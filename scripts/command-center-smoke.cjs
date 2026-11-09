@@ -215,7 +215,7 @@ const { testWindow } = require('./test-window.cjs');
     await app.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1});});
     await page.getByRole('button',{name:'Field Guide',exact:true}).click();
     await page.getByRole('button',{name:'Delete all local data',exact:true}).click();
-    await page.getByRole('heading',{name:'Set up your companion',exact:true}).waitFor();
+    await page.getByRole('heading',{name:'A companion for the road ahead.',exact:true}).waitFor();
     assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('bf-guidance-v1:')).length),0,'Reset must remove per-character planning preferences');
     console.log('PASS: automatic source-backed plans, session/focus autosave, character isolation, restart persistence, explicit AI draft without inference, compact/reduced-motion layout and import replanning. Synthetic profiles only.');
   } catch(error) {

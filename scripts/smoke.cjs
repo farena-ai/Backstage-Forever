@@ -122,11 +122,11 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
       .waitFor();
     await page
       .getByText(
-        "Levelled up or changed areas? Type /reload in WoW to refresh your companion.",
+        "Live guidance runs inside WoW. The desktop journal catches up after the game saves on logout.",
         { exact: true },
       )
       .waitFor();
-    await page.getByText("Advanced connection tools", { exact: true }).click();
+    await page.getByText("Connection checks and tools", { exact: true }).click();
     await page
       .getByRole("button", { name: "Choose game folder", exact: true })
       .waitFor();

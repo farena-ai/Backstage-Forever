@@ -72,6 +72,8 @@ function harness(overrides = {}) {
     context,
   );
   context.QuestGuide = context.window.QuestGuide;
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/living-setup.js"), "utf8"), context);
+  context.LivingSetup = context.window.LivingSetup;
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, "../src/renderer/app.js"), "utf8"),
     context,

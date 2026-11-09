@@ -564,6 +564,9 @@ const { testWindow } = require("./test-window.cjs");
     await page.waitForFunction(() =>
       document.querySelector(".quest-waypoint")?.textContent.includes("reload"),
     );
+    assert.doesNotMatch(await page.locator(".quest-waypoint").innerText(), /second \/reload|then \/reload to load it/i, "Old saved capture must not demand repeated reloads or claim the current Compass is broken");
+    assert.match(await page.locator(".quest-waypoint").innerText(), /snapshot was saved/i);
+    assert.match(await page.locator(".quest-waypoint").innerText(), /current Compass may already work/i);
     assert.equal(
       await page
         .getByRole("button", { name: "Copy game waypoint", exact: true })
@@ -800,7 +803,7 @@ const { testWindow } = require("./test-window.cjs");
       .getByRole("button", { name: "Delete all local data", exact: true })
       .click();
     await page
-      .getByRole("heading", { name: "Set up your companion", exact: true })
+      .getByRole("heading", { name: "A companion for the road ahead.", exact: true })
       .waitFor();
     assert.equal(await page.locator(".quest-detail").count(), 0);
     assert.equal(

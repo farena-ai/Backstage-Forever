@@ -35,19 +35,21 @@ const { testWindow } = require("./test-window.cjs");
           .getBuiltinModule("node:module")
           .createRequire(p.join(app.getAppPath(), "package.json"));
       r("./src/core/game-sync.cjs").GameSync.prototype.discover =
-        async () => [];
+        async () => [{ id: "synthetic", label: "Synthetic Forever", path: root }];
+      r("./src/core/game-runtime.cjs").GameRuntime.prototype.probe =
+        async () => ({ state: "unknown", checkedAt: null, launchAvailable: false });
       dialog.showOpenDialog = async () => ({
         canceled: false,
         filePaths: [root],
       });
     }, game);
     await page
-      .getByRole("heading", { name: "Set up your companion", exact: true })
+      .getByRole("heading", { name: "A companion for the road ahead.", exact: true })
       .waitFor({ timeout: 10000 });
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1000,700));
     await page.waitForFunction(()=>innerWidth<=1000);
     const actionBounds = await page
-      .getByRole("button", { name: "Set up my companion", exact: true })
+      .getByRole("button", { name: "Start my adventure", exact: true })
       .boundingBox();
     assert.ok(
       actionBounds.y + actionBounds.height <=
@@ -55,10 +57,10 @@ const { testWindow } = require("./test-window.cjs");
       "Primary setup action is visible without scrolling",
     );
     await page
-      .getByRole("button", { name: "Set up my companion", exact: true })
+      .getByRole("button", { name: "Start my adventure", exact: true })
       .click();
     await page
-      .getByRole("heading", { name: "Load your character in WoW", exact: true })
+      .getByRole("heading", { name: "Your adventure starts in the world.", exact: true })
       .waitFor();
     for (const name of [
       "BackstageForever.toc",
@@ -108,12 +110,6 @@ const { testWindow } = require("./test-window.cjs");
       "BackstageForeverExport = " + JSON.stringify(JSON.stringify(shot)),
     );
     await page
-      .getByRole("heading", { name: "Your companion is ready", exact: true })
-      .waitFor({ timeout: 15000 });
-    await page
-      .getByRole("button", { name: "Enter my adventure", exact: true })
-      .click();
-    await page
       .getByRole("heading", { name: "Compass Hero", exact: true })
       .waitFor();
     await page.getByText("Synthetic rescue", { exact: true }).first().waitFor();
@@ -149,7 +145,7 @@ const { testWindow } = require("./test-window.cjs");
       .getByRole("button", { name: "Set up my companion", exact: true })
       .click();
     await page
-      .getByRole("heading", { name: "Your companion is ready", exact: true })
+      .getByRole("heading", { name: "Your companion is prepared", exact: true })
       .waitFor();
     const otherGame = path.join(data, "another-client");
     await fs.mkdir(path.join(otherGame, "WTF", "Account"), { recursive: true });
@@ -159,7 +155,7 @@ const { testWindow } = require("./test-window.cjs");
       otherGame,
     );
     await page
-      .getByRole("heading", { name: "Load your character in WoW", exact: true })
+      .getByRole("heading", { name: "Your companion is prepared", exact: true })
       .waitFor({ timeout: 10000 });
     assert.equal(
       (await page.evaluate(() => window.backstage.bootstrap())).state.profiles
@@ -168,7 +164,7 @@ const { testWindow } = require("./test-window.cjs");
     );
     assert.deepEqual(cspErrors, []);
     console.log(
-      "PASS: first-run companion journey, automatic five-file addon preparation, actionable reload step, auto-import, quest/XP briefing, explicit AI action without inference, reduced motion and reopenable setup.",
+      "PASS: first-run single-install preparation, exact five-file readback, no-snapshot entry, auto-import, quest/XP briefing, explicit AI drafting, reduced motion and reopenable setup.",
     );
   } finally {
     if (app) await app.close();
