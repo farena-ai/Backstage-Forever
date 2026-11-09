@@ -3,3 +3,6 @@
 *.js text eol=lf
 *.lua text eol=lf
 *.svg text eol=lf
+data/forever/*.json text eol=lf
+data/forever/LICENSE text eol=lf
+data/forever/NOTICE text eol=lf

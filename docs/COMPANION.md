@@ -10,6 +10,8 @@ Adventure builds a deterministic plan from your saved observed quest log without
 
 ## Character context and honest uncertainty
 
+0.6 adds bounded relevant Forever reference facts to the shared approved context: compatible exact-ID quest links, NPC/reference coordinates, listed rewards, chain status and source provenance. The same whitelist supplies the visible preview and every provider route. Character-sharing opt-out applies to these facts too. Full completed-ID sets and full reference packs remain local. The AI can explain supplied evidence, but its own answer does not establish a new verified quest fact. Local Quest Guide remains usable without a model.
+
 The active-character preview shows the selected context used for a question; players can opt out. Only approved public character fields, bounded observed quests/objectives and actual destinations, XP, up to 10 recent observed turn-ins and optional completed-count belong in the request. The preview shows the approved payload; up to 10 quests and 3 objectives per quest are shared. A local dashboard and optional in-game Compass use observed data without inference. Recent history is a bounded tracking window, not a complete quest history or verified quest-guide database. Race and faction come from separate public game APIs; unfamiliar races are accepted without guessing a faction. Saved snapshots arrive through the addon's normal logout/UI-reload write cadence, so their timestamp matters: a saved zone or level is not a live observation. Private notes/goals are untrusted and excluded by default. Account identifiers, GUIDs, machine paths and credentials do not belong in automatic context.
 
 The assistant knows which game this is. It may not know a specific Forever quest, item or patch rule. It must explain uncertainty about that fact instead of inventing equipment, quest progress, location or a verified quest database. General WoW guidance should be labeled when Forever-specific behavior is unverified.
@@ -18,7 +20,7 @@ Example interaction:
 
 > Player: Where should I level?
 >
-> Companion: Your saved character snapshot shows level 24 in the Barrens; check its timestamp, since you may have moved since it was saved. For a manual leveling plan, prioritize nearby quests around your level and group up for difficult objectives. I don't have a verified Forever quest database. Are you looking for solo questing or a dungeon group?
+> Companion: Your saved snapshot shows level 24 in the Barrens; check its timestamp, since you may have moved since that save. Let's start with the quests in your saved log and their compatible reference details. If a quest's location or prerequisite is missing, I'll say so. Would you prefer solo questing or dungeon preparation?
 
 The character details above are illustrative, not real imported data. Without approved context, the companion can ask for class, level and current zone while offering a useful general approach. It should not ask which game you mean.
 

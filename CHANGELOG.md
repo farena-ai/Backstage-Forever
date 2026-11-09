@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 — 2026-11-09
+
+- Added a bundled, separately licensed live-Forever reference pack with exact-ID/build lookup, reported quest links, NPC/objective observations, listed rewards and source provenance. Coverage is partial; reference-only cache records do not establish playability or every prerequisite.
+- Added local Quest Guide and automatic reference enrichment for saved character plans. Supported complete completion-ID observations allow bounded follow-up candidates with explicit availability uncertainty. No AI connection is required for reference browsing or local planning.
+- Added optional client build, locale, capture version and objective metadata through guarded public addon APIs. Completed quest ID sets remain local; all provider routes share a bounded approved reference context and matching preview.
+- Added player-controlled numeric waypoint commands with build, quest-phase, combat and public-API checks. BF never moves, targets, fights, interacts, opens game maps automatically or forces a reload.
+- Added cancellable build-specific public reference checks, offline bundled/last-good fallback, automatic-check controls and data attribution. Whole-build downloads send no character details.
+- Fixed update recovery with bounded fresh retries, interrupted-stream handling, sanitized stage diagnostics, safe partial cleanup and Windows cache-path checks. Newer manifest failures no longer appear as up-to-date; verified older installers remain preserved. Retry and official Releases recovery stay available without weakening signature/hash/size checks.
+- See docs/releases/0.6.0.md and docs/VALIDATION.md for release gates, measured results and remaining live-client/installed-upgrade limits.
+
 ## 0.5.0 — 2026-11-09
 
 - Added deterministic source-backed observed-quest guidance, automatic plans and bounded session/focus selection without AI or invented routes.

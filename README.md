@@ -6,7 +6,7 @@
 
 **[Download the Windows preview](https://github.com/farena-ai/Backstage-Forever/releases)** · **[Install and get started](docs/GETTING-STARTED.md)** · **[Choose an AI connection](docs/PROVIDERS.md)**
 
-Version **0.5.0 is a Windows desktop preview** with automatic source-backed quest plans, a polished character command center and original class/faction artwork. Local guidance works without AI. Session/focus choices save per character, and saved progress rebuilds the plan automatically. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
+Version **0.6.0 is a Windows desktop preview** with a bundled Forever quest reference, reported chain links, NPC locations, listed rewards, automatic character guidance and improved update recovery. Local Quest Guide and planning work without AI. Exact quest IDs and compatible game builds keep similarly named quests separate. Session/focus choices save per character, and saved progress rebuilds the plan automatically. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
 
 ## Install
 
@@ -17,6 +17,10 @@ Version **0.5.0 is a Windows desktop preview** with automatic source-backed ques
 The installer is **unsigned**. Windows may display an unknown-publisher warning; verify the download source before proceeding. Windows publisher signing and clean-machine installation/upgrade acceptance remain pending. App-update downloads use a separate pinned Ed25519 signature and installer hash/size verification. See [Getting started](docs/GETTING-STARTED.md) for full beginner instructions, backups and deletion.
 
 ## What this preview includes
+
+- A local Quest Guide with build-specific Forever facts, reported chains, quest givers/turn-ins, approximate observed locations, reward choices and inspectable sources. The initial pack is bundled; optional automatic whole-build reference checks need no AI account and send no character details. Coverage is partial; cache records and chain links do not prove playability or every prerequisite. See [Forever reference coverage](docs/FOREVER-DATA.md).
+- Player-controlled **Copy game waypoint** commands for compatible supported destinations. Paste the prepared command into WoW; the addon checks the build and quest phase before placing a marker or printing coordinates. No automatic movement, combat, interaction or map opening.
+- Bounded automatic retries and clear recovery for interrupted app updates. If an older updater cannot download the new release, use the official Windows installer once to receive the fixes. See [update recovery](docs/UPDATES.md#recovering-a-failed-update).
 
 - Local character profiles, goals and private notes; backup/import/reset controls.
 - Painted citadel scenery, an embossed companion medallion, bronze/leather framing and a parchment journal, with bundled offline fonts.
@@ -80,4 +84,4 @@ docs/                 Setup, privacy, compatibility and release evidence
 
 The painted environment and medallion are original generated fantasy artwork bundled locally; no Blizzard artwork or game assets were copied. The original Backstage crest remains in the identity system. Bundled Cinzel and Source Sans 3 fonts include their SIL Open Font License notices. See [Artwork notes](docs/ARTWORK.md). Brand and product design: Frank Arena, Backstage Coding.
 
-Licensed under [MIT](LICENSE). This project is not an official Blizzard product. See [Security](SECURITY.md) and [Changelog](CHANGELOG.md).
+Application code is licensed under [MIT](LICENSE). Efficient Games' derived reference compilation retains [CC BY 4.0 attribution and notices](docs/THIRD-PARTY-NOTICES.md). This project is not an official Blizzard product. See [Security](SECURITY.md) and [Changelog](CHANGELOG.md).
