@@ -9,7 +9,20 @@ function shortPath(target) {
   const alias = require("node:child_process").execFileSync(path.join(process.env.WINDIR, "System32/WindowsPowerShell/v1.0/powershell.exe"), ["-NoProfile", "-NonInteractive", "-Command", script], { env: { ...process.env, BF_VOICE_ALIAS_PATH: target }, encoding: "utf8", timeout: 15000 }).trim();
   assert.notEqual(alias.toLowerCase(), target.toLowerCase()); assert.match(alias, /~\d/); assert.equal(syncFs.statSync(alias).ino, syncFs.statSync(target).ino); return alias;
 }
-(async () => {
+async function probeCapabilities(voice) {
+  const workerFactory = voice.worker; let terminal = null;
+  voice.worker = function (...args) {
+    const worker = workerFactory.apply(this, args);
+    void worker.result.then(result => { if (worker.done && ["capabilities", "unavailable"].includes(result.event?.event)) terminal = result.event.event; });
+    return worker;
+  };
+  try {
+    const result = await voice.capabilities();
+    assert.ok(terminal, "Native capability boot is unproven: no validated terminal and confirmed disposal (bootstrap, compilation or worker failure).");
+    return { result, terminal };
+  } finally { voice.worker = workerFactory; }
+}
+async function main() {
   const root = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), "forever-voice-backend-")); let app;
   const watchdog = setTimeout(() => { console.error("Voice fixture exceeded 80 seconds"); process.exitCode = 1; app?.process().kill(); }, 80000);
   try {
@@ -18,12 +31,12 @@ function shortPath(target) {
       const { VoiceService } = require("../src/core/voice.cjs"), { CompanionContext } = require("../src/core/companion-context.cjs"), state = defaultState();
       const voice = new VoiceService({ context: new CompanionContext(() => state), getState: () => state, inputAllowed: () => false, dataDir: data });
       try {
-        const result = await voice.capabilities(); assert.ok(["available", "unavailable"].includes(result.status));
+        const { result, terminal } = await probeCapabilities(voice); assert.ok(["available", "unavailable"].includes(result.status));
         assert.ok(result.recognition.cultures.length <= 32 && result.synthesis.voices.length <= 32);
         console.log("CAPABILITIES ONLY: " + JSON.stringify(result));
         const runtime = path.join(normal, "runtime/voice");
         for (const name of ["voice-helper.ps1", "voice-helper.cs"]) assert.deepEqual(await fs.readFile(path.join(runtime, name)), await fs.readFile(path.join(__dirname, "../src/native", name)));
-        assert.equal(voice.workers.size, 0); console.log("PASS: fixed Windows helper boot/compile/enumeration/disposal; exact prepared runtime bytes; no input/output audio selected.");
+        assert.equal(voice.workers.size, 0); console.log(`PASS: fixed Windows helper validated ${terminal} terminal and confirmed disposal prove boot/compile; exact prepared runtime bytes; no input/output audio selected.`);
       } finally { voice.close(); }
       return;
     }
@@ -42,7 +55,7 @@ function shortPath(target) {
         this.spawn = () => {
           const child = new EventEmitter(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.stdin = new PassThrough(); child.killed = false;
           child.on("exit", code => queueMicrotask(() => child.emit("close", code)));
-          child.kill = () => { child.killed = true; child.emit("exit", null); return true; };
+          child.kill = () => { child.killed = true; child.killCalls = (child.killCalls || 0) + 1; if (child.killMode === "false") return false; if (child.killMode === "throw") throw Error("Fixture kill denied"); if (child.killMode === "unclosed") return true; child.emit("exit", null); return true; };
           child.send = event => child.stdout.write(JSON.stringify({ v: 1, id: child.id, ...event }) + "\n");
           child.capabilities = () => { child.send({ event: "capabilities", recognizers: [{ id: "MS-1033-80-DESK", name: "Microsoft English", culture: "en-US" }], voices: [{ id: "Microsoft David Desktop", name: "Microsoft David Desktop", culture: "en-US" }] }); child.emit("exit", 0); };
           child.stdin.on("data", line => { const request = JSON.parse(String(line)); child.id = request.id; voiceFixture.commands.push(request); if (request.command === "capabilities" && !voiceFixture.holdProbe) queueMicrotask(child.capabilities); if (["listen", "speak"].includes(request.command)) queueMicrotask(() => child.send({ event: "started" })); if (request.command === "cancel" && !voiceFixture.ignoreCancel) queueMicrotask(() => child.emit("exit", 0)); });
@@ -77,7 +90,20 @@ function shortPath(target) {
     await call("companionContext", { profileId: "Alpha", view: "other" }); s = await call("voiceSpeak", { profileId: "Alpha", text: "Reviewed public plan", voiceId: "Microsoft David Desktop" }); await waitPhase(s.sessionId, "speaking");
     await call("resetData"); assert.equal((await call("voiceStatus", s.sessionId)).phase, "idle"); await call("companionContext", { profileId: null, view: "ai" }); await focus(); s = await call("voiceStart", { profileId: null, culture: "en-US" }); await waitPhase(s.sessionId, "listening");
     await app.evaluate(() => voiceFixture.children.at(-1).stdout.write("x".repeat(32769))); await waitPhase(s.sessionId, "error");
+    for (const killMode of ["false", "throw", "unclosed"]) {
+      s = await call("voiceSpeak", { profileId: null, text: "Synthetic reviewed reading", voiceId: "Microsoft David Desktop" }); await waitPhase(s.sessionId, "speaking");
+      const inputCount = await app.evaluate((_electron, killMode) => { voiceFixture.old = voiceFixture.children.at(-1); voiceFixture.old.killMode = killMode; voiceFixture.ignoreCancel = true; return voiceFixture.commands.filter(c => c.command === "listen").length; }, killMode);
+      const replacement = await call("voiceStart", { profileId: null, culture: "en-US" }); await waitPhase(replacement.sessionId, "unavailable");
+      const ownership = await app.evaluate(() => {
+        const child = voiceFixture.old; child.stdin.emit("error", Error("Late EPIPE fixture")); child.stderr.emit("error", Error("Late stderr fixture"));
+        return { owned: [...voiceFixture.service.workers].some(worker => worker.child === child), protected: child.stdin.listenerCount("error"), inputCount: voiceFixture.commands.filter(c => c.command === "listen").length };
+      }); assert.equal(ownership.owned, true); assert.equal(ownership.protected, 1); assert.equal(ownership.inputCount, inputCount);
+      await app.evaluate(() => { voiceFixture.old.emit("close", null); voiceFixture.ignoreCancel = false; });
+      assert.equal((await call("voiceStatus", replacement.sessionId)).phase, "unavailable"); assert.equal(await app.evaluate(() => voiceFixture.service.workers.size), 0);
+    }
     assert.equal(await app.evaluate(() => voiceFixture.launches), 0);
-    console.log("PASS: actual trusted Electron voice IPC, fake-worker lifecycle, startup release, blur/input-only cancellation, explicit speech, context/profile/provider/memory/reset/reload invalidation, null-profile fallback and protocol bounds; no real audio or game launch.");
+    console.log("PASS: actual trusted Electron voice IPC, fake-worker lifecycle, startup release, blur/input-only cancellation, explicit speech, context/profile/provider/memory/reset/reload invalidation, null-profile fallback, protocol bounds and retained ownership/error protection with replacement audio blocked after unconfirmed termination; no real audio or game launch.");
   } finally { clearTimeout(watchdog); if (app) await app.close().catch(() => app.process().kill()); await fs.rm(root, { recursive: true, force: true }); }
-})().catch(error => { console.error(error); process.exitCode = 1; });
+}
+if (require.main === module) main().catch(error => { console.error(error); process.exitCode = 1; });
+module.exports = { probeCapabilities };

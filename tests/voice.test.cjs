@@ -12,7 +12,7 @@ function fixture(options = {}) {
   const spawn = (...args) => {
     const child = new EventEmitter(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.stdin = new PassThrough(); child.args = args; child.killed = false;
     child.on("exit", code => options.delayedClose ? setTimeout(() => child.emit("close", code), 5) : queueMicrotask(() => child.emit("close", code)));
-    child.kill = () => { child.killed = true; child.emit("exit", null, "SIGTERM"); return true; };
+    child.kill = () => { child.killed = true; child.killCalls = (child.killCalls || 0) + 1; if (options.killMode === "false") return false; if (options.killMode === "throw") throw Error("Fixture kill denied"); if (options.killMode === "unclosed") return true; child.emit("exit", null, "SIGTERM"); return true; };
     child.send = obj => child.stdout.write(JSON.stringify({ v: 1, id: child.id, ...obj }) + "\n");
     child.stdin.on("data", raw => { const command = JSON.parse(String(raw)); child.id = command.id; commands.push(command); if (command.command === "capabilities" && !options.holdProbe) queueMicrotask(() => { child.send({ event: "capabilities", ...caps }); child.emit("exit", 0); }); if (["listen", "speak"].includes(command.command) && !options.holdStart) queueMicrotask(() => child.send({ event: "started" })); if (command.command === "cancel" && !options.ignoreCancel) queueMicrotask(() => child.emit("exit", 0)); });
     children.push(child); return child;
@@ -90,4 +90,47 @@ test("explicit cancel before the renderer receives a start acknowledgement prese
 });
 test("protocol failure retains pipe error protection until the terminated child closes", async () => {
   const f = fixture({ delayedClose: true }); try { const s = f.service.start({ profileId: "Alpha", culture: "en-US" }); await new Promise(r => setTimeout(r, 15)); const child = f.children.at(-1); child.stdout.write("bad json\n"); assert.equal(child.stdin.listenerCount("error"), 1); assert.doesNotThrow(() => child.stdin.emit("error", Error("EPIPE fixture"))); await new Promise(r => setTimeout(r, 20)); assert.equal(f.service.status(s.sessionId).phase, "error"); assert.equal(child.stdin.listenerCount("error"), 0); } finally { f.service.close(); }
+});
+test("unconfirmed termination retains ownership and rejects replacement audio after the fixed deadline", async () => {
+  for (const killMode of ["false", "throw", "unclosed"]) for (const failure of [false, true]) {
+    const f = fixture({ ignoreCancel: true, killMode }); let old;
+    try {
+      const first = f.service.speak({ profileId: "Alpha", text: "Current reading", voiceId: caps.voices[0].id }); await tick(); await tick(); old = f.children.at(-1);
+      if (failure) old.stdout.write("bad json\n"); else f.service.stop(first.sessionId);
+      await new Promise(r => setTimeout(r, 25));
+      assert.equal(f.service.workers.size, 1, "Unclosed process remains owned after the kill deadline");
+      assert.equal(old.stdin.listenerCount("error"), 1); assert.doesNotThrow(() => old.stdin.emit("error", Error("Late EPIPE fixture")));
+      assert.equal(f.service.status(first.sessionId).phase, "error"); assert.match(f.service.status(first.sessionId).message, /confirm|blocked/i);
+      const replacement = f.service.start({ profileId: "Alpha", culture: "en-US" }); await new Promise(r => setTimeout(r, 25));
+      assert.equal(f.service.status(replacement.sessionId).phase, "unavailable", "Replacement must settle boundedly without waiting forever");
+      assert.equal(f.commands.filter(c => c.command === "listen").length, 0); assert.equal(f.children.length, 2);
+      const kills = old.killCalls; f.service.close(); assert.ok(old.killCalls > kills, "Quit retries every unconfirmed owned worker");
+      assert.equal(f.service.workers.size, 1); assert.doesNotThrow(() => old.stderr.emit("error", Error("Late pipe failure")));
+      old.emit("close", null); await tick(); assert.equal(f.service.workers.size, 0); assert.equal(old.stdin.listenerCount("error"), 0);
+    } finally { old?.emit("close", null); f.service.close(); }
+  }
+});
+test("late close after an unconfirmed deadline never resumes rejected input automatically", async () => {
+  const f = fixture({ ignoreCancel: true, killMode: "unclosed" }); let old;
+  try {
+    f.service.speak({ profileId: "Alpha", text: "Current reading", voiceId: caps.voices[0].id }); await tick(); await tick(); old = f.children.at(-1);
+    const replacement = f.service.start({ profileId: "Alpha", culture: "en-US" }); await new Promise(r => setTimeout(r, 25));
+    assert.equal(f.service.status(replacement.sessionId).phase, "unavailable"); assert.equal(f.commands.some(c => c.command === "listen"), false);
+    old.emit("close", null); await tick(); assert.equal(f.service.workers.size, 0); assert.equal(f.service.status(replacement.sessionId).phase, "unavailable");
+    f.service.start({ profileId: "Alpha", culture: "en-US" }); await tick(); await tick(); assert.equal(f.commands.filter(c => c.command === "listen").length, 1);
+  } finally { old?.emit("close", null); for (const child of f.children) child.emit("close", null); f.service.close(); }
+});
+test("capability diagnostic cannot claim native boot after a bootstrap failure", async () => {
+  const { probeCapabilities } = require("../scripts/voice-backend-smoke.cjs"); assert.equal(typeof probeCapabilities, "function", "Diagnostic evidence gate must exist");
+  const f = fixture(); try { f.service.spawn = () => { throw Error("Fixture compiler/bootstrap failure"); }; assert.equal((await f.service.capabilities()).status, "unavailable"); await assert.rejects(() => probeCapabilities(f.service), /boot.*unproven/i); } finally { f.service.close(); }
+  const g = fixture({ holdProbe: true }); try { const pending = probeCapabilities(g.service); await tick(); g.children[0].stderr.write("fixture compiler failure"); g.children[0].emit("close", 1); await assert.rejects(() => pending, /boot.*unproven/i); } finally { g.service.close(); }
+});
+test("capability diagnostic accepts only validated native terminal evidence with confirmed disposal", async () => {
+  const { probeCapabilities } = require("../scripts/voice-backend-smoke.cjs");
+  const f = fixture(); try { const evidence = await probeCapabilities(f.service); assert.equal(evidence.terminal, "capabilities"); assert.equal(evidence.result.status, "available"); } finally { f.service.close(); }
+  const g = fixture({ holdProbe: true }); try { const pending = probeCapabilities(g.service); await tick(); g.children[0].send({ event: "unavailable", code: "engine" }); g.children[0].emit("close", 0); const evidence = await pending; assert.equal(evidence.terminal, "unavailable"); assert.equal(evidence.result.status, "unavailable"); } finally { g.service.close(); }
+});
+test("stop acknowledges cancellation without claiming unconfirmed native input has stopped", async () => {
+  const f = fixture({ ignoreCancel: true, killMode: "false" }); let child;
+  try { const s = f.service.start({ profileId: "Alpha", culture: "en-US" }); await tick(); await tick(); child = f.children.at(-1); child.send({ event: "hypothesis", text: "Preserve draft" }); const stopped = f.service.stop(s.sessionId); assert.match(stopped.message, /Stopping/); assert.equal(stopped.incomplete, true); await new Promise(r => setTimeout(r, 25)); assert.equal(f.service.status(s.sessionId).phase, "error"); assert.equal(f.service.status(s.sessionId).draft, "Preserve draft"); } finally { child?.emit("close", null); f.service.close(); }
 });

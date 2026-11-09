@@ -7,6 +7,7 @@ const LIMITS = Object.freeze({ line: 32768, stdout: 131072, stderr: 16384, text:
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const UNAVAILABLE = "Local Windows speech is unavailable. You can keep typing.";
 const FAILURE = "Local speech stopped safely. You can keep typing or try again.";
+const UNCONFIRMED = "Local speech could not confirm it stopped. Further voice use is blocked until the helper exits. You can keep typing.";
 function exact(value, keys) {
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== keys.length || keys.some(k => !Object.hasOwn(value, k))) throw Error("Invalid voice request.");
 }
@@ -55,6 +56,7 @@ class VoiceWorker {
   constructor({ spawn, executable, helper, request, limits, onEvent }) {
     this.request = request; this.limits = limits; this.onEvent = onEvent; this.done = false; this.cancelled = false; this.buffer = Buffer.alloc(0); this.output = 0; this.errors = 0; this.terminal = null; this.started = false; this.bindings = [];
     this.result = new Promise(resolve => this.resolve = resolve);
+    this.disposed = new Promise(resolve => this.resolveDisposed = resolve);
     try {
       this.child = spawn(executable, ["-NoLogo", "-NoProfile", "-NonInteractive", "-File", helper], { shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
       this.bind(this.child, "error", () => this.fail());
@@ -77,7 +79,7 @@ class VoiceWorker {
     try { this.child.stdin.write(line); } catch { this.fail(); }
   }
   read(chunk) {
-    if (this.done || this.cancelled || this.failed) return;
+    if (this.done || this.cancelled || this.failed || this.resultSettled) return;
     try {
       this.output += chunk.length; if (this.output > this.limits.stdout) throw Error();
       this.buffer = Buffer.concat([this.buffer, Buffer.from(chunk)]);
@@ -105,23 +107,36 @@ class VoiceWorker {
     if (this.done || this.failed) return;
     this.failed = true; clearTimeout(this.deadline);
     if (!this.child) { this.finish({ error: true }); return; }
-    // Keep pipe error handlers while termination drains outstanding writes.
-    // Removing them before close can turn a late EPIPE into a main-process crash.
-    this.deadline = setTimeout(() => { try { this.child.kill(); } catch {} this.finish({ error: true }); }, this.limits.kill);
-    try { this.child.kill(); } catch {}
+    this.terminationDeadline(); this.kill();
+  }
+  kill() { try { this.child?.kill(); } catch {} }
+  terminationDeadline() {
+    if (this.terminationStarted) return;
+    this.terminationStarted = true;
+    this.terminationTimer = setTimeout(() => {
+      this.kill();
+      // A kill request, including a successful return value, is not disposal.
+      // Bound the public result while retaining ownership and pipe protection.
+      this.settle({ ...(this.cancelled ? { cancelled: true } : { error: true }), unconfirmed: !this.done });
+    }, this.limits.kill);
   }
   cancel(force = false) {
     if (this.done) return this.result;
-    if (this.cancelled && !force) return this.result;
-    this.cancelled = true; clearTimeout(this.deadline);
-    if (force) { try { this.child?.kill(); } catch {} this.finish({ cancelled: true }); }
-    else { this.deadline = setTimeout(() => { try { this.child?.kill(); } catch {} this.finish({ cancelled: true }); }, this.limits.kill); this.write({ v: 1, id: this.request.id, command: "cancel" }); }
+    if (!this.cancelled) {
+      this.cancelled = true; clearTimeout(this.deadline); this.terminationDeadline();
+      if (!force && !this.failed) this.write({ v: 1, id: this.request.id, command: "cancel" });
+    }
+    if (force) this.kill();
     return this.result;
   }
+  settle(result) {
+    if (this.resultSettled) return;
+    this.resultSettled = true; this.buffer = Buffer.alloc(0); this.resolve(result);
+  }
   finish(result) {
-    if (this.done) return; this.done = true; clearTimeout(this.deadline);
+    if (this.done) return; this.done = true; clearTimeout(this.deadline); clearTimeout(this.terminationTimer);
     for (const [emitter, name, fn] of this.bindings) emitter.removeListener(name, fn);
-    this.bindings = []; this.buffer = Buffer.alloc(0); this.resolve(result);
+    this.bindings = []; this.settle(result); this.resolveDisposed();
   }
 }
 const idle = () => ({ sessionId: null, phase: "idle", draft: "", incomplete: false, message: "" });
@@ -153,7 +168,7 @@ class VoiceService {
   speak(input) { return this.request(input, "speak"); }
   worker(helper, request, onEvent) {
     const worker = new VoiceWorker({ spawn: this.spawn, executable: this.executable, helper, request, limits: this.limits, onEvent });
-    this.workers.add(worker); void worker.result.then(() => this.workers.delete(worker)); return worker;
+    this.workers.add(worker); void worker.disposed.then(() => this.workers.delete(worker)); return worker;
   }
   async prepareBounded() {
     let timer, cancel;
@@ -162,6 +177,7 @@ class VoiceService {
   }
   cancelPreparations() { for (const cancel of this.preparations) cancel(); this.preparations.clear(); }
   supported() { return this.platform === "win32" && typeof this.executable === "string" && path.win32.isAbsolute(this.executable); }
+  disposalPending() { return [...this.workers].some(worker => worker.terminationStarted && !worker.done); }
   async discover(helper) {
     const worker = this.worker(helper, { v: 1, id: randomUUID(), command: "capabilities" });
     return (await worker.result).event;
@@ -176,8 +192,9 @@ class VoiceService {
   async readCapabilities() {
     const generation = this.generation;
     try {
-      if (this.closed || !this.supported()) return unavailable();
+      if (this.closed || !this.supported() || this.disposalPending()) return unavailable();
       const helper = await this.prepareBounded(); if (this.closed || generation !== this.generation) return unavailable();
+      if (this.disposalPending()) return unavailable();
       const event = await this.discover(helper); if (this.closed || generation !== this.generation || event?.event !== "capabilities") return unavailable();
       return { status: event.recognizers.length || event.voices.length ? "available" : "unavailable", recognition: { available: !!event.recognizers.length, cultures: [...new Set(event.recognizers.map(r => r.culture))] }, synthesis: { available: !!event.voices.length, voices: structuredClone(event.voices) }, message: "Installed local engines only; microphone access and playback have not been tested." };
     } catch { return unavailable(); }
@@ -185,9 +202,12 @@ class VoiceService {
   async run(session, input, previous) {
     try {
       await Promise.all(previous); if (!this.valid(session)) return;
+      if (this.disposalPending()) { session.status.phase = "unavailable"; session.status.message = UNCONFIRMED; return; }
       if (!this.supported()) throw Error();
       const helper = await this.prepareBounded(); if (!this.valid(session)) return;
+      if (this.disposalPending()) { session.status.phase = "unavailable"; session.status.message = UNCONFIRMED; return; }
       const capability = await this.discover(helper); if (!this.valid(session)) return;
+      if (this.disposalPending()) { session.status.phase = "unavailable"; session.status.message = UNCONFIRMED; return; }
       if (capability?.event !== "capabilities" || (session.kind === "listen" ? !capability.recognizers.some(r => r.culture === input.culture) : !capability.voices.some(v => v.id === input.voiceId))) throw Error();
       const request = { v: 1, id: session.status.sessionId, command: session.kind, ...(session.kind === "listen" ? { culture: input.culture } : { text: input.text, voiceId: input.voiceId }) };
       if (!this.valid(session)) return;
@@ -198,7 +218,7 @@ class VoiceService {
       });
       const result = await session.worker.result; if (!this.valid(session)) return;
       if (result.event?.event === "completed") { session.status.phase = "stopped"; session.status.draft = result.event.text || ""; session.status.incomplete = false; session.status.message = session.kind === "listen" ? "Review the draft before sending." : "Reading finished."; }
-      else { session.status.phase = result.event?.event === "unavailable" ? "unavailable" : "error"; session.status.draft = ""; session.status.message = FAILURE; }
+      else { session.status.phase = result.event?.event === "unavailable" ? "unavailable" : "error"; session.status.draft = ""; session.status.message = result.unconfirmed && !session.worker.done ? UNCONFIRMED : FAILURE; }
     } catch { if (this.valid(session)) { session.status.phase = "unavailable"; session.status.message = UNAVAILABLE; } }
   }
   stop(id) {
@@ -206,8 +226,18 @@ class VoiceService {
     const session = this.session; if (!session || session.status.sessionId !== id || !this.context.isCurrent(session.context)) return idle();
     this.generation++;
     this.cancelPreparations();
-    for (const worker of this.workers) void worker.cancel();
-    if (["starting", "listening", "speaking"].includes(session.status.phase)) { session.status.phase = "stopped"; session.status.incomplete = session.kind === "listen"; session.status.message = session.kind === "listen" ? "Capture stopped. This draft may be incomplete; review before sending." : "Reading stopped."; }
+    const workers = [...this.workers], stopping = workers.map(worker => worker.cancel());
+    if (!session.stopWatching) {
+      session.stopWatching = true;
+      void Promise.all(stopping).then(results => {
+        if (results.some(result => result.unconfirmed) && workers.some(worker => !worker.done) && this.session === session && this.context.isCurrent(session.context)) {
+          session.status.phase = "error"; session.status.message = UNCONFIRMED;
+        } else if (this.session === session && session.status.phase === "stopped" && this.context.isCurrent(session.context)) {
+          session.status.message = session.kind === "listen" ? "Capture stopped. This draft may be incomplete; review before sending." : "Reading stopped.";
+        }
+      });
+    }
+    if (["starting", "listening", "speaking"].includes(session.status.phase)) { session.status.phase = "stopped"; session.status.incomplete = session.kind === "listen"; session.status.message = session.kind === "listen" ? "Stopping local capture. This draft may be incomplete; review before sending." : "Stopping local reading."; }
     return structuredClone(session.status);
   }
   blur() { this.inputGeneration++; if (this.session?.kind === "listen") this.stop(this.session.status.sessionId); }
