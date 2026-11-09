@@ -54,7 +54,11 @@ local fighting=false
 InCombatLockdown=function()return fighting end
 SlashCmdList={};UIParent={}
 local methods={}
-for _,k in ipairs({'SetSize','SetMovable','EnableMouse','RegisterForDrag','SetClampedToScreen','SetBackdrop','SetBackdropColor','RegisterEvent','SetWidth','SetJustifyH','SetJustifyV','SetAllPoints','ClearAllPoints','SetTextColor','SetWordWrap','SetMaxLines'})do methods[k]=function()end end
+for _,k in ipairs({'SetMovable','EnableMouse','RegisterForDrag','SetClampedToScreen','SetBackdrop','SetBackdropColor','RegisterEvent','SetJustifyH','SetJustifyV','SetAllPoints','ClearAllPoints','SetTextColor'})do methods[k]=function()end end
+methods.SetSize=function(self,w,h)self.width=w;self.height=h end
+methods.SetWidth=function(self,w)self.width=w end
+methods.SetWordWrap=function(self,v)self.wordWrap=v end
+methods.SetMaxLines=function(self,v)self.maxLines=v end
 methods.SetPoint=function(self,...)self.point={...}end
 methods.GetPoint=function()return 'CENTER',UIParent,'CENTER',321,123 end
 methods.StartMoving=function(self)self.moving=true end
@@ -118,6 +122,39 @@ assert(fonts[2].point[3]==-35,'Collapsed body must move above its footer')
 assert(frames.BackstageForeverCompass.height==122 and fonts[2].height==30)
 BackstageForeverHUDCaptureStatus('unavailable')
 assert(frames.BackstageForeverCompass.height==152 and fonts[2].height==60)
+`));
+test('wide waypoint titles cannot consume the separately reserved source and phase row',()=>lua(hud+String.raw`
+BackstageForeverBuildPlan=function()return {status='ready',steps={
+ {questId=1,phase='o',title='Unsupported first step',source='none',detail='Check quest log'},
+ {questId=2,phase='o',title=string.rep('W',100),source='reference',detail='Approximate reference: observed objective progress location.',command='/bf guide 2 o 1413 0.4 0.5 1.60.1.70862'}}}end
+BackstageForeverHUDUpdate(character)
+local title,qualifier
+for _,font in ipairs(fonts)do
+ if font.text and font.text:find('Step 2:',1,true) then title=font end
+ if font.text and font.text:find('Approximate reference — objective',1,true) then qualifier=font end
+end
+assert(title and qualifier and title~=qualifier,'Action title and source/phase need independent reserved regions')
+for _,font in ipairs({title,qualifier})do
+ assert(font.width==312 and font.height==16 and font.maxLines==1 and font.wordWrap==false,'Each action row must explicitly reserve one unwrapped line')
+end
+assert(title.point[1]=='BOTTOMLEFT' and title.point[3]==qualifier.point[3]+16,'Action rows must not overlap')
+assert(qualifier.point[3]==81 and title.point[3]==97,'Action rows must preserve the existing body/control/footer geometry')
+-- A synthetic wide-glyph layout exposes clipping rather than only checking
+-- the strings passed to SetText. This is not a claim about actual WoW fonts.
+local function rendered(font)
+ local out,width={},0
+ for glyph in font.text:gmatch('[%z\1-\127\194-\244][\128-\191]*')do
+  local advance=glyph=='W' and 12 or 6
+  if glyph=='\n' or width+advance>font.width then break end
+  out[#out+1]=glyph;width=width+advance
+ end
+ return table.concat(out)
+end
+assert(rendered(title)~=title.text and rendered(title):find('Step 2: WWW',1,true),'Wide title fixture must actually clip its independent title row')
+assert(rendered(qualifier)=='Approximate reference — objective','Source and phase must remain wholly visible after title clipping')
+assert(frames.BackstageForeverCompassWaypoint.enabled and #guideCalls==0)
+frames.BackstageForeverCompassWaypoint.OnClick();assert(guideCalls[1]=='guide 2 o 1413 0.4 0.5 1.60.1.70862')
+frames.BackstageForeverCompassCollapse.OnClick();assert(not title.visible and not qualifier.visible,'Both reserved rows hide while collapsed')
 `));
 test('TOC loads planner dependencies before capture and HUD',()=>{
  const fs=require('node:fs');const toc=fs.readFileSync(path.join(__dirname,'../addon/BackstageForever/BackstageForever.toc'),'utf8');

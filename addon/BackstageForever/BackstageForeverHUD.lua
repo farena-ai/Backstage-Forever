@@ -1,5 +1,5 @@
 -- Native display and explicit waypoint clicks only; capture remains event driven.
-local panel,body,hint,actionLabel,focusButton,sessionButton,waypointButton
+local panel,body,hint,actionTitle,actionSource,focusButton,sessionButton,waypointButton
 local latest,captureMessage,settings
 local visible,collapsed,active=true,false,false
 local epoch=0
@@ -107,17 +107,21 @@ local function update()
     safe(panel.SetHeight,panel,collapsed and (captureMessage and 152 or 122) or 440)
     safe(focusButton.SetText,focusButton,'Focus: '..settings.focus)
     safe(sessionButton.SetText,sessionButton,settings.minutes..' min / '..(settings.minutes==15 and 1 or settings.minutes==60 and 3 or 2)..' cards')
-    for _,control in ipairs({focusButton,sessionButton,waypointButton,actionLabel})do safe(collapsed and control.Hide or control.Show,control) end
+    for _,control in ipairs({focusButton,sessionButton,waypointButton,actionTitle,actionSource})do safe(collapsed and control.Hide or control.Show,control) end
     if selected and not collapsed then
         local qualifier=selected.source=='reference' and 'Approximate reference' or 'Current game'
-        safe(actionLabel.SetText,actionLabel,'Step '..stepIndex..': '..text(selected.title,62)..'\n'..qualifier..' — '..(selected.phase=='t' and 'turn-in' or 'objective'))
+        safe(actionTitle.SetText,actionTitle,'Step '..stepIndex..': '..text(selected.title,62))
+        safe(actionSource.SetText,actionSource,qualifier..' — '..(selected.phase=='t' and 'turn-in' or 'objective'))
         local clickEpoch,clickCharacter=epoch,latest
         safe(waypointButton.SetScript,waypointButton,'OnClick',function()
             if not active or epoch~=clickEpoch or latest~=clickCharacter or combat() or type(BackstageForeverGuide)~='function' then return end
             safe(BackstageForeverGuide,command)
         end)
         safe(waypointButton.Enable,waypointButton)
-    else safe(actionLabel.SetText,actionLabel,'No supported waypoint in these steps.\nCheck the quest log for directions.') end
+    else
+        safe(actionTitle.SetText,actionTitle,'No supported waypoint in these steps.')
+        safe(actionSource.SetText,actionSource,'Check the quest log for directions.')
+    end
     safe(panel.Show,panel)
 end
 BackstageForeverHUDUpdate=function(character) latest=character;update() end
@@ -176,7 +180,14 @@ local function initialize()
     focusButton:SetScript('OnClick',function()if active and not combat() then settings.focus=focuses[settings.focus] or 'balanced';save();update()end end)
     sessionButton=button('BackstageForeverCompassSession',192,134)
     sessionButton:SetScript('OnClick',function()if active and not combat() then settings.minutes=settings.minutes==15 and 30 or settings.minutes==30 and 60 or 15;save();update()end end)
-    actionLabel=panel:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall');actionLabel:SetPoint('BOTTOMLEFT',14,81);actionLabel:SetWidth(312);actionLabel:SetHeight(32);actionLabel:SetJustifyH('LEFT');safe(actionLabel.SetMaxLines,actionLabel,2)
+    -- Independent rows prevent a wide title from hiding the waypoint qualifier.
+    local function actionRow(y)
+        local row=panel:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
+        row:SetPoint('BOTTOMLEFT',14,y);row:SetWidth(312);row:SetHeight(16);row:SetJustifyH('LEFT')
+        safe(row.SetMaxLines,row,1);safe(row.SetWordWrap,row,false)
+        return row
+    end
+    actionTitle=actionRow(97);actionSource=actionRow(81)
     waypointButton=CreateFrame('Button','BackstageForeverCompassWaypoint',panel,'UIPanelButtonTemplate');waypointButton:SetPoint('BOTTOMLEFT',14,51);waypointButton:SetSize(312,24);waypointButton:SetText('Show waypoint')
     update()
 end
