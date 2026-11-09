@@ -27,6 +27,8 @@ Preserve the series design's game/public-API, saved-file, privacy, source owners
 
 ## Task 4: Publish and authenticate the combined preview
 
+Publication adjustment: main validation42711047916 passed, but parallel tag validation42712456626 exposed a Preparation retry-fixture race. Production workflow42712457255 was cancelled before publication; no0.12.0 release/assets exist. Preserve the immutable v0.12.0 tag and publish the same combined feature checkpoint as0.12.1 after witnessed fixture correction, focused independent review and fresh validation. No tag, public history or published assets are overwritten. The five-resource version strings advance together;1.0 remains held.
+
 - [ ] Recheck remote main drift and owner/repository/public MIT state, preserve exact reviewed source. Fast-forward main through the authorized path; no forced public history rewrite or published tag/asset overwrite.
 - [ ] If checkout normalization changes reviewed physical bytes, rebuild before the packaged byte gate. Push main and observe Windows validation success before creating/pushing the single new v0.12.0 tag.
 - [ ] Observe signed production release workflow to completion in this session, without scheduled watchers. Preserve the existing signing key and preview channel; do not claim Windows Authenticode signing.

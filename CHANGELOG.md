@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.12.0 — combined preview checkpoint, 2026-11-09
+## 0.12.1 — combined preview checkpoint, 2026-11-09
+
+- Corrected a Preparation retry test that inspected retained old material cards before the genuine read/paint completed. The focus assertion remains; delayed replies and newer deliberate focus receive explicit coverage.
+- The 0.12.0 candidate was not published: its release was cancelled when a tag validation exposed this fixture race. Its tag is preserved. The combined public checkpoint is 0.12.1, with unchanged feature scope and update-signing trust.
 
 - Delivered the Adventure Director, Preparation, optional Windows voice/private memory and Party milestones as one update, with 1.0 held for owner acceptance.
 - Added an illustrated class/faction Quest Guide atlas, explicit reported chain links, observed reward and source-qualified destination panels, visible unknowns and readable compact controls.
@@ -22,7 +25,7 @@
 - Added exact shortfalls only for complete applicable bag observations; partial/unknown quantities remain explicit and other characters are never silently pooled.
 - Added deliberate atomic manual shopping checklists in Company, without crafting, purchases, transfer or invented quest proof.
 - Added guarded native collectors and dated caches, plus deep snapshot reload and both byte/node export budgeting that preserves collected characters before optional workshop detail.
-- Preserved dirty input, held controls, native dropdown readability and compact navigation. Public delivery remains combined into 0.12.0.
+- Preserved dirty input, held controls, native dropdown readability and compact navigation. Public delivery remains combined into the 0.12.1 checkpoint.
 
 
 ## 0.9.0 — development milestone, 2026-11-09
@@ -30,7 +33,7 @@
 - Added explained Adventure Director choices and one-click tracked Company sessions, ranking all bounded eligible quests before the visible cap.
 - Added native current-map/zone and level-aware ranking with factual reasons, qualified source labels and unknown-objective fallbacks.
 - Preserved held mouse/keyboard/native-control actions and disclosure focus across queued updates with a shared renderer interaction guard.
-- Private goals remain local; no automatic AI, gameplay actions or new reference data. Combined public delivery is planned for 0.12.0.
+- Private goals remain local; no automatic AI, gameplay actions or new reference data. Combined public delivery is the 0.12.1 checkpoint.
 
 
 ## 0.8.0 — 2026-11-09

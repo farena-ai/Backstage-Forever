@@ -553,7 +553,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.12.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.12.1'
     character.race=clean((call(UnitRace,'player')));character.faction=clean((call(UnitFactionGroup,'player')))
     local previous=roster[guid]
     local history={recent=array({})}
