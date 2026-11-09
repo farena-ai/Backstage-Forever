@@ -46,6 +46,8 @@ Game status gains additive `runtime`, `loadedCaptureVersion`, and `companionStat
 
 Read all valid bounded account exports rather than only the newest account file. Combine newest per-character observations deterministically, select the latest saved active character, deduplicate, and retain at most 100 characters (always retain latest active). Report partial/omitted coverage if necessary; malformed/transient files cannot erase good profiles. Publish one validated composite snapshot per changed digest, with stable ordering and generation checks. Respect per-character timestamps and explicit manual selection/follow-off; older account data must not roll back newer fields, journals or active selection. No account paths/identifiers enter AI/public exports. No account-wide discovery of never-visited characters is claimed.
 
+Re-enabling following should apply the current generation's already-known latest saved active character immediately when freshness guards permit, without requiring another logout/reload merely to reselect it. Disconnected/reset caches cannot resurrect a former selection, and newer restored profiles keep their freshness protection.
+
 ## D. Beginner frontend
 
 First run has one clear `Start my adventure` action. Once files are prepared, the player may enter the app/play without needing a desktop snapshot or an AI provider. If game is closed, offer `Open Forever` when the validated executable is available; otherwise explain ordinary launcher use. If already running, offer quiet next-login activation and an optional copyable reload instruction; never force interruption. Multiple installs use readable choice cards; no-path discovery offers one folder button.
