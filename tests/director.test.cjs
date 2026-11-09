@@ -49,6 +49,14 @@ test("unknown, manual, empty and preparation facts remain honest; pending goals 
   const d=director(p);assert.equal(d.preparation.bags.free,2);assert.equal(d.privateGoals.length,3);assert.equal(d.privateGoals[0].text,"PRIVATE_0");
   assert.doesNotMatch(JSON.stringify(d.choices),/PRIVATE_|DONE/);assert.equal(director(profile()).preparation,null);
 });
+test("bag preparation preserves the native zero-through-two boundary and saved positive-capacity guards",()=>{
+  for(const [free,expected] of [[0,true],[2,true],[3,false],[4,false]]){
+    const d=director(profile({readiness:{bags:{free,total:20}}}));
+    assert.equal(Boolean(d.preparation),expected,`${free} free slots`);
+    if(expected)assert.deepEqual(d.preparation.bags,{free,total:20});
+  }
+  for(const extra of [{readiness:undefined},{readiness:{}},{readiness:{bags:{free:0,total:0}}},{source:undefined,readiness:{bags:{free:0,total:20}}}])assert.equal(director(profile(extra)).preparation,null);
+});
 test("brief attaches Director without changing detailed guidance",()=>{const p=profile(),brief=buildBrief(p,{now});assert.deepEqual(brief.guidance,buildGuidance(p,{now}));assert.deepEqual(brief.director,buildDirector(p,brief.guidance));});
 test("sessions atomically track 1/2/3 server-owned current-log baselines and detached state",()=>{
   for(const [minutes,count] of [[15,1],[30,2],[60,3]]){const s=state(),before=structuredClone(s),out=createDirectorSession(s,"p",{minutes,focus:"balanced"},hooks());assert.equal(out.created,true);assert.equal(out.state.journeys.length,1);assert.equal(out.state.journeys[0].steps.length,count);assert.equal(out.journeyId,out.state.journeys[0].id);for(const step of out.state.journeys[0].steps){assert.equal(step.profileId,"p");assert.equal(step.quest.baselineAt,s.profiles[0].source.updatedAt);assert.equal(step.quest.build,s.profiles[0].clientBuild);assert.equal(step.quest.baselineCompleted,false);assert.equal(step.observed,undefined);}assert.doesNotMatch(JSON.stringify(out.state.journeys),/PRIVATE_/);assert.deepEqual(s,before);out.state.profiles[0].notes="changed";assert.deepEqual(s,before);}

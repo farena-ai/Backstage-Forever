@@ -47,7 +47,7 @@ function buildDirector(profile, guidance) {
     character: { id: p.id ?? null, name: p.name || "Choose a character", realm: p.realm ?? null, className: p.className || null, level: p.level ?? null, race: p.race || null, faction: p.faction || null, location: location ? structuredClone(location) : null },
     freshness: guidance?.freshness ? structuredClone(guidance.freshness) : null,
     choices, primary: choices[0] || null, alternatives: choices.slice(1),
-    preparation: p.source?.kind === "wow-addon" && bags?.total > 0 && bags.free < 5
+    preparation: p.source?.kind === "wow-addon" && bags?.total > 0 && bags.free <= 2
       ? { kind: "bag-space", bags: structuredClone(bags), message: `${bags.free} of ${bags.total} bag slots were free in the saved snapshot.` } : null,
     privateGoals: (p.goals || []).filter((g) => !g.done).slice(0, 3).map((g) => ({ id: g.id, text: g.text })),
     session: { available: status === "ready" && p.source?.kind === "wow-addon" && Boolean(p.source.id && p.clientBuild && guidance.freshness?.updatedAt), maxChoices: choices.length },

@@ -30,7 +30,7 @@ Director model:
 
 `character` is an explicit public identity whitelist; unknown optional identity/location fields are null. Source identity and private notes are absent. `sourceKind` is `game-snapshot`, `reference`, or `reference-clue`. The original card's `source`, actual `destination`, `referenceDestination`, objective, phase kind and qualified knowledge fields are preserved. Actual current-game destinations always take precedence when evaluating reference positions. Mention-only NPC references never become destinations or proximity facts. `distance` is normalized same-map straight-line geometry or null; it does not reorder the documented level/ID ties and must never be presented as route, yards or travel time.
 
-Ranking is ready turn-in, current game same-map/observed same-zone unfinished work, compatible same-map reference position, reported quest-level proximity, numeric ID. The bounded full actionable candidate set is ranked before the three-choice cap. Existing balanced/nearby/turn-ins filtering remains owned by guidance. Bag preparation appears only for saved addon bags with a positive total and fewer than five free slots, matching the existing native threshold. Pending private goal text is for local display only.
+Ranking is ready turn-in, current game same-map/observed same-zone unfinished work, compatible same-map reference position, reported quest-level proximity, numeric ID. The bounded full actionable candidate set is ranked before the three-choice cap. Existing balanced/nearby/turn-ins filtering remains owned by guidance. Bag preparation appears only for saved addon bags with a positive total and zero through two free slots (`free <= 2`), preserving the existing native 0.8 threshold. Three or four free slots produce no preparation cue. Pending private goal text is for local display only.
 
 `session.available` indicates that the supplied profile has actionable saved addon guidance, source identity, build and saved time. It does not authorize a different active character: main checks the latest active selection when starting. `maxChoices` is the available choice count; actual minute caps are 15→1, 30→2, 60→3.
 
@@ -112,3 +112,28 @@ Checked source ownership, active selection versus normalization, exact argument/
 Additional guidance carrier was explicitly authorized by the parent's all-candidate clarification. All other modified files match Task 1 ownership. No tests or actions touched actual player folders, actual user data, credentials, paid inference, microphone, installer execution, game launch or gameplay. Synthetic client preparation only copied managed files into temporary fixture directories. Read-only actual Electron application launch is the source test harness, not game launch.
 
 Renderer presentation, pending UI duplicate guards, queue/epoch integration and native ranking remain later tasks. Real-client API behavior and owner acceptance remain deferred. This task makes no graphical/native/real-player acceptance claim. Independent Task 1 review is owned by the parent before Task 2; implementation stops after this commit.
+
+## Independent-review P2 correction
+
+The independent review found one defect: the original Director preparation condition used `free < 5`, disagreeing with the owning native 0.8 threshold. Corrected the original contract above so the UI handoff now explicitly requires **zero through two free slots** with positive capacity and a saved addon source. The production change is only `< 5` → `<= 2`; native behavior and source/capacity guards remain intact.
+
+Added the boundary regression before changing production. It covers free slots 0 and 2 producing a cue; 3 and 4 remaining quiet; missing readiness, missing bags, 0-of-0 capacity and a manual source remaining quiet.
+
+RED command:
+
+```powershell
+node --test tests/director.test.cjs
+```
+
+Observed **11 pass, 1 fail**. Exact failing assertion: `3 free slots`, `true !== false`. This assertion-level failure reproduced the review defect before the production line changed.
+
+GREEN command:
+
+```powershell
+node --test tests/director.test.cjs tests/director-ipc.test.cjs tests/guidance.test.cjs tests/adventure.test.cjs
+git diff --check
+```
+
+Observed **26/26 PASS**, 0 fail, 0 skipped, 0 cancelled; diff check passed. Per the parent's bounded review-fix instruction, the unchanged earlier 340-test whole-suite/backend evidence was not rerun for this one-line condition fix. It remains historical pre-fix evidence, not a claim of a new whole-suite run.
+
+Fix commit message: `fix: preserve native low-bag threshold in Director`. Only `src/core/director.cjs`, `tests/director.test.cjs` and this report are included. Parent-owned next-phase docs and the independent review report are untouched. Focused independent re-review remains the parent's next gate before renderer implementation.
