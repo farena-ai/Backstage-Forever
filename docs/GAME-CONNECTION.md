@@ -29,3 +29,10 @@ Local runtime checks use bounded OS metadata to distinguish the configured Forev
 ## Automatic local guidance
 
 Adventure builds its quest plan when saved data arrives and when you switch characters. Session/focus changes save automatically and rebuild the plan without running AI. Source evidence and freshness remain visible. Optional equipment/bag observations are local preparation information, not gear scores or recommendations. See [Guidance](GUIDANCE.md) for the first supported quest slice and recovery steps.
+
+
+## When a quest has no destination
+
+A prepared connection does not guarantee every quest has a public location. BF keeps a valid game point first, can use supported map-specific observations, and labels an unfinished quest-area fallback as an area rather than an exact NPC. Ready turn-ins never borrow an unfinished area. Historical reference points remain approximate; named-NPC clues are not confirmed destinations. Missing or ambiguous facts stay unknown instead of becoming invented coordinates.
+
+Check the source and saved date before repeating setup. The in-game Compass can follow supported current observations while the desktop still shows the last disk save. Logout/game exit catches the desktop up naturally; a voluntary `/reload` can save sooner when wanted. Reloading repeatedly cannot create missing reference data or make an unsupported API available. See [reference coverage](FOREVER-DATA.md).

@@ -23,9 +23,9 @@ Files: data/forever pack/lock/notices +compiled addonReference; separate data/fo
 
 Files: addon/BackstageForever/BackstageForever.lua, focused addon destination/live/transport tests; strict core destination validators only if necessary and documented. No new game resource, data/provider/version/UI changes.
 
-- [ ] Read exact generatedAPI researchdocs and RED actualmultireturn/fallback/map/phase/protected/malformed/directpriority/bounds cases.
-- [ ] Implement guarded map-specific nextwaypoint and strictunfinished questarea observations, no mapsetters/supertracking/opening/actions. Retain validcurrentdirect priority/malformedrefrefusal/lifecyclecoalescing/outsidecombat.
-- [ ] Existing and new Lua/GameSync/privacy/resource tests fulloncefinal, report work/v012-guide-task2-report.md; independentreview.
+- [x] Read exact generatedAPI researchdocs and RED actualmultireturn/fallback/map/phase/protected/malformed/directpriority/bounds cases.
+- [x] Implement guarded map-specific nextwaypoint and strictunfinished questarea observations, no mapsetters/supertracking/opening/actions. Retain validcurrentdirect priority/malformedrefrefusal/lifecyclecoalescing/outsidecombat.
+- [x] Existing and new Lua/GameSync/privacy/resource tests fulloncefinal, report work/v012-guide-task2-report.md; independentreview.
 
 ## Task 3: Quest expedition atlas visual pass and seller presentation
 
