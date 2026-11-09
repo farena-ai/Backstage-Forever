@@ -34,6 +34,9 @@ assert(BackstageForeverExport:find('"completedIdsKnown":true',1,true))
 assert(BackstageForeverExport:find('"required":1',1,true))
 BackstageForeverGuide('guide 1061 t 1413 0.3528 0.2786 1.60.1.70862');assert(set and set.map==1413)
 assert(messages[#messages]:find('Localized place',1,true))
+assert(messages[#messages]:find('Quest waypoint:',1,true));assert(not messages[#messages]:find('reference marker',1,true))
+BackstageForeverGuide('guide 1061 r 1413 .3 .2 1.60.1.70862');assert(messages[#messages]:find('Reference marker (check availability):',1,true))
+C_QuestLog.IsComplete=function()return false end;BackstageForeverGuide('guide 1061 o 999 .1 .2 1.60.1.70862');assert(set.map==999);assert(messages[#messages]:find('Quest waypoint:',1,true));C_QuestLog.IsComplete=function()return true end
 for _,command in ipairs({'guide 1061 t 1413 -1 0.2 1.60.1.70862','guide 1061 o 1413 .3 .2 1.60.1.70862','guide 1061 t 1413 .3 .2 1.60.1.999','guide 999 t 1413 .3 .2 1.60.1.70862','guide 1061 t 1413 .3 .2 1.60.1.70862 extra','guide 1061 t 1413 nan .2 1.60.1.70862'})do
 set=nil;BackstageForeverGuide(command);assert(set==nil,command)
 end

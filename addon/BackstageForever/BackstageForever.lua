@@ -310,7 +310,7 @@ function BackstageForeverGuide(message)
     if not point then guideMessage('Waypoint API unavailable; coordinates: '..coordinates);return end
     local setter=field(mapApi,'SetUserWaypoint')
     local ok=pcall(setter,point)
-    if ok then guideMessage((phase=='r' and 'Reference marker (check availability): ' or 'Approximate reference marker: ')..coordinates)
+    if ok then guideMessage((phase=='r' and 'Reference marker (check availability): ' or 'Quest waypoint: ')..coordinates)
     else guideMessage('Waypoint restricted; coordinates: '..coordinates) end
 end
 if type(CreateFrame)=='function' then

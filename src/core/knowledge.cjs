@@ -828,6 +828,10 @@ class KnowledgeIndex {
       }
       return null;
     };
+    if (phase === "r" && !active) {
+      const giver = first(d.givers, "observed-quest-giver");
+      if (giver) return giver;
+    }
     if (phase === "t" || phase === "r") {
       const dest = first(d.turnIns, "observed-turn-in-npc");
       if (dest) return dest;
@@ -893,16 +897,74 @@ class KnowledgeIndex {
     }
     return out;
   }
-  waypoint(p, questId, phase) {
+  resolveWaypoint(p, questId, phase) {
+    const descriptor = {
+      phase: ["t", "o", "r"].includes(phase) ? phase : null,
+      source: null,
+      destination: null,
+      canCopy: false,
+      reason: "No compatible sourced waypoint for this quest phase.",
+    };
+    if (!id(questId) || !descriptor.phase) return descriptor;
+    if (!this.compatible(p)) return descriptor;
     if (
       typeof p?.captureVersion !== "string" ||
       !/^0\.(?:[6-9]|[1-9]\d+)\./.test(p.captureVersion)
+    ) {
+      descriptor.reason =
+        "Update the addon and reload the game before copying a waypoint.";
+      return descriptor;
+    }
+    const active = p.quests?.find((q) => q.id === questId);
+    if (
+      phase !== "r" &&
+      (!active ||
+        typeof active.complete !== "boolean" ||
+        (phase === "t") !== active.complete)
     )
-      throw Error(
-        "Update the addon and reload the game before copying a waypoint.",
-      );
-    const d = this.destination(p, questId, phase);
-    if (!d) throw Error("No compatible sourced waypoint for this quest phase.");
+      return descriptor;
+    let destination,
+      source = "reference";
+    // Game-reported points remain authoritative even without a matching reference row.
+    if (phase !== "r" && active.destination !== undefined) {
+      const actual = active.destination;
+      const point =
+        object(actual) &&
+        position({ uiMap: actual.mapId, mapX: actual.x, mapY: actual.y });
+      if (
+        !point ||
+        (actual.text !== undefined && actual.text !== "" && !text(actual.text))
+      )
+        return descriptor;
+      destination = {
+        ...point,
+        ...(actual.text !== undefined ? { text: actual.text } : {}),
+      };
+      source = "game";
+    } else destination = this.destination(p, questId, phase);
+    if (!destination) return descriptor;
+    return {
+      ...descriptor,
+      source,
+      destination: {
+        ...destination,
+        // Preview and clipboard describe the exact same command precision.
+        x: Number(destination.x.toFixed(4)),
+        y: Number(destination.y.toFixed(4)),
+      },
+      canCopy: true,
+      reason:
+        source === "game"
+          ? "Game-reported quest waypoint from the saved snapshot."
+          : phase === "r"
+            ? "Approximate reference marker; check availability."
+            : "Approximate community observation for this quest phase.",
+    };
+  }
+  waypoint(p, questId, phase) {
+    const resolved = this.resolveWaypoint(p, questId, phase);
+    if (!resolved.canCopy) throw Error(resolved.reason);
+    const d = resolved.destination;
     return `/bf guide ${questId} ${phase} ${d.mapId} ${d.x.toFixed(4)} ${d.y.toFixed(4)} ${this.pack.build}`;
   }
 }

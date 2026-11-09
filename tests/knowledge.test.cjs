@@ -275,3 +275,76 @@ test("waypoint command uses sourced coordinates and capture proof only", () => {
   assert.throws(() => index.waypoint(profile(), 1061, "evil"));
   assert.throws(() => index.waypoint(profile(), 1061, "o"));
 });
+test("quest waypoint resolution prioritizes valid actual points without changing reference destinations", () => {
+  for (const [phase, complete] of [
+    ["t", true],
+    ["o", false],
+  ]) {
+    const p = profile();
+    p.quests[0].complete = complete;
+    p.quests[0].destination = {
+      mapId: 999,
+      x: 0.1,
+      y: 0.2,
+      text: "Game destination",
+    };
+    assert.equal(
+      index.waypoint(p, 1061, phase),
+      `/bf guide 1061 ${phase} 999 0.1000 0.2000 ${build}`,
+    );
+    const preview = index.resolveWaypoint(p, 1061, phase);
+    assert.equal(preview.canCopy, true);
+    assert.equal(preview.source, "game");
+    assert.equal(preview.destination.mapId, 999);
+    assert.equal(index.destination(p, 1061, phase).mapId, 1413);
+    assert.equal(index.resolveWaypoint(p, 1061, "r").source, "reference");
+    assert.equal(index.resolveWaypoint(p, 1061, "r").destination.mapId, 1413);
+    for (const q of [
+      { ...p.quests[0], id: 999999, title: "Missing reference" },
+      { ...p.quests[0], title: "Conflicting reference" },
+    ]) {
+      const altered = { ...p, quests: [q] };
+      assert.equal(index.resolveWaypoint(altered, q.id, phase).source, "game");
+      assert.match(index.waypoint(altered, q.id, phase), / 999 0.1000 0.2000 /);
+    }
+  }
+  assert.equal(index.resolveWaypoint(profile(), 1061, "t").source, "reference");
+  const blankText = profile();
+  blankText.quests[0].destination = { mapId: 999, x: 0.1, y: 0.2, text: "" };
+  assert.equal(index.resolveWaypoint(blankText, 1061, "t").source, "game");
+  const nonActive = { ...profile(), quests: [] };
+  const marker = index.resolveWaypoint(nonActive, 5730, "r");
+  assert.equal(marker.destination.id, 3216);
+  assert.equal(marker.destination.evidence, "observed-quest-giver");
+});
+test("actual quest waypoints preserve capture, build, profile, phase and coordinate refusal boundaries", () => {
+  const p = profile();
+  p.quests[0].destination = { mapId: 999, x: 0.1, y: 0.2 };
+  for (const altered of [
+    { ...p, captureVersion: undefined },
+    { ...p, source: undefined },
+    { ...p, clientBuild: "1.60.1.999" },
+    { ...p, quests: [] },
+  ]) {
+    assert.equal(index.resolveWaypoint(altered, 1061, "t").canCopy, false);
+    assert.throws(() => index.waypoint(altered, 1061, "t"));
+  }
+  for (const phase of ["o", "evil", {}, null]) {
+    assert.equal(index.resolveWaypoint(p, 1061, phase).canCopy, false);
+    assert.throws(() => index.waypoint(p, 1061, phase));
+  }
+  for (const destination of [
+    { mapId: 0, x: 0.1, y: 0.2 },
+    { mapId: 1.5, x: 0.1, y: 0.2 },
+    { mapId: 999, x: NaN, y: 0.2 },
+    { mapId: 999, x: 0.1, y: Infinity },
+    { mapId: 999, x: -0.1, y: 0.2 },
+    { mapId: 999, x: 0.1, y: 1.1 },
+    null,
+    [],
+  ]) {
+    const altered = { ...p, quests: [{ ...p.quests[0], destination }] };
+    assert.equal(index.resolveWaypoint(altered, 1061, "t").canCopy, false);
+    assert.throws(() => index.waypoint(altered, 1061, "t"));
+  }
+});

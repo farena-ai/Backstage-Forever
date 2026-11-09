@@ -60,9 +60,16 @@ function registerKnowledgeHandlers({
       p = profile(profileId);
     if (!Number.isSafeInteger(questId) || questId < 1 || questId > 2147483647)
       throw Error("Invalid quest ID.");
-    const index = knowledge.index(p);
-    if (index) return index.details(p, questId);
-    return knowledge.bundled.details(p, questId);
+    const index = knowledge.index(p) || knowledge.bundled;
+    const active = p.quests?.find((q) => q.id === questId);
+    return {
+      ...index.details(p, questId),
+      waypoint: index.resolveWaypoint(
+        p,
+        questId,
+        active ? (active.complete ? "t" : "o") : "r",
+      ),
+    };
   });
   handle("copyQuestWaypoint", (...args) => {
     count(args, 3);
@@ -83,7 +90,9 @@ function registerKnowledgeHandlers({
     return {
       command,
       message:
-        "Paste in the game chat and press Enter to set an approximate reference marker.",
+        phase === "r"
+          ? "Paste in the game chat and press Enter to set a reference marker; check quest availability."
+          : "Paste in the game chat and press Enter to set a quest waypoint.",
     };
   });
   handle("contextPreview", (...args) => {
