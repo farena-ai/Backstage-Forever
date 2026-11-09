@@ -60,12 +60,20 @@ class KnowledgeService {
     } catch {}
   }
   safeDir(create = true) {
-    let current = this.cacheDir;
+    let current = this.cacheDir,
+      expected;
     while (true) {
       if (fs.existsSync(current)) {
         const s = fs.lstatSync(current);
         if (!s.isDirectory() || s.isSymbolicLink())
           throw Error("Invalid reference directory.");
+        // Native realpath expands Windows 8.3 aliases. Anchor the expected child
+        // to an existing checked parent before creation, not its lexical spelling.
+        if (!expected && current !== this.cacheDir)
+          expected = path.join(
+            fs.realpathSync.native(current),
+            path.relative(current, this.cacheDir),
+          );
       }
       const parent = path.dirname(current);
       if (parent === current) break;
@@ -74,8 +82,7 @@ class KnowledgeService {
     if (create && !fs.existsSync(this.cacheDir))
       fs.mkdirSync(this.cacheDir, { recursive: true });
     if (fs.existsSync(this.cacheDir)) {
-      const canonical = fs.realpathSync.native(this.cacheDir),
-        expected = this.cacheDir;
+      const canonical = fs.realpathSync.native(this.cacheDir);
       if (
         (process.platform === "win32" ? canonical.toLowerCase() : canonical) !==
         (process.platform === "win32" ? expected.toLowerCase() : expected)

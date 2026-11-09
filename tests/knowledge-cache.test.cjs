@@ -174,6 +174,70 @@ test("cache refuses a junction ancestor before writing outside owned directory",
   assert.throws(() => s.setAutomatic(false), /directory/);
   assert.equal(fs.existsSync(path.join(real, "owned")), false);
 });
+
+test("cache accepts equivalent native canonical ancestor spelling before creating nested directories", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "bf-canonical-alias-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const native = fs.realpathSync.native;
+  const canonicalRoot = native(root) + "-canonical-spelling";
+  t.mock.method(fs.realpathSync, "native", (value) => {
+    const actual = native(value);
+    const base = native(root);
+    return actual === base || actual.startsWith(base + path.sep)
+      ? canonicalRoot + actual.slice(base.length) : actual;
+  });
+  const dataDir = path.join(root, "not-created", "owned");
+  const s = new KnowledgeService({ dataDir, bundledPath: bundled });
+  assert.doesNotThrow(() => s.setAutomatic(false));
+  assert.equal(JSON.parse(fs.readFileSync(path.join(s.cacheDir,"preferences.json"))).automatic,false);
+  const reopened = new KnowledgeService({ dataDir, bundledPath: bundled });
+  assert.equal(reopened.automatic,false);
+});
+
+test("cache persists and reloads refreshed data through a real Windows short-name alias", {
+  skip: process.platform !== "win32",
+}, async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "bf-real-short-alias-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const script = `Add-Type -TypeDefinition 'using System; using System.Text; using System.Runtime.InteropServices; public static class BfShortPath { [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetShortPathName(string path, StringBuilder result, uint length); }'; $buffer = New-Object System.Text.StringBuilder 4096; $length = [BfShortPath]::GetShortPathName($env:BF_TEST_ALIAS_PATH,$buffer,4096); if ($length -eq 0 -or $length -ge 4096) { throw 'Short path unavailable' }; $buffer.ToString()`;
+  const alias = require("node:child_process").execFileSync("powershell.exe", ["-NoProfile","-NonInteractive","-Command",script], {
+    env: { ...process.env, BF_TEST_ALIAS_PATH: root }, encoding:"utf8",
+  }).trim();
+  if (alias.toLowerCase() === fs.realpathSync.native(root).toLowerCase())
+    return t.skip("This volume does not create 8.3 aliases.");
+  assert.equal(fs.statSync(alias).ino, fs.statSync(root).ino);
+  const next = "d".repeat(40);
+  const dataDir = path.join(alias,"owned");
+  const s = new KnowledgeService({dataDir,bundledPath:bundled,fetcher:async url=>url.includes("api.github")
+    ? new Response(JSON.stringify({commit:{sha:next}})) : new Response(raw(url.split("/").at(-1)))});
+  s.setContext({clientBuild:build},false);
+  await s.refresh();
+  assert.equal(s.status().sourceCommit,next);
+  assert.doesNotThrow(()=>s.setAutomatic(false));
+  for (const spelling of [dataDir,path.join(root,"owned")]) {
+    const reopened = new KnowledgeService({dataDir:spelling,bundledPath:bundled});
+    reopened.setContext({clientBuild:build},false);
+    assert.equal(reopened.automatic,false);
+    assert.equal(reopened.status().sourceCommit,next);
+  }
+});
+
+test("canonical child redirection and cache-directory junctions are still refused", (t) => {
+  const s = setup(t);
+  fs.mkdirSync(s.cacheDir,{recursive:true});
+  const native = fs.realpathSync.native;
+  t.mock.method(fs.realpathSync,"native",value=>path.resolve(value)===s.cacheDir
+    ? path.join(s.dataDir,"other-cache") : native(value));
+  assert.throws(()=>s.setAutomatic(false),/directory/);
+  assert.equal(fs.readdirSync(s.cacheDir).length,0);
+  t.mock.restoreAll();
+  const outside = path.join(s.dataDir,"outside");
+  fs.rmdirSync(s.cacheDir);
+  fs.mkdirSync(outside);
+  fs.symlinkSync(outside,s.cacheDir,process.platform==="win32" ? "junction" : "dir");
+  assert.throws(()=>s.setAutomatic(false),/directory/);
+  assert.equal(fs.readdirSync(outside).length,0);
+});
 test("stream body bound and abort cancel active readers without stale commits", async (t) => {
   let cancelled = false;
   const s = setup(
