@@ -7,7 +7,7 @@ function renderer() {
   for(const [file,name] of [["interaction","InteractionGuard"],["command-center","CommandCenter"],["director","Director"]]){
     vm.runInContext(fs.readFileSync(require.resolve(`../src/renderer/${file}.js`),"utf8"),context);context[name]=context.window[name];
   }
-  context.Director.init({root,esc:v=>String(v??"").replaceAll("<","&lt;"),active:()=>true,options:()=>({minutes:30,focus:"balanced"})});
+  context.Director.init({root,esc:v=>String(v??"").replaceAll("<","&lt;"),active:()=>true,profileId:()=>"profile",options:()=>({minutes:30,focus:"balanced"})});
   return context;
 }
 test("Director keeps mention-only reference clues out of destination geometry",()=>{
@@ -26,4 +26,10 @@ test("Director labels the exact public observation and provenance without overri
   choice.destination={mapId:2,x:.4,y:.5,text:"Current game marker"};choice.sourceKind="game-snapshot";
   const game=c.Director.panel({primary:choice,alternatives:[],session:{available:true}});
   assert.match(game,/Current game marker/);assert.doesNotMatch(game,/20\.0%|Observed objective progress location/);
+});
+test("Director disclosure identity includes profile, quest and disclosure kind",()=>{
+  const c=renderer(),choice={questId:101,title:"Quest",sourceKind:"game-snapshot",source:{}};
+  const html=c.Director.panel({primary:choice,alternatives:[],session:{available:true},privateGoals:[{text:"Local goal"}]});
+  assert.ok(html.includes(`data-interaction-key='${JSON.stringify(["profile",101,"quest-evidence"])}'`) || html.includes(`data-interaction-key="${JSON.stringify(["profile",101,"quest-evidence"])}"`));
+  assert.ok(html.includes(JSON.stringify(["profile","private-goals"])));
 });

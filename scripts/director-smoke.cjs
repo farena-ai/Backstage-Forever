@@ -61,10 +61,26 @@ function shortPath(target) {
     assert.equal(await primary.evaluate(n=>getComputedStyle(n).animationName),"none");
     await capture("compact");
     await assertSelectContrast(page,"Director compact shared controls");
-    await page.locator("[data-director-primary] summary").click();
+    const evidenceSummary=page.locator("[data-director-primary] summary");
+    await evidenceSummary.focus();
+    await evidenceSummary.evaluate(node=>{window.summaryActivation={original:node,details:node.parentElement,toggles:0};node.parentElement.addEventListener("toggle",()=>window.summaryActivation.toggles++);});
+    await page.keyboard.down("Space");
+    await page.evaluate(()=>new Promise(resolve=>setTimeout(()=>{render();resolve();},0)));
+    assert.equal(await evidenceSummary.evaluate(node=>node===window.summaryActivation.original),true,"Held Director Summary Space must retain the actual native target through scheduled root render");
+    await page.keyboard.up("Space");
+    await page.waitForFunction(()=>window.summaryActivation.toggles===1);
+    assert.equal(await page.locator("[data-director-primary] details").evaluate(node=>node.open),true,"The actual disclosure opens once and remains open after deferred paint");
+    assert.equal(await evidenceSummary.evaluate(node=>node===document.activeElement),true,"Native disclosure focus must remain on the corresponding summary");
     assert.match(await page.locator("[data-director-primary]").innerText(),/Saved game destination.*Game-provided marker/s);
     assert.doesNotMatch(await page.locator("[data-director-primary]").innerText(),/yards|minutes away/);
-    await page.locator("[data-director-primary] summary").click();
+    // The same release-time restoration also preserves a physical disclosure click.
+    await evidenceSummary.evaluate(node=>{window.pointerSummary={original:node,toggles:0};node.parentElement.addEventListener("toggle",()=>window.pointerSummary.toggles++);});
+    const summaryBox=await evidenceSummary.boundingBox();await page.mouse.move(summaryBox.x+10,summaryBox.y+10);await page.mouse.down();
+    await page.evaluate(()=>new Promise(resolve=>setTimeout(()=>{render();resolve();},0)));
+    assert.equal(await evidenceSummary.evaluate(node=>node===window.pointerSummary.original),true);
+    await page.mouse.up();await page.waitForFunction(()=>window.pointerSummary.toggles===1);
+    assert.equal(await page.locator("[data-director-primary] details").evaluate(node=>node.open),false);
+    assert.equal(await evidenceSummary.evaluate(node=>node===document.activeElement),true);
     // Native keyboard preferences use the one shared control set.
     await page.getByLabel("Session length",{exact:true}).focus();await page.keyboard.press("ArrowDown");await page.keyboard.press("Enter");
     await page.waitForFunction(()=>document.querySelector('[data-plan-option="minutes"]').value==="60");

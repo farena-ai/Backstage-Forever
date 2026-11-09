@@ -167,6 +167,23 @@ async function physicalClick(page, locator, whilePressed) {
   await page.getByText("Saved ready to turn in; not turned in",{exact:true}).waitFor();
   await page.getByText(/Tracking starts from the saved capture/).waitFor();
   await settleCompanyWrite(page);
+  // Held native Space must survive an intervening scheduled root render.
+  const keyboardCheck=journey.getByRole("checkbox").first();
+  await keyboardCheck.focus();
+  await keyboardCheck.evaluate(node=>{window.companySpace={original:node,changes:0};node.addEventListener("change",()=>window.companySpace.changes++);});
+  await app.evaluate(()=>companyUiFixture.spaceWrites=0);
+  await app.evaluate(({ipcMain})=>{
+   const original=ipcMain._invokeHandlers.get("backstage:journeyAction");ipcMain.removeHandler("backstage:journeyAction");
+   ipcMain.handle("backstage:journeyAction",(event,...args)=>{if(args[0]?.type==="set-done")companyUiFixture.spaceWrites++;return original(event,...args);});
+  });
+  await page.keyboard.down("Space");await page.evaluate(()=>new Promise(resolve=>setTimeout(()=>{render();resolve();},0)));
+  assert.equal(await keyboardCheck.evaluate(node=>node===window.companySpace.original),true,"Held Company checkbox Space must retain its native target until keyup");
+  await page.keyboard.up("Space");
+  await page.waitForFunction(async()=>window.companySpace.changes===1&&(await window.backstage.companyBrief()).journeys[0].steps[0].done);
+  await settleCompanyWrite(page);
+  assert.equal(await keyboardCheck.isChecked(),true);assert.equal(await app.evaluate(()=>companyUiFixture.spaceWrites),1,"Exactly one native activation reaches persisted completion");
+  assert.equal(await keyboardCheck.evaluate(node=>node===document.activeElement),true,"Checkbox focus survives deferred render and saved acknowledgement");
+  await keyboardCheck.uncheck();await settleCompanyWrite(page);
   // Natural title blur must preserve the next pointer target even behind queued work.
   const pointerTitle=journey.getByLabel("Plan title"),pointerCheck=journey.getByRole("checkbox").first();
   await page.evaluate(async()=>{await autosaveQueue;window.companyHeldQueue={};window.companyHeldQueue.promise=new Promise(resolve=>window.companyHeldQueue.release=resolve);autosaveQueue=window.companyHeldQueue.promise;});
