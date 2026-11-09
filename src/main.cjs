@@ -16,12 +16,16 @@ const v = require("./core/validation.cjs");
 const ai = require("./core/providers.cjs");
 const { ChatGPTAuth } = require("./core/chatgpt.cjs");
 const claude = require("./core/claude.cjs");
+const { Updater } = require("./core/updater.cjs");
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
 ).href;
 let win,
   store,
   chatgpt,
+  updater,
+  quitApproved = false,
+  quitPending = false,
   subscriptionEpoch = 0,
   resetting = false,
   busy = false;
@@ -55,9 +59,9 @@ function handle(name, fn) {
         ["ask", "connectSubscription", "disconnectSubscription"].includes(
           name,
         ) &&
-          /^(Provider |Could not reach|Save an API|Choose a character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription )/.test(
-            e?.message,
-          )
+        /^(Provider |Could not reach|Save an API|Choose a character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription )/.test(
+          e?.message,
+        )
           ? e.message
           : "The action could not be completed. Check your input or file and try again.",
       );
@@ -83,6 +87,15 @@ app.whenReady().then(() => {
       openExternal: (url) => shell.openExternal(url),
     });
     claude.configure({ dataDir: app.getPath("userData") });
+    updater = new Updater({
+      dataDir: app.getPath("userData"),
+      currentVersion: app.getVersion(),
+      publicKey: fs.readFileSync(
+        path.join(__dirname, "..", "assets", "update-public-key.pem"),
+      ),
+      packaged: app.isPackaged,
+    });
+    updater.start();
   } catch {
     dialog.showErrorBox(
       "Backstage Forever",
@@ -121,6 +134,17 @@ app.whenReady().then(() => {
       ),
     };
   }
+  handle("updateStatus", () => updater.status());
+  handle("checkForUpdates", () => updater.check());
+  handle("setUpdatePreferences", (input) => updater.setPreferences(input));
+  handle("installUpdate", async () => {
+    const installed = await updater.install();
+    if (installed) {
+      quitApproved = true;
+      app.quit();
+    }
+    return updater.status();
+  });
   handle("subscriptionStatus", subscriptionStatus);
   handle("connectSubscription", async (provider) => {
     v.provider(provider);
@@ -147,6 +171,7 @@ app.whenReady().then(() => {
     state: structuredClone(store.state),
     providers: v.providers,
     version: app.getVersion(),
+    updateStatus: updater.status(),
     secretStatus: store.secretStatus(),
     subscriptionStatus: await subscriptionStatus(),
   }));
@@ -292,7 +317,9 @@ app.whenReady().then(() => {
     resetting = true;
     subscriptionEpoch++;
     try {
+      const updateReset = updater.reset();
       chatgpt.reset();
+      await updateReset;
       await claude.clearCredentials();
       return store.reset();
     } finally {
@@ -340,7 +367,28 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-app.on("before-quit", () => {
+app.on("before-quit", (event) => {
   subscriptionEpoch++;
   chatgpt?.close();
+  if (quitApproved || !updater) {
+    updater?.close();
+    return;
+  }
+  if (
+    updater.status().phase === "ready" &&
+    updater.status().installOnQuit &&
+    updater.status().automatic
+  ) {
+    event.preventDefault();
+    if (quitPending) return;
+    quitPending = true;
+    updater
+      .install({ onQuit: true })
+      .catch(() => false)
+      .finally(() => {
+        quitApproved = true;
+        updater.close();
+        app.quit();
+      });
+  } else updater.close();
 });

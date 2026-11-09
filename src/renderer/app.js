@@ -19,6 +19,7 @@ const nav = [
   ["assistant", "✧", "AI Companion"],
   ["connections", "⌘", "Connections"],
   ["guide", "▤", "Field Guide"],
+  ["updates", "⟲", "Updates"],
 ];
 let state,
   metadata = [],
@@ -31,6 +32,15 @@ let state,
   subscriptions = {},
   authChoice = "api",
   authPending = false,
+  updateInfo = {
+    phase: "unsupported",
+    automatic: true,
+    installOnQuit: true,
+    progress: 0,
+  },
+  updateSaving = false,
+  updatePendingPrefs = null,
+  updateEpoch = 0,
   chatGeneration = 0,
   toastTimer;
 const esc = (value) =>
@@ -91,14 +101,15 @@ function onboarding() {
 function render() {
   if (!state.onboarded) return onboarding();
   const current = nav.find((item) => item[0] === page);
-  root.innerHTML = `<div class="shell"><aside class="rail">${brand()}<nav aria-label="Main navigation">${nav.map(([key, glyph, label]) => `<button data-nav="${key}" class="${page === key ? "active" : ""}" ${page === key ? 'aria-current="page"' : ""}><span class="glyph" aria-hidden="true">${glyph}</span>${label}</button>`).join("")}</nav><div class="rail-bottom"><div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span>${current[2]}</span></div><label><span class="sr-only">Active character</span><select id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${{ adventure: adventure, characters: characters, assistant: assistant, connections: connections, guide: guide }[page]()}</div></main></div>`;
+  root.innerHTML = `<div class="shell"><aside class="rail">${brand()}<nav aria-label="Main navigation">${nav.map(([key, glyph, label]) => `<button data-nav="${key}" class="${page === key ? "active" : ""}" ${page === key ? 'aria-current="page"' : ""}><span class="glyph" aria-hidden="true">${glyph}</span>${label}</button>`).join("")}</nav><div class="rail-bottom"><button class="update-rail" data-nav="updates"><span aria-hidden="true">⟲</span><span data-update-label>Updates</span></button><div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span>${current[2]}</span></div><label><span class="sr-only">Active character</span><select id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${{ adventure: adventure, characters: characters, assistant: assistant, connections: connections, guide: guide, updates: updatesPage }[page]()}</div></main></div>`;
   if (page === "assistant") document.getElementById("chatlog").scrollTop = 1e6;
+  refreshUpdateWidgets();
 }
 function adventure() {
   const p = profile();
   const goals = p?.goals || [];
   const done = goals.filter((g) => g.done).length;
-  return `<section class="hero"><div class="hero-copy"><div class="eyebrow">The next chapter is yours</div><h1>${esc(p?.name || "Your adventure awaits")}</h1><p>${p ? `${esc(p.className)} · Level ${p.level} · ${esc(p.realm || "Realm not set")}` : "Create your first character and make a little room for possibility."}</p><button class="primary" data-nav="assistant">Consult your companion &nbsp; ↗</button></div><div class="hero-caption">THE ROAD AHEAD / ORIGINAL BACKSTAGE ART</div></section><section class="stats" aria-label="Journal overview"><div class="stat"><div><div class="eyebrow">Your roster</div><small>Characters on this computer</small></div><strong>${state.profiles.length.toString().padStart(2, "0")}</strong></div><div class="stat"><div><div class="eyebrow">On the horizon</div><small>Active character’s open goals</small></div><strong>${(goals.length - done).toString().padStart(2, "0")}</strong></div><div class="stat"><div><div class="eyebrow">Small victories</div><small>Goals you’ve completed</small></div><strong>${done.toString().padStart(2, "0")}</strong></div></section><div class="grid"><section class="panel"><div class="panel-header"><h3>Your next adventures</h3><span class="eyebrow">${done} / ${goals.length} complete</span></div>${goals.length ? goals.map((g) => `<div class="goal"><label class="${g.done ? "done" : ""}"><input type="checkbox" data-goal="${esc(g.id)}" ${g.done ? "checked" : ""}><span>${esc(g.text)}</span></label><button data-remove-goal="${esc(g.id)}" aria-label="Delete goal: ${esc(g.text)}">×</button></div>`).join("") : '<div class="empty">An open page. A whole world ahead.<br>Add a goal, from learning a profession to your next dungeon.</div>'}${p ? '<form id="goal-form" class="inline goal-form"><label>New goal<input name="goal" maxlength="1000" placeholder="What would you like to do next?" required></label><button type="submit" aria-label="Add goal">+ Add</button></form>' : '<button data-nav="characters">Create a character</button>'}</section><aside class="panel"><div class="panel-header"><h3>A good place to begin</h3><span class="gold" aria-hidden="true">✧</span></div><p class="muted">Less tab juggling.<br>More time in the world.</p><div class="steps"><div class="step"><b>1</b><div><p>Keep your own field journal</p><small>Characters, goals and private notes.</small></div></div><div class="step"><b>2</b><div><p>Choose your AI companion</p><small>Local Ollama or your own cloud API.</small></div></div><div class="step"><b>3</b><div><p>Play on your terms</p><small>You make the decisions. You play the game.</small></div></div></div><button class="subtle" data-nav="connections">Set up a connection &nbsp; →</button><div class="corner-note">Manual journal · no live game connection</div></aside></div>`;
+  return `<section class="hero"><div class="hero-copy"><div class="eyebrow">The next chapter is yours</div><div class="hero-identity"><img class="hero-medallion" src="../../assets/wolf-medallion.png" alt=""><div><h1>${esc(p?.name || "Your adventure awaits")}</h1><p>${p ? `${esc(p.className)} · Level ${p.level} · ${esc(p.realm || "Realm not set")}` : "Create your first character and make a little room for possibility."}</p></div></div><button class="primary" data-nav="assistant">Consult your companion &nbsp; ↗</button></div><div class="hero-caption">A WORLD OF POSSIBILITY / ORIGINAL FANTASY ART</div></section><section class="stats" aria-label="Journal overview"><div class="stat"><div><div class="eyebrow">Your roster</div><small>Characters on this computer</small></div><strong>${state.profiles.length.toString().padStart(2, "0")}</strong></div><div class="stat"><div><div class="eyebrow">On the horizon</div><small>Active character’s open goals</small></div><strong>${(goals.length - done).toString().padStart(2, "0")}</strong></div><div class="stat"><div><div class="eyebrow">Small victories</div><small>Goals you’ve completed</small></div><strong>${done.toString().padStart(2, "0")}</strong></div></section><div class="grid adventure-grid"><section class="panel adventure-journal"><div class="panel-header"><h3>Your next adventures</h3><span class="eyebrow">${done} / ${goals.length} complete</span></div>${goals.length ? goals.map((g) => `<div class="goal"><label class="${g.done ? "done" : ""}"><input type="checkbox" data-goal="${esc(g.id)}" ${g.done ? "checked" : ""}><span>${esc(g.text)}</span></label><button data-remove-goal="${esc(g.id)}" aria-label="Delete goal: ${esc(g.text)}">×</button></div>`).join("") : '<div class="empty">An open page. A whole world ahead.<br>Add a goal, from learning a profession to your next dungeon.</div>'}${p ? '<form id="goal-form" class="inline goal-form"><label>New goal<input name="goal" maxlength="1000" placeholder="What would you like to do next?" required></label><button type="submit" aria-label="Add goal">+ Add</button></form>' : '<button data-nav="characters">Create a character</button>'}</section><aside class="panel camp-panel"><div class="panel-header"><h3>A good place to begin</h3><span class="gold" aria-hidden="true">✧</span></div><p class="muted">Less tab juggling.<br>More time in the world.</p><div class="steps"><div class="step"><b>1</b><div><p>Keep your own field journal</p><small>Characters, goals and private notes.</small></div></div><div class="step"><b>2</b><div><p>Choose your AI companion</p><small>Local Ollama or your own cloud API.</small></div></div><div class="step"><b>3</b><div><p>Play on your terms</p><small>You make the decisions. You play the game.</small></div></div></div><button class="subtle" data-nav="connections">Set up a connection &nbsp; →</button><div class="corner-note">Manual journal · no live game connection</div></aside></div>`;
 }
 function characters() {
   const p = profile();
@@ -155,7 +166,72 @@ function connections() {
 }
 
 function guide() {
-  return `<header class="section-head"><div class="eyebrow">The adventurer’s field guide</div><h1>A little guidance. A longer adventure.</h1><p>Everything you need to get started, understand your privacy, and keep your journal safe.</p></header><div class="guide-grid"><section class="panel"><div class="eyebrow">01 · Getting started</div><h3>Your first five minutes</h3><p>Create a character in Characters. Add your next goal in Adventure. Keep private notes in the character journal. All of this works without AI, a WoW addon, or a Backstage account.</p><button data-nav="characters">Open characters →</button></section><section class="panel"><div class="eyebrow">02 · Optional intelligence</div><h3>One installer. Your own setup.</h3><p>Friends install the same app and choose their own access. ChatGPT and Claude offer subscription sign-in in this preview. All cloud providers also support separate API-key mode; Grok subscription integration is still pending.</p><button data-nav="connections">Choose a provider →</button></section><section class="panel"><div class="eyebrow">03 · Privacy & portability</div><h3>Your journal belongs to you.</h3><p>Export creates a JSON backup of profiles, goals, notes and preferences, without API keys or subscription credentials. Import replaces those records after confirmation, preserving existing credentials. Treat backups as private: notes are readable in them.</p><div class="actions"><button data-command="export">Export backup</button><button data-command="import">Import backup</button></div></section><section class="panel"><div class="eyebrow">04 · Game compatibility</div><h3>A companion beside the game.</h3><p>The desktop journal is independent of WoW. The included optional addon prototype is experimental and requires interface verification before installation. It offers manual copy only; the desktop has no automatic addon import yet.</p><p>No game input, process inspection, live combat computation or automation. In-game compatibility is not certified.</p></section><section class="panel full"><h3>Questions from the road</h3><details><summary>How do I update?</summary><p>For this preview, run a newer trusted Windows installer over the existing installation. Profiles remain in your Windows user data folder. Export a backup first. Use this project’s GitHub Releases for trusted downloads. This preview is unsigned; code signing and clean-machine acceptance remain pending. No background updater runs.</p></details><details><summary>What gets sent to an AI provider?</summary><p>Your current question and a short companion instruction. If you tick Include character details, the selected character’s name, class, level and realm are included. Notes, goals, other characters and previous messages are excluded. Providers process requests according to their own terms.</p></details><details><summary>What if the connection fails?</summary><p>Check that the model ID exists for your account, the API key is active and your provider has available quota. For Ollama, ensure the service is running and the model is downloaded. Cloud errors never trigger another provider automatically.</p></details><details><summary>Does uninstalling erase my journal?</summary><p>The installer preserves app data. Use Delete all local data below to remove profiles, preferences and keys from this installation. It also clears app-owned subscription credentials. It does not erase exported backups or remove data already held by a provider. Delete backup copies and revoke provider keys separately when needed.</p></details><div class="actions"><button class="danger" data-command="reset">Delete all local data</button></div></section></div><p class="corner-note">Backstage Forever v${esc(version)} · Backstage Coding · Designed by Frank Arena.<br>World of Warcraft is a trademark of Blizzard Entertainment. This independent project is not endorsed by Blizzard.</p>`;
+  return `<header class="section-head"><div class="eyebrow">The adventurer’s field guide</div><h1>A little guidance. A longer adventure.</h1><p>Everything you need to get started, understand your privacy, and keep your journal safe.</p></header><div class="guide-grid"><section class="panel"><div class="eyebrow">01 · Getting started</div><h3>Your first five minutes</h3><p>Create a character in Characters. Add your next goal in Adventure. Keep private notes in the character journal. All of this works without AI, a WoW addon, or a Backstage account.</p><button data-nav="characters">Open characters →</button></section><section class="panel"><div class="eyebrow">02 · Optional intelligence</div><h3>One installer. Your own setup.</h3><p>Friends install the same app and choose their own access. ChatGPT and Claude offer subscription sign-in in this preview. All cloud providers also support separate API-key mode; Grok subscription integration is still pending.</p><button data-nav="connections">Choose a provider →</button></section><section class="panel"><div class="eyebrow">03 · Privacy & portability</div><h3>Your journal belongs to you.</h3><p>Export creates a JSON backup of profiles, goals, notes and preferences, without API keys or subscription credentials. Import replaces those records after confirmation, preserving existing credentials. Treat backups as private: notes are readable in them.</p><div class="actions"><button data-command="export">Export backup</button><button data-command="import">Import backup</button></div></section><section class="panel"><div class="eyebrow">04 · Game compatibility</div><h3>A companion beside the game.</h3><p>The desktop journal is independent of WoW. The included optional addon prototype is experimental and requires interface verification before installation. It offers manual copy only; the desktop has no automatic addon import yet.</p><p>No game input, process inspection, live combat computation or automation. In-game compatibility is not certified.</p></section><section class="panel full"><h3>Questions from the road</h3><details><summary>How do I update?</summary><p>The installed Windows app checks for authenticated releases at startup and every six hours while open. It downloads updates automatically and installs on exit by default. Use Updates to change this or restart when ready. Version 0.1.0 needs one manual upgrade to gain this feature. Windows publisher signing remains pending.</p></details><details><summary>What gets sent to an AI provider?</summary><p>Your current question and a short companion instruction. If you tick Include character details, the selected character’s name, class, level and realm are included. Notes, goals, other characters and previous messages are excluded. Providers process requests according to their own terms.</p></details><details><summary>What if the connection fails?</summary><p>Check that the model ID exists for your account, the API key is active and your provider has available quota. For Ollama, ensure the service is running and the model is downloaded. Cloud errors never trigger another provider automatically.</p></details><details><summary>Does uninstalling erase my journal?</summary><p>The installer preserves app data. Use Delete all local data below to remove profiles, preferences and keys from this installation. It also clears app-owned subscription credentials. It does not erase exported backups or remove data already held by a provider. Delete backup copies and revoke provider keys separately when needed.</p></details><div class="actions"><button class="danger" data-command="reset">Delete all local data</button></div></section></div><p class="corner-note">Backstage Forever v${esc(version)} · Backstage Coding · Designed by Frank Arena.<br>World of Warcraft is a trademark of Blizzard Entertainment. This independent project is not endorsed by Blizzard.</p>`;
+}
+function updateSummary() {
+  if (updateInfo.phase === "ready")
+    return updateInfo.automatic && updateInfo.installOnQuit
+      ? "Your next version is ready. It installs when you close the app, or you can restart now."
+      : "Your next version is ready. Choose Restart and update when you’re ready to install.";
+  if (updateInfo.phase === "downloading")
+    return "Downloading an authenticated update in the background…";
+  if (updateInfo.phase === "checking") return "Checking for a newer release…";
+  if (updateInfo.phase === "current") return "You’re up to date.";
+  if (updateInfo.phase === "error")
+    return (
+      updateInfo.message ||
+      "Could not check for updates. Your current app is unaffected."
+    );
+  if (!updateInfo.automatic) return "Automatic update checks are off.";
+  if (updateInfo.phase === "unsupported")
+    return "Automatic checks start in the installed Windows app. Source builds never install updates.";
+  return "Your companion checks for updates while it is open.";
+}
+function refreshUpdateWidgets() {
+  document.querySelectorAll("[data-update-pref]").forEach((node) => {
+    node.disabled = updateSaving;
+    node.checked = Boolean(
+      (updatePendingPrefs || updateInfo)[node.dataset.updatePref],
+    );
+  });
+  document
+    .querySelectorAll("[data-update-label]")
+    .forEach(
+      (node) =>
+        (node.textContent =
+          updateInfo.phase === "ready"
+            ? "Update ready"
+            : updateInfo.phase === "downloading"
+              ? "Downloading update"
+              : updateInfo.automatic
+                ? "Updates enabled"
+                : "Updates paused"),
+    );
+  const summary = document.querySelector("[data-update-summary]");
+  if (summary) summary.textContent = updateSummary();
+  const progress = document.querySelector("[data-update-progress]");
+  if (progress) {
+    progress.value = Number(updateInfo.progress) || 0;
+    progress.hidden = updateInfo.phase !== "downloading";
+  }
+  const available = document.querySelector("[data-update-version]");
+  if (available)
+    available.textContent = updateInfo.availableVersion
+      ? "Available: " + updateInfo.availableVersion
+      : "Installed: " + version;
+  const restart = document.querySelector('[data-command="install-update"]');
+  if (restart) restart.disabled = updateSaving || updateInfo.phase !== "ready";
+  const check = document.querySelector('[data-command="check-updates"]');
+  if (check)
+    check.disabled =
+      updateSaving || ["checking", "downloading"].includes(updateInfo.phase);
+}
+function updatesPage() {
+  return `<header class="section-head"><div class="eyebrow">A companion that keeps growing</div><h1>Keep your companion ready.</h1><p>The next adventure shouldn’t require a trip through a downloads folder. Updates run quietly while your journal stays yours.</p></header>
+  <div class="grid"><section class="panel update-panel"><div class="panel-header"><h3>Windows updates</h3><span class="tag" data-update-version>Installed: ${esc(version)}</span></div><p class="update-summary" data-update-summary>${esc(updateSummary())}</p><progress data-update-progress max="100" value="${Number(updateInfo.progress) || 0}" ${updateInfo.phase === "downloading" ? "" : "hidden"} aria-label="Update download progress"></progress>
+  <div class="update-options"><label class="check-label"><input type="checkbox" data-update-pref="automatic" ${updateInfo.automatic ? "checked" : ""}>Automatically check and download updates</label><p>Check after startup and every six hours while the app is open. Downloads come from this project’s GitHub Releases.</p><label class="check-label"><input type="checkbox" data-update-pref="installOnQuit" ${updateInfo.installOnQuit ? "checked" : ""}>Install downloaded updates when I close the app</label><p>No forced restart during your game. You can also restart here when you’re ready.</p></div>
+  <div class="actions"><button class="primary" data-command="check-updates">Check for updates</button><button data-command="install-update" ${updateInfo.phase === "ready" ? "" : "disabled"}>Restart and update</button></div><p class="corner-note">Last checked: ${updateInfo.lastChecked ? esc(new Date(updateInfo.lastChecked).toLocaleString()) : "Not checked in this session"}</p></section>
+  <aside class="panel"><h3>A trusted path forward.</h3><div class="steps"><div class="step"><b>1</b><div><p>Authenticate the release</p><small>Only releases signed by Backstage Forever’s update key are accepted.</small></div></div><div class="step"><b>2</b><div><p>Verify the download</p><small>The complete installer’s size and fingerprint must match before it can run.</small></div></div><div class="step"><b>3</b><div><p>Keep your journal</p><small>Profiles and provider settings remain in your Windows account’s app folder.</small></div></div></div><div class="callout brass">Upgrading from 0.1.0? Install 0.2.0 once manually. That earlier build has no updater to perform the first upgrade.</div><p class="corner-note">Application update signatures authenticate future downloads. This preview still lacks a Windows publisher certificate, so an initial manual installer may show an unknown-publisher notice.</p></aside></div>`;
 }
 root.addEventListener("click", (event) => {
   const button = event.target.closest("button");
@@ -193,6 +269,27 @@ root.addEventListener("click", (event) => {
       render();
     }
     switch (button.dataset.command) {
+      case "check-updates":
+        if (updateSaving) break;
+        const checkingEpoch = ++updateEpoch;
+        updateInfo = { ...updateInfo, phase: "checking" };
+        refreshUpdateWidgets();
+        try {
+          const status = await api.checkForUpdates();
+          if (checkingEpoch === updateEpoch) updateInfo = status;
+        } finally {
+          refreshUpdateWidgets();
+        }
+        break;
+      case "install-update":
+        if (
+          confirm(
+            "Close Backstage Forever, install the verified update and restart? Your saved journal is preserved.",
+          )
+        )
+          await api.installUpdate();
+        break;
+
       case "subscription-login": {
         const generation = chatGeneration;
         const selectedProvider = connection;
@@ -283,6 +380,18 @@ root.addEventListener("click", (event) => {
           subscriptions = {};
           authPending = false;
           authChoice = "api";
+          updateEpoch++;
+          updateSaving = false;
+          updatePendingPrefs = null;
+          updateInfo = {
+            ...updateInfo,
+            phase: "disabled",
+            automatic: false,
+            availableVersion: null,
+            progress: 0,
+            lastChecked: null,
+            message: "",
+          };
           messages = [];
           page = "adventure";
           connection = "ollama";
@@ -297,6 +406,31 @@ root.addEventListener("click", (event) => {
 });
 root.addEventListener("change", (event) =>
   action(async () => {
+    if (event.target.dataset.updatePref) {
+      if (updateSaving) {
+        refreshUpdateWidgets();
+        return;
+      }
+      const candidate = {
+        automatic: updateInfo.automatic,
+        installOnQuit: updateInfo.installOnQuit,
+      };
+      candidate[event.target.dataset.updatePref] = event.target.checked;
+      const savingEpoch = ++updateEpoch;
+      updateSaving = true;
+      updatePendingPrefs = candidate;
+      refreshUpdateWidgets();
+      try {
+        const status = await api.setUpdatePreferences(candidate);
+        if (savingEpoch === updateEpoch) updateInfo = status;
+      } finally {
+        if (savingEpoch === updateEpoch) {
+          updateSaving = false;
+          updatePendingPrefs = null;
+          refreshUpdateWidgets();
+        }
+      }
+    }
     if (event.target.id === "access-method") {
       authChoice = event.target.value;
       render();
@@ -435,6 +569,7 @@ root.addEventListener("submit", (event) => {
     metadata = initial.providers;
     keys = initial.secretStatus;
     version = initial.version;
+    updateInfo = initial.updateStatus || updateInfo;
     subscriptions = initial.subscriptionStatus || {};
     authChoice = state.provider.authMode || "api";
     connection = state.provider.id;
@@ -444,3 +579,16 @@ root.addEventListener("submit", (event) => {
       '<main class="content"><h1>Your journal could not be opened.</h1><p>Your files were preserved. Close the app and consult the troubleshooting instructions in the README.</p></main>';
   }
 })();
+
+setInterval(() => {
+  const pollingEpoch = updateEpoch;
+  if (state?.onboarded && !updateSaving)
+    api
+      .updateStatus()
+      .then((status) => {
+        if (updateSaving || pollingEpoch !== updateEpoch) return;
+        updateInfo = status;
+        refreshUpdateWidgets();
+      })
+      .catch(() => {});
+}, 5000);

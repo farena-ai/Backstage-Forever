@@ -1,10 +1,10 @@
-# Releases and manual updates
+# Building and publishing releases
 
-This is a **0.1.0 unsigned Windows preview** from Backstage Coding, designed by Frank Arena. Do not describe it as signed, publicly published or verified on a clean machine. See VALIDATION.md for the checks actually performed.
+Public MIT repository: farena-ai/Backstage-Forever. Backstage Coding, designed by Frank Arena. Version 0.2.0 remains a Windows preview. Installers are not Windows Authenticode signed; Ed25519 app-update signatures separately authenticate downloads. See UPDATES.md for trust, key management and rotation.
 
-## Build from source
+## Local validation
 
-In the extracted project folder with Node.js LTS and npm installed:
+Use Node.js 24 LTS and locked dependencies:
 
 ```powershell
 npm ci
@@ -12,25 +12,17 @@ npm test
 npm run test:ui
 npm run test:integration
 npm run dist
+npm run test:packaged
 ```
 
-The Windows build is a per-user NSIS installer. Inspect the configured output folder in package.json and keep the installer together with its version and SHA256 validation record. Never include user data, keys or personal backups in source/installer archives. The optional addon stays a separate experimental template.
+The per-user x64 NSIS installer is written to dist. User records, provider credentials, CLI homes, signing private keys and scratch files must never be included. Include LICENSE, font notices and artwork provenance. Official Claude/Grok tools are not bundled or relicensed.
 
-## Gates before public distribution
+## Signed publication
 
-- Frank has confirmed the public repository `farena-ai/Backstage-Forever`; verify release artifacts and destination before publishing.
-- Frank approved MIT licensing; include LICENSE and required third-party notices in source distributions. Claude Code is separately installed and remains under Anthropic's terms; its binary is not bundled or relicensed.
-- Sign the application/installer with the intended publisher identity and verify signatures.
-- Test install, first run, uninstall, data retention/deletion and upgrade on a clean Windows machine.
-- Review source/installer contents, privacy statements and compatibility claims, and attach actual test evidence and checksums.
-- Live interactive subscription consent and paid inference acceptance have not been performed. Run live provider checks only after deliberate user authentication/consent; API/subscription fixture success is not live authentication proof. Verify ChatGPT consent, refresh/logout and subscription-only routing, plus Claude app-private official CLI sign-in, no-tool invocation and sign-out/reset. Grok subscription mode is unavailable; an isolated official CLI adapter is deferred roadmap work. Never spend credits merely to make a test badge green.
-- Recheck official CLI capability and policy behavior. Safe mode preserves administrator policy, so managed-hook behavior needs explicit deployment review; do not claim the child process is an OS sandbox.
-- Keep all subscription credentials and app-private CLI homes out of installers, source archives, backups and logs. Use a fresh profile for acceptance.
+Set package version and releaseChannel explicitly (preview/stable), update docs, review/test/commit, then push an exact vMAJOR.MINOR.PATCH tag. The release workflow validates version/channel, runs locked installation and tests, builds, signs with the protected repository secret, archives source and generates checksums. New releases remain drafts until all assets upload. Never put private keys on command lines, in logs or in source. Do not upload competing manual builds while that workflow owns the version’s assets.
 
-No publication is performed merely by building. Never add release watcher jobs, scheduled checks or recurring threads.
+App checks run only while open. No watcher service, scheduled task, cron, chat automation or recurring polling job is created. Tag-triggered CI produces releases only when deliberately triggered.
 
-## Manual update path
+## Acceptance evidence
 
-Obtain a newer installer from the confirmed `farena-ai/Backstage-Forever` GitHub Releases location when a release is actually published. While the app is open, export a backup. Then close the app, verify the publisher/signature and supplied checksum, and run the newer installer over the current per-user installation. Reopen and check profiles/settings. This is the planned manual path; upgrade and clean-machine verification are pending. There is no automatic updater, simulated update check or background release monitor.
-
-If an upgrade fails, retain your backup and ask for version-specific recovery guidance before deleting data or downgrading. Provider keys are not portable backups and may need to be entered again.
+Record actual results in VALIDATION.md. Fixtures do not certify live consent, entitlements, billing or game APIs. Clean-machine install/upgrade/uninstall, real self-update, accessibility, Windows publisher signing and in-client addon tests remain separate gates until performed. Never spend provider credits just for a badge. No beta/testing store track is used by this workflow.

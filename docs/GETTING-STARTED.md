@@ -34,7 +34,7 @@ The desktop currently uses manual profiles. The addon is a separate, unverified 
 
 ## Updates and help
 
-While the app is open, export a backup. Then close the app before upgrading. Download a newer installer from [Releases](https://github.com/farena-ai/Backstage-Forever/releases) and run it over the existing installation. This manual update path still needs clean-machine and upgrade verification. There is no background updater or watcher. For trouble reports, include the app version, Windows version and steps to reproduce; remove keys, private notes and personal backup data.
+Version 0.2.0 and later installed Windows builds check while open, download authenticated updates and install on exit by default. Open Updates to check now, restart into a downloaded version or change preferences. Sessions are never forcibly restarted. Users on 0.1.0 must manually install the newer build once: export a backup while the old app is open, close it, then run the downloaded installer. There is no OS service, scheduled job or release watcher. Actual old-to-new installation acceptance remains pending. For help include version, Windows version and reproduction steps with secrets/private data removed.
 
 
 ChatGPT preview account switching requires resetting app data because one registration/account is saved per installation. Export profiles first if you want to keep them, then reset and reconnect your chosen account. Live interactive subscription consent and paid inference acceptance remain unperformed. Grok subscription mode is unavailable; use xAI API mode.

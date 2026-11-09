@@ -21,3 +21,8 @@ Claude subscription requests run the unmodified, separately installed official C
 Each Claude request uses an empty temporary working directory, stdin prompt, no shell, no builtin tools, empty strict MCP configuration, disabled customizations/slash commands and no session persistence. Environment API keys, OAuth token overrides and routing variables are removed so subscription mode does not deliberately fall back to API charging. Managed administrator policy can still affect official CLI behavior; this is not an OS-level sandbox. No live sign-in or paid inference was performed by the fixture tests.
 
 Use each provider's official account controls for revocation, retained data and subscription usage. The reset control cannot erase data already held by the provider. Grok subscription mode is unavailable in this preview. Official OAuth exists, but its isolated inference adapter and credential lifecycle are deferred roadmap work.
+
+
+## Update connections
+
+Installed Windows builds contact GitHub’s public release service after startup and every six hours while open when automatic updates are enabled. GitHub receives normal connection information such as IP address; no profiles, notes, prompts, provider credentials or game data accompany those requests. Authenticated newer releases download to the app-owned cache and install on exit by default. Updates exposes opt-out, timing and manual checks. This preview accepts authenticated published preview and stable releases. Source builds never automatically check or execute installers. Reset cancels work, deletes cache and turns automatic checks off until re-enabled. Update preferences are separate from exported character backups. See UPDATES.md.

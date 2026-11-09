@@ -1,5 +1,17 @@
 # Validation — November 8, 2026
 
+## 0.2.0 cinematic interface and updates
+
+The 0.2.0 build adds original painted raster art, bundled licensed fonts and a material-rich interface. Existing data/provider flows remain compatible. New update controls have real Electron preference/restart-persistence coverage; wide and compact layouts are rendered and checked for horizontal overflow.
+
+Automatic Windows updates authenticate an Ed25519-signed manifest against the bundled public key, bind version/tag/repository/URL/installer name, bound transfers, verify SHA256/size and reverify cached files before fixed-argument installer execution. Preferences, cancellation/reset, tampering, redirects, duplicate timers, install-on-exit, manual checks after opt-out and explicit restart are covered by fixture tests. Tests inject installer launches: they do not certify a real self-upgrade. The signing private key is OS-protected locally and stored as a protected repository release secret; only its public verification key ships.
+
+The signed release workflow validates an explicit version/channel tag, runs all checks, builds and signs an update manifest, uploads assets to a draft and then publishes. App update authentication is separate from Windows publisher identity; installers remain without Authenticode. Users upgrading from 0.1.0 need one manual install. Current test/build/CI results are reported in the release notes and corresponding workflow run. Live cloud account acceptance and game API verification remain unperformed.
+
+Local evidence: `npm test` 62/62 passed; real Electron UI and storage/reset integration passed; 0.2.0 installer built and packaged startup passed. The actual local installer was signed through its update manifest and successfully verified against the bundled production public key. Wide and 1000px-window screenshots were inspected; compact layout had no horizontal overflow. `npm audit` reported zero vulnerabilities. Independent review closed all important findings, including update timer/reset races, NSIS restart flags, manual install after opt-out, overlapping preference saves and stale status polling. No real self-update/old-to-new installation was executed; installer launches in update tests are injected.
+
+## Prior 0.1.0 foundation evidence
+
 Version 0.1.0 is a desktop foundation preview. These checks establish the behaviors tested here, not blanket compatibility with accounts, game versions or managed Windows deployments.
 
 ## Passed locally

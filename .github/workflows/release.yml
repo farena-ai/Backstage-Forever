@@ -1,0 +1,81 @@
+name: Production release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.repository == 'farena-ai/Backstage-Forever'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Validate explicit release tag
+        shell: pwsh
+        run: |
+          $package = Get-Content package.json -Raw | ConvertFrom-Json
+          $version = $package.version
+          $channel = $package.releaseChannel
+          if ($channel -cnotin @('preview', 'stable')) { throw 'package releaseChannel must be preview or stable' }
+          "RELEASE_CHANNEL=$channel" >> $env:GITHUB_ENV
+          if ($version -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' -or $env:GITHUB_REF_NAME -cne "v$version") { throw 'Tag must match strict package version' }
+          "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:ui
+      - run: npm run test:integration
+      - run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - run: npm run test:packaged
+      - name: Sign application update manifest
+        shell: pwsh
+        env:
+          BF_UPDATE_SIGNING_KEY: ${{ secrets.BF_UPDATE_SIGNING_KEY }}
+        run: |
+          node scripts/sign-update.cjs --installer "dist/Backstage-Forever-$env:RELEASE_VERSION-Windows-x64-Setup.exe" --version "$env:RELEASE_VERSION" --output dist/backstage-update.json
+          if ($LASTEXITCODE -ne 0) { throw 'Manifest signing failed' }
+      - name: Create source archive and checksums
+        shell: pwsh
+        run: |
+          git archive --format=zip --output="dist/Backstage-Forever-$env:RELEASE_VERSION-Source.zip" "$env:GITHUB_REF_NAME"
+          if ($LASTEXITCODE -ne 0) { throw 'Source archive failed' }
+          $names = @("Backstage-Forever-$env:RELEASE_VERSION-Windows-x64-Setup.exe", "Backstage-Forever-$env:RELEASE_VERSION-Source.zip", 'backstage-update.json')
+          $lines = foreach ($name in $names) { $hash = (Get-FileHash -LiteralPath "dist/$name" -Algorithm SHA256).Hash.ToLowerInvariant(); "$hash  $name" }
+          [IO.File]::WriteAllLines((Join-Path $pwd 'dist/SHA256SUMS.txt'), $lines, [Text.UTF8Encoding]::new($false))
+      - name: Publish or update versioned release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $existing = gh release view $tag --repo "$env:GITHUB_REPOSITORY" --json isDraft,isPrerelease 2>$null
+          $existed = $LASTEXITCODE -eq 0
+          if (-not $existed) {
+            $createArguments = @('release', 'create', $tag, '--repo', $env:GITHUB_REPOSITORY, '--verify-tag', '--draft', '--title', "Backstage Forever $env:RELEASE_VERSION")
+            $notes = "docs/releases/$env:RELEASE_VERSION.md"
+            if (Test-Path -LiteralPath $notes) { $createArguments += @('--notes-file', $notes) } else { $createArguments += '--generate-notes' }
+            if ($env:RELEASE_CHANNEL -ceq 'preview') { $createArguments += '--prerelease' }
+            gh @createArguments
+            if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed' }
+          }
+          gh release upload $tag "dist/Backstage-Forever-$env:RELEASE_VERSION-Windows-x64-Setup.exe" "dist/Backstage-Forever-$env:RELEASE_VERSION-Source.zip" dist/backstage-update.json dist/SHA256SUMS.txt --clobber --repo "$env:GITHUB_REPOSITORY"
+          if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed' }
+          # Published releases retain their current preview/stable status on reruns.
+          if (-not $existed -or ($existing | ConvertFrom-Json).isDraft) {
+            $preview = if ($env:RELEASE_CHANNEL -ceq 'preview') { 'true' } else { 'false' }
+            gh release edit $tag --repo "$env:GITHUB_REPOSITORY" --draft=false "--prerelease=$preview"
+            if ($LASTEXITCODE -ne 0) { throw 'Release publication failed; assets remain in draft' }
+          }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 — 2026-11-08
+
+- Original painted fantasy scenery, dimensional companion medallion, bronze/leather frames, parchment journal and bundled Cinzel/Source Sans 3 typography.
+- Automatic authenticated Windows release checks/downloads, install-on-exit, restart-now, manual checks and persistent preferences. Source builds never automatically check or execute installers; 0.1.0 requires one manual upgrade.
+- Pinned Ed25519 update manifests, SHA256/size and repository/version binding, bounded downloads, cache revalidation, cancellation/reset protection and tag-triggered signed release publication.
+- Updater, signing and UI preference tests; existing profile and provider privacy defaults preserved.
+- Clarified Grok inference-isolation work and next acceptance/model-discovery/addon milestones.
+
 ## 0.1.0 preview — 2026-11-08
 
 - Introduced Backstage Forever from Backstage Coding, designed by Frank Arena.

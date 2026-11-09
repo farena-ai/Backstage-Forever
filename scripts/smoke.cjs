@@ -80,12 +80,19 @@ const { testWindow } = require("./test-window.cjs");
     await page
       .getByRole("heading", { name: "A little guidance. A longer adventure." })
       .waitFor();
+    await page.getByRole('button',{name:'Updates',exact:true}).click();
+    await page.getByRole('heading',{name:'Keep your companion ready.'}).waitFor();
+    await page.getByRole('checkbox',{name:'Automatically check and download updates'}).uncheck();
+    await page.getByText('Automatic update checks are off.',{exact:false}).waitFor();
     await app.close();
     app = null;
     page = await launch();
     await page
       .getByRole("heading", { name: "Smoke Ranger", exact: true })
       .waitFor();
+    await page.getByRole('button',{name:'Updates',exact:true}).click();
+    assert.equal(await page.getByRole('checkbox',{name:'Automatically check and download updates'}).isChecked(),false);
+    await page.getByRole('button',{name:'Adventure',exact:true}).click();
     assert.equal(
       await page
         .getByRole("checkbox", { name: "Prepare for a dungeon" })

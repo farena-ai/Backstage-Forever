@@ -6,7 +6,7 @@
 
 **[Download the Windows preview](https://github.com/farena-ai/Backstage-Forever/releases)** · **[Install and get started](docs/GETTING-STARTED.md)** · **[Choose an AI connection](docs/PROVIDERS.md)**
 
-Version **0.1.0 is a desktop foundation preview**. Create characters, track goals and keep notes locally, with or without AI. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
+Version **0.2.0 is a desktop preview** with cinematic original fantasy artwork, textured journals and authenticated automatic Windows updates. Create characters, track goals and keep notes locally, with or without AI. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
 
 ## Install
 
@@ -19,6 +19,8 @@ The installer is **unsigned**. Windows may display an unknown-publisher warning;
 ## What this preview includes
 
 - Local character profiles, goals and private notes; backup/import/reset controls.
+- Painted citadel scenery, an embossed companion medallion, bronze/leather framing and a parchment journal, with bundled offline fonts.
+- Automatic checks and downloads of authenticated releases, installation on exit, restart-now and preference controls.
 - Optional Ollama locally, or OpenAI, Anthropic and xAI API connections with your own key and model selection.
 - Explicit ChatGPT browser subscription authentication and Claude subscription authentication through the separately installed official Claude Code tool, using app-private credentials.
 - Character sharing off by default. Opt in to send name, realm, class and level; notes and goals are excluded from automatic context.
@@ -33,7 +35,7 @@ The desktop uses manual game records. It does not inspect or play the game, calc
 
 Profiles stay in this Windows account's app-data folder. API keys are encrypted separately and never included in exported backups. Subscription credentials are also excluded; Claude's official tool manages its own app-private credential files. Prompts you send go to your selected provider. Read [Privacy](docs/PRIVACY.md) and [Providers](docs/PROVIDERS.md) before connecting.
 
-Updates are manual: export a backup while the app is open, close it, then run a newer installer from Releases. No automatic updater or release watcher is included.
+Installed Windows builds check shortly after startup and every six hours while open, download verified updates, and install on exit by default. The Updates screen offers manual checks, restart-now and preference controls. No forced mid-game restart or external watcher job is created. **0.1.0 needs one manual installer upgrade to gain this updater.** See [Automatic updates](docs/UPDATES.md). Source builds never automatically check or run installers.
 
 ## Run or build from source
 
@@ -64,6 +66,6 @@ docs/                 Setup, privacy, compatibility and release evidence
 
 ## Artwork and license
 
-The crest and landscape in `assets/crest.svg` and `assets/landscape.svg` are original local vector artwork created for Backstage Forever. No Blizzard artwork or copied game assets are included in these graphics. Brand and product design: Frank Arena, Backstage Coding.
+The painted environment and medallion are original generated fantasy artwork bundled locally; no Blizzard artwork or game assets were copied. The original Backstage crest remains in the identity system. Bundled Cinzel and Source Sans 3 fonts include their SIL Open Font License notices. See [Artwork notes](docs/ARTWORK.md). Brand and product design: Frank Arena, Backstage Coding.
 
 Licensed under [MIT](LICENSE). This project is not an official Blizzard product. See [Security](SECURITY.md) and [Changelog](CHANGELOG.md).

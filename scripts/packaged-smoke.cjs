@@ -25,7 +25,7 @@ const { testWindow } = require("./test-window.cjs");
     }));
     assert.equal(result.packaged, true);
     assert.equal(result.asar, true);
-    assert.equal(result.version, "0.1.0");
+    assert.equal(result.version, require('../package.json').version);
     assert.equal(result.secureStorage, true);
     assert.ok(await page.evaluate(() => Boolean(window.backstage?.bootstrap)));
     console.log(

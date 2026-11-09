@@ -12,6 +12,11 @@ contextBridge.exposeInMainWorld(
   "backstage",
   Object.freeze({
     bootstrap: () => invoke("bootstrap"),
+    updateStatus: () => invoke("updateStatus"),
+    checkForUpdates: () => invoke("checkForUpdates"),
+    setUpdatePreferences: (preferences) =>
+      invoke("setUpdatePreferences", preferences),
+    installUpdate: () => invoke("installUpdate"),
     subscriptionStatus: () => invoke("subscriptionStatus"),
     connectSubscription: (provider) => invoke("connectSubscription", provider),
     disconnectSubscription: (provider) =>

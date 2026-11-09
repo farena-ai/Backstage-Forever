@@ -2,6 +2,7 @@ const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
+const assert = require("node:assert/strict");
 const { testWindow } = require("./test-window.cjs");
 (async () => {
   const data = await fs.mkdtemp(path.join(os.tmpdir(), "backstage-art-"));
@@ -61,6 +62,30 @@ const { testWindow } = require("./test-window.cjs");
     await page.getByLabel("Access method").selectOption("subscription");
     await page.screenshot({
       path: path.join(__dirname, "..", "assets", "connections-preview.png"),
+    });
+    await page.getByRole("button", { name: "Updates", exact: true }).click();
+    await page
+      .getByRole("heading", { name: "Keep your companion ready." })
+      .waitFor();
+    await page.screenshot({
+      path: path.join(__dirname, "..", "assets", "updates-preview.png"),
+    });
+    await page.getByRole("button", { name: "Adventure", exact: true }).click();
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].setSize(1000, 760),
+    );
+    await page.waitForFunction(() => window.innerWidth <= 1000);
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+      true,
+    );
+    await page.screenshot({
+      path: path.join(__dirname, "..", "assets", "desktop-compact-preview.png"),
     });
     console.log(
       "Captured original interface previews using a clearly labeled synthetic demo profile.",
