@@ -77,15 +77,42 @@ The following remain research or later releases; the 0.8 planning foundation doe
 
 Acceptance: account/source boundaries, freshness and missing characters remain visible; no automatic purchases, mail, trading or gameplay actions.
 
-## Milestone 0.9: voice, presentation and player-driven sharing
+## 0.9: Adventure Director
+
+- One explained primary quest action and up to two alternatives, selected from all eligible captured candidates before applying display limits.
+- Respect current game destinations, qualified references, observed map/zone and reported level; unknown class/race/faction requirements remain unknown.
+- One explicit action creates or reuses a tracked Company session with current saved baselines. Private goals remain local and do not enter automatic AI context.
+- Improve native local ranking and reasons without routine reloads or gameplay control. Preserve compact first-screen actions, drafts and keyboard/pointer/native-select behavior.
+
+Acceptance: deterministic source-backed choices, atomic session/reuse, correct character/follow behavior, private context exclusions and real Electron/Lua lifecycle checks. Session length is a choice limit, not an estimated duration.
+
+## 0.10: Preparation and Professions
+
+- Guarded observations of owned professions, learned recipes/reagents and specified carried bags through Forever-compatible public APIs.
+- Simple recipe/craft-count selection, exact shortfalls only when observations support them, and honest partial/unknown states.
+- Separate dated observations from other collected characters; no automatic assumption that materials can be transferred.
+- Graphical workshop and deliberately created manual shopping checklists. No crafting, item use, purchase or bank/account-storage automation.
+
+Acceptance: exact-build API shapes, strict bounds/source ownership, cache/session isolation, rich capture/reload/budget preservation, unknown versus empty counts, local privacy and compact accessible UI. Item acquisition suggestions require separately qualified sources; no invented vendor/drop/skill-up path.
+
+## 0.11: Optional voice and conversation memory
 
 - Optional push-to-talk questions, interruptible spoken replies and hands-free reading of an explicitly requested plan. Microphone activation is visible; no always-on recording by default.
-- Rich route/quest cards and accessible map views where data and asset licenses permit. Actual character media is optional after supported API availability, user consent and rights are verified.
-- Share/export a user-approved party plan or checklist. No messages to friends/guild channels without an explicit player action.
+- Local Windows speech where available, editable transcript review before Send, interruptible reading and a typed fallback. No surprise cloud transcription or audio recording persistence.
+- Explicit per-character saved exchanges with review/delete; choosing to store an exchange does not automatically send it with later questions. Private journals/goals/journeys stay excluded.
+
+Acceptance: safe capability discovery, bounded/cancellable microphone and output lifetimes, no automatic inference, per-character isolation and identical selected-memory preview/send across provider modes. Live microphone/recognition/playback and consent remain owner-led checks.
+
+## 0.12: Party planning and the Quest Guide presentation/data pass
+
+- Preview/export/import user-approved party plans and dungeon checklists. Imported plans are new manual, unassigned steps without captured completion proof. No messages to friends/guild channels or automatic game actions.
+- Rich quest/destination dossiers and coordinate views with class/faction art, readable evidence, map/date/phase labels and useful missing-point states.
+- Refresh the compatible licensed Forever snapshot, improve guarded public game destination capture and measure source coverage. Retain reliable points rather than import incompatible or unlicensed locations.
+- Consider separately compiled same-build observed supply-vendor facts, preserving the existing quest-cache protocol. Historical reactions/locations do not guarantee access, current stock or prices.
 - Final visual pass: consistent class/faction tokens, spacing, icon hierarchy, control states and polished empty/error screens; restrained transitions rather than effects competing with the game.
 - Verify 100/125/150/200 percent Windows scaling, compact windows, keyboard/focus, contrast, screen readers, reduced motion and low idle CPU/GPU. Native addon styling must fit WoW and remain unobtrusive.
 
-Acceptance: a new user can connect, import, select a character and get useful guidance without knowing AI terminology. UI remains responsive alongside the game and graphics have measurable frame/idle budgets.
+Acceptance: a new user can connect, import, select a character and get useful guidance without knowing AI terminology. UI remains responsive alongside the game and graphics have measurable frame/idle budgets. Automated gates precede the combined signed 0.12 release; the owner performs [the hands-on check](OWNER-CHECK-012.md) before any 1.0 release-quality decision.
 
 ## 1.0 quality bar
 
