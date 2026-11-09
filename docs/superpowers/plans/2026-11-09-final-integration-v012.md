@@ -8,21 +8,21 @@ Preserve the series design's game/public-API, saved-file, privacy, source owners
 
 ## Task 1: Bounded retained-note polish
 
-- [ ] Execute work/final-polish-brief.md: shared vendor ordinal boundary correction, friendly voice captions with exact explicit culture values, format-only preparation readability.
-- [ ] Cover changed behavior with witnessed RED/GREEN and existing relevant checks, actual fake-worker voice screen normal/genuine8.3 serially, artifact reproduction unchanged. Report work/final-polish-report.md and commit owned paths only.
-- [ ] The independent strongest whole-series review below also returns explicit polish SPEC/QUALITY verdicts; no self-approval or skipped review.
+- [x] Execute work/final-polish-brief.md: shared vendor ordinal boundary correction, friendly voice captions with exact explicit culture values, format-only preparation readability.
+- [x] Cover changed behavior with witnessed RED/GREEN and existing relevant checks, actual fake-worker voice screen normal/genuine8.3 serially, artifact reproduction unchanged. Report work/final-polish-report.md and commit owned paths only.
+- [x] The independent strongest whole-series review below also returns explicit polish SPEC/QUALITY verdicts; no self-approval or skipped review.
 
 ## Task 2: Complete integrated candidate gates
 
-- [ ] Final full serial unit suite on normal and genuine Windows8.3 temporary roots, finite runner and no skipped/cancelled tests.
-- [ ] All current required source Electron flows and offline compiler checks normal and genuine8.3, strictly one GUI fixture at a time. Company retains all four setup races. Inspect final class/faction/full/compact/unknown/error visuals.
-- [ ] Current dependency audit and exact raw quest/seller/native reproduction. No ignored research dependency in ordinary tests or CI.
-- [ ] Resolve/check absolute dist target, fresh Windows NSIS/unpacked build and packaged exact reviewed source/data/helper/key bytes plus all five managed addon readback/repair checks. Safe packaged capability-only probe normal/8.3; no real audio.
+- [x] Final full serial unit suite on normal and genuine Windows8.3 temporary roots, finite runner and no skipped/cancelled tests.
+- [x] All current required source Electron flows and offline compiler checks normal and genuine8.3, strictly one GUI fixture at a time. Company retains all four setup races. Inspect final class/faction/full/compact/unknown/error visuals.
+- [x] Current dependency audit and exact raw quest/seller/native reproduction. No ignored research dependency in ordinary tests or CI.
+- [x] Resolve/check absolute dist target, fresh Windows NSIS/unpacked build and packaged exact reviewed source/data/helper/key bytes plus all five managed addon readback/repair checks. Safe packaged capability-only probe normal/8.3; no real audio.
 
 ## Task 3: Strongest independent whole-series review
 
-- [ ] Review published0.8 baseline f0ec4dce3ea8fe67c50acfa9f5ca871e5682f4e0 through final candidate, including all cross-task lifecycle/privacy/data/provider/IPC/update/interaction contracts and retained notes.
-- [ ] Provide complete diff plus code/metadata/tests/notices package. Only the three reproduced generated data/Lua artifacts may be separated with byte/SHA256/Git-blob manifests; complete diff remains available. Use bounded chunk/index navigation for the large package. No green suite reruns merely to confirm reports.
+- [x] Review published0.8 baseline f0ec4dce3ea8fe67c50acfa9f5ca871e5682f4e0 through final candidate, including all cross-task lifecycle/privacy/data/provider/IPC/update/interaction contracts and retained notes.
+- [x] Provide complete diff plus code/metadata/tests/notices package. Only the three reproduced generated data/Lua artifacts may be separated with byte/SHA256/Git-blob manifests; complete diff remains available. Use bounded chunk/index navigation for the large package. No green suite reruns merely to confirm reports.
 - [ ] Return evidence/file:line, readiness and explicit polish SPEC/QUALITY verdicts. If findings remain, dispatch one consolidated fix wave, run covering checks, obtain focused re-review and rebuild/revalidate affected release artifacts. Never merge with unresolved blocking findings.
 
 ## Task 4: Publish and authenticate the combined preview
