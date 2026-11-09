@@ -489,3 +489,28 @@ test("account-directory bound reports partial coverage and preserves previously 
   for(let i=0;i<256;i++)await fs.mkdir(path.join(f.root,"WTF","Account",`EmptySynthetic${i}`));
   await sync.refresh();assert.equal(events.length,1);assert.equal(sync.status().characterCount,1);assert.equal(sync.status().coverage.partial,true);
 });
+
+test("missing previously populated Account directory reports partial and recovers without losing characters or notes",async t=>{
+  const f=await fixture(t),{mergeSnapshot}=require("../src/core/profile-sync.cjs"),{defaultState}=require("../src/core/validation.cjs");
+  let state=defaultState(),calls=0;
+  const sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:path.join(__dirname,"../addon/BackstageForever"),onSnapshot:s=>{state=mergeSnapshot(state,s);calls++;}});t.after(()=>sync.close());
+  const first=snapshot(),second=snapshot();
+  second.characters[0]={...second.characters[0],id:"Player-second",name:"Second"};second.activeId="Player-second";
+  const other=path.join(f.root,"WTF","Account","OtherSynthetic","SavedVariables","BackstageForever.lua");
+  await fs.mkdir(path.dirname(other),{recursive:true});await fs.writeFile(f.file,saved(first));await fs.writeFile(other,saved(second));
+  await sync.prepare(f.root);assert.equal(state.profiles.length,2);assert.equal(calls,1);
+  state.profiles[0].notes="Keep private journal";
+  const before=structuredClone(state),lastSync=sync.status().lastSync,account=path.join(f.root,"WTF","Account"),away=path.join(f.root,"WTF","Account-away");
+  await fs.rename(account,away);let status=await sync.refresh();
+  assert.equal(status.coverage.partial,true);assert.equal(status.coverage.unreadableAccountCount,2);assert.match(status.coverage.message,/unavailable|preserved/i);assert.doesNotMatch(status.coverage.message,/characters imported within/i);
+  assert.equal(status.characterCount,2);assert.equal(status.lastSync,lastSync);assert.equal(sync.accountSnapshots.size,2);assert.deepEqual(state,before);assert.equal(calls,1);
+  await fs.rename(away,account);first.characters[0].level=13;first.characters[0].updatedAt=1700000100;first.observedAt=1700000100;await fs.writeFile(f.file,saved(first));status=await sync.refresh();
+  assert.equal(status.coverage.partial,false);assert.equal(status.coverage.unreadableAccountCount,0);assert.equal(state.profiles.length,2);assert.equal(state.profiles.find(p=>p.name==="Example").level,13);assert.equal(state.profiles[0].notes,"Keep private journal");assert.equal(calls,2);
+});
+
+test("never-saved client without an Account directory remains quietly prepared",async t=>{
+  const f=await fixture(t);await fs.rm(path.join(f.root,"WTF","Account"),{recursive:true});
+  const sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:path.join(__dirname,"../addon/BackstageForever"),onSnapshot:()=>assert.fail("unexpected snapshot")});t.after(()=>sync.close());
+  const status=await sync.prepare(f.root);
+  assert.equal(status.addonCurrent,true);assert.equal(status.companionState,"prepared");assert.equal(status.nextAction.id,"play");assert.equal(status.coverage.partial,false);assert.equal(status.coverage.unreadableAccountCount,0);assert.equal(status.characterCount,0);
+});

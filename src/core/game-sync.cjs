@@ -552,7 +552,15 @@ class GameSync {
         await safe(account, "dir");
       } catch (error) {
         if (error.code !== "ENOENT") throw error;
-        return cancelled() ? this.status() : this._noExport(gen, false);
+        if (cancelled()) return this.status();
+        const unavailableAccounts = this.accountSnapshots.size;
+        if (unavailableAccounts)
+          this.state.coverage = {
+            ...this.state.coverage,
+            partial: true,
+            unreadableAccountCount: unavailableAccounts,
+          };
+        return this._noExport(gen, unavailableAccounts > 0);
       }
       const entries = [];
       for await (const entry of await fs.opendir(account)) {
