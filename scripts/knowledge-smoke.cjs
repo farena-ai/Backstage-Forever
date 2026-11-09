@@ -5,6 +5,20 @@ const fs = require("node:fs/promises"),
   assert = require("node:assert/strict");
 const { _electron: electron } = require("playwright");
 const { testWindow } = require("./test-window.cjs");
+function currentQuestPaint({ id, previous }) {
+  const detail = document.querySelector(`[data-quest-control="detail:${id}"]`);
+  const row = document.querySelector(`.quest-ledger-row[data-quest-id="${id}"]`);
+  const selectedProfile = document.querySelector("#active-character")?.value;
+  let rowIntent, copyIntent;
+  try {
+    rowIntent = JSON.parse(row?.dataset.questIntent || "null");
+    copyIntent = JSON.parse(detail?.querySelector("[data-quest-copy]")?.dataset.questIntent || "null");
+  } catch { return false; }
+  return Boolean(detail && detail !== previous && row?.getAttribute("aria-pressed") === "true" &&
+    rowIntent?.id === id && copyIntent?.id === id &&
+    rowIntent.profileId === selectedProfile && copyIntent.profileId === selectedProfile &&
+    rowIntent.generation === copyIntent.generation);
+}
 function shortPath(target){
   const script=`Add-Type -TypeDefinition 'using System; using System.Text; using System.Runtime.InteropServices; public static class AtlasShortPath { [DllImport("kernel32.dll",CharSet=CharSet.Unicode)] public static extern uint GetShortPathName(string path,StringBuilder result,uint length); }'; $buffer=New-Object System.Text.StringBuilder 4096; $length=[AtlasShortPath]::GetShortPathName($env:BF_ATLAS_FIXTURE_PATH,$buffer,4096); if($length -eq 0 -or $length -ge 4096){throw 'Short path unavailable'}; $buffer.ToString()`;
   const alias=require('node:child_process').execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{env:{...process.env,BF_ATLAS_FIXTURE_PATH:target},encoding:'utf8',timeout:15000}).trim();
@@ -142,6 +156,7 @@ function shortPath(target){
       env: { ...process.env, BF_USER_DATA: data },
     });
     page = await testWindow(app);
+    const waitQuestPaint = (id, previous) => page.waitForFunction(currentQuestPaint, { id, previous });
     await app.evaluate(({ ipcMain, clipboard }, root) => {
       globalThis.knowledgeInference = 0;
       globalThis.knowledgeCopies = [];
@@ -296,22 +311,73 @@ function shortPath(target){
       [854, 98024],
     );
     await search.fill("5728");
-    await page.locator('.quest-ledger-row[data-quest-id="5728"]').click();
-    await page.locator('.quest-detail h2').waitFor();
     const reported = await page.evaluate(async () => {
       const id = (await window.backstage.bootstrap()).state.activeProfileId;
       return (await window.backstage.questDetails(id,5728)).chain;
     });
+    // Hold the real main-owned result so the old empty-detail heading cannot
+    // accidentally stand in for completion of this selected quest.
+    await app.evaluate(({ ipcMain }) => {
+      const original = ipcMain._invokeHandlers.get("backstage:questDetails");
+      ipcMain.removeHandler("backstage:questDetails");
+      globalThis.atlasCompletionHold = true;
+      globalThis.atlasCompletionReleases = [];
+      ipcMain.handle("backstage:questDetails", async (...args) => {
+        const result = await original(...args);
+        if (args[2] === globalThis.atlasCompletionQuest && globalThis.atlasCompletionHold) {
+          await new Promise(resolve => globalThis.atlasCompletionReleases.push(resolve));
+        }
+        return result;
+      });
+    });
+    const openQuestAndWait = async (id) => {
+      const row = page.locator(`.quest-ledger-row[data-quest-id="${id}"]`);
+      await row.waitFor();
+      const previous = await page.$(".quest-detail");
+      await app.evaluate((_, id) => {
+        globalThis.atlasCompletionQuest = id;
+        globalThis.atlasCompletionHold = true;
+      }, id);
+      await row.focus();
+      await page.keyboard.down("Space");
+      await row.click();
+      await app.evaluate(async () => {
+        const end = Date.now() + 5000;
+        while (!globalThis.atlasCompletionReleases.length) {
+          if (Date.now() > end) throw Error("Quest completion response was not held");
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+      });
+      assert.equal(await page.evaluate(currentQuestPaint, { id, previous }), false,
+        "A retained detail cannot complete the held current selection");
+      // This deliberately witnesses the old predicate while a genuine reply is
+      // held. The readiness condition contains no chain, title or waypoint facts.
+      assert.equal(await page.locator(".quest-detail h2").count(), 1,
+        "The old generic heading predicate is satisfied before completion");
+      await app.evaluate(() => {
+        globalThis.atlasCompletionHold = false;
+        globalThis.atlasCompletionReleases.splice(0).forEach(release => release());
+      });
+      await page.keyboard.up("Space");
+      await waitQuestPaint(id, previous);
+      await previous?.dispose();
+      console.log(`PASS: held actual questDetails #${id}: old heading is present before current selection paint; current profile/generation and replacement detail complete after release.`);
+    };
+    await openQuestAndWait(5728);
     const shownEdges = await page.locator('[data-chain-from]').evaluateAll(nodes => nodes.map(n=>[Number(n.dataset.chainFrom),Number(n.dataset.chainTo)]));
     assert.deepEqual(shownEdges.sort((a,b)=>a[0]-b[0]), reported.filter(n=>n.nextQuestId).map(n=>[n.id,n.nextQuestId]).sort((a,b)=>a[0]-b[0]), "Every visible arrow must describe an actual reported edge, never array adjacency");
     const neighbor = page.locator('[data-chain-node="5729"]');
     assert.match(await neighbor.innerText(), /Current game hotfix title/);
     assert.match(await neighbor.innerText(), /Reference conflict.*Hidden Enemies/s);
+    if (process.argv.includes("--detail-completion-only")) {
+      console.log("PASS: current selected quest completion uses the genuine main/preload/renderer path and preserves exact chain/title/conflict assertions.");
+      return;
+    }
     await fs.mkdir(path.join(repo,"work/v012-quest-ui-evidence"),{recursive:true});
     await page.evaluate(()=>{ document.getElementById("toast").className = ""; });
     await page.locator('.quest-chain').screenshot({path:path.join(repo,"work/v012-quest-ui-evidence/quest-chain-directed.png")});
     await search.fill("5730");
-    await page.locator('.quest-ledger-row[data-quest-id="5730"]').click();
+    await openQuestAndWait(5730);
     await page
       .getByRole("heading", { name: "Hidden Enemies", exact: true })
       .waitFor();
@@ -356,7 +422,7 @@ function shortPath(target){
     await search.focus();
     await search.press("Escape");
     assert.equal(
-      await search.evaluate((node) => node === document.activeElement),
+      await page.evaluate(() => document.querySelector("#quest-search") === document.activeElement),
       true,
       "Escape returns focus to quest search",
     );
@@ -387,8 +453,7 @@ function shortPath(target){
     await page
       .getByLabel("Active character", { exact: true })
       .selectOption(horde);
-    await page.locator('.quest-ledger-row[data-quest-id="5730"]').click();
-    await page.locator(".quest-detail h2").waitFor();
+    await openQuestAndWait(5730);
     assert.match(
       await page.locator(".quest-waypoint").innerText(),
       /Named in a quest objective/,
@@ -433,12 +498,30 @@ function shortPath(target){
     await page.waitForFunction(()=>window.atlasToggles===1);assert.equal(await sourceSummary.evaluate(n=>n===document.activeElement),true);
     const disclosureOpen=await sourceSummary.evaluate(n=>n.parentElement.open);await page.evaluate(()=>render());assert.equal(await sourceSummary.evaluate(n=>n.parentElement.open),disclosureOpen);
     const activeMenu=page.getByLabel('Active character',{exact:true});await activeMenu.click();await activeMenu.evaluate(n=>window.atlasHeldMenu=n);await page.evaluate(()=>render());assert.ok(await activeMenu.evaluate(n=>n===window.atlasHeldMenu));await page.keyboard.press('Escape');await search.focus();
-    const atlasNav=page.getByRole('button',{name:'Quest Guide',exact:true});await atlasNav.focus();await page.evaluate(()=>render());assert.equal(await atlasNav.evaluate(n=>n===document.activeElement),true,'Navigation focus keeps semantic ownership through source/root paints');
-    await search.fill('Hidden');await search.evaluate(n=>n.setSelectionRange(2,4));await page.evaluate(()=>render());assert.equal(await search.inputValue(),'Hidden');assert.deepEqual(await search.evaluate(n=>[n.selectionStart,n.selectionEnd]),[2,4]);assert.equal(await search.evaluate(n=>n===document.activeElement),true);
-    await search.fill('');await page.locator('.quest-ledger-row[data-quest-id="5730"]').click();await page.locator('.quest-detail h2').waitFor();
+    const atlasNav=page.getByRole('button',{name:'Quest Guide',exact:true});await atlasNav.focus();await page.evaluate(()=>render());
+    // A locator may resolve a node just before an accepted root replacement.
+    // Keep this semantic focus check atomic; held native target checks above
+    // deliberately retain their original-node assertions.
+    await app.evaluate(({ipcMain})=>{
+      const original=ipcMain._invokeHandlers.get('backstage:saveState');ipcMain.removeHandler('backstage:saveState');
+      ipcMain.handle('backstage:saveState',async(...args)=>{const result=await original(...args);if(globalThis.atlasFocusSaveHold)await new Promise(resolve=>globalThis.atlasFocusSaveRelease=resolve);return result;});
+      globalThis.atlasFocusSaveHold=true;
+    });
+    await page.evaluate(()=>{autosaveQueue=autosaveQueue.then(async()=>{await persist(state);render();});});
+    await app.evaluate(async()=>{const end=Date.now()+5000;while(!globalThis.atlasFocusSaveRelease){if(Date.now()>end)throw Error('Navigation focus save acknowledgement was not held');await new Promise(resolve=>setTimeout(resolve,10));}});
+    const previousNav=await atlasNav.elementHandle();
+    await app.evaluate(()=>{globalThis.atlasFocusSaveHold=false;globalThis.atlasFocusSaveRelease();});await page.evaluate(()=>autosaveQueue);
+    await page.waitForFunction(previous=>document.querySelector('[data-shell-control="nav:quest-guide"]')!==previous,previousNav);
+    assert.equal(await previousNav.evaluate(node=>node.isConnected),false,'The probe witnesses an actual accepted root replacement');
+    assert.equal(await previousNav.evaluate(node=>node===document.activeElement),false,'An obsolete resolved node cannot describe current semantic focus');
+    assert.equal(await page.evaluate(()=>document.querySelector('[data-shell-control="nav:quest-guide"]')===document.activeElement),true,'Navigation focus keeps semantic ownership through source/root paints');
+    await previousNav.dispose();
+    console.log('PASS: held real save acknowledgement replaces the obsolete navigation node; current semantic navigation focus remains exact.');
+    await search.fill('Hidden');await search.evaluate(n=>n.setSelectionRange(2,4));await page.evaluate(()=>render());assert.equal(await search.inputValue(),'Hidden');assert.deepEqual(await search.evaluate(n=>[n.selectionStart,n.selectionEnd]),[2,4]);assert.equal(await page.evaluate(()=>document.querySelector('#quest-search')===document.activeElement),true);
+    await search.fill('');await openQuestAndWait(5730);
     // A real ready phase uses the compatible turn-in observation, not an objective clue.
     characters[1].quests.find(q=>q.id===5730).complete=true;characters[1].updatedAt+=2;await write();await page.evaluate(()=>window.backstage.refreshGame());
-    await page.evaluate(async()=>{const r=await backstage.bootstrap();state=r.state;render();});await page.locator('.quest-ledger-row[data-quest-id="5730"]').click();await page.locator('.quest-detail h2').waitFor();
+    await page.evaluate(async()=>{const r=await backstage.bootstrap();state=r.state;render();});await openQuestAndWait(5730);
     const readyFacts=await page.evaluate(async()=>backstage.questDetails(state.activeProfileId,5730));
     assert.equal(readyFacts.waypoint.source,'reference');assert.notEqual(readyFacts.waypoint.destination?.evidence,'mentioned-in-objective');assert.ok(readyFacts.waypoint.destination);
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1440,1000));await capture('quest-guide-horde-ready.png');
@@ -907,6 +990,8 @@ function shortPath(target){
       await app
         .evaluate(() => {
           globalThis.atlasRepeatSaveRelease?.();
+          globalThis.atlasFocusSaveRelease?.();
+          globalThis.atlasCompletionReleases?.splice(0).forEach(release => release());
           globalThis.atlasRepeatStatusReleases?.forEach(release=>release("Fixture cleanup"));
           globalThis.atlasNavStatusRelease?.();
           globalThis.atlasCopyRelease?.();
