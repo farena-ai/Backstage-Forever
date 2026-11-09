@@ -96,3 +96,39 @@ test("unrelated key release cannot settle Space and default blur/window cancella
     f.flush();assert.deepEqual(calls,["paint"]);assert.equal(f.guard.interacting(),false);
   }
 });
+test("pointerup followed by keydown completes the pointer without ending the newer held key",()=>{
+  const f=fixture(),calls=[],node={tagName:"BUTTON",closest:()=>null};
+  f.root.emit("pointerdown",{button:0,target:node});f.document.emit("pointerup");
+  f.root.emit("keydown",{target:node,key:" "});f.guard.defer(()=>calls.push("root"),"root");f.guard.defer(()=>calls.push("region"));
+  f.flush();assert.equal(f.guard.interacting(),true);assert.deepEqual(calls,[]);
+  f.document.emit("keyup",{key:" "});f.flush();assert.equal(f.guard.interacting(),false);assert.deepEqual(calls,["root"]);
+});
+test("keyup followed by pointerdown completes the key without ending the newer held pointer",()=>{
+  const f=fixture(),calls=[],node={tagName:"BUTTON",closest:()=>null};
+  f.root.emit("keydown",{target:node,key:" "});f.document.emit("keyup",{key:" "});
+  f.root.emit("pointerdown",{button:0,target:node});f.guard.defer(()=>calls.push("paint"),"root");
+  f.flush();assert.equal(f.guard.interacting(),true);assert.deepEqual(calls,[]);
+  f.document.emit("pointerup");f.flush();assert.equal(f.guard.interacting(),false);assert.deepEqual(calls,["paint"]);
+});
+test("old pointer release cannot clear a newer same-kind pointer press",()=>{
+  const f=fixture(),calls=[];f.root.emit("pointerdown",{button:0,target:f.button});f.document.emit("pointerup");
+  f.root.emit("pointerdown",{button:0,target:f.button});f.guard.defer(()=>calls.push("paint"),"root");f.flush();
+  assert.equal(f.guard.interacting(),true);assert.deepEqual(calls,[]);f.document.emit("pointerup");f.flush();assert.deepEqual(calls,["paint"]);
+});
+test("overlapping Space and Enter keep independent native activation lifetimes",()=>{
+  for(const first of [" ","Enter"]){
+    const f=fixture(),calls=[],node={tagName:"BUTTON",closest:()=>null},second=first===" "?"Enter":" ";
+    f.root.emit("keydown",{target:node,key:first});f.root.emit("keydown",{target:node,key:second});f.guard.defer(()=>calls.push("paint"),"root");
+    f.document.emit("keyup",{key:second});f.flush();assert.equal(f.guard.interacting(),true);assert.deepEqual(calls,[]);
+    f.document.emit("keyup",{key:first});f.flush();assert.equal(f.guard.interacting(),false);assert.deepEqual(calls,["paint"]);
+  }
+});
+test("mixed held inputs settle after cancellation and invalidation does not flush stale work",()=>{
+  for(const boundary of ["blur","cancel","invalidate"]){
+    const f=fixture(),calls=[],node={tagName:"BUTTON",closest:()=>null};
+    f.root.emit("pointerdown",{button:0,target:node});f.document.emit("pointerup");f.root.emit("keydown",{target:node,key:" "});f.root.emit("keydown",{target:node,key:"Enter"});f.guard.defer(()=>calls.push("old"),"root");
+    if(boundary==="blur")f.window.emit("blur");else if(boundary==="cancel")f.document.emit("pointercancel");else f.guard.invalidate();
+    f.flush();assert.equal(f.guard.interacting(),false);assert.deepEqual(calls,boundary==="invalidate"?[]:["old"]);
+    f.root.emit("pointerdown",{button:0,target:node});f.guard.defer(()=>calls.push("new"),"root");f.document.emit("pointerup");f.flush();assert.equal(calls.at(-1),"new");
+  }
+});
