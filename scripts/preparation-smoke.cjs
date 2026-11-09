@@ -57,6 +57,61 @@ function shortPath(target) {
     const workshopPage=async()=>{await page.getByRole("button",{name:"Preparation",exact:true}).click();await page.locator("[data-preparation-reagent]").first().waitFor();};
     const update=async()=>{clock+=2;characters[0].updatedAt=clock;await write();await page.evaluate(()=>window.backstage.refreshGame());};
     const first=initial.activeProfileId,second=initial.profiles.find(p=>p.name==="Vaelric").id;
+    const readRetryFocus=async()=>{
+      // Hold the real main-owned brief after it reads the synthetic saved source.
+      await app.evaluate(({ipcMain})=>{
+        const read=ipcMain._invokeHandlers.get("backstage:preparationBrief");
+        ipcMain.removeHandler("backstage:preparationBrief");
+        ipcMain.handle("backstage:preparationBrief",async(...args)=>{
+          if(preparationUi.retryReadError)throw Error("Synthetic read error");
+          const result=await read(...args);
+          if(preparationUi.holdRetryRead)await new Promise(resolve=>preparationUi.retryReaders.push(resolve));
+          return result;
+        });
+        preparationUi.retryReaders=[];preparationUi.retryReadError=true;
+      });
+      const beforeJourneys=(await state()).journeys.length;
+      await update();await page.getByRole("alert").waitFor();
+      assert.equal(await page.getByRole("button",{name:"Ask about this supply plan",exact:true}).isDisabled(),true,"Replaced-source read failure must not authorize a new draft from old facts");
+      if(!process.argv.includes("--read-retry-only"))await capture("read-error");
+      const action=()=>page.locator("[data-preparation-add]").first().evaluate(n=>JSON.parse(n.dataset.preparationChoice));
+      const waitForRetryPaint=previous=>page.waitForFunction(previous=>{
+        const node=document.querySelector("[data-preparation-add]");
+        if(!node||node.disabled||document.querySelector("[data-preparation] [role=alert]"))return false;
+        const current=JSON.parse(node.dataset.preparationChoice);
+        return current.profileId===previous.profileId&&current.generation===previous.generation&&current.sourceRevision>previous.sourceRevision;
+      },previous);
+      const beginRetry=async()=>{
+        const previous=await action();
+        await app.evaluate(()=>{preparationUi.retryReadError=false;preparationUi.holdRetryRead=true;});
+        await page.getByRole("button",{name:"Retry workshop",exact:true}).click();
+        await untilMain("preparationUi.retryReaders.length===1");
+        // This is the old CI wait: it succeeds while this retry reply is still held.
+        await page.locator("[data-preparation-reagent]").first().waitFor();
+        assert.equal((await action()).sourceRevision,previous.sourceRevision,"Existing rows belong to the error paint, not the retry reply");
+        assert.equal(await page.getByRole("button",{name:"Retry workshop",exact:true}).evaluate(n=>n===document.activeElement),true,"A pending read has not completed its focus handoff");
+        return previous;
+      };
+      const releaseRetry=()=>app.evaluate(()=>{preparationUi.holdRetryRead=false;preparationUi.retryReaders.splice(0).forEach(resolve=>resolve());});
+      const previous=await beginRetry();
+      await releaseRetry();await waitForRetryPaint(previous);
+      assert.equal(await page.getByRole("button",{name:"Add shopping checklist",exact:true}).evaluate(n=>n===document.activeElement),true,"Successful read retry returns focus to the semantic action");
+      // A later deliberate focus owns the keyboard even when completion paint is deferred.
+      await app.evaluate(()=>preparationUi.retryReadError=true);await update();await page.getByRole("alert").waitFor();
+      const later=await beginRetry();
+      const sources=page.locator(".workshop-details summary");await sources.focus();await page.keyboard.down("Space");
+      await releaseRetry();
+      await page.waitForFunction(()=>!Preparation.page().includes('role="alert"'));
+      assert.equal(await page.getByRole("alert").count(),1,"The held native key defers successful replacement paint");
+      await page.keyboard.up("Space");await waitForRetryPaint(later);
+      assert.equal(await sources.evaluate(n=>n===document.activeElement),true,"Successful read retry must preserve newer deliberate focus");
+      console.log("Preparation retry: stale rows witnessed during held genuine reply; current successful paint restores Add and preserves newer native Summary focus PASS");
+      assert.equal((await state()).journeys.length,beforeJourneys,"Read retry does not create a checklist");
+    };
+    if(process.argv.includes("--read-retry-only")){
+      await readRetryFocus();console.log("Preparation read-retry focused fixture PASS");return;
+    }
+
     assert.equal(await page.getByRole('button',{name:'Ask about this supply plan',exact:true}).count(),1,"Supply-plan draft action must be explicit");
     assert.match(await page.locator('[data-preparation]').innerText(),/Historical seller observations/i);
     console.log("Preparation: saved source and navigation ready");await capture("alliance-full");
@@ -125,7 +180,7 @@ function shortPath(target) {
     // Mutation error retry is deliberate and never makes a duplicate successful call.
     await workshopPage();await app.evaluate(()=>preparationUi.failOnce=true);await add.click();await page.getByRole("alert").waitFor();assert.equal(await page.getByRole("button",{name:"Retry shopping checklist",exact:true}).evaluate(n=>n===document.activeElement),true,"Failed action must transfer its owned focus to semantic retry");await capture("mutation-error");await page.getByRole("button",{name:"Retry shopping checklist",exact:true}).click();await page.locator("[data-company-journey]").first().waitFor();assert.equal((await state()).journeys.length,2);
     // Read errors have a separate explicit retry without a checklist mutation.
-    await workshopPage();await app.evaluate(()=>preparationUi.failRead=true);await update();await page.getByRole("alert").waitFor();assert.equal(await page.getByRole("button",{name:"Ask about this supply plan",exact:true}).isDisabled(),true,"Replaced-source read failure must not authorize a new draft from old facts");await capture("read-error");await app.evaluate(()=>preparationUi.failRead=false);await page.getByRole("button",{name:"Retry workshop",exact:true}).click();await page.locator("[data-preparation-reagent]").first().waitFor();assert.equal(await add.evaluate(n=>n===document.activeElement),true,"Successful read retry returns focus to the semantic action");
+    await workshopPage();await readRetryFocus();
     // Partial supply creates manual totals, never an invented exact missing amount.
     characters[0].readiness.workshop.materials.complete=false;characters[0].readiness.workshop.materials.observedAt=clock+2;await update();await workshopPage();await page.waitForFunction(()=>document.querySelector('[data-preparation-reagent="200"]')?.innerText.includes("Shortfall unknown"));
     assert.match(await page.locator('[data-preparation-reagent="200"]').innerText(),/At least 5/);await capture("partial");await add.focus();await page.keyboard.press("Space");await page.locator("[data-company-journey]").first().waitFor();savedNow=await state();assert.equal(savedNow.journeys.length,3);assert.match(savedNow.journeys.at(-1).steps[0].text,/incomplete or unknown/);assert.match(savedNow.journeys.at(-1).steps[1].text,/total required: 6/);
