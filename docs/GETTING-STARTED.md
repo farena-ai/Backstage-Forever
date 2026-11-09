@@ -48,7 +48,7 @@ To share, open Company, choose the exact plan and use **Share plan**. Review/edi
 
 ## Optional voice and saved exchanges
 
-In **AI Companion**, compatible local Windows engines make **Hold to dictate** available. Hold it while speaking, release, review the editable draft and explicitly Send. If you typed meanwhile, BF leaves a separate draft for you to insert deliberately. Voice does not send a question by itself. **Read answer**, **Read plan** and **Stop voice** are explicit local actions. Missing or blocked engines leave typing available; BF does not change Windows permissions or install speech packs.
+In **AI Companion**, compatible local Windows engines make **Hold to dictate** available. Hold it while speaking, release, review the editable draft and explicitly Send. If you typed meanwhile, BF leaves a separate draft for you to insert deliberately. Voice does not send a question by itself. Use **Read answer** in AI Companion or **Read plan** on Adventure for an explicit local reading; **Stop voice** interrupts it. Missing or blocked engines leave typing available; BF does not change Windows permissions or install speech packs.
 
 Review an answer before **Save exchange**. Saved exchanges stay on this computer for that character. Select them separately for each new question, inspect the preview, then Send if wanted. You can delete individual exchanges or clear the character's memory. Local deletion cannot erase a provider's records. See [Voice and memory help](VOICE-AND-MEMORY.md).
 

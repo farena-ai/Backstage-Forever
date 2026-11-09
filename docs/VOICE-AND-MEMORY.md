@@ -4,7 +4,7 @@ Typed questions always work. Voice is optional and uses compatible installed Win
 
 Hold the dictate control while speaking. Listening is visibly indicated. Release, Stop, Escape, leaving the page or switching characters stops the operation. Recognition may leave an incomplete draft: review and edit it before pressing Send. Dictation does not send a question by itself. Sending uses your selected AI connection and its existing access/billing terms. BF retains no audio file. A brief “Stopping” message means shutdown is still being confirmed. If Windows cannot confirm that the helper stopped, BF blocks further voice use and leaves typing available; it does not silently start another recording.
 
-Read answer or Read plan is a separate explicit local speech action. Stop interrupts it; starting dictation stops BF's own speech first. Missing voices or blocked audio leave the written answer available.
+Read answer in AI Companion or Read plan on Adventure is a separate explicit local speech action. Stop interrupts it; starting dictation stops BF's own speech first. Missing voices or blocked audio leave the written answer available.
 
 Save exchange stores a bounded reviewed conversation locally for the selected character. Saving is optional, and there is no automatic conversation archive or background summary. These local memories are readable app data, so avoid saving passwords or secrets. Review, delete individual exchanges, or clear the character's memory when wanted.
 
