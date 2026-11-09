@@ -43,10 +43,10 @@ test("compiler retains exact live facts, independent observations, and no narrat
     pack.quests["5730"].rewards.choices[0].name,
   );
   const shipped = require("../data/forever/pack.json");
-  assert.equal(shipped.counts.npcs, 206);
-  assert.equal(shipped.counts.objects, 18);
-  assert.equal(shipped.counts.approachedObjects, 186);
-  assert.equal(shipped.counts.objectiveQuests, 97);
+  assert.equal(shipped.counts.npcs, 341);
+  assert.equal(shipped.counts.objects, 36);
+  assert.equal(shipped.counts.approachedObjects, 341);
+  assert.equal(shipped.counts.objectiveQuests, 162);
   assert.doesNotMatch(
     JSON.stringify(pack),
     /"description"|worldX|worldY|prerequisites|xpDifficulty/,

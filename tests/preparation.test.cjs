@@ -50,3 +50,23 @@ test("preparation options are actual plain objects and recipe/skill data can be 
  for(const options of [new Date(),Object.create({recipeId:100}),{crafts:2n}])assert.throws(()=>core().buildPreparation(state(),"p",options));
  const s=state();s.profiles[0].readiness.workshop.professions.complete=false;s.profiles[0].readiness.workshop.recipes.complete=false;const model=core().buildPreparation(s,"p",{recipeId:100});assert.equal(model.planning.available,true);assert.equal(model.coverage.professions.status,"partial");assert.equal(model.coverage.recipes.status,"partial");
 });
+
+test("bounded historical seller enrichment keeps inventory, dates, partial labels and other characters separate", () => {
+ const { normalizeVendors } = require("../src/core/vendor-facts.cjs"), { fixture, commit, build } = require("./fixtures/vendor-facts.cjs");
+ const vendorPack = normalizeVendors(fixture(), { commit, build }), s = state(); s.profiles[0].faction = "Horde";
+ s.profiles[0].readiness.workshop.recipes.items[0].reagents[0].itemId = 2320;
+ s.profiles[0].readiness.workshop.materials.complete = false;
+ const before = structuredClone(s), model = core().buildPreparation(s, "p", { recipeId: 100, crafts: 2 }, { vendorPack });
+ assert.ok(model.shoppingRows[0].historicalSellers, "Preparation must expose qualified historical seller facts");
+ assert.equal(model.shoppingRows[0].historicalSellers.suggestions[0].id, 10);
+ assert.equal(model.shoppingRows[0].quantityKind, "lower-bound"); assert.equal(model.shoppingRows[0].missing, null);
+ assert.equal(model.shoppingRows[0].required, 6); assert.equal(model.coverage.materials.observedAt, at);
+ assert.equal(model.shoppingRows[1].historicalSellers.status, "unobserved");
+ assert.equal(model.sellerReference.source.build, build); assert.match(model.sellerReference.limitation, /current stock, price and access are unverified/);
+ assert.equal(model.otherCharacters[0].materials[0].count, 2); assert.deepEqual(s, before);
+ assert.doesNotMatch(JSON.stringify(model), /PRIVATE_|waypoint|\/bf guide/);
+ model.shoppingRows[0].historicalSellers.suggestions[0].name = "changed"; assert.equal(vendorPack.vendors[0].name, "Synthetic seller");
+ s.profiles[0].faction = "Alliance";
+ assert.equal(core().buildPreparation(s, "p", {}, { vendorPack }).shoppingRows[0].historicalSellers.status, "browse-only");
+ assert.equal(core().buildPreparation(s, "p", {}).sellerReference, null);
+});

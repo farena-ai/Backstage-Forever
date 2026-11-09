@@ -1,6 +1,7 @@
 "use strict";
 const { validateState, str } = require("./validation.cjs");
 const { applyJourneyAction } = require("./journeys.cjs");
+const { sellerFacts } = require("./vendor-facts.cjs");
 function invalid() { throw Error("Invalid preparation request."); }
 function validatePreparationOptions(value = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value) || ![Object.prototype, null].includes(Object.getPrototypeOf(value)) || Object.keys(value).some(key => !["recipeId", "crafts"].includes(key))) invalid();
@@ -27,7 +28,7 @@ function facts(profile) {
   return { character: character(profile), source: source(profile), coverage: Object.fromEntries(["professions", "recipes", "materials"].map(key => [key, coverage(workshop?.[key])])), professions: workshop?.professions?.items || [], recipes: workshop?.recipes?.items || [], materials: workshop?.materials?.items || [] };
 }
 /** A dated local projection, not a crafting eligibility or live inventory assertion. */
-function buildPreparation(state, profileId, options = {}) {
+function buildPreparation(state, profileId, options = {}, { vendorPack = null } = {}) {
   if (profileId !== null) str(profileId, 100, false);
   const valid = validateState(state), settings = validatePreparationOptions(options);
   const profile = valid.profiles.find(p => p.id === profileId), selected = facts(profile), workshop = profile?.readiness?.workshop;
@@ -55,10 +56,13 @@ function buildPreparation(state, profileId, options = {}) {
       quantityKind: inventoryExact ? "exact" : workshop.materials ? "lower-bound" : "unknown",
       missing: inventoryExact ? Math.max(0, required - (material?.count || 0)) : null };
   }) : [];
+  const sellers = vendorPack ? sellerFacts(vendorPack, profile, shoppingRows.map(row => row.itemId)) : null;
+  for (const row of shoppingRows) row.historicalSellers = sellers?.rows.find(seller => seller.itemId === row.itemId) ?? null;
   return structuredClone({ version: 1, status: available ? "ready" : workshop?.recipes?.complete && !selected.recipes.length ? "empty" : "unavailable",
     ...selected, equipment: profile?.readiness?.equipment ?? null, bags: profile?.readiness?.bags ?? null,
     selection: { recipeId: recipe?.id ?? null, crafts: settings.crafts }, selectedRecipe: recipe || null, profession: profession || null,
     planning: { available, reason, requirementsKnown: recipe?.reagentsKnown === true, inventoryExact, checklistAvailable: available }, shoppingRows,
+    sellerReference: sellers ? { source: sellers.source, limitation: sellers.limitation } : null,
     otherCharacters: valid.profiles.filter(p => p.id !== profileId && p.readiness?.workshop).map(facts),
     limitations: ["Desktop observations are last saved, not live game inventory.", "Crafts means craft attempts or batches, not guaranteed output items or skill-ups.", "Materials cover backpack plus four bags (bags 0–4), excluding all other storage.", "Partial carried counts are lower-bound observations; absent items and exact shortfalls are unknown.", "Other characters are separate dated observations; no transfer or automatic subtraction is assumed.", "Checklists are manual and do not craft, purchase or automatically complete anything."] });
 }

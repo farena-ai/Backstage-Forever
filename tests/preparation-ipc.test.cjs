@@ -24,3 +24,15 @@ test("preload exposes preparation methods and forwards extra arguments for main 
  let api,request;vm.runInNewContext(fs.readFileSync(path.join(__dirname,"../src/preload.cjs"),"utf8"),{require:()=>({contextBridge:{exposeInMainWorld:(_n,a)=>api=a},ipcRenderer:{invoke:(...args)=>{request=args;return Promise.resolve();}}})});
  for(const method of ["preparationBrief","createPreparationJourney"]){assert.equal(typeof api[method],"function");await api[method]("p",{recipeId:100},"extra");assert.deepEqual(Array.from(request),[`backstage:${method}`,"p",{recipeId:100},"extra"]);}
 });
+
+test("trusted brief enriches from the offline seller bundle without changing captured inventory or provider whitelist", () => {
+ const f = setup(); f.current.profiles[0].faction = "Horde";
+ f.current.profiles[0].readiness.workshop.recipes.items[0].reagents[0].itemId = 2320;
+ const before = structuredClone(f.current), model = f.handlers.preparationBrief("p", { recipeId: 100 });
+ assert.ok(model.shoppingRows[0].historicalSellers, "Trusted main read must enrich historical sellers");
+ assert.equal(model.shoppingRows[0].historicalSellers.status, "historical-suggestions");
+ assert.ok(model.shoppingRows[0].historicalSellers.suggestions.length <= 3);
+ assert.equal(model.sellerReference.source.sourceCommit, "23f9636486d3d60479dc0bcee2356053c33faf2c");
+ assert.deepEqual(f.current, before); assert.equal(f.writes, 0);
+ assert.doesNotMatch(JSON.stringify(require("../src/core/providers.cjs").approvedProfile(f.current.profiles[0])), /historicalSellers|sellerReference|workshop|PRIVATE_/);
+});

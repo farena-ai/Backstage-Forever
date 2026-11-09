@@ -80,6 +80,10 @@ async function sourceFiles(folder, prefix = "src") {
       "data/forever/source-lock.json",
       "data/forever/NOTICE",
       "data/forever/LICENSE",
+      "data/forever-vendors/pack.json",
+      "data/forever-vendors/source-lock.json",
+      "data/forever-vendors/NOTICE",
+      "data/forever-vendors/LICENSE",
       "assets/update-public-key.pem",
     );
     const expected = await Promise.all(

@@ -28,6 +28,6 @@ test("compiler verifies hashes and reproducibly compiles six factual fixture inp
   fs.appendFileSync(path.join(dir, "npcs.json"), " ");
   assert.throws(() => compile(dir, fixtureLock), /hash mismatch/);
   const lock = JSON.parse(fs.readFileSync("data/forever/source-lock.json"));
-  assert.equal(lock.files["npcs.json"].coverage.npcs, 206);
-  assert.equal(lock.files["objectives.json"].coverage.quests, 97);
+  assert.equal(lock.files["npcs.json"].coverage.npcs, 341);
+  assert.equal(lock.files["objectives.json"].coverage.quests, 162);
 });

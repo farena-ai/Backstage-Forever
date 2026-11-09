@@ -1,0 +1,77 @@
+{
+  "publisher": "Efficient Games",
+  "repository": "JIVESCORP/eg-link-output-wowf",
+  "commit": "23f9636486d3d60479dc0bcee2356053c33faf2c",
+  "product": "wowf",
+  "build": "1.60.1.70862",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+  "files": {
+    "vendors.json": {
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/23f9636486d3d60479dc0bcee2356053c33faf2c/data/wowf/1.60.1.70862/vendors.json",
+      "bytes": 240965,
+      "sha256": "8f9eebe8ef227deadbcef1eaad79aae4ca75e51240903db7fa2c25225ba1a5da",
+      "meta": {
+        "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+        "clientBuild": "1.60.1.70862",
+        "collectedOn": {
+          "first": "2026-11-09",
+          "last": "2026-11-09"
+        },
+        "dataset": "vendors",
+        "license": "CC BY 4.0",
+        "product": "wowf",
+        "schemaVersion": 1,
+        "sources": 3
+      }
+    },
+    "npcs.json": {
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/23f9636486d3d60479dc0bcee2356053c33faf2c/data/wowf/1.60.1.70862/npcs.json",
+      "bytes": 499984,
+      "sha256": "aaa77747a6ad15f2828168e784fe0d639c9ced14c696a830bdb1688a22a9aded",
+      "meta": {
+        "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+        "clientBuild": "1.60.1.70862",
+        "collectedOn": {
+          "first": "2026-11-09",
+          "last": "2026-11-09"
+        },
+        "dataset": "npcs",
+        "license": "CC BY 4.0",
+        "product": "wowf",
+        "schemaVersion": 1,
+        "sources": 3
+      }
+    },
+    "creatures.json": {
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/23f9636486d3d60479dc0bcee2356053c33faf2c/data/wowf/1.60.1.70862/creatures.json",
+      "bytes": 797697,
+      "sha256": "f39ef280ce15d5162b2068e9deab438f1de0c3af0f19351a24e49d5deffa5ffc",
+      "meta": {
+        "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+        "clientBuild": "1.60.1.70862",
+        "collectedOn": {
+          "first": "2026-11-07",
+          "last": "2026-11-09"
+        },
+        "combatLogUploads": 7,
+        "dataset": "creatures",
+        "license": "CC BY 4.0",
+        "product": "wowf",
+        "schemaVersion": 1,
+        "sources": 3
+      }
+    }
+  },
+  "normalization": "Exact numeric NPC ID and observed name join with Merchant evidence. Historical listing IDs/names/keys, contributor counts, dates, approximate interaction points and faction-indexed reaction observations only. Prices, stock, raw side, narrative and world coordinates omitted.",
+  "compiled": {
+    "bytes": 113510,
+    "sha256": "cf508a3b213c32eb5c0293113d46e963c83e70c5e9a64eb212b77a14e46b1af6"
+  },
+  "licenseSource": {
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/23f9636486d3d60479dc0bcee2356053c33faf2c/LICENSE",
+    "bytes": 18659,
+    "sha256": "5eebefd3682e32d661f307a28539b304e5e52fb1eb33ba214e61d7a57663e4f0"
+  }
+}

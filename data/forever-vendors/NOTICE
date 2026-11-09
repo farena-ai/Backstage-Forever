@@ -1,0 +1,19 @@
+Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
+Source: https://github.com/JIVESCORP/eg-link-output-wowf
+Pinned commit: 23f9636486d3d60479dc0bcee2356053c33faf2c
+Product wowf; client build 1.60.1.70862. Observed listing names are not locale-guaranteed.
+License: https://creativecommons.org/licenses/by/4.0/
+
+Backstage Coding changed the compilation by joining exact numeric NPC IDs and
+exact observed names across vendors, NPC interactions and creature reactions,
+requiring Merchant evidence, and retaining bounded factual listings, contributor
+counts, dates and approximate player interaction points. Prices, stock, raw side,
+narrative and world coordinates are omitted. Reactions are historical observations
+for the named faction, never proof of current access or purchase availability.
+Unknown factions and multiple-map mobile observations remain browse-only.
+Sources count contributing saved files, not observations. See source-lock.json
+for immutable input URLs, bytes, hashes, metadata and compiled artifact checksum.
+
+World of Warcraft and related content are copyright Blizzard Entertainment, Inc.
+This compilation is not affiliated with or endorsed by Blizzard Entertainment.
+Application and compiler code remain separately licensed MIT.

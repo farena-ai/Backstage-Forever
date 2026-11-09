@@ -6,7 +6,7 @@ const { test } = require("node:test"),
 const { KnowledgeService } = require("../src/core/knowledge-cache.cjs");
 const { FILES } = require("../src/core/knowledge.cjs");
 const build = "1.60.1.70862",
-  commit = "156f29c9af78b1586883e8eb94a13467eb89638c";
+  commit = "23f9636486d3d60479dc0bcee2356053c33faf2c";
 const bundled = path.join(__dirname, "../data/forever/pack.json");
 function setup(t, fetcher) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-knowledge-"));
@@ -14,6 +14,7 @@ function setup(t, fetcher) {
   return new KnowledgeService({ dataDir, bundledPath: bundled, fetcher });
 }
 const fixture = require("./fixtures/forever-facts.cjs").fixture();
+for (const source of Object.values(fixture)) source.meta.collectedOn.last = "2026-11-09";
 const raw = (n) => JSON.stringify(fixture[n]);
 test("offline bundled lookup, exact selected build and checks without redownloading unchanged commit", async (t) => {
   const urls = [];
@@ -27,7 +28,7 @@ test("offline bundled lookup, exact selected build and checks without redownload
   assert.ok(s.status().lastChecked);
   assert.equal(s.status().build, build);
   assert.equal(s.status().packBuild, build);
-  assert.equal(s.index().pack.observedThrough, "2026-11-08");
+  assert.equal(s.index().pack.observedThrough, "2026-11-09");
   s.setContext({ clientBuild: "1.60.1.999" }, false);
   assert.equal(s.index(), null);
   assert.equal(s.status().phase, "mismatch");
@@ -35,6 +36,40 @@ test("offline bundled lookup, exact selected build and checks without redownload
   s.setContext({}, false);
   assert.equal(s.status().build, null);
   assert.ok(s.index());
+});
+
+test("offline upgrade prefers newer compatible bundled observation date over old valid cache without writes or network", t => {
+  let calls = 0;
+  const s = setup(t, async () => { calls++; throw Error("must remain offline"); });
+  const oldRaw = structuredClone(fixture);
+  for (const source of Object.values(oldRaw)) source.meta.collectedOn.last = "2026-11-08";
+  const old = require("../src/core/knowledge.cjs").normalizeData(oldRaw, { commit: "f".repeat(40), build });
+  const payload = JSON.stringify(old); s.write(`${build}.json`, { schemaVersion: 1, payload, sha256: require("../src/core/knowledge.cjs").hash(payload) });
+  const cacheFile = path.join(s.cacheDir, `${build}.json`), before = fs.readFileSync(cacheFile);
+  s.setContext({ clientBuild: build }, false);
+  assert.equal(s.status().sourceCommit, commit); assert.equal(s.status().observedThrough, "2026-11-09");
+  assert.equal(s.index().pack.counts.quests, 3884); assert.equal(calls, 0); assert.deepEqual(fs.readFileSync(cacheFile), before);
+});
+
+test("offline cache with equal or newer canonical observation date remains selected regardless of SHA or record count", t => {
+  for (const date of ["2026-11-09", "2026-11-10"]) {
+    const s = setup(t, async () => { throw Error("must remain offline"); });
+    const cached = require("../src/core/knowledge.cjs").normalizeData(fixture, { commit: "0".repeat(40), build });
+    cached.observedThrough = date;
+    const payload = JSON.stringify(cached); s.write(`${build}.json`, { schemaVersion: 1, payload, sha256: require("../src/core/knowledge.cjs").hash(payload) });
+    s.setContext({ clientBuild: build }, false);
+    assert.equal(s.status().sourceCommit, "0".repeat(40)); assert.equal(s.status().observedThrough, date);
+    assert.ok(s.index().pack.counts.quests < s.bundled.pack.counts.quests);
+  }
+});
+
+test("a valid different-build cache remains usable with its own older observation date", t => {
+  const s = setup(t), otherBuild = "1.60.1.70000", sources = structuredClone(fixture);
+  for (const source of Object.values(sources)) { source.meta.clientBuild = otherBuild; source.meta.collectedOn.last = "2026-11-08"; }
+  const cached = require("../src/core/knowledge.cjs").normalizeData(sources, { commit: "b".repeat(40), build: otherBuild });
+  const payload = JSON.stringify(cached); s.write(`${otherBuild}.json`, { schemaVersion: 1, payload, sha256: require("../src/core/knowledge.cjs").hash(payload) });
+  s.setContext({ clientBuild: otherBuild }, false);
+  assert.equal(s.status().packBuild, otherBuild); assert.equal(s.status().observedThrough, "2026-11-08"); assert.equal(s.status().sourceCommit, "b".repeat(40));
 });
 test("new commit fetches only six literal exact-build files, persists validated cache and falls back offline", async (t) => {
   const urls = [],

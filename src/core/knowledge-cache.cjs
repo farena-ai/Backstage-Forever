@@ -127,7 +127,11 @@ class KnowledgeService {
         throw Error();
       const index = new KnowledgeIndex(JSON.parse(c.payload));
       if (index.pack.build !== build) throw Error();
-      this.packs.set(build, index);
+      // Both dates have passed strict pack validation. An upgrade's newer bundled
+      // observations must remain useful offline; equal/newer saved caches still win.
+      const existing = this.packs.get(build);
+      if (!existing || index.pack.observedThrough >= existing.pack.observedThrough)
+        this.packs.set(build, index);
     } catch {}
   }
   index(profile) {
