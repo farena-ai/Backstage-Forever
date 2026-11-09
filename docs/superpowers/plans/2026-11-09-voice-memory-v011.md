@@ -12,11 +12,11 @@ Read full docs/superpowers/specs/2026-11-09-adventure-series-v09-v012-design.md 
 
 Files: focused src/core/memory-data.cjs, memory.cjs, memory-ipc.cjs, companion-context.cjs; narrow validation/store/company-ipc ordinary-merge/profile-sync/game-sync source-transition/main/preload integration and actual backend/privacy tests; scripts/memory-backend-smoke.cjs. No renderer/native/helper/version/data/provider protocol changes.
 
-- [ ] RED strict optional schema, old migration, main-owned preservation, profile prune/import/reset/export and atomic failure before implementation.
-- [ ] Implement explicit save/delete/clear using main-generated IDs/time and response-context binding; no forged/stale reply saving or ordinary renderer history replacement.
-- [ ] RED and implement shared pure selected-memory preview/ask augmentation, all API/subscription routes identical bounded prompt, original-question scope/retrieval preserved; no automatic memory selection or private journal fields.
-- [ ] Main assistant context/invalidation contract must cover nav/profile/provider/import/reset/delete/clear and late response effects. Record exact IPC/response-token/model contract for subsequent tasks.
-- [ ] Actual synthetic Electron backend, local fake providers, focused/full once final normal/genuine83. Commit/report work/v011-task1-report.md then independent review.
+- [x] RED strict optional schema, old migration, main-owned preservation, profile prune/import/reset/export and atomic failure before implementation.
+- [x] Implement explicit save/delete/clear using main-generated IDs/time and response-context binding; no forged/stale reply saving or ordinary renderer history replacement.
+- [x] RED and implement shared pure selected-memory preview/ask augmentation, all API/subscription routes identical bounded prompt, original-question scope/retrieval preserved; no automatic memory selection or private journal fields.
+- [x] Main assistant context/invalidation contract must cover nav/profile/provider/import/reset/delete/clear and late response effects. Record exact IPC/response-token/model contract for subsequent tasks.
+- [x] Actual synthetic Electron backend, local fake providers, focused/full once final normal/genuine83. Commit/report work/v011-task1-report.md then independent review.
 
 ## Task 2: Fixed local speech worker and trusted voice lifecycle
 
