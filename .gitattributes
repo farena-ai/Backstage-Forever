@@ -6,3 +6,4 @@
 data/forever/*.json text eol=lf
 data/forever/LICENSE text eol=lf
 data/forever/NOTICE text eol=lf
+addon/BackstageForever/BackstageForeverReference.lua text eol=lf linguist-generated=true
