@@ -234,17 +234,52 @@ function normalizeData(inputs, { commit, build } = {}) {
           ["offers", "givers"],
           ["takes", "turnIns"],
         ])
-          for (const [questId] of n[field] === undefined
+          for (const [questId, observation] of n[field] === undefined
             ? []
-            : entries(n[field], 5000)) {
-            const q = pack.quests[questId];
-            if (!q) continue;
-            q[out].push({ id: npc.id, kind });
-            q.observedInPlay = true;
-            if (npc.side) {
-              q.sides ||= [];
-              if (!q.sides.includes(npc.side)) q.sides.push(npc.side);
-            }
+            : optional(() => entries(n[field], 5000)) || []) {
+            optional(() => {
+              checkKeys(
+                observation,
+                field === "offers"
+                  ? [
+                      "title",
+                      "level",
+                      "frequency",
+                      "repeatable",
+                      "legendary",
+                      "important",
+                      "meta",
+                      "infoId",
+                    ]
+                  : ["title", "level"],
+              );
+              if (
+                !id(+questId) ||
+                !text(observation.title) ||
+                !observation.title.trim() ||
+                (observation.level !== undefined &&
+                  !number(observation.level, 1000))
+              )
+                fail();
+              for (const k of ["repeatable", "legendary", "important", "meta"])
+                if (
+                  observation[k] !== undefined &&
+                  typeof observation[k] !== "boolean"
+                )
+                  fail();
+              for (const k of ["frequency", "infoId"])
+                if (observation[k] !== undefined && !number(observation[k]))
+                  fail();
+              const q = pack.quests[questId];
+              if (!q) return true;
+              q[out].push({ id: npc.id, kind });
+              q.observedInPlay = true;
+              if (npc.side) {
+                q.sides ||= [];
+                if (!q.sides.includes(npc.side)) q.sides.push(npc.side);
+              }
+              return true;
+            });
           }
         return true;
       });
@@ -739,12 +774,13 @@ class KnowledgeIndex {
     )
       fail();
     if (p.clientBuild && p.clientBuild !== this.pack.build) return [];
-    const active = new Set(p.quests?.map((q) => q.id) || []),
+    const active = new Map(p.quests?.map((q) => [q.id, q]) || []),
       needle = query.trim().toLocaleLowerCase("en-US");
+    const currentTitle = (q) => active.get(q.id)?.title || q.title;
     const score = (q) =>
       Number(active.has(q.id)) * 4 +
       Number(String(q.id) === needle) * 2 +
-      Number(q.title.toLowerCase() === needle);
+      Number(currentTitle(q).toLowerCase() === needle);
     return Object.values(this.pack.quests)
       .filter(
         (q) =>
@@ -753,18 +789,20 @@ class KnowledgeIndex {
             options.includeReferenceOnly) &&
           (!needle ||
             String(q.id) === needle ||
+            currentTitle(q).toLowerCase().includes(needle) ||
             q.title.toLowerCase().includes(needle)),
       )
       .sort((a, b) => score(b) - score(a) || a.id - b.id)
       .slice(0, 30)
       .map((q) => ({
         id: q.id,
-        title: q.title,
+        title: currentTitle(q),
+        ...(currentTitle(q) !== q.title ? { referenceTitle: q.title } : {}),
         level: q.level ?? null,
         minLevel: q.minLevel ?? null,
         observedInPlay: q.observedInPlay,
         active: active.has(q.id),
-        status: this.compatible(p) ? "match" : "reference",
+        status: this.details(p, q.id).status,
         build: this.pack.build,
       }));
   }

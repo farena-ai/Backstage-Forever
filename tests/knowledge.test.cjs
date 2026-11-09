@@ -153,6 +153,72 @@ test("search is bounded, stable, observed-only by default, with active reference
   assert.throws(() => index.search("x".repeat(121), {}));
   assert.throws(() => index.search("", {}, { url: "https://bad" }));
 });
+test("search matches and displays the active game title while identifying English reference conflicts", () => {
+  const current = "Changed current game title",
+    p = profile(1061, current);
+  for (const query of [current, "1061", "The Spirits of Stonetalon"]) {
+    const row = index.search(query, p).find((q) => q.id === 1061);
+    assert.ok(row, query);
+    assert.equal(row.title, current);
+    assert.equal(row.referenceTitle, "The Spirits of Stonetalon");
+    assert.equal(row.status, "conflict");
+  }
+  const translated = index.search("Aktueller Titel", {
+    ...profile(1061, "Aktueller Titel"),
+    locale: "deDE",
+  })[0];
+  assert.equal(translated.id, 1061);
+  assert.equal(translated.title, "Aktueller Titel");
+  assert.equal(translated.referenceTitle, "The Spirits of Stonetalon");
+  assert.equal(translated.status, "match");
+});
+test("malformed optional offer and take observations cannot establish playability or NPC edges", () => {
+  for (const field of ["offers", "takes"])
+    for (const observation of [
+      null,
+      [],
+      ["title"],
+      false,
+      42,
+      "title",
+      {},
+      { title: 42 },
+      { title: "" },
+      { title: "   " },
+      { title: "x".repeat(201) },
+      { title: "bad\u0000" },
+      { title: "Valid title", level: "20" },
+    ]) {
+      const changed = structuredClone(raw);
+      changed["npcs.json"].npcs["4049"][field]["1"] = observation;
+      const normalized = normalizeData(changed, { commit, build });
+      assert.equal(
+        normalized.quests["1"].observedInPlay,
+        false,
+        field + JSON.stringify(observation),
+      );
+      assert.deepEqual(
+        normalized.quests["1"][field === "offers" ? "givers" : "turnIns"],
+        [],
+      );
+      assert.equal(normalized.counts.dropped, pack.counts.dropped + 1);
+      assert.equal(normalized.quests["1061"].turnIns[0].id, 4049);
+      assert.equal(normalized.quests["1062"].givers[0].id, 4049);
+    }
+  for (const field of ["offers", "takes"]) {
+    const changed = structuredClone(raw);
+    changed["npcs.json"].npcs["4049"][field]["1"] = {
+      title: "Observed title",
+      level: 0,
+    };
+    const normalized = normalizeData(changed, { commit, build });
+    assert.equal(normalized.quests["1"].observedInPlay, true);
+    assert.equal(
+      normalized.quests["1"][field === "offers" ? "givers" : "turnIns"][0].id,
+      4049,
+    );
+  }
+});
 test("bounded chain walk detects cycles and missing nodes without prerequisites", () => {
   const p = structuredClone(pack);
   p.quests["1062"].nextQuestId = 1061;
