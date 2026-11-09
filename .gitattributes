@@ -1,0 +1,5 @@
+* text=auto
+*.cjs text eol=lf
+*.js text eol=lf
+*.lua text eol=lf
+*.svg text eol=lf

@@ -1,0 +1,23 @@
+name: Windows validation
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  desktop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:ui
+      - run: npm run test:integration
+      - run: npm run dist
+      - run: npm run test:packaged
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-preview-unsigned
+          path: dist/*.exe

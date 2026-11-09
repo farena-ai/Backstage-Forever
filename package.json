@@ -1,0 +1,65 @@
+{
+  "name": "backstage-forever",
+  "productName": "Backstage Forever",
+  "version": "0.1.0",
+  "description": "A local-first adventure companion from Backstage Coding. Designed by Frank Arena.",
+  "author": "Frank Arena / Backstage Coding",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/farena-ai/Backstage-Forever.git"
+  },
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "test:ui": "node scripts/smoke.cjs",
+    "test:integration": "node scripts/integration.cjs",
+    "test:packaged": "node scripts/packaged-smoke.cjs",
+    "pack": "electron-builder --win --dir",
+    "dist": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0",
+    "playwright": "1.65.0"
+  },
+  "build": {
+    "appId": "com.backstagecoding.backstageforever",
+    "productName": "Backstage Forever",
+    "artifactName": "Backstage-Forever-${version}-Windows-${arch}-Setup.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json",
+      "README.md",
+      "LICENSE",
+      "docs/*.md",
+      "addon/**/*"
+    ],
+    "asar": true,
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false
+    }
+  },
+  "dependencies": {
+    "jose": "6.2.16"
+  },
+  "overrides": {
+    "minimatch@>=7.0.0 <11.0.1": "11.0.5"
+  }
+}
