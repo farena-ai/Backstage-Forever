@@ -1,12 +1,12 @@
 # Backstage Forever
 
-**Your adventure notebook and optional AI companion, from Backstage Coding. Designed by Frank Arena.**
+**Your character command center and Forever quest companion, from Backstage Coding. Designed by Frank Arena.**
 
 ![Backstage Forever desktop preview](assets/desktop-preview.png)
 
 **[Download the Windows preview](https://github.com/farena-ai/Backstage-Forever/releases)** · **[Install and get started](docs/GETTING-STARTED.md)** · **[Choose an AI connection](docs/PROVIDERS.md)**
 
-Version **0.4.0 is a desktop preview** with cinematic original fantasy artwork, textured journals and authenticated automatic Windows updates. Create characters, track goals and keep notes locally, with or without AI. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
+Version **0.5.0 is a Windows desktop preview** with automatic source-backed quest plans, a polished character command center and original class/faction artwork. Local guidance works without AI. Session/focus choices save per character, and saved progress rebuilds the plan automatically. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
 
 ## Install
 
@@ -14,7 +14,7 @@ Version **0.4.0 is a desktop preview** with cinematic original fantasy artwork, 
 2. If downloading a ZIP, extract it first. Run the setup executable for your Windows account.
 3. Launch Backstage Forever and choose **Set up my companion**. It looks for your Forever client, asks for a folder if needed, prepares and verifies its addon, then explains the next step. Enable/load the addon in-game and voluntarily `/reload` or log out to save a snapshot. Manual profiles and AI setup remain optional.
 
-The installer is **unsigned**. Windows may display an unknown-publisher warning; verify the download source before proceeding. Signing and clean-machine installation/upgrade acceptance remain pending. See [Getting started](docs/GETTING-STARTED.md) for full beginner instructions, backups and deletion.
+The installer is **unsigned**. Windows may display an unknown-publisher warning; verify the download source before proceeding. Windows publisher signing and clean-machine installation/upgrade acceptance remain pending. App-update downloads use a separate pinned Ed25519 signature and installer hash/size verification. See [Getting started](docs/GETTING-STARTED.md) for full beginner instructions, backups and deletion.
 
 ## What this preview includes
 
