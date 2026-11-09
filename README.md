@@ -71,6 +71,10 @@ npm run test:ui
 npm run test:integration
 npm run test:setup
 npm run test:autosave
+npm run test:living-backend
+npm run test:living-setup
+npm run test:company-backend
+npm run test:company
 npm run test:command-center
 npm run test:knowledge
 npm run dist
