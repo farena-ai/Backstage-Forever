@@ -23,7 +23,7 @@ Preserve the series design's game/public-API, saved-file, privacy, source owners
 
 - [x] Review published0.8 baseline f0ec4dce3ea8fe67c50acfa9f5ca871e5682f4e0 through final candidate, including all cross-task lifecycle/privacy/data/provider/IPC/update/interaction contracts and retained notes.
 - [x] Provide complete diff plus code/metadata/tests/notices package. Only the three reproduced generated data/Lua artifacts may be separated with byte/SHA256/Git-blob manifests; complete diff remains available. Use bounded chunk/index navigation for the large package. No green suite reruns merely to confirm reports.
-- [ ] Return evidence/file:line, readiness and explicit polish SPEC/QUALITY verdicts. If findings remain, dispatch one consolidated fix wave, run covering checks, obtain focused re-review and rebuild/revalidate affected release artifacts. Never merge with unresolved blocking findings.
+- [x] Return evidence/file:line, readiness and explicit polish SPEC/QUALITY verdicts. The consolidated refresh fixes passed focused independent re-review with Ready to merge: Yes, 128 affected tests, 571 full tests on both paths and six serial GUI passes. Rebuild/revalidate the merged-source release artifacts before publication; never merge with unresolved blocking findings.
 
 ## Task 4: Publish and authenticate the combined preview
 
