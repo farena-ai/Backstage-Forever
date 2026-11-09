@@ -4,6 +4,7 @@ const { tmpdir } = require("node:os");
 const path = require("node:path");
 const assert = require("node:assert/strict");
 const { testWindow } = require("./test-window.cjs");
+const { assertSelectContrast } = require("./select-contrast.cjs");
 
 (async () => {
   const data = await mkdtemp(path.join(tmpdir(), "backstage-smoke-"));
@@ -41,6 +42,18 @@ const { testWindow } = require("./test-window.cjs");
       }));
     });
     await page.getByLabel("Character name").fill("Smoke Ranger");
+    await assertSelectContrast(page, "onboarding class/faction");
+    const characterClass = page.locator("select[name=className]");
+    await characterClass.focus();
+    await characterClass.press("Home");
+    const firstClass = await characterClass.inputValue();
+    await characterClass.press("ArrowDown");
+    assert.notEqual(await characterClass.inputValue(), firstClass, "Native select must support keyboard selection");
+    assert.ok(await characterClass.evaluate(node => {
+      const style = getComputedStyle(node);
+      return node.matches(":focus-visible") && style.outlineStyle !== "none" && parseFloat(style.outlineWidth) >= 2;
+    }), "Keyboard selection must retain a visible focus ring");
+    await characterClass.selectOption("Hunter");
     await page.getByLabel("Realm").fill("Test Realm");
     await page.locator("select[name=faction]").selectOption("Alliance");
     await page.getByRole("button", { name: "Begin my adventure" }).click();
@@ -55,6 +68,25 @@ const { testWindow } = require("./test-window.cjs");
       await page.locator("body").getAttribute("data-class"),
       "hunter",
     );
+    await assertSelectContrast(page, "adventure character/session/focus");
+    // Cover grouped/disabled native menu rows without adding fake product UI.
+    await page.locator("#active-character").evaluate(select => {
+      const group = document.createElement("optgroup");
+      group.label = "Synthetic group";
+      group.innerHTML = '<option value="contrast-only">Synthetic character</option><option value="contrast-disabled" disabled>Unavailable synthetic character</option>';
+      group.dataset.contrastFixture = "";
+      select.append(group);
+      const disabledGroup = group.cloneNode(true);
+      disabledGroup.label = "Synthetic disabled group";
+      disabledGroup.disabled = true;
+      select.append(disabledGroup);
+    });
+    await assertSelectContrast(page, "grouped disabled menu rows");
+    await page.locator("[data-contrast-fixture]").evaluateAll(nodes => nodes.forEach(node => node.remove()));
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1000, 700));
+    await page.waitForFunction(() => innerWidth <= 1000);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Select styling must not introduce horizontal scrolling");
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 960));
     await page.getByLabel("New goal").fill("Prepare for a dungeon");
     await page.getByRole("button", { name: "Add goal" }).click();
     await page.getByRole("checkbox", { name: "Prepare for a dungeon" }).check();
@@ -111,6 +143,7 @@ const { testWindow } = require("./test-window.cjs");
       .waitFor();
     assert.equal(await page.getByLabel("API key", { exact: true }).count(), 0);
     await page.getByLabel("Access method").selectOption("api");
+    await assertSelectContrast(page, "connection access/model");
     await page.getByLabel("API key", { exact: true }).waitFor();
     await page.getByLabel("Available models").waitFor();
     await page
@@ -131,6 +164,7 @@ const { testWindow } = require("./test-window.cjs");
       await page.getByLabel("Available models").inputValue(),
       "fixture-model-two",
     );
+    await assertSelectContrast(page, "chosen model");
     await page
       .getByRole("button", { name: "Ollama Cloud", exact: true })
       .click();
@@ -279,12 +313,15 @@ const { testWindow } = require("./test-window.cjs");
       await page.getByLabel("Character name").getAttribute("readonly"),
       "",
     );
+    assert.equal(await page.locator("select[name=className]").isDisabled(), true);
+    assert.equal(await page.locator("select[name=faction]").isDisabled(), true);
+    await assertSelectContrast(page, "imported disabled character fields");
     await page.getByRole("button", { name: "Adventure", exact: true }).click();
     await page.screenshot({
       path: path.join(__dirname, "..", "work", "desktop-preview.png"),
     });
     console.log(
-      "PASS: onboarding, profile, goal, private notes, character context default/opt-out, catalog choice preservation, faction/class theming, snapshot draft preservation, read-only imported fields, provider navigation, guide, restart persistence, safe text rendering.",
+      "PASS: onboarding, profile, goal, private notes, character context default/opt-out, catalog choice preservation, faction/class theming, snapshot draft preservation, read-only imported fields, provider navigation, guide, restart persistence, safe text rendering; native select/option/group contrast under light/dark preference, selected/disabled rows, keyboard/focus and compact layout.",
     );
   } catch (error) {
     if (app) {

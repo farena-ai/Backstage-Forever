@@ -90,6 +90,32 @@ textarea {
   box-shadow: inset 0 2px 8px #0006;
   color: #eae3cd;
 }
+/* Native popups cannot inherit the field's decorative gradient reliably. */
+select {
+  color-scheme: only dark;
+  background-color: #151b16;
+  color: var(--text);
+  accent-color: var(--gold);
+}
+select option,
+select optgroup {
+  background-color: #182019;
+  color: var(--text);
+}
+select option:checked {
+  background-color: var(--gold);
+  color: #201708;
+}
+select:disabled,
+select option:disabled,
+select optgroup:disabled,
+select optgroup:disabled option {
+  background-color: #151b16;
+  color: #bfb399;
+}
+select:disabled {
+  cursor: not-allowed;
+}
 input::placeholder,
 textarea::placeholder {
   color: #9d9d84;
