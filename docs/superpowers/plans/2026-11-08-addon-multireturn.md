@@ -8,4 +8,4 @@
 
 - [x] Add native WoW dialog visuals, title dragging, close/minimize buttons, permanent reopen hint, per-character settings.
 - [x] Test long-text clipping and restored anchors; verify live native panel and imported desktop snapshot.
-- [ ] Publish permanent 0.4.1 installer after review and CI.
+- [x] Publish permanent 0.4.1 installer after independent review and successful release CI 42569450029.
