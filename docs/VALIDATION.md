@@ -9,6 +9,7 @@ Version 0.1.0 is a desktop foundation preview. These checks establish the behavi
 - `npm run test:integration`: real Electron IPC, actual Windows safeStorage encryption, excluded secrets in bootstrap/exports, backup/import dialogs with test-controlled file choices, invalid-import preservation, credential preservation, local HTTP provider fixture, privacy payload, reset during a delayed reply, deletion of app-owned credentials and clearing cached subscription identity.
 - `npm audit`: zero reported vulnerabilities across the installed production and development tree. The lockfile overrides affected minimatch 7–10 dependencies with patched 11.0.5; successful Windows packaging exercises its build usage. Earlier dependency versions below 7 retain their compatible APIs.
 - Independent review found and resolved mutable-state save poisoning, late replies after reset/import, stale subscription identity, multi-instance overwrite, refresh after sign-out, and overlapping mutations during asynchronous reset.
+- Fresh Windows CI also runs the suite. An intermittent first-run GUI timeout led to explicit test-window painting and a 45-second cold-start allowance; production window/power settings are unchanged. Failed GUI checks preserve a diagnostic screenshot.
 
 ## Distribution checks
 

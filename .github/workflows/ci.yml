@@ -18,6 +18,11 @@ jobs:
       - run: npm run dist
       - run: npm run test:packaged
       - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: windows-test-diagnostics
+          path: work/*failure.png
+      - uses: actions/upload-artifact@v4
         with:
           name: windows-preview-unsigned
           path: dist/*.exe

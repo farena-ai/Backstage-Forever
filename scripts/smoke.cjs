@@ -3,6 +3,7 @@ const { mkdtemp, rm } = require("node:fs/promises");
 const { tmpdir } = require("node:os");
 const path = require("node:path");
 const assert = require("node:assert/strict");
+const { testWindow } = require("./test-window.cjs");
 
 (async () => {
   const data = await mkdtemp(path.join(tmpdir(), "backstage-smoke-"));
@@ -12,8 +13,7 @@ const assert = require("node:assert/strict");
       args: [path.join(__dirname, "..")],
       env: { ...process.env, BF_USER_DATA: data },
     });
-    const page = await app.firstWindow();
-    page.setDefaultTimeout(15000);
+    const page = await testWindow(app);
     page.on("pageerror", (error) =>
       console.error("Renderer error:", error.message),
     );

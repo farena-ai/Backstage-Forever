@@ -2,6 +2,7 @@ const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
+const { testWindow } = require("./test-window.cjs");
 (async () => {
   const data = await fs.mkdtemp(path.join(os.tmpdir(), "backstage-art-"));
   let app;
@@ -10,8 +11,7 @@ const path = require("node:path");
       args: [path.join(__dirname, "..")],
       env: { ...process.env, BF_USER_DATA: data },
     });
-    const page = await app.firstWindow();
-    page.setDefaultTimeout(15000);
+    const page = await testWindow(app);
     await page
       .getByRole("heading", { name: "Every adventure starts somewhere." })
       .waitFor();

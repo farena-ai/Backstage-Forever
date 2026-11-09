@@ -4,6 +4,7 @@ const os = require("node:os");
 const path = require("node:path");
 const http = require("node:http");
 const assert = require("node:assert/strict");
+const { testWindow } = require("./test-window.cjs");
 
 (async () => {
   const data = await fs.mkdtemp(
@@ -51,8 +52,7 @@ const assert = require("node:assert/strict");
       args: [path.join(__dirname, "..")],
       env: { ...process.env, BF_USER_DATA: data },
     });
-    const page = await app.firstWindow();
-    page.setDefaultTimeout(15000);
+    const page = await testWindow(app);
     const initial = await page.evaluate(() => window.backstage.bootstrap());
     assert.equal(initial.subscriptionStatus.openai.connected, true);
     const state = {
