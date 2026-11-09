@@ -1,5 +1,6 @@
 "use strict";
 const { validateJourneys } = require("./journeys.cjs");
+const { validateMemories } = require("./memory-data.cjs");
 const {
   validateQuestData,
   validateProgress,
@@ -95,6 +96,7 @@ function defaultState() {
     onboarded: false,
     profiles: [],
     journeys: [],
+    memories: [],
     activeProfileId: null,
     provider: { id: "ollama", model: "", endpoint: providers[0].endpoint },
   };
@@ -108,6 +110,7 @@ function validateState(s) {
     "provider",
     "followGameCharacter",
     "journeys",
+    "memories",
   ]);
   if (
     s.schemaVersion !== 1 ||
@@ -225,6 +228,7 @@ function validateState(s) {
   endpoint(s.provider.id, s.provider.endpoint);
   const valid = JSON.parse(JSON.stringify(s));
   valid.journeys = validateJourneys(s.journeys);
+  valid.memories = validateMemories(s.memories, valid.profiles);
   if (valid.activeProfileId === null && valid.profiles.length)
     valid.activeProfileId = valid.profiles[0].id;
   return valid;

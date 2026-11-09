@@ -4,6 +4,7 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const v = require("./validation.cjs");
 const { reconcileJourneys } = require("./journeys.cjs");
+const { preserveMemories } = require("./memory-data.cjs");
 // Bounded capacity for 100 profiles with complete quest histories and journals.
 const MAX_BACKUP_BYTES = 256 * 1024 * 1024;
 function atomic(file, text) {
@@ -39,7 +40,10 @@ class Store {
     for (const val of Object.values(this.keys)) v.str(val, 20000, false);
   }
   saveState(s) {
-    return this.#writeState(s, true);
+    return this.#writeState(preserveMemories(this.state, s), true);
+  }
+  saveMemories(memories) {
+    return this.#writeState({ ...this.state, memories }, true);
   }
   #writeState(s, preserveObserved) {
     const valid = v.validateState(s);
@@ -69,15 +73,18 @@ class Store {
     valid.journeys = reconcileJourneys(valid.journeys, valid.profiles);
     atomic(this.file, JSON.stringify(valid, null, 2));
     this.state = valid;
+    this.onStateChange?.();
     return structuredClone(valid);
   }
   importData(text) {
     if (Buffer.byteLength(text) > MAX_BACKUP_BYTES)
       throw new Error("Backup is too large.");
-    return this.#writeState(v.validateState(JSON.parse(text)), false);
+    const valid = v.validateState(JSON.parse(text));
+    return this.#writeState({ ...valid, memories: [] }, false);
   }
   exportData() {
-    return JSON.stringify(this.state, null, 2);
+    const { memories, ...exported } = this.state;
+    return JSON.stringify(exported, null, 2);
   }
   secretStatus() {
     return Object.fromEntries(

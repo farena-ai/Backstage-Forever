@@ -72,6 +72,8 @@ function importHandler({ store, file, filesystem = fs }) {
       v: validation,
       win: {},
       subscriptionEpoch: 0,
+      resetting: false,
+      companionContext: new (require("../src/core/companion-context.cjs").CompanionContext)(() => store.state),
       gameActionEpoch: 0,
       latestObservation: null,
       catalogs: { clear() {} },

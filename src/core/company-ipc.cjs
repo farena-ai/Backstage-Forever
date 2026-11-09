@@ -3,6 +3,7 @@ const { validateState } = require("./validation.cjs");
 const { mergeUserEdits } = require("./profile-sync.cjs");
 const { applyJourneyAction } = require("./journeys.cjs");
 const { buildCompany } = require("./company.cjs");
+const { preserveMemories } = require("./memory-data.cjs");
 const captured = [
   "source", "location", "quests", "progress", "history", "readiness",
   "clientBuild", "locale", "captureVersion",
@@ -11,8 +12,8 @@ const captured = [
 /** Renderer forms edit journals/manual identity, never captured evidence/plans. */
 function mergeOrdinaryState(current, edited, base = current) {
   current = validateState(current);
-  edited = validateState(edited);
-  base = validateState(base);
+  edited = validateState(preserveMemories(current, edited));
+  base = validateState(preserveMemories(current, base));
   const owned = new Map(current.profiles.map((p) => [p.id, p]));
   for (const p of edited.profiles) {
     const existing = owned.get(p.id);

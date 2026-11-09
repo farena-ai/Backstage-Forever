@@ -1,6 +1,7 @@
 "use strict";
 const { createHash } = require("node:crypto");
 const { validateState, object, str } = require("./validation.cjs");
+const { preserveMemories } = require("./memory-data.cjs");
 
 function timestamp(value) {
   if (
@@ -79,6 +80,7 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
     return validateState({
       ...next,
       profiles: [profile],
+      memories: [],
       activeProfileId: null,
     }).profiles[0];
   });
@@ -197,6 +199,6 @@ function mergeUserEdits(current, edited, base) {
     !next.profiles.some((p) => p.id === next.activeProfileId)
   )
     next.activeProfileId = next.profiles[0]?.id ?? null;
-  return validateState(next);
+  return validateState(preserveMemories(current, next));
 }
 module.exports = { mergeSnapshot, mergeUserEdits };

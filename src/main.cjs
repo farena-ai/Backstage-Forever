@@ -32,6 +32,10 @@ const { KnowledgeService } = require("./core/knowledge-cache.cjs");
 const { registerKnowledgeHandlers } = require("./core/knowledge-ipc.cjs");
 const { registerDirectorHandlers } = require("./core/director-ipc.cjs");
 const { registerPreparationHandlers } = require("./core/preparation-ipc.cjs");
+const { CompanionContext } = require("./core/companion-context.cjs");
+const { MemoryService, buildMemoryPrompt } = require("./core/memory.cjs");
+const { registerMemoryHandlers } = require("./core/memory-ipc.cjs");
+const { preserveMemories } = require("./core/memory-data.cjs");
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
@@ -42,6 +46,8 @@ let win,
   updater,
   game,
   knowledge,
+  companionContext,
+  memory,
   quitApproved = false,
   quitPending = false,
   subscriptionEpoch = 0,
@@ -78,6 +84,7 @@ function handle(name, fn) {
       return await fn(...args);
     } catch (e) {
       if (e?.message === "Secure credential storage is unavailable.") throw e;
+      if (["ask", "memoryPreview", "saveMemory", "deleteMemory", "clearMemory"].includes(name) && /^(Memory |Provider response is no longer current|Choose the current character)/.test(e?.message)) throw e;
       if (
         name === "copyQuestWaypoint" &&
         [
@@ -115,6 +122,9 @@ app.whenReady().then(() => {
   if (!ownsInstance) return;
   try {
     store = new Store(app.getPath("userData"), safeStorage);
+    companionContext = new CompanionContext(() => store.state);
+    memory = new MemoryService({ store, context: companionContext });
+    store.onStateChange = () => companionContext.sync();
     chatgpt = new ChatGPTAuth(app.getPath("userData"), safeStorage, {
       openExternal: (url) => shell.openExternal(url),
     });
@@ -136,6 +146,7 @@ app.whenReady().then(() => {
         : path.join(__dirname, "..", "addon", "BackstageForever"),
       onSnapshot: (snapshot) => {
         if (game?.root !== latestObservationRoot) {
+          companionContext.invalidate("source-root");
           latestObservation = null;
           latestObservationRoot = game?.root;
         }
@@ -213,6 +224,7 @@ app.whenReady().then(() => {
     return updater.status();
   });
   handle("subscriptionStatus", subscriptionStatus);
+  registerMemoryHandlers({ handle, getState: () => store.state, memory, context: companionContext });
   registerCompanyHandlers({
     handle,
     getState: () => store.state,
@@ -291,6 +303,15 @@ app.whenReady().then(() => {
   handle("gameStatus", () => game.status());
   handle("gameSnapshot", gameSnapshot);
   handle("discoverGame", () => game.discover());
+  async function prepareSource(root, cancelled) {
+    const previousRoot = game.root;
+    try {
+      return await game.prepare(root, cancelled);
+    } finally {
+      // An empty source has no snapshot callback, but still changes context.
+      if (game.root !== previousRoot) companionContext.invalidate("source-root");
+    }
+  }
   handle("startCompanion", async (...args) => {
     if (args.length) throw Error("Invalid setup request.");
     const epoch = subscriptionEpoch, actionEpoch = ++gameActionEpoch;
@@ -298,13 +319,13 @@ app.whenReady().then(() => {
     await game.ready;
     if (cancelled()) return gameSnapshot();
     if (game.status().connected) {
-      await game.prepare(undefined, cancelled);
+      await prepareSource(undefined, cancelled);
       return gameSnapshot();
     }
     const candidates = await game.discover();
     if (cancelled()) return gameSnapshot();
     if (candidates.length === 1) {
-      await game.prepare(candidates[0].path, cancelled);
+      await prepareSource(candidates[0].path, cancelled);
       return gameSnapshot();
     }
     return { ...gameSnapshot(), setupCandidates: candidates };
@@ -330,7 +351,7 @@ app.whenReady().then(() => {
     if (root !== undefined) v.str(root, 1000, false);
     else {
       if (automatic && game.status().connected) {
-        await game.prepare(undefined, cancelled);
+        await prepareSource(undefined, cancelled);
         return gameSnapshot();
       }
       const candidates = automatic ? await game.discover() : [];
@@ -347,7 +368,7 @@ app.whenReady().then(() => {
       }
     }
     if (cancelled()) return gameSnapshot();
-    await game.prepare(root, cancelled);
+    await prepareSource(root, cancelled);
     return gameSnapshot();
   }
   handle("prepareGame", (root) => prepareGame(root, true));
@@ -361,6 +382,7 @@ app.whenReady().then(() => {
     return gameSnapshot();
   });
   handle("disconnectGame", async () => {
+    companionContext.invalidate("source-disconnect");
     gameActionEpoch++;
     knowledge.setContext({}, false);
     await game.disconnect();
@@ -393,6 +415,7 @@ app.whenReady().then(() => {
   });
   handle("connectSubscription", async (provider) => {
     v.provider(provider);
+    companionContext.invalidate("authentication-connect");
     catalogs.clear();
     if (provider === "openai") await chatgpt.connect();
     else if (provider === "anthropic") await claude.login();
@@ -401,10 +424,12 @@ app.whenReady().then(() => {
         "Subscription sign-in is unavailable for this provider in this preview.",
       );
     catalogs.clear();
+    companionContext.invalidate("authentication-connected");
     return subscriptionStatus();
   });
   handle("disconnectSubscription", async (provider) => {
     v.provider(provider);
+    companionContext.invalidate("authentication-disconnect");
     subscriptionEpoch++;
     catalogs.clear();
     if (provider === "openai") await chatgpt.disconnect();
@@ -413,6 +438,7 @@ app.whenReady().then(() => {
       throw new Error(
         "Subscription sign-in is unavailable for this provider in this preview.",
       );
+    companionContext.invalidate("authentication-disconnected");
     return subscriptionStatus();
   });
   handle("bootstrap", async () => ({
@@ -428,7 +454,7 @@ app.whenReady().then(() => {
     const previousActive =
       base === undefined
         ? store.state.activeProfileId
-        : v.validateState(base).activeProfileId;
+        : v.validateState(preserveMemories(store.state, base)).activeProfileId;
     if (game.status().connected && state.activeProfileId !== previousActive)
       next.followGameCharacter = false;
     if (store.state.followGameCharacter === false && next.followGameCharacter === true && game.status().connected && game.lastSnapshot && latestObservationRoot === game.root) {
@@ -458,6 +484,7 @@ app.whenReady().then(() => {
     )
       store.saveKey(input.provider, input.apiKey);
     store.saveState(next);
+    companionContext.invalidate("provider-save");
     catalogs.clear();
     return {
       state: structuredClone(store.state),
@@ -465,11 +492,15 @@ app.whenReady().then(() => {
     };
   });
   handle("deleteKey", (provider) => {
+    companionContext.invalidate("authentication-key-delete");
     catalogs.clear();
     return store.deleteKey(provider);
   });
-  handle("ask", async (input) => {
-    v.object(input, ["provider", "prompt", "profileId", "shareProfile"]);
+  handle("ask", async (...args) => {
+    memory.clearDraft();
+    if (args.length !== 1) throw Error("Invalid provider request.");
+    const input = args[0];
+    v.object(input, ["provider", "prompt", "profileId", "shareProfile", "memoryIds"]);
     v.provider(input.provider);
     v.str(input.prompt, 12000, false);
     if (
@@ -478,6 +509,9 @@ app.whenReady().then(() => {
     )
       throw new Error("Invalid provider selection.");
     if (busy) throw new Error("Provider request already in progress.");
+    const profileId = input.profileId === undefined ? store.state.activeProfileId : input.profileId;
+    const token = memory.begin(profileId);
+    const augmented = buildMemoryPrompt(store.state, { profileId, prompt: input.prompt, memoryIds: input.memoryIds === undefined ? [] : input.memoryIds });
     const refusal = scopeResponse(input.prompt);
     if (refusal) return refusal;
     const context = ai.profileContext(
@@ -500,7 +534,7 @@ app.whenReady().then(() => {
         if (input.provider === "openai")
           reply = await chatgpt.ask({
             model: selected.model,
-            prompt: input.prompt,
+            prompt: augmented.prompt,
             context,
           });
         else if (input.provider === "anthropic") {
@@ -515,7 +549,7 @@ app.whenReady().then(() => {
             : undefined;
           reply = await claude.ask({
             model: selected.model,
-            prompt: input.prompt,
+            prompt: augmented.prompt,
             context: shared,
           });
         } else
@@ -527,13 +561,14 @@ app.whenReady().then(() => {
           provider: input.provider,
           ...selected,
           apiKey: store.getKey(input.provider),
-          prompt: input.prompt,
+          prompt: augmented.prompt,
           context,
         });
       if (epoch !== subscriptionEpoch)
         throw new Error(
-          "Provider request was cancelled because local data or authentication changed.",
+          "Provider response is no longer current because local data or authentication changed.",
         );
+      memory.complete(token, input.prompt, reply);
       return reply;
     } finally {
       busy = false;
@@ -574,12 +609,18 @@ app.whenReady().then(() => {
     });
     if (confirm.response !== 1 || epoch !== subscriptionEpoch) return null;
     subscriptionEpoch++;
+    companionContext.invalidate("import");
     catalogs.clear();
     gameActionEpoch++;
     knowledge.setContext({}, false);
-    await game.disconnect();
-    latestObservation = null;
-    return store.importData(text);
+    resetting = true;
+    try {
+      await game.disconnect();
+      latestObservation = null;
+      return store.importData(text);
+    } finally {
+      resetting = false;
+    }
   });
   handle("resetData", async () => {
     const result = await dialog.showMessageBox(win, {
@@ -594,6 +635,7 @@ app.whenReady().then(() => {
     });
     if (result.response !== 1) return null;
     resetting = true;
+    companionContext.invalidate("reset");
     subscriptionEpoch++;
     gameActionEpoch++;
     catalogs.clear();
@@ -634,6 +676,9 @@ app.whenReady().then(() => {
       },
     });
     win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+    win.webContents.on("destroyed", () => companionContext.invalidate("renderer-destroyed"));
+    win.webContents.on("render-process-gone", () => companionContext.invalidate("renderer-gone"));
+    win.webContents.on("did-start-navigation", () => companionContext.invalidate("renderer-navigation"));
     win.webContents.on("will-navigate", (event, url) => {
       if (url !== trusted) event.preventDefault();
     });
@@ -653,6 +698,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", (event) => {
+  companionContext?.invalidate("quit");
   subscriptionEpoch++;
   chatgpt?.close();
   game?.close();
