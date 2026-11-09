@@ -71,3 +71,12 @@ ChatGPT subscription mode implements the documented open-source sign-in route. C
 Grok OAuth exists in its official CLI, as Sara’s design also recognizes. Backstage Forever does not yet provide an accepted Grok subscription inference adapter: its currently documented CLI exposes retained MCP meta-tools and managed hooks even with empty tool selection. The UI marks this route unavailable; xAI API mode remains implemented. This is a current implementation limit, not a claim that Grok subscription integration is impossible.
 
 Next gates: subscription acceptance with real accounts; a safe Grok adapter; account-aware model discovery; clean Windows installation/upgrade/uninstall; code signing; addon/client verification; accessible keyboard/screen-reader acceptance. See ROADMAP.md for phases.
+
+
+## 0.4.1 live capture and Compass repair (2026-11-08, America/Chicago)
+
+A live Forever session loaded the 0.4.0 HUD but wrote a nil account export. Reproduced in the Lua VM with realistic multi-return class/race/faction APIs; the prior single-return harness concealed the problem. Explicit single-result calls fixed capture. All 136 unit tests passed, including realistic tuples, oversized HUD text, restored anchors, drag callbacks, close/collapse/reopen and combat guards. The packaged smoke check passed automatic installation/readback and startup repair after the final HUD resource was staged into the packaged fixture. Release CI rebuilds the installer from its tagged source.
+
+Observed in the actual game after the player's voluntary reload: class, level, location, XP and nine active quests in Compass. A later reload produced a successful desktop import with race and faction; the selected imported profile displayed level 15 and public snapshot metadata. Observed native dialog textures, close/minimize buttons and permanent instructions; the player repositioned the panel. No player identifiers, account paths or screenshots are published as evidence. Live hide/reopen, per-character persistence after a full client restart, combat transitions, later level changes and full quest/waypoint coverage are not claimed by these observations.
+
+The game-folder scripts were repaired and byte-verified locally. Program Files denied direct writes to the installed companion resource copy; 0.4.1 must be installed normally to make the resource repair permanent. This local repair is not evidence that self-upgrade completed. Installers remain without Windows Authenticode signing; application update manifests use separate Ed25519 integrity verification.
