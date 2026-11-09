@@ -100,8 +100,17 @@ function shortPath(target) {
       const base = (await call("bootstrap")).state; if (base.activeProfileId !== "Alpha") await call("saveState", { ...base, activeProfileId: "Alpha" }, base);
       await call("companionContext", { profileId: "Alpha", view: "ai" });
     }
-    const emptyGame = path.join(dir, "synthetic-empty-client"); await fs.mkdir(emptyGame); await fs.writeFile(path.join(emptyGame, ".flavor.info"), "wowf");
-    await startPending(); await call("prepareGame", emptyGame); await finishPending(true);
+    const emptyGame = path.join(dir, "synthetic-empty-client"); await fs.mkdir(path.join(emptyGame, "WTF"), { recursive: true }); await fs.writeFile(path.join(emptyGame, ".flavor.info"), "wowf");
+    await app.evaluate(({ app }) => {
+      const load = process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(), "package.json")), { GameSync } = load("./src/core/game-sync.cjs"), install = GameSync.prototype._installAddon;
+      GameSync.prototype._installAddon = async function (...args) { if (memoryFixture.holdPreparation) { memoryFixture.preparationRootChanged = this.root === memoryFixture.expectedRoot; await new Promise(resolve => memoryFixture.releasePreparation = resolve); } return install.apply(this, args); };
+    });
+    await startPending(); await app.evaluate((_electron, root) => { memoryFixture.holdPreparation = true; memoryFixture.expectedRoot = root; }, emptyGame);
+    await page.evaluate(root => { window.pendingPreparation = window.backstage.prepareGame(root); }, emptyGame);
+    await app.evaluate(async () => { const end = Date.now() + 5000; while (!memoryFixture.releasePreparation) { if (Date.now() > end) throw Error("Source preparation never paused"); await new Promise(r => setTimeout(r, 10)); } });
+    assert.equal(await app.evaluate(() => memoryFixture.preparationRootChanged), true);
+    await finishPending(true); assert.equal(await call("memoryDraft", "Alpha"), null);
+    await app.evaluate(() => { memoryFixture.holdPreparation = false; memoryFixture.releasePreparation(); }); await page.evaluate(() => window.pendingPreparation);
     await ask(); const restoredDraft = await call("memoryDraft", "Alpha"); await call("saveMemory", { profileId: "Alpha", responseId: restoredDraft.responseId });
     await call("companionContext", { profileId: "Alpha", view: "ai" }); assert.equal(await call("memoryDraft", "Alpha"), null);
     await ask(); await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].blur()); assert.ok(await call("memoryDraft", "Alpha"));

@@ -199,10 +199,11 @@ async function boundedRead(file, limit = MAX) {
   }
 }
 class GameSync {
-  constructor({ dataDir, addonDir, onSnapshot = () => {}, runtime = new GameRuntime() }) {
+  constructor({ dataDir, addonDir, onSnapshot = () => {}, onRootChange = () => {}, runtime = new GameRuntime() }) {
     this.dataDir = dataDir;
     this.addonDir = addonDir;
     this.onSnapshot = onSnapshot;
+    this.onRootChange = onRootChange;
     this.runtime = runtime;
     this.refreshEpoch = 0;
     this.accountSnapshots = new Map();
@@ -226,6 +227,17 @@ class GameSync {
       coverage: { partial: false, unreadableAccountCount: 0, omittedCharacterCount: 0, omittedProfileCount: 0 },
     };
     this.ready = this.restore();
+  }
+  _setRoot(root) {
+    const previousRoot = this.root;
+    if (root === previousRoot) return;
+    this.root = root;
+    // Retire old-source effects before any asynchronous source preparation.
+    this.onRootChange({ previousRoot, root, reason: "root" });
+  }
+  _sourceUnavailable() {
+    if (this.state.phase !== "folder-unavailable")
+      this.onRootChange({ previousRoot: this.root, root: this.root, reason: "unavailable" });
   }
   status() {
     const state = structuredClone(this.state);
@@ -340,7 +352,7 @@ class GameSync {
     const gen = ++this.generation;
     const stale = () => gen !== this.generation || cancelled();
     clearInterval(this.timer);
-    this.root = null;
+    this._setRoot(null);
     try {
       root = await this.validateRoot(root);
       let version = null;
@@ -351,7 +363,7 @@ class GameSync {
           )?.[0] || null;
       } catch {}
       if (stale()) return this.status();
-      this.root = root;
+      this._setRoot(root);
       this.lastDigest = null;
       this.lastSnapshot = null;
       this.accountSnapshots.clear();
@@ -395,7 +407,8 @@ class GameSync {
       await this._installAddon(gen, root, cancelled);
       if (!stale()) await this.refresh();
     } catch {
-      if (!stale())
+      if (!stale()) {
+        this._sourceUnavailable();
         this.state = {
           ...this.state,
           connected: false,
@@ -405,6 +418,7 @@ class GameSync {
           phase: "folder-unavailable",
           message: "Choose a valid World of Warcraft: Forever client folder.",
         };
+      }
     }
     return this.status();
   }
@@ -540,13 +554,15 @@ class GameSync {
       try {
         await this.validateRoot(root);
       } catch {
-        if (!cancelled())
+        if (!cancelled()) {
+          this._sourceUnavailable();
           this.state = {
             ...this.state,
             phase: "folder-unavailable",
             message:
               "The game folder is unavailable. Reconnect it; previous characters are preserved.",
           };
+        }
         return this.status();
       }
       const runtime = await this.runtime.probe(root);
@@ -661,7 +677,7 @@ class GameSync {
   async disconnect() {
     ++this.generation;
     clearInterval(this.timer);
-    this.root = null;
+    this._setRoot(null);
     this.lastDigest = null;
     this.lastSnapshot = null;
     this.accountSnapshots.clear();
@@ -698,7 +714,7 @@ class GameSync {
   close() {
     ++this.generation;
     clearInterval(this.timer);
-    this.root = null;
+    this._setRoot(null);
     this.lastSnapshot = null;
     this.accountSnapshots.clear();
     this.state = {

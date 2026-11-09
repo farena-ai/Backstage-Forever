@@ -141,12 +141,12 @@ app.whenReady().then(() => {
     knowledge = new KnowledgeService({ dataDir: app.getPath("userData") });
     game = new GameSync({
       dataDir: app.getPath("userData"),
+      onRootChange: () => companionContext.invalidate("source-root"),
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
         : path.join(__dirname, "..", "addon", "BackstageForever"),
       onSnapshot: (snapshot) => {
         if (game?.root !== latestObservationRoot) {
-          companionContext.invalidate("source-root");
           latestObservation = null;
           latestObservationRoot = game?.root;
         }
@@ -303,15 +303,6 @@ app.whenReady().then(() => {
   handle("gameStatus", () => game.status());
   handle("gameSnapshot", gameSnapshot);
   handle("discoverGame", () => game.discover());
-  async function prepareSource(root, cancelled) {
-    const previousRoot = game.root;
-    try {
-      return await game.prepare(root, cancelled);
-    } finally {
-      // An empty source has no snapshot callback, but still changes context.
-      if (game.root !== previousRoot) companionContext.invalidate("source-root");
-    }
-  }
   handle("startCompanion", async (...args) => {
     if (args.length) throw Error("Invalid setup request.");
     const epoch = subscriptionEpoch, actionEpoch = ++gameActionEpoch;
@@ -319,13 +310,13 @@ app.whenReady().then(() => {
     await game.ready;
     if (cancelled()) return gameSnapshot();
     if (game.status().connected) {
-      await prepareSource(undefined, cancelled);
+      await game.prepare(undefined, cancelled);
       return gameSnapshot();
     }
     const candidates = await game.discover();
     if (cancelled()) return gameSnapshot();
     if (candidates.length === 1) {
-      await prepareSource(candidates[0].path, cancelled);
+      await game.prepare(candidates[0].path, cancelled);
       return gameSnapshot();
     }
     return { ...gameSnapshot(), setupCandidates: candidates };
@@ -351,7 +342,7 @@ app.whenReady().then(() => {
     if (root !== undefined) v.str(root, 1000, false);
     else {
       if (automatic && game.status().connected) {
-        await prepareSource(undefined, cancelled);
+        await game.prepare(undefined, cancelled);
         return gameSnapshot();
       }
       const candidates = automatic ? await game.discover() : [];
@@ -368,7 +359,7 @@ app.whenReady().then(() => {
       }
     }
     if (cancelled()) return gameSnapshot();
-    await prepareSource(root, cancelled);
+    await game.prepare(root, cancelled);
     return gameSnapshot();
   }
   handle("prepareGame", (root) => prepareGame(root, true));
