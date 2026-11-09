@@ -4,7 +4,7 @@ Backstage Forever 0.12 is the checkpoint requested by Frank Arena before decidin
 
 ## Update and characters
 
-- [ ] Confirm the installed app says 0.12.1 and opens normally with existing profiles, notes, plans and provider connections.
+- [ ] Confirm the installed app says 0.12.2 and opens normally with existing profiles, notes, plans and provider connections.
 - [ ] Let BF prepare/verify its companion files. Load the updated addon on the next game launch, or use one voluntary /reload if the addon was already installed and WoW is running.
 - [ ] Visit two characters with the addon enabled and let the game save naturally. Confirm their identity, faction, level, quests and private journals stay separate. Never-visited alts are not promised.
 - [ ] Switch the desktop character deliberately, confirm following pauses, then resume following and check the selected saved character. Inside WoW the Compass must always describe the currently played character.

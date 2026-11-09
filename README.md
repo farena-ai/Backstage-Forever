@@ -8,11 +8,11 @@
 
 **[Download the Windows preview](https://github.com/farena-ai/Backstage-Forever/releases)** · **[Install and get started](docs/GETTING-STARTED.md)** · **[Choose an AI connection](docs/PROVIDERS.md)**
 
-Version **0.12.1 is the combined adventure-series preview checkpoint** before Frank Arena's hands-on 1.0 review. It adds an explained next-action Director, profession and material planning, optional local Windows voice, deliberate per-character conversation memory, and reviewed party-plan files. Automatic setup and the local in-game Compass work without an AI account or routine reloads. The desktop keeps last-saved snapshots, plans, journal, Quest Guide and optional AI. Exact quest IDs, compatible builds and source labels keep reference facts qualified. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
+Version **0.12.2 is the combined adventure-series preview checkpoint** before Frank Arena's hands-on 1.0 review. It adds an explained next-action Director, profession and material planning, optional local Windows voice, deliberate per-character conversation memory, and reviewed party-plan files. Automatic setup and the local in-game Compass work without an AI account or routine reloads. The desktop keeps last-saved snapshots, plans, journal, Quest Guide and optional AI. Exact quest IDs, compatible builds and source labels keep reference facts qualified. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
 
 ## Install
 
-1. Open [Releases](https://github.com/farena-ai/Backstage-Forever/releases) and choose **Backstage-Forever-0.12.1-Windows-x64-Setup.exe**.
+1. Open [Releases](https://github.com/farena-ai/Backstage-Forever/releases) and choose **Backstage-Forever-0.12.2-Windows-x64-Setup.exe**.
 2. Run that setup executable for your Windows account. The **Source.zip** archive contains developer code, not the installer; normal installation needs no Node.js or source commands.
 3. Launch Backstage Forever and choose **Start my adventure**. It finds your Forever client, prepares and verifies its addon, and offers a simple choice if needed. You can start playing once the files are prepared; no desktop snapshot or AI setup is required first. Enable/load the addon in-game if needed.
 
