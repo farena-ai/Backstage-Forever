@@ -16,11 +16,13 @@ function harness(overrides = {}) {
     dataset: { updatePref: "automatic" },
     checked: true,
     matches: () => false,
+    closest: () => null,
   };
   const installOnQuit = {
     dataset: { updatePref: "installOnQuit" },
     checked: true,
     matches: () => false,
+    closest: () => null,
   };
   const summary = { textContent: "" };
   const label = { textContent: "" };
@@ -74,6 +76,8 @@ function harness(overrides = {}) {
   context.QuestGuide = context.window.QuestGuide;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/living-setup.js"), "utf8"), context);
   context.LivingSetup = context.window.LivingSetup;
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/company.js"), "utf8"), context);
+  context.Company = context.window.Company;
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, "../src/renderer/app.js"), "utf8"),
     context,

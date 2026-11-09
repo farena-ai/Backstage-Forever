@@ -19,6 +19,7 @@ const classes = [
 ];
 const nav = [
   ["adventure", "◈", "Adventure"],
+  ["company", "♜", "Company"],
   ["quest-guide", "⌖", "Quest Guide"],
   ["characters", "♙", "Characters"],
   ["assistant", "✧", "AI Companion"],
@@ -131,6 +132,7 @@ function draftKey(form) {
 }
 function rememberDrafts() {
   root.querySelectorAll("form[data-draft-key]").forEach((form) => {
+    if (form.closest("[data-company]")) return;
     const fields = [...form.elements].filter(
       (e) => e.name && !e.disabled && !e.readOnly,
     );
@@ -153,6 +155,7 @@ function rememberDrafts() {
 }
 function restoreDrafts() {
   root.querySelectorAll("form").forEach((form) => {
+    if (form.closest("[data-company]")) return;
     const key = draftKey(form);
     form.dataset.draftKey = key;
     const draft = formDrafts.get(key);
@@ -319,6 +322,26 @@ async function prepareCompanion(fn) {
     if (generation === setupGeneration) { setupBusy = false; render(); }
   }
 }
+async function planWithoutCharacter() {
+  if (setupBusy) return;
+  const generation = ++setupGeneration;
+  setupBusy = true;
+  render();
+  try {
+    if (!state.onboarded) {
+      const epoch = stateMutationEpoch;
+      const next = await mutateStateCall(() => api.saveState({ ...state, onboarded: true }, state));
+      if (generation !== setupGeneration || stateMutationEpoch !== epoch + 2) return;
+      state = next;
+    }
+    if (generation !== setupGeneration) return;
+    closeSetup("deferred");
+    page = "company";
+    render();
+  } finally {
+    if (generation === setupGeneration) { setupBusy = false; render(); }
+  }
+}
 let state,
   metadata = [],
   keys = {},
@@ -423,9 +446,11 @@ function characterFields(p = {}) {
   return `<div class="form-grid"><label>Character name<input name="name" maxlength="100" value="${esc(p.name)}" required autocomplete="off" ${lock}></label><label>Realm<input name="realm" maxlength="100" value="${esc(p.realm)}" autocomplete="off" placeholder="Your home realm" ${lock}></label><label>Class<select name="className" ${imported ? "disabled" : ""}>${options(classes.includes(p.className) ? classes : [...classes, p.className].filter(Boolean), p.className || "Hunter")}</select></label><label>Level<input name="level" type="number" min="1" max="60" value="${esc(p.level || 1)}" required ${lock}></label><label>Faction<select name="faction" ${imported ? "disabled" : ""}><option value="">Not set</option>${options([...new Set(["Alliance", "Horde", p.faction].filter(Boolean))], p.faction)}</select></label><label>Race<input name="race" maxlength="100" value="${esc(p.race)}" ${lock} placeholder="Optional"></label></div>${imported ? '<p class="corner-note">Character details come from your saved game snapshot. Notes and goals remain editable.</p>' : ""}`;
 }
 function onboarding() {
-  root.innerHTML = `<main class="onboarding"><section class="onboarding-art">${brand()}<div><div class="eyebrow">Your world. Your adventure.</div><h1>A companion for<br>the road ahead.</h1><p>Make room for the adventure.<br>We’ll keep your plans in order.</p></div><small>DESIGNED BY FRANK ARENA</small></section><section class="onboarding-form"><div class="eyebrow">Welcome, adventurer · 01 / 01</div><h2>Every adventure starts somewhere.</h2><p>Start with a character, then connect your game to import saved character snapshots. Your journal stays on this computer.</p><form id="onboard">${characterFields()}<div class="actions"><button class="primary" type="submit">Begin my adventure</button></div></form><div class="callout">◈ &nbsp; No account. No subscription required for the app.<br>Profiles and planning work offline. AI is optional and uses your own provider access.</div><p class="snapshot-hint">${savedHelp}</p><p class="onboarding-footer">Independent companion for World of Warcraft: Forever.<br>Not affiliated with or endorsed by Blizzard Entertainment.</p></section></main>`;
+  root.innerHTML = `<main class="onboarding"><section class="onboarding-art">${brand()}<div><div class="eyebrow">Your world. Your adventure.</div><h1>A companion for<br>the road ahead.</h1><p>Make room for the adventure.<br>We’ll keep your plans in order.</p></div><small>DESIGNED BY FRANK ARENA</small></section><section class="onboarding-form"><div class="eyebrow">Welcome, adventurer · 01 / 01</div><h2>Every adventure starts somewhere.</h2><p>Start with a character, then connect your game to import saved character snapshots. Your journal stays on this computer.</p><form id="onboard">${characterFields()}<div class="actions"><button class="primary" type="submit">Begin my adventure</button></div></form><div class="callout">◈ &nbsp; No account. No subscription required for the app.<br>Profiles and planning work offline. AI is optional and uses your own provider access.</div><p class="snapshot-hint">${savedHelp}</p><button type="button" class="subtle" data-command="setup-company" ${setupBusy ? "disabled" : ""}>Plan without a character</button><p class="onboarding-footer">Independent companion for World of Warcraft: Forever.<br>Not affiliated with or endorsed by Blizzard Entertainment.</p></section></main>`;
 }
 function render() {
+  Company.beginRender();
+  try {
   QuestGuide.sync(profile(), knowledgeStatus);
   syncGuidance();
   rememberDrafts();
@@ -448,7 +473,7 @@ function render() {
     return;
   }
   const current = nav.find((item) => item[0] === page);
-  root.innerHTML = `<div class="shell"><aside class="rail">${brand()}<nav aria-label="Main navigation">${nav.map(([key, glyph, label]) => `<button data-nav="${key}" class="${page === key ? "active" : ""}" ${page === key ? 'aria-current="page"' : ""}><span class="glyph" aria-hidden="true">${glyph}</span>${label}</button>`).join("")}</nav><div class="rail-bottom"><button class="update-rail" data-nav="updates"><span aria-hidden="true">⟲</span><span data-update-label>Updates</span></button><div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span>${current[2]}</span></div><button class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}<small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${setupDock()}${{ adventure: adventure, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, updates: updatesPage }[page]()}</div></main></div>`;
+  root.innerHTML = `<div class="shell"><aside class="rail">${brand()}<nav aria-label="Main navigation">${nav.map(([key, glyph, label]) => `<button data-nav="${key}" class="${page === key ? "active" : ""}" ${page === key ? 'aria-current="page"' : ""}><span class="glyph" aria-hidden="true">${glyph}</span>${label}</button>`).join("")}</nav><div class="rail-bottom"><button class="update-rail" data-nav="updates"><span aria-hidden="true">⟲</span><span data-update-label>Updates</span></button><div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span>${current[2]}</span></div><button class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}<small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${setupDock()}${{ adventure: adventure, company: Company.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, updates: updatesPage }[page]()}</div></main></div>`;
   restoreDrafts();
   if (page === "assistant") document.getElementById("chatlog").scrollTop = 1e6;
   // Actions keep the character shown when rendered, even if an autosave later
@@ -462,6 +487,10 @@ function render() {
     });
   refreshUpdateWidgets();
   QuestGuide.mounted();
+  Company.mounted();
+  } finally {
+    Company.endRender();
+  }
 }
 function classKey(className) {
   return String(className || "other")
@@ -782,9 +811,38 @@ function updatesPage() {
   <aside class="panel"><h3>A trusted path forward.</h3><div class="steps"><div class="step"><b>1</b><div><p>Authenticate the release</p><small>Only releases signed by Backstage Forever’s update key are accepted.</small></div></div><div class="step"><b>2</b><div><p>Verify the download</p><small>The complete installer’s size and fingerprint must match before it can run.</small></div></div><div class="step"><b>3</b><div><p>Keep your journal</p><small>Profiles and provider settings remain in your Windows account’s app folder.</small></div></div></div><div class="callout brass">Older updater stuck? Open Releases and run the latest installer once. Older installed apps cannot receive these retry and recovery improvements until they are upgraded.</div><p class="corner-note">Application update signatures authenticate future downloads. This preview still lacks a Windows publisher certificate, so an initial manual installer may show an unknown-publisher notice.</p></aside></div>`;
 }
 QuestGuide.init({ api, root, esc, notify: toast, onStatus: value => { knowledgeStatus = value; } });
+Company.init({
+  api, root, esc, portrait,
+  active: () => page === "company" && !setupOpen && Boolean(state?.onboarded),
+  epoch: () => stateMutationEpoch,
+  mutate: (input, valid) => {
+    const generation = autosaveGeneration;
+    const task = async () => {
+      if (generation !== autosaveGeneration || !valid()) return null;
+      const epoch = stateMutationEpoch;
+      const result = await mutateStateCall(() => api.journeyAction(input));
+      // Another mutation or a replacement lifecycle may finish while IPC waits.
+      if (generation !== autosaveGeneration || !valid() || stateMutationEpoch !== epoch + 2) return null;
+      state = result.state;
+      return result.company;
+    };
+    const result = autosaveQueue.then(task, task);
+    autosaveQueue = result.catch(() => {});
+    return result;
+  },
+  open: selectedId => action(async () => {
+    Company.invalidate();
+    await autosaveQueue;
+    await persist({ ...state, activeProfileId: selectedId });
+    page = "adventure";
+    render();
+  }),
+});
 root.addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button) return;
+  if (button.hasAttribute("data-company-command") || button.hasAttribute("data-company-open") || button.closest("[data-company-form]")) return;
+  if (button.dataset.nav || button.dataset.character || ["reset", "import"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) Company.invalidate();
   action(async () => {
     await autosaveQueue;
     if (button.dataset.nav) {
@@ -904,6 +962,9 @@ root.addEventListener("click", (event) => {
       case "setup-manual":
         closeSetup("manual");
         render();
+        break;
+      case "setup-company":
+        await planWithoutCharacter();
         break;
       case "setup-defer":
         closeSetup("deferred");
@@ -1068,6 +1129,7 @@ root.addEventListener("click", (event) => {
         stateMutationEpoch++;
         const next = await mutateStateCall(() => api.importData());
         if (next) {
+          Company.invalidate(true);
           chatGeneration++;
           autosaveGeneration++;
           formDrafts.clear();
@@ -1093,6 +1155,7 @@ root.addEventListener("click", (event) => {
         stateMutationEpoch++;
         const next = await mutateStateCall(() => api.resetData());
         if (next) {
+          Company.invalidate(true);
           CommandCenter.remove();
           QuestGuide.invalidate(true);
           knowledgeStatus = null;
@@ -1139,6 +1202,8 @@ root.addEventListener("click", (event) => {
 });
 root.addEventListener("change", (event) =>
   action(async () => {
+    if (event.target.closest("[data-company]")) return;
+    if (event.target.id === "active-character") Company.invalidate();
     if (event.target.dataset.planOption && state.activeProfileId) {
       const selected = CommandCenter.options(state.activeProfileId);
       const key = event.target.dataset.planOption;
@@ -1214,6 +1279,7 @@ root.addEventListener("change", (event) =>
 root.addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.target;
+  if (form.dataset.companyForm) return;
   const data = new FormData(form);
   const renderedProfileId = form.dataset.profileId;
   action(async () => {
@@ -1391,6 +1457,18 @@ setInterval(async () => {
     )
       return;
     const editing = isEditing();
+    if (page === "company") {
+      // Company fields keep their drafts independently of captured evidence.
+      // Refresh only that region so newer proof can arrive during a text edit.
+      pendingSnapshot = null;
+      const selectionChanged = state.activeProfileId !== result.state.activeProfileId;
+      state = result.state;
+      gameStatus = result.gameStatus || {};
+      acceptBrief(result);
+      if (selectionChanged) render();
+      Company.refresh();
+      return;
+    }
     if (editing || sending) {
       pendingSnapshot = { result, epoch: pollingMutationEpoch };
       return;
