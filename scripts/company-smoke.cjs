@@ -9,17 +9,88 @@ function shortPath(target) {
  const alias=require("node:child_process").execFileSync("powershell.exe",["-NoProfile","-NonInteractive","-Command",script],{env:{...process.env,BF_COMPANY_UI_ALIAS_PATH:target},encoding:"utf8",timeout:15000}).trim();
  assert.notEqual(alias.toLowerCase(),target.toLowerCase());assert.match(alias,/~\d/);assert.equal(require("node:fs").statSync(alias).ino,require("node:fs").statSync(target).ino);return alias;
 }
-// One physical gesture: no locator click retry can silently deliver a second click.
-async function physicalClick(page, locator, whilePressed) {
- await locator.scrollIntoViewIfNeeded();
- const box=await locator.boundingBox();assert.ok(box,"Physical target has bounds");
- await locator.evaluate(node=>{
-  window.companyPointerTarget={node,clicks:0};
-  node.addEventListener("click",()=>window.companyPointerTarget.clicks++,{once:true});
+// Optional CI regression injection: main has saved the preceding write, while its
+// actual renderer acknowledgement is held. A forgotten settlement fails deterministically.
+const setupRaces=process.argv.find(arg=>arg==="--setup-races"||arg.startsWith("--setup-races="));
+if(setupRaces)assert.ok(["--setup-races","--setup-races=uncheck","--setup-races=remove-step","--setup-races=create","--setup-races=refresh"].includes(setupRaces),"Known setup-race case");
+let setupWriteRelease=null, setupRefreshPending=setupRaces==="--setup-races"||setupRaces==="--setup-races=refresh";
+async function releaseSetupWrite() {
+ const release=setupWriteRelease;setupWriteRelease=null;await release?.();
+}
+async function armSetupRace(page,app,name) {
+ if(!setupRaces || (setupRaces!=="--setup-races"&&setupRaces!==`--setup-races=${name}`))return;
+ assert.equal(setupWriteRelease,null,"Previous injected acknowledgement has been consumed");
+ await page.evaluate(async()=>{await autosaveQueue;});
+ await app.evaluate(()=>{companyUiFixture.setupDelay="backstage:journeyAction";companyUiFixture.setupRelease=null;});
+ setupWriteRelease=async()=>{
+  await app.evaluate(async()=>{const end=Date.now()+5000;while(!companyUiFixture.setupRelease){if(Date.now()>end)throw Error("Setup write did not reach its held acknowledgement");await new Promise(r=>setTimeout(r,10));}});
+  const gap=await page.evaluate(async()=>({saved:(await window.backstage.bootstrap()).state.journeys,shown:state.journeys,plans:document.querySelectorAll("[data-company-journey]").length}));
+  if(name==="uncheck"){assert.equal(gap.saved[0].steps[0].done,false);assert.equal(gap.shown[0].steps[0].done,true);}
+  if(name==="remove-step"){assert.equal(gap.saved[0].steps.length,5);assert.equal(gap.shown[0].steps.length,6);}
+  if(name==="create"){assert.equal(gap.saved.length,2);assert.equal(gap.shown.length,1);assert.equal(gap.plans,1);}
+  console.log(`Injected ${name}: main saved the preceding mutation before renderer acknowledgement`);
+  await app.evaluate(()=>companyUiFixture.setupRelease());
+  await page.evaluate(async()=>{await autosaveQueue;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
+ };
+}
+// Main-store visibility can precede Company.perform's final renderer paint.
+// Settle only the preceding accepted work, before dirtying the next text field.
+async function settleCompanyWrite(page) {
+ await releaseSetupWrite();
+ await page.waitForFunction(()=>stateMutationBusy===0);
+ const stable=await page.evaluate(async()=>{
+  const previous=autosaveQueue;await previous;
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  return previous===autosaveQueue&&stateMutationBusy===0;
  });
- await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+ assert.equal(stable,true,"Preceding Company write settled before preparing a new gesture");
+}
+// Preparation can be refreshed before a gesture begins. Bound acquisition to
+// three hit-tested snapshots; record and retain the actual control at pointerdown.
+async function physicalClick(page, locator, whilePressed) {
+ assert.equal(setupWriteRelease,null,"Preceding injected write settled before gesture preparation");
+ let prepared,ready=false,refreshed=false;
+ for(let attempt=0;attempt<3&&!ready;attempt++){
+  prepared=await locator.evaluate(node=>{
+   window.companyControlKey=control=>control?JSON.stringify([control.tagName,control.type,control.name,
+    control.dataset.companyField,control.dataset.companyFocus,control.dataset.companyCommand,control.dataset.companyOpen,
+    control.closest("[data-company-journey]")?.dataset.companyJourney,
+    control.closest("[data-company-step]")?.dataset.companyStep,
+    control.closest("[data-company-form]")?.dataset.companyForm]):null;
+   if(!node.isConnected||node.disabled)return null;
+   node.scrollIntoView({block:"center",inline:"center",behavior:"instant"});
+   const rect=node.getBoundingClientRect();if(!rect.width||!rect.height)return null;
+   window.companyPointerSetup=node;
+   return {identity:window.companyControlKey(node),x:rect.x+rect.width/2,y:rect.y+rect.height/2};
+  });
+  if(!prepared)continue;
+  // An ordinary read may replace this idle node before the gesture starts.
+  if(setupRefreshPending){
+   setupRefreshPending=false;refreshed=true;
+   await page.evaluate(async()=>{window.companyPrepressRefreshNode=window.companyPointerSetup;await new Promise(r=>requestAnimationFrame(r));await Company.refresh();});
+   assert.equal(await page.evaluate(()=>window.companyPrepressRefreshNode.isConnected),false,"Actual age-only Company refresh replaced the idle preparation node");
+   console.log("Injected refresh: actual age-only Company read repainted before pointerdown");
+  }
+  await page.mouse.move(prepared.x,prepared.y);
+  ready=await page.evaluate(({identity,x,y})=>{
+   const hit=document.elementFromPoint(x,y)?.closest("button,input,select");
+   if(!hit?.isConnected||hit.disabled||window.companyControlKey(hit)!==identity)return false;
+   window.companyPointerTarget={node:null,identity:null,clicks:0};
+   document.addEventListener("pointerdown",event=>{
+    const node=event.target.closest("button,input,select");
+    window.companyPointerTarget.node=node;window.companyPointerTarget.identity=window.companyControlKey(node);
+    node?.addEventListener("click",()=>window.companyPointerTarget.clicks++,{once:true});
+   },{once:true,capture:true});
+   return true;
+  },prepared);
+ }
+ assert.equal(ready,true,"Physical target prepared within three snapshots before pressing");
  await page.mouse.down();
- try {await whilePressed?.();} finally {await page.mouse.up();}
+ try {
+  assert.equal(await page.evaluate(()=>window.companyPointerTarget.identity),prepared.identity,"Pointerdown reached the intended control");
+  if(refreshed)assert.equal(await page.evaluate(()=>window.companyPointerTarget.node===window.companyPrepressRefreshNode),false,"Gesture owns the current control after idle refresh");
+  await whilePressed?.();
+ } finally {await page.mouse.up();}
  assert.equal(await page.evaluate(()=>window.companyPointerTarget.clicks),1,"One physical click must reach the original control");
 }
 (async()=>{
@@ -53,6 +124,7 @@ async function physicalClick(page, locator, whilePressed) {
     ipcMain.handle(channel,async(event,...args)=>{
      if(channel==="backstage:companyBrief"&&companyUiFixture.failRead) throw Error("Synthetic read failure");
      const result=await original(event,...args);
+     if(companyUiFixture.setupDelay===channel){companyUiFixture.setupDelay=null;await new Promise(r=>companyUiFixture.setupRelease=r);return result;}
      if(companyUiFixture.delay===channel){companyUiFixture.delay=null;await new Promise(r=>companyUiFixture.release=r);}
      return result;
     });
@@ -94,6 +166,7 @@ async function physicalClick(page, locator, whilePressed) {
   await journey.getByRole("button",{name:"Track saved quest",exact:true}).click();
   await page.getByText("Saved ready to turn in; not turned in",{exact:true}).waitFor();
   await page.getByText(/Tracking starts from the saved capture/).waitFor();
+  await settleCompanyWrite(page);
   // Natural title blur must preserve the next pointer target even behind queued work.
   const pointerTitle=journey.getByLabel("Plan title"),pointerCheck=journey.getByRole("checkbox").first();
   await page.evaluate(async()=>{await autosaveQueue;window.companyHeldQueue={};window.companyHeldQueue.promise=new Promise(resolve=>window.companyHeldQueue.release=resolve);autosaveQueue=window.companyHeldQueue.promise;});
@@ -103,8 +176,10 @@ async function physicalClick(page, locator, whilePressed) {
   });
   await page.evaluate(()=>window.companyHeldQueue.release());
   await page.waitForFunction(async()=>{const j=(await window.backstage.companyBrief()).journeys[0];return j.title==="One click queued title"&&j.steps[0].done;});
+  await armSetupRace(page,app,"uncheck");
   await pointerCheck.uncheck();
   await page.waitForFunction(async()=>!(await window.backstage.companyBrief()).journeys[0].steps[0].done);
+  await settleCompanyWrite(page);
   // A fast acknowledgement/read/full-root refresh while the physical button is down
   // must not detach the newly focused input, or steal its later typed text/range.
   await app.evaluate(()=>{companyUiFixture.delay="backstage:journeyAction";companyUiFixture.release=null;});
@@ -121,6 +196,7 @@ async function physicalClick(page, locator, whilePressed) {
   await pointerTitle.fill("Keyboard transfer title");await pointerTitle.press("Tab");
   await page.waitForFunction(async()=>{await autosaveQueue;return document.activeElement?.dataset.companyCommand==="remove";});
   assert.equal(await journey.getByRole("button",{name:"Delete plan Keyboard transfer title",exact:true}).evaluate(n=>document.activeElement===n),true,"Keyboard Tab also reaches its natural next control");
+  await settleCompanyWrite(page);
   // An unrelated pending text edit must not disable or lose the next submit button.
   const originalStep=(await page.evaluate(()=>window.backstage.companyBrief())).journeys[0].steps[0].text;
   await journey.getByLabel("Step text",{exact:true}).first().fill("Pointer step edit");
@@ -130,7 +206,10 @@ async function physicalClick(page, locator, whilePressed) {
   });
   await app.evaluate(()=>companyUiFixture.release());
   await page.waitForFunction(async()=>{const j=(await window.backstage.companyBrief()).journeys[0];return j.steps[0].text==="Pointer step edit"&&j.steps.at(-1).text==="Pointer entry text";});
+  await settleCompanyWrite(page);
+  await armSetupRace(page,app,"remove-step");
   await journey.getByRole("button",{name:"Remove Pointer entry text",exact:true}).click();
+  await settleCompanyWrite(page);
   await journey.getByLabel("Step text",{exact:true}).first().fill(originalStep);
   await physicalClick(page,journey.getByLabel("Assigned character",{exact:true}).first(),async()=>{
    await page.evaluate(async()=>{await autosaveQueue;await Company.refresh();render();await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
@@ -138,9 +217,11 @@ async function physicalClick(page, locator, whilePressed) {
   });
   await page.keyboard.press("Home");await page.keyboard.press("ArrowDown");await page.keyboard.press("Enter");
   await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].steps[0].profileId==="lark");
+  await settleCompanyWrite(page);
   await physicalClick(page,journey.getByLabel("Note step"));
   await journey.getByLabel("Assigned character",{exact:true}).first().selectOption("");
   await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].steps[0].profileId===null);
+  await settleCompanyWrite(page);
   await pointerTitle.fill("Button focus title");
   await physicalClick(page,page.getByRole("button",{name:"Create plan",exact:true}));
   await page.waitForFunction(()=>document.activeElement?.name==="title"&&document.activeElement.closest('[data-company-form="create"]'));
@@ -180,6 +261,7 @@ async function physicalClick(page, locator, whilePressed) {
   await sameIdTitle.press("Tab");await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Same-ID retained draft");
   // A real same-ID GameSync/header poll can arrive while a natural blur's
   // acknowledgement resolves and the next input is still physically pressed.
+  await settleCompanyWrite(page);
   await app.evaluate(()=>{companyUiFixture.delay="backstage:journeyAction";companyUiFixture.release=null;});
   await sameIdTitle.fill("Held same-ID header title");
   await physicalClick(page,journey.getByLabel("Note step"),async()=>{
@@ -361,10 +443,15 @@ async function physicalClick(page, locator, whilePressed) {
   // accepted queued-navigation plan above (neither persistence assertion replaces the other).
   await page.getByRole("button",{name:"Company",exact:true}).click();
   await page.getByRole("button",{name:"Create plan",exact:true}).click();
-  await page.getByLabel("Plan name").fill("Pointer restart plan");await page.getByRole("button",{name:"Save plan",exact:true}).click();
+  await page.getByLabel("Plan name").fill("Pointer restart plan");
+  await armSetupRace(page,app,"create");
+  await page.getByRole("button",{name:"Save plan",exact:true}).click();
+  await settleCompanyWrite(page);
   const restartPlan=page.locator("[data-company-journey]").last();
+  assert.equal(await restartPlan.getByLabel("Plan title").inputValue(),"Pointer restart plan","The new plan owns restart setup before filling its note");
   await restartPlan.getByLabel("Note step").fill("Persistent pointer step");await restartPlan.getByRole("button",{name:"Add note",exact:true}).click();
   await restartPlan.getByRole("checkbox").waitFor();
+  await settleCompanyWrite(page);
   await restartPlan.getByLabel("Plan title").fill("Persistent pointer title");
   await physicalClick(page,restartPlan.getByRole("checkbox"));
   await page.waitForFunction(async()=>{const j=(await window.backstage.companyBrief()).journeys.at(-1);return j.title==="Persistent pointer title"&&j.steps[0].done;});
@@ -382,6 +469,8 @@ async function physicalClick(page, locator, whilePressed) {
   assert.equal(await restartedPointer.getByLabel("Plan title").inputValue(),"Persistent pointer title","Natural blur title survives restart");
   assert.equal(await restartedPointer.getByRole("checkbox").isChecked(),true,"One physical checkbox action survives restart");
   assert.equal(await restartedPointer.getByLabel("Step text").inputValue(),"Persistent pointer step");
+  assert.equal(setupWriteRelease,null,"Every injected preceding write was settled before its next gesture");
+  assert.equal(setupRefreshPending,false,"Requested idle refresh injection ran before a gesture");
   console.log(`Company source Electron ${process.argv.includes("--short-path")?"genuine 8.3":"normal"}: single physical blur clicks/focus/select/submit/restart, real plans/notes/quests, newer evidence+dirty focus, historical mismatch, manual conversion, delayed reads/actions, duplicate guard, private backup/import/reset, no-profile first use, menus/compact PASS`);
  }finally{clearTimeout(watchdog);await app?.close();const resolved=await fs.realpath(dir);assert.equal(path.dirname(resolved).toLowerCase(),(await fs.realpath(os.tmpdir())).toLowerCase());assert.ok(path.basename(resolved).startsWith("forever-company-ui-"));await fs.rm(resolved,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1;});
