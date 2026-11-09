@@ -40,6 +40,7 @@ jobs:
       - run: npm run test:autosave
       - run: npm run test:integration
       - run: npm run test:living-backend
+      - run: npm run test:living-setup
       - run: npm run test:command-center
       - run: npm run test:knowledge
       - run: npm run dist
