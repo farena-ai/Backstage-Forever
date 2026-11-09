@@ -3,6 +3,7 @@ const fs = require("node:fs"), path = require("node:path");
 const { ATTRIBUTION, observedBuild } = require("./knowledge.cjs");
 const FILES = Object.freeze(["vendors.json", "npcs.json", "creatures.json"]);
 const MAX_BYTES = 1024 * 1024;
+const LISTING_KEY = /^item:[1-9]\d*(?:#(?:[2-9]|[1-9]\d+))?$/;
 const LIMITATION = "Historical listings and approximate interaction points; current stock, price and access are unverified. No observation does not mean unobtainable.";
 function invalid() { throw Error("Invalid historical seller data."); }
 const plain = o => !!o && typeof o === "object" && [Object.prototype, null].includes(Object.getPrototypeOf(o));
@@ -41,7 +42,7 @@ function validateVendorPack(value) {
     const listingKeys = new Set();
     for (const row of v.listings) {
       keys(row, ["key", "itemId", "name", "sources"]);
-      if (!integer(row.itemId) || !text(row.name) || !integer(row.sources, 1000000) || typeof row.key !== "string" || row.key.length > 80 || !/^item:[1-9]\d*(?:#[2-9]\d*)?$/.test(row.key) || Number(row.key.match(/^item:(\d+)/)[1]) !== row.itemId || listingKeys.has(row.key)) invalid();
+      if (!integer(row.itemId) || !text(row.name) || !integer(row.sources, 1000000) || typeof row.key !== "string" || row.key.length > 80 || !LISTING_KEY.test(row.key) || Number(row.key.match(/^item:(\d+)/)[1]) !== row.itemId || listingKeys.has(row.key)) invalid();
       listingKeys.add(row.key); listings++;
     }
   }
@@ -82,7 +83,7 @@ function normalizeVendors(inputs, { commit, build } = {}) {
     }
     const listings = [];
     for (const [entryKey, e] of entries) {
-      if (!plain(e) || !/^item:[1-9]\d*(?:#[2-9]\d*)?$/.test(entryKey) || entryKey.length > 80 || !integer(e.itemId) || Number(entryKey.match(/^item:(\d+)/)[1]) !== e.itemId || !text(e.name) || !integer(e.sources, vs.meta.sources)) { counts.droppedListings++; continue; }
+      if (!plain(e) || !LISTING_KEY.test(entryKey) || entryKey.length > 80 || !integer(e.itemId) || Number(entryKey.match(/^item:(\d+)/)[1]) !== e.itemId || !text(e.name) || !integer(e.sources, vs.meta.sources)) { counts.droppedListings++; continue; }
       listings.push({ key: entryKey, itemId: e.itemId, name: e.name, sources: e.sources });
     }
     // Unknown faction observations remain absent. Malformed reaction evidence is never promoted.

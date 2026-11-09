@@ -52,10 +52,28 @@ function shortPath(target) {
     const hold=page.getByRole("button",{name:"Hold to dictate",exact:true}),question=page.getByRole("textbox",{name:"Your question",exact:true});
     assert.equal(await hold.count(),1,"Explicit graphical hold-to-dictate control is required");
     await hold.waitFor({state:"visible"});await page.waitForFunction(()=>!document.querySelector("[data-voice-hold]").disabled);
+    const dictationLanguage=page.getByRole("combobox",{name:"Dictation language",exact:true});
+    assert.equal(await dictationLanguage.locator("option:checked").innerText(),"English (United States)","Dictation language needs a friendly public caption");
+    assert.equal(await dictationLanguage.locator("option:checked").getAttribute("value"),"en-US","The friendly caption must keep an explicit exact culture value");
+    await dictationLanguage.selectOption("en-US");await page.evaluate(()=>render());
+    assert.equal(await dictationLanguage.inputValue(),"en-US","An ordinary paint preserves the selected culture code");
+    for(const fallback of ["unavailable","invalid"]){
+      const option=await page.evaluate(fallback=>{
+        const displayNames=Intl.DisplayNames;
+        try{
+          Intl.DisplayNames=fallback==="unavailable"?undefined:class{of(){throw new RangeError("Synthetic invalid display name");}};
+          render();
+          const selected=document.querySelector("[data-voice-culture] option:checked");
+          return {caption:selected.textContent,value:selected.value,explicitValue:selected.getAttribute("value")};
+        }finally{Intl.DisplayNames=displayNames;render();}
+      },fallback);
+      assert.deepEqual(option,{caption:"en-US",value:"en-US",explicitValue:"en-US"},"Unavailable or invalid display naming falls back to the exact culture code");
+    }
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].focus());
     await question.fill("Where OLD next?");await question.evaluate(n=>{n.focus();n.setSelectionRange(6,9);});
     await hold.scrollIntoViewIfNeeded();const point=await hold.boundingBox();await page.mouse.move(point.x+point.width/2,point.y+point.height/2);await page.mouse.down();
     await page.waitForFunction(()=>document.querySelector("[data-voice]").dataset.phase==="listening");
+    assert.equal(await app.evaluate(()=>voiceUi.commands.findLast(c=>c.command==="listen").culture),"en-US","Actual fake-worker listening receives the culture code, never the caption");
     await page.evaluate(()=>window.heldMic=document.querySelector("[data-voice-hold]"));
     await app.evaluate(()=>voiceUi.children.at(-1).send({event:"hypothesis",text:"quest"}));
     await page.evaluate(()=>new Promise(r=>setTimeout(()=>{render();r();},0)));

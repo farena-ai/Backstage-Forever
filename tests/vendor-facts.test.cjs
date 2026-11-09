@@ -5,6 +5,35 @@ function api() { assert.ok(fs.existsSync(path.join(__dirname, "../src/core/vendo
 const profile = () => ({ source: { kind: "wow-addon", updatedAt: "2026-11-09T12:00:00.000Z" }, clientBuild: build, faction: "Horde" });
 const normalize = raw => api().normalizeVendors(raw, { commit, build });
 
+for (const suffix of ["", "#2", "#9", "#10", "#19", "#20", "#100", "#1000", "#1999"]) {
+  const key = `item:2320${suffix}`;
+  test(`raw seller listings preserve the canonical ordinal ${key}`, () => {
+    const raw = fixture(), entries = raw["vendors.json"].vendors[10].entries;
+    entries[key] = entries["item:2320"];
+    const pack = normalize(raw);
+    assert.ok(pack.vendors[0].listings.some(row => row.key === key));
+    assert.equal(pack.counts.droppedListings, 0);
+  });
+  test(`compiled seller listings accept the canonical ordinal ${key}`, () => {
+    const pack = normalize(fixture());
+    pack.vendors[0].listings[0].key = key;
+    assert.deepEqual(api().validateVendorPack(pack), pack);
+  });
+}
+
+for (const suffix of ["#0", "#1", "#00", "#01", "#02", "#09", "#010", "#0100"]) {
+  const key = `item:2320${suffix}`;
+  test(`raw and compiled seller listings reject noncanonical ordinal ${key}`, () => {
+    const raw = fixture(), entries = raw["vendors.json"].vendors[10].entries;
+    entries[key] = entries["item:2320"];
+    const pack = normalize(raw);
+    assert.deepEqual(pack.vendors[0].listings.map(row => row.key), ["item:2320"]);
+    assert.equal(pack.counts.droppedListings, 1);
+    pack.vendors[0].listings[0].key = key;
+    assert.throws(() => api().validateVendorPack(pack), /Invalid historical seller data/);
+  });
+}
+
 test("seller normalizer joins exact positive IDs, names and Merchant evidence; retains only historical facts", () => {
   const pack = normalize(fixture());
   assert.equal(pack.vendors.length, 1); assert.equal(pack.counts.listings, 1);
