@@ -398,7 +398,7 @@ window.QuestGuide = (() => {
     ]
       .filter(Boolean)
       .join(" · ");
-    return `<div class="context-preview"><span class="eyebrow">EXACT PUBLIC CONTEXT · REVIEW BEFORE SENDING</span><strong>Public character context:</strong><p class="context-selection">Selected: ${esc(selectedLabel || "No character")} · Selection stays visible locally when sharing is off.</p><div data-context-body>Opening the public context preview…</div><small>Private notes, goals, full completion history, account identifiers and local paths stay here. Earlier chat is not sent.</small></div>`;
+    return `<div class="context-preview"><span class="eyebrow">EXACT PUBLIC CONTEXT · REVIEW BEFORE SENDING</span><strong>Public character context:</strong><p class="context-selection">Selected: ${esc(selectedLabel || "No character")} · Selection stays visible locally when sharing is off.</p><div data-context-body>Opening the public context preview…</div><small>Private notes, goals, full completion history, account identifiers and local paths stay here. Saved exchanges are included only when you select them separately in Memory.</small></div>`;
   }
   function paintContext(value, message) {
     const host = root.querySelector("[data-context-body]");
