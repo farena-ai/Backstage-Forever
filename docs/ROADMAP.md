@@ -59,7 +59,15 @@ Acceptance: no routine reload prompt for native progress updates; no stale actio
 
 Acceptance: correct next actions from recorded play scenarios, no repeated reminders or surprise inference costs, cancellation and provider outages leave the local planner working. Measure time to first useful suggestion and recommendation usefulness with players.
 
-## Milestone 0.8: account-wide planning and progression
+## 0.8 Adventure Company: planning foundation
+
+Company brings collected characters, saved ready turn-ins, private goals and preparation facts into one overview. Shared local journeys span characters; player-owned steps and editable quest/dungeon checklists remain useful offline. Steps linked to saved observed quests can retain newly proved completion while respecting baseline, identity, build, repeatable and history-availability boundaries. Merely viewing Company does not change selection or following.
+
+Native Compass gains a quiet low-bag-space cue using existing permitted observations, without notification spam or extra inference. Desktop journeys remain last-saved; a continuous transport or new account login is not implied. Privacy, backup/migration, stale responses, source ownership and orphaned-character steps are release gates.
+
+### Further account-wide progression and data work
+
+The following remain research or later releases; the 0.8 planning foundation does not establish their source coverage or implementation:
 
 - An alt roster showing which character has relevant professions, materials, gear or unfinished goals, limited to verified collected data.
 - Shopping/crafting plans, reagent shortfalls, profession paths and suitable gear-upgrade options with acquisition sources.

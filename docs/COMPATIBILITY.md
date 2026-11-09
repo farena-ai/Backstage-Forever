@@ -2,6 +2,14 @@
 
 Evidence date: **2026-11-09**. Local manual profiles and notes work without a game connection or AI. Automated fixtures establish tested behavior, not live account entitlement or game-client acceptance.
 
+## Adventure Company and shared journeys
+
+0.8 Company uses the characters and observations BF has already collected. It adds no account API, profession/recipe database or continuous desktop feed. Editable templates are player checklists, not class-role assignments, gear scores or dungeon eligibility verdicts. Manual and unknown observations remain distinct from saved game facts.
+
+A tracked quest can gain durable observed completion only from newer, same-identity/build saved evidence relative to its baseline. Ready objectives or removal from the log alone are insufficient. Repeatables already in completed history require a new observed turn-in; missing history can leave progress unconfirmed. Restored backups and removed characters retain honest source/orphan labels. See [Adventure Company](ADVENTURE-COMPANY.md).
+
+The native bag-space cue consumes existing guarded readiness data, adding no new game API. Zero/unavailable capacity produces no warning. Actual 0.8 native rendering and live bag/combat/character transitions still require player-led acceptance in the current client; fixtures are separate evidence.
+
 ## Optional Forever addon
 
 Local files identify product `wowf`, client `1.60.1.70862`, with Interface `16001` evidence in client configuration. The addon declares Interface 16001 and guards public API availability. This is loader/configuration evidence, not proof that the running client loaded every feature successfully.

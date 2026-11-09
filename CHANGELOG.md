@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0 — 2026-11-09
+
+- Added Company, a saved-character overview with source-labelled ready turn-ins, private goals and known preparation facts, preserving deliberate selection/follow behavior and class/faction artwork.
+- Added local cross-character journeys and editable quest-session/dungeon-preparation checklists, with bounded migration, autosave, backup/restore and orphaned-character handling.
+- Linked steps to observed saved quests and retained new compatible completion evidence without treating ready objectives, disappearance, historical repeatable completion or missing data as a new turn-in.
+- Preserved private journey contents outside automatic AI context and protected game-owned evidence from ordinary form saves.
+- Added a quiet live native bag-space cue from existing supported observations, with unavailable/zero-capacity, combat, character/session and layout guards. No gameplay automation, new data source or AI charge is introduced.
+
 ## 0.7.0 — 2026-11-09
 
 - Added a bounded pure native quest planner and offline, source-labelled Lua reference compilation. Current out-of-combat game observations update native guidance without routine reloads or desktop AI.

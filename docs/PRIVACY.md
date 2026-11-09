@@ -36,6 +36,12 @@ Only characters visited with the addon enabled are known. The newest account exp
 
 Model catalogs refresh on startup, connection opening, sign-in, save and manual refresh. These are metadata requests, not inference entitlement probes. ChatGPT's authenticated account catalog controls model visibility; provider API catalogs and Claude CLI initialization are not guarantees of plan entitlement. Catalog failures preserve your selection; no silent paid fallback occurs. Local off-topic gating and the shared WoW specialist policy do not form a perfect semantic classifier. The app has no companion code-execution or game-control tools.
 
+## Shared journeys
+
+Company summaries and shared journeys are local to this Windows account. Journey titles, steps, character assignments, completion baselines and observed proof are readable local JSON with the profiles; they are not encrypted notebooks. Their contents are excluded from automatic AI/public context, along with private character notes and goals. Choosing a template, checking a step or receiving a new saved capture never sends an AI question.
+
+Quest baselines use a local hash of the existing stable addon identity, the client build and saved game evidence. They do not add account authorization or a network feed. Company displays bounded local goal previews but excludes private notes, raw source identities, account paths and provider secrets. Deliberate backup/export includes journeys; import/reset follows the existing confirmation/replacement behavior. Protect these backups. Ordinary form saves cannot manufacture game-owned completion evidence.
+
 ## Automatic saves
 
 Provider/model choices save immediately; text fields, notes and API keys save when focus leaves the field. Unsaved drafts stay in interface memory until saved. API keys use the same encrypted storage and are cleared from visible drafts after successful saving. Save failures remain visible and retryable. Nothing about saving or opening the dashboard submits an AI question.

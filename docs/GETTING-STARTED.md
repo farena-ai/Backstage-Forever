@@ -28,6 +28,12 @@ Character fields and notes also save automatically (text when you leave the fiel
 
 In AI Companion, ask about World of Warcraft: Forever and press Send or Enter. Shift+Enter inserts a newline; input-method composition does not send prematurely. Use my active character starts enabled and shows exactly which bounded public character, quest/objective, XP and recent turn-in details accompany the question. Uncheck it to keep those details out; that choice persists. Notes and goals are excluded from automatic context. Anything you type into the prompt is sent, so do not paste a secret. Replies are plain text and can be wrong. Chat is temporary and is not a saved notebook. No paid question runs automatically in the background.
 
+## Plan across your characters
+
+Open **Company** to see collected characters, saved ready turn-ins, private goals and known preparation facts together. Choose a character deliberately to open their Adventure. Merely browsing Company leaves your current character and following preference alone.
+
+Create a shared journey from a blank plan or an editable quest-session/dungeon-preparation checklist. Add your own steps or pick a character and a quest from its saved log. Manual checks and newly observed game completions receive distinct labels. BF does not infer a turn-in just because a quest disappeared. Everything works without an AI provider; plans stay local and out of automatic AI context. See [Adventure Company](ADVENTURE-COMPANY.md) for repeatable quests, shared steps, reassignment and backups.
+
 ## Backup, restore and deletion
 
 Use the app's backup/export control and choose a file in the native Windows dialog. Store that file somewhere you control; it contains profiles, notes, goals and provider preferences in readable JSON. It does not contain API keys. Import using the app's import control and select a backup. Review the confirmation: importing replaces the app's current state. A malformed file should leave current data intact. A backup is data, never executable code.
