@@ -4,8 +4,33 @@ const { _electron: electron } = require("playwright");
 const assert = require("node:assert/strict"), fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path");
 const { testWindow } = require("./test-window.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
+// A physical click dispatches an async listener; it does not await its returned work.
+async function beginRefresh(page) {
+  await page.evaluate(() => {
+    const original = action;
+    const refresh = window.livingRefreshFixture = { settled: false };
+    action = fn => {
+      action = original;
+      refresh.promise = original(fn);
+      refresh.promise.then(() => { refresh.settled = true; }, () => { refresh.settled = true; });
+      return refresh.promise;
+    };
+  });
+  await page.getByRole("button", { name: "Refresh saved snapshot", exact: true }).click();
+}
+async function finishRefresh(page) {
+  await page.evaluate(async () => {
+    const refresh = window.livingRefreshFixture;
+    if (!refresh?.promise) throw Error("Physical Refresh click did not start its renderer action");
+    let timer;
+    try {
+      await Promise.race([refresh.promise, new Promise((_, reject) => { timer = setTimeout(() => reject(Error("Refresh renderer action did not finish")), 10000); })]);
+    } finally { clearTimeout(timer); }
+  });
+}
 (async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "bf-living-ui-"));
+  const tempRoot = await fs.realpath(os.tmpdir());
+  const dir = await fs.mkdtemp(path.join(tempRoot, "bf-living-ui-"));
   let app;
   try {
     const roots = [path.join(dir, "Fictional Alliance client"), path.join(dir, "Fictional Horde client")];
@@ -112,7 +137,8 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
     await fs.writeFile(file, "BackstageForeverExport = " + JSON.stringify(JSON.stringify({ schema: 1, activeId: characters[0].id, observedAt: now, characters })));
     await app.evaluate(() => { fixture.runtime = "running"; fixture.launchAvailable = true; });
     await page.getByText("Connection checks and tools", { exact: true }).click();
-    await page.getByRole("button", { name: "Refresh saved snapshot", exact: true }).click();
+    await beginRefresh(page);
+    await finishRefresh(page);
     await page.getByText(/Your current Compass may already work/).waitFor();
     await page.getByText("Optional activation during this session", { exact: true }).click();
     const optionalReload = page.getByLabel("Optional game UI reload command", { exact: true });
@@ -150,11 +176,36 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
     assert.equal(snapshot.state.followGameCharacter, true);
     assert.equal(snapshot.state.profiles.find(p => p.id === horde).notes, "Fictional private Horde journal — never share");
     // A real previously prepared folder disappears while its saved journals stay local.
+    await app.evaluate(({ app }) => {
+      const p = process.getBuiltinModule("node:path");
+      const load = process.getBuiltinModule("node:module").createRequire(p.join(app.getAppPath(), "package.json"));
+      const prototype = load("./src/core/game-sync.cjs").GameSync.prototype;
+      const original = prototype.refresh;
+      fixture.restoreRefresh = () => { prototype.refresh = original; };
+      fixture.refreshEntered = new Promise(resolve => { fixture.markRefreshEntered = resolve; });
+      fixture.refreshGate = new Promise(resolve => { fixture.releaseRefresh = resolve; });
+      prototype.refresh = async function (...args) {
+        fixture.markRefreshEntered();
+        await fixture.refreshGate;
+        return original.apply(this, args);
+      };
+    });
     const offlineRoot = roots[1] + ".offline";
     await fs.rename(roots[1], offlineRoot);
     await page.getByRole("button", { name: "Game Connection", exact: true }).click();
     await page.getByText("Connection checks and tools", { exact: true }).click();
-    await page.getByRole("button", { name: "Refresh saved snapshot", exact: true }).click();
+    await beginRefresh(page);
+    await app.evaluate(async () => {
+      let timer;
+      try {
+        await Promise.race([fixture.refreshEntered, new Promise((_, reject) => { timer = setTimeout(() => reject(Error("Refresh did not reach the held filesystem boundary")), 10000); })]);
+      } finally { clearTimeout(timer); }
+    });
+    assert.equal(await page.evaluate(() => window.livingRefreshFixture.settled), false, "Physical click returns while the actual Refresh action is held");
+    assert.equal((await page.evaluate(() => window.backstage.bootstrap())).gameStatus.phase, "synced", "A bootstrap read before Refresh completion still contains the previous status");
+    await app.evaluate(() => fixture.releaseRefresh());
+    await finishRefresh(page);
+    await app.evaluate(() => { fixture.restoreRefresh(); delete fixture.restoreRefresh; delete fixture.releaseRefresh; });
     snapshot = await page.evaluate(() => window.backstage.bootstrap());
     assert.equal(snapshot.gameStatus.connected, true, "Reproduce the preserved connection flag");
     assert.equal(snapshot.gameStatus.addonCurrent, true, "Reproduce the preserved prepared-file flag");
@@ -199,7 +250,8 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
     await fs.writeFile(bad, "This is not a saved export");
     await page.getByRole("button", { name: "Game Connection", exact: true }).click();
     await page.getByText("Connection checks and tools", { exact: true }).click();
-    await page.getByRole("button", { name: "Refresh saved snapshot", exact: true }).click();
+    await beginRefresh(page);
+    await finishRefresh(page);
     await page.locator(".coverage-note").waitFor();
     assert.equal((await page.evaluate(() => window.backstage.bootstrap())).state.profiles.length, 2);
     // One-candidate start repairs automatically. No second snapshot/account gate appears.
@@ -291,7 +343,11 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
     assert.deepEqual(errors, []);
     console.log("PASS: living UI no/one/multiple installs, explicit picker, prepared no-snapshot entry, closed/running/unknown, unavailable-folder loss/restoration/recovery with preserved journals, launch-request semantics, optional activation, cached follow/private journal, partial coverage, timestamp focus preservation, reset/close cancellation, compact keyboard/reduced-motion, fictional faction evidence.");
   } finally {
-    await app?.close();
-    await fs.rm(dir, { recursive: true, force: true });
+    try {
+      if (app) await app.evaluate(() => { fixture.releaseRefresh?.(); fixture.restoreRefresh?.(); }).catch(() => {});
+    } finally {
+      try { await app?.close(); }
+      finally { await fs.rm(dir, { recursive: true, force: true }); }
+    }
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });
