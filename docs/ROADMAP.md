@@ -31,18 +31,19 @@ Acceptance: two characters retain separate correct data and notes across reload/
 
 This is a coverage-limited reference layer, not certification of every quest or a complete prerequisite and travel graph. Next data milestones are:
 
-- Build a licensed, versioned knowledge layer for quests/prerequisites/rewards, NPCs/coordinates, items, spells, class/race differences, professions, vendors and travel.
+- Expand measured quest/NPC coverage across more zones and live client builds; add prerequisite conditions only when their meaning is verified.
+- Extend the licensed reference layer to item acquisition, spells, class/race differences, professions, vendors and travel where suitable sources exist.
 - Prefer supported official game/API data. Evaluate community sources individually for accuracy and licensing; do not copy a guide database or AGPL code into the MIT product by assumption.
 - Every recommendation can show its source, game version, freshness and reason. Separate observed facts from estimates and AI wording. No invented quest chains or coordinates.
-- 0.5 ships source-backed guidance for the observed quest log. Next, validate a small external zone/level knowledge slice, then expand coverage. Offline caches remain useful without a model/provider connection.
-- Introduce a quest-chain graph and route planner respecting actual completed IDs, active objectives, faction/race/class restrictions, level, travel access and user goals.
+- Validate representative guidance against real Forever play, then expand coverage. Offline caches remain useful without a model/provider connection.
+- Extend reported chain links into a route planner that respects verified conditions, actual completed IDs, active objectives, level, travel access and user goals. Do not infer hard prerequisites from correlations.
 
 Acceptance: representative route fixtures cover prerequisites, inaccessible content, missing data, updated quests and both factions. Validate the initial content slice in Forever. Measure dead-end suggestions, factual correctness and coverage before expanding.
 
 ## Milestone 0.7: proactive adventure coach
 
-- A one-click “What should I do next?” action returns a short executable-by-the-player plan: nearby objectives, turn-ins, next destination, why it helps and optional alternatives.
-- Session goals such as “I have 30 minutes,” relaxed exploration, profession progress, dungeon preparation or leveling efficiency influence recommendations.
+- Extend the existing next-step plan with source-backed alternatives for nearby objectives, turn-ins, travel and preparation, explaining why each action helps.
+- Extend existing 15/30/60-minute session preferences with relaxed exploration, profession progress, dungeon preparation and other player-selected goals.
 - Recompute deterministic local plans after a new permitted snapshot. The native addon provides supported out-of-combat progress cues without requiring cloud AI. Desktop plans explicitly retain last-save freshness.
 - Contextual reminders: a ready turn-in, prerequisite satisfied, relevant training, low supplies or gear worth reviewing, only where supported data justifies it. Quiet mode, cooldowns and relevance filters prevent notification spam.
 - Optional persistent per-character conversation/session memory with clear review/delete controls; private journal sharing remains separate and explicit.
