@@ -46,6 +46,12 @@ Company summaries and shared journeys are local to this Windows account. Journey
 
 Quest baselines use a local hash of the existing stable addon identity, the client build and saved game evidence. They do not add account authorization or a network feed. Company displays bounded local goal previews but excludes private notes, raw source identities, account paths and provider secrets. Deliberate backup/export includes journeys; import/reset follows the existing confirmation/replacement behavior. Protect these backups. Ordinary form saves cannot manufacture game-owned completion evidence.
 
+## Portable party plans
+
+A party-plan file is separate from a private profile backup. Its portable content is only the title and step text you review before explicitly saving it. BF does not automatically attach profiles, character/source identifiers, local paths, notes, goals, credentials, saved conversation memory or completion proof. Your own step wording can contain personal information; review every line and edit it before sharing. BF does not claim to recognize or redact arbitrary personal prose automatically.
+
+BF does not upload the file, send messages or connect to a party service. Share it yourself if wanted. Opening an imported file produces a preview only; explicitly adding it creates new local manual, unchecked, unassigned steps with new IDs and no observed quest proof. It does not replace the character roster. Cancelled, invalid or over-capacity imports leave the journal intact.
+
 ## Automatic saves
 
 Provider/model choices save immediately; text fields, notes and API keys save when focus leaves the field. Unsaved drafts stay in interface memory until saved. API keys use the same encrypted storage and are cleared from visible drafts after successful saving. Save failures remain visible and retryable. Nothing about saving or opening the dashboard submits an AI question.
