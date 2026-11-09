@@ -71,6 +71,15 @@ function shortPath(target) {
     await page.waitForFunction(()=>window.summaryActivation.toggles===1);
     assert.equal(await page.locator("[data-director-primary] details").evaluate(node=>node.open),true,"The actual disclosure opens once and remains open after deferred paint");
     assert.equal(await evidenceSummary.evaluate(node=>node===document.activeElement),true,"Native disclosure focus must remain on the corresponding summary");
+    // A settled activation must survive the next ordinary regional and root paints too.
+    await page.evaluate(()=>new Promise(r=>setTimeout(r,30)));
+    await page.evaluate(()=>{guidance={...guidance,director:{...guidance.director,freshness:{message:"Newer ordinary guidance"}}};Director.paint();});
+    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open&&n===document.activeElement),true,"Settled evidence stays open and focused across ordinary guidance paint");
+    await page.evaluate(()=>render());
+    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open&&n===document.activeElement),true,"Settled evidence stays open and focused across root refresh");
+    await page.keyboard.press("Tab");
+    assert.equal(await page.getByLabel("Session length",{exact:true}).evaluate(n=>n===document.activeElement),true,"Tab continues naturally after settled restoration");
+    await evidenceSummary.focus();
     assert.match(await page.locator("[data-director-primary]").innerText(),/Saved game destination.*Game-provided marker/s);
     assert.doesNotMatch(await page.locator("[data-director-primary]").innerText(),/yards|minutes away/);
     // The same release-time restoration also preserves a physical disclosure click.
@@ -81,9 +90,33 @@ function shortPath(target) {
     await page.mouse.up();await page.waitForFunction(()=>window.pointerSummary.toggles===1);
     assert.equal(await page.locator("[data-director-primary] details").evaluate(node=>node.open),false);
     assert.equal(await evidenceSummary.evaluate(node=>node===document.activeElement),true);
+    await page.keyboard.press("Enter");await page.evaluate(()=>new Promise(r=>setTimeout(r,30)));
+    await page.evaluate(async()=>{guidance=await api.guidancePlan(state.activeProfileId,CommandCenter.options(state.activeProfileId));Director.paint();});
+    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open&&n===document.activeElement),true,"Settled Enter disclosure survives an actual ordinary guidance response");
+    await page.evaluate(()=>render());assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open&&n===document.activeElement),true);
+    await evidenceSummary.click();await evidenceSummary.click();await page.evaluate(()=>new Promise(r=>setTimeout(r,30)));
+    await page.evaluate(()=>Director.paint());await page.evaluate(()=>render());
+    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open&&n===document.activeElement),true,"Settled physical click disclosure survives region and root paints");
+    await page.getByLabel("New goal",{exact:true}).focus();await page.evaluate(()=>{Director.paint();render();});
+    assert.equal(await evidenceSummary.evaluate(n=>n===document.activeElement),false,"An ordinary paint never restores older evidence focus over a newer control");
+    await page.evaluate(()=>{window.retainedDirectorGuidance=guidance;guidance={...guidance,director:{...guidance.director,primary:{...guidance.director.primary,questId:909090}}};Director.paint();});
+    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open),false,"A replacement quest receives no obsolete disclosure state");
+    await page.evaluate(()=>{guidance=window.retainedDirectorGuidance;Director.paint();});
+    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open),false,"A removed quest cannot resurrect an older disclosure when it returns");
     // Native keyboard preferences use the one shared control set.
     await page.getByLabel("Session length",{exact:true}).focus();await page.keyboard.press("ArrowDown");await page.keyboard.press("Enter");
     await page.waitForFunction(()=>document.querySelector('[data-plan-option="minutes"]').value==="60");
+    await page.locator('[data-director-primary] summary').waitFor();await evidenceSummary.focus();await page.keyboard.press('Space');
+    await page.evaluate(()=>new Promise(r=>setTimeout(r,30)));
+    await app.evaluate(({ipcMain})=>{const handler=ipcMain._invokeHandlers.get('backstage:guidancePlan');ipcMain.removeHandler('backstage:guidancePlan');ipcMain.handle('backstage:guidancePlan',async(...args)=>{const result=await handler(...args);if(directorUi.holdGuidance)await new Promise(r=>directorUi.releaseGuidance=r);return result;});directorUi.holdGuidance=true;});
+    await page.evaluate(()=>{adventureBrief={...adventureBrief,guidance:{...adventureBrief.guidance,ordinaryRefreshWitness:1}};render();});
+    await untilMain('Boolean(directorUi.releaseGuidance)');
+    assert.equal(await evidenceSummary.count(),1,'Pending same-character/same-options guidance preserves the dated visible evidence');
+    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open&&n===document.activeElement),true);
+    await app.evaluate(()=>{directorUi.holdGuidance=false;directorUi.releaseGuidance();});
+    await page.waitForFunction(()=>document.querySelector('[data-director-primary] summary')===document.activeElement);
+    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open),true,'Settled current guidance retains the same semantic disclosure');
+    console.log('Final R2: settled physical Space/Enter/click, ordinary guidance/root paints, newer focus, replaced quest and same-options held guidance continuity PASS');
     await page.getByLabel("Session length",{exact:true}).selectOption("30");
     await page.waitForFunction(()=>document.querySelectorAll("[data-director-choice]").length===3);
     await app.evaluate(({ipcMain})=>{

@@ -1,13 +1,33 @@
 "use strict";
 window.Director = (() => {
-  let host,guard,generation=0,pending=false,error="",painting=false;
+  let host,guard,generation=0,pending=false,error="",painting=false,view=null,focusRevision=0;
   const active=()=>host?.active();
   const esc=value=>host.esc(value);
-  function invalidate(){generation++;pending=false;error="";guard?.invalidate();}
+  const controls=()=>[...host.root.querySelectorAll('[data-director] summary[data-interaction-key],[data-director] [data-plan-option],[data-director] [data-director-start],[data-director] [data-nav]')];
+  const controlKey=n=>n?.dataset.interactionKey?"summary:"+n.dataset.interactionKey:n?.dataset.planOption?"option:"+n.dataset.planOption:n?.dataset.directorControl?"action:"+n.dataset.directorControl:n?.dataset.nav?"nav:"+n.dataset.nav:null;
+  function beginRender(){
+    const node=host.root.querySelector("[data-director]");
+    view=null;
+    if(active()&&node?.dataset.directorContext===JSON.stringify([host.profileId()??null,generation])){
+      const nodes=controls(),focused=nodes.find(n=>n===document.activeElement);
+      view={generation,profileId:host.profileId(),revision:focusRevision,key:controlKey(focused),disclosures:new Map(nodes.filter(n=>n.tagName==="SUMMARY").map(n=>[controlKey(n),n.parentElement.open]))};
+    }
+    painting=true;
+  }
+  function mounted(){
+    if(!active()||!view||view.generation!==generation||view.profileId!==host.profileId())return;
+    const nodes=controls();
+    for(const n of nodes)if(n.tagName==="SUMMARY"&&view.disclosures.has(controlKey(n)))n.parentElement.open=view.disclosures.get(controlKey(n));
+    if(view.revision!==focusRevision||!view.key)return;
+    const node=nodes.find(n=>controlKey(n)===view.key);
+    if(node&&!node.disabled&&(document.activeElement===document.body||!document.activeElement?.isConnected||document.activeElement===node))node.focus({preventScroll:true});
+  }
+  function endRender(){painting=false;view=null;}
+  function invalidate(){generation++;pending=false;error="";view=null;guard?.invalidate();}
   function paint(){
     if(!active()||guard.defer(paint))return;
     const node=host.root.querySelector("[data-director]");
-    if(node){painting=true;try{node.outerHTML=panel(host.model());}finally{painting=false;}}
+    if(node){beginRender();try{node.outerHTML=panel(host.model());mounted();}finally{endRender();}}
   }
   function destination(choice) {
     if(choice.sourceKind==="reference-clue" && !choice.destination)return "Public NPC mention · location clue only; no destination confirmed.";
@@ -26,8 +46,8 @@ window.Director = (() => {
   }
   function panel(model) {
     const selected=host.options(),available=Boolean(model?.session?.available),primary=model?.primary;
-    const session=`<div class="director-session">${CommandCenter.controls(selected,esc)}<div class="director-action"><button class="primary" data-director-start ${available&&!pending?"":"disabled"}>${pending?"Saving quest session…":"Start quest session"}</button><small>${available?`Tracks up to ${{15:1,30:2,60:3}[selected.minutes]} saved quest choices · opens Company` : "Saved actionable addon quests required"}</small></div></div>`;
-    return `<section class="director" data-director aria-label="Adventure Director"><header class="director-heading"><div><span class="eyebrow">ADVENTURE DIRECTOR · LOCAL, WITHOUT AI</span><h2>${primary?"A direction for your next chapter.":model?.status==="empty"?"Room for a new chapter.":"Your next chapter starts here."}</h2></div><span class="director-compass" aria-hidden="true">✧</span></header>${primary?`<div class="director-choices"><div class="director-main">${choiceCard(primary,true)}${session}</div><div class="director-alternatives">${(model.alternatives||[]).map((c,i)=>choiceCard(c,false,i)).join("")}</div></div>`:`<div class="director-empty"><p>${esc(model?.headline||"Open a character or connect a saved game snapshot to see your next quest choices.")}</p><p>Manual journals and Company plans work offline. Quest choices require a saved addon log; missing observations stay unknown.</p><button data-nav="company">Open Company · plan manually →</button></div>${session}`}${error?`<div class="director-error" role="alert"><p>${esc(error)}</p><button data-director-start>Retry quest session</button></div>`:""}${model?.preparation?`<p class="director-preparation">◈ ${esc(model.preparation.message)}</p>`:""}${model?.privateGoals?.length?`<details class="director-private"><summary data-interaction-key="${esc(JSON.stringify([host.profileId(),"private-goals"]))}">${model.privateGoals.length} private ${model.privateGoals.length===1?"goal":"goals"} · only on this computer</summary><ul>${model.privateGoals.map(g=>`<li>${esc(g.text)}</li>`).join("")}</ul><p>These previews are never added to Explain my plan or tracked quest steps.</p></details>`:""}<p class="director-footnote">${esc(model?.freshness?.message||"Desktop choices reflect your last saved game snapshot.")} You choose every action; session length is a choice limit, not a time estimate.</p></section>`;
+    const session=`<div class="director-session">${CommandCenter.controls(selected,esc)}<div class="director-action"><button class="primary" data-director-start data-director-control="start" ${available&&!pending?"":"disabled"}>${pending?"Saving quest session…":"Start quest session"}</button><small>${available?`Tracks up to ${{15:1,30:2,60:3}[selected.minutes]} saved quest choices · opens Company` : "Saved actionable addon quests required"}</small></div></div>`;
+    return `<section class="director" data-director data-director-context="${esc(JSON.stringify([host.profileId()??null,generation]))}" aria-label="Adventure Director"><header class="director-heading"><div><span class="eyebrow">ADVENTURE DIRECTOR · LOCAL, WITHOUT AI</span><h2>${primary?"A direction for your next chapter.":model?.status==="empty"?"Room for a new chapter.":"Your next chapter starts here."}</h2></div><span class="director-compass" aria-hidden="true">✧</span></header>${primary?`<div class="director-choices"><div class="director-main">${choiceCard(primary,true)}${session}</div><div class="director-alternatives">${(model.alternatives||[]).map((c,i)=>choiceCard(c,false,i)).join("")}</div></div>`:`<div class="director-empty"><p>${esc(model?.headline||"Open a character or connect a saved game snapshot to see your next quest choices.")}</p><p>Manual journals and Company plans work offline. Quest choices require a saved addon log; missing observations stay unknown.</p><button data-nav="company">Open Company · plan manually →</button></div>${session}`}${error?`<div class="director-error" role="alert"><p>${esc(error)}</p><button data-director-start data-director-control="retry">Retry quest session</button></div>`:""}${model?.preparation?`<p class="director-preparation">◈ ${esc(model.preparation.message)}</p>`:""}${model?.privateGoals?.length?`<details class="director-private"><summary data-interaction-key="${esc(JSON.stringify([host.profileId(),"private-goals"]))}">${model.privateGoals.length} private ${model.privateGoals.length===1?"goal":"goals"} · only on this computer</summary><ul>${model.privateGoals.map(g=>`<li>${esc(g.text)}</li>`).join("")}</ul><p>These previews are never added to Explain my plan or tracked quest steps.</p></details>`:""}<p class="director-footnote">${esc(model?.freshness?.message||"Desktop choices reflect your last saved game snapshot.")} You choose every action; session length is a choice limit, not a time estimate.</p></section>`;
   }
   async function start() {
     if(pending||!active()||!host.model()?.session?.available)return;
@@ -45,7 +65,10 @@ window.Director = (() => {
   }
   function init(options) {
     host=options;guard=InteractionGuard.create({root:host.root,active,painting:()=>painting});
+    document.addEventListener("focusin",event=>{if(active()&&!painting&&event.target!==document.body)focusRevision++;});
+    document.addEventListener("pointerdown",()=>{if(active()&&!painting)focusRevision++;},true);
+    document.addEventListener("keydown",event=>{if(active()&&!painting&&event.key==="Tab")focusRevision++;},true);
     host.root.addEventListener("click",event=>{if(event.target.closest("[data-director-start]"))start();});
   }
-  return {init,panel,paint,invalidate,deferRender:callback=>guard?.defer(callback,"root")||false,deferPaint:callback=>guard?.defer(callback,"guidance")||false};
+  return {init,panel,paint,invalidate,beginRender,mounted,endRender,deferRender:callback=>guard?.defer(callback,"root")||false,deferPaint:callback=>guard?.defer(callback,"guidance")||false};
 })();

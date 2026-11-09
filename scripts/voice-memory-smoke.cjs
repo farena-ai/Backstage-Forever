@@ -20,7 +20,7 @@ function shortPath(target) {
     await app.evaluate(({app,dialog,ipcMain})=>{
       const load=process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(),"package.json"));
       const {EventEmitter}=load("node:events"),{PassThrough}=load("node:stream"),{VoiceService}=load("./src/core/voice.cjs");
-      globalThis.voiceUi={commands:[],children:[],asks:0,launches:0,holdPrepare:false,holdList:true,unavailable:false};
+      globalThis.voiceUi={commands:[],children:[],asks:0,launches:0,holdPrepare:false,holdList:true,unavailable:false,holdCapabilities:true};
       load("./src/core/game-runtime.cjs").GameRuntime.prototype.probe=async()=>({state:"not-running",launchAvailable:false});
       load("./src/core/game-runtime.cjs").GameRuntime.prototype.launch=async()=>{voiceUi.launches++;throw Error("Fixture blocks launch");};
       load("./src/core/providers.cjs").models=async()=>[];
@@ -38,6 +38,7 @@ function shortPath(target) {
           if(["listen","speak"].includes(r.command))queueMicrotask(()=>child.send({event:"started"}));
           if(r.command==="cancel"&&!child.unclosed)queueMicrotask(()=>child.emit("exit",0));});voiceUi.children.push(child);return child;};return worker.apply(this,args);};
       dialog.showMessageBox=async()=>({response:1});
+      const capabilities=ipcMain._invokeHandlers.get("backstage:voiceCapabilities");ipcMain.removeHandler("backstage:voiceCapabilities");ipcMain.handle("backstage:voiceCapabilities",async(...args)=>{const result=await capabilities(...args);if(voiceUi.holdCapabilities)await new Promise(r=>voiceUi.releaseCapabilities=r);return result;});
       const start=ipcMain._invokeHandlers.get("backstage:voiceStart");ipcMain.removeHandler("backstage:voiceStart");ipcMain.handle("backstage:voiceStart",async(...args)=>{const result=await start(...args);if(voiceUi.holdAck)await new Promise(r=>voiceUi.releaseAck=r);return result;});
       const preview=ipcMain._invokeHandlers.get("backstage:memoryPreview");ipcMain.removeHandler("backstage:memoryPreview");ipcMain.handle("backstage:memoryPreview",async(...args)=>{const result=await preview(...args);if(voiceUi.holdPreview)await new Promise(r=>(voiceUi.previewReleases??=[]).push(r));return result;});
       const save=ipcMain._invokeHandlers.get("backstage:saveState");ipcMain.removeHandler("backstage:saveState");ipcMain.handle("backstage:saveState",async(...args)=>{const result=await save(...args);if(voiceUi.holdSave)await new Promise(r=>voiceUi.releaseSave=r);return result;});
@@ -47,11 +48,33 @@ function shortPath(target) {
       const speak=ipcMain._invokeHandlers.get("backstage:voiceSpeak");ipcMain.removeHandler("backstage:voiceSpeak");ipcMain.handle("backstage:voiceSpeak",async(...args)=>{voiceUi.speakRequests=(voiceUi.speakRequests||0)+1;const result=await speak(...args);if(voiceUi.holdSpeakAck)await new Promise(r=>voiceUi.releaseSpeakAck=r);return result;});
       const cancel=ipcMain._invokeHandlers.get("backstage:voiceCancel");ipcMain.removeHandler("backstage:voiceCancel");ipcMain.handle("backstage:voiceCancel",async(...args)=>{voiceUi.cancels=(voiceUi.cancels||0)+1;return cancel(...args);});
     });
-    await page.evaluate(()=>localStorage.setItem("bf-setup-v4","complete"));await page.reload();await page.evaluate(()=>{window.confirm=()=>true;});
-    await page.getByRole("button",{name:"AI Companion",exact:true}).click();
+    await page.evaluate(()=>localStorage.setItem("bf-setup-v4","complete"));
     const hold=page.getByRole("button",{name:"Hold to dictate",exact:true}),question=page.getByRole("textbox",{name:"Your question",exact:true});
-    assert.equal(await hold.count(),1,"Explicit graphical hold-to-dictate control is required");
-    await hold.waitFor({state:"visible"});await page.waitForFunction(()=>!document.querySelector("[data-voice-hold]").disabled);
+    for(const scenario of ['unavailable','newer-focus','available']){
+      await app.evaluate((_e,scenario)=>{voiceUi.unavailable=scenario==='unavailable';voiceUi.holdCapabilities=true;voiceUi.releaseCapabilities=null;},scenario);
+      await page.reload();await page.evaluate(()=>{window.confirm=()=>true;});
+      await page.getByRole("button",{name:"AI Companion",exact:true}).click();
+      // Navigation retires Adventure's probe; mounted then starts this composer's first probe.
+      await app.evaluate(async()=>{const end=Date.now()+6000;while(!voiceUi.releaseCapabilities){if(Date.now()>end)throw Error("Adventure capability gate missing");await new Promise(r=>setTimeout(r,10));}voiceUi.releaseCapabilities();voiceUi.releaseCapabilities=null;});
+      await page.waitForFunction(()=>!document.querySelector('[data-voice-check]').disabled);await page.evaluate(()=>Voice.mounted());
+      assert.equal(await hold.count(),1,"Explicit graphical hold-to-dictate control is required");
+      await app.evaluate(async()=>{const end=Date.now()+6000;while(!voiceUi.releaseCapabilities){if(Date.now()>end)throw Error("Initial capability gate missing");await new Promise(r=>setTimeout(r,10));}});
+      await question.fill("Keep this typed question");await question.evaluate(n=>{window.initialQuestion=n;n.focus();n.setSelectionRange(5,9);});
+      if(scenario==='newer-focus')await page.locator('#share-profile').focus();
+      await app.evaluate(()=>{voiceUi.holdCapabilities=false;voiceUi.releaseCapabilities();});
+      await page.waitForFunction(unavailable=>!document.querySelector('[data-voice-check]').disabled&&document.querySelector('[data-voice-culture]').value===(unavailable?'Unavailable':'en-US'),scenario==='unavailable');
+      assert.deepEqual(await question.evaluate(n=>({same:n===window.initialQuestion,value:n.value,focused:n===document.activeElement,start:n.selectionStart,end:n.selectionEnd})),{same:true,value:"Keep this typed question",focused:scenario!=='newer-focus',start:5,end:9},`Initial ${scenario} capability discovery preserves the exact typed draft/range and current focus choice`);
+      if(scenario==='newer-focus')assert.equal(await page.locator('#share-profile').evaluate(n=>n===document.activeElement),true);
+      else {await page.keyboard.type("fresh");assert.equal(await question.inputValue(),"Keep fresh typed question","Physical typing continues in the selected range after discovery");}
+    }
+    // Deliberate dictation uses the exact range retained through initial discovery.
+    await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].focus());
+    await question.evaluate(n=>{n.focus();n.setSelectionRange(5,10);});
+    await hold.scrollIntoViewIfNeeded();const initialPoint=await hold.boundingBox();await page.mouse.move(initialPoint.x+initialPoint.width/2,initialPoint.y+initialPoint.height/2);await page.mouse.down();
+    await page.waitForFunction(()=>document.querySelector('[data-voice]').dataset.phase==='listening');
+    await app.evaluate(()=>voiceUi.children.at(-1).send({event:'hypothesis',text:'reviewed'}));await page.mouse.up();
+    await page.waitForFunction(()=>document.querySelector('[name="prompt"]').value==='Keep reviewed typed question');assert.equal(await app.evaluate(()=>voiceUi.asks),0);
+    console.log('Final R3: held initial unavailable/available capabilities retain exact typed node/text/range/focus, newer focus, continued physical typing and deliberate fake dictation insertion PASS');
     const dictationLanguage=page.getByRole("combobox",{name:"Dictation language",exact:true});
     assert.equal(await dictationLanguage.locator("option:checked").innerText(),"English (United States)","Dictation language needs a friendly public caption");
     assert.equal(await dictationLanguage.locator("option:checked").getAttribute("value"),"en-US","The friendly caption must keep an explicit exact culture value");

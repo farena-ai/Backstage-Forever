@@ -3,6 +3,7 @@ window.Voice = (() => {
   let host, guard, generation=0, statusEpoch=0, capability=null, checking=false, session=null, operation=null, held=null, capture=null, timer=null, finalTimer=null, started=0, separate="", message="", phase="idle", voiceChoice="", cultureChoice="";
   const active=()=>Boolean(host?.active()), esc=value=>host.esc(value), field=()=>host.root.querySelector('#chat-form [name="prompt"]');
   const current=token=>token===generation && active();
+  let painting=false;
   function clearTimers(){statusEpoch++;clearTimeout(timer);clearTimeout(finalTimer);timer=finalTimer=null;}
   function invalidate(){generation++;clearTimers();held=null;capture=null;session=null;operation=null;separate="";phase="idle";message="";guard?.invalidate();void host?.api.voiceCancel().catch(()=>{});}
   function cultureCaption(culture){
@@ -21,7 +22,20 @@ window.Voice = (() => {
     const draft=node.querySelector("[data-voice-draft]");draft.hidden=!separate;draft.querySelector("textarea").value=separate;
     node.querySelectorAll("[data-voice-read]").forEach(n=>n.disabled=!capability?.synthesis?.available||Boolean(held)||host.busy()||!(n.dataset.voiceRead==="plan"?host.plan()?.steps?.length:host.answer()));
   }
-  async function check(){if(checking||!active())return;checking=true;const token=generation;paint();try{const result=await host.api.voiceCapabilities();if(current(token)){capability=result;message=result.message;host.render();}}catch{if(current(token))message="Local voice could not be checked. Keep typing, or check again when ready.";}finally{checking=false;paint();}}
+  function refreshControls(){
+    if(!active()||guard.defer(refreshControls,"capabilities"))return;
+    const node=host.root.querySelector("[data-voice]");if(!node)return;
+    const focused=document.activeElement,attributes=["data-voice-hold","data-voice-culture","data-voice-choice","data-voice-read","data-voice-stop","data-voice-insert","data-voice-check"],key=node.contains(focused)?attributes.find(k=>focused.hasAttribute(k)):null,value=key?focused.getAttribute(key):null;
+    painting=true;
+    try{
+      node.outerHTML=markup(node.querySelector("[data-voice-hold]")?"input":"plan");
+      const replacement=host.root.querySelector("[data-voice]");
+      const target=key?[...replacement.querySelectorAll(`[${key}]`)].find(n=>n.getAttribute(key)===value):null;
+      if(target&&!target.disabled&&(document.activeElement===document.body||document.activeElement===focused))target.focus({preventScroll:true});
+      paint();
+    }finally{painting=false;}
+  }
+  async function check(){if(checking||!active())return;checking=true;const token=generation;paint();try{const result=await host.api.voiceCapabilities();if(current(token)){capability=result;message=result.message;refreshControls();}}catch{if(current(token))message="Local voice could not be checked. Keep typing, or check again when ready.";}finally{checking=false;paint();}}
   function insertDraft(text){if(!text||!capture||capture.applied)return;capture.applied=true;const node=field();if(!node)return;
     if(node.value===capture.value&&capture.value.length-(capture.end-capture.start)+text.length<=12000){node.value=capture.value.slice(0,capture.start)+text+capture.value.slice(capture.end);node.dispatchEvent(new Event("input",{bubbles:true}));node.setSelectionRange(capture.start+text.length,capture.start+text.length);if(document.hasFocus())node.focus({preventScroll:true});}
     else separate=text;
@@ -51,7 +65,7 @@ window.Voice = (() => {
   async function read(kind){if(!active()||!capability?.synthesis?.available||held)return;const text=kind==="plan"?planText():String(host.answer()||"");if(!text)return;if(text.length>4000){message="This answer is longer than local reading allows. Read it on screen.";paint();return;}
     clearTimers();const token=++generation;capture=null;session=null;operation="output";phase="starting";message="Preparing local reading…";paint();try{await host.ready();if(!current(token))return;accept(await host.api.voiceSpeak({profileId:host.profileId()??null,text,voiceId:host.root.querySelector("[data-voice-choice]").value}),token);}catch{if(current(token)){phase="unavailable";message="Local reading is unavailable. The answer remains on screen.";paint();}}
   }
-  function init(value){host=value;guard=InteractionGuard.create({root:host.root,active});
+  function init(value){host=value;guard=InteractionGuard.create({root:host.root,active,painting:()=>painting});
     host.root.addEventListener("pointerdown",e=>{const node=e.target.closest("[data-voice-hold]");if(!node||e.button!==0||node.disabled)return;e.preventDefault();node.setPointerCapture(e.pointerId);void start(node,{pointer:e.pointerId});});
     document.addEventListener("pointerup",e=>{if(held?.pointer===e.pointerId)void stop(true);});
     for(const name of ["pointercancel","lostpointercapture"])host.root.addEventListener(name,e=>{if(held?.pointer===e.pointerId)void stop(true);});

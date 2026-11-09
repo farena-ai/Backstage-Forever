@@ -52,7 +52,7 @@ let setupCandidates = null, setupGeneration = 0, launchBusy = false;
 let adventureBrief = null,
   briefProfileId = null,
   briefEpoch = 0;
-let guidance = null, guidanceProfileId = null, guidanceSignature = "", guidanceEpoch = 0;
+let guidance = null, guidanceProfileId = null, guidanceSignature = "", guidanceContextSignature = "", guidanceEpoch = 0;
 function paintGuidance() {
   if (Director.deferPaint(paintGuidance)) return;
   const region = root.querySelector('[aria-label="Your next steps"]');
@@ -67,11 +67,15 @@ function syncGuidance() {
   if (guidanceProfileId !== selectedId) Director.invalidate();
   const selected = CommandCenter.options(selectedId);
   const brief = briefProfileId === selectedId ? adventureBrief : null;
-  const signature = JSON.stringify([selectedId, selected, brief?.guidance]);
+  const selectedProfile = profile();
+  const context = JSON.stringify([selectedId, selected, selectedProfile?.source?.kind, selectedProfile?.source?.id, selectedProfile?.clientBuild]);
+  const signature = JSON.stringify([context, brief?.guidance]);
   if (signature === guidanceSignature) return;
   guidanceSignature = signature;
   const epoch = ++guidanceEpoch;
-  guidance = null;
+  // Keep the dated current plan readable during an ordinary same-context refresh.
+  if (context !== guidanceContextSignature || !brief) guidance = null;
+  guidanceContextSignature = context;
   guidanceProfileId = selectedId;
   if (!selectedId || !brief) return;
   if (selected.minutes === 30 && selected.focus === "balanced" && brief.guidance) {
@@ -115,6 +119,7 @@ async function refreshBrief() {
   guidance = null;
   guidanceProfileId = selectedId;
   guidanceSignature = "";
+  guidanceContextSignature = "";
   guidanceEpoch++;
   if (!api.adventureBrief || !selectedId) return;
   const [brief, referenceStatus] = await Promise.all([api.adventureBrief(selectedId), api.knowledgeStatus()]);
@@ -474,6 +479,7 @@ function render() {
   Company.beginRender();
   Preparation.beginRender();
   Party.beginRender();
+  Director.beginRender();
   try {
   QuestGuide.sync(profile(), knowledgeStatus);
   syncGuidance();
@@ -514,6 +520,7 @@ function render() {
   Company.mounted();
   Preparation.mounted();
   Party.mounted();
+  Director.mounted();
   Voice.mounted();
   Memory.mounted();
   if (focusedOption) root.querySelector(`[data-plan-option="${focusedOption}"]`)?.focus();
@@ -522,6 +529,7 @@ function render() {
     Company.endRender();
     Preparation.endRender();
   Party.endRender();
+    Director.endRender();
   }
 }
 function classKey(className) {
@@ -976,6 +984,7 @@ Party.init({
   character: () => profile(), profileId: () => state?.activeProfileId,
   active: () => page === "party" && !setupOpen && Boolean(state?.onboarded),
   sourceSignature: () => JSON.stringify([state?.provider,state?.profiles.map(p=>[p.id,p.source,p.readiness,p.name,p.className,p.faction])]),
+  contextSignature: () => { const p=profile();return JSON.stringify([state?.provider,p?.id,p?.source?.kind,p?.source?.id,p?.clientBuild,p?.name,p?.realm,p?.className,p?.faction]); },
   epoch: () => stateMutationEpoch, ready: () => autosaveQueue,
   cancelPreview: () => { companionReady=api.companionContext({profileId:state.activeProfileId??null,view:companionView()});companionReady.catch(()=>{}); },
   cleanError: e => String(e?.message||"").replace(/^Error invoking remote method '[^']+': Error: /,""),
