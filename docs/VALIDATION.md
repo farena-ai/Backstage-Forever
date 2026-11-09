@@ -1,5 +1,15 @@
 # Validation — November 9, 2026
 
+## Final 0.8.0 local release gates
+
+The complete final unit/runtime suite passed **324/324**, with zero failures, cancellations or skips, both normally and under a distinct genuine Windows 8.3 temporary-root alias. Alias device/inode equality was verified. The four task reviews returned specification PASS and quality APPROVE after the documented Company fixes. Native/resource coverage passed 72/72; offline reference reproduction remains unchanged. Current dependency audit reports zero vulnerabilities.
+
+All **ten** source Electron flows passed normally and under that real short-path temporary root: UI, setup, autosave, integration, living backend, living setup, Company backend, Company UI, command center and Quest Guide. This is in addition to offline native reference reproduction. The final fictional 0.8 Company viewport was inspected and promoted to the README; no player data or test sentinel is shown in that public preview.
+
+A fresh Windows NSIS/unpacked build passed actual packaged acceptance normally and under the short-path temporary root: **45 source/data/key files** match byte-for-byte, the offline quest reference and bundled SDK load, and all **five addon files** are installed/read back and automatically repaired at restart while unrelated files survive. These checks use isolated synthetic data; they do not execute the installer or certify actual self-upgrade/native game rendering. Windows publisher signing remains separate from pinned signed-update integrity.
+
+Final whole-branch review, public CI publication and independent public download authentication follow these local gates; their measured results accompany the release deliverables. The desktop still uses last-saved observations, native cues use supported current game observations, and actual in-client/installed-upgrade/live-provider acceptance remains player-led.
+
 ## 0.8 journey, Company and interface checkpoints
 
 The journey-core checkpoint passed **310/310 unit tests**, zero failures or skips, with an actual Windows 8.3 Store roundtrip. Strict optional-state migration, bounded plans/steps, immutable input actions, saved-game clock/source/build baselines, repeatables, unavailable history, future turn-ins, orphan assignment, durable first-proof retention and explicit import/reset replacement have fixture coverage. Membership checks reuse per-profile evidence and sorted IDs rather than copying histories into every step. Independent task review returned specification PASS and quality APPROVE with no findings.
