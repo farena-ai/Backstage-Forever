@@ -33,6 +33,9 @@ const { testWindow } = require('./test-window.cjs');
     app = await electron.launch({args:[path.join(__dirname,'..')],env:{...process.env,BF_USER_DATA:data}});
     page = await testWindow(app);
     await app.evaluate(({ipcMain})=>{globalThis.commandAIRequests=0;ipcMain.removeHandler('backstage:ask');ipcMain.handle('backstage:ask',()=>{globalThis.commandAIRequests++;throw Error('Fixture blocks inference');});});
+    // Re-establish fixture onboarding after the forced test-process restart.
+    await page.evaluate(()=>localStorage.setItem('bf-setup-v4','complete'));
+    await page.reload();
     await page.getByRole('heading',{name:'Aeralyn',exact:true}).waitFor({timeout:5000});
     const repaired=await page.evaluate(()=>window.backstage.bootstrap());
     assert.equal(repaired.state.activeProfileId,repaired.state.profiles[0].id,'Bootstrap must give Adventure a real selected profile');
