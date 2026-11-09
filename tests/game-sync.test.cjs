@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
+const captureVersion = require("../package.json").version;
 const { GameSync, parseSavedVariables } = require("../src/core/game-sync.cjs");
 const snapshot = () => ({
   schema: 1,
@@ -431,13 +432,13 @@ test("all accounts merge newest per-character records and retain good data throu
   await fs.mkdir(path.dirname(other),{recursive:true});
   const a=snapshot(),b=snapshot();
   a.observedAt=1700000300;a.characters[0].updatedAt=1700000200;a.characters[0].captureVersion="0.6.1";
-  b.observedAt=1700000400;b.activeId="Player-two";b.characters=[{...b.characters[0],id:"Player-two",name:"Second",captureVersion:"0.7.0",updatedAt:1700000100},{...a.characters[0],level:13,updatedAt:1700000300}];
+  b.observedAt=1700000400;b.activeId="Player-two";b.characters=[{...b.characters[0],id:"Player-two",name:"Second",captureVersion,updatedAt:1700000100},{...a.characters[0],level:13,updatedAt:1700000300}];
   a.characters.push({...a.characters[0],id:"Player-first-account-only",name:"Only first account"});
   await fs.writeFile(f.file,saved(a));await fs.writeFile(other,saved(b));
   const sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:path.join(__dirname,"../addon/BackstageForever"),onSnapshot:s=>events.push(s),runtime:{probe:async()=>({state:"running",checkedAt:"2026-01-01T00:00:00.000Z",launchAvailable:true})}});t.after(()=>sync.close());
   await sync.prepare(f.root);
   assert.equal(events.length,1);assert.equal(events[0].characters.length,3);assert.equal(events[0].characters.find(c=>c.name==="Example").level,13);
-  assert.equal(sync.status().loadedCaptureVersion,"0.7.0");assert.equal(sync.status().runtime.state,"running");assert.equal(sync.status().companionState,"saved");
+  assert.equal(sync.status().loadedCaptureVersion,captureVersion);assert.equal(sync.status().runtime.state,"running");assert.equal(sync.status().companionState,"saved");
   await sync.refresh();assert.equal(events.length,1);
   await fs.writeFile(other,"partial");await sync.refresh();
   assert.equal(sync.status().characterCount,3);assert.equal(sync.status().coverage.partial,true);assert.equal(sync.status().coverage.unreadableAccountCount,1);assert.equal(events.length,1);

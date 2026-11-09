@@ -28,7 +28,7 @@ C_Map={CanSetUserWaypointOnMap=function()return true end,SetUserWaypoint=functio
 UiMapPoint={CreateFromCoordinates=function(map,x,y)return {map=map,x=x,y=y}end}
 dofile('addon/BackstageForever/BackstageForever.lua');handler(nil,'PLAYER_LOGIN')
 assert(BackstageForeverExport:find('"clientBuild":"1.60.1.70862"',1,true))
-assert(BackstageForeverExport:find('"captureVersion":"0.7.0"',1,true))
+assert(BackstageForeverExport:find('"captureVersion":"${require("../package.json").version}"',1,true))
 assert(BackstageForeverExport:find('"completedIds":[5729,5730]',1,true))
 assert(BackstageForeverExport:find('"completedIdsKnown":true',1,true))
 assert(BackstageForeverExport:find('"required":1',1,true))

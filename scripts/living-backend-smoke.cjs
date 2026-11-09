@@ -31,7 +31,7 @@ const { testWindow }=require("./test-window.cjs");
     snapshot=await page.evaluate(()=>window.backstage.launchGame());assert.equal(snapshot.launchResult.state,"requested");assert.equal(snapshot.gameStatus.loadedCaptureVersion,null);assert.equal(await app.evaluate(()=>fixture.launches),1);
     const account=path.join(roots[0],"WTF","Account","SyntheticAccount","SavedVariables","BackstageForever.lua");await fs.mkdir(path.dirname(account),{recursive:true});
     const save=(observedAt,activeId,characters)=>"BackstageForeverExport = "+JSON.stringify(JSON.stringify({schema:1,observedAt,activeId,characters}));
-    const c=(id,level,updatedAt)=>({id,name:id,realm:"Synthetic Realm",className:"Mage",level,updatedAt,captureVersion:"0.7.0"});
+    const c=(id,level,updatedAt)=>({id,name:id,realm:"Synthetic Realm",className:"Mage",level,updatedAt,captureVersion:require("../package.json").version});
     await fs.writeFile(account,save(1794182400,"a",[c("a",10,1794182400),c("b",10,1794182200)]));
     snapshot=await page.evaluate(()=>window.backstage.refreshGame());
     const a=snapshot.state.profiles.find(p=>p.name==="a"),b=snapshot.state.profiles.find(p=>p.name==="b");assert.equal(snapshot.state.activeProfileId,a.id);
