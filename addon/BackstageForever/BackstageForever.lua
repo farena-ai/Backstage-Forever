@@ -59,7 +59,7 @@ local function decode(s)
         error('unfinished')
     end
     parse=function(depth)
-        count=count+1;if count>200000 or depth>8 then error('limit') end
+        count=count+1;if count>200000 or depth>12 then error('limit') end
         space(); local c=s:sub(i,i)
         if c=='"' then return stringValue() end
         if c=='{' or c=='[' then
@@ -167,7 +167,7 @@ local function progress()
     if not current or not max or current>max then return nil end
     return {current=current,max=max,rested=integer(call(GetXPExhaustion),0,2147483647)}
 end
--- Equipment IDs only; never read bag contents, links, money or account storage.
+-- Equipment IDs only. Carried materials below read bags 0-4; no links, money or account storage.
 local function equipment()
     if type(public(GetInventoryItemID))~='function' then return nil end
     local result=array({})
@@ -208,10 +208,213 @@ local function optional(fn)
     captureIssue=prior or failed
     if ok then return value end
 end
-local function readiness()
+-- A nil item slot is empty only after a successful public API read.
+local function observed(fn,...)
+    local prior=captureIssue;captureIssue=false
+    local value=call(fn,...)
+    local valid=type(fn)=='function' and not captureIssue
+    captureIssue=prior or captureIssue
+    return value,valid
+end
+local function feature(api,key)
+    local prior=captureIssue;captureIssue=false
+    local fn=field(api,key)
+    local valid=not captureIssue and (fn==nil or type(fn)=='function')
+    captureIssue=prior or not valid
+    return fn,valid
+end
+local function label(value)
+    local text=clean(value,200)
+    if text and text:find('%S') then return text end
+end
+local function clock()
+    return integer(call(time),0,253402300799)
+end
+-- Bound both table traversal and indexed reads; sparse/oversized lists stay partial.
+local function sequence(raw,limit)
+    if type(public(raw))~='table' then return nil,false end
+    local count,highest=0,0;local complete=true
+    for k in pairs(raw) do
+        count=count+1
+        if count>limit then complete=false;break end
+        k=integer(k,1,limit)
+        if not k then complete=false else highest=math.max(highest,k) end
+    end
+    if count~=highest then complete=false end
+    local result=array({})
+    for i=1,math.min(highest,limit) do
+        local value=field(raw,i)
+        if value==nil then complete=false else result[#result+1]=value end
+    end
+    return result,complete
+end
+local function professions()
+    local skills=public(C_SkillInfo);local trade=public(C_TradeSkillUI)
+    local count=integer(call(field(skills,'GetNumSkillLines')),0,2147483647)
+    if not count or type(field(skills,'GetSkillLineInfo'))~='function' or type(field(trade,'GetProfessionInfoBySkillLineID'))~='function' then return nil end
+    local result={items=array({}),complete=count<=100};local seenSkill,seenProfession={},{}
+    for index=1,math.min(count,100) do
+        local info=call(field(skills,'GetSkillLineInfo'),index)
+        local header=field(info,'isHeader')
+        if header==true then
+            if field(info,'isCollapsed')~=false then result.complete=false end
+        elseif header==false then
+            local id=integer(field(info,'skillID'),1,2147483647)
+            local meta,ok
+            if id then meta,ok=observed(field(trade,'GetProfessionInfoBySkillLineID'),id) end
+            local profession=integer(field(meta,'professionID'),1,2147483647)
+            if profession then
+                local name=label(field(info,'name'));local rank=integer(field(info,'rank'),0,10000);local max=integer(field(info,'maxRank'),0,10000)
+                if not name or not rank or not max or rank>max or seenSkill[id] or seenProfession[profession] or #result.items>=20 then result.complete=false
+                else
+                    seenSkill[id]=true;seenProfession[profession]=true
+                    result.items[#result.items+1]={skillLineId=id,professionId=profession,name=name,rank=rank,maxRank=max}
+                end
+            elseif not ok or integer(field(meta,'professionID'),0,2147483647)~=0 then result.complete=false end
+        else result.complete=false end
+    end
+    result.observedAt=clock()
+    if result.observedAt then return result end
+end
+local function recipeRequirements(trade,id,recipe)
+    local schematic=call(field(trade,'GetRecipeSchematic'),id,false)
+    if integer(field(schematic,'recipeID'),1,2147483647)~=id or field(schematic,'isRecraft')~=false then return end
+    recipe.outputItemId=integer(field(schematic,'outputItemID'),1,2147483647)
+    local min=integer(field(schematic,'quantityMin'),1,10000);local max=integer(field(schematic,'quantityMax'),1,10000)
+    if not min or not max or min<=max then recipe.outputMin=min;recipe.outputMax=max end
+    local slots,complete=sequence(field(schematic,'reagentSlotSchematics'),20)
+    if not slots or not complete then return end
+    local basic=integer(field(field(public(Enum),'CraftingReagentType'),'Basic'),0,2147483647)
+    local itemType=integer(field(field(public(Enum),'TradeskillSlotDataType'),'Reagent'),0,2147483647)
+    local reagents=array({});local byId={}
+    for _,slot in ipairs(slots) do
+        local required=field(slot,'required')
+        if required~=false then
+            if required~=true or not basic or not itemType or field(slot,'reagentType')~=basic or field(slot,'dataSlotType')~=itemType then return end
+            local variables,variablesComplete=sequence(field(slot,'variableQuantities'),1)
+            local alternatives,alternativesComplete=sequence(field(slot,'reagents'),1)
+            local quantity=integer(field(slot,'quantityRequired'),1,100000)
+            if not variables or not variablesComplete or #variables~=0 or not alternatives or not alternativesComplete or #alternatives~=1 or not quantity then return end
+            local item=alternatives[1];local itemId=integer(field(item,'itemID'),1,2147483647)
+            if not itemId or field(item,'currencyID')~=nil then return end
+            if byId[itemId] then
+                local total=byId[itemId].required+quantity
+                if total>100000 then return end
+                byId[itemId].required=total
+            else
+                local reagent={itemId=itemId,required=quantity,name=label(call(field(public(C_Item),'GetItemNameByID'),itemId))}
+                reagents[#reagents+1]=reagent;byId[itemId]=reagent
+            end
+        end
+    end
+    recipe.reagentsKnown=true;recipe.reagents=reagents
+end
+local function recipes(owned)
+    if not owned then return nil end
+    local trade=public(C_TradeSkillUI)
+    if type(field(trade,'GetProfessionSpells'))~='function' or type(field(trade,'GetRecipeInfo'))~='function' then return nil end
+    local result={items=array({}),complete=owned.complete};local blocked=false
+    -- These view indicators vary between clients. Never confuse guild-system
+    -- availability with viewing another player's or guild's recipe source.
+    for _,key in ipairs({'IsTradeSkillLinked','IsTradeSkillGuild','IsNPCCrafting'}) do
+        local prior=captureIssue;captureIssue=false
+        local fn=field(trade,key)
+        if fn==nil then
+            if key=='IsTradeSkillLinked' then fn=public(IsTradeSkillLinked)
+            elseif key=='IsTradeSkillGuild' then fn=public(IsTradeSkillGuild) end
+        end
+        if captureIssue or (fn~=nil and type(fn)~='function') then blocked=true;result.complete=false end
+        captureIssue=prior or captureIssue
+        if type(fn)=='function' then
+            local value,ok=observed(fn)
+            if not ok or value~=false then blocked=true;result.complete=false end
+        end
+    end
+    -- No assumption about the numeric meaning of a source-filter enum. Without
+    -- a verified unfiltered state, positive owned facts may be retained, not full coverage.
+    local filter,filterKnown=feature(trade,'GetSourceTypeFilter')
+    if not filterKnown or filter~=nil then result.complete=false end
+    local seen,queried={},0
+    if not blocked then for _,profession in ipairs(owned.items) do
+        local spells,ok=observed(field(trade,'GetProfessionSpells'),profession.professionId,profession.skillLineId)
+        local ids,complete=sequence(spells,100-queried)
+        if not ok or not ids or not complete then result.complete=false end
+        if ids then for _,raw in ipairs(ids) do
+            queried=queried+1
+            local id=integer(raw,1,2147483647)
+            if not id or seen[id] then result.complete=false
+            else
+                seen[id]=true
+                local info,read=observed(field(trade,'GetRecipeInfo'),id)
+                if not read then result.complete=false
+                elseif info~=nil then
+                    local learned=field(info,'learned')
+                    if learned==true then
+                        local name=label(field(info,'name'))
+                        local matches=integer(field(info,'recipeID'),1,2147483647)==id
+                        local inLine,lineKnown=feature(trade,'IsRecipeInSkillLine')
+                        if not lineKnown or (inLine~=nil and call(inLine,id,profession.skillLineId)~=true) then matches=false end
+                        local professionLearned,professionKnown=feature(trade,'IsRecipeProfessionLearned')
+                        if not professionKnown or (professionLearned~=nil and call(professionLearned,id)~=true) then matches=false end
+                        if matches and name then
+                            local recipe={id=id,skillLineId=profession.skillLineId,name=name,reagentsKnown=false,reagents=array({})}
+                            local skillUp=field(info,'canSkillUp');if type(skillUp)=='boolean' then recipe.canSkillUp=skillUp end
+                            optional(function()recipeRequirements(trade,id,recipe)end)
+                            result.items[#result.items+1]=recipe
+                        else result.complete=false end
+                    elseif learned~=false then result.complete=false end
+                end
+            end
+        end end
+    end end
+    result.observedAt=clock()
+    if result.observedAt then return result end
+end
+local function materials()
+    local api=public(C_Container)
+    if type(field(api,'GetContainerNumSlots'))~='function' or type(field(api,'GetContainerItemInfo'))~='function' then return nil end
+    local result={complete=true,scope='bags-0-4',items=array({})};local slots,total=0,0;local byId={}
+    for bag=0,4 do
+        local count=integer(call(field(api,'GetContainerNumSlots'),bag),0,2147483647)
+        if not count then result.complete=false
+        else
+            total=total+count
+            if count>256-slots then result.complete=false end
+            for slot=1,math.min(count,256-slots) do
+                slots=slots+1
+                local info,ok=observed(field(api,'GetContainerItemInfo'),bag,slot)
+                if not ok then result.complete=false
+                elseif info~=nil then
+                    local id=integer(field(info,'itemID'),1,2147483647);local n=integer(field(info,'stackCount'),1,1000000)
+                    if not id or not n then result.complete=false
+                    elseif byId[id] then
+                        if byId[id].count+n>1000000 then result.complete=false else byId[id].count=byId[id].count+n end
+                    elseif #result.items>=256 then result.complete=false
+                    else
+                        local item={itemId=id,count=n,name=label(field(info,'itemName'))}
+                        byId[id]=item;result.items[#result.items+1]=item
+                    end
+                end
+            end
+        end
+    end
+    if total==0 then result.complete=false end
+    table.sort(result.items,function(a,b)return a.itemId<b.itemId end)
+    result.observedAt=clock()
+    if result.observedAt then return result end
+end
+local workshopCache
+local function readiness(guid,build)
     local gear=optional(equipment)
     local space=optional(bags)
-    if gear~=nil or space~=nil then return {equipment=gear,bags=space} end
+    if not workshopCache or workshopCache.guid~=guid or workshopCache.build~=build then
+        local owned=optional(professions)
+        workshopCache={guid=guid,build=build,professions=owned,recipes=optional(function()return recipes(owned)end)}
+    end
+    local carried=optional(materials)
+    local workshop
+    if workshopCache.professions or workshopCache.recipes or carried then workshop={professions=workshopCache.professions,recipes=workshopCache.recipes,materials=carried} end
+    if gear~=nil or space~=nil or workshop then return {equipment=gear,bags=space,workshop=workshop} end
 end
 local roster={}
 local function capture(event,eventId)
@@ -261,7 +464,14 @@ local function capture(event,eventId)
     history.completedIdsKnown=completed~=nil
     if completed then history.completedCount=#completed;history.completedIds=completed end
     character.history=history
-    character.quests=optional(quests);character.progress=optional(progress);character.readiness=optional(readiness)
+    character.quests=optional(quests);character.progress=optional(progress)
+    character.readiness=optional(function()return readiness(guid,character.clientBuild)end)
+    -- Collection may cross a clock second. Cached recipes keep their own date.
+    now=math.max(now,clock() or now)
+    if character.readiness and character.readiness.workshop then
+        for _,collection in pairs(character.readiness.workshop) do now=math.max(now,collection.observedAt) end
+    end
+    character.updatedAt=now
     if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character) end
     roster[guid]=character
     local chars=array({});for _,c in pairs(roster) do chars[#chars+1]=c end
@@ -270,7 +480,16 @@ local function capture(event,eventId)
     local payload={schema=1,characters=chars,activeId=guid,observedAt=now}
     local encoded=encode(payload)
     local encodedLength=#encoded
-    -- Retain identities while shedding the oldest optional detail first.
+    -- Workshop is optional: shed it across the roster before older quest/XP/history.
+    for i=#chars,1,-1 do
+        if encodedLength<1048576 then break end
+        local ready=chars[i].readiness
+        if ready and ready.workshop then
+            local before=#encode(chars[i]);ready.workshop=nil
+            encodedLength=encodedLength-before+#encode(chars[i])
+        end
+    end
+    -- Retain identities while shedding the oldest remaining optional detail first.
     for i=#chars,1,-1 do
         if encodedLength<1048576 then break end
         local before=#encode(chars[i])
@@ -317,6 +536,7 @@ if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
     local loggedIn,generation,pending=false,0,nil
     local immediate={PLAYER_LOGIN=true,PLAYER_ENTERING_WORLD=true,PLAYER_LEVEL_UP=true,QUEST_TURNED_IN=true,PLAYER_REGEN_ENABLED=true}
+    local workshopDirty={SKILL_LINES_CHANGED=true,NEW_RECIPE_LEARNED=true,TRADE_SKILL_LIST_UPDATE=true,TRADE_SKILL_DETAILS_UPDATE=true,TRADE_SKILL_DATA_SOURCE_CHANGED=true,TRADE_SKILL_DATA_SOURCE_CHANGING=true,TRADE_SKILL_SHOW=true,TRADE_SKILL_CLOSE=true}
     local function refresh(event,eventId)
         if not loggedIn then return end
         captureIssue=false
@@ -326,10 +546,12 @@ if type(CreateFrame)=='function' then
         end
     end
     for _,event in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_LEVEL_UP','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LOGOUT','QUEST_LOG_UPDATE','QUEST_ACCEPTED','QUEST_TURNED_IN','UNIT_QUEST_LOG_CHANGED','PLAYER_XP_UPDATE','UPDATE_EXHAUSTION','PLAYER_EQUIPMENT_CHANGED','BAG_UPDATE_DELAYED','GET_ITEM_INFO_RECEIVED','PLAYER_STOPPED_MOVING'}) do pcall(frame.RegisterEvent,frame,event) end
+    for event in pairs(workshopDirty) do pcall(frame.RegisterEvent,frame,event) end
     frame:SetScript('OnEvent',function(_,event,eventId)
         -- Logout APIs may already be torn down; persist the last prepared export.
         if event=='PLAYER_LOGOUT' or event=='PLAYER_LOGIN' then
             generation=generation+1;pending=nil;loggedIn=false
+            workshopCache=nil
             if type(BackstageForeverHUDSession)=='function' then pcall(BackstageForeverHUDSession,event) end
         end
         if event=='PLAYER_LOGOUT' then return end
@@ -344,6 +566,7 @@ if type(CreateFrame)=='function' then
         end
         -- Startup events must not replace the saved roster before it is restored.
         if not loggedIn then return end
+        if workshopDirty[event] then workshopCache=nil end
         if immediate[event] then pending=nil;refresh(event,public(eventId));return end
         local after=field(public(C_Timer),'After')
         if type(after)~='function' then refresh(event,public(eventId));return end
