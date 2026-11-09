@@ -123,6 +123,12 @@ const { testWindow } = require("./test-window.cjs");
         .evaluate((node) => node.value),
       25,
     );
+    for (const section of ["Adventure", "Characters", "AI Companion", "Game Connection", "Connections", "Field Guide", "Updates"]) {
+      await page.getByRole("button", { name: section, exact: true }).click();
+      assert.equal(await page.locator(".companion-dock").count(), 0,
+        `Successful setup must not show a repeated banner on ${section}`);
+    }
+    await page.getByRole("button", { name: "Adventure", exact: true }).click();
     await page
       .getByRole("button", { name: "Plan my next quest", exact: true })
       .click();

@@ -300,6 +300,7 @@ function setupJourney() {
     </section></main>`;
 }
 function setupDock() {
+  if (setupReady()) return "";
   return `<div class="companion-dock"><span class="companion-gem" aria-hidden="true">✧</span><span><strong>${setupReady() ? "Companion ready" : "Finish your companion setup"}</strong><br>${esc(gameStatus.nextAction?.detail || (gameStatus.addonCurrent ? "Load your character in WoW, then /reload or log out." : "Find your game and prepare the addon."))}</span><button data-command="setup-open">Companion setup</button></div>`;
 }
 const reloadHint =
