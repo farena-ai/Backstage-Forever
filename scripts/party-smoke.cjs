@@ -4,6 +4,7 @@ const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
 const { assertSelectContrast } = require("./select-contrast.cjs");
 const { testWindow } = require("./test-window.cjs");
+const {selectCurrentText}=require("./selection-fixture.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 const { serializePartyPlan } = require("../src/core/party.cjs");
 function shortPath(target) {
@@ -118,12 +119,12 @@ function shortPath(target) {
     // A facts read also cannot erase a newer editor validation error or its focused recovery.
     await page.getByLabel('Portable plan title',{exact:true}).fill('');await page.getByRole('button',{name:'Save reviewed plan file',exact:true}).focus();await page.keyboard.press('Space');await page.getByRole('alert').filter({hasText:'nonblank'}).waitFor();await app.evaluate(()=>{partyFixture.holdRead=false;partyFixture.readers.splice(0).forEach(r=>r());});await page.waitForFunction(()=>!document.querySelector('[data-party-create]')?.disabled);assert.equal(await page.getByRole('alert').filter({hasText:'nonblank'}).count(),1);assert.equal(await page.getByLabel('Portable plan title',{exact:true}).inputValue(),'');assert.equal(await page.getByRole('button',{name:'Save reviewed plan file',exact:true}).evaluate(n=>n===document.activeElement),true);
     const inert='<img src=x onerror="window.PARTY_EXECUTED=true"> $() https://example.invalid';await page.getByLabel('Portable step 1',{exact:true}).fill(inert);await page.getByLabel('Portable plan title',{exact:true}).fill('Reviewed expedition');
-    const step=page.getByLabel('Portable step 1',{exact:true});await step.evaluate(n=>{window.heldPartyDraft=n;n.focus();n.setSelectionRange(2,9);});await page.evaluate(()=>render());assert.equal(await step.inputValue(),inert);assert.deepEqual(await step.evaluate(n=>[n.selectionStart,n.selectionEnd]),[2,9]);assert.equal(await page.evaluate(()=>window.PARTY_EXECUTED),undefined);assert.equal(await page.locator('[data-party-editor] img').count(),0);await capture('review-preview');
+    const step=page.getByLabel('Portable step 1',{exact:true});await selectCurrentText(page,{selector:'[data-party-field="0"]',value:inert,start:2,end:9,focus:true,capture:'heldPartyDraft'});await page.evaluate(()=>render());assert.equal(await step.inputValue(),inert);assert.deepEqual(await page.evaluate(()=>{const n=document.querySelector('[data-party-field="0"]');return [n.value,n===document.activeElement,n.selectionStart,n.selectionEnd];}),[inert,true,2,9]);assert.equal(await page.evaluate(()=>window.PARTY_EXECUTED),undefined);assert.equal(await page.locator('[data-party-editor] img').count(),0);await capture('review-preview');
     for(const id of ['Alpha','Beta']){
       await refreshFacts(id);
       assert.equal(await page.locator('[data-party-editor]').count(),1,'Ordinary facts must keep the reviewed portable editor');
       assert.equal(await step.inputValue(),inert);assert.equal(await page.getByLabel('Portable plan title',{exact:true}).inputValue(),'Reviewed expedition');
-      assert.deepEqual(await step.evaluate(n=>[n===document.activeElement,n.selectionStart,n.selectionEnd]),[true,2,9]);
+      assert.deepEqual(await page.evaluate(()=>{const n=document.querySelector('[data-party-field="0"]');return [n.value,n===document.activeElement,n.selectionStart,n.selectionEnd];}),[inert,true,2,9]);
       assert.match(await page.locator('.party-facts').innerText(),/7 \/ 20 slots free/,'Fresh facts still paint beside the retained editor');
     }
     console.log('Final R1: ordinary selected/unrelated facts preserve dirty portable title/step, exact focus/range and editor; current held preview survives with fresh facts PASS');

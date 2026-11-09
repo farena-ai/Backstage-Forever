@@ -5,6 +5,7 @@ const fs = require("node:fs/promises"),
   assert = require("node:assert/strict");
 const { _electron: electron } = require("playwright");
 const { testWindow } = require("./test-window.cjs");
+const {selectCurrentText}=require("./selection-fixture.cjs");
 function currentQuestPaint({ id, previous }) {
   const detail = document.querySelector(`[data-quest-control="detail:${id}"]`);
   const row = document.querySelector(`.quest-ledger-row[data-quest-id="${id}"]`);
@@ -517,7 +518,7 @@ function shortPath(target){
     assert.equal(await page.evaluate(()=>document.querySelector('[data-shell-control="nav:quest-guide"]')===document.activeElement),true,'Navigation focus keeps semantic ownership through source/root paints');
     await previousNav.dispose();
     console.log('PASS: held real save acknowledgement replaces the obsolete navigation node; current semantic navigation focus remains exact.');
-    await search.fill('Hidden');await search.evaluate(n=>n.setSelectionRange(2,4));await page.evaluate(()=>render());assert.equal(await search.inputValue(),'Hidden');assert.deepEqual(await search.evaluate(n=>[n.selectionStart,n.selectionEnd]),[2,4]);assert.equal(await page.evaluate(()=>document.querySelector('#quest-search')===document.activeElement),true);
+    await search.fill('Hidden');await selectCurrentText(page,{selector:'#quest-search',value:'Hidden',start:2,end:4});await page.evaluate(()=>render());assert.equal(await search.inputValue(),'Hidden');assert.deepEqual(await page.evaluate(()=>{const n=document.querySelector('#quest-search');return [n.value,n===document.activeElement,n.selectionStart,n.selectionEnd];}),['Hidden',true,2,4]);assert.equal(await page.evaluate(()=>document.querySelector('#quest-search')===document.activeElement),true);
     await search.fill('');await openQuestAndWait(5730);
     // A real ready phase uses the compatible turn-in observation, not an objective clue.
     characters[1].quests.find(q=>q.id===5730).complete=true;characters[1].updatedAt+=2;await write();await page.evaluate(()=>window.backstage.refreshGame());
