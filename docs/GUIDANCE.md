@@ -1,12 +1,18 @@
 # Your next adventure, without extra setup
 
-BF builds a local quest plan when a saved character snapshot arrives. Choose your character on Adventure, then choose a session length and focus. The plan changes automatically; no Save button, API key or AI subscription is needed for local guidance.
+Living Companion gives you current local quest guidance inside WoW and a saved plan on the desktop. The native Compass updates from supported events outside combat, even with the desktop closed. Adventure rebuilds when a saved snapshot arrives. Both work without a Save button, API key or AI subscription. See [Living Companion](LIVING-COMPANION.md).
 
 ## Connect once
 
-Open Game Connection and choose Set up my companion. BF finds your Forever installation when it can, or asks you to choose its folder. It prepares and verifies its own addon files. Launch Forever yourself, enable BackstageForever in the game's AddOns list, and enter your character. Use `/reload` or log out to write your first snapshot. If a newly fixed addon starts collecting for the first time after a reload, use a second reload or log out to flush that new capture to disk.
+Choose Start my adventure. BF finds your Forever installation when it can, offers a choice if needed, and prepares/verifies its own addon files. Prepare before launching the game to avoid an activation reload. Enable BackstageForever if needed, enter your character and use the native Compass. You can enter the desktop app before its first snapshot arrives; logout/game exit normally supplies that saved data.
 
-BF checks its saved export while open and rebuilds the plan when new data arrives. To add another toon, play it once with the addon enabled, then log out or reload. Characters you have not visited do not yet have detailed addon snapshots. There is no Battle.net password prompt or account-wide roster login in 0.5.
+BF checks saved exports while open and rebuilds the desktop plan when new data arrives. To add another toon, visit it with the addon enabled; its saved capture arrives on logout or an optional reload. Characters you have not visited do not yet have detailed addon snapshots. No Battle.net account-wide roster login is added in 0.7.
+
+## Live native guidance in 0.7
+
+The Compass uses current ready turn-ins and unfinished objectives, with current game markers first and compatible approximate references where available. Balanced, nearby and turn-in focus adjust the short plan. Session preferences control card count rather than a promised travel or completion time. Current game titles stay authoritative; unknown objectives and finishers stay unknown.
+
+Use its waypoint action yourself where a supported destination exists. The existing guide checks the live build, quest phase and public marker APIs again on click. Combat hides the Compass; safe event updates resume outside combat. Position, visibility, collapse and native focus/session settings belong to each character. No routine reload, desktop connection or background AI request is needed for these native updates.
 
 ## Forever references in 0.6
 
@@ -28,7 +34,7 @@ Completed objective text and quest completion are distinct: completing an object
 
 ## Saved means saved
 
-The desktop reads disk snapshots, not the current game process. In-game Compass can update out of combat from supported public events; those observations reach the desktop on reload/logout. A recent save is still a save, not a live feed. If you level up, travel or finish quests and the desktop looks behind, reload or log out at a convenient moment. BF never forces this action.
+The desktop reads disk snapshots, not live character state. Native Compass guidance updates outside combat from supported public events; those observations reach the desktop on logout, game exit or voluntary UI reload. A recent save is still a save. For ordinary play, let the game save naturally. If you specifically want fresh desktop or AI context now, voluntarily reload and wait for import. BF never forces this action.
 
 Manual characters have no verified quest snapshot. Missing or restricted data remains unknown; BF offers setup guidance rather than filling the gaps with guesses. Freshness and connection status are separate: the addon can be installed correctly while your character's last save is old.
 

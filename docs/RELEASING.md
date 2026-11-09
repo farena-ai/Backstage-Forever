@@ -8,6 +8,7 @@ Use Node.js 24 LTS and locked dependencies:
 
 ```powershell
 npm ci
+npm run check:addon-reference
 npm test
 npm run test:ui
 npm run test:integration
@@ -21,7 +22,7 @@ npm run test:packaged
 
 The per-user x64 NSIS installer is written to dist. User records, provider credentials, CLI homes, signing private keys and scratch files must never be included. Include LICENSE, font notices and artwork provenance. Official Claude/Grok tools are not bundled or relicensed.
 
-The bundled `data/forever` pack, source lock, CC BY license and change notice must be present in the ASAR. Packaged acceptance checks source/data byte hashes as well as actual automatic three-file addon installation and repair in a synthetic client. Reference inputs stay out of the shipped app and source archive. If changing the data or compiler, separately reproduce the full pack from the six hash-locked inputs with the command in FOREVER-DATA.md. Ordinary unit tests remain offline and use tracked fixtures. Unit files run serially to avoid competing Lua VM CPU deadlines; the test deadlines and assertions remain unchanged.
+The bundled `data/forever` pack, source lock, CC BY license and change notice must be present in the ASAR. Packaged acceptance checks source/data byte hashes as well as actual automatic five-file addon installation and repair in a synthetic client. The tracked `BackstageForeverReference.lua` is an offline, safely escaped compilation of the validated bundled pack; `npm run check:addon-reference` must reproduce its exact LF bytes without writing. The installer does not generate Lua from runtime public downloads. Reference inputs stay out of the shipped app and source archive. If changing the original pack or compiler, separately reproduce the full pack from the six hash-locked inputs with the command in FOREVER-DATA.md. Ordinary unit tests remain offline and use tracked fixtures. Unit files run serially to avoid competing Lua VM CPU deadlines; the test deadlines and assertions remain unchanged.
 
 ## Signed publication
 
