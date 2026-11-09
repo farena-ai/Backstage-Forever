@@ -10,7 +10,7 @@ Read full docs/superpowers/specs/2026-11-09-adventure-series-v09-v012-design.md 
 
 ## Task 1: Main-owned memory and preview/send parity
 
-Files: focused src/core/memory-data.cjs, memory.cjs, memory-ipc.cjs, companion-context.cjs; narrow validation/store/main/preload integration and actual backend/privacy tests; scripts/memory-backend-smoke.cjs. No renderer/native/helper/version/data/provider protocol changes.
+Files: focused src/core/memory-data.cjs, memory.cjs, memory-ipc.cjs, companion-context.cjs; narrow validation/store/profile-sync/main/preload integration and actual backend/privacy tests; scripts/memory-backend-smoke.cjs. No renderer/native/helper/version/data/provider protocol changes.
 
 - [ ] RED strict optional schema, old migration, main-owned preservation, profile prune/import/reset/export and atomic failure before implementation.
 - [ ] Implement explicit save/delete/clear using main-generated IDs/time and response-context binding; no forged/stale reply saving or ordinary renderer history replacement.
