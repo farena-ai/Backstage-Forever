@@ -5,12 +5,12 @@ Backstage Forever is a Windows desktop app from Backstage Coding, designed by Fr
 ## Install the preview
 
 1. Download the Windows setup executable from [Backstage Forever Releases](https://github.com/farena-ai/Backstage-Forever/releases). Check the file's SHA256 against the separately supplied validation record when available; a checksum alone is not publisher authentication.
-2. If the files arrive as a ZIP, right-click it, choose **Extract All**, and open the extracted folder. Do not run files from inside the ZIP.
+2. Choose the file ending **Windows-x64-Setup.exe**. The **Source.zip** archive is for developers and contains no setup executable. A normal installation does not need Node.js, npm or source commands.
 3. Run the supplied Windows setup executable. This preview uses a per-user NSIS installer. It installs for your Windows account, rather than configuring every account on the computer.
 4. The preview is unsigned, so Windows may show an unknown-publisher warning or block it. Verify the source with Frank before proceeding. Do not disable Windows protections globally. Windows publisher (Authenticode) signing remains pending. App-update downloads use a separate pinned Ed25519 signature and installer hash; that does not establish the Windows publisher identity.
 5. Launch Backstage Forever from its shortcut and choose **Start my adventure**. BF searches common Forever locations and bounded registry entries, then prepares/verifies its addon automatically. If several installations are found, choose yours; if none is found, choose the folder once. You can start playing once files are prepared, without a desktop snapshot or AI connection. Prepare before launching the game when possible. Enable Backstage Forever in the game's AddOns list if needed. Manual journals remain optional. [Living Companion](LIVING-COMPANION.md) explains activation when the game is already running.
 
-If no installer was supplied, use the source commands in the README. Node.js/npm are only needed for source development, not a packaged desktop installation.
+If you intentionally want to run the source archive, extract it first and follow the README source commands from the project folder. Otherwise download the Windows setup executable.
 
 ## Your first session
 

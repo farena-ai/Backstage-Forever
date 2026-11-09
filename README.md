@@ -12,8 +12,8 @@ Version **0.12.0 is the combined adventure-series preview checkpoint** before Fr
 
 ## Install
 
-1. Open [Releases](https://github.com/farena-ai/Backstage-Forever/releases) and select the Windows setup executable attached to the preview release.
-2. If downloading a ZIP, extract it first. Run the setup executable for your Windows account.
+1. Open [Releases](https://github.com/farena-ai/Backstage-Forever/releases) and choose **Backstage-Forever-0.12.0-Windows-x64-Setup.exe**.
+2. Run that setup executable for your Windows account. The **Source.zip** archive contains developer code, not the installer; normal installation needs no Node.js or source commands.
 3. Launch Backstage Forever and choose **Start my adventure**. It finds your Forever client, prepares and verifies its addon, and offers a simple choice if needed. You can start playing once the files are prepared; no desktop snapshot or AI setup is required first. Enable/load the addon in-game if needed.
 
 Once installed, native guidance can work with the desktop app closed. Logout/game exit saves your character back to the desktop. A voluntary UI reload is available when you specifically want a fresh desktop snapshot or need to load an addon update. See [Living Companion](docs/LIVING-COMPANION.md) for the two views of your adventure.

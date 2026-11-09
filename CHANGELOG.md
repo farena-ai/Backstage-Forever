@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.12.0 — combined preview checkpoint, 2026-11-09
+
+- Delivered the Adventure Director, Preparation, optional Windows voice/private memory and Party milestones as one update, with 1.0 held for owner acceptance.
+- Added an illustrated class/faction Quest Guide atlas, explicit reported chain links, observed reward and source-qualified destination panels, visible unknowns and readable compact controls.
+- Refreshed compatible licensed Forever observations through November 9 and separately compiled historical seller facts with strict build/faction/date/partial-inventory qualifiers. Older same-build caches no longer hide a newer bundle.
+- Added guarded map-specific/current quest-area observations, preserving direct points and clear area qualification without map-opening or gameplay input.
+- Added deliberate portable plan preview/export/import, new manual unassigned imports and explicit selected-supply AI question drafts; no automatic sharing or inference.
+- Preserved keyboard/native-control focus, drafts, queued saves and error ownership across source/character/navigation/reset/import changes. See the release notes and validation evidence for scope and measured limits.
+
+## 0.11.0 — development milestone, 2026-11-09
+
+- Added optional fixed local Windows speech, visible hold/release draft input, explicit reading/Stop and typed fallback with bounded process/protocol ownership.
+- Added reviewed main-owned per-character saved exchanges, separate per-question selection/preview parity across providers, and memory exclusion from backups/replacement import.
+- Preserved context, privacy and stale-effect boundaries; real microphone/voice quality remains owner-led acceptance. Delivered publicly with 0.12.
+
+
 ## 0.10.0 — development milestone, 2026-11-09
 
 - Added a graphical Preparation workshop using observed owned professions, learned recipes and carried materials, with per-character recipe/batch preferences and source dates.
