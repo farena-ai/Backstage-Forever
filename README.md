@@ -8,7 +8,7 @@
 
 **[Download the Windows preview](https://github.com/farena-ai/Backstage-Forever/releases)** · **[Install and get started](docs/GETTING-STARTED.md)** · **[Choose an AI connection](docs/PROVIDERS.md)**
 
-Version **0.8.0 Adventure Company is a Windows-first preview** with an overview of your collected characters, private cross-character journeys and evidence-driven quest checklists. Automatic setup and the local in-game Compass continue to work without an AI account or routine reloads. The desktop keeps your last-saved snapshots, plans, journal, Quest Guide and optional AI. Exact quest IDs, compatible builds and source labels keep reference facts qualified. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
+Version **0.12.0 is the combined adventure-series preview checkpoint** before Frank Arena's hands-on 1.0 review. It adds an explained next-action Director, profession and material planning, optional local Windows voice, deliberate per-character conversation memory, and reviewed party-plan files. Automatic setup and the local in-game Compass work without an AI account or routine reloads. The desktop keeps last-saved snapshots, plans, journal, Quest Guide and optional AI. Exact quest IDs, compatible builds and source labels keep reference facts qualified. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
 
 ## Install
 
@@ -22,6 +22,10 @@ The installer is **unsigned**. Windows may display an unknown-publisher warning;
 
 ## What this preview includes
 
+- **Adventure Director** explains one next quest action and up to two alternatives. **Start quest session** creates or reuses a tracked Company plan without an AI request. Session length limits plan size, not a promised completion time. See [Director help](docs/ADVENTURE-DIRECTOR.md).
+- **Preparation** shows observed professions, known recipes and dated carried materials. Exact shortfalls require complete applicable counts; partial observations stay qualified, and alts are not silently pooled. Add a manual shopping checklist without crafting or buying anything. See [Preparation help](docs/PREPARATION.md).
+- **Party** offers an explicit role choice and manual dungeon-preparation checklist. Preview and edit every portable line before saving a plan file; importing adds new manual, unassigned steps without completion proof. Sharing happens only through the method you choose. See [Party plans](docs/PARTY-PLANS.md).
+- Optional **local Windows voice** creates an editable draft while you hold the control; release and review before Send. Explicit reading and Stop are separate. Typed input remains available. Save a reviewed exchange as local character memory only when wanted, then separately select specific memories for each future question. See [Voice and memory](docs/VOICE-AND-MEMORY.md).
 - **Company** brings collected characters, ready turn-ins, private goals and known preparation facts together, with existing class/faction artwork and explicit saved-data labels. Choosing a character is deliberate; browsing the overview does not switch it.
 - Local shared journeys with editable quest-session/dungeon-preparation checklists, manual steps and steps linked to a saved character's observed quest. New compatible completion evidence can check a tracked quest automatically; ready objectives, missing quests and historical completion alone do not prove a new turn-in. Plans remain private and included in deliberate backups. See [Adventure Company](docs/ADVENTURE-COMPANY.md).
 - A quiet native bag-space cue from current supported observations, clearing when space improves. Unknown or zero reported capacity is not treated as a full bag. No sounds, repeated notifications or automatic game actions.
@@ -55,7 +59,7 @@ Nine original class portraits and Alliance/Horde environments shape the selected
 
 ## Your data
 
-Profiles stay in this Windows account's app-data folder. API keys are encrypted separately and never included in exported backups. Subscription credentials are also excluded; Claude's official tool manages its own app-private credential files. Prompts you send go to your selected provider. Read [Privacy](docs/PRIVACY.md) and [Providers](docs/PROVIDERS.md) before connecting.
+Profiles stay in this Windows account's app-data folder. API keys are encrypted separately and never included in exported backups. Subscription credentials are also excluded; Claude's official tool manages its own app-private credential files. Ordinary chat is temporary; explicitly saved character memory is readable local data and is excluded from profile backups. Replacement import/reset clears memory. Saving an exchange does not select it for future sharing. Prompts you explicitly send go to your selected provider. Read [Privacy](docs/PRIVACY.md) and [Providers](docs/PROVIDERS.md) before connecting.
 
 Installed Windows builds check shortly after startup and every six hours while open, download verified updates, and install on exit by default. The Updates screen offers manual checks, restart-now and preference controls. No forced mid-game restart or external watcher job is created. **0.1.0 needs one manual installer upgrade to gain this updater.** See [Automatic updates](docs/UPDATES.md). Source builds never automatically check or run installers.
 
@@ -67,17 +71,28 @@ Install Node.js LTS with npm, extract the complete source archive, and open Powe
 npm ci
 npm start
 npm test
+npm run check:addon-reference
 npm run test:ui
-npm run test:integration
 npm run test:setup
 npm run test:autosave
+npm run test:integration
+npm run test:command-center
+npm run test:knowledge
 npm run test:living-backend
 npm run test:living-setup
 npm run test:company-backend
 npm run test:company
-npm run test:command-center
-npm run test:knowledge
+npm run test:director-backend
+npm run test:director
+npm run test:preparation-backend
+npm run test:preparation
+npm run test:memory-backend
+npm run test:voice-backend
+npm run test:voice-memory
+npm run test:party-backend
+npm run test:party
 npm run dist
+npm run test:packaged
 ```
 
 `npm start` opens the desktop. `npm run dist` builds the Windows installer in the configured output folder. See [Validation](docs/VALIDATION.md) for measured results and [Releasing](docs/RELEASING.md) for release gates.

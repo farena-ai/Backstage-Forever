@@ -26,7 +26,13 @@ You can stop here and continue offline. For AI, open Connections and choose a pr
 
 Character fields and notes also save automatically (text when you leave the field). Unknown race/faction stays unknown until supplied manually or reported by the game; unfamiliar races such as Sunborn are accepted. Game race and faction come from their separate public APIs, never an invented race-to-faction lookup.
 
-In AI Companion, ask about World of Warcraft: Forever and press Send or Enter. Shift+Enter inserts a newline; input-method composition does not send prematurely. Use my active character starts enabled and shows exactly which bounded public character, quest/objective, XP and recent turn-in details accompany the question. Uncheck it to keep those details out; that choice persists. Notes and goals are excluded from automatic context. Anything you type into the prompt is sent, so do not paste a secret. Replies are plain text and can be wrong. Chat is temporary and is not a saved notebook. No paid question runs automatically in the background.
+In AI Companion, ask about World of Warcraft: Forever and press Send or Enter. Shift+Enter inserts a newline; input-method composition does not send prematurely. Use my active character starts enabled and shows exactly which bounded public character, quest/objective, XP and recent turn-in details accompany the question. Uncheck it to keep those details out; that choice persists. Notes and goals are excluded from automatic context. Anything you type into the prompt is sent, so do not paste a secret. Replies are plain text and can be wrong. Ordinary chat is temporary. Only an exchange you explicitly review and save becomes local memory for the current character; saving it does not select it for another question. Choose specific saved exchanges separately and inspect their question preview before Send. No paid question runs automatically in the background.
+
+## Choose your next adventure
+
+Open **Adventure** for the Director's explained next action and alternatives. Choose your session length/focus and use **Start quest session** to create or reuse a tracked Company plan. This works without AI and does not operate the game. The time choice limits how many quests the plan tracks; it is not a promised finishing time. See [Director help](ADVENTURE-DIRECTOR.md).
+
+Open **Preparation** for saved professions, recipes and carried materials. Choose a known recipe and craft batches, review the dates and complete/partial labels, then use **Add shopping checklist** if wanted. Partial inventory is not a zero shortfall. Other characters remain separate; BF does not buy, craft or transfer items. See [Preparation help](PREPARATION.md).
 
 ## Plan across your characters
 
@@ -34,9 +40,21 @@ Open **Company** to see collected characters, saved ready turn-ins, private goal
 
 Create a shared journey from a blank plan or an editable quest-session/dungeon-preparation checklist. Add your own steps or pick a character and a quest from its saved log. Manual checks and newly observed game completions receive distinct labels. BF does not infer a turn-in just because a quest disappeared. Everything works without an AI provider; plans stay local and out of automatic AI context. See [Adventure Company](ADVENTURE-COMPANY.md) for repeatable quests, shared steps, reassignment and backups.
 
+## Prepare a party and share a plan
+
+Open **Party**, choose your own role (or leave it unselected), and use **Create dungeon checklist** for five manual preparation checks in Company. Saved equipment and bag facts help your review; they do not guarantee dungeon access or readiness.
+
+To share, open Company, choose the exact plan and use **Share plan**. Review/edit its title and every step before explicitly saving the file. Remove personal wording yourself. BF does not attach private structured data or send the file to anyone. A friend can choose **Import plan**, inspect the preview, then explicitly add it as new manual, unchecked and unassigned steps. Opening the file alone changes nothing. This is different from restoring a profile backup. See [Party help](PARTY-PLANS.md).
+
+## Optional voice and saved exchanges
+
+In **AI Companion**, compatible local Windows engines make **Hold to dictate** available. Hold it while speaking, release, review the editable draft and explicitly Send. If you typed meanwhile, BF leaves a separate draft for you to insert deliberately. Voice does not send a question by itself. **Read answer**, **Read plan** and **Stop voice** are explicit local actions. Missing or blocked engines leave typing available; BF does not change Windows permissions or install speech packs.
+
+Review an answer before **Save exchange**. Saved exchanges stay on this computer for that character. Select them separately for each new question, inspect the preview, then Send if wanted. You can delete individual exchanges or clear the character's memory. Local deletion cannot erase a provider's records. See [Voice and memory help](VOICE-AND-MEMORY.md).
+
 ## Backup, restore and deletion
 
-Use the app's backup/export control and choose a file in the native Windows dialog. Store that file somewhere you control; it contains profiles, notes, goals and provider preferences in readable JSON. It does not contain API keys. Import using the app's import control and select a backup. Review the confirmation: importing replaces the app's current state. A malformed file should leave current data intact. A backup is data, never executable code.
+Use the app's backup/export control and choose a file in the native Windows dialog. Store that file somewhere you control; it contains profiles, notes, goals and provider preferences in readable JSON. It does not contain API keys, subscription credentials or saved conversation memory. Import using the app's import control and select a backup. Review the confirmation: importing replaces the app's current profiles/plans and clears local conversation memory. A malformed file should leave current data intact. A backup is data, never executable code.
 
 To move computers, export on the old computer, install on the new one and import there. Re-enter API keys and reconnect subscription accounts separately. Do not send a friend your private backup unless you want them to have its contents. Every friend should create their own profiles and use their own provider account.
 
@@ -55,4 +73,4 @@ Version 0.2.0 and later installed Windows builds check while open, download auth
 If an older BF installation finds an update but cannot download it, use the newest Windows installer on the official Releases page. Close BF before running setup. The 0.6 updater includes retry and recovery fixes, but an older running copy needs one successful upgrade to receive them. See [update recovery](UPDATES.md#recovering-a-failed-update).
 
 
-ChatGPT preview account switching requires resetting app data because one registration/account is saved per installation. Export profiles first if you want to keep them, then reset and reconnect your chosen account. Live interactive subscription consent and paid inference acceptance remain unperformed. Grok subscription mode is unavailable; use xAI API mode.
+ChatGPT preview account switching requires resetting app data because one registration/account is saved per installation. Export profiles first if you want to keep them, then reset and reconnect your chosen account. Saved conversation memory is not in that backup and is removed by reset. Live interactive subscription consent and paid inference acceptance remain unperformed. Grok subscription mode is unavailable; use xAI API mode.
