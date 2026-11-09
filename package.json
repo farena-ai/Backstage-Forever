@@ -36,7 +36,8 @@
     "test:preparation": "node scripts/preparation-smoke.cjs",
     "test:memory-backend": "node scripts/memory-backend-smoke.cjs",
     "test:voice-backend": "node scripts/voice-backend-smoke.cjs",
-    "test:voice-memory": "node scripts/voice-memory-smoke.cjs"
+    "test:voice-memory": "node scripts/voice-memory-smoke.cjs",
+    "test:party-backend": "node scripts/party-backend-smoke.cjs"
   },
   "devDependencies": {
     "electron": "45.2.3",
