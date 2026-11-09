@@ -23,8 +23,8 @@ Files: src/core/party.cjs, party-ipc.cjs, tests/party.test.cjs, party-ipc.test.c
 
 Files: focused renderer party.js/css; narrow app/index/Company share wiring, scripts/party-smoke.cjs and rendererVM actualhelper loads. No backend/native/provider/version/data/voice/memory changes.
 
-- [ ] Read exact Task1 model. RED actual Electron party/currentfacts/checklist and portable preview before UI.
-- [ ] Illustrated class/faction expedition, rolecards, manual/unknown/current source labels, compact clear actions. Explicit editable bounded preview before save/add, no silent sharing or proof/profile transfer.
-- [ ] Use existing state queue/epochs/sharedInteractionGuard for single physical actions, errors/retry, exactCompanynavigation, drafts/select/keyboard/nav/character/import/reset/stale replies; followoff retained.
-- [ ] Normal/genuine83 actual UI plus inspected fictional full/compact/empty/error previews, affected flows and full once final; commit/report work/v012-task2-report.md and independentreview.
+- [x] Read exact Task1 model. RED actual Electron party/currentfacts/checklist and portable preview before UI.
+- [x] Illustrated class/faction expedition, rolecards, manual/unknown/current source labels, compact clear actions. Explicit editable bounded preview before save/add, no silent sharing or proof/profile transfer.
+- [x] Use existing state queue/epochs/sharedInteractionGuard for single physical actions, errors/retry, exactCompanynavigation, drafts/select/keyboard/nav/character/import/reset/stale replies; followoff retained.
+- [x] Normal/genuine83 actual UI plus inspected fictional full/compact/empty/error previews, affected flows and full once final; commit/report work/v012-task2-report.md and independentreview.
 - [ ] Parent0.12 metadata/docs/npm/bothCI requiredgates/fresh package milestone, then finalQuestGuide separateplan, whole-series review and signedpublic0.12. No1.0publication.
