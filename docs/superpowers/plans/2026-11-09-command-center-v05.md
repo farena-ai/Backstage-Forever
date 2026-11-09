@@ -18,10 +18,10 @@ Files: src/core/guidance.cjs, adventure.cjs, quest-data.cjs or readiness.cjs, va
 Files: src/renderer/app.js, new command-center.css loaded by index.html; scripts/command-center-smoke.cjs, setup-smoke/preview as needed.
 - [x] Write failing real Electron checks: default plan, automatic session/focus updates, two-character isolation, imported/manual freshness, no inference, no successful dock across pages, game setup remains accessible, 1000x700 controls usable.
 - [x] Build dashboard/roster/readiness/plan cards using task1 interfaces, keep data escaped, preferences local and auto-saved, explicit AI explanation only. Add ornate class/faction polish while retaining original assets and accessibility.
-- [ ] Run `npm run test:setup`, `npm run test:ui`, `npm run test:command-center`; capture synthetic previews and inspect Alliance/Horde and compact/reduced-motion output. Task review before integration.
+- [x] Run `npm run test:setup`, `npm run test:ui`, `npm run test:command-center`; capture synthetic previews and inspect Alliance/Horde and compact/reduced-motion output. Task review before integration.
 
 ### Task3: docs, integration and 0.5 release
 Files: package.json/lock, addon TOC, docs/releases/0.5.0.md, README and beginner/compatibility/privacy/guidance/validation docs; release CI.
 - [x] Document precise supported observed-quest scope, per-toon collection, normal reload/write boundary, provider/cost controls, automatic plan rebuild, diagnostic recovery and unsupported account-link state.
-- [ ] Run all136+ unit tests, setup/UI/autosave/integration/command-center checks, `npm run dist` and `npm run test:packaged`; independent whole-branch review; repair important findings.
+- [x] Run all136+ unit tests, setup/UI/autosave/integration/command-center checks, `npm run dist` and `npm run test:packaged`; independent whole-branch review; repair important findings.
 - [ ] Publish reviewed0.5.0 through existing tag workflow, wait in this session without recurring jobs, verify public production-key signature/hash/size. Offer the real installer and synthetic screenshots; distinguish release availability from actual installed update.
