@@ -27,6 +27,10 @@ Where a supported destination is available, use the Compass's waypoint action yo
 
 The Compass hides during combat and resumes outside combat. Drag its title, collapse it with **−**, or close it with **X**. Use **/bf show**, **/bf hide** or **/bf status**. Position and display preferences belong to the current character.
 
+Version 0.8 adds one quiet preparation line when supported current bag observations show two or fewer free slots. It clears when space improves or current observations become unavailable. Unknown or zero capacity does not mean full bags. There is no sound, repeated notification or automatic action.
+
+On the desktop, [Company](ADVENTURE-COMPANY.md) brings your collected characters and private shared journeys together. Quest steps recognise new compatible saved completion evidence; they do not infer completion from a quest disappearing or being ready to turn in. Company works without an AI connection.
+
 ## Switch characters
 
 Each character you visit with the addon enabled can be captured. The Compass uses the character currently in the game. Saved captures reach the desktop when WoW saves them. BF can collect valid saved characters from more than one account folder in the connected Forever installation.
