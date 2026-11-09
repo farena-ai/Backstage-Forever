@@ -27,6 +27,7 @@ jobs:
       - run: npm run test:preparation-backend
       - run: npm run test:preparation
       - run: npm run test:memory-backend
+      - run: npm run test:voice-backend
       - run: npm run test:command-center
       - run: npm run test:knowledge
       - run: npm run dist
