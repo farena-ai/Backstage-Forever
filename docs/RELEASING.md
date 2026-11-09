@@ -12,6 +12,7 @@ npm run check:addon-reference
 npm test
 npm run test:ui
 npm run test:integration
+npm run test:living-backend
 npm run test:setup
 npm run test:autosave
 npm run test:command-center
