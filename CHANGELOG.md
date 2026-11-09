@@ -2,6 +2,7 @@
 
 ## 0.6.1 — 2026-11-09
 
+- Gave native dropdown options explicit dark backgrounds, readable text and a clear selection state across the app.
 - Repaired populated rosters with an empty active selection so the dashboard and character selector agree, preserving deliberate choices and follow preferences.
 - Prevented pre-login addon events from overwriting a saved roster before restoration. Preserved the latest prepared export during logout and ignored teardown events until login; world entry refreshes observations.
 - Added synthetic lifecycle/selection regressions for multi-character capture and complete saved progress. See docs/releases/0.6.1.md for activation and acceptance limits.
