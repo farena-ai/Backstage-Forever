@@ -3,7 +3,7 @@
 window.Company = (() => {
   let host, model = null, signature = "", generation = 0, read = 0, loading = false;
   let error = "", errorKind = "", retry = null, creating = false, focus = null, painting = false;
-  let interaction = 0, pointerDown = false, focusTransfer = false, nativeSelect = null, paintPending = false, renderPending = null, requestedFocus = null;
+  let guard, requestedFocus = null, requestedJourney = null;
   const drafts = new Map(), pending = new Map();
   const saving = (type, journeyId) => [...pending.values()].some(action=>action.type===type&&action.journeyId===journeyId);
   const key = (...parts) => JSON.stringify(parts);
@@ -35,34 +35,16 @@ window.Company = (() => {
         }
       }
     }
+    if(requestedJourney && model) {
+      const journey=[...region.querySelectorAll("[data-company-journey]")].find(node=>node.dataset.companyJourney===requestedJourney);
+      if(journey){requestedJourney=null;journey.scrollIntoView({block:"center"});journey.querySelector('[aria-label="Plan title"]')?.focus({preventScroll:true});}
+    }
     if (!model && !loading && !error) refresh();
   }
-  function interacting() {
-    // A native select can stay open after pointerup; keep its actual node until blur.
-    return active() && (pointerDown || focusTransfer || (nativeSelect?.isConnected && document.activeElement === nativeSelect));
-  }
-  function deferRender(render) {
-    if(!interacting())return false;
-    renderPending=render;
-    return true;
-  }
-  function finishInteraction(releasePointer = false, releaseSelect = false) {
-    // Run after the browser's pointer/focus/default-action dispatch, not after a guessed delay.
-    const current=interaction;
-    setTimeout(()=>{
-      if(current!==interaction)return;
-      focusTransfer=false;
-      if(releasePointer)pointerDown=false;
-      if(releaseSelect || document.activeElement !== nativeSelect)nativeSelect=null;
-      if(interacting())return;
-      const render=renderPending, repaint=paintPending;
-      renderPending=null;paintPending=false;
-      if(render)render();else if(repaint)paint();
-    },0);
-  }
+  function deferRender(render) { return guard?.defer(render, "root") || false; }
   function paint() {
     if(!active())return;
-    if(interacting()){paintPending=true;return;}
+    if(guard.defer(paint))return;
     const region=host.root.querySelector("[data-company]");
     if(!region)return;
     remember();
@@ -73,7 +55,7 @@ window.Company = (() => {
   function beginRender() { remember(); painting=true; }
   function endRender() { painting=false; }
   function invalidate(clear=false) {
-    focusTransfer=false;paintPending=false;renderPending=null;requestedFocus=null;
+    guard?.invalidate();requestedFocus=null;requestedJourney=null;
     generation++;read++;loading=false;pending.clear();model=null;signature="";error="";errorKind="";retry=null;focus=null;
     if(clear){drafts.clear();creating=false;}
   }
@@ -177,25 +159,7 @@ window.Company = (() => {
   }
   function init(options) {
     host=options;
-    host.root.addEventListener("pointerdown",event=>{
-      if(active()&&event.button===0){
-        interaction++;pointerDown=true;
-        nativeSelect=event.target.closest("select");
-      }
-    },true);
-    document.addEventListener("pointerup",()=>finishInteraction(true));
-    document.addEventListener("pointercancel",()=>finishInteraction(true,true));
-    // The new focus target is assigned after focusout, including keyboard Tab.
-    host.root.addEventListener("focusout",()=>{
-      if(!painting&&active()){focusTransfer=true;finishInteraction();}
-    });
-    host.root.addEventListener("change",event=>{if(event.target===nativeSelect)finishInteraction(false,true);});
-    host.root.addEventListener("keydown",event=>{
-      if(event.target.tagName!=="SELECT"||!active())return;
-      if(event.key==="Escape"||event.key==="Enter")finishInteraction(false,true);
-      else nativeSelect=event.target;
-    });
-    window.addEventListener?.("blur",()=>finishInteraction(true,true));
+    guard=InteractionGuard.create({root:host.root,active,painting:()=>painting});
     host.root.addEventListener("input",event=>{
       const node=event.target;if(node.dataset.companyField)drafts.set(node.dataset.companyField,node.value);
     });
@@ -242,5 +206,5 @@ window.Company = (() => {
       }
     });
   }
-  return {init,page,mounted,beginRender,endRender,deferRender,invalidate,refresh};
+  return {init,page,mounted,beginRender,endRender,deferRender,invalidate,refresh,showJourney(id){invalidate();requestedJourney=id;}};
 })();

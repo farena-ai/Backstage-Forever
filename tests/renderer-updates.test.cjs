@@ -77,6 +77,12 @@ function harness(overrides = {}) {
   context.QuestGuide = context.window.QuestGuide;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/living-setup.js"), "utf8"), context);
   context.LivingSetup = context.window.LivingSetup;
+  for (const name of ["interaction", "command-center", "director"]) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${name}.js`), "utf8"), context);
+  }
+  context.InteractionGuard = context.window.InteractionGuard;
+  context.Director = context.window.Director;
+  context.CommandCenter = context.window.CommandCenter;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/company.js"), "utf8"), context);
   context.Company = context.window.Company;
   vm.runInContext(
@@ -290,4 +296,48 @@ test("a failed newer download remains visible beside the older ready installer",
     vm.runInContext("updatesPage()", h.context),
     /data-link="releases"/,
   );
+});
+
+
+test("accepted Director work drains across navigation, new-character and replacement lifecycles without stale painting", async () => {
+  for (const boundary of ["navigate", "select", "new-character", "import", "reset"]) {
+    const held=deferred(),calls=[];
+    const replacement={onboarded:true,profiles:[{id:"p",name:"Replacement"}],activeProfileId:"p",journeys:[],provider:{id:"ollama",model:""}};
+    const h=harness({
+      startDirectorSession:async(id,options)=>{calls.push({id,options});return {state:{...vm.runInContext("state",h.context),journeys:[{id:"saved-session"}]},journeyId:"saved-session",created:true};},
+      saveState:async state=>state,importData:async()=>replacement,resetData:async()=>({...replacement,onboarded:false,profiles:[],activeProfileId:null}),
+      gameStatus:async()=>({}),subscriptionStatus:async()=>({}),
+    });
+    h.context.heldQueue=held.promise;
+    vm.runInContext(`state={onboarded:true,profiles:[{id:'p',name:'One'},{id:'q',name:'Two'}],activeProfileId:'p',journeys:[],provider:{id:'ollama',model:''}};page='adventure';setupOpen=false;guidanceProfileId='p';guidance={director:{session:{available:true}}};autosaveQueue=heldQueue;render=()=>{};`,h.context);
+    const start={dataset:{},hasAttribute:name=>name==="data-director-start",closest:selector=>selector==="[data-director-start]"||selector==="button"?start:null};
+    h.handlers.click.forEach(fn=>fn({target:start}));
+    const accepted=vm.runInContext("autosaveQueue",h.context);assert.equal(calls.length,0);
+    let changing;
+    if(boundary==="select"){
+      const select={id:"active-character",dataset:{},value:"q",closest:()=>null,matches:()=>false};changing=Promise.all(h.handlers.change.map(fn=>fn({target:select})));
+    }else{
+      const button={dataset:boundary==="navigate"?{nav:"guide"}:{command:boundary},hasAttribute:()=>false,closest:selector=>selector==="button"?button:null};h.handlers.click.forEach(fn=>fn({target:button}));
+    }
+    held.resolve();await accepted;await changing;for(let i=0;i<30;i++)await Promise.resolve();
+    assert.equal(calls.length,1,`${boundary}: accepted session must reach the owner queue once`);
+    assert.notEqual(vm.runInContext("page",h.context),"company",`${boundary}: stale session cannot navigate back`);
+    if(boundary==="select")assert.equal(vm.runInContext("state.activeProfileId",h.context),"q");
+    if(boundary==="new-character")assert.equal(vm.runInContext("state.activeProfileId",h.context),null);
+    if(boundary==="import")assert.equal(vm.runInContext("state.profiles[0].name",h.context),"Replacement");
+    if(boundary==="reset")assert.equal(vm.runInContext("state.profiles.length",h.context),0);
+  }
+});
+
+
+test("a changed saved active character clears the previous Director pending presentation", async()=>{
+  const held=deferred(),h=harness({startDirectorSession:()=>held.promise});
+  vm.runInContext(`state={onboarded:true,profiles:[{id:'p'},{id:'q'}],activeProfileId:'p'};page='adventure';setupOpen=false;guidanceProfileId='p';guidance={director:{session:{available:true}}};render=()=>{};`,h.context);
+  const start={dataset:{},hasAttribute:name=>name==="data-director-start",closest:selector=>selector==="[data-director-start]"||selector==="button"?start:null};
+  h.handlers.click.forEach(fn=>fn({target:start}));await Promise.resolve();
+  vm.runInContext(`state.activeProfileId='q';acceptBrief({briefProfileId:'q',brief:{guidance:{steps:[]},director:{session:{available:true}}}});`,h.context);
+  const html=vm.runInContext("Director.panel(guidance.director)",h.context);
+  assert.doesNotMatch(html,/Saving quest session/);
+  held.resolve({state:{profiles:[{id:'p'}],activeProfileId:'p'},journeyId:'obsolete',created:true});
+  await vm.runInContext("autosaveQueue",h.context);assert.equal(vm.runInContext("state.activeProfileId",h.context),'q');
 });

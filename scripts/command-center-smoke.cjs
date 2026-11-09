@@ -89,7 +89,7 @@ const { testWindow } = require('./test-window.cjs');
     await page.evaluate(()=>scrollTo(0,0));
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Compact layout must not scroll horizontally');
     assert.ok(await page.locator('.command-hero').evaluate(node=>node.getBoundingClientRect().height<=230),'Compact hero must leave room for the actual next steps');
-    assert.ok(await plans.locator('.guidance-step h3').first().evaluate(node=>node.getBoundingClientRect().bottom<=innerHeight),'The first action title must be readable in the compact first screen');
+    assert.ok(await page.locator('[data-director-primary] h3').evaluate(node=>node.getBoundingClientRect().bottom<=innerHeight),'The primary Director action title must be readable in the compact first screen');
     await page.emulateMedia({reducedMotion:'reduce'});
     await page.getByLabel('Session length',{exact:true}).selectOption('30');
     await page.getByLabel('Quest focus',{exact:true}).selectOption('balanced');

@@ -51,14 +51,17 @@ let adventureBrief = null,
   briefEpoch = 0;
 let guidance = null, guidanceProfileId = null, guidanceSignature = "", guidanceEpoch = 0;
 function paintGuidance() {
+  if (Director.deferPaint(paintGuidance)) return;
   const region = root.querySelector('[aria-label="Your next steps"]');
   if (page !== "adventure" || !region) return;
   const focusedOption = document.activeElement?.dataset.planOption;
   region.outerHTML = CommandCenter.steps(guidance, CommandCenter.options(state.activeProfileId), esc);
+  Director.paint();
   if (focusedOption) root.querySelector(`[data-plan-option="${focusedOption}"]`)?.focus();
 }
 function syncGuidance() {
   const selectedId = state?.activeProfileId;
+  if (guidanceProfileId !== selectedId) Director.invalidate();
   const selected = CommandCenter.options(selectedId);
   const brief = briefProfileId === selectedId ? adventureBrief : null;
   const signature = JSON.stringify([selectedId, selected, brief?.guidance]);
@@ -69,7 +72,7 @@ function syncGuidance() {
   guidanceProfileId = selectedId;
   if (!selectedId || !brief) return;
   if (selected.minutes === 30 && selected.focus === "balanced" && brief.guidance) {
-    guidance = brief.guidance;
+    guidance = { ...brief.guidance, director: brief.director };
     return;
   }
   if (!api.guidancePlan) return;
@@ -458,7 +461,8 @@ function onboarding() {
   root.innerHTML = `<main class="onboarding"><section class="onboarding-art">${brand()}<div><div class="eyebrow">Your world. Your adventure.</div><h1>A companion for<br>the road ahead.</h1><p>Make room for the adventure.<br>We’ll keep your plans in order.</p></div><small>DESIGNED BY FRANK ARENA</small></section><section class="onboarding-form"><div class="eyebrow">Welcome, adventurer · 01 / 01</div><h2>Every adventure starts somewhere.</h2><p>Start with a character, then connect your game to import saved character snapshots. Your journal stays on this computer.</p><form id="onboard">${characterFields()}<div class="actions"><button class="primary" type="submit">Begin my adventure</button></div></form><div class="callout">◈ &nbsp; No account. No subscription required for the app.<br>Profiles and planning work offline. AI is optional and uses your own provider access.</div><p class="snapshot-hint">${savedHelp}</p><button type="button" class="subtle" data-command="setup-company" ${setupBusy ? "disabled" : ""}>Plan without a character</button><p class="onboarding-footer">Independent companion for World of Warcraft: Forever.<br>Not affiliated with or endorsed by Blizzard Entertainment.</p></section></main>`;
 }
 function render() {
-  if (Company.deferRender(render)) return;
+  if (Company.deferRender(render) || Director.deferRender(render)) return;
+  const focusedOption = document.activeElement?.dataset.planOption;
   Company.beginRender();
   try {
   QuestGuide.sync(profile(), knowledgeStatus);
@@ -498,6 +502,7 @@ function render() {
   refreshUpdateWidgets();
   QuestGuide.mounted();
   Company.mounted();
+  if (focusedOption) root.querySelector(`[data-plan-option="${focusedOption}"]`)?.focus();
   } finally {
     Company.endRender();
   }
@@ -667,12 +672,12 @@ function refreshModelWidgets() {
 }
 function adventure() {
   const p = profile();
-  if (!p) return LivingSetup.empty(gameStatus, esc);
+  if (!p) return LivingSetup.empty(gameStatus, esc) + Director.panel(null);
   const goals = p?.goals || [];
   const done = goals.filter((g) => g.done).length;
   const brief = briefProfileId === p?.id ? adventureBrief : null;
   const plan = guidanceProfileId === p?.id ? guidance : null;
-  return `<div class="adventure-brief command-center"><section class="hero command-hero"><img class="hero-class-art" src="${portrait(p?.className)}" alt=""><div class="hero-copy">${factionBanner(p)}<div class="hero-identity"><img class="hero-medallion" src="${portrait(p?.className)}" alt=""><div><div class="eyebrow">YOUR CHARACTER · YOUR NEXT CHAPTER</div><h1>${esc(p?.name || "Your adventure awaits")}</h1><p>${p ? `Level ${p.level} ${esc(p.className)} · ${esc(p.realm || "Realm not set")}` : "Create a character to begin your field journal."}</p></div></div><span class="hero-saved">${esc(CommandCenter.age(p))} · ${esc(brief?.freshness?.status || "unknown")} snapshot${state.followGameCharacter === false ? '<span class="follow-paused"><span>Saved-game follow paused.</span><button data-command="follow-saved">Follow saved game</button></span>' : ""}</span></div><div class="hero-caption">YOUR FIELD JOURNAL / ORIGINAL FANTASY ART</div></section>${LivingSetup.coverage(gameStatus, esc)}${commandOverview(p, brief)}<div class="command-columns">${CommandCenter.steps(plan, CommandCenter.options(p?.id), esc)}<aside class="command-sidebar">${CommandCenter.readiness(brief, esc)}<section class="saved-source"><div class="eyebrow">YOUR SOURCE OF TRUTH</div><h3>A saved moment in the world.</h3><p>${esc(brief?.freshness?.message || "A manual journal has no saved game observations.")}</p><p>${esc(snapshotLabel(p))}</p><button data-nav="game">Review game connection →</button><p class="corner-note">Live quest guidance updates inside WoW. This desktop view reflects your last game save; it catches up after logout.</p><button class="subtle" data-brief-action="next-quest">Plan my next quest</button></section></aside></div></div>${commandRoster(p)}${situationCards()}<div class="grid adventure-grid"><section class="panel adventure-journal"><div class="panel-header"><h3>Your next adventures</h3><span class="eyebrow">${done} / ${goals.length} complete</span></div>${goals.length ? goals.map((g) => `<div class="goal"><label class="${g.done ? "done" : ""}"><input type="checkbox" data-goal="${esc(g.id)}" ${g.done ? "checked" : ""}><span>${esc(g.text)}</span></label><button data-remove-goal="${esc(g.id)}" aria-label="Delete goal: ${esc(g.text)}">×</button></div>`).join("") : '<div class="empty">An open page. A whole world ahead.<br>Add a goal, from learning a profession to your next dungeon.</div>'}${p ? '<form id="goal-form" class="inline goal-form"><label>New goal<input name="goal" maxlength="1000" placeholder="What would you like to do next?" required></label><button type="submit" aria-label="Add goal">+ Add</button></form>' : '<button data-nav="characters">Create a character</button>'}</section><aside class="panel camp-panel"><div class="panel-header"><h3>A good place to begin</h3><span class="gold" aria-hidden="true">✧</span></div><p class="muted">Less tab juggling.<br>More time in the world.</p><div class="steps"><div class="step"><b>1</b><div><p>Keep your own field journal</p><small>Characters, goals and private notes.</small></div></div><div class="step"><b>2</b><div><p>Choose your AI companion</p><small>Local Ollama or your own cloud API.</small></div></div><div class="step"><b>3</b><div><p>Play on your terms</p><small>You make the decisions. You play the game.</small></div></div></div><button class="subtle" data-nav="connections">Set up a connection &nbsp; →</button><div class="corner-note"><span data-snapshot-age>${esc(snapshotLabel(p))}</span></div></aside></div>`;
+  return `<div class="adventure-brief command-center"><section class="hero command-hero"><img class="hero-class-art" src="${portrait(p?.className)}" alt=""><div class="hero-copy">${factionBanner(p)}<div class="hero-identity"><img class="hero-medallion" src="${portrait(p?.className)}" alt=""><div><div class="eyebrow">YOUR CHARACTER · YOUR NEXT CHAPTER</div><h1>${esc(p?.name || "Your adventure awaits")}</h1><p>${p ? `Level ${p.level} ${esc(p.className)} · ${esc(p.realm || "Realm not set")}` : "Create a character to begin your field journal."}</p></div></div><span class="hero-saved">${esc(CommandCenter.age(p))} · ${esc(brief?.freshness?.status || "unknown")} snapshot${state.followGameCharacter === false ? '<span class="follow-paused"><span>Saved-game follow paused.</span><button data-command="follow-saved">Follow saved game</button></span>' : ""}</span></div><div class="hero-caption">YOUR FIELD JOURNAL / ORIGINAL FANTASY ART</div></section>${Director.panel(plan?.director || null)}${LivingSetup.coverage(gameStatus, esc)}${commandOverview(p, brief)}<div class="command-columns">${CommandCenter.steps(plan, CommandCenter.options(p?.id), esc)}<aside class="command-sidebar">${CommandCenter.readiness(brief, esc)}<section class="saved-source"><div class="eyebrow">YOUR SOURCE OF TRUTH</div><h3>A saved moment in the world.</h3><p>${esc(brief?.freshness?.message || "A manual journal has no saved game observations.")}</p><p>${esc(snapshotLabel(p))}</p><button data-nav="game">Review game connection →</button><p class="corner-note">Live quest guidance updates inside WoW. This desktop view reflects your last game save; it catches up after logout.</p><button class="subtle" data-brief-action="next-quest">Plan my next quest</button></section></aside></div></div>${commandRoster(p)}${situationCards()}<div class="grid adventure-grid"><section class="panel adventure-journal"><div class="panel-header"><h3>Your next adventures</h3><span class="eyebrow">${done} / ${goals.length} complete</span></div>${goals.length ? goals.map((g) => `<div class="goal"><label class="${g.done ? "done" : ""}"><input type="checkbox" data-goal="${esc(g.id)}" ${g.done ? "checked" : ""}><span>${esc(g.text)}</span></label><button data-remove-goal="${esc(g.id)}" aria-label="Delete goal: ${esc(g.text)}">×</button></div>`).join("") : '<div class="empty">An open page. A whole world ahead.<br>Add a goal, from learning a profession to your next dungeon.</div>'}${p ? '<form id="goal-form" class="inline goal-form"><label>New goal<input name="goal" maxlength="1000" placeholder="What would you like to do next?" required></label><button type="submit" aria-label="Add goal">+ Add</button></form>' : '<button data-nav="characters">Create a character</button>'}</section><aside class="panel camp-panel"><div class="panel-header"><h3>A good place to begin</h3><span class="gold" aria-hidden="true">✧</span></div><p class="muted">Less tab juggling.<br>More time in the world.</p><div class="steps"><div class="step"><b>1</b><div><p>Keep your own field journal</p><small>Characters, goals and private notes.</small></div></div><div class="step"><b>2</b><div><p>Choose your AI companion</p><small>Local Ollama or your own cloud API.</small></div></div><div class="step"><b>3</b><div><p>Play on your terms</p><small>You make the decisions. You play the game.</small></div></div></div><button class="subtle" data-nav="connections">Set up a connection &nbsp; →</button><div class="corner-note"><span data-snapshot-age>${esc(snapshotLabel(p))}</span></div></aside></div>`;
 }
 function characters() {
   const p = profile();
@@ -821,6 +826,35 @@ function updatesPage() {
   <aside class="panel"><h3>A trusted path forward.</h3><div class="steps"><div class="step"><b>1</b><div><p>Authenticate the release</p><small>Only releases signed by Backstage Forever’s update key are accepted.</small></div></div><div class="step"><b>2</b><div><p>Verify the download</p><small>The complete installer’s size and fingerprint must match before it can run.</small></div></div><div class="step"><b>3</b><div><p>Keep your journal</p><small>Profiles and provider settings remain in your Windows account’s app folder.</small></div></div></div><div class="callout brass">Older updater stuck? Open Releases and run the latest installer once. Older installed apps cannot receive these retry and recovery improvements until they are upgraded.</div><p class="corner-note">Application update signatures authenticate future downloads. This preview still lacks a Windows publisher certificate, so an initial manual installer may show an unknown-publisher notice.</p></aside></div>`;
 }
 QuestGuide.init({ api, root, esc, notify: toast, onStatus: value => { knowledgeStatus = value; } });
+Director.init({
+  root, esc,
+  active: () => page === "adventure" && !setupOpen && Boolean(state?.onboarded),
+  profileId: () => state?.activeProfileId,
+  options: () => CommandCenter.options(state?.activeProfileId),
+  model: () => guidanceProfileId === state?.activeProfileId ? guidance?.director : null,
+  mutate: (id, options, valid) => {
+    const generation = autosaveGeneration;
+    const task = async () => {
+      // Accepted queued writes finish after navigation; only replies depend on the view.
+      if (generation !== autosaveGeneration) return null;
+      const epoch = stateMutationEpoch;
+      const result = await mutateStateCall(() => api.startDirectorSession(id, options));
+      if (generation !== autosaveGeneration || !valid() || stateMutationEpoch !== epoch + 2) return null;
+      state = result.state;
+      return result;
+    };
+    const result = autosaveQueue.then(task, task);
+    autosaveQueue = result.catch(() => {});
+    return result;
+  },
+  open: result => {
+    Director.invalidate();
+    Company.showJourney(result.journeyId);
+    page = "company";
+    render();
+    toast(result.created ? "Quest session saved. Tracking starts from this saved capture." : "Opened your existing quest session. No duplicate plan was created.");
+  },
+});
 Company.init({
   api, root, esc, portrait,
   active: () => page === "company" && !setupOpen && Boolean(state?.onboarded),
@@ -853,8 +887,9 @@ Company.init({
 root.addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button) return;
+  if (button.hasAttribute("data-director-start")) return;
   if (button.hasAttribute("data-company-command") || button.hasAttribute("data-company-open") || button.closest("[data-company-form]")) return;
-  if (button.dataset.nav || button.dataset.character || ["reset", "import"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) Company.invalidate();
+  if (button.dataset.nav || button.dataset.character || ["reset", "import", "new-character", "delete-character"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) { Company.invalidate(); Director.invalidate(); }
   action(async () => {
     await autosaveQueue;
     if (button.dataset.nav) {
@@ -1215,12 +1250,13 @@ root.addEventListener("click", (event) => {
 root.addEventListener("change", (event) =>
   action(async () => {
     if (event.target.closest("[data-company]")) return;
-    if (event.target.id === "active-character") Company.invalidate();
+    if (event.target.id === "active-character") { Company.invalidate(); Director.invalidate(); }
     if (event.target.dataset.planOption && state.activeProfileId) {
       const selected = CommandCenter.options(state.activeProfileId);
       const key = event.target.dataset.planOption;
       selected[key] = key === "minutes" ? Number(event.target.value) : event.target.value;
       CommandCenter.save(state.activeProfileId, selected);
+      Director.invalidate();
       syncGuidance();
       render();
       document.querySelector(`[data-plan-option="${key}"]`)?.focus();
