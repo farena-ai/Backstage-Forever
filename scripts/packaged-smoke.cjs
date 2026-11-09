@@ -198,7 +198,7 @@ async function sourceFiles(folder, prefix = "src") {
       "preserve",
     );
     console.log(
-      `PASS: isolated packaged Windows startup, ${sourceMatch.checked} reviewed source/data/key byte matches, offline quest reference, SDK loading, automatic three-file addon install/readback and startup repair preserving unrelated files. No player data or credentials changed.`,
+      `PASS: isolated packaged Windows startup, ${sourceMatch.checked} reviewed source/data/key byte matches, offline quest reference, SDK loading, automatic ${owned.length}-file addon install/readback and startup repair preserving unrelated files. No player data or credentials changed.`,
     );
   } finally {
     if (app) await app.close();
