@@ -34,4 +34,3 @@ No publication is performed merely by building. Never add release watcher jobs, 
 Obtain a newer installer from the confirmed `farena-ai/Backstage-Forever` GitHub Releases location when a release is actually published. While the app is open, export a backup. Then close the app, verify the publisher/signature and supplied checksum, and run the newer installer over the current per-user installation. Reopen and check profiles/settings. This is the planned manual path; upgrade and clean-machine verification are pending. There is no automatic updater, simulated update check or background release monitor.
 
 If an upgrade fails, retain your backup and ask for version-specific recovery guidance before deleting data or downgrading. Provider keys are not portable backups and may need to be entered again.
-

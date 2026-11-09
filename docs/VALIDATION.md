@@ -14,7 +14,7 @@ Version 0.1.0 is a desktop foundation preview. These checks establish the behavi
 
 The per-user x64 NSIS installer is built with `npm run dist`, with original application icon and MIT license included. It is intentionally unsigned. Installer and source checksums accompany the downloadable files. Public source is `farena-ai/Backstage-Forever`; updates are manual downloads from that repository’s Releases page.
 
-Packaged application startup is checked separately from source UI tests. A clean-machine install, upgrade and uninstall have not been certified. No code-signing certificate, automatic updater, scheduled watcher or store submission was configured.
+`npm run test:packaged` passed: the built Windows executable opened the branded interface from its ASAR bundle, exposed the isolated preload bridge, reported version 0.1.0 and had Windows secure credential storage available. Its executable metadata reports Backstage Forever. This launch check did not change player profiles or credentials. A clean-machine install, upgrade and uninstall have not been certified. No code-signing certificate, automatic updater, scheduled watcher or store submission was configured.
 
 ## Compatibility evidence and remaining gates
 
