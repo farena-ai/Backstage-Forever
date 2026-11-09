@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld(
     adventureBrief: (profileId) => invoke("adventureBrief", profileId),
     companyBrief: () => invoke("companyBrief"),
     startDirectorSession: (...args) => invoke("startDirectorSession", ...args),
+    preparationBrief: (...args) => invoke("preparationBrief", ...args),
+    createPreparationJourney: (...args) => invoke("createPreparationJourney", ...args),
     journeyAction: (action) => invoke("journeyAction", action),
     knowledgeStatus: () => invoke("knowledgeStatus"),
     refreshKnowledge: () => invoke("refreshKnowledge"),

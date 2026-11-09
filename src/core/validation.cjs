@@ -171,6 +171,11 @@ function validateState(s) {
       )
         fail();
     }
+    if (
+      p.source && p.readiness?.workshop &&
+      Object.values(p.readiness.workshop).some(collection =>
+        collection !== undefined && collection.observedAt > p.source.updatedAt)
+    ) fail();
     if (p.location !== undefined) {
       object(p.location, ["zone", "subZone", "mapId", "x", "y"]);
       for (const key of ["zone", "subZone"])

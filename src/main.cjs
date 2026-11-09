@@ -31,6 +31,7 @@ const { buildBrief } = require("./core/adventure.cjs");
 const { KnowledgeService } = require("./core/knowledge-cache.cjs");
 const { registerKnowledgeHandlers } = require("./core/knowledge-ipc.cjs");
 const { registerDirectorHandlers } = require("./core/director-ipc.cjs");
+const { registerPreparationHandlers } = require("./core/preparation-ipc.cjs");
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
@@ -222,6 +223,11 @@ app.whenReady().then(() => {
     getState: () => store.state,
     saveState: (next) => store.saveState(next),
     knowledge,
+  });
+  registerPreparationHandlers({
+    handle,
+    getState: () => store.state,
+    saveState: (next) => store.saveState(next),
   });
   registerKnowledgeHandlers({
     handle,

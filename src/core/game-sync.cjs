@@ -153,8 +153,13 @@ function parseSavedVariables(raw) {
       out.progress = require("./quest-data.cjs").validateProgress(c.progress);
     if (c.history !== undefined)
       out.history = require("./quest-data.cjs").validateHistory(c.history);
-    if (c.readiness !== undefined)
-      out.readiness = require("./readiness.cjs").validateReadiness(c.readiness);
+    if (c.readiness !== undefined) {
+      if (!c.readiness || typeof c.readiness !== "object" || Array.isArray(c.readiness)) invalid();
+      out.readiness = require("./readiness.cjs").validateReadiness({
+        ...c.readiness,
+        ...(c.readiness.workshop === undefined ? {} : { workshop: require("./preparation-data.cjs").normalizeWorkshopCapture(c.readiness.workshop, out.updatedAt) }),
+      });
+    }
     return out;
   });
   const activeId = s.activeId === null ? null : id(s.activeId);

@@ -17,7 +17,7 @@ function number(v, min, max) {
 }
 function validateReadiness(value) {
   if (value === undefined) return undefined;
-  object(value, ["equipment", "bags"]);
+  object(value, ["equipment", "bags", "workshop"]);
   const out = {};
   if (value.equipment !== undefined) {
     if (!Array.isArray(value.equipment) || value.equipment.length > 19)
@@ -55,6 +55,7 @@ function validateReadiness(value) {
     };
     if (out.bags.free > out.bags.total) invalid();
   }
+  if (value.workshop !== undefined) out.workshop = require("./preparation-data.cjs").validateWorkshop(value.workshop);
   return out;
 }
 module.exports = { validateReadiness };
