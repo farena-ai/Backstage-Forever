@@ -32,6 +32,8 @@ Optional preparation snapshots contain bounded equipped-item IDs/metadata, bag f
 
 Recipe and batch display preferences use a separate per-character renderer preference namespace, not the captured game evidence. They are not credentials or part of profile JSON backups; successful import/reset clears the namespace and deleting a character clears its entry. Creating a shopping checklist deliberately saves manual Company steps; it performs no purchase, craft, transfer or automatic game-completion action.
 
+Ask about this supply plan opens an editable question from selected visible profession/recipe/batch/material facts, observation scope/dates and bounded historical seller qualifications. Other characters and private notes/goals/journeys/equipment/hidden source identities are excluded. It does not automatically send, change character sharing or select memory. A separately bundled historical seller catalog is offline and adds no network request or automatic provider-context field.
+
 Explain my plan places bounded public quest details in the visible prompt for review. Like any prompt you explicitly send, that text goes to the selected provider even if automatic character context is turned off. It never includes private journal notes, goals, account identifiers or local paths automatically.
 
 ## Optional game connection
