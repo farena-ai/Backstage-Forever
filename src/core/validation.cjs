@@ -215,7 +215,10 @@ function validateState(s) {
   str(s.provider.model, 200);
   str(s.provider.endpoint, 500, false);
   endpoint(s.provider.id, s.provider.endpoint);
-  return JSON.parse(JSON.stringify(s));
+  const valid = JSON.parse(JSON.stringify(s));
+  if (valid.activeProfileId === null && valid.profiles.length)
+    valid.activeProfileId = valid.profiles[0].id;
+  return valid;
 }
 module.exports = {
   providers,

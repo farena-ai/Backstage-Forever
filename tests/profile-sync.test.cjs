@@ -30,6 +30,34 @@ const manual = (id = "manual", extra = {}) => ({
   goals: [{ id: "goal", text: "Explore", done: true }],
   ...extra,
 });
+
+test("validation repairs a populated null selection without changing follow preference or input", () => {
+  for (const profiles of [[manual("hunter")], [manual("hunter"), manual("warrior")]]) {
+    const input = { ...defaultState(), profiles, followGameCharacter: false };
+    const before = structuredClone(input);
+    const result = validateState(input);
+    assert.equal(result.activeProfileId, "hunter");
+    assert.equal(result.followGameCharacter, false);
+    assert.deepEqual(input, before);
+    result.profiles[0].goals[0].done = false;
+    assert.deepEqual(input, before);
+  }
+});
+
+test("validation preserves explicit selection and empty rosters but rejects dangling IDs and invalid profiles", () => {
+  for (const followGameCharacter of [true, false, undefined]) {
+    const input = {
+      ...defaultState(),
+      profiles: [manual("hunter"), manual("warrior")],
+      activeProfileId: "warrior",
+      ...(followGameCharacter === undefined ? {} : { followGameCharacter }),
+    };
+    assert.deepEqual(validateState(input), input);
+    assert.deepEqual(validateState(defaultState()), defaultState());
+    assert.throws(() => validateState({ ...input, activeProfileId: "missing" }));
+    assert.throws(() => validateState({ ...input, activeProfileId: null, profiles: [manual("bad", { level: 0 })] }));
+  }
+});
 test("adds stable profiles, selects active and deeply clones both inputs", () => {
   const input = defaultState(),
     shot = snapshot(

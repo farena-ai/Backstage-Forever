@@ -315,8 +315,11 @@ function BackstageForeverGuide(message)
 end
 if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
-    for _,event in ipairs({'PLAYER_LOGIN','PLAYER_LEVEL_UP','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LOGOUT','QUEST_LOG_UPDATE','QUEST_ACCEPTED','QUEST_TURNED_IN','UNIT_QUEST_LOG_CHANGED','PLAYER_XP_UPDATE','UPDATE_EXHAUSTION','PLAYER_EQUIPMENT_CHANGED','BAG_UPDATE_DELAYED','GET_ITEM_INFO_RECEIVED'}) do pcall(frame.RegisterEvent,frame,event) end
+    local loggedIn=false
+    for _,event in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_LEVEL_UP','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LOGOUT','QUEST_LOG_UPDATE','QUEST_ACCEPTED','QUEST_TURNED_IN','UNIT_QUEST_LOG_CHANGED','PLAYER_XP_UPDATE','UPDATE_EXHAUSTION','PLAYER_EQUIPMENT_CHANGED','BAG_UPDATE_DELAYED','GET_ITEM_INFO_RECEIVED'}) do pcall(frame.RegisterEvent,frame,event) end
     frame:SetScript('OnEvent',function(_,event,eventId)
+        -- Logout APIs may already be torn down; persist the last prepared export.
+        if event=='PLAYER_LOGOUT' then loggedIn=false;return end
         if event=='PLAYER_LOGIN' then
             local saved=decode(BackstageForeverExport)
             if type(saved)=='table' and saved.schema==1 and type(saved.characters)=='table' then
@@ -324,7 +327,10 @@ if type(CreateFrame)=='function' then
                     if i<=100 and type(c)=='table' and clean(c.id,200) and type(c.updatedAt)=='number' then roster[c.id]=c end
                 end
             end
+            loggedIn=true
         end
+        -- Startup events must not replace the saved roster before it is restored.
+        if not loggedIn then return end
         captureIssue=false
         local ok,captured=pcall(capture,event,public(eventId))
         if type(BackstageForeverHUDCaptureStatus)=='function' then
