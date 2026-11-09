@@ -22,10 +22,10 @@ Files: focused src/core/memory-data.cjs, memory.cjs, memory-ipc.cjs, companion-c
 
 Files: src/native/voice-helper.ps1 and .cs; focused src/core/voice.cjs, voice-ipc.cjs/runtime helper if useful; narrow main/preload/.gitattributes/packaged checks and voice unit/backend fixture. No renderer/memory schema/provider protocol/native game/version/data changes.
 
-- [ ] Read Task1 exact context contract. RED strict process/protocol/cancellation/runtime preparation tests before implementation.
-- [ ] Implement fixed WindowsPowerShell System.Speech worker and verified runtime preparation. Bound and validate both sides, no shell/text interpolation, no execution-policy bypass/audio artifacts/automatic start.
-- [ ] Strict main context/session/epoch startup cancellation, PTT hard stop/dispose/kill, explicit TTS/Stop, null-profile fallback, safe capability discovery and cleanup.
-- [ ] Fake workers only for audio paths; safe real capability enumeration allowed. Test packaged source bytes and short paths, context races/errors/owned cleanup. Full once final, report work/v011-task2-report.md with exact UI contracts, independent review.
+- [x] Read Task1 exact context contract. RED strict process/protocol/cancellation/runtime preparation tests before implementation.
+- [x] Implement fixed WindowsPowerShell System.Speech worker and verified runtime preparation. Bound and validate both sides, no shell/text interpolation, no execution-policy bypass/audio artifacts/automatic start.
+- [x] Strict main context/session/epoch startup cancellation, PTT hard stop/dispose/kill, explicit TTS/Stop, null-profile fallback, safe capability discovery and cleanup.
+- [x] Fake workers only for audio paths; safe real capability enumeration allowed. Test packaged source bytes and short paths, context races/errors/owned cleanup. Full once final, report work/v011-task2-report.md with exact UI contracts, independent review.
 
 ## Task 3: Graphical voice and private memory experience
 
