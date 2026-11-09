@@ -14,10 +14,10 @@ Read docs/superpowers/specs/2026-11-09-adventure-series-v09-v012-design.md and 2
 
 Files: src/core/party.cjs, party-ipc.cjs, tests/party.test.cjs, party-ipc.test.cjs, scripts/party-backend-smoke.cjs; narrow main/preload wiring. No renderer/native/provider/version/data/memory/voice protocol changes.
 
-- [ ] RED strict portable schema, size/keys/duplicate structural keys/inert content/privacy projection and manual new-ID import; reject source/proof/status/private fields.
-- [ ] Implement pure public party brief/templates and explicit role; dated known/unknown equipment/bags, no invented eligibility.
-- [ ] Trusted preview/export/import-preview/commit and checklist IPC, fake dialog only, epoch cancellation/atomic caps/error/current selection and normal state ownership.
-- [ ] Synthetic Electron backend normal/genuine83, affected privacy/journey/voice-memory routes; full once final. Commit/report work/v012-task1-report.md exactAPI/model/TDD/logs; independentreview.
+- [x] RED strict portable schema, size/keys/duplicate structural keys/inert content/privacy projection and manual new-ID import; reject source/proof/status/private fields.
+- [x] Implement pure public party brief/templates and explicit role; dated known/unknown equipment/bags, no invented eligibility.
+- [x] Trusted preview/export/import-preview/commit and checklist IPC, fake dialog only, epoch cancellation/atomic caps/error/current selection and normal state ownership.
+- [x] Synthetic Electron backend normal/genuine83, affected privacy/journey/voice-memory routes; full once final. Commit/report work/v012-task1-report.md exactAPI/model/TDD/logs; independentreview.
 
 ## Task 2: Graphical Party expedition and deliberate sharing
 
