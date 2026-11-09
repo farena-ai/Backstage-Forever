@@ -28,7 +28,7 @@ function shortPath(target) {
    load("./src/core/providers.cjs").ask=async()=>{throw Error("Fixture blocks inference");};
    load("./src/core/claude.cjs").status=async()=>({installed:false,loggedIn:false});
    globalThis.companyUiFixture={};
-   dialog.showMessageBox=async()=>({response:1});
+   dialog.showMessageBox=async()=>{companyUiFixture.confirmCalls=(companyUiFixture.confirmCalls||0)+1;return {response:companyUiFixture.confirm??1};};
    dialog.showOpenDialog=async()=>({canceled:false,filePaths:[companyUiFixture.importFile]});
    dialog.showSaveDialog=async()=>({canceled:false,filePath:companyUiFixture.exportFile});
   });
@@ -104,6 +104,16 @@ function shortPath(target) {
   assert.equal(await page.getByRole("button",{name:"Create plan",exact:true}).evaluate(n=>n.getBoundingClientRect().bottom<innerHeight),true,"First useful action visible");
   assert.equal(await page.getByRole("button",{name:"Open recommended Lark Ashvale Adventure",exact:true}).evaluate(n=>n.getBoundingClientRect().bottom<innerHeight),true,"Recommended character action visible in first compact viewport");
   await page.screenshot({path:path.join(evidence,"company-compact.png"),fullPage:true});
+  // Same-ID saved identity/level/source changes must update chrome during a dirty edit.
+  const sameIdTitle=journey.getByLabel("Plan title");await sameIdTitle.fill("Same-ID retained draft");await sameIdTitle.evaluate(n=>n.setSelectionRange(3,8));
+  clock=Math.floor(Date.now()/1000);Object.assign(captures[0],{updatedAt:clock,name:"Lark Dawnvale",level:32,className:"Warrior",faction:"Horde"});await writeCapture();await page.evaluate(()=>window.backstage.refreshGame());
+  await page.waitForFunction(()=>document.body.dataset.faction==="horde"&&document.body.dataset.class==="warrior"&&document.querySelector('#active-character option:checked')?.textContent.includes("Lark Dawnvale · Level 32"),{},{timeout:12000});
+  assert.match(await page.locator(".game-status-chip small").innerText(),/Saved · just now/);
+  assert.equal(await sameIdTitle.inputValue(),"Same-ID retained draft");
+  assert.deepEqual(await sameIdTitle.evaluate(n=>({focused:document.activeElement===n,start:n.selectionStart,end:n.selectionEnd})),{focused:true,start:3,end:8},"Same-ID chrome update retains dirty text and focus");
+  clock+=60;Object.assign(captures[0],{updatedAt:clock,name:"Lark Ashvale",level:31,className:"Mage",faction:"Alliance"});await writeCapture();await page.evaluate(()=>window.backstage.refreshGame());
+  await page.waitForFunction(()=>document.body.dataset.faction==="alliance"&&document.body.dataset.class==="mage"&&document.querySelector('#active-character option:checked')?.textContent.includes("Lark Ashvale · Level 31"),{},{timeout:12000});
+  await sameIdTitle.press("Tab");await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Same-ID retained draft");
   // A newer genuine GameSync observation updates evidence without eating a draft or focus.
   await journey.getByLabel("Plan title").fill("Still editing this title");
   const titleNode=journey.getByLabel("Plan title");await titleNode.evaluate(n=>n.setSelectionRange(4,9));
@@ -161,14 +171,21 @@ function shortPath(target) {
   assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).state.activeProfileId,"rook'\"><b>");
   await page.getByLabel("Active character").selectOption("lark");
   await page.waitForFunction(()=>document.body.dataset.faction==="alliance"&&document.querySelector("[data-company-journey]"));
-  await app.evaluate(()=>{companyUiFixture.delay="backstage:journeyAction";companyUiFixture.release=null;});
-  await journey.getByRole("checkbox").first().evaluate(n=>{n.checked=!n.checked;n.dispatchEvent(new Event("change",{bubbles:true}));});
-  await app.evaluate(async()=>{const end=Date.now()+5000;while(!companyUiFixture.release){if(Date.now()>end)throw Error("Navigation queue delay did not start");await new Promise(r=>setTimeout(r,10));}});
+  await page.evaluate(async()=>{await autosaveQueue;window.companyHeldQueue={};window.companyHeldQueue.promise=new Promise(resolve=>window.companyHeldQueue.release=resolve);autosaveQueue=window.companyHeldQueue.promise;});
   await titleNode.fill("Saved while leaving Company");await titleNode.press("Tab");
-  await page.getByRole("button",{name:"Adventure",exact:true}).click();await app.evaluate(()=>companyUiFixture.release());
+  assert.equal(await page.evaluate(()=>autosaveQueue!==window.companyHeldQueue.promise),true,"Blur has entered the held real renderer queue before navigation");
+  await page.getByRole("button",{name:"Adventure",exact:true}).click();await page.evaluate(()=>window.companyHeldQueue.release());
   await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Saved while leaving Company");
   await page.getByRole("button",{name:"Company",exact:true}).click();await titleNode.fill("Newer retained draft");await titleNode.press("Tab");
   await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Newer retained draft");
+  await page.evaluate(async()=>{await autosaveQueue;window.companyHeldQueue={};window.companyHeldQueue.promise=new Promise(resolve=>window.companyHeldQueue.release=resolve);autosaveQueue=window.companyHeldQueue.promise;});
+  await titleNode.fill("Saved across queued selection");await titleNode.press("Tab");
+  assert.equal(await page.evaluate(()=>autosaveQueue!==window.companyHeldQueue.promise),true,"Selection regression starts with an accepted queued blur");
+  await page.getByLabel("Active character").selectOption("rook'\"><b>");await page.evaluate(()=>window.companyHeldQueue.release());
+  await page.waitForFunction(async()=>{const {state}=await window.backstage.bootstrap();return state.activeProfileId==="rook'\"><b>"&&state.journeys[0].title==="Saved across queued selection";});
+  await page.waitForFunction(()=>document.body.dataset.faction==="horde"&&document.querySelector("[data-company-journey]"));
+  await page.getByLabel("Active character").selectOption("lark");await page.waitForFunction(()=>document.body.dataset.faction==="alliance"&&document.querySelector("[data-company-journey]"));
+  await titleNode.fill("Newer retained draft");await titleNode.press("Tab");await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Newer retained draft");
   // A delayed real read must never reopen Company or replace a newer selection after navigation.
   await page.getByRole("button",{name:"Adventure",exact:true}).click();
   await app.evaluate(()=>{companyUiFixture.delay="backstage:companyBrief";companyUiFixture.release=null;});
@@ -181,6 +198,25 @@ function shortPath(target) {
   const backup=path.join(dir,"company-backup.json");
   await app.evaluate((_e,file)=>{companyUiFixture.exportFile=file;companyUiFixture.importFile=file;},backup);
   assert.equal(await page.evaluate(()=>window.backstage.exportData()),true);
+  // Cancellation is an actual main/dialog outcome. Only the boundary trigger is synthetic.
+  await page.getByRole("button",{name:"Company",exact:true}).click();await titleNode.waitFor();
+  for(const boundary of ["import","reset"]){
+   await page.evaluate(async()=>{await autosaveQueue;window.companyHeldQueue={};window.companyHeldQueue.promise=new Promise(resolve=>window.companyHeldQueue.release=resolve);autosaveQueue=window.companyHeldQueue.promise;});
+   await titleNode.fill(`Accepted before cancelled ${boundary}`);await titleNode.press("Tab");
+   assert.equal(await page.evaluate(()=>autosaveQueue!==window.companyHeldQueue.promise),true);
+   await app.evaluate(()=>{companyUiFixture.confirm=0;companyUiFixture.confirmCalls=0;});
+   await page.evaluate(command=>{const button=document.createElement("button");button.dataset.command=command;button.dataset.companyBoundaryFixture="true";button.textContent="Fixture boundary";document.getElementById("app").append(button);},boundary);
+   await page.locator("[data-company-boundary-fixture]").click();await page.evaluate(()=>window.companyHeldQueue.release());
+   await page.waitForFunction(()=>stateMutationBusy===0);
+   await app.evaluate(async()=>{const end=Date.now()+5000;while(!companyUiFixture.confirmCalls){if(Date.now()>end)throw Error("Cancellation did not reach the real confirmation");await new Promise(r=>setTimeout(r,10));}});
+   const kept=(await page.evaluate(()=>window.backstage.bootstrap())).state;
+   assert.equal(kept.journeys[0].title,`Accepted before cancelled ${boundary}`);assert.equal(kept.profiles.length,2);
+   await page.locator("[data-company-boundary-fixture]").evaluate(n=>n.remove());
+   await page.getByRole("button",{name:"Company",exact:true}).click();await titleNode.waitFor();
+  }
+  await app.evaluate(()=>companyUiFixture.confirm=1);
+  await titleNode.fill("Newer retained draft");await titleNode.press("Tab");await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Newer retained draft");
+  await page.getByRole("button",{name:"Adventure",exact:true}).click();
   const restoreJourney=(await page.evaluate(()=>window.backstage.companyBrief())).journeys[0].id;
   await page.evaluate(journeyId=>window.backstage.journeyAction({type:"rename",journeyId,title:"Pre-restore stale title"}),restoreJourney);
   await app.evaluate(()=>{companyUiFixture.delay="backstage:companyBrief";companyUiFixture.release=null;});
@@ -234,6 +270,11 @@ function shortPath(target) {
   assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).state.profiles.length,0);
   await page.getByRole("button",{name:"Create plan",exact:true}).click();await page.getByLabel("Plan name").fill("Persistent offline plan");await page.getByRole("button",{name:"Save plan",exact:true}).click();
   await page.getByLabel("Plan title").waitFor();assert.deepEqual(rendererErrors,[]);
+  await page.evaluate(async()=>{await autosaveQueue;window.companyHeldQueue={};window.companyHeldQueue.promise=new Promise(resolve=>window.companyHeldQueue.release=resolve);autosaveQueue=window.companyHeldQueue.promise;});
+  await page.getByLabel("Plan title").fill("Persistent accepted queued plan");await page.getByLabel("Plan title").press("Tab");
+  assert.equal(await page.evaluate(()=>autosaveQueue!==window.companyHeldQueue.promise),true);
+  await page.getByRole("button",{name:"Adventure",exact:true}).click();await page.evaluate(()=>window.companyHeldQueue.release());
+  await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Persistent accepted queued plan");
   await app.close();app=await electron.launch({args:[path.join(__dirname,"..")],env:{...process.env,BF_USER_DATA:data}});
   await app.evaluate(({app})=>{
    const load=process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(),"package.json"));
@@ -243,7 +284,7 @@ function shortPath(target) {
    load("./src/core/claude.cjs").status=async()=>({installed:false,loggedIn:false});
   });
   const restarted=await testWindow(app);await restarted.getByRole("button",{name:"Company",exact:true}).click();
-  assert.equal(await restarted.getByLabel("Plan title").inputValue(),"Persistent offline plan","Company plans survive restart");
+  assert.equal(await restarted.getByLabel("Plan title").inputValue(),"Persistent accepted queued plan","Accepted queued blur survives navigation and a real restart");
   console.log(`Company source Electron ${process.argv.includes("--short-path")?"genuine 8.3":"normal"}: real plans/notes/quests, newer evidence+dirty focus, historical mismatch, manual conversion, delayed reads/actions, duplicate guard, private backup/import/reset, no-profile first use, menus/compact PASS`);
  }finally{clearTimeout(watchdog);await app?.close();const resolved=await fs.realpath(dir);assert.equal(path.dirname(resolved).toLowerCase(),(await fs.realpath(os.tmpdir())).toLowerCase());assert.ok(path.basename(resolved).startsWith("forever-company-ui-"));await fs.rm(resolved,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1;});

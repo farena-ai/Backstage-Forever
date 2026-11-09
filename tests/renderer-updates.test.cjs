@@ -68,6 +68,7 @@ function harness(overrides = {}) {
     clearTimeout: () => {},
     crypto: {},
     console,
+    structuredClone,
   });
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, "../src/renderer/quest-guide.js"), "utf8"),
@@ -85,6 +86,8 @@ function harness(overrides = {}) {
   vm.runInContext("state = { onboarded: true };", context);
   return {
     context,
+    handlers,
+    polls,
     automatic,
     installOnQuit,
     summary,
@@ -97,6 +100,75 @@ function harness(overrides = {}) {
       JSON.parse(vm.runInContext("JSON.stringify(updateInfo)", context)),
   };
 }
+
+test("accepted Company blur writes drain across view invalidation and cancelled replacements", async () => {
+  for (const boundary of ["navigate", "select", "import", "reset", "open-character"]) {
+    const held = deferred(), calls = [];
+    let savedTitle = "Original";
+    const h = harness({
+      journeyAction: async input => {
+        calls.push(input); savedTitle = input.title;
+        return {state:{...vm.runInContext("state",h.context),journeys:[{id:"j",title:savedTitle,steps:[]}]},company:{characters:[],journeys:[],totals:{}}};
+      },
+      saveState: async edited => edited,
+      importData: async () => null,
+      resetData: async () => null,
+    });
+    h.context.heldQueue = held.promise;
+    vm.runInContext(`state={onboarded:true,profiles:[{id:'p',name:'One',className:'Mage'},{id:'q',name:'Two',className:'Warrior'}],activeProfileId:'p',journeys:[{id:'j',title:'Original',steps:[]}]};page='company';setupOpen=false;autosaveQueue=heldQueue;render=()=>{};`,h.context);
+    const title = {dataset:{companyField:JSON.stringify(["title","j",""]),companyEdit:"title"},value:`Accepted ${boundary}`,isConnected:true,
+      closest:selector=>selector==="[data-company-journey]"?{dataset:{companyJourney:"j"}}:null,matches:()=>false};
+    for(const fn of h.handlers.input)fn({target:title});
+    for(const fn of h.handlers.focusout)fn({target:title});
+    const queued = vm.runInContext("autosaveQueue",h.context);
+    assert.equal(calls.length,0,"Blur must be accepted behind the held queue");
+    let changing;
+    if(boundary==="select") {
+      const node={dataset:{},id:"active-character",value:"q",closest:()=>null,matches:()=>false};
+      changing=Promise.all(h.handlers.change.map(fn=>fn({target:node})));
+    } else if(boundary==="open-character") {
+      const button={dataset:{companyOpen:"q"},hasAttribute:name=>name==="data-company-open",closest:selector=>selector==="button"?button:selector==="[data-company]"?{}:null};
+      h.handlers.click.forEach(fn=>fn({target:button}));
+    } else {
+      const button={dataset:boundary==="navigate"?{nav:"adventure"}:{command:boundary},hasAttribute:()=>false,closest:selector=>selector==="button"?button:null};
+      h.handlers.click.forEach(fn=>fn({target:button}));
+    }
+    held.resolve();await queued;await changing;
+    for(let i=0;i<12;i++)await Promise.resolve();
+    assert.equal(calls.length,1,`${boundary}: view lifetime must not cancel an accepted write`);
+    assert.equal(savedTitle,`Accepted ${boundary}`);
+    if(["select","open-character"].includes(boundary))assert.equal(vm.runInContext("state.activeProfileId",h.context),"q","Late write cannot undo selection");
+  }
+});
+
+test("Company header responds to same-ID saved character and connection inputs, ignoring checkedAt-only polls", async () => {
+  let snapshot;
+  const h=harness({gameSnapshot:async()=>snapshot});
+  vm.runInContext(`state={onboarded:true,profiles:[{id:'p',name:'One',level:31,className:'Mage',faction:'Alliance',source:{updatedAt:'2026-11-08T12:00:00.000Z'}},{id:'q',name:'Two',level:20}],activeProfileId:'p'};page='company';setupOpen=false;gameStatus={connected:true,runtime:{state:'not-running',checkedAt:'old'}};globalThis.headerRenders=0;render=()=>{headerRenders++};`,h.context);
+  snapshot={state:structuredClone(vm.runInContext("state",h.context)),gameStatus:{connected:true,runtime:{state:"not-running",checkedAt:"new"}}};
+  await h.polls[1]();assert.equal(vm.runInContext("headerRenders",h.context),0,"A runtime check clock alone stays quiet");
+  snapshot=structuredClone(snapshot);
+  snapshot.state.profiles[0]={...snapshot.state.profiles[0],name:"New One",level:32,className:"Warrior",faction:"Horde",source:{updatedAt:"2026-11-09T12:00:00.000Z"}};
+  await h.polls[1]();assert.equal(vm.runInContext("headerRenders",h.context),1,"Same-ID character facts refresh header/theme");
+  snapshot={...snapshot,state:structuredClone(snapshot.state)};snapshot.state.profiles[1].name="New selector option";
+  await h.polls[1]();assert.equal(vm.runInContext("headerRenders",h.context),2,"Other selector option labels refresh");
+  snapshot={...snapshot,gameStatus:{connected:false,runtime:{state:"not-running",checkedAt:"later"}}};
+  await h.polls[1]();assert.equal(vm.runInContext("headerRenders",h.context),3,"Meaningful connection changes refresh");
+});
+
+test("a successful replacement generation still cancels obsolete queued Company work", async () => {
+  const held=deferred(),calls=[];
+  const h=harness({journeyAction:async input=>{calls.push(input);throw Error("Obsolete write reached main");}});
+  h.context.heldQueue=held.promise;
+  vm.runInContext(`state={onboarded:true,profiles:[],activeProfileId:null,journeys:[]};page='company';setupOpen=false;autosaveQueue=heldQueue;`,h.context);
+  const node={dataset:{companyField:JSON.stringify(["title","old",""]),companyEdit:"title"},value:"Old replacement draft",isConnected:true,closest:s=>s==="[data-company-journey]"?{dataset:{companyJourney:"old"}}:null,matches:()=>false};
+  h.handlers.input.forEach(fn=>fn({target:node}));h.handlers.focusout.forEach(fn=>fn({target:node}));
+  const queued=vm.runInContext("autosaveQueue",h.context);
+  vm.runInContext(`autosaveGeneration++;Company.invalidate(true);state={onboarded:true,profiles:[],activeProfileId:null,journeys:[]};`,h.context);
+  held.resolve();await queued;
+  assert.equal(calls.length,0,"Replacement cancellation is independent of view invalidation");
+  assert.equal(vm.runInContext("state.journeys.length",h.context),0);
+});
 
 test("overlapping preference changes cannot silently re-enable automatic updates", async () => {
   const requests = [];

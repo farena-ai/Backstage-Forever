@@ -432,6 +432,15 @@ function isEditing() {
     return el.value !== el.defaultValue;
   });
 }
+function companyChromeSignature(saved, status) {
+  const selected = saved.profiles.find(p => p.id === saved.activeProfileId);
+  return JSON.stringify([
+    saved.activeProfileId,
+    saved.profiles.map(p => [p.id, p.name, p.level]),
+    selected?.className, selected?.faction, selected?.source?.kind, selected?.source?.updatedAt,
+    LivingSetup.signature(status),
+  ]);
+}
 function options(values, selected) {
   return values
     .map(
@@ -818,7 +827,9 @@ Company.init({
   mutate: (input, valid) => {
     const generation = autosaveGeneration;
     const task = async () => {
-      if (generation !== autosaveGeneration || !valid()) return null;
+      // A blurred edit is accepted work, even after its view has closed.
+      // Replacement generations cancel obsolete writes; view validity only gates replies.
+      if (generation !== autosaveGeneration) return null;
       const epoch = stateMutationEpoch;
       const result = await mutateStateCall(() => api.journeyAction(input));
       // Another mutation or a replacement lifecycle may finish while IPC waits.
@@ -1461,11 +1472,13 @@ setInterval(async () => {
       // Company fields keep their drafts independently of captured evidence.
       // Refresh only that region so newer proof can arrive during a text edit.
       pendingSnapshot = null;
-      const selectionChanged = state.activeProfileId !== result.state.activeProfileId;
+      const chromeChanged = companyChromeSignature(state, gameStatus) !== companyChromeSignature(result.state, result.gameStatus);
       state = result.state;
       gameStatus = result.gameStatus || {};
       acceptBrief(result);
-      if (selectionChanged) render();
+      if (chromeChanged) render();
+      const savedAge = root.querySelector(".game-status-chip small");
+      if (savedAge) savedAge.textContent = profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character";
       Company.refresh();
       return;
     }
