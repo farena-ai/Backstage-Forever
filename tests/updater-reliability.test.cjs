@@ -139,6 +139,151 @@ test("retry cap and diagnostics contain only bounded allowlisted fields", async 
   assert.ok(saved.length < 512);
   assert.doesNotMatch(saved, /secret|token|private|stack|https:/);
 });
+
+test("failed partial removal stops retries and preserves any previous verified installer", async (t) => {
+  for (const priorReady of [false, true]) {
+    const h = harness(t, {
+      download: ({ attempts, chunk }) => {
+        if (attempts === 1) {
+          chunk(Buffer.from("discard"), 7);
+          throw transient();
+        }
+        chunk(data, data.length);
+        return data.length;
+      },
+    });
+    const old = envelope("0.4.0");
+    if (priorReady) {
+      fs.writeFileSync(
+        path.join(h.dir, "updates/ready.json"),
+        JSON.stringify(old),
+      );
+      fs.writeFileSync(
+        path.join(h.dir, "updates", path.basename(assetURL("0.4.0"))),
+        data,
+      );
+      h.updater.restore();
+    }
+    const unlink = fs.unlinkSync;
+    let status;
+    try {
+      fs.unlinkSync = (file) => {
+        if (String(file).endsWith(".partial"))
+          throw Object.assign(Error("private cleanup details"), {
+            code: "EPERM",
+          });
+        return unlink(file);
+      };
+      status = await h.updater.check();
+    } finally {
+      fs.unlinkSync = unlink;
+    }
+    assert.equal(h.attempts(), 1);
+    assert.deepEqual(h.waits, []);
+    assert.equal(status.phase, priorReady ? "ready" : "error");
+    assert.deepEqual(status.diagnostic, {
+      stage: "cache",
+      code: "PERMISSION",
+      attempt: 1,
+      bytes: 7,
+    });
+    assert.match(status.message, /Windows.*save.*retry/i);
+    assert.equal(status.readyVersion, priorReady ? "0.4.0" : null);
+    assert.equal(
+      fs
+        .readdirSync(path.join(h.dir, "updates"))
+        .filter((name) => name.endsWith(".partial")).length,
+      1,
+    );
+    if (priorReady)
+      assert.deepEqual(
+        JSON.parse(fs.readFileSync(path.join(h.dir, "updates/ready.json"))),
+        old,
+      );
+    else
+      assert.equal(
+        fs.existsSync(path.join(h.dir, "updates/ready.json")),
+        false,
+      );
+    assert.doesNotMatch(
+      JSON.stringify(status.diagnostic),
+      /private|details|stack/,
+    );
+  }
+});
+
+test("failed partial close stops retries with a sanitized cache diagnostic", async (t) => {
+  const h = harness(t, {
+    download: ({ attempts, chunk }) => {
+      if (attempts === 1) {
+        chunk(Buffer.from("discard"), 7);
+        throw transient();
+      }
+      chunk(data, data.length);
+      return data.length;
+    },
+  });
+  const open = fs.openSync,
+    close = fs.closeSync;
+  const owned = new Set();
+  let injected = false;
+  let status;
+  try {
+    fs.openSync = (file, ...args) => {
+      const fd = open(file, ...args);
+      if (String(file).endsWith(".partial")) owned.add(fd);
+      return fd;
+    };
+    fs.closeSync = (fd) => {
+      if (owned.has(fd) && !injected) {
+        injected = true;
+        throw Object.assign(Error("private close details"), { code: "EIO" });
+      }
+      return close(fd);
+    };
+    status = await h.updater.check();
+  } finally {
+    fs.openSync = open;
+    fs.closeSync = close;
+    for (const fd of owned) {
+      try {
+        close(fd);
+      } catch {}
+    }
+  }
+  assert.equal(injected, true);
+  assert.equal(h.attempts(), 1);
+  assert.deepEqual(h.waits, []);
+  assert.equal(status.phase, "error");
+  assert.deepEqual(status.diagnostic, {
+    stage: "cache",
+    code: "CACHE",
+    attempt: 1,
+    bytes: 7,
+  });
+  assert.equal(fs.existsSync(path.join(h.dir, "updates/ready.json")), false);
+});
+
+test("a failed exclusive partial open never removes a file this attempt did not create", async (t) => {
+  const h = harness(t);
+  const existing = path.join(
+    h.dir,
+    "updates/download-fixture-collision.partial",
+  );
+  fs.writeFileSync(existing, "preserve existing bytes");
+  const uuid = crypto.randomUUID;
+  let status;
+  try {
+    crypto.randomUUID = () => "fixture-collision";
+    status = await h.updater.check();
+  } finally {
+    crypto.randomUUID = uuid;
+  }
+  assert.equal(status.phase, "error");
+  assert.equal(status.diagnostic.stage, "cache");
+  assert.equal(h.attempts(), 0);
+  assert.equal(fs.readFileSync(existing, "utf8"), "preserve existing bytes");
+});
 test("cancellation during backoff stops immediately without another request", async (t) => {
   let entered;
   const started = new Promise((r) => (entered = r));

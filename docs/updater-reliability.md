@@ -11,7 +11,10 @@ HTTP 5xx failures. Backoff is 500 ms then 1,500 ms and respects cancellation.
 Every installer attempt starts with a new partial file and hash. Signature,
 signed version/asset binding, SHA256, size and unsafe-path failures do not retry
 or bypass verification. Failed partial files are closed and removed before
-backoff. Ready metadata is published only after complete verification and
+backoff. If closing or removing an owned failed partial fails, retries stop and
+a sanitized cache error remains visible; an older verified installer is preserved.
+An attempt never removes a colliding file it did not create.
+Ready metadata is published only after complete verification and
 atomic placement.
 
 Initial requests to this repository's GitHub release-download route use a fresh

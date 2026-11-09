@@ -664,9 +664,11 @@ class Updater {
           "download-" + crypto.randomUUID() + ".partial",
         );
         let fd;
+        let partialCreated = false;
         let successful = false;
         try {
           fd = fs.openSync(tmp, "wx", 0o600);
+          partialCreated = true;
           const hash = crypto.createHash("sha256");
           stage = "download";
           const size = await this.fetch(
@@ -715,15 +717,27 @@ class Updater {
           if (stage !== "download" || !retryable(error) || attempt === 3)
             throw error;
         } finally {
+          let cleanupError;
           if (fd !== undefined) {
             try {
               fs.closeSync(fd);
-            } catch {}
+            } catch (error) {
+              cleanupError = error;
+            }
           }
-          if (!successful) {
+          if (!successful && partialCreated) {
             try {
               fs.unlinkSync(tmp);
-            } catch {}
+            } catch (error) {
+              if (error.code !== "ENOENT") cleanupError ??= error;
+            }
+          }
+          if (cleanupError) {
+            stage = "cache";
+            const code = classify(cleanupError, stage);
+            throw updateError(
+              ["PERMISSION", "DISK", "PATH"].includes(code) ? code : "CACHE",
+            );
           }
         }
         if (successful) break;
