@@ -20,6 +20,7 @@ const classes = [
 const nav = [
   ["adventure", "◈", "Adventure"],
   ["company", "♜", "Company"],
+  ["party", "⚔", "Party"],
   ["preparation", "⚒", "Preparation"],
   ["quest-guide", "⌖", "Quest Guide"],
   ["characters", "♙", "Characters"],
@@ -466,10 +467,11 @@ function onboarding() {
 function render() {
   syncCompanion();
   if (Voice.deferRender(render) || Memory.deferRender(render)) return;
-  if (Company.deferRender(render) || Director.deferRender(render) || Preparation.deferRender(render)) return;
+  if (Company.deferRender(render) || Director.deferRender(render) || Preparation.deferRender(render) || Party.deferRender(render)) return;
   const focusedOption = document.activeElement?.dataset.planOption;
   Company.beginRender();
   Preparation.beginRender();
+  Party.beginRender();
   try {
   QuestGuide.sync(profile(), knowledgeStatus);
   syncGuidance();
@@ -493,7 +495,7 @@ function render() {
     return;
   }
   const current = nav.find((item) => item[0] === page);
-  root.innerHTML = `<div class="shell"><aside class="rail">${brand()}<nav aria-label="Main navigation">${nav.map(([key, glyph, label]) => `<button data-nav="${key}" class="${page === key ? "active" : ""}" ${page === key ? 'aria-current="page"' : ""}><span class="glyph" aria-hidden="true">${glyph}</span>${label}</button>`).join("")}</nav><div class="rail-bottom"><button class="update-rail" data-nav="updates"><span aria-hidden="true">⟲</span><span data-update-label>Updates</span></button><div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span>${current[2]}</span></div><button class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}<small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${setupDock()}${{ adventure: adventure, company: Company.page, preparation: Preparation.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, updates: updatesPage }[page]()}</div></main></div>`;
+  root.innerHTML = `<div class="shell"><aside class="rail">${brand()}<nav aria-label="Main navigation">${nav.map(([key, glyph, label]) => `<button data-nav="${key}" class="${page === key ? "active" : ""}" ${page === key ? 'aria-current="page"' : ""}><span class="glyph" aria-hidden="true">${glyph}</span>${label}</button>`).join("")}</nav><div class="rail-bottom"><button class="update-rail" data-nav="updates"><span aria-hidden="true">⟲</span><span data-update-label>Updates</span></button><div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span>${current[2]}</span></div><button class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}<small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${setupDock()}${{ adventure: adventure, company: Company.page, party: Party.page, preparation: Preparation.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, updates: updatesPage }[page]()}</div></main></div>`;
   restoreDrafts();
   if (page === "assistant") document.getElementById("chatlog").scrollTop = 1e6;
   // Actions keep the character shown when rendered, even if an autosave later
@@ -509,12 +511,14 @@ function render() {
   QuestGuide.mounted();
   Company.mounted();
   Preparation.mounted();
+  Party.mounted();
   Voice.mounted();
   Memory.mounted();
   if (focusedOption) root.querySelector(`[data-plan-option="${focusedOption}"]`)?.focus();
   } finally {
     Company.endRender();
     Preparation.endRender();
+  Party.endRender();
   }
 }
 function classKey(className) {
@@ -950,6 +954,29 @@ Preparation.init({
     toast("Shopping checklist saved. Check off each step manually in Company.");
   },
 });
+Party.init({
+  api, root, esc, portrait, notify: toast,
+  character: () => profile(), profileId: () => state?.activeProfileId,
+  active: () => page === "party" && !setupOpen && Boolean(state?.onboarded),
+  sourceSignature: () => JSON.stringify([state?.provider,state?.profiles.map(p=>[p.id,p.source,p.readiness,p.name,p.className,p.faction])]),
+  epoch: () => stateMutationEpoch, ready: () => autosaveQueue,
+  cancelPreview: () => { companionReady=api.companionContext({profileId:state.activeProfileId??null,view:companionView()});companionReady.catch(()=>{}); },
+  cleanError: e => String(e?.message||"").replace(/^Error invoking remote method '[^']+': Error: /,""),
+  mutate: (kind,input,valid) => {
+    const generation=autosaveGeneration;
+    const task=async()=>{
+      // Reviewed portable content must still belong to the visible editor before dispatch.
+      if(generation!==autosaveGeneration || (kind==="commit"&&!valid()))return null;
+      const epoch=stateMutationEpoch;
+      const result=await mutateStateCall(()=>kind==="create"?api.createPartyJourney(input):api.commitPartyPlan(input));
+      if(generation!==autosaveGeneration||!valid()||stateMutationEpoch!==epoch+2)return null;
+      state=result.state;return result;
+    };
+    const result=autosaveQueue.then(task,task);autosaveQueue=result.catch(()=>{});return result;
+  },
+  show: () => { Company.invalidate(); Party.invalidate(); page="party"; render(); },
+  open: result => { Party.invalidate(); Company.showJourney(result.journeyId);page="company";render();toast("Manual plan saved. Check off each step yourself in Company."); },
+});
 Company.init({
   api, root, esc, portrait,
   active: () => page === "company" && !setupOpen && Boolean(state?.onboarded),
@@ -982,9 +1009,11 @@ Company.init({
 root.addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button) return;
+  if (button.hasAttribute("data-company-share")) { if(page==="company")Party.shareJourney(button.dataset.companyShare); return; }
+  if (button.closest("[data-party]") && !button.dataset.nav) return;
   if (button.hasAttribute("data-director-start") || button.hasAttribute("data-preparation-add") || button.hasAttribute("data-preparation-retry")) return;
   if (button.hasAttribute("data-company-command") || button.hasAttribute("data-company-open") || button.closest("[data-company-form]")) return;
-  if (button.dataset.nav || button.dataset.character || ["reset", "import", "new-character", "delete-character"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) { Company.invalidate(); Director.invalidate(); Preparation.invalidate(); }
+  if (button.dataset.nav || button.dataset.character || ["reset", "import", "new-character", "delete-character"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) { Company.invalidate(); Director.invalidate(); Preparation.invalidate(); Party.invalidate(); }
   if (button.dataset.nav || button.dataset.character || button.dataset.provider || button.dataset.briefAction || button.dataset.task || ["clear-chat", "reset", "import", "new-character", "delete-character", "delete-key", "subscription-login", "subscription-logout", "explain-plan"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) retireCompanion();
   action(async () => {
     await autosaveQueue;
@@ -1242,6 +1271,7 @@ root.addEventListener("click", (event) => {
         if (confirm("Delete this character, their goals and private notes?")) {
           CommandCenter.remove(button.dataset.profileId);
           Preparation.remove(button.dataset.profileId);
+          Party.remove(button.dataset.profileId);
           await persist(
             editedState((next) => {
               const target = button.dataset.profileId;
@@ -1276,6 +1306,7 @@ root.addEventListener("click", (event) => {
           Company.invalidate(true);
           Preparation.invalidate();
           Preparation.remove();
+          Party.invalidate(); Party.remove();
           chatGeneration++;
           autosaveGeneration++;
           formDrafts.clear();
@@ -1304,6 +1335,7 @@ root.addEventListener("click", (event) => {
           Company.invalidate(true);
           Preparation.invalidate();
           Preparation.remove();
+          Party.invalidate(); Party.remove();
           CommandCenter.remove();
           QuestGuide.invalidate(true);
           knowledgeStatus = null;
@@ -1350,9 +1382,9 @@ root.addEventListener("click", (event) => {
 });
 root.addEventListener("change", (event) =>
   action(async () => {
-    if (event.target.closest("[data-company],[data-preparation]")) return;
+    if (event.target.closest("[data-company],[data-preparation],[data-party]")) return;
     if (event.target.id === "active-character" || event.target.id === "access-method") retireCompanion();
-    if (event.target.id === "active-character") { Company.invalidate(); Director.invalidate(); Preparation.invalidate(); }
+    if (event.target.id === "active-character") { Company.invalidate(); Director.invalidate(); Preparation.invalidate(); Party.invalidate(); }
     if (event.target.dataset.planOption && state.activeProfileId) {
       const selected = CommandCenter.options(state.activeProfileId);
       const key = event.target.dataset.planOption;
@@ -1628,6 +1660,14 @@ setInterval(async () => {
     )
       return;
     const editing = isEditing();
+    if (page === "party") {
+      if(state.activeProfileId!==result.state.activeProfileId)Party.invalidate();
+      pendingSnapshot=null;
+      const chromeChanged=companyChromeSignature(state,gameStatus)!==companyChromeSignature(result.state,result.gameStatus);
+      state=result.state;gameStatus=result.gameStatus||{};acceptBrief(result);
+      if(chromeChanged)render();
+      Party.refresh();return;
+    }
     if (page === "preparation") {
       if (state.activeProfileId !== result.state.activeProfileId) Preparation.invalidate();
       pendingSnapshot = null;

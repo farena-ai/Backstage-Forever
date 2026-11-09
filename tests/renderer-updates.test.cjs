@@ -87,6 +87,8 @@ function harness(overrides = {}) {
   context.Company = context.window.Company;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/preparation.js"), "utf8"), context);
   context.Preparation = context.window.Preparation;
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/party.js"), "utf8"), context);
+  context.Party = context.window.Party;
   for (const name of ["voice", "memory"]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${name}.js`), "utf8"), context);
     context[name === "voice" ? "Voice" : "Memory"] = context.window[name === "voice" ? "Voice" : "Memory"];
