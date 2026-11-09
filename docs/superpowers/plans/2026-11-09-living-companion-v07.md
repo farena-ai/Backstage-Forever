@@ -35,7 +35,7 @@ Files: capture/HUD/TOC, GameSync owned resource list or shared addon-files modul
 
 ### Task 3: Runtime-aware setup and multi-account import backend
 
-Files: new `src/core/game-runtime.cjs`, GameSync, main/preload narrow IPC, focused unit/IPC/import tests. No renderer overhaul yet. Define exported public field shape in report for Task4.
+Files: new `src/core/game-runtime.cjs`, optional focused `src/core/game-roster.cjs` for pure composite logic, GameSync/discovery, main/preload narrow IPC, focused unit/IPC/import tests. Core adventure/guidance freshness copy may be adjusted without changing timestamps/classification to remove routine reload nags. No renderer overhaul yet. Define exported public field shape in report for Task4.
 
 - [ ] Write failing tests for runtime tri-state/path/launch safety, no/one/multiple discovery, stale async setup/reset/disconnect, composite snapshots/newest-per-character/follow semantics.
 - [ ] Implement bounded cached Windows process metadata probe and explicit validated literal executable launch with injected tests.
