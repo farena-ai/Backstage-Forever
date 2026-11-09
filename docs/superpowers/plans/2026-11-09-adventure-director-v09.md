@@ -14,11 +14,11 @@ Read docs/superpowers/specs/2026-11-09-adventure-series-v09-v012-design.md and d
 
 ## Task 1: Director model, atomic session and trusted integration
 
-Files: create src/core/director.cjs, src/core/director-ipc.cjs, tests/director.test.cjs, tests/director-ipc.test.cjs, scripts/director-backend-smoke.cjs; modify src/core/adventure.cjs, src/main.cjs, src/preload.cjs narrowly. No renderer/native/version/data/provider changes.
+Files: create src/core/director.cjs, src/core/director-ipc.cjs, tests/director.test.cjs, tests/director-ipc.test.cjs, scripts/director-backend-smoke.cjs; modify src/core/adventure.cjs, src/core/guidance.cjs, src/main.cjs, src/preload.cjs narrowly. No renderer/native/version/data/provider changes.
 
 Interfaces: exact exports and startDirectorSession from the 0.9 design. Integrate `.director` into existing brief/guidance responses. Read existing guidance, journeys, company IPC and Store to use their contracts; do not duplicate validation/baselines.
 
-- [ ] RED pure tests for module/ranking/three-choice cap/source/missing data, private goal locality and session count/reuse/atomicity/selection rejection.
+- [ ] RED pure tests for module/ranking/three-choice cap/source/missing data, private goal locality and session count/reuse/atomicity/selection rejection. Include a later eligible quest beyond the existing 3/5/8 visible slice that must rank first. Share one enrichment path into bounded guidance.candidates (<=25), leaving visible steps/counts unchanged.
 - [ ] Implement pure model and immutable all-or-nothing session with main-owned current log baselines. Bound lookup and deterministic tie-breaking; exact profile/hash/build/baseline reuse across renamed journeys; no private goal text in quest steps or cloud context.
 - [ ] RED then implement trusted strict main/preload integration and actual synthetic Electron backend test covering current-state saves, reuse, reset/import, extra args, stale ordinary save preservation and no automatic inference. No production testing bypass.
 - [ ] Run focused and full units once final, existing affected command-center/Company/privacy flows as justified and new backend normal/genuine short-path. Self-review/commit/report work/v09-task1-report.md with exact commands/logs/RED/GREEN/limits. Independent task review before Task 2.
