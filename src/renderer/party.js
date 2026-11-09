@@ -28,8 +28,8 @@ window.Party = (() => {
   function valid(v){return active()&&v.generation===generation&&v.profileId===profile()&&v.role===role();}
   function displayed(n){try{return JSON.parse(n.dataset.partyIntent);}catch{return null;}}
   async function refresh(){if(!active())return;const next=JSON.stringify([profile(),role(),host.sourceSignature()]);if(next===signature)return;if(signature&&next!==signature){generation++;editor=null;pending=false;previewPending=false;}signature=next;const token=generation,request=++read,epoch=host.epoch();loading=true;
-    try{const result=await host.api.partyBrief({profileId:profile(),role:role()});if(!active()||token!==generation||request!==read)return;if(epoch!==host.epoch()){signature="";return;}model=result;choicePending=false;if(retryFocus?.revision===focusRevision)requestFocus("create");retryFocus=null;if(errorKind!=="write"){error="";errorKind="";}paint();}
-    catch{if(active()&&token===generation&&request===read){retryFocus=null;model=null;error="Your expedition facts could not be opened. Manual planning is still available. Try again.";errorKind="read";paint();}}
+    try{const result=await host.api.partyBrief({profileId:profile(),role:role()});if(!active()||token!==generation||request!==read)return;if(epoch!==host.epoch()){signature="";return;}model=result;choicePending=false;if(errorKind==="read"&&retryFocus?.revision===focusRevision)requestFocus("create");retryFocus=null;if(errorKind==="read"){error="";errorKind="";}paint();}
+    catch{if(active()&&token===generation&&request===read){retryFocus=null;model=null;if(!error||errorKind==="read"){error="Your expedition facts could not be opened. Manual planning is still available. Try again.";errorKind="read";}paint();}}
     finally{if(token===generation&&request===read)loading=false;}
   }
   function mounted(){if(active()){restore();refresh();}}
