@@ -14,10 +14,10 @@ Read docs/superpowers/specs/2026-11-09-adventure-series-v09-v012-design.md and 2
 
 Files: data/forever pack/lock/notices +compiled addonReference; separate data/forever-vendors artifacts/notices; scripts/build-forever-vendors.cjs and src/core/vendor-facts.cjs plus focused tests; narrow preparation enrichment/main read model and reproducibility/packaged source assertions. No nativecapture/renderer/provider/version/questcacheprotocol changes.
 
-- [ ] RED newer exact-input hash/meta/license/reproduction and vendor joins/reaction/unknown/build/size/schema tests first.
-- [ ] Verify pinned6rawsourcebytes, compile unchanged normalizer, regenerate reference and explicit before/after qualified/clue coverage report. Keep source caps/guards.
-- [ ] Separate3file seller compiler/strictloader with historicalfactionreactionqualified suggestions bound<=3/material<=20rows, unknowns honest/mobilebrowseonly; no prices/stock/access guarantees or newwaypoint.
-- [ ] Reproduction/sourceprivacy/packagedartifact integration tests, fulloncefinal, exactmodel/report work/v012-guide-task1-report.md and independentreview.
+- [x] RED newer exact-input hash/meta/license/reproduction and vendor joins/reaction/unknown/build/size/schema tests first.
+- [x] Verify pinned6rawsourcebytes, compile unchanged normalizer, regenerate reference and explicit before/after qualified/clue coverage report. Keep source caps/guards.
+- [x] Separate3file seller compiler/strictloader with historicalfactionreactionqualified suggestions bound<=3/material<=20rows, unknowns honest/mobilebrowseonly; no prices/stock/access guarantees or newwaypoint.
+- [x] Reproduction/sourceprivacy/packagedartifact integration tests, fulloncefinal, exactmodel/report work/v012-guide-task1-report.md and independentreview.
 
 ## Task 2: Guarded complementary current-client destinations
 

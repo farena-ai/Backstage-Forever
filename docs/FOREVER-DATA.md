@@ -1,29 +1,59 @@
 # Your Forever quest reference
 
-BF includes its quest reference. You do not need an AI connection, account signup or database download to use it. Connect the game, load the updated companion addon, then type `/reload` in WoW to save your character's current progress. BF uses your exact quest IDs and client build to select compatible facts.
+BF includes its quest reference. You do not need an AI connection, account signup or database download. Connect the game and load the companion addon. In-game guidance updates as you play outside combat; the desktop receives a saved snapshot on logout or game exit. Use a voluntary `/reload` when you want that desktop snapshot now or need to load an addon update. Routine progress does not require routine reloads.
 
-The Quest Guide starts with your character's quests. Search locally by name or quest number to inspect reported chain links, quest givers, turn-in NPCs, approximate observed locations and listed rewards. Reward choices mean choose one; they are separate from guaranteed items. Missing details stay unknown. A reported next-quest link does not establish every prerequisite or guarantee that your character can accept it.
+Quest Guide starts with your character's quests. Search locally by name or quest number to inspect reported chain links, givers, finishers, approximate observed locations and listed rewards. Reward choices mean choose one; they are separate from guaranteed items. Missing details stay unknown. A reported next-quest link does not establish every prerequisite or guarantee your character can accept it.
 
-Where compatible data supports a destination, Copy game waypoint prepares a short `/bf guide` command. Paste it into WoW yourself. The addon checks the command and quest state before placing a supported marker. If the client cannot place one, it prints coordinates. BF never moves, targets, fights, interacts, automatically reloads or opens game panels for you.
+Where compatible evidence supports a destination, **Copy game waypoint** prepares a short `/bf guide` command. Paste it into WoW yourself. The addon checks the command and quest state before placing a supported marker; if placement is unavailable it can print coordinates. BF never moves, targets, fights, interacts, automatically reloads or opens game panels for you.
 
-NPC locations record where a player stood while interacting with the NPC. Treat them as approximate observations, not exact spawns or guaranteed routes. Quest facts have a collection date, game build and source report count. One report is not independent corroboration. Server-cache records alone are reference entries, not proof that a quest is playable.
+Saved game destinations and historical reference locations are distinct. NPC reference coordinates record where a player stood while interacting, not an exact spawn or guaranteed route. A named NPC mentioned in an objective remains a clue, even if a historical interaction coordinate exists. Quest facts have a collection date, build and source report count. One report is not independent corroboration. Server-cache records alone do not prove a quest is playable.
 
-The initial pack comes from Efficient Games' published live Forever observations, collected November 7–8, 2026 for build 1.60.1.70862. It has 3,392 quest cache records and 1,187 reported positive next-quest links, with much smaller observed NPC/objective coverage. BF does not cover every quest, condition or location. Another build may have no matching pack; BF shows that rather than applying unrelated Classic or beta data.
+## What the 0.12 reference contains
 
-Of those records, 213 have offer, turn-in or objective-progress evidence in the initial pack. Default browsing prioritizes your current quests and records with that evidence. Additional reference-only entries can be inspected explicitly, but they do not independently trigger a recommendation. The pack also has 206 interacted NPC records, 18 interacted objects and objective-position observations for 97 quests. Some optional malformed observations are dropped during normalization; the coverage report records that count.
+The bundled Efficient Games observations match live Forever product `wowf`, build **1.60.1.70862**, English `enUS`, with observations through **November 9, 2026**. The refreshed pack has **3,884 quest cache records**, of which **379** have offer, turn-in or objective-progress evidence. It also includes 341 interacted NPC records and 36 interacted objects. Default browsing prioritizes your current quests and records with played evidence; additional cache-only entries require an explicit choice and do not independently trigger recommendations.
 
-Automatic reference checks download public whole-build datasets while BF is open. They do not send character names, quests, account details, notes or AI credentials. You can disable automatic checks and refresh manually. If a download fails, the last valid compatible pack remains usable. The last check date and the source's collection date are different things.
+The same fixed matching-build test profiles were used before and after the refresh, without a saved game destination:
 
-Full completed-quest ID sets stay local. When Use my active character is enabled, an explicitly submitted AI question can include a bounded selection of relevant sourced quest facts. The context preview shows the same approved information. Refreshing data, browsing quests and building a plan do not make an AI request.
+| Reference test phase | Previous coordinate destinations | Refreshed coordinate destinations | Refreshed named-NPC clues |
+| --- | ---: | ---: | ---: |
+| Ready turn-in | 163 | 301 | 44 |
+| Unfinished objective | 81 | 129 | 68 |
+| Reference browsing | 212 | 373 | 40 |
 
-Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Source: https://github.com/JIVESCORP/eg-link-output-wowf, initial commit 156f29c9af78b1586883e8eb94a13467eb89638c. Backstage Coding filters, normalizes, indexes and combines the published records for BF; these are changes to the source compilation. The app code remains MIT licensed. The publisher's data license does not transfer ownership of Blizzard's game content.
+Counts are unique quests, not a count of points. Clues are separate from coordinate-qualified results. These synthetic checks measure structural reference potential, not actual player accuracy, eligibility, live-client acceptance or universal coverage. The data contains explicit giver/finisher/objective positions for 374 unique quests; phase and objective-shape guards can reduce usable results. Some malformed optional observations are dropped during normalization. Another build or locale may have no compatible reference; BF shows that instead of mixing unrelated Classic, Era, beta or unlicensed locations.
+
+No second external publisher met the compatibility and licensing requirements for this pass. The complementary path is supported current-client observations, with the game point and its qualification kept separate from historical references.
+
+## Freshness and privacy
+
+Automatic reference checks download public whole-build datasets. They do not send character names, quest lists, account details, notes, goals or AI credentials. Disable automatic checks or refresh manually when wanted. Failed or oversized downloads preserve the last valid data. For the same build, a newer bundled observation date takes precedence over an older valid cache after an app upgrade; equal-date or newer caches remain usable. The last check date and the source collection date mean different things.
+
+Full completed-quest ID sets stay local. With **Use my active character** enabled, an explicitly submitted question may include a bounded selection of relevant sourced facts. Its preview uses the same approved context helper. Browsing, refreshing references and local planning never submit an AI question.
+
+## Historical supply sellers
+
+A separate offline catalog contains **91 vendors with listings**, **1,301 listing rows** and **487 item IDs** from the same pinned build/source. Two raw vendor records had no listings and were dropped. This catalog does not change the six-file quest cache or add network requests.
+
+Suggestions require a compatible observed character build and explicit historical nonhostile reaction evidence for the character's reported faction. Missing evidence stays unknown; it does not mean hostile or inaccessible. This snapshot has no Alliance reaction arrays. Multiple-map mobile vendor history is browse-only. Reference locations are approximate interaction points, and current stock, price and access are unverified. No observed seller means no matching observation, not that a material is unobtainable. No automatic purchase or vendor waypoint is created.
+
+## Source and license
+
+Data from [Efficient Games](https://efficient.games), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Source: [JIVESCORP/eg-link-output-wowf, immutable commit 23f9636486d3d60479dc0bcee2356053c33faf2c](https://github.com/JIVESCORP/eg-link-output-wowf/tree/23f9636486d3d60479dc0bcee2356053c33faf2c). Backstage Coding filters, normalizes, indexes and combines the records; those are changes to the compilation. The separate quest and seller artifacts retain their own license/notices. App code remains MIT. The compilation license does not transfer ownership of Blizzard's game content.
 
 ## For source developers
 
-Normal unit tests use tracked small fixtures and the bundled factual pack; no research folder or network access is required. To reproduce the entire initial pack, obtain the six original JSON files from the immutable URLs in `data/forever/source-lock.json` and place them together in a local folder. The compiler checks their SHA256 hashes and byte sizes against the shipped lock before normalization:
+Ordinary tests and the offline checks use bundled artifacts and small tracked fixtures, without ignored research files or network access:
 
 ```powershell
-node scripts/build-forever-data.cjs --source-dir "C:\path\to\source-files" --check
+npm run check:addon-reference
+npm run check:forever-vendors
 ```
 
-This explicit reproduction check is separate from ordinary offline tests. Do not copy a different build, beta data or undocumented prerequisite correlations into that folder and label the result verified. The shipped license and notice must accompany redistributed derived data.
+For full reproduction, obtain the exact files at the immutable URLs in each source lock. The compiler checks bytes, SHA256, metadata and bounds before normalization. Put the six quest inputs together in one folder and the three seller inputs in another, then run:
+
+```powershell
+node scripts/build-forever-data.cjs --source-dir "C:\path\to\quest-inputs" --check
+node scripts/build-forever-vendors.cjs --source-dir "C:\path\to\seller-inputs" --check
+```
+
+Do not substitute another build or infer undocumented prerequisites. Keep the shipped license and notice with redistributed derived data. See [measured validation](VALIDATION.md) and the source locks under `data/forever/` and `data/forever-vendors/`.
