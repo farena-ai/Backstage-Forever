@@ -79,6 +79,7 @@ local function event(name)for _,f in ipairs(handlers)do if f.OnEvent then f.OnEv
 local function text()local t={};for _,f in ipairs(fonts)do t[#t+1]=f.text or ''end;return table.concat(t,'\n')end
 local guideCalls={}
 BackstageForeverGuide=function(command)guideCalls[#guideCalls+1]=command end
+dofile('addon/BackstageForever/BackstageForeverPlan.lua')
 local character={id='A',name='Hero|cffff0000',level=12,className='Mage',location={zone='Zone'},quests={}}
 local options
 BackstageForeverBuildPlan=function(c,o)
@@ -156,6 +157,53 @@ assert(frames.BackstageForeverCompassWaypoint.enabled and #guideCalls==0)
 frames.BackstageForeverCompassWaypoint.OnClick();assert(guideCalls[1]=='guide 2 o 1413 0.4 0.5 1.60.1.70862')
 frames.BackstageForeverCompassCollapse.OnClick();assert(not title.visible and not qualifier.visible,'Both reserved rows hide while collapsed')
 `));
+test('quiet bag fact reserves its own line above the action rows even with maximum quest text',()=>lua(hud+String.raw`
+character.readiness={bags={free=2,total=1000}}
+BackstageForeverHUDSettings.minutes=60
+BackstageForeverHUDUpdate(character)
+local cue,action,source
+for _,font in ipairs(fonts)do
+ if font.text=='Current game bags: 2 / 1000 free slots.' then cue=font end
+ if font.text and font.text:find('Step 2:',1,true) then action=font end
+ if font.text=='Approximate reference — turn-in' then source=font end
+end
+assert(cue,'Low-space fact must have an independent quiet line')
+assert(cue~=fonts[2] and cue~=action and cue~=source)
+assert(cue.width==312 and cue.height==16 and cue.maxLines==1 and cue.wordWrap==false)
+assert(cue.point[1]=='BOTTOMLEFT' and cue.point[3]==113)
+assert(action.point[3]+action.height<=cue.point[3] and source.point[3]+source.height<=action.point[3])
+local bodyBottom=frames.BackstageForeverCompass.height+fonts[2].point[3]-fonts[2].height
+assert(bodyBottom>=cue.point[3]+cue.height,'Long quest details must stop above the reserved preparation line')
+assert(action.text:find('Step 2:',1,true) and source.text=='Approximate reference — turn-in')
+assert(frames.BackstageForeverCompassWaypoint.enabled and #guideCalls==0)
+local function cueText()return cue.text or ''end
+character.readiness.bags.free=3;BackstageForeverHUDUpdate(character);assert(cueText()=='')
+character.readiness.bags.free=0;BackstageForeverHUDUpdate(character);assert(cueText():find('0 / 1000',1,true))
+character.readiness=nil;BackstageForeverHUDUpdate(character);assert(cueText()=='')
+character.readiness={bags={free=0,total=0}};BackstageForeverHUDUpdate(character);assert(cueText()=='')
+`));
+test('bag cue follows current capture, combat, visibility, collapse and session identity',()=>lua(hud+String.raw`
+character.readiness={bags={free=1,total=16}};BackstageForeverHUDUpdate(character)
+local cue
+for _,font in ipairs(fonts)do if font.text=='Current game bags: 1 / 16 free slots.' then cue=font end end
+assert(cue and cue.visible,'Current low-space capture must appear quietly')
+frames.BackstageForeverCompassCollapse.OnClick();assert(not cue.visible)
+frames.BackstageForeverCompassCollapse.OnClick();assert(cue.visible)
+SlashCmdList.BACKSTAGEFOREVER('hide');assert(not frames.BackstageForeverCompass.visible)
+SlashCmdList.BACKSTAGEFOREVER('show');assert(frames.BackstageForeverCompass.visible)
+fighting=true;event('PLAYER_REGEN_DISABLED');assert(not frames.BackstageForeverCompass.visible)
+fighting=false;event('PLAYER_REGEN_ENABLED');assert(frames.BackstageForeverCompass.visible)
+BackstageForeverHUDCaptureStatus('unavailable');assert(cue.text=='','A failed fresh capture must clear the previous cue')
+frames.BackstageForeverCompassFocus.OnClick();BackstageForeverHUDCaptureStatus('ready');assert(cue.text=='','Status alone cannot revive stale readiness')
+BackstageForeverHUDUpdate(character);assert(cue.text:find('1 / 16',1,true))
+local nextCharacter={id='B',name='Other',level=12,className='Mage',quests={}}
+BackstageForeverHUDUpdate(nextCharacter);assert(cue.text=='','Missing readiness on another identity must clear the previous cue')
+nextCharacter.readiness={bags={free=2,total=20}};BackstageForeverHUDUpdate(nextCharacter);assert(cue.text:find('2 / 20',1,true))
+BackstageForeverHUDSession('PLAYER_LOGIN');BackstageForeverHUDCaptureStatus('unavailable')
+assert(cue.text=='' and not text():find('2 / 20',1,true),'Failed new session cannot retain a previous identity cue')
+BackstageForeverHUDUpdate(nextCharacter);event('PLAYER_LOGOUT');assert(not frames.BackstageForeverCompass.visible)
+event('PLAYER_LOGIN');assert(cue.text=='','Previous session cue cannot revive on login')
+`));
 test('TOC loads planner dependencies before capture and HUD',()=>{
  const fs=require('node:fs');const toc=fs.readFileSync(path.join(__dirname,'../addon/BackstageForever/BackstageForever.toc'),'utf8');
  assert.deepEqual(toc.split(/\r?\n/).filter(x=>x.endsWith('.lua')),['BackstageForeverReference.lua','BackstageForeverPlan.lua','BackstageForever.lua','BackstageForeverHUD.lua']);
@@ -173,6 +221,10 @@ for _,font in ipairs(fonts)do if font.text then assert(utf8.len(font.text),'Trun
 `));
 test('real native capture and planner update quest cards, XP and zones without reloading',()=>lua(hud.slice(0,hud.indexOf('local character='))+String.raw`
 local who,xp,zone,complete,objective='A',10,'First zone',false,'Current kills: 1/4'
+local free,bagReads=1,0
+Enum={BagIndex={Backpack=0,Bag_1=1,Bag_2=2,Bag_3=3,Bag_4=4}}
+C_Container={GetContainerNumSlots=function(index)bagReads=bagReads+1;return index==0 and 16 or 0 end,
+ GetContainerNumFreeSlots=function(index)return index==0 and free or 0 end}
 local timers={}
 C_Timer={After=function(_,fn)timers[#timers+1]=fn end}
 local function flush()local queued=timers;timers={};for _,fn in ipairs(queued)do fn()end end
@@ -197,6 +249,15 @@ dofile('addon/BackstageForever/BackstageForever.lua')
 dofile('addon/BackstageForever/BackstageForeverHUD.lua')
 event('PLAYER_LOGIN')
 assert(text():find('Current kills: 1/4',1,true) and text():find('XP 10 / 100',1,true))
+assert(text():find('Current game bags: 1 / 16 free slots.',1,true))
+local beforeBags=bagReads
+free=3;for i=1,30 do event('BAG_UPDATE_DELAYED')end
+assert(#timers==1 and bagReads==beforeBags and text():find('Current game bags: 1 / 16',1,true),'Bag events must coalesce without extra immediate reads')
+flush();assert(bagReads==beforeBags+5 and not text():find('Current game bags:',1,true),'Improved space clears on the normal coalesced capture')
+free=2;event('BAG_UPDATE_DELAYED');flush();assert(text():find('Current game bags: 2 / 16',1,true))
+local containers=C_Container;C_Container=nil;event('BAG_UPDATE_DELAYED');flush()
+assert(not text():find('Current game bags:',1,true),'Missing supported bag APIs must stay silent')
+C_Container=containers;event('BAG_UPDATE_DELAYED');flush();assert(text():find('Current game bags: 2 / 16',1,true))
 objective='Current kills: 3/4';xp=40;zone='Second zone'
 event('QUEST_LOG_UPDATE');event('PLAYER_XP_UPDATE');event('ZONE_CHANGED');flush()
 assert(text():find('Current kills: 3/4',1,true) and text():find('XP 40 / 100',1,true) and text():find('Second zone',1,true))
@@ -206,18 +267,27 @@ frames.BackstageForeverCompassFocus.OnClick();frames.BackstageForeverCompassSess
 local old=BackstageForeverHUDSettings
 old.point='CENTER';old.relativePoint='CENTER';old.x=111;old.y=222
 event('PLAYER_LOGOUT');assert(not frames.BackstageForeverCompass.visible)
-who='B';BackstageForeverHUDSettings={focus='turn-ins',minutes=15,visible=false,point='TOP',relativePoint='TOP',x=8,y=9}
+who='B';free=3;BackstageForeverHUDSettings={focus='turn-ins',minutes=15,visible=false,point='TOP',relativePoint='TOP',x=8,y=9}
 event('PLAYER_LOGIN');assert(not frames.BackstageForeverCompass.visible)
 SlashCmdList.BACKSTAGEFOREVER('show')
+assert(not text():find('Current game bags:',1,true),'Previous character bags cannot carry into a new identity')
 assert(BackstageForeverHUDSettings.focus=='turn-ins' and BackstageForeverHUDSettings.minutes==15 and frames.BackstageForeverCompass.point[1]=='TOP')
 assert(old.focus=='nearby' and old.minutes==60 and old.x==111)
-event('PLAYER_LOGOUT');BackstageForeverHUDSettings=old;who='A';event('PLAYER_LOGIN')
+event('PLAYER_LOGOUT');BackstageForeverHUDSettings=old;who='A';free=0;event('PLAYER_LOGIN')
+assert(text():find('Current game bags: 0 / 16',1,true),'Returning character requires a fresh observed cue')
 assert(BackstageForeverHUDSettings.focus=='nearby' and BackstageForeverHUDSettings.minutes==60 and frames.BackstageForeverCompass.point[4]==111)
-fighting=true;event('PLAYER_REGEN_DISABLED');xp=70;event('PLAYER_XP_UPDATE');flush();assert(not frames.BackstageForeverCompass.visible)
-fighting=false;event('PLAYER_REGEN_ENABLED');assert(frames.BackstageForeverCompass.visible and text():find('XP 70 / 100',1,true))
+fighting=true;event('PLAYER_REGEN_DISABLED');xp=70;free=3;event('BAG_UPDATE_DELAYED');event('PLAYER_XP_UPDATE');flush();assert(not frames.BackstageForeverCompass.visible)
+fighting=false;event('PLAYER_REGEN_ENABLED');assert(frames.BackstageForeverCompass.visible and text():find('XP 70 / 100',1,true) and not text():find('Current game bags:',1,true))
+free=1;event('BAG_UPDATE_DELAYED');flush();assert(text():find('Current game bags: 1 / 16',1,true))
+local validIdentity=UnitGUID
+UnitGUID=function()return nil end;event('PLAYER_ENTERING_WORLD')
+assert(not text():find('Current game bags:',1,true),'Failed fresh capture cannot retain the earlier successful bag cue')
+UnitGUID=validIdentity;event('PLAYER_ENTERING_WORLD');assert(text():find('Current game bags: 1 / 16',1,true))
+event('BAG_UPDATE_DELAYED');local staleBagCapture=timers[1]
 -- A login with denied identity must clear the previous character even without
 -- a preceding logout event in this synthetic same-VM lifecycle.
 UnitGUID=function()return nil end;BackstageForeverHUDSettings={};event('PLAYER_LOGIN')
+staleBagCapture();assert(not text():find('Current game bags:',1,true),'Queued previous-session bag captures cannot resurrect the cue')
 assert(text():find('Waiting for a public character snapshot.',1,true) and text():find('Snapshot unavailable',1,true))
 assert(not text():find('Spirits of Stonetalon',1,true) and not text():find('XP 70',1,true) and not frames.BackstageForeverCompassWaypoint.enabled,'Failed new-login capture cannot retain a prior character plan or action')
 `));

@@ -1,6 +1,6 @@
 -- Native display and explicit waypoint clicks only; capture remains event driven.
-local panel,body,hint,actionTitle,actionSource,focusButton,sessionButton,waypointButton
-local latest,captureMessage,settings
+local panel,body,hint,actionTitle,actionSource,preparationLine,focusButton,sessionButton,waypointButton
+local latest,preparation,captureMessage,settings
 local visible,collapsed,active=true,false,false
 local epoch=0
 local anchors={TOPLEFT=true,TOP=true,TOPRIGHT=true,LEFT=true,CENTER=true,RIGHT=true,BOTTOMLEFT=true,BOTTOM=true,BOTTOMRIGHT=true}
@@ -70,6 +70,7 @@ local function sourceLabel(step)
 end
 local function update()
     if not panel then return end
+    safe(preparationLine.SetText,preparationLine,'')
     safe(waypointButton.Disable,waypointButton)
     safe(waypointButton.SetScript,waypointButton,'OnClick',nil)
     if combat() or not visible or not active then safe(panel.Hide,panel);return end
@@ -103,11 +104,12 @@ local function update()
     safe(body.SetText,body,table.concat(lines,'\n'))
     safe(body.ClearAllPoints,body)
     safe(body.SetPoint,body,'TOPLEFT',14,collapsed and -35 or -66)
-    safe(body.SetHeight,body,collapsed and (captureMessage and 60 or 30) or 260)
+    safe(body.SetHeight,body,collapsed and (captureMessage and 60 or 30) or 244)
     safe(panel.SetHeight,panel,collapsed and (captureMessage and 152 or 122) or 440)
     safe(focusButton.SetText,focusButton,'Focus: '..settings.focus)
     safe(sessionButton.SetText,sessionButton,settings.minutes..' min / '..(settings.minutes==15 and 1 or settings.minutes==60 and 3 or 2)..' cards')
-    for _,control in ipairs({focusButton,sessionButton,waypointButton,actionTitle,actionSource})do safe(collapsed and control.Hide or control.Show,control) end
+    for _,control in ipairs({focusButton,sessionButton,waypointButton,actionTitle,actionSource,preparationLine})do safe(collapsed and control.Hide or control.Show,control) end
+    if preparation and not collapsed then safe(preparationLine.SetText,preparationLine,text(preparation.text,80)) end
     if selected and not collapsed then
         local qualifier=selected.source=='reference' and 'Approximate reference' or 'Current game'
         safe(actionTitle.SetText,actionTitle,'Step '..stepIndex..': '..text(selected.title,62))
@@ -124,13 +126,20 @@ local function update()
     end
     safe(panel.Show,panel)
 end
-BackstageForeverHUDUpdate=function(character) latest=character;update() end
+BackstageForeverHUDUpdate=function(character)
+    latest=character
+    preparation=safe(BackstageForeverBuildPreparation,character)
+    update()
+end
 BackstageForeverHUDSession=function(event)
-    epoch=epoch+1;latest=nil;captureMessage=nil
+    epoch=epoch+1;latest=nil;preparation=nil;captureMessage=nil
+    if preparationLine then safe(preparationLine.SetText,preparationLine,'') end
     active=event=='PLAYER_LOGIN'
     if not active and panel then safe(panel.Hide,panel) end
 end
 BackstageForeverHUDCaptureStatus=function(state)
+    -- Status changes cannot revive facts from a previously successful capture.
+    if state=='unavailable' then preparation=nil end
     captureMessage=state=='partial' and 'Some public data is unavailable. Try again outside combat.'
         or state=='unavailable' and 'Snapshot unavailable. Try again outside combat.' or nil
     pcall(update)
@@ -188,6 +197,7 @@ local function initialize()
         return row
     end
     actionTitle=actionRow(97);actionSource=actionRow(81)
+    preparationLine=actionRow(113)
     waypointButton=CreateFrame('Button','BackstageForeverCompassWaypoint',panel,'UIPanelButtonTemplate');waypointButton:SetPoint('BOTTOMLEFT',14,51);waypointButton:SetSize(312,24);waypointButton:SetText('Show waypoint')
     update()
 end

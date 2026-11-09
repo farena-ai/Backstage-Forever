@@ -183,3 +183,37 @@ local s=plan(player({q(438,true)})).steps[1]
 assert(s.source=='reference' and s.detail:find('observed turn-in object',1,true))
 assert(not s.detail:find('turn-in NPC',1,true))
 `));
+
+test("preparation returns a quiet current bag-space fact only at the low-space threshold", () => runLua(String.raw`
+assert(type(BackstageForeverBuildPreparation)=='function','Pure preparation builder must exist')
+assert(BackstageForeverBuildPreparation({readiness={bags={free=0,total=0}}})==nil)
+assert(BackstageForeverBuildPreparation({readiness={bags={free=3,total=16}}})==nil)
+local p=BackstageForeverBuildPreparation({readiness={bags={free=2,total=16}}})
+assert(p.kind=='bag-space' and p.free==2 and p.total==16)
+assert(p.text=='Current game bags: 2 / 16 free slots.')
+for _,free in ipairs({0,1,2})do
+ local c={readiness={bags={free=free,total=1000}}}
+ local cue=BackstageForeverBuildPreparation(c)
+ assert(cue.free==free and cue.total==1000 and c.readiness.bags.free==free)
+ cue.free=99;assert(c.readiness.bags.free==free,'Returned facts must not alias the observation')
+end
+assert(BackstageForeverBuildPreparation({readiness={bags={free=2,total=2}}}).free==2)
+`));
+
+test("preparation rejects unknown malformed and unbounded bags without APIs or metamethod reads", () => runLua(String.raw`
+local function forbidden()error('Preparation must not call APIs or metamethods')end
+CreateFrame=forbidden;GetBuildInfo=forbidden;InCombatLockdown=forbidden;C_Container=setmetatable({},{__index=forbidden})
+local evil=setmetatable({},{__index=forbidden,__len=forbidden,__pairs=forbidden})
+for _,c in ipairs({false,1,'bad',{},evil,{readiness=evil},{readiness={bags=evil}},{readiness='bad'},{readiness={bags=false}}})do
+ assert(BackstageForeverBuildPreparation(c)==nil)
+end
+assert(BackstageForeverBuildPreparation(nil)==nil)
+for _,bags in ipairs({{}, {free=0}, {total=16}, {free='2',total=16}, {free=2,total='16'}, {free=false,total=16},
+ {free=-1,total=16}, {free=1.5,total=16}, {free=1,total=16.5}, {free=2,total=1}, {free=0,total=-1},
+ {free=0,total=1001}, {free=1001,total=1001}, {free=0/0,total=16}, {free=1,total=0/0},
+ {free=math.huge,total=16}, {free=1,total=math.huge}, {free=1,total=-math.huge}})do
+ assert(BackstageForeverBuildPreparation({readiness={bags=bags}})==nil)
+end
+local c=setmetatable({readiness=setmetatable({bags=setmetatable({free=1,total=16},{__index=forbidden})},{__index=forbidden})},{__index=forbidden})
+assert(BackstageForeverBuildPreparation(c).free==1,'Only raw observed fields may be read')
+`));

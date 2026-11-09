@@ -187,3 +187,13 @@ function BackstageForeverBuildPlan(character,options)
         or (focus=='turn-ins' and 'No observed quests are ready to turn in.' or 'No active quest observations yet.')
     return result
 end
+
+-- Only current captured bag counts are used; unavailable data stays silent.
+function BackstageForeverBuildPreparation(character)
+    local bags=field(field(character,'readiness'),'bags')
+    local total=integer(field(bags,'total'),1,1000)
+    local free=integer(field(bags,'free'),0,1000)
+    if not total or not free or free>total or free>2 then return nil end
+    return {kind='bag-space',free=free,total=total,
+        text=string.format('Current game bags: %d / %d free slots.',free,total)}
+end
