@@ -73,9 +73,8 @@ function buildGuidance(
       levelDistance(a) - levelDistance(b) ||
       a.id - b.id,
   );
-  const steps = candidates
-    .slice(0, { 15: 3, 30: 5, 60: 8 }[minutes])
-    .map((q) => ({
+  // Enrich once before either consumer caps its presentation. Quest logs are <=25.
+  const candidateSteps = candidates.map((q) => ({
       questId: q.id,
       title: q.title,
       kind: q.complete ? "turn-in" : "objective",
@@ -104,6 +103,7 @@ function buildGuidance(
         questId: q.id,
       },
     }));
+  const steps = candidateSteps.slice(0, { 15: 3, 30: 5, 60: 8 }[minutes]);
   const status = !known ? "unavailable" : steps.length ? "ready" : "empty";
   return {
     version: 1,
@@ -122,6 +122,7 @@ function buildGuidance(
             : "Your observed quest log is empty.",
     freshness,
     steps,
+    candidates: candidateSteps,
     followUps: knowledge?.followUps(profile) || [],
     counts: {
       observed: known ? quests.length : null,

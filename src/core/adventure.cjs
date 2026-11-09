@@ -37,6 +37,7 @@ function buildBrief(
     label: `Plan for my ${p.className || "character"}`,
     prompt: `Help me plan exploration, professions or a journal checklist for my level ${p.level || "?"} ${p.className || "character"}. Ask what I want to focus on. Do not choose combat actions.`,
   });
+  const guidance = require("./guidance.cjs").buildGuidance(p, { now, minutes, focus, knowledge });
   return {
     character: {
       name: p.name || "Choose a character",
@@ -93,12 +94,8 @@ function buildBrief(
             : "No level XP requirement reported.",
         }
       : { known: false, message: "Experience data unavailable." },
-    guidance: require("./guidance.cjs").buildGuidance(p, {
-      now,
-      minutes,
-      focus,
-      knowledge,
-    }),
+    guidance,
+    director: require("./director.cjs").buildDirector(p, guidance),
     readiness:
       p.readiness === undefined
         ? { known: false, message: "Preparation data unavailable." }

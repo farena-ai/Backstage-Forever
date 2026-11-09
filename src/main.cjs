@@ -30,6 +30,7 @@ const { scopeResponse } = require("./core/wow-policy.cjs");
 const { buildBrief } = require("./core/adventure.cjs");
 const { KnowledgeService } = require("./core/knowledge-cache.cjs");
 const { registerKnowledgeHandlers } = require("./core/knowledge-ipc.cjs");
+const { registerDirectorHandlers } = require("./core/director-ipc.cjs");
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
@@ -216,6 +217,12 @@ app.whenReady().then(() => {
     getState: () => store.state,
     saveState: (next) => store.saveState(next),
   });
+  registerDirectorHandlers({
+    handle,
+    getState: () => store.state,
+    saveState: (next) => store.saveState(next),
+    knowledge,
+  });
   registerKnowledgeHandlers({
     handle,
     knowledge,
@@ -269,10 +276,11 @@ app.whenReady().then(() => {
       buildGuidance,
       validateGuidanceOptions,
     } = require("./core/guidance.cjs");
-    return buildGuidance(profile, {
+    const guidance = buildGuidance(profile, {
       ...validateGuidanceOptions(options),
       knowledge: knowledge.index(profile),
     });
+    return { ...guidance, director: require("./core/director.cjs").buildDirector(profile, guidance) };
   });
   handle("gameStatus", () => game.status());
   handle("gameSnapshot", gameSnapshot);
