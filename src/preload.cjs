@@ -16,6 +16,18 @@ contextBridge.exposeInMainWorld(
     guidancePlan: (profileId, options) =>
       invoke("guidancePlan", profileId, options),
     adventureBrief: (profileId) => invoke("adventureBrief", profileId),
+    knowledgeStatus: () => invoke("knowledgeStatus"),
+    refreshKnowledge: () => invoke("refreshKnowledge"),
+    setKnowledgeAutomatic: (automatic) =>
+      invoke("setKnowledgeAutomatic", automatic),
+    searchQuests: (query, profileId, options) =>
+      invoke("searchQuests", query, profileId, options),
+    questDetails: (profileId, questId) =>
+      invoke("questDetails", profileId, questId),
+    copyQuestWaypoint: (profileId, questId, phase) =>
+      invoke("copyQuestWaypoint", profileId, questId, phase),
+    contextPreview: (profileId, share, prompt) =>
+      invoke("contextPreview", profileId, share, prompt),
     prepareGame: (root) => invoke("prepareGame", root),
     gameSnapshot: () => invoke("gameSnapshot"),
     discoverGame: () => invoke("discoverGame"),

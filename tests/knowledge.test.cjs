@@ -1,0 +1,211 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const {
+  normalizeData,
+  KnowledgeIndex,
+  validatePack,
+  FILES,
+} = require("../src/core/knowledge.cjs");
+const commit = "156f29c9af78b1586883e8eb94a13467eb89638c";
+const build = "1.60.1.70862";
+const raw = require("./fixtures/forever-facts.cjs").fixture();
+const pack = normalizeData(raw, { commit, build });
+const index = new KnowledgeIndex(pack);
+const profile = (id = 1061, title = "The Spirits of Stonetalon") => ({
+  source: { kind: "wow-addon", updatedAt: "2026-11-09T00:00:00.000Z" },
+  clientBuild: build,
+  locale: "enUS",
+  captureVersion: "0.6.0",
+  level: 20,
+  faction: "Horde",
+  quests: [{ id, title, complete: true, objectives: [] }],
+  history: { recent: [], completedIdsKnown: true, completedIds: [] },
+});
+test("compiler retains exact live facts, independent observations, and no narrative", () => {
+  assert.equal(pack.quests["1061"].nextQuestId, 1062);
+  assert.equal(pack.quests["5729"].turnIns[0].id, 3216);
+  assert.equal(pack.quests["5730"].turnIns[0].id, 4949);
+  assert.deepEqual(
+    pack.quests["5730"].rewards.choices.map((r) => r.itemId),
+    [15443, 15445, 15424, 15444],
+  );
+  assert.equal(pack.quests["98024"].title, pack.quests["854"].title);
+  assert.notEqual(pack.quests["98024"].raceMask, pack.quests["854"].raceMask);
+  assert.equal(pack.quests["98024"].turnIns.length, 0);
+  assert.equal(pack.quests["98024"].mentions[0].id, 3429);
+  assert.equal(pack.npcs["npc:3429"].positions[0].x, 0.5154);
+  assert.equal(pack.npcs["npc:4049"].positions[0].mapId, 1413);
+  assert.equal(pack.creatures["3429"].name, "Thork");
+  assert.equal(
+    pack.items["15443"].name,
+    pack.quests["5730"].rewards.choices[0].name,
+  );
+  const shipped = require("../data/forever/pack.json");
+  assert.equal(shipped.counts.npcs, 206);
+  assert.equal(shipped.counts.objects, 18);
+  assert.equal(shipped.counts.approachedObjects, 186);
+  assert.equal(shipped.counts.objectiveQuests, 97);
+  assert.doesNotMatch(
+    JSON.stringify(pack),
+    /"description"|worldX|worldY|prerequisites|xpDifficulty/,
+  );
+  assert.equal(validatePack(pack).build, build);
+});
+test("metadata rejects mixed build, product, schema, locale, license and oversized input", () => {
+  for (const [key, value] of Object.entries({
+    clientBuild: "1.60.1.1",
+    product: "wow_classic_beta",
+    schemaVersion: 2,
+    locale: "deDE",
+    license: "unknown",
+  })) {
+    const altered = structuredClone(raw);
+    altered["quests.enUS.json"].meta[key] = value;
+    assert.throws(() => normalizeData(altered, { commit, build }));
+  }
+  assert.throws(() => normalizeData(raw, { commit: "main", build }));
+  assert.throws(() =>
+    normalizeData(
+      { ...raw, "quests.enUS.json": " ".repeat(5 * 1024 * 1024) },
+      { commit, build },
+    ),
+  );
+});
+test("normalized cache validation rejects bad optional facts, links and coordinates", () => {
+  for (const change of [
+    (p) => (p.quests["1061"].level = "20"),
+    (p) => (p.quests["1061"].turnIns = [{ id: -1, kind: "npc" }]),
+    (p) => (p.quests["1062"].objectiveLocations[0].positions[0].x = 2),
+    (p) => (p.quests["1061"].rewards.moneyCopper = -1),
+  ]) {
+    const p = structuredClone(pack);
+    change(p);
+    assert.throws(() => validatePack(p));
+  }
+});
+test("invalid optional records are dropped; bounded strings remain literal data", () => {
+  const altered = structuredClone(raw);
+  altered["quests.enUS.json"].quests["999999"] = {
+    title: "<script>alert(1)</script>",
+    sources: 1,
+  };
+  altered["quests.enUS.json"].quests["999998"] = {
+    title: "bad\u0000",
+    sources: 1,
+  };
+  altered["npcs.json"].npcs["4049"].positions.unshift({
+    uiMap: 1413,
+    mapX: Infinity,
+    mapY: 0,
+  });
+  const p = normalizeData(altered, { commit, build });
+  assert.equal(p.quests["999999"].title, "<script>alert(1)</script>");
+  assert.equal(p.quests["999998"], undefined);
+  assert.ok(p.counts.dropped > 0);
+  assert.equal(p.npcs["npc:4049"].positions[0].x, 0.3528);
+});
+test("exact ID/build/title matching never borrows same-title quests", () => {
+  assert.equal(index.details(profile(), 1061).status, "match");
+  assert.equal(
+    index.details({ ...profile(), clientBuild: "1.60.1.9" }, 1061).status,
+    "missing",
+  );
+  assert.equal(
+    index.details(profile(98024, "Journey to the Crossroads"), 98024).record.id,
+    98024,
+  );
+  assert.equal(
+    index.details(profile(98024, "Other title"), 98024).status,
+    "conflict",
+  );
+  assert.equal(
+    index.details({ ...profile(98024, "Other title"), locale: "deDE" }, 98024)
+      .status,
+    "match",
+  );
+  assert.equal(index.details({}, 1061).status, "reference");
+  assert.equal(
+    index.details({ ...profile(), source: undefined }, 1061).status,
+    "reference",
+  );
+  assert.equal(
+    index.destination({ ...profile(), source: undefined }, 1061, "t"),
+    null,
+  );
+  assert.equal(index.details(profile(), 99999999).status, "missing");
+  assert.equal(index.destination(profile(), 1061, "t").x, 0.3528);
+  assert.equal(
+    index.destination({ ...profile(), clientBuild: undefined }, 1061, "t"),
+    null,
+  );
+});
+test("search is bounded, stable, observed-only by default, with active reference support", () => {
+  assert.ok(index.search("", profile()).some((q) => q.id === 1061));
+  assert.ok(!index.search("1", {}).some((q) => q.id === 1));
+  assert.ok(
+    index
+      .search("1", {}, { includeReferenceOnly: true })
+      .some((q) => q.id === 1),
+  );
+  assert.ok(index.search("", {}).length <= 30);
+  assert.throws(() => index.search("x".repeat(121), {}));
+  assert.throws(() => index.search("", {}, { url: "https://bad" }));
+});
+test("bounded chain walk detects cycles and missing nodes without prerequisites", () => {
+  const p = structuredClone(pack);
+  p.quests["1062"].nextQuestId = 1061;
+  assert.ok(
+    new KnowledgeIndex(p)
+      .details(profile(), 1061)
+      .warnings.some((s) => /cycle/i.test(s)),
+  );
+  p.quests["1062"].nextQuestId = 999999;
+  const details = new KnowledgeIndex(p).details(profile(), 1061);
+  assert.ok(details.chain.length <= 12);
+  assert.ok(
+    details.chain.some((q) => q.id === 999999 && q.status === "missing"),
+  );
+  p.quests["1062"].nextQuestId = undefined;
+  p.quests["5729"].nextQuestId = 1062;
+  assert.equal(
+    new KnowledgeIndex(p)
+      .details(profile(), 1062)
+      .warnings.some((s) => /cycle/i.test(s)),
+    false,
+  );
+});
+test("followups require positive complete history and observed compatible next quest", () => {
+  const p = profile();
+  p.quests = [];
+  p.history.completedIds = [1061];
+  assert.equal(index.followUps(p)[0].questId, 1062);
+  assert.match(index.followUps(p)[0].label, /Check availability/);
+  for (const changed of [
+    { history: { recent: [], completedIds: [1061] } },
+    { level: 1 },
+    { faction: "Alliance" },
+    {
+      history: {
+        recent: [],
+        completedIdsKnown: true,
+        completedIds: [1061, 1062],
+      },
+    },
+  ])
+    assert.deepEqual(index.followUps({ ...p, ...changed }), []);
+});
+test("waypoint command uses sourced coordinates and capture proof only", () => {
+  assert.equal(
+    index.waypoint(profile(), 1061, "t"),
+    "/bf guide 1061 t 1413 0.3528 0.2786 1.60.1.70862",
+  );
+  assert.throws(
+    () =>
+      index.waypoint({ ...profile(), captureVersion: undefined }, 1061, "t"),
+    /reload/i,
+  );
+  assert.throws(() => index.waypoint(profile(), 1061, "evil"));
+  assert.throws(() => index.waypoint(profile(), 1061, "o"));
+});

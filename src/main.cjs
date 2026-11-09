@@ -7,6 +7,7 @@ const {
   safeStorage,
   shell,
   session,
+  clipboard,
 } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
@@ -23,6 +24,8 @@ const { CatalogCache } = require("./core/catalog-cache.cjs");
 const { listModels } = require("./core/model-catalog.cjs");
 const { scopeResponse } = require("./core/wow-policy.cjs");
 const { buildBrief } = require("./core/adventure.cjs");
+const { KnowledgeService } = require("./core/knowledge-cache.cjs");
+const { registerKnowledgeHandlers } = require("./core/knowledge-ipc.cjs");
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
@@ -32,6 +35,7 @@ let win,
   chatgpt,
   updater,
   game,
+  knowledge,
   quitApproved = false,
   quitPending = false,
   subscriptionEpoch = 0,
@@ -68,13 +72,22 @@ function handle(name, fn) {
       return await fn(...args);
     } catch (e) {
       if (e?.message === "Secure credential storage is unavailable.") throw e;
+      if (
+        name === "copyQuestWaypoint" &&
+        [
+          "Update the addon and reload the game before copying a waypoint.",
+          "No compatible sourced waypoint for this quest phase.",
+          "No compatible reference pack.",
+        ].includes(e?.message)
+      )
+        throw e;
       throw new Error(
         ["ask", "connectSubscription", "disconnectSubscription"].includes(
           name,
         ) &&
-          /^(Provider |Could not reach|Save an API|Choose a character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription )/.test(
-            e?.message,
-          )
+        /^(Provider |Could not reach|Save an API|Choose a character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription )/.test(
+          e?.message,
+        )
           ? e.message
           : "The action could not be completed. Check your input or file and try again.",
       );
@@ -109,6 +122,7 @@ app.whenReady().then(() => {
       packaged: app.isPackaged,
     });
     updater.start();
+    knowledge = new KnowledgeService({ dataDir: app.getPath("userData") });
     game = new GameSync({
       dataDir: app.getPath("userData"),
       addonDir: app.isPackaged
@@ -130,6 +144,13 @@ app.whenReady().then(() => {
           )
             merged.onboarded = true;
           store.saveState(merged);
+          const selected = merged.profiles.find(
+            (p) => p.id === merged.activeProfileId,
+          );
+          knowledge.setContext(
+            selected || {},
+            Boolean(game?.status().connected),
+          );
           latestObservation = snapshot.observedAt;
         }
       },
@@ -184,18 +205,46 @@ app.whenReady().then(() => {
     return updater.status();
   });
   handle("subscriptionStatus", subscriptionStatus);
-  const gameSnapshot = () => ({
-    state: structuredClone(store.state),
-    gameStatus: game.status(),
-    brief: buildBrief(
-      store.state.profiles.find((p) => p.id === store.state.activeProfileId),
-    ),
-    briefProfileId: store.state.activeProfileId,
+  registerKnowledgeHandlers({
+    handle,
+    knowledge,
+    getState: () => store.state,
+    connected: () => game.status().connected,
+    clipboard,
   });
+  const syncKnowledge = () => {
+    if (resetting) return;
+    knowledge.setContext(
+      store.state.profiles.find((p) => p.id === store.state.activeProfileId) ||
+        {},
+      game.status().connected,
+    );
+  };
+  const referenceTimer = setInterval(syncKnowledge, 60000);
+  referenceTimer.unref();
+  app.on("before-quit", () => {
+    clearInterval(referenceTimer);
+    knowledge.cancel();
+  });
+  void game.ready.then(syncKnowledge).catch(() => {});
+  const enrichedBrief = (profile) =>
+    buildBrief(profile, { knowledge: knowledge.index(profile || {}) });
+  const gameSnapshot = () => {
+    syncKnowledge();
+    return {
+      state: structuredClone(store.state),
+      gameStatus: game.status(),
+      brief: enrichedBrief(
+        store.state.profiles.find((p) => p.id === store.state.activeProfileId),
+      ),
+      briefProfileId: store.state.activeProfileId,
+      knowledgeStatus: knowledge.status(),
+    };
+  };
   handle("adventureBrief", (profileId) => {
     if (profileId !== undefined && profileId !== null)
       v.str(profileId, 100, false);
-    return buildBrief(
+    return enrichedBrief(
       store.state.profiles.find(
         (p) => p.id === (profileId ?? store.state.activeProfileId),
       ),
@@ -209,7 +258,10 @@ app.whenReady().then(() => {
       buildGuidance,
       validateGuidanceOptions,
     } = require("./core/guidance.cjs");
-    return buildGuidance(profile, validateGuidanceOptions(options));
+    return buildGuidance(profile, {
+      ...validateGuidanceOptions(options),
+      knowledge: knowledge.index(profile),
+    });
   });
   handle("gameStatus", () => game.status());
   handle("gameSnapshot", gameSnapshot);
@@ -258,6 +310,7 @@ app.whenReady().then(() => {
   });
   handle("disconnectGame", async () => {
     gameActionEpoch++;
+    knowledge.setContext({}, false);
     await game.disconnect();
     return gameSnapshot();
   });
@@ -311,15 +364,10 @@ app.whenReady().then(() => {
     return subscriptionStatus();
   });
   handle("bootstrap", async () => ({
-    state: structuredClone(store.state),
+    ...gameSnapshot(),
     providers: v.providers,
     version: app.getVersion(),
     updateStatus: updater.status(),
-    gameStatus: game.status(),
-    brief: buildBrief(
-      store.state.profiles.find((p) => p.id === store.state.activeProfileId),
-    ),
-    briefProfileId: store.state.activeProfileId,
     secretStatus: store.secretStatus(),
     subscriptionStatus: await subscriptionStatus(),
   }));
@@ -382,6 +430,12 @@ app.whenReady().then(() => {
       store.state,
       input.profileId,
       input.shareProfile,
+      {
+        knowledge: knowledge.index(
+          store.state.profiles.find((p) => p.id === input.profileId) || {},
+        ),
+        prompt: input.prompt,
+      },
     );
     busy = true;
     const epoch = subscriptionEpoch;
@@ -400,7 +454,10 @@ app.whenReady().then(() => {
             (p) => p.id === input.profileId,
           );
           const shared = input.shareProfile
-            ? ai.approvedProfile(profile)
+            ? ai.approvedProfile(profile, {
+                knowledge: knowledge.index(profile || {}),
+                prompt: input.prompt,
+              })
             : undefined;
           reply = await claude.ask({
             model: selected.model,
@@ -464,6 +521,7 @@ app.whenReady().then(() => {
     subscriptionEpoch++;
     catalogs.clear();
     gameActionEpoch++;
+    knowledge.setContext({}, false);
     await game.disconnect();
     latestObservation = null;
     return store.importData(text);
@@ -485,11 +543,13 @@ app.whenReady().then(() => {
     gameActionEpoch++;
     catalogs.clear();
     try {
+      const knowledgeReset = knowledge.reset();
       await game.reset();
       latestObservation = null;
       const updateReset = updater.reset();
       chatgpt.reset();
       await updateReset;
+      await knowledgeReset;
       await claude.clearCredentials();
       return store.reset();
     } finally {

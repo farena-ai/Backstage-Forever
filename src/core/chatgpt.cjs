@@ -489,7 +489,7 @@ class ChatGPTAuth {
   async ask({ model, prompt, context = "" }) {
     str(model, 200, false);
     str(prompt, 12000, false);
-    str(context, 2000);
+    str(context, 20000);
     const generation = this.generation;
     const token = await this.accessToken();
     try {

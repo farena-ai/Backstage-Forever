@@ -39,7 +39,7 @@ function snapshotFreshness(profile, now = Date.now()) {
 }
 function buildGuidance(
   profile,
-  { now = Date.now(), minutes = 30, focus = "balanced" } = {},
+  { now = Date.now(), minutes = 30, focus = "balanced", knowledge } = {},
 ) {
   validateGuidanceOptions({ minutes, focus });
   if (!Number.isFinite(Number(now))) throw Error("Invalid guidance time.");
@@ -88,6 +88,16 @@ function buildGuidance(
         ? q.objectives
         : q.objectives.filter((o) => !o.done),
       ...(q.destination ? { destination: q.destination } : {}),
+      ...(knowledge ? { knowledge: knowledge.details(profile, q.id) } : {}),
+      ...(knowledge?.destination(profile, q.id, q.complete ? "t" : "o")
+        ? {
+            referenceDestination: knowledge.destination(
+              profile,
+              q.id,
+              q.complete ? "t" : "o",
+            ),
+          }
+        : {}),
       source: {
         kind: "game-snapshot",
         observedAt: freshness.updatedAt,
@@ -112,6 +122,7 @@ function buildGuidance(
             : "Your observed quest log is empty.",
     freshness,
     steps,
+    followUps: knowledge?.followUps(profile) || [],
     counts: {
       observed: known ? quests.length : null,
       ready,

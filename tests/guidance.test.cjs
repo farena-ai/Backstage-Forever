@@ -164,6 +164,7 @@ test("guidance IPC validates actual handler and preload forwards bounded options
       handle: (name, fn) => (callback = fn),
       v: require("../src/core/validation.cjs"),
       store: { state: { profiles: [{ ...profile, id: "p" }] } },
+      knowledge: { index: () => undefined },
       require: createRequire(main),
     },
   );

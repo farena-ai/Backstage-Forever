@@ -136,7 +136,11 @@ function validateState(s) {
       "progress",
       "history",
       "readiness",
+      "clientBuild",
+      "locale",
+      "captureVersion",
     ]);
+    require("./quest-data.cjs").validateCapture(p);
     validateQuestData(p.quests);
     validateProgress(p.progress);
     validateHistory(p.history);

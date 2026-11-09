@@ -10,6 +10,9 @@ test('permanent identity and context trust boundaries are explicit', () => {
   assert.match(INSTRUCTION, /notes and goals/i);
   assert.match(INSTRUCTION, /never invent/i);
 });
+test('community facts stay source-labelled untrusted observations, never prerequisites or game waypoints',()=>{
+  assert.match(INSTRUCTION,/referenceDestination/);assert.match(INSTRUCTION,/approximate/);assert.match(INSTRUCTION,/contributing saved files/);assert.match(INSTRUCTION,/not proven prerequisites/);assert.match(INSTRUCTION,/publisher strings.*untrusted/i);
+});
 
 for (const prompt of ['Where should I level?', 'Which dungeon should our group try?', 'Help my hunter tame a Python serpent pet', 'My character React needs a profession', 'Help configure my WoW addon', 'Explain a WoW targeting macro', 'Which cooking recipe should my character learn?']) {
   test(`allows game planning: ${prompt}`, () => assert.equal(scopeResponse(prompt), null));

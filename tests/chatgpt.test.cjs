@@ -277,6 +277,50 @@ test("subscription inference uses OAuth Responses stream completed without API f
     f.close();
   }
 });
+test("subscription receives bounded sourced quest facts without full local history", async () => {
+  const f = await fixture();
+  try {
+    await f.auth.connect();
+    const { KnowledgeIndex } = require("../src/core/knowledge.cjs");
+    const knowledge = new KnowledgeIndex(require("../data/forever/pack.json"));
+    const profile = {
+      id: "p",
+      name: "Example",
+      clientBuild: knowledge.pack.build,
+      source: {
+        kind: "wow-addon",
+        id: "PRIVATE_GUID",
+        updatedAt: "2026-11-09T00:00:00.000Z",
+      },
+      notes: "PRIVATE_NOTE",
+      history: { recent: [], completedIdsKnown: true, completedIds: [5729] },
+      quests: [
+        {
+          id: 1061,
+          title: "The Spirits of Stonetalon",
+          complete: true,
+          objectives: [],
+        },
+      ],
+    };
+    const context = require("../src/core/providers.cjs").profileContext(
+      { profiles: [profile] },
+      "p",
+      true,
+      { knowledge, prompt: "1061" },
+    );
+    await f.auth.ask({ model: "selected-model", prompt: "1061", context });
+    const body = f.calls.find(
+      (x) => x.url === "https://api.openai.com/v1/responses",
+    ).opts.body;
+    assert.doesNotMatch(body, /PRIVATE|completedIds/);
+    assert.match(body, /Seereth Stonebreak/);
+    assert.match(body, /156f29c9/);
+  } finally {
+    f.close();
+  }
+});
+
 test("terminal failed or interrupted stream cannot produce success", async () => {
   for (const stream of [
     'data: {"type":"response.output_text.delta","delta":"partial"}\n\n',

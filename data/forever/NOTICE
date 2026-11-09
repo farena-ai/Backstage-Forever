@@ -1,0 +1,15 @@
+Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
+Source: https://github.com/JIVESCORP/eg-link-output-wowf
+Initial commit: 156f29c9af78b1586883e8eb94a13467eb89638c
+Product wowf; client build 1.60.1.70862; English (enUS).
+
+Backstage Coding modified the compilation by retaining bounded factual fields,
+joining exact IDs, separating reward choices, and omitting narrative descriptions,
+personal data and undocumented prerequisite correlations. NPC window positions
+are approximate player observation positions, not guaranteed creature spawns.
+Per-record sources counts contributing saved files, not observation counts.
+See source-lock.json for immutable URLs, SHA256 hashes and collection coverage.
+
+World of Warcraft and all related content are copyright Blizzard Entertainment,
+Inc. This compilation is not affiliated with or endorsed by Blizzard Entertainment.
+Application/normalizer code remains separately licensed MIT.

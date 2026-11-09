@@ -98,18 +98,25 @@ local function destination(api,id)
     if not map or type(x)~='number' or type(y)~='number' or x~=x or y~=y or x<0 or x>1 or y<0 or y>1 then return nil end
     return {mapId=map,x=x,y=y,text=clean(call(field(api,'GetNextWaypointText'),id),200)}
 end
-local function completedCount()
+local function completedIds()
     local ids=call(field(public(C_QuestLog),'GetAllCompletedQuestIDs'))
     if type(ids)~='table' then return nil end
-    local count=0
+    local count=0;local result=array({});local seen={};local highest=0
     local ok=pcall(function()
         for k,v in pairs(ids) do
             k=public(k);v=public(v)
             if not integer(k,1,20000) or not integer(v,1,2147483647) then error('unavailable') end
+            if seen[v] then error('duplicate') end;seen[v]=true
             count=count+1;if count>20000 then error('bound') end
+            highest=math.max(highest,k);result[#result+1]=v
         end
     end)
-    if ok then return count end
+    if ok and highest==count then table.sort(result);return result end
+end
+local function clientBuild()
+    local version,build=call(GetBuildInfo)
+    version=clean(version,30);build=clean(build,12)
+    if version and build and version:match('^%d+%.%d+%.%d+$') and build:match('^%d+$') then return version..'.'..build end
 end
 local function quests()
     local api=public(C_QuestLog)
@@ -134,7 +141,12 @@ local function quests()
                 local objective=field(raw,j);if objective==nil then break end
                 local text=clean(field(objective,'text'),200);local done=field(objective,'finished')
                 if not text or type(done)~='boolean' then return nil end
-                objectives[#objectives+1]={text=text,done=done}
+                local captured={text=text,done=done}
+                captured.type=clean(field(objective,'type'),40)
+                captured.required=integer(field(objective,'numRequired'),0,100000)
+                captured.fulfilled=integer(field(objective,'numFulfilled'),0,100000)
+                if captured.required and captured.fulfilled and captured.fulfilled>captured.required then captured.fulfilled=nil end
+                objectives[#objectives+1]=captured
             end
             if not seen[id] then
                 seen[id]=true
@@ -223,6 +235,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.6.0'
     character.race=clean((call(UnitRace,'player')));character.faction=clean((call(UnitFactionGroup,'player')))
     local previous=roster[guid]
     local history={recent=array({})}
@@ -244,7 +257,9 @@ local function capture(event,eventId)
             while #history.recent>25 do table.remove(history.recent) end
         end
     end
-    history.completedCount=completedCount()
+    local completed=completedIds()
+    history.completedIdsKnown=completed~=nil
+    if completed then history.completedCount=#completed;history.completedIds=completed end
     character.history=history
     character.quests=optional(quests);character.progress=optional(progress);character.readiness=optional(readiness)
     if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character) end
@@ -254,12 +269,49 @@ local function capture(event,eventId)
     while #chars>100 do roster[chars[#chars].id]=nil;table.remove(chars) end
     local payload={schema=1,characters=chars,activeId=guid,observedAt=now}
     local encoded=encode(payload)
+    local encodedLength=#encoded
     -- Retain identities while shedding the oldest optional detail first.
     for i=#chars,1,-1 do
-        if #encoded<1048576 then break end
-        chars[i].quests=nil;chars[i].progress=nil;chars[i].history=nil;chars[i].readiness=nil;encoded=encode(payload)
+        if encodedLength<1048576 then break end
+        local before=#encode(chars[i])
+        chars[i].quests=nil;chars[i].progress=nil;chars[i].history=nil;chars[i].readiness=nil
+        encodedLength=encodedLength-before+#encode(chars[i])
     end
+    if encodedLength~=#encoded then encoded=encode(payload) end
     if #encoded<1048576 then BackstageForeverExport=encoded;return true end
+end
+-- Explicit player command only. No map panels, movement, targeting or game input.
+local function guideMessage(message)
+    local chat=public(DEFAULT_CHAT_FRAME)
+    call(field(chat,'AddMessage'),chat,'Backstage Forever: '..message)
+end
+function BackstageForeverGuide(message)
+    local help='Use /bf guide QuestID t/o/r MapID X Y Build (coordinates 0 to 1).'
+    if type(message)~='string' or #message>150 then guideMessage(help);return end
+    local parts={};for part in message:gmatch('%S+') do parts[#parts+1]=part end
+    if #parts~=7 or parts[1]~='guide' or not parts[2]:match('^%d+$') or not parts[4]:match('^%d+$') or not parts[5]:match('^%d*%.?%d+$') or not parts[6]:match('^%d*%.?%d+$') or not parts[7]:match('^%d+%.%d+%.%d+%.%d+$') then guideMessage(help);return end
+    local quest=integer(tonumber(parts[2]),1,2147483647);local map=integer(tonumber(parts[4]),1,2147483647)
+    local phase=parts[3];local x,y=tonumber(parts[5]),tonumber(parts[6])
+    if not quest or not map or (phase~='t' and phase~='o' and phase~='r') or not x or not y or x<0 or x>1 or y<0 or y>1 then guideMessage(help);return end
+    if call(InCombatLockdown)~=false then guideMessage('Waypoint unavailable in combat or restricted state.');return end
+    if clientBuild()~=parts[7] then guideMessage('Waypoint build mismatch; refresh your desktop snapshot.');return end
+    if phase~='r' then
+        local api=public(C_QuestLog)
+        local logIndex=integer(call(field(api,'GetLogIndexForQuestID'),quest),1,1000)
+        local complete=call(field(api,'IsComplete'),quest)
+        if not logIndex or type(complete)~='boolean' or (phase=='t')~=complete then guideMessage('Quest log or completion phase changed; refresh your snapshot.');return end
+    end
+    local mapApi=public(C_Map);local info=call(field(mapApi,'GetMapInfo'),map)
+    local name=clean(field(info,'name'),100) or ('Map #'..map)
+    local coordinates=name..string.format(' %.2f, %.2f',x*100,y*100)
+    local allowed=call(field(mapApi,'CanSetUserWaypointOnMap'),map)
+    if allowed~=true or type(field(mapApi,'SetUserWaypoint'))~='function' then guideMessage('Waypoint API unavailable; coordinates: '..coordinates);return end
+    local point=call(field(public(UiMapPoint),'CreateFromCoordinates'),map,x,y)
+    if not point then guideMessage('Waypoint API unavailable; coordinates: '..coordinates);return end
+    local setter=field(mapApi,'SetUserWaypoint')
+    local ok=pcall(setter,point)
+    if ok then guideMessage((phase=='r' and 'Reference marker (check availability): ' or 'Approximate reference marker: ')..coordinates)
+    else guideMessage('Waypoint restricted; coordinates: '..coordinates) end
 end
 if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')

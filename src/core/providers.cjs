@@ -1,7 +1,7 @@
 "use strict";
 const v = require("./validation.cjs");
 const { INSTRUCTION: instruction } = require("./wow-policy.cjs");
-function approvedProfile(p) {
+function approvedProfile(p, { knowledge, prompt = "" } = {}) {
   const out = {};
   for (const key of [
     "name",
@@ -51,15 +51,35 @@ function approvedProfile(p) {
   if (p.progress !== undefined) out.progress = validateProgress(p.progress);
   if (p.history !== undefined) {
     const h = validateHistory(p.history);
-    out.history = { ...h, recent: h.recent.slice(0, 10) };
+    out.history = {
+      ...(h.completedCount !== undefined
+        ? { completedCount: h.completedCount }
+        : {}),
+      recent: h.recent.slice(0, 10),
+    };
+  }
+  const { referenceFacts, publicFacts } = require("./knowledge-context.cjs");
+  const facts = knowledge
+    ? referenceFacts(p, knowledge, prompt)
+    : publicFacts(p.knowledge);
+  if (facts) out.knowledge = facts;
+  // Keep the preview and every transport within the same bounded context budget.
+  while (JSON.stringify(out).length > 18000) {
+    if (out.quests?.length > 3) out.quests.pop();
+    else if (out.history?.recent?.length) out.history.recent.pop();
+    else if (out.knowledge?.length > 1) out.knowledge.pop();
+    else if (out.quests?.length) out.quests.pop();
+    else break;
   }
   return out;
 }
-function profileContext(state, id, share) {
+function profileContext(state, id, share, options) {
   if (!share) return "";
   const p = state.profiles.find((p) => p.id === id);
   if (!p) throw new Error("Choose a character before sharing context.");
-  return "Optional character context: " + JSON.stringify(approvedProfile(p));
+  return (
+    "Optional character context: " + JSON.stringify(approvedProfile(p, options))
+  );
 }
 async function ask(
   { provider, model, endpoint, apiKey, prompt, context = "" },

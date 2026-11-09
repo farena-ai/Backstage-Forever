@@ -6,7 +6,7 @@ const {
 } = require("./quest-data.cjs");
 function buildBrief(
   profile,
-  { now = Date.now(), minutes = 30, focus = "balanced" } = {},
+  { now = Date.now(), minutes = 30, focus = "balanced", knowledge } = {},
 ) {
   const p = profile || {};
   const quests = validateQuestData(p.quests),
@@ -57,7 +57,9 @@ function buildBrief(
     },
     quests: {
       known: quests !== undefined,
-      items: quests || [],
+      items: (quests || []).map((q) =>
+        knowledge ? { ...q, knowledge: knowledge.details(p, q.id) } : q,
+      ),
       ready,
       count: quests?.length ?? null,
       message:
@@ -95,6 +97,7 @@ function buildBrief(
       now,
       minutes,
       focus,
+      knowledge,
     }),
     readiness:
       p.readiness === undefined

@@ -112,6 +112,7 @@ function parseSavedVariables(raw) {
       invalid();
     seen.add(key);
     const out = {
+      ...require("./quest-data.cjs").validateCapture(c),
       id: key,
       name: text(c.name, 100, true),
       realm: text(c.realm),

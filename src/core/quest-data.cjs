@@ -50,10 +50,19 @@ function validateQuestData(value) {
       title: q.title,
       complete: q.complete,
       objectives: q.objectives.map((o) => {
-        obj(o, ["text", "done"]);
+        obj(o, ["text", "done", "type", "required", "fulfilled"]);
         text(o.text);
         if (typeof o.done !== "boolean") fail();
-        return { text: o.text, done: o.done };
+        const objective = { text: o.text, done: o.done };
+        if (o.type !== undefined) objective.type = text(o.type);
+        for (const k of ["required", "fulfilled"])
+          if (o[k] !== undefined) objective[k] = num(o[k], 0, 100000);
+        if (
+          objective.required !== undefined &&
+          objective.fulfilled > objective.required
+        )
+          fail();
+        return objective;
       }),
     };
     if (q.level !== undefined) result.level = num(q.level, 0, 1000);
@@ -83,7 +92,7 @@ function validateProgress(value) {
 }
 function validateHistory(value) {
   if (value === undefined) return undefined;
-  obj(value, ["completedCount", "recent"]);
+  obj(value, ["completedCount", "recent", "completedIds", "completedIdsKnown"]);
   if (!Array.isArray(value.recent) || value.recent.length > 25) fail();
   const result = {
     recent: value.recent.map((q) => {
@@ -98,6 +107,41 @@ function validateHistory(value) {
   };
   if (value.completedCount !== undefined)
     result.completedCount = num(value.completedCount, 0, 20000);
+  if (value.completedIdsKnown !== undefined) {
+    if (typeof value.completedIdsKnown !== "boolean") fail();
+    result.completedIdsKnown = value.completedIdsKnown;
+  }
+  if (value.completedIds !== undefined) {
+    if (!Array.isArray(value.completedIds) || value.completedIds.length > 20000)
+      fail();
+    let previous = 0;
+    result.completedIds = value.completedIds.map((id) => {
+      num(id, 1);
+      if (id <= previous) fail();
+      previous = id;
+      return id;
+    });
+  }
+  if (result.completedIdsKnown === true && !result.completedIds) fail();
   return result;
 }
-module.exports = { validateQuestData, validateProgress, validateHistory };
+function validateCapture(value) {
+  const result = {};
+  for (const [k, pattern] of Object.entries({
+    clientBuild: /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/,
+    locale: /^[a-z]{2}[A-Z]{2}$/,
+    captureVersion: /^\d{1,3}\.\d{1,3}\.\d{1,3}$/,
+  })) {
+    if (value[k] !== undefined) {
+      if (typeof value[k] !== "string" || !pattern.test(value[k])) fail();
+      result[k] = value[k];
+    }
+  }
+  return result;
+}
+module.exports = {
+  validateQuestData,
+  validateProgress,
+  validateHistory,
+  validateCapture,
+};

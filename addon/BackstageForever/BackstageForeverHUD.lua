@@ -113,13 +113,21 @@ end
 if type(SlashCmdList)=='table' then
     SLASH_BACKSTAGEFOREVER1='/bf'
     SlashCmdList.BACKSTAGEFOREVER=function(message)
+        if type(message)=='string' and message:match('^guide') then
+            if type(BackstageForeverGuide)=='function' then pcall(BackstageForeverGuide,message) end
+            return
+        end
         if combat() then return end
         message=type(message)=='string' and message:lower() or ''
         if message=='hide' then visible=false elseif message=='show' then visible=true
         elseif message=='status' then
             if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..(latest and 'public snapshot available; desktop export is saved on reload/logout.' or 'waiting for public snapshot.')) end
             return
-        else visible=not visible end
+        elseif message=='' then visible=not visible
+        else
+            if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: /bf show, hide, status, or guide QuestID t/o/r MapID X Y Build.') end
+            return
+        end
         pcall(initialize);save();pcall(update)
     end
 end
