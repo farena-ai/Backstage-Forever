@@ -10,7 +10,7 @@ Enable BackstageForever in the game. A newly added addon may require a voluntary
 
 ## Two views of your adventure
 
-The optional in-game Adventure Compass updates out of combat using guarded public APIs. Drag it to reposition, click its title to collapse, or use `/bf show`, `/bf hide` and `/bf status`. It hides during combat. Unsupported frame APIs leave the saved export usable.
+The optional in-game Adventure Compass updates out of combat using guarded public APIs. Drag its title to reposition, use - to collapse or X to close, or use `/bf show`, `/bf hide` and `/bf status`. It hides during combat. Unsupported frame APIs leave the saved export usable.
 
 The desktop dashboard shows the most recently saved public character details, observed quests/objectives, ready turn-ins, available XP, up to 25 recent turn-ins observed while tracking, and an optional public completed-count. Actual game-provided waypoints may appear; no optimal routes or invented NPC destinations are supplied. Missing or restricted data is unknown. A completed-count is not a complete historical quest-name list.
 

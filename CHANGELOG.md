@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.1 — 2026-11-08
+## 0.4.1 â€” 2026-11-08
 
 - Made Adventure Compass use native WoW dialog artwork and close controls, title dragging, a separate collapse button, compact content sizing and visible hide/show instructions. Position/visibility/collapse persist per character after the updated saved-variable declaration loads.
 
