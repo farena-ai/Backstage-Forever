@@ -144,7 +144,7 @@ test("snapshot metadata is optional, validated and backup compatible", () => {
       location: { zone: "Forest", subZone: "Grove", mapId: 1, x: 0.5, y: 0.2 },
     },
   ];
-  a.deepEqual(v.validateState(s), s);
+  a.deepEqual(v.validateState(s), { ...s, activeProfileId: "p" });
   s.profiles[0].location.x = 2;
   a.throws(() => v.validateState(s));
 });
