@@ -217,3 +217,133 @@ end
 local c=setmetatable({readiness=setmetatable({bags=setmetatable({free=1,total=16},{__index=forbidden})},{__index=forbidden})},{__index=forbidden})
 assert(BackstageForeverBuildPreparation(c).free==1,'Only raw observed fields may be read')
 `));
+
+test("Director ranks every eligible native candidate before the 15/30/60 minute caps", () => runLua(String.raw`
+local quests={};for i=1,25 do quests[i]=q(900000+i) end
+quests[25].destination={mapId=1413,x=0.9,y=0.9}
+for _,focus in ipairs({'balanced','nearby'})do
+ for minutes,cap in pairs({[15]=1,[30]=2,[60]=3})do
+  local p=plan(player(quests),{minutes=minutes,focus=focus})
+  assert(#p.steps==cap and p.steps[1].questId==900025,'Late same-map game candidate must survive '..focus..' cap '..cap)
+  assert(p.counts.quests==25 and not p.counts.limited)
+ end
+end
+quests[25].destination=nil
+BackstageForeverReference.quests[900025]={title='Synthetic 900025',objectives={{index=1,type='event',required=1,destination={mapId=1413,x=0.9,y=0.9,approximate=true,evidence='observed-objective-gain'}}}}
+quests[25].objectives={{text='Observed event',done=false,type='event',required=1}}
+for minutes,cap in pairs({[15]=1,[30]=2,[60]=3})do
+ local p=plan(player(quests),{minutes=minutes})
+ assert(#p.steps==cap and p.steps[1].questId==900025,'Late qualified reference must survive cap '..cap)
+end
+`));
+
+test("native relevance ranks ready, current-map game, observed zone and qualified reference before level", () => runLua(String.raw`
+local ready,game,zone,reference,remote=q(900005,true),q(900004),q(900003),q(900002),q(900001)
+game.destination={mapId=1413,x=0.99,y=0.99};game.level=40
+zone.zone='Synthetic zone';zone.level=12
+zone.objectives={{text='Current zone objective',done=false}}
+remote.destination={mapId=9999,x=0.35,y=0.28};remote.level=12
+reference.objectives={{text='Observed event',done=false,type='event',required=1}}
+BackstageForeverReference.quests[900002]={title='Synthetic 900002',objectives={{index=1,type='event',required=1,destination={mapId=1413,x=0.35,y=0.28,approximate=true,evidence='observed-objective-gain'}}}}
+local c=player({remote,reference,zone,game,ready});c.level=12;c.location.zone='Synthetic zone'
+for _,focus in ipairs({'balanced','nearby'})do
+ local p=plan(c,{minutes=60,focus=focus})
+ assert(p.steps[1].questId==900005 and p.steps[2].questId==900003 and p.steps[3].questId==900004,'Ready and current observations precede reference for '..focus)
+ c.quests={remote,reference};p=plan(c,{minutes=60,focus=focus})
+ assert(p.steps[1].questId==900002,'Qualified current-map reference precedes remote marker')
+ c.quests={remote,reference,zone,game,ready}
+end
+c.location={zone='Synthetic zone'};c.quests={remote,zone}
+assert(plan(c).steps[1].questId==900003,'Observed zone does not require coordinates')
+`));
+
+test("reported quest level then numeric ID decide ties without normalized distance becoming travel priority", () => runLua(String.raw`
+local far,near,tie=q(900002),q(900001),q(900003)
+far.level=12;near.level=40;tie.level=12
+far.destination={mapId=1413,x=0.9,y=0.9};near.destination={mapId=1413,x=0.35,y=0.28};tie.destination={mapId=1413,x=0.36,y=0.28}
+local c=player({near,tie,far});c.level=12
+for _,focus in ipairs({'balanced','nearby'})do
+ local p=plan(c,{focus=focus,minutes=60})
+ assert(p.steps[1].questId==900002 and p.steps[2].questId==900003 and p.steps[3].questId==900001,'Level and ID must win over geometric distance for '..focus)
+end
+`));
+
+test("unknown native level and location stay unknown with deterministic ID ties and no fabricated gates", () => runLua(String.raw`
+local a,b,c=q(900003),q(900001),q(900002)
+local p=player({a,c,b});p.location=nil;p.level=nil
+for _,focus in ipairs({'balanced','nearby'})do
+ local s=plan(p,{focus=focus,minutes=60}).steps
+ assert(s[1].questId==900001 and s[2].questId==900002 and s[3].questId==900003)
+ assert(s[1].reason=='Ordered by quest ID; map/zone and level do not establish a priority.')
+end
+p.level=12;a.level=12;b.level='12';c.level=0/0
+assert(plan(p).steps[1].questId==900003,'Known level proximity precedes unavailable levels')
+for _,s in ipairs(plan(p).steps)do
+ assert(s.destination==nil and s.command==nil and not s.detail:find('eligible',1,true) and not s.detail:find('travel',1,true))
+end
+`));
+
+test("mention-only clues never acquire nearby reference priority and retain phase and source qualification", () => runLua(String.raw`
+local clue,unknown=q(98024),q(900001)
+local c=player({clue,unknown});c.level=12;clue.level=40;unknown.level=12
+for _,focus in ipairs({'balanced','nearby'})do
+ local p=plan(c,{focus=focus,minutes=60})
+ assert(p.steps[1].questId==900001,'A same-map mention must not outrank reported level')
+ local s=p.steps[2]
+ assert(s.source=='reference' and s.destination and s.command and s.phase=='o')
+ assert(s.reason=='Reference-mentioned NPC is a clue; verify your quest details.')
+ assert(s.detail:find('mentioned in objective',1,true) and s.detail:find('Approximate reference:',1,true))
+ assert(not s.reason:find('current map',1,true) and p.headline=='Your next quest steps')
+ local t=plan(c,{focus='turn-ins',minutes=15});assert(#t.steps==0)
+end
+clue.complete=true
+local s=plan(c,{focus='turn-ins',minutes=60}).steps[1]
+assert(s.phase=='t' and s.destination==nil and s.command==nil)
+`));
+
+test("native factual reasons preserve current marker authority, reference relationship and observed objective", () => runLua(String.raw`
+local a=q(1061);a.destination={mapId=1413,x=0.5,y=0.5};a.objectives={{text='Actual unfinished objective',done=false}}
+local c=player({a});c.level=12;a.level=12
+local s=plan(c).steps[1]
+assert(s.reason=='Current game marker is on your current map.')
+assert(s.detail:find(s.reason,1,true)==1 and s.detail:find('Actual unfinished objective',1,true))
+assert(s.source=='game' and s.phase=='o' and not s.detail:find('Approximate reference:',1,true))
+a.complete=true;a.destination=nil
+s=plan(c).steps[1]
+assert(s.reason=='Reported ready to turn in.' and s.source=='reference' and s.phase=='t')
+assert(s.detail:find('Approximate reference: observed turn-in NPC',1,true) and s.command)
+a.destination={mapId=0,x=0.5,y=0.5};a.complete=false
+s=plan(c).steps[1]
+assert(s.source=='game' and s.destination==nil and s.command==nil and not s.detail:find('Approximate reference:',1,true))
+assert(s.reason=='Ordered by reported quest-level proximity, then quest ID.')
+`));
+
+test("nearby retains ready phase priority even when only unfinished work has current-map geometry", () => runLua(String.raw`
+local ready,current=q(900002,true),q(900001)
+current.destination={mapId=1413,x=0.35,y=0.28}
+local c=player({current,ready})
+for minutes,cap in pairs({[15]=1,[30]=2,[60]=2})do
+ local p=plan(c,{focus='nearby',minutes=minutes})
+ assert(#p.steps==cap and p.steps[1].questId==900002,'Ready turn-in must remain first before nearby cap '..cap)
+end
+`));
+
+test("native unknown-objective checks remain a last resort even with a closer reported level", () => runLua(String.raw`
+local unknown,work,tie=q(900001),q(900003),q(900002)
+unknown.level=12;work.level=40;tie.level=40
+work.objectives={{text='Actual unfinished work',done=false}}
+work.destination={mapId=9999,x=0.35,y=0.28}
+tie.objectives={{text='Other unfinished work',done=false}}
+local c=player({unknown,work,tie});c.level=12
+for _,focus in ipairs({'balanced','nearby'})do
+ local p=plan(c,{minutes=60,focus=focus})
+ assert(p.steps[1].questId==900002 and p.steps[2].questId==900003 and p.steps[3].questId==900001,'Actionable work precedes fallback; actionable ties use numeric ID')
+end
+`));
+
+test("known remote locations do not become an invented unavailable-location claim", () => runLua(String.raw`
+local a=q(900001);a.destination={mapId=9999,x=0.2,y=0.3}
+local s=plan(player({a})).steps[1]
+assert(s.reason=='Ordered by quest ID; map/zone and level do not establish a priority.')
+assert(s.destination.mapId==9999 and not s.detail:find('Location and reported quest level are unavailable',1,true))
+`));

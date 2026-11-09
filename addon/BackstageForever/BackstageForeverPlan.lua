@@ -94,7 +94,7 @@ local function referenceDestination(row,quest,phase)
         if kind=='monster' or kind=='item' or kind=='gameObject' then return nil end
     end
     local p,name=observedPoint(field(row,'mention'),'mentioned-in-objective')
-    if p then return p,'Approximate reference: '..(name or 'NPC')..' mentioned in objective; verify your quest details.' end
+    if p then return p,'Approximate reference: '..(name or 'NPC')..' mentioned in objective; verify your quest details.',true end
 end
 local function candidate(character,quest,reference)
     local id=integer(field(quest,'id'),1,2147483647)
@@ -108,6 +108,7 @@ local function candidate(character,quest,reference)
         or objective or 'Check your quest log for the next objective; objective details are unavailable.'
     local actual=field(quest,'destination')
     local row,alias=referenceRow(reference,character,id,title)
+    local clue=false
     if actual~=nil then
         -- An explicitly malformed current marker must not be replaced by a
         -- plausible-looking community location.
@@ -117,9 +118,10 @@ local function candidate(character,quest,reference)
             if step.destination.text then step.detail=step.detail..' Game marker: '..step.destination.text..'.' end
         end
     elseif row then
-        local destination,detail=referenceDestination(row,quest,phase)
+        local destination,detail,mentioned=referenceDestination(row,quest,phase)
         if destination then
             step.destination=destination;step.source='reference'
+            clue=mentioned==true
             step.detail=(complete and 'Ready to turn in. ' or (step.detail..' '))..detail
             if alias then step.detail=step.detail..' English reference: '..alias..'.' end
         end
@@ -136,7 +138,36 @@ local function candidate(character,quest,reference)
         -- may re-check the live quest phase/build and invoke a waypoint API.
         step.command=string.format('/bf guide %d %s %d %.4f %.4f %s',id,phase,d.mapId,d.x,d.y,currentBuild)
     end
-    return {step=step,objective=objective~=nil,actual=step.destination~=nil and step.source=='game'}
+    return {step=step,objective=objective~=nil,actual=step.destination~=nil and step.source=='game',clue=clue}
+end
+local function relevance(character,quest,item)
+    local step=item.step
+    local location=field(character,'location')
+    local map=integer(field(location,'mapId'),1,2147483647)
+    local sameMap=step.destination~=nil and map~=nil and map==step.destination.mapId
+    local zone=text(field(quest,'zone'))
+    local sameZone=zone~=nil and zone==text(field(location,'zone'))
+    local current=item.actual and sameMap or sameZone
+    local reference=step.source=='reference' and not item.clue and sameMap
+    -- Unknown-objective checks stay useful as a last resort, but cannot displace
+    -- observed work merely because their reported level is closer.
+    item.actionable=step.phase=='t' or item.objective or item.actual or (step.source=='reference' and not item.clue)
+    item.priority=step.phase=='t' and 0 or current and 1 or reference and 2 or 3
+    local playerLevel=integer(field(character,'level'),1,1000)
+    local questLevel=integer(field(quest,'level'),0,1000)
+    item.levelGap=playerLevel and questLevel and math.abs(playerLevel-questLevel) or 10000
+    local position=point(location)
+    if position and sameMap and not item.clue then
+        item.distance=(position.x-step.destination.x)^2+(position.y-step.destination.y)^2
+    end
+    step.reason=step.phase=='t' and 'Reported ready to turn in.'
+        or item.actual and sameMap and 'Current game marker is on your current map.'
+        or sameZone and 'Observed quest zone matches your current zone.'
+        or reference and 'Approximate reference on your current map.'
+        or item.clue and 'Reference-mentioned NPC is a clue; verify your quest details.'
+        or item.levelGap~=10000 and 'Ordered by reported quest-level proximity, then quest ID.'
+        or 'Ordered by quest ID; map/zone and level do not establish a priority.'
+    step.detail=step.reason..' '..step.detail
 end
 function BackstageForeverBuildPlan(character,options)
     local reference,info=referenceInfo(character)
@@ -149,7 +180,6 @@ function BackstageForeverBuildPlan(character,options)
     local minutes=field(options,'minutes')
     local cap=minutes==15 and 1 or (minutes==60 and 3 or 2)
     local candidates,seen={},{}
-    local location=point(field(character,'location'))
     for i=1,QUEST_CAP do
         local quest=field(quests,i)
         if quest==nil then break end
@@ -159,9 +189,7 @@ function BackstageForeverBuildPlan(character,options)
             local s=item.step;seen[s.questId]=true;counts.quests=counts.quests+1
             if s.phase=='t' then counts.ready=counts.ready+1 else counts.unfinished=counts.unfinished+1 end
             if focus~='turn-ins' or s.phase=='t' then
-                if location and s.destination and location.mapId==s.destination.mapId then
-                    item.distance=(location.x-s.destination.x)^2+(location.y-s.destination.y)^2
-                end
+                relevance(character,quest,item)
                 candidates[#candidates+1]=item
             end
         end
@@ -169,15 +197,9 @@ function BackstageForeverBuildPlan(character,options)
     counts.limited=field(quests,QUEST_CAP+1)~=nil
     table.sort(candidates,function(a,b)
         local x,y=a.step,b.step
-        if focus=='nearby' then
-            if (a.distance~=nil)~=(b.distance~=nil) then return a.distance~=nil end
-            if a.distance~=nil and b.distance~=nil and a.distance~=b.distance then return a.distance<b.distance end
-        end
-        if x.phase~=y.phase then return x.phase=='t' end
-        if a.actual~=b.actual then return a.actual end
-        if a.objective~=b.objective then return a.objective end
-        if focus~='nearby' and (a.distance~=nil)~=(b.distance~=nil) then return a.distance~=nil end
-        if focus~='nearby' and a.distance~=nil and b.distance~=nil and a.distance~=b.distance then return a.distance<b.distance end
+        if a.actionable~=b.actionable then return a.actionable end
+        if a.priority~=b.priority then return a.priority<b.priority end
+        if a.levelGap~=b.levelGap then return a.levelGap<b.levelGap end
         return x.questId<y.questId
     end)
     for i=1,math.min(cap,#candidates) do result.steps[i]=candidates[i].step end

@@ -291,3 +291,35 @@ staleBagCapture();assert(not text():find('Current game bags:',1,true),'Queued pr
 assert(text():find('Waiting for a public character snapshot.',1,true) and text():find('Snapshot unavailable',1,true))
 assert(not text():find('Spirits of Stonetalon',1,true) and not text():find('XP 70',1,true) and not frames.BackstageForeverCompassWaypoint.enabled,'Failed new-login capture cannot retain a prior character plan or action')
 `));
+
+test('real planner reasons stay inside existing body while source phase and waypoint rows remain reserved',()=>lua(hud.slice(0,hud.indexOf('local character='))+String.raw`
+dofile('addon/BackstageForever/BackstageForeverReference.lua')
+local character={id='Reason-A',name='Synthetic Hero',level=12,className='Mage',locale='deDE',clientBuild='1.60.1.70862',
+ location={mapId=1413,x=0.35,y=0.28,zone='Synthetic zone'},readiness={bags={free=2,total=16}},quests={
+ {id=1061,title=string.rep('W',100),complete=true,objectives={}},
+ {id=900001,title='Current marker',complete=false,destination={mapId=1413,x=0.5,y=0.5},objectives={{text='Actual unfinished objective',done=false}}}}}
+dofile('addon/BackstageForever/BackstageForeverHUD.lua')
+event('PLAYER_LOGIN');BackstageForeverHUDSettings.minutes=60;BackstageForeverHUDUpdate(character)
+assert(text():find('Reported ready to turn in.',1,true) and text():find('Current game marker is on your current map.',1,true))
+assert(text():find('observed turn-in NPC',1,true) and text():find('English reference: The Spirits of Stonetalon',1,true))
+local source,action,cue
+for _,font in ipairs(fonts)do
+ if font.text=='Approximate reference — turn-in' then source=font end
+ if font.text and font.text:find('Step 1: WWW',1,true) then action=font end
+ if font.text=='Current game bags: 2 / 16 free slots.' then cue=font end
+end
+assert(source and action and cue and source~=fonts[2] and action~=fonts[2] and cue~=fonts[2])
+assert(source.point[3]==81 and action.point[3]==97 and cue.point[3]==113)
+assert(source.height==16 and source.maxLines==1 and source.wordWrap==false)
+local bodyBottom=frames.BackstageForeverCompass.height+fonts[2].point[3]-fonts[2].height
+assert(bodyBottom>=cue.point[3]+cue.height,'Reasons cannot expand into the reserved rows')
+local button=frames.BackstageForeverCompassWaypoint
+assert(button.enabled and #guideCalls==0)
+button.OnClick();assert(guideCalls[1]=='guide 1061 t 1413 0.3528 0.2786 1.60.1.70862')
+frames.BackstageForeverCompassCollapse.OnClick();assert(not source.visible and not action.visible and not cue.visible)
+frames.BackstageForeverCompassCollapse.OnClick();assert(source.visible and action.visible and cue.visible)
+local previous=button.OnClick
+event('PLAYER_LOGOUT');event('PLAYER_LOGIN');previous();assert(#guideCalls==1 and not button.enabled)
+character.id='Reason-B';character.quests={};character.readiness=nil;BackstageForeverHUDUpdate(character)
+assert(not button.enabled and not text():find('Reported ready to turn in.',1,true) and cue.text=='')
+`));
