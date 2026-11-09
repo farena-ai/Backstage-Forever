@@ -40,7 +40,15 @@ This is a coverage-limited reference layer, not certification of every quest or 
 
 Acceptance: representative route fixtures cover prerequisites, inaccessible content, missing data, updated quests and both factions. Validate the initial content slice in Forever. Measure dead-end suggestions, factual correctness and coverage before expanding.
 
-## Milestone 0.7: proactive adventure coach
+## 0.7: Living Companion
+
+This release focuses on three practical improvements: prepare the companion with one primary setup action, import/switch saved characters reliably, and keep useful native quest guidance changing during play without routine reloads. The bundled native reference/planner can work with the desktop closed. Five managed addon resources are staged, verified and repaired together; explicit player clicks can show supported waypoints. Current game observations and qualified community facts remain distinct.
+
+Setup distinguishes prepared files, a running game and the last saved capture. A first desktop snapshot and an AI account are not prerequisites for entering the app once files are prepared. Saved account exports are combined conservatively, and re-enabling following can apply an already-known saved active character without another logout. Local runtime checks and explicit launch use only the configured validated client.
+
+Acceptance: no routine reload prompt for native progress updates; no stale action from another character/session; correct snapshot imports despite another character's later save; no/multiple-install choices and unknown runtime remain usable; journal/provider/privacy boundaries preserved. Synthetic fixtures, packaged resources, signed publication and real-client acceptance have separate evidence in VALIDATION.md.
+
+### Further adventure-coach work after 0.7
 
 - Extend the existing next-step plan with source-backed alternatives for nearby objectives, turn-ins, travel and preparation, explaining why each action helps.
 - Extend existing 15/30/60-minute session preferences with relaxed exploration, profession progress, dungeon preparation and other player-selected goals.
