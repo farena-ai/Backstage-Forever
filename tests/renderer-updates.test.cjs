@@ -152,3 +152,24 @@ test("manual update checks report their actual phase when automatic checks are o
     );
   }
 });
+
+test("a failed newer download remains visible beside the older ready installer", () => {
+  const h = harness();
+  vm.runInContext(
+    'updateInfo = { phase: "ready", readyVersion: "0.4.0", availableVersion: "0.5.0", message: "The update download was interrupted. Retry, or use the Releases page." }; refreshUpdateWidgets();',
+    h.context,
+  );
+  assert.match(h.summary.textContent, /interrupted/);
+  assert.match(h.summary.textContent, /0\.4\.0.*ready/i);
+  assert.equal(
+    vm.runInContext(
+      "document.querySelector('[data-command=\"check-updates\"]').textContent",
+      h.context,
+    ),
+    "Retry update",
+  );
+  assert.match(
+    vm.runInContext("updatesPage()", h.context),
+    /data-link="releases"/,
+  );
+});

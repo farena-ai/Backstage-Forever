@@ -41,6 +41,7 @@ let latestObservation = null;
 let latestObservationRoot = null;
 let gameActionEpoch = 0;
 const links = {
+  releases: "https://github.com/farena-ai/Backstage-Forever/releases",
   ollama: "https://ollama.com/",
   "ollama-cloud": "https://ollama.com/settings/keys",
   openai: "https://platform.openai.com/api-keys",

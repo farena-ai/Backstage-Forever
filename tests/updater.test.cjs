@@ -62,7 +62,12 @@ const path = require("node:path");
 const { Updater } = require("../src/core/updater.cjs");
 function harness(t, options = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-updater-"));
-  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  t.after(() => {
+    const real = fs.realpathSync(dir);
+    assert.equal(path.dirname(real), fs.realpathSync(os.tmpdir()));
+    assert.ok(path.basename(real).startsWith("bf-updater-"));
+    fs.rmSync(real, { recursive: true, force: true });
+  });
   const data = Buffer.from("trusted installer fixture");
   const envelope = fixture({
     size: data.length,
@@ -145,7 +150,9 @@ test("hash mismatch never becomes an installer or leaves a partial file", async 
   const h = harness(t, { corrupt: true });
   assert.equal((await h.updater.check()).phase, "error");
   assert.equal(await h.updater.install(), false);
-  assert.deepEqual(fs.readdirSync(path.join(h.dir, "updates")), []);
+  assert.deepEqual(fs.readdirSync(path.join(h.dir, "updates")), [
+    "diagnostic.json",
+  ]);
 });
 test("opt out cancels an in-flight download without resurrecting ready state", async (t) => {
   let release;

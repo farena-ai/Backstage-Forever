@@ -63,7 +63,7 @@ function verifyManifest(envelope, key, current) {
     signature.length !== 64 ||
     !crypto.verify(null, bytes, publicKey, signature)
   )
-    throw Error("Invalid signature");
+    throw updateError("SIGNATURE");
   const m = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   if (
     !m ||
@@ -84,30 +84,158 @@ function verifyManifest(envelope, key, current) {
     throw Error("Invalid signed update");
   return m;
 }
-function request(url, signal, limit, onChunk, api = false, redirects = 0) {
+const errorCodes = new Set([
+  "NETWORK",
+  "TIMEOUT",
+  "HTTP",
+  "REDIRECT",
+  "URL",
+  "BODY_ABORT",
+  "SIZE",
+  "HASH",
+  "SIGNATURE",
+  "MANIFEST",
+  "DISCOVERY",
+  "PATH",
+  "PERMISSION",
+  "DISK",
+  "CACHE",
+  "CANCELLED",
+]);
+function updateError(code, fields = {}) {
+  return Object.assign(new Error("Update operation failed"), {
+    updateCode: code,
+    ...fields,
+  });
+}
+function classify(error, stage) {
+  if (errorCodes.has(error?.updateCode)) return error.updateCode;
+  if (
+    [
+      "ECONNRESET",
+      "ECONNREFUSED",
+      "ENOTFOUND",
+      "EAI_AGAIN",
+      "ENETUNREACH",
+      "EPIPE",
+    ].includes(error?.code)
+  )
+    return "NETWORK";
+  if (["ETIMEDOUT", "ESOCKETTIMEDOUT"].includes(error?.code)) return "TIMEOUT";
+  if (["EACCES", "EPERM", "EROFS"].includes(error?.code)) return "PERMISSION";
+  if (["ENOSPC", "EDQUOT"].includes(error?.code)) return "DISK";
+  if (error?.code === "ABORT_ERR") return "CANCELLED";
+  return stage === "download"
+    ? "NETWORK"
+    : stage === "cache"
+      ? "CACHE"
+      : stage === "discovery"
+        ? "DISCOVERY"
+        : "MANIFEST";
+}
+function retryable(error) {
+  const code = classify(error, "download");
+  return (
+    ["NETWORK", "TIMEOUT", "BODY_ABORT"].includes(code) ||
+    (code === "HTTP" && (error.httpStatus === 429 || error.httpStatus >= 500))
+  );
+}
+function failureMessage(stage, code) {
+  if (["HASH", "SIZE", "SIGNATURE", "MANIFEST"].includes(code))
+    return "The update could not be verified safely. Retry, or use the Releases page.";
+  if (stage === "discovery")
+    return "The release check could not connect. Retry, or use the Releases page.";
+  if (stage === "manifest")
+    return "The update information could not be retrieved. Retry, or use the Releases page.";
+  if (stage === "cache") {
+    if (code === "DISK")
+      return "There is not enough space to save the update. Free some space and retry.";
+    if (code === "PERMISSION")
+      return "Windows could not save the update. Check folder access and retry, or use the Releases page.";
+    return "The update cache could not be used safely. Retry, or use the Releases page.";
+  }
+  return "The update download was interrupted. Retry, or use the Releases page.";
+}
+function retryDelay(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(updateError("CANCELLED"));
+    const done = () => {
+      signal.removeEventListener("abort", abort);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    const abort = () => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", abort);
+      reject(updateError("CANCELLED"));
+    };
+    signal.addEventListener("abort", abort, { once: true });
+  });
+}
+function request(
+  url,
+  signal,
+  limit,
+  onChunk,
+  api = false,
+  redirects = 0,
+  transport = https,
+) {
   return new Promise((resolve, reject) => {
     if ((!api && !allowedURL(url)) || (api && url !== API) || redirects > 5)
-      return reject(Error("Unsafe update URL"));
-    const req = https.get(
-      url,
+      return reject(updateError(redirects > 5 ? "REDIRECT" : "URL"));
+    let size = 0,
+      response,
+      settled = false;
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      reject(
+        updateError(classify(error, "download"), {
+          ...(Number.isInteger(response?.statusCode)
+            ? { httpStatus: response.statusCode }
+            : {}),
+          bytes: size,
+        }),
+      );
+    };
+    const target = new URL(url);
+    if (
+      !api &&
+      redirects === 0 &&
+      target.origin === "https://github.com" &&
+      target.pathname.startsWith(
+        "/farena-ai/Backstage-Forever/releases/download/",
+      )
+    ) {
+      // Refresh GitHub's redirect metadata; never alter the signed CDN URL.
+      target.searchParams.set("_bf", crypto.randomUUID());
+    }
+    const req = transport.get(
+      target.href,
       {
         signal,
         headers: {
           "User-Agent": "Backstage-Forever",
+          "Cache-Control": "no-cache",
           Accept: api
             ? "application/vnd.github+json"
             : "application/octet-stream",
         },
       },
       (res) => {
+        response = res;
+        res.on("error", fail);
         if ([301, 302, 303, 307, 308].includes(res.statusCode)) {
           res.resume();
           let next;
           try {
             next = new URL(res.headers.location, url).href;
           } catch {
-            return reject(Error("Invalid redirect"));
+            return fail(updateError("REDIRECT"));
           }
+          // The redirected request owns completion and cancellation from here.
+          settled = true;
           return request(
             next,
             signal,
@@ -115,37 +243,57 @@ function request(url, signal, limit, onChunk, api = false, redirects = 0) {
             onChunk,
             false,
             redirects + 1,
+            transport,
           ).then(resolve, reject);
         }
         if (res.statusCode !== 200) {
           res.resume();
-          return reject(Error("Update unavailable"));
+          return fail(updateError("HTTP"));
         }
         if (Number(res.headers["content-length"]) > limit) {
+          fail(updateError("SIZE"));
           res.destroy();
-          return reject(Error("Update too large"));
+          return;
         }
-        let size = 0;
+        const expected =
+          res.headers["content-length"] === undefined
+            ? null
+            : Number(res.headers["content-length"]);
         const chunks = [];
         res.on("data", (chunk) => {
+          if (settled) return;
           size += chunk.length;
           if (size > limit) {
-            res.destroy(Error("Update too large"));
+            fail(updateError("SIZE"));
+            res.destroy();
             return;
           }
           try {
             if (onChunk) onChunk(chunk, size);
             else chunks.push(chunk);
           } catch (e) {
-            res.destroy(e);
+            fail(e);
+            res.destroy();
           }
         });
-        res.on("error", reject);
-        res.on("end", () => resolve(onChunk ? size : Buffer.concat(chunks)));
+        res.on("aborted", () => fail(updateError("BODY_ABORT")));
+        res.on("close", () => {
+          if (!settled) fail(updateError("BODY_ABORT"));
+        });
+        res.on("end", () => {
+          if (settled) return;
+          if (
+            expected !== null &&
+            (!Number.isSafeInteger(expected) || expected !== size)
+          )
+            return fail(updateError("BODY_ABORT"));
+          settled = true;
+          resolve(onChunk ? size : Buffer.concat(chunks));
+        });
       },
     );
-    req.setTimeout(30000, () => req.destroy(Error("Update request timed out")));
-    req.on("error", reject);
+    req.setTimeout(30000, () => req.destroy(updateError("TIMEOUT")));
+    req.on("error", fail);
   });
 }
 function runInstaller(file, { restart = false } = {}) {
@@ -178,6 +326,7 @@ class Updater {
     installRunner = runInstaller,
     setTimer = setTimeout,
     clearTimer = clearTimeout,
+    retryDelay: wait = retryDelay,
   }) {
     Object.assign(this, {
       dir: path.join(dataDir, "updates"),
@@ -189,6 +338,7 @@ class Updater {
       installRunner,
       setTimer,
       clearTimer,
+      retryDelay: wait,
     });
     this.epoch = 0;
     this.timers = [];
@@ -198,7 +348,16 @@ class Updater {
     this.lastChecked = null;
     this.message = "";
     this.ready = null;
-    this.safeDir();
+    this.diagnostic = null;
+    this.retryAttempt = 0;
+    try {
+      this.safeDir();
+    } catch (error) {
+      if (this.phase !== "unsupported") this.phase = "error";
+      this.recordFailure(error, "cache");
+      this.message = failureMessage("cache", this.diagnostic.code);
+      return;
+    }
     try {
       const p = JSON.parse(
         fs.readFileSync(path.join(this.dir, "preferences.json"), "utf8"),
@@ -217,12 +376,34 @@ class Updater {
     this.restore();
   }
   safeDir() {
+    const resolved = path.resolve(this.dir);
+    const equal = (a, b) =>
+      process.platform === "win32"
+        ? a.toLowerCase() === b.toLowerCase()
+        : a === b;
+    // Validate the existing ancestor before recursive mkdir can follow a junction.
+    let ancestor = resolved;
+    while (true) {
+      const stat = fs.lstatSync(ancestor, { throwIfNoEntry: false });
+      if (stat) {
+        if (
+          !stat.isDirectory() ||
+          stat.isSymbolicLink() ||
+          !equal(fs.realpathSync(ancestor), ancestor)
+        )
+          throw updateError("PATH");
+        break;
+      }
+      const parent = path.dirname(ancestor);
+      if (parent === ancestor) throw updateError("PATH");
+      ancestor = parent;
+    }
     fs.mkdirSync(this.dir, { recursive: true });
     if (
       fs.lstatSync(this.dir).isSymbolicLink() ||
-      fs.realpathSync(this.dir) !== path.resolve(this.dir)
+      !equal(fs.realpathSync(this.dir), resolved)
     )
-      throw Error("Unsafe update cache");
+      throw updateError("PATH");
   }
   safeFile(name) {
     this.safeDir();
@@ -231,25 +412,53 @@ class Updater {
       fs.existsSync(file) &&
       (!fs.lstatSync(file).isFile() || fs.lstatSync(file).isSymbolicLink())
     )
-      throw Error("Unsafe update file");
+      throw updateError("PATH");
     return file;
   }
   atomic(name, data) {
     const target = this.safeFile(name),
       tmp = this.safeFile(name + "." + crypto.randomUUID() + ".tmp");
-    fs.writeFileSync(tmp, data, { flag: "wx", mode: 0o600 });
-    fs.renameSync(tmp, target);
+    try {
+      fs.writeFileSync(tmp, data, { flag: "wx", mode: 0o600 });
+      fs.renameSync(tmp, target);
+    } finally {
+      try {
+        fs.unlinkSync(tmp);
+      } catch {}
+    }
+  }
+  recordFailure(error, stage, attempt = 0, bytes = 0) {
+    this.diagnostic = {
+      stage,
+      code: classify(error, stage),
+      attempt: Math.max(0, Math.min(3, attempt)),
+      bytes: Math.max(
+        0,
+        Math.min(MAX, Number.isSafeInteger(bytes) ? bytes : 0),
+      ),
+      ...(Number.isInteger(error?.httpStatus) &&
+      error.httpStatus >= 100 &&
+      error.httpStatus <= 599
+        ? { httpStatus: error.httpStatus }
+        : {}),
+    };
+    try {
+      this.atomic("diagnostic.json", JSON.stringify(this.diagnostic));
+    } catch {}
   }
   status() {
     return {
       phase: this.phase,
       currentVersion: this.currentVersion,
       availableVersion:
-        this.ready?.manifest.version ?? this.availableVersion ?? null,
+        this.availableVersion ?? this.ready?.manifest.version ?? null,
+      readyVersion: this.ready?.manifest.version ?? null,
       ...this.preferences,
       progress: this.progress,
       lastChecked: this.lastChecked,
       message: this.message,
+      diagnostic: this.diagnostic ? { ...this.diagnostic } : null,
+      retryAttempt: this.retryAttempt,
     };
   }
   verifyFile(m) {
@@ -340,70 +549,101 @@ class Updater {
     });
     return this.pending;
   }
+  async fetchMetadata(url, signal, limit, api, stage, active) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      active();
+      this.retryAttempt = attempt;
+      try {
+        const result = await this.fetch(url, signal, limit, null, api);
+        active();
+        this.diagnostic = null;
+        this.message = "";
+        return result;
+      } catch (error) {
+        active();
+        this.recordFailure(error, stage, attempt, error.bytes);
+        if (!retryable(error) || attempt === 3) throw error;
+      }
+      await this.retryDelay(attempt === 1 ? 500 : 1500, signal);
+      active();
+    }
+  }
   async performCheck() {
     const epoch = this.epoch;
     this.controller = new AbortController();
     const signal = this.controller.signal;
     const active = () => {
-      if (epoch !== this.epoch || signal.aborted) throw Error("Cancelled");
+      if (epoch !== this.epoch || signal.aborted)
+        throw updateError("CANCELLED");
     };
     this.phase = "checking";
     this.message = "";
+    this.diagnostic = null;
+    this.retryAttempt = 0;
+    this.availableVersion = null;
+    let stage = "discovery",
+      bytes = 0;
     try {
       const releases = JSON.parse(
-        (await this.fetch(API, signal, 1024 * 1024, null, true)).toString(
-          "utf8",
-        ),
+        (
+          await this.fetchMetadata(
+            API,
+            signal,
+            1024 * 1024,
+            true,
+            stage,
+            active,
+          )
+        ).toString("utf8"),
       );
       active();
       if (!Array.isArray(releases) || releases.length > 30)
         throw Error("Invalid release list");
-      const candidates = [];
-      for (const r of releases) {
-        active();
-        if (
-          r.draft ||
-          typeof r.tag_name !== "string" ||
-          !r.tag_name.startsWith("v") ||
-          !newer(r.tag_name.slice(1), this.currentVersion) ||
-          !Array.isArray(r.assets)
-        )
-          continue;
-        const url = `${REPO}/releases/download/${r.tag_name}/backstage-update.json`;
-        if (
-          !r.assets.some(
-            (a) =>
-              a.name === "backstage-update.json" &&
-              a.browser_download_url === url,
-          )
-        )
-          continue;
-        try {
-          const envelope = JSON.parse(
-            (await this.fetch(url, signal, 32768)).toString("utf8"),
-          );
-          active();
-          const manifest = verifyManifest(
-            envelope,
-            this.publicKey,
-            this.currentVersion,
-          );
-          if (manifest.releaseTag !== r.tag_name) continue;
-          candidates.push({ envelope, manifest });
-        } catch (e) {
-          active();
-        }
-      }
-      active();
       this.lastChecked = new Date().toISOString();
-      candidates.sort((a, b) =>
-        newer(a.manifest.version, b.manifest.version) ? -1 : 1,
-      );
-      const chosen = candidates[0];
-      if (!chosen) {
+      const release = releases
+        .filter(
+          (r) =>
+            r &&
+            !r.draft &&
+            typeof r.tag_name === "string" &&
+            r.tag_name.startsWith("v") &&
+            newer(r.tag_name.slice(1), this.currentVersion),
+        )
+        .sort((a, b) =>
+          newer(a.tag_name.slice(1), b.tag_name.slice(1)) ? -1 : 1,
+        )[0];
+      if (!release) {
         this.phase = this.ready ? "ready" : "current";
         return this.status();
       }
+      active();
+      this.availableVersion = release.tag_name.slice(1);
+      stage = "manifest";
+      const url = `${REPO}/releases/download/${release.tag_name}/backstage-update.json`;
+      if (
+        !Array.isArray(release.assets) ||
+        !release.assets.some(
+          (a) =>
+            a &&
+            a.name === "backstage-update.json" &&
+            a.browser_download_url === url,
+        )
+      )
+        throw updateError("MANIFEST");
+      const envelope = JSON.parse(
+        (
+          await this.fetchMetadata(url, signal, 32768, false, stage, active)
+        ).toString("utf8"),
+      );
+      active();
+      const manifest = verifyManifest(
+        envelope,
+        this.publicKey,
+        this.currentVersion,
+      );
+      if (manifest.releaseTag !== release.tag_name)
+        throw updateError("MANIFEST");
+      const chosen = { envelope, manifest };
       if (
         this.ready &&
         !newer(chosen.manifest.version, this.ready.manifest.version)
@@ -413,45 +653,86 @@ class Updater {
       }
       this.availableVersion = chosen.manifest.version;
       this.phase = "downloading";
-      this.progress = 0;
-      const tmp = this.safeFile("download-" + crypto.randomUUID() + ".partial");
-      const fd = fs.openSync(tmp, "wx", 0o600);
-      const hash = crypto.createHash("sha256");
-      let size;
-      try {
-        size = await this.fetch(
-          chosen.manifest.url,
-          signal,
-          chosen.manifest.size,
-          (chunk, n) => {
-            active();
-            let offset = 0;
-            while (offset < chunk.length)
-              offset += fs.writeSync(fd, chunk, offset);
-            hash.update(chunk);
-            this.progress = Math.floor((n / chosen.manifest.size) * 100);
-          },
-        );
+      let verifiedTmp;
+      for (let attempt = 1; attempt <= 3; attempt++) {
         active();
-        if (
-          size !== chosen.manifest.size ||
-          hash.digest("hex") !== chosen.manifest.sha256
-        )
-          throw Error("Update verification failed");
-        fs.fsyncSync(fd);
-      } catch (e) {
+        this.retryAttempt = attempt;
+        this.progress = 0;
+        bytes = 0;
+        stage = "cache";
+        const tmp = this.safeFile(
+          "download-" + crypto.randomUUID() + ".partial",
+        );
+        let fd;
+        let successful = false;
         try {
+          fd = fs.openSync(tmp, "wx", 0o600);
+          const hash = crypto.createHash("sha256");
+          stage = "download";
+          const size = await this.fetch(
+            chosen.manifest.url,
+            signal,
+            chosen.manifest.size,
+            (chunk) => {
+              active();
+              if (
+                !Buffer.isBuffer(chunk) ||
+                bytes + chunk.length > chosen.manifest.size
+              )
+                throw updateError("SIZE");
+              bytes += chunk.length;
+              stage = "cache";
+              let offset = 0;
+              while (offset < chunk.length) {
+                const written = fs.writeSync(
+                  fd,
+                  chunk,
+                  offset,
+                  chunk.length - offset,
+                );
+                if (written <= 0) throw updateError("DISK");
+                offset += written;
+              }
+              hash.update(chunk);
+              this.progress = Math.floor((bytes / chosen.manifest.size) * 100);
+              stage = "download";
+            },
+          );
+          active();
+          if (size !== chosen.manifest.size || bytes !== chosen.manifest.size)
+            throw updateError("SIZE");
+          if (hash.digest("hex") !== chosen.manifest.sha256)
+            throw updateError("HASH");
+          stage = "cache";
+          fs.fsyncSync(fd);
           fs.closeSync(fd);
-        } catch {}
-        try {
-          fs.unlinkSync(tmp);
-        } catch {}
-        throw e;
-      } finally {
-        try {
-          fs.closeSync(fd);
-        } catch {}
+          fd = undefined;
+          successful = true;
+          verifiedTmp = tmp;
+        } catch (error) {
+          active();
+          this.recordFailure(error, stage, attempt, bytes);
+          if (stage !== "download" || !retryable(error) || attempt === 3)
+            throw error;
+        } finally {
+          if (fd !== undefined) {
+            try {
+              fs.closeSync(fd);
+            } catch {}
+          }
+          if (!successful) {
+            try {
+              fs.unlinkSync(tmp);
+            } catch {}
+          }
+        }
+        if (successful) break;
+        this.message = "The download was interrupted. Retrying automatically…";
+        await this.retryDelay(attempt === 1 ? 500 : 1500, signal);
+        active();
       }
+      const tmp = verifiedTmp;
+      stage = "cache";
       try {
         active();
         fs.renameSync(tmp, this.safeFile(filename(chosen.manifest.version)));
@@ -459,16 +740,28 @@ class Updater {
         this.ready = chosen;
         this.phase = "ready";
         this.progress = 100;
+        this.message = "";
+        this.diagnostic = null;
+        try {
+          fs.unlinkSync(this.safeFile("diagnostic.json"));
+        } catch {}
       } finally {
         try {
           fs.unlinkSync(tmp);
         } catch {}
       }
-    } catch {
+    } catch (error) {
       if (epoch === this.epoch) {
         this.phase = this.ready ? "ready" : "error";
-        this.message =
-          "The update could not be verified or downloaded. Try again later.";
+        this.recordFailure(
+          error,
+          stage,
+          this.retryAttempt,
+          stage === "manifest" || stage === "discovery"
+            ? (error.bytes ?? bytes)
+            : bytes,
+        );
+        this.message = failureMessage(stage, this.diagnostic.code);
       }
     }
     return this.status();
@@ -514,6 +807,8 @@ class Updater {
     this.progress = 0;
     this.lastChecked = null;
     this.message = "";
+    this.diagnostic = null;
+    this.retryAttempt = 0;
     this.safeDir();
     this.atomic("preferences.json", JSON.stringify(this.preferences));
     return this.status();
