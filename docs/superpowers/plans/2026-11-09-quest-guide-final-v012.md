@@ -31,8 +31,8 @@ Files: addon/BackstageForever/BackstageForever.lua, focused addon destination/li
 
 Files: renderer quest-guide.js/css, narrow existing app/index/helperwiring; preparation seller cards and explicit selected-plan AI-draft action narrow; actual knowledge/preparation smoke and rendererVM actualmodule dependency updates. No backend/native/provider/version/data changes.
 
-- [ ] Read prior exactmodel and RED source-qualified destination/chain/reward/selector/explicitcopy flow first.
-- [ ] Original class/faction art premiumatlas/dossier/illustratedcards and dimensionalcontrols, no fake map, explicit partialfacts, compact1000x700 darkmenus/motionrespect, clearunknown/manual/error. Preparation seller facts plus explicit current-plan editable AI draft, selected visible facts/dates/qualifiers only, no otherchar/private data or automatic inference.
-- [ ] Reuse sharedInteractionGuard/epochs for physicalclicks/keyboard/select/details/search/drafts/sourceupdates/char/nav/import/reset. No autoAI/audio/systemclipboard/gameactions.
-- [ ] Actual normal/genuine83 affected flows and inspected Alliance/Horde/class/compact/empty/error previews plus fulloncefinal; report work/v012-guide-task3-report.md and independentreview.
+- [x] Read prior exactmodel and RED source-qualified destination/chain/reward/selector/explicitcopy flow first.
+- [x] Original class/faction art premiumatlas/dossier/illustratedcards and dimensionalcontrols, no fake map, explicit partialfacts, compact1000x700 darkmenus/motionrespect, clearunknown/manual/error. Preparation seller facts plus explicit current-plan editable AI draft, selected visible facts/dates/qualifiers only, no otherchar/private data or automatic inference.
+- [x] Reuse sharedInteractionGuard/epochs for physicalclicks/keyboard/select/details/search/drafts/sourceupdates/char/nav/import/reset. No autoAI/audio/systemclipboard/gameactions.
+- [x] Actual normal/genuine83 affected flows and inspected Alliance/Horde/class/compact/empty/error previews plus fulloncefinal; report work/v012-guide-task3-report.md and independentreview.
 - [ ] Parentfinaldocs/measuredcoverage/audit/allintegratedflowsfreshpackage/whole-seriesstrongestreview/signedpublicCI/downloadcryptoverification/ownercheckbefore1.0. Do not stop at screenshots or partial source progress.

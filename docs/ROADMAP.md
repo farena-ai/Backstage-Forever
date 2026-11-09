@@ -1,6 +1,6 @@
 # Backstage Forever product roadmap
 
-Updated 2026-11-09 (America/Chicago). Proposed milestones, not delivery dates or claims of shipped support. Backstage Coding; designed by Frank Arena. BF should make the next useful action obvious, using verified Forever facts and the player's actual progress. More UI or more model calls are not acceptance criteria.
+Updated 2026-11-09 (America/Chicago). The 0.9–0.12 series is implemented as the combined 0.12 preview checkpoint. Publication and measured acceptance are recorded separately in VALIDATION.md; 1.0 remains held for Frank’s hands-on check. Later research items are proposals, not delivery promises. Backstage Coding; designed by Frank Arena. BF should make the next useful action obvious, using verified Forever facts and the player's actual progress. More UI or more model calls are not acceptance criteria.
 
 ## Foundation through 0.5
 
@@ -108,7 +108,7 @@ Acceptance: safe capability discovery, bounded/cancellable microphone and output
 - Preview/export/import user-approved party plans and dungeon checklists. Imported plans are new manual, unassigned steps without captured completion proof. No messages to friends/guild channels or automatic game actions.
 - Rich quest/destination dossiers and coordinate views with class/faction art, readable evidence, map/date/phase labels and useful missing-point states.
 - Refresh the compatible licensed Forever snapshot, improve guarded public game destination capture and measure source coverage. Retain reliable points rather than import incompatible or unlicensed locations.
-- Consider separately compiled same-build observed supply-vendor facts, preserving the existing quest-cache protocol. Historical reactions/locations do not guarantee access, current stock or prices.
+- Separately compiled same-build historical supply-vendor facts preserve the existing quest-cache protocol. Historical reactions/locations do not guarantee access, current stock or prices.
 - Final visual pass: consistent class/faction tokens, spacing, icon hierarchy, control states and polished empty/error screens; restrained transitions rather than effects competing with the game.
 - Verify 100/125/150/200 percent Windows scaling, compact windows, keyboard/focus, contrast, screen readers, reduced motion and low idle CPU/GPU. Native addon styling must fit WoW and remain unobtrusive.
 
