@@ -9,6 +9,19 @@ function shortPath(target) {
  const alias=require("node:child_process").execFileSync("powershell.exe",["-NoProfile","-NonInteractive","-Command",script],{env:{...process.env,BF_COMPANY_UI_ALIAS_PATH:target},encoding:"utf8",timeout:15000}).trim();
  assert.notEqual(alias.toLowerCase(),target.toLowerCase());assert.match(alias,/~\d/);assert.equal(require("node:fs").statSync(alias).ino,require("node:fs").statSync(target).ino);return alias;
 }
+// One physical gesture: no locator click retry can silently deliver a second click.
+async function physicalClick(page, locator, whilePressed) {
+ await locator.scrollIntoViewIfNeeded();
+ const box=await locator.boundingBox();assert.ok(box,"Physical target has bounds");
+ await locator.evaluate(node=>{
+  window.companyPointerTarget={node,clicks:0};
+  node.addEventListener("click",()=>window.companyPointerTarget.clicks++,{once:true});
+ });
+ await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+ await page.mouse.down();
+ try {await whilePressed?.();} finally {await page.mouse.up();}
+ assert.equal(await page.evaluate(()=>window.companyPointerTarget.clicks),1,"One physical click must reach the original control");
+}
 (async()=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),"forever-company-ui-")); let app;
  const watchdog=setTimeout(()=>{console.error("Company UI fixture exceeded 110 seconds");app?.process().kill();process.exitCode=1;},110000);
@@ -81,6 +94,57 @@ function shortPath(target) {
   await journey.getByRole("button",{name:"Track saved quest",exact:true}).click();
   await page.getByText("Saved ready to turn in; not turned in",{exact:true}).waitFor();
   await page.getByText(/Tracking starts from the saved capture/).waitFor();
+  // Natural title blur must preserve the next pointer target even behind queued work.
+  const pointerTitle=journey.getByLabel("Plan title"),pointerCheck=journey.getByRole("checkbox").first();
+  await page.evaluate(async()=>{await autosaveQueue;window.companyHeldQueue={};window.companyHeldQueue.promise=new Promise(resolve=>window.companyHeldQueue.release=resolve);autosaveQueue=window.companyHeldQueue.promise;});
+  await pointerTitle.fill("One click queued title");
+  await physicalClick(page,pointerCheck,async()=>{
+   assert.equal(await page.evaluate(()=>autosaveQueue!==window.companyHeldQueue.promise),true,"Natural blur accepted the title before pointer release");
+  });
+  await page.evaluate(()=>window.companyHeldQueue.release());
+  await page.waitForFunction(async()=>{const j=(await window.backstage.companyBrief()).journeys[0];return j.title==="One click queued title"&&j.steps[0].done;});
+  await pointerCheck.uncheck();
+  await page.waitForFunction(async()=>!(await window.backstage.companyBrief()).journeys[0].steps[0].done);
+  // A fast acknowledgement/read/full-root refresh while the physical button is down
+  // must not detach the newly focused input, or steal its later typed text/range.
+  await app.evaluate(()=>{companyUiFixture.delay="backstage:journeyAction";companyUiFixture.release=null;});
+  await pointerTitle.fill("Fast acknowledgement title");
+  await physicalClick(page,journey.getByLabel("Note step"),async()=>{
+   await app.evaluate(async()=>{const end=Date.now()+5000;while(!companyUiFixture.release){if(Date.now()>end)throw Error("Natural blur delay did not start");await new Promise(r=>setTimeout(r,10));}companyUiFixture.release();});
+   await page.evaluate(async()=>{await autosaveQueue;await Company.refresh();render();await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
+   assert.equal(await page.evaluate(()=>window.companyPointerTarget.node.isConnected),true,"Fast ack/poll keeps the pressed input mounted");
+  });
+  await page.waitForFunction(()=>document.activeElement?.getAttribute("aria-label")==="Plan title"?false:document.activeElement?.name==="note");
+  await page.keyboard.type("Pointer entry text");
+  assert.equal(await journey.getByLabel("Note step").inputValue(),"Pointer entry text");
+  assert.equal(await journey.getByLabel("Note step").evaluate(n=>document.activeElement===n&&n.selectionStart===n.value.length),true,"Next field accepts real keyboard typing after ack");
+  await pointerTitle.fill("Keyboard transfer title");await pointerTitle.press("Tab");
+  await page.waitForFunction(async()=>{await autosaveQueue;return document.activeElement?.dataset.companyCommand==="remove";});
+  assert.equal(await journey.getByRole("button",{name:"Delete plan Keyboard transfer title",exact:true}).evaluate(n=>document.activeElement===n),true,"Keyboard Tab also reaches its natural next control");
+  // An unrelated pending text edit must not disable or lose the next submit button.
+  const originalStep=(await page.evaluate(()=>window.backstage.companyBrief())).journeys[0].steps[0].text;
+  await journey.getByLabel("Step text",{exact:true}).first().fill("Pointer step edit");
+  await app.evaluate(()=>{companyUiFixture.delay="backstage:journeyAction";companyUiFixture.release=null;});
+  await physicalClick(page,journey.getByRole("button",{name:"Add note",exact:true}),async()=>{
+   await app.evaluate(async()=>{const end=Date.now()+5000;while(!companyUiFixture.release){if(Date.now()>end)throw Error("Step blur delay did not start");await new Promise(r=>setTimeout(r,10));}});
+  });
+  await app.evaluate(()=>companyUiFixture.release());
+  await page.waitForFunction(async()=>{const j=(await window.backstage.companyBrief()).journeys[0];return j.steps[0].text==="Pointer step edit"&&j.steps.at(-1).text==="Pointer entry text";});
+  await journey.getByRole("button",{name:"Remove Pointer entry text",exact:true}).click();
+  await journey.getByLabel("Step text",{exact:true}).first().fill(originalStep);
+  await physicalClick(page,journey.getByLabel("Assigned character",{exact:true}).first(),async()=>{
+   await page.evaluate(async()=>{await autosaveQueue;await Company.refresh();render();await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
+   assert.equal(await page.evaluate(()=>window.companyPointerTarget.node.isConnected),true,"Assignment popup survives blur ack/poll");
+  });
+  await page.keyboard.press("Home");await page.keyboard.press("ArrowDown");await page.keyboard.press("Enter");
+  await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].steps[0].profileId==="lark");
+  await physicalClick(page,journey.getByLabel("Note step"));
+  await journey.getByLabel("Assigned character",{exact:true}).first().selectOption("");
+  await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].steps[0].profileId===null);
+  await pointerTitle.fill("Button focus title");
+  await physicalClick(page,page.getByRole("button",{name:"Create plan",exact:true}));
+  await page.waitForFunction(()=>document.activeElement?.name==="title"&&document.activeElement.closest('[data-company-form="create"]'));
+  await page.getByRole("button",{name:"Cancel",exact:true}).click();
   const check=journey.getByRole("checkbox").first();await check.focus();await check.press("Space");
   await page.getByText("Manually checked",{exact:true}).waitFor();
   assert.equal(await check.evaluate(n=>document.activeElement===n),true,"Keyboard manual check retains focus");
@@ -114,6 +178,24 @@ function shortPath(target) {
   clock+=60;Object.assign(captures[0],{updatedAt:clock,name:"Lark Ashvale",level:31,className:"Mage",faction:"Alliance"});await writeCapture();await page.evaluate(()=>window.backstage.refreshGame());
   await page.waitForFunction(()=>document.body.dataset.faction==="alliance"&&document.body.dataset.class==="mage"&&document.querySelector('#active-character option:checked')?.textContent.includes("Lark Ashvale · Level 31"),{},{timeout:12000});
   await sameIdTitle.press("Tab");await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Same-ID retained draft");
+  // A real same-ID GameSync/header poll can arrive while a natural blur's
+  // acknowledgement resolves and the next input is still physically pressed.
+  await app.evaluate(()=>{companyUiFixture.delay="backstage:journeyAction";companyUiFixture.release=null;});
+  await sameIdTitle.fill("Held same-ID header title");
+  await physicalClick(page,journey.getByLabel("Note step"),async()=>{
+   await app.evaluate(async()=>{const end=Date.now()+5000;while(!companyUiFixture.release){if(Date.now()>end)throw Error("Header blur delay did not start");await new Promise(r=>setTimeout(r,10));}companyUiFixture.release();});
+   await page.evaluate(async()=>{await autosaveQueue;});
+   clock+=60;captures[0].updatedAt=clock;captures[0].level=32;await writeCapture();await page.evaluate(()=>window.backstage.refreshGame());
+   await page.waitForFunction(()=>state.profiles.find(p=>p.id==="lark")?.level===32,{},{timeout:12000});
+   assert.equal(await page.evaluate(()=>window.companyPointerTarget.node.isConnected),true,"Real same-ID header poll preserves the pressed input");
+   assert.match(await page.locator('#active-character option:checked').innerText(),/Level 31/,"Header rendering waits for the gesture, while root state accepts the new capture");
+  });
+  await page.waitForFunction(()=>document.querySelector('#active-character option:checked')?.textContent.includes("Level 32"));
+  assert.equal(await journey.getByLabel("Note step").evaluate(n=>document.activeElement===n),true,"Deferred real header poll preserves next-input focus");
+  await page.keyboard.type("Header poll typing");assert.equal(await journey.getByLabel("Note step").inputValue(),"Header poll typing");
+  await journey.getByLabel("Note step").fill("");
+  clock+=60;captures[0].updatedAt=clock;captures[0].level=31;await writeCapture();await page.evaluate(()=>window.backstage.refreshGame());
+  await page.waitForFunction(()=>document.querySelector('#active-character option:checked')?.textContent.includes("Level 31"),{},{timeout:12000});
   // A newer genuine GameSync observation updates evidence without eating a draft or focus.
   await journey.getByLabel("Plan title").fill("Still editing this title");
   const titleNode=journey.getByLabel("Plan title");await titleNode.evaluate(n=>n.setSelectionRange(4,9));
@@ -275,6 +357,17 @@ function shortPath(target) {
   assert.equal(await page.evaluate(()=>autosaveQueue!==window.companyHeldQueue.promise),true);
   await page.getByRole("button",{name:"Adventure",exact:true}).click();await page.evaluate(()=>window.companyHeldQueue.release());
   await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Persistent accepted queued plan");
+  // Keep a separate natural-click plan for actual restart readback, alongside the
+  // accepted queued-navigation plan above (neither persistence assertion replaces the other).
+  await page.getByRole("button",{name:"Company",exact:true}).click();
+  await page.getByRole("button",{name:"Create plan",exact:true}).click();
+  await page.getByLabel("Plan name").fill("Pointer restart plan");await page.getByRole("button",{name:"Save plan",exact:true}).click();
+  const restartPlan=page.locator("[data-company-journey]").last();
+  await restartPlan.getByLabel("Note step").fill("Persistent pointer step");await restartPlan.getByRole("button",{name:"Add note",exact:true}).click();
+  await restartPlan.getByRole("checkbox").waitFor();
+  await restartPlan.getByLabel("Plan title").fill("Persistent pointer title");
+  await physicalClick(page,restartPlan.getByRole("checkbox"));
+  await page.waitForFunction(async()=>{const j=(await window.backstage.companyBrief()).journeys.at(-1);return j.title==="Persistent pointer title"&&j.steps[0].done;});
   await app.close();app=await electron.launch({args:[path.join(__dirname,"..")],env:{...process.env,BF_USER_DATA:data}});
   await app.evaluate(({app})=>{
    const load=process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(),"package.json"));
@@ -284,7 +377,11 @@ function shortPath(target) {
    load("./src/core/claude.cjs").status=async()=>({installed:false,loggedIn:false});
   });
   const restarted=await testWindow(app);await restarted.getByRole("button",{name:"Company",exact:true}).click();
-  assert.equal(await restarted.getByLabel("Plan title").inputValue(),"Persistent accepted queued plan","Accepted queued blur survives navigation and a real restart");
-  console.log(`Company source Electron ${process.argv.includes("--short-path")?"genuine 8.3":"normal"}: real plans/notes/quests, newer evidence+dirty focus, historical mismatch, manual conversion, delayed reads/actions, duplicate guard, private backup/import/reset, no-profile first use, menus/compact PASS`);
+  assert.equal(await restarted.getByLabel("Plan title").first().inputValue(),"Persistent accepted queued plan","Accepted queued blur survives navigation and a real restart");
+  const restartedPointer=restarted.locator("[data-company-journey]").last();
+  assert.equal(await restartedPointer.getByLabel("Plan title").inputValue(),"Persistent pointer title","Natural blur title survives restart");
+  assert.equal(await restartedPointer.getByRole("checkbox").isChecked(),true,"One physical checkbox action survives restart");
+  assert.equal(await restartedPointer.getByLabel("Step text").inputValue(),"Persistent pointer step");
+  console.log(`Company source Electron ${process.argv.includes("--short-path")?"genuine 8.3":"normal"}: single physical blur clicks/focus/select/submit/restart, real plans/notes/quests, newer evidence+dirty focus, historical mismatch, manual conversion, delayed reads/actions, duplicate guard, private backup/import/reset, no-profile first use, menus/compact PASS`);
  }finally{clearTimeout(watchdog);await app?.close();const resolved=await fs.realpath(dir);assert.equal(path.dirname(resolved).toLowerCase(),(await fs.realpath(os.tmpdir())).toLowerCase());assert.ok(path.basename(resolved).startsWith("forever-company-ui-"));await fs.rm(resolved,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1;});

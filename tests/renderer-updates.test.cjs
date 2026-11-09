@@ -11,7 +11,7 @@ function deferred() {
   return { promise, resolve };
 }
 function harness(overrides = {}) {
-  const handlers = {};
+  const handlers = {}, documentHandlers = {}, timeouts = [];
   const automatic = {
     dataset: { updatePref: "automatic" },
     checked: true,
@@ -53,7 +53,7 @@ function harness(overrides = {}) {
       backstage: { bootstrap: () => new Promise(() => {}), ...overrides },
     },
     document: {
-      addEventListener: () => {},
+      addEventListener: (name, fn) => (documentHandlers[name] ??= []).push(fn),
       body: { dataset: {} },
       hidden: false,
       getElementById: (id) => (id === "app" ? root : {}),
@@ -64,7 +64,7 @@ function harness(overrides = {}) {
       polls.push(fn);
       return polls.length;
     },
-    setTimeout: () => 1,
+    setTimeout: fn => {timeouts.push(fn);return timeouts.length;},
     clearTimeout: () => {},
     crypto: {},
     console,
@@ -87,6 +87,8 @@ function harness(overrides = {}) {
   return {
     context,
     handlers,
+    documentHandlers,
+    flushEvents: () => timeouts.splice(0).forEach(fn=>fn()),
     polls,
     automatic,
     installOnQuit,
@@ -100,6 +102,37 @@ function harness(overrides = {}) {
       JSON.parse(vm.runInContext("JSON.stringify(updateInfo)", context)),
   };
 }
+
+test("Company render deferral follows the current pointer and native-select lifecycle", () => {
+  const h=harness();let rendered=0;
+  vm.runInContext("state={onboarded:true,profiles:[]};page='company';setupOpen=false;",h.context);
+  const input={dataset:{},tagName:"INPUT",isConnected:true,closest:()=>null,matches:()=>false};
+  h.context.document.activeElement=input;
+  const down=node=>h.handlers.pointerdown.forEach(fn=>fn({target:node,button:0}));
+  const up=()=>h.documentHandlers.pointerup.forEach(fn=>fn({}));
+  h.handlers.focusout.forEach(fn=>fn({target:input}));
+  let transferred=0;
+  assert.equal(h.context.Company.deferRender(()=>transferred++),true,"Keyboard focus transfer must finish before repaint");
+  h.flushEvents();assert.equal(transferred,1);
+  down(input);
+  assert.equal(h.context.Company.deferRender(()=>rendered++),true);
+  h.handlers.focusout.forEach(fn=>fn({target:input}));h.flushEvents();
+  assert.equal(rendered,0,"Blur must not end an unfinished physical press");
+  up();down(input);h.flushEvents();
+  assert.equal(rendered,0,"An older pointerup task cannot unlock a newer press");
+  assert.equal(h.context.Company.deferRender(()=>rendered++),true);
+  up();h.flushEvents();assert.equal(rendered,1,"The latest pending root render flushes once after dispatch");
+  const select={...input,tagName:"SELECT",hasAttribute:()=>false,closest:selector=>selector==="select"?select:null};
+  h.context.document.activeElement=select;down(select);up();h.flushEvents();
+  assert.equal(h.context.Company.deferRender(()=>rendered++),true,"Pointerup must keep an open native menu alive");
+  h.handlers.keydown.forEach(fn=>fn({target:select,key:"Escape"}));h.flushEvents();
+  assert.equal(rendered,2,"Native cancellation flushes the pending render");
+  down(select);up();h.flushEvents();h.context.Company.deferRender(()=>rendered++);
+  h.handlers.change.forEach(fn=>fn({target:select}));h.flushEvents();
+  assert.equal(rendered,3,"Native selection completion flushes the pending render");
+  down(input);h.context.Company.deferRender(()=>rendered++);h.context.Company.invalidate();
+  up();h.flushEvents();assert.equal(rendered,3,"View invalidation drops obsolete deferred presentation");
+});
 
 test("accepted Company blur writes drain across view invalidation and cancelled replacements", async () => {
   for (const boundary of ["navigate", "select", "import", "reset", "open-character"]) {

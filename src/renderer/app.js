@@ -458,6 +458,7 @@ function onboarding() {
   root.innerHTML = `<main class="onboarding"><section class="onboarding-art">${brand()}<div><div class="eyebrow">Your world. Your adventure.</div><h1>A companion for<br>the road ahead.</h1><p>Make room for the adventure.<br>We’ll keep your plans in order.</p></div><small>DESIGNED BY FRANK ARENA</small></section><section class="onboarding-form"><div class="eyebrow">Welcome, adventurer · 01 / 01</div><h2>Every adventure starts somewhere.</h2><p>Start with a character, then connect your game to import saved character snapshots. Your journal stays on this computer.</p><form id="onboard">${characterFields()}<div class="actions"><button class="primary" type="submit">Begin my adventure</button></div></form><div class="callout">◈ &nbsp; No account. No subscription required for the app.<br>Profiles and planning work offline. AI is optional and uses your own provider access.</div><p class="snapshot-hint">${savedHelp}</p><button type="button" class="subtle" data-command="setup-company" ${setupBusy ? "disabled" : ""}>Plan without a character</button><p class="onboarding-footer">Independent companion for World of Warcraft: Forever.<br>Not affiliated with or endorsed by Blizzard Entertainment.</p></section></main>`;
 }
 function render() {
+  if (Company.deferRender(render)) return;
   Company.beginRender();
   try {
   QuestGuide.sync(profile(), knowledgeStatus);

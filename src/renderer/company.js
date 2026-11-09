@@ -3,7 +3,9 @@
 window.Company = (() => {
   let host, model = null, signature = "", generation = 0, read = 0, loading = false;
   let error = "", errorKind = "", retry = null, creating = false, focus = null, painting = false;
-  const drafts = new Map(), pending = new Set();
+  let interaction = 0, pointerDown = false, focusTransfer = false, nativeSelect = null, paintPending = false, renderPending = null, requestedFocus = null;
+  const drafts = new Map(), pending = new Map();
+  const saving = (type, journeyId) => [...pending.values()].some(action=>action.type===type&&action.journeyId===journeyId);
   const key = (...parts) => JSON.stringify(parts);
   const date = value => value ? new Date(value).toLocaleString() : "No saved capture";
   const active = () => host?.active();
@@ -17,6 +19,7 @@ window.Company = (() => {
     const focusedKey = node?.dataset.companyField || node?.dataset.companyFocus;
     focus = focusedKey && node.closest("[data-company]")
       ? {key:focusedKey,start:node.selectionStart,end:node.selectionEnd} : null;
+    if(requestedFocus){focus={key:requestedFocus};requestedFocus=null;}
   }
   function mounted() {
     if (!active()) return;
@@ -34,8 +37,32 @@ window.Company = (() => {
     }
     if (!model && !loading && !error) refresh();
   }
+  function interacting() {
+    // A native select can stay open after pointerup; keep its actual node until blur.
+    return active() && (pointerDown || focusTransfer || (nativeSelect?.isConnected && document.activeElement === nativeSelect));
+  }
+  function deferRender(render) {
+    if(!interacting())return false;
+    renderPending=render;
+    return true;
+  }
+  function finishInteraction(releasePointer = false, releaseSelect = false) {
+    // Run after the browser's pointer/focus/default-action dispatch, not after a guessed delay.
+    const current=interaction;
+    setTimeout(()=>{
+      if(current!==interaction)return;
+      focusTransfer=false;
+      if(releasePointer)pointerDown=false;
+      if(releaseSelect || document.activeElement !== nativeSelect)nativeSelect=null;
+      if(interacting())return;
+      const render=renderPending, repaint=paintPending;
+      renderPending=null;paintPending=false;
+      if(render)render();else if(repaint)paint();
+    },0);
+  }
   function paint() {
     if(!active())return;
+    if(interacting()){paintPending=true;return;}
     const region=host.root.querySelector("[data-company]");
     if(!region)return;
     remember();
@@ -46,6 +73,7 @@ window.Company = (() => {
   function beginRender() { remember(); painting=true; }
   function endRender() { painting=false; }
   function invalidate(clear=false) {
+    focusTransfer=false;paintPending=false;renderPending=null;requestedFocus=null;
     generation++;read++;loading=false;pending.clear();model=null;signature="";error="";errorKind="";retry=null;focus=null;
     if(clear){drafts.clear();creating=false;}
   }
@@ -71,7 +99,7 @@ window.Company = (() => {
   async function perform(action,submitted=[],onSaved) {
     const token=generation,actionKey=JSON.stringify(action);
     if(pending.has(actionKey))return;
-    pending.add(actionKey);error="";errorKind="";retry=null;read++;loading=false;paint();
+    pending.set(actionKey,action);error="";errorKind="";retry=null;read++;loading=false;paint();
     try {
       const result=await host.mutate(action,()=>token===generation&&active());
       if(!result||token!==generation||!active())return;
@@ -106,10 +134,10 @@ window.Company = (() => {
     const selected=value("picker",journey.id,"",""),character=model.characters.find(c=>c.id===selected);
     const quests=character?.quests.items.filter(q=>q.trackable)||[],quest=value("quest",journey.id,"","");
     return `<article class="company-plan" data-company-journey="${esc(journey.id)}">
-      <header><div><span class="eyebrow">SHARED JOURNEY · ${journey.steps.length} STEPS</span><input aria-label="Plan title" maxlength="100" value="${esc(value("title",journey.id,"",journey.title))}" ${field("title",journey.id)} data-company-edit="title"></div><button class="subtle" data-company-command="remove" aria-label="Delete plan ${esc(journey.title)}">Delete plan</button></header>
+      <header><div><span class="eyebrow">SHARED JOURNEY · ${journey.steps.length} STEPS</span><input aria-label="Plan title" maxlength="100" value="${esc(value("title",journey.id,"",journey.title))}" ${field("title",journey.id)} data-company-edit="title"></div><button class="subtle" data-company-command="remove" data-company-focus="${esc(fieldKey("remove",journey.id))}" aria-label="Delete plan ${esc(journey.title)}">Delete plan</button></header>
       <ol class="company-checklist">${journey.steps.map(s=>stepRow(journey,s)).join("")||'<li class="company-empty-step">A clear page. Add your first note or saved quest below.</li>'}</ol>
-      <div class="company-add"><form data-company-form="note"><label>Note step<input name="note" maxlength="300" required placeholder="A small next step…" value="${esc(value("note",journey.id,"",""))}" ${field("note",journey.id)}></label><button type="submit" ${pending.size?"disabled":""}>Add note</button></form>
-      <form data-company-form="quest"><label>Saved character<select aria-label="Saved character" name="character" ${field("picker",journey.id)}>${characterOptions(selected)}</select></label><label>Saved quest<select aria-label="Saved quest" name="quest" ${field("quest",journey.id)} ${quests.length?"":"disabled"}><option value="">${quests.length?"Choose a saved quest":"No trackable saved quests"}</option>${quests.map(q=>`<option value="${q.id}" ${String(q.id)===quest?"selected":""}>${esc(q.title)}${q.ready?" · Ready to turn in":""}</option>`).join("")}</select></label><button type="submit" ${pending.size||!quests.some(q=>String(q.id)===quest)?"disabled":""}>Track saved quest</button></form>
+      <div class="company-add"><form data-company-form="note"><label>Note step<input name="note" maxlength="300" required placeholder="A small next step…" value="${esc(value("note",journey.id,"",""))}" ${field("note",journey.id)}></label><button type="submit" ${saving("add-note",journey.id)?"disabled":""}>Add note</button></form>
+      <form data-company-form="quest"><label>Saved character<select aria-label="Saved character" name="character" ${field("picker",journey.id)}>${characterOptions(selected)}</select></label><label>Saved quest<select aria-label="Saved quest" name="quest" ${field("quest",journey.id)} ${quests.length?"":"disabled"}><option value="">${quests.length?"Choose a saved quest":"No trackable saved quests"}</option>${quests.map(q=>`<option value="${q.id}" ${String(q.id)===quest?"selected":""}>${esc(q.title)}${q.ready?" · Ready to turn in":""}</option>`).join("")}</select></label><button type="submit" ${saving("add-quest",journey.id)||!quests.some(q=>String(q.id)===quest)?"disabled":""}>Track saved quest</button></form>
       <p>Quest tracking begins at the selected character’s saved capture. Newer saved evidence can confirm a turn-in. Ready means ready to turn in, not turned in.</p></div></article>`;
   }
   function characterCard(c) {
@@ -134,7 +162,7 @@ window.Company = (() => {
   }
   function createForm() {
     if(!creating)return "";
-    return `<form class="company-create" data-company-form="create"><div><span class="eyebrow">YOUR NEXT CHAPTER</span><h2>A simple plan. Your pace.</h2><p>Start with a checklist, then make it your own.</p></div><label>Plan name<input name="title" maxlength="100" required placeholder="Tonight’s adventure" value="${esc(value("create-title","","",""))}" ${field("create-title")}></label><label>Starting checklist<select aria-label="Starting checklist" name="template" ${field("create-template")}><option value="blank" ${value("create-template","","","blank")==="blank"?"selected":""}>Blank plan</option><option value="quest-session" ${value("create-template","","","")==="quest-session"?"selected":""}>Quest session</option><option value="dungeon-prep" ${value("create-template","","","")==="dungeon-prep"?"selected":""}>Dungeon preparation</option></select></label><div class="actions"><button class="primary" type="submit" ${pending.size?"disabled":""}>Save plan</button><button type="button" data-company-command="cancel">Cancel</button></div></form>`;
+    return `<form class="company-create" data-company-form="create"><div><span class="eyebrow">YOUR NEXT CHAPTER</span><h2>A simple plan. Your pace.</h2><p>Start with a checklist, then make it your own.</p></div><label>Plan name<input name="title" maxlength="100" required placeholder="Tonight’s adventure" value="${esc(value("create-title","","",""))}" ${field("create-title")}></label><label>Starting checklist<select aria-label="Starting checklist" name="template" ${field("create-template")}><option value="blank" ${value("create-template","","","blank")==="blank"?"selected":""}>Blank plan</option><option value="quest-session" ${value("create-template","","","")==="quest-session"?"selected":""}>Quest session</option><option value="dungeon-prep" ${value("create-template","","","")==="dungeon-prep"?"selected":""}>Dungeon preparation</option></select></label><div class="actions"><button class="primary" type="submit" ${saving("create")?"disabled":""}>Save plan</button><button type="button" data-company-command="cancel">Cancel</button></div></form>`;
   }
   function page() {
     const totals=model?.totals,recommendation=model?.recommendation;
@@ -149,6 +177,25 @@ window.Company = (() => {
   }
   function init(options) {
     host=options;
+    host.root.addEventListener("pointerdown",event=>{
+      if(active()&&event.button===0){
+        interaction++;pointerDown=true;
+        nativeSelect=event.target.closest("select");
+      }
+    },true);
+    document.addEventListener("pointerup",()=>finishInteraction(true));
+    document.addEventListener("pointercancel",()=>finishInteraction(true,true));
+    // The new focus target is assigned after focusout, including keyboard Tab.
+    host.root.addEventListener("focusout",()=>{
+      if(!painting&&active()){focusTransfer=true;finishInteraction();}
+    });
+    host.root.addEventListener("change",event=>{if(event.target===nativeSelect)finishInteraction(false,true);});
+    host.root.addEventListener("keydown",event=>{
+      if(event.target.tagName!=="SELECT"||!active())return;
+      if(event.key==="Escape"||event.key==="Enter")finishInteraction(false,true);
+      else nativeSelect=event.target;
+    });
+    window.addEventListener?.("blur",()=>finishInteraction(true,true));
     host.root.addEventListener("input",event=>{
       const node=event.target;if(node.dataset.companyField)drafts.set(node.dataset.companyField,node.value);
     });
@@ -174,7 +221,7 @@ window.Company = (() => {
       if(button.hasAttribute("data-company-open")){host.open(button.dataset.companyOpen);return;}
       const {journeyId,stepId}=context(button);
       switch(button.dataset.companyCommand){
-        case "create":creating=true;paint();host.root.querySelector('[data-company-form="create"] input')?.focus();break;
+        case "create":creating=true;requestedFocus=fieldKey("create-title");paint();break;
         case "cancel":creating=false;paint();break;
         case "retry":retry?.();break;
         case "remove":if(confirm("Delete this shared plan and all its steps?"))perform({type:"remove",journeyId});break;
@@ -195,5 +242,5 @@ window.Company = (() => {
       }
     });
   }
-  return {init,page,mounted,beginRender,endRender,invalidate,refresh};
+  return {init,page,mounted,beginRender,endRender,deferRender,invalidate,refresh};
 })();
