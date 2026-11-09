@@ -378,3 +378,22 @@ test('late navigation status cannot cross leaving Quest Guide or a same-characte
  }
 });
 test('Preparation refresh ownership includes an exact saved build change even when its collection clocks are unchanged',async()=>{let calls=0;const h=harness({preparationBrief:async()=>{calls++;return {character:{id:'p'},selection:{crafts:1},planning:{},recipes:[],shoppingRows:[],otherCharacters:[]};}});vm.runInContext("state={onboarded:true,profiles:[{id:'p',name:'One',clientBuild:'1.60.1.70862',source:{kind:'wow-addon',updatedAt:'2026-11-09T12:00:00Z'}}],activeProfileId:'p',provider:{id:'ollama',model:''}};page='preparation';setupOpen=false;render=()=>{};",h.context);await h.context.Preparation.refresh();vm.runInContext("state.profiles[0].clientBuild='1.60.1.99999'",h.context);await h.context.Preparation.refresh();assert.equal(calls,2,'Changed build must invalidate old seller/draft qualification without depending on a different clock');});
+test('two Guide clicks behind one held save cannot roll NEWER status back to OLDER',async()=>{
+ const save=deferred(),reads=[],accepted=[],h=harness({knowledgeStatus:()=>{const r=deferred();reads.push(r);return r.promise;}});h.context.heldSave=save.promise;h.context.QuestGuide.sync=(p,status)=>accepted.push({message:status.message,build:p.clientBuild});
+ vm.runInContext("state={onboarded:true,profiles:[{id:'p',name:'One',clientBuild:'before-save'}],activeProfileId:'p',provider:{id:'ollama',model:''}};page='adventure';setupOpen=false;render=()=>{};autosaveQueue=heldSave;",h.context);
+ const click=()=>{const n={dataset:{nav:'quest-guide'},hasAttribute:()=>false,closest:s=>s==='button'?n:null};h.handlers.click.forEach(f=>f({target:n}));};
+ click();click();assert.equal(reads.length,0);vm.runInContext("state.profiles[0].clientBuild='accepted-after-save'",h.context);save.resolve();for(let i=0;i<12;i++)await Promise.resolve();
+ // The broken implementation dispatches two reads. Retiring the obsolete queued click may dispatch only the latest one.
+ if(reads.length===2){reads[1].resolve({message:'NEWER'});for(let i=0;i<12;i++)await Promise.resolve();reads[0].resolve({message:'OLDER'});}else{assert.equal(reads.length,1);reads[0].resolve({message:'NEWER'});}
+ for(let i=0;i<20;i++)await Promise.resolve();assert.deepEqual(accepted,[{message:'NEWER',build:'accepted-after-save'}]);assert.equal(vm.runInContext('knowledgeStatus.message',h.context),'NEWER');
+});
+test('an older queued Guide navigation is retired by a newer other-page navigation',async()=>{
+ const save=deferred(),reads=[],h=harness({knowledgeStatus:()=>{reads.push('read');return Promise.resolve({message:'obsolete'});}});h.context.heldSave=save.promise;
+ vm.runInContext("state={onboarded:true,profiles:[{id:'p',name:'One'}],activeProfileId:'p',provider:{id:'ollama',model:''}};page='adventure';setupOpen=false;render=()=>{};autosaveQueue=heldSave;",h.context);
+ const click=nav=>{const n={dataset:{nav},hasAttribute:()=>false,closest:s=>s==='button'?n:null};h.handlers.click.forEach(f=>f({target:n}));};click('quest-guide');click('guide');save.resolve();for(let i=0;i<20;i++)await Promise.resolve();assert.deepEqual(reads,[]);assert.equal(vm.runInContext('page',h.context),'guide');
+});
+test('separate dispatched Guide status reads retain unique owners through reversed replies',async()=>{
+ const reads=[],accepted=[],h=harness({knowledgeStatus:()=>{const r=deferred();reads.push(r);return r.promise;}});h.context.QuestGuide.sync=(_p,status)=>accepted.push(status.message);
+ vm.runInContext("state={onboarded:true,profiles:[{id:'p',name:'One'}],activeProfileId:'p',provider:{id:'ollama',model:''}};page='adventure';setupOpen=false;render=()=>{};",h.context);
+ const click=()=>{const n={dataset:{nav:'quest-guide'},hasAttribute:()=>false,closest:s=>s==='button'?n:null};h.handlers.click.forEach(f=>f({target:n}));};click();for(let i=0;i<8;i++)await Promise.resolve();click();for(let i=0;i<8;i++)await Promise.resolve();assert.equal(reads.length,2);reads[1].resolve({message:'NEWER'});for(let i=0;i<12;i++)await Promise.resolve();reads[0].resolve({message:'OLDER'});for(let i=0;i<12;i++)await Promise.resolve();assert.deepEqual(accepted,['NEWER']);assert.equal(vm.runInContext('knowledgeStatus.message',h.context),'NEWER');
+});

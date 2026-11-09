@@ -850,6 +850,23 @@ function shortPath(target){
     await page.getByRole('button',{name:'Quest Guide',exact:true}).click();await waitHeld('atlasNavStatusRelease');await page.getByRole('button',{name:'Field Guide',exact:true}).click();
     await app.evaluate(()=>{globalThis.atlasHoldNavStatus=false;globalThis.atlasNavStatusRelease();});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
     assert.equal(await page.evaluate(()=>page), 'guide');assert.doesNotMatch(await page.evaluate(()=>JSON.stringify(knowledgeStatus)),/STALE NAV STATUS/);
+    // Two physical Guide clicks behind one real accepted save acknowledgement retain one latest navigation owner.
+    await app.evaluate(({ipcMain})=>{
+      const save=ipcMain._invokeHandlers.get('backstage:saveState');ipcMain.removeHandler('backstage:saveState');ipcMain.handle('backstage:saveState',async(...args)=>{const result=await save(...args);if(globalThis.atlasRepeatSaveHold)await new Promise(r=>globalThis.atlasRepeatSaveRelease=r);return result;});
+      const status=ipcMain._invokeHandlers.get('backstage:knowledgeStatus');ipcMain.removeHandler('backstage:knowledgeStatus');ipcMain.handle('backstage:knowledgeStatus',async(...args)=>{const result=await status(...args);if(globalThis.atlasRepeatStatusHold){if(globalThis.atlasRepeatSkipStatus>0)globalThis.atlasRepeatSkipStatus--;else await new Promise(r=>globalThis.atlasRepeatStatusReleases.push(message=>{result.message=message;r();}));}return result;});
+      globalThis.atlasRepeatSaveHold=true;globalThis.atlasRepeatStatusHold=true;globalThis.atlasRepeatSkipStatus=1;globalThis.atlasRepeatStatusReleases=[];
+    });
+    await page.evaluate(()=>{autosaveQueue=autosaveQueue.then(()=>persist(state));});await waitHeld('atlasRepeatSaveRelease');
+    await page.getByRole('button',{name:'Quest Guide',exact:true}).click();await page.getByRole('button',{name:'Quest Guide',exact:true}).click();assert.equal(await app.evaluate(()=>atlasRepeatStatusReleases.length),0);
+    await app.evaluate(()=>{globalThis.atlasRepeatSaveHold=false;globalThis.atlasRepeatSaveRelease();});await page.evaluate(()=>autosaveQueue);
+    const waitRepeat=target=>app.evaluate(async(_e,target)=>{const end=Date.now()+5000;while(globalThis.atlasRepeatStatusReleases.length<target){if(Date.now()>end)throw Error('Repeated status fixture did not start');await new Promise(r=>setTimeout(r,10));}},target);
+    await waitRepeat(1);assert.equal(await app.evaluate(()=>atlasRepeatStatusReleases.length),1,'Only the latest queued Guide click may dispatch status');
+    await app.evaluate(()=>atlasRepeatStatusReleases[0]('NEWER QUEUED NAV STATUS'));await page.waitForFunction(()=>knowledgeStatus.message==='NEWER QUEUED NAV STATUS');
+    // Dispatched reads also have distinct owners; resolve the second before the first.
+    await app.evaluate(()=>globalThis.atlasRepeatStatusReleases=[]);await page.getByRole('button',{name:'Quest Guide',exact:true}).click();await waitRepeat(1);await page.getByRole('button',{name:'Quest Guide',exact:true}).click();await waitRepeat(2);
+    await app.evaluate(()=>atlasRepeatStatusReleases[1]('NEWER DISPATCHED NAV STATUS'));await page.waitForFunction(()=>knowledgeStatus.message==='NEWER DISPATCHED NAV STATUS');await app.evaluate(()=>atlasRepeatStatusReleases[0]('OLDER DISPATCHED NAV STATUS'));
+    await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));assert.equal(await page.evaluate(()=>knowledgeStatus.message),'NEWER DISPATCHED NAV STATUS');await app.evaluate(()=>globalThis.atlasRepeatStatusHold=false);
+    console.log('PASS: two physical Guide clicks behind one held save dispatch only latest; separate read replies NEWER-before-OLDER keep NEWER.');
     const manual=await page.evaluate(async()=>{const s=(await backstage.bootstrap()).state;const p={id:'Fictional-manual-journal',name:'Elowen',className:'Druid',level:12,faction:'',realm:'Fictional Realm',notes:'',goals:[]};s.profiles.push(p);s.activeProfileId=p.id;s.followGameCharacter=false;state=await backstage.saveState(s);knowledgeStatus=await backstage.knowledgeStatus();render();return p.id;});
     await page.getByRole('button',{name:'Quest Guide',exact:true}).click();await page.locator('.quest-detail-empty').waitFor();await capture('quest-guide-neutral-manual.png');
     assert.equal(await app.evaluate(() => globalThis.knowledgeInference), 0);
@@ -889,6 +906,8 @@ function shortPath(target){
     if (app)
       await app
         .evaluate(() => {
+          globalThis.atlasRepeatSaveRelease?.();
+          globalThis.atlasRepeatStatusReleases?.forEach(release=>release("Fixture cleanup"));
           globalThis.atlasNavStatusRelease?.();
           globalThis.atlasCopyRelease?.();
           globalThis.knowledgeSearchHeld?.();

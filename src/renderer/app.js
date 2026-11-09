@@ -32,7 +32,7 @@ const nav = [
 ];
 let stateMutationEpoch = 0,
   stateMutationBusy = 0;
-let knowledgeStatus = null, questStatusRequest=0;
+let knowledgeStatus = null, questStatusRequest=0, questNavigationRequest=0;
 let gameStatus = {},
   modelCatalogs = {},
   modelEpoch = 0,
@@ -1030,22 +1030,25 @@ root.addEventListener("click", (event) => {
   if (button.closest("[data-party]") && !button.dataset.nav) return;
   if (button.hasAttribute("data-director-start") || button.hasAttribute("data-preparation-add") || button.hasAttribute("data-preparation-retry") || button.hasAttribute("data-preparation-ask")) return;
   if (button.hasAttribute("data-company-command") || button.hasAttribute("data-company-open") || button.closest("[data-company-form]")) return;
-  if (button.dataset.nav || button.dataset.character || ["reset", "import", "new-character", "delete-character"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) { questStatusRequest++;QuestGuide.invalidate(); Company.invalidate(); Director.invalidate(); Preparation.invalidate(); Party.invalidate(); }
+  if (button.dataset.nav || button.dataset.character || ["reset", "import", "new-character", "delete-character"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) { questNavigationRequest++;questStatusRequest++;QuestGuide.invalidate(); Company.invalidate(); Director.invalidate(); Preparation.invalidate(); Party.invalidate(); }
   if (button.dataset.nav || button.dataset.character || button.dataset.provider || button.dataset.briefAction || button.dataset.task || ["clear-chat", "reset", "import", "new-character", "delete-character", "delete-key", "subscription-login", "subscription-logout", "explain-plan"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) retireCompanion();
+  // A click owns its navigation before the save barrier; reference polls cannot retarget it.
+  const navigation=button.dataset.nav?Object.freeze({page:button.dataset.nav,request:questNavigationRequest}):null;
   action(async () => {
     await autosaveQueue;
-    if (button.dataset.nav) {
+    if (navigation) {
+      if(navigation.request!==questNavigationRequest)return;
       if (pendingSnapshot?.epoch === stateMutationEpoch && !stateMutationBusy) {
         state = pendingSnapshot.result.state;
         gameStatus = pendingSnapshot.result.gameStatus || {};
         acceptBrief(pendingSnapshot.result);
         pendingSnapshot = null;
       }
-      page = button.dataset.nav;
+      page = navigation.page;
       render();
       if (page === "quest-guide") {
         const epoch = stateMutationEpoch;
-        const id = state.activeProfileId,request=questStatusRequest,saved=JSON.stringify(profile());
+        const id = state.activeProfileId,request=++questStatusRequest,saved=JSON.stringify(profile());
         const nextStatus = await api.knowledgeStatus();
         if (page==="quest-guide"&&request===questStatusRequest&&saved===JSON.stringify(profile())&&epoch === stateMutationEpoch && id === state.activeProfileId) {
           knowledgeStatus = nextStatus;
@@ -1397,7 +1400,7 @@ root.addEventListener("change", (event) =>
   action(async () => {
     if (event.target.closest("[data-company],[data-preparation],[data-party]")) return;
     if (event.target.id === "active-character" || event.target.id === "access-method") retireCompanion();
-    if (event.target.id === "active-character") { questStatusRequest++;QuestGuide.invalidate(); Company.invalidate(); Director.invalidate(); Preparation.invalidate(); Party.invalidate(); }
+    if (event.target.id === "active-character") { questNavigationRequest++;questStatusRequest++;QuestGuide.invalidate(); Company.invalidate(); Director.invalidate(); Preparation.invalidate(); Party.invalidate(); }
     if (event.target.dataset.planOption && state.activeProfileId) {
       const selected = CommandCenter.options(state.activeProfileId);
       const key = event.target.dataset.planOption;
