@@ -32,7 +32,8 @@
     "test:company": "node scripts/company-smoke.cjs --setup-races",
     "test:director-backend": "node scripts/director-backend-smoke.cjs",
     "test:director": "node scripts/director-smoke.cjs",
-    "test:preparation-backend": "node scripts/preparation-backend-smoke.cjs"
+    "test:preparation-backend": "node scripts/preparation-backend-smoke.cjs",
+    "test:preparation": "node scripts/preparation-smoke.cjs"
   },
   "devDependencies": {
     "electron": "45.2.3",
