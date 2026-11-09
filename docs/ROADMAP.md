@@ -2,7 +2,7 @@
 
 Updated 2026-11-09 (America/Chicago). Proposed milestones, not delivery dates or claims of shipped support. Backstage Coding; designed by Frank Arena. BF should make the next useful action obvious, using verified Forever facts and the player's actual progress. More UI or more model calls are not acceptance criteria.
 
-## Current foundation: 0.5 implementation
+## Foundation through 0.5
 
 Windows companion, guided addon installation, local profiles, public character snapshots, observed quests/objectives and XP, optional provider connections, encrypted credential storage, signed app-update manifests, and original class/faction artwork. The live client now demonstrates character capture, quest/XP display, race/faction import and desktop snapshot import. Native Compass styling, title dragging, close/collapse controls and reopen instructions have been observed or fixture-tested; see VALIDATION.md for the exact boundary.
 

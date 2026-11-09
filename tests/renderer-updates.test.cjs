@@ -33,6 +33,8 @@ function harness(overrides = {}) {
   };
   const root = {
     addEventListener: (name, fn) => (handlers[name] ??= []).push(fn),
+    querySelector: (selector) => select(selector)[0] || null,
+    querySelectorAll: select,
   };
   const polls = [];
   function select(selector) {
@@ -65,6 +67,11 @@ function harness(overrides = {}) {
     crypto: {},
     console,
   });
+  vm.runInContext(
+    fs.readFileSync(path.join(__dirname, "../src/renderer/quest-guide.js"), "utf8"),
+    context,
+  );
+  context.QuestGuide = context.window.QuestGuide;
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, "../src/renderer/app.js"), "utf8"),
     context,
