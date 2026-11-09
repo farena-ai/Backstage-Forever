@@ -2,9 +2,9 @@
 
 **Your character command center and Forever quest companion, from Backstage Coding. Designed by Frank Arena.**
 
-![Backstage Forever Adventure Company](assets/company-preview.png)
+![Backstage Forever Quest Guide atlas](assets/quest-guide-preview.png)
 
-*Fictional characters and demo plans; your own character shapes the class and faction presentation.*
+*Fictional player state with qualified public reference facts; your selected character shapes the original class and faction presentation.*
 
 **[Download the Windows preview](https://github.com/farena-ai/Backstage-Forever/releases)** · **[Install and get started](docs/GETTING-STARTED.md)** · **[Choose an AI connection](docs/PROVIDERS.md)**
 
