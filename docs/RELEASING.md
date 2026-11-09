@@ -1,6 +1,6 @@
 # Building and publishing releases
 
-Public MIT application repository: farena-ai/Backstage-Forever. Backstage Coding, designed by Frank Arena. Version 0.6.0 remains a Windows preview. Reference data retains separate CC BY 4.0 notices. Installers are not Windows Authenticode signed; Ed25519 app-update signatures separately authenticate downloads. See UPDATES.md for trust, key management and rotation.
+Public MIT application repository: farena-ai/Backstage-Forever. Backstage Coding, designed by Frank Arena. Version 0.7.0 Living Companion remains a Windows-first preview. Reference data retains separate CC BY 4.0 notices. Installers are not Windows Authenticode signed; Ed25519 app-update signatures separately authenticate downloads. See UPDATES.md for trust, key management and rotation.
 
 ## Local validation
 

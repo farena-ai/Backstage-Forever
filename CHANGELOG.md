@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0 — 2026-11-09
+
+- Added a bounded pure native quest planner and offline, source-labelled Lua reference compilation. Current out-of-combat game observations update native guidance without routine reloads or desktop AI.
+- Expanded Adventure Compass with per-character focus/session preferences, compact current steps, explicit guarded waypoint action and reserved source/phase labels. Combat hides it; lifecycle generations prevent old timers or actions crossing character sessions.
+- Prepared five managed addon files with staging/readback, module-first/loader-last commit and bounded application rollback; unrelated files remain untouched.
+- Added runtime-aware setup and explicit validated client launch, safe unknown-status fallback, single-install automatic preparation and clear multiple/no-install choices. No initial desktop snapshot or AI connection is required to enter a prepared companion.
+- Combined valid account exports with per-character timestamp guards, stable identity and partial/capacity reporting. Re-enabling following can apply the current connection's known saved active character immediately without a new save; private journals and deliberate selection remain protected.
+- Clarified native live guidance versus last-saved desktop/AI context and removed routine level/zone reload nags. See docs/LIVING-COMPANION.md, docs/releases/0.7.0.md and docs/VALIDATION.md for activation, evidence and limits.
+
 ## 0.6.1 — 2026-11-09
 
 - Gave native dropdown options explicit dark backgrounds, readable text and a clear selection state across the app.
