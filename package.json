@@ -29,7 +29,9 @@
     "test:living-backend": "node scripts/living-backend-smoke.cjs",
     "test:living-setup": "node scripts/living-setup-smoke.cjs",
     "test:company-backend": "node scripts/company-backend-smoke.cjs",
-    "test:company": "node scripts/company-smoke.cjs --setup-races"
+    "test:company": "node scripts/company-smoke.cjs --setup-races",
+    "test:director-backend": "node scripts/director-backend-smoke.cjs",
+    "test:director": "node scripts/director-smoke.cjs"
   },
   "devDependencies": {
     "electron": "45.2.3",
