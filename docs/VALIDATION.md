@@ -1,4 +1,14 @@
-# Validation — November 8, 2026
+# Validation — November 9, 2026
+
+## 0.8 journey and Company backend checkpoints
+
+The journey-core checkpoint passed **310/310 unit tests**, zero failures or skips, with an actual Windows 8.3 Store roundtrip. Strict optional-state migration, bounded plans/steps, immutable input actions, saved-game clock/source/build baselines, repeatables, unavailable history, future turn-ins, orphan assignment, durable first-proof retention and explicit import/reset replacement have fixture coverage. Membership checks reuse per-profile evidence and sorted IDs rather than copying histories into every step. Independent task review returned specification PASS and quality APPROVE with no findings.
+
+The Company/IPC checkpoint passed **317/317 unit tests**, zero failures or skips; its focused privacy/subscription set passed 58/58. Actual Electron backend checks passed with normal and genuine Windows short-path userData. Synthetic GameSync exports drive newer completion and history-pruning checks; the real main/preload handlers exercise trusted-frame/argument/reset guards, stale base/legacy saves, source ownership, manual selection/follow-off, backup/restart/reset and credential preservation. Ordinary renderer saves retain current journeys and captured evidence; only main-owned ingestion/explicit confirmed imports introduce that evidence. All API and subscription fixtures exclude private journey/goal sentinels from automatic context; no live sign-in or paid request occurred.
+
+Existing smoke and Quest Guide fixtures were adapted at their actual old captured-evidence injection points: the UI uses a test-owned main Store write for its dirty-draft scenario; Quest Guide advances its genuine synthetic GameSync export to retain stale-waypoint phase revalidation. No production bypass was added and original assertions remain. The redirected preview retains original artwork. The remaining six existing source Electron flows also passed after the public-save guard; together, all eight existing desktop flows passed at this backend checkpoint. Independent Company task review returned specification PASS and quality APPROVE with no findings.
+
+These are component checkpoints; later UI/native, packaged and publication evidence is recorded separately. All test profiles, folders, provider data and process runners are isolated/synthetic. No user game files, credentials, gameplay input, actual game launch, paid inference or installer execution occurred.
 
 ## 0.4.0 verification scope
 
