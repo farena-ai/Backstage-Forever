@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const v = require("./validation.cjs");
+const { reconcileJourneys } = require("./journeys.cjs");
 // Bounded capacity for 100 profiles with complete quest histories and journals.
 const MAX_BACKUP_BYTES = 256 * 1024 * 1024;
 function atomic(file, text) {
@@ -24,6 +25,10 @@ class Store {
     this.state = fs.existsSync(this.file)
       ? v.validateState(JSON.parse(fs.readFileSync(this.file, "utf8")))
       : v.defaultState();
+    this.state.journeys = reconcileJourneys(
+      this.state.journeys,
+      this.state.profiles,
+    );
     this.keys = fs.existsSync(this.keyFile)
       ? JSON.parse(fs.readFileSync(this.keyFile, "utf8"))
       : {};
@@ -34,7 +39,34 @@ class Store {
     for (const val of Object.values(this.keys)) v.str(val, 20000, false);
   }
   saveState(s) {
+    return this.#writeState(s, true);
+  }
+  #writeState(s, preserveObserved) {
     const valid = v.validateState(s);
+    if (preserveObserved) {
+      // A stale ordinary edit must not erase a completion already saved locally.
+      const previous = new Map(
+        this.state.journeys.map((j) => [
+          j.id,
+          new Map(j.steps.map((step) => [step.id, step])),
+        ]),
+      );
+      for (const journey of valid.journeys)
+        for (const step of journey.steps) {
+          const before = previous.get(journey.id)?.get(step.id);
+          if (
+            before?.observed &&
+            step.quest &&
+            before.quest &&
+            step.profileId === before.profileId &&
+            Object.keys(before.quest).every(
+              (key) => before.quest[key] === step.quest[key],
+            )
+          )
+            step.observed = structuredClone(before.observed);
+        }
+    }
+    valid.journeys = reconcileJourneys(valid.journeys, valid.profiles);
     atomic(this.file, JSON.stringify(valid, null, 2));
     this.state = valid;
     return structuredClone(valid);
@@ -42,7 +74,7 @@ class Store {
   importData(text) {
     if (Buffer.byteLength(text) > MAX_BACKUP_BYTES)
       throw new Error("Backup is too large.");
-    return this.saveState(v.validateState(JSON.parse(text)));
+    return this.#writeState(v.validateState(JSON.parse(text)), false);
   }
   exportData() {
     return JSON.stringify(this.state, null, 2);
@@ -80,7 +112,7 @@ class Store {
     return this.secretStatus();
   }
   reset() {
-    this.saveState(v.defaultState());
+    this.#writeState(v.defaultState(), false);
     atomic(this.keyFile, "{}");
     this.keys = {};
     return structuredClone(this.state);

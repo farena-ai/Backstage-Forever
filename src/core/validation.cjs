@@ -1,4 +1,5 @@
 "use strict";
+const { validateJourneys } = require("./journeys.cjs");
 const {
   validateQuestData,
   validateProgress,
@@ -93,6 +94,7 @@ function defaultState() {
     schemaVersion: 1,
     onboarded: false,
     profiles: [],
+    journeys: [],
     activeProfileId: null,
     provider: { id: "ollama", model: "", endpoint: providers[0].endpoint },
   };
@@ -105,6 +107,7 @@ function validateState(s) {
     "activeProfileId",
     "provider",
     "followGameCharacter",
+    "journeys",
   ]);
   if (
     s.schemaVersion !== 1 ||
@@ -216,6 +219,7 @@ function validateState(s) {
   str(s.provider.endpoint, 500, false);
   endpoint(s.provider.id, s.provider.endpoint);
   const valid = JSON.parse(JSON.stringify(s));
+  valid.journeys = validateJourneys(s.journeys);
   if (valid.activeProfileId === null && valid.profiles.length)
     valid.activeProfileId = valid.profiles[0].id;
   return valid;

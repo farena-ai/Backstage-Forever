@@ -324,3 +324,43 @@ test("quest and XP updates require newer observed data; unavailable clears old o
   assert.deepEqual(s.profiles[0].quests, []);
   assert.equal(s.profiles[0].progress.current, 20);
 });
+
+test("snapshot and stale journal merges retain current shared plans without assigning or exposing source evidence", () => {
+  const { applyJourneyAction } = require("../src/core/journeys.cjs");
+  let base = mergeSnapshot(
+    defaultState(),
+    snapshot([character("a")], "a", old),
+  );
+  base = applyJourneyAction(
+    base,
+    { type: "create", title: "Shared private plan" },
+    { now: 0, id: () => "plan" },
+  );
+  const current = applyJourneyAction(
+    base,
+    {
+      type: "add-note",
+      journeyId: "plan",
+      text: "Keep across imports",
+      profileId: base.profiles[0].id,
+    },
+    { id: () => "note" },
+  );
+  const imported = mergeSnapshot(
+    current,
+    snapshot([character("a", { level: 22, updatedAt: newer })], "a", newer),
+  );
+  assert.deepEqual(imported.journeys, current.journeys);
+  const edited = structuredClone(base);
+  edited.profiles[0].notes = "Journal edit";
+  edited.journeys = [];
+  const merged = mergeUserEdits(imported, edited, base);
+  assert.deepEqual(merged.journeys, current.journeys);
+  assert.equal(merged.profiles[0].notes, "Journal edit");
+  const deleted = structuredClone(merged);
+  deleted.profiles = [];
+  deleted.activeProfileId = null;
+  const orphan = mergeUserEdits(merged, deleted, merged);
+  assert.deepEqual(orphan.journeys, current.journeys);
+  assert.equal(orphan.profiles.length, 0);
+});
