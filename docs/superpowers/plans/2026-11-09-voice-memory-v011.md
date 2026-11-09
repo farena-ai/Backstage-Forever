@@ -31,8 +31,8 @@ Files: src/native/voice-helper.ps1 and .cs; focused src/core/voice.cjs, voice-ip
 
 Files: focused renderer voice.js/css and memory.js/css; narrow app/index plus actual renderer VM helper loads; scripts/voice-memory-smoke.cjs. No core/helper/native/provider/version/data changes.
 
-- [ ] RED actual Electron hold/release/draft/explicit send and optional memory selection preview first.
-- [ ] Implement accessible graphical optional voice controls with visible local recording state/time, editable incomplete draft, explicit Read/Stop, typed fallback; no paid inference/audio in tests.
-- [ ] Explicit Save exchange, review/delete/clear memory and separate selected-memory future-use preview; queue/epochs/context token/latest saves; no stale display/dictation/TTS/save or automatic selection.
-- [ ] Actual physical mouse/keyboard/default behavior plus startup-release/blur/nav/character/reset/import/clear/provider/held-ack races. Blur stops input/startup but preserves an otherwise current explicitly requested TTS reading or AI response so the player can return focus to the game. Normal/genuine83 and inspected fictional full/compact/unavailable/error previews; affected flows and full once final. Report work/v011-task3-report.md, independent review.
+- [x] RED actual Electron hold/release/draft/explicit send and optional memory selection preview first.
+- [x] Implement accessible graphical optional voice controls with visible local recording state/time, editable incomplete draft, explicit Read/Stop, typed fallback; no paid inference/audio in tests.
+- [x] Explicit Save exchange, review/delete/clear memory and separate selected-memory future-use preview; queue/epochs/context token/latest saves; no stale display/dictation/TTS/save or automatic selection.
+- [x] Actual physical mouse/keyboard/default behavior plus startup-release/blur/nav/character/reset/import/clear/provider/held-ack races. Blur stops input/startup but preserves an otherwise current explicitly requested TTS reading or AI response so the player can return focus to the game. Normal/genuine83 and inspected fictional full/compact/unavailable/error previews; affected flows and full once final. Report work/v011-task3-report.md, independent review.
 - [ ] Parent version0.11.0 docs/gates/fresh packaged milestone and safe capability-only probe; then formal0.12 party+finalQuestGuide plan. Final signed public0.12 only; owner real-player/microphone check before1.0.
