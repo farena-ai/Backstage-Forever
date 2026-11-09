@@ -34,6 +34,7 @@ jobs:
           "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
       - run: npm ci
       - run: npm run check:addon-reference
+      - run: npm run check:forever-vendors
       - run: npm test
       - run: npm run test:ui
       - run: npm run test:setup

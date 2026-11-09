@@ -72,6 +72,7 @@ npm ci
 npm start
 npm test
 npm run check:addon-reference
+npm run check:forever-vendors
 npm run test:ui
 npm run test:setup
 npm run test:autosave
