@@ -25,11 +25,12 @@ Interfaces: exact exports and startDirectorSession from the 0.9 design. Integrat
 
 ## Task 2: Polished Director interface
 
-Files: focused src/renderer/director.js and director.css; narrow app.js/index.html/command-center.js wiring; scripts/director-smoke.cjs and relevant real renderer VM dependency updates. No backend/native/version/provider/data changes.
+Files: focused src/renderer/director.js and director.css; narrow app.js/index.html/command-center.js wiring; scripts/director-smoke.cjs and relevant real renderer VM dependency updates. A focused shared src/renderer/interaction.js and narrow Company delegation are authorized to reuse the existing pointer/focus/native-select dispatch guard rather than copy it for each new view. No backend/native/version/provider/data changes.
 
 - [ ] Read Task 1 report for exact model. RED actual Electron primary choice/alternatives and one-click session before adding UI.
 - [ ] Implement class/faction Director presentation, saved source/reason/destination qualifiers and existing focus/minute controls; primary Start quest session visible at 1000x700, manual/unknown/prepared/offline states usable. Retain detailed steps; no duplicated second settings system.
 - [ ] Use existing mutation queue/epochs and 0.8 interaction guards for stateful action; explicit open Company for returned journey, reuse feedback, pending duplicate protection/error retry. No implicit selection/follow change or AI. Private local goal previews never enter Explain draft.
+- [ ] If sharing the dispatch guard, retain root-render priority over later region paints, generation-safe release/invalidation, keyboard/native-select cancellation and old-task/new-gesture protection. Keep Company draft/focus/queue ownership unchanged. Load actual shared helper in VM; run mandatory Company all-four setup-race regressions after this refactor.
 - [ ] Actual Electron tests: single physical click/held preceding ack/poll, same-ID update and different-character switch during dirty text, stale/reset/import replies, reuse/rename, keyboard/select/contrast/reduced motion, compact/restart and privacy. Capture fictional Alliance/Horde/compact/empty/error previews under work/v09-ui-evidence/ and inspect.
 - [ ] Run affected source/VM and new Director normal/genuine short-path; full units once final. Self-review/commit/report work/v09-task2-report.md; independent SPEC/QUALITY review.
 
