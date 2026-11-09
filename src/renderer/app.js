@@ -45,6 +45,40 @@ let setupOpen = !["complete", "manual", "deferred"].includes(setupChoice),
 let adventureBrief = null,
   briefProfileId = null,
   briefEpoch = 0;
+let guidance = null, guidanceProfileId = null, guidanceSignature = "", guidanceEpoch = 0;
+function paintGuidance() {
+  const region = root.querySelector('[aria-label="Your next steps"]');
+  if (page !== "adventure" || !region) return;
+  const focusedOption = document.activeElement?.dataset.planOption;
+  region.outerHTML = CommandCenter.steps(guidance, CommandCenter.options(state.activeProfileId), esc);
+  if (focusedOption) root.querySelector(`[data-plan-option="${focusedOption}"]`)?.focus();
+}
+function syncGuidance() {
+  const selectedId = state?.activeProfileId;
+  const selected = CommandCenter.options(selectedId);
+  const brief = briefProfileId === selectedId ? adventureBrief : null;
+  const signature = JSON.stringify([selectedId, selected, brief?.guidance]);
+  if (signature === guidanceSignature) return;
+  guidanceSignature = signature;
+  const epoch = ++guidanceEpoch;
+  guidance = null;
+  guidanceProfileId = selectedId;
+  if (!selectedId || !brief) return;
+  if (selected.minutes === 30 && selected.focus === "balanced" && brief.guidance) {
+    guidance = brief.guidance;
+    return;
+  }
+  if (!api.guidancePlan) return;
+  api.guidancePlan(selectedId, selected).then(result => {
+    if (epoch !== guidanceEpoch || selectedId !== state?.activeProfileId) return;
+    guidance = result;
+    paintGuidance();
+  }).catch(() => {
+    if (epoch !== guidanceEpoch || selectedId !== state?.activeProfileId) return;
+    guidance = { status: "unavailable", headline: "Quest guidance could not be opened.", steps: [], counts: {}, limitations: ["Try refreshing the saved snapshot in Game Connection."] };
+    paintGuidance();
+  });
+}
 function chooseSetup(choice) {
   setupChoice = choice;
   try {
@@ -58,6 +92,7 @@ function acceptBrief(result) {
     adventureBrief = result.brief;
     briefProfileId =
       result.briefProfileId ?? result.state?.activeProfileId ?? null;
+    syncGuidance();
   }
 }
 async function refreshBrief() {
@@ -66,6 +101,10 @@ async function refreshBrief() {
     mutation = stateMutationEpoch;
   adventureBrief = null;
   briefProfileId = null;
+  guidance = null;
+  guidanceProfileId = selectedId;
+  guidanceSignature = "";
+  guidanceEpoch++;
   if (!api.adventureBrief || !selectedId) return;
   const brief = await api.adventureBrief(selectedId);
   if (
@@ -76,6 +115,7 @@ async function refreshBrief() {
     return;
   adventureBrief = brief;
   briefProfileId = selectedId;
+  syncGuidance();
 }
 // Drafts live only in renderer memory; credentials never enter browser storage.
 const formDrafts = new Map();
@@ -381,7 +421,7 @@ function editedState(edit) {
   return next;
 }
 function isEditing() {
-  if (document.activeElement?.matches("input,textarea,select")) return true;
+  if (document.activeElement?.matches("input,textarea,select:not([data-plan-option])")) return true;
   return [
     ...document.querySelectorAll("form input,form textarea,form select"),
   ].some((el) => {
@@ -411,6 +451,7 @@ function onboarding() {
   root.innerHTML = `<main class="onboarding"><section class="onboarding-art">${brand()}<div><div class="eyebrow">Your world. Your adventure.</div><h1>A companion for<br>the road ahead.</h1><p>Make room for the adventure.<br>We’ll keep your plans in order.</p></div><small>DESIGNED BY FRANK ARENA</small></section><section class="onboarding-form"><div class="eyebrow">Welcome, adventurer · 01 / 01</div><h2>Every adventure starts somewhere.</h2><p>Start with a character, then connect your game to import saved character snapshots. Your journal stays on this computer.</p><form id="onboard">${characterFields()}<div class="actions"><button class="primary" type="submit">Begin my adventure</button></div></form><div class="callout">◈ &nbsp; No account. No subscription required for the app.<br>Profiles and planning work offline. AI is optional and uses your own provider access.</div><p class="snapshot-hint">${reloadHint} Logging out also saves a snapshot.</p><p class="onboarding-footer">Independent companion for World of Warcraft: Forever.<br>Not affiliated with or endorsed by Blizzard Entertainment.</p></section></main>`;
 }
 function render() {
+  syncGuidance();
   rememberDrafts();
   const selected = profile();
   document.body.dataset.class = classKey(selected?.className);
@@ -431,7 +472,7 @@ function render() {
     return;
   }
   const current = nav.find((item) => item[0] === page);
-  root.innerHTML = `<div class="shell"><aside class="rail">${brand()}<nav aria-label="Main navigation">${nav.map(([key, glyph, label]) => `<button data-nav="${key}" class="${page === key ? "active" : ""}" ${page === key ? 'aria-current="page"' : ""}><span class="glyph" aria-hidden="true">${glyph}</span>${label}</button>`).join("")}</nav><div class="rail-bottom"><button class="update-rail" data-nav="updates"><span aria-hidden="true">⟲</span><span data-update-label>Updates</span></button><div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span>${current[2]}</span></div><label><span class="sr-only">Active character</span><select id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${setupDock()}${{ adventure: adventure, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, updates: updatesPage }[page]()}</div></main></div>`;
+  root.innerHTML = `<div class="shell"><aside class="rail">${brand()}<nav aria-label="Main navigation">${nav.map(([key, glyph, label]) => `<button data-nav="${key}" class="${page === key ? "active" : ""}" ${page === key ? 'aria-current="page"' : ""}><span class="glyph" aria-hidden="true">${glyph}</span>${label}</button>`).join("")}</nav><div class="rail-bottom"><button class="update-rail" data-nav="updates"><span aria-hidden="true">⟲</span><span data-update-label>Updates</span></button><div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span>${current[2]}</span></div><button class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span>${gameStatus.connected ? "Game connected" : "Connect game"}<small>${esc(CommandCenter.age(profile()))}</small></span></button><label><span class="sr-only">Active character</span><select id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${setupDock()}${{ adventure: adventure, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, updates: updatesPage }[page]()}</div></main></div>`;
   restoreDrafts();
   if (page === "assistant") document.getElementById("chatlog").scrollTop = 1e6;
   // Actions keep the character shown when rendered, even if an autosave later
@@ -554,16 +595,15 @@ function publicContext(p) {
     (!p.faction ? " · Faction not yet received" : "")
   );
 }
-function briefDashboard() {
-  const brief =
-    briefProfileId === state.activeProfileId ? adventureBrief : null;
-  if (!brief)
-    return '<section class="adventure-brief panel"><h2>Your adventure briefing</h2><p>Saved quest and experience details will appear here when available.</p><button data-brief-action="next-quest">Plan my next quest</button></section>';
-  return `<section class="adventure-brief"><h2>Your adventure briefing</h2><div class="brief-grid"><article class="brief-card"><h3>Saved moment · ${esc(brief.freshness.status)}</h3><p>${esc(brief.freshness.message)}</p><p>${esc(brief.character.zone || "Location unavailable")}</p></article><article class="brief-card"><h3>Experience</h3><p>${esc(brief.progress.message)}</p>${brief.progress.known && brief.progress.percent !== null ? `<strong>${brief.progress.percent}%</strong><progress class="xp-track" aria-label="Level experience" max="100" value="${Math.max(0, Math.min(100, brief.progress.percent))}"></progress>` : ""}</article><article class="brief-card"><h3>Your quest log</h3><p>${esc(brief.quests.message)}</p><button data-brief-action="next-quest">Plan my next quest</button></article></div><div class="quest-list">${brief.quests.items.map((q) => `<article class="quest-row"><h3>${esc(q.title)}</h3><span class="quest-status">${q.complete ? "Ready to turn in" : "In progress"}${q.zone ? " · " + esc(q.zone) : ""}</span>${q.destination ? `<p>Observed destination: map ${esc(q.destination.mapId)} · ${esc(Math.round(q.destination.x * 100))}%, ${esc(Math.round(q.destination.y * 100))}% ${esc(q.destination.text || "")}</p>` : ""}<ul class="quest-objectives">${q.objectives.map((o) => `<li>${o.done ? "✓ " : "○ "}${esc(o.text)}</li>`).join("")}</ul></article>`).join("")}</div>${brief.history ? `<article class="brief-card"><h3>Completed quests · observed window</h3><p>${esc(brief.history.message)}</p>${brief.history.recent.map((q) => `<p>${esc(q.title)}</p>`).join("")}<small>This is the observed window, not your complete quest history.</small></article>` : ""}<div class="actions">${brief.actions.map((a) => `<button data-brief-action="${esc(a.id)}">${esc(a.label)}</button>`).join("")}</div></section>`;
-}
 function situationCards() {
   const p = profile();
   return `<section class="situation-cards" aria-label="Planning suggestions"><button class="illustrated-card dungeon-card" data-task="dungeon"><span class="eyebrow">PREPARE / PLANNING SUGGESTION</span><strong>Beyond the dungeon gate</strong><span>A checklist for ${esc(p?.className || "your character")}, level ${p?.level || 1} →</span></button><button class="illustrated-card forge-card" data-task="profession"><span class="eyebrow">CRAFT / PLANNING SUGGESTION</span><strong>Make something legendary</strong><span>Choose a profession and plan your next craft →</span></button><button class="illustrated-card expedition-card" data-task="session"><span class="eyebrow">EXPLORE / SAVED LOCATION</span><strong>${esc(p?.location?.zone || "The road ahead")}</strong><span>${esc(p?.location?.subZone || "Plan a relaxed session from your last saved location")} →</span></button></section>`;
+}
+function commandOverview(p, brief) {
+  return `<section class="command-overview" aria-label="Character overview"><div class="overview-xp"><span class="eyebrow">LEVEL ${p?.level || 1} · EXPERIENCE</span><strong>${brief?.progress?.known && brief.progress.percent !== null ? `${esc(brief.progress.percent)}%` : "Unknown"}</strong>${brief?.progress?.known && brief.progress.percent !== null ? `<progress class="xp-track" aria-label="Level experience" max="100" value="${Math.max(0, Math.min(100, brief.progress.percent))}"></progress>` : ""}<small>${esc(brief?.progress?.message || "Experience not received from the game.")}</small></div><div><span class="eyebrow">READY TO TURN IN</span><strong>${brief?.guidance?.counts?.ready ?? "—"}</strong><small>${esc(brief?.quests?.message || "Quest log not yet received.")}</small></div><div><span class="eyebrow">LAST SAVED LOCATION</span><strong class="overview-location">${esc(p?.location?.zone || "Unknown")}</strong><small>${esc(p?.location?.subZone || "No subzone reported")}</small></div></section>`;
+}
+function commandRoster(p) {
+  return `<section class="command-roster"><div class="panel-header"><h3>Your company</h3><button class="subtle" data-nav="characters">Manage roster →</button></div><div class="roster-strip">${state.profiles.map(item => `<button data-character="${esc(item.id)}" class="roster-card ${item.id === p?.id ? "selected" : ""}" ${item.id === p?.id ? 'aria-pressed="true"' : 'aria-pressed="false"'}><img src="${portrait(item.className)}" alt=""><span><strong>${esc(item.name)}</strong><small>Level ${item.level} ${esc(item.className)} · ${esc(item.faction || "Faction unknown")}</small><small>${item.source?.kind === "wow-addon" ? "Game snapshot" : "Manual journal"} · ${esc(CommandCenter.age(item))}</small></span></button>`).join("")}</div><p class="corner-note">Another character missing? Visit that character once in game, then /reload or log out to save their snapshot.</p></section>`;
 }
 function gameConnection() {
   return `<header class="section-head"><div class="eyebrow">Your world, remembered</div><h1>Bring your adventure home.</h1><p>Prepare the addon and keep saved character snapshots in your journal.</p></header><section class="panel"><h2>Game connection · ${esc(gameStatus.phase || "Not connected")}</h2><p class="setup-status">${esc(gameStatus.message || "Choose your game folder to begin.")}</p>${setupChecks()}<div class="actions"><button class="primary" data-command="setup-open">Set up my companion</button></div><p><strong>Next: ${esc(gameStatus.nextAction?.label || "Set up your companion")}</strong><br>${esc(gameStatus.nextAction?.detail || "Find your game and automatically prepare the addon.")}</p><label class="check-label"><input type="checkbox" id="follow-game-character" ${state.followGameCharacter !== false ? "checked" : ""}>Follow my last played character</label><p>${esc(snapshotLabel(profile()))}</p><p><span>${reloadHint}</span> Enable the addon in WoW’s AddOns menu. If it is not listed, quit and start the game again yourself.</p><details><summary>Advanced connection tools</summary><div class="actions"><button data-command="game-discover">Find my game</button><button data-command="game-connect">Choose game folder</button>${gameStatus.connected ? '<button data-command="game-install">Repair companion addon</button><button data-command="game-refresh">Refresh saved snapshot</button><button data-command="game-disconnect">Disconnect game</button>' : ""}</div></details></section>`;
@@ -666,11 +706,13 @@ function adventure() {
   const p = profile();
   const goals = p?.goals || [];
   const done = goals.filter((g) => g.done).length;
-  return `<section class="hero"><img class="hero-class-art" src="${portrait(p?.className)}" alt=""><div class="hero-copy">${factionBanner(p)}<div class="eyebrow">The next chapter is yours</div><div class="hero-identity"><img class="hero-medallion" src="${portrait(p?.className)}" alt=""><div><h1>${esc(p?.name || "Your adventure awaits")}</h1><p>${p ? `${esc(p.className)} · Level ${p.level} · ${esc(p.realm || "Realm not set")}` : "Create your first character and make a little room for possibility."}</p></div></div><button class="primary" data-nav="assistant">Consult your companion &nbsp; ↗</button></div><div class="hero-caption">A WORLD OF POSSIBILITY / ORIGINAL FANTASY ART</div></section>${briefDashboard()}${situationCards()}<section class="stats" aria-label="Journal overview"><div class="stat"><div><div class="eyebrow">Your roster</div><small>Characters on this computer</small></div><strong>${state.profiles.length.toString().padStart(2, "0")}</strong></div><div class="stat"><div><div class="eyebrow">On the horizon</div><small>Active character’s open goals</small></div><strong>${(goals.length - done).toString().padStart(2, "0")}</strong></div><div class="stat"><div><div class="eyebrow">Small victories</div><small>Goals you’ve completed</small></div><strong>${done.toString().padStart(2, "0")}</strong></div></section><div class="grid adventure-grid"><section class="panel adventure-journal"><div class="panel-header"><h3>Your next adventures</h3><span class="eyebrow">${done} / ${goals.length} complete</span></div>${goals.length ? goals.map((g) => `<div class="goal"><label class="${g.done ? "done" : ""}"><input type="checkbox" data-goal="${esc(g.id)}" ${g.done ? "checked" : ""}><span>${esc(g.text)}</span></label><button data-remove-goal="${esc(g.id)}" aria-label="Delete goal: ${esc(g.text)}">×</button></div>`).join("") : '<div class="empty">An open page. A whole world ahead.<br>Add a goal, from learning a profession to your next dungeon.</div>'}${p ? '<form id="goal-form" class="inline goal-form"><label>New goal<input name="goal" maxlength="1000" placeholder="What would you like to do next?" required></label><button type="submit" aria-label="Add goal">+ Add</button></form>' : '<button data-nav="characters">Create a character</button>'}</section><aside class="panel camp-panel"><div class="panel-header"><h3>A good place to begin</h3><span class="gold" aria-hidden="true">✧</span></div><p class="muted">Less tab juggling.<br>More time in the world.</p><div class="steps"><div class="step"><b>1</b><div><p>Keep your own field journal</p><small>Characters, goals and private notes.</small></div></div><div class="step"><b>2</b><div><p>Choose your AI companion</p><small>Local Ollama or your own cloud API.</small></div></div><div class="step"><b>3</b><div><p>Play on your terms</p><small>You make the decisions. You play the game.</small></div></div></div><button class="subtle" data-nav="connections">Set up a connection &nbsp; →</button><div class="corner-note"><span data-snapshot-age>${esc(snapshotLabel(p))}</span></div></aside></div>`;
+  const brief = briefProfileId === p?.id ? adventureBrief : null;
+  const plan = guidanceProfileId === p?.id ? guidance : null;
+  return `<div class="adventure-brief command-center"><section class="hero command-hero"><img class="hero-class-art" src="${portrait(p?.className)}" alt=""><div class="hero-copy">${factionBanner(p)}<div class="hero-identity"><img class="hero-medallion" src="${portrait(p?.className)}" alt=""><div><div class="eyebrow">YOUR CHARACTER · YOUR NEXT CHAPTER</div><h1>${esc(p?.name || "Your adventure awaits")}</h1><p>${p ? `Level ${p.level} ${esc(p.className)} · ${esc(p.realm || "Realm not set")}` : "Create a character to begin your field journal."}</p></div></div><span class="hero-saved">${esc(CommandCenter.age(p))} · ${esc(brief?.freshness?.status || "unknown")} snapshot</span></div><div class="hero-caption">YOUR FIELD JOURNAL / ORIGINAL FANTASY ART</div></section>${commandOverview(p, brief)}<div class="command-columns">${CommandCenter.steps(plan, CommandCenter.options(p?.id), esc)}<aside class="command-sidebar">${CommandCenter.readiness(brief, esc)}<section class="saved-source"><div class="eyebrow">YOUR SOURCE OF TRUTH</div><h3>A saved moment in the world.</h3><p>${esc(brief?.freshness?.message || "A manual journal has no saved game observations.")}</p><p>${esc(snapshotLabel(p))}</p><button data-nav="game">Review game connection →</button><p class="corner-note">Changed areas or made progress? Type /reload in game, or log out, to save a new snapshot.</p><button class="subtle" data-brief-action="next-quest">Plan my next quest</button></section></aside></div></div>${commandRoster(p)}${situationCards()}<div class="grid adventure-grid"><section class="panel adventure-journal"><div class="panel-header"><h3>Your next adventures</h3><span class="eyebrow">${done} / ${goals.length} complete</span></div>${goals.length ? goals.map((g) => `<div class="goal"><label class="${g.done ? "done" : ""}"><input type="checkbox" data-goal="${esc(g.id)}" ${g.done ? "checked" : ""}><span>${esc(g.text)}</span></label><button data-remove-goal="${esc(g.id)}" aria-label="Delete goal: ${esc(g.text)}">×</button></div>`).join("") : '<div class="empty">An open page. A whole world ahead.<br>Add a goal, from learning a profession to your next dungeon.</div>'}${p ? '<form id="goal-form" class="inline goal-form"><label>New goal<input name="goal" maxlength="1000" placeholder="What would you like to do next?" required></label><button type="submit" aria-label="Add goal">+ Add</button></form>' : '<button data-nav="characters">Create a character</button>'}</section><aside class="panel camp-panel"><div class="panel-header"><h3>A good place to begin</h3><span class="gold" aria-hidden="true">✧</span></div><p class="muted">Less tab juggling.<br>More time in the world.</p><div class="steps"><div class="step"><b>1</b><div><p>Keep your own field journal</p><small>Characters, goals and private notes.</small></div></div><div class="step"><b>2</b><div><p>Choose your AI companion</p><small>Local Ollama or your own cloud API.</small></div></div><div class="step"><b>3</b><div><p>Play on your terms</p><small>You make the decisions. You play the game.</small></div></div></div><button class="subtle" data-nav="connections">Set up a connection &nbsp; →</button><div class="corner-note"><span data-snapshot-age>${esc(snapshotLabel(p))}</span></div></aside></div>`;
 }
 function characters() {
   const p = profile();
-  return `<header class="section-head"><div class="eyebrow">Your company of adventurers</div><h1>Every character has a story.</h1><p>Keep a separate journal for each adventure. Connect your game to refresh saved character details, or keep a manual journal. Notes and goals remain your own.</p></header><div class="grid"><section class="panel"><div class="panel-header"><h3>${p ? "Character journal" : "Create a character"}</h3><span class="tag">Stored locally</span></div><form id="character-form">${characterFields(p)}<label class="full notes-label">Private notes<textarea name="notes" maxlength="20000" placeholder="Build ideas, profession plans, places to revisit…">${esc(p?.notes || "")}</textarea></label><div class="actions"><button type="submit" class="${p ? "subtle" : "primary"}">${p ? "Save character" : "Create character"}</button>${p ? '<button type="button" data-command="delete-character" class="danger">Delete character</button>' : ""}</div></form><p class="snapshot-hint"><span data-snapshot-age>${esc(snapshotLabel(p))}</span><br>${reloadHint} Logging out also saves.</p><p class="corner-note">Private notes and goals are never automatically included in AI requests.</p></section><aside class="panel"><div class="panel-header"><h3>Your roster</h3><button data-command="new-character" class="subtle">+ New</button></div><div class="character-list">${state.profiles.map((item) => `<button data-character="${esc(item.id)}" class="${item.id === p?.id ? "selected" : ""}"><span class="avatar class-sigil" data-class="${esc(item.className)}"><img src="${portrait(item.className)}" alt=""><span>${sigil(item.className)}</span></span><span>${esc(item.name)}<small>${esc(item.className)} · Level ${item.level} · ${esc(item.realm || "Realm not set")}</small></span></button>`).join("") || '<div class="empty">Your roster is ready for its first adventurer.</div>'}</div><div class="callout">Each installation belongs to its player. Friends use their own profiles and provider access; no connection to Frank’s accounts or computer is needed.</div></aside></div>`;
+  return `<header class="section-head"><div class="eyebrow">Your company of adventurers</div><h1>Every character has a story.</h1><p>Keep a separate journal for each adventure. Connect your game to refresh saved character details, or keep a manual journal. Notes and goals remain your own.</p></header><div class="grid"><section class="panel"><div class="panel-header"><h3>${p ? "Character journal" : "Create a character"}</h3><span class="tag">Stored locally</span></div><form id="character-form">${characterFields(p)}<label class="full notes-label">Private notes<textarea name="notes" maxlength="20000" placeholder="Build ideas, profession plans, places to revisit…">${esc(p?.notes || "")}</textarea></label><div class="actions"><button type="submit" class="${p ? "subtle" : "primary"}">${p ? "Save character" : "Create character"}</button>${p ? '<button type="button" data-command="delete-character" class="danger">Delete character</button>' : ""}</div></form><p class="snapshot-hint"><span data-snapshot-age>${esc(snapshotLabel(p))}</span><br>${reloadHint} Logging out also saves.</p><p class="corner-note">Private notes and goals are never automatically included in AI requests.</p></section><aside class="panel"><div class="panel-header"><h3>Your roster</h3><button data-command="new-character" class="subtle">+ New</button></div><div class="character-list">${state.profiles.map((item) => `<button data-character="${esc(item.id)}" class="${item.id === p?.id ? "selected" : ""}"><span class="avatar class-sigil" data-class="${esc(item.className)}"><img src="${portrait(item.className)}" alt=""><span>${sigil(item.className)}</span></span><span>${esc(item.name)}<small>${esc(item.className)} · Level ${item.level} · ${esc(item.realm || "Realm not set")}</small><small>${item.source?.kind === "wow-addon" ? "Game snapshot" : "Manual journal"} · ${esc(CommandCenter.age(item))}</small></span></button>`).join("") || '<div class="empty">Your roster is ready for its first adventurer.</div>'}</div><div class="callout">Another character missing? Visit that character once in game, then /reload or log out. Each player uses their own local journal and provider access.</div></aside></div>`;
 }
 function assistant() {
   const p = profile();
@@ -739,7 +781,7 @@ function connections() {
 }
 
 function guide() {
-  return `<header class="section-head"><div class="eyebrow">The adventurer’s field guide</div><h1>A little guidance. A longer adventure.</h1><p>Everything you need to get started, understand your privacy, and keep your journal safe.</p></header><div class="guide-grid"><section class="panel"><div class="eyebrow">01 · Getting started</div><h3>Your first five minutes</h3><p>Create a character in Characters. Add your next goal in Adventure. Keep private notes in the character journal. All of this works without AI, a WoW addon, or a Backstage account.</p><button data-nav="characters">Open characters →</button></section><section class="panel"><div class="eyebrow">02 · Optional intelligence</div><h3>One installer. Your own setup.</h3><p>Friends install the same app and choose their own access. ChatGPT and Claude offer subscription sign-in in this preview. All cloud providers also support separate API-key mode; Grok subscription integration is still pending.</p><button data-nav="connections">Choose a provider →</button></section><section class="panel"><div class="eyebrow">03 · Privacy & portability</div><h3>Your journal belongs to you.</h3><p>Export creates a JSON backup of profiles, goals, notes and preferences, without API keys or subscription credentials. Import replaces those records after confirmation, preserving existing credentials. Treat backups as private: notes are readable in them.</p><div class="actions"><button data-command="export">Export backup</button><button data-command="import">Import backup</button></div></section><section class="panel"><div class="eyebrow">04 · Game compatibility</div><h3>A companion beside the game.</h3><p>The desktop journal is independent of WoW. The optional addon uses guarded game APIs and exports saved character snapshots on UI reload or logout. Game Connection installs the addon and watches those saved snapshots while this app is open.</p><p>No game input, process inspection, live combat computation or automation. In-game compatibility is not certified.</p></section><section class="panel full"><h3>Questions from the road</h3><details><summary>How do I update?</summary><p>The installed Windows app checks for authenticated releases at startup and every six hours while open. It downloads updates automatically and installs on exit by default. Use Updates to change this or restart when ready. Version 0.1.0 needs one manual upgrade to gain this feature. Windows publisher signing remains pending.</p></details><details><summary>What gets sent to an AI provider?</summary><p>Your current question and a short companion instruction. Use my active character defaults on and remembers your opt-out. The preview shows the exact public name, class, level, realm, race, faction, saved location and snapshot time included. Notes, goals, other characters and previous messages are excluded. Providers process requests according to their own terms.</p></details><details><summary>What if the connection fails?</summary><p>Check that the model ID exists for your account, the API key is active and your provider has available quota. For Ollama, ensure the service is running and the model is downloaded. Cloud errors never trigger another provider automatically.</p></details><details><summary>Does uninstalling erase my journal?</summary><p>The installer preserves app data. Use Delete all local data below to remove profiles, preferences and keys from this installation. It also clears app-owned subscription credentials. It does not erase exported backups or remove data already held by a provider. Delete backup copies and revoke provider keys separately when needed.</p></details><div class="actions"><button class="danger" data-command="reset">Delete all local data</button></div></section></div><p class="corner-note">Backstage Forever v${esc(version)} · Backstage Coding · Designed by Frank Arena.<br>World of Warcraft is a trademark of Blizzard Entertainment. This independent project is not endorsed by Blizzard.</p>`;
+  return `<header class="section-head"><div class="eyebrow">The adventurer’s field guide</div><h1>A little guidance. A longer adventure.</h1><p>Everything you need to get started, understand your privacy, and keep your journal safe.</p></header><div class="guide-grid"><section class="panel"><div class="eyebrow">01 · Getting started</div><h3>Your first five minutes</h3><p>Adventure builds your next steps automatically from your saved quest log, without AI. Choose 15, 30 or 60 minutes and a quest focus; each character remembers their own choices. Keep your own goals in Adventure and private notes in Characters, even without a game connection.</p><button data-nav="characters">Open characters →</button></section><section class="panel"><div class="eyebrow">02 · Optional intelligence</div><h3>One installer. Your own setup.</h3><p>Friends install the same app and choose their own access. ChatGPT and Claude offer subscription sign-in in this preview. All cloud providers also support separate API-key mode; Grok subscription integration is still pending.</p><button data-nav="connections">Choose a provider →</button></section><section class="panel"><div class="eyebrow">03 · Privacy & portability</div><h3>Your journal belongs to you.</h3><p>Export creates a JSON backup of profiles, goals, notes and preferences, without API keys or subscription credentials. Import replaces those records after confirmation, preserving existing credentials. Treat backups as private: notes are readable in them.</p><div class="actions"><button data-command="export">Export backup</button><button data-command="import">Import backup</button></div></section><section class="panel"><div class="eyebrow">04 · Game compatibility</div><h3>A companion beside the game.</h3><p>The desktop journal is independent of WoW. The optional addon uses guarded game APIs and exports saved character snapshots on UI reload or logout. Game Connection installs the addon and watches those saved snapshots while this app is open. Saved always means the last disk save, never live game state. Visit another character once and /reload or log out to add them to the roster.</p><p>Your companion offers guidance beside the game. You choose the next step and perform every game action yourself.</p></section><section class="panel full"><h3>Questions from the road</h3><details><summary>How does my quest plan work?</summary><p>Your local plan prioritizes observed turn-ins and unfinished objectives. Expand Saved game evidence on any action to see its source, time and reported destination. It is a saved quest-log slice, not a complete quest database or a verified optimal route. Session length limits how many actions are shown, without guessing completion times.</p><p>Explain my plan opens an editable AI question containing bounded public quest evidence. Review it, choose your provider, and press Send question when ready. Opening the draft never sends a request. Private notes, goals and preparation details are not added to the draft.</p></details><details><summary>How do I update?</summary><p>The installed Windows app checks for authenticated releases at startup and every six hours while open. It downloads updates automatically and installs on exit by default. Use Updates to change this or restart when ready. Version 0.1.0 needs one manual upgrade to gain this feature. Windows publisher signing remains pending.</p></details><details><summary>What gets sent to an AI provider?</summary><p>Your current question and a short companion instruction. Use my active character defaults on and remembers your opt-out. The preview shows the exact public name, class, level, realm, race, faction, saved location and snapshot time included. Notes, goals, other characters and previous messages are excluded. Providers process requests according to their own terms.</p></details><details><summary>What if the connection fails?</summary><p>Check that the model ID exists for your account, the API key is active and your provider has available quota. For Ollama, ensure the service is running and the model is downloaded. Cloud errors never trigger another provider automatically.</p></details><details><summary>Does uninstalling erase my journal?</summary><p>The installer preserves app data. Use Delete all local data below to remove profiles, preferences and keys from this installation. It also clears app-owned subscription credentials. It does not erase exported backups or remove data already held by a provider. Delete backup copies and revoke provider keys separately when needed.</p></details><div class="actions"><button class="danger" data-command="reset">Delete all local data</button></div></section></div><p class="corner-note">Backstage Forever v${esc(version)} · Backstage Coding · Designed by Frank Arena.<br>World of Warcraft is a trademark of Blizzard Entertainment. This independent project is not endorsed by Blizzard.</p>`;
 }
 function updateSummary() {
   if (updateInfo.phase === "ready")
@@ -886,6 +928,16 @@ root.addEventListener("click", (event) => {
       render();
     }
     switch (button.dataset.command) {
+      case "explain-plan": {
+        if (guidanceProfileId !== state.activeProfileId || !guidance?.steps?.length) break;
+        const draft = CommandCenter.draft(guidance, CommandCenter.options(state.activeProfileId));
+        page = "assistant";
+        render();
+        const field = document.querySelector("[name=prompt]");
+        field.value = draft;
+        field.focus();
+        break;
+      }
       case "setup-open":
         setupOpen = true;
         render();
@@ -1025,6 +1077,7 @@ root.addEventListener("click", (event) => {
         break;
       case "delete-character":
         if (confirm("Delete this character, their goals and private notes?")) {
+          CommandCenter.remove(button.dataset.profileId);
           await persist(
             editedState((next) => {
               const target = button.dataset.profileId;
@@ -1072,6 +1125,7 @@ root.addEventListener("click", (event) => {
         stateMutationEpoch++;
         const next = await mutateStateCall(() => api.resetData());
         if (next) {
+          CommandCenter.remove();
           chatGeneration++;
           modelEpoch++;
           modelCatalogs = {};
@@ -1115,6 +1169,15 @@ root.addEventListener("click", (event) => {
 });
 root.addEventListener("change", (event) =>
   action(async () => {
+    if (event.target.dataset.planOption && state.activeProfileId) {
+      const selected = CommandCenter.options(state.activeProfileId);
+      const key = event.target.dataset.planOption;
+      selected[key] = key === "minutes" ? Number(event.target.value) : event.target.value;
+      CommandCenter.save(state.activeProfileId, selected);
+      syncGuidance();
+      render();
+      document.querySelector(`[data-plan-option="${key}"]`)?.focus();
+    }
     if (event.target.dataset.updatePref) {
       if (updateSaving) {
         refreshUpdateWidgets();

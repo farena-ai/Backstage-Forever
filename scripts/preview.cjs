@@ -50,6 +50,7 @@ const { testWindow } = require("./test-window.cjs");
           className: "Hunter",
           level: 18,
           progress: { current: 13520, max: 21000, rested: 4000 },
+          readiness: { equipment: [{ slot: 16, itemId: 1234, name: "Demo: Ranger’s Longbow", quality: 2, itemLevel: 20 }], bags: { free: 8, total: 48 } },
           quests: [
             {
               id: 1001,
@@ -77,6 +78,9 @@ const { testWindow } = require("./test-window.cjs");
                 { text: "Find the missing scout: 0/1", done: false },
               ],
             },
+            { id: 1003, title: "Demo: Light the watchfires", level: 18, zone: "Silverwood Highlands", complete: false, objectives: [{ text: "Watchfires lit: 1/3", done: false }] },
+            { id: 1004, title: "Demo: A letter for the captain", level: 18, zone: "Silverwood Highlands", complete: true, objectives: [{ text: "Recover the sealed letter: 1/1", done: true }] },
+            { id: 1005, title: "Demo: The forest remembers", level: 19, zone: "Silverwood Highlands", complete: false, objectives: [{ text: "Inspect the ancient stones: 0/4", done: false }] },
           ],
           history: {
             completedCount: 42,
@@ -145,6 +149,8 @@ const { testWindow } = require("./test-window.cjs");
     await page.evaluate((root) => window.backstage.prepareGame(root), gameRoot);
     await page.reload();
     await page.getByRole("heading", { name: "Aeralyn", exact: true }).waitFor();
+    await page.getByRole("region", { name: "Your next steps" }).waitFor();
+    await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].map(image => image.decode().catch(() => {}))); });
     await page.screenshot({
       path: path.join(__dirname, "..", "assets", "desktop-preview.png"),
     });
@@ -175,7 +181,7 @@ const { testWindow } = require("./test-window.cjs");
     });
     await page.getByRole("button", { name: "Adventure", exact: true }).click();
     await app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows()[0].setSize(1000, 760),
+      BrowserWindow.getAllWindows()[0].setSize(1000, 700),
     );
     await page.waitForFunction(() => window.innerWidth <= 1000);
     await page.evaluate(async () => {
