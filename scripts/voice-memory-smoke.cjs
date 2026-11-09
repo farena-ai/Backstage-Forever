@@ -44,6 +44,8 @@ function shortPath(target) {
       const list=ipcMain._invokeHandlers.get("backstage:memoryList");ipcMain.removeHandler("backstage:memoryList");ipcMain.handle("backstage:memoryList",async(...args)=>{const result=await list(...args);if(voiceUi.holdList)await new Promise(r=>(voiceUi.listReleases??=[]).push(r));return result;});
       const status=ipcMain._invokeHandlers.get("backstage:voiceStatus");ipcMain.removeHandler("backstage:voiceStatus");ipcMain.handle("backstage:voiceStatus",async(...args)=>{voiceUi.statusReads=(voiceUi.statusReads||0)+1;const result=await status(...args);if(voiceUi.holdStatus)await new Promise(r=>voiceUi.releaseStatus=r);return result;});
       const draft=ipcMain._invokeHandlers.get("backstage:memoryDraft");ipcMain.removeHandler("backstage:memoryDraft");ipcMain.handle("backstage:memoryDraft",async(...args)=>{const result=await draft(...args);if(voiceUi.holdDraft)await new Promise(r=>voiceUi.releaseDraft=r);return result;});
+      const speak=ipcMain._invokeHandlers.get("backstage:voiceSpeak");ipcMain.removeHandler("backstage:voiceSpeak");ipcMain.handle("backstage:voiceSpeak",async(...args)=>{voiceUi.speakRequests=(voiceUi.speakRequests||0)+1;const result=await speak(...args);if(voiceUi.holdSpeakAck)await new Promise(r=>voiceUi.releaseSpeakAck=r);return result;});
+      const cancel=ipcMain._invokeHandlers.get("backstage:voiceCancel");ipcMain.removeHandler("backstage:voiceCancel");ipcMain.handle("backstage:voiceCancel",async(...args)=>{voiceUi.cancels=(voiceUi.cancels||0)+1;return cancel(...args);});
     });
     await page.evaluate(()=>localStorage.setItem("bf-setup-v4","complete"));await page.reload();await page.evaluate(()=>{window.confirm=()=>true;});
     await page.getByRole("button",{name:"AI Companion",exact:true}).click();
@@ -107,6 +109,21 @@ function shortPath(target) {
     // Blur cancels capture but preserves explicit TTS and an otherwise current AI answer.
     await mouseHold();await listening();await hypothesis("blur draft");await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].hide());await page.waitForFunction(()=>document.querySelector("[data-voice]").dataset.phase==="stopped");await page.mouse.up();await focus();
     const readingVoice=page.getByRole("combobox",{name:"Reading voice",exact:true});await readingVoice.selectOption("Microsoft Zira Desktop");await page.evaluate(()=>render());assert.equal(await readingVoice.inputValue(),"Microsoft Zira Desktop","An ordinary paint preserves the explicitly selected local voice");
+    // Stop retires the real renderer readiness continuation before it can dispatch speech.
+    await page.evaluate(async()=>{await companionReady;companionReady=new Promise(resolve=>window.releaseReadingReady=resolve);});
+    let speechBefore=await count("speak"),speakRequestsBefore=await app.evaluate(()=>voiceUi.speakRequests||0),cancelBefore=await app.evaluate(()=>voiceUi.cancels||0);
+    await page.getByRole("button",{name:"Read answer",exact:true}).click();await page.waitForFunction(()=>document.querySelector("[data-voice]").dataset.phase==="starting");
+    await page.getByRole("button",{name:"Stop voice",exact:true}).click();await untilMain(`(voiceUi.cancels||0)===${cancelBefore+1}`);assert.equal(await count("speak"),speechBefore);
+    await page.evaluate(()=>{window.releaseReadingReady();delete window.releaseReadingReady;});await page.waitForTimeout(180);
+    assert.equal(await count("speak"),speechBefore,"Stop before companion readiness must dispatch zero later speak commands");
+    assert.equal(await app.evaluate(()=>voiceUi.speakRequests||0),speakRequestsBefore,"Stopped readiness continuation must dispatch zero voiceSpeak requests");
+    assert.equal(await page.locator("[data-voice]").getAttribute("data-phase"),"stopped");
+    // Main cancellation still owns an already-dispatched read whose acknowledgement is delayed.
+    await app.evaluate(()=>voiceUi.holdSpeakAck=true);await page.getByRole("button",{name:"Read answer",exact:true}).click();await untilMain("Boolean(voiceUi.releaseSpeakAck)");await untilMain(`voiceUi.commands.filter(c=>c.command==="speak").length===${speechBefore+1}`);
+    await page.getByRole("button",{name:"Stop voice",exact:true}).click();await page.waitForFunction(()=>document.querySelector("[data-voice]").dataset.phase==="stopped");await untilMain("voiceUi.service.workers.size===0");
+    await app.evaluate(()=>{voiceUi.holdSpeakAck=false;voiceUi.releaseSpeakAck();voiceUi.releaseSpeakAck=null;});await page.waitForTimeout(30);
+    assert.equal(await page.locator("[data-voice]").getAttribute("data-phase"),"stopped","A pre-Stop speech acknowledgement cannot repaint Starting after Stop");assert.equal(await count("speak"),speechBefore+1);
+    console.log("Voice startup R1: held readiness Stop dispatches zero voiceSpeak requests/workers; held speech acknowledgement cannot repaint Starting after Stop PASS");
     await page.getByRole("button",{name:"Read answer",exact:true}).click();await page.waitForFunction(()=>document.querySelector("[data-voice]").dataset.phase==="speaking");assert.equal(await app.evaluate(()=>voiceUi.commands.findLast(c=>c.command==="speak").voiceId),"Microsoft Zira Desktop");
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].hide());
     // testWindow keeps native rendering active; inject only the browser visibility property/event.

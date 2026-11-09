@@ -32,7 +32,8 @@ window.Voice = (() => {
     const input=field();if(!input)return;clearTimers();const token=++generation;held=gesture;capture={value:input.value,start:input.selectionStart,end:input.selectionEnd,applied:false};session=null;separate="";operation="input";phase="starting";message="Preparing local capture. Release to stop.";started=Date.now();paint();
     try{await host.ready();if(!current(token)||!held)return;const status=await host.api.voiceStart({profileId:host.profileId()??null,culture:host.root.querySelector("[data-voice-culture]").value});if(!current(token)||!held){if(status.sessionId)void host.api.voiceStop(status.sessionId).catch(()=>{});return;}accept(status,token);}catch{if(current(token)){held=null;phase="unavailable";message="Local dictation is unavailable. Your typed question is ready to use.";paint();}}
   }
-  async function stop(inputOnly=false){if(inputOnly&&operation!=="input")return;if(!operation)return;held=null;statusEpoch++;clearTimeout(timer);const token=generation;phase="stopped";message=operation==="input"?"Stopping local capture. Review the incomplete draft.":"Stopping local reading.";paint();
+  // Retire startup continuations; Stop and its final status read own the new generation.
+  async function stop(inputOnly=false){if(inputOnly&&operation!=="input")return;if(!operation)return;held=null;statusEpoch++;clearTimeout(timer);const token=++generation;phase="stopped";message=operation==="input"?"Stopping local capture. Review the incomplete draft.":"Stopping local reading.";paint();
     try{const status=session?await host.api.voiceStop(session):await host.api.voiceCancel();if(!current(token))return;accept(status,token);
       // One bounded read exposes unconfirmed native disposal without retrying audio.
       clearTimeout(finalTimer);finalTimer=setTimeout(async()=>{if(!current(token)||document.hidden||!session)return;try{accept(await host.api.voiceStatus(session),token);}catch{}},1100);
