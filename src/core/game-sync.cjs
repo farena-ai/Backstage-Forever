@@ -147,6 +147,8 @@ function parseSavedVariables(raw) {
       out.progress = require("./quest-data.cjs").validateProgress(c.progress);
     if (c.history !== undefined)
       out.history = require("./quest-data.cjs").validateHistory(c.history);
+    if (c.readiness !== undefined)
+      out.readiness = require("./readiness.cjs").validateReadiness(c.readiness);
     return out;
   });
   const activeId = s.activeId === null ? null : id(s.activeId);

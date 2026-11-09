@@ -1,16 +1,17 @@
 -- Public player snapshots only. No networking, input automation, or protected-value access.
+local captureIssue=false
 local function public(value)
     if type(issecretvalue) == "function" then
         local ok, secret = pcall(issecretvalue, value)
-        if not ok or secret then return nil end
+        if not ok or secret then captureIssue=true;return nil end
     end
     return value
 end
 local function call(fn, ...)
     if type(fn) ~= "function" then return nil end
-    local ok, a, b, c = pcall(fn, ...)
-    if not ok then return nil end
-    return public(a), public(b), public(c)
+    local ok, a, b, c, d = pcall(fn, ...)
+    if not ok then captureIssue=true;return nil end
+    return public(a), public(b), public(c), public(d)
 end
 local function clean(value, limit)
     value = public(value)
@@ -85,6 +86,7 @@ local function field(value,key)
     value=public(value);if type(value)~='table' then return nil end
     local ok,result=pcall(function() return value[key] end)
     if ok then return public(result) end
+    captureIssue=true
 end
 local function integer(value,low,high)
     value=public(value)
@@ -153,6 +155,52 @@ local function progress()
     if not current or not max or current>max then return nil end
     return {current=current,max=max,rested=integer(call(GetXPExhaustion),0,2147483647)}
 end
+-- Equipment IDs only; never read bag contents, links, money or account storage.
+local function equipment()
+    if type(public(GetInventoryItemID))~='function' then return nil end
+    local result=array({})
+    for slot=1,19 do
+        local raw=call(GetInventoryItemID,'player',slot)
+        if captureIssue then return nil end
+        if raw~=nil and raw~=0 then
+            local id=integer(raw,1,9007199254740991)
+            if not id then return nil end
+            local item={slot=slot,itemId=id}
+            local name,_,quality,level=call(field(public(C_Item),'GetItemInfo'),id)
+            item.name=clean(name,200);item.quality=integer(quality,0,8);item.itemLevel=integer(level,0,10000)
+            result[#result+1]=item
+        end
+    end
+    return result
+end
+local function bags()
+    local api=public(C_Container)
+    if type(field(api,'GetContainerNumFreeSlots'))~='function' or type(field(api,'GetContainerNumSlots'))~='function' then return nil end
+    local indices=field(public(Enum),'BagIndex')
+    local free,total=0,0;local seen={}
+    for _,key in ipairs({'Backpack','Bag_1','Bag_2','Bag_3','Bag_4'}) do
+        local index=integer(field(indices,key),0,100)
+        if not index or seen[index] then return nil end
+        seen[index]=true
+        local count=integer(call(field(api,'GetContainerNumSlots'),index),0,1000)
+        local available=integer(call(field(api,'GetContainerNumFreeSlots'),index),0,1000)
+        if not count or not available or available>count then return nil end
+        free=free+available;total=total+count
+    end
+    if free<=1000 and total<=1000 then return {free=free,total=total} end
+end
+local function optional(fn)
+    local prior=captureIssue;captureIssue=false
+    local ok,value=pcall(fn)
+    local failed=captureIssue or not ok
+    captureIssue=prior or failed
+    if ok then return value end
+end
+local function readiness()
+    local gear=optional(equipment)
+    local space=optional(bags)
+    if gear~=nil or space~=nil then return {equipment=gear,bags=space} end
+end
 local roster={}
 local function capture(event,eventId)
     if type(InCombatLockdown) ~= "function" or call(InCombatLockdown) ~= false then return end
@@ -164,8 +212,8 @@ local function capture(event,eventId)
     if not guid or not name or not realm or not class or type(level)~='number' or level<1 or level>1000 or type(now)~='number' then return end
     local location={zone=clean((call(GetZoneText))) or '',subZone=clean((call(GetSubZoneText))) or ''}
     if type(public(C_Map))=='table' then
-        local map=call(field(C_Map,'GetBestMapForUnit'),'player')
-        if type(map)=='number' and map>=0 then
+        local map=integer(call(field(C_Map,'GetBestMapForUnit'),'player'),0,1000000)
+        if map then
             location.mapId=map
             local pos=call(field(C_Map,'GetPlayerMapPosition'),map,'player')
             if pos then
@@ -198,7 +246,7 @@ local function capture(event,eventId)
     end
     history.completedCount=completedCount()
     character.history=history
-    character.quests=quests();character.progress=progress()
+    character.quests=optional(quests);character.progress=optional(progress);character.readiness=optional(readiness)
     if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character) end
     roster[guid]=character
     local chars=array({});for _,c in pairs(roster) do chars[#chars+1]=c end
@@ -209,13 +257,13 @@ local function capture(event,eventId)
     -- Retain identities while shedding the oldest optional detail first.
     for i=#chars,1,-1 do
         if #encoded<1048576 then break end
-        chars[i].quests=nil;chars[i].progress=nil;chars[i].history=nil;encoded=encode(payload)
+        chars[i].quests=nil;chars[i].progress=nil;chars[i].history=nil;chars[i].readiness=nil;encoded=encode(payload)
     end
-    if #encoded<1048576 then BackstageForeverExport=encoded end
+    if #encoded<1048576 then BackstageForeverExport=encoded;return true end
 end
 if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
-    for _,event in ipairs({'PLAYER_LOGIN','PLAYER_LEVEL_UP','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LOGOUT','QUEST_LOG_UPDATE','QUEST_ACCEPTED','QUEST_TURNED_IN','UNIT_QUEST_LOG_CHANGED','PLAYER_XP_UPDATE','UPDATE_EXHAUSTION'}) do pcall(frame.RegisterEvent,frame,event) end
+    for _,event in ipairs({'PLAYER_LOGIN','PLAYER_LEVEL_UP','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LOGOUT','QUEST_LOG_UPDATE','QUEST_ACCEPTED','QUEST_TURNED_IN','UNIT_QUEST_LOG_CHANGED','PLAYER_XP_UPDATE','UPDATE_EXHAUSTION','PLAYER_EQUIPMENT_CHANGED','BAG_UPDATE_DELAYED','GET_ITEM_INFO_RECEIVED'}) do pcall(frame.RegisterEvent,frame,event) end
     frame:SetScript('OnEvent',function(_,event,eventId)
         if event=='PLAYER_LOGIN' then
             local saved=decode(BackstageForeverExport)
@@ -225,6 +273,10 @@ if type(CreateFrame)=='function' then
                 end
             end
         end
-        pcall(capture,event,public(eventId))
+        captureIssue=false
+        local ok,captured=pcall(capture,event,public(eventId))
+        if type(BackstageForeverHUDCaptureStatus)=='function' then
+            pcall(BackstageForeverHUDCaptureStatus,(not ok or not captured) and 'unavailable' or captureIssue and 'partial' or 'ready')
+        end
     end)
 end

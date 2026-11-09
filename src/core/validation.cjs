@@ -135,10 +135,12 @@ function validateState(s) {
       "quests",
       "progress",
       "history",
+      "readiness",
     ]);
     validateQuestData(p.quests);
     validateProgress(p.progress);
     validateHistory(p.history);
+    require("./readiness.cjs").validateReadiness(p.readiness);
     str(p.id, 100, false);
     if (ids.has(p.id)) fail();
     ids.add(p.id);

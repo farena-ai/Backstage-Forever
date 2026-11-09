@@ -200,6 +200,16 @@ app.whenReady().then(() => {
       ),
     );
   });
+  handle("guidancePlan", (profileId, options) => {
+    v.str(profileId, 100, false);
+    const profile = store.state.profiles.find((p) => p.id === profileId);
+    if (!profile) throw Error("Choose a character.");
+    const {
+      buildGuidance,
+      validateGuidanceOptions,
+    } = require("./core/guidance.cjs");
+    return buildGuidance(profile, validateGuidanceOptions(options));
+  });
   handle("gameStatus", () => game.status());
   handle("gameSnapshot", gameSnapshot);
   handle("discoverGame", () => game.discover());

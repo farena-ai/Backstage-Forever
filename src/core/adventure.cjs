@@ -4,7 +4,10 @@ const {
   validateProgress,
   validateHistory,
 } = require("./quest-data.cjs");
-function buildBrief(profile, { now = Date.now() } = {}) {
+function buildBrief(
+  profile,
+  { now = Date.now(), minutes = 30, focus = "balanced" } = {},
+) {
   const p = profile || {};
   const quests = validateQuestData(p.quests),
     xp = validateProgress(p.progress);
@@ -88,6 +91,20 @@ function buildBrief(profile, { now = Date.now() } = {}) {
             : "No level XP requirement reported.",
         }
       : { known: false, message: "Experience data unavailable." },
+    guidance: require("./guidance.cjs").buildGuidance(p, {
+      now,
+      minutes,
+      focus,
+    }),
+    readiness:
+      p.readiness === undefined
+        ? { known: false, message: "Preparation data unavailable." }
+        : {
+            known: true,
+            ...require("./readiness.cjs").validateReadiness(p.readiness),
+            message:
+              "Preparation observed in the saved snapshot; this is not a gear recommendation.",
+          },
     actions,
   };
 }

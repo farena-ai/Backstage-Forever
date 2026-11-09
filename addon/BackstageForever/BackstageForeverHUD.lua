@@ -1,5 +1,5 @@
 -- Optional native display only. It never performs character actions.
-local panel,body,latest
+local panel,body,latest,captureMessage
 local visible,collapsed=true,false
 local settings
 local anchors={TOPLEFT=true,TOP=true,TOPRIGHT=true,LEFT=true,CENTER=true,RIGHT=true,BOTTOMLEFT=true,BOTTOM=true,BOTTOMRIGHT=true}
@@ -45,6 +45,7 @@ local function update()
             end
         end
     end
+    if captureMessage then text=text..'\n'..captureMessage end
     safe(body.SetText,body,text)
     local height=safe(body.GetStringHeight,body)
     if not finite(height) or height<1 then local _,lines=text:gsub('\n','');height=(lines+1)*14 end
@@ -52,6 +53,11 @@ local function update()
     safe(panel.SetHeight,panel,math.max(110,math.min(320,height+86)));safe(panel.Show,panel)
 end
 BackstageForeverHUDUpdate=function(character) latest=character;update() end
+BackstageForeverHUDCaptureStatus=function(state)
+    captureMessage=state=='partial' and 'Some public data is unavailable. Try again outside combat.'
+        or state=='unavailable' and 'Snapshot unavailable. Try again outside combat, then reload or log out.' or nil
+    pcall(update)
+end
 local function initialize()
     if combat() or panel or type(CreateFrame)~='function' then return end
     local saved=type(BackstageForeverHUDSettings)=='table' and BackstageForeverHUDSettings or {}

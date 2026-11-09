@@ -96,6 +96,56 @@ UnitGUID=function()error('unavailable')end
 handler(nil,'PLAYER_LOGOUT');assert(before==BackstageForeverExport)
 print('Addon runtime persistence/combat/secret/API guards passed')
 `;
+test("native readiness handles multi-return metadata and failures without losing identity or leaking errors", () => {
+  const script =
+    LUA_HARNESS.slice(0, LUA_HARNESS.indexOf("dofile('addon")) +
+    String.raw`
+local diagnostic
+BackstageForeverHUDCaptureStatus=function(state) diagnostic=state end
+GetInventoryItemID=function(unit,slot)assert(unit=='player' and slot>=1 and slot<=19);if slot==1 then return 123 end end
+C_Item={GetItemInfo=function(id)assert(id==123);return 'Observed helm','PRIVATE ITEM LINK',3,42,1,'Armor' end}
+Enum={BagIndex={Backpack=0,Bag_1=1,Bag_2=2,Bag_3=3,Bag_4=4}}
+C_Container={GetContainerNumSlots=function(bag)return 4 end,GetContainerNumFreeSlots=function(bag)return 2,99 end}
+dofile('addon/BackstageForever/BackstageForever.lua')
+handler(nil,'PLAYER_LOGIN')
+assert(BackstageForeverExport:find('"readiness":',1,true),'Readiness must be captured')
+assert(BackstageForeverExport:find('"itemLevel":42',1,true),'Fourth API return must survive')
+assert(BackstageForeverExport:find('"quality":3',1,true))
+assert(BackstageForeverExport:find('"free":10',1,true))
+assert(not BackstageForeverExport:find('PRIVATE',1,true))
+GetInventoryItemID=nil
+handler(nil,'BAG_UPDATE_DELAYED')
+assert(BackstageForeverExport:find('"bags":',1,true) and not BackstageForeverExport:find('"equipment":',1,true),'Missing gear API must not imply empty gear')
+GetInventoryItemID=function()return 'SECRET' end
+C_Map.GetBestMapForUnit=function()return .5 end
+handler(nil,'PLAYER_EQUIPMENT_CHANGED')
+assert(not BackstageForeverExport:find('"mapId":',1,true),'Invalid optional map must not poison snapshot identity')
+assert(not BackstageForeverExport:find('SECRET',1,true))
+GetInventoryItemID=function()error('PRIVATE ERROR TOKEN') end
+C_Container.GetContainerNumSlots=function()error('PRIVATE ERROR TOKEN') end
+handler(nil,'BAG_UPDATE_DELAYED')
+assert(BackstageForeverExport:find('Player%-synthetic%-one'))
+assert(not BackstageForeverExport:find('"readiness":',1,true),'Unavailable APIs must not look like empty equipment')
+assert(diagnostic=='partial','Fixed diagnostic required on optional API failure')
+assert(not BackstageForeverExport:find('PRIVATE',1,true))
+UnitGUID=function()error('PRIVATE CORE ERROR')end
+local before=BackstageForeverExport
+handler(nil,'PLAYER_LEVEL_UP');assert(before==BackstageForeverExport and diagnostic=='unavailable')
+print('Readiness and fixed diagnostics passed')`;
+  const result = require("node:child_process").spawnSync(
+    process.execPath,
+    [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"],
+    {
+      cwd: path.join(__dirname, ".."),
+      input: script,
+      encoding: "utf8",
+      timeout: 10000,
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, "");
+  assert.match(result.stdout, /Readiness and fixed diagnostics passed/);
+});
 test("native compass executes visibility, collapse and combat hiding in Lua", () => {
   const { spawnSync } = require("node:child_process");
   const cli = require.resolve("fengari-node-cli/src/lua-cli.js");
@@ -144,6 +194,11 @@ assert(type(fontStrings[2].height)=='number' and fontStrings[2].height<=234 and 
 collapseButton.OnClick();assert(BackstageForeverHUDSettings.collapsed)
 closeButton.OnClick();assert(not panel.visible and BackstageForeverHUDSettings.visible==false)
 assert(messages[#messages]:find('/bf show',1,true),'Closing must explain how to reopen')
+SlashCmdList.BACKSTAGEFOREVER('show')
+BackstageForeverHUDCaptureStatus('unavailable')
+assert(fontStrings[2].text:find('Snapshot unavailable',1,true),'Capture failures must be visible as friendly fixed text')
+BackstageForeverHUDCaptureStatus('PRIVATE ERROR TOKEN')
+assert(not fontStrings[2].text:find('PRIVATE',1,true),'Arbitrary diagnostic input must never be displayed')
 SlashCmdList.BACKSTAGEFOREVER('show');assert(panel.visible)
 -- A fresh Lua load retains hidden state without affecting export content.
 closeButton.OnClick()

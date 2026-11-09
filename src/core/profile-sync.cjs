@@ -44,6 +44,7 @@ function mergeSnapshot(state, snapshot) {
       "quests",
       "progress",
       "history",
+      "readiness",
     ]);
     str(record.id, 200, false);
     timestamp(record.updatedAt);
@@ -66,6 +67,7 @@ function mergeSnapshot(state, snapshot) {
       "quests",
       "progress",
       "history",
+      "readiness",
     ])
       if (record[key] !== undefined) profile[key] = record[key];
     return validateState({
@@ -115,6 +117,7 @@ function mergeSnapshot(state, snapshot) {
         "quests",
         "progress",
         "history",
+        "readiness",
         "source",
       ]) {
         if (incoming[key] !== undefined) profile[key] = incoming[key];
