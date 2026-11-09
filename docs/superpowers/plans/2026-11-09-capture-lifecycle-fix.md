@@ -25,6 +25,8 @@ Files: src/core/validation.cjs, addon/BackstageForever/BackstageForever.lua, tes
 
 ### Task 2: release acceptance
 
+Before release acceptance, implement the added dropdown requirement as its own reviewed task: inspect global and page-specific select styles, add meaningful failing real Electron contrast assertions, theme opened options/optgroups and selection with adequate contrast, preserve native keyboard/focus/disabled behavior, and inspect an actual expanded Windows popup. Scope is renderer CSS plus its existing UI fixture, not a new custom dropdown framework. Commit and review the task before the final whole-branch gate. Rebuild after renderer changes.
+
 - [ ] Set package/lock/TOC/captureVersion consistently to 0.6.1; update tests expecting capture version, changelog and beginner release notes.
 - [ ] Full unit suite, relevant desktop checks, build/packaged source-resource readback, final review.
 - [ ] Publish v0.6.1 through the existing signed release workflow; monitor in this session.

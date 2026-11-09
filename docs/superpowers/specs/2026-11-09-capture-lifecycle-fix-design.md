@@ -9,3 +9,7 @@ Design: normalize null selection with a nonempty validated roster to the first p
 Tests must reproduce blank-selection/follow-off and pre-login/teardown corruption with synthetic data before source changes; cover two characters across reload/login and existing size/security assertions. No real game reload, character switching, gameplay inputs, paid inference or publication of player data. Release a signed 0.6.1 repair after tests/review/build/public verification. User performs installation and reload.
 
 Self-review: scope is the demonstrated selection and capture lifecycle failure, not unknown APIs or quest guidance expansion. Never-visited characters remain unavailable.
+
+## Added user requirement: readable themed dropdowns
+
+The user reports opened session/focus and other dropdowns have white backgrounds with faint text. Include a global dropdown contrast repair in 0.6.1. Prefer themed native selects/options with explicit dark menu backgrounds, warm readable text and a clear selection cue, preserving the existing fantasy style, keyboard operation, focus and disabled states. A full custom combobox replacement adds unnecessary behavior risk to this repair. Native platform menus may limit decorative images; do not promise unsupported popup styling. Verify all select contexts in real Electron using computed contrast and inspect an actual expanded Windows popup. No edits to the player's app data or OS accessibility settings.
