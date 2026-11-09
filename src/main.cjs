@@ -22,6 +22,7 @@ const { mergeSnapshot, mergeUserEdits } = require("./core/profile-sync.cjs");
 const { CatalogCache } = require("./core/catalog-cache.cjs");
 const { listModels } = require("./core/model-catalog.cjs");
 const { scopeResponse } = require("./core/wow-policy.cjs");
+const { buildBrief } = require("./core/adventure.cjs");
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
@@ -37,6 +38,8 @@ let win,
   resetting = false,
   busy = false;
 let latestObservation = null;
+let latestObservationRoot = null;
+let gameActionEpoch = 0;
 const links = {
   ollama: "https://ollama.com/",
   "ollama-cloud": "https://ollama.com/settings/keys",
@@ -107,13 +110,25 @@ app.whenReady().then(() => {
     updater.start();
     game = new GameSync({
       dataDir: app.getPath("userData"),
-      addonDir: path.join(__dirname, "..", "addon", "BackstageForever"),
+      addonDir: app.isPackaged
+        ? path.join(process.resourcesPath, "addon", "BackstageForever")
+        : path.join(__dirname, "..", "addon", "BackstageForever"),
       onSnapshot: (snapshot) => {
+        if (game?.root !== latestObservationRoot) {
+          latestObservation = null;
+          latestObservationRoot = game?.root;
+        }
         if (
           !resetting &&
           (!latestObservation || snapshot.observedAt >= latestObservation)
         ) {
-          store.saveState(mergeSnapshot(store.state, snapshot));
+          const merged = mergeSnapshot(store.state, snapshot);
+          if (
+            snapshot.characters.length &&
+            merged.profiles.some((p) => p.source?.kind === "wow-addon")
+          )
+            merged.onboarded = true;
+          store.saveState(merged);
           latestObservation = snapshot.observedAt;
         }
       },
@@ -171,27 +186,57 @@ app.whenReady().then(() => {
   const gameSnapshot = () => ({
     state: structuredClone(store.state),
     gameStatus: game.status(),
+    brief: buildBrief(
+      store.state.profiles.find((p) => p.id === store.state.activeProfileId),
+    ),
+    briefProfileId: store.state.activeProfileId,
+  });
+  handle("adventureBrief", (profileId) => {
+    if (profileId !== undefined && profileId !== null)
+      v.str(profileId, 100, false);
+    return buildBrief(
+      store.state.profiles.find(
+        (p) => p.id === (profileId ?? store.state.activeProfileId),
+      ),
+    );
   });
   handle("gameStatus", () => game.status());
   handle("gameSnapshot", gameSnapshot);
   handle("discoverGame", () => game.discover());
-  handle("connectGame", async (root) => {
+  async function prepareGame(root, automatic) {
     const epoch = subscriptionEpoch;
+    const actionEpoch = ++gameActionEpoch;
     await game.ready;
-    if (epoch !== subscriptionEpoch) return gameSnapshot();
+    const cancelled = () =>
+      resetting ||
+      epoch !== subscriptionEpoch ||
+      actionEpoch !== gameActionEpoch;
+    if (cancelled()) return gameSnapshot();
     if (root !== undefined) v.str(root, 1000, false);
     else {
-      const result = await dialog.showOpenDialog(win, {
-        title: "Choose your World of Warcraft Forever folder (_forever_)",
-        properties: ["openDirectory"],
-      });
-      if (result.canceled || resetting || epoch !== subscriptionEpoch)
+      if (automatic && game.status().connected) {
+        await game.prepare();
         return gameSnapshot();
-      root = result.filePaths[0];
+      }
+      const candidates = automatic ? await game.discover() : [];
+      if (cancelled()) return gameSnapshot();
+      if (candidates.length === 1) root = candidates[0].path;
+      else {
+        const result = await dialog.showOpenDialog(win, {
+          title: "Choose your World of Warcraft Forever folder (_forever_)",
+          properties: ["openDirectory"],
+          ...(candidates[0] ? { defaultPath: candidates[0].path } : {}),
+        });
+        if (result.canceled || cancelled()) return gameSnapshot();
+        root = result.filePaths[0];
+      }
     }
-    await game.connect(root);
+    if (cancelled()) return gameSnapshot();
+    await game.prepare(root);
     return gameSnapshot();
-  });
+  }
+  handle("prepareGame", (root) => prepareGame(root, true));
+  handle("connectGame", (root) => prepareGame(root, false));
   handle("installGameAddon", async () => {
     await game.installAddon();
     return gameSnapshot();
@@ -201,6 +246,7 @@ app.whenReady().then(() => {
     return gameSnapshot();
   });
   handle("disconnectGame", async () => {
+    gameActionEpoch++;
     await game.disconnect();
     return gameSnapshot();
   });
@@ -259,6 +305,10 @@ app.whenReady().then(() => {
     version: app.getVersion(),
     updateStatus: updater.status(),
     gameStatus: game.status(),
+    brief: buildBrief(
+      store.state.profiles.find((p) => p.id === store.state.activeProfileId),
+    ),
+    briefProfileId: store.state.activeProfileId,
     secretStatus: store.secretStatus(),
     subscriptionStatus: await subscriptionStatus(),
   }));
@@ -339,18 +389,7 @@ app.whenReady().then(() => {
             (p) => p.id === input.profileId,
           );
           const shared = input.shareProfile
-            ? {
-                name: profile.name,
-                realm: profile.realm,
-                className: profile.className,
-                level: profile.level,
-                ...(profile.race ? { race: profile.race } : {}),
-                ...(profile.faction ? { faction: profile.faction } : {}),
-                ...(profile.location ? { location: profile.location } : {}),
-                ...(profile.source
-                  ? { snapshotUpdatedAt: profile.source.updatedAt }
-                  : {}),
-              }
+            ? ai.approvedProfile(profile)
             : undefined;
           reply = await claude.ask({
             model: selected.model,
@@ -413,6 +452,7 @@ app.whenReady().then(() => {
     if (confirm.response !== 1 || epoch !== subscriptionEpoch) return null;
     subscriptionEpoch++;
     catalogs.clear();
+    gameActionEpoch++;
     await game.disconnect();
     latestObservation = null;
     return store.importData(text);
@@ -431,6 +471,7 @@ app.whenReady().then(() => {
     if (result.response !== 1) return null;
     resetting = true;
     subscriptionEpoch++;
+    gameActionEpoch++;
     catalogs.clear();
     try {
       await game.reset();

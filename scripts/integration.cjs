@@ -58,6 +58,8 @@ const { testWindow } = require("./test-window.cjs");
       env: { ...process.env, BF_USER_DATA: data },
     });
     const page = await testWindow(app);
+    await page.evaluate(() => localStorage.setItem("bf-setup-v4", "manual"));
+    await page.reload();
     const initial = await page.evaluate(() => window.backstage.bootstrap());
     assert.equal(initial.subscriptionStatus.openai.connected, true);
     const state = {
@@ -209,6 +211,9 @@ const { testWindow } = require("./test-window.cjs");
     }
     await page
       .getByRole("button", { name: "Delete all local data", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Use a manual character", exact: true })
       .click();
     await page
       .getByRole("heading", { name: "Every adventure starts somewhere." })

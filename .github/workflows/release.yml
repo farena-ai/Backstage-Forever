@@ -35,6 +35,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run test:ui
+      - run: npm run test:setup
+      - run: npm run test:autosave
       - run: npm run test:integration
       - run: npm run dist
         env:

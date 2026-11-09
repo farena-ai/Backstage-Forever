@@ -13,6 +13,16 @@ const { testWindow } = require("./test-window.cjs");
       env: { ...process.env, BF_USER_DATA: data },
     });
     const page = await testWindow(app);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page
+      .getByRole("heading", { name: "Set up your companion", exact: true })
+      .waitFor();
+    await page.screenshot({
+      path: path.join(__dirname, "..", "assets", "companion-setup-preview.png"),
+    });
+    await page
+      .getByRole("button", { name: "Use a manual character", exact: true })
+      .click();
     await page
       .getByRole("heading", { name: "Every adventure starts somewhere." })
       .waitFor();
@@ -39,6 +49,45 @@ const { testWindow } = require("./test-window.cjs");
           },
           className: "Hunter",
           level: 18,
+          progress: { current: 13520, max: 21000, rested: 4000 },
+          quests: [
+            {
+              id: 1001,
+              title: "Demo: Supplies for the outpost",
+              level: 18,
+              zone: "Silverwood Highlands",
+              complete: true,
+              objectives: [
+                { text: "Collect the supply crates: 6/6", done: true },
+              ],
+              destination: {
+                mapId: 1,
+                x: 0.48,
+                y: 0.64,
+                text: "Demo: Return to the outpost",
+              },
+            },
+            {
+              id: 1002,
+              title: "Demo: Along the old road",
+              level: 18,
+              zone: "Silverwood Highlands",
+              complete: false,
+              objectives: [
+                { text: "Find the missing scout: 0/1", done: false },
+              ],
+            },
+          ],
+          history: {
+            completedCount: 42,
+            recent: [
+              {
+                id: 999,
+                title: "Demo: A welcome in the highlands",
+                completedAt: Math.floor(Date.now() / 1000) - 300,
+              },
+            ],
+          },
           notes:
             "Sample journal for a product screenshot. No real player data.",
           goals: [
@@ -65,7 +114,35 @@ const { testWindow } = require("./test-window.cjs");
       className: "Mage",
       source: { ...demo.profiles[0].source, id: "synthetic-horde-art-fixture" },
     });
+    const { createHash } = require("node:crypto");
+    const rawIds = ["Synthetic-Alliance", "Synthetic-Horde"];
+    demo.profiles.forEach((p, i) => {
+      p.source.id = createHash("sha256")
+        .update("BackstageForever:" + rawIds[i])
+        .digest("hex");
+    });
     await page.evaluate((state) => window.backstage.saveState(state), demo);
+    const gameRoot = path.join(data, "synthetic-client"),
+      snapshotFile = path.join(
+        gameRoot,
+        "WTF/Account/Synthetic/SavedVariables/BackstageForever.lua",
+      );
+    await fs.mkdir(path.dirname(snapshotFile), { recursive: true });
+    await fs.writeFile(path.join(gameRoot, ".flavor.info"), "wowf");
+    const shot = {
+      schema: 1,
+      activeId: rawIds[0],
+      observedAt: Date.now() / 1000,
+      characters: demo.profiles.map((p, i) => {
+        const { source, notes, goals, ...character } = p;
+        return { ...character, id: rawIds[i], updatedAt: Date.now() / 1000 };
+      }),
+    };
+    await fs.writeFile(
+      snapshotFile,
+      "BackstageForeverExport = " + JSON.stringify(JSON.stringify(shot)),
+    );
+    await page.evaluate((root) => window.backstage.prepareGame(root), gameRoot);
     await page.reload();
     await page.getByRole("heading", { name: "Aeralyn", exact: true }).waitFor();
     await page.screenshot({

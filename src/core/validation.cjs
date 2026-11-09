@@ -1,4 +1,9 @@
 "use strict";
+const {
+  validateQuestData,
+  validateProgress,
+  validateHistory,
+} = require("./quest-data.cjs");
 const providers = [
   {
     id: "ollama",
@@ -127,7 +132,13 @@ function validateState(s) {
       "faction",
       "source",
       "location",
+      "quests",
+      "progress",
+      "history",
     ]);
+    validateQuestData(p.quests);
+    validateProgress(p.progress);
+    validateHistory(p.history);
     str(p.id, 100, false);
     if (ids.has(p.id)) fail();
     ids.add(p.id);

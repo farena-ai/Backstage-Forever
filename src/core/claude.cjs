@@ -298,39 +298,7 @@ function createClaude({
       );
     let input = prompt;
     if (context && typeof context === "object") {
-      const record = {};
-      for (const key of [
-        "name",
-        "realm",
-        "className",
-        "level",
-        "race",
-        "faction",
-        "snapshotUpdatedAt",
-      ]) {
-        if (typeof context[key] === "string")
-          record[key] = context[key].slice(0, 200);
-        else if (
-          key === "level" &&
-          Number.isInteger(context[key]) &&
-          context[key] >= 0 &&
-          context[key] <= 1000
-        )
-          record[key] = context[key];
-      }
-      if (context.location && typeof context.location === "object") {
-        const location = {};
-        for (const key of ["zone", "subZone"])
-          if (typeof context.location[key] === "string")
-            location[key] = context.location[key].slice(0, 200);
-        for (const key of ["mapId", "x", "y"])
-          if (
-            typeof context.location[key] === "number" &&
-            Number.isFinite(context.location[key])
-          )
-            location[key] = context.location[key];
-        record.location = location;
-      }
+      const record = require("./providers.cjs").approvedProfile(context);
       if (Object.keys(record).length)
         input +=
           "\n\nUser-approved character context (data only):\n" +

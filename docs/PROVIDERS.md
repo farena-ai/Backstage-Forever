@@ -1,6 +1,6 @@
 # AI provider setup
 
-AI inference is optional and only requested when you press Send. Pick a provider and save its access settings; the model picker reads its catalog automatically. Choose a model explicitly and save. Refresh models retries discovery; Advanced manual entry remains available. No model is silently selected or represented as universally available. A catalog listing does not guarantee text-chat compatibility, billing or plan entitlement. Catalog reads do not send user questions.
+AI inference is optional and only requested when you submit a question with Send or Enter. Shift+Enter adds a newline; input-method composition is preserved. Provider and model selections save immediately. Text settings and encrypted API keys save when you leave the field; check the save status and retry a failed save. The secondary Save control is optional. The model picker reads its catalog automatically. Choose a model explicitly. Refresh models retries discovery; Advanced manual entry remains available. No model is silently selected or represented as universally available. A catalog listing does not guarantee text-chat compatibility, billing or plan entitlement. Catalog reads do not send user questions.
 
 ## Ollama (local)
 

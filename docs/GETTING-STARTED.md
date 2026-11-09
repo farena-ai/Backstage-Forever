@@ -8,7 +8,7 @@ Backstage Forever is a Windows desktop app from Backstage Coding, designed by Fr
 2. If the files arrive as a ZIP, right-click it, choose **Extract All**, and open the extracted folder. Do not run files from inside the ZIP.
 3. Run the supplied Windows setup executable. This preview uses a per-user NSIS installer. It installs for your Windows account, rather than configuring every account on the computer.
 4. The preview is unsigned, so Windows may show an unknown-publisher warning or block it. Verify the source with Frank before proceeding. Do not disable Windows protections globally. A signed public release is still pending.
-5. Launch Backstage Forever from its shortcut. Complete the welcome flow and add your character's name, realm, class and level. These are manual records, not live game readings.
+5. Launch Backstage Forever from its shortcut. Choose **Set up my companion**. Existing users also get the setup entry when upgrading. The app searches common Forever locations and bounded registry entries; choose the Forever client folder if it cannot find yours. Setup prepares and verifies the addon automatically, then shows exactly what to do next. Enable/load BackstageForever in-game and voluntarily type `/reload` or log out to save your first snapshot. The app cannot load an addon or reload the game for you. You can also continue with manual character records.
 
 If no installer was supplied, use the source commands in the README. Node.js/npm are only needed for source development, not a packaged desktop installation.
 
@@ -16,9 +16,11 @@ If no installer was supplied, use the source commands in the README. Node.js/npm
 
 Add a character, then a goal you can mark complete. Use notes for information you want to keep locally. Select the active character when switching between profiles. Changes are stored on this computer under the app's Windows user-data folder.
 
-You can stop here and continue offline. For AI, open Connections, choose a provider and save its access settings. The model list refreshes automatically; choose a model and save. Refresh models retries discovery, and Advanced allows manual entry if discovery is unavailable. Cloud API mode requires your own API key. Explicit subscription modes instead use official account sign-in routes. See [Providers](PROVIDERS.md).
+You can stop here and continue offline. For AI, open Connections and choose a provider. Provider and model selections save immediately; text settings and API keys save when you leave the field. Watch the save status and retry if it reports a failure; the secondary Save control remains available. The model list refreshes automatically; choose a model explicitly. Refresh models retries discovery, and Advanced allows manual entry if discovery is unavailable. Cloud API mode requires your own API key. Explicit subscription modes instead use official account sign-in routes. See [Providers](PROVIDERS.md).
 
-In AI Companion, ask about World of Warcraft: Forever and press Send. Use my active character starts enabled and shows exactly which public character details accompany the question. Uncheck it to keep those details out; that choice persists. Notes and goals are excluded from automatic context. Anything you type into the prompt is sent, so do not paste a secret. Replies are plain text and can be wrong. Chat is temporary and is not a saved notebook. No paid question runs automatically in the background.
+Character fields and notes also save automatically (text when you leave the field). Unknown race/faction stays unknown until supplied manually or reported by the game; unfamiliar races such as Sunborn are accepted. Game race and faction come from their separate public APIs, never an invented race-to-faction lookup.
+
+In AI Companion, ask about World of Warcraft: Forever and press Send or Enter. Shift+Enter inserts a newline; input-method composition does not send prematurely. Use my active character starts enabled and shows exactly which bounded public character, quest/objective, XP and recent turn-in details accompany the question. Uncheck it to keep those details out; that choice persists. Notes and goals are excluded from automatic context. Anything you type into the prompt is sent, so do not paste a secret. Replies are plain text and can be wrong. Chat is temporary and is not a saved notebook. No paid question runs automatically in the background.
 
 ## Backup, restore and deletion
 
@@ -30,7 +32,9 @@ Use Delete Key for an individual stored provider credential. Use the reset/delet
 
 ## Optional experimental addon
 
-Open Game Connection, choose the dedicated Forever client folder and install the companion addon. Enable it in WoW and visit each character you want imported. **Levelled up or changed areas? Type `/reload` in WoW to refresh your companion.** Logging out also saves. The desktop checks saved files every five seconds while open; the displayed timestamp describes a saved snapshot, not continuous live monitoring. Choosing another character pauses automatic selection until you restore Follow my last played character. See [Game connection](GAME-CONNECTION.md) and [Compatibility](COMPATIBILITY.md). Actual in-client loading still requires acceptance on your client; desktop tests use synthetic exports.
+Reopen **Set up my companion** whenever needed. It checks the dedicated Forever client folder, prepares/verifies the addon and restores its own missing/outdated files. Only a valid Forever client or a parent containing `_forever_` is accepted. Enable it in WoW and visit each character you want imported. **Levelled up or changed areas? Type `/reload` in WoW to refresh your companion.** Logging out also saves. The desktop checks saved files every five seconds while open; the displayed timestamp describes a saved snapshot, not continuous live monitoring. Choosing another character pauses automatic selection until you restore Follow my last played character. See [Game connection](GAME-CONNECTION.md) and [Compatibility](COMPATIBILITY.md). Actual in-client loading still requires acceptance on your client; desktop tests use synthetic exports.
+
+The local adventure dashboard displays observed quests/objectives, ready turn-ins and available XP. Recent history contains at most 25 turn-ins observed with this addon; an optional public completed-count is not a full historical quest list. Waypoints appear only when the game provides them. In-game, the optional Adventure Compass is draggable, collapsible and hidden during combat. Use `/bf show`, `/bf hide` or `/bf status`. Its out-of-combat updates do not make desktop snapshots live.
 
 ## Updates and help
 

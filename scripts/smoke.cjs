@@ -23,6 +23,9 @@ const { testWindow } = require("./test-window.cjs");
   try {
     let page = await launch();
     await page
+      .getByRole("button", { name: "Use a manual character", exact: true })
+      .click();
+    await page
       .getByRole("heading", { name: "Every adventure starts somewhere." })
       .waitFor();
     await app.evaluate(({ ipcMain }) => {
@@ -91,6 +94,7 @@ const { testWindow } = require("./test-window.cjs");
         { exact: true },
       )
       .waitFor();
+    await page.getByText("Advanced connection tools", { exact: true }).click();
     await page
       .getByRole("button", { name: "Choose game folder", exact: true })
       .waitFor();

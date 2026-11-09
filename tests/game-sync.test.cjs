@@ -155,6 +155,22 @@ test("parser accepts WoW decimal byte escapes without running Lua", () => {
     '"';
   assert.equal(parseSavedVariables(lua).characters[0].name, "Example");
 });
+test("saved game history retains observed completion details without account identifiers", () => {
+  const shot = snapshot();
+  shot.characters[0].history = {
+    completedCount: 5,
+    recent: [
+      { id: 42, title: "Synthetic completion", completedAt: 1700000000 },
+    ],
+  };
+  const parsed = parseSavedVariables(saved(shot));
+  assert.equal(
+    parsed.characters[0].history.recent[0].title,
+    "Synthetic completion",
+  );
+  assert.equal(parsed.characters[0].history.completedCount, 5);
+  assert.doesNotMatch(JSON.stringify(parsed), /Player-synthetic-1/);
+});
 test("addon installer refuses symlink owned destination without changing its target", async (t) => {
   const f = await fixture(t);
   const folder = path.join(f.root, "Interface", "AddOns", "BackstageForever");
@@ -238,4 +254,107 @@ test("failed snapshot consumer is retried instead of acknowledged", async (t) =>
   await sync.refresh();
   await sync.refresh();
   assert.equal(calls, 2);
+});
+test("managed prepare repairs three owned files, keeps extras, and reports snapshot health", async (t) => {
+  const f = await fixture(t),
+    addon = path.join(f.dir, "source");
+  await fs.mkdir(addon);
+  const files = [
+    "BackstageForever.toc",
+    "BackstageForever.lua",
+    "BackstageForeverHUD.lua",
+  ];
+  for (const file of files)
+    await fs.writeFile(
+      path.join(addon, file),
+      file.endsWith(".toc") ? "## Version: 0.4.0\n" : "synthetic " + file,
+    );
+  const sync = new GameSync({
+    dataDir: path.join(f.dir, "data"),
+    addonDir: addon,
+  });
+  t.after(() => sync.close());
+  let status = await sync.prepare(f.root);
+  assert.equal(status.phase, "needs-reload");
+  assert.equal(status.addonCurrent, true);
+  assert.equal(status.addonVersion, "0.4.0");
+  assert.equal(status.checks.length, 3);
+  const folder = path.join(f.root, "Interface", "AddOns", "BackstageForever");
+  await fs.writeFile(path.join(folder, "custom.txt"), "preserve");
+  await fs.writeFile(path.join(folder, files[1]), "obsolete");
+  status = await sync.prepare();
+  assert.equal(status.addonCurrent, true);
+  assert.equal(
+    await fs.readFile(path.join(folder, files[1]), "utf8"),
+    "synthetic " + files[1],
+  );
+  assert.equal(
+    await fs.readFile(path.join(folder, "custom.txt"), "utf8"),
+    "preserve",
+  );
+  const fresh = snapshot();
+  fresh.observedAt = Math.floor(Date.now() / 1000);
+  await fs.writeFile(f.file, saved(fresh));
+  assert.equal((await sync.refresh()).phase, "synced");
+  await fs.writeFile(f.file, "broken");
+  status = await sync.refresh();
+  assert.equal(status.phase, "invalid-export");
+  assert.equal(status.characterCount, 1);
+  assert.ok(!JSON.stringify(status).includes("SyntheticAccount"));
+  sync.close();
+  const restored = new GameSync({
+    dataDir: path.join(f.dir, "data"),
+    addonDir: addon,
+  });
+  t.after(() => restored.close());
+  await fs.unlink(path.join(folder, files[2]));
+  await restored.ready;
+  assert.equal(restored.status().addonCurrent, true);
+  assert.equal(
+    await fs.readFile(path.join(folder, files[2]), "utf8"),
+    "synthetic " + files[2],
+  );
+});
+test("prepare accepts installation parent and missing account exports are needs-reload", async (t) => {
+  const f = await fixture(t),
+    parent = path.join(f.dir, "game");
+  await fs.mkdir(parent);
+  const root = path.join(parent, "_forever_");
+  await fs.rename(f.root, root);
+  const addon = path.join(f.dir, "source");
+  await fs.mkdir(addon);
+  for (const file of [
+    "BackstageForever.toc",
+    "BackstageForever.lua",
+    "BackstageForeverHUD.lua",
+  ])
+    await fs.writeFile(path.join(addon, file), "fixture");
+  const sync = new GameSync({
+    dataDir: path.join(f.dir, "data"),
+    addonDir: addon,
+  });
+  t.after(() => sync.close());
+  assert.equal((await sync.prepare(parent)).phase, "needs-reload");
+});
+test("changing the game folder requires its own snapshot and clears connection counters", async (t) => {
+  const a = await fixture(t),
+    b = await fixture(t);
+  const sync = new GameSync({
+    dataDir: path.join(a.dir, "data"),
+    addonDir: path.join(__dirname, "../addon/BackstageForever"),
+  });
+  t.after(() => sync.close());
+  await fs.writeFile(a.file, saved());
+  await sync.prepare(a.root);
+  assert.equal(sync.status().characterCount, 1);
+  const status = await sync.prepare(b.root);
+  assert.equal(status.phase, "needs-reload");
+  assert.equal(status.characterCount, 0);
+  assert.equal(status.lastSync, null);
+});
+test("logical JSON payload remains bounded even when the Lua transport has a larger escape budget", () => {
+  const json = JSON.stringify({ ...snapshot(), padding: "x".repeat(1048576) });
+  assert.throws(() =>
+    parseSavedVariables("BackstageForeverExport = [=[" + json + "]=]"),
+  );
 });

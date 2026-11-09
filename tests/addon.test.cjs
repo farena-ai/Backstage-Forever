@@ -59,10 +59,24 @@ UnitFactionGroup=function()return 'Alliance' end
 GetZoneText=function()return 'Test Zone' end
 GetSubZoneText=function()return '' end
 time=function()return 1700000000 end
+UnitXP=function()return 20 end
+UnitXPMax=function()return 100 end
+GetXPExhaustion=function()return 40 end
+C_QuestLog={GetNumQuestLogEntries=function()return 1 end,GetInfo=function()return {questID=42,title='Observed quest',isHeader=false,level=12} end,IsComplete=function()return true end,GetQuestObjectives=function()return {{text='Real objective',finished=true}} end}
 C_Map={GetBestMapForUnit=function()return 1 end,GetPlayerMapPosition=function()return {GetXY=function()return .4,.5 end}end}
 dofile('addon/BackstageForever/BackstageForever.lua')
 handler(nil,'PLAYER_LOGIN')
 assert(BackstageForeverExport:find('Player%-synthetic%-one'))
+assert(BackstageForeverExport:find('"complete":true',1,true))
+assert(BackstageForeverExport:find('"current":20',1,true))
+local inspected=false
+local protected=setmetatable({}, {__index=function() inspected=true;error('secret inspection') end})
+issecretvalue=function(v)return v==protected or v=='SECRET' end
+C_QuestLog.GetInfo=function()return protected end
+handler(nil,'QUEST_LOG_UPDATE');assert(not inspected)
+assert(not BackstageForeverExport:find('"quests":',1,true))
+C_QuestLog.GetNumQuestLogEntries=function()return 0 end
+handler(nil,'QUEST_LOG_UPDATE');assert(BackstageForeverExport:find('"quests":[]',1,true))
 local first=BackstageForeverExport
 who='Player-synthetic-two'
 -- Simulate the next login with persisted JSON and a fresh addon roster.
@@ -80,3 +94,110 @@ UnitGUID=function()error('unavailable')end
 handler(nil,'PLAYER_LOGOUT');assert(before==BackstageForeverExport)
 print('Addon runtime persistence/combat/secret/API guards passed')
 `;
+test("native compass executes visibility, collapse and combat hiding in Lua", () => {
+  const { spawnSync } = require("node:child_process");
+  const cli = require.resolve("fengari-node-cli/src/lua-cli.js");
+  const result = spawnSync(process.execPath, [cli, "-"], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8",
+    timeout: 10000,
+    input: String.raw`
+local events,panel,title
+local fighting=false
+InCombatLockdown=function()return fighting end
+SlashCmdList={}
+local methods={}
+for _,k in ipairs({'SetSize','SetPoint','SetMovable','EnableMouse','RegisterForDrag','SetClampedToScreen','SetBackdrop','SetBackdropColor','RegisterEvent','SetWidth','SetJustifyH','SetAllPoints','SetHeight','StartMoving','StopMovingOrSizing'}) do methods[k]=function()end end
+methods.SetText=function(self,text)self.text=text end
+methods.Show=function(self)self.visible=true end
+methods.Hide=function(self)self.visible=false end
+methods.SetScript=function(self,event,fn)self[event]=fn end
+methods.CreateFontString=function()return setmetatable({}, {__index=methods})end
+CreateFrame=function(kind,name,parent)
+ local f=setmetatable({}, {__index=methods})
+ if name then panel=f elseif kind=='Button' then title=f else events=f end
+ return f
+end
+dofile('addon/BackstageForever/BackstageForeverHUD.lua')
+events.OnEvent(nil,'PLAYER_LOGIN');assert(panel.visible)
+BackstageForeverHUDUpdate({name='Example',level=12,className='Mage',location={zone='Actual zone'},quests={},progress={current=1,max=100}})
+title.OnClick();SlashCmdList.BACKSTAGEFOREVER('hide');assert(not panel.visible)
+SlashCmdList.BACKSTAGEFOREVER('show');assert(panel.visible)
+fighting=true;events.OnEvent(nil,'PLAYER_REGEN_DISABLED');assert(not panel.visible)
+SlashCmdList.BACKSTAGEFOREVER('show');assert(not panel.visible)
+fighting=false;events.OnEvent(nil,'PLAYER_REGEN_ENABLED');assert(panel.visible)
+print('HUD guards passed')`,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /HUD guards passed/);
+});
+test("export sheds older optional detail under one MiB while retaining 100 identities", () => {
+  const quest = {
+    id: 1,
+    title: "Q".repeat(200),
+    complete: false,
+    objectives: Array.from({ length: 5 }, () => ({
+      text: "O".repeat(200),
+      done: false,
+    })),
+  };
+  const characters = Array.from({ length: 99 }, (_, i) => ({
+    id: "old-" + i,
+    name: "Example",
+    realm: "Realm",
+    className: "Mage",
+    level: 12,
+    updatedAt: 1600000000,
+    quests: [],
+  }));
+  let index = 0;
+  while (true) {
+    const c = characters[index % 99];
+    c.quests.push({ ...quest, id: c.quests.length + 1 });
+    const bytes = Buffer.byteLength(
+      JSON.stringify({
+        schema: 1,
+        characters,
+        activeId: "old-0",
+        observedAt: 1600000000,
+      }),
+    );
+    if (bytes > 1040000) {
+      c.quests.pop();
+      break;
+    }
+    index++;
+  }
+  const saved = JSON.stringify({
+    schema: 1,
+    characters,
+    activeId: "old-0",
+    observedAt: 1600000000,
+  });
+  const script =
+    LUA_HARNESS.slice(0, LUA_HARNESS.indexOf("dofile('addon")) +
+    `\nBackstageForeverExport=[=[${saved}]=]\nC_QuestLog.GetNumQuestLogEntries=function()return 25 end\nC_QuestLog.GetInfo=function(i)return {questID=i,title=string.rep('Q',200),isHeader=false,level=12}end\nC_QuestLog.GetQuestObjectives=function()local t={};for i=1,5 do t[i]={text=string.rep('O',200),finished=false} end;return t end\ndofile('addon/BackstageForever/BackstageForever.lua')\nhandler(nil,'PLAYER_LOGIN')\nassert(#BackstageForeverExport<1048576)\nprint(BackstageForeverExport)`;
+  const { spawnSync } = require("node:child_process");
+  const result = spawnSync(
+    process.execPath,
+    [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"],
+    {
+      cwd: path.join(__dirname, ".."),
+      input: script,
+      encoding: "utf8",
+      timeout: 30000,
+      maxBuffer: 2 * 1048576,
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  const exported = JSON.parse(result.stdout.trim());
+  const transport =
+    "BackstageForeverExport = " + JSON.stringify(result.stdout.trim());
+  const parsed = require("../src/core/game-sync.cjs").parseSavedVariables(
+    transport,
+  );
+  assert.equal(parsed.characters.length, 100);
+  assert.equal(exported.characters.length, 100);
+  assert.ok(exported.characters.some((c) => c.quests === undefined));
+  assert.equal(exported.characters[0].quests.length, 25);
+});

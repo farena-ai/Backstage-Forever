@@ -1,6 +1,22 @@
 # Validation — November 8, 2026
 
-## 0.3.0 game-aware companion evidence
+## 0.4.0 verification scope
+
+The 0.3.0 source-addon tests passed while the shipped bundle failed to copy addon files after folder selection. This regression was reproduced in the packaged application: source copies alone were insufficient evidence. Version 0.4.0 moves owned addon sources to unpacked resources and requires the actual packaged application to prepare and read back all three owned files. Final packaged/full-suite results are recorded below only after execution; no source result certifies that release gate.
+
+The built Windows executable passed the full packaged regression: choose a synthetic game folder, automatically install and compare all three files byte-for-byte, close the app, remove its HUD file, restart, wait for verified repair and compare all three files again. An unrelated file survives. The same run verifies isolated user data, Windows secure storage, preload isolation and packaged SDK loading. The named owner's existing empty addon folder was repaired and all three final files read back against this source; no game launch/reload or actual in-client rendering was automated. The first real saved character snapshot is still a player-led acceptance step. Full dependency audit: zero reported vulnerabilities.
+
+Implemented setup includes bounded common-location/registry discovery, native picker fallback, automatic preparation/repair, exact readback, explicit health checks/next actions, reconnect/reset/disconnect cancellation and unrelated-file preservation. Local targeted setup tests passed (12 tests). Adventure/quest/history checks run JavaScript contracts and a real Fengari Lua VM, covering guarded public APIs, combat suppression, persistence, unavailable/restricted data, empty-vs-unknown state, actual waypoints, bounded history/counts and export-budget shedding with 100 synthetic identities. These are synthetic fixtures, not actual client loading/HUD acceptance.
+
+`npm test`: **136/136 passed**. Real Electron UI, storage/provider/game integration, setup and autosave checks passed. Setup covers first-run, three prepared files, the reload step, automatic import, native XP meter, quest briefing, reopening, current-folder readiness and no implicit inference. Autosave covers immediate model selection, text/select persistence across navigation, encrypted key blur, arbitrary race/faction in the actual request, private-note exclusion, Enter/Shift+Enter and navigation while a catalog is deliberately stalled. Character-A edits stay with A across a newer character-B import. Setup's primary action is visible without scrolling, and the fixture reports no CSP violations.
+
+Independent review findings were fixed and verified: Lua escaping can enlarge the physical saved file, so transport has a separate bounded allowance while decoded JSON remains capped at 1 MiB; the real Lua export is round-tripped through the actual SavedVariables parser. A new game folder clears connection-specific counters and cannot borrow readiness from retained profiles. The update preference harness now faithfully dispatches additive listeners and all timers, verifying that the stale poll actually occurs. Earlier counts below are historical evidence, not current results.
+
+The approved payload includes up to 10 quests, 3 objectives each and 10 recent observed turn-ins, public identity/race/faction/location/time and XP; private journals, paths/raw GUIDs/account identifiers stay excluded. Game history stores up to 25 observed turn-ins; optional completed-count is read only within a 20,000-entry bound and never exports a full historical quest-ID/name list. Schema version 1 uses optional fields and preserves unknown data honestly. Waypoints come from actual public APIs, not invented routes.
+
+Actual Forever-client loading, native HUD pixels, live subscription consent/paid inference, clean-machine installation/real self-upgrade, screen-reader acceptance and Authenticode remain separate gates. Desktop saved-file polling is still five seconds and requires voluntary reload/logout writes. Nothing here claims a realtime desktop feed, full quest-guide database or automatic gameplay.
+
+## Historical 0.3.0 game-aware companion evidence
 
 Implementation covers a guarded SavedVariables addon, restricted non-executable export parser, bounded folder scanning, five-second saved-file polling, roster merging with retained notes/goals, cancellation/disconnect and last-played following. Provider tests cover catalog protocols, auth separation, caching/races, separate Ollama Cloud native chat and no inference entitlement probes. Specialist tests cover the shared instruction, local off-topic heuristic and approved context exclusions.
 

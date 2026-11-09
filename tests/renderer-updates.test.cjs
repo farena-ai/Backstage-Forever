@@ -12,10 +12,15 @@ function deferred() {
 }
 function harness(overrides = {}) {
   const handlers = {};
-  const automatic = { dataset: { updatePref: "automatic" }, checked: true };
+  const automatic = {
+    dataset: { updatePref: "automatic" },
+    checked: true,
+    matches: () => false,
+  };
   const installOnQuit = {
     dataset: { updatePref: "installOnQuit" },
     checked: true,
+    matches: () => false,
   };
   const summary = { textContent: "" };
   const label = { textContent: "" };
@@ -26,8 +31,10 @@ function harness(overrides = {}) {
     '[data-command="install-update"]': {},
     '[data-command="check-updates"]': {},
   };
-  const root = { addEventListener: (name, fn) => (handlers[name] = fn) };
-  let poll;
+  const root = {
+    addEventListener: (name, fn) => (handlers[name] ??= []).push(fn),
+  };
+  const polls = [];
   function select(selector) {
     if (selector.includes("data-update-pref")) {
       if (selector.includes("installOnQuit")) return [installOnQuit];
@@ -42,11 +49,17 @@ function harness(overrides = {}) {
       backstage: { bootstrap: () => new Promise(() => {}), ...overrides },
     },
     document: {
+      addEventListener: () => {},
+      body: { dataset: {} },
+      hidden: false,
       getElementById: (id) => (id === "app" ? root : {}),
       querySelector: (selector) => select(selector)[0] || null,
       querySelectorAll: select,
     },
-    setInterval: (fn) => (poll = fn),
+    setInterval: (fn) => {
+      polls.push(fn);
+      return polls.length;
+    },
     setTimeout: () => 1,
     clearTimeout: () => {},
     crypto: {},
@@ -62,10 +75,10 @@ function harness(overrides = {}) {
     automatic,
     installOnQuit,
     summary,
-    poll: () => poll(),
+    poll: () => polls.forEach((fn) => fn()),
     change: (node, checked) => {
       node.checked = checked;
-      return handlers.change({ target: node });
+      return Promise.all(handlers.change.map((fn) => fn({ target: node })));
     },
     info: () =>
       JSON.parse(vm.runInContext("JSON.stringify(updateInfo)", context)),
@@ -99,12 +112,17 @@ test("overlapping preference changes cannot silently re-enable automatic updates
 
 test("a stale status poll cannot overwrite an acknowledged opt-out", async () => {
   const poll = deferred();
+  let reads = 0;
   const save = deferred();
   const h = harness({
-    updateStatus: () => poll.promise,
+    updateStatus: () => {
+      reads++;
+      return poll.promise;
+    },
     setUpdatePreferences: () => save.promise,
   });
   h.poll();
+  assert.equal(reads, 1);
   const saving = h.change(h.automatic, false);
   save.resolve({ automatic: false, installOnQuit: true, phase: "disabled" });
   await saving;

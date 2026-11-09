@@ -42,8 +42,73 @@ const { testWindow } = require("./test-window.cjs");
       return typeof core.query;
     });
     assert.equal(sdk, "function");
+    const gameRoot = path.join(data, "synthetic-client");
+    await fs.mkdir(path.join(gameRoot, "WTF", "Account"), { recursive: true });
+    await fs.writeFile(path.join(gameRoot, ".flavor.info"), "wowf");
+    const prepared = await page.evaluate(
+      (root) => window.backstage.connectGame(root),
+      gameRoot,
+    );
+    assert.equal(
+      prepared.gameStatus.addonInstalled,
+      true,
+      "Packaged addon preparation must actually install its files",
+    );
+    const owned = [
+      "BackstageForever.toc",
+      "BackstageForever.lua",
+      "BackstageForeverHUD.lua",
+    ];
+    for (const name of owned)
+      assert.equal(
+        await fs.readFile(
+          path.join(gameRoot, "Interface", "AddOns", "BackstageForever", name),
+          "utf8",
+        ),
+        await fs.readFile(
+          path.join(__dirname, "../addon/BackstageForever", name),
+          "utf8",
+        ),
+      );
+    const addonFolder = path.join(
+      gameRoot,
+      "Interface",
+      "AddOns",
+      "BackstageForever",
+    );
+    await fs.writeFile(path.join(addonFolder, "player-extra.txt"), "preserve");
+    await app.close();
+    app = null;
+    await fs.unlink(path.join(addonFolder, "BackstageForeverHUD.lua"));
+    app = await electron.launch({
+      executablePath: path.join(
+        __dirname,
+        "../dist/win-unpacked/Backstage Forever.exe",
+      ),
+      args: ["--user-data-dir=" + data],
+    });
+    const reopened = await testWindow(app);
+    let restored;
+    for (let attempt=0;attempt<100;attempt++) {
+      restored=await reopened.evaluate(()=>window.backstage.gameStatus());
+      if(restored.addonCurrent) break;
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }
+    assert.equal(restored.addonCurrent,true,"Startup must finish verifying the repaired addon");
+    for (const name of owned)
+      assert.equal(
+        await fs.readFile(path.join(addonFolder, name), "utf8"),
+        await fs.readFile(
+          path.join(__dirname, "../addon/BackstageForever", name),
+          "utf8",
+        ),
+      );
+    assert.equal(
+      await fs.readFile(path.join(addonFolder, "player-extra.txt"), "utf8"),
+      "preserve",
+    );
     console.log(
-      "PASS: packaged Windows executable opens the branded interface from ASAR with secure storage and isolated preload. No player data or credentials changed.",
+      "PASS: isolated packaged Windows startup, SDK loading, automatic three-file addon install/readback and startup repair preserving unrelated files. No player data or credentials changed.",
     );
   } finally {
     if (app) await app.close();

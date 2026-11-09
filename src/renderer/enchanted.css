@@ -1,0 +1,597 @@
+/* Enchanted command table: graphic ornament is decorative and never captures input. */
+:root {
+  --magic: #69dcc7;
+  --magic-soft: #69dcc732;
+  --bronze: #bc8b4e;
+}
+body[data-faction="Horde"],
+body[data-faction="horde"] {
+  --magic: #ff956e;
+  --magic-soft: #ee6d4732;
+}
+body[data-faction="Alliance"],
+body[data-faction="alliance"] {
+  --magic: #85caff;
+  --magic-soft: #85caff32;
+}
+button:not(.illustrated-card) {
+  position: relative;
+  isolation: isolate;
+  min-height: 42px;
+  border: 1px solid #9a7545;
+  border-radius: 2px 9px 2px 9px;
+  padding: 11px 25px;
+  color: #f4dfb5;
+  background:
+    radial-gradient(ellipse at 50% 0, #96704336, transparent 70%),
+    repeating-linear-gradient(118deg, #ffffff04 0 1px, transparent 1px 4px),
+    linear-gradient(#393b32 0%, #24261f 47%, #151a15 49%, #25291f 100%);
+  box-shadow:
+    inset 0 0 0 2px #131511,
+    inset 0 0 0 3px #c5985033,
+    inset 0 5px 7px #e5b96b15,
+    0 3px 0 #090e0c,
+    0 5px 12px #0007;
+  text-shadow: 0 2px 2px #000;
+  transition:
+    transform 0.18s,
+    box-shadow 0.18s,
+    border-color 0.18s;
+}
+button:not(.illustrated-card)::before,
+button:not(.illustrated-card)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 30px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  background: url("../../assets/ui-button-endcap.svg") center/contain no-repeat;
+}
+button:not(.illustrated-card)::before {
+  left: -5px;
+}
+button:not(.illustrated-card)::after {
+  right: -5px;
+  transform: translateY(-50%) rotate(180deg);
+}
+button:not(.illustrated-card):hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: #edd39a;
+  box-shadow:
+    inset 0 0 0 2px #191810,
+    inset 0 0 0 3px #c5985077,
+    0 4px 0 #090e0c,
+    0 0 22px var(--magic-soft);
+}
+button:not(.illustrated-card):active:not(:disabled) {
+  transform: translateY(1px);
+}
+button.primary:not(.illustrated-card) {
+  color: #fff4d7;
+  border-color: #f1d69a;
+  font-weight: 750;
+  background:
+    radial-gradient(ellipse at 50% 0, #ffe5a255, transparent 65%),
+    linear-gradient(#a47b36, #6f4c1d 47%, #46371c 49%, #8b632a);
+  box-shadow:
+    inset 0 0 0 2px #36220e,
+    inset 0 0 0 3px #e8be7366,
+    0 3px 0 #0c0c09,
+    0 0 25px #d5aa4130;
+}
+button.primary:not(.illustrated-card)::before,
+button.primary:not(.illustrated-card)::after {
+  width: 23px;
+  height: 37px;
+  filter: drop-shadow(0 0 5px var(--magic));
+}
+button.subtle:not(.illustrated-card) {
+  background: linear-gradient(#30322b, #151b17);
+}
+button.danger:not(.illustrated-card) {
+  background: linear-gradient(#4c2d26, #241713);
+  border-color: #b97d61;
+}
+nav button:not(.illustrated-card) {
+  margin-bottom: 8px;
+  padding-left: 17px;
+  border-color: #685639;
+  text-align: left;
+}
+nav button.active:not(.illustrated-card) {
+  background:
+    radial-gradient(ellipse at 15% 50%, var(--magic-soft), transparent 75%),
+    linear-gradient(90deg, #403b28, #21291f);
+  border-color: #d9b56d;
+}
+nav button .glyph {
+  color: var(--magic);
+  text-shadow: 0 0 12px var(--magic);
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #bcf9ef;
+  outline-offset: 5px;
+}
+button:disabled {
+  filter: saturate(0.35);
+}
+.hero {
+  background-size: 107% auto;
+  animation: enchanted-landscape 32s ease-in-out infinite alternate;
+}
+.hero-medallion {
+  animation: enchanted-breathe 6s ease-in-out infinite;
+}
+.panel,
+.brief-card {
+  border: 1px solid #685637;
+  box-shadow:
+    inset 0 1px #d8ad4e20,
+    0 5px 18px #0004;
+}
+.setup-screen {
+  position: relative;
+  max-width: 1250px;
+  margin: 0 auto;
+  animation: enchanted-arrive 0.55s ease-out both;
+}
+.setup-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 228px;
+  padding: 34px 38px;
+  border: 3px ridge #a78248;
+  background:
+    linear-gradient(90deg, #101c18f5 0%, #13211bdf 43%, #13211b33 100%),
+    url("../../assets/citadel-journey.png") 70% 46% / cover;
+  box-shadow:
+    inset 0 0 50px #0006,
+    0 12px 35px #0007;
+  isolation: isolate;
+}
+.setup-hero h1 {
+  max-width: 650px;
+  font-size: clamp(30px, 3.8vw, 49px);
+  margin: 9px 0 12px;
+  color: #ffe3ab;
+  text-shadow: 0 3px 8px #000;
+}
+.setup-hero p {
+  max-width: 580px;
+  color: #e2d9c1;
+  line-height: 1.55;
+}
+.setup-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 210px;
+  height: 210px;
+  right: 7%;
+  top: 12px;
+  border: 1px solid #d5be6e55;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    transparent 0deg 28deg,
+    #d6c47d77 29deg 30deg
+  );
+  mask: radial-gradient(
+    transparent 0 63%,
+    #000 64% 66%,
+    transparent 67% 72%,
+    #000 73% 74%,
+    transparent 75%
+  );
+  animation: enchanted-orbit 90s linear infinite;
+  pointer-events: none;
+}
+.setup-panel {
+  position: relative;
+  margin-top: 20px;
+  padding: 25px;
+  border: 2px ridge #8b7045;
+  background:
+    radial-gradient(ellipse at top left, #5b4b2525, transparent 70%),
+    repeating-linear-gradient(130deg, #ffffff02 0 1px, transparent 1px 5px),
+    #171d18;
+  box-shadow:
+    inset 0 0 0 3px #0b110e,
+    0 8px 24px #0005;
+}
+.setup-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 13px;
+  margin: 20px 0;
+  counter-reset: readiness;
+}
+.setup-step {
+  position: relative;
+  padding: 18px 16px;
+  border: 1px solid #5d553d;
+  background: linear-gradient(145deg, #35362888, #151d18);
+  min-width: 0;
+  counter-increment: readiness;
+  box-shadow: inset 0 0 0 3px #111811;
+}
+.setup-step::before {
+  content: counter(readiness, decimal-leading-zero);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 12px;
+  color: #d8c391;
+  font-family: Cinzel, Georgia, serif;
+  border: 2px ridge #9d8150;
+  transform: rotate(-4deg);
+  background: #222b23;
+  box-shadow: 0 3px 9px #0007;
+}
+.setup-step h3 {
+  font-size: 16px;
+  margin: 7px 0;
+}
+.setup-step p,
+.setup-step small {
+  color: #c0c3ad;
+  line-height: 1.45;
+}
+.setup-step[data-state="active"] {
+  border-color: var(--magic);
+  background:
+    radial-gradient(ellipse at 50% 0, var(--magic-soft), transparent 85%),
+    #1b271f;
+  box-shadow:
+    inset 0 0 0 3px #101b16,
+    0 0 18px var(--magic-soft);
+}
+.setup-step[data-state="active"]::before {
+  color: #d3fff3;
+  border-color: var(--magic);
+  text-shadow: 0 0 12px var(--magic);
+}
+.setup-step[data-state="done"]::before {
+  content: "✓";
+  color: #c0f0b7;
+  border-color: #92b873;
+}
+.setup-step[data-state="locked"] {
+  border-style: dashed;
+}
+.setup-step[data-state="blocked"] {
+  border-color: #d89b75;
+  background: linear-gradient(140deg, #50362777, #211c17);
+}
+.setup-progress {
+  display: block;
+  width: 100%;
+  height: 8px;
+  accent-color: var(--magic);
+  border-radius: 0;
+  background: #090f0b;
+}
+.setup-actions,
+.setup-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 21px;
+}
+.setup-footer {
+  justify-content: space-between;
+  color: #bcb69e;
+  font-size: 13px;
+}
+.setup-status {
+  border-left: 2px solid var(--magic);
+  padding: 12px 17px;
+  background: #77d9b60b;
+  color: #d4e3cd;
+  line-height: 1.5;
+}
+.setup-check {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #76633c44;
+}
+.setup-rune,
+.companion-gem {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 58px;
+  height: 58px;
+  border: 3px ridge #c8a462;
+  border-radius: 12px 2px;
+  color: #dbfff7;
+  background: conic-gradient(
+    from 45deg,
+    #133b34,
+    #80d7bc,
+    #1c7660,
+    #174236,
+    #b7e6be,
+    #133b34
+  );
+  box-shadow:
+    inset 0 0 0 5px #17281ecc,
+    inset 0 0 17px #c7fff17a,
+    0 0 22px var(--magic-soft);
+  text-shadow: 0 0 8px #a8ffe0;
+  font-size: 25px;
+  animation: enchanted-breathe 6s ease-in-out infinite;
+}
+.companion-banner {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding: 22px 26px;
+  margin-bottom: 21px;
+  border: 2px ridge #aa884c;
+  background:
+    radial-gradient(ellipse at 8% 0, var(--magic-soft), transparent 65%),
+    linear-gradient(100deg, #182b22, #24271b);
+  box-shadow:
+    inset 0 0 0 3px #11190e,
+    0 5px 15px #0005;
+}
+.companion-banner h2 {
+  margin: 0 0 5px;
+  font-size: 24px;
+}
+.companion-banner p {
+  margin: 0;
+  color: #cec9af;
+}
+.companion-banner button {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.adventure-brief {
+  margin: 25px 0;
+}
+.brief-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.brief-card {
+  min-width: 0;
+  padding: 19px;
+  background: linear-gradient(145deg, #34352977, #171d18);
+}
+.brief-card h3 {
+  font-size: 17px;
+  margin-top: 0;
+}
+.quest-list {
+  display: grid;
+  gap: 11px;
+  margin: 17px 0;
+}
+.quest-row {
+  position: relative;
+  padding: 16px 18px 16px 23px;
+  border: 1px solid #655737;
+  border-left: 3px solid #c39f55;
+  background: linear-gradient(100deg, #36322388, #161e19);
+  box-shadow: inset 0 1px #d0b36c15;
+}
+.quest-row h3,
+.quest-row h4 {
+  margin: 0 0 7px;
+  color: #e9d2a0;
+}
+.quest-status {
+  color: #bce2b1;
+  font-size: 12px;
+  letter-spacing: 0.6px;
+}
+.quest-objectives {
+  padding-left: 20px;
+  color: #c9c9b3;
+  line-height: 1.65;
+  margin-bottom: 0;
+}
+.xp-track {
+  overflow: hidden;
+  height: 12px;
+  margin: 12px 0 7px;
+  padding: 2px;
+  border: 1px solid #aa8b52;
+  background: #0b110e;
+  box-shadow: inset 0 2px 5px #000;
+}
+progress.xp-track {
+  display: block;
+  width: 100%;
+  appearance: none;
+}
+progress.xp-track::-webkit-progress-bar {
+  background: #0b110e;
+}
+progress.xp-track::-webkit-progress-value {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--class-accent) 45%, #17382c),
+    var(--class-accent),
+    #e2f3c4
+  );
+  box-shadow: 0 0 12px #8af2ce88;
+}
+.setup-diagnostics {
+  margin-top: 16px;
+}
+.xp-fill {
+  height: 100%;
+  max-width: 100%;
+  background: linear-gradient(90deg, #35645d, #72c9b5, #cbe8a8);
+  box-shadow: 0 0 12px #8af2ce88;
+  transition: width 0.6s ease;
+}
+.milestone {
+  color: #e1c88e;
+  font-family: Cinzel, Georgia, serif;
+}
+.companion-dock,
+.readiness-tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 15px;
+  padding: 16px 20px;
+  border: 1px solid #816a3f;
+  background: linear-gradient(#303226, #19221b);
+  box-shadow: inset 0 0 0 3px #10170f;
+}
+@keyframes enchanted-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes enchanted-breathe {
+  50% {
+    filter: drop-shadow(0 0 9px var(--magic-soft));
+  }
+}
+@keyframes enchanted-landscape {
+  from {
+    background-position: 60% 48%;
+  }
+  to {
+    background-position: 65% 51%;
+  }
+}
+@keyframes enchanted-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+body[data-paused="true"] *,
+body[data-paused="true"] *::before,
+body[data-paused="true"] *::after {
+  animation-play-state: paused !important;
+}
+@media (max-width: 1150px) {
+  .setup-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .setup-hero {
+    padding: 24px;
+    min-height: 200px;
+  }
+  .setup-hero::after {
+    right: -65px;
+  }
+  .setup-hero p {
+    max-width: 460px;
+  }
+  .brief-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .companion-banner {
+    flex-wrap: wrap;
+    padding: 18px;
+  }
+  .companion-banner button {
+    margin-left: 0;
+  }
+}
+@media (max-width: 800px) {
+  .setup-steps,
+  .brief-grid {
+    grid-template-columns: 1fr;
+  }
+  .setup-panel {
+    padding: 17px;
+  }
+  .setup-hero {
+    padding: 23px 19px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .hero {
+    background-size: cover;
+  }
+}
+/* Character paintings move as a separate depth plane behind the readable copy. */
+body[data-class] .hero-class-art {
+  transform-origin: 65% 45%;
+  animation: enchanted-portrait 23s ease-in-out infinite alternate;
+}
+body[data-class] .companion-gem,
+body[data-class] .setup-rune {
+  --magic: var(--class-accent);
+  --magic-soft: color-mix(in srgb, var(--class-accent) 25%, transparent);
+}
+body[data-class] .xp-fill {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--class-accent) 45%, #17382c),
+    var(--class-accent),
+    #e2f3c4
+  );
+}
+.hero::after {
+  content: "";
+  inset: 0;
+  width: auto;
+  height: auto;
+  border: 0;
+  background:
+    radial-gradient(circle at 77% 79%, #f6cc7ba6 0 1px, transparent 2px),
+    radial-gradient(circle at 93% 62%, #f6cc7b77 0 1px, transparent 2px),
+    radial-gradient(circle at 67% 36%, #d5ffd86b 0 1px, transparent 2px),
+    radial-gradient(circle at 85% 25%, #d5ffd84d 0 1px, transparent 2px);
+  animation: enchanted-embers 14s ease-in-out infinite alternate;
+  z-index: 1;
+  filter: drop-shadow(0 0 4px #fac674);
+}
+@keyframes enchanted-portrait {
+  from {
+    transform: scale(1.01) translateX(0);
+  }
+  to {
+    transform: scale(1.06) translateX(-1%);
+  }
+}
+@keyframes enchanted-embers {
+  from {
+    transform: translateY(7px);
+    opacity: 0.45;
+  }
+  to {
+    transform: translateY(-18px);
+    opacity: 0.85;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-class] .hero-class-art,
+  .hero::after {
+    animation: none;
+    transform: none;
+  }
+}

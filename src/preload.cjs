@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld(
   Object.freeze({
     bootstrap: () => invoke("bootstrap"),
     gameStatus: () => invoke("gameStatus"),
+    adventureBrief: (profileId) => invoke("adventureBrief", profileId),
+    prepareGame: (root) => invoke("prepareGame", root),
     gameSnapshot: () => invoke("gameSnapshot"),
     discoverGame: () => invoke("discoverGame"),
     connectGame: (root) => invoke("connectGame", root),

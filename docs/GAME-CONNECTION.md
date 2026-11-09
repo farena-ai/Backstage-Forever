@@ -1,15 +1,25 @@
-# Game connection
+# Game connection and setup
 
-Open Game Connection, choose your World of Warcraft: Forever client folder, and install the companion addon. The installer updates only BackstageForever's own addon files. Enable the addon in WoW; if the game was already running, load it on your next restart or voluntary UI reload.
+Choose **Set up my companion** on first launch, after an upgrade, or from the persistent setup entry. The app looks in bounded common C–Z drive locations and registry entries, without recursively scanning your drives. If needed, select your dedicated Forever client folder or a parent containing `_forever_`. Other clients are rejected.
 
-The addon tracks public character information while you play, including name, realm, class, level, race, faction and available zone/location data. It remembers characters you have actually visited with the addon enabled. It cannot discover every character on your account through a magical account API.
+Setup automatically prepares and verifies all three owned BackstageForever addon files, and repairs missing/outdated owned files on a connected startup. Unrelated addon files are preserved. Its checks and next action explain whether the folder is unavailable, files need preparation, the game needs a saved snapshot, or the connection is ready. Choosing a folder is not proof that the game loaded the addon.
 
-**Levelled up or changed areas? Type `/reload` in WoW to refresh your companion.**
+Enable BackstageForever in the game. A newly added addon may require a voluntary game restart before it appears. Never assume a desktop ready indicator can load an addon into a running client.
 
-WoW writes the saved snapshot to disk on UI reload or logout. The desktop checks for saved exports while it is open and imports changes automatically. This is a saved snapshot, not a realtime feed: moving, levelling or changing areas in the game does not immediately write a desktop file. The displayed snapshot time tells you how old that information is. Backstage Forever never forces a reload, logs you out, reads game memory, or automates gameplay.
+**Levelled up or changed areas? Type `/reload` in WoW to refresh your companion.** Logout also saves. The desktop checks saved exports every five seconds while open; it cannot see unsaved game changes. No reload, logout or launch is forced.
 
-Follow my last played character starts enabled. The newest saved export selects its active character until you deliberately choose another profile; that pauses automatic selection while every character's saved details continue updating. Restore the checkbox in Game Connection to follow again. Imported characters keep their stable identity even after a name or realm change. Newer records update game fields; older records cannot roll them back. Your notes, goals and unrelated manual profiles stay intact. A manual profile becomes linked only when its exact name and realm uniquely identify one imported character. Ambiguous matches stay separate. The local roster is limited to 100 profiles; at the limit existing profiles can still update, but additional characters are skipped.
+## Two views of your adventure
 
-Disconnecting stops automatic imports and keeps the characters already imported. A missing or incomplete saved file also leaves your last good profiles intact. Reconnect or refresh after a valid export becomes available. Backups include character profiles and their snapshot metadata, but the machine-specific game-folder connection is stored separately. Account folder names, local paths and source identifiers are not automatically sent to the AI; the character context preview shows the game details offered to the provider.
+The optional in-game Adventure Compass updates out of combat using guarded public APIs. Drag it to reposition, click its title to collapse, or use `/bf show`, `/bf hide` and `/bf status`. It hides during combat. Unsupported frame APIs leave the saved export usable.
 
-Addon compatibility uses guarded public APIs and the Forever Interface 16001 declaration. Desktop parser and synthetic addon-runtime tests do not establish that a particular running game client has loaded the addon; confirm it is enabled and export a snapshot in your client.
+The desktop dashboard shows the most recently saved public character details, observed quests/objectives, ready turn-ins, available XP, up to 25 recent turn-ins observed while tracking, and an optional public completed-count. Actual game-provided waypoints may appear; no optimal routes or invented NPC destinations are supplied. Missing or restricted data is unknown. A completed-count is not a complete historical quest-name list.
+
+Race and faction are read independently from `UnitRace` and `UnitFactionGroup`; unfamiliar races are not rejected or assigned an assumed faction. Only characters visited with the addon enabled are known. The addon cannot discover every account character.
+
+## Characters and recovery
+
+Follow my last played character starts enabled. Deliberately choosing another profile pauses following until its checkbox is restored. Newer snapshots update game fields without rolling back notes/goals or unsaved journal edits. Stable identities survive game name/realm changes. A manual profile links only on a unique exact name/realm match; ambiguous matches stay separate. The roster supports 100 profiles; existing profiles can update at capacity.
+
+Disconnect stops imports and keeps profiles. Missing/invalid exports preserve the last good profiles and show a retryable next step. A disconnected user is not automatically reconnected. Backup files include profiles and snapshot metadata; machine-specific folder settings remain separate. Raw account identifiers, local paths and source IDs are excluded from approved AI context.
+
+The addon declares Forever Interface 16001 and guards public APIs. Synthetic parser/Lua/Electron tests do not establish actual client loading or HUD appearance. See [Compatibility](COMPATIBILITY.md) and [Validation](VALIDATION.md).

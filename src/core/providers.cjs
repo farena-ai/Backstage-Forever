@@ -1,23 +1,65 @@
 "use strict";
 const v = require("./validation.cjs");
 const { INSTRUCTION: instruction } = require("./wow-policy.cjs");
+function approvedProfile(p) {
+  const out = {};
+  for (const key of [
+    "name",
+    "className",
+    "level",
+    "realm",
+    "race",
+    "faction",
+  ]) {
+    if (typeof p[key] === "string") out[key] = p[key].slice(0, 200);
+    else if (
+      key === "level" &&
+      Number.isInteger(p[key]) &&
+      p[key] >= 1 &&
+      p[key] <= 1000
+    )
+      out[key] = p[key];
+  }
+  if (p.location) {
+    const location = {};
+    for (const key of ["zone", "subZone"])
+      if (typeof p.location[key] === "string")
+        location[key] = p.location[key].slice(0, 200);
+    for (const key of ["mapId", "x", "y"])
+      if (
+        Number.isFinite(p.location[key]) &&
+        p.location[key] >= 0 &&
+        (key === "mapId"
+          ? Number.isSafeInteger(p.location[key])
+          : p.location[key] <= 1)
+      )
+        location[key] = p.location[key];
+    out.location = location;
+  }
+  const stamp = p.source?.updatedAt ?? p.snapshotUpdatedAt;
+  if (typeof stamp === "string" && Number.isFinite(Date.parse(stamp)))
+    out.snapshotUpdatedAt = stamp;
+  const {
+    validateQuestData,
+    validateProgress,
+    validateHistory,
+  } = require("./quest-data.cjs");
+  if (p.quests !== undefined)
+    out.quests = validateQuestData(p.quests)
+      .slice(0, 10)
+      .map((q) => ({ ...q, objectives: q.objectives.slice(0, 3) }));
+  if (p.progress !== undefined) out.progress = validateProgress(p.progress);
+  if (p.history !== undefined) {
+    const h = validateHistory(p.history);
+    out.history = { ...h, recent: h.recent.slice(0, 10) };
+  }
+  return out;
+}
 function profileContext(state, id, share) {
   if (!share) return "";
   const p = state.profiles.find((p) => p.id === id);
   if (!p) throw new Error("Choose a character before sharing context.");
-  return (
-    "Optional character context: " +
-    JSON.stringify({
-      name: p.name,
-      className: p.className,
-      level: p.level,
-      realm: p.realm,
-      race: p.race,
-      faction: p.faction,
-      location: p.location,
-      snapshotUpdatedAt: p.source?.updatedAt,
-    })
-  );
+  return "Optional character context: " + JSON.stringify(approvedProfile(p));
 }
 async function ask(
   { provider, model, endpoint, apiKey, prompt, context = "" },
@@ -123,4 +165,4 @@ async function ask(
     );
   }
 }
-module.exports = { ask, profileContext };
+module.exports = { ask, profileContext, approvedProfile };

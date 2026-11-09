@@ -41,6 +41,9 @@ function mergeSnapshot(state, snapshot) {
       "faction",
       "location",
       "updatedAt",
+      "quests",
+      "progress",
+      "history",
     ]);
     str(record.id, 200, false);
     timestamp(record.updatedAt);
@@ -56,7 +59,14 @@ function mergeSnapshot(state, snapshot) {
       goals: [],
       source: { kind: "wow-addon", id: record.id, updatedAt: record.updatedAt },
     };
-    for (const key of ["race", "faction", "location"])
+    for (const key of [
+      "race",
+      "faction",
+      "location",
+      "quests",
+      "progress",
+      "history",
+    ])
       if (record[key] !== undefined) profile[key] = record[key];
     return validateState({
       ...next,
@@ -102,6 +112,9 @@ function mergeSnapshot(state, snapshot) {
         "race",
         "faction",
         "location",
+        "quests",
+        "progress",
+        "history",
         "source",
       ]) {
         if (incoming[key] !== undefined) profile[key] = incoming[key];

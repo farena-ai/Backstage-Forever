@@ -6,13 +6,13 @@
 
 **[Download the Windows preview](https://github.com/farena-ai/Backstage-Forever/releases)** · **[Install and get started](docs/GETTING-STARTED.md)** · **[Choose an AI connection](docs/PROVIDERS.md)**
 
-Version **0.3.0 is a desktop preview** with cinematic original fantasy artwork, textured journals and authenticated automatic Windows updates. Create characters, track goals and keep notes locally, with or without AI. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
+Version **0.4.0 is a desktop preview** with cinematic original fantasy artwork, textured journals and authenticated automatic Windows updates. Create characters, track goals and keep notes locally, with or without AI. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
 
 ## Install
 
 1. Open [Releases](https://github.com/farena-ai/Backstage-Forever/releases) and select the Windows setup executable attached to the preview release.
 2. If downloading a ZIP, extract it first. Run the setup executable for your Windows account.
-3. Launch Backstage Forever and create a character. Continue offline, or open Connections to configure AI.
+3. Launch Backstage Forever and choose **Set up my companion**. It looks for your Forever client, asks for a folder if needed, prepares and verifies its addon, then explains the next step. Enable/load the addon in-game and voluntarily `/reload` or log out to save a snapshot. Manual profiles and AI setup remain optional.
 
 The installer is **unsigned**. Windows may display an unknown-publisher warning; verify the download source before proceeding. Signing and clean-machine installation/upgrade acceptance remain pending. See [Getting started](docs/GETTING-STARTED.md) for full beginner instructions, backups and deletion.
 
@@ -23,9 +23,11 @@ The installer is **unsigned**. Windows may display an unknown-publisher warning;
 - Automatic checks and downloads of authenticated releases, installation on exit, restart-now and preference controls.
 - Optional offline local Ollama, separate Ollama Cloud, or OpenAI, Anthropic and xAI API connections with your own key. Friendly model catalogs refresh on startup, connection opening, authentication, saving and manual refresh; no paid inference probes or silent provider/model/billing fallback.
 - Explicit ChatGPT browser subscription authentication and Claude subscription authentication through the separately installed official Claude Code tool, using app-private credentials.
-- Optional Game Connection: choose the client folder and install/update the guarded companion addon with one click. Saved-file checks run every five seconds while open. Notes and goals survive imports.
+- First-run and migration setup discovers the Forever client or offers a folder picker, automatically prepares/verifies the addon and repairs its missing or outdated files. Clear checks explain whether to choose a folder, prepare files, reload or play. Saved-file checks run every five seconds while open; notes and goals survive imports.
+- A local adventure dashboard shows observed quests/objectives, ready turn-ins, XP, recent observed completions and actual public-API waypoints when available. An optional draggable/collapsible in-game Adventure Compass updates out of combat and hides during combat; `/bf show`, `/bf hide` and `/bf status` control it. This is not a complete quest database or optimal route planner.
+- Connections, models and character fields save automatically; text fields and encrypted API keys save when focus leaves them. Notes persist locally. Enter sends an explicit AI question; Shift+Enter adds a line, with input-method composition preserved.
 - A permanent World of Warcraft: Forever specialist, with a local gate for obvious unrelated requests and a shared provider policy. The gate is a heuristic, not a perfect classifier. No code execution or gameplay automation.
-- **Use my active character is on by default**, with a persistent opt-out and visible context preview. Only public name, realm, class, level, race, faction, location and snapshot timestamp accompany a submitted question; notes, goals, raw GUIDs, account identifiers and paths are excluded.
+- **Use my active character is on by default**, with a persistent opt-out and visible context preview. The preview shows bounded public identity, race/faction, location, snapshot time, quest/objective details, XP and recent observed completion history that accompany a submitted question; notes, goals, raw GUIDs, account identifiers and paths are excluded.
 
 API adapters and subscription transports have fixture coverage. **Live interactive subscription consent and paid inference acceptance have not been performed.** Fixtures do not prove account eligibility, live API access or billing coverage. API mode and subscription mode are separate; errors do not silently switch to API charging. This preview supports one saved ChatGPT registration/account per installation; reset app data to switch accounts, after exporting your profiles if needed.
 
@@ -53,6 +55,8 @@ npm start
 npm test
 npm run test:ui
 npm run test:integration
+npm run test:setup
+npm run test:autosave
 npm run dist
 ```
 

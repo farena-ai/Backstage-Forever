@@ -255,3 +255,32 @@ test("three-way edits apply explicit deletion, selection and goals without resur
     1,
   );
 });
+test("quest and XP updates require newer observed data; unavailable clears old observation", () => {
+  const q = [{ id: 1, title: "Known", complete: false, objectives: [] }];
+  let s = mergeSnapshot(
+    defaultState(),
+    snapshot([
+      character("a", { quests: q, progress: { current: 10, max: 100 } }),
+    ]),
+  );
+  s = mergeSnapshot(s, snapshot([character("a", { updatedAt: newer })]));
+  assert.equal(s.profiles[0].quests, undefined);
+  assert.equal(s.profiles[0].progress, undefined);
+  s = mergeSnapshot(
+    s,
+    snapshot([character("a", { updatedAt: old, quests: [] })]),
+  );
+  assert.equal(s.profiles[0].quests, undefined);
+  s = mergeSnapshot(
+    s,
+    snapshot([
+      character("a", {
+        updatedAt: "2026-01-03T00:00:00.000Z",
+        quests: [],
+        progress: { current: 20, max: 100 },
+      }),
+    ]),
+  );
+  assert.deepEqual(s.profiles[0].quests, []);
+  assert.equal(s.profiles[0].progress.current, 20);
+});
