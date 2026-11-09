@@ -15,7 +15,7 @@ const { testWindow } = require("./test-window.cjs");
     const page = await testWindow(app);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page
-      .getByRole("heading", { name: "Set up your companion", exact: true })
+      .getByRole("heading", { name: "A companion for the road ahead.", exact: true })
       .waitFor();
     await page.screenshot({
       path: path.join(__dirname, "..", "assets", "companion-setup-preview.png"),
@@ -125,7 +125,14 @@ const { testWindow } = require("./test-window.cjs");
         .update("BackstageForever:" + rawIds[i])
         .digest("hex");
     });
-    await page.evaluate((state) => window.backstage.saveState(state), demo);
+    // Seed only manual journals here; the synthetic GameSync export below owns
+    // all captured facts and attaches them to these matching manual identities.
+    const manualDemo = {
+      ...demo,
+      profiles: demo.profiles.map(({ id, name, realm, className, level, race, faction, notes, goals }) =>
+        ({ id, name, realm, className, level, race, faction, notes, goals })),
+    };
+    await page.evaluate((state) => window.backstage.saveState(state), manualDemo);
     const gameRoot = path.join(data, "synthetic-client"),
       snapshotFile = path.join(
         gameRoot,

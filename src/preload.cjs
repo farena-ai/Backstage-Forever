@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld(
     guidancePlan: (profileId, options) =>
       invoke("guidancePlan", profileId, options),
     adventureBrief: (profileId) => invoke("adventureBrief", profileId),
+    companyBrief: () => invoke("companyBrief"),
+    journeyAction: (action) => invoke("journeyAction", action),
     knowledgeStatus: () => invoke("knowledgeStatus"),
     refreshKnowledge: () => invoke("refreshKnowledge"),
     setKnowledgeAutomatic: (automatic) =>

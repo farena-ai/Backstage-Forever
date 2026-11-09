@@ -19,7 +19,11 @@ const { ChatGPTAuth } = require("./core/chatgpt.cjs");
 const claude = require("./core/claude.cjs");
 const { Updater } = require("./core/updater.cjs");
 const { GameSync } = require("./core/game-sync.cjs");
-const { mergeSnapshot, mergeUserEdits } = require("./core/profile-sync.cjs");
+const { mergeSnapshot } = require("./core/profile-sync.cjs");
+const {
+  registerCompanyHandlers,
+  mergeOrdinaryState,
+} = require("./core/company-ipc.cjs");
 const { CatalogCache } = require("./core/catalog-cache.cjs");
 const { listModels } = require("./core/model-catalog.cjs");
 const { scopeResponse } = require("./core/wow-policy.cjs");
@@ -207,6 +211,11 @@ app.whenReady().then(() => {
     return updater.status();
   });
   handle("subscriptionStatus", subscriptionStatus);
+  registerCompanyHandlers({
+    handle,
+    getState: () => store.state,
+    saveState: (next) => store.saveState(next),
+  });
   registerKnowledgeHandlers({
     handle,
     knowledge,
@@ -401,10 +410,7 @@ app.whenReady().then(() => {
     subscriptionStatus: await subscriptionStatus(),
   }));
   handle("saveState", (state, base) => {
-    let next =
-      base === undefined
-        ? v.validateState(state)
-        : mergeUserEdits(store.state, state, base);
+    let next = mergeOrdinaryState(store.state, state, base);
     const previousActive =
       base === undefined
         ? store.state.activeProfileId

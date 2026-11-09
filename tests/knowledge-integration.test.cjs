@@ -200,7 +200,11 @@ test("shared context helper grounds facts and excludes private data and full his
 });
 test("all API request payloads and Claude subscription receive only whitelisted reference facts", async (t) => {
   const ai = require("../src/core/providers.cjs");
-  const approved = ai.approvedProfile(p, { knowledge: index, prompt: "1061" });
+  const privateState = {
+    profiles: [{ ...p, goals: [{id:"private-goal",text:"PRIVATE_GOAL",done:false}] }],
+    journeys: [{id:"private-journey",title:"PRIVATE_JOURNEY_TITLE",createdAt:"2026-11-09T00:00:00.000Z",steps:[{id:"private-step",text:"PRIVATE_JOURNEY_STEP",done:false,profileId:"p"}]}],
+  };
+  const approved = ai.approvedProfile(privateState.profiles[0], { knowledge: index, prompt: "1061" });
   for (const provider of [
     "ollama",
     "ollama-cloud",
@@ -215,7 +219,7 @@ test("all API request payloads and Claude subscription receive only whitelisted 
         model: "fixture",
         apiKey: "fixture",
         prompt: "1061",
-        context: ai.profileContext({ profiles: [p] }, "p", true, {
+        context: ai.profileContext(privateState, "p", true, {
           knowledge: index,
           prompt: "1061",
         }),
@@ -244,7 +248,7 @@ test("all API request payloads and Claude subscription receive only whitelisted 
     );
     assert.doesNotMatch(
       sent,
-      /completedIds|PRIVATE_NOTE|PRIVATE_GUID|readiness/,
+      /completedIds|PRIVATE_NOTE|PRIVATE_GUID|PRIVATE_GOAL|PRIVATE_JOURNEY|readiness/,
     );
     assert.ok(sent.includes("Seereth Stonebreak"));
     assert.ok(sent.includes("156f29c9"));
@@ -284,7 +288,7 @@ test("all API request payloads and Claude subscription receive only whitelisted 
   await api.ask({ model: "fixture", prompt: "1061", context: approved });
   assert.doesNotMatch(
     input,
-    /completedIds|PRIVATE_NOTE|PRIVATE_GUID|readiness/,
+    /completedIds|PRIVATE_NOTE|PRIVATE_GUID|PRIVATE_GOAL|PRIVATE_JOURNEY|readiness/,
   );
   assert.ok(input.includes("Seereth Stonebreak"));
 });

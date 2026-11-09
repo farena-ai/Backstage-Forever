@@ -230,8 +230,31 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
     await page
       .getByLabel("Private notes")
       .fill("Unsaved draft must survive a snapshot refresh");
-    await page.evaluate(async () => {
-      const { state } = await window.backstage.bootstrap();
+    // Capture the existing main-owned Store for synthetic observation injection.
+    // Renderer saveState deliberately cannot manufacture addon evidence.
+    await app.evaluate(({ app }) => {
+      const load = process.getBuiltinModule("node:module").createRequire(
+        process.getBuiltinModule("node:path").join(app.getAppPath(), "package.json"),
+      );
+      const { Store } = load("./src/core/store.cjs");
+      const original = Store.prototype.saveState;
+      globalThis.smokeRestoreStore = () => { Store.prototype.saveState = original; };
+      Store.prototype.saveState = function (next) {
+        globalThis.smokeStore = this;
+        Store.prototype.saveState = original;
+        return original.call(this, next);
+      };
+    });
+    try {
+      await page.evaluate(async () => {
+        const { state } = await window.backstage.bootstrap();
+        await window.backstage.saveState(state, state);
+      });
+    } finally {
+      await app.evaluate(() => { smokeRestoreStore(); delete globalThis.smokeRestoreStore; });
+    }
+    await app.evaluate(() => {
+      const state = structuredClone(smokeStore.state);
       const character = state.profiles.find(
         (p) => p.id === state.activeProfileId,
       );
@@ -256,7 +279,8 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
         source: { ...character.source, id: "synthetic-ui-alt" },
       });
       state.activeProfileId = "fixture-alt";
-      await window.backstage.saveState(state);
+      smokeStore.saveState(state);
+      delete globalThis.smokeStore;
     });
     await page.waitForTimeout(5300);
     assert.equal(

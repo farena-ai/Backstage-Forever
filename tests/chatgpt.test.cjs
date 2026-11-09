@@ -293,6 +293,7 @@ test("subscription receives bounded sourced quest facts without full local histo
         updatedAt: "2026-11-09T00:00:00.000Z",
       },
       notes: "PRIVATE_NOTE",
+      goals: [{ id: "private-goal", text: "PRIVATE_GOAL", done: false }],
       history: { recent: [], completedIdsKnown: true, completedIds: [5729] },
       quests: [1061, 5729, 5730, 98024].map((id) => ({
         id,
@@ -303,7 +304,10 @@ test("subscription receives bounded sourced quest facts without full local histo
     };
     for (const prompt of ["1061", "Where is Thork?", "quest 5730"]) {
       const context = require("../src/core/providers.cjs").profileContext(
-        { profiles: [profile] }, "p", true, { knowledge, prompt },
+        {
+          profiles: [profile],
+          journeys: [{id:"private-journey",title:"PRIVATE_JOURNEY_TITLE",createdAt:"2026-11-09T00:00:00.000Z",steps:[{id:"private-step",text:"PRIVATE_JOURNEY_STEP",done:false,profileId:"p"}]}],
+        }, "p", true, { knowledge, prompt },
       );
       await f.auth.ask({ model: "selected-model", prompt, context });
       const body = f.calls.findLast(

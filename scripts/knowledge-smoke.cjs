@@ -231,13 +231,11 @@ const { testWindow } = require("./test-window.cjs");
     );
     const beforeRefusal = (await app.evaluate(() => globalThis.knowledgeCopies))
       .length;
-    await page.evaluate(async () => {
-      const s = (await window.backstage.bootstrap()).state;
-      s.profiles
-        .find((p) => p.id === s.activeProfileId)
-        .quests.find((q) => q.id === 1061).complete = false;
-      await window.backstage.saveState(s);
-    });
+    // Advance owned saved evidence while retaining the visible stale descriptor.
+    characters[0].quests.find((q) => q.id === 1061).complete = false;
+    characters[0].updatedAt = Math.max(Date.now() / 1000, characters[0].updatedAt + 0.01);
+    await write();
+    await page.evaluate(() => window.backstage.refreshGame());
     await page
       .getByRole("button", { name: "Copy game waypoint", exact: true })
       .click();
@@ -250,13 +248,10 @@ const { testWindow } = require("./test-window.cjs");
       beforeRefusal,
       "Main revalidates phase after the visible descriptor was fetched",
     );
-    await page.evaluate(async () => {
-      const s = (await window.backstage.bootstrap()).state;
-      s.profiles
-        .find((p) => p.id === s.activeProfileId)
-        .quests.find((q) => q.id === 1061).complete = true;
-      await window.backstage.saveState(s);
-    });
+    characters[0].quests.find((q) => q.id === 1061).complete = true;
+    characters[0].updatedAt = Math.max(Date.now() / 1000, characters[0].updatedAt + 0.01);
+    await write();
+    await page.evaluate(() => window.backstage.refreshGame());
     await search.fill("A New Beginning");
     await page.waitForFunction(
       () => document.querySelectorAll(".quest-ledger-row").length === 2,
