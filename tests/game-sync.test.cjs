@@ -255,12 +255,14 @@ test("failed snapshot consumer is retried instead of acknowledged", async (t) =>
   await sync.refresh();
   assert.equal(calls, 2);
 });
-test("managed prepare repairs three owned files, keeps extras, and reports snapshot health", async (t) => {
+test("managed prepare repairs five owned files, keeps extras, and reports snapshot health", async (t) => {
   const f = await fixture(t),
     addon = path.join(f.dir, "source");
   await fs.mkdir(addon);
   const files = [
     "BackstageForever.toc",
+    "BackstageForeverReference.lua",
+    "BackstageForeverPlan.lua",
     "BackstageForever.lua",
     "BackstageForeverHUD.lua",
   ];
@@ -281,9 +283,12 @@ test("managed prepare repairs three owned files, keeps extras, and reports snaps
   assert.equal(status.checks.length, 3);
   const folder = path.join(f.root, "Interface", "AddOns", "BackstageForever");
   await fs.writeFile(path.join(folder, "custom.txt"), "preserve");
+  for (const file of files) assert.equal(await fs.stat(path.join(folder, file)).then(()=>true,()=>false), true, 'Managed resource must be installed: '+file);
   await fs.writeFile(path.join(folder, files[1]), "obsolete");
+  await fs.unlink(path.join(folder, files[2]));
   status = await sync.prepare();
   assert.equal(status.addonCurrent, true);
+  for (const file of files) assert.equal(await fs.readFile(path.join(folder, file), "utf8"), file.endsWith(".toc") ? "## Version: 0.4.0\n" : "synthetic " + file);
   assert.equal(
     await fs.readFile(path.join(folder, files[1]), "utf8"),
     "synthetic " + files[1],
@@ -315,6 +320,47 @@ test("managed prepare repairs three owned files, keeps extras, and reports snaps
     "synthetic " + files[2],
   );
 });
+
+test("installer stages all resources, commits TOC last and rolls back a failed commit", async (t) => {
+  const f = await fixture(t), addon = path.join(f.dir, "source");
+  const files = ['BackstageForever.toc','BackstageForeverReference.lua','BackstageForeverPlan.lua','BackstageForever.lua','BackstageForeverHUD.lua'];
+  await fs.mkdir(addon);
+  for (const file of files) await fs.writeFile(path.join(addon,file), file.endsWith('.toc')?'## Version: old\n':'old '+file);
+  const sync = new GameSync({dataDir:path.join(f.dir,'data'),addonDir:addon}); t.after(()=>sync.close());
+  await sync.prepare(f.root);
+  const folder=path.join(f.root,'Interface','AddOns','BackstageForever');
+  for(const file of files) await fs.writeFile(path.join(addon,file),'new '+file);
+  const native=require('node:fs'),rename=native.renameSync,committed=[];
+  let failed=false;
+  native.renameSync=function(from,to){
+    if(path.dirname(to)===folder){
+      committed.push(path.basename(to));
+      if(path.basename(to)==='BackstageForeverHUD.lua'&&!failed){failed=true;throw Error('synthetic commit failure');}
+    }
+    return rename(from,to);
+  };
+  try {assert.equal((await sync.prepare()).addonCurrent,false);}finally{native.renameSync=rename;}
+  for(const file of files)assert.equal(await fs.readFile(path.join(folder,file),'utf8'),file.endsWith('.toc')?'## Version: old\n':'old '+file,'Failed transaction must restore '+file);
+  committed.length=0;
+  native.renameSync=function(from,to){if(path.dirname(to)===folder)committed.push(path.basename(to));return rename(from,to);};
+  try {assert.equal((await sync.prepare()).addonCurrent,true);}finally{native.renameSync=rename;}
+  assert.equal(committed.at(-1),'BackstageForever.toc','Loader is committed after all modules');
+  assert.deepEqual((await fs.readdir(folder)).sort(),files.sort(),'No staging leftovers');
+});
+
+test("disconnect during staging commits no resources and removes staging files", async (t) => {
+  const f=await fixture(t),addon=path.join(__dirname,'../addon/BackstageForever');
+  const sync=new GameSync({dataDir:path.join(f.dir,'data'),addonDir:addon});t.after(()=>sync.close());
+  await sync.prepare(f.root);
+  const folder=path.join(f.root,'Interface','AddOns','BackstageForever');
+  await fs.writeFile(path.join(folder,'BackstageForeverPlan.lua'),'old planner');
+  const write=fs.writeFile;let paused=false;
+  fs.writeFile=async function(file,...args){const result=await write(file,...args);if(!paused&&path.dirname(file)===folder&&path.basename(file).startsWith('.backstage-')){paused=true;await sync.disconnect();}return result;};
+  try{assert.equal((await sync.prepare()).connected,false);}finally{fs.writeFile=write;}
+  assert.equal(paused,true);
+  assert.equal(await fs.readFile(path.join(folder,'BackstageForeverPlan.lua'),'utf8'),'old planner');
+  assert.equal((await fs.readdir(folder)).some(name=>name.startsWith('.backstage-')),false);
+});
 test("prepare accepts installation parent and missing account exports are needs-reload", async (t) => {
   const f = await fixture(t),
     parent = path.join(f.dir, "game");
@@ -325,6 +371,8 @@ test("prepare accepts installation parent and missing account exports are needs-
   await fs.mkdir(addon);
   for (const file of [
     "BackstageForever.toc",
+    "BackstageForeverReference.lua",
+    "BackstageForeverPlan.lua",
     "BackstageForever.lua",
     "BackstageForeverHUD.lua",
   ])

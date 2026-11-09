@@ -6,6 +6,8 @@ const MAX = 1024 * 1024,
   SAVED_MAX = MAX * 4 + 4096,
   OWN = [
     "BackstageForever.toc",
+    "BackstageForeverReference.lua",
+    "BackstageForeverPlan.lua",
     "BackstageForever.lua",
     "BackstageForeverHUD.lua",
   ];
@@ -230,7 +232,7 @@ class GameSync {
             : "blocked",
         label: "Prepare companion addon",
         detail: state.addonCurrent
-          ? "All three companion files match this app."
+          ? "All five companion files match this app."
           : "Companion files need preparation or repair.",
       },
       {
@@ -408,35 +410,56 @@ class GameSync {
           await boundedRead(path.join(this.addonDir, file)),
         ]),
       );
-      for (const [file, content] of sources) {
-        const dest = path.join(folder, file);
-        try {
-          await safe(dest, "file");
-        } catch (e) {
-          if (e.code !== "ENOENT") throw e;
-        }
-        if (gen !== this.generation) return this.status();
-        try {
-          if ((await boundedRead(dest)) === content) continue;
-        } catch (error) {
-          if (error.code !== "ENOENT") throw error;
-        }
-        if (gen !== this.generation) return this.status();
-        const temporary = path.join(
-          folder,
-          ".backstage-" + crypto.randomUUID() + ".tmp",
-        );
-        try {
-          await fs.writeFile(temporary, content, { flag: "wx" });
-          await safe(folder, "dir");
+      // Stage and verify every module before committing the loader last.
+      const staged = [];
+      try {
+        for (const [file, content] of [...sources.slice(1), sources[0]]) {
+          const dest = path.join(folder, file);
+          try {
+            await safe(dest, "file");
+          } catch (e) {
+            if (e.code !== "ENOENT") throw e;
+          }
           if (gen !== this.generation) return this.status();
-          // Synchronous commit prevents disconnect/reset interleaving after the guard.
-          fsSync.renameSync(temporary, dest);
-          if ((await boundedRead(dest)) !== content)
-            throw Error("Verification failed");
-        } finally {
-          await fs.unlink(temporary).catch(() => {});
+          let previous = null;
+          try {
+            previous = await boundedRead(dest);
+            if (previous === content) continue;
+          } catch (error) {
+            if (error.code !== "ENOENT") throw error;
+          }
+          if (gen !== this.generation) return this.status();
+          const temporary = path.join(
+            folder,
+            ".backstage-" + crypto.randomUUID() + ".tmp",
+          );
+          staged.push({ temporary, dest, content, previous });
+          await fs.writeFile(temporary, content, { flag: "wx" });
+          if ((await boundedRead(temporary)) !== content) throw Error("Verification failed");
         }
+        await safe(folder, "dir");
+        if (gen !== this.generation) return this.status();
+        const committed = [];
+        try {
+          // No await: disconnect/reset cannot interleave the commit and rollback.
+          for (const entry of staged) {
+            fsSync.renameSync(entry.temporary, entry.dest);
+            committed.push(entry);
+            if (fsSync.readFileSync(entry.dest, "utf8") !== entry.content)
+              throw Error("Verification failed");
+          }
+        } catch (error) {
+          for (const entry of committed.reverse()) {
+            if (entry.previous === null) fsSync.unlinkSync(entry.dest);
+            else {
+              fsSync.writeFileSync(entry.temporary, entry.previous, { flag: "wx" });
+              fsSync.renameSync(entry.temporary, entry.dest);
+            }
+          }
+          throw error;
+        }
+      } finally {
+        await Promise.all(staged.map(({ temporary }) => fs.unlink(temporary).catch(() => {})));
       }
       if (gen === this.generation)
         this.state = {

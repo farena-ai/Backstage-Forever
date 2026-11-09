@@ -28,7 +28,7 @@ C_Map={CanSetUserWaypointOnMap=function()return true end,SetUserWaypoint=functio
 UiMapPoint={CreateFromCoordinates=function(map,x,y)return {map=map,x=x,y=y}end}
 dofile('addon/BackstageForever/BackstageForever.lua');handler(nil,'PLAYER_LOGIN')
 assert(BackstageForeverExport:find('"clientBuild":"1.60.1.70862"',1,true))
-assert(BackstageForeverExport:find('"captureVersion":"0.6.1"',1,true))
+assert(BackstageForeverExport:find('"captureVersion":"0.7.0"',1,true))
 assert(BackstageForeverExport:find('"completedIds":[5729,5730]',1,true))
 assert(BackstageForeverExport:find('"completedIdsKnown":true',1,true))
 assert(BackstageForeverExport:find('"required":1',1,true))
@@ -40,6 +40,8 @@ C_QuestLog.IsComplete=function()return false end;BackstageForeverGuide('guide 10
 for _,command in ipairs({'guide 1061 t 1413 -1 0.2 1.60.1.70862','guide 1061 o 1413 .3 .2 1.60.1.70862','guide 1061 t 1413 .3 .2 1.60.1.999','guide 999 t 1413 .3 .2 1.60.1.70862','guide 1061 t 1413 .3 .2 1.60.1.70862 extra','guide 1061 t 1413 nan .2 1.60.1.70862'})do
 set=nil;BackstageForeverGuide(command);assert(set==nil,command)
 end
+BackstageForeverGuide('guide 1061 t 1413 .3 .2 1.60.1.999');assert(not messages[#messages]:find('desktop snapshot',1,true))
+BackstageForeverGuide('guide 1061 o 1413 .3 .2 1.60.1.70862');assert(not messages[#messages]:find('refresh your snapshot',1,true))
 InCombatLockdown=function()return true end;set=nil;BackstageForeverGuide('guide 1061 r 1413 .3 .2 1.60.1.70862');assert(not set)
 InCombatLockdown=function()return false end
 C_Map.CanSetUserWaypointOnMap=function()return false end;BackstageForeverGuide('guide 1061 r 1413 .3 .2 1.60.1.70862');assert(not set);assert(messages[#messages]:find('coordinates',1,true))

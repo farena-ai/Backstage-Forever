@@ -23,7 +23,7 @@ test("addon declares real loader/export and only guarded event snapshots", () =>
     assert.ok(lua.includes(token), token);
   assert.doesNotMatch(
     lua,
-    /C_Timer|ReloadUI|SendChatMessage|RunMacro|http:\/\//,
+    /OnUpdate|ReloadUI|SendChatMessage|RunMacro|http:\/\//,
   );
 });
 
@@ -177,7 +177,7 @@ methods.SetScript=function(self,event,fn)self[event]=fn end
 methods.CreateFontString=function()local f=setmetatable({}, {__index=methods});fontStrings[#fontStrings+1]=f;return f end
 CreateFrame=function(kind,name,parent)
  local f=setmetatable({}, {__index=methods})
- if name=='BackstageForeverCompass' then panel=f elseif name=='BackstageForeverCompassClose' then closeButton=f elseif name=='BackstageForeverCompassCollapse' then collapseButton=f elseif kind=='Button' then title=f else events=f end
+ if name=='BackstageForeverCompass' then panel=f elseif name=='BackstageForeverCompassClose' then closeButton=f elseif name=='BackstageForeverCompassCollapse' then collapseButton=f elseif kind=='Button' and not name then title=f elseif kind=='Frame' then events=f end
  return f
 end
 dofile('addon/BackstageForever/BackstageForeverHUD.lua')
@@ -190,7 +190,7 @@ title.OnDragStart(title);assert(panel.moving,'Title must drag the parent compass
 title.OnDragStop(title);assert(not panel.moving)
 assert(BackstageForeverHUDSettings.x==321 and BackstageForeverHUDSettings.y==123)
 measuredHeight=500;BackstageForeverHUDUpdate({name='Example',level=12,className='Mage',location={zone='Actual zone'}})
-assert(type(fontStrings[2].height)=='number' and fontStrings[2].height<=234 and panel.height<=320,'Long text must leave room for footer')
+assert(type(fontStrings[2].height)=='number' and fontStrings[2].height<=260 and panel.height<=440,'Long text must leave room for controls and footer')
 collapseButton.OnClick();assert(BackstageForeverHUDSettings.collapsed)
 closeButton.OnClick();assert(not panel.visible and BackstageForeverHUDSettings.visible==false)
 assert(messages[#messages]:find('/bf show',1,true),'Closing must explain how to reopen')

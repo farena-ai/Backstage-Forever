@@ -138,6 +138,8 @@ async function sourceFiles(folder, prefix = "src") {
     );
     const owned = [
       "BackstageForever.toc",
+      "BackstageForeverReference.lua",
+      "BackstageForeverPlan.lua",
       "BackstageForever.lua",
       "BackstageForeverHUD.lua",
     ];
@@ -162,6 +164,8 @@ async function sourceFiles(folder, prefix = "src") {
     await app.close();
     app = null;
     await fs.unlink(path.join(addonFolder, "BackstageForeverHUD.lua"));
+    await fs.unlink(path.join(addonFolder, "BackstageForeverReference.lua"));
+    await fs.writeFile(path.join(addonFolder, "BackstageForeverPlan.lua"), "synthetic obsolete planner");
     app = await electron.launch({
       executablePath: path.join(
         __dirname,

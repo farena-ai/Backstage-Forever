@@ -62,16 +62,17 @@ const { testWindow } = require("./test-window.cjs");
       .waitFor();
     for (const name of [
       "BackstageForever.toc",
+      "BackstageForeverReference.lua",
+      "BackstageForeverPlan.lua",
       "BackstageForever.lua",
       "BackstageForeverHUD.lua",
     ])
-      assert.ok(
-        (
-          await fs.readFile(
-            path.join(game, "Interface/AddOns/BackstageForever", name),
-            "utf8",
-          )
-        ).length > 0,
+      assert.equal(
+        await fs.readFile(
+          path.join(game, "Interface/AddOns/BackstageForever", name),
+          "utf8",
+        ),
+        await fs.readFile(path.join(__dirname, "../addon/BackstageForever", name), "utf8"),
       );
     const now = Date.now() / 1000;
     const shot = {
@@ -167,7 +168,7 @@ const { testWindow } = require("./test-window.cjs");
     );
     assert.deepEqual(cspErrors, []);
     console.log(
-      "PASS: first-run companion journey, automatic three-file addon preparation, actionable reload step, auto-import, quest/XP briefing, explicit AI action without inference, reduced motion and reopenable setup.",
+      "PASS: first-run companion journey, automatic five-file addon preparation, actionable reload step, auto-import, quest/XP briefing, explicit AI action without inference, reduced motion and reopenable setup.",
     );
   } finally {
     if (app) await app.close();

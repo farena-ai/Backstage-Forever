@@ -235,7 +235,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.6.1'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.7.0'
     character.race=clean((call(UnitRace,'player')));character.faction=clean((call(UnitFactionGroup,'player')))
     local previous=roster[guid]
     local history={recent=array({})}
@@ -294,12 +294,12 @@ function BackstageForeverGuide(message)
     local phase=parts[3];local x,y=tonumber(parts[5]),tonumber(parts[6])
     if not quest or not map or (phase~='t' and phase~='o' and phase~='r') or not x or not y or x<0 or x>1 or y<0 or y>1 then guideMessage(help);return end
     if call(InCombatLockdown)~=false then guideMessage('Waypoint unavailable in combat or restricted state.');return end
-    if clientBuild()~=parts[7] then guideMessage('Waypoint build mismatch; refresh your desktop snapshot.');return end
+    if clientBuild()~=parts[7] then guideMessage('Waypoint build mismatch; use a current Compass step or a command from a matching saved build.');return end
     if phase~='r' then
         local api=public(C_QuestLog)
         local logIndex=integer(call(field(api,'GetLogIndexForQuestID'),quest),1,1000)
         local complete=call(field(api,'IsComplete'),quest)
-        if not logIndex or type(complete)~='boolean' or (phase=='t')~=complete then guideMessage('Quest log or completion phase changed; refresh your snapshot.');return end
+        if not logIndex or type(complete)~='boolean' or (phase=='t')~=complete then guideMessage('Quest state changed; use a current Compass step or a newly saved desktop command.');return end
     end
     local mapApi=public(C_Map);local info=call(field(mapApi,'GetMapInfo'),map)
     local name=clean(field(info,'name'),100) or ('Map #'..map)
@@ -315,11 +315,24 @@ function BackstageForeverGuide(message)
 end
 if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
-    local loggedIn=false
-    for _,event in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_LEVEL_UP','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LOGOUT','QUEST_LOG_UPDATE','QUEST_ACCEPTED','QUEST_TURNED_IN','UNIT_QUEST_LOG_CHANGED','PLAYER_XP_UPDATE','UPDATE_EXHAUSTION','PLAYER_EQUIPMENT_CHANGED','BAG_UPDATE_DELAYED','GET_ITEM_INFO_RECEIVED'}) do pcall(frame.RegisterEvent,frame,event) end
+    local loggedIn,generation,pending=false,0,nil
+    local immediate={PLAYER_LOGIN=true,PLAYER_ENTERING_WORLD=true,PLAYER_LEVEL_UP=true,QUEST_TURNED_IN=true,PLAYER_REGEN_ENABLED=true}
+    local function refresh(event,eventId)
+        if not loggedIn then return end
+        captureIssue=false
+        local ok,captured=pcall(capture,event,eventId)
+        if type(BackstageForeverHUDCaptureStatus)=='function' then
+            pcall(BackstageForeverHUDCaptureStatus,(not ok or not captured) and 'unavailable' or captureIssue and 'partial' or 'ready')
+        end
+    end
+    for _,event in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_LEVEL_UP','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LOGOUT','QUEST_LOG_UPDATE','QUEST_ACCEPTED','QUEST_TURNED_IN','UNIT_QUEST_LOG_CHANGED','PLAYER_XP_UPDATE','UPDATE_EXHAUSTION','PLAYER_EQUIPMENT_CHANGED','BAG_UPDATE_DELAYED','GET_ITEM_INFO_RECEIVED','PLAYER_STOPPED_MOVING'}) do pcall(frame.RegisterEvent,frame,event) end
     frame:SetScript('OnEvent',function(_,event,eventId)
         -- Logout APIs may already be torn down; persist the last prepared export.
-        if event=='PLAYER_LOGOUT' then loggedIn=false;return end
+        if event=='PLAYER_LOGOUT' or event=='PLAYER_LOGIN' then
+            generation=generation+1;pending=nil;loggedIn=false
+            if type(BackstageForeverHUDSession)=='function' then pcall(BackstageForeverHUDSession,event) end
+        end
+        if event=='PLAYER_LOGOUT' then return end
         if event=='PLAYER_LOGIN' then
             local saved=decode(BackstageForeverExport)
             if type(saved)=='table' and saved.schema==1 and type(saved.characters)=='table' then
@@ -331,10 +344,17 @@ if type(CreateFrame)=='function' then
         end
         -- Startup events must not replace the saved roster before it is restored.
         if not loggedIn then return end
-        captureIssue=false
-        local ok,captured=pcall(capture,event,public(eventId))
-        if type(BackstageForeverHUDCaptureStatus)=='function' then
-            pcall(BackstageForeverHUDCaptureStatus,(not ok or not captured) and 'unavailable' or captureIssue and 'partial' or 'ready')
+        if immediate[event] then pending=nil;refresh(event,public(eventId));return end
+        local after=field(public(C_Timer),'After')
+        if type(after)~='function' then refresh(event,public(eventId));return end
+        if pending then return end
+        local token={generation=generation};pending=token
+        local ok=pcall(after,.25,function()
+            if not loggedIn or token.generation~=generation or pending~=token then return end
+            pending=nil;refresh('COALESCED')
+        end)
+        if not ok then
+            pending=nil;refresh(event,public(eventId))
         end
     end)
 end
