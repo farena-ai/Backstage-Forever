@@ -3,6 +3,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const v = require("./validation.cjs");
+// Bounded capacity for 100 profiles with complete quest histories and journals.
+const MAX_BACKUP_BYTES = 256 * 1024 * 1024;
 function atomic(file, text) {
   const tmp = file + "." + crypto.randomUUID() + ".tmp";
   try {
@@ -38,7 +40,7 @@ class Store {
     return structuredClone(valid);
   }
   importData(text) {
-    if (Buffer.byteLength(text) > 4000000)
+    if (Buffer.byteLength(text) > MAX_BACKUP_BYTES)
       throw new Error("Backup is too large.");
     return this.saveState(v.validateState(JSON.parse(text)));
   }
@@ -84,4 +86,4 @@ class Store {
     return structuredClone(this.state);
   }
 }
-module.exports = { Store, atomic };
+module.exports = { Store, atomic, MAX_BACKUP_BYTES };

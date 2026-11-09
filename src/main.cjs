@@ -12,7 +12,7 @@ const {
 const path = require("node:path");
 const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
-const { Store, atomic } = require("./core/store.cjs");
+const { Store, atomic, MAX_BACKUP_BYTES } = require("./core/store.cjs");
 const v = require("./core/validation.cjs");
 const ai = require("./core/providers.cjs");
 const { ChatGPTAuth } = require("./core/chatgpt.cjs");
@@ -504,7 +504,8 @@ app.whenReady().then(() => {
     });
     if (result.canceled || epoch !== subscriptionEpoch) return null;
     const file = result.filePaths[0];
-    if (fs.statSync(file).size > 4000000) throw new Error("Invalid backup.");
+    if (fs.statSync(file).size > MAX_BACKUP_BYTES)
+      throw new Error("Invalid backup.");
     const text = fs.readFileSync(file, "utf8");
     v.validateState(JSON.parse(text));
     const confirm = await dialog.showMessageBox(win, {

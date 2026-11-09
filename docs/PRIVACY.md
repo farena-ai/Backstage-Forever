@@ -8,6 +8,8 @@ AI sends the prompt you explicitly submit to your selected provider. **Use my ac
 
 Chats are memory-only and disappear when the app closes; they are not included in backups. Exported backups contain readable profiles, notes, goals and preferences, never API keys. Keep backups private. Imported files are validated data; the app does not execute their contents.
 
+Backup imports have a shared 256 MiB byte limit in the native file picker path and storage parser, with the existing per-field/profile validation unchanged. This accommodates larger multi-character completed-quest histories; it does not permit executable content or imported credentials. Oversized files are refused before reading and confirmation. Invalid backups preserve current state and keys.
+
 Use Delete Key to remove one locally stored credential. Use the app's reset/delete-data control and confirm the native dialog to clear app data and stored keys. Delete exported backups separately. For an exposed key, revoke it at the provider, not just locally. To remove provider-held data, use that provider's controls. Uninstallation may retain per-user data; reset first when handing the computer to someone else. No secure disk erasure guarantee is made.
 
 ## Local guidance preferences and preparation
