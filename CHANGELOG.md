@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 — development milestone, 2026-11-09
+
+- Added explained Adventure Director choices and one-click tracked Company sessions, ranking all bounded eligible quests before the visible cap.
+- Added native current-map/zone and level-aware ranking with factual reasons, qualified source labels and unknown-objective fallbacks.
+- Preserved held mouse/keyboard/native-control actions and disclosure focus across queued updates with a shared renderer interaction guard.
+- Private goals remain local; no automatic AI, gameplay actions or new reference data. Combined public delivery is planned for 0.12.0.
+
+
 ## 0.8.0 — 2026-11-09
 
 - Added Company, a saved-character overview with source-labelled ready turn-ins, private goals and known preparation facts, preserving deliberate selection/follow behavior and class/faction artwork.
