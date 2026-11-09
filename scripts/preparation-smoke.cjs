@@ -18,10 +18,10 @@ function shortPath(target) {
     const game=path.join(dir,"synthetic-client"),saved=path.join(game,"WTF/Account/Synthetic/SavedVariables/BackstageForever.lua");
     await fs.mkdir(path.dirname(saved),{recursive:true});await fs.writeFile(path.join(game,".flavor.info"),"wowf");
     const manual=id=>({id,name:id,realm:"Synthetic Realm",className:"Hunter",level:18,notes:"PRIVATE NOTE SENTINEL",goals:[{id:"g",text:"PRIVATE GOAL SENTINEL",done:false}]});
-    await fs.writeFile(path.join(data,"state.json"),JSON.stringify({...defaultState(),onboarded:true,followGameCharacter:false,profiles:[manual("Aeralyn"),{...manual("Vaelric"),className:"Mage"}],activeProfileId:"Aeralyn"}));
+    await fs.writeFile(path.join(data,"state.json"),JSON.stringify({...defaultState(),onboarded:true,followGameCharacter:false,profiles:[manual("Aeralyn"),{...manual("Vaelric"),className:"Mage"}],activeProfileId:"Aeralyn",provider:{...defaultState().provider,model:"synthetic-model"}}));
     let clock=Math.floor(Date.now()/1000);
     const col=items=>({observedAt:clock,complete:true,items});
-    const workshop=count=>({professions:col([{skillLineId:171,professionId:1,name:"Alchemy",rank:22,maxRank:75}]),recipes:col([{id:100,skillLineId:171,name:"Amber restorative",reagentsKnown:true,reagents:[{itemId:200,name:"Sunleaf",required:3},{itemId:201,name:"Clear vial",required:1}]},{id:101,skillLineId:171,name:"Silverleaf infusion",reagentsKnown:true,reagents:[{itemId:200,name:"Sunleaf",required:2}]},{id:102,skillLineId:171,name:"Unresolved formula",reagentsKnown:false,reagents:[]}]),materials:{...col([{itemId:200,name:"Sunleaf",count},{itemId:201,name:"Clear vial",count:1}]),scope:"bags-0-4"}});
+    const workshop=count=>({professions:col([{skillLineId:171,professionId:1,name:"Alchemy",rank:22,maxRank:75}]),recipes:col([{id:100,skillLineId:171,name:"Amber restorative",reagentsKnown:true,reagents:[{itemId:200,name:"Sunleaf",required:3},{itemId:201,name:"Clear vial",required:1},{itemId:2320,name:"Coarse Thread",required:1}]},{id:101,skillLineId:171,name:"Silverleaf infusion",reagentsKnown:true,reagents:[{itemId:200,name:"Sunleaf",required:2}]},{id:102,skillLineId:171,name:"Unresolved formula",reagentsKnown:false,reagents:[]}]),materials:{...col([{itemId:200,name:"Sunleaf",count},{itemId:201,name:"Clear vial",count:1},{itemId:2320,name:"Coarse Thread",count:20}]),scope:"bags-0-4"}});
     const characters=["Aeralyn","Vaelric"].map((name,i)=>({id:`Synthetic-${name}`,name,realm:"Synthetic Realm",className:i?"Mage":"Hunter",faction:i?"Horde":"Alliance",race:"Synthetic",level:18,updatedAt:clock,clientBuild:"1.60.1.70862",captureVersion:require("../package.json").version,readiness:{bags:{free:4,total:40},workshop:workshop(i?99:2)}}));
     const write=()=>fs.writeFile(saved,"BackstageForeverExport = "+JSON.stringify(JSON.stringify({schema:1,observedAt:clock,activeId:characters[0].id,characters})));
     await write();
@@ -33,7 +33,8 @@ function shortPath(target) {
         load("./src/core/game-runtime.cjs").GameRuntime.prototype.probe=async()=>({state:"not-running",launchAvailable:false});
         load("./src/core/game-runtime.cjs").GameRuntime.prototype.launch=async()=>{preparationUi.launches++;throw Error("Fixture blocks launch");};
         load("./src/core/claude.cjs").status=async()=>({installed:false,loggedIn:false});
-        load("./src/core/providers.cjs").ask=async()=>{preparationUi.inference++;throw Error("Fixture blocks inference");};
+        load("./src/core/providers.cjs").ask=async request=>{if(!preparationUi.allowAsk){preparationUi.inference++;throw Error("Fixture blocks inference");}preparationUi.fakeAsks=(preparationUi.fakeAsks||0)+1;preparationUi.sent={prompt:request.prompt,context:request.context};return "Fictional supply review. Partial counts cannot prove shortfalls, and historical sellers do not guarantee access.";};
+        load("./src/core/voice.cjs").VoiceService.prototype.readCapabilities=async()=>({status:"unavailable",recognition:{available:false,cultures:[]},synthesis:{available:false,voices:[]},message:"Synthetic voice unavailable; typed draft remains editable."});
         dialog.showMessageBox=async()=>({response:1});
       });
       page=await testWindow(app);page.setDefaultTimeout(8000);
@@ -49,13 +50,15 @@ function shortPath(target) {
     await page.getByRole("button",{name:"Preparation",exact:true}).click();await page.locator("[data-preparation-reagent]").first().waitFor();
     assert.match(await page.locator("[data-preparation]").innerText(),/Amber restorative/);
 
-    const evidence=path.resolve("work/v010-ui-evidence");await fs.mkdir(evidence,{recursive:true});
+    const evidence=path.resolve("work/v012-preparation-ui-evidence");await fs.mkdir(evidence,{recursive:true});
     const capture=async name=>{await page.locator("#toast.visible").waitFor({state:"hidden",timeout:8000});await page.evaluate(()=>{scrollTo(0,0);document.querySelector(".main")?.scrollTo(0,0);});await page.screenshot({path:path.join(evidence,`${process.argv.includes("--short-path")?"short-":""}${name}.png`),fullPage:true});};
     const state=async()=>(await page.evaluate(()=>window.backstage.bootstrap())).state;
     const untilMain=condition=>app.evaluate(async(_e,condition)=>{const end=Date.now()+6000;while(!Function(`return (${condition})`)()){if(Date.now()>end)throw Error("Fixture condition timed out: "+condition);await new Promise(r=>setTimeout(r,10));}},condition);
     const workshopPage=async()=>{await page.getByRole("button",{name:"Preparation",exact:true}).click();await page.locator("[data-preparation-reagent]").first().waitFor();};
     const update=async()=>{clock+=2;characters[0].updatedAt=clock;await write();await page.evaluate(()=>window.backstage.refreshGame());};
     const first=initial.activeProfileId,second=initial.profiles.find(p=>p.name==="Vaelric").id;
+    assert.equal(await page.getByRole('button',{name:'Ask about this supply plan',exact:true}).count(),1,"Supply-plan draft action must be explicit");
+    assert.match(await page.locator('[data-preparation]').innerText(),/Historical seller observations/i);
     console.log("Preparation: saved source and navigation ready");await capture("alliance-full");
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1000,700));await page.waitForFunction(()=>innerWidth<=1000);
     let add=page.getByRole("button",{name:"Add shopping checklist",exact:true});
@@ -73,6 +76,20 @@ function shortPath(target) {
     await page.getByLabel("Saved recipe",{exact:true}).selectOption("101");await page.waitForFunction(()=>document.querySelector(".formula-heading h2")?.textContent==="Silverleaf infusion");
     assert.equal((await state()).profiles[0].readiness.workshop.materials.items[0].count,2,"Display preferences must not rewrite evidence");
     await page.getByLabel("Saved recipe",{exact:true}).selectOption("100");await page.waitForFunction(()=>document.querySelector(".formula-heading h2")?.textContent==="Amber restorative");
+    // Seller facts stay historical and browse-only when this faction was not observed.
+    const thread=page.locator('[data-preparation-reagent="2320"]');await thread.locator('summary').click();
+    assert.match(await thread.innerText(),/Browse only.*not a recommendation/i);assert.match(await thread.innerText(),/faction access unknown/i);assert.match(await thread.innerText(),/Approximate interaction/);
+    assert.equal(await thread.locator('[data-quest-copy]').count(),0);await capture('historical-sellers-alliance');
+    // Deliberate draft shares only the visible selected plan and never changes sharing opt-out.
+    await page.getByRole('button',{name:'AI Companion',exact:true}).click();await page.getByLabel('Use my active character',{exact:true}).uncheck();
+    await workshopPage();const askSupply=page.getByRole('button',{name:'Ask about this supply plan',exact:true});await askSupply.click();
+    const question=page.getByLabel('Your question',{exact:true});await question.waitFor();const supplyDraft=await question.inputValue();
+    assert.match(supplyDraft,/Amber restorative/);assert.match(supplyDraft,/Coarse Thread/);assert.match(supplyDraft,/bags 0–4/);assert.match(supplyDraft,/saved source/i);assert.match(supplyDraft,/Browse only, not a recommendation/);assert.match(supplyDraft,/faction access unknown/);assert.ok(supplyDraft.length<=12000);
+    assert.doesNotMatch(supplyDraft,/Vaelric|PRIVATE|Synthetic-Aeralyn|equipment|journeys/);assert.ok(!supplyDraft.includes(game)&&!supplyDraft.includes(saved));
+    assert.equal(await page.getByLabel('Use my active character',{exact:true}).isChecked(),false);assert.equal(await app.evaluate(()=>preparationUi.fakeAsks||0),0);assert.equal(await page.locator('.context-preview pre').count(),0);
+    await question.fill(supplyDraft+'\nMy deliberate edit: suggest checks, not purchases.');await capture('supply-editable-draft');await app.evaluate(()=>preparationUi.allowAsk=true);await page.getByRole('button',{name:'Send question',exact:true}).click();await page.locator('.message.assistant').waitFor();await app.evaluate(()=>preparationUi.allowAsk=false);
+    const sent=await app.evaluate(()=>preparationUi.sent);assert.equal(sent.prompt,supplyDraft+'\nMy deliberate edit: suggest checks, not purchases.');assert.ok(!sent.context);assert.equal(await app.evaluate(()=>preparationUi.fakeAsks),1);
+    await workshopPage();assert.equal(await page.locator('.workshop-sellers[open]').count(),0,'Leaving the workshop retires old disclosure presentation');
     // The real native Summary target survives a held key and a competing root paint.
     const summary=page.locator(".workshop-details summary");await summary.focus();await summary.evaluate(n=>{window.heldSummary=n;window.summaryToggles=0;n.parentElement.addEventListener("toggle",()=>window.summaryToggles++);});
     await page.keyboard.down("Space");await page.evaluate(()=>new Promise(r=>setTimeout(()=>{render();r();},0)));assert.ok(await summary.evaluate(n=>n===window.heldSummary));await page.keyboard.up("Space");
@@ -106,13 +123,15 @@ function shortPath(target) {
     await page.locator("[data-company-journey]").waitFor();assert.equal(await app.evaluate(()=>preparationUi.calls),1);let savedNow=await state();assert.equal(savedNow.journeys.length,1);assert.equal(savedNow.followGameCharacter,false);assert.ok(savedNow.journeys[0].steps.every(s=>!s.done&&!s.quest&&!s.observed));
     assert.equal(await page.getByLabel("Plan title",{exact:true}).evaluate(n=>n===document.activeElement),true,"Exact returned checklist receives focus");assert.match(savedNow.journeys[0].steps[0].text,/shortfall: 1/);
     // Mutation error retry is deliberate and never makes a duplicate successful call.
-    await workshopPage();await app.evaluate(()=>preparationUi.failOnce=true);await add.click();await page.getByRole("alert").waitFor();await capture("mutation-error");await page.getByRole("button",{name:"Retry shopping checklist",exact:true}).click();await page.locator("[data-company-journey]").first().waitFor();assert.equal((await state()).journeys.length,2);
+    await workshopPage();await app.evaluate(()=>preparationUi.failOnce=true);await add.click();await page.getByRole("alert").waitFor();assert.equal(await page.getByRole("button",{name:"Retry shopping checklist",exact:true}).evaluate(n=>n===document.activeElement),true,"Failed action must transfer its owned focus to semantic retry");await capture("mutation-error");await page.getByRole("button",{name:"Retry shopping checklist",exact:true}).click();await page.locator("[data-company-journey]").first().waitFor();assert.equal((await state()).journeys.length,2);
     // Read errors have a separate explicit retry without a checklist mutation.
-    await workshopPage();await app.evaluate(()=>preparationUi.failRead=true);await page.evaluate(()=>{Preparation.invalidate();render();});await page.getByRole("alert").waitFor();await capture("read-error");await app.evaluate(()=>preparationUi.failRead=false);await page.getByRole("button",{name:"Retry workshop",exact:true}).click();await page.locator("[data-preparation-reagent]").first().waitFor();
+    await workshopPage();await app.evaluate(()=>preparationUi.failRead=true);await update();await page.getByRole("alert").waitFor();assert.equal(await page.getByRole("button",{name:"Ask about this supply plan",exact:true}).isDisabled(),true,"Replaced-source read failure must not authorize a new draft from old facts");await capture("read-error");await app.evaluate(()=>preparationUi.failRead=false);await page.getByRole("button",{name:"Retry workshop",exact:true}).click();await page.locator("[data-preparation-reagent]").first().waitFor();assert.equal(await add.evaluate(n=>n===document.activeElement),true,"Successful read retry returns focus to the semantic action");
     // Partial supply creates manual totals, never an invented exact missing amount.
     characters[0].readiness.workshop.materials.complete=false;characters[0].readiness.workshop.materials.observedAt=clock+2;await update();await workshopPage();await page.waitForFunction(()=>document.querySelector('[data-preparation-reagent="200"]')?.innerText.includes("Shortfall unknown"));
     assert.match(await page.locator('[data-preparation-reagent="200"]').innerText(),/At least 5/);await capture("partial");await add.focus();await page.keyboard.press("Space");await page.locator("[data-company-journey]").first().waitFor();savedNow=await state();assert.equal(savedNow.journeys.length,3);assert.match(savedNow.journeys.at(-1).steps[0].text,/incomplete or unknown/);assert.match(savedNow.journeys.at(-1).steps[1].text,/total required: 6/);
     console.log("Preparation: physical ack/click/key, read/write retry and partial checklist passed");
+    // A later partial-supply draft is an editable question, never a fabricated exact shortfall.
+    await workshopPage();await page.getByRole('button',{name:'Ask about this supply plan',exact:true}).click();const partialQuestion=await page.getByLabel('Your question',{exact:true}).inputValue();assert.match(partialQuestion,/Shortfall unknown/);assert.match(partialQuestion,/lower-bound/);assert.doesNotMatch(partialQuestion,/Vaelric|PRIVATE/);assert.equal(await app.evaluate(()=>preparationUi.fakeAsks),1);await workshopPage();
     // A missing material collection stays unknown rather than becoming zero inventory.
     delete characters[0].readiness.workshop.materials;await update();await workshopPage();await page.waitForFunction(()=>document.querySelector('[data-preparation-reagent="200"]')?.innerText.includes("Unknown"));assert.match(await page.locator(".workshop-supply-summary").innerText(),/Supply check needed/);assert.equal(await add.isEnabled(),true);await capture("unknown-supply");characters[0].readiness.workshop.materials={...col([{itemId:200,name:"Sunleaf",count:5}]),complete:false,scope:"bags-0-4"};await update();
     // Another character keeps independent options and counted supply, not pooled stock.

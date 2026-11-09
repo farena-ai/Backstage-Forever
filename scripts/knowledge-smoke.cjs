@@ -5,10 +5,17 @@ const fs = require("node:fs/promises"),
   assert = require("node:assert/strict");
 const { _electron: electron } = require("playwright");
 const { testWindow } = require("./test-window.cjs");
+function shortPath(target){
+  const script=`Add-Type -TypeDefinition 'using System; using System.Text; using System.Runtime.InteropServices; public static class AtlasShortPath { [DllImport("kernel32.dll",CharSet=CharSet.Unicode)] public static extern uint GetShortPathName(string path,StringBuilder result,uint length); }'; $buffer=New-Object System.Text.StringBuilder 4096; $length=[AtlasShortPath]::GetShortPathName($env:BF_ATLAS_FIXTURE_PATH,$buffer,4096); if($length -eq 0 -or $length -ge 4096){throw 'Short path unavailable'}; $buffer.ToString()`;
+  const alias=require('node:child_process').execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{env:{...process.env,BF_ATLAS_FIXTURE_PATH:target},encoding:'utf8',timeout:15000}).trim();
+  assert.notEqual(alias.toLowerCase(),target.toLowerCase());assert.match(alias,/~\d/);assert.equal(require('node:fs').statSync(alias).ino,require('node:fs').statSync(target).ino);return alias;
+}
 (async () => {
-  const data = await fs.mkdtemp(path.join(os.tmpdir(), "bf-knowledge-"));
+  const normalData = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), "bf-knowledge-"));
+  const data=process.argv.includes("--short-path")?shortPath(normalData):normalData;
   const repo = path.join(__dirname, "..");
   let app, page;
+  const watchdog=setTimeout(()=>{console.error("Quest atlas fixture exceeded 120 seconds");process.exitCode=1;app?.process().kill();},120000);
   try {
     await fs.mkdir(path.join(data, "knowledge-v1"));
     await fs.writeFile(
@@ -61,7 +68,7 @@ const { testWindow } = require("./test-window.cjs");
               mapId: 999,
               x: 0.123456,
               y: 0.654321,
-              text: "Saved game destination",
+              text: "Quest area reported by the game; not an exact NPC or spawn location",
             },
           },
           {
@@ -157,6 +164,7 @@ const { testWindow } = require("./test-window.cjs");
           );
         throw Error("Fixture offline");
       };
+      process.mainModule.require(root+'/src/core/voice.cjs').VoiceService.prototype.readCapabilities=async()=>({status:'unavailable',recognition:{available:false,cultures:[]},synthesis:{available:false,voices:[]},message:'Synthetic voice unavailable.'});
     }, repo);
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "complete"));
     const prepared = await page.evaluate(
@@ -179,7 +187,7 @@ const { testWindow } = require("./test-window.cjs");
       .waitFor();
     assert.match(
       await plans.innerText(),
-      /Saved game destination|Game destination/,
+      /Saved game destination|Game destination/i,
     );
     await plans
       .getByRole("button", { name: /Quest details/ })
@@ -229,6 +237,29 @@ const { testWindow } = require("./test-window.cjs");
       (await app.evaluate(() => globalThis.knowledgeCopies)).at(-1),
       "/bf guide 1061 t 999 0.1235 0.6543 1.60.1.70862",
     );
+    assert.equal(await page.locator('.quest-atlas-art').count(),1,"Quest atlas must be image-led with original class art");
+    assert.match(await page.locator('.quest-waypoint').innerText(),/Quest area reported by the game; not an exact NPC or spawn location/);
+    assert.match(await page.locator('.quest-waypoint').innerText(),/Saved game snapshot · saved/);
+    assert.ok(await page.locator('[data-quest-copy]').getAttribute('data-quest-intent'));
+    await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1000,700));
+    await page.waitForFunction(()=>innerWidth<=1000);await page.evaluate(()=>scrollTo(0,0));
+    assert.ok(await page.getByRole('button',{name:'Copy game waypoint',exact:true}).evaluate(n=>n.getBoundingClientRect().bottom<=innerHeight),'Game area copy action must fit the compact first viewport with the full qualification visible');
+    await fs.mkdir(path.join(repo,'work/v012-quest-ui-evidence'),{recursive:true});await page.evaluate(()=>{document.querySelector('.breadcrumb').textContent='Fictional preview · invented player state';document.getElementById('toast').className='';scrollTo(0,0);});await page.screenshot({path:path.join(repo,'work/v012-quest-ui-evidence',`${process.argv.includes('--short-path')?'short-':''}quest-guide-game-area.png`)});
+    await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1440,1000));
+    assert.ok(await page.locator(".rail nav").evaluate(n=>n.scrollWidth<=n.clientWidth),"Navigation must never gain a horizontal scroll axis");
+    await app.evaluate(({ipcMain})=>{const original=ipcMain._invokeHandlers.get('backstage:copyQuestWaypoint');ipcMain.removeHandler('backstage:copyQuestWaypoint');globalThis.atlasCopyCalls=0;ipcMain.handle('backstage:copyQuestWaypoint',async(...args)=>{atlasCopyCalls++;const fail=globalThis.atlasCopyFail;const result=await original(...args);if(globalThis.atlasCopyHold)await new Promise(r=>globalThis.atlasCopyRelease=r);if(fail)throw Error("Synthetic late copy acknowledgement failure");return result;});globalThis.atlasCopyHold=true;});
+    const copying=page.getByRole('button',{name:'Copy game waypoint',exact:true});await copying.click();
+    await app.evaluate(async()=>{const end=Date.now()+5000;while(!globalThis.atlasCopyRelease){if(Date.now()>end)throw Error('copy ack not held');await new Promise(r=>setTimeout(r,10));}});
+    assert.equal(await copying.isDisabled(),true,'Explicit waypoint action cannot duplicate while its acknowledgement is held');
+    await page.evaluate(()=>render());await app.evaluate(()=>{globalThis.atlasCopyHold=false;globalThis.atlasCopyRelease();});await copying.waitFor({state:'visible'});
+    await page.waitForFunction(()=>!document.querySelector('[data-quest-copy]').disabled);
+    assert.equal(await app.evaluate(()=>atlasCopyCalls),1);
+    await app.evaluate(()=>{globalThis.atlasCopyHold=true;globalThis.atlasCopyFail=true;globalThis.atlasCopyRelease=null;});await copying.click();
+    await app.evaluate(async()=>{const end=Date.now()+5000;while(!globalThis.atlasCopyRelease){if(Date.now()>end)throw Error('copy ack not held');await new Promise(r=>setTimeout(r,10));}});
+    await page.locator('.quest-ledger-row[data-quest-id="5729"]').click();await page.locator('[data-quest-control="detail:5729"]').waitFor();
+    await app.evaluate(()=>{globalThis.atlasCopyHold=false;globalThis.atlasCopyFail=false;globalThis.atlasCopyRelease();});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+    assert.equal(await page.locator('[data-quest-control="detail:5729"]').count(),1,'Failed copy reply cannot reopen the old selected quest');assert.doesNotMatch(await page.locator('.quest-detail').innerText(),/saved quest changed/i);
+    await page.locator('.quest-ledger-row[data-quest-id="1061"]').click();await page.locator('[data-quest-control="detail:1061"]').waitFor();
     const beforeRefusal = (await app.evaluate(() => globalThis.knowledgeCopies))
       .length;
     // Advance owned saved evidence while retaining the visible stale descriptor.
@@ -276,9 +307,9 @@ const { testWindow } = require("./test-window.cjs");
     const neighbor = page.locator('[data-chain-node="5729"]');
     assert.match(await neighbor.innerText(), /Current game hotfix title/);
     assert.match(await neighbor.innerText(), /Reference conflict.*Hidden Enemies/s);
-    await fs.mkdir(path.join(repo,"work/v06-ui-evidence"),{recursive:true});
+    await fs.mkdir(path.join(repo,"work/v012-quest-ui-evidence"),{recursive:true});
     await page.evaluate(()=>{ document.getElementById("toast").className = ""; });
-    await page.locator('.quest-chain').screenshot({path:path.join(repo,"work/v06-ui-evidence/quest-chain-directed.png")});
+    await page.locator('.quest-chain').screenshot({path:path.join(repo,"work/v012-quest-ui-evidence/quest-chain-directed.png")});
     await search.fill("5730");
     await page.locator('.quest-ledger-row[data-quest-id="5730"]').click();
     await page
@@ -340,7 +371,7 @@ const { testWindow } = require("./test-window.cjs");
       );
     const alliance = ids.find((row) => row.text.includes("Aeralyn")).id,
       horde = ids.find((row) => row.text.includes("Vaelric")).id;
-    const screens = path.join(repo, "work/v06-ui-evidence");
+    const screens = path.join(repo, "work/v012-quest-ui-evidence");
     await fs.mkdir(screens, { recursive: true });
     await page.emulateMedia({ reducedMotion: "reduce" });
     const capture = async (name) => {
@@ -350,7 +381,7 @@ const { testWindow } = require("./test-window.cjs");
         scrollTo(0, 0);
         document.getElementById("toast").className = "";
       });
-      await page.screenshot({ path: path.join(screens, name) });
+      await page.screenshot({ path: path.join(screens, (process.argv.includes("--short-path")?"short-":"")+name) });
     };
     await capture("quest-guide-alliance.png");
     await page
@@ -370,6 +401,8 @@ const { testWindow } = require("./test-window.cjs");
       .locator(".quest-detail")
       .getByRole("heading", { name: "Turn-in observations", exact: true })
       .waitFor();
+    assert.match(await page.locator('.quest-waypoint').innerText(),/NPC clue.*destination unconfirmed/i);
+    assert.equal(await page.getByRole('button',{name:'Copy NPC clue marker',exact:true}).count(),1);
     await capture("quest-guide-horde.png");
     await app.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0].setSize(1000, 700),
@@ -388,10 +421,33 @@ const { testWindow } = require("./test-window.cjs");
     await capture("quest-guide-compact.png");
     assert.ok(
       await page
-        .getByRole("button", { name: "Copy game waypoint", exact: true })
+        .getByRole("button", { name: "Copy NPC clue marker", exact: true })
         .evaluate((node) => node.getBoundingClientRect().bottom <= innerHeight),
       "The first waypoint action fits the compact first screen",
     );
+    assert.ok(await page.locator('.rail nav').evaluate(n=>n.scrollWidth<=n.clientWidth),"Navigation must never gain a horizontal scroll axis");
+    // Real native disclosure, menu and search selection survive root and region paints.
+    const sourceSummary=page.locator('.quest-source summary');await sourceSummary.scrollIntoViewIfNeeded();await sourceSummary.focus();
+    await sourceSummary.evaluate(n=>{window.atlasHeldSummary=n;window.atlasToggles=0;n.parentElement.addEventListener('toggle',()=>window.atlasToggles++);});
+    await page.keyboard.down('Space');await page.evaluate(()=>render());assert.ok(await sourceSummary.evaluate(n=>n===window.atlasHeldSummary));await page.keyboard.up('Space');
+    await page.waitForFunction(()=>window.atlasToggles===1);assert.equal(await sourceSummary.evaluate(n=>n===document.activeElement),true);
+    const disclosureOpen=await sourceSummary.evaluate(n=>n.parentElement.open);await page.evaluate(()=>render());assert.equal(await sourceSummary.evaluate(n=>n.parentElement.open),disclosureOpen);
+    const activeMenu=page.getByLabel('Active character',{exact:true});await activeMenu.click();await activeMenu.evaluate(n=>window.atlasHeldMenu=n);await page.evaluate(()=>render());assert.ok(await activeMenu.evaluate(n=>n===window.atlasHeldMenu));await page.keyboard.press('Escape');await search.focus();
+    const atlasNav=page.getByRole('button',{name:'Quest Guide',exact:true});await atlasNav.focus();await page.evaluate(()=>render());assert.equal(await atlasNav.evaluate(n=>n===document.activeElement),true,'Navigation focus keeps semantic ownership through source/root paints');
+    await search.fill('Hidden');await search.evaluate(n=>n.setSelectionRange(2,4));await page.evaluate(()=>render());assert.equal(await search.inputValue(),'Hidden');assert.deepEqual(await search.evaluate(n=>[n.selectionStart,n.selectionEnd]),[2,4]);assert.equal(await search.evaluate(n=>n===document.activeElement),true);
+    await search.fill('');await page.locator('.quest-ledger-row[data-quest-id="5730"]').click();await page.locator('.quest-detail h2').waitFor();
+    // A real ready phase uses the compatible turn-in observation, not an objective clue.
+    characters[1].quests.find(q=>q.id===5730).complete=true;characters[1].updatedAt+=2;await write();await page.evaluate(()=>window.backstage.refreshGame());
+    await page.evaluate(async()=>{const r=await backstage.bootstrap();state=r.state;render();});await page.locator('.quest-ledger-row[data-quest-id="5730"]').click();await page.locator('.quest-detail h2').waitFor();
+    const readyFacts=await page.evaluate(async()=>backstage.questDetails(state.activeProfileId,5730));
+    assert.equal(readyFacts.waypoint.source,'reference');assert.notEqual(readyFacts.waypoint.destination?.evidence,'mentioned-in-objective');assert.ok(readyFacts.waypoint.destination);
+    await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1440,1000));await capture('quest-guide-horde-ready.png');
+    characters[1].quests.find(q=>q.id===5730).complete=false;characters[1].updatedAt+=2;await write();await page.evaluate(()=>window.backstage.refreshGame());
+    await app.evaluate(({ipcMain})=>{const original=ipcMain._invokeHandlers.get('backstage:questDetails');ipcMain.removeHandler('backstage:questDetails');ipcMain.handle('backstage:questDetails',async(...args)=>{if(globalThis.atlasFailDetails)throw Error('Synthetic evidence unavailable');return original(...args);});globalThis.atlasFailDetails=true;});
+    await page.locator('.quest-ledger-row[data-quest-id="5730"]').click();await page.getByRole('button',{name:'Retry quest evidence',exact:true}).waitFor();await capture('quest-guide-detail-error.png');
+    await app.evaluate(()=>globalThis.atlasFailDetails=false);await page.getByRole('button',{name:'Retry quest evidence',exact:true}).click();await page.locator('.quest-detail h2').waitFor();
+    await search.fill('99999999');await page.getByText('No matching quests.',{exact:true}).waitFor();await capture('quest-guide-empty.png');await search.fill('');
+
     await page
       .getByRole("button", { name: "AI Companion", exact: true })
       .click();
@@ -584,6 +640,7 @@ const { testWindow } = require("./test-window.cjs");
       await page.locator(".quest-ledger-row").count(),
       characters[0].quests.length,
     );
+    await capture("quest-guide-build-mismatch.png");
     characters[0].clientBuild = "1.60.1.70862";
     characters[0].quests[0].title = "Current hotfix title";
     characters[0].updatedAt++;
@@ -787,6 +844,14 @@ const { testWindow } = require("./test-window.cjs");
       ),
       "Late status does not cross a character switch",
     );
+    // The root navigation read owns its page/profile, independently of module replies.
+    await page.getByRole('button',{name:'Field Guide',exact:true}).click();
+    await app.evaluate(({ipcMain})=>{const original=ipcMain._invokeHandlers.get('backstage:knowledgeStatus');ipcMain.removeHandler('backstage:knowledgeStatus');ipcMain.handle('backstage:knowledgeStatus',async(...args)=>{const result=await original(...args);if(globalThis.atlasHoldNavStatus){await new Promise(r=>globalThis.atlasNavStatusRelease=r);result.message='STALE NAV STATUS MUST NOT APPEAR';}return result;});globalThis.atlasHoldNavStatus=true;});
+    await page.getByRole('button',{name:'Quest Guide',exact:true}).click();await waitHeld('atlasNavStatusRelease');await page.getByRole('button',{name:'Field Guide',exact:true}).click();
+    await app.evaluate(()=>{globalThis.atlasHoldNavStatus=false;globalThis.atlasNavStatusRelease();});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+    assert.equal(await page.evaluate(()=>page), 'guide');assert.doesNotMatch(await page.evaluate(()=>JSON.stringify(knowledgeStatus)),/STALE NAV STATUS/);
+    const manual=await page.evaluate(async()=>{const s=(await backstage.bootstrap()).state;const p={id:'Fictional-manual-journal',name:'Elowen',className:'Druid',level:12,faction:'',realm:'Fictional Realm',notes:'',goals:[]};s.profiles.push(p);s.activeProfileId=p.id;s.followGameCharacter=false;state=await backstage.saveState(s);knowledgeStatus=await backstage.knowledgeStatus();render();return p.id;});
+    await page.getByRole('button',{name:'Quest Guide',exact:true}).click();await page.locator('.quest-detail-empty').waitFor();await capture('quest-guide-neutral-manual.png');
     assert.equal(await app.evaluate(() => globalThis.knowledgeInference), 0);
     await app.evaluate(({ dialog }) => {
       dialog.showMessageBox = async () => ({ response: 1 });
@@ -824,6 +889,8 @@ const { testWindow } = require("./test-window.cjs");
     if (app)
       await app
         .evaluate(() => {
+          globalThis.atlasNavStatusRelease?.();
+          globalThis.atlasCopyRelease?.();
           globalThis.knowledgeSearchHeld?.();
           globalThis.knowledgeContextHeld?.();
           globalThis.knowledgeDetailsHeld?.();
@@ -831,9 +898,10 @@ const { testWindow } = require("./test-window.cjs");
           globalThis.knowledgeDeferredPreviewRelease?.();
         })
         .catch(() => {});
+    clearTimeout(watchdog);
     if (app) await app.close();
-    const target = path.resolve(data);
-    assert.equal(path.dirname(target), path.resolve(os.tmpdir()));
+    const target = await fs.realpath(normalData);
+    assert.equal(path.dirname(target), await fs.realpath(os.tmpdir()));
     assert.ok(path.basename(target).startsWith("bf-knowledge-"));
     await fs.rm(target, { recursive: true, force: true });
   }

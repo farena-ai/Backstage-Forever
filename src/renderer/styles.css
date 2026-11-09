@@ -1251,3 +1251,8 @@ body[data-class] .providers {
 .rail nav { min-height:0; overflow-y:auto; flex:1; align-content:start; }
 .rail .brand,.rail .rail-bottom { flex-shrink:0; }
 @media(max-height:800px){.rail .brand{margin-bottom:22px}.rail nav{gap:5px}.rail nav button:not(.illustrated-card){padding:9px 12px}.rail .rail-bottom{padding-top:12px}}
+
+/* Leave one scrolling axis and room for sculpted endcaps and keyboard outlines. */
+.rail nav{min-width:0;overflow-x:hidden;grid-template-columns:minmax(0,1fr);padding:4px 6px 4px 3px;scrollbar-gutter:stable;}
+.rail nav button:not(.illustrated-card){min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;gap:8px;}
+.rail nav button .glyph{flex-shrink:0;}

@@ -1,7 +1,15 @@
 "use strict";
 // This module presents server-approved facts. Destination selection stays in main.
 window.QuestGuide = (() => {
-  let api, root, esc, notify, onStatus;
+  let api, root, esc, notify, onStatus, portrait, guard, painting=false, focus=null,suspendedFocus=null,focusRevision=0;
+  const disclosures=new Map();
+  const active=()=>Boolean(root?.querySelector(".quest-guide"));
+  const seal=()=>`<svg class="atlas-engraving" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="48"/><circle cx="60" cy="60" r="39"/><path d="M60 3v21m0 72v21M3 60h21m72 0h21M20 20l15 15m50 50l15 15M20 100l15-15m50-50l15-15M60 23l10 37-10 37-10-37zM23 60l37-10 37 10-37 10z"/><path class="atlas-foil" d="M60 23l10 37H60zM60 97L50 60h10z"/></svg>`;
+  const intent=(kind,id)=>esc(JSON.stringify({kind,id,generation,profileId:profile?.id??null}));
+  function remember(){const n=document.activeElement;focus=(n?.dataset?.questControl||n?.dataset?.shellControl)?{key:n.dataset.questControl||n.dataset.shellControl,start:n.selectionStart,end:n.selectionEnd,revision:focusRevision}:suspendedFocus?.revision===focusRevision?suspendedFocus:null;root.querySelectorAll(".quest-guide details[open] summary[data-interaction-key]").forEach(n=>disclosures.set(n.dataset.interactionKey,true));root.querySelectorAll(".quest-guide details:not([open]) summary[data-interaction-key]").forEach(n=>disclosures.set(n.dataset.interactionKey,false));}
+  function restore(){root.querySelectorAll(".quest-guide summary[data-interaction-key]").forEach(n=>{if(disclosures.has(n.dataset.interactionKey))n.parentElement.open=disclosures.get(n.dataset.interactionKey);});if(!focus||focus.revision!==focusRevision)return;const n=[...root.querySelectorAll("[data-quest-control],[data-shell-control]")].find(n=>(n.dataset.questControl||n.dataset.shellControl)===focus.key);if(!n||n.disabled){suspendedFocus=focus;return;}if(n){n.focus({preventScroll:true});suspendedFocus=null;if(typeof focus.start==="number"&&n.setSelectionRange)try{n.setSelectionRange(focus.start,focus.end);}catch{}}}
+  function beginRender(){remember();painting=true;}function endRender(){painting=false;}
+  function paintRegion(selector,markup,kind){if(guard?.defer(()=>paintRegion(selector,markup,kind),kind))return;const n=root.querySelector(selector);if(n){beginRender();try{n.innerHTML=markup();restore();}finally{endRender();}}}
   let profile = null,
     signature = "",
     sourceSignature = "",
@@ -22,7 +30,7 @@ window.QuestGuide = (() => {
     contextKey = "",
     contextResolvedKey = "",
     contextValue = null;
-  let queryTimer, contextTimer;
+  let queryTimer, contextTimer, opening=false,copying=false, detailError="",copyError="";
   const safeDate = (value) =>
     value && Number.isFinite(Date.parse(value))
       ? new Date(value).toLocaleDateString(
@@ -45,8 +53,9 @@ window.QuestGuide = (() => {
     })[value] || "Published player observation";
   const point = (p) =>
     `Map ${p.mapId} · ${(p.x * 100).toFixed(2)}%, ${(p.y * 100).toFixed(2)}%`;
-  function invalidate(clearQuery = false) {
+  function invalidate(clearQuery = false,preserveGesture=false) {
     generation++;
+    opening=false;copying=false;detailError="";copyError="";if(!preserveGesture)guard?.invalidate();
     searchRequest++;
     detailRequest++;
     statusRequest++;
@@ -62,6 +71,7 @@ window.QuestGuide = (() => {
     contextKey = "";
     contextResolvedKey = "";
     contextValue = null;
+    if (clearQuery) { disclosures.clear(); if(focus?.key!=="active-character")focus=null; }
     if (clearQuery) {
       query = "";
       includeReference = false;
@@ -74,7 +84,9 @@ window.QuestGuide = (() => {
     const next = JSON.stringify(p || null);
     if (signature !== next) {
       const switched = profile?.id !== p?.id;
-      invalidate(switched);
+      const previous=selected;
+      invalidate(switched,!switched);
+      if(!switched)selected=previous;
       signature = next;
       profile = p || null;
     }
@@ -96,7 +108,12 @@ window.QuestGuide = (() => {
     }
   }
   function init(options) {
-    ({ api, root, esc, notify, onStatus } = options);
+    ({ api, root, esc, notify, onStatus, portrait } = options);
+    const newerFocus=()=>{focusRevision++;suspendedFocus=null;};
+    document.addEventListener("focusin",e=>{if(active()&&!painting&&e.target!==document.body)newerFocus();});
+    document.addEventListener("pointerdown",()=>{if(active()&&!painting)newerFocus();},true);
+    document.addEventListener("keydown",e=>{if(active()&&!painting&&e.key==="Tab")newerFocus();},true);
+    guard=InteractionGuard.create({root,active,painting:()=>painting});
     root.addEventListener("input", (event) => {
       if (event.target.id === "quest-search") {
         query = event.target.value.slice(0, 120);
@@ -133,8 +150,12 @@ window.QuestGuide = (() => {
     root.addEventListener("click", (event) => {
       const button = event.target.closest("button");
       if (!button) return;
-      if (button.dataset.questId) open(Number(button.dataset.questId));
-      if (button.dataset.questCopy) copy(Number(button.dataset.questCopy));
+      let displayed;try{displayed=JSON.parse(button.dataset.questIntent||"null");}catch{return;}
+      if ((button.dataset.questId || button.dataset.questCopy) && (!displayed || displayed.generation!==generation || displayed.profileId!==(profile?.id??null)))return;
+      if (button.dataset.questId) open(displayed.id);
+      if (button.dataset.questCopy) copy(displayed.id,displayed);
+      if(button.dataset.questRetry==="search")search();
+      if(button.dataset.questRetry==="detail"&&selected)open(selected);
       if (button.dataset.knowledgeAction === "refresh")
         runStatus(() => api.refreshKnowledge(), true);
       if (button.dataset.knowledgeAction === "cancel")
@@ -161,10 +182,11 @@ window.QuestGuide = (() => {
       refreshing: "Checking reference",
       offline: "Reference offline",
     };
-    return `<section class="knowledge-status" aria-label="Quest reference status"><div class="knowledge-status-main"><span class="knowledge-sigil" aria-hidden="true">◈</span><div><strong>${esc(labels[s.phase] || "Quest reference")}</strong><p>${esc(s.message || "Bundled quest facts work without a connection.")}</p><small>Reference ${esc(s.packBuild || s.bundledBuild || "unknown")} · Observed through ${esc(safeDate(s.observedThrough))}${s.build ? ` · Game ${esc(s.build)}` : " · Game build not yet saved"}</small></div></div><div class="knowledge-actions"><label class="check-label"><input id="knowledge-automatic" aria-label="Automatic reference updates" type="checkbox" ${s.automatic ? "checked" : ""}>Automatic updates</label>${s.phase === "refreshing" ? '<button data-knowledge-action="cancel">Cancel refresh</button>' : '<button data-knowledge-action="refresh">Refresh reference</button>'}</div></section>`;
+    return `<section class="knowledge-status" aria-label="Quest reference status"><div class="knowledge-status-main"><span class="knowledge-sigil" aria-hidden="true">◈</span><div><strong>${esc(labels[s.phase] || "Quest reference")}</strong><p>${esc(s.message || "Bundled quest facts work without a connection.")}</p><small>Reference ${esc(s.packBuild || s.bundledBuild || "unknown")} · Observed through ${esc(safeDate(s.observedThrough))}${s.build ? ` · Game ${esc(s.build)}` : " · Game build not yet saved"}</small></div></div><div class="knowledge-actions"><label class="check-label"><input data-quest-control="automatic" id="knowledge-automatic" aria-label="Automatic reference updates" type="checkbox" ${s.automatic ? "checked" : ""}>Automatic updates</label>${s.phase === "refreshing" ? '<button data-quest-control="cancel" data-knowledge-action="cancel">Cancel refresh</button>' : '<button data-quest-control="refresh" data-knowledge-action="refresh">Refresh reference</button>'}</div></section>`;
   }
   function page() {
-    return `<div class="quest-guide"><header class="section-head quest-guide-heading"><div><div class="eyebrow">THE QUEST LEDGER · NO AI REQUIRED</div><h1>Your next chapter.</h1><p>Your saved quests, connected to public Forever observations. Pick a quest to find its next step, reported chain and rewards.</p></div><span class="ledger-seal" aria-hidden="true">✧</span></header><div data-knowledge-status>${statusMarkup()}</div><section class="quest-ledger" aria-label="Quest Guide"><aside class="quest-index"><label class="quest-search-label" for="quest-search">Find a quest<span>Title or exact quest ID</span></label><input id="quest-search" type="search" maxlength="120" autocomplete="off" aria-label="Find a quest" placeholder="Search this character’s journey…" value="${esc(query)}"><label class="check-label reference-toggle"><input id="reference-quests" type="checkbox" ${includeReference ? "checked" : ""}>Include unobserved reference quests</label><p class="ledger-caption">${profile?.quests?.length ? "YOUR CURRENT QUESTS FIRST" : "OBSERVED PUBLIC QUESTS"} <span>Saved, never live</span></p><div class="quest-results" aria-live="polite">${resultsMarkup()}</div></aside><div class="quest-detail-host">${detailMarkup()}</div></section><p class="ledger-footnote">Built locally. Community coverage is partial; reported links are not a complete prerequisite graph. You choose every action in game.</p></div>`;
+    const faction=["Alliance","Horde"].includes(profile?.faction)?profile.faction.toLowerCase():null;
+    return `<div class="quest-guide" data-atlas-faction="${faction||"neutral"}"><header class="quest-guide-heading"><img class="quest-atlas-art" src="${portrait?portrait(profile?.className):"../../assets/citadel-journey.png"}" alt=""><div class="atlas-heading-copy"><div class="eyebrow">THE EXPEDITION ATLAS · LOCAL, WITHOUT AI</div><h1>Your next chapter.</h1><p>Saved quests. Reported connections. A little direction for the road.</p><span class="atlas-owner">${esc(profile?.name||"An uncharted adventure")} · ${esc(profile?.className||"Manual journal")} · ${esc(profile?.source?.kind==="wow-addon"?"Saved game observations":"Reference browsing · availability unknown")}</span></div>${faction?`<img class="atlas-faction" src="../../assets/faction-${faction}.png" alt="${esc(profile.faction)}">`:""}<div class="atlas-seal">${seal()}<span>FIELD EDITION<br>FOREVER</span></div></header><div data-knowledge-status>${statusMarkup()}</div><section class="quest-ledger" aria-label="Quest Guide"><aside class="quest-index"><div class="atlas-index-label"><span>01 / QUEST INDEX</span><span aria-hidden="true">✦</span></div><label class="quest-search-label" for="quest-search">Find a quest<span>Title or exact quest ID</span></label><input data-quest-control="search" id="quest-search" type="search" maxlength="120" autocomplete="off" aria-label="Find a quest" placeholder="Search this character’s journey…" value="${esc(query)}"><label class="check-label reference-toggle"><input data-quest-control="references" id="reference-quests" type="checkbox" ${includeReference?"checked":""}>Include unobserved reference quests</label><p class="ledger-caption">${profile?.quests?.length?"YOUR CURRENT QUESTS FIRST":"OBSERVED PUBLIC QUESTS"}<span>Saved, never live · coverage is partial</span></p><div class="quest-results" aria-live="polite">${resultsMarkup()}</div></aside><div class="quest-detail-host">${detailMarkup()}</div></section><p class="ledger-footnote">Built locally. Reported links are not a complete prerequisite graph. You choose every action in game.</p></div>`;
   }
   function mergedRows(found) {
     const active = profile?.quests || [];
@@ -196,46 +218,54 @@ window.QuestGuide = (() => {
     ];
   }
   function resultsMarkup() {
-    if (error) return `<p class="quest-empty">${esc(error)}</p>`;
+    if (error) return `<div class="quest-empty" role="alert">${esc(error)}<button data-quest-control="retry-search" data-quest-retry="search">Retry quest index</button></div>`;
     if (!loaded && loading)
       return '<p class="quest-empty">Opening saved quest references…</p>';
     return rows.length
       ? rows
           .map(
             (row) =>
-              `<button class="quest-ledger-row ${selected === row.id ? "selected" : ""}" data-quest-id="${row.id}" aria-pressed="${selected === row.id}"><span class="quest-row-mark" aria-hidden="true">${row.active ? (row.complete ? "◆" : "◇") : "○"}</span><span><strong>${esc(row.title)}</strong><small>#${row.id}${row.active ? (row.complete ? " · Ready to turn in" : " · In your saved log") : " · Check availability"}</small>${row.status === "conflict" ? "<em>Current title differs from reference</em>" : row.status === "missing" ? "<em>No matching reference</em>" : row.referenceTitle ? `<em>English reference: ${esc(row.referenceTitle)}</em>` : ""}</span><span aria-hidden="true">›</span></button>`,
+              `<button class="quest-ledger-row ${selected === row.id ? "selected" : ""}" data-quest-control="quest:${row.id}" data-quest-intent="${intent("open",row.id)}" data-quest-id="${row.id}" aria-pressed="${selected === row.id}"><span class="quest-row-mark" aria-hidden="true">${row.active ? (row.complete ? "◆" : "◇") : "○"}</span><span><strong>${esc(row.title)}</strong><small>#${row.id}${row.active ? (row.complete ? " · Ready to turn in" : " · In your saved log") : " · Check availability"}</small>${row.status === "conflict" ? "<em>Current title differs from reference</em>" : row.status === "missing" ? "<em>No matching reference</em>" : row.referenceTitle ? `<em>English reference: ${esc(row.referenceTitle)}</em>` : ""}</span><span aria-hidden="true">›</span></button>`,
           )
           .join("")
       : `<div class="quest-empty"><strong>${query ? "No matching quests." : "A fresh page awaits."}</strong><p>${status?.phase === "mismatch" ? "This game build has no matching reference pack. Your saved quests stay available; refresh later for compatible coverage." : "Try a quest title or exact ID. Include unobserved references to browse the wider cache; their availability is unknown."}</p></div>`;
   }
   function chainMarkup(chain) {
     if (!chain.length) return "";
+    chain=chain.slice(0,30);
     const nodes = new Map(chain.map(node => [node.id, node]));
     return `<section class="quest-section"><h3>Reported chain</h3><p class="section-note">Each arrow is a reported next link, not a proven prerequisite. This list is a bounded view, not a required sequence.</p><ul class="quest-chain">${chain.map(node => {
       const next = nodes.get(node.nextQuestId);
+      const seen=new Set([node.id]);let cursor=next,cycle=false;while(cursor){if(seen.has(cursor.id)){cycle=true;break;}seen.add(cursor.id);cursor=nodes.get(cursor.nextQuestId);}
+
       const qualifier = node.referenceTitle
         ? `<small class="chain-reference">${node.referenceStatus === "conflict" ? "Reference conflict" : "English reference"}: ${esc(node.referenceTitle)}${node.referenceStatus === "conflict" ? " \u00b7 Current game title wins" : ""}</small>`
         : "";
-      return `<li class="chain-${esc(node.status)}" data-chain-node="${node.id}"><span class="chain-status">${esc({ active: "In your log", completed: "Completed", unknown: "Status unknown", missing: "Reference missing" }[node.status] || "Unknown")}</span><button data-quest-id="${node.id}" ${node.id === selected ? 'aria-current="step"' : ""}>${esc(node.title || `Quest #${node.id}`)} <small>#${node.id}</small></button>${qualifier}${node.nextQuestId ? `<div class="chain-link" data-chain-from="${node.id}" data-chain-to="${node.nextQuestId}"><span>Reported next \u2192 </span><button data-quest-id="${node.nextQuestId}">${esc(next?.title || `Quest #${node.nextQuestId}`)} <small>#${node.nextQuestId}${!next ? " \u00b7 Outside this view" : next.status === "missing" ? " \u00b7 Reference missing" : ""}</small></button></div>` : '<small class="chain-reference">No next link reported.</small>'}</li>`;
+      return `<li class="chain-${esc(node.status)}" data-chain-node="${node.id}"><span class="chain-status">${esc({ active: "In your log", completed: "Completed", unknown: "Status unknown", missing: "Reference missing" }[node.status] || "Unknown")}</span><button data-quest-control="chain:${node.id}" data-quest-intent="${intent("open",node.id)}" data-quest-id="${node.id}" ${node.id === selected ? 'aria-current="step"' : ""}>${esc(node.title || `Quest #${node.id}`)} <small>#${node.id}</small></button>${qualifier}${cycle?'<small class="chain-reference">Reported cycle · no travel sequence inferred.</small>':""}${node.nextQuestId ? `<div class="chain-link" data-chain-from="${node.id}" data-chain-to="${node.nextQuestId}"><span>Reported next \u2192 </span><button data-quest-control="next:${node.id}:${node.nextQuestId}" data-quest-intent="${intent("open",node.nextQuestId)}" data-quest-id="${node.nextQuestId}">${esc(next?.title || `Quest #${node.nextQuestId}`)} <small>#${node.nextQuestId}${!next ? " \u00b7 Outside this view" : next.status === "missing" ? " \u00b7 Reference missing" : ""}</small></button></div>` : '<small class="chain-reference">No next link reported.</small>'}</li>`;
     }).join("")}</ul></section>`;
   }
   function detailMarkup() {
     if (!selected)
-      return `<section class="quest-detail quest-detail-empty"><div class="ledger-compass" aria-hidden="true">✧</div><div class="eyebrow">A LITTLE DIRECTION FOR THE ROAD</div><h2>Choose your next quest.</h2><p>Start with a quest in your saved log. The ledger keeps game destinations and approximate community locations clearly labelled.</p><div class="ledger-how"><span><b>01</b>Choose a quest</span><span><b>02</b>Review the evidence</span><span><b>03</b>Copy a waypoint, if available</span></div><small>No provider, account or database download needed.</small></section>`;
+      return `<section class="quest-detail quest-detail-empty"><div class="ledger-compass">${seal()}</div><div class="eyebrow">A LITTLE DIRECTION FOR THE ROAD</div><h2>Choose your next quest.</h2><p>Start with a quest in your saved log. The ledger keeps game destinations and approximate community locations clearly labelled.</p><div class="ledger-how"><span><b>01</b>Choose a quest</span><span><b>02</b>Review the evidence</span><span><b>03</b>Copy a waypoint, if available</span></div><small>No provider, account or database download needed.</small></section>`;
+    if(detailError)return `<section class="quest-detail"><div class="quest-empty" role="alert">${esc(detailError)}<button data-quest-control="retry-detail:${selected}" data-quest-retry="detail">Retry quest evidence</button></div></section>`;
     if (!details)
       return '<section class="quest-detail"><p class="quest-empty">Opening quest evidence…</p></section>';
     const d = details,
       q = profile?.quests?.find((q) => q.id === selected),
       title = q?.title || d.record?.title || `Quest #${selected}`;
     const chain = d.chain || [];
-    return `<article class="quest-detail" tabindex="-1" aria-label="Quest details"><header class="quest-detail-heading"><span class="eyebrow">QUEST #${selected}${q ? " · YOUR SAVED LOG" : " · PUBLIC REFERENCE"}</span><h2>${esc(title)}</h2><p>${q ? (q.complete ? "Ready to turn in in your saved snapshot." : "Continue the objectives in your saved quest log.") : "Check availability in game. A public record does not prove eligibility."}</p>${d.status === "conflict" ? `<p class="quest-notice">Your current game title wins. Reference title: ${esc(d.record?.title)}. Conflicting reference facts cannot supply an automatic marker.</p>` : ""}${d.status === "missing" ? '<p class="quest-notice">No matching reference for this quest and saved game build. Your quest remains in your log. Check the in-game journal and refresh references later.</p>' : ""}</header>${waypointMarkup(d)}${q?.objectives?.length ? `<section class="quest-section"><h3>Your objectives</h3><ul class="quest-objectives">${q.objectives.map((o) => `<li>${o.done ? "✓" : "○"} ${esc(o.text)}</li>`).join("")}</ul></section>` : ""}${chainMarkup(chain)}${rewardsMarkup(d.rewards)}${npcsMarkup("Quest givers", d.givers)}${npcsMarkup("Turn-in observations", d.turnIns)}${npcsMarkup("Mentioned in an objective", d.mentions)}${d.objectiveLocations?.length ? `<section class="quest-section"><h3>Objective observations</h3>${d.objectiveLocations.map((o) => `<p>Objective ${esc(o.index)} · ${esc(sourceFiles(o.sources))}${o.positions?.length ? ` · ${esc(point(o.positions[0]))}` : " · No position"}</p>`).join("")}<p class="section-note">Gain observations are approximate positions, not a route.</p></section>` : ""}${sourceMarkup(d, Boolean(q))}</article>`;
+    return `<article class="quest-detail" data-quest-control="detail:${selected}" tabindex="-1" aria-label="Quest details"><header class="quest-detail-heading"><img class="quest-chapter-scene" src="../../assets/${["Alliance","Horde"].includes(profile?.faction)?`faction-${profile.faction.toLowerCase()}`:"citadel-journey"}.png" alt=""><div class="quest-chapter-mark">${seal()}</div><span class="eyebrow">QUEST #${selected}${q ? " · YOUR SAVED LOG" : " · PUBLIC REFERENCE"}</span><h2>${esc(title)}</h2><p>${q ? (q.complete ? "Ready to turn in in your saved snapshot." : "Continue the objectives in your saved quest log.") : "Check availability in game. A public record does not prove eligibility."}</p>${d.status === "conflict" ? `<p class="quest-notice">Your current game title wins. Reference title: ${esc(d.record?.title)}. Conflicting reference facts cannot supply an automatic marker.</p>` : ""}${d.status === "missing" ? '<p class="quest-notice">No matching reference for this quest and saved game build. Your quest remains in your log. Check the in-game journal and refresh references later.</p>' : ""}</header>${copyError?`<p class="quest-notice" role="alert">${esc(copyError)}</p>`:""}${waypointMarkup(d)}${q?.objectives?.length ? `<section class="quest-section"><h3>Your objectives</h3><ul class="quest-objectives">${q.objectives.map((o) => `<li>${o.done ? "✓" : "○"} ${esc(o.text)}</li>`).join("")}</ul></section>` : ""}${chainMarkup(chain)}${rewardsMarkup(d.rewards)}${npcsMarkup("Quest givers", d.givers)}${npcsMarkup("Turn-in observations", d.turnIns)}${npcsMarkup("Mentioned in an objective", d.mentions)}${d.objectiveLocations?.length ? `<section class="quest-section"><h3>Objective observations</h3>${d.objectiveLocations.map((o) => `<p>Objective ${esc(o.index)} · ${esc(sourceFiles(o.sources))}${o.positions?.length ? ` · ${esc(point(o.positions[0]))}` : " · No position"}</p>`).join("")}<p class="section-note">Gain observations are approximate positions, not a route.</p></section>` : ""}${sourceMarkup(d, Boolean(q))}</article>`;
   }
   function waypointMarkup(d) {
     const w = d.waypoint,
       p = w?.destination;
     const isReference = w?.source === "reference" || w?.phase === "r";
+    const clue=isReference&&p?.evidence==="mentioned-in-objective";
+    const namedClue=!p&&Boolean(d.mentions?.length);
     const olderCapture = !w?.canCopy && /capture|reload|addon/i.test(w?.reason || "");
-    return `<section class="quest-waypoint ${w?.canCopy ? "has-waypoint" : ""}"><div class="eyebrow">${w?.source === "game" ? "SAVED GAME DESTINATION" : isReference && p ? "APPROXIMATE COMMUNITY LOCATION" : "YOUR NEXT DESTINATION"}</div><h3>${p ? esc(p.name || p.text || "Quest waypoint") : "Check your in-game quest log"}</h3>${p ? `<p class="waypoint-coordinates">${esc(point(p))}</p>${w.source === "reference" ? `<p class="section-note">Approximate player observation · ${esc(sourceFiles(p.sources))} · ${esc(safeDate(p.observedThrough || d.provenance?.observedThrough))}. ${esc(evidenceLabel(p.evidence))}</p>` : '<p class="section-note">This point came from your saved game snapshot.</p>'}` : ""}<button class="primary" data-quest-copy="${selected}" ${w?.canCopy ? "" : "disabled"}>${w?.phase === "r" ? "Copy reference marker" : "Copy game waypoint"}</button><p class="waypoint-instruction">${w?.canCopy ? (w.phase === "r" ? "Paste into game chat and press Enter. This marker does not confirm quest availability." : "Paste into game chat and press Enter. The addon rechecks your quest and build.") : olderCapture ? "This desktop snapshot was saved before the waypoint feature. A newer save is needed for this desktop action." : esc(w?.reason || "No compatible destination was observed. Check the quest log in game.")}</p>${olderCapture ? '<p class="section-note">Prepare current companion files in Game Connection. They load on the next game launch; if the addon is already listed, you can choose a voluntary UI reload. Your current Compass may already work. Desktop waypoint evidence catches up after logout.</p>' : ""}</section>`;
+    const heading=w?.source==="game"?"Game-reported quest marker":p?.name||p?.text||"Quest waypoint";
+    const copyIntent=esc(JSON.stringify({kind:"copy",id:selected,generation,profileId:profile?.id??null,phase:w?.phase,canCopy:w?.canCopy===true}));
+    return `<section class="quest-waypoint ${w?.canCopy ? "has-waypoint" : ""}"><div class="eyebrow">${w?.source === "game" ? "SAVED GAME DESTINATION" : clue||namedClue?"NPC CLUE · DESTINATION UNCONFIRMED":isReference && p ? "APPROXIMATE COMMUNITY LOCATION" : "YOUR NEXT DESTINATION"}</div><h3>${p ? esc(heading) : namedClue?esc(d.mentions[0].name)+" · named in an objective":"Check your in-game quest log"}</h3>${p ? `<p class="waypoint-coordinates">${esc(point(p))}</p>${w.source === "reference" ? `<p class="section-note">Approximate player observation · ${esc(sourceFiles(p.sources))} · ${esc(safeDate(p.observedThrough || d.provenance?.observedThrough))}. ${esc(evidenceLabel(p.evidence))}</p>` : `<p class="section-note">Saved game snapshot · saved ${esc(safeDate(profile?.source?.updatedAt))}. ${p.text?esc(p.text):"Point reported by the game; check your in-game journal."}</p>`}` : ""}<button class="primary" data-quest-control="copy:${selected}" data-quest-intent="${copyIntent}" data-quest-copy="${selected}" ${w?.canCopy&&!copying ? "" : "disabled"}>${clue?"Copy NPC clue marker":w?.source==="reference"?"Copy reference marker":"Copy game waypoint"}</button><p class="waypoint-instruction">${w?.canCopy ? (clue?"Copies an approximate historical NPC interaction point. This does not confirm the NPC’s current location, this quest destination or availability. Paste into game chat yourself.":isReference ? "Paste into game chat and press Enter. This marker does not confirm quest availability." : "Paste into game chat and press Enter. The addon rechecks your quest and build.") : olderCapture ? "This desktop snapshot was saved before the waypoint feature. A newer save is needed for this desktop action." : esc(w?.reason || "No compatible destination was observed. Check the quest log in game.")}</p>${olderCapture ? '<p class="section-note">Prepare current companion files in Game Connection. They load on the next game launch; if the addon is already listed, you can choose a voluntary UI reload. Your current Compass may already work. Desktop waypoint evidence catches up after logout.</p>' : ""}</section>`;
   }
   function rewardsMarkup(rewards) {
     if (
@@ -248,7 +278,7 @@ window.QuestGuide = (() => {
     const items = (list) =>
       `<ul class="quest-rewards">${list.map((item) => `<li><span aria-hidden="true">◈</span>${esc(item.name || `Item #${item.itemId}`)}${item.count > 1 ? ` × ${item.count}` : ""}<small>Item #${item.itemId}</small></li>`).join("")}</ul>`;
     const copper = rewards.moneyCopper;
-    return `<section class="quest-section"><h3>Rewards</h3>${rewards.items?.length ? `<h4>Guaranteed items</h4>${items(rewards.items)}` : ""}${rewards.choices?.length ? `<h4>Choose one</h4>${items(rewards.choices)}` : ""}${copper !== undefined ? `<p class="quest-money">Listed money: ${Math.floor(copper / 10000)}g ${Math.floor((copper % 10000) / 100)}s ${copper % 100}c</p><p class="section-note">Listed source amount; your scaled payout may differ.</p>` : ""}</section>`;
+    return `<section class="quest-section"><h3>Rewards</h3><p class="section-note">Historical listed rewards, not earned loot. Check the current quest window.</p>${rewards.items?.length ? `<h4>Observed guaranteed items</h4>${items(rewards.items)}` : ""}${rewards.choices?.length ? `<h4>Observed choices · choose one</h4>${items(rewards.choices)}` : ""}${copper !== undefined ? `<p class="quest-money">Listed money: ${Math.floor(copper / 10000)}g ${Math.floor((copper % 10000) / 100)}s ${copper % 100}c</p><p class="section-note">Listed source amount; your scaled payout may differ.</p>` : ""}</section>`;
   }
   function npcsMarkup(label, list) {
     return list?.length
@@ -256,7 +286,7 @@ window.QuestGuide = (() => {
       : "";
   }
   function sourceMarkup(d, active) {
-    return `<details class="quest-source"><summary>Sources & what remains unknown</summary>${d.provenance ? `<p>${esc(d.provenance.attribution || "Efficient Games · CC BY 4.0")}</p><p>Build ${esc(d.provenance.build)} · Observed through ${esc(safeDate(d.provenance.observedThrough))}</p><p class="source-url">${esc(d.provenance.url)}</p><p>Source commit <code>${esc(d.provenance.sourceCommit)}</code></p>` : ""}<p>${esc(status?.coverage || "Public observation coverage is partial.")}</p>${d.record?.sources !== undefined ? `<p>Quest cache: ${esc(sourceFiles(d.record.sources))}.</p>` : ""}<p>Counts describe contributor files, not universal verification. Approximate interaction positions are not guaranteed spawns or routes.</p>${!active && d.record && !d.record.observedInPlay ? "<p>Availability has not been observed in play for this cache-only record.</p>" : ""}${(
+    return `<details class="quest-source"><summary data-quest-control="source:${selected}" data-interaction-key="${esc(JSON.stringify([profile?.id??null,selected,"quest-source"]))}">Sources & what remains unknown</summary>${d.provenance ? `<p>${esc(d.provenance.attribution || "Efficient Games · CC BY 4.0")}</p><p>Build ${esc(d.provenance.build)} · Observed through ${esc(safeDate(d.provenance.observedThrough))}</p><p class="source-url">${esc(d.provenance.url)}</p><p>Source commit <code>${esc(d.provenance.sourceCommit)}</code></p>` : ""}<p>${esc(status?.coverage || "Public observation coverage is partial.")}</p>${d.record?.sources !== undefined ? `<p>Quest cache: ${esc(sourceFiles(d.record.sources))}.</p>` : ""}<p>Counts describe contributor files, not universal verification. Approximate interaction positions are not guaranteed spawns or routes.</p>${!active && d.record && !d.record.observedInPlay ? "<p>Availability has not been observed in play for this cache-only record.</p>" : ""}${(
       d.warnings || []
     )
       .filter(
@@ -268,24 +298,12 @@ window.QuestGuide = (() => {
         "",
       )}<p>Race, class, reputation and unreported prerequisites remain unknown. Check the game before travelling.</p><p>Last successful reference check: ${esc(safeDate(status?.lastChecked))}. Collection date and check date are separate.</p></details>`;
   }
-  function paintResults() {
-    const host = root.querySelector(".quest-results");
-    if (host) host.innerHTML = resultsMarkup();
+  function paintResults(){paintRegion(".quest-results",resultsMarkup,"results");}
+  function paintDetail(){
+    paintRegion(".quest-detail-host",detailMarkup,"detail");
+    root.querySelectorAll(".quest-ledger-row").forEach(node=>{const current=Number(node.dataset.questId)===selected;node.classList.toggle("selected",current);node.setAttribute("aria-pressed",String(current));});
   }
-  function paintDetail() {
-    const host = root.querySelector(".quest-detail-host");
-    if (host) host.innerHTML = detailMarkup();
-    root.querySelectorAll(".quest-ledger-row").forEach((node) => {
-      const active = Number(node.dataset.questId) === selected;
-      node.classList.toggle("selected", active);
-      node.setAttribute("aria-pressed", String(active));
-    });
-  }
-  function paintStatus() {
-    root.querySelectorAll("[data-knowledge-status]").forEach((node) => {
-      node.innerHTML = statusMarkup();
-    });
-  }
+  function paintStatus(){paintRegion("[data-knowledge-status]",statusMarkup,"status");}
   async function search() {
     if (!api.searchQuests || !root.querySelector(".quest-guide")) return;
     const request = ++searchRequest,
@@ -319,26 +337,27 @@ window.QuestGuide = (() => {
     const request = ++detailRequest,
       epoch = generation,
       pid = profile?.id || null;
+    if(selected!==id)copyError="";
     selected = id;
+    opening=true;detailError="";
     details = null;
     paintDetail();
     try {
       const result = await api.questDetails(pid, id);
       if (request !== detailRequest || epoch !== generation) return;
-      details = result;
+      opening=false;details = result;
       paintDetail();
-      root.querySelector(".quest-detail")?.focus({ preventScroll: true });
+
     } catch {
       if (request === detailRequest && epoch === generation) {
-        selected = null;
+        opening=false;detailError="Quest evidence could not be opened. Your saved quest log is safe. Try again.";
         paintDetail();
-        notify("Quest evidence could not be opened. Try again.", true);
       }
     }
   }
-  async function copy(id) {
-    const descriptor = details?.waypoint;
-    if (id !== selected || !descriptor?.canCopy) return;
+  async function copy(id, descriptor) {
+    if (copying || id !== selected || !descriptor?.canCopy || descriptor.generation!==generation) return;
+    copying=true;copyError="";root.querySelectorAll("[data-quest-copy]").forEach(n=>n.disabled=true);
     const epoch = generation;
     try {
       const result = await api.copyQuestWaypoint(
@@ -346,15 +365,16 @@ window.QuestGuide = (() => {
         id,
         descriptor.phase,
       );
-      if (epoch === generation) notify(result.message);
+      if (epoch === generation && id===selected) {copyError="";notify(result.message);paintDetail();}
     } catch (error) {
-      if (epoch !== generation) return;
+      if (epoch !== generation || id!==selected) return;
+      copyError="The saved quest changed or its marker is unavailable. Refresh your snapshot and try again.";
       notify(
         "The saved quest changed or its marker is unavailable. Refresh your snapshot and try again.",
         true,
       );
       open(id);
-    }
+    }finally{if(epoch===generation){copying=false;paintDetail();}}
   }
   async function runStatus(operation, refreshing = false) {
     const request = ++statusRequest,
@@ -458,7 +478,9 @@ window.QuestGuide = (() => {
     }
   }
   function mounted() {
+    if(active()){const n=root.querySelector("#active-character");if(n)n.dataset.questControl="active-character";restore();}
     if (root.querySelector(".quest-guide") && !loaded && !loading) search();
+    if(active()&&selected&&!details&&!opening&&!detailError)open(selected);
     if (root.querySelector("[data-context-body]"))
       queueMicrotask(updateContext);
   }
@@ -471,6 +493,6 @@ window.QuestGuide = (() => {
     statusMarkup,
     contextMarkup,
     updateContext,
-    open,
+    open, beginRender,endRender,deferRender:callback=>guard?.defer(callback,"root")||false,
   };
 })();

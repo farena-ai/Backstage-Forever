@@ -357,3 +357,24 @@ test('a saved active-character replacement clears queued Preparation pending pre
  const button={dataset:{preparationChoice:choice},hasAttribute:name=>name==='data-preparation-add',closest:selector=>selector==='[data-preparation-add]'||selector==='button'?button:null};h.handlers.click.forEach(fn=>fn({target:button}));assert.match(vm.runInContext('Preparation.page()',h.context),/Saving shopping checklist/);
  await h.polls.at(-1)();assert.doesNotMatch(vm.runInContext('Preparation.page()',h.context),/Saving shopping checklist/);queue.resolve();await vm.runInContext('autosaveQueue',h.context);assert.equal(vm.runInContext('state.activeProfileId',h.context),'q');
 });
+test('editable question bridge refuses queued drafts after newer typing, replacement, or lost current-plan ownership',async()=>{
+ for(const boundary of ['typing','replacement','ownership']){
+  const held=deferred(),h=harness();h.context.held=held.promise;
+  vm.runInContext("state={onboarded:true,profiles:[],provider:{id:'ollama',model:'fixture'}};page='preparation';setupOpen=false;autosaveQueue=held;render=()=>{};globalThis.stillOwned=true;",h.context);
+  const queued=vm.runInContext("openQuestionDraft('OLD SUPPLY DRAFT',()=>stillOwned)",h.context);
+  vm.runInContext(boundary==='typing'?"questionRevision++":boundary==='replacement'?"autosaveGeneration++":"stillOwned=false",h.context);
+  held.resolve();await queued;assert.equal(vm.runInContext('page',h.context),'preparation',boundary+' cannot open/overwrite a newer question');
+ }
+});
+test('late navigation status cannot cross leaving Quest Guide or a same-character source replacement',async()=>{
+ for(const boundary of ['navigate','source']){
+  const held=deferred(),h=harness({knowledgeStatus:()=>held.promise});const accepted=[];h.context.QuestGuide.sync=(_p,status)=>accepted.push(status);
+  vm.runInContext("state={onboarded:true,profiles:[{id:'p',name:'One',clientBuild:'old'}],activeProfileId:'p',provider:{id:'ollama',model:''}};page='adventure';setupOpen=false;render=()=>{};",h.context);
+  const click=nav=>{const n={dataset:{nav},hasAttribute:()=>false,closest:s=>s==='button'?n:null};h.handlers.click.forEach(f=>f({target:n}));};
+  click('quest-guide');for(let i=0;i<8;i++)await Promise.resolve();
+  if(boundary==='navigate')click('guide');else vm.runInContext("state.profiles[0].clientBuild='new'",h.context);
+  for(let i=0;i<8;i++)await Promise.resolve();held.resolve({message:'STALE NAV STATUS'});for(let i=0;i<15;i++)await Promise.resolve();
+  assert.equal(accepted.length,0,boundary+' must retire the old status request');
+ }
+});
+test('Preparation refresh ownership includes an exact saved build change even when its collection clocks are unchanged',async()=>{let calls=0;const h=harness({preparationBrief:async()=>{calls++;return {character:{id:'p'},selection:{crafts:1},planning:{},recipes:[],shoppingRows:[],otherCharacters:[]};}});vm.runInContext("state={onboarded:true,profiles:[{id:'p',name:'One',clientBuild:'1.60.1.70862',source:{kind:'wow-addon',updatedAt:'2026-11-09T12:00:00Z'}}],activeProfileId:'p',provider:{id:'ollama',model:''}};page='preparation';setupOpen=false;render=()=>{};",h.context);await h.context.Preparation.refresh();vm.runInContext("state.profiles[0].clientBuild='1.60.1.99999'",h.context);await h.context.Preparation.refresh();assert.equal(calls,2,'Changed build must invalidate old seller/draft qualification without depending on a different clock');});
