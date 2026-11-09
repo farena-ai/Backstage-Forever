@@ -406,3 +406,86 @@ test("logical JSON payload remains bounded even when the Lua transport has a lar
     parseSavedVariables("BackstageForeverExport = [=[" + json + "]=]"),
   );
 });
+
+test("all accounts merge newest per-character records and retain good data through partial files", async t => {
+  const f=await fixture(t),events=[];
+  const other=path.join(f.root,"WTF","Account","OtherSynthetic","SavedVariables","BackstageForever.lua");
+  await fs.mkdir(path.dirname(other),{recursive:true});
+  const a=snapshot(),b=snapshot();
+  a.observedAt=1700000300;a.characters[0].updatedAt=1700000200;a.characters[0].captureVersion="0.6.1";
+  b.observedAt=1700000400;b.activeId="Player-two";b.characters=[{...b.characters[0],id:"Player-two",name:"Second",captureVersion:"0.7.0",updatedAt:1700000100},{...a.characters[0],level:13,updatedAt:1700000300}];
+  a.characters.push({...a.characters[0],id:"Player-first-account-only",name:"Only first account"});
+  await fs.writeFile(f.file,saved(a));await fs.writeFile(other,saved(b));
+  const sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:path.join(__dirname,"../addon/BackstageForever"),onSnapshot:s=>events.push(s),runtime:{probe:async()=>({state:"running",checkedAt:"2026-01-01T00:00:00.000Z",launchAvailable:true})}});t.after(()=>sync.close());
+  await sync.prepare(f.root);
+  assert.equal(events.length,1);assert.equal(events[0].characters.length,3);assert.equal(events[0].characters.find(c=>c.name==="Example").level,13);
+  assert.equal(sync.status().loadedCaptureVersion,"0.7.0");assert.equal(sync.status().runtime.state,"running");assert.equal(sync.status().companionState,"saved");
+  await sync.refresh();assert.equal(events.length,1);
+  await fs.writeFile(other,"partial");await sync.refresh();
+  assert.equal(sync.status().characterCount,3);assert.equal(sync.status().coverage.partial,true);assert.equal(sync.status().coverage.unreadableAccountCount,1);assert.equal(events.length,1);
+  assert.doesNotMatch(JSON.stringify(sync.status()),/OtherSynthetic|SyntheticAccount|Player-two/);
+});
+
+test("prepared status permits play without an export and runtime does not prove capture load", async t=>{
+  const f=await fixture(t);
+  const runtime={probe:async()=>({state:"running",checkedAt:"2026-01-01T00:00:00.000Z",launchAvailable:true})};
+  const sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:path.join(__dirname,"../addon/BackstageForever"),runtime});t.after(()=>sync.close());
+  await sync.prepare(f.root);assert.equal(sync.status().companionState,"update-next-launch");assert.equal(sync.status().loadedCaptureVersion,null);assert.equal(sync.status().nextAction.id,"play");assert.doesNotMatch(sync.status().message,/use \/reload/i);
+  const old=snapshot();old.characters[0].captureVersion="0.6.1";await fs.writeFile(f.file,saved(old));await sync.refresh();
+  assert.equal(sync.status().loadedCaptureVersion,"0.6.1");assert.equal(sync.status().companionState,"update-next-launch");
+  runtime.probe=async()=>({state:"not-running",checkedAt:"2026-01-01T00:01:00.000Z",launchAvailable:true});
+  await sync.refresh();assert.equal(sync.status().companionState,"prepared");
+  await sync.disconnect();assert.equal(sync.status().runtime.launchAvailable,false);assert.equal(sync.lastSnapshot,null);
+});
+
+test("unavailable folder disables launch and cannot claim prepared play-now status",async t=>{
+  const f=await fixture(t),sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:path.join(__dirname,"../addon/BackstageForever"),runtime:{probe:async()=>({state:"running",checkedAt:"2026-01-01T00:00:00.000Z",launchAvailable:true})}});t.after(()=>sync.close());
+  await sync.prepare(f.root);await fs.rename(f.root,path.join(f.dir,"moved-client"));await sync.refresh();
+  assert.equal(sync.status().companionState,"unavailable");assert.equal(sync.status().runtime.launchAvailable,false);assert.match(sync.status().companionMessage,/unavailable|reconnect/i);
+});
+
+test("overlapping refresh cannot publish an earlier read after a later refresh",async t=>{
+  const f=await fixture(t),events=[];
+  const sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:"unused",onSnapshot:s=>events.push(s)});t.after(()=>sync.close());
+  await sync.prepare(f.root);await fs.writeFile(f.file,saved());
+  const original=fs.open;let reached,release,paused=false;const blocked=new Promise(r=>reached=r);
+  fs.open=async function(file,...args){const h=await original.call(this,file,...args);if(file===f.file&&!paused){paused=true;const read=h.read.bind(h);h.read=async(...readArgs)=>{const result=await read(...readArgs);reached();await new Promise(r=>release=r);return result;};}return h;};
+  try{const pending=sync.refresh();await blocked;const fresh=snapshot();fresh.characters[0].level=30;fresh.characters[0].updatedAt=1700000500;fresh.observedAt=1700000500;await fs.writeFile(f.file,saved(fresh));await sync.refresh();release();await pending;assert.equal(events.length,1);assert.equal(events[0].characters[0].level,30);}finally{fs.open=original;release?.();}
+});
+
+test("external cancellation while staging prevents resource commit without requiring disconnect",async t=>{
+  const f=await fixture(t),sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:path.join(__dirname,"../addon/BackstageForever")});t.after(()=>sync.close());
+  await sync.prepare(f.root);const folder=path.join(f.root,"Interface","AddOns","BackstageForever");await fs.writeFile(path.join(folder,"BackstageForeverPlan.lua"),"old planner");
+  const original=fs.writeFile;let cancelled=false;
+  fs.writeFile=async function(file,...args){const result=await original.call(this,file,...args);if(path.basename(file).startsWith(".backstage-"))cancelled=true;return result;};
+  try{await sync.prepare(undefined,()=>cancelled);}finally{fs.writeFile=original;}
+  assert.equal(cancelled,true);assert.equal(await fs.readFile(path.join(folder,"BackstageForeverPlan.lua"),"utf8"),"old planner");
+});
+
+test("a missing formerly valid account export is reported as partial while preserving saved profiles",async t=>{
+  const f=await fixture(t),sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:"unused"});t.after(()=>sync.close());
+  await fs.writeFile(f.file,saved());await sync.prepare(f.root);await fs.unlink(f.file);await sync.refresh();
+  assert.equal(sync.status().characterCount,1);assert.equal(sync.status().coverage.partial,true);assert.equal(sync.status().coverage.unreadableAccountCount,1);
+});
+
+test("store capacity omissions remain visible and friendly on unchanged subsequent reads",async t=>{
+  const f=await fixture(t),sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:"unused",onSnapshot:()=>({omittedProfileCount:2})});t.after(()=>sync.close());
+  await fs.writeFile(f.file,saved());await sync.prepare(f.root);await sync.refresh();
+  assert.equal(sync.status().coverage.partial,true);assert.equal(sync.status().coverage.omittedProfileCount,2);assert.match(sync.status().coverage.message,/100|capacity|space/i);
+});
+
+test("removed account directories cannot grow the private source cache across refreshes",async t=>{
+  const f=await fixture(t),sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:"unused"});t.after(()=>sync.close());
+  await fs.writeFile(f.file,saved());await sync.prepare(f.root);
+  await fs.rm(path.join(f.root,"WTF","Account","SyntheticAccount"),{recursive:true});
+  const next=path.join(f.root,"WTF","Account","OtherSynthetic","SavedVariables","BackstageForever.lua");await fs.mkdir(path.dirname(next),{recursive:true});await fs.writeFile(next,saved());await sync.refresh();
+  assert.equal(sync.accountSnapshots.size,1);assert.equal(sync.status().coverage.partial,true);
+  await sync.reset();assert.equal(sync.status().coverage.partial,false);assert.equal(sync.status().coverage.omittedProfileCount,0);
+});
+
+test("account-directory bound reports partial coverage and preserves previously saved data",async t=>{
+  const f=await fixture(t),events=[],sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:"unused",onSnapshot:s=>events.push(s)});t.after(()=>sync.close());
+  await fs.writeFile(f.file,saved());await sync.prepare(f.root);
+  for(let i=0;i<256;i++)await fs.mkdir(path.join(f.root,"WTF","Account",`EmptySynthetic${i}`));
+  await sync.refresh();assert.equal(events.length,1);assert.equal(sync.status().characterCount,1);assert.equal(sync.status().coverage.partial,true);
+});

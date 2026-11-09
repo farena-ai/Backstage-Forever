@@ -13,7 +13,7 @@ function timestamp(value) {
 }
 
 /** Merge a validated saved export without sharing mutable data with either input. */
-function mergeSnapshot(state, snapshot) {
+function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted = () => {} } = {}) {
   const next = validateState(state);
   object(snapshot, ["characters", "activeId", "observedAt"]);
   timestamp(snapshot.observedAt);
@@ -85,6 +85,7 @@ function mergeSnapshot(state, snapshot) {
   if (snapshot.activeId !== null && !seen.has(snapshot.activeId))
     throw Error("Invalid active snapshot character");
   const usedIds = new Set(next.profiles.map((p) => p.id));
+  let omitted = 0;
   for (const incoming of records) {
     let profile = sources.get(incoming.source.id);
     if (!profile) {
@@ -99,7 +100,7 @@ function mergeSnapshot(state, snapshot) {
         profile = matches[0];
     }
     if (!profile) {
-      if (next.profiles.length >= 100) continue;
+      if (next.profiles.length >= 100) { omitted++; continue; }
       const base =
         "wow-" + createHash("sha256").update(incoming.source.id).digest("hex");
       let id = base,
@@ -139,10 +140,12 @@ function mergeSnapshot(state, snapshot) {
   const active = sources.get(snapshot.activeId);
   if (
     active &&
+    allowActiveSelection &&
     next.followGameCharacter !== false &&
     snapshot.observedAt >= latestKnown
   )
     next.activeProfileId = active.id;
+  onOmitted(omitted);
   return validateState(next);
 }
 

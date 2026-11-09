@@ -31,6 +31,18 @@ const manual = (id = "manual", extra = {}) => ({
   ...extra,
 });
 
+test("older composite observations still advance individual characters without switching selection",()=>{
+  const first=mergeSnapshot(defaultState(),snapshot([character("a",{updatedAt:"2026-01-05T00:00:00.000Z"}),character("b")],"a","2026-01-05T00:00:00.000Z"));
+  first.profiles[1].notes="private";
+  const merged=mergeSnapshot(first,snapshot([character("b",{updatedAt:newer,level:20})],"b",newer),{allowActiveSelection:false});
+  assert.equal(merged.profiles[1].level,20);assert.equal(merged.profiles[1].notes,"private");assert.equal(merged.activeProfileId,first.activeProfileId);
+});
+test("profile capacity reports omitted imports and does not delete journals",()=>{
+  const input={...defaultState(),profiles:Array.from({length:100},(_,i)=>manual(String(i),{name:String(i)})),activeProfileId:"0"};let count;
+  const merged=mergeSnapshot(input,snapshot([character("overflow",{name:"extra"})]),{onOmitted:n=>count=n});
+  assert.equal(count,1);assert.deepEqual(merged,input);
+});
+
 test("validation repairs a populated null selection without changing follow preference or input", () => {
   for (const profiles of [[manual("hunter")], [manual("hunter"), manual("warrior")]]) {
     const input = { ...defaultState(), profiles, followGameCharacter: false };

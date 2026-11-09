@@ -133,11 +133,12 @@ app.whenReady().then(() => {
           latestObservation = null;
           latestObservationRoot = game?.root;
         }
-        if (
-          !resetting &&
-          (!latestObservation || snapshot.observedAt >= latestObservation)
-        ) {
-          const merged = mergeSnapshot(store.state, snapshot);
+        if (!resetting) {
+          let omittedProfileCount = 0;
+          const merged = mergeSnapshot(store.state, snapshot, {
+            allowActiveSelection: !latestObservation || snapshot.observedAt >= latestObservation,
+            onOmitted: (count) => { omittedProfileCount = count; },
+          });
           if (
             snapshot.characters.length &&
             merged.profiles.some((p) => p.source?.kind === "wow-addon")
@@ -151,7 +152,8 @@ app.whenReady().then(() => {
             selected || {},
             Boolean(game?.status().connected),
           );
-          latestObservation = snapshot.observedAt;
+          if (!latestObservation || snapshot.observedAt > latestObservation) latestObservation = snapshot.observedAt;
+          return { omittedProfileCount };
         }
       },
     });
@@ -266,6 +268,33 @@ app.whenReady().then(() => {
   handle("gameStatus", () => game.status());
   handle("gameSnapshot", gameSnapshot);
   handle("discoverGame", () => game.discover());
+  handle("startCompanion", async (...args) => {
+    if (args.length) throw Error("Invalid setup request.");
+    const epoch = subscriptionEpoch, actionEpoch = ++gameActionEpoch;
+    const cancelled = () => resetting || epoch !== subscriptionEpoch || actionEpoch !== gameActionEpoch;
+    await game.ready;
+    if (cancelled()) return gameSnapshot();
+    if (game.status().connected) {
+      await game.prepare(undefined, cancelled);
+      return gameSnapshot();
+    }
+    const candidates = await game.discover();
+    if (cancelled()) return gameSnapshot();
+    if (candidates.length === 1) {
+      await game.prepare(candidates[0].path, cancelled);
+      return gameSnapshot();
+    }
+    return { ...gameSnapshot(), setupCandidates: candidates };
+  });
+  handle("launchGame", async (...args) => {
+    if (args.length) throw Error("Invalid launch request.");
+    const epoch = subscriptionEpoch, actionEpoch = gameActionEpoch;
+    const cancelled = () => resetting || epoch !== subscriptionEpoch || actionEpoch !== gameActionEpoch;
+    await game.ready;
+    if (cancelled()) return { ...gameSnapshot(), launchResult: { state: "cancelled", message: "Opening Forever was cancelled." } };
+    const launchResult = await game.launch(cancelled);
+    return { ...gameSnapshot(), launchResult };
+  });
   async function prepareGame(root, automatic) {
     const epoch = subscriptionEpoch;
     const actionEpoch = ++gameActionEpoch;
@@ -278,7 +307,7 @@ app.whenReady().then(() => {
     if (root !== undefined) v.str(root, 1000, false);
     else {
       if (automatic && game.status().connected) {
-        await game.prepare();
+        await game.prepare(undefined, cancelled);
         return gameSnapshot();
       }
       const candidates = automatic ? await game.discover() : [];
@@ -295,7 +324,7 @@ app.whenReady().then(() => {
       }
     }
     if (cancelled()) return gameSnapshot();
-    await game.prepare(root);
+    await game.prepare(root, cancelled);
     return gameSnapshot();
   }
   handle("prepareGame", (root) => prepareGame(root, true));
@@ -372,7 +401,7 @@ app.whenReady().then(() => {
     subscriptionStatus: await subscriptionStatus(),
   }));
   handle("saveState", (state, base) => {
-    const next =
+    let next =
       base === undefined
         ? v.validateState(state)
         : mergeUserEdits(store.state, state, base);
@@ -382,6 +411,11 @@ app.whenReady().then(() => {
         : v.validateState(base).activeProfileId;
     if (game.status().connected && state.activeProfileId !== previousActive)
       next.followGameCharacter = false;
+    if (store.state.followGameCharacter === false && next.followGameCharacter === true && game.status().connected && game.lastSnapshot && latestObservationRoot === game.root) {
+      next = mergeSnapshot(next, game.lastSnapshot, {
+        allowActiveSelection: !latestObservation || game.lastSnapshot.observedAt >= latestObservation,
+      });
+    }
     return store.saveState(next);
   });
   handle("saveProvider", (input) => {

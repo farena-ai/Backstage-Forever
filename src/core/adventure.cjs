@@ -52,8 +52,8 @@ function buildBrief(
         status === "unknown"
           ? "Snapshot time unavailable."
           : status === "stale"
-            ? "Saved snapshot is older than 15 minutes; reload or log out to export newer desktop data."
-            : "Recent saved snapshot; game changes appear after reload or logout.",
+            ? "Desktop last saved progress is older than 15 minutes. Live guidance continues inside WoW; desktop progress updates when the game saves."
+            : "Recent saved progress. Live guidance runs inside WoW; desktop progress updates when the game saves.",
     },
     quests: {
       known: quests !== undefined,

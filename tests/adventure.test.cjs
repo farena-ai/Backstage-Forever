@@ -6,6 +6,14 @@ const {
 } = require("../src/core/quest-data.cjs");
 const { buildBrief } = require("../src/core/adventure.cjs");
 const { approvedProfile } = require("../src/core/providers.cjs");
+
+test("saved freshness keeps timestamps and classification without routine reload instructions",()=>{
+  const profile={source:{updatedAt:"2026-01-01T00:00:00.000Z"}};
+  const brief=buildBrief(profile,{now:Date.parse("2026-01-01T00:16:00.000Z")});
+  assert.equal(brief.freshness.status,"stale");assert.equal(brief.freshness.ageMinutes,16);assert.equal(brief.freshness.updatedAt,profile.source.updatedAt);
+  assert.doesNotMatch(brief.freshness.message,/reload|log out/i);assert.match(brief.freshness.message,/last saved|saved progress/i);
+  assert.doesNotMatch(brief.guidance.freshness.message,/reload|log out/i);
+});
 test("optional observed data preserves unknown vs empty and enforces bounds", () => {
   assert.equal(validateQuestData(undefined), undefined);
   assert.deepEqual(validateQuestData([]), []);

@@ -13,6 +13,9 @@ const MAX = 1024 * 1024,
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");
+const { GameRuntime } = require("./game-runtime.cjs");
+const { combineSnapshots } = require("./game-roster.cjs");
+const unknownRuntime = () => ({ state: "unknown", checkedAt: null, launchAvailable: false });
 function invalid() {
   throw new Error("Invalid addon snapshot");
 }
@@ -191,10 +194,14 @@ async function boundedRead(file, limit = MAX) {
   }
 }
 class GameSync {
-  constructor({ dataDir, addonDir, onSnapshot = () => {} }) {
+  constructor({ dataDir, addonDir, onSnapshot = () => {}, runtime = new GameRuntime() }) {
     this.dataDir = dataDir;
     this.addonDir = addonDir;
     this.onSnapshot = onSnapshot;
+    this.runtime = runtime;
+    this.refreshEpoch = 0;
+    this.accountSnapshots = new Map();
+    this.lastSnapshot = null;
     this.generation = 0;
     this.root = null;
     this.lastDigest = null;
@@ -209,11 +216,29 @@ class GameSync {
       characterCount: 0,
       clientVersion: null,
       interfaceVersion: null,
+      runtime: unknownRuntime(),
+      loadedCaptureVersion: null,
+      coverage: { partial: false, unreadableAccountCount: 0, omittedCharacterCount: 0, omittedProfileCount: 0 },
     };
     this.ready = this.restore();
   }
   status() {
     const state = structuredClone(this.state);
+    if (!state.connected || state.phase === "folder-unavailable") state.runtime = unknownRuntime();
+    state.coverage.message = state.coverage.omittedProfileCount
+      ? `${state.coverage.omittedProfileCount} saved character(s) could not fit in the 100-profile capacity. Existing profiles and journals were preserved.`
+      : state.coverage.omittedCharacterCount
+        ? `${state.coverage.omittedCharacterCount} older saved character(s) exceed the 100-character import limit. The latest saved active character is included.`
+        : state.coverage.partial
+          ? "Some game saves are unavailable. Previous saved characters are preserved."
+          : "Available saved characters imported within the profile limit.";
+    state.companionState = state.phase === "folder-unavailable" ? "unavailable"
+      : !state.addonCurrent ? "not-prepared"
+      : state.lastSync && state.loadedCaptureVersion === state.addonVersion ? "saved"
+      : state.runtime.state === "running" ? "update-next-launch" : "prepared";
+    state.companionMessage = state.companionState === "unavailable" || !state.addonCurrent ? state.message
+      : state.runtime.state === "running" ? "Companion files are prepared for your next game login. Live guidance runs inside WoW; desktop shows the last saved progress."
+      : "Companion files are prepared. You can play now; live guidance runs inside WoW. Desktop progress arrives with game saves.";
     state.checks = [
       {
         id: "folder",
@@ -243,7 +268,7 @@ class GameSync {
             : state.addonCurrent
               ? "action"
               : "blocked",
-        label: "Receive character snapshot",
+        label: "Desktop last saved progress (optional)",
         detail: state.message,
       },
     ];
@@ -263,6 +288,7 @@ class GameSync {
       label: action[1],
       detail: state.message,
     };
+    if (state.addonCurrent && state.phase !== "folder-unavailable") state.nextAction = { id: "play", label: "Ready to play", detail: state.companionMessage };
     return state;
   }
   async restore() {
@@ -299,14 +325,15 @@ class GameSync {
     const flavor = await boundedRead(path.join(root, ".flavor.info"));
     if (!/\bwowf\b/i.test(flavor)) throw Error("Not Forever");
     await safe(path.join(root, "WTF"), "dir");
-    return path.resolve(root);
+    return fs.realpath(root);
   }
   async connect(root) {
     await this.ready;
     return this._connect(root, true);
   }
-  async _connect(root, persist) {
+  async _connect(root, persist, cancelled = () => false) {
     const gen = ++this.generation;
+    const stale = () => gen !== this.generation || cancelled();
     clearInterval(this.timer);
     this.root = null;
     try {
@@ -318,9 +345,11 @@ class GameSync {
             /\b1\.60\.\d+\.\d+\b/,
           )?.[0] || null;
       } catch {}
-      if (gen !== this.generation) return this.status();
+      if (stale()) return this.status();
       this.root = root;
       this.lastDigest = null;
+      this.lastSnapshot = null;
+      this.accountSnapshots.clear();
       this.state = {
         ...this.state,
         connected: true,
@@ -334,6 +363,9 @@ class GameSync {
           "Snapshots reach disk when you log out or reload the UI. No live feed.",
         clientVersion: version,
         interfaceVersion: 16001,
+        runtime: unknownRuntime(),
+        loadedCaptureVersion: null,
+        coverage: { partial: false, unreadableAccountCount: 0, omittedCharacterCount: 0, omittedProfileCount: 0 },
       };
       try {
         for (const file of OWN)
@@ -341,24 +373,24 @@ class GameSync {
             path.join(root, "Interface", "AddOns", "BackstageForever", file),
             "file",
           );
-        if (gen === this.generation) this.state.addonInstalled = true;
+        if (!stale()) this.state.addonInstalled = true;
       } catch {}
       if (persist) {
         await fs.mkdir(this.dataDir, { recursive: true });
-        if (gen !== this.generation) return this.status();
+        if (stale()) return this.status();
         // No await between the generation check and the atomic settings write.
         atomic(
           path.join(this.dataDir, "game-connection.private.json"),
           JSON.stringify({ root }),
         );
       }
-      if (gen !== this.generation) return this.status();
+      if (stale()) return this.status();
       this.timer = setInterval(() => this.refresh().catch(() => {}), 5000);
       this.timer.unref?.();
-      await this._installAddon(gen, root);
-      await this.refresh();
+      await this._installAddon(gen, root, cancelled);
+      if (!stale()) await this.refresh();
     } catch {
-      if (gen === this.generation)
+      if (!stale())
         this.state = {
           ...this.state,
           connected: false,
@@ -371,23 +403,31 @@ class GameSync {
     }
     return this.status();
   }
-  async prepare(root) {
+  async prepare(root, cancelled = () => false) {
     await this.ready;
-    if (root !== undefined) return this._connect(root, true);
+    if (cancelled()) return this.status();
+    if (root !== undefined) return this._connect(root, true, cancelled);
     if (!this.root) return this.status();
     const gen = ++this.generation;
-    await this._installAddon(gen, this.root);
-    return this.refresh();
+    await this._installAddon(gen, this.root, cancelled);
+    return cancelled() || gen !== this.generation ? this.status() : this.refresh();
+  }
+  async launch(cancelled = () => false) {
+    const root = this.root, gen = this.generation;
+    const stale = () => cancelled() || gen !== this.generation || root !== this.root;
+    if (!root || stale()) return { state: root ? "cancelled" : "unavailable", message: "Open Forever with your usual launcher." };
+    return this.runtime.launch(root, stale);
   }
   async installAddon() {
     await this.ready;
     return this._installAddon(++this.generation, this.root);
   }
-  async _installAddon(gen, root) {
+  async _installAddon(gen, root, cancelled = () => false) {
+    const stale = () => gen !== this.generation || cancelled();
     if (!root) return this.status();
     try {
       await this.validateRoot(root);
-      if (gen !== this.generation) return this.status();
+      if (stale()) return this.status();
       let folder = root;
       for (const part of ["Interface", "AddOns", "BackstageForever"]) {
         folder = path.join(folder, part);
@@ -399,7 +439,7 @@ class GameSync {
             throw e;
           } catch (check) {
             if (check.code !== "ENOENT") throw check;
-            if (gen !== this.generation) return this.status();
+            if (stale()) return this.status();
             await fs.mkdir(folder);
           }
         }
@@ -420,7 +460,7 @@ class GameSync {
           } catch (e) {
             if (e.code !== "ENOENT") throw e;
           }
-          if (gen !== this.generation) return this.status();
+          if (stale()) return this.status();
           let previous = null;
           try {
             previous = await boundedRead(dest);
@@ -428,7 +468,7 @@ class GameSync {
           } catch (error) {
             if (error.code !== "ENOENT") throw error;
           }
-          if (gen !== this.generation) return this.status();
+          if (stale()) return this.status();
           const temporary = path.join(
             folder,
             ".backstage-" + crypto.randomUUID() + ".tmp",
@@ -438,7 +478,7 @@ class GameSync {
           if ((await boundedRead(temporary)) !== content) throw Error("Verification failed");
         }
         await safe(folder, "dir");
-        if (gen !== this.generation) return this.status();
+        if (stale()) return this.status();
         const committed = [];
         try {
           // No await: disconnect/reset cannot interleave the commit and rollback.
@@ -461,7 +501,7 @@ class GameSync {
       } finally {
         await Promise.all(staged.map(({ temporary }) => fs.unlink(temporary).catch(() => {})));
       }
-      if (gen === this.generation)
+      if (!stale())
         this.state = {
           ...this.state,
           addonInstalled: true,
@@ -470,10 +510,10 @@ class GameSync {
             sources[0][1].match(/^## Version:\s*(.+)$/m)?.[1]?.trim() || null,
           phase: "needs-reload",
           message:
-            "Addon installed. If the game is running, load it on your next restart or UI reload. Saved snapshots update on logout/reload.",
+            "Companion prepared. You can play now; the files activate at your next game login. Desktop progress reflects game saves.",
         };
     } catch {
-      if (gen === this.generation)
+      if (!stale())
         this.state = {
           ...this.state,
           addonInstalled: false,
@@ -488,13 +528,14 @@ class GameSync {
   }
   async refresh() {
     const gen = this.generation,
-      root = this.root;
+      root = this.root, refreshEpoch = ++this.refreshEpoch;
+    const cancelled = () => gen !== this.generation || refreshEpoch !== this.refreshEpoch;
     if (!root) return this.status();
     try {
       try {
         await this.validateRoot(root);
       } catch {
-        if (gen === this.generation)
+        if (!cancelled())
           this.state = {
             ...this.state,
             phase: "folder-unavailable",
@@ -503,12 +544,15 @@ class GameSync {
           };
         return this.status();
       }
+      const runtime = await this.runtime.probe(root);
+      if (cancelled()) return this.status();
+      this.state.runtime = runtime;
       const account = path.join(root, "WTF", "Account");
       try {
         await safe(account, "dir");
       } catch (error) {
         if (error.code !== "ENOENT") throw error;
-        return this._noExport(gen, false);
+        return cancelled() ? this.status() : this._noExport(gen, false);
       }
       const entries = [];
       for await (const entry of await fs.opendir(account)) {
@@ -516,10 +560,12 @@ class GameSync {
         if (entries.length > 256) throw Error("Too many entries");
       }
       if (entries.length > 256) throw Error("Too many entries");
-      let best = null,
-        malformed = false;
-      for (const e of entries) {
+      const snapshots = new Map(this.accountSnapshots);
+      let malformed = false, unreadableAccountCount = 0;
+      const seenAccounts = new Set();
+      for (const e of entries.sort((a,b)=>a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
         if (!e.isDirectory() || e.isSymbolicLink()) continue;
+        seenAccounts.add(e.name);
         const file = path.join(
           account,
           e.name,
@@ -528,13 +574,19 @@ class GameSync {
         );
         try {
           const s = parseSavedVariables(await boundedRead(file, SAVED_MAX));
-          if (!best || s.observedAt > best.observedAt) best = s;
+          snapshots.set(e.name, s);
         } catch (error) {
-          if (error.code !== "ENOENT") malformed = true;
+          if (error.code !== "ENOENT" || snapshots.has(e.name)) { malformed = true; unreadableAccountCount++; }
         }
       }
-      if (gen !== this.generation) return this.status();
-      if (!best) return this._noExport(gen, malformed);
+      // Removed directories cannot accumulate indefinitely. The profile store keeps
+      // their already imported observations and private journals independently.
+      for (const name of snapshots.keys()) if (!seenAccounts.has(name)) { malformed = true; unreadableAccountCount++; snapshots.delete(name); }
+      if (cancelled()) return this.status();
+      const composite = combineSnapshots([...snapshots.values()]);
+      const best = composite?.snapshot;
+      this.state.coverage = { ...this.state.coverage, partial: malformed || Boolean(composite?.coverage.omittedCharacterCount) || this.state.coverage.omittedProfileCount > 0, unreadableAccountCount, omittedCharacterCount: composite?.coverage.omittedCharacterCount || 0 };
+      if (!best) { this.accountSnapshots = snapshots; return this._noExport(gen, malformed); }
       const digest = crypto
         .createHash("sha256")
         .update(JSON.stringify(best))
@@ -543,26 +595,33 @@ class GameSync {
         ...this.state,
         phase: !this.state.addonCurrent
           ? "needs-addon"
-          : Date.now() - Date.parse(best.observedAt) > 86400000
+          : malformed ? "invalid-export" : Date.now() - Date.parse(best.observedAt) > 86400000
             ? "stale"
             : "synced",
         message: !this.state.addonCurrent
           ? "Previous snapshot imported. Repair the companion files before loading the addon."
           : Date.now() - Date.parse(best.observedAt) > 86400000
-            ? "The saved snapshot is over a day old. Use /reload or log out to save current progress."
-            : "Saved snapshot imported. Updates reach disk on logout or UI reload.",
+            ? "Desktop last saved progress is over a day old. Live guidance continues inside WoW; desktop progress updates when the game saves."
+            : "Desktop last saved progress imported. Live guidance runs inside WoW; desktop progress updates when the game saves.",
         lastSync: best.observedAt,
         characterCount: best.characters.length,
+        loadedCaptureVersion: best.characters.find(c=>c.id===best.activeId)?.captureVersion || null,
       };
+      if (malformed) this.state.message = "Some game saves are unavailable. Valid last saved progress and previous characters are preserved; live guidance continues inside WoW.";
       if (digest !== this.lastDigest) {
-        this.onSnapshot(best);
+        const imported = this.onSnapshot(best);
+        this.state.coverage.omittedProfileCount = imported?.omittedProfileCount || 0;
+        this.state.coverage.partial ||= this.state.coverage.omittedProfileCount > 0;
         this.lastDigest = digest;
       }
+      this.accountSnapshots = snapshots;
+      this.lastSnapshot = structuredClone(best);
     } catch {
-      if (gen === this.generation)
+      if (!cancelled())
         this.state = {
           ...this.state,
           phase: "error",
+          coverage: { ...this.state.coverage, partial: true },
           message:
             "The snapshot could not be read or imported. Retry; previous characters are preserved.",
         };
@@ -579,9 +638,9 @@ class GameSync {
             : "needs-reload"
           : "needs-addon",
         message: malformed
-          ? "The saved snapshot is unreadable. Load the addon and use /reload to save a fresh snapshot; previous characters are preserved."
+          ? "The last game save is unreadable. You can keep playing; previous desktop characters are preserved until the next valid save."
           : this.state.addonCurrent
-            ? "Companion files are ready. Launch Forever, enable BackstageForever if needed, then use /reload or log out to save your first snapshot."
+            ? "Companion files are prepared. You can play now; enable BackstageForever at your next game login. Desktop progress appears when the game saves."
             : "Prepare or repair the companion addon before loading it in game.",
       };
     return this.status();
@@ -591,12 +650,16 @@ class GameSync {
     clearInterval(this.timer);
     this.root = null;
     this.lastDigest = null;
+    this.lastSnapshot = null;
+    this.accountSnapshots.clear();
     this.state = {
       ...this.state,
       connected: false,
       addonInstalled: false,
       addonCurrent: false,
       addonVersion: null,
+      runtime: unknownRuntime(),
+      loadedCaptureVersion: null,
       phase: "disconnected",
       message: "Game disconnected.",
     };
@@ -615,6 +678,7 @@ class GameSync {
       characterCount: 0,
       clientVersion: null,
       interfaceVersion: null,
+      coverage: { partial: false, unreadableAccountCount: 0, omittedCharacterCount: 0, omittedProfileCount: 0 },
     };
     return this.status();
   }
@@ -622,12 +686,16 @@ class GameSync {
     ++this.generation;
     clearInterval(this.timer);
     this.root = null;
+    this.lastSnapshot = null;
+    this.accountSnapshots.clear();
     this.state = {
       ...this.state,
       connected: false,
       addonInstalled: false,
       addonCurrent: false,
       addonVersion: null,
+      runtime: unknownRuntime(),
+      loadedCaptureVersion: null,
       phase: "disconnected",
     };
   }
