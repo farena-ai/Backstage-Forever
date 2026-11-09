@@ -101,11 +101,114 @@ local function integer(value,low,high)
     value=public(value)
     if type(value)=='number' and value==value and value>=low and value<=high and value%1==0 then return value end
 end
-local function destination(api,id)
+local function gamePoint(map,x,y)
+    map=integer(map,1,2147483647);x=public(x);y=public(y)
+    if map and type(x)=='number' and type(y)=='number' and x==x and y==y and x>=0 and x<=1 and y>=0 and y<=1 then
+        return {mapId=map,x=x,y=y}
+    end
+end
+local function mapStatus(context,map)
+    if context.maps[map] then return context.maps[map] end
+    local status='unavailable'
+    local fn=field(public(C_Map),'GetMapInfo')
+    if type(fn)=='function' then
+        -- Distinguish unsupported/thrown optional metadata from a successful
+        -- contradictory or restricted response. Only the former preserves an
+        -- otherwise valid direct waypoint from the original API.
+        local ok,raw=pcall(fn,map)
+        if ok then
+            local prior=captureIssue;captureIssue=false
+            local info=public(raw)
+            if captureIssue or info~=nil then
+                status=integer(field(info,'mapID'),1,2147483647)==map and 'valid' or 'invalid'
+            end
+            captureIssue=prior or captureIssue
+        else captureIssue=true end
+    end
+    context.maps[map]=status
+    return status
+end
+local function questAreas(api,context,map)
+    if context.areas[map]~=nil then return context.areas[map] end
+    local prior=captureIssue;captureIssue=false
+    local rows=call(field(api,'GetQuestsOnMap'),map)
+    local failed=captureIssue;captureIssue=prior or failed
+    local found={};local count,highest=0,0
+    local ok=type(rows)=='table' and pcall(function()
+        for key,row in pairs(rows) do
+            count=count+1
+            key=integer(public(key),1,1000)
+            if count>1000 or not key then error('bound') end
+            highest=math.max(highest,key)
+            local id=integer(field(row,'questID'),1,2147483647)
+            if not id then error('unavailable') end
+            local p=gamePoint(field(row,'mapID'),field(row,'x'),field(row,'y'))
+            if not p or p.mapId~=map or field(row,'inProgress')~=true
+                or field(row,'isQuestStart')~=false or field(row,'isMapIndicatorQuest')~=false then
+                found[id]=false
+            elseif found[id]==nil then found[id]=p
+            elseif found[id] and (found[id].x~=p.x or found[id].y~=p.y) then found[id]=false end
+        end
+        if count~=highest then error('sparse') end
+    end)
+    -- A malformed list must not be truncated into a seemingly unique result.
+    if ok then context.areas[map]=found
+    elseif rows==nil and not failed then context.areas[map]=false
+    else context.areas[map]='invalid';captureIssue=true end
+    return context.areas[map]
+end
+local function destination(api,quest,context)
+    local id=quest.id
     local map,x,y=call(field(api,'GetNextWaypoint'),id)
     map=integer(map,1,2147483647)
-    if not map or type(x)~='number' or type(y)~='number' or x~=x or y~=y or x<0 or x>1 or y<0 or y>1 then return nil end
-    return {mapId=map,x=x,y=y,text=clean(call(field(api,'GetNextWaypointText'),id),200)}
+    local direct=gamePoint(map,x,y)
+    if direct then
+        if mapStatus(context,map)=='invalid' then return nil end
+        direct.text=clean(call(field(api,'GetNextWaypointText'),id),200)
+        return direct
+    end
+    local maps,seen={},{}
+    local function add(candidate)
+        candidate=integer(candidate,1,2147483647)
+        if candidate and not seen[candidate] and #maps<3 then
+            seen[candidate]=true
+            if mapStatus(context,candidate)=='valid' then maps[#maps+1]=candidate end
+        end
+    end
+    add(context.currentMap);add(map)
+    if not context.poiRead then
+        context.poiRead=true;context.poiMap=call(field(api,'GetMapForQuestPOIs'))
+    end
+    add(context.poiMap)
+    local function currentPhase(point)
+        if point and call(field(api,'IsComplete'),id)==quest.complete then return point end
+    end
+    for _,candidate in ipairs(maps) do
+        -- This API returns x,y, not the mapID,x,y tuple of GetNextWaypoint.
+        local px,py=call(field(api,'GetNextWaypointForMap'),id,candidate)
+        local point=gamePoint(candidate,px,py)
+        if point then
+            point.text=clean(call(field(api,'GetNextWaypointText'),id),200)
+            return currentPhase(point)
+        end
+    end
+    if quest.complete then return nil end
+    local unfinished=false
+    for _,objective in ipairs(quest.objectives) do if objective.done==false then unfinished=true;break end end
+    if not unfinished then return nil end
+    local area
+    for _,candidate in ipairs(maps) do
+        local entries=questAreas(api,context,candidate)
+        if entries=='invalid' then return nil end
+        local point
+        if entries then point=entries[id] end
+        if point==false then return nil end
+        if point then
+            if area and (area.mapId~=point.mapId or area.x~=point.x or area.y~=point.y) then return nil end
+            area={mapId=point.mapId,x=point.x,y=point.y,text='Quest area reported by the game; not an exact NPC or spawn location'}
+        end
+    end
+    return currentPhase(area)
 end
 local function completedIds()
     local ids=call(field(public(C_QuestLog),'GetAllCompletedQuestIDs'))
@@ -127,12 +230,15 @@ local function clientBuild()
     version=clean(version,30);build=clean(build,12)
     if version and build and version:match('^%d+%.%d+%.%d+$') and build:match('^%d+$') then return version..'.'..build end
 end
-local function quests()
+local function quests(currentMap)
     local api=public(C_QuestLog)
     local rawCount,rawTotal=call(field(api,'GetNumQuestLogEntries'))
     local count=integer(rawCount,0,1000)
     local total=integer(rawTotal,0,1000)
     if not count or type(field(api,'GetInfo'))~='function' or type(field(api,'IsComplete'))~='function' or type(field(api,'GetQuestObjectives'))~='function' then return nil end
+    -- At most 25 quest maps plus the current/POI maps; no cache survives this
+    -- capture, character, build, phase, or session. POI lists are read once/map.
+    local context={currentMap=currentMap,maps={},areas={}}
     local result=array({});local zone;local seen={}
     for i=1,count do
         local info=call(field(api,'GetInfo'),i)
@@ -161,7 +267,7 @@ local function quests()
                 seen[id]=true
                 local q={id=id,title=title,complete=complete,objectives=objectives,zone=zone}
                 q.level=integer(field(info,'level'),0,1000)
-                q.destination=destination(api,id)
+                q.destination=destination(api,q,context)
                 result[#result+1]=q
                 if #result>=25 then break end
             end
@@ -473,7 +579,7 @@ local function capture(event,eventId)
     history.completedIdsKnown=completed~=nil
     if completed then history.completedCount=#completed;history.completedIds=completed end
     character.history=history
-    character.quests=optional(quests);character.progress=optional(progress)
+    character.quests=optional(function()return quests(location.mapId)end);character.progress=optional(progress)
     character.readiness=optional(function()return readiness(guid,character.clientBuild)end)
     -- Collection may cross a clock second. Cached recipes keep their own date.
     now=math.max(now,clock() or now)

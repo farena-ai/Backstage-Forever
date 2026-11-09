@@ -214,6 +214,22 @@ BackstageForeverHUDUpdate(character)
 assert(text():find('mentioned in objective',1,true),'Bounded rendering must preserve relationship qualification')
 assert(text():find('English reference: Original quest title',1,true),'Bounded rendering must preserve localized reference qualification')
 `));
+test('long current objectives cannot hide the actual game marker area qualification',()=>lua(hud+String.raw`
+dofile('addon/BackstageForever/BackstageForeverPlan.lua')
+character.clientBuild='1.60.1.70862'
+character.quests={{id=42,title='Observed quest',complete=false,
+ objectives={{text=string.rep('Long objective ',13),done=false}},
+ destination={mapId=1413,x=.3,y=.4,text='Quest area reported by the game; not an exact NPC or spawn location'}}}
+BackstageForeverHUDUpdate(character)
+assert(text():find('Quest area reported by the game; not an exact NPC or spawn location',1,true),'Existing 150-character preview must preserve the entire area qualification')
+assert(text():find('Current game',1,true) and text():find('objective',1,true))
+assert(frames.BackstageForeverCompassWaypoint.enabled and #guideCalls==0,'Qualification must not change explicit action behavior')
+character.quests[1].destination.text='Actual direct game marker';BackstageForeverHUDUpdate(character)
+assert(text():find('Actual direct game marker',1,true),'Ordinary direct marker descriptions remain game-labelled')
+assert(text():find('Current game',1,true))
+character.quests[1].destination.text='Direct |Hquest:42|hmarker|h';BackstageForeverHUDUpdate(character)
+assert(text():find('Game marker: Direct ||Hquest:42||hmarker||h',1,true),'Literal marker formatting must be escaped exactly once')
+`));
 test('bounded native text preserves UTF-8 character boundaries',()=>lua(hud+String.raw`
 BackstageForeverBuildPlan=function()return {status='ready',steps={{questId=2,phase='o',title=string.rep(string.char(195,169),50),source='game',detail=string.rep(string.char(226,130,172),70)}}}end
 BackstageForeverHUDUpdate(character)

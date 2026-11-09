@@ -89,7 +89,13 @@ local function update()
                     local step=plan.steps[i];if type(step)~='table' then break end
                     local source=sourceLabel(step)
                     lines[#lines+1]=i..'. '..text(step.title,74)..' ['..source..']'
-                    lines[#lines+1]=text(step.detail,150)
+                    local detail=step.detail
+                    if step.source=='game' and type(step.destination)=='table' and type(step.destination.text)=='string' and step.destination.text~='' then
+                        -- Preserve the game's marker qualification before a
+                        -- long objective consumes the bounded detail preview.
+                        detail='Game marker: '..step.destination.text..'. '..(type(detail)=='string' and detail or '')
+                    end
+                    lines[#lines+1]=text(detail,150)
                     local candidate=validCommand(step)
                     if not selected and candidate and type(BackstageForeverGuide)=='function' then selected=step;command=candidate;stepIndex=i end
                 end
