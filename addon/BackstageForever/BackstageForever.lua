@@ -27,14 +27,23 @@ end
 local arrays=setmetatable({}, {__mode="k"})
 local function array(t) arrays[t]=true;return t end
 local function encode(v)
-    if type(v) == "string" then return quote(v) end
-    if type(v) == "number" then return tostring(v) end
-    if type(v) == "boolean" then return v and "true" or "false" end
-    if type(v) ~= "table" then return "null" end
-    local parts = {}
-    if arrays[v] or v[1] then for i=1,#v do parts[#parts+1]=encode(v[i]) end return '['..table.concat(parts,',')..']' end
-    for k,x in pairs(v) do parts[#parts+1]=quote(k)..':'..encode(x) end
-    return '{'..table.concat(parts,',')..'}'
+    if type(v) == "string" then return quote(v),1 end
+    if type(v) == "number" then return tostring(v),1 end
+    if type(v) == "boolean" then return v and "true" or "false",1 end
+    if type(v) ~= "table" then return "null",1 end
+    -- Match decode's parsed-value accounting: one node per value/container,
+    -- including empty containers, without counting object property keys.
+    local parts,nodes = {},1
+    if arrays[v] or v[1] then
+        for i=1,#v do
+            local text,count=encode(v[i]);parts[#parts+1]=text;nodes=nodes+count
+        end
+        return '['..table.concat(parts,',')..']',nodes
+    end
+    for k,x in pairs(v) do
+        local text,count=encode(x);parts[#parts+1]=quote(k)..':'..text;nodes=nodes+count
+    end
+    return '{'..table.concat(parts,',')..'}',nodes
 end
 -- Decode only our bounded JSON data; never compile or evaluate saved text as Lua.
 local function decode(s)
@@ -478,26 +487,29 @@ local function capture(event,eventId)
     table.sort(chars,function(a,b) return a.updatedAt>b.updatedAt end)
     while #chars>100 do roster[chars[#chars].id]=nil;table.remove(chars) end
     local payload={schema=1,characters=chars,activeId=guid,observedAt=now}
-    local encoded=encode(payload)
+    local encoded,encodedNodes=encode(payload)
     local encodedLength=#encoded
+    local changed=false
+    local function fits()return encodedLength<1048576 and encodedNodes<=200000 end
+    local function discard(parent,key)
+        if type(parent)~='table' or parent[key]==nil then return end
+        -- Measure only the removed subtree, not the entire character twice.
+        local detail,nodes=encode(parent[key]);parent[key]=nil;changed=true
+        encodedLength=encodedLength-#quote(key)-1-#detail-(next(parent) and 1 or 0)
+        encodedNodes=encodedNodes-nodes
+    end
     -- Workshop is optional: shed it across the roster before older quest/XP/history.
     for i=#chars,1,-1 do
-        if encodedLength<1048576 then break end
-        local ready=chars[i].readiness
-        if ready and ready.workshop then
-            local before=#encode(chars[i]);ready.workshop=nil
-            encodedLength=encodedLength-before+#encode(chars[i])
-        end
+        if fits() then break end
+        discard(chars[i].readiness,'workshop')
     end
     -- Retain identities while shedding the oldest remaining optional detail first.
     for i=#chars,1,-1 do
-        if encodedLength<1048576 then break end
-        local before=#encode(chars[i])
-        chars[i].quests=nil;chars[i].progress=nil;chars[i].history=nil;chars[i].readiness=nil
-        encodedLength=encodedLength-before+#encode(chars[i])
+        if fits() then break end
+        for _,key in ipairs({'quests','progress','history','readiness'}) do discard(chars[i],key) end
     end
-    if encodedLength~=#encoded then encoded=encode(payload) end
-    if #encoded<1048576 then BackstageForeverExport=encoded;return true end
+    if changed then encoded,encodedNodes=encode(payload) end
+    if #encoded<1048576 and encodedNodes<=200000 then BackstageForeverExport=encoded;return true end
 end
 -- Explicit player command only. No map panels, movement, targeting or game input.
 local function guideMessage(message)

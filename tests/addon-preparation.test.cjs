@@ -67,6 +67,26 @@ function run(scenario, { validate = true, timeout = 30000 } = {}) {
   });
 }
 const active = p => p.characters.find(c => c.id === p.activeId);
+// Decoder counts JSON values (containers included), never object property keys.
+const jsonValueNodes = value => 1 + (value && typeof value === "object"
+  ? Object.values(value).reduce((sum, child) => sum + jsonValueNodes(child), 0) : 0);
+function nodeBudgetSeed() {
+  return { schema: 1, activeId: "old-0", observedAt: 1600000000,
+    characters: Array.from({ length: 19 }, (_, i) => ({
+      id: "old-" + i, name: "Old", realm: "Realm", className: "Mage", level: 20, updatedAt: 1600000000,
+      quests: [{ id: 42, title: "Retain quest", complete: false, objectives: [] }], progress: { current: 3, max: 100 },
+      history: { recent: [], completedIdsKnown: true, completedCount: 10000,
+        completedIds: Array.from({ length: 10000 }, (_, j) => j + 1) },
+    })),
+  };
+}
+const nodeBudgetCapture = String.raw`
+C_QuestLog.GetAllCompletedQuestIDs=function()local r={};for i=1,4000 do r[i]=i end;return r end
+C_Item=nil
+spells={};for i=1,100 do spells[i]=i end
+C_TradeSkillUI.GetRecipeInfo=function(id)return {recipeID=id,name='R',learned=true}end
+C_TradeSkillUI.GetRecipeSchematic=function(id)local slots={};for i=1,20 do slots[i]=basic(i,1)end;return {recipeID=id,isRecraft=false,reagentSlotSchematics=slots}end
+`;
 
 test("exact table APIs collect owned learned recipes and aggregate only carried bags", () => {
   const [p] = run(String.raw`event('PLAYER_LOGIN');assert(spellReads==1 and recipeReads==3 and schematicReads==1,'Missing learned-recipe collection');assert(slotReads==6);save()`);
@@ -285,4 +305,69 @@ C_TradeSkillUI.IsRecipeProfessionLearned=nil;C_TradeSkillUI.GetSourceTypeFilter=
   for (const p of rows) assert.equal(active(p).readiness.workshop.recipes.complete, false);
   for (const p of rows.slice(0, 2)) assert.deepEqual(active(p).readiness.workshop.recipes.items, []);
   assert.equal(active(rows[2]).readiness.workshop.recipes.items[0].id, 1001);
+});
+
+test("low-byte high-node export sheds workshop and retains every alt across a fresh Lua load", t => {
+  const seed = nodeBudgetSeed(), characters = seed.characters;
+  const saved = JSON.stringify(seed);
+  assert.ok(Buffer.byteLength(saved) < 1048576 && jsonValueNodes(seed) < 200000);
+  const rows = run(`BackstageForeverExport=[=[${saved}]=]\n` + nodeBudgetCapture + String.raw`
+event('PLAYER_LOGIN');save()
+load();event('PLAYER_LOGIN');save()
+`, { timeout: 60000 });
+  for (const p of rows) {
+    assert.equal(p.characters.length, 20, "Addon export must remain decodable without silently losing all alts");
+    assert.ok(Buffer.byteLength(JSON.stringify(p)) < 1048576, "Keep the existing byte budget");
+    assert.ok(jsonValueNodes(p) <= 200000, "Export must fit the unchanged decoder node budget");
+    assert.equal(active(p).readiness?.workshop, undefined, "Shed optional workshop before older quest, XP and history facts");
+    assert.equal(active(p).history.completedIds.length, 4000);
+    for (const old of characters) assert.deepEqual(p.characters.find(c => c.id === old.id), old);
+  }
+  t.diagnostic(JSON.stringify({ seedBytes: Buffer.byteLength(saved), seedNodes: jsonValueNodes(seed),
+    captures: rows.map(p => ({ bytes: Buffer.byteLength(JSON.stringify(p)), nodes: jsonValueNodes(p), characters: p.characters.length })) }));
+});
+
+test("exactly 200000 JSON values retain workshop and all identities through reload", t => {
+  const [baseline] = run(nodeBudgetCapture + "event('PLAYER_LOGIN');save()");
+  const seed = nodeBudgetSeed();
+  const remove = jsonValueNodes(seed) + jsonValueNodes(active(baseline)) - 200000;
+  assert.ok(remove > 0 && remove < 10000);
+  const history = seed.characters[0].history;
+  history.completedIds.length -= remove; history.completedCount = history.completedIds.length;
+  const rows = run(`BackstageForeverExport=[=[${JSON.stringify(seed)}]=]\n` + nodeBudgetCapture + String.raw`
+event('PLAYER_LOGIN');save()
+load();event('PLAYER_LOGIN');save()
+`, { timeout: 60000 });
+  for (const p of rows) {
+    assert.equal(p.characters.length, 20); assert.equal(jsonValueNodes(p), 200000);
+    assert.ok(Buffer.byteLength(JSON.stringify(p)) < 1048576);
+    assert.equal(active(p).readiness.workshop.recipes.items.length, 100, "An inclusive node boundary must not shed valid facts");
+    for (const old of seed.characters) assert.deepEqual(p.characters.find(c => c.id === old.id), old);
+  }
+  t.diagnostic(JSON.stringify({ captures: rows.map(p => ({ bytes: Buffer.byteLength(JSON.stringify(p)), nodes: jsonValueNodes(p) })) }));
+});
+
+test("node overflow without workshop uses existing optional-detail shedding and preserves identities", () => {
+  const capture = String.raw`
+C_SkillInfo=nil;C_TradeSkillUI=nil;C_Container=nil
+C_QuestLog.GetAllCompletedQuestIDs=function()local r={};for i=1,20000 do r[i]=i end;return r end
+`;
+  const [baseline] = run(capture + "event('PLAYER_LOGIN');save()");
+  const seed = nodeBudgetSeed();
+  const oversized = { ...seed, characters: [...seed.characters, active(baseline)], activeId: "A", observedAt: 1700000000 };
+  assert.ok(Buffer.byteLength(JSON.stringify(oversized)) < 1048576, "This must exercise nodes alone");
+  assert.ok(jsonValueNodes(oversized) > 200000);
+  const rows = run(`BackstageForeverExport=[=[${JSON.stringify(seed)}]=]\n` + capture + String.raw`
+event('PLAYER_LOGIN');save()
+load();event('PLAYER_LOGIN');save()
+`, { timeout: 60000 });
+  for (const p of rows) {
+    assert.equal(p.characters.length, 20); assert.ok(jsonValueNodes(p) <= 200000);
+    assert.ok(Buffer.byteLength(JSON.stringify(p)) < 1048576);
+    assert.equal(active(p).history.completedIds.length, 20000);
+    for (const old of seed.characters) assert.ok(p.characters.find(c => c.id === old.id));
+    const retained = p.characters.filter(c => c.id.startsWith("old-") && c.history);
+    assert.ok(retained.length > 0 && retained.length < 19, "Only necessary oldest optional detail should be discarded");
+    for (const old of retained) assert.deepEqual(old, seed.characters.find(c => c.id === old.id));
+  }
 });
