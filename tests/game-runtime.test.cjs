@@ -3,7 +3,7 @@ const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs/promises"), path = require("node:path"), os = require("node:os"), { EventEmitter } = require("node:events");
 const { GameRuntime } = require("../src/core/game-runtime.cjs");
 async function fixture(t) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "forever-runtime-"));
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "forever-runtime-")));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   await fs.mkdir(path.join(root, "WTF")); await fs.writeFile(path.join(root, ".flavor.info"), "wowf");
   await fs.writeFile(path.join(root, "Wow.exe"), "synthetic-never-execute"); return root;

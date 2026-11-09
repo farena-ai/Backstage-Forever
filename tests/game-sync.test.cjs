@@ -52,7 +52,7 @@ test("rejects executable Lua, partial exports, invalid schema, controls and over
   assert.throws(() => parseSavedVariables(saved(bad)));
 });
 async function fixture(t) {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "forever-sync-"));
+  const dir = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "forever-sync-")));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const root = path.join(dir, "client");
   await fs.mkdir(
@@ -76,6 +76,19 @@ async function fixture(t) {
       "BackstageForever.lua",
     ),
   };
+}
+async function withinDeadline(promise, label, milliseconds = 5000) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(Error(`Timed out waiting for ${label}`)), milliseconds);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 test("connect, refresh, partial-write recovery, install ownership and disconnect cancellation", async (t) => {
   const f = await fixture(t),
@@ -207,12 +220,14 @@ test("disconnect during addon checks cannot rewrite the private connection or re
   const original = fs.lstat;
   let release,
     reached,
-    paused = false;
+    paused = false,
+    active = true,
+    pending;
   const blocked = new Promise((r) => {
     reached = r;
   });
   fs.lstat = async function (file, ...args) {
-    if (!paused && String(file) === path.join(folder, "BackstageForever.toc")) {
+    if (active && !paused && String(file) === path.join(folder, "BackstageForever.toc")) {
       paused = true;
       reached();
       await new Promise((r) => {
@@ -222,11 +237,11 @@ test("disconnect during addon checks cannot rewrite the private connection or re
     return original.call(this, file, ...args);
   };
   try {
-    const pending = sync.connect(f.root);
-    await blocked;
+    pending = sync.connect(f.root);
+    await withinDeadline(blocked, "addon-check pause hook");
     await sync.disconnect();
     release();
-    await pending;
+    await withinDeadline(pending, "cancelled connection to settle");
     assert.equal(sync.status().connected, false);
     assert.equal(sync.status().addonInstalled, false);
     await assert.rejects(
@@ -234,8 +249,11 @@ test("disconnect during addon checks cannot rewrite the private connection or re
       { code: "ENOENT" },
     );
   } finally {
+    active = false;
     fs.lstat = original;
     release?.();
+    sync.close();
+    if (pending) await withinDeadline(pending, "connection cleanup");
   }
 });
 test("failed snapshot consumer is retried instead of acknowledged", async (t) => {
@@ -448,9 +466,9 @@ test("overlapping refresh cannot publish an earlier read after a later refresh",
   const f=await fixture(t),events=[];
   const sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:"unused",onSnapshot:s=>events.push(s)});t.after(()=>sync.close());
   await sync.prepare(f.root);await fs.writeFile(f.file,saved());
-  const original=fs.open;let reached,release,paused=false;const blocked=new Promise(r=>reached=r);
-  fs.open=async function(file,...args){const h=await original.call(this,file,...args);if(file===f.file&&!paused){paused=true;const read=h.read.bind(h);h.read=async(...readArgs)=>{const result=await read(...readArgs);reached();await new Promise(r=>release=r);return result;};}return h;};
-  try{const pending=sync.refresh();await blocked;const fresh=snapshot();fresh.characters[0].level=30;fresh.characters[0].updatedAt=1700000500;fresh.observedAt=1700000500;await fs.writeFile(f.file,saved(fresh));await sync.refresh();release();await pending;assert.equal(events.length,1);assert.equal(events[0].characters[0].level,30);}finally{fs.open=original;release?.();}
+  const original=fs.open;let reached,release,paused=false,active=true,pending;const blocked=new Promise(r=>reached=r);
+  fs.open=async function(file,...args){const h=await original.call(this,file,...args);if(active&&file===f.file&&!paused){paused=true;const read=h.read.bind(h);h.read=async(...readArgs)=>{const result=await read(...readArgs);if(!active)return result;reached();await new Promise(r=>release=r);return result;};}return h;};
+  try{pending=sync.refresh();await withinDeadline(blocked,"saved-export read pause hook");const fresh=snapshot();fresh.characters[0].level=30;fresh.characters[0].updatedAt=1700000500;fresh.observedAt=1700000500;await fs.writeFile(f.file,saved(fresh));await withinDeadline(sync.refresh(),"newer refresh to settle");release();await withinDeadline(pending,"older refresh to settle");assert.equal(events.length,1);assert.equal(events[0].characters[0].level,30);}finally{active=false;fs.open=original;release?.();sync.close();if(pending)await withinDeadline(pending,"refresh cleanup");}
 });
 
 test("external cancellation while staging prevents resource commit without requiring disconnect",async t=>{
