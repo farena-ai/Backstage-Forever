@@ -5,6 +5,8 @@ BF has two useful views of your adventure:
 - **Inside WoW:** Adventure Compass uses supported public game observations to update local guidance while you play, outside combat. No AI account or routine reload is needed for those changes.
 - **On your desktop:** BF keeps the most recently saved character snapshots, your journal, references and optional AI connection. WoW writes new snapshots on logout, game exit or a voluntary UI reload. The desktop does not have a continuous character feed.
 
+Once prepared, the addon's local guidance can run with the BF desktop app closed. Launch WoW normally and play. Open the desktop when you want your journal, deeper reference browsing, app/addon updates or optional AI.
+
 ## Start playing
 
 Choose **Start my adventure** in BF. It looks for Forever, prepares its own companion files and verifies them. If several installations are found, choose the one you play; if none is found, choose the game folder once. Your provider connection is optional.
