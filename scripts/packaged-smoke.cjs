@@ -13,7 +13,7 @@ async function sourceFiles(folder, prefix = "src") {
       result.push(
         ...(await sourceFiles(path.join(folder, entry.name), relative)),
       );
-    else if (entry.isFile() && /\.(?:cjs|js|css|html)$/.test(entry.name))
+    else if (entry.isFile() && /\.(?:cjs|js|css|html|ps1|cs)$/.test(entry.name))
       result.push(relative);
   }
   return result;

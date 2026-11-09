@@ -36,6 +36,8 @@ const { CompanionContext } = require("./core/companion-context.cjs");
 const { MemoryService, buildMemoryPrompt } = require("./core/memory.cjs");
 const { registerMemoryHandlers } = require("./core/memory-ipc.cjs");
 const { preserveMemories } = require("./core/memory-data.cjs");
+const { VoiceService } = require("./core/voice.cjs");
+const { registerVoiceHandlers } = require("./core/voice-ipc.cjs");
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
@@ -48,6 +50,7 @@ let win,
   knowledge,
   companionContext,
   memory,
+  voice,
   quitApproved = false,
   quitPending = false,
   subscriptionEpoch = 0,
@@ -124,6 +127,12 @@ app.whenReady().then(() => {
     store = new Store(app.getPath("userData"), safeStorage);
     companionContext = new CompanionContext(() => store.state);
     memory = new MemoryService({ store, context: companionContext });
+    voice = new VoiceService({
+      context: companionContext,
+      getState: () => store.state,
+      dataDir: app.getPath("userData"),
+      inputAllowed: () => !!win && !win.isDestroyed() && win.isVisible() && win.isFocused() && !win.webContents.isDestroyed() && win.webContents.getURL() === trusted,
+    });
     store.onStateChange = () => companionContext.sync();
     chatgpt = new ChatGPTAuth(app.getPath("userData"), safeStorage, {
       openExternal: (url) => shell.openExternal(url),
@@ -225,6 +234,7 @@ app.whenReady().then(() => {
   });
   handle("subscriptionStatus", subscriptionStatus);
   registerMemoryHandlers({ handle, getState: () => store.state, memory, context: companionContext });
+  registerVoiceHandlers({ handle, voice });
   registerCompanyHandlers({
     handle,
     getState: () => store.state,
@@ -667,6 +677,9 @@ app.whenReady().then(() => {
       },
     });
     win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+    win.on("blur", () => voice.blur());
+    win.on("hide", () => voice.blur());
+    win.on("minimize", () => voice.blur());
     win.webContents.on("destroyed", () => companionContext.invalidate("renderer-destroyed"));
     win.webContents.on("render-process-gone", () => companionContext.invalidate("renderer-gone"));
     win.webContents.on("did-start-navigation", () => companionContext.invalidate("renderer-navigation"));
@@ -689,6 +702,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", (event) => {
+  voice?.close();
   companionContext?.invalidate("quit");
   subscriptionEpoch++;
   chatgpt?.close();
