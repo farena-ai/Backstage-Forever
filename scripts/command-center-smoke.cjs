@@ -85,6 +85,7 @@ const { testWindow } = require('./test-window.cjs');
     assert.notEqual(await page.getByRole('region',{name:'Your next steps',exact:true}).innerText(),before,'Imported progress must rebuild guidance');
     await app.evaluate(({ipcMain})=>{
       const original=ipcMain._invokeHandlers.get('backstage:guidancePlan');
+      globalThis.commandOriginalGuidance=original;
       ipcMain.removeHandler('backstage:guidancePlan');
       ipcMain.handle('backstage:guidancePlan',async (...args)=>{
         const result=await original(...args);
@@ -111,6 +112,75 @@ const { testWindow } = require('./test-window.cjs');
     const savedPreferences=await page.evaluate(()=>Object.entries(localStorage).filter(([key])=>key.startsWith('bf-guidance-v1:')));
     assert.ok(savedPreferences.length>=2);
     for(const [,value] of savedPreferences) assert.deepEqual(Object.keys(JSON.parse(value)).sort(),['focus','minutes']);
+    const restored=(await page.evaluate(()=>window.backstage.bootstrap())).state;
+    const restoredCharacter=restored.profiles.find(p=>p.id===first);
+    restored.activeProfileId=first;
+    restoredCharacter.quests=[{id:901,title:'Restored quest from backup',complete:false,objectives:[{text:'Restored objective',done:false}]}];
+    restoredCharacter.notes='RESTORED PRIVATE NOTES';
+    restoredCharacter.goals=[{id:'restored-goal',text:'Restored personal goal',done:false}];
+    restored.provider.model='restore-fixture-model';
+    const backupFile=path.join(data,'restore-fixture.json');
+    await fs.writeFile(backupFile,JSON.stringify(restored));
+    await app.evaluate(({ipcMain,dialog},backup)=>{
+      dialog.showOpenDialog=async()=>({canceled:false,filePaths:[backup]});
+      dialog.showMessageBox=async()=>({response:1});
+      ipcMain.removeHandler('backstage:listModels');
+      ipcMain.handle('backstage:listModels',async()=>({models:[{id:'restore-fixture-model',label:'Restore fixture model'}],source:'Synthetic fixture',checkedAt:new Date().toISOString(),message:'Synthetic catalog; no inference.'}));
+      const original=globalThis.commandOriginalGuidance;
+      const snapshot=ipcMain._invokeHandlers.get('backstage:gameSnapshot');
+      globalThis.commandOriginalSnapshot=snapshot;
+      ipcMain.removeHandler('backstage:gameSnapshot');
+      ipcMain.handle('backstage:gameSnapshot',(...args)=>new Promise(resolve=>{
+        globalThis.commandSnapshotRelease=()=>Promise.resolve(snapshot(...args)).then(resolve);
+      }));
+      let held=false;
+      ipcMain.removeHandler('backstage:guidancePlan');
+      ipcMain.handle('backstage:guidancePlan',async(...args)=>{
+        const result=await original(...args);
+        if(!held && args[2].minutes===60) {
+          held=true;
+          globalThis.commandRestorePending=new Promise(resolve=>{globalThis.commandRestoreRelease=resolve;});
+          await globalThis.commandRestorePending;
+          result.steps[0].title='PRE-RESTORE QUEST MUST NOT RETURN';
+        }
+        return result;
+      });
+    },backupFile);
+    await page.getByLabel('Session length',{exact:true}).selectOption('60');
+    await app.evaluate(async()=>{
+      const deadline=Date.now()+5000;
+      while(!globalThis.commandRestoreRelease) {
+        if(Date.now()>deadline) throw Error('Pre-restore planner fixture did not start');
+        await new Promise(resolve=>setTimeout(resolve,10));
+      }
+    });
+    await page.getByRole('button',{name:'Field Guide',exact:true}).click();
+    await page.getByRole('button',{name:'Import backup',exact:true}).click();
+    await page.getByRole('status').filter({hasText:'Backup imported.'}).waitFor();
+    await page.getByRole('button',{name:'Adventure',exact:true}).click();
+    await plans.getByRole('heading',{name:'Restored quest from backup',exact:true}).waitFor({timeout:1000});
+    assert.equal(await page.getByLabel('Active character',{exact:true}).inputValue(),first);
+    assert.equal(await page.getByLabel('Session length',{exact:true}).inputValue(),'60');
+    assert.equal(await page.getByLabel('Quest focus',{exact:true}).inputValue(),'balanced');
+    await app.evaluate(()=>globalThis.commandRestoreRelease());
+    await app.evaluate(()=>globalThis.commandRestorePending);
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    assert.ok(!(await plans.innerText()).includes('PRE-RESTORE'),'Pre-import responses must not overwrite restored guidance');
+    await page.getByRole('button',{name:'Characters',exact:true}).click();
+    assert.equal(await page.getByLabel('Private notes').inputValue(),'RESTORED PRIVATE NOTES');
+    await page.getByRole('button',{name:'Connections',exact:true}).click();
+    await page.getByRole('option',{name:'Restore fixture model',exact:true}).waitFor({state:'attached'});
+    assert.equal(await page.getByLabel('Available models').inputValue(),'restore-fixture-model');
+    assert.equal(await app.evaluate(()=>globalThis.commandAIRequests),0,'Restoring and loading a provider must not run inference');
+    await app.evaluate(({ipcMain})=>{
+      ipcMain.removeHandler('backstage:gameSnapshot');
+      ipcMain.handle('backstage:gameSnapshot',globalThis.commandOriginalSnapshot);
+      globalThis.commandSnapshotRelease?.();
+    });
+    // Reconnect only the synthetic export so the remaining import/empty-state checks stay independent.
+    await page.evaluate(root=>window.backstage.prepareGame(root),game);
+    await page.reload();
+    await page.getByRole('heading',{name:'Aeralyn',exact:true}).waitFor();
     characters[0].quests=[];characters[0].updatedAt=Date.now()/1000+2;await write();
     await page.evaluate(()=>window.backstage.refreshGame());
     await page.waitForFunction(()=>document.querySelector('[aria-label="Your next steps"]')?.textContent.includes('observed quest log is empty'));
@@ -137,6 +207,7 @@ const { testWindow } = require('./test-window.cjs');
     if(page) { await fs.mkdir(path.join(__dirname,'../work'),{recursive:true});await page.screenshot({path:path.join(__dirname,'../work/command-center-failure.png')}).catch(()=>{}); }
     throw error;
   } finally {
+    if(app) await app.evaluate(()=>{globalThis.commandRestoreRelease?.();globalThis.commandSnapshotRelease?.();}).catch(()=>{});
     if(app) await app.close();
     const cleanupTarget=path.resolve(data);
     assert.equal(path.dirname(cleanupTarget),path.resolve(os.tmpdir()),'Cleanup must stay in the temporary directory');

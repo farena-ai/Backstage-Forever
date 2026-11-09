@@ -1110,7 +1110,13 @@ root.addEventListener("click", (event) => {
         const next = await mutateStateCall(() => api.importData());
         if (next) {
           chatGeneration++;
+          autosaveGeneration++;
+          formDrafts.clear();
           state = next;
+          // A restored profile may keep its ID while replacing all quest evidence.
+          // Refresh also invalidates plans still running against the old backup.
+          await refreshBrief();
+          gameStatus = await api.gameStatus();
           connection = state.provider.id;
           authChoice = state.provider.authMode || "api";
           messages = [];
