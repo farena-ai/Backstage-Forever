@@ -85,6 +85,8 @@ function harness(overrides = {}) {
   context.CommandCenter = context.window.CommandCenter;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/company.js"), "utf8"), context);
   context.Company = context.window.Company;
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/preparation.js"), "utf8"), context);
+  context.Preparation = context.window.Preparation;
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, "../src/renderer/app.js"), "utf8"),
     context,
@@ -340,4 +342,11 @@ test("a changed saved active character clears the previous Director pending pres
   assert.doesNotMatch(html,/Saving quest session/);
   held.resolve({state:{profiles:[{id:'p'}],activeProfileId:'p'},journeyId:'obsolete',created:true});
   await vm.runInContext("autosaveQueue",h.context);assert.equal(vm.runInContext("state.activeProfileId",h.context),'q');
+});
+test('a saved active-character replacement clears queued Preparation pending presentation',async()=>{
+ const queue=deferred(),snapshot={onboarded:true,profiles:[{id:'p',name:'One'},{id:'q',name:'Two'}],activeProfileId:'q',provider:{id:'ollama',model:''}},m={character:{id:'p',name:'One'},selection:{recipeId:100,crafts:1},selectedRecipe:{id:100,name:'Formula'},planning:{checklistAvailable:true},recipes:[],shoppingRows:[],otherCharacters:[]};
+ const h=harness({gameSnapshot:async()=>({state:snapshot}),preparationBrief:async id=>({...m,character:{id,name:id}}),createPreparationJourney:async()=>({state:snapshot,journeyId:'saved'})});h.context.heldQueue=queue.promise;
+ vm.runInContext(`state={onboarded:true,profiles:[{id:'p',name:'One'},{id:'q',name:'Two'}],activeProfileId:'p',provider:{id:'ollama',model:''}};page='preparation';setupOpen=false;render=()=>{};autosaveQueue=heldQueue;Preparation.refresh();`,h.context);for(let i=0;i<5;i++)await Promise.resolve();
+ const button={dataset:{},hasAttribute:name=>name==='data-preparation-add',closest:selector=>selector==='[data-preparation-add]'||selector==='button'?button:null};h.handlers.click.forEach(fn=>fn({target:button}));assert.match(vm.runInContext('Preparation.page()',h.context),/Saving shopping checklist/);
+ await h.polls.at(-1)();assert.doesNotMatch(vm.runInContext('Preparation.page()',h.context),/Saving shopping checklist/);queue.resolve();await vm.runInContext('autosaveQueue',h.context);assert.equal(vm.runInContext('state.activeProfileId',h.context),'q');
 });

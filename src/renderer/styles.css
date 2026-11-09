@@ -1247,3 +1247,7 @@ body[data-class] .providers {
     margin-bottom: 14px;
   }
 }
+/* Keep the growing journal navigation reachable in compact desktop windows. */
+.rail nav { min-height:0; overflow-y:auto; flex:1; align-content:start; }
+.rail .brand,.rail .rail-bottom { flex-shrink:0; }
+@media(max-height:800px){.rail .brand{margin-bottom:22px}.rail nav{gap:5px}.rail nav button:not(.illustrated-card){padding:9px 12px}.rail .rail-bottom{padding-top:12px}}

@@ -1,0 +1,150 @@
+"use strict";
+const { _electron: electron } = require("playwright");
+const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
+const { testWindow } = require("./test-window.cjs");
+const { defaultState } = require("../src/core/validation.cjs");
+const { assertSelectContrast } = require("./select-contrast.cjs");
+function shortPath(target) {
+  const script = `Add-Type -TypeDefinition 'using System; using System.Text; using System.Runtime.InteropServices; public static class PreparationUiShortPath { [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetShortPathName(string path, StringBuilder result, uint length); }'; $buffer = New-Object System.Text.StringBuilder 4096; $length = [PreparationUiShortPath]::GetShortPathName($env:BF_PREPARATION_UI_PATH,$buffer,4096); if ($length -eq 0 -or $length -ge 4096) { throw 'Short path unavailable' }; $buffer.ToString()`;
+  const alias = require("node:child_process").execFileSync("powershell.exe",["-NoProfile","-NonInteractive","-Command",script],{env:{...process.env,BF_PREPARATION_UI_PATH:target},encoding:"utf8",timeout:15000}).trim();
+  assert.notEqual(alias.toLowerCase(),target.toLowerCase());assert.match(alias,/~\d/);assert.equal(syncFs.statSync(alias).ino,syncFs.statSync(target).ino);return alias;
+}
+(async()=>{
+  const tempRoot=await fs.realpath(os.tmpdir()),dir=await fs.mkdtemp(path.join(tempRoot,"forever-preparation-ui-"));let app,page;
+  const watchdog=setTimeout(()=>{console.error("Preparation UI fixture exceeded 180 seconds");process.exitCode=1;app?.process().kill();},180000);
+  try {
+    const normalData=path.join(dir,"synthetic-user-data");await fs.mkdir(normalData);
+    const data=process.argv.includes("--short-path")?shortPath(normalData):normalData;
+    const game=path.join(dir,"synthetic-client"),saved=path.join(game,"WTF/Account/Synthetic/SavedVariables/BackstageForever.lua");
+    await fs.mkdir(path.dirname(saved),{recursive:true});await fs.writeFile(path.join(game,".flavor.info"),"wowf");
+    const manual=id=>({id,name:id,realm:"Synthetic Realm",className:"Hunter",level:18,notes:"PRIVATE NOTE SENTINEL",goals:[{id:"g",text:"PRIVATE GOAL SENTINEL",done:false}]});
+    await fs.writeFile(path.join(data,"state.json"),JSON.stringify({...defaultState(),onboarded:true,followGameCharacter:false,profiles:[manual("Aeralyn"),{...manual("Vaelric"),className:"Mage"}],activeProfileId:"Aeralyn"}));
+    let clock=Math.floor(Date.now()/1000);
+    const col=items=>({observedAt:clock,complete:true,items});
+    const workshop=count=>({professions:col([{skillLineId:171,professionId:1,name:"Alchemy",rank:22,maxRank:75}]),recipes:col([{id:100,skillLineId:171,name:"Amber restorative",reagentsKnown:true,reagents:[{itemId:200,name:"Sunleaf",required:3},{itemId:201,name:"Clear vial",required:1}]},{id:101,skillLineId:171,name:"Silverleaf infusion",reagentsKnown:true,reagents:[{itemId:200,name:"Sunleaf",required:2}]},{id:102,skillLineId:171,name:"Unresolved formula",reagentsKnown:false,reagents:[]}]),materials:{...col([{itemId:200,name:"Sunleaf",count},{itemId:201,name:"Clear vial",count:1}]),scope:"bags-0-4"}});
+    const characters=["Aeralyn","Vaelric"].map((name,i)=>({id:`Synthetic-${name}`,name,realm:"Synthetic Realm",className:i?"Mage":"Hunter",faction:i?"Horde":"Alliance",race:"Synthetic",level:18,updatedAt:clock,clientBuild:"1.60.1.70862",captureVersion:require("../package.json").version,readiness:{bags:{free:4,total:40},workshop:workshop(i?99:2)}}));
+    const write=()=>fs.writeFile(saved,"BackstageForeverExport = "+JSON.stringify(JSON.stringify({schema:1,observedAt:clock,activeId:characters[0].id,characters})));
+    await write();
+    const launch=async()=>{
+      app=await electron.launch({args:[path.join(__dirname,"..")],env:{...process.env,BF_USER_DATA:data},timeout:20000});
+      await app.evaluate(({app,dialog})=>{
+        const load=process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(),"package.json"));
+        globalThis.preparationUi={inference:0,launches:0,calls:0};
+        load("./src/core/game-runtime.cjs").GameRuntime.prototype.probe=async()=>({state:"not-running",launchAvailable:false});
+        load("./src/core/game-runtime.cjs").GameRuntime.prototype.launch=async()=>{preparationUi.launches++;throw Error("Fixture blocks launch");};
+        load("./src/core/claude.cjs").status=async()=>({installed:false,loggedIn:false});
+        load("./src/core/providers.cjs").ask=async()=>{preparationUi.inference++;throw Error("Fixture blocks inference");};
+        dialog.showMessageBox=async()=>({response:1});
+      });
+      page=await testWindow(app);page.setDefaultTimeout(8000);
+      await app.evaluate(({ipcMain})=>{const snapshot=ipcMain._invokeHandlers.get("backstage:gameSnapshot");ipcMain.removeHandler("backstage:gameSnapshot");ipcMain.handle("backstage:gameSnapshot",async(...args)=>{preparationUi.polls=(preparationUi.polls||0)+1;return snapshot(...args);});});
+      await page.evaluate(()=>localStorage.setItem("bf-setup-v4","complete"));
+    };
+    await launch();await page.evaluate(root=>window.backstage.prepareGame(root),game);await page.reload();
+    await page.getByRole("heading",{name:"Aeralyn",exact:true}).waitFor();
+    // RED requires the real page after a genuine synthetic saved recipe/shortfall.
+    const initial=(await page.evaluate(()=>window.backstage.bootstrap())).state;
+    assert.equal((await page.evaluate(id=>window.backstage.preparationBrief(id,{recipeId:100,crafts:2}),initial.activeProfileId)).shoppingRows[0].missing,4);
+    assert.equal(await page.getByRole("button",{name:"Preparation",exact:true}).count(),1,"Preparation navigation must exist for the saved workshop");
+    await page.getByRole("button",{name:"Preparation",exact:true}).click();await page.locator("[data-preparation-reagent]").first().waitFor();
+    assert.match(await page.locator("[data-preparation]").innerText(),/Amber restorative/);
+
+    const evidence=path.resolve("work/v010-ui-evidence");await fs.mkdir(evidence,{recursive:true});
+    const capture=async name=>{await page.locator("#toast.visible").waitFor({state:"hidden",timeout:8000});await page.evaluate(()=>{scrollTo(0,0);document.querySelector(".main")?.scrollTo(0,0);});await page.screenshot({path:path.join(evidence,`${process.argv.includes("--short-path")?"short-":""}${name}.png`),fullPage:true});};
+    const state=async()=>(await page.evaluate(()=>window.backstage.bootstrap())).state;
+    const untilMain=condition=>app.evaluate(async(_e,condition)=>{const end=Date.now()+6000;while(!Function(`return (${condition})`)()){if(Date.now()>end)throw Error("Fixture condition timed out: "+condition);await new Promise(r=>setTimeout(r,10));}},condition);
+    const workshopPage=async()=>{await page.getByRole("button",{name:"Preparation",exact:true}).click();await page.locator("[data-preparation-reagent]").first().waitFor();};
+    const update=async()=>{clock+=2;characters[0].updatedAt=clock;await write();await page.evaluate(()=>window.backstage.refreshGame());};
+    const first=initial.activeProfileId,second=initial.profiles.find(p=>p.name==="Vaelric").id;
+    console.log("Preparation: saved source and navigation ready");await capture("alliance-full");
+    await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1000,700));await page.waitForFunction(()=>innerWidth<=1000);
+    let add=page.getByRole("button",{name:"Add shopping checklist",exact:true});
+    await capture("alliance-compact");
+    assert.ok(await add.evaluate(n=>{const r=n.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}),"Primary action must fit the compact first viewport");
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    const rail=page.locator(".rail");assert.ok(await rail.evaluate(n=>n.getBoundingClientRect().bottom<=innerHeight));
+    await page.getByRole("button",{name:"Field Guide",exact:true}).scrollIntoViewIfNeeded();assert.ok(await page.getByRole("button",{name:"Field Guide",exact:true}).isVisible());
+    assert.ok(await page.locator(".update-rail").evaluate(n=>n.getBoundingClientRect().bottom<=innerHeight),"Updates must remain reachable beneath the scrolling navigation");
+    await workshopPage();await assertSelectContrast(page,"Preparation compact native controls");
+    await page.emulateMedia({reducedMotion:"reduce"});assert.equal(await add.evaluate(n=>getComputedStyle(n).animationName),"none");
+    await page.getByLabel("Craft attempts",{exact:true}).focus();await page.keyboard.press("ArrowDown");await page.keyboard.press("Enter");
+    await page.waitForFunction(()=>document.querySelector('[data-preparation-reagent="200"] .reagent-copy>span b')?.textContent==="6");
+    assert.match(await page.locator('[data-preparation-reagent="200"]').innerText(),/4\s*shortfall/);assert.match(await page.locator(".workshop-supply-summary").innerText(),/2 material shortfalls/);
+    await page.getByLabel("Saved recipe",{exact:true}).selectOption("101");await page.waitForFunction(()=>document.querySelector(".formula-heading h2")?.textContent==="Silverleaf infusion");
+    assert.equal((await state()).profiles[0].readiness.workshop.materials.items[0].count,2,"Display preferences must not rewrite evidence");
+    await page.getByLabel("Saved recipe",{exact:true}).selectOption("100");await page.waitForFunction(()=>document.querySelector(".formula-heading h2")?.textContent==="Amber restorative");
+    // The real native Summary target survives a held key and a competing root paint.
+    const summary=page.locator(".workshop-details summary");await summary.focus();await summary.evaluate(n=>{window.heldSummary=n;window.summaryToggles=0;n.parentElement.addEventListener("toggle",()=>window.summaryToggles++);});
+    await page.keyboard.down("Space");await page.evaluate(()=>new Promise(r=>setTimeout(()=>{render();r();},0)));assert.ok(await summary.evaluate(n=>n===window.heldSummary));await page.keyboard.up("Space");
+    await page.waitForFunction(()=>window.summaryToggles===1);assert.equal(await page.locator(".workshop-details").evaluate(n=>n.open),true);assert.equal(await summary.evaluate(n=>n===document.activeElement),true);
+    // A held native menu survives source refresh; newest counts appear after closure.
+    const select=page.getByLabel("Saved recipe",{exact:true});await select.click();
+    const beforeNativePoll=await app.evaluate(()=>preparationUi.polls||0);await select.evaluate(n=>window.heldRecipe=n);characters[0].readiness.workshop.materials.items[0].count=5;characters[0].readiness.workshop.materials.observedAt=clock+2;await update();
+    await untilMain(`preparationUi.polls>${beforeNativePoll}`);assert.ok(await select.evaluate(n=>n===window.heldRecipe),"Native recipe control survives saved-source refresh");await page.keyboard.press("Enter");await page.getByLabel("Craft attempts",{exact:true}).focus();
+    await page.getByLabel("Saved recipe",{exact:true}).selectOption("100");await page.waitForFunction(()=>document.querySelector('[data-preparation-reagent="200"]')?.innerText.includes("1\nshortfall"));
+    await app.evaluate(({ipcMain})=>{
+      const original=ipcMain._invokeHandlers.get("backstage:createPreparationJourney");
+      ipcMain.removeHandler("backstage:createPreparationJourney");ipcMain.handle("backstage:createPreparationJourney",async(...args)=>{
+        preparationUi.calls++;if(preparationUi.failOnce){preparationUi.failOnce=false;throw Error("Synthetic unavailable write");}
+        const result=await original(...args);preparationUi.last=result;
+        if(preparationUi.hold)await new Promise(r=>preparationUi.release=r);return result;
+      });
+      const read=ipcMain._invokeHandlers.get("backstage:preparationBrief");
+      ipcMain.removeHandler("backstage:preparationBrief");ipcMain.handle("backstage:preparationBrief",async(...args)=>{if(preparationUi.failRead){throw Error("Synthetic read error");}return read(...args);});
+    });
+    // A dirty local note and caret survive newer source evidence; no provider call.
+    await page.getByRole("button",{name:"Characters",exact:true}).click();const notes=page.locator('textarea[name="notes"]');await notes.fill("PRIVATE LOCAL UNSAVED DRAFT");await notes.evaluate(n=>{window.dirtyNotes=n;n.focus();n.setSelectionRange(2,7);});
+    const draftPoll=await app.evaluate(()=>preparationUi.polls||0);await update();await untilMain(`preparationUi.polls>${draftPoll}`);assert.ok(await notes.evaluate(n=>n===window.dirtyNotes));assert.equal(await notes.inputValue(),"PRIVATE LOCAL UNSAVED DRAFT");assert.deepEqual(await notes.evaluate(n=>[n.selectionStart,n.selectionEnd]),[2,7]);await workshopPage();
+    // Hold a genuine preceding state save acknowledgement in the existing queue.
+    await app.evaluate(({ipcMain})=>{const save=ipcMain._invokeHandlers.get("backstage:saveState");ipcMain.removeHandler("backstage:saveState");ipcMain.handle("backstage:saveState",async(...args)=>{const result=await save(...args);if(preparationUi.holdSave)await new Promise(r=>preparationUi.releaseSave=r);return result;});preparationUi.holdSave=true;});
+    await page.evaluate(()=>{autosaveQueue=autosaveQueue.then(()=>persist(editedState(next=>{next.profiles.find(p=>p.id===next.activeProfileId).notes="PRIVATE QUEUED SAVE";})));});await untilMain("Boolean(preparationUi.releaseSave)");
+    // A physical press across a preceding acknowledgement and root paint creates exactly one manual checklist.
+    await add.scrollIntoViewIfNeeded();const box=await add.boundingBox();await page.evaluate(()=>window.heldAdd=document.querySelector("[data-preparation-add]"));await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();
+    await app.evaluate(()=>{preparationUi.holdSave=false;preparationUi.releaseSave();});await page.evaluate(()=>autosaveQueue);
+    const heldPoll=await app.evaluate(()=>preparationUi.polls||0);await untilMain(`preparationUi.polls>${heldPoll}`);
+    await page.evaluate(()=>new Promise(r=>setTimeout(()=>{render();r();},0)));assert.ok(await page.evaluate(()=>window.heldAdd===document.querySelector("[data-preparation-add]")));await page.mouse.up();
+    await page.locator("[data-company-journey]").waitFor();assert.equal(await app.evaluate(()=>preparationUi.calls),1);let savedNow=await state();assert.equal(savedNow.journeys.length,1);assert.equal(savedNow.followGameCharacter,false);assert.ok(savedNow.journeys[0].steps.every(s=>!s.done&&!s.quest&&!s.observed));
+    assert.equal(await page.getByLabel("Plan title",{exact:true}).evaluate(n=>n===document.activeElement),true,"Exact returned checklist receives focus");assert.match(savedNow.journeys[0].steps[0].text,/shortfall: 1/);
+    // Mutation error retry is deliberate and never makes a duplicate successful call.
+    await workshopPage();await app.evaluate(()=>preparationUi.failOnce=true);await add.click();await page.getByRole("alert").waitFor();await capture("mutation-error");await page.getByRole("button",{name:"Retry shopping checklist",exact:true}).click();await page.locator("[data-company-journey]").first().waitFor();assert.equal((await state()).journeys.length,2);
+    // Read errors have a separate explicit retry without a checklist mutation.
+    await workshopPage();await app.evaluate(()=>preparationUi.failRead=true);await page.evaluate(()=>{Preparation.invalidate();render();});await page.getByRole("alert").waitFor();await capture("read-error");await app.evaluate(()=>preparationUi.failRead=false);await page.getByRole("button",{name:"Retry workshop",exact:true}).click();await page.locator("[data-preparation-reagent]").first().waitFor();
+    // Partial supply creates manual totals, never an invented exact missing amount.
+    characters[0].readiness.workshop.materials.complete=false;characters[0].readiness.workshop.materials.observedAt=clock+2;await update();await workshopPage();await page.waitForFunction(()=>document.querySelector('[data-preparation-reagent="200"]')?.innerText.includes("Shortfall unknown"));
+    assert.match(await page.locator('[data-preparation-reagent="200"]').innerText(),/At least 5/);await capture("partial");await add.focus();await page.keyboard.press("Space");await page.locator("[data-company-journey]").first().waitFor();savedNow=await state();assert.equal(savedNow.journeys.length,3);assert.match(savedNow.journeys.at(-1).steps[0].text,/incomplete or unknown/);assert.match(savedNow.journeys.at(-1).steps[1].text,/total required: 6/);
+    console.log("Preparation: physical ack/click/key, read/write retry and partial checklist passed");
+    // A missing material collection stays unknown rather than becoming zero inventory.
+    delete characters[0].readiness.workshop.materials;await update();await workshopPage();await page.waitForFunction(()=>document.querySelector('[data-preparation-reagent="200"]')?.innerText.includes("Unknown"));assert.match(await page.locator(".workshop-supply-summary").innerText(),/Supply check needed/);assert.equal(await add.isEnabled(),true);await capture("unknown-supply");characters[0].readiness.workshop.materials={...col([{itemId:200,name:"Sunleaf",count:5}]),complete:false,scope:"bags-0-4"};await update();
+    // Another character keeps independent options and counted supply, not pooled stock.
+    await workshopPage();await page.getByLabel("Active character",{exact:true}).selectOption(second);await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Vaelric"));await capture("horde-compact");assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"1");
+    await page.getByLabel("Craft attempts",{exact:true}).selectOption("3");await page.waitForFunction(()=>document.querySelector('[data-preparation-reagent="200"] .reagent-copy>span b')?.textContent==="9");
+    await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1440,1000));await capture("horde-full");
+    await page.getByLabel("Active character",{exact:true}).selectOption(first);await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Aeralyn"));assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"2");
+    // Accepted writes survive a later intentional selection, without late navigation.
+    await app.evaluate(()=>{preparationUi.hold=true;preparationUi.release=null;preparationUi.before=preparationUi.calls;});await add.click();await untilMain("Boolean(preparationUi.release)");assert.equal(await page.getByRole("button",{name:"Saving shopping checklist…",exact:true}).isDisabled(),true);
+    await page.getByLabel("Active character",{exact:true}).selectOption(second,{timeout:8000,noWaitAfter:true}).catch(()=>{});
+    await app.evaluate(()=>{preparationUi.hold=false;preparationUi.release();});await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Vaelric"));assert.equal((await state()).journeys.length,4);assert.equal(await app.evaluate(()=>preparationUi.calls-preparationUi.before),1);assert.equal((await state()).activeProfileId,second);
+    await app.evaluate(()=>{preparationUi.hold=true;preparationUi.release=null;});await add.click();await untilMain("Boolean(preparationUi.release)");await page.getByRole("button",{name:"Field Guide",exact:true}).click({noWaitAfter:true});await app.evaluate(()=>{preparationUi.hold=false;preparationUi.release();});await page.waitForFunction(()=>document.querySelector('[aria-current="page"]')?.dataset.nav==="guide");assert.equal((await state()).journeys.length,5);assert.equal(await page.locator("[data-company]").count(),0);
+    assert.deepEqual(await app.evaluate(()=>({inference:preparationUi.inference,launches:preparationUi.launches})),{inference:0,launches:0});
+    // Restart proves local recipe/attempt preferences, while sources remain main-owned.
+    await app.close();app=null;await launch();add=page.getByRole("button",{name:"Add shopping checklist",exact:true});await page.getByRole("heading",{name:"Vaelric",exact:true}).waitFor();await workshopPage();assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"3");
+    await page.getByLabel("Active character",{exact:true}).selectOption(first);await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Aeralyn"));
+    // Selected recipes disappearing and orphaned professions are explicit, no fallback.
+    characters[0].readiness.workshop.recipes.items=characters[0].readiness.workshop.recipes.items.filter(r=>r.id!==100);await update();await page.getByRole("option",{name:"Selected recipe no longer observed",exact:true}).waitFor({state:"attached"});assert.equal(await add.isDisabled(),true);assert.match(await page.locator("[data-preparation]").innerText(),/no longer|not.*observed|unavailable/i);await capture("missing-recipe");
+    characters[0].readiness.workshop=workshop(5);characters[0].readiness.workshop.professions.items=[];await update();await page.waitForFunction(()=>document.querySelector("[data-preparation]")?.innerText.includes("currently observed owned profession"));assert.equal(await add.isDisabled(),true);
+    characters[0].readiness.workshop=workshop(5);characters[0].readiness.workshop.recipes.items[0].reagentsKnown=false;characters[0].readiness.workshop.recipes.items[0].reagents=[];await update();await page.waitForFunction(()=>document.querySelector("[data-preparation]")?.innerText.includes("unknown or ambiguous"));assert.equal(await add.isDisabled(),true);await capture("unknown-requirements");
+    console.log("Preparation: independent alts, pending navigation/selection, restart and replacements passed");
+    // Actual same-ID import clears local preferences and replaces sources atomically.
+    const imported=await state();const importedFirst=imported.profiles.find(p=>p.id===first);delete importedFirst.readiness;delete importedFirst.source;
+    const backup=path.join(dir,"replacement.json");await fs.writeFile(backup,JSON.stringify(imported));await app.evaluate(({dialog},backup)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[backup]});},backup);
+    await page.getByRole("button",{name:"Field Guide",exact:true}).click();await page.getByRole("button",{name:"Import backup",exact:true}).click();await page.getByRole("status").filter({hasText:"Backup imported."}).waitFor();await page.getByRole("button",{name:"Preparation",exact:true}).click();await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Aeralyn")&&document.querySelector(".workshop-source")?.textContent.includes("quiet bench"));assert.equal(await add.isDisabled(),true);assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"1");await capture("manual-empty");
+    assert.doesNotMatch(JSON.stringify(await page.evaluate(id=>window.backstage.contextPreview(id,true,"Explain my plan"),first)),/PRIVATE|Amber restorative|Sunleaf|workshop|journeys/);
+    assert.deepEqual(await app.evaluate(()=>({inference:preparationUi.inference,launches:preparationUi.launches})),{inference:0,launches:0});
+    await page.getByRole("button",{name:"Field Guide",exact:true}).click();await page.getByRole("button",{name:"Delete all local data",exact:true}).click();await page.getByRole("status").filter({hasText:"Local data and saved keys deleted."}).waitFor();await page.getByRole("button",{name:"Plan without a character",exact:true}).click();await page.getByRole("button",{name:"Preparation",exact:true}).click();await page.locator("[data-preparation]").waitFor();assert.equal(await add.isDisabled(),true);await capture("no-character");
+    console.log(`Preparation UI source Electron ${process.argv.includes("--short-path")?"genuine 8.3":"normal"}: saved recipe, native selection, compact rail/action, physical click/key/disclosure, dated refresh, manual totals, separate alts, retry, pending selection/navigation, restart/import/reset/privacy PASS`);
+
+  } finally {
+    clearTimeout(watchdog);await app?.close();const resolved=await fs.realpath(dir);
+    assert.equal(path.dirname(resolved).toLowerCase(),tempRoot.toLowerCase());assert.ok(path.basename(resolved).startsWith("forever-preparation-ui-"));await fs.rm(resolved,{recursive:true,force:true});
+  }
+})().catch(error=>{console.error(error);process.exitCode=1;});
