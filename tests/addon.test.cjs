@@ -43,6 +43,7 @@ test("addon executes persistence, combat, secret-value and unavailable API guard
     timeout: 10000,
   });
   assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, "", result.stderr);
   assert.match(result.stdout, /Addon runtime persistence/);
 });
 const LUA_HARNESS = String.raw`local handler
@@ -52,10 +53,10 @@ InCombatLockdown=function() return false end
 local who='Player-synthetic-one'
 UnitGUID=function()return who end
 UnitFullName=function()return 'Example','Example Realm' end
-UnitClass=function()return 'Mage' end
+UnitClass=function()return 'Mage','MAGE',8 end
 UnitLevel=function()return 12 end
-UnitRace=function()return 'Human' end
-UnitFactionGroup=function()return 'Alliance' end
+UnitRace=function()return 'Human','Human',1 end
+UnitFactionGroup=function()return 'Alliance','Alliance' end
 GetZoneText=function()return 'Test Zone' end
 GetSubZoneText=function()return '' end
 time=function()return 1700000000 end
@@ -66,6 +67,7 @@ C_QuestLog={GetNumQuestLogEntries=function()return 1 end,GetInfo=function()retur
 C_Map={GetBestMapForUnit=function()return 1 end,GetPlayerMapPosition=function()return {GetXY=function()return .4,.5 end}end}
 dofile('addon/BackstageForever/BackstageForever.lua')
 handler(nil,'PLAYER_LOGIN')
+assert(type(BackstageForeverExport)=='string','Multi-return player APIs must produce a snapshot')
 assert(BackstageForeverExport:find('Player%-synthetic%-one'))
 assert(BackstageForeverExport:find('"complete":true',1,true))
 assert(BackstageForeverExport:find('"current":20',1,true))
@@ -102,26 +104,53 @@ test("native compass executes visibility, collapse and combat hiding in Lua", ()
     encoding: "utf8",
     timeout: 10000,
     input: String.raw`
-local events,panel,title
+local events,panel,title,closeButton,collapseButton
+local fontStrings={}
+local measuredHeight
+local messages={}
+DEFAULT_CHAT_FRAME={AddMessage=function(_,text)messages[#messages+1]=text end}
 local fighting=false
 InCombatLockdown=function()return fighting end
 SlashCmdList={}
 local methods={}
-for _,k in ipairs({'SetSize','SetPoint','SetMovable','EnableMouse','RegisterForDrag','SetClampedToScreen','SetBackdrop','SetBackdropColor','RegisterEvent','SetWidth','SetJustifyH','SetAllPoints','SetHeight','StartMoving','StopMovingOrSizing'}) do methods[k]=function()end end
+methods.SetPoint=function(self,point,relative,relativePoint,x,y)self.anchor={point=point,x=x,y=y} end
+methods.SetHeight=function(self,height)self.height=height end
+methods.GetStringHeight=function()return measuredHeight end
+methods.GetPoint=function()return 'CENTER',UIParent,'CENTER',321,123 end
+methods.StartMoving=function(self)self.moving=true end
+methods.StopMovingOrSizing=function(self)self.moving=false end
+for _,k in ipairs({'SetSize','SetMovable','EnableMouse','RegisterForDrag','SetClampedToScreen','SetBackdrop','SetBackdropColor','RegisterEvent','SetWidth','SetJustifyH','SetAllPoints','ClearAllPoints'}) do methods[k]=function()end end
 methods.SetText=function(self,text)self.text=text end
 methods.Show=function(self)self.visible=true end
 methods.Hide=function(self)self.visible=false end
 methods.SetScript=function(self,event,fn)self[event]=fn end
-methods.CreateFontString=function()return setmetatable({}, {__index=methods})end
+methods.CreateFontString=function()local f=setmetatable({}, {__index=methods});fontStrings[#fontStrings+1]=f;return f end
 CreateFrame=function(kind,name,parent)
  local f=setmetatable({}, {__index=methods})
- if name then panel=f elseif kind=='Button' then title=f else events=f end
+ if name=='BackstageForeverCompass' then panel=f elseif name=='BackstageForeverCompassClose' then closeButton=f elseif name=='BackstageForeverCompassCollapse' then collapseButton=f elseif kind=='Button' then title=f else events=f end
  return f
 end
 dofile('addon/BackstageForever/BackstageForeverHUD.lua')
 events.OnEvent(nil,'PLAYER_LOGIN');assert(panel.visible)
+local hint=false;for _,font in ipairs(fontStrings)do if font.text and font.text:find('/bf show',1,true) then hint=true end end
+assert(hint,'Reopen instructions must be visible even before a snapshot')
 BackstageForeverHUDUpdate({name='Example',level=12,className='Mage',location={zone='Actual zone'},quests={},progress={current=1,max=100}})
-title.OnClick();SlashCmdList.BACKSTAGEFOREVER('hide');assert(not panel.visible)
+assert(closeButton and collapseButton,'Visible close and collapse controls are required')
+title.OnDragStart(title);assert(panel.moving,'Title must drag the parent compass')
+title.OnDragStop(title);assert(not panel.moving)
+assert(BackstageForeverHUDSettings.x==321 and BackstageForeverHUDSettings.y==123)
+measuredHeight=500;BackstageForeverHUDUpdate({name='Example',level=12,className='Mage',location={zone='Actual zone'}})
+assert(type(fontStrings[2].height)=='number' and fontStrings[2].height<=234 and panel.height<=320,'Long text must leave room for footer')
+collapseButton.OnClick();assert(BackstageForeverHUDSettings.collapsed)
+closeButton.OnClick();assert(not panel.visible and BackstageForeverHUDSettings.visible==false)
+assert(messages[#messages]:find('/bf show',1,true),'Closing must explain how to reopen')
+SlashCmdList.BACKSTAGEFOREVER('show');assert(panel.visible)
+-- A fresh Lua load retains hidden state without affecting export content.
+closeButton.OnClick()
+dofile('addon/BackstageForever/BackstageForeverHUD.lua')
+events.OnEvent(nil,'PLAYER_LOGIN');assert(not panel.visible)
+assert(panel.anchor.x==321 and panel.anchor.y==123,'Position must restore after reload')
+SlashCmdList.BACKSTAGEFOREVER('hide');assert(not panel.visible)
 SlashCmdList.BACKSTAGEFOREVER('show');assert(panel.visible)
 fighting=true;events.OnEvent(nil,'PLAYER_REGEN_DISABLED');assert(not panel.visible)
 SlashCmdList.BACKSTAGEFOREVER('show');assert(not panel.visible)
@@ -129,6 +158,7 @@ fighting=false;events.OnEvent(nil,'PLAYER_REGEN_ENABLED');assert(panel.visible)
 print('HUD guards passed')`,
   });
   assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, "", result.stderr);
   assert.match(result.stdout, /HUD guards passed/);
 });
 test("export sheds older optional detail under one MiB while retaining 100 identities", () => {
@@ -190,6 +220,7 @@ test("export sheds older optional detail under one MiB while retaining 100 ident
     },
   );
   assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, "", result.stderr);
   const exported = JSON.parse(result.stdout.trim());
   const transport =
     "BackstageForeverExport = " + JSON.stringify(result.stdout.trim());

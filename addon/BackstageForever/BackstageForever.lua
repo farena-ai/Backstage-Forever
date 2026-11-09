@@ -158,11 +158,11 @@ local function capture(event,eventId)
     if type(InCombatLockdown) ~= "function" or call(InCombatLockdown) ~= false then return end
     local guid=clean(call(UnitGUID,'player'),200)
     local name,realm=call(UnitFullName,'player')
-    name=clean(name);realm=clean(realm) or clean(call(GetRealmName))
-    local class=clean(call(UnitClass,'player'))
+    name=clean(name);realm=clean(realm) or clean((call(GetRealmName)))
+    local class=clean((call(UnitClass,'player')))
     local level=call(UnitLevel,'player');local now=call(time)
     if not guid or not name or not realm or not class or type(level)~='number' or level<1 or level>1000 or type(now)~='number' then return end
-    local location={zone=clean(call(GetZoneText)) or '',subZone=clean(call(GetSubZoneText)) or ''}
+    local location={zone=clean((call(GetZoneText))) or '',subZone=clean((call(GetSubZoneText))) or ''}
     if type(public(C_Map))=='table' then
         local map=call(field(C_Map,'GetBestMapForUnit'),'player')
         if type(map)=='number' and map>=0 then
@@ -175,7 +175,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.race=clean(call(UnitRace,'player'));character.faction=clean(call(UnitFactionGroup,'player'))
+    character.race=clean((call(UnitRace,'player')));character.faction=clean((call(UnitFactionGroup,'player')))
     local previous=roster[guid]
     local history={recent=array({})}
     if previous and type(previous.history)=='table' and type(previous.history.recent)=='table' then
