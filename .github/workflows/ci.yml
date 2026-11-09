@@ -17,6 +17,7 @@ jobs:
       - run: npm run test:setup
       - run: npm run test:autosave
       - run: npm run test:integration
+      - run: npm run test:command-center
       - run: npm run dist
       - run: npm run test:packaged
       - uses: actions/upload-artifact@v4

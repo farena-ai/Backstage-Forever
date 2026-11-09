@@ -4,6 +4,10 @@ Backstage Forever is permanently specialized for **World of Warcraft: Forever**,
 
 Use it for class and leveling choices, zone and quest planning, dungeon preparation, professions, gear principles and group plans outside combat. Macro and addon setup/configuration can be discussed; the companion cannot execute code. It does not control inputs, inspect game processes or memory, make live combat decisions, automate farming or bypass anti-cheat.
 
+## Automatic local guidance
+
+Adventure builds a deterministic plan from your saved observed quest log without calling a provider. Session/focus controls save per character. Each step retains its reported source and save timestamp. Turn-ins and unfinished objectives can be prioritized, but unobserved prerequisites, NPCs and routes are not invented. Explain my plan drafts a public quest question for review; you still choose whether to send it. Equipment/bag preparation details stay local and are excluded from automatic provider context. See [Guidance](GUIDANCE.md).
+
 ## Character context and honest uncertainty
 
 The active-character preview shows the selected context used for a question; players can opt out. Only approved public character fields, bounded observed quests/objectives and actual destinations, XP, up to 10 recent observed turn-ins and optional completed-count belong in the request. The preview shows the approved payload; up to 10 quests and 3 objectives per quest are shared. A local dashboard and optional in-game Compass use observed data without inference. Recent history is a bounded tracking window, not a complete quest history or verified quest-guide database. Race and faction come from separate public game APIs; unfamiliar races are accepted without guessing a faction. Saved snapshots arrive through the addon's normal logout/UI-reload write cadence, so their timestamp matters: a saved zone or level is not a live observation. Private notes/goals are untrusted and excluded by default. Account identifiers, GUIDs, machine paths and credentials do not belong in automatic context.

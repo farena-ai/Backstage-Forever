@@ -1,18 +1,20 @@
 # Backstage Forever product roadmap
 
-Updated 2026-11-08 (America/Chicago). Proposed milestones, not delivery dates or claims of shipped support. Backstage Coding; designed by Frank Arena. BF should make the next useful action obvious, using verified Forever facts and the player's actual progress. More UI or more model calls are not acceptance criteria.
+Updated 2026-11-09 (America/Chicago). Proposed milestones, not delivery dates or claims of shipped support. Backstage Coding; designed by Frank Arena. BF should make the next useful action obvious, using verified Forever facts and the player's actual progress. More UI or more model calls are not acceptance criteria.
 
-## Current foundation: 0.4.1
+## Current foundation: 0.5 implementation
 
 Windows companion, guided addon installation, local profiles, public character snapshots, observed quests/objectives and XP, optional provider connections, encrypted credential storage, signed app-update manifests, and original class/faction artwork. The live client now demonstrates character capture, quest/XP display, race/faction import and desktop snapshot import. Native Compass styling, title dragging, close/collapse controls and reopen instructions have been observed or fixture-tested; see VALIDATION.md for the exact boundary.
 
+0.5 adds a compact character command center, deterministic observed-quest plans, per-character session/focus preferences, source evidence, optional local equipment/bag observations and friendly native capture diagnostics. Live acceptance recorded for 0.4.1 does not certify every new 0.5 API field; see VALIDATION.md for measured results.
+
 Desktop data still reaches disk through player-triggered reload/logout. In-game out-of-combat UI can update from supported events. BF is not a continuous desktop feed, complete quest database or autonomous game controller.
 
-## Immediate usability repair: next installer
+## Successful setup stays quiet in 0.5
 
-Hide the repeated successful setup dock after a valid current-folder import. Preserve incomplete setup actions and the Game Connection setup entry. Do not replace a large permanent banner with another large permanent banner. Source implementation/testing is separate from release delivery.
+The repeated successful setup dock is suppressed after a valid current-folder import. Incomplete setup actions and the Game Connection setup entry remain available. Compact connection/freshness status replaces the permanent success message.
 
-## Milestone 0.5: reliable character command center
+## Character command center: 0.5 delivery and continued research
 
 - Compact connection health and explicit freshness: live in-addon observation, last disk save, last account-API update, missing data and errors have distinct labels.
 - Automatically collect each character visited with the addon enabled, preserving private journals and intentional active-character selection. Explain first-login collection once during setup.
@@ -23,12 +25,12 @@ Hide the repeated successful setup dock after a valid current-folder import. Pre
 
 Acceptance: two characters retain separate correct data and notes across reload/logout/restart; identity mapping is confirmed in the real client. Optional roster linking must pass real consent, multiple-account, refresh/expiry, revoke, stale/missing-character and encryption tests before being advertised.
 
-## Milestone 0.6: verified Forever guidance engine
+## Milestone 0.6: expand beyond observed quests with verified Forever data
 
 - Build a licensed, versioned knowledge layer for quests/prerequisites/rewards, NPCs/coordinates, items, spells, class/race differences, professions, vendors and travel.
 - Prefer supported official game/API data. Evaluate community sources individually for accuracy and licensing; do not copy a guide database or AGPL code into the MIT product by assumption.
 - Every recommendation can show its source, game version, freshness and reason. Separate observed facts from estimates and AI wording. No invented quest chains or coordinates.
-- Ship a small verified zone/level slice first, then expand coverage. Offline caches remain useful without a model/provider connection.
+- 0.5 ships source-backed guidance for the observed quest log. Next, validate a small external zone/level knowledge slice, then expand coverage. Offline caches remain useful without a model/provider connection.
 - Introduce a quest-chain graph and route planner respecting actual completed IDs, active objectives, faction/race/class restrictions, level, travel access and user goals.
 
 Acceptance: representative route fixtures cover prerequisites, inaccessible content, missing data, updated quests and both factions. Validate the initial content slice in Forever. Measure dead-end suggestions, factual correctness and coverage before expanding.

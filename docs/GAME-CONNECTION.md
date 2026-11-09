@@ -1,6 +1,6 @@
 # Game connection and setup
 
-Choose **Set up my companion** on first launch, after an upgrade, or from the persistent setup entry. The app looks in bounded common C–Z drive locations and registry entries, without recursively scanning your drives. If needed, select your dedicated Forever client folder or a parent containing `_forever_`. Other clients are rejected.
+Choose **Set up my companion** on first launch, after an upgrade, or from Game Connection in the navigation. The app looks in bounded common C–Z drive locations and registry entries, without recursively scanning your drives. If needed, select your dedicated Forever client folder or a parent containing `_forever_`. Other clients are rejected.
 
 Setup automatically prepares and verifies all three owned BackstageForever addon files, and repairs missing/outdated owned files on a connected startup. Unrelated addon files are preserved. Its checks and next action explain whether the folder is unavailable, files need preparation, the game needs a saved snapshot, or the connection is ready. Choosing a folder is not proof that the game loaded the addon.
 
@@ -23,3 +23,7 @@ Follow my last played character starts enabled. Deliberately choosing another pr
 Disconnect stops imports and keeps profiles. Missing/invalid exports preserve the last good profiles and show a retryable next step. A disconnected user is not automatically reconnected. Backup files include profiles and snapshot metadata; machine-specific folder settings remain separate. Raw account identifiers, local paths and source IDs are excluded from approved AI context.
 
 The addon declares Forever Interface 16001 and guards public APIs. Synthetic parser/Lua/Electron tests do not establish actual client loading or HUD appearance. See [Compatibility](COMPATIBILITY.md) and [Validation](VALIDATION.md).
+
+## Automatic local guidance
+
+Adventure builds its quest plan when saved data arrives and when you switch characters. Session/focus changes save automatically and rebuild the plan without running AI. Source evidence and freshness remain visible. Optional equipment/bag observations are local preparation information, not gear scores or recommendations. See [Guidance](GUIDANCE.md) for the first supported quest slice and recovery steps.

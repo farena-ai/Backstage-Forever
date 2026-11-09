@@ -7,14 +7,16 @@ Backstage Forever is a Windows desktop app from Backstage Coding, designed by Fr
 1. Download the Windows setup executable from [Backstage Forever Releases](https://github.com/farena-ai/Backstage-Forever/releases). Check the file's SHA256 against the separately supplied validation record when available; a checksum alone is not publisher authentication.
 2. If the files arrive as a ZIP, right-click it, choose **Extract All**, and open the extracted folder. Do not run files from inside the ZIP.
 3. Run the supplied Windows setup executable. This preview uses a per-user NSIS installer. It installs for your Windows account, rather than configuring every account on the computer.
-4. The preview is unsigned, so Windows may show an unknown-publisher warning or block it. Verify the source with Frank before proceeding. Do not disable Windows protections globally. A signed public release is still pending.
+4. The preview is unsigned, so Windows may show an unknown-publisher warning or block it. Verify the source with Frank before proceeding. Do not disable Windows protections globally. Windows publisher (Authenticode) signing remains pending. App-update downloads use a separate pinned Ed25519 signature and installer hash; that does not establish the Windows publisher identity.
 5. Launch Backstage Forever from its shortcut. Choose **Set up my companion**. Existing users also get the setup entry when upgrading. The app searches common Forever locations and bounded registry entries; choose the Forever client folder if it cannot find yours. Setup prepares and verifies the addon automatically, then shows exactly what to do next. Enable/load BackstageForever in-game and voluntarily type `/reload` or log out to save your first snapshot. The app cannot load an addon or reload the game for you. You can also continue with manual character records.
 
 If no installer was supplied, use the source commands in the README. Node.js/npm are only needed for source development, not a packaged desktop installation.
 
 ## Your first session
 
-Add a character, then a goal you can mark complete. Use notes for information you want to keep locally. Select the active character when switching between profiles. Changes are stored on this computer under the app's Windows user-data folder.
+After your first game snapshot imports, open Adventure. BF builds a local quest plan automatically. Choose a session length and focus to adjust how much it shows; those choices save automatically for the selected character. No AI subscription or API key is needed for this plan. Select another character to see its own saved progress and preferences. Log into each additional toon once with the addon enabled, then reload or log out to collect its details.
+
+You can also create a manual character, keep a private journal and add goals you mark complete. Manual profiles have no observed quest log until connected and matched. Changes are stored on this computer under the app's Windows user-data folder. See [Quest guidance](GUIDANCE.md) for source evidence, freshness, limitations and controls.
 
 You can stop here and continue offline. For AI, open Connections and choose a provider. Provider and model selections save immediately; text settings and API keys save when you leave the field. Watch the save status and retry if it reports a failure; the secondary Save control remains available. The model list refreshes automatically; choose a model explicitly. Refresh models retries discovery, and Advanced allows manual entry if discovery is unavailable. Cloud API mode requires your own API key. Explicit subscription modes instead use official account sign-in routes. See [Providers](PROVIDERS.md).
 

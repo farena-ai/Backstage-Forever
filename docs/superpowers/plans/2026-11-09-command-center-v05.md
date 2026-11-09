@@ -10,9 +10,9 @@ Follow the exact interfaces and trust/delivery constraints in the sibling design
 
 ### Task1: snapshot and planner backend
 Files: src/core/guidance.cjs, adventure.cjs, quest-data.cjs or readiness.cjs, validation.cjs, game-sync.cjs, profile-sync.cjs, providers.cjs, main.cjs/preload.cjs; addon scripts; corresponding tests.
-- [ ] Write failing guidance/readiness/Lua tests using the design's output shape; run `node --test tests/guidance.test.cjs tests/readiness.test.cjs tests/addon.test.cjs` and confirm expected failures.
-- [ ] Implement optional readiness and deterministic source-backed planner; add IPC with validated profile selection/options and expose via brief. Friendly capture diagnostics without raw data. Keep errors/secret values out of exports.
-- [ ] Run unit suite and task review; resolve correctness/security findings before frontend work.
+- [x] Write failing guidance/readiness/Lua tests using the design's output shape; run `node --test tests/guidance.test.cjs tests/readiness.test.cjs tests/addon.test.cjs` and confirm expected failures.
+- [x] Implement optional readiness and deterministic source-backed planner; add IPC with validated profile selection/options and expose via brief. Friendly capture diagnostics without raw data. Keep errors/secret values out of exports.
+- [x] Run unit suite and task review; resolve correctness/security findings before frontend work.
 
 ### Task2: command-center UX and final polish
 Files: src/renderer/app.js, new command-center.css loaded by index.html; scripts/command-center-smoke.cjs, setup-smoke/preview as needed.

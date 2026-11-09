@@ -38,6 +38,7 @@ jobs:
       - run: npm run test:setup
       - run: npm run test:autosave
       - run: npm run test:integration
+      - run: npm run test:command-center
       - run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'

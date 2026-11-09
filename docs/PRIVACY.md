@@ -10,6 +10,14 @@ Chats are memory-only and disappear when the app closes; they are not included i
 
 Use Delete Key to remove one locally stored credential. Use the app's reset/delete-data control and confirm the native dialog to clear app data and stored keys. Delete exported backups separately. For an exposed key, revoke it at the provider, not just locally. To remove provider-held data, use that provider's controls. Uninstallation may retain per-user data; reset first when handing the computer to someone else. No secure disk erasure guarantee is made.
 
+## Local guidance preferences and preparation
+
+The local planner uses saved quest observations and runs without any AI provider request. Session length and quest focus are saved per character in the desktop renderer's local preference storage. They are not API credentials and are not part of character JSON backups. The app reset clears the planner preference namespace.
+
+Optional preparation snapshots contain bounded equipped-item IDs/metadata and carried-bag free/total counts. They do not include a full inventory, bank, mail, money or account data. They remain in local profile backups and are excluded from automatic provider context. Missing client APIs leave the corresponding fields unavailable.
+
+Explain my plan places bounded public quest details in the visible prompt for review. Like any prompt you explicitly send, that text goes to the selected provider even if automatic character context is turned off. It never includes private journal notes, goals, account identifiers or local paths automatically.
+
 ## Optional game connection
 
 Game Connection installs or updates only this app's addon files in your selected client. The guarded addon records public character, quest/objective, XP and bounded recent-turn-in snapshots using normal SavedVariables. Recent history stores at most 25 observed turn-ins. A public completed-count is accepted only after a bounded complete read of at most 20,000 entries; unavailable/restricted APIs mean unknown, not fabricated progress. Setup searches bounded common C–Z drive locations and registry entries without recursively scanning drives, then offers a folder picker. It automatically prepares/verifies and repairs only its three owned addon files, preserving unrelated files. The desktop reads its export every five seconds while open; it does not execute imported Lua. WoW writes to disk only on UI reload or logout. **Levelled up or changed areas? Type `/reload` in WoW to refresh your companion.** No forced reload, memory inspection, network addon bridge or gameplay automation is provided.

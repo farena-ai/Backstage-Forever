@@ -1,0 +1,48 @@
+# Your next adventure, without extra setup
+
+BF builds a local quest plan when a saved character snapshot arrives. Choose your character on Adventure, then choose a session length and focus. The plan changes automatically; no Save button, API key or AI subscription is needed for local guidance.
+
+## Connect once
+
+Open Game Connection and choose Set up my companion. BF finds your Forever installation when it can, or asks you to choose its folder. It prepares and verifies its own addon files. Launch Forever yourself, enable BackstageForever in the game's AddOns list, and enter your character. Use `/reload` or log out to write your first snapshot. If a newly fixed addon starts collecting for the first time after a reload, use a second reload or log out to flush that new capture to disk.
+
+BF checks its saved export while open and rebuilds the plan when new data arrives. To add another toon, play it once with the addon enabled, then log out or reload. Characters you have not visited do not yet have detailed addon snapshots. There is no Battle.net password prompt or account-wide roster login in 0.5.
+
+## Read your plan
+
+The first guidance release covers quests actually observed in your saved game log. It uses reported objectives, completion state, zone and destinations when the game provides them. Ready turn-ins and relevant nearby-zone work receive priority. Session length controls how much work BF presents; it does not promise a measured completion time.
+
+Every step shows why it was suggested. Expand its evidence to see the observed quest/objectives and save time. A game-provided destination is a location reference, not a certified shortest route. BF does not invent missing NPCs, prerequisites, coordinates, rewards or unobserved quests. It is not a complete quest guide database.
+
+Completed objective text and quest completion are distinct: completing an objective does not always mean the game reports a quest ready to turn in. If a quest disappeared from a later snapshot, BF stops treating it as active. Recent observed turn-ins are not your complete historical quest log.
+
+## Saved means saved
+
+The desktop reads disk snapshots, not the current game process. In-game Compass can update out of combat from supported public events; those observations reach the desktop on reload/logout. A recent save is still a save, not a live feed. If you level up, travel or finish quests and the desktop looks behind, reload or log out at a convenient moment. BF never forces this action.
+
+Manual characters have no verified quest snapshot. Missing or restricted data remains unknown; BF offers setup guidance rather than filling the gaps with guesses. Freshness and connection status are separate: the addon can be installed correctly while your character's last save is old.
+
+## Equipment and preparation
+
+Where the client exposes supported public data, BF can display bounded equipped-item and bag-capacity observations. Missing fields are not empty slots or proof that a character has no equipment. These preparation observations stay local and are not automatically added to provider requests.
+
+## Ask the AI when you want an explanation
+
+Explain my plan opens the AI Companion with a draft question. Review it and press Enter or Send question. Shift+Enter adds a line. Nothing is sent automatically. The existing Use my active character control determines whether public saved-character context accompanies the question. Private notes, goals, account identifiers and local paths are not automatically included. Provider API costs and subscription plan limits still apply.
+
+Local plans continue working without a provider. AI wording is a suggestion, not new verified game evidence. BF keeps the saved-source plan separate from a model's explanation.
+
+## Stay in control
+
+In WoW, drag Adventure Compass by its title. X hides it, - collapses it, and `/bf show` restores it. The panel shows these instructions and closing it prints a reminder. It hides during combat. Position and visibility use per-character saved settings; restart WoW once after upgrading if a new saved-variable declaration needs to load.
+
+BF automates preparation, imports and planning. You choose and perform game actions. There is no automatic movement, combat, trading, purchasing, input simulation, memory reading or protected-value bypass.
+
+## If something is missing
+
+- No character: check Game Connection, enable the addon in-game and save a snapshot.
+- Waiting in Compass: check its message; leave combat and use the normal reload/logout flow after updating addon files. Capture failures should prompt a safe retry rather than show raw player data or script errors.
+- No quest steps: BF distinguishes an observed empty log from unavailable quest data. It will not manufacture a quest to fill a card.
+- Old level/location: save in WoW. Refresh saved snapshot only rereads what is already on disk.
+- Another character's plan: select the intended toon. Choosing one deliberately pauses following the last played character until you enable that option again.
+- A cloud provider is unavailable: use local guidance while reconnecting; BF never silently switches you to a billed API.
