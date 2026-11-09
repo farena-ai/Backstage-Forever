@@ -8,7 +8,7 @@
 
 **[Download the Windows preview](https://github.com/farena-ai/Backstage-Forever/releases)** · **[Install and get started](docs/GETTING-STARTED.md)** · **[Choose an AI connection](docs/PROVIDERS.md)**
 
-Version **0.12.2 is the combined adventure-series preview checkpoint** before Frank Arena's hands-on 1.0 review. It adds an explained next-action Director, profession and material planning, optional local Windows voice, deliberate per-character conversation memory, and reviewed party-plan files. Automatic setup and the local in-game Compass work without an AI account or routine reloads. The desktop keeps last-saved snapshots, plans, journal, Quest Guide and optional AI. Exact quest IDs, compatible builds and source labels keep reference facts qualified. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
+Version **0.12.3 is the combined adventure-series preview checkpoint** before Frank Arena's hands-on 1.0 review. It adds an explained next-action Director, profession and material planning, optional local Windows voice, deliberate per-character conversation memory, and reviewed party-plan files. Automatic setup and the local in-game Compass work without an AI account or routine reloads. The desktop keeps last-saved snapshots, plans, journal, Quest Guide and optional AI. Exact quest IDs, compatible builds and source labels keep reference facts qualified. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
 
 ## Install
 

@@ -1,6 +1,6 @@
 # Final 0.12 integration and publication plan
 
-Owner-authorized continuation of the completed0.9–0.12 feature series. Public MIT repository farena-ai/Backstage-Forever is confirmed; publish one combined0.12-series checkpoint, now0.12.2 after the pre-publication fixture repairs below. Version1.0 remains held for Frank Arena's hands-on check. Routine implementation/integration/publication is authorized; no human question unless a complete blocker.
+Owner-authorized continuation of the completed0.9–0.12 feature series. Public MIT repository farena-ai/Backstage-Forever is confirmed; publish one combined0.12-series checkpoint, now0.12.3 after the pre-publication fixture repairs below. Version1.0 remains held for Frank Arena's hands-on check. Routine implementation/integration/publication is authorized; no human question unless a complete blocker.
 
 ## Binding constraints
 
@@ -31,8 +31,10 @@ Publication adjustment: main validation42711047916 passed, but parallel tag vali
 
 Second fixture gate:0.12.1 main validation42714478968 passed, but production42715903483 stopped at a Quest Guide chain assertion whose generic heading wait accepted the empty detail before its genuine response. No0.12.1 app release/assets were published. Preserve both existing tags. Complete the witnessed completion repair and bounded same-class fixture audit, obtain independent review, then deliver the unchanged feature checkpoint as0.12.2 through fresh package/main/tag gates.
 
+Third fixture gate:0.12.2 main validation42718956234 passed, but tag validation42720359701 exposed a Company caret setup targeting a previously resolved field that a genuine accepted read had disconnected. Production42720360093 was cancelled before publication; no0.12.2 app release/assets exist. Preserve all three tags. Witness the exact original failure and harden atomic current-field selection setup, keeping physical selection, exact caret/focus/text and held-original-node assertions. Review the narrow same-class fixture correction before the fresh0.12.3 gates.
+
 - [ ] Recheck remote main drift and owner/repository/public MIT state, preserve exact reviewed source. Fast-forward main through the authorized path; no forced public history rewrite or published tag/asset overwrite.
-- [ ] If checkout normalization changes reviewed physical bytes, rebuild before the packaged byte gate. Push main and observe Windows validation success before creating/pushing the new v0.12.2 tag; retain v0.12.0 and v0.12.1 unchanged.
+- [ ] If checkout normalization changes reviewed physical bytes, rebuild before the packaged byte gate. Push main and observe Windows validation success before creating/pushing the new v0.12.3 tag; retain v0.12.0, v0.12.1 and v0.12.2 unchanged.
 - [ ] Observe signed production release workflow to completion in this session, without scheduled watchers. Preserve the existing signing key and preview channel; do not claim Windows Authenticode signing.
-- [ ] Download all four public assets to the owned outputs release folder. Authenticate production pinned Ed25519 manifest/exact version/repository/URL/full installer size+SHA256/checksums and exact reviewed source contents, not just ZIP comment. Use the tested work/verify-source-archive.py Git-export comparison via work/verify-public-v0122.cjs.
+- [ ] Download all four public assets to the owned outputs release folder. Authenticate production pinned Ed25519 manifest/exact version/repository/URL/full installer size+SHA256/checksums and exact reviewed source contents, not just ZIP comment. Use the tested work/verify-source-archive.py Git-export comparison via work/verify-public-v0123.cjs.
 - [ ] Write truthful VERIFICATION/START-HERE/OWNER-CHECK with actual commit, workflow IDs, test counts, packaged byte/resource counts and public hashes. Final response links the deliverables, summarizes measured changes/limits and holds1.0. No partial final response while required work remains.
