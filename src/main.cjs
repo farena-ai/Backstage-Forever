@@ -32,6 +32,7 @@ const { KnowledgeService } = require("./core/knowledge-cache.cjs");
 const { registerKnowledgeHandlers } = require("./core/knowledge-ipc.cjs");
 const { registerDirectorHandlers } = require("./core/director-ipc.cjs");
 const { registerPreparationHandlers } = require("./core/preparation-ipc.cjs");
+const { registerPartyHandlers } = require("./core/party-ipc.cjs");
 const { CompanionContext } = require("./core/companion-context.cjs");
 const { MemoryService, buildMemoryPrompt } = require("./core/memory.cjs");
 const { registerMemoryHandlers } = require("./core/memory-ipc.cjs");
@@ -87,6 +88,7 @@ function handle(name, fn) {
       return await fn(...args);
     } catch (e) {
       if (e?.message === "Secure credential storage is unavailable.") throw e;
+      if (["partyBrief", "partyPreview", "createPartyJourney", "commitPartyPlan", "exportPartyPlan", "importPartyPlan"].includes(name) && /^Party plan/.test(e?.message)) throw e;
       if (["ask", "memoryPreview", "saveMemory", "deleteMemory", "clearMemory"].includes(name) && /^(Memory |Provider response is no longer current|Choose the current character)/.test(e?.message)) throw e;
       if (
         name === "copyQuestWaypoint" &&
@@ -250,6 +252,16 @@ app.whenReady().then(() => {
     handle,
     getState: () => store.state,
     saveState: (next) => store.saveState(next),
+  });
+  registerPartyHandlers({
+    handle,
+    getState: () => store.state,
+    saveState: (next) => store.saveState(next),
+    context: companionContext,
+    getEpoch: () => subscriptionEpoch,
+    isBlocked: () => resetting,
+    dialog,
+    getWindow: () => win,
   });
   registerKnowledgeHandlers({
     handle,
