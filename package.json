@@ -1,7 +1,7 @@
 {
   "name": "backstage-forever",
   "productName": "Backstage Forever",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "releaseChannel": "preview",
   "description": "A local-first adventure companion from Backstage Coding. Designed by Frank Arena.",
   "author": "Frank Arena / Backstage Coding",
@@ -23,7 +23,9 @@
     "pack": "electron-builder --win --dir",
     "dist": "electron-builder --win nsis --x64 --publish never",
     "test:command-center": "node scripts/command-center-smoke.cjs",
-    "test:knowledge": "node scripts/knowledge-smoke.cjs"
+    "test:knowledge": "node scripts/knowledge-smoke.cjs",
+    "build:addon-reference": "node scripts/build-addon-reference.cjs",
+    "check:addon-reference": "node scripts/build-addon-reference.cjs --check"
   },
   "devDependencies": {
     "electron": "45.2.3",
