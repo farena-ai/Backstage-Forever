@@ -1,7 +1,7 @@
 {
   "name": "backstage-forever",
   "productName": "Backstage Forever",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "releaseChannel": "preview",
   "description": "A local-first adventure companion from Backstage Coding. Designed by Frank Arena.",
   "author": "Frank Arena / Backstage Coding",
@@ -24,6 +24,7 @@
   "devDependencies": {
     "electron": "45.2.3",
     "electron-builder": "26.18.0",
+    "fengari-node-cli": "0.1.0",
     "playwright": "1.65.0"
   },
   "build": {
@@ -40,7 +41,8 @@
       "README.md",
       "LICENSE",
       "docs/*.md",
-      "addon/**/*"
+      "addon/**/*",
+      "!node_modules/@anthropic-ai/claude-agent-sdk-*/**/*"
     ],
     "asar": true,
     "win": {
@@ -58,6 +60,7 @@
     }
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.319",
     "jose": "6.2.16"
   },
   "overrides": {

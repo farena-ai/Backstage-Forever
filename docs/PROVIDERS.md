@@ -1,14 +1,18 @@
 # AI provider setup
 
-AI is optional and is only requested when you press Send. Pick a provider and explicitly enter a model available to your account or local installation. No default model is represented as universally available. Saving settings does not prove live access.
+AI inference is optional and only requested when you press Send. Pick a provider and save its access settings; the model picker reads its catalog automatically. Choose a model explicitly and save. Refresh models retries discovery; Advanced manual entry remains available. No model is silently selected or represented as universally available. A catalog listing does not guarantee text-chat compatibility, billing or plan entitlement. Catalog reads do not send user questions.
 
 ## Ollama (local)
 
-Install and start Ollama separately. Download a model using Ollama's own tools, then enter the exact installed model name in Connections. The usual local endpoint is `http://127.0.0.1:11434`; a custom endpoint must use loopback HTTP. Remote hosts, LAN addresses and cloud endpoints are rejected for this adapter. Ollama must be running and the model must be installed. Local model speed and memory needs depend on your hardware. The app does not install Ollama or download models for you.
+Install and start Ollama separately. Download a model using Ollama's own tools, then select an installed model in Connections. The usual local endpoint is `http://127.0.0.1:11434`; a custom endpoint must use loopback HTTP. Remote hosts, LAN addresses and cloud endpoints are rejected for this adapter. Ollama must be running and the model must be installed. Local model speed and memory needs depend on your hardware. The app does not install Ollama or download models for you.
+
+## Ollama Cloud
+
+Choose the separate Ollama Cloud tile, create an API key in your Ollama account, save it, refresh models and choose a text-chat model. This adapter uses fixed `https://ollama.com` native chat and its own encrypted credential slot. It sends approved context and questions to the cloud; local Ollama does not. Your account's subscription, limits and model access apply. A local `:cloud` model alias is not automatically substituted for the model identifier returned by this cloud catalog. See [Ollama Cloud](https://docs.ollama.com/cloud).
 
 ## OpenAI API
 
-Create an API key in your OpenAI API account, confirm account billing/access and enter that key under OpenAI. Enter a model identifier your API account can use. Requests use the fixed OpenAI HTTPS endpoint; the app does not accept a custom cloud URL.
+Create an API key in your OpenAI API account, confirm account billing/access and save that key under OpenAI API mode. Choose a compatible text model from the refreshed catalog. Requests use the fixed OpenAI HTTPS endpoint; the app does not accept a custom cloud URL.
 
 ## Anthropic API
 

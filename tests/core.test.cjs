@@ -197,7 +197,8 @@ test("all adapters include companion safety instructions", async () => {
       body.instructions ||
       body.system ||
       body.messages.find((m) => m.role === "system")?.content;
-    a.match(instruction, /automation/i);
+    a.equal(instruction, require("../src/core/wow-policy.cjs").INSTRUCTION);
+    a.match(instruction, /automat/i);
     a.match(instruction, /combat/i);
     a.match(instruction, /uncertain/i);
   }

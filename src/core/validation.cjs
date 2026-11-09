@@ -7,6 +7,12 @@ const providers = [
     help: "Run Ollama locally and enter an installed model name.",
   },
   {
+    id: "ollama-cloud",
+    name: "Ollama Cloud",
+    endpoint: "https://ollama.com",
+    help: "Use an Ollama Cloud API key; models run in the cloud.",
+  },
+  {
     id: "openai",
     name: "OpenAI API",
     endpoint: "https://api.openai.com",
@@ -93,6 +99,7 @@ function validateState(s) {
     "profiles",
     "activeProfileId",
     "provider",
+    "followGameCharacter",
   ]);
   if (
     s.schemaVersion !== 1 ||
@@ -101,9 +108,26 @@ function validateState(s) {
     s.profiles.length > 100
   )
     fail();
+  if (
+    s.followGameCharacter !== undefined &&
+    typeof s.followGameCharacter !== "boolean"
+  )
+    fail();
   const ids = new Set();
   for (const p of s.profiles) {
-    object(p, ["id", "name", "realm", "className", "level", "notes", "goals"]);
+    object(p, [
+      "id",
+      "name",
+      "realm",
+      "className",
+      "level",
+      "notes",
+      "goals",
+      "race",
+      "faction",
+      "source",
+      "location",
+    ]);
     str(p.id, 100, false);
     if (ids.has(p.id)) fail();
     ids.add(p.id);
@@ -111,6 +135,41 @@ function validateState(s) {
     str(p.realm, 100);
     str(p.className, 100);
     str(p.notes, 20000);
+    for (const key of ["race", "faction"])
+      if (p[key] !== undefined) str(p[key], 100);
+    if (p.source !== undefined) {
+      object(p.source, ["kind", "id", "updatedAt"]);
+      if (p.source.kind !== "wow-addon") fail();
+      str(p.source.id, 200, false);
+      if (
+        typeof p.source.updatedAt !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(
+          p.source.updatedAt,
+        ) ||
+        !Number.isFinite(Date.parse(p.source.updatedAt)) ||
+        new Date(p.source.updatedAt).toISOString() !== p.source.updatedAt
+      )
+        fail();
+    }
+    if (p.location !== undefined) {
+      object(p.location, ["zone", "subZone", "mapId", "x", "y"]);
+      for (const key of ["zone", "subZone"])
+        if (p.location[key] !== undefined) str(p.location[key], 200);
+      if (
+        p.location.mapId !== undefined &&
+        (!Number.isSafeInteger(p.location.mapId) || p.location.mapId < 0)
+      )
+        fail();
+      for (const key of ["x", "y"])
+        if (
+          p.location[key] !== undefined &&
+          (typeof p.location[key] !== "number" ||
+            !Number.isFinite(p.location[key]) ||
+            p.location[key] < 0 ||
+            p.location[key] > 1)
+        )
+          fail();
+    }
     if (
       !Number.isInteger(p.level) ||
       p.level < 1 ||

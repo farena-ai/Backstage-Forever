@@ -18,8 +18,7 @@ const SCOPES =
   "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct";
 const SAFE_ERROR =
   "ChatGPT sign-in could not be completed. Try Continue with ChatGPT again.";
-const INSTRUCTION =
-  "You are a planning and journaling companion. Do not provide game automation or live combat computation. State uncertainty for unverified Forever details; do not claim current game knowledge. Offer manual, out-of-combat help only.";
+const { INSTRUCTION } = require("./wow-policy.cjs");
 const random = (bytes = 32) => crypto.randomBytes(bytes).toString("base64url");
 function createTransaction(redirectUri, clientId = "dynamic_agent_client") {
   const verifier = random(64);
@@ -463,6 +462,29 @@ class ChatGPTAuth {
       });
     }
     return this.refreshing;
+  }
+  async listModels() {
+    const { normalize, result } = require("./model-catalog.cjs");
+    const generation = this.generation;
+    try {
+      const token = await this.accessToken();
+      const data = await this.request(RESOURCE + "/models", {
+        method: "GET",
+        headers: { Authorization: "Bearer " + token },
+      });
+      if (generation !== this.generation) throw new Error();
+      return result(
+        normalize(data.models, "chatgpt"),
+        "chatgpt-account",
+        "Current ChatGPT account models refreshed in account order.",
+      );
+    } catch {
+      return result(
+        [],
+        "chatgpt-account",
+        "Could not refresh this ChatGPT account�s models. Reconnect or retry; API billing was not used.",
+      );
+    }
   }
   async ask({ model, prompt, context = "" }) {
     str(model, 200, false);

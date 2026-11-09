@@ -12,6 +12,14 @@ contextBridge.exposeInMainWorld(
   "backstage",
   Object.freeze({
     bootstrap: () => invoke("bootstrap"),
+    gameStatus: () => invoke("gameStatus"),
+    gameSnapshot: () => invoke("gameSnapshot"),
+    discoverGame: () => invoke("discoverGame"),
+    connectGame: (root) => invoke("connectGame", root),
+    installGameAddon: () => invoke("installGameAddon"),
+    refreshGame: () => invoke("refreshGame"),
+    disconnectGame: () => invoke("disconnectGame"),
+    listModels: (options) => invoke("listModels", options),
     updateStatus: () => invoke("updateStatus"),
     checkForUpdates: () => invoke("checkForUpdates"),
     setUpdatePreferences: (preferences) =>
@@ -21,7 +29,7 @@ contextBridge.exposeInMainWorld(
     connectSubscription: (provider) => invoke("connectSubscription", provider),
     disconnectSubscription: (provider) =>
       invoke("disconnectSubscription", provider),
-    saveState: (state) => invoke("saveState", state),
+    saveState: (state, base) => invoke("saveState", state, base),
     saveProvider: (settings) => invoke("saveProvider", settings),
     deleteKey: (provider) => invoke("deleteKey", provider),
     ask: (request) => invoke("ask", request),

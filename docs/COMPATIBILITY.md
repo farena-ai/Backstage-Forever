@@ -1,21 +1,25 @@
 # Compatibility and evidence
 
-Evidence date: **2026-11-08**. The desktop's manual profiles do not depend on a game API. Windows installer signing, clean-machine acceptance and upgrade verification remain release gates. Automated provider fixtures are not live cloud authentication tests.
+Evidence date: **2026-11-08**. Local manual profiles and notes work without a game connection or AI. Automated fixtures establish tested behavior, not live account entitlement or game-client acceptance.
 
-## Forever client
+## Optional Forever addon
 
-A local installation was inspected: `_forever_` exists, and `.build.info` identifies product `wowf`, version `1.60.1.70862`. This confirms files on disk, not addon compatibility. No in-client API test or modern API parity certification has been completed. Do not infer a supported interface number from that product version.
+Local files identify product `wowf`, client `1.60.1.70862`, with Interface `16001` evidence in client configuration. The addon declares Interface 16001 and guards public API availability. This is loader/configuration evidence, not proof that the running client loaded every feature successfully.
 
-Blizzard's [Forever landing page](https://worldofwarcraft.blizzard.com/en-us/forever/) and [Midnight combat philosophy and addon disarmament](https://worldofwarcraft.blizzard.com/en-gb/news/24246290/combat-philosophy-and-addon-disarmament-in-midnight) were indexed in search, but direct retrieval returned HTTP 403. They are primary-source pointers, not directly retrieved API contracts. Third-party API claims are not certification for this client. Combat-related restrictions are one reason this project stays with explicit out-of-combat manual records.
+Open Game Connection, choose the Forever installation and install/update the companion addon. Only this app's addon files are changed. Enable it in the game; a running game may require a voluntary restart or UI reload. No account credentials are needed. See [Game Connection](GAME-CONNECTION.md).
 
-## Experimental addon: deliberate local test only
+**Levelled up or changed areas? Type `/reload` in WoW to refresh your companion.** Logout also writes SavedVariables. The desktop checks saved exports every five seconds while open. It cannot see unsaved changes, discover unvisited characters through an account API or provide a continuous live feed. The newest account snapshot identifies the last played character; deliberate selection pauses default following until its checkbox is restored.
 
-The source contains `addon/BackstageForever/BackstageForever.toc.template`, not an install-ready `.toc`. It deliberately has no guessed interface number. All API calls in the prototype remain unverified in the intended client.
+Actual client acceptance must verify addon loading, public fields, level/zone changes, reload/logout writes, character switching, timestamp freshness, disconnect and preservation of notes/goals. Synthetic addon-runtime and parser tests cannot replace this. No code execution, input automation, combat decisions, memory reads or protected-value bypass is supported.
 
-1. Back up your addon settings and close the game before copying anything. This project does not auto-install or modify the game.
-2. In the intended client, outside combat, retrieve the interface number using `/dump select(4, GetBuildInfo())` if that diagnostic command is supported there. If it is unavailable or unclear, stop and seek client-specific primary documentation. Record the client version, build and fourth return value; do not substitute a retail interface number.
-3. In a separate test copy of the addon folder, rename `BackstageForever.toc.template` to `BackstageForever.toc`, replace `REPLACE_WITH_VERIFIED_INTERFACE` with that verified integer, and save it as UTF-8. This only selects a loader version; it does not validate the rest of the API.
-4. Manually place that test folder under the intended client's addon directory, commonly `_forever_/Interface/AddOns/BackstageForever`. Verify the path for your installation first. Restart the client and check its addon list/errors. Do not force-load incompatible code merely to suppress a warning.
-5. Outside combat, try `/backstageforever`. Confirm the text matches your character and that Ctrl+C copies it. Starting combat should hide the panel; invoking the command during combat should refuse to open it. Record any errors and disable/remove the test addon if behavior differs.
+## AI connections
 
-The panel contains name, realm, class, level and build evidence. Enter relevant details manually in the desktop. It is not a supported import format, executable import, synchronization mechanism or real-time bridge. No addon is needed for normal desktop use. Validation of loading, APIs, combat behavior and uninstall is still pending; structural Node tests cannot replace these in-client checks.
+Local Ollama can operate offline with locally available models. Ollama Cloud is separate: fixed `https://ollama.com`, its own Bearer key and native chat. API and subscription modes remain explicit, with no silent fallback.
+
+ChatGPT's authenticated account catalog determines listed subscription visibility. API model catalogs and Claude's official CLI initialization do not prove that every listed model is entitled to your plan. Catalog refreshes do not run paid inference. Claude subscription uses a separately installed official CLI and app-private profile; managed administrator policies may affect that external executable. Live OAuth/consent, account limits and paid inference remain acceptance gates.
+
+Grok subscription remains unavailable because the tools/hooks isolation boundary is unresolved. xAI API mode remains available. The local off-topic gate and shared specialist policy reduce unrelated requests; neither guarantees perfect model behavior.
+
+## Windows distribution
+
+The public GitHub preview release channel is independent of app-store testing tracks. Update manifests use pinned Ed25519 integrity and installer hash/size checks. The installer is still unsigned with Windows Authenticode. Clean-machine installation, real installed self-upgrade/uninstall, keyboard and screen-reader acceptance remain separate gates. No publication or successful live upgrade is certified by this page.

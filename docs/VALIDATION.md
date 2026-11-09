@@ -1,5 +1,22 @@
 # Validation — November 8, 2026
 
+## 0.3.0 game-aware companion evidence
+
+Implementation covers a guarded SavedVariables addon, restricted non-executable export parser, bounded folder scanning, five-second saved-file polling, roster merging with retained notes/goals, cancellation/disconnect and last-played following. Provider tests cover catalog protocols, auth separation, caching/races, separate Ollama Cloud native chat and no inference entitlement probes. Specialist tests cover the shared instruction, local off-topic heuristic and approved context exclusions.
+
+Local 0.3.0 results: `npm test` **120/120 passed**, including a real Lua VM harness. Real Electron UI and integration checks passed. The integration uses a synthetic game folder to exercise addon installation, imports, levels, deliberate selection, reset-during-folder-dialog cancellation and stale journal saves across newer imports. UI checks keep a dirty character-A form stable while main imports character B; saving preserves both journals and newer game fields. Independent review found and closed connection resurrection, stale-dialog, selection and journal overwrite races.
+
+`npm run dist` builds the per-user Windows x64 NSIS installer. Packaged startup passed with an isolated temporary user-data directory, Windows secure storage, isolated preload and the packaged Claude SDK core loading successfully. Native vendor CLI bundles are excluded; Claude requires the user's official installed executable. `npm audit` reported zero vulnerabilities across production and development dependencies. Wide, compact, Alliance/Hunter and Horde/Mage screenshots were inspected. CI and signed public-update verification are additional release gates; actual installer execution/self-upgrade is not implied by these checks.
+
+Static loader/configuration evidence identifies Forever product wowf, version 1.60.1.70862 and Interface 16001. Synthetic addon-runtime tests exercise event/export logic but do not establish actual in-game loading. No real-game acceptance, live OAuth plan entitlement, paid inference acceptance, clean-machine installation or actual self-update is claimed. A successful model catalog response is not paid inference certification: ChatGPT account visibility is authoritative for listing, while API catalogs and Claude CLI initialization do not guarantee plan entitlement.
+
+Public active-character context now defaults on with persistent opt-out. It includes public identity, level, race/faction, location and snapshot timestamp, excluding raw GUIDs, account identifiers, paths, notes and goals. A saved file is fresh only after WoW writes it on `/reload` or logout. No account API, continuous feed, code-execution tool, gameplay automation or autonomous paid inference is supplied.
+
+Nine original class portraits and Alliance/Horde environments are included and inspected in wide and compact layouts; neutral fallback is retained. Signed Ed25519 update integrity is distinct from unsigned Windows Authenticode. Release availability is established by the public Releases page and its workflow.
+
+## Historical evidence
+
+
 ## 0.2.0 cinematic interface and updates
 
 The 0.2.0 build adds original painted raster art, bundled licensed fonts and a material-rich interface. Existing data/provider flows remain compatible. New update controls have real Electron preference/restart-persistence coverage; wide and compact layouts are rendered and checked for horizontal overflow.
@@ -10,7 +27,7 @@ The signed release workflow validates an explicit version/channel tag, runs all 
 
 Local evidence: `npm test` 62/62 passed; real Electron UI and storage/reset integration passed; 0.2.0 installer built and packaged startup passed. The actual local installer was signed through its update manifest and successfully verified against the bundled production public key. Wide and 1000px-window screenshots were inspected; compact layout had no horizontal overflow. `npm audit` reported zero vulnerabilities. Independent review closed all important findings, including update timer/reset races, NSIS restart flags, manual install after opt-out, overlapping preference saves and stale status polling. No real self-update/old-to-new installation was executed; installer launches in update tests are injected.
 
-## Prior 0.1.0 foundation evidence
+## Prior 0.1.0 foundation evidence (historical)
 
 Version 0.1.0 is a desktop foundation preview. These checks establish the behaviors tested here, not blanket compatibility with accounts, game versions or managed Windows deployments.
 
@@ -23,13 +40,13 @@ Version 0.1.0 is a desktop foundation preview. These checks establish the behavi
 - Independent review found and resolved mutable-state save poisoning, late replies after reset/import, stale subscription identity, multi-instance overwrite, refresh after sign-out, and overlapping mutations during asynchronous reset.
 - Fresh Windows CI also runs the suite. An intermittent first-run GUI timeout led to explicit test-window painting and a 45-second cold-start allowance; production window/power settings are unchanged. Failed GUI checks preserve a diagnostic screenshot.
 
-## Distribution checks
+## 0.1.0 distribution checks (historical)
 
 The per-user x64 NSIS installer is built with `npm run dist`, with original application icon and MIT license included. It is intentionally unsigned. Installer and source checksums accompany the downloadable files. Public source is `farena-ai/Backstage-Forever`; updates are manual downloads from that repository’s Releases page.
 
 `npm run test:packaged` passed: the built Windows executable opened the branded interface from its ASAR bundle, exposed the isolated preload bridge, reported version 0.1.0 and had Windows secure credential storage available. Its executable metadata reports Backstage Forever. This launch check did not change player profiles or credentials. A clean-machine install, upgrade and uninstall have not been certified. No code-signing certificate, automatic updater, scheduled watcher or store submission was configured.
 
-## Compatibility evidence and remaining gates
+## 0.1.0 compatibility evidence and remaining gates (historical)
 
 The local installed game metadata identified product `wowf`, version `1.60.1.70862`, with a dedicated `_forever_` folder. No game files were modified, and no in-client API test ran. The optional addon remains a template requiring an interface value verified from the running client. No game-data import, live combat support, or automated play is advertised.
 

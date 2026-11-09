@@ -846,3 +846,404 @@ details p {
     animation: none !important;
   }
 }
+/* Illustrated field-journal additions. */
+.situation-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 22px 0;
+}
+.illustrated-card {
+  min-height: 205px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 22px;
+  border: 1px solid #a98045;
+  border-radius: 3px;
+  background: #201d16;
+  box-shadow:
+    inset 0 0 0 4px #100e0a66,
+    0 12px 25px #0006;
+}
+.illustrated-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-position: center;
+  background-size: cover;
+  transition: transform 0.35s;
+}
+.illustrated-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(0deg, #090b0df7, #11131788 65%, #12110c15);
+}
+.illustrated-card:hover::before {
+  transform: scale(1.04);
+}
+.dungeon-card::before {
+  background-image: url("../../assets/dungeon-gate.png");
+}
+.forge-card::before {
+  background-image: url("../../assets/artisan-forge.png");
+}
+.expedition-card::before {
+  background-image: url("../../assets/citadel-journey.png");
+}
+.illustrated-card strong {
+  font-family: Cinzel, Georgia, serif;
+  font-size: 21px;
+  line-height: 1.25;
+  color: #ffe0a0;
+  max-width: 220px;
+  margin: 9px 0;
+}
+.illustrated-card > span:last-child {
+  color: #e6ddc9;
+  font-size: 13px;
+}
+.illustrated-card .eyebrow {
+  color: #dfc48c;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+.class-sigil {
+  background: radial-gradient(circle, #38504a, #121d20 70%) !important;
+  border: 2px solid #c9a467 !important;
+  box-shadow:
+    0 0 0 4px #141513,
+    0 0 0 5px #6a5533,
+    inset 0 0 16px #000;
+  color: #ebce90 !important;
+  font-family: Georgia, serif;
+}
+.class-sigil[data-class="Mage"] {
+  color: #8fd7ed !important;
+  background: radial-gradient(circle, #264d64, #101820) !important;
+}
+.class-sigil[data-class="Warlock"] {
+  color: #d1a4ea !important;
+  background: radial-gradient(circle, #593859, #18111c) !important;
+}
+.class-sigil[data-class="Druid"] {
+  color: #f4a75a !important;
+}
+.class-sigil[data-class="Priest"] {
+  color: #fff8d5 !important;
+}
+.game-banner {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 30px 40px;
+  margin-bottom: 24px;
+  border: 1px solid #917449;
+  background:
+    linear-gradient(90deg, #152629ed, #162521a0),
+    url("../../assets/citadel-journey.png") center 45% / cover;
+  box-shadow: inset 0 0 70px #0008;
+}
+.game-banner img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 12px #000);
+}
+.game-banner h2 {
+  margin: 8px 0;
+  font-family: Cinzel, Georgia, serif;
+  font-size: 25px;
+}
+.game-banner p {
+  margin: 0;
+  max-width: 620px;
+  color: #d1c8b3;
+}
+.snapshot-hint {
+  border-left: 2px solid #bb9257;
+  padding: 10px 14px;
+  background: #d9a34c0b;
+  color: #d2bf99;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.model-status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.model-status span {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.model-status button {
+  white-space: nowrap;
+}
+.provider-fields details label {
+  margin-top: 14px;
+}
+.context-preview {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1100px) {
+  .situation-cards {
+    gap: 10px;
+  }
+  .illustrated-card {
+    padding: 15px;
+    min-height: 190px;
+  }
+  .illustrated-card strong {
+    font-size: 17px;
+  }
+  .game-banner {
+    padding: 22px;
+  }
+}
+@media (max-width: 760px) {
+  .situation-cards {
+    grid-template-columns: 1fr;
+  }
+  .illustrated-card {
+    min-height: 170px;
+  }
+  .game-banner {
+    padding: 20px;
+    gap: 15px;
+  }
+  .game-banner img {
+    width: 70px;
+    height: 70px;
+  }
+  .game-banner h2 {
+    font-size: 20px;
+  }
+  .model-status {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .illustrated-card::before {
+    transition: none;
+  }
+  .illustrated-card:hover::before {
+    transform: none;
+  }
+}
+body[data-class] {
+  --class-accent: #b6cb83;
+}
+body[data-class="warrior"] {
+  --class-accent: #cba17b;
+}
+body[data-class="paladin"] {
+  --class-accent: #eda9cc;
+}
+body[data-class="hunter"] {
+  --class-accent: #b3d78b;
+}
+body[data-class="rogue"] {
+  --class-accent: #e7d785;
+}
+body[data-class="priest"] {
+  --class-accent: #f3edd2;
+}
+body[data-class="shaman"] {
+  --class-accent: #83b9ec;
+}
+body[data-class="mage"] {
+  --class-accent: #88d5e8;
+}
+body[data-class="warlock"] {
+  --class-accent: #c6a2e5;
+}
+body[data-class="druid"] {
+  --class-accent: #eaae76;
+}
+body[data-class="deathknight"] {
+  --class-accent: #d77b8e;
+}
+body[data-class="demonhunter"] {
+  --class-accent: #c5a0df;
+}
+body[data-class="monk"] {
+  --class-accent: #8bdcb8;
+}
+body[data-class="evoker"] {
+  --class-accent: #7fcab8;
+}
+body[data-faction] {
+  --faction-accent: #b69a65;
+}
+body[data-faction="alliance"] {
+  --faction-accent: #84b9df;
+}
+body[data-faction="horde"] {
+  --faction-accent: #e29179;
+}
+body[data-faction="alliance"] {
+  --faction-scene: url("../../assets/faction-alliance.png");
+}
+body[data-faction="horde"] {
+  --faction-scene: url("../../assets/faction-horde.png");
+}
+body[data-faction="alliance"],
+body[data-faction="horde"] {
+  background-image: var(--faction-scene);
+}
+body[data-faction="alliance"] .hero,
+body[data-faction="horde"] .hero {
+  background-image: var(--faction-scene);
+  background-position: center 48%;
+}
+body[data-faction="alliance"] .rail {
+  border-right-color: #527c9e;
+  background:
+    linear-gradient(100deg, #101b29fa, #15273ae8),
+    var(--faction-scene) center/cover;
+}
+body[data-faction="horde"] .rail {
+  border-right-color: #9a5541;
+  background:
+    linear-gradient(100deg, #24100efa, #3a1c15e8),
+    var(--faction-scene) center/cover;
+}
+body[data-faction="alliance"] .rail nav button.active {
+  background: linear-gradient(100deg, #294362c9, #172b3b);
+  border-color: #7399b7;
+}
+body[data-faction="horde"] .rail nav button.active {
+  background: linear-gradient(100deg, #703125b8, #321a15);
+  border-color: #b46c54;
+}
+body[data-class] .hero h1 {
+  color: var(--class-accent);
+}
+body[data-class] .hero {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--faction-accent);
+  min-height: 370px;
+}
+body[data-class] .hero-copy {
+  position: relative;
+  z-index: 2;
+  max-width: 720px;
+  background: linear-gradient(90deg, #0c1513ee, #0c1513b8 70%, transparent);
+}
+body[data-class] .hero-class-art {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 50%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  z-index: -2;
+  mask-image: linear-gradient(90deg, transparent, #000 25%);
+}
+body[data-class] .hero-medallion {
+  width: 104px;
+  height: 104px;
+  border: 2px solid var(--class-accent);
+  object-fit: cover;
+  object-position: center 20%;
+  box-shadow:
+    0 0 0 4px #17150e,
+    0 0 0 5px #aa864d;
+}
+.faction-banner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--faction-accent);
+  font-family: Cinzel, Georgia, serif;
+  font-size: 13px;
+  margin-bottom: 22px;
+}
+.faction-banner img {
+  width: 42px;
+  height: 45px;
+  object-fit: cover;
+  object-position: 50% 40%;
+  border: 1px solid var(--faction-accent);
+  border-radius: 0 0 15px 15px;
+}
+.faction-banner small {
+  display: block;
+  font-family: "Source Sans", sans-serif;
+  font-size: 8px;
+  letter-spacing: 1.7px;
+  margin-top: 3px;
+  color: #d1c5ae;
+}
+body[data-class] .class-sigil {
+  position: relative;
+  overflow: hidden;
+  width: 56px;
+  height: 64px;
+  border-radius: 20% !important;
+  flex-shrink: 0;
+}
+.class-sigil img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 20%;
+}
+body[data-class] .class-sigil span {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: #0c1013db;
+  color: #f9dda2;
+  padding: 0 4px;
+  font-size: 20px;
+  line-height: 24px;
+  text-shadow: 0 1px #000;
+}
+body[data-faction="alliance"] .topbar {
+  border-bottom-color: #53728c;
+}
+body[data-faction="horde"] .topbar {
+  border-bottom-color: #884a3b;
+}
+body[data-class] .providers {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+@media (max-width: 1100px) {
+  body[data-class] .providers {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  body[data-class] .hero-class-art {
+    width: 58%;
+  }
+  .faction-banner {
+    margin-bottom: 15px;
+  }
+}
+@media (max-width: 760px) {
+  body[data-class] .providers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body[data-class] .hero-class-art {
+    width: 100%;
+    opacity: 0.65;
+  }
+  body[data-class] .hero-copy {
+    background: #0c151399;
+  }
+  .faction-banner {
+    margin-bottom: 14px;
+  }
+}

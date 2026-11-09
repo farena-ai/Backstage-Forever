@@ -453,3 +453,66 @@ test("disconnect blocks new inference and login while revoking; reset wins over 
     f.close();
   }
 });
+test("account catalog GET uses OAuth, visibility, labels and server order without inference", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-catalog-"));
+  let request;
+  const auth = new ChatGPTAuth(dir, safe, {
+    fetch: async (url, opts) => {
+      request = { url, opts };
+      return Response.json({
+        models: [
+          { slug: "second", display_name: "Second", visibility: "list" },
+          { slug: "hidden", display_name: "Hidden", visibility: "hide" },
+          { slug: "first", display_name: "First", visibility: "list" },
+        ],
+      });
+    },
+  });
+  auth.record = {
+    tokens: { access_token: "OAUTH-ONLY", expiresAt: Date.now() + 3600000 },
+  };
+  try {
+    const r = await auth.listModels();
+    assert.deepEqual(r.models, [
+      { id: "second", label: "Second" },
+      { id: "first", label: "First" },
+    ]);
+    assert.equal(request.url, "https://api.openai.com/v1/models");
+    assert.equal(request.opts.method, "GET");
+    assert.equal(request.opts.headers.Authorization, "Bearer OAUTH-ONLY");
+    assert.equal(request.opts.body, undefined);
+    assert.doesNotMatch(JSON.stringify(r), /OAUTH-ONLY/);
+  } finally {
+    auth.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+test("account catalog errors and late results after close never leak or restore models", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-catalog-"));
+  let release;
+  const auth = new ChatGPTAuth(dir, safe, {
+    fetch: async () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  });
+  auth.record = {
+    tokens: { access_token: "SECRET", expiresAt: Date.now() + 3600000 },
+  };
+  try {
+    const pending = auth.listModels();
+    await new Promise((resolve) => setImmediate(resolve));
+    auth.close();
+    release(
+      Response.json({
+        models: [{ slug: "late", display_name: "Late", visibility: "list" }],
+      }),
+    );
+    const r = await pending;
+    assert.deepEqual(r.models, []);
+    assert.doesNotMatch(JSON.stringify(r), /SECRET/);
+  } finally {
+    auth.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

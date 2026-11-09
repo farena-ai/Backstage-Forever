@@ -28,7 +28,15 @@ const { testWindow } = require("./test-window.cjs");
         {
           id: "demo",
           name: "Aeralyn",
-          realm: "Demo realm · manual profile",
+          realm: "Demo realm · synthetic snapshot",
+          faction: "Alliance",
+          race: "Synthetic race",
+          location: { zone: "Silverwood Highlands", subZone: "The old road" },
+          source: {
+            kind: "wow-addon",
+            id: "synthetic-art-fixture",
+            updatedAt: new Date().toISOString(),
+          },
           className: "Hunter",
           level: 18,
           notes:
@@ -49,6 +57,14 @@ const { testWindow } = require("./test-window.cjs");
         },
       ],
     };
+    demo.profiles.push({
+      ...structuredClone(demo.profiles[0]),
+      id: "horde-demo",
+      name: "Vaelric",
+      faction: "Horde",
+      className: "Mage",
+      source: { ...demo.profiles[0].source, id: "synthetic-horde-art-fixture" },
+    });
     await page.evaluate((state) => window.backstage.saveState(state), demo);
     await page.reload();
     await page.getByRole("heading", { name: "Aeralyn", exact: true }).waitFor();
@@ -62,6 +78,16 @@ const { testWindow } = require("./test-window.cjs");
     await page.getByLabel("Access method").selectOption("subscription");
     await page.screenshot({
       path: path.join(__dirname, "..", "assets", "connections-preview.png"),
+    });
+    await page
+      .getByRole("button", { name: "Game Connection", exact: true })
+      .click();
+    await page.screenshot({
+      path: path.join(__dirname, "..", "assets", "game-connection-preview.png"),
+    });
+    await page.getByRole("button", { name: "Characters", exact: true }).click();
+    await page.screenshot({
+      path: path.join(__dirname, "..", "assets", "roster-preview.png"),
     });
     await page.getByRole("button", { name: "Updates", exact: true }).click();
     await page
@@ -86,6 +112,20 @@ const { testWindow } = require("./test-window.cjs");
     );
     await page.screenshot({
       path: path.join(__dirname, "..", "assets", "desktop-compact-preview.png"),
+    });
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].setSize(1440, 960),
+    );
+    await page.getByLabel("Active character").selectOption("horde-demo");
+    await page.getByRole("heading", { name: "Vaelric", exact: true }).waitFor();
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      await Promise.all(
+        [...document.images].map((image) => image.decode().catch(() => {})),
+      );
+    });
+    await page.screenshot({
+      path: path.join(__dirname, "..", "assets", "horde-preview.png"),
     });
     console.log(
       "Captured original interface previews using a clearly labeled synthetic demo profile.",

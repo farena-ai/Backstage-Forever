@@ -1,7 +1,6 @@
 "use strict";
 const v = require("./validation.cjs");
-const instruction =
-  "You are a planning and journaling companion. Do not provide game automation or live combat computation. State uncertainty for unverified Forever details; do not claim current game knowledge. Offer manual, out-of-combat help only.";
+const { INSTRUCTION: instruction } = require("./wow-policy.cjs");
 function profileContext(state, id, share) {
   if (!share) return "";
   const p = state.profiles.find((p) => p.id === id);
@@ -13,6 +12,10 @@ function profileContext(state, id, share) {
       className: p.className,
       level: p.level,
       realm: p.realm,
+      race: p.race,
+      faction: p.faction,
+      location: p.location,
+      snapshotUpdatedAt: p.source?.updatedAt,
     })
   );
 }
@@ -50,8 +53,11 @@ async function ask(
       messages: [{ role: "user", content: input }],
     };
   } else {
-    route = provider === "ollama" ? "/api/chat" : "/v1/chat/completions";
-    if (provider === "xai") headers.Authorization = "Bearer " + apiKey;
+    route = ["ollama", "ollama-cloud"].includes(provider)
+      ? "/api/chat"
+      : "/v1/chat/completions";
+    if (["xai", "ollama-cloud"].includes(provider))
+      headers.Authorization = "Bearer " + apiKey;
     body = {
       model,
       messages: [
@@ -89,22 +95,21 @@ async function ask(
       chunks.push(Buffer.from(chunk));
     }
     const data = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    const out =
-      provider === "ollama"
-        ? data.message?.content
-        : provider === "openai"
-          ? data.output
-              ?.filter((x) => x.type === "message")
-              .flatMap((x) => x.content || [])
-              .filter((x) => x.type === "output_text")
+    const out = ["ollama", "ollama-cloud"].includes(provider)
+      ? data.message?.content
+      : provider === "openai"
+        ? data.output
+            ?.filter((x) => x.type === "message")
+            .flatMap((x) => x.content || [])
+            .filter((x) => x.type === "output_text")
+            .map((x) => x.text)
+            .join("\n")
+        : provider === "anthropic"
+          ? data.content
+              ?.filter((x) => x.type === "text")
               .map((x) => x.text)
               .join("\n")
-          : provider === "anthropic"
-            ? data.content
-                ?.filter((x) => x.type === "text")
-                .map((x) => x.text)
-                .join("\n")
-            : data.choices?.[0]?.message?.content;
+          : data.choices?.[0]?.message?.content;
     if (typeof out !== "string" || !out.trim())
       throw new Error("Provider returned no text. Check the chosen model.");
     return out;

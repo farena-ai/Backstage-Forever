@@ -6,7 +6,7 @@
 
 **[Download the Windows preview](https://github.com/farena-ai/Backstage-Forever/releases)** · **[Install and get started](docs/GETTING-STARTED.md)** · **[Choose an AI connection](docs/PROVIDERS.md)**
 
-Version **0.2.0 is a desktop preview** with cinematic original fantasy artwork, textured journals and authenticated automatic Windows updates. Create characters, track goals and keep notes locally, with or without AI. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
+Version **0.3.0 is a desktop preview** with cinematic original fantasy artwork, textured journals and authenticated automatic Windows updates. Create characters, track goals and keep notes locally, with or without AI. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
 
 ## Install
 
@@ -21,15 +21,21 @@ The installer is **unsigned**. Windows may display an unknown-publisher warning;
 - Local character profiles, goals and private notes; backup/import/reset controls.
 - Painted citadel scenery, an embossed companion medallion, bronze/leather framing and a parchment journal, with bundled offline fonts.
 - Automatic checks and downloads of authenticated releases, installation on exit, restart-now and preference controls.
-- Optional Ollama locally, or OpenAI, Anthropic and xAI API connections with your own key and model selection.
+- Optional offline local Ollama, separate Ollama Cloud, or OpenAI, Anthropic and xAI API connections with your own key. Friendly model catalogs refresh on startup, connection opening, authentication, saving and manual refresh; no paid inference probes or silent provider/model/billing fallback.
 - Explicit ChatGPT browser subscription authentication and Claude subscription authentication through the separately installed official Claude Code tool, using app-private credentials.
-- Character sharing off by default. Opt in to send name, realm, class and level; notes and goals are excluded from automatic context.
+- Optional Game Connection: choose the client folder and install/update the guarded companion addon with one click. Saved-file checks run every five seconds while open. Notes and goals survive imports.
+- A permanent World of Warcraft: Forever specialist, with a local gate for obvious unrelated requests and a shared provider policy. The gate is a heuristic, not a perfect classifier. No code execution or gameplay automation.
+- **Use my active character is on by default**, with a persistent opt-out and visible context preview. Only public name, realm, class, level, race, faction, location and snapshot timestamp accompany a submitted question; notes, goals, raw GUIDs, account identifiers and paths are excluded.
 
 API adapters and subscription transports have fixture coverage. **Live interactive subscription consent and paid inference acceptance have not been performed.** Fixtures do not prove account eligibility, live API access or billing coverage. API mode and subscription mode are separate; errors do not silently switch to API charging. This preview supports one saved ChatGPT registration/account per installation; reset app data to switch accounts, after exporting your profiles if needed.
 
 Grok subscription mode is currently unavailable in the interface. Official Grok OAuth exists, but an isolated inference adapter is deferred pending a verified tools/hooks boundary. Use xAI API mode in this preview.
 
-The desktop uses manual game records. It does not inspect or play the game, calculate combat decisions or provide a live connection. The optional addon is an experimental manual-copy prototype; client/API compatibility remains unverified. See [Compatibility](docs/COMPATIBILITY.md) and the [Roadmap](docs/ROADMAP.md).
+**Levelled up or changed areas? Type `/reload` in WoW to refresh your companion.** WoW writes addon snapshots on UI reload or logout; five-second desktop checks cannot make unsaved game data live. Only characters visited with the addon enabled can be known. The newest account snapshot supplies the active character; Follow last played character starts enabled, and deliberately selecting another profile pauses it until you restore the checkbox. There is no account API or continuous live feed. Read [Game Connection](docs/GAME-CONNECTION.md), [Companion](docs/COMPANION.md) and [Compatibility](docs/COMPATIBILITY.md).
+
+ChatGPT account catalogs determine visible subscription models; API catalogs and Claude CLI initialization do not guarantee plan entitlement. ChatGPT subscription access and API billing are separate. Claude uses the official CLI with an app-private profile and no API fallback.
+
+Nine original class portraits and Alliance/Horde environments shape the selected character's dashboard, roster and journal. Unknown classes and factions retain neutral fallback. These illustrations are not portraits captured from your actual character.
 
 ## Your data
 
@@ -59,7 +65,7 @@ src/
   core/               Local storage, providers and authentication
   renderer/           Local interface and styles
 assets/               Original vector artwork and preview image
-addon/                Optional experimental manual-copy prototype
+addon/                Optional guarded SavedVariables companion addon
 tests/                Local, protocol-fixture and integration checks
 docs/                 Setup, privacy, compatibility and release evidence
 ```

@@ -16,9 +16,9 @@ If no installer was supplied, use the source commands in the README. Node.js/npm
 
 Add a character, then a goal you can mark complete. Use notes for information you want to keep locally. Select the active character when switching between profiles. Changes are stored on this computer under the app's Windows user-data folder.
 
-You can stop here and continue offline. For AI, open Connections, choose a provider, type a model identifier available to you and save its settings. Cloud API mode requires your own API key. Explicit subscription modes instead use their official account sign-in routes; see provider instructions. See [Providers](PROVIDERS.md).
+You can stop here and continue offline. For AI, open Connections, choose a provider and save its access settings. The model list refreshes automatically; choose a model and save. Refresh models retries discovery, and Advanced allows manual entry if discovery is unavailable. Cloud API mode requires your own API key. Explicit subscription modes instead use official account sign-in routes. See [Providers](PROVIDERS.md).
 
-In AI Companion, write a prompt and press Send. Character sharing is off by default. Enable it deliberately only if you want to send the displayed name, realm, class and level. Notes and goals are excluded from automatic character context. Anything you type into the prompt is sent, so do not paste a secret. Replies are plain text and can be wrong. Chat is temporary and is not a saved notebook.
+In AI Companion, ask about World of Warcraft: Forever and press Send. Use my active character starts enabled and shows exactly which public character details accompany the question. Uncheck it to keep those details out; that choice persists. Notes and goals are excluded from automatic context. Anything you type into the prompt is sent, so do not paste a secret. Replies are plain text and can be wrong. Chat is temporary and is not a saved notebook. No paid question runs automatically in the background.
 
 ## Backup, restore and deletion
 
@@ -30,7 +30,7 @@ Use Delete Key for an individual stored provider credential. Use the reset/delet
 
 ## Optional experimental addon
 
-The desktop currently uses manual profiles. The addon is a separate, unverified prototype; you do not need it. No game files have been installed or modified by this project setup. See [Compatibility](COMPATIBILITY.md) before attempting a local test. Its output must be manually entered in the desktop; there is no addon import or real-time bridge.
+Open Game Connection, choose the dedicated Forever client folder and install the companion addon. Enable it in WoW and visit each character you want imported. **Levelled up or changed areas? Type `/reload` in WoW to refresh your companion.** Logging out also saves. The desktop checks saved files every five seconds while open; the displayed timestamp describes a saved snapshot, not continuous live monitoring. Choosing another character pauses automatic selection until you restore Follow my last played character. See [Game connection](GAME-CONNECTION.md) and [Compatibility](COMPATIBILITY.md). Actual in-client loading still requires acceptance on your client; desktop tests use synthetic exports.
 
 ## Updates and help
 

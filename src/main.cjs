@@ -17,6 +17,12 @@ const ai = require("./core/providers.cjs");
 const { ChatGPTAuth } = require("./core/chatgpt.cjs");
 const claude = require("./core/claude.cjs");
 const { Updater } = require("./core/updater.cjs");
+const { GameSync } = require("./core/game-sync.cjs");
+const { mergeSnapshot, mergeUserEdits } = require("./core/profile-sync.cjs");
+const { CatalogCache } = require("./core/catalog-cache.cjs");
+const { listModels } = require("./core/model-catalog.cjs");
+const { scopeResponse } = require("./core/wow-policy.cjs");
+const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
 ).href;
@@ -24,13 +30,16 @@ let win,
   store,
   chatgpt,
   updater,
+  game,
   quitApproved = false,
   quitPending = false,
   subscriptionEpoch = 0,
   resetting = false,
   busy = false;
+let latestObservation = null;
 const links = {
   ollama: "https://ollama.com/",
+  "ollama-cloud": "https://ollama.com/settings/keys",
   openai: "https://platform.openai.com/api-keys",
   anthropic: "https://console.anthropic.com/",
   xai: "https://console.x.ai/",
@@ -59,9 +68,9 @@ function handle(name, fn) {
         ["ask", "connectSubscription", "disconnectSubscription"].includes(
           name,
         ) &&
-        /^(Provider |Could not reach|Save an API|Choose a character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription )/.test(
-          e?.message,
-        )
+          /^(Provider |Could not reach|Save an API|Choose a character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription )/.test(
+            e?.message,
+          )
           ? e.message
           : "The action could not be completed. Check your input or file and try again.",
       );
@@ -96,6 +105,19 @@ app.whenReady().then(() => {
       packaged: app.isPackaged,
     });
     updater.start();
+    game = new GameSync({
+      dataDir: app.getPath("userData"),
+      addonDir: path.join(__dirname, "..", "addon", "BackstageForever"),
+      onSnapshot: (snapshot) => {
+        if (
+          !resetting &&
+          (!latestObservation || snapshot.observedAt >= latestObservation)
+        ) {
+          store.saveState(mergeSnapshot(store.state, snapshot));
+          latestObservation = snapshot.observedAt;
+        }
+      },
+    });
   } catch {
     dialog.showErrorBox(
       "Backstage Forever",
@@ -146,19 +168,83 @@ app.whenReady().then(() => {
     return updater.status();
   });
   handle("subscriptionStatus", subscriptionStatus);
+  const gameSnapshot = () => ({
+    state: structuredClone(store.state),
+    gameStatus: game.status(),
+  });
+  handle("gameStatus", () => game.status());
+  handle("gameSnapshot", gameSnapshot);
+  handle("discoverGame", () => game.discover());
+  handle("connectGame", async (root) => {
+    const epoch = subscriptionEpoch;
+    await game.ready;
+    if (epoch !== subscriptionEpoch) return gameSnapshot();
+    if (root !== undefined) v.str(root, 1000, false);
+    else {
+      const result = await dialog.showOpenDialog(win, {
+        title: "Choose your World of Warcraft Forever folder (_forever_)",
+        properties: ["openDirectory"],
+      });
+      if (result.canceled || resetting || epoch !== subscriptionEpoch)
+        return gameSnapshot();
+      root = result.filePaths[0];
+    }
+    await game.connect(root);
+    return gameSnapshot();
+  });
+  handle("installGameAddon", async () => {
+    await game.installAddon();
+    return gameSnapshot();
+  });
+  handle("refreshGame", async () => {
+    await game.refresh();
+    return gameSnapshot();
+  });
+  handle("disconnectGame", async () => {
+    await game.disconnect();
+    return gameSnapshot();
+  });
+  handle("listModels", async (input) => {
+    v.object(input, ["provider", "authMode", "endpoint", "refresh"]);
+    v.provider(input.provider);
+    const authMode = input.authMode ?? "api";
+    if (
+      !["api", "subscription"].includes(authMode) ||
+      (input.refresh !== undefined && typeof input.refresh !== "boolean")
+    )
+      throw Error("Invalid model selection.");
+    const endpoint = v.endpoint(input.provider, input.endpoint);
+    const key = JSON.stringify([input.provider, authMode, endpoint]);
+    return catalogs.get(
+      key,
+      () =>
+        listModels({
+          provider: input.provider,
+          authMode,
+          endpoint,
+          chatgpt,
+          claude,
+          apiKey: authMode === "api" ? store.getKey(input.provider) : undefined,
+        }),
+      input.refresh,
+    );
+  });
   handle("connectSubscription", async (provider) => {
     v.provider(provider);
+    catalogs.clear();
     if (provider === "openai") await chatgpt.connect();
     else if (provider === "anthropic") await claude.login();
     else
       throw new Error(
         "Subscription sign-in is unavailable for this provider in this preview.",
       );
+    catalogs.clear();
     return subscriptionStatus();
   });
   handle("disconnectSubscription", async (provider) => {
     v.provider(provider);
     subscriptionEpoch++;
+    catalogs.clear();
     if (provider === "openai") await chatgpt.disconnect();
     else if (provider === "anthropic") await claude.logout();
     else
@@ -172,10 +258,23 @@ app.whenReady().then(() => {
     providers: v.providers,
     version: app.getVersion(),
     updateStatus: updater.status(),
+    gameStatus: game.status(),
     secretStatus: store.secretStatus(),
     subscriptionStatus: await subscriptionStatus(),
   }));
-  handle("saveState", (state) => store.saveState(state));
+  handle("saveState", (state, base) => {
+    const next =
+      base === undefined
+        ? v.validateState(state)
+        : mergeUserEdits(store.state, state, base);
+    const previousActive =
+      base === undefined
+        ? store.state.activeProfileId
+        : v.validateState(base).activeProfileId;
+    if (game.status().connected && state.activeProfileId !== previousActive)
+      next.followGameCharacter = false;
+    return store.saveState(next);
+  });
   handle("saveProvider", (input) => {
     v.object(input, ["provider", "model", "endpoint", "apiKey", "authMode"]);
     v.provider(input.provider);
@@ -196,12 +295,16 @@ app.whenReady().then(() => {
     )
       store.saveKey(input.provider, input.apiKey);
     store.saveState(next);
+    catalogs.clear();
     return {
       state: structuredClone(store.state),
       secretStatus: store.secretStatus(),
     };
   });
-  handle("deleteKey", (provider) => store.deleteKey(provider));
+  handle("deleteKey", (provider) => {
+    catalogs.clear();
+    return store.deleteKey(provider);
+  });
   handle("ask", async (input) => {
     v.object(input, ["provider", "prompt", "profileId", "shareProfile"]);
     v.provider(input.provider);
@@ -212,6 +315,8 @@ app.whenReady().then(() => {
     )
       throw new Error("Invalid provider selection.");
     if (busy) throw new Error("Provider request already in progress.");
+    const refusal = scopeResponse(input.prompt);
+    if (refusal) return refusal;
     const context = ai.profileContext(
       store.state,
       input.profileId,
@@ -239,6 +344,12 @@ app.whenReady().then(() => {
                 realm: profile.realm,
                 className: profile.className,
                 level: profile.level,
+                ...(profile.race ? { race: profile.race } : {}),
+                ...(profile.faction ? { faction: profile.faction } : {}),
+                ...(profile.location ? { location: profile.location } : {}),
+                ...(profile.source
+                  ? { snapshotUpdatedAt: profile.source.updatedAt }
+                  : {}),
               }
             : undefined;
           reply = await claude.ask({
@@ -278,12 +389,13 @@ app.whenReady().then(() => {
     return true;
   });
   handle("importData", async () => {
+    const epoch = subscriptionEpoch;
     const result = await dialog.showOpenDialog(win, {
       title: "Import a Backstage Forever backup",
       properties: ["openFile"],
       filters: [{ name: "JSON backup", extensions: ["json"] }],
     });
-    if (result.canceled) return null;
+    if (result.canceled || epoch !== subscriptionEpoch) return null;
     const file = result.filePaths[0];
     if (fs.statSync(file).size > 4000000) throw new Error("Invalid backup.");
     const text = fs.readFileSync(file, "utf8");
@@ -298,8 +410,11 @@ app.whenReady().then(() => {
       cancelId: 0,
       noLink: true,
     });
-    if (confirm.response !== 1) return null;
+    if (confirm.response !== 1 || epoch !== subscriptionEpoch) return null;
     subscriptionEpoch++;
+    catalogs.clear();
+    await game.disconnect();
+    latestObservation = null;
     return store.importData(text);
   });
   handle("resetData", async () => {
@@ -316,7 +431,10 @@ app.whenReady().then(() => {
     if (result.response !== 1) return null;
     resetting = true;
     subscriptionEpoch++;
+    catalogs.clear();
     try {
+      await game.reset();
+      latestObservation = null;
       const updateReset = updater.reset();
       chatgpt.reset();
       await updateReset;
@@ -370,6 +488,8 @@ app.on("window-all-closed", () => {
 app.on("before-quit", (event) => {
   subscriptionEpoch++;
   chatgpt?.close();
+  game?.close();
+  catalogs.clear();
   if (quitApproved || !updater) {
     updater?.close();
     return;

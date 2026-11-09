@@ -13,6 +13,11 @@ const { testWindow } = require("./test-window.cjs");
   let app, waitingResponse, resolveRequest;
   const received = new Promise((resolve) => (resolveRequest = resolve));
   const server = http.createServer((request, response) => {
+    if (request.method === "GET" && request.url === "/api/tags") {
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({ models: [{ name: "fixture" }] }));
+      return;
+    }
     let text = "";
     request.on("data", (chunk) => (text += chunk));
     request.on("end", () => {
@@ -139,27 +144,89 @@ const { testWindow } = require("./test-window.cjs");
       `http://127.0.0.1:${server.address().port}`,
     );
     await page.reload();
+    const refusal = await page.evaluate(() =>
+      window.backstage.ask({
+        provider: "ollama",
+        prompt: "Build a React app",
+        shareProfile: false,
+      }),
+    );
+    assert.match(refusal, /World of Warcraft/);
+    assert.equal(waitingResponse, undefined);
+    const catalog = await page.evaluate(
+      (endpoint) =>
+        window.backstage.listModels({
+          provider: "ollama",
+          endpoint,
+          refresh: true,
+        }),
+      `http://127.0.0.1:${server.address().port}`,
+    );
+    assert.equal(catalog.models[0].id, "fixture");
     await page
       .getByRole("button", { name: "AI Companion", exact: true })
       .click();
-    await page.getByLabel("Your question").fill("A delayed fixture question");
+    await page
+      .getByLabel("Your question")
+      .fill("Which dungeon should I try next? A delayed fixture question");
     await page
       .getByRole("button", { name: "Send question", exact: true })
       .click();
     const request = await received;
     assert.doesNotMatch(
       JSON.stringify(request),
-      /PRIVATE JOURNAL|PRIVATE GOAL|Integration Hero/,
+      /PRIVATE JOURNAL|PRIVATE GOAL/,
     );
+    assert.match(JSON.stringify(request), /Integration Hero/);
+    assert.match(JSON.stringify(request), /World of Warcraft: Forever/);
     await page
       .getByRole("button", { name: "Field Guide", exact: true })
       .click();
+    const gameRoot = path.join(data, "synthetic-client");
+    const snapshotFile = path.join(
+      gameRoot,
+      "WTF",
+      "Account",
+      "Synthetic",
+      "SavedVariables",
+      "BackstageForever.lua",
+    );
+    await fs.mkdir(path.dirname(snapshotFile), { recursive: true });
+    await fs.writeFile(path.join(gameRoot, ".flavor.info"), "wowf");
+    await app.evaluate(({ dialog }) => {
+      dialog.showOpenDialog = () =>
+        new Promise((resolve) => {
+          globalThis.fixtureConnectDialog = resolve;
+        });
+    });
+    await page.evaluate(() => {
+      window.pendingConnect = window.backstage.connectGame();
+    });
+    for (let i = 0; i < 50; i++) {
+      if (await app.evaluate(() => Boolean(globalThis.fixtureConnectDialog)))
+        break;
+      await new Promise((r) => setTimeout(r, 20));
+    }
     await page
       .getByRole("button", { name: "Delete all local data", exact: true })
       .click();
     await page
       .getByRole("heading", { name: "Every adventure starts somewhere." })
       .waitFor();
+    await app.evaluate(
+      (_electron, root) =>
+        globalThis.fixtureConnectDialog({ canceled: false, filePaths: [root] }),
+      gameRoot,
+    );
+    await page.evaluate(() => window.pendingConnect);
+    assert.equal(
+      (await page.evaluate(() => window.backstage.gameStatus())).connected,
+      false,
+    );
+    await assert.rejects(
+      fs.stat(path.join(data, "game-connection.private.json")),
+      { code: "ENOENT" },
+    );
     waitingResponse.writeHead(200, { "Content-Type": "application/json" });
     waitingResponse.end(
       JSON.stringify({ message: { content: "STALE PRIVATE REPLY" } }),
@@ -189,6 +256,82 @@ const { testWindow } = require("./test-window.cjs");
       await page.locator("body").innerText(),
       /fixture@example.invalid/,
     );
+    await page.evaluate((root) => window.backstage.connectGame(root), gameRoot);
+    const installed = await page.evaluate(() =>
+      window.backstage.installGameAddon(),
+    );
+    assert.equal(installed.gameStatus.addonInstalled, true);
+    const shot = {
+      schema: 1,
+      activeId: "Player-Fixture",
+      observedAt: Date.now() / 1000,
+      characters: [
+        {
+          id: "Player-Fixture",
+          name: "Snapshot Hero",
+          realm: "Example Realm",
+          className: "Mage",
+          level: 15,
+          faction: "Horde",
+          location: { zone: "Test Forest", subZone: "" },
+          updatedAt: Date.now() / 1000,
+        },
+      ],
+    };
+    const writeShot = () =>
+      fs.writeFile(
+        snapshotFile,
+        "BackstageForeverExport = " + JSON.stringify(JSON.stringify(shot)),
+      );
+    await writeShot();
+    const synced = await page.evaluate(() => window.backstage.refreshGame());
+    assert.equal(synced.state.profiles.length, 2);
+    assert.equal(
+      synced.state.profiles.find((p) => p.id === synced.state.activeProfileId)
+        .name,
+      "Snapshot Hero",
+    );
+    shot.characters.push({
+      ...shot.characters[0],
+      id: "Player-Second",
+      name: "Second Snapshot",
+      level: 20,
+    });
+    shot.activeId = "Player-Second";
+    shot.observedAt += 1;
+    const staleJournal = structuredClone(synced.state);
+    staleJournal.profiles.find((p) => p.name === "Snapshot Hero").notes =
+      "Journal during a newer import";
+    await writeShot();
+    const concurrent = await page.evaluate(() =>
+      window.backstage.refreshGame(),
+    );
+    const preserved = await page.evaluate(
+      ({ edit, base }) => window.backstage.saveState(edit, base),
+      { edit: staleJournal, base: synced.state },
+    );
+    assert.equal(preserved.profiles.length, 3);
+    assert.equal(preserved.activeProfileId, concurrent.state.activeProfileId);
+    assert.equal(preserved.followGameCharacter, undefined);
+    const freshId = synced.state.profiles.find(
+      (p) => p.name === "Fresh Hero",
+    ).id;
+    await page.evaluate((next) => window.backstage.saveState(next), {
+      ...preserved,
+      activeProfileId: freshId,
+    });
+    shot.characters[0].level = 16;
+    shot.characters[0].updatedAt += 2;
+    shot.observedAt += 2;
+    await writeShot();
+    const newer = await page.evaluate(() => window.backstage.refreshGame());
+    assert.equal(newer.state.activeProfileId, freshId);
+    assert.equal(
+      newer.state.profiles.find((p) => p.name === "Snapshot Hero").level,
+      16,
+    );
+    assert.equal(newer.state.followGameCharacter, false);
+    await page.evaluate(() => window.backstage.disconnectGame());
     console.log(
       "PASS: OS-encrypted key, no secret readback/export, native backup/import handlers, invalid import recovery, preserved keys, local protocol fixture, privacy payload, reset clears keys and suppresses late replies.",
     );

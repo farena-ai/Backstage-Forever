@@ -1,0 +1,7 @@
+## Interface: 16001
+## Title: Backstage Forever
+## Notes: Local saved character snapshots for Backstage Forever. Written to disk on logout or UI reload.
+## Author: Backstage Coding
+## Version: 0.3.0
+## SavedVariables: BackstageForeverExport
+BackstageForever.lua
