@@ -577,7 +577,7 @@ app.whenReady().then(() => {
   });
   handle("exportData", async () => {
     const result = await dialog.showSaveDialog(win, {
-      title: "Export profiles and preferences (keys excluded)",
+      title: "Export profiles and plans (keys and memory excluded)",
       defaultPath: "Backstage-Forever-backup.json",
       filters: [{ name: "JSON backup", extensions: ["json"] }],
     });
@@ -602,7 +602,7 @@ app.whenReady().then(() => {
       type: "warning",
       title: "Replace saved profiles?",
       message:
-        "Import replaces all profiles and preferences. Existing API keys are preserved.",
+        "Import replaces profiles, notes, goals, plans and preferences, and clears saved conversation memory. Existing API keys are preserved.",
       buttons: ["Cancel", "Import backup"],
       defaultId: 0,
       cancelId: 0,
@@ -628,7 +628,7 @@ app.whenReady().then(() => {
       type: "warning",
       title: "Delete all local data?",
       message:
-        "This deletes every profile, goal, note, preference, API key and app-owned subscription credential. Pending sign-ins are cancelled. Other apps and global Claude credentials are unaffected. Export a backup first if needed; backups exclude credentials.",
+        "This deletes all profiles, goals, notes, plans, saved conversation memory, preferences, API keys and app-owned subscription credentials. Pending sign-ins are cancelled. Other apps and global Claude credentials are unaffected. Profile backups exclude credentials and conversation memory.",
       buttons: ["Cancel", "Delete all data"],
       defaultId: 0,
       cancelId: 0,
