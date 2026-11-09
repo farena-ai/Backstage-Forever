@@ -26,7 +26,8 @@
     "test:knowledge": "node scripts/knowledge-smoke.cjs",
     "build:addon-reference": "node scripts/build-addon-reference.cjs",
     "check:addon-reference": "node scripts/build-addon-reference.cjs --check",
-    "test:living-backend": "node scripts/living-backend-smoke.cjs"
+    "test:living-backend": "node scripts/living-backend-smoke.cjs",
+    "test:living-setup": "node scripts/living-setup-smoke.cjs"
   },
   "devDependencies": {
     "electron": "45.2.3",
