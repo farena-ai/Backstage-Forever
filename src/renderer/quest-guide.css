@@ -1,0 +1,798 @@
+/* A worn field ledger: bronze clasps, dark leather and a readable parchment leaf. */
+.quest-guide {
+  max-width: 1440px;
+  margin: auto;
+}
+.quest-guide-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+.quest-guide-heading h1 {
+  font-size: clamp(32px, 3.4vw, 48px);
+  margin-bottom: 9px;
+}
+.quest-guide-heading p {
+  max-width: 720px;
+}
+.ledger-seal {
+  font-size: 82px;
+  line-height: 1;
+  color: #c9974a80;
+  text-shadow: 0 3px 25px #c9974a40;
+}
+.knowledge-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: linear-gradient(125deg, #30251ccf, #151819eb);
+  border: 1px solid #94703b73;
+  border-top-color: #bd955b9c;
+  padding: 16px 20px;
+  box-shadow:
+    0 6px 22px #0005,
+    inset 0 1px #f5d59a0a;
+  margin-bottom: 24px;
+  border-radius: 4px;
+}
+.knowledge-status-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.knowledge-sigil {
+  font-size: 28px;
+  color: #d5b071;
+}
+.knowledge-status strong {
+  font-family: Cinzel, Georgia, serif;
+  font-size: 15px;
+  color: #efd7a9;
+}
+.knowledge-status p {
+  margin: 4px 0;
+  font-size: 14px;
+  line-height: 1.4;
+  max-width: 700px;
+}
+.knowledge-status small {
+  display: block;
+  font-size: 12px;
+  color: #b8ad99;
+}
+.knowledge-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.knowledge-actions .check-label {
+  font-size: 12px;
+  margin: 0;
+  gap: 6px;
+}
+.knowledge-actions button {
+  font-size: 12px;
+  white-space: nowrap;
+  padding: 8px 13px;
+}
+.quest-ledger {
+  display: grid;
+  grid-template-columns: minmax(260px, 34%) minmax(0, 1fr);
+  border: 1px solid #9e784687;
+  border-top: 3px solid #a77d44;
+  background: #191916;
+  box-shadow:
+    0 22px 50px #0006,
+    inset 0 1px #f6d79a25;
+  border-radius: 5px;
+  overflow: hidden;
+  min-height: 550px;
+}
+.quest-index {
+  padding: 25px 18px;
+  background: linear-gradient(100deg, #261f17f0, #151714f0);
+  border-right: 1px solid #6f5736;
+  min-width: 0;
+}
+.quest-search-label {
+  font-family: Cinzel, Georgia, serif;
+  color: #e6c995;
+  font-size: 18px;
+}
+.quest-search-label span {
+  display: block;
+  font-family: "Source Sans", sans-serif;
+  color: #b9ad97;
+  font-size: 12px;
+  margin: 4px 0 12px;
+}
+.quest-index input[type="search"] {
+  width: 100%;
+  background: #0c1111cc;
+  border-color: #856a43;
+  color: #f5e6c7;
+  padding: 12px 13px;
+  font-size: 15px;
+}
+.quest-index input[type="search"]::placeholder {
+  font-size: 13px;
+  color: #a49b89;
+}
+.reference-toggle {
+  font-size: 12px;
+  color: #c5baa5;
+  margin: 13px 0 25px;
+  gap: 7px;
+}
+.ledger-caption {
+  font-size: 10px;
+  letter-spacing: 1.3px;
+  color: #c7a976;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #b28b493b;
+  margin: 0;
+}
+.ledger-caption span {
+  display: block;
+  letter-spacing: 0.3px;
+  color: #8e948a;
+  margin-top: 4px;
+}
+.quest-results {
+  padding-top: 8px;
+  max-height: 720px;
+  overflow-y: auto;
+  scrollbar-color: #81613b #181c17;
+}
+.quest-ledger-row {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  width: 100%;
+  gap: 12px;
+  padding: 15px 9px;
+  border: 0;
+  border-bottom: 1px solid #b28b4924;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  position: relative;
+  color: #e1d2b9;
+  white-space: normal;
+}
+.quest-ledger-row:hover {
+  background: #bd8c3f10;
+}
+.quest-ledger-row.selected {
+  background: linear-gradient(90deg, #bf954329, #bd8c3f08);
+  box-shadow: inset 3px 0 #c9a063;
+}
+.quest-row-mark {
+  font-size: 19px;
+  color: #cda45d;
+  flex-shrink: 0;
+}
+.quest-ledger-row > span:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+.quest-ledger-row strong {
+  display: block;
+  font-family: Cinzel, Georgia, serif;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.quest-ledger-row small,
+.quest-ledger-row em {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  font-style: normal;
+  color: #b4ae9e;
+  line-height: 1.5;
+  margin-top: 3px;
+}
+.quest-ledger-row em {
+  font-size: 11px;
+  color: #d0b47e;
+}
+.quest-ledger-row > span:last-child {
+  font-size: 22px;
+  color: #bd995f;
+}
+.quest-empty {
+  padding: 23px 9px;
+  color: #c3b6a1;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.quest-empty strong {
+  font-family: Cinzel, Georgia, serif;
+}
+.quest-detail-host {
+  min-width: 0;
+  background:
+    radial-gradient(ellipse at top right, #f8e8bb30, transparent 60%),
+    linear-gradient(100deg, #d4c096, #ead7ad 8%, #e2cfa7 96%, #c1a77a);
+  color: #382b1d;
+  position: relative;
+}
+.quest-detail {
+  padding: 32px 36px;
+  outline-offset: -5px;
+  min-height: 100%;
+  color: #382b1d;
+  background: repeating-linear-gradient(
+    0deg,
+    #8b672803 0px,
+    #8b672803 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+.quest-detail .eyebrow {
+  color: #775628;
+  font-size: 10px;
+  letter-spacing: 1.8px;
+}
+.quest-detail h2 {
+  font-family: Cinzel, Georgia, serif;
+  font-size: clamp(23px, 2.3vw, 32px);
+  line-height: 1.35;
+  color: #372718;
+  margin: 10px 0;
+}
+.quest-detail h3 {
+  font-family: Cinzel, Georgia, serif;
+  color: #51391d;
+  font-size: 17px;
+  margin: 0 0 10px;
+}
+.quest-detail h4 {
+  font-size: 13px;
+  color: #574127;
+  margin: 13px 0 6px;
+}
+.quest-detail p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.quest-detail-heading {
+  padding-bottom: 17px;
+}
+.quest-detail-heading > p {
+  margin: 8px 0;
+}
+.quest-notice {
+  padding: 10px 12px;
+  border-left: 3px solid #946833;
+  background: #8a623315;
+}
+.quest-section {
+  padding: 23px 0 2px;
+  border-top: 1px solid #9a774c63;
+  margin-top: 22px;
+}
+.quest-detail .section-note {
+  font-size: 12px;
+  line-height: 1.55;
+  color: #6e5738;
+  margin: 6px 0 12px;
+}
+.quest-waypoint {
+  padding: 18px 20px;
+  background: linear-gradient(120deg, #513a2210, #9b753c13);
+  border: 1px solid #a484527a;
+  border-left: 3px solid #9e733b;
+  border-radius: 3px;
+  box-shadow: inset 0 1px #fff6;
+}
+.quest-waypoint .eyebrow {
+  font-size: 9px;
+  letter-spacing: 1.4px;
+}
+.quest-waypoint h3 {
+  font-size: 19px;
+  margin: 7px 0;
+}
+.quest-waypoint .waypoint-coordinates {
+  font-family: Cinzel, Georgia, serif;
+  font-size: 14px;
+  margin: 4px 0 10px;
+  font-weight: 600;
+}
+.quest-detail button.primary {
+  color: #ffe4ab;
+  border: 1px solid #886127;
+  border-top-color: #d4ac6b;
+  background: linear-gradient(#76572d, #49311b);
+  box-shadow:
+    inset 0 1px #fff3,
+    0 2px 3px #4e361d4d;
+  font-size: 13px;
+  padding: 10px 16px;
+}
+.quest-detail button.primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.quest-detail .waypoint-instruction {
+  font-size: 12px;
+  color: #674e30;
+  margin: 9px 0 0;
+}
+.quest-detail .quest-objectives {
+  color: #49351e;
+  padding-left: 0;
+  list-style: none;
+}
+.quest-chain {
+  list-style: none;
+  padding: 0 0 0 9px;
+  margin: 18px 0 5px;
+  border-left: 1px solid #9e7b48;
+}
+.quest-chain li {
+  position: relative;
+  padding: 0 0 17px 17px;
+}
+.quest-chain li:before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border: 1px solid #8b683b;
+  background: #deca9e;
+  position: absolute;
+  left: -13px;
+  top: 4px;
+  transform: rotate(45deg);
+}
+.quest-chain li.chain-completed:before {
+  background: #5f6c43;
+}
+.quest-chain li.chain-active:before {
+  background: #a47027;
+  box-shadow: 0 0 0 3px #a4702725;
+}
+.quest-chain .chain-status {
+  display: block;
+  font-size: 10px;
+  color: #77572e;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.quest-chain button {
+  border: 0;
+  padding: 2px 0;
+  background: none;
+  box-shadow: none;
+  color: #46321c;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: normal;
+}
+.quest-chain button:hover {
+  text-decoration: underline;
+}
+.quest-chain button small {
+  color: #856a43;
+  font-weight: 400;
+  font-size: 11px;
+}
+.quest-chain [aria-current="step"] {
+  color: #815214;
+}
+.quest-rewards {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.quest-rewards li {
+  display: flex;
+  gap: 9px;
+  padding: 7px 0;
+  font-size: 14px;
+  border-bottom: 1px dotted #9e77424d;
+}
+.quest-rewards li > span {
+  color: #9b6b2e;
+}
+.quest-rewards small {
+  font-size: 10px;
+  margin-left: auto;
+  align-self: center;
+  color: #7a6140;
+  white-space: nowrap;
+}
+.quest-money {
+  font-weight: 600;
+}
+.quest-npc {
+  margin: 15px 0;
+}
+.quest-npc strong {
+  font-size: 14px;
+}
+.quest-npc strong small {
+  font-size: 11px;
+  color: #7d6240;
+  font-weight: 400;
+}
+.quest-npc p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+.quest-npc > small {
+  color: #7b6040;
+  font-size: 11px;
+}
+.quest-source {
+  border-top: 1px solid #9a774c63;
+  padding-top: 18px;
+  margin-top: 26px;
+  font-size: 12px;
+  color: #705638;
+}
+.quest-source summary {
+  font-family: Cinzel, Georgia, serif;
+  font-size: 13px;
+  color: #664421;
+  cursor: pointer;
+}
+.quest-source p {
+  font-size: 12px;
+}
+.quest-source code,
+.source-url {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: 10px !important;
+  color: #7d6443;
+}
+.ledger-footnote {
+  font-size: 12px;
+  color: #b5aa94;
+  line-height: 1.7;
+  margin: 16px 0;
+}
+.quest-detail-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-height: 550px;
+  padding: 45px;
+}
+.ledger-compass {
+  font-size: 88px;
+  color: #9674438a;
+  line-height: 1;
+  margin-bottom: 24px;
+}
+.quest-detail-empty p {
+  max-width: 390px;
+  color: #735c3c;
+}
+.quest-detail-empty small {
+  color: #826843;
+  font-size: 12px;
+}
+.ledger-how {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  text-align: left;
+  margin: 24px 0 30px;
+  color: #705131;
+  font-size: 14px;
+}
+.ledger-how b {
+  font-family: Cinzel, Georgia, serif;
+  color: #9b783d;
+  margin-right: 13px;
+}
+.guidance-reference {
+  margin: 14px 0 2px;
+  padding: 11px 13px;
+  border: 1px solid #b18b4b42;
+  background: #d3a25208;
+  border-left: 2px solid #b18b4b8c;
+}
+.guidance-reference p {
+  font-size: 13px !important;
+  margin: 4px 0 !important;
+}
+.guidance-reference strong {
+  color: #dec38d;
+  font-size: 12px;
+}
+.guidance-reference .subtle {
+  font-size: 12px;
+  padding: 5px 0;
+  margin-top: 3px;
+}
+.plan-followups {
+  border-top: 1px solid #b18b4b42;
+  padding: 16px 0 0;
+  margin-top: 18px;
+}
+.plan-followups h3 {
+  font-size: 15px;
+}
+.plan-followups button {
+  font-size: 12px;
+  margin: 4px 8px 4px 0;
+}
+.plan-followups p {
+  font-size: 12px;
+  color: #b9af9d;
+}
+.context-preview {
+  line-height: 1.65;
+}
+.context-preview details {
+  margin: 9px 0;
+}
+.context-preview summary {
+  cursor: pointer;
+  color: #e3c58b;
+  font-size: 13px;
+}
+.context-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid #b18b4b42;
+  background: #101817;
+  padding: 12px;
+  color: #e1d1b2;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.context-preview small {
+  display: block;
+  font-size: 11px;
+}
+.context-preview .eyebrow {
+  font-size: 9px;
+}
+@media (max-width: 1100px) {
+  .quest-guide-heading {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+  }
+  .quest-guide-heading .eyebrow {
+    margin-bottom: 4px;
+  }
+  .quest-guide-heading h1 {
+    font-size: 30px;
+    line-height: 1.2;
+    margin: 0 0 3px;
+  }
+  .quest-guide-heading p {
+    font-size: 13px;
+    line-height: 1.45;
+    margin: 4px 0 0;
+  }
+  .ledger-seal {
+    font-size: 60px;
+  }
+  .knowledge-status {
+    padding: 8px 12px;
+    margin-bottom: 14px;
+    gap: 12px;
+  }
+  .knowledge-status p {
+    font-size: 12px;
+  }
+  .knowledge-status small {
+    font-size: 10px;
+  }
+  .knowledge-actions .check-label {
+    font-size: 10px;
+  }
+  .knowledge-actions button:not(.illustrated-card) {
+    min-height: 34px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+  .quest-ledger {
+    grid-template-columns: minmax(245px, 35%) minmax(0, 1fr);
+  }
+  .quest-index {
+    padding: 19px 13px;
+  }
+  .quest-detail {
+    padding: 20px 23px;
+  }
+  .quest-detail-heading {
+    padding-bottom: 10px;
+  }
+  .quest-detail h2 {
+    font-size: 23px;
+    margin: 7px 0;
+  }
+  .quest-detail-heading > p {
+    margin: 6px 0;
+    line-height: 1.4;
+  }
+  .quest-waypoint {
+    padding: 12px;
+  }
+  .quest-waypoint h3 {
+    font-size: 17px;
+  }
+  .quest-waypoint .section-note {
+    font-size: 11px;
+    line-height: 1.4;
+    margin-bottom: 9px;
+  }
+  .quest-detail .quest-waypoint button.primary {
+    min-height: 36px;
+    padding: 8px 14px;
+  }
+  .quest-ledger-row {
+    gap: 8px;
+    padding: 13px 7px;
+  }
+  .quest-ledger-row strong {
+    font-size: 12px;
+  }
+  .reference-toggle {
+    font-size: 11px;
+  }
+  .quest-detail-empty {
+    padding: 30px 24px;
+  }
+  .knowledge-sigil {
+    display: none;
+  }
+  .guidance-reference {
+    margin-top: 10px;
+    padding: 8px 10px;
+  }
+}
+@media (max-width: 760px) {
+  .quest-ledger {
+    grid-template-columns: 1fr;
+  }
+  .quest-index {
+    border-right: 0;
+    border-bottom: 1px solid #8e693d;
+  }
+  .quest-results {
+    max-height: 300px;
+  }
+  .knowledge-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .knowledge-actions {
+    flex-direction: row;
+    align-items: center;
+  }
+  .ledger-seal {
+    display: none;
+  }
+  .quest-detail-empty {
+    min-height: 350px;
+  }
+  .quest-guide-heading h1 {
+    font-size: 28px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quest-guide * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* The global sculpted control skin applies to actions, not the ledger text links. */
+button.quest-ledger-row:not(.illustrated-card) {
+  border: 0;
+  border-bottom: 1px solid #b28b4924;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  text-shadow: none;
+  padding: 15px 9px;
+  transform: none;
+  color: #e1d2b9;
+}
+button.quest-ledger-row:not(.illustrated-card):hover {
+  background: #bd8c3f10;
+  box-shadow: none;
+  transform: none;
+}
+button.quest-ledger-row.selected:not(.illustrated-card) {
+  background: linear-gradient(90deg, #bf954329, #bd8c3f08);
+  box-shadow: inset 3px 0 #c9a063;
+}
+button.quest-ledger-row:not(.illustrated-card)::before,
+button.quest-ledger-row:not(.illustrated-card)::after,
+.quest-chain button:not(.illustrated-card)::before,
+.quest-chain button:not(.illustrated-card)::after {
+  display: none;
+}
+.quest-chain button:not(.illustrated-card) {
+  border: 0;
+  border-radius: 0;
+  padding: 2px 0;
+  background: none;
+  box-shadow: none;
+  color: #46321c;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: normal;
+  min-height: 24px;
+  text-shadow: none;
+  transform: none;
+}
+.quest-chain button:not(.illustrated-card):hover {
+  text-decoration: underline;
+  color: #815214;
+  background: none;
+  box-shadow: none;
+  transform: none;
+}
+.quest-detail h2,
+.quest-detail h3 {
+  text-shadow: none;
+}
+.quest-detail .quest-objectives li {
+  color: #49351e;
+}
+@media (max-width: 1100px) {
+  button.quest-ledger-row:not(.illustrated-card) {
+    padding: 13px 7px;
+  }
+}
+.rail {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #81613b #181c17;
+}
+@media (max-height: 800px) {
+  .rail {
+    padding-top: 17px;
+    padding-bottom: 14px;
+  }
+  .rail .brand {
+    margin-bottom: 22px;
+  }
+  .rail nav {
+    gap: 5px;
+  }
+  .rail nav button:not(.illustrated-card) {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    margin-bottom: 3px;
+    min-height: 42px;
+  }
+  .rail nav button .glyph {
+    font-size: 18px;
+  }
+  .rail-bottom {
+    padding-top: 14px;
+  }
+  .rail-bottom .status {
+    font-size: 10px;
+  }
+  .rail-bottom small {
+    font-size: 9px;
+  }
+}
