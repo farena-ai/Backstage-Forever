@@ -1,6 +1,6 @@
 # Compatibility and evidence
 
-Evidence date: **2026-11-08**. Local manual profiles and notes work without a game connection or AI. Automated fixtures establish tested behavior, not live account entitlement or game-client acceptance.
+Evidence date: **2026-11-09**. Local manual profiles and notes work without a game connection or AI. Automated fixtures establish tested behavior, not live account entitlement or game-client acceptance.
 
 ## Optional Forever addon
 
@@ -10,7 +10,13 @@ Choose **Set up my companion**. Bounded common-folder/registry discovery falls b
 
 **Levelled up or changed areas? Type `/reload` in WoW to refresh your companion.** Logout also writes SavedVariables. The desktop checks saved exports every five seconds while open. It cannot see unsaved changes, discover unvisited characters through an account API or provide a continuous live feed. The newest account snapshot identifies the last played character; deliberate selection pauses default following until its checkbox is restored.
 
-Actual client acceptance must verify addon loading, public race/faction and quest/XP APIs, observed turn-ins, provided waypoints, in-game Adventure Compass pixels/drag/collapse/combat hiding, level/zone changes, reload/logout writes, character switching, timestamp freshness, disconnect and preservation of notes/goals. The in-game HUD can update out of combat while the desktop still waits for reload/logout disk saves. Quest history is limited to 25 observed recent turn-ins and optional public completed-count (bounded to 20,000 entries), not complete historical quest names. Schema version 1 retains compatibility through optional fields. Synthetic addon-runtime and parser tests cannot replace this. No code execution, input automation, combat decisions, memory reads or protected-value bypass is supported.
+Actual client acceptance must verify addon loading, public race/faction and quest/XP APIs, observed turn-ins, provided waypoints, in-game Adventure Compass pixels/drag/collapse/combat hiding, level/zone changes, reload/logout writes, character switching, timestamp freshness, disconnect and preservation of notes/goals. The in-game HUD can update out of combat while the desktop still waits for reload/logout disk saves. Recent named history is limited to 25 observed turn-ins. In 0.6 a complete supported public read may additionally save up to 20,000 completed quest IDs locally; unavailable, protected, partial or oversized history stays unknown. These IDs do not create a complete historical quest-name database. Schema version 1 retains compatibility through optional fields. Synthetic addon-runtime and parser tests cannot replace this. No code execution, input automation, combat decisions, memory reads or protected-value bypass is supported.
+
+## Forever reference compatibility
+
+The initial 0.6 quest pack is pinned to live product `wowf`, build `1.60.1.70862`, English `enUS`, with a November 7–8 collection window. It is a community compilation of observations and server-cache answers, not a Blizzard-endorsed complete guide. Exact IDs distinguish same-title quests. Reference-only records do not establish playability, and reported next links do not establish all prerequisites. Other client builds can browse labelled reference details without enabling automatic compatible destinations. See [source and coverage](FOREVER-DATA.md).
+
+The updated addon exports optional client build, locale, capture version, objective counts/types and completed IDs through guarded public APIs. These additions and `/bf guide` have isolated Lua and desktop acceptance gates; they still require real-client acceptance after installation. Missing waypoint APIs print coordinates rather than forcing map behavior. No real-client acceptance of a new 0.6 field is implied by older 0.4.1 capture evidence.
 
 ## AI connections
 

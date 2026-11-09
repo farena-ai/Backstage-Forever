@@ -8,6 +8,14 @@ Checks contact GitHub's public releases API and download from GitHub release ass
 
 With automatic checks off, a manual check may still download an authenticated newer release. Choose Restart and update to install it; normal exit will not install it in that mode. Reset clears queued updates and turns automatic checks off until explicitly re-enabled.
 
+## Recovering a failed update
+
+If an older installation finds 0.5.0 but says the update could not be verified or downloaded, open the [official Releases page](https://github.com/farena-ai/Backstage-Forever/releases) and download the newest Windows setup executable. Close BF and run that installer normally. Your existing profiles and encrypted connections remain in the same Windows account's app-data folder. Export a profile backup first if you want an additional copy. An old running updater cannot acquire its own fixes until the app has been upgraded.
+
+The 0.6 updater retries temporary network failures up to three times and offers **Retry update** and **Open Releases**. A failed metadata request remains an error rather than appearing as “up to date.” Signature, file-size and hash checks stay mandatory. If Windows cannot safely write or clean up its update cache, BF explains the cache failure instead of continuing another download. No Windows security setting needs to be changed.
+
+During development, actual installed Electron requests sometimes received HTTP 504 from GitHub. Earlier attempts completed fully authenticated downloads, including recovery after an interrupted transfer. These observations do not establish the exact cause of every failed update or guarantee that a remote outage has ended. See [measured recovery and diagnostics](updater-reliability.md).
+
 ## What authenticates a release
 
 The bundled Ed25519 public key authenticates `backstage-update.json`. Its envelope contains exactly base64 `payload` and `signature`; the signature covers the original UTF-8 payload bytes. The payload contains `schemaVersion` (1), `version`, `releaseTag`, `url`, `sha256`, `size`, and `publishedAt`. The version, tag, installer filename and URL must agree and point to this repository. The updater verifies downloaded byte count and SHA256, then verifies again immediately before execution. GitHub metadata alone never authorizes an installer.

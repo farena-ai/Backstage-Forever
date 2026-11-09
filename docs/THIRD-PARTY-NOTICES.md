@@ -7,3 +7,9 @@ The Anthropic Claude Agent SDK is copyright Anthropic PBC and subject to its ven
 Other production dependency notices, including jose and transitive SDK dependencies, remain alongside those packages. Electron and the NSIS distribution retain their upstream notices.
 
 Original generated illustrations and their production prompts are described in ARTWORK.md and ARTWORK-V3.md. No Blizzard artwork, faction logos or extracted game assets are included.
+
+## Forever quest reference data
+
+Data from Efficient Games (https://efficient.games), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Published source: [JIVESCORP/eg-link-output-wowf](https://github.com/JIVESCORP/eg-link-output-wowf), initially pinned to commit `156f29c9af78b1586883e8eb94a13467eb89638c`, live product `wowf`, build `1.60.1.70862`, English `enUS`.
+
+Backstage Coding filters, normalizes, indexes and combines selected factual records; these are changes to the publisher's compilation. The derived data has its own license and source notices under `data/forever/`. It is not relicensed as MIT. BF's implementation code remains MIT licensed. Blizzard's game text, names and other game content remain the property of their respective owners; the publisher's compilation license does not transfer those rights. No game artwork is included in this reference pack. See [coverage, provenance and privacy](FOREVER-DATA.md).

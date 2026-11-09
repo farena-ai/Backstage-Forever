@@ -25,7 +25,11 @@ The repeated successful setup dock is suppressed after a valid current-folder im
 
 Acceptance: two characters retain separate correct data and notes across reload/logout/restart; identity mapping is confirmed in the real client. Optional roster linking must pass real consent, multiple-account, refresh/expiry, revoke, stale/missing-character and encryption tests before being advertised.
 
-## Milestone 0.6: expand beyond observed quests with verified Forever data
+## 0.6: Forever quest reference delivery
+
+0.6 introduces a bundled, licensed Efficient Games live-Forever reference pack, build-specific automatic refresh, exact-ID quest details, reported chain links, NPC/objective positions, listed rewards and source-aware follow-up candidates. Local Quest Guide needs no AI account. Player-controlled waypoint commands use supported native APIs with build and quest-state checks. The updater gains bounded retries, stage-specific recovery and safer cache handling. See FOREVER-DATA.md and UPDATES.md for scope and measured limits.
+
+This is a coverage-limited reference layer, not certification of every quest or a complete prerequisite and travel graph. Next data milestones are:
 
 - Build a licensed, versioned knowledge layer for quests/prerequisites/rewards, NPCs/coordinates, items, spells, class/race differences, professions, vendors and travel.
 - Prefer supported official game/API data. Evaluate community sources individually for accuracy and licensing; do not copy a guide database or AGPL code into the MIT product by assumption.

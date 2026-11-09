@@ -12,6 +12,10 @@ Use Delete Key to remove one locally stored credential. Use the app's reset/dele
 
 ## Local guidance preferences and preparation
 
+The Forever reference downloads whole-build public datasets from the fixed Efficient Games GitHub repository. GitHub receives normal connection information such as IP address. Requests do not include character names, active or completed quest IDs, account identifiers, notes, goals or AI credentials. Automatic reference checks can be disabled; manual refresh remains available. The bundled pack works offline. Downloaded references are validated data, never executable addon code. [Reference data details](FOREVER-DATA.md) explain the build and coverage limits.
+
+When a supported complete public read is available, the addon can save up to 20,000 completed quest IDs locally to distinguish finished chain steps. These IDs are included in private profile backups and excluded from automatic AI context. Absence from an incomplete or unavailable history is not proof a quest is unfinished. An explicitly submitted question may include only a bounded selection of relevant compatible reference facts and chain statuses when character sharing is enabled; the preview uses the same approved context helper. Local reference search, downloads and planning never invoke an AI provider.
+
 The local planner uses saved quest observations and runs without any AI provider request. Session length and quest focus are saved per character in the desktop renderer's local preference storage. They are not API credentials and are not part of character JSON backups. The app reset clears the planner preference namespace.
 
 Optional preparation snapshots contain bounded equipped-item IDs/metadata and carried-bag free/total counts. They do not include a full inventory, bank, mail, money or account data. They remain in local profile backups and are excluded from automatic provider context. Missing client APIs leave the corresponding fields unavailable.

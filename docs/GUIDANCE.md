@@ -8,7 +8,17 @@ Open Game Connection and choose Set up my companion. BF finds your Forever insta
 
 BF checks its saved export while open and rebuilds the plan when new data arrives. To add another toon, play it once with the addon enabled, then log out or reload. Characters you have not visited do not yet have detailed addon snapshots. There is no Battle.net password prompt or account-wide roster login in 0.5.
 
-## Read your plan
+## Forever references in 0.6
+
+Adventure can enrich your saved quest steps with compatible exact-ID Forever references. Quest Guide lets you inspect chain links, NPCs, approximate observed positions and rewards locally. Your actual game-provided destination stays separate from a community reference marker. A matching build and quest ID are required before BF applies a reference to your character's guidance. Current game observations win when English quest titles conflict.
+
+Follow-up cards show reported next quests only when your known saved completion history supports checking them next. They say **Check availability**: a chain link does not prove every race, class, reputation or other condition. Missing links and unknown conditions stay visible. BF does not make up a prerequisite graph from nearby IDs or similarly named quests.
+
+Use **Copy game waypoint** where a compatible destination is available, then paste the prepared `/bf guide` command into WoW. The updated addon rechecks the build and active quest phase before placing a supported marker. Reference-only markers are explicitly labelled. Missing map APIs fall back to printed coordinates; no automatic movement, combat or interaction occurs. If BF asks for a reload after updating its addon, save a new snapshot before using this action.
+
+Data refresh and local guidance work without an AI provider. The initial pack is bundled; automatic checks fetch public whole-build data without your character details. Disable automatic reference checks or refresh manually in Quest Guide. See [coverage and source notices](FOREVER-DATA.md).
+
+## Read your saved quest plan
 
 The first guidance release covers quests actually observed in your saved game log. It uses reported objectives, completion state, zone and destinations when the game provides them. Ready turn-ins and relevant nearby-zone work receive priority. Session length controls how much work BF presents; it does not promise a measured completion time.
 
