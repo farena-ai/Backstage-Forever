@@ -7,10 +7,26 @@ const { spawn } = require("node:child_process");
 const REPO = "https://github.com/farena-ai/Backstage-Forever";
 const API =
   "https://api.github.com/repos/farena-ai/Backstage-Forever/releases?per_page=30";
+const ASSET_API =
+  "https://api.github.com/repos/farena-ai/Backstage-Forever/releases/assets/";
 const MAX = 512 * 1024 * 1024;
 const versionPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const filename = (v) => `Backstage-Forever-${v}-Windows-x64-Setup.exe`;
 const assetURL = (v) => `${REPO}/releases/download/v${v}/${filename(v)}`;
+function allowedAssetAPI(value) {
+  if (typeof value !== "string" || !value.startsWith(ASSET_API)) return false;
+  const id = value.slice(ASSET_API.length);
+  return /^[1-9]\d*$/.test(id) && Number.isSafeInteger(Number(id));
+}
+function selectedAssetAPI(release, name, url) {
+  // Metadata selects a transport alias only; the signed manifest authorizes bytes.
+  const asset = release.assets.find(
+    (a) => a && a.name === name && a.browser_download_url === url,
+  );
+  return Number.isSafeInteger(asset?.id) && asset.id > 0
+    ? ASSET_API + asset.id
+    : null;
+}
 function newer(a, b) {
   if (!versionPattern.test(a) || !versionPattern.test(b)) return false;
   const x = a.split(".").map(BigInt),
@@ -182,7 +198,18 @@ function request(
   transport = https,
 ) {
   return new Promise((resolve, reject) => {
-    if ((!api && !allowedURL(url)) || (api && url !== API) || redirects > 5)
+    // Asset API requests may redirect only to approved CDN hosts on every hop.
+    const allowed =
+      api === true
+        ? url === API
+        : api === "asset"
+          ? redirects === 0 && allowedAssetAPI(url)
+          : api === "asset-redirect"
+            ? redirects > 0 &&
+              allowedURL(url) &&
+              new URL(url).hostname !== "github.com"
+            : api === false && allowedURL(url);
+    if (!allowed || redirects > 5)
       return reject(updateError(redirects > 5 ? "REDIRECT" : "URL"));
     let size = 0,
       response,
@@ -218,9 +245,10 @@ function request(
         headers: {
           "User-Agent": "Backstage-Forever",
           "Cache-Control": "no-cache",
-          Accept: api
-            ? "application/vnd.github+json"
-            : "application/octet-stream",
+          Accept:
+            api === true
+              ? "application/vnd.github+json"
+              : "application/octet-stream",
         },
       },
       (res) => {
@@ -241,7 +269,9 @@ function request(
             signal,
             limit,
             onChunk,
-            false,
+            api === "asset" || api === "asset-redirect"
+              ? "asset-redirect"
+              : false,
             redirects + 1,
             transport,
           ).then(resolve, reject);
@@ -549,12 +579,27 @@ class Updater {
     });
     return this.pending;
   }
-  async fetchMetadata(url, signal, limit, api, stage, active) {
+  async fetchMetadata(
+    url,
+    signal,
+    limit,
+    api,
+    stage,
+    active,
+    alternate = null,
+  ) {
     for (let attempt = 1; attempt <= 3; attempt++) {
       active();
       this.retryAttempt = attempt;
       try {
-        const result = await this.fetch(url, signal, limit, null, api);
+        const useAlternate = attempt > 1 && alternate;
+        const result = await this.fetch(
+          useAlternate || url,
+          signal,
+          limit,
+          null,
+          useAlternate ? "asset" : api,
+        );
         active();
         this.diagnostic = null;
         this.message = "";
@@ -632,7 +677,15 @@ class Updater {
         throw updateError("MANIFEST");
       const envelope = JSON.parse(
         (
-          await this.fetchMetadata(url, signal, 32768, false, stage, active)
+          await this.fetchMetadata(
+            url,
+            signal,
+            32768,
+            false,
+            stage,
+            active,
+            selectedAssetAPI(release, "backstage-update.json", url),
+          )
         ).toString("utf8"),
       );
       active();
@@ -653,6 +706,11 @@ class Updater {
       }
       this.availableVersion = chosen.manifest.version;
       this.phase = "downloading";
+      const installerAPI = selectedAssetAPI(
+        release,
+        filename(manifest.version),
+        manifest.url,
+      );
       let verifiedTmp;
       for (let attempt = 1; attempt <= 3; attempt++) {
         active();
@@ -672,7 +730,7 @@ class Updater {
           const hash = crypto.createHash("sha256");
           stage = "download";
           const size = await this.fetch(
-            chosen.manifest.url,
+            attempt > 1 && installerAPI ? installerAPI : chosen.manifest.url,
             signal,
             chosen.manifest.size,
             (chunk) => {
@@ -699,6 +757,7 @@ class Updater {
               this.progress = Math.floor((bytes / chosen.manifest.size) * 100);
               stage = "download";
             },
+            attempt > 1 && installerAPI ? "asset" : false,
           );
           active();
           if (size !== chosen.manifest.size || bytes !== chosen.manifest.size)

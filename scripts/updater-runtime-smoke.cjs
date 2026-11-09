@@ -40,9 +40,21 @@ const assert = require("node:assert/strict");
         const events = [];
         let interrupted = false;
         const fetch = async (url, signal, limit, chunk, api) => {
-          const stage = api ? "discovery" : chunk ? "download" : "manifest";
+          const stage =
+            api === true ? "discovery" : chunk ? "download" : "manifest";
+          const route =
+            api === true
+              ? "discovery"
+              : api === "asset"
+                ? "asset-api"
+                : "standard";
           let bytes = 0;
           try {
+            if (options.failPrimary && route === "standard")
+              throw Object.assign(Error("Synthetic primary-route failure"), {
+                updateCode: "HTTP",
+                httpStatus: 504,
+              });
             const result = await u.request(
               url,
               signal,
@@ -68,6 +80,7 @@ const assert = require("node:assert/strict");
             );
             events.push({
               stage,
+              route,
               code: "OK",
               bytes: chunk ? bytes : result.length,
             });
@@ -91,6 +104,7 @@ const assert = require("node:assert/strict");
             ]);
             events.push({
               stage,
+              route,
               code: /^[A-Z_]{2,32}$/.test(e.updateCode || "")
                 ? e.updateCode
                 : known.has(e.code)
@@ -121,7 +135,8 @@ const assert = require("node:assert/strict");
           },
         });
         const status = await updater.check();
-        let cachedVerified = false;
+        let cachedVerified = false,
+          cachedBytes = 0;
         if (status.phase === "ready") {
           const cached = JSON.parse(
             fs.readFileSync(
@@ -130,9 +145,13 @@ const assert = require("node:assert/strict");
             ),
           );
           const manifest = u.verifyManifest(cached, updater.publicKey, "0.4.0");
-          updater.verifyFile(manifest);
+          const file = updater.verifyFile(manifest);
+          cachedBytes = fs.statSync(file).size;
           cachedVerified = true;
         }
+        const partialsRemaining = fs
+          .readdirSync(path.join(options.data, "updates"))
+          .filter((name) => name.endsWith(".partial")).length;
         updater.close();
         return {
           installedVersion: app.getVersion(),
@@ -140,6 +159,9 @@ const assert = require("node:assert/strict");
           source: options.source,
           status,
           cachedVerified,
+          cachedBytes,
+          partialsRemaining,
+          primaryFailureInjected: options.failPrimary,
           interruptionInjected: interrupted,
           events,
         };
@@ -149,11 +171,27 @@ const assert = require("node:assert/strict");
         root: path.resolve(__dirname, ".."),
         source: process.argv.includes("--source"),
         interrupt: process.argv.includes("--interrupt-first"),
+        failPrimary: process.argv.includes("--fail-primary"),
       },
     );
     console.log(JSON.stringify(result));
-    if (process.argv.includes("--expect-ready"))
+    if (process.argv.includes("--expect-ready")) {
       assert.equal(result.status.phase, "ready");
+      assert.equal(result.cachedVerified, true);
+      assert.ok(result.cachedBytes > 0);
+    }
+    assert.equal(result.partialsRemaining, 0);
+    if (process.argv.includes("--fail-primary")) {
+      for (const stage of ["manifest", "download"]) {
+        const events = result.events.filter((event) => event.stage === stage);
+        assert.ok(events.length >= 2 && events.length <= 3);
+        assert.equal(events[0].route, "standard");
+        assert.equal(events[0].httpStatus, 504);
+        assert.ok(
+          events.slice(1).every((event) => event.route === "asset-api"),
+        );
+      }
+    }
     if (process.argv.includes("--interrupt-first")) {
       const downloads = result.events.filter(
         (event) => event.stage === "download",
