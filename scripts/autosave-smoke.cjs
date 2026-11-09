@@ -97,6 +97,7 @@ const { testWindow } = require("./test-window.cjs");
     assert.equal(requests.length, 0);
     await prompt.press("Enter");
     await page
+      .getByRole("log", { name: "Conversation", exact: true })
       .getByText("Synthetic character-aware reply", { exact: true })
       .waitFor();
     assert.equal(requests.length, 1);

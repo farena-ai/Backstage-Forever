@@ -50,7 +50,7 @@ function harness(overrides = {}) {
   }
   const context = vm.createContext({
     window: {
-      backstage: { bootstrap: () => new Promise(() => {}), ...overrides },
+      backstage: { bootstrap: () => new Promise(() => {}), voiceCancel: async () => ({phase:"idle"}), ...overrides },
     },
     document: {
       addEventListener: (name, fn) => (documentHandlers[name] ??= []).push(fn),
@@ -87,6 +87,10 @@ function harness(overrides = {}) {
   context.Company = context.window.Company;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/preparation.js"), "utf8"), context);
   context.Preparation = context.window.Preparation;
+  for (const name of ["voice", "memory"]) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${name}.js`), "utf8"), context);
+    context[name === "voice" ? "Voice" : "Memory"] = context.window[name === "voice" ? "Voice" : "Memory"];
+  }
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, "../src/renderer/app.js"), "utf8"),
     context,
