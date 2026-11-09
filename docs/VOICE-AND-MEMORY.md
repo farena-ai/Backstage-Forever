@@ -12,4 +12,4 @@ Saving locally does not authorize future sharing. Select specific saved exchange
 
 Profile backups omit memory by default. Importing a profile backup clears local memory in the replacement state; deleting a character or resetting local data removes its memory. Exported party plans never automatically include it. Data already sent to an AI provider remains subject to that provider's policies; deleting local memory does not delete the provider's records or cancel an already processed charge.
 
-Real microphone behavior, recognition of game names and audible stop quality are part of the owner-led check before1.0. Automated development uses fake audio workers and only safe installed-capability enumeration on the actual machine.
+Real microphone behavior, recognition of game names and audible stop quality are part of the owner-led check before 1.0. Automated development uses fake audio workers and only safe installed-capability enumeration on the actual machine.

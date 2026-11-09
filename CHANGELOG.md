@@ -6,7 +6,7 @@
 - Added exact shortfalls only for complete applicable bag observations; partial/unknown quantities remain explicit and other characters are never silently pooled.
 - Added deliberate atomic manual shopping checklists in Company, without crafting, purchases, transfer or invented quest proof.
 - Added guarded native collectors and dated caches, plus deep snapshot reload and both byte/node export budgeting that preserves collected characters before optional workshop detail.
-- Preserved dirty input, held controls, native dropdown readability and compact navigation. Public delivery remains combined into0.12.0.
+- Preserved dirty input, held controls, native dropdown readability and compact navigation. Public delivery remains combined into 0.12.0.
 
 
 ## 0.9.0 — development milestone, 2026-11-09
