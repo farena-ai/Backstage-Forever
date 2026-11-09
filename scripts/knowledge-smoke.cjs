@@ -345,6 +345,18 @@ const { testWindow } = require("./test-window.cjs");
       .selectOption(horde);
     await page.locator('.quest-ledger-row[data-quest-id="5730"]').click();
     await page.locator(".quest-detail h2").waitFor();
+    assert.match(
+      await page.locator(".quest-waypoint").innerText(),
+      /Named in a quest objective/,
+    );
+    assert.doesNotMatch(
+      await page.locator(".quest-waypoint").innerText(),
+      /finisher not confirmed/,
+    );
+    await page
+      .locator(".quest-detail")
+      .getByRole("heading", { name: "Turn-in observations", exact: true })
+      .waitFor();
     await capture("quest-guide-horde.png");
     await app.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0].setSize(1000, 700),
@@ -370,6 +382,72 @@ const { testWindow } = require("./test-window.cjs");
     await page
       .getByRole("button", { name: "AI Companion", exact: true })
       .click();
+    const deferredQuestion = "Where is Neeru for quest 5730?";
+    await app.evaluate(({ ipcMain }) => {
+      const original = ipcMain._invokeHandlers.get("backstage:contextPreview");
+      ipcMain.removeHandler("backstage:contextPreview");
+      globalThis.knowledgeDeferredPreviewCalls = 0;
+      ipcMain.handle("backstage:contextPreview", async (...args) => {
+        const result = await original(...args);
+        if (
+          args[3] === "Where is Neeru for quest 5730?" &&
+          !globalThis.knowledgeDeferredPreviewReleased
+        ) {
+          globalThis.knowledgeDeferredPreviewCalls++;
+          await new Promise((resolve) => {
+            globalThis.knowledgeDeferredPreviewRelease = resolve;
+          });
+        }
+        return result;
+      });
+    });
+    await page
+      .getByLabel("Your question", { exact: true })
+      .fill("Explain quest 1061 with its public source facts.");
+    await page.waitForFunction(() =>
+      document
+        .querySelector(".context-preview pre")
+        ?.textContent.includes("1061"),
+    );
+    const previousPreview = await page
+      .locator(".context-preview pre")
+      .textContent();
+    await page.evaluate((prompt) => {
+      document.querySelector('#chat-form [name="prompt"]').value = prompt;
+      window.QuestGuide.updateContext();
+      window.QuestGuide.mounted();
+      window.QuestGuide.updateContext();
+    }, deferredQuestion);
+    await app.evaluate(async () => {
+      const end = Date.now() + 5000;
+      while (!globalThis.knowledgeDeferredPreviewRelease) {
+        if (Date.now() > end)
+          throw Error("Deferred preview fixture did not start");
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    });
+    assert.equal(
+      await page.locator(".context-preview pre").count(),
+      0,
+      "Duplicate calls while the new preview is pending must not repaint previous quest JSON",
+    );
+    assert.match(
+      await page.locator("[data-context-body]").innerText(),
+      /Opening the public context preview/,
+    );
+    assert.equal(
+      await app.evaluate(() => globalThis.knowledgeDeferredPreviewCalls),
+      1,
+      "Same pending key must not start duplicate IPC requests",
+    );
+    await app.evaluate(() => {
+      globalThis.knowledgeDeferredPreviewReleased = true;
+      globalThis.knowledgeDeferredPreviewRelease();
+    });
+    await page.waitForFunction((old) => {
+      const next = document.querySelector(".context-preview pre")?.textContent;
+      return next && next !== old && next.includes("5730");
+    }, previousPreview);
     await page
       .getByLabel("Your question", { exact: true })
       .fill("Where is Neeru for quest 5730?");
@@ -724,6 +802,7 @@ const { testWindow } = require("./test-window.cjs");
           globalThis.knowledgeContextHeld?.();
           globalThis.knowledgeDetailsHeld?.();
           globalThis.knowledgeStatusHeld?.();
+          globalThis.knowledgeDeferredPreviewRelease?.();
         })
         .catch(() => {});
     if (app) await app.close();

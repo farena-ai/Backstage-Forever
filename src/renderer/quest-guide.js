@@ -20,6 +20,7 @@ window.QuestGuide = (() => {
     error = "",
     loaded = false,
     contextKey = "",
+    contextResolvedKey = "",
     contextValue = null;
   let queryTimer, contextTimer;
   const safeDate = (value) =>
@@ -36,7 +37,7 @@ window.QuestGuide = (() => {
       "observed-quest-giver": "Quest giver observation",
       "observed-turn-in": "Quest turn-in observation",
       "observed-turn-in-npc": "Quest turn-in observation",
-      "mentioned-in-objective": "Named in an objective; finisher not confirmed",
+      "mentioned-in-objective": "Named in a quest objective",
       "objective-gain": "Objective progress observation",
       "observed-objective": "Objective progress observation",
       "observed-objective-gain": "Objective progress observation",
@@ -59,6 +60,7 @@ window.QuestGuide = (() => {
     loading = false;
     error = "";
     contextKey = "";
+    contextResolvedKey = "";
     contextValue = null;
     if (clearQuery) {
       query = "";
@@ -402,14 +404,17 @@ window.QuestGuide = (() => {
     const share = root.querySelector("#share-profile")?.checked === true;
     const key = JSON.stringify([signature, share, prompt]);
     if (key === contextKey) {
-      paintContext(contextValue);
+      if (contextResolvedKey === key) paintContext(contextValue);
+      else paintContext(null, "Opening the public context preview…");
       return;
     }
     contextKey = key;
+    contextResolvedKey = "";
+    contextValue = null;
     const request = ++contextRequest,
       epoch = generation;
     if (!share) {
-      contextValue = null;
+      contextResolvedKey = key;
       paintContext(null);
       return;
     }
@@ -427,10 +432,12 @@ window.QuestGuide = (() => {
       )
         return;
       contextValue = result;
+      contextResolvedKey = key;
       paintContext(result);
     } catch {
       if (request === contextRequest && epoch === generation) {
         contextKey = "";
+        contextResolvedKey = "";
         paintContext(
           null,
           "Context preview unavailable. Reopen this page before sending character context.",
