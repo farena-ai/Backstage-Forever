@@ -49,7 +49,7 @@ window.CommandCenter = (() => {
       } } : {}),
       savedAt: step.source?.observedAt,
     }));
-    return ("Explain this local quest plan in plain language. Use only the saved observations and labelled public reference facts below; do not invent quests, NPCs, prerequisites or an optimal route. Ask me about missing details. This is a saved quest-log slice, not a complete quest database.\n" +
+    return ("Explain this local quest plan in plain language. Use only the saved observations and labelled public reference facts below; do not invent quests, NPCs, prerequisites or an optimal route. Chain array order does not imply progression: only nextQuestId is a reported directed link, including targets outside this view. referenceStatus describes reference agreement separately from progress status; current game titles win, and referenceTitle is a qualified English alias. Conflicting references cannot establish current facts or eligibility. Ask me about missing details. This is a saved quest-log slice, not a complete quest database.\n" +
       JSON.stringify({ sessionMinutes: selection.minutes, focus: selection.focus, evidence }, null, 2)).slice(0, 11500);
   }
   function reference(step, esc) {

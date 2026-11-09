@@ -294,28 +294,31 @@ test("subscription receives bounded sourced quest facts without full local histo
       },
       notes: "PRIVATE_NOTE",
       history: { recent: [], completedIdsKnown: true, completedIds: [5729] },
-      quests: [
-        {
-          id: 1061,
-          title: "The Spirits of Stonetalon",
-          complete: true,
-          objectives: [],
-        },
-      ],
+      quests: [1061, 5729, 5730, 98024].map((id) => ({
+        id,
+        title: id === 5729 ? "Current game title" : knowledge.pack.quests[id].title,
+        complete: false,
+        objectives: [],
+      })),
     };
-    const context = require("../src/core/providers.cjs").profileContext(
-      { profiles: [profile] },
-      "p",
-      true,
-      { knowledge, prompt: "1061" },
-    );
-    await f.auth.ask({ model: "selected-model", prompt: "1061", context });
-    const body = f.calls.find(
-      (x) => x.url === "https://api.openai.com/v1/responses",
-    ).opts.body;
-    assert.doesNotMatch(body, /PRIVATE|completedIds/);
-    assert.match(body, /Seereth Stonebreak/);
-    assert.match(body, /156f29c9/);
+    for (const prompt of ["1061", "Where is Thork?", "quest 5730"]) {
+      const context = require("../src/core/providers.cjs").profileContext(
+        { profiles: [profile] }, "p", true, { knowledge, prompt },
+      );
+      await f.auth.ask({ model: "selected-model", prompt, context });
+      const body = f.calls.findLast(
+        (x) => x.url === "https://api.openai.com/v1/responses",
+      ).opts.body;
+      assert.doesNotMatch(body, /PRIVATE|completedIds/);
+      assert.match(body, prompt === "1061" ? /Seereth Stonebreak/
+        : prompt.includes("Thork") ? /Thork/ : /Current game title/);
+      if (prompt === "quest 5730") {
+        assert.match(body, /nextQuestId/);
+        assert.match(body, /referenceStatus/);
+        assert.match(body, /conflict/);
+      }
+      assert.match(body, /156f29c9/);
+    }
   } finally {
     f.close();
   }

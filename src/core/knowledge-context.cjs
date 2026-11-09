@@ -67,13 +67,24 @@ function publicFacts(value) {
         row[kind].push(npc);
       }
     }
+    // Nodes describe a bounded graph neighborhood. Only nextQuestId proves a link.
     for (const c of Array.isArray(f.chain) ? f.chain.slice(0, 6) : [])
       if (
         id(c.id) &&
         safeText(c.title) &&
         ["active", "completed", "unknown", "missing"].includes(c.status)
       )
-        row.chain.push({ id: c.id, title: c.title, status: c.status });
+        row.chain.push({
+          id: c.id,
+          title: c.title,
+          status: c.status,
+          ...(id(c.nextQuestId) ? { nextQuestId: c.nextQuestId } : {}),
+          ...(["match", "conflict", "reference", "missing"].includes(
+            c.referenceStatus,
+          )
+            ? { referenceStatus: c.referenceStatus } : {}),
+          ...(safeText(c.referenceTitle) ? { referenceTitle: c.referenceTitle } : {}),
+        });
     const d = f.referenceDestination;
     if (
       d &&
@@ -111,46 +122,79 @@ function publicFacts(value) {
   }
   return out.length ? out : undefined;
 }
+// Literal full names only: publisher punctuation is data, never a regular expression.
+function mentionsName(question, name) {
+  if (!name) return false;
+  const needle = name.toLowerCase();
+  let start = question.indexOf(needle);
+  const word = (c) => Boolean(c && /[\p{L}\p{N}_]/u.test(c));
+  while (start !== -1) {
+    if (!word(question[start - 1]) && !word(question[start + needle.length]))
+      return true;
+    start = question.indexOf(needle, start + 1);
+  }
+  return false;
+}
 function referenceFacts(profile, index, prompt = "") {
   if (!index?.compatible(profile)) return undefined;
   const q = String(prompt).slice(0, 12000).toLowerCase();
   const active = profile.quests || [];
-  const activeIds = new Set(active.map((r) => r.id));
-  const relevant = Object.values(index.pack.quests)
-    .filter(
-      (r) =>
-        (r.observedInPlay || activeIds.has(r.id)) &&
-        (new RegExp(`(?:^|\\D)${r.id}(?:$|\\D)`).test(q) ||
-          q.includes(r.title.toLowerCase())),
-    )
-    .sort(
-      (a, b) =>
-        Number(activeIds.has(b.id)) - Number(activeIds.has(a.id)) ||
-        a.id - b.id,
+  const current = new Map(active.map((r) => [r.id, r]));
+  const requested = new Set();
+  // Bare numbers in levels, money or coordinates are not quest identities.
+  if (/^\s*[1-9]\d*\s*$/.test(q)) requested.add(Number(q.trim()));
+  for (const match of q.matchAll(
+    /(?:^|[^\p{L}\p{N}_])(?:#\s*|quest\s*(?:id\s*)?[:#]?\s*)([1-9]\d*)(?![\p{L}\p{N}_])/gu,
+  ))
+    requested.add(Number(match[1]));
+  const relevant = [];
+  for (const r of Object.values(index.pack.quests)) {
+    const titleMatch =
+      mentionsName(q, current.get(r.id)?.title) || mentionsName(q, r.title);
+    const npcMatch = ["givers", "turnIns", "mentions"].some((kind) =>
+      r[kind].some((n) => mentionsName(q, index.pack.npcs[`${n.kind}:${n.id}`]?.name)),
     );
-  const rows = (relevant.length ? relevant : active)
-    .slice(0, 3)
-    .map((quest) => {
-      const d = index.details(profile, quest.id);
-      if (d.status !== "match") return null;
-      return {
-        questId: quest.id,
-        title: quest.title,
-        status: d.status,
-        ...d.provenance,
-        givers: d.givers,
-        turnIns: d.turnIns,
-        mentions: d.mentions,
-        referenceDestination: index.destination(
-          profile,
-          quest.id,
-          active.find(q=>q.id===quest.id)?.complete ? "t" : "o",
-        ),
-        chain: d.chain,
-        rewards: d.rewards,
-      };
-    })
-    .filter(Boolean);
+    const rank = requested.size
+      ? (requested.has(r.id) ? 3 : 0)
+      : titleMatch ? 2 : npcMatch ? 1 : 0;
+    if (rank) relevant.push({ ...r, rank });
+  }
+  for (const r of active)
+    if (!index.pack.quests[r.id] && !requested.size && mentionsName(q, r.title))
+      relevant.push({ ...r, rank: 2 });
+  // An explicit but unavailable/conflicting reference must not fall back to unrelated quests.
+  relevant.sort((a, b) =>
+    b.rank - a.rank ||
+    Number(current.has(b.id)) - Number(current.has(a.id)) || a.id - b.id,
+  );
+  const candidates = requested.size || relevant.length ? relevant : active;
+  const relevantNpcs = (list) => [...list].sort((a, b) =>
+    Number(mentionsName(q, b.name)) - Number(mentionsName(q, a.name)),
+  );
+  const rows = [];
+  for (const quest of candidates) {
+    const reference = index.pack.quests[quest.id];
+    if (!reference || (!reference.observedInPlay && !current.has(quest.id))) continue;
+    const d = index.details(profile, quest.id);
+    if (d.status !== "match") continue;
+    rows.push({
+      questId: quest.id,
+      title: current.get(quest.id)?.title || reference.title,
+      status: d.status,
+      ...d.provenance,
+      givers: relevantNpcs(d.givers),
+      turnIns: relevantNpcs(d.turnIns),
+      mentions: relevantNpcs(d.mentions),
+      referenceDestination: index.destination(
+        profile,
+        quest.id,
+        current.get(quest.id)?.complete ? "t" : "o",
+      ),
+      chain: d.chain,
+      rewards: d.rewards,
+    });
+    if (rows.length === 3) break;
+  }
   return publicFacts(rows);
 }
 module.exports = { referenceFacts, publicFacts };

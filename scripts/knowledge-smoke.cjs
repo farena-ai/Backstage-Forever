@@ -66,7 +66,7 @@ const { testWindow } = require("./test-window.cjs");
           },
           {
             id: 5729,
-            title: "Hidden Enemies",
+            title: "Current game hotfix title",
             complete: false,
             objectives: [{ text: "Speak with Neeru Fireblade", done: false }],
           },
@@ -104,12 +104,15 @@ const { testWindow } = require("./test-window.cjs");
         race: "Orc",
         className: "Mage",
         quests: [
+          {id:1061,title:"The Spirits of Stonetalon",complete:false,objectives:[]},
+          {id:5729,title:"Current game hotfix title",complete:false,objectives:[]},
           {
             id: 5730,
             title: "Hidden Enemies",
             complete: false,
             objectives: [{ text: "Speak with Thrall", done: false }],
           },
+          {id:98024,title:"Journey to the Crossroads",complete:false,objectives:[]},
         ],
       },
     ];
@@ -266,6 +269,21 @@ const { testWindow } = require("./test-window.cjs");
       ).sort((a, b) => a - b),
       [854, 98024],
     );
+    await search.fill("5728");
+    await page.locator('.quest-ledger-row[data-quest-id="5728"]').click();
+    await page.locator('.quest-detail h2').waitFor();
+    const reported = await page.evaluate(async () => {
+      const id = (await window.backstage.bootstrap()).state.activeProfileId;
+      return (await window.backstage.questDetails(id,5728)).chain;
+    });
+    const shownEdges = await page.locator('[data-chain-from]').evaluateAll(nodes => nodes.map(n=>[Number(n.dataset.chainFrom),Number(n.dataset.chainTo)]));
+    assert.deepEqual(shownEdges.sort((a,b)=>a[0]-b[0]), reported.filter(n=>n.nextQuestId).map(n=>[n.id,n.nextQuestId]).sort((a,b)=>a[0]-b[0]), "Every visible arrow must describe an actual reported edge, never array adjacency");
+    const neighbor = page.locator('[data-chain-node="5729"]');
+    assert.match(await neighbor.innerText(), /Current game hotfix title/);
+    assert.match(await neighbor.innerText(), /Reference conflict.*Hidden Enemies/s);
+    await fs.mkdir(path.join(repo,"work/v06-ui-evidence"),{recursive:true});
+    await page.evaluate(()=>{ document.getElementById("toast").className = ""; });
+    await page.locator('.quest-chain').screenshot({path:path.join(repo,"work/v06-ui-evidence/quest-chain-directed.png")});
     await search.fill("5730");
     await page.locator('.quest-ledger-row[data-quest-id="5730"]').click();
     await page
@@ -382,6 +400,16 @@ const { testWindow } = require("./test-window.cjs");
     await page
       .getByRole("button", { name: "AI Companion", exact: true })
       .click();
+    await page.getByLabel("Your question", {exact:true}).fill("Where is Thork?");
+    await page.waitForFunction(()=>document.querySelector('.context-preview pre')?.textContent.includes('Thork'));
+    const npcPreview = JSON.parse(await page.locator('.context-preview pre').textContent());
+    assert.equal(npcPreview.knowledge[0].questId,98024,"Name-only preview retrieves Thork after three other active quests");
+    await page.getByRole('button',{name:'Adventure',exact:true}).click();
+    await page.getByRole('button',{name:'Explain my plan',exact:true}).click();
+    const chainDraft = await page.getByLabel('Your question',{exact:true}).inputValue();
+    assert.match(chainDraft,/"nextQuestId": 5730/);
+    assert.match(chainDraft,/"referenceStatus": "conflict"/);
+    assert.match(chainDraft,/Current game hotfix title/);
     const deferredQuestion = "Where is Neeru for quest 5730?";
     await app.evaluate(({ ipcMain }) => {
       const original = ipcMain._invokeHandlers.get("backstage:contextPreview");

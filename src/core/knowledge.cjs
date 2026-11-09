@@ -710,6 +710,7 @@ class KnowledgeIndex {
       p.history?.completedIdsKnown === true ? p.history.completedIds : [],
     );
     const seen = new Set();
+    const activeQuests = new Map((p.quests || []).map((q) => [q.id, q]));
     const chain = [];
     const queue = [questId];
     while (queue.length && chain.length < 12) {
@@ -717,12 +718,21 @@ class KnowledgeIndex {
       if (seen.has(current)) continue;
       seen.add(current);
       const row = this.pack.quests[current];
+      const game = activeQuests.get(current);
+      const titleConflict = Boolean(
+        row && game && (!p.locale || p.locale === "enUS") && game.title !== row.title,
+      );
       chain.push({
         id: current,
-        title: row?.title || `Quest #${current}`,
+        title: game?.title || row?.title || `Quest #${current}`,
+        referenceStatus: !row
+          ? "missing"
+          : titleConflict ? "conflict" : status === "reference" ? "reference" : "match",
+        ...(row && game && game.title !== row.title
+          ? { referenceTitle: row.title } : {}),
         status: !row
           ? "missing"
-          : p.quests?.some((q) => q.id === current)
+          : game
             ? "active"
             : completed.has(current)
               ? "completed"

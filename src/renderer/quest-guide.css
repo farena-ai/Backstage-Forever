@@ -337,11 +337,23 @@
   list-style: none;
   padding: 0 0 0 9px;
   margin: 18px 0 5px;
-  border-left: 1px solid #9e7b48;
 }
 .quest-chain li {
   position: relative;
   padding: 0 0 17px 17px;
+}
+.quest-chain .chain-reference {
+  display: block;
+  color: #77572e;
+  font-size: 11px;
+}
+.quest-chain .chain-link {
+  margin-top: 3px;
+  color: #77572e;
+  font-size: 11px;
+}
+.quest-chain .chain-link button {
+  font-size: 12px;
 }
 .quest-chain li:before {
   content: "";
