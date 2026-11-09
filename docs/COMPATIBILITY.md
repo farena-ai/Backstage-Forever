@@ -24,7 +24,7 @@ Actual client acceptance must verify addon loading, public race/faction and ques
 
 The addon includes an offline, safely escaped Lua compilation of the pinned bundled reference plus a pure local planner. This is packaged with the app, not generated from runtime public downloads. Exact build/ID and current-title compatibility still gate community directions; current game observations take priority. Native planner and frame/timer behavior are verified with synthetic runtime fixtures, not blanket certification of all APIs in the running client.
 
-The0.12 quest pack is pinned to live product `wowf`, build `1.60.1.70862`, English `enUS`, with observations through November9,2026 at immutable source commit `23f9636486d3d60479dc0bcee2356053c33faf2c`. It is a community compilation of observations and server-cache answers, not a Blizzard-endorsed complete guide. Exact IDs distinguish same-title quests. Reference-only records do not establish playability, and reported next links do not establish all prerequisites. A known unsupported client build does not borrow the bundled pack for character guidance. Manual or unknown-build profiles may browse explicitly labelled reference details; those details do not enable automatic compatible destinations. See [source and coverage](FOREVER-DATA.md).
+The 0.12 quest pack is pinned to live product `wowf`, build `1.60.1.70862`, English `enUS`, with observations through November 9, 2026 at immutable source commit `23f9636486d3d60479dc0bcee2356053c33faf2c`. It is a community compilation of observations and server-cache answers, not a Blizzard-endorsed complete guide. Exact IDs distinguish same-title quests. Reference-only records do not establish playability, and reported next links do not establish all prerequisites. A known unsupported client build does not borrow the bundled pack for character guidance. Manual or unknown-build profiles may browse explicitly labelled reference details; those details do not enable automatic compatible destinations. See [source and coverage](FOREVER-DATA.md).
 
 The updated addon exports optional client build, locale, capture version, objective counts/types and completed IDs through guarded public APIs. These additions and `/bf guide` have isolated Lua and desktop acceptance gates; they still require real-client acceptance after installation. Missing waypoint APIs print coordinates rather than forcing map behavior. No real-client acceptance of a new 0.6 field is implied by older 0.4.1 capture evidence.
 
@@ -32,7 +32,7 @@ The updated addon exports optional client build, locale, capture version, object
 
 0.12 preserves a valid direct game waypoint before considering complementary map-specific queries. New fallbacks use actual validated map identities, guarded public values and bounded per-capture caches. An unambiguous in-progress quest-area observation is only an unfinished-objective fallback; it never becomes a ready turn-in location. The text explicitly says that a quest area is not an exact NPC or spawn location, including in the native Compass's shortened preview.
 
-Missing, protected, malformed or contradictory optional observations leave the new fallback unavailable. They do not justify guessed conversions or map/input automation, and an unavailable new optional map API does not erase an otherwise valid direct point. These are independently implemented generated-API-shape/Lua tests, not real-client certification. The owner must compare actual destinations in the running client before1.0.
+Missing, protected, malformed or contradictory optional observations leave the new fallback unavailable. They do not justify guessed conversions or map/input automation, and an unavailable new optional map API does not erase an otherwise valid direct point. These are independently implemented generated-API-shape/Lua tests, not real-client certification. The owner must compare actual destinations in the running client before 1.0.
 
 ## Preparation, Party and optional voice
 
@@ -40,7 +40,7 @@ Recipe and material observations retain their own dates and complete/partial cov
 
 Party roles are chosen by the player, not inferred. Portable plans contain only reviewed title/step text; opening an imported file does not add it. Explicitly added imports receive new local IDs and manual, unchecked, unassigned steps without completion proof. There is no party service or automatic messaging.
 
-Compatible installed local Windows speech engines are optional. Capability enumeration and fake-worker lifecycle tests do not establish microphone permission, recognition accuracy or audible stop quality. Typed questions remain available. Saved character memory is explicit readable local data, excluded from backups; future sharing requires a separate per-question selection. See [the owner check before1.0](OWNER-CHECK-012.md).
+Compatible installed local Windows speech engines are optional. Capability enumeration and fake-worker lifecycle tests do not establish microphone permission, recognition accuracy or audible stop quality. Typed questions remain available. Saved character memory is explicit readable local data, excluded from backups; future sharing requires a separate per-question selection. See [the owner check before 1.0](OWNER-CHECK-012.md).
 
 ## AI connections
 
