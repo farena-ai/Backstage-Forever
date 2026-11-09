@@ -1,6 +1,6 @@
 # Validation — November 9, 2026
 
-## 0.8 journey and Company backend checkpoints
+## 0.8 journey, Company and interface checkpoints
 
 The journey-core checkpoint passed **310/310 unit tests**, zero failures or skips, with an actual Windows 8.3 Store roundtrip. Strict optional-state migration, bounded plans/steps, immutable input actions, saved-game clock/source/build baselines, repeatables, unavailable history, future turn-ins, orphan assignment, durable first-proof retention and explicit import/reset replacement have fixture coverage. Membership checks reuse per-profile evidence and sorted IDs rather than copying histories into every step. Independent task review returned specification PASS and quality APPROVE with no findings.
 
@@ -8,7 +8,11 @@ The Company/IPC checkpoint passed **317/317 unit tests**, zero failures or skips
 
 Existing smoke and Quest Guide fixtures were adapted at their actual old captured-evidence injection points: the UI uses a test-owned main Store write for its dirty-draft scenario; Quest Guide advances its genuine synthetic GameSync export to retain stale-waypoint phase revalidation. No production bypass was added and original assertions remain. The redirected preview retains original artwork. The remaining six existing source Electron flows also passed after the public-save guard; together, all eight existing desktop flows passed at this backend checkpoint. Independent Company task review returned specification PASS and quality APPROVE with no findings.
 
-These are component checkpoints; later UI/native, packaged and publication evidence is recorded separately. All test profiles, folders, provider data and process runners are isolated/synthetic. No user game files, credentials, gameplay input, actual game launch, paid inference or installer execution occurred.
+The Company interface checkpoint passed **320/320 unit tests**, zero failures or skips, including seven renderer regressions using the actual Company helper and app callbacks. Real Electron Company flows passed normally and through a distinct genuine Windows 8.3 alias. Templates, private notes, saved-quest selection, newer observed proof, historical/orphan labels, explicit character switching, follow-off, dirty focus, retry, duplicate clicks, malicious IDs, no-profile first use, backups/import/reset and restart are covered. Compact 1000×700 primary/recommended actions, keyboard use, reduced motion and native dropdown contrast were checked; fictional Alliance/Horde/compact/empty/error images were inspected.
+
+Independent interface review found two defects before release: navigation could cancel an accepted queued edit, and same-ID saved updates could leave common header/theme details stale. Both were reproduced and fixed. Actual held renderer-queue checks now verify saved text across navigation, selection, cancelled import/reset and restart. Same-ID synthetic GameSync changes refresh identity/level/theme/source details while retaining a dirty field's selection; runtime-check timestamps alone remain quiet. Successful replacements and stale replies remain guarded. The focused re-review returned specification PASS and quality APPROVE with no remaining findings. Existing UI and autosave flows also passed after those fixes; no real player state was used.
+
+These are component checkpoints; later native, packaged and publication evidence is recorded separately. All test profiles, folders, provider data and process runners are isolated/synthetic. No user game files, credentials, gameplay input, actual game launch, paid inference or installer execution occurred.
 
 ## 0.4.0 verification scope
 
