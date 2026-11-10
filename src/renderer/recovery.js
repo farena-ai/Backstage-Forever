@@ -34,7 +34,7 @@ window.Recovery = (() => {
   }
   async function run(kind, value) {
     if (!active() || pending || (kind === "restore" && !preview)) return;
-    const token = ++generation, point = preview; pending = true; error = false;
+    const token = ++generation, point = preview; let committed = false; pending = true; error = false;
     if (!["restore", "preview"].includes(kind)) preview = null;
     message = kind === "restore" || kind === "clear" ? "Review the confirmation before continuing…" : "Checking local recovery…"; paint();
     try {
@@ -50,7 +50,7 @@ window.Recovery = (() => {
       else if (kind === "restore") {
         message = result ? "Journal restored. Game observation is disconnected; existing API keys are preserved." : "Restore cancelled. Your journal is unchanged.";
         if (result) {
-          preview = null; restoredRefreshPending = true; detailsUnavailable = Boolean(result.detailsUnavailable);
+          committed = true; preview = null; restoredRefreshPending = true; detailsUnavailable = Boolean(result.detailsUnavailable);
           try {
             const list = await host.api.recoveryList();
             if (!active() || token !== generation) return;
@@ -70,7 +70,7 @@ window.Recovery = (() => {
     } catch (e) {
       if (!active() || token !== generation) return;
       preview = null; loaded = true; error = true;
-      message = restoredRefreshPending ? restoredWarning() : /Recovery limit/.test(e.message) ? "Recovery limit reached. No journal content was trimmed. A point must fit within 64 MiB." : /Preview|changed/.test(e.message) ? "Your journal or recovery point changed. Refresh and preview it again." : "Recovery is unavailable. Your journal was not replaced. Check local storage and try again.";
+      message = committed || (kind === "list" && restoredRefreshPending) ? restoredWarning() : /Recovery limit/.test(e.message) ? "Recovery limit reached. No journal content was trimmed. A point must fit within 64 MiB." : /Preview|changed/.test(e.message) ? "Your journal or recovery point changed. Refresh and preview it again." : restoredRefreshPending ? "Recovery is unavailable. This action did not replace your journal. Use Refresh recovery history to retry the earlier journal display refresh." : "Recovery is unavailable. Your journal was not replaced. Check local storage and try again.";
     } finally { if (active() && token === generation) { pending = false; paint(); } }
   }
   function init(value) {

@@ -84,6 +84,22 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
         const data = JSON.parse(await fs.readFile(path.join(dir, "state.json"), "utf8")); assert.equal(data.profiles[0].notes, "ORIGINAL_PRIVATE_NOTES"); assert.deepEqual(data.memories, []);
         assert.equal(await fs.readFile(path.join(dir, "credentials.json"), "utf8"), credentials);
         await page.screenshot({ path: path.join(evidence, `recovery-postcommit-${failure}.png`), fullPage: true });
+        if (failure === "adventureBrief") {
+          const other = await page.locator("[data-recovery-select]").evaluate((select, id) => [...select.options].find(option => option.value !== id)?.value, selected.id);
+          assert.ok(other, "A different safety point must be available for the next attempt");
+          await page.locator("[data-recovery-select]").selectOption(other); await preview().click();
+          await page.waitForFunction(() => !document.querySelector("[data-recovery-restore]").disabled);
+          const pointFile = path.join(dir, "recovery", other + ".json"), pointBytes = await fs.readFile(pointFile), committedJournal = await fs.readFile(path.join(dir, "state.json"));
+          await fs.unlink(pointFile);
+          try {
+            await restore().click();
+            await page.getByText("Recovery is unavailable. This action did not replace your journal. Use Refresh recovery history to retry the earlier journal display refresh.", { exact: true }).waitFor();
+            assert.deepEqual(await fs.readFile(path.join(dir, "state.json")), committedJournal, "Failed new attempt must retain the earlier committed journal");
+            assert.equal(await app.evaluate(() => recoveryFixture.completed.restoreCheckpoint || 0), before + 1);
+            assert.equal(await restore().isDisabled(), true);
+            await page.screenshot({ path: path.join(evidence, "recovery-prior-commit-new-failure.png"), fullPage: true });
+          } finally { await fs.writeFile(pointFile, pointBytes); }
+        }
         await app.evaluate(() => recoveryFixture.failRead = null);
         await page.getByRole("button", { name: "Refresh recovery history", exact: true }).click();
         await page.getByText("Local recovery history is ready. Recent edits may be newer than the latest point.", { exact: true }).waitFor();

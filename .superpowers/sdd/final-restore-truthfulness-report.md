@@ -45,3 +45,30 @@ Reviewed the scoped source/test/help diff after GREEN. The commit boundary and d
 The focus runner executes the first four existing setup checks and the one new check, then exits; the full existing Recovery fixture now has **15 checks**, with three failure variants in the added check. The parent owns regeneration and execution of the full genuine 8.3 alias fixture, integrated full unit suite, independent delta review, rebuild and packaged-artifact addendum. No full unit suite, packaging, other feature GUI suite or old passing broad check was repeated here. The final synthetic post-commit cases verify disconnected status; the existing full-fixture real synthetic source-retirement case remains for the parent full run.
 
 Only isolated synthetic journals and fake native/provider/audio surfaces were used. No actual player/game files, gameplay, audio capture, account sign-in, paid request, installer, OS setting, scheduled watcher, push, PR, tag or release was performed. Version/public preview remains 0.12.3; **1.0 remains held for owner acceptance**. This report is scoped correction evidence, not a publication or real-player acceptance claim.
+
+
+## I1 operation-ownership follow-up after e202bde review
+
+The independent delta review correctly found that `restoredRefreshPending` still described the prior successful restore, yet the shared catch treated it as success evidence for a later operation. At `e202bde`, a first successful restore with unavailable details followed by a new preview and rejected second restore could therefore display the earlier success as the new attempt's outcome. The prior original-path GREEN results above remain valid for their tested paths; they did not cover this sequence. The parent separately reported the full `e202bde` suite passing 713/713, which likewise did not establish coverage of this missing sequence.
+
+The owning Recovery module now records `committed` within each individual `run` invocation. Only that operation's committed result, or a deliberate history-refresh action retrying a prior committed display, can use the restored warning. A failed new action gets its own failure outcome and an explicit reminder to retry the earlier display refresh. The retained details/retry state is preserved through new preview/restore failure and native cancellation; it is not cleared to conceal the bug. No app-host, backend, reference or other runtime module changed in this follow-up.
+
+### New RED/GREEN evidence
+
+```powershell
+node --test --test-name-pattern='prior restore' tests/recovery-renderer.test.cjs
+node --test tests/recovery-renderer.test.cjs
+node --test --test-concurrency=1 tests/recovery-renderer.test.cjs tests/renderer-updates.test.cjs tests/renderer-interaction.test.cjs tests/refresh-renderer.test.cjs
+node scripts/recovery-smoke.cjs --postcommit-only
+git diff --check
+```
+
+- New actual-module RED before the follow-up production change: **3 tests, 1 pass, 2 fail**, zero cancelled/skipped/todo. The second restore and second preview failure incorrectly showed the prior success; the native-cancel preservation case already passed. Log: `work/restore-truthfulness-ownership-red.log`.
+- Owning Recovery module GREEN: **8 tests, 8 pass, zero fail/cancelled/skipped/todo**. Log: `work/restore-truthfulness-ownership-green.log`.
+- Affected renderer GREEN: **71 tests, 71 pass, zero fail/cancelled/skipped/todo**, duration 575.0523 ms. Log: `work/restore-truthfulness-ownership-scoped.log`. This includes every earlier post-commit, obsolete-retry, paint, interaction and app-host assertion.
+- Actual synthetic Electron GREEN: **5 focused checks passed**, retaining all three original post-commit rejection variants and the held Enter identity/focus assertions. Log: `work/restore-truthfulness-ownership-electron-green.log`. Within the existing fifth check, the brief-failure variant now previews a *different* safety point after the first commit, temporarily removes that synthetic checkpoint, and attempts a second restore through the real main/preload/renderer boundary. Main rejects before replacement. The UI reports this action's failure; the earlier committed `state.json` remains byte-for-byte unchanged; committed replacement count stays one. Restoring only the fixture checkpoint bytes then refreshing resolves the retained earlier display retry without another replacement. Memory, credential, active-profile and disconnection assertions remain intact.
+- New screenshot: `work/recovery-ui/recovery-prior-commit-new-failure.png`, visually inspected. It shows the current-action failure, earlier display-refresh instruction and disabled Restore in the existing Recovery panel, with Support preserved.
+- Three new unit regressions were added, bringing this correction's total unit addition from eight to eleven. The full Recovery fixture count remains **15 checks**; focused count remains **5**, because the sequential Electron case extends the existing check.
+- `git diff --check` passed. No broad full-suite rerun, backend test rerun, package rebuild, watcher or release was performed in this follow-up. Parent owns the fresh independent delta review, final full suite, regenerated genuine-alias full fixture and rebuilt-artifact gate. All prior synthetic-only and 1.0-held limits still apply.
+
+Self-review: the per-operation flag is initialized false for every attempted action and is set only after that restore returns a committed result. Earlier display retry state is independent and survives the later failure/cancellation. Shared error handling no longer treats prior success as current success; fixed messages do not expose injected private error strings. Reviewed the complete four-file follow-up delta after GREEN.
