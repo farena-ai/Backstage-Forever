@@ -61,6 +61,7 @@ jobs:
       - run: npm run test:command-center
       - run: npm run test:knowledge
       - run: npm run test:insights
+      - run: npm run test:character-guidance
       - run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'

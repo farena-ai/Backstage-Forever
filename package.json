@@ -45,7 +45,8 @@
     "test:party": "node scripts/party-smoke.cjs",
     "check:forever-vendors": "node scripts/build-forever-vendors.cjs --check",
     "check:forever-insights": "node scripts/build-forever-insights.cjs --check",
-    "test:insights": "node scripts/insights-smoke.cjs"
+    "test:insights": "node scripts/insights-smoke.cjs",
+    "test:character-guidance": "node scripts/character-guidance-smoke.cjs"
   },
   "devDependencies": {
     "electron": "45.2.3",

@@ -89,5 +89,9 @@ contextBridge.exposeInMainWorld(
     copyDiagnostics: (...args) => invoke("copyDiagnostics", ...args),
     exportDiagnostics: (...args) => invoke("exportDiagnostics", ...args),
     openLink: (id) => invoke("openLink", id),
+    characterGuidance: (...args) => invoke("characterGuidance", ...args),
+    searchGuidanceTrainers: (...args) => invoke("searchGuidanceTrainers", ...args),
+    createCharacterChecklist: (...args) => invoke("createCharacterChecklist", ...args),
+    characterGuidancePrompt: (...args) => invoke("characterGuidancePrompt", ...args),
   }),
 );

@@ -34,7 +34,11 @@ function harness(overrides = {}) {
     '[data-command="check-updates"]': {},
   };
   const root = {
-    addEventListener: (name, fn) => (handlers[name] ??= []).push(fn),
+    addEventListener: (name, fn) => (handlers[name] ??= []).push(event => {
+      // Synthetic elements expose the ordinary DOM surface used by the loaded modules.
+      if (event.target && !event.target.hasAttribute) event.target.hasAttribute = () => false;
+      return fn(event);
+    }),
     querySelector: (selector) => select(selector)[0] || null,
     querySelectorAll: select,
   };
@@ -89,6 +93,10 @@ function harness(overrides = {}) {
   context.Preparation = context.window.Preparation;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/party.js"), "utf8"), context);
   context.Party = context.window.Party;
+  for (const [file, name] of [["support", "Support"], ["recovery", "Recovery"], ["character-guidance", "CharacterGuidance"]]) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${file}.js`), "utf8"), context);
+    context[name] = context.window[name];
+  }
   for (const name of ["voice", "memory"]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${name}.js`), "utf8"), context);
     context[name === "voice" ? "Voice" : "Memory"] = context.window[name === "voice" ? "Voice" : "Memory"];

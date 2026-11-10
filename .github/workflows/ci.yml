@@ -40,6 +40,7 @@ jobs:
       - run: npm run test:command-center
       - run: npm run test:knowledge
       - run: npm run test:insights
+      - run: npm run test:character-guidance
       - run: npm run dist
       - run: npm run test:packaged
       - uses: actions/upload-artifact@v4

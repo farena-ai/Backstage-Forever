@@ -52,7 +52,7 @@ function fullHistories() {
 }
 function importHandler({ store, file, filesystem = fs }) {
   let handler;
-  const calls = { confirm: 0, disconnect: 0 };
+  const calls = { confirm: 0, disconnect: 0, guidanceInvalidations: 0 };
   const source = fs.readFileSync(
     path.join(__dirname, "../src/main.cjs"),
     "utf8",
@@ -74,6 +74,7 @@ function importHandler({ store, file, filesystem = fs }) {
       subscriptionEpoch: 0,
       resetting: false,
       recovery: { clear() {} }, diagnostics: { clear() {} }, latestObservationRoot: null,
+      characterGuidance: { clear() { calls.guidanceInvalidations++; } },
       companionContext: new (require("../src/core/companion-context.cjs").CompanionContext)(() => store.state),
       gameActionEpoch: 0,
       latestObservation: null,
@@ -125,6 +126,7 @@ test("the actual native-dialog import handler accepts the same larger valid back
   assert.deepEqual(store.state, state);
   assert.equal(calls.confirm, 1);
   assert.equal(calls.disconnect, 1);
+  assert.equal(calls.guidanceInvalidations, 1);
 });
 test("the native import budget refuses an oversized file before reading or confirming", async () => {
   let read = false;
@@ -150,4 +152,5 @@ test("the native import budget refuses an oversized file before reading or confi
   assert.equal(read, false);
   assert.equal(calls.confirm, 0);
   assert.equal(calls.disconnect, 0);
+  assert.equal(calls.guidanceInvalidations, 0);
 });

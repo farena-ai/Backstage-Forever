@@ -41,7 +41,8 @@ test("real persisted-disconnect sharing failure aborts the main replacement tran
   f.store.saveState({ ...defaultState(), onboarded: true }); const point = f.store.recovery.create(f.store.state, "manual"); f.store.saveState({ ...f.store.state, followGameCharacter: false });
   const connection = path.join(f.dir, "game-connection.private.json"); fs.writeFileSync(connection, '{"root":"SYNTHETIC_SOURCE"}'); fs.writeFileSync(path.join(f.dir, "credentials.json"), "KEY_SENTINEL");
   const before = fs.readFileSync(f.store.file), source = fs.readFileSync(path.join(__dirname, "../src/main.cjs"), "utf8");
-  const scope = { store: f.store, game, subscriptionEpoch: 0, gameActionEpoch: 0, resetting: false, latestObservation: null, latestObservationRoot: null, recovery: { clear() {} }, diagnostics: { clear() {} }, companionContext: f.context, catalogs: { clear() {} }, knowledge: { setContext() {} } };
+  let guidanceInvalidations = 0;
+  const scope = { store: f.store, game, subscriptionEpoch: 0, gameActionEpoch: 0, resetting: false, latestObservation: null, latestObservationRoot: null, recovery: { clear() {} }, diagnostics: { clear() {} }, characterGuidance: { clear() { guidanceInvalidations++; } }, companionContext: f.context, catalogs: { clear() {} }, knowledge: { setContext() {} } };
   vm.runInNewContext(source.slice(source.indexOf("  async function replaceJournal("), source.indexOf("  recovery = registerRecoveryHandlers")) + "globalThis.replace = replaceJournal;", scope);
   const script = '$a=[System.IO.File]::Open($env:BF_LOCK_CONNECTION,[System.IO.FileMode]::Open,[System.IO.FileAccess]::Read,[System.IO.FileShare]::Read); [Console]::WriteLine("LOCKED"); [Console]::ReadLine() | Out-Null; $a.Dispose()';
   const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, env: { ...process.env, BF_LOCK_CONNECTION: connection } });
@@ -54,6 +55,7 @@ test("real persisted-disconnect sharing failure aborts the main replacement tran
     await assert.rejects(() => scope.reset(), /Recovery/); assert.deepEqual(fs.readFileSync(f.store.file), before); assert.equal(fs.existsSync(connection), true);
   } finally { child.stdin.end("release\n"); await new Promise(resolve => child.once("exit", resolve)); }
   await scope.replace(() => f.store.restoreCheckpoint(point.id, point.sha256)); assert.equal(fs.existsSync(connection), false);
+  assert.equal(guidanceInvalidations, 3, "Confirmed replacement/reset attempts invalidate guidance, including failed disconnects");
   let reconnected = 0; const reconnect = GameSync.prototype._connect; GameSync.prototype._connect = async () => { reconnected++; };
   try { const restarted = new GameSync({ dataDir: f.dir, addonDir: path.join(__dirname, "../addon/BackstageForever"), runtime: { probe: async () => ({ state: "not-running" }) } }); await restarted.ready; restarted.close(); assert.equal(reconnected, 0); } finally { GameSync.prototype._connect = reconnect; }
 });

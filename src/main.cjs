@@ -32,6 +32,7 @@ const { buildBrief } = require("./core/adventure.cjs");
 const { KnowledgeService } = require("./core/knowledge-cache.cjs");
 const { registerKnowledgeHandlers } = require("./core/knowledge-ipc.cjs");
 const { loadBundledInsights } = require("./core/insights-data.cjs");
+const { registerCharacterGuidanceHandlers } = require("./core/character-guidance-ipc.cjs");
 const { registerDirectorHandlers } = require("./core/director-ipc.cjs");
 const { registerPreparationHandlers } = require("./core/preparation-ipc.cjs");
 const { registerPartyHandlers } = require("./core/party-ipc.cjs");
@@ -61,6 +62,7 @@ let win,
   voice,
   diagnostics,
   recovery,
+  characterGuidance,
   quitApproved = false,
   quitPending = false,
   subscriptionEpoch = 0,
@@ -69,6 +71,7 @@ let latestObservation = null;
 let latestObservationRoot = null;
 let gameActionEpoch = 0;
 const links = {
+  "forever-class-overview": "https://news.blizzard.com/en-us/article/24304075/create-the-hero-you-want-to-be-in-world-of-warcraft-forever",
   releases: "https://github.com/farena-ai/Backstage-Forever/releases",
   ollama: "https://ollama.com/",
   "ollama-cloud": "https://ollama.com/settings/keys",
@@ -152,7 +155,7 @@ app.whenReady().then(async () => {
       dataDir: app.getPath("userData"),
       inputAllowed: () => !!win && !win.isDestroyed() && win.isVisible() && win.isFocused() && !win.webContents.isDestroyed() && win.webContents.getURL() === trusted,
     });
-    store.onStateChange = () => companionContext.sync();
+    store.onStateChange = () => { companionContext.sync(); characterGuidance?.sync(); };
     chatgpt = new ChatGPTAuth(app.getPath("userData"), safeStorage, {
       openExternal: (url) => shell.openExternal(url),
     });
@@ -169,7 +172,7 @@ app.whenReady().then(async () => {
     knowledge = new KnowledgeService({ dataDir: app.getPath("userData") });
     game = new GameSync({
       dataDir: app.getPath("userData"),
-      onRootChange: () => companionContext.invalidate("source-root"),
+      onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
         : path.join(__dirname, "..", "addon", "BackstageForever"),
@@ -278,6 +281,7 @@ app.whenReady().then(async () => {
   });
   async function replaceJournal(operation, reason = "restore") {
     subscriptionEpoch++;
+    characterGuidance?.clear();
     recovery?.clear(); diagnostics.clear(); companionContext.invalidate(reason);
     catalogs.clear(); gameActionEpoch++; knowledge.setContext({}, false);
     resetting = true;
@@ -316,6 +320,7 @@ app.whenReady().then(async () => {
     getWindow: () => win,
   });
   const insights = loadBundledInsights();
+  characterGuidance = registerCharacterGuidanceHandlers({ handle, getState: () => store.state, saveState: next => store.saveState(next), getInsights: () => insights });
   registerKnowledgeHandlers({
     handle,
     knowledge,
@@ -700,6 +705,7 @@ app.whenReady().then(async () => {
     if (result.response !== 1) return null;
     resetting = true;
     recovery.clear();
+    characterGuidance.clear();
     diagnostics.clear();
     companionContext.invalidate("reset");
     subscriptionEpoch++;
