@@ -481,6 +481,8 @@ function onboarding() {
 }
 function render() {
   syncCompanion();
+  Support.sync();
+  if (Support.deferRender(render)) return;
   if (Voice.deferRender(render) || Memory.deferRender(render)) return;
   if (QuestGuide.deferRender(render) || Company.deferRender(render) || Director.deferRender(render) || Preparation.deferRender(render) || Party.deferRender(render)) return;
   const focusedOption = document.activeElement?.dataset.planOption;
@@ -793,6 +795,7 @@ function guide() {
     <section class="panel"><div class="eyebrow">04 · Connect on your terms</div><h3>A live Compass. A saved desktop.</h3><p>The native Compass runs inside WoW with this app closed. No routine reload is needed for native Compass quest, level or zone changes. The desktop reads disk saves after logout, game exit or a voluntary UI reload; Refresh saved snapshot only rereads existing files. It never asks the game to save.</p><p>Play each character with the addon enabled, then log out to bring it here. Manual character selection pauses saved-game follow; restore it in Game Connection. If the folder is unavailable, choose it again. Repair companion addon and connection checks help with setup; your journals remain local.</p><button data-nav="game">Review Game Connection →</button></section>
     <section class="panel"><div class="eyebrow">05 · Optional AI, voice & memory</div><h3>Review first. Send deliberately.</h3><p>Choose your own provider and model in Connections. Local Ollama can work offline with a running local model; cloud providers use your own access. Subscription and API billing are separate. No automatic paid fallback.</p><p>Only Send question submits your prompt. Explain my plan and supply-plan actions open editable drafts. Use my active character defaults on with a persistent opt-out; review the public context preview. Automatic context excludes private notes, goals, journeys and other characters. Anything you put in the question itself will be sent.</p><p>Ordinary chat is session-only. Review and save an exchange to keep per-character local memory; saved text is readable local data. Sharing saved memory is separate and off by default for each question: explicitly select exchanges and review that question’s memory preview. Earlier chat is otherwise excluded; past answers remain unverified.</p><p>Optional Windows dictation starts only while you hold its control. It creates editable text, never sends it; the app creates no audio files. Reading an answer is optional and has its own Stop. Stop response cancels supported local request work and preserves the conversation; it cannot undo remote processing or charges. Use Edit question to recover a stopped or failed question.</p><div class="actions"><button data-nav="assistant">Ask in AI Companion →</button><button data-nav="connections">Configure AI access →</button></div></section>
     <section class="panel"><div class="eyebrow">06 · Protect your journal</div><h3>Private backups, deliberate replacement.</h3><p>Export backup saves readable profiles, private notes, goals, saved observations, Company journeys and provider preferences. It excludes credentials and saved conversation memory. Game-folder connections, app-update settings and desktop planner, preparation and role display preferences have separate lifetimes; this is not a complete device backup.</p><p>Import validates before confirmation, then replaces profiles, notes, goals, plans and preferences, clears saved conversation memory, and disconnects game observation until you reconnect. Existing API keys are preserved. Invalid imports preserve the journal. Keep private backups private; use a reviewed portable party-plan file for sharing a checklist.</p><div class="actions"><button data-command="export">Export backup</button><button data-command="import">Import backup</button></div><details><summary>Recover a connection or update</summary><p>For AI failures, check the model, provider access and quota in Connections; for Ollama, check the local service and downloaded model. For missing saved characters, use Game Connection. For a stalled app update, use Retry update or Open Releases in Updates. Older installed updaters may need the latest installer once; Windows publisher signing remains pending.</p><p>If the journal cannot open at startup, its files are preserved. Use the startup dialog’s Open data folder action, preserve that folder, and follow the README’s startup recovery instructions before making changes.</p></details><details><summary>Remove local data knowingly</summary><p>Uninstalling preserves app data. Delete all local data clears profiles, plans, memory, preferences, keys and app-owned subscription credentials after confirmation. It does not erase exported backups, global Claude credentials or provider-held data. Remove backups and revoke exposed keys separately.</p></details><button class="danger" data-command="reset">Delete all local data</button></section>
+    ${Support.markup()}
   </div><p class="corner-note">Backstage Forever v${esc(version)} · Backstage Coding · Designed by Frank Arena.<br>World of Warcraft is a trademark of Blizzard Entertainment. This independent project is not endorsed by Blizzard.</p>`;
 }
 
@@ -893,6 +896,7 @@ function syncCompanion() {
   retireCompanion(Boolean(previous) || companionView() === "ai");
   if (previous) messages = [];
 }
+Support.init({ api, root, esc, active: () => Boolean(state?.onboarded) && !setupOpen && page === "guide" });
 Voice.init({api, root, esc, render,
   active: () => Boolean(state?.onboarded) && !setupOpen && ["assistant", "adventure"].includes(page),
   profileId: () => state?.activeProfileId,
@@ -1061,6 +1065,7 @@ root.addEventListener("click", (event) => {
     return;
   }
   if (button.hasAttribute("data-company-share")) { if(page==="company")Party.shareJourney(button.dataset.companyShare); return; }
+  if (button.closest("[data-support]")) return;
   if (button.closest("[data-party]") && !button.dataset.nav) return;
   if (button.hasAttribute("data-director-start") || button.hasAttribute("data-preparation-add") || button.hasAttribute("data-preparation-retry") || button.hasAttribute("data-preparation-ask")) return;
   if (button.hasAttribute("data-company-command") || button.hasAttribute("data-company-open") || button.closest("[data-company-form]")) return;

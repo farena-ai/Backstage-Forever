@@ -41,6 +41,8 @@ const { registerMemoryHandlers } = require("./core/memory-ipc.cjs");
 const { preserveMemories } = require("./core/memory-data.cjs");
 const { VoiceService } = require("./core/voice.cjs");
 const { registerVoiceHandlers } = require("./core/voice-ipc.cjs");
+const { registerDiagnosticsHandlers } = require("./core/diagnostics-ipc.cjs");
+const { releaseChannel } = require("../package.json");
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
@@ -55,6 +57,7 @@ let win,
   companionRequest,
   memory,
   voice,
+  diagnostics,
   quitApproved = false,
   quitPending = false,
   subscriptionEpoch = 0,
@@ -89,6 +92,13 @@ function handle(name, fn) {
         );
       return await fn(...args);
     } catch (e) {
+      if (["diagnosticsPreview", "copyDiagnostics", "exportDiagnostics"].includes(name) && [
+        "Report request is invalid.",
+        "Prepare a new report and review it before copying or saving.",
+        "The report could not be prepared. Try again.",
+        "The report could not be copied. Try again.",
+        "The report could not be saved. Choose a text file outside the app data folder.",
+      ].includes(e?.message)) throw e;
       if (e?.message === "Secure credential storage is unavailable.") throw e;
       if (["partyBrief", "partyPreview", "createPartyJourney", "commitPartyPlan", "exportPartyPlan", "importPartyPlan"].includes(name) && /^Party plan/.test(e?.message)) throw e;
       if (["ask", "memoryPreview", "saveMemory", "deleteMemory", "clearMemory"].includes(name) && /^(Memory |Provider response is no longer current|Choose the current character)/.test(e?.message)) throw e;
@@ -243,6 +253,25 @@ app.whenReady().then(async () => {
   handle("subscriptionStatus", subscriptionStatus);
   registerMemoryHandlers({ handle, getState: () => store.state, memory, context: companionContext });
   registerVoiceHandlers({ handle, voice });
+  diagnostics = registerDiagnosticsHandlers({
+    handle, dialog, clipboard, getWindow: () => win, dataDir: app.getPath("userData"),
+    collect: () => {
+      // Read already-held local facts only. No auth worker, model catalog, disk scan or refresh.
+      const selected = store.state.provider, gameFacts = game.status();
+      const index = knowledge.packs.get(knowledge.build), pack = (index || knowledge.bundled).pack;
+      const update = updater.status();
+      return {
+        version: app.getVersion(), channel: releaseChannel,
+        platform: process.platform, arch: process.arch,
+        secureStorage: safeStorage.isEncryptionAvailable(), profileCount: store.state.profiles.length,
+        provider: { id: selected.id, authMode: selected.authMode ?? "api", keyPresent: store.secretStatus()[selected.id] },
+        game: { phase: gameFacts.phase, companionState: gameFacts.companionState, coverage: { partial: gameFacts.coverage?.partial, unreadableAccountCount: gameFacts.coverage?.unreadableAccountCount, omittedCharacterCount: gameFacts.coverage?.omittedCharacterCount, omittedProfileCount: gameFacts.coverage?.omittedProfileCount } },
+        reference: { phase: knowledge.pending ? "refreshing" : knowledge.build && !index ? "mismatch" : knowledge.phase || (knowledge.build && knowledge.captureObserved ? "ready" : "reference"), packBuild: pack.build, counts: { quests: pack.counts.quests, items: pack.counts.itemNames, npcs: pack.counts.npcs } },
+        updater: { phase: update.phase, currentVersion: update.currentVersion, availableVersion: update.availableVersion, readyVersion: update.readyVersion, diagnostic: { code: update.diagnostic?.code } },
+        recovery: typeof store.recoveryStatus === "function" ? store.recoveryStatus() : undefined,
+      };
+    },
+  });
   registerCompanyHandlers({
     handle,
     getState: () => store.state,
@@ -663,6 +692,7 @@ app.whenReady().then(async () => {
     });
     if (result.response !== 1) return null;
     resetting = true;
+    diagnostics.clear();
     companionContext.invalidate("reset");
     subscriptionEpoch++;
     gameActionEpoch++;

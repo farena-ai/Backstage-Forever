@@ -39,6 +39,7 @@
     "test:voice-memory": "node scripts/voice-memory-smoke.cjs",
     "test:companion-recovery": "node scripts/companion-recovery-smoke.cjs",
     "test:product-polish": "node scripts/product-polish-smoke.cjs",
+    "test:support": "node scripts/support-smoke.cjs",
     "test:party-backend": "node scripts/party-backend-smoke.cjs",
     "test:party": "node scripts/party-smoke.cjs",
     "check:forever-vendors": "node scripts/build-forever-vendors.cjs --check"

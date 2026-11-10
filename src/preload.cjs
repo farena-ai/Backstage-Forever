@@ -79,6 +79,9 @@ contextBridge.exposeInMainWorld(
     exportData: () => invoke("exportData"),
     importData: () => invoke("importData"),
     resetData: () => invoke("resetData"),
+    diagnosticsPreview: (...args) => invoke("diagnosticsPreview", ...args),
+    copyDiagnostics: (...args) => invoke("copyDiagnostics", ...args),
+    exportDiagnostics: (...args) => invoke("exportDiagnostics", ...args),
     openLink: (id) => invoke("openLink", id),
   }),
 );

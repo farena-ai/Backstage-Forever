@@ -1,5 +1,11 @@
 # Privacy and local data
 
+## Optional local support report
+
+Field Guide → Support & Recovery lets you prepare and review a small fixed-schema status report, then deliberately copy or save exactly that snapshot. Nothing is uploaded. It includes bounded app/platform/version facts, secure-storage availability, profile count, selected provider/access mode/key-present flag, connection/setup coverage states, public reference status/counts and known updater codes. Access mode is configuration, not verified sign-in or entitlement. Preparation reads already-held local status; it does not contact providers, spawn an authentication CLI, refresh references or inspect audio.
+
+Reports exclude character identities, private journal content, conversations, prompts, saved memory, model names, local paths, URLs, credentials, account/machine identity, authentication metadata, logs and free-form errors. A report expires after five minutes, regeneration replaces it, and reset invalidates it, including pending saves. No report history is retained. Deliberately exported files and copied clipboard text remain under your control outside the app; reset does not erase them. See [Support and recovery](SUPPORT-AND-RECOVERY.md).
+
 Backstage Forever has no project-operated backend, telemetry or autonomous paid background inference. Profiles and provider preferences live in Electron's per-user `userData` directory on this Windows account (normally under `%APPDATA%` using the packaged app name). Profiles include character details, notes and goals and are readable local JSON. They are not encrypted notebooks. Protect the Windows account and any backups.
 
 API keys are handled in the main process only and encrypted with Electron safeStorage in a separate local credentials file. They are not returned to the renderer, written into profile state, or included in app exports. Secure storage is required; there is no plaintext fallback. OS-backed storage does not protect an unlocked account from every malicious program.
