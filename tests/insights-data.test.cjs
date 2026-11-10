@@ -91,6 +91,28 @@ test("malformed optional facts are omitted with explicit counters", () => {
   assert.equal(p.dropped.positions, 1);
   assert.equal(p.dropped.services, 1);
 });
+for (const field of ["true", "false"]) {
+  test(`present null sharing ${field} is omitted and counted rather than converted to zero`, () => {
+    const raw = fixture();
+    raw["quest_scan.json"].pushable[10][field] = null;
+    const pack = normalize(raw);
+    assert.equal(pack.quests[0].sharing, undefined);
+    assert.equal(pack.dropped.sharingRows, 1);
+  });
+}
+test("only missing sharing properties default to zero, and an explicit zero stays a valid count", () => {
+  for (const sharing of [{ false: 1 }, { true: 0, false: 1 }]) {
+    const raw = fixture();
+    raw["quest_scan.json"].pushable[10] = sharing;
+    const pack = normalize(raw);
+    assert.deepEqual(pack.quests[0].sharing, {
+      supportedCount: 0,
+      unsupportedCount: 1,
+      scanSources: 3,
+    });
+    assert.equal(pack.dropped.sharingRows, 0);
+  }
+});
 test("source identities, metadata and bounded input shapes reject wholesale", () => {
   api();
   for (const mutate of [

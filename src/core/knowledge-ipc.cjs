@@ -79,14 +79,29 @@ function registerKnowledgeHandlers({
         result.provenance?.sourceCommit !== insights.sourceCommit
           ? {
               status: "unavailable",
-              reason: "The selected quest reference source differs from the bundled supplementary reference.",
+              reason:
+                "The selected quest reference source differs from the bundled supplementary reference.",
             }
-          : questInsights(insights, {
-              id: questId,
-              title: active?.title || result.record?.title,
-              build: p.clientBuild,
-              locale: p.locale,
-            });
+          : result.status === "conflict" ||
+            (active && result.record && active.title !== result.record.title)
+            ? {
+                status: "unavailable",
+                reason:
+                  "Quest title differs from the selected primary reference; supplementary facts are unavailable.",
+              }
+            : !["match", "reference"].includes(result.status) ||
+                result.record?.id !== questId
+              ? {
+                  status: "unavailable",
+                  reason:
+                    "The selected primary quest reference is missing or incompatible; supplementary facts are unavailable.",
+                }
+              : questInsights(insights, {
+                  id: questId,
+                  title: result.record.title,
+                  build: p.clientBuild,
+                  locale: p.locale,
+                });
     }
     return result;
   });

@@ -23,6 +23,11 @@ const repo = path.resolve(__dirname, ".."),
     page,
     checks = 0;
   const check = async (name, fn) => {
+    if (
+      process.argv.includes("--primary-reference-gate") &&
+      !name.startsWith("primary reference")
+    )
+      return;
     await fn();
     checks++;
     console.log("PASS " + name);
@@ -198,6 +203,61 @@ const repo = path.resolve(__dirname, ".."),
         exact: true,
       });
     await check(
+      "primary reference conflicts or missing rows suppress supplementary facts while preserving saved game waypoints",
+      async () => {
+        await page.evaluate(() => window.backstage.knowledgeStatus());
+        await app.evaluate(() => {
+          insightsFixture.originalQuest = structuredClone(
+            insightsFixture.knowledge.bundled.pack.quests[138],
+          );
+        });
+        try {
+          for (const scenario of ["conflict", "missing"]) {
+            await app.evaluate((_, scenario) => {
+              const quests = insightsFixture.knowledge.bundled.pack.quests;
+              quests[138] = structuredClone(insightsFixture.originalQuest);
+              if (scenario === "conflict")
+                quests[138].title = "Conflicting primary reference title";
+              else delete quests[138];
+            }, scenario);
+            await open(138);
+            await facts().waitFor();
+            const detail = await page.evaluate(() =>
+              window.backstage.questDetails("p", 138),
+            );
+            assert.equal(detail.status, scenario);
+            assert.equal(detail.insights.status, "unavailable");
+            assert.doesNotMatch(
+              await facts().innerText(),
+              /Synthetic Starter|Sharing was reported mixed/,
+            );
+            assert.match(
+              await facts().innerText(),
+              /primary.*reference|selected.*reference/i,
+            );
+            assert.equal(detail.waypoint.source, "game");
+            assert.equal(detail.waypoint.canCopy, true);
+            await page
+              .getByRole("button", { name: "Copy game waypoint", exact: true })
+              .waitFor();
+          if(process.argv.includes("--primary-reference-gate")) {
+            await facts().scrollIntoViewIfNeeded();
+            await page.screenshot({path:path.join(evidence,`primary-${scenario}.png`)});
+          }
+          }
+        } finally {
+          await app.evaluate(() => {
+            insightsFixture.knowledge.bundled.pack.quests[138] =
+              insightsFixture.originalQuest;
+          });
+        }
+        await open(138);
+        await facts()
+          .getByText(/Synthetic Starter/)
+          .waitFor();
+      },
+    );
+    await check(
       "compatible selected quest shows qualified secondary facts after its primary action",
       async () => {
         await open(138);
@@ -336,7 +396,7 @@ const repo = path.resolve(__dirname, ".."),
           await page.locator("#active-character").selectOption(id);
           await open(138);
           await facts()
-            .getByText(/differs/)
+            .getByText(/differs|missing|incompatible/)
             .waitFor();
           assert.doesNotMatch(await facts().innerText(), /Synthetic Starter/);
         }

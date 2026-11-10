@@ -4,8 +4,87 @@ const test = require("node:test"),
 const { registerKnowledgeHandlers } = require("../src/core/knowledge-ipc.cjs"),
   { KnowledgeIndex } = require("../src/core/knowledge.cjs"),
   { fixture, commit, build } = require("./fixtures/insights.cjs");
+for (const scenario of [
+  "conflicting-primary-title",
+  "missing-primary-row",
+  "manual-reference-title-conflict",
+  "matching-manual-reference",
+]) {
+  test(`supplementary gate respects the actual KnowledgeIndex ${scenario}`, () => {
+    const index = new KnowledgeIndex(
+      structuredClone(require("../data/forever/pack.json")),
+    );
+    const title = index.pack.quests[138].title;
+    const pack = require("../src/core/insights-data.cjs").normalizeInsights(
+      fixture(),
+      { commit, build },
+    );
+    pack.quests[0].id = 138;
+    pack.quests[0].title = title;
+    const manual =
+      scenario.startsWith("manual") || scenario === "matching-manual-reference";
+    const p = {
+      id: "p",
+      ...(manual
+        ? {}
+        : {
+            clientBuild: build,
+            locale: "enUS",
+            source: {
+              kind: "wow-addon",
+              updatedAt: "2026-11-09T12:00:00.000Z",
+            },
+            quests: [{ id: 138, title, complete: false, objectives: [] }],
+          }),
+    };
+    if (scenario.includes("title"))
+      index.pack.quests[138].title = "Conflicting primary reference title";
+    if (scenario === "missing-primary-row") delete index.pack.quests[138];
+    const handlers = {},
+      register = (getInsights) =>
+        registerKnowledgeHandlers({
+          handle: (name, fn) => (handlers[name] = fn),
+          knowledge: { setContext() {}, index: () => index },
+          getState: () => ({ profiles: [p], activeProfileId: "p" }),
+          connected: () => false,
+          clipboard: { writeText() {} },
+          getInsights,
+        });
+    register();
+    const legacy = handlers.questDetails("p", 138);
+    assert.equal(
+      legacy.status,
+      scenario === "conflicting-primary-title"
+        ? "conflict"
+        : scenario === "missing-primary-row"
+          ? "missing"
+          : "reference",
+    );
+    register(() => pack);
+    const enriched = handlers.questDetails("p", 138);
+    assert.equal(
+      enriched.insights.status,
+      scenario === "matching-manual-reference" ? "available" : "unavailable",
+    );
+      if (scenario === "missing-primary-row") assert.match(enriched.insights.reason, /missing/);
+    delete enriched.insights;
+    assert.deepEqual(
+      enriched,
+      legacy,
+      "Enrichment never alters the primary record or waypoint",
+    );
+    register(() => null);
+    assert.deepEqual(
+      handlers.questDetails("p", 138),
+      legacy,
+      "Null optional pack retains the exact legacy object",
+    );
+  });
+}
 test("optional insights leave legacy detail byte shape and automatic context unchanged; additions require exact reference source", () => {
-  const index = new KnowledgeIndex(require("../data/forever/pack.json")),
+  const index = new KnowledgeIndex(
+      structuredClone(require("../data/forever/pack.json")),
+    ),
     p = {
       id: "p",
       clientBuild: build,

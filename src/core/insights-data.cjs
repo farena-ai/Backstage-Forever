@@ -351,7 +351,9 @@ function normalizeInsights(inputs, options = {}) {
         row.itemDrops = drops.sort((a, b) => a.itemId - b.itemId);
     }
     const d = scan.described[key],
-      s = scan.pushable[key];
+      s = scan.pushable[key],
+      supportedCount = plain(s) && Object.hasOwn(s, "true") ? s.true : 0,
+      unsupportedCount = plain(s) && Object.hasOwn(s, "false") ? s.false : 0;
     if (s !== undefined) {
       if (
         plain(d) &&
@@ -359,12 +361,12 @@ function normalizeInsights(inputs, options = {}) {
         integer(d.sources, 3) &&
         plain(s) &&
         Object.keys(s).every((k) => ["true", "false"].includes(k)) &&
-        [s.true ?? 0, s.false ?? 0].every((n) => integer(n, 3, 0)) &&
-        (s.true ?? 0) + (s.false ?? 0) <= d.sources
+        [supportedCount, unsupportedCount].every((n) => integer(n, 3, 0)) &&
+        supportedCount + unsupportedCount <= d.sources
       )
         row.sharing = {
-          supportedCount: s.true ?? 0,
-          unsupportedCount: s.false ?? 0,
+          supportedCount,
+          unsupportedCount,
           scanSources: d.sources,
         };
       else dropped.sharingRows++;
