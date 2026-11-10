@@ -2,6 +2,7 @@
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
 const { testWindow } = require("./test-window.cjs");
+const {currentControlState}=require("./selection-fixture.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
 function shortPath(target) {
@@ -69,16 +70,16 @@ function shortPath(target) {
     assert.equal(await evidenceSummary.evaluate(node=>node===window.summaryActivation.original),true,"Held Director Summary Space must retain the actual native target through scheduled root render");
     await page.keyboard.up("Space");
     await page.waitForFunction(()=>window.summaryActivation.toggles===1);
-    assert.equal(await page.locator("[data-director-primary] details").evaluate(node=>node.open),true,"The actual disclosure opens once and remains open after deferred paint");
-    assert.equal(await evidenceSummary.evaluate(node=>node===document.activeElement),true,"Native disclosure focus must remain on the corresponding summary");
+    assert.equal((await currentControlState(page,"[data-director-primary] summary",{disclosure:true})).open,true,"The actual disclosure opens once and remains open after deferred paint");
+    assert.equal((await currentControlState(page,"[data-director-primary] summary")).focused,true,"Native disclosure focus must remain on the corresponding summary");
     // A settled activation must survive the next ordinary regional and root paints too.
     await page.evaluate(()=>new Promise(r=>setTimeout(r,30)));
     await page.evaluate(()=>{guidance={...guidance,director:{...guidance.director,freshness:{message:"Newer ordinary guidance"}}};Director.paint();});
-    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open&&n===document.activeElement),true,"Settled evidence stays open and focused across ordinary guidance paint");
+    assert.equal(await currentControlState(page,"[data-director-primary] summary",{disclosure:true}).then(({open,focused})=>open&&focused),true,"Settled evidence stays open and focused across ordinary guidance paint");
     await page.evaluate(()=>render());
-    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open&&n===document.activeElement),true,"Settled evidence stays open and focused across root refresh");
+    assert.equal(await currentControlState(page,"[data-director-primary] summary",{disclosure:true}).then(({open,focused})=>open&&focused),true,"Settled evidence stays open and focused across root refresh");
     await page.keyboard.press("Tab");
-    assert.equal(await page.getByLabel("Session length",{exact:true}).evaluate(n=>n===document.activeElement),true,"Tab continues naturally after settled restoration");
+    assert.equal((await currentControlState(page,"[data-plan-option=\"minutes\"][aria-label=\"Session length\"]")).focused,true,"Tab continues naturally after settled restoration");
     await evidenceSummary.focus();
     assert.match(await page.locator("[data-director-primary]").innerText(),/Saved game destination.*Game-provided marker/s);
     assert.doesNotMatch(await page.locator("[data-director-primary]").innerText(),/yards|minutes away/);
@@ -88,21 +89,21 @@ function shortPath(target) {
     await page.evaluate(()=>new Promise(resolve=>setTimeout(()=>{render();resolve();},0)));
     assert.equal(await evidenceSummary.evaluate(node=>node===window.pointerSummary.original),true);
     await page.mouse.up();await page.waitForFunction(()=>window.pointerSummary.toggles===1);
-    assert.equal(await page.locator("[data-director-primary] details").evaluate(node=>node.open),false);
-    assert.equal(await evidenceSummary.evaluate(node=>node===document.activeElement),true);
+    assert.equal((await currentControlState(page,"[data-director-primary] summary",{disclosure:true})).open,false);
+    assert.equal((await currentControlState(page,"[data-director-primary] summary")).focused,true);
     await page.keyboard.press("Enter");await page.evaluate(()=>new Promise(r=>setTimeout(r,30)));
     await page.evaluate(async()=>{guidance=await api.guidancePlan(state.activeProfileId,CommandCenter.options(state.activeProfileId));Director.paint();});
-    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open&&n===document.activeElement),true,"Settled Enter disclosure survives an actual ordinary guidance response");
-    await page.evaluate(()=>render());assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open&&n===document.activeElement),true);
+    assert.equal(await currentControlState(page,"[data-director-primary] summary",{disclosure:true}).then(({open,focused})=>open&&focused),true,"Settled Enter disclosure survives an actual ordinary guidance response");
+    await page.evaluate(()=>render());assert.equal(await currentControlState(page,"[data-director-primary] summary",{disclosure:true}).then(({open,focused})=>open&&focused),true);
     await evidenceSummary.click();await evidenceSummary.click();await page.evaluate(()=>new Promise(r=>setTimeout(r,30)));
     await page.evaluate(()=>Director.paint());await page.evaluate(()=>render());
-    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open&&n===document.activeElement),true,"Settled physical click disclosure survives region and root paints");
+    assert.equal(await currentControlState(page,"[data-director-primary] summary",{disclosure:true}).then(({open,focused})=>open&&focused),true,"Settled physical click disclosure survives region and root paints");
     await page.getByLabel("New goal",{exact:true}).focus();await page.evaluate(()=>{Director.paint();render();});
-    assert.equal(await evidenceSummary.evaluate(n=>n===document.activeElement),false,"An ordinary paint never restores older evidence focus over a newer control");
+    assert.equal((await currentControlState(page,"[data-director-primary] summary")).focused,false,"An ordinary paint never restores older evidence focus over a newer control");
     await page.evaluate(()=>{window.retainedDirectorGuidance=guidance;guidance={...guidance,director:{...guidance.director,primary:{...guidance.director.primary,questId:909090}}};Director.paint();});
-    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open),false,"A replacement quest receives no obsolete disclosure state");
+    assert.equal((await currentControlState(page,"[data-director-primary] summary",{disclosure:true})).open,false,"A replacement quest receives no obsolete disclosure state");
     await page.evaluate(()=>{guidance=window.retainedDirectorGuidance;Director.paint();});
-    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open),false,"A removed quest cannot resurrect an older disclosure when it returns");
+    assert.equal((await currentControlState(page,"[data-director-primary] summary",{disclosure:true})).open,false,"A removed quest cannot resurrect an older disclosure when it returns");
     // Native keyboard preferences use the one shared control set.
     await page.getByLabel("Session length",{exact:true}).focus();await page.keyboard.press("ArrowDown");await page.keyboard.press("Enter");
     await page.waitForFunction(()=>document.querySelector('[data-plan-option="minutes"]').value==="60");
@@ -112,10 +113,10 @@ function shortPath(target) {
     await page.evaluate(()=>{adventureBrief={...adventureBrief,guidance:{...adventureBrief.guidance,ordinaryRefreshWitness:1}};render();});
     await untilMain('Boolean(directorUi.releaseGuidance)');
     assert.equal(await evidenceSummary.count(),1,'Pending same-character/same-options guidance preserves the dated visible evidence');
-    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open&&n===document.activeElement),true);
+    assert.equal(await currentControlState(page,"[data-director-primary] summary",{disclosure:true}).then(({open,focused})=>open&&focused),true);
     await app.evaluate(()=>{directorUi.holdGuidance=false;directorUi.releaseGuidance();});
     await page.waitForFunction(()=>document.querySelector('[data-director-primary] summary')===document.activeElement);
-    assert.equal(await evidenceSummary.evaluate(n=>n.parentElement.open),true,'Settled current guidance retains the same semantic disclosure');
+    assert.equal((await currentControlState(page,"[data-director-primary] summary",{disclosure:true})).open,true,'Settled current guidance retains the same semantic disclosure');
     console.log('Final R2: settled physical Space/Enter/click, ordinary guidance/root paints, newer focus, replaced quest and same-options held guidance continuity PASS');
     await page.getByLabel("Session length",{exact:true}).selectOption("30");
     await page.waitForFunction(()=>document.querySelectorAll("[data-director-choice]").length===3);
@@ -150,7 +151,7 @@ function shortPath(target) {
     const state=(await page.evaluate(()=>window.backstage.bootstrap())).state;
     assert.equal(state.journeys.length,1);assert.equal(state.followGameCharacter,false);
     assert.deepEqual(state.journeys[0].steps.map(s=>s.quest.id),[101,102]);
-    assert.equal(await page.getByLabel("Plan title",{exact:true}).evaluate(node=>node===document.activeElement),true,"Exact returned journey should receive focus");
+    assert.equal((await currentControlState(page,{selector:'[data-company-edit="title"][aria-label="Plan title"]',scope:{selector:"[data-company-journey]",attribute:"data-company-journey",value:state.journeys[0].id}})).focused,true,"Exact returned journey should receive focus");
     const journeyId=state.journeys[0].id;
     await page.getByLabel("Plan title",{exact:true}).fill("A renamed evening");await page.getByLabel("Plan title",{exact:true}).press("Tab");
     await page.waitForFunction(async()=>((await window.backstage.bootstrap()).state.journeys[0].title==="A renamed evening"));
@@ -168,7 +169,7 @@ function shortPath(target) {
     await goal.evaluate(n=>{window.goalBeforePoll=n;n.focus();n.setSelectionRange(2,7);});
     clock+=2;characters[0].updatedAt=clock;characters[0].quests[1].title="Updated forest observation";await write();await page.evaluate(()=>window.backstage.refreshGame());
     const pollBefore=await app.evaluate(()=>directorUi.polls||0);await untilMain(`directorUi.polls>${pollBefore}`);
-    assert.ok(await goal.evaluate(n=>n===window.goalBeforePoll));assert.equal(await goal.inputValue(),"LOCAL UNSAVED DRAFT");assert.deepEqual(await goal.evaluate(n=>[n.selectionStart,n.selectionEnd]),[2,7]);
+    assert.ok(await goal.evaluate(n=>n===window.goalBeforePoll));assert.equal(await goal.inputValue(),"LOCAL UNSAVED DRAFT");assert.deepEqual(await currentControlState(page,"#goal-form input[name=\"goal\"]",{selection:true}),{focused:true,value:"LOCAL UNSAVED DRAFT",start:2,end:7});
     const first=state.activeProfileId,second=(await savedState()).profiles.find(p=>p.name==="Vaelric").id;
     await page.getByLabel("Active character",{exact:true}).selectOption(second);await page.getByRole("heading",{name:"Vaelric",exact:true}).waitFor();
     assert.equal(await page.getByLabel("New goal",{exact:true}).inputValue(),"");await page.evaluate(()=>{scrollTo(0,0);document.querySelector(".main")?.scrollTo(0,0);});await capture("horde");

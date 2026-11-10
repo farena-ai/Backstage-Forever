@@ -3,7 +3,7 @@ const {_electron:electron}=require("playwright");
 const fs=require("node:fs/promises"), path=require("node:path"), os=require("node:os"), assert=require("node:assert/strict");
 const {testWindow}=require("./test-window.cjs");
 const {assertSelectContrast}=require("./select-contrast.cjs");
-const {selectCurrentText}=require("./selection-fixture.cjs");
+const {selectCurrentText,currentControlState}=require("./selection-fixture.cjs");
 const {defaultState}=require("../src/core/validation.cjs");
 function shortPath(target) {
  const script=`Add-Type -TypeDefinition 'using System; using System.Text; using System.Runtime.InteropServices; public static class BfCompanyUiShortPath { [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetShortPathName(string path, StringBuilder result, uint length); }'; $buffer = New-Object System.Text.StringBuilder 4096; $length = [BfCompanyUiShortPath]::GetShortPathName($env:BF_COMPANY_UI_ALIAS_PATH,$buffer,4096); if ($length -eq 0 -or $length -ge 4096) { throw 'Short path unavailable' }; $buffer.ToString()`;
@@ -158,6 +158,8 @@ async function physicalClick(page, locator, whilePressed) {
   saved=await page.evaluate(()=>window.backstage.bootstrap());assert.equal(saved.state.journeys.length,1);assert.equal(saved.state.journeys[0].steps.length,3);
   assert.equal(await page.locator("[data-company] img[src=x]").count(),0);
   const journey=page.locator("[data-company-journey]").first();
+  const journeyScope={selector:"[data-company-journey]",attribute:"data-company-journey",value:saved.state.journeys[0].id};
+  const companyControl=(selector,options)=>currentControlState(page,{selector,scope:journeyScope},options);
   await journey.getByLabel("Note step").fill("PRIVATE_PLAN_SENTINEL");
   await journey.getByRole("button",{name:"Add note",exact:true}).click();
   await page.waitForFunction(()=>document.querySelectorAll("[data-company-step]").length===4);
@@ -183,7 +185,7 @@ async function physicalClick(page, locator, whilePressed) {
   await page.waitForFunction(async()=>window.companySpace.changes===1&&(await window.backstage.companyBrief()).journeys[0].steps[0].done);
   await settleCompanyWrite(page);
   assert.equal(await keyboardCheck.isChecked(),true);assert.equal(await app.evaluate(()=>companyUiFixture.spaceWrites),1,"Exactly one native activation reaches persisted completion");
-  assert.equal(await keyboardCheck.evaluate(node=>node===document.activeElement),true,"Checkbox focus survives deferred render and saved acknowledgement");
+  assert.equal((await companyControl(".company-checklist > [data-company-step]:first-child [data-company-done]")).focused,true,"Checkbox focus survives deferred render and saved acknowledgement");
   await keyboardCheck.uncheck();await settleCompanyWrite(page);
   // Natural title blur must preserve the next pointer target even behind queued work.
   const pointerTitle=journey.getByLabel("Plan title"),pointerCheck=journey.getByRole("checkbox").first();
@@ -210,10 +212,10 @@ async function physicalClick(page, locator, whilePressed) {
   await page.waitForFunction(()=>document.activeElement?.getAttribute("aria-label")==="Plan title"?false:document.activeElement?.name==="note");
   await page.keyboard.type("Pointer entry text");
   assert.equal(await journey.getByLabel("Note step").inputValue(),"Pointer entry text");
-  assert.equal(await journey.getByLabel("Note step").evaluate(n=>document.activeElement===n&&n.selectionStart===n.value.length),true,"Next field accepts real keyboard typing after ack");
+  assert.equal(await companyControl('[data-company-form="note"] input[name="note"]',{selection:true}).then(({focused,start,value})=>focused&&start===value.length),true,"Next field accepts real keyboard typing after ack");
   await pointerTitle.fill("Keyboard transfer title");await pointerTitle.press("Tab");
   await page.waitForFunction(async()=>{await autosaveQueue;return document.activeElement?.dataset.companyCommand==="remove";});
-  assert.equal(await journey.getByRole("button",{name:"Delete plan Keyboard transfer title",exact:true}).evaluate(n=>document.activeElement===n),true,"Keyboard Tab also reaches its natural next control");
+  assert.equal((await companyControl('[data-company-command="remove"][aria-label="Delete plan Keyboard transfer title"]')).focused,true,"Keyboard Tab also reaches its natural next control");
   await settleCompanyWrite(page);
   // An unrelated pending text edit must not disable or lose the next submit button.
   const originalStep=(await page.evaluate(()=>window.backstage.companyBrief())).journeys[0].steps[0].text;
@@ -246,7 +248,7 @@ async function physicalClick(page, locator, whilePressed) {
   await page.getByRole("button",{name:"Cancel",exact:true}).click();
   const check=journey.getByRole("checkbox").first();await check.focus();await check.press("Space");
   await page.getByText("Manually checked",{exact:true}).waitFor();
-  assert.equal(await check.evaluate(n=>document.activeElement===n),true,"Keyboard manual check retains focus");
+  assert.equal((await companyControl(".company-checklist > [data-company-step]:first-child [data-company-done]")).focused,true,"Keyboard manual check retains focus");
   const rename=journey.getByLabel("Plan title");await rename.fill("Private evening plan");await rename.press("Tab");
   await page.waitForFunction(async()=> (await window.backstage.companyBrief()).journeys[0].title==="Private evening plan");
   await page.getByRole("button",{name:"Open Rook Emberfall Adventure",exact:true}).click();
@@ -290,16 +292,16 @@ async function physicalClick(page, locator, whilePressed) {
   await page.waitForFunction(()=>document.body.dataset.faction==="horde"&&document.body.dataset.class==="warrior"&&document.querySelector('#active-character option:checked')?.textContent.includes("Lark Dawnvale · Level 32"),{},{timeout:12000});
   assert.match(await page.locator(".game-status-chip small").innerText(),/Saved · just now/);
   assert.equal(await sameIdTitle.inputValue(),"Same-ID retained draft");
-  assert.deepEqual(await page.evaluate(()=>{const n=document.querySelector('[data-company-edit="title"]');return {value:n.value,focused:document.activeElement===n,start:n.selectionStart,end:n.selectionEnd};}),{value:"Same-ID retained draft",focused:true,start:3,end:8},"Same-ID chrome update retains dirty text and focus");
+  assert.deepEqual(await companyControl('[data-company-edit="title"]',{selection:true}),{value:"Same-ID retained draft",focused:true,start:3,end:8},"Same-ID chrome update retains dirty text and focus");
   // A physical click followed by native Shift+Arrow creates a newer selection.
   // The next genuine same-ID header/source update must preserve that selection.
   await physicalClick(page,sameIdTitle);
   await page.keyboard.press("Home");for(let i=0;i<4;i++)await page.keyboard.press("ArrowRight");
   await page.keyboard.down("Shift");try{for(let i=0;i<5;i++)await page.keyboard.press("ArrowRight");}finally{await page.keyboard.up("Shift");}
-  assert.deepEqual(await page.evaluate(()=>{const n=document.querySelector('[data-company-edit="title"]');return {value:n.value,focused:document.activeElement===n,start:n.selectionStart,end:n.selectionEnd};}),{value:"Same-ID retained draft",focused:true,start:4,end:9},"Physical selection owns the current draft before the next source update");
+  assert.deepEqual(await companyControl('[data-company-edit="title"]',{selection:true}),{value:"Same-ID retained draft",focused:true,start:4,end:9},"Physical selection owns the current draft before the next source update");
   clock+=60;Object.assign(captures[0],{updatedAt:clock,name:"Lark Ashvale",level:31,className:"Mage",faction:"Alliance"});await writeCapture();await page.evaluate(()=>window.backstage.refreshGame());
   await page.waitForFunction(()=>document.body.dataset.faction==="alliance"&&document.body.dataset.class==="mage"&&document.querySelector('#active-character option:checked')?.textContent.includes("Lark Ashvale · Level 31"),{},{timeout:12000});
-  assert.deepEqual(await page.evaluate(()=>{const n=document.querySelector('[data-company-edit="title"]');return {value:n.value,focused:document.activeElement===n,start:n.selectionStart,end:n.selectionEnd};}),{value:"Same-ID retained draft",focused:true,start:4,end:9},"Same-ID header/source paint preserves a newer physical selection");
+  assert.deepEqual(await companyControl('[data-company-edit="title"]',{selection:true}),{value:"Same-ID retained draft",focused:true,start:4,end:9},"Same-ID header/source paint preserves a newer physical selection");
   await sameIdTitle.press("Tab");await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Same-ID retained draft");
   // A real same-ID GameSync/header poll can arrive while a natural blur's
   // acknowledgement resolves and the next input is still physically pressed.
@@ -315,7 +317,7 @@ async function physicalClick(page, locator, whilePressed) {
    assert.match(await page.locator('#active-character option:checked').innerText(),/Level 31/,"Header rendering waits for the gesture, while root state accepts the new capture");
   });
   await page.waitForFunction(()=>document.querySelector('#active-character option:checked')?.textContent.includes("Level 32"));
-  assert.equal(await journey.getByLabel("Note step").evaluate(n=>document.activeElement===n),true,"Deferred real header poll preserves next-input focus");
+  assert.equal((await companyControl('[data-company-form="note"] input[name="note"]')).focused,true,"Deferred real header poll preserves next-input focus");
   await page.keyboard.type("Header poll typing");assert.equal(await journey.getByLabel("Note step").inputValue(),"Header poll typing");
   await journey.getByLabel("Note step").fill("");
   clock+=60;captures[0].updatedAt=clock;captures[0].level=31;await writeCapture();await page.evaluate(()=>window.backstage.refreshGame());
@@ -328,7 +330,7 @@ async function physicalClick(page, locator, whilePressed) {
   await page.evaluate(async()=>{const {state}=await window.backstage.bootstrap();await window.backstage.saveState({...state,activeProfileId:"rook'\"><b>"},state);});
   await page.getByText("Observed in a newer saved snapshot",{exact:true}).waitFor({timeout:12000});
   assert.equal(await titleNode.inputValue(),"Still editing this title");
-  assert.deepEqual(await page.evaluate(()=>{const n=document.querySelector('[data-company-edit="title"]');return {value:n.value,focused:document.activeElement===n,start:n.selectionStart,end:n.selectionEnd};}),{value:"Still editing this title",focused:true,start:4,end:9},"Poll preserves focus/selection");
+  assert.deepEqual(await companyControl('[data-company-edit="title"]',{selection:true}),{value:"Still editing this title",focused:true,start:4,end:9},"Poll preserves focus/selection");
   assert.equal(await page.getByLabel("Active character").inputValue(),"rook'\"><b>","Company header reflects a newer main-owned selection without stealing text focus");
   assert.equal(await journey.getByRole("checkbox").last().isDisabled(),true,"Observed proof is distinct from manual checkbox");
   await titleNode.press("Tab");
@@ -357,11 +359,11 @@ async function physicalClick(page, locator, whilePressed) {
   await titleNode.fill("Newer retained draft");await physicalClick(page,titleNode);
   await page.keyboard.press("Home");for(let i=0;i<3;i++)await page.keyboard.press("ArrowRight");
   await page.keyboard.down("Shift");try{for(let i=0;i<5;i++)await page.keyboard.press("ArrowRight");}finally{await page.keyboard.up("Shift");}
-  assert.deepEqual(await page.evaluate(()=>{const n=document.querySelector('[data-company-edit="title"]');return {value:n.value,focused:document.activeElement===n,start:n.selectionStart,end:n.selectionEnd};}),{value:"Newer retained draft",focused:true,start:3,end:8},"New physical selection precedes the older save acknowledgement");
+  assert.deepEqual(await companyControl('[data-company-edit="title"]',{selection:true}),{value:"Newer retained draft",focused:true,start:3,end:8},"New physical selection precedes the older save acknowledgement");
   await app.evaluate(()=>companyUiFixture.release());await settleCompanyWrite(page);
   await page.waitForFunction(()=>!document.querySelector('[data-company-form="note"] button').disabled);
   assert.equal(await titleNode.inputValue(),"Newer retained draft");
-  assert.deepEqual(await page.evaluate(()=>{const n=document.querySelector('[data-company-edit="title"]');return {value:n.value,focused:document.activeElement===n,start:n.selectionStart,end:n.selectionEnd};}),{value:"Newer retained draft",focused:true,start:3,end:8},"Older save acknowledgement preserves the newer physical selection");
+  assert.deepEqual(await companyControl('[data-company-edit="title"]',{selection:true}),{value:"Newer retained draft",focused:true,start:3,end:8},"Older save acknowledgement preserves the newer physical selection");
   await titleNode.press("Tab");
   await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Newer retained draft");
   if(process.argv.includes("--caret-only")){console.log("Company actual main/preload/read/header/older-save and physical selection regression PASS");return;}

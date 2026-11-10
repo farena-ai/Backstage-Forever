@@ -3,6 +3,7 @@
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
 const { testWindow } = require("./test-window.cjs");
+const {currentControlState}=require("./selection-fixture.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 function shortPath(target) {
   const script = `Add-Type -TypeDefinition 'using System; using System.Text; using System.Runtime.InteropServices; public static class BfVoiceUiShortPath { [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetShortPathName(string path, StringBuilder result, uint length); }'; $buffer = New-Object System.Text.StringBuilder 4096; $length = [BfVoiceUiShortPath]::GetShortPathName($env:BF_VOICE_UI_PATH,$buffer,4096); if ($length -eq 0 -or $length -ge 4096) { throw 'Short path unavailable' }; $buffer.ToString()`;
@@ -64,7 +65,7 @@ function shortPath(target) {
       await app.evaluate(()=>{voiceUi.holdCapabilities=false;voiceUi.releaseCapabilities();});
       await page.waitForFunction(unavailable=>!document.querySelector('[data-voice-check]').disabled&&document.querySelector('[data-voice-culture]').value===(unavailable?'Unavailable':'en-US'),scenario==='unavailable');
       assert.deepEqual(await question.evaluate(n=>({same:n===window.initialQuestion,value:n.value,focused:n===document.activeElement,start:n.selectionStart,end:n.selectionEnd})),{same:true,value:"Keep this typed question",focused:scenario!=='newer-focus',start:5,end:9},`Initial ${scenario} capability discovery preserves the exact typed draft/range and current focus choice`);
-      if(scenario==='newer-focus')assert.equal(await page.locator('#share-profile').evaluate(n=>n===document.activeElement),true);
+      if(scenario==='newer-focus')assert.equal((await currentControlState(page,"#share-profile")).focused,true);
       else {await page.keyboard.type("fresh");assert.equal(await question.inputValue(),"Keep fresh typed question","Physical typing continues in the selected range after discovery");}
     }
     // Deliberate dictation uses the exact range retained through initial discovery.

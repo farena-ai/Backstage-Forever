@@ -5,7 +5,7 @@ const fs = require("node:fs/promises"),
   assert = require("node:assert/strict");
 const { _electron: electron } = require("playwright");
 const { testWindow } = require("./test-window.cjs");
-const {selectCurrentText}=require("./selection-fixture.cjs");
+const {selectCurrentText,currentControlState}=require("./selection-fixture.cjs");
 function currentQuestPaint({ id, previous }) {
   const detail = document.querySelector(`[data-quest-control="detail:${id}"]`);
   const row = document.querySelector(`.quest-ledger-row[data-quest-id="${id}"]`);
@@ -496,8 +496,8 @@ function shortPath(target){
     const sourceSummary=page.locator('.quest-source summary');await sourceSummary.scrollIntoViewIfNeeded();await sourceSummary.focus();
     await sourceSummary.evaluate(n=>{window.atlasHeldSummary=n;window.atlasToggles=0;n.parentElement.addEventListener('toggle',()=>window.atlasToggles++);});
     await page.keyboard.down('Space');await page.evaluate(()=>render());assert.ok(await sourceSummary.evaluate(n=>n===window.atlasHeldSummary));await page.keyboard.up('Space');
-    await page.waitForFunction(()=>window.atlasToggles===1);assert.equal(await sourceSummary.evaluate(n=>n===document.activeElement),true);
-    const disclosureOpen=await sourceSummary.evaluate(n=>n.parentElement.open);await page.evaluate(()=>render());assert.equal(await sourceSummary.evaluate(n=>n.parentElement.open),disclosureOpen);
+    await page.waitForFunction(()=>window.atlasToggles===1);assert.equal((await currentControlState(page,".quest-source summary")).focused,true);
+    const disclosureOpen=(await currentControlState(page,".quest-source summary",{disclosure:true})).open;await page.evaluate(()=>render());assert.equal((await currentControlState(page,".quest-source summary",{disclosure:true})).open,disclosureOpen);
     const activeMenu=page.getByLabel('Active character',{exact:true});await activeMenu.click();await activeMenu.evaluate(n=>window.atlasHeldMenu=n);await page.evaluate(()=>render());assert.ok(await activeMenu.evaluate(n=>n===window.atlasHeldMenu));await page.keyboard.press('Escape');await search.focus();
     const atlasNav=page.getByRole('button',{name:'Quest Guide',exact:true});await atlasNav.focus();await page.evaluate(()=>render());
     // A locator may resolve a node just before an accepted root replacement.

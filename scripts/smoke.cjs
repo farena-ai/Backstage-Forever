@@ -6,8 +6,18 @@ const assert = require("node:assert/strict");
 const { testWindow } = require("./test-window.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
 
+function shortPath(target) {
+  const script = `Add-Type -TypeDefinition 'using System; using System.Text; using System.Runtime.InteropServices; public static class BfSmokeShortPath { [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetShortPathName(string path, StringBuilder result, uint length); }'; $buffer = New-Object System.Text.StringBuilder 4096; $length = [BfSmokeShortPath]::GetShortPathName($env:BF_SMOKE_ALIAS_PATH,$buffer,4096); if ($length -eq 0 -or $length -ge 4096) { throw 'Short path unavailable' }; $buffer.ToString()`;
+  const alias = require("node:child_process").execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { env: { ...process.env, BF_SMOKE_ALIAS_PATH: target }, encoding: "utf8", timeout: 15000 }).trim();
+  assert.notEqual(alias.toLowerCase(), target.toLowerCase());
+  assert.match(alias, /~\d/);
+  assert.equal(require("node:fs").statSync(alias).ino, require("node:fs").statSync(target).ino);
+  return alias;
+}
+
 (async () => {
-  const data = await mkdtemp(path.join(tmpdir(), "backstage-smoke-"));
+  const normalData = await mkdtemp(path.join(tmpdir(), "backstage-smoke-"));
+  let data = normalData;
   let app;
   const launch = async () => {
     app = await electron.launch({
@@ -22,6 +32,7 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
     return page;
   };
   try {
+    if (process.argv.includes("--short-path")) data = shortPath(normalData);
     let page = await launch();
     await page
       .getByRole("button", { name: "Use a manual character", exact: true })
@@ -49,7 +60,10 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
     const firstClass = await characterClass.inputValue();
     await characterClass.press("ArrowDown");
     assert.notEqual(await characterClass.inputValue(), firstClass, "Native select must support keyboard selection");
-    assert.ok(await characterClass.evaluate(node => {
+    assert.ok(await page.evaluate(() => {
+      const matches = document.querySelectorAll('#onboard select[name="className"]');
+      if (matches.length !== 1 || !matches[0].isConnected) throw Error("Expected one current onboarding class control");
+      const node = matches[0];
       const style = getComputedStyle(node);
       return node.matches(":focus-visible") && style.outlineStyle !== "none" && parseFloat(style.outlineWidth) >= 2;
     }), "Keyboard selection must retain a visible focus ring");
@@ -358,7 +372,7 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
     throw error;
   } finally {
     if (app) await app.close();
-    await rm(data, { recursive: true, force: true });
+    await rm(normalData, { recursive: true, force: true });
   }
 })().catch((error) => {
   console.error(error);

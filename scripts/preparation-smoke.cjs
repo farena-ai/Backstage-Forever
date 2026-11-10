@@ -2,6 +2,7 @@
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
 const { testWindow } = require("./test-window.cjs");
+const {currentControlState}=require("./selection-fixture.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
 function shortPath(target) {
@@ -89,13 +90,13 @@ function shortPath(target) {
         // This is the old CI wait: it succeeds while this retry reply is still held.
         await page.locator("[data-preparation-reagent]").first().waitFor();
         assert.equal((await action()).sourceRevision,previous.sourceRevision,"Existing rows belong to the error paint, not the retry reply");
-        assert.equal(await page.getByRole("button",{name:"Retry workshop",exact:true}).evaluate(n=>n===document.activeElement),true,"A pending read has not completed its focus handoff");
+        assert.equal((await currentControlState(page,"[data-preparation] [data-preparation-control=\"retry-read\"]")).focused,true,"A pending read has not completed its focus handoff");
         return previous;
       };
       const releaseRetry=()=>app.evaluate(()=>{preparationUi.holdRetryRead=false;preparationUi.retryReaders.splice(0).forEach(resolve=>resolve());});
       const previous=await beginRetry();
       await releaseRetry();await waitForRetryPaint(previous);
-      assert.equal(await page.getByRole("button",{name:"Add shopping checklist",exact:true}).evaluate(n=>n===document.activeElement),true,"Successful read retry returns focus to the semantic action");
+      assert.equal((await currentControlState(page,"[data-preparation] [data-preparation-control=\"add\"]")).focused,true,"Successful read retry returns focus to the semantic action");
       // A later deliberate focus owns the keyboard even when completion paint is deferred.
       await app.evaluate(()=>preparationUi.retryReadError=true);await update();await page.getByRole("alert").waitFor();
       const later=await beginRetry();
@@ -104,7 +105,7 @@ function shortPath(target) {
       await page.waitForFunction(()=>!Preparation.page().includes('role="alert"'));
       assert.equal(await page.getByRole("alert").count(),1,"The held native key defers successful replacement paint");
       await page.keyboard.up("Space");await waitForRetryPaint(later);
-      assert.equal(await sources.evaluate(n=>n===document.activeElement),true,"Successful read retry must preserve newer deliberate focus");
+      assert.equal((await currentControlState(page,"[data-preparation] .workshop-details summary")).focused,true,"Successful read retry must preserve newer deliberate focus");
       console.log("Preparation retry: stale rows witnessed during held genuine reply; current successful paint restores Add and preserves newer native Summary focus PASS");
       assert.equal((await state()).journeys.length,beforeJourneys,"Read retry does not create a checklist");
     };
@@ -148,7 +149,7 @@ function shortPath(target) {
     // The real native Summary target survives a held key and a competing root paint.
     const summary=page.locator(".workshop-details summary");await summary.focus();await summary.evaluate(n=>{window.heldSummary=n;window.summaryToggles=0;n.parentElement.addEventListener("toggle",()=>window.summaryToggles++);});
     await page.keyboard.down("Space");await page.evaluate(()=>new Promise(r=>setTimeout(()=>{render();r();},0)));assert.ok(await summary.evaluate(n=>n===window.heldSummary));await page.keyboard.up("Space");
-    await page.waitForFunction(()=>window.summaryToggles===1);assert.equal(await page.locator(".workshop-details").evaluate(n=>n.open),true);assert.equal(await summary.evaluate(n=>n===document.activeElement),true);
+    await page.waitForFunction(()=>window.summaryToggles===1);assert.equal((await currentControlState(page,"[data-preparation] .workshop-details summary",{disclosure:true})).open,true);assert.equal((await currentControlState(page,"[data-preparation] .workshop-details summary")).focused,true);
     // A held native menu survives source refresh; newest counts appear after closure.
     const select=page.getByLabel("Saved recipe",{exact:true});await select.click();
     const beforeNativePoll=await app.evaluate(()=>preparationUi.polls||0);await select.evaluate(n=>window.heldRecipe=n);characters[0].readiness.workshop.materials.items[0].count=5;characters[0].readiness.workshop.materials.observedAt=clock+2;await update();
@@ -166,7 +167,7 @@ function shortPath(target) {
     });
     // A dirty local note and caret survive newer source evidence; no provider call.
     await page.getByRole("button",{name:"Characters",exact:true}).click();const notes=page.locator('textarea[name="notes"]');await notes.fill("PRIVATE LOCAL UNSAVED DRAFT");await notes.evaluate(n=>{window.dirtyNotes=n;n.focus();n.setSelectionRange(2,7);});
-    const draftPoll=await app.evaluate(()=>preparationUi.polls||0);await update();await untilMain(`preparationUi.polls>${draftPoll}`);assert.ok(await notes.evaluate(n=>n===window.dirtyNotes));assert.equal(await notes.inputValue(),"PRIVATE LOCAL UNSAVED DRAFT");assert.deepEqual(await notes.evaluate(n=>[n.selectionStart,n.selectionEnd]),[2,7]);await workshopPage();
+    const draftPoll=await app.evaluate(()=>preparationUi.polls||0);await update();await untilMain(`preparationUi.polls>${draftPoll}`);assert.ok(await notes.evaluate(n=>n===window.dirtyNotes));assert.equal(await notes.inputValue(),"PRIVATE LOCAL UNSAVED DRAFT");assert.deepEqual(await currentControlState(page,"#character-form textarea[name=\"notes\"]",{selection:true}),{focused:true,value:"PRIVATE LOCAL UNSAVED DRAFT",start:2,end:7});await workshopPage();
     // Hold a genuine preceding state save acknowledgement in the existing queue.
     await app.evaluate(({ipcMain})=>{const save=ipcMain._invokeHandlers.get("backstage:saveState");ipcMain.removeHandler("backstage:saveState");ipcMain.handle("backstage:saveState",async(...args)=>{const result=await save(...args);if(preparationUi.holdSave)await new Promise(r=>preparationUi.releaseSave=r);return result;});preparationUi.holdSave=true;});
     await page.evaluate(()=>{autosaveQueue=autosaveQueue.then(()=>persist(editedState(next=>{next.profiles.find(p=>p.id===next.activeProfileId).notes="PRIVATE QUEUED SAVE";})));});await untilMain("Boolean(preparationUi.releaseSave)");
@@ -176,9 +177,9 @@ function shortPath(target) {
     const heldPoll=await app.evaluate(()=>preparationUi.polls||0);await untilMain(`preparationUi.polls>${heldPoll}`);
     await page.evaluate(()=>new Promise(r=>setTimeout(()=>{render();r();},0)));assert.ok(await page.evaluate(()=>window.heldAdd===document.querySelector("[data-preparation-add]")));await page.mouse.up();
     await page.locator("[data-company-journey]").waitFor();assert.equal(await app.evaluate(()=>preparationUi.calls),1);let savedNow=await state();assert.equal(savedNow.journeys.length,1);assert.equal(savedNow.followGameCharacter,false);assert.ok(savedNow.journeys[0].steps.every(s=>!s.done&&!s.quest&&!s.observed));
-    assert.equal(await page.getByLabel("Plan title",{exact:true}).evaluate(n=>n===document.activeElement),true,"Exact returned checklist receives focus");assert.match(savedNow.journeys[0].steps[0].text,/shortfall: 1/);
+    assert.equal((await currentControlState(page,{selector:'[data-company-edit="title"][aria-label="Plan title"]',scope:{selector:"[data-company-journey]",attribute:"data-company-journey",value:savedNow.journeys[0].id}})).focused,true,"Exact returned checklist receives focus");assert.match(savedNow.journeys[0].steps[0].text,/shortfall: 1/);
     // Mutation error retry is deliberate and never makes a duplicate successful call.
-    await workshopPage();await app.evaluate(()=>preparationUi.failOnce=true);await add.click();await page.getByRole("alert").waitFor();assert.equal(await page.getByRole("button",{name:"Retry shopping checklist",exact:true}).evaluate(n=>n===document.activeElement),true,"Failed action must transfer its owned focus to semantic retry");await capture("mutation-error");await page.getByRole("button",{name:"Retry shopping checklist",exact:true}).click();await page.locator("[data-company-journey]").first().waitFor();assert.equal((await state()).journeys.length,2);
+    await workshopPage();await app.evaluate(()=>preparationUi.failOnce=true);await add.click();await page.getByRole("alert").waitFor();assert.equal((await currentControlState(page,"[data-preparation] [data-preparation-control=\"retry-add\"]")).focused,true,"Failed action must transfer its owned focus to semantic retry");await capture("mutation-error");await page.getByRole("button",{name:"Retry shopping checklist",exact:true}).click();await page.locator("[data-company-journey]").first().waitFor();assert.equal((await state()).journeys.length,2);
     // Read errors have a separate explicit retry without a checklist mutation.
     await workshopPage();await readRetryFocus();
     // Partial supply creates manual totals, never an invented exact missing amount.
