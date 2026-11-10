@@ -4,3 +4,19 @@
 .voice-console p.voice-instructions{color:#c1bba9;font-size:12px;line-height:1.55;margin:13px 0 8px}.voice-status{color:#e5d4ac;font-size:13px;margin:8px 0;min-height:20px}.voice-console[data-phase=listening] .voice-status{color:#ffe4b1;font-weight:700}.voice-console[data-phase=listening] .voice-sigil{color:#ffd0a1;border-color:#eea46c;box-shadow:0 0 0 5px #d9774140}.voice-console[data-phase=error] .voice-status{color:#ffd3c6}.voice-console [data-voice-check]{color:#c8c2ad;font-size:11px;margin-top:5px;padding:8px 13px}.voice-console [data-voice-draft]{margin:12px 0;padding-top:12px;border-top:1px solid #bd9c6255}.voice-console [data-voice-draft] p{font-size:12px}.voice-console [data-voice-draft] textarea{min-height:75px;color:#f3ead2;background:#131c17;border-color:#9d885b}
 .companion-grid{grid-template-columns:minmax(0,1fr) 285px}.companion-conversation{min-width:0}.companion-conversation .chatlog{height:auto;min-height:120px;max-height:300px}.companion-conversation .chatlog:empty{min-height:0;height:0;margin:0;padding:0}.companion-conversation .chat-form textarea[name=prompt]{min-height:96px}.companion-conversation .chat-form{display:block}.companion-conversation .button-row{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
 @media(max-width:1180px){.companion-grid{grid-template-columns:minmax(0,1fr)}.companion-intel{display:none}.voice-controls label{min-width:120px}.voice-console{padding:16px}.voice-heading h3{font-size:21px}}
+
+.companion-conversation .voice-console { margin-top: 24px; }
+@media(max-width:1100px) {
+  .section-head:has(+ .companion-grid) { margin-bottom: 18px; }
+  .section-head:has(+ .companion-grid) { padding-bottom: 12px; }
+  .section-head:has(+ .companion-grid) h1 { font-size: 30px; margin: 6px 0; }
+  .section-head:has(+ .companion-grid) p { margin: 6px 0; line-height: 1.5; }
+  .companion-conversation .panel-header { margin-bottom: 12px; }
+  .companion-conversation .chat-form textarea[name=prompt] { min-height: 80px; }
+  .companion-conversation .suggestions { margin: 8px 0; }
+  .companion-conversation .context-preview { margin: 8px 0; line-height: 1.45; }
+  .companion-conversation .context-selection { margin: 4px 0; }
+  .companion-conversation .context-preview details { padding: 5px 0; margin: 5px 0; }
+  .companion-conversation .context-preview small { font-size: 12px; }
+  .companion-conversation .button-row { margin-top: 10px; }
+}

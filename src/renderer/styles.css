@@ -236,6 +236,40 @@ nav button.active {
   background: var(--teal);
   display: inline-block;
 }
+.game-status-chip[data-connection-state="disconnected"] .dot {
+  background: #b4ad99;
+}
+.game-status-chip[data-connection-state="unavailable"] .dot {
+  background: #e4b76b;
+}
+#app > button.skip-content {
+  position: fixed;
+  z-index: 100;
+  top: 12px;
+  left: 12px;
+  transform: translateY(-160%);
+}
+#app > button.skip-content:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid #f5d899;
+  outline-offset: 3px;
+}
+#main-content:focus-visible {
+  outline: 2px solid #d1b575;
+  outline-offset: -3px;
+}
+.ai-setup-hint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  color: #dfc792;
+  font-size: 13px;
+}
+.ai-setup-hint button {
+  font-size: 13px;
+}
 .rail-bottom small {
   font-size: 10px;
 }
