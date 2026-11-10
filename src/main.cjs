@@ -13,6 +13,7 @@ const path = require("node:path");
 const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
 const { Store, atomic, MAX_BACKUP_BYTES } = require("./core/store.cjs");
+const { showStartupFailure } = require("./core/startup-recovery.cjs");
 const v = require("./core/validation.cjs");
 const ai = require("./core/providers.cjs");
 const { ChatGPTAuth } = require("./core/chatgpt.cjs");
@@ -124,7 +125,7 @@ app.on("second-instance", () => {
     win.focus();
   }
 });
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (!ownsInstance) return;
   try {
     store = new Store(app.getPath("userData"), safeStorage);
@@ -188,11 +189,14 @@ app.whenReady().then(() => {
       },
     });
   } catch {
-    dialog.showErrorBox(
-      "Backstage Forever",
-      "Saved data could not be read safely. Your files were preserved. Restore a valid backup or move the data folder before restarting.",
-    );
-    app.quit();
+    try {
+      await showStartupFailure({ dialog, shell, dataDir: app.getPath("userData") });
+    } catch {
+      // Recovery must never turn an initialization error into an unhandled rejection.
+    } finally {
+      quitApproved = true;
+      app.quit();
+    }
     return;
   }
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, callback) =>
