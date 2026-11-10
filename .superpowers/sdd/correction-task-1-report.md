@@ -68,3 +68,11 @@ The reviewer found one Important issue after the first Task 1 commit: Stop remai
 - `node scripts/companion-recovery-smoke.cjs` — **PASS** with the deterministic held-review boundary.
 - `node --test --test-concurrency=1 tests/companion-request.test.cjs tests/memory.test.cjs tests/memory-ipc.test.cjs` — **11 passed**; includes pending CLI ownership and memory identity checks.
 - Follow-up changes are limited to `src/main.cjs`, `scripts/companion-recovery-smoke.cjs` and this report. No unrelated broad suites were rerun. No new live-service or release work was performed.
+
+## Final-gate fixture correction — request admission versus presentation
+
+A serialized final-gate run failed the initial Stop count despite having no overlapping GUI worker. Earlier overlap speculation is not a sufficient explanation and is withdrawn. The fixture incorrectly equated backend request admission with renderer presentation completion. An actual held Enter regression deterministically observed the request admitted while `Memory.deferRender` returned true, the original Send node remained connected/current, and Stop had not yet been painted; the old immediate exact count assertion failed 0 versus 1. Releasing the physical key and waiting for the actual visible Stop presentation preserves the exact assertion and passes. Product source was unchanged.
+
+The fixture also now creates its synthetic app-data directory under raw TEMP rather than canonicalizing away a Windows short alias first. Separate canonical identity and cleanup checks retain safety. Serial normal and genuine 8.3 runs of the complete recovery fixture passed, including all prior draft/late-review/ownership/focus checks. The 8.3 run proved a distinct same-inode alias, aliased `BF_USER_DATA` input retained by Electron, and actual userData access to the same owned directory. No claim is made that every application path uses a short spelling.
+
+Commands: `node scripts/companion-recovery-smoke.cjs` and `./work/run-companion-fixture-short.ps1`. Full diagnosis, RED/GREEN and scope limits are in `work/readiness-fixture-fix-report.md`; short-run log is `work/readiness-fixture-fixed-short.log`. No broad green suites or product changes were added.
