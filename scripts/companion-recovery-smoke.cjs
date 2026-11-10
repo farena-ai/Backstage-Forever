@@ -9,9 +9,13 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
  try{
   await fs.writeFile(path.join(dir,'state.json'),JSON.stringify({...defaultState(),onboarded:true,activeProfileId:'Alpha',profiles:['Alpha','Beta'].map(id=>({id,name:id,className:'Mage',realm:'Synthetic',level:12,goals:[],notes:'PRIVATE'})),provider:{id:'ollama',model:'fixture',endpoint:'http://127.0.0.1:11434'}}));
   app=await electron.launch({args:[path.join(__dirname,'..')],env:{...process.env,BF_USER_DATA:dir},timeout:20000});const page=await testWindow(app);page.setDefaultTimeout(6000);
-  await app.evaluate(({app})=>{
+  await app.evaluate(({app,ipcMain})=>{
    const load=process.getBuiltinModule('node:module').createRequire(process.getBuiltinModule('node:path').join(app.getAppPath(),'package.json'));
-   globalThis.recovery={requests:[]};
+   globalThis.recovery={requests:[],invalidations:[]};
+   const context=load('./src/core/companion-context.cjs').CompanionContext.prototype, invalidate=context.invalidate;
+   context.invalidate=function(reason){recovery.invalidations.push(reason);return invalidate.call(this,reason);};
+   const memoryDraft=ipcMain._invokeHandlers.get('backstage:memoryDraft');ipcMain.removeHandler('backstage:memoryDraft');
+   ipcMain.handle('backstage:memoryDraft',async(...args)=>{const result=await memoryDraft(...args);if(recovery.holdReview){recovery.holdReview=false;recovery.heldDraft=result;await new Promise(resolve=>recovery.releaseReview=resolve);}return result;});
    load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});
    load('./src/core/claude.cjs').status=async()=>({available:false,connected:false});
    load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});
@@ -36,6 +40,23 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   await page.getByRole('button',{name:'Edit question',exact:true}).press('Enter');assert.equal(await question.inputValue(),'Explain FAIL quest');assert.equal(await question.evaluate(n=>document.activeElement===n),true);assert.equal(await page.getByLabel('Use my active character',{exact:true}).isChecked(),false);
   await send('Explain FAIL another quest');await page.getByRole('button',{name:'Edit question',exact:true}).waitFor();
   await question.fill('My newer quest draft');await page.getByRole('button',{name:'Edit question',exact:true}).click();assert.equal(await question.inputValue(),'My newer quest draft');assert.match(await page.locator('[data-question-recovery]').innerText(),/newer draft/);assert.equal(await call('memoryDraft','Alpha'),null);
+  // Hold the actual main draft reply after transport settlement while renderer Stop remains visible.
+  await app.evaluate(()=>{recovery.holdReview=true;});await send('Explain completed quest awaiting review');
+  await app.evaluate(async()=>{const end=Date.now()+4000;while(!recovery.releaseReview){if(Date.now()>end)throw Error('Memory review did not reach the held boundary');await new Promise(r=>setTimeout(r,10));}});
+  const retiredDraft=await call('memoryDraft','Alpha');assert.equal(retiredDraft.question,'Explain completed quest awaiting review');
+  const beforeReviewStop=await app.evaluate(()=>recovery.invalidations.length);
+  await page.getByRole('button',{name:'Stop response',exact:true}).click();await page.getByRole('button',{name:'Edit question',exact:true}).waitFor();
+  assert.equal(await call('memoryDraft','Alpha'),null,'Stop must retire the completed backend draft while renderer review is pending');
+  await assert.rejects(()=>call('saveMemory',{profileId:'Alpha',responseId:retiredDraft.responseId}),/no longer current/);
+  assert.equal(await call('cancelAsk'),false);assert.equal(await app.evaluate(()=>recovery.invalidations.length),beforeReviewStop,'Completed/idle Stop must not invalidate unrelated context or voice work');
+  const nextCount=await app.evaluate(()=>recovery.requests.length);await send('Explain HOLD newer review quest');await waitRequest(nextCount+1);
+  await app.evaluate(()=>recovery.releaseReview());await page.waitForTimeout(30);
+  assert.equal(await page.getByRole('button',{name:'Save exchange',exact:true}).count(),0,'Late review must not publish the retired exchange');
+  assert.equal(await page.getByRole('button',{name:'Stop response',exact:true}).count(),1,'Late review must not retire the newer request');
+  assert.equal(await call('memoryDraft','Alpha'),null);
+  await app.evaluate((_e,index)=>recovery.requests[index].resolve('New review answer'),nextCount);await page.getByRole('button',{name:'Save exchange',exact:true}).waitFor();
+  assert.equal((await call('memoryDraft','Alpha')).question,'Explain HOLD newer review quest');
+  await assert.rejects(()=>call('saveMemory',{profileId:'Alpha',responseId:retiredDraft.responseId}),/no longer current/);
   // Direct handlers verify trusted origin and cancellation arity independently of preload.
   const invalid=await app.evaluate(async({ipcMain,BrowserWindow})=>{const win=BrowserWindow.getAllWindows()[0],handler=ipcMain._invokeHandlers.get('backstage:cancelAsk'),event={sender:win.webContents,senderFrame:win.webContents.mainFrame};const rejects=async(...args)=>{try{await handler(...args);return false;}catch{return true;}};return [await rejects(event,'extra'),await rejects({sender:{},senderFrame:{}}),await rejects({sender:win.webContents,senderFrame:{url:event.senderFrame.url}})];});assert.ok(invalid.every(Boolean));
   for(const scenario of ['navigation','provider','character']){
@@ -52,6 +73,6 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   await send('Explain HOLD focus quest');const last=await app.evaluate(()=>recovery.requests.length-1);
   await page.getByRole('button',{name:'Stop response',exact:true}).click();await question.fill('New focus draft');await question.evaluate(n=>{window.recoveryOriginalQuestion=n;n.focus();n.setSelectionRange(4,9);});
   await app.evaluate((_e,index)=>recovery.requests[index].resolve('STALE focus answer'),last);await page.waitForTimeout(30);assert.equal(await question.inputValue(),'New focus draft');assert.deepEqual(await question.evaluate(n=>[n===window.recoveryOriginalQuestion,window.recoveryOriginalQuestion.isConnected,document.activeElement===n,n.selectionStart,n.selectionEnd]),[true,true,true,4,9]);
-  console.log('Companion recovery actual Electron PASS: Stop/new request, stale success/error, memory ownership, navigation/provider/character, edit/newer draft, keyboard focus, trusted arity.');
+  console.log('Companion recovery actual Electron PASS: Stop/new request, stale success/error, memory ownership, completed-but-held review Stop, late review/new request isolation, navigation/provider/character, edit/newer draft, keyboard focus, trusted arity.');
  }finally{clearTimeout(watchdog);if(app)await app.close().catch(()=>{});const real=await fs.realpath(dir);assert.equal(path.dirname(real).toLowerCase(),tempRoot.toLowerCase());assert.ok(path.basename(real).startsWith('forever-companion-recovery-'));await fs.rm(real,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

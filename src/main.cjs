@@ -515,6 +515,9 @@ app.whenReady().then(() => {
     if (args.length) throw Error("Invalid cancellation request.");
     const stopped = companionRequest.cancel();
     if (stopped) companionContext.invalidate("response-stop");
+    // Stop remains visible while the renderer reviews an already completed reply.
+    // Retire that draft without cancelling unrelated idle context or voice work.
+    else memory.clearDraft();
     return stopped;
   });
   handle("ask", async (...args) => {

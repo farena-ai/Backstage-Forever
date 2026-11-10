@@ -57,3 +57,14 @@ All Electron fixtures ran serially against separate temporary synthetic app data
 - Context changes still retire/reset conversation as previously designed; explicit Stop/error retains the transcript in the current context.
 - Existing memory backend confirms blur and same-character observation updates do not cancel a request. Existing physical-control regression covers held-control identity; new fixture additionally asserts original question-node identity during stale completion.
 - Version, tags, publication, dependencies, and installer are unchanged. This is a bounded correction, not 1.0 certification.
+
+## Independent-review correction — completed reply still awaiting memory review
+
+The reviewer found one Important issue after the first Task 1 commit: Stop remained visible while `Memory.review()` awaited its main-process draft reply, but the provider transport had already settled. `cancelAsk` returned false and left the completed draft eligible for saving. This was reproduced and fixed in a separate scoped follow-up commit.
+
+- **RED:** Extended `node scripts/companion-recovery-smoke.cjs` to hold the real `backstage:memoryDraft` reply after the provider had completed. Before the fix, `Stop must retire the completed backend draft while renderer review is pending` failed: the actual backend draft still contained `Explain completed quest awaiting review`, its answer and response ID instead of null.
+- **Fix:** When `companionRequest.cancel()` returns false, `cancelAsk` clears the completed memory draft. Active transports retain the existing cancellation/context path. Completed or idle Stop does not invalidate unrelated context or voice work, and the native-worker ownership rules are unchanged.
+- **GREEN:** The actual main/preload/renderer fixture now asserts that Stop clears the backend draft, the retired response ID cannot save, and releasing the held old review cannot publish Save exchange or retire a newer pending request. A later new request owns its own draft. It also asserts unchanged main context-invalidation count across completed Stop and a repeated idle Stop. Existing transcript, sharing, newer-draft, focus and stale-response scenarios remain passing.
+- `node scripts/companion-recovery-smoke.cjs` — **PASS** with the deterministic held-review boundary.
+- `node --test --test-concurrency=1 tests/companion-request.test.cjs tests/memory.test.cjs tests/memory-ipc.test.cjs` — **11 passed**; includes pending CLI ownership and memory identity checks.
+- Follow-up changes are limited to `src/main.cjs`, `scripts/companion-recovery-smoke.cjs` and this report. No unrelated broad suites were rerun. No new live-service or release work was performed.
