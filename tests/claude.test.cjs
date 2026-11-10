@@ -84,3 +84,25 @@ test('reset invalidates pending login and does not report a late connection',asy
  const login=api.login();await started;const reset=api.clearCredentials();release();
  await assert.rejects(login,/request failed/);await reset;
 });
+
+test('ask external abort cancels auth-status worker and prevents inference',async()=>{
+ const controller=new AbortController();let started,observed,calls=0;const ready=new Promise(r=>started=r);
+ const api=createClaude({dataDir:pathForTests(),findExecutable:async()=> 'C:/trusted/claude.exe',runner:async(_exe,_args,{signal})=>{calls++;observed=signal;started();await new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(Error('closed')),{once:true}));}});
+ const pending=api.ask({model:'sonnet',prompt:'quest',signal:controller.signal});pending.catch(()=>{});await ready;controller.abort();assert.equal(observed.aborted,true);await assert.rejects(pending);assert.equal(calls,1);
+});
+test('native runner keeps ownership when kill throws until close confirms termination',async()=>{
+ const {EventEmitter}=require('node:events');const controller=new AbortController();let child,settled=false;
+ const pending=runProcess('fake',[],{signal:controller.signal,spawnImpl:()=>{child=new EventEmitter();child.stdout=new EventEmitter();child.stderr=new EventEmitter();child.stdin={on(){},end(){}};child.kill=()=>{throw Error('not terminated');};return child;}}).finally(()=>{settled=true;});pending.catch(()=>{});
+ controller.abort();await new Promise(r=>setImmediate(r));assert.equal(settled,false);child.emit('close',null);await assert.rejects(pending,/Claude Code request failed/);
+});
+
+test('native cancellation waits for a real synthetic child to close',async()=>{
+ const {spawn}=require('node:child_process');const controller=new AbortController();let child,closed=false;
+ const result=runProcess(process.execPath,['-e','process.stdout.write("ready");setInterval(()=>{},1000)'],{signal:controller.signal,timeoutMs:5000,spawnImpl:(...args)=>{child=spawn(...args);child.stdout.once('data',()=>controller.abort());child.once('close',()=>{closed=true;});return child;}});
+ await assert.rejects(result,/Claude Code request failed/);assert.equal(closed,true);assert.ok(child.pid);
+});
+test('Claude inference cancellation keeps isolated directory until runner closes',async()=>{
+ const controller=new AbortController();let ready,finish,cwd,observed;const started=new Promise(r=>ready=r);
+ const api=createClaude({dataDir:pathForTests(),findExecutable:async()=> 'C:/trusted/claude.exe',runner:async(_exe,args,options)=>{if(args.includes('status'))return {code:0,stdout:JSON.stringify(signedIn)};cwd=options.cwd;observed=options.signal;ready();await new Promise(r=>finish=r);return {code:0,stdout:JSON.stringify({type:'result',subtype:'success',result:'late'})};}});
+ const pending=api.ask({model:'sonnet',prompt:'quest',signal:controller.signal});await started;controller.abort();assert.equal(observed.aborted,true);assert.equal(fs.existsSync(cwd),true);finish();await assert.rejects(pending);assert.equal(fs.existsSync(cwd),false);
+});

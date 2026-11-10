@@ -38,6 +38,7 @@ let gameStatus = {},
   modelEpoch = 0,
   modelsLoading = false;
 let questionRevision=0;
+let currentQuestion = null, questionRecovery = null;
 let shareCharacter = true;
 try {
   shareCharacter = localStorage.getItem("bf-share-character") !== "false";
@@ -711,7 +712,7 @@ function characters() {
 function assistant() {
   const p = profile();
   const provider = metadata.find((item) => item.id === state.provider.id);
-  return `<header class="section-head"><div class="eyebrow">World of Warcraft: Forever specialist</div><h1>A little wisdom for the journey.</h1><p>Plan outside combat. Answers are AI suggestions, grounded in approved saved observations and compatible public reference facts when available. Your companion specializes in WoW Forever and uses your approved saved character context. It cannot control the game.</p></header><div class="grid companion-grid"><section class="panel companion-conversation"><div class="panel-header"><h3>Your companion</h3><span class="tag">${esc(provider?.name || state.provider.id)}</span></div><div class="chatlog" id="chatlog" role="log" aria-label="Conversation" aria-live="polite">${messages.length ? messages.map((m) => `<div class="message ${m.role}"><span class="eyebrow">${m.role === "user" ? "You" : "Companion · AI suggestion"}</span><div class="message-text">${esc(m.text)}</div></div>`).join("") : ""}</div><form id="chat-form" class="chat-form"><label>Your question<textarea name="prompt" maxlength="12000" required placeholder="Help me prepare for my next adventure…" ${sending ? "disabled" : ""}></textarea></label>${Voice.markup()}<div class="suggestions"><button type="button" data-prompt="Help me make a general dungeon preparation checklist. Clearly distinguish general advice from unverified Forever details.">Dungeon preparation</button><button type="button" data-prompt="Help me plan a relaxed 45-minute game session around a goal I will describe next.">Plan a short session</button></div><label class="check-label"><input type="checkbox" id="share-profile" ${shareCharacter ? "checked" : ""} ${sending ? "disabled" : ""}>Use my active character</label>${QuestGuide.contextMarkup()}<div class="button-row"><button class="primary" type="submit" ${sending ? "disabled" : ""}>${sending ? "Thinking…" : "Send question"}</button><button type="button" data-command="clear-chat">Clear conversation</button></div></form>${Memory.markup()}</section><aside class="panel companion-intel"><img class="hero-medallion" src="${portrait(p?.className)}" alt=""><h2>${esc(p?.name || "Choose your character")}</h2><p>${p ? `Level ${p.level} ${esc(p.className)} · ${esc(p.race || "Race not yet received")} · ${esc(p.faction || "Faction not yet received")}` : "Your character snapshot will bring this page to life."}</p><p>${esc(p?.location?.zone || "Location not yet received")}${p?.location?.subZone ? " · " + esc(p.location.subZone) : ""}</p><div class="callout brass">${esc(snapshotLabel(p))}<br>${esc(briefProfileId === p?.id ? adventureBrief?.freshness?.message : "Desktop saved data arrives after the game saves on logout.")}</div><h3>Observed quest log</h3><p>${esc(briefProfileId === p?.id ? adventureBrief?.quests?.message : "Quest data unavailable.")}</p>${(
+  return `<header class="section-head"><div class="eyebrow">World of Warcraft: Forever specialist</div><h1>A little wisdom for the journey.</h1><p>Plan outside combat. Answers are AI suggestions, grounded in approved saved observations and compatible public reference facts when available. Your companion specializes in WoW Forever and uses your approved saved character context. It cannot control the game.</p></header><div class="grid companion-grid"><section class="panel companion-conversation"><div class="panel-header"><h3>Your companion</h3><span class="tag">${esc(provider?.name || state.provider.id)}</span></div><div class="chatlog" id="chatlog" role="log" aria-label="Conversation" aria-live="polite">${messages.length ? messages.map((m) => `<div class="message ${m.role}"><span class="eyebrow">${m.role === "user" ? "You" : "Companion · AI suggestion"}</span><div class="message-text">${esc(m.text)}</div></div>`).join("") : ""}</div><form id="chat-form" class="chat-form"><label>Your question<textarea name="prompt" maxlength="12000" required placeholder="Help me prepare for my next adventure…" ${sending ? "disabled" : ""}></textarea></label>${Voice.markup()}<div class="suggestions"><button type="button" data-prompt="Help me make a general dungeon preparation checklist. Clearly distinguish general advice from unverified Forever details.">Dungeon preparation</button><button type="button" data-prompt="Help me plan a relaxed 45-minute game session around a goal I will describe next.">Plan a short session</button></div><label class="check-label"><input type="checkbox" id="share-profile" ${shareCharacter ? "checked" : ""} ${sending ? "disabled" : ""}>Use my active character</label>${QuestGuide.contextMarkup()}<div class="button-row"><button class="primary" type="submit" ${sending ? "disabled" : ""}>${sending ? "Thinking…" : "Send question"}</button>${sending ? '<button type="button" data-command="stop-response">Stop response</button>' : ""}<button type="button" data-command="clear-chat">Clear conversation</button></div></form>${questionRecovery ? `<div class="callout" data-question-recovery role="status"><p>${esc(questionRecovery.message)}</p><button type="button" data-command="edit-question">Edit question</button></div>` : ""}${Memory.markup()}</section><aside class="panel companion-intel"><img class="hero-medallion" src="${portrait(p?.className)}" alt=""><h2>${esc(p?.name || "Choose your character")}</h2><p>${p ? `Level ${p.level} ${esc(p.className)} · ${esc(p.race || "Race not yet received")} · ${esc(p.faction || "Faction not yet received")}` : "Your character snapshot will bring this page to life."}</p><p>${esc(p?.location?.zone || "Location not yet received")}${p?.location?.subZone ? " · " + esc(p.location.subZone) : ""}</p><div class="callout brass">${esc(snapshotLabel(p))}<br>${esc(briefProfileId === p?.id ? adventureBrief?.freshness?.message : "Desktop saved data arrives after the game saves on logout.")}</div><h3>Observed quest log</h3><p>${esc(briefProfileId === p?.id ? adventureBrief?.quests?.message : "Quest data unavailable.")}</p>${(
     p?.quests || []
   )
     .slice(0, 5)
@@ -856,6 +857,8 @@ function retireCompanion(notify = true) {
   chatGeneration++;
   sending = false;
   chatStarting = false;
+  currentQuestion = null;
+  questionRecovery = null;
   Voice.invalidate();
   Memory.invalidate();
   if (notify && state && api.companionContext) {
@@ -1250,6 +1253,37 @@ root.addEventListener("click", (event) => {
           await api.installUpdate();
         break;
 
+      case "stop-response": {
+        if (!sending || !currentQuestion) break;
+        const question = currentQuestion;
+        retireCompanion(false);
+        const generation = chatGeneration;
+        questionRecovery = { ...question, message: "Response stopped. Review your question and sharing choices before sending again. Stopping locally does not undo provider processing or charges." };
+        // Queue cancellation before another request can be sent through this renderer.
+        companionReady = api.cancelAsk();
+        companionReady.catch(() => {});
+        render();
+        if (generation === chatGeneration) document.querySelector('[data-command="edit-question"]')?.focus();
+        await companionReady;
+        break;
+      }
+      case "edit-question": {
+        if (!questionRecovery || sending) break;
+        const field = document.querySelector('#chat-form [name="prompt"]');
+        if (!field) break;
+        if (field.value || questionRevision !== questionRecovery.revision) {
+          questionRecovery.message = "Your newer draft was kept. The earlier question is still in the conversation above.";
+          const message = document.querySelector('[data-question-recovery] p');
+          if (message) message.textContent = questionRecovery.message;
+          field.focus();
+          break;
+        }
+        field.value = questionRecovery.prompt;
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        field.focus();
+        field.setSelectionRange(field.value.length, field.value.length);
+        break;
+      }
       case "subscription-login": {
         const generation = chatGeneration;
         const selectedProvider = connection;
@@ -1602,6 +1636,8 @@ root.addEventListener("submit", (event) => {
       formDrafts.delete(form.dataset.draftKey);
       form.elements.namedItem("prompt").value = "";
       form.elements.namedItem("prompt").defaultValue = "";
+      currentQuestion = { prompt, revision: questionRevision };
+      questionRecovery = null;
       messages.push({ role: "user", text: prompt });
       chatStarting = false;
       sending = true;
@@ -1613,17 +1649,15 @@ root.addEventListener("submit", (event) => {
           await Memory.review();
         }
       } catch (error) {
-        if (generation === chatGeneration)
-          toast(
-            error.message.replace(
-              /^Error invoking remote method '[^']+': Error: /,
-              "",
-            ),
-            true,
-          );
+        if (generation === chatGeneration) {
+          questionRecovery = { ...currentQuestion, message: error.message.replace(/^Error invoking remote method '[^']+': Error: /, "") };
+        }
       } finally {
-        if (generation === chatGeneration) sending = false;
-        if (page === "assistant") render();
+        if (generation === chatGeneration) {
+          sending = false;
+          currentQuestion = null;
+          if (page === "assistant") render();
+        }
       }
     }
   }).finally(() => {

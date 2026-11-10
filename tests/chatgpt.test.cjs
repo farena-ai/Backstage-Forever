@@ -567,3 +567,9 @@ test("account catalog errors and late results after close never leak or restore 
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('ChatGPT external cancellation reaches streaming response body',async()=>{
+ const auth=Object.create(ChatGPTAuth.prototype);auth.generation=0;auth.accessToken=async()=> 'fixture';const controller=new AbortController();let observed,started;const ready=new Promise(r=>started=r);
+ auth.fetch=async(_url,{signal})=>{observed=signal;return {ok:true,body:{async *[Symbol.asyncIterator](){started();await new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));}}};};
+ const pending=auth.ask({model:'fixture',prompt:'quest',signal:controller.signal});pending.catch(()=>{});await ready;controller.abort();assert.equal(observed.aborted,true);await assert.rejects(pending,/ChatGPT plan request/);
+});

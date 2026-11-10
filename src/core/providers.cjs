@@ -82,7 +82,7 @@ function profileContext(state, id, share, options) {
   );
 }
 async function ask(
-  { provider, model, endpoint, apiKey, prompt, context = "" },
+  { provider, model, endpoint, apiKey, prompt, context = "", signal },
   fetcher = fetch,
 ) {
   v.provider(provider);
@@ -136,7 +136,7 @@ async function ask(
       headers,
       body: JSON.stringify(body),
       redirect: "error",
-      signal: AbortSignal.timeout(60000),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60000)]) : AbortSignal.timeout(60000),
     });
     if (!response.ok)
       throw new Error(

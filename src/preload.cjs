@@ -62,6 +62,7 @@ contextBridge.exposeInMainWorld(
     saveProvider: (settings) => invoke("saveProvider", settings),
     deleteKey: (provider) => invoke("deleteKey", provider),
     ask: (request) => invoke("ask", request),
+    cancelAsk: () => invoke("cancelAsk"),
     companionContext: (...args) => invoke("companionContext", ...args),
     memoryList: (...args) => invoke("memoryList", ...args),
     memoryDraft: (...args) => invoke("memoryDraft", ...args),

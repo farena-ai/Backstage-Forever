@@ -33,6 +33,7 @@ const { registerKnowledgeHandlers } = require("./core/knowledge-ipc.cjs");
 const { registerDirectorHandlers } = require("./core/director-ipc.cjs");
 const { registerPreparationHandlers } = require("./core/preparation-ipc.cjs");
 const { registerPartyHandlers } = require("./core/party-ipc.cjs");
+const { CompanionRequest } = require("./core/companion-request.cjs");
 const { CompanionContext } = require("./core/companion-context.cjs");
 const { MemoryService, buildMemoryPrompt } = require("./core/memory.cjs");
 const { registerMemoryHandlers } = require("./core/memory-ipc.cjs");
@@ -50,13 +51,13 @@ let win,
   game,
   knowledge,
   companionContext,
+  companionRequest,
   memory,
   voice,
   quitApproved = false,
   quitPending = false,
   subscriptionEpoch = 0,
-  resetting = false,
-  busy = false;
+  resetting = false;
 let latestObservation = null;
 let latestObservationRoot = null;
 let gameActionEpoch = 0;
@@ -128,6 +129,7 @@ app.whenReady().then(() => {
   try {
     store = new Store(app.getPath("userData"), safeStorage);
     companionContext = new CompanionContext(() => store.state);
+    companionRequest = new CompanionRequest(companionContext);
     memory = new MemoryService({ store, context: companionContext });
     voice = new VoiceService({
       context: companionContext,
@@ -509,6 +511,12 @@ app.whenReady().then(() => {
     catalogs.clear();
     return store.deleteKey(provider);
   });
+  handle("cancelAsk", (...args) => {
+    if (args.length) throw Error("Invalid cancellation request.");
+    const stopped = companionRequest.cancel();
+    if (stopped) companionContext.invalidate("response-stop");
+    return stopped;
+  });
   handle("ask", async (...args) => {
     memory.clearDraft();
     if (args.length !== 1) throw Error("Invalid provider request.");
@@ -521,7 +529,6 @@ app.whenReady().then(() => {
       input.provider !== store.state.provider.id
     )
       throw new Error("Invalid provider selection.");
-    if (busy) throw new Error("Provider request already in progress.");
     const profileId = input.profileId === undefined ? store.state.activeProfileId : input.profileId;
     const token = memory.begin(profileId);
     const augmented = buildMemoryPrompt(store.state, { profileId, prompt: input.prompt, memoryIds: input.memoryIds === undefined ? [] : input.memoryIds });
@@ -538,10 +545,9 @@ app.whenReady().then(() => {
         prompt: input.prompt,
       },
     );
-    busy = true;
     const epoch = subscriptionEpoch;
     const selected = { ...store.state.provider };
-    try {
+    const reply = await companionRequest.run(async signal => {
       let reply;
       if (selected.authMode === "subscription" && input.provider !== "ollama") {
         if (input.provider === "openai")
@@ -549,6 +555,7 @@ app.whenReady().then(() => {
             model: selected.model,
             prompt: augmented.prompt,
             context,
+            signal,
           });
         else if (input.provider === "anthropic") {
           const profile = store.state.profiles.find(
@@ -564,6 +571,7 @@ app.whenReady().then(() => {
             model: selected.model,
             prompt: augmented.prompt,
             context: shared,
+            signal,
           });
         } else
           throw new Error(
@@ -576,16 +584,16 @@ app.whenReady().then(() => {
           apiKey: store.getKey(input.provider),
           prompt: augmented.prompt,
           context,
+          signal,
         });
       if (epoch !== subscriptionEpoch)
         throw new Error(
           "Provider response is no longer current because local data or authentication changed.",
         );
-      memory.complete(token, input.prompt, reply);
       return reply;
-    } finally {
-      busy = false;
-    }
+    }, { waitForSettlement: selected.authMode === "subscription" && input.provider === "anthropic" });
+    memory.complete(token, input.prompt, reply);
+    return reply;
   });
   handle("exportData", async () => {
     const result = await dialog.showSaveDialog(win, {

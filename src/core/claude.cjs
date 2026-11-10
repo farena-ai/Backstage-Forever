@@ -98,7 +98,7 @@ function runProcess(
       try {
         child.kill();
       } catch {
-        settle(true);
+        // A failed kill is not evidence of termination. Retain ownership until close.
       }
     };
     if (signal?.aborted) {
@@ -119,7 +119,11 @@ function runProcess(
     }
     signal?.addEventListener("abort", stop, { once: true });
     timer = setTimeout(stop, timeoutMs);
-    child.on("error", () => settle(true));
+    child.on("error", () => {
+      // A launch failure has no process; errors from a live process still require close.
+      if (!child.pid) settle(true);
+      else stop();
+    });
     const receive = (chunk, keep) => {
       if (stopping || settled) return;
       bytes += Buffer.byteLength(chunk);
@@ -180,11 +184,12 @@ function createClaude({
       resetting = false;
     }
   }
-  async function invoke(args, { input = "", timeoutMs = 30000 } = {}) {
+  async function invoke(args, { input = "", timeoutMs = 30000, signal } = {}) {
     if (!configured || resetting)
       throw new Error(
         "Claude Code private storage is not configured or is being cleared.",
       );
+    signal?.throwIfAborted();
     const startedGeneration = generation;
     const executable = await discover();
     if (!executable)
@@ -198,11 +203,12 @@ function createClaude({
     if (startedGeneration !== generation || resetting) throw new Error(FAILURE);
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "backstage-claude-"));
     const controller = new AbortController();
+    const combinedSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
     let complete;
     const completion = new Promise((resolve) => (complete = resolve));
     active.set(controller, completion);
     try {
-      if (startedGeneration !== generation || resetting)
+      if (startedGeneration !== generation || resetting || combinedSignal.aborted)
         throw new Error(FAILURE);
       const result = await runner(executable, ["--safe-mode", ...args], {
         input,
@@ -213,13 +219,13 @@ function createClaude({
           USERPROFILE: home,
           CLAUDE_CONFIG_DIR: config,
         },
-        signal: controller.signal,
+        signal: combinedSignal,
         timeoutMs,
         maxBytes: 1024 * 1024,
         shell: false,
         windowsHide: true,
       });
-      if (startedGeneration !== generation || controller.signal.aborted)
+      if (startedGeneration !== generation || combinedSignal.aborted)
         throw new Error(FAILURE);
       if (
         !result ||
@@ -237,9 +243,9 @@ function createClaude({
       complete();
     }
   }
-  async function status() {
+  async function status({ signal } = {}) {
     try {
-      const result = await invoke(["auth", "status", "--json"]);
+      const result = await invoke(["auth", "status", "--json"], { signal });
       const value = JSON.parse(result.stdout);
       const connected =
         result.code === 0 &&
@@ -284,7 +290,7 @@ function createClaude({
       );
     return status();
   }
-  async function ask({ model, prompt, context } = {}) {
+  async function ask({ model, prompt, context, signal } = {}) {
     if (
       typeof model !== "string" ||
       !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,199}$/.test(model)
@@ -292,7 +298,7 @@ function createClaude({
       throw new Error("Choose a valid Claude model.");
     if (typeof prompt !== "string" || !prompt.trim() || prompt.length > 16000)
       throw new Error("Enter a prompt of up to 16000 characters.");
-    if (!(await status()).connected)
+    if (!(await status({ signal })).connected)
       throw new Error(
         "Connect a supported Claude subscription first. No API fallback is used.",
       );
@@ -324,7 +330,7 @@ function createClaude({
         "--system-prompt",
         INSTRUCTION,
       ],
-      { input, timeoutMs: 120000 },
+      { input, timeoutMs: 120000, signal },
     );
     try {
       const value = JSON.parse(result.stdout);

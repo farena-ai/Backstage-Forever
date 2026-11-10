@@ -206,7 +206,7 @@ class ChatGPTAuth {
     const response = await this.fetch(url, {
       ...options,
       redirect: "error",
-      signal: AbortSignal.timeout(raw ? 60000 : 15000),
+      signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(raw ? 60000 : 15000)]) : AbortSignal.timeout(raw ? 60000 : 15000),
     });
     if (!response.ok) throw new Error(SAFE_ERROR);
     return raw ? response : JSON.parse(await boundedText(response));
@@ -486,16 +486,19 @@ class ChatGPTAuth {
       );
     }
   }
-  async ask({ model, prompt, context = "" }) {
+  async ask({ model, prompt, context = "", signal }) {
     str(model, 200, false);
     str(prompt, 12000, false);
     str(context, 20000);
     const generation = this.generation;
+    signal?.throwIfAborted();
     const token = await this.accessToken();
+    signal?.throwIfAborted();
     try {
       const response = await this.request(
         RESOURCE + "/responses",
         {
+          signal,
           method: "POST",
           headers: {
             Authorization: "Bearer " + token,
