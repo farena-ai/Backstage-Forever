@@ -1,5 +1,7 @@
 # Privacy and local data
 
+The local unreleased supplementary Forever field notes are a separately bundled offline reference. They update with app releases; the existing public quest-reference refresh remains separate. Local quest-detail lookup makes no extra network request, reads no additional player files and sends no question. Supplementary sharing/start-item/duration/drop/trainer/item-name facts are not silently included in automatic AI context, Director rankings or the native addon reference. Missing or invalid optional reference data disables these field notes alone. Public 0.12.3 is unchanged and 1.0 remains held for hands-on acceptance.
+
 ## Optional local support report
 
 Field Guide → Support & Recovery lets you prepare and review a small fixed-schema status report, then deliberately copy or save exactly that snapshot. Nothing is uploaded. It includes bounded app/platform/version facts, secure-storage availability, profile count, selected provider/access mode/key-present flag, connection/setup coverage states, public reference status/counts and known updater codes. Access mode is configuration, not verified sign-in or entitlement. Preparation reads already-held local status; it does not contact providers, spawn an authentication CLI, refresh references or inspect audio.

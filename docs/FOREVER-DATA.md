@@ -24,6 +24,16 @@ Counts are unique quests, not a count of points. Clues are separate from coordin
 
 No second external publisher met the compatibility and licensing requirements for this pass. The complementary path is supported current-client observations, with the game point and its qualification kept separate from historical references.
 
+## Supplementary field notes (local, unreleased)
+
+The current local review build adds a separate offline `data/forever-insights/` artifact; public 0.12.3 and the held 1.0 release are unchanged. Quest Guide places these historical facts after the existing waypoint action. Exact quest ID/title, reference source commit/build and saved build/locale when known must agree. Manual reference browsing does not establish player availability. Incompatible or missing facts stay unavailable.
+
+The same Efficient Games pin supplies 3,677 quest sharing observations, 33 static reported duration limits, 928 starting-item IDs and 131 item/count drop lists. The base remains **3,884 quest cache records**. Sharing counts are recorded answers from contributor files, not distinct people, independent witnesses or probabilities; disagreement remains mixed and absence unknown. A duration is not a countdown. A starting item proves neither ownership nor quest access; a drop entry establishes no drop rate, location or guarantee. Missing optional facts imply no restriction or prerequisite.
+
+The artifact also retains 34 exactly joined trainers with 2,074 service listings, covering 1,139 distinct spell IDs, and 5,014 status-valid English item names for later local guidance. Trainer positions are approximate interaction points. Level zero has unknown-requirement/already-known ambiguity; positive reported levels establish neither learnability nor learned status. Missing faction reaction evidence remains unknown. Observation names have unspecified locale even though cache names are enUS. No costs, ambiguous ability relationships, narrative text, racial mechanics, eligibility rules or item stats are included.
+
+All seven source files have exact byte/hash/metadata locks and separate collected dates under `data/forever-insights/source-lock.json`. Normalization omitted one invalid zero-count drop row, 943 invalid item-name records and 14 removed item-name records. All 131 raw drop lists retain at least one valid entry, so normalized nonempty-list coverage is also 131. The 45 sharing rows outside the cache are counted as unjoined and never manufacture full quest records. Per-file source counts stay distinct. These supplementary facts update **with app releases only**; Refresh reference continues to update the separate existing six-file quest ledger. There is no additional network request, and these facts are not silently added to automatic AI context, Director rankings or native addon markers.
+
 ## Freshness and privacy
 
 Automatic reference checks download public whole-build datasets. They do not send character names, quest lists, account details, notes, goals or AI credentials. Disable automatic checks or refresh manually when wanted. Failed or oversized downloads preserve the last valid data. For the same build, a newer bundled observation date takes precedence over an older valid cache after an app upgrade; equal-date or newer caches remain usable. The last check date and the source collection date mean different things.
@@ -47,6 +57,7 @@ Ordinary tests and the offline checks use bundled artifacts and small tracked fi
 ```powershell
 npm run check:addon-reference
 npm run check:forever-vendors
+npm run check:forever-insights
 ```
 
 For full reproduction, obtain the exact files at the immutable URLs in each source lock. The compiler checks bytes, SHA256, metadata and bounds before normalization. Put the six quest inputs together in one folder and the three seller inputs in another, then run:
@@ -54,6 +65,7 @@ For full reproduction, obtain the exact files at the immutable URLs in each sour
 ```powershell
 node scripts/build-forever-data.cjs --source-dir "C:\path\to\quest-inputs" --check
 node scripts/build-forever-vendors.cjs --source-dir "C:\path\to\seller-inputs" --check
+node scripts/build-forever-insights.cjs --source-dir "C:\path\to\seven-insights-inputs" --check
 ```
 
 Do not substitute another build or infer undocumented prerequisites. Keep the shipped license and notice with redistributed derived data. See [measured validation](VALIDATION.md) and the source locks under `data/forever/` and `data/forever-vendors/`.

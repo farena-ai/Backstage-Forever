@@ -31,6 +31,7 @@ const { scopeResponse } = require("./core/wow-policy.cjs");
 const { buildBrief } = require("./core/adventure.cjs");
 const { KnowledgeService } = require("./core/knowledge-cache.cjs");
 const { registerKnowledgeHandlers } = require("./core/knowledge-ipc.cjs");
+const { loadBundledInsights } = require("./core/insights-data.cjs");
 const { registerDirectorHandlers } = require("./core/director-ipc.cjs");
 const { registerPreparationHandlers } = require("./core/preparation-ipc.cjs");
 const { registerPartyHandlers } = require("./core/party-ipc.cjs");
@@ -314,12 +315,14 @@ app.whenReady().then(async () => {
     dialog,
     getWindow: () => win,
   });
+  const insights = loadBundledInsights();
   registerKnowledgeHandlers({
     handle,
     knowledge,
     getState: () => store.state,
     connected: () => game.status().connected,
     clipboard,
+    getInsights: () => insights,
   });
   const syncKnowledge = () => {
     if (resetting) return;

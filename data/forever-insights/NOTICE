@@ -1,0 +1,26 @@
+Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
+License: https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/JIVESCORP/eg-link-output-wowf
+Immutable source commit: 23f9636486d3d60479dc0bcee2356053c33faf2c
+Product wowf; build 1.60.1.70862. Collected November 7–9, 2026.
+
+Backstage Forever normalization changes: separately compiled bounded quest
+sharing counts, starting-item IDs, static durations, reported item/count drops,
+four-source exact-ID/name trainer joins and observed service listings, and
+status-valid enUS item names. Malformed optional rows are omitted and counted.
+Descriptions, costs, ambiguous abilities, narrative text, race masks, game
+assets and personal saved records are excluded. Per-file metadata, byte sizes,
+hashes and immutable URLs are preserved in pack.json/source-lock.json.
+
+Compilation and player observations are licensed by Efficient Games. Seven
+files are from one publisher, not seven independent witnesses. Observation
+names have unspecified locale; enUS cache names do not establish their locale.
+Counts describe source saved files/recorded answers, not distinct people,
+independent witnesses, confidence or probabilities. Level zero remains unknown
+requirement/already-known ambiguity. Positive levels are reported levels, not
+learned status or proof of eligibility. Positions approximate where a window
+was opened; current location, faction access and availability remain unknown.
+
+This license does not grant rights in Blizzard narrative text or game assets.
+This supplementary artifact updates with the application only. The existing
+quest-reference refresh remains a separate six-file feature.

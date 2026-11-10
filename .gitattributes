@@ -11,4 +11,7 @@ data/forever/NOTICE text eol=lf
 data/forever-vendors/*.json text eol=lf
 data/forever-vendors/LICENSE text eol=lf
 data/forever-vendors/NOTICE text eol=lf
+data/forever-insights/*.json text eol=lf
+data/forever-insights/LICENSE text eol=lf whitespace=-blank-at-eof
+data/forever-insights/NOTICE text eol=lf
 addon/BackstageForever/BackstageForeverReference.lua text eol=lf linguist-generated=true

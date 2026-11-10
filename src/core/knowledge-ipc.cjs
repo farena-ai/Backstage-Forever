@@ -1,12 +1,14 @@
 "use strict";
 const v = require("./validation.cjs"),
   ai = require("./providers.cjs");
+const { questInsights } = require("./insights-data.cjs");
 function registerKnowledgeHandlers({
   handle,
   knowledge,
   getState,
   connected,
   clipboard,
+  getInsights = () => null,
 }) {
   const sync = () => {
     const s = getState();
@@ -62,7 +64,7 @@ function registerKnowledgeHandlers({
       throw Error("Invalid quest ID.");
     const index = knowledge.index(p) || knowledge.bundled;
     const active = p.quests?.find((q) => q.id === questId);
-    return {
+    const result = {
       ...index.details(p, questId),
       waypoint: index.resolveWaypoint(
         p,
@@ -70,6 +72,23 @@ function registerKnowledgeHandlers({
         active ? (active.complete ? "t" : "o") : "r",
       ),
     };
+    const insights = getInsights();
+    if (insights) {
+      result.insights =
+        result.provenance?.build !== insights.build ||
+        result.provenance?.sourceCommit !== insights.sourceCommit
+          ? {
+              status: "unavailable",
+              reason: "The selected quest reference source differs from the bundled supplementary reference.",
+            }
+          : questInsights(insights, {
+              id: questId,
+              title: active?.title || result.record?.title,
+              build: p.clientBuild,
+              locale: p.locale,
+            });
+    }
+    return result;
   });
   handle("copyQuestWaypoint", (...args) => {
     count(args, 3);

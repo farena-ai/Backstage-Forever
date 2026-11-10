@@ -281,3 +281,17 @@ button.quest-ledger-row:not(.illustrated-card){display:flex;align-items:center;g
   .quest-detail-heading { padding-top: 8px; padding-bottom: 10px; }
   .quest-waypoint { margin-top: 10px; padding: 10px; }
 }
+.quest-insights { margin-top: 20px; padding: 18px; border: 1px solid #8f77494d; background: linear-gradient(135deg, #b9965312, #121e251a); border-radius: 8px; }
+.quest-facts-heading .eyebrow { font-size: 12px; letter-spacing: .12em; color: #d7bb80; }
+.quest-facts-heading h3 { margin: 6px 0 16px; }
+.quest-facts-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.quest-fact { display: flex; align-items: flex-start; gap: 10px; min-width: 0; padding-top: 12px; border-top: 1px solid #b6995e30; }
+.quest-fact-mark { flex: 0 0 28px; font-size: 25px; line-height: 1.2; color: #d7bb80; text-align: center; }
+.quest-insights .quest-fact h4 { margin: 0 0 7px; font-size: 14px; }
+.quest-insights p, .quest-insights li, .quest-insights span, .quest-insights small { font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+.quest-insights .quest-fact p { margin: 4px 0 7px; }
+.quest-insights small { display: block; color: #b9c3c8; }
+.quest-fact ul { margin: 4px 0 7px; padding-left: 17px; }
+.quest-facts-qualification { margin: 18px 0 10px; color: #d4c5a8; }
+.quest-facts-source { margin-bottom: 0; padding-top: 12px; border-top: 1px solid #b6995e30; color: #aabac3; }
+@media (max-width: 1100px) { .quest-facts-grid { grid-template-columns: minmax(0, 1fr); } .quest-insights { padding: 14px; } }
