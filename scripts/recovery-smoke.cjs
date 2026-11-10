@@ -68,6 +68,18 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
       await page.getByRole("button", { name: "Adventure", exact: true }).click(); await app.evaluate(() => { recoveryFixture.holdDialog = false; recoveryFixture.releaseDialog(); }); assert.match(await pending, /Preview/);
       await page.getByRole("button", { name: "Field Guide", exact: true }).click();
     });
+    await check("empty-memory Clear is reachable and purges damaged originals; failure stays visible", async () => {
+      const original = path.join(dir, "recovery", "damaged-original.bin"), alias = path.join(dir, "memory-original-hardlink");
+      await fs.writeFile(original, "PRIVATE_HIDDEN_MEMORY");
+      await page.getByRole("button", { name: "AI Companion", exact: true }).click();
+      const clear = page.getByRole("button", { name: "Clear this character’s memory", exact: true }); await clear.waitFor(); assert.equal(await clear.isEnabled(), true);
+      await fs.link(original, alias); const before = await fs.readFile(path.join(dir, "state.json"));
+      await page.evaluate(() => { window.confirm = message => { window.memoryClearConfirmation = message; return true; }; }); await clear.click(); await page.locator("[data-memory] [role='alert']").waitFor();
+      assert.match(await page.locator("[data-memory] [role='alert']").innerText(), /Recovery/); assert.equal(await fs.readFile(original, "utf8"), "PRIVATE_HIDDEN_MEMORY"); assert.deepEqual(await fs.readFile(path.join(dir, "state.json")), before);
+      await fs.unlink(alias); await page.evaluate(() => { window.confirm = message => { window.memoryClearConfirmation = message; return true; }; }); await clear.click();
+      await page.waitForFunction(() => !document.querySelector("[data-memory-clear]")?.disabled && !document.querySelector("[data-memory] [role='alert']")); await assert.rejects(() => fs.stat(original), { code: "ENOENT" });
+      await page.getByRole("button", { name: "Field Guide", exact: true }).click();
+    });
     await check("full and compact layouts show bounded dated options and keep keyboard controls usable", async () => {
       for (const [name, width, height] of [["full", 1440, 960], ["compact", 984, 635]]) {
         await app.evaluate(({ BrowserWindow }, size) => { const w = BrowserWindow.getAllWindows()[0]; w.setMinimumSize(0, 0); w.setContentSize(...size); }, [width, height]);

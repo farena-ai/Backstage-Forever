@@ -68,9 +68,12 @@ class RecoveryCheckpoints {
   }
   read(id, expectedHash) {
     if (!UUID.test(id)) throw new RecoveryError("invalid");
+    const dir = this.directory(); if (!dir) throw new RecoveryError("unavailable");
+    return this.#readEnvelope(id, path.join(dir, id + ".json"), expectedHash);
+  }
+  #readEnvelope(id, file, expectedHash) {
     try {
-      const dir = this.directory(); if (!dir) throw Error();
-      const { bytes } = readRegular(path.join(dir, id + ".json"), this.maxPointBytes), envelope = JSON.parse(bytes.toString("utf8"));
+      const { bytes } = readRegular(file, this.maxPointBytes), envelope = JSON.parse(bytes.toString("utf8"));
       if (Object.keys(envelope).sort().join() !== "createdAt,id,payload,reason,sha256,version" || envelope.version !== 1 || envelope.id !== id || !REASONS.includes(envelope.reason) || typeof envelope.createdAt !== "string" || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(envelope.createdAt) || new Date(envelope.createdAt).toISOString() !== envelope.createdAt || Date.parse(envelope.createdAt) > this.now() + 300000 || typeof envelope.payload !== "object" || !envelope.payload || Object.hasOwn(envelope.payload, "memories")) throw Error();
       const sha256 = hash(JSON.stringify(envelope.payload));
       if (sha256 !== envelope.sha256 || expectedHash && sha256 !== expectedHash) throw new RecoveryError("changed");
@@ -94,10 +97,20 @@ class RecoveryCheckpoints {
     try { automatic = this.preference(); const points = this.list(); return { phase: this.phase, automatic, count: points.length, latestAt: points[0]?.createdAt || null }; }
     catch { return { phase: "unavailable", automatic, count: 0, latestAt: null }; }
   }
+  #clearAbandonedStages() {
+    const names = this.entries().filter(name => temporaryName(name) && pointName(name.slice(0, -41)));
+    const files = names.map(name => ({ file: path.join(this.directory(), name), id: name.slice(0, 36) }));
+    if (files.reduce((total, { file }) => total + regular(file).size, 0) > this.maxPointBytes) throw new RecoveryError("unavailable");
+    // An uncommitted, fully validated memory-free stage can be retried from the journal.
+    // Damaged or linked remnants remain untouched until an explicit privacy clear.
+    for (const { file, id } of files) this.#readEnvelope(id, file);
+    for (const { file } of files) { regular(file); fs.unlinkSync(file); }
+  }
   create(input, reason) {
     try {
       if (!REASONS.includes(reason)) throw new RecoveryError("invalid");
       if (["startup", "save", "close", "import"].includes(reason) && !this.preference()) return null;
+      this.#clearAbandonedStages();
       const { memories, ...payload } = validateState(input), sha256 = hash(JSON.stringify(payload));
       const points = this.list(), identical = points.find(p => p.sha256 === sha256);
       if (identical) { this.phase = "ready"; return identical; }
@@ -113,10 +126,20 @@ class RecoveryCheckpoints {
       for (const p of points) regular(path.join(dir, p.id + ".json"));
       const retained = [...points], evicted = []; let total = points.reduce((n, p) => n + p.bytes, bytes.length);
       while (retained.length >= 3 || total > this.maxTotalBytes) { const old = retained.pop(); if (!old) throw new RecoveryError("limit"); total -= old.bytes; evicted.push(old); }
-      // Stage fully before rotation. A failed write cannot destroy an earlier point.
-      const file = path.join(dir, envelope.id + ".json"); writeAtomic(file, bytes);
-      try { for (const old of evicted) { const previous = path.join(dir, old.id + ".json"); regular(previous); fs.unlinkSync(previous); } }
-      catch (e) { fs.unlinkSync(file); throw e; }
+      // Keep the new envelope uncommitted until permanent history fits its bounds.
+      // Production's total >= 2 * single-point cap leaves a prior usable point
+      // throughout eviction; a process exit cannot strand a fourth permanent file.
+      if (points.length && !retained.length) throw new RecoveryError("limit");
+      const file = path.join(dir, envelope.id + ".json"), staged = file + "." + crypto.randomUUID() + ".tmp";
+      const rollback = evicted.map(old => ({ file: path.join(dir, old.id + ".json"), bytes: readRegular(path.join(dir, old.id + ".json"), this.maxPointBytes).bytes })), removed = [];
+      try {
+        fs.writeFileSync(staged, bytes, { flag: "wx", mode: 0o600 }); this.#readEnvelope(envelope.id, staged, sha256);
+        for (const previous of rollback) { regular(previous.file); fs.unlinkSync(previous.file); removed.push(previous); }
+        fs.renameSync(staged, file);
+      } catch (e) {
+        for (const previous of removed) if (!fs.existsSync(previous.file)) writeAtomic(previous.file, previous.bytes);
+        throw e;
+      } finally { if (fs.existsSync(staged)) fs.unlinkSync(staged); }
       this.lastCapture = this.now(); this.phase = "ready";
       const { state, fileHash, ...point } = this.read(envelope.id); return point;
     } catch (e) { this.phase = e.kind === "limit" ? "limit" : "unavailable"; throw e instanceof RecoveryError ? e : new RecoveryError("unavailable"); }
@@ -142,8 +165,16 @@ class RecoveryCheckpoints {
       for (const file of files) { regular(file); fs.unlinkSync(file); }
     } catch { this.phase = "unavailable"; throw new RecoveryError("unavailable"); }
   }
+  disconnectSavedGame() {
+    try {
+      const file = path.join(this.root(), "game-connection.private.json");
+      try { regular(file); } catch (e) { if (e.code === "ENOENT") return; throw e; }
+      fs.unlinkSync(file);
+    } catch { throw new RecoveryError("unavailable"); }
+  }
   restoreDamaged(token) {
     try {
+      if (this.entries().some(name => name.startsWith("damaged-original.bin.") && temporaryName(name))) throw new RecoveryError("unavailable");
       const point = this.read(token.id, token.sha256), file = path.join(this.root(), "state.json"), original = readRegular(file, MAX_POINT_BYTES);
       if (point.fileHash !== token.fileHash || hash(original.bytes) !== token.originalHash || !sameFile(original.identity, token.identity)) throw new RecoveryError("changed");
       const preserved = path.join(this.directory(true), "damaged-original.bin");
@@ -154,8 +185,7 @@ class RecoveryCheckpoints {
       if (hash(readRegular(preserved, MAX_POINT_BYTES).bytes) !== token.originalHash) throw new RecoveryError("unavailable");
       const current = readRegular(file, MAX_POINT_BYTES);
       if (!sameFile(current.identity, token.identity) || hash(current.bytes) !== token.originalHash || this.read(token.id, token.sha256).fileHash !== token.fileHash) throw new RecoveryError("changed");
-      const connection = path.join(this.root(), "game-connection.private.json");
-      if (fs.existsSync(connection)) { regular(connection); fs.unlinkSync(connection); }
+      this.disconnectSavedGame();
       writeAtomic(file, JSON.stringify({ ...point.state, memories: [] }, null, 2));
     } catch (e) { throw e instanceof RecoveryError ? e : new RecoveryError("unavailable"); }
   }

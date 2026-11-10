@@ -35,3 +35,25 @@ test("clear confirmation retains automatic choice, rejects stale confirmation an
   const result = await f.handlers.clearCheckpoints(); assert.equal(result.status.automatic, false); assert.equal(result.points.length, 0);
   await assert.rejects(() => f.handlers.restoreCheckpoint({ id: p.id, sha256: p.sha256 }), /Preview/);
 });
+test("real persisted-disconnect sharing failure aborts the main replacement transaction", { skip: process.platform !== "win32" }, async t => {
+  const f = fixture(t), { GameSync } = require("../src/core/game-sync.cjs"), { spawn } = require("node:child_process"), vm = require("node:vm");
+  const game = new GameSync({ dataDir: f.dir, addonDir: path.join(__dirname, "../addon/BackstageForever"), runtime: { probe: async () => ({ state: "not-running" }) } }); await game.ready; t.after(() => game.close());
+  f.store.saveState({ ...defaultState(), onboarded: true }); const point = f.store.recovery.create(f.store.state, "manual"); f.store.saveState({ ...f.store.state, followGameCharacter: false });
+  const connection = path.join(f.dir, "game-connection.private.json"); fs.writeFileSync(connection, '{"root":"SYNTHETIC_SOURCE"}'); fs.writeFileSync(path.join(f.dir, "credentials.json"), "KEY_SENTINEL");
+  const before = fs.readFileSync(f.store.file), source = fs.readFileSync(path.join(__dirname, "../src/main.cjs"), "utf8");
+  const scope = { store: f.store, game, subscriptionEpoch: 0, gameActionEpoch: 0, resetting: false, latestObservation: null, latestObservationRoot: null, recovery: { clear() {} }, diagnostics: { clear() {} }, companionContext: f.context, catalogs: { clear() {} }, knowledge: { setContext() {} } };
+  vm.runInNewContext(source.slice(source.indexOf("  async function replaceJournal("), source.indexOf("  recovery = registerRecoveryHandlers")) + "globalThis.replace = replaceJournal;", scope);
+  const script = '$a=[System.IO.File]::Open($env:BF_LOCK_CONNECTION,[System.IO.FileMode]::Open,[System.IO.FileAccess]::Read,[System.IO.FileShare]::Read); [Console]::WriteLine("LOCKED"); [Console]::ReadLine() | Out-Null; $a.Dispose()';
+  const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, env: { ...process.env, BF_LOCK_CONNECTION: connection } });
+  try {
+    await new Promise((resolve, reject) => { child.stdout.once("data", data => data.toString().includes("LOCKED") ? resolve() : reject(Error("Lock helper failed"))); child.once("error", reject); child.once("exit", code => reject(Error("Lock helper exited " + code))); });
+    await assert.rejects(() => scope.replace(() => f.store.restoreCheckpoint(point.id, point.sha256)), /Recovery/);
+    assert.deepEqual(fs.readFileSync(f.store.file), before); assert.equal(fs.readFileSync(path.join(f.dir, "credentials.json"), "utf8"), "KEY_SENTINEL"); assert.equal(fs.existsSync(connection), true);
+    Object.assign(scope, { handle: (_name, fn) => scope.reset = fn, dialog: { showMessageBox: async () => ({ response: 1 }) }, win: {}, updater: { reset: async () => {} }, chatgpt: { reset() {} }, claude: { clearCredentials: async () => {} } }); scope.knowledge.reset = async () => {};
+    vm.runInNewContext(source.slice(source.indexOf('  handle("resetData"'), source.indexOf('  handle("openLink"')), scope);
+    await assert.rejects(() => scope.reset(), /Recovery/); assert.deepEqual(fs.readFileSync(f.store.file), before); assert.equal(fs.existsSync(connection), true);
+  } finally { child.stdin.end("release\n"); await new Promise(resolve => child.once("exit", resolve)); }
+  await scope.replace(() => f.store.restoreCheckpoint(point.id, point.sha256)); assert.equal(fs.existsSync(connection), false);
+  let reconnected = 0; const reconnect = GameSync.prototype._connect; GameSync.prototype._connect = async () => { reconnected++; };
+  try { const restarted = new GameSync({ dataDir: f.dir, addonDir: path.join(__dirname, "../addon/BackstageForever"), runtime: { probe: async () => ({ state: "not-running" }) } }); await restarted.ready; restarted.close(); assert.equal(reconnected, 0); } finally { GameSync.prototype._connect = reconnect; }
+});

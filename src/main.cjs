@@ -282,6 +282,8 @@ app.whenReady().then(async () => {
     resetting = true;
     try {
       await game.disconnect(); latestObservation = null; latestObservationRoot = null;
+      // A live disconnect alone cannot prevent the saved source reopening next launch.
+      store.recovery.disconnectSavedGame();
       return operation();
     } finally { resetting = false; }
   }
@@ -703,6 +705,7 @@ app.whenReady().then(async () => {
     try {
       const knowledgeReset = knowledge.reset();
       await game.reset();
+      store.recovery.disconnectSavedGame();
       latestObservation = null;
       const updateReset = updater.reset();
       chatgpt.reset();
