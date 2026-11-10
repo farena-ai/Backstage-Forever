@@ -1,5 +1,25 @@
 # Validation — November 9, 2026
 
+## November 10, 2026 pre-1.0 correction integration
+
+The review branch keeps version 0.12.3 and published releases unchanged. The [whole-product assessment](PRODUCT-READINESS.md) covers twelve surfaces, nine journeys, correction evidence, provider limitations and separate owner gates. It is a pre-1.0 evaluation, not certification of a running game, live provider, speech engine, screen reader or installed upgrade.
+
+Task 1 AI ownership/Stop/question recovery is independently approved through `fc8a942`; Task 2 preservation-first startup recovery at `7fb5603`; Task 3 keyboard/help/compact UI corrections through `6b8de7d`. Their reports record actual RED/GREEN evidence, including the reviewer-found completed-memory-draft Stop boundary and omitted compact atlas-availability qualifier. Targeted actual Electron GUI checks passed serially using synthetic isolated data; native startup dialogs and Explorer were injected fakes. Baseline screenshots establish sampled normal-state layout; they do not replace the dynamic regression evidence.
+
+The single integrated full unit gate `node work/run-v08-unit-suite.cjs readiness-integrated` passed **594/594**, zero failed/cancelled/skipped/todo, in **78.79 seconds**, against application-source HEAD `6b8de7dad49d156b73564ea0530c3779b51eff92` with only Task 4 docs/configuration edits in progress. Local log: `work/readiness-integrated.log`. No redundant full GUI rerun was used to count the same evidence twice.
+
+New reusable source commands, executed one at a time:
+
+```powershell
+npm run test:companion-recovery
+npm run test:product-polish
+```
+
+These resolve respectively to `node scripts/companion-recovery-smoke.cjs` and `node scripts/product-polish-smoke.cjs`, whose successful executions are recorded in the owning task reports. Both are registered as separate serial steps in Windows validation and production-release CI. Local JavaScript syntax, package/lock JSON, both workflow YAML parses and all referenced npm script names were checked; registration does not imply remote execution. Existing dependencies were used. For the full unit suite in a normal source checkout use `npm test`; the bounded wrapper above is local working evidence.
+
+**Still pending at this integration checkpoint:** final independent whole-branch review, targeted genuine-Windows-8.3 regressions and a freshly built isolated unpacked review candidate/package check. Remote CI is **not run in this local pre-1.0 review**; no push or PR is planned. CI registration applies to future authorized pushes/releases. No installer was executed or published. Actual client, clean-machine install/upgrade, keyboard/screen-reader/Windows scaling, real audio, optional provider entitlement/billing and private-data rehearsal remain owner gates; **1.0 stays held**. Historical release evidence below remains evidence for its named source/version only.
+
+
 ## Final 0.8.0 local release gates
 
 The complete final unit/runtime suite passed **325/325**, with zero failures, cancellations or skips, both normally and under a distinct genuine Windows 8.3 temporary-root alias. Alias device/inode equality was verified. The four task reviews returned specification PASS and quality APPROVE after the documented Company fixes. Native/resource coverage passed 72/72; offline reference reproduction remains unchanged. Current dependency audit reports zero vulnerabilities.

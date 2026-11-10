@@ -92,6 +92,8 @@ npm run test:preparation
 npm run test:memory-backend
 npm run test:voice-backend
 npm run test:voice-memory
+npm run test:companion-recovery
+npm run test:product-polish
 npm run test:party-backend
 npm run test:party
 npm run dist
@@ -99,6 +101,8 @@ npm run test:packaged
 ```
 
 `npm start` opens the desktop. `npm run dist` builds the Windows installer in the configured output folder. See [Validation](docs/VALIDATION.md) for measured results and [Releasing](docs/RELEASING.md) for release gates.
+
+Run Electron checks one at a time; competing desktop windows can invalidate keyboard/focus evidence. The recovery and product-polish checks use isolated synthetic data, fake providers and fake audio workers. See the [whole-product readiness assessment](docs/PRODUCT-READINESS.md) for the pre-1.0 corrections and remaining owner checks. Version 0.12.3 and publication are unchanged by this review branch.
 
 ```text
 src/

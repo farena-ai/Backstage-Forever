@@ -51,6 +51,8 @@ jobs:
       - run: npm run test:memory-backend
       - run: npm run test:voice-backend
       - run: npm run test:voice-memory
+      - run: npm run test:companion-recovery
+      - run: npm run test:product-polish
       - run: npm run test:party-backend
       - run: npm run test:party
       - run: npm run test:command-center
