@@ -136,10 +136,11 @@ test("failed open followed by failed native dialog still settles safely", async 
 
 // Execute the real main startup callback with only native Electron surfaces and
 // one unrelated initializer injected; Store and the recovery helper remain real.
-function startup(f, { kind, dialog, shell, helperThrows = false }) {
+function startup(f, { kind, dialog, shell, helperThrows = false, restartThrows = false }) {
   let ready;
   let quitCount = 0;
   let helperAttempts = 0;
+  let relaunchCount = 0;
   const listeners = new Map();
   const app = {
     isPackaged: true,
@@ -148,6 +149,7 @@ function startup(f, { kind, dialog, shell, helperThrows = false }) {
     on(name, fn) { listeners.set(name, fn); },
     whenReady() { return { then(fn) { ready = Promise.resolve().then(fn); return ready; } }; },
     quit() { quitCount++; listeners.get("before-quit")?.({ preventDefault() { assert.fail("startup failure must quit"); } }); },
+    relaunch() { relaunchCount++; if (restartThrows) throw Error(privateError); },
   };
   const realRequire = createRequire(mainFile);
   const native = { app, dialog, shell };
@@ -164,7 +166,7 @@ function startup(f, { kind, dialog, shell, helperThrows = false }) {
     __dirname: path.dirname(mainFile),
     process: { platform: process.platform, env: {} },
   });
-  return { ready, quitCount: () => quitCount, helperAttempts: () => helperAttempts };
+  return { ready, quitCount: () => quitCount, helperAttempts: () => helperAttempts, relaunchCount: () => relaunchCount };
 }
 
 for (const kind of ["state", "keys", "initializer"]) {
@@ -206,3 +208,60 @@ for (const helperThrows of [false, true]) {
     f.unchanged();
   });
 }
+test("later unrelated initializer failure with NONEMPTY valid journal never creates recovery files", async t => {
+  const f = fixture(t, "initializer");
+  const state = { ...defaultState(), onboarded: true, profiles: [{ id: "p", name: "Synthetic", realm: "Fixture", className: "Mage", level: 10, notes: "private", goals: [] }] };
+  const file = path.join(f.dir, "state.json"), bytes = Buffer.from(JSON.stringify(state)); fs.writeFileSync(file, bytes);
+  const entries = fs.readdirSync(f.dir); const main = startup(f, { kind: "initializer", dialog: { async showMessageBox(options) { assertSafeDialog(options, f.dir); return { response: 0 }; } }, shell: {} });
+  await main.ready; assert.equal(main.quitCount(), 1); assert.deepEqual(fs.readFileSync(file), bytes); assert.deepEqual(fs.readdirSync(f.dir), entries);
+});
+
+test("journal fault alone offers explicit restore/restart and retains exact damaged bytes", async t => {
+  const f = fixture(t), { RecoveryCheckpoints } = require("../src/core/recovery-checkpoints.cjs"), { StoreStartupError } = require("../src/core/store.cjs");
+  assert.equal(typeof StoreStartupError, "function"); const manager = new RecoveryCheckpoints(f.dir);
+  manager.create(defaultState(), "manual"); const original = fs.readFileSync(path.join(f.dir, "state.json")); let restarted = 0, offered;
+  fs.writeFileSync(path.join(f.dir, "game-connection.private.json"), '{"root":"synthetic"}');
+  await loadHelper()({ dataDir: f.dir, error: new StoreStartupError("journal"), recovery: manager, restart: () => { restarted++; }, shell: {}, dialog: { async showMessageBox(options) { offered = options; return { response: 2 }; } } });
+  assert.equal(restarted, 1); assert.deepEqual(offered.buttons, ["Quit", "Open data folder", "Restore and restart"]); assert.equal(offered.defaultId, 0); assert.match(offered.detail, /damaged.*memory/i);
+  assert.deepEqual(fs.readFileSync(path.join(f.dir, "recovery", "damaged-original.bin")), original);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.dir, "state.json"))).memories, []);
+  assert.equal(fs.readFileSync(path.join(f.dir, "credentials.json"), "utf8"), '{"openai":"c3ludGhldGljLXNlbnRpbmVs"}');
+  assert.equal(fs.existsSync(path.join(f.dir, "game-connection.private.json")), false);
+  manager.clear(); assert.equal(fs.existsSync(path.join(f.dir, "recovery", "damaged-original.bin")), false);
+});
+for (const kind of ["credentials", "unrelated"]) test(`valid point does not authorize startup restore for ${kind}`, async t => {
+  const f = fixture(t), { RecoveryCheckpoints } = require("../src/core/recovery-checkpoints.cjs"), { StoreStartupError } = require("../src/core/store.cjs");
+  new RecoveryCheckpoints(f.dir).create(defaultState(), "manual");
+  await loadHelper()({ dataDir: f.dir, error: kind === "unrelated" ? Error("private") : new StoreStartupError(kind), restart: () => assert.fail(), shell: {}, dialog: { async showMessageBox(options) { assertSafeDialog(options, f.dir); return { response: 2 }; } } });
+  assert.equal(fs.readFileSync(path.join(f.dir, "state.json"), "utf8"), "{invalid-synthetic-state");
+});
+for (const mutation of ["point", "journal", "preservation", "restart"]) test(`startup ${mutation} failure preserves original and gives fixed safe guidance`, async t => {
+  const f = fixture(t), { RecoveryCheckpoints } = require("../src/core/recovery-checkpoints.cjs"), { StoreStartupError } = require("../src/core/store.cjs");
+  const manager = new RecoveryCheckpoints(f.dir), point = manager.create(defaultState(), "manual"), dialogs = [];
+  await loadHelper()({ dataDir: f.dir, error: new StoreStartupError("journal"), recovery: manager, restart: () => { if (mutation === "restart") throw Error(privateError); assert.fail(); }, shell: {}, dialog: { async showMessageBox(options) {
+    dialogs.push(options); if (dialogs.length === 1) {
+      if (mutation === "point") fs.writeFileSync(path.join(f.dir, "recovery", point.id + ".json"), "bad");
+      if (mutation === "journal") fs.writeFileSync(path.join(f.dir, "state.json"), "changed journal");
+      if (mutation === "preservation") fs.mkdirSync(path.join(f.dir, "recovery", "damaged-original.bin"));
+    } return { response: 2 };
+  } } });
+  assert.equal(dialogs.length, 2); assert.doesNotMatch(JSON.stringify(dialogs), /synthetic-private-token/);
+  if (mutation === "restart") { assert.match(dialogs[1].message, /restart.*manually/i); assert.equal(fs.readFileSync(path.join(f.dir, "recovery", "damaged-original.bin"), "utf8"), "{invalid-synthetic-state"); }
+  else assert.equal(fs.readFileSync(path.join(f.dir, "state.json"), "utf8"), mutation === "journal" ? "changed journal" : "{invalid-synthetic-state");
+});
+for (const restartThrows of [false, true]) test(`real main startup restore ${restartThrows ? "failed" : "successful"} relaunch always quits`, async t => {
+  const f = fixture(t), { RecoveryCheckpoints } = require("../src/core/recovery-checkpoints.cjs"); new RecoveryCheckpoints(f.dir).create(defaultState(), "manual"); const dialogs = [];
+  const main = startup(f, { kind: "state", restartThrows, dialog: { async showMessageBox(options) { dialogs.push(options); return { response: 2 }; } }, shell: {} });
+  await main.ready; assert.equal(main.relaunchCount(), 1); assert.equal(main.quitCount(), 1); assert.equal(dialogs.length, restartThrows ? 2 : 1);
+  assert.equal(fs.readFileSync(path.join(f.dir, "recovery", "damaged-original.bin"), "utf8"), "{invalid-synthetic-state");
+});
+test("real Windows replacement lock retains exact damaged bytes and preserved original after failed startup restore", { skip: process.platform !== "win32" }, async t => {
+  const f = fixture(t), { RecoveryCheckpoints } = require("../src/core/recovery-checkpoints.cjs"), { spawn } = require("node:child_process");
+  const manager = new RecoveryCheckpoints(f.dir), p = manager.create(defaultState(), "manual"), token = manager.prepareStartupRestore(p.id);
+  const script = '$a=[System.IO.File]::Open($env:BF_LOCK_JOURNAL,[System.IO.FileMode]::Open,[System.IO.FileAccess]::Read,[System.IO.FileShare]::Read); [Console]::WriteLine("LOCKED"); [Console]::ReadLine() | Out-Null; $a.Dispose()';
+  const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, env: { ...process.env, BF_LOCK_JOURNAL: path.join(f.dir, "state.json") } });
+  try {
+    await new Promise((resolve, reject) => { child.stdout.once("data", data => data.toString().includes("LOCKED") ? resolve() : reject(Error("Lock helper failed"))); child.once("error", reject); child.once("exit", code => reject(Error("Lock helper exited " + code))); });
+    assert.throws(() => manager.restoreDamaged(token)); assert.equal(fs.readFileSync(path.join(f.dir, "state.json"), "utf8"), "{invalid-synthetic-state"); assert.equal(fs.readFileSync(path.join(f.dir, "recovery", "damaged-original.bin"), "utf8"), "{invalid-synthetic-state");
+  } finally { child.stdin.end("release\n"); await new Promise(resolve => child.once("exit", resolve)); }
+});

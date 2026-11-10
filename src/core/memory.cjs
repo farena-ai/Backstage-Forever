@@ -69,11 +69,13 @@ class MemoryService {
     const memories = structuredClone(this.store.state.memories), group = memories.find(group => group.profileId === input.profileId);
     if (!group?.exchanges.some(item => item.id === input.id)) throw Error("Memory exchange is no longer available.");
     group.exchanges = group.exchanges.filter(item => item.id !== input.id);
+    this.store.clearRecoveryOriginal?.();
     const state = this.store.saveMemories(memories.filter(group => group.exchanges.length));
     this.context.invalidate("memory-delete"); return state;
   }
   clear(profileId) {
     currentProfile(this.store.state, profileId);
+    this.store.clearRecoveryOriginal?.();
     const state = this.store.saveMemories(this.store.state.memories.filter(group => group.profileId !== profileId));
     this.context.invalidate("memory-clear"); return state;
   }

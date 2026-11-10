@@ -58,7 +58,7 @@ function importHandler({ store, file, filesystem = fs }) {
     "utf8",
   );
   vm.runInNewContext(
-    source.slice(
+    source.slice(source.indexOf("  async function replaceJournal("), source.indexOf("  recovery = registerRecoveryHandlers")) + source.slice(
       source.indexOf('  handle("importData"'),
       source.indexOf('  handle("resetData"'),
     ),
@@ -73,6 +73,7 @@ function importHandler({ store, file, filesystem = fs }) {
       win: {},
       subscriptionEpoch: 0,
       resetting: false,
+      recovery: { clear() {} }, diagnostics: { clear() {} }, latestObservationRoot: null,
       companionContext: new (require("../src/core/companion-context.cjs").CompanionContext)(() => store.state),
       gameActionEpoch: 0,
       latestObservation: null,

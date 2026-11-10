@@ -42,6 +42,7 @@ const { preserveMemories } = require("./core/memory-data.cjs");
 const { VoiceService } = require("./core/voice.cjs");
 const { registerVoiceHandlers } = require("./core/voice-ipc.cjs");
 const { registerDiagnosticsHandlers } = require("./core/diagnostics-ipc.cjs");
+const { registerRecoveryHandlers, RECOVERY_MESSAGES } = require("./core/recovery-ipc.cjs");
 const { releaseChannel } = require("../package.json");
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
@@ -58,6 +59,7 @@ let win,
   memory,
   voice,
   diagnostics,
+  recovery,
   quitApproved = false,
   quitPending = false,
   subscriptionEpoch = 0,
@@ -92,6 +94,7 @@ function handle(name, fn) {
         );
       return await fn(...args);
     } catch (e) {
+      if (RECOVERY_MESSAGES.includes(e?.message)) throw new Error(e.message);
       if (["diagnosticsPreview", "copyDiagnostics", "exportDiagnostics"].includes(name) && [
         "Report request is invalid.",
         "Prepare a new report and review it before copying or saving.",
@@ -174,7 +177,7 @@ app.whenReady().then(async () => {
           latestObservation = null;
           latestObservationRoot = game?.root;
         }
-        if (!resetting) {
+        if (!resetting && game?.root) {
           let omittedProfileCount = 0;
           const merged = mergeSnapshot(store.state, snapshot, {
             allowActiveSelection: !latestObservation || snapshot.observedAt >= latestObservation,
@@ -198,9 +201,9 @@ app.whenReady().then(async () => {
         }
       },
     });
-  } catch {
+  } catch (error) {
     try {
-      await showStartupFailure({ dialog, shell, dataDir: app.getPath("userData") });
+      await showStartupFailure({ dialog, shell, dataDir: app.getPath("userData"), error, restart: () => app.relaunch() });
     } catch {
       // Recovery must never turn an initialization error into an unhandled rejection.
     } finally {
@@ -256,7 +259,7 @@ app.whenReady().then(async () => {
   diagnostics = registerDiagnosticsHandlers({
     handle, dialog, clipboard, getWindow: () => win, dataDir: app.getPath("userData"),
     collect: () => {
-      // Read already-held local facts only. No auth worker, model catalog, disk scan or refresh.
+      // Read local status only, including bounded recovery metadata. No auth worker, model catalog or network refresh.
       const selected = store.state.provider, gameFacts = game.status();
       const index = knowledge.packs.get(knowledge.build), pack = (index || knowledge.bundled).pack;
       const update = updater.status();
@@ -272,6 +275,17 @@ app.whenReady().then(async () => {
       };
     },
   });
+  async function replaceJournal(operation, reason = "restore") {
+    subscriptionEpoch++;
+    recovery?.clear(); diagnostics.clear(); companionContext.invalidate(reason);
+    catalogs.clear(); gameActionEpoch++; knowledge.setContext({}, false);
+    resetting = true;
+    try {
+      await game.disconnect(); latestObservation = null; latestObservationRoot = null;
+      return operation();
+    } finally { resetting = false; }
+  }
+  recovery = registerRecoveryHandlers({ handle, store, context: companionContext, getEpoch: () => subscriptionEpoch, getWindow: () => win, dialog, transaction: replaceJournal });
   registerCompanyHandlers({
     handle,
     getState: () => store.state,
@@ -658,33 +672,21 @@ app.whenReady().then(async () => {
       type: "warning",
       title: "Replace saved profiles?",
       message:
-        "Import replaces profiles, notes, goals, plans and preferences, and clears saved conversation memory. Existing API keys are preserved.",
+        "Import replaces profiles, notes, goals, plans and preferences, clears saved conversation memory, and disconnects game observation. Existing API keys are preserved. " + (store.recoveryStatus().automatic ? "A local safety point protects your current journal before replacement." : "Automatic protection is off: no automatic safety copy will be made."),
       buttons: ["Cancel", "Import backup"],
       defaultId: 0,
       cancelId: 0,
       noLink: true,
     });
     if (confirm.response !== 1 || epoch !== subscriptionEpoch) return null;
-    subscriptionEpoch++;
-    companionContext.invalidate("import");
-    catalogs.clear();
-    gameActionEpoch++;
-    knowledge.setContext({}, false);
-    resetting = true;
-    try {
-      await game.disconnect();
-      latestObservation = null;
-      return store.importData(text);
-    } finally {
-      resetting = false;
-    }
+    return replaceJournal(() => store.importData(text), "import");
   });
   handle("resetData", async () => {
     const result = await dialog.showMessageBox(win, {
       type: "warning",
       title: "Delete all local data?",
       message:
-        "This deletes all profiles, goals, notes, plans, saved conversation memory, preferences, API keys and app-owned subscription credentials. Pending sign-ins are cancelled. Other apps and global Claude credentials are unaffected. Profile backups exclude credentials and conversation memory.",
+        "This deletes all profiles, goals, notes, plans, saved conversation memory, recovery points, preserved damaged originals, preferences, API keys and app-owned subscription credentials. Pending sign-ins are cancelled. Other apps and global Claude credentials are unaffected. Exported backups remain separate.",
       buttons: ["Cancel", "Delete all data"],
       defaultId: 0,
       cancelId: 0,
@@ -692,6 +694,7 @@ app.whenReady().then(async () => {
     });
     if (result.response !== 1) return null;
     resetting = true;
+    recovery.clear();
     diagnostics.clear();
     companionContext.invalidate("reset");
     subscriptionEpoch++;
@@ -750,6 +753,7 @@ app.whenReady().then(async () => {
     win.loadURL(trusted);
   }
   createWindow();
+  store.startRecovery();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -759,6 +763,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", (event) => {
+  store?.closeRecovery();
   voice?.close();
   companionContext?.invalidate("quit");
   subscriptionEpoch++;

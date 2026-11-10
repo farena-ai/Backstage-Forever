@@ -17,7 +17,7 @@ function buildDiagnostics(input, { now = Date.now } = {}) {
     game: { phase: choice(g?.phase, ["disconnected", "waiting", "folder-unavailable", "needs-addon", "needs-reload", "invalid-export", "stale", "synced", "error"]), companion: choice(g?.companionState, ["unavailable", "not-prepared", "saved", "update-next-launch", "prepared"]), partial: bool(g?.coverage?.partial), unreadableAccountCount: count(g?.coverage?.unreadableAccountCount), omittedCharacterCount: count(g?.coverage?.omittedCharacterCount), omittedProfileCount: count(g?.coverage?.omittedProfileCount) },
     reference: { phase: choice(r?.phase, ["offline", "refreshing", "mismatch", "ready", "reference", "error", "idle"]), build: build(r?.packBuild), quests: count(r?.counts?.quests), items: count(r?.counts?.items), npcs: count(r?.counts?.npcs) },
     updater: { phase: choice(u?.phase, ["idle", "unsupported", "disabled", "error", "checking", "current", "downloading", "ready"]), code: choice(u?.diagnostic?.code, ["NETWORK", "TIMEOUT", "HTTP", "REDIRECT", "URL", "BODY_ABORT", "SIZE", "HASH", "SIGNATURE", "MANIFEST", "DISCOVERY", "PATH", "PERMISSION", "DISK", "CACHE", "CANCELLED"]), currentVersion: version(u?.currentVersion), availableVersion: version(u?.availableVersion), readyVersion: version(u?.readyVersion) },
-    recovery: { availability: s.recovery?.availability === "ready" ? "ready" : "unavailable", count: s.recovery?.availability === "ready" ? count(s.recovery.count) : "unknown" },
+    recovery: { phase: choice(s.recovery?.phase, ["ready", "unavailable", "limit"]), automatic: bool(s.recovery?.automatic), count: count(s.recovery?.count) },
   };
   const text = [
     "Backstage Forever — local support report",
@@ -53,7 +53,8 @@ function buildDiagnostics(input, { now = Date.now } = {}) {
     `Available version: ${report.updater.availableVersion}`,
     `Ready version: ${report.updater.readyVersion}`,
     "",
-    `Checkpoint availability: ${report.recovery.availability}`,
+    `Checkpoint phase: ${report.recovery.phase}`,
+    `Automatic local protection: ${report.recovery.automatic}`,
     `Checkpoint count: ${report.recovery.count}`,
     ""
   ].join("\n");

@@ -8,7 +8,7 @@ test("fixed report projects local safe facts and uses the injected clock", () =>
   assert.equal(result.report.generatedAt, "2026-11-10T12:00:00.000Z");
   assert.equal(result.report.provider.id, "openai"); assert.equal(result.report.provider.accessMode, "subscription");
   assert.equal(result.report.game.unreadableAccountCount, 2);
-  assert.match(result.text, /Profile count: 4/); assert.match(result.text, /Checkpoint availability: unavailable/);
+  assert.match(result.text, /Profile count: 4/); assert.match(result.text, /Checkpoint phase: unknown/);
   assert.ok(Buffer.byteLength(result.text) <= MAX_REPORT_BYTES);
   assert.equal(result.text, buildDiagnostics({ version: "0.12.3", channel: "preview", platform: "win32", arch: "x64", secureStorage: true, profileCount: 4, provider: { id: "openai", authMode: "subscription", keyPresent: true }, game: { phase: "synced", companionState: "saved", coverage: { partial: true, unreadableAccountCount: 2 } }, reference: { phase: "ready", packBuild: "1.60.1.70862", counts: { quests: 123 } }, updater: { phase: "error", diagnostic: { code: "NETWORK" } } }, { now }).text);
 });
@@ -17,13 +17,13 @@ test("private state and every malformed allowlisted field stay out of object and
   const { report, text } = buildDiagnostics(input, { now });
   assert.doesNotMatch(JSON.stringify(report) + text, /PRIVATE_CANARY|script|private\/token/);
   assert.equal(report.provider.id, "unknown"); assert.equal(report.provider.keyPresent, "unknown"); assert.equal(report.profileCount, "unknown");
-  assert.equal(report.recovery.availability, "unavailable");
+  assert.equal(report.recovery.phase, "unknown");
 });
 test("bounded primitive grammar rejects coercion, oversized counts and versions", () => {
   for (const value of [NaN, Infinity, -1, 1.5, 1000001, "5", {}, []]) assert.equal(buildDiagnostics({ profileCount: value }, { now }).report.profileCount, "unknown");
   for (const value of ["1.2.3\nsecret", "01.2.3", "9".repeat(200), {}, null]) assert.equal(buildDiagnostics({ version: value }, { now }).report.version, "unknown");
   assert.equal(buildDiagnostics(null, { now }).report.platform, "unknown");
-  assert.equal(buildDiagnostics({ recovery: { availability: "ready", count: 3 } }, { now }).report.recovery.count, 3);
+  assert.equal(buildDiagnostics({ recovery: { phase: "ready", automatic: true, count: 3 } }, { now }).report.recovery.count, 3);
 });
 test("text is exact fixed-order readable projection with no source metadata", () => {
   const { report, text } = buildDiagnostics({}, { now });
@@ -38,4 +38,8 @@ test("real four-part reference builds remain useful while malformed suffixes are
 test("current waiting and offline states remain diagnostic facts", () => {
   const { report } = buildDiagnostics({ game: { phase: "waiting" }, reference: { phase: "offline" } }, { now });
   assert.equal(report.game.phase, "waiting"); assert.equal(report.reference.phase, "offline");
+});
+test("recovery projects only fixed phase, automatic and count; never dates or identity", () => {
+  const { report, text } = buildDiagnostics({ recovery: { phase: "limit", automatic: false, count: 3, latestAt: canary, id: canary, path: canary } }, { now });
+  assert.equal(report.recovery.phase, "limit"); assert.equal(report.recovery.automatic, false); assert.equal(report.recovery.count, 3); assert.doesNotMatch(JSON.stringify(report) + text, /PRIVATE_CANARY/);
 });

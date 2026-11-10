@@ -10,7 +10,21 @@ Copy and Save use the exact main-process snapshot shown in the preview, rather t
 
 Save uses your chosen text-file destination, with an atomic write. Destinations inside the app-owned data directory are rejected, including canonical directory aliases. No report history is kept. Files you deliberately save elsewhere and text you put on the clipboard remain under your control; reset cannot remove copies you shared.
 
-The checkpoint line currently reads **unavailable**. Automatic recovery checkpoints are a separate planned service; this report does not create or restore them. Until then, use **Protect your journal → Export backup** for a private profile backup. Backups contain private journal content and are different from this small support report. If the journal cannot open at startup, preserve its files and follow the README startup recovery instructions before changing them.
+## Automatic local protection
+
+Open **Field Guide → Automatic local protection**. Protection defaults on without setup. A successful startup protects a nonempty valid journal; changed saves create a point at most once every 15 minutes, and ordinary app close protects remaining changes. Identical content is not copied again. There is no recovery timer, scheduled task, watcher or network service. Recent edits can be newer than the latest dated point.
+
+Keep up to **3 points, 64 MiB each, 128 MiB combined**. Points contain validated private profile-backup data: profiles, notes, goals, journeys and preferences. They exclude credentials and saved conversation memory. These are readable local files, not encrypted notebooks or portable party plans. The machine-local automatic choice and recovery history are excluded from exported profile backups. SHA-256 detects damage, not authenticity; local checkpoint files are always treated as untrusted data.
+
+**Create point now** deliberately saves the current journal, including when automatic protection is off. Turning protection off retains existing points. **Refresh recovery history** retries local status after a storage problem. A failed automatic point does not prevent ordinary journal saves. Oversized journals are never trimmed: manual creation and safety-copy operations fail with a fixed size-limit message. Keep an exported backup elsewhere to protect against drive loss.
+
+Choose a dated point, select **Preview selected point**, then **Restore selected point**. The native confirmation defaults to Cancel. Restore creates a deliberate safety point of the current journal even with automatic protection off, replaces journal/preferences, clears saved memory, keeps existing API credentials and disconnects game observation until you deliberately reconnect. It retires work for the former character/source context. If the point or journal changes while confirmation is open, preview again. External backup import protects the current journal when automatic protection is on; inability to create that safety point aborts replacement. When protection is off, the import confirmation discloses that no automatic safety copy is made.
+
+**Clear recovery history** removes all managed points and any retained damaged original. It keeps the automatic choice; future saves can protect new changes. Character deletion clears **all** managed history and damaged originals before committing deletion, so a deleted character is not left in another character's checkpoint. A purge failure refuses deletion. **Delete all local data** clears history, damaged originals and the recovery preference without creating an old-state point. Unrelated files and deliberately exported backups remain separate.
+
+For a journal-specific startup failure, a valid newest point enables **Restore and restart**. Quit remains the default; Open data folder still works. Before replacement, the exact damaged regular-file journal is retained as one local original (at most 64 MiB). **This raw original can contain saved memory and private text**, unlike ordinary memory-free checkpoints. A different existing original is never silently overwritten. Clear history, character deletion and reset remove it; explicit saved-memory deletion/clear (even if the current memory list is empty) and external backup import also purge old originals and their managed crash temporaries. A purge failure refuses that privacy operation. Credentials and unrelated files are preserved. Safe restore refuses changed points, changed journals, oversized originals, linked files or failed preservation. Game observation may already be disconnected if a later journal write fails. If restart fails after restoration, close the app and reopen it manually. Credential faults and unrelated initialization faults do not offer journal restore.
+
+Support reports include only recovery phase (`ready`, `unavailable`, `limit`), automatic choice and bounded point count. Point dates, IDs, paths and private journal text never enter a support report. Recovery is local protection, not a promise that a failing disk or an administrator modifying app files can be repaired automatically.
 
 ## Developer verification
 
@@ -19,6 +33,8 @@ Use synthetic local data only:
 ```powershell
 node --test tests/diagnostics.test.cjs tests/diagnostics-ipc.test.cjs
 npm run test:support
+node --test --test-concurrency=1 tests/recovery-checkpoints.test.cjs tests/recovery-store.test.cjs tests/recovery-ipc.test.cjs tests/startup-recovery.test.cjs
+npm run test:recovery
 ```
 
 The Electron fixture uses isolated temporary data, fake native clipboard/dialog surfaces and synthetic canaries. It checks exact preview/copy/export equality, trusted requests, held controls/focus, layout and navigation/reset races without real player files, account sign-in, audio capture, inference or installers.

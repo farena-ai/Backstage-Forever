@@ -12,6 +12,21 @@ function fixture(t) {
   const store = new Store(dir, { isEncryptionAvailable: () => true, encryptString: x => Buffer.from(x), decryptString: x => x.toString() });
   store.saveState(state()); return { dir, store };
 }
+for (const action of ["remove", "clear", "empty-clear", "import"]) test(`explicit ${action} removes hidden damaged-original memory`, t => {
+  const { store, dir } = fixture(t), { MemoryService } = require("../src/core/memory.cjs"), { CompanionContext } = require("../src/core/companion-context.cjs");
+  store.startRecovery(); if (action !== "empty-clear") store.saveMemories([{ profileId: "p", exchanges: [exchange()] }]);
+  const file = path.join(dir, "recovery", "damaged-original.bin"); fs.writeFileSync(file, "PRIVATE_DELETED_MEMORY");
+  const memory = new MemoryService({ store, context: new CompanionContext(() => store.state) });
+  if (action === "remove") memory.remove({ profileId: "p", id }); else if (action === "import") store.importData(store.exportData()); else memory.clear("p");
+  assert.equal(fs.existsSync(file), false); assert.equal(store.recovery.list().length > 0, true);
+});
+test("damaged-original purge failure refuses explicit memory deletion and preserves journal bytes", t => {
+  const { store, dir } = fixture(t), { MemoryService } = require("../src/core/memory.cjs"), { CompanionContext } = require("../src/core/companion-context.cjs");
+  store.startRecovery(); store.saveMemories([{ profileId: "p", exchanges: [exchange()] }]);
+  const file = path.join(dir, "recovery", "damaged-original.bin"); fs.writeFileSync(file, "PRIVATE_DELETED_MEMORY"); fs.linkSync(file, path.join(dir, "sentinel"));
+  const before = fs.readFileSync(store.file), memory = new MemoryService({ store, context: new CompanionContext(() => store.state) });
+  assert.throws(() => memory.clear("p")); assert.deepEqual(fs.readFileSync(store.file), before); assert.equal(store.state.memories.length, 1);
+});
 test("optional memory schema normalizes legacy data and strictly validates bounded owned exchanges", () => {
   const s = state(); delete s.memories; assert.deepEqual(validateState(s).memories, []);
   s.memories = [{ profileId: "p", exchanges: [exchange()] }]; assert.deepEqual(validateState(s).memories, s.memories);

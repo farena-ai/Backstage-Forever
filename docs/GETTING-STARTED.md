@@ -54,6 +54,10 @@ Review an answer before **Save exchange**. Saved exchanges stay on this computer
 
 ## Backup, restore and deletion
 
+Your journal has automatic local protection without extra setup. Open **Field Guide → Automatic local protection** to see dated points, turn protection off/on, create a point now, preview/restore a point or clear history. Up to 3 memory-free private points are kept (64 MiB each, 128 MiB combined). Changed saves are coalesced to 15 minutes; startup and ordinary close also protect changes. A recent edit may be newer than the last point. Ordinary journaling still works if a checkpoint fails. Turning automatic protection off retains history.
+
+Restore requires preview and a native confirmation, creates a current-journal safety point even when automatic protection is off, clears saved memory, preserves keys and disconnects game observation. External import creates a safety point only when automatic protection is on; the confirmation says when it is off. Character deletion removes ALL local recovery history and damaged originals before deleting the character; reset also resets the automatic choice. Clear history keeps the choice so future saves can be protected. See [Support and recovery](SUPPORT-AND-RECOVERY.md).
+
 Use the app's backup/export control and choose a file in the native Windows dialog. Store that file somewhere you control; it contains profiles, notes, goals and provider preferences in readable JSON. It does not contain API keys, subscription credentials or saved conversation memory. Import using the app's import control and select a backup. Review the confirmation: importing replaces the app's current profiles/plans and clears local conversation memory. A malformed file should leave current data intact. A backup is data, never executable code.
 
 To move computers, export on the old computer, install on the new one and import there. Re-enter API keys and reconnect subscription accounts separately. Do not send a friend your private backup unless you want them to have its contents. Every friend should create their own profiles and use their own provider account.
@@ -62,7 +66,9 @@ Use Delete Key for an individual stored provider credential. Use the reset/delet
 
 ## If the app cannot start
 
-A startup failure can come from saved state, credentials or another component. The dialog does not diagnose damaged data. **Quit** is the default; **Open data folder** opens only this installation's actual app-data directory and then the app quits. Neither choice resets, restores, renames or deletes files. If Windows cannot open the folder, the follow-up dialog shows its exact path for File Explorer.
+A startup failure can come from saved state, credentials or another component. Only a specifically identified journal read/validation failure can offer **Restore and restart**, and only if a valid checkpoint and safely preservable original are available. Credential and unrelated failures do not offer journal restore. **Quit** is the default; **Open data folder** opens only this installation's actual app-data directory and then the app quits. Neither choice resets, restores, renames or deletes files. If Windows cannot open the folder, the follow-up dialog shows its exact path for File Explorer.
+
+If offered, **Restore and restart** is deliberate: it preserves the exact damaged journal (up to 64 MiB), replaces it with the newest validated checkpoint, clears active saved memory, preserves API keys and disconnects game observation. The retained raw original can contain memory/private text. Clear history, character deletion/reset, explicit memory deletion/clear and external import purge old originals; ordinary checkpoints never include saved memory. A failed preservation refuses replacement; a later write failure can leave observation disconnected. If restart fails after a successful restore, reopen the app manually.
 
 The usual Windows directory is `%APPDATA%\Backstage Forever` (normally `C:\Users\<your Windows user>\AppData\Roaming\Backstage Forever`). Use the exact **Data folder** path shown in the startup dialog if it differs, including source runs with a custom `BF_USER_DATA` location. This is the desktop app's data folder, not the game or addon folder.
 

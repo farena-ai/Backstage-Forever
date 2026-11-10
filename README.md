@@ -34,7 +34,7 @@ The installer is **unsigned**. Windows may display an unknown-publisher warning;
 - Player-controlled **Copy game waypoint** commands for compatible supported destinations. Paste the prepared command into WoW; the addon checks the build and quest phase before placing a marker or printing coordinates. No automatic movement, combat, interaction or map opening.
 - Bounded automatic retries and clear recovery for interrupted app updates. If an older updater cannot download the new release, use the official Windows installer once to receive the fixes. See [update recovery](docs/UPDATES.md#recovering-a-failed-update).
 
-- Local character profiles, goals and private notes; backup/import/reset controls.
+- Local character profiles, goals and private notes; automatic bounded local recovery points, deliberate preview/restore and backup/import/reset controls. See [Support and recovery](docs/SUPPORT-AND-RECOVERY.md).
 - Painted citadel scenery, an embossed companion medallion, bronze/leather framing and a parchment journal, with bundled offline fonts.
 - Automatic checks and downloads of authenticated releases, installation on exit, restart-now and preference controls.
 - Optional offline local Ollama, separate Ollama Cloud, or OpenAI, Anthropic and xAI API connections with your own key. Friendly model catalogs refresh on startup, connection opening, authentication, saving and manual refresh; no paid inference probes or silent provider/model/billing fallback.
@@ -61,7 +61,7 @@ Nine original class portraits and Alliance/Horde environments shape the selected
 
 Profiles stay in this Windows account's app-data folder. API keys are encrypted separately and never included in exported backups. Subscription credentials are also excluded; Claude's official tool manages its own app-private credential files. Ordinary chat is temporary; explicitly saved character memory is readable local data and is excluded from profile backups. Replacement import/reset clears memory. Saving an exchange does not select it for future sharing. Prompts you explicitly send go to your selected provider. Read [Privacy](docs/PRIVACY.md) and [Providers](docs/PROVIDERS.md) before connecting.
 
-If startup cannot finish, choose **Open data folder** in the error dialog to find the actual directory, then follow [If the app cannot start](docs/GETTING-STARTED.md#if-the-app-cannot-start). Preserve a copy of the entire folder before any manual recovery action; a startup failure alone does not identify which component failed.
+For an identified journal startup fault, a valid local point can offer **Restore and restart**, preserving the exact damaged original locally. That original may contain memory/private text; see the recovery retention instructions. For any startup failure, choose **Open data folder** in the error dialog to find the actual directory, then follow [If the app cannot start](docs/GETTING-STARTED.md#if-the-app-cannot-start). Preserve a copy of the entire folder before any manual recovery action; a startup failure alone does not identify which component failed.
 
 Installed Windows builds check shortly after startup and every six hours while open, download verified updates, and install on exit by default. The Updates screen offers manual checks, restart-now and preference controls. No forced mid-game restart or external watcher job is created. **0.1.0 needs one manual installer upgrade to gain this updater.** See [Automatic updates](docs/UPDATES.md). Source builds never automatically check or run installers.
 
@@ -94,6 +94,8 @@ npm run test:voice-backend
 npm run test:voice-memory
 npm run test:companion-recovery
 npm run test:product-polish
+npm run test:support
+npm run test:recovery
 npm run test:party-backend
 npm run test:party
 npm run dist
