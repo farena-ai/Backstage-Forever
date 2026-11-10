@@ -267,7 +267,7 @@ button.quest-ledger-row:not(.illustrated-card){display:flex;align-items:center;g
 @media(max-width:1100px){.quest-atlas-art{width:44%;height:200%;right:3%}.atlas-seal{width:64px;bottom:11px;right:12px}.atlas-seal span{inset:22px 5px auto;font-size:5px}.quest-detail-heading{padding:10px 45px 12px 13px;margin:-5px -8px 0}.quest-chapter-mark{width:30px;height:30px;top:15px;right:8px}}
 
 /* Keep functional qualifiers readable alongside the atlas's decorative microtype. */
-.quest-guide :is(.knowledge-status p,.knowledge-status small,.knowledge-actions button,.knowledge-actions .check-label,.quest-search-label span,.reference-toggle,.ledger-caption span,.quest-ledger-row small,.quest-ledger-row em,.waypoint-coordinates,.quest-waypoint .section-note,.waypoint-instruction,.quest-section h4,.chain-status,.quest-chain button small,.chain-reference,.chain-link>span,.quest-rewards small,.quest-npc strong small,.quest-npc>small,.quest-source code,.source-url,.ledger-footnote),
+.quest-guide :is(.atlas-owner,.knowledge-status p,.knowledge-status small,.knowledge-actions button,.knowledge-actions .check-label,.quest-search-label span,.reference-toggle,.ledger-caption span,.quest-ledger-row small,.quest-ledger-row em,.waypoint-coordinates,.quest-waypoint .section-note,.waypoint-instruction,.quest-section h4,.chain-status,.quest-chain button small,.chain-reference,.chain-link>span,.quest-rewards small,.quest-npc strong small,.quest-npc>small,.quest-source code,.source-url,.ledger-footnote),
 .quest-guide .quest-index input::placeholder {
   font-size: 12px !important;
 }

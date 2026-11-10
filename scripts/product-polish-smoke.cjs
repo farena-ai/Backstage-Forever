@@ -154,13 +154,13 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
     await check("updates heading identifies the app", async () => assert.equal(await page.getByRole("heading", { name: "Backstage Forever updates", exact: true }).count(), 1));
     await navigate("Quest Guide");
     await check("compact functional Quest Guide text is at least 12px", async () => {
-      const sizes = await page.locator(".knowledge-status p,.knowledge-status small,.knowledge-actions button,.knowledge-actions .check-label,.reference-toggle,.quest-search-label span,.ledger-footnote").evaluateAll(nodes => nodes.filter(n => n.getClientRects().length).map(n => ({ text: n.textContent.trim().slice(0, 70), size: parseFloat(getComputedStyle(n).fontSize) })));
+      const sizes = await page.locator(".atlas-owner,.knowledge-status p,.knowledge-status small,.knowledge-actions button,.knowledge-actions .check-label,.reference-toggle,.quest-search-label span,.ledger-footnote").evaluateAll(nodes => nodes.filter(n => n.getClientRects().length).map(n => ({ text: n.textContent.trim().slice(0, 70), size: parseFloat(getComputedStyle(n).fontSize) })));
       assert.ok(sizes.length); assert.deepEqual(sizes.filter(n => n.size < 12), []); metrics.push({ questFunctionalSizes: sizes });
     });
     await assertSelectContrast(page, "compact Quest Guide"); await capture("quest-compact");
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(984, 635));
     await capture("quest-baseline-compact");
-    assert.ok(await page.locator(".knowledge-status small,.reference-toggle,.ledger-footnote").evaluateAll(nodes => nodes.every(n => parseFloat(getComputedStyle(n).fontSize) >= 12)));
+    assert.ok(await page.locator(".atlas-owner,.knowledge-status small,.reference-toggle,.ledger-footnote").evaluateAll(nodes => nodes.every(n => parseFloat(getComputedStyle(n).fontSize) >= 12)));
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1440, 960)); await capture("quest-full");
     await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.setContentSize(1440, 960); w.webContents.setZoomFactor(2); });
     await check("actual Electron 200% zoom retains layout", async () => { assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor()), 2); await capture("quest-zoom200");
