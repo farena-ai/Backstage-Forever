@@ -18,7 +18,7 @@ A personal historical review shows at most three trainers and six listings per t
 
 All services are sorted before limiting the displayed list. Positive reported levels nearest the saved character level come first; zero is unknown and comes last. This is review ordering, never proof that a spell is learned, unlearned or eligible. Current location, access, prerequisites and costs remain unverified. Positions are approximate historical observations, with no trainer waypoint action.
 
-The separate **Browse historical training reference** disclosure searches trainer names, class titles and listed spell names, including listings without personal faction evidence. Search accepts at most 120 characters and shows at most eight trainers with six listings each. Browse results never become personal access suggestions. Source details state dates, build, licence, separate source-file counts and omitted positions. Extra facts update with app releases; the existing quest-cache refresh is separate.
+The separate **Browse historical training reference** disclosure searches trainer names, class titles and listed spell names, including listings without personal faction evidence. Search accepts at most 120 characters and shows at most eight trainers with six listings each. A spell-only match filters the listings to matching spell names before applying that cap, with matching/omitted/other-listing counts; it does not change personal-review ordering. Browse results never become personal access suggestions. Source details state dates, build, licence, separate source-file counts and omitted positions. Extra facts update with app releases; the existing quest-cache refresh is separate.
 
 ## Manual plans and optional questions
 

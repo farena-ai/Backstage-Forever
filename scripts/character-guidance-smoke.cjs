@@ -8,7 +8,7 @@ const repo=path.resolve(__dirname,'..');
 
 (async()=>{
 
- const dir=await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()),'bf-character-guidance-')),evidence=path.join(repo,'work/character-guidance-ui');let app,page,checks=0;
+ const dir=await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()),'bf-character-guidance-')),evidence=path.join(repo,'work/character-guidance-ui-correction');let app,page,checks=0;
 
  const check=async(name,fn)=>{await fn();checks++;console.log('PASS '+name);};
 
@@ -26,7 +26,8 @@ const repo=path.resolve(__dirname,'..');
 
   await fs.writeFile(path.join(dir,'package.json'),JSON.stringify({name:'bf-character-guidance-fixture',version:require('../package.json').version,main:'launch.cjs'}));
 
-  const pack=normalizeInsights(fixture(),{commit,build});pack.trainers[0].name='Mentor <script>evil()</script>';
+  const inputs=fixture();for(let i=0;i<7;i++)inputs['trainers.json'].trainers[30].services[100+i]={spellId:100+i,name:i===6?'Distant Synthetic Spell':'Nearby Synthetic Spell '+i,level:i===6?80:20+i,skillRank:0,sources:1};
+  const pack=normalizeInsights(inputs,{commit,build});pack.trainers[0].name='Mentor <script>evil()</script>';
 
   await fs.writeFile(path.join(dir,'launch.cjs'),`const {app,dialog}=require('electron');app.setAppPath(${JSON.stringify(repo)});globalThis.cgFixture={asks:0,hold:false,fail:false,pack:${JSON.stringify(pack)}};const insights=require(${JSON.stringify(path.join(repo,'src/core/insights-data.cjs'))});insights.loadBundledInsights=()=>cgFixture.pack;const Store=require(${JSON.stringify(path.join(repo,'src/core/store.cjs'))}).Store;const start=Store.prototype.startRecovery;Store.prototype.startRecovery=function(){cgFixture.store=this;return start.call(this)};require(${JSON.stringify(path.join(repo,'src/core/voice.cjs'))}).VoiceService.prototype.readCapabilities=async()=>({status:'unavailable',recognition:{available:false,cultures:[]},synthesis:{available:false,voices:[]},message:'Synthetic voice unavailable'});dialog.showMessageBox=async()=>({response:0});require(${JSON.stringify(path.join(repo,'src/main.cjs'))});`);
 
@@ -47,10 +48,24 @@ const repo=path.resolve(__dirname,'..');
   await check('clean finished header uses existing environment art and keeps saved source facts readable',async()=>{
    await app.evaluate(()=>{cgFixture.store.state.profiles[0].readiness.equipment[0].name='Synthetic travel blade';cgFixture.store.state.profiles[0].source.updatedAt=new Date().toISOString();cgFixture.pack.trainers[0].name='Synthetic Mentor';});await panel().getByText('Synthetic travel blade',{exact:true}).waitFor();await page.locator('.cg-hero').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(evidence,'full.png')});await panel().locator('.cg-equipment').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(evidence,'equipment.png')});await panel().locator('[data-cg-personal]').evaluate(n=>n.scrollIntoView({block:'start'}));await page.screenshot({path:path.join(evidence,'training.png')});
   });
+  await check('idle saved-source poll refreshes new alts, selector and readonly journal identity without navigation',async()=>{
+   await page.locator('.section-head h1').click();
+   await app.evaluate(()=>{const p=cgFixture.store.state.profiles[0];p.name='Synthetic Pathfinder';p.realm='New Synthetic Realm';p.level=19;p.source.updatedAt=new Date().toISOString();cgFixture.store.state.profiles.push({...structuredClone(p),id:'new-alt',name:'Newly Saved Alt',level:8,source:{...p.source,id:'SYNTHETIC_NEW_ALT'}});});
+   await page.locator('#active-character option[value="new-alt"]').waitFor({state:'attached'});
+   await page.locator('.character-list [data-character="new-alt"]').waitFor();
+   assert.equal(await page.locator('#character-form [name="name"]').inputValue(),'Synthetic Pathfinder');assert.equal(await page.locator('#character-form [name="realm"]').inputValue(),'New Synthetic Realm');assert.equal(await page.locator('#character-form [name="level"]').inputValue(),'19');
+   assert.match(await page.locator('#active-character option[value="p"]').textContent(),/Synthetic Pathfinder/);assert.match(await page.locator('.snapshot-hint [data-snapshot-age]').innerText(),/Saved snapshot/);
+  });
   await check('faction unknown access, mismatch numeric slots and manual states',async()=>{await select('alliance');await panel().getByText(/Missing Alliance/).waitFor();assert.equal(await panel().locator('[data-cg-personal] article').count(),0);await select('wrong');await panel().getByText('mismatch',{exact:true}).waitFor();assert.match(await panel().innerText(),/Slot 16/);await select('manual');await panel().getByText('manual',{exact:true}).waitFor();assert.match(await panel().innerText(),/Warrior/);assert.match(await panel().innerText(),/Equipment not observed/);await select('p');await panel().getByText('observed',{exact:true}).waitFor();});
 
-  await check('historical search supports 120 characters and keeps current draft/caret through source updates',async()=>{await panel().locator('details[data-cg-browse] summary').click();await panel().locator('[data-cg-search]').fill('Mage');await panel().getByRole('button',{name:'Search historical reference',exact:true}).click();await panel().locator('[data-cg-results]').getByText(/Mentor/).waitFor();await selectCurrentText(page,{selector:'[data-cg-search]',value:'Mage',start:1,end:3,focus:true,capture:'originalCGSearch'});await app.evaluate(()=>{cgFixture.store.state.profiles[0].level=21;cgFixture.store.state.profiles[0].source.updatedAt=new Date().toISOString();});await panel().getByText(/Level 21.*Mage.*Sunborn.*Horde/).waitFor();assert.deepEqual(await currentControlState(page,'[data-cg-search]',{selection:true}),{focused:true,value:'Mage',start:1,end:3});assert.equal(await page.evaluate(()=>originalCGSearch.isConnected&&originalCGSearch===document.querySelector('[data-cg-search]')),true);});
+  await check('historical search supports 120 characters and keeps current draft/caret through source updates',async()=>{await panel().locator('details[data-cg-browse] summary').click();await panel().locator('[data-cg-search]').fill('Mage');await panel().getByRole('button',{name:'Search historical reference',exact:true}).click();await panel().locator('[data-cg-results]').getByText(/Mentor/).waitFor();await selectCurrentText(page,{selector:'[data-cg-search]',value:'Mage',start:1,end:3,focus:true,capture:'originalCGSearch'});await app.evaluate(()=>{cgFixture.store.state.profiles[0].level=21;cgFixture.store.state.profiles[0].source.updatedAt=new Date().toISOString();});await panel().getByText(/Level 21.*Mage.*Sunborn.*Horde/).waitFor();assert.deepEqual(await currentControlState(page,'[data-cg-search]',{selection:true}),{focused:true,value:'Mage',start:1,end:3});assert.equal(await page.evaluate(()=>originalCGSearch.isConnected&&originalCGSearch===document.querySelector('[data-cg-search]')),true);await page.locator('.section-head h1').click();await page.waitForFunction(()=>document.querySelector('#character-form [name="level"]')?.value==='21');assert.equal(await panel().locator('[data-cg-search]').inputValue(),'Mage');});
 
+  await check('exact spell query beyond six nearest listings exposes its source-qualified match',async()=>{
+   await panel().locator('[data-cg-search]').fill('Distant Synthetic Spell');await panel().getByRole('button',{name:'Search historical reference',exact:true}).click();
+   await panel().locator('[data-cg-results] li span').getByText('Distant Synthetic Spell',{exact:true}).waitFor();
+   const text=await panel().locator('[data-cg-results]').innerText();assert.match(text,/Reported level 80/);assert.match(text,/Last observed 2026-11-09/);assert.match(text,/matching spell listing/i);assert.match(text,/other trainer listings not shown/i);await panel().locator('[data-cg-results]').evaluate(n=>n.scrollIntoView({block:'start'}));await page.screenshot({path:path.join(evidence,'spell-match.png')});
+   await panel().locator('[data-cg-search]').fill('Mage');await panel().getByRole('button',{name:'Search historical reference',exact:true}).click();
+  });
   await check('held original checklist button survives a saved-source update and cannot commit stale facts',async()=>{
    const button=panel().locator('[data-cg-add]');await button.focus();await page.evaluate(()=>window.originalCGAdd=document.activeElement);await page.keyboard.down(' ');
    await app.evaluate(()=>{cgFixture.store.state.profiles[0].level=22;cgFixture.store.state.profiles[0].source.updatedAt=new Date().toISOString();});

@@ -1799,8 +1799,18 @@ setInterval(async () => {
       Party.refresh();return;
     }
     if (page === "characters" && state.activeProfileId === result.state.activeProfileId) {
-      // Keep the private journal and search controls physically in place during saved-source updates.
+      // Keep edited controls in place, but retain the surrounding roster/identity refresh until idle.
+      const changed = JSON.stringify(state) !== JSON.stringify(result.state) ||
+        LivingSetup.signature(gameStatus) !== LivingSetup.signature(result.gameStatus);
+      snapshotRenderPending ||= changed;
       pendingSnapshot=null; state=result.state; gameStatus=result.gameStatus||{}; acceptBrief(result);
+      if (snapshotRenderPending && !editing && !sending) {
+        render(); // Existing interaction guards defer held buttons/native menus through their dispatch.
+        snapshotRenderPending=false;
+      }
+      document.querySelectorAll("[data-snapshot-age]").forEach(node => { node.textContent=snapshotLabel(profile()); });
+      const savedAge=root.querySelector(".game-status-chip small");
+      if (savedAge) savedAge.textContent=profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character";
       CharacterGuidance.refresh(); return;
     }
     if (page === "preparation") {

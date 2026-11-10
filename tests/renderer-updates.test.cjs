@@ -405,3 +405,33 @@ test('separate dispatched Guide status reads retain unique owners through revers
  vm.runInContext("state={onboarded:true,profiles:[{id:'p',name:'One'}],activeProfileId:'p',provider:{id:'ollama',model:''}};page='adventure';setupOpen=false;render=()=>{};",h.context);
  const click=()=>{const n={dataset:{nav:'quest-guide'},hasAttribute:()=>false,closest:s=>s==='button'?n:null};h.handlers.click.forEach(f=>f({target:n}));};click();for(let i=0;i<8;i++)await Promise.resolve();click();for(let i=0;i<8;i++)await Promise.resolve();assert.equal(reads.length,2);reads[1].resolve({message:'NEWER'});for(let i=0;i<12;i++)await Promise.resolve();reads[0].resolve({message:'OLDER'});for(let i=0;i<12;i++)await Promise.resolve();assert.deepEqual(accepted,['NEWER']);assert.equal(vm.runInContext('knowledgeStatus.message',h.context),'NEWER');
 });
+
+test('Characters actual snapshot poll refreshes idle roster/identity and flushes changes after search editing',async()=>{
+  let snapshot;
+  const h=harness({gameSnapshot:async()=>snapshot});
+  vm.runInContext("state={onboarded:true,profiles:[{id:'p',name:'Original',level:20,className:'Mage',source:{updatedAt:'old'}}],activeProfileId:'p'};page='characters';setupOpen=false;gameStatus={};globalThis.fullRenders=0;globalThis.guideUpdates=0;globalThis.editingCharacterSearch=false;isEditing=()=>editingCharacterSearch;render=()=>{fullRenders++};CharacterGuidance.refresh=()=>{guideUpdates++};",h.context);
+  snapshot={state:structuredClone(vm.runInContext('state',h.context)),gameStatus:{}};
+  snapshot.state.profiles[0]={...snapshot.state.profiles[0],name:'Fresh identity',level:21,source:{updatedAt:'new'}};
+  snapshot.state.profiles.push({id:'q',name:'Newly saved alt',level:8});
+  await h.polls.at(-1)();
+  assert.equal(vm.runInContext('fullRenders',h.context),1,'Idle poll must repaint roster, selector and readonly saved identity');
+  assert.equal(vm.runInContext('state.profiles.length',h.context),2);
+  vm.runInContext('editingCharacterSearch=true',h.context);snapshot.state=structuredClone(snapshot.state);snapshot.state.profiles[0].level=22;
+  await h.polls.at(-1)();assert.equal(vm.runInContext('fullRenders',h.context),1,'Editing search keeps the current physical input');
+  assert.equal(vm.runInContext('state.profiles[0].level',h.context),22,'Guidance receives the newest public facts during an edit');
+  vm.runInContext('editingCharacterSearch=false',h.context);await h.polls.at(-1)();
+  assert.equal(vm.runInContext('fullRenders',h.context),2,'The retained full refresh flushes when idle, even without another source change');
+  assert.equal(vm.runInContext('guideUpdates',h.context),3);
+});
+
+test('owned character search draft stops blocking idle refresh after blur without losing its text',()=>{
+  const h=harness();
+  vm.runInContext("state={onboarded:true,profiles:[{id:'p'}],activeProfileId:'p'};page='characters';setupOpen=false;",h.context);
+  const field={tagName:'INPUT',dataset:{cgControl:'search'},value:'Mage draft',defaultValue:'',matches:selector=>selector==='[data-cg-search]'||selector==='input,textarea,select:not([data-plan-option])'};
+  h.context.document.querySelectorAll=()=>[field];h.context.document.activeElement=field;
+  h.handlers.input.forEach(fn=>fn({target:field}));
+  assert.equal(vm.runInContext('isEditing()',h.context),true,'Focused input still owns editing');
+  h.context.document.activeElement=null;
+  assert.equal(vm.runInContext('isEditing()',h.context),false,'Locally accepted search draft must not hold the entire roster refresh forever');
+  assert.equal(field.value,'Mage draft');
+});

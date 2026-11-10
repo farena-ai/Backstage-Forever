@@ -24,8 +24,16 @@ function trainerRow(trainer, level) {
 function searchHistoricalTrainers(insights, query, level) {
   if (typeof query !== "string" || query.length > 120 || /[\x00-\x1f\x7f]/.test(query)) throw Error("Invalid character guidance search.");
   const term = query.trim().toLowerCase();
-  const rows = (insights?.trainers || []).filter(t => `${t.name} ${t.title} ${t.services.map(s => s.name).join(" ")}`.toLowerCase().includes(term));
-  return { query, total: rows.length, rows: rows.slice(0, 8).map(t => trainerRow(t, level)),
+  const trainerMatches = t => `${t.name} ${t.title}`.toLowerCase().includes(term);
+  const spellMatches = s => s.name.toLowerCase().includes(term);
+  const rows = (insights?.trainers || []).filter(t => trainerMatches(t) || t.services.some(spellMatches));
+  return { query, total: rows.length, rows: rows.slice(0, 8).map(t => {
+    if (trainerMatches(t)) return trainerRow(t, level);
+    // Explicit spell queries inspect their matching listings, independently of personal-review proximity.
+    const matching = t.services.filter(spellMatches);
+    return { ...trainerRow({ ...t, services: matching }, level), serviceMatchCount: matching.length,
+      additionalServices: Math.max(0, matching.length - 6), otherServices: t.services.length - matching.length };
+  }),
     qualification: "Historical browsing only. Saved faction access, current location, learned status and eligibility are unverified." };
 }
 function buildCharacterGuidance(state, profileId, { insights = null, now = Date.now() } = {}) {

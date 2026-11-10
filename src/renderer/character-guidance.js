@@ -1,6 +1,9 @@
 "use strict";
 window.CharacterGuidance = (() => {
-  let host, guard, freshnessMinute=-1, model=null, generation=0, read=0, searchRead=0, signature="", modelSignature="", loading=false, pending=false, error="", errorKind="", searchError="", results=null, painting=false, focus=null;
+  let host, guard, freshnessMinute = -1, model = null;
+  let generation = 0, read = 0, searchRead = 0, signature = "", modelSignature = "";
+  let loading = false, pending = false, painting = false;
+  let error = "", errorKind = "", searchError = "", results = null, focus = null;
   const drafts=new Map(), disclosures=new Map();
   const active=()=>host?.active(), esc=v=>host.esc(v), date=v=>v ? CommandCenter.savedTime(v) : "Unknown";
   const draft=()=>drafts.get(host.profileId())||"";
@@ -20,38 +23,241 @@ window.CharacterGuidance = (() => {
   function beginRender(){if(active())remember();painting=true;}
   function endRender(){painting=false;}
   function invalidate(clearDrafts=false){generation++;read++;searchRead++;model=null;signature="";modelSignature="";freshnessMinute=-1;loading=false;pending=false;results=null;error="";errorKind="";searchError="";focus=null;disclosures.clear();guard?.invalidate();if(clearDrafts)drafts.clear();}
-  function trainer(t,personal=false){return `<article class="cg-trainer"><div class="cg-trainer-heading"><span aria-hidden="true">◇</span><div><h4>${esc(t.name)}</h4><p>${esc(t.title)} · ${personal?"Class-title historical review":"Historical browse only"}</p></div></div><p>Last observed ${esc(t.lastSeen)} · ${t.sources} trainer source ${t.sources===1?"file":"files"} · title ${t.titleSources}, NPC ${t.npcSources}, reaction ${t.creatureSources} source files</p><p>Approximate positions: ${t.positions.map(p=>`Map ${p.mapId}: ${(p.x*100).toFixed(1)}%, ${(p.y*100).toFixed(1)}%`).join(" / ")}${t.additionalPositions?` · ${t.additionalPositions} more omitted`:""}</p><p>Observed reactions: ${esc(Object.entries(t.reactions).map(([f,r])=>`${f}: ${r.join(", ")}`).join("; ")||"Unknown")}. Other faction access is unknown.</p><ul>${t.services.map(s=>`<li><span>${esc(s.name)}${s.rankText?` · ${esc(s.rankText)}`:""}</span><small>${s.observedLevel?`Reported level ${s.observedLevel}`:"Level requirement unknown (0)"} · ${s.sources} source ${s.sources===1?"file":"files"}${s.skill?` · reported skill ${esc(s.skill)} (${s.skillRank})`:""}</small></li>`).join("")}</ul><small>Up to six listings shown. No learned-status, eligibility, current access, cost or route claim.</small></article>`;}
+  function listingSummary(t) {
+    const qualification = "No learned-status, eligibility, current access, cost or route claim.";
+    if (t.serviceMatchCount === undefined) return "Up to six listings shown. " + qualification;
+    return `${t.serviceMatchCount} matching spell listing${t.serviceMatchCount === 1 ? "" : "s"}; ${t.services.length} shown; ${t.additionalServices} additional matches omitted; ${t.otherServices} other trainer listings not shown. ${qualification}`;
+  }
+  function trainer(t,personal=false){return `<article class="cg-trainer">
+<div class="cg-trainer-heading">
+<span aria-hidden="true">◇</span>
+<div>
+<h4>${esc(t.name)}</h4>
+<p>${esc(t.title)} · ${personal?"Class-title historical review":"Historical browse only"}</p>
+</div>
+</div>
+<p>Last observed ${esc(t.lastSeen)} · ${t.sources} trainer source ${t.sources===1?"file":"files"} · title ${t.titleSources}, NPC ${t.npcSources}, reaction ${t.creatureSources} source files</p>
+<p>Approximate positions: ${t.positions.map(p=>`Map ${p.mapId}: ${(p.x*100).toFixed(1)}%, ${(p.y*100).toFixed(1)}%`).join(" / ")}${t.additionalPositions?` · ${t.additionalPositions} more omitted`:""}</p>
+<p>Observed reactions: ${esc(Object.entries(t.reactions).map(([f,r])=>`${f}: ${r.join(", ")}`).join("; ")||"Unknown")}. Other faction access is unknown.</p>
+<ul>${t.services.map(s=>`<li>
+<span>${esc(s.name)}${s.rankText?` · ${esc(s.rankText)}`:""}</span>
+<small>${s.observedLevel?`Reported level ${s.observedLevel}`:"Level requirement unknown (0)"} · ${s.sources} source ${s.sources===1?"file":"files"}${s.skill?` · reported skill ${esc(s.skill)} (${s.skillRank})`:""}</small>
+</li>`).join("")}</ul>
+<small>${esc(listingSummary(t))}</small>
+</article>`;}
+  function identityMarkup(m, c, faction) {
+    return `<header class="cg-hero">
+<img class="cg-portrait" src="${host.portrait(c?.className)}" alt="">
+<div>
+<span class="eyebrow">CHARACTER FIELD GUIDE · LOCAL, WITHOUT AI</span>
+<h2>${esc(c?.name||"An unwritten adventure")}</h2>
+<p>${c?`Level ${c.level} · ${esc(c.className)} · ${esc(c.race||"Race unknown")} · ${esc(c.faction||"Faction unknown")}`:"No active saved character"}</p>
+<p>${esc(c?.realm||"Realm unknown")}</p>
+<span class="cg-status" data-cg-status>${esc(m.status)}</span>${loading?'<span role="status"> Updating saved guidance…</span>':""}</div>${faction?`<img class="cg-banner" src="../../assets/faction-${faction}.png" alt="">`:""}</header>
+<div class="cg-source-strip">
+<span>${m.source?`Saved addon snapshot ${esc(date(m.source.updatedAt))}`:"Manual journal · no addon observation"}</span>
+<span>Build ${esc(m.source?.build||"unknown")} · locale ${esc(m.source?.locale||"unknown")}</span>
+</div>
+<p class="cg-status-message">${esc(m.statusMessage)}</p>`;
+  }
+  function overviewMarkup(m, c) {
+    return `${m.overview?`<section class="cg-class">
+<span class="eyebrow">GENERAL CLASS IDENTITY</span>
+<h3>${esc(c.className)} · ${esc(m.overview.text)}</h3>
+<p>${esc(m.overview.qualification)} Checked ${esc(m.overview.checkedOn)}. <button class="subtle" data-link="forever-class-overview" data-cg-control="official">Read official overview ↗</button>
+</p>
+</section>`:""}`;
+  }
+  function raceMarkup(c) {
+    return `<div class="cg-race">
+<span class="eyebrow">SAVED RACE · UNVERIFIED TRAITS</span>
+<p>${esc(c?.race||"Race unknown")}: racial bonuses and traits have no verified reference here. Inspect them in game; custom race names stay literal.</p>
+</div>`;
+  }
+  function actionsMarkup(m, choice, ready) {
+    return `<div class="cg-action-row">
+<button class="primary" data-cg-add data-cg-control="add" data-cg-choice="${choice}" ${ready&&!pending?"":"disabled"}>${pending?"Saving manual checklist…":m.checklistCreated?"Open character checklist":"Create character checklist"}</button>
+<button data-cg-ask data-cg-control="ask" data-cg-choice="${choice}" ${ready&&!pending?"":"disabled"}>Ask about this character</button>
+<small>Checklist opens Company. Ask opens an editable public draft; Send stays separate. No provider needed here.</small>
+</div>`;
+  }
+  function equipmentMarkup(m) {
+    return `<section class="cg-equipment">
+<div class="cg-section-title">
+<span class="eyebrow">OBSERVED LOADOUT</span>
+<h3>Lay your equipment on the table.</h3>
+</div>
+<p>${esc(m.gear.explanation)}</p>${m.gear.rows.length?`<div class="cg-gear-list">${m.gear.rows.map(g=>`<article class="cg-gear">
+<span class="cg-slot">${esc(g.slotLabel)}<small>Slot ${g.slot}</small>
+</span>
+<div>
+<h4>${esc(g.observedName||"Observed name unknown")}</h4>
+<p>Item ${g.itemId} · saved quality ${g.quality??"unknown"}</p>${g.referenceName?`<p>Reference name: ${esc(g.referenceName)}${g.observedName&&g.referenceName!==g.observedName?" · differs from saved name":""}</p>`:"<p>Reference name unavailable</p>"}</div>
+<span class="cg-level">${g.itemLevel??"?"}<small>item level</small>
+</span>
+</article>`).join("")}</div>`:`<div class="cg-empty">
+<h4>${m.gear.status==="unknown"?"Equipment not observed":"No equipment rows in this saved observation"}</h4>
+<p>Missing gear metadata stays unknown. It does not establish empty or compulsory slots.</p>
+</div>`}</section>`;
+  }
+  function trainingMarkup(m) {
+    return `<section data-cg-personal class="cg-training">
+<div class="cg-section-title">
+<span class="eyebrow">QUALIFIED HISTORICAL CLASS LISTINGS</span>
+<h3>A place to review your training.</h3>
+</div>
+<p>${esc(m.trainingExplanation)}</p>${m.trainerReason?`<p class="cg-empty">${esc(m.trainerReason)}</p>`:""}<div class="cg-trainers">${m.classTrainers.map(t=>trainer(t,true)).join("")}</div>
+</section>`;
+  }
+  function referenceMarkup(m) {
+    return `<div class="cg-reference">
+<span class="eyebrow">REFERENCE PROVENANCE</span>
+<p>${m.reference?`${esc(m.reference.publisher)} · build ${esc(m.reference.build)} · English ${esc(m.reference.locale)} reference · ${esc(m.reference.license)} · observed through ${esc(m.reference.observedThrough)}. Observation names locale: ${esc(m.reference.observationNamesLocale)}. Extra facts update with app releases, separately from the quest-cache refresh.`:"Supplementary historical reference unavailable. Saved character facts remain usable."}</p>
+</div>`;
+  }
+  function limitationsMarkup(m) {
+    return `<details data-cg-disclosure="limits">
+<summary data-cg-control="limits" data-interaction-key="${esc(JSON.stringify([host.profileId(),"cg-limits"]))}">Evidence, racial traits & what remains unknown</summary>${m.limitations.map(s=>`<p>${esc(s)}</p>`).join("")}</details>`;
+  }
   function facts(){
     const m=model,c=m?.identity;
     if(!m)return `<div class="cg-empty"><h2>${loading?"Opening your character field guide…":"Your character field guide"}</h2><p>Choose a character to review saved identity, equipment and qualified historical class listings.</p></div>`;
     const faction=["Alliance","Horde"].includes(c?.faction)?c.faction.toLowerCase():null;
     const choice=esc(JSON.stringify({profileId:host.profileId(),token:m.token,generation}));
     const ready=Boolean(c)&&!loading&&signature===modelSignature;
-    return `<header class="cg-hero"><img class="cg-portrait" src="${host.portrait(c?.className)}" alt=""><div><span class="eyebrow">CHARACTER FIELD GUIDE · LOCAL, WITHOUT AI</span><h2>${esc(c?.name||"An unwritten adventure")}</h2><p>${c?`Level ${c.level} · ${esc(c.className)} · ${esc(c.race||"Race unknown")} · ${esc(c.faction||"Faction unknown")}`:"No active saved character"}</p><p>${esc(c?.realm||"Realm unknown")}</p><span class="cg-status" data-cg-status>${esc(m.status)}</span>${loading?'<span role="status"> Updating saved guidance…</span>':""}</div>${faction?`<img class="cg-banner" src="../../assets/faction-${faction}.png" alt="">`:""}</header><div class="cg-source-strip"><span>${m.source?`Saved addon snapshot ${esc(date(m.source.updatedAt))}`:"Manual journal · no addon observation"}</span><span>Build ${esc(m.source?.build||"unknown")} · locale ${esc(m.source?.locale||"unknown")}</span></div><p class="cg-status-message">${esc(m.statusMessage)}</p>${m.overview?`<section class="cg-class"><span class="eyebrow">GENERAL CLASS IDENTITY</span><h3>${esc(c.className)} · ${esc(m.overview.text)}</h3><p>${esc(m.overview.qualification)} Checked ${esc(m.overview.checkedOn)}. <button class="subtle" data-link="forever-class-overview" data-cg-control="official">Read official overview ↗</button></p></section>`:""}<div class="cg-race"><span class="eyebrow">SAVED RACE · UNVERIFIED TRAITS</span><p>${esc(c?.race||"Race unknown")}: racial bonuses and traits have no verified reference here. Inspect them in game; custom race names stay literal.</p></div><div class="cg-action-row"><button class="primary" data-cg-add data-cg-control="add" data-cg-choice="${choice}" ${ready&&!pending?"":"disabled"}>${pending?"Saving manual checklist…":m.checklistCreated?"Open character checklist":"Create character checklist"}</button><button data-cg-ask data-cg-control="ask" data-cg-choice="${choice}" ${ready&&!pending?"":"disabled"}>Ask about this character</button><small>Checklist opens Company. Ask opens an editable public draft; Send stays separate. No provider needed here.</small></div><section class="cg-equipment"><div class="cg-section-title"><span class="eyebrow">OBSERVED LOADOUT</span><h3>Lay your equipment on the table.</h3></div><p>${esc(m.gear.explanation)}</p>${m.gear.rows.length?`<div class="cg-gear-list">${m.gear.rows.map(g=>`<article class="cg-gear"><span class="cg-slot">${esc(g.slotLabel)}<small>Slot ${g.slot}</small></span><div><h4>${esc(g.observedName||"Observed name unknown")}</h4><p>Item ${g.itemId} · saved quality ${g.quality??"unknown"}</p>${g.referenceName?`<p>Reference name: ${esc(g.referenceName)}${g.observedName&&g.referenceName!==g.observedName?" · differs from saved name":""}</p>`:"<p>Reference name unavailable</p>"}</div><span class="cg-level">${g.itemLevel??"?"}<small>item level</small></span></article>`).join("")}</div>`:`<div class="cg-empty"><h4>${m.gear.status==="unknown"?"Equipment not observed":"No equipment rows in this saved observation"}</h4><p>Missing gear metadata stays unknown. It does not establish empty or compulsory slots.</p></div>`}</section><section data-cg-personal class="cg-training"><div class="cg-section-title"><span class="eyebrow">QUALIFIED HISTORICAL CLASS LISTINGS</span><h3>A place to review your training.</h3></div><p>${esc(m.trainingExplanation)}</p>${m.trainerReason?`<p class="cg-empty">${esc(m.trainerReason)}</p>`:""}<div class="cg-trainers">${m.classTrainers.map(t=>trainer(t,true)).join("")}</div></section><div class="cg-reference"><span class="eyebrow">REFERENCE PROVENANCE</span><p>${m.reference?`${esc(m.reference.publisher)} · build ${esc(m.reference.build)} · English ${esc(m.reference.locale)} reference · ${esc(m.reference.license)} · observed through ${esc(m.reference.observedThrough)}. Observation names locale: ${esc(m.reference.observationNamesLocale)}. Extra facts update with app releases, separately from the quest-cache refresh.`:"Supplementary historical reference unavailable. Saved character facts remain usable."}</p></div><details data-cg-disclosure="limits"><summary data-cg-control="limits" data-interaction-key="${esc(JSON.stringify([host.profileId(),"cg-limits"]))}">Evidence, racial traits & what remains unknown</summary>${m.limitations.map(s=>`<p>${esc(s)}</p>`).join("")}</details>`;
+    return [
+      identityMarkup(m, c, faction), overviewMarkup(m, c), raceMarkup(c),
+      actionsMarkup(m, choice, ready), equipmentMarkup(m), trainingMarkup(m),
+      referenceMarkup(m), limitationsMarkup(m)
+    ].join("");
   }
-  function resultMarkup(){const r=results||model?.browse;return `${searchError?`<p role="alert">${esc(searchError)}</p>`:""}<p>${esc(r?.qualification||"Historical browsing is separate from personal access suggestions.")}</p>${r?`<p>${r.total} historical trainer ${r.total===1?"match":"matches"} · at most eight shown. Query: ${esc(r.query||"all listings")}</p><div class="cg-trainers">${r.rows.map(t=>trainer(t)).join("")}</div>`:""}`;}
-  function page(){return `<section class="character-guidance" data-character-guidance aria-label="Character guidance"><div data-cg-facts>${facts()}</div><div data-cg-error>${error?`<div role="alert"><p>${esc(error)}</p><button data-cg-retry data-cg-control="retry">Retry character guidance</button></div>`:""}</div><details data-cg-browse data-cg-disclosure="browse"><summary data-cg-control="browse" data-interaction-key="${esc(JSON.stringify([host.profileId(),"cg-browse"]))}">Browse historical training reference</summary><p>Browse any class or faction. A match does not imply personal access or learnability.</p><form data-cg-search-form class="cg-search"><label>Trainer, class title or listed spell<input data-cg-search data-cg-control="search" maxlength="120" value="${esc(draft())}" placeholder="Search historical listings…"></label><button data-cg-control="search-button" type="submit">Search historical reference</button></form><div data-cg-results>${resultMarkup()}</div></details></section>`;}
-  function paint(){if(!active()||guard.defer(paint))return;const n=host.root.querySelector('[data-cg-facts]');if(!n)return;beginRender();try{n.innerHTML=facts();host.root.querySelector('[data-cg-results]').innerHTML=resultMarkup();host.root.querySelector('[data-cg-error]').innerHTML=error?`<div role="alert"><p>${esc(error)}</p><button data-cg-retry data-cg-control="retry">Retry character guidance</button></div>`:"";restore();}finally{endRender();}}
-  async function refresh(force=false){
-    if(!active())return;const next=currentSignature(),minute=Math.floor(Date.now()/60000);if(!force&&next===signature&&freshnessMinute===minute)return;
-    if(next!==signature){searchRead++;results=null;searchError="";}
-    signature=next;freshnessMinute=minute;const request=++read,token=generation,id=host.profileId();loading=true;
-    try{const value=await host.api.characterGuidance(id);if(!active()||token!==generation||request!==read||id!==host.profileId()||next!==currentSignature())return;model=value;modelSignature=next;loading=false;if(errorKind==="read"){error="";errorKind="";}paint();}
-    catch{if(!active()||token!==generation||request!==read)return;loading=false;errorKind="read";error="Character guidance could not be opened. Saved observations are safe. Try again.";signature="";paint();}
+  function resultMarkup(){const r=results||model?.browse;return `${searchError?`<p role="alert">${esc(searchError)}</p>`:""}<p>${esc(r?.qualification||"Historical browsing is separate from personal access suggestions.")}</p>${r?`<p>${r.total} historical trainer ${r.total===1?"match":"matches"} · at most eight shown. Query: ${esc(r.query||"all listings")}</p>
+<div class="cg-trainers">${r.rows.map(t=>trainer(t)).join("")}</div>`:""}`;}
+  function page(){return `<section class="character-guidance" data-character-guidance aria-label="Character guidance">
+<div data-cg-facts>${facts()}</div>
+<div data-cg-error>${error?`<div role="alert">
+<p>${esc(error)}</p>
+<button data-cg-retry data-cg-control="retry">Retry character guidance</button>
+</div>`:""}</div>
+<details data-cg-browse data-cg-disclosure="browse">
+<summary data-cg-control="browse" data-interaction-key="${esc(JSON.stringify([host.profileId(),"cg-browse"]))}">Browse historical training reference</summary>
+<p>Browse any class or faction. A match does not imply personal access or learnability.</p>
+<form data-cg-search-form class="cg-search">
+<label>Trainer, class title or listed spell<input data-cg-search data-cg-control="search" maxlength="120" value="${esc(draft())}" placeholder="Search historical listings…">
+</label>
+<button data-cg-control="search-button" type="submit">Search historical reference</button>
+</form>
+<div data-cg-results>${resultMarkup()}</div>
+</details>
+</section>`;}
+  function paint() {
+    if (!active() || guard.defer(paint)) return;
+    const node = host.root.querySelector('[data-cg-facts]');
+    if (!node) return;
+    beginRender();
+    try {
+      node.innerHTML = facts();
+      host.root.querySelector('[data-cg-results]').innerHTML = resultMarkup();
+      host.root.querySelector('[data-cg-error]').innerHTML = error
+        ? `<div role="alert"><p>${esc(error)}</p><button data-cg-retry data-cg-control="retry">Retry character guidance</button></div>` : "";
+      restore();
+    } finally { endRender(); }
   }
-  async function search(){
-    if(!active())return;const token=generation,id=host.profileId(),request=++searchRead,q=draft(),source=currentSignature();searchError="";
-    try{const value=await host.api.searchGuidanceTrainers(q,id);if(!active()||token!==generation||request!==searchRead||id!==host.profileId()||q!==draft()||source!==currentSignature())return;results=value;paint();}
-    catch{if(!active()||token!==generation||request!==searchRead)return;searchError="Historical search could not be opened. Your draft was kept; try Search again.";paint();}
+  async function refresh(force = false) {
+    if (!active()) return;
+    const next = currentSignature(), minute = Math.floor(Date.now() / 60000);
+    if (!force && next === signature && freshnessMinute === minute) return;
+    if (next !== signature) { searchRead++; results = null; searchError = ""; }
+    signature = next;
+    freshnessMinute = minute;
+    const request = ++read, token = generation, id = host.profileId();
+    loading = true;
+    try {
+      const value = await host.api.characterGuidance(id);
+      if (!active() || token !== generation || request !== read || id !== host.profileId() || next !== currentSignature()) return;
+      model = value;
+      modelSignature = next;
+      loading = false;
+      if (errorKind === "read") { error = ""; errorKind = ""; }
+      paint();
+    } catch {
+      if (!active() || token !== generation || request !== read) return;
+      loading = false;
+      errorKind = "read";
+      error = "Character guidance could not be opened. Saved observations are safe. Try again.";
+      signature = "";
+      paint();
+    }
   }
-  function displayed(button){let c;try{c=JSON.parse(button.dataset.cgChoice);}catch{return null;}return active()&&!pending&&!loading&&c.generation===generation&&c.profileId===host.profileId()&&modelSignature===currentSignature()?Object.freeze({profileId:c.profileId,token:c.token}):null;}
-  async function choose(button,ask){
-    const c=displayed(button);if(!c)return;const token=generation,source=currentSignature(),valid=()=>active()&&token===generation&&c.profileId===host.profileId()&&source===currentSignature();pending=true;
-    try{if(ask){const text=await host.api.characterGuidancePrompt(c);if(valid())await host.openDraft(text,valid);}else{const result=await host.mutate(c,valid);if(result&&valid())host.open(result);}}
-    catch{if(valid()){errorKind="action";error="This displayed choice could not be used. Refresh guidance, then try again. Your existing plans are safe.";signature="";void refresh(true);}}
-    finally{if(token===generation){pending=false;paint();}}
+  async function search() {
+    if (!active()) return;
+    const token = generation, id = host.profileId(), request = ++searchRead, query = draft(), source = currentSignature();
+    searchError = "";
+    try {
+      const value = await host.api.searchGuidanceTrainers(query, id);
+      if (!active() || token !== generation || request !== searchRead || id !== host.profileId() || query !== draft() || source !== currentSignature()) return;
+      results = value;
+      paint();
+    } catch {
+      if (!active() || token !== generation || request !== searchRead) return;
+      searchError = "Historical search could not be opened. Your draft was kept; try Search again.";
+      paint();
+    }
   }
-  function init(value){host=value;guard=InteractionGuard.create({root:host.root,active,painting:()=>painting});host.root.addEventListener('click',e=>{const b=e.target.closest('[data-cg-add],[data-cg-ask]');if(b)void choose(b,b.hasAttribute('data-cg-ask'));if(e.target.closest('[data-cg-retry]')){error='';errorKind='';void refresh(true);}});host.root.addEventListener('input',e=>{if(!e.target.matches('[data-cg-search]'))return;drafts.set(host.profileId(),e.target.value.slice(0,120));if(drafts.size>128)drafts.delete(drafts.keys().next().value);searchRead++;});host.root.addEventListener('submit',e=>{if(!e.target.matches('[data-cg-search-form]'))return;e.preventDefault();void search();});}
+  function displayed(button) {
+    let choice;
+    try { choice = JSON.parse(button.dataset.cgChoice); } catch { return null; }
+    return active() && !pending && !loading && choice.generation === generation &&
+      choice.profileId === host.profileId() && modelSignature === currentSignature()
+      ? Object.freeze({ profileId: choice.profileId, token: choice.token }) : null;
+  }
+  async function choose(button, ask) {
+    const choice = displayed(button);
+    if (!choice) return;
+    const token = generation, source = currentSignature();
+    const valid = () => active() && token === generation && choice.profileId === host.profileId() && source === currentSignature();
+    pending = true;
+    try {
+      if (ask) {
+        const text = await host.api.characterGuidancePrompt(choice);
+        if (valid()) await host.openDraft(text, valid);
+      } else {
+        const result = await host.mutate(choice, valid);
+        if (result && valid()) host.open(result);
+      }
+    } catch {
+      if (valid()) {
+        errorKind = "action";
+        error = "This displayed choice could not be used. Refresh guidance, then try again. Your existing plans are safe.";
+        signature = "";
+        void refresh(true);
+      }
+    } finally {
+      if (token === generation) { pending = false; paint(); }
+    }
+  }
+  function init(value) {
+    host = value;
+    guard = InteractionGuard.create({ root: host.root, active, painting: () => painting });
+    host.root.addEventListener('click', event => {
+      const button = event.target.closest('[data-cg-add],[data-cg-ask]');
+      if (button) void choose(button, button.hasAttribute('data-cg-ask'));
+      if (event.target.closest('[data-cg-retry]')) { error = ''; errorKind = ''; void refresh(true); }
+    });
+    host.root.addEventListener('input', event => {
+      if (!event.target.matches('[data-cg-search]')) return;
+      drafts.set(host.profileId(), event.target.value.slice(0, 120));
+      // This local draft is already accepted by its owner; after blur it must not block idle roster refresh.
+      event.target.defaultValue = event.target.value;
+      if (drafts.size > 128) drafts.delete(drafts.keys().next().value);
+      searchRead++;
+    });
+    host.root.addEventListener('submit', event => {
+      if (!event.target.matches('[data-cg-search-form]')) return;
+      event.preventDefault();
+      void search();
+    });
+  }
   function mounted(){if(active()){restore();void refresh();}}
   return {init,page,mounted,refresh,invalidate,beginRender,endRender,deferRender:fn=>guard?.defer(fn,"root")||false};
 })();

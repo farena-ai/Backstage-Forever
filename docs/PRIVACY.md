@@ -83,11 +83,13 @@ Use each provider's official account controls for revocation, retained data and 
 
 Installed Windows builds contact GitHub’s public release service after startup and every six hours while open when automatic updates are enabled. GitHub receives normal connection information such as IP address; no profiles, notes, prompts, provider credentials or game data accompany those requests. Authenticated newer releases download to the app-owned cache and install on exit by default. Updates exposes opt-out, timing and manual checks. This preview accepts authenticated published preview and stable releases. Source builds never automatically check or execute installers. Reset cancels work, deletes cache and turns automatic checks off until re-enabled. Update preferences are separate from exported character backups. See UPDATES.md.
 
-## Local recovery retention
+## Local character guidance and optional drafts
 
 Character guidance is computed locally from the active saved profile and bundled historical reference. It makes no AI/provider request and adds no capture fields or automatic AI context. Its public projection excludes private notes, goals, journeys, saved memory and provider/model settings. Source identifiers and immutable choice tokens are internal validation data, never draft content. Search stays local; the deliberate official-overview link opens the fixed Blizzard article in your browser. Extra reference facts update with app releases, separately from public quest-cache requests.
 
 Creating a character checklist writes only manual Company steps; it never acts in the game or creates observed proof. The optional character question deliberately places reviewed public identity/equipment/qualified historical facts in an editable draft. It never sends, selects memory or changes the existing automatic-character-sharing preference. Facts explicitly present in the draft will be sent if you later choose Send, even with automatic sharing off. Confirmed import/reset/recovery replacement retires pending guidance choices and responses, including identical restored public facts. See [Character guidance](CHARACTER-GUIDANCE.md).
+
+## Local recovery retention
 
 Automatic local protection defaults on and keeps up to 3 validated journal checkpoints (64 MiB each, 128 MiB combined). It runs on successful startup, changed saves coalesced to 15 minutes, and ordinary app close; no recovery job, timer or network upload is used. Checkpoints include private notes, goals and journeys but exclude credentials and saved conversation memory. The local automatic preference and checkpoint history are not exported. Turning protection off retains existing points.
 
