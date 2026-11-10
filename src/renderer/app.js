@@ -904,7 +904,16 @@ function syncCompanion() {
   if (previous) messages = [];
 }
 Support.init({ api, root, esc, active: () => Boolean(state?.onboarded) && !setupOpen && page === "guide" });
+async function refreshRecoveryDetails() {
+  const restoredState = state, mutation = stateMutationEpoch;
+  const [briefResult, statusResult] = await Promise.allSettled([refreshBrief(), api.gameStatus()]);
+  if (state !== restoredState || mutation !== stateMutationEpoch) return false;
+  if (statusResult.status === "fulfilled") gameStatus = statusResult.value;
+  render();
+  return briefResult.status === "fulfilled" && statusResult.status === "fulfilled";
+}
 Recovery.init({ api, root, esc, active: () => Boolean(state?.onboarded) && !setupOpen && page === "guide",
+  refreshDetails: refreshRecoveryDetails,
   restore: async input => {
     await autosaveQueue;
     const next = await mutateStateCall(() => api.restoreCheckpoint(input));
@@ -913,9 +922,11 @@ Recovery.init({ api, root, esc, active: () => Boolean(state?.onboarded) && !setu
       Company.invalidate(true); Director.invalidate(); QuestGuide.invalidate(true);
       CharacterGuidance.invalidate(true); Preparation.invalidate(); Preparation.remove(); Party.invalidate(); Party.remove();
       autosaveGeneration++; formDrafts.clear(); state = next; messages = [];
-      await refreshBrief(); gameStatus = await api.gameStatus();
+      gameStatus = { connected: false };
       connection = state.provider.id; authChoice = state.provider.authMode || "api";
-      render();
+      // Replacement has committed; optional display failures cannot undo it.
+      const detailsAvailable = await refreshRecoveryDetails().catch(() => false);
+      return { detailsUnavailable: !detailsAvailable };
     }
     return next;
   }

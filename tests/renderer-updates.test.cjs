@@ -101,6 +101,9 @@ function harness(overrides = {}) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${name}.js`), "utf8"), context);
     context[name === "voice" ? "Voice" : "Memory"] = context.window[name === "voice" ? "Voice" : "Memory"];
   }
+  let recoveryHost;
+  const recoveryInit = context.Recovery.init;
+  context.Recovery.init = host => { recoveryHost = host; recoveryInit(host); };
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, "../src/renderer/app.js"), "utf8"),
     context,
@@ -108,6 +111,7 @@ function harness(overrides = {}) {
   vm.runInContext("state = { onboarded: true };", context);
   return {
     context,
+    recoveryHost,
     handlers,
     documentHandlers,
     flushEvents: () => timeouts.splice(0).forEach(fn=>fn()),
@@ -434,4 +438,36 @@ test('owned character search draft stops blocking idle refresh after blur withou
   h.context.document.activeElement=null;
   assert.equal(vm.runInContext('isEditing()',h.context),false,'Locally accepted search draft must not hold the entire roster refresh forever');
   assert.equal(field.value,'Mage draft');
+});
+
+for (const failure of ["brief", "gameStatus"]) test(`committed Recovery host restore survives rejected ${failure} and retries only display reads`, async () => {
+  let restores = 0, fail = true, briefs = 0, statuses = 0;
+  const restored = {onboarded:true,profiles:[{id:"restored",name:"Restored"}],activeProfileId:"restored",provider:{id:"ollama",authMode:"api"},memories:[]};
+  const h = harness({
+    restoreCheckpoint: async () => { restores++; return restored; },
+    adventureBrief: async () => { briefs++; if(fail && failure === "brief") throw Error("private detail error"); return {freshness:{status:"manual"}}; },
+    knowledgeStatus: async () => ({}),
+    gameStatus: async () => { statuses++; if(fail && failure === "gameStatus") throw Error("private source error"); return {connected:false}; }
+  });
+  vm.runInContext("state={onboarded:true,profiles:[{id:'old'}],activeProfileId:'old',provider:{id:'old'}};page='guide';setupOpen=false;formDrafts.set('old','stale');messages=[{text:'OLD_PRIVATE'}];gameStatus={connected:true};globalThis.renders=0;render=()=>{renders++};",h.context);
+  let result;
+  await assert.doesNotReject(async () => { result = await h.recoveryHost.restore({id:"point",sha256:"hash"}); });
+  assert.equal(result.detailsUnavailable,true);
+  assert.equal(vm.runInContext("state.activeProfileId",h.context),"restored");
+  assert.equal(vm.runInContext("formDrafts.size + messages.length",h.context),0);
+  assert.equal(vm.runInContext("gameStatus.connected",h.context),false);
+  assert.equal(vm.runInContext("connection",h.context),"ollama");
+  assert.ok(vm.runInContext("renders",h.context)>0);
+  fail=false;
+  assert.equal(await h.recoveryHost.refreshDetails(),true);
+  assert.equal(restores,1,"Display retry must never repeat journal replacement");
+  assert.equal(briefs,2); assert.equal(statuses,2);
+});
+
+test("Recovery host never converts a rejected post-commit display paint into replacement failure",async()=>{
+  const restored={onboarded:true,profiles:[],activeProfileId:null,provider:{id:"ollama"},memories:[]};
+  const h=harness({restoreCheckpoint:async()=>restored,gameStatus:async()=>({connected:false})});
+  vm.runInContext("state={onboarded:true,profiles:[],provider:{id:'old'}};page='guide';setupOpen=false;render=()=>{throw Error('PRIVATE_PAINT')};",h.context);
+  const result=await h.recoveryHost.restore({id:"point",sha256:"hash"});
+  assert.equal(result.detailsUnavailable,true);assert.equal(vm.runInContext("state.provider.id",h.context),"ollama");
 });

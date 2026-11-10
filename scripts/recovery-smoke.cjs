@@ -23,9 +23,9 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
       const Recovery = load("./src/core/recovery-checkpoints.cjs"), createPoint = Recovery.RecoveryCheckpoints.prototype.create;
       Recovery.RecoveryCheckpoints.prototype.create = function (...args) { const limit = this.maxPointBytes; if (recoveryFixture.limit) this.maxPointBytes = 64; try { return createPoint.apply(this, args); } finally { this.maxPointBytes = limit; } };
       dialog.showMessageBox = async (_win, options) => { recoveryFixture.dialogs.push(options); if (recoveryFixture.holdDialog && options.title === "Restore this recovery point?") await new Promise(r => recoveryFixture.releaseDialog = r); return { response: recoveryFixture.response }; };
-      for (const name of ["recoveryList", "checkpointNow", "previewCheckpoint"]) {
+      for (const name of ["recoveryList", "checkpointNow", "previewCheckpoint", "restoreCheckpoint", "adventureBrief", "gameStatus"]) {
         const original = ipcMain._invokeHandlers.get("backstage:" + name); if (!original) continue;
-        ipcMain.removeHandler("backstage:" + name); ipcMain.handle("backstage:" + name, async (...args) => { if (recoveryFixture.holds[name]) await new Promise(r => recoveryFixture.release = r); const result = await original(...args); recoveryFixture.completed[name] = (recoveryFixture.completed[name] || 0) + 1; return result; });
+        ipcMain.removeHandler("backstage:" + name); ipcMain.handle("backstage:" + name, async (...args) => { if (recoveryFixture.postCommit && recoveryFixture.failRead === name) { recoveryFixture.failedRead = true; throw Error("PRIVATE_POST_COMMIT_DETAIL"); } if (recoveryFixture.holds[name]) await new Promise(r => recoveryFixture.release = r); const result = await original(...args); if (name === "restoreCheckpoint" && result) recoveryFixture.postCommit = true; recoveryFixture.completed[name] = (recoveryFixture.completed[name] || 0) + 1; return result; });
       }
     });
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "manual")); await page.reload();
@@ -61,6 +61,38 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
       const data = JSON.parse(await fs.readFile(path.join(dir, "state.json"), "utf8")); assert.equal(data.profiles[0].notes, "ORIGINAL_PRIVATE_NOTES"); assert.deepEqual(data.memories, []); assert.equal(await fs.readFile(path.join(dir, "credentials.json"), "utf8"), credentials);
       assert.equal((await page.evaluate(() => window.backstage.gameStatus())).connected, false);
     });
+    await check("committed restore truthfully survives history, brief and source-status failures with display-only retry", async () => {
+      for (const failure of ["recoveryList", "adventureBrief", "gameStatus"]) {
+        await page.evaluate(async () => { const b = await window.backstage.bootstrap(); b.state.profiles[0].notes = "POST_COMMIT_LATEST"; b.state.memories = [{profileId:"p",exchanges:[{id:"820e520e-e64b-4c71-93d1-36c2ade326fd",createdAt:new Date().toISOString(),question:"POST_COMMIT_PRIVATE_MEMORY",answer:"POST_COMMIT_PRIVATE_ANSWER"}]}]; await window.backstage.saveState(b.state); });
+        await page.getByRole("button", { name: "Refresh recovery history", exact: true }).click();
+        await page.waitForFunction(() => !document.querySelector("[data-recovery-preview]").disabled);
+        await page.locator("[data-recovery-select]").selectOption(selected.id); await preview().click();
+        await page.waitForFunction(() => !document.querySelector("[data-recovery-restore]").disabled);
+        const before = await app.evaluate(() => recoveryFixture.completed.restoreCheckpoint || 0);
+        await app.evaluate((_e, failure) => { recoveryFixture.postCommit = false; recoveryFixture.failedRead = false; recoveryFixture.failRead = failure; }, failure);
+        if (failure === "recoveryList") {
+          await restore().focus();
+          await page.evaluate(() => { window.heldRestore = document.querySelector("[data-recovery-restore]"); window.heldSupport = document.querySelector("[data-support-prepare]"); });
+          await page.keyboard.down("Enter"); await mainWait("failedRead"); await page.waitForTimeout(100);
+          assert.equal(await page.evaluate(() => heldRestore === document.activeElement && heldRestore === document.querySelector("[data-recovery-restore]") && heldSupport === document.querySelector("[data-support-prepare]")), true, "Post-commit failure must preserve the held physical controls");
+          await page.keyboard.up("Enter");
+        } else await restore().click();
+        await page.waitForFunction(() => /Journal restored.*unavailable/.test(document.querySelector("[data-recovery-status]").textContent));
+        const text = await page.locator("[data-recovery-status]").innerText();
+        assert.match(text, /Refresh recovery history/); assert.doesNotMatch(text, /not replaced|PRIVATE_POST_COMMIT_DETAIL/);
+        assert.equal(await restore().isDisabled(), true, "Old preview must be retired after commit");
+        const data = JSON.parse(await fs.readFile(path.join(dir, "state.json"), "utf8")); assert.equal(data.profiles[0].notes, "ORIGINAL_PRIVATE_NOTES"); assert.deepEqual(data.memories, []);
+        assert.equal(await fs.readFile(path.join(dir, "credentials.json"), "utf8"), credentials);
+        await page.screenshot({ path: path.join(evidence, `recovery-postcommit-${failure}.png`), fullPage: true });
+        await app.evaluate(() => recoveryFixture.failRead = null);
+        await page.getByRole("button", { name: "Refresh recovery history", exact: true }).click();
+        await page.getByText("Local recovery history is ready. Recent edits may be newer than the latest point.", { exact: true }).waitFor();
+        assert.equal(await app.evaluate(() => recoveryFixture.completed.restoreCheckpoint || 0), before + 1, "Display retry must not replace journal again");
+        assert.equal(await restore().isDisabled(), true); assert.equal((await page.evaluate(() => window.backstage.gameStatus())).connected, false);
+        assert.equal((await page.evaluate(() => window.backstage.bootstrap())).state.activeProfileId, "p");
+      }
+    });
+    if (process.argv.includes("--postcommit-only")) { console.log(`${checks} focused recovery checks passed; screenshots: ${evidence}`); return; }
     await check("native restore held across navigation cannot replace the journal", async () => {
       const p = await page.evaluate(async () => { const list = await window.backstage.recoveryList(); return window.backstage.previewCheckpoint(list.points[0].id); });
       await app.evaluate(() => { recoveryFixture.holdDialog = true; recoveryFixture.releaseDialog = null; });

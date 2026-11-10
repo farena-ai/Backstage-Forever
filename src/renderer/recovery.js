@@ -1,14 +1,16 @@
 "use strict";
 window.Recovery = (() => {
   let host, guard, generation = 0, loaded = false, pending = false, points = [], selected = "", preview = null;
+  let restoredRefreshPending = false, detailsUnavailable = false;
+  const restoredWarning = () => `Journal restored. Recovery ${detailsUnavailable ? "details or history are" : "history is"} unavailable. Use Refresh recovery history to retry the display; your journal does not need restoring again.`;
   let status = { phase: "ready", automatic: true, count: 0, latestAt: null }, message = "Loading local protection…", error = false;
   const active = () => Boolean(host?.active());
   const date = value => value ? new Date(value).toLocaleString() : "No point yet";
   const counts = point => `${point.profileCount} character${point.profileCount === 1 ? "" : "s"} · ${point.journeyCount} journey${point.journeyCount === 1 ? "" : "s"}`;
   const reason = value => ({ startup: "Startup", save: "Saved journal", close: "App closed", manual: "Created by you", import: "Before import", restore: "Before restore" })[value] || "Recovery point";
-  function invalidate() { generation++; loaded = false; pending = false; points = []; preview = null; selected = ""; error = false; message = "Loading local protection…"; guard?.invalidate(); }
+  function invalidate() { restoredRefreshPending = false; detailsUnavailable = false; generation++; loaded = false; pending = false; points = []; preview = null; selected = ""; error = false; message = "Loading local protection…"; guard?.invalidate(); }
   function markup() {
-    return `<section class="panel recovery-card" data-recovery role="region" aria-labelledby="recovery-title"><div class="recovery-heading"><span class="recovery-seal" aria-hidden="true">◈</span><div><div class="eyebrow">Your journal’s safety net</div><h2 id="recovery-title">Automatic local protection</h2></div><span class="tag">ON THIS COMPUTER</span></div><p>Small, dated recovery points protect your private journal automatically. No account or setup needed.</p><label class="check-label"><input type="checkbox" data-recovery-automatic checked>Automatically protect my journal</label><p class="corner-note">Changed saves are protected at most once every 15 minutes, plus successful startup and ordinary app close. Recent edits may be newer than the last point. Turning this off keeps existing history; Create point now still works.</p><div class="recovery-facts"><div><span>Latest point</span><strong data-recovery-latest>No point yet</strong></div><div><span>Local history</span><strong data-recovery-count>Loading…</strong></div></div><p>Up to 3 points · 64 MiB each · 128 MiB total. Points contain profiles, private notes, goals, journeys and preferences. They exclude credentials and saved conversation memory, and are readable local files, not encrypted backups.</p><div class="button-row"><button type="button" class="primary" data-recovery-create>Create point now</button><button type="button" data-recovery-refresh>Refresh recovery history</button></div><label class="recovery-selection">Choose a dated recovery point<select data-recovery-select aria-label="Recovery point"><option value="">No recovery points</option></select></label><div class="button-row"><button type="button" data-recovery-preview disabled>Preview selected point</button><button type="button" data-recovery-restore disabled>Restore selected point</button><button type="button" class="danger" data-recovery-clear>Clear recovery history</button></div><p data-recovery-preview-text class="recovery-preview">Select a point to review its date and journal counts before restoring.</p><p data-recovery-status class="recovery-status" role="status" aria-live="polite">${host.esc(message)}</p><details><summary>What restore and clearing history do</summary><p>Restore asks for confirmation, protects the current journal even when automatic protection is off, replaces the journal and preferences, clears conversation memory, keeps API keys and disconnects game observation. Reconnect deliberately in Game Connection.</p><p>A startup restore also retains one exact damaged original. That original may contain memory and private text. Clear history, character deletion and Delete all local data remove all managed points and that original. Explicit memory deletion or clearing and external backup import also remove old damaged originals. Clear history keeps your automatic choice; future saves may create new points. Exported backups remain separate.</p></details></section>`;
+    return `<section class="panel recovery-card" data-recovery role="region" aria-labelledby="recovery-title"><div class="recovery-heading"><span class="recovery-seal" aria-hidden="true">◈</span><div><div class="eyebrow">Your journal’s safety net</div><h2 id="recovery-title">Automatic local protection</h2></div><span class="tag">ON THIS COMPUTER</span></div><p>Small, dated recovery points protect your private journal automatically. No account or setup needed.</p><label class="check-label"><input type="checkbox" data-recovery-automatic checked>Automatically protect my journal</label><p class="corner-note">Changed saves are protected at most once every 15 minutes, plus successful startup and ordinary app close. Recent edits may be newer than the last point. Turning this off keeps existing history; Create point now still works.</p><div class="recovery-facts"><div><span>Latest point</span><strong data-recovery-latest>No point yet</strong></div><div><span>Local history</span><strong data-recovery-count>Loading…</strong></div></div><p>Up to 3 points · 64 MiB each · 128 MiB total. Points contain profiles, private notes, goals, journeys and preferences. They exclude credentials and saved conversation memory, and are readable local files, not encrypted backups.</p><div class="button-row"><button type="button" class="primary" data-recovery-create>Create point now</button><button type="button" data-recovery-refresh>Refresh recovery history</button></div><label class="recovery-selection">Choose a dated recovery point<select data-recovery-select aria-label="Recovery point"><option value="">No recovery points</option></select></label><div class="button-row"><button type="button" data-recovery-preview disabled>Preview selected point</button><button type="button" data-recovery-restore disabled>Restore selected point</button><button type="button" class="danger" data-recovery-clear>Clear recovery history</button></div><p data-recovery-preview-text class="recovery-preview">Select a point to review its date and journal counts before restoring.</p><p data-recovery-status class="recovery-status" role="status" aria-live="polite">${host.esc(message)}</p><details><summary>What restore and clearing history do</summary><p>Restore asks for confirmation, protects the current journal even when automatic protection is off, replaces the journal and preferences, clears conversation memory, keeps API keys and disconnects game observation. Reconnect deliberately in Game Connection. If restore succeeds but details or history are unavailable, use Refresh recovery history to retry the display without replacing the journal again.</p><p>A startup restore also retains one exact damaged original. That original may contain memory and private text. Clear history, character deletion and Delete all local data remove all managed points and that original. Explicit memory deletion or clearing and external backup import also remove old damaged originals. Clear history keeps your automatic choice; future saves may create new points. Exported backups remain separate.</p></details></section>`;
   }
   function paint() {
     if (!active() || guard.defer(paint)) return;
@@ -31,25 +33,44 @@ window.Recovery = (() => {
     if (!points.some(p => p.id === selected)) selected = points[0]?.id || "";
   }
   async function run(kind, value) {
-    if (!active() || pending) return;
+    if (!active() || pending || (kind === "restore" && !preview)) return;
     const token = ++generation, point = preview; pending = true; error = false;
     if (!["restore", "preview"].includes(kind)) preview = null;
     message = kind === "restore" || kind === "clear" ? "Review the confirmation before continuing…" : "Checking local recovery…"; paint();
     try {
+      if (kind === "list" && detailsUnavailable) {
+        const available = await host.refreshDetails();
+        if (!active() || token !== generation) return;
+        detailsUnavailable = !available;
+      }
       const result = await (kind === "list" ? host.api.recoveryList() : kind === "automatic" ? host.api.setRecoveryAutomatic(value) : kind === "create" ? host.api.checkpointNow() : kind === "preview" ? host.api.previewCheckpoint(selected) : kind === "restore" ? host.restore({ id: point.id, sha256: point.sha256 }) : host.api.clearCheckpoints());
       if (!active() || token !== generation) return;
       loaded = true;
       if (kind === "preview") { preview = result; message = "Point reviewed. Restore asks for confirmation before changing your journal."; }
       else if (kind === "restore") {
         message = result ? "Journal restored. Game observation is disconnected; existing API keys are preserved." : "Restore cancelled. Your journal is unchanged.";
-        if (result) { preview = null; const list = await host.api.recoveryList(); if (!active() || token !== generation) return; accept(list); }
+        if (result) {
+          preview = null; restoredRefreshPending = true; detailsUnavailable = Boolean(result.detailsUnavailable);
+          try {
+            const list = await host.api.recoveryList();
+            if (!active() || token !== generation) return;
+            accept(list); restoredRefreshPending = detailsUnavailable;
+          } catch {
+            if (!active() || token !== generation) return;
+          }
+          if (restoredRefreshPending) { message = restoredWarning(); error = true; }
+        }
       } else if (result) {
         accept(result); message = kind === "create" ? "Recovery point saved locally." : kind === "clear" ? "Recovery history cleared. Future protection follows your automatic choice." : status.phase === "limit" ? "Protection reached its size limit. Your journal is still saved; no content was trimmed." : status.phase === "unavailable" ? "Protection is unavailable. Your journal is still saved. Check local storage and try again." : kind === "automatic" ? status.automatic ? "Automatic protection is on. Future changes can create points." : "Automatic protection is off. Existing points are retained." : "Local recovery history is ready. Recent edits may be newer than the latest point.";
+        if (kind === "list" && restoredRefreshPending) {
+          restoredRefreshPending = detailsUnavailable;
+          if (detailsUnavailable) { message = restoredWarning(); error = true; }
+        }
       } else message = "Clear cancelled. Your recovery history is unchanged.";
     } catch (e) {
       if (!active() || token !== generation) return;
       preview = null; loaded = true; error = true;
-      message = /Recovery limit/.test(e.message) ? "Recovery limit reached. No journal content was trimmed. A point must fit within 64 MiB." : /Preview|changed/.test(e.message) ? "Your journal or recovery point changed. Refresh and preview it again." : "Recovery is unavailable. Your journal was not replaced. Check local storage and try again.";
+      message = restoredRefreshPending ? restoredWarning() : /Recovery limit/.test(e.message) ? "Recovery limit reached. No journal content was trimmed. A point must fit within 64 MiB." : /Preview|changed/.test(e.message) ? "Your journal or recovery point changed. Refresh and preview it again." : "Recovery is unavailable. Your journal was not replaced. Check local storage and try again.";
     } finally { if (active() && token === generation) { pending = false; paint(); } }
   }
   function init(value) {
