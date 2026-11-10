@@ -1,6 +1,12 @@
 # Whole-product readiness assessment
 
-Assessment started November 10, 2026 against published 0.12.3 (975df45). The review branch remains a pre-1.0 candidate. **1.0 is held for real-player acceptance.** The selected corrections are implemented and independently task-reviewed through `6b8de7dad49d156b73564ea0530c3779b51eff92`; whole-branch source review, including the subsequent fixture-only correction `42da057`, is approved. Local candidate/package results are recorded separately in the delivered review bundle's VERIFICATION.md. Remote CI is not run in this local pre-1.0 review, and no push or PR is planned for this pass.
+Assessment started November 10, 2026 against published 0.12.3 (975df45). The review branch remains a pre-1.0 candidate. **1.0 is held for real-player acceptance.** The earlier selected corrections were implemented and independently task-reviewed through `6b8de7dad49d156b73564ea0530c3779b51eff92`; their whole-branch source review, including the subsequent fixture-only correction `42da057`, was approved. Local candidate/package results are recorded separately in the delivered review bundle's VERIFICATION.md. Remote CI is not run in this local pre-1.0 review, and no push or PR is planned for this pass.
+
+## Local resilience and verified-guidance follow-up
+
+The four selected follow-up priorities are now implemented in this local review branch: allowlisted diagnostics, automatic recovery, richer bundled reference facts and initial class/race/loadout guidance. Each component passed independent spec/quality review after its identified defects were corrected. The current application-source gate at `9afb3c54357429a32b90f6eb9c63b4a17875b01e` passed **705/705 unit tests**, with zero failures, cancellations or skips. Fresh whole-series and packaged-artifact acceptance are recorded separately in the delivered review bundle. This pass is local; no public update, installer or 1.0 release was published.
+
+Character guidance needs no AI or extra setup. It uses the selected saved profile, preserves custom races literally, qualifies every historical training suggestion and opens manual plans or editable drafts only. Source absence stays visible: there is no verified Sunborn racial optimizer, complete quest graph or continuous desktop feed. The seven owner gates below remain in force.
 
 ## Product decision
 
@@ -84,13 +90,13 @@ Relative effort includes maintenance, not just initial coding: local filtering/p
 
 | Feature | Priority/value | Requirements and acceptance |
 |---|---|---|
-| Redacted support diagnostics | Next, high support value | Allowlisted version/platform/status, explicit preview/export; no keys, prompts, notes, source IDs or private paths. Preview must equal exported contents. |
-| Local recovery checkpoints | Next proposal, high resilience value | Separately design bounded rotation, validation, private-data retention and explicit restore preview. Preserve damaged originals; never silently replace a journal or copy credentials into profile exports. Test interrupted writes and incompatible checkpoints before enabling. |
+| Allowlisted support diagnostics | Implemented in local review | Main-owned five-minute preview, exact copy/save and canonical destination guards; no keys, character identity, prompts, notes, source IDs or private paths. Nothing uploads automatically. See [Support and recovery](SUPPORT-AND-RECOVERY.md). |
+| Local recovery checkpoints | Implemented in local review | Automatic bounded memory-free protection, deliberate preview/restore, usable prior history through interrupted rotation and strict persisted source retirement. Raw damaged originals have separate disclosed private retention/clear rules. Real disposable-copy acceptance remains an owner gate. |
 | Roster/plan filtering and recent-plan return | After 1.0, medium | Existing local data; preserve selection, drafts and source ownership. Test large bounded rosters and clear empty results. |
 | Favorite quests/personal reminders | After 1.0, medium | Manual preference separate from observed completion; no scheduler required. Pins survive refresh without claiming quest availability. |
 | Deliberate saved-memory portability | After 1.0, medium | New opt-in private format with schema/limits and preview; never silently add memory to ordinary backups or party files. |
-| Better quest/vendor coverage | Ongoing, high where sparse | Matching build/locale, verifiable sources, redistribution license/attribution, provenance and validation. Measure coverage gains and retain conflict/unknown semantics. |
-| Verified class/race/loadout guidance | Research next, high potential player value | Versioned Forever mechanics from permitted, verifiable sources plus approved character observations. New/custom races need actual evidence, not generic WoW assumptions. Show source/build/confidence and test any calculations; no automatic respec, purchases, equipment changes or redistribution of unlicensed game data. High curation/compatibility effort. |
+| Better quest/vendor coverage | Ongoing; initial enrichment implemented locally | Separate pinned licensed pack adds sharing, static time limits, starting items, drops and historical trainers/items. Quest count remains 3,884; missing destinations/prerequisites stay unknown. Matching build/locale/title/source and attribution remain required. |
+| Verified class/race/loadout guidance | Initial evidence tier implemented locally | Automatic exact identity and saved gear, general class overview, qualified historical training and reusable manual checklist. Custom races stay literal. Verified racial mechanics, talents, equip permissions, stat priorities and optimization still require permitted matching-build evidence; no automatic game changes. |
 | Map visualization | Research, medium | Licensed or original maps and verified transforms; omit unknown points, expose provenance, support accessible/offline use. No automatic movement. |
 | Bank/account-storage planning | Deferred pending client research | Only actually supported public APIs and explicit observations; unknown when unavailable, separate dates/sources, no assumed transfer eligibility. |
 | Online party synchronization | Later, uncertain versus file exchange | Separate service/auth/consent/deletion/conflict/operational design. Existing reviewed file exchange remains sufficient for 1.0. |

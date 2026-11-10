@@ -2,6 +2,8 @@
 
 **Your character command center and Forever quest companion, from Backstage Coding. Designed by Frank Arena.**
 
+**Local pre-1.0 review:** this branch adds support diagnostics, automatic recovery, richer bundled reference facts and character guidance. These additions are supplied in a separate local review bundle; this pass has not been published as an automatic update. **1.0 stays held for the hands-on check.**
+
 ![Backstage Forever Quest Guide atlas](assets/quest-guide-preview.png)
 
 *Fictional player state with qualified public reference facts; your selected character shapes the original class and faction presentation.*
@@ -21,6 +23,10 @@ Once installed, native guidance can work with the desktop app closed. Logout/gam
 The installer is **unsigned**. Windows may display an unknown-publisher warning; verify the download source before proceeding. Windows publisher signing and clean-machine installation/upgrade acceptance remain pending. App-update downloads use a separate pinned Ed25519 signature and installer hash/size verification. See [Getting started](docs/GETTING-STARTED.md) for full beginner instructions, backups and deletion.
 
 ## What this preview includes
+
+- **Character field guide** automatically follows the selected saved character, with class/faction artwork, observed equipment, dated class identity and qualified historical training. Search trainer/spell records locally, create a reusable manual Company checklist, or open a reviewed editable public question. No AI account is required. Custom races stay literal; unverified racial mechanics and equipment suitability stay unknown. See [Character guidance](docs/CHARACTER-GUIDANCE.md).
+- **Bundled field notes** add exact-source quest sharing reports, static duration, starting items and reported drops beneath the primary quest action. The base remains 3,884 quests; these facts add evidence types rather than complete prerequisites or missing destinations. See [Reference coverage](docs/FOREVER-DATA.md).
+- **Support diagnostics** prepares a fixed allowlisted report for exact preview, copy and save. No automatic upload, log dump, credentials, character identity, journal text or private paths. See [Support and recovery](docs/SUPPORT-AND-RECOVERY.md).
 
 - **Adventure Director** explains one next quest action and up to two alternatives. **Start quest session** creates or reuses a tracked Company plan without an AI request. Session length limits plan size, not a promised completion time. See [Director help](docs/ADVENTURE-DIRECTOR.md).
 - **Preparation** shows observed professions, known recipes and dated carried materials. Exact shortfalls require complete applicable counts; partial observations stay qualified, and alts are not silently pooled. Add a manual shopping checklist without crafting or buying anything. See [Preparation help](docs/PREPARATION.md).
@@ -96,6 +102,9 @@ npm run test:companion-recovery
 npm run test:product-polish
 npm run test:support
 npm run test:recovery
+npm run check:forever-insights
+npm run test:insights
+npm run test:character-guidance
 npm run test:party-backend
 npm run test:party
 npm run dist
