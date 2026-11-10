@@ -1,0 +1,14 @@
+# Pre-1.0 correction design
+
+Evidence: the whole-source assessment in work/product-readiness-source-report.md, 571 passing baseline unit tests, and 29 isolated actual Electron captures indexed in work/product-readiness-ui/manifest.json. Twelve surfaces and nine journeys were assessed. This is a corrective product pass, not 1.0 certification.
+
+Use the existing fantasy visual system and focused modules. Prioritize controllable waiting, actionable failure recovery, discoverability and readable controls. A graphics-only pass leaves confirmed failures intact; speculative integrations expand risk without correcting them. Adopt bounded corrections below, retain larger feature ideas in the assessment roadmap.
+
+1. AI request ownership: a main-owned active request with AbortController, deliberate context cancellation and identity-checked completion/finalization. Propagate cancellation through ordinary API fetch, ChatGPT streaming and isolated Claude CLI execution. A Stop response action preserves conversation and offers editable question recovery; stopped/stale work cannot become saved memory. Do not claim cancellation reverses remote processing or charges. Do not release a lock over an unconfirmed live CLI worker. No automatic paid retry.
+2. Startup failure: preserve every file, state the actual data directory and give a safe Open data folder action plus accurate recovery instructions. This bounded correction does not implement destructive reset or an automatic restore wizard. Do not misdiagnose all initializer errors as corrupt journals or expose raw exceptions/credentials.
+3. Interface/help: a keyboard skip button focuses a stable main region without changing the trusted file URL; current Field Guide explains all existing workflows and exact sharing/backup boundaries. Core chat actions precede optional voice, compact AI setup is visible, important compact quest qualifiers are readable. Correct duplicate manual labels, ambiguous Windows update wording and disconnected green status. Preserve class/faction art, reduced motion, held-control identity, drafts, sharing consent and manual/follow choices.
+4. Deliver a whole-product assessment including page coverage, priorities, useful future features, evidence limitations and separate owner acceptance gates. Keep version 0.12.3 and publication unchanged for this review branch; no installer release/1.0 claim.
+
+No real game/player-file changes, audio, account sign-in, paid calls, installer execution, OS settings or watchers. All regression work uses isolated synthetic fixtures and existing dependencies. Independent task reviews and strongest whole-branch review required.
+
+Self-review: cancellation and UI recovery share a lifecycle and belong together; startup diagnostics and visual/help work are independently reviewable. Startup instructions deliberately stop short of a risky restore wizard. Provider protocols, entitlement promises and source provenance remain unchanged.
