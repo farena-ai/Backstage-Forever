@@ -8,6 +8,14 @@ Use it for class and leveling choices, zone and quest planning, dungeon preparat
 
 Adventure builds a deterministic plan from your saved observed quest log without calling a provider. Session/focus controls save per character. Each step retains its reported source and save timestamp. Turn-ins and unfinished objectives can be prioritized, but unobserved prerequisites, NPCs and routes are not invented. Explain my plan drafts a public quest question for review; you still choose whether to send it. Equipment/bag preparation details stay local and are excluded from automatic provider context. See [Guidance](GUIDANCE.md).
 
+## Local NPC reference
+
+Ask an NPC location by full name, a unique short name, or exact **NPC #ID**. Recognized names and explicit NPC questions are handled locally before model/key/provider access; no AI account is needed. Ambiguous names ask for an exact ID, and unknown/unavailable evidence stays unknown. Ordinary material, item, bank and geography questions retain their existing planning path.
+
+The resolver prefers compatible observed-build points, then a separate historical reference containing 616 NPCs and 758 interaction points from Forever build 1.60.1.70790. Answers retain build, per-NPC lastSeen, source and approximate/non-live qualifications. Cairne's historical Thunder Bluff point around 59.9, 51.7 was last observed November 5, 2026; the file's November 9–11 collection dates do not change that observation. Asking where in Orgrimmar he is does not prove his presence there. No automatic route, waypoint or game action is created.
+
+A direct **I'm already in Org** statement can supply a user-reported planning city for the retained conversation. The preview shows that source and keeps the old saved location separate; old mine coordinates are never attached to a newly reported city. Reports expire with their retained turn (at most six exchanges) and clear with existing character/provider/source/sharing/memory/clear boundaries. Failed/cancelled questions cannot retain a new report. Quotes, past/future/hypothetical statements, AI replies and saved memory cannot create one. Sharing off omits automatic character context. Desktop location remains last saved even if its timestamp is today; native Compass updates inside the game.
+
 ## Character context and honest uncertainty
 
 0.6 adds bounded relevant Forever reference facts to the shared approved context: compatible exact-ID quest links, NPC/reference coordinates, listed rewards, chain status and source provenance. The same whitelist supplies the visible preview and every provider route. Character-sharing opt-out applies to these facts too. Full completed-ID sets and full reference packs remain local. The AI can explain supplied evidence, but its own answer does not establish a new verified quest fact. Local Quest Guide remains usable without a model.

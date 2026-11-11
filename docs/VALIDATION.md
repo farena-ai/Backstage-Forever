@@ -1,5 +1,17 @@
 # Validation — November 9, 2026
 
+## 0.13.5 NPC/reference validation
+
+The candidate combines connection timing fixes with local NPC lookup and bounded user-reported location context. The existing quest reference remains separately pinned; the new historical NPC bundle is checked offline and ships with its own attribution. Run the existing gates plus:
+
+```powershell
+npm run check:forever-npc-locations
+npm run test:npc-companion
+```
+
+The native NPC check uses fictional isolated saved profiles and fake external surfaces. It verifies original Cairne-in-Org lookup, explicit current-report preview/send, sharing/owner boundaries, ambiguity, unavailable/corrupt reference, zero local provider/key requests, compact rendering and caret preservation. It does not prove live game locations, real provider entitlement/audio, installation or public delivery. Both commands are required by Windows validation and tagged release workflows. **1.0 remains held.**
+
+
 ## November 10, 2026 pre-1.0 correction integration
 
 The review branch keeps version 0.12.3 and published releases unchanged. The [whole-product assessment](PRODUCT-READINESS.md) covers twelve surfaces, nine journeys, correction evidence, provider limitations and separate owner gates. It is a pre-1.0 evaluation, not certification of a running game, live provider, speech engine, screen reader or installed upgrade.

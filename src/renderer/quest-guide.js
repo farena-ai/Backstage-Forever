@@ -1,7 +1,7 @@
 "use strict";
 // This module presents server-approved facts. Destination selection stays in main.
 window.QuestGuide = (() => {
-  let api, root, esc, notify, onStatus, portrait, guard, painting=false, focus=null,suspendedFocus=null,focusRevision=0;
+  let api, root, esc, notify, onStatus, portrait, selectedMemoryIds=()=>[], ready=()=>Promise.resolve(), guard, painting=false, focus=null,suspendedFocus=null,focusRevision=0;
   const disclosures=new Map();
   const active=()=>Boolean(root?.querySelector(".quest-guide"));
   const seal=()=>`<svg class="atlas-engraving" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="48"/><circle cx="60" cy="60" r="39"/><path d="M60 3v21m0 72v21M3 60h21m72 0h21M20 20l15 15m50 50l15 15M20 100l15-15m50-50l15-15M60 23l10 37-10 37-10-37zM23 60l37-10 37 10-37 10z"/><path class="atlas-foil" d="M60 23l10 37H60zM60 97L50 60h10z"/></svg>`;
@@ -109,6 +109,7 @@ window.QuestGuide = (() => {
   }
   function init(options) {
     ({ api, root, esc, notify, onStatus, portrait } = options);
+    selectedMemoryIds=options.selectedMemoryIds||selectedMemoryIds;ready=options.ready||ready;
     const newerFocus=()=>{focusRevision++;suspendedFocus=null;};
     document.addEventListener("focusin",e=>{if(active()&&!painting&&e.target!==document.body)newerFocus();});
     document.addEventListener("pointerdown",()=>{if(active()&&!painting)newerFocus();},true);
@@ -422,11 +423,10 @@ window.QuestGuide = (() => {
       profile?.name,
       profile?.race,
       profile?.faction,
-      profile?.location?.zone,
     ]
       .filter(Boolean)
       .join(" · ");
-    return `<div class="context-preview"><span class="eyebrow">EXACT PUBLIC CONTEXT · REVIEW BEFORE SENDING</span><strong>Public character context:</strong><p class="context-selection">Selected: ${esc(selectedLabel || "No character")} · Selection stays visible locally when sharing is off.</p><div data-context-body>Opening the public context preview…</div><small>Private notes, goals, full completion history, account identifiers and local paths stay here. Saved exchanges are included only when you select them separately in Memory.</small></div>`;
+    return `<div class="context-preview"><span class="eyebrow">EXACT PUBLIC CONTEXT · REVIEW BEFORE SENDING</span><strong>Public character context:</strong><p class="context-selection">Selected character: ${esc(selectedLabel || "No character")} · Last saved location: ${esc(profile?.location?.zone || "Not received")} · Selection stays visible locally when sharing is off.</p><div data-context-body>Opening the public context preview…</div><small>Private notes, goals, full completion history, account identifiers and local paths stay here. Saved exchanges are included only when you select them separately in Memory.</small></div>`;
   }
   function paintContext(value, message) {
     const host = root.querySelector("[data-context-body]");
@@ -437,12 +437,14 @@ window.QuestGuide = (() => {
         ? `<details><summary>Review public character & source facts</summary><pre>${esc(JSON.stringify(value, null, 2))}</pre></details>`
         : "<p>No character context will be sent with this question.</p>";
   }
-  async function updateContext() {
+  async function updateContext(force = false) {
     if (!root.querySelector("[data-context-body]")) return;
     const prompt =
       root.querySelector('#chat-form [name="prompt"]')?.value || "";
     const share = root.querySelector("#share-profile")?.checked === true;
-    const key = JSON.stringify([signature, share, prompt]);
+    const memoryIds=selectedMemoryIds();
+    const key = JSON.stringify([signature, share, prompt, memoryIds]);
+    if(force)contextKey="";
     if (key === contextKey) {
       if (contextResolvedKey === key) paintContext(contextValue);
       else paintContext(null, "Opening the public context preview…");
@@ -460,10 +462,13 @@ window.QuestGuide = (() => {
     }
     paintContext(null, "Opening the public context preview…");
     try {
+      await ready();
+      if(request!==contextRequest||epoch!==generation)return;
       const result = await api.contextPreview(
         profile?.id || null,
         share,
         prompt,
+        memoryIds,
       );
       if (
         request !== contextRequest ||

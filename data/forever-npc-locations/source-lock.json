@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "product": "wowf",
+  "build": "1.60.1.70790",
+  "commit": "3067c6919046428152f2152fa551f44a8c215d79",
+  "license": "CC BY 4.0",
+  "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+  "files": {
+    "npcs.json": {
+      "name": "npcs.json",
+      "bytes": 882823,
+      "sha256": "1f053dc1f283061a78637a8447914296e90d7344911a8ff5b86e508bf602805a",
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/3067c6919046428152f2152fa551f44a8c215d79/data/wowf/1.60.1.70790/npcs.json",
+      "meta": {
+        "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+        "clientBuild": "1.60.1.70790",
+        "collectedOn": {
+          "first": "2026-11-09",
+          "last": "2026-11-11"
+        },
+        "dataset": "npcs",
+        "license": "CC BY 4.0",
+        "product": "wowf",
+        "schemaVersion": 1,
+        "sources": 4
+      }
+    }
+  },
+  "compiled": {
+    "bytes": 87541,
+    "sha256": "cd847d9380b9d6eb637999b3d86c6f32f93cf4d330100921f22935518efafc27"
+  }
+}

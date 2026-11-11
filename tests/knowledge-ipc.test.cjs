@@ -1,5 +1,13 @@
 const { test } = require("node:test"),
   assert = require("node:assert/strict");
+test('location preview uses explicit memory scope and original draft without mutation',()=>{
+ const {registerKnowledgeHandlers}=require('../src/core/knowledge-ipc.cjs'),handlers={},seen=[];
+ const p={id:'p',location:{zone:'Old mine',mapId:1,x:.1,y:.2}},state={activeProfileId:'p',profiles:[p]};
+ registerKnowledgeHandlers({handle:(name,fn)=>handlers[name]=fn,knowledge:{index:()=>null},getState:()=>state,connected:()=>false,clipboard:{},getLocationContext:(...args)=>{seen.push(args);return {zone:'Orgrimmar',source:'user-report'};}});
+ const mid='12345678-1234-4234-8234-123456789abc',r=handlers.contextPreview('p',true,"I'm in Org",[mid]);
+ assert.equal(r.location.zone,'Orgrimmar');assert.equal(r.locationSource,'user-report');assert.equal(r.savedLocation.zone,'Old mine');assert.deepEqual(seen,[['p',true,"I'm in Org",[mid]]]);assert.deepEqual(p.location,{zone:'Old mine',mapId:1,x:.1,y:.2});assert.equal(handlers.contextPreview('p',false,'q',[mid]),null);
+ assert.throws(()=>handlers.contextPreview('p',true,'q',['bad']));assert.throws(()=>handlers.contextPreview('p',true,'q',[mid,mid]));assert.throws(()=>handlers.contextPreview('p',true,'q',[],{}));
+});
 test("knowledge IPC accepts bounded queries only, selects sourced clipboard coordinates and shares exact preview helper", () => {
   const {
       registerKnowledgeHandlers,

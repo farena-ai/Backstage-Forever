@@ -40,8 +40,8 @@ contextBridge.exposeInMainWorld(
       invoke("questDetails", profileId, questId),
     copyQuestWaypoint: (profileId, questId, phase) =>
       invoke("copyQuestWaypoint", profileId, questId, phase),
-    contextPreview: (profileId, share, prompt) =>
-      invoke("contextPreview", profileId, share, prompt),
+    contextPreview: (profileId, share, prompt, memoryIds = []) =>
+      invoke("contextPreview", profileId, share, prompt, memoryIds),
     prepareGame: (root) => invoke("prepareGame", root),
     startCompanion: () => invoke("startCompanion"),
     launchGame: () => invoke("launchGame"),

@@ -57,7 +57,9 @@
     "test:adventure-coach": "node scripts/adventure-coach-smoke.cjs",
     "test:player-shell": "node scripts/player-shell-smoke.cjs",
     "check:forever-acquisition": "node scripts/build-forever-acquisition.cjs --check",
-    "test:acquisition": "node --test tests/acquisition-data.test.cjs"
+    "test:acquisition": "node --test tests/acquisition-data.test.cjs",
+    "check:forever-npc-locations": "node scripts/build-forever-npc-locations.cjs --check",
+    "test:npc-companion": "node scripts/npc-companion-smoke.cjs"
   },
   "devDependencies": {
     "electron": "45.2.3",

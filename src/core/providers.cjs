@@ -1,7 +1,7 @@
 "use strict";
 const v = require("./validation.cjs");
 const { INSTRUCTION: instruction } = require("./wow-policy.cjs");
-function approvedProfile(p, { knowledge, prompt = "" } = {}) {
+function approvedProfile(p, { knowledge, prompt = "", reportedLocation } = {}) {
   const out = {};
   for (const key of [
     "name",
@@ -36,6 +36,7 @@ function approvedProfile(p, { knowledge, prompt = "" } = {}) {
         location[key] = p.location[key];
     out.location = location;
   }
+  require('./companion-location.cjs').applyLocationContext(out,p,reportedLocation);
   const stamp = p.source?.updatedAt ?? p.snapshotUpdatedAt;
   if (typeof stamp === "string" && Number.isFinite(Date.parse(stamp)))
     out.snapshotUpdatedAt = stamp;

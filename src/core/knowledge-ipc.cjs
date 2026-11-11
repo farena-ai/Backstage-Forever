@@ -9,6 +9,7 @@ function registerKnowledgeHandlers({
   connected,
   clipboard,
   getInsights = () => null,
+  getLocationContext = () => null,
 }) {
   const sync = () => {
     const s = getState();
@@ -130,14 +131,16 @@ function registerKnowledgeHandlers({
     };
   });
   handle("contextPreview", (...args) => {
-    count(args, 2, 3);
-    const [profileId, share, prompt = ""] = args;
+    count(args, 2, 4);
+    const [profileId, share, prompt = "", memoryIds = []] = args;
     if (typeof share !== "boolean") throw Error("Invalid context choice.");
     v.str(prompt, 12000);
+    if(!Array.isArray(memoryIds)||memoryIds.length>5||new Set(memoryIds).size!==memoryIds.length)throw Error('Invalid location preview memory scope.');
+    memoryIds.forEach(require('./memory-data.cjs').uuid);
     if (!share) return null;
     const p = profile(profileId);
     if (!p.id) throw Error("Choose a character.");
-    return ai.approvedProfile(p, { knowledge: knowledge.index(p), prompt });
+    return ai.approvedProfile(p, { knowledge: knowledge.index(p), prompt, reportedLocation:getLocationContext(p.id,share,prompt,memoryIds) });
   });
 }
 module.exports = { registerKnowledgeHandlers };

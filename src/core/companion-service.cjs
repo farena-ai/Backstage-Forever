@@ -3,11 +3,13 @@ const v=require('./validation.cjs');
 const {buildMemoryPrompt}=require('./memory.cjs');
 const {scopeResponse}=require('./wow-policy.cjs');
 const {ConversationSession}=require('./companion-conversation.cjs');
+const {resolveNpcLocation}=require('./npc-location.cjs');
+const {uuid}=require('./memory-data.cjs');
 // These events cancel work/drafts without changing completed conversation ownership.
 const SOFT_REASONS=new Set(['renderer-context','response-stop','memory-save']);
 class CompanionService {
-  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,onReset=()=>{}}){
-    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,onReset});
+  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,onReset=()=>{}}){
+    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,onReset});
     this.session=new ConversationSession();this.rootEpoch=0;
     context.subscribe(({reason})=>{
       if(SOFT_REASONS.has(reason))return;
@@ -20,6 +22,12 @@ class CompanionService {
     return {usedTurns:0,omittedTurns:0,resetReason:'clear'};
   }
   async legacy(...args){return (await this.ask(...args)).text;}
+  owner(profileId){const s=this.store.state,p=s.profiles.find(p=>p.id===profileId);return {profileId,provider:{...s.provider},source:[p?.source?.kind,p?.source?.id],rootEpoch:this.rootEpoch};}
+  previewLocation(profileId,shareProfile,prompt,memoryIds=[]){
+    if(typeof shareProfile!=='boolean'||typeof prompt!=='string'||prompt.length>12000||!Array.isArray(memoryIds)||memoryIds.length>5||new Set(memoryIds).size!==memoryIds.length)throw Error('Invalid location preview.');
+    memoryIds.forEach(uuid);if(profileId!==this.store.state.activeProfileId)throw Error('Choose the current character.');
+    return shareProfile?this.session.previewLocation({owner:this.owner(profileId),shareProfile,memoryIds,prompt}):null;
+  }
   async ask(...args){
     if(args.length!==1)throw Error('Invalid provider request.');
     const input=args[0];v.object(input,['provider','prompt','profileId','shareProfile','memoryIds']);v.provider(input.provider);v.str(input.prompt,12000,false);
@@ -30,10 +38,17 @@ class CompanionService {
       const token=this.memory.begin(profileId),memoryIds=input.memoryIds===undefined?[]:input.memoryIds;
       const augmented=buildMemoryPrompt(state,{profileId,prompt:input.prompt,memoryIds});
       const profile=state.profiles.find(p=>p.id===profileId);
-      const prepared=this.session.prepare({owner:{profileId,provider:selected,source:[profile?.source?.kind,profile?.source?.id],rootEpoch:this.rootEpoch},shareProfile:input.shareProfile,memoryIds,prompt:input.prompt,currentPrompt:augmented.prompt});
+      const prepared=this.session.prepare({owner:this.owner(profileId),shareProfile:input.shareProfile,memoryIds,prompt:input.prompt,currentPrompt:augmented.prompt});
       if(prepared.meta.resetReason==='scope-change')this.travel?.clear();
       const refusal=scopeResponse(input.prompt);
       if(refusal){this.travel?.clear();return {text:refusal,kind:'scope',conversation:prepared.meta};}
+      const npc=resolveNpcLocation(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile,currentIndex:input.shareProfile?this.knowledge.index(profile||{}):null,historicalPack:this.npcReference});
+      if(npc){
+        if(signal.aborted)throw signal.reason;
+        this.memory.complete(token,input.prompt,npc.text);
+        if(!this.session.commit(prepared.token,{question:input.prompt,answer:npc.text,kind:'npc'}))throw Error('Provider response is no longer current.');
+        this.travel?.clear();return {text:npc.text,kind:'npc',npc:npc.dto,conversation:prepared.meta};
+      }
       const local=this.travel?.resolve(input.prompt,{profileId,shareProfile:input.shareProfile});
       if(local){
         if(signal.aborted)throw signal.reason;
@@ -41,8 +56,8 @@ class CompanionService {
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:local.text,kind:'travel'}))throw Error('Provider response is no longer current.');
         return {text:local.text,kind:'travel',conversation:prepared.meta,travel:this.travel.commit(local)};
       }
-      if(!selected.model)throw Error('Choose a model in Connections for AI questions. Local travel questions need no model.');
-      const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence};
+      if(!selected.model)throw Error('Choose a model in Connections for AI questions. Local NPC locations and travel need no model.');
+      const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence,reportedLocation:prepared.reportedLocation};
       const context=this.ai.profileContext(state,profileId,input.shareProfile,options);
       const request={model:selected.model,prompt:prepared.composedPrompt,context,signal};
       let reply;

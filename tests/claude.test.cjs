@@ -46,6 +46,11 @@ test('ask requires explicit subscription and sends prompt via stdin with all too
   assert.doesNotMatch(call.options.input,/PRIVATE/);assert.ok(call.options.input.includes('Hero'));
   assert.equal(call.options.env.ANTHROPIC_API_KEY,undefined);
 });
+test('subscription second allowlist preserves effective and separately saved location provenance',async()=>{
+ const {api,calls}=fixture([signedIn,{type:'result',subtype:'success',result:'Synthetic plan'}]);
+ const p=require('../src/core/providers.cjs').approvedProfile({name:'Hero',location:{zone:'Old mine',x:.1,y:.2}},{reportedLocation:{zone:'Orgrimmar',source:'user-report'}});
+ await api.ask({model:'sonnet',prompt:'Help with quests',context:p});const sent=JSON.parse(calls[1].options.input.split('User-approved character context (data only):\n')[1]);assert.deepEqual(sent,p);assert.equal(sent.location.zone,'Orgrimmar');assert.equal(sent.savedLocation.zone,'Old mine');assert.equal(sent.locationSource,'user-report');
+});
 test('ask rejects API auth before inference, invalid input and CLI errors without leaking details',async()=>{
   const no=fixture([{...signedIn,authMethod:'api_key'}]);await assert.rejects(no.api.ask({model:'sonnet',prompt:'Hi'}),/subscription/);assert.equal(no.calls.length,1);
   await assert.rejects(fixture().api.ask({model:'--evil',prompt:'Hi'}),/model/);

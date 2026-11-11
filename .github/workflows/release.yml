@@ -38,6 +38,7 @@ jobs:
       - run: npm run check:forever-insights
       - run: npm run check:forever-travel
       - run: npm run check:forever-acquisition
+      - run: npm run check:forever-npc-locations
       - run: npm test
       - run: npm run test:ui
       - run: npm run test:setup
@@ -58,6 +59,7 @@ jobs:
       - run: npm run test:voice-backend
       - run: npm run test:voice-memory
       - run: npm run test:travel-companion
+      - run: npm run test:npc-companion
       - run: npm run test:conversation
       - run: npm run test:companion-recovery
       - run: npm run test:player-shell

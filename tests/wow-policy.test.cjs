@@ -39,3 +39,4 @@ test('ordinary addon configuration discussion stays available', () => {
 test('game process inspection is refused without the word memory', () => {
   assert.equal(typeof scopeResponse('Inspect the game process'), 'string');
 });
+test('shared instruction distinguishes current first-person report, NPC city premise and per-NPC dates',()=>{const {INSTRUCTION}=require('../src/core/wow-policy.cjs');assert.match(INSTRUCTION,/first-person.*current/i);assert.match(INSTRUCTION,/NPC question.*city/i);assert.match(INSTRUCTION,/lastSeen/);assert.match(INSTRUCTION,/savedLocation/);});
