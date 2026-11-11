@@ -6,7 +6,7 @@ Adventure now recommends one useful next step and up to two alternatives: make r
 
 Inside WoW the Compass updates from permitted current capture events without AI or the desktop. **Not now** quietly dismisses that recommendation for its current facts; unrelated XP or capture timestamps do not bring it back. Relevant progress can resurface it. Dismissals are bounded to 20 entries for the current session and never complete quests. **Quest details** exposes the existing Focus and minutes/card-limit controls; **Less** folds them away. Hide, collapse, drag and `/bf show`, `/bf hide`, `/bf status` remain. Only an explicitly displayed supported quest step can offer a manual waypoint.
 
-On desktop, Adventure's Compass is explicitly **Last saved** and **No AI**. Its goal preference is independent of the in-game preference. Use **Review quest choices** for the detailed Director or **Open Professions** for the single workshop under Adventure → Professions. The five main navigation sections and all existing destinations remain. Native goal preferences survive addon updates; setup/repair owns twelve files and preserves unrelated addon files. This preview is version **0.13.1**; **1.0 and actual in-client acceptance remain held**.
+On desktop, Adventure's Compass is explicitly **Last saved** and **No AI**. Its goal preference is independent of the in-game preference. Use **Review quest choices** for the detailed Director or **Open Professions** for the single workshop under Adventure → Professions. The five main navigation sections and all existing destinations remain. Native goal preferences survive addon updates; setup/repair owns twelve files and preserves unrelated addon files. This preview is version **0.13.2**; **1.0 and actual in-client acceptance remain held**.
 
 ## Find your way around
 
@@ -14,7 +14,7 @@ The journal has five main sections: **Adventure** for your next step, **Quests**
 
 Voice, Memory, and quest reference details open when you need them. Folding Voice stops pending or active speech. The memory summary always shows how many exchanges are selected for this question; saving an exchange does not consent to sharing it. Provider costs and character-sharing choices remain visible. Local travel has a **Show road guide** shortcut when a road alternative is documented; **How we know** holds dated source details. These are guides and manual plans, never game actions.
 
-Manual character creation offers Forever's nine confirmed classes plus Other. Existing imported or custom class names remain unchanged. Original class and faction artwork remains in use. The preview version is 0.13.1; 1.0 publication remains held for owner review.
+Manual character creation offers Forever's nine confirmed classes plus Other. Existing imported or custom class names remain unchanged. Original class and faction artwork remains in use. The preview version is 0.13.2; 1.0 publication remains held for owner review.
 
 
 **Your character command center and Forever quest companion, from Backstage Coding. Designed by Frank Arena.**
@@ -27,7 +27,7 @@ Manual character creation offers Forever's nine confirmed classes plus Other. Ex
 
 **[Download the Windows preview](https://github.com/farena-ai/Backstage-Forever/releases)** · **[Install and get started](docs/GETTING-STARTED.md)** · **[Choose an AI connection](docs/PROVIDERS.md)**
 
-Version **0.13.1 brings the reviewed local improvements to the installed preview** before Frank Arena's hands-on 1.0 review. It adds an explained next-action Director, profession and material planning, optional local Windows voice, deliberate per-character conversation memory, and reviewed party-plan files. Automatic setup and the local in-game Compass work without an AI account or routine reloads. The desktop keeps last-saved snapshots, plans, journal, Quest Guide and optional AI. Exact quest IDs, compatible builds and source labels keep reference facts qualified. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
+Version **0.13.2 brings the reviewed local improvements to the installed preview** before Frank Arena's hands-on 1.0 review. It adds an explained next-action Director, profession and material planning, optional local Windows voice, deliberate per-character conversation memory, and reviewed party-plan files. Automatic setup and the local in-game Compass work without an AI account or routine reloads. The desktop keeps last-saved snapshots, plans, journal, Quest Guide and optional AI. Exact quest IDs, compatible builds and source labels keep reference facts qualified. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
 
 ## Install
 
@@ -130,7 +130,7 @@ npm run test:packaged
 
 `npm start` opens the desktop. `npm run dist` builds the Windows installer in the configured output folder. See [Validation](docs/VALIDATION.md) for measured results and [Releasing](docs/RELEASING.md) for release gates.
 
-Run Electron checks one at a time; competing desktop windows can invalidate keyboard/focus evidence. The recovery and product-polish checks use isolated synthetic data, fake providers and fake audio workers. See the [whole-product readiness assessment](docs/PRODUCT-READINESS.md) for the pre-1.0 corrections and remaining owner checks. See the [0.13 release notes](docs/releases/0.13.1.md) for this preview and the separate owner acceptance gates.
+Run Electron checks one at a time; competing desktop windows can invalidate keyboard/focus evidence. The recovery and product-polish checks use isolated synthetic data, fake providers and fake audio workers. See the [whole-product readiness assessment](docs/PRODUCT-READINESS.md) for the pre-1.0 corrections and remaining owner checks. See the [0.13 release notes](docs/releases/0.13.2.md) for this preview and the separate owner acceptance gates.
 
 ```text
 src/

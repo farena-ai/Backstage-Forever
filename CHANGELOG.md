@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.2 — Map validation acknowledgement, 2026-11-11
+
+- The 0.13.1 candidate passed the full unit suite, then failed the actual Map smoke gate before publication because the fixture read the dossier before its guarded paint completed. The 0.13.0/0.13.1 tags, historical notes and evidence remain unchanged.
+- Map acceptance now waits for the exact selected public point ID, pressed controls, dossier title and evidence qualification. Pointer and keyboard actions select different points; the later older-reference click receives the same acknowledgement. Disclosure/profile checks also wait for their expected state. All thirteen gates and original assertions remain.
+- Reproduced the old failure and passed the full isolated Map smoke with delayed real InteractionGuard callbacks. No renderer/product behavior, dependency, data, schema, protocol, recovery fixture or timeout changes.
+- Aligned package/lock, addon TOC and actual emitted capture at 0.13.2 preview for the existing authenticated updater. Installed 0.12.3 can update directly once published; 1.0 remains held for hands-on acceptance.
+
 ## 0.13.1 — preview delivery correction, 2026-11-11
 
 - The 0.13.0 candidate failed CI before publication. Its tag and evidence remain unchanged; this patch prepares the same reviewed features for the normal authenticated preview updater. Installed 0.12.3 can update directly once published.

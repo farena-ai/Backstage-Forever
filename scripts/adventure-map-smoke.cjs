@@ -77,6 +77,24 @@ const { _electron: electron } = require("playwright"),
       page.waitForFunction(
         () => document.querySelectorAll(".map-mark").length > 0,
       );
+    // Input acknowledgement precedes deferred guard paints. Observe the chosen
+    // public point in both controls and the qualified dossier before reading it.
+    const pointSelector = (id) => `[data-map-point=${JSON.stringify(id)}]`;
+    const waitSelected = (point, qualification, detail = "") =>
+      page.waitForFunction(
+        ({ id, title, qualification, detail }) => {
+          const selected = [
+            ...document.querySelectorAll('[data-map-point][aria-pressed="true"]'),
+          ];
+          const dossier = document.querySelector(".map-dossier-copy");
+          return selected.length === 2 &&
+            selected.every((n) => n.dataset.mapPoint === id) &&
+            dossier?.querySelector("h2")?.textContent === title &&
+            dossier.querySelector(".eyebrow")?.textContent === qualification &&
+            dossier.textContent.includes(detail);
+        },
+        { id: point.id, title: point.title, qualification, detail },
+      );
     const capture = async (name) => {
       await page.evaluate(
         () =>
@@ -145,17 +163,24 @@ const { _electron: electron } = require("playwright"),
     checks.push(
       "actual main model / SVG counts, nonzero exact geometry and zero player coordinate",
     );
-    await page.locator(".map-point-list button").last().click();
+    const pointerPoint = m.points.find(
+      (p) => p.kind === "material" && p.qualification === "qualified-historical",
+    ),
+      keyboardPoint = m.points.find((p) => p.kind === "find");
+    assert.ok(pointerPoint && keyboardPoint, "Pointer and keyboard fixtures need qualified material and recorded-find points");
+    assert.notEqual(pointerPoint.id, keyboardPoint.id, "Keyboard activation must change the selected point");
+    await page.locator(`.map-point-list button${pointSelector(pointerPoint.id)}`).click();
+    await waitSelected(pointerPoint, "Historical reference");
     assert.match(
       await page.locator(".map-dossier").innerText(),
       /Historical reference|Your recorded find/i,
     );
-    await page.locator(".map-mark.find").focus();
+    await page.locator(`.map-mark.find${pointSelector(keyboardPoint.id)}`).focus();
     await page.keyboard.press("Enter");
-    await page.waitForFunction(() =>
-      document
-        .querySelector(".map-dossier")
-        .textContent.includes("Recorded copper"),
+    await waitSelected(keyboardPoint, "Your recorded find", "standing interaction");
+    assert.equal(
+      await page.locator(`.map-point-list button${pointSelector(pointerPoint.id)}`).getAttribute("aria-pressed"),
+      "false",
     );
     assert.match(
       await page.locator(".map-dossier").innerText(),
@@ -428,6 +453,9 @@ const { _electron: electron } = require("playwright"),
     await page
       .getByLabel("Active character", { exact: true })
       .selectOption("p");
+    await page.waitForFunction(() =>
+      document.querySelector(".map-hero-emblem")?.textContent.includes("Aeralyn"),
+    );
     await waitReady();
     await change(() => {
       mapGate.state().profiles[0].clientBuild = "1.60.1.70888";
@@ -438,11 +466,15 @@ const { _electron: electron } = require("playwright"),
     await page.locator("[data-map-control=layers]").click();
     await page.locator("[data-map-layer=olderReferences]").check();
     await page.locator(".map-mark.old").first().waitFor();
-    await page
-      .locator(".map-point-list button")
-      .filter({ hasText: "Copper Vein" })
-      .first()
-      .click();
+    const olderModel = await page.evaluate(() => api.adventureMap("p", {
+      ...AdventureMap.options("p"), goal: Preparation.options("p"),
+    }));
+    const olderPoint = olderModel.points.find((p) =>
+      p.kind === "material" && p.title.includes("Copper Vein") && p.qualification === "browse-only",
+    );
+    assert.ok(olderPoint, "Older-build browse must expose its qualified Copper Vein reference");
+    await page.locator(`.map-point-list button${pointSelector(olderPoint.id)}`).click();
+    await waitSelected(olderPoint, "Older / uncertain reference");
     assert.match(
       await page.locator(".map-dossier").innerText(),
       /Older \/ uncertain reference|build mismatch/i,
@@ -462,6 +494,10 @@ const { _electron: electron } = require("playwright"),
     });
     await page.waitForFunction(() => !document.querySelector(".map-mark.find"));
     await page.locator("[data-map-control=notes]").click();
+    await page.waitForFunction(() =>
+      document.querySelector(".map-notes")?.open &&
+      document.querySelector(".map-notes").textContent.includes("history: missing"),
+    );
     assert.match(
       await page.locator(".map-notes").innerText(),
       /history: missing/,
