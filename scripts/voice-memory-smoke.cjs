@@ -1,5 +1,5 @@
 "use strict";
-const { navigate, ensureCompanionTools } = require("./player-navigation.cjs");
+const { navigate, ensureCompanionTools, setCompanionToolOpen, clickCompanionTool } = require("./player-navigation.cjs");
 // Actual renderer/main/preload; synthetic state and main-owned fake audio workers only.
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
@@ -73,7 +73,7 @@ function shortPath(target) {
     await app.evaluate(()=>{voiceUi.failCapabilities=true;voiceUi.holdCapabilities=true;voiceUi.releaseCapabilities=null;});
     await page.getByRole("button",{name:"Check local voice",exact:true}).click();
     await app.evaluate(async()=>{const end=Date.now()+6000;while(!voiceUi.releaseCapabilities){if(Date.now()>end)throw Error("Rejected capability gate missing");await new Promise(r=>setTimeout(r,10));}});
-    await page.locator('[data-player-tool="voice"] > summary').click();
+    await setCompanionToolOpen(page,"voice",false);
     await app.evaluate(()=>{voiceUi.holdCapabilities=false;voiceUi.releaseCapabilities();voiceUi.releaseCapabilities=null;});
     await page.waitForFunction(()=>!document.querySelector('[data-voice-check]').disabled);
     assert.equal(await page.locator('[data-player-tool="voice"]').evaluate(n=>n.open),false);
@@ -135,7 +135,7 @@ function shortPath(target) {
     await question.fill("What should I check in WoW Forever?");await page.locator("[data-memory-select]").check();
     await page.waitForFunction(()=>document.querySelector("[data-memory-preview]")?.textContent.includes("BEGIN UNTRUSTED SAVED CONVERSATION"));
     assert.doesNotMatch(await page.locator("[data-memory-preview]").innerText(),/PRIVATE NOTE SENTINEL/);
-    const evidence=path.resolve("work/v011-ui-evidence");await fs.mkdir(evidence,{recursive:true});
+    const evidence=path.resolve("work/voice-memory-captures",new Date().toISOString().replace(/[:.]/g,"-"));await fs.mkdir(evidence,{recursive:true});
     const capture=async name=>{await page.evaluate(()=>{scrollTo(0,0);document.querySelector(".main")?.scrollTo(0,0);});await page.screenshot({path:path.join(evidence,`${process.argv.includes("--short-path")?"short-":""}${name}.png`),fullPage:true});};
     const untilMain=condition=>app.evaluate(async(_e,condition)=>{const end=Date.now()+6000;while(!Function(`return (${condition})`)()){if(Date.now()>end)throw Error("Fixture condition timed out: "+condition);await new Promise(r=>setTimeout(r,10));}},condition);
     const count=command=>app.evaluate((_e,command)=>voiceUi.commands.filter(c=>c.command===command).length,command);
@@ -153,7 +153,7 @@ function shortPath(target) {
     await question.fill("My newer typed question ");await question.focus();await mouseHold();await listening();await hypothesis("captured words");await page.keyboard.type("stays");await page.mouse.up();
     await page.getByRole("button",{name:"Insert dictated draft",exact:true}).waitFor();assert.equal(await question.inputValue(),"My newer typed question stays");
     assert.equal(await page.getByRole("textbox",{name:"Separate dictated draft",exact:true}).inputValue(),"captured words");
-    await page.locator('[data-player-tool="voice"] > summary').click();
+    await setCompanionToolOpen(page,"voice",false);
     assert.match(await page.locator('[data-player-tool="voice"] > summary').innerText(),/draft to review/i);
     await ensureCompanionTools(page,"voice");
     await page.getByRole("button",{name:"Insert dictated draft",exact:true}).click();assert.equal(await question.inputValue(),"My newer typed question stayscaptured words");
@@ -193,16 +193,21 @@ function shortPath(target) {
     assert.equal(await page.locator("[data-voice]").getAttribute("data-phase"),"stopped","A pre-Stop speech acknowledgement cannot repaint Starting after Stop");assert.equal(await count("speak"),speechBefore+1);
     // Folding Voice is a cancellation boundary for pending and active fake audio.
     await page.evaluate(async()=>{await companionReady;companionReady=new Promise(resolve=>window.releaseFoldReady=resolve);});
-    const foldRequests=await app.evaluate(()=>voiceUi.speakRequests||0);
+    const foldRequests=await app.evaluate(()=>voiceUi.speakRequests||0),foldCancels=await app.evaluate(()=>voiceUi.cancels||0),foldWorkers=await app.evaluate(()=>voiceUi.service.workers.size),foldCommands=await count("speak");
     await page.getByRole("button",{name:"Read answer",exact:true}).click();
     await page.waitForFunction(()=>document.querySelector('[data-voice]').dataset.phase==='starting');
-    await page.locator('[data-player-tool="voice"] > summary').click();
-    await page.evaluate(()=>window.releaseFoldReady());await page.waitForTimeout(180);
+    await setCompanionToolOpen(page,"voice",false);
+    await untilMain(`(voiceUi.cancels||0)>${foldCancels}`);
+    await page.waitForFunction(()=>document.querySelector('[data-voice]').dataset.phase==='stopped');
+    assert.equal(await app.evaluate(()=>voiceUi.speakRequests||0),foldRequests,"Cancellation is acknowledged while readiness is still held");
+    await page.evaluate(async()=>{window.releaseFoldReady();await companionReady;delete window.releaseFoldReady;});
     assert.equal(await app.evaluate(()=>voiceUi.speakRequests||0),foldRequests,"Folded pending reading cannot dispatch later audio");
+    assert.equal(await count("speak"),foldCommands,"Retired readiness cannot dispatch a fake worker speak command");
+    assert.equal(await app.evaluate(()=>voiceUi.service.workers.size),foldWorkers,"Retired readiness cannot attach an audio worker");
     await ensureCompanionTools(page,"voice");
     await page.getByRole("button",{name:"Read answer",exact:true}).click();
     await page.waitForFunction(()=>document.querySelector('[data-voice]').dataset.phase==='speaking');
-    await page.locator('[data-player-tool="voice"] > summary').click();await untilMain("voiceUi.service.workers.size===0");
+    await setCompanionToolOpen(page,"voice",false);await untilMain("voiceUi.service.workers.size===0");
     await ensureCompanionTools(page,"voice");
     console.log("Voice startup R1: held readiness Stop dispatches zero voiceSpeak requests/workers; held speech acknowledgement cannot repaint Starting after Stop PASS");
     await page.getByRole("button",{name:"Read answer",exact:true}).click();await page.waitForFunction(()=>document.querySelector("[data-voice]").dataset.phase==="speaking");assert.equal(await app.evaluate(()=>voiceUi.commands.findLast(c=>c.command==="speak").voiceId),"Microsoft Zira Desktop");
@@ -217,7 +222,7 @@ function shortPath(target) {
     assert.equal(await selected.isChecked(),false);
     // A held preview cannot permit duplicate sends or reuse sharing for the next question.
     await selected.check();await question.fill("Help me review the WoW Forever quest log carefully.");await page.waitForFunction(()=>document.querySelector("[data-memory-preview]").textContent.includes("carefully"));
-    await page.locator('[data-player-tool="memory"] > summary').click();
+    await setCompanionToolOpen(page,"memory",false);
     assert.match(await page.locator('[data-player-tool="memory"] > summary').innerText(),/1 selected/);
     assert.equal(await page.locator('[data-companion-cost]').isVisible(),true);
     assert.equal(await page.getByLabel('Use my active character',{exact:true}).isVisible(),true);
@@ -232,8 +237,8 @@ function shortPath(target) {
     // Unconfirmed cancellation is surfaced once after the fixed deadline; no new audio command.
     await mouseHold();await listening();await app.evaluate(()=>voiceUi.children.at(-1).unclosed=true);await hypothesis("bounded stopped draft");before=await count("listen");await page.mouse.up();
     await page.waitForFunction(()=>document.querySelector("[data-voice-status]").textContent.includes("could not confirm it stopped"));await capture("blocked-stop-error");
-    await page.locator('[data-player-tool="voice"] > summary').click();
-    await page.waitForFunction(()=>{const panel=document.querySelector('[data-player-tool="voice"]');return panel.open||panel.querySelector('summary').textContent.includes('Needs attention');});
+    await clickCompanionTool(page,"voice");
+    await page.waitForFunction(()=>{const panel=document.querySelector('[data-player-tool="voice"]');return panel.open&&panel.querySelector('[data-voice]').dataset.phase==='error'&&panel.querySelector('[data-voice-status]').textContent.includes('could not confirm it stopped');});
     assert.match(await page.locator('[data-voice-status]').innerText(),/could not confirm it stopped/);
     await ensureCompanionTools(page,"voice");
     for(const fail of [true,false]){
@@ -264,7 +269,7 @@ function shortPath(target) {
     const game=path.join(temp,"synthetic-client"),saved=path.join(game,"WTF/Account/Synthetic/SavedVariables/BackstageForever.lua"),clock=Math.floor(Date.now()/1000);
     await fs.mkdir(path.dirname(saved),{recursive:true});await fs.writeFile(path.join(game,".flavor.info"),"wowf");
     await fs.writeFile(saved,"BackstageForeverExport = "+JSON.stringify(JSON.stringify({schema:1,observedAt:clock,activeId:"Synthetic-Alliance",characters:[{id:"Synthetic-Alliance",name:"Aeralyn",realm:"Synthetic Realm",className:"Hunter",race:"Synthetic",faction:"Alliance",level:18,updatedAt:clock,clientBuild:"1.15.8.64000",captureVersion:require("../package.json").version,quests:[{id:999991,title:"Return the fictional scout",complete:true,objectives:[{text:"Scout returned",done:true}],destination:{mapId:1,x:.4,y:.5,text:"Saved camp marker"}}]}]})));
-    await page.getByRole("button",{name:"Adventure",exact:true}).click();await page.evaluate(async game=>{await mutateGame(()=>api.prepareGame(game));},game);await page.locator("[data-director-primary]").waitFor();
+    await navigate(page,"adventure");await page.evaluate(async game=>{await mutateGame(()=>api.prepareGame(game));},game);await ensureCompanionTools(page,"coach-quest-plan");await page.locator("[data-director-primary]").waitFor();await ensureCompanionTools(page,"voice");
     await app.evaluate(()=>voiceUi.unavailable=false);await page.getByRole("button",{name:"Check local voice",exact:true}).click();const readPlan=page.getByRole("button",{name:"Read plan",exact:true});await page.waitForFunction(()=>!document.querySelector('[data-voice-read="plan"]').disabled);
     // Qualified fictional public reference uses the actual guidance shape, not Director's sourceKind.
     await page.evaluate(()=>{guidance={...guidance,steps:guidance.steps.map(step=>({...step,referenceDestination:{mapId:1,x:.41,y:.51,name:"Fictional public mention",evidence:"mentioned-in-objective"},knowledge:{status:"match",provenance:{build:"fictional-reference",observedThrough:"2026-01-01",attribution:"Fictional public source"}}}))};render();});

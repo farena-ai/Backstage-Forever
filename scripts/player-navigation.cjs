@@ -49,10 +49,25 @@ async function navigate(page, id) {
     new RegExp(section),
   );
 }
-async function ensureCompanionTools(page, tool) {
+async function clickCompanionTool(page, tool) {
   const panel = page.locator(`[data-player-tool="${tool}"]`);
-  if (!(await panel.evaluate((n) => n.open)))
-    await panel.locator(":scope > summary").click();
-  assert.equal(await panel.evaluate((n) => n.open), true);
+  // Native details state changes before its queued toggle handler runs.
+  await panel.evaluate((n) => {
+    n.smokeToggleAcknowledged = false;
+    n.addEventListener("toggle", () => { n.smokeToggleAcknowledged = true; }, { once: true });
+  });
+  await panel.locator(":scope > summary").click();
+  await page.waitForFunction((tool) =>
+    document.querySelector(`[data-player-tool="${tool}"]`)?.smokeToggleAcknowledged === true,
+  tool);
 }
-module.exports = { navigate, ensureCompanionTools, routes };
+async function setCompanionToolOpen(page, tool, open) {
+  const panel = page.locator(`[data-player-tool="${tool}"]`);
+  if ((await panel.evaluate((n) => n.open)) !== open)
+    await clickCompanionTool(page, tool);
+  assert.equal(await panel.evaluate((n) => n.open), open);
+}
+async function ensureCompanionTools(page, tool) {
+  await setCompanionToolOpen(page, tool, true);
+}
+module.exports = { navigate, ensureCompanionTools, setCompanionToolOpen, clickCompanionTool, routes };

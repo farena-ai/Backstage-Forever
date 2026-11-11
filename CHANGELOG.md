@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.3 — Voice validation acknowledgement, 2026-11-11
+
+- The 0.13.2 candidate passed Map validation, then failed the voice/memory smoke before publication. Its fixture released held readiness after a physical disclosure click before the queued native cancellation handler was acknowledged. All failed tags, historical notes and evidence remain unchanged.
+- Voice smoke now observes native disclosure toggles, main cancellation and stopped state before releasing held readiness, then asserts exact speech-request, command and worker counts remain unchanged. Active/error folding, capability rejection and draft disclosure checks retain their privacy/cancellation assertions. Plan reading explicitly opens the existing folded quest-plan and Voice tools.
+- The shared test navigation helper acknowledges native toggle delivery; fresh evidence folders preserve prior captures. No product renderer, audio service, dependency, data, schema, protocol or timeout change.
+- Package/lock, TOC and emitted capture are aligned at 0.13.3 preview. Installed 0.12.3 can update directly once published; 1.0 remains held for hands-on acceptance.
+
 ## 0.13.2 — Map validation acknowledgement, 2026-11-11
 
 - The 0.13.1 candidate passed the full unit suite, then failed the actual Map smoke gate before publication because the fixture read the dossier before its guarded paint completed. The 0.13.0/0.13.1 tags, historical notes and evidence remain unchanged.
