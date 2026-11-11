@@ -37,6 +37,7 @@
     "test:memory-backend": "node scripts/memory-backend-smoke.cjs",
     "test:voice-backend": "node scripts/voice-backend-smoke.cjs",
     "test:voice-memory": "node scripts/voice-memory-smoke.cjs",
+    "test:conversation": "node scripts/conversation-smoke.cjs",
     "test:companion-recovery": "node scripts/companion-recovery-smoke.cjs",
     "test:product-polish": "node scripts/product-polish-smoke.cjs",
     "test:support": "node scripts/support-smoke.cjs",

@@ -62,6 +62,14 @@ contextBridge.exposeInMainWorld(
     saveProvider: (settings) => invoke("saveProvider", settings),
     deleteKey: (provider) => invoke("deleteKey", provider),
     ask: (request) => invoke("ask", request),
+    askCompanion: (...args) => invoke("askCompanion", ...args),
+    clearConversation: (...args) => invoke("clearConversation", ...args),
+    onConversationReset: (listener) => {
+      if (typeof listener !== "function") throw new Error("Invalid conversation listener.");
+      const handler = (_event, reason) => listener(reason);
+      ipcRenderer.on("backstage:conversationReset", handler);
+      return () => ipcRenderer.removeListener("backstage:conversationReset", handler);
+    },
     cancelAsk: () => invoke("cancelAsk"),
     companionContext: (...args) => invoke("companionContext", ...args),
     memoryList: (...args) => invoke("memoryList", ...args),

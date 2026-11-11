@@ -54,6 +54,12 @@ In **AI Companion**, compatible local Windows engines make **Hold to dictate** a
 
 Review an answer before **Save exchange**. Saved exchanges stay on this computer for that character. Select them separately for each new question, inspect the preview, then Send if wanted. You can delete individual exchanges or clear the character's memory. Local deletion cannot erase a provider's records. See [Voice and memory help](VOICE-AND-MEMORY.md).
 
+## Follow up naturally
+
+In AI Companion, recent completed messages accompany your next question. A correction such as “This is for WoW Forever, not retail” can retain the question you were discussing. Earlier AI answers are suggestions, not verified game facts. The page explains this sharing; the selected provider, billing mode and character-sharing choice remain visible.
+
+Up to six exchanges stay in this app session, with older text omitted or clipped to fit the request. Your current question and explicitly selected saved memory remain intact. Leaving and returning to the page keeps completed same-owner conversation, but cancels unfinished work. Clear conversation starts fresh and removes the unsaved review draft, without deleting saved exchanges. Reload, character/provider/source/access changes and import/reset/restore also start fresh. Changing sharing or memory choices starts a new conversation; saved memory must be selected again for each question.
+
 ## Backup, restore and deletion
 
 Your journal has automatic local protection without extra setup. Open **Field Guide → Automatic local protection** to see dated points, turn protection off/on, create a point now, preview/restore a point or clear history. Up to 3 memory-free private points are kept (64 MiB each, 128 MiB combined). Changed saves are coalesced to 15 minutes; startup and ordinary close also protect changes. A recent edit may be newer than the last point. Ordinary journaling still works if a checkpoint fails. Turning automatic protection off retains history.

@@ -27,7 +27,7 @@ const {
 } = require("./core/company-ipc.cjs");
 const { CatalogCache } = require("./core/catalog-cache.cjs");
 const { listModels } = require("./core/model-catalog.cjs");
-const { scopeResponse } = require("./core/wow-policy.cjs");
+const { CompanionService } = require("./core/companion-service.cjs");
 const { buildBrief } = require("./core/adventure.cjs");
 const { KnowledgeService } = require("./core/knowledge-cache.cjs");
 const { registerKnowledgeHandlers } = require("./core/knowledge-ipc.cjs");
@@ -38,7 +38,7 @@ const { registerPreparationHandlers } = require("./core/preparation-ipc.cjs");
 const { registerPartyHandlers } = require("./core/party-ipc.cjs");
 const { CompanionRequest } = require("./core/companion-request.cjs");
 const { CompanionContext } = require("./core/companion-context.cjs");
-const { MemoryService, buildMemoryPrompt } = require("./core/memory.cjs");
+const { MemoryService } = require("./core/memory.cjs");
 const { registerMemoryHandlers } = require("./core/memory-ipc.cjs");
 const { preserveMemories } = require("./core/memory-data.cjs");
 const { VoiceService } = require("./core/voice.cjs");
@@ -58,6 +58,7 @@ let win,
   knowledge,
   companionContext,
   companionRequest,
+  companionService,
   memory,
   voice,
   diagnostics,
@@ -108,7 +109,7 @@ function handle(name, fn) {
       ].includes(e?.message)) throw e;
       if (e?.message === "Secure credential storage is unavailable.") throw e;
       if (["partyBrief", "partyPreview", "createPartyJourney", "commitPartyPlan", "exportPartyPlan", "importPartyPlan"].includes(name) && /^Party plan/.test(e?.message)) throw e;
-      if (["ask", "memoryPreview", "saveMemory", "deleteMemory", "clearMemory"].includes(name) && /^(Memory |Provider response is no longer current|Choose the current character)/.test(e?.message)) throw e;
+      if (["ask", "askCompanion", "memoryPreview", "saveMemory", "deleteMemory", "clearMemory"].includes(name) && /^(Memory |Provider response is no longer current|Choose the current character)/.test(e?.message)) throw e;
       if (
         name === "copyQuestWaypoint" &&
         [
@@ -119,7 +120,7 @@ function handle(name, fn) {
       )
         throw e;
       throw new Error(
-        ["ask", "connectSubscription", "disconnectSubscription"].includes(
+        ["ask", "askCompanion", "connectSubscription", "disconnectSubscription"].includes(
           name,
         ) &&
         /^(Provider |Could not reach|Save an API|Choose a character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription )/.test(
@@ -577,84 +578,14 @@ app.whenReady().then(async () => {
     else memory.clearDraft();
     return stopped;
   });
-  handle("ask", async (...args) => {
-    memory.clearDraft();
-    if (args.length !== 1) throw Error("Invalid provider request.");
-    const input = args[0];
-    v.object(input, ["provider", "prompt", "profileId", "shareProfile", "memoryIds"]);
-    v.provider(input.provider);
-    v.str(input.prompt, 12000, false);
-    if (
-      typeof input.shareProfile !== "boolean" ||
-      input.provider !== store.state.provider.id
-    )
-      throw new Error("Invalid provider selection.");
-    const profileId = input.profileId === undefined ? store.state.activeProfileId : input.profileId;
-    const token = memory.begin(profileId);
-    const augmented = buildMemoryPrompt(store.state, { profileId, prompt: input.prompt, memoryIds: input.memoryIds === undefined ? [] : input.memoryIds });
-    const refusal = scopeResponse(input.prompt);
-    if (refusal) return refusal;
-    const context = ai.profileContext(
-      store.state,
-      input.profileId,
-      input.shareProfile,
-      {
-        knowledge: knowledge.index(
-          store.state.profiles.find((p) => p.id === input.profileId) || {},
-        ),
-        prompt: input.prompt,
-      },
-    );
-    const epoch = subscriptionEpoch;
-    const selected = { ...store.state.provider };
-    const reply = await companionRequest.run(async signal => {
-      let reply;
-      if (selected.authMode === "subscription" && input.provider !== "ollama") {
-        if (input.provider === "openai")
-          reply = await chatgpt.ask({
-            model: selected.model,
-            prompt: augmented.prompt,
-            context,
-            signal,
-          });
-        else if (input.provider === "anthropic") {
-          const profile = store.state.profiles.find(
-            (p) => p.id === input.profileId,
-          );
-          const shared = input.shareProfile
-            ? ai.approvedProfile(profile, {
-                knowledge: knowledge.index(profile || {}),
-                prompt: input.prompt,
-              })
-            : undefined;
-          reply = await claude.ask({
-            model: selected.model,
-            prompt: augmented.prompt,
-            context: shared,
-            signal,
-          });
-        } else
-          throw new Error(
-            "Subscription inference is unavailable for this provider. Choose API mode explicitly if desired.",
-          );
-      } else
-        reply = await ai.ask({
-          provider: input.provider,
-          ...selected,
-          apiKey: store.getKey(input.provider),
-          prompt: augmented.prompt,
-          context,
-          signal,
-        });
-      if (epoch !== subscriptionEpoch)
-        throw new Error(
-          "Provider response is no longer current because local data or authentication changed.",
-        );
-      return reply;
-    }, { waitForSettlement: selected.authMode === "subscription" && input.provider === "anthropic" });
-    memory.complete(token, input.prompt, reply);
-    return reply;
+  companionService = new CompanionService({
+    store, context: companionContext, requests: companionRequest, memory,
+    ai, chatgpt, claude, knowledge,
+    onReset: (reason) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:conversationReset", reason); },
   });
+  handle("ask", (...args) => companionService.legacy(...args));
+  handle("askCompanion", (...args) => companionService.ask(...args));
+  handle("clearConversation", (...args) => companionService.clear(...args));
   handle("exportData", async () => {
     const result = await dialog.showSaveDialog(win, {
       title: "Export profiles and plans (keys and memory excluded)",

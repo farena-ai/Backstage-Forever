@@ -142,6 +142,12 @@ function shortPath(target) {
     await mouseHold();await listening();await app.evaluate(()=>voiceUi.holdStatus=true);await untilMain("Boolean(voiceUi.releaseStatus)");await page.mouse.up();await page.waitForFunction(()=>document.querySelector("[data-voice]").dataset.phase==="stopped");
     await app.evaluate(()=>{voiceUi.holdStatus=false;voiceUi.releaseStatus();voiceUi.releaseStatus=null;});await page.waitForTimeout(30);assert.equal(await page.locator("[data-voice]").getAttribute("data-phase"),"stopped","An older held status acknowledgement must not repaint listening after release");
     assert.equal(await app.evaluate(()=>voiceUi.asks),1);
+    // Selecting saved memory now starts a fresh conversation; explicit speech needs a fresh reply.
+    assert.equal(await page.locator(".message.assistant").count(),0,"Changed memory scope clears the prior visible reply");
+    await question.fill("Explain the WoW Forever quest log for reading aloud.");
+    await page.getByRole("button",{name:"Send question",exact:true}).click();
+    await page.getByRole("button",{name:"Save exchange",exact:true}).waitFor();
+    assert.equal(await app.evaluate(()=>voiceUi.asks),2,"Only the additional explicit Send creates the fresh reply");
     // Startup release fences a future main attachment; held IPC acknowledgement also cancels.
     await app.evaluate(()=>voiceUi.holdPrepare=true);let before=await count("listen");await mouseHold();await untilMain("Boolean(voiceUi.releasePrepare)");await page.mouse.up();
     await app.evaluate(()=>{voiceUi.holdPrepare=false;voiceUi.releasePrepare();voiceUi.releasePrepare=null;});await page.waitForTimeout(180);assert.equal(await count("listen"),before);
@@ -189,9 +195,10 @@ function shortPath(target) {
     await mouseHold();await listening();await app.evaluate(()=>voiceUi.children.at(-1).unclosed=true);await hypothesis("bounded stopped draft");before=await count("listen");await page.mouse.up();
     await page.waitForFunction(()=>document.querySelector("[data-voice-status]").textContent.includes("could not confirm it stopped"));await capture("blocked-stop-error");
     assert.equal(await count("listen"),before);await app.evaluate(()=>voiceUi.children.at(-1).emit("close",null));await page.waitForTimeout(160);assert.equal(await count("listen"),before);
-    // Navigation retires selected sharing and a held network reply, without claiming to cancel billing.
+    // Navigation retires selected sharing and a held network reply, retaining only completed same-owner replies.
+    const completedBeforeNavigation=await page.locator(".message.assistant").allTextContents();
     await selected.check();await question.fill("Help my WoW Forever character with another quest.");await app.evaluate(()=>voiceUi.holdAsk=true);await page.getByRole("button",{name:"Send question",exact:true}).click();await untilMain("Boolean(voiceUi.releaseAsk)");
-    await page.getByRole("button",{name:"Adventure",exact:true}).click();await app.evaluate(()=>{voiceUi.holdAsk=false;voiceUi.releaseAsk();voiceUi.releaseAsk=null;});await page.getByRole("button",{name:"AI Companion",exact:true}).click();assert.equal(await selected.isChecked(),false);assert.equal(await page.locator(".message.assistant").count(),0);
+    await page.getByRole("button",{name:"Adventure",exact:true}).click();await app.evaluate(()=>{voiceUi.holdAsk=false;voiceUi.releaseAsk();voiceUi.releaseAsk=null;});await page.getByRole("button",{name:"AI Companion",exact:true}).click();assert.equal(await selected.isChecked(),false);assert.deepEqual(await page.locator(".message.assistant").allTextContents(),completedBeforeNavigation,"Navigation retains completed replies but never appends the cancelled late reply");
     await page.getByLabel("Active character",{exact:true}).selectOption("Vaelric");await page.waitForFunction(()=>document.querySelector("[data-memory]").textContent.includes("Vaelric"));assert.equal(await page.locator("[data-memory-row]").count(),0);await capture("horde-empty");
     await app.evaluate(()=>voiceUi.unavailable=true);await page.getByRole("button",{name:"Check local voice",exact:true}).click();await page.waitForFunction(()=>document.querySelector("[data-voice-hold]").disabled);await capture("unavailable");assert.equal(await question.isEnabled(),true);
     // Memory changes retire a pending reply and leave the typed composer usable.

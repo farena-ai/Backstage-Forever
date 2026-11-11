@@ -729,7 +729,7 @@ function characters() {
 function assistant() {
   const p = profile();
   const provider = metadata.find((item) => item.id === state.provider.id);
-  return `<header class="section-head"><div class="eyebrow">World of Warcraft: Forever specialist</div><h1>A little wisdom for the journey.</h1><p>Ask about WoW Forever outside combat. Review the context before sending; answers are AI suggestions, never game actions.</p></header><div class="grid companion-grid"><section class="panel companion-conversation"><div class="panel-header"><h3>Your companion</h3><span class="tag">${esc(provider?.name || state.provider.id)}</span></div><div class="chatlog" id="chatlog" role="log" aria-label="Conversation" aria-live="polite">${messages.length ? messages.map((m) => `<div class="message ${m.role}"><span class="eyebrow">${m.role === "user" ? "You" : "Companion · AI suggestion"}</span><div class="message-text">${esc(m.text)}</div></div>`).join("") : ""}</div>${!state.provider.model ? '<div class="ai-setup-hint"><span>Choose a model before asking.</span><button type="button" data-nav="connections">Configure AI connection</button></div>' : ""}<form id="chat-form" class="chat-form"><label>Your question<textarea name="prompt" maxlength="12000" required placeholder="Help me prepare for my next adventure…" ${sending ? "disabled" : ""}></textarea></label><label class="check-label"><input type="checkbox" id="share-profile" ${shareCharacter ? "checked" : ""} ${sending ? "disabled" : ""}>Use my active character</label>${QuestGuide.contextMarkup()}<div class="button-row"><button class="primary" type="submit" ${sending ? "disabled" : ""}>${sending ? "Thinking…" : "Send question"}</button>${sending ? '<button type="button" data-command="stop-response">Stop response</button>' : ""}<button type="button" data-command="clear-chat">Clear conversation</button></div><div class="suggestions"><button type="button" data-prompt="Help me make a general dungeon preparation checklist. Clearly distinguish general advice from unverified Forever details.">Dungeon preparation</button><button type="button" data-prompt="Help me plan a relaxed 45-minute game session around a goal I will describe next.">Plan a short session</button></div>${Voice.markup()}</form>${questionRecovery ? `<div class="callout" data-question-recovery role="status"><p>${esc(questionRecovery.message)}</p><button type="button" data-command="edit-question">Edit question</button></div>` : ""}${Memory.markup()}</section><aside class="panel companion-intel"><img class="hero-medallion" src="${portrait(p?.className)}" alt=""><h2>${esc(p?.name || "Choose your character")}</h2><p>${p ? `Level ${p.level} ${esc(p.className)} · ${esc(p.race || "Race not yet received")} · ${esc(p.faction || "Faction not yet received")}` : "Your character snapshot will bring this page to life."}</p><p>${esc(p?.location?.zone || "Location not yet received")}${p?.location?.subZone ? " · " + esc(p.location.subZone) : ""}</p><div class="callout brass">${esc(snapshotLabel(p))}<br>${esc(briefProfileId === p?.id ? adventureBrief?.freshness?.message : "Desktop saved data arrives after the game saves on logout.")}</div><h3>Observed quest log</h3><p>${esc(briefProfileId === p?.id ? adventureBrief?.quests?.message : "Quest data unavailable.")}</p>${(
+  return `<header class="section-head"><div class="eyebrow">World of Warcraft: Forever specialist</div><h1>A little wisdom for the journey.</h1><p>Ask about WoW Forever outside combat. Review the context before sending; answers are AI suggestions, never game actions.</p></header><div class="grid companion-grid"><section class="panel companion-conversation"><div class="panel-header"><h3>Your companion</h3><span class="tag">${esc(provider?.name || state.provider.id)}</span></div><p class="corner-note" data-conversation-notice role="status">${esc(conversationNotice)}</p><div class="chatlog" id="chatlog" role="log" aria-label="Conversation" aria-live="polite">${messages.length ? messages.map((m) => `<div class="message ${m.role}"><span class="eyebrow">${m.role === "user" ? "You" : "Companion · AI suggestion"}</span><div class="message-text">${esc(m.text)}</div></div>`).join("") : ""}</div>${!state.provider.model ? '<div class="ai-setup-hint"><span>Choose a model before asking.</span><button type="button" data-nav="connections">Configure AI connection</button></div>' : ""}<form id="chat-form" class="chat-form"><label>Your question<textarea name="prompt" maxlength="12000" required placeholder="Help me prepare for my next adventure…" ${sending ? "disabled" : ""}></textarea></label><label class="check-label"><input type="checkbox" id="share-profile" ${shareCharacter ? "checked" : ""} ${sending ? "disabled" : ""}>Use my active character</label>${QuestGuide.contextMarkup()}<div class="button-row"><button class="primary" type="submit" ${sending ? "disabled" : ""}>${sending ? "Thinking…" : "Send question"}</button>${sending ? '<button type="button" data-command="stop-response">Stop response</button>' : ""}<button type="button" data-command="clear-chat">Clear conversation</button></div><div class="suggestions"><button type="button" data-prompt="Help me make a general dungeon preparation checklist. Clearly distinguish general advice from unverified Forever details.">Dungeon preparation</button><button type="button" data-prompt="Help me plan a relaxed 45-minute game session around a goal I will describe next.">Plan a short session</button></div>${Voice.markup()}</form>${questionRecovery ? `<div class="callout" data-question-recovery role="status"><p>${esc(questionRecovery.message)}</p><button type="button" data-command="edit-question">Edit question</button></div>` : ""}${Memory.markup()}</section><aside class="panel companion-intel"><img class="hero-medallion" src="${portrait(p?.className)}" alt=""><h2>${esc(p?.name || "Choose your character")}</h2><p>${p ? `Level ${p.level} ${esc(p.className)} · ${esc(p.race || "Race not yet received")} · ${esc(p.faction || "Faction not yet received")}` : "Your character snapshot will bring this page to life."}</p><p>${esc(p?.location?.zone || "Location not yet received")}${p?.location?.subZone ? " · " + esc(p.location.subZone) : ""}</p><div class="callout brass">${esc(snapshotLabel(p))}<br>${esc(briefProfileId === p?.id ? adventureBrief?.freshness?.message : "Desktop saved data arrives after the game saves on logout.")}</div><h3>Observed quest log</h3><p>${esc(briefProfileId === p?.id ? adventureBrief?.quests?.message : "Quest data unavailable.")}</p>${(
     p?.quests || []
   )
     .slice(0, 5)
@@ -739,7 +739,7 @@ function assistant() {
     )
     .join(
       "",
-    )}<h3>Experience</h3><p>${esc(briefProfileId === p?.id ? adventureBrief?.progress?.message : "Experience data unavailable.")}</p>${briefProfileId === p?.id && adventureBrief?.progress?.percent != null ? `<p>${adventureBrief.progress.percent}% of this level</p>` : ""}${p?.source?.kind !== "wow-addon" || !p?.race || !p?.faction ? '<div class="callout"><p>Connect your game to receive your character’s race, faction, quests and progress. Missing details are never guessed.</p><button data-command="setup-open">Set up my companion</button></div>' : ""}<hr class="rule"><p class="corner-note">${esc(provider?.name || "Choose a provider")} · ${esc(state.provider.model || "No model selected")}<br>${state.provider.id === "ollama" ? "Uses your configured local Ollama service." : state.provider.authMode === "subscription" ? "Uses your provider subscription and its plan limits." : "Cloud API questions may incur charges."} Nothing is sent until you ask. Only the approved public context is shared; private notes and goals stay here. Earlier chat is excluded unless you separately select a saved exchange below. Review that question’s memory preview before sending. Saved quests and partial public references do not establish unknown prerequisites or availability.</p><button data-nav="connections">Configure provider</button></aside></div>`;
+    )}<h3>Experience</h3><p>${esc(briefProfileId === p?.id ? adventureBrief?.progress?.message : "Experience data unavailable.")}</p>${briefProfileId === p?.id && adventureBrief?.progress?.percent != null ? `<p>${adventureBrief.progress.percent}% of this level</p>` : ""}${p?.source?.kind !== "wow-addon" || !p?.race || !p?.faction ? '<div class="callout"><p>Connect your game to receive your character’s race, faction, quests and progress. Missing details are never guessed.</p><button data-command="setup-open">Set up my companion</button></div>' : ""}<hr class="rule"><p class="corner-note">${esc(provider?.name || "Choose a provider")} · ${esc(state.provider.model || "No model selected")}<br>${state.provider.id === "ollama" ? "Uses your configured local Ollama service." : state.provider.authMode === "subscription" ? "Uses your provider subscription and its plan limits." : "Cloud API questions may incur charges."} Nothing is sent until you ask. Only the approved public context is shared; private notes and goals stay here. Recent session exchanges accompany follow-ups. Permanent saved memory is shared only when you select it for this question; review its preview below. Clear conversation removes session context, not saved memory. Saved quests and partial public references do not establish unknown prerequisites or availability.</p><button data-nav="connections">Configure provider</button></aside></div>`;
 }
 const providerNotes = {
   ollama:
@@ -879,29 +879,57 @@ function updatesPage() {
   <div class="actions"><button class="primary" data-command="check-updates">Check for updates</button><button data-command="install-update" ${updateInfo.phase === "ready" ? "" : "disabled"}>Restart and update</button><button data-link="releases">Open Releases ↗</button></div><p class="corner-note">Last checked: ${updateInfo.lastChecked ? esc(new Date(updateInfo.lastChecked).toLocaleString()) : "Not checked in this session"}</p></section>
   <aside class="panel"><h3>A trusted path forward.</h3><div class="steps"><div class="step"><b>1</b><div><p>Authenticate the release</p><small>Only releases signed by Backstage Forever’s update key are accepted.</small></div></div><div class="step"><b>2</b><div><p>Verify the download</p><small>The complete installer’s size and fingerprint must match before it can run.</small></div></div><div class="step"><b>3</b><div><p>Keep your journal</p><small>Profiles and provider settings remain in your Windows account’s app folder.</small></div></div></div><div class="callout brass">Older updater stuck? Open Releases and run the latest installer once. Older installed apps cannot receive these retry and recovery improvements until they are upgraded.</div><p class="corner-note">Application update signatures authenticate future downloads. This preview still lacks a Windows publisher certificate, so an initial manual installer may show an unknown-publisher notice.</p></aside></div>`;
 }
-let companionSignature = "", companionReady = Promise.resolve();
+let companionSignature = "", conversationOwner = "", conversationScope = null, companionReady = Promise.resolve();
+let localConversationClears = 0;
+let conversationNotice = "Recent messages accompany follow-ups in this session (up to 6 exchanges; older text may be omitted). Saved memory is separate: select it for each question.";
 function companionView() { return page === "assistant" && !setupOpen ? "ai" : "other"; }
-function retireCompanion(notify = true) {
+function retireCompanion(notify = true, preserveMemory = false) {
   chatGeneration++;
   sending = false;
   chatStarting = false;
   currentQuestion = null;
   questionRecovery = null;
   Voice.invalidate();
-  Memory.invalidate();
+  if (preserveMemory) Memory.retireDraft(); else Memory.invalidate();
   if (notify && state && api.companionContext) {
     companionReady = api.companionContext({profileId: state.activeProfileId ?? null, view: companionView()});
     companionReady.catch(() => {});
   }
 }
+function resetConversationView(preserveMemory = false, preserveRecovery = false) {
+  const recovery = !sending && preserveRecovery ? questionRecovery : null;
+  retireCompanion(false, preserveMemory);
+  questionRecovery = recovery;
+  messages = [];
+  conversationScope = null;
+  conversationNotice = "Recent messages accompany follow-ups. A fresh conversation starts when character, provider, sharing or selected memory changes. Saved memory remains separate and per question.";
+}
+function clearMainConversation(preserveMemory = false, preserveRecovery = false) {
+  resetConversationView(preserveMemory, preserveRecovery);
+  if (api.clearConversation) {
+    localConversationClears++;
+    companionReady = api.clearConversation().catch(error => { localConversationClears = Math.max(0, localConversationClears - 1); throw error; });
+  } else companionReady = api.companionContext?.({profileId: state.activeProfileId ?? null, view: companionView()}) || Promise.resolve();
+  companionReady.catch(() => {});
+  render();
+  return companionReady;
+}
+api.onConversationReset?.(reason => {
+  if (reason === "clear" && localConversationClears) { localConversationClears--; return; }
+  resetConversationView();
+  if (state) render();
+});
 function syncCompanion() {
   if (!state) return;
-  const signature = JSON.stringify([state.activeProfileId ?? null, state.provider, companionView(), page, setupOpen]);
+  const selected = profile();
+  const owner = JSON.stringify([state.activeProfileId ?? null, state.provider, selected?.source?.kind, selected?.source?.id]);
+  if (conversationOwner && owner !== conversationOwner) resetConversationView();
+  conversationOwner = owner;
+  const signature = JSON.stringify([owner, companionView(), page, setupOpen]);
   if (signature === companionSignature) return;
   const previous = companionSignature;
   companionSignature = signature;
   retireCompanion(Boolean(previous) || companionView() === "ai");
-  if (previous) messages = [];
 }
 Support.init({ api, root, esc, active: () => Boolean(state?.onboarded) && !setupOpen && page === "guide" });
 async function refreshRecoveryDetails() {
@@ -943,6 +971,10 @@ Memory.init({api, root, esc,
   active: () => Boolean(state?.onboarded) && !setupOpen && page === "assistant",
   profileId: () => state?.activeProfileId,
   character: () => profile(),
+  selectionChanged: ids => {
+    const nextScope = JSON.stringify([shareCharacter, [...ids].sort()]);
+    if (conversationScope !== null && conversationScope !== nextScope) void clearMainConversation(true, true);
+  },
   cleanError: e => e.message.replace(/^Error invoking remote method '[^']+': Error: /, ""),
   mutate: (kind, input, valid) => {
     const generation = autosaveGeneration;
@@ -1422,9 +1454,7 @@ root.addEventListener("click", (event) => {
         }
         break;
       case "clear-chat":
-        chatGeneration++;
-        messages = [];
-        render();
+        await clearMainConversation();
         toast("Conversation cleared from this session.");
         break;
       case "delete-key":
@@ -1568,6 +1598,7 @@ root.addEventListener("change", (event) =>
     }
     if (event.target.id === "share-profile") {
       shareCharacter = event.target.checked;
+      await clearMainConversation(true, true);
       document
         .querySelector(".context-preview")
         ?.classList.toggle("context-disabled", !shareCharacter);
@@ -1698,8 +1729,8 @@ root.addEventListener("submit", (event) => {
     }
     if (form.id === "chat-form" && !sending) {
       if (submitGeneration !== chatGeneration || page !== "assistant") return;
-      const prompt = String(data.get("prompt")).trim();
-      if (!prompt) return;
+      const prompt = String(data.get("prompt"));
+      if (!prompt.trim()) return;
       if (!state.provider.model) {
         toast("Choose a model in Connections first.", true);
         return;
@@ -1712,6 +1743,12 @@ root.addEventListener("submit", (event) => {
       const memoryIds = await Memory.forQuestion(prompt);
       if (generation !== chatGeneration || page !== "assistant" || renderedProfileId !== (state.activeProfileId || "")) return;
       request.memoryIds = memoryIds;
+      const nextScope = JSON.stringify([shareProfile, [...memoryIds].sort()]);
+      if (conversationScope !== null && conversationScope !== nextScope) {
+        messages = [];
+        conversationNotice = "Recent messages accompany follow-ups. Sharing choices changed, so this question starts a fresh conversation. Saved memory must be selected for each question.";
+      }
+      conversationScope = nextScope;
       Voice.invalidate();
       Memory.beginQuestion();
       formDrafts.delete(form.dataset.draftKey);
@@ -1724,9 +1761,11 @@ root.addEventListener("submit", (event) => {
       sending = true;
       render();
       try {
-        const reply = await api.ask(request);
+        const result = api.askCompanion ? await api.askCompanion(request) : { text: await api.ask(request), kind: "ai" };
         if (generation === chatGeneration) {
-          messages.push({ role: "assistant", text: reply });
+          if (result.conversation?.resetReason) messages = [{ role: "user", text: prompt }];
+          if (result.conversation?.omittedTurns) conversationNotice = "Recent messages accompany follow-ups; older exchanges were omitted to keep this request bounded. Your current question and selected saved memory stay intact.";
+          messages.push({ role: "assistant", text: result.text, kind: result.kind });
           await Memory.review();
         }
       } catch (error) {
