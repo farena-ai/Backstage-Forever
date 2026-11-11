@@ -10,7 +10,7 @@
 
 Source0.12.3/1.0held/no publication or installer. No actualplayer/game/input/auth/audio/paid/OSsettings/watchers. Preserve all existing authority/privacy/native/cancellation/no-MCP-tools behavior and data/art/addon/native bytes. Allowed existing-peer pins ONLY @anthropic-ai/sdk1.6.0, @modelcontextprotocol/sdk1.32.2, zod4.6.7; keep existing ClaudeSDK0.3.319/jose6.2.16. Offline lock update/no upgrades/new downloads. Previous sealed outputs immutable; failedcandidate/log receipts preserved.
 
-## Task1: Production peer closure and isolated packaged gate
+## Task 1: Production peer closure and isolated packaged gate
 
 Files modify package.json/package-lock.json, scripts/packaged-smoke.cjs, docs/THIRD-PARTY-NOTICES.md and precise developer packaging guidance if needed; no application/provider/renderer logic. Existing canonical fixture variables/contracts should remain clear for parent's richer derived actual-feature test; report exact data/profile/app paths and insertion seams.
 
@@ -20,3 +20,4 @@ Files modify package.json/package-lock.json, scripts/packaged-smoke.cjs, docs/TH
 - [ ] Self-review/parse/diff/lock scope, markstepscomplete. BEFOREscopedcommit write .superpowers/sdd/guided-peer-packaging-report.md exactRED/GREEN/buildcommands/productionpeerpaths/licenses/no capabilitychanges/limits. Commit scoped files and report following existing convention, send finalSHA/releaseGUI/buildowner. Strongest fresh source reviewer addendum required before delivery. Parent richer work/guided-packaged helpers may need adaptation to new canonical fixture—document seams, do not edit those owned helpers.
 
 Self-review: copiedapp outsidecheckout is the necessary negative control; cwd alone cannot prevent ancestor module fallback. Explicit peers express existing SDK runtime requirements and preserve public app semantics. No decision about paid services or public release is required.
+
