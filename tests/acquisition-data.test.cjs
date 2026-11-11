@@ -113,6 +113,46 @@ test("privacy canaries and material names never cross public projection", () => 
   assert.ok(dto.rows.every(r => !Object.hasOwn(r, "name")));
   assert.ok(dto.rows.every(r => r.sources.every(s => s.nameKind === "reference-source-name")));
 });
+function malformedArrayVariants(values) {
+  const sparse = values.slice(); delete sparse[0];
+  const compensated = values.slice(); delete compensated[0]; compensated.extra = values[0];
+  const inherited = values.slice(); delete inherited[0]; inherited.extra = values[0];
+  Object.setPrototypeOf(inherited, Object.create(Array.prototype, { 0: { value: values[0], enumerable: true } }));
+  const nonenumerableExtra = values.slice(); Object.defineProperty(nonenumerableExtra, "extra", { value: values[0] });
+  const symbolicExtra = values.slice(); symbolicExtra[Symbol("extra")] = values[0];
+  const nonenumerableIndex = values.slice(); Object.defineProperty(nonenumerableIndex, "0", { value: values[0], enumerable: false });
+  const accessorIndex = values.slice(); Object.defineProperty(accessorIndex, "0", { get: () => values[0], enumerable: true });
+  return [sparse, compensated, inherited, nonenumerableExtra, symbolicExtra, nonenumerableIndex, accessorIndex];
+}
+test("malformed reaction arrays cannot qualify a merchant through skipped or inherited evidence", () => {
+  const a = api(), p = a.loadAcquisitionPack();
+  for (const ns of malformedArrayVariants([5])) {
+    const q = clone(p); q.rows.find(r => r.itemId === 2320).observedReactionsByFaction.Horde = ns;
+    assert.throws(() => a.validateAcquisitionPack(q), "nonordinary reactions must reject");
+    const dto = a.acquisitionFacts(q, profile(), [2320]);
+    assert.equal(dto.status, "unavailable"); assert.equal(dto.rows[0].status, "unavailable"); assert.deepEqual(dto.rows[0].sources, []);
+  }
+});
+test("shared array boundary rejects holes and unrelated properties in positions and contexts", () => {
+  const a = api(), p = a.loadAcquisitionPack();
+  for (const field of ["positions", "context"]) {
+    for (const bad of malformedArrayVariants(p.rows[1][field])) {
+      const q = clone(p); q.rows[1][field] = bad;
+      assert.throws(() => a.validateAcquisitionPack(q), field);
+      assert.equal(a.acquisitionFacts(q, profile(), [2447]).status, "unavailable");
+    }
+  }
+});
+test("requested IDs require dense own indices with no compensating or unrelated keys", () => {
+  const a = api(), p = a.loadAcquisitionPack();
+  for (const bad of malformedArrayVariants([765])) assert.throws(() => a.acquisitionFacts(p, profile(), bad));
+  assert.deepEqual(a.acquisitionFacts(p, profile(), []).rows, []);
+  const dto = a.acquisitionFacts(p, profile(), [765, 765, 2320]);
+  assert.deepEqual(dto.rows.map(r => r.itemId), [765, 2320]);
+  assert.ok(dto.rows.every(r => r.status === "qualified-historical"));
+  dto.rows[0].sources[0].positions[0].x = .1;
+  assert.equal(a.acquisitionFacts(p, profile(), [765]).rows[0].sources[0].positions[0].x, .5027);
+});
 test("runtime load rejects changed facts even if adjacent checksum is recomputed", t => {
   const a = api(), target = tempBundle(t), p = JSON.parse(fs.readFileSync(path.join(target, "pack.json")));
   p.rows[0].positions[0].x = .1234; const bytes = Buffer.from(JSON.stringify(p) + "\n"); fs.writeFileSync(path.join(target, "pack.json"), bytes);

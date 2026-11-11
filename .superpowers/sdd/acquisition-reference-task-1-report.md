@@ -88,3 +88,40 @@ Qualification requires profile.source.kind `wow-addon`, a valid ISO timestamp wi
 Exact attribution retained: `Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.` License URL https://creativecommons.org/licenses/by/4.0/. Actual generation copied existing `work/proactive-research/eg-LICENSE`, hash/bytes above. The CLI also supports the already verified existing `data/forever-insights/LICENSE` copy when the source directory contains just the four originals; license is not a fifth compileAcquisition data Buffer. Source pin, attribution and changed-data notice are included in pack/lock/NOTICE.md/Lua and documentation. The grant covers publisher compilation/player observations and excludes Blizzard underlying content/assets. No raw megabyte source files, client Lua, guide prose, textures or map assets ship. Implementation code remains MIT; observations are not relicensed as MIT.
 
 Coverage is deliberately seven relations, not a general profession/spawn database. The existing November11 coverage note establishes no publisher70888 pin; this task does not infer disappearance, present gatherability or current-build compatibility. Unknown requirements/access/current presence remain unknown. Tests are offline and synthetic around genuine pinned public source data; no real character, game/input/auth/audio/paid/installer/OS-settings operation, watcher or publication was performed. Source/build flags and historical qualification must remain visible in the following consumer. Real client/map/harvest behavior is unverified. Parent independent SPEC/QUALITY review is the next gate before profession coach work; full-series suite/build/copied-artifact gates remain with the parent. No release was attempted.
+
+## SPEC/QUALITY array-boundary correction (2026-11-11)
+
+Review base: `f09665bd8b7faa1e8e243a750d4955737f5f5296`. Read-only reviewer probe correctly showed that Object.keys length does not establish array density: a missing reaction index balanced by an unrelated enumerable property passed validation, and Array.every skipped the missing evidence. Sparse requested IDs could likewise escape the positive-ID boundary. This affected the public in-memory boundary; the canonical shipped JSON facts were unchanged.
+
+Before editing runtime code, added three actual regressions covering reactions, shared position/context arrays, and requested IDs:
+
+```powershell
+node --test --test-name-pattern='malformed reaction arrays|shared array boundary|requested IDs require' tests/acquisition-data.test.cjs
+```
+
+Actual RED: **3 tests, 0 pass, 3 fail, 0 skipped** (78.6427 ms). All failures were missing expected validation exceptions, including whole-pack reaction acceptance and malformed requested IDs. Sparse arrays, holes balanced by extra keys, inherited numeric indices, nonenumerable unrelated keys and symbol properties are represented. Regressions additionally reject nonenumerable numeric elements/accessor indices, since those do not safely survive the defensive-clone boundary as ordinary observed values.
+
+The shared list validator now retains caller-specific length/minimum bounds, requires exactly the length property plus one own property per array index, and explicitly requires every index from0 throughlength-1 to be an own enumerable data element. It rejects holes, inherited indices, unrelated string/symbol properties and elements that could turn into holes or change during cloning. Empty arrays remain permitted wherever the caller permits them. Malformed pack arrays yield atomic unavailable DTOs with no merchant sources; malformed requested-ID arrays throw. Ordinary dense arrays still preserve deduplication, qualified historical faction behavior, bounded points and defensive copies.
+
+Final focused GREEN:
+
+```powershell
+$env:ACQUISITION_SOURCE_DIR = 'work/proactive-research'
+node --test tests/acquisition-data.test.cjs
+node scripts/build-forever-acquisition.cjs --source-dir work/proactive-research --check
+node scripts/build-forever-acquisition.cjs --check
+```
+
+Actual result: **20 tests, 20 pass, 0 fail, 0 skipped** (1104.555 ms), including genuine locked-original reproduction and actual Fengari parity. Both explicit CLI checks exited0, maintaining the distinction between raw reproduction and shipped-only authentication. No broader test/build/GUI check was run.
+
+Read-only SHA256 confirmation after the fix: all five generated artifacts retain exactly the bytes/hashes in the original report, with no regeneration or artifact edit:
+
+| Artifact | Bytes | SHA256 |
+|---|---:|---|
+| pack.json | 6051 | 6447033020706c08abf1005f97a6fe86ac3ba081b72935a7781b185f978f940b |
+| source-lock.json | 2811 | dffd85edccf247b5d11dbb353e3bf5836a6d4c54ba9e68f924687c3583141f49 |
+| LICENSE | 18659 | 5eebefd3682e32d661f307a28539b304e5e52fb1eb33ba214e61d7a57663e4f0 |
+| NOTICE.md | 1305 | 80a91163655ef28f118cd3a41b6f627563534bb3a9434da89ce90a346eafb51a |
+| BackstageForeverAcquisition.lua | 7340 | ea98a4bf603b4aa752d6b2fadba6b3c6bde41e9391640b38f069d608ae5d7b35 |
+
+Fix scope is only src/core/acquisition-data.cjs, tests/acquisition-data.test.cjs and this appended report. No future docs/specs, old resource, dependency/version, UI/runtime consumer, TOC or player data was changed. No network/auth/game/input/audio/paid/OS-settings/watcher/installer/publication activity or agent delegation occurred. Existing seven-relation/seventeen-point scope, public DTO names, license boundaries and held1.0 limitations remain unchanged. This correction is ready for the parent's fresh independent review.

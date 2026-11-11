@@ -42,7 +42,12 @@ function record(v, names) {
   if (!plain(v) || Object.keys(v).length !== names.length || names.some(n => !Object.hasOwn(v, n))) fail("unexpected fields");
 }
 function list(v, max, min = 0) {
-  if (!Array.isArray(v) || v.length < min || v.length > max || Object.keys(v).length !== v.length) fail("array bounds");
+  if (!Array.isArray(v) || v.length < min || v.length > max || Reflect.ownKeys(v).length !== v.length + 1) fail("array bounds");
+  // Each element must survive defensive cloning; holes and unrelated keys are not evidence.
+  for (let i = 0; i < v.length; i++) {
+    const element = Object.getOwnPropertyDescriptor(v, String(i));
+    if (!element?.enumerable || !Object.hasOwn(element, "value")) fail("array indices");
+  }
 }
 function position(p) {
   record(p, ["mapId", "x", "y"]);
