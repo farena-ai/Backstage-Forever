@@ -174,3 +174,19 @@ test("live frames reach the AI as authoritative current state", async () => {
   await service.ask({ provider: "anthropic", prompt: "Which quest after that?", profileId: "A", shareProfile: false, memoryIds: [] });
   assert.doesNotMatch(String(seen.context), /Live game link/);
 });
+
+test("protected secret values from the client become unknown instead of breaking the strip", () => {
+  const out = lua(String.raw`
+local SECRET=setmetatable({},{__tostring=function()return 'secret'end,__div=function()error('attempt to perform arithmetic on a secret number value')end})
+issecretvalue=function(v)return v==SECRET end
+UnitHealth=function()return SECRET end
+UnitHealthMax=function()return SECRET end
+UnitLevel=function()return 15 end
+C_Map={GetBestMapForUnit=function()return 1456 end,GetPlayerMapPosition=function()return {GetXY=function()return 0.47,0.495 end}end}
+dofile('addon/BackstageForever/BackstageForeverLive.lua')
+local s=BackstageForeverLiveState()
+assert(s.health==nil and s.level==15 and s.mapId==1456)
+local cells=BackstageForeverLiveCells(BackstageForeverLivePayload(s))
+print(#cells)`);
+  assert.equal(out, "36");
+});

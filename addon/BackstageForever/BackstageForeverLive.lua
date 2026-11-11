@@ -11,7 +11,21 @@ local PAYLOAD_CELLS = 32            -- 24 bytes * 8 bits / 6 bits per cell
 local VERSION = 1
 
 local function public(value) if type(value)=='function' or type(value)=='table' then return value end end
-local function call(fn, ...) if type(fn)~='function' then return nil end local ok,a,b,c,d=pcall(fn,...) if ok then return a,b,c,d end end
+local unpackAll=unpack or table.unpack
+-- Newer clients return protected "secret" values for some unit data; treat them as unknown.
+local function plain(v)
+    if v==nil then return nil end
+    local check=issecretvalue
+    if type(check)=='function' then local ok,secret=pcall(check,v) if not ok or secret then return nil end end
+    return v
+end
+local function call(fn, ...)
+    if type(fn)~='function' then return nil end
+    local r={pcall(fn,...)}
+    if not r[1] then return nil end
+    for i=2,10 do r[i]=plain(r[i]) end
+    return unpackAll(r,2,10)
+end
 local function field(t,k) if type(t)=='table' then return t[k] end end
 local floor = math.floor
 local function clampByte(v) v=tonumber(v) or 0 if v~=v then v=0 end v=floor(v) if v<0 then return 0 elseif v>255 then return 255 end return v end
@@ -105,17 +119,21 @@ local function npcIdFromGuid(guid)
     local kind,id=parts[1],parts[6]
     if kind=='Creature' or kind=='Vehicle' then return tonumber(id) end
 end
-local function percent(cur,max) cur,max=tonumber(cur),tonumber(max) if cur and max and max>0 then return floor(cur/max*100+.5) end end
+local function percent(cur,max) local ok,v=pcall(function() cur,max=tonumber(plain(cur)),tonumber(plain(max)) if cur and max and max>0 then return floor(cur/max*100+.5) end end) if ok then return v end end
 local function quest()
     local api=public(C_QuestLog)
     local id
     local getWatch=field(api,'GetQuestIDForQuestWatchIndex')
     if type(getWatch)=='function' then id=call(getWatch,1) end
-    local n=call(field(api,'GetNumQuestLogEntries')) or 0
+    local n=call(field(api,'GetNumQuestLogEntries')) or call(GetNumQuestLogEntries) or 0
     local hash,first=0,nil
     for i=1,math.min(tonumber(n) or 0,40) do
         local info=call(field(api,'GetInfo'),i)
         local qid=type(info)=='table' and not info.isHeader and tonumber(info.questID)
+        if not qid and type(GetQuestLogTitle)=='function' then
+            local _,_,_,header,_,_,_,legacyId=call(GetQuestLogTitle,i)
+            if not header then qid=tonumber(legacyId) end
+        end
         if qid then
             first=first or qid
             local done=call(field(api,'IsComplete'),qid) and 1 or 0
@@ -170,6 +188,7 @@ end
 
 -- Drawing (only when enabled).
 local strip,textures,enabled,elapsed,lastKey
+local paints,lastError=0,nil
 local function settings()
     if type(BackstageForeverLiveSettings)~='table' then BackstageForeverLiveSettings={enabled=false} end
     return BackstageForeverLiveSettings
@@ -218,12 +237,20 @@ local function apply()
         elapsed=elapsed+(tonumber(dt) or 0)
         if elapsed<.25 then return end
         elapsed=0
-        pcall(paint)
+        local ok,err=pcall(paint)
+        if ok then paints=paints+1 lastError=nil else lastError=tostring(err) end
     end)
 end
 function BackstageForeverLiveCommand(message)
     local arg=type(message)=='string' and message:lower():match('^live%s*(%a*)') or ''
     local s=settings()
+    if arg=='status' then
+        local w=strip and call(strip.GetWidth,strip) local es=strip and call(strip.GetEffectiveScale,strip)
+        local _,ph=call(GetPhysicalScreenSize)
+        local msg=('Backstage Forever live: %s · strip %s · %sx units · scale %.3f · screen %s · paints %d%s'):format(s.enabled and 'on' or 'off',strip and (call(strip.IsVisible,strip) and 'visible' or 'hidden') or 'none',tostring(w),tonumber(es) or -1,tostring(ph),paints,lastError and (' · error: '..lastError:sub(1,160)) or '')
+        if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,msg) end
+        return
+    end
     if arg=='on' then s.enabled=true elseif arg=='off' then s.enabled=false elseif arg=='' then s.enabled=not s.enabled end
     apply()
     if type(DEFAULT_CHAT_FRAME)=='table' and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then
