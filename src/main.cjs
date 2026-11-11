@@ -53,6 +53,7 @@ const { registerRecoveryHandlers, RECOVERY_MESSAGES } = require("./core/recovery
 const { releaseChannel } = require("../package.json");
 const { LiveBridge } = require("./core/live-bridge.cjs");
 let liveBridge = null;
+let radar = null;
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
@@ -624,6 +625,9 @@ app.whenReady().then(async () => {
   });
   handle("worldMap", (input) => worldMap.build(input || {}));
   handle("worldMapSearch", (query) => worldMap.search(query));
+  radar = require("./core/radar-window.cjs").createRadar({ BrowserWindow, ipcMain, worldMap, live: liveBridge, rendererDir: path.join(__dirname, "renderer") });
+  handle("openRadar", () => radar.open());
+  handle("setRadarTarget", (pin) => radar.setTarget(pin === undefined ? null : pin));
   const { buildAtlas, loadEncounters } = require("./core/dungeon-atlas.cjs");
   const encounters = loadEncounters();
   handle("dungeonAtlas", () => buildAtlas({ profile: store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null, encounters }));
@@ -759,6 +763,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", (event) => {
+  radar?.close();
   liveBridge?.stop();
   store?.closeRecovery();
   voice?.close();

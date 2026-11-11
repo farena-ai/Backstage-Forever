@@ -61,6 +61,18 @@ const { defaultState } = require("../src/core/validation.cjs");
     const clip = await app.evaluate(({ clipboard }) => clipboard.readText());
     assert.match(clip, /^\/bf way 1413 \d+\.\d \d+\.\d Devrak$/);
     await page.screenshot({ path: path.join(capture, "world-map-search.png") });
+    // Pop-out radar tracks the chosen pin around the live position.
+    const radarOpen = app.waitForEvent("window");
+    await page.locator("[data-wm-act=track]").click();
+    const radar = await radarOpen;
+    await radar.waitForLoadState("domcontentloaded");
+    await radar.waitForFunction(() => window.__radar?.().state?.target?.label === "Devrak" && window.__radar().state.live);
+    assert.match(await radar.locator("[data-radar-target]").innerText(), /Devrak[\s\S]*south/);
+    assert.match(await radar.locator("[data-radar-zone]").innerText(), /The Barrens · 60\.0, 8\.0/);
+    const rimPainted = await radar.evaluate(() => { const c = document.querySelector("[data-radar-canvas]"); const d = c.getContext("2d").getImageData(c.width / 2, 6, 1, 1).data; return d[3]; });
+    assert.ok(rimPainted > 0, "radar ring painted");
+    await radar.screenshot({ path: path.join(capture, "radar.png") });
+    await radar.locator('[data-radar="close"]').click();
     // Zone switch and layer toggle.
     await page.locator("[data-wm-zone]").selectOption("1456");
     await page.locator("[data-wm-title]").getByText("Thunder Bluff").waitFor();

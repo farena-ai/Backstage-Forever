@@ -78,6 +78,8 @@ contextBridge.exposeInMainWorld(
     },
     worldMap: (input) => invoke("worldMap", input),
     dungeonAtlas: () => invoke("dungeonAtlas"),
+    openRadar: () => invoke("openRadar"),
+    setRadarTarget: (pin) => invoke("setRadarTarget", pin),
     worldMapSearch: (query) => invoke("worldMapSearch", query),
     copyWaypoint: (input) => invoke("copyWaypoint", input),
     liveLinkStatus: () => invoke("liveLinkStatus"),

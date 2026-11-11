@@ -32,7 +32,7 @@ window.WorldMapView = (() => {
       </header>
       <div class="wm-body">
         <div class="wm-frame"><canvas class="wm-canvas" data-wm-canvas tabindex="0" aria-label="Zone map"></canvas>
-          <div class="wm-tools"><button type="button" data-wm-act="me" title="Center on me">◎</button><button type="button" data-wm-act="in" title="Zoom in">＋</button><button type="button" data-wm-act="out" title="Zoom out">－</button><button type="button" data-wm-act="reset" title="Whole zone">⤢</button></div>
+          <div class="wm-tools"><button type="button" data-wm-act="me" title="Center on me">◎</button><button type="button" data-wm-act="in" title="Zoom in">＋</button><button type="button" data-wm-act="out" title="Zoom out">－</button><button type="button" data-wm-act="reset" title="Whole zone">⤢</button><button type="button" data-wm-act="radar" title="Pop out radar">◉</button></div>
           <div class="wm-tip" data-wm-tip hidden></div>
         </div>
         <aside class="wm-side">
@@ -185,7 +185,7 @@ window.WorldMapView = (() => {
       <p class="wm-coords">${esc(model.mapName)} · ${pct(p.x)}, ${pct(p.y)}</p>${relation(p)}
       ${p.sells?.length ? `<p class="wm-sells">Sold here: ${p.sells.map(esc).join(", ")}</p>` : ""}
       ${p.services ? `<p class="wm-sells">${p.services} training services observed</p>` : ""}
-      <div class="wm-card-actions"><button type="button" class="primary" data-wm-act="way">Copy waypoint for WoW</button></div>
+      <div class="wm-card-actions"><button type="button" class="primary" data-wm-act="way">Copy waypoint for WoW</button><button type="button" data-wm-act="track">Track on radar</button></div>
       <p class="wm-src">${esc(p.source || "")}${p.lastSeen ? ` · seen ${esc(p.lastSeen)}` : ""}${p.build ? ` · build ${esc(p.build)}` : ""}</p>`;
   }
   function liveLine() {
@@ -301,6 +301,8 @@ window.WorldMapView = (() => {
       if (act === "reset") { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); }
       if (act === "me") { const me = model?.player?.live || model?.player?.saved; if (me) { view = { zoom: Math.max(view.zoom, 2.5), cx: me.x, cy: me.y }; draw(); } }
       if (act === "clear") { results = null; resultsList(); }
+      if (act === "radar") { try { await api.openRadar(); } catch {} }
+      if (act === "track" && selected) { try { await api.setRadarTarget({ mapId: model.mapId, x: selected.x, y: selected.y, label: selected.label, sub: selected.sub || null, kind: selected.kind }); await api.openRadar(); e.target.textContent = "Tracking on radar"; } catch (err) { e.target.textContent = err.message; } }
       if (act === "way" && selected) { try { const t = await api.copyWaypoint({ mapId: model.mapId, x: selected.x, y: selected.y, label: selected.label }); window.toast?.(t.message); e.target.textContent = "Copied — paste in WoW chat"; } catch (err) { e.target.textContent = err.message; } }
     });
   }
