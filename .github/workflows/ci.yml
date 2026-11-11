@@ -13,6 +13,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check:addon-reference
+      - run: npm run check:find-index
       - run: npm run check:forever-vendors
       - run: npm run check:forever-insights
       - run: npm run check:forever-travel

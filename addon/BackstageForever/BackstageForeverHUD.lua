@@ -333,6 +333,10 @@ if type(SlashCmdList)=='table' then
             if active and type(BackstageForeverGuide)=='function' then pcall(BackstageForeverGuide,message)end
             return
         end
+        if type(message)=='string' and message:lower():match('^find%s') then
+            if type(BackstageForeverFind)=='function' then pcall(BackstageForeverFind,message:gsub('^%S+','find',1))end
+            return
+        end
         if type(message)=='string' and message:lower():match('^way%s') then
             if type(BackstageForeverWay)=='function' then pcall(BackstageForeverWay,message)end
             return
@@ -349,7 +353,7 @@ if type(SlashCmdList)=='table' then
             return
         elseif message=='' then visible=not visible
         else
-            if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: /bf show, hide, status, live, way MapID X Y, or guide QuestID t/o/r MapID X Y Build.')end
+            if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: /bf find NAME, way MapID X Y, live, show, hide, status, or guide QuestID t/o/r MapID X Y Build.')end
             return
         end
         pcall(initialize);save();pcall(update)

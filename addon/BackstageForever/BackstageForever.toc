@@ -17,3 +17,4 @@ BackstageForeverMap.xml
 BackstageForever.lua
 BackstageForeverHUD.lua
 BackstageForeverLive.lua
+BackstageForeverFind.lua

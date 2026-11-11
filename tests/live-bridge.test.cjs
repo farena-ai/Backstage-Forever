@@ -256,3 +256,24 @@ BackstageForeverWay('way nonsense') assert(set==nil)
 print('ok')`);
   assert.equal(out, "ok");
 });
+
+test("/bf find picks the nearest match on your map, sets a waypoint and lists distinct alternatives", () => {
+  const out = lua(String.raw`
+local msgs,set={},nil
+DEFAULT_CHAT_FRAME={AddMessage=function(_,m)msgs[#msgs+1]=m end}
+InCombatLockdown=function()return false end
+UiMapPoint={CreateFromCoordinates=function(m,x,y)return {m=m,x=x,y=y}end}
+C_Map={GetBestMapForUnit=function()return 1413 end,GetPlayerMapPosition=function()return {GetXY=function()return 0.6,0.1 end}end,CanSetUserWaypointOnMap=function()return true end,SetUserWaypoint=function(p)set=p end}
+C_SuperTrack={SetSuperTrackedUserWaypoint=function()end}
+dofile('addon/BackstageForever/BackstageForeverLive.lua')
+dofile('addon/BackstageForever/BackstageForeverFind.lua')
+BackstageForeverFind('find flight master')
+assert(set.m==1413 and msgs[1]:find('Devrak',1,true),'nearest flight master on this map first')
+local also=0 local seen={} for _,m in ipairs(msgs) do local n=m:match('also: ([^,(]+)') if n then also=also+1 assert(not seen[n],'distinct alternatives') seen[n]=true end end
+assert(also>=2)
+msgs={} set=nil BackstageForeverFind('find Cairne Bloodhoof')
+assert(set.m==1456 and msgs[1]:find('Thunder Bluff; travel there first',1,true))
+msgs={} set=nil BackstageForeverFind('find zzzz') assert(set==nil and msgs[1]:find('No match',1,true))
+print('ok')`);
+  assert.equal(out, "ok");
+});
