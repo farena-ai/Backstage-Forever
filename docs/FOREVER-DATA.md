@@ -54,6 +54,26 @@ Data from [Efficient Games](https://efficient.games), licensed under [CC BY 4.0]
 
 ## For source developers
 
+### Qualified acquisition data (local, unreleased)
+
+`data/forever-acquisition/` is a separate offline increment for a following profession/map consumer. It contains exactly **seven relations / seventeen historical player-standing points**, capped at the first three distinct valid normalized positions in each original record's array order. Relation order is authored and stable: `object:1617|spell:2368` → 765; `object:1618|spell:2368|bountifulHarvest:1` → 2447; `object:1619|spell:2368` → 2449; `object:1731|spell:2576` → 2770 and 2835; `npc:11910|quest` → 2589; and `vendors[3005].entries["item:2320"]` → 2320. Object labels join the same numeric ID in `npcs.approached`; corpse identity joins `creatures`; the merchant joins vendor/NPC/creature identity, Merchant interaction and exact item listing. No Poor Copper fallback, reversed relationship, skinning claim, odds, yields, prices or inferred requirements are included.
+
+Four original `eg-` files are locked to Efficient Games commit `23f9636486d3d60479dc0bcee2356053c33faf2c`, product `wowf`, build `1.60.1.70862`. The lock preserves original metadata: creature contributions span **November 7–9, 2026**, while loot/NPC/vendor contributions and selected point observations are **November 9**. Contributing saved files and loot windows count observations, never active spawns or independent people. Per-relation observed contexts remain visible; `requiredSkillLineId`, `requiredRank` and `availableNow` are null, and `exactObjectPosition` is false. Vendor limited-stock evidence is unknown for this selected listing. No client files or map textures ship.
+
+The public projection returns `{version:1,status,reference,rows,limitations}` with explicit unknown rows for uncovered requested item IDs. Each row has `itemId,status,reason,sources`; each bounded source retains exact `sourceKey,kind,entityId`, reference-labelled name, positions, evidence/date/build, counts, context and unknowns, plus `qualification,reason`. It exposes no profile/source identifiers, notes, goals, keys or private paths, and does no provider I/O. Material display names must come from actual same-ID recipe/material observations. A matching dated saved addon build permits only **qualified historical** places to look, never current gatherability or access. Vendor suggestions also need wholly nonhostile observed reactions for the saved faction; absent/opposing/conflicting evidence is browse-only. Manual, undated or different-build profiles are browse-only. In particular, **70888 is not verified by this 70862 reference**. A corrupt/missing resource is unavailable as a whole, while independent observed recipe planning remains possible.
+
+The original CC BY 4.0 license bytes and attribution/change notice are preserved. This license covers the publisher's compilation/player observations and excludes Blizzard underlying game content/assets. `BackstageForeverAcquisition.lua` is a deterministic data-only export with matching provenance; no TOC, UI, capture, HUD, owned-install or runtime integration is made here. Existing quest/seller/insights/travel resources, dependencies and source version 0.12.3 remain unchanged; 1.0 is held.
+
+```powershell
+npm run check:forever-acquisition
+npm run test:acquisition
+node scripts/build-forever-acquisition.cjs --source-dir work/proactive-research --check
+$env:ACQUISITION_SOURCE_DIR = 'work/proactive-research'
+node --test tests/acquisition-data.test.cjs
+```
+
+The ordinary shipped check authenticates the authored canonical compiled identity, all raw descriptors, exact license and generated-Lua parity **without claiming raw reproduction**. An explicit `--source-dir` authenticates the four original Buffers, then reproduces pack/lock/Lua/license/notice from them; non-check generation writes only fixed in-repository targets. Its license source is `eg-LICENSE` in that directory, with the already verified `data/forever-insights/LICENSE` as fallback; it is not a fifth data Buffer. No fetching occurs. Runtime loading pins the 6,051-byte pack SHA256 `6447033020706c08abf1005f97a6fe86ac3ba081b72935a7781b185f978f940b` in authored source, so changing both local facts and an adjacent checksum cannot authorize different data. Tests with the environment variable prove actual raw reproduction and Fengari data parity; absent that variable only the optional raw-source case is skipped. These checks do not certify real-client behavior.
+
 Ordinary tests and the offline checks use bundled artifacts and small tracked fixtures, without ignored research files or network access:
 
 ```powershell

@@ -10,6 +10,10 @@ Recipe lists can be partial or unavailable when the game's public APIs do not ex
 
 ## Historical places to look
 
+A separate local acquisition data increment is ready for a following profession/map consumer; no new preparation UI or native marker is connected by this increment. It holds seven material/source relations and seventeen approximate historical standing points: Silverleaf (765), Peacebloom (2447), Earthroot (2449), Copper Ore (2770), Rough Stone (2835), corpse-looted Linen Cloth (2589), and the historical Coarse Thread merchant listing (2320). These item labels describe the reference coverage; a consumer must display material names from actual same-ID recipe/material observations. Source labels are bounded reference names of unspecified locale.
+
+All seven relations retain build `1.60.1.70862` and November 9, 2026 point observations. Matching dated addon evidence can qualify a historical place to look; a `70888` character, manual profile or undated snapshot can only browse this older reference. The merchant additionally needs wholly nonhostile reaction observations for the saved faction. This pin has Horde `[5]`, with Alliance access unknown. Corpse loot remains distinct from gathering; quest and `bountifulHarvest:1` contexts are retained without declaring them requirements. Gathering rank/skill, current presence, access, stock and availability stay unknown. The points are where a contributor stood, never exact spawns or a promise of gatherability. No observation does not mean unobtainable. Public 0.12.3 is unchanged and 1.0 remains held.
+
 Historical seller references describe observed merchants and approximate interaction positions. Review the collection date, build and faction qualification. Qualified suggestions and browse-only references are different; missing Alliance reaction evidence stays unknown, and multiple-map mobile history is browse-only. Current stock, price and access remain unverified. No observed seller means the catalog has no matching observation, not that the material is unobtainable. BF does not generate vendor game-waypoint commands.
 
 ## Ask about the selected supply plan

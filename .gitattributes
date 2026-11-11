@@ -18,3 +18,8 @@ addon/BackstageForever/BackstageForeverReference.lua text eol=lf linguist-genera
 
 data/forever-travel/* text eol=lf
 data/forever-travel/LICENSE-CC-BY-4.0.txt text eol=lf whitespace=-blank-at-eof
+
+data/forever-acquisition/*.json text eol=lf
+data/forever-acquisition/LICENSE text eol=lf whitespace=-blank-at-eof
+data/forever-acquisition/NOTICE.md text eol=lf
+addon/BackstageForever/BackstageForeverAcquisition.lua text eol=lf linguist-generated=true
