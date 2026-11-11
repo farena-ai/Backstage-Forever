@@ -105,11 +105,20 @@ function buildAdventureCoach(
       mode === "questing" ? guidance.candidates.slice(0, 3) : director.choices;
     for (const step of steps) {
       const quest = (p.quests || []).find((q) => q.id === step.questId),
+        actionable =
+          Boolean(step.destination) ||
+          (step.objectives || []).some(
+            (o) =>
+              o.done === false &&
+              typeof o.text === "string" &&
+              o.text.trim().length > 0,
+          ),
         local =
-          step.priority <= 1 ||
-          (quest?.zone && quest.zone === p.location?.zone) ||
-          (step.destination?.mapId !== undefined &&
-            step.destination.mapId === p.location?.mapId);
+          actionable &&
+          (step.priority <= 1 ||
+            (quest?.zone && quest.zone === p.location?.zone) ||
+            (step.destination?.mapId !== undefined &&
+              step.destination.mapId === p.location?.mapId));
       const rank =
         mode === "questing"
           ? 0
@@ -124,6 +133,7 @@ function buildAdventureCoach(
         (step.objectives || [])
           .slice(0, 10)
           .map((o) => o.text)
+          .filter((value) => value.trim().length > 0)
           .join(" · ")
           .slice(0, 800) || "Check your quest log for the next step.";
       const publicStep = {

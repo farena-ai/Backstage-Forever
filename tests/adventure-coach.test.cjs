@@ -180,3 +180,36 @@ test("valid learned recipes in partial catalogs remain eligible only with comple
     ].every((x) => x?.kind !== "craft-ready"),
   );
 });
+
+test("blank local objective prose requires a valid current-game marker; ready turn-ins remain first", () => {
+  for (const prose of ["", "   ", " \u00a0 "]) {
+    const p = profile();
+    p.readiness.bags.free = 5;
+    const q = p.quests[0];
+    q.zone = "Forest";
+    q.objectives = [{ text: prose, done: false }];
+    assert.equal(
+      build(p).recommendation.kind,
+      "craft-ready",
+      "Blank prose cannot establish local work",
+    );
+    q.destination = { mapId: 1413, x: 0.2, y: 0.3 };
+    assert.equal(
+      build(p).recommendation.kind,
+      "quest",
+      "Valid current marker remains actionable",
+    );
+    delete q.destination;
+    q.complete = true;
+    assert.equal(
+      build(p).recommendation.kind,
+      "quest",
+      "Ready turn-in remains first",
+    );
+  }
+  const p = profile();
+  p.readiness.bags.free = 5;
+  p.quests[0].zone = "Forest";
+  p.quests[0].objectives = [{ text: "Find the scout", done: false }];
+  assert.equal(build(p).recommendation.kind, "quest");
+});

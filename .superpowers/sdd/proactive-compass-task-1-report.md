@@ -46,3 +46,38 @@ Justified filename/placement decisions: native BuildPreparation is inside existi
 ## Remaining limits / handoff
 
 No full npm test, build, packaging, installer, real game/player data/input, authentication, audio, paid inference, OS settings, watcher, publication or live acceptance was performed. Native rendering, client API behavior/performance and player acceptance remain owner-led; synthetic Lua/desktop checks do not establish them. Public reference build drift was not relabelled or silently upgraded. Parent owns independent SPEC/QUALITY review, remaining increments, final whole-series suite/build and new outside-checkout review bundle. All app/capture/reference protocols and source version stay held as required.
+
+
+## Review corrections — 2026-11-11
+
+The original completion claim was reopened by `work/proactive-compass-review.md` (I1/P1 protected sequence readiness and I2/P2 blank-objective priority). This correction starts from `90699b04191c1fd619dd4872898598801234b227`, whose only changes after the original source commit were future acquisition documentation. Independent clean re-review remains the next gate; this section does not declare reviewer approval.
+
+### Corrections and related scope
+
+- Native sequences now distinguish clean absence from rejected values. A bounded raw-key traversal guards each key and row before comparison/indexing/coercion, rejects protected/unreadable rows, non-array keys, holes, oversize indices and metatable-backed virtual lists, and returns an owned dense sequence only after full validation. Reagents remain capped at ten. The same concrete prefix/hidden-duplicate risk was fixed for profession, material and recipe collection sequences (caps 20/256/100). A rejected material/profession/recipe sequence cannot establish craft readiness. Individually valid entries in a structurally valid partial recipe catalog remain eligible with complete fresh carried counts; no whole-catalog completeness requirement was added.
+- Desktop and native Adventure ranking now requires meaningful unfinished objective prose or a valid current game destination before local promotion. Empty, ASCII-whitespace-only and Unicode-whitespace-only prose cannot outrank an established craft attempt. Ready turn-ins, valid game markers and meaningful local prose remain eligible. Desktop blank details use the existing honest check-quest fallback. No Plan, capture, normalization or reference contract changed.
+- Added actual JS/Lua regressions and extended the existing safe Electron coach fixture with main-owned blank-objective and valid-marker saved-source transitions. No additional framework, production data, provider or action boundary was introduced.
+
+### Exact RED / GREEN evidence
+
+- RED: `node --test tests/adventure-coach.test.cjs tests/addon-coach.test.cjs` — **18 pass / 5 fail**. Failures established protected second reagent readiness, malformed/sparse reagent readiness, protected workshop collection prefix readiness, native blank-prose priority and desktop blank-prose priority. Lua assertions were detected on stderr even when Fengari reported process status 0; the helper requires both status 0 and empty stderr.
+- Initial associated GREEN: the same two-file command — **23/23 PASS**.
+- Additional focused RED: `node --test --test-name-pattern="native dense bounded sequences" tests/addon-coach.test.cjs` — **0 pass / 1 fail**, `Malformed reagent sequence 6`, for a metatable-backed virtual sequence. Rejected sequence metatables without invoking their methods; identical focused command then **1/1 PASS**.
+- Final covering GREEN: `node --test --test-concurrency=1 tests/adventure-coach.test.cjs tests/addon-coach.test.cjs tests/addon-live.test.cjs tests/addon-plan.test.cjs tests/adventure-coach-ipc.test.cjs` — **64/64 PASS**, zero skipped/cancelled. Covers actual native policy/Plan/lifecycle plus strict main-owned IPC, the paired blank/whitespace/marker/ready-turn-in cases, protected first/second/out-of-cap rows, guard failure, whole unknown sequence, sparse/malformed keys, material/profession/recipe prefix ambiguity and valid partial-catalog retention.
+- Actual GUI: `node scripts/adventure-coach-smoke.cjs` — **PASS**. Existing synthetic bootstrap disables update/reference starts before main loads and substitutes provider/model/key/game/voice/clipboard/shell surfaces. Both factions, compact first-viewport action, 200% reduced motion, folded Director/reveal, stale responses, no broken assets/overflow and five main navigation sections remain checked. New visible transitions prove known craft first for blank local prose and quest first once a valid marker is saved. Counters: providers 0, keys 0, game 0, external 0. The fixture closed and removed only its checked task-created temporary profile.
+- `node --check src/core/adventure-coach.cjs`, `node --check tests/adventure-coach.test.cjs`, `node --check tests/addon-coach.test.cjs`, `node --check scripts/adventure-coach-smoke.cjs` — **PASS**.
+- `git diff --check` — **PASS**. `git diff --exit-code -- addon/BackstageForever/BackstageForeverPlan.lua addon/BackstageForever/BackstageForever.lua addon/BackstageForever/BackstageForeverReference.lua package.json package-lock.json` — **PASS**, unchanged.
+
+### New receipt and diff self-review
+
+New immutable synthetic capture folder: `.superpowers/sdd/proactive-compass-captures/2026-11-11T06-55-15-295Z/` (eight PNGs and manifest). Visually inspected both added screenshots: `review-blank-objective.png` shows Try Amber restorative as primary; `review-valid-marker.png` shows Unknown local objective as primary. Both retain the collapsed quest details and clear action. This is synthetic desktop evidence, explicitly `inClient:false`, not native client acceptance.
+
+SHA-256 receipts:
+
+- `manifest.json`: `F65FF72B7DD83AEEC1F2DF177622D5FBA8B5AB2CF85E482E71C1C6B8444FCE10`
+- `review-blank-objective.png`: `8EAF606EACF78C8A7A5A113E483FBE9287DFDB5CE0B1021CE304FDAD048098D0`
+- `review-valid-marker.png`: `9C38A90BA164B2CED10E52E7278C326540DBDB52B04FEC03C2A0D45305C97A1A`
+
+Self-reviewed the complete five-file source/test diff: only the two pure policies, paired policy tests and existing synthetic coach GUI fixture changed. The sixth scoped file is this appended report. Raw sequence iteration is bounded by cap + 1, rejects unknown keys before numeric validation, and never invokes sequence metatable methods. Public validation still occurs before secret-sensitive comparisons; the field helper deliberately keeps a single-value interface while the internal public guard reports readability separately. Recipe ownership, dated eligibility, complete/fresh material counts, duplicate checks and signatures remain intact. No broad refactor, old artifact overwrite, future acquisition docs/spec/data edit, dependency/version bump or unrelated control change occurred.
+
+Source stays 0.12.3; 1.0 remains held. No full npm test, build, package, installer, real game/player data/input, authentication, audio, paid inference, OS settings, watcher or publication was performed. Parent owns independent re-review and later full-series validation. Source/GUI ownership is released only after this report is force-added and the scoped fix commit completes.

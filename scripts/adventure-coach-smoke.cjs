@@ -141,7 +141,10 @@ const { defaultState } = require("../src/core/validation.cjs"),
     const files = [];
     const shot = async (name) => {
       files.push(name + ".png");
-      await page.evaluate(()=>{scrollTo(0,0);document.querySelector(".main")?.scrollTo(0,0);});
+      await page.evaluate(() => {
+        scrollTo(0, 0);
+        document.querySelector(".main")?.scrollTo(0, 0);
+      });
       await page.screenshot({ path: path.join(captures, name + ".png") });
     };
     await app.evaluate(({ BrowserWindow }) =>
@@ -318,6 +321,51 @@ const { defaultState } = require("../src/core/validation.cjs"),
       /PRIVATE_/,
     );
 
+    await mode.selectOption("adventure");
+    await app.evaluate(() => {
+      const next = structuredClone(coachFixture.store.state),
+        p = next.profiles.find((p) => p.id === next.activeProfileId);
+      p.readiness.bags.free = 5;
+      p.quests = [
+        {
+          id: 42,
+          title: "Unknown local objective",
+          zone: "Forest",
+          complete: false,
+          objectives: [{ text: "   ", done: false }],
+        },
+      ];
+      p.source.updatedAt = new Date().toISOString();
+      coachFixture.store.saveState(next);
+    });
+    await page.evaluate(async () => {
+      state = (await api.bootstrap()).state;
+      render();
+    });
+    await page.waitForFunction(() =>
+      document
+        .querySelector("[data-coach-primary]")
+        ?.textContent.includes("Amber restorative"),
+    );
+    await shot("review-blank-objective");
+    await app.evaluate(() => {
+      const next = structuredClone(coachFixture.store.state),
+        p = next.profiles.find((p) => p.id === next.activeProfileId);
+      p.quests[0].destination = { mapId: 1413, x: 0.2, y: 0.3 };
+      p.source.updatedAt = new Date().toISOString();
+      coachFixture.store.saveState(next);
+    });
+    await page.evaluate(async () => {
+      state = (await api.bootstrap()).state;
+      render();
+    });
+    await page.waitForFunction(() =>
+      document
+        .querySelector("[data-coach-primary]")
+        ?.textContent.includes("Unknown local objective"),
+    );
+    await shot("review-valid-marker");
+
     assert.ok(
       await page.evaluate(() =>
         [...document.images].every((i) => i.complete && i.naturalWidth > 0),
@@ -363,6 +411,7 @@ const { defaultState } = require("../src/core/validation.cjs"),
             "no broken assets/overflow",
             "no providers/keys/game/external actions",
             "folded Director and explicit reveal",
+            "blank local objective and valid current marker",
           ],
         },
         null,
@@ -377,7 +426,10 @@ const { defaultState } = require("../src/core/validation.cjs"),
     clearTimeout(watchdog);
     if (app) await app.close();
     const cleanup = await fs.realpath(dir);
-    assert.equal(path.dirname(cleanup).toLowerCase(),(await fs.realpath(os.tmpdir())).toLowerCase());
+    assert.equal(
+      path.dirname(cleanup).toLowerCase(),
+      (await fs.realpath(os.tmpdir())).toLowerCase(),
+    );
     assert.ok(path.basename(cleanup).startsWith("forever-coach-"));
     await fs.rm(cleanup, { recursive: true, force: true });
   }

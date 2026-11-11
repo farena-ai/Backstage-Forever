@@ -107,3 +107,67 @@ test("native partial known recipe catalog permits a valid observed skill-up reci
   lua(
     `c.readiness.bags.free=5;c.readiness.workshop.recipes.complete=false;assert(coach('professions').recommendation.kind=='craft-ready');c.readiness.workshop.recipes.items={};local b=coach('professions');assert(b.recommendation.kind~='craft-ready');for _,a in ipairs(b.alternatives)do assert(a.kind~='craft-ready')end`,
   ));
+
+test("native protected reagent rows cannot terminate a readable prefix or hide outside the cap", () =>
+  lua(`
+c.readiness.bags.free=5
+local r=c.readiness.workshop.recipes.items[1]
+local function noCraft(label)
+ local b=coach('professions');assert(not b.recommendation or b.recommendation.kind~='craft-ready',label)
+ for _,v in ipairs(b.alternatives)do assert(v.kind~='craft-ready',label)end
+end
+for _,slot in ipairs({1,2,11})do
+ r.reagents={{itemId=200,required=2}};r.reagents[slot]={secret=true}
+ noCraft('Protected reagent slot '..slot)
+end
+r.reagents={secret=true};noCraft('Protected entire reagent sequence')
+r.reagents={{itemId=200,required=2},{unreadable=true}}
+issecretvalue=function(v)if type(v)=='table' and rawget(v,'unreadable') then error('Unreadable public value')end;return type(v)=='table' and rawget(v,'secret')==true end
+noCraft('Guard failure for entire reagent row')
+`));
+
+test("native dense bounded sequences reject holes, unknown rows and non-array keys", () =>
+  lua(`
+c.readiness.bags.free=5
+local r=c.readiness.workshop.recipes.items[1]
+local shapes={
+ {[1]={itemId=200,required=2},[3]={itemId=201,required=1}},
+ {{itemId=200,required=2},false},
+ {{itemId=200,required=2},{}},
+ {[1]={itemId=200,required=2},extra={itemId=201,required=1}},
+ {[1]={itemId=200,required=2},[1000]={itemId=201,required=1}}
+}
+shapes[#shapes+1]=setmetatable({{itemId=200,required=2}},{__index=function()error('Do not resolve virtual reagent rows')end,__len=function()error('Do not trust virtual sequence length')end})
+local protectedKey=setmetatable({secret=true},{__tostring=function()error('Do not coerce protected key')end,__eq=function()error('Do not compare protected key')end})
+shapes[#shapes+1]={[1]={itemId=200,required=2},[protectedKey]={itemId=201,required=1}}
+for i,v in ipairs(shapes)do r.reagents=v;local b=coach('professions');assert(not b.recommendation or b.recommendation.kind~='craft-ready','Malformed reagent sequence '..i);for _,a in ipairs(b.alternatives)do assert(a.kind~='craft-ready','Malformed reagent sequence '..i)end end
+`));
+
+test("native unreadable or sparse workshop sequences cannot assert readiness from a prefix", () =>
+  lua(`
+c.readiness.bags.free=5
+local w=c.readiness.workshop
+for _,key in ipairs({'materials','professions','recipes'})do
+ local original=w[key].items
+ for _,slot in ipairs({2,1000})do
+  w[key].items={[1]=original[1],[slot]={secret=true}}
+  local b=coach('professions');assert(not b.recommendation or b.recommendation.kind~='craft-ready',key..' protected row');for _,a in ipairs(b.alternatives)do assert(a.kind~='craft-ready',key)end
+ end
+ w[key].items={[1]=original[1],[3]=original[1]}
+ local b=coach('professions');assert(not b.recommendation or b.recommendation.kind~='craft-ready',key..' hole');for _,a in ipairs(b.alternatives)do assert(a.kind~='craft-ready',key)end
+ w[key].items=original
+end
+w.recipes.complete=false;assert(coach('professions').recommendation.kind=='craft-ready','Valid partial catalog remains useful')
+`));
+
+test("native blank objective prose requires a valid game marker for local priority", () =>
+  lua(`
+c.readiness.bags.free=5;c.location.mapId=1413;local q=c.quests[1];q.zone='Forest'
+for _,prose in ipairs({'','   ','  '..string.char(194,160)..'  '})do
+ q.complete=false;q.objectives={{text=prose,done=false}};q.destination=nil
+ assert(coach().recommendation.kind=='craft-ready','Blank prose cannot establish local work')
+ q.destination={mapId=1413,x=.2,y=.3};assert(coach().recommendation.kind=='quest','Valid current marker remains actionable')
+ q.destination=nil;q.complete=true;assert(coach().recommendation.kind=='quest','Ready turn-in remains first')
+end
+q.complete=false;q.objectives={{text='Find the scout',done=false}};assert(coach().recommendation.kind=='quest')
+`));
