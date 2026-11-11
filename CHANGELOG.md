@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.6 — saved-character preview compatibility, 2026-11-11
+
+- Restore read-only public context previews for an explicitly named stored character while another character is selected. The 0.13.5 candidate failed this existing Company backend contract during Windows validation and was not published; its tag, notes and failed receipts remain unchanged.
+- Keep volatile location reports and the current question's report scoped to the selected character. Other-character previews show only that character's approved saved facts, without changing selection, conversation, memory or provider state. Null/omitted profile IDs still resolve to the selected character.
+- Preserve strict current-character requirements for sending questions and using memory, the existing public-field allowlist, sharing opt-out and preview/send parity. Add a real-service regression covering retained and draft reports across both preview scopes.
+- Carry forward local sourced NPC guidance, conservative current-location reports, cross-tier NPC identity reconciliation, complete-point city checks and connection timing fixes. No dependency, protocol, authentication, audio or update-trust change.
+- App/lock, addon TOC, emitted capture and current documentation align at 0.13.6 preview. Windows CI, publication and authenticated installed-updater evidence remain separate gates; **1.0 remains held for Frank's hands-on acceptance**.
+
 ## 0.13.5 — local NPC guidance, current-location context and connection timing, 2026-11-11
 
 - Keep Connection checks, optional activation and setup checks in the player's current open or closed state through status paints of the same screen. Preserve focused disclosure summaries; changing screen, character, setup session, folder or journal replacement retires the old choice.

@@ -140,7 +140,10 @@ function registerKnowledgeHandlers({
     if (!share) return null;
     const p = profile(profileId);
     if (!p.id) throw Error("Choose a character.");
-    return ai.approvedProfile(p, { knowledge: knowledge.index(p), prompt, reportedLocation:getLocationContext(p.id,share,prompt,memoryIds) });
+    // Stored-profile previews remain public/read-only; volatile conversation
+    // reports and the current draft belong only to the selected character.
+    const reportedLocation=p.id===getState().activeProfileId?getLocationContext(p.id,share,prompt,memoryIds):null;
+    return ai.approvedProfile(p, { knowledge: knowledge.index(p), prompt, reportedLocation });
   });
 }
 module.exports = { registerKnowledgeHandlers };

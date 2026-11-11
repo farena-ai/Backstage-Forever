@@ -8,6 +8,35 @@ test('location preview uses explicit memory scope and original draft without mut
  assert.equal(r.location.zone,'Orgrimmar');assert.equal(r.locationSource,'user-report');assert.equal(r.savedLocation.zone,'Old mine');assert.deepEqual(seen,[['p',true,"I'm in Org",[mid]]]);assert.deepEqual(p.location,{zone:'Old mine',mapId:1,x:.1,y:.2});assert.equal(handlers.contextPreview('p',false,'q',[mid]),null);
  assert.throws(()=>handlers.contextPreview('p',true,'q',['bad']));assert.throws(()=>handlers.contextPreview('p',true,'q',[mid,mid]));assert.throws(()=>handlers.contextPreview('p',true,'q',[],{}));
 });
+
+test('explicit other-profile public preview stays read-only without crossing active conversation ownership',async()=>{
+ const {registerKnowledgeHandlers}=require('../src/core/knowledge-ipc.cjs'),providers=require('../src/core/providers.cjs'),{CompanionService}=require('../src/core/companion-service.cjs'),{CompanionContext}=require('../src/core/companion-context.cjs'),{CompanionRequest}=require('../src/core/companion-request.cjs'),{MemoryService}=require('../src/core/memory.cjs');
+ const state={activeProfileId:'Beta',profiles:['Alpha','Beta'].map(id=>({id,name:id,location:{zone:id==='Alpha'?'Alpha saved forest':'Beta saved mine',mapId:1411,x:.1,y:.2},notes:'PRIVATE_NOTE',goals:[{text:'PRIVATE_GOAL'}],source:{kind:'wow-addon',id:'PRIVATE_SOURCE_'+id,updatedAt:'2026-11-01T00:00:00Z'}})),provider:{id:'ollama',model:'fixture',endpoint:'http://localhost:11434',authMode:'api'},memories:[]};
+ const store={state,getKey:()=>''},context=new CompanionContext(()=>state),requests=new CompanionRequest(context),memory=new MemoryService({store,context}),calls=[],seen=[],handlers={};
+ const service=new CompanionService({store,context,requests,memory,knowledge:{index:()=>null},ai:{...providers,ask:async r=>{calls.push(r);return 'Synthetic planning reply';}}});
+ const ask=(prompt,profileId='Beta')=>service.ask({provider:'ollama',prompt,profileId,shareProfile:true,memoryIds:[]});
+ registerKnowledgeHandlers({handle:(n,fn)=>handlers[n]=fn,knowledge:{index:()=>null},getState:()=>state,connected:()=>false,getLocationContext:(...args)=>{seen.push(args);return service.previewLocation(...args);}});
+ await ask("I'm in Org. Help me plan my next quest");
+ const snapshot=()=>JSON.stringify({state,session:service.session,rootEpoch:service.rootEpoch,context:context.snapshot(),draft:memory.draft('Beta')});
+ const before=snapshot(),mid='12345678-1234-4234-8234-123456789abc';
+ for(const [prompt,ids]of [['1061',[]],["I'm in TB. Explain my plan",[mid]]]){
+  const result=handlers.contextPreview('Alpha',true,prompt,ids);
+  assert.equal(result.name,'Alpha');assert.equal(result.location.zone,'Alpha saved forest');assert.equal(result.locationSource,'saved-snapshot');assert.equal(result.reportedLocation,undefined);
+  assert.doesNotMatch(JSON.stringify(result),/PRIVATE_|Orgrimmar|Thunder Bluff|Beta saved mine/);assert.equal(snapshot(),before);
+ }
+ assert.equal(seen.length,0,'another stored profile must not consult the active-report callback');
+ assert.equal(handlers.contextPreview('Alpha',false,'1061'),null);
+ assert.throws(()=>handlers.contextPreview('Missing',true,'1061'),/Choose a character/);
+ assert.throws(()=>handlers.contextPreview('Alpha',true,'1061',['bad']));
+ const active=handlers.contextPreview(null,true,'Help me plan my next quest');
+ assert.equal(active.name,'Beta');assert.equal(active.location.zone,'Orgrimmar');assert.equal(active.savedLocation.zone,'Beta saved mine');assert.equal(active.locationSource,'user-report');assert.equal(snapshot(),before);
+ assert.deepEqual(handlers.contextPreview(undefined,true,'Help me plan my next quest'),active);assert.equal(snapshot(),before);
+ assert.deepEqual(seen,[['Beta',true,'Help me plan my next quest',[]],['Beta',true,'Help me plan my next quest',[]]]);
+ assert.throws(()=>service.previewLocation('Alpha',true,'1061'),/current character/);
+ assert.throws(()=>memory.list('Alpha'),/current character/);
+ await ask('Help me plan my next quest');const raw=calls.at(-1).context;assert.deepEqual(JSON.parse(raw.slice(raw.indexOf('{'))),active);
+ const called=calls.length;await assert.rejects(ask('Help me plan','Alpha'),/current character/);assert.equal(calls.length,called);
+});
 test("knowledge IPC accepts bounded queries only, selects sourced clipboard coordinates and shares exact preview helper", () => {
   const {
       registerKnowledgeHandlers,

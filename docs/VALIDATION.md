@@ -1,8 +1,12 @@
 # Validation — November 9, 2026
 
-## 0.13.5 NPC/reference validation
+## 0.13.6 NPC/reference validation
 
-The candidate combines connection timing fixes with local NPC lookup and bounded user-reported location context. The existing quest reference remains separately pinned; the new historical NPC bundle is checked offline and ships with its own attribution. Run the existing gates plus:
+The candidate combines connection timing fixes with local NPC lookup and bounded user-reported location context. The existing quest reference remains separately pinned; the new historical NPC bundle is checked offline and ships with its own attribution.
+
+Version 0.13.5 stopped before publication on the existing Company backend's explicit other-character public preview. Version 0.13.6 restores that read-only contract. Company, Director and Preparation backend checks must retain those calls, while active-report preview/send parity, privacy and selected-character send/memory guards remain required. Earlier tags, notes and receipts stay unchanged.
+
+Run the existing gates plus:
 
 ```powershell
 npm run check:forever-npc-locations
