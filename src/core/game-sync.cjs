@@ -9,6 +9,8 @@ const MAX = 1024 * 1024,
     "BackstageForeverReference.lua",
     "BackstageForeverPlan.lua",
     "BackstageForeverCoach.lua",
+    "BackstageForeverAcquisition.lua",
+    "BackstageForeverProfession.lua",
     "BackstageForever.lua",
     "BackstageForeverHUD.lua",
   ];

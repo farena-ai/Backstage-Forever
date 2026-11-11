@@ -206,7 +206,7 @@ event('PLAYER_LOGIN');assert(cue.text=='','Previous session cue cannot revive on
 `));
 test('TOC loads planner dependencies before capture and HUD',()=>{
  const fs=require('node:fs');const toc=fs.readFileSync(path.join(__dirname,'../addon/BackstageForever/BackstageForever.toc'),'utf8');
- assert.deepEqual(toc.split(/\r?\n/).filter(x=>x.endsWith('.lua')),['BackstageForeverReference.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForever.lua','BackstageForeverHUD.lua']);
+ assert.deepEqual(toc.split(/\r?\n/).filter(x=>x.endsWith('.lua')),['BackstageForeverReference.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverProfession.lua','BackstageForever.lua','BackstageForeverHUD.lua']);
 });
 test('long localized reference cards retain relationship and English-title qualification',()=>lua(hud+String.raw`
 BackstageForeverBuildPlan=function()return {status='ready',steps={{questId=2,phase='o',title='Localized title',source='reference',detail=string.rep('Current objective ',20)..' Approximate reference: Reference NPC mentioned in objective; verify your quest details. English reference: Original quest title.',command='/bf guide 2 o 1413 0.4 0.5 1.60.1.70862'}}}end

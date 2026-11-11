@@ -134,7 +134,7 @@ const { defaultState } = require("../src/core/validation.cjs");
         await page.getByLabel("Active character", { exact: true }).inputValue(),
         "Alpha",
       );
-      const group = ["party", "preparation"].includes(id)
+      const group = id === "preparation" ? "adventure" : id === "party"
         ? "company"
         : ["game", "connections", "updates"].includes(id)
           ? "game"
@@ -366,7 +366,7 @@ const { defaultState } = require("../src/core/validation.cjs");
       assert.equal(await control.getAttribute("aria-current"), "page");
     }
     await navigate(page, "company");
-    for (const tab of ["My plans", "Party", "Preparation"]) {
+    for (const tab of ["My plans", "Party"]) {
       const button = page
         .getByRole("navigation", { name: "Plans navigation", exact: true })
         .getByRole("button", { name: tab, exact: true });
@@ -375,11 +375,12 @@ const { defaultState } = require("../src/core/validation.cjs");
       assert.equal(await button.getAttribute("aria-current"), "page");
     }
     for (const [section, tabs] of [
+      ["Adventure", ["Next step", "Professions"]],
       ["Settings", ["Game connection", "AI connection", "Updates"]],
       ["Help", ["Field guide"]],
     ]) {
       const secondary = page
-        .getByRole("navigation", { name: "Settings and help", exact: true })
+        .getByRole("navigation", { name: section==="Adventure"?"Main navigation":"Settings and help", exact: true })
         .getByRole("button", { name: section, exact: true });
       await secondary.focus();
       await page.keyboard.press("Enter");

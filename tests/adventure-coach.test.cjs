@@ -298,3 +298,5 @@ test("coach keeps deterministic Questing order and bounded ready/local and unkno
     "Oversize desktop quest snapshots remain invalid",
   );
 });
+
+test("desktop profession follow-through precedes unknown log fallback and never has a quest command",()=>{const p=profile();p.readiness.bags.free=5;p.readiness.workshop.professions.items[0].rank=20;p.readiness.workshop.materials.items[0].count=1;p.quests[0].objectives=[];const m=build(p,{mode:'professions'});assert.equal(m.recommendation.kind,'materials-needed');assert.equal(m.recommendation.questStep,undefined);assert.equal(build(p).recommendation.kind,'materials-needed');});

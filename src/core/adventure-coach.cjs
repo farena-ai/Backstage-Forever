@@ -2,6 +2,8 @@
 const { buildGuidance } = require("./guidance.cjs");
 const { buildDirector } = require("./director.cjs");
 const { validateWorkshop } = require("./preparation-data.cjs");
+const { buildProfessionCoach } = require("./profession-coach.cjs");
+const { defaultState } = require("./validation.cjs");
 const { createHash } = require("node:crypto");
 function validateCoachOptions(value = {}) {
   if (
@@ -253,6 +255,16 @@ function buildAdventureCoach(
           { professionId: o.professionId },
         );
   }
+  // The workshop owns automatic supply selection; no alternate source database or command path.
+  try {
+    const profession = buildProfessionCoach({...defaultState(),activeProfileId:p.id,profiles:[p]},p.id);
+    const next = profession.recommendation;
+    if(next.kind === "materials-needed") add(mode === "questing" ? 4 : mode === "professions" ? 2.5 : 4.25,
+      next.kind,profession.selection.recipeId,next.title,next.detail,next.detail,
+      "Learned recipe + complete dated carried counts",
+      [profession.selection,profession.profession,profession.shoppingRows.map(r=>[r.itemId,r.required,r.have,r.missing])],
+      {recipeId:profession.selection.recipeId,professionId:profession.profession.professionId});
+  } catch { /* Invalid observations remain unavailable, as with existing workshop advice. */ }
   rows.sort(
     (a, b) =>
       a.rank - b.rank ||

@@ -8,6 +8,7 @@ const prelude = String.raw`
 issecretvalue=function(v)return type(v)=='table' and rawget(v,'secret')==true end
 dofile('addon/BackstageForever/BackstageForeverPlan.lua')
 dofile('addon/BackstageForever/BackstageForeverCoach.lua')
+dofile('addon/BackstageForever/BackstageForeverProfession.lua')
 local function col(items)return {observedAt=100,complete=true,items=items}end
 local c={id='PRIVATE_SOURCE_ID',name='Synthetic',updatedAt=100,clientBuild='1.60.1.70862',location={zone='Forest'},quests={{id=42,title='Distant',complete=false,objectives={{text='Find things',done=false}}}},readiness={bags={free=1,total=16},workshop={professions=col({{skillLineId=171,professionId=4,name='Alchemy',rank=75,maxRank=75}}),recipes=col({{id=100,skillLineId=171,name='Potion',canSkillUp=true,reagentsKnown=true,reagents={{itemId=200,required=2}}}}),materials=col({{itemId=200,count=3}})}}}
 c.readiness.workshop.materials.scope='bags-0-4'
@@ -55,7 +56,7 @@ function hud(s) {
     .match(/const hud=String.raw`([\s\S]*?)`;/)[1];
   const source = raw.replace(
     /local options[\s\S]*?(?=dofile\('addon\/BackstageForever\/BackstageForeverHUD.lua'\))/,
-    "dofile('addon/BackstageForever/BackstageForeverCoach.lua')\ncharacter.updatedAt=100;character.clientBuild='1.60.1.70862';character.quests={{id=42,title='Observe',complete=false,objectives={{text='Trees',done=false,fulfilled=1,required=4}},destination={mapId=1413,x=.1,y=.2}}}\n",
+    "dofile('addon/BackstageForever/BackstageForeverCoach.lua')\ndofile('addon/BackstageForever/BackstageForeverProfession.lua')\ncharacter.updatedAt=100;character.clientBuild='1.60.1.70862';character.quests={{id=42,title='Observe',complete=false,objectives={{text='Trees',done=false,fulfilled=1,required=4}},destination={mapId=1413,x=.1,y=.2}}}\n",
   );
   const r = spawnSync(
     process.execPath,

@@ -2,7 +2,7 @@
 
 ## Find your way around
 
-The journal has five main sections: **Adventure** for your next step, **Quests** for the saved quest atlas, **Companion** for questions and local travel, **Characters** for your roster, and **Plans** for checklists. Plans contains **My plans** (formerly Company), **Party**, and **Preparation**. **Settings** contains **Game connection**, **AI connection** (formerly Connections), and **Updates**. **Help → Field guide** contains support reports, recovery checkpoints, and backup tools.
+The journal has five main sections: **Adventure** for your next step, **Quests** for the saved quest atlas, **Companion** for questions and local travel, **Characters** for your roster, and **Plans** for checklists. Adventure contains **Next step** and **Professions**, the single saved workshop. Plans contains **My plans** (formerly Company), **Party**, and a shortcut to Professions. **Settings** contains **Game connection**, **AI connection** (formerly Connections), and **Updates**. **Help → Field guide** contains support reports, recovery checkpoints, and backup tools.
 
 Voice, Memory, and quest reference details open when you need them. Folding Voice stops pending or active speech. The memory summary always shows how many exchanges are selected for this question; saving an exchange does not consent to sharing it. Provider costs and character-sharing choices remain visible. Local travel has a **Show road guide** shortcut when a road alternative is documented; **How we know** holds dated source details. These are guides and manual plans, never game actions.
 
@@ -41,7 +41,7 @@ In AI Companion, ask about World of Warcraft: Forever and press Send or Enter. S
 
 Open **Characters** (or Adventure's **Character guidance** action) for automatic saved identity, equipment review and qualified historical class-training listings. The exact saved race/faction stays visible; unverified racial traits remain unknown. No provider or extra setup is needed. **Create character checklist** creates or reopens a manual Company plan. **Ask about this character** opens an editable public draft with a separate Send action, preserving your sharing preference. See [Character guidance](CHARACTER-GUIDANCE.md) for source/build/date limits and historical browsing.
 
-Open **Adventure** for the Director's explained next action and alternatives. Choose your session length/focus and use **Start quest session** to create or reuse a tracked Company plan. This works without AI and does not operate the game. The time choice limits how many quests the plan tracks; it is not a promised finishing time. See [Director help](ADVENTURE-DIRECTOR.md).
+Open **Adventure → Next step** for the Compass recommendation. **Review quest choices** opens the detailed Director and its alternatives. Choose your session length/focus and use **Start quest session** to create or reuse a tracked Company plan. This works without AI and does not operate the game. The time choice limits how many quests the plan tracks; it is not a promised finishing time. See [Director help](ADVENTURE-DIRECTOR.md).
 
 Open **Preparation** for saved professions, recipes and carried materials. Choose a known recipe and craft batches, review the dates and complete/partial labels, then use **Add shopping checklist** if wanted. Partial inventory is not a zero shortfall. Other characters remain separate; BF does not buy, craft or transfer items. See [Preparation help](PREPARATION.md).
 

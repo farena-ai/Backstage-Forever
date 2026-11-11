@@ -354,3 +354,24 @@
     margin-top: 6px;
   }
 }
+
+.professions-shortcut{margin-top:10px;font-size:12px;color:#e2c88e;border-color:#b79a5b55;background:#172b2d}
+@media(max-width:1100px){.content:has([data-adventure-coach])>.player-section .player-section-heading{display:none}.content:has([data-adventure-coach])>.player-section{padding:5px 8px;margin-bottom:7px}}
+
+/* At actual browser zoom, give the workbench a readable column and retain scrollable navigation. */
+@media(max-width:620px){
+ .shell:has(.workshop){grid-template-columns:125px minmax(0,1fr)}
+ .shell:has(.workshop) .rail{padding:12px 7px}
+ .shell:has(.workshop) .brand{gap:6px;margin-bottom:8px}
+ .shell:has(.workshop) .brand strong{font-size:13px}.shell:has(.workshop) .brand img{width:26px}
+ .shell:has(.workshop) .brand small,.shell:has(.workshop) .rail-bottom>small,.shell:has(.workshop) .rail-bottom .status{display:none}
+ .shell:has(.workshop) .rail nav[aria-label="Main navigation"]{margin-top:7px;gap:5px;min-height:65px}
+ .shell:has(.workshop) .rail nav[aria-label="Main navigation"] button{min-height:38px;font-size:12px;padding:7px 6px}
+ .shell:has(.workshop) .rail-bottom{padding-top:7px}.shell:has(.workshop) .secondary-navigation button{font-size:12px}
+ .shell:has(.workshop) .topbar{height:auto;min-height:66px;padding:10px 14px;gap:8px;flex-wrap:wrap;align-items:center}
+ .shell:has(.workshop) .breadcrumb{width:100%;font-size:11px;gap:6px}
+ .shell:has(.workshop) .topbar>label{min-width:0;flex:1}.shell:has(.workshop) .topbar select{width:100%;min-width:0;max-width:100%}
+ .shell:has(.workshop) .game-status-chip{min-width:0;max-width:52%;font-size:10px}.shell:has(.workshop) .game-status-chip small{font-size:9px}
+ .shell:has(.workshop) .content{padding:14px}
+ .shell:has(.workshop) .player-section-heading{display:none}.shell:has(.workshop) .player-subtabs{flex-wrap:wrap}
+}

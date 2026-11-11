@@ -1,13 +1,13 @@
 "use strict";
 const assert = require("node:assert/strict");
 const routes = {
-  adventure: ["Adventure"],
+  adventure: ["Adventure", "Next step"],
   "quest-guide": ["Quests"],
   assistant: ["Companion"],
   characters: ["Characters"],
   company: ["Plans", "My plans"],
   party: ["Plans", "Party"],
-  preparation: ["Plans", "Preparation"],
+  preparation: ["Adventure", "Professions"],
   game: ["Settings", "Game connection"],
   connections: ["Settings", "AI connection"],
   updates: ["Settings", "Updates"],

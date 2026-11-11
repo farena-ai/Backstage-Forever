@@ -8,15 +8,15 @@ window.PlayerNavigation = (() => {
     ["company", "♜", "Plans"],
   ]);
   const groups = {
+    adventure: {label:"Adventure",routes:[["adventure","Next step"],["preparation","Professions"]],description:"One useful next step, or a little profession planning. Your choices stay yours."},
     company: {
       label: "Plans",
       routes: [
         ["company", "My plans"],
         ["party", "Party"],
-        ["preparation", "Preparation"],
       ],
       description:
-        "Choose a checklist, prepare your supplies, or plan together. Every step stays yours.",
+        "Choose a checklist or plan together. Every step stays yours.",
     },
     game: {
       label: "Settings",
@@ -69,7 +69,7 @@ window.PlayerNavigation = (() => {
   function subtabs(route) {
     const section = groups[group(route)];
     if (!section) return "";
-    return `<section class="player-section" aria-label="${section.label} sections"><div class="player-section-heading"><span class="player-seal" aria-hidden="true">${group(route) === "company" ? "♜" : group(route) === "game" ? "⚙" : "▤"}</span><p>${section.description}</p></div><nav class="player-subtabs" aria-label="${section.label} navigation">${section.routes.map(([id, label]) => button(id, "", label, route === id, "subtab")).join("")}</nav></section>`;
+    return `<section class="player-section" aria-label="${section.label} sections"><div class="player-section-heading"><span class="player-seal" aria-hidden="true">${group(route) === "company" ? "♜" : group(route) === "game" ? "⚙" : "▤"}</span><p>${section.description}</p></div><nav class="player-subtabs" aria-label="${section.label} navigation">${section.routes.map(([id, label]) => button(id, "", label, route === id, "subtab")).join("")}</nav>${group(route)==="company"?'<button class="professions-shortcut" data-professions-shortcut data-nav="preparation" data-shell-control="professions-shortcut">Professions workshop →</button>':""}</section>`;
   }
   const tools = new Map();
   function remember(container) {

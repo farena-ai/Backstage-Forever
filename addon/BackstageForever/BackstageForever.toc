@@ -8,5 +8,7 @@
 BackstageForeverReference.lua
 BackstageForeverPlan.lua
 BackstageForeverCoach.lua
+BackstageForeverAcquisition.lua
+BackstageForeverProfession.lua
 BackstageForever.lua
 BackstageForeverHUD.lua

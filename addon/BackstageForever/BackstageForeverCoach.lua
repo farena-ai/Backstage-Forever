@@ -62,6 +62,8 @@ local function collection(w,key,cap,now)
     if not now or not at or at>now or not items or type(complete)~='boolean' then return nil end
     return {observedAt=at,complete=complete,items=items,scope=field(c,'scope')}
 end
+-- Shared public normalization, consumed lazily by the profession model after TOC load.
+BackstageForeverPublicFacts={public=public,field=field,number=number,text=text,sequence=sequence,collection=collection,stamp=stamp}
 local function signature(id,values)
     local out={id};for _,v in ipairs(values)do local s=tostring(v);out[#out+1]=#s..':'..s end;return table.concat(out,'|')
 end
@@ -108,37 +110,21 @@ function BackstageForeverBuildCoach(character,options)
         for _,o in ipairs(q and q.objectives or {})do for _,key in ipairs({'text','done','type','required','fulfilled'})do facts[#facts+1]=tostring(o[key])end end
         add(rank,'quest',step.questId,step.title,step.reason,step.detail,step.source=='reference' and 'Approximate reference; verify quest details' or 'Current quest log',facts,{questStep=step})
     end
-    local w=field(field(character,'readiness'),'workshop');local now=stamp(c.updatedAt)
-    local pc=collection(w,'professions',20,now);local rc=collection(w,'recipes',100,now);local mc=collection(w,'materials',256,now)
-    local owners,professionIds={},{};local ambiguous=false
-    for _,raw in ipairs(pc and pc.items or {})do
-        local id=number(field(raw,'skillLineId'),1,2147483647);local pid=number(field(raw,'professionId'),1,2147483647);local rank=number(field(raw,'rank'),0,10000);local max=number(field(raw,'maxRank'),0,10000);local name=text(field(raw,'name'))
-        if id and pid and rank and max and rank<=max and name and not owners[id] and not professionIds[pid] then owners[id]={id=id,pid=pid,rank=rank,max=max,name=name};professionIds[pid]=true else ambiguous=true end
-    end
-    local materials,materialOK={},mc and field(mc,'complete')==true and field(mc,'scope')=='bags-0-4'
-    for _,m in ipairs(mc and mc.items or {})do
-        local id=number(field(m,'itemId'),1,2147483647);local count=number(field(m,'count'),1,1000000)
-        if not id or not count or materials[id] then materialOK=false else materials[id]=count end
-    end
-    local recipeIds,duplicate={},{}
-    for _,r in ipairs(rc and rc.items or {})do local id=number(field(r,'id'),1,2147483647);if id then if recipeIds[id] then duplicate[id]=true end;recipeIds[id]=true end end
-    if not ambiguous then
-        for _,r in ipairs(rc and rc.items or {})do
-            local id=number(field(r,'id'),1,2147483647);local skill=number(field(r,'skillLineId'),1,2147483647);local owner=owners[skill];local name=text(field(r,'name'));local reagents=sequence(field(r,'reagents'),10)
-            local ready=id and not duplicate[id] and owner and name and field(pc,'observedAt')<=field(rc,'observedAt') and field(r,'canSkillUp')==true and field(r,'reagentsKnown')==true and materialOK and field(mc,'observedAt')>=field(rc,'observedAt') and reagents and #reagents>0
-            local facts,seen={},{}
-            if ready then
-                for _,reagent in ipairs(reagents)do
-                    local item=number(field(reagent,'itemId'),1,2147483647);local required=number(field(reagent,'required'),1,100000)
-                    if not item or not required or seen[item] or not materials[item] or materials[item]<required then ready=false;break end
-                    seen[item]=true;facts[#facts+1]={item,required,materials[item]}
-                end
-            end
-            if ready then table.sort(facts,function(a,b)return a[1]<b[1]end);local values={id,skill,owner.rank,owner.max};for _,f in ipairs(facts)do for _,v in ipairs(f)do values[#values+1]=v end end
-                add(mode=='questing' and 2 or mode=='professions' and 1 or 3,'craft-ready',id,'Try '..name,'Carried materials cover one learned skill-up-capable recipe attempt.','Materials ready for one craft attempt; skill-up and output are not guaranteed.','Learned recipe + complete fresh carried counts',values,{recipeId=id,professionId=owner.pid})
-            end
-        end
-        for id,o in pairs(owners)do if o.max>0 and o.rank==o.max then add(mode=='questing' and 3 or mode=='professions' and 2 or 5,'profession-cap',id,'Check '..o.name..' training',o.name..' is at its observed rank cap ('..o.rank..'/'..o.max..').','Check whether further training is available. A higher rank or accessible trainer is not established.','Current owned profession',{id,o.rank,o.max},{professionId=o.pid})end end
+    local profession=BackstageForeverBuildProfessionCoach(character,options)
+    local pc=profession.coverage.professions.status~='unknown'
+    local nextStep=profession.recommendation
+    if nextStep and (nextStep.kind=='craft-ready' or nextStep.kind=='materials-needed' or nextStep.kind=='profession-cap' or (nextStep.kind=='craft-plan' and profession.selection.automatic==false)) then
+        local kind=nextStep.kind
+        local rank=kind=='craft-ready' and (mode=='questing' and 2 or mode=='professions' and 1 or 3)
+            or kind=='profession-cap' and (mode=='questing' and 3 or mode=='professions' and 2 or 5)
+            or kind=='craft-plan' and (mode=='professions' and 3 or 5)
+            or (mode=='questing' and 4 or mode=='professions' and 2.5 or 4.25)
+        local selected=profession.selection;local owner=profession.profession
+        local values={selected.recipeId or 0,selected.skillLineId or 0,selected.crafts,owner and owner.rank or 0,owner and owner.maxRank or 0}
+        for _,r in ipairs(profession.shoppingRows)do values[#values+1]=r.itemId;values[#values+1]=r.required;values[#values+1]=r.have or 'unknown';values[#values+1]=r.missing or 'unknown' end
+        add(rank,kind,selected.recipeId or selected.skillLineId or 0,nextStep.title,nextStep.detail,
+            nextStep.detail..(nextStep.qualification and (' '..nextStep.qualification) or ''),'Current owned profession and observed supplies',values,
+            {recipeId=selected.recipeId,professionId=owner and owner.professionId})
     end
     table.sort(rows,function(a,b)if a.rank~=b.rank then return a.rank<b.rank end;if a.value.kind=='quest' and b.value.kind=='quest' then return a.order<b.order end;return a.value.id<b.value.id end)
     if mode=='questing' and #rows>3 then for i=4,#rows do if rows[i].value.kind=='bags' then rows[3]=rows[i];break end end end

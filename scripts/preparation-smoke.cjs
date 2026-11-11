@@ -24,7 +24,7 @@ function shortPath(target) {
     await fs.writeFile(path.join(data,"state.json"),JSON.stringify({...defaultState(),onboarded:true,followGameCharacter:false,profiles:[manual("Aeralyn"),{...manual("Vaelric"),className:"Mage"}],activeProfileId:"Aeralyn",provider:{...defaultState().provider,model:"synthetic-model"}}));
     let clock=Math.floor(Date.now()/1000);
     const col=items=>({observedAt:clock,complete:true,items});
-    const workshop=count=>({professions:col([{skillLineId:171,professionId:1,name:"Alchemy",rank:22,maxRank:75}]),recipes:col([{id:100,skillLineId:171,name:"Amber restorative",reagentsKnown:true,reagents:[{itemId:200,name:"Sunleaf",required:3},{itemId:201,name:"Clear vial",required:1},{itemId:2320,name:"Coarse Thread",required:1}]},{id:101,skillLineId:171,name:"Silverleaf infusion",reagentsKnown:true,reagents:[{itemId:200,name:"Sunleaf",required:2}]},{id:102,skillLineId:171,name:"Unresolved formula",reagentsKnown:false,reagents:[]}]),materials:{...col([{itemId:200,name:"Sunleaf",count},{itemId:201,name:"Clear vial",count:1},{itemId:2320,name:"Coarse Thread",count:20}]),scope:"bags-0-4"}});
+    const workshop=count=>({professions:col([{skillLineId:171,professionId:1,name:"Alchemy",rank:22,maxRank:75}]),recipes:col([{id:100,skillLineId:171,name:"Amber restorative",canSkillUp:true,reagentsKnown:true,reagents:[{itemId:200,name:"Sunleaf",required:3},{itemId:201,name:"Clear vial",required:1},{itemId:2320,name:"Coarse Thread",required:1}]},{id:101,skillLineId:171,name:"Silverleaf infusion",canSkillUp:true,reagentsKnown:true,reagents:[{itemId:200,name:"Sunleaf",required:2}]},{id:102,skillLineId:171,name:"Unresolved formula",reagentsKnown:false,reagents:[]}]),materials:{...col([{itemId:200,name:"Sunleaf",count},{itemId:201,name:"Clear vial",count:1},{itemId:2320,name:"Coarse Thread",count:20}]),scope:"bags-0-4"}});
     const characters=["Aeralyn","Vaelric"].map((name,i)=>({id:`Synthetic-${name}`,name,realm:"Synthetic Realm",className:i?"Mage":"Hunter",faction:i?"Horde":"Alliance",race:"Synthetic",level:18,updatedAt:clock,clientBuild:"1.60.1.70862",captureVersion:require("../package.json").version,readiness:{bags:{free:4,total:40},workshop:workshop(i?99:2)}}));
     const write=()=>fs.writeFile(saved,"BackstageForeverExport = "+JSON.stringify(JSON.stringify({schema:1,observedAt:clock,activeId:characters[0].id,characters})));
     await write();
@@ -48,8 +48,9 @@ function shortPath(target) {
     await page.getByRole("heading",{name:"Aeralyn",exact:true}).waitFor();
     // RED requires the real page after a genuine synthetic saved recipe/shortfall.
     const initial=(await page.evaluate(()=>window.backstage.bootstrap())).state;
+    await page.evaluate(id=>Preparation.save(id,{recipeId:100,crafts:1}),initial.activeProfileId);
     assert.equal((await page.evaluate(id=>window.backstage.preparationBrief(id,{recipeId:100,crafts:2}),initial.activeProfileId)).shoppingRows[0].missing,4);
-    await navigate(page,"preparation");assert.equal(await page.getByRole("button",{name:"Preparation",exact:true}).count(),1,"Preparation navigation must exist for the saved workshop");
+    await navigate(page,"preparation");assert.equal(await page.getByRole("button",{name:"Professions",exact:true}).count(),1,"Preparation navigation must exist for the saved workshop");
     await navigate(page, "preparation");await page.locator("[data-preparation-reagent]").first().waitFor();
     assert.match(await page.locator("[data-preparation]").innerText(),/Amber restorative/);
 
@@ -63,9 +64,9 @@ function shortPath(target) {
     const readRetryFocus=async()=>{
       // Hold the real main-owned brief after it reads the synthetic saved source.
       await app.evaluate(({ipcMain})=>{
-        const read=ipcMain._invokeHandlers.get("backstage:preparationBrief");
-        ipcMain.removeHandler("backstage:preparationBrief");
-        ipcMain.handle("backstage:preparationBrief",async(...args)=>{
+        const read=ipcMain._invokeHandlers.get("backstage:professionCoach");
+        ipcMain.removeHandler("backstage:professionCoach");
+        ipcMain.handle("backstage:professionCoach",async(...args)=>{
           if(preparationUi.retryReadError)throw Error("Synthetic read error");
           const result=await read(...args);
           if(preparationUi.holdRetryRead)await new Promise(resolve=>preparationUi.retryReaders.push(resolve));
@@ -102,12 +103,12 @@ function shortPath(target) {
       // A later deliberate focus owns the keyboard even when completion paint is deferred.
       await app.evaluate(()=>preparationUi.retryReadError=true);await update();await page.getByRole("alert").waitFor();
       const later=await beginRetry();
-      const sources=page.locator(".workshop-details summary");await sources.focus();await page.keyboard.down("Space");
+      const sources=page.locator('[data-preparation-control="sources"]');await sources.focus();await page.keyboard.down("Space");
       await releaseRetry();
       await page.waitForFunction(()=>!Preparation.page().includes('role="alert"'));
       assert.equal(await page.getByRole("alert").count(),1,"The held native key defers successful replacement paint");
       await page.keyboard.up("Space");await waitForRetryPaint(later);
-      assert.equal((await currentControlState(page,"[data-preparation] .workshop-details summary")).focused,true,"Successful read retry must preserve newer deliberate focus");
+      assert.equal((await currentControlState(page,"[data-preparation] [data-preparation-control=sources]")).focused,true,"Successful read retry must preserve newer deliberate focus");
       console.log("Preparation retry: stale rows witnessed during held genuine reply; current successful paint restores Add and preserves newer native Summary focus PASS");
       assert.equal((await state()).journeys.length,beforeJourneys,"Read retry does not create a checklist");
     };
@@ -135,7 +136,7 @@ function shortPath(target) {
     assert.equal((await state()).profiles[0].readiness.workshop.materials.items[0].count,2,"Display preferences must not rewrite evidence");
     await page.getByLabel("Saved recipe",{exact:true}).selectOption("100");await page.waitForFunction(()=>document.querySelector(".formula-heading h2")?.textContent==="Amber restorative");
     // Seller facts stay historical and browse-only when this faction was not observed.
-    const thread=page.locator('[data-preparation-reagent="2320"]');await thread.locator('summary').click();
+    const thread=page.locator('[data-preparation-reagent="2320"]');await thread.locator('summary').evaluateAll(nodes=>nodes.forEach(n=>n.parentElement.open=true));
     assert.match(await thread.innerText(),/Browse only.*not a recommendation/i);assert.match(await thread.innerText(),/faction access unknown/i);assert.match(await thread.innerText(),/Approximate interaction/);
     assert.equal(await thread.locator('[data-quest-copy]').count(),0);await capture('historical-sellers-alliance');
     // Deliberate draft shares only the visible selected plan and never changes sharing opt-out.
@@ -149,9 +150,9 @@ function shortPath(target) {
     const sent=await app.evaluate(()=>preparationUi.sent);assert.equal(sent.prompt,supplyDraft+'\nMy deliberate edit: suggest checks, not purchases.');assert.ok(!sent.context);assert.equal(await app.evaluate(()=>preparationUi.fakeAsks),1);
     await workshopPage();assert.equal(await page.locator('.workshop-sellers[open]').count(),0,'Leaving the workshop retires old disclosure presentation');
     // The real native Summary target survives a held key and a competing root paint.
-    const summary=page.locator(".workshop-details summary");await summary.focus();await summary.evaluate(n=>{window.heldSummary=n;window.summaryToggles=0;n.parentElement.addEventListener("toggle",()=>window.summaryToggles++);});
+    const summary=page.locator('[data-preparation-control="sources"]');await summary.focus();await summary.evaluate(n=>{window.heldSummary=n;window.summaryToggles=0;n.parentElement.addEventListener("toggle",()=>window.summaryToggles++);});
     await page.keyboard.down("Space");await page.evaluate(()=>new Promise(r=>setTimeout(()=>{render();r();},0)));assert.ok(await summary.evaluate(n=>n===window.heldSummary));await page.keyboard.up("Space");
-    await page.waitForFunction(()=>window.summaryToggles===1);assert.equal((await currentControlState(page,"[data-preparation] .workshop-details summary",{disclosure:true})).open,true);assert.equal((await currentControlState(page,"[data-preparation] .workshop-details summary")).focused,true);
+    await page.waitForFunction(()=>window.summaryToggles===1);assert.equal((await currentControlState(page,"[data-preparation] [data-preparation-control=sources]",{disclosure:true})).open,true);assert.equal((await currentControlState(page,"[data-preparation] [data-preparation-control=sources]")).focused,true);
     // A held native menu survives source refresh; newest counts appear after closure.
     const select=page.getByLabel("Saved recipe",{exact:true});await select.click();
     const beforeNativePoll=await app.evaluate(()=>preparationUi.polls||0);await select.evaluate(n=>window.heldRecipe=n);characters[0].readiness.workshop.materials.items[0].count=5;characters[0].readiness.workshop.materials.observedAt=clock+2;await update();
@@ -164,8 +165,8 @@ function shortPath(target) {
         const result=await original(...args);preparationUi.last=result;
         if(preparationUi.hold)await new Promise(r=>preparationUi.release=r);return result;
       });
-      const read=ipcMain._invokeHandlers.get("backstage:preparationBrief");
-      ipcMain.removeHandler("backstage:preparationBrief");ipcMain.handle("backstage:preparationBrief",async(...args)=>{if(preparationUi.failRead){throw Error("Synthetic read error");}return read(...args);});
+      const read=ipcMain._invokeHandlers.get("backstage:professionCoach");
+      ipcMain.removeHandler("backstage:professionCoach");ipcMain.handle("backstage:professionCoach",async(...args)=>{if(preparationUi.failRead){throw Error("Synthetic read error");}return read(...args);});
     });
     // A dirty local note and caret survive newer source evidence; no provider call.
     await page.getByRole("button",{name:"Characters",exact:true}).click();const notes=page.locator('textarea[name="notes"]');await notes.fill("PRIVATE LOCAL UNSAVED DRAFT");await notes.evaluate(n=>{window.dirtyNotes=n;n.focus();n.setSelectionRange(2,7);});
@@ -193,7 +194,7 @@ function shortPath(target) {
     // A missing material collection stays unknown rather than becoming zero inventory.
     delete characters[0].readiness.workshop.materials;await update();await workshopPage();await page.waitForFunction(()=>document.querySelector('[data-preparation-reagent="200"]')?.innerText.includes("Unknown"));assert.match(await page.locator(".workshop-supply-summary").innerText(),/Supply check needed/);assert.equal(await add.isEnabled(),true);await capture("unknown-supply");characters[0].readiness.workshop.materials={...col([{itemId:200,name:"Sunleaf",count:5}]),complete:false,scope:"bags-0-4"};await update();
     // Another character keeps independent options and counted supply, not pooled stock.
-    await workshopPage();await page.getByLabel("Active character",{exact:true}).selectOption(second);await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Vaelric"));await capture("horde-compact");assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"1");
+    await workshopPage();await page.evaluate(id=>Preparation.save(id,{recipeId:100,crafts:1}),second);await page.getByLabel("Active character",{exact:true}).selectOption(second);await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Vaelric"));await capture("horde-compact");assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"1");
     await page.getByLabel("Craft attempts",{exact:true}).selectOption("3");await page.waitForFunction(()=>document.querySelector('[data-preparation-reagent="200"] .reagent-copy>span b')?.textContent==="9");
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1440,1000));await capture("horde-full");
     await page.getByLabel("Active character",{exact:true}).selectOption(first);await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Aeralyn"));assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"2");
@@ -217,9 +218,9 @@ function shortPath(target) {
     await displayed(100,1);const beforeChoiceJourneys=(await state()).journeys.length;
     await app.evaluate(({ipcMain})=>{
       preparationUi.choiceCalls=[];preparationUi.choiceReaders=[];
-      const create=ipcMain._invokeHandlers.get("backstage:createPreparationJourney"),read=ipcMain._invokeHandlers.get("backstage:preparationBrief");
+      const create=ipcMain._invokeHandlers.get("backstage:createPreparationJourney"),read=ipcMain._invokeHandlers.get("backstage:professionCoach");
       ipcMain.removeHandler("backstage:createPreparationJourney");ipcMain.handle("backstage:createPreparationJourney",async(...args)=>{preparationUi.choiceCalls.push({profileId:args[1],options:args[2]});return create(...args);});
-      ipcMain.removeHandler("backstage:preparationBrief");ipcMain.handle("backstage:preparationBrief",async(...args)=>{const result=await read(...args);if(preparationUi.holdChoice)await new Promise(resolve=>preparationUi.choiceReaders.push(resolve));if(args[2].recipeId===undefined&&result.selection.recipeId===101)preparationUi.defaultRefreshSeen=true;return result;});
+      ipcMain.removeHandler("backstage:professionCoach");ipcMain.handle("backstage:professionCoach",async(...args)=>{const result=await read(...args);if(preparationUi.holdChoice)await new Promise(resolve=>preparationUi.choiceReaders.push(resolve));if(args[2].recipeId===undefined&&result.selection.recipeId===101)preparationUi.defaultRefreshSeen=true;return result;});
       preparationUi.holdChoice=true;
     });
     await page.getByLabel("Saved recipe",{exact:true}).click();await page.keyboard.press("ArrowDown");await page.keyboard.press("Enter");
@@ -233,7 +234,7 @@ function shortPath(target) {
     // A source-only read may default to a different recipe behind a held native Add.
     // The clicked snapshot must still request the visible old recipe; main rejects it freshly.
     await workshopPage();await page.evaluate(id=>{Preparation.remove(id);Preparation.invalidate();render();},first);await displayed(100,1);await add.scrollIntoViewIfNeeded();const heldChoiceBox=await add.boundingBox();await add.evaluate(n=>window.heldSourceChoice=n);await page.mouse.move(heldChoiceBox.x+heldChoiceBox.width/2,heldChoiceBox.y+heldChoiceBox.height/2);await page.mouse.down();
-    characters[0].readiness.workshop.recipes.items=characters[0].readiness.workshop.recipes.items.filter(r=>r.id!==100);await update();await untilMain("Boolean(preparationUi.defaultRefreshSeen)");await page.evaluate(()=>new Promise(resolve=>setTimeout(resolve,0)));assert.ok(await add.evaluate(n=>n===window.heldSourceChoice));assert.equal(await page.getByLabel("Saved recipe",{exact:true}).inputValue(),"100");
+    characters[0].readiness.workshop.recipes.items=characters[0].readiness.workshop.recipes.items.filter(r=>r.id!==100);await update();await untilMain("Boolean(preparationUi.defaultRefreshSeen)");await page.evaluate(()=>new Promise(resolve=>setTimeout(resolve,0)));assert.ok(await add.evaluate(n=>n===window.heldSourceChoice));assert.equal(await page.getByLabel("Saved recipe",{exact:true}).inputValue(),"");
     await page.mouse.up();await page.getByRole("alert").waitFor();assert.deepEqual(await app.evaluate(()=>preparationUi.choiceCalls.at(-1)),{profileId:first,options:{recipeId:100,crafts:1}});assert.equal((await state()).journeys.length,beforeChoiceJourneys+2,"A newly defaulted recipe is never silently saved by the held old button");await capture("held-choice-replacement");
     console.log("Preparation R1: delayed native recipe/crafts logically blocked, matching briefs submit exact choices, held source/default replacement retains painted request and no wrong journey PASS");
     console.log("Preparation: independent alts, pending navigation/selection, restart and replacements passed");

@@ -26,7 +26,7 @@ test("legacy deep links resolve to their visible player group and readable page"
   const { nav } = fixture();
   for (const [route, group, label] of [
     ["party", "company", "Party"],
-    ["preparation", "company", "Preparation"],
+    ["preparation", "adventure", "Professions"],
     ["connections", "game", "AI connection"],
     ["updates", "game", "Updates"],
     ["guide", "guide", "Field guide"],
@@ -64,3 +64,5 @@ test("removed disclosure toggle cannot cancel a replacement voice owner", () => 
   toggle();
   assert.equal(f.closed(), 0);
 });
+
+test("Adventure owns Next step and Professions; Plans keeps two tabs and an explicit shortcut",()=>{const {nav}=fixture();assert.match(nav.subtabs('adventure'),/Next step/);assert.match(nav.subtabs('preparation'),/Professions/);assert.match(nav.subtabs('company'),/data-professions-shortcut/);assert.equal((nav.main('preparation').match(/<button/g)||[]).length,5);assert.doesNotMatch(nav.subtabs('adventure'),/Map/);});

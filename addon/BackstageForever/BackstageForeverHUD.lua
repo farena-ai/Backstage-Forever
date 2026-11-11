@@ -2,6 +2,8 @@
 local panel,body,hint,actionTitle,actionSource,preparationLine,focusButton,sessionButton,waypointButton
 local goalButton,notNowButton,detailsButton,selectedCoach
 local questDetails=false
+local professionDetails=false
+local professionDetailsButton,professionButton,recipeButton,attemptsButton
 local dismissed,dismissOrder={},{}
 local latest,ownerId,preparation,captureMessage,settings
 local visible,collapsed,active=true,false,false
@@ -40,6 +42,9 @@ local function loadSettings()
     if anchors[saved.point] and anchors[saved.relativePoint] and finite(saved.x) and finite(saved.y) then
         settings.point=saved.point;settings.relativePoint=saved.relativePoint;settings.x=saved.x;settings.y=saved.y
     end
+    local preference=type(saved.profession)=='table' and saved.profession or {}
+    local function id(v)return type(v)=='number' and v==v and v%1==0 and v>0 and v<=2147483647 and v or nil end
+    settings.profession={skillLineId=id(preference.skillLineId),recipeId=id(preference.recipeId),crafts=id(preference.crafts) and preference.crafts<=20 and preference.crafts or 1}
     BackstageForeverHUDSettings=settings;visible=settings.visible;collapsed=settings.collapsed
     if panel then
         safe(panel.ClearAllPoints,panel)
@@ -88,7 +93,7 @@ update=function()
         if not collapsed then
             local xp=latest.progress
             lines[#lines+1]=text(latest.location and latest.location.zone,70)..' | '..(xp and ('XP '..text(tostring(xp.current),12)..' / '..text(tostring(xp.max),12)) or 'XP unavailable')
-            local coach=safe(BackstageForeverBuildCoach,latest,{mode=settings.mode})
+            local coach=safe(BackstageForeverBuildCoach,latest,{mode=settings.mode,skillLineId=settings.profession.skillLineId,recipeId=settings.profession.recipeId,crafts=settings.profession.crafts})
             if type(coach)=='table' then
                 local opportunities={};if coach.recommendation then opportunities[1]=coach.recommendation end
                 for _,v in ipairs(coach.alternatives or {})do opportunities[#opportunities+1]=v end
@@ -158,9 +163,9 @@ update=function()
     if captureMessage then lines[#lines+1]=captureMessage end
     safe(body.SetText,body,table.concat(lines,'\n'))
     safe(body.ClearAllPoints,body)
-    safe(body.SetPoint,body,'TOPLEFT',14,collapsed and -35 or -94)
+    safe(body.SetPoint,body,'TOPLEFT',14,collapsed and -35 or professionDetails and -148 or type(BackstageForeverBuildProfessionCoach)=='function' and -120 or -94)
     safe(body.SetHeight,body,collapsed and (captureMessage and 60 or 30) or 216)
-    safe(panel.SetHeight,panel,collapsed and (captureMessage and 152 or 122) or 440)
+    safe(panel.SetHeight,panel,collapsed and (captureMessage and 152 or 122) or professionDetails and 494 or type(BackstageForeverBuildProfessionCoach)=='function' and 466 or 440)
     safe(goalButton.SetText,goalButton,'Goal: '..({adventure='Adventure',questing='Quests',professions='Professions'})[settings.mode])
     safe(focusButton.SetText,focusButton,'Focus: '..settings.focus)
     safe(sessionButton.SetText,sessionButton,settings.minutes..'m / '..(settings.minutes==15 and 1 or settings.minutes==60 and 3 or 2)..' cards')
@@ -171,6 +176,41 @@ update=function()
         safe(detailsButton.SetPoint,detailsButton,'TOPLEFT',questDetails and 252 or 14,-64)
         safe(detailsButton.SetSize,detailsButton,questDetails and 74 or 312,22)
     else safe(detailsButton.Hide,detailsButton)end
+    if professionDetailsButton then
+        for _,control in ipairs({professionDetailsButton,professionButton,recipeButton,attemptsButton})do
+            safe(control.SetScript,control,'OnClick',nil)
+            safe((collapsed or not latest or (control~=professionDetailsButton and not professionDetails)) and control.Hide or control.Show,control)
+        end
+        local current=safe(BackstageForeverBuildProfessionCoach,latest,settings.profession)
+        local clickEpoch,clickCharacter=epoch,latest
+        local function bind(control,fn)
+            safe(control.SetScript,control,'OnClick',function()
+                if not active or not visible or collapsed or combat() or not latest or epoch~=clickEpoch or latest~=clickCharacter then return end
+                fn();epoch=epoch+1;save();update()
+            end)
+        end
+        safe(professionDetailsButton.SetText,professionDetailsButton,professionDetails and 'Less profession detail' or 'Profession details')
+        bind(professionDetailsButton,function()professionDetails=not professionDetails end)
+        if current then
+            if professionDetails then
+                if current.profession then lines[#lines+1]=text(current.profession.name,40)..': '..current.profession.rank..' / '..current.profession.maxRank end
+                lines[#lines+1]=text(current.planning.reason or current.recommendation.detail,150)
+                safe(body.SetText,body,table.concat(lines,'\n'))
+            end
+            local choice=settings.profession
+            safe(professionButton.SetText,professionButton,'Profession: '..(choice.skillLineId and text(current.profession and current.profession.name or 'Unavailable',15) or 'Auto'))
+            safe(recipeButton.SetText,recipeButton,'Recipe: '..(choice.recipeId and text(current.selectedRecipe and current.selectedRecipe.name or 'Unavailable',15) or 'Auto'))
+            safe(attemptsButton.SetText,attemptsButton,choice.crafts..' attempts')
+            local function nextId(items,key,id)
+                if not id then return items[1] and items[1][key] end
+                for i,item in ipairs(items)do if item[key]==id then return items[i+1] and items[i+1][key] end end
+                return nil
+            end
+            bind(professionButton,function()choice.skillLineId=nextId(current.ownedProfessionChoices,'skillLineId',choice.skillLineId);choice.recipeId=nil end)
+            bind(recipeButton,function()choice.recipeId=nextId(current.recipeChoices,'id',choice.recipeId)end)
+            bind(attemptsButton,function()choice.crafts=({[1]=5,[5]=10,[10]=20,[20]=1})[choice.crafts] or 1 end)
+        end
+    end
     if preparation and not collapsed then safe(preparationLine.SetText,preparationLine,text(preparation.text,80)) end
     if selected and not collapsed then
         local qualifier=selected.source=='reference' and 'Approximate reference' or 'Current game'
@@ -190,13 +230,14 @@ update=function()
     safe(panel.Show,panel)
 end
 BackstageForeverHUDUpdate=function(character)
-    if ownerId and character and ownerId~=character.id then epoch=epoch+1;dismissed={};dismissOrder={};questDetails=false end
+    epoch=epoch+1
+    if ownerId and character and ownerId~=character.id then epoch=epoch+1;dismissed={};dismissOrder={};questDetails=false;professionDetails=false end
     latest=character;ownerId=character and character.id or ownerId
     preparation=safe(BackstageForeverBuildPreparation,character)
     update()
 end
 BackstageForeverHUDSession=function(event)
-    epoch=epoch+1;latest=nil;ownerId=nil;preparation=nil;captureMessage=nil;selectedCoach=nil;dismissed={};dismissOrder={};questDetails=false
+    epoch=epoch+1;latest=nil;ownerId=nil;preparation=nil;captureMessage=nil;selectedCoach=nil;dismissed={};dismissOrder={};questDetails=false;professionDetails=false
     if preparationLine then safe(preparationLine.SetText,preparationLine,'') end
     active=event=='PLAYER_LOGIN'
     if not active and panel then safe(panel.Hide,panel) end
@@ -258,6 +299,10 @@ local function initialize()
     sessionButton:SetScript('OnClick',function()if active and not combat() then epoch=epoch+1;settings.minutes=settings.minutes==15 and 30 or settings.minutes==30 and 60 or 15;save();update()end end)
     detailsButton=button('BackstageForeverCompassDetails',14,312)
     detailsButton:SetScript('OnClick',function()if active and not combat()then epoch=epoch+1;questDetails=not questDetails;update()end end)
+    professionDetailsButton=button('BackstageForeverCompassProfessionDetails',14,312);professionDetailsButton:SetPoint('TOPLEFT',14,-90)
+    professionButton=button('BackstageForeverCompassProfession',14,126);professionButton:SetPoint('TOPLEFT',14,-118)
+    recipeButton=button('BackstageForeverCompassRecipe',144,104);recipeButton:SetPoint('TOPLEFT',144,-118)
+    attemptsButton=button('BackstageForeverCompassAttempts',252,74);attemptsButton:SetPoint('TOPLEFT',252,-118)
     -- Independent rows prevent a wide title from hiding the waypoint qualifier.
     local function actionRow(y)
         local row=panel:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')

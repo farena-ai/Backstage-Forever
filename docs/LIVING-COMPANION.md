@@ -6,7 +6,7 @@ Adventure now recommends one useful next step and up to two alternatives: make r
 
 Inside WoW the Compass updates from permitted current capture events without AI or the desktop. **Not now** quietly dismisses that recommendation for its current facts; unrelated XP or capture timestamps do not bring it back. Relevant progress can resurface it. Dismissals are bounded to 20 entries for the current session and never complete quests. **Quest details** exposes the existing Focus and minutes/card-limit controls; **Less** folds them away. Hide, collapse, drag and `/bf show`, `/bf hide`, `/bf status` remain. Only an explicitly displayed supported quest step can offer a manual waypoint.
 
-On desktop, Adventure's Compass is explicitly **Last saved** and **No AI**. Its goal preference is independent of the in-game preference. Use **Review quest choices** for the detailed Director or **Open Preparation** for the existing material workshop under Plans. The five main navigation sections and all existing destinations remain. Native goal preferences survive addon updates; setup/repair owns six files and preserves unrelated addon files. This local increment keeps source display **0.12.3**; **1.0 and actual in-client acceptance remain held**.
+On desktop, Adventure's Compass is explicitly **Last saved** and **No AI**. Its goal preference is independent of the in-game preference. Use **Review quest choices** for the detailed Director or **Open Professions** for the single workshop under Adventure → Professions. The five main navigation sections and all existing destinations remain. Native goal preferences survive addon updates; setup/repair owns eight files and preserves unrelated addon files. This local increment keeps source display **0.12.3**; **1.0 and actual in-client acceptance remain held**.
 
 BF has two useful views of your adventure:
 
@@ -62,3 +62,11 @@ The native planner uses the bundled, build-specific reference slice. Desktop ref
 Local running-game checks look only for the configured client through bounded OS process metadata. They do not read game memory or authenticate to your account. Unknown process status does not block setup. [Privacy](PRIVACY.md) explains what stays local and what an explicitly submitted AI question can share.
 
 [Validation](VALIDATION.md) separates automated fixtures from actual in-client acceptance. An API being present does not certify that every feature works on every Forever build.
+
+## Profession follow-through
+
+The current in-game Compass automatically chooses a useful observed learned skill-up recipe using carried supplies. Known shortfalls now name materials to check. Profession details lets you cycle Auto/owned profession, Auto/observed recipe and 1/5/10/20 attempts. These per-character native preferences are independent of the desktop workshop. A selected recipe that disappears stays unavailable until you choose Auto or another recipe; it is never silently replaced.
+
+Opening your own profession normally supplies learned recipe observations. A partial catalog can still contain a useful known recipe. Exact shortfalls require complete, fresh bags 0–4 counts; missing or older supply stays uncertain. Attempts are batches, not promised output or skill points. At the observed rank cap, check whether training is available; no trainer offer, higher cap or cost is established. No profession or material advice can arm a quest waypoint or perform crafting, buying or movement.
+
+New addon files need initial activation at game launch or a voluntary UI reload. After activation, native updates follow ordinary game events without routine reloads; the desktop still reads the last saved snapshot after logout or a voluntary save/reload.
