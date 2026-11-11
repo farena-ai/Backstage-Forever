@@ -6,7 +6,7 @@ const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:pa
 const {testWindow}=require('./test-window.cjs');const {defaultState}=require('../src/core/validation.cjs');
 (async()=>{
  const root=await fs.realpath(os.tmpdir()),dir=await fs.mkdtemp(path.join(root,'forever-travel-companion-'));let app;
- const capture=path.join(__dirname,'..','.superpowers','sdd','travel-companion-captures');await fs.mkdir(capture,{recursive:true});
+ const capture=path.join(__dirname,'..','.superpowers','sdd','travel-companion-captures',new Date().toISOString().replace(/[:.]/g,'-'));await fs.mkdir(capture,{recursive:true});
  const watchdog=setTimeout(()=>{console.error('Conversation fixture exceeded 120 seconds');app?.process().kill();process.exitCode=1;},120000);
  try{
   const initial={...defaultState(),onboarded:true,activeProfileId:'Alpha',profiles:['Alpha','Beta'].map(id=>({id,name:id,className:'Mage',realm:'Synthetic',level:12,goals:[{id:'g',text:'PRIVATE_GOAL_CANARY',done:false}],notes:'PRIVATE_NOTE_CANARY',faction:'Horde',clientBuild:'1.60.1.70862',location:{zone:'Orgrimmar'},source:{kind:'wow-addon',id:'SYNTHETIC_'+id,updatedAt:'2026-11-10T00:00:00.000Z'}})),provider:{id:'ollama',model:'',endpoint:'http://127.0.0.1:11434'}};
@@ -20,7 +20,9 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
     const load=require('node:module').createRequire(${JSON.stringify(path.join(repo,'package.json'))});
     load('./src/core/model-catalog.cjs').listModels=async()=>({models:[],source:'fixture'});
     load('./src/core/claude.cjs').status=async()=>({available:false,connected:false});
-    globalThis.travelFixture={calls:[],opens:[],copies:[],keys:0};
+    globalThis.travelFixture={calls:[],opens:[],copies:[],keys:0,receipts:[]};
+    const companion=load('./src/core/companion-service.cjs').CompanionService.prototype,ask=companion.ask;
+    companion.ask=async function(...args){const receipt={sequence:travelFixture.receipts.length+1,input:args[0],phase:'pending'};travelFixture.receipts.push(receipt);try{const result=await ask.apply(this,args);receipt.result=result;receipt.phase='complete';return result;}catch(error){receipt.phase='failed';throw error;}};
     const storeProto=load('./src/core/store.cjs').Store.prototype;storeProto.getKey=function(){travelFixture.keys++;return '';};
     load('electron').clipboard.writeText=text=>travelFixture.copies.push(text);
     load('electron').shell.openExternal=async url=>{travelFixture.opens.push(url);};
@@ -37,7 +39,25 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   const call=(method,...args)=>page.evaluate(({method,args})=>window.backstage[method](...args),{method,args});
   const open=()=>navigate(page, "assistant");await open();
   const field=page.getByRole('textbox',{name:'Your question',exact:true});
-  const send=async text=>{const before=await page.locator('#chatlog .message.assistant').count();await field.fill(text);await page.getByRole('button',{name:'Send question',exact:true}).click();await page.waitForFunction(n=>document.querySelectorAll('#chatlog .message.assistant').length>n||document.querySelector('[data-question-recovery]'),before);await page.waitForFunction(()=>!document.querySelector('[data-command="stop-response"]'));};
+  const send=async text=>{
+   // Sharing changes can clear history while its guarded DOM paint is pending.
+   // A new terminal reply/recovery belongs to this prompt; history size does not.
+   const sequence=await app.evaluate(()=>travelFixture.receipts.length);
+   const owner=await page.evaluate(()=>{window.travelBeforeSend={reply:messages.at(-1),recovery:questionRecovery};return {generation:chatGeneration,profileId:state.activeProfileId,shareProfile:document.querySelector('#share-profile').checked};});
+   await field.fill(text);await page.getByRole('button',{name:'Send question',exact:true}).click();
+   const deadline=Date.now()+6000;
+   const receipt=await app.evaluate(async(_e,{sequence,deadline})=>{while(!travelFixture.receipts[sequence]||travelFixture.receipts[sequence].phase==='pending'){if(Date.now()>deadline)throw Error('Current travel request did not settle');await new Promise(r=>setTimeout(r,10));}return travelFixture.receipts[sequence];},{sequence,deadline});
+   assert.equal(receipt.sequence,sequence+1);assert.equal(receipt.input.prompt,text);assert.equal(receipt.input.profileId,owner.profileId);assert.equal(receipt.input.shareProfile,owner.shareProfile);
+   await page.waitForFunction(({text,owner,receipt})=>{
+    const prior=window.travelBeforeSend,last=messages.at(-1);
+    const answered=receipt.phase==='complete'&&last?.role==='assistant'&&last!==prior.reply&&last.text===receipt.result.text&&last.kind===receipt.result.kind&&messages.at(-2)?.role==='user'&&messages.at(-2).text===text;
+    const failed=receipt.phase==='failed'&&questionRecovery&&questionRecovery!==prior.recovery&&questionRecovery.prompt===text;
+    const user=[...document.querySelectorAll('#chatlog .message.user')].at(-1);
+    const painted=user?.querySelector('.message-text')?.textContent===text&&(answered?user.nextElementSibling?.classList.contains('assistant'):document.querySelector('[data-question-recovery]'));
+    return chatGeneration===owner.generation&&!sending&&!chatStarting&&(answered||failed)&&painted;
+   },{text,owner,receipt},{timeout:Math.max(1,deadline-Date.now())});
+   await page.waitForFunction(()=>!document.querySelector('[data-command="stop-response"]'));
+  };
   await app.evaluate(()=>{travelFixture.keys=0;});
   await send('what is the fastest way from org to tb');
   assert.match(await page.locator('[data-travel-result]').innerText(),/Thunder Bluff/);assert.equal(await page.locator('.travel-option').count(),2);

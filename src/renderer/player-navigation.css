@@ -360,18 +360,36 @@
 
 /* At actual browser zoom, give the workbench a readable column and retain scrollable navigation. */
 @media(max-width:620px){
- .shell:has(.workshop){grid-template-columns:125px minmax(0,1fr)}
- .shell:has(.workshop) .rail{padding:12px 7px}
- .shell:has(.workshop) .brand{gap:6px;margin-bottom:8px}
- .shell:has(.workshop) .brand strong{font-size:13px}.shell:has(.workshop) .brand img{width:26px}
- .shell:has(.workshop) .brand small,.shell:has(.workshop) .rail-bottom>small,.shell:has(.workshop) .rail-bottom .status{display:none}
- .shell:has(.workshop) .rail nav[aria-label="Main navigation"]{margin-top:7px;gap:5px;min-height:65px}
- .shell:has(.workshop) .rail nav[aria-label="Main navigation"] button{min-height:38px;font-size:12px;padding:7px 6px}
- .shell:has(.workshop) .rail-bottom{padding-top:7px}.shell:has(.workshop) .secondary-navigation button{font-size:12px}
- .shell:has(.workshop) .topbar{height:auto;min-height:66px;padding:10px 14px;gap:8px;flex-wrap:wrap;align-items:center}
- .shell:has(.workshop) .breadcrumb{width:100%;font-size:11px;gap:6px}
- .shell:has(.workshop) .topbar>label{min-width:0;flex:1}.shell:has(.workshop) .topbar select{width:100%;min-width:0;max-width:100%}
- .shell:has(.workshop) .game-status-chip{min-width:0;max-width:52%;font-size:10px}.shell:has(.workshop) .game-status-chip small{font-size:9px}
- .shell:has(.workshop) .content{padding:14px}
- .shell:has(.workshop) .player-section-heading{display:none}.shell:has(.workshop) .player-subtabs{flex-wrap:wrap}
+ .shell:has(.workshop, [data-party]){grid-template-columns:125px minmax(0,1fr)}
+ .shell:has(.workshop, [data-party]) .rail{padding:12px 7px}
+ .shell:has(.workshop, [data-party]) .brand{gap:6px;margin-bottom:8px}
+ .shell:has(.workshop, [data-party]) .brand strong{font-size:13px}.shell:has(.workshop, [data-party]) .brand img{width:26px}
+ .shell:has(.workshop, [data-party]) .brand small,.shell:has(.workshop, [data-party]) .rail-bottom>small,.shell:has(.workshop, [data-party]) .rail-bottom .status{display:none}
+ .shell:has(.workshop, [data-party]) .rail nav[aria-label="Main navigation"]{margin-top:7px;gap:5px;min-height:65px}
+ .shell:has(.workshop, [data-party]) .rail nav[aria-label="Main navigation"] button{min-height:38px;font-size:12px;padding:7px 6px}
+ .shell:has(.workshop, [data-party]) .rail-bottom{padding-top:7px}.shell:has(.workshop, [data-party]) .secondary-navigation button{font-size:12px}
+ .shell:has(.workshop, [data-party]) .topbar{height:auto;min-height:66px;padding:10px 14px;gap:8px;flex-wrap:wrap;align-items:center}
+ .shell:has(.workshop, [data-party]) .breadcrumb{width:100%;font-size:11px;gap:6px}
+ .shell:has(.workshop, [data-party]) .topbar>label{min-width:0;flex:1}.shell:has(.workshop, [data-party]) .topbar select{width:100%;min-width:0;max-width:100%}
+ .shell:has(.workshop, [data-party]) .game-status-chip{min-width:0;max-width:52%;font-size:10px}.shell:has(.workshop, [data-party]) .game-status-chip small{font-size:9px}
+ .shell:has(.workshop, [data-party]) .content{padding:14px}
+ .shell:has(.workshop, [data-party]) .player-section-heading{display:none}.shell:has(.workshop, [data-party]) .player-subtabs{flex-wrap:wrap}
+}
+
+/* Keep Party's first manual action above the fold without shrinking its artwork or role controls. */
+@media (max-width:1100px) {
+ .content:has(>[data-party])>.player-section{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+ .content:has(>[data-party])>.player-section .player-section-heading{display:none}
+ .content:has(>[data-party])>.player-section .professions-shortcut{margin-top:0;min-height:32px;padding:6px 10px}
+ .content:has(>[data-party])>.companion-dock{padding:6px 14px;gap:12px;font-size:12px;line-height:1.35}
+ .content:has(>[data-party])>.companion-dock .companion-gem{width:36px;height:36px;font-size:20px}
+ .content:has(>[data-party])>.companion-dock button{padding:7px 12px;min-height:34px;font-size:12px}
+}
+@media (max-width:760px) {
+ .shell:has([data-party]) .party-hero-copy{margin:20px 16px}
+ .shell:has([data-party]) .party-portrait{left:0;opacity:.35}
+ .shell:has([data-party]) .party-roles{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .shell:has([data-party]) .party-role-select{display:grid;gap:6px}
+ .shell:has([data-party]) .party-role-select select{min-width:0;max-width:100%;width:100%}
+ .shell:has([data-party]) .party-primary-actions button{max-width:100%;white-space:normal}
 }

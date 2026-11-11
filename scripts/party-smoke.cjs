@@ -40,7 +40,7 @@ function shortPath(target) {
     let page = await launch();
     const call = (method, ...args) => page.evaluate(({ method, args }) => window.backstage[method](...args), { method, args });
     await page.evaluate(()=>localStorage.setItem("bf-setup-v4","complete"));await page.reload();
-    const evidence=path.resolve("work/v012-ui-evidence");await fs.mkdir(evidence,{recursive:true});
+    const evidence=path.resolve("work/party-ui",new Date().toISOString().replace(/[:.]/g,"-"));await fs.mkdir(evidence,{recursive:true});
     const capture=async name=>{await page.evaluate(()=>{scrollTo(0,0);document.querySelector('.main')?.scrollTo(0,0);document.getElementById('toast').className='';});await page.screenshot({path:path.join(evidence,`${process.argv.includes('--short-path')?'short-':''}${name}.png`),fullPage:true});};
     const current=async()=>(await call("bootstrap")).state;
     const until=condition=>app.evaluate(async(_e,condition)=>{const end=Date.now()+6000;while(!Function(`return (${condition})`)()){if(Date.now()>end)throw Error("Fixture wait: "+condition);await new Promise(r=>setTimeout(r,10));}},condition);
@@ -74,6 +74,22 @@ function shortPath(target) {
     assert.equal(await page.getByLabel('Your chosen role',{exact:true}).inputValue(),'unspecified');await capture('alliance-full');
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1000,700));await page.evaluate(()=>document.querySelector('.main').scrollTo(0,0));
     await capture('alliance-compact');assert.ok(await page.locator('.party-hero-copy p').evaluate(n=>n.getBoundingClientRect().height>0&&n.getBoundingClientRect().bottom<=n.closest('.party-hero').getBoundingClientRect().bottom),'Hero character identity remains visible');let box=await page.locator('[data-party-create]').boundingBox();console.log('compact action',box);assert.ok(box.y>=0&&box.y+box.height<=700,'Compact primary action is visible');await assertSelectContrast(page);await capture('alliance-compact');
+    const layoutEvidence=[];
+    const measureLayout=async(name,firstAction)=>{
+      const metrics=await page.evaluate(()=>{const rect=n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};return {width:innerWidth,height:innerHeight,scrollWidth:document.documentElement.scrollWidth,action:rect(document.querySelector('[data-party-create]')),hero:rect(document.querySelector('.party-hero')),identity:rect(document.querySelector('.party-hero-copy p')),title:rect(document.querySelector('.party-hero h1'))};});
+      assert.ok(metrics.scrollWidth<=metrics.width,`${name}: no horizontal overflow`);
+      for(const text of [metrics.identity,metrics.title])assert.ok(text.y>=metrics.hero.y&&text.bottom<=metrics.hero.bottom&&text.x>=metrics.hero.x&&text.right<=metrics.hero.right,`${name}: hero title/identity are not clipped`);
+      if(firstAction)assert.ok(metrics.action.y>=0&&metrics.action.bottom<=metrics.height,`${name}: primary action fits the actual viewport`);
+      await assertSelectContrast(page,name);layoutEvidence.push({name,...metrics});
+      await fs.writeFile(path.join(evidence,`${name}.png`),Buffer.from(await app.evaluate(async({BrowserWindow})=>(await BrowserWindow.getAllWindows()[0].webContents.capturePage()).toPNG().toString('base64')),'base64'));
+    };
+    await measureLayout('party-compact-native',true);
+    await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(1440,960));await page.waitForFunction(()=>innerWidth===1440&&innerHeight===960);await page.evaluate(()=>document.querySelector('.main').scrollTo(0,0));await measureLayout('party-full-native',false);await page.locator('[data-party-create]').scrollIntoViewIfNeeded();await measureLayout('party-full-action-native',true);
+    await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(984,635));await page.waitForFunction(()=>innerWidth===984&&innerHeight===635);
+    await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(2));await page.waitForFunction(()=>innerWidth===492);
+    await measureLayout('party-200-native',false);await page.locator('[data-party-create]').scrollIntoViewIfNeeded();await measureLayout('party-200-action-native',true);
+    await fs.writeFile(path.join(evidence,'party-layout-metrics.json'),JSON.stringify(layoutEvidence,null,2));console.log('Party native layout metrics',JSON.stringify(layoutEvidence));
+    await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(1));await page.waitForFunction(()=>innerWidth===984);await page.evaluate(()=>document.querySelector('.main').scrollTo(0,0));
     // R1: real keyboard defaults retain semantic focus through root/region paints and held role reads.
     if(!process.argv.includes('--review-preview-only')){
       await app.evaluate(()=>partyFixture.holdRead=true);const tank=page.locator('[data-party-role="tank"]');await tank.focus();await page.keyboard.down('Space');await page.evaluate(()=>render());await page.keyboard.up('Space');await until('partyFixture.readers.length===1');

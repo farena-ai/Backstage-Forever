@@ -10,9 +10,9 @@ With automatic checks off, a manual check may still download an authenticated ne
 
 ## The 0.13 preview
 
-The 0.13.0, 0.13.1 and 0.13.2 candidates were not published; their tags and evidence are preserved. After the earlier fixture corrections, 0.13.2 passed Map validation but exposed a voice-smoke sequencing race between physical disclosure closure and its queued native cancellation handler. 0.13.3 corrects the fixture acknowledgement and is the next publication candidate. No intermediate installation is needed.
+The 0.13.0–0.13.3 candidates were not published; their tags and evidence are preserved. After earlier fixture corrections, 0.13.3 passed voice validation but exposed a travel-smoke history-count assumption across sharing changes. 0.13.4 corrects that fixture, updates Support's current breadcrumb expectation and keeps Party's primary action visible in the compact viewport. All remaining source validation commands were checked in this patch wave. No intermediate installation is needed.
 
-Installed 0.12.3 can receive 0.13.3 through this existing authenticated preview channel once its release is published. Open **Updates → Check now** in the older app, then choose when to install. No forced restart is added; existing automatic download/install-on-exit preferences still apply. This delivers the reviewed Proactive Compass, Professions, Map and companion improvements; 1.0 stays held for hands-on acceptance. See [0.13 release notes](releases/0.13.3.md). Preparing the version and CI is not proof of publication, authenticated public download or a successful installed upgrade; those results are recorded separately.
+Installed 0.12.3 can receive 0.13.4 through this existing authenticated preview channel once its release is published. Open **Updates → Check now** in the older app, then choose when to install. No forced restart is added; existing automatic download/install-on-exit preferences still apply. This delivers the reviewed Proactive Compass, Professions, Map and companion improvements; 1.0 stays held for hands-on acceptance. See [0.13 release notes](releases/0.13.4.md). Preparing the version and CI is not proof of publication, authenticated public download or a successful installed upgrade; those results are recorded separately.
 
 ## Recovering a failed update
 
@@ -35,10 +35,10 @@ Only explicit `vMAJOR.MINOR.PATCH` tag pushes trigger `.github/workflows/release
 The protected repository secret `BF_UPDATE_SIGNING_KEY` holds the Ed25519 private PEM and is exposed only to the signing step. The public key is `assets/update-public-key.pem`. Private keys are never committed, copied into build assets, passed as command-line arguments, or printed. Local release signing uses the owner's protected DPAPI key helper to supply this same environment variable only in memory:
 
 ```text
-node scripts/sign-update.cjs --installer <installer-path> --version 0.13.3 --output <new-manifest-path>
+node scripts/sign-update.cjs --installer <installer-path> --version 0.13.4 --output <new-manifest-path>
 ```
 
-The installer basename must be `Backstage-Forever-0.13.3-Windows-x64-Setup.exe`. The signer rejects a non-Ed25519 key, a key that does not match the bundled public key, incorrect filenames, invalid versions, empty installers or installers over 512 MiB, and existing output files. Never set a production private key in a shell command or shell history.
+The installer basename must be `Backstage-Forever-0.13.4-Windows-x64-Setup.exe`. The signer rejects a non-Ed25519 key, a key that does not match the bundled public key, incorrect filenames, invalid versions, empty installers or installers over 512 MiB, and existing output files. Never set a production private key in a shell command or shell history.
 
 ## Recovery and key rotation
 

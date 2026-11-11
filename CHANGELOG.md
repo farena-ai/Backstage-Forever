@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.4 — remaining preview validation and compact Party correction, 2026-11-11
+
+- The 0.13.3 candidate passed voice validation, then failed before publication because the travel fixture expected assistant-history counts to grow across a deliberate sharing reset. Earlier failed tags, notes and evidence remain unchanged.
+- Travel acceptance binds each actual main request and terminal result to its current renderer generation, prompt, profile, sharing choice and new reply/recovery identity. Support acceptance uses the current Adventure / Next step breadcrumb. No privacy, cancellation or ownership assertion was removed.
+- Party keeps its first manual action inside the actual 984×635 viewport by compacting only its navigation/setup chrome. Existing artwork, role controls and readable labels remain; narrow native 200% layouts retain unclipped identity and scrollable actions.
+- Audited all remaining source workflow commands from travel through character guidance; corrected the two concrete later blockers and retained their full gates. No dependency, data, schema, protocol, provider or updater-trust change.
+- Package/lock, TOC and actual emitted capture are 0.13.4 preview. Installed 0.12.3 can update directly once published; 1.0 remains held for hands-on acceptance.
+
 ## 0.13.3 — Voice validation acknowledgement, 2026-11-11
 
 - The 0.13.2 candidate passed Map validation, then failed the voice/memory smoke before publication. Its fixture released held readiness after a physical disclosure click before the queued native cancellation handler was acknowledged. All failed tags, historical notes and evidence remain unchanged.

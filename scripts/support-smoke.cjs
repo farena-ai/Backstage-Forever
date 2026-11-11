@@ -6,7 +6,7 @@ const fs = require("node:fs/promises"), os = require("node:os"), path = require(
 const { build: referenceBuild, counts: referenceCounts } = require("../data/forever/pack.json");
 const { defaultState } = require("../src/core/validation.cjs"), { testWindow } = require("./test-window.cjs");
 (async () => {
-  const dir = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), "bf-support-")), evidence = path.resolve("work/support-ui"); let app, checks = 0;
+  const dir = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), "bf-support-")), evidence = path.resolve("work/support-ui",new Date().toISOString().replace(/[:.]/g,"-")); let app, checks = 0;
   const latePath = path.join(dir, "..", path.basename(dir) + "-late.txt");
   const check = async (name, run) => { await run(); checks++; console.log(`PASS ${name}`); };
   const watchdog = setTimeout(() => { console.error("Support fixture exceeded 120 seconds"); app?.process().kill(); process.exitCode = 1; }, 120000);
@@ -107,8 +107,8 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
     await check("late preview cannot overwrite navigation or reactivate an obsolete report", async () => {
       await app.evaluate(() => { supportFixture.hold = true; supportFixture.release = null; }); await prepare().click(); await mainWait("release");
       await page.getByText("Preparing a local report…", { exact: true }).waitFor(); assert.equal(await copy().isDisabled(), true); assert.equal(await save().isDisabled(), true); assert.equal(await page.locator("[data-support-preview]").textContent(), "");
-      await page.getByRole("button", { name: "Adventure", exact: true }).click(); await app.evaluate(() => { supportFixture.hold = false; supportFixture.release(); });
-      await page.waitForFunction(() => document.querySelector("#page-heading")?.textContent === "Adventure"); assert.equal(await page.locator("[data-support]").count(), 0);
+      await navigate(page,"adventure"); await app.evaluate(() => { supportFixture.hold = false; supportFixture.release(); });
+      await page.waitForFunction(() => page === "adventure" && document.querySelector("#page-heading")?.textContent === "Adventure / Next step"); assert.equal(await page.locator("[data-support]").count(), 0);
       await navigate(page, "guide"); assert.equal(await copy().isDisabled(), true); assert.equal(await page.locator("[data-support-preview]").innerText(), "");
     });
     await check("preparation error is fixed text and retry works", async () => {
