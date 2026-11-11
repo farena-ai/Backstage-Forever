@@ -34,6 +34,7 @@ try {
 let setupOpen = !["complete", "manual", "deferred"].includes(setupChoice),
   setupBusy = false;
 let setupCandidates = null, setupGeneration = 0, launchBusy = false;
+let livingDisclosureOwner = "", livingDisclosureGeneration = 0;
 let adventureBrief = null,
   briefProfileId = null,
   briefEpoch = 0;
@@ -471,6 +472,16 @@ function render() {
   if (Support.deferRender(render)) return;
   if (Voice.deferRender(render) || Memory.deferRender(render)) return;
   if (AdventureCoach.deferRender(render) || CharacterGuidance.deferRender(render) || QuestGuide.deferRender(render) || Company.deferRender(render) || Director.deferRender(render) || AdventureMap.deferRender(render) || Preparation.deferRender(render) || Party.deferRender(render)) return;
+  // Snapshot the executed paint, after native interaction guards have released.
+  // Disclosure choices belong only to this screen, character and setup lifecycle.
+  const disclosureOwner = JSON.stringify([page, setupOpen, setupGeneration, autosaveGeneration,
+    state?.onboarded, state?.activeProfileId, Boolean(gameStatus.connected), livingDisclosureGeneration]);
+  const disclosures = livingDisclosureOwner === disclosureOwner
+    ? new Map([...root.querySelectorAll("details[data-living-disclosure]")].map(node => [node.dataset.livingDisclosure, node.open]))
+    : new Map();
+  const focusedSummary = livingDisclosureOwner === disclosureOwner && document.activeElement?.tagName === "SUMMARY"
+    ? document.activeElement.closest("details[data-living-disclosure]")?.dataset.livingDisclosure : null;
+  livingDisclosureOwner = disclosureOwner;
   const focusedOption = document.activeElement?.dataset.planOption;
   CharacterGuidance.beginRender();
   QuestGuide.beginRender();
@@ -545,6 +556,11 @@ function render() {
   Recovery.paint();
   if (focusedOption) root.querySelector(`[data-plan-option="${focusedOption}"]`)?.focus();
   } finally {
+    for (const node of root.querySelectorAll("details[data-living-disclosure]")) {
+      if (disclosures.has(node.dataset.livingDisclosure)) node.open = disclosures.get(node.dataset.livingDisclosure);
+      if (node.dataset.livingDisclosure === focusedSummary && document.activeElement === document.body)
+        node.querySelector(":scope > summary")?.focus({preventScroll:true});
+    }
     CharacterGuidance.endRender();
     QuestGuide.endRender();
     Company.endRender();
@@ -620,7 +636,7 @@ function commandRoster(p) {
   return `<section class="command-roster"><div class="panel-header"><h3>Your company</h3><button class="subtle" data-nav="characters">Manage roster →</button></div><div class="roster-strip">${state.profiles.map(item => `<button data-character="${esc(item.id)}" class="roster-card ${item.id === p?.id ? "selected" : ""}" ${item.id === p?.id ? 'aria-pressed="true"' : 'aria-pressed="false"'}><img src="${portrait(item.className)}" alt=""><span><strong>${esc(item.name)}</strong><small>Level ${item.level} ${esc(item.className)} · ${esc(item.faction || "Faction unknown")}</small><small>${item.source?.kind === "wow-addon" ? "Game snapshot · " + esc(CommandCenter.age(item)) : "Manual journal"}</small></span></button>`).join("")}</div><p class="corner-note">Another character missing? Play that character and log out to bring their saved snapshot here.</p></section>`;
 }
 function gameConnection() {
-  return `<header class="section-head"><div class="eyebrow">Your world, remembered</div><h1>Bring your adventure home.</h1><p>Live guidance inside WoW. Saved characters and private journals here.</p></header><section class="panel"><h2>${setupReady() ? "Companion files prepared" : "Game connection"}</h2><p class="setup-status">${esc(gameStatus.companionMessage || gameStatus.message || "Choose your game folder to begin.")}</p><div class="actions">${LivingSetup.unavailable(gameStatus) ? '<button class="primary" data-command="game-connect">Choose game folder</button>' : ""}<button class="${LivingSetup.unavailable(gameStatus) ? "subtle" : "primary"}" data-command="setup-open">Set up my companion</button></div>${LivingSetup.activation(gameStatus, esc)}${LivingSetup.coverage(gameStatus, esc)}<hr class="rule"><h3>Desktop saved characters</h3><label class="check-label"><input type="checkbox" id="follow-game-character" ${state.followGameCharacter !== false ? "checked" : ""}>Follow my last played character</label><p>After the game saves, follow the last played character in this desktop journal. Pausing keeps your manual selection; live guidance in WoW keeps working.</p><p>${esc(profile() ? snapshotLabel(profile()) : "Desktop · no saved character yet")}</p><p>${savedHelp}</p><details><summary>Connection checks and tools</summary>${setupChecks()}<div class="actions"><button data-command="game-discover">Find my game</button><button data-command="game-connect">Choose game folder</button>${gameStatus.connected ? '<button data-command="game-install">Repair companion addon</button><button data-command="game-refresh">Refresh saved snapshot</button><button data-command="game-disconnect">Disconnect game</button>' : ""}</div><p>Refresh reads existing saved files. It does not request a save or interrupt your game.</p></details></section>`;
+  return `<header class="section-head"><div class="eyebrow">Your world, remembered</div><h1>Bring your adventure home.</h1><p>Live guidance inside WoW. Saved characters and private journals here.</p></header><section class="panel"><h2>${setupReady() ? "Companion files prepared" : "Game connection"}</h2><p class="setup-status">${esc(gameStatus.companionMessage || gameStatus.message || "Choose your game folder to begin.")}</p><div class="actions">${LivingSetup.unavailable(gameStatus) ? '<button class="primary" data-command="game-connect">Choose game folder</button>' : ""}<button class="${LivingSetup.unavailable(gameStatus) ? "subtle" : "primary"}" data-command="setup-open">Set up my companion</button></div>${LivingSetup.activation(gameStatus, esc)}${LivingSetup.coverage(gameStatus, esc)}<hr class="rule"><h3>Desktop saved characters</h3><label class="check-label"><input type="checkbox" id="follow-game-character" ${state.followGameCharacter !== false ? "checked" : ""}>Follow my last played character</label><p>After the game saves, follow the last played character in this desktop journal. Pausing keeps your manual selection; live guidance in WoW keeps working.</p><p>${esc(profile() ? snapshotLabel(profile()) : "Desktop · no saved character yet")}</p><p>${savedHelp}</p><details data-living-disclosure="connection-checks"><summary>Connection checks and tools</summary>${setupChecks()}<div class="actions"><button data-command="game-discover">Find my game</button><button data-command="game-connect">Choose game folder</button>${gameStatus.connected ? '<button data-command="game-install">Repair companion addon</button><button data-command="game-refresh">Refresh saved snapshot</button><button data-command="game-disconnect">Disconnect game</button>' : ""}</div><p>Refresh reads existing saved files. It does not request a save or interrupt your game.</p></details></section>`;
 }
 async function mutateGame(fn) {
   const generation = setupGeneration;
@@ -1357,6 +1373,7 @@ root.addEventListener("click", (event) => {
         await prepareCompanion(() => api.startCompanion());
         break;
       case "game-connect":
+        livingDisclosureGeneration++;
         await mutateGame(() => api.connectGame());
         break;
       case "game-install":

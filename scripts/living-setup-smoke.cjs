@@ -5,29 +5,22 @@ const { _electron: electron } = require("playwright");
 const assert = require("node:assert/strict"), fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path");
 const { testWindow } = require("./test-window.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
-// A physical click dispatches an async listener; it does not await its returned work.
+const { beginRendererAction, finishRendererAction } = require("./renderer-action-fixture.cjs");
+let refreshAction;
+async function openConnectionChecks(page) {
+  const summary = page.getByText("Connection checks and tools", { exact: true });
+  if (!await summary.evaluate(node => node.parentElement.open)) await summary.click();
+  assert.equal(await summary.evaluate(node => node.parentElement.open), true, "Current connection checks are disclosed before their action");
+}
+// A physical click dispatches an async listener; acknowledge that exact action.
 async function beginRefresh(page) {
-  await page.evaluate(() => {
-    const original = action;
-    const refresh = window.livingRefreshFixture = { settled: false };
-    action = fn => {
-      action = original;
-      refresh.promise = original(fn);
-      refresh.promise.then(() => { refresh.settled = true; }, () => { refresh.settled = true; });
-      return refresh.promise;
-    };
-  });
-  await page.getByRole("button", { name: "Refresh saved snapshot", exact: true }).click();
+  refreshAction = await beginRendererAction(page,
+    page.getByRole("button", { name: "Refresh saved snapshot", exact: true }),
+    { attribute: "data-command", value: "game-refresh" });
+  await page.evaluate(token => { window.livingRefreshFixture = window.rendererActionFixtures.get(token); }, refreshAction);
 }
 async function finishRefresh(page) {
-  await page.evaluate(async () => {
-    const refresh = window.livingRefreshFixture;
-    if (!refresh?.promise) throw Error("Physical Refresh click did not start its renderer action");
-    let timer;
-    try {
-      await Promise.race([refresh.promise, new Promise((_, reject) => { timer = setTimeout(() => reject(Error("Refresh renderer action did not finish")), 10000); })]);
-    } finally { clearTimeout(timer); }
-  });
+  await finishRendererAction(page, refreshAction);
 }
 (async () => {
   const tempRoot = await fs.realpath(os.tmpdir());
@@ -137,7 +130,7 @@ async function finishRefresh(page) {
     ];
     await fs.writeFile(file, "BackstageForeverExport = " + JSON.stringify(JSON.stringify({ schema: 1, activeId: characters[0].id, observedAt: now, characters })));
     await app.evaluate(() => { fixture.runtime = "running"; fixture.launchAvailable = true; });
-    await page.getByText("Connection checks and tools", { exact: true }).click();
+    await openConnectionChecks(page);
     await beginRefresh(page);
     await finishRefresh(page);
     await page.getByText(/Your current Compass may already work/).waitFor();
@@ -194,7 +187,7 @@ async function finishRefresh(page) {
     const offlineRoot = roots[1] + ".offline";
     await fs.rename(roots[1], offlineRoot);
     await navigate(page, "game");
-    await page.getByText("Connection checks and tools", { exact: true }).click();
+    await openConnectionChecks(page);
     await beginRefresh(page);
     await app.evaluate(async () => {
       let timer;
@@ -216,9 +209,10 @@ async function finishRefresh(page) {
     assert.equal(await page.locator(".living-activation").count(), 0);
     await page.locator(".companion-dock").filter({ hasText: /folder.*unavailable/i }).waitFor();
     assert.match(await page.locator(".setup-status").innerText(), /folder.*unavailable/i);
-    await page.getByRole("button", { name: "Choose game folder", exact: true }).waitFor();
+    const gameRecovery = page.locator(".panel > .actions").getByRole("button", { name: "Choose game folder", exact: true });
+    await gameRecovery.waitFor();
     const pickersBeforeGameRecovery = await app.evaluate(() => fixture.pickers);
-    await page.getByRole("button", { name: "Choose game folder", exact: true }).click();
+    await gameRecovery.click();
     assert.equal(await app.evaluate(() => fixture.pickers), pickersBeforeGameRecovery + 1, "Game Connection offers direct explicit picker recovery");
     assert.equal(await page.evaluate(status => window.LivingSetup.prepared({ ...status, phase: "waiting" }), snapshot.gameStatus), false, "Unavailable companion state independently rejects readiness");
     assert.equal(await page.evaluate(status => window.LivingSetup.prepared({ ...status, companionState: "prepared" }), snapshot.gameStatus), false, "Unavailable folder phase independently rejects readiness");
@@ -250,13 +244,13 @@ async function finishRefresh(page) {
     await fs.mkdir(path.dirname(bad), { recursive: true });
     await fs.writeFile(bad, "This is not a saved export");
     await navigate(page, "game");
-    await page.getByText("Connection checks and tools", { exact: true }).click();
+    await openConnectionChecks(page);
     await beginRefresh(page);
     await finishRefresh(page);
     await page.locator(".coverage-note").waitFor();
     assert.equal((await page.evaluate(() => window.backstage.bootstrap())).state.profiles.length, 2);
     // One-candidate start repairs automatically. No second snapshot/account gate appears.
-    await page.getByText("Connection checks and tools", { exact: true }).click();
+    await openConnectionChecks(page);
     await page.getByRole("button", { name: "Disconnect game", exact: true }).click();
     await app.evaluate((_electron, root) => { fixture.candidates = [{ id: "one", label: "Fictional single", path: root }]; fixture.runtime = "not-running"; }, roots[0]);
     await page.getByRole("button", { name: "Set up my companion", exact: true }).click();
@@ -280,7 +274,7 @@ async function finishRefresh(page) {
     await app.evaluate(() => { fixture.waitLaunch = true; fixture.launchState = "requested"; });
     await page.getByRole("button", { name: "Open Forever", exact: true }).click();
     await app.evaluate(async () => { while (!fixture.releaseLaunch) await new Promise(resolve => setTimeout(resolve, 10)); });
-    await page.getByText("Connection checks and tools", { exact: true }).click();
+    await openConnectionChecks(page);
     await page.getByRole("button", { name: "Disconnect game", exact: true }).click();
     const launchesBeforeCancel = await app.evaluate(() => fixture.launches);
     await app.evaluate(() => fixture.releaseLaunch());

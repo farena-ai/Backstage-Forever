@@ -2,13 +2,23 @@
 
 ## Goal and evidence
 
-Fix the two unresolved 0.13.4 Windows validation failures while preserving the polished five-section interface. Keep 1.0 held for Frank's hands-on acceptance. The published 0.13.4 release pipeline passed; independent validation failed in `living-setup-smoke.cjs:141` (Refresh target detached after disclosure) and `company-smoke.cjs:219` (renamed plan's current Delete control absent at assertion). These are unresolved timing failures, not established product defects.
+Fix the two unresolved 0.13.4 Windows validation failures while preserving the polished five-section interface. Keep 1.0 held for Frank's hands-on acceptance. The published 0.13.4 release pipeline passed; independent validation failed in `living-setup-smoke.cjs:141` (Refresh target detached after disclosure) and `company-smoke.cjs:219` (renamed plan's current Delete control absent at assertion). At planning time these were unresolved timing failures, not established product defects. Controlled actual-app reproduction subsequently proved both fixture races and a user-facing same-screen disclosure collapse.
 
 ## Chosen design
 
 Reproduce both failures with controlled scheduling in the actual isolated Electron app. Acknowledgements must bind to the intended route/disclosure/request, current rendered data and focused control. Preserve real pointer/key input and explicit original-node ownership assertions. Reject stale same-label controls and acknowledgements belonging to another action. The alternatives are arbitrary longer sleeps (conceals races) or a broad interaction rewrite (unjustified risk). Neither is appropriate.
 
 Change fixtures when they race legitimate asynchronous rendering. Change product behavior only when a deterministic user-facing defect remains after correct acknowledgement. Any product correction must retain current artwork, accessible keyboard navigation, autosave, cancellation and pending-state clarity. Related polish is bounded to these two flows; no new screens or redesign.
+
+## Qualified product correction
+
+The executed Game connection render can replace native Connection checks and Optional activation panels after the player has deliberately opened them while a status response is outstanding. Preserve the immediate native open/closed state and focused summary of these panels, plus setup Connection checks, only through an executed paint with the same owner: route, setup mode/generation, journal replacement generation, onboarded state, active character, connection state and an ephemeral explicit-folder-choice generation. Capture after existing interaction guards allow the render to execute; never capture queued render requests. Read the native state directly so queued toggle events cannot resurrect an earlier choice.
+
+The status API intentionally exposes no folder path. Setup preparation/disconnect already changes setup generation; Game connection's explicit Choose folder command additionally changes the ephemeral disclosure generation, including cancellation conservatively. No root path, persistence, new preference, consent, provider state or journal data is added. Route/setup/profile/import/reset/folder changes retire the old owner. Missing panels carry no retained state into later paints. Existing artwork and CSS remain unchanged. Retain same-screen closed choices and keyboard summary focus as well as open choices.
+
+Game-connection navigation fixture acknowledgement binds to the exact physical button's renderer action, not the next unrelated action or an early route heading. Other route helpers retain their earlier route/heading boundary because their suites deliberately hold route-specific reads to test retirement. Renamed-plan acknowledgement binds in one current DOM snapshot to the saved journey ID, exact new Delete label, visible unique card and focused current control; main-store visibility and old-label focus alone cannot pass. Keep separate original-node held-input assertions intact.
+
+This proven product change is prepared as **0.13.5 preview** with aligned app/lockfile/addon/capture/current documentation metadata and a new release note. Existing release notes, tags and evidence remain sealed. Independent review and parent-owned normal validation/publication remain separate gates; **1.0 stays held**.
 
 ## Boundaries
 

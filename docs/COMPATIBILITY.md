@@ -62,7 +62,7 @@ The native minimum is current/qualified quest markers, the existing seven acquis
 
 Recording is intentionally narrow: known English target-name/object relations, own Mining 2576 or Herbalism 2368 cast, a single readable GameObject loot source and material evidence within bounded time/map/displacement checks. Unknown locales, missing targets, corpses, containers, competing sources and protected values are skipped. Saved findings are approximate past standing points, never active resource presence or quantity collected. Real mining and herbalism capture each need owner-led observation; a synthetic fixture does not certify the client.
 
-`loadedGatheringSchema: 1` is a connected valid saved-format receipt only; `null` means no such current receipt. It can be 1 with an empty or capability-unavailable gathering block. Missing/invalid/unreadable saved data cannot claim feature loading, and imported backups do not reconnect a source. Files prepared, saved format received and live client acceptance are three different facts. Preview version is 0.13.4; 1.0 is held.
+`loadedGatheringSchema: 1` is a connected valid saved-format receipt only; `null` means no such current receipt. It can be 1 with an empty or capability-unavailable gathering block. Missing/invalid/unreadable saved data cannot claim feature loading, and imported backups do not reconnect a source. Files prepared, saved format received and live client acceptance are three different facts. Preview version is 0.13.5; 1.0 is held.
 
 ## Desktop Map qualification
 

@@ -14,13 +14,15 @@ Follow the companion spec `docs/superpowers/specs/2026-11-11-ui-timing-polish-de
 
 ## Task 1: Diagnose, repair and qualify both timing boundaries
 
-**Primary files:** `scripts/living-setup-smoke.cjs`, `scripts/company-smoke.cjs`; shared fixture helpers only if needed. Relevant production code is read first and modified only after a deterministic product defect. Regression files belong under `tests/`. Update this plan's checkboxes and record evidence under ignored `work/ui-timing-polish-report.md`.
+**Primary files:** `scripts/living-setup-smoke.cjs`, `scripts/company-smoke.cjs`; shared fixture helpers only if needed. Controlled RED established same-screen disclosure collapse; bounded production changes are `src/renderer/app.js` and `src/renderer/living-setup.js` as described in the amended spec, with no CSS/artwork changes. Regression files belong under `tests/`. Update this plan's checkboxes and record evidence under ignored `work/ui-timing-polish-report.md`.
 
-- [ ] Read the exact failure logs `work/installed-0134-validation-failure.log` and `work/installed-0134-main-validation-failure.log`, affected scripts and actual renderer event/paint path.
-- [ ] Reproduce Refresh disclosure/target retirement and renamed-plan keyboard ownership failures deterministically in an isolated actual app. Save RED logs and state receipts identifying what has completed and what remains queued. Do not declare a passing rerun a fix.
-- [ ] Add a minimal regression before changing a helper or product. Use real deferred work rather than a test that merely repeats implementation. Reject stale same-name controls, completed unrelated actions and hidden old DOM.
-- [ ] Make the minimal correction. Preserve natural pointer/key input, title autosave and exact focus, independent main writes, cancellation and original-node held-input checks. Audit adjacent uses of the same changed boundary.
-- [ ] Run the same controlled reproduction GREEN, then the complete affected commands:
+- [x] Read the exact failure logs `work/installed-0134-validation-failure.log` and `work/installed-0134-main-validation-failure.log`, affected scripts and actual renderer event/paint path.
+- [x] Reproduce Refresh disclosure/target retirement and renamed-plan keyboard ownership failures deterministically in an isolated actual app. Save RED logs and state receipts identifying what has completed and what remains queued. Do not declare a passing rerun a fix.
+- [x] Add a minimal regression before changing a helper or product. Use real deferred work rather than a test that merely repeats implementation. Reject stale same-name controls, completed unrelated actions and hidden old DOM.
+- [x] Preserve same-screen native disclosure open/closed choices and summary focus only within the current owner, with actual-app route/profile/folder/setup and replacement-generation regressions.
+- [x] Align authorized 0.13.5 preview app/lock/addon/capture/current-doc metadata and add new release notes; preserve all older notes and tags. Parent owns review, full CI, publication and authenticated-download proof.
+- [x] Make the minimal correction. Preserve natural pointer/key input, title autosave and exact focus, independent main writes, cancellation and original-node held-input checks. Audit adjacent uses of the same changed boundary.
+- [x] Run the same controlled reproduction GREEN, then the complete affected commands:
 
 ```powershell
 npm run test:living-setup
@@ -29,7 +31,7 @@ npm run test:company
 
 Expected: complete original acceptance flows, zero failures; no skipped or weakened gates. Run focused regression tests and adjacent setup/autosave checks only for changed shared behavior. Capture native screenshots if a product appearance changes.
 
-- [ ] Self-review the diff, preserve raw receipts, write exact cause/scope/RED-GREEN/commands/capture paths/limitations to the report, and commit only scoped files. Return source/GUI ownership to the parent.
+- [x] Self-review the diff, preserve raw receipts, write exact cause/scope/RED-GREEN/commands/capture paths/limitations to the report, and commit only scoped files. Return source/GUI ownership to the parent.
 
 ## Task 2: Independent review and normal validation
 

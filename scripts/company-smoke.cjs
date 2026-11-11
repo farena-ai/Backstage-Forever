@@ -5,6 +5,7 @@ const fs=require("node:fs/promises"), path=require("node:path"), os=require("nod
 const {testWindow}=require("./test-window.cjs");
 const {assertSelectContrast}=require("./select-contrast.cjs");
 const {selectCurrentText,currentControlState}=require("./selection-fixture.cjs");
+const {waitForCompanyTitleFocus}=require("./company-fixture.cjs");
 const {defaultState}=require("../src/core/validation.cjs");
 function shortPath(target) {
  const script=`Add-Type -TypeDefinition 'using System; using System.Text; using System.Runtime.InteropServices; public static class BfCompanyUiShortPath { [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetShortPathName(string path, StringBuilder result, uint length); }'; $buffer = New-Object System.Text.StringBuilder 4096; $length = [BfCompanyUiShortPath]::GetShortPathName($env:BF_COMPANY_UI_ALIAS_PATH,$buffer,4096); if ($length -eq 0 -or $length -ge 4096) { throw 'Short path unavailable' }; $buffer.ToString()`;
@@ -215,8 +216,7 @@ async function physicalClick(page, locator, whilePressed) {
   assert.equal(await journey.getByLabel("Note step").inputValue(),"Pointer entry text");
   assert.equal(await companyControl('[data-company-form="note"] input[name="note"]',{selection:true}).then(({focused,start,value})=>focused&&start===value.length),true,"Next field accepts real keyboard typing after ack");
   await pointerTitle.fill("Keyboard transfer title");await pointerTitle.press("Tab");
-  await page.waitForFunction(async()=>{await autosaveQueue;return document.activeElement?.dataset.companyCommand==="remove";});
-  assert.equal((await companyControl('[data-company-command="remove"][aria-label="Delete plan Keyboard transfer title"]')).focused,true,"Keyboard Tab also reaches its natural next control");
+  assert.equal((await waitForCompanyTitleFocus(page,journeyScope.value,"Keyboard transfer title")).focused,true,"Keyboard Tab also reaches its natural next control on the renamed card");
   await settleCompanyWrite(page);
   // An unrelated pending text edit must not disable or lose the next submit button.
   const originalStep=(await page.evaluate(()=>window.backstage.companyBrief())).journeys[0].steps[0].text;

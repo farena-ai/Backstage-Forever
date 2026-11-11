@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.5 — connection disclosure and validation timing polish, 2026-11-11
+
+- Keep Connection checks, optional activation and setup checks in the player's current open or closed state through status paints of the same screen. Preserve focused disclosure summaries; changing screen, character, setup session, folder or journal replacement retires the old choice.
+- Bind setup navigation/Refresh checks to their exact physical renderer actions. Wait for the renamed plan's unique current card, exact new Delete label and natural Tab focus after the guarded paint.
+- Preserve private journals, cancellation, held-input ownership, write-count assertions and original timeouts. No dependency, reference-data, game protocol, provider, audio or trust changes.
+- App/lock, addon TOC and emitted capture metadata align at 0.13.5 preview. Source preparation is not publication or installed-upgrade proof; **1.0 remains held for Frank's hands-on acceptance**.
+
 ## 0.13.4 — remaining preview validation and compact Party correction, 2026-11-11
 
 - The 0.13.3 candidate passed voice validation, then failed before publication because the travel fixture expected assistant-history counts to grow across a deliberate sharing reset. Earlier failed tags, notes and evidence remain unchanged.

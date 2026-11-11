@@ -1,5 +1,6 @@
 "use strict";
 const assert = require("node:assert/strict");
+const { beginRendererAction, finishRendererAction } = require("./renderer-action-fixture.cjs");
 const routes = {
   adventure: ["Adventure", "Next step"],
   "quest-guide": ["Quests"],
@@ -37,17 +38,27 @@ async function navigate(page, id) {
       : "Main navigation",
     exact: true,
   });
-  await nav.getByRole("button", { name: section, exact: true }).click();
-  if (tab)
-    await page
-      .getByRole("navigation", { name: `${section} navigation`, exact: true })
-      .getByRole("button", { name: tab, exact: true })
-      .click();
+  const actions = [];
+  const click = async (locator, value) => {
+    // Other suites deliberately leave route-specific reads pending to test their
+    // retirement. Only Game connection needs its final status paint here.
+    if (id === "game") actions.push(await beginRendererAction(page, locator,
+      { attribute: "data-shell-control", value }));
+    else await locator.click();
+  };
+  const sectionRoute = { Adventure: "adventure", Plans: "company", Settings: "game", Help: "guide" }[section] || id;
+  await click(nav.getByRole("button", { name: section, exact: true }), `nav:${sectionRoute}`);
+  if (tab) {
+    const subtab = page.getByRole("navigation", { name: `${section} navigation`, exact: true })
+      .getByRole("button", { name: tab, exact: true });
+    await click(subtab, `subtab:${id}`);
+  }
   await page.waitForFunction((id) => page === id, id);
   assert.match(
     await page.locator("#page-heading").innerText(),
     new RegExp(section),
   );
+  for (const token of actions) await finishRendererAction(page, token);
 }
 async function clickCompanionTool(page, tool) {
   const panel = page.locator(`[data-player-tool="${tool}"]`);
