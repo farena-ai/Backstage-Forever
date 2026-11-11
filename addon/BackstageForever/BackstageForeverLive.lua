@@ -6,9 +6,9 @@
 local CELL = 4                      -- physical pixels per cell edge
 local LEVELS = {0, 85, 170, 255}    -- four robust levels per colour channel
 local MARKERS = {{255, 0, 255}, {0, 255, 0}, {85, 85, 85}, {170, 170, 170}}
-local PAYLOAD_BYTES = 24
-local PAYLOAD_CELLS = 32            -- 24 bytes * 8 bits / 6 bits per cell
-local VERSION = 1
+local PAYLOAD_BYTES = 27
+local PAYLOAD_CELLS = 36            -- 27 bytes * 8 bits / 6 bits per cell
+local VERSION = 2
 
 local function public(value) if type(value)=='function' or type(value)=='table' then return value end end
 local unpackAll=unpack or table.unpack
@@ -52,7 +52,14 @@ end
 local function put16(bytes,i,v) v=floor(math.max(0,math.min(65535,tonumber(v) or 0))) bytes[i]=floor(v/256) bytes[i+1]=v%256 end
 local function put24(bytes,i,v) v=floor(math.max(0,math.min(16777215,tonumber(v) or 0))) bytes[i]=floor(v/65536) bytes[i+1]=floor(v/256)%256 bytes[i+2]=v%256 end
 
--- Pure: state table -> 24 payload bytes (1-based array). See src/core/live-bridge.cjs.
+-- Pure: character identity -> 16-bit hash (desktop mirrors this to bind frames to a profile).
+function BackstageForeverLiveIdentity(guid)
+    if type(guid)~='string' then return 0 end
+    local h=0
+    for i=1,math.min(#guid,200) do h=(h*31+guid:byte(i))%65521 end
+    return h
+end
+-- Pure: state table -> 27 payload bytes (1-based array). See src/core/live-bridge.cjs.
 function BackstageForeverLivePayload(s)
     s=type(s)=='table' and s or {}
     local b={}
@@ -85,7 +92,8 @@ function BackstageForeverLivePayload(s)
     else
         b[10],b[15],b[16],b[17]=255,255,255,255
     end
-    b[24]=crc8(b,23)
+    put16(b,24,s.identity or 0)
+    b[27]=crc8(b,26)
     return b
 end
 -- Pure: payload bytes -> list of {r,g,b} cells (markers first).
@@ -159,6 +167,7 @@ end
 function BackstageForeverLiveState()
     local s={combat=call(InCombatLockdown) and true or false}
     s.dead=call(UnitIsDeadOrGhost,'player') and true or false
+    s.identity=BackstageForeverLiveIdentity(call(UnitGUID,'player'))
     if s.combat then return s end
     local mapApi=public(C_Map)
     local map=call(field(mapApi,'GetBestMapForUnit'),'player')
@@ -193,17 +202,20 @@ local function settings()
     if type(BackstageForeverLiveSettings)~='table' then BackstageForeverLiveSettings={enabled=false} end
     return BackstageForeverLiveSettings
 end
+-- One UI unit = one physical pixel, independent of UI scale and resolution.
+local function rescale()
+    if not strip then return end
+    local _,height=call(GetPhysicalScreenSize)
+    local scale=(type(height)=='number' and height>0) and 768/height or 1
+    if type(strip.SetIgnoreParentScale)=='function' then pcall(strip.SetIgnoreParentScale,strip,true) pcall(strip.SetScale,strip,scale)
+    else local parent=call(field(UIParent,'GetEffectiveScale'),UIParent) or 1 pcall(strip.SetScale,strip,scale/parent) end
+end
 local function build()
     if strip or type(CreateFrame)~='function' then return strip end
     strip=CreateFrame('Frame','BackstageForeverLiveStrip',UIParent)
     if not strip then return nil end
     pcall(strip.SetFrameStrata,strip,'TOOLTIP')
     pcall(strip.SetFrameLevel,strip,10000)
-    -- One UI unit = one physical pixel, independent of UI scale.
-    local _,height=call(GetPhysicalScreenSize)
-    local scale=(type(height)=='number' and height>0) and 768/height or 1
-    if type(strip.SetIgnoreParentScale)=='function' then pcall(strip.SetIgnoreParentScale,strip,true) pcall(strip.SetScale,strip,scale)
-    else local parent=call(field(UIParent,'GetEffectiveScale'),UIParent) or 1 pcall(strip.SetScale,strip,scale/parent) end
     local total=#MARKERS+PAYLOAD_CELLS
     pcall(strip.SetSize,strip,total*CELL,CELL)
     pcall(strip.ClearAllPoints,strip)
@@ -220,7 +232,7 @@ local function build()
 end
 local function paint()
     local s=BackstageForeverLiveState()
-    local key=table.concat({tostring(s.combat),tostring(s.mapId),s.x and floor(s.x*2000) or '',s.y and floor(s.y*2000) or '',tostring(s.level),tostring(s.health),tostring(s.targetNpcId),tostring(s.targetHealth),tostring(s.questId),tostring(s.objectives),tostring(s.questHash),tostring(s.freeSlots),s.facing and floor(s.facing*20) or '',tostring(s.xp),tostring(s.dead),tostring(s.mounted)},'|')
+    local key=table.concat({tostring(s.combat),tostring(s.mapId),s.x and floor(s.x*2000) or '',s.y and floor(s.y*2000) or '',tostring(s.level),tostring(s.health),tostring(s.targetNpcId),tostring(s.targetHealth),tostring(s.questId),tostring(s.objectives),tostring(s.questHash),tostring(s.freeSlots),s.facing and floor(s.facing*20) or '',tostring(s.xp),tostring(s.dead),tostring(s.mounted),tostring(s.resting),tostring(s.instance),tostring(s.afk),tostring(s.identity)},'|')
     if key==lastKey then return end
     lastKey=key
     seq=(seq+1)%256
@@ -231,6 +243,7 @@ end
 local function apply()
     if not settings().enabled then if strip then pcall(strip.Hide,strip) pcall(strip.SetScript,strip,'OnUpdate',nil) end return end
     if not build() then return end
+    rescale()
     lastKey=nil elapsed=1
     pcall(strip.Show,strip)
     pcall(strip.SetScript,strip,'OnUpdate',function(_,dt)
@@ -260,7 +273,7 @@ end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        pcall(events.RegisterEvent,events,'PLAYER_LOGIN')
-        pcall(events.SetScript,events,'OnEvent',function() pcall(apply) end)
+        for _,e in ipairs({'PLAYER_LOGIN','DISPLAY_SIZE_CHANGED','UI_SCALE_CHANGED'}) do pcall(events.RegisterEvent,events,e) end
+        pcall(events.SetScript,events,'OnEvent',function(_,event) if event=='PLAYER_LOGIN' then pcall(apply) else pcall(rescale) lastKey=nil end end)
     end
 end

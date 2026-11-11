@@ -59,17 +59,22 @@ class CompanionService {
       }
       if(!selected.model)throw Error('Choose a model in Connections for AI questions. Local NPC locations and travel need no model.');
       const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence,reportedLocation:prepared.reportedLocation};
-      const liveStatus=input.shareProfile?this.live?.status?.():null,liveFrame=liveStatus?.frame||null;
+      // Live frames count only when they carry the selected character's identity.
+      const {identityHash}=require('./live-bridge.cjs');
+      const expected=profile?.source?.kind==='wow-addon'?identityHash(profile.source.id):null;
+      const liveStatusNow=()=>{if(!input.shareProfile||!this.live?.status)return null;const s=this.live.status();if(s?.frame&&expected!==null&&s.frame.characterHash&&s.frame.characterHash!==expected)return {...s,signal:'other-character',frame:null};if(s?.frame&&expected!==null&&!s.frame.characterHash)return {...s,frame:{...s.frame,identityUnverified:true}};return s;};
+      const liveNow=()=>liveStatusNow()?.frame||null;
+      const liveStatus=liveStatusNow(),liveFrame=liveStatus?.frame||null;
       let context=this.ai.profileContext(state,profileId,input.shareProfile,options);
       // The live link is a current game reading; it outranks the saved snapshot for position.
       if(liveFrame&&context)context+='\n\nLive game link (read from the game screen '+Math.round((liveFrame.ageMs||0)/1000)+'s ago; current, overrides savedLocation for position/level/target): '+JSON.stringify(require('./companion-tools.cjs').liveSummary(liveFrame));
       // Read-only local lookups (NPCs, quests, items, travel, character) the model may call.
-      const tools=this.lookups?createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveFrame,liveStatus}):undefined;
+      const tools=this.lookups?createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow}):undefined;
       const request={model:selected.model,prompt:prepared.composedPrompt,context,signal,...(tools?{tools}:{})};
       let reply;
       if(selected.authMode==='subscription'&&input.provider!=='ollama'){
         if(input.provider==='openai')reply=await this.chatgpt.ask(request);
-        else if(input.provider==='anthropic')reply=await this.claude.ask({...request,context:input.shareProfile?this.ai.approvedProfile(profile,options):undefined});
+        else if(input.provider==='anthropic')reply=await this.claude.ask({...request,context:input.shareProfile?this.ai.approvedProfile(profile,options):undefined,live:liveFrame?require('./companion-tools.cjs').liveSummary(liveFrame):undefined});
         else throw Error('Subscription inference is unavailable for this provider. Choose API mode explicitly if desired.');
       }else reply=await this.ai.ask({provider:input.provider,...selected,apiKey:this.store.getKey(input.provider),...request});
       if(signal.aborted)throw signal.reason;

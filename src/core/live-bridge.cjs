@@ -7,10 +7,17 @@ const path = require("node:path");
 const fs = require("node:fs");
 const childProcess = require("node:child_process");
 
-const CELL = 4, MARKERS = 4, PAYLOAD_CELLS = 32, PAYLOAD_BYTES = 24, VERSION = 1;
+const CELL = 4, MARKERS = 4, PAYLOAD_CELLS = 36, PAYLOAD_BYTES = 27, VERSION = 2;
 const REGION = { width: 200, height: 16 };
 const FRESH_MS = 4000;
 
+// Mirrors BackstageForeverLiveIdentity: binds frames to the saved character (UnitGUID).
+function identityHash(guid) {
+  if (typeof guid !== "string") return 0;
+  let h = 0;
+  for (let i = 0; i < Math.min(guid.length, 200); i++) h = (h * 31 + guid.charCodeAt(i)) % 65521;
+  return h;
+}
 function crc8(bytes, n) {
   let crc = 0;
   for (let i = 0; i < n; i++) {
@@ -91,6 +98,7 @@ function parsePayload(b) {
     version: b[0], seq: b[1],
     combat: Boolean(flags & 1), dead: Boolean(flags & 2), resting: Boolean(flags & 4), mounted: Boolean(flags & 8), inInstance: Boolean(flags & 16), afk: Boolean(flags & 32),
   };
+  out.characterHash = u16(23);
   if (out.combat) return out; // Frozen during combat by design.
   if (flags & 64) out.position = { mapId: u16(2), x: u16(4) / 65535, y: u16(6) / 65535, facing: (b[22] / 256) * 2 * Math.PI };
   out.level = b[8] || null;
@@ -187,11 +195,20 @@ class LiveBridge {
       env: { SystemRoot: process.env.SystemRoot, windir: process.env.windir, PATH: process.env.PATH, TEMP: process.env.TEMP, TMP: process.env.TMP, BF_LIVE_PROCESS: this.processName, BF_LIVE_W: String(REGION.width), BF_LIVE_H: String(REGION.height), BF_LIVE_MS: String(this.intervalMs), ...(Number.isInteger(this.processId) ? { BF_LIVE_PID: String(this.processId) } : {}) },
     });
     this.child = child;
+    // Output and errors from a stopped or replaced worker are ignored.
+    const current = () => this.child === child && this.enabled;
     child.stdout.setEncoding("utf8");
-    child.stdout.on("data", (chunk) => this.read(chunk));
+    child.stdout.on("data", (chunk) => { if (current()) this.read(chunk); });
     child.stderr.on("data", () => {});
-    child.on("error", () => { this.child = null; this.signal = "error"; this.emit(); });
-    child.on("close", () => { if (this.child === child) { this.child = null; if (this.enabled) { this.signal = "error"; this.emit(); this.retry = setTimeout(() => this.start(), 5000); } } });
+    child.on("error", () => { if (!current()) return; this.signal = "error"; this.emit(); this.restartLater(child); });
+    child.on("close", () => { if (!current()) return; this.signal = "error"; this.emit(); this.restartLater(child); });
+  }
+  restartLater(child) {
+    if (this.child !== child) return;
+    this.child = null;
+    try { child.kill(); } catch {}
+    clearTimeout(this.retry);
+    this.retry = setTimeout(() => { if (this.enabled) this.start(); }, 5000);
   }
   stop() {
     clearTimeout(this.retry);
@@ -200,6 +217,7 @@ class LiveBridge {
     this.signal = "off"; this.frame = null; this.buffer = "";
   }
   read(chunk) {
+    if (!this.enabled) return;
     this.buffer += chunk;
     if (this.buffer.length > 200000) this.buffer = this.buffer.slice(-100000);
     let nl;
@@ -231,4 +249,4 @@ class LiveBridge {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { LiveBridge, decodeStrip, decodeCells, encodeCells, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };
+module.exports = { LiveBridge, identityHash, decodeStrip, decodeCells, encodeCells, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };

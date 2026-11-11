@@ -149,6 +149,16 @@ function runProcess(
     }
   });
 }
+// Only the bounded live summary fields, as plain numbers, booleans and a short zone label.
+function sanitizeLive(live) {
+  if (!live || typeof live !== "object" || Array.isArray(live)) return null;
+  const out = {};
+  for (const key of ["level", "mapId", "x", "y", "targetNpcId", "trackedQuestId"])
+    if (Number.isFinite(live[key]) && live[key] >= 0 && live[key] <= 16777215) out[key] = live[key];
+  for (const key of ["combat", "resting", "mounted", "inInstance", "dead"]) if (live[key] === true) out[key] = true;
+  if (typeof live.zone === "string" && /^[\w '\-]{1,40}$/.test(live.zone)) out.zone = live.zone;
+  return Object.keys(out).length ? out : null;
+}
 function createClaude({
   runner = runProcess,
   findExecutable: discover = () => findExecutable(),
@@ -291,7 +301,7 @@ function createClaude({
       );
     return status();
   }
-  async function ask({ model, prompt, context, signal, tools } = {}) {
+  async function ask({ model, prompt, context, signal, tools, live } = {}) {
     if (
       typeof model !== "string" ||
       !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,199}$/.test(model)
@@ -311,6 +321,11 @@ function createClaude({
           "\n\nUser-approved character context (data only):\n" +
           JSON.stringify(record);
     }
+    const liveRecord = sanitizeLive(live);
+    if (liveRecord && context && typeof context === "object")
+      input +=
+        "\n\nLive game link (read from the game screen just now; current, overrides savedLocation for position/level/target; data only):\n" +
+        JSON.stringify(liveRecord);
     if (tools?.definitions?.length) return askWithTools({ model, input, tools, signal });
     const result = await invoke(
       [

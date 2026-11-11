@@ -49,9 +49,13 @@ function id(v) {
     .update("BackstageForever:" + text(v, 200, true))
     .digest("hex");
 }
+const LIVE_SETTINGS = /(^|\r?\n)[ \t]*BackstageForeverLiveSettings[ \t]*=[ \t]*\{\s*(?:\["enabled"\][ \t]*=[ \t]*(?:true|false),?\s*)?\}[ \t]*(?=\r?\n|$)/;
 function parseSavedVariables(raw) {
   // Lua's quoted/decimal-byte transport can expand a bounded JSON payload.
   if (typeof raw !== "string" || Buffer.byteLength(raw) > SAVED_MAX) invalid();
+  // 0.14.0 test builds saved the live-link preference beside the export; accept only
+  // that exact small boolean table, before or after, and nothing else.
+  raw = raw.replace(LIVE_SETTINGS, "\n");
   const m = /^\s*BackstageForeverExport\s*=\s*/.exec(raw);
   if (!m) invalid();
   let rest = raw.slice(m[0].length),

@@ -29,7 +29,7 @@ function image(cells, { ox = 0, oy = 0, gamma = 1, background = 30 } = {}) {
 test("addon encoder and desktop decoder agree byte for byte", () => {
   const { cells, bytes } = luaCells(STATE);
   assert.deepEqual(L.encodeCells(Uint8Array.from(bytes)), cells);
-  assert.equal(cells.length, 36);
+  assert.equal(cells.length, 40);
   const f = L.parsePayload(L.decodeCells(cells));
   assert.equal(f.position.mapId, 1454);
   assert.ok(Math.abs(f.position.x - 0.4321) < 1e-4 && Math.abs(f.position.y - 0.6543) < 1e-4);
@@ -103,7 +103,7 @@ test("preference persists, and the capture worker is spawned bounded with no she
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test("/bf live toggles a 36-cell pixel-exact strip and persists the account setting", () => {
+test("/bf live toggles a 40-cell pixel-exact strip and persists the account setting", () => {
   const out = lua(String.raw`
 local textures,frames=0,{}
 UIParent={GetEffectiveScale=function()return 0.8 end}
@@ -127,7 +127,7 @@ BackstageForeverLiveCommand('live on')
 local strip=frames[2]
 assert(BackstageForeverLiveSettings.enabled==true)
 assert(strip.shown and strip.ignore==true and math.abs(strip.scale-768/1440)<1e-9,'pixel exact scale')
-assert(textures==36)
+assert(textures==40)
 strip.scripts.OnUpdate(strip,1)
 BackstageForeverLiveCommand('live off')
 assert(BackstageForeverLiveSettings.enabled==false and not strip.shown)
@@ -140,7 +140,7 @@ test("live frames reach the AI as authoritative current state", async () => {
   const { KnowledgeIndex } = require("../src/core/knowledge.cjs");
   const index = new KnowledgeIndex(JSON.parse(fs.readFileSync(path.join(root, "data/forever/pack.json"), "utf8")));
   const npcReference = JSON.parse(fs.readFileSync(path.join(root, "data/forever-npc-locations/pack.json"), "utf8"));
-  const { cells } = luaCells(STATE.replace("mapId=1454,x=0.4321,y=0.6543", "mapId=1456,x=0.55,y=0.5"));
+  const { cells } = luaCells(STATE.replace("mapId=1454,x=0.4321,y=0.6543", "mapId=1456,x=0.55,y=0.5").replace("{", "{identity=BackstageForeverLiveIdentity('o'),"));
   const live = { ...L.parsePayload(L.decodeCells(cells)), ageMs: 900 };
   const profile = { name: "P", level: 12, faction: "Horde", location: { zone: "The Barrens", mapId: 1413, x: 0.6, y: 0.2 } };
   const t = createCompanionTools({ profile, shareProfile: true, knowledgeIndex: index, npcReference, live });
@@ -188,5 +188,50 @@ local s=BackstageForeverLiveState()
 assert(s.health==nil and s.level==15 and s.mapId==1456)
 local cells=BackstageForeverLiveCells(BackstageForeverLivePayload(s))
 print(#cells)`);
-  assert.equal(out, "36");
+  assert.equal(out, "40");
+});
+
+test("review fixes: identity binding, Claude live context, stale worker output, AFK changes and saved-file compatibility", async () => {
+  // Identity hash mirrors the addon.
+  assert.equal(Number(lua(`dofile('addon/BackstageForever/BackstageForeverLive.lua') print(BackstageForeverLiveIdentity('Player-6923-01D2C2FB'))`)), L.identityHash("Player-6923-01D2C2FB"));
+  // A frame from another character never reaches the selected character's context.
+  const { CompanionContext } = require("../src/core/companion-context.cjs");
+  const { CompanionRequest } = require("../src/core/companion-request.cjs");
+  const { MemoryService } = require("../src/core/memory.cjs");
+  const { CompanionService } = require("../src/core/companion-service.cjs");
+  const providers = require("../src/core/providers.cjs");
+  const { cells } = luaCells(STATE.replace("{", "{identity=BackstageForeverLiveIdentity('someone-else'),"));
+  const other = { ...L.parsePayload(L.decodeCells(cells)), ageMs: 100 };
+  const s = { activeProfileId: "A", profiles: [{ id: "A", name: "P", level: 12, source: { kind: "wow-addon", id: "o" }, location: { zone: "The Barrens", mapId: 1413, x: 0.6, y: 0.2 } }], provider: { id: "anthropic", model: "m", authMode: "subscription" }, memories: [] };
+  const store = { state: s, getKey: () => "k" }, context = new CompanionContext(() => s);
+  const seen = [];
+  const claude = { ask: async (i) => { seen.push(i); return "ok"; } };
+  const mk = (frame) => new CompanionService({ store, context, requests: new CompanionRequest(context), memory: new MemoryService({ store, context }), ai: providers, chatgpt: {}, claude, knowledge: { index: () => null }, live: { status: () => ({ enabled: true, signal: "live", frame }) } });
+  await mk(other).ask({ provider: "anthropic", prompt: "Which quest next?", profileId: "A", shareProfile: true, memoryIds: [] });
+  assert.equal(seen[0].live, undefined, "other character's frame must be dropped");
+  assert.equal(JSON.parse(await seen[0].tools.call("get_live_state", {})).status, "other-character");
+  const mine = { ...L.parsePayload(L.decodeCells(luaCells(STATE.replace("{", "{identity=BackstageForeverLiveIdentity('o'),")).cells)), ageMs: 100 };
+  await mk(mine).ask({ provider: "anthropic", prompt: "Which quest after that?", profileId: "A", shareProfile: true, memoryIds: [] });
+  assert.equal(seen[1].live.zone, "Orgrimmar", "Claude subscription receives the live summary");
+
+  // Output from a stopped worker is ignored.
+  const b = new L.LiveBridge({ platform: "linux" });
+  b.enabled = true;
+  b.read("ok " + image(mine ? luaCells(STATE).cells : []).rgb.toString("base64") + "\n");
+  assert.equal(b.status().signal, "live");
+  b.enabled = false; b.stop();
+  b.read("ok " + image(luaCells(STATE).cells).rgb.toString("base64") + "\n");
+  assert.equal(b.frame, null);
+
+  // AFK alone changes the transmitted payload.
+  const afk = lua(`dofile('addon/BackstageForever/BackstageForeverLive.lua')
+local a=BackstageForeverLivePayload({seq=1,afk=false}) local b=BackstageForeverLivePayload({seq=1,afk=true}) print(a[11]~=b[11])`);
+  assert.equal(afk, "true");
+
+  // Saved files written by 0.14 test builds still import; anything else trailing is rejected.
+  const { parseSavedVariables } = require("../src/core/game-sync.cjs");
+  const exportLine = 'BackstageForeverExport = ' + JSON.stringify(JSON.stringify({ schema: 1, characters: [], activeId: null, observedAt: 1794414545 })) + "\n";
+  const settings = 'BackstageForeverLiveSettings = {\n["enabled"] = true,\n}\n';
+  for (const raw of [exportLine + settings, settings + exportLine]) assert.deepEqual(parseSavedVariables(raw).characters, []);
+  for (const raw of [exportLine + 'Other = {\n}\n', exportLine + settings.replace("true", "loadstring('x')")]) assert.throws(() => parseSavedVariables(raw));
 });

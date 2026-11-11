@@ -112,15 +112,23 @@ const DEFINITIONS = [
   },
 ];
 
-function createCompanionTools({ profile = null, shareProfile = false, knowledgeIndex = null, npcReference = null, travelReference = null, vendorPack = null, acquisitionPack = null, contextOptions = {}, live = null, liveStatus = null } = {}) {
+function createCompanionTools({ profile = null, shareProfile = false, knowledgeIndex = null, npcReference = null, travelReference = null, vendorPack = null, acquisitionPack = null, contextOptions = {}, live: liveSource = null, liveStatus: liveStatusSource = null } = {}) {
   const trace = [];
   let historical = null;
   try { historical = npcReference ? validateNpcLocationPack(npcReference) : null; } catch {}
   const shared = shareProfile && profile ? profile : null;
   const reported = contextOptions.reportedLocation || null;
-  const liveFrame = shared && live?.position ? live : null;
-  // Live position first; a zone-only current report makes saved coordinates stale.
-  const here = shared ? (liveFrame ? liveFrame.position : reported ? (reported.mapId ? reported : null) : shared.location) : null;
+  // The live frame is re-read for every lookup so a long answer never reuses an expired,
+  // disabled, combat or other-character reading as current.
+  let live = null, liveStatus = null, liveFrame = null, here = null;
+  function refresh() {
+    live = (typeof liveSource === "function" ? liveSource() : liveSource) || null;
+    liveStatus = (typeof liveStatusSource === "function" ? liveStatusSource() : liveStatusSource) || null;
+    liveFrame = shared && live?.position && !live.combat ? live : null;
+    // Live position first; a zone-only current report makes saved coordinates stale.
+    here = shared ? (liveFrame ? liveFrame.position : reported ? (reported.mapId ? reported : null) : shared.location) : null;
+  }
+  refresh();
   const originLabel = () => (liveFrame ? MAP_NAMES[liveFrame.position.mapId] : null) || reported?.zone || null;
   const index = knowledgeIndex;
   const pack = index?.pack;
@@ -275,6 +283,7 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
         out.trackedQuest = { id: live.quest.id, title, objectivesDone: live.quest.objectivesDone };
       }
       if (Number.isInteger(live.level) && Number.isInteger(shared.level) && live.level !== shared.level && live.level !== shared.level + 1) out.warning = "Live level differs from the selected character; the game may be on another character.";
+      if (live.identityUnverified) out.warning = "The game did not expose which character this is; it may be a different character than the one selected.";
       out.note = "Read from the game screen just now; authoritative over the saved snapshot for position, level and target.";
       return out;
     },
@@ -292,6 +301,7 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
     let args = rawArgs;
     if (typeof args === "string") { try { args = args.trim() ? JSON.parse(args) : {}; } catch { args = null; } }
     if (!args || typeof args !== "object" || Array.isArray(args)) args = null;
+    refresh();
     const entry = { name: typeof name === "string" ? name.slice(0, 40) : "?", ok: false };
     trace.push(entry);
     if (trace.length > MAX_CALLS) return bounded({ status: "limit", message: "Lookup limit reached for this question. Answer with what you have." });
