@@ -1,6 +1,6 @@
 # Privacy and local data
 
-The local unreleased supplementary Forever field notes are a separately bundled offline reference. They update with app releases; the existing public quest-reference refresh remains separate. Local quest-detail lookup makes no extra network request, reads no additional player files and sends no question. Supplementary sharing/start-item/duration/drop/trainer/item-name facts are not silently included in automatic AI context, Director rankings or the native addon reference. Missing or invalid optional reference data disables these field notes alone. Public 0.12.3 is unchanged and 1.0 remains held for hands-on acceptance.
+The bundled 0.13 preview supplementary Forever field notes are a separately bundled offline reference. They update with app releases; the existing public quest-reference refresh remains separate. Local quest-detail lookup makes no extra network request, reads no additional player files and sends no question. Supplementary sharing/start-item/duration/drop/trainer/item-name facts are not silently included in automatic AI context, Director rankings or the native addon reference. Missing or invalid optional reference data disables these field notes alone. These facts ship with the 0.13 preview; 1.0 remains held for hands-on acceptance.
 
 ## Optional local support report
 

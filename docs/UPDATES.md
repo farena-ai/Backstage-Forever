@@ -8,6 +8,10 @@ Checks contact GitHub's public releases API and download from GitHub release ass
 
 With automatic checks off, a manual check may still download an authenticated newer release. Choose Restart and update to install it; normal exit will not install it in that mode. Reset clears queued updates and turns automatic checks off until explicitly re-enabled.
 
+## The 0.13 preview
+
+Installed 0.12.3 can receive 0.13.0 through this existing authenticated preview channel once its release is published. Open **Settings → Updates → Check now**, then choose when to install. No forced restart is added; existing automatic download/install-on-exit preferences still apply. This delivers the reviewed Proactive Compass, Professions, Map and companion improvements; 1.0 stays held for hands-on acceptance. See [0.13 release notes](releases/0.13.0.md). Preparing the version and CI is not proof of publication, authenticated public download or a successful installed upgrade; those results are recorded separately.
+
 ## Recovering a failed update
 
 If an older installation finds 0.5.0 but says the update could not be verified or downloaded, open the [official Releases page](https://github.com/farena-ai/Backstage-Forever/releases) and download the newest Windows setup executable. Close BF and run that installer normally. Your existing profiles and encrypted connections remain in the same Windows account's app-data folder. Export a profile backup first if you want an additional copy. An old running updater cannot acquire its own fixes until the app has been upgraded.
@@ -29,10 +33,10 @@ Only explicit `vMAJOR.MINOR.PATCH` tag pushes trigger `.github/workflows/release
 The protected repository secret `BF_UPDATE_SIGNING_KEY` holds the Ed25519 private PEM and is exposed only to the signing step. The public key is `assets/update-public-key.pem`. Private keys are never committed, copied into build assets, passed as command-line arguments, or printed. Local release signing uses the owner's protected DPAPI key helper to supply this same environment variable only in memory:
 
 ```text
-node scripts/sign-update.cjs --installer <installer-path> --version 0.2.0 --output <new-manifest-path>
+node scripts/sign-update.cjs --installer <installer-path> --version 0.13.0 --output <new-manifest-path>
 ```
 
-The installer basename must be `Backstage-Forever-0.2.0-Windows-x64-Setup.exe`. The signer rejects a non-Ed25519 key, a key that does not match the bundled public key, incorrect filenames, invalid versions, empty installers or installers over 512 MiB, and existing output files. Never set a production private key in a shell command or shell history.
+The installer basename must be `Backstage-Forever-0.13.0-Windows-x64-Setup.exe`. The signer rejects a non-Ed25519 key, a key that does not match the bundled public key, incorrect filenames, invalid versions, empty installers or installers over 512 MiB, and existing output files. Never set a production private key in a shell command or shell history.
 
 ## Recovery and key rotation
 

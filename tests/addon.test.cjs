@@ -38,7 +38,7 @@ test("addon executes persistence, combat, secret-value and unavailable API guard
   const { spawnSync } = require("node:child_process");
   const result = spawnSync(process.execPath, [cli, "-"], {
     cwd: path.join(__dirname, ".."),
-    input: LUA_HARNESS,
+    input: LUA_HARNESS + `\nassert(BackstageForeverExport:find('"captureVersion":"${require("../package.json").version}"',1,true),'Emitted capture version must match the application')`,
     encoding: "utf8",
     timeout: 10000,
   });

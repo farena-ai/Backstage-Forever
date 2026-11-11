@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.0 — installed Proactive Adventure preview, 2026-11-11
+
+- Delivers the reviewed local series through the existing authenticated preview updater: proactive native/last-saved desktop Compass, one Professions workshop, native BF Layers and last-saved desktop Map, five-section sidebar, reliable conversation, sourced travel, diagnostics and recovery. Earlier local-review entries below remain historical evidence.
+- Adds separate qualified acquisition/insights/travel references with explicit older-build, faction, partial-coverage and approximate-standing-point limits; no game automation, automatic AI or expanded sharing consent.
+- Aligns package/lock, addon TOC and actual emitted capture version at 0.13.0. Setup/repair owns twelve files and preserves foreign files. No dependency, schema, protocol or game-build change.
+- Requires acquisition validation plus Compass/Profession/Map acceptance in validation and tagged publication. Existing tests and Ed25519 updater trust remain required.
+- 1.0 stays held. Real client rendering/gathering/performance, live providers/audio, clean-machine and actual installed upgrade acceptance remain separate owner checks. Publication and authenticated public-download results are recorded separately from this source preparation.
+
 ## Unreleased local review — proactive Compass, 2026-11-11
 
 - Added local native and last-saved desktop recommendations for bags, quests, qualified craft attempts and observed profession rank caps, with independent Adventure/Quests/Professions goals.

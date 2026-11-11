@@ -1,6 +1,6 @@
 # Your Forever quest reference
 
-The local unreleased travel reference is a separate bounded offline pack; see [travel guidance and evidence limits](TRAVEL-GUIDANCE.md). Its compiler/check does not modify this quest ledger, supplementary insights, seller pack or native addon waypoints.
+The bundled 0.13 preview travel reference is a separate bounded offline pack; see [travel guidance and evidence limits](TRAVEL-GUIDANCE.md). Its compiler/check does not modify this quest ledger, supplementary insights, seller pack or native addon waypoints.
 
 BF includes its quest reference. You do not need an AI connection, account signup or database download. Connect the game and load the companion addon. In-game guidance updates as you play outside combat; the desktop receives a saved snapshot on logout or game exit. Use a voluntary `/reload` when you want that desktop snapshot now or need to load an addon update. Routine progress does not require routine reloads.
 
@@ -26,9 +26,9 @@ Counts are unique quests, not a count of points. Clues are separate from coordin
 
 No second external publisher met the compatibility and licensing requirements for this pass. The complementary path is supported current-client observations, with the game point and its qualification kept separate from historical references.
 
-## Supplementary field notes (local, unreleased)
+## Supplementary field notes (0.13 preview)
 
-The current local review build adds a separate offline `data/forever-insights/` artifact; public 0.12.3 and the held 1.0 release are unchanged. Quest Guide places these historical facts after the existing waypoint action. Exact quest ID/title, reference source commit/build and saved build/locale when known must agree. Manual reference browsing does not establish player availability. Incompatible or missing facts stay unavailable.
+The current 0.13 preview includes a separate offline `data/forever-insights/` artifact; 1.0 remains held for hands-on acceptance. Quest Guide places these historical facts after the existing waypoint action. Exact quest ID/title, reference source commit/build and saved build/locale when known must agree. Manual reference browsing does not establish player availability. Incompatible or missing facts stay unavailable.
 
 The same Efficient Games pin supplies 3,677 quest sharing observations, 33 static reported duration limits, 928 starting-item IDs and 131 item/count drop lists. The base remains **3,884 quest cache records**. Sharing counts are recorded answers from contributor files, not distinct people, independent witnesses or probabilities; disagreement remains mixed and absence unknown. A duration is not a countdown. A starting item proves neither ownership nor quest access; a drop entry establishes no drop rate, location or guarantee. Missing optional facts imply no restriction or prerequisite.
 
@@ -54,7 +54,7 @@ Data from [Efficient Games](https://efficient.games), licensed under [CC BY 4.0]
 
 ## For source developers
 
-### Qualified acquisition data (local, unreleased)
+### Qualified acquisition data (0.13 preview)
 
 `data/forever-acquisition/` is a separate offline reference consumed by the bounded desktop/native profession and map models. It contains exactly **seven relations / seventeen historical player-standing points**, capped at the first three distinct valid normalized positions in each original record's array order. Relation order is authored and stable: `object:1617|spell:2368` → 765; `object:1618|spell:2368|bountifulHarvest:1` → 2447; `object:1619|spell:2368` → 2449; `object:1731|spell:2576` → 2770 and 2835; `npc:11910|quest` → 2589; and `vendors[3005].entries["item:2320"]` → 2320. Object labels join the same numeric ID in `npcs.approached`; corpse identity joins `creatures`; the merchant joins vendor/NPC/creature identity, Merchant interaction and exact item listing. No Poor Copper fallback, reversed relationship, skinning claim, odds, yields, prices or inferred requirements are included.
 
@@ -62,7 +62,7 @@ Four original `eg-` files are locked to Efficient Games commit `23f9636486d3d604
 
 The public projection returns `{version:1,status,reference,rows,limitations}` with explicit unknown rows for uncovered requested item IDs. Each row has `itemId,status,reason,sources`; each bounded source retains exact `sourceKey,kind,entityId`, reference-labelled name, positions, evidence/date/build, counts, context and unknowns, plus `qualification,reason`. It exposes no profile/source identifiers, notes, goals, keys or private paths, and does no provider I/O. Material display names must come from actual same-ID recipe/material observations. A matching dated saved addon build permits only **qualified historical** places to look, never current gatherability or access. Vendor suggestions also need wholly nonhostile observed reactions for the saved faction; absent/opposing/conflicting evidence is browse-only. Manual, undated or different-build profiles are browse-only. In particular, **70888 is not verified by this 70862 reference**. A corrupt/missing resource is unavailable as a whole, while independent observed recipe planning remains possible.
 
-The original CC BY 4.0 license bytes and attribution/change notice are preserved. This license covers the publisher's compilation/player observations and excludes Blizzard underlying game content/assets. `BackstageForeverAcquisition.lua` is a deterministic data-only export with matching provenance, loaded through the addon TOC and included in the twelve-file owned install/repair manifest. Native profession/map consumers and desktop Professions/Map use its qualified historical facts; these do not establish current nodes, availability, rank requirements or guaranteed progress. Existing quest/seller/insights/travel resources, dependencies and source version 0.12.3 remain unchanged; 1.0 is held.
+The original CC BY 4.0 license bytes and attribution/change notice are preserved. This license covers the publisher's compilation/player observations and excludes Blizzard underlying game content/assets. `BackstageForeverAcquisition.lua` is a deterministic data-only export with matching provenance, loaded through the addon TOC and included in the twelve-file owned install/repair manifest. Native profession/map consumers and desktop Professions/Map use its qualified historical facts; these do not establish current nodes, availability, rank requirements or guaranteed progress. The 0.13 delivery changes no quest/seller/insights/travel resources, dependencies or data formats; 1.0 is held.
 
 ```powershell
 npm run check:forever-acquisition

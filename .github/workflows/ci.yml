@@ -16,6 +16,7 @@ jobs:
       - run: npm run check:forever-vendors
       - run: npm run check:forever-insights
       - run: npm run check:forever-travel
+      - run: npm run check:forever-acquisition
       - run: npm test
       - run: npm run test:ui
       - run: npm run test:setup
@@ -29,6 +30,9 @@ jobs:
       - run: npm run test:director
       - run: npm run test:preparation-backend
       - run: npm run test:preparation
+      - run: npm run test:adventure-coach
+      - run: npm run test:profession-coach
+      - run: npm run test:adventure-map
       - run: npm run test:memory-backend
       - run: npm run test:voice-backend
       - run: npm run test:voice-memory

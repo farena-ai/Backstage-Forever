@@ -1,6 +1,6 @@
 # Building and publishing releases
 
-Public MIT application repository: farena-ai/Backstage-Forever. Backstage Coding, designed by Frank Arena. Version 0.8.0 Adventure Company remains a Windows-first preview. Reference data retains separate CC BY 4.0 notices. Installers are not Windows Authenticode signed; Ed25519 app-update signatures separately authenticate downloads. See UPDATES.md for trust, key management and rotation.
+Public MIT application repository: farena-ai/Backstage-Forever. Backstage Coding, designed by Frank Arena. Version 0.13.0 remains a Windows-first preview; 1.0 is held for owner acceptance. Reference data retains separate CC BY 4.0 notices. Installers are not Windows Authenticode signed; Ed25519 app-update signatures separately authenticate downloads. See UPDATES.md for trust, key management and rotation.
 
 ## Local validation
 
@@ -9,6 +9,10 @@ Use Node.js 24 LTS and locked dependencies:
 ```powershell
 npm ci
 npm run check:addon-reference
+npm run check:forever-vendors
+npm run check:forever-insights
+npm run check:forever-travel
+npm run check:forever-acquisition
 npm test
 npm run test:ui
 npm run test:integration
@@ -16,6 +20,9 @@ npm run test:living-backend
 npm run test:living-setup
 npm run test:company-backend
 npm run test:company
+npm run test:adventure-coach
+npm run test:profession-coach
+npm run test:adventure-map
 npm run test:setup
 npm run test:autosave
 npm run test:command-center
@@ -24,9 +31,11 @@ npm run dist
 npm run test:packaged
 ```
 
+The complete required gate list is maintained in `.github/workflows/ci.yml` and `.github/workflows/release.yml`; the commands above are a local entry point, not a replacement for those full gates. `npm test` already includes native Compass/Profession/Map tests, so a duplicate native-suite step is unnecessary.
+
 The per-user x64 NSIS installer is written to dist. User records, provider credentials, CLI homes, signing private keys and scratch files must never be included. Include LICENSE, font notices and artwork provenance. Official Claude/Grok tools are not bundled or relicensed.
 
-The bundled `data/forever` pack, source lock, CC BY license and change notice must be present in the ASAR. Packaged acceptance checks source/data byte hashes as well as actual automatic five-file addon installation and repair in a synthetic client. The tracked `BackstageForeverReference.lua` is an offline, safely escaped compilation of the validated bundled pack; `npm run check:addon-reference` must reproduce its exact LF bytes without writing. The installer does not generate Lua from runtime public downloads. Reference inputs stay out of the shipped app and source archive. If changing the original pack or compiler, separately reproduce the full pack from the six hash-locked inputs with the command in FOREVER-DATA.md. Ordinary unit tests remain offline and use tracked fixtures. Unit files run serially to avoid competing Lua VM CPU deadlines; the test deadlines and assertions remain unchanged.
+The bundled `data/forever` pack, source lock, CC BY license and change notice must be present in the ASAR. Packaged acceptance checks source/data byte hashes as well as actual automatic twelve-file addon installation and repair in a synthetic client. The tracked `BackstageForeverReference.lua` is an offline, safely escaped compilation of the validated bundled pack; `npm run check:addon-reference` must reproduce its exact LF bytes without writing. The installer does not generate Lua from runtime public downloads. Reference inputs stay out of the shipped app and source archive. If changing the original pack or compiler, separately reproduce the full pack from the six hash-locked inputs with the command in FOREVER-DATA.md. Ordinary unit tests remain offline and use tracked fixtures. Unit files run serially to avoid competing Lua VM CPU deadlines; the test deadlines and assertions remain unchanged.
 
 ## Signed publication
 

@@ -5,6 +5,7 @@ const fs = require("node:fs/promises"),
   os = require("node:os"),
   path = require("node:path"),
   assert = require("node:assert/strict");
+const releaseVersion = require("../package.json").version;
 const { testWindow } = require("./test-window.cjs");
 (async () => {
   const data = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "bf-setup-")));
@@ -22,7 +23,7 @@ const { testWindow } = require("./test-window.cjs");
     for(const [folder,preferences] of [['updates',{automatic:false,installOnQuit:false}],['knowledge-v1',{automatic:false,checked:{}}]]){
       await fs.mkdir(path.join(data,folder),{recursive:true});await fs.writeFile(path.join(data,folder,'preferences.json'),JSON.stringify(preferences));
     }
-    await fs.writeFile(path.join(data,'package.json'),JSON.stringify({name:'synthetic-native-map-setup',version:'0.12.3',main:'fixture.cjs'}));
+    await fs.writeFile(path.join(data,'package.json'),JSON.stringify({name:'synthetic-native-map-setup',version:releaseVersion,main:'fixture.cjs'}));
     await fs.writeFile(path.join(data,'fixture.cjs'),`const load=require('node:module').createRequire(${JSON.stringify(path.join(repo,'package.json'))});globalThis.mapSetup={providers:0,keys:0,game:0,external:0};load('./src/core/catalog-cache.cjs').CatalogCache.prototype.get=async()=>({models:[],source:'synthetic'});load('./src/core/model-catalog.cjs').listModels=async()=>({models:[]});load('./src/core/claude.cjs').status=async()=>({installed:false,loggedIn:false});load('./src/core/providers.cjs').ask=async()=>{mapSetup.providers++;throw Error('No provider');};load('./src/core/store.cjs').Store.prototype.getKey=function(){mapSetup.keys++;return '';};load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});load('./src/core/game-runtime.cjs').GameRuntime.prototype.launch=async()=>{mapSetup.game++;throw Error('No game');};load('./src/core/game-sync.cjs').GameSync.prototype.discover=async()=>[{id:'synthetic',label:'Synthetic Forever',path:${JSON.stringify(game)}}];load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});load('./src/core/voice.cjs').VoiceService.prototype.readCapabilities=async()=>({status:'unavailable',recognition:{available:false,cultures:[]},synthesis:{available:false,voices:[]}});load('electron').clipboard.writeText=()=>{mapSetup.external++;};load('electron').shell.openExternal=async()=>{mapSetup.external++;};load('./src/core/knowledge-cache.cjs').KnowledgeService.prototype.maybeRefresh=function(){};load('./src/core/updater.cjs').Updater.prototype.start=function(){};load('./src/main.cjs');`);
     app = await electron.launch({
       args: [data],
@@ -107,7 +108,7 @@ const { testWindow } = require("./test-window.cjs");
           level: 18,
           faction: "Alliance",
           updatedAt: now,
-          captureVersion:'0.12.3',clientBuild:'1.60.1.70888',
+          captureVersion:releaseVersion,clientBuild:'1.60.1.70888',
           gathering:{schemaVersion:1,status:'unavailable',recording:false,observedAt:now,limited:false,totalRecords:0,records:[]},
           location: { zone: "Synthetic Forest", subZone: "Camp" },
           progress: { current: 250, max: 1000 },
@@ -140,6 +141,8 @@ const { testWindow } = require("./test-window.cjs");
       25,
     );
     assert.equal((await page.evaluate(()=>window.backstage.gameStatus())).loadedGatheringSchema,1);
+    assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).version,releaseVersion);
+    assert.equal((await page.evaluate(()=>window.backstage.gameStatus())).loadedCaptureVersion,releaseVersion);
     assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).state.profiles[0].gathering.status,'unavailable');
     await page.screenshot({path:path.join(captures,'setup-new-format-saved-character.png'),fullPage:true});
     for (const section of ["Adventure", "Characters", "AI Companion", "Game Connection", "Connections", "Field Guide", "Updates"]) {
@@ -185,7 +188,7 @@ const { testWindow } = require("./test-window.cjs");
     assert.deepEqual(cspErrors, []);
     assert.equal((await page.evaluate(()=>window.backstage.gameStatus())).loadedGatheringSchema,null);
     const counters=await app.evaluate(()=>mapSetup);assert.deepEqual(counters,{providers:0,keys:0,game:0,external:0});
-    await fs.writeFile(path.join(captures,'manifest.json'),JSON.stringify({kind:'synthetic-source-setup-only',version:'0.12.3',files:12,receipt:'null before valid save, 1 for schema, null after source replacement',liveClientCertified:false,counters},null,2));
+    await fs.writeFile(path.join(captures,'manifest.json'),JSON.stringify({kind:'synthetic-source-setup-only',version:releaseVersion,files:12,receipt:'null before valid save, 1 for schema, null after source replacement',liveClientCertified:false,counters},null,2));
     console.log(
       "PASS: first-run single-install preparation, exact twelve-file readback and connected schema receipt, no-snapshot entry, auto-import, quest/XP briefing, explicit AI drafting, reduced motion and reopenable setup.",
     );

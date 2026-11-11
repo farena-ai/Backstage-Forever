@@ -54,7 +54,7 @@ Grok subscription remains unavailable because the tools/hooks isolation boundary
 
 The public GitHub preview release channel is independent of app-store testing tracks. Update manifests use pinned Ed25519 integrity and installer hash/size checks. The installer is still unsigned with Windows Authenticode. Clean-machine installation, real installed self-upgrade/uninstall, keyboard and screen-reader acceptance remain separate gates. No publication or successful live upgrade is certified by this page.
 
-## Native adventure map foundation (0.12.3 local review)
+## Native adventure map foundation (0.13 preview)
 
 The own pin XML mixes the complete native map-pin base during engine frame creation, before the native pool calls `SetOwningMap`. The provider attaches passively when the real world-map frame/base/template are available, explicitly refreshes an already-visible map, and removes only its own pins. No map opening, addon forcing, polling, input simulation or tracking changes are used. Synthetic fixtures cover actual provider/acquire/release order, properties-backed vectors, late attachment, same-map points, filters and stale callbacks. This is source-contract evidence against the inspected 70862 UI mirror; current 70888 client rendering, zoom, interaction and performance remain unverified owner gates before 1.0.
 
@@ -62,7 +62,7 @@ The native minimum is current/qualified quest markers, the existing seven acquis
 
 Recording is intentionally narrow: known English target-name/object relations, own Mining 2576 or Herbalism 2368 cast, a single readable GameObject loot source and material evidence within bounded time/map/displacement checks. Unknown locales, missing targets, corpses, containers, competing sources and protected values are skipped. Saved findings are approximate past standing points, never active resource presence or quantity collected. Real mining and herbalism capture each need owner-led observation; a synthetic fixture does not certify the client.
 
-`loadedGatheringSchema: 1` is a connected valid saved-format receipt only; `null` means no such current receipt. It can be 1 with an empty or capability-unavailable gathering block. Missing/invalid/unreadable saved data cannot claim feature loading, and imported backups do not reconnect a source. Files prepared, saved format received and live client acceptance are three different facts. Source version remains 0.12.3; 1.0 is held.
+`loadedGatheringSchema: 1` is a connected valid saved-format receipt only; `null` means no such current receipt. It can be 1 with an empty or capability-unavailable gathering block. Missing/invalid/unreadable saved data cannot claim feature loading, and imported backups do not reconnect a source. Files prepared, saved format received and live client acceptance are three different facts. Preview version is 0.13.0; 1.0 is held.
 
 ## Desktop Map qualification
 

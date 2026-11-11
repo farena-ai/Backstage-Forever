@@ -1,6 +1,6 @@
 # Forever travel guidance
 
-This local, unreleased reference answers a small set of Forever trips with dated evidence. Ask a trip in Companion to see conditional route cards, source details and a manual Save trip plan action. Recognized travel works without a model or provider connection and makes no inference or credential request. Public 0.12.3 and the held 1.0 release are unchanged.
+This 0.13 preview reference answers a small set of Forever trips with dated evidence. Ask a trip in Companion to see conditional route cards, source details and a manual Save trip plan action. Recognized travel works without a model or provider connection and makes no inference or credential request. 1.0 remains held for hands-on acceptance.
 
 ## A beginner's Orgrimmar to Thunder Bluff trip
 
