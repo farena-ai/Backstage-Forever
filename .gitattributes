@@ -23,4 +23,7 @@ data/forever-travel/LICENSE-CC-BY-4.0.txt text eol=lf whitespace=-blank-at-eof
 data/forever-acquisition/*.json text eol=lf
 data/forever-acquisition/LICENSE text eol=lf whitespace=-blank-at-eof
 data/forever-acquisition/NOTICE.md text eol=lf
+data/forever-npc-locations/*.json text eol=lf
+data/forever-npc-locations/LICENSE text eol=lf whitespace=-blank-at-eof
+data/forever-npc-locations/NOTICE text eol=lf
 addon/BackstageForever/BackstageForeverAcquisition.lua text eol=lf linguist-generated=true
