@@ -60,6 +60,8 @@ jobs:
       - run: npm run test:voice-memory
       - run: npm run test:travel-companion
       - run: npm run test:npc-companion
+      - run: npm run test:companion-tools
+      - run: npm run test:live-link
       - run: npm run test:conversation
       - run: npm run test:companion-recovery
       - run: npm run test:player-shell

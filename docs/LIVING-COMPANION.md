@@ -76,9 +76,9 @@ New addon files need initial activation at game launch or a voluntary UI reload.
 Saved snapshots only reach the desktop when WoW writes them (logout, exit or `/reload`). The optional **live game link** closes that gap while you play.
 
 1. In Backstage Forever, open **Settings → Game connection** and turn on **Read my live position from the game window**.
-2. In WoW, type **/bf live on** once. That choice is remembered for your account. Type **/bf live off** to stop.
+2. In WoW, type **/bf live on** once. That choice is remembered per character. Type **/bf live off** to stop.
 
-The addon then shows a tiny colour strip (about 144 × 4 pixels) in the top-left corner of the game window. It updates a few times a second, only when something changes. The strip carries:
+The addon then shows a tiny colour strip (about 160 × 4 pixels) in the top-left corner of the game window. It updates a few times a second, only when something changes. The strip carries:
 
 - your map, position and facing
 - level, health and XP

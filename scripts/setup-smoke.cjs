@@ -190,7 +190,7 @@ const { testWindow } = require("./test-window.cjs");
     const counters=await app.evaluate(()=>mapSetup);assert.deepEqual(counters,{providers:0,keys:0,game:0,external:0});
     await fs.writeFile(path.join(captures,'manifest.json'),JSON.stringify({kind:'synthetic-source-setup-only',version:releaseVersion,files:12,receipt:'null before valid save, 1 for schema, null after source replacement',liveClientCertified:false,counters},null,2));
     console.log(
-      "PASS: first-run single-install preparation, exact twelve-file readback and connected schema receipt, no-snapshot entry, auto-import, quest/XP briefing, explicit AI drafting, reduced motion and reopenable setup.",
+      "PASS: first-run single-install preparation, exact thirteen-file readback and connected schema receipt, no-snapshot entry, auto-import, quest/XP briefing, explicit AI drafting, reduced motion and reopenable setup.",
     );
   } finally {
     if (app) await app.close();

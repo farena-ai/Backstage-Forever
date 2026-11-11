@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.0 — tool-using AI and live game link, 2026-11-11
+
+- AI questions can call seven bounded, read-only local lookups (NPCs, quests with objective NPC locations, items/vendors, travel, approved character, live state, waypoint command) across every provider transport, with a lookup trail on each answer. Models that reject tools get one plain retry on the same provider and model.
+- Optional live game link: `/bf live on` draws a calibrated 40-cell status strip; the desktop reads only that strip (about 2 Hz) to know current position, facing, level, target, tracked quest, XP and bag space. Combat freezes details; protected client values stay unknown. No input, memory reads, screenshots or network.
+- Verified in the real Forever client: fixed protected-value arithmetic and quest log return handling found during the hands-on check; added `/bf live status` diagnostics.
+- Managed addon set is now thirteen files. New gates `test:companion-tools` and `test:live-link`. App/lock, TOC and capture metadata align at 0.14.0 preview. **1.0 remains held.**
+
 ## 0.13.7 — packaged validation shutdown and cleanup, 2026-11-11
 
 - Preserve the unpublished 0.13.6 tag, notes and failed receipt. Its packaged application passed startup/restart, 133 reviewed byte matches, SDK loading and twelve-file addon install/readback/repair, then Windows blocked deletion of the disposable test executable.

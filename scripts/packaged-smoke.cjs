@@ -210,6 +210,7 @@ async function sourceFiles(folder, prefix = "src") {
     "BackstageForeverMap.xml",
       "BackstageForever.lua",
       "BackstageForeverHUD.lua",
+      "BackstageForeverLive.lua",
     ];
     for (const name of owned)
       assert.equal(
