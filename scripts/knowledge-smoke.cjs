@@ -21,6 +21,27 @@ function currentQuestPaint({ id, previous }) {
     rowIntent.profileId === selectedProfile && copyIntent.profileId === selectedProfile &&
     rowIntent.generation === copyIntent.generation);
 }
+async function prepareCurrentSourceSpace(page,id){
+ return page.evaluate(id=>{
+  const matches=document.querySelectorAll('.quest-source summary');
+  if(matches.length!==1)throw Error('Expected one current quest source disclosure');
+  const node=matches[0],key=node.dataset.interactionKey;
+  const [profileId,questId,kind]=JSON.parse(key||'null');
+  if(!node.isConnected||node.dataset.questControl!==`source:${id}`||questId!==id||kind!=='quest-source'||profileId!==document.querySelector('#active-character')?.value)throw Error('Source disclosure is not owned by the current quest and character');
+  node.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});node.focus({preventScroll:true});
+  const rect=node.getBoundingClientRect();
+  if(document.activeElement!==node||!rect.width||!rect.height||rect.bottom<=0||rect.top>=innerHeight)throw Error('Current source disclosure must be visible and own focus before Space');
+  window.atlasSourcePreparedSummary=node;window.atlasHeldSummary=null;window.atlasToggles=0;window.atlasSourceKeydown=null;
+  // Idle paints may replace preparation nodes. The physical keydown owns the
+  // original node for every held-input/toggle assertion after the press begins.
+  document.addEventListener('keydown',event=>{
+   const target=event.target;window.atlasHeldSummary=target;
+   window.atlasSourceKeydown={code:event.code,trusted:event.isTrusted,connected:target.isConnected,focused:target===document.activeElement,summary:target.matches('.quest-source summary'),control:target.dataset.questControl,key:target.dataset.interactionKey};
+   target.parentElement.addEventListener('toggle',()=>window.atlasToggles++);
+  },{once:true,capture:true});
+  return {control:node.dataset.questControl,key};
+ },id);
+}
 function shortPath(target){
   const script=`Add-Type -TypeDefinition 'using System; using System.Text; using System.Runtime.InteropServices; public static class AtlasShortPath { [DllImport("kernel32.dll",CharSet=CharSet.Unicode)] public static extern uint GetShortPathName(string path,StringBuilder result,uint length); }'; $buffer=New-Object System.Text.StringBuilder 4096; $length=[AtlasShortPath]::GetShortPathName($env:BF_ATLAS_FIXTURE_PATH,$buffer,4096); if($length -eq 0 -or $length -ge 4096){throw 'Short path unavailable'}; $buffer.ToString()`;
   const alias=require('node:child_process').execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{env:{...process.env,BF_ATLAS_FIXTURE_PATH:target},encoding:'utf8',timeout:15000}).trim();
@@ -494,13 +515,27 @@ function shortPath(target){
     );
     assert.ok(await page.locator('.rail nav').evaluateAll(nodes=>nodes.every(n=>n.scrollWidth<=n.clientWidth)),"Navigation must never gain a horizontal scroll axis");
     // Real native disclosure, menu and search selection survive root and region paints.
-    const sourceSummary=page.locator('.quest-source summary');await sourceSummary.scrollIntoViewIfNeeded();await sourceSummary.focus();
-    await sourceSummary.evaluate(n=>{window.atlasHeldSummary=n;window.atlasToggles=0;n.parentElement.addEventListener('toggle',()=>window.atlasToggles++);});
-    await page.keyboard.down('Space');await page.evaluate(()=>render());assert.ok(await sourceSummary.evaluate(n=>n===window.atlasHeldSummary));await page.keyboard.up('Space');
+    const sourceSummary=page.locator('.quest-source summary'),idleSource=await sourceSummary.elementHandle();
+    await page.evaluate(()=>render());
+    assert.equal(await idleSource.evaluate(n=>n.isConnected),false,'Accepted idle root paint retires the resolved preparation node before scrolling');
+    await assert.rejects(idleSource.scrollIntoViewIfNeeded(),/not attached to the DOM/);await idleSource.dispose();
+    const sourceTarget=await prepareCurrentSourceSpace(page,5730);
+    // A second accepted idle paint after preparation must retain semantic focus;
+    // the following physical keydown must capture its actual replacement node.
+    await page.evaluate(()=>render());
+    assert.equal(await page.evaluate(()=>atlasSourcePreparedSummary.isConnected),false,'The idle preparation node is replaced before the physical press');
+    assert.equal((await currentControlState(page,'.quest-source summary')).focused,true,'Current source disclosure retains semantic keyboard focus after idle paint');
+    await page.keyboard.down('Space');
+    try{
+      assert.deepEqual(await page.evaluate(()=>atlasSourceKeydown),{code:'Space',trusted:true,connected:true,focused:true,summary:true,...sourceTarget},'The true physical keydown owns the exact current source disclosure');
+      assert.equal(await page.evaluate(()=>atlasHeldSummary===atlasSourcePreparedSummary),false,'Keydown captures the current replacement, never an obsolete idle node');
+      await page.evaluate(()=>render());assert.ok(await sourceSummary.evaluate(n=>n===window.atlasHeldSummary));
+    }finally{await page.keyboard.up('Space');}
     await page.waitForFunction(()=>window.atlasToggles===1);assert.equal((await currentControlState(page,".quest-source summary")).focused,true);
     const disclosureOpen=(await currentControlState(page,".quest-source summary",{disclosure:true})).open;await page.evaluate(()=>render());assert.equal((await currentControlState(page,".quest-source summary",{disclosure:true})).open,disclosureOpen);
+    console.log('PASS: accepted idle root paints retire stale pre-scroll/pre-key nodes; atomic current preparation and true native Space keydown preserve exact held node, one toggle, semantic focus and disclosure choice.');
     const activeMenu=page.getByLabel('Active character',{exact:true});await activeMenu.click();await activeMenu.evaluate(n=>window.atlasHeldMenu=n);await page.evaluate(()=>render());assert.ok(await activeMenu.evaluate(n=>n===window.atlasHeldMenu));await page.keyboard.press('Escape');await search.focus();
-    const atlasNav=page.getByRole('button',{name:'Quests',exact:true});await atlasNav.focus();await page.evaluate(()=>render());
+    const atlasNav=page.getByRole('button',{name:'Quests',exact:true});await page.evaluate(()=>{const nodes=document.querySelectorAll('[data-shell-control="nav:quest-guide"]');if(nodes.length!==1)throw Error('Expected one current Quests navigation control');nodes[0].focus();if(document.activeElement!==nodes[0])throw Error('Current Quests navigation control must own focus');});await page.evaluate(()=>render());
     // A locator may resolve a node just before an accepted root replacement.
     // Keep this semantic focus check atomic; held native target checks above
     // deliberately retain their original-node assertions.
