@@ -52,7 +52,40 @@ test('actual capture emits empty typed schema, coalesces no-argument record sign
 });
 
 test('new competing loot before success rejects ambiguous attribution; repeated identical READY remains one record',()=>lua(`sent();loot();source='GameObject-0-1-2-3-1731-OTHER';loot();success();assert(count()==0);sent();loot();loot();success();assert(count()==1)`));
-test('private store retains128, exports64, deduplicates and preserves paused history across unavailable login APIs',()=>lua(`for i=1,140 do now=now+1;epoch=epoch+1;x=i/1000;sent();success();loot()end;assert(#BackstageForeverGatheringDB.records==128);assert(count()==64 and snap().totalRecords==128 and snap().limited);local last=snap().records[1].id;sent();success();loot();assert(#BackstageForeverGatheringDB.records==128 and snap().records[1].id==last);BackstageForeverGatheringSetRecording(false);local previous=owner;UnitGUID=function()return nil end;BackstageForeverGatheringSession('PLAYER_LOGIN');assert(#BackstageForeverGatheringDB.records==128);UnitGUID=function()return previous end;assert(count()==64 and not snap().recording)`));
+test('private store retains128, exports64, deduplicates and preserves paused history across unavailable login APIs',()=>lua(`
+-- Derive persisted history from a genuine collector result, then exercise only
+-- the boundary transitions instead of replaying 140 full interactions.
+sent();success();loot();assert(count()==1 and signals==1)
+local actual=BackstageForeverGatheringDB.records[1]
+local seeded={}
+for i=1,127 do
+ local r={};for k,v in pairs(actual)do r[k]=v end
+ r.itemIds={table.unpack(actual.itemIds)};r.x=i/1000;r.observedAt=epoch-127+i
+ r.id='wowf:mining:1731:1411:'..math.floor(r.x*10000+.5)..':4000:1.60.1.70888'
+ seeded[i]=r
+end
+local oldest,second,third=seeded[1].id,seeded[2].id,seeded[3].id
+BackstageForeverGatheringDB={schemaVersion=1,recording=true,records=seeded}
+BackstageForeverGatheringSession('PLAYER_LOGIN')
+assert(#BackstageForeverGatheringDB.records==127,'Every seeded record must pass real persisted-history validation')
+assert(count()==64 and snap().totalRecords==127 and snap().limited)
+for i=128,130 do
+ now=now+1;epoch=epoch+1;x=i/1000;sent();success();loot()
+ assert(#BackstageForeverGatheringDB.records==128,'128 retained cap across first fill and overflow')
+end
+assert(signals==4,'Only one seed-producing and three cap-crossing real interactions')
+local ids={};for _,r in ipairs(BackstageForeverGatheringDB.records)do assert(not ids[r.id]);ids[r.id]=true end
+assert(not ids[oldest] and not ids[second] and ids[third],'Overflow evicts exactly the two oldest records')
+local exported=snap();assert(#exported.records==64 and exported.totalRecords==128 and exported.limited)
+assert(exported.records[1].x==.130 and exported.records[64].x==.067,'Export keeps newest 64 in order')
+local last=exported.records[1].id;sent();success();loot()
+assert(#BackstageForeverGatheringDB.records==128 and snap().records[1].id==last,'Repeated observation deduplicates at retention cap')
+BackstageForeverGatheringSetRecording(false);local previous=owner;UnitGUID=function()return nil end
+BackstageForeverGatheringSession('PLAYER_LOGIN');assert(#BackstageForeverGatheringDB.records==128)
+UnitGUID=function()return previous end;assert(count()==64 and not snap().recording)
+local clear=BackstageForeverGatheringClearAction();assert(type(clear)=='function');clear()
+assert(count()==0 and snap().totalRecords==0 and not snap().limited and not snap().recording,'Explicit clear removes retained history without enabling recording')
+`));
 
 test('actual capture budget trims optional gathering before workshop/quests and preserves native retained history',()=>{
  const at=1600000000;

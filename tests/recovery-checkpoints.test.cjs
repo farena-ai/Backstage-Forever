@@ -3,8 +3,9 @@ const test = require("node:test"), assert = require("node:assert/strict"), fs = 
 const { defaultState } = require("../src/core/validation.cjs");
 const modulePath = "../src/core/recovery-checkpoints.cjs";
 function fixture(t, options = {}) {
-  const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "bf-recovery-"));
-  t.after(() => { assert.equal(path.dirname(fs.realpathSync(dir)), fs.realpathSync(os.tmpdir())); fs.rmSync(dir, { recursive: true, force: true }); });
+  const tempRoot = fs.realpathSync.native(os.tmpdir());
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "bf-recovery-")));
+  t.after(() => { assert.equal(path.dirname(fs.realpathSync.native(dir)), tempRoot); assert.ok(path.basename(dir).startsWith("bf-recovery-")); fs.rmSync(dir, { recursive: true, force: true }); });
   assert.ok(fs.existsSync(path.resolve(__dirname, modulePath)), "recovery manager must exist");
   const { RecoveryCheckpoints } = require(modulePath);
   let now = Date.parse("2026-11-10T12:00:00.000Z");
@@ -99,8 +100,9 @@ test("untrusted managed envelopes cannot exceed the aggregate read budget", t =>
 for (const boundary of ["promotion", "eviction", "last-eviction"]) test(`process exit at ${boundary} keeps bounded usable points and later capture recovers`, t => {
   const { dir, manager } = fixture(t); for (const value of ["a", "b", "c"]) manager.create(state(value.repeat(100)), "manual");
   const points = manager.list(), budget = points.reduce((n, p) => n + p.bytes, 0), input = state("d".repeat(500)); fs.writeFileSync(path.join(dir, "next-input.json"), JSON.stringify(input));
-  const script = `const fs=require('node:fs'),path=require('node:path'); const {RecoveryCheckpoints}=require(process.argv[1]); const dir=process.argv[2], boundary=process.argv[3], budget=Number(process.argv[4]); const originalRename=fs.renameSync, originalUnlink=fs.unlinkSync;let removed=0; fs.renameSync=function(a,b){const result=originalRename(a,b);if(boundary==='promotion'&&path.dirname(b)===path.join(dir,'recovery')&&/^[a-f0-9-]{36}\\.json$/.test(path.basename(b)))process.exit(73);return result;};fs.unlinkSync=function(file){const result=originalUnlink(file);if(/^[a-f0-9-]{36}\\.json$/.test(path.basename(file))){removed++;if(boundary==='eviction'||boundary==='last-eviction'&&removed===2)process.exit(74);}return result;};new RecoveryCheckpoints(dir,{now:()=>Date.parse('2026-11-10T12:00:01.000Z'),maxTotalBytes:budget}).create(JSON.parse(fs.readFileSync(path.join(dir,'next-input.json'))),'manual');`;
+  const script = `const fs=require('node:fs'),path=require('node:path'); const {RecoveryCheckpoints}=require(process.argv[1]); const dir=fs.realpathSync.native(process.argv[2]), boundary=process.argv[3], budget=Number(process.argv[4]); const originalRename=fs.renameSync, originalUnlink=fs.unlinkSync;let removed=0; fs.renameSync=function(a,b){const result=originalRename(a,b);if(boundary==='promotion'&&path.dirname(b)===path.join(dir,'recovery')&&/^[a-f0-9-]{36}\\.json$/.test(path.basename(b))){fs.writeFileSync(path.join(dir,'fault-hit.json'),JSON.stringify({boundary,code:73}));process.exit(73);}return result;};fs.unlinkSync=function(file){const result=originalUnlink(file);if(/^[a-f0-9-]{36}\\.json$/.test(path.basename(file))){removed++;if(boundary==='eviction'||boundary==='last-eviction'&&removed===2){fs.writeFileSync(path.join(dir,'fault-hit.json'),JSON.stringify({boundary,code:74}));process.exit(74);}}return result;};new RecoveryCheckpoints(dir,{now:()=>Date.parse('2026-11-10T12:00:01.000Z'),maxTotalBytes:budget}).create(JSON.parse(fs.readFileSync(path.join(dir,'next-input.json'))),'manual');`;
   const result = require("node:child_process").spawnSync(process.execPath, ["-e", script, path.resolve(__dirname, modulePath), dir, boundary, String(budget)], { encoding: "utf8", timeout: 10000 }); assert.equal(result.status, boundary === "promotion" ? 73 : 74, result.stderr);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, "fault-hit.json"))), { boundary, code: result.status }, "The requested crash injection must actually execute");
   const permanent = fs.readdirSync(path.join(dir, "recovery")).filter(n => n.endsWith(".json")); assert.ok(permanent.length >= 1 && permanent.length <= 3); assert.ok(permanent.reduce((sum, name) => sum + fs.statSync(path.join(dir, "recovery", name)).size, 0) <= budget);
   const { RecoveryCheckpoints } = require(modulePath), restarted = new RecoveryCheckpoints(dir, { now: () => Date.parse("2026-11-10T12:00:02.000Z"), maxTotalBytes: budget });
   const entries = fs.readdirSync(path.join(dir, "recovery")); assert.ok(restarted.list().length >= 1); assert.deepEqual(fs.readdirSync(path.join(dir, "recovery")), entries, "list does not reconcile files during failed startup");
@@ -109,12 +111,16 @@ for (const boundary of ["promotion", "eviction", "last-eviction"]) test(`process
 test("failed promotion restores evicted bytes and cleanup refusal cannot accumulate stages", t => {
   const { dir, manager } = fixture(t); for (const value of ["a", "b", "c"]) manager.create(state(value), "manual");
   const recoveryDir = path.join(dir, "recovery"), files = fs.readdirSync(recoveryDir), original = new Map(files.map(name => [name, fs.readFileSync(path.join(recoveryDir, name))]));
-  const rename = fs.renameSync; fs.renameSync = (from, to) => { if (path.dirname(to) === recoveryDir && to.endsWith(".json") && !files.includes(path.basename(to))) throw Object.assign(Error("synthetic promotion denial"), { code: "EACCES" }); return rename(from, to); };
+  let promotionHits = 0;
+  const rename = fs.renameSync; fs.renameSync = (from, to) => { if (path.dirname(to) === recoveryDir && to.endsWith(".json") && !files.includes(path.basename(to))) { promotionHits++; throw Object.assign(Error("synthetic promotion denial"), { code: "EACCES" }); } return rename(from, to); };
   try { assert.throws(() => manager.create(state("replacement"), "manual")); } finally { fs.renameSync = rename; }
+  assert.equal(promotionHits, 1, "The promotion denial must hit the actual canonical destination");
   assert.deepEqual(fs.readdirSync(recoveryDir).sort(), files.sort()); for (const [name, bytes] of original) assert.deepEqual(fs.readFileSync(path.join(recoveryDir, name)), bytes);
   const stem = files[0], staged = path.join(recoveryDir, stem + "." + crypto.randomUUID() + ".tmp"); fs.writeFileSync(staged, original.get(stem));
-  const before = fs.readdirSync(recoveryDir), unlink = fs.unlinkSync; fs.unlinkSync = file => { if (file === staged) throw Object.assign(Error("synthetic stage cleanup denial"), { code: "EPERM" }); return unlink(file); };
+  let cleanupHits = 0;
+  const before = fs.readdirSync(recoveryDir), unlink = fs.unlinkSync; fs.unlinkSync = file => { if (file === staged) { cleanupHits++; throw Object.assign(Error("synthetic stage cleanup denial"), { code: "EPERM" }); } return unlink(file); };
   try { for (let i = 0; i < 3; i++) { assert.throws(() => manager.create(state("retry" + i), "manual")); assert.deepEqual(fs.readdirSync(recoveryDir), before); } } finally { fs.unlinkSync = unlink; }
+  assert.equal(cleanupHits, 3, "Each retry must hit the actual canonical staged file");
 });
 test("an interrupted raw-original preservation cannot accumulate another private stage", t => {
   const { dir, manager } = fixture(t), point = manager.create(state(), "manual"); fs.writeFileSync(path.join(dir, "state.json"), "damaged journal");

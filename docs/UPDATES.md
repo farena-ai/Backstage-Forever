@@ -10,7 +10,9 @@ With automatic checks off, a manual check may still download an authenticated ne
 
 ## The 0.13 preview
 
-Installed 0.12.3 can receive 0.13.0 through this existing authenticated preview channel once its release is published. Open **Updates → Check now** in the older app, then choose when to install. No forced restart is added; existing automatic download/install-on-exit preferences still apply. This delivers the reviewed Proactive Compass, Professions, Map and companion improvements; 1.0 stays held for hands-on acceptance. See [0.13 release notes](releases/0.13.0.md). Preparing the version and CI is not proof of publication, authenticated public download or a successful installed upgrade; those results are recorded separately.
+The 0.13.0 candidate failed automated validation before publication. Its tag is preserved; 0.13.1 contains the CI fixture corrections and is the next publication candidate. No manual 0.13.0 installation is needed.
+
+Installed 0.12.3 can receive 0.13.1 through this existing authenticated preview channel once its release is published. Open **Updates → Check now** in the older app, then choose when to install. No forced restart is added; existing automatic download/install-on-exit preferences still apply. This delivers the reviewed Proactive Compass, Professions, Map and companion improvements; 1.0 stays held for hands-on acceptance. See [0.13 release notes](releases/0.13.1.md). Preparing the version and CI is not proof of publication, authenticated public download or a successful installed upgrade; those results are recorded separately.
 
 ## Recovering a failed update
 
@@ -33,10 +35,10 @@ Only explicit `vMAJOR.MINOR.PATCH` tag pushes trigger `.github/workflows/release
 The protected repository secret `BF_UPDATE_SIGNING_KEY` holds the Ed25519 private PEM and is exposed only to the signing step. The public key is `assets/update-public-key.pem`. Private keys are never committed, copied into build assets, passed as command-line arguments, or printed. Local release signing uses the owner's protected DPAPI key helper to supply this same environment variable only in memory:
 
 ```text
-node scripts/sign-update.cjs --installer <installer-path> --version 0.13.0 --output <new-manifest-path>
+node scripts/sign-update.cjs --installer <installer-path> --version 0.13.1 --output <new-manifest-path>
 ```
 
-The installer basename must be `Backstage-Forever-0.13.0-Windows-x64-Setup.exe`. The signer rejects a non-Ed25519 key, a key that does not match the bundled public key, incorrect filenames, invalid versions, empty installers or installers over 512 MiB, and existing output files. Never set a production private key in a shell command or shell history.
+The installer basename must be `Backstage-Forever-0.13.1-Windows-x64-Setup.exe`. The signer rejects a non-Ed25519 key, a key that does not match the bundled public key, incorrect filenames, invalid versions, empty installers or installers over 512 MiB, and existing output files. Never set a production private key in a shell command or shell history.
 
 ## Recovery and key rotation
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.1 — preview delivery correction, 2026-11-11
+
+- The 0.13.0 candidate failed CI before publication. Its tag and evidence remain unchanged; this patch prepares the same reviewed features for the normal authenticated preview updater. Installed 0.12.3 can update directly once published.
+- Corrected recovery fault-injection fixtures to use native Windows canonical paths, including genuine 8.3 temporary roots, with explicit proof that crash/promotion/cleanup injections execute. Production path guards and rollback/crash assertions remain unchanged.
+- Replaced 140 full gathering-fixture replays with validated persisted history derived from an actual collected record plus real cap-crossing interactions. Exact 128 retention, oldest eviction, newest 64 export, deduplication, paused/unavailable login and clear remain checked; the 20-second deadline is unchanged.
+- Aligned package/lock, TOC and emitted capture version at 0.13.1 preview. No product feature, dependency, data, schema, protocol or signing-trust change. 1.0 remains held for hands-on acceptance.
+
 ## 0.13.0 — installed Proactive Adventure preview, 2026-11-11
 
 - Delivers the reviewed local series through the existing authenticated preview updater: proactive native/last-saved desktop Compass, one Professions workshop, native BF Layers and last-saved desktop Map, five-section sidebar, reliable conversation, sourced travel, diagnostics and recovery. Earlier local-review entries below remain historical evidence.

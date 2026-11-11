@@ -7,11 +7,12 @@ const { newer } = require("../src/core/updater.cjs");
 const root = path.resolve(__dirname, "..");
 const read = (name) => fs.readFileSync(path.join(root, name), "utf8");
 
-test("installed preview advances beyond 0.12.3 with aligned package, lock and addon versions", () => {
+test("installed preview advances beyond the unpublished 0.13.0 candidate with aligned versions", () => {
   const pkg = JSON.parse(read("package.json"));
   const lock = JSON.parse(read("package-lock.json"));
   assert.equal(pkg.releaseChannel, "preview");
   assert.ok(newer(pkg.version, "0.12.3"), "Installed 0.12.3 must see a newer version");
+  assert.ok(newer(pkg.version, "0.13.0"), "The failed 0.13.0 tag remains unchanged; publish a newer patch");
   assert.ok(newer("1.0.0", pkg.version), "1.0 remains held for owner acceptance");
   assert.equal(lock.version, pkg.version);
   assert.equal(lock.packages[""].version, pkg.version);
