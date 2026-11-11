@@ -195,6 +195,71 @@ test("leveling, questing and unrelated questions never inherit old travel intent
       q,
     );
 });
+test("progression and talent transitions remain nontravel even after game correction", () => {
+  for (const q of [
+    "How do I get from level 10 to level 20?",
+    "How do I level from 10 to 20?",
+    "level 10 to 20",
+    "What talents should I take if I go from Beast Mastery to Survival?",
+    "How do I change talents from Beast Mastery to Survival?",
+    "How do I switch from Beast Mastery to Survival?",
+    "What is the fastest way to get from level 10 to level 20?",
+    "What leveling route should I use from 10 to 20?",
+  ]) {
+    assert.equal(intent(q, { profile: matching }), null, q);
+    assert.equal(
+      intent("This is for wow forever, not retail", {
+        previousQuestion: q,
+        profile: matching,
+      }),
+      null,
+      q,
+    );
+  }
+});
+test("real trips retain incidental progression words and unknown named destinations", () => {
+  for (const q of [
+    "At level 10, how do I get from org to tb?",
+    "With Survival talents, what is the fastest way from org to tb?",
+  ]) {
+    const i = intent(q);
+    assert.equal(i?.status, "ready", q);
+    assert.equal(i.originId, "orgrimmar");
+    assert.equal(i.destinationId, "thunder-bluff");
+  }
+  for (const q of [
+    "While choosing talents, how do I get from org to Darnassus?",
+    "With my talents, how do I travel from Darnassus to Exodar?",
+    "Darnassus to Exodar",
+  ]) {
+    const i = intent(q);
+    assert.ok(i, q);
+    assert.equal(
+      api().planTravel(reference, i, { profile: matching }).status,
+      "uncovered",
+      q,
+    );
+  }
+});
+test("via waypoints and chained destinations ask one trip question instead of inventing a place label", () => {
+  for (const q of [
+    "How do I get from org to tb via crossroads?",
+    "How do I get from org to tb to uc?",
+    "org to tb via crossroads",
+    "org to tb to uc",
+    "How to get to tb via crossroads from org?",
+    "How to get from org through crossroads to tb?",
+    "How do I get from org to Darnassus via Ironforge?",
+  ]) {
+    const i = intent(q, { profile: matching });
+    assert.equal(i?.reason, "ambiguous", q);
+    const r = api().planTravel(reference, i, { profile: matching });
+    assert.equal(r.status, "clarify", q);
+    assert.equal(r.options.length, 0);
+    assert.equal((r.text.match(/\?/g) || []).length, 1);
+  }
+  assert.equal(intent("How to get to tb from org?").status, "ready");
+});
 test("unknown explicit endpoint is retained without asking for the same destination again", () => {
   const i = intent("how do I get from org to Darnassus");
   assert.equal(i.destinationId, null);

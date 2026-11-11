@@ -64,11 +64,33 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
     /\b(?:quest|level)\s+next\b/i.test(q)
   )
     return null;
+  const forward = q.match(/\bfrom\s+(.+?)\s+to\s+(.+)$/i);
+  const reverse = q.match(/.*\bto\s+(.+?)\s+from\s+(.+)$/i);
+  const simple = q.match(/^([a-z '\-]+?)\s+to\s+(.+)$/i);
+  const barePair =
+    simple &&
+    !/\b(?:how|what|why|when|from|way|get|go|travel|walk|fly|boat|tram|zeppelin|route|want|need)\b/i.test(
+      simple[1],
+    );
+  const routeParts =
+    forward?.slice(1) || reverse?.slice(1) || (barePair ? simple.slice(1) : []);
+  const geographic =
+    /\b(?:travel|flight|fly|zeppelin|boat|tram)\b/i.test(q) ||
+    routeParts.some((part) => endpoint(part).id);
+  // Progression and spec changes also use from/to grammar. A named place or
+  // explicit transport request keeps incidental level/talent words harmless.
+  if (
+    !geographic &&
+    /\b(?:level(?:ing)?|lvl|talents?|specs?|specialization|respec|switch(?:ing)?|chang(?:e|ing))\b/i.test(
+      q,
+    )
+  )
+    return null;
   const travel =
-    /\b(?:travel|flight|fly|zeppelin|boat|tram|route|fastest way)\b/i.test(q) ||
+    geographic ||
+    /\b(?:route|fastest way)\b/i.test(q) ||
     /\b(?:get|go|walk)\b.*\b(?:to|from|there)\b/i.test(q) ||
-    /^[a-z '\-]+\s+to\s+[a-z '\-]+[?.!]?$/i.test(q) ||
-    /\bfrom\s+.+\s+to\s+/i.test(q);
+    barePair;
   if (!travel) return null;
   const result = {
     status: "clarify",
@@ -81,7 +103,10 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
     reason: "missing-endpoint",
     clarification: "What are your starting place and destination?",
   };
-  if (/\b(?:or|then|and)\b/i.test(q)) {
+  if (
+    /\b(?:or|then|and|via|through)\b/i.test(q) ||
+    routeParts.some((part) => /\bto\b/i.test(part))
+  ) {
     result.reason = "ambiguous";
     result.clarification =
       "Which single starting place and destination should I use for this trip?";
@@ -90,8 +115,6 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
   let from,
     to,
     explicit = false;
-  const forward = q.match(/\bfrom\s+(.+?)\s+to\s+(.+)$/i);
-  const reverse = q.match(/.*\bto\s+(.+?)\s+from\s+(.+)$/i);
   if (forward) {
     [, from, to] = forward;
     explicit = true;
@@ -100,13 +123,7 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
     from = reverse[2];
     explicit = true;
   } else {
-    const simple = q.match(/^([a-z '\-]+?)\s+to\s+(.+)$/i);
-    if (
-      simple &&
-      !/\b(?:how|what|way|get|go|travel|walk|fly|boat|tram|zeppelin|route|want|need)\b/i.test(
-        simple[1],
-      )
-    ) {
+    if (barePair) {
       from = simple[1];
       to = simple[2];
       explicit = true;

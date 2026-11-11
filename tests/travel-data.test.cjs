@@ -34,6 +34,14 @@ function reject(mutate) {
     /travel/i,
   );
 }
+function hasResearchOnlyMaster(nodes) {
+  return nodes.some((n) => n.flightMaster?.taxiNode === 77);
+}
+test("research-only master exclusion detects a nested node-77 mutation", () => {
+  const nodes = structuredClone(pack().nodes);
+  nodes[0].flightMaster.taxiNode = 77;
+  assert.equal(hasResearchOnlyMaster(nodes), true);
+});
 test("bounded shipped pack validates with six independent flights and original one-way curation", () => {
   const p = api().loadTravelReference(Buffer.from(JSON.stringify(pack())));
   assert.equal(p.product, "wowf");
@@ -50,7 +58,7 @@ test("bounded shipped pack validates with six independent flights and original o
   assert.equal(p.negatives.length, 1);
   assert.equal(p.negatives[0].from, "orgrimmar");
   assert.equal(p.itineraries.length, 1);
-  assert.ok(!p.nodes.some((n) => n.taxiNode === 77));
+  assert.equal(hasResearchOnlyMaster(p.nodes), false);
   assert.ok(!JSON.stringify(p).includes("worldX"));
 });
 test("validator rejects malformed JSON, oversized bytes, wrong schemas and unknown top-level keys", () => {
