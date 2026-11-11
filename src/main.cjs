@@ -601,6 +601,7 @@ app.whenReady().then(async () => {
   handle("liveLinkStatus", () => liveBridge.status());
   handle("setLiveLink", (enabled) => liveBridge.setEnabled(enabled));
   let travelReference;
+  let worldMap = null;
   try { travelReference = loadTravelReference(fs.readFileSync(path.join(__dirname, "..", "data", "forever-travel", "pack.json"))); } catch { travelReference = null; }
   const travel = new TravelCompanion({store, context: companionContext, reference: travelReference, openExternal: url => shell.openExternal(url), writeClipboard: text => clipboard.writeText(text)});
   handle("copyTravelGuidance", (...args) => travel.copyGuidance(...args));
@@ -615,6 +616,22 @@ app.whenReady().then(async () => {
     vendorPack: (()=>{try{return require('./core/vendor-facts.cjs').loadVendorPack();}catch{return null;}})(),
     acquisitionPack: (()=>{try{return require('./core/acquisition-data.cjs').loadAcquisitionPack();}catch{return null;}})(),
     onReset: (reason) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:conversationReset", reason); },
+  });
+  // World Map: one zone of pins plus live position, and a cross-zone finder.
+  worldMap = new (require("./core/world-map.cjs").WorldMap)({
+    getState: () => store.state, knowledge, npcReference: companionService.npcReference, travelReference,
+    vendorPack: companionService.vendorPack, insights, acquisitionPack: companionService.acquisitionPack, live: liveBridge,
+  });
+  handle("worldMap", (input) => worldMap.build(input || {}));
+  handle("worldMapSearch", (query) => worldMap.search(query));
+  handle("copyWaypoint", (input) => {
+    if (!input || typeof input !== "object") throw Error("Invalid waypoint.");
+    const { mapId, x, y } = input;
+    if (!Number.isSafeInteger(mapId) || mapId <= 0 || ![x, y].every((v) => Number.isFinite(v) && v >= 0 && v <= 1)) throw Error("Invalid waypoint.");
+    const label = typeof input.label === "string" ? input.label.replace(/[^\p{L}\p{N} '\-.,]/gu, "").slice(0, 60).trim() : "";
+    const command = `/bf way ${mapId} ${(x * 100).toFixed(1)} ${(y * 100).toFixed(1)}${label ? " " + label : ""}`;
+    clipboard.writeText(command);
+    return { command, message: "Waypoint copied. Paste it into WoW chat." };
   });
   handle("ask", (...args) => companionService.legacy(...args));
   handle("askCompanion", (...args) => companionService.ask(...args));

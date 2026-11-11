@@ -254,6 +254,28 @@ local function apply()
         if ok then paints=paints+1 lastError=nil else lastError=tostring(err) end
     end)
 end
+-- /bf way MapID X Y [label]: a native user waypoint plus the game's own navigation arrow.
+-- X and Y accept map percentages (51.5) or fractions (0.515). Never in combat.
+function BackstageForeverWay(message)
+    local say=function(m) if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..m) end end
+    if type(message)~='string' or #message>160 then return say('Use /bf way MapID X Y [name].') end
+    local map,x,y,label=message:match('^way%s+(%d+)%s+([%d%.]+)%s+([%d%.]+)%s*(.-)%s*$')
+    map,x,y=tonumber(map),tonumber(x),tonumber(y)
+    if not map or not x or not y then return say('Use /bf way MapID X Y [name], for example /bf way 1413 51.5 30.9 Thork.') end
+    if x>1 or y>1 then x,y=x/100,y/100 end
+    if x<0 or x>1 or y<0 or y>1 then return say('Coordinates must be between 0 and 100.') end
+    if call(InCombatLockdown) then return say('Waypoints wait until you leave combat.') end
+    local mapApi=public(C_Map)
+    if call(field(mapApi,'CanSetUserWaypointOnMap'),map)~=true then return say(('Cannot place a waypoint on map %d here; head to %.1f, %.1f.'):format(map,x*100,y*100)) end
+    local point=call(field(public(UiMapPoint),'CreateFromCoordinates'),map,x,y)
+    if not point then return say('Waypoint unavailable.') end
+    local ok=pcall(field(mapApi,'SetUserWaypoint'),point)
+    if not ok then return say('Waypoint unavailable.') end
+    local st=public(C_SuperTrack)
+    if type(field(st,'SetSuperTrackedUserWaypoint'))=='function' then pcall(st.SetSuperTrackedUserWaypoint,true) end
+    label=(label and label~='' and label:sub(1,60)) or 'waypoint'
+    say(('Waypoint set: %s at %.1f, %.1f. Follow the arrow on your minimap and screen.'):format(label,x*100,y*100))
+end
 function BackstageForeverLiveCommand(message)
     local arg=type(message)=='string' and message:lower():match('^live%s*(%a*)') or ''
     local s=settings()

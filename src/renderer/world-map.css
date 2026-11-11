@@ -1,0 +1,67 @@
+/* World Map: gilded frame, parchment map, quiet side panel. Original styling. */
+.world-map-page { display: flex; flex-direction: column; gap: 14px; }
+.wm-head { display: grid; grid-template-columns: 1fr minmax(260px, 420px) auto; gap: 14px; align-items: end; }
+.wm-banner { position: relative; padding: 10px 22px 12px; background: linear-gradient(180deg, #5a1a12, #3a0f0a); border: 2px solid #c9a24a; border-radius: 6px; box-shadow: inset 0 0 0 1px #2a0805, 0 6px 18px rgba(0,0,0,.45); }
+.wm-banner::before, .wm-banner::after { content: ""; position: absolute; top: 50%; width: 14px; height: 14px; background: #c9a24a; transform: translateY(-50%) rotate(45deg); box-shadow: 0 0 0 2px #2a0805; }
+.wm-banner::before { left: -8px; } .wm-banner::after { right: -8px; }
+.wm-banner-eyebrow { display: block; font: 600 11px/1 "Source Sans 3", sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #e9cf8a; opacity: .85; }
+.wm-banner h1 { margin: 4px 0 0; font: 700 30px/1.1 Cinzel, Georgia, serif; color: #fbe7b0; text-shadow: 0 2px 0 #1b0402, 0 0 18px rgba(255,200,90,.25); }
+.wm-live { display: inline-block; margin-top: 6px; font: 600 12px "Source Sans 3", sans-serif; color: #d9c79c; }
+.wm-live.on { color: #8ee08f; text-shadow: 0 0 8px rgba(120,230,120,.5); }
+.wm-search { display: flex; gap: 6px; }
+.wm-search input { flex: 1; padding: 9px 12px; border-radius: 4px; border: 1px solid #8a6a2c; background: #f3e6c4; color: #2a1a08; font: 15px "Source Sans 3", sans-serif; box-shadow: inset 0 2px 4px rgba(60,35,10,.25); }
+.wm-search button { padding: 8px 16px; }
+.wm-zone { display: flex; flex-direction: column; gap: 4px; font: 600 11px "Source Sans 3", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #d9c79c; }
+.wm-zone select { padding: 8px; min-width: 190px; background: #2a1a0c; color: #f3e3b8; border: 1px solid #8a6a2c; border-radius: 4px; font: 14px "Source Sans 3"; }
+.wm-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+.wm-frame { position: relative; padding: 14px; border-radius: 10px; background: linear-gradient(145deg, #3b2614, #1e1209); border: 2px solid #b8913f; box-shadow: inset 0 0 0 2px #120a04, inset 0 0 22px rgba(0,0,0,.6), 0 10px 30px rgba(0,0,0,.5); }
+.wm-frame::before { content: ""; position: absolute; inset: 6px; border: 1px solid rgba(232,200,120,.35); border-radius: 7px; pointer-events: none; }
+.wm-canvas { display: block; width: 100%; border-radius: 3px; cursor: grab; box-shadow: 0 0 0 1px #5c4320, 0 0 18px rgba(0,0,0,.6); }
+.wm-canvas:active { cursor: grabbing; }
+.wm-tools { position: absolute; top: 24px; right: 24px; display: flex; flex-direction: column; gap: 6px; }
+.wm-tools button { width: 34px; height: 34px; padding: 0; border-radius: 50%; font-size: 17px; line-height: 1; background: radial-gradient(circle at 35% 30%, #6a4a22, #2c1a0a); color: #f6dc9a; border: 1px solid #c9a24a; box-shadow: 0 2px 6px rgba(0,0,0,.6); }
+.wm-tip { position: absolute; z-index: 3; max-width: 260px; padding: 7px 10px; pointer-events: none; background: rgba(16,10,4,.94); border: 1px solid #c9a24a; border-radius: 4px; color: #f5e6bd; font: 13px "Source Sans 3", sans-serif; box-shadow: 0 6px 14px rgba(0,0,0,.5); }
+.wm-tip small { color: #cdb57a; }
+.wm-side { display: flex; flex-direction: column; gap: 12px; }
+.wm-card, .wm-results, .wm-legend { padding: 12px 14px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
+.wm-card h3, .wm-results h3, .wm-legend h3 { margin: 0 0 6px; font: 700 16px Cinzel, Georgia, serif; color: #3d220c; }
+.wm-card-empty { font-size: 14px; line-height: 1.45; }
+.wm-card-head { display: flex; gap: 10px; align-items: flex-start; }
+.wm-sub { margin: 0; font-style: italic; color: #5a3d18; }
+.wm-coords { margin: 8px 0 2px; font-weight: 700; }
+.wm-rel { margin: 2px 0 8px; }
+.wm-sells { font-size: 13px; color: #4a3214; }
+.wm-src, .wm-attrib { font-size: 11px; color: #6a5030; }
+.wm-attrib { color: #bfa878; }
+.wm-card-actions { margin: 8px 0; }
+.wm-results ol { list-style: none; margin: 0 0 8px; padding: 0; max-height: 300px; overflow: auto; }
+.wm-results li button { display: flex; gap: 8px; width: 100%; padding: 6px 4px; text-align: left; background: none; border: 0; border-bottom: 1px solid rgba(120,80,30,.25); color: inherit; cursor: pointer; }
+.wm-results li button:hover { background: rgba(255,240,200,.6); }
+.wm-results small { display: block; color: #5a3d18; }
+.wm-layer { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 14px; cursor: pointer; }
+.wm-layer small { margin-left: auto; color: #6a5030; }
+.wm-follow { color: #e9d7a8; }
+.wm-swatch { flex: none; display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #2a1c0c; box-shadow: inset -2px -2px 3px rgba(0,0,0,.35); }
+.wm-k-quest-turnin, .wm-k-quest-giver { background: #f6c445; }
+.wm-k-quest-objective { background: #d9442e; }
+.wm-k-flight { background: #4f8fd6; }
+.wm-k-trainer { background: #4f9d5a; }
+.wm-k-vendor { background: #a8743a; }
+.wm-k-herb { background: #5fae3c; border-radius: 50% 0; }
+.wm-k-ore { background: #9a8f86; border-radius: 3px; }
+.wm-k-find { background: #e8b33a; box-shadow: 0 0 6px #ffd76a; }
+.wm-k-npc { background: #5b4630; width: 10px; height: 10px; }
+.wm-k-town { background: #7a1f14; border-radius: 2px; transform: rotate(45deg); }
+@media (max-width: 1100px) { .wm-body { grid-template-columns: 1fr; } .wm-head { grid-template-columns: 1fr; } }
+
+/* Scope resets: keep the app's ornate global controls out of map cards. */
+.world-map-page .wm-legend label, .world-map-page .wm-layer { color: #2b1b0a; font-weight: 600; }
+.world-map-page .wm-layer input { accent-color: #7a1f14; }
+.world-map-page .wm-results li button { all: unset; box-sizing: border-box; display: flex; gap: 8px; width: 100%; padding: 7px 6px; cursor: pointer; border-bottom: 1px solid rgba(120,80,30,.25); color: #2b1b0a; }
+.world-map-page .wm-results li button:hover, .world-map-page .wm-results li button:focus-visible { background: rgba(255,240,200,.7); outline: none; }
+.world-map-page .wm-results li strong { display: block; font: 700 14px Cinzel, Georgia, serif; }
+.world-map-page .wm-results ol { overflow-x: hidden; }
+.world-map-page .wm-results[hidden] { display: none; }
+
+.world-map-page { min-width: 0; max-width: 100%; overflow-x: hidden; }
+.wm-body, .wm-head { min-width: 0; }

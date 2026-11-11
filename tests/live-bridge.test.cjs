@@ -235,3 +235,24 @@ local a=BackstageForeverLivePayload({seq=1,afk=false}) local b=BackstageForeverL
   for (const raw of [exportLine + settings, settings + exportLine]) assert.deepEqual(parseSavedVariables(raw).characters, []);
   for (const raw of [exportLine + 'Other = {\n}\n', exportLine + settings.replace("true", "loadstring('x')")]) assert.throws(() => parseSavedVariables(raw));
 });
+
+test("/bf way places a native waypoint and super-tracks it, refusing combat and bad input", () => {
+  const out = lua(String.raw`
+local set,tracked,msgs=nil,false,{}
+DEFAULT_CHAT_FRAME={AddMessage=function(_,m)msgs[#msgs+1]=m end}
+local fighting=false
+InCombatLockdown=function()return fighting end
+UiMapPoint={CreateFromCoordinates=function(m,x,y)return {m=m,x=x,y=y}end}
+C_Map={CanSetUserWaypointOnMap=function(m)return m==1413 end,SetUserWaypoint=function(p)set=p end}
+C_SuperTrack={SetSuperTrackedUserWaypoint=function(v)tracked=v end}
+dofile('addon/BackstageForever/BackstageForeverLive.lua')
+BackstageForeverWay('way 1413 51.5 30.4 Devrak')
+assert(set and set.m==1413 and math.abs(set.x-0.515)<1e-9 and math.abs(set.y-0.304)<1e-9 and tracked==true)
+assert(msgs[#msgs]:find('Devrak at 51.5, 30.4',1,true))
+set=nil fighting=true BackstageForeverWay('way 1413 0.5 0.5') assert(set==nil and msgs[#msgs]:find('combat'))
+fighting=false BackstageForeverWay('way 9999 50 50') assert(set==nil and msgs[#msgs]:find('Cannot place'))
+BackstageForeverWay('way 1413 150 20') assert(set==nil)
+BackstageForeverWay('way nonsense') assert(set==nil)
+print('ok')`);
+  assert.equal(out, "ok");
+});

@@ -61,7 +61,8 @@
     "check:forever-npc-locations": "node scripts/build-forever-npc-locations.cjs --check",
     "test:npc-companion": "node scripts/npc-companion-smoke.cjs",
     "test:companion-tools": "node scripts/companion-tools-smoke.cjs",
-    "test:live-link": "node scripts/live-link-smoke.cjs"
+    "test:live-link": "node scripts/live-link-smoke.cjs",
+    "test:world-map": "node --test tests/world-map.test.cjs && node scripts/world-map-smoke.cjs"
   },
   "devDependencies": {
     "electron": "45.2.3",

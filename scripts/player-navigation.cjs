@@ -4,6 +4,7 @@ const { beginRendererAction, finishRendererAction } = require("./renderer-action
 const routes = {
   adventure: ["Adventure", "Next step"],
   "quest-guide": ["Quests"],
+  "world-map": ["World Map"],
   assistant: ["Companion"],
   characters: ["Characters"],
   company: ["Plans", "My plans"],

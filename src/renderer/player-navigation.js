@@ -2,6 +2,7 @@
 window.PlayerNavigation = (() => {
   const primary = Object.freeze([
     ["adventure", "◈", "Adventure"],
+    ["world-map", "✥", "World Map"],
     ["quest-guide", "⌖", "Quests"],
     ["assistant", "✧", "Companion"],
     ["characters", "♙", "Characters"],

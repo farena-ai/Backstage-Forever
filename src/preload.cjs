@@ -76,6 +76,9 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.on("backstage:conversationReset", handler);
       return () => ipcRenderer.removeListener("backstage:conversationReset", handler);
     },
+    worldMap: (input) => invoke("worldMap", input),
+    worldMapSearch: (query) => invoke("worldMapSearch", query),
+    copyWaypoint: (input) => invoke("copyWaypoint", input),
     liveLinkStatus: () => invoke("liveLinkStatus"),
     setLiveLink: (enabled) => invoke("setLiveLink", enabled),
     onLiveLink: (listener) => {
