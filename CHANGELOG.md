@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.1 — pop-out radar, 2026-11-11
+
+- Always-on-top radar window around the live position with nearby pins and a tracked World Map target (direction, distance band, rim arrow); isolated preload/IPC; combat pauses details.
+- App/lock, TOC and capture metadata align at 0.15.1 preview. **1.0 remains held.**
+
 ## 0.15.0 — World Map, in-game finder and Instance Atlas, 2026-11-11
 
 - World Map page: original parchment cartography with the live arrow, trail and remembered paths; quest, flight, trainer, vendor, herb, ore and personal-find pins with clustering; "Near you"; cross-zone Find; waypoint copy.
