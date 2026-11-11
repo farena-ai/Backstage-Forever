@@ -10,7 +10,7 @@ With automatic checks off, a manual check may still download an authenticated ne
 
 ## The 0.13 preview
 
-Installed 0.12.3 can receive 0.13.0 through this existing authenticated preview channel once its release is published. Open **Settings → Updates → Check now**, then choose when to install. No forced restart is added; existing automatic download/install-on-exit preferences still apply. This delivers the reviewed Proactive Compass, Professions, Map and companion improvements; 1.0 stays held for hands-on acceptance. See [0.13 release notes](releases/0.13.0.md). Preparing the version and CI is not proof of publication, authenticated public download or a successful installed upgrade; those results are recorded separately.
+Installed 0.12.3 can receive 0.13.0 through this existing authenticated preview channel once its release is published. Open **Updates → Check now** in the older app, then choose when to install. No forced restart is added; existing automatic download/install-on-exit preferences still apply. This delivers the reviewed Proactive Compass, Professions, Map and companion improvements; 1.0 stays held for hands-on acceptance. See [0.13 release notes](releases/0.13.0.md). Preparing the version and CI is not proof of publication, authenticated public download or a successful installed upgrade; those results are recorded separately.
 
 ## Recovering a failed update
 
