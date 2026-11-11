@@ -5,6 +5,7 @@ const fs = require("node:fs/promises"),
   os = require("node:os");
 const crypto = require("node:crypto");
 const { testWindow } = require("./test-window.cjs");
+const { checkedPackagedRoot, closePackagedApp, cleanupPackagedRun } = require("./packaged-cleanup.cjs");
 function isInside(parent, target) {
   const relative = path.relative(parent, target);
   return relative !== "" && relative !== ".." &&
@@ -46,7 +47,7 @@ async function sourceFiles(folder, prefix = "src") {
   return result;
 }
 (async () => {
-  let app;
+  let app, successMessage;
   const repo = await fs.realpath(path.join(__dirname, ".."));
   const temp = await fs.realpath(os.tmpdir());
   const runRoot = await fs.mkdtemp(path.join(temp, "backstage-packaged-"));
@@ -65,6 +66,7 @@ async function sourceFiles(folder, prefix = "src") {
   try {
     assert.ok(!isInside(repo, runRoot) && runRoot !== repo,
       "Packaged acceptance must run outside the development checkout");
+    await checkedPackagedRoot(temp, runRoot);
     await fs.cp(path.join(repo, "dist", "win-unpacked"), appDir, { recursive: true });
     await fs.mkdir(path.join(data, "updates"), { recursive: true });
     await fs.mkdir(path.join(data, "knowledge-v1"), { recursive: true });
@@ -227,7 +229,7 @@ async function sourceFiles(folder, prefix = "src") {
       "BackstageForever",
     );
     await fs.writeFile(path.join(addonFolder, "player-extra.txt"), "preserve");
-    await app.close();
+    await closePackagedApp(app);
     app = null;
     await fs.unlink(path.join(addonFolder, "BackstageForeverHUD.lua"));
     await fs.unlink(path.join(addonFolder, "BackstageForeverCoach.lua"));
@@ -267,17 +269,11 @@ async function sourceFiles(folder, prefix = "src") {
       await fs.readFile(path.join(addonFolder, "player-extra.txt"), "utf8"),
       "preserve",
     );
-    console.log(
-      `PASS: outside-checkout packaged Windows startup/restart with the same isolated profile, ${sourceMatch.checked} reviewed source/data/key byte matches, offline quest reference, real SDK core loading and ${sdk.peers.length} contained runtime peers, automatic ${owned.length}-file addon install/readback and startup repair preserving unrelated files. No player data or credentials changed.`,
-    );
+    successMessage = `PASS: outside-checkout packaged Windows startup/restart with the same isolated profile, ${sourceMatch.checked} reviewed source/data/key byte matches, offline quest reference, real SDK core loading and ${sdk.peers.length} contained runtime peers, automatic ${owned.length}-file addon install/readback and startup repair preserving unrelated files. No player data or credentials changed.`;
   } finally {
-    if (app) await app.close();
-    const resolved = await fs.realpath(runRoot);
-    assert.equal(resolved, runRoot);
-    assert.ok(isInside(temp, resolved));
-    assert.ok(path.basename(resolved).startsWith("backstage-packaged-"));
-    await fs.rm(resolved, { recursive: true, force: true });
+    await cleanupPackagedRun({ app, temp, runRoot });
   }
+  console.log(successMessage);
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

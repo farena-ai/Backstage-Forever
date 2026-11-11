@@ -1,10 +1,10 @@
 # Validation — November 9, 2026
 
-## 0.13.6 NPC/reference validation
+## 0.13.7 NPC/reference validation
 
 The candidate combines connection timing fixes with local NPC lookup and bounded user-reported location context. The existing quest reference remains separately pinned; the new historical NPC bundle is checked offline and ships with its own attribution.
 
-Version 0.13.5 stopped before publication on the existing Company backend's explicit other-character public preview. Version 0.13.6 restores that read-only contract. Company, Director and Preparation backend checks must retain those calls, while active-report preview/send parity, privacy and selected-character send/memory guards remain required. Earlier tags, notes and receipts stay unchanged.
+Version 0.13.5 stopped before publication on the existing Company backend's explicit other-character public preview. Version 0.13.6 restored that contract and passed the packaged functional checks, then failed disposable TEMP executable cleanup with EBUSY. Version 0.13.7 fixes that test lifetime: await the exact child process close and finish bounded, ownership-checked cleanup before printing PASS. Functional packaged byte, SDK, startup/restart and addon assertions remain required; a stubborn cleanup error still fails. Earlier tags, notes and receipts stay unchanged.
 
 Run the existing gates plus:
 

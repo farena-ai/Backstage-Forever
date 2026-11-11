@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.7 — packaged validation shutdown and cleanup, 2026-11-11
+
+- Preserve the unpublished 0.13.6 tag, notes and failed receipt. Its packaged application passed startup/restart, 133 reviewed byte matches, SDK loading and twelve-file addon install/readback/repair, then Windows blocked deletion of the disposable test executable.
+- Wait for both application shutdown and the exact launched child process to close before restarting or removing the disposable packaged fixture. Revalidate its resolved TEMP parent and owned basename before copying/removing; no installed application or unrelated process is targeted.
+- Retry transient Windows sharing/executable locks within one bounded removal budget, and keep stubborn locks or shutdown errors as test failures. The final packaged PASS line now prints only after successful cleanup; all functional acceptance assertions remain intact.
+- Align app/lock, addon TOC, emitted capture and current documentation at 0.13.7 preview. No product behavior, dependency, data, game protocol, provider, audio or updater-trust changes beyond version metadata. **1.0 remains held for Frank's hands-on acceptance**; normal CI/build/publication and installed-updater proof remain separate gates.
+
 ## 0.13.6 — saved-character preview compatibility, 2026-11-11
 
 - Restore read-only public context previews for an explicitly named stored character while another character is selected. The 0.13.5 candidate failed this existing Company backend contract during Windows validation and was not published; its tag, notes and failed receipts remain unchanged.
