@@ -53,3 +53,13 @@ test('failure/refusal/invalid arguments never become history; exact keys and ari
  await assert.rejects(f.service.ask({provider:'ollama',prompt:'q',shareProfile:true,history:[]}));await assert.rejects(f.service.ask());await assert.rejects(f.service.ask({},{}));assert.throws(()=>f.service.clear('extra'));
  f.transport(async()=> 'Legacy text');assert.equal(await f.service.legacy({provider:'ollama',prompt:'Legacy quest',shareProfile:true}),'Legacy text');assert.equal(f.service.session.status().turns,2);
 });
+
+for(const boundary of ['question','answer'])test(`valid ${boundary} whitespace prefix cannot discard a successful answer or full conversation history`,async()=>{
+ const f=fixture(),question=(boundary==='question'?' '.repeat(1000):'')+'Where should I level?',answer=(boundary==='answer'?' '.repeat(2000):'')+'Check the saved quest log.';
+ f.transport(async input=>{f.seen.push(input);return answer;});
+ const result=await f.ask(question);assert.equal(f.seen[0].prompt,question);assert.equal(result.text,answer);assert.equal(f.service.session.status().turns,1);
+ const draft=f.memory.draft('Alpha');assert.equal(draft.question,question.trimStart());assert.equal(draft.answer,answer.trimStart());
+ await f.ask('Which quest next?');const quoted=f.seen[1].prompt.split('\n').find(line=>line.startsWith('[{'));
+ assert.deepEqual(JSON.parse(quoted),[{question,answer}],'Full original question and successful reply remain unchanged in recent history');
+ let release;f.transport(()=>new Promise(resolve=>release=resolve));const pending=f.ask(question),rejected=assert.rejects(pending,/no longer current/);f.context.invalidate('restore');release(answer);await rejected;assert.equal(f.memory.draft('Alpha'),null);assert.equal(f.service.session.status().turns,0);
+});

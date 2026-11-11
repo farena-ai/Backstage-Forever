@@ -4,6 +4,12 @@ const { object, text, uuid } = require("./memory-data.cjs");
 function currentProfile(state, profileId, optional = false) {
   if (profileId !== state.activeProfileId || (!optional && profileId === null) || (profileId !== null && !state.profiles.some(p => p.id === profileId))) throw Error("Choose the current character before using memory.");
 }
+function reviewExcerpt(value, limit) {
+  const excerpt = value.slice(0, limit);
+  // A whitespace-only prefix must not make a valid completed exchange unsaveable.
+  // Only the optional review excerpt changes; wire text and session history stay intact.
+  return excerpt.trim() ? excerpt : value.trimStart().slice(0, limit);
+}
 /** Shared verbatim by preview and every provider transport; original question remains intact. */
 function buildMemoryPrompt(state, input) {
   object(input, ["profileId", "prompt", "memoryIds"]);
@@ -32,7 +38,7 @@ class MemoryService {
     if (!this.context.isCurrent(token)) throw Error("Provider response is no longer current because the companion context changed.");
     if (token.profileId === null) return;
     if (typeof question !== "string" || typeof answer !== "string") throw Error("Invalid provider response.");
-    const draft = { profileId: token.profileId, responseId: token.responseId, question: question.slice(0, 1000), answer: answer.slice(0, 2000) };
+    const draft = { profileId: token.profileId, responseId: token.responseId, question: reviewExcerpt(question, 1000), answer: reviewExcerpt(answer, 2000) };
     text(draft.question, 1000); text(draft.answer, 2000);
     this.eligible = { token, draft, savedId: null };
   }

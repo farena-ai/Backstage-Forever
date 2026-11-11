@@ -46,6 +46,13 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   // Private edits and public observations neither insert their text nor reset the owner.
   let state=(await call('bootstrap')).state;const next=structuredClone(state);next.profiles[0].notes='EDITED_PRIVATE_CANARY';next.profiles[0].level=13;await call('saveState',next,state);await send('Where next?');await done();assert.match((await latest()).prompt,/fastest way from org to tb/);assert.doesNotMatch(JSON.stringify(await latest()),/EDITED_PRIVATE/);
   const verbatim='  Where next, exactly?\n  ';await send(verbatim);await done();assert.ok((await latest()).prompt.endsWith(verbatim),'Typed current question must remain verbatim, including surrounding whitespace');
+  const boundaryQuestion=' '.repeat(1000)+'Where should I level after this quest?';
+  const boundaryReply='Synthetic Forever answer '+((await count())+1);await send(boundaryQuestion);
+  await page.waitForFunction(reply=>document.querySelector('[data-question-recovery]')||document.querySelector('#chatlog .message.assistant:last-child')?.textContent.includes(reply),boundaryReply);
+  assert.equal(await page.locator('[data-question-recovery]').count(),0,'Valid original question with 1000 leading spaces must deliver its completed answer');
+  await done();assert.ok((await latest()).prompt.endsWith(boundaryQuestion),'Full outgoing question must preserve the whitespace prefix');
+  const boundedDraft=await call('memoryDraft','Alpha');assert.equal(boundedDraft.question,boundaryQuestion.trimStart());assert.match(await page.locator('[data-memory-review]').innerText(),/Where should I level after this quest/);
+  await send('Continue after the whitespace-prefixed question');await done();const recent=(await latest()).prompt.split('\n').find(line=>line.startsWith('[{'));assert.equal(JSON.parse(recent).at(-1).question,boundaryQuestion,'Main history preserves the complete original question');
   await page.screenshot({path:path.join(capture,'conversation-full.png'),fullPage:true});
   // Same IDs restored/imported/root changed are explicit process epochs.
   for(const reason of ['source-root','import','restore','reset']){

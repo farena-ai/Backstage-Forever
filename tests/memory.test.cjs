@@ -100,3 +100,15 @@ test("server drafts bind the reviewed bounded current response and save exactly 
   assert.equal(memory.draft("q"), null);
   store.reset(); assert.equal(memory.draft(null), null);
 });
+
+for(const boundary of ['question','answer'])test(`bounded memory review retains meaningful ${boundary} after a full whitespace-only prefix`,t=>{
+ const {store}=fixture(t),{MemoryService}=require('../src/core/memory.cjs'),{CompanionContext}=require('../src/core/companion-context.cjs');
+ const context=new CompanionContext(()=>store.state),memory=new MemoryService({store,context});
+ const question=(boundary==='question'?' '.repeat(1000):'')+'Where should I level?',answer=(boundary==='answer'?' '.repeat(2000):'')+'Check the saved quest log.';
+ memory.complete(memory.begin('p'),question,answer);const draft=memory.draft('p');
+ assert.equal(draft.question,question.trimStart());assert.equal(draft.answer,answer.trimStart());
+ const saved=memory.save({profileId:'p',responseId:draft.responseId});assert.equal(saved.memories[0].exchanges[0].question,draft.question);assert.equal(saved.memories[0].exchanges[0].answer,draft.answer);
+ const stale=memory.begin('p');context.invalidate('restore');assert.throws(()=>memory.complete(stale,question,answer),/no longer current/);assert.equal(memory.draft('p'),null);
+ const current=memory.begin('p');assert.throws(()=>memory.complete(current,' '.repeat(1001),'valid'),/Invalid saved memory/);assert.throws(()=>memory.complete(current,'valid',' '.repeat(2001)),/Invalid saved memory/);
+ memory.complete(current,'  Preserve short indentation','  Preserve this too');assert.equal(memory.draft('p').question,'  Preserve short indentation');assert.equal(memory.draft('p').answer,'  Preserve this too');
+});
