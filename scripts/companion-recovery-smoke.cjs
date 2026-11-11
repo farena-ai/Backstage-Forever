@@ -4,6 +4,7 @@ const { navigate } = require("./player-navigation.cjs");
 const {_electron:electron}=require('playwright');
 const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict');
 const {testWindow}=require('./test-window.cjs');const {defaultState}=require('../src/core/validation.cjs');
+const {currentControlState}=require('./selection-fixture.cjs');
 (async()=>{
  const rawTempRoot=os.tmpdir(),tempRoot=await fs.realpath(rawTempRoot),dir=await fs.mkdtemp(path.join(rawTempRoot,'forever-companion-recovery-'));let app;
  const watchdog=setTimeout(()=>{console.error('Recovery fixture exceeded 100 seconds');app?.process().kill();process.exitCode=1;},100000);
@@ -31,7 +32,19 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   await page.evaluate(()=>localStorage.setItem('bf-setup-v4','complete'));await page.reload();
   const call=(method,...args)=>page.evaluate(({method,args})=>window.backstage[method](...args),{method,args});
   const open=()=>navigate(page, "assistant");await open();
+  await page.evaluate(()=>{
+   window.recoveryEditActions=[];window.recoveryCapturedEdit=null;
+   root.addEventListener('click',event=>{const button=event.target.closest('[data-command="edit-question"]');if(!button)return;const record={trusted:event.isTrusted,phase:'pending'};recoveryEditActions.push(record);window.recoveryCapturedEdit=record;},true);
+   const originalAction=action;action=(...args)=>{const record=window.recoveryCapturedEdit;window.recoveryCapturedEdit=null;const result=originalAction(...args);if(record)result.then(()=>{const field=document.querySelector('#chat-form [name="prompt"]');record.completed={value:field?.value,focused:field===document.activeElement};record.phase='complete';});return result;};
+  });
   const question=page.getByRole('textbox',{name:'Your question',exact:true});
+  const assertRecoveredQuestion=async(index,value)=>{
+   await page.waitForFunction(index=>recoveryEditActions[index]?.phase==='complete',index);
+   const completed=await page.evaluate(index=>recoveryEditActions[index],index);
+   assert.equal(completed.trusted,true,'The exact physical Edit action must complete before observing recovery');
+   assert.deepEqual(completed.completed,{value,focused:true},'Edit completion owns the recovered current draft and focus');
+   assert.deepEqual(await currentControlState(page,'#chat-form [name="prompt"]',{selection:true}),{value,focused:true,start:value.length,end:value.length},'The current rendered question owns the exact recovered value, focus and caret');
+  };
   const send=async text=>{await question.fill(text);await page.getByRole('button',{name:'Send question',exact:true}).click();};
   const waitPendingPresentation=()=>page.getByRole('button',{name:'Stop response',exact:true}).waitFor({state:'visible'});
   const waitRequest=async count=>app.evaluate(async (_e,count)=>{const end=Date.now()+4000;while(recovery.requests.length<count){if(Date.now()>end)throw Error('Request not started');await new Promise(r=>setTimeout(r,10));}},count);
@@ -51,12 +64,23 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   await page.getByRole('button',{name:'Stop response',exact:true}).click();await page.getByRole('button',{name:'Edit question',exact:true}).waitFor();
   assert.match(await page.locator('[data-question-recovery]').innerText(),/stopped/i);assert.equal(await question.inputValue(),'');assert.equal(await page.locator('#chatlog').getByText('Explain HOLD quest',{exact:true}).count(),1);
   assert.equal(await app.evaluate(()=>recovery.requests[0].input.signal.aborted),true);assert.equal(await call('cancelAsk'),false);assert.equal(await call('memoryDraft','Alpha'),null);
-  await page.getByRole('button',{name:'Edit question',exact:true}).press('Enter');assert.equal(await question.inputValue(),'Explain HOLD quest');assert.equal(await question.evaluate(n=>document.activeElement===n),true);
+  const stoppedEdit=await page.evaluate(()=>recoveryEditActions.length);await page.getByRole('button',{name:'Edit question',exact:true}).press('Enter');await assertRecoveredQuestion(stoppedEdit,'Explain HOLD quest');
   await send('Explain another quest');await page.locator('#chatlog').getByText('Synthetic quest answer',{exact:true}).waitFor();
   await app.evaluate(()=>recovery.requests[0].resolve('LATE OLD ANSWER'));await page.waitForTimeout(50);assert.equal(await page.getByText('LATE OLD ANSWER',{exact:true}).count(),0);assert.equal((await call('memoryDraft','Alpha')).question,'Explain another quest');
   await send('Explain FAIL quest');await page.getByRole('button',{name:'Edit question',exact:true}).waitFor();assert.match(await page.locator('[data-question-recovery]').innerText(),/failed/);
   await page.getByLabel('Use my active character',{exact:true}).uncheck();
-  await page.getByRole('button',{name:'Edit question',exact:true}).press('Enter');assert.equal(await question.inputValue(),'Explain FAIL quest');assert.equal(await question.evaluate(n=>document.activeElement===n),true);assert.equal(await page.getByLabel('Use my active character',{exact:true}).isChecked(),false);
+  await page.evaluate(()=>{const paint=new Promise(r=>window.recoveryEditPaintRelease=r),complete=new Promise(r=>window.recoveryEditActionRelease=r);autosaveQueue=autosaveQueue.then(async()=>{await paint;render();await complete;});});
+  const editSequence=await page.evaluate(()=>recoveryEditActions.length);
+  await page.getByRole('button',{name:'Edit question',exact:true}).press('Enter');
+  const idleQuestion=await question.elementHandle();
+  await page.evaluate(()=>recoveryEditPaintRelease());
+  await page.waitForFunction(previous=>document.querySelector('#chat-form [name="prompt"]')!==previous,idleQuestion);
+  await page.evaluate(()=>recoveryEditActionRelease());
+  await assertRecoveredQuestion(editSequence,'Explain FAIL quest');
+  assert.equal(await idleQuestion.evaluate(n=>n.isConnected),false,'Accepted queued root paint retires the idle question lookup');
+  assert.equal(await idleQuestion.evaluate(n=>document.activeElement===n),false,'The obsolete handle cannot describe current semantic focus');await idleQuestion.dispose();
+  console.log('PASS: accepted queued root paint retires the idle lookup; the exact physical Edit Enter acknowledgement and atomic current field retain recovered value, focus and caret.');
+  assert.equal(await page.getByLabel('Use my active character',{exact:true}).isChecked(),false);
   await send('Explain FAIL another quest');await page.getByRole('button',{name:'Edit question',exact:true}).waitFor();
   await question.fill('My newer quest draft');await page.getByRole('button',{name:'Edit question',exact:true}).click();assert.equal(await question.inputValue(),'My newer quest draft');assert.match(await page.locator('[data-question-recovery]').innerText(),/newer draft/);assert.equal(await call('memoryDraft','Alpha'),null);
   // Hold the actual main draft reply after transport settlement while renderer Stop remains visible.
