@@ -151,6 +151,23 @@ test("invalid options rejected and absent saved source is unavailable", () => {
 });
 module.exports = { profile };
 
+test("each visible craft carries its own observed-cap qualification in every mode", () => {
+  const fixture = require("./fixtures/adventure-coach-cap.cjs");
+  for (const mode of fixture.modes) {
+    for (const options of [{}, { rank: 74 }, { mixed: true }]) {
+      const p = fixture.profile(options), b = build(p, { mode });
+      const visible = [b.recommendation, ...b.alternatives];
+      assert.deepEqual(visible.map((row) => row.id), ["craft-ready:100", "craft-ready:101", "craft-ready:102"]);
+      for (const row of visible) {
+        const capped = options.rank !== 74 && !(options.mixed && row.recipeId === 101);
+        if (capped) assert.match(row.reason, /Check training before expecting rank progress\./, `${mode}: ${row.id}`);
+        else assert.doesNotMatch(row.reason + row.detail, /Check training before expecting rank progress/);
+        assert.match(row.detail, /not guaranteed/);
+      }
+    }
+  }
+});
+
 test("newer profession rank cannot imply old recipe skill-up capability is current", () => {
   const p = profile();
   p.readiness.bags.free = 5;

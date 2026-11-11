@@ -2,7 +2,10 @@
 const { buildGuidance } = require("./guidance.cjs");
 const { buildDirector } = require("./director.cjs");
 const { validateWorkshop } = require("./preparation-data.cjs");
-const { buildProfessionCoach } = require("./profession-coach.cjs");
+const {
+  buildProfessionCoach,
+  professionCapQualification,
+} = require("./profession-coach.cjs");
 const { defaultState } = require("./validation.cjs");
 const { createHash } = require("node:crypto");
 function validateCoachOptions(value = {}) {
@@ -229,12 +232,16 @@ function buildAdventureCoach(
       const facts = r.reagents
         .map((x) => [x.itemId, x.required, materials.get(x.itemId)])
         .sort((a, b) => a[0] - b[0]);
+      const qualification = professionCapQualification(owner);
       add(
         mode === "questing" ? 2 : mode === "professions" ? 1 : 3,
         "craft-ready",
         r.id,
         `Try ${r.name}`,
-        "Saved carried materials cover one learned skill-up-capable recipe attempt.",
+        [
+          "Saved carried materials cover one learned skill-up-capable recipe attempt.",
+          qualification,
+        ].filter(Boolean).join(" "),
         "Materials ready for one craft attempt; skill-up and output are not guaranteed. Verify your current bags before crafting.",
         "Learned recipe + complete dated carried counts",
         [r.id, r.skillLineId, owner.rank, owner.maxRank, facts],

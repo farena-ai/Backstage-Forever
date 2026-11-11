@@ -2,6 +2,12 @@
 const { buildPreparation } = require("./preparation.cjs");
 const { validateState, str } = require("./validation.cjs");
 const { acquisitionFacts } = require("./acquisition-data.cjs");
+// Callers establish source/date authority before qualifying an owned observation.
+function professionCapQualification(profession) {
+  return profession?.maxRank > 0 && profession.rank === profession.maxRank
+    ? "Check training before expecting rank progress."
+    : null;
+}
 function validateProfessionOptions(value = {}) {
   const fail = () => {
     throw Error("Invalid profession coach request.");
@@ -191,8 +197,8 @@ function buildProfessionCoach(
   model.gatheringReference = gatheringIds.length
     ? acquisitionFacts(acquisitionPack, profile, gatheringIds)
     : null;
-  const cap =
-    dated && profession?.maxRank > 0 && profession.rank === profession.maxRank;
+  const qualification = dated ? professionCapQualification(profession) : null;
+  const cap = Boolean(qualification);
   const leveling = recipe && eligible(recipe) && model.planning.available;
   const missing = model.shoppingRows.filter((r) => r.missing > 0);
   const kind =
@@ -229,10 +235,12 @@ function buildProfessionCoach(
               : "Observe learned recipes and materials in game. Partial catalogs may omit other useful choices.",
     levelingEligible: Boolean(leveling),
     atObservedCap: Boolean(cap),
-    qualification: cap
-      ? "Check training before expecting rank progress."
-      : null,
+    qualification,
   };
   return structuredClone(model);
 }
-module.exports = { validateProfessionOptions, buildProfessionCoach };
+module.exports = {
+  validateProfessionOptions,
+  buildProfessionCoach,
+  professionCapQualification,
+};
