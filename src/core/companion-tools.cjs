@@ -112,7 +112,10 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
   let historical = null;
   try { historical = npcReference ? validateNpcLocationPack(npcReference) : null; } catch {}
   const shared = shareProfile && profile ? profile : null;
-  const here = shared ? (contextOptions.reportedLocation?.mapId ? contextOptions.reportedLocation : shared.location) : null;
+  const reported = contextOptions.reportedLocation || null;
+  // A zone-only current report makes saved coordinates stale: no relative directions then.
+  const here = shared ? (reported ? (reported.mapId ? reported : null) : shared.location) : null;
+  const originLabel = () => reported?.zone || null;
   const index = knowledgeIndex;
   const pack = index?.pack;
   const exactBuild = Boolean(shared && index?.compatible?.(shared));
@@ -128,11 +131,24 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
   function npcDto(group) {
     const best = group.find((r) => r.positions.length) || group[0];
     const positions = [];
-    for (const r of group) for (const p of r.positions) if (!positions.some((q) => q.mapId === p.mapId && Math.abs(q.x - p.x) < 0.005 && Math.abs(q.y - p.y) < 0.005)) positions.push(p);
-    const pts = positions.map((p) => point(p, here)).sort((a, b) => (b.sameMapAsPlayer ? 1 : 0) - (a.sameMapAsPlayer ? 1 : 0) || (a.mapDistance ?? 9) - (b.mapDistance ?? 9)).slice(0, 4);
-    return { id: best.id, name: best.name, locations: pts, morePoints: Math.max(0, positions.length - pts.length), evidence: best.tier, build: best.build, lastSeen: group.map((r) => r.lastSeen).filter(Boolean).sort().at(-1) || null, source: `Efficient Games, CC BY 4.0 · ${NPC_REPO}/${best.commit}/data/wowf/${best.build}` };
+    // Each point keeps the build, evidence tier and date of the record it came from.
+    for (const r of group) for (const p of r.positions) if (!positions.some((q) => q.p.mapId === p.mapId && Math.abs(q.p.x - p.x) < 0.005 && Math.abs(q.p.y - p.y) < 0.005)) positions.push({ p, r });
+    const pts = positions.map(({ p, r }) => ({ ...point(p, here), evidence: r.tier, build: r.build, lastSeen: r.lastSeen || null })).sort((a, b) => (b.sameMapAsPlayer ? 1 : 0) - (a.sameMapAsPlayer ? 1 : 0) || (a.mapDistance ?? 9) - (b.mapDistance ?? 9)).slice(0, 4);
+    const sources = [...new Map(group.map((r) => [r.commit + r.build, `Efficient Games, CC BY 4.0 · ${NPC_REPO}/${r.commit}/data/wowf/${r.build}`])).values()];
+    return { id: best.id, name: best.name, locations: pts, morePoints: Math.max(0, positions.length - pts.length), source: sources.join(" ; ") };
   }
 
+  function questRewards(itemId) {
+    const out = [];
+    for (const q of Object.values(pack?.quests || {})) {
+      const r = q.rewards;
+      if (!r) continue;
+      const kind = (r.items || []).some((x) => (x.id ?? x.itemId) === itemId) ? "reward" : (r.choices || []).some((x) => (x.id ?? x.itemId) === itemId) ? "reward-choice" : null;
+      if (kind) out.push({ questId: q.id, title: q.title, kind, level: q.level ?? null });
+      if (out.length >= 5) break;
+    }
+    return out;
+  }
   const handlers = {
     find_npc(args) {
       const id = posInt(args.id), name = str(args.name);
@@ -206,6 +222,7 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
             id: i.id, name: i.name,
             sources: (a?.sources || []).slice(0, 3).map((x) => ({ ...x, positions: undefined, locations: (x.positions || []).slice(0, 2).map((p) => point(p, here)) })),
             sourceStatus: a?.status || "unknown",
+            questRewards: questRewards(i.id),
             vendors: s ? [...s.suggestions, ...s.browse].slice(0, 3).map((v) => ({ id: v.id, name: v.name, qualification: v.qualification, locations: (v.positions || []).slice(0, 2).map((p) => point(p, here)), listings: v.listings.slice(0, 2) })) : [],
           };
         }),
@@ -216,7 +233,8 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
       const to = str(args.to, 100), from = str(args.from, 100);
       if (!to) return { status: "invalid" };
       if (!travelReference) return { status: "unavailable" };
-      const question = from ? `from ${from} to ${to}` : `how do I get to ${to}`;
+      const implicit = !from && originLabel();
+      const question = from ? `from ${from} to ${to}` : implicit ? `from ${implicit} to ${to}` : `how do I get to ${to}`;
       const intent = parseTravelIntent(question, { profile: shared || undefined });
       if (!intent) return { status: "not-understood", message: "Name a city, town or zone." };
       const plan = planTravel(travelReference, intent, { profile: shared || undefined });

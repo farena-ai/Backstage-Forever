@@ -24,7 +24,7 @@ test("find_npc resolves Cairne Bloodhoof to Thunder Bluff, not the asked-about c
   assert.equal(m.locations[0].zone, "Thunder Bluff");
   assert.equal(m.locations[0].mapId, 1456);
   assert.match(m.source, /Efficient Games, CC BY 4\.0/);
-  assert.ok(m.lastSeen);
+  assert.ok(m.locations[0].lastSeen);
 });
 
 test("find_npc on the player's own map adds direction and distance", async () => {
@@ -226,4 +226,17 @@ test("companion service hands tools to the provider and returns the lookup trail
   assert.ok(seen.tools.definitions.length >= 7);
   const off = new CompanionService({ store, context, requests: new CompanionRequest(context), memory: new MemoryService({ store, context }), ai: { ...providers, ask: async (i) => { assert.equal(i.tools, undefined); return "ok"; } }, chatgpt: {}, claude: {}, knowledge: { index: () => index }, lookups: false });
   assert.equal((await off.ask({ provider: "anthropic", prompt: "Which quest should I do next?", profileId: "A", shareProfile: true, memoryIds: [] })).lookups, undefined);
+});
+
+test("review fixes: reward reverse lookup, per-point provenance and reported-location origin", async () => {
+  const reported = createCompanionTools({ profile, shareProfile: true, knowledgeIndex: index, npcReference, travelReference, contextOptions: { reportedLocation: { zone: "Thunder Bluff", source: "user-report" } } });
+  const item = JSON.parse(await reported.call("find_item", { id: 287059 }));
+  assert.deepEqual(item.items[0].questRewards[0], { questId: 11, title: "Riverpaw Gnoll Bounty", kind: "reward-choice", level: 10 });
+  const thrall = JSON.parse(await reported.call("find_npc", { name: "Thrall" }));
+  assert.equal(thrall.matches[0].locations[0].sameMapAsPlayer, undefined, "zone-only report must not use stale saved coordinates");
+  const trip = JSON.parse(await reported.call("plan_travel", { to: "Undercity" }));
+  assert.equal(trip.origin.label, "Thunder Bluff");
+  const faranell = JSON.parse(await kit().call("find_npc", { name: "Faranell" }));
+  const tiers = faranell.matches[0].locations.map((l) => `${l.evidence}@${l.build}`);
+  assert.ok(tiers.includes("historical-reference@1.60.1.70790") && tiers.some((t) => t.startsWith("reference-observation@1.60.1.70862")));
 });
