@@ -51,6 +51,8 @@ const { registerVoiceHandlers } = require("./core/voice-ipc.cjs");
 const { registerDiagnosticsHandlers } = require("./core/diagnostics-ipc.cjs");
 const { registerRecoveryHandlers, RECOVERY_MESSAGES } = require("./core/recovery-ipc.cjs");
 const { releaseChannel } = require("../package.json");
+const { LiveBridge } = require("./core/live-bridge.cjs");
+let liveBridge = null;
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
@@ -592,6 +594,12 @@ app.whenReady().then(async () => {
     else memory.clearDraft();
     return stopped;
   });
+  // Opt-in live game link: reads only the addon's status strip from the game window.
+  liveBridge = new LiveBridge({ dataDir: app.getPath("userData") });
+  liveBridge.subscribe((status) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:liveLink", status); });
+  if (liveBridge.enabled) liveBridge.start();
+  handle("liveLinkStatus", () => liveBridge.status());
+  handle("setLiveLink", (enabled) => liveBridge.setEnabled(enabled));
   let travelReference;
   try { travelReference = loadTravelReference(fs.readFileSync(path.join(__dirname, "..", "data", "forever-travel", "pack.json"))); } catch { travelReference = null; }
   const travel = new TravelCompanion({store, context: companionContext, reference: travelReference, openExternal: url => shell.openExternal(url), writeClipboard: text => clipboard.writeText(text)});
@@ -603,6 +611,7 @@ app.whenReady().then(async () => {
     ai, chatgpt, claude, knowledge, travel,
     npcReference: (()=>{try{return require('./core/npc-location-data.cjs').validateNpcLocationPack(JSON.parse(fs.readFileSync(path.join(__dirname,'..','data','forever-npc-locations','pack.json'),'utf8')));}catch{return null;}})(),
     travelReference,
+    live: liveBridge,
     vendorPack: (()=>{try{return require('./core/vendor-facts.cjs').loadVendorPack();}catch{return null;}})(),
     acquisitionPack: (()=>{try{return require('./core/acquisition-data.cjs').loadAcquisitionPack();}catch{return null;}})(),
     onReset: (reason) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:conversationReset", reason); },
@@ -730,6 +739,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", (event) => {
+  liveBridge?.stop();
   store?.closeRecovery();
   voice?.close();
   companionContext?.invalidate("quit");

@@ -76,6 +76,14 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.on("backstage:conversationReset", handler);
       return () => ipcRenderer.removeListener("backstage:conversationReset", handler);
     },
+    liveLinkStatus: () => invoke("liveLinkStatus"),
+    setLiveLink: (enabled) => invoke("setLiveLink", enabled),
+    onLiveLink: (listener) => {
+      if (typeof listener !== "function") throw new Error("Invalid live link listener.");
+      const handler = (_event, status) => listener(status);
+      ipcRenderer.on("backstage:liveLink", handler);
+      return () => ipcRenderer.removeListener("backstage:liveLink", handler);
+    },
     cancelAsk: () => invoke("cancelAsk"),
     companionContext: (...args) => invoke("companionContext", ...args),
     memoryList: (...args) => invoke("memoryList", ...args),

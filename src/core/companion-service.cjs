@@ -9,8 +9,8 @@ const {createCompanionTools}=require('./companion-tools.cjs');
 // These events cancel work/drafts without changing completed conversation ownership.
 const SOFT_REASONS=new Set(['renderer-context','response-stop','memory-save']);
 class CompanionService {
-  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,lookups=true,onReset=()=>{}}){
-    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,lookups,onReset});
+  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,lookups=true,live=null,onReset=()=>{}}){
+    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,lookups,live,onReset});
     this.session=new ConversationSession();this.rootEpoch=0;
     context.subscribe(({reason})=>{
       if(SOFT_REASONS.has(reason))return;
@@ -59,9 +59,12 @@ class CompanionService {
       }
       if(!selected.model)throw Error('Choose a model in Connections for AI questions. Local NPC locations and travel need no model.');
       const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence,reportedLocation:prepared.reportedLocation};
-      const context=this.ai.profileContext(state,profileId,input.shareProfile,options);
+      const liveStatus=input.shareProfile?this.live?.status?.():null,liveFrame=liveStatus?.frame||null;
+      let context=this.ai.profileContext(state,profileId,input.shareProfile,options);
+      // The live link is a current game reading; it outranks the saved snapshot for position.
+      if(liveFrame&&context)context+='\n\nLive game link (read from the game screen '+Math.round((liveFrame.ageMs||0)/1000)+'s ago; current, overrides savedLocation for position/level/target): '+JSON.stringify(require('./companion-tools.cjs').liveSummary(liveFrame));
       // Read-only local lookups (NPCs, quests, items, travel, character) the model may call.
-      const tools=this.lookups?createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options}):undefined;
+      const tools=this.lookups?createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveFrame,liveStatus}):undefined;
       const request={model:selected.model,prompt:prepared.composedPrompt,context,signal,...(tools?{tools}:{})};
       let reply;
       if(selected.authMode==='subscription'&&input.provider!=='ollama'){

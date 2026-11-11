@@ -1299,3 +1299,7 @@ body[data-class] .providers {
 
 /* Local reference lookups the AI made for this answer. */
 .lookup-trail{display:block;margin-top:.45rem;font-size:.78rem;opacity:.75;font-style:italic;}
+
+/* Live game link status. */
+.live-link-line{font-size:.85rem;margin:.4rem 0;opacity:.85;}
+.live-link-line[data-signal="live"]{color:#7fd18b;opacity:1;font-weight:600;}

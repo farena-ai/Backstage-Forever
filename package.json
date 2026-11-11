@@ -60,7 +60,8 @@
     "test:acquisition": "node --test tests/acquisition-data.test.cjs",
     "check:forever-npc-locations": "node scripts/build-forever-npc-locations.cjs --check",
     "test:npc-companion": "node scripts/npc-companion-smoke.cjs",
-    "test:companion-tools": "node scripts/companion-tools-smoke.cjs"
+    "test:companion-tools": "node scripts/companion-tools-smoke.cjs",
+    "test:live-link": "node scripts/live-link-smoke.cjs"
   },
   "devDependencies": {
     "electron": "45.2.3",

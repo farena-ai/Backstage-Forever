@@ -3,7 +3,7 @@
 ## Notes: Local saved character snapshots for Backstage Forever. Written to disk on logout or UI reload.
 ## Author: Backstage Coding
 ## Version: 0.13.7
-## SavedVariables: BackstageForeverExport
+## SavedVariables: BackstageForeverExport, BackstageForeverLiveSettings
 ## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings
 BackstageForeverReference.lua
 BackstageForeverPlan.lua
@@ -16,3 +16,4 @@ BackstageForeverMap.lua
 BackstageForeverMap.xml
 BackstageForever.lua
 BackstageForeverHUD.lua
+BackstageForeverLive.lua

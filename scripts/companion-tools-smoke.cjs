@@ -47,7 +47,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     const reply = page.locator("#chatlog .message.assistant").last();
     await reply.getByText(/Thunder Bluff, around 59\.9, 51\.7/).waitFor();
     const r = await app.evaluate(() => toolsFixture.requests.at(-1));
-    assert.deepEqual(r.definitions, ["find_npc", "search_quests", "get_quest", "find_item", "plan_travel", "get_character", "quest_waypoint"]);
+    assert.deepEqual(r.definitions, ["find_npc", "search_quests", "get_quest", "find_item", "plan_travel", "get_character", "get_live_state", "quest_waypoint"]);
     assert.equal(r.npc.matches[0].locations[0].zone, "Thunder Bluff");
     assert.equal(r.quest.title, "Exploring the Horde");
     assert.match(await reply.locator(".eyebrow").innerText(), /AI with local reference lookups/i);

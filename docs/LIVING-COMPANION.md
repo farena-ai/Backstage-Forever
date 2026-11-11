@@ -70,3 +70,25 @@ The current in-game Compass automatically chooses a useful observed learned skil
 Opening your own profession normally supplies learned recipe observations. A partial catalog can still contain a useful known recipe. Exact shortfalls require complete, fresh bags 0–4 counts; missing or older supply stays uncertain. Attempts are batches, not promised output or skill points. At the observed rank cap, check whether training is available; no trainer offer, higher cap or cost is established. No profession or material advice can arm a quest waypoint or perform crafting, buying or movement.
 
 New addon files need initial activation at game launch or a voluntary UI reload. After activation, native updates follow ordinary game events without routine reloads; the desktop still reads the last saved snapshot after logout or a voluntary save/reload.
+
+## Live game link (optional)
+
+Saved snapshots only reach the desktop when WoW writes them (logout, exit or `/reload`). The optional **live game link** closes that gap while you play.
+
+1. In Backstage Forever, open **Settings → Game connection** and turn on **Read my live position from the game window**.
+2. In WoW, type **/bf live on** once. That choice is remembered for your account. Type **/bf live off** to stop.
+
+The addon then shows a tiny colour strip (about 144 × 4 pixels) in the top-left corner of the game window. It updates a few times a second, only when something changes. The strip carries:
+
+- your map, position and facing
+- level, health and XP
+- the NPC you are targeting
+- your tracked quest and which of its objectives are done
+- free bag slots
+- resting, mounted, in-instance and dead flags
+
+A checksum and colour-calibration cells protect against misreads.
+
+The desktop reads only that strip, twice a second, from the visible game window. It sends no input, reads no game memory or files, stores no screenshots and makes no network requests. During combat the strip carries only an "in combat" flag; details resume after combat.
+
+When the link is live, the Companion panel shows **Live · Zone x, y**, and AI questions treat the live position as current. Your saved snapshot is kept as the older saved location. With lookups on, the AI can call **get_live_state** for "where am I", "what am I targeting" or "which way". The link needs the game window visible: minimized, covered or combat states show their own status, and stale readings are never presented as live.

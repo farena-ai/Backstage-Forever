@@ -333,6 +333,10 @@ if type(SlashCmdList)=='table' then
             if active and type(BackstageForeverGuide)=='function' then pcall(BackstageForeverGuide,message)end
             return
         end
+        if type(message)=='string' and message:lower():match('^live') then
+            if type(BackstageForeverLiveCommand)=='function' then pcall(BackstageForeverLiveCommand,message)end
+            return
+        end
         if combat() or not active then return end
         message=type(message)=='string' and message:lower() or ''
         if message=='hide' then visible=false elseif message=='show' then visible=true
@@ -341,7 +345,7 @@ if type(SlashCmdList)=='table' then
             return
         elseif message=='' then visible=not visible
         else
-            if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: /bf show, hide, status, or guide QuestID t/o/r MapID X Y Build.')end
+            if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: /bf show, hide, status, live, or guide QuestID t/o/r MapID X Y Build.')end
             return
         end
         pcall(initialize);save();pcall(update)
