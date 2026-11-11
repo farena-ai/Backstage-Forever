@@ -9,7 +9,7 @@ window.WorldMapView = (() => {
     ["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["npc", "Other NPCs"],
   ];
   const PREF = "bf-world-map-v1";
-  let clusters = [];
+  let clusters = [], pendingFocus = null;
   let model = null, mapId = null, follow = true, selected = null, hover = null, trail = [], view = { zoom: 1, cx: 0.5, cy: 0.5 };
   let layers = Object.fromEntries(LAYERS.map(([k]) => [k, k !== "npc"]));
   const EXPLORED = "bf-world-map-explored-v1:";
@@ -36,6 +36,7 @@ window.WorldMapView = (() => {
           <div class="wm-tip" data-wm-tip hidden></div>
         </div>
         <aside class="wm-side">
+          <div class="wm-near" data-wm-near hidden></div>
           <div class="wm-card" data-wm-card></div>
           <div class="wm-results" data-wm-results></div>
           <div class="wm-legend" data-wm-legend></div>
@@ -87,6 +88,7 @@ window.WorldMapView = (() => {
     const k = p.kind, r = (k === "npc" ? 3.5 : 9) * (emphasis ? 1.35 : 1);
     if (k === "npc") { ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.fillStyle = "rgba(60,40,20,0.75)"; ctx.fill(); return; }
     if (k === "town") return;
+    if (k === "instance") { const g = ctx.createRadialGradient(sx, sy, 2, sx, sy, 16); g.addColorStop(0, "#f3d9ff"); g.addColorStop(0.5, "#8a3fd1"); g.addColorStop(1, "rgba(60,10,90,0)"); ctx.beginPath(); ctx.arc(sx, sy, 16, 0, 7); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = "#2a0d3d"; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(sx, sy, 4 + i * 3.5, i, i + 4.2); ctx.stroke(); } return; }
     if (k === "quest-objective") { ctx.beginPath(); ctx.arc(sx, sy, 14 * view.zoom ** 0.3, 0, 7); ctx.fillStyle = "rgba(217,68,46,0.14)"; ctx.fill(); ctx.setLineDash([4, 3]); ctx.strokeStyle = "rgba(160,40,25,0.8)"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]); badge(sx, sy, r * 0.75, COLORS[k]); glyph("•", sx, sy, 12, "#fff"); return; }
     if (k === "herb" || (k === "find" && p.gather === "herb")) { if (k === "find") badge(sx, sy, r, "#f2d27a"); leaf(sx, sy, r * 0.8, COLORS.herb); return; }
     if (k === "ore" || (k === "find" && p.gather === "ore")) { if (k === "find") badge(sx, sy, r, "#f2d27a"); rock(sx, sy, r * 0.7, "#8d8276"); return; }
@@ -202,7 +204,19 @@ window.WorldMapView = (() => {
     if (!results) { box.innerHTML = ""; return; }
     box.innerHTML = `<h3>Found ${results.results.length} for “${esc(results.query)}”</h3>` + (results.results.length ? `<ol>${results.results.map((r, i) => `<li><button type="button" data-wm-result="${i}"><span class="wm-swatch wm-k-${esc(r.kind)}"></span><span><strong>${esc(r.label)}</strong><small>${esc(r.sub || "")}${r.sub ? " · " : ""}${esc(r.mapName)} ${pct(r.x)}, ${pct(r.y)}</small></span></button></li>`).join("")}</ol>` : `<p>Nothing in the local reference matches. Coverage grows as you and others play.</p>`) + `<button type="button" class="subtle" data-wm-act="clear">Clear search</button>`;
   }
-  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; const a = document.querySelector("[data-wm-attrib]"); if (a && model) a.textContent = model.attribution; legend(); card(); liveLine(); zoneSelect(); resultsList(); draw(); }
+  // Nearest useful places to your live (or saved) position.
+  const NEAR_KINDS = new Set(["quest-turnin", "quest-objective", "quest-giver", "flight", "find", "herb", "ore", "instance"]);
+  function nearList() {
+    const box = document.querySelector("[data-wm-near]"); if (!box) return;
+    const me = model?.player?.live || model?.player?.saved;
+    if (!me) { box.hidden = true; return; }
+    const near = visiblePins().filter((p) => NEAR_KINDS.has(p.kind)).map((p) => ({ p, d: Math.hypot(p.x - me.x, p.y - me.y) })).sort((a, b) => (a.p.kind === "quest-turnin" ? -0.05 : 0) + a.d - ((b.p.kind === "quest-turnin" ? -0.05 : 0) + b.d))
+      .filter((n, i, all) => !all.slice(0, i).some((m) => m.p.label === n.p.label && Math.hypot(m.p.x - n.p.x, m.p.y - n.p.y) < 0.03)).slice(0, 5);
+    box.hidden = !near.length;
+    box.innerHTML = `<h3>Near you${model.player.live ? "" : " (last saved)"}</h3><ol>${near.map(({ p, d }, i) => `<li><button type="button" data-wm-near-pin="${i}"><span class="wm-swatch wm-k-${esc(p.kind)}"></span><span><strong>${esc(p.label)}</strong><small>${esc(p.sub || "")}${p.sub ? " · " : ""}${d < 0.02 ? "right here" : `${dirName(p.x - me.x, p.y - me.y)}, ${d < 0.08 ? "close" : d < 0.25 ? "short ride" : "far"}`}</small></span></button></li>`).join("")}</ol>`;
+    box._near = near.map((n) => n.p);
+  }
+  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; const a = document.querySelector("[data-wm-attrib]"); if (a && model) a.textContent = model.attribution; legend(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); draw(); }
 
   // ---------- data ----------
   async function load(next) {
@@ -211,6 +225,10 @@ window.WorldMapView = (() => {
       const m = await api.worldMap(next ? { mapId: next } : mapId ? { mapId } : {});
       if (m.mapId !== model?.mapId) { selected = null; view = { zoom: 1, cx: 0.5, cy: 0.5 }; }
       model = m; mapId = m.mapId; error = "";
+      if (pendingFocus && pendingFocus.mapId === m.mapId) {
+        const pin = { id: "focus", kind: "instance", label: pendingFocus.label, sub: pendingFocus.sub || null, mapId: m.mapId, x: pendingFocus.x, y: pendingFocus.y, source: "Classic-era baseline (approximate entrance)" };
+        model.pins.push(pin); selected = pin; view = { zoom: 2.2, cx: pin.x, cy: pin.y }; pendingFocus = null;
+      }
       if (m.player?.live) pushTrail(m.mapId, m.player.live);
     } catch (e) { error = e.message; }
     loading = false; paintAll();
@@ -225,7 +243,7 @@ window.WorldMapView = (() => {
       model.player.live = { x: f.position.x, y: f.position.y, facing: f.position.facing, mounted: f.mounted, combat: f.combat };
       pushTrail(model.mapId, f.position);
       if (follow && view.zoom > 1) { view.cx = f.position.x; view.cy = f.position.y; }
-      liveLine(); draw();
+      liveLine(); nearList(); draw();
     }
   }
 
@@ -263,7 +281,7 @@ window.WorldMapView = (() => {
     canvas.addEventListener("wheel", (e) => { e.preventDefault(); const r = canvas.getBoundingClientRect(); const [mx, my] = toMap(e.clientX - r.left, e.clientY - r.top); const z = Math.min(8, Math.max(1, view.zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2))); view.cx = mx - (mx - view.cx) * (view.zoom / z); view.cy = my - (my - view.cy) * (view.zoom / z); view.zoom = z; if (z === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }, { passive: false });
     canvas.addEventListener("dblclick", () => { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); });
     root.addEventListener("change", (e) => {
-      if (e.target.matches("[data-wm-layer]")) { layers[e.target.dataset.wmLayer] = e.target.checked; savePref(); draw(); }
+      if (e.target.matches("[data-wm-layer]")) { layers[e.target.dataset.wmLayer] = e.target.checked; savePref(); nearList(); draw(); }
       if (e.target.matches("[data-wm-zone]")) { follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; savePref(); load(Number(e.target.value)); }
       if (e.target.matches("[data-wm-follow]")) { follow = e.target.checked; savePref(); if (follow && lastLive) load(lastLive.position.mapId); }
     });
@@ -274,6 +292,8 @@ window.WorldMapView = (() => {
       resultsList();
     });
     root.addEventListener("click", async (e) => {
+      const np = e.target.closest("[data-wm-near-pin]");
+      if (np) { const p = root.querySelector("[data-wm-near]")._near?.[Number(np.dataset.wmNearPin)]; if (p) { selected = p; view = { zoom: Math.max(view.zoom, 2), cx: p.x, cy: p.y }; card(); draw(); } return; }
       const r = e.target.closest("[data-wm-result]");
       if (r) { const hitR = results.results[Number(r.dataset.wmResult)]; follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; await load(hitR.mapId); selected = model.pins.find((p) => p.id === hitR.id) || { ...hitR }; view = { zoom: 2.2, cx: hitR.x, cy: hitR.y }; card(); draw(); return; }
       const act = e.target.closest("[data-wm-act]")?.dataset.wmAct; if (!act) return;
@@ -292,5 +312,6 @@ window.WorldMapView = (() => {
   }
   if (api?.onLiveLink) api.onLiveLink(onLive);
   window.addEventListener("resize", () => { if (document.querySelector("[data-world-map]")) resize(); });
-  return { page, mounted, _state: () => ({ model, selected, view, trail, layers, results }) };
+  function focus(f) { if (!f || !Number.isSafeInteger(f.mapId)) return; pendingFocus = f; follow = false; mapId = f.mapId; savePref(); if (document.querySelector("[data-world-map]")) load(f.mapId); }
+  return { page, mounted, focus, _state: () => ({ model, selected, view, trail, layers, results }) };
 })();

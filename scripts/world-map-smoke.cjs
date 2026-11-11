@@ -13,7 +13,7 @@ const { defaultState } = require("../src/core/validation.cjs");
   const watchdog = setTimeout(() => { console.error("World map fixture exceeded 150 seconds"); app?.process().kill(); process.exitCode = 1; }, 150000);
   try {
     const profile = { id: "Alpha", name: "Alpha", className: "Hunter", realm: "Synthetic", level: 15, race: "Tauren", faction: "Horde", goals: [], notes: "", location: { zone: "The Barrens", mapId: 1413, x: 0.52, y: 0.29 },
-      quests: [{ id: 96, title: "Call of Water", complete: true, objectives: [] }] };
+      quests: [{ id: 96, title: "Call of Water", complete: true, objectives: [] }, { id: 5728, title: "Hidden Enemies", complete: false, objectives: [{ text: "0/1 Bazzalan slain", done: false, type: "monster", required: 1, fulfilled: 0 }, { text: "0/1 Jergosh the Invoker slain", done: false, type: "monster", required: 1, fulfilled: 0 }] }] };
     const initial = { ...defaultState(), onboarded: true, activeProfileId: "Alpha", profiles: [profile], provider: { id: "ollama", model: "fixture", endpoint: "http://127.0.0.1:11434" } };
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(initial));
     const repo = path.resolve(__dirname, "..");
@@ -68,6 +68,24 @@ const { defaultState } = require("../src/core/validation.cjs");
     assert.ok(st.counts.trainer >= 10);
     await page.locator("[data-wm-layer=trainer]").uncheck();
     await page.screenshot({ path: path.join(capture, "world-map-thunder-bluff.png") });
+    // Instance Atlas: difficulty colours, your quests, and the jump to the World Map.
+    await navigate(page, "dungeons");
+    const rfc = page.locator('[data-atlas-card="rfc"]');
+    await rfc.waitFor();
+    assert.match(await rfc.getAttribute("class"), /d-right/);
+    await rfc.getByText("Hidden Enemies").waitFor();
+    await page.locator(".atlas-chip", { hasText: "Ragefire Chasm" }).waitFor();
+    await rfc.locator("[data-atlas-open]").click();
+    await rfc.locator(".atlas-bosses").getByText("Bazzalan").waitFor();
+    await page.screenshot({ path: path.join(capture, "dungeon-atlas.png") });
+    await page.locator('[data-atlas-tab="forever"]').click();
+    await page.locator(".atlas-card", { hasText: "Shade of the Archmage" }).first().waitFor().catch(async () => { await page.locator(".atlas-card").first().locator("[data-atlas-open]").click(); });
+    await page.locator('[data-atlas-tab="dungeon"]').click();
+    await page.locator('[data-atlas-card="rfc"] [data-atlas-open]').click();
+    await page.locator('[data-atlas-map="rfc"]').click();
+    await page.waitForFunction(() => window.WorldMapView._state().selected?.label === "Ragefire Chasm entrance");
+    await page.locator("[data-wm-title]").getByText("Orgrimmar").waitFor();
+    await page.screenshot({ path: path.join(capture, "world-map-instance.png") });
     console.log("World map smoke passed");
   } finally {
     clearTimeout(watchdog);

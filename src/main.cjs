@@ -624,6 +624,9 @@ app.whenReady().then(async () => {
   });
   handle("worldMap", (input) => worldMap.build(input || {}));
   handle("worldMapSearch", (query) => worldMap.search(query));
+  const { buildAtlas, loadEncounters } = require("./core/dungeon-atlas.cjs");
+  const encounters = loadEncounters();
+  handle("dungeonAtlas", () => buildAtlas({ profile: store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null, encounters }));
   handle("copyWaypoint", (input) => {
     if (!input || typeof input !== "object") throw Error("Invalid waypoint.");
     const { mapId, x, y } = input;

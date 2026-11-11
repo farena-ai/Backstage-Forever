@@ -77,6 +77,7 @@ contextBridge.exposeInMainWorld(
       return () => ipcRenderer.removeListener("backstage:conversationReset", handler);
     },
     worldMap: (input) => invoke("worldMap", input),
+    dungeonAtlas: () => invoke("dungeonAtlas"),
     worldMapSearch: (query) => invoke("worldMapSearch", query),
     copyWaypoint: (input) => invoke("copyWaypoint", input),
     liveLinkStatus: () => invoke("liveLinkStatus"),

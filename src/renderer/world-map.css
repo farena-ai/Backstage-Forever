@@ -65,3 +65,12 @@
 
 .world-map-page { min-width: 0; max-width: 100%; overflow-x: hidden; }
 .wm-body, .wm-head { min-width: 0; }
+
+.wm-k-instance { background: radial-gradient(circle, #f3d9ff, #8a3fd1 60%, #2a0d3d); }
+.wm-near { padding: 12px 14px; border-radius: 6px; background: linear-gradient(180deg, #2b1a0c, #1a0f06); border: 1px solid #b8913f; color: #f1dfb2; box-shadow: 0 4px 10px rgba(0,0,0,.4); }
+.wm-near h3 { margin: 0 0 6px; font: 700 16px Cinzel, Georgia, serif; color: #f6dc9a; }
+.wm-near ol { list-style: none; margin: 0; padding: 0; }
+.world-map-page .wm-near li button { all: unset; box-sizing: border-box; display: flex; gap: 8px; align-items: center; width: 100%; padding: 5px 2px; cursor: pointer; border-bottom: 1px solid rgba(232,200,120,.15); }
+.world-map-page .wm-near li button:hover { background: rgba(232,200,120,.12); }
+.wm-near small { display: block; color: #cdb57a; }
+.wm-near[hidden] { display: none; }

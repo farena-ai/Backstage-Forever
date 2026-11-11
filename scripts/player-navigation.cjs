@@ -5,6 +5,7 @@ const routes = {
   adventure: ["Adventure", "Next step"],
   "quest-guide": ["Quests"],
   "world-map": ["World Map"],
+  dungeons: ["Adventure", "Dungeons & raids"],
   assistant: ["Companion"],
   characters: ["Characters"],
   company: ["Plans", "My plans"],

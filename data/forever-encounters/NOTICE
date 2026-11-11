@@ -1,0 +1,3 @@
+Encounter observations: Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0 (see LICENSE).
+Source: JIVESCORP/eg-link-output-wowf @ 3067c6919046428152f2152fa551f44a8c215d79, data/wowf/1.60.1.70888/encounters.json (sha256 in pack.json).
+Changes: selected fields (name, instance map, kills, runs, pulls) only. Blizzard underlying game content is excluded from the compilation license.
