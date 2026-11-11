@@ -2,7 +2,7 @@
 
 ## Find your way around
 
-The journal has five main sections: **Adventure** for your next step, **Quests** for the saved quest atlas, **Companion** for questions and local travel, **Characters** for your roster, and **Plans** for checklists. Plans contains **My plans** (formerly Company), **Party**, and **Preparation**. **Settings** contains **Game connection**, **AI connection** (formerly Connections), and **Updates**. **Help → Field guide** contains support reports, recovery checkpoints, and backup tools.
+The journal has five main sections: **Adventure** for your next step, **Quests** for the saved quest atlas, **Companion** for questions and local travel, **Characters** for your roster, and **Plans** for checklists. Adventure contains **Next step** and **Professions**, the single saved workshop. Plans contains **My plans** (formerly Company), **Party**, and a shortcut to Professions. **Settings** contains **Game connection**, **AI connection** (formerly Connections), and **Updates**. **Help → Field guide** contains support reports, recovery checkpoints, and backup tools.
 
 Voice, Memory, and quest reference details open when you need them. Folding Voice stops pending or active speech. The memory summary always shows how many exchanges are selected for this question; saving an exchange does not consent to sharing it. Provider costs and character-sharing choices remain visible. Local travel has a **Show road guide** shortcut when a road alternative is documented; **How we know** holds dated source details. These are guides and manual plans, never game actions.
 

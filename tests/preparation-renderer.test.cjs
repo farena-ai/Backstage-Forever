@@ -11,7 +11,7 @@ function model(){return {character:{id:'a',name:'Aeralyn',className:'Hunter',fac
 test('actual Preparation helper loads with the existing interaction dependency',()=>{const {c}=fixture();assert.equal(typeof c.Preparation?.init,'function');});
 test('bounded local preferences keep characters separate and exclude evidence',()=>{const {c,host,storage}=fixture();c.Preparation.init(host);c.Preparation.save('a',{recipeId:100,crafts:2,materials:[{count:99}]});assert.deepEqual(JSON.parse(JSON.stringify(c.Preparation.options('a'))),{recipeId:100,crafts:2});assert.deepEqual(JSON.parse(JSON.stringify(c.Preparation.options('b'))),{crafts:1});assert.doesNotMatch(JSON.stringify(storage),/materials|99/);c.Preparation.save('a',{recipeId:-1,crafts:99});assert.deepEqual(JSON.parse(JSON.stringify(c.Preparation.options('a'))),{crafts:1});c.Preparation.remove('a');assert.deepEqual(JSON.parse(JSON.stringify(c.Preparation.options('a'))),{crafts:1});});
 test('partial materials retain unknown shortfalls and separate dated alt counts',()=>{const {c,host}=fixture();c.Preparation.init(host);const html=c.Preparation.page(model());assert.match(html,/At least 2/);assert.match(html,/Shortfall unknown/);assert.match(html,/Total required/);assert.match(html,/99/);assert.match(html,/never subtracted/);assert.match(html,/backpack plus four bags/i);assert.doesNotMatch(html,/Ready to craft|guaranteed skill/);});
-test('explicit checklist availability governs action, including missing recipe selection',()=>{const {c,host}=fixture();c.Preparation.init(host);const m=model();m.planning.checklistAvailable=false;m.selectedRecipe=null;m.shoppingRows=[];m.planning.reason='Selected recipe is no longer observed.';const html=c.Preparation.page(m);assert.match(html,/data-preparation-add[^>]* disabled/);assert.match(html,/no longer observed/);assert.match(html,/Open Company/);});
+test('explicit checklist availability governs action, including missing recipe selection',()=>{const {c,host}=fixture();c.Preparation.init(host);const m=model();m.planning.checklistAvailable=false;m.selectedRecipe=null;m.shoppingRows=[];m.planning.reason='Selected recipe is no longer observed.';const html=c.Preparation.page(m);assert.match(html,/data-preparation-add[^>]* disabled/);assert.match(html,/no longer observed/);assert.match(html,/Open Plans/);});
 test('stable source disclosure identity uses profile and recipe rather than row index',()=>{const {c,host}=fixture();c.Preparation.init(host);const html=c.Preparation.page(model());assert.ok(html.includes('&quot;a&quot;,100,&quot;workshop-source&quot;'));});
 
 test('rapid native choice changes preserve the newest recipe while its read is pending',async()=>{
@@ -67,3 +67,42 @@ supplyTest('painted action ownership uses a bounded local revision rather than s
 supplyTest('supply draft retains exact-ID acquisition source uncertainty and observed contexts',()=>{const {c,host}=fixture();c.Preparation.init(host);const m=model();m.shoppingRows[0].acquisition={sources:[{referenceName:'Historical herb',kind:'gathered-object-loot',qualification:'browse-only',reason:'Older build; current availability unknown.',clientBuild:'1.60.1.70862',observedOn:'2026-11-09',positions:[{mapId:1,x:.2,y:.3}],context:['bountifulHarvest:1'],limitedStock:null}]};const draft=c.Preparation.supplyDraft(m);assert.match(draft,/Historical herb/);assert.match(draft,/bountifulHarvest:1/);assert.match(draft,/Older build/);});
 
 test('observed profession progress uses native numeric attributes that survive the self-only style policy',()=>{const {c,host}=fixture();c.Preparation.init(host);const m=model();m.profession={name:'Alchemy',rank:22,maxRank:75};const html=c.Preparation.page(m);assert.match(html,/<progress[^>]*value="22"[^>]*max="75"/);assert.doesNotMatch(html,/style="width:/);});
+
+function shippedThreadModel() {
+ const at='2026-11-11T12:00:00.000Z', col=items=>({observedAt:at,complete:true,items});
+ const state={...require('../src/core/validation.cjs').defaultState(),activeProfileId:'a',profiles:[{id:'a',name:'Synthetic',realm:'Synthetic',notes:'',goals:[],className:'Mage',level:12,faction:'Horde',source:{kind:'wow-addon',id:'Synthetic',updatedAt:at},clientBuild:'1.60.1.70862',readiness:{workshop:{professions:col([{skillLineId:171,professionId:4,name:'Alchemy',rank:20,maxRank:75}]),recipes:col([{id:100,skillLineId:171,name:'Thread formula',canSkillUp:true,reagentsKnown:true,reagents:[{itemId:2320,name:'Coarse Thread',required:1}]}]),materials:{...col([]),scope:'bags-0-4'}}}}]};
+ return require('../src/core/profession-coach.cjs').buildProfessionCoach(state,'a',{}, {acquisitionPack:require('../src/core/acquisition-data.cjs').loadAcquisitionPack(),vendorPack:require('../src/core/vendor-facts.cjs').loadVendorPack()});
+}
+async function renderLoaded(m) {const f=fixture();f.host.api.professionCoach=async()=>m;f.c.Preparation.init(f.host);await f.c.Preparation.refresh();return f.c.Preparation.page();}
+test('shipped Coarse Thread authorities merge Mahu despite reversed evidence order',async()=>{
+ const m=shippedThreadModel(), row=m.shoppingRows[0], a=row.acquisition.sources.find(v=>v.entityId===3005), v=[...row.historicalSellers.suggestions,...row.historicalSellers.browse].find(v=>v.id===3005), before=JSON.stringify(m);
+ assert.notDeepEqual(a.positions,v.positions,'Actual shipped authorities have reversed point order');
+ assert.deepEqual(a.positions,[...v.positions].reverse());
+ const html=await renderLoaded(m);
+ assert.equal((html.match(/<h4>Mahu<\/h4>/g)||[]).length,1);
+ assert.match(html,/Seller catalog also records/);assert.ok(html.includes(v.qualification));assert.ok(html.includes(v.lastSeen));assert.ok(html.includes(a.observedOn));assert.ok(html.includes(`${v.sources} contributor files`));assert.ok(html.includes(`${a.contributingFiles} contributor files`));assert.match(html,/Stock limit unknown|Listing was not marked limited/);assert.match(html,/Current presence, access, stock and prices: unverified/);assert.equal(JSON.stringify(m),before,'Display must preserve both evidence orders');
+ row.historicalSellers={suggestions:[v],browse:[]};
+ assert.doesNotMatch(await renderLoaded(m),/No historical seller observation for this material/,'Fully merged is not absent');
+});
+test('seller identity retains typed coordinates and actual source build boundaries',async()=>{
+ for(const change of [m=>m.sellerReference.source.build='1.60.1.70888',m=>m.shoppingRows[0].acquisition.sources[0].positions[0].mapId=String(m.shoppingRows[0].acquisition.sources[0].positions[0].mapId),m=>m.shoppingRows[0].acquisition.sources[0].positions[0].x+=0.001]) {
+  const m=shippedThreadModel();change(m);assert.equal(((await renderLoaded(m)).match(/<h4>Mahu<\/h4>/g)||[]).length,2);
+ }
+});
+test('new disclosures survive actual paint and root refresh but retire on selection and owner invalidation',async()=>{
+ const f=fixture();let revision=0,id='a',m=model(),nodes=[];
+ m.acquisitionReference={reference:{attribution:'Reference',clientBuild:'1.60.1.70862',changes:'None'},limitations:[]};
+ const parse=html=>{nodes=[...html.matchAll(/<summary([^>]*)>/g)].map(([,attrs])=>({dataset:{preparationControl:attrs.match(/data-preparation-control="([^"]+)"/)?.[1],interactionKey:attrs.match(/data-interaction-key="([^"]+)"/)?.[1]},parentElement:{open:false}}));};
+ const region={set outerHTML(html){parse(html);}};
+ f.root.querySelector=s=>s==='[data-preparation]'?region:null;
+ f.root.querySelectorAll=s=>s.includes('summary[data-interaction-key]')?nodes.filter(n=>n.dataset.interactionKey):[];
+ f.host.profileId=()=>id;f.host.sourceSignature=()=>revision;f.host.api.professionCoach=async()=>m;
+ f.c.Preparation.init(f.host);await f.c.Preparation.refresh();
+ const disclosures=()=>nodes.filter(n=>['other-characters','acquisition-attribution'].includes(n.dataset.preparationControl));
+ assert.equal(disclosures().length,2);disclosures().forEach(n=>n.parentElement.open=true);
+ revision++;await f.c.Preparation.refresh();assert.ok(disclosures().every(n=>n.parentElement.open),'Source refresh retains expanded details');
+ f.c.Preparation.beginRender();parse(f.c.Preparation.page());f.c.Preparation.endRender();f.c.Preparation.mounted();assert.ok(disclosures().every(n=>n.parentElement.open),'Root refresh retains expanded details');
+ m={...m,selection:{recipeId:101,skillLineId:171,crafts:1}};revision++;await f.c.Preparation.refresh();assert.ok(disclosures().every(n=>!n.parentElement.open),'Changed selection gets separate disclosure identity');
+ disclosures().forEach(n=>n.parentElement.open=true);f.c.Preparation.invalidate();parse(f.c.Preparation.page());id='b';revision++;await f.c.Preparation.refresh();assert.ok(disclosures().every(n=>!n.parentElement.open),'Hard owner invalidation does not transfer expanded state');
+ f.c.Preparation.invalidate();parse(f.c.Preparation.page());id='a';revision++;await f.c.Preparation.refresh();assert.ok(disclosures().every(n=>!n.parentElement.open),'Leaving and returning does not resurrect invalidated state');
+});

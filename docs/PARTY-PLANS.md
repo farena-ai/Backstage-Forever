@@ -1,10 +1,10 @@
 # Party plans: prepare together, share deliberately
 
-Party helps you create a manual dungeon-preparation checklist and exchange a small plan file. It does not log into a party service, send chat messages, control group members or operate the game.
+Open **Plans → Party** to create a manual dungeon-preparation checklist and exchange a small plan file. It does not log into a party service, send chat messages, control group members or operate the game.
 
 Choose a role yourself: tank, healer, damage, or unspecified. BF may show the selected character's observed class, level, equipment and bag space with their saved date. These are facts to review, not a gear score or guarantee of dungeon access. Repair, consumables and meeting-point checks remain manual unless an actual observation explicitly says otherwise.
 
-Create a dungeon checklist to add a local Company journey. Check or edit its steps as your group prepares. Viewing Party does not change your selected character or re-enable following.
+Create a dungeon checklist to add a local journey in **Plans → My plans**. Check or edit its steps as your group prepares. Viewing Party does not change your selected character or re-enable following.
 
 To share an existing plan, select it and open the preview. The portable title starts generically. Review every line and remove personal wording before explicitly saving the JSON file. Only the disclosed title and step text are portable; BF does not automatically append profiles, journal notes, goals, provider credentials, source identifiers or completion evidence. Text you deliberately wrote into the selected steps may itself contain personal information, so the preview matters.
 

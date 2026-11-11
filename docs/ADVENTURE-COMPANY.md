@@ -4,7 +4,7 @@ Company brings your collected characters and shared plans together. It works loc
 
 ## See the next useful character
 
-Open **Company**. Character cards show their class/faction, level, saved progress, ready turn-ins and available preparation facts. Private goals remain attached to their character. Choose a card's adventure action to deliberately switch characters; browsing Company leaves your current selection alone.
+Open **Plans → My plans** (the Company overview). Character cards show their class/faction, level, saved progress, ready turn-ins and available preparation facts. Private goals remain attached to their character. Choose a card's adventure action to deliberately switch characters; browsing Company leaves your current selection alone.
 
 Counts describe collected observations. A manual character or a missing quest log is not an empty quest log. Save dates matter: your characters may have advanced since their last save. A suggested character is a planning suggestion, not a claim that a route is optimal or content is currently available.
 

@@ -43,19 +43,19 @@ Open **Characters** (or Adventure's **Character guidance** action) for automatic
 
 Open **Adventure → Next step** for the Compass recommendation. **Review quest choices** opens the detailed Director and its alternatives. Choose your session length/focus and use **Start quest session** to create or reuse a tracked Company plan. This works without AI and does not operate the game. The time choice limits how many quests the plan tracks; it is not a promised finishing time. See [Director help](ADVENTURE-DIRECTOR.md).
 
-Open **Preparation** for saved professions, recipes and carried materials. Choose a known recipe and craft batches, review the dates and complete/partial labels, then use **Add shopping checklist** if wanted. Partial inventory is not a zero shortfall. Other characters remain separate; BF does not buy, craft or transfer items. See [Preparation help](PREPARATION.md).
+Open **Adventure → Professions** for saved professions, recipes and carried materials. Auto chooses a useful observed learned recipe; you can select an owned profession or explicit saved recipe and 1–20 craft attempts. Choices autosave for this character, independently of native goals. Attempts do not guarantee output or skill gains. Review the dates and complete/partial labels, then use **Add shopping checklist** if wanted. Partial inventory is not a zero shortfall. Other characters remain separate; BF does not buy, craft or transfer items. See [Preparation help](PREPARATION.md).
 
 ## Plan across your characters
 
-Open **Company** to see collected characters, saved ready turn-ins, private goals and known preparation facts together. Choose a character deliberately to open their Adventure. Merely browsing Company leaves your current character and following preference alone.
+Open **Plans → My plans** to see collected characters, saved ready turn-ins, private goals and known preparation facts together. Choose a character deliberately to open their Adventure. Merely browsing Company leaves your current character and following preference alone.
 
 Create a shared journey from a blank plan or an editable quest-session/dungeon-preparation checklist. Add your own steps or pick a character and a quest from its saved log. Manual checks and newly observed game completions receive distinct labels. BF does not infer a turn-in just because a quest disappeared. Everything works without an AI provider; plans stay local and out of automatic AI context. See [Adventure Company](ADVENTURE-COMPANY.md) for repeatable quests, shared steps, reassignment and backups.
 
 ## Prepare a party and share a plan
 
-Open **Party**, choose your own role (or leave it unselected), and use **Create dungeon checklist** for five manual preparation checks in Company. Saved equipment and bag facts help your review; they do not guarantee dungeon access or readiness.
+Open **Plans → Party**, choose your own role (or leave it unselected), and use **Create dungeon checklist** for five manual preparation checks in Company. Saved equipment and bag facts help your review; they do not guarantee dungeon access or readiness.
 
-To share, open Company, choose the exact plan and use **Share plan**. Review/edit its title and every step before explicitly saving the file. Remove personal wording yourself. BF does not attach private structured data or send the file to anyone. A friend can choose **Import plan**, inspect the preview, then explicitly add it as new manual, unchecked and unassigned steps. Opening the file alone changes nothing. This is different from restoring a profile backup. See [Party help](PARTY-PLANS.md).
+To share, open **Plans → My plans**, choose the exact plan and use **Share plan**. Review/edit its title and every step before explicitly saving the file. Remove personal wording yourself. BF does not attach private structured data or send the file to anyone. A friend can choose **Import plan**, inspect the preview, then explicitly add it as new manual, unchecked and unassigned steps. Opening the file alone changes nothing. This is different from restoring a profile backup. See [Party help](PARTY-PLANS.md).
 
 ## Optional voice and saved exchanges
 
@@ -113,4 +113,4 @@ ChatGPT preview account switching requires resetting app data because one regist
 
 ## Local travel in Companion
 
-In Companion, try “what is the fastest way from org to tb”. This small dated local reference works without choosing a model. Follow clarification questions for missing places or faction. Review conditional flight and road options, unknown unlocks and source dates. Save trip plan creates a manual checklist in Plans (currently Company); you check off the steps. Other questions still need your configured AI connection. Nothing moves or controls your character.
+In Companion, try “what is the fastest way from org to tb”. This small dated local reference works without choosing a model. Follow clarification questions for missing places or faction. Review conditional flight and road options, unknown unlocks and source dates. Save trip plan creates a manual checklist in **Plans → My plans**; you check off the steps. Other questions still need your configured AI connection. Nothing moves or controls your character.

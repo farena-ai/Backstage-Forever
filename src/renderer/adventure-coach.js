@@ -88,7 +88,8 @@ window.AdventureCoach = (() => {
       quest: "✧",
       "craft-ready": "⚒",
       "profession-cap": "❧",
-    }[primary.kind];
+      "materials-needed": "◈",
+    }[primary.kind] || "✧";
     return `<div class="coach-path"><article data-coach-primary><div class="coach-title"><span class="coach-sigil" aria-hidden="true">${glyph}</span><div><span class="eyebrow">YOUR NEXT STEP</span><h2>${esc(primary.title)}</h2></div></div><p class="coach-reason">${esc(primary.reason)}</p><p class="coach-detail">${esc(primary.detail)}</p><div class="coach-bottom"><span class="coach-evidence">${esc(primary.kind === "craft-ready" ? "Saved recipes and bags" : primary.evidence)}</span><button data-coach-action ${primary.kind === "quest" ? "data-coach-director" : 'data-nav="preparation"'}>${primary.kind === "quest" ? "Review quest choices" : "Open Professions"} →</button></div></article>${alternatives.length ? `<aside class="coach-alternatives" aria-label="Other useful paths">${alternatives.map((a) => `<div><span class="eyebrow">ANOTHER PATH</span><h3>${esc(a.title)}</h3><p>${esc(a.reason)}</p></div>`).join("")}</aside>` : ""}</div>`;
   }
   function render() {

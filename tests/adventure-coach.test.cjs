@@ -300,3 +300,12 @@ test("coach keeps deterministic Questing order and bounded ready/local and unkno
 });
 
 test("desktop profession follow-through precedes unknown log fallback and never has a quest command",()=>{const p=profile();p.readiness.bags.free=5;p.readiness.workshop.professions.items[0].rank=20;p.readiness.workshop.materials.items[0].count=1;p.quests[0].objectives=[];const m=build(p,{mode:'professions'});assert.equal(m.recommendation.kind,'materials-needed');assert.equal(m.recommendation.questStep,undefined);assert.equal(build(p).recommendation.kind,'materials-needed');});
+
+test('actual Adventure renderer gives every emitted opportunity a sigil and safe fallback',async()=>{
+ const vm=require('node:vm'),fs=require('node:fs');
+ for(const kind of ['bags','quest','craft-ready','profession-cap','materials-needed','future-kind']) {
+  const c={window:{},localStorage:{getItem:()=>null},InteractionGuard:{create:()=>({defer:()=>false})},CommandCenter:{savedTime:v=>v}};vm.createContext(c);vm.runInContext(fs.readFileSync(require.resolve('../src/renderer/adventure-coach.js'),'utf8'),c);
+  c.window.AdventureCoach.init({root:{addEventListener(){},querySelector:()=>null},active:()=>true,esc:v=>String(v??''),profile:()=>({id:'a',source:{kind:'wow-addon'},clientBuild:'1.60.1.70862'}),api:{adventureCoach:async()=>({recommendation:{kind,title:'Supplies',reason:'Observed facts',detail:'Check materials',evidence:'Saved observations'}})}});
+  c.window.AdventureCoach.sync();await new Promise(r=>setImmediate(r));const html=c.window.AdventureCoach.render();assert.doesNotMatch(html,/undefined|null/);assert.match(html,/<span class="coach-sigil" aria-hidden="true">[^<]+<\/span>/);if(kind==='materials-needed')assert.match(html,/Open Professions/);
+ }
+});

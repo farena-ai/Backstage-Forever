@@ -86,3 +86,57 @@ Final covering roots under the same captures directory: `covering-player-shell-2
 ## Remaining limits and ownership
 
 Parent independent SPEC/QUALITY review is next. Map should consume the exact selection/shoppingRows.acquisition/acquisitionReference/gatheringReference fields above, not create a second source database. Native/current versus desktop/last-saved and independent goals stay explicit. Actual client behavior/layout/performance and final full-suite/build/package/outside-checkout review remain pending with parent/owner. Source0.12.3;1.0held. Source/GUI ownership releases only after force-adding this report and a successful scoped commit.
+
+
+## Review corrections — 2026-11-11, base 22c2a8c09ed1209cddb9047316a79ad59fc16f7d
+
+Resolved all four findings from `work/profession-coach-review.md` before the Map gate.
+
+- **I1/P2:** Source-card identity now compares a nonmutating canonical unordered set of typed `[mapId,x,y]` tuples, still requiring the same item row/entity and the actual seller-reference/acquisition build. The shipped Coarse Thread/Mahu observations have reversed point order and now render one card. Original source arrays/order remain untouched. The merged card retains acquisition qualification/reason/build/date/contributor count/context/stock uncertainty plus seller qualification/listing date/contributor count/stock-price uncertainty. An entirely merged seller list no longer falsely says there was no seller observation. Different builds, typed map IDs, or coordinates do not merge.
+- **M1:** `materials-needed` uses the themed material sigil, with a fallback for unknown kinds. The actual Adventure renderer is exercised for all five emitted opportunity kinds and one future kind; none prints `undefined`.
+- **M2:** Other characters and Acquisition reference & coverage now have semantic keys scoped by profile, selected profession/recipe and section. The existing remember/restore path preserves expanded state through source and root paints; selection changes and hard owner/navigation invalidation retire it. Generation, source, action, focus and privacy fences are unchanged. Existing material/gathering source summaries already had identities; their refresh behavior is also exercised in the desktop fixture.
+- **M3:** README, Getting Started, Preparation help, Company/Party help and the current Product Readiness/Roadmap navigation summaries now point to Adventure → Professions and Plans → My plans/Party as appropriate. Auto and 1–20 attempts semantics are explicit. Workshop helper/empty-state actions say Plans while internal `company` route/control IDs stay unchanged. Historical release notes and dated specs/plans are untouched.
+
+No DTO, native helper, goal option, source data, addon ownership, or main/preload authority contract changed. Source stays 0.12.3; 1.0/live-client acceptance remain held.
+
+### Focused RED → GREEN
+
+Command (the same command was used for RED and initial GREEN):
+
+```powershell
+node --test --test-concurrency=1 tests/preparation-renderer.test.cjs tests/adventure-coach.test.cjs
+```
+
+After correcting the new synthetic profile's required validation fields (professionId, realm, notes, goals and source ID), RED was **33 pass / 3 fail / 0 skip**: actual shipped Mahu count 2 versus 1, actual materials-needed renderer printed undefined, and actual disclosure paint lost expanded state. The build/typed-coordinate boundary regression passed before the fix. Production code was changed only after those intended failures. Initial GREEN: **36/36 pass, 0 fail, 0 skip**. Logs preserved under `work/profession-review-red.txt` and `work/profession-review-green.txt`.
+
+Final focused command:
+
+```powershell
+node --test --test-concurrency=1 tests/preparation-renderer.test.cjs tests/adventure-coach.test.cjs tests/profession-coach.test.cjs tests/addon-profession-coach.test.cjs tests/profession-coach-ipc.test.cjs tests/player-navigation.test.cjs
+```
+
+**59/59 pass, 0 fail, 0 skip** (2723.2979ms). Includes unchanged strict IPC/native profession coverage plus source/action retirement regressions. Log: `work/profession-review-focused-green.txt`.
+
+Actual desktop command:
+
+```powershell
+node scripts/profession-coach-smoke.cjs --review-only
+```
+
+**PASS** using the real Electron main/preload/renderer and existing prebootstrap synthetic external-service fakes. Verifies one shipped-geometry Mahu card, preserved merged qualifiers/dates/counts, expanded acquisition/attribution/other-character evidence across root and saved-source refresh, and character/navigation retirement. Both factions were captured at 1440×960 and 984×635; Add remains inside the compact viewport, numeric progress remains 22/75. No renderer/CSP errors, inference, or game launches. The first fixture attempt asked innerText of a still-closed native disclosure and returned an empty string; assertion placement was corrected to follow the physical expansion, without changing production code or weakening the assertion. That failed dated folder remains preserved.
+
+### Fresh review evidence and limits
+
+Final review folder: `.superpowers/sdd/profession-coach-captures/2026-11-11T07-55-01-753Z/` — six PNGs plus manifest. Merged source and Alliance compact images were visually inspected: both authorities' dated claims are readable on one Mahu card, original art/ornate controls remain, Add is visible by 635px, and the progress bar is approximately 29% filled. The manifest labels the inherited synthetic limitedStock=true override on the returned item2320 acquisition clone; shipped limitedStock remains null. Old receipts were not modified. This focused pass did not rerun unaffected 200% or all-five GUI gates; their original qualified receipts remain above.
+
+SHA256:
+
+- `manifest.json`: `5729cfa43385514d397dc8ca558e41f4e74bd76245d5f053fc4b8f167827842b`
+- `review-merged-mahu.png`: `bb1c938bf33e47224adf1360a14f6826a56d90a297f52cf0e423f8cffbe668d7`
+- `review-expanded-evidence.png`: `6a4d85386d8c330a1323ae3aeafe59c029c58543df2ef396e3e594d0c948cc8c`
+- `review-alliance-compact.png`: `7637ec940a2d74095fc273bf72bfa806857eab8721602066f9123b93143d3bd6`
+- `review-alliance-full.png`: `7af9cddf1be4fff08823e8dbcf9e0f8e1e965329d84b66d73f174ef79544bd08`
+- `review-horde-compact.png`: `7729736d5b3794c16f8f98f521c4e79b2e9c85043577bf8634ea15d0b8d753b7`
+- `review-horde-full.png`: `8e9de43a56f28f4adde3f1859e44a3879634f6c261a764f7701e2764fa3b5582`
+
+Rechecked the existing reference-byte manifest: all 22 data/generated reference files still match their recorded byte lengths and SHA256 hashes. No acquisition/native bytes changed. Syntax checks and `git diff --check` passed. No full suite, build, package, real-player/game/auth/audio/paid/OS/installer/watcher/publication action occurred. Parent retains final acceptance after Map. Sole source/GUI ownership releases after this appended report is force-added and the focused correction commit succeeds.

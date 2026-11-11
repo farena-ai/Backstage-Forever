@@ -317,6 +317,66 @@ function shortPath(target) {
     };
     const first = initial.activeProfileId,
       second = initial.profiles.find((p) => p.name === "Vaelric").id;
+
+    if (process.argv.includes("--review-only")) {
+      const errors=[];
+      page.on('pageerror',e=>errors.push(e.message));
+      page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+      await page.evaluate(id=>Preparation.save(id,{recipeId:100,crafts:1}),second);
+      await page.getByLabel('Active character',{exact:true}).selectOption(second);
+      await page.waitForFunction(id=>document.querySelector('#active-character')?.value===id,second);
+      const thread=page.locator('[data-preparation-reagent="2320"]');
+      await thread.waitFor();
+      await page.waitForFunction(()=>document.querySelector('.workshop-hero-copy p')?.textContent.includes('Vaelric'));
+      assert.equal(await thread.locator('h4').filter({hasText:/^Mahu$/}).count(),1,'Actual shipped reversed Mahu positions merge');
+      const merged=thread.locator('.acquisition-sources .seller-observation').filter({hasText:'Mahu'});
+      const selectors=['[data-preparation-control="other-characters"]','[data-preparation-control="acquisition-attribution"]','[data-preparation-control="acquisition:2320"]'];
+      for(const selector of selectors) await page.locator(selector).click();
+      assert.match(await merged.innerText(),/Seller catalog also records/);
+      assert.match(await merged.innerText(),/Listing date .*contributor files/);
+      await page.locator('[data-preparation-control="other-characters"]').blur();
+      const isOpen=()=>page.evaluate(selectors=>selectors.every(s=>document.querySelector(s)?.parentElement.open),selectors);
+      assert.ok(await isOpen());
+      await page.evaluate(()=>render());
+      assert.ok(await isOpen(),'Root render retains all expanded evidence');
+      characters[1].updatedAt=clock+2;
+      await update();
+      await page.waitForFunction(()=>document.querySelector('[data-preparation-add]')?.disabled===false);
+      assert.ok(await isOpen(),'Saved source refresh retains expanded evidence');
+      await merged.scrollIntoViewIfNeeded();
+      await page.screenshot({path:path.join(evidence,'review-merged-mahu.png')});
+      await page.locator('[data-preparation-control="acquisition-attribution"]').scrollIntoViewIfNeeded();
+      await page.screenshot({path:path.join(evidence,'review-expanded-evidence.png')});
+      await page.getByLabel('Active character',{exact:true}).selectOption(first);
+      await page.waitForFunction(()=>document.querySelector('.workshop-hero-copy p')?.textContent.includes('Aeralyn'));
+      assert.equal(await isOpen(),false,'Character switch retires expanded state');
+      for(const selector of selectors.slice(0,2)) assert.equal(await page.locator(selector).evaluate(n=>n.parentElement.open),false);
+      for(const selector of selectors.slice(0,2)) await page.locator(selector).click();
+      await navigate(page,'company');await navigate(page,'preparation');
+      await page.locator('[data-preparation-reagent]').first().waitFor();
+      for(const selector of selectors.slice(0,2)) assert.equal(await page.locator(selector).evaluate(n=>n.parentElement.open),false,'Navigation retires disclosure state');
+      for(const [id,faction] of [[first,'alliance'],[second,'horde']]) {
+        await page.getByLabel('Active character',{exact:true}).selectOption(id);
+        await page.waitForFunction(id=>document.querySelector('#active-character')?.value===id,id);
+        for(const [size,width,height] of [['full',1440,960],['compact',984,635]]) {
+          await app.evaluate(({BrowserWindow},{width,height})=>BrowserWindow.getAllWindows()[0].setContentSize(width,height),{width,height});
+          await page.evaluate(()=>document.querySelector('.main').scrollTo(0,0));
+          assert.deepEqual(await page.getByLabel('Observed profession rank',{exact:true}).evaluate(n=>({value:n.value,max:n.max})),{value:22,max:75});
+          assert.ok(await page.locator('[data-preparation-add]').evaluate(n=>n.getBoundingClientRect().bottom<=innerHeight));
+          await capture('review-'+faction+'-'+size);
+        }
+      }
+      assert.deepEqual(errors,[],'No renderer or CSP errors');
+      assert.deepEqual(await app.evaluate(()=>({inference:preparationUi.inference,launches:preparationUi.launches})),{inference:0,launches:0});
+      const captures=[];
+      for(const file of (await fs.readdir(evidence)).filter(n=>n.endsWith('.png'))) {
+        const bytes=await fs.readFile(path.join(evidence,file));captures.push({file,bytes:bytes.length,sha256:require('node:crypto').createHash('sha256').update(bytes).digest('hex')});
+      }
+      await fs.writeFile(path.join(evidence,'manifest.json'),JSON.stringify({synthetic:true,inClient:false,reviewFixes:['shipped unordered Mahu identity','expanded source/root refresh','character/navigation retirement','full/compact factions'],limitedStockVariant:'Main-owned synthetic true for item 2320; shipped bytes unchanged',rendererErrors:errors,captures},null,2));
+      console.log('Profession review GUI PASS: merged shipped Mahu, expanded refresh, owner/navigation retirement, both factions full/compact, numeric 22/75, no CSP/errors/inference/launches. Evidence: '+evidence);
+      return;
+    }
+
     const readRetryFocus = async () => {
       // Hold the real main-owned brief after it reads the synthetic saved source.
       await app.evaluate(({ ipcMain }) => {
