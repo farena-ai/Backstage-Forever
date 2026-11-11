@@ -76,3 +76,26 @@ test('native base releases before owned row retirement and tooltip truncation ca
  WorldMapFrame.provider:RefreshAllData();assert(sawRow,'Native release must run before owned data is discarded')
  local title;GameTooltip.SetText=function(_,value)title=value end;c.quests[25].title=string.rep('Q',119)..'|cffff0000';BackstageForeverMapUpdate(c);pins[1]:OnMouseEnter();assert(title);local stripped=title:gsub('||','');assert(not stripped:find('|',1,true),'Truncation must not split escaped pipe pairs')
 `));
+
+const actualGuide=String.raw`
+local currentComplete,currentIndex=true,1
+local guideMessages,placed={},nil
+DEFAULT_CHAT_FRAME={AddMessage=function(_,value)guideMessages[#guideMessages+1]=value end}
+C_QuestLog={GetLogIndexForQuestID=function(id)return id==25 and currentIndex or nil end,IsComplete=function(id)return id==25 and currentComplete or false end}
+C_Map.GetMapInfo=function(id)return {name='Synthetic map '..id}end
+C_Map.SetUserWaypoint=function(value)waypoints=waypoints+1;placed=value end
+dofile('addon/BackstageForever/BackstageForever.lua')
+`;
+test('review P1 quest pin adapts the unchanged Plan command into the actual Guide and places the chosen waypoint',()=>lua(native+actualGuide+`
+local pin=pins[1];assert(pin.bfRow.kind=='quest' and pin.bfRow.questStep.command:find('/bf guide ',1,true)==1)
+pin:OnClick('LeftButton');assert(waypoints==1,'Valid quest pin must reach the actual Guide waypoint setter');assert(placed.mapId==1411 and placed.x==.1 and placed.y==.2);assert(guideMessages[#guideMessages]:find('Quest waypoint:',1,true))
+`));
+test('review P1 actual quest Guide rejects forged command coordinates and stale quest/build/owner/generation/combat state',()=>lua(native+actualGuide+`
+local pin=pins[1];local row=pin.bfRow;local original=row.questStep.command
+for _,bad in ipairs({'/run something','/bf guide 999 t 1411 0.1 0.2 1.60.1.70862','/bf guide 25 r 1411 0.1 0.2 1.60.1.70862','/bf guide 25 t 1412 0.1 0.2 1.60.1.70862','/bf guide 25 t 1411 0.3 0.2 1.60.1.70862','/bf guide 25 t 1411 0.1 0.2 1.60.1.70888'})do row.questStep.command=bad;pin:OnClick('LeftButton');assert(waypoints==0,'Forged path must not place a marker')end
+row.questStep.command=original;currentComplete=false;pin:OnClick('LeftButton');assert(waypoints==0);currentComplete=true;currentIndex=nil;pin:OnClick('LeftButton');assert(waypoints==0);currentIndex=1
+fighting=true;pin:OnClick('LeftButton');assert(waypoints==0);fighting=false
+local oldBuild=GetBuildInfo;GetBuildInfo=function()return '1.60.1','70888'end;pin:OnClick('LeftButton');assert(waypoints==0);GetBuildInfo=oldBuild
+local oldOwner=UnitGUID;UnitGUID=function()return 'OTHER'end;pin:OnClick('LeftButton');assert(waypoints==0);UnitGUID=oldOwner
+local oldClick=pin.OnMouseClickAction;BackstageForeverMapUpdate(c);oldClick(pin,'LeftButton');assert(waypoints==0);pins[1]:OnClick('LeftButton');assert(waypoints==1,'Current valid replacement must recover')
+`));

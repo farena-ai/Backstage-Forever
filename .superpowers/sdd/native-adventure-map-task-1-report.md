@@ -132,3 +132,26 @@ Primary70862 UI/API evidence remains the locally inspected `work/proactive-resea
 `native-adventure-map-captures/task-1-immutable-receipts.json` rechecks **22 existing data/generated reference files byte-for-byte** against the previous exact byte manifest. Plan and package-lock Git blobs unchanged; exact Guide command body unchanged; package version/dependencies unchanged. Native XML resource filter/TOC/owned parity, strict independent module imports, source diffs and `git diff --check` reviewed. JS syntax checks passed. No acquisition/reference bytes or SDK dependencies changed.
 
 Owner must still naturally open the actual current-client map and inspect pixels, positions/zoom/tooltips/filters/persistence/combat/source behavior; observe real supported mining and herbalism; assess performance and normal SavedVariables writes. Synthetic source/provider fixtures and a saved-format receipt do not establish these facts. Parent owns fresh independent native SPEC/QUALITY review, desktop Map implementation and final comprehensive/full-suite/build/packaged/outside-checkout release gates. Source0.12.3/1.0held. Sole source/GUI ownership releases only after this report is force-added and the scoped commit succeeds.
+
+## Native review correction wave — 2026-11-11
+
+Base `90092e5fa86b5f245803005aea782e45ac3b0c3c`; addressed both P1 findings from `work/native-map-review.md` in one scoped wave.
+
+- **Quest action boundary:** Map now validates the selected quest command against the exact row identity, quest ID/phase, destination/map/coordinates and current captured build, then removes only the `/bf ` prefix before calling the actual Guide. The existing Plan command format and Guide implementation/protocol remain byte-for-byte unchanged. Existing owner/map/build/generation checks and Guide's fresh quest/phase/combat checks remain active. Tests load the real Guide and dispatch the actual pin click: a valid click sets the selected waypoint; forged command identities/coordinates/build and stale quest/owner/build/generation/combat paths do not. A fresh replacement pin recovers.
+- **Complete collector context and persistence fence:** Each event gathers and validates its required owner, build, monotonic clock, epoch and map/vector once before owner/store mutation or correlation math. The candidate record is independently validated before reading retained history and revalidated after material union, before the single retained-record assignment. A nil/secret/malformed required observation retires that interaction without appending or resetting valid history. An unexpected nonempty owner in the same Lua session also retires correlation and cannot adopt or erase the existing per-character journal; restoring the valid owner permits later recording. No schema, public helper, point DTO, resource ownership, data-pack, dependency or source version contract changed.
+
+Focused regression command, run against the unfixed source first and again after the fixes:
+
+```powershell
+node --test --test-name-pattern="review P1" tests/addon-map.test.cjs tests/addon-gathering.test.cjs
+```
+
+**RED: 0/5 pass, 5 fail**, 652.1863ms (`work/native-map-review-fix-red.txt`). **GREEN: 5/5 pass, 0 fail/skip/cancel**, 599.9371ms (`work/native-map-review-fix-green.txt`). Both real-Guide regressions and all three actual-collector regressions check Fengari status and empty stderr. Collector coverage begins with valid retained history, reproduces the second-read nil epoch, verifies one required API read per event, exercises nil/secret/malformed epoch/GetTime/build/owner/map/vector observations, and proves later valid recording recovery. The intermediate 4/5 run is retained in `work/native-map-review-fix-intermediate-tie-fixture.txt`: its remaining assertion assumed insertion order after a same-epoch snapshot, although the existing validator sorts ties by canonical ID. The corrected assertion checks that the original ID survives anywhere in the retained records, plus exact total and valid epoch values.
+
+Requested covering run:
+
+```powershell
+node --test --test-concurrency=1 tests/addon-map.test.cjs tests/addon-gathering.test.cjs tests/gathering-data.test.cjs tests/gathering-sync.test.cjs tests/addon-live.test.cjs tests/addon-lifecycle.test.cjs
+```
+
+**46/46 pass, 0 fail/skip/cancel**, 24823.1927ms (`work/native-map-review-fix-covering-green.txt`), consisting of the prior41 plus5 new regressions. Source/test diff self-review and `git diff --check` passed. This wave modifies only Map.lua, Gathering.lua, their two test files and this report; the existing Plan, Guide/capture, HUD, schema, data/reference, XML/TOC, package/dependency and artifact files remain unchanged from the base. No repeated208/full-suite/GUI/build/packaged or live-client operation occurred. Source0.12.3 and1.0held remain unchanged; actual-client acceptance limits above still apply. Parent retains independent re-review and downstream desktop/final delivery gates. Source/GUI/build ownership releases after this report is force-added and the scoped correction commit succeeds.

@@ -45,6 +45,22 @@ local function valid(token,map,id,row)
         and method(map,'IsShown')==true and settings and settings.enabled and text(call(UnitGUID,'player'),200)==owner
         and text(field(latest,'clientBuild'),30)==actualBuild() and number(method(map,'GetMapID'),1,2147483647)==row.mapId and shownPoints[id]==row
 end
+-- Plan emits the copyable slash command; Guide receives only its arguments.
+-- Keep the adapter bound to this exact chosen point before Guide's live checks.
+local function questCommand(row)
+    local step=field(row,'questStep');local command=text(field(step,'command'),154)
+    if not command then return nil end
+    local id,phase,map,x,y,build=command:match('^/bf guide (%d+) ([to]) (%d+) (%d*%.?%d+) (%d*%.?%d+) (%d+%.%d+%.%d+%.%d+)$')
+    if not id then return nil end
+    id=number(tonumber(id),1,2147483647);map=number(tonumber(map),1,2147483647)
+    x=tonumber(x);y=tonumber(y)
+    local destination=field(step,'destination')
+    if not id or not map or row.kind~='quest' or row.id~='quest:'..id..':'..phase..':'..map
+        or id~=number(field(step,'questId'),1,2147483647) or phase~=field(step,'phase') or map~=row.mapId
+        or x~=row.x or y~=row.y or build~=text(field(latest,'clientBuild'),30)
+        or field(destination,'mapId')~=map or field(destination,'x')~=x or field(destination,'y')~=y then return nil end
+    return command:sub(5)
+end
 local Pin={}
 function Pin:OnLoad()
     method(self,'SetSize',20,20)
@@ -64,7 +80,7 @@ function Pin:OnAcquired(row,token,map)
     self.OnMouseClickAction=function(_,button)
         if public(button)~='LeftButton' or not current()then return end
         if row.questStep then
-            local command=text(field(row.questStep,'command'),150)
+            local command=questCommand(row)
             if command then call(BackstageForeverGuide,command)end
             return
         end

@@ -83,3 +83,40 @@ test('actual character capture accepts public vector properties and rejects prot
 });
 
 test('known English herbalism needs actual target/object/material identity and ordinary vectors, never herb-name guessing',()=>lua(`source='GameObject-0-1-2-3-1617-PRIVATE_OBJECT';items={765};sent('Silverleaf',2368);loot();success(2368);assert(count()==1 and snap().records[1].method=='herbalism' and snap().records[1].entityId==1617);BackstageForeverGatheringClearAction()();sent('Silverleaf plant',2368);success(2368);loot();assert(count()==0);C_Map.GetPlayerMapPosition=function()return {GetXY=function()return {secret=true},.4 end}end;sent('Silverleaf',2368);success(2368);loot();assert(count()==0)`));
+
+test('review P1 single event context consumes each required observation once and cannot append a second-read nil epoch',()=>lua(`
+sent();success();loot();assert(count()==1);local first=BackstageForeverGatheringDB.records[1].id;x=.51;sent();success()
+local reads=0;time=function()reads=reads+1;if reads==1 then return epoch end;return nil end
+loot();assert(reads==1,'Event epoch must be observed once, not checked then reread');time=function()return epoch end
+assert(#BackstageForeverGatheringDB.records==2 and count()==2);local found=false;for _,r in ipairs(BackstageForeverGatheringDB.records)do assert(r.observedAt==epoch);if r.id==first then found=true end end;assert(found,'Prior valid record must survive')
+`));
+test('review P1 transient required context failures preserve valid history and allow later valid recovery',()=>lua(`
+sent();success();loot();assert(count()==1);local first=BackstageForeverGatheringDB.records[1].id
+local failures={nil,{secret=true},'malformed'}
+local cases={
+ {get=function()return time end,set=function(f)time=f end,good=function()return epoch end},
+ {get=function()return GetTime end,set=function(f)GetTime=f end,good=function()return now end},
+ {get=function()return GetBuildInfo end,set=function(f)GetBuildInfo=f end,good=function()return '1.60.1',build end},
+ {get=function()return UnitGUID end,set=function(f)UnitGUID=f end,good=function()return owner end},
+ {get=function()return C_Map.GetBestMapForUnit end,set=function(f)C_Map.GetBestMapForUnit=f end,good=function()return map end},
+ {get=function()return C_Map.GetPlayerMapPosition end,set=function(f)C_Map.GetPlayerMapPosition=f end,good=function()return {x=x,y=y}end},
+}
+for index,case in ipairs(cases)do for kind=1,3 do
+ x=.51;sent();success();local old=case.get();local bad=failures[kind];case.set(function()return bad end)
+ loot();case.set(old);assert(#BackstageForeverGatheringDB.records==1,'Invalid context must not append/reset retained history '..index..'/'..kind);assert(count()==1 and snap().records[1].id==first)
+end end
+-- An unexpected nonempty owner also retires correlation; it cannot adopt/erase this session's store.
+x=.51;sent();success();local prior=UnitGUID;UnitGUID=function()return 'DIFFERENT_OWNER'end;loot();UnitGUID=prior;assert(count()==1 and snap().records[1].id==first)
+x=.52;sent();success();loot();assert(count()==2,'A later complete observation must recover recording')
+`));
+test('review P1 context values that become secret on a hypothetical second read never enter correlation math or poison retained records',()=>lua(`
+sent();success();loot();assert(count()==1)
+local cases={
+ {set=function(f)GetTime=f end,good=function()return now end},
+ {set=function(f)GetBuildInfo=f end,good=function()return '1.60.1',build end},
+ {set=function(f)UnitGUID=f end,good=function()return owner end},
+ {set=function(f)C_Map.GetBestMapForUnit=f end,good=function()return map end},
+ {set=function(f)C_Map.GetPlayerMapPosition=f end,good=function()return {x=x,y=y}end},
+}
+for i,case in ipairs(cases)do x=.51+i/1000;sent();success();local reads=0;case.set(function()reads=reads+1;if reads==1 then return case.good()end;return {secret=true}end);loot();assert(reads==1,'Event field read once '..i);case.set(case.good);assert(count()==i+1);for _,r in ipairs(snap().records)do assert(r.observedAt==epoch and r.clientBuild=='1.60.1.70888')end end
+`));

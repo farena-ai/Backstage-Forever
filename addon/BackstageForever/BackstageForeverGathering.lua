@@ -103,14 +103,20 @@ local function bind()
     if not active then return nil end
     local id=text(call(UnitGUID,'player'),200)
     if not id then retire();return nil end
-    if owner and owner~=id then retire();BackstageForeverGatheringDB=nil end
+    if owner and owner~=id then retire();return nil end
     owner=id;return id
 end
-local function capabilities()
-    if call(InCombatLockdown)~=false or not clock() or not epoch() or call(GetLocale)~='enUS' or not clientBuild() or not position()then return false end
-    for _,fn in ipairs({'GetLootSourceInfo','GetLootSlotLink','GetNumLootItems'})do if type(public(_G[fn]))~='function' then return false end end
-    return true
+-- Build one complete observation, without checking then rereading changing APIs.
+-- No owner binding or store mutation is allowed until every required value exists.
+local function observation()
+    if call(InCombatLockdown)~=false or call(GetLocale)~='enUS' then return nil end
+    for _,fn in ipairs({'GetLootSourceInfo','GetLootSlotLink','GetNumLootItems'})do if type(public(_G[fn]))~='function' then return nil end end
+    local id=text(call(UnitGUID,'player'),200)
+    local build,tick,at,p=clientBuild(),clock(),epoch(),position()
+    if not id or not build or not tick or not at or not p then return nil end
+    return {owner=id,build=build,clock=tick,at=at,mapId=p.mapId,x=p.x,y=p.y}
 end
+local function capabilities()return observation()~=nil end
 function BackstageForeverGatheringSession(event)
     event=text(event,50);retire()
     if event=='PLAYER_LOGOUT' then active=false;return end
@@ -142,9 +148,15 @@ function BackstageForeverGatheringClearAction()
     end
 end
 local function context()
-    local id=bind();if not id or not store().recording or not capabilities()then return nil end
-    local p=position();if not p then return nil end
-    p.owner=id;p.build=clientBuild();p.clock=clock();p.at=epoch();return p
+    if not active then return nil end
+    local current=observation()
+    if not current then return nil end
+    -- Unexpected identity during this Lua session retires correlation, never the
+    -- per-character journal. A fresh client session owns any new character DB.
+    if owner and owner~=current.owner then retire();return nil end
+    if not store().recording then return nil end
+    owner=current.owner
+    return current
 end
 local function same(a,b)
     return a and b and a.owner==b.owner and a.build==b.build and a.mapId==b.mapId and b.clock>=a.clock and b.clock-a.clock<=10 and (a.x-b.x)^2+(a.y-b.y)^2<=.005^2
@@ -187,12 +199,17 @@ local function reconcile()
     if #matches==0 or #matches>8 then return end;table.sort(matches)
     local ctx=p.loot.context;local method=methods[p.spell]
     local r={id=identity(method,p.loot.entityId,ctx.mapId,ctx.x,ctx.y,ctx.build),method=method,entityId=p.loot.entityId,itemIds=matches,mapId=ctx.mapId,x=ctx.x,y=ctx.y,observedAt=ctx.at,clientBuild=ctx.build,name=p.target,evidence='observed-gathering-loot',precision='recorded-standing-point',approximate=true}
+    -- Validate the complete candidate before touching retained history. Context
+    -- completeness is required above; this is the independent persistence fence.
+    r=record(r,ctx.at);if not r then return end
     local db=store();local kept={}
     for _,old in ipairs(db.records)do
         if old.id~=r.id then kept[#kept+1]=old
         else for _,id in ipairs(old.itemIds)do if not seen[id] and #r.itemIds<8 then seen[id]=true;r.itemIds[#r.itemIds+1]=id end end end
     end
-    table.sort(r.itemIds);table.insert(kept,1,r);while #kept>128 do table.remove(kept)end
+    table.sort(r.itemIds)
+    r=record(r,ctx.at);if not r then return end
+    table.insert(kept,1,r);while #kept>128 do table.remove(kept)end
     db.records=kept;signal()
 end
 if type(CreateFrame)=='function' then
