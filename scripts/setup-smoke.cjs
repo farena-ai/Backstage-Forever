@@ -1,4 +1,5 @@
 "use strict";
+const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"),
   os = require("node:os"),
@@ -121,7 +122,7 @@ const { testWindow } = require("./test-window.cjs");
       25,
     );
     for (const section of ["Adventure", "Characters", "AI Companion", "Game Connection", "Connections", "Field Guide", "Updates"]) {
-      await page.getByRole("button", { name: section, exact: true }).click();
+      await navigate(page, section);
       assert.equal(await page.locator(".companion-dock").count(), 0,
         `Successful setup must not show a repeated banner on ${section}`);
     }
@@ -138,9 +139,7 @@ const { testWindow } = require("./test-window.cjs");
       ),
       true,
     );
-    await page
-      .getByRole("button", { name: "Game Connection", exact: true })
-      .click();
+    await navigate(page, "game");
     await page
       .getByRole("button", { name: "Set up my companion", exact: true })
       .click();

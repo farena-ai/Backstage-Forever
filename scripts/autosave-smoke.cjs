@@ -1,4 +1,5 @@
 "use strict";
+const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright"),
   fs = require("node:fs/promises"),
   os = require("node:os"),
@@ -64,9 +65,7 @@ const { testWindow } = require("./test-window.cjs");
     await page.getByLabel("Race", { exact: true }).blur();
     await page.locator('select[name="faction"]').selectOption("Horde");
     await page.getByLabel("Private notes").fill("PRIVATE AUTOSAVE JOURNAL");
-    await page
-      .getByRole("button", { name: "Connections", exact: true })
-      .click();
+    await navigate(page, "connections");
     const savedCharacter = (
       await page.evaluate(() => window.backstage.bootstrap())
     ).state.profiles[0];
@@ -80,9 +79,7 @@ const { testWindow } = require("./test-window.cjs");
       .click();
     await page.getByLabel("Available models").selectOption("fixture-two");
     // Deliberately navigate immediately: no Save connection click and no artificial wait.
-    await page
-      .getByRole("button", { name: "AI Companion", exact: true })
-      .click();
+    await navigate(page, "assistant");
     const selected = (await page.evaluate(() => window.backstage.bootstrap()))
       .state.provider;
     assert.equal(selected.model, "fixture-two");
@@ -105,9 +102,7 @@ const { testWindow } = require("./test-window.cjs");
     assert.match(text, /Sunborn/);
     assert.match(text, /Horde/);
     assert.doesNotMatch(text, /PRIVATE AUTOSAVE JOURNAL/);
-    await page
-      .getByRole("button", { name: "Connections", exact: true })
-      .click();
+    await navigate(page, "connections");
     await page
       .getByRole("button", { name: "Ollama Cloud", exact: true })
       .click();
@@ -126,9 +121,7 @@ const { testWindow } = require("./test-window.cjs");
       .locator('input[name="apiKey"]')
       .fill("synthetic-key-for-encryption-only");
     await page.locator('input[name="apiKey"]').blur();
-    await page
-      .getByRole("button", { name: "AI Companion", exact: true })
-      .click();
+    await navigate(page, "assistant");
     await page
       .getByRole("heading", {
         name: "A little wisdom for the journey.",

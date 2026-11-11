@@ -1,4 +1,5 @@
 "use strict";
+const { navigate } = require("./player-navigation.cjs");
 // Actual isolated Electron/main/preload/renderer; only synthetic local data and native surfaces.
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path"), assert = require("node:assert/strict");
@@ -48,14 +49,14 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
       } });
     });
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "manual")); await page.reload();
-    await page.getByRole("button", { name: "Field Guide", exact: true }).click();
+    await navigate(page, "guide");
     const prepare = () => page.getByRole("button", { name: "Prepare report", exact: true }), copy = () => page.getByRole("button", { name: "Copy report", exact: true }), save = () => page.getByRole("button", { name: "Save report", exact: true });
     let lastPresented = "";
     const prepared = async () => { await page.waitForFunction(old => !document.querySelector("[data-support-copy]")?.disabled && !!document.querySelector("[data-support-preview]")?.textContent && document.querySelector("[data-support-preview]").textContent !== old, lastPresented); lastPresented = await page.locator("[data-support-preview]").textContent(); };
     const mainWait = name => app.evaluate(async (_e, name) => { const end = Date.now() + 4000; while (!supportFixture[name]) { if (Date.now() > end) throw Error("Fixture action did not begin: " + name); await new Promise(r => setTimeout(r, 10)); } }, name);
     await check("Field Guide discovers Support & Recovery without another route", async () => {
       await page.getByRole("region", { name: "Support & Recovery", exact: true }).waitFor();
-      assert.equal(await page.locator("nav[aria-label='Main navigation'] button").count(), 11); assert.equal(await copy().isDisabled(), true); assert.equal(await save().isDisabled(), true);
+      assert.equal(await page.locator("nav[aria-label='Main navigation'] button").count(), 5);assert.equal(await page.getByRole("navigation",{name:"Settings and help",exact:true}).getByRole("button").count(),2); assert.equal(await copy().isDisabled(), true); assert.equal(await save().isDisabled(), true);
       for (const label of ["Export backup", "Import backup", "Delete all local data", "Explore Quest Guide →"]) assert.equal(await page.getByRole("button", { name: label, exact: true }).count(), 1);
     });
     await check("physical Enter retains original controls and unrelated Field Guide nodes until release", async () => {
@@ -108,7 +109,7 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
       await page.getByText("Preparing a local report…", { exact: true }).waitFor(); assert.equal(await copy().isDisabled(), true); assert.equal(await save().isDisabled(), true); assert.equal(await page.locator("[data-support-preview]").textContent(), "");
       await page.getByRole("button", { name: "Adventure", exact: true }).click(); await app.evaluate(() => { supportFixture.hold = false; supportFixture.release(); });
       await page.waitForFunction(() => document.querySelector("#page-heading")?.textContent === "Adventure"); assert.equal(await page.locator("[data-support]").count(), 0);
-      await page.getByRole("button", { name: "Field Guide", exact: true }).click(); assert.equal(await copy().isDisabled(), true); assert.equal(await page.locator("[data-support-preview]").innerText(), "");
+      await navigate(page, "guide"); assert.equal(await copy().isDisabled(), true); assert.equal(await page.locator("[data-support-preview]").innerText(), "");
     });
     await check("preparation error is fixed text and retry works", async () => {
       await app.evaluate(() => supportFixture.fail = true); await prepare().click(); await page.getByText("The report could not be prepared. Try again.", { exact: true }).waitFor(); assert.doesNotMatch(await page.locator("[data-support]").innerText(), /PRIVATE_/);

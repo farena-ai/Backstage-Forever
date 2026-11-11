@@ -1,4 +1,5 @@
 "use strict";
+const { navigate } = require("./player-navigation.cjs");
 // Real main/preload/renderer; only synthetic journals and fake inference.
 const {_electron:electron}=require('playwright');
 const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict');
@@ -31,7 +32,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   },repo);
   await page.evaluate(()=>localStorage.setItem('bf-setup-v4','complete'));await page.reload();
   const call=(method,...args)=>page.evaluate(({method,args})=>window.backstage[method](...args),{method,args});
-  const open=()=>page.getByRole('button',{name:'AI Companion',exact:true}).click();await open();
+  const open=()=>navigate(page, "assistant");await open();
   const field=page.getByRole('textbox',{name:'Your question',exact:true});
   const send=async text=>{await field.fill(text);await page.getByRole('button',{name:'Send question',exact:true}).click();};
   const done=async()=>{const reply=await app.evaluate(()=>conversationFixture.requests.at(-1)?.reply);if(reply)await page.locator('#chatlog').getByText(reply,{exact:true}).last().waitFor();await page.waitForFunction(()=>document.querySelector('#chat-form [type=submit]')?.disabled===false&&!document.querySelector('[data-command="stop-response"]'));};
@@ -42,7 +43,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   await send('This is for wow forever, not retail');await done();
   const second=await latest();assert.match(second.prompt,/Which pet should my hunter use/,'Follow-up must include original pet question in actual outgoing main request');assert.match(second.prompt,/untrusted/i);assert.match(second.prompt,/This is for wow forever, not retail/);assert.doesNotMatch(JSON.stringify(second),/PRIVATE_NOTE_CANARY|PRIVATE_GOAL_CANARY/);
   assert.match(await page.locator('[data-conversation-notice]').innerText(),/recent messages/i);
-  const chat=await page.locator('#chatlog').innerText(),beforeNav=await count();await page.getByRole('button',{name:'Field Guide',exact:true}).click();await open();assert.equal(await page.locator('#chatlog').innerText(),chat);assert.equal(await count(),beforeNav);
+  const chat=await page.locator('#chatlog').innerText(),beforeNav=await count();await navigate(page, "guide");await open();assert.equal(await page.locator('#chatlog').innerText(),chat);assert.equal(await count(),beforeNav);
   // Private edits and public observations neither insert their text nor reset the owner.
   let state=(await call('bootstrap')).state;const next=structuredClone(state);next.profiles[0].notes='EDITED_PRIVATE_CANARY';next.profiles[0].level=13;await call('saveState',next,state);await send('Where next?');await done();assert.match((await latest()).prompt,/Which pet should my hunter use/);assert.doesNotMatch(JSON.stringify(await latest()),/EDITED_PRIVATE/);
   const verbatim='  Where next, exactly?\n  ';await send(verbatim);await done();assert.ok((await latest()).prompt.endsWith(verbatim),'Typed current question must remain verbatim, including surrounding whitespace');

@@ -1,4 +1,5 @@
 "use strict";
+const { navigate } = require("./player-navigation.cjs");
 const {_electron:electron}=require("playwright");
 const fs=require("node:fs/promises"), path=require("node:path"), os=require("node:os"), assert=require("node:assert/strict");
 const {testWindow}=require("./test-window.cjs");
@@ -133,7 +134,7 @@ async function physicalClick(page, locator, whilePressed) {
   });
 
   await page.getByRole("button",{name:"Use a manual character",exact:true}).click();
-  await page.getByRole("button",{name:"Company",exact:true}).click();
+  await navigate(page, "company");
   await page.getByRole("heading",{name:"Lark Ashvale",exact:true}).waitFor();
   assert.equal(await page.getByLabel("Collected character totals").locator("div").nth(1).locator("b").innerText(),"—","All-manual roster has unknown aggregate quests");
   await page.getByRole("button",{name:"Adventure",exact:true}).click();
@@ -144,7 +145,7 @@ async function physicalClick(page, locator, whilePressed) {
   const writeCapture=()=>fs.writeFile(savedFile,"BackstageForeverExport = "+JSON.stringify(JSON.stringify({schema:1,observedAt:clock,activeId:"fictional-lark",characters:captures})));
   await writeCapture();await page.evaluate(root=>window.backstage.prepareGame(root),game);await page.reload();
   const original=await page.evaluate(()=>window.backstage.bootstrap());
-  await page.getByRole("button",{name:"Company",exact:true}).click();
+  await navigate(page, "company");
   await page.getByRole("heading",{name:"Your adventure company.",exact:true}).waitFor();
   await page.getByRole("heading",{name:"Lark Ashvale",exact:true}).waitFor();
   let saved=await page.evaluate(()=>window.backstage.bootstrap());
@@ -254,7 +255,7 @@ async function physicalClick(page, locator, whilePressed) {
   await page.getByRole("button",{name:"Open Rook Emberfall Adventure",exact:true}).click();
   await page.getByRole("heading",{name:"Rook Emberfall",exact:true}).waitFor();
   saved=await page.evaluate(()=>window.backstage.bootstrap());assert.equal(saved.state.activeProfileId,"rook'\"><b>");assert.equal(saved.state.followGameCharacter,false);
-  await page.getByRole("button",{name:"Company",exact:true}).click();
+  await navigate(page, "company");
   await page.getByRole("heading",{name:"Your adventure company.",exact:true}).waitFor();
   const evidence=path.join(__dirname,"../work/v08-ui-evidence");await fs.mkdir(evidence,{recursive:true});
   await page.screenshot({path:path.join(evidence,"company-horde.png"),fullPage:true});
@@ -391,7 +392,7 @@ async function physicalClick(page, locator, whilePressed) {
   assert.equal(await page.evaluate(()=>autosaveQueue!==window.companyHeldQueue.promise),true,"Blur has entered the held real renderer queue before navigation");
   await page.getByRole("button",{name:"Adventure",exact:true}).click();await page.evaluate(()=>window.companyHeldQueue.release());
   await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Saved while leaving Company");
-  await page.getByRole("button",{name:"Company",exact:true}).click();await titleNode.fill("Newer retained draft");await titleNode.press("Tab");
+  await navigate(page, "company");await titleNode.fill("Newer retained draft");await titleNode.press("Tab");
   await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Newer retained draft");
   await page.evaluate(async()=>{await autosaveQueue;window.companyHeldQueue={};window.companyHeldQueue.promise=new Promise(resolve=>window.companyHeldQueue.release=resolve);autosaveQueue=window.companyHeldQueue.promise;});
   await titleNode.fill("Saved across queued selection");await titleNode.press("Tab");
@@ -404,7 +405,7 @@ async function physicalClick(page, locator, whilePressed) {
   // A delayed real read must never reopen Company or replace a newer selection after navigation.
   await page.getByRole("button",{name:"Adventure",exact:true}).click();
   await app.evaluate(()=>{companyUiFixture.delay="backstage:companyBrief";companyUiFixture.release=null;});
-  await page.getByRole("button",{name:"Company",exact:true}).click();
+  await navigate(page, "company");
   await app.evaluate(async()=>{while(!companyUiFixture.release)await new Promise(r=>setTimeout(r,10));});
   await page.getByRole("button",{name:"Adventure",exact:true}).click();
   await app.evaluate(()=>companyUiFixture.release());
@@ -414,7 +415,7 @@ async function physicalClick(page, locator, whilePressed) {
   await app.evaluate((_e,file)=>{companyUiFixture.exportFile=file;companyUiFixture.importFile=file;},backup);
   assert.equal(await page.evaluate(()=>window.backstage.exportData()),true);
   // Cancellation is an actual main/dialog outcome. Only the boundary trigger is synthetic.
-  await page.getByRole("button",{name:"Company",exact:true}).click();await titleNode.waitFor();
+  await navigate(page, "company");await titleNode.waitFor();
   for(const boundary of ["import","reset"]){
    await page.evaluate(async()=>{await autosaveQueue;window.companyHeldQueue={};window.companyHeldQueue.promise=new Promise(resolve=>window.companyHeldQueue.release=resolve);autosaveQueue=window.companyHeldQueue.promise;});
    await titleNode.fill(`Accepted before cancelled ${boundary}`);await titleNode.press("Tab");
@@ -427,7 +428,7 @@ async function physicalClick(page, locator, whilePressed) {
    const kept=(await page.evaluate(()=>window.backstage.bootstrap())).state;
    assert.equal(kept.journeys[0].title,`Accepted before cancelled ${boundary}`);assert.equal(kept.profiles.length,2);
    await page.locator("[data-company-boundary-fixture]").evaluate(n=>n.remove());
-   await page.getByRole("button",{name:"Company",exact:true}).click();await titleNode.waitFor();
+   await navigate(page, "company");await titleNode.waitFor();
   }
   await app.evaluate(()=>companyUiFixture.confirm=1);
   await titleNode.fill("Newer retained draft");await titleNode.press("Tab");await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Newer retained draft");
@@ -435,25 +436,25 @@ async function physicalClick(page, locator, whilePressed) {
   const restoreJourney=(await page.evaluate(()=>window.backstage.companyBrief())).journeys[0].id;
   await page.evaluate(journeyId=>window.backstage.journeyAction({type:"rename",journeyId,title:"Pre-restore stale title"}),restoreJourney);
   await app.evaluate(()=>{companyUiFixture.delay="backstage:companyBrief";companyUiFixture.release=null;});
-  await page.getByRole("button",{name:"Company",exact:true}).click();
+  await navigate(page, "company");
   await app.evaluate(async()=>{const end=Date.now()+5000;while(!companyUiFixture.release){if(Date.now()>end)throw Error("Restore read delay did not start");await new Promise(r=>setTimeout(r,10));}});
-  await page.getByRole("button",{name:"Field Guide",exact:true}).click();
+  await navigate(page, "guide");
   await page.getByRole("button",{name:"Import backup",exact:true}).click();
-  await page.getByRole("button",{name:"Company",exact:true}).click();
+  await navigate(page, "company");
   await page.getByLabel("Plan title").waitFor();assert.equal(await page.getByLabel("Plan title").inputValue(),"Newer retained draft");
   await app.evaluate(()=>companyUiFixture.release());await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   assert.equal(await page.getByLabel("Plan title").inputValue(),"Newer retained draft","Same-ID restore rejects a pre-import read");
   // Read errors are recoverable, even before the first useful Company response.
   await page.getByRole("button",{name:"Adventure",exact:true}).click();await app.evaluate(()=>companyUiFixture.failRead=true);
-  await page.getByRole("button",{name:"Company",exact:true}).click();await page.getByRole("alert").waitFor();
+  await navigate(page, "company");await page.getByRole("alert").waitFor();
   await app.evaluate(()=>companyUiFixture.failRead=false);await page.getByRole("button",{name:"Retry",exact:true}).click();
   await page.getByLabel("Plan title").waitFor();
   const noProfiles=path.join(dir,"no-profiles.json");
   historicalSnapshot.journeys[0].id="plan'\"><i>";historicalSnapshot.journeys[0].steps[0].id="step'\"><img>";
   await fs.writeFile(noProfiles,JSON.stringify({...historicalSnapshot,onboarded:true,profiles:[],activeProfileId:null}));
   await app.evaluate((_e,file)=>companyUiFixture.importFile=file,noProfiles);
-  await page.getByRole("button",{name:"Field Guide",exact:true}).click();await page.getByRole("button",{name:"Import backup",exact:true}).click();
-  await page.getByRole("button",{name:"Company",exact:true}).click();await page.getByText("A company begins with one adventurer.",{exact:true}).waitFor();
+  await navigate(page, "guide");await page.getByRole("button",{name:"Import backup",exact:true}).click();
+  await navigate(page, "company");await page.getByText("A company begins with one adventurer.",{exact:true}).waitFor();
   assert.equal(await page.getByLabel("Collected character totals").locator("div").nth(1).locator("b").innerText(),"—","No observed logs must not imply known zero quests");
   assert.equal(await page.getByLabel("Collected character totals").locator("div").nth(2).locator("b").innerText(),"—","No observed logs must not imply known zero turn-ins");
   await page.getByText("Historical saved completion",{exact:true}).waitFor();await page.getByText(/Assigned character is missing/).waitFor();
@@ -468,9 +469,9 @@ async function physicalClick(page, locator, whilePressed) {
   // First use after reset can start planning without inventing a character.
   await page.getByRole("button",{name:"Adventure",exact:true}).click();
   await app.evaluate(()=>{companyUiFixture.delay="backstage:companyBrief";companyUiFixture.release=null;});
-  await page.getByRole("button",{name:"Company",exact:true}).click();
+  await navigate(page, "company");
   await app.evaluate(async()=>{const end=Date.now()+5000;while(!companyUiFixture.release){if(Date.now()>end)throw Error("Reset read delay did not start");await new Promise(r=>setTimeout(r,10));}});
-  await page.getByRole("button",{name:"Field Guide",exact:true}).click();await page.getByRole("button",{name:"Delete all local data",exact:true}).click();
+  await navigate(page, "guide");await page.getByRole("button",{name:"Delete all local data",exact:true}).click();
   await page.getByRole("button",{name:"Start my adventure",exact:true}).waitFor();await app.evaluate(()=>companyUiFixture.release());
   assert.equal(await page.locator("[data-company]").count(),0,"Delayed pre-reset Company cannot reopen itself");
   await app.evaluate(()=>{companyUiFixture.delay="backstage:saveState";companyUiFixture.release=null;});
@@ -492,7 +493,7 @@ async function physicalClick(page, locator, whilePressed) {
   await page.waitForFunction(async()=>(await window.backstage.companyBrief()).journeys[0].title==="Persistent accepted queued plan");
   // Keep a separate natural-click plan for actual restart readback, alongside the
   // accepted queued-navigation plan above (neither persistence assertion replaces the other).
-  await page.getByRole("button",{name:"Company",exact:true}).click();
+  await navigate(page, "company");
   await page.getByRole("button",{name:"Create plan",exact:true}).click();
   await page.getByLabel("Plan name").fill("Pointer restart plan");
   await armSetupRace(page,app,"create");
@@ -514,7 +515,7 @@ async function physicalClick(page, locator, whilePressed) {
    load("./src/core/providers.cjs").ask=async()=>{throw Error("Fixture blocks inference");};
    load("./src/core/claude.cjs").status=async()=>({installed:false,loggedIn:false});
   });
-  const restarted=await testWindow(app);await restarted.getByRole("button",{name:"Company",exact:true}).click();
+  const restarted=await testWindow(app);await navigate(restarted, "company");
   assert.equal(await restarted.getByLabel("Plan title").first().inputValue(),"Persistent accepted queued plan","Accepted queued blur survives navigation and a real restart");
   const restartedPointer=restarted.locator("[data-company-journey]").last();
   assert.equal(await restartedPointer.getByLabel("Plan title").inputValue(),"Persistent pointer title","Natural blur title survives restart");

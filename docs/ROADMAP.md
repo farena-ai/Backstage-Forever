@@ -1,5 +1,14 @@
 # Backstage Forever product roadmap
 
+## Find your way around
+
+The journal has five main sections: **Adventure** for your next step, **Quests** for the saved quest atlas, **Companion** for questions and local travel, **Characters** for your roster, and **Plans** for checklists. Plans contains **My plans** (formerly Company), **Party**, and **Preparation**. **Settings** contains **Game connection**, **AI connection** (formerly Connections), and **Updates**. **Help → Field guide** contains support reports, recovery checkpoints, and backup tools.
+
+Voice, Memory, and quest reference details open when you need them. Folding Voice stops pending or active speech. The memory summary always shows how many exchanges are selected for this question; saving an exchange does not consent to sharing it. Provider costs and character-sharing choices remain visible. Local travel has a **Show road guide** shortcut when a road alternative is documented; **How we know** holds dated source details. These are guides and manual plans, never game actions.
+
+Manual character creation offers Forever's nine confirmed classes plus Other. Existing imported or custom class names remain unchanged. Original class and faction artwork remains in use. The source display version is 0.12.3; 1.0 publication remains held for owner review.
+
+
 Updated 2026-11-09 (America/Chicago). The 0.9–0.12 series is implemented as the combined 0.12 preview checkpoint. Publication and measured acceptance are recorded separately in VALIDATION.md; 1.0 remains held for Frank’s hands-on check. Later research items are proposals, not delivery promises. Backstage Coding; designed by Frank Arena. BF should make the next useful action obvious, using verified Forever facts and the player's actual progress. More UI or more model calls are not acceptance criteria.
 
 ## Foundation through 0.5

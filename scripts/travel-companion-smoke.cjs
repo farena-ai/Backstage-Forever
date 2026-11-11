@@ -1,4 +1,5 @@
 "use strict";
+const { navigate } = require("./player-navigation.cjs");
 // Real main/preload/renderer; only synthetic journals and fake inference.
 const {_electron:electron}=require('playwright');
 const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict');
@@ -34,7 +35,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   app=await electron.launch({args:[dir],env:{...process.env,BF_USER_DATA:dir},timeout:20000});const page=await testWindow(app);page.setDefaultTimeout(6000);
   await page.evaluate(()=>localStorage.setItem('bf-setup-v4','complete'));await page.reload();
   const call=(method,...args)=>page.evaluate(({method,args})=>window.backstage[method](...args),{method,args});
-  const open=()=>page.getByRole('button',{name:'AI Companion',exact:true}).click();await open();
+  const open=()=>navigate(page, "assistant");await open();
   const field=page.getByRole('textbox',{name:'Your question',exact:true});
   const send=async text=>{const before=await page.locator('#chatlog .message.assistant').count();await field.fill(text);await page.getByRole('button',{name:'Send question',exact:true}).click();await page.waitForFunction(n=>document.querySelectorAll('#chatlog .message.assistant').length>n||document.querySelector('[data-question-recovery]'),before);await page.waitForFunction(()=>!document.querySelector('[data-command="stop-response"]'));};
   await app.evaluate(()=>{travelFixture.keys=0;});
@@ -42,9 +43,14 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   assert.match(await page.locator('[data-travel-result]').innerText(),/Thunder Bluff/);assert.equal(await page.locator('.travel-option').count(),2);
   const primaryVisible=()=>page.evaluate(()=>{const log=document.querySelector('#chatlog').getBoundingClientRect(),h=document.querySelector('[data-travel-result] h3').getBoundingClientRect(),o=document.querySelector('.travel-option h4').getBoundingClientRect();return h.top>=log.top&&h.bottom<=log.bottom&&o.top>=log.top&&o.bottom<=log.bottom;});
   assert.equal(await primaryVisible(),true,'New route headline and primary option must be visible without scrolling');
+  const roadJump=page.getByRole('button',{name:'Show road guide',exact:true}).last();
+  assert.equal(await roadJump.count(),1,'Road alternative has a visible top-level jump');
+  assert.equal(await roadJump.evaluate(n=>{const r=n.getBoundingClientRect(),l=document.querySelector('#chatlog').getBoundingClientRect();return r.top>=l.top&&r.bottom<=l.bottom;}),true);
+  await roadJump.click();assert.equal(await page.locator('.travel-option').last().evaluate(n=>{const r=n.getBoundingClientRect(),l=document.querySelector('#chatlog').getBoundingClientRect();return r.top>=l.top-1&&r.top<l.bottom;}),true);
+  await page.locator('#chatlog').evaluate(n=>n.scrollTop=0);
   await page.screenshot({path:path.join(capture,'travel-full.png'),fullPage:true});
   const position=await page.locator('#chatlog').evaluate(n=>{n.scrollTop=140;return n.scrollTop;});await page.evaluate(()=>render());assert.equal(await page.locator('#chatlog').evaluate(n=>n.scrollTop),position,'Background repaint preserves user chat scroll');
-  await page.getByRole('button',{name:'Field Guide',exact:true}).click();await open();assert.equal(await page.locator('#chatlog').evaluate(n=>n.scrollTop),position,'Navigation retains completed chat scroll');
+  await navigate(page, "guide");await open();assert.equal(await page.locator('#chatlog').evaluate(n=>n.scrollTop),position,'Navigation retains completed chat scroll');
 
   assert.equal(await page.evaluate(()=>typeof window.backstage.copyTravelGuidance),'function','Main-owned travel copy bridge exists');
   await page.getByRole('button',{name:'Copy full guidance',exact:true}).last().click();assert.match(await app.evaluate(()=>travelFixture.copies.at(-1)),/Sources:/);
@@ -55,12 +61,12 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   const latestArgs=()=>page.locator('[data-command="save-travel-plan"]').last().evaluate(b=>({optionId:b.dataset.optionId,index:Number(b.dataset.messageIndex)}));
   const current=await call('askCompanion',{provider:'ollama',prompt:'org to tb',shareProfile:true,profileId:'Alpha'});
   const choice={profileId:'Alpha',token:current.travel.choiceToken,optionId:current.travel.options[0].id};
-  await page.getByRole('button',{name:'Field Guide',exact:true}).click();await open();
+  await navigate(page, "guide");await open();
   let saved=await call('createTravelPlan',choice);assert.equal(saved.reused,false);assert.equal((await call('createTravelPlan',choice)).reused,true);assert.equal(saved.state.journeys.length,1);
   const draft=await call('memoryDraft','Alpha');if(draft)await call('saveMemory',{profileId:'Alpha',responseId:draft.responseId});assert.equal((await call('createTravelPlan',choice)).reused,true);
   await app.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1});});
   const point=(await call('checkpointNow')).points[0],preview=await call('previewCheckpoint',point.id);
-  await call('restoreCheckpoint',{id:preview.id,sha256:preview.sha256});await assert.rejects(call('createTravelPlan',choice));
+  await call('restoreCheckpoint',{id:preview.id,sha256:preview.sha256});await assert.rejects(call('createTravelPlan',choice), /This trip choice is no longer current\. Ask again\./);
   const beforeImport=await call('askCompanion',{provider:'ollama',prompt:'org to tb',shareProfile:true,profileId:'Alpha'}),backup=path.join(dir,'synthetic-travel-backup.json');
   await fs.writeFile(backup,JSON.stringify((await call('bootstrap')).state));await app.evaluate(({dialog},backup)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[backup]});},backup);
   await call('importData');await assert.rejects(call('createTravelPlan',{profileId:'Alpha',token:beforeImport.travel.choiceToken,optionId:beforeImport.travel.options[0].id}));
@@ -79,7 +85,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   await field.fill('A new editable draft');await field.evaluate(n=>{window.originalTravelField=n;n.focus();n.setSelectionRange(2,7);});
   assert.deepEqual(await field.evaluate(n=>[n===originalTravelField,n.selectionStart,n.selectionEnd]),[true,2,7]);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.locator('#chatlog').evaluate(n=>n.scrollTop=0);await page.screenshot({path:path.join(capture,'travel-984x635.png'),fullPage:true});
-  await page.getByRole('button',{name:'Company',exact:true}).click();await page.screenshot({path:path.join(capture,'manual-plan.png'),fullPage:true});await open();
+  await navigate(page, "company");await page.screenshot({path:path.join(capture,'manual-plan.png'),fullPage:true});await open();
   // A saved IPC result held across character replacement cannot overwrite the newer renderer owner.
   await send('org to tb');
   await app.evaluate(({ipcMain})=>{const original=ipcMain._invokeHandlers.get('backstage:createTravelPlan');ipcMain._invokeHandlers.set('backstage:createTravelPlan',async(...args)=>{const result=await original(...args);return new Promise(resolve=>travelFixture.releaseSave=()=>resolve(result));});});
@@ -90,7 +96,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   await field.fill('Keep this newer draft');await field.evaluate(n=>{window.lateSaveField=n;n.focus();n.setSelectionRange(3,8);});
   await app.evaluate(()=>travelFixture.releaseSave());await page.waitForTimeout(50);
   assert.deepEqual(await field.evaluate(n=>[n===lateSaveField,n.isConnected,n.selectionStart,n.selectionEnd]),[true,true,3,8]);
-  await page.getByRole('button',{name:'Field Guide',exact:true}).click();await open();assert.equal(await page.getByLabel('Active character',{exact:true}).inputValue(),'Beta','Late plan save must not restore the old character');
+  await navigate(page, "guide");await open();assert.equal(await page.getByLabel('Active character',{exact:true}).inputValue(),'Beta','Late plan save must not restore the old character');
   const ipcChecks=await app.evaluate(async({ipcMain,BrowserWindow})=>{const win=BrowserWindow.getAllWindows()[0],event={sender:win.webContents,senderFrame:win.webContents.mainFrame};const rejects=async(name,e,...args)=>{try{await ipcMain._invokeHandlers.get('backstage:'+name)(e,...args);return false;}catch{return true;}};return [await rejects('createTravelPlan',event,{},{}),await rejects('createTravelPlan',event,{profileId:'Alpha',token:'forged',optionId:'road',url:'https://evil.test'}),await rejects('openTravelSource',event,'https://evil.test'),await rejects('openTravelSource',event,'E1','extra'),await rejects('openTravelSource',{sender:{},senderFrame:{}},'E1'),await rejects('copyTravelGuidance',event,'forged'),await rejects('copyTravelGuidance',event,'forged','text'),await rejects('copyTravelGuidance',{sender:{},senderFrame:{}},'forged')];});assert.ok(ipcChecks.every(Boolean));
   await fs.writeFile(path.join(capture,'synthetic-evidence.json'),JSON.stringify({ipcChecks,choices:current.travel,requests:await app.evaluate(()=>travelFixture.calls.map(i=>({prompt:i.prompt,context:i.context})))},null,2));
   console.log('Travel actual Electron PASS: zero-inference original/correction, pending/faction, local privacy, soft/hard choices, manual save/reuse, sources, no-model error, ordinary conversation, safe DOM, held Save/caret, compact/reduced motion. Captures: '+capture);

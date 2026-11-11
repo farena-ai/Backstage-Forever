@@ -1,4 +1,5 @@
 "use strict";
+const { navigate } = require("./player-navigation.cjs");
 // All characters, installs and runtime observations here are fictional fixtures.
 const { _electron: electron } = require("playwright");
 const assert = require("node:assert/strict"), fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path");
@@ -115,15 +116,15 @@ async function finishRefresh(page) {
     await page.getByText(/Launch requested/).first().waitFor();
     assert.equal(await app.evaluate(() => fixture.launches), 1);
     assert.equal((await page.evaluate(() => window.backstage.bootstrap())).gameStatus.loadedCaptureVersion, null);
-    await page.getByRole("button", { name: "Quest Guide", exact: true }).click();
+    await navigate(page, "quest-guide");
     assert.equal(await page.locator(".companion-dock").count(), 0);
-    await page.getByRole("button", { name: "Game Connection", exact: true }).click();
+    await navigate(page, "game");
     await page.getByRole("button", { name: "Set up my companion", exact: true }).click();
     await page.getByRole("heading", { name: "Your companion is prepared", exact: true }).waitFor();
     await page.getByRole("button", { name: "Enter my adventure", exact: true }).click();
     // Unknown process metadata cannot gate preparation or normal play.
     await app.evaluate(() => { fixture.runtime = "unknown"; fixture.launchAvailable = false; });
-    await page.getByRole("button", { name: "Game Connection", exact: true }).click();
+    await navigate(page, "game");
     await page.getByText(/Use your usual game launcher/).waitFor();
     assert.equal(await page.getByRole("button", { name: "Open Forever", exact: true }).count(), 0);
     // A previous-version save is evidence about disk, not proof of what is loaded now.
@@ -157,7 +158,7 @@ async function finishRefresh(page) {
     await questButton.evaluate(node => { window.focusFixture = node; });
     await page.waitForTimeout(5500);
     assert.ok(await page.evaluate(() => document.activeElement === window.focusFixture && window.focusFixture.isConnected));
-    await page.getByRole("button", { name: "Game Connection", exact: true }).click();
+    await navigate(page, "game");
     await page.getByRole("checkbox", { name: "Follow my last played character", exact: true }).uncheck();
     const options = await page.getByLabel("Active character", { exact: true }).locator("option").evaluateAll(nodes => nodes.map(n => ({ value: n.value, text: n.textContent })));
     const horde = options.find(option => option.text.includes("Vaelric")).value;
@@ -192,7 +193,7 @@ async function finishRefresh(page) {
     });
     const offlineRoot = roots[1] + ".offline";
     await fs.rename(roots[1], offlineRoot);
-    await page.getByRole("button", { name: "Game Connection", exact: true }).click();
+    await navigate(page, "game");
     await page.getByText("Connection checks and tools", { exact: true }).click();
     await beginRefresh(page);
     await app.evaluate(async () => {
@@ -239,7 +240,7 @@ async function finishRefresh(page) {
     assert.equal(await page.locator(".companion-dock").count(), 0);
     assert.equal(snapshot.state.profiles.length, 2);
     assert.equal(snapshot.state.profiles.find(p => p.id === horde).notes, "Fictional private Horde journal — never share");
-    await page.getByRole("button", { name: "Game Connection", exact: true }).click();
+    await navigate(page, "game");
     await page.getByRole("button", { name: "Set up my companion", exact: true }).click();
     await page.getByRole("heading", { name: "Your companion is prepared", exact: true }).waitFor();
     await page.getByRole("button", { name: "Enter my adventure", exact: true }).click();
@@ -248,7 +249,7 @@ async function finishRefresh(page) {
     const bad = path.join(roots[1], "WTF/Account/FictionalUnreadable/SavedVariables/BackstageForever.lua");
     await fs.mkdir(path.dirname(bad), { recursive: true });
     await fs.writeFile(bad, "This is not a saved export");
-    await page.getByRole("button", { name: "Game Connection", exact: true }).click();
+    await navigate(page, "game");
     await page.getByText("Connection checks and tools", { exact: true }).click();
     await beginRefresh(page);
     await finishRefresh(page);
@@ -263,7 +264,7 @@ async function finishRefresh(page) {
     await page.getByRole("heading", { name: "Aeralyn", exact: true }).waitFor();
     assert.equal((await page.evaluate(() => window.backstage.bootstrap())).gameStatus.addonCurrent, true);
     // Unavailable/error/already-running outcomes never turn a launch request into a load claim.
-    await page.getByRole("button", { name: "Game Connection", exact: true }).click();
+    await navigate(page, "game");
     await app.evaluate(() => { fixture.launchState = "unavailable"; });
     await page.getByRole("button", { name: "Open Forever", exact: true }).click();
     await page.locator("#toast").filter({ hasText: "Use your usual launcher" }).waitFor();
@@ -292,7 +293,7 @@ async function finishRefresh(page) {
     await page.getByRole("button", { name: "Start my adventure", exact: true }).click();
     await app.evaluate(async () => { while (!fixture.releaseDiscovery) await new Promise(resolve => setTimeout(resolve, 10)); });
     await page.getByRole("button", { name: "Continue later", exact: true }).click();
-    await page.getByRole("button", { name: "Field Guide", exact: true }).click();
+    await navigate(page, "guide");
     await page.getByRole("button", { name: "Delete all local data", exact: true }).click();
     await page.getByRole("button", { name: "Start my adventure", exact: true }).waitFor();
     await app.evaluate(() => fixture.releaseDiscovery());
@@ -310,7 +311,7 @@ async function finishRefresh(page) {
     await page.getByLabel("Character name", { exact: true }).fill("Fictional interim journal");
     await page.getByRole("button", { name: "Begin my adventure", exact: true }).click();
     await page.getByRole("heading", { name: "Fictional interim journal", exact: true }).waitFor();
-    await page.getByRole("button", { name: "Field Guide", exact: true }).click();
+    await navigate(page, "guide");
     await page.getByRole("button", { name: "Delete all local data", exact: true }).click();
     await page.getByRole("button", { name: "Start my adventure", exact: true }).waitFor();
     await app.evaluate(() => fixture.releaseOnboarded());

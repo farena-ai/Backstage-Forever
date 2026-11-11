@@ -1,3 +1,4 @@
+const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const { mkdtemp, rm } = require("node:fs/promises");
 const { tmpdir } = require("node:os");
@@ -120,17 +121,13 @@ function shortPath(target) {
       .getByLabel("Private notes")
       .fill("<img src=x onerror=alert(1)> My private journal");
     await page.getByRole("button", { name: "Save character" }).click();
-    await page
-      .getByRole("button", { name: "AI Companion", exact: true })
-      .click();
+    await navigate(page, "assistant");
     assert.equal(
       await page.getByLabel("Use my active character").isChecked(),
       true,
     );
     await page.getByLabel("Use my active character").uncheck();
-    await page
-      .getByRole("button", { name: "Game Connection", exact: true })
-      .click();
+    await navigate(page, "game");
     await page
       .getByRole("heading", { name: "Bring your adventure home." })
       .waitFor();
@@ -144,9 +141,7 @@ function shortPath(target) {
     await page
       .getByRole("button", { name: "Choose game folder", exact: true })
       .waitFor();
-    await page
-      .getByRole("button", { name: "Connections", exact: true })
-      .click();
+    await navigate(page, "connections");
     await page
       .getByRole("heading", { name: "Choose your intelligence." })
       .waitFor();
@@ -188,13 +183,11 @@ function shortPath(target) {
     await page
       .getByText("A ChatGPT subscription is not an API key.", { exact: false })
       .waitFor();
-    await page
-      .getByRole("button", { name: "Field Guide", exact: true })
-      .click();
+    await navigate(page, "guide");
     await page
       .getByRole("heading", { name: "A little guidance. A longer adventure." })
       .waitFor();
-    await page.getByRole("button", { name: "Updates", exact: true }).click();
+    await navigate(page, "updates");
     await page
       .getByRole("heading", { name: "Keep your companion ready." })
       .waitFor();
@@ -212,7 +205,7 @@ function shortPath(target) {
     await page
       .getByRole("heading", { name: "Smoke Ranger", exact: true })
       .waitFor();
-    await page.getByRole("button", { name: "Updates", exact: true }).click();
+    await navigate(page, "updates");
     assert.equal(
       await page
         .getByRole("checkbox", {
@@ -221,9 +214,7 @@ function shortPath(target) {
         .isChecked(),
       false,
     );
-    await page
-      .getByRole("button", { name: "AI Companion", exact: true })
-      .click();
+    await navigate(page, "assistant");
     assert.equal(
       await page.getByLabel("Use my active character").isChecked(),
       false,
@@ -332,9 +323,7 @@ function shortPath(target) {
       "horde",
     );
     await page.getByRole("button", { name: /Synthetic Highlands/ }).waitFor();
-    await page
-      .getByRole("button", { name: "AI Companion", exact: true })
-      .click();
+    await navigate(page, "assistant");
     await page
       .getByText("Public character context:", { exact: false })
       .waitFor();

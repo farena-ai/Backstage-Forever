@@ -1,4 +1,5 @@
 "use strict";
+const { navigate, ensureCompanionTools } = require("./player-navigation.cjs");
 // Real main/preload/renderer, isolated synthetic journals and validated reference fixtures.
 const { _electron: electron } = require("playwright"),
   fs = require("node:fs/promises"),
@@ -192,9 +193,7 @@ const repo = path.resolve(__dirname, ".."),
     });
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "manual"));
     await page.reload();
-    await page
-      .getByRole("button", { name: "Quest Guide", exact: true })
-      .click();
+    await navigate(page, "quest-guide");
     const open = (id) =>
       page.locator(`.quest-ledger-row[data-quest-id="${id}"]`).click();
     const facts = () =>
@@ -401,7 +400,7 @@ const repo = path.resolve(__dirname, ".."),
           assert.doesNotMatch(await facts().innerText(), /Synthetic Starter/);
         }
         await page.locator("#active-character").selectOption("manual");
-        await page.locator("#reference-quests").check();
+        await ensureCompanionTools(page,"quest-filters");await page.locator("#reference-quests").check();
         await page.locator("#quest-search").fill("138");
         await open(138);
         await facts()
@@ -588,7 +587,7 @@ const repo = path.resolve(__dirname, ".."),
           );
           await page.screenshot({ path: path.join(evidence, `${name}.png`) });
         }
-        assert.equal(await page.locator("nav button").count(), 11);
+        assert.equal(await page.locator('nav[aria-label="Main navigation"] button').count(), 5);assert.equal(await page.getByRole("navigation",{name:"Settings and help",exact:true}).getByRole("button").count(),2);
       },
     );
     const calls = await app.evaluate(() => ({
@@ -614,9 +613,7 @@ const repo = path.resolve(__dirname, ".."),
         });
         page = await testWindow(app);
         page.setDefaultTimeout(6500);
-        await page
-          .getByRole("button", { name: "Quest Guide", exact: true })
-          .click();
+        await navigate(page, "quest-guide");
         await open(138);
         await page
           .getByRole("button", { name: "Copy game waypoint", exact: true })

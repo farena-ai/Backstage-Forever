@@ -1,4 +1,5 @@
 "use strict";
+const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
 const { testWindow } = require("./test-window.cjs");
@@ -193,7 +194,7 @@ function shortPath(target) {
     await page.getByLabel("Active character",{exact:true}).selectOption(first);await page.getByRole("heading",{name:"Aeralyn",exact:true}).waitFor();
     await app.evaluate(()=>{directorUi.holdDirector=true;directorUi.releaseDirector=null;});
     await page.getByRole("button",{name:"Start quest session",exact:true}).click();await untilMain("Boolean(directorUi.releaseDirector)");
-    await page.getByRole("button",{name:"Field Guide",exact:true}).click();
+    await page.getByRole("navigation",{name:"Settings and help",exact:true}).getByRole("button",{name:"Help",exact:true}).click();
     await app.evaluate(()=>{directorUi.holdDirector=false;directorUi.releaseDirector();});
     await page.waitForFunction(()=>document.querySelector('[aria-current="page"]')?.dataset.nav==="guide");
     assert.equal(await page.locator("[data-company]").count(),0,"Late accepted session cannot jump back over explicit navigation");
@@ -205,13 +206,13 @@ function shortPath(target) {
     const imported=await savedState();imported.profiles.find(p=>p.id===first).quests=[];
     const backup=path.join(dir,"replacement.json");await fs.writeFile(backup,JSON.stringify(imported));
     await app.evaluate(({dialog},backup)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[backup]});},backup);
-    await page.getByRole("button",{name:"Field Guide",exact:true}).click();await page.getByRole("button",{name:"Import backup",exact:true}).click();
+    await navigate(page, "guide");await page.getByRole("button",{name:"Import backup",exact:true}).click();
     await page.getByRole("status").filter({hasText:"Backup imported."}).waitFor();await page.getByRole("button",{name:"Adventure",exact:true}).click();
     await page.getByRole("heading",{name:"Room for a new chapter.",exact:true}).waitFor();
     assert.equal(await page.locator("[data-director-choice]").count(),0);assert.equal(await page.getByRole("button",{name:"Start quest session",exact:true}).isDisabled(),true);
     await page.evaluate(()=>{scrollTo(0,0);document.querySelector(".main")?.scrollTo(0,0);});await capture("empty");
     // Reset is actual trusted replacement. Plan without a character remains usable.
-    await page.getByRole("button",{name:"Field Guide",exact:true}).click();await page.getByRole("button",{name:"Delete all local data",exact:true}).click();
+    await navigate(page, "guide");await page.getByRole("button",{name:"Delete all local data",exact:true}).click();
     await page.getByRole("status").filter({hasText:"Local data and saved keys deleted."}).waitFor();assert.deepEqual((await savedState()).profiles,[]);
     await page.getByRole("button",{name:"Plan without a character",exact:true}).click();
     await page.getByRole("button",{name:"Adventure",exact:true}).click();await page.locator("[data-director]").waitFor();

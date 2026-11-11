@@ -101,6 +101,7 @@ function handle(name, fn) {
         );
       return await fn(...args);
     } catch (e) {
+      if (["createTravelPlan", "copyTravelGuidance"].includes(name) && e?.message === "This trip choice is no longer current. Ask again.") throw new Error(e.message);
       if (RECOVERY_MESSAGES.includes(e?.message)) throw new Error(e.message);
       if (["diagnosticsPreview", "copyDiagnostics", "exportDiagnostics"].includes(name) && [
         "Report request is invalid.",

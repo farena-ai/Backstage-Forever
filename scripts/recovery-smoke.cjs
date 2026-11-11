@@ -1,4 +1,5 @@
 "use strict";
+const { navigate, ensureCompanionTools } = require("./player-navigation.cjs");
 // Isolated real Electron/main/preload/renderer with synthetic journals only.
 const { _electron: electron } = require("playwright"), fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path"), assert = require("node:assert/strict");
 const { defaultState } = require("../src/core/validation.cjs"), { testWindow } = require("./test-window.cjs");
@@ -29,7 +30,7 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
       }
     });
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "manual")); await page.reload();
-    await page.getByRole("button", { name: "Field Guide", exact: true }).click();
+    await navigate(page, "guide");
     const create = () => page.getByRole("button", { name: "Create point now", exact: true }), preview = () => page.getByRole("button", { name: "Preview selected point", exact: true }), restore = () => page.getByRole("button", { name: "Restore selected point", exact: true });
     const mainWait = name => app.evaluate(async (_e, name) => { const end = Date.now() + 5000; while (!recoveryFixture[name]) { if (Date.now() > end) throw Error("Fixture did not begin " + name); await new Promise(r => setTimeout(r, 10)); } }, name);
     let selected;
@@ -114,19 +115,19 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
       await app.evaluate(() => { recoveryFixture.holdDialog = true; recoveryFixture.releaseDialog = null; });
       const pending = page.evaluate(p => window.backstage.restoreCheckpoint({ id: p.id, sha256: p.sha256 }).catch(e => e.message), p); await mainWait("releaseDialog");
       await page.getByRole("button", { name: "Adventure", exact: true }).click(); await app.evaluate(() => { recoveryFixture.holdDialog = false; recoveryFixture.releaseDialog(); }); assert.match(await pending, /Preview/);
-      await page.getByRole("button", { name: "Field Guide", exact: true }).click();
+      await navigate(page, "guide");
     });
     await check("empty-memory Clear is reachable and purges damaged originals; failure stays visible", async () => {
       const original = path.join(dir, "recovery", "damaged-original.bin"), alias = path.join(dir, "memory-original-hardlink");
       await fs.writeFile(original, "PRIVATE_HIDDEN_MEMORY");
-      await page.getByRole("button", { name: "AI Companion", exact: true }).click();
+      await navigate(page, "assistant");await ensureCompanionTools(page,"memory");
       const clear = page.getByRole("button", { name: "Clear this character’s memory", exact: true }); await clear.waitFor(); assert.equal(await clear.isEnabled(), true);
       await fs.link(original, alias); const before = await fs.readFile(path.join(dir, "state.json"));
       await page.evaluate(() => { window.confirm = message => { window.memoryClearConfirmation = message; return true; }; }); await clear.click(); await page.locator("[data-memory] [role='alert']").waitFor();
       assert.match(await page.locator("[data-memory] [role='alert']").innerText(), /Recovery/); assert.equal(await fs.readFile(original, "utf8"), "PRIVATE_HIDDEN_MEMORY"); assert.deepEqual(await fs.readFile(path.join(dir, "state.json")), before);
       await fs.unlink(alias); await page.evaluate(() => { window.confirm = message => { window.memoryClearConfirmation = message; return true; }; }); await clear.click();
       await page.waitForFunction(() => !document.querySelector("[data-memory-clear]")?.disabled && !document.querySelector("[data-memory] [role='alert']")); await assert.rejects(() => fs.stat(original), { code: "ENOENT" });
-      await page.getByRole("button", { name: "Field Guide", exact: true }).click();
+      await navigate(page, "guide");
     });
     await check("full and compact layouts show bounded dated options and keep keyboard controls usable", async () => {
       for (const [name, width, height] of [["full", 1440, 960], ["compact", 984, 635]]) {
@@ -155,7 +156,7 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
       assert.equal((await page.evaluate(() => window.backstage.gameStatus())).connected, false);
       await assert.rejects(() => page.evaluate(state => window.backstage.saveState(state, state), observed.state));
       const final = (await page.evaluate(() => window.backstage.bootstrap())).state; assert.equal(final.profiles.length, 1); assert.equal(final.profiles[0].source, undefined); assert.equal(final.profiles[0].level, 10);
-      await page.reload(); await page.getByRole("button", { name: "Field Guide", exact: true }).click();
+      await page.reload(); await navigate(page, "guide");
     });
     await check("size failure is visible, ordinary journal saves succeed and manual retry recovers", async () => {
       await app.evaluate(() => recoveryFixture.limit = true);
@@ -167,7 +168,7 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
     await check("late history reply cannot overwrite navigation or reactivate obsolete preview", async () => {
       await app.evaluate(() => { recoveryFixture.holds.recoveryList = true; recoveryFixture.release = null; }); await page.getByRole("button", { name: "Refresh recovery history", exact: true }).click(); await mainWait("release");
       await page.getByRole("button", { name: "Adventure", exact: true }).click(); await app.evaluate(() => { recoveryFixture.holds.recoveryList = false; recoveryFixture.release(); });
-      assert.equal(await page.locator("[data-recovery]").count(), 0); await page.getByRole("button", { name: "Field Guide", exact: true }).click(); await page.waitForFunction(() => !document.querySelector("[data-recovery-create]").disabled); assert.equal(await restore().isDisabled(), true);
+      assert.equal(await page.locator("[data-recovery]").count(), 0); await navigate(page, "guide"); await page.waitForFunction(() => !document.querySelector("[data-recovery-create]").disabled); assert.equal(await restore().isDisabled(), true);
     });
     await check("real unavailable storage shows fixed retry guidance and restored storage recovers", async () => {
       const owned = path.join(dir, "recovery"), held = path.join(dir, "recovery-held"); assert.equal(path.dirname(owned), dir); assert.equal(path.dirname(held), dir);
@@ -179,7 +180,7 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
       await fs.writeFile(path.join(dir, "recovery", "damaged-original.bin"), "PRIVATE_OLD_MEMORY");
       await page.evaluate(async () => { const b = await window.backstage.bootstrap(); await window.backstage.saveState({ ...b.state, profiles: [], activeProfileId: null }, b.state); });
       assert.equal((await page.evaluate(() => window.backstage.recoveryList())).status.count, 0); await assert.rejects(() => fs.stat(path.join(dir, "recovery", "damaged-original.bin")), { code: "ENOENT" });
-      await page.reload(); await page.getByRole("button", { name: "Field Guide", exact: true }).click();
+      await page.reload(); await navigate(page, "guide");
     });
     await check("history clear keeps automatic preference; future points remain deliberate when off", async () => {
       await page.locator("[data-recovery-automatic]").uncheck(); await page.waitForFunction(() => !document.querySelector("[data-recovery-automatic]").disabled);

@@ -56,6 +56,7 @@ jobs:
       - run: npm run test:travel-companion
       - run: npm run test:conversation
       - run: npm run test:companion-recovery
+      - run: npm run test:player-shell
       - run: npm run test:product-polish
       - run: npm run test:support
       - run: npm run test:recovery

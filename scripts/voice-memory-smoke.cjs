@@ -1,4 +1,5 @@
 "use strict";
+const { navigate, ensureCompanionTools } = require("./player-navigation.cjs");
 // Actual renderer/main/preload; synthetic state and main-owned fake audio workers only.
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
@@ -54,7 +55,7 @@ function shortPath(target) {
     for(const scenario of ['unavailable','newer-focus','available']){
       await app.evaluate((_e,scenario)=>{voiceUi.unavailable=scenario==='unavailable';voiceUi.holdCapabilities=true;voiceUi.releaseCapabilities=null;},scenario);
       await page.reload();await page.evaluate(()=>{window.confirm=()=>true;});
-      await page.getByRole("button",{name:"AI Companion",exact:true}).click();
+      await navigate(page, "assistant");await ensureCompanionTools(page,"voice");await ensureCompanionTools(page,"memory");
       // Navigation retires Adventure's probe; mounted then starts this composer's first probe.
       await app.evaluate(async()=>{const end=Date.now()+6000;while(!voiceUi.releaseCapabilities){if(Date.now()>end)throw Error("Adventure capability gate missing");await new Promise(r=>setTimeout(r,10));}voiceUi.releaseCapabilities();voiceUi.releaseCapabilities=null;});
       await page.waitForFunction(()=>!document.querySelector('[data-voice-check]').disabled);await page.evaluate(()=>Voice.mounted());
@@ -136,6 +137,9 @@ function shortPath(target) {
     await question.fill("My newer typed question ");await question.focus();await mouseHold();await listening();await hypothesis("captured words");await page.keyboard.type("stays");await page.mouse.up();
     await page.getByRole("button",{name:"Insert dictated draft",exact:true}).waitFor();assert.equal(await question.inputValue(),"My newer typed question stays");
     assert.equal(await page.getByRole("textbox",{name:"Separate dictated draft",exact:true}).inputValue(),"captured words");
+    await page.locator('[data-player-tool="voice"] > summary').click();
+    assert.match(await page.locator('[data-player-tool="voice"] > summary').innerText(),/draft to review/i);
+    await ensureCompanionTools(page,"voice");
     await page.getByRole("button",{name:"Insert dictated draft",exact:true}).click();assert.equal(await question.inputValue(),"My newer typed question stayscaptured words");
     // Both keyboard activation keys hold instead of invoking button click or Enter-to-send.
     for(const key of ["Space","Enter"]){await hold.focus();await page.keyboard.down(key);await listening();await hypothesis(key+" draft");await page.keyboard.up(key);await page.waitForFunction(()=>document.querySelector("[data-voice]").dataset.phase==="stopped");}
@@ -171,6 +175,19 @@ function shortPath(target) {
     await page.getByRole("button",{name:"Stop voice",exact:true}).click();await page.waitForFunction(()=>document.querySelector("[data-voice]").dataset.phase==="stopped");await untilMain("voiceUi.service.workers.size===0");
     await app.evaluate(()=>{voiceUi.holdSpeakAck=false;voiceUi.releaseSpeakAck();voiceUi.releaseSpeakAck=null;});await page.waitForTimeout(30);
     assert.equal(await page.locator("[data-voice]").getAttribute("data-phase"),"stopped","A pre-Stop speech acknowledgement cannot repaint Starting after Stop");assert.equal(await count("speak"),speechBefore+1);
+    // Folding Voice is a cancellation boundary for pending and active fake audio.
+    await page.evaluate(async()=>{await companionReady;companionReady=new Promise(resolve=>window.releaseFoldReady=resolve);});
+    const foldRequests=await app.evaluate(()=>voiceUi.speakRequests||0);
+    await page.getByRole("button",{name:"Read answer",exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('[data-voice]').dataset.phase==='starting');
+    await page.locator('[data-player-tool="voice"] > summary').click();
+    await page.evaluate(()=>window.releaseFoldReady());await page.waitForTimeout(180);
+    assert.equal(await app.evaluate(()=>voiceUi.speakRequests||0),foldRequests,"Folded pending reading cannot dispatch later audio");
+    await ensureCompanionTools(page,"voice");
+    await page.getByRole("button",{name:"Read answer",exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('[data-voice]').dataset.phase==='speaking');
+    await page.locator('[data-player-tool="voice"] > summary').click();await untilMain("voiceUi.service.workers.size===0");
+    await ensureCompanionTools(page,"voice");
     console.log("Voice startup R1: held readiness Stop dispatches zero voiceSpeak requests/workers; held speech acknowledgement cannot repaint Starting after Stop PASS");
     await page.getByRole("button",{name:"Read answer",exact:true}).click();await page.waitForFunction(()=>document.querySelector("[data-voice]").dataset.phase==="speaking");assert.equal(await app.evaluate(()=>voiceUi.commands.findLast(c=>c.command==="speak").voiceId),"Microsoft Zira Desktop");
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].hide());
@@ -184,6 +201,11 @@ function shortPath(target) {
     assert.equal(await selected.isChecked(),false);
     // A held preview cannot permit duplicate sends or reuse sharing for the next question.
     await selected.check();await question.fill("Help me review the WoW Forever quest log carefully.");await page.waitForFunction(()=>document.querySelector("[data-memory-preview]").textContent.includes("carefully"));
+    await page.locator('[data-player-tool="memory"] > summary').click();
+    assert.match(await page.locator('[data-player-tool="memory"] > summary').innerText(),/1 selected/);
+    assert.equal(await page.locator('[data-companion-cost]').isVisible(),true);
+    assert.equal(await page.getByLabel('Use my active character',{exact:true}).isVisible(),true);
+    await ensureCompanionTools(page,"memory");
     const previewText=await page.locator("[data-memory-preview]").innerText();await app.evaluate(()=>{voiceUi.holdPreview=true;voiceUi.holdAsk=true;});const userCount=await page.locator(".message.user").count();
     await question.press("Enter");await untilMain("Boolean(voiceUi.previewReleases?.length)");await question.press("Enter");await page.waitForTimeout(100);
     await app.evaluate(()=>{voiceUi.holdPreview=false;voiceUi.previewReleases.splice(0).forEach(r=>r());});await untilMain("Boolean(voiceUi.releaseAsk)");
@@ -194,11 +216,14 @@ function shortPath(target) {
     // Unconfirmed cancellation is surfaced once after the fixed deadline; no new audio command.
     await mouseHold();await listening();await app.evaluate(()=>voiceUi.children.at(-1).unclosed=true);await hypothesis("bounded stopped draft");before=await count("listen");await page.mouse.up();
     await page.waitForFunction(()=>document.querySelector("[data-voice-status]").textContent.includes("could not confirm it stopped"));await capture("blocked-stop-error");
+    await page.locator('[data-player-tool="voice"] > summary').click();
+    await page.waitForFunction(()=>{const panel=document.querySelector('[data-player-tool="voice"]');return panel.open||panel.querySelector('summary').textContent.includes('Needs attention');});
+    assert.match(await page.locator('[data-voice-status]').innerText(),/could not confirm it stopped/);
     assert.equal(await count("listen"),before);await app.evaluate(()=>voiceUi.children.at(-1).emit("close",null));await page.waitForTimeout(160);assert.equal(await count("listen"),before);
     // Navigation retires selected sharing and a held network reply, retaining only completed same-owner replies.
     const completedBeforeNavigation=await page.locator(".message.assistant").allTextContents();
     await selected.check();await question.fill("Help my WoW Forever character with another quest.");await app.evaluate(()=>voiceUi.holdAsk=true);await page.getByRole("button",{name:"Send question",exact:true}).click();await untilMain("Boolean(voiceUi.releaseAsk)");
-    await page.getByRole("button",{name:"Adventure",exact:true}).click();await app.evaluate(()=>{voiceUi.holdAsk=false;voiceUi.releaseAsk();voiceUi.releaseAsk=null;});await page.getByRole("button",{name:"AI Companion",exact:true}).click();assert.equal(await selected.isChecked(),false);assert.deepEqual(await page.locator(".message.assistant").allTextContents(),completedBeforeNavigation,"Navigation retains completed replies but never appends the cancelled late reply");
+    await page.getByRole("button",{name:"Adventure",exact:true}).click();await app.evaluate(()=>{voiceUi.holdAsk=false;voiceUi.releaseAsk();voiceUi.releaseAsk=null;});await navigate(page, "assistant");await ensureCompanionTools(page,"voice");await ensureCompanionTools(page,"memory");assert.equal(await selected.isChecked(),false);assert.deepEqual(await page.locator(".message.assistant").allTextContents(),completedBeforeNavigation,"Navigation retains completed replies but never appends the cancelled late reply");assert.equal(await page.getByRole("button",{name:"Save exchange",exact:true}).count(),0,"Retained history must not manufacture a current save draft");
     await page.getByLabel("Active character",{exact:true}).selectOption("Vaelric");await page.waitForFunction(()=>document.querySelector("[data-memory]").textContent.includes("Vaelric"));assert.equal(await page.locator("[data-memory-row]").count(),0);await capture("horde-empty");
     await app.evaluate(()=>voiceUi.unavailable=true);await page.getByRole("button",{name:"Check local voice",exact:true}).click();await page.waitForFunction(()=>document.querySelector("[data-voice-hold]").disabled);await capture("unavailable");assert.equal(await question.isEnabled(),true);
     // Memory changes retire a pending reply and leave the typed composer usable.
@@ -222,11 +247,11 @@ function shortPath(target) {
     await readPlan.click();await page.waitForFunction(()=>document.querySelector("[data-voice]").dataset.phase==="speaking");const spoken=await app.evaluate(()=>voiceUi.commands.findLast(c=>c.command==="speak").text);
     assert.ok(spoken.length<=4000);assert.match(spoken,/Return the fictional scout/);assert.match(spoken,/Saved .+Source: game snapshot/);assert.match(spoken,/not live game state/);assert.match(spoken,/Public reference build fictional-reference, observed through 2026-01-01/);assert.match(spoken,/clue only; destination and availability are unconfirmed/);assert.doesNotMatch(spoken,/PRIVATE NOTE|PRIVATE QUEUED NOTE|PRIVATE GOAL/);await page.getByRole("button",{name:"Stop voice",exact:true}).click();await capture("read-plan");
     // Physical provider, import and reset actions use the existing renderer queue and main gates.
-    await page.getByRole("button",{name:"Connections",exact:true}).click();await page.locator('#provider-form summary').click();await page.getByLabel("Manual model ID",{exact:true}).fill("synthetic-model-2");await page.getByLabel("Manual model ID",{exact:true}).press("Tab");await page.waitForFunction(()=>state.provider.model==="synthetic-model-2");
-    await page.getByRole("button",{name:"AI Companion",exact:true}).click();assert.equal(await page.locator(".message.assistant").count(),0);await question.fill("A WoW Forever question to keep locally.");await question.press("Enter");await page.getByRole("button",{name:"Save exchange",exact:true}).click();await page.locator("[data-memory-row]").waitFor();
+    await navigate(page, "connections");await page.locator('#provider-form summary').click();await page.getByLabel("Manual model ID",{exact:true}).fill("synthetic-model-2");await page.getByLabel("Manual model ID",{exact:true}).press("Tab");await page.waitForFunction(()=>state.provider.model==="synthetic-model-2");
+    await navigate(page, "assistant");await ensureCompanionTools(page,"voice");await ensureCompanionTools(page,"memory");assert.equal(await page.locator(".message.assistant").count(),0);await question.fill("A WoW Forever question to keep locally.");await question.press("Enter");await page.getByRole("button",{name:"Save exchange",exact:true}).click();await page.locator("[data-memory-row]").waitFor();
     const backup=path.join(temp,"synthetic-backup.json");await fs.writeFile(backup,JSON.stringify((await page.evaluate(()=>window.backstage.bootstrap())).state));await app.evaluate(({dialog},backup)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[backup]});},backup);
-    await page.getByRole("button",{name:"Field Guide",exact:true}).click();await page.getByRole("button",{name:"Import backup",exact:true}).click();await page.waitForFunction(()=>state.memories.length===0);await page.getByRole("button",{name:"AI Companion",exact:true}).click();assert.equal(await page.locator("[data-memory-row]").count(),0);assert.equal(await page.getByRole("button",{name:"Save exchange",exact:true}).count(),0);
-    await page.getByRole("button",{name:"Field Guide",exact:true}).click();await page.getByRole("button",{name:"Delete all local data",exact:true}).click();await page.waitForFunction(()=>state.profiles.length===0);assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).state.memories.length,0);
+    await navigate(page, "guide");await page.getByRole("button",{name:"Import backup",exact:true}).click();await page.waitForFunction(()=>state.memories.length===0);await navigate(page, "assistant");await ensureCompanionTools(page,"voice");await ensureCompanionTools(page,"memory");assert.equal(await page.locator("[data-memory-row]").count(),0);assert.equal(await page.getByRole("button",{name:"Save exchange",exact:true}).count(),0);
+    await navigate(page, "guide");await page.getByRole("button",{name:"Delete all local data",exact:true}).click();await page.waitForFunction(()=>state.profiles.length===0);assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).state.memories.length,0);
     assert.equal(await app.evaluate(()=>voiceUi.launches),0);
     console.log("PASS: actual Electron physical pointer/key hold/release, unchanged range/dirty insertion, explicit send/save/select/preview/read/stop, startup/pre-ack/blur/navigation/character races, unconfirmed-stop deadline, typed unavailable fallback and fictional full/compact/error evidence; fake audio workers only.");
   }finally{clearTimeout(watchdog);if(app)await app.close().catch(()=>app.process().kill());await fs.rm(temp,{recursive:true,force:true});}

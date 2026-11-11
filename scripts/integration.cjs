@@ -1,3 +1,4 @@
+const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises");
 const os = require("node:os");
@@ -165,9 +166,7 @@ const { testWindow } = require("./test-window.cjs");
       `http://127.0.0.1:${server.address().port}`,
     );
     assert.equal(catalog.models[0].id, "fixture");
-    await page
-      .getByRole("button", { name: "AI Companion", exact: true })
-      .click();
+    await navigate(page, "assistant");
     await page
       .getByLabel("Your question")
       .fill("Which dungeon should I try next? A delayed fixture question");
@@ -181,9 +180,7 @@ const { testWindow } = require("./test-window.cjs");
     );
     assert.match(JSON.stringify(request), /Integration Hero/);
     assert.match(JSON.stringify(request), /World of Warcraft: Forever/);
-    await page
-      .getByRole("button", { name: "Field Guide", exact: true })
-      .click();
+    await navigate(page, "guide");
     const gameRoot = path.join(data, "synthetic-client");
     const snapshotFile = path.join(
       gameRoot,
@@ -239,9 +236,7 @@ const { testWindow } = require("./test-window.cjs");
     await page.getByLabel("Character name").fill("Fresh Hero");
     await page.getByLabel("Realm").fill("New Realm");
     await page.getByRole("button", { name: "Begin my adventure" }).click();
-    await page
-      .getByRole("button", { name: "AI Companion", exact: true })
-      .click();
+    await navigate(page, "assistant");
     await page
       .getByRole("button", { name: "Send question", exact: true })
       .waitFor();
@@ -252,9 +247,7 @@ const { testWindow } = require("./test-window.cjs");
     const cleared = await page.evaluate(() => window.backstage.bootstrap());
     assert.equal(cleared.secretStatus.openai, false);
     assert.equal(cleared.state.profiles[0].name, "Fresh Hero");
-    await page
-      .getByRole("button", { name: "Connections", exact: true })
-      .click();
+    await navigate(page, "connections");
     await page.getByRole("button", { name: "OpenAI API", exact: true }).click();
     await page.getByText("Not signed in", { exact: true }).waitFor();
     assert.doesNotMatch(

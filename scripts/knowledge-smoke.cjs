@@ -1,4 +1,5 @@
 "use strict";
+const { navigate, ensureCompanionTools } = require("./player-navigation.cjs");
 const fs = require("node:fs/promises"),
   os = require("node:os"),
   path = require("node:path"),
@@ -262,7 +263,7 @@ function shortPath(target){
     assert.ok(await page.getByRole('button',{name:'Copy game waypoint',exact:true}).evaluate(n=>n.getBoundingClientRect().bottom<=innerHeight),'Game area copy action must fit the compact first viewport with the full qualification visible');
     await fs.mkdir(path.join(repo,'work/v012-quest-ui-evidence'),{recursive:true});await page.evaluate(()=>{document.querySelector('.breadcrumb').textContent='Fictional preview · invented player state';document.getElementById('toast').className='';scrollTo(0,0);});await page.screenshot({path:path.join(repo,'work/v012-quest-ui-evidence',`${process.argv.includes('--short-path')?'short-':''}quest-guide-game-area.png`)});
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1440,1000));
-    assert.ok(await page.locator(".rail nav").evaluate(n=>n.scrollWidth<=n.clientWidth),"Navigation must never gain a horizontal scroll axis");
+    assert.ok(await page.locator(".rail nav").evaluateAll(nodes=>nodes.every(n=>n.scrollWidth<=n.clientWidth)),"Navigation must never gain a horizontal scroll axis");
     await app.evaluate(({ipcMain})=>{const original=ipcMain._invokeHandlers.get('backstage:copyQuestWaypoint');ipcMain.removeHandler('backstage:copyQuestWaypoint');globalThis.atlasCopyCalls=0;ipcMain.handle('backstage:copyQuestWaypoint',async(...args)=>{atlasCopyCalls++;const fail=globalThis.atlasCopyFail;const result=await original(...args);if(globalThis.atlasCopyHold)await new Promise(r=>globalThis.atlasCopyRelease=r);if(fail)throw Error("Synthetic late copy acknowledgement failure");return result;});globalThis.atlasCopyHold=true;});
     const copying=page.getByRole('button',{name:'Copy game waypoint',exact:true});await copying.click();
     await app.evaluate(async()=>{const end=Date.now()+5000;while(!globalThis.atlasCopyRelease){if(Date.now()>end)throw Error('copy ack not held');await new Promise(r=>setTimeout(r,10));}});
@@ -491,7 +492,7 @@ function shortPath(target){
         .evaluate((node) => node.getBoundingClientRect().bottom <= innerHeight),
       "The first waypoint action fits the compact first screen",
     );
-    assert.ok(await page.locator('.rail nav').evaluate(n=>n.scrollWidth<=n.clientWidth),"Navigation must never gain a horizontal scroll axis");
+    assert.ok(await page.locator('.rail nav').evaluateAll(nodes=>nodes.every(n=>n.scrollWidth<=n.clientWidth)),"Navigation must never gain a horizontal scroll axis");
     // Real native disclosure, menu and search selection survive root and region paints.
     const sourceSummary=page.locator('.quest-source summary');await sourceSummary.scrollIntoViewIfNeeded();await sourceSummary.focus();
     await sourceSummary.evaluate(n=>{window.atlasHeldSummary=n;window.atlasToggles=0;n.parentElement.addEventListener('toggle',()=>window.atlasToggles++);});
@@ -499,7 +500,7 @@ function shortPath(target){
     await page.waitForFunction(()=>window.atlasToggles===1);assert.equal((await currentControlState(page,".quest-source summary")).focused,true);
     const disclosureOpen=(await currentControlState(page,".quest-source summary",{disclosure:true})).open;await page.evaluate(()=>render());assert.equal((await currentControlState(page,".quest-source summary",{disclosure:true})).open,disclosureOpen);
     const activeMenu=page.getByLabel('Active character',{exact:true});await activeMenu.click();await activeMenu.evaluate(n=>window.atlasHeldMenu=n);await page.evaluate(()=>render());assert.ok(await activeMenu.evaluate(n=>n===window.atlasHeldMenu));await page.keyboard.press('Escape');await search.focus();
-    const atlasNav=page.getByRole('button',{name:'Quest Guide',exact:true});await atlasNav.focus();await page.evaluate(()=>render());
+    const atlasNav=page.getByRole('button',{name:'Quests',exact:true});await atlasNav.focus();await page.evaluate(()=>render());
     // A locator may resolve a node just before an accepted root replacement.
     // Keep this semantic focus check atomic; held native target checks above
     // deliberately retain their original-node assertions.
@@ -532,9 +533,7 @@ function shortPath(target){
     await app.evaluate(()=>globalThis.atlasFailDetails=false);await page.getByRole('button',{name:'Retry quest evidence',exact:true}).click();await page.locator('.quest-detail h2').waitFor();
     await search.fill('99999999');await page.getByText('No matching quests.',{exact:true}).waitFor();await capture('quest-guide-empty.png');await search.fill('');
 
-    await page
-      .getByRole("button", { name: "AI Companion", exact: true })
-      .click();
+    await navigate(page, "assistant");
     await page.getByLabel("Your question", {exact:true}).fill("Where is Thork?");
     await page.waitForFunction(()=>document.querySelector('.context-preview pre')?.textContent.includes('Thork'));
     const npcPreview = JSON.parse(await page.locator('.context-preview pre').textContent());
@@ -643,9 +642,7 @@ function shortPath(target){
         ?.textContent.includes("No character context"),
     );
     assert.equal(await page.locator(".context-preview pre").count(), 0);
-    await page
-      .getByRole("button", { name: "Quest Guide", exact: true })
-      .click();
+    await navigate(page, "quest-guide");await ensureCompanionTools(page,"quest-details");
     await page
       .getByRole("button", { name: "Refresh reference", exact: true })
       .click();
@@ -731,9 +728,7 @@ function shortPath(target){
     await write();
     await page.evaluate(() => window.backstage.refreshGame());
     await page.reload();
-    await page
-      .getByRole("button", { name: "Quest Guide", exact: true })
-      .click();
+    await navigate(page, "quest-guide");await ensureCompanionTools(page,"quest-details");
     await search.fill("The Spirits of Stonetalon");
     await page.locator('.quest-ledger-row[data-quest-id="1061"]').waitFor();
     assert.match(
@@ -797,9 +792,7 @@ function shortPath(target){
         return result;
       });
     });
-    await page
-      .getByRole("button", { name: "AI Companion", exact: true })
-      .click();
+    await navigate(page, "assistant");
     await page.getByLabel("Use my active character", { exact: true }).check();
     await page
       .getByLabel("Your question", { exact: true })
@@ -855,14 +848,10 @@ function shortPath(target){
         return result;
       });
     }, backup);
-    await page
-      .getByRole("button", { name: "Quest Guide", exact: true })
-      .click();
+    await navigate(page, "quest-guide");await ensureCompanionTools(page,"quest-details");
     await page.locator('.quest-ledger-row[data-quest-id="5730"]').click();
     await waitHeld("knowledgeDetailsHeld");
-    await page
-      .getByRole("button", { name: "Field Guide", exact: true })
-      .click();
+    await navigate(page, "guide");
     await page
       .getByRole("button", { name: "Import backup", exact: true })
       .click();
@@ -870,9 +859,7 @@ function shortPath(target){
       .getByRole("status")
       .filter({ hasText: "Backup imported." })
       .waitFor();
-    await page
-      .getByRole("button", { name: "Quest Guide", exact: true })
-      .click();
+    await navigate(page, "quest-guide");await ensureCompanionTools(page,"quest-details");
     await page.locator('.quest-ledger-row[data-quest-id="2000002"]').click();
     await page
       .getByRole("heading", { name: "Restored current quest", exact: true })
@@ -929,9 +916,9 @@ function shortPath(target){
       "Late status does not cross a character switch",
     );
     // The root navigation read owns its page/profile, independently of module replies.
-    await page.getByRole('button',{name:'Field Guide',exact:true}).click();
+    await navigate(page, "guide");
     await app.evaluate(({ipcMain})=>{const original=ipcMain._invokeHandlers.get('backstage:knowledgeStatus');ipcMain.removeHandler('backstage:knowledgeStatus');ipcMain.handle('backstage:knowledgeStatus',async(...args)=>{const result=await original(...args);if(globalThis.atlasHoldNavStatus){await new Promise(r=>globalThis.atlasNavStatusRelease=r);result.message='STALE NAV STATUS MUST NOT APPEAR';}return result;});globalThis.atlasHoldNavStatus=true;});
-    await page.getByRole('button',{name:'Quest Guide',exact:true}).click();await waitHeld('atlasNavStatusRelease');await page.getByRole('button',{name:'Field Guide',exact:true}).click();
+    await navigate(page, "quest-guide");await ensureCompanionTools(page,"quest-details");await waitHeld('atlasNavStatusRelease');await navigate(page, "guide");
     await app.evaluate(()=>{globalThis.atlasHoldNavStatus=false;globalThis.atlasNavStatusRelease();});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
     assert.equal(await page.evaluate(()=>page), 'guide');assert.doesNotMatch(await page.evaluate(()=>JSON.stringify(knowledgeStatus)),/STALE NAV STATUS/);
     // Two physical Guide clicks behind one real accepted save acknowledgement retain one latest navigation owner.
@@ -941,25 +928,23 @@ function shortPath(target){
       globalThis.atlasRepeatSaveHold=true;globalThis.atlasRepeatStatusHold=true;globalThis.atlasRepeatSkipStatus=1;globalThis.atlasRepeatStatusReleases=[];
     });
     await page.evaluate(()=>{autosaveQueue=autosaveQueue.then(()=>persist(state));});await waitHeld('atlasRepeatSaveRelease');
-    await page.getByRole('button',{name:'Quest Guide',exact:true}).click();await page.getByRole('button',{name:'Quest Guide',exact:true}).click();assert.equal(await app.evaluate(()=>atlasRepeatStatusReleases.length),0);
+    await page.getByRole("navigation",{name:"Main navigation",exact:true}).getByRole("button",{name:"Quests",exact:true}).click();await page.getByRole("navigation",{name:"Main navigation",exact:true}).getByRole("button",{name:"Quests",exact:true}).click();assert.equal(await app.evaluate(()=>atlasRepeatStatusReleases.length),0);
     await app.evaluate(()=>{globalThis.atlasRepeatSaveHold=false;globalThis.atlasRepeatSaveRelease();});await page.evaluate(()=>autosaveQueue);
     const waitRepeat=target=>app.evaluate(async(_e,target)=>{const end=Date.now()+5000;while(globalThis.atlasRepeatStatusReleases.length<target){if(Date.now()>end)throw Error('Repeated status fixture did not start');await new Promise(r=>setTimeout(r,10));}},target);
     await waitRepeat(1);assert.equal(await app.evaluate(()=>atlasRepeatStatusReleases.length),1,'Only the latest queued Guide click may dispatch status');
     await app.evaluate(()=>atlasRepeatStatusReleases[0]('NEWER QUEUED NAV STATUS'));await page.waitForFunction(()=>knowledgeStatus.message==='NEWER QUEUED NAV STATUS');
     // Dispatched reads also have distinct owners; resolve the second before the first.
-    await app.evaluate(()=>globalThis.atlasRepeatStatusReleases=[]);await page.getByRole('button',{name:'Quest Guide',exact:true}).click();await waitRepeat(1);await page.getByRole('button',{name:'Quest Guide',exact:true}).click();await waitRepeat(2);
+    await app.evaluate(()=>globalThis.atlasRepeatStatusReleases=[]);await navigate(page, "quest-guide");await ensureCompanionTools(page,"quest-details");await waitRepeat(1);await navigate(page, "quest-guide");await ensureCompanionTools(page,"quest-details");await waitRepeat(2);
     await app.evaluate(()=>atlasRepeatStatusReleases[1]('NEWER DISPATCHED NAV STATUS'));await page.waitForFunction(()=>knowledgeStatus.message==='NEWER DISPATCHED NAV STATUS');await app.evaluate(()=>atlasRepeatStatusReleases[0]('OLDER DISPATCHED NAV STATUS'));
     await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));assert.equal(await page.evaluate(()=>knowledgeStatus.message),'NEWER DISPATCHED NAV STATUS');await app.evaluate(()=>globalThis.atlasRepeatStatusHold=false);
     console.log('PASS: two physical Guide clicks behind one held save dispatch only latest; separate read replies NEWER-before-OLDER keep NEWER.');
     const manual=await page.evaluate(async()=>{const s=(await backstage.bootstrap()).state;const p={id:'Fictional-manual-journal',name:'Elowen',className:'Druid',level:12,faction:'',realm:'Fictional Realm',notes:'',goals:[]};s.profiles.push(p);s.activeProfileId=p.id;s.followGameCharacter=false;state=await backstage.saveState(s);knowledgeStatus=await backstage.knowledgeStatus();render();return p.id;});
-    await page.getByRole('button',{name:'Quest Guide',exact:true}).click();await page.locator('.quest-detail-empty').waitFor();await capture('quest-guide-neutral-manual.png');
+    await navigate(page, "quest-guide");await ensureCompanionTools(page,"quest-details");await page.locator('.quest-detail-empty').waitFor();await capture('quest-guide-neutral-manual.png');
     assert.equal(await app.evaluate(() => globalThis.knowledgeInference), 0);
     await app.evaluate(({ dialog }) => {
       dialog.showMessageBox = async () => ({ response: 1 });
     });
-    await page
-      .getByRole("button", { name: "Field Guide", exact: true })
-      .click();
+    await navigate(page, "guide");
     await page
       .getByRole("button", { name: "Delete all local data", exact: true })
       .click();

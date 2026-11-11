@@ -1,3 +1,4 @@
+const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises");
 const os = require("node:os");
@@ -161,17 +162,13 @@ const { testWindow } = require("./test-window.cjs");
     await page.screenshot({
       path: path.join(__dirname, "..", "assets", "desktop-preview.png"),
     });
-    await page
-      .getByRole("button", { name: "Connections", exact: true })
-      .click();
+    await navigate(page, "connections");
     await page.getByRole("button", { name: "OpenAI API", exact: true }).click();
     await page.getByLabel("Access method").selectOption("subscription");
     await page.screenshot({
       path: path.join(__dirname, "..", "assets", "connections-preview.png"),
     });
-    await page
-      .getByRole("button", { name: "Game Connection", exact: true })
-      .click();
+    await navigate(page, "game");
     await page.screenshot({
       path: path.join(__dirname, "..", "assets", "game-connection-preview.png"),
     });
@@ -179,7 +176,7 @@ const { testWindow } = require("./test-window.cjs");
     await page.screenshot({
       path: path.join(__dirname, "..", "assets", "roster-preview.png"),
     });
-    await page.getByRole("button", { name: "Updates", exact: true }).click();
+    await navigate(page, "updates");
     await page
       .getByRole("heading", { name: "Keep your companion ready." })
       .waitFor();

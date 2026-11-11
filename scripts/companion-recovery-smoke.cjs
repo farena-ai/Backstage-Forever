@@ -1,4 +1,5 @@
 "use strict";
+const { navigate } = require("./player-navigation.cjs");
 // Actual main/preload/renderer with synthetic state and deliberately late fake transport.
 const {_electron:electron}=require('playwright');
 const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict');
@@ -29,7 +30,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   });
   await page.evaluate(()=>localStorage.setItem('bf-setup-v4','complete'));await page.reload();
   const call=(method,...args)=>page.evaluate(({method,args})=>window.backstage[method](...args),{method,args});
-  const open=()=>page.getByRole('button',{name:'AI Companion',exact:true}).click();await open();
+  const open=()=>navigate(page, "assistant");await open();
   const question=page.getByRole('textbox',{name:'Your question',exact:true});
   const send=async text=>{await question.fill(text);await page.getByRole('button',{name:'Send question',exact:true}).click();};
   const waitPendingPresentation=()=>page.getByRole('button',{name:'Stop response',exact:true}).waitFor({state:'visible'});
@@ -79,7 +80,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   const invalid=await app.evaluate(async({ipcMain,BrowserWindow})=>{const win=BrowserWindow.getAllWindows()[0],handler=ipcMain._invokeHandlers.get('backstage:cancelAsk'),event={sender:win.webContents,senderFrame:win.webContents.mainFrame};const rejects=async(...args)=>{try{await handler(...args);return false;}catch{return true;}};return [await rejects(event,'extra'),await rejects({sender:{},senderFrame:{}}),await rejects({sender:win.webContents,senderFrame:{url:event.senderFrame.url}})];});assert.ok(invalid.every(Boolean));
   for(const scenario of ['navigation','provider','character']){
    const count=await app.evaluate(()=>recovery.requests.length);await send('Explain HOLD '+scenario+' quest');await waitRequest(count+1);await waitPendingPresentation();
-   if(scenario==='navigation'){await page.getByRole('button',{name:'Field Guide',exact:true}).click();await open();}
+   if(scenario==='navigation'){await navigate(page, "guide");await open();}
    if(scenario==='provider'){await call('saveProvider',{provider:'ollama',model:'fixture-two',endpoint:'http://127.0.0.1:11434',authMode:'api'});}
    if(scenario==='character'){await page.getByLabel('Active character',{exact:true}).selectOption('Beta');}
    await page.waitForFunction(()=>!document.querySelector('#chat-form [type=submit]').disabled);
