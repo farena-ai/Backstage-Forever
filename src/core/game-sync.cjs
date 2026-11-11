@@ -287,7 +287,7 @@ class GameSync {
             : "blocked",
         label: "Prepare companion addon",
         detail: state.addonCurrent
-          ? "All five companion files match this app."
+          ? "All owned companion files match this app."
           : "Companion files need preparation or repair.",
       },
       {

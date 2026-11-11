@@ -2,7 +2,7 @@
 
 ## Find your way around
 
-The journal has five main sections: **Adventure** for your next step, **Quests** for the saved quest atlas, **Companion** for questions and local travel, **Characters** for your roster, and **Plans** for checklists. Adventure contains **Next step** and **Professions**, the single saved workshop. Plans contains **My plans** (formerly Company), **Party**, and a shortcut to Professions. **Settings** contains **Game connection**, **AI connection** (formerly Connections), and **Updates**. **Help → Field guide** contains support reports, recovery checkpoints, and backup tools.
+The journal has five main sections: **Adventure** for your next step, **Quests** for the saved quest atlas, **Companion** for questions and local travel, **Characters** for your roster, and **Plans** for checklists. Adventure contains **Next step**, **Professions** (your saved workshop), and **Map** (last-saved coordinates). Plans contains **My plans** (formerly Company), **Party**, and a shortcut to Professions. **Settings** contains **Game connection**, **AI connection** (formerly Connections), and **Updates**. **Help → Field guide** contains support reports, recovery checkpoints, and backup tools.
 
 Voice, Memory, and quest reference details open when you need them. Folding Voice stops pending or active speech. The memory summary always shows how many exchanges are selected for this question; saving an exchange does not consent to sharing it. Provider costs and character-sharing choices remain visible. Local travel has a **Show road guide** shortcut when a road alternative is documented; **How we know** holds dated source details. These are guides and manual plans, never game actions.
 
@@ -140,3 +140,9 @@ Current primary documentation was re-opened separately from source/tests. [OpenA
 
 This spot-check does not validate Grok subscription inference, all provider terms, account eligibility or billing. Those remain separate, explicit acceptance/research items; no authentication or paid call was performed.
 
+
+## Personal map candidate
+
+The desktop now includes **Adventure → Map**, a graphical last-saved coordinate view with useful profession defaults, visible evidence legend, dated dossiers and per-character filters. Main owns the strict read-only model; source/character/view/replacement fences retire stale results and actions. Five primary sections and all eleven earlier destinations remain. No native, reference pack, dependency or version contract changes belong to this desktop task.
+
+Focused synthetic source/UI evidence is recorded in the desktop task report. These checks do not establish actual game map rendering, gathering events, provider/audio behavior, installed updater behavior or long-session performance. Final independent review, full-suite/build/copied Windows bundle verification and owner hands-on review remain distinct requirements before 1.0. When opening a separate review copy, close the regular app first so two copies cannot repair the same game-addon files.

@@ -592,7 +592,7 @@ function shortPath(target) {
         .getByRole("navigation", { name: "Adventure navigation", exact: true })
         .getByRole("button")
         .count(),
-      2,
+      3,
     );
     const originalWorkshops = characters.map((c) =>
       structuredClone(c.readiness.workshop),

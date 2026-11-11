@@ -1,0 +1,392 @@
+[
+  {
+    "root": ".superpowers/sdd/adventure-map-captures/2026-11-11T09-11-01-028Z",
+    "files": [
+      {
+        "file": "alliance-compact.png",
+        "bytes": 550601,
+        "sha256": "b1ef871d8259a868cc546df4677a5b01433417565fc1602614b04cd66d4ba62a"
+      },
+      {
+        "file": "alliance-full.png",
+        "bytes": 963497,
+        "sha256": "18cee1933491bd542d9c522db50c91fe85a0c7fd4f1b02a5e2b6c81a5a3f9a44"
+      },
+      {
+        "file": "damaged-reference-keeps-observations.png",
+        "bytes": 918748,
+        "sha256": "13eb12b30b75d37054db13eb3249a320f027a242a3434ba4f5322e03a57d8967"
+      },
+      {
+        "file": "horde-compact.png",
+        "bytes": 543277,
+        "sha256": "0d05437525f8b6987a13b88c7c5fb421686fc7e13aa4d62905ae41b0216289d3"
+      },
+      {
+        "file": "horde-full.png",
+        "bytes": 956321,
+        "sha256": "702da746f3beed82639cef1c795c9e0517499b78245372fc597f4f52d22dc368"
+      },
+      {
+        "file": "horde-native-200-percent-map-detail.png",
+        "bytes": 989146,
+        "sha256": "73c4180cbc9aedd62060ce080ad3bb3c1a9984c5fc1a540c2dcace6300e4ca96"
+      },
+      {
+        "file": "horde-native-200-percent-reduced-motion.png",
+        "bytes": 1082735,
+        "sha256": "66d4f7699b3eaf58c06302f145b31dd53ddfde5b7f8e7dda6810a2c808f22e96"
+      },
+      {
+        "file": "manifest.json",
+        "bytes": 3146,
+        "sha256": "c64de7454cd513be15d7cbea4dcf1c4e242240aa442b35994c8339e5c5fbdaeb"
+      },
+      {
+        "file": "missing-coordinate.png",
+        "bytes": 883089,
+        "sha256": "e0ec707dab7538b0e381022feac9b030f432f4c448b23b891ebb3a9fa6368121"
+      },
+      {
+        "file": "missing-format.png",
+        "bytes": 906774,
+        "sha256": "3215e93dadb2d464a555bfe712ff3eca7ac6323de2b767f78319150cbe475680"
+      },
+      {
+        "file": "no-location-empty.png",
+        "bytes": 971618,
+        "sha256": "1abe613401c7e639d7959b208bff31c601471bb20900c5b464d7a06e521f1ab0"
+      },
+      {
+        "file": "older-build-browse.png",
+        "bytes": 919145,
+        "sha256": "1d563e7d4b5aa6dfb8e97659ce2325307e9b97565d9a16b1280ddf694302b964"
+      },
+      {
+        "file": "restored-private-journal.png",
+        "bytes": 967884,
+        "sha256": "ed558d259761d1205a5aa21143d42173213d5f63d5e7cc857c039f59ff7ee921"
+      }
+    ],
+    "pngCount": 12
+  },
+  {
+    "root": ".superpowers/sdd/adventure-map-captures/covering-player-shell-2026-11-11-0904",
+    "files": [
+      {
+        "file": "alliance-adventure-compact.png",
+        "bytes": 1599339,
+        "sha256": "d9d901f9ec34a8b8a6c3b418df7054ce48a28527ac4ee4e09a64e6ec48136c28"
+      },
+      {
+        "file": "alliance-adventure-full.png",
+        "bytes": 2609489,
+        "sha256": "13c58d52f6f6a07427e46fce3a9a4291012c7ae7fa0e30489b094260a19a0184"
+      },
+      {
+        "file": "alliance-assistant-compact.png",
+        "bytes": 765219,
+        "sha256": "3e415022685c908e2f621392cec5bcc04dd04fa3fc9258e711a0a3c4d5b5d020"
+      },
+      {
+        "file": "alliance-assistant-full.png",
+        "bytes": 1658065,
+        "sha256": "558e6ed76be3d8d8e5da0bf66d02552b8063e79cf027c895317bdb5510b9976a"
+      },
+      {
+        "file": "alliance-characters-compact.png",
+        "bytes": 1550587,
+        "sha256": "17241bc54742510bbdc003506d8b02ca8e970192692c0fd71442154f7806614e"
+      },
+      {
+        "file": "alliance-characters-full.png",
+        "bytes": 2045096,
+        "sha256": "ef5081322067cec2af5f82b34e3ac6aa2ecd0a50c4b337bdba6293b4db13e765"
+      },
+      {
+        "file": "alliance-company-compact.png",
+        "bytes": 1110644,
+        "sha256": "590698290427425eb4784f1052fde29ea7346f431262be682402c9f75dc5dfc9"
+      },
+      {
+        "file": "alliance-company-full.png",
+        "bytes": 1781711,
+        "sha256": "29d87c9ee1514b985605a9301b2001388b0fafa574f8ebf65dcfe30032d79cba"
+      },
+      {
+        "file": "alliance-quest-guide-compact.png",
+        "bytes": 1113197,
+        "sha256": "a7700c14e80b3414c644f0220800cef687433dbd7c3adb6464a3fe7e07e1013c"
+      },
+      {
+        "file": "alliance-quest-guide-full.png",
+        "bytes": 1766532,
+        "sha256": "0ac074f0c5dde005b7969a505b0967e4ce712c1cbbccc6b55b8f17df8614baea"
+      },
+      {
+        "file": "horde-adventure-compact.png",
+        "bytes": 1604655,
+        "sha256": "ce145652f1b0a8a5a0fb698dbe7acbca7ad7a23f29d75c7a8ebad35bb2cdd906"
+      },
+      {
+        "file": "horde-adventure-full.png",
+        "bytes": 2631954,
+        "sha256": "de8a2656631f22f5ab85d1d6142b4134a60a11f51698508ddd090baa727b3fb1"
+      },
+      {
+        "file": "horde-assistant-compact.png",
+        "bytes": 756767,
+        "sha256": "c7b9a26a060eb90695ca259868a8d034cee50f279643436c5c543aaa44731f8e"
+      },
+      {
+        "file": "horde-assistant-full.png",
+        "bytes": 1640897,
+        "sha256": "5a928c6b57bae330f3b74174774d3babbf1b2a6167e184ee740d600ec30ea121"
+      },
+      {
+        "file": "horde-characters-compact.png",
+        "bytes": 1481454,
+        "sha256": "ae550ac10c0529ede0f1422b106a53ec2dcdcd64578a8356de6db5dde22a3693"
+      },
+      {
+        "file": "horde-characters-full.png",
+        "bytes": 1978860,
+        "sha256": "91f3cfd7a66aed606c0cf79143571d2791b87b46e64fa4f6e5b85ed9d8c2d7f4"
+      },
+      {
+        "file": "horde-company-compact.png",
+        "bytes": 1101505,
+        "sha256": "287f55a9f6be1af92b25b0f7d0c1ed13e3df20e6fd0027efd3a73e370023d8c2"
+      },
+      {
+        "file": "horde-company-full.png",
+        "bytes": 1786800,
+        "sha256": "88cdddd8729dd677d8c881bff6f7acbb202827979bcc29eb54c48119e4f75630"
+      },
+      {
+        "file": "horde-quest-guide-compact.png",
+        "bytes": 1117792,
+        "sha256": "a1f048371daab9263e690eca2ea24e089a771ed1054e5cc21c6bdc8831a984c3"
+      },
+      {
+        "file": "horde-quest-guide-full.png",
+        "bytes": 1788895,
+        "sha256": "7bbd2ed06ffa240705ea0ac81fcae3b01c16b3d3405fd6e7ebf29482c8f53d8c"
+      },
+      {
+        "file": "manifest.json",
+        "bytes": 4092,
+        "sha256": "282fa254fccf5bf1f9ef03b313f91b719dc2ee7874d6e28d5105dbc98897bab4"
+      },
+      {
+        "file": "optional-tools.png",
+        "bytes": 1284787,
+        "sha256": "99ae3e090896dd8a0ff78888c4dab6ee408e432c7a161633c2c6c05569ce7b58"
+      },
+      {
+        "file": "quest-zoom200-reduced.png",
+        "bytes": 1030415,
+        "sha256": "561b218d69b1014ef421648418f051c45b1550a53dc45a863e2241dc16d0eea9"
+      },
+      {
+        "file": "secondary-connections.png",
+        "bytes": 1106752,
+        "sha256": "795fcfa1deadb8ed6a617c06c36e89900604360dbe24d64c11db04b938a356d2"
+      },
+      {
+        "file": "secondary-game.png",
+        "bytes": 766218,
+        "sha256": "46659a737f68ed4aec59f298eb8fd5f9c514729efaeac74ebcb527fd410beb71"
+      },
+      {
+        "file": "secondary-guide.png",
+        "bytes": 2407093,
+        "sha256": "9a6493c8cb9d3269cb38c91c19276c447fab12e428e91b184708c544f7b56d09"
+      },
+      {
+        "file": "secondary-updates.png",
+        "bytes": 916961,
+        "sha256": "aec8350b68780da3803da13b54aa48cec9a7b32b78ee697da9a4cb2209a6570f"
+      }
+    ],
+    "pngCount": 26
+  },
+  {
+    "root": ".superpowers/sdd/adventure-map-captures/covering-profession-2026-11-11-0909",
+    "files": [
+      {
+        "file": "alliance-compact.png",
+        "bytes": 1193826,
+        "sha256": "0b6238bea7b02739f0b663c6511f3a2fc264a0a9e19a89fc3fe84bee761142d5"
+      },
+      {
+        "file": "alliance-full.png",
+        "bytes": 1769900,
+        "sha256": "fdc3a766efaac1a4a6ace87cccaccc946997515749e63b1dc6041f0d50a99d24"
+      },
+      {
+        "file": "held-choice-replacement.png",
+        "bytes": 1444405,
+        "sha256": "e3f10654cf66caa09ed90b12d8148800c1b1a07880e42e8c7f14c76afe4fa577"
+      },
+      {
+        "file": "historical-sellers-alliance.png",
+        "bytes": 1386428,
+        "sha256": "f34d707173883f62b82b9d61edf9525c8317b5ab1e05958b2b8f70481b346f3b"
+      },
+      {
+        "file": "horde-compact.png",
+        "bytes": 1035900,
+        "sha256": "9674fb8144e9251767ef007d6ed1af8fabb283e52b0f2dc49add2ce7b2d5ac21"
+      },
+      {
+        "file": "horde-full.png",
+        "bytes": 1539645,
+        "sha256": "b2ffd31f143236dde5e80bfcd190a5642835c54b1099b121550483b0792ceabf"
+      },
+      {
+        "file": "manifest.json",
+        "bytes": 3703,
+        "sha256": "0ef2f8cb9fb1eb7e325667dfd7d15e8f966121137014660bd461c88f55d3a5d6"
+      },
+      {
+        "file": "manual-empty.png",
+        "bytes": 1290261,
+        "sha256": "34c109b42a48fd6abaa52b5ba75788a236b4e93d2d6d8022d6c53be24ee98652"
+      },
+      {
+        "file": "missing-recipe.png",
+        "bytes": 1296041,
+        "sha256": "fdffb3979d3e732909c24b7ef909d8acb16a57b54c983a9bbef993e2b3d55216"
+      },
+      {
+        "file": "mutation-error.png",
+        "bytes": 1060903,
+        "sha256": "b71b7b22809a1a7cc9ea813bdaf03776c156c6030233d6d6613615e6e2b3c339"
+      },
+      {
+        "file": "no-character.png",
+        "bytes": 1352294,
+        "sha256": "ee22d6ded95c4e423fefd92ab562aba569ae514131ba9fb29b0c3dca33f5790c"
+      },
+      {
+        "file": "partial.png",
+        "bytes": 1048743,
+        "sha256": "12797ed69b1deac0bdb38c1011ea9898f00860842bd237f142c7d2de785bc890"
+      },
+      {
+        "file": "profession-alliance-200-percent.png",
+        "bytes": 448088,
+        "sha256": "2e78da6de38875dffe7d0424e85c6975b0cd99033b886df797d66e07c1a28000"
+      },
+      {
+        "file": "profession-alliance-compact.png",
+        "bytes": 1054688,
+        "sha256": "eece9d3da4e26419197394ab96e13c0bdc1d2e97f8ff485a3f596f3fad622545"
+      },
+      {
+        "file": "profession-alliance-full.png",
+        "bytes": 1549258,
+        "sha256": "7a8dfcd23a83b53e3345580bd7e71462369f0780eff86e1ec8c65863279add76"
+      },
+      {
+        "file": "profession-horde-200-percent.png",
+        "bytes": 443607,
+        "sha256": "84e171bf34e4bcb5ace89b717f788a24a7c334c00755b70c44ce4344bbedfff8"
+      },
+      {
+        "file": "profession-horde-compact.png",
+        "bytes": 1053370,
+        "sha256": "0c2121807331d78ddab87ad0c5c63d0c1cc2275660ef3154c4bf6acd2ba020d3"
+      },
+      {
+        "file": "profession-horde-full.png",
+        "bytes": 1563095,
+        "sha256": "a7e39de9e90c2601cb0d95714b20b0b0dd1df27ea87f0c0caf402f1d43ece134"
+      },
+      {
+        "file": "profession-older-build-qualified-sources.png",
+        "bytes": 1811406,
+        "sha256": "b6492ec2deb6645b3eee734e2fc32816a832c8f785aac708f31a41d704bc25c2"
+      },
+      {
+        "file": "read-error.png",
+        "bytes": 1057027,
+        "sha256": "85d9329e030de5ea8c2e2a4239cf14a7bf8cfcf3d498033f3b79c58bb9fe3438"
+      },
+      {
+        "file": "supply-editable-draft.png",
+        "bytes": 707699,
+        "sha256": "a7763016ef847b04e928e5caff91318760fb233c70ca063317622e281cd1e786"
+      },
+      {
+        "file": "unknown-requirements.png",
+        "bytes": 1290894,
+        "sha256": "7d376096de5dba86e5043b30512f31829c0907ebe289f0350aefdc50b98996e8"
+      },
+      {
+        "file": "unknown-supply.png",
+        "bytes": 1047865,
+        "sha256": "55f9563723c9ca6a11964c7d024f6bee7d8ce0d21c464c60808e6e3cfddb784f"
+      }
+    ],
+    "pngCount": 22
+  },
+  {
+    "root": ".superpowers/sdd/adventure-map-captures/covering-director-2026-11-11-0912",
+    "files": [
+      {
+        "file": "alliance.png",
+        "bytes": 1200780,
+        "sha256": "a160ab834feb3554b1928899686cb7587ca467ee3a81f6e77e7b42e78fa7403d"
+      },
+      {
+        "file": "compact-red.png",
+        "bytes": 629309,
+        "sha256": "be7eda9bbc3d3288f9c337f75fdeb0023b99db016e3f0f8b5385bff80f309dc0"
+      },
+      {
+        "file": "compact.png",
+        "bytes": 557775,
+        "sha256": "e829ac9127ed6220a2e405b54fabc9cc9c077b95c365c404812913704ffc2816"
+      },
+      {
+        "file": "empty.png",
+        "bytes": 1138165,
+        "sha256": "b9035eecfa1a0d28082ab8285bb0ddf3db1ded5dcd39f5c7298fcfe36ad8d5ae"
+      },
+      {
+        "file": "error.png",
+        "bytes": 515696,
+        "sha256": "c6370894aedde3285b28ad6d94ed9a89580e8ac19fe54143adb88f057994f8d8"
+      },
+      {
+        "file": "horde.png",
+        "bytes": 602638,
+        "sha256": "23cd92bd8e630d055c0b8875d85bcc74ecff8d15d6a292894274b1651ae9f24c"
+      },
+      {
+        "file": "no-characters.png",
+        "bytes": 1115693,
+        "sha256": "7cefbaf1c179f22ba3b833ad5863d801a6cca40beafe0d48b00bde9749d08a29"
+      }
+    ],
+    "pngCount": 7
+  },
+  {
+    "root": ".superpowers/sdd/adventure-map-captures/covering-command-center-2026-11-11-0914",
+    "files": [
+      {
+        "file": "command-center-compact.png",
+        "bytes": 633935,
+        "sha256": "a242d8eebabfff5289a1c5fe15125a7e4a11109c937193b6e1f8ab51f9867124"
+      },
+      {
+        "file": "command-center-full.png",
+        "bytes": 1303584,
+        "sha256": "10847ce0c0b1cf15e73cd850f747696e480f71ae723df96bea7e0b9e0751091d"
+      }
+    ],
+    "pngCount": 2
+  }
+]

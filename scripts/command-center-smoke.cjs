@@ -26,6 +26,14 @@ const { testWindow } = require('./test-window.cjs');
     await page.evaluate(root=>window.backstage.prepareGame(root),game);
     await page.reload();
     await page.getByRole('heading',{name:'Aeralyn',exact:true}).waitFor();
+    if(process.env.BF_SMOKE_CAPTURE_ROOT){
+      await fs.mkdir(process.env.BF_SMOKE_CAPTURE_ROOT,{recursive:true});
+      for(const [width,height,name] of [[1440,960,'command-center-full'],[984,635,'command-center-compact']]){
+        await app.evaluate(({BrowserWindow},{width,height})=>BrowserWindow.getAllWindows()[0].setContentSize(width,height),{width,height});
+        await page.waitForFunction(({width,height})=>innerWidth===width&&innerHeight===height,{width,height});
+        await page.screenshot({path:path.join(process.env.BF_SMOKE_CAPTURE_ROOT,name+'.png')});
+      }
+    }
     // Reproduce an existing saved roster with follow disabled and no active ID.
     const nullSelection=await page.evaluate(()=>window.backstage.bootstrap());
     nullSelection.state.activeProfileId=null;

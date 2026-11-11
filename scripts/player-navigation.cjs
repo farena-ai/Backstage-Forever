@@ -8,6 +8,7 @@ const routes = {
   company: ["Plans", "My plans"],
   party: ["Plans", "Party"],
   preparation: ["Adventure", "Professions"],
+  "adventure-map": ["Adventure", "Map"],
   game: ["Settings", "Game connection"],
   connections: ["Settings", "AI connection"],
   updates: ["Settings", "Updates"],

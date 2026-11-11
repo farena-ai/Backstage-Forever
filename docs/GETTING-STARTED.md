@@ -2,7 +2,7 @@
 
 ## Find your way around
 
-The journal has five main sections: **Adventure** for your next step, **Quests** for the saved quest atlas, **Companion** for questions and local travel, **Characters** for your roster, and **Plans** for checklists. Adventure contains **Next step** and **Professions**, the single saved workshop. Plans contains **My plans** (formerly Company), **Party**, and a shortcut to Professions. **Settings** contains **Game connection**, **AI connection** (formerly Connections), and **Updates**. **Help → Field guide** contains support reports, recovery checkpoints, and backup tools.
+The journal has five main sections: **Adventure** for your next step, **Quests** for the saved quest atlas, **Companion** for questions and local travel, **Characters** for your roster, and **Plans** for checklists. Adventure contains **Next step**, **Professions** (your saved workshop), and **Map** (last-saved coordinates). Plans contains **My plans** (formerly Company), **Party**, and a shortcut to Professions. **Settings** contains **Game connection**, **AI connection** (formerly Connections), and **Updates**. **Help → Field guide** contains support reports, recovery checkpoints, and backup tools.
 
 Voice, Memory, and quest reference details open when you need them. Folding Voice stops pending or active speech. The memory summary always shows how many exchanges are selected for this question; saving an exchange does not consent to sharing it. Provider costs and character-sharing choices remain visible. Local travel has a **Show road guide** shortcut when a road alternative is documented; **How we know** holds dated source details. These are guides and manual plans, never game actions.
 
@@ -116,3 +116,11 @@ ChatGPT preview account switching requires resetting app data because one regist
 ## Local travel in Companion
 
 In Companion, try “what is the fastest way from org to tb”. This small dated local reference works without choosing a model. Follow clarification questions for missing places or faction. Review conditional flight and road options, unknown unlocks and source dates. Save trip plan creates a manual checklist in **Plans → My plans**; you check off the steps. Other questions still need your configured AI connection. Nothing moves or controls your character.
+
+## Remembered places
+
+Open **Adventure → Map**. It starts with your saved area and shows saved quests, sources related to your professions or selected recipe, and your own recorded finds. Choose a marker or its numbered list entry for a short explanation; **How we know** holds dates and uncertainty. **Map layers** lets you browse other reference types. Your area and filters save separately for each character; **Choose for me** restores useful defaults. **Your profession focus** opens the same Professions plan used by this view.
+
+This desktop view has coordinates, not terrain. Your marker is the last saved standing point; missing coordinates produce no marker. Unknown areas keep their map number. Older or uncertain references are off by default and never establish a resource currently exists. Open your world map **inside WoW** for the full live terrain map. No map button moves, targets, buys, gathers or controls the game.
+
+Companion files being prepared means installation is ready. **New-format game save received** confirms the format was saved, not that live map rendering or gathering APIs work. Load the updated addon once: if the game is already open, use the next game launch or an optional UI reload when appropriate. Afterward, native map and coach updates need no routine reload. The desktop updates when WoW normally saves; refreshing this app cannot force a save.

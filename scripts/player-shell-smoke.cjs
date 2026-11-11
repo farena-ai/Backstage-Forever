@@ -89,6 +89,8 @@ const { defaultState } = require("../src/core/validation.cjs");
     const proto=load('./src/core/companion-context.cjs').CompanionContext.prototype,original=proto.invalidate;proto.invalidate=function(reason){travelFixture.context=this;return original.call(this,reason);};
     load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});
     load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});
+    load('./src/core/voice.cjs').VoiceService.prototype.readCapabilities=async()=>({status:'unavailable',recognition:{available:false,cultures:[]},synthesis:{available:false,voices:[]}});
+    load('./src/core/game-runtime.cjs').GameRuntime.prototype.launch=async()=>{throw Error('Synthetic gate blocks launch');};
     load('./src/core/knowledge-cache.cjs').KnowledgeService.prototype.maybeRefresh=function(){};
     load('./src/core/updater.cjs').Updater.prototype.start=function(){};
     load('./src/main.cjs');
@@ -134,7 +136,7 @@ const { defaultState } = require("../src/core/validation.cjs");
         await page.getByLabel("Active character", { exact: true }).inputValue(),
         "Alpha",
       );
-      const group = id === "preparation" ? "adventure" : id === "party"
+      const group = ["preparation","adventure-map"].includes(id) ? "adventure" : id === "party"
         ? "company"
         : ["game", "connections", "updates"].includes(id)
           ? "game"
@@ -425,7 +427,7 @@ const { defaultState } = require("../src/core/validation.cjs");
       ),
     );
     console.log(
-      "Player shell actual Electron PASS: 5 primary + 2 secondary, 11 visible destinations, preserved custom class, disclosures, keyboard, 26 faction/full/compact/secondary/tool/zoom captures.",
+      "Player shell actual Electron PASS: 5 primary + 2 secondary, 12 visible destinations (all 11 legacy routes plus Map), preserved custom class, disclosures, keyboard, 26 faction/full/compact/secondary/tool/zoom captures.",
     );
   } finally {
     clearTimeout(watchdog);

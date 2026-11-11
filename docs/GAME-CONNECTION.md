@@ -44,3 +44,9 @@ The prepared companion now has twelve owned files, including its own world-map p
 Open the game's map and expand **BF Layers > Layers & recording** for relevant quest/material layers, older references, pause and confirmed clear. My finds are approximate past interactions, not active resources. The initial automatic subset requires known English targets and unambiguous own Mining/Herbalism cast plus single-object/material loot evidence; unsupported or protected reads are skipped. Native historical coverage is the existing seven acquisition relations, narrower than desktop seller browsing. The separate desktop Map view is not part of this foundation.
 
 Files prepared is not evidence that the running addon loaded them. The optional gathering schema in a connected valid saved capture provides a new-format receipt, even when there are no finds or APIs are unavailable. It does not certify live map rendering or harvesting. Imported/restored backups remain historical and cannot supply a connected receipt. Private local history, pause/clear behavior and normal save timing are described in [Privacy](PRIVACY.md).
+
+## Map save status
+
+Prepared files and a received new-format save are different states. Settings displays the connected main-owned gathering-schema receipt only after a valid new-format block was freshly read from the current connected source. Missing, unreadable, imported, restored or malformed snapshots cannot grant that receipt. The receipt proves format, not live map/API capability. A valid empty unavailable block still proves format while reporting unavailable observations.
+
+The full live terrain map stays in WoW. Adventure → Map is always last-saved. After one initial addon load, normal native events update the map without repeated reloads; the desktop waits for normal game saves.

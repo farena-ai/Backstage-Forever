@@ -65,4 +65,4 @@ test("removed disclosure toggle cannot cancel a replacement voice owner", () => 
   assert.equal(f.closed(), 0);
 });
 
-test("Adventure owns Next step and Professions; Plans keeps two tabs and an explicit shortcut",()=>{const {nav}=fixture();assert.match(nav.subtabs('adventure'),/Next step/);assert.match(nav.subtabs('preparation'),/Professions/);assert.match(nav.subtabs('company'),/data-professions-shortcut/);assert.equal((nav.main('preparation').match(/<button/g)||[]).length,5);assert.doesNotMatch(nav.subtabs('adventure'),/Map/);});
+test("Adventure owns Next step and Professions; Plans keeps two tabs and an explicit shortcut",()=>{const {nav}=fixture();assert.match(nav.subtabs('adventure'),/Next step/);assert.match(nav.subtabs('preparation'),/Professions/);assert.match(nav.subtabs('company'),/data-professions-shortcut/);assert.equal((nav.main('preparation').match(/<button/g)||[]).length,5);assert.match(nav.subtabs('adventure-map'),/Map/);assert.equal(nav.group('adventure-map'),'adventure');assert.equal(nav.current('adventure-map').pageLabel,'Map');assert.equal((nav.subtabs('adventure-map').match(/aria-current="page"/g)||[]).length,1);});

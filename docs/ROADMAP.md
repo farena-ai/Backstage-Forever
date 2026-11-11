@@ -146,3 +146,7 @@ A third-party API author's direct tests report a Forever account profile and cha
 Battle.net linking is separate from AI-provider login. Use registered official authorization, narrow scopes, state/PKCE where supported, encrypted local tokens and revoke/delete controls. Never embed an application client secret in a distributed desktop binary; if a confidential-client exchange is required, design a minimal secure service and disclose its data handling before implementation. Do not scrape account passwords, session cookies or account-switching screens.
 
 No scheduled release watchers or external recurring jobs form part of this roadmap.
+
+## Personal adventure map — local review candidate
+
+Implemented: native map/recording foundation plus Adventure → Map desktop coordinate journal, three Adventure tabs within the five-section shell, source-qualified material references and private personal finds. Desktop and native controls remain independent; there is no desktop game-control bridge or terrain redistribution. Source version remains 0.12.3. Independent task review, integrated packaging validation and owner real-client acceptance remain separate gates; 1.0 stays held.

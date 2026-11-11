@@ -91,6 +91,8 @@ function harness(overrides = {}) {
   context.Company = context.window.Company;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/preparation.js"), "utf8"), context);
   context.Preparation = context.window.Preparation;
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/adventure-map.js"), "utf8"), context);
+  context.AdventureMap=context.window.AdventureMap;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/party.js"), "utf8"), context);
   context.Party = context.window.Party;
   for (const [file, name] of [["support", "Support"], ["recovery", "Recovery"], ["character-guidance", "CharacterGuidance"]]) {
@@ -101,6 +103,7 @@ function harness(overrides = {}) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${name}.js`), "utf8"), context);
     context[name === "voice" ? "Voice" : "Memory"] = context.window[name === "voice" ? "Voice" : "Memory"];
   }
+  for(const [file,name] of [["adventure-coach","AdventureCoach"],["player-navigation","PlayerNavigation"]]){vm.runInContext(fs.readFileSync(path.join(__dirname,`../src/renderer/${file}.js`),"utf8"),context);context[name]=context.window[name];}
   let recoveryHost;
   const recoveryInit = context.Recovery.init;
   context.Recovery.init = host => { recoveryHost = host; recoveryInit(host); };
@@ -389,7 +392,7 @@ test('late navigation status cannot cross leaving Quest Guide or a same-characte
   assert.equal(accepted.length,0,boundary+' must retire the old status request');
  }
 });
-test('Preparation refresh ownership includes an exact saved build change even when its collection clocks are unchanged',async()=>{let calls=0;const h=harness({preparationBrief:async()=>{calls++;return {character:{id:'p'},selection:{crafts:1},planning:{},recipes:[],shoppingRows:[],otherCharacters:[]};}});vm.runInContext("state={onboarded:true,profiles:[{id:'p',name:'One',clientBuild:'1.60.1.70862',source:{kind:'wow-addon',updatedAt:'2026-11-09T12:00:00Z'}}],activeProfileId:'p',provider:{id:'ollama',model:''}};page='preparation';setupOpen=false;render=()=>{};",h.context);await h.context.Preparation.refresh();vm.runInContext("state.profiles[0].clientBuild='1.60.1.99999'",h.context);await h.context.Preparation.refresh();assert.equal(calls,2,'Changed build must invalidate old seller/draft qualification without depending on a different clock');});
+test('Preparation refresh ownership includes an exact saved build change even when its collection clocks are unchanged',async()=>{let calls=0;const h=harness({professionCoach:async()=>{calls++;return {character:{id:'p'},selection:{crafts:1},planning:{},recipes:[],shoppingRows:[],otherCharacters:[]};}});vm.runInContext("state={onboarded:true,profiles:[{id:'p',name:'One',clientBuild:'1.60.1.70862',source:{kind:'wow-addon',updatedAt:'2026-11-09T12:00:00Z'}}],activeProfileId:'p',provider:{id:'ollama',model:''}};page='preparation';setupOpen=false;render=()=>{};",h.context);await h.context.Preparation.refresh();vm.runInContext("state.profiles[0].clientBuild='1.60.1.99999'",h.context);await h.context.Preparation.refresh();assert.equal(calls,2,'Changed build must invalidate old seller/draft qualification without depending on a different clock');});
 test('two Guide clicks behind one held save cannot roll NEWER status back to OLDER',async()=>{
  const save=deferred(),reads=[],accepted=[],h=harness({knowledgeStatus:()=>{const r=deferred();reads.push(r);return r.promise;}});h.context.heldSave=save.promise;h.context.QuestGuide.sync=(p,status)=>accepted.push({message:status.message,build:p.clientBuild});
  vm.runInContext("state={onboarded:true,profiles:[{id:'p',name:'One',clientBuild:'before-save'}],activeProfileId:'p',provider:{id:'ollama',model:''}};page='adventure';setupOpen=false;render=()=>{};autosaveQueue=heldSave;",h.context);
@@ -471,3 +474,5 @@ test("Recovery host never converts a rejected post-commit display paint into rep
   const result=await h.recoveryHost.restore({id:"point",sha256:"hash"});
   assert.equal(result.detailsUnavailable,true);assert.equal(vm.runInContext("state.provider.id",h.context),"ollama");
 });
+
+test('ordinary same-character profession snapshot does not retire its held control owner',async()=>{const snapshot={onboarded:true,profiles:[{id:'p',name:'One'}],activeProfileId:'p',provider:{id:'ollama',model:''}},h=harness({gameSnapshot:async()=>({state:structuredClone(snapshot)})});let retired=0;h.context.Preparation.invalidate=()=>retired++;h.context.Preparation.refresh=()=>{};vm.runInContext("state={onboarded:true,profiles:[{id:'p',name:'One'}],activeProfileId:'p',provider:{id:'ollama',model:''}};page='preparation';setupOpen=false;render=()=>{};",h.context);await h.polls.at(-1)();assert.equal(retired,0);snapshot.activeProfileId='q';snapshot.profiles.push({id:'q',name:'Two'});await h.polls.at(-1)();assert.equal(retired,1);});

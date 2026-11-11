@@ -38,6 +38,7 @@ const { registerCharacterGuidanceHandlers } = require("./core/character-guidance
 const { registerDirectorHandlers } = require("./core/director-ipc.cjs");
 const { registerAdventureCoachHandlers } = require("./core/adventure-coach-ipc.cjs");
 const { registerProfessionCoachHandlers } = require("./core/profession-coach-ipc.cjs");
+const { registerAdventureMapHandlers } = require("./core/adventure-map-ipc.cjs");
 const { registerPreparationHandlers } = require("./core/preparation-ipc.cjs");
 const { registerPartyHandlers } = require("./core/party-ipc.cjs");
 const { CompanionRequest } = require("./core/companion-request.cjs");
@@ -312,6 +313,10 @@ app.whenReady().then(async () => {
   });
   registerAdventureCoachHandlers({ handle, getState: () => store.state, knowledge });
   registerProfessionCoachHandlers({ handle, getState: () => store.state });
+  registerAdventureMapHandlers({handle,getState:()=>store.state,knowledge,gatheringReceipt:profile=>{
+    const status=game.status(),snapshot=game.lastSnapshot;
+    return Boolean(status.connected&&status.loadedGatheringSchema===1&&profile?.source?.kind==="wow-addon"&&snapshot?.activeId===profile.source.id&&snapshot.characters.some(c=>c.id===profile.source.id&&c.updatedAt===profile.source.updatedAt&&c.gathering?.schemaVersion===1));
+  }});
   registerPreparationHandlers({
     handle,
     getState: () => store.state,
