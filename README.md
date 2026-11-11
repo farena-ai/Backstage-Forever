@@ -1,5 +1,9 @@
 # Backstage Forever
 
+## 0.15 preview: find anything, see where you are
+
+A graphical **World Map** with your live arrow, quest/flight/trainer/vendor/herb/ore pins, "Near you" and a cross-zone finder; **/bf find** and **/bf way** waypoints inside WoW; and an **Instance Atlas** coloured for your level. See the [0.15.0 release notes](docs/releases/0.15.0.md).
+
 ## 0.14 preview: the companion goes live
 
 AI answers now **look things up** in the bundled Forever references, instead of saying "I don't have that". Ask where an NPC is, walk through a quest, find an item or plan a trip, and every fact comes with its source. The optional **live game link** (`/bf live on`, then Settings → Game connection) lets the desktop and AI know where you are right now, without `/reload`. See the [0.14.1 release notes](docs/releases/0.14.1.md) and [Living Companion](docs/LIVING-COMPANION.md#live-game-link-optional). **1.0 remains held.**

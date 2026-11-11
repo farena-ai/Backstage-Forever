@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.15.0 — World Map, in-game finder and Instance Atlas, 2026-11-11
+
+- World Map page: original parchment cartography with the live arrow, trail and remembered paths; quest, flight, trainer, vendor, herb, ore and personal-find pins with clustering; "Near you"; cross-zone Find; waypoint copy.
+- In-game `/bf find` (compiled offline finder, about 900 places) and `/bf way` native waypoints with super-tracking. Managed addon set is now fourteen files.
+- Instance Atlas: classic-era baseline plus observed Forever encounters (bundled, CC BY 4.0), difficulty colours for your level, linked quests, entrance waypoints and a World Map deep link.
+- App/lock, TOC and capture metadata align at 0.15.0 preview. **1.0 remains held.**
+
 ## 0.14.1 — first published tool-using AI and live game link preview, 2026-11-11
 
 - Live-link UI check verifies the Companion side panel line by content, because narrow CI windows hide that panel. No app change. The unpublished 0.14.0 tag is preserved.
