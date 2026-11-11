@@ -365,6 +365,36 @@ const { defaultState } = require("../src/core/validation.cjs"),
         ?.textContent.includes("Unknown local objective"),
     );
     await shot("review-valid-marker");
+    await app.evaluate(() => {
+      const next = structuredClone(coachFixture.store.state),
+        p = next.profiles.find((p) => p.id === next.activeProfileId);
+      p.quests = Array.from({ length: 4 }, (_, i) => ({
+        id: i + 1,
+        title: i === 3 ? "Known local task" : `Blank local ${i + 1}`,
+        level: 12,
+        zone: "Forest",
+        complete: false,
+        objectives: [{ text: i === 3 ? "Find the scout" : "   ", done: false }],
+      }));
+      p.readiness.workshop.recipes.complete = false;
+      p.source.updatedAt = new Date().toISOString();
+      coachFixture.store.saveState(next);
+    });
+    await page.evaluate(async () => {
+      state = (await api.bootstrap()).state;
+      render();
+    });
+    await page.waitForFunction(() =>
+      document
+        .querySelector("[data-coach-primary]")
+        ?.textContent.includes("Known local task"),
+    );
+    assert.match(
+      await page.locator(".coach-alternatives").innerText(),
+      /Amber restorative/,
+    );
+    assert.equal(await page.locator("[data-director]").isVisible(), false);
+    await shot("review-fourth-local-quest");
 
     assert.ok(
       await page.evaluate(() =>
@@ -412,6 +442,7 @@ const { defaultState } = require("../src/core/validation.cjs"),
             "no providers/keys/game/external actions",
             "folded Director and explicit reveal",
             "blank local objective and valid current marker",
+            "fourth meaningful local quest survives three blank candidates",
           ],
         },
         null,

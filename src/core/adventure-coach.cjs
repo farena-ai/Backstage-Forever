@@ -18,6 +18,23 @@ function validateCoachOptions(value = {}) {
 }
 const signature = (id, facts) =>
   id + ":" + createHash("sha256").update(JSON.stringify(facts)).digest("hex");
+// Drain the existing three-card projection before applying the coach's own cap.
+// Reusing each planner batch preserves its ordering and reference qualifications.
+function directorPool(profile, guidance) {
+  let remaining = guidance.candidates.slice(0, 25);
+  const steps = [];
+  for (let batch = 0; batch < 9 && remaining.length; batch++) {
+    const choices = buildDirector(profile, {
+      ...guidance,
+      candidates: remaining,
+    }).choices;
+    if (!choices.length) break;
+    steps.push(...choices);
+    const selected = new Set(choices.map((step) => step.questId));
+    remaining = remaining.filter((step) => !selected.has(step.questId));
+  }
+  return steps;
+}
 /** Public normalized facts only. No journal goals, source IDs, commands or providers. */
 function buildAdventureCoach(
   profile,
@@ -100,9 +117,10 @@ function buildAdventureCoach(
     guidance = null;
   }
   if (guidance) {
-    const director = buildDirector(p, guidance);
     const steps =
-      mode === "questing" ? guidance.candidates.slice(0, 3) : director.choices;
+      mode === "questing"
+        ? guidance.candidates.slice(0, 25)
+        : directorPool(p, guidance);
     for (const step of steps) {
       const quest = (p.quests || []).find((q) => q.id === step.questId),
         actionable =
@@ -119,7 +137,7 @@ function buildAdventureCoach(
             (quest?.zone && quest.zone === p.location?.zone) ||
             (step.destination?.mapId !== undefined &&
               step.destination.mapId === p.location?.mapId));
-      const rank =
+      let rank =
         mode === "questing"
           ? 0
           : mode === "professions"
@@ -129,6 +147,14 @@ function buildAdventureCoach(
               : local
                 ? 2
                 : 4;
+      // A check-log fallback follows established quest work within its tier.
+      if (
+        mode !== "questing" &&
+        step.kind !== "turn-in" &&
+        !actionable &&
+        !step.referenceDestination
+      )
+        rank += 0.5;
       const detail =
         (step.objectives || [])
           .slice(0, 10)

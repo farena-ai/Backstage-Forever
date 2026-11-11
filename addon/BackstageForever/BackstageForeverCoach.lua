@@ -65,6 +65,24 @@ end
 local function signature(id,values)
     local out={id};for _,v in ipairs(values)do local s=tostring(v);out[#out+1]=#s..':'..s end;return table.concat(out,'|')
 end
+-- Drain bounded planner batches so its preview cap cannot hide coach candidates.
+-- The planner still owns ordering, reference qualification and command creation.
+local function questPool(character)
+    local remaining={};for key,value in pairs(character)do remaining[key]=value end
+    local steps,status={},nil
+    for _=1,9 do
+        local plan=BackstageForeverBuildPlan(remaining,{minutes=60})
+        status=status or plan.status
+        if #plan.steps==0 then break end
+        local selected={}
+        for _,step in ipairs(plan.steps)do steps[#steps+1]=step;selected[step.questId]=true end
+        local quests={}
+        for _,quest in ipairs(remaining.quests or {})do if not selected[quest.id] then quests[#quests+1]=quest end end
+        if #quests==0 then break end
+        remaining.quests=quests
+    end
+    return steps,status
+end
 function BackstageForeverBuildCoach(character,options)
     local mode=field(options,'mode');if mode~='questing' and mode~='professions' then mode='adventure'end
     local result={version=1,status='unavailable',mode=mode,alternatives={},limitations={'Open your own profession normally to observe learned recipes and carried materials.','You choose every action; skill-ups and output are not guaranteed.','Advice covers observed recipes only; a partial catalog may omit other choices.'}}
@@ -77,13 +95,15 @@ function BackstageForeverBuildCoach(character,options)
     end
     local prep=BackstageForeverBuildPreparation(c)
     if prep then add(mode=='questing' and 1 or 0,'bags','carried','Make room in your bags',prep.free..' of '..prep.total..' carried slots are free.','Review carried items before collecting more. Nothing is sold or deleted automatically.','Current game bags',{prep.free,prep.total}) end
-    local plan=BackstageForeverBuildPlan(c,{minutes=60})
-    for i,step in ipairs(plan.steps or {})do
+    local questSteps,questStatus=questPool(c)
+    for i,step in ipairs(questSteps)do
         local q;for _,v in ipairs(c.quests or {})do if v.id==step.questId then q=v;break end end
         local actionable=step.source=='game' and step.destination~=nil
         for _,o in ipairs(q and q.objectives or {})do if o.done==false and meaningful(o.text) then actionable=true end end
         local localQuest=actionable and q and q.zone and q.zone==c.location.zone or step.source=='game' and step.destination and step.destination.mapId==c.location.mapId
         local rank=mode=='questing' and 0 or mode=='professions' and 3 or step.phase=='t' and 1 or localQuest and 2 or 4
+        -- Keep unknown check-log fallbacks behind established work in this tier.
+        if mode~='questing' and step.phase~='t' and not actionable and not step.destination then rank=rank+0.5 end
         local facts={step.questId,step.phase,step.title,step.detail,step.command or ''}
         for _,o in ipairs(q and q.objectives or {})do for _,key in ipairs({'text','done','type','required','fulfilled'})do facts[#facts+1]=tostring(o[key])end end
         add(rank,'quest',step.questId,step.title,step.reason,step.detail,step.source=='reference' and 'Approximate reference; verify quest details' or 'Current quest log',facts,{questStep=step})
@@ -122,7 +142,7 @@ function BackstageForeverBuildCoach(character,options)
     end
     table.sort(rows,function(a,b)if a.rank~=b.rank then return a.rank<b.rank end;if a.value.kind=='quest' and b.value.kind=='quest' then return a.order<b.order end;return a.value.id<b.value.id end)
     if mode=='questing' and #rows>3 then for i=4,#rows do if rows[i].value.kind=='bags' then rows[3]=rows[i];break end end end
-    result.status=#rows>0 and 'ready' or plan.status=='unavailable' and not pc and 'unavailable' or 'empty'
+    result.status=#rows>0 and 'ready' or questStatus=='unavailable' and not pc and 'unavailable' or 'empty'
     result.recommendation=rows[1] and rows[1].value or nil
     for i=2,math.min(3,#rows)do result.alternatives[#result.alternatives+1]=rows[i].value end
     return result

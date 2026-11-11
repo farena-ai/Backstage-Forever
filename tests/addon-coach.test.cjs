@@ -171,3 +171,35 @@ for _,prose in ipairs({'','   ','  '..string.char(194,160)..'  '})do
 end
 q.complete=false;q.objectives={{text='Find the scout',done=false}};assert(coach().recommendation.kind=='quest')
 `));
+
+test("native coach ranks all bounded quests before the three opportunity cap", () =>
+  lua(`
+c.readiness.bags.free=5;c.location.mapId=1413;c.level=12;c.readiness.workshop.recipes.complete=false
+for _,count in ipairs({4,25})do
+ for _,evidence in ipairs({'prose','marker','turn-in','remote-prose'})do
+  c.quests={};for i=1,count do c.quests[i]={id=i,title='Blank local '..i,level=12,zone='Forest',complete=false,objectives={{text='   ',done=false}}}end
+  local q=c.quests[count];q.title='Known local task'
+  if evidence=='prose' or evidence=='remote-prose' then q.objectives[1].text='Find the scout';if evidence=='remote-prose' then q.zone='Desert' end elseif evidence=='marker' then q.destination={mapId=1413,x=.2,y=.3} else q.complete=true end
+  local b=coach();if evidence=='remote-prose' then assert(b.recommendation.kind=='craft-ready');assert(b.alternatives[1].id=='quest:'..count,'Unknown fallbacks cannot hide established distant work') else assert(b.recommendation.id=='quest:'..count,evidence..' at slot '..count);assert(b.alternatives[1].kind=='craft-ready')end;assert(#b.alternatives==2)
+  if q.destination then assert(b.recommendation.questStep.command=='/bf guide '..count..' o 1413 0.2000 0.3000 1.60.1.70862','Waypoint belongs to selected displayed quest')end
+ end
+end
+`));
+
+test("native coach preserves deterministic Questing order and bounded ready/local and unknown pools", () =>
+  lua(`
+c.readiness.bags.free=5;c.level=12;c.quests={}
+for i=1,8 do c.quests[i]={id=9-i,title='Task '..(9-i),level=12,zone='Forest',complete=i<=4,objectives={{text='Find the scout',done=false}}}end
+local function ids(b)return b.recommendation.id..','..b.alternatives[1].id..','..b.alternatives[2].id end
+assert(ids(coach())=='quest:5,quest:6,quest:7')
+for _,q in ipairs(c.quests)do q.complete=false end
+assert(ids(coach())=='quest:1,quest:2,quest:3')
+for _,q in ipairs(c.quests)do q.objectives[1].text=q.id==8 and 'Find the scout' or '   ' end
+local p=BackstageForeverBuildPlan(c,{minutes=60});local expected='quest:'..p.steps[1].questId..',quest:'..p.steps[2].questId..',quest:'..p.steps[3].questId
+assert(ids(coach('questing'))==expected)
+local reversed={};for i=#c.quests,1,-1 do reversed[#reversed+1]=c.quests[i]end;c.quests=reversed;assert(ids(coach('questing'))==expected)
+for _,q in ipairs(c.quests)do q.objectives[1].text='   ' end
+c.readiness.workshop=nil;assert(ids(coach())=='quest:1,quest:2,quest:3')
+c.quests={};for i=1,26 do c.quests[i]={id=i,title='Task '..i,complete=i==26,objectives={{text='   ',done=false}}}end
+assert(ids(coach())=='quest:1,quest:2,quest:3','Native only observes first 25 quests')
+`));

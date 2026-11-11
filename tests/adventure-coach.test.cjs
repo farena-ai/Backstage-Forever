@@ -213,3 +213,88 @@ test("blank local objective prose requires a valid current-game marker; ready tu
   p.quests[0].objectives = [{ text: "Find the scout", done: false }];
   assert.equal(build(p).recommendation.kind, "quest");
 });
+
+test("coach ranks the full bounded quest pool before choosing three opportunities", () => {
+  for (const count of [4, 25]) {
+    for (const evidence of ["prose", "marker", "turn-in", "remote-prose"]) {
+      const p = profile();
+      p.readiness.bags.free = 5;
+      p.readiness.workshop.recipes.complete = false;
+      p.quests = Array.from({ length: count }, (_, i) => ({
+        id: i + 1,
+        title: `Blank local ${i + 1}`,
+        level: 12,
+        zone: "Forest",
+        complete: false,
+        objectives: [{ text: "   ", done: false }],
+      }));
+      const q = p.quests.at(-1);
+      q.title = "Known local task";
+      if (evidence.includes("prose")) q.objectives[0].text = "Find the scout";
+      if (evidence === "remote-prose") q.zone = "Desert";
+      if (evidence === "marker")
+        q.destination = { mapId: 1413, x: 0.2, y: 0.3 };
+      if (evidence === "turn-in") q.complete = true;
+      const b = build(p);
+      if (evidence === "remote-prose") {
+        assert.equal(b.recommendation.kind, "craft-ready");
+        assert.equal(
+          b.alternatives[0].id,
+          `quest:${count}`,
+          "Unknown fallbacks cannot hide established distant work",
+        );
+      } else {
+        assert.equal(
+          b.recommendation.id,
+          `quest:${count}`,
+          `${evidence} at slot ${count}`,
+        );
+        assert.equal(b.alternatives[0].kind, "craft-ready");
+      }
+      assert.equal(b.alternatives.length, 2);
+      if (q.destination)
+        assert.deepEqual(b.recommendation.questStep.destination, q.destination);
+    }
+  }
+});
+
+test("coach keeps deterministic Questing order and bounded ready/local and unknown pools", () => {
+  const p = profile();
+  p.readiness.bags.free = 5;
+  const ids = (b) => [b.recommendation, ...b.alternatives].map((v) => v.id);
+  p.quests = Array.from({ length: 8 }, (_, i) => ({
+    id: 8 - i,
+    title: `Task ${8 - i}`,
+    level: 12,
+    zone: "Forest",
+    complete: i < 4,
+    objectives: [{ text: "Find the scout", done: false }],
+  }));
+  assert.deepEqual(ids(build(p)), ["quest:5", "quest:6", "quest:7"]);
+  p.quests.forEach((q) => (q.complete = false));
+  assert.deepEqual(ids(build(p)), ["quest:1", "quest:2", "quest:3"]);
+  p.quests.forEach(
+    (q) => (q.objectives[0].text = q.id === 8 ? "Find the scout" : "   "),
+  );
+  const expected = require("../src/core/guidance.cjs")
+    .buildGuidance(p)
+    .candidates.slice(0, 3)
+    .map((s) => `quest:${s.questId}`);
+  assert.deepEqual(ids(build(p, { mode: "questing" })), expected);
+  p.quests.reverse();
+  assert.deepEqual(ids(build(p, { mode: "questing" })), expected);
+  p.quests.forEach((q) => (q.objectives[0].text = "   "));
+  delete p.readiness.workshop;
+  assert.deepEqual(ids(build(p)), ["quest:1", "quest:2", "quest:3"]);
+  p.quests = Array.from({ length: 26 }, (_, i) => ({
+    id: i + 1,
+    title: `Task ${i + 1}`,
+    complete: true,
+    objectives: [],
+  }));
+  assert.equal(
+    build(p).recommendation,
+    null,
+    "Oversize desktop quest snapshots remain invalid",
+  );
+});
