@@ -1,0 +1,83 @@
+{
+  "synthetic": true,
+  "externalSurfaces": "prebootstrap fakes; automatic app/reference starts off",
+  "realGame": false,
+  "checks": [
+    "actual main model / SVG counts, nonzero exact geometry and zero player coordinate",
+    "SVG keyboard and mouse list selection / concise dossier / legend",
+    "user-selected reference area autosaves and remains selected across source refresh",
+    "per-character layer autosave and useful defaults",
+    "existing bounded profession goal getter reused",
+    "actual native select / held Enter / whole-root ownership",
+    "held and unheld pending source replacement retires mounted geometry and selection",
+    "late main replies retired on real navigation and profile selection",
+    "both factions full/compact, native 200% capture, reduced motion, native select contrast, no overflow",
+    "old-build browse, no coordinate, missing format, empty unknown area",
+    "five primary / three Adventure tabs / all eleven legacy routes / Plans shortcut",
+    "actual isolated import / preview-confirmed recovery / reset retire preferences and late geometry",
+    "prebootstrap damaged references preserve actual saved quest and personal geometry"
+  ],
+  "errors": [],
+  "captures": [
+    {
+      "file": "alliance-compact.png",
+      "bytes": 550738,
+      "sha256": "7815c8e5816bc57e5f994deff50a77424dbe6aa679ac2be92c07a46647c8ff0b"
+    },
+    {
+      "file": "alliance-full.png",
+      "bytes": 963589,
+      "sha256": "e038c010ca30a1d241b0a0b5a9c6f808e221b24cb9d9a19b49f28d8536f79d97"
+    },
+    {
+      "file": "damaged-reference-keeps-observations.png",
+      "bytes": 918748,
+      "sha256": "13eb12b30b75d37054db13eb3249a320f027a242a3434ba4f5322e03a57d8967"
+    },
+    {
+      "file": "horde-compact.png",
+      "bytes": 543375,
+      "sha256": "bcd7e54b08662d6283492e309f978c1757e6d1ebca6eeefbaf64348f9c9bc69d"
+    },
+    {
+      "file": "horde-full.png",
+      "bytes": 956317,
+      "sha256": "4c4db6527efa86761048e04adaaf122541dd09b872cf774f035cf7fa3ae32d2c"
+    },
+    {
+      "file": "horde-native-200-percent-map-detail.png",
+      "bytes": 989146,
+      "sha256": "73c4180cbc9aedd62060ce080ad3bb3c1a9984c5fc1a540c2dcace6300e4ca96"
+    },
+    {
+      "file": "horde-native-200-percent-reduced-motion.png",
+      "bytes": 1082735,
+      "sha256": "66d4f7699b3eaf58c06302f145b31dd53ddfde5b7f8e7dda6810a2c808f22e96"
+    },
+    {
+      "file": "missing-coordinate.png",
+      "bytes": 882961,
+      "sha256": "c1a15c40dc2d434e2a88c5fce1d97db1824c5c2d3853d160dfd1039cd625742a"
+    },
+    {
+      "file": "missing-format.png",
+      "bytes": 906683,
+      "sha256": "f14a45172b146a64c76dcef8a05a3b9a1cba891d65a369592bef830faba36133"
+    },
+    {
+      "file": "no-location-empty.png",
+      "bytes": 956053,
+      "sha256": "e2fda44b53024354e6a516a9421519b2f52bceba6ea0b8b0659e4697b48eac6f"
+    },
+    {
+      "file": "older-build-browse.png",
+      "bytes": 918953,
+      "sha256": "e6a4d6d591d2c5e759b44424867ee5a06cf4a9f7d8163f6f60dc5fc36190689b"
+    },
+    {
+      "file": "restored-private-journal.png",
+      "bytes": 967789,
+      "sha256": "7d8d8721b1eaaa33e654a59debadac8a00cf293154abadf8a4372ab07193491a"
+    }
+  ]
+}

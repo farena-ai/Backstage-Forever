@@ -20,6 +20,9 @@ window.AdventureMap = (() => {
     selected = null,
     error = "",
     loading = false,
+    agePending = false,
+    ageUnavailable = false,
+    ageRetryAt = 0,
     painting = false,
     focus = null;
   const disclosures = new Map(),
@@ -126,24 +129,106 @@ window.AdventureMap = (() => {
     modelSignature = "";
     selected = null;
     loading = false;
+    agePending = false;
+    ageUnavailable = false;
+    ageRetryAt = 0;
     error = "";
     focus = null;
     disclosures.clear();
     guard?.invalidate();
   }
+  function savedAge(m) {
+    if (!m?.source?.savedAt) return "No saved addon location";
+    const status =
+      m === model && agePending
+        ? "Checking saved age…"
+        : m === model && ageUnavailable
+          ? "Saved age unavailable"
+          : m.source.freshness || "saved";
+    return `Saved ${m.source.savedAt.replace("T", " ").replace(".000Z", " UTC")} · ${status}`;
+  }
+  function paintAge() {
+    if (!active() || modelSignature !== current()) return;
+    const caption = host.root.querySelector("[data-map-age]");
+    // Text-only updates preserve native menus, physical owners and the dossier.
+    if (caption) caption.textContent = savedAge(model);
+  }
+  async function refreshAge() {
+    const source = model?.source,
+      now = Date.now(),
+      stamp = Date.parse(source?.savedAt);
+    // Guidance's authority uses floor(age / minute) > 15. Ask main once at
+    // that boundary; never infer a new freshness status from renderer time.
+    if (
+      loading ||
+      agePending ||
+      source?.freshness !== "fresh" ||
+      !Number.isFinite(stamp) ||
+      now < stamp + 16 * 60000 ||
+      now < ageRetryAt
+    )
+      return;
+    const request = read,
+      token = generation,
+      next = signature,
+      epoch = host.epoch();
+    agePending = true;
+    ageUnavailable = false;
+    ageRetryAt = now + 60000;
+    paintAge();
+    try {
+      const result = await host.api.adventureMap(host.profileId() ?? null, {
+        ...options(host.profileId()),
+        goal: Preparation.options(host.profileId()),
+      });
+      if (
+        !active() ||
+        request !== read ||
+        token !== generation ||
+        next !== current()
+      )
+        return;
+      agePending = false;
+      if (
+        epoch !== host.epoch() ||
+        result?.character?.id !== model?.character?.id ||
+        result?.source?.savedAt !== source.savedAt ||
+        result.source.kind !== source.kind ||
+        result.source.build !== source.build
+      )
+        ageUnavailable = true;
+      else model.source.freshness = result.source.freshness;
+      paintAge();
+    } catch {
+      if (
+        !active() ||
+        request !== read ||
+        token !== generation ||
+        next !== current()
+      )
+        return;
+      agePending = false;
+      ageUnavailable = true;
+      paintAge();
+    }
+  }
   async function refresh() {
     if (!active()) return;
     const next = current();
-    if (next === signature) return;
+    if (next === signature) return refreshAge();
     signature = next;
     selected = null;
     model = null;
     modelSignature = "";
     error = "";
     loading = true;
+    agePending = false;
+    ageUnavailable = false;
+    ageRetryAt = 0;
     const request = ++read,
       token = generation,
       epoch = host.epoch();
+    paint();
     try {
       const result = await host.api.adventureMap(host.profileId() ?? null, {
         ...options(host.profileId()),
@@ -217,7 +302,7 @@ window.AdventureMap = (() => {
       .join("");
     return `<section data-adventure-map class="adventure-map ${faction}"><header class="map-hero"><div class="map-title"><span class="eyebrow">YOUR ADVENTURE ATLAS</span><h1>Places worth remembering.</h1><p>Last-saved location view; full live map in WoW.</p></div><div class="map-hero-emblem"><img src="${host.portrait?.(c.className) || "../../assets/wolf-medallion.png"}" alt=""><span>${esc(c.name || "Your next adventure")}<small>${esc(c.className || "Choose a character")} · ${esc(c.faction || "Private journal")}</small></span></div></header>
  <div class="map-toolbar"><label>Area<select data-map-control="area" data-map-area aria-label="Map area">${m?.view?.maps?.length ? m.view.maps.map((a) => `<option value="${a.mapId}" ${a.mapId === m.view.mapId ? "selected" : ""}>${esc(a.label)}${m.view.kind === "reference" && a.mapId === m.view.mapId ? " · reference area" : ""}</option>`).join("") : '<option value="">No saved area</option>'}</select></label><button data-nav="preparation" data-map-control="focus">Your profession focus →</button><details data-map-disclosure="layers" class="map-layer-menu"><summary data-map-control="layers" data-interaction-key="map-layers">Map layers</summary><div>${keys.map((k) => `<label><input type="checkbox" data-map-layer="${k}" data-map-control="layer:${k}" ${layers[k] ? "checked" : ""}>${labels[k]}</label>`).join("")}<button data-map-defaults data-map-control="defaults">Choose for me</button></div></details></div>
- <div class="map-freshness"><span>${esc(m?.view?.kind === "reference" ? "Reference area · character location not established here" : m?.view?.label || "Waiting for a saved area")}</span><span>${m?.source?.savedAt ? `Saved ${esc(m.source.savedAt.replace("T", " ").replace(".000Z", " UTC"))} · ${esc(m.source.freshness || "saved")}` : "No saved addon location"}</span></div>
+ <div class="map-freshness"><span>${esc(m?.view?.kind === "reference" ? "Reference area · character location not established here" : m?.view?.label || "Waiting for a saved area")}</span><span data-map-age>${esc(savedAge(m))}</span></div>
  ${error ? `<p role="status">${esc(error)} <button data-map-retry data-map-control="retry">Try again</button></p>` : ""}
  <div class="map-legend" aria-label="Map legend"><span class="quest">● Saved quest</span><span class="material">○ Historical source</span><span class="find">◆ Your find</span><span class="player">⊙ Saved position</span></div><div class="map-layout"><div><div class="map-frame"><svg viewBox="-30 -30 1060 1060" role="group" aria-label="${esc(m?.view?.label || "Saved coordinate view")}" class="map-chart"><defs><pattern id="atlas-grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" class="map-gridline"/></pattern></defs><rect x="0" y="0" width="1000" height="1000" fill="url(#atlas-grid)" class="map-plane"/><circle cx="500" cy="500" r="360" class="map-compass-ring"/><path d="M500 160 L520 480 L840 500 L520 520 L500 840 L480 520 L160 500 L480 480 Z" class="map-compass"/><text x="500" y="85" text-anchor="middle" class="map-axis">N · COORDINATE REFERENCE</text><text x="25" y="980" class="map-axis">0%</text><text x="920" y="980" class="map-axis">100%</text>${markers}${m?.playerPosition ? `<g class="map-player" aria-label="Last-saved position"><circle cx="${m.playerPosition.x * 1000}" cy="${m.playerPosition.y * 1000}" r="24"/><circle cx="${m.playerPosition.x * 1000}" cy="${m.playerPosition.y * 1000}" r="8"/></g>` : ""}</svg>${!points.length ? `<div class="map-no-points">${loading ? "Opening your saved map…" : "No matching points in this area."}<small>${loading ? "Reading your local journal" : "Try another area or Map layers. Missing references do not mean unobtainable."}</small></div>` : ""}<span class="map-frame-caption">COORDINATES ONLY · NO TERRAIN OR ROUTES</span></div><p class="map-location-note">${esc(m?.limitations?.[1] || "Position not recorded; no character marker is shown.")}</p></div><aside class="map-dossier" aria-label="Selected map point">${dossier(chosen)}</aside></div>
  <section class="map-index"><div class="map-index-heading"><h2>In this view</h2><span>${points.length} saved / reference points${m?.counts?.omitted ? ` · ${m.counts.omitted} omitted` : ""}</span></div><div class="map-point-list">${points.map((p, i) => `<button data-map-point="${esc(p.id)}" data-map-owner="${read}" data-map-control="point:${esc(p.id)}" aria-pressed="${p.id === selected}"><span class="map-number ${p.kind}">${i + 1}</span><span>${esc(p.title)}<small>${esc(qualification(p))}</small></span></button>`).join("")}</div></section>

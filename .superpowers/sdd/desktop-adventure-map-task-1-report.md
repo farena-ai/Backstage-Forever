@@ -122,3 +122,56 @@ The final test actually runs this through `parseSavedVariables`, `mergeSnapshot(
 Reviewed exact diff, actual module boundaries, private allowlists, source qualifications, source/epoch ownership, per-source stock/context mapping, native select stability, all route migrations and new docs. Node syntax checks passed for main/app/new core/renderer/smoke/fixture. `git diff --check` passed. `git diff -- addon data package-lock.json` is empty; package.json changes only add the focused test command, with version/dependency values unchanged. No old artifact or failed receipt was overwritten. The status-only wording correction and whitespace-only CSS formatting after final GUI do not change behavior or pixels.
 
 No known unresolved task implementation defect is claimed. Independent parent review remains required and can find additional issues. Actual WoW native rendering/pins/gathering-event compatibility, normal game-save behavior, real provider/audio, installed updater, and long-session performance remain owner hands-on gates. Final integrated full-suite/raw reference/offline checks, full current12-file installation/repair, source-owned build, outside-checkout copied Windows app/SDK/resource parity, new review ZIP decoded-file SHA validation and final strong source/artifact review are **parent-owned and not claimed here**. Keep1.0held, no installer/publication; close regular BF before opening a separate review copy to avoid competing addon repairs.
+
+
+## Review correction wave — mounted retirement and time authority (2026-11-11)
+
+Base: `ecfe704a2326e7babe619a5172bd8d0e3c25d1dd`. Addressed both Important/P2 findings in `work/desktop-map-review.md` as one scoped wave. The earlier conclusion of no known unresolved implementation defect was superseded by that independent review; its two concrete findings are now covered below. Original receipts, capture directories and index remain unchanged.
+
+### Production changes and unchanged contracts
+
+Only `src/renderer/adventure-map.js` changes product behavior. A source/options/profile replacement now calls the existing guarded `paint()` immediately after retiring its model and incrementing its read owner, before awaiting IPC. With no physical owner, the **mounted** old markers, position, dossier and freshness text disappear immediately and the mounted map says “Opening your saved map…”. While a pointer/key/native menu owns the controls, the shared InteractionGuard queues this paint until dispatch completes. Old mounted action tokens are already invalid during this hold; the paint evaluates the current model on release, so a newer resolved replacement wins. No global render, navigation or interaction hook changed.
+
+The unchanged-source branch now checks the saved timestamp on the existing Map refresh/poll. Guidance's existing authority (`snapshotFreshness`) uses floored minutes and `ageMinutes > 15`, so the first stale boundary is savedAt + **16 minutes**, not 15:00. At the first existing refresh on/after that boundary, a fresh model gets one main-owned `adventureMap(profileId, options)` reread. The renderer's clock schedules the read; it does **not** declare a new freshness status. The accepted status comes from the actual main model. While waiting, only the mounted age span's `textContent` changes to “Checking saved age…”. On acceptance only `model.source.freshness` and that caption update. Geometry, selected marker, dossier, current native select and physical action owner stay intact. Already stale/unknown/manual sources cause no age rereads; repeated refreshes while pending cause none. Failed/mismatched reads show “Saved age unavailable” and are retried no more than once per minute. An authoritative still-fresh response may likewise retry after one minute, covering clock disagreement without a read storm.
+
+Age replies retain active route, read generation, source/options/profile signature and mutation-epoch fences, plus matching returned character ID/source kind/saved timestamp/build. Source replacement resets age ownership. A delayed old age reply cannot repaint the pending replacement or its later geometry. `data-map-age` is a renderer-only span hook. Public DTO/schema/API/arity, strict main ownership, `Preparation.options(profileId)` goal reuse, preferences, source qualification and private-data allowlist are **unchanged**. No native/addon, core model/IPC, Guide, data, dependencies, package/version, global hooks or parent packaging helpers changed.
+
+### Genuine mounted DOM regression and RED → GREEN
+
+Added `tests/fixtures/adventure-map-dom.cjs`: an isolated **hidden/offscreen Electron BrowserWindow** loading a scratch HTML document, production `interaction.js` and production `adventure-map.js`. It does not load product main/bootstrap or initialize providers/updaters/GameSync. Network requests other than local file loads are blocked. Test data, storage and userData are temporary synthetic paths and the fixture closes its own app. Existing Electron/Playwright dependencies are reused. Assertions query actual Chromium DOM elements/attributes/text and retained node identity; they do not use `AdventureMap.page()` as mounted evidence. Actual `buildAdventureMap` supplies the models with an injected test clock, matched to the renderer clock; the normal IPC serialization boundary is represented by Playwright's detached arguments.
+
+Exact commands and preserved receipts:
+
+1. RED: `node --test --test-concurrency=1 tests/adventure-map-renderer.test.cjs tests/adventure-map.test.cjs` → **18/21 pass, 3 expected failures**, `work/adventure-map-review-fix-red.txt`. Confirmed four retired mounted nodes still present, held native release failing to paint pending, and unchanged-source boundary still at one read instead of two.
+2. Initial GREEN, same command → **21/21**, `work/adventure-map-review-fix-green.txt`.
+3. Added bounded failure/retry/late-age-source coverage, then exact focused + required covering command: `node --test --test-concurrency=1 tests/adventure-map-renderer.test.cjs tests/adventure-map.test.cjs tests/renderer-updates.test.cjs tests/renderer-interaction.test.cjs tests/refresh-renderer.test.cjs tests/player-navigation.test.cjs` → **90/90** (22 model/renderer + 68 covering), `work/adventure-map-review-fix-covering.txt`. Zero failures, cancellations or skips.
+4. One final visible source acceptance: `node scripts/adventure-map-smoke.cjs` → **13 gates / 12 native captures**, `work/adventure-map-review-fix-gui.txt`. This is the only visible Map acceptance run in this correction wave. No repeated full231, four unrelated covering GUI runs, full suite, build or package.
+
+Mounted regressions cover delayed same-character replacement and new numeric geometry, cleared/malformed history, selected-dossier retirement, native menu identity through pointer-up and Escape, retired action rejection, the actual core fresh/stale millisecond boundary, pending and authoritative updated captions, unchanged selected marker/dossier/native node identity, dozens of irrelevant refreshes with no extra reads, 12-hour stale retention without reads, failed age read with one-minute bounded retry, and an old age reply arriving during source replacement. Core boundary tests compare Map directly with `snapshotFreshness` at 0, 15:59.999, 16:00 and 24 hours. Existing exact covering suites stayed green; no extra global-hook cover was needed because none changed.
+
+### Final actual Electron acceptance and capture hashes
+
+The smoke now asserts mounted pending geometry/caption/dossier before releasing delayed IPC, then verifies current replacement geometry (`cx=630`) and title. Its former pure-page delayed-reply assertion now queries mounted DOM. All original 13 gates remain, including held pointer/Enter/native select/whole-root ownership, profile/route/import/restore/reset fences, all legacy routes and Plans, qualified source conditions, actual native capturePage 200% (with compositor barrier), both factions/compact first-viewport marker, reduced motion, contrast, keyboard and CSP. Synthetic external surfaces are still replaced before product bootstrap and automatic update/reference starts remain off. No actual game/player/provider/account/audio surface was exercised.
+
+New immutable capture root: `.superpowers/sdd/adventure-map-captures/2026-11-11T09-27-37-170Z`. `manifest.json` records **errors: []**, 13 gates and the 12 captures. SHA-256: `bc441298f972c1f709ede2291382fefc490350692a8a1f041175037bb11bd0c1`. All capture hashes were independently recomputed against the manifest. Visually inspected the new Horde compact and actual200% map-detail PNGs: compact visible quest marker, readable source/legend, stable responsive frame/sidebar and doubled native text remain intact.
+
+| Capture | SHA-256 |
+| --- | --- |
+| alliance-compact.png | 7815c8e5816bc57e5f994deff50a77424dbe6aa679ac2be92c07a46647c8ff0b |
+| alliance-full.png | e038c010ca30a1d241b0a0b5a9c6f808e221b24cb9d9a19b49f28d8536f79d97 |
+| damaged-reference-keeps-observations.png | 13eb12b30b75d37054db13eb3249a320f027a242a3434ba4f5322e03a57d8967 |
+| horde-compact.png | bcd7e54b08662d6283492e309f978c1757e6d1ebca6eeefbaf64348f9c9bc69d |
+| horde-full.png | 4c4db6527efa86761048e04adaaf122541dd09b872cf774f035cf7fa3ae32d2c |
+| horde-native-200-percent-map-detail.png | 73c4180cbc9aedd62060ce080ad3bb3c1a9984c5fc1a540c2dcace6300e4ca96 |
+| horde-native-200-percent-reduced-motion.png | 66d4f7699b3eaf58c06302f145b31dd53ddfde5b7f8e7dda6810a2c808f22e96 |
+| missing-coordinate.png | c1a15c40dc2d434e2a88c5fce1d97db1824c5c2d3853d160dfd1039cd625742a |
+| missing-format.png | f14a45172b146a64c76dcef8a05a3b9a1cba891d65a369592bef830faba36133 |
+| no-location-empty.png | e2fda44b53024354e6a516a9421519b2f52bceba6ea0b8b0659e4697b48eac6f |
+| older-build-browse.png | e6a4d6d591d2c5e759b44424867ee5a06cf4a9f7d8163f6f60dc5fc36190689b |
+| restored-private-journal.png | 7d8d8721b1eaaa33e654a59debadac8a00cf293154abadf8a4372ab07193491a |
+
+### Correction self-review and ownership release
+
+Reviewed the complete scoped production/test/smoke diff, asynchronous owner fences, text-only caption mutation, boundary/retry cadence, fixture isolation and absence of unrelated edits. `git diff --check` passed. The exact protected-path diff is empty for core/native/addon/data/package/version/global app/interaction/navigation sources. Existing reusable `seed()`/`capture()` fixture and public DTO/helper contracts above remain valid for the parent's final package acceptance.
+
+No known unresolved correction defect is claimed; independent parent re-review is still required. The local Electron fixtures establish mounted behavior, not real WoW, live provider/audio or long-session owner acceptance. Source remains0.12.3 and1.0held. Final whole-series review, full suite, build, outside-checkout copied Windows acceptance and new review ZIP remain exclusively parent-owned. Source/GUI ownership releases with the scoped commit returned to the parent; all test-owned Electron processes have closed.

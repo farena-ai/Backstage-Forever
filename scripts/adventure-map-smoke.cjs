@@ -281,14 +281,48 @@ const { _electron: electron } = require("playwright"),
       await page.locator(".map-dossier").innerText(),
       /Choose a marker/,
     );
-    checks.push("held pointer source replacement retires old selection");
+    // An unheld source replacement must retire the mounted map before IPC returns.
+    await app.evaluate(() => (mapGate.delay = true));
+    await change(() => {
+      mapGate.state().profiles[0].quests[0].title =
+        "Current replacement errand";
+      mapGate.state().profiles[0].quests[0].destination.x = 0.63;
+    });
+    assert.equal(
+      await page.locator(".map-mark,.map-player,.map-dossier-copy").count(),
+      0,
+    );
+    assert.match(
+      await page.locator(".map-no-points").innerText(),
+      /Opening your saved map/,
+    );
+    assert.doesNotMatch(
+      await page.locator(".map-freshness").innerText(),
+      /fresh|stale/,
+    );
+    await app.evaluate(() => {
+      mapGate.delay = false;
+      mapGate.pending.splice(0).forEach((f) => f());
+    });
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".map-mark.quest circle")?.getAttribute("cx") ===
+        "630",
+    );
+    assert.match(
+      await page.locator(".map-point-list").innerText(),
+      /Current replacement errand/,
+    );
+    checks.push(
+      "held and unheld pending source replacement retires mounted geometry and selection",
+    );
     // Main produces the old result before a delay; route/profile invalidation must discard it.
     await app.evaluate(() => (mapGate.delay = true));
     await change(() => {
       mapGate.state().profiles[0].quests[0].title = "Late obsolete errand";
     });
     await page.waitForFunction(
-      () => !AdventureMap.page().includes("data-map-point="),
+      () => !document.querySelector("[data-adventure-map] [data-map-point]"),
     );
     await navigate(page, "characters");
     await app.evaluate(() => {

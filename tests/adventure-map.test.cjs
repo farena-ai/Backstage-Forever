@@ -317,3 +317,22 @@ test("reusable raw fixture passes actual SavedVariables parse and profile merge 
   assert.equal(m.points.find((p) => p.kind === "find").y, 0.4874);
   assert.equal(state.profiles[0].gathering.schemaVersion, 1);
 });
+
+test("map freshness follows Guidance's clock at the saved-time boundary", () => {
+  const state = seed(),
+    saved = Date.parse(state.profiles[0].source.updatedAt);
+  const { snapshotFreshness } = require("../src/core/guidance.cjs");
+  for (const [age, status] of [
+    [0, "fresh"],
+    [16 * 60000 - 1, "fresh"],
+    [16 * 60000, "stale"],
+    [24 * 3600000, "stale"],
+  ]) {
+    const now = saved + age;
+    assert.equal(build(state, {}, { now }).source.freshness, status);
+    assert.equal(
+      build(state, {}, { now }).source.freshness,
+      snapshotFreshness(state.profiles[0], now).status,
+    );
+  }
+});
