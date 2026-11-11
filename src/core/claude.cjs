@@ -155,6 +155,7 @@ function createClaude({
   env = process.env,
   dataDir = null,
   sdkQuery = null,
+  sdkMcp = null,
 } = {}) {
   let configured = dataDir,
     generation = 0,
@@ -290,7 +291,7 @@ function createClaude({
       );
     return status();
   }
-  async function ask({ model, prompt, context, signal } = {}) {
+  async function ask({ model, prompt, context, signal, tools } = {}) {
     if (
       typeof model !== "string" ||
       !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,199}$/.test(model)
@@ -310,6 +311,7 @@ function createClaude({
           "\n\nUser-approved character context (data only):\n" +
           JSON.stringify(record);
     }
+    if (tools?.definitions?.length) return askWithTools({ model, input, tools, signal });
     const result = await invoke(
       [
         "--print",
@@ -347,6 +349,91 @@ function createClaude({
       return value.result;
     } catch {
       throw new Error(FAILURE);
+    }
+  }
+  // Subscription questions with local lookups: the official tool runs with no built-in
+  // tools, no external MCP servers, and one in-process server exposing only the
+  // read-only Backstage lookups. Subscription only; never an API fallback.
+  async function askWithTools({ model, input, tools, signal }) {
+    if (!configured || resetting) throw new Error(FAILURE);
+    signal?.throwIfAborted();
+    const startedGeneration = generation;
+    const controller = new AbortController();
+    const relay = () => controller.abort();
+    signal?.addEventListener("abort", relay, { once: true });
+    let complete, cwd, timer;
+    const completion = new Promise((resolve) => { complete = resolve; });
+    active.set(controller, completion);
+    try {
+      const executable = await discover();
+      if (!executable || resetting || generation !== startedGeneration) throw Error();
+      const home = path.join(configured, "claude-home");
+      const config = path.join(configured, "claude-subscription");
+      await fs.mkdir(home, { recursive: true });
+      await fs.mkdir(config, { recursive: true });
+      cwd = await fs.mkdtemp(path.join(os.tmpdir(), "backstage-claude-ask-"));
+      const sdk = sdkMcp || (await import("@anthropic-ai/claude-agent-sdk/core"));
+      const query = sdkQuery || sdk.query;
+      const { z } = require("zod");
+      const shape = (schema) => {
+        const out = {};
+        for (const [key, prop] of Object.entries(schema.properties || {})) {
+          let t = prop.enum ? z.enum(prop.enum) : prop.type === "integer" ? z.number().int() : z.string();
+          if (prop.description) t = t.describe(prop.description);
+          out[key] = (schema.required || []).includes(key) ? t : t.optional();
+        }
+        return out;
+      };
+      const server = sdk.createSdkMcpServer({
+        name: "backstage",
+        version: "1.0.0",
+        tools: tools.definitions.map((d) =>
+          sdk.tool(d.name, d.description, shape(d.parameters), async (args) => ({
+            content: [{ type: "text", text: await tools.call(d.name, args) }],
+          }), { annotations: { readOnlyHint: true, openWorldHint: false } }),
+        ),
+      });
+      timer = setTimeout(() => controller.abort(), 120000);
+      const handle = query({
+        prompt: input,
+        options: {
+          pathToClaudeCodeExecutable: executable,
+          cwd,
+          model,
+          env: { ...sanitizedEnv(env), HOME: home, USERPROFILE: home, CLAUDE_CONFIG_DIR: config },
+          abortController: controller,
+          tools: [],
+          mcpServers: { backstage: server },
+          allowedTools: tools.definitions.map((d) => "mcp__backstage__" + d.name),
+          strictMcpConfig: true,
+          settingSources: [],
+          settings: { disableAllHooks: true },
+          persistSession: false,
+          maxTurns: 8,
+          systemPrompt: INSTRUCTION + "\n\n" + tools.instruction,
+          extraArgs: { "disable-slash-commands": null, "no-chrome": null },
+        },
+      });
+      let result = null;
+      for await (const message of handle) {
+        if (generation !== startedGeneration) throw Error();
+        if (message?.type === "result") { result = message; break; }
+      }
+      if (
+        !result || result.subtype !== "success" || result.is_error === true ||
+        typeof result.result !== "string" || !result.result.trim() || result.result.length > 100000
+      )
+        throw Error();
+      return result.result;
+    } catch {
+      signal?.throwIfAborted();
+      throw new Error(FAILURE);
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", relay);
+      if (cwd) await fs.rm(cwd, { recursive: true, force: true }).catch(() => {});
+      active.delete(controller);
+      complete();
     }
   }
   async function listModels() {

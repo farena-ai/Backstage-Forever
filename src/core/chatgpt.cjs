@@ -486,7 +486,7 @@ class ChatGPTAuth {
       );
     }
   }
-  async ask({ model, prompt, context = "", signal }) {
+  async ask({ model, prompt, context = "", signal, tools }) {
     str(model, 200, false);
     str(prompt, 12000, false);
     str(context, 20000);
@@ -494,7 +494,9 @@ class ChatGPTAuth {
     signal?.throwIfAborted();
     const token = await this.accessToken();
     signal?.throwIfAborted();
-    try {
+    const input = [context, prompt].filter(Boolean).join("\n\n");
+    // One streamed Responses call; resolves to { output } like the JSON API.
+    const post = async (body) => {
       const response = await this.request(
         RESOURCE + "/responses",
         {
@@ -504,24 +506,14 @@ class ChatGPTAuth {
             Authorization: "Bearer " + token,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            model,
-            instructions: INSTRUCTION,
-            input: [
-              {
-                role: "user",
-                content: [context, prompt].filter(Boolean).join("\n\n"),
-              },
-            ],
-            store: false,
-            stream: true,
-          }),
+          body: JSON.stringify({ ...body, store: false, stream: true }),
         },
         true,
       );
       const text = await boundedText(response);
       let output = "";
       let completed = false;
+      let items = null;
       for (const frame of text.replace(/\r\n/g, "\n").split("\n\n")) {
         const data = frame
           .split("\n")
@@ -543,11 +535,24 @@ class ChatGPTAuth {
         if (event.type === "response.completed") {
           if (event.response?.status && event.response.status !== "completed")
             throw new Error(SAFE_ERROR);
+          if (Array.isArray(event.response?.output)) items = event.response.output;
           completed = true;
         }
       }
-      if (!completed || !output.trim() || generation !== this.generation)
-        throw new Error(SAFE_ERROR);
+      if (!completed || generation !== this.generation) throw new Error(SAFE_ERROR);
+      const calls = (items || []).filter((x) => x.type === "function_call");
+      return { output: [...calls, { type: "message", content: [{ type: "output_text", text: output }] }] };
+    };
+    try {
+      let output;
+      if (tools?.definitions?.length) {
+        const { responsesLoop } = require("./tool-loop.cjs");
+        output = await responsesLoop({ post, model, instructions: INSTRUCTION + "\n\n" + tools.instruction, input, tools });
+      } else {
+        const { responsesText } = require("./tool-loop.cjs");
+        output = responsesText((await post({ model, instructions: INSTRUCTION, input: [{ role: "user", content: input }] })).output);
+      }
+      if (!output.trim() || generation !== this.generation) throw new Error(SAFE_ERROR);
       return output;
     } catch {
       throw new Error(

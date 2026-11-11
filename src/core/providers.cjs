@@ -82,8 +82,58 @@ function profileContext(state, id, share, options) {
     "Optional character context: " + JSON.stringify(approvedProfile(p, options))
   );
 }
+const PROVIDER_ERROR = /^(Provider (authentication|rate|request|reply|returned))/;
+function statusError(status) {
+  const e = new Error(
+    [401, 403].includes(status)
+      ? "Provider authentication failed. Check your API access and key."
+      : status === 429
+        ? "Provider rate or billing limit reached."
+        : "Provider request failed. Check the connection and model.",
+  );
+  e.status = status;
+  return e;
+}
+async function postJson(fetcher, url, headers, body, signal) {
+  const response = await fetcher(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    redirect: "error",
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60000)]) : AbortSignal.timeout(60000),
+  });
+  if (!response.ok) throw statusError(response.status);
+  let size = 0;
+  const chunks = [];
+  for await (const chunk of response.body) {
+    size += chunk.byteLength;
+    if (size > 1000000) {
+      await response.body.cancel().catch(() => {});
+      throw new Error("Provider reply is too large.");
+    }
+    chunks.push(Buffer.from(chunk));
+  }
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+function extractText(provider, data) {
+  return ["ollama", "ollama-cloud"].includes(provider)
+    ? data.message?.content
+    : provider === "openai"
+      ? data.output
+          ?.filter((x) => x.type === "message")
+          .flatMap((x) => x.content || [])
+          .filter((x) => x.type === "output_text")
+          .map((x) => x.text)
+          .join("\n")
+      : provider === "anthropic"
+        ? data.content
+            ?.filter((x) => x.type === "text")
+            .map((x) => x.text)
+            .join("\n")
+        : data.choices?.[0]?.message?.content;
+}
 async function ask(
-  { provider, model, endpoint, apiKey, prompt, context = "", signal },
+  { provider, model, endpoint, apiKey, prompt, context = "", signal, tools },
   fetcher = fetch,
 ) {
   v.provider(provider);
@@ -131,56 +181,32 @@ async function ask(
       ...(provider === "xai" ? { max_tokens: 2048 } : {}),
     };
   }
+  const post = (b) => postJson(fetcher, base + route, headers, b, signal);
   try {
-    const response = await fetcher(base + route, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-      redirect: "error",
-      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60000)]) : AbortSignal.timeout(60000),
-    });
-    if (!response.ok)
-      throw new Error(
-        [401, 403].includes(response.status)
-          ? "Provider authentication failed. Check your API access and key."
-          : response.status === 429
-            ? "Provider rate or billing limit reached."
-            : "Provider request failed. Check the connection and model.",
-      );
-    let size = 0;
-    const chunks = [];
-    for await (const chunk of response.body) {
-      size += chunk.byteLength;
-      if (size > 1000000) {
-        await response.body.cancel().catch(() => {});
-        throw new Error("Provider reply is too large.");
+    let out;
+    if (tools?.definitions?.length) {
+      const loop = require("./tool-loop.cjs");
+      const system = instruction + "\n\n" + tools.instruction;
+      try {
+        out =
+          provider === "anthropic"
+            ? await loop.anthropicLoop({ post, model, system, input, tools })
+            : provider === "openai"
+              ? await loop.responsesLoop({ post, model, instructions: system, input, tools, extra: { max_output_tokens: 2048 } })
+              : await loop.chatLoop({ post, model, system, input, tools, ollama: ["ollama", "ollama-cloud"].includes(provider), extra: provider === "xai" ? { max_tokens: 2048 } : {} });
+      } catch (e) {
+        // Some local/cloud models reject tool definitions (HTTP 400). Retry once, same
+        // provider and model, as a plain question with the original bounded context.
+        if (e.status !== 400 || tools.trace.length) throw e;
+        tools.unsupported = true;
+        out = extractText(provider, await post(body));
       }
-      chunks.push(Buffer.from(chunk));
-    }
-    const data = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    const out = ["ollama", "ollama-cloud"].includes(provider)
-      ? data.message?.content
-      : provider === "openai"
-        ? data.output
-            ?.filter((x) => x.type === "message")
-            .flatMap((x) => x.content || [])
-            .filter((x) => x.type === "output_text")
-            .map((x) => x.text)
-            .join("\n")
-        : provider === "anthropic"
-          ? data.content
-              ?.filter((x) => x.type === "text")
-              .map((x) => x.text)
-              .join("\n")
-          : data.choices?.[0]?.message?.content;
+    } else out = extractText(provider, await post(body));
     if (typeof out !== "string" || !out.trim())
       throw new Error("Provider returned no text. Check the chosen model.");
     return out;
   } catch (e) {
-    if (
-      /^(Provider (authentication|rate|request|reply|returned))/.test(e.message)
-    )
-      throw e;
+    if (PROVIDER_ERROR.test(e.message)) throw e;
     throw new Error(
       "Could not reach the provider or read its reply. Check your connection and model.",
     );

@@ -5,11 +5,12 @@ const {scopeResponse}=require('./wow-policy.cjs');
 const {ConversationSession}=require('./companion-conversation.cjs');
 const {resolveNpcLocation}=require('./npc-location.cjs');
 const {uuid}=require('./memory-data.cjs');
+const {createCompanionTools}=require('./companion-tools.cjs');
 // These events cancel work/drafts without changing completed conversation ownership.
 const SOFT_REASONS=new Set(['renderer-context','response-stop','memory-save']);
 class CompanionService {
-  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,onReset=()=>{}}){
-    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,onReset});
+  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,lookups=true,onReset=()=>{}}){
+    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,lookups,onReset});
     this.session=new ConversationSession();this.rootEpoch=0;
     context.subscribe(({reason})=>{
       if(SOFT_REASONS.has(reason))return;
@@ -59,7 +60,9 @@ class CompanionService {
       if(!selected.model)throw Error('Choose a model in Connections for AI questions. Local NPC locations and travel need no model.');
       const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence,reportedLocation:prepared.reportedLocation};
       const context=this.ai.profileContext(state,profileId,input.shareProfile,options);
-      const request={model:selected.model,prompt:prepared.composedPrompt,context,signal};
+      // Read-only local lookups (NPCs, quests, items, travel, character) the model may call.
+      const tools=this.lookups?createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options}):undefined;
+      const request={model:selected.model,prompt:prepared.composedPrompt,context,signal,...(tools?{tools}:{})};
       let reply;
       if(selected.authMode==='subscription'&&input.provider!=='ollama'){
         if(input.provider==='openai')reply=await this.chatgpt.ask(request);
@@ -72,7 +75,8 @@ class CompanionService {
       this.memory.complete(token,input.prompt,reply);
       if(!this.session.commit(prepared.token,{question:input.prompt,answer:reply,kind:'ai'}))throw Error('Provider response is no longer current.');
       this.travel?.clear();
-      return {text:reply,kind:'ai',conversation:prepared.meta};
+      const lookups=tools?tools.trace.filter(t=>t.summary).slice(0,10).map(t=>t.summary):[];
+      return {text:reply,kind:'ai',conversation:prepared.meta,...(lookups.length?{lookups}:{})};
     },{waitForSettlement:selected.authMode==='subscription'&&input.provider==='anthropic'});
   }
 }

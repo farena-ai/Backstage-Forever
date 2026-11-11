@@ -602,6 +602,9 @@ app.whenReady().then(async () => {
     store, context: companionContext, requests: companionRequest, memory,
     ai, chatgpt, claude, knowledge, travel,
     npcReference: (()=>{try{return require('./core/npc-location-data.cjs').validateNpcLocationPack(JSON.parse(fs.readFileSync(path.join(__dirname,'..','data','forever-npc-locations','pack.json'),'utf8')));}catch{return null;}})(),
+    travelReference,
+    vendorPack: (()=>{try{return require('./core/vendor-facts.cjs').loadVendorPack();}catch{return null;}})(),
+    acquisitionPack: (()=>{try{return require('./core/acquisition-data.cjs').loadAcquisitionPack();}catch{return null;}})(),
     onReset: (reason) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:conversationReset", reason); },
   });
   handle("ask", (...args) => companionService.legacy(...args));
