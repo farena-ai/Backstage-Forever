@@ -37,7 +37,7 @@ class ConversationSession {
     return {composedPrompt:chosen.length?PREFIX+JSON.stringify(chosen)+SUFFIX+currentPrompt:currentPrompt,questionForEvidence:questionForEvidence(prompt,this.turns.at(-1)?.question),token,meta};
   }
   commit(token,{question,answer,kind}){
-    if(!this.pending||token!==this.pending.token||question!==this.pending.question||kind!=='ai'||typeof answer!=='string'||!answer.trim()||answer.length>100000)return false;
+    if(!this.pending||token!==this.pending.token||question!==this.pending.question||!['ai','travel'].includes(kind)||typeof answer!=='string'||!answer.trim()||answer.length>100000)return false;
     this.pending=null;this.turns.push({question,answer});
     if(this.turns.length>MAX_TURNS){this.turns.shift();this.dropped++;}
     return true;

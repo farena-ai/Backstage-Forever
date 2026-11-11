@@ -77,6 +77,10 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
   const geographic =
     /\b(?:travel|flight|fly|zeppelin|boat|tram)\b/i.test(q) ||
     routeParts.some((part) => endpoint(part).id);
+  // A quest route can mean ordering objectives, without requesting transport.
+  // Explicit travel language or endpoints still take the ordinary travel path.
+  if (!geographic && /\b(?:quests?|questing)\b/i.test(q) && !/\b(?:from|to)\s+\S+/i.test(q))
+    return null;
   // Progression and spec changes also use from/to grammar. A named place or
   // explicit transport request keeps incidental level/talent words harmless.
   if (

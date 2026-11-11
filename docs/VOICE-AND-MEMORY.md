@@ -19,3 +19,8 @@ Real microphone behavior, recognition of game names and audible stop quality are
 Recent completed questions and answers now accompany follow-ups without saving them permanently. Up to six exchanges are kept only while this app session is open; up to 6,000 characters of history fit inside the existing 12,000-character combined prompt limit. Older text can be omitted or clipped, while your current question and explicit memory selection stay intact. Prior AI suggestions remain unverified; current approved facts win.
 
 Clear conversation removes this recent context and any unsaved review draft, without deleting saved memory. Reload, character/provider/access/source changes and import/reset/recovery replacement also clear it. Ordinary navigation keeps completed same-owner conversation. A sharing or saved-memory-selection change starts fresh. After a memory-bearing answer, a question with no memory selected does not silently resend that answer. Select the same saved exchanges again if you want that scope to continue.
+
+
+## Local travel in Companion
+
+Local sourced travel replies use the same original-question review and explicit memory save as other Companion exchanges. Saving does not automatically share anything. A later AI question sends a saved exchange only when selected for that question; a recognized local travel question sends nothing to a provider. Clear and privacy changes retire volatile trip continuation and choices; Stop retires the trip choice even when completed conversation remains. Navigation retains completed same-owner replies. Safe reply formatting supports paragraphs, lists, bold and inline code; model links, HTML and action-shaped JSON are inert.

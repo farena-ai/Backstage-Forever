@@ -100,3 +100,8 @@ If an older BF installation finds an update but cannot download it, use the newe
 
 
 ChatGPT preview account switching requires resetting app data because one registration/account is saved per installation. Export profiles first if you want to keep them, then reset and reconnect your chosen account. Saved conversation memory is not in that backup and is removed by reset. Live interactive subscription consent and paid inference acceptance remain unperformed. Grok subscription mode is unavailable; use xAI API mode.
+
+
+## Local travel in Companion
+
+In Companion, try “what is the fastest way from org to tb”. This small dated local reference works without choosing a model. Follow clarification questions for missing places or faction. Review conditional flight and road options, unknown unlocks and source dates. Save trip plan creates a manual checklist in Plans (currently Company); you check off the steps. Other questions still need your configured AI connection. Nothing moves or controls your character.

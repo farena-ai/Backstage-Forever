@@ -62,6 +62,9 @@ contextBridge.exposeInMainWorld(
     saveProvider: (settings) => invoke("saveProvider", settings),
     deleteKey: (provider) => invoke("deleteKey", provider),
     ask: (request) => invoke("ask", request),
+    copyTravelGuidance: (...args) => invoke("copyTravelGuidance", ...args),
+    createTravelPlan: (...args) => invoke("createTravelPlan", ...args),
+    openTravelSource: (...args) => invoke("openTravelSource", ...args),
     askCompanion: (...args) => invoke("askCompanion", ...args),
     clearConversation: (...args) => invoke("clearConversation", ...args),
     onConversationReset: (listener) => {

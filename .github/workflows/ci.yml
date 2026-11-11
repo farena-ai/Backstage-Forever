@@ -32,6 +32,7 @@ jobs:
       - run: npm run test:memory-backend
       - run: npm run test:voice-backend
       - run: npm run test:voice-memory
+      - run: npm run test:travel-companion
       - run: npm run test:conversation
       - run: npm run test:companion-recovery
       - run: npm run test:product-polish

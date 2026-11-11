@@ -1,0 +1,18 @@
+.travel-result { white-space: normal; overflow-wrap: anywhere; }
+.travel-result h3 { margin: .6rem 0; font-size: 1.2rem; }
+.travel-options { display: grid; gap: .8rem; margin: 1rem 0; }
+.travel-option { padding: 1rem; border: 1px solid #716247; border-left: 3px solid #c7ab6c; border-radius: 6px; background: #182326; }
+.travel-option h4 { margin: .4rem 0 .7rem; font-size: 1.05rem; color: #f0dfba; }
+.travel-option ol { padding-left: 1.25rem; margin: .6rem 0; }
+.travel-option li,.travel-cautions li { margin: .4rem 0; }
+.travel-condition { color: #d9c296; }
+.travel-claim { border-left: 2px solid #9b865f; padding-left: .8rem; }
+.travel-cautions { padding-left: 1.25rem; font-size: .9rem; color: #c3c8c5; }
+.travel-evidence { margin-top: 1rem; border-top: 1px solid #58615c; padding-top: .8rem; }
+.travel-evidence summary { cursor: pointer; color: #e3cc97; }
+.travel-evidence article { padding: .8rem 0; border-bottom: 1px solid #384541; }
+.travel-evidence p { margin: .4rem 0; font-size: .85rem; }
+.travel-result button { white-space: normal; max-width: 100%; }
+@media (prefers-reduced-motion: reduce) { .travel-result * { animation: none; transition: none; } }
+
+.travel-result pre { white-space: pre-wrap; overflow-wrap: anywhere; }

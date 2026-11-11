@@ -6,8 +6,8 @@ const {ConversationSession}=require('./companion-conversation.cjs');
 // These events cancel work/drafts without changing completed conversation ownership.
 const SOFT_REASONS=new Set(['renderer-context','response-stop','memory-save']);
 class CompanionService {
-  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,onReset=()=>{}}){
-    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,onReset});
+  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,onReset=()=>{}}){
+    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,onReset});
     this.session=new ConversationSession();this.rootEpoch=0;
     context.subscribe(({reason})=>{
       if(SOFT_REASONS.has(reason))return;
@@ -31,8 +31,17 @@ class CompanionService {
       const augmented=buildMemoryPrompt(state,{profileId,prompt:input.prompt,memoryIds});
       const profile=state.profiles.find(p=>p.id===profileId);
       const prepared=this.session.prepare({owner:{profileId,provider:selected,source:[profile?.source?.kind,profile?.source?.id],rootEpoch:this.rootEpoch},shareProfile:input.shareProfile,memoryIds,prompt:input.prompt,currentPrompt:augmented.prompt});
+      if(prepared.meta.resetReason==='scope-change')this.travel?.clear();
       const refusal=scopeResponse(input.prompt);
-      if(refusal)return {text:refusal,kind:'scope',conversation:prepared.meta};
+      if(refusal){this.travel?.clear();return {text:refusal,kind:'scope',conversation:prepared.meta};}
+      const local=this.travel?.resolve(input.prompt,{profileId,shareProfile:input.shareProfile});
+      if(local){
+        if(signal.aborted)throw signal.reason;
+        this.memory.complete(token,input.prompt,local.text);
+        if(!this.session.commit(prepared.token,{question:input.prompt,answer:local.text,kind:'travel'}))throw Error('Provider response is no longer current.');
+        return {text:local.text,kind:'travel',conversation:prepared.meta,travel:this.travel.commit(local)};
+      }
+      if(!selected.model)throw Error('Choose a model in Connections for AI questions. Local travel questions need no model.');
       const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence};
       const context=this.ai.profileContext(state,profileId,input.shareProfile,options);
       const request={model:selected.model,prompt:prepared.composedPrompt,context,signal};
@@ -47,6 +56,7 @@ class CompanionService {
       // Eligibility verifies the same current context before either main-owned commit.
       this.memory.complete(token,input.prompt,reply);
       if(!this.session.commit(prepared.token,{question:input.prompt,answer:reply,kind:'ai'}))throw Error('Provider response is no longer current.');
+      this.travel?.clear();
       return {text:reply,kind:'ai',conversation:prepared.meta};
     },{waitForSettlement:selected.authMode==='subscription'&&input.provider==='anthropic'});
   }

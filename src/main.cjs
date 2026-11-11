@@ -27,6 +27,8 @@ const {
 } = require("./core/company-ipc.cjs");
 const { CatalogCache } = require("./core/catalog-cache.cjs");
 const { listModels } = require("./core/model-catalog.cjs");
+const { TravelCompanion } = require("./core/travel-companion.cjs");
+const { loadTravelReference } = require("./core/travel-data.cjs");
 const { CompanionService } = require("./core/companion-service.cjs");
 const { buildBrief } = require("./core/adventure.cjs");
 const { KnowledgeService } = require("./core/knowledge-cache.cjs");
@@ -123,7 +125,7 @@ function handle(name, fn) {
         ["ask", "askCompanion", "connectSubscription", "disconnectSubscription"].includes(
           name,
         ) &&
-        /^(Provider |Could not reach|Save an API|Choose a character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription )/.test(
+        /^(Provider |Could not reach|Save an API|Choose a model|Choose a character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription )/.test(
           e?.message,
         )
           ? e.message
@@ -571,6 +573,7 @@ app.whenReady().then(async () => {
   });
   handle("cancelAsk", (...args) => {
     if (args.length) throw Error("Invalid cancellation request.");
+    companionService?.travel?.clear();
     const stopped = companionRequest.cancel();
     if (stopped) companionContext.invalidate("response-stop");
     // Stop remains visible while the renderer reviews an already completed reply.
@@ -578,9 +581,15 @@ app.whenReady().then(async () => {
     else memory.clearDraft();
     return stopped;
   });
+  let travelReference;
+  try { travelReference = loadTravelReference(fs.readFileSync(path.join(__dirname, "..", "data", "forever-travel", "pack.json"))); } catch { travelReference = null; }
+  const travel = new TravelCompanion({store, context: companionContext, reference: travelReference, openExternal: url => shell.openExternal(url), writeClipboard: text => clipboard.writeText(text)});
+  handle("copyTravelGuidance", (...args) => travel.copyGuidance(...args));
+  handle("createTravelPlan", (...args) => travel.createPlan(...args));
+  handle("openTravelSource", (...args) => travel.openSource(...args));
   companionService = new CompanionService({
     store, context: companionContext, requests: companionRequest, memory,
-    ai, chatgpt, claude, knowledge,
+    ai, chatgpt, claude, knowledge, travel,
     onReset: (reason) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:conversationReset", reason); },
   });
   handle("ask", (...args) => companionService.legacy(...args));

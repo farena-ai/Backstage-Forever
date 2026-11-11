@@ -38,13 +38,13 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   const count=()=>app.evaluate(()=>conversationFixture.requests.length);
   const latest=()=>app.evaluate(()=>{const i=conversationFixture.requests.at(-1).input;return {prompt:i.prompt,context:i.context};});
   const pending=()=>page.getByRole('button',{name:'Stop response',exact:true}).waitFor();
-  await send('what is the fastest way from org to tb');await done();
+  await send('Which pet should my hunter use in WoW Forever');await done();
   await send('This is for wow forever, not retail');await done();
-  const second=await latest();assert.match(second.prompt,/fastest way from org to tb/,'Follow-up must include original travel question in actual outgoing main request');assert.match(second.prompt,/untrusted/i);assert.match(second.prompt,/This is for wow forever, not retail/);assert.doesNotMatch(JSON.stringify(second),/PRIVATE_NOTE_CANARY|PRIVATE_GOAL_CANARY/);
+  const second=await latest();assert.match(second.prompt,/Which pet should my hunter use/,'Follow-up must include original pet question in actual outgoing main request');assert.match(second.prompt,/untrusted/i);assert.match(second.prompt,/This is for wow forever, not retail/);assert.doesNotMatch(JSON.stringify(second),/PRIVATE_NOTE_CANARY|PRIVATE_GOAL_CANARY/);
   assert.match(await page.locator('[data-conversation-notice]').innerText(),/recent messages/i);
   const chat=await page.locator('#chatlog').innerText(),beforeNav=await count();await page.getByRole('button',{name:'Field Guide',exact:true}).click();await open();assert.equal(await page.locator('#chatlog').innerText(),chat);assert.equal(await count(),beforeNav);
   // Private edits and public observations neither insert their text nor reset the owner.
-  let state=(await call('bootstrap')).state;const next=structuredClone(state);next.profiles[0].notes='EDITED_PRIVATE_CANARY';next.profiles[0].level=13;await call('saveState',next,state);await send('Where next?');await done();assert.match((await latest()).prompt,/fastest way from org to tb/);assert.doesNotMatch(JSON.stringify(await latest()),/EDITED_PRIVATE/);
+  let state=(await call('bootstrap')).state;const next=structuredClone(state);next.profiles[0].notes='EDITED_PRIVATE_CANARY';next.profiles[0].level=13;await call('saveState',next,state);await send('Where next?');await done();assert.match((await latest()).prompt,/Which pet should my hunter use/);assert.doesNotMatch(JSON.stringify(await latest()),/EDITED_PRIVATE/);
   const verbatim='  Where next, exactly?\n  ';await send(verbatim);await done();assert.ok((await latest()).prompt.endsWith(verbatim),'Typed current question must remain verbatim, including surrounding whitespace');
   const boundaryQuestion=' '.repeat(1000)+'Where should I level after this quest?';
   const boundaryReply='Synthetic Forever answer '+((await count())+1);await send(boundaryQuestion);
@@ -56,7 +56,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   await page.screenshot({path:path.join(capture,'conversation-full.png'),fullPage:true});
   // Same IDs restored/imported/root changed are explicit process epochs.
   for(const reason of ['source-root','import','restore','reset']){
-   await app.evaluate((_e,reason)=>conversationFixture.context.invalidate(reason),reason);await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await send('Fresh '+reason+' question');await done();assert.doesNotMatch((await latest()).prompt,/fastest way from org to tb/);
+   await app.evaluate((_e,reason)=>conversationFixture.context.invalidate(reason),reason);await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await send('Fresh '+reason+' question');await done();assert.doesNotMatch((await latest()).prompt,/Which pet should my hunter use/);
   }
   await page.getByLabel('Use my active character',{exact:true}).uncheck();await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');assert.equal(await page.locator('#chatlog').innerText(),'');await send('Sharing off question');await done();assert.doesNotMatch((await latest()).prompt,/Fresh reset question/);
   // Save an explicitly reviewed synthetic private exchange, select it anew, then omit it.

@@ -401,3 +401,4 @@ test("no prices, times, speed rankings or safety promises are manufactured", () 
   assert.match(text, /timing|duration/i);
   assert.match(text, /unknown/i);
 });
+test('generic quest routes do not become city travel, but geographic quest travel remains recognized',()=>{assert.equal(intent('Explain the quest route'),null);assert.equal(intent('What questing route should I use?'),null);assert.equal(intent('quest route from org to tb').status,'ready');assert.equal(intent('travel from unknownville to TB').status,'clarify');});

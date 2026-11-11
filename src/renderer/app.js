@@ -38,6 +38,7 @@ let gameStatus = {},
   modelEpoch = 0,
   modelsLoading = false;
 let questionRevision=0;
+let chatScrollTop=0, lastPaintedMessage=null;
 let currentQuestion = null, questionRecovery = null;
 let shareCharacter = true;
 try {
@@ -498,6 +499,8 @@ function render() {
   QuestGuide.sync(profile(), knowledgeStatus);
   syncGuidance();
   rememberDrafts();
+  const previousChat=document.getElementById("chatlog");
+  if(previousChat)chatScrollTop=previousChat.scrollTop;
   const selected = profile();
   document.body.dataset.class = classKey(selected?.className);
   document.body.dataset.faction = ["Alliance", "Horde"].includes(
@@ -520,7 +523,16 @@ function render() {
   root.innerHTML = `<button type="button" class="skip-content" data-shell-control="skip-content" data-action="skip-content">Skip to content</button><div class="shell"><aside class="rail">${brand()}<nav aria-label="Main navigation">${nav.map(([key, glyph, label]) => `<button data-shell-control="nav:${key}" data-nav="${key}" class="${page === key ? "active" : ""}" ${page === key ? 'aria-current="page"' : ""}><span class="glyph" aria-hidden="true">${glyph}</span>${label}</button>`).join("")}</nav><div class="rail-bottom"><button data-shell-control="updates:rail" class="update-rail" data-nav="updates"><span aria-hidden="true">⟲</span><span data-update-label>Updates</span></button><div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main" id="main-content" tabindex="-1" aria-labelledby="page-heading"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span id="page-heading" role="heading" aria-level="1">${current[2]}</span></div><button data-shell-control="connection-status" class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span><span data-game-connection-label>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}</span><small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select data-shell-control="active-character" id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${setupDock()}${{ adventure: adventure, company: Company.page, party: Party.page, preparation: Preparation.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, updates: updatesPage }[page]()}</div></main></div>`;
   refreshGameStatusWidget();
   restoreDrafts();
-  if (page === "assistant") document.getElementById("chatlog").scrollTop = 1e6;
+  if (page === "assistant") {
+    const chat=document.getElementById("chatlog"), newest=messages.at(-1);
+    CompanionTravel.mounted(chat,messages);
+    if(newest!==lastPaintedMessage){
+      const message=chat.lastElementChild;
+      chat.scrollTop=message ? message.getBoundingClientRect().top-chat.getBoundingClientRect().top : 0;
+    } else chat.scrollTop=chatScrollTop;
+    lastPaintedMessage=newest;
+    chatScrollTop=chat.scrollTop;
+  }
   // Actions keep the character shown when rendered, even if an autosave later
   // receives a newer active-character selection from the game watcher.
   root
@@ -729,7 +741,7 @@ function characters() {
 function assistant() {
   const p = profile();
   const provider = metadata.find((item) => item.id === state.provider.id);
-  return `<header class="section-head"><div class="eyebrow">World of Warcraft: Forever specialist</div><h1>A little wisdom for the journey.</h1><p>Ask about WoW Forever outside combat. Review the context before sending; answers are AI suggestions, never game actions.</p></header><div class="grid companion-grid"><section class="panel companion-conversation"><div class="panel-header"><h3>Your companion</h3><span class="tag">${esc(provider?.name || state.provider.id)}</span></div><p class="corner-note" data-conversation-notice role="status">${esc(conversationNotice)}</p><div class="chatlog" id="chatlog" role="log" aria-label="Conversation" aria-live="polite">${messages.length ? messages.map((m) => `<div class="message ${m.role}"><span class="eyebrow">${m.role === "user" ? "You" : "Companion · AI suggestion"}</span><div class="message-text">${esc(m.text)}</div></div>`).join("") : ""}</div>${!state.provider.model ? '<div class="ai-setup-hint"><span>Choose a model before asking.</span><button type="button" data-nav="connections">Configure AI connection</button></div>' : ""}<form id="chat-form" class="chat-form"><label>Your question<textarea name="prompt" maxlength="12000" required placeholder="Help me prepare for my next adventure…" ${sending ? "disabled" : ""}></textarea></label><label class="check-label"><input type="checkbox" id="share-profile" ${shareCharacter ? "checked" : ""} ${sending ? "disabled" : ""}>Use my active character</label>${QuestGuide.contextMarkup()}<div class="button-row"><button class="primary" type="submit" ${sending ? "disabled" : ""}>${sending ? "Thinking…" : "Send question"}</button>${sending ? '<button type="button" data-command="stop-response">Stop response</button>' : ""}<button type="button" data-command="clear-chat">Clear conversation</button></div><div class="suggestions"><button type="button" data-prompt="Help me make a general dungeon preparation checklist. Clearly distinguish general advice from unverified Forever details.">Dungeon preparation</button><button type="button" data-prompt="Help me plan a relaxed 45-minute game session around a goal I will describe next.">Plan a short session</button></div>${Voice.markup()}</form>${questionRecovery ? `<div class="callout" data-question-recovery role="status"><p>${esc(questionRecovery.message)}</p><button type="button" data-command="edit-question">Edit question</button></div>` : ""}${Memory.markup()}</section><aside class="panel companion-intel"><img class="hero-medallion" src="${portrait(p?.className)}" alt=""><h2>${esc(p?.name || "Choose your character")}</h2><p>${p ? `Level ${p.level} ${esc(p.className)} · ${esc(p.race || "Race not yet received")} · ${esc(p.faction || "Faction not yet received")}` : "Your character snapshot will bring this page to life."}</p><p>${esc(p?.location?.zone || "Location not yet received")}${p?.location?.subZone ? " · " + esc(p.location.subZone) : ""}</p><div class="callout brass">${esc(snapshotLabel(p))}<br>${esc(briefProfileId === p?.id ? adventureBrief?.freshness?.message : "Desktop saved data arrives after the game saves on logout.")}</div><h3>Observed quest log</h3><p>${esc(briefProfileId === p?.id ? adventureBrief?.quests?.message : "Quest data unavailable.")}</p>${(
+  return `<header class="section-head"><div class="eyebrow">World of Warcraft: Forever specialist</div><h1>A little wisdom for the journey.</h1><p>Ask about WoW Forever outside combat. Review the context before sending; travel uses a dated local reference; other answers are AI suggestions. Nothing performs game actions.</p></header><div class="grid companion-grid"><section class="panel companion-conversation"><div class="panel-header"><h3>Your companion</h3><span class="tag">${esc(provider?.name || state.provider.id)}</span></div><p class="corner-note" data-conversation-notice role="status">${esc(conversationNotice)}</p><div class="chatlog" id="chatlog" role="log" aria-label="Conversation" aria-live="polite">${messages.length ? messages.map((m, index) => `<div class="message ${m.role}"><span class="eyebrow">${m.role === "user" ? "You" : m.kind === "travel" ? "Forever travel reference · local" : "Companion · AI suggestion"}</span><div class="message-text ${m.role === "assistant" ? "companion-reply" : ""}">${m.kind === "travel" && m.travel ? CompanionTravel.render(m.travel,index,m.text) : m.role === "assistant" ? CompanionReply.render(m.text) : esc(m.text)}</div></div>`).join("") : ""}</div>${!state.provider.model ? '<div class="ai-setup-hint"><span>Local travel needs no model. Other questions need an AI connection.</span><button type="button" data-nav="connections">Configure AI connection</button></div>' : ""}<form id="chat-form" class="chat-form"><label>Your question<textarea name="prompt" maxlength="12000" required placeholder="Help me prepare for my next adventure…" ${sending ? "disabled" : ""}></textarea></label><label class="check-label"><input type="checkbox" id="share-profile" ${shareCharacter ? "checked" : ""} ${sending ? "disabled" : ""}>Use my active character</label>${QuestGuide.contextMarkup()}<div class="button-row"><button class="primary" type="submit" ${sending ? "disabled" : ""}>${sending ? "Thinking…" : "Send question"}</button>${sending ? '<button type="button" data-command="stop-response">Stop response</button>' : ""}<button type="button" data-command="clear-chat">Clear conversation</button></div><div class="suggestions"><button type="button" data-prompt="What is the fastest way from Orgrimmar to Thunder Bluff?">Plan a trip · local reference</button><button type="button" data-prompt="Help me make a general dungeon preparation checklist. Clearly distinguish general advice from unverified Forever details.">Dungeon preparation</button><button type="button" data-prompt="Help me plan a relaxed 45-minute game session around a goal I will describe next.">Plan a short session</button></div>${Voice.markup()}</form>${questionRecovery ? `<div class="callout" data-question-recovery role="status"><p>${esc(questionRecovery.message)}</p><button type="button" data-command="edit-question">Edit question</button></div>` : ""}${Memory.markup()}</section><aside class="panel companion-intel"><img class="hero-medallion" src="${portrait(p?.className)}" alt=""><h2>${esc(p?.name || "Choose your character")}</h2><p>${p ? `Level ${p.level} ${esc(p.className)} · ${esc(p.race || "Race not yet received")} · ${esc(p.faction || "Faction not yet received")}` : "Your character snapshot will bring this page to life."}</p><p>${esc(p?.location?.zone || "Location not yet received")}${p?.location?.subZone ? " · " + esc(p.location.subZone) : ""}</p><div class="callout brass">${esc(snapshotLabel(p))}<br>${esc(briefProfileId === p?.id ? adventureBrief?.freshness?.message : "Desktop saved data arrives after the game saves on logout.")}</div><h3>Observed quest log</h3><p>${esc(briefProfileId === p?.id ? adventureBrief?.quests?.message : "Quest data unavailable.")}</p>${(
     p?.quests || []
   )
     .slice(0, 5)
@@ -1256,6 +1268,27 @@ root.addEventListener("click", (event) => {
       render();
     }
     switch (button.dataset.command) {
+      case "copy-travel": {
+        const message = messages[Number(button.dataset.messageIndex)];
+        if (message?.kind === "travel") { await api.copyTravelGuidance(message.travel.choiceToken); toast("Full qualified guidance copied."); }
+        break;
+      }
+      case "open-travel-source":
+        await api.openTravelSource(button.dataset.sourceId);
+        break;
+      case "save-travel-plan": {
+        const message = messages[Number(button.dataset.messageIndex)], token = message?.travel?.choiceToken;
+        if (!token) break;
+        const generation=chatGeneration, epoch=stateMutationEpoch, profileId=state.activeProfileId;
+        const result = await mutateStateCall(() => api.createTravelPlan({profileId,token,optionId:button.dataset.optionId}));
+        if(generation!==chatGeneration || stateMutationEpoch!==epoch+2 || profileId!==state.activeProfileId) break;
+        state=result.state;
+        const option=message.travel.options.find(o=>o.id===button.dataset.optionId);
+        if(option)option.saved=true;
+        button.textContent="Saved to Plans";
+        toast(result.reused ? "This trip is already in Plans (Company)." : "Saved to Plans (Company). Check off each step yourself.");
+        break;
+      }
       case "explain-plan": {
         if (guidanceProfileId !== state.activeProfileId || !guidance?.steps?.length) break;
         const draft = shareCharacter ? CommandCenter.draft(guidance, CommandCenter.options(state.activeProfileId)) : "Explain how to plan a quest session in general. Character sharing is off; ask me for any details you need.";
@@ -1731,10 +1764,6 @@ root.addEventListener("submit", (event) => {
       if (submitGeneration !== chatGeneration || page !== "assistant") return;
       const prompt = String(data.get("prompt"));
       if (!prompt.trim()) return;
-      if (!state.provider.model) {
-        toast("Choose a model in Connections first.", true);
-        return;
-      }
       const shareProfile = document.getElementById("share-profile").checked;
       const request = { provider: state.provider.id, prompt, shareProfile };
       if (renderedProfileId) request.profileId = renderedProfileId;
@@ -1765,7 +1794,7 @@ root.addEventListener("submit", (event) => {
         if (generation === chatGeneration) {
           if (result.conversation?.resetReason) messages = [{ role: "user", text: prompt }];
           if (result.conversation?.omittedTurns) conversationNotice = "Recent messages accompany follow-ups; older exchanges were omitted to keep this request bounded. Your current question and selected saved memory stay intact.";
-          messages.push({ role: "assistant", text: result.text, kind: result.kind });
+          messages.push({ role: "assistant", text: result.text, kind: result.kind, travel: result.travel });
           await Memory.review();
         }
       } catch (error) {
