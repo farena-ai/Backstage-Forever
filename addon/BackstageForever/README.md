@@ -1,6 +1,6 @@
 # Optional character snapshot addon
 
-Use Start my adventure in the desktop app to prepare and verify this addon's five owned files automatically. The reference and pure planner load before capture and HUD. Enable Backstage Forever in WoW if needed. Interface 16001 matches inspected Forever client configuration; runtime guards handle unavailable or restricted APIs. Synthetic Lua tests do not certify actual in-client loading. See [Compatibility](../../docs/COMPATIBILITY.md).
+Use Start my adventure in the desktop app to prepare and verify this addon's twelve owned files automatically. The reference, public normalizers, profession/map planners, gathering collector, map provider and owned pin XML load before capture and HUD. Enable Backstage Forever in WoW if needed. Interface 16001 matches inspected Forever client configuration; runtime guards handle unavailable or restricted APIs. Synthetic Lua tests do not certify actual in-client loading. See [Compatibility](../../docs/COMPATIBILITY.md).
 
 Once installed, local guidance can work with the desktop app closed. Supported public events update the native plan outside combat; no routine reload is needed after quest progress, levels or zone changes. Visit characters you want captured and let logout/game exit save naturally. The desktop reads the resulting snapshots while open. Voluntary reload remains available when you specifically want fresh desktop data or need to load an update. No input automation, memory access, combat calculation or forced reload is used.
 
@@ -20,4 +20,14 @@ The 0.10 collector observes owned professions, learned recipes and fixed basic i
 
 Recipe caches retain their actual dates and reset on character/build/session or relevant skill changes. Desktop Preparation uses the resulting saved observations; its shopping checklists are manual Company plans, not game-completion proof. No workshop details are added to automatic AI context. WoW's normal save boundary still applies to the desktop; native guidance needs no routine reload.
 
-Exports stay within both the byte and parser-value limits. Optional workshop detail is removed before older quest/history details when needed, preserving character identities and treating dropped observations as unknown.
+Exports stay within both the byte and parser-value limits. Optional gathering history is trimmed first, then workshop detail before older quest/history details when needed, preserving character identities and treating dropped observations as unknown.
+
+## Native world-map layers and private finds
+
+Open the world map normally. **BF Layers** adds same-map quest help, relevant Herbs/Ore/Supplies references and **My finds**. Auto follows owned gathering professions and the native Compass profession goal; native and desktop goals remain independent. Expand **Layers & recording** to filter, hide/show, pause recording, or deliberately confirm **Clear my recorded history**. A marker click chooses a supported public waypoint; it never moves, targets, gathers or buys. The game's own player arrow remains authoritative.
+
+Native coverage is the existing quest reference plus seven acquisition relations and supported personal observations. Desktop reference browsing has broader seller history; the addon does not claim complete merchant/trainer/node coverage. Build 70862 references on 70888 appear only with **Older references**, explicitly labelled for browsing. Positions are approximate contributor/player standing points, never active nodes, exact objects, spawn timers, requirements or safe routes.
+
+Recording initially supports readable English (`enUS`) Mining 2576 and Herbalism 2368 only when a known exact target name, matching own cast, one actual GameObject loot source and observed material ID agree. It skips unknown sources/locales, absent herbalism targets, ambiguous loot, combat and protected data. A loot window proves an interaction, not items collected. The actual Herbalism event shape and all map pixels/zoom/combat behavior still need owner acceptance in the current client.
+
+The private per-character store retains at most 128 records and exports at most 64 recent records; optional export history is trimmed before quest/readiness data if needed. Pause persists without deleting history. Confirmed clear removes only this character's addon observations and pending correlations. Changes reach the desktop after WoW saves normally; old private backups may still contain dated history. Cast/object/owner GUIDs are ephemeral and are never saved in discovery records. An empty new schema receipt proves only that a new-format capture was saved, not live API or rendering support. Load the updated addon once if the game is already running; ordinary native updates need no repeated reload.

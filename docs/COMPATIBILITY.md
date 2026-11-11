@@ -1,6 +1,6 @@
 # Compatibility and evidence
 
-Evidence date: **2026-11-09**. Local manual profiles and notes work without a game connection or AI. Automated fixtures establish tested behavior, not live account entitlement or game-client acceptance.
+Evidence date: **2026-11-11**. Local manual profiles and notes work without a game connection or AI. Automated fixtures establish tested behavior, not live account entitlement or game-client acceptance.
 
 ## Adventure Company and shared journeys
 
@@ -14,7 +14,7 @@ The native bag-space cue consumes existing guarded readiness data, adding no new
 
 Local files identify product `wowf`, client `1.60.1.70862`, with Interface `16001` evidence in client configuration. The addon declares Interface 16001 and guards public API availability. This is loader/configuration evidence, not proof that the running client loaded every feature successfully.
 
-Choose **Start my adventure**. Bounded common-folder/registry discovery prepares one validated Forever folder automatically, offers choices for several, or lets you choose a folder. All eight owned files are read back, and missing/outdated owned files are repaired. Preparation is distinct from actual addon loading and an initial desktop snapshot. Enable the addon in the game if needed; a running game may require a voluntary restart or UI reload to load new files. No account credentials are needed. See [Game Connection](GAME-CONNECTION.md).
+Choose **Start my adventure**. Bounded common-folder/registry discovery prepares one validated Forever folder automatically, offers choices for several, or lets you choose a folder. All twelve owned files are read back, and missing/outdated owned files are repaired. Preparation is distinct from actual addon loading and an initial desktop snapshot. Enable the addon in the game if needed; a running game may require a voluntary restart or UI reload to load new files. No account credentials are needed. See [Game Connection](GAME-CONNECTION.md).
 
 The native Compass updates its short local plan outside combat from supported public events, without routine reloads or the desktop app running. Logout/game exit writes SavedVariables; an optional voluntary UI reload can save sooner. The desktop checks saved exports every five seconds while open and combines valid account exports. It cannot see unsaved character changes, discover unvisited characters through an account API or provide a continuous live feed. The latest valid saved active character controls following; deliberate selection pauses following until its checkbox is restored.
 
@@ -53,3 +53,13 @@ Grok subscription remains unavailable because the tools/hooks isolation boundary
 ## Windows distribution
 
 The public GitHub preview release channel is independent of app-store testing tracks. Update manifests use pinned Ed25519 integrity and installer hash/size checks. The installer is still unsigned with Windows Authenticode. Clean-machine installation, real installed self-upgrade/uninstall, keyboard and screen-reader acceptance remain separate gates. No publication or successful live upgrade is certified by this page.
+
+## Native adventure map foundation (0.12.3 local review)
+
+The own pin XML mixes the complete native map-pin base during engine frame creation, before the native pool calls `SetOwningMap`. The provider attaches passively when the real world-map frame/base/template are available, explicitly refreshes an already-visible map, and removes only its own pins. No map opening, addon forcing, polling, input simulation or tracking changes are used. Synthetic fixtures cover actual provider/acquire/release order, properties-backed vectors, late attachment, same-map points, filters and stale callbacks. This is source-contract evidence against the inspected 70862 UI mirror; current 70888 client rendering, zoom, interaction and performance remain unverified owner gates before 1.0.
+
+The native minimum is current/qualified quest markers, the existing seven acquisition relations and supported private finds. The desktop's existing seller pack is broader; complete merchant/trainer/gathering coverage is not claimed in game. Exact 70862 historical coordinates remain older browse references on 70888. A new own interaction may carry the actual current build when all current cast/source/name/material evidence agrees; that does not promote old coordinates, ranks or availability to current facts.
+
+Recording is intentionally narrow: known English target-name/object relations, own Mining 2576 or Herbalism 2368 cast, a single readable GameObject loot source and material evidence within bounded time/map/displacement checks. Unknown locales, missing targets, corpses, containers, competing sources and protected values are skipped. Saved findings are approximate past standing points, never active resource presence or quantity collected. Real mining and herbalism capture each need owner-led observation; a synthetic fixture does not certify the client.
+
+`loadedGatheringSchema: 1` is a connected valid saved-format receipt only; `null` means no such current receipt. It can be 1 with an empty or capability-unavailable gathering block. Missing/invalid/unreadable saved data cannot claim feature loading, and imported backups do not reconnect a source. Files prepared, saved format received and live client acceptance are three different facts. Source version remains 0.12.3; 1.0 is held.

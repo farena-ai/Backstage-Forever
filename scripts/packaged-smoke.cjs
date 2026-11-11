@@ -202,6 +202,10 @@ async function sourceFiles(folder, prefix = "src") {
     "BackstageForeverCoach.lua",
     "BackstageForeverAcquisition.lua",
     "BackstageForeverProfession.lua",
+    "BackstageForeverGathering.lua",
+    "BackstageForeverMapPlan.lua",
+    "BackstageForeverMap.lua",
+    "BackstageForeverMap.xml",
       "BackstageForever.lua",
       "BackstageForeverHUD.lua",
     ];
@@ -229,6 +233,7 @@ async function sourceFiles(folder, prefix = "src") {
     await fs.unlink(path.join(addonFolder, "BackstageForeverCoach.lua"));
     await fs.unlink(path.join(addonFolder, "BackstageForeverAcquisition.lua"));
     await fs.unlink(path.join(addonFolder, "BackstageForeverProfession.lua"));
+    for (const name of ["BackstageForeverGathering.lua", "BackstageForeverMapPlan.lua", "BackstageForeverMap.lua", "BackstageForeverMap.xml"]) await fs.unlink(path.join(addonFolder, name));
     await fs.unlink(path.join(addonFolder, "BackstageForeverReference.lua"));
     await fs.writeFile(path.join(addonFolder, "BackstageForeverPlan.lua"), "synthetic obsolete planner");
     app = await electron.launch(launchOptions);

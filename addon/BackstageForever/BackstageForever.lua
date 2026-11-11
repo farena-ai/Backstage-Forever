@@ -13,6 +13,17 @@ local function call(fn, ...)
     if not ok then captureIssue=true;return nil end
     return public(a), public(b), public(c), public(d)
 end
+-- Public map vectors may be native userdata or property-backed tables.
+local function vectorField(value,key)
+    value=public(value)
+    if type(value)~='table' and type(value)~='userdata' then return nil end
+    local ok,result=pcall(function()return value[key]end)
+    if not ok then return nil end
+    return public(result)
+end
+local function coordinate(value)
+    return type(value)=='number' and value==value and value>=0 and value<=1
+end
 local function clean(value, limit)
     value = public(value)
     if type(value) ~= "string" or #value > (limit or 100) or value:find("[%z\1-\31\127]") then return nil end
@@ -547,8 +558,9 @@ local function capture(event,eventId)
             location.mapId=map
             local pos=call(field(C_Map,'GetPlayerMapPosition'),map,'player')
             if pos then
-                local x,y=call(field(pos,'GetXY'),pos)
-                if type(x)=='number' and type(y)=='number' and x>=0 and x<=1 and y>=0 and y<=1 then location.x=x;location.y=y end
+                local x,y=vectorField(pos,'x'),vectorField(pos,'y')
+                if not coordinate(x) or not coordinate(y) then x,y=call(vectorField(pos,'GetXY'),pos)end
+                if coordinate(x) and coordinate(y) then location.x=x;location.y=y end
             end
         end
     end
@@ -587,6 +599,14 @@ local function capture(event,eventId)
         for _,collection in pairs(character.readiness.workshop) do now=math.max(now,collection.observedAt) end
     end
     character.updatedAt=now
+    if type(BackstageForeverGatheringSnapshot)=='function' then
+        character.gathering=optional(function()return BackstageForeverGatheringSnapshot(character)end)
+        if character.gathering then
+            array(character.gathering.records)
+            for _,record in ipairs(character.gathering.records)do array(record.itemIds)end
+        end
+    end
+    if type(BackstageForeverMapUpdate)=='function' then pcall(BackstageForeverMapUpdate,character)end
     if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character) end
     roster[guid]=character
     local chars=array({});for _,c in pairs(roster) do chars[#chars+1]=c end
@@ -603,6 +623,18 @@ local function capture(event,eventId)
         local detail,nodes=encode(parent[key]);parent[key]=nil;changed=true
         encodedLength=encodedLength-#quote(key)-1-#detail-(next(parent) and 1 or 0)
         encodedNodes=encodedNodes-nodes
+    end
+    -- Personal history is the first optional export detail to shed. The private
+    -- native store is detached; trimming never deletes retained observations.
+    for i=#chars,1,-1 do
+        if fits() then break end
+        local gathering=chars[i].gathering
+        if gathering and type(gathering.records)=='table' and #gathering.records>0 then
+            local old,nodes=encode(gathering)
+            gathering.records=array({});gathering.limited=gathering.totalRecords>0
+            local small,smallNodes=encode(gathering)
+            encodedLength=encodedLength-#old+#small;encodedNodes=encodedNodes-nodes+smallNodes;changed=true
+        end
     end
     -- Workshop is optional: shed it across the roster before older quest/XP/history.
     for i=#chars,1,-1 do
@@ -659,10 +691,27 @@ if type(CreateFrame)=='function' then
         if not loggedIn then return end
         captureIssue=false
         local ok,captured=pcall(capture,event,eventId)
+        if (not ok or not captured) and type(BackstageForeverMapUpdate)=='function' then pcall(BackstageForeverMapUpdate,nil)end
         if type(BackstageForeverHUDCaptureStatus)=='function' then
             pcall(BackstageForeverHUDCaptureStatus,(not ok or not captured) and 'unavailable' or captureIssue and 'partial' or 'ready')
         end
     end
+    local function queue(event,eventId)
+        if not loggedIn then return end
+        local after=field(public(C_Timer),'After')
+        if type(after)~='function' then refresh(event,eventId);return end
+        if pending then return end
+        local token={generation=generation};pending=token
+        local ok=pcall(after,.25,function()
+            if not loggedIn or token.generation~=generation or pending~=token then return end
+            pending=nil;refresh('COALESCED')
+        end)
+        if not ok then
+            pending=nil;refresh(event,eventId)
+        end
+    end
+    -- Focused signal: no character injection, disk write or recursive capture.
+    BackstageForeverRequestCapture=function()queue('GATHERING')end
     for _,event in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_LEVEL_UP','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LOGOUT','QUEST_LOG_UPDATE','QUEST_ACCEPTED','QUEST_TURNED_IN','UNIT_QUEST_LOG_CHANGED','PLAYER_XP_UPDATE','UPDATE_EXHAUSTION','PLAYER_EQUIPMENT_CHANGED','BAG_UPDATE_DELAYED','GET_ITEM_INFO_RECEIVED','PLAYER_STOPPED_MOVING'}) do pcall(frame.RegisterEvent,frame,event) end
     for event in pairs(workshopDirty) do pcall(frame.RegisterEvent,frame,event) end
     frame:SetScript('OnEvent',function(_,event,eventId)
@@ -671,6 +720,7 @@ if type(CreateFrame)=='function' then
             generation=generation+1;pending=nil;loggedIn=false
             workshopCache=nil
             if type(BackstageForeverHUDSession)=='function' then pcall(BackstageForeverHUDSession,event) end
+            if type(BackstageForeverGatheringSession)=='function' then pcall(BackstageForeverGatheringSession,event)end
         end
         if event=='PLAYER_LOGOUT' then return end
         if event=='PLAYER_LOGIN' then
@@ -686,16 +736,6 @@ if type(CreateFrame)=='function' then
         if not loggedIn then return end
         if workshopDirty[event] then workshopCache=nil end
         if immediate[event] then pending=nil;refresh(event,public(eventId));return end
-        local after=field(public(C_Timer),'After')
-        if type(after)~='function' then refresh(event,public(eventId));return end
-        if pending then return end
-        local token={generation=generation};pending=token
-        local ok=pcall(after,.25,function()
-            if not loggedIn or token.generation~=generation or pending~=token then return end
-            pending=nil;refresh('COALESCED')
-        end)
-        if not ok then
-            pending=nil;refresh(event,public(eventId))
-        end
+        queue(event,public(eventId))
     end)
 end

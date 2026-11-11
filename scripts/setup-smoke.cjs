@@ -7,7 +7,9 @@ const fs = require("node:fs/promises"),
   assert = require("node:assert/strict");
 const { testWindow } = require("./test-window.cjs");
 (async () => {
-  const data = await fs.mkdtemp(path.join(os.tmpdir(), "bf-setup-"));
+  const data = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "bf-setup-")));
+  const repo=path.resolve(__dirname,'..'), captures=path.join(repo,'.superpowers/sdd/native-adventure-map-captures',new Date().toISOString().replace(/[:.]/g,'-'));
+  await fs.mkdir(captures,{recursive:true});
   let app;
   try {
     const game = path.join(data, "synthetic-client"),
@@ -17,8 +19,13 @@ const { testWindow } = require("./test-window.cjs");
       );
     await fs.mkdir(path.dirname(exportFile), { recursive: true });
     await fs.writeFile(path.join(game, ".flavor.info"), "wowf");
+    for(const [folder,preferences] of [['updates',{automatic:false,installOnQuit:false}],['knowledge-v1',{automatic:false,checked:{}}]]){
+      await fs.mkdir(path.join(data,folder),{recursive:true});await fs.writeFile(path.join(data,folder,'preferences.json'),JSON.stringify(preferences));
+    }
+    await fs.writeFile(path.join(data,'package.json'),JSON.stringify({name:'synthetic-native-map-setup',version:'0.12.3',main:'fixture.cjs'}));
+    await fs.writeFile(path.join(data,'fixture.cjs'),`const load=require('node:module').createRequire(${JSON.stringify(path.join(repo,'package.json'))});globalThis.mapSetup={providers:0,keys:0,game:0,external:0};load('./src/core/catalog-cache.cjs').CatalogCache.prototype.get=async()=>({models:[],source:'synthetic'});load('./src/core/model-catalog.cjs').listModels=async()=>({models:[]});load('./src/core/claude.cjs').status=async()=>({installed:false,loggedIn:false});load('./src/core/providers.cjs').ask=async()=>{mapSetup.providers++;throw Error('No provider');};load('./src/core/store.cjs').Store.prototype.getKey=function(){mapSetup.keys++;return '';};load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});load('./src/core/game-runtime.cjs').GameRuntime.prototype.launch=async()=>{mapSetup.game++;throw Error('No game');};load('./src/core/game-sync.cjs').GameSync.prototype.discover=async()=>[{id:'synthetic',label:'Synthetic Forever',path:${JSON.stringify(game)}}];load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});load('./src/core/voice.cjs').VoiceService.prototype.readCapabilities=async()=>({status:'unavailable',recognition:{available:false,cultures:[]},synthesis:{available:false,voices:[]}});load('electron').clipboard.writeText=()=>{mapSetup.external++;};load('electron').shell.openExternal=async()=>{mapSetup.external++;};load('./src/core/knowledge-cache.cjs').KnowledgeService.prototype.maybeRefresh=function(){};load('./src/core/updater.cjs').Updater.prototype.start=function(){};load('./src/main.cjs');`);
     app = await electron.launch({
-      args: [path.join(__dirname, "..")],
+      args: [data],
       env: { ...process.env, BF_USER_DATA: data },
     });
     const page = await testWindow(app);
@@ -30,11 +37,11 @@ const { testWindow } = require("./test-window.cjs");
       )
         cspErrors.push(message.text());
     });
-    await app.evaluate(({ app, dialog }, root) => {
+    await app.evaluate(({ app, dialog }, {root,repo}) => {
       const p = process.getBuiltinModule("node:path"),
         r = process
           .getBuiltinModule("node:module")
-          .createRequire(p.join(app.getAppPath(), "package.json"));
+          .createRequire(p.join(repo, "package.json"));
       r("./src/core/game-sync.cjs").GameSync.prototype.discover =
         async () => [{ id: "synthetic", label: "Synthetic Forever", path: root }];
       r("./src/core/game-runtime.cjs").GameRuntime.prototype.probe =
@@ -43,7 +50,7 @@ const { testWindow } = require("./test-window.cjs");
         canceled: false,
         filePaths: [root],
       });
-    }, game);
+    }, {root:game,repo});
     await page
       .getByRole("heading", { name: "A companion for the road ahead.", exact: true })
       .waitFor({ timeout: 10000 });
@@ -70,6 +77,10 @@ const { testWindow } = require("./test-window.cjs");
       "BackstageForeverCoach.lua",
     "BackstageForeverAcquisition.lua",
     "BackstageForeverProfession.lua",
+    "BackstageForeverGathering.lua",
+    "BackstageForeverMapPlan.lua",
+    "BackstageForeverMap.lua",
+    "BackstageForeverMap.xml",
       "BackstageForever.lua",
       "BackstageForeverHUD.lua",
     ])
@@ -80,7 +91,9 @@ const { testWindow } = require("./test-window.cjs");
         ),
         await fs.readFile(path.join(__dirname, "../addon/BackstageForever", name), "utf8"),
       );
-    const now = Date.now() / 1000;
+    assert.equal((await page.evaluate(()=>window.backstage.gameStatus())).loadedGatheringSchema,null);
+    await page.screenshot({path:path.join(captures,'setup-files-prepared.png'),fullPage:true});
+    const now = Math.floor(Date.now() / 1000);
     const shot = {
       schema: 1,
       activeId: "Player-Synthetic",
@@ -94,6 +107,8 @@ const { testWindow } = require("./test-window.cjs");
           level: 18,
           faction: "Alliance",
           updatedAt: now,
+          captureVersion:'0.12.3',clientBuild:'1.60.1.70888',
+          gathering:{schemaVersion:1,status:'unavailable',recording:false,observedAt:now,limited:false,totalRecords:0,records:[]},
           location: { zone: "Synthetic Forest", subZone: "Camp" },
           progress: { current: 250, max: 1000 },
           quests: [
@@ -124,6 +139,9 @@ const { testWindow } = require("./test-window.cjs");
         .evaluate((node) => node.value),
       25,
     );
+    assert.equal((await page.evaluate(()=>window.backstage.gameStatus())).loadedGatheringSchema,1);
+    assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).state.profiles[0].gathering.status,'unavailable');
+    await page.screenshot({path:path.join(captures,'setup-new-format-saved-character.png'),fullPage:true});
     for (const section of ["Adventure", "Characters", "AI Companion", "Game Connection", "Connections", "Field Guide", "Updates"]) {
       await navigate(page, section);
       assert.equal(await page.locator(".companion-dock").count(), 0,
@@ -165,11 +183,16 @@ const { testWindow } = require("./test-window.cjs");
       1,
     );
     assert.deepEqual(cspErrors, []);
+    assert.equal((await page.evaluate(()=>window.backstage.gameStatus())).loadedGatheringSchema,null);
+    const counters=await app.evaluate(()=>mapSetup);assert.deepEqual(counters,{providers:0,keys:0,game:0,external:0});
+    await fs.writeFile(path.join(captures,'manifest.json'),JSON.stringify({kind:'synthetic-source-setup-only',version:'0.12.3',files:12,receipt:'null before valid save, 1 for schema, null after source replacement',liveClientCertified:false,counters},null,2));
     console.log(
-      "PASS: first-run single-install preparation, exact five-file readback, no-snapshot entry, auto-import, quest/XP briefing, explicit AI drafting, reduced motion and reopenable setup.",
+      "PASS: first-run single-install preparation, exact twelve-file readback and connected schema receipt, no-snapshot entry, auto-import, quest/XP briefing, explicit AI drafting, reduced motion and reopenable setup.",
     );
   } finally {
     if (app) await app.close();
+    assert.equal(path.dirname(await fs.realpath(data)),await fs.realpath(os.tmpdir()));
+    assert.ok(path.basename(data).startsWith('bf-setup-'));
     await fs.rm(data, { recursive: true, force: true });
   }
 })().catch((error) => {

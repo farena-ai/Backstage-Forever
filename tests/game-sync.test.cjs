@@ -274,7 +274,7 @@ test("failed snapshot consumer is retried instead of acknowledged", async (t) =>
   await sync.refresh();
   assert.equal(calls, 2);
 });
-test("managed prepare repairs eight owned files, keeps extras, and reports snapshot health", async (t) => {
+test("managed prepare repairs twelve owned files, keeps extras, and reports snapshot health", async (t) => {
   const f = await fixture(t),
     addon = path.join(f.dir, "source");
   await fs.mkdir(addon);
@@ -285,6 +285,10 @@ test("managed prepare repairs eight owned files, keeps extras, and reports snaps
     "BackstageForeverCoach.lua",
     "BackstageForeverAcquisition.lua",
     "BackstageForeverProfession.lua",
+    "BackstageForeverGathering.lua",
+    "BackstageForeverMapPlan.lua",
+    "BackstageForeverMap.lua",
+    "BackstageForeverMap.xml",
     "BackstageForever.lua",
     "BackstageForeverHUD.lua",
   ];
@@ -345,7 +349,7 @@ test("managed prepare repairs eight owned files, keeps extras, and reports snaps
 
 test("installer stages all resources, commits TOC last and rolls back a failed commit", async (t) => {
   const f = await fixture(t), addon = path.join(f.dir, "source");
-  const files = ['BackstageForever.toc','BackstageForeverReference.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverProfession.lua','BackstageForever.lua','BackstageForeverHUD.lua'];
+  const files = ['BackstageForever.toc','BackstageForeverReference.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverProfession.lua','BackstageForeverGathering.lua','BackstageForeverMapPlan.lua','BackstageForeverMap.lua','BackstageForeverMap.xml','BackstageForever.lua','BackstageForeverHUD.lua'];
   await fs.mkdir(addon);
   for (const file of files) await fs.writeFile(path.join(addon,file), file.endsWith('.toc')?'## Version: old\n':'old '+file);
   const sync = new GameSync({dataDir:path.join(f.dir,'data'),addonDir:addon}); t.after(()=>sync.close());
@@ -398,6 +402,10 @@ test("prepare accepts installation parent and missing account exports are needs-
     "BackstageForeverCoach.lua",
     "BackstageForeverAcquisition.lua",
     "BackstageForeverProfession.lua",
+    "BackstageForeverGathering.lua",
+    "BackstageForeverMapPlan.lua",
+    "BackstageForeverMap.lua",
+    "BackstageForeverMap.xml",
     "BackstageForever.lua",
     "BackstageForeverHUD.lua",
   ])

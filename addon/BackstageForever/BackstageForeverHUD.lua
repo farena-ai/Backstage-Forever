@@ -33,6 +33,7 @@ local function text(value,limit)
 end
 local function save()
     if settings then settings.visible=visible;settings.collapsed=collapsed end
+    if type(BackstageForeverMapGoalChanged)=='function' then pcall(BackstageForeverMapGoalChanged)end
 end
 local function loadSettings()
     local saved=type(BackstageForeverHUDSettings)=='table' and BackstageForeverHUDSettings or {}

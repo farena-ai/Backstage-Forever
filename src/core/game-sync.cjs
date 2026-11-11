@@ -11,6 +11,10 @@ const MAX = 1024 * 1024,
     "BackstageForeverCoach.lua",
     "BackstageForeverAcquisition.lua",
     "BackstageForeverProfession.lua",
+    "BackstageForeverGathering.lua",
+    "BackstageForeverMapPlan.lua",
+    "BackstageForeverMap.lua",
+    "BackstageForeverMap.xml",
     "BackstageForever.lua",
     "BackstageForeverHUD.lua",
   ];
@@ -163,6 +167,10 @@ function parseSavedVariables(raw) {
         ...(c.readiness.workshop === undefined ? {} : { workshop: require("./preparation-data.cjs").normalizeWorkshopCapture(c.readiness.workshop, out.updatedAt) }),
       });
     }
+    // Optional feature failure must not erase valid core character observations.
+    if (c.gathering !== undefined) {
+      try { out.gathering = require("./gathering-data.cjs").normalizeGatheringCapture(c.gathering, out.updatedAt); } catch { /* Omit the entire invalid optional block. */ }
+    }
     return out;
   });
   const activeId = s.activeId === null ? null : id(s.activeId);
@@ -227,6 +235,7 @@ class GameSync {
       interfaceVersion: null,
       runtime: unknownRuntime(),
       loadedCaptureVersion: null,
+      loadedGatheringSchema: null,
       coverage: { partial: false, unreadableAccountCount: 0, omittedCharacterCount: 0, omittedProfileCount: 0 },
     };
     this.ready = this.restore();
@@ -239,6 +248,7 @@ class GameSync {
     this.onRootChange({ previousRoot, root, reason: "root" });
   }
   _sourceUnavailable() {
+    this.state.loadedGatheringSchema = null;
     if (this.state.phase !== "folder-unavailable")
       this.onRootChange({ previousRoot: this.root, root: this.root, reason: "unavailable" });
   }
@@ -385,6 +395,7 @@ class GameSync {
         interfaceVersion: 16001,
         runtime: unknownRuntime(),
         loadedCaptureVersion: null,
+        loadedGatheringSchema: null,
         coverage: { partial: false, unreadableAccountCount: 0, omittedCharacterCount: 0, omittedProfileCount: 0 },
       };
       try {
@@ -592,7 +603,7 @@ class GameSync {
         if (entries.length > 256) throw Error("Too many entries");
       }
       if (entries.length > 256) throw Error("Too many entries");
-      const snapshots = new Map(this.accountSnapshots);
+      const snapshots = new Map(this.accountSnapshots), freshlyRead = [];
       let malformed = false, unreadableAccountCount = 0;
       const seenAccounts = new Set();
       for (const e of entries.sort((a,b)=>a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
@@ -607,6 +618,7 @@ class GameSync {
         try {
           const s = parseSavedVariables(await boundedRead(file, SAVED_MAX));
           snapshots.set(e.name, s);
+          freshlyRead.push(s);
         } catch (error) {
           if (error.code !== "ENOENT" || snapshots.has(e.name)) { malformed = true; unreadableAccountCount++; }
         }
@@ -623,6 +635,10 @@ class GameSync {
         .createHash("sha256")
         .update(JSON.stringify(best))
         .digest("hex");
+      const activeCharacter = best.characters.find(c => c.id === best.activeId);
+      const receivedGathering = activeCharacter?.gathering?.schemaVersion === 1 &&
+        freshlyRead.some(s => s.characters.some(c => c.id === best.activeId &&
+          c.updatedAt === activeCharacter.updatedAt && c.gathering?.schemaVersion === 1));
       this.state = {
         ...this.state,
         phase: !this.state.addonCurrent
@@ -637,7 +653,8 @@ class GameSync {
             : "Desktop last saved progress imported. Live guidance runs inside WoW; desktop progress updates when the game saves.",
         lastSync: best.observedAt,
         characterCount: best.characters.length,
-        loadedCaptureVersion: best.characters.find(c=>c.id===best.activeId)?.captureVersion || null,
+        loadedCaptureVersion: activeCharacter?.captureVersion || null,
+        loadedGatheringSchema: receivedGathering ? 1 : null,
       };
       if (malformed) this.state.message = "Some game saves are unavailable. Valid last saved progress and previous characters are preserved; live guidance continues inside WoW.";
       if (digest !== this.lastDigest) {
@@ -653,6 +670,7 @@ class GameSync {
         this.state = {
           ...this.state,
           phase: "error",
+          loadedGatheringSchema: null,
           coverage: { ...this.state.coverage, partial: true },
           message:
             "The snapshot could not be read or imported. Retry; previous characters are preserved.",
@@ -661,6 +679,8 @@ class GameSync {
     return this.status();
   }
   _noExport(gen, malformed) {
+    if (gen !== this.generation) return this.status();
+    this.state.loadedGatheringSchema = null;
     if (gen === this.generation)
       this.state = {
         ...this.state,
@@ -692,6 +712,7 @@ class GameSync {
       addonVersion: null,
       runtime: unknownRuntime(),
       loadedCaptureVersion: null,
+      loadedGatheringSchema: null,
       phase: "disconnected",
       message: "Game disconnected.",
     };
@@ -728,6 +749,7 @@ class GameSync {
       addonVersion: null,
       runtime: unknownRuntime(),
       loadedCaptureVersion: null,
+      loadedGatheringSchema: null,
       phase: "disconnected",
     };
   }

@@ -11,7 +11,16 @@ function combineSnapshots(snapshots) {
   const newest = ordered[0], records = new Map();
   for (const snapshot of ordered) for (const character of snapshot.characters) {
     const previous = records.get(character.id);
-    if (!previous || character.updatedAt > previous.updatedAt || (character.updatedAt === previous.updatedAt && serialized(character) < serialized(previous))) records.set(character.id,character);
+    if (!previous || character.updatedAt > previous.updatedAt) records.set(character.id,character);
+    else if (character.updatedAt === previous.updatedAt) {
+      const chosen = serialized(character) < serialized(previous) ? character : previous;
+      const other = chosen === character ? previous : character;
+      const combined = { ...chosen };
+      const gathering = require("./gathering-data.cjs").intersectGatheringProfiles(other.gathering, chosen.gathering);
+      if (gathering === undefined) delete combined.gathering;
+      else combined.gathering = gathering;
+      records.set(character.id, combined);
+    }
   }
   let characters = [...records.values()].sort((a,b) => compare(b.updatedAt,a.updatedAt) || compare(a.id,b.id));
   const omittedCharacterCount = Math.max(0,characters.length - 100);

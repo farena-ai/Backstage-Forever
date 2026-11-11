@@ -1,0 +1,7 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Frame name="BackstageForeverMapPinTemplate" virtual="true" enableMouse="true">
+        <Scripts>
+            <OnLoad function="BackstageForeverMapPin_OnLoad"/>
+        </Scripts>
+    </Frame>
+</Ui>

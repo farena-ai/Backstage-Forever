@@ -142,6 +142,7 @@ function validateState(s) {
       "progress",
       "history",
       "readiness",
+      "gathering",
       "clientBuild",
       "locale",
       "captureVersion",
@@ -151,6 +152,7 @@ function validateState(s) {
     validateProgress(p.progress);
     validateHistory(p.history);
     require("./readiness.cjs").validateReadiness(p.readiness);
+    require("./gathering-data.cjs").validateGatheringProfile(p.gathering);
     str(p.id, 100, false);
     if (ids.has(p.id)) fail();
     ids.add(p.id);
@@ -179,6 +181,7 @@ function validateState(s) {
       Object.values(p.readiness.workshop).some(collection =>
         collection !== undefined && collection.observedAt > p.source.updatedAt)
     ) fail();
+    if (p.source && p.gathering && p.gathering.observedAt > p.source.updatedAt) fail();
     if (p.location !== undefined) {
       object(p.location, ["zone", "subZone", "mapId", "x", "y"]);
       for (const key of ["zone", "subZone"])

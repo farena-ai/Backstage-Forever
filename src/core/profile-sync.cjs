@@ -46,6 +46,7 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
       "progress",
       "history",
       "readiness",
+      "gathering",
       "clientBuild",
       "locale",
       "captureVersion",
@@ -72,6 +73,7 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
       "progress",
       "history",
       "readiness",
+      "gathering",
       "clientBuild",
       "locale",
       "captureVersion",
@@ -127,6 +129,7 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
         "progress",
         "history",
         "readiness",
+        "gathering",
         "clientBuild",
         "locale",
         "captureVersion",
@@ -135,6 +138,10 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
         if (incoming[key] !== undefined) profile[key] = incoming[key];
         else delete profile[key];
       }
+    } else if (incoming.source.updatedAt === profile.source.updatedAt) {
+      const gathering = require("./gathering-data.cjs").intersectGatheringProfiles(profile.gathering, incoming.gathering);
+      if (gathering === undefined) delete profile.gathering;
+      else profile.gathering = gathering;
     }
     sources.set(incoming.source.id, profile);
   }
