@@ -257,12 +257,20 @@ test("auth mode is optional for old backups and validated explicitly", () => {
   s.provider.authMode = "automatic";
   a.throws(() => v.validateState(s));
 });
-// Main integration contract is structural; Electron behavior is covered by UI smoke.
-test("main routes explicit subscription mode without reading API keys and resets app credentials", () => {
+// Main/service integration is structural; transport behavior is covered by companion-service tests.
+test("main wires companion dispatch to the service and retains app credential reset boundaries", () => {
   const main = fs.readFileSync(path.join(__dirname, "../src/main.cjs"), "utf8");
-  a.match(main, /authMode.*subscription/s);
-  a.match(main, /chatgpt\.ask/);
-  a.match(main, /claude\.ask/);
+  const service = fs.readFileSync(
+    path.join(__dirname, "../src/core/companion-service.cjs"),
+    "utf8",
+  );
+  a.match(service, /authMode.*subscription/s);
+  a.match(service, /chatgpt\.ask/);
+  a.match(service, /claude\.ask/);
+  a.match(main, /const \{ CompanionService \} = require\("\.\/core\/companion-service\.cjs"\)/);
+  a.match(main, /companionService = new CompanionService\(/);
+  a.match(main, /handle\("ask", \(\.\.\.args\) => companionService\.legacy\(\.\.\.args\)\)/);
+  a.match(main, /handle\("askCompanion", \(\.\.\.args\) => companionService\.ask\(\.\.\.args\)\)/);
   a.match(main, /chatgpt\.reset/);
   a.match(main, /claude\.clearCredentials/);
   a.match(main, /subscriptionStatus/);
