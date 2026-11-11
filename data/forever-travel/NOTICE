@@ -1,0 +1,23 @@
+Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
+Source: https://github.com/JIVESCORP/eg-link-output-wowf
+Immutable commit: 23f9636486d3d60479dc0bcee2356053c33faf2c
+Product wowf; build 1.60.1.70862. Observations collected 2026-11-09;
+the enUS quest cache covers 2026-11-07 through 2026-11-09.
+Changes: selected six independently directed flight observations and three
+master names, IDs, normalized positions and city mappings. Omitted prices,
+timings, narrative quest content and all other observed routes. Public
+observation names have no asserted locale. This compilation is not MIT.
+CC BY 4.0 covers the compilation and observations, not Blizzard content rights.
+See LICENSE-CC-BY-4.0.txt and source-lock.json for attribution and raw hashes.
+
+Backstage Coding original factual curation, reviewed 2026-11-10:
+GamerBlurb Team, GamerBlurb (2026-11-06):
+https://gamerblurb.com/articles/how-to-get-to-thunder-bluff-from-orgrimmar-in-wow-forever
+Mrs. and Mr. Video Games, How To Video Game (2026-11-06):
+https://howtovideogame.com/wow-forever-thunder-bluff-get-to/
+Geekmandem, Method (2026-10-14, prelaunch general guidance):
+https://www.method.gg/wow-forever/all-travel-routes-in-wow-forever-boats-zeppelins
+Only small originally worded factual directions and citations are retained.
+No authored guide prose, maps, images or client Lua files are redistributed.
+Guide copyrights remain with their owners; no open guide license is asserted.
+These dated guides are not exact-build or player-availability observations.

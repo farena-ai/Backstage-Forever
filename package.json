@@ -46,6 +46,8 @@
     "test:party": "node scripts/party-smoke.cjs",
     "check:forever-vendors": "node scripts/build-forever-vendors.cjs --check",
     "check:forever-insights": "node scripts/build-forever-insights.cjs --check",
+    "check:forever-travel": "node scripts/build-forever-travel.cjs --check",
+    "test:travel": "node --test --test-concurrency=1 tests/travel-data.test.cjs tests/travel.test.cjs",
     "test:insights": "node scripts/insights-smoke.cjs",
     "test:character-guidance": "node scripts/character-guidance-smoke.cjs"
   },

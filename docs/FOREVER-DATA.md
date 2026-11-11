@@ -1,5 +1,7 @@
 # Your Forever quest reference
 
+The local unreleased travel reference is a separate bounded offline pack; see [travel guidance and evidence limits](TRAVEL-GUIDANCE.md). Its compiler/check does not modify this quest ledger, supplementary insights, seller pack or native addon waypoints.
+
 BF includes its quest reference. You do not need an AI connection, account signup or database download. Connect the game and load the companion addon. In-game guidance updates as you play outside combat; the desktop receives a saved snapshot on logout or game exit. Use a voluntary `/reload` when you want that desktop snapshot now or need to load an addon update. Routine progress does not require routine reloads.
 
 Quest Guide starts with your character's quests. Search locally by name or quest number to inspect reported chain links, givers, finishers, approximate observed locations and listed rewards. Reward choices mean choose one; they are separate from guaranteed items. Missing details stay unknown. A reported next-quest link does not establish every prerequisite or guarantee your character can accept it.

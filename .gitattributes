@@ -15,3 +15,6 @@ data/forever-insights/*.json text eol=lf
 data/forever-insights/LICENSE text eol=lf whitespace=-blank-at-eof
 data/forever-insights/NOTICE text eol=lf
 addon/BackstageForever/BackstageForeverReference.lua text eol=lf linguist-generated=true
+
+data/forever-travel/* text eol=lf
+data/forever-travel/LICENSE-CC-BY-4.0.txt text eol=lf whitespace=-blank-at-eof

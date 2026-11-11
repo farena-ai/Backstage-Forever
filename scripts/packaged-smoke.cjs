@@ -88,6 +88,10 @@ async function sourceFiles(folder, prefix = "src") {
       "data/forever-insights/source-lock.json",
       "data/forever-insights/NOTICE",
       "data/forever-insights/LICENSE",
+      "data/forever-travel/pack.json",
+      "data/forever-travel/source-lock.json",
+      "data/forever-travel/NOTICE",
+      "data/forever-travel/LICENSE-CC-BY-4.0.txt",
       "assets/update-public-key.pem",
     );
     const expected = await Promise.all(

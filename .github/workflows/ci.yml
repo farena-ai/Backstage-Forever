@@ -15,6 +15,7 @@ jobs:
       - run: npm run check:addon-reference
       - run: npm run check:forever-vendors
       - run: npm run check:forever-insights
+      - run: npm run check:forever-travel
       - run: npm test
       - run: npm run test:ui
       - run: npm run test:setup
