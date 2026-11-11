@@ -130,3 +130,5 @@ button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-
 }
 @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 body[data-paused="true"] *, body[data-paused="true"] *::before, body[data-paused="true"] *::after { animation-play-state: paused !important; }
+
+.roster-card > span { min-width:0; overflow-wrap:anywhere; }

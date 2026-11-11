@@ -1,5 +1,13 @@
 # Your Living Companion
 
+## Proactive Compass — local review, 1.0 held
+
+Adventure now recommends one useful next step and up to two alternatives: make room in nearly full bags, work on observed quests, attempt a learned skill-up-capable recipe with established carried materials, or check whether further profession training is available. **Adventure**, **Quests**, and **Professions** change the priorities. Unknown or partial inventory never means craft-ready, and skill-ups/output are never guaranteed. No bank/alt pooling, invented trainers, routes, prices or material sources are added.
+
+Inside WoW the Compass updates from permitted current capture events without AI or the desktop. **Not now** quietly dismisses that recommendation for its current facts; unrelated XP or capture timestamps do not bring it back. Relevant progress can resurface it. Dismissals are bounded to 20 entries for the current session and never complete quests. **Quest details** exposes the existing Focus and minutes/card-limit controls; **Less** folds them away. Hide, collapse, drag and `/bf show`, `/bf hide`, `/bf status` remain. Only an explicitly displayed supported quest step can offer a manual waypoint.
+
+On desktop, Adventure's Compass is explicitly **Last saved** and **No AI**. Its goal preference is independent of the in-game preference. Use **Review quest choices** for the detailed Director or **Open Preparation** for the existing material workshop under Plans. The five main navigation sections and all existing destinations remain. Native goal preferences survive addon updates; setup/repair owns six files and preserves unrelated addon files. This local increment keeps source display **0.12.3**; **1.0 and actual in-client acceptance remain held**.
+
 BF has two useful views of your adventure:
 
 - **Inside WoW:** Adventure Compass uses supported public game observations to update local guidance while you play, outside combat. No AI account or routine reload is needed for those changes.

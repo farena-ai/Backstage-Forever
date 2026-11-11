@@ -17,7 +17,7 @@ const { defaultState } = require("../src/core/validation.cjs");
   const root = await fs.realpath(os.tmpdir()),
     dir = await fs.mkdtemp(path.join(root, "forever-player-shell-"));
   let app;
-  const capture = path.join(
+  const capture = process.env.BF_SMOKE_CAPTURE_ROOT || path.join(
     __dirname,
     "..",
     ".superpowers",

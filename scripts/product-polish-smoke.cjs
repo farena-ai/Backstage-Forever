@@ -1,4 +1,5 @@
 "use strict";
+const { syntheticLaunch } = require("./synthetic-coach-bootstrap.cjs");
 const { navigate } = require("./player-navigation.cjs");
 // Actual Electron/main/preload/renderer with isolated synthetic state only.
 const { _electron: electron } = require("playwright");
@@ -8,7 +9,7 @@ const { testWindow } = require("./test-window.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
 (async () => {
   const data = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), "bf-product-polish-"));
-  const evidence = path.resolve("work/product-polish-ui");
+  const evidence = path.resolve(process.env.BF_SMOKE_CAPTURE_ROOT || "work/product-polish-ui");
   const failures = [], metrics = [], captures = [];
   let app;
   const check = async (name, run) => { try { await run(); console.log(`PASS ${name}`); } catch (error) { failures.push(`${name}: ${error.message}`); console.error(`FAIL ${name}: ${error.message}`); } };
@@ -18,7 +19,7 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
     await fs.mkdir(path.join(data, "knowledge-v1"));
     await fs.writeFile(path.join(data, "knowledge-v1/preferences.json"), JSON.stringify({ automatic: false, checked: {} }));
     await fs.writeFile(path.join(data, "state.json"), JSON.stringify({ ...defaultState(), onboarded: true, activeProfileId: "manual", profiles: [{ id: "manual", name: "Aeralyn", className: "Hunter", faction: "Alliance", level: 24, realm: "Fictional Realm", notes: "PRIVATE SYNTHETIC NOTE", goals: [] }] }));
-    app = await electron.launch({ args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: data }, timeout: 20000 });
+    app = await electron.launch({ args: [await syntheticLaunch(data)], env: { ...process.env, BF_USER_DATA: data }, timeout: 20000 });
     const page = await testWindow(app); page.setDefaultTimeout(4000);
     await app.evaluate(({ app, ipcMain }) => {
       const load = process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(), "package.json"));

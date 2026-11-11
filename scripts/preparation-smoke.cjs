@@ -1,4 +1,5 @@
 "use strict";
+const { syntheticLaunch } = require("./synthetic-coach-bootstrap.cjs");
 const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
@@ -28,7 +29,7 @@ function shortPath(target) {
     const write=()=>fs.writeFile(saved,"BackstageForeverExport = "+JSON.stringify(JSON.stringify({schema:1,observedAt:clock,activeId:characters[0].id,characters})));
     await write();
     const launch=async()=>{
-      app=await electron.launch({args:[path.join(__dirname,"..")],env:{...process.env,BF_USER_DATA:data},timeout:20000});
+      app=await electron.launch({args:[await syntheticLaunch(data)],env:{...process.env,BF_USER_DATA:data},timeout:20000});
       await app.evaluate(({app,dialog})=>{
         const load=process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(),"package.json"));
         globalThis.preparationUi={inference:0,launches:0,calls:0};
@@ -52,7 +53,7 @@ function shortPath(target) {
     await navigate(page, "preparation");await page.locator("[data-preparation-reagent]").first().waitFor();
     assert.match(await page.locator("[data-preparation]").innerText(),/Amber restorative/);
 
-    const evidence=path.resolve("work/v012-preparation-ui-evidence");await fs.mkdir(evidence,{recursive:true});
+    const evidence=path.resolve(process.env.BF_SMOKE_CAPTURE_ROOT || "work/v012-preparation-ui-evidence");await fs.mkdir(evidence,{recursive:true});
     const capture=async name=>{await page.locator("#toast.visible").waitFor({state:"hidden",timeout:8000});await page.evaluate(()=>{scrollTo(0,0);document.querySelector(".main")?.scrollTo(0,0);});await page.screenshot({path:path.join(evidence,`${process.argv.includes("--short-path")?"short-":""}${name}.png`),fullPage:true});};
     const state=async()=>(await page.evaluate(()=>window.backstage.bootstrap())).state;
     const untilMain=condition=>app.evaluate(async(_e,condition)=>{const end=Date.now()+6000;while(!Function(`return (${condition})`)()){if(Date.now()>end)throw Error("Fixture condition timed out: "+condition);await new Promise(r=>setTimeout(r,10));}},condition);

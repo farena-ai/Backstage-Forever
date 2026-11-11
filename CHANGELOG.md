@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased local review — proactive Compass, 2026-11-11
+
+- Added local native and last-saved desktop recommendations for bags, quests, qualified craft attempts and observed profession rank caps, with independent Adventure/Quests/Professions goals.
+- Added quiet signature-based native dismissal, guarded current-character callbacks and optional working quest details. Unknown, partial or stale material supply cannot claim readiness; individually valid learned recipes remain useful in partial observed catalogs.
+- Added the sixth owned addon module with install/repair coverage, strict read-only desktop IPC and a graphical Adventure coach using existing art and five-section navigation.
+- No capture/reference schema, public data pack, native command, provider or version change. Source remains 0.12.3; 1.0 and owner in-client acceptance are held. No release or installer was run.
+
 ## 0.12.3 — combined preview checkpoint, 2026-11-09
 
 - Hardened idle fixture selection preparation against real refreshes replacing a previously resolved element. Original current-field text/focus/caret and intentional held-node checks remain; the 0.12.2 app release was cancelled before publication and its tag is preserved.

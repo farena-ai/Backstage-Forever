@@ -1,6 +1,9 @@
 -- Native display and explicit waypoint clicks only; capture remains event driven.
 local panel,body,hint,actionTitle,actionSource,preparationLine,focusButton,sessionButton,waypointButton
-local latest,preparation,captureMessage,settings
+local goalButton,notNowButton,detailsButton,selectedCoach
+local questDetails=false
+local dismissed,dismissOrder={},{}
+local latest,ownerId,preparation,captureMessage,settings
 local visible,collapsed,active=true,false,false
 local epoch=0
 local anchors={TOPLEFT=true,TOP=true,TOPRIGHT=true,LEFT=true,CENTER=true,RIGHT=true,BOTTOMLEFT=true,BOTTOM=true,BOTTOMRIGHT=true}
@@ -32,6 +35,7 @@ end
 local function loadSettings()
     local saved=type(BackstageForeverHUDSettings)=='table' and BackstageForeverHUDSettings or {}
     settings={schemaVersion=1,visible=saved.visible~=false,collapsed=saved.collapsed==true,
+        mode=(saved.mode=='questing' or saved.mode=='professions') and saved.mode or 'adventure',
         focus=focuses[saved.focus] and saved.focus or 'balanced',minutes=(saved.minutes==15 or saved.minutes==30 or saved.minutes==60) and saved.minutes or 30}
     if anchors[saved.point] and anchors[saved.relativePoint] and finite(saved.x) and finite(saved.y) then
         settings.point=saved.point;settings.relativePoint=saved.relativePoint;settings.x=saved.x;settings.y=saved.y
@@ -68,9 +72,12 @@ local function sourceLabel(step)
     if alias then label=label..'; English reference: '..text(alias,48) end
     return label
 end
-local function update()
+local update
+update=function()
     if not panel then return end
     safe(preparationLine.SetText,preparationLine,'')
+    selectedCoach=nil
+    if notNowButton then safe(notNowButton.Disable,notNowButton);safe(notNowButton.SetScript,notNowButton,'OnClick',nil)end
     safe(waypointButton.Disable,waypointButton)
     safe(waypointButton.SetScript,waypointButton,'OnClick',nil)
     if combat() or not visible or not active then safe(panel.Hide,panel);return end
@@ -81,6 +88,47 @@ local function update()
         if not collapsed then
             local xp=latest.progress
             lines[#lines+1]=text(latest.location and latest.location.zone,70)..' | '..(xp and ('XP '..text(tostring(xp.current),12)..' / '..text(tostring(xp.max),12)) or 'XP unavailable')
+            local coach=safe(BackstageForeverBuildCoach,latest,{mode=settings.mode})
+            if type(coach)=='table' then
+                local opportunities={};if coach.recommendation then opportunities[1]=coach.recommendation end
+                for _,v in ipairs(coach.alternatives or {})do opportunities[#opportunities+1]=v end
+                local shown={};for _,v in ipairs(opportunities)do if dismissed[v.id]~=v.signature then shown[#shown+1]=v end end
+                selectedCoach=shown[1]
+                if selectedCoach then
+                    lines[#lines+1]='Next: '..text(selectedCoach.title,80)
+                    lines[#lines+1]=text(selectedCoach.reason,150)
+                    if not questDetails then lines[#lines+1]=text(selectedCoach.detail,170)end
+                    lines[#lines+1]='Evidence: '..(selectedCoach.questStep and sourceLabel(selectedCoach.questStep) or text(selectedCoach.evidence,100))
+                    if not questDetails then for i=2,math.min(3,#shown)do lines[#lines+1]='Or: '..text(shown[i].title,70)end end
+                    local step=selectedCoach.kind=='quest' and selectedCoach.questStep or nil
+                    local candidate=step and validCommand(step)
+                    if candidate and type(BackstageForeverGuide)=='function' then selected=step;command=candidate;stepIndex=1 end
+                    local clickEpoch,clickCharacter,chosen=epoch,latest,selectedCoach
+                    safe(notNowButton.SetScript,notNowButton,'OnClick',function()
+                        if not active or not visible or collapsed or combat() or epoch~=clickEpoch or latest~=clickCharacter or not selectedCoach or selectedCoach.id~=chosen.id or selectedCoach.signature~=chosen.signature then return end
+                        if not dismissed[chosen.id] then dismissOrder[#dismissOrder+1]=chosen.id end
+                        dismissed[chosen.id]=chosen.signature
+                        while #dismissOrder>20 do dismissed[table.remove(dismissOrder,1)]=nil end
+                        epoch=epoch+1;update()
+                    end)
+                    safe(notNowButton.Enable,notNowButton)
+                else
+                    lines[#lines+1]=#opportunities>0 and 'Quiet for now. Continue at your own pace.' or 'Play normally to observe a useful next step.'
+                    lines[#lines+1]='Open your own profession normally for recipe advice.'
+                end
+                if questDetails then
+                    local plan=safe(BackstageForeverBuildPlan,latest,{focus=settings.focus,minutes=settings.minutes})
+                    lines[#lines+1]='Quest details | Minutes limit cards, not an ETA.'
+                    selected=nil;command=nil;stepIndex=nil
+                    local cap=settings.minutes==15 and 1 or settings.minutes==60 and 3 or 2
+                    for i=1,cap do local step=type(plan)=='table' and type(plan.steps)=='table' and plan.steps[i] or nil;if not step then break end
+                        lines[#lines+1]=i..'. '..text(step.title,42)
+                        lines[#lines+1]=text(step.detail,46)
+                        local candidate=validCommand(step)
+                        if not selected and candidate and type(BackstageForeverGuide)=='function' then selected=step;command=candidate;stepIndex=i end
+                    end
+                end
+            else
             local plan=safe(BackstageForeverBuildPlan,latest,{focus=settings.focus,minutes=settings.minutes})
             if type(plan)=='table' and (plan.status=='ready' or plan.status=='empty') and type(plan.steps)=='table' then
                 lines[#lines+1]=text(plan.headline,88)
@@ -104,25 +152,34 @@ local function update()
                 lines[#lines+1]=#latest.quests..' observed quests | '..ready..' ready'
                 lines[#lines+1]='Live plan unavailable; check your quest log.'
             else lines[#lines+1]='Quest data unavailable' end
+            end
         end
     end
     if captureMessage then lines[#lines+1]=captureMessage end
     safe(body.SetText,body,table.concat(lines,'\n'))
     safe(body.ClearAllPoints,body)
-    safe(body.SetPoint,body,'TOPLEFT',14,collapsed and -35 or -66)
-    safe(body.SetHeight,body,collapsed and (captureMessage and 60 or 30) or 244)
+    safe(body.SetPoint,body,'TOPLEFT',14,collapsed and -35 or -94)
+    safe(body.SetHeight,body,collapsed and (captureMessage and 60 or 30) or 216)
     safe(panel.SetHeight,panel,collapsed and (captureMessage and 152 or 122) or 440)
+    safe(goalButton.SetText,goalButton,'Goal: '..({adventure='Adventure',questing='Quests',professions='Professions'})[settings.mode])
     safe(focusButton.SetText,focusButton,'Focus: '..settings.focus)
-    safe(sessionButton.SetText,sessionButton,settings.minutes..' min / '..(settings.minutes==15 and 1 or settings.minutes==60 and 3 or 2)..' cards')
-    for _,control in ipairs({focusButton,sessionButton,waypointButton,actionTitle,actionSource,preparationLine})do safe(collapsed and control.Hide or control.Show,control) end
+    safe(sessionButton.SetText,sessionButton,settings.minutes..'m / '..(settings.minutes==15 and 1 or settings.minutes==60 and 3 or 2)..' cards')
+    for _,control in ipairs({focusButton,sessionButton,goalButton,notNowButton,detailsButton,waypointButton,actionTitle,actionSource,preparationLine})do safe(collapsed and control.Hide or control.Show,control) end
+    if type(BackstageForeverBuildCoach)=='function' then
+        for _,control in ipairs({focusButton,sessionButton})do safe((collapsed or not questDetails) and control.Hide or control.Show,control)end
+        safe(detailsButton.SetText,detailsButton,questDetails and 'Less' or 'Quest details')
+        safe(detailsButton.SetPoint,detailsButton,'TOPLEFT',questDetails and 252 or 14,-64)
+        safe(detailsButton.SetSize,detailsButton,questDetails and 74 or 312,22)
+    else safe(detailsButton.Hide,detailsButton)end
     if preparation and not collapsed then safe(preparationLine.SetText,preparationLine,text(preparation.text,80)) end
     if selected and not collapsed then
         local qualifier=selected.source=='reference' and 'Approximate reference' or 'Current game'
         safe(actionTitle.SetText,actionTitle,'Step '..stepIndex..': '..text(selected.title,62))
         safe(actionSource.SetText,actionSource,qualifier..' — '..(selected.phase=='t' and 'turn-in' or 'objective'))
-        local clickEpoch,clickCharacter=epoch,latest
+        local clickEpoch,clickCharacter,clickCoach=epoch,latest,selectedCoach
         safe(waypointButton.SetScript,waypointButton,'OnClick',function()
-            if not active or epoch~=clickEpoch or latest~=clickCharacter or combat() or type(BackstageForeverGuide)~='function' then return end
+            if not active or not visible or collapsed or epoch~=clickEpoch or latest~=clickCharacter or combat() or type(BackstageForeverGuide)~='function' then return end
+            if clickCoach and (not selectedCoach or selectedCoach.id~=clickCoach.id or selectedCoach.signature~=clickCoach.signature)then return end
             safe(BackstageForeverGuide,command)
         end)
         safe(waypointButton.Enable,waypointButton)
@@ -133,19 +190,20 @@ local function update()
     safe(panel.Show,panel)
 end
 BackstageForeverHUDUpdate=function(character)
-    latest=character
+    if ownerId and character and ownerId~=character.id then epoch=epoch+1;dismissed={};dismissOrder={};questDetails=false end
+    latest=character;ownerId=character and character.id or ownerId
     preparation=safe(BackstageForeverBuildPreparation,character)
     update()
 end
 BackstageForeverHUDSession=function(event)
-    epoch=epoch+1;latest=nil;preparation=nil;captureMessage=nil
+    epoch=epoch+1;latest=nil;ownerId=nil;preparation=nil;captureMessage=nil;selectedCoach=nil;dismissed={};dismissOrder={};questDetails=false
     if preparationLine then safe(preparationLine.SetText,preparationLine,'') end
     active=event=='PLAYER_LOGIN'
     if not active and panel then safe(panel.Hide,panel) end
 end
 BackstageForeverHUDCaptureStatus=function(state)
     -- Status changes cannot revive facts from a previously successful capture.
-    if state=='unavailable' then preparation=nil end
+    if state=='unavailable' then epoch=epoch+1;latest=nil;preparation=nil;selectedCoach=nil end
     captureMessage=state=='partial' and 'Some public data is unavailable. Try again outside combat.'
         or state=='unavailable' and 'Snapshot unavailable. Try again outside combat.' or nil
     pcall(update)
@@ -189,12 +247,17 @@ local function initialize()
     hint:SetPoint('BOTTOMLEFT',14,13);hint:SetWidth(312);hint:SetJustifyH('LEFT')
     hint:SetText('Live in WoW | Desktop saves on logout / UI reload\nDrag title | X: hide | -: collapse | /bf show')
     local function button(name,x,width)
-        local control=CreateFrame('Button',name,panel,'UIPanelButtonTemplate');control:SetPoint('TOPLEFT',x,-36);control:SetSize(width,22);return control
+        local control=CreateFrame('Button',name,panel,'UIPanelButtonTemplate');control:SetPoint('TOPLEFT',x,-64);control:SetSize(width,22);return control
     end
-    focusButton=button('BackstageForeverCompassFocus',14,174)
-    focusButton:SetScript('OnClick',function()if active and not combat() then settings.focus=focuses[settings.focus] or 'balanced';save();update()end end)
-    sessionButton=button('BackstageForeverCompassSession',192,134)
-    sessionButton:SetScript('OnClick',function()if active and not combat() then settings.minutes=settings.minutes==15 and 30 or settings.minutes==30 and 60 or 15;save();update()end end)
+    goalButton=button('BackstageForeverCompassGoal',14,174);goalButton:SetPoint('TOPLEFT',14,-36)
+    goalButton:SetScript('OnClick',function()if active and not combat() then epoch=epoch+1;settings.mode=({adventure='questing',questing='professions',professions='adventure'})[settings.mode];save();update()end end)
+    notNowButton=button('BackstageForeverCompassNotNow',192,134);notNowButton:SetPoint('TOPLEFT',192,-36);notNowButton:SetText('Not now')
+    focusButton=button('BackstageForeverCompassFocus',14,126)
+    focusButton:SetScript('OnClick',function()if active and not combat() then epoch=epoch+1;settings.focus=focuses[settings.focus] or 'balanced';save();update()end end)
+    sessionButton=button('BackstageForeverCompassSession',144,104)
+    sessionButton:SetScript('OnClick',function()if active and not combat() then epoch=epoch+1;settings.minutes=settings.minutes==15 and 30 or settings.minutes==30 and 60 or 15;save();update()end end)
+    detailsButton=button('BackstageForeverCompassDetails',14,312)
+    detailsButton:SetScript('OnClick',function()if active and not combat()then epoch=epoch+1;questDetails=not questDetails;update()end end)
     -- Independent rows prevent a wide title from hiding the waypoint qualifier.
     local function actionRow(y)
         local row=panel:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
@@ -212,7 +275,7 @@ if type(CreateFrame)=='function' then
     for _,event in ipairs({'PLAYER_LOGIN','PLAYER_LOGOUT','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED'})do safe(events.RegisterEvent,events,event)end
     events:SetScript('OnEvent',function(_,event)
         if event=='PLAYER_LOGOUT' then BackstageForeverHUDSession(event);return end
-        if event=='PLAYER_REGEN_DISABLED' then if panel then safe(panel.Hide,panel)end;return end
+        if event=='PLAYER_REGEN_DISABLED' then epoch=epoch+1;if waypointButton then safe(waypointButton.SetScript,waypointButton,'OnClick',nil);safe(waypointButton.Disable,waypointButton)end;if notNowButton then safe(notNowButton.SetScript,notNowButton,'OnClick',nil)end;if panel then safe(panel.Hide,panel)end;return end
         if event=='PLAYER_LOGIN' then active=true;epoch=epoch+1;loadSettings()end
         pcall(initialize);pcall(update)
     end)

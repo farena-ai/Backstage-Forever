@@ -36,6 +36,7 @@ const { registerKnowledgeHandlers } = require("./core/knowledge-ipc.cjs");
 const { loadBundledInsights } = require("./core/insights-data.cjs");
 const { registerCharacterGuidanceHandlers } = require("./core/character-guidance-ipc.cjs");
 const { registerDirectorHandlers } = require("./core/director-ipc.cjs");
+const { registerAdventureCoachHandlers } = require("./core/adventure-coach-ipc.cjs");
 const { registerPreparationHandlers } = require("./core/preparation-ipc.cjs");
 const { registerPartyHandlers } = require("./core/party-ipc.cjs");
 const { CompanionRequest } = require("./core/companion-request.cjs");
@@ -308,6 +309,7 @@ app.whenReady().then(async () => {
     saveState: (next) => store.saveState(next),
     knowledge,
   });
+  registerAdventureCoachHandlers({ handle, getState: () => store.state, knowledge });
   registerPreparationHandlers({
     handle,
     getState: () => store.state,

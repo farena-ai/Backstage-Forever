@@ -7,5 +7,6 @@
 ## SavedVariablesPerCharacter: BackstageForeverHUDSettings
 BackstageForeverReference.lua
 BackstageForeverPlan.lua
+BackstageForeverCoach.lua
 BackstageForever.lua
 BackstageForeverHUD.lua

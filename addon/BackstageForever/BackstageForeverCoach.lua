@@ -1,0 +1,94 @@
+-- Pure advice from bounded public observations. No game actions or I/O.
+local function public(value)
+    if type(issecretvalue)=='function' then local ok,secret=pcall(issecretvalue,value);if not ok or secret then return nil end end
+    return value
+end
+local function field(value,key) value=public(value);if type(value)=='table' then return public(rawget(value,key)) end end
+local function number(value,min,max) value=public(value);if type(value)=='number' and value==value and value>=min and value<=max and value%1==0 then return value end end
+local function text(value,max) value=public(value);if type(value)=='string' and #value>0 and #value<=(max or 200) and not value:find('[%z\1-\31\127]') then return value end end
+local function copyFields(value,keys)
+    local out={};for _,key in ipairs(keys)do local v=field(value,key);if type(v)=='string' then out[key]=text(v,800) elseif type(v)=='boolean' then out[key]=v elseif type(v)=='number' and v==v and math.abs(v)<1e12 then out[key]=v end end;return out
+end
+local function point(value)return copyFields(value,{'mapId','x','y','text','zone'})end
+local function safeCharacter(raw)
+    local c=copyFields(raw,{'clientBuild','locale','level','updatedAt'})
+    c.location=point(field(raw,'location'))
+    local quests=field(raw,'quests')
+    if type(quests)=='table' then c.quests={};for i=1,25 do local q=field(quests,i);if q==nil then break end
+        local out=copyFields(q,{'id','title','complete','level','zone'});out.objectives={}
+        for j=1,10 do local o=field(field(q,'objectives'),j);if o==nil then break end;out.objectives[j]=copyFields(o,{'text','done','type','required','fulfilled'})end
+        if field(q,'destination')~=nil then out.destination=point(field(q,'destination'))end;c.quests[#c.quests+1]=out
+    end end
+    c.readiness={bags=copyFields(field(field(raw,'readiness'),'bags'),{'free','total'})};return c
+end
+local function stamp(value) return number(value,0,8640000000000) end
+local function collection(w,key,cap,now)
+    local c=field(w,key);local at=stamp(field(c,'observedAt'));local items=field(c,'items')
+    if not now or not at or at>now or type(items)~='table' or type(field(c,'complete'))~='boolean' or field(items,cap+1)~=nil then return nil end
+    return c
+end
+local function signature(id,values)
+    local out={id};for _,v in ipairs(values)do local s=tostring(v);out[#out+1]=#s..':'..s end;return table.concat(out,'|')
+end
+function BackstageForeverBuildCoach(character,options)
+    local mode=field(options,'mode');if mode~='questing' and mode~='professions' then mode='adventure'end
+    local result={version=1,status='unavailable',mode=mode,alternatives={},limitations={'Open your own profession normally to observe learned recipes and carried materials.','You choose every action; skill-ups and output are not guaranteed.','Advice covers observed recipes only; a partial catalog may omit other choices.'}}
+    if type(public(character))~='table' then return result end
+    local c=safeCharacter(character);local rows={}
+    local function add(rank,kind,identity,title,reason,detail,evidence,facts,extra)
+        local id=kind..':'..identity;local value={id=id,kind=kind,title=title,reason=reason,detail=detail,evidence=evidence,signature=signature(id,facts)}
+        for k,v in pairs(extra or {})do value[k]=v end
+        rows[#rows+1]={rank=rank,order=#rows+1,value=value}
+    end
+    local prep=BackstageForeverBuildPreparation(c)
+    if prep then add(mode=='questing' and 1 or 0,'bags','carried','Make room in your bags',prep.free..' of '..prep.total..' carried slots are free.','Review carried items before collecting more. Nothing is sold or deleted automatically.','Current game bags',{prep.free,prep.total}) end
+    local plan=BackstageForeverBuildPlan(c,{minutes=60})
+    for i,step in ipairs(plan.steps or {})do
+        local q;for _,v in ipairs(c.quests or {})do if v.id==step.questId then q=v;break end end
+        local actionable=step.source=='game' and step.destination~=nil
+        for _,o in ipairs(q and q.objectives or {})do if o.done==false and text(o.text) then actionable=true end end
+        local localQuest=actionable and q and q.zone and q.zone==c.location.zone or step.source=='game' and step.destination and step.destination.mapId==c.location.mapId
+        local rank=mode=='questing' and 0 or mode=='professions' and 3 or step.phase=='t' and 1 or localQuest and 2 or 4
+        local facts={step.questId,step.phase,step.title,step.detail,step.command or ''}
+        for _,o in ipairs(q and q.objectives or {})do for _,key in ipairs({'text','done','type','required','fulfilled'})do facts[#facts+1]=tostring(o[key])end end
+        add(rank,'quest',step.questId,step.title,step.reason,step.detail,step.source=='reference' and 'Approximate reference; verify quest details' or 'Current quest log',facts,{questStep=step})
+    end
+    local w=field(field(character,'readiness'),'workshop');local now=stamp(c.updatedAt)
+    local pc=collection(w,'professions',20,now);local rc=collection(w,'recipes',100,now);local mc=collection(w,'materials',256,now)
+    local owners,professionIds={},{};local ambiguous=false
+    for i=1,20 do local raw=field(field(pc,'items'),i);if raw==nil then break end
+        local id=number(field(raw,'skillLineId'),1,2147483647);local pid=number(field(raw,'professionId'),1,2147483647);local rank=number(field(raw,'rank'),0,10000);local max=number(field(raw,'maxRank'),0,10000);local name=text(field(raw,'name'))
+        if id and pid and rank and max and rank<=max and name and not owners[id] and not professionIds[pid] then owners[id]={id=id,pid=pid,rank=rank,max=max,name=name};professionIds[pid]=true else ambiguous=true end
+    end
+    local materials,materialOK={},mc and field(mc,'complete')==true and field(mc,'scope')=='bags-0-4'
+    for i=1,256 do local m=field(field(mc,'items'),i);if m==nil then break end
+        local id=number(field(m,'itemId'),1,2147483647);local count=number(field(m,'count'),1,1000000)
+        if not id or not count or materials[id] then materialOK=false else materials[id]=count end
+    end
+    local recipeIds,duplicate={},{}
+    for i=1,100 do local r=field(field(rc,'items'),i);if r==nil then break end;local id=number(field(r,'id'),1,2147483647);if id then if recipeIds[id] then duplicate[id]=true end;recipeIds[id]=true end end
+    if not ambiguous then
+        for i=1,100 do local r=field(field(rc,'items'),i);if r==nil then break end
+            local id=number(field(r,'id'),1,2147483647);local skill=number(field(r,'skillLineId'),1,2147483647);local owner=owners[skill];local name=text(field(r,'name'));local reagents=field(r,'reagents')
+            local ready=id and not duplicate[id] and owner and name and field(pc,'observedAt')<=field(rc,'observedAt') and field(r,'canSkillUp')==true and field(r,'reagentsKnown')==true and materialOK and field(mc,'observedAt')>=field(rc,'observedAt') and type(reagents)=='table' and field(reagents,1)~=nil and field(reagents,11)==nil
+            local facts,seen={},{}
+            if ready then
+                for j=1,10 do local reagent=field(reagents,j);if reagent==nil then break end
+                    local item=number(field(reagent,'itemId'),1,2147483647);local required=number(field(reagent,'required'),1,100000)
+                    if not item or not required or seen[item] or not materials[item] or materials[item]<required then ready=false;break end
+                    seen[item]=true;facts[#facts+1]={item,required,materials[item]}
+                end
+            end
+            if ready then table.sort(facts,function(a,b)return a[1]<b[1]end);local values={id,skill,owner.rank,owner.max};for _,f in ipairs(facts)do for _,v in ipairs(f)do values[#values+1]=v end end
+                add(mode=='questing' and 2 or mode=='professions' and 1 or 3,'craft-ready',id,'Try '..name,'Carried materials cover one learned skill-up-capable recipe attempt.','Materials ready for one craft attempt; skill-up and output are not guaranteed.','Learned recipe + complete fresh carried counts',values,{recipeId=id,professionId=owner.pid})
+            end
+        end
+        for id,o in pairs(owners)do if o.max>0 and o.rank==o.max then add(mode=='questing' and 3 or mode=='professions' and 2 or 5,'profession-cap',id,'Check '..o.name..' training',o.name..' is at its observed rank cap ('..o.rank..'/'..o.max..').','Check whether further training is available. A higher rank or accessible trainer is not established.','Current owned profession',{id,o.rank,o.max},{professionId=o.pid})end end
+    end
+    table.sort(rows,function(a,b)if a.rank~=b.rank then return a.rank<b.rank end;if a.value.kind=='quest' and b.value.kind=='quest' then return a.order<b.order end;return a.value.id<b.value.id end)
+    if mode=='questing' and #rows>3 then for i=4,#rows do if rows[i].value.kind=='bags' then rows[3]=rows[i];break end end end
+    result.status=#rows>0 and 'ready' or plan.status=='unavailable' and not pc and 'unavailable' or 'empty'
+    result.recommendation=rows[1] and rows[1].value or nil
+    for i=2,math.min(3,#rows)do result.alternatives[#result.alternatives+1]=rows[i].value end
+    return result
+end

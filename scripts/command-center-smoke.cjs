@@ -1,3 +1,4 @@
+const { syntheticLaunch } = require("./synthetic-coach-bootstrap.cjs");
 const { navigate } = require("./player-navigation.cjs");
 const fs = require('node:fs/promises'), os = require('node:os'), path = require('node:path'), assert = require('node:assert/strict');
 const { _electron: electron } = require('playwright');
@@ -18,7 +19,7 @@ const { testWindow } = require('./test-window.cjs');
     ];
     const write = async()=>fs.writeFile(file,'BackstageForeverExport = '+JSON.stringify(JSON.stringify({schema:1,activeId:characters[0].id,observedAt:Date.now()/1000,characters})));
     await write();
-    app = await electron.launch({args:[path.join(__dirname,'..')],env:{...process.env,BF_USER_DATA:data}});
+    app = await electron.launch({args:[await syntheticLaunch(data)],env:{...process.env,BF_USER_DATA:data}});
     page = await testWindow(app);
     await app.evaluate(({ipcMain})=>{globalThis.commandAIRequests=0;ipcMain.removeHandler('backstage:ask');ipcMain.handle('backstage:ask',()=>{globalThis.commandAIRequests++;throw Error('Fixture blocks inference');});});
     await page.evaluate(()=>localStorage.setItem('bf-setup-v4','complete'));
@@ -31,7 +32,7 @@ const { testWindow } = require('./test-window.cjs');
     nullSelection.state.followGameCharacter=false;
     await app.close();
     await fs.writeFile(path.join(data,'state.json'),JSON.stringify(nullSelection.state));
-    app = await electron.launch({args:[path.join(__dirname,'..')],env:{...process.env,BF_USER_DATA:data}});
+    app = await electron.launch({args:[await syntheticLaunch(data)],env:{...process.env,BF_USER_DATA:data}});
     page = await testWindow(app);
     await app.evaluate(({ipcMain})=>{globalThis.commandAIRequests=0;ipcMain.removeHandler('backstage:ask');ipcMain.handle('backstage:ask',()=>{globalThis.commandAIRequests++;throw Error('Fixture blocks inference');});});
     await page.getByRole('heading',{name:'Aeralyn',exact:true}).waitFor({timeout:5000});
@@ -53,6 +54,7 @@ const { testWindow } = require('./test-window.cjs');
     await page.evaluate(s=>window.backstage.saveState(s),privateState.state);
     await page.reload();
     await page.getByRole('heading',{name:'Aeralyn',exact:true}).waitFor();
+    await page.evaluate(()=>PlayerNavigation.reveal(root,'coach-quest-plan'));
     await page.getByLabel('Session length',{exact:true}).selectOption('15');
     await page.waitForFunction(()=>document.querySelectorAll('.guidance-step').length===3);
     assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('aria-label')),'Session length','Automatic planning must preserve keyboard focus on the preference control');
@@ -75,6 +77,7 @@ const { testWindow } = require('./test-window.cjs');
     assert.equal(await page.getByLabel('Session length',{exact:true}).inputValue(),'15');
     assert.equal(await page.getByLabel('Quest focus',{exact:true}).inputValue(),'turn-ins');
     await page.reload();
+    await page.evaluate(()=>PlayerNavigation.reveal(root,'coach-quest-plan'));
     await page.getByLabel('Session length',{exact:true}).waitFor();
     assert.equal(await page.getByLabel('Session length',{exact:true}).inputValue(),'15');
     assert.equal(await page.getByLabel('Quest focus',{exact:true}).inputValue(),'turn-ins');
@@ -90,8 +93,9 @@ const { testWindow } = require('./test-window.cjs');
     await page.evaluate(()=>scrollTo(0,0));
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Compact layout must not scroll horizontally');
     assert.ok(await page.locator('.command-hero').evaluate(node=>node.getBoundingClientRect().height<=230),'Compact hero must leave room for the actual next steps');
-    assert.ok(await page.locator('[data-director-primary] h3').evaluate(node=>node.getBoundingClientRect().bottom<=innerHeight),'The primary Director action title must be readable in the compact first screen');
+    assert.ok(await page.locator('[data-coach-action]').evaluate(node=>{const r=node.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}),'The proactive next action must be readable in the compact first screen');
     await page.emulateMedia({reducedMotion:'reduce'});
+    await page.evaluate(()=>PlayerNavigation.reveal(root,'coach-quest-plan'));
     await page.getByLabel('Session length',{exact:true}).selectOption('30');
     await page.getByLabel('Quest focus',{exact:true}).selectOption('balanced');
     const before=await page.getByRole('region',{name:'Your next steps',exact:true}).innerText();
@@ -113,6 +117,7 @@ const { testWindow } = require('./test-window.cjs');
         return result;
       });
     });
+    await page.evaluate(()=>PlayerNavigation.reveal(root,'coach-quest-plan'));
     await page.getByLabel('Session length',{exact:true}).selectOption('60');
     await app.evaluate(async()=>{
       const deadline=Date.now()+5000;
@@ -121,6 +126,7 @@ const { testWindow } = require('./test-window.cjs');
         await new Promise(resolve=>setTimeout(resolve,10));
       }
     });
+    await page.evaluate(()=>PlayerNavigation.reveal(root,'coach-quest-plan'));
     await page.getByLabel('Session length',{exact:true}).selectOption('15');
     await app.evaluate(()=>globalThis.commandDelayedResponse);
     await page.waitForFunction(()=>document.querySelectorAll('.guidance-step').length===3);
@@ -162,6 +168,7 @@ const { testWindow } = require('./test-window.cjs');
         return result;
       });
     },backupFile);
+    await page.evaluate(()=>PlayerNavigation.reveal(root,'coach-quest-plan'));
     await page.getByLabel('Session length',{exact:true}).selectOption('60');
     await app.evaluate(async()=>{
       const deadline=Date.now()+5000;
@@ -220,7 +227,7 @@ const { testWindow } = require('./test-window.cjs');
     assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('bf-guidance-v1:')).length),0,'Reset must remove per-character planning preferences');
     console.log('PASS: automatic source-backed plans, session/focus autosave, character isolation, restart persistence, explicit AI draft without inference, compact/reduced-motion layout and import replanning. Synthetic profiles only.');
   } catch(error) {
-    if(page) { await fs.mkdir(path.join(__dirname,'../work'),{recursive:true});await page.screenshot({path:path.join(__dirname,'../work/command-center-failure.png')}).catch(()=>{}); }
+    if(page) { await fs.mkdir(path.join(__dirname,'../work'),{recursive:true});await page.screenshot({path:path.join(process.env.BF_SMOKE_CAPTURE_ROOT || path.join(__dirname,'../work'),'command-center-failure.png')}).catch(()=>{}); }
     throw error;
   } finally {
     if(app) await app.evaluate(()=>{globalThis.commandRestoreRelease?.();globalThis.commandSnapshotRelease?.();}).catch(()=>{});

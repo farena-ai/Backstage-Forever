@@ -274,7 +274,7 @@ test("failed snapshot consumer is retried instead of acknowledged", async (t) =>
   await sync.refresh();
   assert.equal(calls, 2);
 });
-test("managed prepare repairs five owned files, keeps extras, and reports snapshot health", async (t) => {
+test("managed prepare repairs six owned files, keeps extras, and reports snapshot health", async (t) => {
   const f = await fixture(t),
     addon = path.join(f.dir, "source");
   await fs.mkdir(addon);
@@ -282,6 +282,7 @@ test("managed prepare repairs five owned files, keeps extras, and reports snapsh
     "BackstageForever.toc",
     "BackstageForeverReference.lua",
     "BackstageForeverPlan.lua",
+    "BackstageForeverCoach.lua",
     "BackstageForever.lua",
     "BackstageForeverHUD.lua",
   ];
@@ -342,7 +343,7 @@ test("managed prepare repairs five owned files, keeps extras, and reports snapsh
 
 test("installer stages all resources, commits TOC last and rolls back a failed commit", async (t) => {
   const f = await fixture(t), addon = path.join(f.dir, "source");
-  const files = ['BackstageForever.toc','BackstageForeverReference.lua','BackstageForeverPlan.lua','BackstageForever.lua','BackstageForeverHUD.lua'];
+  const files = ['BackstageForever.toc','BackstageForeverReference.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForever.lua','BackstageForeverHUD.lua'];
   await fs.mkdir(addon);
   for (const file of files) await fs.writeFile(path.join(addon,file), file.endsWith('.toc')?'## Version: old\n':'old '+file);
   const sync = new GameSync({dataDir:path.join(f.dir,'data'),addonDir:addon}); t.after(()=>sync.close());
@@ -392,6 +393,7 @@ test("prepare accepts installation parent and missing account exports are needs-
     "BackstageForever.toc",
     "BackstageForeverReference.lua",
     "BackstageForeverPlan.lua",
+    "BackstageForeverCoach.lua",
     "BackstageForever.lua",
     "BackstageForeverHUD.lua",
   ])
@@ -532,4 +534,15 @@ test("never-saved client without an Account directory remains quietly prepared",
   const sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:path.join(__dirname,"../addon/BackstageForever"),onSnapshot:()=>assert.fail("unexpected snapshot")});t.after(()=>sync.close());
   const status=await sync.prepare(f.root);
   assert.equal(status.addonCurrent,true);assert.equal(status.companionState,"prepared");assert.equal(status.nextAction.id,"play");assert.equal(status.coverage.partial,false);assert.equal(status.coverage.unreadableAccountCount,0);assert.equal(status.characterCount,0);
+});
+
+test("connected startup repairs the actual sixth coach module and preserves foreign addon content", async t => {
+ const f=await fixture(t),addon=path.join(__dirname,"../addon/BackstageForever"),dataDir=path.join(f.dir,"data");
+ const initial=new GameSync({dataDir,addonDir:addon});await initial.prepare(f.root);initial.close();
+ const folder=path.join(f.root,"Interface/AddOns/BackstageForever");
+ await fs.writeFile(path.join(folder,"foreign-owner.lua"),"owner data");await fs.unlink(path.join(folder,"BackstageForeverCoach.lua"));
+ const restored=new GameSync({dataDir,addonDir:addon});t.after(()=>restored.close());await restored.ready;
+ assert.equal(restored.status().addonCurrent,true);
+ assert.equal(await fs.readFile(path.join(folder,"BackstageForeverCoach.lua"),"utf8"),await fs.readFile(path.join(addon,"BackstageForeverCoach.lua"),"utf8"));
+ assert.equal(await fs.readFile(path.join(folder,"foreign-owner.lua"),"utf8"),"owner data");
 });

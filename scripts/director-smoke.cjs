@@ -1,4 +1,5 @@
 "use strict";
+const { syntheticLaunch } = require("./synthetic-coach-bootstrap.cjs");
 const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
@@ -27,7 +28,7 @@ function shortPath(target) {
     const write=()=>fs.writeFile(saved,"BackstageForeverExport = "+JSON.stringify(JSON.stringify({schema:1,observedAt:clock,activeId:characters[0].id,characters})));
     await write();
     const launch=async()=>{
-      app=await electron.launch({args:[path.join(__dirname,"..")],env:{...process.env,BF_USER_DATA:data},timeout:20000});
+      app=await electron.launch({args:[await syntheticLaunch(data)],env:{...process.env,BF_USER_DATA:data},timeout:20000});
       await app.evaluate(({app,dialog})=>{
         const load=process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(),"package.json"));
         globalThis.directorUi={inference:0,launches:0,calls:0};
@@ -43,11 +44,14 @@ function shortPath(target) {
     await launch();await page.evaluate(root=>window.backstage.prepareGame(root),game);await page.reload();
     await page.getByRole("heading",{name:"Aeralyn",exact:true}).waitFor();
     await page.locator(".companion-dock").waitFor({state:"hidden"});
-    const evidence=path.resolve("work/v09-ui-evidence");await fs.mkdir(evidence,{recursive:true});
+    const evidence=path.resolve(process.env.BF_SMOKE_CAPTURE_ROOT || "work/v09-ui-evidence");await fs.mkdir(evidence,{recursive:true});
     const capture=async name=>page.screenshot({path:path.join(evidence,`${process.argv.includes("--short-path")?"short-":""}${name}.png`)});
     const savedState=async()=>(await page.evaluate(()=>window.backstage.bootstrap())).state;
     const untilMain=condition=>app.evaluate(async(_electron,condition)=>{const end=Date.now()+6000;while(!Function(`return (${condition})`)()){if(Date.now()>end)throw Error("Fixture condition timed out: "+condition);await new Promise(r=>setTimeout(r,10));}},condition);
-    const adventure=async()=>{await page.getByRole("button",{name:"Adventure",exact:true}).click();await page.locator("[data-director-primary]").waitFor();};
+    const expandDirector=async()=>{const disclosure=page.locator('[data-player-tool="coach-quest-plan"]');if(!await disclosure.evaluate(n=>n.open))await disclosure.locator(':scope > summary').click();};
+    const adventure=async()=>{await page.getByRole("button",{name:"Adventure",exact:true}).click();await expandDirector();await page.locator("[data-director-primary]").waitFor();};
+    assert.equal(await page.locator('[data-director]').isVisible(),false,'Detailed Director starts folded');
+    await expandDirector();
     // RED: these assertions require the real Director view and physical action.
     assert.equal(await page.locator("[data-director-choice]").count(),3,"Director must expose primary and two alternatives");
     assert.match(await page.locator("[data-director-primary]").innerText(),/Return the scout/);
@@ -57,7 +61,8 @@ function shortPath(target) {
     await page.evaluate(()=>{scrollTo(0,0);document.querySelector(".main")?.scrollTo(0,0);});
     const primary=page.getByRole("button",{name:"Start quest session",exact:true});
     await capture("compact-red");
-    assert.ok(await primary.evaluate(node=>{const r=node.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}),"Start quest session must be inside the native compact first viewport");
+    assert.ok(await page.locator("[data-coach-action]").evaluate(node=>{const r=node.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}),"Proactive next action must be inside the native compact first viewport");
+    await primary.scrollIntoViewIfNeeded();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await page.emulateMedia({reducedMotion:"reduce"});
     assert.equal(await primary.evaluate(n=>getComputedStyle(n).animationName),"none");
@@ -199,7 +204,7 @@ function shortPath(target) {
     await page.waitForFunction(()=>document.querySelector('[aria-current="page"]')?.dataset.nav==="guide");
     assert.equal(await page.locator("[data-company]").count(),0,"Late accepted session cannot jump back over explicit navigation");
     // Actual restart retains sessions and options; starting again reuses the exact baseline.
-    await app.close();app=null;await launch();await page.getByRole("heading",{name:"Aeralyn",exact:true}).waitFor();
+    await app.close();app=null;await launch();await page.getByRole("heading",{name:"Aeralyn",exact:true}).waitFor();await expandDirector();
     await page.getByRole("button",{name:"Start quest session",exact:true}).click();await page.locator("[data-company-journey]").first().waitFor();
     assert.equal((await savedState()).journeys.length,2);assert.match(await page.getByRole("status").innerText(),/existing quest session/);
     // A deliberate import replaces the same profile ID and all Director evidence.
@@ -215,7 +220,7 @@ function shortPath(target) {
     await navigate(page, "guide");await page.getByRole("button",{name:"Delete all local data",exact:true}).click();
     await page.getByRole("status").filter({hasText:"Local data and saved keys deleted."}).waitFor();assert.deepEqual((await savedState()).profiles,[]);
     await page.getByRole("button",{name:"Plan without a character",exact:true}).click();
-    await page.getByRole("button",{name:"Adventure",exact:true}).click();await page.locator("[data-director]").waitFor();
+    await page.getByRole("button",{name:"Adventure",exact:true}).click();await expandDirector();await page.locator("[data-director]").waitFor();
     assert.equal(await page.getByRole("button",{name:"Start quest session",exact:true}).isDisabled(),true);
     assert.equal(await page.getByRole("button",{name:"Open Company · plan manually →",exact:true}).count(),1);
     await page.locator("[data-director]").scrollIntoViewIfNeeded();await capture("no-characters");

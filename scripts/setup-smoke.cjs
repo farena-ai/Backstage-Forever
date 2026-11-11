@@ -67,6 +67,7 @@ const { testWindow } = require("./test-window.cjs");
       "BackstageForever.toc",
       "BackstageForeverReference.lua",
       "BackstageForeverPlan.lua",
+      "BackstageForeverCoach.lua",
       "BackstageForever.lua",
       "BackstageForeverHUD.lua",
     ])
