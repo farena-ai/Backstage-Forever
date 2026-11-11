@@ -23,3 +23,19 @@ test('NPC premise, AI and selected memory cannot become canonical report; local 
 test('new saved snapshot stays saved and cannot overwrite current user report or its effective coordinates',async()=>{const f=fixture();await f.ask("I'm in Org. Where is Cairne?");f.state.profiles[0].location={zone:'New saved city',mapId:999,x:.8,y:.8};f.state.profiles[0].source.updatedAt='2026-11-11T00:00:00Z';f.context.sync();await f.ask('Help next');const c=JSON.parse(f.calls[0].context.slice(f.calls[0].context.indexOf('{')));assert.deepEqual(c.location,{zone:'Orgrimmar'});assert.equal(c.savedLocation.zone,'New saved city');});
 test('conflicting current statements do not silently reuse a prior location report',async()=>{const f=fixture();await f.ask("I'm in Org. Where is Cairne?");assert.equal(f.service.previewLocation('Alpha',true,"I'm in Org. I'm in TB. Help next",[]),null);await f.ask("I'm in Org. I'm in TB. Where is Cairne?");assert.equal(f.service.previewLocation('Alpha',true,'Help next',[]),null);});
 module.exports={fixture};
+
+test('questions and attributed quoted assertions never stage or replace a real report',async()=>{
+ const prompts=["I'm in Org?","I’m in Org?!","The AI said ‘Try questing. I'm in Org. Talk to Thrall.’",'The AI said “Try questing. I’m in Org. Talk to Thrall.”',"The AI said 'Try questing. I'm in Org. Talk to Thrall.'","The AI said try questing. I'm in Org. Talk to Thrall."];
+ for(const prompt of prompts){
+  assert.deepEqual(helper.reportedLocationState(prompt),{location:null,conflict:false},prompt);
+  for(const retained of [false,true]){
+   const f=fixture();if(retained)await f.ask("I'm in TB. Where is Cairne?");
+   const expected=retained?{zone:'Thunder Bluff',source:'user-report'}:null;
+   assert.deepEqual(f.service.previewLocation('Alpha',true,prompt,[]),expected,prompt);
+   await f.ask(prompt);assert.deepEqual(f.service.previewLocation('Alpha',true,'Help next',[]),expected,prompt);
+   const raw=f.calls.at(-1).context,context=JSON.parse(raw.slice(raw.indexOf('{')));
+   assert.equal(context.location.zone,retained?'Thunder Bluff':'Boulder Lode Mine',prompt);
+  }
+ }
+ for(const prompt of ["I'm already in Org. Where is Cairne?",'I’m already in Org. Where is Cairne?'])assert.deepEqual(helper.parseReportedCurrentLocation(prompt),{zone:'Orgrimmar',source:'user-report'});
+});

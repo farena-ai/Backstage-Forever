@@ -56,9 +56,50 @@ const {defaultState}=require('../src/core/validation.cjs'),{testWindow}=require(
    await page.getByLabel('Use my active character',{exact:true}).check();await send("I'm in Org. Where is Cairne?");
    await page.getByLabel('Active character',{exact:true}).selectOption('Beta');await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await field.fill('Help me plan my next quest');await page.waitForFunction(()=>document.querySelector('[data-context-body] pre')?.textContent.includes('saved-snapshot'));assert.equal(JSON.parse(await preview().textContent()).location.zone,'Boulder Lode Mine');
    await call('saveProvider',{provider:'ollama',model:'fixture',endpoint:'http://127.0.0.1:11434',authMode:'api'});await page.reload();await navigate(page,'assistant');await send("I'm in Org. Help me plan my next quest");const sent=await app.evaluate(()=>npcFixture.calls.at(-1).context);assert.match(sent,/user-report/);assert.equal(JSON.parse(sent.slice(sent.indexOf('{'))).location.zone,'Orgrimmar');assert.doesNotMatch(sent,/PRIVATE_/);
+   // Hold actual IPC boundaries, preserving the unchanged physical draft. Old
+   // previews are deliberately released while main still owns the old report.
+   await app.evaluate(({ipcMain})=>{
+    const handlers=ipcMain._invokeHandlers,clear=handlers.get('backstage:clearConversation'),preview=handlers.get('backstage:contextPreview');
+    npcFixture.previewCalls=[];npcFixture.clearCalls=0;
+    handlers.set('backstage:clearConversation',async(...args)=>{npcFixture.clearCalls++;if(npcFixture.holdClear)await new Promise(r=>npcFixture.releaseClear=r);return clear(...args);});
+    handlers.set('backstage:contextPreview',async(...args)=>{const value=await preview(...args);npcFixture.previewCalls.push({args:args.slice(1),value});if(npcFixture.holdPreview){npcFixture.holdPreview=false;await new Promise(r=>npcFixture.releasePreview=r);}return value;});
+   });
+   const clearEvidence=[];
+   for(const late of [false,true]){
+    await send("I'm in Org. Where is Cairne?");const unchanged='Help me plan my next quest';await field.fill(unchanged);
+    await page.waitForFunction(()=>document.querySelector('[data-context-body] pre')?.textContent.includes('"locationSource": "user-report"'));
+    const before=await app.evaluate(()=>({previews:npcFixture.previewCalls.length,clears:npcFixture.clearCalls}));
+    if(late){await app.evaluate(()=>npcFixture.holdPreview=true);await page.evaluate(()=>{window.npcOldPreview=QuestGuide.updateContext(true);});await app.evaluate(async()=>{const end=Date.now()+4000;while(!npcFixture.releasePreview){if(Date.now()>end)throw Error('Old preview not held');await new Promise(r=>setTimeout(r,10));}});}
+    await app.evaluate(()=>{npcFixture.holdClear=true;});
+    await page.getByRole('button',{name:'Clear conversation',exact:true}).click();
+    await app.evaluate(async(_e,before)=>{const end=Date.now()+4000;while(npcFixture.clearCalls===before){if(Date.now()>end)throw Error('Clear was not admitted');await new Promise(r=>setTimeout(r,10));}},before.clears);
+    await page.waitForFunction(()=>document.querySelector('[data-context-body]')?.textContent.includes('Opening the public context preview'));
+    assert.equal(await field.inputValue(),unchanged);
+    // The actual Clear click has repainted the conversation. Refocus its
+    // unchanged draft, then hold physical input across preview completions.
+    await field.focus();await field.evaluate(n=>n.setSelectionRange(3,8));
+    await field.evaluate(n=>{window.npcClearDraftNode=n;window.npcClearPaints=[];window.npcClearObserver=new MutationObserver(()=>npcClearPaints.push(document.querySelector('[data-context-body]')?.textContent||''));npcClearObserver.observe(document.querySelector('[data-context-body]'),{childList:true,subtree:true,characterData:true});});
+    await page.keyboard.down('Shift');
+    try{
+     if(late){await app.evaluate(()=>{npcFixture.releasePreview();delete npcFixture.releasePreview;});await page.evaluate(()=>npcOldPreview);}
+     assert.doesNotMatch(await page.locator('[data-context-body]').innerText(),/Orgrimmar|user-report/);
+     assert.equal(await app.evaluate(()=>npcFixture.previewCalls.length),before.previews+(late?1:0),'new preview must await held clear, with no cache reuse or premature IPC');
+     await page.screenshot({path:path.join(capture,`npc-clear-${late?'late':'cached'}-held.png`),fullPage:true});
+     await app.evaluate(()=>{npcFixture.holdClear=false;npcFixture.releaseClear();delete npcFixture.releaseClear;});
+     await page.waitForFunction(()=>document.querySelector('[data-context-body] pre')?.textContent.includes('"locationSource": "saved-snapshot"'));
+     const exactPreview=JSON.parse(await preview().textContent());assert.equal(exactPreview.location.zone,'Boulder Lode Mine');
+     assert.deepEqual(await field.evaluate(n=>[n===npcClearDraftNode,n.isConnected,document.activeElement===n,n.selectionStart,n.selectionEnd,n.value]),[true,true,true,3,8,unchanged]);
+     assert.equal(await page.evaluate(()=>npcClearPaints.some(text=>/Orgrimmar|user-report/.test(text))),false,'no stale old paint during held clear');
+     await page.evaluate(()=>npcClearObserver.disconnect());
+     await page.screenshot({path:path.join(capture,`npc-clear-${late?'late':'cached'}-resolved.png`),fullPage:true});
+     clearEvidence.push({late,preview:exactPreview,draft:unchanged,caret:[3,8],physicalNodePreserved:true});
+    }finally{await page.keyboard.up('Shift');}
+    await send(unchanged);const raw=await app.evaluate(()=>npcFixture.calls.at(-1).context),actual=JSON.parse(raw.slice(raw.indexOf('{')));assert.deepEqual(actual,clearEvidence.at(-1).preview,'new conversation preview equals next actual send');clearEvidence.at(-1).sent=actual;
+   }
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.equal(await app.evaluate(()=>npcFixture.external),0);
+   await fs.writeFile(path.join(capture,'clear-evidence.json'),JSON.stringify(clearEvidence,null,2));
    await fs.writeFile(path.join(capture,'evidence.json'),JSON.stringify(await app.evaluate(()=>({calls:npcFixture.calls.map(r=>({prompt:r.prompt,context:r.context})),receipts:npcFixture.receipts.map(r=>({prompt:r.input.prompt,kind:r.result?.kind,status:r.result?.npc?.status})),external:npcFixture.external})),null,2));
   }finally{clearTimeout(watchdog);if(app)await app.close().catch(()=>{});const real=await fs.realpath(dir);assert.equal(path.dirname(real).toLowerCase(),root.toLowerCase());assert.ok(path.basename(real).startsWith('forever-npc-fixture-'));await fs.rm(real,{recursive:true,force:true});}
  }
- console.log('NPC actual Electron PASS: historical Cairne, local/no-provider, current-report preview/send, sharing/owner boundaries, repeats, ambiguity, unknown, corrupt bundle, compact layout and caret. Captures: '+capture);
+ console.log('NPC actual Electron PASS: historical Cairne, local/no-provider, current-report preview/send, held clear with cached/late previews, exact next-send parity, physical draft/caret, sharing/owner boundaries, repeats, ambiguity, unknown, corrupt bundle and compact layout. Captures: '+capture);
 })().catch(e=>{console.error(e);process.exitCode=1;});

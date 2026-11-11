@@ -3,10 +3,14 @@ const {CITIES}=require('./travel-sources.cjs');
 const aliases=new Map(CITIES.flatMap(([,name,list])=>list.map(alias=>[alias,name])));
 function validReport(value){return value&&value.source==='user-report'&&[...aliases.values()].includes(value.zone)?{zone:value.zone,source:'user-report'}:null;}
 function reportedLocationState(prompt){
- if(typeof prompt!=='string'||prompt.length>12000||/[`">]/.test(prompt))return {location:null,conflict:false};
+ // Only apostrophes inside words are spelling, rather than possible quoted prose.
+ if(typeof prompt!=='string'||prompt.length>12000||/[`">“”]/.test(prompt)||/(?<![\p{L}\p{N}])['‘’]|['‘’](?![\p{L}\p{N}])/u.test(prompt))return {location:null,conflict:false};
  const reports=[];
- for(const sentence of prompt.replace(/[’‘]/g,"'").split(/[.!?]\s*/)){
-  const match=sentence.trim().match(/^(?:no[,!]\s*)?i(?:'m|\s+am)\s+(?:(?:now|already|currently)\s+)?(?:in|at)\s+(.+?)\s*$/i);if(!match)continue;
+ for(const sentence of prompt.replace(/[’‘]/g,"'").match(/[^.!?]+(?:[.!?]+|$)/g)||[]){
+  // Preserve question punctuation until assertion classification. Stop at prose
+  // so an attributed passage cannot introduce a later first-person assertion.
+  if(sentence.includes('?'))break;
+  const match=sentence.replace(/[.!]+$/,'').trim().match(/^(?:no[,!]\s*)?i(?:'m|\s+am)\s+(?:(?:now|already|currently)\s+)?(?:in|at)\s+(.+?)\s*$/i);if(!match)break;
   const value=match[1].toLowerCase().replace(/[,;]\s*not\b.*$/,'').replace(/\s+(?:now|already|currently)$/,'').replace(/[,;]$/,'').trim();
   const zone=aliases.get(value);if(zone)reports.push(zone);
  }

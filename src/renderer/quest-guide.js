@@ -437,6 +437,14 @@ window.QuestGuide = (() => {
         ? `<details><summary>Review public character & source facts</summary><pre>${esc(JSON.stringify(value, null, 2))}</pre></details>`
         : "<p>No character context will be sent with this question.</p>";
   }
+  function invalidateContext() {
+    contextRequest++;
+    clearTimeout(contextTimer);
+    contextKey = "";
+    contextResolvedKey = "";
+    contextValue = null;
+    paintContext(null, "Opening the public context preview…");
+  }
   async function updateContext(force = false) {
     if (!root.querySelector("[data-context-body]")) return;
     const prompt =
@@ -506,6 +514,7 @@ window.QuestGuide = (() => {
     statusMarkup,
     contextMarkup,
     updateContext,
+    invalidateContext,
     open, beginRender,endRender,deferRender:callback=>guard?.defer(callback,"root")||false,
   };
 })();

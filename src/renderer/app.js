@@ -918,6 +918,7 @@ function retireCompanion(notify = true, preserveMemory = false) {
   }
 }
 function resetConversationView(preserveMemory = false, preserveRecovery = false) {
+  QuestGuide.invalidateContext();
   const recovery = !sending && preserveRecovery ? questionRecovery : null;
   retireCompanion(false, preserveMemory);
   questionRecovery = recovery;
