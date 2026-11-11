@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.1 — first published tool-using AI and live game link preview, 2026-11-11
+
+- Live-link UI check verifies the Companion side panel line by content, because narrow CI windows hide that panel. No app change. The unpublished 0.14.0 tag is preserved.
+- App/lock, TOC and capture metadata align at 0.14.1 preview.
+
 ## 0.14.0 — tool-using AI and live game link, 2026-11-11
 
 - AI questions can call seven bounded, read-only local lookups (NPCs, quests with objective NPC locations, items/vendors, travel, approved character, live state, waypoint command) across every provider transport, with a lookup trail on each answer. Models that reject tools get one plain retry on the same provider and model.

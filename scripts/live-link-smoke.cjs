@@ -47,8 +47,13 @@ const { defaultState } = require("../src/core/validation.cjs");
     });
     await page.locator("[data-live-link-line]").getByText("Live · Thunder Bluff 55.1, 50.2 · level 12 · target NPC #3057").waitFor();
     await page.screenshot({ path: path.join(capture, "live-link-settings.png") });
+    // Match narrow CI windows, where the Companion side panel collapses.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1024, 720));
     await navigate(page, "assistant");
-    await page.locator(".companion-intel [data-live-link-line]").getByText(/Live · Thunder Bluff/).waitFor({ timeout: 5000 });
+    // The side panel may be collapsed by the responsive layout on narrow windows; check its content.
+    const intel = page.locator(".companion-intel [data-live-link-line]");
+    await intel.waitFor({ state: "attached", timeout: 5000 });
+    await page.waitForFunction(() => /Live · Thunder Bluff/.test(document.querySelector(".companion-intel [data-live-link-line]")?.textContent || ""), null, { timeout: 5000 });
     await page.screenshot({ path: path.join(capture, "live-link-companion.png") });
     await navigate(page, "game");
     await page.locator("#live-link-toggle").uncheck();
