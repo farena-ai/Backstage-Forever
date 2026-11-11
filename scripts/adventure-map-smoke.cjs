@@ -129,14 +129,14 @@ const { _electron: electron } = require("playwright"),
         .getByRole("navigation", { name: "Main navigation", exact: true })
         .getByRole("button")
         .count(),
-      5,
+      6,
     );
     assert.equal(
       await page
         .getByRole("navigation", { name: "Adventure navigation", exact: true })
         .getByRole("button")
         .count(),
-      3,
+      4,
     );
     assert.equal(
       await page.locator(".map-mark.find circle").getAttribute("cx"),
@@ -521,7 +521,7 @@ const { _electron: electron } = require("playwright"),
           .getByRole("navigation", { name: "Main navigation", exact: true })
           .getByRole("button")
           .count(),
-        5,
+        6,
       );
     }
     await navigate(page, "company");

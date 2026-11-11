@@ -585,14 +585,14 @@ function shortPath(target) {
         .getByRole("navigation", { name: "Main navigation", exact: true })
         .getByRole("button")
         .count(),
-      5,
+      6,
     );
     assert.equal(
       await page
         .getByRole("navigation", { name: "Adventure navigation", exact: true })
         .getByRole("button")
         .count(),
-      3,
+      4,
     );
     const originalWorkshops = characters.map((c) =>
       structuredClone(c.readiness.workshop),
