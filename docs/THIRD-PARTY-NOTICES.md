@@ -6,6 +6,14 @@ The Anthropic Claude Agent SDK is copyright Anthropic PBC and subject to its ven
 
 Other production dependency notices, including jose and transitive SDK dependencies, remain alongside those packages. Electron and the NSIS distribution retain their upstream notices.
 
+The Claude Agent SDK's required JavaScript runtime peers are explicitly included in the distribution:
+
+- `@anthropic-ai/sdk` 1.6.0 — Anthropic, PBC; Apache License 2.0. Both its `LICENSE` and `LICENSE-MIT` are retained. The latter preserves the MIT terms for previously published versions and contributions made before the upstream license change.
+- `@modelcontextprotocol/sdk` 1.32.2 — copyright 2024 Anthropic, PBC; MIT License, retained in its `LICENSE` file.
+- `zod` 4.6.7 — copyright 2025 Colin McDonnell; MIT License, retained in its `LICENSE` file.
+
+Their required dependency closure and upstream license files ship under `resources/app.asar/node_modules` (or the corresponding unpacked resources). Including the protocol SDK satisfies the Claude SDK's module imports; it does not enable MCP servers, tools or additional permissions. Its optional `@cfworker/json-schema` validation adapter is not used or bundled.
+
 Original generated illustrations and their production prompts are described in ARTWORK.md and ARTWORK-V3.md. No Blizzard artwork, faction logos or extracted game assets are included.
 
 ## Forever quest reference data

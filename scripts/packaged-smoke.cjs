@@ -5,6 +5,33 @@ const fs = require("node:fs/promises"),
   os = require("node:os");
 const crypto = require("node:crypto");
 const { testWindow } = require("./test-window.cjs");
+function isInside(parent, target) {
+  const relative = path.relative(parent, target);
+  return relative !== "" && relative !== ".." &&
+    !relative.startsWith(".." + path.sep) && !path.isAbsolute(relative);
+}
+async function checkSdk(app, appDir) {
+  const sdk = await app.evaluate(({ app }) => {
+    const path = process.getBuiltinModule("node:path");
+    const requireFromApp = process
+      .getBuiltinModule("node:module")
+      .createRequire(path.join(app.getAppPath(), "package.json"));
+    const peers = ["@anthropic-ai/sdk", "@modelcontextprotocol/sdk/client/index.js", "zod"]
+      .map((name) => ({ name, resolved: requireFromApp.resolve(name) }));
+    const core = requireFromApp("@anthropic-ai/claude-agent-sdk/core");
+    return { queryType: typeof core.query, peers };
+  });
+  assert.equal(sdk.queryType, "function");
+  for (const peer of sdk.peers) {
+    assert.ok(
+      ["app.asar", "app.asar.unpacked"].some((name) =>
+        isInside(path.join(appDir, "resources", name), peer.resolved)),
+      `${peer.name} must resolve inside the copied application's resources: ${peer.resolved}`,
+    );
+    console.log(`Bundled peer: ${peer.name} -> ${peer.resolved}`);
+  }
+  return sdk;
+}
 async function sourceFiles(folder, prefix = "src") {
   const result = [];
   for (const entry of await fs.readdir(folder, { withFileTypes: true })) {
@@ -20,18 +47,33 @@ async function sourceFiles(folder, prefix = "src") {
 }
 (async () => {
   let app;
-  const data = await fs.mkdtemp(path.join(os.tmpdir(), "backstage-packaged-"));
+  const repo = await fs.realpath(path.join(__dirname, ".."));
+  const temp = await fs.realpath(os.tmpdir());
+  const runRoot = await fs.mkdtemp(path.join(temp, "backstage-packaged-"));
+  const appDir = path.join(runRoot, "app");
+  const data = path.join(runRoot, "profile");
+  const env = { ...process.env };
+  for (const key of Object.keys(env))
+    if (["BF_USER_DATA", "NODE_PATH", "NODE_OPTIONS"].includes(key.toUpperCase()))
+      delete env[key];
+  const launchOptions = {
+    executablePath: path.join(appDir, "Backstage Forever.exe"),
+    cwd: appDir,
+    args: ["--user-data-dir=" + data],
+    env,
+  };
   try {
-    app = await electron.launch({
-      executablePath: path.join(
-        __dirname,
-        "..",
-        "dist",
-        "win-unpacked",
-        "Backstage Forever.exe",
-      ),
-      args: ["--user-data-dir=" + data],
-    });
+    assert.ok(!isInside(repo, runRoot) && runRoot !== repo,
+      "Packaged acceptance must run outside the development checkout");
+    await fs.cp(path.join(repo, "dist", "win-unpacked"), appDir, { recursive: true });
+    await fs.mkdir(path.join(data, "updates"), { recursive: true });
+    await fs.mkdir(path.join(data, "knowledge-v1"), { recursive: true });
+    await fs.writeFile(path.join(data, "updates", "preferences.json"),
+      JSON.stringify({ automatic: false, installOnQuit: false }));
+    await fs.writeFile(path.join(data, "knowledge-v1", "preferences.json"),
+      JSON.stringify({ automatic: false, checked: {} }));
+    // Synthetic journal fixtures can be seeded here, before the first launch.
+    app = await electron.launch(launchOptions);
     const page = await testWindow(app);
     await page.locator(".brand").first().waitFor();
     const result = await app.evaluate(({ app, safeStorage }) => ({
@@ -40,16 +82,24 @@ async function sourceFiles(folder, prefix = "src") {
       asar: app.getAppPath().endsWith("app.asar"),
       secureStorage: safeStorage.isEncryptionAvailable(),
       userData: app.getPath("userData"),
+      appPath: app.getAppPath(),
+      cwd: process.cwd(),
+      bfUserData: process.env.BF_USER_DATA,
     }));
     assert.equal(result.packaged, true);
     assert.equal(result.asar, true);
     assert.equal(result.version, require("../package.json").version);
     assert.equal(result.secureStorage, true);
     assert.equal(path.resolve(result.userData), path.resolve(data));
+    assert.equal(path.resolve(result.cwd), path.resolve(appDir));
+    assert.equal(result.bfUserData, undefined);
+    assert.ok(isInside(path.join(appDir, "resources"), result.appPath));
     assert.ok(await page.evaluate(() => Boolean(window.backstage?.bootstrap)));
     const reference = await page.evaluate(() =>
       window.backstage.knowledgeStatus(),
     );
+    assert.equal(reference.automatic, false);
+    assert.equal((await page.evaluate(() => window.backstage.updateStatus())).automatic, false);
     const bundled = JSON.parse(
       await fs.readFile(
         path.join(__dirname, "../data/forever/pack.json"),
@@ -93,6 +143,11 @@ async function sourceFiles(folder, prefix = "src") {
       "data/forever-travel/NOTICE",
       "data/forever-travel/LICENSE-CC-BY-4.0.txt",
       "assets/update-public-key.pem",
+      "docs/THIRD-PARTY-NOTICES.md",
+      "node_modules/@anthropic-ai/sdk/LICENSE",
+      "node_modules/@anthropic-ai/sdk/LICENSE-MIT",
+      "node_modules/@modelcontextprotocol/sdk/LICENSE",
+      "node_modules/zod/LICENSE",
     );
     const expected = await Promise.all(
       ownFiles.map(async (relative) => ({
@@ -127,15 +182,7 @@ async function sourceFiles(folder, prefix = "src") {
       [],
       "Packaged source, reference data, notices and pinned update key must match reviewed source bytes",
     );
-    const sdk = await app.evaluate(async ({ app }) => {
-      const path = process.getBuiltinModule("node:path");
-      const requireFromApp = process
-        .getBuiltinModule("node:module")
-        .createRequire(path.join(app.getAppPath(), "package.json"));
-      const core = requireFromApp("@anthropic-ai/claude-agent-sdk/core");
-      return typeof core.query;
-    });
-    assert.equal(sdk, "function");
+    const sdk = await checkSdk(app, appDir);
     const gameRoot = path.join(data, "synthetic-client");
     await fs.mkdir(path.join(gameRoot, "WTF", "Account"), { recursive: true });
     await fs.writeFile(path.join(gameRoot, ".flavor.info"), "wowf");
@@ -178,14 +225,14 @@ async function sourceFiles(folder, prefix = "src") {
     await fs.unlink(path.join(addonFolder, "BackstageForeverHUD.lua"));
     await fs.unlink(path.join(addonFolder, "BackstageForeverReference.lua"));
     await fs.writeFile(path.join(addonFolder, "BackstageForeverPlan.lua"), "synthetic obsolete planner");
-    app = await electron.launch({
-      executablePath: path.join(
-        __dirname,
-        "../dist/win-unpacked/Backstage Forever.exe",
-      ),
-      args: ["--user-data-dir=" + data],
-    });
+    app = await electron.launch(launchOptions);
     const reopened = await testWindow(app);
+    const restarted = await app.evaluate(({ app }) => ({
+      userData: app.getPath("userData"), cwd: process.cwd(),
+    }));
+    assert.equal(path.resolve(restarted.userData), path.resolve(data));
+    assert.equal(path.resolve(restarted.cwd), path.resolve(appDir));
+    assert.deepEqual(await checkSdk(app, appDir), sdk);
     let restored;
     for (let attempt = 0; attempt < 100; attempt++) {
       restored = await reopened.evaluate(() => window.backstage.gameStatus());
@@ -210,13 +257,13 @@ async function sourceFiles(folder, prefix = "src") {
       "preserve",
     );
     console.log(
-      `PASS: isolated packaged Windows startup, ${sourceMatch.checked} reviewed source/data/key byte matches, offline quest reference, SDK loading, automatic ${owned.length}-file addon install/readback and startup repair preserving unrelated files. No player data or credentials changed.`,
+      `PASS: outside-checkout packaged Windows startup/restart with the same isolated profile, ${sourceMatch.checked} reviewed source/data/key byte matches, offline quest reference, real SDK core loading and ${sdk.peers.length} contained runtime peers, automatic ${owned.length}-file addon install/readback and startup repair preserving unrelated files. No player data or credentials changed.`,
     );
   } finally {
     if (app) await app.close();
-    const resolved = await fs.realpath(data);
-    const relative = path.relative(await fs.realpath(os.tmpdir()), resolved);
-    assert.ok(!relative.startsWith("..") && !path.isAbsolute(relative));
+    const resolved = await fs.realpath(runRoot);
+    assert.equal(resolved, runRoot);
+    assert.ok(isInside(temp, resolved));
     assert.ok(path.basename(resolved).startsWith("backstage-packaged-"));
     await fs.rm(resolved, { recursive: true, force: true });
   }
