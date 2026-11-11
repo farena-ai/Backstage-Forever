@@ -40,7 +40,7 @@ function shortPath(target) {
           if(["listen","speak"].includes(r.command))queueMicrotask(()=>child.send({event:"started"}));
           if(r.command==="cancel"&&!child.unclosed)queueMicrotask(()=>child.emit("exit",0));});voiceUi.children.push(child);return child;};return worker.apply(this,args);};
       dialog.showMessageBox=async()=>({response:1});
-      const capabilities=ipcMain._invokeHandlers.get("backstage:voiceCapabilities");ipcMain.removeHandler("backstage:voiceCapabilities");ipcMain.handle("backstage:voiceCapabilities",async(...args)=>{const result=await capabilities(...args);if(voiceUi.holdCapabilities)await new Promise(r=>voiceUi.releaseCapabilities=r);return result;});
+      const capabilities=ipcMain._invokeHandlers.get("backstage:voiceCapabilities");ipcMain.removeHandler("backstage:voiceCapabilities");ipcMain.handle("backstage:voiceCapabilities",async(...args)=>{const fail=voiceUi.failCapabilities;const result=await capabilities(...args);if(voiceUi.holdCapabilities)await new Promise(r=>voiceUi.releaseCapabilities=r);if(fail)throw Error("Synthetic capability rejection");return result;});
       const start=ipcMain._invokeHandlers.get("backstage:voiceStart");ipcMain.removeHandler("backstage:voiceStart");ipcMain.handle("backstage:voiceStart",async(...args)=>{const result=await start(...args);if(voiceUi.holdAck)await new Promise(r=>voiceUi.releaseAck=r);return result;});
       const preview=ipcMain._invokeHandlers.get("backstage:memoryPreview");ipcMain.removeHandler("backstage:memoryPreview");ipcMain.handle("backstage:memoryPreview",async(...args)=>{const result=await preview(...args);if(voiceUi.holdPreview)await new Promise(r=>(voiceUi.previewReleases??=[]).push(r));return result;});
       const save=ipcMain._invokeHandlers.get("backstage:saveState");ipcMain.removeHandler("backstage:saveState");ipcMain.handle("backstage:saveState",async(...args)=>{const result=await save(...args);if(voiceUi.holdSave)await new Promise(r=>voiceUi.releaseSave=r);return result;});
@@ -69,6 +69,22 @@ function shortPath(target) {
       if(scenario==='newer-focus')assert.equal((await currentControlState(page,"#share-profile")).focused,true);
       else {await page.keyboard.type("fresh");assert.equal(await question.inputValue(),"Keep fresh typed question","Physical typing continues in the selected range after discovery");}
     }
+    // A current manual capability failure remains discoverable after the player folds Voice.
+    await app.evaluate(()=>{voiceUi.failCapabilities=true;voiceUi.holdCapabilities=true;voiceUi.releaseCapabilities=null;});
+    await page.getByRole("button",{name:"Check local voice",exact:true}).click();
+    await app.evaluate(async()=>{const end=Date.now()+6000;while(!voiceUi.releaseCapabilities){if(Date.now()>end)throw Error("Rejected capability gate missing");await new Promise(r=>setTimeout(r,10));}});
+    await page.locator('[data-player-tool="voice"] > summary').click();
+    await app.evaluate(()=>{voiceUi.holdCapabilities=false;voiceUi.releaseCapabilities();voiceUi.releaseCapabilities=null;});
+    await page.waitForFunction(()=>!document.querySelector('[data-voice-check]').disabled);
+    assert.equal(await page.locator('[data-player-tool="voice"]').evaluate(n=>n.open),false);
+    assert.match(await page.locator('[data-player-tool="voice"] > summary').innerText(),/Needs attention/);
+    assert.match(await page.locator('[data-voice-status]').textContent(),/Local voice could not be checked/);
+    await ensureCompanionTools(page,"voice");await app.evaluate(()=>voiceUi.failCapabilities=false);
+    await page.getByRole("button",{name:"Check local voice",exact:true}).click();
+    await page.waitForFunction(()=>!document.querySelector('[data-voice-check]').disabled);
+    assert.doesNotMatch(await page.locator('[data-player-tool="voice"] > summary').innerText(),/Needs attention/);
+    assert.doesNotMatch(await page.locator('[data-voice-status]').innerText(),/could not be checked/);
+    console.log("I1: held manual capability rejection remains visible after folding; explicit successful retry clears its attention state PASS");
     // Deliberate dictation uses the exact range retained through initial discovery.
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].focus());
     await question.evaluate(n=>{n.focus();n.setSelectionRange(5,10);});
@@ -219,6 +235,14 @@ function shortPath(target) {
     await page.locator('[data-player-tool="voice"] > summary').click();
     await page.waitForFunction(()=>{const panel=document.querySelector('[data-player-tool="voice"]');return panel.open||panel.querySelector('summary').textContent.includes('Needs attention');});
     assert.match(await page.locator('[data-voice-status]').innerText(),/could not confirm it stopped/);
+    await ensureCompanionTools(page,"voice");
+    for(const fail of [true,false]){
+      await app.evaluate((_e,fail)=>voiceUi.failCapabilities=fail,fail);
+      await page.getByRole("button",{name:"Check local voice",exact:true}).click();
+      await page.waitForFunction(()=>!document.querySelector('[data-voice-check]').disabled);
+      assert.match(await page.locator('[data-voice-status]').innerText(),/could not confirm it stopped/,"Checking capabilities cannot erase an unconfirmed audio stop");
+      assert.equal(await page.locator('[data-voice]').getAttribute('data-phase'),'error');
+    }
     assert.equal(await count("listen"),before);await app.evaluate(()=>voiceUi.children.at(-1).emit("close",null));await page.waitForTimeout(160);assert.equal(await count("listen"),before);
     // Navigation retires selected sharing and a held network reply, retaining only completed same-owner replies.
     const completedBeforeNavigation=await page.locator(".message.assistant").allTextContents();
@@ -251,6 +275,14 @@ function shortPath(target) {
     await navigate(page, "assistant");await ensureCompanionTools(page,"voice");await ensureCompanionTools(page,"memory");assert.equal(await page.locator(".message.assistant").count(),0);await question.fill("A WoW Forever question to keep locally.");await question.press("Enter");await page.getByRole("button",{name:"Save exchange",exact:true}).click();await page.locator("[data-memory-row]").waitFor();
     const backup=path.join(temp,"synthetic-backup.json");await fs.writeFile(backup,JSON.stringify((await page.evaluate(()=>window.backstage.bootstrap())).state));await app.evaluate(({dialog},backup)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[backup]});},backup);
     await navigate(page, "guide");await page.getByRole("button",{name:"Import backup",exact:true}).click();await page.waitForFunction(()=>state.memories.length===0);await navigate(page, "assistant");await ensureCompanionTools(page,"voice");await ensureCompanionTools(page,"memory");assert.equal(await page.locator("[data-memory-row]").count(),0);assert.equal(await page.getByRole("button",{name:"Save exchange",exact:true}).count(),0);
+    await app.evaluate(()=>{voiceUi.failCapabilities=true;voiceUi.holdCapabilities=true;voiceUi.releaseCapabilities=null;});
+    await page.getByRole("button",{name:"Check local voice",exact:true}).click();await untilMain("Boolean(voiceUi.releaseCapabilities)");
+    await navigate(page,"guide");await navigate(page,"assistant");await ensureCompanionTools(page,"voice");
+    await app.evaluate(()=>{voiceUi.holdCapabilities=false;voiceUi.failCapabilities=false;voiceUi.releaseCapabilities();voiceUi.releaseCapabilities=null;});
+    await page.waitForFunction(()=>!document.querySelector('[data-voice-check]').disabled);
+    assert.doesNotMatch(await page.locator('[data-player-tool="voice"] > summary').innerText(),/Needs attention/);
+    assert.doesNotMatch(await page.locator('[data-voice-status]').innerText(),/could not be checked/);
+    console.log("I1: late rejected capability reply cannot mark the replacement navigation owner; failed/successful checks preserve unconfirmed stop error PASS");
     await navigate(page, "guide");await page.getByRole("button",{name:"Delete all local data",exact:true}).click();await page.waitForFunction(()=>state.profiles.length===0);assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).state.memories.length,0);
     assert.equal(await app.evaluate(()=>voiceUi.launches),0);
     console.log("PASS: actual Electron physical pointer/key hold/release, unchanged range/dirty insertion, explicit send/save/select/preview/read/stop, startup/pre-ack/blur/navigation/character races, unconfirmed-stop deadline, typed unavailable fallback and fictional full/compact/error evidence; fake audio workers only.");
