@@ -43,7 +43,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
    // Sharing changes can clear history while its guarded DOM paint is pending.
    // A new terminal reply/recovery belongs to this prompt; history size does not.
    const sequence=await app.evaluate(()=>travelFixture.receipts.length);
-   const owner=await page.evaluate(()=>{window.travelBeforeSend={reply:messages.at(-1),recovery:questionRecovery};return {generation:chatGeneration,profileId:state.activeProfileId,shareProfile:document.querySelector('#share-profile').checked};});
+   const owner=await page.evaluate(()=>{window.travelBeforeSend={reply:messages.at(-1),recovery:questionRecovery,recoveryNode:document.querySelector('[data-question-recovery]')};return {generation:chatGeneration,profileId:state.activeProfileId,shareProfile:document.querySelector('#share-profile').checked};});
    await field.fill(text);await page.getByRole('button',{name:'Send question',exact:true}).click();
    const deadline=Date.now()+6000;
    const receipt=await app.evaluate(async(_e,{sequence,deadline})=>{while(!travelFixture.receipts[sequence]||travelFixture.receipts[sequence].phase==='pending'){if(Date.now()>deadline)throw Error('Current travel request did not settle');await new Promise(r=>setTimeout(r,10));}return travelFixture.receipts[sequence];},{sequence,deadline});
@@ -53,7 +53,9 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
     const answered=receipt.phase==='complete'&&last?.role==='assistant'&&last!==prior.reply&&last.text===receipt.result.text&&last.kind===receipt.result.kind&&messages.at(-2)?.role==='user'&&messages.at(-2).text===text;
     const failed=receipt.phase==='failed'&&questionRecovery&&questionRecovery!==prior.recovery&&questionRecovery.prompt===text;
     const user=[...document.querySelectorAll('#chatlog .message.user')].at(-1);
-    const painted=user?.querySelector('.message-text')?.textContent===text&&(answered?user.nextElementSibling?.classList.contains('assistant'):document.querySelector('[data-question-recovery]'));
+    const recoveryNode=document.querySelector('[data-question-recovery]');
+    // Identical prior markup is not a receipt for the current guarded root paint.
+    const painted=lastPaintedMessage===last&&user?.querySelector('.message-text')?.textContent===text&&(answered?user.nextElementSibling?.classList.contains('assistant'):recoveryNode&&recoveryNode!==prior.recoveryNode&&recoveryNode.querySelector('p')?.textContent===questionRecovery?.message);
     return chatGeneration===owner.generation&&!sending&&!chatStarting&&(answered||failed)&&painted;
    },{text,owner,receipt},{timeout:Math.max(1,deadline-Date.now())});
    await page.waitForFunction(()=>!document.querySelector('[data-command="stop-response"]'));
