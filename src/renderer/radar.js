@@ -54,9 +54,12 @@
       else { const a = Math.atan2(dy, dx); ctx.save(); ctx.translate(C + Math.cos(a) * (R - 4), C + Math.sin(a) * (R - 4)); ctx.rotate(a + Math.PI / 2); ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(9, 6); ctx.lineTo(-9, 6); ctx.closePath(); ctx.fillStyle = "#ffe08a"; ctx.fill(); ctx.strokeStyle = "#3a2008"; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); }
     }
     // Player arrow.
-    ctx.save(); ctx.translate(C, C); ctx.rotate(-(me.facing || 0));
-    ctx.beginPath(); ctx.moveTo(0, -13); ctx.lineTo(9, 10); ctx.lineTo(0, 4); ctx.lineTo(-9, 10); ctx.closePath();
-    ctx.fillStyle = me.combat ? "#ff6f5e" : "#ffd65a"; ctx.fill(); ctx.strokeStyle = "#2a1406"; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.translate(C, C);
+    ctx.beginPath(); ctx.arc(0, 0, 16, 0, 7); ctx.fillStyle = "rgba(12,20,34,0.82)"; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = me.combat ? "#ff5a4a" : "#62d6ff"; ctx.stroke();
+    ctx.rotate(-(me.facing || 0));
+    ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(9, 9); ctx.lineTo(0, 3); ctx.lineTo(-9, 9); ctx.closePath();
+    ctx.fillStyle = me.combat ? "#ffb0a4" : "#d8f6ff"; ctx.fill(); ctx.strokeStyle = "#08121e"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
   }
   function text() {
     const me = state?.live, t = state?.target;

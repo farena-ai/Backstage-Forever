@@ -149,7 +149,7 @@ window.WorldMapView = (() => {
     // Player: saved marker, live trail, live arrow.
     const pl = model?.player;
     if (pl?.saved && !pl.live) { const [sx, sy] = toScreen(pl.saved.x, pl.saved.y); ctx.beginPath(); ctx.arc(sx, sy, 8, 0, 7); ctx.setLineDash([3, 3]); ctx.strokeStyle = "#3a2410"; ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); ctx.font = "600 11px 'Source Sans 3'"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; const lw = ctx.measureText("last saved").width + 10; ctx.fillStyle = "rgba(245,232,200,0.92)"; ctx.beginPath(); ctx.roundRect(sx - lw / 2, sy + 11, lw, 15, 3); ctx.fill(); ctx.fillStyle = "#3a2410"; ctx.fillText("last saved", sx, sy + 19); }
-    trail.forEach((t, i) => { if (t.mapId !== model?.mapId) return; const [sx, sy] = toScreen(t.x, t.y); ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, 7); ctx.fillStyle = `rgba(200,140,30,${(i + 1) / trail.length * 0.8})`; ctx.fill(); });
+    trail.forEach((t, i) => { if (t.mapId !== model?.mapId) return; const [sx, sy] = toScreen(t.x, t.y); ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, 7); ctx.fillStyle = `rgba(70,190,255,${(i + 1) / trail.length * 0.85})`; ctx.fill(); });
     if (pl?.live) arrow(...toScreen(pl.live.x, pl.live.y), pl.live.facing, pl.live.combat);
   }
   function compassRose(x, y, r) {
@@ -158,13 +158,18 @@ window.WorldMapView = (() => {
     ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, 7); ctx.strokeStyle = "#4a321a"; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.font = "700 13px Cinzel, serif"; ctx.fillStyle = "#3a2410"; ctx.textAlign = "center"; ctx.fillText("N", 0, -r - 8); ctx.restore();
   }
+  // Cool blue on a dark disc so the arrow reads on the warm, gold zone art as well as on parchment.
   function arrow(x, y, facing, combat) {
-    ctx.save(); ctx.translate(x, y); ctx.rotate(-(facing || 0));
-    const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 26); glow.addColorStop(0, combat ? "rgba(220,40,30,0.6)" : "rgba(255,210,80,0.65)"); glow.addColorStop(1, "rgba(255,210,80,0)");
-    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, 26, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(0, -19); ctx.lineTo(13, 14); ctx.lineTo(0, 6); ctx.lineTo(-13, 14); ctx.closePath();
-    const g = ctx.createLinearGradient(0, -19, 0, 14); g.addColorStop(0, "#fff7c8"); g.addColorStop(1, "#d4901c");
-    ctx.fillStyle = g; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#3a2008"; ctx.stroke(); ctx.restore();
+    const ring = combat ? "#ff5a4a" : "#62d6ff";
+    ctx.save(); ctx.translate(x, y);
+    const glow = ctx.createRadialGradient(0, 0, 14, 0, 0, 30); glow.addColorStop(0, combat ? "rgba(255,70,50,0.55)" : "rgba(80,200,255,0.55)"); glow.addColorStop(1, "rgba(80,200,255,0)");
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, 30, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, 18, 0, 7); ctx.fillStyle = "rgba(12,20,34,0.82)"; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = ring; ctx.stroke();
+    ctx.rotate(-(facing || 0));
+    ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(10, 10); ctx.lineTo(0, 4); ctx.lineTo(-10, 10); ctx.closePath();
+    const g = ctx.createLinearGradient(0, -14, 0, 10); g.addColorStop(0, "#ffffff"); g.addColorStop(1, combat ? "#ff9a8a" : "#9fe8ff");
+    ctx.fillStyle = g; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = "#08121e"; ctx.stroke(); ctx.restore();
   }
 
   // ---------- side panel ----------
