@@ -10,7 +10,7 @@ const { loadAcquisitionPack } = require("../src/core/acquisition-data.cjs");
 const { loadBundledInsights } = require("../src/core/insights-data.cjs");
 const root = path.join(__dirname, "..");
 const target = path.join(root, "addon", "BackstageForever", "BackstageForeverFind.lua");
-const CODES = { flight: "f", trainer: "t", vendor: "v", npc: "n", herb: "h", ore: "o" };
+const CODES = { flight: "f", "class-trainer": "t", "profession-trainer": "t", vendor: "v", npc: "n", herb: "h", ore: "o" };
 
 const luaString = (value) => '"' + [...Buffer.from(String(value), "utf8")].map((b) => (b >= 32 && b <= 126 && b !== 34 && b !== 92 ? String.fromCharCode(b) : "\\" + String(b).padStart(3, "0"))).join("") + '"';
 
