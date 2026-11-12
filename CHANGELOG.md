@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.3 — new characters explained, 2026-11-12
+
+- WoW saves addon data only on /reload or logout, so the app can't know a brand-new character until then. The addon now says so once in chat for a new character, and the World Map reads "WoW is on a new character · /reload once in game so the app can link it" instead of a vague "not live". A live frame from another saved character says to switch characters.
+- Live frames streamed into an open World Map now respect the character match too (previously only the initial map build checked it).
+- App/lock, TOC and capture metadata align at 0.16.3 preview. **1.0 remains held.**
+
 ## 0.16.2 — a live arrow you can see on real maps, 2026-11-12
 
 - The live arrow on the World Map and radar is now a bright blue arrow on a dark disc (red in combat), with a blue trail, so it stands out on the game's warm, gold zone art. The old gold arrow blended into it.

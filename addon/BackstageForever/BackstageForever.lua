@@ -543,6 +543,7 @@ local function readiness(guid,build)
     if gear~=nil or space~=nil or workshop then return {equipment=gear,bags=space,workshop=workshop} end
 end
 local roster={}
+local newCharacterHinted=false
 local function capture(event,eventId)
     if type(InCombatLockdown) ~= "function" or call(InCombatLockdown) ~= false then return end
     local guid=clean(call(UnitGUID,'player'),200)
@@ -565,9 +566,14 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.16.2'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.16.3'
     character.race=clean((call(UnitRace,'player')));character.faction=clean((call(UnitFactionGroup,'player')))
     local previous=roster[guid]
+    -- WoW writes saved data only on /reload or logout, so a brand-new character is unknown to the app until then.
+    if not previous and not newCharacterHinted and type(DEFAULT_CHAT_FRAME)=='table' and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then
+        newCharacterHinted=true
+        pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: new character. Type /reload once (or log out) so the desktop app can link it; WoW only saves addon data then.')
+    end
     local history={recent=array({})}
     if previous and type(previous.history)=='table' and type(previous.history.recent)=='table' then
         for i,h in ipairs(previous.history.recent) do

@@ -203,7 +203,7 @@ window.WorldMapView = (() => {
   function liveLine() {
     const n = document.querySelector("[data-wm-live]"); if (!n) return;
     const pl = model?.player;
-    n.textContent = pl?.live ? `● Live · ${pct(pl.live.x)}, ${pct(pl.live.y)}${pl.live.mounted ? " · mounted" : ""}` : pl?.liveElsewhere ? `● Live in ${pl.liveElsewhere.mapName}` : `${pl?.saved ? "Last saved position · " : ""}${notLive()}`;
+    n.textContent = pl?.live ? `● Live · ${pct(pl.live.x)}, ${pct(pl.live.y)}${pl.live.mounted ? " · mounted" : ""}` : pl?.liveElsewhere ? `● Live in ${pl.liveElsewhere.mapName}` : pl?.liveIssue === "unsaved-character" ? "WoW is on a new character · /reload once in game so the app can link it" : pl?.liveIssue === "other-character" ? `${pl?.saved ? "Last saved position · " : ""}WoW is on another character (switch above)` : `${pl?.saved ? "Last saved position · " : ""}${notLive()}`;
     n.classList.toggle("on", Boolean(pl?.live));
   }
   function zoneSelect() {
@@ -263,10 +263,18 @@ window.WorldMapView = (() => {
     loading = false; paintAll();
   }
   function pushTrail(id, p) { remember(id, p); const last = trail[trail.length - 1]; if (!last || last.mapId !== id || Math.hypot(last.x - p.x, last.y - p.y) > 0.002) { trail.push({ mapId: id, x: p.x, y: p.y }); if (trail.length > 60) trail.shift(); } }
+  let foreignKey = null;
   function onLive(status) {
     const f = status?.frame;
     if (!document.querySelector("[data-world-map]")) return;
     if (!f?.position) { if (model?.player?.live) { delete model.player.live; draw(); } liveLine(); return; }
+    // A frame from a different (or not yet saved) character: rebuild once so the map explains it.
+    const key = model?.player?.liveKey;
+    if (key != null && f.characterHash && f.characterHash !== key) {
+      if (f.characterHash !== foreignKey) { foreignKey = f.characterHash; if (model.player.live) delete model.player.live; load(mapId); }
+      return;
+    }
+    foreignKey = null;
     lastLive = f;
     if (follow && f.position.mapId !== mapId) { mapId = f.position.mapId; load(mapId); return; }
     if (model && f.position.mapId === model.mapId) {

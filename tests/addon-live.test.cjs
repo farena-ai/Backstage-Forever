@@ -339,3 +339,10 @@ event('PLAYER_LOGOUT');event('PLAYER_LOGIN');previous();assert(#guideCalls==1 an
 character.id='Reason-B';character.quests={};character.readiness=nil;BackstageForeverHUDUpdate(character)
 assert(not button.enabled and not text():find('Reported ready to turn in.',1,true) and cue.text=='')
 `));
+test('a brand-new character is told once to /reload so the desktop app can link it',()=>lua(capture+String.raw`
+local said={};DEFAULT_CHAT_FRAME={AddMessage=function(_,m)said[#said+1]=m end}
+event('PLAYER_LOGIN');assert(#said==1 and said[1]:find('/reload once',1,true))
+event('PLAYER_XP_UPDATE');flush();assert(#said==1,'hint is shown once per session')
+-- After /reload the addon loads again with the saved roster: a known character is not told.
+event('PLAYER_LOGOUT');said={};dofile('addon/BackstageForever/BackstageForever.lua');event('PLAYER_LOGIN');assert(#said==0,'known character is not told again')
+`));
