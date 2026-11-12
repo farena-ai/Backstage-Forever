@@ -47,7 +47,7 @@ test("search finds flight masters, trainers and named NPCs across zones, nearest
   const flights = wm.search("flight master").results;
   assert.ok(flights.length >= 3);
   assert.equal(flights[0].label, "Devrak", "the Barrens flight master is nearest");
-  assert.ok(wm.search("trainer").results.every((r) => r.kind === "trainer"));
+  assert.ok(wm.search("trainer").results.every((r) => r.kind === "class-trainer" || r.kind === "profession-trainer"));
   assert.equal(wm.search("Cairne Bloodhoof").results[0].mapName, "Thunder Bluff");
   assert.throws(() => wm.search(""));
   assert.throws(() => wm.build([]));
@@ -71,4 +71,44 @@ test("the map explains a live frame from a new or different character instead of
   assert.equal(fresh.player.liveKey, identityHash("guid-mine"));
   assert.equal(make(me, { ...at, characterHash: identityHash("guid-alt") }).build({}).player.liveIssue, "other-character");
   assert.equal(make(me, { ...at, characterHash: identityHash("guid-mine") }).build({}).player.liveIssue, null);
+});
+
+test("trainers split into class and profession pins, and NPCs carry their faction", () => {
+  const { trainerKind, friendlyTo } = require("../src/core/world-map.cjs");
+  assert.equal(trainerKind("Priest Trainer"), "class-trainer");
+  assert.equal(trainerKind("Weapon Master"), "class-trainer");
+  assert.equal(trainerKind("Journeyman Tailor"), "profession-trainer");
+  assert.equal(trainerKind("Mining Trainer"), "profession-trainer");
+  assert.deepEqual(friendlyTo({ Horde: [5], Alliance: [1] }), ["Horde"]);
+  const tirisfal = make({ ...player, level: 3, location: { zone: "Tirisfal Glades", mapId: 1420, x: 0.3, y: 0.7 } }).build({ mapId: 1420 });
+  assert.ok(tirisfal.counts["class-trainer"] >= 1 && tirisfal.counts["profession-trainer"] >= 1);
+  assert.equal(tirisfal.counts.trainer, undefined);
+  // An Alliance character sees Horde-only NPCs marked, not counted.
+  const ally = make({ ...player, faction: "Alliance", level: 3 }).build({ mapId: 1420 });
+  assert.ok(ally.counts.otherFaction > 0);
+  assert.ok(ally.pins.filter((p) => p.otherFaction).every((p) => !p.sides.includes("Alliance")));
+});
+
+test("an NPC card says who they are and what they offer this character", () => {
+  const wm = make({ ...player, level: 3, faction: "Horde", className: "Priest", quests: [] });
+  const priest = wm.npc(2123);
+  assert.equal(priest.trainer.forYou, true);
+  const asMage = make({ ...player, level: 3, faction: "Horde", className: "Mage", quests: [] }).npc(2123);
+  assert.equal(asMage.trainer.forYou, false);
+  assert.ok(asMage.trainer.services.every((sv) => sv.learnable === null), "another class's spells are never 'learnable now'");
+  assert.equal(priest.name, "Dark Cleric Duesten");
+  assert.ok(priest.roles.includes("Priest Trainer"));
+  assert.deepEqual(priest.sides, ["Horde"]);
+  assert.equal(priest.trainer.kind, "class-trainer");
+  assert.ok(priest.trainer.services.some((s) => s.learnable === true) && priest.trainer.services.some((s) => s.learnable === false), "splits learnable now vs later at level 3");
+  assert.ok(priest.questsGiven.some((q) => q.title === "In Favor of Darkness" && q.status === "too-high"));
+  const vendor = wm.npc(2115);
+  assert.ok(vendor.vendor.items.length >= 2 && vendor.roles.includes("Vendor"));
+  assert.equal(wm.npc(999999999), null);
+  assert.throws(() => wm.npc("2123"));
+});
+
+test("searching a specific trainer ranks the exact match above any nearby trainer", () => {
+  const r = make(player).search("hunter trainer").results;
+  assert.match(r[0].sub, /Hunter Trainer/);
 });

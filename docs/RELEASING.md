@@ -40,7 +40,6 @@ npm run test:company-backend
 npm run test:company
 npm run test:adventure-coach
 npm run test:profession-coach
-npm run test:adventure-map
 npm run test:setup
 npm run test:autosave
 npm run test:command-center

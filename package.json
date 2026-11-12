@@ -1,7 +1,7 @@
 {
   "name": "backstage-forever",
   "productName": "Backstage Forever",
-  "version": "0.16.3",
+  "version": "0.17.0",
   "releaseChannel": "preview",
   "description": "A local-first adventure companion from Backstage Coding. Designed by Frank Arena.",
   "author": "Frank Arena / Backstage Coding",
@@ -36,7 +36,6 @@
     "test:director": "node scripts/director-smoke.cjs",
     "test:preparation-backend": "node scripts/preparation-backend-smoke.cjs",
     "test:preparation": "node scripts/preparation-smoke.cjs",
-    "test:adventure-map": "node --test tests/adventure-map.test.cjs tests/adventure-map-ipc.test.cjs tests/adventure-map-renderer.test.cjs && node scripts/adventure-map-smoke.cjs",
     "test:native-map": "node --test tests/gathering-data.test.cjs tests/gathering-sync.test.cjs tests/addon-gathering.test.cjs tests/addon-map.test.cjs",
     "test:profession-coach": "node scripts/profession-coach-smoke.cjs",
     "test:memory-backend": "node scripts/memory-backend-smoke.cjs",

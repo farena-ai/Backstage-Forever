@@ -77,9 +77,16 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator("[data-wm-zone]").selectOption("1456");
     await page.locator("[data-wm-title]").getByText("Thunder Bluff").waitFor();
     st = await s();
-    assert.ok(st.counts.trainer >= 10);
-    await page.locator("[data-wm-layer=trainer]").uncheck();
+    assert.ok(st.counts["class-trainer"] >= 5 && st.counts["profession-trainer"] >= 5, "trainers split into class and profession pins");
+    await page.locator("[data-wm-layer=profession-trainer]").uncheck();
+    await page.locator("[data-wm-layer=profession-trainer]").check();
     await page.screenshot({ path: path.join(capture, "world-map-thunder-bluff.png") });
+    // NPC card: a class trainer lists what it teaches; quests open from the card.
+    await page.locator("[data-wm-search] input").fill("hunter trainer");
+    await page.locator("[data-wm-search] button").click();
+    await page.locator("[data-wm-result]").first().click();
+    await page.locator("[data-wm-card]").getByText(/Trains · /).waitFor();
+    await page.screenshot({ path: path.join(capture, "world-map-npc-card.png") });
     // Instance Atlas: difficulty colours, your quests, and the jump to the World Map.
     await navigate(page, "dungeons");
     const rfc = page.locator('[data-atlas-card="rfc"]');

@@ -5,13 +5,14 @@ window.WorldMapView = (() => {
   const api = window.backstage;
   const LAYERS = [
     ["quest-turnin", "Turn-ins"], ["quest-objective", "Objectives"], ["quest-giver", "Quests to pick up"],
-    ["flight", "Flight masters"], ["trainer", "Trainers"], ["vendor", "Vendors"],
+    ["flight", "Flight masters"], ["class-trainer", "Class trainers"], ["profession-trainer", "Profession trainers"], ["vendor", "Vendors"],
     ["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["npc", "Other NPCs"],
   ];
-  const PREF = "bf-world-map-v1";
+  const OFF_BY_DEFAULT = new Set(["npc", "otherFaction"]);
+  const PREF = "bf-world-map-v2";
   let clusters = [], pendingFocus = null;
   let model = null, mapId = null, follow = true, selected = null, hover = null, trail = [], view = { zoom: 1, cx: 0.5, cy: 0.5 };
-  let layers = Object.fromEntries(LAYERS.map(([k]) => [k, k !== "npc"]));
+  let layers = { ...Object.fromEntries(LAYERS.map(([k]) => [k, !OFF_BY_DEFAULT.has(k)])), otherFaction: false };
   const EXPLORED = "bf-world-map-explored-v1:";
   const explored = (id) => { try { return JSON.parse(localStorage.getItem(EXPLORED + id) || "[]"); } catch { return []; } };
   const remember = (id, p) => { try { const a = explored(id); const last = a[a.length - 1]; if (last && Math.hypot(last[0] - p.x, last[1] - p.y) < 0.004) return; a.push([+p.x.toFixed(4), +p.y.toFixed(4)]); if (a.length > 4000) a.splice(0, a.length - 4000); localStorage.setItem(EXPLORED + id, JSON.stringify(a)); } catch {} };
@@ -73,35 +74,62 @@ window.WorldMapView = (() => {
   const toMap = (sx, sy) => [(sx - canvas.width / 2) / (canvas.width * view.zoom) + view.cx, (sy - canvas.height / 2) / (canvas.height * view.zoom) + view.cy];
 
   // ---------- icons ----------
-  const COLORS = { "quest-turnin": "#f6c445", "quest-giver": "#f6c445", "quest-objective": "#d9442e", flight: "#4f8fd6", trainer: "#4f9d5a", vendor: "#a8743a", herb: "#5fae3c", ore: "#9a8f86", find: "#e8b33a", npc: "#5b4630", town: "#3a2a16" };
-  function badge(x, y, r, fill, ring = "#2a1c0c") {
-    ctx.beginPath(); ctx.arc(x, y, r + 2, 0, 7); ctx.fillStyle = "rgba(20,12,4,0.55)"; ctx.fill();
-    const g = ctx.createRadialGradient(x - r / 3, y - r / 3, 1, x, y, r); g.addColorStop(0, "#fff3cf"); g.addColorStop(0.25, fill); g.addColorStop(1, shade(fill));
-    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = g; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = ring; ctx.stroke();
+  // One silhouette per kind so pins read at a glance: shields for quests, a diamond for
+  // flight, hexagons for trainers (swords: class, hammer: profession), a square for vendors.
+  const COLORS = { "quest-turnin": "#ffd34d", "quest-giver": "#f6c445", "quest-objective": "#d9442e", flight: "#3f86d8", "class-trainer": "#b8462e", "profession-trainer": "#2f9c8f", vendor: "#a8743a", herb: "#5fae3c", ore: "#9a8f86", find: "#e8b33a", npc: "#6b5a48", town: "#3a2a16" };
+  function shade(hex, f = 0.55) { const n = parseInt(hex.slice(1), 16); const m = (v) => Math.max(0, Math.floor(v * f)); return `rgb(${m(n >> 16)},${m((n >> 8) & 255)},${m(n & 255)})`; }
+  function fillShape(g, path, fill, x, y, r) {
+    g.save(); g.shadowColor = "rgba(0,0,0,0.55)"; g.shadowBlur = 4; g.shadowOffsetY = 1.5;
+    const gr = g.createLinearGradient(x, y - r, x, y + r); gr.addColorStop(0, "#fff6d8"); gr.addColorStop(0.18, fill); gr.addColorStop(1, shade(fill));
+    path(); g.fillStyle = gr; g.fill(); g.restore();
+    path(); g.lineWidth = 1.6; g.strokeStyle = "#1b1006"; g.stroke();
   }
-  function shade(hex) { const n = parseInt(hex.slice(1), 16); const f = (v) => Math.max(0, Math.floor(v * 0.55)); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; }
-  function glyph(text, x, y, size, color = "#1d1207") { ctx.fillStyle = color; ctx.font = `700 ${size}px Cinzel, Georgia, serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, x, y + 1); }
-  function leaf(x, y, s, color) { ctx.save(); ctx.translate(x, y); ctx.rotate(-0.6); ctx.beginPath(); ctx.moveTo(0, -s); ctx.quadraticCurveTo(s * 0.9, 0, 0, s); ctx.quadraticCurveTo(-s * 0.9, 0, 0, -s); ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = "#1f3a12"; ctx.lineWidth = 1; ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, -s * 0.8); ctx.lineTo(0, s * 0.8); ctx.stroke(); ctx.restore(); }
-  function rock(x, y, s, color) { ctx.beginPath(); ctx.moveTo(x - s, y + s * 0.6); ctx.lineTo(x - s * 0.6, y - s * 0.5); ctx.lineTo(x + s * 0.1, y - s); ctx.lineTo(x + s, y - s * 0.2); ctx.lineTo(x + s * 0.8, y + s * 0.7); ctx.closePath(); ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = "#2b2420"; ctx.lineWidth = 1.2; ctx.stroke(); ctx.fillStyle = "#d9a441"; ctx.fillRect(x - s * 0.2, y - s * 0.3, s * 0.35, s * 0.3); }
-  function wing(x, y, s) { ctx.save(); ctx.translate(x, y); ctx.fillStyle = "#eaf2ff"; ctx.beginPath(); ctx.moveTo(-s * 0.9, s * 0.4); ctx.quadraticCurveTo(-s * 0.2, -s, s * 0.9, -s * 0.6); ctx.quadraticCurveTo(s * 0.2, -s * 0.1, s * 0.5, s * 0.1); ctx.quadraticCurveTo(0, 0, -s * 0.9, s * 0.4); ctx.fill(); ctx.restore(); }
-  function drawPin(p, sx, sy, emphasis) {
-    const k = p.kind, r = (k === "npc" ? 3.5 : 9) * (emphasis ? 1.35 : 1);
-    if (k === "npc") { ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.fillStyle = "rgba(60,40,20,0.75)"; ctx.fill(); return; }
+  const poly = (g, x, y, r, n, rot = 0) => () => { g.beginPath(); for (let i = 0; i < n; i++) { const a = rot + (i * 2 * Math.PI) / n; g.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)); } g.closePath(); };
+  const shield = (g, x, y, r) => () => { g.beginPath(); g.moveTo(x - r * 0.85, y - r * 0.85); g.lineTo(x + r * 0.85, y - r * 0.85); g.lineTo(x + r * 0.85, y + r * 0.1); g.quadraticCurveTo(x + r * 0.6, y + r * 0.75, x, y + r * 1.1); g.quadraticCurveTo(x - r * 0.6, y + r * 0.75, x - r * 0.85, y + r * 0.1); g.closePath(); };
+  const roundSquare = (g, x, y, r) => () => { g.beginPath(); g.roundRect(x - r * 0.85, y - r * 0.85, r * 1.7, r * 1.7, r * 0.35); };
+  function text(g, t, x, y, size, color = "#1d1207") { g.fillStyle = color; g.font = `800 ${size}px Georgia, serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(t, x, y + 1); }
+  function leaf(g, x, y, s, color) { g.save(); g.translate(x, y); g.rotate(-0.6); g.beginPath(); g.moveTo(0, -s); g.quadraticCurveTo(s * 0.95, 0, 0, s); g.quadraticCurveTo(-s * 0.95, 0, 0, -s); g.fillStyle = color; g.fill(); g.strokeStyle = "#173009"; g.lineWidth = 1.3; g.stroke(); g.beginPath(); g.moveTo(0, -s * 0.8); g.lineTo(0, s * 0.8); g.stroke(); g.restore(); }
+  function rock(g, x, y, s) { g.beginPath(); g.moveTo(x - s, y + s * 0.6); g.lineTo(x - s * 0.6, y - s * 0.5); g.lineTo(x + s * 0.1, y - s); g.lineTo(x + s, y - s * 0.2); g.lineTo(x + s * 0.8, y + s * 0.7); g.closePath(); g.fillStyle = "#8d8276"; g.fill(); g.strokeStyle = "#1f1a16"; g.lineWidth = 1.3; g.stroke(); g.fillStyle = "#e0ad45"; g.fillRect(x - s * 0.2, y - s * 0.3, s * 0.35, s * 0.3); }
+  function wing(g, x, y, s) { g.save(); g.translate(x, y); g.fillStyle = "#f2f7ff"; g.beginPath(); g.moveTo(-s * 0.9, s * 0.4); g.quadraticCurveTo(-s * 0.2, -s, s * 0.9, -s * 0.6); g.quadraticCurveTo(s * 0.2, -s * 0.1, s * 0.5, s * 0.1); g.quadraticCurveTo(0, 0, -s * 0.9, s * 0.4); g.fill(); g.restore(); }
+  function swords(g, x, y, s) { g.save(); g.strokeStyle = "#fff4dc"; g.lineWidth = 2; g.lineCap = "round"; g.beginPath(); g.moveTo(x - s, y + s); g.lineTo(x + s, y - s); g.moveTo(x + s, y + s); g.lineTo(x - s, y - s); g.stroke(); g.lineWidth = 1.6; g.beginPath(); g.moveTo(x - s * 0.95, y + s * 0.35); g.lineTo(x - s * 0.35, y + s * 0.95); g.moveTo(x + s * 0.95, y + s * 0.35); g.lineTo(x + s * 0.35, y + s * 0.95); g.stroke(); g.restore(); }
+  function hammer(g, x, y, s) { g.save(); g.translate(x, y); g.rotate(-0.6); g.fillStyle = "#fff4dc"; g.fillRect(-s * 0.15, -s * 0.3, s * 0.3, s * 1.3); g.fillRect(-s * 0.75, -s * 0.85, s * 1.5, s * 0.6); g.restore(); }
+  function coin(g, x, y, s) { g.beginPath(); g.arc(x, y, s, 0, 7); g.fillStyle = "#f4cf5a"; g.fill(); g.strokeStyle = "#5a3a0c"; g.lineWidth = 1.3; g.stroke(); text(g, "g", x, y - 0.5, s * 1.4, "#5a3a0c"); }
+  function star(g, x, y, s) { g.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? s * 0.45 : s, a = -Math.PI / 2 + (i * Math.PI) / 5; g.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)); } g.closePath(); g.fillStyle = "#ffe27a"; g.fill(); g.strokeStyle = "#5a3a0c"; g.lineWidth = 1; g.stroke(); }
+  // Draw one pin icon centred on (x, y) with radius r into any 2D context.
+  function icon(g, kind, x, y, r, { gather = null, zoom = 1 } = {}) {
+    const k = kind;
+    if (k === "npc") { fillShape(g, poly(g, x, y, r * 0.45, 4, Math.PI / 4), COLORS.npc, x, y, r * 0.45); return; }
     if (k === "town") return;
-    if (k === "instance") { const g = ctx.createRadialGradient(sx, sy, 2, sx, sy, 16); g.addColorStop(0, "#f3d9ff"); g.addColorStop(0.5, "#8a3fd1"); g.addColorStop(1, "rgba(60,10,90,0)"); ctx.beginPath(); ctx.arc(sx, sy, 16, 0, 7); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = "#2a0d3d"; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(sx, sy, 4 + i * 3.5, i, i + 4.2); ctx.stroke(); } return; }
-    if (k === "quest-objective") { ctx.beginPath(); ctx.arc(sx, sy, 14 * view.zoom ** 0.3, 0, 7); ctx.fillStyle = "rgba(217,68,46,0.14)"; ctx.fill(); ctx.setLineDash([4, 3]); ctx.strokeStyle = "rgba(160,40,25,0.8)"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]); badge(sx, sy, r * 0.75, COLORS[k]); glyph("•", sx, sy, 12, "#fff"); return; }
-    if (k === "herb" || (k === "find" && p.gather === "herb")) { if (k === "find") badge(sx, sy, r, "#f2d27a"); leaf(sx, sy, r * 0.8, COLORS.herb); return; }
-    if (k === "ore" || (k === "find" && p.gather === "ore")) { if (k === "find") badge(sx, sy, r, "#f2d27a"); rock(sx, sy, r * 0.7, "#8d8276"); return; }
-    badge(sx, sy, r, COLORS[k] || "#999");
-    if (k === "quest-giver") glyph("!", sx, sy, 15);
-    else if (k === "quest-turnin") glyph("?", sx, sy, 15);
-    else if (k === "flight") wing(sx, sy, r * 0.75);
-    else if (k === "trainer") glyph("✦", sx, sy, 12, "#fff");
-    else if (k === "vendor") glyph("¤", sx, sy, 14, "#fff");
+    if (k === "instance") { const gr = g.createRadialGradient(x, y, 2, x, y, r * 1.7); gr.addColorStop(0, "#f3d9ff"); gr.addColorStop(0.5, "#8a3fd1"); gr.addColorStop(1, "rgba(60,10,90,0)"); g.beginPath(); g.arc(x, y, r * 1.7, 0, 7); g.fillStyle = gr; g.fill(); g.strokeStyle = "#2a0d3d"; g.lineWidth = 2; for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(x, y, r * 0.4 + i * r * 0.38, i, i + 4.2); g.stroke(); } return; }
+    if (k === "quest-objective") {
+      const a = r * 1.5 * zoom ** 0.3; g.beginPath(); g.arc(x, y, a, 0, 7); g.fillStyle = "rgba(217,68,46,0.16)"; g.fill(); g.setLineDash([4, 3]); g.strokeStyle = "rgba(170,40,25,0.85)"; g.lineWidth = 1.5; g.stroke(); g.setLineDash([]);
+      g.beginPath(); g.arc(x, y, r * 0.55, 0, 7); g.fillStyle = COLORS[k]; g.fill(); g.strokeStyle = "#fff0d8"; g.lineWidth = 2; g.stroke();
+      g.beginPath(); g.moveTo(x - r * 0.95, y); g.lineTo(x - r * 0.3, y); g.moveTo(x + r * 0.3, y); g.lineTo(x + r * 0.95, y); g.moveTo(x, y - r * 0.95); g.lineTo(x, y - r * 0.3); g.moveTo(x, y + r * 0.3); g.lineTo(x, y + r * 0.95); g.strokeStyle = "#5a0f06"; g.lineWidth = 1.8; g.stroke(); return;
+    }
+    if (k === "quest-giver" || k === "quest-turnin") {
+      if (k === "quest-turnin") { g.beginPath(); g.arc(x, y, r * 1.35, 0, 7); g.fillStyle = "rgba(255,214,80,0.28)"; g.fill(); }
+      fillShape(g, shield(g, x, y, r), COLORS[k], x, y, r); text(g, k === "quest-giver" ? "!" : "?", x, y - r * 0.05, r * 1.45); return;
+    }
+    if (k === "flight") { fillShape(g, poly(g, x, y, r * 1.15, 4, 0), COLORS[k], x, y, r); wing(g, x, y, r * 0.72); return; }
+    if (k === "class-trainer") { fillShape(g, poly(g, x, y, r * 1.05, 6, Math.PI / 6), COLORS[k], x, y, r); swords(g, x, y, r * 0.48); return; }
+    if (k === "profession-trainer") { fillShape(g, poly(g, x, y, r * 1.05, 6, Math.PI / 6), COLORS[k], x, y, r); hammer(g, x, y, r * 0.62); return; }
+    if (k === "vendor") { fillShape(g, roundSquare(g, x, y, r), COLORS[k], x, y, r); coin(g, x, y, r * 0.5); return; }
+    if (k === "herb" || (k === "find" && gather !== "ore")) { leaf(g, x, y, r * 0.9, COLORS.herb); if (k === "find") star(g, x + r * 0.65, y - r * 0.65, r * 0.45); return; }
+    if (k === "ore" || k === "find") { rock(g, x, y, r * 0.8); if (k === "find") star(g, x + r * 0.65, y - r * 0.65, r * 0.45); return; }
+    g.beginPath(); g.arc(x, y, r * 0.7, 0, 7); g.fillStyle = "#999"; g.fill();
   }
+  function drawPin(p, sx, sy, emphasis) {
+    const r = 9 * (emphasis ? 1.35 : 1);
+    if (p.otherFaction) ctx.globalAlpha = 0.55;
+    icon(ctx, p.kind, sx, sy, p.kind === "npc" ? r * 1.2 : r, { gather: p.gather, zoom: view.zoom });
+    if (p.otherFaction) { ctx.globalAlpha = 1; ctx.beginPath(); ctx.moveTo(sx - r * 0.8, sy + r * 0.8); ctx.lineTo(sx + r * 0.8, sy - r * 0.8); ctx.strokeStyle = "#c0261a"; ctx.lineWidth = 2.2; ctx.stroke(); }
+  }
+  // Small canvas icons for lists (legend, search results, near you, card header).
+  const ico = (kind, extra = "") => `<canvas class="wm-ico" width="22" height="22" data-ico="${esc(kind)}" ${extra}></canvas>`;
+  function paintIcons(box) { for (const c of box?.querySelectorAll?.("canvas[data-ico]") || []) { const g = c.getContext("2d"); g.clearRect(0, 0, 22, 22); icon(g, c.dataset.ico, 11, 11, c.dataset.ico === "quest-objective" ? 7 : 7.5, { gather: c.dataset.gather || null }); } }
 
   // ---------- drawing ----------
-  function visiblePins() { return (model?.pins || []).filter((p) => p.kind === "town" || layers[p.kind] !== false); }
+  function visiblePins() { return (model?.pins || []).filter((p) => p.kind === "town" || (layers[p.kind] !== false && (!p.otherFaction || layers.otherFaction))); }
   function draw() {
     if (!canvas || !ctx) return;
     const w = canvas.width, h = canvas.height;
@@ -175,7 +203,9 @@ window.WorldMapView = (() => {
   // ---------- side panel ----------
   function legend() {
     const box = document.querySelector("[data-wm-legend]"); if (!box) return;
-    box.innerHTML = `<h3>Layers</h3>` + LAYERS.map(([k, label]) => `<label class="wm-layer"><input type="checkbox" data-wm-layer="${k}" ${layers[k] !== false ? "checked" : ""}><span class="wm-swatch wm-k-${k}"></span>${esc(label)} <small>${model?.counts?.[k] || 0}</small></label>`).join("");
+    box.innerHTML = `<h3>Layers</h3>` + LAYERS.map(([k, label]) => `<label class="wm-layer"><input type="checkbox" data-wm-layer="${k}" ${layers[k] !== false ? "checked" : ""}>${ico(k, k === "find" ? 'data-gather="herb"' : "")}${esc(label)} <small>${model?.counts?.[k] || 0}</small></label>`).join("")
+      + (model?.counts?.otherFaction ? `<label class="wm-layer wm-layer-other"><input type="checkbox" data-wm-layer="otherFaction" ${layers.otherFaction ? "checked" : ""}><span class="wm-ico-other">⊘</span>Other faction's NPCs <small>${model.counts.otherFaction}</small></label>` : "");
+    paintIcons(box);
   }
   function relation(p) {
     const me = model?.player?.live || model?.player?.saved;
@@ -184,16 +214,55 @@ window.WorldMapView = (() => {
     const how = d < 0.02 ? "right here" : `${dirName(dx, dy)}, ${d < 0.08 ? "close" : d < 0.25 ? "a short ride" : "across the zone"}`;
     return `<p class="wm-rel">${model.player.live ? "From you (live)" : "From your last saved spot"}: <strong>${esc(how)}</strong></p>`;
   }
+  // Status words for quests on an NPC card, in the selected character's terms.
+  const QSTATUS = { ready: ["Ready to turn in", "ready"], active: ["In your log", "active"], available: ["Available", "available"], low: ["Low level", "low"], "too-high": ["Level too low", "high"], done: ["Done", "done"], "other-faction": ["Other faction", "other"] };
+  let npcInfo = null, npcFor = null;
+  function questRows(list, verb) {
+    return `<ul class="wm-qlist">${list.map((q) => { const [label, cls] = QSTATUS[q.status] || ["", ""]; const lvl = q.level ? `<small>lvl ${q.level}${q.status === "too-high" && q.minLevel ? ` · needs ${q.minLevel}` : ""}</small>` : ""; return `<li><button type="button" class="wm-qbtn" data-quest-open="${q.id}" title="Open in Quests"><span class="wm-qtitle">${esc(q.title)}</span>${lvl}<span class="wm-qchip wm-q-${cls}">${verb && q.status === "available" ? esc(verb) : esc(label)}</span></button></li>`; }).join("")}</ul>`;
+  }
+  function npcSections(d) {
+    if (!d) return "";
+    const parts = [];
+    const side = d.sides?.length ? `<span class="wm-faction wm-f-${d.otherFaction ? "other" : "ok"}">${esc(d.sides.join(" & "))}${d.otherFaction ? " · not your faction" : ""}</span>` : "";
+    parts.push(`<p class="wm-roles">${esc(d.roles.join(" · ") || "NPC")} ${side}</p>`);
+    if (d.flight) parts.push(`<p class="wm-note">Flight master for <strong>${esc(d.flight.town)}</strong>. Talk to them to learn this flight path.</p>`);
+    if (d.questsGiven.length) parts.push(`<section class="wm-sec"><h4>Quests given (${d.questsGiven.length})</h4>${questRows(d.questsGiven)}</section>`);
+    if (d.questsTurnedIn.length) parts.push(`<section class="wm-sec"><h4>Quests handed in here (${d.questsTurnedIn.length})</h4>${questRows(d.questsTurnedIn, "Hand in here")}</section>`);
+    if (d.trainer) {
+      const sv = d.trainer.services;
+      if (d.trainer.kind === "class-trainer" && d.trainer.forYou === false) {
+        parts.push(`<section class="wm-sec"><h4>Trains · ${esc(d.trainer.title)}</h4><p class="wm-note">Teaches ${esc(d.trainer.teaches)}s only, not your class (${sv.length} skills).</p></section>`);
+      } else if (d.trainer.kind === "class-trainer" && sv.some((s) => s.learnable !== null)) {
+        const now = sv.filter((s) => s.learnable), later = sv.filter((s) => s.learnable === false);
+        parts.push(`<section class="wm-sec"><h4>Trains · ${esc(d.trainer.title)}</h4>${now.length ? `<p class="wm-learn">You can learn now (${now.length})</p><ul class="wm-spells">${now.map((s) => `<li>${esc(s.name)}${s.rank ? ` <small>${esc(s.rank)}</small>` : ""}</li>`).join("")}</ul>` : ""}${later.length ? `<details><summary>Later (${later.length})</summary><ul class="wm-spells">${later.map((s) => `<li>${esc(s.name)}${s.rank ? ` <small>${esc(s.rank)}</small>` : ""} <small>lvl ${s.level}</small></li>`).join("")}</ul></details>` : ""}</section>`);
+      } else if (sv.length) {
+        parts.push(`<section class="wm-sec"><h4>Trains · ${esc(d.trainer.title)} (${sv.length})</h4><ul class="wm-spells">${sv.slice(0, 30).map((s) => `<li>${esc(s.name)}${s.rank ? ` <small>${esc(s.rank)}</small>` : ""}${s.skillRank ? ` <small>skill ${s.skillRank}</small>` : s.level ? ` <small>lvl ${s.level}</small>` : ""}</li>`).join("")}</ul></section>`);
+      }
+    }
+    if (d.vendor?.items.length) parts.push(`<section class="wm-sec"><details ${d.vendor.items.length <= 8 ? "open" : ""}><summary>Sells (${d.vendor.items.length})</summary><ul class="wm-items">${d.vendor.items.map((i) => `<li>${esc(i.name)}</li>`).join("")}</ul></details></section>`);
+    const elsewhere = d.places.filter((p) => p.mapId !== model?.mapId);
+    if (elsewhere.length) parts.push(`<p class="wm-note">Also seen in ${elsewhere.map((p) => `${esc(p.mapName)} ${pct(p.x)}, ${pct(p.y)}`).join("; ")}.</p>`);
+    if (!d.questsGiven.length && !d.questsTurnedIn.length && !d.trainer && !d.vendor && !d.flight) parts.push(`<p class="wm-note">No quests, training or wares are recorded for this NPC yet.</p>`);
+    return parts.join("");
+  }
+  async function loadNpc(p) {
+    if (!p?.npcId || !api?.worldMapNpc) return;
+    if (npcFor === p.npcId && npcInfo) return;
+    npcFor = p.npcId; npcInfo = null;
+    try { const d = await api.worldMapNpc(p.npcId); if (npcFor === p.npcId) { npcInfo = d; card(); } } catch { if (npcFor === p.npcId) { npcInfo = false; card(); } }
+  }
   function card() {
     const box = document.querySelector("[data-wm-card]"); if (!box) return;
-    if (!selected) { box.innerHTML = `<div class="wm-card-empty"><strong>Click any pin</strong> for details and a waypoint you can paste in game.<br>Use <em>Find</em> to search every zone.</div>`; return; }
+    if (!selected) { box.innerHTML = `<div class="wm-card-empty"><strong>Click any pin</strong> to see who it is, what they offer you and how to get there.<br>Use <em>Find</em> to search every zone.</div>`; return; }
     const p = selected;
-    box.innerHTML = `<div class="wm-card-head"><span class="wm-swatch wm-k-${esc(p.kind)}"></span><div><h3>${esc(p.label)}</h3>${p.sub ? `<p class="wm-sub">${esc(p.sub)}</p>` : ""}</div></div>
+    const details = p.npcId ? (npcFor === p.npcId && npcInfo ? npcSections(npcInfo) : npcInfo === false ? `<p class="wm-note">Details could not be loaded.</p>` : `<p class="wm-note">Loading details…</p>`) : "";
+    box.innerHTML = `<div class="wm-card-head">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<div><h3>${esc(p.label)}</h3>${p.sub ? `<p class="wm-sub">${esc(p.sub)}</p>` : ""}</div></div>
       <p class="wm-coords">${esc(model.mapName)} · ${pct(p.x)}, ${pct(p.y)}</p>${relation(p)}
-      ${p.sells?.length ? `<p class="wm-sells">Sold here: ${p.sells.map(esc).join(", ")}</p>` : ""}
-      ${p.services ? `<p class="wm-sells">${p.services} training services observed</p>` : ""}
-      <div class="wm-card-actions"><button type="button" class="primary" data-wm-act="way">Copy waypoint for WoW</button><button type="button" data-wm-act="track">Track on radar</button></div>
+      ${details}
+      <div class="wm-card-actions"><button type="button" class="primary" data-wm-act="way">Copy waypoint for WoW</button><button type="button" data-wm-act="track">Track on radar</button>${p.questId ? `<button type="button" data-quest-open="${p.questId}">Open quest</button>` : ""}</div>
       <p class="wm-src">${esc(p.source || "")}${p.lastSeen ? ` · seen ${esc(p.lastSeen)}` : ""}${p.build ? ` · build ${esc(p.build)}` : ""}</p>`;
+    paintIcons(box);
+    if (p.npcId && npcFor !== p.npcId) loadNpc(p);
   }
   // Say why the arrow is not live, in the player's terms.
   function notLive() {
@@ -214,7 +283,8 @@ window.WorldMapView = (() => {
     const box = document.querySelector("[data-wm-results]"); if (!box) return;
     box.hidden = !results;
     if (!results) { box.innerHTML = ""; return; }
-    box.innerHTML = `<h3>Found ${results.results.length} for “${esc(results.query)}”</h3>` + (results.results.length ? `<ol>${results.results.map((r, i) => `<li><button type="button" data-wm-result="${i}"><span class="wm-swatch wm-k-${esc(r.kind)}"></span><span><strong>${esc(r.label)}</strong><small>${esc(r.sub || "")}${r.sub ? " · " : ""}${esc(r.mapName)} ${pct(r.x)}, ${pct(r.y)}</small></span></button></li>`).join("")}</ol>` : `<p>Nothing in the local reference matches. Coverage grows as you and others play.</p>`) + `<button type="button" class="subtle" data-wm-act="clear">Clear search</button>`;
+    box.innerHTML = `<h3>Found ${results.results.length} for “${esc(results.query)}”</h3>` + (results.results.length ? `<ol>${results.results.map((r, i) => `<li><button type="button" data-wm-result="${i}">${ico(r.kind, r.gather ? `data-gather="${esc(r.gather)}"` : "")}<span><strong>${esc(r.label)}</strong><small>${esc(r.sub || "")}${r.sub ? " · " : ""}${esc(r.mapName)} ${pct(r.x)}, ${pct(r.y)}</small></span></button></li>`).join("")}</ol>` : `<p>Nothing in the local reference matches. Coverage grows as you and others play.</p>`) + `<button type="button" class="subtle" data-wm-act="clear">Clear search</button>`;
+    paintIcons(box);
   }
   // Nearest useful places to your live (or saved) position.
   const NEAR_KINDS = new Set(["quest-turnin", "quest-objective", "quest-giver", "flight", "find", "herb", "ore", "instance"]);
@@ -225,8 +295,9 @@ window.WorldMapView = (() => {
     const near = visiblePins().filter((p) => NEAR_KINDS.has(p.kind)).map((p) => ({ p, d: Math.hypot(p.x - me.x, p.y - me.y) })).sort((a, b) => (a.p.kind === "quest-turnin" ? -0.05 : 0) + a.d - ((b.p.kind === "quest-turnin" ? -0.05 : 0) + b.d))
       .filter((n, i, all) => !all.slice(0, i).some((m) => m.p.label === n.p.label && Math.hypot(m.p.x - n.p.x, m.p.y - n.p.y) < 0.03)).slice(0, 5);
     box.hidden = !near.length;
-    box.innerHTML = `<h3>Near you${model.player.live ? "" : " (last saved)"}</h3><ol>${near.map(({ p, d }, i) => `<li><button type="button" data-wm-near-pin="${i}"><span class="wm-swatch wm-k-${esc(p.kind)}"></span><span><strong>${esc(p.label)}</strong><small>${esc(p.sub || "")}${p.sub ? " · " : ""}${d < 0.02 ? "right here" : `${dirName(p.x - me.x, p.y - me.y)}, ${d < 0.08 ? "close" : d < 0.25 ? "short ride" : "far"}`}</small></span></button></li>`).join("")}</ol>`;
+    box.innerHTML = `<h3>Near you${model.player.live ? "" : " (last saved)"}</h3><ol>${near.map(({ p, d }, i) => `<li><button type="button" data-wm-near-pin="${i}">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<span><strong>${esc(p.label)}</strong><small>${esc(p.sub || "")}${p.sub ? " · " : ""}${d < 0.02 ? "right here" : `${dirName(p.x - me.x, p.y - me.y)}, ${d < 0.08 ? "close" : d < 0.25 ? "short ride" : "far"}`}</small></span></button></li>`).join("")}</ol>`;
     box._near = near.map((n) => n.p);
+    paintIcons(box);
   }
   function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; attrib(); loadArt(model?.mapId); legend(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); draw(); }
 

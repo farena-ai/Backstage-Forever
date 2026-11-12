@@ -5,7 +5,7 @@
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
-const RADAR_KINDS = new Set(["quest-turnin", "quest-objective", "quest-giver", "flight", "trainer", "vendor", "herb", "ore", "find", "town"]);
+const RADAR_KINDS = new Set(["quest-turnin", "quest-objective", "quest-giver", "flight", "class-trainer", "profession-trainer", "vendor", "herb", "ore", "find", "town"]);
 
 function createRadar({ BrowserWindow, ipcMain, worldMap, live, rendererDir, mapArt = null }) {
   const page = pathToFileURL(path.join(rendererDir, "radar.html")).toString();
@@ -13,7 +13,7 @@ function createRadar({ BrowserWindow, ipcMain, worldMap, live, rendererDir, mapA
   const valid = (event) => win && !win.isDestroyed() && event.sender === win.webContents && event.senderFrame === win.webContents.mainFrame && event.senderFrame.url === page;
   function pinsFor(mapId) {
     if (cache.mapId !== mapId) {
-      try { cache = { mapId, pins: worldMap.build({ mapId }).pins.filter((p) => RADAR_KINDS.has(p.kind)).map((p) => ({ id: p.id, kind: p.kind, gather: p.gather, label: p.label, sub: p.sub, x: p.x, y: p.y })) }; }
+      try { cache = { mapId, pins: worldMap.build({ mapId }).pins.filter((p) => RADAR_KINDS.has(p.kind) && !p.otherFaction).map((p) => ({ id: p.id, kind: p.kind, gather: p.gather, label: p.label, sub: p.sub, x: p.x, y: p.y })) }; }
       catch { cache = { mapId, pins: [] }; }
     }
     return cache.pins;

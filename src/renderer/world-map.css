@@ -74,3 +74,31 @@
 .world-map-page .wm-near li button:hover { background: rgba(232,200,120,.12); }
 .wm-near small { display: block; color: #cdb57a; }
 .wm-near[hidden] { display: none; }
+
+/* Pin icons in lists, and the richer NPC card. */
+.wm-ico { flex: none; width: 22px; height: 22px; vertical-align: middle; margin-right: 6px; }
+.wm-ico-other { display: inline-block; width: 22px; margin-right: 6px; text-align: center; color: #a3241a; font-weight: 700; }
+.wm-card-head .wm-ico { width: 28px; height: 28px; }
+.wm-roles { margin: 2px 0 6px; font-weight: 600; color: #3d220c; }
+.wm-faction { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 9px; font-size: 12px; font-weight: 700; }
+.wm-f-ok { background: #e3d2a6; color: #3d220c; border: 1px solid #a5823e; }
+.wm-f-other { background: #7a1f14; color: #ffe9c9; }
+.wm-sec { margin: 10px 0 4px; }
+.wm-sec h4, .wm-sec summary { margin: 0 0 4px; font: 700 13px Cinzel, Georgia, serif; color: #5a2e0c; cursor: default; }
+.wm-sec summary { cursor: pointer; }
+.wm-qlist, .wm-spells, .wm-items { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; }
+.wm-qbtn { display: flex; width: 100%; gap: 6px; align-items: baseline; padding: 4px 6px; margin: 2px 0; border: 1px solid transparent; border-radius: 4px; background: rgba(255,248,225,.55); color: #2b1b0a; text-align: left; cursor: pointer; font: inherit; }
+.wm-qbtn:hover, .wm-qbtn:focus-visible { border-color: #a5823e; background: #fff6dc; }
+.wm-qtitle { flex: 1; font-weight: 600; }
+.wm-qbtn small { color: #6b4a22; white-space: nowrap; }
+.wm-qchip { flex: none; padding: 0 6px; border-radius: 8px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.wm-q-ready { background: #f6c445; color: #3a2400; }
+.wm-q-active { background: #3f86d8; color: #fff; }
+.wm-q-available { background: #4e8f3a; color: #fff; }
+.wm-q-low, .wm-q-done { background: #b7a98a; color: #2b1b0a; }
+.wm-q-high { background: #b8462e; color: #fff; }
+.wm-q-other { background: #6d6d6d; color: #fff; }
+.wm-learn { margin: 2px 0; font-weight: 700; color: #2e6b1e; }
+.wm-spells li, .wm-items li { padding: 1px 0; font-size: 13px; }
+.wm-spells small, .wm-items small { color: #6b4a22; }
+.wm-note { margin: 6px 0; font-size: 13px; color: #4a3218; }

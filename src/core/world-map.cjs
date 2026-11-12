@@ -4,7 +4,16 @@
 const { MAP_NAMES } = require("./companion-tools.cjs");
 
 const GATHER_SPELLS = { 2366: "herb", 2368: "herb", 3570: "herb", 2575: "ore", 2576: "ore", 3564: "ore" };
-const KINDS = ["quest-turnin", "quest-giver", "quest-objective", "flight", "trainer", "vendor", "herb", "ore", "find", "town", "npc"];
+const KINDS = ["quest-turnin", "quest-giver", "quest-objective", "flight", "class-trainer", "profession-trainer", "vendor", "herb", "ore", "find", "town", "npc"];
+// Class trainers (and weapon/portal masters) teach your class; everything else trains a profession.
+const CLASS_TITLE = /^(warrior|paladin|hunter|rogue|priest|shaman|mage|warlock|druid|portal) trainer$|weapon master/i;
+const trainerKind = (title) => (CLASS_TITLE.test(title || "") ? "class-trainer" : "profession-trainer");
+// Factions an NPC is friendly to, from observed reactions (4+ is neutral or better).
+function friendlyTo(reactions) {
+  const out = [];
+  for (const [f, rs] of Object.entries(reactions || {})) if ((rs || []).some((r) => r >= 4)) out.push(f);
+  return out.length ? out : null;
+}
 const MAX_PINS = 1500;
 const mapName = (id) => MAP_NAMES[id] || `Map ${id}`;
 const pt = (p) => p && Number.isSafeInteger(p.mapId) && Number.isFinite(p.x) && Number.isFinite(p.y) && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
@@ -24,8 +33,8 @@ function buildStaticIndex({ knowledgePack = null, npcReference = null, travelRef
     if (n.flightMaster?.npcId) flightNpcs.set(n.flightMaster.npcId, n.label);
   }
   const special = new Map(); // npcId -> {kind, sub, extra}
-  for (const t of insights?.trainers || []) special.set(t.id, { kind: "trainer", sub: t.title || "Trainer", positions: t.positions, lastSeen: t.lastSeen, extra: { services: (t.services || []).length } });
-  for (const v of vendorPack?.vendors || []) if (!special.has(v.id)) special.set(v.id, { kind: "vendor", sub: "Vendor", positions: v.positions, lastSeen: v.lastSeen, extra: { sells: (v.listings || []).slice(0, 6).map((l) => l.name).filter(Boolean) } });
+  for (const t of insights?.trainers || []) special.set(t.id, { kind: trainerKind(t.title), sub: t.title || "Trainer", label: t.name, positions: t.positions, lastSeen: t.lastSeen, sides: friendlyTo(t.observedReactionsByFaction), extra: { services: (t.services || []).length } });
+  for (const v of vendorPack?.vendors || []) if (!special.has(v.id)) special.set(v.id, { kind: "vendor", sub: "Vendor", label: v.name, positions: v.positions, lastSeen: v.lastSeen, sides: friendlyTo(v.observedReactionsByFaction), extra: { sells: (v.listings || []).slice(0, 6).map((l) => l.name).filter(Boolean) } });
   for (const [id, town] of flightNpcs) special.set(id, { ...(special.get(id) || {}), kind: "flight", sub: `Flight Master · ${town}` });
   const seen = new Set();
   const npcRows = [];
@@ -38,13 +47,14 @@ function buildStaticIndex({ knowledgePack = null, npcReference = null, travelRef
       const key = `${n.id}:${p.mapId}:${Math.round(p.x * 200)}:${Math.round(p.y * 200)}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      add({ id: `npc:${n.id}:${p.mapId}:${Math.round(p.x * 1000)}`, npcId: n.id, kind: s?.kind || "npc", label: n.name, sub: s?.sub || null, mapId: p.mapId, x: p.x, y: p.y, lastSeen: n.lastSeen || s?.lastSeen || null, build: n.build, evidence: n.tier, ...(s?.extra || {}), source: "Efficient Games, CC BY 4.0" });
+      const sides = n.side ? [n.side] : s?.sides || null;
+      add({ id: `npc:${n.id}:${p.mapId}:${Math.round(p.x * 1000)}`, npcId: n.id, kind: s?.kind || "npc", label: n.name, sub: s?.sub || null, sides, mapId: p.mapId, x: p.x, y: p.y, lastSeen: n.lastSeen || s?.lastSeen || null, build: n.build, evidence: n.tier, ...(s?.extra || {}), source: "Efficient Games, CC BY 4.0" });
     }
   }
   // Trainers/vendors that the NPC packs do not list still appear.
   for (const [id, s] of special) {
     if (npcRows.some((n) => n.id === id)) continue;
-    for (const p of (s.positions || []).slice(0, 2)) add({ id: `npc:${id}:${p.mapId}:${Math.round(p.x * 1000)}`, npcId: id, kind: s.kind, label: s.label || `NPC #${id}`, sub: s.sub, mapId: p.mapId, x: p.x, y: p.y, lastSeen: s.lastSeen || null, evidence: "historical", ...(s.extra || {}), source: "Efficient Games, CC BY 4.0" });
+    for (const p of (s.positions || []).slice(0, 2)) add({ id: `npc:${id}:${p.mapId}:${Math.round(p.x * 1000)}`, npcId: id, kind: s.kind, label: s.label || `NPC #${id}`, sub: s.sub, sides: s.sides || null, mapId: p.mapId, x: p.x, y: p.y, lastSeen: s.lastSeen || null, evidence: "historical", ...(s.extra || {}), source: "Efficient Games, CC BY 4.0" });
   }
   for (const r of acquisitionPack?.rows || []) {
     if (r.kind !== "gathered-object-loot") continue;
@@ -107,7 +117,7 @@ function findPins(profile, mapId) {
 
 class WorldMap {
   constructor({ getState, knowledge, npcReference, travelReference, vendorPack, insights, acquisitionPack, live }) {
-    Object.assign(this, { getState, knowledge, live });
+    Object.assign(this, { getState, knowledge, live, npcReference, travelReference, vendorPack, insights });
     this.static = buildStaticIndex({ knowledgePack: knowledge?.bundled?.pack, npcReference, travelReference, vendorPack, insights, acquisitionPack });
   }
   profile() { const s = this.getState(); return s.profiles.find((p) => p.id === s.activeProfileId) || null; }
@@ -142,8 +152,11 @@ class WorldMap {
     // Quest and personal pins draw above reference pins.
     pins.sort((a, b) => KINDS.indexOf(b.kind) - KINDS.indexOf(a.kind));
     if (pins.length > MAX_PINS) pins = pins.slice(pins.length - MAX_PINS);
+    // NPCs friendly only to the other faction stay available but are marked (hidden by default in the app).
+    if (profile?.faction) pins = pins.map((p) => (p.sides && !p.sides.includes(profile.faction) ? { ...p, otherFaction: true } : p));
     const counts = {};
-    for (const p of pins) counts[p.kind] = (counts[p.kind] || 0) + 1;
+    for (const p of pins) if (!p.otherFaction) counts[p.kind] = (counts[p.kind] || 0) + 1;
+    counts.otherFaction = pins.filter((p) => p.otherFaction).length;
     return {
       mapId, mapName: mapName(mapId), maps: this.maps(),
       player: {
@@ -159,6 +172,63 @@ class WorldMap {
       attribution: "Reference data from Efficient Games (https://efficient.games), CC BY 4.0. Positions are approximate community observations.",
     };
   }
+  // Everything known about one NPC, in the selected character's terms.
+  npc(npcId) {
+    if (!Number.isSafeInteger(npcId) || npcId <= 0) throw Error("Invalid NPC.");
+    const profile = this.profile();
+    const pack = this.knowledge?.bundled?.pack || null;
+    const ref = pack?.npcs?.[`npc:${npcId}`] || null;
+    const trainer = (this.insights?.trainers || []).find((t) => t.id === npcId) || null;
+    const vendor = (this.vendorPack?.vendors || []).find((v) => v.id === npcId) || null;
+    const located = (this.npcReference?.npcs || []).find((n) => n.id === npcId) || null;
+    const flight = (this.travelReference?.nodes || []).find((n) => n.flightMaster?.npcId === npcId) || null;
+    const name = ref?.name || trainer?.name || vendor?.name || located?.name || null;
+    if (!name) return null;
+    const sides = ref?.side ? [ref.side] : friendlyTo(trainer?.observedReactionsByFaction || vendor?.observedReactionsByFaction);
+    const positions = ref?.positions?.length ? ref.positions : trainer?.positions || vendor?.positions || located?.positions || [];
+    const level = Number.isInteger(profile?.level) ? profile.level : null;
+    const active = new Map((profile?.quests || []).map((q) => [q.id, q]));
+    const done = new Set(profile?.history?.completedIdsKnown ? profile.history.completedIds : []);
+    const status = (q) => {
+      if (done.has(q.id)) return "done";
+      const a = active.get(q.id);
+      if (a) return a.complete ? "ready" : "active";
+      if (profile?.faction && q.sides?.length && !q.sides.includes(profile.faction)) return "other-faction";
+      if (level !== null && q.minLevel && level < q.minLevel) return "too-high";
+      if (level !== null && q.level && q.level < level - 6) return "low";
+      return "available";
+    };
+    const ORDER = { ready: 0, active: 1, available: 2, low: 3, "too-high": 4, done: 5, "other-faction": 6 };
+    const quests = (role) => Object.values(pack?.quests || {}).filter((q) => (q[role] || []).some((r) => r.kind === "npc" && r.id === npcId))
+      .map((q) => ({ id: q.id, title: q.title, level: q.level ?? null, minLevel: q.minLevel ?? null, status: status(q) }))
+      .sort((a, b) => ORDER[a.status] - ORDER[b.status] || (a.level ?? 99) - (b.level ?? 99)).slice(0, 40);
+    const tKind = trainer ? trainerKind(trainer.title) : null;
+    // A class trainer only teaches its own class (weapon masters teach everyone).
+    const teaches = tKind === "class-trainer" ? (/^(\w+) trainer$/i.exec(trainer.title || "")?.[1] || null) : null;
+    const forYou = !teaches || teaches.toLowerCase() === "portal" ? (teaches ? /mage/i.test(profile?.className || "") : true) : !profile?.className || teaches.toLowerCase() === String(profile.className).toLowerCase();
+    const given = quests("givers"), turnIns = quests("turnIns");
+    const roles = [];
+    if (flight) roles.push(`Flight Master · ${flight.label}`);
+    if (trainer) roles.push(trainer.title || "Trainer");
+    if (vendor) roles.push("Vendor");
+    if (given.length) roles.push("Quest giver");
+    return {
+      npcId, name, roles, sides,
+      otherFaction: Boolean(profile?.faction && sides && !sides.includes(profile.faction)),
+      places: positions.slice(0, 6).map((p) => ({ mapId: p.mapId, mapName: mapName(p.mapId), x: p.x, y: p.y })),
+      questsGiven: given, questsTurnedIn: turnIns,
+      trainer: trainer ? {
+        title: trainer.title || "Trainer", kind: tKind, teaches, forYou,
+        services: (trainer.services || []).map((sv) => ({ name: sv.name, rank: sv.rankText || null, level: sv.observedLevel || null, skillRank: sv.skillRank || null,
+          learnable: tKind === "class-trainer" && forYou && level !== null ? (sv.observedLevel || 0) <= level : null }))
+          .sort((a, b) => (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name)),
+      } : null,
+      vendor: vendor ? { items: (vendor.listings || []).filter((l) => l.name).map((l) => ({ itemId: l.itemId, name: l.name })) } : null,
+      flight: flight ? { town: flight.label } : null,
+      lastSeen: ref?.lastSeen || trainer?.lastSeen || vendor?.lastSeen || located?.lastSeen || null,
+      source: "Efficient Games, CC BY 4.0",
+    };
+  }
   search(query) {
     if (typeof query !== "string" || !query.trim() || query.length > 80) throw Error("Invalid world map search.");
     const q = norm(query);
@@ -167,7 +237,7 @@ class WorldMap {
     const live = this.liveFrame(profile);
     const here = live?.position || (pt(profile?.location) ? profile.location : null);
     const results = [];
-    const kindWords = { flight: ["flight", "fly", "gryphon", "wind rider", "bat"], trainer: ["trainer", "train"], vendor: ["vendor", "sell", "merchant", "shop"], herb: ["herb", "herbs"], ore: ["ore", "mine", "mining", "vein"] };
+    const kindWords = { flight: ["flight", "fly", "gryphon", "wind rider", "bat"], "class-trainer": ["trainer", "train", "class"], "profession-trainer": ["trainer", "train", "profession"], vendor: ["vendor", "sell", "merchant", "shop"], herb: ["herb", "herbs"], ore: ["ore", "mine", "mining", "vein"] };
     for (const [mapId, pins] of this.static) {
       for (const p of pins) {
         if (p.kind === "town") continue;
@@ -177,7 +247,7 @@ class WorldMap {
         if (!kindHit && !textHit) continue;
         const sameMap = here && here.mapId === mapId;
         const dist = sameMap ? Math.hypot(p.x - here.x, p.y - here.y) : null;
-        results.push({ ...p, mapName: mapName(mapId), distance: dist, score: (norm(p.label) === q ? 3 : 0) + (sameMap ? 2 : 0) + (kindHit ? 1 : 0) });
+        results.push({ ...p, mapName: mapName(mapId), distance: dist, score: (norm(p.label) === q ? 3 : 0) + (textHit ? 3 : 0) + (sameMap ? 2 : 0) + (kindHit ? 1 : 0) });
       }
     }
     results.sort((a, b) => b.score - a.score || (a.distance ?? 9) - (b.distance ?? 9) || a.label.localeCompare(b.label));
@@ -187,4 +257,4 @@ class WorldMap {
     return { query, results: unique, from: here ? { mapId: here.mapId, mapName: mapName(here.mapId), live: Boolean(live) } : null };
   }
 }
-module.exports = { WorldMap, buildStaticIndex, questPins, KINDS, mapName };
+module.exports = { WorldMap, buildStaticIndex, questPins, KINDS, mapName, trainerKind, friendlyTo };

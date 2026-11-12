@@ -3,7 +3,7 @@
 (() => {
   const canvas = document.querySelector("[data-radar-canvas]"), ctx = canvas.getContext("2d");
   const zoneEl = document.querySelector("[data-radar-zone]"), targetEl = document.querySelector("[data-radar-target]");
-  const COLORS = { "quest-turnin": "#f6c445", "quest-giver": "#f6c445", "quest-objective": "#d9442e", flight: "#4f8fd6", trainer: "#4f9d5a", vendor: "#a8743a", herb: "#5fae3c", ore: "#9a8f86", find: "#e8b33a", town: "#7a1f14", instance: "#8a3fd1", target: "#ffe08a" };
+  const COLORS = { "quest-turnin": "#f6c445", "quest-giver": "#f6c445", "quest-objective": "#d9442e", flight: "#4f8fd6", "class-trainer": "#b8462e", "profession-trainer": "#2f9c8f", vendor: "#a8743a", herb: "#5fae3c", ore: "#9a8f86", find: "#e8b33a", town: "#7a1f14", instance: "#8a3fd1", target: "#ffe08a" };
   let state = null, range = 0.12;
   // Zone maps are 1002 x 668: scale y so the radar keeps the map's true proportions.
   const ASPECT = 668 / 1002;
