@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("radar", Object.freeze({
   state: () => ipcRenderer.invoke("radar:state"),
   close: () => ipcRenderer.invoke("radar:close"),
+  art: (mapId) => ipcRenderer.invoke("radar:art", mapId),
   onState: (listener) => {
     if (typeof listener !== "function") throw new Error("Invalid radar listener.");
     const handler = (_event, value) => listener(value);

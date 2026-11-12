@@ -199,7 +199,7 @@ end
 local strip,textures,enabled,elapsed,lastKey
 local paints,lastError=0,nil
 local function settings()
-    if type(BackstageForeverLiveSettings)~='table' then BackstageForeverLiveSettings={enabled=false} end
+    if type(BackstageForeverLiveSettings)~='table' then BackstageForeverLiveSettings={enabled=true,announce=true} end
     return BackstageForeverLiveSettings
 end
 -- One UI unit = one physical pixel, independent of UI scale and resolution.
@@ -292,10 +292,19 @@ function BackstageForeverLiveCommand(message)
         pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever live link '..(s.enabled and 'on: the desktop app can read your position from the small strip at the top-left. /bf live off to stop.' or 'off.'))
     end
 end
+-- First login with the live link: say once what the strip is and how to hide it.
+local function announce()
+    local s=settings()
+    if not s.announce then return end
+    s.announce=nil
+    if type(DEFAULT_CHAT_FRAME)=='table' and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then
+        pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever live link is on: the tiny strip at the top-left lets the desktop app show where you are. Type /bf live off to hide it.')
+    end
+end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','DISPLAY_SIZE_CHANGED','UI_SCALE_CHANGED'}) do pcall(events.RegisterEvent,events,e) end
-        pcall(events.SetScript,events,'OnEvent',function(_,event) if event=='PLAYER_LOGIN' then pcall(apply) else pcall(rescale) lastKey=nil end end)
+        pcall(events.SetScript,events,'OnEvent',function(_,event) if event=='PLAYER_LOGIN' then pcall(apply) pcall(announce) else pcall(rescale) lastKey=nil end end)
     end
 end

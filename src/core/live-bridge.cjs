@@ -174,7 +174,7 @@ class LiveBridge {
   }
   prefFile() { return this.dataDir ? path.join(this.dataDir, "live-link.json") : null; }
   readPreference() {
-    try { return JSON.parse(fs.readFileSync(this.prefFile(), "utf8")).enabled === true; } catch { return false; }
+    try { return JSON.parse(fs.readFileSync(this.prefFile(), "utf8")).enabled !== false; } catch { return true; }
   }
   setEnabled(enabled) {
     if (typeof enabled !== "boolean") throw Error("Invalid live link preference.");

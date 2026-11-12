@@ -85,7 +85,9 @@ test("preference persists, and the capture worker is spawned bounded with no she
     return { stdout: { setEncoding() {}, on() {} }, stderr: { on() {} }, on: (e, f) => (listeners[e] = f), kill() { calls.push("killed"); } };
   };
   const b = new L.LiveBridge({ dataDir: dir, spawn: fake, platform: "win32" });
-  assert.equal(b.enabled, false);
+  assert.equal(b.enabled, true, "on by default for new installs");
+  b.setEnabled(false);
+  assert.equal(new L.LiveBridge({ dataDir: dir }).enabled, false, "an explicit off is remembered");
   b.setEnabled(true);
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "live-link.json"), "utf8")).enabled, true);
   assert.equal(new L.LiveBridge({ dataDir: dir }).enabled, true);

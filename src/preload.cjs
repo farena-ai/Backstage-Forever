@@ -81,6 +81,7 @@ contextBridge.exposeInMainWorld(
     openRadar: () => invoke("openRadar"),
     setRadarTarget: (pin) => invoke("setRadarTarget", pin),
     worldMapSearch: (query) => invoke("worldMapSearch", query),
+    mapArt: (mapId) => invoke("mapArt", mapId),
     copyWaypoint: (input) => invoke("copyWaypoint", input),
     liveLinkStatus: () => invoke("liveLinkStatus"),
     setLiveLink: (enabled) => invoke("setLiveLink", enabled),
