@@ -22,7 +22,8 @@ function identityHash(guid) {
 // addon's 16-bit hash of the raw GUID) is remembered here when SavedVariables are read.
 const liveKeys = new Map();
 function rememberLiveKey(sourceId, guid) { if (typeof sourceId === "string" && typeof guid === "string") liveKeys.set(sourceId, identityHash(guid)); }
-// -> 16-bit key, or null when this session has not read that character's GUID yet.
+// -> 16-bit key, or null when this session has not read that character's GUID yet
+// (callers then treat identified frames as another character's).
 function liveKeyFor(sourceId) { return liveKeys.has(sourceId) ? liveKeys.get(sourceId) : null; }
 function crc8(bytes, n) {
   let crc = 0;

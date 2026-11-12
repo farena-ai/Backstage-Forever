@@ -166,7 +166,8 @@ test("live frames reach the AI as authoritative current state", async () => {
   const { MemoryService } = require("../src/core/memory.cjs");
   const { CompanionService } = require("../src/core/companion-service.cjs");
   const providers = require("../src/core/providers.cjs");
-  const s = { activeProfileId: "A", profiles: [{ id: "A", ...profile, source: { kind: "wow-addon", id: "o" } }], provider: { id: "anthropic", model: "m", authMode: "api" }, memories: [] };
+  L.rememberLiveKey("digest-of-o", "o");
+  const s = { activeProfileId: "A", profiles: [{ id: "A", ...profile, source: { kind: "wow-addon", id: "digest-of-o" } }], provider: { id: "anthropic", model: "m", authMode: "api" }, memories: [] };
   const store = { state: s, getKey: () => "k" }, context = new CompanionContext(() => s);
   let seen;
   const service = new CompanionService({ store, context, requests: new CompanionRequest(context), memory: new MemoryService({ store, context }), ai: { ...providers, ask: async (i) => { seen = i; return "ok"; } }, chatgpt: {}, claude: {}, knowledge: { index: () => index }, npcReference, live: { status: () => ({ enabled: true, signal: "live", frame: live }) } });
