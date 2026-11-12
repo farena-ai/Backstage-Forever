@@ -302,7 +302,7 @@ async function enterPrepared(generation) {
     if (generation !== setupGeneration || !setupOpen || !setupReady()) return;
   }
   closeSetup("complete");
-  page = "adventure";
+  page = "now";
   render();
 }
 async function prepareCompanion(fn) {
@@ -344,7 +344,7 @@ let state,
   metadata = [],
   keys = {},
   version = "",
-  page = "adventure",
+  page = "now",
   connection = "ollama",
   messages = [],
   sending = false,
@@ -518,7 +518,7 @@ function render() {
     return;
   }
   const current = PlayerNavigation.current(page);
-  root.innerHTML = `<button type="button" class="skip-content" data-shell-control="skip-content" data-action="skip-content">Skip to content</button><div class="shell"><aside class="rail">${brand()}${PlayerNavigation.main(page)}<div class="rail-bottom">${PlayerNavigation.secondary(page)}<div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main" id="main-content" tabindex="-1" aria-labelledby="page-heading"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span id="page-heading" role="heading" aria-level="1">${current.label}${current.label !== current.pageLabel ? " / " + current.pageLabel : ""}</span></div><button data-shell-control="connection-status" class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span><span data-game-connection-label>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}</span><small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select data-shell-control="active-character" id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${PlayerNavigation.subtabs(page)}${setupDock()}${{ adventure: adventure, company: Company.page, party: Party.page, preparation: Preparation.page, "world-map": WorldMapView.page, dungeons: DungeonAtlas.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, updates: updatesPage }[page]()}</div></main></div>`;
+  root.innerHTML = `<button type="button" class="skip-content" data-shell-control="skip-content" data-action="skip-content">Skip to content</button><div class="shell"><aside class="rail">${brand()}${PlayerNavigation.main(page)}<div class="rail-bottom">${PlayerNavigation.secondary(page)}<div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main" id="main-content" tabindex="-1" aria-labelledby="page-heading"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span id="page-heading" role="heading" aria-level="1">${current.label}${current.label !== current.pageLabel ? " / " + current.pageLabel : ""}</span></div><button data-shell-control="connection-status" class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span><span data-game-connection-label>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}</span><small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select data-shell-control="active-character" id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${PlayerNavigation.subtabs(page)}${setupDock()}${{ now: NowView.page, adventure: adventure, company: Company.page, party: Party.page, preparation: Preparation.page, "world-map": WorldMapView.page, dungeons: DungeonAtlas.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, updates: updatesPage }[page]()}</div></main></div>`;
   PlayerNavigation.mounted(root);
   refreshGameStatusWidget();
   restoreDrafts();
@@ -546,6 +546,7 @@ function render() {
   Company.mounted();
   CharacterGuidance.mounted();
   WorldMapView.mounted();
+  NowView.mounted();
   DungeonAtlas.mounted();
   Preparation.mounted();
   Party.mounted();
@@ -1160,7 +1161,7 @@ Company.init({
     Company.invalidate();
     await autosaveQueue;
     await persist({ ...state, activeProfileId: selectedId });
-    page = "adventure";
+    page = "now";
     render();
   }),
 });

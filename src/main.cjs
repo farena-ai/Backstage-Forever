@@ -621,6 +621,11 @@ app.whenReady().then(async () => {
   handle("worldMap", (input) => worldMap.build(input || {}));
   handle("worldMapSearch", (query) => worldMap.search(query));
   handle("worldMapNpc", (npcId) => worldMap.npc(npcId));
+  const leveling = new (require("./core/leveling.cjs").LevelingAdvisor)({
+    getState: () => store.state, knowledge, insights,
+    getLive: () => worldMap.liveFrame(worldMap.profile()),
+  });
+  handle("levelingAdvice", () => leveling.advise());
   // Zone art from the player's own WoW install, cached locally per game build.
   const mapArt = new (require("./core/map-art.cjs").MapArt)({ getRoot: () => game?.root || null, cacheDir: path.join(app.getPath("userData"), "map-art") });
   handle("mapArt", (mapId) => {

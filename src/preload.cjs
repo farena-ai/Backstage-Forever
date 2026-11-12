@@ -81,6 +81,7 @@ contextBridge.exposeInMainWorld(
     setRadarTarget: (pin) => invoke("setRadarTarget", pin),
     worldMapSearch: (query) => invoke("worldMapSearch", query),
     worldMapNpc: (npcId) => invoke("worldMapNpc", npcId),
+    levelingAdvice: () => invoke("levelingAdvice"),
     mapArt: (mapId) => invoke("mapArt", mapId),
     copyWaypoint: (input) => invoke("copyWaypoint", input),
     liveLinkStatus: () => invoke("liveLinkStatus"),
