@@ -46,3 +46,9 @@ test("Alliance characters never get Horde-only zones, and odd input is handled",
   assert.equal(new LevelingAdvisor({ getState: () => ({ activeProfileId: null, profiles: [] }), knowledge: null, insights: null }).advise().status, "no-character");
   assert.deepEqual(hubOf([]), null);
 });
+
+test("a finished quest with no recorded hand-in points back to its quest giver", () => {
+  const r = advisor({ level: 7, faction: "Horde", className: "Priest", race: "Undead", location: { mapId: 1420, x: 0.6, y: 0.5 }, quests: [{ id: 358, title: "Graverobbers", complete: true, objectives: [] }] }).advise();
+  const g = r.log.ready.find((q) => q.id === 358);
+  assert.ok(g.turnIn && g.turnIn.guess === true && g.turnIn.mapId === 1420);
+});

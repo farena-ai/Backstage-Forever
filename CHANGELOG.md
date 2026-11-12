@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.1 — hand-ins you can see in game, 2026-11-12
+
+- BF Guide hand-ins come from WoW's own quest locations first, then the reference, then the quest giver (where quests usually go), so finished quests always get a pin and `/bf next` picks them first. The Now page uses the same giver fallback.
+- BF Guide pins draw above WoW's quest markers instead of underneath them.
+- The BF Layers panel sits inside the map, so reskinned map frames no longer cover it with their title bar.
+- Now says "Next spells at level N" so it can't be read as your level.
+- App/lock, TOC and capture metadata align at 0.18.1 preview. **1.0 remains held.**
+
 ## 0.18.0 — Now, and a guide on the in-game map, 2026-11-12
 
 - **Now** is the new home page: "Do this next" (hand in finished quests at the nearest NPC, train new class skills, continue your nearest quest, or head to the zone that fits), where to level (zones for your level and faction with how many quests you can pick up and their base town), quests to pick up there, class training now and at your next level, and your quest log. It follows the live link: change zone, level or quest progress and it updates. "Show on map" opens the World Map on the real NPC.

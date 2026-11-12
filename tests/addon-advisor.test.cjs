@@ -39,6 +39,18 @@ test("pick-ups respect level, faction, completion and the quest log; trainers re
   `);
 });
 
+test("hand-ins prefer WoW's own quest location, then our reference, then the quest giver", () => {
+  lua(pure + String.raw`
+  -- quest 1 (giver A) finished with no recorded hand-in: falls back to its giver
+  local rows=BackstageForeverAdvisorPoints(1420,who,{},{[1]=true},{[1]=true},{pickup=false,class=false,profession=false,flight=false})
+  assert(#rows==1 and rows[1].title=='Giver A' and rows[1].detail:match('usually to the quest giver'))
+  -- the game's own spot wins over both
+  rows=BackstageForeverAdvisorPoints(1420,who,{},{[1]=true,[5]=true},{[1]=true,[5]=true},{pickup=false,class=false,profession=false,flight=false},{[5]={x=.9,y=.9}})
+  local five;for _,r in ipairs(rows)do if r.questId==5 then five=r end end
+  assert(five and five.x==.9 and five.title:match('^Hand in: In My Log'))
+  `);
+});
+
 test("the generated advisor data loads in Lua and holds givers, trainers and zones", () => {
   const out = lua(String.raw`dofile('addon/BackstageForever/BackstageForeverAdvisorData.lua')
   local g,n=0,0;for _,rows in pairs(BackstageForeverAdvisorData.givers)do g=g+#rows end;for _,rows in pairs(BackstageForeverAdvisorData.npcs)do n=n+#rows end
@@ -52,7 +64,7 @@ test("the map provider attaches, draws game icons, waypoints on click, hides in 
   local methods={};for _,k in ipairs({'SetSize','SetPoint','ClearAllPoints','EnableMouse','SetBackdrop','SetBackdropColor','SetAllPoints','RegisterEvent'})do methods[k]=function()end end
   methods.SetScript=function(s,k,f)s[k]=f end;methods.HookScript=function(s,k,f)local p=s[k];s[k]=function(...)if p then p(...)end;f(...)end end
   methods.SetText=function(s,t)s.text=t end;methods.Show=function(s)s.visible=true end;methods.Hide=function(s)s.visible=false end;methods.IsShown=function(s)return s.visible==true end
-  methods.SetTexture=function(s,t)s.texture=t end
+  methods.SetTexture=function(s,t)s.texture=t end;methods.UseFrameLevelType=function(s,t)s.level=t end
   methods.CreateTexture=function()return setmetatable({},{__index=methods})end
   CreateFrame=function(_,name)local f=setmetatable({name=name},{__index=methods});frames[#frames+1]=f;return f end
   Mixin=function(t,...)for _,m in ipairs({...})do for k,v in pairs(m)do t[k]=v end end;return t end
@@ -76,6 +88,7 @@ test("the map provider attaches, draws game icons, waypoints on click, hides in 
   assert(#pins==5,'hand-in, pick-up, 2 class, 1 profession: '..#pins)
   local textures={};for _,p in ipairs(pins)do textures[p.bfIcon.texture]=true end
   assert(textures['Interface\\GossipFrame\\AvailableQuestIcon'] and textures['Interface\\GossipFrame\\ActiveQuestIcon'] and textures['Interface\\Minimap\\Tracking\\Class'])
+  assert(pins[1].level=='PIN_FRAME_LEVEL_SUPER_TRACKED_CONTENT','pins sit above WoW quest markers')
   pins[1]:OnMouseClickAction('LeftButton');assert(#ways==1 and ways[1]:match('^way 1420 '))
   pins[1]:OnMouseEnter();assert(GameTooltip.owner==pins[1])
   fighting=true;for _,f in ipairs(frames)do if f.OnEvent then f.OnEvent(f,'PLAYER_REGEN_DISABLED')end end;assert(#pins==0,'combat clears pins')
@@ -87,6 +100,6 @@ test("the map provider attaches, draws game icons, waypoints on click, hides in 
   -- /bf next: hand-in beats a nearer pick-up
   C_Map={GetBestMapForUnit=function()return 1420 end,GetPlayerMapPosition=function()return {GetXY=function()return .3,.6 end} end}
   local said={};DEFAULT_CHAT_FRAME={AddMessage=function(_,m)said[#said+1]=m end}
-  BackstageForeverNext();assert(ways[#ways]:match('Turn In NPC') and said[#said]:match('Hand in'))
+  BackstageForeverNext();assert(ways[#ways]:match('Turn In NPC') and said[#said]:match('Hand in'),said[#said])
   `);
 });

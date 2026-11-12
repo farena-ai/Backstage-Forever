@@ -145,7 +145,8 @@ class LevelingAdvisor {
     const ready = [], active = [];
     for (const q of p.quests || []) {
       const rec = pack?.quests?.[q.id] || null;
-      if (q.complete) ready.push({ id: q.id, title: q.title, level: rec?.level ?? null, turnIn: spot(rec?.turnIns?.[0]) });
+      // Without a recorded hand-in NPC, quests usually go back to whoever gave them.
+      if (q.complete) { const t = spot(rec?.turnIns?.[0]); const g = t ? null : spot(rec?.givers?.[0]); ready.push({ id: q.id, title: q.title, level: rec?.level ?? null, turnIn: t || (g && { ...g, guess: true }) }); }
       else {
         const objs = q.objectives || [];
         const loc = rec?.objectiveLocations?.find((o) => !objs[o.index - 1]?.done)?.positions?.[0] || null;

@@ -2,7 +2,7 @@
 
 ## 0.18 preview: a leveling advisor that works with you live
 
-The app now opens on **Now**: what to do next (hand in, train, continue a quest, or where to level), the zones that fit your level with the quests you can pick up there, your class training now and next, and your quest log, all following your live position. Inside WoW, a **BF Guide** layer on the world map shows quests you can pick up (checked live against your level, faction and completed quests), hand-ins, your class trainer, profession trainers and flight masters; `/bf next` points WoW's own arrow at the nearest one. See the [0.18.0 release notes](docs/releases/0.18.0.md).
+The app now opens on **Now**: what to do next (hand in, train, continue a quest, or where to level), the zones that fit your level with the quests you can pick up there, your class training now and next, and your quest log, all following your live position. Inside WoW, a **BF Guide** layer on the world map shows quests you can pick up (checked live against your level, faction and completed quests), hand-ins, your class trainer, profession trainers and flight masters; `/bf next` points WoW's own arrow at the nearest one. See the [0.18.0 release notes](docs/releases/0.18.0.md) and [0.18.1](docs/releases/0.18.1.md).
 
 ## 0.16 preview: your game's own maps, live
 

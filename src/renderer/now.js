@@ -25,7 +25,7 @@ window.NowView = (() => {
     if (ready.length) {
       const first = ready[0];
       out.push({ kind: "hand-in", title: ready.length === 1 ? `Hand in “${first.title}”` : `Hand in ${ready.length} finished quests`,
-        detail: first.turnIn ? `Nearest: ${esc(first.turnIn.name)} · ${at(first.turnIn)}${ready.length > 1 ? ` · also ${ready.slice(1, 3).map((q) => `“${esc(q.title)}”`).join(", ")}${ready.length > 3 ? "…" : ""}` : ""}` : "Hand-in location not recorded yet.",
+        detail: first.turnIn ? `Nearest: ${esc(first.turnIn.name)}${first.turnIn.guess ? " (usually the quest giver)" : ""} · ${at(first.turnIn)}${ready.length > 1 ? ` · also ${ready.slice(1, 3).map((q) => `“${esc(q.title)}”`).join(", ")}${ready.length > 3 ? "…" : ""}` : ""}` : "Hand-in location not recorded yet.",
         actions: mapBtn(first.turnIn, first.turnIn?.name || first.title, `Turn in: ${first.title}`, first.turnIn?.npcId) + `<button type="button" data-quest-open="${first.id}">Open quest</button>` });
     }
     const t = a.training;
@@ -62,7 +62,7 @@ window.NowView = (() => {
       : !t.trainer ? `<p>No ${esc(t.className)} trainer is recorded for your faction yet.</p>`
       : `<p><strong>${esc(t.trainer.name)}</strong> · ${esc(t.trainer.title)}<br><small>${at(t.trainer)}</small></p>
          ${t.newNow.length ? `<p class="now-good">New for you now: ${t.newNow.map((s) => esc(s.name)).join(", ")}</p>` : `<p>Nothing new at level ${c.level}.</p>`}
-         ${t.nextAt ? `<p>Next at <strong>level ${t.nextAt}</strong>: ${t.nextSpells.slice(0, 6).map((s) => esc(s.name)).join(", ")}${t.nextSpells.length > 6 ? "…" : ""}</p>` : ""}
+         ${t.nextAt ? `<p>Next spells at <strong>level ${t.nextAt}</strong>: ${t.nextSpells.slice(0, 6).map((s) => esc(s.name)).join(", ")}${t.nextSpells.length > 6 ? "…" : ""}</p>` : ""}
          <div class="now-actions">${mapBtn(t.trainer, t.trainer.name, t.trainer.title, t.trainer.npcId)}</div>`;
     const log = a.log;
     const questLog = log.inLog ? `<ul class="now-log">${log.ready.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip ready">Hand in</span>${esc(q.title)}</button></li>`).join("")}${log.active.slice(0, 8).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip">${q.total ? `${q.done}/${q.total}` : "…"}</span>${esc(q.title)}${q.level ? ` <small>lvl ${q.level}</small>` : ""}</button></li>`).join("")}</ul>` : `<p>Your quest log is empty. ${a.next ? `Pick up quests in ${esc(a.next.name)}.` : ""}</p>`;
