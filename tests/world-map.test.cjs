@@ -52,3 +52,10 @@ test("search finds flight masters, trainers and named NPCs across zones, nearest
   assert.throws(() => wm.search(""));
   assert.throws(() => wm.build([]));
 });
+
+test("a live frame never binds to a character whose live key has not been read", () => {
+  const { identityHash } = require("../src/core/live-bridge.cjs");
+  const frame = { characterHash: identityHash("guid-unread"), position: { mapId: 1456, x: 0.5, y: 0.5, facing: 1 }, mounted: false };
+  const m = make({ ...player, source: { kind: "wow-addon", id: "digest-never-read" } }, frame).build({});
+  assert.equal(m.player.live, null);
+});

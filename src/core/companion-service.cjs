@@ -61,8 +61,8 @@ class CompanionService {
       const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence,reportedLocation:prepared.reportedLocation};
       // Live frames count only when they carry the selected character's identity.
       const {liveKeyFor}=require('./live-bridge.cjs');
-      const expected=profile?.source?.kind==='wow-addon'?liveKeyFor(profile.source.id):null;
-      const liveStatusNow=()=>{if(!input.shareProfile||!this.live?.status)return null;const s=this.live.status();if(s?.frame&&expected!==null&&s.frame.characterHash&&s.frame.characterHash!==expected)return {...s,signal:'other-character',frame:null};if(s?.frame&&expected!==null&&!s.frame.characterHash)return {...s,frame:{...s.frame,identityUnverified:true}};return s;};
+      const bound=profile?.source?.kind==='wow-addon',expected=bound?liveKeyFor(profile.source.id):null; // null: GUID not read yet, never matches
+      const liveStatusNow=()=>{if(!input.shareProfile||!this.live?.status)return null;const s=this.live.status();if(s?.frame&&bound&&s.frame.characterHash&&s.frame.characterHash!==expected)return {...s,signal:'other-character',frame:null};if(s?.frame&&bound&&!s.frame.characterHash)return {...s,frame:{...s.frame,identityUnverified:true}};return s;};
       const liveNow=()=>liveStatusNow()?.frame||null;
       const liveStatus=liveStatusNow(),liveFrame=liveStatus?.frame||null;
       let context=this.ai.profileContext(state,profileId,input.shareProfile,options);
