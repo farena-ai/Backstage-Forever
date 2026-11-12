@@ -3,6 +3,7 @@
 ## 0.16.2 — a live arrow you can see on real maps, 2026-11-12
 
 - The live arrow on the World Map and radar is now a bright blue arrow on a dark disc (red in combat), with a blue trail, so it stands out on the game's warm, gold zone art. The old gold arrow blended into it.
+- Live frames bind only to a character whose live key was read from the addon's saved data; an unknown key no longer falls back to accepting the frame.
 - App/lock, TOC and capture metadata align at 0.16.2 preview. **1.0 remains held.**
 
 ## 0.16.1 — live position shows in the app, 2026-11-11
