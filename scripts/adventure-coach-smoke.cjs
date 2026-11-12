@@ -1,5 +1,6 @@
 "use strict";
 const { _electron: electron } = require("playwright");
+const { navigate } = require("./player-navigation.cjs");
 const fs = require("node:fs/promises"),
   path = require("node:path"),
   os = require("node:os"),
@@ -113,6 +114,7 @@ const { defaultState } = require("../src/core/validation.cjs"),
     page.setDefaultTimeout(6000);
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "complete"));
     await page.reload();
+    await navigate(page, "adventure");
     await page.locator("[data-adventure-coach]").waitFor();
     await page.waitForFunction(() =>
       document

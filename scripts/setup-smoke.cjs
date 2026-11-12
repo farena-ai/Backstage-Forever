@@ -68,6 +68,8 @@ const { testWindow } = require("./test-window.cjs");
     await page
       .getByRole("button", { name: "Start my adventure", exact: true })
       .click();
+    await page.locator("[data-now]").waitFor();
+    await navigate(page, "adventure");
     await page
       .getByRole("heading", { name: "Your adventure starts in the world.", exact: true })
       .waitFor();

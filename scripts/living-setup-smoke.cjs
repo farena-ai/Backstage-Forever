@@ -97,6 +97,8 @@ async function finishRefresh(page) {
     await app.evaluate(async () => { while (!fixture.releaseOnboarded) await new Promise(resolve => setTimeout(resolve, 10)); });
     assert.equal(await page.locator('[data-command="setup-enter"]').isEnabled(), false, "Automatic entry must not expose a second enabled step while it saves");
     await app.evaluate(() => fixture.releaseOnboarded());
+    await page.locator("[data-now]").waitFor();
+    await navigate(page, "adventure");
     await page.getByRole("heading", { name: "Your adventure starts in the world.", exact: true }).waitFor();
     let snapshot = await page.evaluate(() => window.backstage.bootstrap());
     assert.equal(snapshot.gameStatus.addonCurrent, true);

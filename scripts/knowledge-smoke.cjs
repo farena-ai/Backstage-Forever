@@ -215,6 +215,7 @@ function shortPath(target){
     );
     await page.reload();
     await page.getByRole("heading", { name: "Aeralyn", exact: true }).waitFor();
+    await navigate(page, "adventure");
     const plans = page.getByRole("region", {
       name: "Your next steps",
       exact: true,

@@ -55,7 +55,7 @@ function shortPath(target) {
     for(const scenario of ['unavailable','newer-focus','available']){
       await app.evaluate((_e,scenario)=>{voiceUi.unavailable=scenario==='unavailable';voiceUi.holdCapabilities=true;voiceUi.releaseCapabilities=null;},scenario);
       await page.reload();await page.evaluate(()=>{window.confirm=()=>true;});
-      await navigate(page, "assistant");await ensureCompanionTools(page,"voice");await ensureCompanionTools(page,"memory");
+      await navigate(page, "adventure");await navigate(page, "assistant");await ensureCompanionTools(page,"voice");await ensureCompanionTools(page,"memory");
       // Navigation retires Adventure's probe; mounted then starts this composer's first probe.
       await app.evaluate(async()=>{const end=Date.now()+6000;while(!voiceUi.releaseCapabilities){if(Date.now()>end)throw Error("Adventure capability gate missing");await new Promise(r=>setTimeout(r,10));}voiceUi.releaseCapabilities();voiceUi.releaseCapabilities=null;});
       await page.waitForFunction(()=>!document.querySelector('[data-voice-check]').disabled);await page.evaluate(()=>Voice.mounted());

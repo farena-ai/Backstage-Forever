@@ -75,6 +75,7 @@ function shortPath(target) {
     await page
       .getByRole("heading", { name: "Smoke Ranger", exact: true })
       .waitFor();
+    await navigate(page, "adventure");
     assert.equal(
       await page.locator("body").getAttribute("data-faction"),
       "alliance",
