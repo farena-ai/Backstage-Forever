@@ -87,13 +87,13 @@ update=function()
     safe(waypointButton.Disable,waypointButton)
     safe(waypointButton.SetScript,waypointButton,'OnClick',nil)
     if combat() or not visible or not active then safe(panel.Hide,panel);return end
-    local lines={'Waiting for a public character snapshot.'}
+    local lines={'Getting ready. If this stays, type /reload once.'}
     local selected,command,stepIndex
     if latest then
         lines={text(latest.name,60)..'  |  Level '..text(tostring(latest.level),4)..' '..text(latest.className,30)}
         if not collapsed then
             local xp=latest.progress
-            lines[#lines+1]=text(latest.location and latest.location.zone,70)..' | '..(xp and ('XP '..text(tostring(xp.current),12)..' / '..text(tostring(xp.max),12)) or 'XP unavailable')
+            lines[#lines+1]=text(latest.location and latest.location.zone,70)..' | '..(xp and ('XP '..text(tostring(xp.current),12)..' / '..text(tostring(xp.max),12)..((tonumber(xp.max) or 0)>0 and (' ('..math.floor((tonumber(xp.current) or 0)/xp.max*100)..'%)') or '')..((tonumber(xp.rested) or 0)>0 and ' | rested' or '')) or 'XP unavailable')
             local coach=safe(BackstageForeverBuildCoach,latest,{mode=settings.mode,skillLineId=settings.profession.skillLineId,recipeId=settings.profession.recipeId,crafts=settings.profession.crafts})
             if type(coach)=='table' then
                 local opportunities={};if coach.recommendation then opportunities[1]=coach.recommendation end
@@ -119,12 +119,12 @@ update=function()
                     end)
                     safe(notNowButton.Enable,notNowButton)
                 else
-                    lines[#lines+1]=#opportunities>0 and 'Quiet for now. Continue at your own pace.' or 'Play normally to observe a useful next step.'
+                    lines[#lines+1]=#opportunities>0 and 'Quiet for now. Continue at your own pace.' or 'Nothing to suggest yet. Type /bf next for the nearest quest.'
                     lines[#lines+1]='Open your own profession normally for recipe advice.'
                 end
                 if questDetails then
                     local plan=safe(BackstageForeverBuildPlan,latest,{focus=settings.focus,minutes=settings.minutes})
-                    lines[#lines+1]='Quest details | Minutes limit cards, not an ETA.'
+                    lines[#lines+1]='Quest details | the time button sets how many steps you see.'
                     selected=nil;command=nil;stepIndex=nil
                     local cap=settings.minutes==15 and 1 or settings.minutes==60 and 3 or 2
                     for i=1,cap do local step=type(plan)=='table' and type(plan.steps)=='table' and plan.steps[i] or nil;if not step then break end
@@ -168,8 +168,8 @@ update=function()
     safe(body.SetHeight,body,collapsed and (captureMessage and 60 or 30) or 216)
     safe(panel.SetHeight,panel,collapsed and (captureMessage and 152 or 122) or professionDetails and 494 or type(BackstageForeverBuildProfessionCoach)=='function' and 466 or 440)
     safe(goalButton.SetText,goalButton,'Goal: '..({adventure='Adventure',questing='Quests',professions='Professions'})[settings.mode])
-    safe(focusButton.SetText,focusButton,'Focus: '..settings.focus)
-    safe(sessionButton.SetText,sessionButton,settings.minutes..'m / '..(settings.minutes==15 and 1 or settings.minutes==60 and 3 or 2)..' cards')
+    safe(focusButton.SetText,focusButton,'Focus: '..(({balanced='everything',['turn-ins']='hand-ins'})[settings.focus] or settings.focus))
+    safe(sessionButton.SetText,sessionButton,settings.minutes..' min: '..(settings.minutes==15 and 1 or settings.minutes==60 and 3 or 2)..' steps')
     for _,control in ipairs({focusButton,sessionButton,goalButton,notNowButton,detailsButton,waypointButton,actionTitle,actionSource,preparationLine})do safe(collapsed and control.Hide or control.Show,control) end
     if type(BackstageForeverBuildCoach)=='function' then
         for _,control in ipairs({focusButton,sessionButton})do safe((collapsed or not questDetails) and control.Hide or control.Show,control)end
@@ -287,7 +287,7 @@ local function initialize()
     safe(body.SetMaxLines,body,21)
     hint=panel:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
     hint:SetPoint('BOTTOMLEFT',14,13);hint:SetWidth(312);hint:SetJustifyH('LEFT')
-    hint:SetText('Live in WoW | Desktop saves on logout / UI reload\nDrag title | X: hide | -: collapse | /bf show')
+    hint:SetText('Updates as you play | /bf help lists commands\nDrag the title to move | X: hide | -: shrink | /bf show')
     local function button(name,x,width)
         local control=CreateFrame('Button',name,panel,'UIPanelButtonTemplate');control:SetPoint('TOPLEFT',x,-64);control:SetSize(width,22);return control
     end
@@ -349,6 +349,13 @@ if type(SlashCmdList)=='table' then
             if type(BackstageForeverLiveCommand)=='function' then pcall(BackstageForeverLiveCommand,message)end
             return
         end
+        if type(message)=='string' then
+            local word=message:lower():match('^(%a+)')
+            if word=='train' or word=='xp' or word=='hearth' or word=='help' or word=='toasts' or word=='danger' or word=='junk' then
+                if type(BackstageForeverAssistCommand)=='function' then pcall(BackstageForeverAssistCommand,message)end
+                return
+            end
+        end
         if combat() or not active then return end
         message=type(message)=='string' and message:lower() or ''
         if message=='hide' then visible=false elseif message=='show' then visible=true
@@ -357,7 +364,7 @@ if type(SlashCmdList)=='table' then
             return
         elseif message=='' then visible=not visible
         else
-            if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: /bf next, find NAME, way MapID X Y, live, show, hide, status, or guide QuestID t/o/r MapID X Y Build.')end
+            if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: try /bf next (where to go), /bf train (your trainer), /bf find NAME, or /bf help for everything.')end
             return
         end
         pcall(initialize);save();pcall(update)

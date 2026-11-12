@@ -1303,3 +1303,12 @@ body[data-class] .providers {
 /* Live game link status. */
 .live-link-line{font-size:.85rem;margin:.4rem 0;opacity:.85;}
 .live-link-line[data-signal="live"]{color:#7fd18b;opacity:1;font-weight:600;}
+
+/* Field guide: beginner start and glossary. */
+.guide-start, .guide-glossary { grid-column: 1 / -1; }
+.guide-steps { margin: 8px 0; padding-left: 22px; display: grid; gap: 6px; }
+.guide-glossary dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 8px 0 0; }
+.guide-glossary dt { font-weight: 700; }
+.guide-glossary dd { margin: 0; }
+.gls-ico { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #f6c445; color: #2b1b0a; font-weight: 800; font-size: 12px; margin-left: 4px; }
+@media (max-width: 700px) { .guide-glossary dl { grid-template-columns: 1fr; } }

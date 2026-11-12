@@ -14,6 +14,15 @@ In 0.6 the desktop Quest Guide can prepare a numeric `/bf guide` command from co
 
 Capture includes optional client build, locale, addon capture version, public objective counts/types and a bounded complete completed-quest ID set when available. Completed IDs stay local to the desktop and its private backups. Missing, protected or incomplete reads remain unknown. After an upgrade, the first reload loads the new addon; a second reload or logout may be needed to write its first new capture to disk. See [Forever data](../../docs/FOREVER-DATA.md).
 
+## Beginner assist (0.19)
+
+`BackstageForeverAssist.lua` adds plain-language help using public API only:
+- a danger line above the target frame (skull, elite, world boss, much higher level, rare, no XP)
+- pop-ups for level-ups, finished quests and deaths, with a waypoint to your body while you're a ghost
+- a **Sell junk** button on vendor windows that sells grey items only when clicked, never in combat
+- `/bf train` (waypoint to your class trainer), `/bf xp` (XP per hour, time to level, rested XP) and `/bf hearth`
+- `/bf help`, plus `/bf toasts`, `/bf danger` and `/bf junk` to switch each helper on or off (saved per character in `BackstageForeverAssistSettings`)
+
 ## Optional profession and material observations
 
 The 0.10 collector observes owned professions, learned recipes and fixed basic item requirements where Forever's public APIs expose them safely. Carried material counts cover only the backpack and four bags (0–4), with bounded reads and explicit partial/unknown coverage. It never opens profession windows, changes filters, adopts another player's linked/guild recipes, reads account/bank/mail storage, crafts or buys. Core character, quest, XP and native guidance continue when optional data is unavailable.

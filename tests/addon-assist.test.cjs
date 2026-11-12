@@ -1,0 +1,128 @@
+"use strict";
+const test = require("node:test"), assert = require("node:assert/strict");
+const path = require("node:path");
+const { spawnSync } = require("node:child_process");
+const root = path.join(__dirname, "..");
+function lua(body) {
+  const r = spawnSync(process.execPath, [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"], { cwd: root, input: body, encoding: "utf8", timeout: 20000 });
+  assert.equal(r.status, 0, r.stderr);
+  return r.stdout.trim();
+}
+const LOAD = "dofile('addon/BackstageForever/BackstageForeverAssist.lua')";
+
+test("danger warnings speak plainly and stay quiet for fair fights", () => {
+  const out = lua(`${LOAD}
+local function d(t) local r=BackstageForeverDanger(t) return r and (r.tone..':'..r.text) or 'none' end
+print(d({attackable=true,level=-1,playerLevel=10}))
+print(d({attackable=true,level=12,playerLevel=10,classification='elite'}))
+print(d({attackable=true,level=16,playerLevel=10}))
+print(d({attackable=true,level=13,playerLevel=10}))
+print(d({attackable=true,level=11,playerLevel=10}))
+print(d({attackable=true,level=3,playerLevel=20}))
+print(d({attackable=true,level=10,playerLevel=10,classification='rare'}))
+print(d({attackable=false,level=-1,playerLevel=10}))
+print(d({attackable=true,isPlayer=true,level=-1,playerLevel=10}))
+print(d({attackable=true,dead=true,level=-1,playerLevel=10}))
+print(BackstageForeverGreyLevel(5),BackstageForeverGreyLevel(20),BackstageForeverGreyLevel(50))`).split("\n");
+  assert.match(out[0], /^red:Skull/);
+  assert.match(out[1], /^red:Elite \(level 12\)/);
+  assert.match(out[2], /^red:Level 16, 6 above you/);
+  assert.match(out[3], /^orange:Level 13/);
+  assert.equal(out[4], "none");
+  assert.match(out[5], /^grey:/);
+  assert.match(out[6], /^yellow:Rare/);
+  assert.deepEqual(out.slice(7, 10), ["none", "none", "none"]);
+  assert.equal(out[10], "0\t13\t39");
+});
+
+test("money, duration, pace and junk helpers", () => {
+  const out = lua(`${LOAD}
+print(BackstageForeverMoney(0),BackstageForeverMoney(57),BackstageForeverMoney(3420),BackstageForeverMoney(1234567))
+print(BackstageForeverDuration(30),BackstageForeverDuration(720),BackstageForeverDuration(3900))
+print(BackstageForeverPace({start=0,gained=100},60,0,1000)==nil)
+local p=BackstageForeverPace({start=0,gained=3000},1800,400,1000) print(p.perHour,math.floor(p.toLevel))
+local list,total=BackstageForeverJunk({{quality=0,price=25,count=3},{quality=1,price=99},{quality=0,price=0},{quality=0,price=10,noValue=true},{quality=0,price=5}})
+print(#list,total)`).split("\n");
+  assert.equal(out[0], "0c\t57c\t34s 20c\t123g 45s");
+  assert.equal(out[1], "under a minute\t12 min\t1 h 05 min");
+  assert.equal(out[2], "true");
+  assert.equal(out[3], "6000\t360");
+  assert.equal(out[4], "2\t80");
+});
+
+const MOCKS = String.raw`
+local frames,msgs,way,sold,clock={},{},nil,{},100
+GetTime=function()return clock end
+DEFAULT_CHAT_FRAME={AddMessage=function(_,m)msgs[#msgs+1]=m end}
+local function frame(name)
+  local f={scripts={},shown=false,events={}}
+  function f:RegisterEvent(e)self.events[e]=true end
+  function f:SetScript(k,fn)self.scripts[k]=fn end
+  function f:Show()self.shown=true end function f:Hide()self.shown=false end
+  function f:SetText(t)self.text=t end
+  function f:CreateTexture()return setmetatable({},{__index=function()return function()end end})end
+  function f:CreateFontString()local s={shown=true} function s:SetText(t)self.text=t end function s:Show()self.shown=true end function s:Hide()self.shown=false end return setmetatable(s,{__index=function()return function()end end})end
+  frames[name or ('f'..#frames)]=f
+  return setmetatable(f,{__index=function()return function()end end})
+end
+CreateFrame=function(_,name)return frame(name)end
+UIParent={} MerchantFrame={} TargetFrame={}
+UnitClass=function()return 'Mage' end
+UnitFactionGroup=function()return 'Horde' end
+C_Map={GetBestMapForUnit=function()return 1411 end,GetPlayerMapPosition=function()return {GetXY=function()return 0.5,0.5 end}end,GetMapInfo=function(id)return {name=id==1411 and 'Durotar' or 'Orgrimmar'}end,ClearUserWaypoint=function()way='cleared' end}
+BackstageForeverWay=function(m)way=m end
+BackstageForeverAdvisorData={npcs={[1411]={{k='c',n='Mai\'ah',r='Mage Trainer',s='H',x=0.42,y=0.69},{k='c',n='Far',r='Mage Trainer',s='H',x=0.9,y=0.9},{k='c',n='Other',r='Warrior Trainer',s='H',x=0.5,y=0.5}}}}
+local xp,xpMax=0,1000
+UnitXP=function()return xp end UnitXPMax=function()return xpMax end
+C_DeathInfo={GetCorpseMapPosition=function()return {GetXY=function()return 0.31,0.62 end}end}
+local ghost=false UnitIsGhost=function()return ghost end
+local bag={[1]={itemID=1,quality=0,stackCount=2},[2]={itemID=2,quality=3,stackCount=1},[3]={itemID=3,quality=0,stackCount=1}}
+C_Container={GetContainerNumSlots=function(b)return b==0 and 3 or 0 end,GetContainerItemInfo=function(b,s)return b==0 and bag[s] or nil end,UseContainerItem=function(b,s)sold[#sold+1]=s bag[s]=nil end}
+GetItemInfo=function(id)return 'n',nil,nil,nil,nil,nil,nil,nil,nil,nil,({[1]=12,[2]=5000,[3]=40})[id] end
+InCombatLockdown=function()return false end
+UnitExists=function()return true end UnitLevel=function(u)return u=='player' and 10 or 16 end
+UnitClassification=function()return 'normal' end UnitCanAttack=function()return true end UnitIsPlayer=function()return false end UnitIsDead=function()return false end
+`;
+test("events: welcome once, level-up with trainer, quest math, death arrow, junk button and danger line", () => {
+  const out = lua(`${MOCKS}
+${LOAD}
+local ev=nil for _,f in pairs(frames) do if f.events and f.events.PLAYER_LOGIN then ev=f end end
+local fire=function(...) ev.scripts.OnEvent(ev,...) end
+fire('PLAYER_LOGIN')
+assert(msgs[1]:find('is ready',1,true),'welcome')
+assert(BackstageForeverAssistSettings.welcomed==true)
+fire('PLAYER_LEVEL_UP',11)
+assert(msgs[#msgs]:find('Level 11!',1,true) and msgs[#msgs]:find("Mai'ah in Durotar",1,true),'nearest trainer named: '..msgs[#msgs])
+xp=400 fire('PLAYER_XP_UPDATE')
+fire('QUEST_TURNED_IN',123,150,0)
+assert(msgs[#msgs]:find('+150 XP',1,true) and msgs[#msgs]:find('about 4 more quests',1,true),msgs[#msgs])
+fire('PLAYER_DEAD') assert(msgs[#msgs]:find('Release Spirit',1,true))
+ghost=true fire('PLAYER_ALIVE')
+assert(way and way:find('^way 1411 0.3100 0.6200 your body'),tostring(way))
+ghost=false fire('PLAYER_UNGHOST') assert(way=='cleared')
+assert(BackstageForeverAssistSession.deaths==1 and BackstageForeverAssistSession.quests==1)
+fire('MERCHANT_SHOW')
+local b=frames.BackstageForeverSellJunkButton
+assert(b.shown and b.text=='Sell junk: 2 items · 64c',tostring(b.text))
+b.scripts.OnClick(b)
+assert(#sold==2 and sold[1]==1 and sold[2]==3,'only greys sold')
+assert(not b.shown,'hidden when nothing is left')
+fire('MERCHANT_CLOSED')
+fire('PLAYER_TARGET_CHANGED')
+assert(BackstageForeverUpdateDanger().tone=='red')
+BackstageForeverAssistCommand('danger off') assert(BackstageForeverUpdateDanger()==nil)
+way=nil BackstageForeverAssistCommand('train') assert(way:find("Mai'ah",1,true))
+local help=BackstageForeverAssistCommand('help') assert(#help>=6)
+clock=100+1800 xp=600 fire('PLAYER_XP_UPDATE')
+assert(BackstageForeverPaceLine():find('XP/hour',1,true))
+print('ok')`);
+  assert.equal(out, "ok");
+});
+
+test("the junk button refuses to sell in combat", () => {
+  const out = lua(`${MOCKS}
+${LOAD}
+InCombatLockdown=function()return true end
+print(BackstageForeverSellJunk(), #sold)`);
+  assert.equal(out, "0\t0");
+});

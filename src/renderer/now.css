@@ -42,3 +42,38 @@
 .now-page .now-zones button::before, .now-page .now-zones button::after, .now-page .now-log button::before, .now-page .now-log button::after { display: none; }
 .now-page .now-zones button:hover:not(:disabled), .now-page .now-log button:hover:not(:disabled) { transform: none; background: #fff6dc; box-shadow: none; }
 .now-card small { color: #6b4a22; }
+
+/* This session: XP bar with rested bonus and the session's pace. */
+.now-death .now-ico { background: #2b2b38; color: #e9e2ff; }
+.now-xp { position: relative; height: 14px; border-radius: 7px; background: rgba(60,40,18,.25); border: 1px solid #8a6a32; overflow: hidden; }
+.now-page .now-xp .now-xp-fill { display: block; position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #c58cff, #7a3fd0); }
+.now-page .now-xp .now-xp-rested { display: block; position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(90deg, rgba(63,134,216,.85) 0 6px, rgba(63,134,216,.6) 6px 12px); }
+.now-xp-line { margin: 6px 0 8px; font-size: 14px; color: #4a3218; }
+.now-rested { color: #2a62a8; font-weight: 700; }
+.now-stats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.now-stats li { display: flex; flex-direction: column; padding: 6px 8px; border-radius: 4px; background: rgba(255,248,225,.55); border: 1px solid #c4a466; }
+.now-stats strong { font: 700 18px Georgia, serif; color: #2b1b0a; }
+.now-stats span { font-size: 12px; color: #5a3e1c; }
+.now-tip { margin: 8px 0 0; font-size: 13px; color: #4a3218; }
+/* Level-up celebration. */
+.bf-celebrate { position: fixed; inset: 0; contain: strict; z-index: 9999; display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, rgba(246,196,69,.25), rgba(0,0,0,.35) 60%); animation: bf-fade 5.2s ease forwards; overflow: hidden; cursor: pointer; }
+.bf-celebrate i { position: absolute; top: -12px; width: 8px; height: 14px; border-radius: 2px; animation: bf-fall 2.6s cubic-bezier(.2,.6,.4,1) forwards; }
+.bf-celebrate-card { text-align: center; padding: 22px 34px; border-radius: 10px; background: linear-gradient(180deg, #5a1a10, #3a0f09); border: 2px solid #f6c445; box-shadow: 0 0 40px rgba(246,196,69,.55); color: #fff1d6; animation: bf-pop .5s cubic-bezier(.2,1.6,.4,1); max-width: 420px; }
+.bf-celebrate-card span { display: block; font: 700 14px Cinzel, Georgia, serif; letter-spacing: .3em; text-transform: uppercase; color: #e8c983; }
+.bf-celebrate-card strong { display: block; font: 800 84px/1 Cinzel, Georgia, serif; color: #ffe27a; text-shadow: 0 0 18px rgba(246,196,69,.8); }
+.bf-celebrate-card p { margin: 10px 0 0; color: #f1dcb0; }
+@keyframes bf-fall { to { transform: translate(var(--drift), 105vh) rotate(720deg); } }
+@keyframes bf-pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes bf-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .bf-celebrate i { display: none; } .bf-celebrate, .bf-celebrate-card { animation: none; } }
+
+/* First-run checklist. */
+.now-setup { border-color: #8a5a18; box-shadow: 0 0 0 2px rgba(246,196,69,.45), 0 4px 10px rgba(0,0,0,.35); }
+.now-checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.now-checklist li { display: flex; gap: 10px; align-items: flex-start; }
+.now-checklist li.done strong { color: #2e6b1e; }
+.now-checklist p { margin: 2px 0 0; font-size: 14px; color: #4a3218; }
+.now-check { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; border: 1.5px solid #6b4a22; background: #fff6dc; color: #3d220c; }
+.now-checklist li.done .now-check { background: #4e8f3a; border-color: #2e5a20; color: #fff; }
+.now-checklist li.next .now-check { background: #f6c445; }
+.now-page .now-tip button.now-link { all: unset; cursor: pointer; color: #7a1f14; font-weight: 700; text-decoration: underline; }

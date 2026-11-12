@@ -93,7 +93,7 @@ dofile('addon/BackstageForever/BackstageForeverHUD.lua')
 event('PLAYER_LOGIN');BackstageForeverHUDUpdate(character)
 `;
 test('live compass persists validated focus/card preferences and binds an explicit labelled supported waypoint',()=>lua(hud+String.raw`
-assert(text():find('Live in WoW',1,true) and text():find('Desktop saves on logout',1,true))
+assert(text():find('Updates as you play',1,true) and text():find('/bf help lists commands',1,true))
 assert(text():find('Hero||cffff0000',1,true),'Untrusted formatting pipes must be escaped')
 assert(text():find('1. First quest',1,true) and text():find('2. Second ||Hquest',1,true),'Native cards retain their identities')
 assert(options.focus=='balanced' and options.minutes==30)
@@ -206,7 +206,7 @@ event('PLAYER_LOGIN');assert(cue.text=='','Previous session cue cannot revive on
 `));
 test('TOC loads planner dependencies before capture and HUD',()=>{
  const fs=require('node:fs');const toc=fs.readFileSync(path.join(__dirname,'../addon/BackstageForever/BackstageForever.toc'),'utf8');
- assert.deepEqual(toc.split(/\r?\n/).filter(x=>x.endsWith('.lua')),['BackstageForeverReference.lua','BackstageForeverAdvisorData.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverProfession.lua','BackstageForeverGathering.lua','BackstageForeverMapPlan.lua','BackstageForeverMap.lua','BackstageForeverAdvisorMap.lua','BackstageForever.lua','BackstageForeverHUD.lua','BackstageForeverLive.lua','BackstageForeverFind.lua']);
+ assert.deepEqual(toc.split(/\r?\n/).filter(x=>x.endsWith('.lua')),['BackstageForeverReference.lua','BackstageForeverAdvisorData.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverProfession.lua','BackstageForeverGathering.lua','BackstageForeverMapPlan.lua','BackstageForeverMap.lua','BackstageForeverAdvisorMap.lua','BackstageForever.lua','BackstageForeverHUD.lua','BackstageForeverLive.lua','BackstageForeverFind.lua','BackstageForeverAssist.lua']);
 });
 test('long localized reference cards retain relationship and English-title qualification',()=>lua(hud+String.raw`
 BackstageForeverBuildPlan=function()return {status='ready',steps={{questId=2,phase='o',title='Localized title',source='reference',detail=string.rep('Current objective ',20)..' Approximate reference: Reference NPC mentioned in objective; verify your quest details. English reference: Original quest title.',command='/bf guide 2 o 1413 0.4 0.5 1.60.1.70862'}}}end
@@ -304,7 +304,7 @@ event('BAG_UPDATE_DELAYED');local staleBagCapture=timers[1]
 -- a preceding logout event in this synthetic same-VM lifecycle.
 UnitGUID=function()return nil end;BackstageForeverHUDSettings={};event('PLAYER_LOGIN')
 staleBagCapture();assert(not text():find('Current game bags:',1,true),'Queued previous-session bag captures cannot resurrect the cue')
-assert(text():find('Waiting for a public character snapshot.',1,true) and text():find('Snapshot unavailable',1,true))
+assert(text():find('Getting ready. If this stays, type /reload once.',1,true) and text():find('Snapshot unavailable',1,true))
 assert(not text():find('Spirits of Stonetalon',1,true) and not text():find('XP 70',1,true) and not frames.BackstageForeverCompassWaypoint.enabled,'Failed new-login capture cannot retain a prior character plan or action')
 `));
 

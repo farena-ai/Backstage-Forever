@@ -82,6 +82,14 @@ contextBridge.exposeInMainWorld(
     worldMapSearch: (query) => invoke("worldMapSearch", query),
     worldMapNpc: (npcId) => invoke("worldMapNpc", npcId),
     levelingAdvice: () => invoke("levelingAdvice"),
+    playSession: () => invoke("playSession"),
+    playTrail: (mapId) => invoke("playTrail", mapId),
+    onPlayEvent: (listener) => {
+      if (typeof listener !== "function") throw new Error("Invalid play event listener.");
+      const handler = (_event, e) => listener(e);
+      ipcRenderer.on("backstage:playEvent", handler);
+      return () => ipcRenderer.removeListener("backstage:playEvent", handler);
+    },
     mapArt: (mapId) => invoke("mapArt", mapId),
     copyWaypoint: (input) => invoke("copyWaypoint", input),
     liveLinkStatus: () => invoke("liveLinkStatus"),

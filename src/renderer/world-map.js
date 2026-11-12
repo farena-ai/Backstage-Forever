@@ -12,7 +12,8 @@ window.WorldMapView = (() => {
   const PREF = "bf-world-map-v2";
   let clusters = [], pendingFocus = null;
   let model = null, mapId = null, follow = true, selected = null, hover = null, trail = [], view = { zoom: 1, cx: 0.5, cy: 0.5 };
-  let layers = { ...Object.fromEntries(LAYERS.map(([k]) => [k, !OFF_BY_DEFAULT.has(k)])), otherFaction: false };
+  let layers = { ...Object.fromEntries(LAYERS.map(([k]) => [k, !OFF_BY_DEFAULT.has(k)])), otherFaction: false, journey: true };
+  let journey = null, journeyAt = 0; // this session's path on the shown map (from the app, memory only)
   const EXPLORED = "bf-world-map-explored-v1:";
   const explored = (id) => { try { return JSON.parse(localStorage.getItem(EXPLORED + id) || "[]"); } catch { return []; } };
   const remember = (id, p) => { try { const a = explored(id); const last = a[a.length - 1]; if (last && Math.hypot(last[0] - p.x, last[1] - p.y) < 0.004) return; a.push([+p.x.toFixed(4), +p.y.toFixed(4)]); if (a.length > 4000) a.splice(0, a.length - 4000); localStorage.setItem(EXPLORED + id, JSON.stringify(a)); } catch {} };
@@ -174,11 +175,42 @@ window.WorldMapView = (() => {
       ctx.beginPath(); ctx.moveTo(sx, sy - 6); ctx.lineTo(sx + 5, sy); ctx.lineTo(sx, sy + 6); ctx.lineTo(sx - 5, sy); ctx.closePath(); ctx.fillStyle = "#7a1f14"; ctx.fill();
     }
     if (selected) { const [sx, sy] = toScreen(selected.x, selected.y); ctx.beginPath(); ctx.arc(sx, sy, 18, 0, 7); ctx.strokeStyle = "#fff6d0"; ctx.lineWidth = 3; ctx.stroke(); ctx.strokeStyle = "#a0701a"; ctx.lineWidth = 1.5; ctx.stroke(); }
+    if (layers.journey !== false && journey && journey.mapId === model?.mapId) drawJourney(journey);
     // Player: saved marker, live trail, live arrow.
     const pl = model?.player;
     if (pl?.saved && !pl.live) { const [sx, sy] = toScreen(pl.saved.x, pl.saved.y); ctx.beginPath(); ctx.arc(sx, sy, 8, 0, 7); ctx.setLineDash([3, 3]); ctx.strokeStyle = "#3a2410"; ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); ctx.font = "600 11px 'Source Sans 3'"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; const lw = ctx.measureText("last saved").width + 10; ctx.fillStyle = "rgba(245,232,200,0.92)"; ctx.beginPath(); ctx.roundRect(sx - lw / 2, sy + 11, lw, 15, 3); ctx.fill(); ctx.fillStyle = "#3a2410"; ctx.fillText("last saved", sx, sy + 19); }
     trail.forEach((t, i) => { if (t.mapId !== model?.mapId) return; const [sx, sy] = toScreen(t.x, t.y); ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, 7); ctx.fillStyle = `rgba(70,190,255,${(i + 1) / trail.length * 0.85})`; ctx.fill(); });
     if (pl?.live) arrow(...toScreen(pl.live.x, pl.live.y), pl.live.facing, pl.live.combat);
+  }
+  // Your path this session: a glowing line, with a cross where you died and a star where you levelled.
+  function drawJourney(j) {
+    const pts = j.points || [];
+    if (pts.length > 1) {
+      ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
+      for (const [width, style] of [[9, "rgba(80,200,255,0.18)"], [4, "rgba(80,200,255,0.55)"], [1.8, "rgba(235,250,255,0.95)"]]) {
+        ctx.lineWidth = width; ctx.strokeStyle = style; ctx.beginPath();
+        pts.forEach(([x, y], i) => { const [sx, sy] = toScreen(x, y); const prev = pts[i - 1]; if (i && Math.hypot(prev[0] - x, prev[1] - y) < 0.05) ctx.lineTo(sx, sy); else ctx.moveTo(sx, sy); });
+        ctx.stroke();
+      }
+      ctx.restore();
+      const [hx, hy] = toScreen(pts[0][0], pts[0][1]);
+      ctx.beginPath(); ctx.arc(hx, hy, 5, 0, 7); ctx.fillStyle = "#eafaff"; ctx.fill(); ctx.strokeStyle = "#1d6fa0"; ctx.lineWidth = 2; ctx.stroke();
+    }
+    for (const d of j.deaths || []) {
+      const [sx, sy] = toScreen(d.x, d.y);
+      ctx.save(); ctx.beginPath(); ctx.arc(sx, sy, 10, 0, 7); ctx.fillStyle = "rgba(20,14,30,0.85)"; ctx.fill(); ctx.strokeStyle = "#d9cfff"; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.strokeStyle = "#ff8a7a"; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(sx - 5, sy - 5); ctx.lineTo(sx + 5, sy + 5); ctx.moveTo(sx + 5, sy - 5); ctx.lineTo(sx - 5, sy + 5); ctx.stroke(); ctx.restore();
+    }
+    for (const u of j.levelUps || []) {
+      const [sx, sy] = toScreen(u.x, u.y);
+      star(ctx, sx, sy, 12);
+      text(ctx, String(u.level), sx, sy + 0.5, 10, "#5a3a0c");
+    }
+  }
+  async function loadJourney(force) {
+    if (!api.playTrail || !model?.mapId || (!force && Date.now() - journeyAt < 5000)) return;
+    journeyAt = Date.now();
+    try { journey = await api.playTrail(model.mapId); draw(); legend(); } catch {}
   }
   function compassRose(x, y, r) {
     ctx.save(); ctx.translate(x, y); ctx.globalAlpha = 0.8;
@@ -204,6 +236,7 @@ window.WorldMapView = (() => {
   function legend() {
     const box = document.querySelector("[data-wm-legend]"); if (!box) return;
     box.innerHTML = `<h3>Layers</h3>` + LAYERS.map(([k, label]) => `<label class="wm-layer"><input type="checkbox" data-wm-layer="${k}" ${layers[k] !== false ? "checked" : ""}>${ico(k, k === "find" ? 'data-gather="herb"' : "")}${esc(label)} <small>${model?.counts?.[k] || 0}</small></label>`).join("")
+      + `<label class="wm-layer wm-layer-journey"><input type="checkbox" data-wm-layer="journey" ${layers.journey !== false ? "checked" : ""}><span class="wm-ico-journey" aria-hidden="true"></span>My path this session <small>${journey && journey.mapId === model?.mapId ? (journey.points?.length || 0) : 0}</small></label>`
       + (model?.counts?.otherFaction ? `<label class="wm-layer wm-layer-other"><input type="checkbox" data-wm-layer="otherFaction" ${layers.otherFaction ? "checked" : ""}><span class="wm-ico-other">⊘</span>Other faction's NPCs <small>${model.counts.otherFaction}</small></label>` : "");
     paintIcons(box);
   }
@@ -335,7 +368,7 @@ window.WorldMapView = (() => {
       }
       if (m.player?.live) pushTrail(m.mapId, m.player.live);
     } catch (e) { error = e.message; }
-    loading = false; paintAll();
+    loading = false; paintAll(); loadJourney(true);
   }
   function pushTrail(id, p) { remember(id, p); const last = trail[trail.length - 1]; if (!last || last.mapId !== id || Math.hypot(last.x - p.x, last.y - p.y) > 0.002) { trail.push({ mapId: id, x: p.x, y: p.y }); if (trail.length > 60) trail.shift(); } }
   let foreignKey = null;
@@ -355,6 +388,7 @@ window.WorldMapView = (() => {
     if (model && f.position.mapId === model.mapId) {
       model.player.live = { x: f.position.x, y: f.position.y, facing: f.position.facing, mounted: f.mounted, combat: f.combat };
       pushTrail(model.mapId, f.position);
+      loadJourney(false);
       if (follow && view.zoom > 1) { view.cx = f.position.x; view.cy = f.position.y; }
       liveLine(); nearList(); draw();
     }
@@ -428,5 +462,5 @@ window.WorldMapView = (() => {
   if (api?.onLiveLink) api.onLiveLink(onLive);
   window.addEventListener("resize", () => { if (document.querySelector("[data-world-map]")) resize(); });
   function focus(f) { if (!f || !Number.isSafeInteger(f.mapId)) return; pendingFocus = f; follow = false; mapId = f.mapId; savePref(); if (document.querySelector("[data-world-map]")) load(f.mapId); }
-  return { page, mounted, focus, _state: () => ({ model, selected, view, trail, layers, results }) };
+  return { page, mounted, focus, _state: () => ({ model, selected, view, trail, layers, results, journey }) };
 })();
