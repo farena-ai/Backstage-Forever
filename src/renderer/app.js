@@ -471,7 +471,7 @@ function render() {
   if (Recovery.deferRender(render)) return;
   if (Support.deferRender(render)) return;
   if (Voice.deferRender(render) || Memory.deferRender(render)) return;
-  if (AdventureCoach.deferRender(render) || CharacterGuidance.deferRender(render) || QuestGuide.deferRender(render) || Company.deferRender(render) || Director.deferRender(render) || AdventureMap.deferRender(render) || Preparation.deferRender(render) || Party.deferRender(render)) return;
+  if (AdventureCoach.deferRender(render) || CharacterGuidance.deferRender(render) || QuestGuide.deferRender(render) || Company.deferRender(render) || Director.deferRender(render) || Preparation.deferRender(render) || Party.deferRender(render)) return;
   // Snapshot the executed paint, after native interaction guards have released.
   // Disclosure choices belong only to this screen, character and setup lifecycle.
   const disclosureOwner = JSON.stringify([page, setupOpen, setupGeneration, autosaveGeneration,
@@ -486,7 +486,6 @@ function render() {
   CharacterGuidance.beginRender();
   QuestGuide.beginRender();
   Company.beginRender();
-  AdventureMap.beginRender();
   Preparation.beginRender();
   Party.beginRender();
   AdventureCoach.beginRender();
@@ -519,7 +518,7 @@ function render() {
     return;
   }
   const current = PlayerNavigation.current(page);
-  root.innerHTML = `<button type="button" class="skip-content" data-shell-control="skip-content" data-action="skip-content">Skip to content</button><div class="shell"><aside class="rail">${brand()}${PlayerNavigation.main(page)}<div class="rail-bottom">${PlayerNavigation.secondary(page)}<div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main" id="main-content" tabindex="-1" aria-labelledby="page-heading"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span id="page-heading" role="heading" aria-level="1">${current.label}${current.label !== current.pageLabel ? " / " + current.pageLabel : ""}</span></div><button data-shell-control="connection-status" class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span><span data-game-connection-label>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}</span><small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select data-shell-control="active-character" id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${PlayerNavigation.subtabs(page)}${page === "adventure-map" ? "" : setupDock()}${{ adventure: adventure, company: Company.page, party: Party.page, preparation: Preparation.page, "adventure-map": AdventureMap.page, "world-map": WorldMapView.page, dungeons: DungeonAtlas.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, updates: updatesPage }[page]()}</div></main></div>`;
+  root.innerHTML = `<button type="button" class="skip-content" data-shell-control="skip-content" data-action="skip-content">Skip to content</button><div class="shell"><aside class="rail">${brand()}${PlayerNavigation.main(page)}<div class="rail-bottom">${PlayerNavigation.secondary(page)}<div class="status"><i class="dot"></i>Local journal · private</div><small>BACKSTAGE CODING<br>Designed by Frank Arena<br>v${esc(version)} · Desktop preview</small></div></aside><main class="main" id="main-content" tabindex="-1" aria-labelledby="page-heading"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span id="page-heading" role="heading" aria-level="1">${current.label}${current.label !== current.pageLabel ? " / " + current.pageLabel : ""}</span></div><button data-shell-control="connection-status" class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span><span data-game-connection-label>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}</span><small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select data-shell-control="active-character" id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content">${PlayerNavigation.subtabs(page)}${setupDock()}${{ adventure: adventure, company: Company.page, party: Party.page, preparation: Preparation.page, "world-map": WorldMapView.page, dungeons: DungeonAtlas.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, updates: updatesPage }[page]()}</div></main></div>`;
   PlayerNavigation.mounted(root);
   refreshGameStatusWidget();
   restoreDrafts();
@@ -546,7 +545,6 @@ function render() {
   QuestGuide.mounted();
   Company.mounted();
   CharacterGuidance.mounted();
-  AdventureMap.mounted();
   WorldMapView.mounted();
   DungeonAtlas.mounted();
   Preparation.mounted();
@@ -566,7 +564,6 @@ function render() {
     CharacterGuidance.endRender();
     QuestGuide.endRender();
     Company.endRender();
-    AdventureMap.endRender();
     Preparation.endRender();
   Party.endRender();
     Director.endRender();
@@ -972,7 +969,7 @@ Recovery.init({ api, root, esc, active: () => Boolean(state?.onboarded) && !setu
     if (next) {
       retireCompanion(false); Support.invalidate();
       Company.invalidate(true); Director.invalidate(); QuestGuide.invalidate(true);
-      CharacterGuidance.invalidate(true); AdventureMap.invalidate(); Preparation.invalidate(); AdventureMap.remove(); Preparation.remove(); Party.invalidate(); Party.remove();
+      CharacterGuidance.invalidate(true); Preparation.invalidate(); Preparation.remove(); Party.invalidate(); Party.remove();
       autosaveGeneration++; formDrafts.clear(); state = next; messages = [];
       gameStatus = { connected: false };
       connection = state.provider.id; authChoice = state.provider.authMode || "api";
@@ -1083,7 +1080,6 @@ CharacterGuidance.init({
   },
   open: result => { CharacterGuidance.invalidate(); Company.showJourney(result.journeyId); page="company"; render(); toast("Character checklist saved. Every step is a manual check."); }
 });
-AdventureMap.init({api,root,esc,portrait,active:()=>page==="adventure-map"&&!setupOpen&&Boolean(state?.onboarded),profileId:()=>state?.activeProfileId,sourceSignature:()=>JSON.stringify([profile(),LivingSetup.signature(gameStatus)]),epoch:()=>stateMutationEpoch,open:route=>{AdventureMap.invalidate();page=route;render();}});
 Preparation.init({
   api, root, esc, portrait,
   openDraft: openQuestionDraft,
@@ -1108,7 +1104,7 @@ Preparation.init({
     return result;
   },
   open: result => {
-    AdventureMap.invalidate(); Preparation.invalidate();
+    Preparation.invalidate();
     Company.showJourney(result.journeyId);
     page = "company";
     render();
@@ -1180,7 +1176,7 @@ root.addEventListener("click", (event) => {
   if (button.closest("[data-party]") && !button.dataset.nav) return;
   if (button.hasAttribute("data-director-start") || button.hasAttribute("data-preparation-add") || button.hasAttribute("data-preparation-retry") || button.hasAttribute("data-preparation-ask")) return;
   if (button.hasAttribute("data-company-command") || button.hasAttribute("data-company-open") || button.closest("[data-company-form]")) return;
-  if (button.dataset.nav || button.dataset.character || ["reset", "import", "new-character", "delete-character"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) { questNavigationRequest++;questStatusRequest++;CharacterGuidance.invalidate(); QuestGuide.invalidate(); Company.invalidate(); Director.invalidate(); AdventureMap.invalidate(); Preparation.invalidate(); Party.invalidate(); }
+  if (button.dataset.nav || button.dataset.character || ["reset", "import", "new-character", "delete-character"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) { questNavigationRequest++;questStatusRequest++;CharacterGuidance.invalidate(); QuestGuide.invalidate(); Company.invalidate(); Director.invalidate(); Preparation.invalidate(); Party.invalidate(); }
   if (button.dataset.nav || button.dataset.character || button.dataset.provider || button.dataset.briefAction || button.dataset.task || ["clear-chat", "reset", "import", "new-character", "delete-character", "delete-key", "subscription-login", "subscription-logout", "explain-plan"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) retireCompanion();
   // A click owns its navigation before the save barrier; reference polls cannot retarget it.
   const navigation=button.dataset.nav?Object.freeze({page:button.dataset.nav,request:questNavigationRequest}):null;
@@ -1489,7 +1485,7 @@ root.addEventListener("click", (event) => {
       case "delete-character":
         if (confirm("Delete this character, their goals, private notes and saved memory? This also clears ALL local recovery points and any preserved damaged original. Exported backups remain separate.")) {
           CommandCenter.remove(button.dataset.profileId);
-          AdventureMap.remove(button.dataset.profileId); Preparation.remove(button.dataset.profileId);
+          Preparation.remove(button.dataset.profileId);
           Party.remove(button.dataset.profileId);
           await persist(
             editedState((next) => {
@@ -1522,8 +1518,8 @@ root.addEventListener("click", (event) => {
         if (next) {
           Company.invalidate(true);
           CharacterGuidance.invalidate(true);
-          AdventureMap.invalidate(); Preparation.invalidate();
-          AdventureMap.remove(); Preparation.remove();
+          Preparation.invalidate();
+          Preparation.remove();
           Party.invalidate(); Party.remove();
           chatGeneration++;
           autosaveGeneration++;
@@ -1552,8 +1548,8 @@ root.addEventListener("click", (event) => {
         if (next) {
           Company.invalidate(true);
           CharacterGuidance.invalidate(true);
-          AdventureMap.invalidate(); Preparation.invalidate();
-          AdventureMap.remove(); Preparation.remove();
+          Preparation.invalidate();
+          Preparation.remove();
           Party.invalidate(); Party.remove();
           CommandCenter.remove();
           QuestGuide.invalidate(true);
@@ -1601,9 +1597,9 @@ root.addEventListener("click", (event) => {
 });
 root.addEventListener("change", (event) =>
   action(async () => {
-    if (event.target.closest("[data-company],[data-preparation],[data-party],[data-adventure-map]")) return;
+    if (event.target.closest("[data-company],[data-preparation],[data-party]")) return;
     if (event.target.id === "active-character" || event.target.id === "access-method") retireCompanion();
-    if (event.target.id === "active-character") { questNavigationRequest++;questStatusRequest++;CharacterGuidance.invalidate(); QuestGuide.invalidate(); Company.invalidate(); Director.invalidate(); AdventureMap.invalidate(); Preparation.invalidate(); Party.invalidate(); }
+    if (event.target.id === "active-character") { questNavigationRequest++;questStatusRequest++;CharacterGuidance.invalidate(); QuestGuide.invalidate(); Company.invalidate(); Director.invalidate(); Preparation.invalidate(); Party.invalidate(); }
     if (event.target.dataset.planOption && state.activeProfileId) {
       const selected = CommandCenter.options(state.activeProfileId);
       const key = event.target.dataset.planOption;
@@ -1909,14 +1905,8 @@ setInterval(async () => {
       if (savedAge) savedAge.textContent=profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character";
       CharacterGuidance.refresh(); return;
     }
-    if (page === "adventure-map") {
-      if(state.activeProfileId!==result.state.activeProfileId)AdventureMap.invalidate();
-      pendingSnapshot=null;const chromeChanged=companyChromeSignature(state,gameStatus)!==companyChromeSignature(result.state,result.gameStatus);
-      state=result.state;gameStatus=result.gameStatus||{};acceptBrief(result);
-      if(chromeChanged)render();AdventureMap.refresh();return;
-    }
     if (page === "preparation") {
-      if (state.activeProfileId !== result.state.activeProfileId) { AdventureMap.invalidate(); Preparation.invalidate(); }
+      if (state.activeProfileId !== result.state.activeProfileId) { Preparation.invalidate(); }
       pendingSnapshot = null;
       const chromeChanged = companyChromeSignature(state, gameStatus) !== companyChromeSignature(result.state, result.gameStatus);
       state = result.state;

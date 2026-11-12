@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.17.0 — a World Map you can read, and NPCs that tell you something, 2026-11-12
+
+- Every pin kind has its own shape: quest shields (! to pick up, ? to hand in), red crosshair objectives, blue diamond flight masters, hexagon trainers split into class (swords) and profession (hammer), square vendors, leaf herbs, rock ore, starred finds. The legend, search results, "Near you" and the card use the same icons.
+- Clicking an NPC shows who they are: roles, faction, the quests they give and take with your status (ready, in your log, available, level too low, done), what a class trainer teaches you now and later (or that they teach another class), full vendor wares, and where else they've been seen. Quests open in Quests.
+- Other-faction NPCs are hidden by default behind a toggle, dimmed when shown, and kept off the radar.
+- Search ranks exact matches first ("hunter trainer" finds the hunter trainer, not the nearest cook).
+- Adventure → Map is removed; the World Map does its job on real terrain.
+- App/lock, TOC and capture metadata align at 0.17.0 preview. **1.0 remains held.**
+
 ## 0.16.3 — new characters explained, 2026-11-12
 
 - WoW saves addon data only on /reload or logout, so the app can't know a brand-new character until then. The addon now says so once in chat for a new character, and the World Map reads "WoW is on a new character · /reload once in game so the app can link it" instead of a vague "not live". A live frame from another saved character says to switch characters.

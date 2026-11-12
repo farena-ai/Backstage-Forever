@@ -34,7 +34,6 @@ jobs:
       - run: npm run test:preparation
       - run: npm run test:adventure-coach
       - run: npm run test:profession-coach
-      - run: npm run test:adventure-map
       - run: npm run test:memory-backend
       - run: npm run test:voice-backend
       - run: npm run test:voice-memory

@@ -29,7 +29,7 @@ test("validation and tag publication require acquisition, Compass, Professions a
       "npm run check:forever-insights", "npm run check:forever-travel",
       "npm run check:forever-acquisition", "npm test", "npm run test:setup",
       "npm run test:adventure-coach", "npm run test:profession-coach",
-      "npm run test:adventure-map", "npm run test:packaged",
+      "npm run test:packaged",
     ]) assert.ok(commands.includes(command), `${filename} requires ${command}`);
     assert.equal(commands.filter((c) => c === "npm test").length, 1);
   }

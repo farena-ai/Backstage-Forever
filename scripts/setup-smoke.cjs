@@ -9,7 +9,7 @@ const releaseVersion = require("../package.json").version;
 const { testWindow } = require("./test-window.cjs");
 (async () => {
   const data = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "bf-setup-")));
-  const repo=path.resolve(__dirname,'..'), captures=path.join(repo,'.superpowers/sdd/native-adventure-map-captures',new Date().toISOString().replace(/[:.]/g,'-'));
+  const repo=path.resolve(__dirname,'..'), captures=path.join(repo,'.superpowers/sdd/native-setup-captures',new Date().toISOString().replace(/[:.]/g,'-'));
   await fs.mkdir(captures,{recursive:true});
   let app;
   try {
