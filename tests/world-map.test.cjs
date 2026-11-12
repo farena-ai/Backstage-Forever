@@ -59,3 +59,16 @@ test("a live frame never binds to a character whose live key has not been read",
   const m = make({ ...player, source: { kind: "wow-addon", id: "digest-never-read" } }, frame).build({});
   assert.equal(m.player.live, null);
 });
+
+test("the map explains a live frame from a new or different character instead of ignoring it", () => {
+  const { identityHash, rememberLiveKey } = require("../src/core/live-bridge.cjs");
+  rememberLiveKey("digest-mine", "guid-mine"); rememberLiveKey("digest-alt", "guid-alt");
+  const at = { position: { mapId: 1456, x: 0.5, y: 0.5, facing: 1 }, mounted: false };
+  const me = { ...player, source: { kind: "wow-addon", id: "digest-mine" } };
+  const fresh = make(me, { ...at, characterHash: identityHash("guid-brand-new") }).build({});
+  assert.equal(fresh.player.live, null);
+  assert.equal(fresh.player.liveIssue, "unsaved-character");
+  assert.equal(fresh.player.liveKey, identityHash("guid-mine"));
+  assert.equal(make(me, { ...at, characterHash: identityHash("guid-alt") }).build({}).player.liveIssue, "other-character");
+  assert.equal(make(me, { ...at, characterHash: identityHash("guid-mine") }).build({}).player.liveIssue, null);
+});

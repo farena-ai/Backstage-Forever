@@ -2,7 +2,7 @@
 
 ## 0.16 preview: your game's own maps, live
 
-The World Map and radar draw each zone's real map art straight from your WoW Forever install (read on your PC, never uploaded), with your live arrow on top. The live link is on by default. See the [0.16.2 release notes](docs/releases/0.16.2.md).
+The World Map and radar draw each zone's real map art straight from your WoW Forever install (read on your PC, never uploaded), with your live arrow on top. The live link is on by default. See the [0.16.3 release notes](docs/releases/0.16.3.md).
 
 ## 0.15 preview: find anything, see where you are
 

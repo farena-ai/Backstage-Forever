@@ -121,6 +121,12 @@ class WorldMap {
     }
     return f;
   }
+  // Why a present live frame was not used: another saved character, or one not saved yet.
+  liveIssue(profile, used) {
+    const f = this.live?.status?.()?.frame;
+    if (used || !f?.position || !f.characterHash || profile?.source?.kind !== "wow-addon") return null;
+    return require("./live-bridge.cjs").isKnownLiveKey(f.characterHash) ? "other-character" : "unsaved-character";
+  }
   maps() {
     return [...this.static.entries()].map(([mapId, pins]) => ({ mapId, name: mapName(mapId), count: pins.length })).filter((m) => MAP_NAMES[m.mapId] || m.count > 20).sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -145,6 +151,9 @@ class WorldMap {
         liveElsewhere: live && live.position.mapId !== mapId ? { mapId: live.position.mapId, mapName: mapName(live.position.mapId) } : null,
         saved: saved && saved.mapId === mapId ? { x: saved.x, y: saved.y, at: profile.source?.updatedAt || null } : null,
         name: profile?.name || null, faction: profile?.faction || null, level: profile?.level || null,
+        liveIssue: this.liveIssue(profile, live),
+        // The renderer applies streamed frames only when they carry this key (null: not an addon character).
+        liveKey: profile?.source?.kind === "wow-addon" ? require("./live-bridge.cjs").liveKeyFor(profile.source.id) ?? -1 : null,
       },
       pins, counts,
       attribution: "Reference data from Efficient Games (https://efficient.games), CC BY 4.0. Positions are approximate community observations.",

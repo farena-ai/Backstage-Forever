@@ -25,6 +25,8 @@ function rememberLiveKey(sourceId, guid) { if (typeof sourceId === "string" && t
 // -> 16-bit key, or null when this session has not read that character's GUID yet
 // (callers then treat identified frames as another character's).
 function liveKeyFor(sourceId) { return liveKeys.has(sourceId) ? liveKeys.get(sourceId) : null; }
+// True when the frame belongs to some character this session has read (just not, perhaps, the selected one).
+function isKnownLiveKey(hash) { for (const v of liveKeys.values()) if (v === hash) return true; return false; }
 function crc8(bytes, n) {
   let crc = 0;
   for (let i = 0; i < n; i++) {
@@ -256,4 +258,4 @@ class LiveBridge {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { LiveBridge, identityHash, rememberLiveKey, liveKeyFor, decodeStrip, decodeCells, encodeCells, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };
+module.exports = { LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, decodeCells, encodeCells, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };
