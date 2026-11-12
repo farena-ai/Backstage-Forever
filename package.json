@@ -27,6 +27,8 @@
     "build:addon-reference": "node scripts/build-addon-reference.cjs",
     "check:addon-reference": "node scripts/build-addon-reference.cjs --check",
     "build:find-index": "node scripts/build-find-index.cjs",
+    "build:addon-advisor": "node scripts/build-addon-advisor.cjs",
+    "check:addon-advisor": "node scripts/build-addon-advisor.cjs --check",
     "check:find-index": "node scripts/build-find-index.cjs --check",
     "test:living-backend": "node scripts/living-backend-smoke.cjs",
     "test:living-setup": "node scripts/living-setup-smoke.cjs",
