@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.2 — live link that survives remote access, 2026-11-12
+
+- The live strip is now version 3: every colour channel is fully on or off (one bit per channel) and cells are 6px, calibrated against white and black markers. Colour shifts from remote sessions, HDR, gamma or colour profiles, slight blur and resizing no longer break it. The strip is a little longer (about 456×6 px at the top-left).
+- The app measures the strip's cell size from the image and still reads the older strip, so a not-yet-updated addon keeps working.
+- App/lock, TOC and capture metadata align at 0.18.2 preview. **1.0 remains held.**
+
 ## 0.18.1 — hand-ins you can see in game, 2026-11-12
 
 - BF Guide hand-ins come from WoW's own quest locations first, then the reference, then the quest giver (where quests usually go), so finished quests always get a pin and `/bf next` picks them first. The Now page uses the same giver fallback.
