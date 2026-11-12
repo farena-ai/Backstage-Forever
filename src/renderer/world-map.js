@@ -107,18 +107,20 @@ window.WorldMapView = (() => {
     const w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
     const [ox, oy] = toScreen(0, 0), [ex, ey] = toScreen(1, 1);
-    ctx.drawImage(parchment, ox, oy, ex - ox, ey - oy);
-    // Ink washes where the world is known: a soft sense of settlements and roads.
-    ctx.save(); ctx.globalCompositeOperation = "multiply";
+    const art = arts.get(model?.mapId)?.bitmap;
+    if (art) { ctx.fillStyle = "#1a1008"; ctx.fillRect(0, 0, w, h); ctx.imageSmoothingQuality = "high"; ctx.drawImage(art, ox, oy, ex - ox, ey - oy); }
+    else ctx.drawImage(parchment, ox, oy, ex - ox, ey - oy);
+    // Ink washes where the world is known: a soft sense of settlements and roads (parchment only).
+    ctx.save(); ctx.globalCompositeOperation = "multiply"; if (art) ctx.globalAlpha = 0;
     for (const p of model?.pins || []) { const [sx, sy] = toScreen(p.x, p.y); const r = 26 * Math.max(1, view.zoom * 0.7); const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r); g.addColorStop(0, "rgba(120,90,50,0.10)"); g.addColorStop(1, "rgba(120,90,50,0)"); ctx.fillStyle = g; ctx.fillRect(sx - r, sy - r, 2 * r, 2 * r); }
     ctx.restore();
     // Places you have travelled with the live link on: your own roads.
     const ex2 = explored(model?.mapId);
     if (ex2.length) { ctx.save(); ctx.strokeStyle = "rgba(110,72,28,0.45)"; ctx.lineWidth = Math.max(2, 3 * view.zoom ** 0.5); ctx.lineCap = "round"; ctx.setLineDash([2, 5]); ctx.beginPath(); ex2.forEach(([x, y], i) => { const [sx, sy] = toScreen(x, y); const prev = ex2[i - 1]; if (i && prev && Math.hypot(prev[0] - x, prev[1] - y) < 0.03) ctx.lineTo(sx, sy); else ctx.moveTo(sx, sy); }); ctx.stroke(); ctx.restore(); }
     // Grid with coordinates.
-    ctx.strokeStyle = "rgba(80,55,25,0.18)"; ctx.lineWidth = 1; ctx.fillStyle = "rgba(60,40,18,0.7)"; ctx.font = "11px 'Source Sans 3', sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.strokeStyle = art ? "rgba(60,40,18,0.10)" : "rgba(80,55,25,0.18)"; ctx.lineWidth = 1; ctx.fillStyle = "rgba(60,40,18,0.7)"; ctx.font = "11px 'Source Sans 3', sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "top";
     for (let i = 0; i <= 10; i++) { const [gx] = toScreen(i / 10, 0), [, gy] = toScreen(0, i / 10); ctx.beginPath(); ctx.moveTo(gx, oy); ctx.lineTo(gx, ey); ctx.moveTo(ox, gy); ctx.lineTo(ex, gy); ctx.stroke(); if (i < 10) { ctx.fillText(String(i * 10), gx + 3, Math.max(oy, 0) + 3); ctx.fillText(String(i * 10), Math.max(ox, 0) + 3, gy + 3); } }
-    compassRose(w - 58, h - 62, 38);
+    if (!art) compassRose(w - 58, h - 62, 38);
     // Pins: overlapping same-kind pins merge into numbered clusters; selection stays visible.
     clusters = [];
     for (const p of visiblePins()) {
@@ -135,7 +137,7 @@ window.WorldMapView = (() => {
       ctx.fillStyle = "#fff3cf"; ctx.font = "700 10px 'Source Sans 3', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(c.pins.length), c.sx + 10, c.sy - 9.5);
     }
     // Landmarks on a parchment plate, above pins.
-    for (const p of visiblePins().filter((p) => p.kind === "town")) {
+    for (const p of art ? [] : visiblePins().filter((p) => p.kind === "town")) {
       const [sx, sy] = toScreen(p.x, p.y); ctx.font = "700 16px Cinzel, Georgia, serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       const tw = ctx.measureText(p.label).width + 18, ty = sy - 26;
       ctx.fillStyle = "rgba(245,232,200,0.92)"; ctx.strokeStyle = "#6b4a1c"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.roundRect(sx - tw / 2, ty - 11, tw, 22, 4); ctx.fill(); ctx.stroke();
@@ -221,9 +223,26 @@ window.WorldMapView = (() => {
     box.innerHTML = `<h3>Near you${model.player.live ? "" : " (last saved)"}</h3><ol>${near.map(({ p, d }, i) => `<li><button type="button" data-wm-near-pin="${i}"><span class="wm-swatch wm-k-${esc(p.kind)}"></span><span><strong>${esc(p.label)}</strong><small>${esc(p.sub || "")}${p.sub ? " · " : ""}${d < 0.02 ? "right here" : `${dirName(p.x - me.x, p.y - me.y)}, ${d < 0.08 ? "close" : d < 0.25 ? "short ride" : "far"}`}</small></span></button></li>`).join("")}</ol>`;
     box._near = near.map((n) => n.p);
   }
-  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; const a = document.querySelector("[data-wm-attrib]"); if (a && model) a.textContent = model.attribution; legend(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); draw(); }
+  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; attrib(); loadArt(model?.mapId); legend(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); draw(); }
 
   // ---------- data ----------
+  // Real zone art from the player's own game install; parchment when unavailable.
+  const arts = new Map();
+  async function loadArt(id) {
+    if (!id || arts.has(id) || !api?.mapArt) return;
+    arts.set(id, { pending: true });
+    try {
+      const r = await api.mapArt(id);
+      const bitmap = r?.png ? await createImageBitmap(new Blob([r.png], { type: "image/png" })) : null;
+      arts.set(id, { bitmap, source: r?.source || null, reason: r?.reason || null });
+    } catch { arts.set(id, { bitmap: null, reason: "Map art unavailable." }); }
+    if (model?.mapId === id) { attrib(); draw(); }
+  }
+  function attrib() {
+    const a = document.querySelector("[data-wm-attrib]"); if (!a || !model) return;
+    const art = arts.get(model.mapId);
+    a.textContent = `${art?.bitmap ? `Map art: ${art.source} (read on this PC, never uploaded). ` : art?.reason ? `${art.reason} ` : ""}${model.attribution}`;
+  }
   async function load(next) {
     if (loading) return; loading = true;
     try {

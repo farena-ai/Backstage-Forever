@@ -1,10 +1,12 @@
 # Changelog
 
-## 0.15.2 — live link on by default, 2026-11-11
+## 0.16.0 — real zone maps from your game, live link on by default, 2026-11-11
 
-- The live game link is on by default for new installs and for every character (an explicit off is remembered). The addon says once in chat what the top-left strip is and how to hide it (`/bf live off`).
-- World Map says why your position is not live (WoW minimized, window covered, link off, game not running) instead of only "Last saved position", clears a stale live arrow, and puts the "last saved" label on a readable plate.
-- App/lock, TOC and capture metadata align at 0.15.2 preview. **1.0 remains held.**
+- World Map and radar now show each zone's real map art, read from the player's own WoW Forever installation (local storage, DB2 map tables, BLP textures) with every explored-area overlay, composed once per game build into a local cache. Nothing is bundled, uploaded or redistributed; the procedural parchment remains the fallback when the game isn't connected or a zone has no art.
+- Radar keeps the map's true proportions so terrain and pins line up.
+- The live game link is on by default for new installs and every character (an explicit off is remembered); the addon explains the top-left strip once in chat.
+- World Map says why your position is not live (WoW minimized, window covered, link off, game not running), clears a stale live arrow, and puts the "last saved" label on a readable plate.
+- App/lock, TOC and capture metadata align at 0.16.0 preview. **1.0 remains held.**
 
 ## 0.15.1 — pop-out radar, 2026-11-11
 

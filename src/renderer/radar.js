@@ -5,6 +5,17 @@
   const zoneEl = document.querySelector("[data-radar-zone]"), targetEl = document.querySelector("[data-radar-target]");
   const COLORS = { "quest-turnin": "#f6c445", "quest-giver": "#f6c445", "quest-objective": "#d9442e", flight: "#4f8fd6", trainer: "#4f9d5a", vendor: "#a8743a", herb: "#5fae3c", ore: "#9a8f86", find: "#e8b33a", town: "#7a1f14", instance: "#8a3fd1", target: "#ffe08a" };
   let state = null, range = 0.12;
+  // Zone maps are 1002 x 668: scale y so the radar keeps the map's true proportions.
+  const ASPECT = 668 / 1002;
+  const arts = new Map();
+  function art(mapId) {
+    if (!mapId || !window.radar.art) return null;
+    if (!arts.has(mapId)) {
+      arts.set(mapId, null);
+      window.radar.art(mapId).then((png) => png ? createImageBitmap(new Blob([png], { type: "image/png" })) : null).then((b) => { arts.set(mapId, b); draw(); }).catch(() => {});
+    }
+    return arts.get(mapId);
+  }
   const dirName = (dx, dy) => ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"][Math.round(((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360 / 45) % 8];
   function band(d) { return d < 0.015 ? "you are there" : d < 0.06 ? "close" : d < 0.2 ? "short ride" : "far"; }
   function draw() {
@@ -20,7 +31,9 @@
     for (const r of [0.33, 0.66]) { ctx.beginPath(); ctx.arc(C, C, R * r, 0, 7); ctx.stroke(); }
     ctx.beginPath(); ctx.moveTo(C, C - R); ctx.lineTo(C, C + R); ctx.moveTo(C - R, C); ctx.lineTo(C + R, C); ctx.stroke();
     const me = state?.live;
-    const toXY = (p) => [C + ((p.x - me.x) / range) * R, C + ((p.y - me.y) / range) * R];
+    const toXY = (p) => [C + ((p.x - me.x) / range) * R, C + ((p.y - me.y) * ASPECT / range) * R];
+    const bmp = me && art(me.mapId);
+    if (bmp) { ctx.imageSmoothingQuality = "high"; ctx.drawImage(bmp, C - (me.x / range) * R, C - (me.y * ASPECT / range) * R, R / range, (R * ASPECT) / range); ctx.fillStyle = "rgba(20,12,5,.12)"; ctx.fillRect(0, 0, W, W); }
     if (me) {
       for (const p of state.pins) {
         const [x, y] = toXY(p); if ((x - C) ** 2 + (y - C) ** 2 > R * R) continue;

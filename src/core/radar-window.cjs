@@ -7,7 +7,7 @@ const { pathToFileURL } = require("node:url");
 
 const RADAR_KINDS = new Set(["quest-turnin", "quest-objective", "quest-giver", "flight", "trainer", "vendor", "herb", "ore", "find", "town"]);
 
-function createRadar({ BrowserWindow, ipcMain, worldMap, live, rendererDir }) {
+function createRadar({ BrowserWindow, ipcMain, worldMap, live, rendererDir, mapArt = null }) {
   const page = pathToFileURL(path.join(rendererDir, "radar.html")).toString();
   let win = null, target = null, cache = { mapId: null, pins: [] };
   const valid = (event) => win && !win.isDestroyed() && event.sender === win.webContents && event.senderFrame === win.webContents.mainFrame && event.senderFrame.url === page;
@@ -30,6 +30,12 @@ function createRadar({ BrowserWindow, ipcMain, worldMap, live, rendererDir }) {
   }
   function push() { if (win && !win.isDestroyed()) win.webContents.send("radar:state", state()); }
   ipcMain.handle("radar:state", (event) => { if (!valid(event)) throw Error("Untrusted radar request."); return state(); });
+  ipcMain.handle("radar:art", (event, mapId) => {
+    if (!valid(event)) throw Error("Untrusted radar request.");
+    if (!Number.isSafeInteger(mapId) || mapId <= 0 || !mapArt) return null;
+    const r = mapArt.art(mapId);
+    return r.png ? new Uint8Array(r.png) : null;
+  });
   ipcMain.handle("radar:close", (event) => { if (!valid(event)) throw Error("Untrusted radar request."); win?.close(); return true; });
   const unsubscribe = live?.subscribe?.(() => push());
   function open() {

@@ -625,7 +625,14 @@ app.whenReady().then(async () => {
   });
   handle("worldMap", (input) => worldMap.build(input || {}));
   handle("worldMapSearch", (query) => worldMap.search(query));
-  radar = require("./core/radar-window.cjs").createRadar({ BrowserWindow, ipcMain, worldMap, live: liveBridge, rendererDir: path.join(__dirname, "renderer") });
+  // Zone art from the player's own WoW install, cached locally per game build.
+  const mapArt = new (require("./core/map-art.cjs").MapArt)({ getRoot: () => game?.root || null, cacheDir: path.join(app.getPath("userData"), "map-art") });
+  handle("mapArt", (mapId) => {
+    if (!Number.isSafeInteger(mapId) || mapId <= 0) throw Error("Invalid map.");
+    const r = mapArt.art(mapId);
+    return { png: r.png ? new Uint8Array(r.png) : null, source: r.source || null, reason: r.reason || null };
+  });
+  radar = require("./core/radar-window.cjs").createRadar({ BrowserWindow, ipcMain, worldMap, live: liveBridge, rendererDir: path.join(__dirname, "renderer"), mapArt });
   handle("openRadar", () => radar.open());
   handle("setRadarTarget", (pin) => radar.setTarget(pin === undefined ? null : pin));
   const { buildAtlas, loadEncounters } = require("./core/dungeon-atlas.cjs");
