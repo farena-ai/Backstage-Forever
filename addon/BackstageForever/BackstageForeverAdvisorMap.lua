@@ -58,8 +58,27 @@ local function questLog()
     return inLog,complete
 end
 
+-- Where WoW itself places each quest on this map (for finished quests: the hand-in).
+local function gameQuestSpots(mapId)
+    local out={}
+    local list=call(field(public(C_QuestLog),'GetQuestsOnMap'),mapId)
+    if type(list)=='table' then for _,info in ipairs(list)do
+        local id=number(field(info,'questID'),1,2147483647);local x,y=number(field(info,'x'),0,1),number(field(info,'y'),0,1)
+        if id and x and y then out[id]={x=x,y=y}end
+    end end
+    return out
+end
+local giverIndex=nil
+local function giverOf(id)
+    if not giverIndex then
+        giverIndex={}
+        for mapId,rows in pairs(field(public(BackstageForeverAdvisorData),'givers') or {})do for _,g in ipairs(rows)do giverIndex[g.q]={mapId=mapId,x=g.x,y=g.y,n=g.n,t=g.t}end end
+    end
+    return giverIndex[id]
+end
 -- Pure: the advisor pins for one map. Exposed for tests and /bf next.
-function BackstageForeverAdvisorPoints(mapId,who,completed,inLog,complete,layers)
+-- spots: optional {questID={x,y}} from the game; hand-ins prefer it, then our reference, then the quest giver.
+function BackstageForeverAdvisorPoints(mapId,who,completed,inLog,complete,layers,spots)
     local data=public(BackstageForeverAdvisorData);local out={}
     mapId=number(mapId,1,2147483647);if not mapId or type(data)~='table' or not who or not who.level then return out end
     local function on(k)return not layers or layers[k]~=false end
@@ -67,9 +86,14 @@ function BackstageForeverAdvisorPoints(mapId,who,completed,inLog,complete,layers
     if on('handin')then
         local ref=field(public(BackstageForeverReference),'quests')
         for id in pairs(complete or {})do
-            local t=field(field(ref,id),'turnIn')
-            if number(field(t,'mapId'),1,2147483647)==mapId then
-                add({layer='handin',x=field(t,'x'),y=field(t,'y'),title=clean(field(t,'name'),60) or 'Hand in',detail='Hand in: '..(clean(field(field(ref,id),'title'),80) or ('quest '..id)),questId=id})
+            local q=field(ref,id);local title=clean(field(q,'title'),80) or clean(call(field(public(C_QuestLog),'GetTitleForQuestID'),id),80) or ('quest '..id)
+            local t=field(q,'turnIn');local g=giverOf(id);local game=spots and spots[id]
+            if game then
+                add({layer='handin',x=game.x,y=game.y,title='Hand in: '..title,detail=(number(field(t,'mapId'),1,2147483647)==mapId and clean(field(t,'name'),60) or g and g.mapId==mapId and g.n) or 'Where WoW marks the hand-in',questId=id})
+            elseif number(field(t,'mapId'),1,2147483647)==mapId then
+                add({layer='handin',x=field(t,'x'),y=field(t,'y'),title=clean(field(t,'name'),60) or 'Hand in',detail='Hand in: '..title,questId=id})
+            elseif g and g.mapId==mapId then
+                add({layer='handin',x=g.x,y=g.y,title=g.n,detail='Hand in: '..title..' (usually to the quest giver)',questId=id})
             end
         end
     end
@@ -105,6 +129,8 @@ end
 function Pin:OnAcquired(row,token,mapId)
     self.bfRow=row
     method(self.bfIcon,'SetTexture',ICONS[row.layer])
+    -- Above WoW's own quest markers, below the super-tracked quest.
+    method(self,'UseFrameLevelType','PIN_FRAME_LEVEL_SUPER_TRACKED_CONTENT')
     local size=row.layer=='pickup' and 16 or row.layer=='handin' and 20 or 18
     method(self,'SetSize',size,size)
     local function current()return self.bfRow==row and token==generation and not combat()end
@@ -173,7 +199,7 @@ refresh=function()
     controls();paint();if not settings.enabled then return end
     local mapId=number(method(attached,'GetMapID'),1,2147483647);if not mapId then return end
     local inLog,complete=questLog()
-    local rows=BackstageForeverAdvisorPoints(mapId,me(),completedSet(),inLog,complete,settings.layers)
+    local rows=BackstageForeverAdvisorPoints(mapId,me(),completedSet(),inLog,complete,settings.layers,gameQuestSpots(mapId))
     local token=generation
     for _,row in ipairs(rows)do
         local pin=method(attached,'AcquirePin',template,row,token,mapId)
@@ -217,12 +243,12 @@ function BackstageForeverNext()
     local px,py=nil,nil;if pos then px,py=method(pos,'GetXY')end
     if not mapId or type(px)~='number' or type(py)~='number' then return say('Your position is unavailable here.')end
     local inLog,complete=questLog()
-    local rows=BackstageForeverAdvisorPoints(mapId,me(),completedSet(),inLog,complete,{class=false,profession=false,flight=false})
+    local rows=BackstageForeverAdvisorPoints(mapId,me(),completedSet(),inLog,complete,{class=false,profession=false,flight=false},gameQuestSpots(mapId))
     local best,bestD=nil,nil
     for _,r in ipairs(rows)do local d=((r.x-px)^2+(r.y-py)^2)^.5+(r.layer=='handin' and 0 or 1);if not bestD or d<bestD then best,bestD=r,d end end
     if not best then return say('Nothing recorded for your level in this zone. The desktop app\'s Now page suggests where to go next.')end
     waypoint(mapId,best.x,best.y,best.title)
-    say((best.layer=='handin' and 'Hand in at ' or 'Next quest: ')..(best.title or '')..' - '..(best.detail or ''))
+    say((best.layer=='handin' and '' or 'Next quest: ')..(best.title or '')..' - '..(best.detail or ''))
 end
 if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
