@@ -19,17 +19,30 @@ local bb={} for _,v in ipairs(b) do bb[#bb+1]=v end
 print('['..table.concat(a,',')..']') print('['..table.concat(bb,',')..']')`).split("\n");
   return { cells: JSON.parse(out[0]), bytes: JSON.parse(out[1]) };
 }
-function image(cells, { ox = 0, oy = 0, gamma = 1, background = 30 } = {}) {
+// Paints cells into a capture-sized image. `map` distorts each channel value (gamma,
+// tone curves, brightness), `mix` bleeds channels into each other, `blur` box-blurs.
+function image(cells, { ox = 0, oy = 0, gamma = 1, background = 30, cell = L.CELL, map = null, mix = 0, blur = false } = {}) {
   const { width: W, height: H } = L.REGION, img = Buffer.alloc(W * H * 3, background);
-  const g = (v) => Math.round(255 * Math.pow(v / 255, gamma));
-  cells.forEach((c, i) => { for (let dy = 0; dy < 4; dy++) for (let dx = 0; dx < 4; dx++) { const o = ((oy + dy) * W + ox + i * 4 + dx) * 3; img[o] = g(c[0]); img[o + 1] = g(c[1]); img[o + 2] = g(c[2]); } });
-  return { width: W, height: H, rgb: img };
+  const g = map || ((v) => Math.round(255 * Math.pow(v / 255, gamma)));
+  const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  cells.forEach((c, i) => {
+    const avg = (c[0] + c[1] + c[2]) / 3, m = c.map((v) => v * (1 - mix) + avg * mix);
+    for (let dy = 0; dy < cell; dy++) for (let dx = 0; dx < cell; dx++) { const o = ((oy + dy) * W + ox + i * cell + dx) * 3; for (let ch = 0; ch < 3; ch++) img[o + ch] = clamp(g(m[ch])); }
+  });
+  if (!blur) return { width: W, height: H, rgb: img };
+  const out = Buffer.from(img);
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) for (let ch = 0; ch < 3; ch++) {
+    let t = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) t += img[((y + dy) * W + x + dx) * 3 + ch];
+    out[(y * W + x) * 3 + ch] = Math.round(t / 9);
+  }
+  return { width: W, height: H, rgb: out };
 }
 
 test("addon encoder and desktop decoder agree byte for byte", () => {
   const { cells, bytes } = luaCells(STATE);
   assert.deepEqual(L.encodeCells(Uint8Array.from(bytes)), cells);
-  assert.equal(cells.length, 40);
+  assert.equal(cells.length, 76);
+  assert.ok(cells.slice(4).every((c) => c.every((v) => v === 0 || v === 255)), "payload is one bit per channel");
   const f = L.parsePayload(L.decodeCells(cells));
   assert.equal(f.position.mapId, 1454);
   assert.ok(Math.abs(f.position.x - 0.4321) < 1e-4 && Math.abs(f.position.y - 0.6543) < 1e-4);
@@ -53,6 +66,44 @@ test("strip decodes through gamma shifts and offsets and rejects noise or corrup
   const noise = { ...L.REGION, rgb: Buffer.from(Array.from({ length: L.REGION.width * L.REGION.height * 3 }, (_, i) => (i * 2654435761) % 256)) };
   assert.equal(L.decodeStrip(noise), null);
   assert.equal(L.decodeStrip({ width: 2, height: 2, rgb: Buffer.alloc(3) }), null);
+});
+
+test("version 3 strip survives the colour shift seen over remote access, tone curves, channel bleed and blur", () => {
+  const { cells } = luaCells(STATE);
+  // Observed while remoted in: 85 arrived as 144 and 170 as 215 (a lifted, compressed curve).
+  const remote = (v) => 40 + 215 * Math.pow(v / 255, 0.55);
+  const cases = {
+    remote: { map: remote },
+    "dim and lifted": { map: (v) => 60 + v * 0.5 },
+    "harsh gamma": { gamma: 2.2 },
+    "soft gamma": { gamma: 0.45 },
+    "brightness +40": { map: (v) => v + 40 },
+    "brightness -40": { map: (v) => v - 40 },
+    "channel bleed 35%": { mix: 0.35 },
+    "remote + blur": { map: remote, blur: true, ox: 3, oy: 2 },
+    "scaled 7px cells": { cell: 7, ox: 1 },
+    "scaled 5px cells": { cell: 5 },
+  };
+  for (const [name, opts] of Object.entries(cases)) {
+    const d = L.decodeStrip(image(cells, opts));
+    assert.ok(d, name);
+    assert.equal(d.version, 3, name);
+    assert.equal(L.parsePayload(d.bytes).position.mapId, 1454, name);
+  }
+});
+
+test("older version 2 strips from earlier addons still decode", () => {
+  const { bytes } = luaCells(STATE);
+  const v2 = Uint8Array.from(bytes); v2[0] = 2; v2[26] = L.crc8(v2, 26);
+  const cells = L.encodeCellsV2(v2);
+  assert.equal(cells.length, 40);
+  for (const gamma of [0.75, 1, 1.3]) {
+    const d = L.decodeStrip(image(cells, { gamma, cell: 4, ox: 2 }));
+    assert.ok(d, `v2 gamma ${gamma}`);
+    assert.equal(d.version, 2);
+    assert.equal(L.parsePayload(d.bytes).level, 12);
+  }
+  assert.equal(L.parsePayload(L.decodeCells(cells)).level, 12);
 });
 
 test("bridge reports live only while frames are fresh and maps worker states", () => {
@@ -105,7 +156,7 @@ test("preference persists, and the capture worker is spawned bounded with no she
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test("/bf live toggles a 40-cell pixel-exact strip and persists the account setting", () => {
+test("/bf live toggles a 76-cell pixel-exact strip and persists the account setting", () => {
   const out = lua(String.raw`
 local textures,frames=0,{}
 UIParent={GetEffectiveScale=function()return 0.8 end}
@@ -129,7 +180,7 @@ BackstageForeverLiveCommand('live on')
 local strip=frames[2]
 assert(BackstageForeverLiveSettings.enabled==true)
 assert(strip.shown and strip.ignore==true and math.abs(strip.scale-768/1440)<1e-9,'pixel exact scale')
-assert(textures==40)
+assert(textures==76)
 strip.scripts.OnUpdate(strip,1)
 BackstageForeverLiveCommand('live off')
 assert(BackstageForeverLiveSettings.enabled==false and not strip.shown)
@@ -191,7 +242,7 @@ local s=BackstageForeverLiveState()
 assert(s.health==nil and s.level==15 and s.mapId==1456)
 local cells=BackstageForeverLiveCells(BackstageForeverLivePayload(s))
 print(#cells)`);
-  assert.equal(out, "40");
+  assert.equal(out, "76");
 });
 
 test("review fixes: identity binding, Claude live context, stale worker output, AFK changes and saved-file compatibility", async () => {

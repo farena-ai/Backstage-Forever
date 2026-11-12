@@ -7,8 +7,10 @@ const path = require("node:path");
 const fs = require("node:fs");
 const childProcess = require("node:child_process");
 
-const CELL = 4, MARKERS = 4, PAYLOAD_CELLS = 36, PAYLOAD_BYTES = 27, VERSION = 2;
-const REGION = { width: 200, height: 16 };
+const CELL = 6, MARKERS = 4, PAYLOAD_CELLS = 72, PAYLOAD_BYTES = 27, VERSION = 3;
+// Version 2 strips (addon 0.18.1 and earlier): 4px cells, four levels per channel.
+const V2 = { cell: 4, payloadCells: 36, version: 2 };
+const REGION = { width: 640, height: 16 }; // room for the strip at up to 8px per cell
 const FRESH_MS = 4000;
 
 // Mirrors BackstageForeverLiveIdentity: binds frames to the saved character (UnitGUID).
@@ -35,21 +37,36 @@ function crc8(bytes, n) {
   }
   return crc;
 }
-// Encoder mirror of the addon (used by tests and the synthetic fixture).
+const bitsOf = (bytes) => { const bits = []; for (const b of bytes) for (let k = 7; k >= 0; k--) bits.push((b >> k) & 1); return bits; };
+const bytesOf = (bits) => { const out = new Uint8Array(PAYLOAD_BYTES); for (let i = 0; i < PAYLOAD_BYTES; i++) { let v = 0; for (let k = 0; k < 8; k++) v = (v << 1) | bits[i * 8 + k]; out[i] = v; } return out; };
+const valid = (bytes, version) => bytes[0] === version && crc8(bytes, PAYLOAD_BYTES - 1) === bytes[PAYLOAD_BYTES - 1];
+// Encoder mirror of the addon (used by tests and the synthetic fixture): one bit per channel.
 function encodeCells(bytes) {
-  const L = [0, 85, 170, 255];
-  const cells = [[255, 0, 255], [0, 255, 0], [85, 85, 85], [170, 170, 170]];
-  const bits = [];
-  for (const b of bytes) for (let k = 7; k >= 0; k--) bits.push((b >> k) & 1);
-  for (let c = 0; c < PAYLOAD_CELLS; c++) {
-    const rgb = [];
-    for (let ch = 0; ch < 3; ch++) { const i = c * 6 + ch * 2; rgb.push(L[(bits[i] || 0) * 2 + (bits[i + 1] || 0)]); }
-    cells.push(rgb);
-  }
+  const cells = [[255, 0, 255], [0, 255, 0], [255, 255, 255], [0, 0, 0]], bits = bitsOf(bytes);
+  for (let c = 0; c < PAYLOAD_CELLS; c++) cells.push([0, 1, 2].map((ch) => (bits[c * 3 + ch] || 0) * 255));
   return cells;
 }
-// Thresholds per channel come from the four calibration markers, so moderate gamma,
-// brightness or colour-filter shifts still decode.
+// Version 2 encoder, kept so older addons stay covered by tests.
+function encodeCellsV2(bytes) {
+  const L = [0, 85, 170, 255], cells = [[255, 0, 255], [0, 255, 0], [85, 85, 85], [170, 170, 170]], bits = bitsOf(bytes);
+  for (let c = 0; c < V2.payloadCells; c++) cells.push([0, 1, 2].map((ch) => { const i = c * 6 + ch * 2; return L[(bits[i] || 0) * 2 + (bits[i + 1] || 0)]; }));
+  return cells;
+}
+// Version 3: per channel, a value is "on" when nearer the white marker than the black one.
+// Any monotonic colour shift (gamma, HDR mapping, colour profiles, remote sessions) keeps that.
+function decodeCellsV3(cells) {
+  if (!Array.isArray(cells) || cells.length < MARKERS + PAYLOAD_CELLS) return null;
+  const [magenta, green, white, black] = cells;
+  const mid = [0, 1, 2].map((ch) => (white[ch] + black[ch]) / 2);
+  for (let ch = 0; ch < 3; ch++) if (white[ch] - black[ch] < 60) return null;
+  const on = (rgb) => rgb.map((v, ch) => (v > mid[ch] ? 1 : 0));
+  if (on(magenta).join("") !== "101" || on(green).join("") !== "010") return null;
+  const bits = [];
+  for (let c = 0; c < PAYLOAD_CELLS; c++) bits.push(...on(cells[MARKERS + c]));
+  const bytes = bytesOf(bits);
+  return valid(bytes, VERSION) ? bytes : null;
+}
+// Thresholds per channel come from the four calibration markers (version 2 strips).
 function thresholds(m) {
   const levels = [
     [m[1][0], m[2][0], m[3][0], m[0][0]], // R: 0, 85, 170, 255
@@ -59,42 +76,57 @@ function thresholds(m) {
   for (const l of levels) if (!(l[0] < l[1] && l[1] < l[2] && l[2] < l[3]) || l[3] - l[0] < 120) return null;
   return levels.map((l) => [(l[0] + l[1]) / 2, (l[1] + l[2]) / 2, (l[2] + l[3]) / 2]);
 }
-function decodeCells(cells) {
-  if (!Array.isArray(cells) || cells.length < MARKERS + PAYLOAD_CELLS) return null;
+function decodeCellsV2(cells) {
+  if (!Array.isArray(cells) || cells.length < MARKERS + V2.payloadCells) return null;
   const t = thresholds(cells.slice(0, MARKERS));
   if (!t) return null;
   const bits = [];
-  for (let c = 0; c < PAYLOAD_CELLS; c++) {
+  for (let c = 0; c < V2.payloadCells; c++) {
     const rgb = cells[MARKERS + c];
-    for (let ch = 0; ch < 3; ch++) {
-      const v = rgb[ch], th = t[ch];
-      const level = v < th[0] ? 0 : v < th[1] ? 1 : v < th[2] ? 2 : 3;
-      bits.push(level >> 1, level & 1);
-    }
+    for (let ch = 0; ch < 3; ch++) { const v = rgb[ch], th = t[ch]; const level = v < th[0] ? 0 : v < th[1] ? 1 : v < th[2] ? 2 : 3; bits.push(level >> 1, level & 1); }
   }
-  const bytes = new Uint8Array(PAYLOAD_BYTES);
-  for (let i = 0; i < PAYLOAD_BYTES; i++) { let v = 0; for (let k = 0; k < 8; k++) v = (v << 1) | bits[i * 8 + k]; bytes[i] = v; }
-  if (bytes[0] !== VERSION || crc8(bytes, PAYLOAD_BYTES - 1) !== bytes[PAYLOAD_BYTES - 1]) return null;
-  return bytes;
+  const bytes = bytesOf(bits);
+  return valid(bytes, V2.version) ? bytes : null;
+}
+function decodeCells(cells) {
+  if (!Array.isArray(cells) || cells.length < MARKERS) return null;
+  return (cells.length >= MARKERS + PAYLOAD_CELLS && decodeCellsV3(cells)) || decodeCellsV2(cells.slice(0, MARKERS + V2.payloadCells));
 }
 const px = (rgb, width, x, y) => { const i = (y * width + x) * 3; return [rgb[i], rgb[i + 1], rgb[i + 2]]; };
-// Find the magenta marker near the client origin, then sample each cell centre.
+const magentaish = (p) => p[0] - p[1] > 60 && p[2] - p[1] > 60;
+// Average the centre of each cell (pitch measured from the image) to resist edge blending.
+function sampleCells(rgb, width, height, x, y, pitch, count) {
+  if (x + count * pitch > width) return null;
+  const cells = [], r = pitch >= 5 ? 1 : 0, cy = Math.min(height - 1, y + Math.floor(pitch / 2));
+  for (let c = 0; c < count; c++) {
+    const cx = x + c * pitch + Math.floor(pitch / 2), acc = [0, 0, 0];
+    let n = 0;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const q = px(rgb, width, Math.min(width - 1, Math.max(0, cx + dx)), Math.min(height - 1, Math.max(0, cy + dy))); acc[0] += q[0]; acc[1] += q[1]; acc[2] += q[2]; n++; }
+    cells.push(acc.map((v) => v / n));
+  }
+  return cells;
+}
+// Find the magenta finder near the client origin, measure the cell pitch from its run,
+// then try the version 3 layout and the older version 2 layout (each checked by CRC).
 function decodeStrip({ width, height, rgb }) {
   if (!Number.isInteger(width) || !Number.isInteger(height) || !Buffer.isBuffer(rgb) || rgb.length !== width * height * 3) return null;
-  const span = (MARKERS + PAYLOAD_CELLS) * CELL;
-  for (let y = 0; y + CELL <= height && y < 10; y++) {
-    for (let x = 0; x + span <= width && x < 40; x++) {
-      const p = px(rgb, width, x, y);
-      if (!(p[0] > 180 && p[1] < 80 && p[2] > 180)) continue;
-      const cells = [];
-      for (let c = 0; c < MARKERS + PAYLOAD_CELLS; c++) {
-        // Average the 2×2 centre of the cell to resist edge blending.
-        const cx = x + c * CELL + 1, cy = y + 1, acc = [0, 0, 0];
-        for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const q = px(rgb, width, cx + dx, Math.min(height - 1, cy + dy)); acc[0] += q[0]; acc[1] += q[1]; acc[2] += q[2]; }
-        cells.push(acc.map((v) => v / 4));
+  for (let y = 0; y + 3 <= height && y < 10; y++) {
+    for (let x = 0; x < width && x < 40; x++) {
+      if (!magentaish(px(rgb, width, x, y))) continue;
+      let run = 1;
+      while (x + run < width && run < 20 && magentaish(px(rgb, width, x + run, y))) run++;
+      if (run < 3) continue;
+      const tries = [];
+      for (const pitch of [run, run + 1, run - 1, CELL, V2.cell]) if (pitch >= 3 && !tries.includes(pitch)) tries.push(pitch);
+      for (const pitch of tries) {
+        const v3 = sampleCells(rgb, width, height, x, y, pitch, MARKERS + PAYLOAD_CELLS);
+        const b3 = v3 && decodeCellsV3(v3);
+        if (b3) return { bytes: b3, origin: { x, y }, pitch, version: VERSION };
+        const v2 = sampleCells(rgb, width, height, x, y, pitch, MARKERS + V2.payloadCells);
+        const b2 = v2 && decodeCellsV2(v2);
+        if (b2) return { bytes: b2, origin: { x, y }, pitch, version: V2.version };
       }
-      const bytes = decodeCells(cells);
-      if (bytes) return { bytes, origin: { x, y } };
+      x += run - 1;
     }
   }
   return null;
@@ -258,4 +290,4 @@ class LiveBridge {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, decodeCells, encodeCells, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };
+module.exports = { LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, decodeCells, encodeCells, encodeCellsV2, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };

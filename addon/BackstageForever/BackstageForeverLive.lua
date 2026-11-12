@@ -3,12 +3,14 @@
 -- window. The desktop app may read those pixels to know where you are right now.
 -- Nothing is sent anywhere by the addon; no input, automation or protected values.
 -- The strip freezes (combat flag only) while in combat. Toggle with /bf live.
-local CELL = 4                      -- physical pixels per cell edge
-local LEVELS = {0, 85, 170, 255}    -- four robust levels per colour channel
-local MARKERS = {{255, 0, 255}, {0, 255, 0}, {85, 85, 85}, {170, 170, 170}}
+local CELL = 6                      -- physical pixels per cell edge
+-- Version 3: every colour channel is fully off or fully on (one bit per channel), so
+-- colour-profile, gamma, HDR or remote-session shifts cannot blur neighbouring levels.
+-- Markers: magenta (finder), green, white and black (per-channel calibration).
+local MARKERS = {{255, 0, 255}, {0, 255, 0}, {255, 255, 255}, {0, 0, 0}}
 local PAYLOAD_BYTES = 27
-local PAYLOAD_CELLS = 36            -- 27 bytes * 8 bits / 6 bits per cell
-local VERSION = 2
+local PAYLOAD_CELLS = 72            -- 27 bytes * 8 bits / 3 bits per cell
+local VERSION = 3
 
 local function public(value) if type(value)=='function' or type(value)=='table' then return value end end
 local unpackAll=unpack or table.unpack
@@ -107,11 +109,7 @@ function BackstageForeverLiveCells(bytes)
     end
     for c=0,PAYLOAD_CELLS-1 do
         local rgb={}
-        for ch=1,3 do
-            local i=c*6+(ch-1)*2+1
-            local level=(bits[i] or 0)*2+(bits[i+1] or 0)
-            rgb[ch]=LEVELS[level+1]
-        end
+        for ch=1,3 do rgb[ch]=(bits[c*3+ch] or 0)*255 end
         cells[#cells+1]=rgb
     end
     return cells
