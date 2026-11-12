@@ -60,8 +60,8 @@ class CompanionService {
       if(!selected.model)throw Error('Choose a model in Connections for AI questions. Local NPC locations and travel need no model.');
       const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence,reportedLocation:prepared.reportedLocation};
       // Live frames count only when they carry the selected character's identity.
-      const {identityHash}=require('./live-bridge.cjs');
-      const expected=profile?.source?.kind==='wow-addon'?identityHash(profile.source.id):null;
+      const {liveKeyFor}=require('./live-bridge.cjs');
+      const expected=profile?.source?.kind==='wow-addon'?liveKeyFor(profile.source.id):null;
       const liveStatusNow=()=>{if(!input.shareProfile||!this.live?.status)return null;const s=this.live.status();if(s?.frame&&expected!==null&&s.frame.characterHash&&s.frame.characterHash!==expected)return {...s,signal:'other-character',frame:null};if(s?.frame&&expected!==null&&!s.frame.characterHash)return {...s,frame:{...s.frame,identityUnverified:true}};return s;};
       const liveNow=()=>liveStatusNow()?.frame||null;
       const liveStatus=liveStatusNow(),liveFrame=liveStatus?.frame||null;

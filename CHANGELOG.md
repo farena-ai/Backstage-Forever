@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.1 — live position shows in the app, 2026-11-11
+
+- Fixed: the World Map arrow, "● Live" status and the companion's live context ignored every live frame from a real character. The app stores characters under a private digest of the game id, but compared it with the addon's live key (a hash of the raw id), so they never matched. The live key is now learned while reading the addon's saved data; frames from another character are still dropped.
+- App/lock, TOC and capture metadata align at 0.16.1 preview. **1.0 remains held.**
+
 ## 0.16.0 — real zone maps from your game, live link on by default, 2026-11-11
 
 - World Map and radar now show each zone's real map art, read from the player's own WoW Forever installation (local storage, DB2 map tables, BLP textures) with every explored-area overlay, composed once per game build into a local cache. Nothing is bundled, uploaded or redistributed; the procedural parchment remains the fallback when the game isn't connected or a zone has no art.

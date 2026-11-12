@@ -116,8 +116,8 @@ class WorldMap {
     const f = st?.frame;
     if (!f?.position) return null;
     if (profile?.source?.kind === "wow-addon" && f.characterHash) {
-      const { identityHash } = require("./live-bridge.cjs");
-      if (identityHash(profile.source.id) !== f.characterHash) return null;
+      const key = require("./live-bridge.cjs").liveKeyFor(profile.source.id);
+      if (key !== null && key !== f.characterHash) return null;
     }
     return f;
   }

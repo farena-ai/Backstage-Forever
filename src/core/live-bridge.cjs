@@ -18,6 +18,12 @@ function identityHash(guid) {
   for (let i = 0; i < Math.min(guid.length, 200); i++) h = (h * 31 + guid.charCodeAt(i)) % 65521;
   return h;
 }
+// Profiles keep only a private digest of the character GUID, so the live key (the
+// addon's 16-bit hash of the raw GUID) is remembered here when SavedVariables are read.
+const liveKeys = new Map();
+function rememberLiveKey(sourceId, guid) { if (typeof sourceId === "string" && typeof guid === "string") liveKeys.set(sourceId, identityHash(guid)); }
+// -> 16-bit key, or null when this session has not read that character's GUID yet.
+function liveKeyFor(sourceId) { return liveKeys.has(sourceId) ? liveKeys.get(sourceId) : null; }
 function crc8(bytes, n) {
   let crc = 0;
   for (let i = 0; i < n; i++) {
@@ -249,4 +255,4 @@ class LiveBridge {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { LiveBridge, identityHash, decodeStrip, decodeCells, encodeCells, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };
+module.exports = { LiveBridge, identityHash, rememberLiveKey, liveKeyFor, decodeStrip, decodeCells, encodeCells, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };

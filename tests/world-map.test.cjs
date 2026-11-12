@@ -30,12 +30,14 @@ test("a zone map combines references, quests, finds and the saved position", () 
 });
 
 test("the live position leads, and frames from another character are ignored", () => {
-  const { identityHash } = require("../src/core/live-bridge.cjs");
+  const { identityHash, rememberLiveKey } = require("../src/core/live-bridge.cjs");
+  // Profiles hold a digest of the GUID; the live key is learned when SavedVariables are read.
+  rememberLiveKey("digest-A", "guid-A"); rememberLiveKey("digest-B", "guid-B");
   const frame = { characterHash: identityHash("guid-A"), position: { mapId: 1456, x: 0.5, y: 0.5, facing: 1 }, mounted: false };
-  const mine = make({ ...player, source: { kind: "wow-addon", id: "guid-A" } }, frame).build({});
+  const mine = make({ ...player, source: { kind: "wow-addon", id: "digest-A" } }, frame).build({});
   assert.equal(mine.mapId, 1456);
   assert.deepEqual([mine.player.live.x, mine.player.live.y], [0.5, 0.5]);
-  const other = make({ ...player, source: { kind: "wow-addon", id: "guid-B" } }, frame).build({});
+  const other = make({ ...player, source: { kind: "wow-addon", id: "digest-B" } }, frame).build({});
   assert.equal(other.mapId, 1413);
   assert.equal(other.player.live, null);
 });

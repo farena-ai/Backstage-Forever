@@ -204,7 +204,8 @@ test("review fixes: identity binding, Claude live context, stale worker output, 
   const providers = require("../src/core/providers.cjs");
   const { cells } = luaCells(STATE.replace("{", "{identity=BackstageForeverLiveIdentity('someone-else'),"));
   const other = { ...L.parsePayload(L.decodeCells(cells)), ageMs: 100 };
-  const s = { activeProfileId: "A", profiles: [{ id: "A", name: "P", level: 12, source: { kind: "wow-addon", id: "o" }, location: { zone: "The Barrens", mapId: 1413, x: 0.6, y: 0.2 } }], provider: { id: "anthropic", model: "m", authMode: "subscription" }, memories: [] };
+  L.rememberLiveKey("digest-of-o", "o"); // game sync learns the key while reading SavedVariables
+  const s = { activeProfileId: "A", profiles: [{ id: "A", name: "P", level: 12, source: { kind: "wow-addon", id: "digest-of-o" }, location: { zone: "The Barrens", mapId: 1413, x: 0.6, y: 0.2 } }], provider: { id: "anthropic", model: "m", authMode: "subscription" }, memories: [] };
   const store = { state: s, getKey: () => "k" }, context = new CompanionContext(() => s);
   const seen = [];
   const claude = { ask: async (i) => { seen.push(i); return "ok"; } };
