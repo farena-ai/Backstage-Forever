@@ -121,6 +121,7 @@ function parseSavedVariables(raw) {
   const characters = s.characters.map((c) => {
     if (!c || typeof c !== "object") invalid();
     const key = id(c.id);
+    require("./live-bridge.cjs").rememberLiveKey(key, c.id);
     if (
       seen.has(key) ||
       !Number.isInteger(c.level) ||

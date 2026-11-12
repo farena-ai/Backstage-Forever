@@ -568,3 +568,11 @@ test("connected startup repairs actual acquisition and profession modules with f
  const sync=new GameSync({dataDir:data,addonDir:addon});await sync.prepare(game);sync.close();const folder=path.join(game,'Interface/AddOns/BackstageForever');await fs.writeFile(path.join(folder,'foreign.lua'),'preserve');for(const name of ['BackstageForeverAcquisition.lua','BackstageForeverProfession.lua'])await fs.unlink(path.join(folder,name));
  const restored=new GameSync({dataDir:data,addonDir:addon});t.after(()=>restored.close());await restored.ready;for(const name of ['BackstageForeverAcquisition.lua','BackstageForeverProfession.lua'])assert.equal(await fs.readFile(path.join(folder,name),'utf8'),await fs.readFile(path.join(addon,name),'utf8'));assert.equal(await fs.readFile(path.join(folder,'foreign.lua'),'utf8'),'preserve');
 });
+
+test("reading SavedVariables teaches the live link which frames belong to the stored character", () => {
+  const { identityHash, liveKeyFor } = require("../src/core/live-bridge.cjs");
+  const parsed = parseSavedVariables(saved());
+  const stored = parsed.characters[0].id;
+  assert.notEqual(stored, "Player-synthetic-1", "profiles keep only a digest of the GUID");
+  assert.equal(liveKeyFor(stored), identityHash("Player-synthetic-1"), "live frames carry the addon's hash of the raw GUID");
+});
