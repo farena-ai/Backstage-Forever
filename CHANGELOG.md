@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.19.0 — a coach at your side, 2026-11-12
+
+- **In game, help at the moments new players get lost** (new BackstageForeverAssist.lua):
+  - **Danger warnings** above the target frame in plain words: skull, elite, world boss, much higher level, rare, or too low to give XP.
+  - **Death help.** A pop-up explains Release Spirit, and an arrow points you back to your body when you're a ghost.
+  - **Pop-ups** for level-ups (naming your nearest class trainer) and finished quests ("+450 XP · about 4 more quests like this to level up").
+  - A **Sell junk** button on vendor windows that lists your grey items and their value. It sells only when you click it, and never in combat.
+  - New commands: `/bf train` (an arrow to your class trainer), `/bf xp` (XP per hour, time to level, rested XP), `/bf hearth`, and a plain `/bf help`. `/bf toasts`, `/bf danger` and `/bf junk` turn each helper on or off.
+  - A one-time welcome on each character.
+- **Plainer Adventure Compass.** The setup line, the help hint, the focus and time buttons, and the XP line (now with percent and a rested marker) use everyday words.
+- **Now gets set-up and session help:**
+  - A **Get set up** checklist ticks itself off: connect the game folder, install the addon, `/reload`, then see yourself live.
+  - A **This session** card shows your XP bar with the rested bonus, time played, progress, levels an hour, time to the next level, deaths and zones visited. Pace counts only time you're playing.
+  - **You died** becomes the first step until you're back on your feet.
+- **Level-up celebration** in the app, wherever you are.
+- **My path this session** on the World Map: a glowing trail of where you walked, with a star where you levelled and a cross where you died. It's a layer you can turn off.
+- **Field guide:** a "New to WoW? Start here" section and a pocket glossary (quest giver, hand in, rested, hearthstone, trainer, flight master, enemy level colours, elite, pulls, corpse runs, durability, vendor trash, dungeons).
+- **Fixes:**
+  - Quest rows in the World Map NPC card are readable again; they were dark on dark.
+  - The XP bar and confetti respect the app's content security policy.
+- The addon installer now manages seventeen files. Type `/reload` in game after updating.
+- App/lock, TOC and capture metadata align at 0.19.0 preview. **1.0 remains held.**
+
 ## 0.18.2 — live link that survives remote access, 2026-11-12
 
 - The live strip is now version 3: every colour channel is fully on or off (one bit per channel) and cells are 6px, calibrated against white and black markers. Colour shifts from remote sessions, HDR, gamma or colour profiles, slight blur and resizing no longer break it. The strip is a little longer (about 456×6 px at the top-left).

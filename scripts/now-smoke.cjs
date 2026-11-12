@@ -50,6 +50,23 @@ const { defaultState } = require("../src/core/validation.cjs");
     // Live frame in another zone: Now refreshes from it.
     await app.evaluate(() => { const b = liveFixture.bridge; b.enabled = true; b.frame = { version: 2, seq: 1, combat: false, characterHash: 0, mounted: false, position: { mapId: 1413, x: 0.51, y: 0.30, facing: 1 }, level: 16, receivedAt: Date.now() }; b.signal = "live"; b.emit(); });
     await page.locator("[data-now-live]").getByText(/Level 16/).waitFor({ timeout: 15000 });
+    // First-run checklist and this session's card.
+    assert.match(await page.locator(".now-setup h2").innerText(), /Get set up/);
+    await page.locator(".now-session").waitFor();
+    // Playing on: a level-up celebrates, a death puts "run back to your body" first.
+    const frame = (o) => app.evaluate((_e, o) => { const b = liveFixture.bridge; b.frame = { version: 3, combat: false, dead: false, characterHash: 0, mounted: false, level: 16, xpPercent: 40, position: { mapId: 1413, x: 0.51, y: 0.30, facing: 1 }, ...o, receivedAt: Date.now() }; b.signal = "live"; b.emit(); }, o);
+    await frame({ seq: 2, position: { mapId: 1413, x: 0.53, y: 0.31, facing: 1 } });
+    await frame({ seq: 3, level: 17, xpPercent: 1, position: { mapId: 1413, x: 0.55, y: 0.33, facing: 1 } });
+    await page.locator(".bf-celebrate").getByText("17").waitFor(); await page.waitForTimeout(1200);
+    await page.screenshot({ path: path.join(capture, "now-level-up.png") });
+    await page.locator(".bf-celebrate").click();
+    await frame({ seq: 4, level: 17, dead: true, position: { mapId: 1413, x: 0.56, y: 0.34, facing: 1 } });
+    await page.locator(".now-step.now-death").waitFor({ timeout: 15000 });
+    assert.match(await page.locator(".now-step h3").first().innerText(), /You died/);
+    const s = await page.evaluate(() => NowView._state().session);
+    assert.equal(s.deaths, 1); assert.equal(s.level, 17);
+    await page.screenshot({ path: path.join(capture, "now-session.png"), fullPage: true });
+    await frame({ seq: 5, level: 17, dead: false, position: { mapId: 1413, x: 0.51, y: 0.30, facing: 1 } });
     // "Show on map" jumps to the World Map focused on that spot.
     await page.locator("[data-now-map]").first().click();
     await page.locator("[data-world-map]").waitFor();

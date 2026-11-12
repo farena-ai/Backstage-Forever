@@ -626,6 +626,22 @@ app.whenReady().then(async () => {
     getLive: () => worldMap.liveFrame(worldMap.profile()),
   });
   handle("levelingAdvice", () => leveling.advise());
+  // This play session (memory only): pace, deaths, level-ups and where you walked.
+  const playSession = new (require("./core/play-session.cjs").PlaySession)();
+  liveBridge.subscribe(() => {
+    try {
+      const raw = liveBridge.status().frame;
+      const mine = worldMap.liveFrame(worldMap.profile());
+      // Combat frames carry no position; they still count as play for the same character.
+      const frame = mine || (raw && raw.characterHash === playSession.key ? { ...raw, position: undefined } : null);
+      for (const e of playSession.observe(frame)) if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:playEvent", e);
+    } catch {}
+  });
+  handle("playSession", () => playSession.summary());
+  handle("playTrail", (mapId) => {
+    if (!Number.isSafeInteger(mapId) || mapId <= 0) throw Error("Invalid map.");
+    return playSession.trail(mapId);
+  });
   // Zone art from the player's own WoW install, cached locally per game build.
   const mapArt = new (require("./core/map-art.cjs").MapArt)({ getRoot: () => game?.root || null, cacheDir: path.join(app.getPath("userData"), "map-art") });
   handle("mapArt", (mapId) => {

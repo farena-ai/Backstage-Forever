@@ -102,6 +102,9 @@
 .wm-spells li, .wm-items li { padding: 1px 0; font-size: 13px; }
 .wm-spells small, .wm-items small { color: #6b4a22; }
 .wm-note { margin: 6px 0; font-size: 13px; color: #4a3218; }
-.world-map-page .wm-qbtn { min-height: 0; border-radius: 4px; padding: 4px 6px; box-shadow: none; text-shadow: none; color: #2b1b0a; }
+.world-map-page .wm-qbtn { min-height: 0; border-radius: 4px; padding: 4px 6px; box-shadow: none; text-shadow: none; color: #2b1b0a; background: rgba(255,248,225,.7); border: 1px solid #c4a466; }
 .world-map-page .wm-qbtn::before, .world-map-page .wm-qbtn::after { display: none; }
 .world-map-page .wm-qbtn:hover:not(:disabled) { transform: none; box-shadow: none; }
+
+.wm-ico-journey { display: inline-block; width: 18px; height: 4px; margin: 0 6px 3px 2px; border-radius: 2px; background: #eafaff; box-shadow: 0 0 0 2px rgba(80,200,255,.6), 0 0 6px rgba(80,200,255,.8); vertical-align: middle; }
+.world-map-page .wm-qbtn:hover, .world-map-page .wm-qbtn:focus-visible { background: #fff6dc; border-color: #8a5a18; }

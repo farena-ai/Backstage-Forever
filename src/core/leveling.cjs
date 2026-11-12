@@ -130,7 +130,7 @@ class LevelingAdvisor {
     const shown = zones.filter((z, i) => i === 0 || z.available > 0);
     return {
       status: "ok",
-      character: { name: p.name, level, faction, className: p.className || null, race: p.race || null, zone: here ? mapName(here) : null, live: Boolean(live?.position), position: where && Number.isFinite(where.x) ? { mapId: where.mapId, x: where.x, y: where.y } : null },
+      character: { name: p.name, level, faction, className: p.className || null, race: p.race || null, zone: here ? mapName(here) : null, live: Boolean(live?.position), xp: p.progress && Number.isFinite(p.progress.max) && p.progress.max > 0 ? { current: p.progress.current, max: p.progress.max, rested: Number.isFinite(p.progress.rested) ? p.progress.rested : 0, savedLevel: p.level } : null, xpPercent: Number.isFinite(live?.xpPercent) ? live.xpPercent : null, dead: Boolean(live?.dead), position: where && Number.isFinite(where.x) ? { mapId: where.mapId, x: where.x, y: where.y } : null },
       next: next && { ...next, why: this.why(next, p, here) },
       zones: (shown.length ? shown : zones).slice(0, 6),
       training: this.training(p),
