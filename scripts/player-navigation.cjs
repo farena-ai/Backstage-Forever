@@ -2,6 +2,7 @@
 const assert = require("node:assert/strict");
 const { beginRendererAction, finishRendererAction } = require("./renderer-action-fixture.cjs");
 const routes = {
+  now: ["Now"],
   adventure: ["Adventure", "Next step"],
   "quest-guide": ["Quests"],
   "world-map": ["World Map"],

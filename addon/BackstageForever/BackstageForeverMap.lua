@@ -119,6 +119,7 @@ end
 local function controls()
     if panel or not attached or combat()then return end
     panel=call(CreateFrame,'Frame',nil,attached,'BackdropTemplate');if not panel then return end
+    BackstageForeverMapPanelFrame=panel -- the advisor layer panel docks below this one
     method(panel,'SetPoint','TOPLEFT',attached,'TOPLEFT',14,-40)
     method(panel,'SetSize',200,54);method(panel,'SetBackdrop',{bgFile='Interface/DialogFrame/UI-DialogBox-Background',edgeFile='Interface/Tooltips/UI-Tooltip-Border',tile=true,tileSize=16,edgeSize=12,insets={left=3,right=3,top=3,bottom=3}})
     method(panel,'SetBackdropColor',.08,.06,.025,.94)

@@ -200,6 +200,7 @@ async function sourceFiles(folder, prefix = "src") {
     const owned = [
       "BackstageForever.toc",
       "BackstageForeverReference.lua",
+      "BackstageForeverAdvisorData.lua",
       "BackstageForeverPlan.lua",
     "BackstageForeverCoach.lua",
     "BackstageForeverAcquisition.lua",
@@ -207,6 +208,7 @@ async function sourceFiles(folder, prefix = "src") {
     "BackstageForeverGathering.lua",
     "BackstageForeverMapPlan.lua",
     "BackstageForeverMap.lua",
+    "BackstageForeverAdvisorMap.lua",
     "BackstageForeverMap.xml",
       "BackstageForever.lua",
       "BackstageForeverHUD.lua",

@@ -35,6 +35,7 @@ jobs:
       - run: npm ci
       - run: npm run check:addon-reference
       - run: npm run check:find-index
+      - run: npm run check:addon-advisor
       - run: npm run check:forever-vendors
       - run: npm run check:forever-insights
       - run: npm run check:forever-travel
@@ -63,6 +64,7 @@ jobs:
       - run: npm run test:companion-tools
       - run: npm run test:live-link
       - run: npm run test:world-map
+      - run: npm run test:now
       - run: npm run test:conversation
       - run: npm run test:companion-recovery
       - run: npm run test:player-shell

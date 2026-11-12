@@ -326,8 +326,12 @@ window.WorldMapView = (() => {
       if (m.mapId !== model?.mapId) { selected = null; view = { zoom: 1, cx: 0.5, cy: 0.5 }; }
       model = m; mapId = m.mapId; error = "";
       if (pendingFocus && pendingFocus.mapId === m.mapId) {
-        const pin = { id: "focus", kind: "instance", label: pendingFocus.label, sub: pendingFocus.sub || null, mapId: m.mapId, x: pendingFocus.x, y: pendingFocus.y, source: "Classic-era baseline (approximate entrance)" };
-        model.pins.push(pin); selected = pin; view = { zoom: 2.2, cx: pin.x, cy: pin.y }; pendingFocus = null;
+        // Prefer the real pin (an NPC from another page); otherwise mark the spot itself.
+        const f = pendingFocus;
+        const real = f.npcId ? model.pins.filter((p) => p.npcId === f.npcId).sort((a, b) => Math.hypot(a.x - f.x, a.y - f.y) - Math.hypot(b.x - f.x, b.y - f.y))[0] : null;
+        const pin = real || { id: "focus", kind: f.kind || (f.npcId ? "npc" : "instance"), npcId: f.npcId || undefined, label: f.label, sub: f.sub || null, mapId: m.mapId, x: f.x, y: f.y, source: f.source || (f.kind || f.npcId ? "From your advisor" : "Classic-era baseline (approximate entrance)") };
+        if (!real) model.pins.push(pin);
+        selected = pin; view = { zoom: 2.2, cx: pin.x, cy: pin.y }; pendingFocus = null;
       }
       if (m.player?.live) pushTrail(m.mapId, m.player.live);
     } catch (e) { error = e.message; }

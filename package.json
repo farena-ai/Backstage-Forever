@@ -1,7 +1,7 @@
 {
   "name": "backstage-forever",
   "productName": "Backstage Forever",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "releaseChannel": "preview",
   "description": "A local-first adventure companion from Backstage Coding. Designed by Frank Arena.",
   "author": "Frank Arena / Backstage Coding",
@@ -27,6 +27,8 @@
     "build:addon-reference": "node scripts/build-addon-reference.cjs",
     "check:addon-reference": "node scripts/build-addon-reference.cjs --check",
     "build:find-index": "node scripts/build-find-index.cjs",
+    "build:addon-advisor": "node scripts/build-addon-advisor.cjs",
+    "check:addon-advisor": "node scripts/build-addon-advisor.cjs --check",
     "check:find-index": "node scripts/build-find-index.cjs --check",
     "test:living-backend": "node scripts/living-backend-smoke.cjs",
     "test:living-setup": "node scripts/living-setup-smoke.cjs",
@@ -63,7 +65,8 @@
     "test:npc-companion": "node scripts/npc-companion-smoke.cjs",
     "test:companion-tools": "node scripts/companion-tools-smoke.cjs",
     "test:live-link": "node scripts/live-link-smoke.cjs",
-    "test:world-map": "node --test tests/world-map.test.cjs && node scripts/world-map-smoke.cjs"
+    "test:world-map": "node --test tests/world-map.test.cjs && node scripts/world-map-smoke.cjs",
+    "test:now": "node --test tests/leveling.test.cjs && node scripts/now-smoke.cjs"
   },
   "devDependencies": {
     "electron": "45.2.3",

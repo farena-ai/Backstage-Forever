@@ -4,4 +4,9 @@
             <OnLoad function="BackstageForeverMapPin_OnLoad"/>
         </Scripts>
     </Frame>
+    <Frame name="BackstageForeverAdvisorPinTemplate" virtual="true" enableMouse="true">
+        <Scripts>
+            <OnLoad function="BackstageForeverAdvisorPin_OnLoad"/>
+        </Scripts>
+    </Frame>
 </Ui>

@@ -341,6 +341,10 @@ if type(SlashCmdList)=='table' then
             if type(BackstageForeverWay)=='function' then pcall(BackstageForeverWay,message)end
             return
         end
+        if type(message)=='string' and message:lower():match('^next') then
+            if type(BackstageForeverNext)=='function' then pcall(BackstageForeverNext)end
+            return
+        end
         if type(message)=='string' and message:lower():match('^live') then
             if type(BackstageForeverLiveCommand)=='function' then pcall(BackstageForeverLiveCommand,message)end
             return
@@ -353,7 +357,7 @@ if type(SlashCmdList)=='table' then
             return
         elseif message=='' then visible=not visible
         else
-            if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: /bf find NAME, way MapID X Y, live, show, hide, status, or guide QuestID t/o/r MapID X Y Build.')end
+            if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: /bf next, find NAME, way MapID X Y, live, show, hide, status, or guide QuestID t/o/r MapID X Y Build.')end
             return
         end
         pcall(initialize);save();pcall(update)

@@ -42,7 +42,7 @@ function shortPath(target) {
       await page.evaluate(()=>localStorage.setItem("bf-setup-v4","complete"));
     };
     await launch();await page.evaluate(root=>window.backstage.prepareGame(root),game);await page.reload();
-    await page.getByRole("heading",{name:"Aeralyn",exact:true}).waitFor();
+    await page.getByRole("heading",{name:"Aeralyn",exact:true}).waitFor();await navigate(page,"adventure");
     await page.locator(".companion-dock").waitFor({state:"hidden"});
     const evidence=path.resolve(process.env.BF_SMOKE_CAPTURE_ROOT || "work/v09-ui-evidence");await fs.mkdir(evidence,{recursive:true});
     const capture=async name=>page.screenshot({path:path.join(evidence,`${process.argv.includes("--short-path")?"short-":""}${name}.png`)});
@@ -204,7 +204,7 @@ function shortPath(target) {
     await page.waitForFunction(()=>document.querySelector('[aria-current="page"]')?.dataset.nav==="guide");
     assert.equal(await page.locator("[data-company]").count(),0,"Late accepted session cannot jump back over explicit navigation");
     // Actual restart retains sessions and options; starting again reuses the exact baseline.
-    await app.close();app=null;await launch();await page.getByRole("heading",{name:"Aeralyn",exact:true}).waitFor();await expandDirector();
+    await app.close();app=null;await launch();await page.getByRole("heading",{name:"Aeralyn",exact:true}).waitFor();await navigate(page,"adventure");await expandDirector();
     await page.getByRole("button",{name:"Start quest session",exact:true}).click();await page.locator("[data-company-journey]").first().waitFor();
     assert.equal((await savedState()).journeys.length,2);assert.match(await page.getByRole("status").innerText(),/existing quest session/);
     // A deliberate import replaces the same profile ID and all Director evidence.

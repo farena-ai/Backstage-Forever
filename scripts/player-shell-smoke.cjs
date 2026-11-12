@@ -107,7 +107,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.reload();
 
     const primary = page.getByRole("navigation", { name: "Main navigation" });
-    const names = ["Adventure", "World Map", "Quests", "Companion", "Characters", "Plans"];
+    const names = ["Now", "Adventure", "World Map", "Quests", "Companion", "Characters", "Plans"];
     assert.equal(await primary.getByRole("button").count(), names.length);
     for (let i = 0; i < names.length; i++) {
       const button = primary.getByRole("button", {
@@ -427,7 +427,7 @@ const { defaultState } = require("../src/core/validation.cjs");
       ),
     );
     console.log(
-      "Player shell actual Electron PASS: 6 primary + 2 secondary, 12 visible destinations (all 11 legacy routes plus Map), preserved custom class, disclosures, keyboard, 26 faction/full/compact/secondary/tool/zoom captures.",
+      "Player shell actual Electron PASS: 7 primary + 2 secondary, 14 visible destinations (all 11 legacy routes plus Map and Now), preserved custom class, disclosures, keyboard, 26 faction/full/compact/secondary/tool/zoom captures.",
     );
   } finally {
     clearTimeout(watchdog);
