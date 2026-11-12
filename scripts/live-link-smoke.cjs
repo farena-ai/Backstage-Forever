@@ -34,10 +34,12 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.reload();
     await navigate(page, "game");
     const toggle = page.locator("#live-link-toggle");
-    assert.equal(await toggle.isChecked(), false);
+    assert.equal(await toggle.isChecked(), true, "live link is on by default");
+    await toggle.uncheck();
     await page.locator("[data-live-link-line]").getByText(/Off\. Turn it on/).waitFor();
+    assert.equal(JSON.parse(await fs.readFile(path.join(dir, "live-link.json"), "utf8")).enabled, false);
     await toggle.check();
-    await page.locator("[data-live-link-line]").getByText(/no live strip yet/).waitFor();
+    await page.locator("[data-live-link-line]").getByText(/no live strip/).waitFor();
     assert.equal(JSON.parse(await fs.readFile(path.join(dir, "live-link.json"), "utf8")).enabled, true);
     // A decoded frame arrives from the (synthetic) worker.
     await app.evaluate(() => {

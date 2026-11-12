@@ -4,12 +4,12 @@
   let status = { enabled: false, signal: "off", frame: null };
   const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const SIGNALS = {
-    off: "Off. Turn it on, then type /bf live on in WoW.",
+    off: "Off. Turn it on to show your live position on the map and radar.",
     starting: "Starting…",
     nogame: "Waiting for WoW Forever to be running.",
     minimized: "WoW is minimized; restore the game window.",
     small: "The game window is too small to read.",
-    "no-signal": "Game found, no live strip yet. In WoW type /bf live on and keep the game visible.",
+    "no-signal": "Game found but no live strip. Keep WoW visible (windowed or borderless fullscreen); if this stays, type /bf live on in WoW once.",
     stale: "Signal paused (game covered or strip hidden).",
     error: "The screen reader stopped; retrying shortly.",
     unsupported: "Live link needs Windows.",
@@ -29,7 +29,7 @@
   }
   window.LiveLink = {
     markup() {
-      return `<hr class="rule"><h3>Live game link <span class="tag">Optional</span></h3><label class="check-label"><input type="checkbox" id="live-link-toggle" ${status.enabled ? "checked" : ""}>Read my live position from the game window</label><p>With this on and <strong>/bf live on</strong> typed once in WoW, the addon shows a tiny colour strip in the top-left corner of the game. Backstage Forever reads only that strip, twice a second, so the companion knows where you are right now without a reload. It sends no input, reads no game memory, stores no screenshots and pauses details during combat.</p><p class="live-link-line" data-live-link-line role="status">${esc(line())}</p>`;
+      return `<hr class="rule"><h3>Live game link <span class="tag">On by default</span></h3><label class="check-label"><input type="checkbox" id="live-link-toggle" ${status.enabled ? "checked" : ""}>Read my live position from the game window</label><p>With this on, the addon shows a tiny colour strip in the top-left corner of the game. Backstage Forever reads only that strip, twice a second, so the companion knows where you are right now without a reload. It sends no input, reads no game memory, stores no screenshots and pauses details during combat.</p><p class="live-link-line" data-live-link-line role="status">${esc(line())}</p>`;
     },
     line() { return `<p class="live-link-line" data-live-link-line role="status">${esc(line())}</p>`; },
     status: () => status,

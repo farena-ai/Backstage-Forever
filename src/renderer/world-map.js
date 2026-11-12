@@ -146,7 +146,7 @@ window.WorldMapView = (() => {
     if (selected) { const [sx, sy] = toScreen(selected.x, selected.y); ctx.beginPath(); ctx.arc(sx, sy, 18, 0, 7); ctx.strokeStyle = "#fff6d0"; ctx.lineWidth = 3; ctx.stroke(); ctx.strokeStyle = "#a0701a"; ctx.lineWidth = 1.5; ctx.stroke(); }
     // Player: saved marker, live trail, live arrow.
     const pl = model?.player;
-    if (pl?.saved && !pl.live) { const [sx, sy] = toScreen(pl.saved.x, pl.saved.y); ctx.beginPath(); ctx.arc(sx, sy, 8, 0, 7); ctx.setLineDash([3, 3]); ctx.strokeStyle = "#3a2410"; ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); ctx.font = "600 11px 'Source Sans 3'"; ctx.fillStyle = "#3a2410"; ctx.textAlign = "center"; ctx.fillText("last saved", sx, sy + 18); }
+    if (pl?.saved && !pl.live) { const [sx, sy] = toScreen(pl.saved.x, pl.saved.y); ctx.beginPath(); ctx.arc(sx, sy, 8, 0, 7); ctx.setLineDash([3, 3]); ctx.strokeStyle = "#3a2410"; ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); ctx.font = "600 11px 'Source Sans 3'"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; const lw = ctx.measureText("last saved").width + 10; ctx.fillStyle = "rgba(245,232,200,0.92)"; ctx.beginPath(); ctx.roundRect(sx - lw / 2, sy + 11, lw, 15, 3); ctx.fill(); ctx.fillStyle = "#3a2410"; ctx.fillText("last saved", sx, sy + 19); }
     trail.forEach((t, i) => { if (t.mapId !== model?.mapId) return; const [sx, sy] = toScreen(t.x, t.y); ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, 7); ctx.fillStyle = `rgba(200,140,30,${(i + 1) / trail.length * 0.8})`; ctx.fill(); });
     if (pl?.live) arrow(...toScreen(pl.live.x, pl.live.y), pl.live.facing, pl.live.combat);
   }
@@ -188,10 +188,15 @@ window.WorldMapView = (() => {
       <div class="wm-card-actions"><button type="button" class="primary" data-wm-act="way">Copy waypoint for WoW</button><button type="button" data-wm-act="track">Track on radar</button></div>
       <p class="wm-src">${esc(p.source || "")}${p.lastSeen ? ` · seen ${esc(p.lastSeen)}` : ""}${p.build ? ` · build ${esc(p.build)}` : ""}</p>`;
   }
+  // Say why the arrow is not live, in the player's terms.
+  function notLive() {
+    const sig = window.LiveLink?.status?.()?.signal || "off";
+    return ({ off: "live link off (Settings → Game connection)", minimized: "WoW is minimized", nogame: "WoW is not running", small: "game window too small", "no-signal": "keep WoW visible for live position", stale: "game window covered", starting: "connecting…", error: "reconnecting…" })[sig] || "not live";
+  }
   function liveLine() {
     const n = document.querySelector("[data-wm-live]"); if (!n) return;
     const pl = model?.player;
-    n.textContent = pl?.live ? `● Live · ${pct(pl.live.x)}, ${pct(pl.live.y)}${pl.live.mounted ? " · mounted" : ""}` : pl?.liveElsewhere ? `● Live in ${pl.liveElsewhere.mapName}` : pl?.saved ? "Last saved position shown" : "";
+    n.textContent = pl?.live ? `● Live · ${pct(pl.live.x)}, ${pct(pl.live.y)}${pl.live.mounted ? " · mounted" : ""}` : pl?.liveElsewhere ? `● Live in ${pl.liveElsewhere.mapName}` : `${pl?.saved ? "Last saved position · " : ""}${notLive()}`;
     n.classList.toggle("on", Boolean(pl?.live));
   }
   function zoneSelect() {
@@ -236,7 +241,8 @@ window.WorldMapView = (() => {
   function pushTrail(id, p) { remember(id, p); const last = trail[trail.length - 1]; if (!last || last.mapId !== id || Math.hypot(last.x - p.x, last.y - p.y) > 0.002) { trail.push({ mapId: id, x: p.x, y: p.y }); if (trail.length > 60) trail.shift(); } }
   function onLive(status) {
     const f = status?.frame;
-    if (!f?.position || !document.querySelector("[data-world-map]")) return;
+    if (!document.querySelector("[data-world-map]")) return;
+    if (!f?.position) { if (model?.player?.live) { delete model.player.live; draw(); } liveLine(); return; }
     lastLive = f;
     if (follow && f.position.mapId !== mapId) { mapId = f.position.mapId; load(mapId); return; }
     if (model && f.position.mapId === model.mapId) {

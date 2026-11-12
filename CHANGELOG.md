@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.2 — live link on by default, 2026-11-11
+
+- The live game link is on by default for new installs and for every character (an explicit off is remembered). The addon says once in chat what the top-left strip is and how to hide it (`/bf live off`).
+- World Map says why your position is not live (WoW minimized, window covered, link off, game not running) instead of only "Last saved position", clears a stale live arrow, and puts the "last saved" label on a readable plate.
+- App/lock, TOC and capture metadata align at 0.15.2 preview. **1.0 remains held.**
+
 ## 0.15.1 — pop-out radar, 2026-11-11
 
 - Always-on-top radar window around the live position with nearby pins and a tracked World Map target (direction, distance band, rim arrow); isolated preload/IPC; combat pauses details.
