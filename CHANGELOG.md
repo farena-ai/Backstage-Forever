@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.18.0 — Now, and a guide on the in-game map, 2026-11-12
+
+- **Now** is the new home page: "Do this next" (hand in finished quests at the nearest NPC, train new class skills, continue your nearest quest, or head to the zone that fits), where to level (zones for your level and faction with how many quests you can pick up and their base town), quests to pick up there, class training now and at your next level, and your quest log. It follows the live link: change zone, level or quest progress and it updates. "Show on map" opens the World Map on the real NPC.
+- Leveling advisor: a reviewed 1–60 zone table for both factions (data/forever-leveling) combined with quests observed in play, which override the table where they exist; quest hubs from where your quests start; class training from observed trainer services.
+- In game, a **BF Guide** layer on WoW's world map (docked under BF Layers): quests to pick up (level, faction, completed quests and quest log checked live in game), quest hand-ins, your class trainer and weapon masters, profession trainers and flight masters, drawn with WoW's own interface icons. Click a pin for WoW's waypoint arrow; hidden in combat.
+- `/bf next` sets WoW's waypoint on the nearest hand-in, or else the nearest quest to pick up.
+- The addon installer now manages sixteen files (adds BackstageForeverAdvisorData.lua and BackstageForeverAdvisorMap.lua). Type `/reload` in game after updating.
+- App/lock, TOC and capture metadata align at 0.18.0 preview. **1.0 remains held.**
+
 ## 0.17.0 — a World Map you can read, and NPCs that tell you something, 2026-11-12
 
 - Every pin kind has its own shape: quest shields (! to pick up, ? to hand in), red crosshair objectives, blue diamond flight masters, hexagon trainers split into class (swords) and profession (hammer), square vendors, leaf herbs, rock ore, starred finds. The legend, search results, "Near you" and the card use the same icons.

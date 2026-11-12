@@ -1,8 +1,12 @@
 # Backstage Forever
 
+## 0.18 preview: a leveling advisor that works with you live
+
+The app now opens on **Now**: what to do next (hand in, train, continue a quest, or where to level), the zones that fit your level with the quests you can pick up there, your class training now and next, and your quest log, all following your live position. Inside WoW, a **BF Guide** layer on the world map shows quests you can pick up (checked live against your level, faction and completed quests), hand-ins, your class trainer, profession trainers and flight masters; `/bf next` points WoW's own arrow at the nearest one. See the [0.18.0 release notes](docs/releases/0.18.0.md).
+
 ## 0.16 preview: your game's own maps, live
 
-The World Map and radar draw each zone's real map art straight from your WoW Forever install (read on your PC, never uploaded), with your live arrow on top. The live link is on by default. See the [0.17.0 release notes](docs/releases/0.17.0.md).
+The World Map and radar draw each zone's real map art straight from your WoW Forever install (read on your PC, never uploaded), with your live arrow on top. The live link is on by default. See the [0.16.0 release notes](docs/releases/0.16.0.md) and [0.17.0](docs/releases/0.17.0.md) for clearer pins and NPC cards.
 
 ## 0.15 preview: find anything, see where you are
 
