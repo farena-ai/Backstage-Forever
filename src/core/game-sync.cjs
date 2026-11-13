@@ -23,6 +23,7 @@ const MAX = 1024 * 1024,
     "BackstageForeverFind.lua",
     "BackstageForeverAssist.lua",
     "BackstageForeverGear.lua",
+    "BackstageForeverQuestIntel.lua",
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");
@@ -181,6 +182,9 @@ function parseSavedVariables(raw) {
     // Optional feature failure must not erase valid core character observations.
     if (c.gathering !== undefined) {
       try { out.gathering = require("./gathering-data.cjs").normalizeGatheringCapture(c.gathering, out.updatedAt); } catch { /* Omit the entire invalid optional block. */ }
+    }
+    if (c.lootSources !== undefined) {
+      try { out.lootSources = require("./quest-intel.cjs").normalizeLootSourcesCapture(c.lootSources); } catch { /* Omit the entire invalid optional block. */ }
     }
     return out;
   });

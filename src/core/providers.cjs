@@ -48,7 +48,8 @@ function approvedProfile(p, { knowledge, prompt = "", reportedLocation } = {}) {
   if (p.quests !== undefined)
     out.quests = validateQuestData(p.quests)
       .slice(0, 10)
-      .map((q) => ({ ...q, objectives: q.objectives.slice(0, 3) }));
+      // Quest log text stays out of the shared context; lookup tools return it per quest.
+      .map(({ text, ...q }) => ({ ...q, objectives: q.objectives.slice(0, 3) }));
   if (p.progress !== undefined) out.progress = validateProgress(p.progress);
   if (p.history !== undefined) {
     const h = validateHistory(p.history);

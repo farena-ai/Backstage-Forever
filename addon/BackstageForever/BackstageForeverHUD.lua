@@ -359,6 +359,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverGearCommand)=='function' then pcall(BackstageForeverGearCommand,message)end
                 return
             end
+            if word=='how' then
+                if type(BackstageForeverHowCommand)=='function' then pcall(BackstageForeverHowCommand,message)end
+                return
+            end
         end
         if combat() or not active then return end
         message=type(message)=='string' and message:lower() or ''
