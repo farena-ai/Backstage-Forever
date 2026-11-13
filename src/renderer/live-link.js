@@ -9,6 +9,8 @@
     nogame: "Waiting for WoW Forever to be running.",
     minimized: "WoW is minimized; restore the game window.",
     small: "The game window is too small to read.",
+    "old-addon": "WoW is still running an older Backstage Forever addon. Type /reload in WoW to load the new one and live updates start again.",
+    unreadable: "The live strip is on screen but its colours are being changed (HDR, Night light, a colour filter or a remote session). Type /reload in WoW once; if it stays, turn the filter off for WoW.",
     "no-signal": "Game found but no live strip. Keep WoW visible (windowed or borderless fullscreen); if this stays, type /bf live on in WoW once.",
     stale: "Signal paused (game covered or strip hidden).",
     error: "The screen reader stopped; retrying shortly.",

@@ -14,6 +14,10 @@
   - 1,301 → 4,322 listings.
   - Elwynn, Stormwind, Westfall, Teldrassil and Darnassus now have vendors. Ironforge and Dun Morogh have none recorded upstream yet.
 - **Reload prompt.** If WoW is still running an older addon than the one installed, Now says "Type /reload in WoW" until you do.
+- **The live link explains itself.** When the strip is on screen but can't be read, the app now says why instead of quietly showing your last save:
+  - "old addon still running: type /reload", or
+  - "colours are being changed (HDR, Night light, a filter or a remote session)".
+  - Now also marks XP and level as "from your last save" whenever it isn't live.
 - **Art pass 1.** Original hand-painted high-fantasy art, made locally with ComfyUI:
   - a painted vista behind the Now header
   - a scholar's study behind Help → Commands and the Field guide

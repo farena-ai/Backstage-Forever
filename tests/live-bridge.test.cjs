@@ -332,3 +332,22 @@ msgs={} set=nil BackstageForeverFind('find zzzz') assert(set==nil and msgs[1]:fi
 print('ok')`);
   assert.equal(out, "ok");
 });
+
+test("a strip on screen that can't be read says why: old addon still running, or colours changed", () => {
+  // Captured from a real game still running the pre-0.18.2 addon, with a display colour shift.
+  const real = { width: 640, height: 16, rgb: fs.readFileSync(path.join(root, "tests/fixtures/live-strip-v2-colour-shifted.rgb")) };
+  assert.equal(L.decodeStrip(real), null);
+  assert.equal(L.stripHint(real), "old-addon");
+  const { bytes } = luaCells(STATE);
+  const v2 = Uint8Array.from(bytes); v2[0] = 2; v2[26] = L.crc8(v2, 26);
+  // Saturation-style shift on a version 2 strip: greys stay grey, colours move apart.
+  const saturate = image(L.encodeCellsV2(v2), { cell: 4, map: (v) => v, mix: -0.6 });
+  if (!L.decodeStrip(saturate)) assert.equal(L.stripHint(saturate), "old-addon");
+  // A version 3 strip with its calibration wrecked is unreadable, not an old addon.
+  const cells = luaCells(STATE).cells.map((c) => [...c]); cells[2] = [255, 0, 0]; cells[3] = [0, 0, 255];
+  assert.equal(L.stripHint(image(cells)), "unreadable");
+  assert.equal(L.stripHint(image([])), null, "no strip at all");
+  const b = new L.LiveBridge({ platform: "linux" }); b.enabled = true;
+  b.read("ok " + real.rgb.toString("base64") + "\n");
+  assert.equal(b.status().signal, "old-addon");
+});

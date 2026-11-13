@@ -89,3 +89,5 @@
 /* Level-up crest behind the number. */
 .bf-celebrate-card .bf-crest { display: grid; place-items: center; width: 220px; height: 220px; margin: 4px auto 0; background: url("art/badge-level.webp") center / contain no-repeat; }
 .bf-celebrate-card .bf-crest strong { font-size: 64px; transform: translateY(-4px); }
+
+.now-saved { color: #7a4b16; font-style: italic; }

@@ -109,7 +109,7 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 ## Suggested release sequence
 
 - **0.21 (shipped):** repair, flight paths, version check, Alliance vendors, flaky checks, art pass 1.
-- **0.22:** 2.1 reward picker, 2.2 gear hints, 2.9 hearth advice, 1.3 quest cleanup, 1.5 helper switches, 1.9 remote live-link check.
+- **0.22:** art pass 2 on the Now page (painted zone vignettes for "Where to level", step icons for Do this next, class crests), 2.1 reward picker, 2.2 gear hints, 2.9 hearth advice, 1.3 quest cleanup, 1.5 helper switches, 1.9 remote live-link check.
 - **0.23:** 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness.
 - **0.24–0.26:** 2.3 route stepper, 2.6 talent coach, 2.8 professions.
 - **0.27+:** Tier 3, then the 4.1 full guided route.
