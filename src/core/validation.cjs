@@ -143,6 +143,7 @@ function validateState(s) {
       "history",
       "readiness",
       "gathering",
+      "lootSources",
       "clientBuild",
       "locale",
       "captureVersion",
@@ -153,6 +154,7 @@ function validateState(s) {
     validateHistory(p.history);
     require("./readiness.cjs").validateReadiness(p.readiness);
     require("./gathering-data.cjs").validateGatheringProfile(p.gathering);
+    require("./quest-intel.cjs").validateLootSources(p.lootSources);
     str(p.id, 100, false);
     if (ids.has(p.id)) fail();
     ids.add(p.id);

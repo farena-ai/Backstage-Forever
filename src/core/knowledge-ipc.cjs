@@ -150,6 +150,8 @@ function registerKnowledgeHandlers({
                   locale: p.locale,
                 });
     }
+    // Quest intel from this player's own game (quest log text, where they looted its items); only when present.
+    try { Object.assign(result, require("./quest-intel.cjs").questIntel(p, questId, result.record)); } catch {}
     return result;
   });
   handle("copyQuestWaypoint", (...args) => {

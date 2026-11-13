@@ -33,6 +33,7 @@ function validateQuestData(value) {
       "complete",
       "objectives",
       "destination",
+      "text",
     ]);
     num(q.id, 1);
     if (ids.has(q.id)) fail();
@@ -79,6 +80,9 @@ function validateQuestData(value) {
       if (q.destination.text !== undefined) d.text = text(q.destination.text);
       result.destination = d;
     }
+    // Quest log text the player's own client showed (optional; older captures lack it).
+    if (q.text !== undefined)
+      result.text = require("./quest-intel.cjs").validateQuestText(q.text);
     return result;
   });
 }
