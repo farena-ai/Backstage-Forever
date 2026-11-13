@@ -200,7 +200,7 @@ class LevelingAdvisor {
     // Union of spells across this class's trainers (each one only lists what was observed).
     const levelled = (rows) => {
       const spells = new Map();
-      for (const tr of rows) for (const s of tr.services || []) { const k = `${s.name}|${s.rankText || ""}`; if (!spells.has(k) || (s.observedLevel || 0) > (spells.get(k).level || 0)) spells.set(k, { name: s.name, rank: s.rankText || null, level: s.observedLevel || 0 }); }
+      for (const tr of rows) for (const s of tr.services || []) { const k = `${s.name}|${s.rankText || ""}`; if (!spells.has(k) || (s.observedLevel || 0) > (spells.get(k).level || 0)) spells.set(k, { name: s.name, rank: s.rankText || null, level: s.observedLevel || 0, spellId: s.spellId || null }); }
       return [...spells.values()].filter((s) => s.level > 0);
     };
     // Class spells are class-wide: when your faction's trainers have no recorded spell levels,
@@ -215,6 +215,9 @@ class LevelingAdvisor {
       trainer: { npcId: t.id, name: t.name, title: t.title, mapId: pos?.mapId ?? null, mapName: pos ? mapName(pos.mapId) : null, x: pos?.x ?? null, y: pos?.y ?? null },
       newNow, nextAt: Number.isFinite(nextAt) ? nextAt : null,
       nextSpells: Number.isFinite(nextAt) ? all.filter((s) => s.level === nextAt).map((s) => ({ name: s.name, rank: s.rank })) : [],
+      // Trainer planner: the next three training levels and what each brings.
+      upcoming: [...new Set(all.filter((s) => s.level > p.level).map((s) => s.level))].sort((a, b) => a - b).slice(0, 3)
+        .map((lv) => ({ level: lv, spells: all.filter((s) => s.level === lv).sort((a, b) => a.name.localeCompare(b.name)).map((s) => ({ name: s.name, rank: s.rank, spellId: s.spellId })) })),
       spellsFromOtherTrainers,
     };
   }

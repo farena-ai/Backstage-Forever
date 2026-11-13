@@ -1,6 +1,6 @@
 "use strict";
 // Local-only dev preview (not a test): your own saved state drives Now at the app's default window size.
-// Usage: node scripts/dev-preview-now.cjs OUT.png [PROFILE_NAME] [WIDTHxHEIGHT]
+// Usage: [BF_PREVIEW_ROOT=".../_forever_"] node scripts/dev-preview-now.cjs OUT.png [PROFILE_NAME] [WIDTHxHEIGHT]
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path");
 const { testWindow } = require("./test-window.cjs");
@@ -21,6 +21,7 @@ const { testWindow } = require("./test-window.cjs");
       const load=require('node:module').createRequire(${JSON.stringify(path.join(repo, "package.json"))});
       load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});
       const L=load('./src/core/live-bridge.cjs'); L.LiveBridge.prototype.readPreference=function(){return false;};L.LiveBridge.prototype.start=function(){};
+      if (process.env.BF_PREVIEW_ROOT) { const G=load('./src/core/game-data.cjs'); const Base=G.GameData; G.GameData=class extends Base{constructor(o){super({...o,getRoot:()=>process.env.BF_PREVIEW_ROOT});}}; }
       load('./src/main.cjs');`);
     app = await electron.launch({ args: [dir], env: { ...process.env, BF_USER_DATA: dir, BF_TEST_INACTIVE: "1" }, timeout: 20000 });
     const page = await testWindow(app);
@@ -34,6 +35,7 @@ const { testWindow } = require("./test-window.cjs");
     await page.screenshot({ path: out });
     await page.evaluate(() => document.querySelector(".now-grid")?.scrollIntoView());
     await page.screenshot({ path: out.replace(/\.png$/, "-grid.png") });
+    if (process.env.BF_PREVIEW_SELECTOR) { await page.waitForTimeout(1500); await page.locator(process.env.BF_PREVIEW_SELECTOR).first().screenshot({ path: out.replace(/\.png$/, "-part.png") }); }
     console.log("wrote", out);
   } catch (e) { console.error(e); process.exitCode = 1; }
   finally { await app?.close().catch(() => {}); await fs.rm(dir, { recursive: true, force: true }).catch(() => {}); }

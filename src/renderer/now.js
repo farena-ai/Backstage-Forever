@@ -164,6 +164,7 @@ window.NowView = (() => {
       : `<p><strong>${esc(t.trainer.name)}</strong> · ${esc(t.trainer.title)}<br><small>${at(t.trainer)}</small></p>
          ${t.newNow.length ? `<p class="now-good">New for you now: ${t.newNow.map((s) => esc(s.name)).join(", ")}</p>` : `<p>Nothing new at level ${c.level}.</p>`}
          ${t.nextAt ? `<p>Next spells at <strong>level ${t.nextAt}</strong>: ${t.nextSpells.slice(0, 6).map((s) => esc(s.name)).join(", ")}${t.nextSpells.length > 6 ? "…" : ""}</p>` : ""}
+         ${t.upcoming?.length ? `<h3 class="now-sub">Upcoming training</h3><ol class="now-plan">${t.upcoming.map((u) => `<li class="${u.level - c.level <= 2 ? "soon" : ""}"><span class="now-plan-lv">${u.level}</span><span class="now-plan-spells">${u.spells.slice(0, 6).map((sp) => `<span class="now-spell" title="${esc(sp.name)}${sp.rank ? ` (${esc(sp.rank)})` : ""}">${sp.spellId ? `<canvas class="game-icon now-spell-ico" width="28" height="28" data-spell-icon="${sp.spellId}"></canvas>` : ""}<span>${esc(sp.name)}${sp.rank ? ` <small>${esc(sp.rank.replace("Rank ", "R"))}</small>` : ""}</span></span>`).join("")}</span></li>`).join("")}</ol>` : ""}
          <div class="now-actions">${mapBtn(t.trainer, t.trainer.name, t.trainer.title, t.trainer.npcId, { title: `Your ${t.className} trainer`, steps: [`${t.trainer.name}, ${t.trainer.title}.`, t.newNow.length ? `Ready to learn: ${t.newNow.map((s) => s.name).join(", ")}.` : `Nothing new until level ${t.nextAt || c.level + 1}.`] })}</div>`;
     const log = a.log;
     const questLog = log.inLog ? `<ul class="now-log">${log.ready.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip ready">Hand in</span>${esc(q.title)}</button></li>`).join("")}${log.active.slice(0, 8).map((q) => { const grey = q.level && q.level <= greyAt(c.level); return `<li><button type="button" data-quest-open="${q.id}"${grey ? ' title="This quest no longer gives experience at your level. Finish it only if you want the reward or the story; otherwise it\'s safe to abandon to free up your log."' : ""}><span class="now-chip">${q.total ? `${q.done}/${q.total}` : "…"}</span>${esc(q.title)}${q.level ? ` <small>lvl ${q.level}</small>` : ""}${grey ? ` <span class="now-chip grey">No XP · safe to drop</span>` : ""}</button></li>`; }).join("")}</ul>` : `<p>Your quest log is empty. ${a.next ? `Pick up quests in ${esc(a.next.name)}.` : ""}</p>`;
@@ -199,6 +200,17 @@ window.NowView = (() => {
     const crestEl = document.querySelector("[data-now-crest]"), cls = String(advice?.character?.className || "").toLowerCase();
     if (crestEl) { if (CLASSES.has(cls)) { crestEl.src = `art/classes/${cls}.png`; crestEl.hidden = false; } else crestEl.hidden = true; }
     liveLine();
+    spellIcons(b);
+  }
+  // Spell icons come from the player's own game install: spell id -> icon file -> GameIcons paints it.
+  const spellIconCache = new Map();
+  function spellIcons(root) {
+    if (!api.gameSpell) return;
+    for (const c of root.querySelectorAll("canvas[data-spell-icon]")) {
+      const id = Number(c.dataset.spellIcon);
+      if (!spellIconCache.has(id)) spellIconCache.set(id, api.gameSpell(id).then((sp) => sp?.iconFileId || null).catch(() => null));
+      spellIconCache.get(id).then((icon) => { if (icon && c.isConnected) { c.dataset.gameIcon = String(icon); window.GameIcons?.paint?.(c.parentElement || c); } else if (!icon) c.remove(); });
+    }
   }
   async function load() {
     if (loading) return; loading = true; lastFetch = Date.now();

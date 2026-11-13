@@ -233,3 +233,12 @@
 .now-zr-item:last-child { border-bottom: 0; }
 .now-zc-head.biome-warcamp, .bf-arrive.biome-warcamp, .now-page .now-zones li.biome-warcamp button { background-image: url("art/zones/warcamp.webp"); }
 .now-zc-head.biome-citadel, .bf-arrive.biome-citadel, .now-page .now-zones li.biome-citadel button { background-image: url("art/zones/citadel.webp"); }
+/* Trainer planner: the next training levels with spell icons. */
+.now-plan { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.now-plan li { display: flex; gap: 10px; align-items: flex-start; padding: 6px 8px; border-radius: 6px; background: rgba(255,248,225,.55); border: 1px solid #c4a466; }
+.now-plan li.soon { border-color: #8a5a18; box-shadow: 0 0 0 1px rgba(246,196,69,.5); }
+.now-plan-lv { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; font: 800 14px Georgia, serif; color: #fff4dc; background: radial-gradient(circle at 35% 30%, #c58cff, #5a2aa0); border: 1.5px solid #2a0d3d; }
+.now-plan-spells { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.now-spell { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: #2b1b0a; }
+.now-spell small { color: #6b4a22; }
+.now-spell-ico { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #5a3a0c; background: #2b1b0a; }
