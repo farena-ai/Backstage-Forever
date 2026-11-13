@@ -24,14 +24,17 @@ function parseConfig(text) {
 }
 
 // BLTE container: one or more chunks, each raw (N), zlib (Z) or a nested frame (F).
-function blte(buf) {
+// Encrypted chunks (E) need a key the player's client may not hold. With zeroEncrypted they
+// become zero bytes of their declared size, so a DB2 can skip its encrypted sections instead.
+function blte(buf, { zeroEncrypted = false } = {}) {
   if (buf.toString("latin1", 0, 4) !== "BLTE") throw Error("Not a BLTE stream.");
   const headerSize = buf.readUInt32BE(4);
-  const decodeChunk = (c) => {
+  const decodeChunk = (c, size) => {
     const mode = String.fromCharCode(c[0]);
     if (mode === "N") return c.subarray(1);
     if (mode === "Z") return zlib.inflateSync(c.subarray(1));
     if (mode === "F") return blte(c.subarray(1));
+    if (mode === "E" && zeroEncrypted && size !== undefined) return Buffer.alloc(size);
     if (mode === "E") { const e = Error("Encrypted content is not readable."); e.code = "ENCRYPTED"; throw e; }
     throw Error(`Unknown BLTE chunk mode ${mode}.`);
   };
@@ -41,7 +44,7 @@ function blte(buf) {
   let pos = headerSize;
   for (let i = 0; i < count; i++) {
     const comp = buf.readUInt32BE(12 + i * 24);
-    parts.push(decodeChunk(buf.subarray(pos, pos + comp)));
+    parts.push(decodeChunk(buf.subarray(pos, pos + comp), buf.readUInt32BE(16 + i * 24)));
     pos += comp;
   }
   return Buffer.concat(parts);
@@ -155,7 +158,7 @@ class CascStorage {
     }
     return null;
   }
-  readEKey(ekeyHex) {
+  readEKey(ekeyHex, opts) {
     const loc = this.locate(Buffer.from(ekeyHex, "hex"));
     if (!loc) { const e = Error("Not present in local storage."); e.code = "MISSING"; throw e; }
     const file = path.join(this.dataDir, "data", `data.${String(loc.archive).padStart(3, "0")}`);
@@ -163,7 +166,7 @@ class CascStorage {
     if (fd === undefined) { fd = fs.openSync(file, "r"); this.fds.set(file, fd); }
     const buf = Buffer.alloc(loc.size);
     fs.readSync(fd, buf, 0, loc.size, loc.offset);
-    return blte(buf.subarray(30));
+    return blte(buf.subarray(30), opts);
   }
   close() { for (const fd of this.fds.values()) try { fs.closeSync(fd); } catch {} this.fds.clear(); }
 
@@ -245,12 +248,12 @@ class CascStorage {
     return this._root;
   }
   fileIdForName(filePath) { return this.root().byName.get(nameHash(filePath)) ?? null; }
-  readFileId(id) {
+  readFileId(id, opts) {
     const ck = this.root().byId.get(id);
     if (!ck) { const e = Error(`File ${id} is not in this build.`); e.code = "MISSING"; throw e; }
     const ek = this.ekeyFor(ck);
     if (!ek) { const e = Error(`File ${id} has no local copy.`); e.code = "MISSING"; throw e; }
-    return this.readEKey(ek);
+    return this.readEKey(ek, opts);
   }
 }
 
