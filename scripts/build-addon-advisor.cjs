@@ -1,7 +1,10 @@
 "use strict";
 // Offline build tool: compiles the in-game advisor layer data (quest givers with level and
 // faction, trainers and flight masters with faction, zone level bands) into a Lua table.
-// Usage: node scripts/build-addon-advisor.cjs [--check]
+// npcs[mapId] rows: k kind (c class trainer, p profession trainer, f flight master, r repair
+// vendor), i NPC id, n name, r subtitle, s side, x/y map position, and t upstream taxi node for f.
+// Usage: node scripts/build-addon-advisor.cjs [--check] [--source-dir DIR]
+//   --source-dir DIR also reproduces the pinned flight master table from DIR/<build>/flights.json.
 const fs = require("node:fs");
 const path = require("node:path");
 const root = path.join(__dirname, "..");
@@ -12,6 +15,8 @@ const { loadLevelingPack } = require("../src/core/leveling.cjs");
 const { loadTravelReference } = require("../src/core/travel-data.cjs");
 const { loadVendorPack } = require("../src/core/vendor-facts.cjs");
 const { loadBundledInsights } = require("../src/core/insights-data.cjs");
+const { MASTERS, SOURCES: FLIGHT_SOURCES, normalizeFlightMasters, taxiNode } = require("../src/core/flight-masters.cjs");
+const { isDeepStrictEqual } = require("node:util");
 
 function luaString(value) {
   return '"' + [...Buffer.from(String(value), "utf8")].map((b) => (b >= 32 && b <= 126 && b !== 34 && b !== 92 ? String.fromCharCode(b) : "\\" + String(b).padStart(3, "0"))).join("") + '"';
@@ -35,14 +40,24 @@ function compile() {
   const npcReference = read("data/forever-npc-locations/pack.json");
   const index = buildStaticIndex({ knowledgePack: pack, npcReference, travelReference: travel, vendorPack, insights });
   const KIND = { flight: "f", "class-trainer": "c", "profession-trainer": "p" };
+  // Repair capability: upstream vendors.json reports whether the merchant window offered repairs.
+  const repairs = new Set(vendorPack.vendors.filter((v) => v.repairs).map((v) => v.id));
   const npcs = {};
   for (const [mapId, pins] of index) {
     const rows = [];
     const seen = new Set();
     for (const p of pins) {
-      const k = KIND[p.kind]; if (!k) continue;
-      const key = `${p.npcId}:${Math.round(p.x * 100)}:${Math.round(p.y * 100)}`; if (seen.has(key)) continue; seen.add(key);
-      rows.push({ k, n: short(p.label, 40), r: short(p.sub, 40), s: side(p.sides), x: p.x, y: p.y });
+      if (!Number.isSafeInteger(p.npcId)) continue;
+      // Trainers keep their kind; other NPCs named as flight masters upstream become flight rows.
+      // Any NPC that can repair (vendor or trainer) also gets its own repair row.
+      const kinds = [];
+      if (KIND[p.kind]) kinds.push([KIND[p.kind], p.sub]);
+      else if (MASTERS[p.npcId]) kinds.push(["f", "Flight Master"]);
+      if (repairs.has(p.npcId)) kinds.push(["r", "Repair vendor"]);
+      for (const [k, sub] of kinds) {
+        const key = `${k}:${p.npcId}:${Math.round(p.x * 100)}:${Math.round(p.y * 100)}`; if (seen.has(key)) continue; seen.add(key);
+        rows.push({ k, i: p.npcId, n: short(p.label, 40), r: short(sub, 40), s: side(p.sides), t: k === "f" ? taxiNode(p.npcId) : undefined, x: p.x, y: p.y });
+      }
     }
     if (rows.length) npcs[mapId] = rows.sort((a, b) => a.k.localeCompare(b.k) || a.n.localeCompare(b.n));
   }
@@ -65,6 +80,13 @@ function compile() {
 }
 
 const text = compile();
+const sourceDir = process.argv.indexOf("--source-dir");
+if (sourceDir >= 0) {
+  const dir = process.argv[sourceDir + 1]; if (!dir) throw Error("Usage: --source-dir DIRECTORY");
+  const raw = Object.fromEntries(FLIGHT_SOURCES.map((s) => [s.build, fs.readFileSync(path.join(path.resolve(dir), s.build, "flights.json"))]));
+  if (!isDeepStrictEqual(normalizeFlightMasters(raw), JSON.parse(JSON.stringify(MASTERS)))) { console.error("Pinned flight master table differs from the locked flights.json sources."); process.exit(1); }
+  console.log(`Flight master table reproduced from ${FLIGHT_SOURCES.length} locked flights.json files.`);
+}
 if (process.argv.includes("--check")) {
   const current = fs.existsSync(out) ? fs.readFileSync(out, "utf8").replace(/\r\n/g, "\n") : "";
   if (current !== text) { console.error("BackstageForeverAdvisorData.lua is stale; run npm run build:addon-advisor."); process.exit(1); }

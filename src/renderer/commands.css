@@ -22,3 +22,9 @@
 .cmd-features ul, .cmd-app ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 .cmd-empty, .cmd-foot { margin: 0; color: #e7d3a6; }
 .cmd-foot code { color: #fff1d6; }
+
+/* Art pass: hero banner and group crests. */
+.cmd-hero { position: relative; overflow: hidden; min-height: 210px; display: flex; flex-direction: column; justify-content: flex-end; background: linear-gradient(90deg, rgba(26,6,4,.92) 0%, rgba(40,10,6,.72) 45%, rgba(40,10,6,.15) 100%), url("art/hero-help.webp") center 40% / cover no-repeat, #3a0f09; }
+.cmd-hero h1 { text-shadow: 0 2px 10px rgba(0,0,0,.7); }
+.cmd-group h2 { display: flex; align-items: center; gap: 10px; }
+.cmd-ico { flex: none; width: 40px; height: 40px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }

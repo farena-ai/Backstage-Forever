@@ -63,7 +63,7 @@ window.NowView = (() => {
     const pctNow = Number.isFinite(c.xpPercent) ? c.xpPercent : saved ? Math.floor((saved.current / saved.max) * 100) : null;
     const restedPct = saved && saved.rested > 0 && pctNow != null ? Math.min(100 - pctNow, (saved.rested / saved.max) * 100) : 0;
     const bar = pctNow == null ? "" : `<div class="now-xp" role="img" aria-label="${pctNow}% through level ${c.level}"><span class="now-xp-fill" data-w="${pctNow}"></span>${restedPct > 0 ? `<span class="now-xp-rested" data-l="${pctNow}" data-w="${restedPct.toFixed(1)}"></span>` : ""}</div>
-      <p class="now-xp-line"><strong>${pctNow}%</strong> of level ${c.level}${restedPct > 0 ? ` · <span class="now-rested">rested bonus</span>` : ""}</p>`;
+      <p class="now-xp-line"><strong>${pctNow}%</strong> of level ${c.level}${restedPct > 0 ? ` · <span class="now-rested">rested bonus</span>` : ""}${c.live ? "" : ` · <span class="now-saved">from your last save (logout or /reload)</span>`}</p>`;
     const rows = [];
     if (s) {
       rows.push(`<li><strong>${minutes(s.activeMinutes)}</strong><span>played this session</span></li>`);
@@ -94,6 +94,15 @@ window.NowView = (() => {
       <ol class="now-checklist">${items.map((i, n) => `<li class="${i.done ? "done" : n === next ? "next" : ""}"><span class="now-check" aria-hidden="true">${i.done ? "✓" : n + 1}</span><div><strong>${i.title}</strong>${i.done ? "" : `<p>${i.how}</p>${n === next && i.action ? `<div class="now-actions">${i.action}</div>` : ""}`}</div></li>`).join("")}</ol>
       <p class="now-tip">New to WoW? The <button type="button" class="now-link" data-nav="guide">Field guide</button> explains the words you'll see, like rested, hand in and elite, and <button type="button" class="now-link" data-nav="commands">Commands</button> lists everything you can type in game.</p></article>`;
   }
+  // The game is still running an addon older than the one just installed: one /reload loads it.
+  function reloadBanner() {
+    const sig = setup?.live?.signal;
+    if (sig === "old-addon") return `<div class="now-reload" role="status"><strong>Type <code>/reload</code> in WoW</strong><span>The game is still running an older Backstage Forever addon, so this page can't follow you live and shows your last save instead. One /reload fixes it.</span></div>`;
+    if (sig === "unreadable") return `<div class="now-reload" role="status"><strong>Live link can't read the game</strong><span>The strip is on screen but its colours are being changed (HDR, Night light, a colour filter or a remote session). Type <code>/reload</code> in WoW once; if this stays, turn the filter off for WoW. Until then this page shows your last save.</span></div>`;
+    const g = setup?.game;
+    if (!g?.connected || !g.addonCurrent || g.runtime?.state !== "running" || !g.loadedCaptureVersion || !g.addonVersion || g.loadedCaptureVersion === g.addonVersion) return "";
+    return `<div class="now-reload" role="status"><strong>Type <code>/reload</code> in WoW</strong><span>The game is still running Backstage Forever ${esc(g.loadedCaptureVersion)}. Reloading loads ${esc(g.addonVersion)} with the newest helpers.</span></div>`;
+  }
   function body() {
     if (error) return `<div class="now-card"><p>${esc(error)}</p></div>`;
     if (!advice) return `<div class="now-card"><p>${loading ? "Working out your next move…" : "Loading…"}</p></div>`;
@@ -111,7 +120,7 @@ window.NowView = (() => {
     const log = a.log;
     const questLog = log.inLog ? `<ul class="now-log">${log.ready.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip ready">Hand in</span>${esc(q.title)}</button></li>`).join("")}${log.active.slice(0, 8).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip">${q.total ? `${q.done}/${q.total}` : "…"}</span>${esc(q.title)}${q.level ? ` <small>lvl ${q.level}</small>` : ""}</button></li>`).join("")}</ul>` : `<p>Your quest log is empty. ${a.next ? `Pick up quests in ${esc(a.next.name)}.` : ""}</p>`;
     const top = a.next?.quests?.length ? `<ul class="now-log">${a.next.quests.slice(0, 6).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip new">lvl ${q.level}</span>${esc(q.title)} <small>from ${esc(q.giver)}</small></button></li>`).join("")}</ul>` : "";
-    return `${setupCard(a)}<div class="now-grid">
+    return `${reloadBanner()}${setupCard(a)}<div class="now-grid">
       <article class="now-card now-next"><h2>Do this next</h2>
         ${list.length ? `<ol class="now-steps">${list.map((s) => `<li class="now-step now-${s.kind}"><span class="now-ico" aria-hidden="true">${ICON[s.kind]}</span><div><h3>${s.title}</h3><p>${s.detail}</p><div class="now-actions">${s.actions}</div></div></li>`).join("")}</ol>` : `<p>You're all caught up. Explore, gather or run a dungeon.</p>`}
       </article>
@@ -147,6 +156,7 @@ window.NowView = (() => {
   function onLive(status) {
     if (!document.querySelector("[data-now]")) return;
     const f = status?.frame;
+    if (setup && setup.live?.signal !== status?.signal) { setup.live = status; lastKey = ""; }
     const key = f?.position ? [f.position.mapId, f.level, f.questLogHash, f.quest?.objectivesDone?.length, f.dead, Math.floor((f.xpPercent ?? 0) / 5)].join("|") : "none";
     if (key === lastKey) return;
     lastKey = key;
@@ -176,7 +186,7 @@ window.NowView = (() => {
     const el = document.createElement("div");
     el.className = "bf-celebrate"; el.setAttribute("role", "status");
     const colors = ["#f6c445", "#ff7a59", "#7fe08a", "#6fc3ff", "#e58cff", "#fff1d6"];
-    el.innerHTML = `${"<i></i>".repeat(48)}<div class="bf-celebrate-card"><span>Level up!</span><strong>${esc(level)}</strong><p>New class skills may be waiting at your trainer. Type <code>/bf train</code> in game for an arrow.</p></div>`;
+    el.innerHTML = `${"<i></i>".repeat(48)}<div class="bf-celebrate-card"><span>Level up!</span><div class="bf-crest"><strong>${esc(level)}</strong></div><p>New class skills may be waiting at your trainer. Type <code>/bf train</code> in game for an arrow.</p></div>`;
     [...el.querySelectorAll("i")].forEach((bit, i) => {
       bit.style.left = `${(i * 37) % 100}%`; bit.style.background = colors[i % colors.length];
       bit.style.animationDelay = `${((i * 13) % 20) / 20}s`; bit.style.setProperty("--drift", `${((i * 29) % 160) - 80}px`);

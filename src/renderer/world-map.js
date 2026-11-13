@@ -300,7 +300,7 @@ window.WorldMapView = (() => {
   // Say why the arrow is not live, in the player's terms.
   function notLive() {
     const sig = window.LiveLink?.status?.()?.signal || "off";
-    return ({ off: "live link off (Settings → Game connection)", minimized: "WoW is minimized", nogame: "WoW is not running", small: "game window too small", "no-signal": "keep WoW visible for live position", stale: "game window covered", starting: "connecting…", error: "reconnecting…" })[sig] || "not live";
+    return ({ off: "live link off (Settings → Game connection)", minimized: "WoW is minimized", nogame: "WoW is not running", small: "game window too small", "no-signal": "keep WoW visible for live position", "old-addon": "type /reload in WoW to update the live link", unreadable: "live strip unreadable: type /reload in WoW", stale: "game window covered", starting: "connecting…", error: "reconnecting…" })[sig] || "not live";
   }
   function liveLine() {
     const n = document.querySelector("[data-wm-live]"); if (!n) return;

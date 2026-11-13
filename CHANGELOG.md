@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.21.0 — repairs, flight paths and a fresh coat of paint, 2026-11-13
+
+- **Repair reminder.** In game, a pop-up when your gear drops to a quarter durability, and again if something breaks. It resets after you repair.
+- **`/bf repair`** puts the arrow on the nearest vendor who can repair: 85 bundled repair vendors for both factions (from the community data's own repair flag), plus every repair vendor you open.
+- **Flight paths.**
+  - The addon learns which flight paths you know from the flight map and from the flight masters you talk to.
+  - Passing near a flight master you haven't learned gives one reminder.
+  - `/bf flights` lists this zone's masters as learned or not.
+  - Flight masters now carry their flight-path ids, and Alliance flight masters show on the in-game map.
+- **Alliance vendors.** The vendor reference merges four game builds:
+  - 91 → 291 vendors, 62 of them friendly to Alliance (was 0).
+  - 1,301 → 4,322 listings.
+  - Elwynn, Stormwind, Westfall, Teldrassil and Darnassus now have vendors. Ironforge and Dun Morogh have none recorded upstream yet.
+- **Reload prompt.** If WoW is still running an older addon than the one installed, Now says "Type /reload in WoW" until you do.
+- **The live link explains itself.** When the strip is on screen but can't be read, the app now says why instead of quietly showing your last save:
+  - "old addon still running: type /reload", or
+  - "colours are being changed (HDR, Night light, a filter or a remote session)".
+  - Now also marks XP and level as "from your last save" whenever it isn't live.
+- **Art pass 1.** Original hand-painted high-fantasy art, made locally with ComfyUI:
+  - a painted vista behind the Now header
+  - a scholar's study behind Help → Commands and the Field guide
+  - a winged gold crest behind your level in the level-up celebration
+  - a crest for each Commands group
+- Help → Commands lists `/bf repair`, `/bf flights`, the repair reminder and the flight path reminder.
+- **Fixes:**
+  - Background repaints no longer steal keyboard focus.
+  - Professions shows each seller once again now that sellers span several game builds.
+  - Two long-standing flaky checks are fixed: focus during voice tests, and dropdown contrast during repaints.
+- App/lock, TOC and capture metadata align at 0.21.0 preview. **1.0 remains held.**
+
 ## 0.20.0 — Alliance too, and every command explained, 2026-11-12
 
 - **Alliance coverage.** Reference data is refreshed to the newest community snapshot and now merges four client builds (1.60.1.70888, 70862, 70840, 70790), newest first:

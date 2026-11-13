@@ -61,10 +61,10 @@ function shortPath(target) {
     await write(); let snapshot = await page.evaluate(root => window.backstage.prepareGame(root), game);
     assert.equal(snapshot.state.profiles[0].readiness.workshop.recipes.observedAt, new Date(clock * 1000).toISOString());
     let model = await brief(); assert.equal(model.shoppingRows[0].missing, 4); assert.equal(model.otherCharacters[0].materials[0].count, 99); assert.doesNotMatch(JSON.stringify(model), /PRIVATE_NOTE|PRIVATE_GOAL|Synthetic-Alpha/);
-    assert.equal(model.shoppingRows[0].historicalSellers.status, "unobserved");
+    assert.equal(model.shoppingRows[0].historicalSellers.status, "historical-suggestions");
     assert.equal(model.shoppingRows[1].historicalSellers.status, "historical-suggestions");
     assert.ok(model.shoppingRows[1].historicalSellers.suggestions.length <= 3);
-    assert.equal(model.sellerReference.source.sourceCommit, "23f9636486d3d60479dc0bcee2356053c33faf2c");
+    assert.equal(model.sellerReference.source.sourceCommit, "164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1");
     assert.match(model.sellerReference.limitation, /current stock, price and access are unverified/);
     const stale = structuredClone(snapshot.state);
     let result = await create(); assert.equal(result.state.journeys.length, 1); const first = result.journeyId;

@@ -71,7 +71,14 @@ test('observed profession progress uses native numeric attributes that survive t
 function shippedThreadModel() {
  const at='2026-11-11T12:00:00.000Z', col=items=>({observedAt:at,complete:true,items});
  const state={...require('../src/core/validation.cjs').defaultState(),activeProfileId:'a',profiles:[{id:'a',name:'Synthetic',realm:'Synthetic',notes:'',goals:[],className:'Mage',level:12,faction:'Horde',source:{kind:'wow-addon',id:'Synthetic',updatedAt:at},clientBuild:'1.60.1.70862',readiness:{workshop:{professions:col([{skillLineId:171,professionId:4,name:'Alchemy',rank:20,maxRank:75}]),recipes:col([{id:100,skillLineId:171,name:'Thread formula',canSkillUp:true,reagentsKnown:true,reagents:[{itemId:2320,name:'Coarse Thread',required:1}]}]),materials:{...col([]),scope:'bags-0-4'}}}}]};
- return require('../src/core/profession-coach.cjs').buildProfessionCoach(state,'a',{}, {acquisitionPack:require('../src/core/acquisition-data.cjs').loadAcquisitionPack(),vendorPack:require('../src/core/vendor-facts.cjs').loadVendorPack()});
+ const m=require('../src/core/profession-coach.cjs').buildProfessionCoach(state,'a',{}, {acquisitionPack:require('../src/core/acquisition-data.cjs').loadAcquisitionPack(),vendorPack:require('../src/core/vendor-facts.cjs').loadVendorPack()});
+ // The seller catalog now merges several builds (newest 1.60.1.70888) while the acquisition pin
+ // stays on 1.60.1.70862, so shipped Mahu rows no longer share a build. Pin the seller side to the
+ // acquisition build with Mahu's single-build points in reversed order to keep exercising the merge.
+ const row=m.shoppingRows[0],a=row.acquisition.sources.find(v=>v.entityId===3005),h=row.historicalSellers,t=h.suggestions[0]||h.browse[0];
+ const mahu={...t,id:3005,name:'Mahu',positions:a.positions.map(p=>({...p})).reverse(),lastSeen:a.lastSeen,sources:a.contributingFiles,listings:[{key:'item:2320',itemId:2320,name:'Coarse Thread',sources:a.listingContributingFiles}]};
+ h.suggestions=[mahu,...h.suggestions.filter(v=>v.id!==3005)].slice(0,3);h.browse=h.browse.filter(v=>v.id!==3005);m.sellerReference.source.build=a.clientBuild;
+ return m;
 }
 async function renderLoaded(m) {const f=fixture();f.host.api.professionCoach=async()=>m;f.c.Preparation.init(f.host);await f.c.Preparation.refresh();return f.c.Preparation.page();}
 test('shipped Coarse Thread authorities merge Mahu despite reversed evidence order',async()=>{
@@ -84,8 +91,13 @@ test('shipped Coarse Thread authorities merge Mahu despite reversed evidence ord
  row.historicalSellers={suggestions:[v],browse:[]};
  assert.doesNotMatch(await renderLoaded(m),/No historical seller observation for this material/,'Fully merged is not absent');
 });
+test('an acquisition observed in any merged seller build is the same seller',async()=>{
+ const m=shippedThreadModel();m.sellerReference.source.build='1.60.1.70888';
+ assert.ok(m.sellerReference.source.builds.includes(m.shoppingRows[0].acquisition.sources.find(v=>v.entityId===3005).clientBuild),'shipped seller builds include the acquisition build');
+ assert.equal(((await renderLoaded(m)).match(/<h4>Mahu<\/h4>/g)||[]).length,1);
+});
 test('seller identity retains typed coordinates and actual source build boundaries',async()=>{
- for(const change of [m=>m.sellerReference.source.build='1.60.1.70888',m=>m.shoppingRows[0].acquisition.sources[0].positions[0].mapId=String(m.shoppingRows[0].acquisition.sources[0].positions[0].mapId),m=>m.shoppingRows[0].acquisition.sources[0].positions[0].x+=0.001]) {
+ for(const change of [m=>{m.sellerReference.source.build='1.60.1.70888';m.sellerReference.source.builds=['1.60.1.70888'];},m=>m.shoppingRows[0].acquisition.sources[0].positions[0].mapId=String(m.shoppingRows[0].acquisition.sources[0].positions[0].mapId),m=>m.shoppingRows[0].acquisition.sources[0].positions[0].x+=0.001]) {
   const m=shippedThreadModel();change(m);assert.equal(((await renderLoaded(m)).match(/<h4>Mahu<\/h4>/g)||[]).length,2);
  }
 });

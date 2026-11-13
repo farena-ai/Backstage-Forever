@@ -6,6 +6,8 @@
   const CATALOG = Object.freeze([
     { group: "Finding your way", command: "/bf next", word: "next", what: "Puts WoW's own arrow on the nearest thing to do: a finished quest to hand in first, otherwise the nearest quest you can pick up.", when: "Any time you're not sure what to do next.", example: "/bf next" },
     { group: "Finding your way", command: "/bf train", word: "train", what: "Puts the arrow on your class trainer: the nearest one in this zone, otherwise in your faction's cities.", when: "After you level up. New skills usually arrive every two levels.", example: "/bf train" },
+    { group: "Finding your way", command: "/bf repair", word: "repair", what: "Puts the arrow on the nearest vendor who can repair your gear. The addon also remembers every repair vendor you open.", when: "When the game or Backstage Forever says your gear is wearing out.", example: "/bf repair" },
+    { group: "Finding your way", command: "/bf flights", word: "flights", what: "Lists the flight masters in this zone and whether you've learned each flight path yet.", when: "When you arrive somewhere new. Learning a flight path lets you fly back later instead of running.", example: "/bf flights" },
     { group: "Finding your way", command: "/bf find NAME", word: "find", what: "Finds a person, a kind of person or a gathering spot by name and puts the arrow on the nearest match. Lists a few others too.", when: "Looking for a flight master, an innkeeper, a trainer, a vendor or a quest NPC.", example: "/bf find flight master" },
     { group: "Finding your way", command: "/bf way MapID X Y [name]", word: "way", what: "Puts the arrow on exact map coordinates. The app's World Map gives you this line ready to paste.", when: "When the app or a guide gives you coordinates.", example: "/bf way 1413 51.5 30.4 Crossroads" },
     { group: "Finding your way", command: "/bf hearth", word: "hearth", what: "Tells you where your Hearthstone takes you and how to change it.", when: "Before a long trip, or when you start questing somewhere new.", example: "/bf hearth" },
@@ -27,6 +29,8 @@
     { name: "Danger warning", where: "Above your target's portrait", what: "Plain words about risky enemies: elite, skull, world boss, several levels above you, rare, or too low to give experience." },
     { name: "Pop-up tips", where: "Top of the screen", what: "Level-ups (with your nearest trainer), finished quests (with how many more you need to level) and deaths (with what to do). A one-time welcome too." },
     { name: "Arrow back to your body", where: "Minimap and screen arrow", what: "After you die and release your spirit, the arrow points to your body. Walk over it and click Resurrect." },
+    { name: "Repair reminder", where: "Top of the screen", what: "A pop-up when your gear drops to a quarter of its durability, and again if something breaks. /bf repair shows the way." },
+    { name: "Flight path reminder", where: "Top of the screen", what: "When you pass close to a flight master you haven't talked to, a pop-up suggests learning that flight path." },
     { name: "Sell junk button", where: "On every vendor window", what: "Lists your grey items and what they're worth. Sells them only when you click it, and never in combat." },
     { name: "Live strip", where: "A thin coloured line, top-left corner", what: "How the desktop app knows where you are. It contains no personal data. /bf live off hides it." },
   ]);
@@ -41,6 +45,8 @@
     { name: "Settings", what: "Game connection (folder, addon, live link), AI connection and updates." },
   ]);
   if (typeof module === "object" && module.exports) { module.exports = { CATALOG, FEATURES, APP }; return; }
+  const ICONS = Object.freeze({ "Finding your way": "finding-your-way", "Your character": "your-character", "Adventure Compass": "adventure-compass", "Helpers on or off": "helpers", "Live link": "live-link", "Advanced": "advanced" });
+  const icon = (name) => `<img class="cmd-ico" src="art/icons/${name}.png" alt="" width="40" height="40">`;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   let filter = "";
   function rows() {
@@ -50,7 +56,7 @@
     const html = groups.map((g) => {
       const list = CATALOG.filter((c) => c.group === g && hit(c));
       if (!list.length) return "";
-      return `<section class="cmd-group"><h2>${esc(g)}</h2><ul>${list.map((c) => `<li class="cmd-row">
+      return `<section class="cmd-group"><h2>${ICONS[g] ? icon(ICONS[g]) : ""}${esc(g)}</h2><ul>${list.map((c) => `<li class="cmd-row">
         <div class="cmd-head"><code class="cmd-name">${esc(c.command)}</code><button type="button" class="cmd-copy" data-cmd-copy="${esc(c.example)}" aria-label="Copy ${esc(c.example)}">Copy</button></div>
         <p>${esc(c.what)}</p><p class="cmd-when"><strong>Use it:</strong> ${esc(c.when)}</p>${c.example !== c.command ? `<p class="cmd-eg">Example: <code>${esc(c.example)}</code></p>` : ""}</li>`).join("")}</ul></section>`;
     }).join("");
@@ -62,8 +68,8 @@
         <p>Type these in WoW's chat box (press Enter, type the command, press Enter again). They only show you things or put an arrow on your map; nothing ever plays for you.</p>
         <label class="cmd-search"><span class="sr-only">Search commands</span><input type="search" data-cmd-filter placeholder="Search: trainer, arrow, junk, live…" value="${esc(filter)}"></label></header>
       <div class="cmd-list" data-cmd-list>${rows()}</div>
-      <section class="cmd-group cmd-features"><h2>Things you'll see in game</h2><ul>${FEATURES.map((f) => `<li class="cmd-row"><div class="cmd-head"><strong>${esc(f.name)}</strong><small>${esc(f.where)}</small></div><p>${esc(f.what)}</p></li>`).join("")}</ul></section>
-      <section class="cmd-group cmd-app"><h2>Around this app</h2><ul>${APP.map((a) => `<li class="cmd-row"><div class="cmd-head"><strong>${esc(a.name)}</strong></div><p>${esc(a.what)}</p></li>`).join("")}</ul></section>
+      <section class="cmd-group cmd-features"><h2>${icon("in-game")}Things you'll see in game</h2><ul>${FEATURES.map((f) => `<li class="cmd-row"><div class="cmd-head"><strong>${esc(f.name)}</strong><small>${esc(f.where)}</small></div><p>${esc(f.what)}</p></li>`).join("")}</ul></section>
+      <section class="cmd-group cmd-app"><h2>${icon("around-the-app")}Around this app</h2><ul>${APP.map((a) => `<li class="cmd-row"><div class="cmd-head"><strong>${esc(a.name)}</strong></div><p>${esc(a.what)}</p></li>`).join("")}</ul></section>
       <p class="cmd-foot">After installing or updating, type <code>/reload</code> in game once. New to WoW? The Field guide explains words like rested, hand in and elite.</p>
     </section>`;
   }

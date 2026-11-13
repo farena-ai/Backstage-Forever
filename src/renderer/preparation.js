@@ -56,7 +56,9 @@ window.Preparation = (() => {
   const positionIdentity=positions=>JSON.stringify([...new Set(positions.map(p=>JSON.stringify([p.mapId,p.x,p.y])))].sort());
   const disclosureKey=(section,m=model,itemId=null)=>esc(JSON.stringify([host.profileId()??null,m?.selection?.skillLineId??null,m?.selection?.recipeId??null,section,itemId]));
   function matchingSeller(row,source){
-    if(source.kind!=="historical-vendor-listing" || model?.sellerReference?.source?.build!==source.clientBuild)return null;
+    const seller=model?.sellerReference?.source;
+    // The seller reference merges several game builds; an acquisition observed in any of them is the same seller.
+    if(source.kind!=="historical-vendor-listing" || !seller || !(seller.build===source.clientBuild || (Array.isArray(seller.builds)&&seller.builds.includes(source.clientBuild))))return null;
     return sellerRows(row).find(v=>v.id===source.entityId && positionIdentity(v.positions)===positionIdentity(source.positions));
   }
   function gathering(m){return m?.gatheringReference?.rows?.length?`<section class="workshop-gathering"><h2>Historical gathering observations</h2><p>Method matches this profession; rank requirements and current nodes remain unknown.</p>${m.gatheringReference.rows.map(row=>`<article><h3>Item ${row.itemId}</h3>${sources({itemId:row.itemId,acquisition:row})}</article>`).join("")}</section>`:"";}

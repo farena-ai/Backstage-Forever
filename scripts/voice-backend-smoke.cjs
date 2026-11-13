@@ -66,7 +66,15 @@ async function main() {
       dialog.showMessageBox = async () => ({ response: 1 });
     });
     const call = (method, ...args) => page.evaluate(({ method, args }) => window.backstage[method](...args), { method, args });
-    const focus = () => app.evaluate(({ BrowserWindow }) => { const win = BrowserWindow.getAllWindows()[0]; win.show(); win.focus(); });
+    // Windows may refuse a background focus request while another app is in front; retry until the
+    // window really has focus (voice input is only allowed in a focused window, by design).
+    const focus = async () => {
+      const end = Date.now() + 5000;
+      while (!(await app.evaluate(({ BrowserWindow }) => { const win = BrowserWindow.getAllWindows()[0]; win.show(); win.setAlwaysOnTop(true); win.moveTop(); win.focus(); win.webContents.focus(); const ok = win.isFocused(); win.setAlwaysOnTop(false); return ok; }))) {
+        assert.ok(Date.now() < end, "the test window could not take focus");
+        await new Promise((r) => setTimeout(r, 50));
+      }
+    };
     const waitPhase = async (id, phase) => { const end = Date.now() + 6000; while (true) { const s = await call("voiceStatus", id); if (s.phase === phase) return s; assert.ok(Date.now() < end, JSON.stringify(s)); await new Promise(r => setTimeout(r, 15)); } };
     await call("companionContext", { profileId: "Alpha", view: "ai" }); await focus();
     assert.equal((await call("voiceCapabilities")).recognition.available, true);

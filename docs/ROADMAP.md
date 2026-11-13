@@ -1,6 +1,6 @@
 # Backstage Forever roadmap
 
-Where the companion goes next. Written 2026-11-12, after 0.20.0. Ordered by value to a player: a beginner should feel guided, and a veteran should feel faster.
+Where the companion goes next. Written 2026-11-12, after 0.20.0; updated 2026-11-13 for 0.21.0. Ordered by value to a player: a beginner should feel guided, and a veteran should feel faster.
 
 **Sizes:** S = a day or less · M = a few days · L = a week or more · XL = a multi-release program.
 **Where:** Game = the addon · App = the desktop app · Both.
@@ -34,6 +34,14 @@ Where the companion goes next. Written 2026-11-12, after 0.20.0. Ordered by valu
   - Level-up and quest pop-ups, Sell junk button.
 - **Alliance coverage:** four game builds merged (0.20.0).
 - **Help:** Field guide with glossary; Help → Commands.
+- **0.21.0:**
+  - Repair reminder and `/bf repair`.
+  - Flight path tracking and `/bf flights`.
+  - Alliance vendors.
+  - A `/reload` prompt.
+  - Art pass 1.
+  - Two flaky checks fixed.
+  - This finished roadmap items 1.1, 1.2, 1.4, 1.6 and 1.8 and graphics step 1.
 
 ---
 
@@ -41,13 +49,8 @@ Where the companion goes next. Written 2026-11-12, after 0.20.0. Ordered by valu
 
 | # | Feature | Size | Where | Why it matters |
 |---|---|---|---|---|
-| 1.1 | **Repair reminder.** Pop-up when gear durability drops below 25%, plus `/bf repair` for an arrow to the nearest repair vendor. | S | Game | New players don't notice red gear until it breaks mid-fight. |
-| 1.2 | **Flight path tracker.** Remember which flight paths you know (read when the flight map opens). Say "You haven't learned this flight path, talk to Devrak" when you pass an unknown one. Show known and unknown paths on the World Map. | S–M | Both | Missing a flight path costs long runs later. |
 | 1.3 | **Grey-quest cleanup.** Flag quests in your log that no longer give much XP, with a one-line "safe to abandon" hint. Hint only; never auto-abandon. | S | Both | Full quest logs confuse beginners. |
-| 1.4 | **Addon-version check.** If the game is running an older addon than the app installed, say so in game and on Now ("type /reload"). | S | Both | Removes the most common "it isn't working" cause. |
 | 1.5 | **Helper switches in the app.** Settings → Game shows the in-game helpers (pop-ups, danger, Sell junk, live strip) and how to toggle them. | S | App | Discoverability. |
-| 1.6 | **Alliance vendors.** Refresh the vendor pack the same way as 0.20 (needs a raised input cap and a merge step). | S–M | Both | Alliance players still see only Horde vendors. |
-| 1.8 | **Fix the flaky voice-backend test.** | S | Dev | Faster, calmer releases. |
 | 1.9 | **Verify live link over remote access** in a real remote session, and add a capture-based regression test. | S | Both | Confirms 0.18.2 in your actual setup. |
 
 ## Tier 2 — Core guidance upgrades (next 2–4 releases)
@@ -92,10 +95,12 @@ Where the companion goes next. Written 2026-11-12, after 0.20.0. Ordered by valu
 ## When to do a graphics pass
 
 Frank offered ChatGPT/OpenAI, Grok and the local ComfyUI for art. Suggested timing:
-1. **Now-ish (before 2.1/2.3 add new UI):**
-   - A consistent icon set for map pins and Commands groups.
-   - A celebration badge.
-   - Hero art for Now and Help.
+1. **Done in 0.21:**
+   - Painted heroes for Now and Help.
+   - Level-up crest.
+   - Commands crests.
+   - Generated locally with ComfyUI (Qwen-Image 2.1, native 2K).
+   - Next: World Map legend icons and class portraits.
 2. **After 3.1/3.2:** milestone badges and zone badges, which are art-heavy by nature.
 3. **Before 1.0:** a full visual review of every page against one style guide.
 
@@ -103,8 +108,8 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 
 ## Suggested release sequence
 
-- **0.21:** 1.1 repair, 1.2 flight paths, 1.4 version check, 1.6 Alliance vendors, 1.8, plus the first graphics pass.
-- **0.22:** 2.1 reward picker, 2.2 gear hints, 2.9 hearth advice, 1.3 quest cleanup.
+- **0.21 (shipped):** repair, flight paths, version check, Alliance vendors, flaky checks, art pass 1.
+- **0.22:** art pass 2 on the Now page (painted zone vignettes for "Where to level", step icons for Do this next, class crests), 2.1 reward picker, 2.2 gear hints, 2.9 hearth advice, 1.3 quest cleanup, 1.5 helper switches, 1.9 remote live-link check.
 - **0.23:** 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness.
 - **0.24–0.26:** 2.3 route stepper, 2.6 talent coach, 2.8 professions.
 - **0.27+:** Tier 3, then the 4.1 full guided route.

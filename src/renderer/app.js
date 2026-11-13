@@ -483,6 +483,9 @@ function render() {
     ? document.activeElement.closest("details[data-living-disclosure]")?.dataset.livingDisclosure : null;
   livingDisclosureOwner = disclosureOwner;
   const focusedOption = document.activeElement?.dataset.planOption;
+  // A background repaint must not steal keyboard focus from shell controls (character picker, skip link, main).
+  const focusedShell = document.activeElement && document.activeElement !== document.body
+    ? (document.activeElement.id ? `#${CSS.escape(document.activeElement.id)}` : document.activeElement.dataset?.shellControl ? `[data-shell-control="${CSS.escape(document.activeElement.dataset.shellControl)}"]` : null) : null;
   CharacterGuidance.beginRender();
   QuestGuide.beginRender();
   Company.beginRender();
@@ -563,6 +566,7 @@ function render() {
       if (node.dataset.livingDisclosure === focusedSummary && document.activeElement === document.body)
         node.querySelector(":scope > summary")?.focus({preventScroll:true});
     }
+    if (focusedShell && (!document.activeElement || document.activeElement === document.body)) root.querySelector(focusedShell)?.focus({ preventScroll: true });
     CharacterGuidance.endRender();
     QuestGuide.endRender();
     Company.endRender();
@@ -815,7 +819,7 @@ function connections() {
 }
 
 function guide() {
-  return `<header class="section-head"><div class="eyebrow">The adventurer’s field guide</div><h1>A little guidance. A longer adventure.</h1><p>Plan locally, read your sources, and decide what leaves your journal.</p></header>
+  return `<header class="section-head guide-hero"><div class="eyebrow">The adventurer’s field guide</div><h1>A little guidance. A longer adventure.</h1><p>Plan locally, read your sources, and decide what leaves your journal.</p></header>
   <div class="guide-grid">
     <section class="panel guide-start"><div class="eyebrow">New to WoW? · Start here</div><h3>Four steps and you're playing with a guide.</h3><ol class="guide-steps"><li><strong>Connect the game.</strong> Settings → Game connection finds your WoW Forever folder and installs the addon.</li><li><strong>Log in and type <code>/reload</code>.</strong> Do this once per new character so the app can read it.</li><li><strong>Open Now.</strong> It tells you the next thing to do and follows you while you play.</li><li><strong>Ask the game for directions.</strong> In chat type <code>/bf next</code> for an arrow to your next quest, <code>/bf train</code> for your class trainer, <code>/bf find flight master</code> to find anyone, and <code>/bf help</code> for the rest. Every command is explained under Help → Commands.</li></ol><p>The addon also warns you about dangerous enemies, points you back to your body when you die, celebrates level-ups and adds a <strong>Sell junk</strong> button at vendors.</p></section>
     <section class="panel guide-glossary"><div class="eyebrow">Words you'll see</div><h3>A pocket glossary.</h3><dl>

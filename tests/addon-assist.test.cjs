@@ -126,3 +126,53 @@ InCombatLockdown=function()return true end
 print(BackstageForeverSellJunk(), #sold)`);
   assert.equal(out, "0\t0");
 });
+
+test("repair: warns once when gear wears out and again when it breaks, learns repairers, /bf repair finds the nearest", () => {
+  const out = lua(`${MOCKS}
+local dur={{90,100},{60,100}}
+GetInventoryItemDurability=function(slot) local d=dur[slot] if d then return d[1],d[2] end end
+BackstageForeverAdvisorData.npcs[1411][#BackstageForeverAdvisorData.npcs[1411]+1]={k='r',n='Far Smith',r='Blacksmith',s='H',x=0.95,y=0.95,i=901}
+UnitGUID=function(u) return u=='npc' and 'Creature-0-1-2-3-3165-0000' or 'Player-1-2' end
+UnitName=function() return 'Wuark' end
+CanMerchantRepair=function() return true end
+${LOAD}
+local ev=nil for _,f in pairs(frames) do if f.events and f.events.UPDATE_INVENTORY_DURABILITY then ev=f end end
+local fire=function(...) ev.scripts.OnEvent(ev,...) end
+fire('PLAYER_LOGIN') local n=#msgs
+fire('UPDATE_INVENTORY_DURABILITY') assert(#msgs==n,'no warning while healthy')
+dur[2]={20,100} fire('UPDATE_INVENTORY_DURABILITY') assert(msgs[#msgs]:find('wearing out (20%)',1,true),msgs[#msgs])
+n=#msgs fire('UPDATE_INVENTORY_DURABILITY') assert(#msgs==n,'warned once')
+dur[2]={0,100} fire('UPDATE_INVENTORY_DURABILITY') assert(msgs[#msgs]:find('Gear broken',1,true))
+dur[2]={100,100} fire('UPDATE_INVENTORY_DURABILITY') dur[2]={10,100} fire('UPDATE_INVENTORY_DURABILITY') assert(msgs[#msgs]:find('wearing out (10%)',1,true),'re-arms after repair')
+fire('MERCHANT_SHOW')
+assert(BackstageForeverAssistSettings.repairers[3165].n=='Wuark','learned the repair vendor you opened')
+way=nil local r=BackstageForeverAssistCommand('repair') assert(r.name=='Wuark' and way:find('Wuark',1,true),'nearest: the learned one at your spot, not the far smith')
+print('ok')`);
+  assert.equal(out, "ok");
+});
+
+test("flight paths: met masters and known nodes count as learned; nearby unknown masters get one reminder", () => {
+  const out = lua(`${MOCKS}
+BackstageForeverAdvisorData.npcs[1411][#BackstageForeverAdvisorData.npcs[1411]+1]={k='f',n='Devrak',r='Wind Rider Master',s='H',x=0.51,y=0.50,i=3615,t=25}
+BackstageForeverAdvisorData.npcs[1411][#BackstageForeverAdvisorData.npcs[1411]+1]={k='f',n='Known Node',r='Flight Master',s='H',x=0.2,y=0.2,i=7777,t=23}
+GetTaxiMapID=function() return 1414 end
+C_TaxiMap={GetAllTaxiNodes=function() return {{nodeID=23,state=1},{nodeID=25,state=2}} end}
+UnitGUID=function(u) return 'Player-1-2' end
+${LOAD}
+local ev=nil for _,f in pairs(frames) do if f.events and f.events.TAXIMAP_OPENED then ev=f end end
+local fire=function(...) ev.scripts.OnEvent(ev,...) end
+fire('PLAYER_LOGIN')
+fire('TAXIMAP_OPENED')
+assert(BackstageForeverAssistSettings.flightNodes[23] and not BackstageForeverAssistSettings.flightNodes[25])
+local list=BackstageForeverAssistCommand('flights')
+assert(#list==2)
+local devrak,known for _,m in ipairs(msgs) do if m:find('Devrak',1,true) then devrak=m end if m:find('Known Node: learned',1,true) then known=m end end
+assert(devrak and devrak:find('not learned yet',1,true) and known,'status per master')
+local n=#msgs
+fire('ZONE_CHANGED') assert(msgs[#msgs]:find('Flight master nearby: Devrak',1,true),msgs[#msgs])
+local m=#msgs fire('ZONE_CHANGED') assert(#msgs==m,'one reminder per session')
+UnitGUID=function(u) return u=='npc' and 'Creature-0-1-2-3-3615-0000' or 'Player-1-2' end
+fire('TAXIMAP_OPENED') assert(BackstageForeverAssistSettings.flightNpcs[3615],'talking to the master marks it learned')
+print('ok')`);
+  assert.equal(out, "ok");
+});

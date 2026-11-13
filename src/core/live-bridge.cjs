@@ -131,6 +131,30 @@ function decodeStrip({ width, height, rgb }) {
   }
   return null;
 }
+// Why a strip that is on screen did not decode: "old-addon" when its calibration cells are the
+// grey shades of the version 2 strip (the game still runs an addon from before 0.18.2 and needs a
+// /reload), "unreadable" for any other visible strip, null when there is no strip at all.
+function stripHint({ width, height, rgb }) {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || !Buffer.isBuffer(rgb) || rgb.length !== width * height * 3) return null;
+  for (let y = 0; y + 3 <= height && y < 10; y++) {
+    for (let x = 0; x < width && x < 40; x++) {
+      if (!magentaish(px(rgb, width, x, y))) continue;
+      let run = 1;
+      while (x + run < width && run < 20 && magentaish(px(rgb, width, x + run, y))) run++;
+      if (run < 3) continue;
+      const cells = sampleCells(rgb, width, height, x, y, run, MARKERS);
+      if (!cells) return "unreadable";
+      const grey = (c) => Math.max(...c) - Math.min(...c) < 40;
+      const mean = (c) => (c[0] + c[1] + c[2]) / 3;
+      const [, green, a, b] = cells;
+      const greenish = green[1] - green[0] > 60 && green[1] - green[2] > 60;
+      // Version 2 markers are dark grey then light grey; version 3 are white then black.
+      if (greenish && grey(a) && grey(b) && mean(a) > 40 && mean(b) < 245 && mean(b) - mean(a) > 25) return "old-addon";
+      return "unreadable";
+    }
+  }
+  return null;
+}
 function parsePayload(b) {
   const u16 = (i) => (b[i] << 8) | b[i + 1], u24 = (i) => (b[i] << 16) | (b[i + 1] << 8) | b[i + 2];
   const flags = b[10];
@@ -273,7 +297,7 @@ class LiveBridge {
       const rgb = Buffer.from(line.slice(3), "base64");
       const decoded = decodeStrip({ width: REGION.width, height: REGION.height, rgb });
       if (decoded) { this.frame = { ...parsePayload(decoded.bytes), receivedAt: this.now() }; this.signal = "live"; }
-      else this.signal = "no-signal";
+      else this.signal = stripHint({ width: REGION.width, height: REGION.height, rgb }) || "no-signal";
     } else if (["nogame", "minimized", "small", "gone", "error"].includes(line)) this.signal = line === "gone" ? "nogame" : line;
     if (JSON.stringify([this.signal, this.frame?.seq]) !== before) this.emit();
   }
@@ -290,4 +314,4 @@ class LiveBridge {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, decodeCells, encodeCells, encodeCellsV2, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };
+module.exports = { LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, encodeCells, encodeCellsV2, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };

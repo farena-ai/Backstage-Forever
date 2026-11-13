@@ -53,7 +53,7 @@ test("seller normalizer joins exact positive IDs, names and Merchant evidence; r
 
 test("strict compiled loader rejects malformed schema, counts, dates, IDs, names, positions and reactions", t => {
   const pack = normalize(fixture());
-  for (const mutate of [p => p.private = true, p => p.product = "classic", p => p.sourceCommit = "main", p => p.counts.listings++, p => p.vendors[0].id = 0, p => p.vendors[0].name = "x".repeat(201), p => p.vendors[0].lastSeen = "2026-02-30", p => p.vendors[0].lastSeen = "2027-01-01", p => p.vendors[0].positions[0].x = NaN, p => p.vendors[0].positions[0].mapId = 0, p => p.vendors[0].positions[0].worldX = 1, p => p.vendors[0].observedReactionsByFaction.Horde = [9], p => p.vendors[0].reactionSources = 0, p => p.vendors[0].listings[0].key = "item:9", p => p.vendors[0].listings[0].price = 1, p => p.vendors.push(structuredClone(p.vendors[0]))]) {
+  for (const mutate of [p => p.private = true, p => p.product = "classic", p => p.sourceCommit = "main", p => p.counts.listings++, p => p.vendors[0].id = 0, p => p.vendors[0].name = "x".repeat(201), p => p.vendors[0].lastSeen = "2026-02-30", p => p.vendors[0].lastSeen = "2027-01-01", p => p.vendors[0].positions[0].x = NaN, p => p.vendors[0].positions[0].mapId = 0, p => p.vendors[0].positions[0].worldX = 1, p => p.vendors[0].observedReactionsByFaction.Horde = [9], p => p.vendors[0].reactionSources = 0, p => p.vendors[0].listings[0].key = "item:9", p => p.vendors[0].listings[0].price = 1, p => p.vendors.push(structuredClone(p.vendors[0])), p => delete p.vendors[0].repairs, p => p.vendors[0].repairs = 1, p => p.builds = [], p => p.builds = ["1.60.1.70790"], p => p.builds.push(p.build), p => p.builds.push("main"), p => delete p.builds]) {
     const bad = structuredClone(pack); mutate(bad); assert.throws(() => api().validateVendorPack(bad), /Invalid historical seller data/);
   }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-vendor-test-")); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -87,7 +87,10 @@ test("seller projection is detached, deterministic, capped at 20 material rows a
 
 test("compiler source/meta/license/build/schema and size guards remain bounded", () => {
   for (const [key, val] of [["license", "unknown"], ["clientBuild", "bad"], ["product", "classic"], ["schemaVersion", 2], ["dataset", "other"], ["attribution", "missing"], ["sources", 0]]) { const raw = fixture(); raw["vendors.json"].meta[key] = val; assert.throws(() => normalize(raw)); }
-  const raw = fixture(); raw["vendors.json"] = " ".repeat(1024 * 1024 + 1); assert.throws(() => normalize(raw), /exceeds/);
+  const raw = fixture(); raw["vendors.json"] = " ".repeat(2 * 1024 * 1024 + 1); assert.throws(() => normalize(raw), /exceeds/);
+  const total = fixture(); for (const name of ["vendors.json", "npcs.json", "creatures.json"]) total[name] = Buffer.from(JSON.stringify(total[name]) + " ".repeat(1.5 * 1024 * 1024)); assert.throws(() => normalize(total), /exceeds/);
+  const bigCreatures = fixture(); bigCreatures["creatures.json"] = Buffer.from(JSON.stringify(bigCreatures["creatures.json"]) + " ".repeat(1.2 * 1024 * 1024)); assert.equal(normalize(bigCreatures).counts.vendors, 1, "a ~1.2 MB creatures.json is within the raw input bound");
+  const repairs = fixture(); repairs["vendors.json"].vendors[10].repairs = "yes"; assert.equal(normalize(repairs).counts.droppedVendors, 1);
   assert.throws(() => api().normalizeVendors(fixture(), { commit: "main", build }));
   const positions = fixture(); positions["vendors.json"].vendors[10].positions = Array.from({ length: 101 }, () => ({ uiMap: 1, mapX: .1, mapY: .1 })); assert.throws(() => normalize(positions));
   const vendors = fixture(); vendors["vendors.json"].vendors = Object.fromEntries(Array.from({ length: 1001 }, (_, i) => [i + 1, vendors["vendors.json"].vendors[10]])); assert.throws(() => normalize(vendors));
@@ -98,4 +101,40 @@ test("compiled dropped counts cannot contradict the bounded source totals", () =
   for (const change of [p => p.counts.droppedVendors = 1000, p => p.counts.droppedListings = 10000, p => p.counts.droppedPositions = 100001]) {
     const pack = normalize(fixture()); change(pack); assert.throws(() => api().validateVendorPack(pack), /Invalid historical seller data/);
   }
+});
+
+test("seller repairs flag follows the observed merchant window", () => {
+  assert.equal(normalize(fixture()).vendors[0].repairs, false);
+  const raw = fixture(); raw["vendors.json"].vendors[10].repairs = true; assert.equal(normalize(raw).vendors[0].repairs, true);
+  raw["vendors.json"].vendors[10].repairs = false; assert.equal(normalize(raw).vendors[0].repairs, false);
+});
+
+test("newest-first seller merge unions sellers, positions, listings and reactions across builds", () => {
+  const older = "1.60.1.70790", newer = fixture(), old = fixture(older);
+  old["vendors.json"].vendors[10].positions.push({ uiMap: 1456, mapX: 0.41, mapY: 0.5 });
+  old["vendors.json"].vendors[10].entries["item:2321"] = { itemId: 2321, name: "Fine Thread", sources: 3 };
+  old["vendors.json"].vendors[10].entries["item:2320"].sources = 2; old["vendors.json"].vendors[10].repairs = true; old["vendors.json"].vendors[10].lastSeen = "2026-11-09";
+  old["creatures.json"].creatures[10].reactions = { Horde: [4, 6], Alliance: [5] };
+  // An Alliance seller only the older build observed.
+  old["vendors.json"].vendors[20] = { name: "Alliance seller", sources: 1, lastSeen: "2026-11-08", repairs: true, positions: [{ uiMap: 1453, mapX: 0.5, mapY: 0.6 }], entries: { "item:159": { itemId: 159, name: "Refreshing Spring Water", sources: 1 } } };
+  old["npcs.json"].npcs[20] = { name: "Alliance seller", interactions: ["Merchant"], side: "Alliance" };
+  old["creatures.json"].creatures[20] = { name: "Alliance seller", sources: 1, reactions: { Alliance: [4] } };
+  const a = normalize(newer), b = api().normalizeVendors(old, { commit, build: older });
+  const merged = api().mergeVendorPacks([a, b]);
+  assert.deepEqual(merged.builds, [build, older]); assert.equal(merged.build, build);
+  assert.deepEqual(merged.vendors.map(v => v.id), [10, 20]);
+  const v = merged.vendors[0];
+  assert.deepEqual(v.positions, [{ mapId: 1456, x: 0.4, y: 0.5 }, { mapId: 1456, x: 0.41, y: 0.5 }]);
+  assert.deepEqual(v.listings.map(r => [r.key, r.sources]), [["item:2320", 2], ["item:2321", 3]]);
+  assert.deepEqual(v.observedReactionsByFaction, { Alliance: [5], Horde: [4, 5, 6] });
+  assert.equal(v.repairs, true); assert.equal(v.lastSeen, "2026-11-09");
+  assert.equal(merged.vendors[1].repairs, true); assert.deepEqual(merged.vendors[1].observedReactionsByFaction, { Alliance: [4] });
+  assert.equal(merged.counts.vendors, 2); assert.equal(merged.counts.listings, 3);
+  assert.deepEqual(api().validateVendorPack(merged), merged);
+  // The addon's saved build matches any merged build.
+  const p = { ...profile(), clientBuild: older }; assert.equal(api().sellerFacts(merged, p, [2321]).rows[0].suggestions.length, 1);
+  assert.deepEqual(api().sellerFacts(merged, p, [2321]).source.builds, [build, older]);
+  assert.throws(() => api().mergeVendorPacks([a, a]), /Invalid historical seller data/);
+  assert.throws(() => api().mergeVendorPacks([a, { ...b, sourceCommit: "a".repeat(40) }]), /Invalid historical seller data/);
+  assert.throws(() => api().mergeVendorPacks([]), /Invalid historical seller data/);
 });
