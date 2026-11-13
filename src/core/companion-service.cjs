@@ -6,11 +6,12 @@ const {ConversationSession}=require('./companion-conversation.cjs');
 const {resolveNpcLocation}=require('./npc-location.cjs');
 const {uuid}=require('./memory-data.cjs');
 const {createCompanionTools}=require('./companion-tools.cjs');
+const {quickAnswer}=require('./quick-answers.cjs');
 // These events cancel work/drafts without changing completed conversation ownership.
 const SOFT_REASONS=new Set(['renderer-context','response-stop','memory-save']);
 class CompanionService {
-  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,lookups=true,live=null,onReset=()=>{}}){
-    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,lookups,live,onReset});
+  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,lookups=true,live=null,advise=null,onReset=()=>{}}){
+    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,lookups,live,advise,onReset});
     this.session=new ConversationSession();this.rootEpoch=0;
     context.subscribe(({reason})=>{
       if(SOFT_REASONS.has(reason))return;
@@ -57,7 +58,6 @@ class CompanionService {
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:local.text,kind:'travel'}))throw Error('Provider response is no longer current.');
         return {text:local.text,kind:'travel',conversation:prepared.meta,travel:this.travel.commit(local)};
       }
-      if(!selected.model)throw Error('Choose a model in Connections for AI questions. Local NPC locations and travel need no model.');
       const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence,reportedLocation:prepared.reportedLocation};
       // Live frames count only when they carry the selected character's identity.
       const {liveKeyFor}=require('./live-bridge.cjs');
@@ -65,6 +65,18 @@ class CompanionService {
       const liveStatusNow=()=>{if(!input.shareProfile||!this.live?.status)return null;const s=this.live.status();if(s?.frame&&bound&&s.frame.characterHash&&s.frame.characterHash!==expected)return {...s,signal:'other-character',frame:null};if(s?.frame&&bound&&!s.frame.characterHash)return {...s,frame:{...s.frame,identityUnverified:true}};return s;};
       const liveNow=()=>liveStatusNow()?.frame||null;
       const liveStatus=liveStatusNow(),liveFrame=liveStatus?.frame||null;
+      // No model chosen: answer the common questions locally (quest how-to, next steps, training).
+      if(!selected.model){
+        const tools=createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow});
+        const quick=quickAnswer(input.prompt,{tools,live:liveFrame,advise:input.shareProfile&&this.advise?()=>this.advise(profileId):null});
+        if(quick){
+          if(signal.aborted)throw signal.reason;
+          this.memory.complete(token,input.prompt,quick.text);
+          if(!this.session.commit(prepared.token,{question:input.prompt,answer:quick.text,kind:'quick'}))throw Error('Provider response is no longer current.');
+          this.travel?.clear();return {text:quick.text,kind:'quick',topic:quick.topic,conversation:prepared.meta};
+        }
+        throw Error('Choose a model in Connections for AI questions. Local NPC locations, travel, quest how-to, next steps and training need no model.');
+      }
       let context=this.ai.profileContext(state,profileId,input.shareProfile,options);
       // The live link is a current game reading; it outranks the saved snapshot for position.
       if(liveFrame&&context)context+='\n\nLive game link (read from the game screen '+Math.round((liveFrame.ageMs||0)/1000)+'s ago; current, overrides savedLocation for position/level/target): '+JSON.stringify(require('./companion-tools.cjs').liveSummary(liveFrame));

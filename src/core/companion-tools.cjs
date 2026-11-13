@@ -335,7 +335,9 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
       return bounded({ status: "error", message: "Lookup failed for these arguments." });
     }
   }
-  return { definitions: DEFINITIONS, call, trace, instruction: TOOL_INSTRUCTION, maxCalls: MAX_CALLS };
+  // Unbounded result objects for local quick answers (never sent to a model).
+  function lookup(name, args) { refresh(); return Object.hasOwn(handlers, name) ? handlers[name](args || {}) : { status: "invalid" }; }
+  return { definitions: DEFINITIONS, call, lookup, trace, instruction: TOOL_INSTRUCTION, maxCalls: MAX_CALLS };
 }
 function summarize(name, args, r) {
   const subject = str(args.name) || str(args.query) || str(args.to) || (args.quest_id ? `${args.quest_id}` : args.id ? `#${args.id}` : "");

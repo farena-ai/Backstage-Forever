@@ -41,11 +41,11 @@
     { name: "Live strip", where: "A thin coloured line, top-left corner", what: "How the desktop app knows where you are. It contains no personal data. /bf live off hides it." },
   ]);
   const APP = Object.freeze([
-    { name: "Now", what: "What to do next, where to level, your training, quest log and this session's pace. Start here." },
+    { name: "Now", what: "What to do next, where to level, your training, quest log and this session's pace. With the live link on, quests you hand in show as Completed straight away, no /reload needed. Start here." },
     { name: "World Map", what: "Zone maps with quest givers, hand-ins, trainers, flight masters, herbs and ore. Click anyone for details. Your path this session is drawn on it." },
     { name: "Quests", what: "Look up any quest: who gives it, where it goes, rewards. Copies a /bf guide line for the game." },
     { name: "Adventure", what: "Your next step in more depth, dungeons for your level, and profession plans." },
-    { name: "Companion", what: "Optional AI helper. Local NPC and travel answers need no AI at all." },
+    { name: "Companion", what: "Ask in plain words. With no AI set up it still answers right away: “how do I do <quest>?”, “what should I do next?”, “what do I train?”, “where is <NPC>?” and “how do I get to <place>?”. An AI model (Settings) answers everything else." },
     { name: "Characters", what: "Each character's journal, gear and training review, and private notes." },
     { name: "Plans", what: "Checklists and party plans you write yourself." },
     { name: "Settings", what: "Game connection (folder, addon, live link), AI connection and updates." },
