@@ -116,6 +116,13 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator("[data-cmd-filter]").fill("trainer");
     const names = await page.locator("[data-cmd-list] .cmd-name").allTextContents();
     assert.ok(names.includes("/bf train") && !names.includes("/bf junk [on|off]"), names.join(","));
+    // Help → Data coverage: zone cards per faction.
+    await page.locator('[data-nav="coverage"]').first().click();
+    await page.locator(".cov-card").first().waitFor();
+    assert.ok(await page.locator(".cov-card").count() >= 30);
+    await page.locator('[data-cov-faction="Alliance"]').click();
+    await page.waitForFunction(() => CoverageView._state().faction === "Alliance");
+    await page.screenshot({ path: path.join(capture, "coverage.png"), fullPage: true });
     console.log("Now smoke passed");
   } catch (e) { console.error(e); process.exitCode = 1; }
   finally { clearTimeout(watchdog); await app?.close().catch(() => {}); await fs.rm(dir, { recursive: true, force: true }).catch(() => {}); }

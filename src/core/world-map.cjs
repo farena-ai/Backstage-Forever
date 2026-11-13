@@ -121,6 +121,38 @@ class WorldMap {
     this.static = buildStaticIndex({ knowledgePack: knowledge?.bundled?.pack, npcReference, travelReference, vendorPack, insights, acquisitionPack });
   }
   profile() { const s = this.getState(); return s.profiles.find((p) => p.id === s.activeProfileId) || null; }
+  /** How much the bundled reference knows per leveling zone and faction (Help → Data coverage). */
+  coverage() {
+    if (this._coverage) return this._coverage;
+    const zones = require("./leveling.cjs").loadLevelingPack().zones;
+    const pack = this.knowledge?.bundled?.pack;
+    const side = (sides, f) => !sides || !sides.length || sides.includes(f);
+    const rows = zones.map((z) => {
+      const row = { mapId: z.mapId, name: mapName(z.mapId), min: z.min, max: z.max, faction: z.faction, Horde: {}, Alliance: {} };
+      for (const f of ["Horde", "Alliance"]) row[f] = { questGivers: 0, objectiveAreas: 0, classTrainers: 0, professionTrainers: 0, vendors: 0, flightMasters: 0 };
+      for (const q of Object.values(pack?.quests || {})) {
+        const giver = (q.givers || []).map((g) => pack.npcs?.[`${g.kind}:${g.id}`]).find((n) => n?.positions?.some((p) => p.mapId === z.mapId));
+        const objective = (q.objectiveLocations || []).some((o) => o.positions?.some((p) => p.mapId === z.mapId));
+        for (const f of ["Horde", "Alliance"]) {
+          if (!side(q.sides, f)) continue;
+          if (giver) row[f].questGivers++;
+          if (objective) row[f].objectiveAreas++;
+        }
+      }
+      const seen = { Horde: new Set(), Alliance: new Set() };
+      const key = { "class-trainer": "classTrainers", "profession-trainer": "professionTrainers", vendor: "vendors", flight: "flightMasters" };
+      for (const pin of this.static.get(z.mapId) || []) {
+        const k = key[pin.kind]; if (!k) continue;
+        for (const f of ["Horde", "Alliance"]) {
+          const id = `${k}:${pin.npcId ?? pin.id}`;
+          if (side(pin.sides, f) && !seen[f].has(id)) { seen[f].add(id); row[f][k]++; }
+        }
+      }
+      return row;
+    });
+    this._coverage = { zones: rows, source: { build: pack?.build || null, builds: pack?.builds || null, observedThrough: pack?.observedThrough || null, attribution: pack?.attribution || null } };
+    return this._coverage;
+  }
   liveFrame(profile) {
     const st = this.live?.status?.();
     const f = st?.frame;

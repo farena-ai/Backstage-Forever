@@ -621,6 +621,7 @@ app.whenReady().then(async () => {
   handle("worldMap", (input) => worldMap.build(input || {}));
   handle("worldMapSearch", (query) => worldMap.search(query));
   handle("worldMapNpc", (npcId) => worldMap.npc(npcId));
+  handle("dataCoverage", () => worldMap.coverage());
   const leveling = new (require("./core/leveling.cjs").LevelingAdvisor)({
     getState: () => store.state, knowledge, insights,
     getLive: () => worldMap.liveFrame(worldMap.profile()),

@@ -82,6 +82,7 @@ contextBridge.exposeInMainWorld(
     worldMapSearch: (query) => invoke("worldMapSearch", query),
     worldMapNpc: (npcId) => invoke("worldMapNpc", npcId),
     levelingAdvice: () => invoke("levelingAdvice"),
+    dataCoverage: () => invoke("dataCoverage"),
     playSession: () => invoke("playSession"),
     playTrail: (mapId) => invoke("playTrail", mapId),
     onPlayEvent: (listener) => {

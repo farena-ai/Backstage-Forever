@@ -1,0 +1,27 @@
+/* Help → Data coverage. */
+.coverage-page { display: flex; flex-direction: column; gap: 14px; }
+.cov-hero { padding: 14px 18px; border-radius: 6px; border: 1px solid #c79a4a; color: #f1dcb0; background: linear-gradient(90deg, rgba(26,6,4,.92), rgba(40,10,6,.6)), url("art/hero-help.webp") center 45% / cover no-repeat, #3a0f09; }
+.cov-eyebrow { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .2em; text-transform: uppercase; color: #e8c983; }
+.cov-hero h1 { margin: 2px 0 4px; font: 700 28px Cinzel, Georgia, serif; color: #fff1d6; }
+.cov-hero p { margin: 0 0 10px; }
+.cov-toggle { display: inline-flex; gap: 4px; padding: 3px; border-radius: 16px; background: rgba(0,0,0,.35); }
+.coverage-page .cov-toggle button { all: unset; cursor: pointer; padding: 5px 16px; border-radius: 14px; font-weight: 700; color: #f1dcb0; }
+.coverage-page .cov-toggle button[aria-pressed="true"] { background: #f6c445; color: #2b1407; }
+.cov-summary { margin: 0; color: #f1dcb0; }
+.cov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.cov-card { border-radius: 8px; overflow: hidden; border: 1px solid #a5823e; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; box-shadow: 0 4px 10px rgba(0,0,0,.35); }
+.cov-card.cov-other { opacity: .62; }
+.cov-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; min-height: 74px; padding: 10px 12px; color: #fff1d6; background: #3a0f09 center / cover no-repeat; }
+.cov-head h3 { margin: 0; font: 700 17px Georgia, serif; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+.cov-head span { font-size: 12px; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.cov-verdict { font-style: normal; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 9px; }
+.cov-verdict.good { background: #4e8f3a; color: #fff; } .cov-verdict.mid { background: #f6c445; color: #2b1407; } .cov-verdict.low { background: #8a2a1a; color: #fff; }
+.cov-meters { list-style: none; margin: 0; padding: 8px 12px 10px; display: grid; gap: 5px; }
+.cov-meter { display: grid; grid-template-columns: 22px 1fr 90px 32px; align-items: center; gap: 6px; font-size: 13px; }
+.cov-bar { height: 8px; border-radius: 4px; background: rgba(60,40,18,.2); overflow: hidden; }
+.cov-bar i { display: block; height: 100%; border-radius: 4px; background: #4e8f3a; }
+.cov-some .cov-bar i { background: #d9a23a; } .cov-thin .cov-bar i { background: #c0563a; }
+.cov-none .cov-label, .cov-none .cov-n { color: #8a6a4a; }
+.cov-n { text-align: right; font-weight: 800; }
+.cov-foot, .cov-empty { margin: 0; color: #c9b48a; font-size: 13px; }
+.cov-all { color: #e7d3a6; font-size: 13px; }

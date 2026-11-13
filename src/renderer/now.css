@@ -154,3 +154,8 @@
   .bf-celebrate-card .bf-crest strong { font-size: 68px; }
   .bf-news { margin-top: 8px; }
 }
+
+.now-page .now-head { gap: 16px; justify-content: flex-start; }
+.now-page .now-head > div:first-of-type { flex: 1; }
+.now-class-crest { flex: none; width: 84px; height: 84px; align-self: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
+.now-chip.grey { background: #8a8378; color: #fff; }
