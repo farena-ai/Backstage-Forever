@@ -188,20 +188,76 @@ window.NowView = (() => {
   }
   function invalidate() { advice = null; lastKey = ""; }
   if (api?.onLiveLink) api.onLiveLink(onLive);
-  // Level-up: a short celebration wherever you are in the app.
+  // Level-up: a big celebration wherever you are in the app. Click, Continue or Escape to dismiss.
+  const MILESTONES = Object.freeze({
+    10: "Talent points start now: open your Talents window and spend your first point.",
+    20: "A fifth of the way to 60. Dungeons for your level are worth a look in Adventure → Dungeons.",
+    30: "Halfway to 60! Check your gear: quest rewards around here are a big step up.",
+    40: "Level 40: riding becomes possible. Ask your faction's mount vendor and riding trainer.",
+    50: "The last stretch. Ten levels to go.",
+    60: "Level 60, the summit! Every dungeon and raid is open to you now.",
+  });
+  const SOUND_PREF = "bf-celebrate-sound";
+  const soundOn = () => { try { return localStorage.getItem(SOUND_PREF) !== "off"; } catch { return true; } };
+  // A short, quiet fanfare synthesized on the spot (no audio files).
+  function fanfare() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return;
+      const ctx = new Ctx(), now = ctx.currentTime;
+      const master = ctx.createGain(); master.gain.value = 0.12; master.connect(ctx.destination);
+      [[523.25, 0], [659.25, 0.12], [783.99, 0.24], [1046.5, 0.38], [783.99, 0.62], [1046.5, 0.74]].forEach(([f, t], i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = i < 4 ? "triangle" : "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0, now + t); g.gain.linearRampToValueAtTime(1, now + t + 0.02); g.gain.exponentialRampToValueAtTime(0.001, now + t + (i === 5 ? 1.4 : 0.45));
+        o.connect(g); g.connect(master); o.start(now + t); o.stop(now + t + 1.5);
+      });
+      setTimeout(() => ctx.close().catch(() => {}), 2600);
+    } catch {}
+  }
   function celebrate(level) {
     document.querySelector(".bf-celebrate")?.remove();
     const el = document.createElement("div");
-    el.className = "bf-celebrate"; el.setAttribute("role", "status");
-    const colors = ["#f6c445", "#ff7a59", "#7fe08a", "#6fc3ff", "#e58cff", "#fff1d6"];
-    el.innerHTML = `${"<i></i>".repeat(48)}<div class="bf-celebrate-card"><span>Level up!</span><div class="bf-crest"><strong>${esc(level)}</strong></div><p>New class skills may be waiting at your trainer. Type <code>/bf train</code> in game for an arrow.</p></div>`;
-    [...el.querySelectorAll("i")].forEach((bit, i) => {
-      bit.style.left = `${(i * 37) % 100}%`; bit.style.background = colors[i % colors.length];
-      bit.style.animationDelay = `${((i * 13) % 20) / 20}s`; bit.style.setProperty("--drift", `${((i * 29) % 160) - 80}px`);
+    el.className = "bf-celebrate"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", `Level ${level}`);
+    const colors = ["#f6c445", "#ff7a59", "#7fe08a", "#6fc3ff", "#e58cff", "#fff1d6", "#ffd34d"];
+    const t = advice?.training, trainer = t?.trainer;
+    const news = t?.newNow?.length && trainer ? `<div class="bf-news"><h3>New for you</h3><p>${t.newNow.length} new ${esc(t.className || "class")} skill${t.newNow.length === 1 ? "" : "s"} at <strong>${esc(trainer.name)}</strong>: ${t.newNow.slice(0, 4).map((s) => esc(s.name)).join(", ")}${t.newNow.length > 4 ? "…" : ""}</p>${Number.isSafeInteger(trainer.mapId) ? `<button type="button" class="bf-go" data-celebrate-map='${esc(JSON.stringify({ mapId: trainer.mapId, x: trainer.x, y: trainer.y, npcId: trainer.npcId || null, label: trainer.name, sub: trainer.title, goal: { title: `Train at ${trainer.name}`, steps: [`Go to ${trainer.name}.`, `Learn: ${t.newNow.slice(0, 6).map((s) => s.name).join(", ")}.`] } }))}'>Show trainer on map</button>` : ""}</div>`
+      : `<div class="bf-news"><p>New class skills may be waiting at your trainer. Type <code>/bf train</code> in game for an arrow.</p></div>`;
+    const milestone = MILESTONES[level] ? `<p class="bf-milestone">${esc(MILESTONES[level])}</p>` : "";
+    el.innerHTML = `<div class="bf-rays" aria-hidden="true"></div><div class="bf-rays bf-rays-2" aria-hidden="true"></div><div class="bf-shock" aria-hidden="true"></div>
+      <div class="bf-bits" aria-hidden="true">${"<i></i>".repeat(140)}</div>
+      <div class="bf-fireworks" aria-hidden="true">${[0, 1, 2].map(() => `<b>${"<s></s>".repeat(18)}</b>`).join("")}</div>
+      <div class="bf-celebrate-card">
+        <h2 class="bf-title">Level up!</h2>
+        <div class="bf-crest"><strong data-bf-level>${esc(Math.max(1, level - 1))}</strong></div>
+        <p class="bf-reached">You reached level ${esc(level)}</p>
+        ${milestone}${news}
+        <div class="bf-actions"><button type="button" class="bf-continue" data-celebrate-close>Continue</button><button type="button" class="bf-sound" data-celebrate-sound aria-pressed="${soundOn()}">${soundOn() ? "Sound on" : "Sound off"}</button></div>
+      </div>`;
+    // CSP forbids inline styles: position the pieces from code.
+    [...el.querySelectorAll(".bf-bits i")].forEach((bit, i) => {
+      bit.style.left = `${(i * 37 + (i % 7) * 11) % 100}%`; bit.style.background = colors[i % colors.length];
+      bit.style.animationDelay = `${((i * 13) % 40) / 20}s`; bit.style.animationDuration = `${2.4 + ((i * 17) % 20) / 10}s`;
+      bit.style.setProperty("--drift", `${((i * 29) % 220) - 110}px`); if (i % 3 === 0) bit.classList.add("wide");
+    });
+    [...el.querySelectorAll(".bf-fireworks b")].forEach((b, k) => {
+      b.style.left = ["22%", "78%", "50%"][k]; b.style.top = ["30%", "26%", "16%"][k]; b.style.animationDelay = `${0.5 + k * 0.55}s`;
+      [...b.querySelectorAll("s")].forEach((sp, i) => { const a = (i / 18) * Math.PI * 2; sp.style.setProperty("--dx", `${Math.cos(a) * 140}px`); sp.style.setProperty("--dy", `${Math.sin(a) * 140}px`); sp.style.background = colors[(i + k) % colors.length]; sp.style.animationDelay = `${0.5 + k * 0.55}s`; });
+    });
+    const close = () => { el.classList.add("leaving"); setTimeout(() => el.remove(), 380); document.removeEventListener("keydown", onKey); };
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    document.addEventListener("keydown", onKey);
+    el.addEventListener("click", (e) => {
+      const go = e.target.closest("[data-celebrate-map]");
+      if (go) { try { window.WorldMapView?.focus(JSON.parse(go.dataset.celebrateMap)); document.querySelector('[data-nav="world-map"]')?.click(); } catch {} close(); return; }
+      const snd = e.target.closest("[data-celebrate-sound]");
+      if (snd) { const on = !soundOn(); try { localStorage.setItem(SOUND_PREF, on ? "on" : "off"); } catch {} snd.textContent = on ? "Sound on" : "Sound off"; snd.setAttribute("aria-pressed", String(on)); if (on) fanfare(); return; }
+      if (e.target.closest("[data-celebrate-close]") || !e.target.closest(".bf-celebrate-card")) close();
     });
     document.body.appendChild(el);
-    el.addEventListener("click", () => el.remove());
-    setTimeout(() => el.remove(), 5200);
+    setTimeout(() => { const n = el.querySelector("[data-bf-level]"); if (n) { n.textContent = String(level); n.classList.add("bump"); } }, 700);
+    if (soundOn()) fanfare();
+    el.querySelector("[data-celebrate-close]")?.focus({ preventScroll: true });
+    setTimeout(() => { if (el.isConnected) close(); }, 9000);
   }
   if (api?.onPlayEvent) api.onPlayEvent((e) => {
     if (e?.kind === "level" && Number.isInteger(e.level)) celebrate(e.level);
