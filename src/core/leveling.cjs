@@ -115,7 +115,12 @@ class LevelingAdvisor {
       let score = (fit === "now" ? 10 : 2) + Math.min(avail.length, 10) + Math.log2(1 + avail.length) * 2 - Math.abs((range.min + range.max) / 2 - level) * 0.3;
       if (z.mapId === here) score += 4;
       else if (here && continent(here) === continent(z.mapId)) score += 3;
-      if (z.starter) score += z.starter.some((r) => r.toLowerCase() === String(p.race || "").toLowerCase()) ? 6 : -4;
+      if (z.starter) {
+        const own = z.starter.some((r) => r.toLowerCase() === String(p.race || "").toLowerCase());
+        // Another race's starting area is a long trip for a new character: never suggest it before level 10.
+        if (!own && p.race && level < 10 && z.mapId !== here) continue;
+        score += own ? 6 : -4;
+      }
       if (faction && !towns.length) score -= 3; // nowhere friendly to hand quests in
       zones.push({
         mapId: z.mapId, name: mapName(z.mapId), min: range.min, max: range.max, observedLevels: range.observed, fit, towns,

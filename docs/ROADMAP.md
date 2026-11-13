@@ -1,152 +1,114 @@
-# Backstage Forever product roadmap
+# Backstage Forever roadmap
 
-## Find your way around
+Where the companion goes next. Written 2026-11-12, after 0.20.0. Ordered by value to a player: a beginner should feel guided, and a veteran should feel faster.
 
-The journal has five main sections: **Adventure** for your next step, **Quests** for the saved quest atlas, **Companion** for questions and local travel, **Characters** for your roster, and **Plans** for checklists. Adventure contains **Next step** and **Professions**, the single saved workshop. Plans contains **My plans** (formerly Company), **Party**, and a shortcut to Professions. **Settings** contains **Game connection**, **AI connection** (formerly Connections), and **Updates**. **Help → Field guide** contains support reports, recovery checkpoints, and backup tools.
+**Sizes:** S = a day or less · M = a few days · L = a week or more · XL = a multi-release program.
+**Where:** Game = the addon · App = the desktop app · Both.
 
-Voice, Memory, and quest reference details open when you need them. Folding Voice stops pending or active speech. The memory summary always shows how many exchanges are selected for this question; saving an exchange does not consent to sharing it. Provider costs and character-sharing choices remain visible. Local travel has a **Show road guide** shortcut when a road alternative is documented; **How we know** holds dated source details. These are guides and manual plans, never game actions.
+**Ground rules for every item:**
+- Public WoW API only.
+- No automated game input.
+- No paid services.
+- Game art is read locally, never bundled.
+- Horde and Alliance get equal coverage.
+- Every new command or helper goes on Help → Commands; a test enforces it.
 
-Manual character creation offers Forever's nine confirmed classes plus Other. Existing imported or custom class names remain unchanged. Original class and faction artwork remains in use. The source display version is 0.12.3; 1.0 publication remains held for owner review.
+---
 
+## Shipped so far (0.16 – 0.20)
 
-Updated 2026-11-09 (America/Chicago). The 0.9–0.12 series is implemented as the combined 0.12 preview checkpoint. Publication and measured acceptance are recorded separately in VALIDATION.md; 1.0 remains held for Frank’s hands-on check. Later research items are proposals, not delivery promises. Backstage Coding; designed by Frank Arena. BF should make the next useful action obvious, using verified Forever facts and the player's actual progress. More UI or more model calls are not acceptance criteria.
+- **Live link:** follows you in real time, including over remote access (0.18.2).
+- **Now page:**
+  - Do this next, where to level, training, quest log.
+  - Get set up checklist.
+  - This session card: XP pace, rested, deaths.
+  - Level-up celebration.
+- **World Map:**
+  - Distinct icons.
+  - NPC cards with quests and training.
+  - Your path this session.
+- **In game:**
+  - BF Guide layer on the world map.
+  - `/bf next`, `/bf train`, `/bf find`, `/bf xp`, `/bf hearth`.
+  - Danger warnings, death help with an arrow to your body.
+  - Level-up and quest pop-ups, Sell junk button.
+- **Alliance coverage:** four game builds merged (0.20.0).
+- **Help:** Field guide with glossary; Help → Commands.
 
-## Foundation through 0.5
+---
 
-Windows companion, guided addon installation, local profiles, public character snapshots, observed quests/objectives and XP, optional provider connections, encrypted credential storage, signed app-update manifests, and original class/faction artwork. The live client now demonstrates character capture, quest/XP display, race/faction import and desktop snapshot import. Native Compass styling, title dragging, close/collapse controls and reopen instructions have been observed or fixture-tested; see VALIDATION.md for the exact boundary.
+## Tier 1 — Quick wins (next 1–2 releases)
 
-0.5 adds a compact character command center, deterministic observed-quest plans, per-character session/focus preferences, source evidence, optional local equipment/bag observations and friendly native capture diagnostics. Live acceptance recorded for 0.4.1 does not certify every new 0.5 API field; see VALIDATION.md for measured results.
+| # | Feature | Size | Where | Why it matters |
+|---|---|---|---|---|
+| 1.1 | **Repair reminder.** Pop-up when gear durability drops below 25%, plus `/bf repair` for an arrow to the nearest repair vendor. | S | Game | New players don't notice red gear until it breaks mid-fight. |
+| 1.2 | **Flight path tracker.** Remember which flight paths you know (read when the flight map opens). Say "You haven't learned this flight path, talk to Devrak" when you pass an unknown one. Show known and unknown paths on the World Map. | S–M | Both | Missing a flight path costs long runs later. |
+| 1.3 | **Grey-quest cleanup.** Flag quests in your log that no longer give much XP, with a one-line "safe to abandon" hint. Hint only; never auto-abandon. | S | Both | Full quest logs confuse beginners. |
+| 1.4 | **Addon-version check.** If the game is running an older addon than the app installed, say so in game and on Now ("type /reload"). | S | Both | Removes the most common "it isn't working" cause. |
+| 1.5 | **Helper switches in the app.** Settings → Game shows the in-game helpers (pop-ups, danger, Sell junk, live strip) and how to toggle them. | S | App | Discoverability. |
+| 1.6 | **Alliance vendors.** Refresh the vendor pack the same way as 0.20 (needs a raised input cap and a merge step). | S–M | Both | Alliance players still see only Horde vendors. |
+| 1.7 | **Gear slot names on build 70888.** Character guidance shows "Slot N" instead of names on the current build. | S | App | Polish bug. |
+| 1.8 | **Fix the flaky voice-backend test.** | S | Dev | Faster, calmer releases. |
+| 1.9 | **Verify live link over remote access** in a real remote session, and add a capture-based regression test. | S | Both | Confirms 0.18.2 in your actual setup. |
 
-Desktop data still reaches disk through player-triggered reload/logout. In-game out-of-combat UI can update from supported events. BF is not a continuous desktop feed, complete quest database or autonomous game controller.
+## Tier 2 — Core guidance upgrades (next 2–4 releases)
 
-## Successful setup stays quiet in 0.5
+| # | Feature | Size | Where | Why it matters |
+|---|---|---|---|---|
+| 2.1 | **Quest reward picker.** On the reward screen, highlight the best choice for your class and spec using public item stats, with a short reason ("+3 Agility, an upgrade over your Ragged Leather Vest"). The player still clicks. | M | Game | One of the most-loved features of leveling addons; beginners guess badly. |
+| 2.2 | **Gear upgrade hints.** "This is an upgrade" on items in bags and from vendors, using the same scoring. The app's Characters page lists weakest slots and where to fix them (quest rewards, vendors, dungeon drops). | M | Both | Turns loot into decisions. |
+| 2.3 | **Zone route stepper.** An ordered plan per quest hub: pick up these, do objectives in this order, hand in here. `/bf route` and a compact in-game step frame tick off steps from quest events. Built from our quest, giver and objective data. | L | Both | The real "tell me exactly what to do" experience. |
+| 2.4 | **Objective areas on the map.** Shade where kill and collect objectives happen. Learn from your own play: record where objective progress ticks, locally, and merge with community data. | M | Both | "Where do I find 8 Plainstriders?" is the #1 beginner question. |
+| 2.5 | **Enemy levels on the map.** Show level ranges and elite camps per zone from creature data, colored the way the game colors levels. | M | App | Avoids wandering into red zones. |
+| 2.6 | **Talent coach.** Per-class leveling talent suggestions (solo-friendly builds we write ourselves), with a "spend your point" reminder on level-up. Talent data is read from the local client. | M–L | Both | Talents are confusing at level 10. |
+| 2.7 | **Dungeon readiness.** For each dungeon: the right level band, quests to pick up first and where, what to bring, and a "you're ready" check against your level and gear. | M | App | Dungeons are where new players get lost or underprepared. |
+| 2.8 | **Profession leveling helper.** Skill-up color for each recipe (orange/yellow/green), the cheapest next recipe, a materials shopping list, and gathering routes from the find index. | M–L | Both | Professions are a maze without guidance. |
+| 2.9 | **Hearthstone advice.** "Your hearth is in Razor Hill, but your quests are in the Barrens. Set it at the Crossroads inn." | S | Both | Saves long runs. |
 
-The repeated successful setup dock is suppressed after a valid current-folder import. Incomplete setup actions and the Game Connection setup entry remain available. Compact connection/freshness status replaces the permanent success message.
+## Tier 3 — Delight and depth
 
-## Character command center: 0.5 delivery and continued research
+| # | Feature | Size | Where | Why it matters |
+|---|---|---|---|---|
+| 3.1 | **Session history and milestones.** Keep past sessions: levels per day, deaths, zones, time to each level. Celebrate milestones (first dungeon, level 10/20/30/40, mount, first flight path). | M | App | Progress you can see keeps people playing. |
+| 3.2 | **World tracker.** A 1–60 world view colored by zone level band, with per-zone progress rings ("Durotar 18/22 quests") and badges for completed zones. | M | App | A satisfying overview and a natural next-zone picker. |
+| 3.3 | **Journey replay and share card.** Replay a session's path on the map with level-up and death markers. Export a PNG of your own hand-drawn-style map. | M | App | Fun to share; no game art involved. |
+| 3.4 | **Always-on-top mini Now.** A small window beside the game showing your next step and pace, like the radar. | S–M | App | Live help without alt-tabbing. |
+| 3.5 | **Spoken next steps.** Optional local voice: "Hand in Call of Water to Islen Waterseer, south-east." Uses the existing local voice runtime. | M | App | Hands-free and accessible. |
+| 3.6 | **Party sync.** Party members running the addon share which quest objectives they still need (addon messages). The app's Party page shows shared quests and who needs what. | L | Both | Grouping is easier when everyone sees the same plan. |
+| 3.7 | **Alt dashboard.** Every character's rested XP, level, professions, gold and bag space at a glance, with "who to play tonight" suggestions. | M | App | For players with several characters. |
 
-- Compact connection health and explicit freshness: live in-addon observation, last disk save, last account-API update, missing data and errors have distinct labels.
-- Automatically collect each character visited with the addon enabled, preserving private journals and intentional active-character selection. Explain first-login collection once during setup.
-- Research and validate optional official Battle.net account linking for a broader initial roster. Offline/addon mode remains usable without an account login. Handle multiple WoW accounts/regions and missing/low-level characters without silently deleting profiles.
-- Verify Forever identity semantics (first name, surname, ruleset versus realm), stable IDs and source precedence. Migrate existing profiles safely and offer deliberate merging of manual/imported duplicates without losing notes.
-- Add supported public equipment, bags, professions, skills, talents, currencies, travel access and quest-completion IDs incrementally. Unavailable/protected fields stay unknown.
-- Make imports idempotent and resilient to partial files, stale API responses, malformed fields and unexpected runtime errors. Actionable addon diagnostics replace indefinite waiting.
+## Tier 4 — Exhaustive / long-term programs
 
-Acceptance: two characters retain separate correct data and notes across reload/logout/restart; identity mapping is confirmed in the real client. Optional roster linking must pass real consent, multiple-account, refresh/expiry, revoke, stale/missing-character and encryption tests before being advertised.
+| # | Program | Size | Notes |
+|---|---|---|---|
+| 4.1 | **Full 1–60 guided route per race and faction.** A complete, curated, step-by-step leveling route, generated from our data and then hand-reviewed. It runs in the in-game step frame (2.3) with auto-advance, skip and "I'm behind or ahead" re-planning. | XL | The flagship. Needs 2.3 and 2.4 first. |
+| 4.2 | **Community data loop.** Opt-in, privacy-reviewed export of your own observations (positions of quest givers, objectives and trainers you met), to share with the community dataset. Closes Alliance gaps faster. | L | Must stay opt-in, contain no personal data, and be reviewed. |
+| 4.3 | **Accessibility and localization.** Screen-reader-friendly app and colorblind-safe icons. Localize the app and addon text (deDE, frFR, esES…) as data allows. | L | Data is enUS today. |
+| 4.4 | **Smarter AI companion.** The companion gets tool access to everything above: routes, gear, dungeons and session history. It answers "what should I do tonight?" with a concrete plan. | L | Works with the user's own provider; no paid services by default. |
+| 4.5 | **Graphics pass.** Original art for class portraits, page heroes, map pins, celebration effects and the in-game frames, kept consistent across the app. | M–L per pass | See below. |
+| 4.6 | **Other platforms.** macOS support (the live link is Windows-only today). | L | Only if wanted. |
 
-## 0.6: Forever quest reference delivery
+---
 
-0.6 introduces a bundled, licensed Efficient Games live-Forever reference pack, build-specific automatic refresh, exact-ID quest details, reported chain links, NPC/objective positions, listed rewards and source-aware follow-up candidates. Local Quest Guide needs no AI account. Player-controlled waypoint commands use supported native APIs with build and quest-state checks. The updater gains bounded retries, stage-specific recovery and safer cache handling. See FOREVER-DATA.md and UPDATES.md for scope and measured limits.
+## When to do a graphics pass
 
-This is a coverage-limited reference layer, not certification of every quest or a complete prerequisite and travel graph. Next data milestones are:
+Frank offered ChatGPT/OpenAI, Grok and the local ComfyUI for art. Suggested timing:
+1. **Now-ish (before 2.1/2.3 add new UI):**
+   - A consistent icon set for map pins and Commands groups.
+   - A celebration badge.
+   - Hero art for Now and Help.
+2. **After 3.1/3.2:** milestone badges and zone badges, which are art-heavy by nature.
+3. **Before 1.0:** a full visual review of every page against one style guide.
 
-- Expand measured quest/NPC coverage across more zones and live client builds; add prerequisite conditions only when their meaning is verified.
-- Extend the licensed reference layer to item acquisition, spells, class/race differences, professions, vendors and travel where suitable sources exist.
-- Prefer supported official game/API data. Evaluate community sources individually for accuracy and licensing; do not copy a guide database or AGPL code into the MIT product by assumption.
-- Every recommendation can show its source, game version, freshness and reason. Separate observed facts from estimates and AI wording. No invented quest chains or coordinates.
-- Validate representative guidance against real Forever play, then expand coverage. Offline caches remain useful without a model/provider connection.
-- Extend reported chain links into a route planner that respects verified conditions, actual completed IDs, active objectives, level, travel access and user goals. Do not infer hard prerequisites from correlations.
+Rule: generated art must be original. No Blizzard assets, and nothing that imitates their art or logos.
 
-Acceptance: representative route fixtures cover prerequisites, inaccessible content, missing data, updated quests and both factions. Validate the initial content slice in Forever. Measure dead-end suggestions, factual correctness and coverage before expanding.
+## Suggested release sequence
 
-## 0.7: Living Companion
+- **0.21:** 1.1 repair, 1.2 flight paths, 1.4 version check, 1.6 Alliance vendors, 1.8, plus the first graphics pass.
+- **0.22:** 2.1 reward picker, 2.2 gear hints, 2.9 hearth advice, 1.3 quest cleanup.
+- **0.23:** 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness.
+- **0.24–0.26:** 2.3 route stepper, 2.6 talent coach, 2.8 professions.
+- **0.27+:** Tier 3, then the 4.1 full guided route.
+- **1.0:** after Frank's hands-on acceptance.
 
-This release focuses on three practical improvements: prepare the companion with one primary setup action, import/switch saved characters reliably, and keep useful native quest guidance changing during play without routine reloads. The bundled native reference/planner can work with the desktop closed. Five managed addon resources are staged, verified and repaired together; explicit player clicks can show supported waypoints. Current game observations and qualified community facts remain distinct.
-
-Setup distinguishes prepared files, a running game and the last saved capture. A first desktop snapshot and an AI account are not prerequisites for entering the app once files are prepared. Saved account exports are combined conservatively, and re-enabling following can apply an already-known saved active character without another logout. Local runtime checks and explicit launch use only the configured validated client.
-
-Acceptance: no routine reload prompt for native progress updates; no stale action from another character/session; correct snapshot imports despite another character's later save; no/multiple-install choices and unknown runtime remain usable; journal/provider/privacy boundaries preserved. Synthetic fixtures, packaged resources, signed publication and real-client acceptance have separate evidence in VALIDATION.md.
-
-### Further adventure-coach work after 0.7
-
-- Extend the existing next-step plan with source-backed alternatives for nearby objectives, turn-ins, travel and preparation, explaining why each action helps.
-- Extend existing 15/30/60-minute session preferences with relaxed exploration, profession progress, dungeon preparation and other player-selected goals.
-- Recompute deterministic local plans after a new permitted snapshot. The native addon provides supported out-of-combat progress cues without requiring cloud AI. Desktop plans explicitly retain last-save freshness.
-- Contextual reminders: a ready turn-in, prerequisite satisfied, relevant training, low supplies or gear worth reviewing, only where supported data justifies it. Quiet mode, cooldowns and relevance filters prevent notification spam.
-- Optional persistent per-character conversation/session memory with clear review/delete controls; private journal sharing remains separate and explicit.
-- Optional background AI summaries require explicit enablement, cost/rate limits, cancellation and caching. No model call for every game event, no silent API fallback.
-
-Acceptance: correct next actions from recorded play scenarios, no repeated reminders or surprise inference costs, cancellation and provider outages leave the local planner working. Measure time to first useful suggestion and recommendation usefulness with players.
-
-## 0.8 Adventure Company: planning foundation
-
-Company brings collected characters, saved ready turn-ins, private goals and preparation facts into one overview. Shared local journeys span characters; player-owned steps and editable quest/dungeon checklists remain useful offline. Steps linked to saved observed quests can retain newly proved completion while respecting baseline, identity, build, repeatable and history-availability boundaries. Merely viewing Company does not change selection or following.
-
-Native Compass gains a quiet low-bag-space cue using existing permitted observations, without notification spam or extra inference. Desktop journeys remain last-saved; a continuous transport or new account login is not implied. Privacy, backup/migration, stale responses, source ownership and orphaned-character steps are release gates.
-
-### Further account-wide progression and data work
-
-The following remain research or later releases; the 0.8 planning foundation does not establish their source coverage or implementation:
-
-- An alt roster showing which character has relevant professions, materials, gear or unfinished goals, limited to verified collected data.
-- Shopping/crafting plans, reagent shortfalls, profession paths and suitable gear-upgrade options with acquisition sources.
-- Dungeon preparation tailored to class, level, actual gear and role preferences; player-controlled group checklists.
-- Auction price context only after validating Forever endpoints, source coverage, rulesets/faction handling, freshness and rate limits. Do not label a stale listing as a guaranteed buy or profit.
-- Completion journeys and cross-character goal planning without treating observed recent turn-ins as a complete history.
-
-Acceptance: account/source boundaries, freshness and missing characters remain visible; no automatic purchases, mail, trading or gameplay actions.
-
-## 0.9: Adventure Director
-
-- One explained primary quest action and up to two alternatives, selected from all eligible captured candidates before applying display limits.
-- Respect current game destinations, qualified references, observed map/zone and reported level; unknown class/race/faction requirements remain unknown.
-- One explicit action creates or reuses a tracked Company session with current saved baselines. Private goals remain local and do not enter automatic AI context.
-- Improve native local ranking and reasons without routine reloads or gameplay control. Preserve compact first-screen actions, drafts and keyboard/pointer/native-select behavior.
-
-Acceptance: deterministic source-backed choices, atomic session/reuse, correct character/follow behavior, private context exclusions and real Electron/Lua lifecycle checks. Session length is a choice limit, not an estimated duration.
-
-## 0.10: Preparation and Professions
-
-- Guarded observations of owned professions, learned recipes/reagents and specified carried bags through Forever-compatible public APIs.
-- Simple recipe/craft-count selection, exact shortfalls only when observations support them, and honest partial/unknown states.
-- Separate dated observations from other collected characters; no automatic assumption that materials can be transferred.
-- Graphical workshop and deliberately created manual shopping checklists. No crafting, item use, purchase or bank/account-storage automation.
-
-Acceptance: exact-build API shapes, strict bounds/source ownership, cache/session isolation, rich capture/reload/budget preservation, unknown versus empty counts, local privacy and compact accessible UI. Item acquisition suggestions require separately qualified sources; no invented vendor/drop/skill-up path.
-
-## 0.11: Optional voice and conversation memory
-
-- Optional push-to-talk questions, interruptible spoken replies and hands-free reading of an explicitly requested plan. Microphone activation is visible; no always-on recording by default.
-- Local Windows speech where available, editable transcript review before Send, interruptible reading and a typed fallback. No surprise cloud transcription or audio recording persistence.
-- Explicit per-character saved exchanges with review/delete; choosing to store an exchange does not automatically send it with later questions. Private journals/goals/journeys stay excluded.
-
-Acceptance: safe capability discovery, bounded/cancellable microphone and output lifetimes, no automatic inference, per-character isolation and identical selected-memory preview/send across provider modes. Live microphone/recognition/playback and consent remain owner-led checks.
-
-## 0.12: Party planning and the Quest Guide presentation/data pass
-
-- Preview/export/import user-approved party plans and dungeon checklists. Imported plans are new manual, unassigned steps without captured completion proof. No messages to friends/guild channels or automatic game actions.
-- Rich quest/destination dossiers and coordinate views with class/faction art, readable evidence, map/date/phase labels and useful missing-point states.
-- Refresh the compatible licensed Forever snapshot, improve guarded public game destination capture and measure source coverage. Retain reliable points rather than import incompatible or unlicensed locations.
-- Separately compiled same-build historical supply-vendor facts preserve the existing quest-cache protocol. Historical reactions/locations do not guarantee access, current stock or prices.
-- Final visual pass: consistent class/faction tokens, spacing, icon hierarchy, control states and polished empty/error screens; restrained transitions rather than effects competing with the game.
-- Verify 100/125/150/200 percent Windows scaling, compact windows, keyboard/focus, contrast, screen readers, reduced motion and low idle CPU/GPU. Native addon styling must fit WoW and remain unobtrusive.
-
-Acceptance: a new user can connect, import, select a character and get useful guidance without knowing AI terminology. UI remains responsive alongside the game and graphics have measurable frame/idle budgets. Automated gates precede the combined signed 0.12 release; the owner performs [the hands-on check](OWNER-CHECK-012.md) before any 1.0 release-quality decision.
-
-## 1.0 quality bar
-
-- Verified installation, update, rollback/recovery, uninstall/data preservation and publisher signing path on supported Windows systems.
-- Tested game-client compatibility matrix and real end-to-end multi-character acceptance, not just source fixtures.
-- Model/provider outages, expired logins and rate limits have clear recovery; API/subscription access remain distinct.
-- Secret storage, source-data licensing, local deletion/export, optional service retention and privacy documentation reviewed.
-- Versioned recommendation evaluation set and a published supported-content scope. No claim to cover every quest until coverage is measured.
-
-## Architecture and permitted automation
-
-Use three complementary layers: the native addon observes permitted public out-of-combat game state and displays immediate local cues; the desktop owns encrypted providers, local profiles, rich planning and versioned knowledge; optional supported account APIs enrich roster and historical/profile data. A source-aware context model reconciles them by freshness and authority. Do not invent a hidden live bridge across the SavedVariables disk boundary.
-
-Automate setup, addon repair, imports, local rule evaluation, plan rebuilding, reminders, model discovery and app updates. Preserve player control of movement, targeting, combat, purchases and game actions. Never use memory reading, injection, protected-value bypass or simulated gameplay input. Information, preparation and decision support provide value without a botting feature list.
-
-## Evidence for optional account roster research
-
-BF's current addon exports only characters that execute its capture events; another toon must be visited to supply its detailed snapshot. Existing local character directories can at most provide incomplete discovery hints, not authoritative level, inventory or quest state.
-
-A third-party API author's direct tests report a Forever account profile and character/media endpoints: https://us.forums.blizzard.com/en/blizzard/t/wow-forever-api-what-works-so-far-plus-a-ts-client/60334 and https://github.com/Pinta365/blizzard_api#readme . The author explicitly describes the interface as undocumented, reports level-10/logout eligibility, delayed account data, and Forever-specific identity semantics. These are research leads, not Blizzard support guarantees or BF live certification. Verify with an authorized user session before product promises.
-
-Battle.net linking is separate from AI-provider login. Use registered official authorization, narrow scopes, state/PKCE where supported, encrypted local tokens and revoke/delete controls. Never embed an application client secret in a distributed desktop binary; if a confidential-client exchange is required, design a minimal secure service and disclose its data handling before implementation. Do not scrape account passwords, session cookies or account-switching screens.
-
-No scheduled release watchers or external recurring jobs form part of this roadmap.
-
-## Personal adventure map — local review candidate
-
-Implemented: native map/recording foundation plus Adventure → Map desktop coordinate journal, three Adventure tabs within the five-section shell, source-qualified material references and private personal finds. Desktop and native controls remain independent; there is no desktop game-control bridge or terrain redistribution. Source version remains 0.12.3. Independent task review, integrated packaging validation and owner real-client acceptance remain separate gates; 1.0 stays held.
+Keep this file and Help → Commands updated with each release.

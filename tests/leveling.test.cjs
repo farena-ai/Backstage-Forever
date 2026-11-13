@@ -62,6 +62,10 @@ test("a level 5 Human Warrior in Elwynn Forest gets Alliance zones and quests fr
   const table = loadLevelingPack().zones;
   assert.ok(r.zones.every((z) => table.find((t) => t.mapId === z.mapId).faction !== "Horde"));
   assert.ok(r.training && r.training.className === "Warrior");
+  assert.ok(!r.zones.some((z) => z.name === "Teldrassil" || z.name === "Dun Morogh"), "another race's starting area is never suggested to a new character");
+  const elf = advisor({ level: 5, faction: "Alliance", className: "Hunter", race: "Night Elf", location: { mapId: 1438, x: 0.55, y: 0.6 }, quests: [] }).advise();
+  assert.equal(elf.next.name, "Teldrassil");
+  assert.ok(!elf.zones.some((z) => z.name === "Elwynn Forest"));
 });
 
 test("Alliance class training points to an Alliance trainer location with spells", () => {

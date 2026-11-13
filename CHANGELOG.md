@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.20.0 — Alliance too, and every command explained, 2026-11-12
+
+- **Alliance coverage.** Reference data is refreshed to the newest community snapshot and now merges four client builds (1.60.1.70888, 70862, 70840, 70790), newest first:
+  - Quest givers with positions: Elwynn Forest 0 → 56, Westfall 1 → 32, Redridge 0 → 25, Stormwind 0 → 19, Teldrassil 0 → 38.
+  - Class trainers: 34 → 113, including Elwynn and Stormwind trainers.
+  - Characters: 616 → 978 NPCs with 1,786 positions.
+  - Horde zones grew too (for example Durotar quest givers 11 → 63).
+  - Dun Morogh, Ironforge, Loch Modan, Wetlands and Duskwood stay thin until more players contribute observations.
+- The app's reference refresh now merges new data into the bundled set instead of replacing it, so coverage never shrinks.
+- Now no longer suggests another race's starting area to a new character (a Human in Elwynn isn't sent to Teldrassil).
+- Class training borrows spell lists from another trainer of the same class when your faction's trainer has none recorded.
+- **Help → Commands:** every `/bf` command and in-game helper in plain English, with search and a Copy button for each. A test keeps the page in step with the addon, so a new command can't ship unexplained. Now and the Field guide link to it.
+- NPC lookups understand Stormwind, Ironforge, Darnassus and Undercity as places.
+- Character gear review names equipment slots (Main hand, Tabard…) on every 1.60.1 game build, not only 70862.
+- New [roadmap](docs/ROADMAP.md): quick wins through long-term programs, with a suggested release order.
+- App/lock, TOC and capture metadata align at 0.20.0 preview. **1.0 remains held.**
+
 ## 0.19.0 — a coach at your side, 2026-11-12
 
 - **In game, help at the moments new players get lost** (new BackstageForeverAssist.lua):
