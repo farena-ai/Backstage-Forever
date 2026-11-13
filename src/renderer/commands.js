@@ -10,7 +10,7 @@
     { group: "Finding your way", command: "/bf flights", word: "flights", what: "Lists the flight masters in this zone and whether you've learned each flight path yet.", when: "When you arrive somewhere new. Learning a flight path lets you fly back later instead of running.", example: "/bf flights" },
     { group: "Finding your way", command: "/bf find NAME", word: "find", what: "Finds a person, a kind of person or a gathering spot by name and puts the arrow on the nearest match. Lists a few others too.", when: "Looking for a flight master, an innkeeper, a trainer, a vendor or a quest NPC.", example: "/bf find flight master" },
     { group: "Finding your way", command: "/bf way MapID X Y [name]", word: "way", what: "Puts the arrow on exact map coordinates. The app's World Map gives you this line ready to paste.", when: "When the app or a guide gives you coordinates.", example: "/bf way 1413 51.5 30.4 Crossroads" },
-    { group: "Finding your way", command: "/bf hearth", word: "hearth", what: "Tells you where your Hearthstone takes you and how to change it.", when: "Before a long trip, or when you start questing somewhere new.", example: "/bf hearth" },
+    { group: "Finding your way", command: "/bf hearth", word: "hearth", what: "Tells you where your Hearthstone takes you and, if you're questing in another zone, which inn to make your home instead.", when: "Before a long trip, or when you start questing somewhere new.", example: "/bf hearth" },
     { group: "Your character", command: "/bf xp", word: "xp", what: "Shows your experience per hour this session, roughly how long until your next level, and any rested bonus.", when: "To see how fast you're leveling.", example: "/bf xp" },
     { group: "Your character", command: "/bf help", word: "help", what: "Lists the main commands in your chat window.", when: "Whenever you forget a command.", example: "/bf help" },
     { group: "Adventure Compass", command: "/bf", word: "", what: "Shows or hides the Adventure Compass, the small panel with your next step.", when: "To bring the panel back or tidy it away.", example: "/bf" },
@@ -31,6 +31,7 @@
     { name: "Arrow back to your body", where: "Minimap and screen arrow", what: "After you die and release your spirit, the arrow points to your body. Walk over it and click Resurrect." },
     { name: "Repair reminder", where: "Top of the screen", what: "A pop-up when your gear drops to a quarter of its durability, and again if something breaks. /bf repair shows the way." },
     { name: "Flight path reminder", where: "Top of the screen", what: "When you pass close to a flight master you haven't talked to, a pop-up suggests learning that flight path." },
+    { name: "Hearthstone tip", where: "Top of the screen", what: "When you pick up quests in a zone while your Hearthstone still points somewhere else, a tip names the inn to switch to (once per zone)." },
     { name: "Sell junk button", where: "On every vendor window", what: "Lists your grey items and what they're worth. Sells them only when you click it, and never in combat." },
     { name: "Live strip", where: "A thin coloured line, top-left corner", what: "How the desktop app knows where you are. It contains no personal data. /bf live off hides it." },
   ]);

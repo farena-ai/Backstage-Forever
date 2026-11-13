@@ -68,7 +68,7 @@ function compile() {
     const n = pack.npcs[`npc:${g.id}`]; const p = n?.positions?.[0]; if (!p) continue;
     (givers[p.mapId] ||= []).push({ q: q.id, t: short(q.title), l: q.level, m: q.minLevel || undefined, s: side(q.sides), n: short(n.name, 40), x: p.x, y: p.y });
   }
-  const zones = loadLevelingPack().zones.map((z) => ({ m: z.mapId, lo: z.min, hi: z.max, f: z.faction[0], h: z.towns?.Horde?.[0], a: z.towns?.Alliance?.[0] }));
+  const zones = loadLevelingPack().zones.map((z) => ({ m: z.mapId, lo: z.min, hi: z.max, f: z.faction[0], h: z.towns?.Horde?.[0], a: z.towns?.Alliance?.[0], th: z.towns?.Horde?.length ? z.towns.Horde : undefined, ta: z.towns?.Alliance?.length ? z.towns.Alliance : undefined }));
   const data = { build: pack.build, attribution: "Quest and NPC data from Efficient Games (https://efficient.games), CC BY 4.0. Zone levels: Backstage Coding review.", npcs, givers, zones };
   return [
     "-- Generated offline by scripts/build-addon-advisor.cjs; do not edit.",
