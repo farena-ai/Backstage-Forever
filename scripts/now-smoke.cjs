@@ -99,6 +99,10 @@ const { defaultState } = require("../src/core/validation.cjs");
       assert.equal(got.title, want.goal.title, `link ${i} shows its goal`);
       if (i === 0) await page.screenshot({ path: path.join(capture, "now-to-map.png") });
     }
+    // Leave the audit on a map focused on a Now link (the loop may end on Now).
+    await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
+    await page.locator("[data-now-map]").first().click(); await page.locator("[data-world-map]").waitFor();
+    await page.waitForFunction(() => Boolean(WorldMapView._state().focused));
     // "Show the full map" leaves focus mode.
     await page.locator('[data-wm-act="unfocus"]').click();
     assert.equal(await page.evaluate(() => WorldMapView._state().focused), null);
