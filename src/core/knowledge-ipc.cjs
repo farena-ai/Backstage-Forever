@@ -81,6 +81,15 @@ function registerKnowledgeHandlers({
       if (result.waypoint?.destination?.mapId) ids.add(result.waypoint.destination.mapId);
       result.mapNames = Object.fromEntries([...ids].filter((id) => MAP_NAMES[id]).map((id) => [id, MAP_NAMES[id]]));
     } catch {}
+    // What each objective is ("Southsea Brigand", "Silithid Egg"), from the reference's own names.
+    try {
+      const pack = index.pack, names = {};
+      for (const o of result.record?.objectives || []) {
+        const n = o.type === "monster" ? pack.creatures?.[String(o.objectId)]?.name : o.type === "item" ? pack.items?.[String(o.objectId)]?.name : null;
+        if (typeof n === "string" && n) names[o.index] = { type: o.type, name: n };
+      }
+      if (Object.keys(names).length) result.objectiveNames = names;
+    } catch {}
     const insights = getInsights();
     if (insights) {
       result.insights =
