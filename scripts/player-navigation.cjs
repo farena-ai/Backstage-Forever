@@ -62,7 +62,7 @@ async function navigate(page, id) {
   );
   for (const token of actions) await finishRendererAction(page, token);
 }
-async function clickCompanionTool(page, tool) {
+async function clickCompanionTool(page, tool, timeout) {
   const panel = page.locator(`[data-player-tool="${tool}"]`);
   // Native details state changes before its queued toggle handler runs.
   await panel.evaluate((n) => {
@@ -72,12 +72,16 @@ async function clickCompanionTool(page, tool) {
   await panel.locator(":scope > summary").click();
   await page.waitForFunction((tool) =>
     document.querySelector(`[data-player-tool="${tool}"]`)?.smokeToggleAcknowledged === true,
-  tool);
+  tool, timeout ? { timeout } : undefined);
 }
 async function setCompanionToolOpen(page, tool, open) {
   const panel = page.locator(`[data-player-tool="${tool}"]`);
-  if ((await panel.evaluate((n) => n.open)) !== open)
-    await clickCompanionTool(page, tool);
+  // A re-render can swap the panel between the click and its toggle handler; wait for the state itself
+  // and retry a lost click rather than waiting forever on the old node.
+  for (let attempt = 0; attempt < 3 && (await panel.evaluate((n) => n.open)) !== open; attempt++) {
+    await clickCompanionTool(page, tool, 10000).catch(() => {});
+    await page.waitForFunction(({ tool, open }) => document.querySelector(`[data-player-tool="${tool}"]`)?.open === open, { tool, open }, { timeout: 5000 }).catch(() => {});
+  }
   assert.equal(await panel.evaluate((n) => n.open), open);
 }
 async function ensureCompanionTools(page, tool) {
