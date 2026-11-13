@@ -1,5 +1,9 @@
 # Backstage Forever
 
+## 0.26: follow the steps
+
+`/bf route` puts a step-by-step guide in the game, with the arrow on each step. Enemies you need show your quest progress in their tooltips, Now opens with a painted "You are here" card for your zone, and the World Map has painted pins. See the [0.26.0 release notes](docs/releases/0.26.0.md).
+
 ## 0.25: always current
 
 With the live link on, Now follows your quest log as you play: quests you hand in show as Completed straight away, no `/reload` needed. The companion answers quest how-to, next steps and training with no AI set up, and one click on Now gets everything installed. See the [0.25.0 release notes](docs/releases/0.25.0.md).

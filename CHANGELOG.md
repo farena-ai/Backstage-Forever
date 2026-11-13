@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.26.0 — follow the steps, 2026-11-13
+
+- **`/bf route`:** an in-game step frame for the current zone (pick up, objectives, hand in) in least-walking order, carried quests first. The game's arrow is on the current step, and the guide moves on by itself as you accept and hand in quests. `next`, `back` and `arrow` options.
+- **Quest progress in enemy tooltips:** kills are matched by name; drops come from what you've looted from that enemy.
+- **You are here:** a zone card on Now with the level fit, quests for your level and the hub, the inn, the flight master, your trainer, repairs, profession trainers and careful ground, each with a map button.
+- **Zone arrival banners** in the app and in game.
+- **Painted map pins:** original medallions for the main World Map pin kinds, and painted banners for Orgrimmar and Stormwind.
+
 ## 0.25.0 — always current, 2026-11-13
 
 - **Live quest log.** A second row on the live strip pages through your quest log (with done flags) and the quests you've turned in this session. Now prefers it over the last save: handed-in quests leave Now at once and show under **Just completed** with a Completed tag. The Quest log card says Live or "from your last save".

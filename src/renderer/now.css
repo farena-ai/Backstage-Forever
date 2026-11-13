@@ -188,12 +188,14 @@
 .now-zr-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; color: #2b1b0a; }
 .now-zr-item small { color: #6b4a22; }
 .now-zr-item button { margin-left: auto; }
-.now-zr-ico { flex: none; width: 34px; height: 34px; border-radius: 50%; background: #3a220d center / cover no-repeat; border: 1.5px solid #8a5a18; box-shadow: 0 2px 4px rgba(0,0,0,.3); }
-.now-zr-quest { background-image: url("art/steps/quest.png"); }
-.now-zr-inn { background-image: url("art/steps/rested.png"); }
-.now-zr-flight { background-image: url("art/steps/flight.png"); }
-.now-zr-train, .now-zr-prof { background-image: url("art/steps/train.png"); }
-.now-zr-repair { background-image: url("art/steps/repair.png"); }
+.now-zr-ico { flex: none; width: 38px; height: 38px; border-radius: 50%; background: transparent center / contain no-repeat; filter: drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
+.now-zr-danger { background-color: #3a220d; border: 1.5px solid #8a1f14; background-size: cover; }
+.now-zr-quest { background-image: url("art/pins/quest-giver.png"); }
+.now-zr-inn { background-image: url("art/pins/inn.png"); }
+.now-zr-flight { background-image: url("art/pins/flight.png"); }
+.now-zr-train { background-image: url("art/pins/class-trainer.png"); }
+.now-zr-prof { background-image: url("art/pins/profession-trainer.png"); }
+.now-zr-repair { background-image: url("art/pins/vendor.png"); }
 .now-zr-danger { background-image: url("art/steps/death.png"); border-color: #8a1f14; }
 
 /* Zone arrival banner (G2). */
@@ -229,3 +231,5 @@
 .now-page .now-zonecard .now-zr-item button[data-now-map]:hover { transform: none; background: linear-gradient(180deg, #8a4a18, #5a2c0a); }
 .now-zr-item { padding: 2px 0; border-bottom: 1px dashed rgba(138,90,24,.25); }
 .now-zr-item:last-child { border-bottom: 0; }
+.now-zc-head.biome-warcamp, .bf-arrive.biome-warcamp, .now-page .now-zones li.biome-warcamp button { background-image: url("art/zones/warcamp.webp"); }
+.now-zc-head.biome-citadel, .bf-arrive.biome-citadel, .now-page .now-zones li.biome-citadel button { background-image: url("art/zones/citadel.webp"); }

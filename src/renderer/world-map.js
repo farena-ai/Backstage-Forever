@@ -97,9 +97,23 @@ window.WorldMapView = (() => {
   function hammer(g, x, y, s) { g.save(); g.translate(x, y); g.rotate(-0.6); g.fillStyle = "#fff4dc"; g.fillRect(-s * 0.15, -s * 0.3, s * 0.3, s * 1.3); g.fillRect(-s * 0.75, -s * 0.85, s * 1.5, s * 0.6); g.restore(); }
   function coin(g, x, y, s) { g.beginPath(); g.arc(x, y, s, 0, 7); g.fillStyle = "#f4cf5a"; g.fill(); g.strokeStyle = "#5a3a0c"; g.lineWidth = 1.3; g.stroke(); text(g, "g", x, y - 0.5, s * 1.4, "#5a3a0c"); }
   function star(g, x, y, s) { g.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? s * 0.45 : s, a = -Math.PI / 2 + (i * Math.PI) / 5; g.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)); } g.closePath(); g.fillStyle = "#ffe27a"; g.fill(); g.strokeStyle = "#5a3a0c"; g.lineWidth = 1; g.stroke(); }
+  // Painted medallions (original ComfyUI art) for the main pin kinds; vector shapes stay as the fallback.
+  const PAINTED = {};
+  for (const k of ["quest-giver", "quest-turnin", "flight", "class-trainer", "profession-trainer", "vendor", "herb", "ore", "instance"]) {
+    if (typeof Image !== "function") break;
+    const im = new Image(); im.onload = () => { PAINTED[k] = im; try { draw(); } catch {} }; im.src = `art/pins/${k}.png`;
+  }
   // Draw one pin icon centred on (x, y) with radius r into any 2D context.
   function icon(g, kind, x, y, r, { gather = null, zoom = 1 } = {}) {
-    const k = kind;
+    const k = kind === "find" ? (gather === "ore" ? "ore" : "herb") : kind;
+    const art = PAINTED[k];
+    if (art && kind !== "find") {
+      if (k === "quest-turnin") { g.beginPath(); g.arc(x, y, r * 1.45, 0, 7); g.fillStyle = "rgba(255,214,80,0.30)"; g.fill(); }
+      const s = r * 2.8;
+      g.save(); g.shadowColor = "rgba(0,0,0,0.55)"; g.shadowBlur = r * 0.6; g.shadowOffsetY = r * 0.15;
+      g.drawImage(art, x - s / 2, y - s / 2, s, s); g.restore();
+      return;
+    }
     if (k === "npc") { fillShape(g, poly(g, x, y, r * 0.45, 4, Math.PI / 4), COLORS.npc, x, y, r * 0.45); return; }
     if (k === "town") return;
     if (k === "objective-area") { const gr = g.createRadialGradient(x, y, 0, x, y, r * 1.2); gr.addColorStop(0, "rgba(242,210,27,0.85)"); gr.addColorStop(1, "rgba(242,210,27,0.1)"); g.beginPath(); g.arc(x, y, r * 1.2, 0, 7); g.fillStyle = gr; g.fill(); g.setLineDash([3, 2]); g.strokeStyle = "#6b4a10"; g.lineWidth = 1.3; g.stroke(); g.setLineDash([]); return; }

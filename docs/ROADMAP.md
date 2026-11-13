@@ -245,7 +245,7 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
   - Moved to 0.24: D7 card system, gear review with icons on Characters, 1.9 remote live-link check.
 - **0.24 (shipped):** Quest intel Q1–Q6, 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness, gear review with icons. D7 card system moves to 0.25.
 - **0.25 (shipped):** N1–N3 Now fixes, R1–R3 always current without /reload (live quest log pages), F1 quick answers with no AI, E10 one-click setup (first part: Set it all up on Now). 2.3 route stepper moves to 0.26.
-- **0.26:** 2.3/A2 route stepper with an in-game step frame and arrow, A1 objectives on mobs and in tooltips, E1 zone briefing, G2 zone arrival banners, G3 painted map pins.
+- **0.26 (shipped):** 2.3/A2 route stepper (`/bf route`, step frame, arrow), A1 objective progress in enemy tooltips (overhead icons come later), E1 zone briefing, G2 zone arrival banners, G3 painted map pins and city banners.
 - **0.27:** F2 "Turn on free AI" one click (built-in local engine), F3 free cloud fallback, E2 supplies, E3 trainer planner, A9 class helpers, G1 living heroes.
 - **0.28:** 2.8 + E8 professions with A6 gathering memory, D7/E11/A14 card and tooltip system, E9 rested planner, A3 speed splits, G7 badges.
 - **0.29:** A4 dungeon loot browser, A5 boss tips, G6 dungeon art, E7 death review, A8 session stats, G8 celebrations part 2.

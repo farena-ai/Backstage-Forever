@@ -274,7 +274,7 @@ test("failed snapshot consumer is retried instead of acknowledged", async (t) =>
   await sync.refresh();
   assert.equal(calls, 2);
 });
-test("managed prepare repairs nineteen owned files, keeps extras, and reports snapshot health", async (t) => {
+test("managed prepare repairs twenty owned files, keeps extras, and reports snapshot health", async (t) => {
   const f = await fixture(t),
     addon = path.join(f.dir, "source");
   await fs.mkdir(addon);
