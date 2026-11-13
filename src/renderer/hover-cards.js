@@ -40,12 +40,22 @@ window.HoverCards = (() => {
     card.style.left = `${left}px`; card.style.top = `${top}px`;
   }
   function hide() { clearTimeout(timer); timer = null; current = null; card?.remove(); card = null; }
+  const SEL = "[data-quest-open], [data-card-quest]";
+  // A page can redraw while the mouse rests on a quest: find the same quest under the pointer again.
+  function under(el, x, y) {
+    if (el.isConnected) return el;
+    const again = document.elementFromPoint?.(x, y)?.closest?.(SEL);
+    return again && (again.dataset.questOpen || again.dataset.cardQuest) === (el.dataset.questOpen || el.dataset.cardQuest) ? again : null;
+  }
   function show(el, x, y) {
     const id = Number(el.dataset.questOpen || el.dataset.cardQuest);
     if (!Number.isSafeInteger(id) || id <= 0) return;
     current = el;
     details(id).then((d) => {
-      if (current !== el || !el.isConnected) return;
+      if (current !== el) return;
+      const now = under(el, x, y);
+      if (!now) return;
+      current = el = now;
       const html = markup(d);
       if (!html) return;
       card?.remove();
@@ -60,7 +70,7 @@ window.HoverCards = (() => {
   function bind() {
     if (typeof document === "undefined" || !document.addEventListener) return;
     document.addEventListener("mouseover", (e) => {
-      const el = e.target.closest?.("[data-quest-open], [data-card-quest]");
+      const el = e.target.closest?.(SEL);
       if (!el) { if (current && !e.target.closest?.(".hover-card")) hide(); return; }
       if (el === current) return;
       hide();
@@ -69,7 +79,10 @@ window.HoverCards = (() => {
       timer = setTimeout(() => show(el, x, y), 350);
     });
     document.addEventListener("mousemove", (e) => { if (card && current) place(e.clientX, e.clientY); });
-    for (const ev of ["scroll", "mousedown", "keydown"]) document.addEventListener(ev, hide, true);
+    for (const ev of ["mousedown", "keydown"]) document.addEventListener(ev, hide, true);
+    // Scrolling moves the quest away from the card: drop a shown card, but a redraw that only
+    // restores a scroll position must not cancel the card that's about to appear.
+    document.addEventListener("scroll", () => { if (card) hide(); }, true);
   }
   bind();
   return { _markup: markup, hide };

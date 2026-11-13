@@ -117,8 +117,11 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
     const questIds = [...new Set(await page.locator("[data-now-body] [data-quest-open]").evaluateAll((els) => els.map((e) => Number(e.dataset.questOpen))))].slice(0, 4);
     assert.ok(questIds.length >= 2);
-    for (const id of questIds) {
-      await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
+    // Now can refresh between visits (new advice after a live frame), so read its quests each time.
+    for (let i = 0; i < questIds.length; i++) {
+      await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor(); await page.waitForTimeout(300);
+      const shown = [...new Set(await page.locator("[data-now-body] [data-quest-open]").evaluateAll((els) => els.map((e) => Number(e.dataset.questOpen))))];
+      const id = shown[i] ?? shown[0];
       await page.locator(`[data-now-body] [data-quest-open="${id}"]`).first().click();
       await page.locator(`[data-quest-control="detail:${id}"]`).waitFor();
     }
