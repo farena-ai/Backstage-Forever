@@ -1,5 +1,9 @@
 # Backstage Forever
 
+## 0.27: free AI for everyone
+
+One click on the Companion page turns on a free AI that runs on your own PC, or paste a free Gemini or Groq key. Now shows your upcoming training with spell icons, and in game Backstage Forever reminds you about ammo, food, your pet and more. See the [0.27.0 release notes](docs/releases/0.27.0.md).
+
 ## 0.26: follow the steps
 
 `/bf route` puts a step-by-step guide in the game, with the arrow on each step. Enemies you need show your quest progress in their tooltips, Now opens with a painted "You are here" card for your zone, and the World Map has painted pins. See the [0.26.0 release notes](docs/releases/0.26.0.md).

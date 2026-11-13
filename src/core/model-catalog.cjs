@@ -101,7 +101,7 @@ async function listModels(
         );
       return await adapter.listModels();
     }
-    if (provider !== "ollama" && !apiKey)
+    if (!v.NO_KEY.has(provider) && !apiKey)
       return result(
         [],
         source,
@@ -111,10 +111,11 @@ async function listModels(
     if (provider === "anthropic") {
       headers["x-api-key"] = apiKey;
       headers["anthropic-version"] = "2023-06-01";
-    } else if (provider !== "ollama")
+    } else if (!v.NO_KEY.has(provider))
       headers.Authorization = "Bearer " + apiKey;
     const native = provider === "ollama" || provider === "ollama-cloud";
-    let route = native ? "/api/tags" : "/v1/models";
+    const prefix = v.OPENAI_PREFIX[provider] || "/v1";
+    let route = native ? "/api/tags" : prefix + "/models";
     const models = [],
       seen = new Set();
     let completed = false;
@@ -146,7 +147,7 @@ async function listModels(
       if (typeof cursor !== "string" || cursor.length > 200 || !cursor)
         throw Error("catalog");
       route =
-        "/v1/models?" +
+        prefix + "/models?" +
         new URLSearchParams({
           [provider === "anthropic" ? "after_id" : "after"]: cursor,
           limit: "100",

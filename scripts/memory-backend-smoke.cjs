@@ -60,7 +60,7 @@ function shortPath(target) {
     assert.equal((await call("saveMemory", { profileId: "Alpha", responseId: draft.responseId })).memories[0].exchanges.length, 1);
     await writeGame(); const observed = await call("prepareGame", game); assert.equal(observed.state.memories[0].exchanges[0].id, id); assert.equal(observed.state.profiles.find(p => p.id === "Beta").level, 13); assert.equal(observed.state.profiles.length, 2);
     const preview = await call("memoryPreview", { profileId: "Alpha", prompt: "Explain the quest route", memoryIds: [id] });
-    for (const provider of providers) {
+    for (const provider of providers.filter((p) => p.id !== "local")) { // the free local engine has its own smoke (test:free-ai)
       await call("saveProvider", { provider: provider.id, model: "fixture", endpoint: provider.id === "ollama" ? endpoint : provider.endpoint, authMode: "api" });
       await ask("Explain the quest route", [id], provider.id); assert.equal((await app.evaluate(() => memoryFixture.requests.at(-1))).prompt, preview.prompt);
     }
@@ -68,7 +68,7 @@ function shortPath(target) {
       await call("saveProvider", { provider, model: "fixture", authMode: "subscription" });
       await ask("Explain the quest route", [id], provider); assert.equal((await app.evaluate(() => memoryFixture.requests.at(-1))).prompt, preview.prompt);
     }
-    assert.equal(seen.length, 8); assert.doesNotMatch(JSON.stringify(seen), /PRIVATE_NOTE|PRIVATE_GOAL|PRIVATE_RAW_SOURCE/);
+    assert.equal(seen.length, 3 + providers.filter((p) => p.id !== "local").length); assert.doesNotMatch(JSON.stringify(seen), /PRIVATE_NOTE|PRIVATE_GOAL|PRIVATE_RAW_SOURCE/);
     assert.ok((await app.evaluate(() => memoryFixture.retrievalPrompts)).every(prompt => ["Where is my quest?", "Explain the quest route"].includes(prompt)));
     await call("saveProvider", { provider: "ollama", model: "fixture", endpoint, authMode: "api" });
     await assert.rejects(() => ask("q".repeat(12000), [id]), /fewer exchanges|prompt budget/); assert.equal(await call("memoryDraft", "Alpha"), null);

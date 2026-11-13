@@ -37,7 +37,33 @@ const providers = [
     endpoint: "https://api.x.ai",
     help: "Requires separate API access and billing.",
   },
+  {
+    id: "local",
+    name: "Free AI on this PC",
+    endpoint: "http://127.0.0.1:41234",
+    help: "Free and private: a small AI model runs on your own computer. Turn it on with one click; nothing leaves your PC.",
+    free: true,
+  },
+  {
+    id: "gemini",
+    name: "Google Gemini (free key)",
+    endpoint: "https://generativelanguage.googleapis.com",
+    help: "Free key from Google AI Studio. The free tier has daily limits, and Google may use free-tier questions to improve its products.",
+    free: true,
+    keyUrl: "https://aistudio.google.com/apikey",
+  },
+  {
+    id: "groq",
+    name: "Groq (free key)",
+    endpoint: "https://api.groq.com",
+    help: "Free key from GroqCloud. Fast, with per-minute and daily limits on the free tier.",
+    free: true,
+    keyUrl: "https://console.groq.com/keys",
+  },
 ];
+// OpenAI-compatible path prefix per provider (chat is PREFIX + "/chat/completions", models PREFIX + "/models").
+const OPENAI_PREFIX = { xai: "/v1", local: "/v1", gemini: "/v1beta/openai", groq: "/openai/v1" };
+const NO_KEY = new Set(["ollama", "local"]);
 function fail() {
   throw new Error("Invalid data. Please check the selected fields or backup.");
 }
@@ -240,6 +266,8 @@ function validateState(s) {
 }
 module.exports = {
   providers,
+  OPENAI_PREFIX,
+  NO_KEY,
   defaultState,
   validateState,
   endpoint,
