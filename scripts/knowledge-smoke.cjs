@@ -70,7 +70,7 @@ function shortPath(target){
       realm: "Fictional Realm",
       level: 24,
       updatedAt: Date.now() / 1000,
-      clientBuild: "1.60.1.70862",
+      clientBuild: "1.60.1.70888",
       captureVersion: "0.6.0",
       locale: "enUS",
       location: {
@@ -254,7 +254,7 @@ function shortPath(target){
       .click();
     assert.equal(
       (await app.evaluate(() => globalThis.knowledgeCopies)).at(-1),
-      "/bf guide 2000001 o 888 0.2500 0.7500 1.60.1.70862",
+      "/bf guide 2000001 o 888 0.2500 0.7500 1.60.1.70888",
     );
     await page.locator('.quest-ledger-row[data-quest-id="1061"]').click();
     await page
@@ -274,7 +274,7 @@ function shortPath(target){
       .click();
     assert.equal(
       (await app.evaluate(() => globalThis.knowledgeCopies)).at(-1),
-      "/bf guide 1061 t 999 0.1235 0.6543 1.60.1.70862",
+      "/bf guide 1061 t 999 0.1235 0.6543 1.60.1.70888",
     );
     assert.equal(await page.locator('.quest-atlas-art').count(),1,"Quest atlas must be image-led with original class art");
     assert.match(await page.locator('.quest-waypoint').innerText(),/Quest area reported by the game; not an exact NPC or spawn location/);
@@ -758,7 +758,7 @@ function shortPath(target){
       characters[0].quests.length,
     );
     await capture("quest-guide-build-mismatch.png");
-    characters[0].clientBuild = "1.60.1.70862";
+    characters[0].clientBuild = "1.60.1.70888";
     characters[0].quests[0].title = "Current hotfix title";
     characters[0].updatedAt++;
     await write();

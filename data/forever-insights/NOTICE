@@ -1,22 +1,30 @@
 Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
 License: https://creativecommons.org/licenses/by/4.0/
 Source: https://github.com/JIVESCORP/eg-link-output-wowf
-Immutable source commit: 23f9636486d3d60479dc0bcee2356053c33faf2c
-Product wowf; build 1.60.1.70862. Collected November 7–9, 2026.
+Immutable source commit: 164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1
+Product wowf; merged builds (newest first) 1.60.1.70888, 1.60.1.70862,
+1.60.1.70840, 1.60.1.70790. Collected November 4–12, 2026.
 
 Backstage Forever normalization changes: separately compiled bounded quest
 sharing counts, starting-item IDs, static durations, reported item/count drops,
 four-source exact-ID/name trainer joins and observed service listings, and
 status-valid enUS item names. Malformed optional rows are omitted and counted.
+Each build is normalized separately and the results are merged newest-first:
+rows are unioned by exact ID, scalar facts come from the newest build, trainer
+positions, observed reactions and service listings are unioned with caps, and a
+reported service level replaces an unknown (zero) one. When a build's creature
+cache lacks a trainer, its enUS title may come from another pinned build's
+record with the same exact ID and name.
 Descriptions, costs, ambiguous abilities, narrative text, race masks, game
 assets and personal saved records are excluded. Per-file metadata, byte sizes,
 hashes and immutable URLs are preserved in pack.json/source-lock.json.
 
-Compilation and player observations are licensed by Efficient Games. Seven
-files are from one publisher, not seven independent witnesses. Observation
+Compilation and player observations are licensed by Efficient Games. The
+files are from one publisher, not independent witnesses. Observation
 names have unspecified locale; enUS cache names do not establish their locale.
-Counts describe source saved files/recorded answers, not distinct people,
-independent witnesses, confidence or probabilities. Level zero remains unknown
+Counts describe source saved files/recorded answers (the largest single-build
+count after merging), not distinct people, independent witnesses, confidence
+or probabilities. Level zero remains unknown
 requirement/already-known ambiguity. Positive levels are reported levels, not
 learned status or proof of eligibility. Positions approximate where a window
 was opened; current location, faction access and availability remain unknown.

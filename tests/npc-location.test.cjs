@@ -32,3 +32,9 @@ test('display truncation cannot deny a requested city present in the complete ch
  const r=resolve('where in org is Cairne Bloodhoof',{shareProfile:true,currentIndex:index});
  assert.equal(r.dto.status,'found');assert.equal(r.dto.entities[0].positions.length,3);assert.equal(r.dto.entities[0].additionalPositions,1);assert.match(r.text,/1 additional historical points are not shown/);assert.doesNotMatch(r.text,/don't have a verified Orgrimmar location/);
 });
+test('Alliance city questions resolve merged-build NPCs with city labels and per-NPC build provenance',()=>{
+ const r=resolve('Where in Stormwind is Morgan Pestle?');
+ assert.equal(r.dto.status,'found');assert.equal(r.dto.entities[0].positions[0].mapLabel,'Stormwind City');assert.equal(r.dto.entities[0].build,'1.60.1.70790');
+ assert.match(r.text,/Stormwind City, around 63\.2, 74\.5/);assert.doesNotMatch(r.text,/don't have a verified/);assert.match(r.text,/data\/wowf\/1\.60\.1\.70790/);
+ assert.match(resolve('Where in Ironforge is Morgan Pestle?').text,/don't have a verified Ironforge location/);
+});

@@ -321,7 +321,7 @@ test("subscription receives bounded sourced quest facts without full local histo
         assert.match(body, /referenceStatus/);
         assert.match(body, /conflict/);
       }
-      assert.match(body, /23f96364/);
+      assert.match(body, /164bd1e2/);
     }
   } finally {
     f.close();

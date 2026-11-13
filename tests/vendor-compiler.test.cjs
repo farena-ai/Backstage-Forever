@@ -1,11 +1,13 @@
 "use strict";
 const test = require("node:test"), assert = require("node:assert/strict"), fs = require("node:fs"), path = require("node:path"), os = require("node:os"), crypto = require("node:crypto");
-test("new immutable quest pin records exact six byte hashes and current coverage", () => {
+test("new immutable quest pin records exact six byte hashes per merged build and current coverage", () => {
   const lock = require("../data/forever/source-lock.json"), pack = require("../data/forever/pack.json");
-  assert.equal(lock.commit, "23f9636486d3d60479dc0bcee2356053c33faf2c");
-  const exact = { "quests.enUS.json": [4141584, "fece8cc749952f9a3eb8eeb223e6ebaea3d4d8244dd6ebd7c18091e93f5bed47"], "npcs.json": [499984, "aaa77747a6ad15f2828168e784fe0d639c9ced14c696a830bdb1688a22a9aded"], "creature_details.enUS.json": [1241957, "72afc6745c756677b4e101ce164ce07436dec522bc8c12edcffe4604b05d4815"], "item_hotfixes.enUS.json": [644620, "8e8bf3106d50a8d0aaff6407c819c7e30e4410c892d5c93530534bfa07512f61"], "turn_ins.json": [156520, "bac5562db3bb9c8ae2f95faecedfa284cd987f28baec9f9efdf08f08ead6db4b"], "objectives.json": [175063, "3079a4124789c0dc651c3c35322f204338d54445e92c10940e0a4716f75beff9"] };
-  for (const [name, [bytes, sha256]] of Object.entries(exact)) { assert.equal(lock.files[name].bytes, bytes); assert.equal(lock.files[name].sha256, sha256); assert.equal(lock.files[name].meta.license, "CC BY 4.0"); assert.equal(lock.files[name].meta.clientBuild, lock.build); assert.equal(pack.files[name].sha256, sha256); }
-  assert.equal(pack.counts.quests, 3884); assert.equal(pack.counts.npcs, 341); assert.equal(pack.counts.objects, 36);
+  assert.equal(lock.commit, "164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1");
+  const exact = { "quests.enUS.json": [5178761, "433fc57290a162eca1c688c277a96234d39b7198edb1326ed4d6ec8fa4a65d60"], "npcs.json": [298166, "c2b1b2e0ab58c187835428223c23f87c5a43bb36af51d20f1c6fd1c28fa60722"] };
+  const primary = lock.builds[0].files;
+  for (const [name, [bytes, sha256]] of Object.entries(exact)) { assert.equal(primary[name].bytes, bytes); assert.equal(primary[name].sha256, sha256); assert.equal(pack.files[name].sha256, sha256); }
+  for (const b of lock.builds) for (const [name, f] of Object.entries(b.files)) { assert.equal(f.meta.license, "CC BY 4.0"); assert.equal(f.meta.clientBuild, b.build); assert.equal(pack.builds.find((p) => p.build === b.build).files[name].sha256, f.sha256); }
+  assert.equal(pack.counts.quests, 4916); assert.equal(pack.counts.npcs, 978); assert.equal(pack.counts.objects, 91);
 });
 test("seller compiler verifies locked bytes and exact metadata, reproduces bundle offline without research files", t => {
   const modulePath = path.join(__dirname, "../scripts/build-forever-vendors.cjs"); assert.ok(fs.existsSync(modulePath), "Locked seller compiler must exist");

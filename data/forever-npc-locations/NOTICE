@@ -1,13 +1,17 @@
 Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
 License: https://creativecommons.org/licenses/by/4.0/
 Source: https://github.com/JIVESCORP/eg-link-output-wowf
-Immutable source commit: 3067c6919046428152f2152fa551f44a8c215d79
-Product wowf; build 1.60.1.70790. File collection November 9-11, 2026.
+Immutable source commit: 164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1
+Product wowf; merged builds (newest first) 1.60.1.70888, 1.60.1.70862,
+1.60.1.70840, 1.60.1.70790. File collection November 9-12, 2026.
 
-Backstage Forever normalization: all 616 NPC identities and 758 bounded map
-interaction points, names, contributing-file counts and per-NPC lastSeen.
+Backstage Forever normalization: each build's npcs.json is normalized
+separately, then merged newest-first into 978 NPC identities and 1786 bounded
+map interaction points (union with exact dedupe, at most eight points per NPC),
+names (newest build wins), contributing-file counts (largest single-build
+count), the newest build that observed each NPC and per-NPC lastSeen.
 Gossip, options, world coordinates, levels, objects, approached entities and
-personal records are excluded. Raw file size/hash/metadata and compiled
+personal records are excluded. Raw file sizes/hashes/metadata and compiled
 size/hash are pinned in source-lock.json. No runtime network request is needed.
 
 These historical player interaction points are approximate, not guaranteed

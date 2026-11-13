@@ -39,7 +39,7 @@ function buildStaticIndex({ knowledgePack = null, npcReference = null, travelRef
   const seen = new Set();
   const npcRows = [];
   if (knowledgePack) for (const n of Object.values(knowledgePack.npcs || {})) if (n.kind === "npc") npcRows.push({ ...n, build: knowledgePack.build, tier: "observed" });
-  for (const n of npcReference?.npcs || []) npcRows.push({ ...n, build: npcReference.build, tier: "historical" });
+  for (const n of npcReference?.npcs || []) npcRows.push({ ...n, build: n.build || npcReference.build, tier: "historical" });
   for (const n of npcRows) {
     const s = special.get(n.id);
     const positions = n.positions?.length ? n.positions : s?.positions || [];

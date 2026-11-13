@@ -13,7 +13,11 @@ const BUILD = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/;
 const COMMIT = /^[a-f0-9]{40}$/;
 const ATTRIBUTION =
   "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.";
-const LIMIT = 4 * 1024 * 1024;
+// Per-file download/compile guard. The current client build's quest file is ~5.2 MB;
+// each build's six files and the compiled pack keep their separate 12 MB bound.
+const LIMIT = 8 * 1024 * 1024;
+const TOTAL = 12 * 1024 * 1024;
+const MAX_BUILDS = 12;
 const id = (v) => Number.isSafeInteger(v) && v > 0 && v <= 2147483647;
 const number = (v, max = 2147483647) =>
   Number.isSafeInteger(v) && v >= 0 && v <= max;
@@ -79,7 +83,7 @@ function normalizeData(inputs, { commit, build } = {}) {
       typeof input === "string" || Buffer.isBuffer(input)
         ? Buffer.from(input)
         : Buffer.from(JSON.stringify(input));
-    if (bytes.length > LIMIT || (total += bytes.length) > 12 * 1024 * 1024)
+    if (bytes.length > LIMIT || (total += bytes.length) > TOTAL)
       fail();
     const d =
       typeof input === "string" || Buffer.isBuffer(input)
@@ -370,10 +374,27 @@ function normalizeData(inputs, { commit, build } = {}) {
   };
   return pack;
 }
+function validateFiles(files, commit, build) {
+  if (!object(files) || Object.keys(files).length !== FILES.length) fail();
+  for (const n of FILES) {
+    const f = files[n];
+    checkKeys(f, ["sha256", "bytes", "sources", "collectedOn", "url"]);
+    if (
+      !/^([a-f0-9]{64})$/.test(f.sha256) ||
+      !number(f.bytes, LIMIT) ||
+      !id(f.sources) ||
+      !day(f.collectedOn?.first) ||
+      !day(f.collectedOn?.last) ||
+      f.url !==
+        `https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/${commit}/data/wowf/${build}/${n}`
+    )
+      fail();
+  }
+}
 function validatePack(p) {
   if (
     !object(p) ||
-    Buffer.byteLength(JSON.stringify(p)) > 12 * 1024 * 1024 ||
+    Buffer.byteLength(JSON.stringify(p)) > TOTAL ||
     p.schemaVersion !== 1 ||
     p.product !== "wowf" ||
     !BUILD.test(p.build) ||
@@ -399,6 +420,7 @@ function validatePack(p) {
     "counts",
     "creatures",
     "items",
+    "builds",
   ]);
   if (Object.keys(p).some((k) => !allowed.has(k))) fail();
   for (const collection of ["creatures", "items"])
@@ -407,20 +429,38 @@ function validatePack(p) {
       if (!id(+key) || row.id !== +key || !text(row.name) || !id(row.sources))
         fail();
     }
-  if (!object(p.files) || Object.keys(p.files).length !== FILES.length) fail();
-  for (const n of FILES) {
-    const f = p.files?.[n];
+  validateFiles(p.files, p.sourceCommit, p.build);
+  // Multi-build packs list every merged build newest-first; the first entry is the
+  // pack's own build/commit/files, so single-build consumers stay unchanged.
+  if (p.builds !== undefined) {
     if (
-      !object(f) ||
-      !/^([a-f0-9]{64})$/.test(f.sha256) ||
-      !number(f.bytes, LIMIT) ||
-      !id(f.sources) ||
-      !day(f.collectedOn?.first) ||
-      !day(f.collectedOn?.last) ||
-      f.url !==
-        `https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/${p.sourceCommit}/data/wowf/${p.build}/${n}`
+      !Array.isArray(p.builds) ||
+      p.builds.length < 1 ||
+      p.builds.length > MAX_BUILDS
     )
       fail();
+    const seen = new Set();
+    p.builds.forEach((b, i) => {
+      checkKeys(b, ["build", "sourceCommit", "observedThrough", "files"]);
+      const key = `${b.build}@${b.sourceCommit}`;
+      if (
+        !BUILD.test(b.build) ||
+        !COMMIT.test(b.sourceCommit) ||
+        !day(b.observedThrough) ||
+        b.observedThrough > p.observedThrough ||
+        seen.has(key)
+      )
+        fail();
+      seen.add(key);
+      validateFiles(b.files, b.sourceCommit, b.build);
+      if (
+        i === 0 &&
+        (b.build !== p.build ||
+          b.sourceCommit !== p.sourceCommit ||
+          JSON.stringify(b.files) !== JSON.stringify(p.files))
+      )
+        fail();
+    });
   }
   for (const [key, q] of entries(p.quests)) {
     checkKeys(q, [
@@ -614,6 +654,7 @@ function validatePack(p) {
     "last",
     "url",
     ...FILES,
+    "builds",
     "observedQuests",
     "objects",
     "approachedObjects",
@@ -640,6 +681,175 @@ function validatePack(p) {
   }
   walk(p);
   return p;
+}
+// Bounded caps for unions; they never exceed the validator's own array limits.
+const MERGE_CAPS = Object.freeze({
+  positions: 100,
+  refs: 100,
+  mentions: 10,
+  objectivePositions: 100,
+  observedXP: 50,
+});
+const pointKey = (p) => `${p.mapId}:${p.x}:${p.y}`;
+function union(lists, key, cap) {
+  const seen = new Set(),
+    out = [];
+  for (const list of lists)
+    for (const row of list || []) {
+      const k = key(row);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(structuredClone(row));
+      if (out.length >= cap) return out;
+    }
+  return out;
+}
+const newest = (rows, field) => rows.find((r) => r[field] !== undefined)?.[field];
+const latestDay = (values) =>
+  values.filter((v) => v !== undefined).sort().at(-1);
+const hasRewards = (r) =>
+  r.items.length > 0 || r.choices.length > 0 || r.moneyCopper !== undefined;
+function mergeQuest(rows) {
+  const [head] = rows;
+  const q = {
+    id: head.id,
+    title: head.title,
+    // Per-build sources count saved files; the maximum is a lower bound, never a sum.
+    sources: Math.max(...rows.map((r) => r.sources)),
+    observedInPlay: rows.some((r) => r.observedInPlay),
+    givers: union(rows.map((r) => r.givers), (r) => `${r.kind}:${r.id}`, MERGE_CAPS.refs),
+    turnIns: union(rows.map((r) => r.turnIns), (r) => `${r.kind}:${r.id}`, MERGE_CAPS.refs),
+    objectiveLocations: [],
+    mentions: union(rows.map((r) => r.mentions), (r) => `${r.kind}:${r.id}`, MERGE_CAPS.mentions),
+    rewards: structuredClone(rows.find((r) => hasRewards(r.rewards))?.rewards || head.rewards),
+  };
+  for (const k of ["level", "minLevel", "nextQuestId", "raceMask", "objectiveEvidence"]) {
+    const v = newest(rows, k);
+    if (v !== undefined) q[k] = v;
+  }
+  q.objectives = structuredClone(rows.find((r) => r.objectives.length)?.objectives || []);
+  const sides = [...new Set(rows.flatMap((r) => r.sides || []))];
+  if (sides.length) q.sides = sides;
+  // The newest build defines each objective slot; older rows only add positions to the same slot.
+  const slots = new Map();
+  for (const r of rows)
+    for (const o of r.objectiveLocations) {
+      const slot = slots.get(o.index);
+      if (!slot) slots.set(o.index, { head: o, rows: [o] });
+      else if (slot.head.type === o.type && slot.head.required === o.required)
+        slot.rows.push(o);
+    }
+  q.objectiveLocations = [...slots.values()].map(({ head: o, rows: same }) => ({
+    index: o.index,
+    type: o.type,
+    required: o.required,
+    gains: Math.max(...same.map((s) => s.gains)),
+    sources: Math.max(...same.map((s) => s.sources)),
+    positions: union(same.map((s) => s.positions), pointKey, MERGE_CAPS.objectivePositions),
+  }));
+  if (rows.some((r) => r.observedXP)) {
+    const xp = new Map();
+    for (const r of rows)
+      for (const o of r.observedXP || []) {
+        const k = `${o.level}:${o.xp}`;
+        if (!xp.has(k)) xp.set(k, { ...o });
+        else xp.get(k).sources = Math.max(xp.get(k).sources, o.sources);
+      }
+    q.observedXP = [...xp.values()].slice(0, MERGE_CAPS.observedXP);
+  }
+  return q;
+}
+function mergeNpc(rows) {
+  const [head] = rows;
+  const n = {
+    id: head.id,
+    kind: head.kind,
+    name: head.name,
+    sources: Math.max(...rows.map((r) => r.sources)),
+    positions: union(rows.map((r) => r.positions), pointKey, MERGE_CAPS.positions),
+  };
+  const lastSeen = latestDay(rows.map((r) => r.lastSeen));
+  if (lastSeen) n.lastSeen = lastSeen;
+  const side = newest(rows, "side");
+  if (side) n.side = side;
+  return n;
+}
+function mergeNamed(rows) {
+  return {
+    id: rows[0].id,
+    name: rows[0].name,
+    sources: Math.max(...rows.map((r) => r.sources)),
+  };
+}
+function gather(packs, collection) {
+  const rows = new Map();
+  for (const p of packs)
+    for (const [key, row] of Object.entries(p[collection])) {
+      if (!rows.has(key)) rows.set(key, []);
+      rows.get(key).push(row);
+    }
+  return rows;
+}
+/**
+ * Merge validated packs given newest-first. Records are unioned with bounded caps and
+ * exact dedupe; scalar facts come from the newest build that reports them. The result
+ * keeps the newest pack's build/commit/files and lists every merged build in `builds`.
+ */
+function mergePacks(packs) {
+  if (!Array.isArray(packs) || !packs.length || packs.length > MAX_BUILDS) fail();
+  const valid = packs.map((p) => validatePack(p));
+  const [head] = valid;
+  const builds = union(
+    valid.map((p) =>
+      p.builds || [
+        {
+          build: p.build,
+          sourceCommit: p.sourceCommit,
+          observedThrough: p.observedThrough,
+          files: p.files,
+        },
+      ],
+    ),
+    (b) => `${b.build}@${b.sourceCommit}`,
+    MAX_BUILDS,
+  );
+  const pack = {
+    schemaVersion: 1,
+    product: head.product,
+    build: head.build,
+    locale: head.locale,
+    sourceCommit: head.sourceCommit,
+    license: head.license,
+    attribution: head.attribution,
+    observedThrough: latestDay(valid.map((p) => p.observedThrough)),
+    files: structuredClone(head.files),
+    builds,
+    quests: {},
+    npcs: {},
+    creatures: {},
+    items: {},
+    counts: {},
+  };
+  for (const [key, rows] of gather(valid, "creatures")) pack.creatures[key] = mergeNamed(rows);
+  for (const [key, rows] of gather(valid, "items")) pack.items[key] = mergeNamed(rows);
+  for (const [key, rows] of gather(valid, "npcs")) pack.npcs[key] = mergeNpc(rows);
+  for (const [key, rows] of gather(valid, "quests")) pack.quests[key] = mergeQuest(rows);
+  const max = (k) => Math.max(...valid.map((p) => p.counts[k] || 0));
+  const npcs = Object.values(pack.npcs);
+  pack.counts = {
+    quests: Object.keys(pack.quests).length,
+    observedQuests: Object.values(pack.quests).filter((q) => q.observedInPlay).length,
+    npcs: npcs.filter((n) => n.kind === "npc").length,
+    objects: npcs.filter((n) => n.kind === "object").length,
+    // Raw-file coverage indicators: the best single build, not a cross-build sum.
+    approachedObjects: max("approachedObjects"),
+    creatureNames: Object.keys(pack.creatures).length,
+    itemNames: Object.keys(pack.items).length,
+    turnInQuests: max("turnInQuests"),
+    objectiveQuests: max("objectiveQuests"),
+    dropped: valid.reduce((n, p) => n + (p.counts.dropped || 0), 0),
+  };
+  return validatePack(pack);
 }
 class KnowledgeIndex {
   constructor(pack) {
@@ -984,8 +1194,12 @@ module.exports = {
   COMMIT,
   ATTRIBUTION,
   LIMIT,
+  TOTAL,
+  MAX_BUILDS,
+  MERGE_CAPS,
   normalizeData,
   validatePack,
+  mergePacks,
   KnowledgeIndex,
   hash,
   observedBuild,

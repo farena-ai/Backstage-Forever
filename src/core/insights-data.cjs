@@ -2,13 +2,27 @@
 const fs = require("node:fs"),
   path = require("node:path"),
   { isDeepStrictEqual } = require("node:util");
-const { COMMIT, BUILD, SOURCES } = require("./insights-sources.cjs");
+const { COMMIT, BUILD, BUILDS, SOURCES } = require("./insights-sources.cjs");
 const ATTRIBUTION =
   "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.";
-const INPUT_BYTES = 4 * 1024 * 1024,
+// Per-file and per-build input bounds (the current build's quest file is ~5.2 MB);
+// the merged multi-build pack has its own bound. Row caps cover the merged union.
+const INPUT_BYTES = 8 * 1024 * 1024,
   TOTAL_BYTES = 12 * 1024 * 1024,
   PACK_BYTES = 2 * 1024 * 1024;
-const FILES = Object.freeze(SOURCES.map((s) => s.name));
+const MAX = Object.freeze({
+  quests: 10000,
+  trainers: 300,
+  services: 20000,
+  items: 20000,
+  sources: 100,
+  builds: 12,
+});
+const FILES = Object.freeze([...new Set(SOURCES.map((s) => s.name))]);
+const BUILD_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/;
+const sourcesFor = (build) => SOURCES.filter((s) => s.build === build);
+const lastDay = (sources) =>
+  sources.map((s) => s.meta.collectedOn.last).sort().at(-1);
 const plain = (v) =>
   !!v &&
   typeof v === "object" &&
@@ -86,12 +100,56 @@ function coverage(p) {
   };
 }
 /** Strict detached reference facts. Unknown and zero observations are not eligibility. */
-function validateInsights(p) {
+function checkSources(sources, commit) {
+  list(sources, MAX.builds * FILES.length);
+  if (!sources.length) invalid();
+  const seen = new Set();
+  for (const s of sources) {
+    keys(s, ["name", "build", "bytes", "sha256", "url", "meta"]);
+    const key = `${s.build}/${s.name}`;
+    if (
+      !FILES.includes(s.name) ||
+      !BUILD_RE.test(s.build) ||
+      seen.has(key) ||
+      !integer(s.bytes, INPUT_BYTES) ||
+      !/^[a-f0-9]{64}$/.test(s.sha256) ||
+      s.url !==
+        `https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/${commit}/data/wowf/${key}` ||
+      !plain(s.meta) ||
+      s.meta.clientBuild !== s.build ||
+      s.meta.dataset !== s.name.split(".")[0] ||
+      s.meta.product !== "wowf" ||
+      s.meta.license !== "CC BY 4.0" ||
+      s.meta.attribution !== ATTRIBUTION ||
+      s.meta.schemaVersion !== 1 ||
+      !integer(s.meta.sources, MAX.sources) ||
+      !date(s.meta.collectedOn?.first) ||
+      !date(s.meta.collectedOn?.last)
+    )
+      invalid();
+    seen.add(key);
+  }
+  const builds = [...new Set(sources.map((s) => s.build))];
+  if (
+    builds.length > MAX.builds ||
+    builds.some(
+      (b) => sources.filter((s) => s.build === b).length !== FILES.length,
+    )
+  )
+    invalid();
+  return builds;
+}
+/**
+ * Strict detached reference facts. Unknown and zero observations are not eligibility.
+ * pinned (default) also requires the exact bundled multi-build provenance.
+ */
+function validateInsights(p, { pinned = true } = {}) {
   keys(p, [
     "schemaVersion",
     "kind",
     "product",
     "build",
+    "builds",
     "sourceCommit",
     "license",
     "attribution",
@@ -109,15 +167,32 @@ function validateInsights(p) {
     p.schemaVersion !== 1 ||
     p.kind !== "forever-insights" ||
     p.product !== "wowf" ||
-    p.build !== BUILD ||
-    p.sourceCommit !== COMMIT ||
+    typeof p.sourceCommit !== "string" ||
+    !/^[a-f0-9]{40}$/.test(p.sourceCommit) ||
     p.license !== "CC BY 4.0" ||
     p.attribution !== ATTRIBUTION ||
-    p.observedThrough !== "2026-11-09" ||
     p.textLocale !== "enUS" ||
     p.observationNamesLocale !== "unspecified" ||
-    !isDeepStrictEqual(p.sources, SOURCES) ||
     Buffer.byteLength(JSON.stringify(p)) > PACK_BYTES
+  )
+    invalid();
+  const builds = checkSources(p.sources, p.sourceCommit);
+  if (
+    !isDeepStrictEqual(p.builds, builds) ||
+    p.build !== builds[0] ||
+    p.observedThrough !== lastDay(p.sources) ||
+    // Pinned provenance: every listed source is one of the immutable bundled sources,
+    // in bundled newest-first order (a single pinned build is also valid).
+    (pinned &&
+      (p.sourceCommit !== COMMIT ||
+        !isDeepStrictEqual(
+          p.builds,
+          BUILDS.filter((b) => p.builds.includes(b)),
+        ) ||
+        !isDeepStrictEqual(
+          p.sources,
+          SOURCES.filter((s) => p.builds.includes(s.build)),
+        )))
   )
     invalid();
   keys(p.dropped, [
@@ -131,9 +206,9 @@ function validateInsights(p) {
     "items",
   ]);
   if (Object.values(p.dropped).some((n) => !count(n))) invalid();
-  unique(p.quests, 5000);
-  unique(p.trainers, 100);
-  unique(p.items, 10000);
+  unique(p.quests, MAX.quests);
+  unique(p.trainers, MAX.trainers);
+  unique(p.items, MAX.items);
   for (const q of p.quests) {
     keys(
       q,
@@ -142,7 +217,7 @@ function validateInsights(p) {
     );
     if (
       !text(q.title) ||
-      !integer(q.sources, 3) ||
+      !integer(q.sources, MAX.sources) ||
       (q.startItemId !== undefined && !integer(q.startItemId)) ||
       (q.timeLimitSeconds !== undefined && !integer(q.timeLimitSeconds, 604800))
     )
@@ -164,9 +239,9 @@ function validateInsights(p) {
     if (Object.hasOwn(q, "sharing")) {
       keys(q.sharing, ["supportedCount", "unsupportedCount", "scanSources"]);
       if (
-        !integer(q.sharing.scanSources, 3) ||
-        !integer(q.sharing.supportedCount, 3, 0) ||
-        !integer(q.sharing.unsupportedCount, 3, 0) ||
+        !integer(q.sharing.scanSources, MAX.sources) ||
+        !integer(q.sharing.supportedCount, MAX.sources, 0) ||
+        !integer(q.sharing.unsupportedCount, MAX.sources, 0) ||
         q.sharing.supportedCount + q.sharing.unsupportedCount >
           q.sharing.scanSources
       )
@@ -195,7 +270,7 @@ function validateInsights(p) {
       !date(t.lastSeen) ||
       t.lastSeen > p.observedThrough ||
       [t.sources, t.npcSources, t.creatureSources, t.titleSources].some(
-        (n) => !integer(n, 3),
+        (n) => !integer(n, MAX.sources),
       )
     )
       invalid();
@@ -224,7 +299,7 @@ function validateInsights(p) {
         !text(s.name) ||
         !integer(s.observedLevel, 1000, 0) ||
         !integer(s.skillRank, 10000, 0) ||
-        !integer(s.sources, 3) ||
+        !integer(s.sources, MAX.sources) ||
         (s.rankText !== undefined && !text(s.rankText, 100)) ||
         (s.skill !== undefined && !text(s.skill, 100))
       )
@@ -234,31 +309,39 @@ function validateInsights(p) {
   }
   for (const i of p.items) {
     keys(i, ["id", "name", "sources"]);
-    if (!text(i.name) || !integer(i.sources, 3)) invalid();
+    if (!text(i.name) || !integer(i.sources, MAX.sources)) invalid();
   }
   const expected = coverage(p);
   keys(p.coverage, Object.keys(expected));
+  // Dropped counts are summed across merged builds, so their bounds scale with them.
+  const k = p.builds.length;
   if (
     !isDeepStrictEqual(p.coverage, expected) ||
-    p.coverage.services > 5000 ||
-    p.dropped.questRows + p.coverage.quests > 5000 ||
-    p.dropped.trainerRows + p.coverage.trainers > 100 ||
-    p.dropped.services + p.coverage.services > 5000 ||
-    p.dropped.items + p.coverage.items > 10000 ||
-    p.dropped.positions > 2000 ||
-    p.dropped.itemDrops > 50000 ||
-    p.dropped.questFields > 10000 ||
-    p.dropped.sharingRows > 10000
+    p.coverage.services > MAX.services ||
+    p.dropped.questRows + p.coverage.quests > MAX.quests * k ||
+    p.dropped.trainerRows + p.coverage.trainers > MAX.trainers * k ||
+    p.dropped.services + p.coverage.services > MAX.services * k ||
+    p.dropped.items + p.coverage.items > MAX.items * k ||
+    p.dropped.positions > 2000 * k ||
+    p.dropped.itemDrops > 50000 * k ||
+    p.dropped.questFields > 10000 * k ||
+    p.dropped.sharingRows > 10000 * k
   )
     invalid();
   return structuredClone(p);
 }
-function parseInputs(inputs, { commit, build }) {
+// One build's seven files, checked against that build's pinned source entries.
+function parseInputs(inputs, { commit, build, sources = sourcesFor(build) }) {
   keys(inputs, FILES);
-  if (commit !== COMMIT || build !== BUILD) invalid();
+  if (
+    typeof commit !== "string" ||
+    (commit === COMMIT && !isDeepStrictEqual(sources, sourcesFor(build))) ||
+    !isDeepStrictEqual(checkSources(sources, commit), [build])
+  )
+    invalid();
   const raw = {};
   let total = 0;
-  for (const source of SOURCES) {
+  for (const source of sources) {
     const input = inputs[source.name],
       bytes = Buffer.isBuffer(input)
         ? input
@@ -273,14 +356,14 @@ function parseInputs(inputs, { commit, build }) {
     raw[source.name] = d;
   }
   for (const [file, key, max] of [
-    [FILES[0], "quests", 5000],
-    [FILES[1], "described", 10000],
-    [FILES[1], "pushable", 10000],
-    [FILES[2], "trainers", 100],
+    [FILES[0], "quests", MAX.quests],
+    [FILES[1], "described", MAX.quests],
+    [FILES[1], "pushable", MAX.quests],
+    [FILES[2], "trainers", MAX.trainers],
     [FILES[3], "npcs", 10000],
     [FILES[4], "creatures", 10000],
     [FILES[5], "creatures", 10000],
-    [FILES[6], "items", 10000],
+    [FILES[6], "items", MAX.items],
   ])
     if (!plain(raw[file][key]) || Object.keys(raw[file][key]).length > max)
       invalid();
@@ -289,9 +372,14 @@ function parseInputs(inputs, { commit, build }) {
 const entries = (o) =>
   Object.entries(o).sort((a, b) => Number(a[0]) - Number(b[0]));
 const canonical = (key) => /^[1-9]\d*$/.test(key) && integer(Number(key));
-/** Input hash verification belongs to the compiler; this normalizer also verifies exact metadata. */
+/**
+ * One build. Input hash verification belongs to the compiler; this normalizer also
+ * verifies exact metadata against options.sources (default: that build's pinned sources).
+ */
 function normalizeInsights(inputs, options = {}) {
-  const r = parseInputs(inputs, options),
+  const sources = options.sources || sourcesFor(options.build),
+    observedThrough = sources.length ? lastDay(sources) : null;
+  const r = parseInputs(inputs, { ...options, sources }),
     qs = r[FILES[0]].quests,
     scan = r[FILES[1]],
     ts = r[FILES[2]].trainers,
@@ -316,7 +404,7 @@ function normalizeInsights(inputs, options = {}) {
       !canonical(key) ||
       !plain(q) ||
       !text(q.title) ||
-      !integer(q.sources, 3)
+      !integer(q.sources, MAX.sources)
     ) {
       dropped.questRows++;
       continue;
@@ -358,10 +446,10 @@ function normalizeInsights(inputs, options = {}) {
       if (
         plain(d) &&
         d.title === q.title &&
-        integer(d.sources, 3) &&
+        integer(d.sources, MAX.sources) &&
         plain(s) &&
         Object.keys(s).every((k) => ["true", "false"].includes(k)) &&
-        [supportedCount, unsupportedCount].every((n) => integer(n, 3, 0)) &&
+        [supportedCount, unsupportedCount].every((n) => integer(n, MAX.sources, 0)) &&
         supportedCount + unsupportedCount <= d.sources
       )
         row.sharing = {
@@ -384,11 +472,19 @@ function normalizeInsights(inputs, options = {}) {
     }
     if (t.services !== undefined && !plain(t.services)) invalid();
     const servicesRaw = Object.entries(t.services || {});
-    if (servicesRaw.length > 500 || (servicesRead += servicesRaw.length) > 5000)
+    if (
+      servicesRaw.length > 500 ||
+      (servicesRead += servicesRaw.length) > MAX.services
+    )
       invalid();
-    const n = ns[key],
+    // A trainer's enUS title is a static creature fact. When this build's cache lacks the
+    // creature, an exact-ID record from another pinned build may supply it (name must match).
+    const fallback = options.fallbackDetails,
+      n = ns[key],
       c = cs[key],
-      d = ds[key];
+      d =
+        ds[key] ??
+        (plain(fallback) && Object.hasOwn(fallback, key) ? fallback[key] : undefined);
     if (
       !canonical(key) ||
       !text(t.name) ||
@@ -403,8 +499,10 @@ function normalizeInsights(inputs, options = {}) {
       !text(d.title) ||
       ![0, 2].includes(t.trainerType) ||
       !date(t.lastSeen) ||
-      t.lastSeen > "2026-11-09" ||
-      [t.sources, n.sources, c.sources, d.sources].some((v) => !integer(v, 3))
+      t.lastSeen > observedThrough ||
+      [t.sources, n.sources, c.sources, d.sources].some(
+        (v) => !integer(v, MAX.sources),
+      )
     ) {
       dropped.trainerRows++;
       dropped.services += servicesRaw.length;
@@ -436,7 +534,7 @@ function normalizeInsights(inputs, options = {}) {
         !text(s.name) ||
         !integer(s.level, 1000, 0) ||
         !integer(s.skillRank, 10000, 0) ||
-        !integer(s.sources, 3) ||
+        !integer(s.sources, MAX.sources) ||
         (s.rankText !== undefined && !text(s.rankText, 100)) ||
         (s.skill !== undefined && !text(s.skill, 100))
       ) {
@@ -492,7 +590,7 @@ function normalizeInsights(inputs, options = {}) {
       !plain(i) ||
       i.status !== "valid" ||
       !text(i.name) ||
-      !integer(i.sources, 3)
+      !integer(i.sources, MAX.sources)
     ) {
       dropped.items++;
       continue;
@@ -503,14 +601,15 @@ function normalizeInsights(inputs, options = {}) {
     schemaVersion: 1,
     kind: "forever-insights",
     product: "wowf",
-    build: BUILD,
-    sourceCommit: COMMIT,
+    build: options.build,
+    builds: [options.build],
+    sourceCommit: options.commit,
     license: "CC BY 4.0",
     attribution: ATTRIBUTION,
-    observedThrough: "2026-11-09",
+    observedThrough,
     textLocale: "enUS",
     observationNamesLocale: "unspecified",
-    sources: structuredClone(SOURCES),
+    sources: structuredClone(sources),
     coverage: {},
     dropped,
     quests,
@@ -518,7 +617,132 @@ function normalizeInsights(inputs, options = {}) {
     items,
   };
   p.coverage = coverage(p);
-  return validateInsights(p);
+  return validateInsights(p, { pinned: false });
+}
+const firstDefined = (rows, k) => rows.find((r) => r[k] !== undefined)?.[k];
+function mergeQuestRows(rows) {
+  const [head] = rows,
+    q = {
+      id: head.id,
+      title: head.title,
+      sources: Math.max(...rows.map((r) => r.sources)),
+    };
+  for (const k of ["startItemId", "timeLimitSeconds"]) {
+    const v = firstDefined(rows, k);
+    if (v !== undefined) q[k] = v;
+  }
+  const drops = new Map();
+  for (const r of rows)
+    for (const d of r.itemDrops || [])
+      if (!drops.has(d.itemId) && drops.size < 10) drops.set(d.itemId, { ...d });
+  if (drops.size) q.itemDrops = [...drops.values()].sort((a, b) => a.itemId - b.itemId);
+  // Sharing answers come from one scan; the newest build that scanned the quest wins.
+  const sharing = firstDefined(rows, "sharing");
+  if (sharing) q.sharing = { ...sharing };
+  return q;
+}
+function mergeTrainerRows(rows) {
+  const [head] = rows,
+    max = (k) => Math.max(...rows.map((r) => r[k]));
+  const positions = [],
+    seen = new Set();
+  for (const r of rows)
+    for (const p of r.positions) {
+      const k = JSON.stringify([p.mapId, p.x, p.y]);
+      if (!seen.has(k) && positions.length < 20) {
+        seen.add(k);
+        positions.push({ ...p });
+      }
+    }
+  const reactions = {};
+  for (const r of rows)
+    for (const [faction, values] of Object.entries(r.observedReactionsByFaction))
+      reactions[faction] = [...new Set([...(reactions[faction] || []), ...values])]
+        .sort((a, b) => a - b)
+        .slice(0, 8);
+  // Newest listing wins per spell, but a reported level beats an unknown (zero) one.
+  const services = new Map();
+  for (const r of rows)
+    for (const sv of r.services) {
+      const m = services.get(sv.spellId);
+      if (!m) {
+        if (services.size < 500) services.set(sv.spellId, { ...sv });
+        continue;
+      }
+      m.sources = Math.max(m.sources, sv.sources);
+      if (!m.observedLevel && sv.observedLevel) m.observedLevel = sv.observedLevel;
+    }
+  return {
+    id: head.id,
+    name: head.name,
+    title: head.title,
+    trainerType: head.trainerType,
+    sources: max("sources"),
+    npcSources: max("npcSources"),
+    creatureSources: max("creatureSources"),
+    titleSources: max("titleSources"),
+    lastSeen: rows.map((r) => r.lastSeen).sort().at(-1),
+    positions,
+    observedReactionsByFaction: Object.fromEntries(
+      ["Alliance", "Horde"].filter((f) => reactions[f]).map((f) => [f, reactions[f]]),
+    ),
+    services: [...services.values()].sort((a, b) => a.spellId - b.spellId),
+  };
+}
+function mergeRows(packs, collection, merge) {
+  const byId = new Map();
+  for (const p of packs)
+    for (const row of p[collection]) {
+      if (!byId.has(row.id)) byId.set(row.id, []);
+      byId.get(row.id).push(row);
+    }
+  return [...byId.values()].map(merge).sort((a, b) => a.id - b.id);
+}
+/**
+ * Merge per-build insights packs given newest-first (same commit). Rows are unioned by ID;
+ * scalar facts come from the newest build; positions/reactions/services are unioned with caps.
+ */
+function mergeInsights(packs, { pinned = false } = {}) {
+  if (!Array.isArray(packs) || !packs.length || packs.length > MAX.builds) invalid();
+  const valid = packs.map((p) => validateInsights(p, { pinned: false }));
+  if (valid.some((p) => p.sourceCommit !== valid[0].sourceCommit)) invalid();
+  const sources = [],
+    seen = new Set();
+  for (const p of valid)
+    for (const s of p.sources)
+      if (!seen.has(`${s.build}/${s.name}`)) {
+        seen.add(`${s.build}/${s.name}`);
+        sources.push(structuredClone(s));
+      }
+  const builds = [...new Set(sources.map((s) => s.build))];
+  const dropped = Object.fromEntries(
+    Object.keys(valid[0].dropped).map((k) => [k, valid.reduce((n, p) => n + p.dropped[k], 0)]),
+  );
+  const p = {
+    schemaVersion: 1,
+    kind: "forever-insights",
+    product: "wowf",
+    build: builds[0],
+    builds,
+    sourceCommit: valid[0].sourceCommit,
+    license: "CC BY 4.0",
+    attribution: ATTRIBUTION,
+    observedThrough: lastDay(sources),
+    textLocale: "enUS",
+    observationNamesLocale: "unspecified",
+    sources,
+    coverage: {},
+    dropped,
+    quests: mergeRows(valid, "quests", mergeQuestRows),
+    trainers: mergeRows(valid, "trainers", mergeTrainerRows),
+    items: mergeRows(valid, "items", (rows) => ({
+      id: rows[0].id,
+      name: rows[0].name,
+      sources: Math.max(...rows.map((r) => r.sources)),
+    })),
+  };
+  p.coverage = coverage(p);
+  return validateInsights(p, { pinned });
 }
 function loadBundledInsights(
   file = path.join(__dirname, "../../data/forever-insights/pack.json"),
@@ -635,7 +859,9 @@ module.exports = {
   INPUT_BYTES,
   TOTAL_BYTES,
   PACK_BYTES,
+  MAX,
   normalizeInsights,
+  mergeInsights,
   validateInsights,
   loadBundledInsights,
   questInsights,

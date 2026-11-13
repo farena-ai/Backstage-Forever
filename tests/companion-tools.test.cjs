@@ -236,7 +236,10 @@ test("review fixes: reward reverse lookup, per-point provenance and reported-loc
   assert.equal(thrall.matches[0].locations[0].sameMapAsPlayer, undefined, "zone-only report must not use stale saved coordinates");
   const trip = JSON.parse(await reported.call("plan_travel", { to: "Undercity" }));
   assert.equal(trip.origin.label, "Thunder Bluff");
-  const faranell = JSON.parse(await kit().call("find_npc", { name: "Faranell" }));
+  // The historical pack records the newest build that saw each NPC; give Faranell a distinct older point.
+  const older = structuredClone(npcReference);
+  Object.assign(older.npcs.find((n) => n.id === 2055), { build: "1.60.1.70790", positions: [{ mapId: 1458, x: 0.1, y: 0.1 }] });
+  const faranell = JSON.parse(await kit({ npcReference: older }).call("find_npc", { name: "Faranell" }));
   const tiers = faranell.matches[0].locations.map((l) => `${l.evidence}@${l.build}`);
-  assert.ok(tiers.includes("historical-reference@1.60.1.70790") && tiers.some((t) => t.startsWith("reference-observation@1.60.1.70862")));
+  assert.ok(tiers.includes("historical-reference@1.60.1.70790") && tiers.some((t) => t.startsWith("reference-observation@1.60.1.70888")));
 });

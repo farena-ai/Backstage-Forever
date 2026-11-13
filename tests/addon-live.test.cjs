@@ -86,7 +86,7 @@ BackstageForeverBuildPlan=function(c,o)
  options=o
  return {status='ready',headline='Live plan',steps={
  {questId=1,phase='o',title='First quest',detail='Check the quest log',source='none'},
- {questId=2,phase='t',title='Second |Hquest:2|hQuest|h',detail='Approximate reference: observed turn-in NPC.',source='reference',command='/bf guide 2 t 1413 0.4 0.5 1.60.1.70862'},
+ {questId=2,phase='t',title='Second |Hquest:2|hQuest|h',detail='Approximate reference: observed turn-in NPC.',source='reference',command='/bf guide 2 t 1413 0.4 0.5 1.60.1.70888'},
  {questId=3,phase='o',title=string.rep('Long title ',30),detail=string.rep('detail ',100),source='game'}},counts={quests=3,ready=1}}
 end
 dofile('addon/BackstageForever/BackstageForeverHUD.lua')
@@ -100,7 +100,7 @@ assert(options.focus=='balanced' and options.minutes==30)
 local button=frames.BackstageForeverCompassWaypoint
 assert(button and button.enabled and #guideCalls==0,'No automatic waypoint')
 assert(text():find('Step 2',1,true) and text():find('Approximate reference',1,true),'Action must name the supported step and qualifier')
-button.OnClick();assert(guideCalls[1]=='guide 2 t 1413 0.4 0.5 1.60.1.70862')
+button.OnClick();assert(guideCalls[1]=='guide 2 t 1413 0.4 0.5 1.60.1.70888')
 local oldClick=button.OnClick
 frames.BackstageForeverCompassFocus.OnClick();assert(BackstageForeverHUDSettings.focus=='nearby' and options.focus=='nearby')
 frames.BackstageForeverCompassSession.OnClick();assert(BackstageForeverHUDSettings.minutes==60 and options.minutes==60)
@@ -127,7 +127,7 @@ assert(frames.BackstageForeverCompass.height==152 and fonts[2].height==60)
 test('wide waypoint titles cannot consume the separately reserved source and phase row',()=>lua(hud+String.raw`
 BackstageForeverBuildPlan=function()return {status='ready',steps={
  {questId=1,phase='o',title='Unsupported first step',source='none',detail='Check quest log'},
- {questId=2,phase='o',title=string.rep('W',100),source='reference',detail='Approximate reference: observed objective progress location.',command='/bf guide 2 o 1413 0.4 0.5 1.60.1.70862'}}}end
+ {questId=2,phase='o',title=string.rep('W',100),source='reference',detail='Approximate reference: observed objective progress location.',command='/bf guide 2 o 1413 0.4 0.5 1.60.1.70888'}}}end
 BackstageForeverHUDUpdate(character)
 local title,qualifier
 for _,font in ipairs(fonts)do
@@ -154,7 +154,7 @@ end
 assert(rendered(title)~=title.text and rendered(title):find('Step 2: WWW',1,true),'Wide title fixture must actually clip its independent title row')
 assert(rendered(qualifier)=='Approximate reference — objective','Source and phase must remain wholly visible after title clipping')
 assert(frames.BackstageForeverCompassWaypoint.enabled and #guideCalls==0)
-frames.BackstageForeverCompassWaypoint.OnClick();assert(guideCalls[1]=='guide 2 o 1413 0.4 0.5 1.60.1.70862')
+frames.BackstageForeverCompassWaypoint.OnClick();assert(guideCalls[1]=='guide 2 o 1413 0.4 0.5 1.60.1.70888')
 frames.BackstageForeverCompassCollapse.OnClick();assert(not title.visible and not qualifier.visible,'Both reserved rows hide while collapsed')
 `));
 test('quiet bag fact reserves its own line above the action rows even with maximum quest text',()=>lua(hud+String.raw`
@@ -209,14 +209,14 @@ test('TOC loads planner dependencies before capture and HUD',()=>{
  assert.deepEqual(toc.split(/\r?\n/).filter(x=>x.endsWith('.lua')),['BackstageForeverReference.lua','BackstageForeverAdvisorData.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverProfession.lua','BackstageForeverGathering.lua','BackstageForeverMapPlan.lua','BackstageForeverMap.lua','BackstageForeverAdvisorMap.lua','BackstageForever.lua','BackstageForeverHUD.lua','BackstageForeverLive.lua','BackstageForeverFind.lua','BackstageForeverAssist.lua']);
 });
 test('long localized reference cards retain relationship and English-title qualification',()=>lua(hud+String.raw`
-BackstageForeverBuildPlan=function()return {status='ready',steps={{questId=2,phase='o',title='Localized title',source='reference',detail=string.rep('Current objective ',20)..' Approximate reference: Reference NPC mentioned in objective; verify your quest details. English reference: Original quest title.',command='/bf guide 2 o 1413 0.4 0.5 1.60.1.70862'}}}end
+BackstageForeverBuildPlan=function()return {status='ready',steps={{questId=2,phase='o',title='Localized title',source='reference',detail=string.rep('Current objective ',20)..' Approximate reference: Reference NPC mentioned in objective; verify your quest details. English reference: Original quest title.',command='/bf guide 2 o 1413 0.4 0.5 1.60.1.70888'}}}end
 BackstageForeverHUDUpdate(character)
 assert(text():find('mentioned in objective',1,true),'Bounded rendering must preserve relationship qualification')
 assert(text():find('English reference: Original quest title',1,true),'Bounded rendering must preserve localized reference qualification')
 `));
 test('long current objectives cannot hide the actual game marker area qualification',()=>lua(hud+String.raw`
 dofile('addon/BackstageForever/BackstageForeverPlan.lua')
-character.clientBuild='1.60.1.70862'
+character.clientBuild='1.60.1.70888'
 character.quests={{id=42,title='Observed quest',complete=false,
  objectives={{text=string.rep('Long objective ',13),done=false}},
  destination={mapId=1413,x=.3,y=.4,text='Quest area reported by the game; not an exact NPC or spawn location'}}}
@@ -252,7 +252,7 @@ UnitXP=function()return xp end
 UnitXPMax=function()return 100 end
 GetZoneText=function()return zone end
 GetSubZoneText=function()return ''end
-GetBuildInfo=function()return '1.60.1','70862'end
+GetBuildInfo=function()return '1.60.1','70888'end
 GetLocale=function()return 'enUS'end
 time=function()return 1700000000 end
 C_QuestLog={GetNumQuestLogEntries=function()return 1,1 end,
@@ -310,7 +310,7 @@ assert(not text():find('Spirits of Stonetalon',1,true) and not text():find('XP 7
 
 test('real planner reasons stay inside existing body while source phase and waypoint rows remain reserved',()=>lua(hud.slice(0,hud.indexOf('local character='))+String.raw`
 dofile('addon/BackstageForever/BackstageForeverReference.lua')
-local character={id='Reason-A',name='Synthetic Hero',level=12,className='Mage',locale='deDE',clientBuild='1.60.1.70862',
+local character={id='Reason-A',name='Synthetic Hero',level=12,className='Mage',locale='deDE',clientBuild='1.60.1.70888',
  location={mapId=1413,x=0.35,y=0.28,zone='Synthetic zone'},readiness={bags={free=2,total=16}},quests={
  {id=1061,title=string.rep('W',100),complete=true,objectives={}},
  {id=900001,title='Current marker',complete=false,destination={mapId=1413,x=0.5,y=0.5},objectives={{text='Actual unfinished objective',done=false}}}}}
@@ -331,7 +331,7 @@ local bodyBottom=frames.BackstageForeverCompass.height+fonts[2].point[3]-fonts[2
 assert(bodyBottom>=cue.point[3]+cue.height,'Reasons cannot expand into the reserved rows')
 local button=frames.BackstageForeverCompassWaypoint
 assert(button.enabled and #guideCalls==0)
-button.OnClick();assert(guideCalls[1]=='guide 1061 t 1413 0.3528 0.2786 1.60.1.70862')
+button.OnClick();assert(guideCalls[1]=='guide 1061 t 1413 0.3528 0.2786 1.60.1.70888')
 frames.BackstageForeverCompassCollapse.OnClick();assert(not source.visible and not action.visible and not cue.visible)
 frames.BackstageForeverCompassCollapse.OnClick();assert(source.visible and action.visible and cue.visible)
 local previous=button.OnClick

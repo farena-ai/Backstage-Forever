@@ -172,16 +172,22 @@ class LevelingAdvisor {
   training(p) {
     if (!p.className) return null;
     const title = `${p.className} trainer`.toLowerCase();
-    const trainers = (this.insights?.trainers || []).filter((t) => String(t.title || "").toLowerCase() === title &&
-      (!p.faction || !t.observedReactionsByFaction || (t.observedReactionsByFaction[p.faction] || []).some((r) => r >= 4)));
-    if (!trainers.length) return { className: p.className, trainer: null, newNow: [], nextAt: null, nextSpells: [] };
+    const sameClass = (this.insights?.trainers || []).filter((t) => String(t.title || "").toLowerCase() === title);
+    const trainers = sameClass.filter((t) => !p.faction || !t.observedReactionsByFaction || (t.observedReactionsByFaction[p.faction] || []).some((r) => r >= 4));
+    if (!trainers.length) return { className: p.className, trainer: null, newNow: [], nextAt: null, nextSpells: [], spellsFromOtherTrainers: false };
     const here = p.location;
     const dist = (t) => { const pos = t.positions?.[0]; if (!pos) return 99; return pos.mapId === here?.mapId ? Math.hypot(pos.x - here.x, pos.y - here.y) : 10; };
     const t = [...trainers].sort((a, b) => dist(a) - dist(b))[0];
     // Union of spells across this class's trainers (each one only lists what was observed).
-    const spells = new Map();
-    for (const tr of trainers) for (const s of tr.services || []) { const k = `${s.name}|${s.rankText || ""}`; if (!spells.has(k) || (s.observedLevel || 0) > (spells.get(k).level || 0)) spells.set(k, { name: s.name, rank: s.rankText || null, level: s.observedLevel || 0 }); }
-    const all = [...spells.values()].filter((s) => s.level > 0);
+    const levelled = (rows) => {
+      const spells = new Map();
+      for (const tr of rows) for (const s of tr.services || []) { const k = `${s.name}|${s.rankText || ""}`; if (!spells.has(k) || (s.observedLevel || 0) > (spells.get(k).level || 0)) spells.set(k, { name: s.name, rank: s.rankText || null, level: s.observedLevel || 0 }); }
+      return [...spells.values()].filter((s) => s.level > 0);
+    };
+    // Class spells are class-wide: when your faction's trainers have no recorded spell levels,
+    // borrow the list from any same-class trainer but keep your faction's trainer as the place to go.
+    let all = levelled(trainers), spellsFromOtherTrainers = false;
+    if (!all.length) { all = levelled(sameClass); spellsFromOtherTrainers = all.length > 0; }
     const newNow = all.filter((s) => s.level <= p.level && s.level >= p.level - 1).sort((a, b) => a.name.localeCompare(b.name));
     const nextAt = all.filter((s) => s.level > p.level).reduce((m, s) => Math.min(m, s.level), Infinity);
     const pos = t.positions?.[0];
@@ -190,6 +196,7 @@ class LevelingAdvisor {
       trainer: { npcId: t.id, name: t.name, title: t.title, mapId: pos?.mapId ?? null, mapName: pos ? mapName(pos.mapId) : null, x: pos?.x ?? null, y: pos?.y ?? null },
       newNow, nextAt: Number.isFinite(nextAt) ? nextAt : null,
       nextSpells: Number.isFinite(nextAt) ? all.filter((s) => s.level === nextAt).map((s) => ({ name: s.name, rank: s.rank })) : [],
+      spellsFromOtherTrainers,
     };
   }
 }
