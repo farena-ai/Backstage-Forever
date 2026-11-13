@@ -46,3 +46,16 @@
 .d-easy .atlas-diff { color: #2f6a2a; } .d-right .atlas-diff { color: #8a6a06; } .d-hard .atlas-diff { color: #a5520f; } .d-impossible .atlas-diff { color: #a1221a; } .d-trivial .atlas-diff { color: #6a6a6a; }
 
 .atlas-page .atlas-chip small { color: #2b1b0a; opacity: .85; }
+
+/* Readiness checklist and quests to pick up first. */
+.atlas-ready { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 3px; font-size: 13px; }
+.atlas-ready li::before { content: "•"; display: inline-block; width: 16px; font-weight: 800; }
+.atlas-ready li.ok::before { content: "✓"; color: #3c9a2e; } .atlas-ready li.warn::before { content: "!"; color: #d9822a; } .atlas-ready li.na::before { color: #8a7a66; }
+.atlas-pickup h4 { margin: 8px 0 4px; }
+.atlas-pickup ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.atlas-pickup li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; background: rgba(255,248,225,.5); }
+.atlas-pickup li small { margin-left: 6px; color: #6b4a22; }
+.atlas-pickup-actions { display: flex; gap: 4px; flex: none; }
+.atlas-card .atlas-pickup-actions button { all: unset; cursor: pointer; padding: 2px 9px; border-radius: 10px; font: 700 12px 'Source Sans 3', sans-serif; background: #3d220c; color: #f6dc9a; white-space: nowrap; }
+.atlas-card .atlas-pickup-actions button:hover, .atlas-card .atlas-pickup-actions button:focus-visible { background: #6a1a0e; outline: 2px solid #f6c445; }
+.atlas-pickup li > span:first-child { min-width: 0; }
