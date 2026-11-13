@@ -108,3 +108,10 @@
 
 .wm-ico-journey { display: inline-block; width: 18px; height: 4px; margin: 0 6px 3px 2px; border-radius: 2px; background: #eafaff; box-shadow: 0 0 0 2px rgba(80,200,255,.6), 0 0 6px rgba(80,200,255,.8); vertical-align: middle; }
 .world-map-page .wm-qbtn:hover, .world-map-page .wm-qbtn:focus-visible { background: #fff6dc; border-color: #8a5a18; }
+
+/* Dialed-in goal: what to do at the focused target. */
+.world-map-page .wm-goal { margin: -2px 0 12px; padding: 10px 12px; border-radius: 6px; background: linear-gradient(180deg, #5a1a10, #3a0f09); color: #fff1d6; border: 1px solid #f6c445; box-shadow: 0 0 0 2px rgba(246,196,69,.25); }
+.world-map-page .wm-goal-eyebrow { font: 700 10px Cinzel, Georgia, serif; letter-spacing: .2em; text-transform: uppercase; color: #e8c983; }
+.world-map-page .wm-goal h4 { margin: 2px 0 6px; font: 700 17px Georgia, serif; color: #ffe9b0; }
+.world-map-page .wm-goal ol { margin: 0 0 8px; padding-left: 20px; line-height: 1.45; }
+.world-map-page .wm-goal-actions { display: flex; flex-wrap: wrap; gap: 6px; }

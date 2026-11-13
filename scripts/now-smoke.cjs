@@ -67,11 +67,33 @@ const { defaultState } = require("../src/core/validation.cjs");
     assert.equal(s.deaths, 1); assert.equal(s.level, 17);
     await page.screenshot({ path: path.join(capture, "now-session.png"), fullPage: true });
     await frame({ seq: 5, level: 17, dead: false, position: { mapId: 1413, x: 0.51, y: 0.30, facing: 1 } });
-    // "Show on map" jumps to the World Map focused on that spot.
-    await page.locator("[data-now-map]").first().click();
-    await page.locator("[data-world-map]").waitFor();
-    await page.waitForFunction(() => Boolean(WorldMapView._state().selected));
-    await page.screenshot({ path: path.join(capture, "now-to-map.png") });
+    // Link audit: every "Show on map" on Now dials in on exactly its target, with what to do there.
+    const mapLinks = await page.locator("[data-now-map]").evaluateAll((els) => els.map((e) => JSON.parse(e.dataset.nowMap)));
+    assert.ok(mapLinks.length >= 4, `expected several map links, got ${mapLinks.length}`);
+    assert.ok(mapLinks.every((l) => l.goal && l.goal.title), "every map link says what to do there");
+    for (let i = 0; i < mapLinks.length; i++) {
+      const want = mapLinks[i];
+      if (i) { await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor(); }
+      await page.locator("[data-now-map]").nth(i).click();
+      await page.locator("[data-world-map]").waitFor();
+      await page.waitForFunction((w) => { const f = WorldMapView._state().focused; return f && f.pin.mapId === w.mapId && (w.npcId ? f.pin.npcId === w.npcId : Math.hypot(f.pin.x - w.x, f.pin.y - w.y) < 1e-6); }, want);
+      const got = await page.evaluate(() => ({ selected: WorldMapView._state().selected === WorldMapView._state().focused.pin, title: document.querySelector("[data-wm-goal] h4")?.textContent }));
+      assert.ok(got.selected, `link ${i} selects its target`);
+      assert.equal(got.title, want.goal.title, `link ${i} shows its goal`);
+      if (i === 0) await page.screenshot({ path: path.join(capture, "now-to-map.png") });
+    }
+    // "Show the full map" leaves focus mode.
+    await page.locator('[data-wm-act="unfocus"]').click();
+    assert.equal(await page.evaluate(() => WorldMapView._state().focused), null);
+    // Every "Open quest" on Now opens that exact quest.
+    await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
+    const questIds = [...new Set(await page.locator("[data-now-body] [data-quest-open]").evaluateAll((els) => els.map((e) => Number(e.dataset.questOpen))))].slice(0, 4);
+    assert.ok(questIds.length >= 2);
+    for (const id of questIds) {
+      await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
+      await page.locator(`[data-now-body] [data-quest-open="${id}"]`).first().click();
+      await page.locator(`[data-quest-control="detail:${id}"]`).waitFor();
+    }
     // The running game still has an older addon: Now asks for one /reload.
     await app.evaluate(({ ipcMain }) => { ipcMain.removeHandler("backstage:gameStatus"); ipcMain.handle("backstage:gameStatus", () => ({ connected: true, addonCurrent: true, addonVersion: "0.21.0", loadedCaptureVersion: "0.20.0", runtime: { state: "running" } })); });
     await page.locator('[data-nav="now"]').first().click();

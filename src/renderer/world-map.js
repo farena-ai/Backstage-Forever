@@ -10,7 +10,7 @@ window.WorldMapView = (() => {
   ];
   const OFF_BY_DEFAULT = new Set(["npc", "otherFaction"]);
   const PREF = "bf-world-map-v2";
-  let clusters = [], pendingFocus = null;
+  let clusters = [], pendingFocus = null, focused = null; // focused: { pin, goal } while a link's target is dialed in
   let model = null, mapId = null, follow = true, selected = null, hover = null, trail = [], view = { zoom: 1, cx: 0.5, cy: 0.5 };
   let layers = { ...Object.fromEntries(LAYERS.map(([k]) => [k, !OFF_BY_DEFAULT.has(k)])), otherFaction: false, journey: true };
   let journey = null, journeyAt = 0; // this session's path on the shown map (from the app, memory only)
@@ -120,6 +120,10 @@ window.WorldMapView = (() => {
     g.beginPath(); g.arc(x, y, r * 0.7, 0, 7); g.fillStyle = "#999"; g.fill();
   }
   function drawPin(p, sx, sy, emphasis) {
+    if (focused && p !== focused.pin) { ctx.save(); ctx.globalAlpha = 0.28; drawPinRaw(p, sx, sy, emphasis); ctx.restore(); return; }
+    drawPinRaw(p, sx, sy, emphasis);
+  }
+  function drawPinRaw(p, sx, sy, emphasis) {
     const r = 9 * (emphasis ? 1.35 : 1);
     if (p.otherFaction) ctx.globalAlpha = 0.55;
     icon(ctx, p.kind, sx, sy, p.kind === "npc" ? r * 1.2 : r, { gather: p.gather, zoom: view.zoom });
@@ -162,8 +166,10 @@ window.WorldMapView = (() => {
     for (const c of clusters) {
       if (c.pins.length === 1) { drawPin(c.pins[0], c.sx, c.sy, c.pins[0] === hover || c.pins[0] === selected); continue; }
       drawPin(c.pins[0], c.sx, c.sy, false);
+      ctx.save(); if (focused && !c.pins.includes(focused.pin)) ctx.globalAlpha = 0.28;
       ctx.beginPath(); ctx.arc(c.sx + 10, c.sy - 10, 8, 0, 7); ctx.fillStyle = "#7a1f14"; ctx.fill(); ctx.strokeStyle = "#f6dc9a"; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.fillStyle = "#fff3cf"; ctx.font = "700 10px 'Source Sans 3', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(c.pins.length), c.sx + 10, c.sy - 9.5);
+      ctx.restore();
     }
     // Landmarks on a parchment plate, above pins.
     for (const p of art ? [] : visiblePins().filter((p) => p.kind === "town")) {
@@ -174,6 +180,7 @@ window.WorldMapView = (() => {
       ctx.beginPath(); ctx.moveTo(sx, ty + 11); ctx.lineTo(sx, sy - 6); ctx.strokeStyle = "#6b4a1c"; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(sx, sy - 6); ctx.lineTo(sx + 5, sy); ctx.lineTo(sx, sy + 6); ctx.lineTo(sx - 5, sy); ctx.closePath(); ctx.fillStyle = "#7a1f14"; ctx.fill();
     }
+    if (focused && focused.pin.mapId === model?.mapId) drawFocus(focused);
     if (selected) { const [sx, sy] = toScreen(selected.x, selected.y); ctx.beginPath(); ctx.arc(sx, sy, 18, 0, 7); ctx.strokeStyle = "#fff6d0"; ctx.lineWidth = 3; ctx.stroke(); ctx.strokeStyle = "#a0701a"; ctx.lineWidth = 1.5; ctx.stroke(); }
     if (layers.journey !== false && journey && journey.mapId === model?.mapId) drawJourney(journey);
     // Player: saved marker, live trail, live arrow.
@@ -181,6 +188,34 @@ window.WorldMapView = (() => {
     if (pl?.saved && !pl.live) { const [sx, sy] = toScreen(pl.saved.x, pl.saved.y); ctx.beginPath(); ctx.arc(sx, sy, 8, 0, 7); ctx.setLineDash([3, 3]); ctx.strokeStyle = "#3a2410"; ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); ctx.font = "600 11px 'Source Sans 3'"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; const lw = ctx.measureText("last saved").width + 10; ctx.fillStyle = "rgba(245,232,200,0.92)"; ctx.beginPath(); ctx.roundRect(sx - lw / 2, sy + 11, lw, 15, 3); ctx.fill(); ctx.fillStyle = "#3a2410"; ctx.fillText("last saved", sx, sy + 19); }
     trail.forEach((t, i) => { if (t.mapId !== model?.mapId) return; const [sx, sy] = toScreen(t.x, t.y); ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, 7); ctx.fillStyle = `rgba(70,190,255,${(i + 1) / trail.length * 0.85})`; ctx.fill(); });
     if (pl?.live) arrow(...toScreen(pl.live.x, pl.live.y), pl.live.facing, pl.live.combat);
+  }
+  // Dialed-in target: a glowing route from you, a double ring on the target and how far it is.
+  function drawFocus(f) {
+    const [tx, ty] = toScreen(f.pin.x, f.pin.y);
+    const me = model?.player?.live || model?.player?.saved;
+    ctx.save();
+    if (me) {
+      const [mx, my] = toScreen(me.x, me.y);
+      ctx.lineCap = "round"; ctx.setLineDash([10, 8]);
+      for (const [width, style] of [[10, "rgba(246,196,69,0.22)"], [4, "rgba(246,196,69,0.85)"]]) { ctx.lineWidth = width; ctx.strokeStyle = style; ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(tx, ty); ctx.stroke(); }
+      ctx.setLineDash([]);
+      const label = howFar(f.pin);
+      if (label) {
+        const lx = (mx + tx) / 2, ly = (my + ty) / 2 - 14;
+        ctx.font = "700 13px 'Source Sans 3', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        const w = ctx.measureText(label).width + 16;
+        ctx.fillStyle = "rgba(43,20,8,0.88)"; ctx.beginPath(); ctx.roundRect(lx - w / 2, ly - 11, w, 22, 11); ctx.fill();
+        ctx.fillStyle = "#ffe9b0"; ctx.fillText(label, lx, ly + 1);
+      }
+    }
+    for (const [r, style, width] of [[34, "rgba(246,196,69,0.35)", 6], [24, "#f6c445", 3], [24, "#5a1a10", 1]]) { ctx.beginPath(); ctx.arc(tx, ty, r, 0, 7); ctx.strokeStyle = style; ctx.lineWidth = width; ctx.stroke(); }
+    ctx.restore();
+  }
+  function howFar(p) {
+    const me = model?.player?.live || model?.player?.saved;
+    if (!me) return "";
+    const dx = p.x - me.x, dy = p.y - me.y, d = Math.hypot(dx, dy);
+    return d < 0.02 ? "right here" : `${dirName(dx, dy)} · ${d < 0.08 ? "close" : d < 0.25 ? "a short ride" : "across the zone"}`;
   }
   // Your path this session: a glowing line, with a cross where you died and a star where you levelled.
   function drawJourney(j) {
@@ -288,8 +323,11 @@ window.WorldMapView = (() => {
     const box = document.querySelector("[data-wm-card]"); if (!box) return;
     if (!selected) { box.innerHTML = `<div class="wm-card-empty"><strong>Click any pin</strong> to see who it is, what they offer you and how to get there.<br>Use <em>Find</em> to search every zone.</div>`; return; }
     const p = selected;
+    if (focused && focused.pin !== p) focused = null;
+    const goal = focused?.goal;
+    const goalBox = focused ? `<section class="wm-goal" data-wm-goal><span class="wm-goal-eyebrow">Your goal here</span><h4>${esc(goal?.title || p.label)}</h4>${goal?.steps?.length ? `<ol>${goal.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}<div class="wm-goal-actions">${goal?.questId ? `<button type="button" data-quest-open="${goal.questId}">Open quest</button>` : ""}<button type="button" class="subtle" data-wm-act="unfocus">Show the full map</button></div></section>` : "";
     const details = p.npcId ? (npcFor === p.npcId && npcInfo ? npcSections(npcInfo) : npcInfo === false ? `<p class="wm-note">Details could not be loaded.</p>` : `<p class="wm-note">Loading details…</p>`) : "";
-    box.innerHTML = `<div class="wm-card-head">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<div><h3>${esc(p.label)}</h3>${p.sub ? `<p class="wm-sub">${esc(p.sub)}</p>` : ""}</div></div>
+    box.innerHTML = `${goalBox}<div class="wm-card-head">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<div><h3>${esc(p.label)}</h3>${p.sub ? `<p class="wm-sub">${esc(p.sub)}</p>` : ""}</div></div>
       <p class="wm-coords">${esc(model.mapName)} · ${pct(p.x)}, ${pct(p.y)}</p>${relation(p)}
       ${details}
       <div class="wm-card-actions"><button type="button" class="primary" data-wm-act="way">Copy waypoint for WoW</button><button type="button" data-wm-act="track">Track on radar</button>${p.questId ? `<button type="button" data-quest-open="${p.questId}">Open quest</button>` : ""}</div>
@@ -364,7 +402,12 @@ window.WorldMapView = (() => {
         const real = f.npcId ? model.pins.filter((p) => p.npcId === f.npcId).sort((a, b) => Math.hypot(a.x - f.x, a.y - f.y) - Math.hypot(b.x - f.x, b.y - f.y))[0] : null;
         const pin = real || { id: "focus", kind: f.kind || (f.npcId ? "npc" : "instance"), npcId: f.npcId || undefined, label: f.label, sub: f.sub || null, mapId: m.mapId, x: f.x, y: f.y, source: f.source || (f.kind || f.npcId ? "From your advisor" : "Classic-era baseline (approximate entrance)") };
         if (!real) model.pins.push(pin);
-        selected = pin; view = { zoom: 2.2, cx: pin.x, cy: pin.y }; pendingFocus = null;
+        selected = pin; pendingFocus = null;
+        focused = { pin, goal: f.goal || null };
+        // Frame you and the target together when you're on this map, else zoom in on the target.
+        const me = m.player?.live || m.player?.saved;
+        if (me && Number.isFinite(me.x)) { const span = Math.max(Math.abs(me.x - pin.x), Math.abs(me.y - pin.y)); view = { zoom: Math.max(1.4, Math.min(3.2, 0.55 / Math.max(span, 0.05))), cx: (me.x + pin.x) / 2, cy: (me.y + pin.y) / 2 }; }
+        else view = { zoom: 2.6, cx: pin.x, cy: pin.y };
       }
       if (m.player?.live) pushTrail(m.mapId, m.player.live);
     } catch (e) { error = e.message; }
@@ -446,6 +489,7 @@ window.WorldMapView = (() => {
       const act = e.target.closest("[data-wm-act]")?.dataset.wmAct; if (!act) return;
       if (act === "in" || act === "out") { view.zoom = Math.min(8, Math.max(1, view.zoom * (act === "in" ? 1.5 : 1 / 1.5))); if (view.zoom === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }
       if (act === "reset") { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); }
+      if (act === "unfocus") { focused = null; view = { zoom: 1, cx: 0.5, cy: 0.5 }; card(); draw(); }
       if (act === "me") { const me = model?.player?.live || model?.player?.saved; if (me) { view = { zoom: Math.max(view.zoom, 2.5), cx: me.x, cy: me.y }; draw(); } }
       if (act === "clear") { results = null; resultsList(); }
       if (act === "radar") { try { await api.openRadar(); } catch {} }
@@ -462,5 +506,5 @@ window.WorldMapView = (() => {
   if (api?.onLiveLink) api.onLiveLink(onLive);
   window.addEventListener("resize", () => { if (document.querySelector("[data-world-map]")) resize(); });
   function focus(f) { if (!f || !Number.isSafeInteger(f.mapId)) return; pendingFocus = f; follow = false; mapId = f.mapId; savePref(); if (document.querySelector("[data-world-map]")) load(f.mapId); }
-  return { page, mounted, focus, _state: () => ({ model, selected, view, trail, layers, results, journey }) };
+  return { page, mounted, focus, _state: () => ({ model, selected, view, trail, layers, results, journey, focused }) };
 })();

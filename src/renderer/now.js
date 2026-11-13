@@ -7,8 +7,9 @@ window.NowView = (() => {
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pct = (v) => (v * 100).toFixed(1);
   const at = (w) => (w && Number.isFinite(w.x) ? `${esc(w.mapName || "")} ${pct(w.x)}, ${pct(w.y)}` : "");
-  const mapBtn = (w, label, sub, npcId) => (w && Number.isSafeInteger(w.mapId) && Number.isFinite(w.x)
-    ? `<button type="button" data-now-map='${esc(JSON.stringify({ mapId: w.mapId, x: w.x, y: w.y, label, sub: sub || null, npcId: npcId || null }))}'>Show on map</button>` : "");
+  // goal: what to do at the target, shown on the map's focus card ({ title, steps[], questId? }).
+  const mapBtn = (w, label, sub, npcId, goal) => (w && Number.isSafeInteger(w.mapId) && Number.isFinite(w.x)
+    ? `<button type="button" data-now-map='${esc(JSON.stringify({ mapId: w.mapId, x: w.x, y: w.y, label, sub: sub || null, npcId: npcId || null, goal: goal || null }))}'>Show on map</button>` : "");
 
   function page() {
     return `<section class="now-page" data-now>
@@ -31,26 +32,30 @@ window.NowView = (() => {
       const first = ready[0];
       out.push({ kind: "hand-in", title: ready.length === 1 ? `Hand in “${first.title}”` : `Hand in ${ready.length} finished quests`,
         detail: first.turnIn ? `Nearest: ${esc(first.turnIn.name)}${first.turnIn.guess ? " (usually the quest giver)" : ""} · ${at(first.turnIn)}${ready.length > 1 ? ` · also ${ready.slice(1, 3).map((q) => `“${esc(q.title)}”`).join(", ")}${ready.length > 3 ? "…" : ""}` : ""}` : "Hand-in location not recorded yet.",
-        actions: mapBtn(first.turnIn, first.turnIn?.name || first.title, `Turn in: ${first.title}`, first.turnIn?.npcId) + `<button type="button" data-quest-open="${first.id}">Open quest</button>` });
+        actions: mapBtn(first.turnIn, first.turnIn?.name || first.title, `Turn in: ${first.title}`, first.turnIn?.npcId,
+          { title: `Hand in “${first.title}”`, questId: first.id, steps: [`Go to ${first.turnIn?.name || "the quest giver"}${first.turnIn?.guess ? " (quests usually go back to whoever gave them)" : ""}.`, `Talk to them and choose “${first.title}”.`, "Pick your reward and click Complete Quest.", ...(ready.length > 1 ? [`Also ready: ${ready.slice(1, 4).map((q) => q.title).join(", ")}.`] : [])] }) + `<button type="button" data-quest-open="${first.id}">Open quest</button>` });
     }
     const t = a.training;
     if (t?.newNow?.length && t.trainer) {
       out.push({ kind: "train", title: `Train ${t.newNow.length} new ${esc(t.className)} skill${t.newNow.length === 1 ? "" : "s"}`,
         detail: `${t.newNow.slice(0, 5).map((s) => esc(s.name) + (s.rank ? ` <small>${esc(s.rank)}</small>` : "")).join(", ")}${t.newNow.length > 5 ? "…" : ""} · ${esc(t.trainer.name)}, ${at(t.trainer)}`,
-        actions: mapBtn(t.trainer, t.trainer.name, t.trainer.title, t.trainer.npcId) });
+        actions: mapBtn(t.trainer, t.trainer.name, t.trainer.title, t.trainer.npcId,
+          { title: `Train at ${t.trainer.name}`, steps: [`Go to ${t.trainer.name}, ${t.trainer.title}.`, `Talk to them and learn: ${t.newNow.slice(0, 6).map((s) => s.name + (s.rank ? ` (${s.rank})` : "")).join(", ")}${t.newNow.length > 6 ? "…" : ""}.`, "Training costs a little money; drag new abilities onto your action bar."] }) });
     }
     const act = a.log.active[0];
     if (act) {
       out.push({ kind: "quest", title: `Continue “${esc(act.title)}”`,
         detail: `${act.next ? esc(act.next) : "Objectives in progress"}${act.total ? ` · ${act.done}/${act.total} done` : ""}${act.where ? ` · ${at(act.where)}` : ""}`,
-        actions: mapBtn(act.where, act.title, act.next, null) + `<button type="button" data-quest-open="${act.id}">Open quest</button>` });
+        actions: mapBtn(act.where, act.title, act.next, null,
+          { title: `Continue “${act.title}”`, questId: act.id, steps: [act.next ? `${act.next}.` : "Work on the quest objectives around here.", ...(act.total ? [`${act.done} of ${act.total} objectives done.`] : []), "Come back to the quest giver when it says complete."] }) + `<button type="button" data-quest-open="${act.id}">Open quest</button>` });
     }
     const n = a.next;
     if (n && (n.mapId !== a.character.position?.mapId || out.length < 2)) {
       const where = n.hub ? { mapId: n.mapId, mapName: n.name, x: n.hub.x, y: n.hub.y } : null;
       out.push({ kind: "zone", title: n.mapId === a.character.position?.mapId ? `Keep leveling in ${esc(n.name)}` : `Head to ${esc(n.name)}`,
         detail: esc(n.why) + (n.hub ? ` · most quests start around ${pct(n.hub.x)}, ${pct(n.hub.y)}` : ""),
-        actions: mapBtn(where, `${n.name} quest hub`, n.why, null) });
+        actions: mapBtn(where, `${n.name} quest hub`, n.why, null,
+          { title: `Quest hub in ${n.name}`, steps: [n.why, ...(n.quests?.length ? [`Pick up: ${n.quests.slice(0, 4).map((q) => q.title).join(", ")}${n.quests.length > 4 ? "…" : ""}.`] : []), "Look for the yellow ! over people's heads."] }) });
     }
     return out.slice(0, 4);
   }
@@ -109,14 +114,14 @@ window.NowView = (() => {
     if (advice.status === "no-character") return setupCard(advice) || `<div class="now-card"><h2>No character yet</h2><p>Connect your WoW Forever folder in Settings → Game connection, log in once and type <code>/reload</code>. Your characters appear here.</p></div>`;
     if (advice.status === "no-level") return `<div class="now-card"><h2>${esc(advice.name)}</h2><p>Log in on this character and type <code>/reload</code> so the app knows its level.</p></div>`;
     const a = advice, c = a.character, list = steps(a);
-    const zones = a.zones.map((z) => `<li class="now-zone now-fit-${esc(z.fit)}"><button type="button" ${z.hub ? `data-now-map='${esc(JSON.stringify({ mapId: z.mapId, x: z.hub.x, y: z.hub.y, label: `${z.name} quest hub`, sub: null }))}'` : "disabled"}><strong>${esc(z.name)}</strong><span>${z.min}–${z.max}${z.observedLevels ? " · seen in play" : ""}</span><span>${z.available ? `${z.available} quests for you` : "no quests recorded yet"}${z.towns.length ? ` · ${esc(z.towns.join(", "))}` : ""}</span><em>${z.fit === "now" ? "Your level" : "Soon"}</em></button></li>`).join("");
+    const zones = a.zones.map((z) => `<li class="now-zone now-fit-${esc(z.fit)}"><button type="button" ${z.hub ? `data-now-map='${esc(JSON.stringify({ mapId: z.mapId, x: z.hub.x, y: z.hub.y, label: `${z.name} quest hub`, sub: null, goal: { title: `Quest hub in ${z.name}`, steps: [`Levels ${z.min}–${z.max}${z.available ? `, ${z.available} quests you can pick up` : ""}.`, ...(z.quests?.length ? [`Start with: ${z.quests.slice(0, 3).map((q) => q.title).join(", ")}.`] : []), ...(z.towns?.length ? [`Friendly towns: ${z.towns.join(", ")}.`] : [])] } }))}'` : "disabled"}><strong>${esc(z.name)}</strong><span>${z.min}–${z.max}${z.observedLevels ? " · seen in play" : ""}</span><span>${z.available ? `${z.available} quests for you` : "no quests recorded yet"}${z.towns.length ? ` · ${esc(z.towns.join(", "))}` : ""}</span><em>${z.fit === "now" ? "Your level" : "Soon"}</em></button></li>`).join("");
     const t = a.training;
     const training = !t ? `<p>Pick a class for this character in Characters to see training.</p>`
       : !t.trainer ? `<p>No ${esc(t.className)} trainer is recorded for your faction yet.</p>`
       : `<p><strong>${esc(t.trainer.name)}</strong> · ${esc(t.trainer.title)}<br><small>${at(t.trainer)}</small></p>
          ${t.newNow.length ? `<p class="now-good">New for you now: ${t.newNow.map((s) => esc(s.name)).join(", ")}</p>` : `<p>Nothing new at level ${c.level}.</p>`}
          ${t.nextAt ? `<p>Next spells at <strong>level ${t.nextAt}</strong>: ${t.nextSpells.slice(0, 6).map((s) => esc(s.name)).join(", ")}${t.nextSpells.length > 6 ? "…" : ""}</p>` : ""}
-         <div class="now-actions">${mapBtn(t.trainer, t.trainer.name, t.trainer.title, t.trainer.npcId)}</div>`;
+         <div class="now-actions">${mapBtn(t.trainer, t.trainer.name, t.trainer.title, t.trainer.npcId, { title: `Your ${t.className} trainer`, steps: [`${t.trainer.name}, ${t.trainer.title}.`, t.newNow.length ? `Ready to learn: ${t.newNow.map((s) => s.name).join(", ")}.` : `Nothing new until level ${t.nextAt || c.level + 1}.`] })}</div>`;
     const log = a.log;
     const questLog = log.inLog ? `<ul class="now-log">${log.ready.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip ready">Hand in</span>${esc(q.title)}</button></li>`).join("")}${log.active.slice(0, 8).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip">${q.total ? `${q.done}/${q.total}` : "…"}</span>${esc(q.title)}${q.level ? ` <small>lvl ${q.level}</small>` : ""}</button></li>`).join("")}</ul>` : `<p>Your quest log is empty. ${a.next ? `Pick up quests in ${esc(a.next.name)}.` : ""}</p>`;
     const top = a.next?.quests?.length ? `<ul class="now-log">${a.next.quests.slice(0, 6).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip new">lvl ${q.level}</span>${esc(q.title)} <small>from ${esc(q.giver)}</small></button></li>`).join("")}</ul>` : "";
