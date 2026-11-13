@@ -230,7 +230,9 @@ window.NowView = (() => {
     if (!document.querySelector("[data-now]")) return;
     const f = status?.frame;
     if (setup && setup.live?.signal !== status?.signal) { setup.live = status; lastKey = ""; }
-    const key = f?.position ? [f.position.mapId, f.level, f.questLogHash, f.quest?.objectivesDone?.length, f.dead, Math.floor((f.xpPercent ?? 0) / 5)].join("|") : "none";
+    const key = f?.position ? [f.position.mapId, f.level, f.questLogHash, f.quest?.objectivesDone?.length, f.dead, Math.floor((f.xpPercent ?? 0) / 5),
+      // Live quest pages: a hand-in or a newly finished objective refreshes too.
+      (f.questLog || []).map((q) => q.id + (q.complete ? "c" : "")).join(","), (f.turnedIn || []).join(",")].join("|") : "none";
     if (key === lastKey) return;
     lastKey = key;
     clearTimeout(timer);
