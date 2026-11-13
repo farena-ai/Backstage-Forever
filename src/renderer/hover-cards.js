@@ -21,8 +21,9 @@ window.HoverCards = (() => {
     }
     return cache.get(id);
   }
-  function markup(d) {
-    const r = d?.record;
+  function markup(d, fallbackTitle = "") {
+    // No reference record (a quest the bundled data doesn't know yet): still say what it is.
+    const r = d?.record || (fallbackTitle ? { title: fallbackTitle } : null);
     if (!r) return "";
     const steps = (d.howTo?.steps || []).slice(0, 3).map((s) => `<li>${esc(s.text)}</li>`).join("");
     const giver = d.givers?.[0];
@@ -59,7 +60,7 @@ window.HoverCards = (() => {
       const now = under(el, x, y);
       if (!now) return;
       current = el = now;
-      const html = markup(d);
+      const html = markup(d, (el.querySelector?.("strong")?.textContent || el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120));
       if (!html) return;
       card?.remove();
       card = document.createElement("div");
