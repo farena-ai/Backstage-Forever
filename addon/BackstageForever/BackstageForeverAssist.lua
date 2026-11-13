@@ -536,6 +536,7 @@ function BackstageForeverAssistCommand(message)
             '/bf hearth - where your Hearthstone takes you',
             '/bf show, /bf hide - the Adventure Compass panel',
             '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',
+            '/bf gear - turn upgrade hints on item tooltips and the best-quest-reward highlight on or off',
             '/bf live - the small strip that lets the desktop app follow you',
         }
         for _,l in ipairs(lines) do say(l) end
