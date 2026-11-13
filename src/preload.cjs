@@ -83,6 +83,7 @@ contextBridge.exposeInMainWorld(
     worldMapNpc: (npcId) => invoke("worldMapNpc", npcId),
     levelingAdvice: () => invoke("levelingAdvice"),
     dataCoverage: () => invoke("dataCoverage"),
+    talentCoach: (input) => invoke("talentCoach", input),
     playSession: () => invoke("playSession"),
     playTrail: (mapId) => invoke("playTrail", mapId),
     onPlayEvent: (listener) => {
