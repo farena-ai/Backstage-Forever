@@ -71,3 +71,7 @@ test("every Now step has its painted crest", () => {
   for (const k of kinds) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/steps", k + ".png")), `missing crest ${k}`);
   for (const b of new Set([...now.matchAll(/\d+: "([a-z]+)"/g)].map((m) => m[1]))) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/zones", b + ".webp")), `missing vista ${b}`);
 });
+
+test("every class has its crest", () => {
+  for (const c of ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"]) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/classes", c + ".png")), c);
+});
