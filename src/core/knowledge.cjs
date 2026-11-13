@@ -9,6 +9,23 @@ const FILES = Object.freeze([
   "turn_ins.json",
   "objectives.json",
 ]);
+// Optional per-build name sources: only reward item names and qualities are read
+// from them. A build lists them in its source lock only when upstream published them.
+const OPTIONAL_FILES = Object.freeze(["vendors.json", "tooltip_scan.enUS.json"]);
+// Classic faction IDs with well-known English names. Unknown IDs keep only their ID.
+const FACTIONS = Object.freeze({
+  21: "Booty Bay", 47: "Ironforge", 54: "Gnomeregan Exiles", 59: "Thorium Brotherhood",
+  67: "Horde", 68: "Undercity", 69: "Darnassus", 70: "Syndicate", 72: "Stormwind",
+  76: "Orgrimmar", 81: "Thunder Bluff", 87: "Bloodsail Buccaneers",
+  92: "Gelkis Clan Centaur", 93: "Magram Clan Centaur", 169: "Steamwheedle Cartel",
+  270: "Zandalar Tribe", 349: "Ravenholdt", 369: "Gadgetzan", 469: "Alliance",
+  470: "Ratchet", 471: "Wildhammer Clan", 509: "League of Arathor", 510: "The Defilers",
+  529: "Argent Dawn", 530: "Darkspear Trolls", 576: "Timbermaw Hold", 577: "Everlook",
+  589: "Wintersaber Trainers", 609: "Cenarion Circle", 729: "Frostwolf Clan",
+  730: "Stormpike Guard", 749: "Hydraxian Waterlords", 809: "Shen'dralar",
+  889: "Warsong Outriders", 890: "Silverwing Sentinels", 909: "Darkmoon Faire",
+  910: "Brood of Nozdormu",
+});
 const BUILD = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/;
 const COMMIT = /^[a-f0-9]{40}$/;
 const ATTRIBUTION =
@@ -63,7 +80,39 @@ function position(v) {
     return null;
   return { mapId: v.uiMap, x: v.mapX, y: v.mapY };
 }
-function normalizeData(inputs, { commit, build } = {}) {
+/**
+ * Reward item names and qualities from one build's parsed datasets: item hotfixes,
+ * then vendor listings, then the tooltip scan (the only quality source).
+ */
+function rewardItemFacts(raw) {
+  const names = {},
+    quality = {};
+  for (const [key, r] of entries(raw.item_hotfixes?.items))
+    if (id(+key) && r?.status === "valid" && text(r.name) && id(r.sources))
+      names[key] = r.name;
+  if (raw.vendors)
+    for (const [, v] of entries(raw.vendors.vendors, 5000))
+      for (const [, e] of object(v?.entries) ? entries(v.entries, 5000) : [])
+        if (id(e?.itemId) && text(e.name) && !names[e.itemId])
+          names[e.itemId] = e.name;
+  if (raw.tooltip_scan)
+    for (const [key, r] of entries(raw.tooltip_scan.items))
+      if (id(+key) && object(r)) {
+        if (text(r.name) && !names[key]) names[key] = r.name;
+        if (number(r.quality, 7)) quality[key] = r.quality;
+      }
+  return { names, quality };
+}
+/**
+ * Fill gaps in `into` from `from` (both rewardItemFacts results); `into` wins.
+ */
+function mergeItemFacts(into, from) {
+  for (const k of ["names", "quality"])
+    for (const [key, v] of Object.entries(from?.[k] || {}))
+      if (into[k][key] === undefined) into[k][key] = v;
+  return into;
+}
+function normalizeData(inputs, { commit, build, itemFacts } = {}) {
   if (!COMMIT.test(commit) || !BUILD.test(build)) fail();
   let total = 0,
     dropped = 0;
@@ -77,7 +126,10 @@ function normalizeData(inputs, { commit, build } = {}) {
       return null;
     }
   };
-  for (const name of FILES) {
+  for (const name of [
+    ...FILES,
+    ...OPTIONAL_FILES.filter((n) => inputs[n] !== undefined),
+  ]) {
     let input = inputs[name];
     const bytes =
       typeof input === "string" || Buffer.isBuffer(input)
@@ -140,6 +192,19 @@ function normalizeData(inputs, { commit, build } = {}) {
       names[key] = r.name;
       pack.items[key] = { id: +key, name: r.name, sources: r.sources };
     }
+  // Reward-only name sources (vendor listings, tooltip scan, and optionally other
+  // pinned builds' facts). They never add rows to pack.items.
+  const facts = rewardItemFacts(raw);
+  if (itemFacts !== undefined) {
+    if (!object(itemFacts?.names) || !object(itemFacts?.quality)) fail();
+    const checked = { names: {}, quality: {} };
+    for (const [key, v] of entries(itemFacts.names, 100000))
+      if (id(+key) && text(v)) checked.names[key] = v;
+    for (const [key, v] of entries(itemFacts.quality, 100000))
+      if (id(+key) && number(v, 7)) checked.quality[key] = v;
+    mergeItemFacts(facts, checked);
+  }
+  const { names: rewardNames, quality } = facts;
   const creatures = {};
   for (const [key, r] of entries(raw.creature_details.creatures))
     if (id(+key) && text(r?.name) && id(r.sources)) {
@@ -199,12 +264,66 @@ function normalizeData(inputs, { commit, build } = {}) {
               record.rewards[kind].push({
                 itemId: r.itemId,
                 count: r.count,
-                name: names[r.itemId] || `Item #${r.itemId}`,
+                name: rewardNames[r.itemId] || `Item #${r.itemId}`,
+                ...(quality[r.itemId] !== undefined
+                  ? { quality: quality[r.itemId] }
+                  : {}),
               });
               return true;
             });
       if (number(q.rewards?.money))
         record.rewards.moneyCopper = q.rewards.money;
+      const reputation = [];
+      if (Array.isArray(q.rewards?.reputation))
+        for (const r of q.rewards.reputation.slice(0, 10))
+          optional(() => {
+            if (
+              !id(r?.factionId) ||
+              !Number.isSafeInteger(r.tier) ||
+              Math.abs(r.tier) > 9 ||
+              (r.override !== undefined &&
+                (!Number.isSafeInteger(r.override) ||
+                  Math.abs(r.override) > 10000000))
+            )
+              fail();
+            // Upstream overrides are stored in hundredths of a reputation point.
+            const amount = r.override ? Math.trunc(r.override / 100) : undefined;
+            if (!r.tier && !amount) return true;
+            if (reputation.some((x) => x.factionId === r.factionId)) fail();
+            reputation.push({
+              factionId: r.factionId,
+              tier: r.tier,
+              ...(amount ? { amount } : {}),
+            });
+            return true;
+          });
+      if (reputation.length) record.rewards.reputation = reputation.slice(0, 5);
+      optional(() => {
+        const d = q.rewards?.xpDifficulty,
+          m = q.rewards?.xpMultiplier;
+        if (d === undefined && m === undefined) return true;
+        if (
+          !number(d, 10) ||
+          typeof m !== "number" ||
+          !Number.isFinite(m) ||
+          m < 0 ||
+          m > 10
+        )
+          fail();
+        record.rewards.xp = { difficulty: d, multiplier: m };
+        return true;
+      });
+      const spells = [];
+      for (const s of [
+        q.rewards?.spellId,
+        ...(Array.isArray(q.rewards?.displaySpells)
+          ? q.rewards.displaySpells.slice(0, 10).map((d) => d?.spellId)
+          : []),
+      ])
+        if (id(s) && !spells.some((x) => x.spellId === s))
+          spells.push({ spellId: s });
+        else if (s !== undefined && !id(s)) dropped++;
+      if (spells.length) record.rewards.spells = spells.slice(0, 6);
       pack.quests[key] = record;
       return true;
     });
@@ -375,8 +494,13 @@ function normalizeData(inputs, { commit, build } = {}) {
   return pack;
 }
 function validateFiles(files, commit, build) {
-  if (!object(files) || Object.keys(files).length !== FILES.length) fail();
-  for (const n of FILES) {
+  if (
+    !object(files) ||
+    FILES.some((n) => !Object.hasOwn(files, n)) ||
+    Object.keys(files).some((n) => !FILES.includes(n) && !OPTIONAL_FILES.includes(n))
+  )
+    fail();
+  for (const n of Object.keys(files)) {
     const f = files[n];
     checkKeys(f, ["sha256", "bytes", "sources", "collectedOn", "url"]);
     if (
@@ -482,7 +606,14 @@ function validatePack(p) {
       "sides",
       "observedXP",
     ]);
-    checkKeys(q.rewards, ["items", "choices", "moneyCopper"]);
+    checkKeys(q.rewards, [
+      "items",
+      "choices",
+      "moneyCopper",
+      "reputation",
+      "xp",
+      "spells",
+    ]);
     if (
       !id(+key) ||
       q?.id !== +key ||
@@ -570,9 +701,57 @@ function validatePack(p) {
       if (
         !Array.isArray(q.rewards?.[k]) ||
         q.rewards[k].length > 12 ||
-        q.rewards[k].some((r) => !id(r.itemId) || !id(r.count) || !text(r.name))
+        q.rewards[k].some((r) => {
+          checkKeys(r, ["itemId", "count", "name", "quality"]);
+          return (
+            !id(r.itemId) ||
+            !id(r.count) ||
+            !text(r.name) ||
+            (r.quality !== undefined && !number(r.quality, 7))
+          );
+        })
       )
         fail();
+    const { reputation, xp, spells } = q.rewards;
+    if (
+      reputation !== undefined &&
+      (!Array.isArray(reputation) ||
+        !reputation.length ||
+        reputation.length > 5 ||
+        reputation.some((r) => {
+          checkKeys(r, ["factionId", "tier", "amount"]);
+          return (
+            !id(r.factionId) ||
+            !Number.isSafeInteger(r.tier) ||
+            Math.abs(r.tier) > 9 ||
+            (r.amount !== undefined &&
+              (!Number.isSafeInteger(r.amount) ||
+                r.amount === 0 ||
+                Math.abs(r.amount) > 100000))
+          );
+        }))
+    )
+      fail();
+    if (xp !== undefined) {
+      checkKeys(xp, ["difficulty", "multiplier"]);
+      if (
+        !number(xp.difficulty, 10) ||
+        typeof xp.multiplier !== "number" ||
+        !(xp.multiplier >= 0 && xp.multiplier <= 10)
+      )
+        fail();
+    }
+    if (
+      spells !== undefined &&
+      (!Array.isArray(spells) ||
+        !spells.length ||
+        spells.length > 6 ||
+        spells.some((r) => {
+          checkKeys(r, ["spellId"]);
+          return !id(r.spellId);
+        }))
+    )
+      fail();
   }
   for (const [key, n] of entries(p.npcs)) {
     checkKeys(n, [
@@ -629,6 +808,15 @@ function validatePack(p) {
     "items",
     "choices",
     "moneyCopper",
+    "quality",
+    "reputation",
+    "factionId",
+    "tier",
+    "amount",
+    "difficulty",
+    "multiplier",
+    "spells",
+    "spellId",
     "itemId",
     "count",
     "name",
@@ -654,6 +842,7 @@ function validatePack(p) {
     "last",
     "url",
     ...FILES,
+    ...OPTIONAL_FILES,
     "builds",
     "observedQuests",
     "objects",
@@ -723,6 +912,12 @@ function mergeQuest(rows) {
     mentions: union(rows.map((r) => r.mentions), (r) => `${r.kind}:${r.id}`, MERGE_CAPS.mentions),
     rewards: structuredClone(rows.find((r) => hasRewards(r.rewards))?.rewards || head.rewards),
   };
+  // Reward facts outside the item/money block come from the newest build reporting each.
+  for (const k of ["moneyCopper", "reputation", "xp", "spells"])
+    if (q.rewards[k] === undefined) {
+      const v = rows.find((r) => r.rewards[k] !== undefined)?.rewards[k];
+      if (v !== undefined) q.rewards[k] = structuredClone(v);
+    }
   for (const k of ["level", "minLevel", "nextQuestId", "raceMask", "objectiveEvidence"]) {
     const v = newest(rows, k);
     if (v !== undefined) q[k] = v;
@@ -834,6 +1029,24 @@ function mergePacks(packs) {
   for (const [key, rows] of gather(valid, "items")) pack.items[key] = mergeNamed(rows);
   for (const [key, rows] of gather(valid, "npcs")) pack.npcs[key] = mergeNpc(rows);
   for (const [key, rows] of gather(valid, "quests")) pack.quests[key] = mergeQuest(rows);
+  // Item names/qualities resolve across builds: an older build's vendor or tooltip
+  // name fills a newer build's "Item #id" fallback for the same exact item ID.
+  const known = new Map();
+  for (const p of valid)
+    for (const q of Object.values(p.quests))
+      for (const r of [...q.rewards.items, ...q.rewards.choices]) {
+        const k = known.get(r.itemId) || {};
+        if (!k.name && r.name !== `Item #${r.itemId}`) k.name = r.name;
+        if (k.quality === undefined && r.quality !== undefined) k.quality = r.quality;
+        known.set(r.itemId, k);
+      }
+  for (const q of Object.values(pack.quests))
+    for (const r of [...q.rewards.items, ...q.rewards.choices]) {
+      const k = known.get(r.itemId) || {};
+      if (r.name === `Item #${r.itemId}`)
+        r.name = pack.items[r.itemId]?.name || k.name || r.name;
+      if (r.quality === undefined && k.quality !== undefined) r.quality = k.quality;
+    }
   const max = (k) => Math.max(...valid.map((p) => p.counts[k] || 0));
   const npcs = Object.values(pack.npcs);
   pack.counts = {
@@ -850,6 +1063,60 @@ function mergePacks(packs) {
     dropped: valid.reduce((n, p) => n + (p.counts.dropped || 0), 0),
   };
   return validatePack(pack);
+}
+const MAX_LEVEL = 60;
+/**
+ * XP a quest gives at or below its own level, derived only when every observation
+ * in the full-XP window (player level <= quest level + 5, below the level cap)
+ * agrees. A second value about 3% higher (a character bonus seen in samples) is
+ * tolerated and the lower value is kept. Otherwise undefined.
+ */
+function baseQuestXP(q) {
+  if (!number(q.level, 1000) || !Array.isArray(q.observedXP)) return undefined;
+  const values = [
+    ...new Set(
+      q.observedXP
+        .filter((o) => o.level < MAX_LEVEL && o.level <= q.level + 5)
+        .map((o) => o.xp),
+    ),
+  ].sort((a, b) => a - b);
+  if (!values.length || values[0] <= 0 || values.length > 2) return undefined;
+  if (values.length === 2 && !(values[1] / values[0] >= 1.02 && values[1] / values[0] <= 1.04))
+    return undefined;
+  return values[0];
+}
+/**
+ * Approximate XP for a player level, from Forever turn-in samples: full XP up to
+ * quest level + 5, then 80% (+6), 60% (+7) and 50% from +8 on (observed through
+ * +13); none at the level cap. Rounding differs by a few points from the game.
+ */
+function estimateQuestXP(base, questLevel, playerLevel) {
+  if (!number(base) || !number(questLevel, 1000) || !number(playerLevel, 1000))
+    return null;
+  if (playerLevel >= MAX_LEVEL) return 0;
+  const over = playerLevel - questLevel;
+  const factor = over <= 5 ? 1 : over === 6 ? 0.8 : over === 7 ? 0.6 : 0.5;
+  return Math.round(base * factor);
+}
+function rewardDetails(q) {
+  const r = q.rewards;
+  const out = { ...r };
+  if (r.reputation)
+    out.reputation = r.reputation.map((x) => ({
+      ...x,
+      ...(FACTIONS[x.factionId] ? { name: FACTIONS[x.factionId] } : {}),
+    }));
+  if (r.xp || q.observedXP?.length) {
+    const base = baseQuestXP(q);
+    out.xp = {
+      ...(r.xp || {}),
+      observed: (q.observedXP || [])
+        .map((o) => ({ level: o.level, xp: o.xp }))
+        .sort((a, b) => a.level - b.level || a.xp - b.xp),
+      ...(base !== undefined ? { base } : {}),
+    };
+  }
+  return out;
 }
 class KnowledgeIndex {
   constructor(pack) {
@@ -902,6 +1169,7 @@ class KnowledgeIndex {
         questId,
         record: null,
         chain: [],
+        links: { previous: [], next: [] },
         givers: [],
         turnIns: [],
         objectiveLocations: [],
@@ -968,6 +1236,14 @@ class KnowledgeIndex {
       }
     }
     if (queue.length) warnings.push("Chain display limited to 12 nodes.");
+    const link = (questId) => ({
+      id: questId,
+      ...(this.pack.quests[questId] ? { title: this.pack.quests[questId].title } : {}),
+    });
+    const links = {
+      previous: (this.reverse.get(questId) || []).slice(0, 12).map(link),
+      next: q.nextQuestId ? [link(q.nextQuestId)] : [],
+    };
     return {
       status,
       questId,
@@ -977,7 +1253,8 @@ class KnowledgeIndex {
       turnIns: q.turnIns.map(resolve),
       objectiveLocations: q.objectiveLocations,
       mentions: q.mentions.map(resolve),
-      rewards: q.rewards,
+      rewards: rewardDetails(q),
+      links,
       provenance,
       warnings: [...new Set(warnings)],
     };
@@ -1190,6 +1467,12 @@ class KnowledgeIndex {
 }
 module.exports = {
   FILES,
+  OPTIONAL_FILES,
+  FACTIONS,
+  rewardItemFacts,
+  mergeItemFacts,
+  baseQuestXP,
+  estimateQuestXP,
   BUILD,
   COMMIT,
   ATTRIBUTION,

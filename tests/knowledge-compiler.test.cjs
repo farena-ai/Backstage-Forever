@@ -40,4 +40,7 @@ test("compiler verifies hashes and reproducibly merges six factual fixture input
   assert.deepEqual(lock.builds.map((b) => b.build), ["1.60.1.70888", "1.60.1.70862", "1.60.1.70840", "1.60.1.70790"]);
   assert.equal(lock.builds[1].files["npcs.json"].coverage.npcs, 507);
   assert.equal(lock.builds[3].files["objectives.json"].coverage.quests, 297);
+  assert.equal(lock.builds[0].files["vendors.json"].coverage.vendors, 79);
+  assert.equal(lock.builds[3].files["tooltip_scan.enUS.json"].coverage.items, 1924);
+  assert.equal(lock.builds[0].files["tooltip_scan.enUS.json"], undefined, "optional files are listed only where upstream published them");
 });

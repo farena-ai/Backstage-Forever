@@ -11,6 +11,11 @@ personal data and undocumented prerequisite correlations. Each build is normaliz
 separately, then merged newest-first: quest givers, turn-ins, objective positions
 and NPC positions are unioned with exact dedupe and bounded caps, and scalar facts
 (titles, levels, links, rewards) come from the newest build that reports them.
+Quest rewards keep item and choice IDs, counts, money, reputation faction IDs with
+reward tiers (and override amounts, stored upstream in hundredths), XP difficulty
+and multiplier, and reward spell IDs. Reward item names come from item hotfixes,
+vendor listings and the tooltip scan (which also gives item quality) of any pinned
+build, matched by exact item ID; unnamed items keep an "Item #id" label.
 NPC window positions are approximate player observation positions, not guaranteed
 creature spawns. Per-record sources counts contributing saved files (the largest
 single-build count), not observation counts.

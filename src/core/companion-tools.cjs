@@ -182,7 +182,8 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
       const d = index.details(qp, id);
       if (d.status === "missing") return { status: "not-found", questId: id, warnings: d.warnings };
       const npc = (n) => ({ id: n.id, name: n.name || `NPC #${n.id}`, kind: n.kind, locations: (n.positions || []).slice(0, 2).map((p) => point(p, here)) });
-      const item = (r) => ({ id: r.id ?? r.itemId, name: pack.items?.[r.id ?? r.itemId]?.name || null, count: r.count ?? r.amount ?? undefined });
+      const item = (r) => ({ id: r.id ?? r.itemId, name: pack.items?.[r.id ?? r.itemId]?.name || (r.name && r.name !== `Item #${r.itemId}` ? r.name : null), count: r.count ?? r.amount ?? undefined, ...(Number.isSafeInteger(r.quality) ? { quality: r.quality } : {}) });
+      const rw = d.rewards;
       const r = d.record;
       const active = shared?.quests?.find((q) => q.id === id);
       return {
@@ -198,7 +199,14 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
         playerProgress: active ? { inQuestLog: true, readyToTurnIn: Boolean(active.complete), objectives: (active.objectives || []).slice(0, 6), ...(active.complete ? { nextStep: d.turnIns.length ? `Ready to turn in: go to ${d.turnIns[0].name || "the turn-in NPC"} (see turnIns) to finish it.` : "Ready to turn in; the turn-in NPC is not in the reference (objective text may name them)." } : {}) } : null,
         givers: d.givers.slice(0, 3).map(npc), turnIns: d.turnIns.slice(0, 3).map(npc),
         objectiveAreas: d.objectiveLocations.slice(0, 4).map((o) => ({ index: o.index, type: o.type, locations: (o.positions || []).slice(0, 2).map((p) => point(p, here)) })),
-        rewards: d.rewards ? { items: (d.rewards.items || []).slice(0, 6).map(item), choices: (d.rewards.choices || []).slice(0, 6).map(item), moneyCopper: d.rewards.moneyCopper ?? null } : null,
+        rewards: rw ? {
+          items: (rw.items || []).slice(0, 6).map(item), choices: (rw.choices || []).slice(0, 6).map(item), moneyCopper: rw.moneyCopper ?? null,
+          ...(rw.reputation ? { reputation: rw.reputation.slice(0, 5).map((x) => ({ faction: x.name || `Faction #${x.factionId}`, ...(x.amount !== undefined ? { amount: x.amount } : { tier: x.tier }) })) } : {}),
+          ...(rw.xp ? { xp: { ...(rw.xp.base !== undefined ? { atOrBelowQuestLevel: rw.xp.base } : {}), observed: rw.xp.observed.slice(0, 4) } } : {}),
+          ...(rw.spells ? { spellIds: rw.spells.map((x) => x.spellId) } : {}),
+          ...(rw.xp?.base !== undefined || rw.reputation ? { rewardNote: "XP is full up to 5 levels above the quest level, then about 80%, 60%, then 50%. Reputation shows points when the data gives them, otherwise the client reward tier (higher is more)." } : {}),
+        } : null,
+        links: { previous: d.links.previous.slice(0, 4), next: d.links.next.slice(0, 4) },
         chain: d.chain.slice(0, 8).map((c) => ({ id: c.id, title: c.title, status: c.status, nextQuestId: c.nextQuestId ?? null })),
         warnings: d.warnings, source: `${d.provenance.attribution} Build ${d.provenance.build}, observed through ${d.provenance.observedThrough}.`,
         caution: "Reported chain links are not proven prerequisites; locations are approximate.",
