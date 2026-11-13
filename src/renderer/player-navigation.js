@@ -32,7 +32,7 @@ window.PlayerNavigation = (() => {
     },
     guide: {
       label: "Help",
-      routes: [["guide", "Field guide"]],
+      routes: [["guide", "Field guide"], ["commands", "Commands"]],
       description:
         "Learn the basics, review a support report, or recover your local journal below.",
     },

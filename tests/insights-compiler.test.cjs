@@ -28,36 +28,45 @@ test("Windows checkouts preserve LF bytes for all four generated insight resourc
   assert.equal(rows.length, 4);
   for (const row of rows) assert.match(row, /: eol: lf$/);
 });
-test("offline bundled validation checks seven immutable source locks, coverage and compiled integrity", () => {
+test("offline bundled validation checks every build's seven immutable source locks, coverage and compiled integrity", () => {
   assert.equal(api().checkBundle(), true);
   const p = require("../data/forever-insights/pack.json");
   assert.deepEqual(p.coverage, {
-    quests: 3884,
-    sharing: 3677,
-    durations: 33,
-    startItems: 928,
-    dropLists: 131,
-    trainers: 34,
-    services: 2074,
-    uniqueSpells: 1139,
-    items: 5014,
+    quests: 4916,
+    sharing: 4847,
+    durations: 37,
+    startItems: 1189,
+    dropLists: 186,
+    trainers: 113,
+    services: 5552,
+    uniqueSpells: 1427,
+    items: 6670,
   });
+  assert.equal(p.build, "1.60.1.70888");
+  assert.deepEqual(p.builds, ["1.60.1.70888", "1.60.1.70862", "1.60.1.70840", "1.60.1.70790"]);
+  assert.equal(p.sources.length, 7 * p.builds.length);
+  const alliance = p.trainers.filter((t) => t.observedReactionsByFaction.Alliance?.some((r) => r >= 4));
+  assert.ok(alliance.some((t) => t.positions.some((q) => q.mapId === 1429)), "an Elwynn Forest trainer");
+  assert.ok(alliance.some((t) => t.positions.some((q) => q.mapId === 1453)), "a Stormwind trainer");
 });
 test("compiler rejects changed original source bytes and forged immutable locks", (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-insights-compile-"));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  for (const [n, d] of Object.entries(fixture()))
-    fs.writeFileSync(path.join(dir, n), JSON.stringify(d));
+  for (const build of require("../src/core/insights-sources.cjs").BUILDS) {
+    fs.mkdirSync(path.join(dir, build));
+    for (const [n, d] of Object.entries(fixture()))
+      fs.writeFileSync(path.join(dir, build, n), JSON.stringify(d));
+  }
   assert.throws(() => api().compile(dir), /hash|bytes/i);
   const lock = structuredClone(
     require("../data/forever-insights/source-lock.json"),
   );
-  delete lock.files["trainers.json"];
+  lock.files = lock.files.filter((s) => s.name !== "trainers.json");
   assert.throws(() => api().compile(dir, lock), /lock|provenance/i);
 });
 test("each source hash, byte count, URL and exact metadata is independently pinned", () => {
   const original = require("../data/forever-insights/source-lock.json");
-  for (const name of Object.keys(original.files))
+  for (const index of original.files.keys())
     for (const mutate of [
       (s) => (s.sha256 = "a".repeat(64)),
       (s) => s.bytes++,
@@ -65,7 +74,7 @@ test("each source hash, byte count, URL and exact metadata is independently pinn
       (s) => s.meta.sources++,
     ]) {
       const lock = structuredClone(original);
-      mutate(lock.files[name]);
+      mutate(lock.files[index]);
       assert.throws(() => api().compile("unused", lock), /lock|provenance/);
     }
 });

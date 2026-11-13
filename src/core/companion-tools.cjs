@@ -139,7 +139,7 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
   function npcRecords() {
     const out = [];
     if (pack) for (const n of Object.values(pack.npcs || {})) if (n.kind === "npc") out.push({ id: n.id, name: n.name, lastSeen: n.lastSeen || null, positions: n.positions || [], build: pack.build, commit: pack.sourceCommit, tier: exactBuild ? "exact-build-observation" : "reference-observation" });
-    if (historical) for (const n of historical.npcs) out.push({ id: n.id, name: n.name, lastSeen: n.lastSeen, positions: n.positions, build: historical.build, commit: historical.sourceCommit, tier: "historical-reference" });
+    if (historical) for (const n of historical.npcs) out.push({ id: n.id, name: n.name, lastSeen: n.lastSeen, positions: n.positions, build: n.build || historical.build, commit: historical.sourceCommit, tier: "historical-reference" });
     return out;
   }
   function npcDto(group) {

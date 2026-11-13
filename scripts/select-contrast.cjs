@@ -26,7 +26,8 @@ async function assertSelectContrast(page, context) {
           selected: Boolean(node.selected),
         };
       };
-      return selects.map((select) => ({
+      // A select replaced by a re-render mid-scan has no computed style; measure only live ones.
+      return selects.filter((select) => select.isConnected).map((select) => ({
         name: select.getAttribute("aria-label") || select.name || select.id,
         appearance: getComputedStyle(select).appearance,
         colorScheme: getComputedStyle(select).colorScheme,

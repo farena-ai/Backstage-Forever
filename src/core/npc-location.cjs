@@ -2,7 +2,7 @@
 const {validateNpcLocationPack}=require('./npc-location-data.cjs');
 const {MAP_LABELS}=require('./npc-location-sources.cjs');
 const normalize=s=>String(s).toLowerCase().replace(/[’‘']/g,'').replace(/\s+/g,' ').trim();
-const PLACES={org:'Orgrimmar',orgrimmar:'Orgrimmar',tb:'Thunder Bluff','thunder bluff':'Thunder Bluff',thunderbluff:'Thunder Bluff'};
+const PLACES={org:'Orgrimmar',orgrimmar:'Orgrimmar',tb:'Thunder Bluff','thunder bluff':'Thunder Bluff',thunderbluff:'Thunder Bluff',uc:'Undercity',undercity:'Undercity',sw:'Stormwind City',stormwind:'Stormwind City','stormwind city':'Stormwind City',ironforge:'Ironforge',darnassus:'Darnassus'};
 const nonNpc=/\b(?:bank|auction house|mailbox|ore|copper|peacebloom|silverleaf|herb|herbs|hearthstone|material|materials|item|items|village|dungeon|profession|trainer supplies|cloth|leather|thread|reagent|potion|food)\b/i;
 const geography=new Set(['orgrimmar','org','thunder bluff','tb','thunderbluff','stormwind','ironforge','undercity','crossroads','ratchet','booty bay','auberdine','gromgol','gromgol zeppelin tower']);
 function parseNpcLocationIntent(prompt){
@@ -25,7 +25,7 @@ function resolveNpcLocation(prompt,{profile,shareProfile=false,currentIndex,hist
  const current=shareProfile&&currentIndex?.compatible(profile)?currentIndex:null;
  const records=[];
  if(current)for(const n of Object.values(current.pack.npcs||{}))if(n.kind==='npc')records.push({id:n.id,name:n.name,lastSeen:n.lastSeen,contributingFiles:n.sources,positions:n.positions,build:current.pack.build,sourceCommit:current.pack.sourceCommit,evidenceTier:'exact-build-observation'});
- if(historical)for(const n of historical.npcs)records.push({...n,build:historical.build,sourceCommit:historical.sourceCommit,evidenceTier:'historical-reference'});
+ if(historical)for(const n of historical.npcs)records.push({...n,build:n.build||historical.build,sourceCommit:historical.sourceCommit,evidenceTier:'historical-reference'});
  const matchedIds=new Set(records.filter(n=>intent.id?n.id===intent.id:matches(intent.query,n.name)).map(n=>n.id));
  // A name discovers IDs; all evidence for those IDs participates in identity.
  const candidates=records.filter(n=>matchedIds.has(n.id));

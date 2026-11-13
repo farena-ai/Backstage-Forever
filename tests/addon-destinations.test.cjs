@@ -4,7 +4,7 @@ const { spawnSync } = require("node:child_process"), path = require("node:path")
 const { parseSavedVariables } = require("../src/core/game-sync.cjs");
 const fixture = String.raw`
 local handler,hud,status
-local who,build,complete,fighting='A','70862',false,false
+local who,build,complete,fighting='A','70888',false,false
 local currentMap,poiMap=1413,1456
 local direct,points,rows={},{},{}
 local calls={direct=0,point={},pois={},info={},poiMap=0}

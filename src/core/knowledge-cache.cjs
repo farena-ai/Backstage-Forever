@@ -6,7 +6,9 @@ const {
   BUILD,
   COMMIT,
   LIMIT,
+  TOTAL,
   normalizeData,
+  mergePacks,
   KnowledgeIndex,
   hash,
   observedBuild,
@@ -118,7 +120,9 @@ class KnowledgeService {
     if (!BUILD.test(build) || this.loaded.has(build)) return;
     this.loaded.add(build);
     try {
-      const c = this.read(`${build}.json`, 12 * 1024 * 1024);
+      // The wrapper stores the pack as an escaped JSON string; the payload itself is
+      // bounded by validatePack (TOTAL), escaping can add up to the same again.
+      const c = this.read(`${build}.json`, 2 * TOTAL);
       if (
         c.schemaVersion !== 1 ||
         typeof c.payload !== "string" ||
@@ -127,12 +131,22 @@ class KnowledgeService {
         throw Error();
       const index = new KnowledgeIndex(JSON.parse(c.payload));
       if (index.pack.build !== build) throw Error();
-      // Both dates have passed strict pack validation. An upgrade's newer bundled
-      // observations must remain useful offline; equal/newer saved caches still win.
+      // Both dates have passed strict pack validation. Coverage never shrinks: a saved
+      // cache and the bundled pack for the same build are merged. The newer observation
+      // date leads (equal dates keep the saved cache first) so its scalar facts win.
       const existing = this.packs.get(build);
-      if (!existing || index.pack.observedThrough >= existing.pack.observedThrough)
-        this.packs.set(build, index);
+      if (!existing) this.packs.set(build, index);
+      else {
+        const cacheFirst =
+          index.pack.observedThrough >= existing.pack.observedThrough;
+        this.packs.set(build, this.merged(cacheFirst ? index : existing, cacheFirst ? existing : index));
+      }
     } catch {}
+  }
+  // Newest-first merge of two indexes for one build. Throws rather than dropping either
+  // side, so callers keep the last good pack when a merge is invalid or oversized.
+  merged(newer, older) {
+    return new KnowledgeIndex(mergePacks([newer.pack, older.pack]));
   }
   index(profile) {
     const build = profile === undefined ? this.build : profile?.clientBuild;
@@ -309,13 +323,16 @@ class KnowledgeService {
               LIMIT,
             );
             total += bytes.length;
-            if (total > 12 * 1024 * 1024) throw Error("Oversized");
+            if (total > TOTAL) throw Error("Oversized");
             inputs[name] = bytes;
             if (!valid()) return this.status();
           }
-          const pack = normalizeData(inputs, { commit, build }),
-            index = new KnowledgeIndex(pack),
-            payload = JSON.stringify(pack);
+          // One freshly downloaded build is merged into the current pack for that build
+          // (bundled multi-build data or an earlier cache), so coverage never shrinks.
+          const fresh = new KnowledgeIndex(normalizeData(inputs, { commit, build })),
+            base = this.packs.get(build),
+            index = base ? this.merged(fresh, base) : fresh,
+            payload = JSON.stringify(index.pack);
           if (!valid()) return this.status();
           this.write(`${build}.json`, {
             schemaVersion: 1,

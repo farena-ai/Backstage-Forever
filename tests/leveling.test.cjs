@@ -48,7 +48,53 @@ test("Alliance characters never get Horde-only zones, and odd input is handled",
 });
 
 test("a finished quest with no recorded hand-in points back to its quest giver", () => {
-  const r = advisor({ level: 7, faction: "Horde", className: "Priest", race: "Undead", location: { mapId: 1420, x: 0.6, y: 0.5 }, quests: [{ id: 358, title: "Graverobbers", complete: true, objectives: [] }] }).advise();
-  const g = r.log.ready.find((q) => q.id === 358);
+  const r = advisor({ level: 7, faction: "Horde", className: "Priest", race: "Undead", location: { mapId: 1420, x: 0.6, y: 0.5 }, quests: [{ id: 97961, title: "Camping 101: Tailoring", complete: true, objectives: [] }] }).advise();
+  const g = r.log.ready.find((q) => q.id === 97961);
   assert.ok(g.turnIn && g.turnIn.guess === true && g.turnIn.mapId === 1420);
+});
+
+test("a level 5 Human Warrior in Elwynn Forest gets Alliance zones and quests from the bundled data", () => {
+  const r = advisor({ level: 5, faction: "Alliance", className: "Warrior", race: "Human", location: { mapId: 1429, x: 0.45, y: 0.55 }, quests: [] }).advise();
+  assert.equal(r.status, "ok");
+  assert.equal(r.next.name, "Elwynn Forest");
+  assert.ok(r.next.available >= 10 && r.next.quests.length > 0 && r.next.hub, "Elwynn quest givers are known");
+  assert.ok(r.next.quests.every((q) => q.level >= 2 && q.level <= 7 && Number.isFinite(q.x)));
+  const table = loadLevelingPack().zones;
+  assert.ok(r.zones.every((z) => table.find((t) => t.mapId === z.mapId).faction !== "Horde"));
+  assert.ok(r.training && r.training.className === "Warrior");
+  assert.ok(!r.zones.some((z) => z.name === "Teldrassil" || z.name === "Dun Morogh"), "another race's starting area is never suggested to a new character");
+  const elf = advisor({ level: 5, faction: "Alliance", className: "Hunter", race: "Night Elf", location: { mapId: 1438, x: 0.55, y: 0.6 }, quests: [] }).advise();
+  assert.equal(elf.next.name, "Teldrassil");
+  assert.ok(!elf.zones.some((z) => z.name === "Elwynn Forest"));
+});
+
+test("Alliance class training points to an Alliance trainer location with spells", () => {
+  const priest = advisor({ level: 5, faction: "Alliance", className: "Priest", race: "Human", location: { mapId: 1429, x: 0.45, y: 0.55 }, quests: [] }).advise().training;
+  assert.equal(priest.trainer.mapId, 1429);
+  assert.equal(priest.trainer.mapName, "Elwynn Forest");
+  assert.equal(priest.nextAt, 6);
+  assert.equal(priest.spellsFromOtherTrainers, false);
+  const hunter = advisor({ level: 10, faction: "Alliance", className: "Hunter", race: "Human", location: { mapId: 1429, x: 0.45, y: 0.55 }, quests: [] }).advise().training;
+  assert.ok(hunter.trainer && [1429, 1453].includes(hunter.trainer.mapId));
+});
+
+test("training falls back to same-class spells when the faction's trainer has no recorded spell levels", () => {
+  const service = (spellId, name, observedLevel) => ({ spellId, name, rankText: "Rank 1", observedLevel, skillRank: 0, sources: 1 });
+  const trainer = (id, name, faction, mapId, services) => ({ id, name, title: "Warrior Trainer", trainerType: 0, sources: 1, npcSources: 1, creatureSources: 1, titleSources: 1, lastSeen: "2026-11-10", positions: [{ mapId, x: 0.4, y: 0.6 }], observedReactionsByFaction: { [faction]: [5] }, services });
+  const synthetic = { trainers: [
+    trainer(1, "Alliance Mentor", "Alliance", 1429, [service(100, "Battle Shout", 0)]),
+    trainer(2, "Horde Mentor", "Horde", 1411, [service(100, "Battle Shout", 4), service(101, "Rend", 4), service(102, "Charge", 6)]),
+  ] };
+  const make = (faction, mapId) => new LevelingAdvisor({ getState: () => ({ activeProfileId: "A", profiles: [{ id: "A", name: "P", level: 4, faction, className: "Warrior", race: "Human", location: { mapId, x: 0.4, y: 0.6 }, quests: [] }] }), knowledge: { bundled: { pack } }, insights: synthetic }).advise().training;
+  const a = make("Alliance", 1429);
+  assert.equal(a.trainer.name, "Alliance Mentor", "location stays with the player's faction trainer");
+  assert.equal(a.trainer.mapId, 1429);
+  assert.equal(a.spellsFromOtherTrainers, true);
+  assert.deepEqual(a.newNow.map((s) => s.name), ["Battle Shout", "Rend"]);
+  assert.equal(a.nextAt, 6);
+  const h = make("Horde", 1411);
+  assert.equal(h.trainer.name, "Horde Mentor");
+  assert.equal(h.spellsFromOtherTrainers, false);
+  const none = new LevelingAdvisor({ getState: () => ({ activeProfileId: "A", profiles: [{ id: "A", name: "P", level: 4, faction: "Alliance", className: "Warrior" }] }), knowledge: null, insights: { trainers: [synthetic.trainers[1]] } }).advise().training;
+  assert.equal(none.trainer, null, "an other-faction trainer is never offered as a location");
 });

@@ -186,7 +186,7 @@ test("shared context helper grounds facts and excludes private data and full his
     serialized,
     /PRIVATE|completedIds|readiness|goals|notes|source\.id/,
   );
-  assert.match(serialized, /23f96364/);
+  assert.match(serialized, /164bd1e2/);
   assert.deepEqual(ai.approvedProfile(context), context);
   assert.equal(ai.profileContext(state, "p", false, options), "");
   assert.equal(
@@ -251,7 +251,7 @@ test("all API request payloads and Claude subscription receive only whitelisted 
       /completedIds|PRIVATE_NOTE|PRIVATE_GUID|PRIVATE_GOAL|PRIVATE_JOURNEY|readiness/,
     );
     assert.ok(sent.includes("Seereth Stonebreak"));
-    assert.ok(sent.includes("23f96364"));
+    assert.ok(sent.includes("164bd1e2"));
   }
   const fs = require("node:fs"),
     path = require("node:path");

@@ -72,6 +72,15 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator("[data-world-map]").waitFor();
     await page.waitForFunction(() => Boolean(WorldMapView._state().selected));
     await page.screenshot({ path: path.join(capture, "now-to-map.png") });
+    // Help → Commands explains every command and filters as you type.
+    await page.locator('[data-nav="guide"]').first().click();
+    await page.locator('[data-nav="commands"]').first().click();
+    await page.locator("[data-commands]").waitFor();
+    assert.ok(await page.locator(".cmd-row code.cmd-name").count() >= 15);
+    await page.screenshot({ path: path.join(capture, "commands.png"), fullPage: true });
+    await page.locator("[data-cmd-filter]").fill("trainer");
+    const names = await page.locator("[data-cmd-list] .cmd-name").allTextContents();
+    assert.ok(names.includes("/bf train") && !names.includes("/bf junk [on|off]"), names.join(","));
     console.log("Now smoke passed");
   } catch (e) { console.error(e); process.exitCode = 1; }
   finally { clearTimeout(watchdog); await app?.close().catch(() => {}); await fs.rm(dir, { recursive: true, force: true }).catch(() => {}); }

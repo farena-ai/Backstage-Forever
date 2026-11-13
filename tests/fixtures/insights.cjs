@@ -1,6 +1,6 @@
 "use strict";
-const commit = "23f9636486d3d60479dc0bcee2356053c33faf2c",
-  build = "1.60.1.70862";
+// Synthetic rows with the bundled build's exact pinned metadata (current commit/build).
+const { COMMIT: commit, BUILD: build, SOURCES } = require("../../src/core/insights-sources.cjs");
 function fixture() {
   const out = {};
   for (const file of [
@@ -12,31 +12,10 @@ function fixture() {
     "creature_details.enUS.json",
     "item_hotfixes.enUS.json",
   ]) {
-    const cache = file.includes(".enUS"),
-      dataset = file.split(".")[0];
     out[file] = {
-      meta: {
-        attribution:
-          "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
-        ...(cache
-          ? {
-              cacheFiles: dataset === "item_hotfixes" ? 66 : 68,
-              cachesLeftOut: 0,
-            }
-          : {}),
-        clientBuild: build,
-        collectedOn: {
-          first: cache || dataset === "creatures" ? "2026-11-07" : "2026-11-09",
-          last: "2026-11-09",
-        },
-        ...(dataset === "creatures" ? { combatLogUploads: 7 } : {}),
-        dataset,
-        license: "CC BY 4.0",
-        ...(cache ? { locale: "enUS" } : {}),
-        product: "wowf",
-        schemaVersion: 1,
-        sources: 3,
-      },
+      meta: structuredClone(
+        SOURCES.find((s) => s.build === build && s.name === file).meta,
+      ),
     };
   }
   out["quests.enUS.json"].quests = {

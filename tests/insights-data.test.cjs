@@ -241,3 +241,43 @@ test("quest projection qualifies build, locale, title and unknown evidence witho
   );
   assert.throws(() => api().trainerInsights(p, { limit: 101 }));
 });
+test("per-build insights merge newest-first: union of rows, newest scalars, capped positions and services", () => {
+  const { BUILDS, SOURCES } = require("../src/core/insights-sources.cjs");
+  const older = BUILDS[1];
+  const olderRaw = fixture();
+  for (const [name, d] of Object.entries(olderRaw))
+    d.meta = structuredClone(SOURCES.find((s) => s.build === older && s.name === name).meta);
+  olderRaw["quests.enUS.json"].quests[10].title = "Old Errand Title";
+  olderRaw["quests.enUS.json"].quests[12] = { title: "Older Only", sources: 1 };
+  const t = olderRaw["trainers.json"].trainers[30];
+  t.lastSeen = "2026-11-08";
+  t.positions.push({ uiMap: 1429, mapX: 0.4334, mapY: 0.6573 });
+  const [newSpell, oldSpell] = Object.keys(t.services);
+  t.services[newSpell].level = 7;
+  t.services[999] = { spellId: 999, name: "Older Spell", level: 9, skillRank: 0, sources: 1 };
+  olderRaw["creatures.json"].creatures[30].reactions = { Alliance: [5] };
+  const newer = normalize(),
+    old = api().normalizeInsights(olderRaw, { commit, build: older });
+  const m = api().mergeInsights([newer, old]);
+  assert.equal(m.build, build);
+  assert.deepEqual(m.builds, [build, older]);
+  assert.equal(m.sources.length, 14);
+  assert.equal(m.quests.find((q) => q.id === 10).title, newer.quests.find((q) => q.id === 10).title);
+  assert.ok(m.quests.some((q) => q.id === 12), "older-only quest kept");
+  const tr = m.trainers.find((x) => x.id === 30);
+  assert.ok(tr.positions.some((p) => p.mapId === 1429));
+  assert.deepEqual(tr.positions[0], newer.trainers[0].positions[0], "newest positions first");
+  assert.deepEqual(tr.observedReactionsByFaction.Alliance, [5]);
+  assert.ok(tr.services.some((s) => s.spellId === 999));
+  const reported = tr.services.find((s) => s.spellId === Number(newSpell));
+  const before = newer.trainers[0].services.find((s) => s.spellId === Number(newSpell));
+  assert.equal(reported.observedLevel, before.observedLevel || 7, "a reported level replaces only an unknown one");
+  assert.ok(oldSpell === undefined || tr.services.some((s) => s.spellId === Number(oldSpell)));
+  assert.equal(m.coverage.trainers, 1);
+  assert.equal(m.dropped.trainerRows, newer.dropped.trainerRows + old.dropped.trainerRows);
+  assert.deepEqual(api().validateInsights(m), m, "a merge of pinned builds is pinned-valid");
+  assert.throws(() => api().mergeInsights([]), /Invalid/);
+  const forged = structuredClone(old);
+  forged.sources[0].sha256 = "a".repeat(64);
+  assert.throws(() => api().validateInsights(forged), /Invalid/, "unpinned sources are rejected by default");
+});

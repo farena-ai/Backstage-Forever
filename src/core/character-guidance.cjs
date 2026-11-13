@@ -2,6 +2,8 @@
 const crypto = require("node:crypto");
 // Independent ordinary labels for the matching UI constants; provenance is documented in CHARACTER-GUIDANCE.
 const SLOT_BUILD = "1.60.1.70862";
+// Equipment slot numbers are stable across the 1.60.1 client family.
+const SLOT_FAMILY = /^1\.60\.1\.\d{4,6}$/;
 const SLOTS = ["Head", "Neck", "Shoulder", "Body", "Chest", "Waist", "Legs", "Feet", "Wrist", "Hands", "Ring 1", "Ring 2", "Trinket 1", "Trinket 2", "Back", "Main hand", "Off hand", "Ranged", "Tabard"];
 const CLASS_OVERVIEWS = Object.freeze({
   Hunter: "Pets and tracking.", Mage: "Ranged elemental magic.", Druid: "Shapeshifting.",
@@ -48,7 +50,7 @@ function buildCharacterGuidance(state, profileId, { insights = null, now = Date.
   const compatible = source?.kind === "wow-addon" && source.build === insights?.build && source.locale === insights?.textLocale;
   const equipment = p?.readiness?.equipment;
   const rows = (equipment || []).slice(0, 19).map(item => ({
-    slot: item.slot, slotLabel: source?.kind === "wow-addon" && source.build === SLOT_BUILD ? SLOTS[item.slot - 1] || `Slot ${item.slot}` : `Slot ${item.slot}`,
+    slot: item.slot, slotLabel: source?.kind === "wow-addon" && SLOT_FAMILY.test(String(source.build || "")) ? SLOTS[item.slot - 1] || `Slot ${item.slot}` : `Slot ${item.slot}`,
     itemId: item.itemId, observedName: item.name || null,
     referenceName: compatible ? insights.items.find(i => i.id === item.itemId)?.name ?? null : null,
     quality: item.quality ?? null, itemLevel: item.itemLevel ?? null

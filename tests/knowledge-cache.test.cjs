@@ -5,8 +5,7 @@ const { test } = require("node:test"),
   path = require("node:path");
 const { KnowledgeService } = require("../src/core/knowledge-cache.cjs");
 const { FILES } = require("../src/core/knowledge.cjs");
-const build = "1.60.1.70862",
-  commit = "23f9636486d3d60479dc0bcee2356053c33faf2c";
+const { build, sourceCommit: commit } = require("../data/forever/pack.json");
 const bundled = path.join(__dirname, "../data/forever/pack.json");
 function setup(t, fetcher) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-knowledge-"));
@@ -14,7 +13,8 @@ function setup(t, fetcher) {
   return new KnowledgeService({ dataDir, bundledPath: bundled, fetcher });
 }
 const fixture = require("./fixtures/forever-facts.cjs").fixture();
-for (const source of Object.values(fixture)) source.meta.collectedOn.last = "2026-11-09";
+// Fixture rows stand in for the bundled reference build's files.
+for (const source of Object.values(fixture)) { source.meta.collectedOn.last = "2026-11-09"; source.meta.clientBuild = build; }
 const raw = (n) => JSON.stringify(fixture[n]);
 test("offline bundled lookup, exact selected build and checks without redownloading unchanged commit", async (t) => {
   const urls = [];
@@ -28,7 +28,7 @@ test("offline bundled lookup, exact selected build and checks without redownload
   assert.ok(s.status().lastChecked);
   assert.equal(s.status().build, build);
   assert.equal(s.status().packBuild, build);
-  assert.equal(s.index().pack.observedThrough, "2026-11-09");
+  assert.equal(s.index().pack.observedThrough, s.bundled.pack.observedThrough);
   s.setContext({ clientBuild: "1.60.1.999" }, false);
   assert.equal(s.index(), null);
   assert.equal(s.status().phase, "mismatch");
@@ -47,19 +47,21 @@ test("offline upgrade prefers newer compatible bundled observation date over old
   const payload = JSON.stringify(old); s.write(`${build}.json`, { schemaVersion: 1, payload, sha256: require("../src/core/knowledge.cjs").hash(payload) });
   const cacheFile = path.join(s.cacheDir, `${build}.json`), before = fs.readFileSync(cacheFile);
   s.setContext({ clientBuild: build }, false);
-  assert.equal(s.status().sourceCommit, commit); assert.equal(s.status().observedThrough, "2026-11-09");
-  assert.equal(s.index().pack.counts.quests, 3884); assert.equal(calls, 0); assert.deepEqual(fs.readFileSync(cacheFile), before);
+  assert.equal(s.status().sourceCommit, commit); assert.equal(s.status().observedThrough, s.bundled.pack.observedThrough);
+  assert.equal(s.index().pack.counts.quests, s.bundled.pack.counts.quests); assert.equal(calls, 0); assert.deepEqual(fs.readFileSync(cacheFile), before);
 });
 
-test("offline cache with equal or newer canonical observation date remains selected regardless of SHA or record count", t => {
-  for (const date of ["2026-11-09", "2026-11-10"]) {
+test("offline cache with equal or newer canonical observation date leads regardless of SHA, merged so record count never shrinks", t => {
+  const bundledDate = require("../data/forever/pack.json").observedThrough;
+  for (const date of [bundledDate, "2026-11-30"]) {
     const s = setup(t, async () => { throw Error("must remain offline"); });
     const cached = require("../src/core/knowledge.cjs").normalizeData(fixture, { commit: "0".repeat(40), build });
     cached.observedThrough = date;
     const payload = JSON.stringify(cached); s.write(`${build}.json`, { schemaVersion: 1, payload, sha256: require("../src/core/knowledge.cjs").hash(payload) });
     s.setContext({ clientBuild: build }, false);
     assert.equal(s.status().sourceCommit, "0".repeat(40)); assert.equal(s.status().observedThrough, date);
-    assert.ok(s.index().pack.counts.quests < s.bundled.pack.counts.quests);
+    assert.equal(s.index().pack.counts.quests, s.bundled.pack.counts.quests);
+    assert.deepEqual(s.index().pack.builds.slice(1).map((b) => b.build), s.bundled.pack.builds.map((b) => b.build));
   }
 });
 

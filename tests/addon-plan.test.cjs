@@ -12,7 +12,7 @@ local function q(id,complete,title)
  return {id=id,title=title or (BackstageForeverReference.quests[id] or {}).title or ('Synthetic '..id),complete=complete==true,objectives={}}
 end
 local function player(quests)
- return {id='Synthetic-Character',clientBuild='1.60.1.70862',locale='enUS',location={mapId=1413,x=0.35,y=0.28},quests=quests}
+ return {id='Synthetic-Character',clientBuild='1.60.1.70888',locale='enUS',location={mapId=1413,x=0.35,y=0.28},quests=quests}
 end
 local function plan(c,o) return BackstageForeverBuildPlan(c,o or {minutes=60}) end
 `;
@@ -54,10 +54,10 @@ test("exact reference turn-ins retain approximate relationship details and never
 local s=plan(player({q(1061,true)})).steps[1]
 assert(s.source=='reference' and s.destination.mapId==1413 and s.destination.x==0.3528 and s.destination.y==0.2786)
 assert(s.detail:find('Approximate',1,true) and s.detail:find('observed turn-in NPC',1,true) and s.detail:find('Seereth Stonebreak',1,true))
-assert(s.command=='/bf guide 1061 t 1413 0.3528 0.2786 1.60.1.70862')
-local m=plan(player({q(98024,true)})).steps[1]
+assert(s.command=='/bf guide 1061 t 1413 0.3528 0.2786 1.60.1.70888')
+local m=plan(player({q(854,true)})).steps[1]
 assert(m.destination==nil and m.command==nil and not m.detail:find('Thork',1,true))
-local o=plan(player({q(98024)})).steps[1]
+local o=plan(player({q(854)})).steps[1]
 assert(o.source=='reference' and o.detail:find('mentioned in objective',1,true) and o.detail:find('Approximate',1,true))
 assert(not o.detail:find('turn-in NPC',1,true) and not o.detail:find('quest giver',1,true))
 `));
@@ -136,7 +136,7 @@ local qs={};for i=1,10000 do qs[i]=q(900000+i) end
 p=plan(player(qs));assert(p.counts.quests==25 and p.counts.limited==true and #p.steps<=3)
 BackstageForeverReference.quests[1061].turnIn={mapId=1413,x=0.2,y=0.3,approximate=true,evidence='mentioned-in-objective',name='Thork'}
 assert(plan(player({q(1061,true)})).steps[1].destination==nil)
-BackstageForeverReference={build='1.60.1.70862',locale='enUS',quests=evil}
+BackstageForeverReference={build='1.60.1.70888',locale='enUS',quests=evil}
 assert(plan(player({q(1061,true,'Actual title')})).steps[1].destination==nil and not touched)
 `));
 
@@ -154,7 +154,7 @@ assert(plan(c).steps[1].destination==nil)
 
 test("current monster/item objectives cannot be redirected to a delivery-style NPC mention", () => runLua(String.raw`
 for _,kind in ipairs({'monster','item','gameObject'}) do
- local a=q(98024);a.objectives={{text='Current objective from the game',done=false,type=kind,required=4}}
+ local a=q(854);a.objectives={{text='Current objective from the game',done=false,type=kind,required=4}}
  local s=plan(player({a})).steps[1]
  assert(s.destination==nil and s.command==nil and s.source=='game','Current '..kind..' objective cannot inherit a delivery mention')
 end
@@ -164,7 +164,7 @@ test("rounded destination preview equals the numeric command and malformed build
 local a=q(900001);a.destination={mapId=2147483647,x=0.1234567,y=0.9999999}
 local c=player({a});local s=plan(c).steps[1]
 assert(s.destination.x==0.1235 and s.destination.y==1,'Preview must describe the command precision')
-assert(s.command=='/bf guide 900001 o 2147483647 0.1235 1.0000 1.60.1.70862')
+assert(s.command=='/bf guide 900001 o 2147483647 0.1235 1.0000 1.60.1.70888')
 for _,b in ipairs({'bad','1.2.3.4; injected','1.2.3.4\n','1234.2.3.4','1.2.3.123456789'}) do
  c.clientBuild=b;s=plan(c).steps[1];assert(s.command==nil and s.source=='game' and s.destination)
 end
@@ -284,7 +284,7 @@ end
 `));
 
 test("mention-only clues never acquire nearby reference priority and retain phase and source qualification", () => runLua(String.raw`
-local clue,unknown=q(98024),q(900001)
+local clue,unknown=q(854),q(900001)
 local c=player({clue,unknown});c.level=12;clue.level=40;unknown.level=12
 for _,focus in ipairs({'balanced','nearby'})do
  local p=plan(c,{focus=focus,minutes=60})

@@ -1,0 +1,87 @@
+"use strict";
+// Commands: every in-game command and helper in plain English, in one place.
+// The catalog is the single source of truth: tests/commands-catalog.test.cjs fails when the
+// addon gains a /bf command that is not listed here (or this lists one the addon lacks).
+(() => {
+  const CATALOG = Object.freeze([
+    { group: "Finding your way", command: "/bf next", word: "next", what: "Puts WoW's own arrow on the nearest thing to do: a finished quest to hand in first, otherwise the nearest quest you can pick up.", when: "Any time you're not sure what to do next.", example: "/bf next" },
+    { group: "Finding your way", command: "/bf train", word: "train", what: "Puts the arrow on your class trainer: the nearest one in this zone, otherwise in your faction's cities.", when: "After you level up. New skills usually arrive every two levels.", example: "/bf train" },
+    { group: "Finding your way", command: "/bf find NAME", word: "find", what: "Finds a person, a kind of person or a gathering spot by name and puts the arrow on the nearest match. Lists a few others too.", when: "Looking for a flight master, an innkeeper, a trainer, a vendor or a quest NPC.", example: "/bf find flight master" },
+    { group: "Finding your way", command: "/bf way MapID X Y [name]", word: "way", what: "Puts the arrow on exact map coordinates. The app's World Map gives you this line ready to paste.", when: "When the app or a guide gives you coordinates.", example: "/bf way 1413 51.5 30.4 Crossroads" },
+    { group: "Finding your way", command: "/bf hearth", word: "hearth", what: "Tells you where your Hearthstone takes you and how to change it.", when: "Before a long trip, or when you start questing somewhere new.", example: "/bf hearth" },
+    { group: "Your character", command: "/bf xp", word: "xp", what: "Shows your experience per hour this session, roughly how long until your next level, and any rested bonus.", when: "To see how fast you're leveling.", example: "/bf xp" },
+    { group: "Your character", command: "/bf help", word: "help", what: "Lists the main commands in your chat window.", when: "Whenever you forget a command.", example: "/bf help" },
+    { group: "Adventure Compass", command: "/bf", word: "", what: "Shows or hides the Adventure Compass, the small panel with your next step.", when: "To bring the panel back or tidy it away.", example: "/bf" },
+    { group: "Adventure Compass", command: "/bf show", word: "show", what: "Shows the Adventure Compass.", when: "After hiding it with X.", example: "/bf show" },
+    { group: "Adventure Compass", command: "/bf hide", word: "hide", what: "Hides the Adventure Compass.", when: "When you want a clean screen.", example: "/bf hide" },
+    { group: "Adventure Compass", command: "/bf status", word: "status", what: "Says whether the addon is ready and reading your character.", when: "If something seems off.", example: "/bf status" },
+    { group: "Helpers on or off", command: "/bf toasts [on|off]", word: "toasts", what: "Turns the pop-up tips on or off: level-ups, finished quests, deaths and the welcome. Chat still gets the message.", when: "If you prefer a quieter screen.", example: "/bf toasts off" },
+    { group: "Helpers on or off", command: "/bf danger [on|off]", word: "danger", what: "Turns the warning above dangerous targets on or off (elites, skulls, much higher levels, enemies too low to give experience).", when: "Once you can judge enemies yourself.", example: "/bf danger off" },
+    { group: "Helpers on or off", command: "/bf junk [on|off]", word: "junk", what: "Turns the Sell junk button on vendor windows on or off.", when: "If you'd rather sell by hand.", example: "/bf junk off" },
+    { group: "Live link", command: "/bf live [on|off|status]", word: "live", what: "Turns on or off the tiny strip in the top-left corner that lets the desktop app follow you while you play. Status reports what the strip is doing.", when: "Turn it off for screenshots or streaming; turn it back on for live help in the app.", example: "/bf live status" },
+    { group: "Advanced", command: "/bf guide …", word: "guide", what: "A waypoint line the app's Quests page prepares for a specific quest step. Copy it in the app and paste it into chat; you never need to type it yourself.", when: "Only when the app hands you one.", example: "/bf guide 840 t 1411 52.0 43.2 1.60.1.70888" },
+  ]);
+  const FEATURES = Object.freeze([
+    { name: "Adventure Compass", where: "A small movable panel in game", what: "Your character, XP and the next step. Drag the title to move it; X hides it, - shrinks it. It hides itself in combat." },
+    { name: "BF Guide on the world map", where: "Press M in game", what: "Shows quests you can pick up (checked against your level and faction), hand-ins, your class trainer, profession trainers and flight masters. Click a marker for an arrow. The BF Layers panel turns each kind on or off." },
+    { name: "Danger warning", where: "Above your target's portrait", what: "Plain words about risky enemies: elite, skull, world boss, several levels above you, rare, or too low to give experience." },
+    { name: "Pop-up tips", where: "Top of the screen", what: "Level-ups (with your nearest trainer), finished quests (with how many more you need to level) and deaths (with what to do). A one-time welcome too." },
+    { name: "Arrow back to your body", where: "Minimap and screen arrow", what: "After you die and release your spirit, the arrow points to your body. Walk over it and click Resurrect." },
+    { name: "Sell junk button", where: "On every vendor window", what: "Lists your grey items and what they're worth. Sells them only when you click it, and never in combat." },
+    { name: "Live strip", where: "A thin coloured line, top-left corner", what: "How the desktop app knows where you are. It contains no personal data. /bf live off hides it." },
+  ]);
+  const APP = Object.freeze([
+    { name: "Now", what: "What to do next, where to level, your training, quest log and this session's pace. Start here." },
+    { name: "World Map", what: "Zone maps with quest givers, hand-ins, trainers, flight masters, herbs and ore. Click anyone for details. Your path this session is drawn on it." },
+    { name: "Quests", what: "Look up any quest: who gives it, where it goes, rewards. Copies a /bf guide line for the game." },
+    { name: "Adventure", what: "Your next step in more depth, dungeons for your level, and profession plans." },
+    { name: "Companion", what: "Optional AI helper. Local NPC and travel answers need no AI at all." },
+    { name: "Characters", what: "Each character's journal, gear and training review, and private notes." },
+    { name: "Plans", what: "Checklists and party plans you write yourself." },
+    { name: "Settings", what: "Game connection (folder, addon, live link), AI connection and updates." },
+  ]);
+  if (typeof module === "object" && module.exports) { module.exports = { CATALOG, FEATURES, APP }; return; }
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  let filter = "";
+  function rows() {
+    const q = filter.trim().toLowerCase();
+    const hit = (c) => !q || [c.command, c.what, c.when, c.group].join(" ").toLowerCase().includes(q);
+    const groups = [...new Set(CATALOG.map((c) => c.group))];
+    const html = groups.map((g) => {
+      const list = CATALOG.filter((c) => c.group === g && hit(c));
+      if (!list.length) return "";
+      return `<section class="cmd-group"><h2>${esc(g)}</h2><ul>${list.map((c) => `<li class="cmd-row">
+        <div class="cmd-head"><code class="cmd-name">${esc(c.command)}</code><button type="button" class="cmd-copy" data-cmd-copy="${esc(c.example)}" aria-label="Copy ${esc(c.example)}">Copy</button></div>
+        <p>${esc(c.what)}</p><p class="cmd-when"><strong>Use it:</strong> ${esc(c.when)}</p>${c.example !== c.command ? `<p class="cmd-eg">Example: <code>${esc(c.example)}</code></p>` : ""}</li>`).join("")}</ul></section>`;
+    }).join("");
+    return html || `<p class="cmd-empty">No command matches “${esc(filter)}”.</p>`;
+  }
+  function page() {
+    return `<section class="commands-page" data-commands>
+      <header class="cmd-hero"><span class="cmd-eyebrow">Help · Commands</span><h1>Everything you can type in game</h1>
+        <p>Type these in WoW's chat box (press Enter, type the command, press Enter again). They only show you things or put an arrow on your map; nothing ever plays for you.</p>
+        <label class="cmd-search"><span class="sr-only">Search commands</span><input type="search" data-cmd-filter placeholder="Search: trainer, arrow, junk, live…" value="${esc(filter)}"></label></header>
+      <div class="cmd-list" data-cmd-list>${rows()}</div>
+      <section class="cmd-group cmd-features"><h2>Things you'll see in game</h2><ul>${FEATURES.map((f) => `<li class="cmd-row"><div class="cmd-head"><strong>${esc(f.name)}</strong><small>${esc(f.where)}</small></div><p>${esc(f.what)}</p></li>`).join("")}</ul></section>
+      <section class="cmd-group cmd-app"><h2>Around this app</h2><ul>${APP.map((a) => `<li class="cmd-row"><div class="cmd-head"><strong>${esc(a.name)}</strong></div><p>${esc(a.what)}</p></li>`).join("")}</ul></section>
+      <p class="cmd-foot">After installing or updating, type <code>/reload</code> in game once. New to WoW? The Field guide explains words like rested, hand in and elite.</p>
+    </section>`;
+  }
+  let bound = null;
+  function mounted() {
+    const root = document.querySelector("[data-commands]");
+    if (!root || bound === root) return;
+    bound = root;
+    root.addEventListener("input", (e) => {
+      if (!e.target.matches("[data-cmd-filter]")) return;
+      filter = e.target.value.slice(0, 60);
+      const list = root.querySelector("[data-cmd-list]"); if (list) list.innerHTML = rows();
+    });
+    root.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-cmd-copy]"); if (!b) return;
+      try { await navigator.clipboard.writeText(b.dataset.cmdCopy); b.textContent = "Copied"; } catch { b.textContent = "Select and copy"; }
+      setTimeout(() => { b.textContent = "Copy"; }, 1500);
+    });
+  }
+  window.CommandsView = { page, mounted, CATALOG, FEATURES, APP };
+})();
