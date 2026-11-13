@@ -323,3 +323,9 @@ button.quest-ledger-row:not(.illustrated-card){display:flex;align-items:center;g
 .reward-card.q-rare { border-color: #0070dd; } .reward-card.q-rare .reward-name, .reward-card.q-rare .reward-gem { color: #3d9bff; }
 .reward-card.q-epic { border-color: #a335ee; } .reward-card.q-epic .reward-name, .reward-card.q-epic .reward-gem { color: #c27bff; }
 .reward-card.q-legendary { border-color: #ff8000; } .reward-card.q-legendary .reward-name, .reward-card.q-legendary .reward-gem { color: #ff9f40; }
+
+.quest-links { display: flex; flex-direction: column; gap: 6px; }
+.quest-link-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.quest-link-row > span { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .14em; text-transform: uppercase; color: #e8c983; min-width: 110px; }
+.quest-guide .quest-link { all: unset; cursor: pointer; padding: 4px 10px; border-radius: 12px; background: #f1e1b8; color: #3d220c; font-weight: 700; }
+.quest-guide .quest-link:hover, .quest-guide .quest-link:focus-visible { background: #fff6dc; outline: 2px solid #f6c445; }

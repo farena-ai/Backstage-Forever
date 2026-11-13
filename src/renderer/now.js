@@ -60,6 +60,9 @@ window.NowView = (() => {
     return out.slice(0, 4);
   }
   const ICON = { death: "✝", "hand-in": "?", train: "⚔", quest: "◎", zone: "➶" };
+  // Painted crests per step and a painted vista per kind of landscape (original art, art/NOTICE.md).
+  const crest = (kind) => `<img class="now-crest" src="art/steps/${kind}.png" alt="" width="44" height="44">`;
+  const BIOME = Object.freeze({ 1429: "meadow", 1424: "meadow", 1417: "meadow", 1433: "meadow", 1436: "farmland", 1411: "canyon", 1441: "canyon", 1442: "canyon", 1413: "savanna", 1412: "savanna", 1426: "snow", 1416: "snow", 1452: "snow", 1432: "highlands", 1425: "highlands", 1420: "haunted", 1421: "haunted", 1431: "haunted", 1430: "haunted", 1422: "haunted", 1423: "haunted", 1448: "haunted", 1438: "elvenwood", 1439: "elvenwood", 1440: "elvenwood", 1444: "elvenwood", 1447: "elvenwood", 1437: "swamp", 1445: "swamp", 1435: "swamp", 1434: "jungle", 1449: "jungle", 1446: "desert", 1451: "desert", 1443: "desert", 1418: "volcanic", 1427: "volcanic", 1428: "volcanic", 1419: "volcanic" });
   const minutes = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`);
   // XP bar with rested bonus, plus this session's pace (from the live link).
   function sessionCard(a) {
@@ -114,7 +117,7 @@ window.NowView = (() => {
     if (advice.status === "no-character") return setupCard(advice) || `<div class="now-card"><h2>No character yet</h2><p>Connect your WoW Forever folder in Settings → Game connection, log in once and type <code>/reload</code>. Your characters appear here.</p></div>`;
     if (advice.status === "no-level") return `<div class="now-card"><h2>${esc(advice.name)}</h2><p>Log in on this character and type <code>/reload</code> so the app knows its level.</p></div>`;
     const a = advice, c = a.character, list = steps(a);
-    const zones = a.zones.map((z) => `<li class="now-zone now-fit-${esc(z.fit)}"><button type="button" ${z.hub ? `data-now-map='${esc(JSON.stringify({ mapId: z.mapId, x: z.hub.x, y: z.hub.y, label: `${z.name} quest hub`, sub: null, goal: { title: `Quest hub in ${z.name}`, steps: [`Levels ${z.min}–${z.max}${z.available ? `, ${z.available} quests you can pick up` : ""}.`, ...(z.quests?.length ? [`Start with: ${z.quests.slice(0, 3).map((q) => q.title).join(", ")}.`] : []), ...(z.towns?.length ? [`Friendly towns: ${z.towns.join(", ")}.`] : [])] } }))}'` : "disabled"}><strong>${esc(z.name)}</strong><span>${z.min}–${z.max}${z.observedLevels ? " · seen in play" : ""}</span><span>${z.available ? `${z.available} quests for you` : "no quests recorded yet"}${z.towns.length ? ` · ${esc(z.towns.join(", "))}` : ""}</span><em>${z.fit === "now" ? "Your level" : "Soon"}</em></button></li>`).join("");
+    const zones = a.zones.map((z) => `<li class="now-zone now-fit-${esc(z.fit)}${BIOME[z.mapId] ? ` biome-${BIOME[z.mapId]}` : ""}"><button type="button" ${z.hub ? `data-now-map='${esc(JSON.stringify({ mapId: z.mapId, x: z.hub.x, y: z.hub.y, label: `${z.name} quest hub`, sub: null, goal: { title: `Quest hub in ${z.name}`, steps: [`Levels ${z.min}–${z.max}${z.available ? `, ${z.available} quests you can pick up` : ""}.`, ...(z.quests?.length ? [`Start with: ${z.quests.slice(0, 3).map((q) => q.title).join(", ")}.`] : []), ...(z.towns?.length ? [`Friendly towns: ${z.towns.join(", ")}.`] : [])] } }))}'` : "disabled"}><strong>${esc(z.name)}</strong><span>${z.min}–${z.max}${z.observedLevels ? " · seen in play" : ""}</span><span>${z.available ? `${z.available} quests for you` : "no quests recorded yet"}${z.towns.length ? ` · ${esc(z.towns.join(", "))}` : ""}</span><em>${z.fit === "now" ? "Your level" : "Soon"}</em></button></li>`).join("");
     const t = a.training;
     const training = !t ? `<p>Pick a class for this character in Characters to see training.</p>`
       : !t.trainer ? `<p>No ${esc(t.className)} trainer is recorded for your faction yet.</p>`
@@ -127,7 +130,7 @@ window.NowView = (() => {
     const top = a.next?.quests?.length ? `<ul class="now-log">${a.next.quests.slice(0, 6).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip new">lvl ${q.level}</span>${esc(q.title)} <small>from ${esc(q.giver)}</small></button></li>`).join("")}</ul>` : "";
     return `${reloadBanner()}${setupCard(a)}<div class="now-grid">
       <article class="now-card now-next"><h2>Do this next</h2>
-        ${list.length ? `<ol class="now-steps">${list.map((s) => `<li class="now-step now-${s.kind}"><span class="now-ico" aria-hidden="true">${ICON[s.kind]}</span><div><h3>${s.title}</h3><p>${s.detail}</p><div class="now-actions">${s.actions}</div></div></li>`).join("")}</ol>` : `<p>You're all caught up. Explore, gather or run a dungeon.</p>`}
+        ${list.length ? `<ol class="now-steps">${list.map((s) => `<li class="now-step now-${s.kind}"><span class="now-ico now-ico-art" aria-hidden="true">${crest(s.kind)}</span><div><h3>${s.title}</h3><p>${s.detail}</p><div class="now-actions">${s.actions}</div></div></li>`).join("")}</ol>` : `<p>You're all caught up. Explore, gather or run a dungeon.</p>`}
       </article>
       ${sessionCard(a)}
       <article class="now-card"><h2>Where to level</h2><ul class="now-zones">${zones}</ul>${top ? `<h3 class="now-sub">Quests to pick up in ${esc(a.next.name)}</h3>${top}` : ""}</article>

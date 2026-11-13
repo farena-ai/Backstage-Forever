@@ -90,6 +90,11 @@ function registerKnowledgeHandlers({
       }
       if (Object.keys(names).length) result.objectiveNames = names;
     } catch {}
+    // Experience at this character's level, by the rule observed in turn-ins (full to +5, then 80/60/50%).
+    try {
+      const xp = result.rewards?.xp, level = Number.isInteger(p.level) ? p.level : null, questLevel = result.record?.level;
+      if (xp?.base && level && Number.isInteger(questLevel)) result.rewards = { ...result.rewards, xp: { ...xp, atYourLevel: { level, xp: require("./knowledge.cjs").estimateQuestXP(xp.base, questLevel, level) } } };
+    } catch {}
     const insights = getInsights();
     if (insights) {
       result.insights =

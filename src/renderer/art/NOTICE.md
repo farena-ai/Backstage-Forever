@@ -10,3 +10,5 @@ None of these images is taken from World of Warcraft or any Blizzard product, an
 | `hero-help.webp` | Help → Commands and Field guide headers |
 | `badge-level.webp` | Level-up celebration crest |
 | `icons/*.png` | Commands group crests |
+| `steps/*.png` | Now "Do this next" step crests (art pass 2, 0.22.0) |
+| `zones/*.webp` | Now "Where to level" landscape vistas, one per kind of zone (art pass 2, 0.22.0) |
