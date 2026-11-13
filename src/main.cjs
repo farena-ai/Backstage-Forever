@@ -761,7 +761,11 @@ app.whenReady().then(async () => {
     return true;
   });
   function createWindow() {
+    // Unpackaged test runs only: open behind other windows without taking keyboard focus,
+    // so automated checks never capture keys meant for a game the developer is playing.
+    const testInactive = !app.isPackaged && process.env.BF_TEST_INACTIVE === "1";
     win = new BrowserWindow({
+      ...(testInactive ? { show: false } : {}),
       width: 1440,
       height: 960,
       minWidth: 1000,
@@ -777,6 +781,7 @@ app.whenReady().then(async () => {
         allowRunningInsecureContent: false,
       },
     });
+    if (testInactive) win.once("ready-to-show", () => win.showInactive());
     win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
     win.on("blur", () => voice.blur());
     win.on("hide", () => voice.blur());
