@@ -112,7 +112,11 @@ window.NowView = (() => {
     if (sig === "unreadable") return `<div class="now-reload" role="status"><strong>Live link can't read the game</strong><span>The strip is on screen but its colours are being changed (HDR, Night light, a colour filter or a remote session). Type <code>/reload</code> in WoW once; if this stays, turn the filter off for WoW. Until then this page shows your last save.</span></div>`;
     const g = setup?.game;
     if (!g?.connected || !g.addonCurrent || g.runtime?.state !== "running" || !g.loadedCaptureVersion || !g.addonVersion || g.loadedCaptureVersion === g.addonVersion) return "";
-    return `<div class="now-reload" role="status"><strong>Type <code>/reload</code> in WoW</strong><span>Your last save came from Backstage Forever ${esc(g.loadedCaptureVersion)}; the installed addon is ${esc(g.addonVersion)}. If you just reloaded, the update probably landed a moment later: reload once more and this goes away within a few seconds.</span></div>`;
+    const saved = Date.parse(g.lastSync || ""), landed = Date.parse(g.addonUpdatedAt || "");
+    const clock = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+    const early = Number.isFinite(saved) && Number.isFinite(landed) && saved < landed && landed - saved < 15 * 60000;
+    const when = early ? ` Your last /reload was at ${clock(saved)}, ${Math.max(1, Math.round((landed - saved) / 1000))} seconds before the update landed at ${clock(landed)}, so the game is still running the old addon: one more /reload fixes it.` : Number.isFinite(landed) ? ` The update landed at ${clock(landed)}. If you just reloaded, the update probably landed a moment later: reload once more and this goes away within a few seconds.` : " If you just reloaded, the update probably landed a moment later: reload once more and this goes away within a few seconds.";
+    return `<div class="now-reload" role="status"><strong>Type <code>/reload</code> in WoW</strong><span>Your last save came from Backstage Forever ${esc(g.loadedCaptureVersion)}; the installed addon is ${esc(g.addonVersion)}.${esc(when)}</span></div>`;
   }
   function body() {
     if (error) return `<div class="now-card"><p>${esc(error)}</p></div>`;
@@ -149,7 +153,9 @@ window.NowView = (() => {
   function liveLine() {
     const n = document.querySelector("[data-now-live]"); if (!n || !advice?.character) return;
     const c = advice.character;
-    n.innerHTML = `Level ${c.level}${c.className ? ` ${esc(c.className)}` : ""}${c.faction ? ` · ${esc(c.faction)}` : ""} · ${c.live ? `<span class="on">● Live</span> in ${esc(c.zone || "")}` : c.zone ? `Last saved in ${esc(c.zone)}` : "Position unknown"}`;
+    const mins = c.savedAt ? Math.max(0, Math.floor((Date.now() - Date.parse(c.savedAt)) / 60000)) : null;
+    const ago = Number.isFinite(mins) ? (mins < 1 ? "just now" : mins < 60 ? `${mins} min ago` : mins < 2880 ? `${Math.floor(mins / 60)} hr ago` : `${Math.floor(mins / 1440)} days ago`) : "";
+    n.innerHTML = `Level ${c.level}${c.className ? ` ${esc(c.className)}` : ""}${c.faction ? ` · ${esc(c.faction)}` : ""} · ${c.live ? `<span class="on">● Live</span> in ${esc(c.zone || "")}` : c.zone ? `Last saved in ${esc(c.zone)}` : "Position unknown"}${ago ? ` <span class="now-saved-at">· save from ${esc(ago)}</span>` : ""}`;
   }
   function paint() {
     const b = document.querySelector("[data-now-body]"); if (!b) return;

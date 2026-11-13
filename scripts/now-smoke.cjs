@@ -116,10 +116,11 @@ const { defaultState } = require("../src/core/validation.cjs");
     });
     assert.equal(layout.cols, 2); assert.ok(layout.maxGap <= 20, `cards stack evenly (gap ${layout.maxGap}px)`); assert.equal(layout.navScrolls, false, "main menu fits");
     // The running game still has an older addon: Now asks for one /reload.
-    await app.evaluate(({ ipcMain }) => { ipcMain.removeHandler("backstage:gameStatus"); ipcMain.handle("backstage:gameStatus", () => ({ connected: true, addonCurrent: true, addonVersion: "0.21.0", loadedCaptureVersion: "0.20.0", runtime: { state: "running" } })); });
+    await app.evaluate(({ ipcMain }) => { ipcMain.removeHandler("backstage:gameStatus"); ipcMain.handle("backstage:gameStatus", () => ({ connected: true, addonCurrent: true, addonVersion: "0.21.0", loadedCaptureVersion: "0.20.0", lastSync: new Date(Date.now() - 60000).toISOString(), addonUpdatedAt: new Date(Date.now() - 33000).toISOString(), runtime: { state: "running" } })); });
     await page.locator('[data-nav="now"]').first().click();
     await page.locator('[data-now-act="refresh"]').click();
     await page.locator(".now-reload").getByText(/last save came from Backstage Forever 0\.20\.0/).waitFor();
+    assert.match(await page.locator(".now-reload").innerText(), /27 seconds before the update landed/, "an early reload is named with times");
     // Help → Commands explains every command and filters as you type.
     await page.locator('[data-nav="guide"]').first().click();
     await page.locator('[data-nav="commands"]').first().click();

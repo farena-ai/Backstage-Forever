@@ -167,3 +167,4 @@
 .now-fresh { margin-left: 6px; font: 600 12px 'Source Sans 3', sans-serif; color: #7a4b16; font-style: italic; }
 .now-fresh.live { color: #2e6b1e; font-style: normal; }
 
+.now-live .now-saved-at { font-weight: 500; color: #d9c49a; }
