@@ -91,6 +91,11 @@ contextBridge.exposeInMainWorld(
       return () => ipcRenderer.removeListener("backstage:playEvent", handler);
     },
     mapArt: (mapId) => invoke("mapArt", mapId),
+    gameDataStatus: () => invoke("gameDataStatus"),
+    gameItems: (ids) => invoke("gameItems", ids),
+    gameSpell: (spellId) => invoke("gameSpell", spellId),
+    gameIcon: (fileId) => invoke("gameIcon", fileId),
+    gameTalents: (className) => invoke("gameTalents", className),
     copyWaypoint: (input) => invoke("copyWaypoint", input),
     liveLinkStatus: () => invoke("liveLinkStatus"),
     setLiveLink: (enabled) => invoke("setLiveLink", enabled),

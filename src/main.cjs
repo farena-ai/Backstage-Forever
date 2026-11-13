@@ -332,9 +332,12 @@ app.whenReady().then(async () => {
   });
   const insights = loadBundledInsights();
   characterGuidance = registerCharacterGuidanceHandlers({ handle, getState: () => store.state, saveState: next => store.saveState(next), getInsights: () => insights });
+  // Item, spell, icon and talent facts from the player's own WoW install, cached locally per game build.
+  const gameData = new (require("./core/game-data.cjs").GameData)({ getRoot: () => game?.root || null, cacheDir: path.join(app.getPath("userData"), "game-data") });
   registerKnowledgeHandlers({
     handle,
     knowledge,
+    gameData,
     getState: () => store.state,
     connected: () => game.status().connected,
     clipboard,
@@ -649,6 +652,7 @@ app.whenReady().then(async () => {
     const r = mapArt.art(mapId);
     return { png: r.png ? new Uint8Array(r.png) : null, source: r.source || null, reason: r.reason || null };
   });
+  require("./core/game-data-ipc.cjs").registerGameDataHandlers({ handle, gameData });
   radar = require("./core/radar-window.cjs").createRadar({ BrowserWindow, ipcMain, worldMap, live: liveBridge, rendererDir: path.join(__dirname, "renderer"), mapArt });
   handle("openRadar", () => radar.open());
   handle("setRadarTarget", (pin) => radar.setTarget(pin === undefined ? null : pin));
