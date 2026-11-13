@@ -1,6 +1,6 @@
 # Backstage Forever roadmap
 
-Where the companion goes next. Written 2026-11-12, after 0.20.0; updated 2026-11-13 for 0.24.0 (Now fixes, Tier 1.9, Tier 2.5). Ordered by value to a player: a beginner should feel guided, and a veteran should feel faster.
+Where the companion goes next. Written 2026-11-12, after 0.20.0; updated 2026-11-13 for 0.25.0. Ordered by value to a player: a beginner should feel guided, and a veteran should feel faster.
 
 **Sizes:** S = a day or less · M = a few days · L = a week or more · XL = a multi-release program.
 **Where:** Game = the addon · App = the desktop app · Both.
@@ -199,8 +199,8 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
   - 2.9 hearth advice, 1.3 no-XP quest hints, 1.5 helper switches, class crests.
   - Moved to 0.24: D7 card system, gear review with icons on Characters, 1.9 remote live-link check.
 - **0.24 (shipped):** Quest intel Q1–Q6, 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness, gear review with icons. D7 card system moves to 0.25.
-- **0.25:** N1–N3 Now fixes (first), R1–R3 always current without /reload, F1 quick answers (zero setup), E10 one-click setup, then 2.3 route stepper.
-- **0.26:** F2 "Turn on free AI" one click (built-in local engine), F3 free cloud fallback, E1 zone briefing, E2 supplies, E3 trainer planner.
+- **0.25 (shipped):** N1–N3 Now fixes, R1–R3 always current without /reload (live quest log pages), F1 quick answers with no AI, E10 one-click setup (first part: Set it all up on Now). 2.3 route stepper moves to 0.26.
+- **0.26:** 2.3 route stepper, F2 "Turn on free AI" one click (built-in local engine), F3 free cloud fallback, E1 zone briefing, E2 supplies, E3 trainer planner.
 - **0.27:** 2.8 + E8 professions, D7/E11 card system, 1.9 remote live-link check, E9 rested planner.
 - **0.28:** E4 mount and gold goals, E5 class quest chains, E6 reputation, E7 death review, Tier 3 starts (session history, world tracker).
 - **0.29+:** the rest of Tier 3 and E12 extras, then the 4.1 full guided route.
