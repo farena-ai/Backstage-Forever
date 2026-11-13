@@ -20,6 +20,11 @@ window.PlayerNavigation = (() => {
       description:
         "Choose a checklist or plan together. Every step stays yours.",
     },
+    characters: {
+      label: "Characters",
+      routes: [["characters", "Journal"], ["talents", "Talents"]],
+      description: "Your characters, their journals and a talent path for leveling.",
+    },
     game: {
       label: "Settings",
       routes: [

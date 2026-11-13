@@ -654,6 +654,15 @@ app.whenReady().then(async () => {
     return { png: r.png ? new Uint8Array(r.png) : null, source: r.source || null, reason: r.reason || null };
   });
   require("./core/game-data-ipc.cjs").registerGameDataHandlers({ handle, gameData });
+  // Talent coach: the player's real trees (from their install) plus a leveling path for their class.
+  handle("talentCoach", (input) => {
+    const className = typeof input?.className === "string" ? input.className.slice(0, 20) : null;
+    const level = Number.isInteger(input?.level) && input.level >= 1 && input.level <= 100 ? input.level : null;
+    if (!className || !level) throw Error("Invalid talent request.");
+    const trees = gameData.talents(className);
+    if (!trees) return { available: false, reason: gameData.status().reason || "Talent trees are not available from your game install yet." };
+    return { available: true, trees, coach: require("./core/talent-coach.cjs").coach(trees, className, level) };
+  });
   radar = require("./core/radar-window.cjs").createRadar({ BrowserWindow, ipcMain, worldMap, live: liveBridge, rendererDir: path.join(__dirname, "renderer"), mapArt });
   handle("openRadar", () => radar.open());
   handle("setRadarTarget", (pin) => radar.setTarget(pin === undefined ? null : pin));

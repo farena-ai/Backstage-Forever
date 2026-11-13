@@ -28,6 +28,12 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "complete")); await page.reload();
 
     console.log('status', JSON.stringify(await page.evaluate(() => window.backstage.gameDataStatus())), JSON.stringify(await page.evaluate(() => window.backstage.gameItems([4924]))).slice(0, 200));
+    if (process.env.BF_PREVIEW_PAGE === "talents") {
+      await page.locator('[data-nav="characters"]').first().click();
+      await page.locator('[data-nav="talents"]').first().click();
+      await page.locator(".tal-tree").first().waitFor({ timeout: 20000 }); await page.waitForTimeout(2500);
+      await page.screenshot({ path: out, fullPage: true }); console.log("preview", out); return;
+    }
     await page.locator('[data-nav="quest-guide"]').first().click();
     await page.evaluate((id) => QuestGuide.open(id), questId);
     await page.locator(`[data-quest-control="detail:${questId}"]`).waitFor({ timeout: 20000 });
