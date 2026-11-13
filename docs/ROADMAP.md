@@ -247,10 +247,11 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 - **0.25 (shipped):** N1–N3 Now fixes, R1–R3 always current without /reload (live quest log pages), F1 quick answers with no AI, E10 one-click setup (first part: Set it all up on Now). 2.3 route stepper moves to 0.26.
 - **0.26 (shipped):** 2.3/A2 route stepper (`/bf route`, step frame, arrow), A1 objective progress in enemy tooltips (overhead icons come later), E1 zone briefing, G2 zone arrival banners, G3 painted map pins and city banners.
 - **0.27 (shipped):** F2 one-click free AI (llama.cpp engine and Qwen models, pinned and checked), F3 free cloud keys (Gemini, Groq), E3 trainer planner with spell icons, E2/A9 supplies and class helpers, G1 living headers.
-- **0.28:** 2.8 + E8 professions with A6 gathering memory, D7/E11/A14 card and tooltip system, E9 rested planner, A3 speed splits, G7 badges.
-- **0.29:** A4 dungeon loot browser, A5 boss tips, G6 dungeon art, E7 death review, A8 session stats, G8 celebrations part 2.
-- **0.30:** E4 mount and gold goals with A7 price memory, E5 class quest chains, E6 reputation, A12 gear sets, G5 character sheet.
-- **0.31+:** A10 PvP alerts, A11 QoL pack, A13/3.6 party sync, the rest of Tier 3, G9–G11, then the 4.1 full guided route and the G12 art review.
+- **0.28 (shipped):** A3 speed splits, E9 rested planner, G7 badge wall with new-badge moments, and the addon journal (levels with /played, firsts, zones). Professions and the card system move to 0.29.
+- **0.29:** 2.8 + E8 professions with A6 gathering memory, D7/E11/A14 card and tooltip system, E7 death review, A8 session stats.
+- **0.30:** A4 dungeon loot browser, A5 boss tips, G6 dungeon art, G8 celebrations part 2.
+- **0.31:** E4 mount and gold goals with A7 price memory, E5 class quest chains, E6 reputation, A12 gear sets, G5 character sheet.
+- **0.32+:** A10 PvP alerts, A11 QoL pack, A13/3.6 party sync, the rest of Tier 3, G9–G11, then the 4.1 full guided route and the G12 art review.
 - **1.0:** after Frank's hands-on acceptance.
 
 Keep this file and Help → Commands updated with each release.

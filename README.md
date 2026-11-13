@@ -1,5 +1,9 @@
 # Backstage Forever
 
+## 0.28: your journey
+
+Characters → Journey shows a painted badge wall, how fast each level went, and your rested bonus, with a banner for every new badge. See the [0.28.0 release notes](docs/releases/0.28.0.md).
+
 ## 0.27: free AI for everyone
 
 One click on the Companion page turns on a free AI that runs on your own PC, or paste a free Gemini or Groq key. Now shows your upcoming training with spell icons, and in game Backstage Forever reminds you about ammo, food, your pet and more. See the [0.27.0 release notes](docs/releases/0.27.0.md).
