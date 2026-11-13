@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.27.0 — free AI for everyone, 2026-11-13
+
+- **Free AI on this PC, one click:** a pinned llama.cpp b11856 build (graphics-card build with a processor fallback) and Qwen3 4B or Qwen2.5 1.5B (both Apache-2.0). Downloads are resumable and SHA-256 checked, and the engine listens on localhost only. Remove frees the space.
+- **Free cloud keys:** Google Gemini and Groq through their OpenAI-compatible endpoints, with key links, a paste field and automatic model choice.
+- **Trainer planner:** the next three training levels with spell icons from the local game install.
+- **Supplies and class helpers in game:** ammo, food and drink, pet happiness, soul shards and poisons. New `/bf supplies` command.
+- **Living headers (G1):** a slow drift and rising embers on the Now header, and gentle zone banner pans. Reduced-motion aware.
+
 ## 0.26.0 — follow the steps, 2026-11-13
 
 - **`/bf route`:** an in-game step frame for the current zone (pick up, objectives, hand in) in least-walking order, carried quests first. The game's arrow is on the current step, and the guide moves on by itself as you accept and hand in quests. `next`, `back` and `arrow` options.

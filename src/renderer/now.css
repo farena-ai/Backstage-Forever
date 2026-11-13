@@ -242,3 +242,31 @@
 .now-spell { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: #2b1b0a; }
 .now-spell small { color: #6b4a22; }
 .now-spell-ico { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #5a3a0c; background: #2b1b0a; }
+
+/* G1 living heroes: the painted scene drifts slowly and embers rise. Off with reduced motion. */
+.now-page .now-head { isolation: isolate; overflow: hidden; background: #3a0f09; }
+.now-page .now-head::before { content: ""; position: absolute; inset: -4%; z-index: -2; background: url("art/hero-now.webp") center 42% / cover no-repeat; animation: bf-drift 38s ease-in-out infinite alternate; }
+.now-page .now-head::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(1.6px 1.6px at 12% 80%, rgba(255,190,90,.95), transparent 70%),
+    radial-gradient(1.2px 1.2px at 27% 92%, rgba(255,150,60,.9), transparent 70%),
+    radial-gradient(2px 2px at 44% 86%, rgba(255,210,120,.85), transparent 70%),
+    radial-gradient(1.4px 1.4px at 63% 95%, rgba(255,170,70,.9), transparent 70%),
+    radial-gradient(1.8px 1.8px at 81% 88%, rgba(255,200,110,.85), transparent 70%),
+    radial-gradient(1.2px 1.2px at 92% 97%, rgba(255,160,60,.9), transparent 70%),
+    linear-gradient(90deg, rgba(26,6,4,.9) 0%, rgba(40,10,6,.62) 40%, rgba(40,10,6,.08) 75%),
+    linear-gradient(0deg, rgba(20,5,3,.75) 0%, rgba(20,5,3,0) 55%);
+  background-size: 100% 240px, 100% 240px, 100% 240px, 100% 240px, 100% 240px, 100% 240px, 100% 100%, 100% 100%;
+  animation: bf-embers 9s linear infinite; }
+@keyframes bf-drift { 0% { transform: scale(1.02) translate(0, 0); } 100% { transform: scale(1.09) translate(-1.6%, -1.2%); } }
+@keyframes bf-embers {
+  0% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; opacity: .95; }
+  100% { background-position: 8px -240px, -6px -240px, 10px -240px, -4px -240px, 6px -240px, -8px -240px, 0 0, 0 0; opacity: .95; }
+}
+.now-zc-head { overflow: hidden; }
+.now-zonecard:hover .now-zc-head { animation: bf-zone-pan 14s ease-in-out infinite alternate; }
+@keyframes bf-zone-pan { from { background-position: 50% 50%; } to { background-position: 62% 40%; } }
+.bf-arrive { animation: bf-arrive-in .9s cubic-bezier(.2,.9,.25,1.15) both, bf-zone-pan 6s ease-in-out .9s both; }
+@media (prefers-reduced-motion: reduce) {
+  .now-page .now-head::before, .now-page .now-head::after, .now-zonecard:hover .now-zc-head, .bf-arrive { animation: none; }
+}
