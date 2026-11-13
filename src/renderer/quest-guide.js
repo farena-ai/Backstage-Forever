@@ -319,7 +319,20 @@ window.QuestGuide = (() => {
   }
   function rewardsMarkup(rewards) {
     if (rewards && (rewards.items?.length || rewards.choices?.length || rewards.moneyCopper !== undefined || rewards.reputation?.length || rewards.xp || rewards.spells?.length)) {
-      const card = (item) => `<li class="reward-card q-${QUALITY[item.quality] || "unknown"}"><span class="reward-gem" aria-hidden="true">◆</span><span class="reward-name">${esc(item.name && !/^Item #/.test(item.name) ? item.name : `Unnamed item #${item.itemId}`)}</span>${item.count > 1 ? `<span class="reward-count">×${item.count}</span>` : ""}</li>`;
+      const pick = details?.rewardPick;
+      const statLine = (d) => [
+        d.damage ? `${d.damage.min}–${d.damage.max} damage${d.speed ? ` · ${d.speed.toFixed(2)} speed` : ""}${d.dps ? ` · ${d.dps.toFixed(1)} DPS` : ""}` : "",
+        d.armor ? `${d.armor} armor` : "",
+        ...(d.stats || []).map((s) => `${s.amount > 0 ? "+" : ""}${s.amount} ${s.stat}`),
+      ].filter(Boolean);
+      const card = (item) => {
+        const d = item.details, q = d?.quality ?? item.quality, best = pick && pick.itemId === item.itemId;
+        const name = d?.name || (item.name && !/^Item #/.test(item.name) ? item.name : `Unnamed item #${item.itemId}`);
+        const kind = d ? [d.slot, d.kind, d.requiredLevel > 1 ? `requires level ${d.requiredLevel}` : ""].filter(Boolean).join(" · ") : "";
+        const stats = d ? statLine(d) : [];
+        return `<li class="reward-card q-${QUALITY[q] || "unknown"}${best ? " is-best" : ""}${d ? " has-details" : ""}">${d?.iconFileId && window.GameIcons ? `<span class="reward-icon">${GameIcons.tag(d.iconFileId, 40)}</span>` : `<span class="reward-gem" aria-hidden="true">◆</span>`}<span class="reward-body"><span class="reward-name">${esc(name)}</span>${kind ? `<span class="reward-kind">${esc(kind)}</span>` : ""}${stats.length ? `<span class="reward-stats">${stats.map((s) => `<span>${esc(s)}</span>`).join("")}</span>` : ""}${d?.bonding ? `<span class="reward-kind">${esc(d.bonding)}</span>` : ""}</span>${item.count > 1 ? `<span class="reward-count">×${item.count}</span>` : ""}${best ? `<span class="reward-best">${pick.upgrade ? "Best for you" : "Closest fit"}</span>` : ""}</li>`;
+      };
+      const pickBox = pick && rewards.choices?.length > 1 ? `<div class="reward-pick${pick.upgrade ? "" : " meh"}"><span class="reward-pick-eyebrow">${pick.upgrade ? "Best choice for you" : "No clear upgrade"}</span><strong>${esc(pick.name || "")}</strong><ul>${(pick.reasons || []).slice(0, 5).map((r) => `<li>${esc(r)}</li>`).join("")}</ul>${pick.equipmentKnown ? "" : `<small>Compared without your saved gear; /reload in game once so the app can see what you wear.</small>`}</div>` : "";
       const lvl = profile?.level;
       const xpNow = rewards.xp?.atYourLevel?.xp;
       const observed = rewards.xp?.observed?.find((o) => o.level === lvl) || rewards.xp?.observed?.[0];
@@ -332,7 +345,7 @@ window.QuestGuide = (() => {
       return `<section class="quest-section quest-rewards-section"><h3>Rewards</h3>
         ${chips ? `<ul class="reward-chips">${chips}</ul>` : ""}
         ${rewards.items?.length ? `<h4>You receive</h4><ul class="reward-cards">${rewards.items.map(card).join("")}</ul>` : ""}
-        ${rewards.choices?.length ? `<h4>Choose one</h4><ul class="reward-cards">${rewards.choices.map(card).join("")}</ul>` : ""}
+        ${rewards.choices?.length ? `<h4>Choose one</h4>${pickBox}<ul class="reward-cards">${rewards.choices.map(card).join("")}</ul>` : ""}
         <p class="section-note">From community observations; the game's quest window has the final say.</p></section>`;
     }
     if (
