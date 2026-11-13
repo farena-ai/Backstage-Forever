@@ -217,6 +217,7 @@ local function onLevel(level)
     local took=lastLevelAt and BackstageForeverDuration(now()-lastLevelAt)
     lastLevelAt=now()
     local sub=t and ('New skills may be waiting: %s in %s. Type /bf train for an arrow.'):format(t.name,mapName(t.mapId)) or 'Visit your class trainer for new skills.'
+    if (tonumber(level) or 0)>=10 then sub=sub..' You also have a talent point: press N (the app's Talents page suggests which).' end
     if took then sub=sub..' This level took '..took..'.' end
     BackstageForeverToast(('Level %s!'):format(tostring(level)),sub,true)
 end
