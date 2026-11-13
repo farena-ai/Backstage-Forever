@@ -135,9 +135,9 @@ function shortPath(target) {
     await page.getByLabel("Saved recipe",{exact:true}).selectOption("101");await page.waitForFunction(()=>document.querySelector(".formula-heading h2")?.textContent==="Silverleaf infusion");
     assert.equal((await state()).profiles[0].readiness.workshop.materials.items[0].count,2,"Display preferences must not rewrite evidence");
     await page.getByLabel("Saved recipe",{exact:true}).selectOption("100");await page.waitForFunction(()=>document.querySelector(".formula-heading h2")?.textContent==="Amber restorative");
-    // Seller facts stay historical and browse-only when this faction was not observed.
+    // Alliance sellers are now observed (merged builds): suggestions stay historical and qualified.
     const thread=page.locator('[data-preparation-reagent="2320"]');await thread.locator('summary').evaluateAll(nodes=>nodes.forEach(n=>n.parentElement.open=true));
-    assert.match(await thread.innerText(),/Browse only.*not a recommendation/i);assert.match(await thread.innerText(),/faction access unknown/i);assert.match(await thread.innerText(),/Approximate interaction/);
+    assert.match(await thread.innerText(),/Qualified historical listing/i);assert.match(await thread.innerText(),/nonhostile reaction observed for Alliance; current access unverified/i);assert.match(await thread.innerText(),/Approximate interaction/);
     assert.equal(await thread.locator('[data-quest-copy]').count(),0);await capture('historical-sellers-alliance');
     // Deliberate draft shares only the visible selected plan and never changes sharing opt-out.
     await navigate(page, "assistant");await page.getByLabel('Use my active character',{exact:true}).uncheck();

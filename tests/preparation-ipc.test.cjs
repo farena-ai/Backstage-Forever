@@ -32,7 +32,7 @@ test("trusted brief enriches from the offline seller bundle without changing cap
  assert.ok(model.shoppingRows[0].historicalSellers, "Trusted main read must enrich historical sellers");
  assert.equal(model.shoppingRows[0].historicalSellers.status, "historical-suggestions");
  assert.ok(model.shoppingRows[0].historicalSellers.suggestions.length <= 3);
- assert.equal(model.sellerReference.source.sourceCommit, "23f9636486d3d60479dc0bcee2356053c33faf2c");
+ assert.equal(model.sellerReference.source.sourceCommit, "164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1");
  assert.deepEqual(f.current, before); assert.equal(f.writes, 0);
  assert.doesNotMatch(JSON.stringify(require("../src/core/providers.cjs").approvedProfile(f.current.profiles[0])), /historicalSellers|sellerReference|workshop|PRIVATE_/);
 });

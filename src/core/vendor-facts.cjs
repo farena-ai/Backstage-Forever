@@ -2,7 +2,10 @@
 const fs = require("node:fs"), path = require("node:path");
 const { ATTRIBUTION, observedBuild } = require("./knowledge.cjs");
 const FILES = Object.freeze(["vendors.json", "npcs.json", "creatures.json"]);
-const MAX_BYTES = 1024 * 1024;
+// Compiled (merged) pack bound. Raw single-file inputs have their own, larger bound:
+// the 70790/70862 creatures.json files are ~1.1 MB each.
+const MAX_BYTES = 1024 * 1024, RAW_MAX_BYTES = 2 * 1024 * 1024, RAW_BUILD_TOTAL = 4 * 1024 * 1024, MAX_BUILDS = 12;
+const BUILD_RE = /^1\.60\.1\.\d{1,8}$/;
 const LISTING_KEY = /^item:[1-9]\d*(?:#(?:[2-9]|[1-9]\d+))?$/;
 const LIMITATION = "Historical listings and approximate interaction points; current stock, price and access are unverified. No observation does not mean unobtainable.";
 function invalid() { throw Error("Invalid historical seller data."); }
@@ -21,20 +24,23 @@ function reactions(v) {
 const byPosition = (a, b) => a.mapId - b.mapId || a.x - b.x || a.y - b.y;
 const byKey = (a, b) => a.itemId - b.itemId || a.key.localeCompare(b.key, "en");
 function identity(value) {
-  if (value.product !== "wowf" || typeof value.build !== "string" || !/^1\.60\.1\.\d{1,8}$/.test(value.build) || !/^[a-f0-9]{40}$/.test(value.sourceCommit) || value.license !== "CC BY 4.0" || value.attribution !== ATTRIBUTION) invalid();
+  if (value.product !== "wowf" || typeof value.build !== "string" || !BUILD_RE.test(value.build) || !/^[a-f0-9]{40}$/.test(value.sourceCommit) || value.license !== "CC BY 4.0" || value.attribution !== ATTRIBUTION) invalid();
 }
 /** Strict detached catalog; no network, game actions or inference. */
 function validateVendorPack(value) {
-  keys(value, ["schemaVersion", "product", "build", "sourceCommit", "license", "attribution", "collectedOn", "counts", "vendors"]);
+  keys(value, ["schemaVersion", "product", "build", "builds", "sourceCommit", "license", "attribution", "collectedOn", "counts", "vendors"]);
   if (value.schemaVersion !== 1 || Buffer.byteLength(JSON.stringify(value)) > MAX_BYTES) invalid();
   identity(value); dates(value.collectedOn);
+  // Merged client builds, newest first; the first is the pack's own build.
+  list(value.builds, MAX_BUILDS);
+  if (!value.builds.length || value.builds[0] !== value.build || value.builds.some(b => typeof b !== "string" || !BUILD_RE.test(b)) || new Set(value.builds).size !== value.builds.length) invalid();
   keys(value.counts, ["vendors", "listings", "droppedVendors", "droppedListings", "droppedPositions"]);
   for (const n of Object.values(value.counts)) if (!integer(n, 1000000, 0)) invalid();
   list(value.vendors, 1000);
   const ids = new Set(); let listings = 0;
   for (const v of value.vendors) {
-    keys(v, ["id", "name", "lastSeen", "sources", "positions", "listings", "observedReactionsByFaction", "reactionSources"]);
-    if (!integer(v.id) || ids.has(v.id) || !text(v.name) || !date(v.lastSeen) || v.lastSeen > value.collectedOn.last || !integer(v.sources, 1000000) || !integer(v.reactionSources, 1000000)) invalid();
+    keys(v, ["id", "name", "lastSeen", "sources", "positions", "listings", "observedReactionsByFaction", "reactionSources", "repairs"]);
+    if (typeof v.repairs !== "boolean" || !integer(v.id) || ids.has(v.id) || !text(v.name) || !date(v.lastSeen) || v.lastSeen > value.collectedOn.last || !integer(v.sources, 1000000) || !integer(v.reactionSources, 1000000)) invalid();
     ids.add(v.id); list(v.positions, 100); if (!v.positions.length) invalid();
     const positions = new Set();
     for (const p of v.positions) { position(p); const key = JSON.stringify([p.mapId, p.x, p.y]); if (positions.has(key)) invalid(); positions.add(key); }
@@ -53,7 +59,7 @@ function parseInputs(inputs, build) {
   keys(inputs, FILES); const parsed = {}; let total = 0;
   for (const name of FILES) {
     const input = inputs[name], bytes = Buffer.isBuffer(input) ? input : Buffer.from(typeof input === "string" ? input : JSON.stringify(input));
-    if (bytes.length > MAX_BYTES || (total += bytes.length) > 3 * MAX_BYTES) throw Error("Historical seller source exceeds bounded size limit.");
+    if (bytes.length > RAW_MAX_BYTES || (total += bytes.length) > RAW_BUILD_TOTAL) throw Error("Historical seller source exceeds bounded size limit.");
     const d = JSON.parse(bytes), m = d.meta;
     if (!plain(d) || !plain(m) || m.dataset !== name.split(".")[0] || m.product !== "wowf" || m.clientBuild !== build || m.schemaVersion !== 1 || m.license !== "CC BY 4.0" || m.attribution !== ATTRIBUTION || !integer(m.sources, 1000000) || m.locale !== undefined) invalid();
     dates(m.collectedOn); const records = d[name.split(".")[0]];
@@ -62,7 +68,7 @@ function parseInputs(inputs, build) {
   }
   return parsed;
 }
-/** Join only the same numeric ID and exact observed name, with Merchant evidence. */
+/** One build: join only the same numeric ID and exact observed name, with Merchant evidence. */
 function normalizeVendors(inputs, { commit, build } = {}) {
   identity({ product: "wowf", build, sourceCommit: commit, license: "CC BY 4.0", attribution: ATTRIBUTION });
   const raw = parseInputs(inputs, build), vs = raw["vendors.json"], ns = raw["npcs.json"].npcs, cs = raw["creatures.json"].creatures;
@@ -72,7 +78,7 @@ function normalizeVendors(inputs, { commit, build } = {}) {
     const id = Number(key), n = ns[key], c = cs[key];
     if (!plain(v) || (v.entries !== undefined && !plain(v.entries)) || !Array.isArray(v.positions) || v.positions.length > 100) invalid();
     const entries = Object.entries(v.entries || {}); totalListings += entries.length; if (totalListings > 10000) invalid();
-    if (!/^[1-9]\d*$/.test(key) || !integer(id) || !text(v.name) || !n || !c || n.name !== v.name || c.name !== v.name || !Array.isArray(n.interactions) || !n.interactions.includes("Merchant") || !date(v.lastSeen) || v.lastSeen > vs.meta.collectedOn.last || !integer(v.sources, vs.meta.sources) || !integer(c.sources, raw["creatures.json"].meta.sources)) {
+    if (!/^[1-9]\d*$/.test(key) || !integer(id) || !text(v.name) || !n || !c || n.name !== v.name || c.name !== v.name || !Array.isArray(n.interactions) || !n.interactions.includes("Merchant") || !date(v.lastSeen) || v.lastSeen > vs.meta.collectedOn.last || !integer(v.sources, vs.meta.sources) || !integer(c.sources, raw["creatures.json"].meta.sources) || (v.repairs !== undefined && typeof v.repairs !== "boolean")) {
       counts.droppedVendors++; counts.droppedListings += entries.length; continue;
     }
     const positions = [], seenPositions = new Set();
@@ -93,10 +99,53 @@ function normalizeVendors(inputs, { commit, build } = {}) {
       for (const faction of ["Alliance", "Horde"]) if (c.reactions[faction] !== undefined) observedReactionsByFaction[faction] = [...c.reactions[faction]].sort((a, b) => a - b);
     }
     if (!positions.length || !listings.length) { counts.droppedVendors++; counts.droppedListings += listings.length; continue; }
-    vendors.push({ id, name: v.name, lastSeen: v.lastSeen, sources: v.sources, positions: positions.sort(byPosition), listings: listings.sort(byKey), observedReactionsByFaction, reactionSources: c.sources });
+    // repairs: the merchant window offered repairs when observed (upstream vendors.json).
+    vendors.push({ id, name: v.name, lastSeen: v.lastSeen, sources: v.sources, positions: positions.sort(byPosition), listings: listings.sort(byKey), observedReactionsByFaction, reactionSources: c.sources, repairs: v.repairs === true });
   }
   counts.vendors = vendors.length; counts.listings = vendors.reduce((n, v) => n + v.listings.length, 0);
-  return validateVendorPack({ schemaVersion: 1, product: "wowf", build, sourceCommit: commit, license: "CC BY 4.0", attribution: ATTRIBUTION, collectedOn: structuredClone(vs.meta.collectedOn), counts, vendors });
+  return validateVendorPack({ schemaVersion: 1, product: "wowf", build, builds: [build], sourceCommit: commit, license: "CC BY 4.0", attribution: ATTRIBUTION, collectedOn: structuredClone(vs.meta.collectedOn), counts, vendors });
+}
+/**
+ * Newest-first merge of single-build packs from one commit. Vendors join by exact ID;
+ * the newest build's name wins. Positions, listings (by exact key) and observed reaction
+ * values are unioned with exact dedupe and validator caps; lastSeen is the latest date,
+ * sources the largest single-build count; repairs is true when any build observed it.
+ * Dropped counts are per-build dropped rows, summed.
+ */
+function mergeVendorPacks(packs) {
+  if (!Array.isArray(packs) || !packs.length || packs.length > MAX_BUILDS) invalid();
+  const valid = packs.map(validateVendorPack), builds = valid.flatMap(p => p.builds);
+  if (valid.some(p => p.sourceCommit !== valid[0].sourceCommit) || new Set(builds).size !== builds.length || builds.length > MAX_BUILDS) invalid();
+  const counts = { vendors: 0, listings: 0, droppedVendors: 0, droppedListings: 0, droppedPositions: 0 }, byId = new Map();
+  for (const p of valid) {
+    for (const k of ["droppedVendors", "droppedListings", "droppedPositions"]) counts[k] += p.counts[k];
+    for (const v of p.vendors) {
+      const m = byId.get(v.id);
+      if (!m) { byId.set(v.id, structuredClone(v)); continue; }
+      if (v.lastSeen > m.lastSeen) m.lastSeen = v.lastSeen;
+      m.sources = Math.max(m.sources, v.sources); m.reactionSources = Math.max(m.reactionSources, v.reactionSources); m.repairs ||= v.repairs;
+      for (const q of v.positions) {
+        if (m.positions.some(e => e.mapId === q.mapId && e.x === q.x && e.y === q.y)) continue;
+        if (m.positions.length >= 100) { counts.droppedPositions++; continue; }
+        m.positions.push({ ...q });
+      }
+      for (const row of v.listings) {
+        const e = m.listings.find(r => r.key === row.key);
+        if (e) e.sources = Math.max(e.sources, row.sources);
+        else if (m.listings.length < 10000) m.listings.push({ ...row });
+        else counts.droppedListings++;
+      }
+      for (const [faction, values] of Object.entries(v.observedReactionsByFaction)) {
+        const union = [...new Set([...(m.observedReactionsByFaction[faction] || []), ...values])].sort((a, b) => a - b);
+        m.observedReactionsByFaction[faction] = union;
+      }
+    }
+  }
+  const vendors = [...byId.values()].sort((a, b) => a.id - b.id);
+  for (const v of vendors) { v.positions.sort(byPosition); v.listings.sort(byKey); v.observedReactionsByFaction = Object.fromEntries(["Alliance", "Horde"].filter(f => v.observedReactionsByFaction[f]).map(f => [f, v.observedReactionsByFaction[f]])); }
+  counts.vendors = vendors.length; counts.listings = vendors.reduce((n, v) => n + v.listings.length, 0);
+  const collectedOn = { first: valid.map(p => p.collectedOn.first).sort()[0], last: valid.map(p => p.collectedOn.last).sort().at(-1) };
+  return validateVendorPack({ schemaVersion: 1, product: "wowf", build: builds[0], builds, sourceCommit: valid[0].sourceCommit, license: "CC BY 4.0", attribution: ATTRIBUTION, collectedOn, counts, vendors });
 }
 function loadVendorPack(file = path.join(__dirname, "../../data/forever-vendors/pack.json")) {
   const size = fs.statSync(file).size; if (size > MAX_BYTES) throw Error("Historical seller pack exceeds 1 MiB.");
@@ -107,7 +156,7 @@ function sellerFacts(pack, profile, itemIds) {
   const catalog = validateVendorPack(pack);
   if (!Array.isArray(itemIds)) invalid();
   const ids = [...new Set(itemIds)].slice(0, 20); if (ids.some(id => !integer(id))) invalid();
-  const exact = Boolean(observedBuild(profile) && profile.clientBuild === catalog.build);
+  const exact = Boolean(observedBuild(profile) && catalog.builds.includes(profile.clientBuild));
   const faction = ["Alliance", "Horde"].includes(profile?.faction) ? profile.faction : null;
   const rows = ids.map(itemId => {
     const matching = catalog.vendors.filter(v => v.listings.some(r => r.itemId === itemId));
@@ -125,6 +174,6 @@ function sellerFacts(pack, profile, itemIds) {
     }).sort((a, b) => Number(b.suggested) - Number(a.suggested) || a.id - b.id).slice(0, 3);
     return { itemId, status: !matching.length ? "unobserved" : options.some(v => v.suggested) ? "historical-suggestions" : "browse-only", observedSellerCount: matching.length, suggestions: options.filter(v => v.suggested), browse: options.filter(v => !v.suggested) };
   });
-  return structuredClone({ source: { publisher: "Efficient Games", build: catalog.build, sourceCommit: catalog.sourceCommit, license: catalog.license, attribution: catalog.attribution, collectedOn: catalog.collectedOn }, limitation: LIMITATION, rows });
+  return structuredClone({ source: { publisher: "Efficient Games", build: catalog.build, builds: catalog.builds, sourceCommit: catalog.sourceCommit, license: catalog.license, attribution: catalog.attribution, collectedOn: catalog.collectedOn }, limitation: LIMITATION, rows });
 }
-module.exports = { FILES, MAX_BYTES, LIMITATION, normalizeVendors, validateVendorPack, loadVendorPack, sellerFacts };
+module.exports = { FILES, MAX_BYTES, RAW_MAX_BYTES, RAW_BUILD_TOTAL, MAX_BUILDS, LIMITATION, normalizeVendors, mergeVendorPacks, validateVendorPack, loadVendorPack, sellerFacts };

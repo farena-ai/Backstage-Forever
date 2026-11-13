@@ -58,6 +58,40 @@ test("the generated advisor data loads in Lua and holds givers, trainers and zon
   assert.ok(out[0] > 200 && out[1] > 20 && out[2] >= 30, out.join(","));
 });
 
+test("advisor NPC rows carry NPC ids, flight masters carry upstream taxi nodes, and repair vendors cover both factions", () => {
+  const out = lua(String.raw`dofile('addon/BackstageForever/BackstageForeverAdvisorData.lua')
+  local c={r={},f={},t=0,rows=0}
+  for _,rows in pairs(BackstageForeverAdvisorData.npcs)do for _,n in ipairs(rows)do
+    c.rows=c.rows+1
+    assert(type(n.i)=='number' and n.i>0 and n.i==math.floor(n.i),'every row has an NPC id')
+    assert(n.k=='c' or n.k=='p' or n.k=='f' or n.k=='r','known kind '..tostring(n.k))
+    assert(n.t==nil or n.k=='f','only flight rows carry a taxi node')
+    if n.k=='r' then c.r[n.s or '-']=(c.r[n.s or '-'] or 0)+1 end
+    if n.k=='f' then c.f[n.s or '-']=(c.f[n.s or '-'] or 0)+1;if type(n.t)=='number' then c.t=c.t+1 end end
+  end end
+  local ok=BackstageForeverAdvisorData.npcs[1454];local doras
+  for _,n in ipairs(ok)do if n.i==3310 and n.k=='f' then doras=n end end
+  assert(doras and doras.t==23,'Doras flies from Orgrimmar node 23')
+  local sw;for _,n in ipairs(BackstageForeverAdvisorData.npcs[1453] or {})do if n.i==352 then sw=n end end
+  assert(sw and sw.k=='f' and sw.s=='A' and sw.t==2,'Dungar Longdrink is the Alliance Stormwind flight master on node 2')
+  print(c.rows,c.r.A or 0,c.r.H or 0,(c.f.A or 0)+(c.f.H or 0)+(c.f['-'] or 0),c.t)`).trim().split(/\s+/).map(Number);
+  const [rows, repairA, repairH, flights, withNode] = out;
+  assert.ok(rows > 200, `rows ${rows}`);
+  assert.ok(repairA >= 10 && repairH >= 50, `repair rows A ${repairA} H ${repairH}`);
+  assert.ok(flights >= 20 && withNode === flights, `flight rows ${flights}, with node ${withNode}`);
+});
+
+test("pinned flight master table is well formed and agrees with the reviewed travel reference", () => {
+  const { MASTERS, SOURCES, validateMasters, normalizeFlightMasters, taxiNode } = require("../src/core/flight-masters.cjs");
+  assert.equal(validateMasters(MASTERS), MASTERS);
+  assert.deepEqual(SOURCES.map((s) => s.build), ["1.60.1.70888", "1.60.1.70862", "1.60.1.70840", "1.60.1.70790"]);
+  const travel = require("../data/forever-travel/pack.json");
+  for (const n of travel.nodes) if (n.flightMaster?.npcId) assert.equal(taxiNode(n.flightMaster.npcId), n.flightMaster.taxiNode, n.label);
+  for (const bad of [{ x: ["A", 1] }, { 1: ["A"] }, { 1: ["", 1] }, { 1: ["A", 0] }, []]) assert.throws(() => validateMasters(bad), /Invalid flight master/);
+  assert.throws(() => normalizeFlightMasters({}), /Invalid flight master/);
+  assert.throws(() => normalizeFlightMasters({ [SOURCES[0].build]: Buffer.from("{}") }), /Invalid flight master/);
+});
+
 test("the map provider attaches, draws game icons, waypoints on click, hides in combat; /bf next picks the hand-in first", () => {
   lua(pure + String.raw`
   local frames,fighting={},false
