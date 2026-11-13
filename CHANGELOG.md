@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.29.0 — know more, faster, 2026-11-13
+
+- **Hover cards (A14 first part):** rest on any quest anywhere in the app for its level, how-to steps, giver and reward icons.
+- **Death review (E7):** a new `BackstageForeverCombat.lua` explains each death from your own combat log (main source, its share of the damage, level and elite status) and gives one tip.
+- **Session stats (A8):** `/bf stats` shows damage, healing, average and best damage per second for this session. The addon now installs 23 files.
+
 ## 0.28.0 — your journey, 2026-11-13
 
 - **Characters → Journey:** a badge wall (20 original painted badges for levels, quests, exploring, firsts and speed, with progress on locked ones), speed splits from `/played` with your best across characters, and a rested planner.

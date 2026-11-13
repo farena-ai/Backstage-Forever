@@ -363,6 +363,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverHowCommand)=='function' then pcall(BackstageForeverHowCommand,message)end
                 return
             end
+            if word=='stats' then
+                if type(BackstageForeverStatsCommand)=='function' then pcall(BackstageForeverStatsCommand)end
+                return
+            end
             if word=='supplies' then
                 if type(BackstageForeverSuppliesCommand)=='function' then pcall(BackstageForeverSuppliesCommand,message)end
                 return

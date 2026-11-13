@@ -106,12 +106,25 @@ const { defaultState } = require("../src/core/validation.cjs");
     // "Show the full map" leaves focus mode.
     await page.locator('[data-wm-act="unfocus"]').click();
     assert.equal(await page.evaluate(() => WorldMapView._state().focused), null);
+    // Hover any quest: a rich card with how to do it (no click needed).
+    await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
+    const hoverTarget = page.locator("[data-now-body] [data-quest-open]").first();
+    await hoverTarget.hover();
+    // Now may redraw under the resting pointer on a slow runner: nudge the mouse once more if needed.
+    if (!(await page.locator(".hover-card").waitFor({ timeout: 4000 }).then(() => true, () => false))) { await page.mouse.move(5, 5); await hoverTarget.hover({ position: { x: 12, y: 8 } }); }
+    await page.locator(".hover-card").waitFor({ timeout: 10000 }).catch(async (e) => { console.log("HOVER DIAG", JSON.stringify(await page.evaluate(() => ({ profile: document.getElementById("active-character")?.value, target: document.querySelector("[data-now-body] [data-quest-open]")?.outerHTML.slice(0, 200) })))); throw e; }); await page.waitForTimeout(300);
+    assert.match(await page.locator(".hover-card").innerText(), /Click to open the quest/);
+    await page.screenshot({ path: path.join(capture, "hover-card.png") });
+    await page.mouse.move(5, 5); await page.mouse.down(); await page.mouse.up();
     // Every "Open quest" on Now opens that exact quest.
     await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
     const questIds = [...new Set(await page.locator("[data-now-body] [data-quest-open]").evaluateAll((els) => els.map((e) => Number(e.dataset.questOpen))))].slice(0, 4);
     assert.ok(questIds.length >= 2);
-    for (const id of questIds) {
-      await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
+    // Now can refresh between visits (new advice after a live frame), so read its quests each time.
+    for (let i = 0; i < questIds.length; i++) {
+      await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor(); await page.waitForTimeout(300);
+      const shown = [...new Set(await page.locator("[data-now-body] [data-quest-open]").evaluateAll((els) => els.map((e) => Number(e.dataset.questOpen))))];
+      const id = shown[i] ?? shown[0];
       await page.locator(`[data-now-body] [data-quest-open="${id}"]`).first().click();
       await page.locator(`[data-quest-control="detail:${id}"]`).waitFor();
     }
