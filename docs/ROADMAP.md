@@ -124,11 +124,12 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 ## Suggested release sequence
 
 - **0.21 (shipped):** repair, flight paths, version check, Alliance vendors, flaky checks, art pass 1.
-- **0.22:**
-  - D1 dialed-in Show on map and D2 link audit.
-  - D4 keep all community quest fields.
+- **0.22 (shipped):**
+  - D1 dialed-in Show on map, D2 link audit (Now).
+  - D4 community quest fields.
   - D3 rich quest pages, first pass.
-  - Art pass 2 on Now: painted zone images for "Where to level", step icons for Do this next, class crests.
+  - Art pass 2: step crests and zone vistas.
+  - Still to do: class crests, and auditing links outside Now.
 - **0.23:**
   - D5 local item, spell and creature details.
   - D3 rewards with stats and icons.

@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.22.0 — dialed in, and the whole quest, 2026-11-13
+
+- **Dialed-in "Show on map".** Every map link from Now (hand in, train, continue a quest, quest hubs, zones, your trainer) and from quest pages opens the World Map focused on that one target:
+  - Other pins dim.
+  - A gold route runs from you to the target, labelled with direction and distance ("southeast · a short ride").
+  - A **Your goal here** card says what to do, step by step, with Open quest and Show the full map.
+- **Link audit.** An automated check clicks every Show on map and Open quest link on Now and confirms it lands on exactly that target.
+- **Quest pages, first pass:**
+  - **Where to go** comes first: pick up from, each objective area (named, e.g. "Kill 12 Southsea Brigand", with how many spots players progressed at) and hand in to, each one click from the dialed-in map.
+  - **Rewards** as cards:
+    - Item names in their quality colours.
+    - Money as coins.
+    - **XP at your level**, using the rule observed in real turn-ins: full XP up to 5 levels above the quest, then 80%, 60% and 50%.
+    - Reputation with faction names, and reward spells.
+  - **Comes after / Leads to** links between quests.
+  - Places show zone names instead of map numbers.
+- **More from the community data:**
+  - Reputation on 2,937 quests.
+  - XP data on all 4,916, with a derived base XP for 790.
+  - Reward spells on 411.
+  - Item quality on 399 reward items.
+  - Fully named item rewards on 274 → 435 quests.
+- **Art pass 2 on Now.** Original painted crests for each kind of step, and a painted vista for every leveling zone. Twelve landscapes cover all 39 zones: meadow, farmland, canyon, savanna, snow, highlands, haunted, enchanted woods, swamp, jungle, desert and volcanic.
+- App/lock, TOC and capture metadata align at 0.22.0 preview. **1.0 remains held.**
+
 ## 0.21.0 — repairs, flight paths and a fresh coat of paint, 2026-11-13
 
 - **Repair reminder.** In game, a pop-up when your gear drops to a quarter durability, and again if something breaks. It resets after you repair.

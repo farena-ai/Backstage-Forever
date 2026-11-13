@@ -63,3 +63,11 @@ test("every art file the pages reference ships with the app", () => {
   for (const r of referenced) assert.ok(fs.existsSync(path.join(root, "src/renderer", r)), `missing ${r}`);
   for (const g of new Set(CATALOG.map((c) => c.group))) assert.match(read("src/renderer/commands.js"), new RegExp(`"${g}": "`), `no crest for ${g}`);
 });
+
+test("every Now step has its painted crest", () => {
+  const now = read("src/renderer/now.js");
+  const kinds = [...now.match(/const ICON = \{([^}]*)\}/)[1].matchAll(/"?([a-z-]+)"?:/g)].map((m) => m[1]);
+  assert.ok(kinds.length >= 5, kinds.join(","));
+  for (const k of kinds) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/steps", k + ".png")), `missing crest ${k}`);
+  for (const b of new Set([...now.matchAll(/\d+: "([a-z]+)"/g)].map((m) => m[1]))) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/zones", b + ".webp")), `missing vista ${b}`);
+});
