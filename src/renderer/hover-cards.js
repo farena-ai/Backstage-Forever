@@ -8,7 +8,10 @@ window.HoverCards = (() => {
   let profileId = null, profileAt = 0, timer = null, card = null, current = null;
   async function profile() {
     if (profileId && Date.now() - profileAt < 15000) return profileId;
-    try { const s = await api.bootstrap(); profileId = s.state.activeProfileId; profileAt = Date.now(); } catch {}
+    // The shell's character picker already knows the active character; asking the main process
+    // (bootstrap) here could redraw the page under the user and move keyboard focus.
+    const pick = document.getElementById("active-character")?.value;
+    if (pick) { profileId = pick; profileAt = Date.now(); }
     return profileId;
   }
   function details(id) {
