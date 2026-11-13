@@ -73,6 +73,28 @@ function registerKnowledgeHandlers({
         active ? (active.complete ? "t" : "o") : "r",
       ),
     };
+    // Zone names for every map the quest mentions, so pages say "Durotar" rather than a map number.
+    try {
+      const { MAP_NAMES } = require("./map-names.cjs"), ids = new Set();
+      for (const list of [result.givers, result.turnIns, result.mentions]) for (const n of list || []) for (const p of n.positions || []) ids.add(p.mapId);
+      for (const o of result.objectiveLocations || []) for (const p of o.positions || []) ids.add(p.mapId);
+      if (result.waypoint?.destination?.mapId) ids.add(result.waypoint.destination.mapId);
+      result.mapNames = Object.fromEntries([...ids].filter((id) => MAP_NAMES[id]).map((id) => [id, MAP_NAMES[id]]));
+    } catch {}
+    // What each objective is ("Southsea Brigand", "Silithid Egg"), from the reference's own names.
+    try {
+      const pack = index.pack, names = {};
+      for (const o of result.record?.objectives || []) {
+        const n = o.type === "monster" ? pack.creatures?.[String(o.objectId)]?.name : o.type === "item" ? pack.items?.[String(o.objectId)]?.name : null;
+        if (typeof n === "string" && n) names[o.index] = { type: o.type, name: n };
+      }
+      if (Object.keys(names).length) result.objectiveNames = names;
+    } catch {}
+    // Experience at this character's level, by the rule observed in turn-ins (full to +5, then 80/60/50%).
+    try {
+      const xp = result.rewards?.xp, level = Number.isInteger(p.level) ? p.level : null, questLevel = result.record?.level;
+      if (xp?.base && level && Number.isInteger(questLevel)) result.rewards = { ...result.rewards, xp: { ...xp, atYourLevel: { level, xp: require("./knowledge.cjs").estimateQuestXP(xp.base, questLevel, level) } } };
+    } catch {}
     const insights = getInsights();
     if (insights) {
       result.insights =

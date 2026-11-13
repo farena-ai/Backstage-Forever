@@ -181,6 +181,32 @@
             "gossip": 0,
             "quests": 95
           }
+        },
+        "vendors.json": {
+          "sha256": "c3da2ed0c0d62e15ee261370dceb23557faaf14aaef579fa7d11067c9cdd9cfd",
+          "bytes": 234773,
+          "sources": 4,
+          "collectedOn": {
+            "first": "2026-11-10",
+            "last": "2026-11-12"
+          },
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1/data/wowf/1.60.1.70888/vendors.json",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70888",
+            "collectedOn": {
+              "first": "2026-11-10",
+              "last": "2026-11-12"
+            },
+            "dataset": "vendors",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          },
+          "coverage": {
+            "vendors": 79
+          }
         }
       }
     },
@@ -356,6 +382,32 @@
             "failed": 2,
             "gossip": 0,
             "quests": 255
+          }
+        },
+        "vendors.json": {
+          "sha256": "d765338631ef2c4e2464398f10e5eaa411d324a3aae1b4d78e04f5cc40d03e8d",
+          "bytes": 375050,
+          "sources": 5,
+          "collectedOn": {
+            "first": "2026-11-09",
+            "last": "2026-11-12"
+          },
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1/data/wowf/1.60.1.70862/vendors.json",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70862",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-12"
+            },
+            "dataset": "vendors",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          },
+          "coverage": {
+            "vendors": 129
           }
         }
       }
@@ -533,6 +585,32 @@
             "gossip": 0,
             "quests": 51
           }
+        },
+        "vendors.json": {
+          "sha256": "deaaaf4185ad5373349c0115f561d29240cbbd1a86087705b7759505f8fa333a",
+          "bytes": 68777,
+          "sources": 3,
+          "collectedOn": {
+            "first": "2026-11-09",
+            "last": "2026-11-12"
+          },
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1/data/wowf/1.60.1.70840/vendors.json",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70840",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-12"
+            },
+            "dataset": "vendors",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 3
+          },
+          "coverage": {
+            "vendors": 29
+          }
         }
       }
     },
@@ -709,6 +787,60 @@
             "gossip": 6,
             "quests": 297
           }
+        },
+        "vendors.json": {
+          "sha256": "6432d3b7bd9ca1665323b9fbfe8026b8176875a51427860373a62c537756106d",
+          "bytes": 445005,
+          "sources": 4,
+          "collectedOn": {
+            "first": "2026-11-09",
+            "last": "2026-11-12"
+          },
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1/data/wowf/1.60.1.70790/vendors.json",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70790",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-12"
+            },
+            "dataset": "vendors",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          },
+          "coverage": {
+            "vendors": 178
+          }
+        },
+        "tooltip_scan.enUS.json": {
+          "sha256": "a9ef28a31b8a655b71e74d5768cf5507b45a48daafc8d6d561b1a93fa8b908da",
+          "bytes": 825683,
+          "sources": 2,
+          "collectedOn": {
+            "first": "2026-11-09",
+            "last": "2026-11-10"
+          },
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1/data/wowf/1.60.1.70790/tooltip_scan.enUS.json",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70790",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-10"
+            },
+            "dataset": "tooltip_scan",
+            "license": "CC BY 4.0",
+            "locale": "enUS",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 2
+          },
+          "coverage": {
+            "items": 1924,
+            "notLoaded": 579
+          }
         }
       }
     }
@@ -716,7 +848,7 @@
   "excluded": [
     "quest_prerequisites.json (undocumented; before-correlation is not a proven prerequisite)"
   ],
-  "normalization": "Factual IDs, names, reported next links, rewards, bounded objective evidence and public observation positions only. Narrative descriptions, personal data and undocumented prerequisites omitted. Positions are approximate player interaction spots. Sources count contributing saved files, not observation totals. Several client builds are normalized separately and merged newest-first: givers, turn-ins, objective and NPC positions are unioned with exact dedupe and bounded caps; scalar facts come from the newest build that reports them.",
+  "normalization": "Factual IDs, names, reported next links, rewards (items with names and qualities where any pinned dataset names them, money, reputation tier and override/100 amount, XP difficulty and multiplier, reward spell IDs), bounded objective evidence and public observation positions only. Narrative descriptions, personal data and undocumented prerequisites omitted. Positions are approximate player interaction spots. Sources count contributing saved files, not observation totals. Several client builds are normalized separately and merged newest-first: givers, turn-ins, objective and NPC positions are unioned with exact dedupe and bounded caps; scalar facts come from the newest build that reports them. Vendor and tooltip-scan files are read only for reward item names and qualities, and an older build's name may fill a newer build's unnamed reward item by exact item ID.",
   "locale": "enUS",
   "licenseSource": {
     "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1/LICENSE",

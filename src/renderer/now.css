@@ -91,3 +91,23 @@
 .bf-celebrate-card .bf-crest strong { font-size: 64px; transform: translateY(-4px); }
 
 .now-saved { color: #7a4b16; font-style: italic; }
+
+/* Art pass 2: painted step crests and zone vistas. */
+.now-page .now-ico.now-ico-art { width: 54px; height: 54px; border: 0; background: none; }
+.now-crest { width: 54px; height: 54px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
+.now-page .now-zones li[class*="biome-"] button { position: relative; min-height: 64px; padding-left: 132px; background-color: #f3e5c1; background-repeat: no-repeat; background-size: 120px 100%; background-position: left center; overflow: hidden; }
+.now-page .now-zones li[class*="biome-"] button::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 120px; box-shadow: inset -18px 0 16px -10px #f3e5c1; pointer-events: none; }
+.now-page .now-zones li.biome-meadow button { background-image: url("art/zones/meadow.webp"); }
+.now-page .now-zones li.biome-farmland button { background-image: url("art/zones/farmland.webp"); }
+.now-page .now-zones li.biome-canyon button { background-image: url("art/zones/canyon.webp"); }
+.now-page .now-zones li.biome-savanna button { background-image: url("art/zones/savanna.webp"); }
+.now-page .now-zones li.biome-snow button { background-image: url("art/zones/snow.webp"); }
+.now-page .now-zones li.biome-highlands button { background-image: url("art/zones/highlands.webp"); }
+.now-page .now-zones li.biome-haunted button { background-image: url("art/zones/haunted.webp"); }
+.now-page .now-zones li.biome-elvenwood button { background-image: url("art/zones/elvenwood.webp"); }
+.now-page .now-zones li.biome-swamp button { background-image: url("art/zones/swamp.webp"); }
+.now-page .now-zones li.biome-jungle button { background-image: url("art/zones/jungle.webp"); }
+.now-page .now-zones li.biome-desert button { background-image: url("art/zones/desert.webp"); }
+.now-page .now-zones li.biome-volcanic button { background-image: url("art/zones/volcanic.webp"); }
+
+.now-page .now-zones li[class*="biome-"] button:hover, .now-page .now-zones li[class*="biome-"] button:focus-visible { background-color: #fff6dc; }

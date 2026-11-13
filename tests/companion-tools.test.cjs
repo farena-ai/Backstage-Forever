@@ -49,6 +49,14 @@ test("get_quest resolves talk-to objectives to NPC locations", async () => {
   assert.match(r.source, /Build 1\.60\.1/);
 });
 
+test("get_quest includes compact reward reputation, XP, quality and links", async () => {
+  const r = JSON.parse(await kit().call("get_quest", { quest_id: 792 }));
+  assert.deepEqual(r.rewards.choices[0], { id: 4924, name: "Primitive Club", count: 1, quality: 1 });
+  assert.deepEqual(r.rewards.reputation[0], { faction: "Orgrimmar", tier: 6 });
+  assert.equal(r.rewards.xp.atOrBelowQuestLevel, 450);
+  assert.deepEqual(r.links.next, [{ id: 794, title: "Burning Blade Medallion" }]);
+});
+
 test("search_quests and plan_travel use bundled references", async () => {
   const t = kit();
   const q = JSON.parse(await t.call("search_quests", { query: "Exploring the Horde" }));

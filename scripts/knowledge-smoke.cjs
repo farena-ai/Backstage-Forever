@@ -267,7 +267,7 @@ function shortPath(target){
     );
     assert.match(
       await page.locator(".quest-waypoint").innerText(),
-      /999.*12\.35.*65\.43/s,
+      /999.*12\.3, 65\.4/s,
     );
     await page
       .getByRole("button", { name: "Copy game waypoint", exact: true })
