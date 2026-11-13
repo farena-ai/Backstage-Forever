@@ -147,3 +147,10 @@
   .bf-celebrate, .bf-celebrate-card, .bf-title, .bf-celebrate-card .bf-crest, .bf-rays, .bf-celebrate-card .bf-crest strong.bump { animation: none !important; }
   .bf-bits, .bf-fireworks, .bf-shock { display: none; }
 }
+@media (max-height: 760px) {
+  .bf-celebrate-card { padding: 16px 28px 14px; }
+  .bf-title { font-size: 40px; }
+  .bf-celebrate-card .bf-crest { width: 230px; height: 230px; }
+  .bf-celebrate-card .bf-crest strong { font-size: 68px; }
+  .bf-news { margin-top: 8px; }
+}
