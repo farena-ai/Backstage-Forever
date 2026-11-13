@@ -1,0 +1,6 @@
+Backstage Forever loot reference
+
+Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
+
+Source: JIVESCORP/eg-link-output-wowf commit 164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1, builds 1.60.1.70888, 70862, 70840, 70790.
+normalization: only quest objective items; sources (creature or object) with observed chance and drop count; sources seen once are dropped unless they are the only one.
