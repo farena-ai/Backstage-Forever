@@ -48,6 +48,40 @@ const { defaultState } = require("../src/core/validation.cjs");
     await app.evaluate(() => { const b = liveFixture.bridge; b.enabled = true; b.frame = { version: 2, seq: 1, combat: false, characterHash: 0, mounted: true, position: { mapId: 1413, x: 0.6, y: 0.08, facing: 2.4 }, level: 15, receivedAt: Date.now() }; b.signal = "live"; b.emit(); });
     await page.locator("[data-wm-live]").getByText(/Live · 60\.0, 8\.0 · mounted/).waitFor();
     await page.screenshot({ path: path.join(capture, "world-map-barrens.png") });
+    // Objective areas: on by default, toggled from the legend, clickable, and dialed in from their card.
+    const areaLayer = page.locator("[data-wm-layer=objective-area]");
+    assert.equal(await areaLayer.isChecked(), true, "objective areas are on by default");
+    const areaCount = await page.evaluate(() => WorldMapView._state().model.areas.length);
+    assert.ok(areaCount >= 5, `Barrens objective areas: ${areaCount}`);
+    await areaLayer.uncheck();
+    assert.equal(await page.evaluate(() => WorldMapView._state().layers["objective-area"]), false);
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("bf-world-map-v2")).layers["objective-area"]), false, "the choice is remembered");
+    await areaLayer.check();
+    // Click an area centre that no pin covers.
+    const spot = await page.evaluate(() => {
+      const { model, view } = WorldMapView._state(), c = document.querySelector("[data-wm-canvas]"), r = c.getBoundingClientRect();
+      const toScreen = (x, y) => [(x - view.cx) * c.width * view.zoom + c.width / 2, (y - view.cy) * c.height * view.zoom + c.height / 2];
+      const pins = model.pins.filter((p) => p.kind !== "town").map((p) => toScreen(p.x, p.y));
+      for (const a of [...model.areas].sort((p, q) => q.radius - p.radius)) {
+        const [sx, sy] = toScreen(a.x, a.y);
+        if (pins.every(([px, py]) => Math.hypot(px - sx, py - sy) > 26)) return { id: a.id, label: a.label, x: r.left + sx * r.width / c.width, y: r.top + sy * r.height / c.height };
+      }
+      return null;
+    });
+    assert.ok(spot, "an objective area clear of pins");
+    await page.mouse.click(spot.x, spot.y);
+    await page.waitForFunction(() => WorldMapView._state().selected?.kind === "objective-area");
+    // The smallest area under the cursor wins, so read back which one was picked.
+    const picked = await page.evaluate(() => { const a = WorldMapView._state().selected; return { id: a.id, label: a.label }; });
+    await page.locator("[data-wm-card] h3").getByText(picked.label, { exact: true }).waitFor();
+    await page.locator("[data-wm-card] [data-quest-open]").first().waitFor();
+    await page.screenshot({ path: path.join(capture, "world-map-objective-area.png") });
+    await page.locator('[data-wm-card] [data-wm-act="focus-area"]').click();
+    await page.waitForFunction((id) => { const v = WorldMapView._state(); return v.focused?.pin?.id === id && v.focused.pin.kind === "objective-area" && v.view.zoom > 1; }, picked.id);
+    await page.locator("[data-wm-goal]").waitFor();
+    await page.locator(".wm-head").scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(capture, "world-map-objective-focus.png") });
+    await page.locator('[data-wm-act="unfocus"]').click();
     // Search across zones, open a result.
     await page.locator("[data-wm-search] input").fill("flight master");
     await page.locator("[data-wm-search] button").click();
