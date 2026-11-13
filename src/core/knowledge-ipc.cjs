@@ -30,6 +30,7 @@ function registerKnowledgeHandlers({
   connected,
   clipboard,
   getInsights = () => null,
+  getCreatures = () => null,
   getLocationContext = () => null,
   gameData = null,
 }) {
@@ -111,6 +112,18 @@ function registerKnowledgeHandlers({
         if (typeof n === "string" && n) names[o.index] = { type: o.type, name: n };
       }
       if (Object.keys(names).length) result.objectiveNames = names;
+    } catch {}
+    // Level range and elite/rare flags of each kill objective's creature, when the creature reference knows it.
+    try {
+      const creatures = getCreatures();
+      if (creatures) {
+        const byId = require("./creature-data.cjs").creatureIndex(creatures), out = {};
+        for (const o of result.record?.objectives || []) {
+          const c = o.type === "monster" && Number.isSafeInteger(o.objectId) ? byId.get(o.objectId) : null;
+          if (c) out[o.index] = { name: result.objectiveNames?.[o.index]?.name || c.name, minLevel: c.minLevel, maxLevel: c.maxLevel, elite: Boolean(c.elite), rare: Boolean(c.rare) };
+        }
+        if (Object.keys(out).length) result.objectiveCreatures = out;
+      }
     } catch {}
     // Experience at this character's level, by the rule observed in turn-ins (full to +5, then 80/60/50%).
     try {

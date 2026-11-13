@@ -286,7 +286,7 @@ window.QuestGuide = (() => {
     return { mapId: best[0].mapId, x: best.reduce((t, p) => t + p.x, 0) / best.length, y: best.reduce((t, p) => t + p.y, 0) / best.length, count: best.length, mapName: details?.mapNames?.[best[0].mapId] || null };
   }
   function whereMarkup(d, title) {
-    const tile = (cls, eyebrow, name, detail, button) => `<div class="quest-where-tile ${cls}"><span class="quest-where-eyebrow">${eyebrow}</span><strong>${esc(name)}</strong>${detail ? `<small>${esc(detail)}</small>` : ""}${button || ""}</div>`;
+    const tile = (cls, eyebrow, name, detail, button, chips = "") => `<div class="quest-where-tile ${cls}"><span class="quest-where-eyebrow">${eyebrow}</span><strong>${esc(name)}</strong>${chips}${detail ? `<small>${esc(detail)}</small>` : ""}${button || ""}</div>`;
     const npcTile = (cls, eyebrow, npc, goal) => {
       const at = npc && mainSpot(npc.positions);
       return tile(cls, eyebrow, npc?.name || "Not recorded yet", at ? `${at.mapName ? at.mapName + " · " : ""}${(at.x * 100).toFixed(1)}, ${(at.y * 100).toFixed(1)}` : npc ? "Position not observed" : "", at ? mapFocus({ mapId: at.mapId, x: at.x, y: at.y, npcId: npc.kind === "npc" ? npc.id : null, label: npc.name, sub: eyebrow, goal }) : "");
@@ -296,7 +296,11 @@ window.QuestGuide = (() => {
       const at = mainSpot(o.positions);
       const named = d.objectiveNames?.[o.index];
       const what = named ? `${{ monster: "Kill", item: "Collect", object: "Use", event: "" }[named.type] ?? ""} ${o.required > 1 ? o.required + " " : ""}${named.name}`.trim() : d.record?.objectiveEvidence && (d.objectiveLocations.length === 1) ? d.record.objectiveEvidence : `Objective ${o.index}${o.required ? ` · ${o.required} needed` : ""}`;
-      return at ? tile("quest-where-objective", "Objective area", what, `${at.count} spot${at.count === 1 ? "" : "s"} where players made progress`, mapFocus({ mapId: at.mapId, x: at.x, y: at.y, label: `“${title}” objective`, sub: what, kind: "quest-objective", goal: { title: `Objective: ${title}`, questId: selected, steps: [what, "Players made progress around this spot; spread out nearby if it's busy.", "Your quest log shows how many you still need."] } })) : "";
+      // Creature level range and an elite warning for kill objectives, when the creature reference knows them.
+      const cr = d.objectiveCreatures?.[o.index];
+      const lv = cr && Number.isInteger(cr.minLevel) ? `lvl ${cr.minLevel === cr.maxLevel ? cr.minLevel : `${cr.minLevel}–${cr.maxLevel}`}` : "";
+      const chips = lv || cr?.elite ? `<span class="quest-where-chips">${lv ? `<span class="quest-chip quest-chip-level">${esc(lv)}</span>` : ""}${cr.elite ? '<span class="quest-chip quest-chip-elite" title="Elite: much tougher than a normal enemy; bring a group">Elite</span>' : ""}</span>` : "";
+      return at ? tile("quest-where-objective", "Objective area", what, `${at.count} spot${at.count === 1 ? "" : "s"} where players made progress`, mapFocus({ mapId: at.mapId, x: at.x, y: at.y, label: `“${title}” objective`, sub: what, kind: "objective-area", questId: selected, index: o.index, goal: { title: `Objective: ${title}`, questId: selected, steps: [what, "Players made progress around this spot; spread out nearby if it's busy.", ...(cr?.elite ? [`${cr.name || "This enemy"} is elite: much tougher than a normal enemy. Bring a group.`] : []), "Your quest log shows how many you still need."] } }), chips) : "";
     }).filter(Boolean);
     if (!giver && !turnIn && !objectiveTiles.length) return "";
     return `<section class="quest-section quest-where" aria-label="Where to go"><h3>Where to go</h3><div class="quest-where-row">

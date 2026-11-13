@@ -20,6 +20,7 @@ jobs:
       - run: npm run check:forever-travel
       - run: npm run check:forever-acquisition
       - run: npm run check:forever-npc-locations
+      - run: npm run check:forever-creatures
       - run: npm test
       - run: npm run test:ui
       - run: npm run test:setup

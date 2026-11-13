@@ -115,3 +115,23 @@
 .world-map-page .wm-goal h4 { margin: 2px 0 6px; font: 700 17px Georgia, serif; color: #ffe9b0; }
 .world-map-page .wm-goal ol { margin: 0 0 8px; padding-left: 20px; line-height: 1.45; }
 .world-map-page .wm-goal-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Objective areas: the card's creature line, difficulty chips, elite warnings and the camps box. */
+.wm-creature { margin: 6px 0; font-size: 14px; }
+.wm-creature small { color: #5a3d18; }
+.wm-diff, .wm-elite { display: inline-block; padding: 0 7px; border-radius: 9px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.wm-diff-grey { background: #b9b2a5; color: #2b1b0a; }
+.wm-diff-green { background: #3f8f2e; color: #fff; }
+.wm-diff-yellow { background: #e8c81a; color: #2b1b0a; }
+.wm-diff-orange { background: #e8702e; color: #fff; }
+.wm-diff-red { background: #b8201a; color: #fff; }
+.wm-elite { background: #7a1f14; color: #ffe9c9; border: 1px solid #f0c060; }
+.world-map-page .wm-warn { margin: 6px 0; padding: 6px 9px; border-left: 4px solid #b8201a; border-radius: 4px; background: rgba(184,32,26,.12); color: #4a0f08; font-size: 13px; font-weight: 600; }
+.wm-camps { padding: 12px 14px; border-radius: 6px; background: linear-gradient(180deg, #3a0f0a, #22080a); border: 1px solid #c9583a; color: #f6dccb; box-shadow: 0 4px 10px rgba(0,0,0,.4); }
+.wm-camps[hidden] { display: none; }
+.wm-camps h3 { margin: 0 0 6px; font: 700 16px Cinzel, Georgia, serif; color: #ffb59a; }
+.wm-camps ul { list-style: none; margin: 0; padding: 0; }
+.world-map-page .wm-camps li button { all: unset; box-sizing: border-box; display: flex; gap: 8px; align-items: flex-start; width: 100%; padding: 5px 2px; cursor: pointer; border-bottom: 1px solid rgba(255,180,150,.15); }
+.world-map-page .wm-camps li button:hover, .world-map-page .wm-camps li button:focus-visible { background: rgba(255,180,150,.12); outline: none; }
+.wm-camps small { display: block; color: #e7b9a6; }
+.wm-camp-mark { flex: none; width: 18px; text-align: center; color: #ffe9c9; }

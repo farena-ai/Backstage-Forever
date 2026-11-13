@@ -347,3 +347,8 @@ button.quest-ledger-row:not(.illustrated-card){display:flex;align-items:center;g
 .reward-pick strong { font: 700 16px Georgia, serif; }
 .reward-pick ul { margin: 4px 0 0; padding-left: 18px; }
 .reward-pick small { display: block; margin-top: 4px; opacity: .8; }
+/* Objective creature level and elite chips on "Where to go" tiles. */
+.quest-where-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.quest-chip { display: inline-block; padding: 0 7px; border-radius: 9px; font: 700 11px/1.6 "Source Sans 3", sans-serif; }
+.quest-chip-level { background: #e3d2a6; color: #3d220c; border: 1px solid #a5823e; }
+.quest-chip-elite { background: #7a1f14; color: #ffe9c9; border: 1px solid #f0c060; }

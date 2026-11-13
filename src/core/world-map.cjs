@@ -14,7 +14,7 @@ function friendlyTo(reactions) {
   for (const [f, rs] of Object.entries(reactions || {})) if ((rs || []).some((r) => r >= 4)) out.push(f);
   return out.length ? out : null;
 }
-const MAX_PINS = 1500;
+const MAX_PINS = 1500, MAX_AREAS = 160;
 const mapName = (id) => MAP_NAMES[id] || `Map ${id}`;
 const pt = (p) => p && Number.isSafeInteger(p.mapId) && Number.isFinite(p.x) && Number.isFinite(p.y) && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
 const norm = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[’‘']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
@@ -64,23 +64,43 @@ function buildStaticIndex({ knowledgePack = null, npcReference = null, travelRef
   return byMap;
 }
 
-function questPins(profile, index, mapId) {
+// Quests that matter to this character: the ones in their log (with reference details) and
+// the ones they could pick up (observed in play, not active or done, level and faction fit).
+function relevantQuests(profile, index) {
   const out = [];
   if (!index || !profile) return out;
   const qp = profile.clientBuild && profile.clientBuild !== index.pack.build ? { ...profile, clientBuild: undefined } : profile;
-  const npcAt = (ref) => index.pack.npcs[`${ref.kind}:${ref.id}`];
   const active = new Set();
   for (const q of profile.quests || []) {
     active.add(q.id);
     let d;
     try { d = index.details(qp, q.id); } catch { continue; }
     if (d.status === "missing") continue;
-    if (q.complete) {
+    out.push({ id: q.id, title: q.title, status: q.complete ? "ready" : "active", log: q, details: d, record: d.record || null });
+  }
+  const done = new Set(profile.history?.completedIdsKnown ? profile.history.completedIds : []);
+  for (const q of Object.values(index.pack.quests)) {
+    if (!q.observedInPlay || active.has(q.id) || done.has(q.id) || !q.givers?.length) continue;
+    if (q.minLevel && Number.isInteger(profile.level) && profile.level < q.minLevel) continue;
+    if (q.level && Number.isInteger(profile.level) && (q.level < profile.level - 6 || q.level > profile.level + 4)) continue;
+    if (profile.faction && q.sides?.length && !q.sides.includes(profile.faction)) continue;
+    out.push({ id: q.id, title: q.title, status: "available", log: null, details: null, record: q });
+  }
+  return out;
+}
+
+function questPins(profile, index, mapId) {
+  const out = [];
+  if (!index || !profile) return out;
+  const npcAt = (ref) => index.pack.npcs[`${ref.kind}:${ref.id}`];
+  for (const r of relevantQuests(profile, index)) {
+    const q = r.log, d = r.details;
+    if (r.status === "ready") {
       for (const t of d.turnIns) {
         const n = npcAt(t);
         for (const p of n?.positions || []) if (p.mapId === mapId) out.push({ id: `qt:${q.id}:${t.id}`, kind: "quest-turnin", label: n.name, sub: `Turn in: ${q.title}`, questId: q.id, mapId, x: p.x, y: p.y, source: "Your quest log + reference" });
       }
-    } else {
+    } else if (r.status === "active") {
       for (const o of d.objectiveLocations) for (const p of (o.positions || []).slice(0, 3)) if (p.mapId === mapId) out.push({ id: `qo:${q.id}:${o.index}:${Math.round(p.x * 1000)}`, kind: "quest-objective", label: q.objectives?.[o.index - 1]?.text || `Objective ${o.index}`, sub: q.title, questId: q.id, mapId, x: p.x, y: p.y, source: "Your quest log + reference" });
       for (const o of d.record.objectives || []) {
         if (!["talkTo", "monster"].includes(o.type) || !o.objectId) continue;
@@ -89,21 +109,115 @@ function questPins(profile, index, mapId) {
         const n = index.pack.npcs[`npc:${o.objectId}`];
         for (const p of n?.positions || []) if (p.mapId === mapId) out.push({ id: `qn:${q.id}:${o.objectId}`, kind: "quest-objective", label: n.name, sub: `${o.text} · ${q.title}`, questId: q.id, mapId, x: p.x, y: p.y, source: "Your quest log + reference" });
       }
-    }
-  }
-  // Quests you could pick up here: observed in play, not active, not known-complete, level and faction fit.
-  const done = new Set(profile.history?.completedIdsKnown ? profile.history.completedIds : []);
-  for (const q of Object.values(index.pack.quests)) {
-    if (!q.observedInPlay || active.has(q.id) || done.has(q.id) || !q.givers?.length) continue;
-    if (q.minLevel && Number.isInteger(profile.level) && profile.level < q.minLevel) continue;
-    if (q.level && Number.isInteger(profile.level) && (q.level < profile.level - 6 || q.level > profile.level + 4)) continue;
-    if (profile.faction && q.sides?.length && !q.sides.includes(profile.faction)) continue;
-    for (const g of q.givers.slice(0, 1)) {
-      const n = npcAt(g);
-      for (const p of (n?.positions || []).slice(0, 1)) if (p.mapId === mapId) out.push({ id: `qg:${q.id}`, kind: "quest-giver", label: n.name, sub: `${q.title} (level ${q.level ?? "?"})`, questId: q.id, mapId, x: p.x, y: p.y, source: "Reference; availability unverified" });
+    } else {
+      // A quest you could pick up here, at its first giver.
+      const rec = r.record;
+      for (const g of rec.givers.slice(0, 1)) {
+        const n = npcAt(g);
+        for (const p of (n?.positions || []).slice(0, 1)) if (p.mapId === mapId) out.push({ id: `qg:${rec.id}`, kind: "quest-giver", label: n.name, sub: `${rec.title} (level ${rec.level ?? "?"})`, questId: rec.id, mapId, x: p.x, y: p.y, source: "Reference; availability unverified" });
+      }
     }
   }
   return out;
+}
+
+// ---------- objective areas ----------
+// Classic con colours: the level at or below which a creature is grey (no experience).
+function greyLevel(L) { return L <= 5 ? 0 : L <= 39 ? L - 5 - Math.floor(L / 10) : L - 1 - Math.floor(L / 5); }
+/** Difficulty of a creature level for a player level: grey, green, yellow, orange or red (skull: red). */
+function difficulty(playerLevel, mobLevel, skull = false) {
+  if (!Number.isInteger(playerLevel) || playerLevel < 1) return null;
+  if (skull) return "red";
+  if (!Number.isInteger(mobLevel)) return null;
+  const d = mobLevel - playerLevel;
+  if (d >= 5) return "red";
+  if (d >= 3) return "orange";
+  if (d >= -2) return "yellow";
+  return mobLevel <= greyLevel(playerLevel) ? "grey" : "green";
+}
+const AREA = { link: 0.05, pad: 0.012, min: 0.018, max: 0.12, parts: 3 };
+// Single-link clusters of nearby observation spots, largest first.
+function clusters(points) {
+  const parent = points.map((_, i) => i), find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  for (let i = 0; i < points.length; i++) for (let j = i + 1; j < points.length; j++) if (Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y) <= AREA.link) parent[find(i)] = find(j);
+  const groups = new Map();
+  points.forEach((p, i) => { const r = find(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(p); });
+  return [...groups.values()].sort((a, b) => b.length - a.length);
+}
+/** Centre and radius (map fractions) of each significant cluster of spots (at most three). */
+function areaShapes(points) {
+  if (!points.length) return [];
+  const groups = clusters(points);
+  const keep = groups.filter((g, i) => i === 0 || g.length >= Math.max(2, Math.ceil(points.length * 0.2))).slice(0, AREA.parts);
+  return keep.map((g) => {
+    const x = g.reduce((t, p) => t + p.x, 0) / g.length, y = g.reduce((t, p) => t + p.y, 0) / g.length;
+    const far = Math.max(...g.map((p) => Math.hypot(p.x - x, p.y - y)));
+    return { x: +x.toFixed(4), y: +y.toFixed(4), radius: +Math.min(AREA.max, Math.max(AREA.min, far + AREA.pad)).toFixed(4), spots: g.length };
+  });
+}
+const VERB = { monster: "Kill", item: "Collect", gameObject: "Use" };
+const levelText = (c) => (c?.minLevel == null ? (c?.skull ? "??" : "") : c.minLevel === c.maxLevel ? String(c.minLevel) : `${c.minLevel}–${c.maxLevel}`);
+/** A plain-words warning for an elite, rare or boss-level objective creature (null when ordinary). */
+function creatureWarning(c, playerLevel) {
+  if (!c) return null;
+  const name = c.name || "This enemy";
+  if (c.worldboss || c.skull) return `${name} is a boss-level enemy (level shown as ??). Leave it for a full group.`;
+  if (c.elite) {
+    const lv = levelText(c);
+    const solo = Number.isInteger(playerLevel) && Number.isInteger(c.maxLevel) && playerLevel >= c.maxLevel + 5;
+    return `${name} is elite${lv ? ` (level ${lv})` : ""}: much tougher than a normal enemy. ${solo ? "You out-level it, so you may manage alone." : "Bring a group, or come back a few levels higher."}`;
+  }
+  if (c.rare) return `${name} is a rare spawn: it may not be there when you arrive.`;
+  return null;
+}
+/** One soft area per objective cluster on this map, for quests in the log or available to pick up. */
+function objectiveAreas(profile, index, creatures, mapId) {
+  const out = [];
+  if (!index || !profile) return out;
+  const level = Number.isInteger(profile.level) ? profile.level : null;
+  for (const r of relevantQuests(profile, index)) {
+    if (r.status === "ready") continue;
+    const rec = r.record || {};
+    const locs = r.details?.objectiveLocations || rec.objectiveLocations || [];
+    const objectives = rec.objectives || [];
+    const indexes = [...new Set([...objectives.map((o) => o.index), ...locs.map((l) => l.index)])].filter(Number.isSafeInteger).sort((a, b) => a - b);
+    for (const i of indexes) {
+      const o = objectives.find((x) => x.index === i) || null, loc = locs.find((l) => l.index === i) || null;
+      const type = o?.type || loc?.type || null;
+      if (type === "talkTo") continue; // talking to an NPC is a pin, not an area
+      const logged = r.log?.objectives?.[i - 1];
+      if (logged?.done) continue;
+      let points = (loc?.positions || []).filter((p) => p.mapId === mapId && pt(p));
+      // Kill objectives without progress observations here fall back to where the creature itself was seen.
+      if (!points.length && type === "monster" && o?.objectId) points = (index.pack.npcs[`npc:${o.objectId}`]?.positions || []).filter((p) => p.mapId === mapId && pt(p));
+      if (!points.length) continue;
+      const ref = type === "monster" && o?.objectId ? creatures?.get?.(o.objectId) || null : null;
+      const name = type === "monster" ? index.pack.creatures?.[String(o?.objectId)]?.name || ref?.name || null : type === "item" ? index.pack.items?.[String(o?.objectId)]?.name || null : null;
+      const required = o?.required ?? loc?.required ?? null;
+      const label = name ? `${VERB[type] || ""} ${required > 1 ? required + " " : ""}${name}`.trim()
+        : logged?.text ? String(logged.text).replace(/^\d+\/\d+\s+/, "") : typeof o?.text === "string" && o.text ? o.text : indexes.length === 1 && rec.objectiveEvidence ? rec.objectiveEvidence : `Objective ${i}`;
+      const creature = ref ? { id: ref.id, name: name || ref.name, minLevel: ref.minLevel, maxLevel: ref.maxLevel, elite: Boolean(ref.elite), rare: Boolean(ref.rare), worldboss: Boolean(ref.worldboss), skull: Boolean(ref.skull), hostile: profile.faction ? ref.hostileTo.includes(profile.faction) : null } : null;
+      const diff = creature ? difficulty(level, creature.maxLevel, creature.skull || creature.worldboss) : null;
+      areaShapes(points).forEach((shape, k) => out.push({
+        id: `oa:${r.id}:${i}:${k}`, kind: "objective-area", questId: r.id, questTitle: r.title || rec.title || `Quest #${r.id}`, status: r.status, index: i, type,
+        label, target: name, progress: logged?.text || null, mapId, ...shape, creature, levels: creature ? levelText(creature) || null : null, difficulty: diff,
+        warning: creatureWarning(creature, level), source: r.status === "available" ? "Reference; availability unverified" : "Your quest log + reference",
+      }));
+    }
+  }
+  return out;
+}
+// Elite, rare-elite and boss-level objective creatures on this map, one warning per creature.
+function hostileCamps(areas) {
+  const by = new Map();
+  for (const a of areas) {
+    const c = a.creature;
+    if (!c || !(c.elite || c.worldboss || c.skull)) continue;
+    const m = by.get(c.id) || { creatureId: c.id, name: c.name || `Creature #${c.id}`, levels: a.levels, elite: c.elite, rare: c.rare, worldboss: c.worldboss || c.skull, difficulty: a.difficulty, hostile: c.hostile, warning: a.warning, areaId: a.id, x: a.x, y: a.y, quests: [] };
+    if (!m.quests.some((q) => q.id === a.questId)) m.quests.push({ id: a.questId, title: a.questTitle, status: a.status });
+    by.set(c.id, m);
+  }
+  return [...by.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function findPins(profile, mapId) {
@@ -116,8 +230,9 @@ function findPins(profile, mapId) {
 }
 
 class WorldMap {
-  constructor({ getState, knowledge, npcReference, travelReference, vendorPack, insights, acquisitionPack, live }) {
+  constructor({ getState, knowledge, npcReference, travelReference, vendorPack, insights, acquisitionPack, creaturePack = null, live }) {
     Object.assign(this, { getState, knowledge, live, npcReference, travelReference, vendorPack, insights });
+    this.creatures = require("./creature-data.cjs").creatureIndex(creaturePack);
     this.static = buildStaticIndex({ knowledgePack: knowledge?.bundled?.pack, npcReference, travelReference, vendorPack, insights, acquisitionPack });
   }
   profile() { const s = this.getState(); return s.profiles.find((p) => p.id === s.activeProfileId) || null; }
@@ -189,6 +304,9 @@ class WorldMap {
     const counts = {};
     for (const p of pins) if (!p.otherFaction) counts[p.kind] = (counts[p.kind] || 0) + 1;
     counts.otherFaction = pins.filter((p) => p.otherFaction).length;
+    // Soft areas where quest objectives happen, drawn under the pins.
+    const areas = objectiveAreas(profile, index, this.creatures, mapId).slice(0, MAX_AREAS);
+    counts["objective-area"] = areas.length;
     return {
       mapId, mapName: mapName(mapId), maps: this.maps(),
       player: {
@@ -200,7 +318,7 @@ class WorldMap {
         // The renderer applies streamed frames only when they carry this key (null: not an addon character).
         liveKey: profile?.source?.kind === "wow-addon" ? require("./live-bridge.cjs").liveKeyFor(profile.source.id) ?? -1 : null,
       },
-      pins, counts,
+      pins, counts, areas, camps: hostileCamps(areas),
       attribution: "Reference data from Efficient Games (https://efficient.games), CC BY 4.0. Positions are approximate community observations.",
     };
   }
@@ -289,4 +407,4 @@ class WorldMap {
     return { query, results: unique, from: here ? { mapId: here.mapId, mapName: mapName(here.mapId), live: Boolean(live) } : null };
   }
 }
-module.exports = { WorldMap, buildStaticIndex, questPins, KINDS, mapName, trainerKind, friendlyTo };
+module.exports = { WorldMap, buildStaticIndex, questPins, relevantQuests, objectiveAreas, hostileCamps, areaShapes, difficulty, greyLevel, creatureWarning, KINDS, mapName, trainerKind, friendlyTo };
