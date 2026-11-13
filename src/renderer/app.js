@@ -483,6 +483,9 @@ function render() {
     ? document.activeElement.closest("details[data-living-disclosure]")?.dataset.livingDisclosure : null;
   livingDisclosureOwner = disclosureOwner;
   const focusedOption = document.activeElement?.dataset.planOption;
+  // A background repaint must not steal keyboard focus from shell controls (character picker, skip link, main).
+  const focusedShell = document.activeElement && document.activeElement !== document.body
+    ? (document.activeElement.id ? `#${CSS.escape(document.activeElement.id)}` : document.activeElement.dataset?.shellControl ? `[data-shell-control="${CSS.escape(document.activeElement.dataset.shellControl)}"]` : null) : null;
   CharacterGuidance.beginRender();
   QuestGuide.beginRender();
   Company.beginRender();
@@ -563,6 +566,7 @@ function render() {
       if (node.dataset.livingDisclosure === focusedSummary && document.activeElement === document.body)
         node.querySelector(":scope > summary")?.focus({preventScroll:true});
     }
+    if (focusedShell && (!document.activeElement || document.activeElement === document.body)) root.querySelector(focusedShell)?.focus({ preventScroll: true });
     CharacterGuidance.endRender();
     QuestGuide.endRender();
     Company.endRender();

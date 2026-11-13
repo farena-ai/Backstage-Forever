@@ -94,6 +94,12 @@ window.NowView = (() => {
       <ol class="now-checklist">${items.map((i, n) => `<li class="${i.done ? "done" : n === next ? "next" : ""}"><span class="now-check" aria-hidden="true">${i.done ? "✓" : n + 1}</span><div><strong>${i.title}</strong>${i.done ? "" : `<p>${i.how}</p>${n === next && i.action ? `<div class="now-actions">${i.action}</div>` : ""}`}</div></li>`).join("")}</ol>
       <p class="now-tip">New to WoW? The <button type="button" class="now-link" data-nav="guide">Field guide</button> explains the words you'll see, like rested, hand in and elite, and <button type="button" class="now-link" data-nav="commands">Commands</button> lists everything you can type in game.</p></article>`;
   }
+  // The game is still running an addon older than the one just installed: one /reload loads it.
+  function reloadBanner() {
+    const g = setup?.game;
+    if (!g?.connected || !g.addonCurrent || g.runtime?.state !== "running" || !g.loadedCaptureVersion || !g.addonVersion || g.loadedCaptureVersion === g.addonVersion) return "";
+    return `<div class="now-reload" role="status"><strong>Type <code>/reload</code> in WoW</strong><span>The game is still running Backstage Forever ${esc(g.loadedCaptureVersion)}. Reloading loads ${esc(g.addonVersion)} with the newest helpers.</span></div>`;
+  }
   function body() {
     if (error) return `<div class="now-card"><p>${esc(error)}</p></div>`;
     if (!advice) return `<div class="now-card"><p>${loading ? "Working out your next move…" : "Loading…"}</p></div>`;
@@ -111,7 +117,7 @@ window.NowView = (() => {
     const log = a.log;
     const questLog = log.inLog ? `<ul class="now-log">${log.ready.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip ready">Hand in</span>${esc(q.title)}</button></li>`).join("")}${log.active.slice(0, 8).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip">${q.total ? `${q.done}/${q.total}` : "…"}</span>${esc(q.title)}${q.level ? ` <small>lvl ${q.level}</small>` : ""}</button></li>`).join("")}</ul>` : `<p>Your quest log is empty. ${a.next ? `Pick up quests in ${esc(a.next.name)}.` : ""}</p>`;
     const top = a.next?.quests?.length ? `<ul class="now-log">${a.next.quests.slice(0, 6).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip new">lvl ${q.level}</span>${esc(q.title)} <small>from ${esc(q.giver)}</small></button></li>`).join("")}</ul>` : "";
-    return `${setupCard(a)}<div class="now-grid">
+    return `${reloadBanner()}${setupCard(a)}<div class="now-grid">
       <article class="now-card now-next"><h2>Do this next</h2>
         ${list.length ? `<ol class="now-steps">${list.map((s) => `<li class="now-step now-${s.kind}"><span class="now-ico" aria-hidden="true">${ICON[s.kind]}</span><div><h3>${s.title}</h3><p>${s.detail}</p><div class="now-actions">${s.actions}</div></div></li>`).join("")}</ol>` : `<p>You're all caught up. Explore, gather or run a dungeon.</p>`}
       </article>

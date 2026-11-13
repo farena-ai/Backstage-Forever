@@ -24,7 +24,9 @@ local function combat() return call(InCombatLockdown)==true end
 local settings
 local function loadSettings()
     local s=type(BackstageForeverAssistSettings)=='table' and BackstageForeverAssistSettings or {}
-    settings={toasts=s.toasts~=false,danger=s.danger~=false,junk=s.junk~=false,welcomed=s.welcomed==true}
+    local tbl=function(v) return type(v)=='table' and v or {} end
+    settings={toasts=s.toasts~=false,danger=s.danger~=false,junk=s.junk~=false,welcomed=s.welcomed==true,
+        repairers=tbl(s.repairers),flightNpcs=tbl(s.flightNpcs),flightNodes=tbl(s.flightNodes)}
     BackstageForeverAssistSettings=settings
     return settings
 end
@@ -319,10 +321,158 @@ local function updateJunk(open)
     else pcall(junkButton.Hide,junkButton) end
 end
 
+
+-- Gear durability: warn once when it gets low, again when something breaks.
+-- Pure: per-slot {cur,max} list -> lowest percent (nil when nothing has durability), broken count.
+function BackstageForeverDurability(slots)
+    local low,broken=nil,0
+    for _,s in ipairs(type(slots)=='table' and slots or {}) do
+        local cur,max=tonumber(s[1]),tonumber(s[2])
+        if cur and max and max>0 then
+            local pct=floor(cur/max*100)
+            if not low or pct<low then low=pct end
+            if cur<=0 then broken=broken+1 end
+        end
+    end
+    return low,broken
+end
+local function readDurability()
+    local slots={}
+    for slot=1,18 do local cur,max=call(GetInventoryItemDurability,slot) if cur and max then slots[#slots+1]={cur,max} end end
+    return BackstageForeverDurability(slots)
+end
+local repairWarned=nil -- nil, 'low' or 'broken'
+local function onDurability()
+    local low,broken=readDurability()
+    if not low then return end
+    if broken>0 and repairWarned~='broken' then
+        repairWarned='broken'
+        return BackstageForeverToast('Gear broken',('%d item%s no longer work until repaired. Visit a blacksmith or armor vendor: /bf repair shows the nearest.'):format(broken,broken==1 and '' or 's'))
+    end
+    if low<=25 and not repairWarned then
+        repairWarned='low'
+        return BackstageForeverToast(('Gear wearing out (%d%%)'):format(low),'Repair soon at a blacksmith or armor vendor. /bf repair shows the nearest.')
+    end
+    if low>50 then repairWarned=nil end
+end
+
+-- Remember who you have talked to (merchants that repair, flight masters you have met).
+local function npcIdOf(unit)
+    local guid=call(UnitGUID,unit)
+    if type(guid)~='string' then return nil end
+    local kind,id=guid:match('^(%a+)%-%d+%-%d+%-%d+%-%d+%-(%d+)')
+    if kind=='Creature' then return tonumber(id) end
+end
+local function herePosition()
+    local mapApi=type(C_Map)=='table' and C_Map or nil
+    local map=mapApi and num(call(mapApi.GetBestMapForUnit,'player'))
+    if not map then return nil end
+    local pos=call(mapApi.GetPlayerMapPosition,map,'player')
+    local x,y
+    if type(pos)=='table' and type(pos.GetXY)=='function' then x,y=call(pos.GetXY,pos) end
+    if type(x)=='number' and type(y)=='number' then return map,x,y end
+    return map
+end
+local function count(t) local n=0 for _ in pairs(t) do n=n+1 end return n end
+local function learnRepairer()
+    if call(CanMerchantRepair)~=true then return end
+    local id=npcIdOf('npc'); local map,x,y=herePosition()
+    if not id or not map or not x then return end
+    settings.repairers=type(settings.repairers)=='table' and settings.repairers or {}
+    if not settings.repairers[id] and count(settings.repairers)>=60 then return end
+    settings.repairers[id]={m=map,x=floor(x*1e4)/1e4,y=floor(y*1e4)/1e4,n=tostring(call(UnitName,'npc') or 'Repair vendor'):sub(1,40)}
+end
+local function learnFlights()
+    settings.flightNpcs=type(settings.flightNpcs)=='table' and settings.flightNpcs or {}
+    settings.flightNodes=type(settings.flightNodes)=='table' and settings.flightNodes or {}
+    local id=npcIdOf('npc')
+    if id then settings.flightNpcs[id]=true end
+    local taxi=type(C_TaxiMap)=='table' and C_TaxiMap or nil
+    local mapId=num(call(GetTaxiMapID))
+    local nodes=taxi and mapId and call(taxi.GetAllTaxiNodes,mapId)
+    if type(nodes)=='table' then
+        for _,n in ipairs(nodes) do
+            local node,state=num(field(n,'nodeID')),num(field(n,'state'))
+            -- Enum.FlightPathState: 0 current, 1 reachable (known), 2 unreachable (not learned).
+            if node and state and state<2 then settings.flightNodes[node]=true end
+        end
+    end
+end
+
+-- Rows from the bundled advisor data for this map: kind 'r' (repair) or 'f' (flight master).
+local function rowsOf(kind,map)
+    local data=type(BackstageForeverAdvisorData)=='table' and BackstageForeverAdvisorData.npcs
+    local out={}
+    if type(data)~='table' then return out end
+    local faction=call(UnitFactionGroup,'player')
+    local side=faction=='Horde' and 'H' or faction=='Alliance' and 'A' or nil
+    local function add(m,list) for _,n in ipairs(list or {}) do if type(n)=='table' and n.k==kind and (n.s==nil or n.s=='B' or side==nil or n.s==side) then out[#out+1]={mapId=m,x=n.x,y=n.y,name=n.n,id=n.i,node=n.t,title=n.r} end end end
+    if map then add(map,data[map]) else for m,list in pairs(data) do add(m,list) end end
+    return out
+end
+-- Pure: is this flight master already learned? (met it, or its node is known from the flight map)
+function BackstageForeverFlightKnown(row,known)
+    known=type(known)=='table' and known or {}
+    return (row.id and (known.npcs or {})[row.id]) or (row.node and (known.nodes or {})[row.node]) or false
+end
+local function knownFlights() return {npcs=settings.flightNpcs or {},nodes=settings.flightNodes or {}} end
+local function nearest(list,map,x,y)
+    local best,bestD
+    for _,r in ipairs(list) do
+        if r.mapId==map and x then local d=((r.x-x)^2+(r.y-y)^2)^.5 if not bestD or d<bestD then best,bestD=r,d end end
+    end
+    return best,bestD
+end
+function BackstageForeverRepair()
+    if not settings then loadSettings() end
+    local map,x,y=herePosition()
+    local list=rowsOf('r',map)
+    for _,r in pairs(type(settings.repairers)=='table' and settings.repairers or {}) do if r.m==map then list[#list+1]={mapId=r.m,x=r.x,y=r.y,name=r.n} end end
+    local best=nearest(list,map,x,y)
+    if not best then
+        local all=rowsOf('r',nil)
+        for _,m in ipairs(CAPITALS) do for _,r in ipairs(all) do if not best and r.mapId==m then best=r end end end
+        best=best or all[1]
+    end
+    if not best then return say('No repair vendor is recorded here yet. Blacksmiths and armor vendors in towns can repair; open one and the addon remembers it.') end
+    if type(BackstageForeverWay)=='function' then BackstageForeverWay(('way %d %.4f %.4f %s'):format(best.mapId,best.x,best.y,best.name or 'repair')) end
+    return best
+end
+function BackstageForeverFlights()
+    if not settings then loadSettings() end
+    local map=herePosition()
+    local list=rowsOf('f',map)
+    if #list==0 then return say('No flight masters are recorded in this zone.') end
+    local known=knownFlights()
+    for _,r in ipairs(list) do
+        say(('%s%s: %s'):format(r.name or 'Flight master',r.title and r.title~='Flight Master' and (' ('..r.title..')') or '',BackstageForeverFlightKnown(r,known) and 'learned' or 'not learned yet. Talk to them to add this flight path.'))
+    end
+    return list
+end
+-- Passing near a flight master you haven't met: one reminder per master per session.
+local flightHinted={}
+local function checkFlightNearby()
+    if not settings or not settings.toasts or combat() then return end
+    local map,x,y=herePosition()
+    if not x then return end
+    local known=knownFlights()
+    for _,r in ipairs(rowsOf('f',map)) do
+        local key=r.id or r.name
+        if key and not flightHinted[key] and not BackstageForeverFlightKnown(r,known) and ((r.x-x)^2+(r.y-y)^2)^.5<0.035 then
+            flightHinted[key]=true
+            BackstageForeverToast('Flight master nearby: '..tostring(r.name),'Talk to them to learn this flight path. Later you can fly back here instead of running.')
+            return r
+        end
+    end
+end
+BackstageForeverCheckFlightNearby=checkFlightNearby
+
 function BackstageForeverAssistCommand(message)
     if not settings then loadSettings() end
     local cmd,arg=(type(message)=='string' and message:lower() or ''):match('^(%a+)%s*(%a*)')
     if cmd=='train' then return BackstageForeverTrain() end
+    if cmd=='repair' then return BackstageForeverRepair() end
+    if cmd=='flights' then return BackstageForeverFlights() end
     if cmd=='xp' then return say(BackstageForeverPaceLine()) end
     if cmd=='hearth' then
         local where=call(GetBindLocation)
@@ -338,6 +488,8 @@ function BackstageForeverAssistCommand(message)
         local lines={
             '/bf next - an arrow to the nearest quest to hand in or pick up',
             '/bf train - an arrow to your class trainer',
+            '/bf repair - an arrow to the nearest repair vendor',
+            '/bf flights - which flight paths here you have learned',
             '/bf find NAME - find a person or place, e.g. /bf find flight master',
             '/bf xp - your experience per hour and time to the next level',
             '/bf hearth - where your Hearthstone takes you',
@@ -353,7 +505,7 @@ end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_XP_UPDATE','PLAYER_LEVEL_UP','QUEST_TURNED_IN','PLAYER_DEAD','PLAYER_ALIVE','PLAYER_UNGHOST','PLAYER_TARGET_CHANGED','UNIT_CLASSIFICATION_CHANGED','MERCHANT_SHOW','MERCHANT_CLOSED','BAG_UPDATE_DELAYED'}) do pcall(events.RegisterEvent,events,e) end
+        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_XP_UPDATE','PLAYER_LEVEL_UP','QUEST_TURNED_IN','PLAYER_DEAD','PLAYER_ALIVE','PLAYER_UNGHOST','PLAYER_TARGET_CHANGED','UNIT_CLASSIFICATION_CHANGED','MERCHANT_SHOW','MERCHANT_CLOSED','BAG_UPDATE_DELAYED','UPDATE_INVENTORY_DURABILITY','TAXIMAP_OPENED','ZONE_CHANGED','ZONE_CHANGED_NEW_AREA','ZONE_CHANGED_INDOORS'}) do pcall(events.RegisterEvent,events,e) end
         local merchantOpen=false
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b)
             if event=='PLAYER_LOGIN' then
@@ -369,10 +521,15 @@ if type(CreateFrame)=='function' then
             elseif event=='PLAYER_ALIVE' then onAlive()
             elseif event=='PLAYER_UNGHOST' then onUnghost()
             elseif event=='PLAYER_TARGET_CHANGED' or (event=='UNIT_CLASSIFICATION_CHANGED' and a=='target') then updateDanger()
-            elseif event=='MERCHANT_SHOW' then merchantOpen=true updateJunk(true)
+            elseif event=='MERCHANT_SHOW' then merchantOpen=true pcall(learnRepairer) updateJunk(true)
+            elseif event=='UPDATE_INVENTORY_DURABILITY' then onDurability()
+            elseif event=='TAXIMAP_OPENED' then pcall(learnFlights)
+            elseif event=='ZONE_CHANGED' or event=='ZONE_CHANGED_NEW_AREA' or event=='ZONE_CHANGED_INDOORS' then checkFlightNearby()
             elseif event=='MERCHANT_CLOSED' then merchantOpen=false updateJunk(false)
             elseif event=='BAG_UPDATE_DELAYED' and merchantOpen then updateJunk(true) end
         end)
+        local tick=0
+        pcall(events.SetScript,events,'OnUpdate',function(_,dt) tick=tick+(tonumber(dt) or 0) if tick>=5 then tick=0 pcall(checkFlightNearby) end end)
     end
 end
 BackstageForeverAssistSession=session
