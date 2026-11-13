@@ -26,6 +26,7 @@ const MAX = 1024 * 1024,
     "BackstageForeverQuestIntel.lua",
     "BackstageForeverRoute.lua",
     "BackstageForeverSupplies.lua",
+    "BackstageForeverJournal.lua",
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");
@@ -187,6 +188,9 @@ function parseSavedVariables(raw) {
     }
     if (c.lootSources !== undefined) {
       try { out.lootSources = require("./quest-intel.cjs").normalizeLootSourcesCapture(c.lootSources); } catch { /* Omit the entire invalid optional block. */ }
+    }
+    if (c.journal !== undefined) {
+      try { out.journal = require("./journal-data.cjs").normalizeJournalCapture(c.journal); } catch { /* Omit the entire invalid optional block. */ }
     }
     return out;
   });

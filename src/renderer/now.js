@@ -222,6 +222,7 @@ window.NowView = (() => {
       // Entering a new zone while playing: a painted arrival banner.
       if (z?.mapId && lastZoneId && z.mapId !== lastZoneId && z.live) arrive(z);
       if (z?.mapId) lastZoneId = z.mapId;
+      window.JourneyView?.check();
     } catch (e) { error = e.message || "Advice is unavailable."; }
     loading = false; paint();
   }

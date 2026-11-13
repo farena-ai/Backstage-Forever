@@ -672,6 +672,10 @@ local function capture(event,eventId)
             character.lootSources=sources
         end
     end
+    if type(BackstageForeverJournalSnapshot)=='function' then
+        local ok,journal=pcall(BackstageForeverJournalSnapshot)
+        if ok and type(journal)=='table' then array(journal.levels);array(journal.firsts);array(journal.zones);character.journal=journal end
+    end
     if type(BackstageForeverMapUpdate)=='function' then pcall(BackstageForeverMapUpdate,character)end
     if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character) end
     roster[guid]=character
@@ -707,6 +711,7 @@ local function capture(event,eventId)
         if fits() then break end
         if type(chars[i].quests)=='table' then for _,q in ipairs(chars[i].quests) do discard(q,'text') end end
         discard(chars[i],'lootSources')
+        if not fits() then discard(chars[i],'journal') end
     end
     -- Workshop is optional: shed it across the roster before older quest/XP/history.
     for i=#chars,1,-1 do

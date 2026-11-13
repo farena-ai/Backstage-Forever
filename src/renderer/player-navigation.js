@@ -22,7 +22,7 @@ window.PlayerNavigation = (() => {
     },
     characters: {
       label: "Characters",
-      routes: [["characters", "Journal"], ["talents", "Talents"]],
+      routes: [["characters", "Journal"], ["talents", "Talents"], ["journey", "Journey"]],
       description: "Your characters, their journals and a talent path for leveling.",
     },
     game: {

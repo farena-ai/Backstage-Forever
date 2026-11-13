@@ -170,6 +170,7 @@ function validateState(s) {
       "readiness",
       "gathering",
       "lootSources",
+      "journal",
       "clientBuild",
       "locale",
       "captureVersion",
@@ -181,6 +182,7 @@ function validateState(s) {
     require("./readiness.cjs").validateReadiness(p.readiness);
     require("./gathering-data.cjs").validateGatheringProfile(p.gathering);
     require("./quest-intel.cjs").validateLootSources(p.lootSources);
+    require("./journal-data.cjs").validateJournal(p.journal);
     str(p.id, 100, false);
     if (ids.has(p.id)) fail();
     ids.add(p.id);
