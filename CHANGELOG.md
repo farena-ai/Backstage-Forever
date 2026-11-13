@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.22.1 — level up like you mean it, 2026-11-13
+
+- **A much bigger level-up celebration in the app:**
+  - A full-screen golden burst with slowly turning light rays, a shockwave, three firework bursts and heavier confetti.
+  - The winged crest drops in and the number ticks up to your new level, under a shining LEVEL UP! title.
+  - **New for you:** the new class skills waiting at your trainer, with "Show trainer on map".
+  - Milestone notes at levels 10, 20, 30, 40, 50 and 60.
+  - A short, quiet fanfare made on the fly (no audio files), with a Sound on/off switch that remembers your choice.
+  - Continue, Escape or a click outside closes it. It stays still if your system asks for reduced motion, and it fits short windows.
+- **In game,** the level-up banner is larger, gold-edged and stays up for 9 seconds.
+- App/lock, TOC and capture metadata align at 0.22.1 preview. **1.0 remains held.**
+
 ## 0.22.0 — dialed in, and the whole quest, 2026-11-13
 
 - **Dialed-in "Show on map".** Every map link from Now (hand in, train, continue a quest, quest hubs, zones, your trainer) and from quest pages opens the World Map focused on that one target:
