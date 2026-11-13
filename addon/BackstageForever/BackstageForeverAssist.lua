@@ -126,7 +126,7 @@ function BackstageForeverPaceLine()
 end
 
 -- Toast: a short message at the top of the screen that fades by itself.
-local toast,toastTitle,toastSub,toastShown=nil,nil,nil,0
+local toast,toastTitle,toastSub,toastShown,toastLen,toastTop=nil,nil,nil,0,6,nil
 local function toastFrame()
     if toast or type(CreateFrame)~='function' then return toast end
     toast=CreateFrame('Frame','BackstageForeverToast',UIParent)
@@ -136,6 +136,8 @@ local function toastFrame()
     pcall(toast.SetFrameStrata,toast,'HIGH')
     local bg=toast:CreateTexture(nil,'BACKGROUND')
     if bg then pcall(bg.SetAllPoints,bg,toast) pcall(bg.SetColorTexture,bg,0,0,0,.6) end
+    toastTop=toast:CreateTexture(nil,'BORDER')
+    if toastTop then pcall(toastTop.SetPoint,toastTop,'TOPLEFT',toast,'TOPLEFT',0,0) pcall(toastTop.SetPoint,toastTop,'TOPRIGHT',toast,'TOPRIGHT',0,0) pcall(toastTop.SetHeight,toastTop,2) pcall(toastTop.SetColorTexture,toastTop,1,.82,0,.9) pcall(toastTop.Hide,toastTop) end
     local line=toast:CreateTexture(nil,'BORDER')
     if line then pcall(line.SetPoint,line,'BOTTOMLEFT',toast,'BOTTOMLEFT',0,0) pcall(line.SetPoint,line,'BOTTOMRIGHT',toast,'BOTTOMRIGHT',0,0) pcall(line.SetHeight,line,2) pcall(line.SetColorTexture,line,1,.82,0,.9) end
     toastTitle=toast:CreateFontString(nil,'OVERLAY','GameFontNormalHuge')
@@ -147,17 +149,24 @@ local function toastFrame()
     pcall(toast.SetScript,toast,'OnUpdate',function(self)
         local t=now()-toastShown
         if t<.25 then pcall(self.SetScale,self,1+(.25-t)*1.6) pcall(self.SetAlpha,self,t/.25)
-        elseif t<5 then pcall(self.SetScale,self,1) pcall(self.SetAlpha,self,1)
-        elseif t<6 then pcall(self.SetAlpha,self,6-t)
+        elseif t<toastLen-1 then pcall(self.SetScale,self,1) pcall(self.SetAlpha,self,1)
+        elseif t<toastLen then pcall(self.SetAlpha,self,toastLen-t)
         else pcall(self.Hide,self) end
     end)
     return toast
 end
 -- Shows a toast (also echoed to chat so it is never missed). Returns the text for tests.
-function BackstageForeverToast(title,sub)
+-- big=true: the level-up banner, larger and longer.
+function BackstageForeverToast(title,sub,big)
     if not settings then loadSettings() end
     if sub then say(title..' '..sub) else say(title) end
     if not settings.toasts or not toastFrame() then return title end
+    toastLen=big and 9 or 6
+    pcall(toast.SetSize,toast,big and 760 or 560,big and 124 or 74)
+    pcall(toastSub.SetWidth,toastSub,big and 720 or 530)
+    local font=type(toastTitle.GetFont)=='function' and select(1,toastTitle:GetFont())
+    if font then pcall(toastTitle.SetFont,toastTitle,font,big and 40 or 26,big and 'THICKOUTLINE' or '') end
+    if toastTop then pcall(big and toastTop.Show or toastTop.Hide,toastTop) end
     pcall(toastTitle.SetText,toastTitle,title)
     pcall(toastSub.SetText,toastSub,sub or '')
     toastShown=now()
@@ -209,7 +218,7 @@ local function onLevel(level)
     lastLevelAt=now()
     local sub=t and ('New skills may be waiting: %s in %s. Type /bf train for an arrow.'):format(t.name,mapName(t.mapId)) or 'Visit your class trainer for new skills.'
     if took then sub=sub..' This level took '..took..'.' end
-    BackstageForeverToast(('Level %s!'):format(tostring(level)),sub)
+    BackstageForeverToast(('Level %s!'):format(tostring(level)),sub,true)
 end
 local function onQuestTurnedIn(xp)
     session.quests=session.quests+1
