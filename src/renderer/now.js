@@ -13,7 +13,7 @@ window.NowView = (() => {
 
   function page() {
     return `<section class="now-page" data-now>
-      <header class="now-head"><div><span class="now-eyebrow">Now</span><h1 data-now-title>${esc(advice?.character?.name || "Your next move")}</h1><p class="now-live" data-now-live></p></div>
+      <header class="now-head"><img class="now-class-crest" data-now-crest alt="" width="84" height="84" hidden><div><span class="now-eyebrow">Now</span><h1 data-now-title>${esc(advice?.character?.name || "Your next move")}</h1><p class="now-live" data-now-live></p></div>
         <button type="button" class="subtle" data-now-act="refresh">Refresh</button></header>
       <div class="now-body" data-now-body>${body()}</div>
     </section>`;
@@ -59,10 +59,13 @@ window.NowView = (() => {
     }
     return out.slice(0, 4);
   }
+  const CLASSES = new Set(["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"]);
+  // Classic rule: at or below this quest/mob level you get no experience.
+  const greyAt = (lvl) => (lvl <= 5 ? 0 : lvl <= 39 ? lvl - 5 - Math.floor(lvl / 10) : lvl - 1 - Math.floor(lvl / 5));
   const ICON = { death: "✝", "hand-in": "?", train: "⚔", quest: "◎", zone: "➶" };
   // Painted crests per step and a painted vista per kind of landscape (original art, art/NOTICE.md).
   const crest = (kind) => `<img class="now-crest" src="art/steps/${kind}.png" alt="" width="44" height="44">`;
-  const BIOME = Object.freeze({ 1429: "meadow", 1424: "meadow", 1417: "meadow", 1433: "meadow", 1436: "farmland", 1411: "canyon", 1441: "canyon", 1442: "canyon", 1413: "savanna", 1412: "savanna", 1426: "snow", 1416: "snow", 1452: "snow", 1432: "highlands", 1425: "highlands", 1420: "haunted", 1421: "haunted", 1431: "haunted", 1430: "haunted", 1422: "haunted", 1423: "haunted", 1448: "haunted", 1438: "elvenwood", 1439: "elvenwood", 1440: "elvenwood", 1444: "elvenwood", 1447: "elvenwood", 1437: "swamp", 1445: "swamp", 1435: "swamp", 1434: "jungle", 1449: "jungle", 1446: "desert", 1451: "desert", 1443: "desert", 1418: "volcanic", 1427: "volcanic", 1428: "volcanic", 1419: "volcanic" });
+  const BIOME = new Proxy({}, { get: (_t, id) => window.ZoneArt?.biome(Number(id)) || undefined });
   const minutes = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`);
   // XP bar with rested bonus, plus this session's pace (from the live link).
   function sessionCard(a) {
@@ -126,7 +129,7 @@ window.NowView = (() => {
          ${t.nextAt ? `<p>Next spells at <strong>level ${t.nextAt}</strong>: ${t.nextSpells.slice(0, 6).map((s) => esc(s.name)).join(", ")}${t.nextSpells.length > 6 ? "…" : ""}</p>` : ""}
          <div class="now-actions">${mapBtn(t.trainer, t.trainer.name, t.trainer.title, t.trainer.npcId, { title: `Your ${t.className} trainer`, steps: [`${t.trainer.name}, ${t.trainer.title}.`, t.newNow.length ? `Ready to learn: ${t.newNow.map((s) => s.name).join(", ")}.` : `Nothing new until level ${t.nextAt || c.level + 1}.`] })}</div>`;
     const log = a.log;
-    const questLog = log.inLog ? `<ul class="now-log">${log.ready.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip ready">Hand in</span>${esc(q.title)}</button></li>`).join("")}${log.active.slice(0, 8).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip">${q.total ? `${q.done}/${q.total}` : "…"}</span>${esc(q.title)}${q.level ? ` <small>lvl ${q.level}</small>` : ""}</button></li>`).join("")}</ul>` : `<p>Your quest log is empty. ${a.next ? `Pick up quests in ${esc(a.next.name)}.` : ""}</p>`;
+    const questLog = log.inLog ? `<ul class="now-log">${log.ready.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip ready">Hand in</span>${esc(q.title)}</button></li>`).join("")}${log.active.slice(0, 8).map((q) => { const grey = q.level && q.level <= greyAt(c.level); return `<li><button type="button" data-quest-open="${q.id}"${grey ? ' title="This quest no longer gives experience at your level. Finish it only if you want the reward or the story; otherwise it\'s safe to abandon to free up your log."' : ""}><span class="now-chip">${q.total ? `${q.done}/${q.total}` : "…"}</span>${esc(q.title)}${q.level ? ` <small>lvl ${q.level}</small>` : ""}${grey ? ` <span class="now-chip grey">No XP · safe to drop</span>` : ""}</button></li>`; }).join("")}</ul>` : `<p>Your quest log is empty. ${a.next ? `Pick up quests in ${esc(a.next.name)}.` : ""}</p>`;
     const top = a.next?.quests?.length ? `<ul class="now-log">${a.next.quests.slice(0, 6).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip new">lvl ${q.level}</span>${esc(q.title)} <small>from ${esc(q.giver)}</small></button></li>`).join("")}</ul>` : "";
     return `${reloadBanner()}${setupCard(a)}<div class="now-grid">
       <article class="now-card now-next"><h2>Do this next</h2>
@@ -149,6 +152,8 @@ window.NowView = (() => {
     b.innerHTML = body();
     for (const el of b.querySelectorAll(".now-xp [data-w]")) { el.style.width = `${Number(el.dataset.w)}%`; if (el.dataset.l) el.style.left = `${Number(el.dataset.l)}%`; }
     const t = document.querySelector("[data-now-title]"); if (t) t.textContent = advice?.character?.name || advice?.name || "Your next move";
+    const crestEl = document.querySelector("[data-now-crest]"), cls = String(advice?.character?.className || "").toLowerCase();
+    if (crestEl) { if (CLASSES.has(cls)) { crestEl.src = `art/classes/${cls}.png`; crestEl.hidden = false; } else crestEl.hidden = true; }
     liveLine();
   }
   async function load() {
