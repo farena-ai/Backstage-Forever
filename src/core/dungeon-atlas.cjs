@@ -62,7 +62,31 @@ function difficulty(level, min, max) {
   if (level <= max) return "easy";
   return "trivial";
 }
-function buildAtlas({ profile = null, encounters = null } = {}) {
+// Quests that send you into a dungeon: kill/collect objectives naming one of its bosses.
+function dungeonQuests(pack, bossNames, profile, dungeonName = "") {
+  if (!pack?.quests) return [];
+  const faction = profile?.faction || null, level = Number.isInteger(profile?.level) ? profile.level : null;
+  const inLog = new Set((profile?.quests || []).map((q) => q.id));
+  const done = new Set(profile?.history?.completedIds || []);
+  const out = [];
+  for (const q of Object.values(pack.quests)) {
+    if (inLog.has(q.id) || done.has(q.id)) continue;
+    if (faction && q.sides?.length && !q.sides.includes(faction)) continue;
+    if (level && q.minLevel && q.minLevel > level + 3) continue;
+    const hit = (q.objectives || []).some((o) => {
+      const n = o.type === "monster" ? pack.creatures?.[String(o.objectId)]?.name : null;
+      return n && bossNames.has(norm(n));
+    });
+    const text = norm(`${q.objectiveEvidence || ""} ${q.title || ""}`), place = norm(dungeonName);
+    const named = (place && place.length > 4 && text.includes(place)) || [...bossNames].some((b) => b && b.length > 4 && text.includes(b));
+    if (!hit && !named) continue;
+    const giverRef = (q.givers || [])[0], giver = giverRef && pack.npcs?.[`${giverRef.kind}:${giverRef.id}`];
+    const at = giver?.positions?.[0];
+    out.push({ id: q.id, title: q.title, level: q.level || null, minLevel: q.minLevel || null, giver: giver ? { name: giver.name, npcId: giver.kind === "npc" ? giver.id : null, mapId: at?.mapId ?? null, x: at?.x ?? null, y: at?.y ?? null } : null });
+  }
+  return out.sort((a, b) => (a.level || 0) - (b.level || 0)).slice(0, 8);
+}
+function buildAtlas({ profile = null, encounters = null, knowledgePack = null } = {}) {
   const level = Number.isInteger(profile?.level) ? profile.level : null;
   const faction = profile?.faction || null;
   const observedByMap = new Map();
@@ -85,7 +109,7 @@ function buildAtlas({ profile = null, encounters = null } = {}) {
       bosses: bosses.map((b) => ({ name: b, observedInForever: observedNames.has(norm(b)), kills: observed.find((o) => norm(o.name) === norm(b))?.kills || 0 })),
       observedOnly: observed.filter((o) => !bosses.some((b) => norm(b) === norm(o.name))).map((o) => ({ name: o.name, kills: o.kills })),
       observedRuns: observed.reduce((m, o) => Math.max(m, o.runs || 0), 0),
-      yourQuests: yours, roles: ROLES[kind], prep: PREP[kind],
+      yourQuests: yours, roles: ROLES[kind], prep: PREP[kind], pickUp: dungeonQuests(knowledgePack, bossNames, profile, name),
       source: "Classic-era baseline (verify in Forever)" + (observed.length ? " + observed Forever encounters" : ""),
     };
   });

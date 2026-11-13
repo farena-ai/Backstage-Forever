@@ -68,6 +68,19 @@ These come from hands-on use. Clicking through from Now must take you straight t
 | D6 | **Data coverage view.** A small Help page listing how much we know per zone and per faction (quest givers, objectives, trainers, vendors), where data is thin, and when it last refreshed. | S | App | Honest about gaps; guides where to improve. |
 | D7 | **Visual consistency for detail cards.** Quest, NPC, item and zone cards share one visual system: portrait or crest, colour-coded chips, icons and mini maps. This is art pass 2's companion work. | M | App | Keeps "lots of information" beautiful rather than busy. |
 
+## Tier 1.6 — Quest intel: "how do I actually do this?" (top priority, 0.24)
+
+From play: on "That Shadowvale Green Elixir" the companion knew where to go but not how. Are the bottles dropped by enemies or lying in the ruins? A web search answered it at once. The answer was in the quest's own text ("Travel to the ruins of Shadowvale... recover some bottles"), which the app never had. Every quest should get a plain **How to do it**.
+
+| # | Feature | Size | Where | Why it matters |
+|---|---|---|---|---|
+| Q1 | **Your quest log's full text.** The addon saves the description and objectives of quests in your log (your own data, kept locally). Quest pages show them, and the companion reads them. | S–M | Both | The quest text often says exactly what to do and where. |
+| Q2 | **Learn item sources from your own play.** When you loot a quest item, the addon notes whether it came from a creature or an object, and which one and where. The app then says "found in crates and bottles in the ruins" or "dropped by Rot Hide Gnolls". | M | Both | Covers Forever-only quests that no shared data knows. |
+| Q3 | **Community drop data.** Use the shared loot and object datasets: "dropped by Southsea Brigand (31%)", "loot from Food Crate objects". | M | App | Most classic quests are covered. |
+| Q4 | **How to do it box.** Built from objective type (kill / collect from enemies / pick up objects / use an item / talk / explore), the item sources, the area, levels and elites, plus the quest text. It shows on quest pages, Now and the map's goal card. | M | App | One clear answer instead of guesswork. |
+| Q5 | **Smarter companion answers.** The companion gets tools for quest text and item sources. When local knowledge is thin, it can do an opt-in web lookup through your own AI provider, with sources cited. | M | App | Matches what a quick web search gives, inside the app. |
+| Q6 | **`/bf how` in game.** The How to do it answer for your tracked or nearest quest, in chat. | S | Game | Answer without alt-tabbing. |
+
 ## Tier 2 — Core guidance upgrades (next 2–4 releases)
 
 | # | Feature | Size | Where | Why it matters |
@@ -137,7 +150,7 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
   - 2.1 reward picker, 2.2 upgrade tooltips, 2.6 talent coach.
   - 2.9 hearth advice, 1.3 no-XP quest hints, 1.5 helper switches, class crests.
   - Moved to 0.24: D7 card system, gear review with icons on Characters, 1.9 remote live-link check.
-- **0.24:** 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness, D7 card system, gear review with icons.
+- **0.24:** Quest intel Q1–Q6 first, then 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness, D7 card system, gear review with icons.
 - **0.25–0.27:** 2.3 route stepper, 2.8 professions.
 - **0.28+:** Tier 3, then the 4.1 full guided route.
 - **1.0:** after Frank's hands-on acceptance.
