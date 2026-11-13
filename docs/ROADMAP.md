@@ -81,6 +81,16 @@ From play: on "That Shadowvale Green Elixir" the companion knew where to go but 
 | Q5 | **Smarter companion answers.** The companion gets tools for quest text and item sources. When local knowledge is thin, it can do an opt-in web lookup through your own AI provider, with sources cited. | M | App | Matches what a quick web search gives, inside the app. |
 | Q6 | **`/bf how` in game.** The How to do it answer for your tracked or nearest quest, in chat. | S | Game | Answer without alt-tabbing. |
 
+## Tier 1.7 — Always current, without /reload
+
+Frank asked whether Refresh on Now could do the `/reload` itself. It can't: the app never sends keys or commands to the game. That would be game automation, which Backstage Forever doesn't do and Blizzard's rules forbid. What we can do is make reloads unnecessary for staying current:
+
+| # | Feature | Size | Where | Why it matters |
+|---|---|---|---|---|
+| R1 | **Live strip v4 with pages.** The strip cycles through extra pages a few times per second: the quest log (ids and completion), objective progress counts, money, bag space, equipped item ids. Now, the quest log and the gear review then update while you play, with no `/reload` needed. Saved files still fill in the rest at logout. | M–L | Both | Now never falls behind during play. |
+| R2 | **Clear freshness.** Each Now card shows whether it is live or from your last save, and when that save was. Refresh re-reads the save and live state at once. | S | App | You can see at a glance what's current. |
+| R3 | **Smarter update timing.** After an app update, the reload banner names the exact moment the new addon landed, so a reload done a few seconds too early is obvious. | S | App | Removes "I reloaded but it's still there". |
+
 ## Tier 2 — Core guidance upgrades (next 2–4 releases)
 
 | # | Feature | Size | Where | Why it matters |
@@ -151,7 +161,8 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
   - 2.9 hearth advice, 1.3 no-XP quest hints, 1.5 helper switches, class crests.
   - Moved to 0.24: D7 card system, gear review with icons on Characters, 1.9 remote live-link check.
 - **0.24 (shipped):** Quest intel Q1–Q6, 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness, gear review with icons. D7 card system moves to 0.25.
-- **0.25–0.27:** 2.3 route stepper, 2.8 professions, D7 card system, 1.9 remote live-link check, Tier 3 starts (session history, world tracker).
+- **0.25:** R1–R3 always current without /reload, then 2.3 route stepper.
+- **0.26–0.27:** 2.8 professions, D7 card system, 1.9 remote live-link check, Tier 3 starts (session history, world tracker).
 - **0.28+:** Tier 3, then the 4.1 full guided route.
 - **1.0:** after Frank's hands-on acceptance.
 
