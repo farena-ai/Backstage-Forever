@@ -47,7 +47,6 @@ Where the companion goes next. Written 2026-11-12, after 0.20.0. Ordered by valu
 | 1.4 | **Addon-version check.** If the game is running an older addon than the app installed, say so in game and on Now ("type /reload"). | S | Both | Removes the most common "it isn't working" cause. |
 | 1.5 | **Helper switches in the app.** Settings → Game shows the in-game helpers (pop-ups, danger, Sell junk, live strip) and how to toggle them. | S | App | Discoverability. |
 | 1.6 | **Alliance vendors.** Refresh the vendor pack the same way as 0.20 (needs a raised input cap and a merge step). | S–M | Both | Alliance players still see only Horde vendors. |
-| 1.7 | **Gear slot names on build 70888.** Character guidance shows "Slot N" instead of names on the current build. | S | App | Polish bug. |
 | 1.8 | **Fix the flaky voice-backend test.** | S | Dev | Faster, calmer releases. |
 | 1.9 | **Verify live link over remote access** in a real remote session, and add a capture-based regression test. | S | Both | Confirms 0.18.2 in your actual setup. |
 
