@@ -73,6 +73,14 @@ function registerKnowledgeHandlers({
         active ? (active.complete ? "t" : "o") : "r",
       ),
     };
+    // Zone names for every map the quest mentions, so pages say "Durotar" rather than a map number.
+    try {
+      const { MAP_NAMES } = require("./map-names.cjs"), ids = new Set();
+      for (const list of [result.givers, result.turnIns, result.mentions]) for (const n of list || []) for (const p of n.positions || []) ids.add(p.mapId);
+      for (const o of result.objectiveLocations || []) for (const p of o.positions || []) ids.add(p.mapId);
+      if (result.waypoint?.destination?.mapId) ids.add(result.waypoint.destination.mapId);
+      result.mapNames = Object.fromEntries([...ids].filter((id) => MAP_NAMES[id]).map((id) => [id, MAP_NAMES[id]]));
+    } catch {}
     const insights = getInsights();
     if (insights) {
       result.insights =

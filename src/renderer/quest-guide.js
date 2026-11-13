@@ -52,7 +52,7 @@ window.QuestGuide = (() => {
       "observed-npc-window": "NPC interaction observation",
     })[value] || "Published player observation";
   const point = (p) =>
-    `Map ${p.mapId} · ${(p.x * 100).toFixed(2)}%, ${(p.y * 100).toFixed(2)}%`;
+    `${details?.mapNames?.[p.mapId] || `Map ${p.mapId}`} · ${(p.x * 100).toFixed(1)}, ${(p.y * 100).toFixed(1)}`;
   function invalidate(clearQuery = false,preserveGesture=false) {
     generation++;
     opening=false;copying=false;detailError="";copyError="";if(!preserveGesture)guard?.invalidate();
@@ -255,7 +255,7 @@ window.QuestGuide = (() => {
       q = profile?.quests?.find((q) => q.id === selected),
       title = q?.title || d.record?.title || `Quest #${selected}`;
     const chain = d.chain || [];
-    return `<article class="quest-detail" data-quest-control="detail:${selected}" tabindex="-1" aria-label="Quest details"><header class="quest-detail-heading"><img class="quest-chapter-scene" src="../../assets/${["Alliance","Horde"].includes(profile?.faction)?`faction-${profile.faction.toLowerCase()}`:"citadel-journey"}.png" alt=""><div class="quest-chapter-mark">${seal()}</div><span class="eyebrow">QUEST #${selected}${q ? " · YOUR SAVED LOG" : " · PUBLIC REFERENCE"}</span><h2>${esc(title)}</h2><p>${q ? (q.complete ? "Ready to turn in in your saved snapshot." : "Continue the objectives in your saved quest log.") : "Check availability in game. A public record does not prove eligibility."}</p>${d.status === "conflict" ? `<p class="quest-notice">Your current game title wins. Reference title: ${esc(d.record?.title)}. Conflicting reference facts cannot supply an automatic marker.</p>` : ""}${d.status === "missing" ? '<p class="quest-notice">No matching reference for this quest and saved game build. Your quest remains in your log. Check the in-game journal and refresh references later.</p>' : ""}</header>${copyError?`<p class="quest-notice" role="alert">${esc(copyError)}</p>`:""}${waypointMarkup(d)}${insightsMarkup(d.insights)}${q?.objectives?.length ? `<section class="quest-section"><h3>Your objectives</h3><ul class="quest-objectives">${q.objectives.map((o) => `<li>${o.done ? "✓" : "○"} ${esc(o.text)}</li>`).join("")}</ul></section>` : ""}${chainMarkup(chain)}${rewardsMarkup(d.rewards)}${npcsMarkup("Quest givers", d.givers)}${npcsMarkup("Turn-in observations", d.turnIns)}${npcsMarkup("Mentioned in an objective", d.mentions)}${d.objectiveLocations?.length ? `<section class="quest-section"><h3>Objective observations</h3>${d.objectiveLocations.map((o) => `<p>Objective ${esc(o.index)} · ${esc(sourceFiles(o.sources))}${o.positions?.length ? ` · ${esc(point(o.positions[0]))}` : " · No position"}</p>`).join("")}<p class="section-note">Gain observations are approximate positions, not a route.</p></section>` : ""}${sourceMarkup(d, Boolean(q))}</article>`;
+    return `<article class="quest-detail" data-quest-control="detail:${selected}" tabindex="-1" aria-label="Quest details"><header class="quest-detail-heading"><img class="quest-chapter-scene" src="../../assets/${["Alliance","Horde"].includes(profile?.faction)?`faction-${profile.faction.toLowerCase()}`:"citadel-journey"}.png" alt=""><div class="quest-chapter-mark">${seal()}</div><span class="eyebrow">QUEST #${selected}${q ? " · YOUR SAVED LOG" : " · PUBLIC REFERENCE"}</span><h2>${esc(title)}</h2><p>${q ? (q.complete ? "Ready to turn in in your saved snapshot." : "Continue the objectives in your saved quest log.") : "Check availability in game. A public record does not prove eligibility."}</p>${d.status === "conflict" ? `<p class="quest-notice">Your current game title wins. Reference title: ${esc(d.record?.title)}. Conflicting reference facts cannot supply an automatic marker.</p>` : ""}${d.status === "missing" ? '<p class="quest-notice">No matching reference for this quest and saved game build. Your quest remains in your log. Check the in-game journal and refresh references later.</p>' : ""}</header>${copyError?`<p class="quest-notice" role="alert">${esc(copyError)}</p>`:""}${waypointMarkup(d)}${insightsMarkup(d.insights)}${q?.objectives?.length ? `<section class="quest-section"><h3>Your objectives</h3><ul class="quest-objectives">${q.objectives.map((o) => `<li>${o.done ? "✓" : "○"} ${esc(o.text)}</li>`).join("")}</ul></section>` : ""}${chainMarkup(chain)}${whereMarkup(d, title)}${rewardsMarkup(d.rewards)}${npcsMarkup("Quest givers", d.givers)}${npcsMarkup("Turn-in observations", d.turnIns)}${npcsMarkup("Mentioned in an objective", d.mentions)}${d.objectiveLocations?.length ? `<section class="quest-section"><h3>Objective observations</h3>${d.objectiveLocations.map((o) => `<p>Objective ${esc(o.index)} · ${esc(sourceFiles(o.sources))}${o.positions?.length ? ` · ${esc(point(o.positions[0]))}` : " · No position"}</p>`).join("")}<p class="section-note">Gain observations are approximate positions, not a route.</p></section>` : ""}${sourceMarkup(d, Boolean(q))}</article>`;
   }
   function waypointMarkup(d) {
     const w = d.waypoint,
@@ -276,7 +276,64 @@ window.QuestGuide = (() => {
     const card = (symbol, label, body) => `<div class="quest-fact"><span class="quest-fact-mark" aria-hidden="true">${symbol}</span><div><h4>${label}</h4>${body}</div></div>`;
     return `<section class="quest-section quest-insights" aria-label="Supplementary reference facts"><div class="quest-facts-heading"><span class="eyebrow">BUNDLED FIELD NOTES · OFFLINE</span><h3>Supplementary reference facts</h3></div><div class="quest-facts-grid">${card("⇄", "Reported sharing", `<p>${esc(shareLabel)}</p>${sharing.status !== "unknown" ? `<p>${sharing.supportedCount} supported · ${sharing.unsupportedCount} not supported · ${sharing.scanSources} scan source files.</p>` : ""}<small>Counts are recorded answers, not distinct people, independent witnesses or probabilities. Current sharing may differ.</small>`)}${facts.timeLimitSeconds ? card("◷", "Reported duration", `<p>${facts.timeLimitSeconds} seconds · static reported limit.</p><small>No countdown or time remaining is known. Check the current game quest window.</small>`) : ""}${facts.startItem ? card("◇", "Reported starting item", `<p>${esc(facts.startItem.name)}${facts.startItem.named ? ` <span>· Item #${facts.startItem.id}</span>` : ""}</p><small>Item ownership and quest access are unknown.</small>`) : ""}${facts.itemDrops?.length ? card("⋄", "Reported quest drops", `<ul>${facts.itemDrops.map(item => `<li>${esc(item.name)} × ${item.count}${item.name !== `Item #${item.itemId}` ? ` <span>· Item #${item.itemId}</span>` : ""}</li>`).join("")}</ul><small>Drop rate, location and guarantee are unknown. These are reported item/count entries.</small>`) : ""}</div><p class="quest-facts-qualification">Static historical reference; player availability remains unknown. These facts do not establish prerequisites, faction restrictions or a destination.</p><p class="quest-facts-source">${esc(facts.source.attribution)}<br>Build ${esc(facts.source.build)} · Observed through ${esc(safeDate(facts.source.observedThrough))} · ${facts.sources} quest-cache source files.<br>English cache names (enUS) · observation names locale unspecified. One publisher; partial coverage.<br>App updates supply these field notes. Refresh reference updates the separate quest ledger.<br><span>Source commit ${esc(facts.source.sourceCommit)}</span></p></section>`;
   }
+  // Where to go: pick up, objectives and hand in, each one click from a dialed-in map.
+  const mapFocus = (payload, label = "Show on map") => `<button type="button" class="quest-map-btn" data-map-focus='${esc(JSON.stringify(payload))}'>${esc(label)}</button>`;
+  function mainSpot(positions) {
+    const byMap = new Map();
+    for (const p of positions || []) if (Number.isSafeInteger(p.mapId) && Number.isFinite(p.x) && Number.isFinite(p.y)) (byMap.get(p.mapId) || byMap.set(p.mapId, []).get(p.mapId)).push(p);
+    const best = [...byMap.values()].sort((a, b) => b.length - a.length)[0];
+    if (!best) return null;
+    return { mapId: best[0].mapId, x: best.reduce((t, p) => t + p.x, 0) / best.length, y: best.reduce((t, p) => t + p.y, 0) / best.length, count: best.length, mapName: details?.mapNames?.[best[0].mapId] || null };
+  }
+  function whereMarkup(d, title) {
+    const tile = (cls, eyebrow, name, detail, button) => `<div class="quest-where-tile ${cls}"><span class="quest-where-eyebrow">${eyebrow}</span><strong>${esc(name)}</strong>${detail ? `<small>${esc(detail)}</small>` : ""}${button || ""}</div>`;
+    const npcTile = (cls, eyebrow, npc, goal) => {
+      const at = npc && mainSpot(npc.positions);
+      return tile(cls, eyebrow, npc?.name || "Not recorded yet", at ? `${at.mapName ? at.mapName + " · " : ""}${(at.x * 100).toFixed(1)}, ${(at.y * 100).toFixed(1)}` : npc ? "Position not observed" : "", at ? mapFocus({ mapId: at.mapId, x: at.x, y: at.y, npcId: npc.kind === "npc" ? npc.id : null, label: npc.name, sub: eyebrow, goal }) : "");
+    };
+    const giver = d.givers?.[0], turnIn = d.turnIns?.[0];
+    const objectiveTiles = (d.objectiveLocations || []).slice(0, 3).map((o) => {
+      const at = mainSpot(o.positions);
+      const what = d.record?.objectiveEvidence && (d.objectiveLocations.length === 1) ? d.record.objectiveEvidence : `Objective ${o.index}${o.required ? ` · ${o.required} needed` : ""}`;
+      return at ? tile("quest-where-objective", "Objective area", what, `${at.count} spot${at.count === 1 ? "" : "s"} where players made progress`, mapFocus({ mapId: at.mapId, x: at.x, y: at.y, label: `“${title}” objective`, sub: what, kind: "quest-objective", goal: { title: `Objective: ${title}`, questId: selected, steps: [what, "Players made progress around this spot; spread out nearby if it's busy.", "Your quest log shows how many you still need."] } })) : "";
+    }).filter(Boolean);
+    if (!giver && !turnIn && !objectiveTiles.length) return "";
+    return `<section class="quest-section quest-where" aria-label="Where to go"><h3>Where to go</h3><div class="quest-where-row">
+      ${npcTile("quest-where-pickup", "Pick up from", giver, giver && { title: `Pick up “${title}”`, questId: selected, steps: [`Find ${giver.name}; look for the yellow ! over their head.`, `Talk to them and accept “${title}”.`] })}
+      ${objectiveTiles.join("") || tile("quest-where-objective", "Objectives", "Area not recorded yet", "Check the quest text in game", "")}
+      ${npcTile("quest-where-handin", "Hand in to", turnIn, turnIn && { title: `Hand in “${title}”`, questId: selected, steps: [`Go back to ${turnIn.name}; a yellow ? shows when it's ready.`, `Talk to them and choose “${title}”.`, "Pick your reward and click Complete Quest."] })}
+    </div></section>`;
+  }
+  // Rewards as cards: quality colour, counts, money as coins, experience, reputation and spells.
+  const QUALITY = ["poor", "common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom"];
+  function coins(copper) {
+    const g = Math.floor(copper / 10000), s = Math.floor((copper % 10000) / 100), c = copper % 100;
+    return `<span class="quest-coins">${g ? `<span class="coin gold">${g}g</span>` : ""}${s ? `<span class="coin silver">${s}s</span>` : ""}${c || (!g && !s) ? `<span class="coin copper">${c}c</span>` : ""}</span>`;
+  }
+  function xpFor(xp, level) {
+    if (!xp?.base || !Number.isInteger(level) || !Number.isInteger(details?.record?.level)) return null;
+    const over = level - details.record.level;
+    const f = over <= 5 ? 1 : Math.max(0.1, 1 - 0.2 * (over - 5));
+    return Math.round(xp.base * f);
+  }
   function rewardsMarkup(rewards) {
+    if (rewards && (rewards.items?.length || rewards.choices?.length || rewards.moneyCopper !== undefined || rewards.reputation?.length || rewards.xp || rewards.spells?.length)) {
+      const card = (item) => `<li class="reward-card q-${QUALITY[item.quality] || "unknown"}"><span class="reward-gem" aria-hidden="true">◆</span><span class="reward-name">${esc(item.name && !/^Item #/.test(item.name) ? item.name : `Unnamed item #${item.itemId}`)}</span>${item.count > 1 ? `<span class="reward-count">×${item.count}</span>` : ""}</li>`;
+      const lvl = profile?.level;
+      const xpNow = xpFor(rewards.xp, lvl);
+      const observed = rewards.xp?.observed?.find((o) => o.level === lvl) || rewards.xp?.observed?.[0];
+      const chips = [
+        rewards.moneyCopper !== undefined ? `<li class="reward-chip">${coins(rewards.moneyCopper)}</li>` : "",
+        xpNow ? `<li class="reward-chip xp">≈ ${xpNow.toLocaleString()} XP at level ${lvl}</li>` : observed ? `<li class="reward-chip xp">${observed.xp.toLocaleString()} XP seen at level ${observed.level}</li>` : "",
+        ...(rewards.reputation || []).map((r) => `<li class="reward-chip rep">${r.amount ? `+${r.amount} ` : ""}${esc(r.name || `Faction #${r.factionId}`)} reputation</li>`),
+        ...(rewards.spells || []).map((sp) => `<li class="reward-chip spell">Teaches ${esc(sp.name || `spell #${sp.spellId}`)}</li>`),
+      ].filter(Boolean).join("");
+      return `<section class="quest-section quest-rewards-section"><h3>Rewards</h3>
+        ${chips ? `<ul class="reward-chips">${chips}</ul>` : ""}
+        ${rewards.items?.length ? `<h4>You receive</h4><ul class="reward-cards">${rewards.items.map(card).join("")}</ul>` : ""}
+        ${rewards.choices?.length ? `<h4>Choose one</h4><ul class="reward-cards">${rewards.choices.map(card).join("")}</ul>` : ""}
+        <p class="section-note">From community observations; the game's quest window has the final say.</p></section>`;
+    }
     if (
       !rewards ||
       (!rewards.items?.length &&

@@ -94,6 +94,14 @@ const { defaultState } = require("../src/core/validation.cjs");
       await page.locator(`[data-now-body] [data-quest-open="${id}"]`).first().click();
       await page.locator(`[data-quest-control="detail:${id}"]`).waitFor();
     }
+    // The quest page shows where to go; each place opens the map dialed in with what to do.
+    const tile = page.locator(".quest-where .quest-map-btn").first();
+    await tile.waitFor();
+    await page.screenshot({ path: path.join(capture, "quest-page.png"), fullPage: true });
+    const wantTile = JSON.parse(await tile.getAttribute("data-map-focus"));
+    await tile.click();
+    await page.locator("[data-world-map]").waitFor();
+    await page.waitForFunction((w) => WorldMapView._state().focused?.goal?.title === w.goal.title, wantTile);
     // The running game still has an older addon: Now asks for one /reload.
     await app.evaluate(({ ipcMain }) => { ipcMain.removeHandler("backstage:gameStatus"); ipcMain.handle("backstage:gameStatus", () => ({ connected: true, addonCurrent: true, addonVersion: "0.21.0", loadedCaptureVersion: "0.20.0", runtime: { state: "running" } })); });
     await page.locator('[data-nav="now"]').first().click();

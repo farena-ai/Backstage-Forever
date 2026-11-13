@@ -295,3 +295,31 @@ button.quest-ledger-row:not(.illustrated-card){display:flex;align-items:center;g
 .quest-facts-qualification { margin: 18px 0 10px; color: #d4c5a8; }
 .quest-facts-source { margin-bottom: 0; padding-top: 12px; border-top: 1px solid #b6995e30; color: #aabac3; }
 @media (max-width: 1100px) { .quest-facts-grid { grid-template-columns: minmax(0, 1fr); } .quest-insights { padding: 14px; } }
+
+/* Rich quest page: where to go and reward cards. */
+.quest-where-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.quest-where-tile { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 6px; border: 1px solid #a5823e; background: linear-gradient(180deg, #f7ecd2, #e8d6a8); color: #2b1b0a; }
+.quest-where-tile strong { font: 700 15px Georgia, serif; }
+.quest-where-tile small { color: #5a3e1c; }
+.quest-where-eyebrow { font: 700 10px Cinzel, Georgia, serif; letter-spacing: .16em; text-transform: uppercase; color: #7a1f14; }
+.quest-where-pickup { border-left: 5px solid #f6c445; }
+.quest-where-objective { border-left: 5px solid #d9442e; }
+.quest-where-handin { border-left: 5px solid #4e8f3a; }
+.quest-where-tile .quest-map-btn { align-self: flex-start; margin-top: 6px; }
+.reward-chips, .reward-cards { list-style: none; margin: 6px 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.reward-chip { padding: 4px 10px; border-radius: 14px; background: #3d220c; color: #f6dc9a; font-weight: 700; font-size: 13px; }
+.reward-chip.xp { background: #5b2a8c; color: #f2e4ff; }
+.reward-chip.rep { background: #2a5a3a; color: #e4ffe9; }
+.reward-chip.spell { background: #1f4a7a; color: #e4f1ff; }
+.quest-coins { display: inline-flex; gap: 6px; }
+.coin.gold { color: #ffd34d; } .coin.silver { color: #e3e7ee; } .coin.copper { color: #e59a5c; }
+.reward-card { display: flex; align-items: center; gap: 8px; min-width: 200px; padding: 8px 12px; border-radius: 6px; background: linear-gradient(180deg, #2b1608, #1b0d05); border: 2px solid #8a7a66; color: #e8e2d4; box-shadow: inset 0 0 12px rgba(0,0,0,.5); }
+.reward-gem { font-size: 18px; }
+.reward-name { font-weight: 700; }
+.reward-count { margin-left: auto; font-weight: 800; color: #f6dc9a; }
+.reward-card.q-poor { border-color: #9d9d9d; } .reward-card.q-poor .reward-name, .reward-card.q-poor .reward-gem { color: #b0b0b0; }
+.reward-card.q-common { border-color: #e8e8e8; } .reward-card.q-common .reward-name { color: #ffffff; }
+.reward-card.q-uncommon { border-color: #1eff00; } .reward-card.q-uncommon .reward-name, .reward-card.q-uncommon .reward-gem { color: #3cff2a; }
+.reward-card.q-rare { border-color: #0070dd; } .reward-card.q-rare .reward-name, .reward-card.q-rare .reward-gem { color: #3d9bff; }
+.reward-card.q-epic { border-color: #a335ee; } .reward-card.q-epic .reward-name, .reward-card.q-epic .reward-gem { color: #c27bff; }
+.reward-card.q-legendary { border-color: #ff8000; } .reward-card.q-legendary .reward-name, .reward-card.q-legendary .reward-gem { color: #ff9f40; }

@@ -1233,6 +1233,9 @@ root.addEventListener("click", (event) => {
       const candidate = setupCandidates?.[Number(button.dataset.setupCandidate)];
       if (candidate) await prepareCompanion(() => api.connectGame(candidate.path));
     }
+    if (button.dataset.mapFocus) {
+      try { const f = JSON.parse(button.dataset.mapFocus); page = "world-map"; render(); WorldMapView.focus(f); } catch {}
+    }
     if (button.dataset.questOpen) {
       page = "quest-guide";
       render();

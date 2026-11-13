@@ -142,5 +142,6 @@ test("optional insights leave legacy detail byte shape and automatic context unc
   assert.deepEqual(handlers.questDetails("p", 138), {
     ...index.details(p, 138),
     waypoint: index.resolveWaypoint(p, 138, "o"),
+    mapNames: { 1436: "Westfall" }, // zone names for the maps this quest mentions
   });
 });
