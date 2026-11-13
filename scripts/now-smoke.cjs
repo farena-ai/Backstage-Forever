@@ -52,6 +52,11 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator("[data-now-live]").getByText(/Level 16/).waitFor({ timeout: 15000 });
     // First-run checklist and this session's card.
     assert.match(await page.locator(".now-setup h2").innerText(), /Get set up/);
+    // One click sets up what the app can do itself (stubbed here: never touch a real game folder in tests).
+    await app.evaluate(({ ipcMain }) => { globalThis.setupCalls = 0; ipcMain.removeHandler("backstage:startCompanion"); ipcMain.handle("backstage:startCompanion", () => { globalThis.setupCalls++; return { connected: true, addonCurrent: true }; }); });
+    await page.locator('[data-now-act="setup"]').click();
+    await page.locator(".now-oneclick").getByText(/Done\. Log in to WoW/).waitFor({ timeout: 15000 });
+    assert.equal(await app.evaluate(() => globalThis.setupCalls), 1);
     await page.locator(".now-session").waitFor();
     // Playing on: a level-up celebrates, a death puts "run back to your body" first.
     const frame = (o) => app.evaluate((_e, o) => { const b = liveFixture.bridge; b.frame = { version: 3, combat: false, dead: false, characterHash: 0, mounted: false, level: 16, xpPercent: 40, position: { mapId: 1413, x: 0.51, y: 0.30, facing: 1 }, ...o, receivedAt: Date.now() }; b.signal = "live"; b.emit(); }, o);

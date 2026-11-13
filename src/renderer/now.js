@@ -3,7 +3,7 @@
 // advisor and the live link. Every action is a suggestion; nothing happens in game by itself.
 window.NowView = (() => {
   const api = window.backstage;
-  let advice = null, session = null, setup = null, error = "", loading = false, mountedFor = null, lastKey = "", lastFetch = 0, timer = null;
+  let advice = null, session = null, setup = null, error = "", loading = false, setting = "", mountedFor = null, lastKey = "", lastFetch = 0, timer = null;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pct = (v) => (v * 100).toFixed(1);
   const at = (w) => (w && Number.isFinite(w.x) ? `${esc(w.mapName || "")} ${pct(w.x)}, ${pct(w.y)}` : "");
@@ -101,8 +101,11 @@ window.NowView = (() => {
     ];
     if (items.every((i) => i.done)) return "";
     const next = items.findIndex((i) => !i.done);
+    // One click does every step the app can do by itself: find WoW, install the addon, turn on the live link.
+    const canDo = !game?.connected || !game?.addonCurrent || live?.enabled === false;
+    const oneClick = canDo ? `<div class="now-oneclick"><button type="button" data-now-act="setup"${setting === "working" ? " disabled" : ""}>${setting === "working" ? "Setting up…" : "Set it all up"}</button><span>${setting && setting !== "working" ? esc(setting) : "Finds WoW Forever, installs the addon and turns on the live link. Nothing to download or type."}</span></div>` : "";
     return `<article class="now-card now-setup"><h2>Get set up <small>${items.filter((i) => i.done).length} of ${items.length}</small></h2>
-      <ol class="now-checklist">${items.map((i, n) => `<li class="${i.done ? "done" : n === next ? "next" : ""}"><span class="now-check" aria-hidden="true">${i.done ? "✓" : n + 1}</span><div><strong>${i.title}</strong>${i.done ? "" : `<p>${i.how}</p>${n === next && i.action ? `<div class="now-actions">${i.action}</div>` : ""}`}</div></li>`).join("")}</ol>
+      ${oneClick}<ol class="now-checklist">${items.map((i, n) => `<li class="${i.done ? "done" : n === next ? "next" : ""}"><span class="now-check" aria-hidden="true">${i.done ? "✓" : n + 1}</span><div><strong>${i.title}</strong>${i.done ? "" : `<p>${i.how}</p>${n === next && i.action ? `<div class="now-actions">${i.action}</div>` : ""}`}</div></li>`).join("")}</ol>
       <p class="now-tip">New to WoW? The <button type="button" class="now-link" data-nav="guide">Field guide</button> explains the words you'll see, like rested, hand in and elite, and <button type="button" class="now-link" data-nav="commands">Commands</button> lists everything you can type in game.</p></article>`;
   }
   // The game is still running an addon older than the one just installed: one /reload loads it.
@@ -186,11 +189,27 @@ window.NowView = (() => {
     clearTimeout(timer);
     timer = setTimeout(load, Math.max(0, 4000 - (Date.now() - lastFetch)));
   }
+  async function oneClickSetup() {
+    if (setting === "working") return;
+    setting = "working"; paint();
+    try {
+      const r = await api.startCompanion();
+      if (r?.setupCandidates?.length > 1) { setting = "Found more than one WoW install: pick yours on the Game connection page."; document.querySelector('[data-nav="game"]')?.click(); }
+      else if (!r?.connected) setting = "Couldn't find WoW Forever automatically. Pick its folder on the Game connection page (Settings).";
+      else {
+        const live = await api.liveLinkStatus?.().catch(() => null);
+        if (live && live.enabled === false) await api.setLiveLink(true);
+        setting = "Done. Log in to WoW (or type /reload if it's running) and your character appears here.";
+      }
+    } catch (e) { setting = e?.message || "Setup couldn't finish. Try the Game connection page in Settings."; }
+    await load();
+  }
   function bind(root) {
     root.addEventListener("click", (e) => {
       const m = e.target.closest("[data-now-map]");
       if (m) { try { window.WorldMapView?.focus(JSON.parse(m.dataset.nowMap)); document.querySelector('[data-nav="world-map"]')?.click(); } catch {} return; }
       if (e.target.closest('[data-now-act="refresh"]')) load();
+      if (e.target.closest('[data-now-act="setup"]')) oneClickSetup();
     });
   }
   function mounted() {
