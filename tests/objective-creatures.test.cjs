@@ -19,7 +19,7 @@ test("quest details add objective creature levels and flags only when the creatu
   const kobolds = h.questDetails("p", 7);
   assert.deepEqual(kobolds.objectiveCreatures, { 1: { name: "Kobold Vermin", minLevel: 1, maxLevel: 2, elite: false, rare: false } });
   const { objectiveCreatures, ...rest } = kobolds;
-  assert.deepEqual(rest, plain, "nothing else changes");
+  { const strip = (o) => { const c = { ...o }; delete c.howTo; return c; }; assert.deepEqual(strip(rest), strip(plain), "nothing else changes (the how-to reflects the new data)"); }
   assert.ok(Object.values(h.questDetails("p", 541).objectiveCreatures).some((c) => c.elite), "Battle of Hillsbrad has an elite kill");
   // Quests without kill objectives the reference knows stay without the field.
   const items = Object.values(require("../data/forever/pack.json").quests).find((q) => q.objectives?.length && q.objectives.every((o) => o.type === "item"));

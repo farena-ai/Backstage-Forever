@@ -254,7 +254,7 @@ test("quest details and companion tools return quest text and learned item sourc
   assert.deepEqual(after.questText, rich.quests[0].text);
   assert.deepEqual(after.itemSources, [{ itemId: 268801, name: "Bottle of Whispering Elixir", lastSeen: stamp, sources: learned.items[0].sources }]);
   const { questText, itemSources, ...rest } = after;
-  assert.deepEqual(rest, before, "nothing else changes");
+  { const strip = (o) => { const c = { ...o }; delete c.howTo; return c; }; assert.deepEqual(strip(rest), strip(before), "nothing else changes (the how-to reflects the new data)"); }
 
   const tools = (profile) => createCompanionTools({ profile, shareProfile: true, knowledgeIndex: index });
   const q0 = JSON.parse(await tools(plain).call("get_quest", { quest_id: 95314 }));
