@@ -106,6 +106,13 @@ const { defaultState } = require("../src/core/validation.cjs");
     // "Show the full map" leaves focus mode.
     await page.locator('[data-wm-act="unfocus"]').click();
     assert.equal(await page.evaluate(() => WorldMapView._state().focused), null);
+    // Hover any quest: a rich card with how to do it (no click needed).
+    await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
+    await page.locator("[data-now-body] [data-quest-open]").first().hover();
+    await page.locator(".hover-card").waitFor({ timeout: 10000 }); await page.waitForTimeout(300);
+    assert.match(await page.locator(".hover-card").innerText(), /Click to open the quest/);
+    await page.screenshot({ path: path.join(capture, "hover-card.png") });
+    await page.mouse.move(5, 5); await page.mouse.down(); await page.mouse.up();
     // Every "Open quest" on Now opens that exact quest.
     await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
     const questIds = [...new Set(await page.locator("[data-now-body] [data-quest-open]").evaluateAll((els) => els.map((e) => Number(e.dataset.questOpen))))].slice(0, 4);

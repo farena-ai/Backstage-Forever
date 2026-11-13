@@ -1,0 +1,16 @@
+/* Hover cards (0.29). */
+.hover-card { position: fixed; z-index: 9500; width: 320px; padding: 12px 14px; border-radius: 8px; pointer-events: none; color: #2b1b0a;
+  background: linear-gradient(180deg, #f5e8c6, #e2cc98); border: 1px solid #8a5a18; box-shadow: 0 0 0 1px rgba(246,196,69,.35), 0 14px 34px rgba(0,0,0,.55); animation: hc-in .15s ease-out both; }
+.hover-card header { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+.hover-card header strong { font: 700 16px Georgia, serif; color: #3d220c; }
+.hc-lv { flex: none; padding: 0 6px; border-radius: 8px; font-size: 11px; font-weight: 700; background: #3f86d8; color: #fff; }
+.hc-steps { margin: 0 0 6px; padding-left: 18px; font-size: 13px; line-height: 1.4; }
+.hc-steps li { margin-bottom: 3px; }
+.hover-card p { margin: 0 0 6px; font-size: 13px; }
+.hc-giver strong { color: #3d220c; }
+.hc-rewards { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0 6px; }
+.hc-item { display: inline-flex; border-radius: 4px; border: 1px solid #5a3a0c; background: #2b1b0a; }
+.hc-rewards small { margin-left: 4px; color: #6b4a22; }
+.hc-hint { color: #7a4b16; font-style: italic; font-size: 12px !important; margin: 0 !important; }
+@keyframes hc-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .hover-card { animation: none; } }
