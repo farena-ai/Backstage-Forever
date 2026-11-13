@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.24.0 — how to actually do it, 2026-11-13
+
+- **How to do it, on every quest page.** Plain steps built from the best source available, each saying where its knowledge came from:
+  - what you've looted yourself
+  - community loot observations: "dropped by Young Goretusk (40% of kills)", or "found in 'Bottle' (click them in the world)"
+  - creature levels and elite warnings
+  - the quest's own text
+  - Guesses are marked as guesses.
+  - Where to hand it in comes last.
+- **The companion answers "how do I do this?"** It now leads with those steps and the quest text instead of only coordinates.
+- **Your quest log's text.** The addon saves each quest's description and objectives from your own log, kept locally. Quest pages and the companion use it.
+- **Learns where quest items come from.** When you loot a quest item, the addon remembers whether it came from a creature or an object, which one, and where.
+- **`/bf how`** in game prints the how-to for your tracked quest.
+- **Community loot reference** for 485 quest items (new data/forever-loot).
+- **Objective areas on the World Map:**
+  - Soft shaded areas where each objective happens, coloured by how dangerous the creatures are for your level (grey, green, yellow, orange, red), with elite markers.
+  - Click one for the objective, the creature's levels and the quest.
+  - Creature levels, elite and rare flags, and which factions they attack come from a new community creature reference (data/forever-creatures, 3,272 creatures).
+  - Quest pages show creature levels and an Elite chip on objectives.
+- **Dungeon readiness.** Each dungeon card has a checklist (does your level fit, which quests to pick up first, the group you need) and a "Pick these up first" list with Show on map and Open quest.
+- **Gear review on Characters.** Each slot shows your game's icon and stats and how the piece holds up at your level (fresh, aging, replace soon), with an **Upgrade these first** list.
+- **Fix:** World Map clicks on the right side of the map land where you click.
+- The addon installer now manages nineteen files. Type `/reload` in game after updating.
+- App/lock, TOC and capture metadata align at 0.24.0 preview. **1.0 remains held.**
+
 ## 0.23.0 — your game, read for you, 2026-11-13
 
 - **Item, spell and talent facts from your own game install.**

@@ -150,8 +150,8 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
   - 2.1 reward picker, 2.2 upgrade tooltips, 2.6 talent coach.
   - 2.9 hearth advice, 1.3 no-XP quest hints, 1.5 helper switches, class crests.
   - Moved to 0.24: D7 card system, gear review with icons on Characters, 1.9 remote live-link check.
-- **0.24:** Quest intel Q1–Q6 first, then 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness, D7 card system, gear review with icons.
-- **0.25–0.27:** 2.3 route stepper, 2.8 professions.
+- **0.24 (shipped):** Quest intel Q1–Q6, 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness, gear review with icons. D7 card system moves to 0.25.
+- **0.25–0.27:** 2.3 route stepper, 2.8 professions, D7 card system, 1.9 remote live-link check, Tier 3 starts (session history, world tracker).
 - **0.28+:** Tier 3, then the 4.1 full guided route.
 - **1.0:** after Frank's hands-on acceptance.
 
