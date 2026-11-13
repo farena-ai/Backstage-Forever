@@ -45,6 +45,8 @@
     { name: "Settings", what: "Game connection (folder, addon, live link), AI connection and updates." },
   ]);
   if (typeof module === "object" && module.exports) { module.exports = { CATALOG, FEATURES, APP }; return; }
+  const ICONS = Object.freeze({ "Finding your way": "finding-your-way", "Your character": "your-character", "Adventure Compass": "adventure-compass", "Helpers on or off": "helpers", "Live link": "live-link", "Advanced": "advanced" });
+  const icon = (name) => `<img class="cmd-ico" src="art/icons/${name}.png" alt="" width="40" height="40">`;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   let filter = "";
   function rows() {
@@ -54,7 +56,7 @@
     const html = groups.map((g) => {
       const list = CATALOG.filter((c) => c.group === g && hit(c));
       if (!list.length) return "";
-      return `<section class="cmd-group"><h2>${esc(g)}</h2><ul>${list.map((c) => `<li class="cmd-row">
+      return `<section class="cmd-group"><h2>${ICONS[g] ? icon(ICONS[g]) : ""}${esc(g)}</h2><ul>${list.map((c) => `<li class="cmd-row">
         <div class="cmd-head"><code class="cmd-name">${esc(c.command)}</code><button type="button" class="cmd-copy" data-cmd-copy="${esc(c.example)}" aria-label="Copy ${esc(c.example)}">Copy</button></div>
         <p>${esc(c.what)}</p><p class="cmd-when"><strong>Use it:</strong> ${esc(c.when)}</p>${c.example !== c.command ? `<p class="cmd-eg">Example: <code>${esc(c.example)}</code></p>` : ""}</li>`).join("")}</ul></section>`;
     }).join("");
@@ -66,8 +68,8 @@
         <p>Type these in WoW's chat box (press Enter, type the command, press Enter again). They only show you things or put an arrow on your map; nothing ever plays for you.</p>
         <label class="cmd-search"><span class="sr-only">Search commands</span><input type="search" data-cmd-filter placeholder="Search: trainer, arrow, junk, live…" value="${esc(filter)}"></label></header>
       <div class="cmd-list" data-cmd-list>${rows()}</div>
-      <section class="cmd-group cmd-features"><h2>Things you'll see in game</h2><ul>${FEATURES.map((f) => `<li class="cmd-row"><div class="cmd-head"><strong>${esc(f.name)}</strong><small>${esc(f.where)}</small></div><p>${esc(f.what)}</p></li>`).join("")}</ul></section>
-      <section class="cmd-group cmd-app"><h2>Around this app</h2><ul>${APP.map((a) => `<li class="cmd-row"><div class="cmd-head"><strong>${esc(a.name)}</strong></div><p>${esc(a.what)}</p></li>`).join("")}</ul></section>
+      <section class="cmd-group cmd-features"><h2>${icon("in-game")}Things you'll see in game</h2><ul>${FEATURES.map((f) => `<li class="cmd-row"><div class="cmd-head"><strong>${esc(f.name)}</strong><small>${esc(f.where)}</small></div><p>${esc(f.what)}</p></li>`).join("")}</ul></section>
+      <section class="cmd-group cmd-app"><h2>${icon("around-the-app")}Around this app</h2><ul>${APP.map((a) => `<li class="cmd-row"><div class="cmd-head"><strong>${esc(a.name)}</strong></div><p>${esc(a.what)}</p></li>`).join("")}</ul></section>
       <p class="cmd-foot">After installing or updating, type <code>/reload</code> in game once. New to WoW? The Field guide explains words like rested, hand in and elite.</p>
     </section>`;
   }

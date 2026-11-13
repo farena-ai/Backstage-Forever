@@ -182,7 +182,7 @@ window.NowView = (() => {
     const el = document.createElement("div");
     el.className = "bf-celebrate"; el.setAttribute("role", "status");
     const colors = ["#f6c445", "#ff7a59", "#7fe08a", "#6fc3ff", "#e58cff", "#fff1d6"];
-    el.innerHTML = `${"<i></i>".repeat(48)}<div class="bf-celebrate-card"><span>Level up!</span><strong>${esc(level)}</strong><p>New class skills may be waiting at your trainer. Type <code>/bf train</code> in game for an arrow.</p></div>`;
+    el.innerHTML = `${"<i></i>".repeat(48)}<div class="bf-celebrate-card"><span>Level up!</span><div class="bf-crest"><strong>${esc(level)}</strong></div><p>New class skills may be waiting at your trainer. Type <code>/bf train</code> in game for an arrow.</p></div>`;
     [...el.querySelectorAll("i")].forEach((bit, i) => {
       bit.style.left = `${(i * 37) % 100}%`; bit.style.background = colors[i % colors.length];
       bit.style.animationDelay = `${((i * 13) % 20) / 20}s`; bit.style.setProperty("--drift", `${((i * 29) % 160) - 80}px`);

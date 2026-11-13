@@ -54,3 +54,12 @@ test("the Commands page is reachable from Help", () => {
   assert.match(html, /<script src="commands\.js"><\/script>/);
   assert.match(html, /href="commands\.css"/);
 });
+
+test("every art file the pages reference ships with the app", () => {
+  const referenced = new Set();
+  for (const f of ["src/renderer/now.css", "src/renderer/commands.css", "src/renderer/styles.css"]) for (const m of read(f).matchAll(/url\("(art\/[^"]+)"\)/g)) referenced.add(m[1]);
+  for (const m of read("src/renderer/commands.js").matchAll(/"([a-z-]+)"/g)) if (fs.existsSync(path.join(root, "src/renderer/art/icons", m[1] + ".png"))) referenced.add(`art/icons/${m[1]}.png`);
+  assert.ok(referenced.size >= 10, [...referenced].join(","));
+  for (const r of referenced) assert.ok(fs.existsSync(path.join(root, "src/renderer", r)), `missing ${r}`);
+  for (const g of new Set(CATALOG.map((c) => c.group))) assert.match(read("src/renderer/commands.js"), new RegExp(`"${g}": "`), `no crest for ${g}`);
+});
