@@ -2,6 +2,27 @@
 const v = require("./validation.cjs"),
   ai = require("./providers.cjs");
 const { questInsights } = require("./insights-data.cjs");
+function enrichRewards(result, p, gameData) {
+  const rw = result.rewards;
+  if (!rw || typeof rw !== "object") return;
+  const list = [...(Array.isArray(rw.items) ? rw.items : []), ...(Array.isArray(rw.choices) ? rw.choices : [])];
+  if (!list.length) return;
+  const ids = [...new Set(list.map((r) => r.itemId))].filter((id) => Number.isSafeInteger(id) && id > 0);
+  const found = gameData.items(ids), byId = new Map(ids.map((id, i) => [id, found[i]]));
+  if (!found.some(Boolean)) return;
+  const attach = (rows) => rows.map((r) => (byId.get(r.itemId) ? { ...r, details: byId.get(r.itemId) } : r));
+  result.rewards = { ...rw, ...(Array.isArray(rw.items) ? { items: attach(rw.items) } : {}), ...(Array.isArray(rw.choices) ? { choices: attach(rw.choices) } : {}) };
+  const choices = result.rewards.choices || [];
+  if (!p.className || !choices.some((c) => c.details)) return;
+  const equipment = Array.isArray(p.readiness?.equipment) ? p.readiness.equipment : null;
+  const worn = equipment?.length ? gameData.items(equipment.map((e) => e.itemId)) : [];
+  const bySlot = {};
+  // Worn items the game tables do not cover still occupy their slot; they are compared as unknown.
+  (equipment || []).forEach((e, i) => { bySlot[e.slot] = worn[i] || { id: e.itemId, name: e.name || `Item #${e.itemId}`, unknown: true, stats: [], armor: 0 }; });
+  const ctx = { className: p.className, level: Number.isInteger(p.level) ? p.level : undefined, equipmentKnown: !!equipment };
+  const pick = require("./gear-score.cjs").bestReward(choices, ctx, bySlot);
+  if (pick) result.rewardPick = { ...pick, equipmentKnown: !!equipment };
+}
 function registerKnowledgeHandlers({
   handle,
   knowledge,
@@ -10,6 +31,7 @@ function registerKnowledgeHandlers({
   clipboard,
   getInsights = () => null,
   getLocationContext = () => null,
+  gameData = null,
 }) {
   const sync = () => {
     const s = getState();
@@ -95,6 +117,8 @@ function registerKnowledgeHandlers({
       const xp = result.rewards?.xp, level = Number.isInteger(p.level) ? p.level : null, questLevel = result.record?.level;
       if (xp?.base && level && Number.isInteger(questLevel)) result.rewards = { ...result.rewards, xp: { ...xp, atYourLevel: { level, xp: require("./knowledge.cjs").estimateQuestXP(xp.base, questLevel, level) } } };
     } catch {}
+    // Reward facts from the player's own game install, plus a suggested pick for this character.
+    if (gameData) try { enrichRewards(result, p, gameData); } catch {}
     const insights = getInsights();
     if (insights) {
       result.insights =
