@@ -556,6 +556,8 @@ class GameSync {
           addonCurrent: true,
           addonVersion:
             sources[0][1].match(/^## Version:\s*(.+)$/m)?.[1]?.trim() || null,
+          // When these files landed: a /reload before this moment still runs the old addon.
+          addonUpdatedAt: new Date().toISOString(),
           phase: "needs-reload",
           message:
             "Companion prepared. You can play now; the files activate at your next game login. Desktop progress reflects game saves.",

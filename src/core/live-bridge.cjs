@@ -10,7 +10,10 @@ const childProcess = require("node:child_process");
 const CELL = 6, MARKERS = 4, PAYLOAD_CELLS = 72, PAYLOAD_BYTES = 27, VERSION = 3;
 // Version 2 strips (addon 0.18.1 and earlier): 4px cells, four levels per channel.
 const V2 = { cell: 4, payloadCells: 36, version: 2 };
-const REGION = { width: 640, height: 16 }; // room for the strip at up to 8px per cell
+const REGION = { width: 640, height: 28 }; // room for both strip rows at up to 8px per cell
+// Second row (addon 0.25+): pages of the quest log and of quests turned in this session.
+const PAGE_VERSION = 80, PAGE_IDS = 6, KIND = { 1: "questLog", 2: "turnedIn" };
+const PAGES_FRESH_MS = 30000; // a full cycle takes a few seconds; older sets are dropped
 const FRESH_MS = 4000;
 
 // Mirrors BackstageForeverLiveIdentity: binds frames to the saved character (UnitGUID).
@@ -88,6 +91,52 @@ function decodeCellsV2(cells) {
   const bytes = bytesOf(bits);
   return valid(bytes, V2.version) ? bytes : null;
 }
+// Page frames use the version 3 cell layout with their own version byte.
+function decodePageCells(cells) {
+  if (!Array.isArray(cells) || cells.length < MARKERS + PAYLOAD_CELLS) return null;
+  const [magenta, green, white, black] = cells;
+  const mid = [0, 1, 2].map((ch) => (white[ch] + black[ch]) / 2);
+  for (let ch = 0; ch < 3; ch++) if (white[ch] - black[ch] < 60) return null;
+  const on = (rgb) => rgb.map((v, ch) => (v > mid[ch] ? 1 : 0));
+  if (on(magenta).join("") !== "101" || on(green).join("") !== "010") return null;
+  const bits = [];
+  for (let c = 0; c < PAYLOAD_CELLS; c++) bits.push(...on(cells[MARKERS + c]));
+  const bytes = bytesOf(bits);
+  return valid(bytes, PAGE_VERSION) ? bytes : null;
+}
+// Mirror of BackstageForeverLivePages (tests and fixtures).
+function encodePages(kind, entries, identity = 0) {
+  const n = Math.min(entries.length, PAGE_IDS * 15), count = Math.max(1, Math.ceil(n / PAGE_IDS));
+  let gen = kind;
+  for (let i = 0; i < n; i++) { const e = entries[i], id = typeof e === "object" ? e.id : e; gen = (gen * 31 + (id % 65521) + (typeof e === "object" && e.complete ? 7 : 0)) % 256; }
+  const pages = [];
+  for (let p = 0; p < count; p++) {
+    const b = new Array(PAYLOAD_BYTES).fill(0);
+    b[0] = PAGE_VERSION; b[1] = kind; b[2] = p * 16 + count; b[3] = gen;
+    let bits = 0;
+    for (let k = 0; k < PAGE_IDS; k++) {
+      const at = p * PAGE_IDS + k; if (at >= n) break;
+      const e = entries[at], id = typeof e === "object" ? e.id : e;
+      b[4 + k * 3] = (id >> 16) & 255; b[5 + k * 3] = (id >> 8) & 255; b[6 + k * 3] = id & 255;
+      if (typeof e === "object" && e.complete) bits |= 1 << k;
+    }
+    b[22] = bits; b[23] = (identity >> 8) & 255; b[24] = identity & 255; b[25] = Math.min(255, n);
+    b[26] = crc8(b, PAYLOAD_BYTES - 1);
+    pages.push(b);
+  }
+  return pages;
+}
+function parsePage(b) {
+  if (!b || b[0] !== PAGE_VERSION || !KIND[b[1]]) return null;
+  const index = b[2] >> 4, count = b[2] & 15, total = b[25];
+  if (!count || index >= count) return null;
+  const ids = [];
+  for (let k = 0; k < PAGE_IDS && index * PAGE_IDS + k < total; k++) {
+    const id = (b[4 + k * 3] << 16) | (b[5 + k * 3] << 8) | b[6 + k * 3];
+    if (id) ids.push({ id, complete: Boolean(b[22] & (1 << k)) });
+  }
+  return { kind: KIND[b[1]], index, count, generation: b[3], identity: (b[23] << 8) | b[24], total, ids };
+}
 function decodeCells(cells) {
   if (!Array.isArray(cells) || cells.length < MARKERS) return null;
   return (cells.length >= MARKERS + PAYLOAD_CELLS && decodeCellsV3(cells)) || decodeCellsV2(cells.slice(0, MARKERS + V2.payloadCells));
@@ -121,7 +170,10 @@ function decodeStrip({ width, height, rgb }) {
       for (const pitch of tries) {
         const v3 = sampleCells(rgb, width, height, x, y, pitch, MARKERS + PAYLOAD_CELLS);
         const b3 = v3 && decodeCellsV3(v3);
-        if (b3) return { bytes: b3, origin: { x, y }, pitch, version: VERSION };
+        if (b3) {
+          const row2 = y + pitch + 3 <= height ? sampleCells(rgb, width, height, x, y + pitch, pitch, MARKERS + PAYLOAD_CELLS) : null;
+          return { bytes: b3, origin: { x, y }, pitch, version: VERSION, page: (row2 && decodePageCells(row2)) || null };
+        }
         const v2 = sampleCells(rgb, width, height, x, y, pitch, MARKERS + V2.payloadCells);
         const b2 = v2 && decodeCellsV2(v2);
         if (b2) return { bytes: b2, origin: { x, y }, pitch, version: V2.version };
@@ -293,18 +345,50 @@ class LiveBridge {
   }
   line(line) {
     const before = JSON.stringify([this.signal, this.frame?.seq]);
+    let changed = false;
     if (line.startsWith("ok ")) {
       const rgb = Buffer.from(line.slice(3), "base64");
-      const decoded = decodeStrip({ width: REGION.width, height: REGION.height, rgb });
-      if (decoded) { this.frame = { ...parsePayload(decoded.bytes), receivedAt: this.now() }; this.signal = "live"; }
-      else this.signal = stripHint({ width: REGION.width, height: REGION.height, rgb }) || "no-signal";
+      // Older capture workers (and saved fixtures) send a shorter region; size from the data.
+      const height = rgb.length % (REGION.width * 3) === 0 ? rgb.length / (REGION.width * 3) : REGION.height;
+      const decoded = decodeStrip({ width: REGION.width, height, rgb });
+      if (decoded) { this.frame = { ...parsePayload(decoded.bytes), receivedAt: this.now() }; this.signal = "live"; if (decoded.page && this.page(parsePage(decoded.page))) changed = true; }
+      else this.signal = stripHint({ width: REGION.width, height, rgb }) || "no-signal";
     } else if (["nogame", "minimized", "small", "gone", "error"].includes(line)) this.signal = line === "gone" ? "nogame" : line;
-    if (JSON.stringify([this.signal, this.frame?.seq]) !== before) this.emit();
+    if (changed || JSON.stringify([this.signal, this.frame?.seq]) !== before) this.emit();
+  }
+  /** Collects second-row pages; returns true when a complete set of one kind changed. */
+  page(pg) {
+    // Pages bind to the character on the main row; anything else is ignored.
+    if (!pg || pg.identity !== this.frame?.characterHash) return false;
+    this.pageSets ||= new Map(); this.pageLists ||= {};
+    const at = this.now();
+    let set = this.pageSets.get(pg.kind);
+    if (!set || set.generation !== pg.generation || set.count !== pg.count || set.identity !== pg.identity) {
+      set = { generation: pg.generation, count: pg.count, identity: pg.identity, total: pg.total, parts: new Map() };
+      this.pageSets.set(pg.kind, set);
+    }
+    set.parts.set(pg.index, pg.ids);
+    const have = this.pageLists[pg.kind];
+    if (set.parts.size === set.count) {
+      if (have && have.generation === set.generation && have.identity === set.identity) { have.at = at; return false; }
+      const list = [];
+      for (let i = 0; i < set.count; i++) list.push(...set.parts.get(i));
+      this.pageLists[pg.kind] = { generation: set.generation, identity: set.identity, list, at };
+      return true;
+    }
+    if (have && have.generation === set.generation) have.at = at;
+    return false;
   }
   /** Live frame only while fresh; older frames are never presented as live. */
   current() {
     if (!this.frame || this.now() - this.frame.receivedAt > FRESH_MS) return null;
-    return { ...this.frame, ageMs: this.now() - this.frame.receivedAt };
+    const out = { ...this.frame, ageMs: this.now() - this.frame.receivedAt };
+    // Quest pages only count for the same character and while recently seen.
+    for (const [kind, v] of Object.entries(this.pageLists || {})) {
+      if (v.identity !== out.characterHash || this.now() - v.at > PAGES_FRESH_MS) continue;
+      out[kind] = kind === "questLog" ? v.list.map((e) => ({ id: e.id, complete: e.complete })) : v.list.map((e) => e.id);
+    }
+    return out;
   }
   status() {
     const frame = this.current();
@@ -314,4 +398,4 @@ class LiveBridge {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, encodeCells, encodeCellsV2, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };
+module.exports = { encodePages, parsePage, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, encodeCells, encodeCellsV2, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };

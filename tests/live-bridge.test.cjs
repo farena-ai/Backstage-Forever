@@ -180,7 +180,7 @@ BackstageForeverLiveCommand('live on')
 local strip=frames[2]
 assert(BackstageForeverLiveSettings.enabled==true)
 assert(strip.shown and strip.ignore==true and math.abs(strip.scale-768/1440)<1e-9,'pixel exact scale')
-assert(textures==76)
+assert(textures==152,"two rows of 76 cells")
 strip.scripts.OnUpdate(strip,1)
 BackstageForeverLiveCommand('live off')
 assert(BackstageForeverLiveSettings.enabled==false and not strip.shown)
@@ -350,4 +350,63 @@ test("a strip on screen that can't be read says why: old addon still running, or
   const b = new L.LiveBridge({ platform: "linux" }); b.enabled = true;
   b.read("ok " + real.rgb.toString("base64") + "\n");
   assert.equal(b.status().signal, "old-addon");
+});
+
+// 0.25: second-row quest pages (quest log with done flags, quests turned in this session).
+function twoRows(mainCells, pageCells, { ox = 0, oy = 0, cell = L.CELL, gamma = 1 } = {}) {
+  const top = image(mainCells, { ox, oy, cell, gamma });
+  const bottom = image(pageCells, { ox, oy: oy + cell, cell, gamma });
+  const rgb = Buffer.from(top.rgb), W = top.width;
+  for (let y = oy + cell; y < oy + 2 * cell; y++) bottom.rgb.copy(rgb, (y * W) * 3, (y * W) * 3, ((y + 1) * W) * 3);
+  return { width: W, height: top.height, rgb };
+}
+test("Lua quest pages match the app's page encoder byte for byte", () => {
+  const out = lua(`dofile('addon/BackstageForever/BackstageForeverLive.lua')
+local log={} for i=1,14 do log[i]={id=1000+i*37,complete=(i%3==0)} end
+local all={}
+for _,p in ipairs(BackstageForeverLivePages(1,log,4242)) do local a={} for _,v in ipairs(p) do a[#a+1]=v end all[#all+1]='['..table.concat(a,',')..']' end
+for _,p in ipairs(BackstageForeverLivePages(2,{5,93739,812},4242)) do local a={} for _,v in ipairs(p) do a[#a+1]=v end all[#all+1]='['..table.concat(a,',')..']' end
+for _,p in ipairs(BackstageForeverLivePages(1,{},4242)) do local a={} for _,v in ipairs(p) do a[#a+1]=v end all[#all+1]='['..table.concat(a,',')..']' end
+print('['..table.concat(all,',')..']')`);
+  const log = Array.from({ length: 14 }, (_, i) => ({ id: 1000 + (i + 1) * 37, complete: (i + 1) % 3 === 0 }));
+  const want = [...L.encodePages(1, log, 4242), ...L.encodePages(2, [5, 93739, 812], 4242), ...L.encodePages(1, [], 4242)];
+  assert.deepEqual(JSON.parse(out), want);
+  assert.equal(want.length, 3 + 1 + 1, "14 log entries take three pages; an empty log still sends one page");
+  const p = L.parsePage(want[2]);
+  assert.deepEqual(p.ids, log.slice(12).map((e) => ({ id: e.id, complete: e.complete })));
+  assert.equal(L.parsePage(want[4]).ids.length, 0);
+});
+test("the second row decodes under colour shifts and older one-row strips still decode", () => {
+  const main = L.encodeCells(Array.from(luaCells(STATE).bytes));
+  const page = L.encodeCells(L.encodePages(1, [{ id: 93739, complete: true }, { id: 812, complete: false }], 77)[0]);
+  for (const gamma of [1, 0.6, 1.8]) for (const [ox, oy] of [[0, 0], [3, 2]]) {
+    const d = L.decodeStrip(twoRows(main, page, { ox, oy, gamma }));
+    assert.ok(d, `main row at gamma ${gamma}`);
+    assert.deepEqual(L.parsePage(d.page).ids, [{ id: 93739, complete: true }, { id: 812, complete: false }]);
+  }
+  const old = L.decodeStrip(image(main));
+  assert.ok(old && old.page === null, "a 0.24 addon (one row) still decodes, with no pages");
+});
+test("LiveBridge assembles page sets per character and drops stale or foreign ones", () => {
+  let t = 1000;
+  const b = new L.LiveBridge({ now: () => t });
+  b.enabled = true;
+  const main = Array.from(luaCells(STATE).bytes), identity = (main[23] << 8) | main[24];
+  const log = Array.from({ length: 8 }, (_, i) => ({ id: 2000 + i, complete: i === 2 }));
+  const pages = [...L.encodePages(1, log, identity), ...L.encodePages(2, [2005, 1999], identity)];
+  const feed = (pageBytes) => { const img = twoRows(L.encodeCells(main), L.encodeCells(pageBytes)); b.line("ok " + img.rgb.toString("base64")); t += 1000; };
+  let emits = 0; b.subscribe(() => emits++);
+  feed(pages[0]);
+  assert.equal(b.current().questLog, undefined, "half a log is not a log");
+  feed(pages[1]);
+  assert.deepEqual(b.current().questLog, log);
+  feed(pages[2]);
+  assert.deepEqual(b.current().turnedIn, [2005, 1999]);
+  assert.ok(emits >= 2, "each completed set refreshes listeners");
+  // A different character's pages never attach to this frame.
+  feed(L.encodePages(2, [1], identity ^ 1)[0]);
+  assert.deepEqual(b.current().turnedIn, [2005, 1999]);
+  // Without new pages for a while, the lists drop out instead of going stale.
+  t += 40000; feed(pages[0]);
+  assert.equal(b.current().turnedIn, undefined);
 });

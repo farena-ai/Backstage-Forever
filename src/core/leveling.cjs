@@ -100,7 +100,21 @@ class LevelingAdvisor {
     const level = Math.max(p.level, Number.isInteger(live?.level) ? live.level : 0), faction = p.faction === "Horde" || p.faction === "Alliance" ? p.faction : null;
     const where = live?.position ? { mapId: live.position.mapId, x: live.position.x, y: live.position.y } : p.location;
     const here = Number.isSafeInteger(where?.mapId) ? where.mapId : null;
-    p = { ...p, level, location: where };
+    // Live quest pages (addon 0.25+) beat the last save: quests turned in since then are done,
+    // and the log is exactly what's in the game right now.
+    const pack = this.knowledge?.bundled?.pack || null;
+    const liveLog = Array.isArray(live?.questLog) ? live.questLog : null;
+    const turnedIn = Array.isArray(live?.turnedIn) ? live.turnedIn : [];
+    const saved = p.history?.completedIdsKnown ? p.history.completedIds : [];
+    const done = new Set([...saved, ...turnedIn]);
+    let quests = p.quests || [];
+    if (liveLog) {
+      const byId = new Map(quests.map((q) => [q.id, q]));
+      quests = liveLog.map((e) => { const q = byId.get(e.id); return q ? { ...q, complete: e.complete } : { id: e.id, title: pack?.quests?.[e.id]?.title || `Quest ${e.id}`, complete: e.complete, objectives: [] }; });
+    } else quests = quests.filter((q) => !done.has(q.id));
+    const history = { ...(p.history || {}), completedIds: [...done], completedIdsKnown: Boolean(p.history?.completedIdsKnown || turnedIn.length) };
+    const justDone = turnedIn.slice(0, 5).map((id) => ({ id, title: pack?.quests?.[id]?.title || (p.quests || []).find((q) => q.id === id)?.title || `Quest ${id}` }));
+    p = { ...p, level, location: where, quests, history };
     const zones = [];
     for (const z of this.pack.zones) {
       if (faction && z.faction !== "Contested" && z.faction !== faction) continue;
@@ -135,11 +149,11 @@ class LevelingAdvisor {
     const shown = zones.filter((z, i) => i === 0 || z.available > 0);
     return {
       status: "ok",
-      character: { name: p.name, level, faction, className: p.className || null, race: p.race || null, zone: here ? mapName(here) : null, live: Boolean(live?.position), xp: p.progress && Number.isFinite(p.progress.max) && p.progress.max > 0 ? { current: p.progress.current, max: p.progress.max, rested: Number.isFinite(p.progress.rested) ? p.progress.rested : 0, savedLevel: p.level } : null, xpPercent: Number.isFinite(live?.xpPercent) ? live.xpPercent : null, dead: Boolean(live?.dead), position: where && Number.isFinite(where.x) ? { mapId: where.mapId, x: where.x, y: where.y } : null },
+      character: { savedAt: p.source?.updatedAt || null, name: p.name, level, faction, className: p.className || null, race: p.race || null, zone: here ? mapName(here) : null, live: Boolean(live?.position), xp: p.progress && Number.isFinite(p.progress.max) && p.progress.max > 0 ? { current: p.progress.current, max: p.progress.max, rested: Number.isFinite(p.progress.rested) ? p.progress.rested : 0, savedLevel: p.level } : null, xpPercent: Number.isFinite(live?.xpPercent) ? live.xpPercent : null, dead: Boolean(live?.dead), position: where && Number.isFinite(where.x) ? { mapId: where.mapId, x: where.x, y: where.y } : null },
       next: next && { ...next, why: this.why(next, p, here) },
       zones: (shown.length ? shown : zones).slice(0, 6),
       training: this.training(p),
-      log: this.log(p),
+      log: { ...this.log(p), justDone, live: Boolean(liveLog) },
       source: this.pack.source,
     };
   }
@@ -160,7 +174,7 @@ class LevelingAdvisor {
       }
     }
     const here = p.location?.mapId;
-    const near = (w) => (w?.mapId === here ? Math.hypot((w.x ?? 0) - (p.location.x ?? 0), (w.y ?? 0) - (p.location.y ?? 0)) : 9);
+    const near = (w) => (here != null && w?.mapId === here ? Math.hypot((w.x ?? 0) - (p.location.x ?? 0), (w.y ?? 0) - (p.location.y ?? 0)) : 9);
     ready.sort((a, b) => near(a.turnIn) - near(b.turnIn));
     active.sort((a, b) => near(a.where) - near(b.where) || (a.level ?? 99) - (b.level ?? 99));
     return { inLog: (p.quests || []).length, ready, active };

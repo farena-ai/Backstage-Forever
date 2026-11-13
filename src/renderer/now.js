@@ -3,7 +3,7 @@
 // advisor and the live link. Every action is a suggestion; nothing happens in game by itself.
 window.NowView = (() => {
   const api = window.backstage;
-  let advice = null, session = null, setup = null, error = "", loading = false, mountedFor = null, lastKey = "", lastFetch = 0, timer = null;
+  let advice = null, session = null, setup = null, error = "", loading = false, setting = "", mountedFor = null, lastKey = "", lastFetch = 0, timer = null;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pct = (v) => (v * 100).toFixed(1);
   const at = (w) => (w && Number.isFinite(w.x) ? `${esc(w.mapName || "")} ${pct(w.x)}, ${pct(w.y)}` : "");
@@ -101,8 +101,11 @@ window.NowView = (() => {
     ];
     if (items.every((i) => i.done)) return "";
     const next = items.findIndex((i) => !i.done);
+    // One click does every step the app can do by itself: find WoW, install the addon, turn on the live link.
+    const canDo = !game?.connected || !game?.addonCurrent || live?.enabled === false;
+    const oneClick = canDo ? `<div class="now-oneclick"><button type="button" data-now-act="setup"${setting === "working" ? " disabled" : ""}>${setting === "working" ? "Setting up…" : "Set it all up"}</button><span>${setting && setting !== "working" ? esc(setting) : "Finds WoW Forever, installs the addon and turns on the live link. Nothing to download or type."}</span></div>` : "";
     return `<article class="now-card now-setup"><h2>Get set up <small>${items.filter((i) => i.done).length} of ${items.length}</small></h2>
-      <ol class="now-checklist">${items.map((i, n) => `<li class="${i.done ? "done" : n === next ? "next" : ""}"><span class="now-check" aria-hidden="true">${i.done ? "✓" : n + 1}</span><div><strong>${i.title}</strong>${i.done ? "" : `<p>${i.how}</p>${n === next && i.action ? `<div class="now-actions">${i.action}</div>` : ""}`}</div></li>`).join("")}</ol>
+      ${oneClick}<ol class="now-checklist">${items.map((i, n) => `<li class="${i.done ? "done" : n === next ? "next" : ""}"><span class="now-check" aria-hidden="true">${i.done ? "✓" : n + 1}</span><div><strong>${i.title}</strong>${i.done ? "" : `<p>${i.how}</p>${n === next && i.action ? `<div class="now-actions">${i.action}</div>` : ""}`}</div></li>`).join("")}</ol>
       <p class="now-tip">New to WoW? The <button type="button" class="now-link" data-nav="guide">Field guide</button> explains the words you'll see, like rested, hand in and elite, and <button type="button" class="now-link" data-nav="commands">Commands</button> lists everything you can type in game.</p></article>`;
   }
   // The game is still running an addon older than the one just installed: one /reload loads it.
@@ -112,7 +115,11 @@ window.NowView = (() => {
     if (sig === "unreadable") return `<div class="now-reload" role="status"><strong>Live link can't read the game</strong><span>The strip is on screen but its colours are being changed (HDR, Night light, a colour filter or a remote session). Type <code>/reload</code> in WoW once; if this stays, turn the filter off for WoW. Until then this page shows your last save.</span></div>`;
     const g = setup?.game;
     if (!g?.connected || !g.addonCurrent || g.runtime?.state !== "running" || !g.loadedCaptureVersion || !g.addonVersion || g.loadedCaptureVersion === g.addonVersion) return "";
-    return `<div class="now-reload" role="status"><strong>Type <code>/reload</code> in WoW</strong><span>Your last save came from Backstage Forever ${esc(g.loadedCaptureVersion)}; the installed addon is ${esc(g.addonVersion)}. If you just reloaded, the update probably landed a moment later: reload once more and this goes away within a few seconds.</span></div>`;
+    const saved = Date.parse(g.lastSync || ""), landed = Date.parse(g.addonUpdatedAt || "");
+    const clock = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+    const early = Number.isFinite(saved) && Number.isFinite(landed) && saved < landed && landed - saved < 15 * 60000;
+    const when = early ? ` Your last /reload was at ${clock(saved)}, ${Math.max(1, Math.round((landed - saved) / 1000))} seconds before the update landed at ${clock(landed)}, so the game is still running the old addon: one more /reload fixes it.` : Number.isFinite(landed) ? ` The update landed at ${clock(landed)}. If you just reloaded, the update probably landed a moment later: reload once more and this goes away within a few seconds.` : " If you just reloaded, the update probably landed a moment later: reload once more and this goes away within a few seconds.";
+    return `<div class="now-reload" role="status"><strong>Type <code>/reload</code> in WoW</strong><span>Your last save came from Backstage Forever ${esc(g.loadedCaptureVersion)}; the installed addon is ${esc(g.addonVersion)}.${esc(when)}</span></div>`;
   }
   function body() {
     if (error) return `<div class="now-card"><p>${esc(error)}</p></div>`;
@@ -130,22 +137,28 @@ window.NowView = (() => {
          <div class="now-actions">${mapBtn(t.trainer, t.trainer.name, t.trainer.title, t.trainer.npcId, { title: `Your ${t.className} trainer`, steps: [`${t.trainer.name}, ${t.trainer.title}.`, t.newNow.length ? `Ready to learn: ${t.newNow.map((s) => s.name).join(", ")}.` : `Nothing new until level ${t.nextAt || c.level + 1}.`] })}</div>`;
     const log = a.log;
     const questLog = log.inLog ? `<ul class="now-log">${log.ready.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip ready">Hand in</span>${esc(q.title)}</button></li>`).join("")}${log.active.slice(0, 8).map((q) => { const grey = q.level && q.level <= greyAt(c.level); return `<li><button type="button" data-quest-open="${q.id}"${grey ? ' title="This quest no longer gives experience at your level. Finish it only if you want the reward or the story; otherwise it\'s safe to abandon to free up your log."' : ""}><span class="now-chip">${q.total ? `${q.done}/${q.total}` : "…"}</span>${esc(q.title)}${q.level ? ` <small>lvl ${q.level}</small>` : ""}${grey ? ` <span class="now-chip grey">No XP · safe to drop</span>` : ""}</button></li>`; }).join("")}</ul>` : `<p>Your quest log is empty. ${a.next ? `Pick up quests in ${esc(a.next.name)}.` : ""}</p>`;
+    // Quests handed in since the last save (live): shown done, so nothing old reads as still to do.
+    const done = log.justDone?.length ? `<h3 class="now-sub">Just completed</h3><ul class="now-log now-done">${log.justDone.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip done">✓ Completed</span>${esc(q.title)}</button></li>`).join("")}</ul>` : "";
     const top = a.next?.quests?.length ? `<ul class="now-log">${a.next.quests.slice(0, 6).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip new">lvl ${q.level}</span>${esc(q.title)} <small>from ${esc(q.giver)}</small></button></li>`).join("")}</ul>` : "";
-    return `${reloadBanner()}${setupCard(a)}<div class="now-grid">
+    // Two independent columns, so a tall card on one side never leaves a gap on the other.
+    return `${reloadBanner()}${setupCard(a)}<div class="now-grid"><div class="now-col now-col-main">
       <article class="now-card now-next"><h2>Do this next</h2>
         ${list.length ? `<ol class="now-steps">${list.map((s) => `<li class="now-step now-${s.kind}"><span class="now-ico now-ico-art" aria-hidden="true">${crest(s.kind)}</span><div><h3>${s.title}</h3><p>${s.detail}</p><div class="now-actions">${s.actions}</div></div></li>`).join("")}</ol>` : `<p>You're all caught up. Explore, gather or run a dungeon.</p>`}
       </article>
+      <article class="now-card now-questlog"><h2>Quest log <small>${log.inLog}</small>${log.live ? ' <span class="now-fresh live">● Live</span>' : ' <span class="now-fresh">from your last save</span>'}</h2>${questLog}${done}</article>
+      </div><div class="now-col now-col-side">
       ${sessionCard(a)}
       <article class="now-card"><h2>Where to level</h2><ul class="now-zones">${zones}</ul>${top ? `<h3 class="now-sub">Quests to pick up in ${esc(a.next.name)}</h3>${top}` : ""}</article>
       <article class="now-card"><h2>${esc(c.className || "Class")} training</h2>${training}</article>
-      <article class="now-card"><h2>Quest log <small>${log.inLog}</small></h2>${questLog}</article>
-    </div>
+    </div></div>
     <p class="now-src">Zone levels: ${esc(a.source)} Quest, trainer and NPC references: Efficient Games, CC BY 4.0.</p>`;
   }
   function liveLine() {
     const n = document.querySelector("[data-now-live]"); if (!n || !advice?.character) return;
     const c = advice.character;
-    n.innerHTML = `Level ${c.level}${c.className ? ` ${esc(c.className)}` : ""}${c.faction ? ` · ${esc(c.faction)}` : ""} · ${c.live ? `<span class="on">● Live</span> in ${esc(c.zone || "")}` : c.zone ? `Last saved in ${esc(c.zone)}` : "Position unknown"}`;
+    const mins = c.savedAt ? Math.max(0, Math.floor((Date.now() - Date.parse(c.savedAt)) / 60000)) : null;
+    const ago = Number.isFinite(mins) ? (mins < 1 ? "just now" : mins < 60 ? `${mins} min ago` : mins < 2880 ? `${Math.floor(mins / 60)} hr ago` : `${Math.floor(mins / 1440)} days ago`) : "";
+    n.innerHTML = `Level ${c.level}${c.className ? ` ${esc(c.className)}` : ""}${c.faction ? ` · ${esc(c.faction)}` : ""} · ${c.live ? `<span class="on">● Live</span> in ${esc(c.zone || "")}` : c.zone ? `Last saved in ${esc(c.zone)}` : "Position unknown"}${ago ? ` <span class="now-saved-at">· save from ${esc(ago)}</span>` : ""}`;
   }
   function paint() {
     const b = document.querySelector("[data-now-body]"); if (!b) return;
@@ -176,11 +189,27 @@ window.NowView = (() => {
     clearTimeout(timer);
     timer = setTimeout(load, Math.max(0, 4000 - (Date.now() - lastFetch)));
   }
+  async function oneClickSetup() {
+    if (setting === "working") return;
+    setting = "working"; paint();
+    try {
+      const r = await api.startCompanion();
+      if (r?.setupCandidates?.length > 1) { setting = "Found more than one WoW install: pick yours on the Game connection page."; document.querySelector('[data-nav="game"]')?.click(); }
+      else if (!r?.connected) setting = "Couldn't find WoW Forever automatically. Pick its folder on the Game connection page (Settings).";
+      else {
+        const live = await api.liveLinkStatus?.().catch(() => null);
+        if (live && live.enabled === false) await api.setLiveLink(true);
+        setting = "Done. Log in to WoW (or type /reload if it's running) and your character appears here.";
+      }
+    } catch (e) { setting = e?.message || "Setup couldn't finish. Try the Game connection page in Settings."; }
+    await load();
+  }
   function bind(root) {
     root.addEventListener("click", (e) => {
       const m = e.target.closest("[data-now-map]");
       if (m) { try { window.WorldMapView?.focus(JSON.parse(m.dataset.nowMap)); document.querySelector('[data-nav="world-map"]')?.click(); } catch {} return; }
       if (e.target.closest('[data-now-act="refresh"]')) load();
+      if (e.target.closest('[data-now-act="setup"]')) oneClickSetup();
     });
   }
   function mounted() {

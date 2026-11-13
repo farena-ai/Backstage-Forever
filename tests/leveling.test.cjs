@@ -98,3 +98,26 @@ test("training falls back to same-class spells when the faction's trainer has no
   const none = new LevelingAdvisor({ getState: () => ({ activeProfileId: "A", profiles: [{ id: "A", name: "P", level: 4, faction: "Alliance", className: "Warrior" }] }), knowledge: null, insights: { trainers: [synthetic.trainers[1]] } }).advise().training;
   assert.equal(none.trainer, null, "an other-faction trainer is never offered as a location");
 });
+
+test("live quest pages beat the last save: turned-in quests leave Now and show as Completed", () => {
+  const q = (id) => ({ id, title: pack.quests[id].title });
+  const barrens = Object.values(pack.quests).filter((x) => x.level >= 14 && x.level <= 18 && x.sides?.includes("Horde")).slice(0, 3).map((x) => x.id);
+  const [a, b, c] = barrens;
+  const profile = { level: 16, faction: "Horde", className: "Hunter", race: "Orc", location: null, history: { completedIdsKnown: true, completedIds: [] },
+    quests: [{ ...q(a), complete: true, objectives: [] }, { ...q(b), complete: false, objectives: [{ text: "0/1", done: false }] }] };
+  const make = (live) => new LevelingAdvisor({ getState: () => ({ activeProfileId: "A", profiles: [{ id: "A", name: "P", ...profile }] }), knowledge: { bundled: { pack } }, insights, getLive: () => live });
+  // No location saved and no live frame: Now still advises (used to crash sorting the log).
+  assert.equal(make(null).advise().status, "ok");
+  // Live: a was handed in, b is now complete, c was just picked up.
+  const r = make({ level: 16, position: { mapId: 1413, x: 0.5, y: 0.3 }, questLog: [{ id: b, complete: true }, { id: c, complete: false }], turnedIn: [a] }).advise();
+  assert.deepEqual(r.log.ready.map((x) => x.id), [b]);
+  assert.deepEqual(r.log.active.map((x) => x.id), [c]);
+  assert.deepEqual(r.log.justDone.map((x) => x.id), [a]);
+  assert.equal(r.log.live, true);
+  const offered = r.zones.flatMap((z) => z.quests.map((x) => x.id));
+  assert.ok(!offered.includes(a), "a turned-in quest is never offered again");
+  // Saved log only: a quest the save already lists as completed is not shown as to-do.
+  profile.history.completedIds = [a];
+  const s = make(null).advise();
+  assert.ok(!s.log.ready.some((x) => x.id === a));
+});

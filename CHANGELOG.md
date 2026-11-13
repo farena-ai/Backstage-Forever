@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.25.0 — always current, 2026-11-13
+
+- **Live quest log.** A second row on the live strip pages through your quest log (with done flags) and the quests you've turned in this session. Now prefers it over the last save: handed-in quests leave Now at once and show under **Just completed** with a Completed tag. The Quest log card says Live or "from your last save".
+- **Now layout.** Two independent columns with no gaps; the seven main links fit at the default window size; save age is shown next to your status.
+- **Reload banner timing.** It names when your last save happened and when the update landed, so an early `/reload` is obvious.
+- **Quick answers with no AI.** The companion answers quest how-to, "what next" and training questions instantly from local data when no model is chosen.
+- **One-click setup.** **Set it all up** on Now finds WoW Forever, installs the addon and turns on the live link.
+- Fixed: Now failed for a character with no saved location. Test windows never take keyboard focus.
+
 ## 0.24.0 — how to actually do it, 2026-11-13
 
 - **How to do it, on every quest page.** Plain steps built from the best source available, each saying where its knowledge came from:
