@@ -1,6 +1,6 @@
 # Backstage Forever roadmap
 
-Where the companion goes next. Written 2026-11-12, after 0.20.0; updated 2026-11-13 for 0.25.0. Ordered by value to a player: a beginner should feel guided, and a veteran should feel faster.
+Where the companion goes next. Written 2026-11-12, after 0.20.0; updated 2026-11-13 after 0.25.0 (Tier 2.6 best-addon features, Tier G graphics program). Ordered by value to a player: a beginner should feel guided, and a veteran should feel faster.
 
 **Sizes:** S = a day or less · M = a few days · L = a week or more · XL = a multi-release program.
 **Where:** Game = the addon · App = the desktop app · Both.
@@ -143,6 +143,51 @@ The goal: open the app (or type `/bf`) and know everything useful about your spo
 | E11 | **Info everywhere.** Hover any quest, NPC, item, zone or spell anywhere in the app to get a rich card (icon, level, where, rewards, who drops it), consistent across pages (the D7 card system). | M–L | App | Information is the lifeline. |
 | E12 | **Over-the-top extras.** Animated zone arrival banners in the app, a level-up replay reel for the session, a "story so far" chapter page per character with zone art, and achievement-style badges painted locally with ComfyUI. | M per item | App | Fun keeps people playing. |
 
+## Tier 2.6 — What the best addons do, built into one companion
+
+Players today stitch together a dozen addons. Each item below takes what players love about a well-known *kind* of addon and builds it into Backstage Forever. It's our own design, public WoW API only and free, and it works together with Now, the map and the companion. Wherever a player already runs one of these addons, we stay out of its way.
+
+| # | Feature | Like… | Size | Where | Why players want it |
+|---|---|---|---|---|---|
+| A1 | **Quest objectives everywhere.** Mobs and objects you need show a small icon over their heads and a "3/8 Bottle" line in their tooltip. Objective areas glow on the world map and minimap. | Quest-helper addons | M–L | Game | The most-installed kind of leveling addon: you never wonder "is this the right mob?" |
+| A2 | **Step-by-step guide with an arrow.** One step at a time in a small frame ("Accept Raptor Thieves", "Kill raptors here", "Turn in at Gazrog"), with an arrow pointing to it. It ticks off from quest events and skips what you've already done. This is 2.3 and 4.1 in game form. | Leveling-guide addons | L–XL | Both | The #1 reason players buy leveling guides. Ours is free, for both factions, and built from real data. |
+| A3 | **Speed splits.** Time per level against your own best and against your other characters, a pace line on Now, and "you're 12 minutes ahead" at each level-up. | Speed-leveling guides | M | Both | Experienced players love racing their own records. |
+| A4 | **Dungeon loot browser.** Every boss's drops with icons and stats. "Upgrade for you" badges, a wish list, and a "this dungeon has 3 upgrades for you" score on dungeon cards. | Loot-browser addons | M–L | App | The first thing players check before a dungeon. |
+| A5 | **Boss tips.** Short plain-words tips per boss ("interrupt the heal", "kill the adds first") shown when you target the boss, plus a pull checklist. Text, not timers. | Boss-warning addons | M | Both | New players wipe less, and veterans get reminders. |
+| A6 | **Gathering memory.** Every herb, ore and chest you open is remembered with its spot. The app shows a heat map per zone, and the in-game map shows remembered nodes, with routes for your skill level (feeds E8). | Gathering-map addons | M | Both | Turns gathering from wandering into a route. |
+| A7 | **Price memory.** When you browse the Auction House yourself, the addon remembers the prices it saw. Tooltips then show "about 1g 20s at auction" and "vendor for 35s", and bags flag what's worth selling. There are no automated scans or buying; it reads only pages you open. | Auction helper addons | M–L | Both | Gold matters for training and the mount (E4). |
+| A8 | **Session stats.** Damage and healing per fight from your own combat log, a "best fight" card, and kills, deaths and gold earned per session on Now. | Damage-meter addons | M | Both | Fun numbers, and they help tune talents. |
+| A9 | **Hunter, warlock and rogue helpers.** Pet happiness and feeding reminders, ammo and soul shard counters, poison reminders and class-quest alerts (E5). | Class helper addons | S–M | Game | Small, constant help that classes need. |
+| A10 | **Enemy player alerts (PvP servers).** "Alliance level 32 rogue nearby" from targets and nameplates you see, with a short history. Public data only. | PvP alert addons | M | Game | Safety on contested ground; Horde and Alliance alike. |
+| A11 | **Quality of life pack.** Sell junk and repair (done), plus: skip quest dialog text you've already read, an auto-dismount option for flight masters, a faster loot window and a coordinates readout. Each one is off by default and switched on with `/bf`. | QoL bundle addons | S each | Game | The little things players expect. |
+| A12 | **Gear sets.** Save and swap sets (leveling, gathering, dungeon) with one click outside combat. The app shows each set's score. | Gear-set addons | M | Both | Swapping gear by hand is tedious. |
+| A13 | **Social and party.** Party members running the addon see each other's quest needs (3.6), a "who needs what" list, and shared waypoints. | Party-sync addons | L | Both | Grouping goes smoother. |
+| A14 | **Unified tooltip.** One rich tooltip in game and in the app, built from everything above: quest use, drop sources, price, upgrade, who sells it. | Tooltip addons | M | Both | Information is the lifeline. |
+
+**Rules for this tier:**
+- These are original designs, not copies.
+- Public API only, and nothing done for the player: no automated buying, no automated quest accepting, nothing in combat that the game doesn't allow.
+- Each feature is switchable on Help → Commands and in Settings.
+
+## Tier G — The graphics program: heavily graphical and impressive
+
+Backstage Forever should look like a premium fantasy companion on every page. All art is original and made locally with ComfyUI (native 2K, upscaled where needed). Nothing imitates Blizzard art, characters, logos or landmarks. Each pass adds to one shared style guide so the whole app stays consistent.
+
+| # | Item | Size | What players see |
+|---|---|---|---|
+| G1 | **Living heroes.** Page headers become short, looping painted scenes: drifting clouds, embers, water shimmer. These are layered parallax stills (ComfyUI layers) with optional tiny video loops, and they're off in reduced-motion mode. | M | The app feels alive on first open. |
+| G2 | **Zone arrival banners.** A painted vista and the zone name sweep in when you enter a new zone (app and in-game toast), with the zone's level band and quest count. | M | Every new zone feels like an arrival. |
+| G3 | **Painted map pins and legend.** Every World Map pin kind gets its own painted icon (giver, hand-in, trainer, flight, vendor, herb, ore, elite, rare, dungeon), with hover glow and animated focus rings. | M | The map reads at a glance and looks crafted. |
+| G4 | **Animated routes.** Route lines on the map flow toward the next step, with footprints for your journey and a pulsing target. | S–M | You can see where to go next. |
+| G5 | **Character sheet.** A full-page painted portrait per class and race (original art), with gear slots drawn around it like a paper doll, glowing upgrades, and a talent tree view. | L | The page players will screenshot. |
+| G6 | **Dungeon and boss art.** A painted card per dungeon (original scenes inspired by each dungeon's theme), boss silhouettes, and loot shown on velvet trays. | L | Dungeons feel epic before you even zone in. |
+| G7 | **Badges and milestones.** A full set of painted badges for levels, firsts, zones completed, professions and speed splits, with a badge wall on Characters. | M | Collecting keeps people playing. |
+| G8 | **Celebrations, part 2.** Level-up, quest-chain completion, dungeon clear and new mount moments, each with its own animation and sound. | M | Big moments feel big. |
+| G9 | **In-game frames reskin.** The Adventure Compass, step frame and toasts get painted frames that match the app, and stay readable and small. | M | One look, in game and out. |
+| G10 | **Splash and onboarding.** A short cinematic first-launch splash and a three-card painted tour for new players. | S–M | A great first impression. |
+| G11 | **Faction themes.** Horde and Alliance colour sets, crests and ornaments that switch with your character, equal in quality. | M | Alliance is just as important. |
+| G12 | **Art review before 1.0.** One pass over every page against the style guide: spacing, contrast, motion and dark-room readability. | M | Polish everywhere. |
+
 ## Tier 3 — Delight and depth
 
 | # | Feature | Size | Where | Why it matters |
@@ -200,10 +245,12 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
   - Moved to 0.24: D7 card system, gear review with icons on Characters, 1.9 remote live-link check.
 - **0.24 (shipped):** Quest intel Q1–Q6, 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness, gear review with icons. D7 card system moves to 0.25.
 - **0.25 (shipped):** N1–N3 Now fixes, R1–R3 always current without /reload (live quest log pages), F1 quick answers with no AI, E10 one-click setup (first part: Set it all up on Now). 2.3 route stepper moves to 0.26.
-- **0.26:** 2.3 route stepper, F2 "Turn on free AI" one click (built-in local engine), F3 free cloud fallback, E1 zone briefing, E2 supplies, E3 trainer planner.
-- **0.27:** 2.8 + E8 professions, D7/E11 card system, 1.9 remote live-link check, E9 rested planner.
-- **0.28:** E4 mount and gold goals, E5 class quest chains, E6 reputation, E7 death review, Tier 3 starts (session history, world tracker).
-- **0.29+:** the rest of Tier 3 and E12 extras, then the 4.1 full guided route.
+- **0.26 (shipped):** 2.3/A2 route stepper (`/bf route`, step frame, arrow), A1 objective progress in enemy tooltips (overhead icons come later), E1 zone briefing, G2 zone arrival banners, G3 painted map pins and city banners.
+- **0.27:** F2 "Turn on free AI" one click (built-in local engine), F3 free cloud fallback, E2 supplies, E3 trainer planner, A9 class helpers, G1 living heroes.
+- **0.28:** 2.8 + E8 professions with A6 gathering memory, D7/E11/A14 card and tooltip system, E9 rested planner, A3 speed splits, G7 badges.
+- **0.29:** A4 dungeon loot browser, A5 boss tips, G6 dungeon art, E7 death review, A8 session stats, G8 celebrations part 2.
+- **0.30:** E4 mount and gold goals with A7 price memory, E5 class quest chains, E6 reputation, A12 gear sets, G5 character sheet.
+- **0.31+:** A10 PvP alerts, A11 QoL pack, A13/3.6 party sync, the rest of Tier 3, G9–G11, then the 4.1 full guided route and the G12 art review.
 - **1.0:** after Frank's hands-on acceptance.
 
 Keep this file and Help → Commands updated with each release.

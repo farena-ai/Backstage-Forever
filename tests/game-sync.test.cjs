@@ -274,7 +274,7 @@ test("failed snapshot consumer is retried instead of acknowledged", async (t) =>
   await sync.refresh();
   assert.equal(calls, 2);
 });
-test("managed prepare repairs nineteen owned files, keeps extras, and reports snapshot health", async (t) => {
+test("managed prepare repairs twenty owned files, keeps extras, and reports snapshot health", async (t) => {
   const f = await fixture(t),
     addon = path.join(f.dir, "source");
   await fs.mkdir(addon);
@@ -298,6 +298,7 @@ test("managed prepare repairs nineteen owned files, keeps extras, and reports sn
     "BackstageForeverAssist.lua",
     "BackstageForeverGear.lua",
     "BackstageForeverQuestIntel.lua",
+    "BackstageForeverRoute.lua",
   ];
   for (const file of files)
     await fs.writeFile(
@@ -356,7 +357,7 @@ test("managed prepare repairs nineteen owned files, keeps extras, and reports sn
 
 test("installer stages all resources, commits TOC last and rolls back a failed commit", async (t) => {
   const f = await fixture(t), addon = path.join(f.dir, "source");
-  const files = ['BackstageForever.toc','BackstageForeverReference.lua','BackstageForeverAdvisorData.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverProfession.lua','BackstageForeverGathering.lua','BackstageForeverMapPlan.lua','BackstageForeverMap.lua','BackstageForeverAdvisorMap.lua','BackstageForeverMap.xml','BackstageForever.lua','BackstageForeverHUD.lua','BackstageForeverLive.lua','BackstageForeverFind.lua','BackstageForeverAssist.lua','BackstageForeverGear.lua','BackstageForeverQuestIntel.lua'];
+  const files = ['BackstageForever.toc','BackstageForeverReference.lua','BackstageForeverAdvisorData.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverProfession.lua','BackstageForeverGathering.lua','BackstageForeverMapPlan.lua','BackstageForeverMap.lua','BackstageForeverAdvisorMap.lua','BackstageForeverMap.xml','BackstageForever.lua','BackstageForeverHUD.lua','BackstageForeverLive.lua','BackstageForeverFind.lua','BackstageForeverAssist.lua','BackstageForeverGear.lua','BackstageForeverQuestIntel.lua','BackstageForeverRoute.lua'];
   await fs.mkdir(addon);
   for (const file of files) await fs.writeFile(path.join(addon,file), file.endsWith('.toc')?'## Version: old\n':'old '+file);
   const sync = new GameSync({dataDir:path.join(f.dir,'data'),addonDir:addon}); t.after(()=>sync.close());
@@ -422,6 +423,7 @@ test("prepare accepts installation parent and missing account exports are needs-
     "BackstageForeverAssist.lua",
     "BackstageForeverGear.lua",
     "BackstageForeverQuestIntel.lua",
+    "BackstageForeverRoute.lua",
   ])
     await fs.writeFile(path.join(addon, file), "fixture");
   const sync = new GameSync({

@@ -2,9 +2,9 @@
 ## Title: Backstage Forever
 ## Notes: Local saved character snapshots for Backstage Forever. Written to disk on logout or UI reload.
 ## Author: Backstage Coding
-## Version: 0.25.0
+## Version: 0.26.0
 ## SavedVariables: BackstageForeverExport
-## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings, BackstageForeverQuestItemSourcesDB
+## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings, BackstageForeverQuestItemSourcesDB, BackstageForeverRouteSettings
 BackstageForeverReference.lua
 BackstageForeverAdvisorData.lua
 BackstageForeverPlan.lua
@@ -23,3 +23,4 @@ BackstageForeverFind.lua
 BackstageForeverAssist.lua
 BackstageForeverGear.lua
 BackstageForeverQuestIntel.lua
+BackstageForeverRoute.lua
