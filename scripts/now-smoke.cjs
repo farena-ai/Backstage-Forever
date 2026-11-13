@@ -46,6 +46,15 @@ const { defaultState } = require("../src/core/validation.cjs");
     assert.match(steps[0], /Hand in/);
     assert.ok(steps.some((t) => /Continue/.test(t)), "active quest step");
     await page.locator("[data-now-live]").getByText(/Level 15 Hunter/).waitFor();
+    // You are here: the zone card, with every row able to open the map dialed in.
+    await page.locator(".now-zonecard h2").getByText("The Barrens").waitFor();
+    assert.ok(await page.locator(".now-zonecard .now-zr").count() >= 2, "zone card lists places nearby");
+    assert.ok(await page.locator(".now-zonecard [data-now-map]").count() >= 2);
+    // Entering a new zone: a painted arrival banner that dismisses itself.
+    await page.evaluate(() => NowView._arrive({ mapId: 1413, name: "The Barrens", band: { min: 10, max: 25 }, questsForYou: 54 }));
+    await page.locator(".bf-arrive").getByText("The Barrens").waitFor();
+    await page.screenshot({ path: path.join(capture, "now-arrival.png") });
+    await page.locator(".bf-arrive").click(); await page.locator(".bf-arrive").waitFor({ state: "detached" });
     await page.screenshot({ path: path.join(capture, "now.png") });
     // Live frame in another zone: Now refreshes from it.
     await app.evaluate(() => { const b = liveFixture.bridge; b.enabled = true; b.frame = { version: 2, seq: 1, combat: false, characterHash: 0, mounted: false, position: { mapId: 1413, x: 0.51, y: 0.30, facing: 1 }, level: 16, receivedAt: Date.now() }; b.signal = "live"; b.emit(); });
@@ -79,7 +88,10 @@ const { defaultState } = require("../src/core/validation.cjs");
     for (let i = 0; i < mapLinks.length; i++) {
       const want = mapLinks[i];
       if (i) { await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor(); }
-      await page.locator("[data-now-map]").nth(i).click();
+      // Click the link for this exact target (nearest-first lists may reorder as the position updates).
+      const at = await page.locator("[data-now-map]").evaluateAll((els, w) => els.findIndex((e) => e.dataset.nowMap === JSON.stringify(w)), want);
+      if (at < 0) continue;
+      await page.locator("[data-now-map]").nth(at).click();
       await page.locator("[data-world-map]").waitFor();
       await page.waitForFunction((w) => { const f = WorldMapView._state().focused; return f && f.pin.mapId === w.mapId && (w.npcId ? f.pin.npcId === w.npcId : Math.hypot(f.pin.x - w.x, f.pin.y - w.y) < 1e-6); }, want);
       const got = await page.evaluate(() => ({ selected: WorldMapView._state().selected === WorldMapView._state().focused.pin, title: document.querySelector("[data-wm-goal] h4")?.textContent }));

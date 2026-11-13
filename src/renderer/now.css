@@ -171,3 +171,61 @@
 /* One-click setup on the checklist. */
 .now-oneclick { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 0 12px; padding: 10px 12px; border-radius: 6px; background: rgba(255,246,220,.85); border: 1px solid #8a5a18; }
 .now-oneclick span { flex: 1 1 260px; font-size: 14px; color: #4a3218; }
+
+/* Zone briefing: "You are here". */
+.now-zonecard { padding: 0; overflow: hidden; }
+.now-zc-head { position: relative; padding: 18px 16px 12px; min-height: 110px; display: flex; flex-direction: column; justify-content: flex-end; background: #4a2a12 center / cover no-repeat; border-bottom: 1px solid #a5823e; }
+.now-zc-head .now-eyebrow { color: #e8c983; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.now-zc-head h2 { margin: 2px 0; color: #fff1d6; font-size: 22px; text-shadow: 0 2px 8px rgba(0,0,0,.85); }
+.now-zc-head p { margin: 0; color: #f1dcb0; font-weight: 600; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.now-zc-fit { padding: 0 6px; border-radius: 8px; font-size: 12px; background: #4e8f3a; color: #fff; text-shadow: none; }
+.now-zc-low { background: #b8462e; } .now-zc-high { background: #8a7a5a; }
+.now-zc-head .now-fresh.live { color: #9ff0a5; }
+.now-zr-list { list-style: none; margin: 0; padding: 10px 16px 14px; display: flex; flex-direction: column; gap: 8px; }
+.now-zr { display: flex; gap: 10px; align-items: flex-start; }
+.now-zr > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.now-zr strong { font: 700 14px Georgia, serif; color: #3d220c; }
+.now-zr-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; color: #2b1b0a; }
+.now-zr-item small { color: #6b4a22; }
+.now-zr-item button { margin-left: auto; }
+.now-zr-ico { flex: none; width: 34px; height: 34px; border-radius: 50%; background: #3a220d center / cover no-repeat; border: 1.5px solid #8a5a18; box-shadow: 0 2px 4px rgba(0,0,0,.3); }
+.now-zr-quest { background-image: url("art/steps/quest.png"); }
+.now-zr-inn { background-image: url("art/steps/rested.png"); }
+.now-zr-flight { background-image: url("art/steps/flight.png"); }
+.now-zr-train, .now-zr-prof { background-image: url("art/steps/train.png"); }
+.now-zr-repair { background-image: url("art/steps/repair.png"); }
+.now-zr-danger { background-image: url("art/steps/death.png"); border-color: #8a1f14; }
+
+/* Zone arrival banner (G2). */
+.bf-arrive { position: fixed; z-index: 9000; top: 70px; left: 50%; width: min(680px, 90vw); height: 150px; transform: translateX(-50%); border-radius: 8px; overflow: hidden; border: 2px solid #c79a4a; box-shadow: 0 0 0 1px #3a220d, 0 18px 50px rgba(0,0,0,.6), 0 0 40px rgba(246,196,69,.25); cursor: pointer; animation: bf-arrive-in .9s cubic-bezier(.2,.9,.25,1.15) both; background: #3a220d center / cover no-repeat; }
+.bf-arrive .bf-arrive-art { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(15,7,3,.85) 0%, rgba(15,7,3,.4) 55%, rgba(15,7,3,.15) 100%); animation: bf-arrive-pan 5s linear both; }
+.bf-arrive-text { position: absolute; left: 28px; bottom: 22px; display: flex; flex-direction: column; gap: 2px; }
+.bf-arrive-text span { font: 700 12px Cinzel, Georgia, serif; letter-spacing: .3em; text-transform: uppercase; color: #e8c983; }
+.bf-arrive-text strong { font: 700 40px Cinzel, Georgia, serif; color: #fff1d6; text-shadow: 0 3px 14px rgba(0,0,0,.9); letter-spacing: .02em; }
+.bf-arrive-text em { font-style: normal; font-weight: 600; color: #f1dcb0; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
+.bf-arrive.out { animation: bf-arrive-out .8s ease-in both; }
+@keyframes bf-arrive-in { from { opacity: 0; transform: translate(-50%, -40px) scale(.96); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes bf-arrive-out { to { opacity: 0; transform: translate(-50%, -20px); } }
+@keyframes bf-arrive-pan { from { background-position: 0 0; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .bf-arrive, .bf-arrive.out, .bf-arrive .bf-arrive-art { animation: none; } }
+
+.now-zc-head.biome-canyon, .bf-arrive.biome-canyon { background-image: url("art/zones/canyon.webp"); }
+.now-zc-head.biome-desert, .bf-arrive.biome-desert { background-image: url("art/zones/desert.webp"); }
+.now-zc-head.biome-elvenwood, .bf-arrive.biome-elvenwood { background-image: url("art/zones/elvenwood.webp"); }
+.now-zc-head.biome-farmland, .bf-arrive.biome-farmland { background-image: url("art/zones/farmland.webp"); }
+.now-zc-head.biome-haunted, .bf-arrive.biome-haunted { background-image: url("art/zones/haunted.webp"); }
+.now-zc-head.biome-highlands, .bf-arrive.biome-highlands { background-image: url("art/zones/highlands.webp"); }
+.now-zc-head.biome-jungle, .bf-arrive.biome-jungle { background-image: url("art/zones/jungle.webp"); }
+.now-zc-head.biome-meadow, .bf-arrive.biome-meadow { background-image: url("art/zones/meadow.webp"); }
+.now-zc-head.biome-savanna, .bf-arrive.biome-savanna { background-image: url("art/zones/savanna.webp"); }
+.now-zc-head.biome-snow, .bf-arrive.biome-snow { background-image: url("art/zones/snow.webp"); }
+.now-zc-head.biome-swamp, .bf-arrive.biome-swamp { background-image: url("art/zones/swamp.webp"); }
+.now-zc-head.biome-volcanic, .bf-arrive.biome-volcanic { background-image: url("art/zones/volcanic.webp"); }
+.now-zc-head::before { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(20,10,4,.9) 0%, rgba(20,10,4,.35) 60%, rgba(20,10,4,.05) 100%); }
+.now-zc-head > * { position: relative; }
+/* Compact map pills inside the zone card (not the ornate action buttons). */
+.now-page .now-zonecard .now-zr-item button[data-now-map] { min-height: 0; padding: 2px 10px; border-radius: 10px; font: 700 12px 'Source Sans 3', sans-serif; color: #fff4dc; background: linear-gradient(180deg, #6a3a14, #4a2408); border: 1px solid #c79a4a; box-shadow: none; text-shadow: none; }
+.now-page .now-zonecard .now-zr-item button[data-now-map]::before, .now-page .now-zonecard .now-zr-item button[data-now-map]::after { display: none; }
+.now-page .now-zonecard .now-zr-item button[data-now-map]:hover { transform: none; background: linear-gradient(180deg, #8a4a18, #5a2c0a); }
+.now-zr-item { padding: 2px 0; border-bottom: 1px dashed rgba(138,90,24,.25); }
+.now-zr-item:last-child { border-bottom: 0; }

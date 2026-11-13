@@ -635,6 +635,15 @@ app.whenReady().then(async () => {
     getLive: () => worldMap.liveFrame(worldMap.profile()),
   });
   handle("levelingAdvice", () => leveling.advise());
+  // "You are here": the zone the character is in, for their level and faction.
+  handle("zoneBriefing", () => {
+    const profile = worldMap.profile();
+    if (!profile) return null;
+    const build = worldMap.build({});
+    const zones = leveling.pack.zones.filter((z) => z.mapId === build.mapId);
+    const band = zones.find((z) => z.faction === profile.faction) || zones.find((z) => z.faction === "Contested") || zones[0] || null;
+    return require("./core/zone-briefing.cjs").zoneBriefing({ build, profile, band, packs: { knowledge: knowledge.bundled?.pack || null, insights, vendors: companionService.vendorPack } });
+  });
   // This play session (memory only): pace, deaths, level-ups and where you walked.
   const playSession = new (require("./core/play-session.cjs").PlaySession)();
   liveBridge.subscribe(() => {

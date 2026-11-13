@@ -3,7 +3,7 @@
 // advisor and the live link. Every action is a suggestion; nothing happens in game by itself.
 window.NowView = (() => {
   const api = window.backstage;
-  let advice = null, session = null, setup = null, error = "", loading = false, setting = "", mountedFor = null, lastKey = "", lastFetch = 0, timer = null;
+  let advice = null, zone = null, lastZoneId = null, session = null, setup = null, error = "", loading = false, setting = "", mountedFor = null, lastKey = "", lastFetch = 0, timer = null;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pct = (v) => (v * 100).toFixed(1);
   const at = (w) => (w && Number.isFinite(w.x) ? `${esc(w.mapName || "")} ${pct(w.x)}, ${pct(w.y)}` : "");
@@ -121,6 +121,36 @@ window.NowView = (() => {
     const when = early ? ` Your last /reload was at ${clock(saved)}, ${Math.max(1, Math.round((landed - saved) / 1000))} seconds before the update landed at ${clock(landed)}, so the game is still running the old addon: one more /reload fixes it.` : Number.isFinite(landed) ? ` The update landed at ${clock(landed)}. If you just reloaded, the update probably landed a moment later: reload once more and this goes away within a few seconds.` : " If you just reloaded, the update probably landed a moment later: reload once more and this goes away within a few seconds.";
     return `<div class="now-reload" role="status"><strong>Type <code>/reload</code> in WoW</strong><span>Your last save came from Backstage Forever ${esc(g.loadedCaptureVersion)}; the installed addon is ${esc(g.addonVersion)}.${esc(when)}</span></div>`;
   }
+  // "You are here": the zone you're in, with everything useful nearby.
+  function zoneCard() {
+    const z = zone;
+    if (!z) return "";
+    const w = (p) => ({ mapId: z.mapId, x: p.x, y: p.y });
+    const row = (ico, title, items, goal) => items.length ? `<li class="now-zr"><span class="now-zr-ico now-zr-${ico}" aria-hidden="true"></span><div><strong>${title}</strong>${items.map((p) => `<span class="now-zr-item">${esc(p.label)}${p.sub ? ` <small>${esc(p.sub)}</small>` : ""} ${mapBtn(w(p), p.label, p.sub, p.npcId, goal(p))}</span>`).join("")}</div></li>` : "";
+    const fit = z.fit === "right" ? "Your level" : z.fit === "low" ? "A bit high for you" : z.fit === "high" ? "You've outgrown it" : "";
+    const hub = z.hub ? `<li class="now-zr"><span class="now-zr-ico now-zr-quest" aria-hidden="true"></span><div><strong>${z.questsForYou} quests for your level</strong><span class="now-zr-item">Most start around ${pct(z.hub.x)}, ${pct(z.hub.y)} ${mapBtn(w(z.hub), `${z.name} quest hub`, null, null, { title: `Quest hub in ${z.name}`, steps: [`${z.hub.quests} quests start around here.`, "Pick up everything for your level, then do them in one loop."] })}</span></div></li>` : "";
+    const art = BIOME[z.mapId] ? ` biome-${BIOME[z.mapId]}` : "";
+    return `<article class="now-card now-zonecard"><div class="now-zc-head${art}"><span class="now-eyebrow">You are here</span><h2>${esc(z.name)}</h2><p>${z.band ? `Levels ${z.band.min}–${z.band.max}` : ""}${fit ? ` · <span class="now-zc-fit now-zc-${esc(z.fit)}">${fit}</span>` : ""}${z.live ? ' · <span class="now-fresh live">● Live</span>' : ""}</p></div>
+      <ul class="now-zr-list">${hub}
+      ${row("inn", "Inn", z.inns, (p) => ({ title: p.label, steps: ["Talk to the innkeeper to make this your home: your Hearthstone brings you back here.", "Logging out in an inn earns rested experience."] }))}
+      ${row("flight", "Flight master", z.flights, (p) => ({ title: p.label, steps: ["Talk to them once to learn this flight path.", "Then you can fly here from any flight master you know."] }))}
+      ${row("train", "Your trainer", z.classTrainers, (p) => ({ title: p.label, steps: [`${p.sub}.`, "Learn new spells every couple of levels."] }))}
+      ${row("repair", "Repairs", z.repairs, (p) => ({ title: p.label, steps: ["Repairs your gear and buys your junk."] }))}
+      ${row("prof", "Profession trainers", z.professionTrainers, (p) => ({ title: p.label, steps: [`${p.sub}.`] }))}
+      ${row("danger", "Careful", z.danger, (p) => ({ title: p.label, steps: [`${p.sub}.`, p.elite ? "Elite: bring a group." : "Higher level than you: come back later or bring a friend."] }))}
+      </ul></article>`;
+  }
+  function arrive(z) {
+    if (document.querySelector(".bf-arrive")) document.querySelector(".bf-arrive").remove();
+    const el = document.createElement("div");
+    el.className = `bf-arrive${BIOME[z.mapId] ? ` biome-${BIOME[z.mapId]}` : ""}`;
+    el.setAttribute("role", "status");
+    el.innerHTML = `<div class="bf-arrive-art"></div><div class="bf-arrive-text"><span>Now entering</span><strong>${esc(z.name)}</strong><em>${z.band ? `Levels ${z.band.min}–${z.band.max}` : ""}${z.questsForYou ? ` · ${z.questsForYou} quests for your level` : ""}</em></div>`;
+    document.body.append(el);
+    el.addEventListener("click", () => el.remove());
+    setTimeout(() => el.classList.add("out"), 4200);
+    setTimeout(() => el.remove(), 5000);
+  }
   function body() {
     if (error) return `<div class="now-card"><p>${esc(error)}</p></div>`;
     if (!advice) return `<div class="now-card"><p>${loading ? "Working out your next move…" : "Loading…"}</p></div>`;
@@ -147,6 +177,7 @@ window.NowView = (() => {
       </article>
       <article class="now-card now-questlog"><h2>Quest log <small>${log.inLog}</small>${log.live ? ' <span class="now-fresh live">● Live</span>' : ' <span class="now-fresh">from your last save</span>'}</h2>${questLog}${done}</article>
       </div><div class="now-col now-col-side">
+      ${zoneCard()}
       ${sessionCard(a)}
       <article class="now-card"><h2>Where to level</h2><ul class="now-zones">${zones}</ul>${top ? `<h3 class="now-sub">Quests to pick up in ${esc(a.next.name)}</h3>${top}` : ""}</article>
       <article class="now-card"><h2>${esc(c.className || "Class")} training</h2>${training}</article>
@@ -172,9 +203,13 @@ window.NowView = (() => {
   async function load() {
     if (loading) return; loading = true; lastFetch = Date.now();
     try {
-      const [a, s, game, live] = await Promise.all([api.levelingAdvice(), api.playSession ? api.playSession().catch(() => null) : null,
-        api.gameStatus ? api.gameStatus().catch(() => null) : null, api.liveLinkStatus ? api.liveLinkStatus().catch(() => null) : null]);
-      advice = a; session = s; setup = { game, live }; error = "";
+      const [a, s, game, live, z] = await Promise.all([api.levelingAdvice(), api.playSession ? api.playSession().catch(() => null) : null,
+        api.gameStatus ? api.gameStatus().catch(() => null) : null, api.liveLinkStatus ? api.liveLinkStatus().catch(() => null) : null,
+        api.zoneBriefing ? api.zoneBriefing().catch(() => null) : null]);
+      advice = a; session = s; setup = { game, live }; zone = z; error = "";
+      // Entering a new zone while playing: a painted arrival banner.
+      if (z?.mapId && lastZoneId && z.mapId !== lastZoneId && z.live) arrive(z);
+      if (z?.mapId) lastZoneId = z.mapId;
     } catch (e) { error = e.message || "Advice is unavailable."; }
     loading = false; paint();
   }
@@ -297,5 +332,5 @@ window.NowView = (() => {
     if (e?.kind === "level" && Number.isInteger(e.level)) celebrate(e.level);
     if (document.querySelector("[data-now]")) { clearTimeout(timer); timer = setTimeout(load, 300); }
   });
-  return { page, mounted, invalidate, celebrate, _state: () => ({ advice, session }) };
+  return { _arrive: (z) => arrive(z), page, mounted, invalidate, celebrate, _state: () => ({ advice, session, zone }) };
 })();
