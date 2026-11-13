@@ -91,8 +91,13 @@ test('shipped Coarse Thread authorities merge Mahu despite reversed evidence ord
  row.historicalSellers={suggestions:[v],browse:[]};
  assert.doesNotMatch(await renderLoaded(m),/No historical seller observation for this material/,'Fully merged is not absent');
 });
+test('an acquisition observed in any merged seller build is the same seller',async()=>{
+ const m=shippedThreadModel();m.sellerReference.source.build='1.60.1.70888';
+ assert.ok(m.sellerReference.source.builds.includes(m.shoppingRows[0].acquisition.sources.find(v=>v.entityId===3005).clientBuild),'shipped seller builds include the acquisition build');
+ assert.equal(((await renderLoaded(m)).match(/<h4>Mahu<\/h4>/g)||[]).length,1);
+});
 test('seller identity retains typed coordinates and actual source build boundaries',async()=>{
- for(const change of [m=>m.sellerReference.source.build='1.60.1.70888',m=>m.shoppingRows[0].acquisition.sources[0].positions[0].mapId=String(m.shoppingRows[0].acquisition.sources[0].positions[0].mapId),m=>m.shoppingRows[0].acquisition.sources[0].positions[0].x+=0.001]) {
+ for(const change of [m=>{m.sellerReference.source.build='1.60.1.70888';m.sellerReference.source.builds=['1.60.1.70888'];},m=>m.shoppingRows[0].acquisition.sources[0].positions[0].mapId=String(m.shoppingRows[0].acquisition.sources[0].positions[0].mapId),m=>m.shoppingRows[0].acquisition.sources[0].positions[0].x+=0.001]) {
   const m=shippedThreadModel();change(m);assert.equal(((await renderLoaded(m)).match(/<h4>Mahu<\/h4>/g)||[]).length,2);
  }
 });

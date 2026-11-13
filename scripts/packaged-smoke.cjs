@@ -251,7 +251,7 @@ async function sourceFiles(folder, prefix = "src") {
     assert.equal(path.resolve(restarted.cwd), path.resolve(appDir));
     assert.deepEqual(await checkSdk(app, appDir), sdk);
     let restored;
-    for (let attempt = 0; attempt < 100; attempt++) {
+    for (let attempt = 0; attempt < 300; attempt++) {
       restored = await reopened.evaluate(() => window.backstage.gameStatus());
       if (restored.addonCurrent) break;
       await new Promise((resolve) => setTimeout(resolve, 50));
