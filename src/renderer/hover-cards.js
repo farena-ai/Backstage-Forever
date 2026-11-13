@@ -5,7 +5,7 @@ window.HoverCards = (() => {
   const api = window.backstage;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const cache = new Map(); // questId -> Promise<details|null>
-  let profileId = null, profileAt = 0, timer = null, card = null, current = null;
+  let profileId = null, profileAt = 0, timer = null, card = null, current = null, resting = null;
   async function profile() {
     if (profileId && Date.now() - profileAt < 15000) return profileId;
     // The shell's character picker already knows the active character; asking the main process
@@ -73,6 +73,7 @@ window.HoverCards = (() => {
   function bind() {
     if (typeof document === "undefined" || !document.addEventListener) return;
     document.addEventListener("mouseover", (e) => {
+      if (resting) return;
       const el = e.target.closest?.(SEL);
       if (!el) { if (current && !e.target.closest?.(".hover-card")) hide(); return; }
       if (el === current) return;
@@ -81,8 +82,13 @@ window.HoverCards = (() => {
       current = el;
       timer = setTimeout(() => show(el, x, y), 350);
     });
-    document.addEventListener("mousemove", (e) => { if (card && current) place(e.clientX, e.clientY); });
-    for (const ev of ["mousedown", "keydown"]) document.addEventListener(ev, hide, true);
+    document.addEventListener("mousemove", (e) => {
+      // After a click the pointer rests where the page is about to redraw; wait for a real move.
+      if (resting && Math.hypot(e.clientX - resting.x, e.clientY - resting.y) > 4) resting = null;
+      if (card && current) place(e.clientX, e.clientY);
+    });
+    document.addEventListener("mousedown", (e) => { hide(); resting = { x: e.clientX, y: e.clientY }; }, true);
+    document.addEventListener("keydown", hide, true);
     // Scrolling moves the quest away from the card: drop a shown card, but a redraw that only
     // restores a scroll position must not cancel the card that's about to appear.
     document.addEventListener("scroll", () => { if (card) hide(); }, true);
