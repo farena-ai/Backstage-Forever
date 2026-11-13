@@ -130,13 +130,15 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
   - D3 rich quest pages, first pass.
   - Art pass 2: step crests and zone vistas.
   - Still to do: class crests, and auditing links outside Now.
-- **0.23:**
-  - D5 local item, spell and creature details.
+- **0.23 (shipped):**
+  - D5 local item, spell and talent details.
   - D3 rewards with stats and icons.
-  - D6 data coverage view, D7 card system.
-  - 2.1 reward picker, 2.2 gear hints, 2.9 hearth advice, 1.3 quest cleanup, 1.5 helper switches, 1.9 remote live-link check.
-- **0.24:** 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness.
-- **0.25–0.27:** 2.3 route stepper, 2.6 talent coach, 2.8 professions.
+  - D6 data coverage.
+  - 2.1 reward picker, 2.2 upgrade tooltips, 2.6 talent coach.
+  - 2.9 hearth advice, 1.3 no-XP quest hints, 1.5 helper switches, class crests.
+  - Moved to 0.24: D7 card system, gear review with icons on Characters, 1.9 remote live-link check.
+- **0.24:** 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness, D7 card system, gear review with icons.
+- **0.25–0.27:** 2.3 route stepper, 2.8 professions.
 - **0.28+:** Tier 3, then the 4.1 full guided route.
 - **1.0:** after Frank's hands-on acceptance.
 
