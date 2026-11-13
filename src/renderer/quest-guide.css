@@ -352,3 +352,16 @@ button.quest-ledger-row:not(.illustrated-card){display:flex;align-items:center;g
 .quest-chip { display: inline-block; padding: 0 7px; border-radius: 9px; font: 700 11px/1.6 "Source Sans 3", sans-serif; }
 .quest-chip-level { background: #e3d2a6; color: #3d220c; border: 1px solid #a5823e; }
 .quest-chip-elite { background: #7a1f14; color: #ffe9c9; border: 1px solid #f0c060; }
+
+/* How to do it. */
+.quest-howto { padding: 12px 14px; border-radius: 8px; background: linear-gradient(180deg, #f7ecd2, #e8d6a8); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: 0 0 0 2px rgba(246,196,69,.35); }
+.quest-howto h3 { color: #5a1a10; }
+.quest-howto ol { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 8px; }
+.quest-howto li { display: flex; gap: 10px; align-items: flex-start; }
+.quest-howto li img { flex: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+.quest-howto li p { margin: 0; font-size: 15px; line-height: 1.4; }
+.quest-howto li.guess p:first-child::after { content: " (best guess)"; color: #8a6a4a; font-size: 12px; }
+.how-warn { margin-top: 3px !important; color: #a12a1a; font-weight: 700; font-size: 13px !important; }
+.how-says { margin: 8px 0 4px; padding: 8px 12px; border-left: 4px solid #c79a4a; background: rgba(255,248,225,.7); font-style: italic; }
+.how-says span { display: block; font: 700 10px Cinzel, Georgia, serif; letter-spacing: .16em; text-transform: uppercase; font-style: normal; color: #7a1f14; }
+.quest-howto .section-note { color: #5a3e1c; }

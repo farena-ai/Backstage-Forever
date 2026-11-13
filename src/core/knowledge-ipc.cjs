@@ -111,6 +111,9 @@ function registerKnowledgeHandlers({
         const n = o.type === "monster" ? pack.creatures?.[String(o.objectId)]?.name : o.type === "item" ? pack.items?.[String(o.objectId)]?.name : null;
         if (typeof n === "string" && n) names[o.index] = { type: o.type, name: n };
       }
+      // Items the community reference never named (often Forever-only): ask the player's own install.
+      const unnamed = (result.record?.objectives || []).filter((o) => o.type === "item" && !names[o.index] && Number.isSafeInteger(o.objectId));
+      if (unnamed.length && gameData) { const found = gameData.items(unnamed.map((o) => o.objectId)); unnamed.forEach((o, i) => { if (found[i]?.name) names[o.index] = { type: "item", name: found[i].name }; }); }
       if (Object.keys(names).length) result.objectiveNames = names;
     } catch {}
     // Level range and elite/rare flags of each kill objective's creature, when the creature reference knows it.
@@ -165,6 +168,8 @@ function registerKnowledgeHandlers({
     }
     // Quest intel from this player's own game (quest log text, where they looted its items); only when present.
     try { Object.assign(result, require("./quest-intel.cjs").questIntel(p, questId, result.record)); } catch {}
+    // Plain "how to do it" steps from everything above (own looting, community drops, levels, quest text).
+    try { const how = require("./quest-howto.cjs").buildHowTo(result, { loot: require("./loot-data.cjs").loadLootPack() }); if (how?.steps.length) result.howTo = how; } catch {}
     return result;
   });
   handle("copyQuestWaypoint", (...args) => {
