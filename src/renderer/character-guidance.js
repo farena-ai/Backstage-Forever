@@ -87,12 +87,12 @@ window.CharacterGuidance = (() => {
 <span class="eyebrow">OBSERVED LOADOUT</span>
 <h3>Lay your equipment on the table.</h3>
 </div>
-<p>${esc(m.gear.explanation)}</p>${m.gear.rows.length?`<div class="cg-gear-list">${m.gear.rows.map(g=>`<article class="cg-gear">
-<span class="cg-slot">${esc(g.slotLabel)}<small>Slot ${g.slot}</small>
+<p>${esc(m.gear.explanation)}</p>${m.gear.weakest?.length?`<div class="cg-weakest"><strong>Upgrade these first</strong><ul>${m.gear.weakest.map(w=>`<li><span class="cg-rate ${esc(w.rating)}">${w.rating==="replace"?"Replace soon":"Aging"}</span>${esc(w.slot)}: ${esc(w.name)} <small>item level ${w.itemLevel??"?"}</small></li>`).join("")}</ul><small>Quest rewards and the Best choice boxes on quest pages are the quickest way to fill these.</small></div>`:""}${m.gear.rows.length?`<div class="cg-gear-list">${m.gear.rows.map(g=>`<article class="cg-gear${g.rating?` rate-${esc(g.rating)}`:""}">
+<span class="cg-slot">${g.details?.iconFileId&&window.GameIcons?GameIcons.tag(g.details.iconFileId,40):""}${esc(g.slotLabel)}<small>Slot ${g.slot}</small>
 </span>
 <div>
 <h4>${esc(g.observedName||"Observed name unknown")}</h4>
-<p>Item ${g.itemId} · saved quality ${g.quality??"unknown"}</p>${g.referenceName?`<p>Reference name: ${esc(g.referenceName)}${g.observedName&&g.referenceName!==g.observedName?" · differs from saved name":""}</p>`:"<p>Reference name unavailable</p>"}</div>
+<p>Item ${g.itemId} · saved quality ${g.quality??"unknown"}</p>${g.details?`<p class="cg-stats">${[g.details.kind,g.details.damage?`${g.details.dps?.toFixed(1)} DPS`:"",g.details.armor?`${g.details.armor} armor`:"",...(g.details.stats||[]).map(x=>`+${x.amount} ${x.stat}`)].filter(Boolean).map(esc).join(" · ")}</p>`:""}${g.referenceName?`<p>Reference name: ${esc(g.referenceName)}${g.observedName&&g.referenceName!==g.observedName?" · differs from saved name":""}</p>`:"<p>Reference name unavailable</p>"}</div>
 <span class="cg-level">${g.itemLevel??"?"}<small>item level</small>
 </span>
 </article>`).join("")}</div>`:`<div class="cg-empty">

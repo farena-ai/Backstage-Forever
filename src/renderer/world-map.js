@@ -4,7 +4,7 @@
 window.WorldMapView = (() => {
   const api = window.backstage;
   const LAYERS = [
-    ["quest-turnin", "Turn-ins"], ["quest-objective", "Objectives"], ["quest-giver", "Quests to pick up"],
+    ["quest-turnin", "Turn-ins"], ["quest-objective", "Objectives"], ["objective-area", "Objective areas"], ["quest-giver", "Quests to pick up"],
     ["flight", "Flight masters"], ["class-trainer", "Class trainers"], ["profession-trainer", "Profession trainers"], ["vendor", "Vendors"],
     ["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["npc", "Other NPCs"],
   ];
@@ -39,6 +39,7 @@ window.WorldMapView = (() => {
         </div>
         <aside class="wm-side">
           <div class="wm-near" data-wm-near hidden></div>
+          <div class="wm-camps" data-wm-camps hidden></div>
           <div class="wm-card" data-wm-card></div>
           <div class="wm-results" data-wm-results></div>
           <div class="wm-legend" data-wm-legend></div>
@@ -101,6 +102,7 @@ window.WorldMapView = (() => {
     const k = kind;
     if (k === "npc") { fillShape(g, poly(g, x, y, r * 0.45, 4, Math.PI / 4), COLORS.npc, x, y, r * 0.45); return; }
     if (k === "town") return;
+    if (k === "objective-area") { const gr = g.createRadialGradient(x, y, 0, x, y, r * 1.2); gr.addColorStop(0, "rgba(242,210,27,0.85)"); gr.addColorStop(1, "rgba(242,210,27,0.1)"); g.beginPath(); g.arc(x, y, r * 1.2, 0, 7); g.fillStyle = gr; g.fill(); g.setLineDash([3, 2]); g.strokeStyle = "#6b4a10"; g.lineWidth = 1.3; g.stroke(); g.setLineDash([]); return; }
     if (k === "instance") { const gr = g.createRadialGradient(x, y, 2, x, y, r * 1.7); gr.addColorStop(0, "#f3d9ff"); gr.addColorStop(0.5, "#8a3fd1"); gr.addColorStop(1, "rgba(60,10,90,0)"); g.beginPath(); g.arc(x, y, r * 1.7, 0, 7); g.fillStyle = gr; g.fill(); g.strokeStyle = "#2a0d3d"; g.lineWidth = 2; for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(x, y, r * 0.4 + i * r * 0.38, i, i + 4.2); g.stroke(); } return; }
     if (k === "quest-objective") {
       const a = r * 1.5 * zoom ** 0.3; g.beginPath(); g.arc(x, y, a, 0, 7); g.fillStyle = "rgba(217,68,46,0.16)"; g.fill(); g.setLineDash([4, 3]); g.strokeStyle = "rgba(170,40,25,0.85)"; g.lineWidth = 1.5; g.stroke(); g.setLineDash([]);
@@ -118,6 +120,65 @@ window.WorldMapView = (() => {
     if (k === "herb" || (k === "find" && gather !== "ore")) { leaf(g, x, y, r * 0.9, COLORS.herb); if (k === "find") star(g, x + r * 0.65, y - r * 0.65, r * 0.45); return; }
     if (k === "ore" || k === "find") { rock(g, x, y, r * 0.8); if (k === "find") star(g, x + r * 0.65, y - r * 0.65, r * 0.45); return; }
     g.beginPath(); g.arc(x, y, r * 0.7, 0, 7); g.fillStyle = "#999"; g.fill();
+  }
+  // ---------- objective areas ----------
+  // Classic con colours (yellow deepened to read on parchment); amber when the level is unknown.
+  const DIFF = { grey: "#9d9d9d", green: "#3fae3f", yellow: "#e8c81a", orange: "#ff8040", red: "#e8281e" };
+  const DIFF_WORDS = { grey: "too low to give experience", green: "easy for you", yellow: "an even fight", orange: "tough for you", red: "very dangerous for you" };
+  const areaColor = (a) => DIFF[a.difficulty] || "#c0822e";
+  const rgba = (hex, al) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${al})`; };
+  function visibleAreas() { return layers["objective-area"] === false ? [] : (model?.areas || []); }
+  // Map-fraction radius as screen ellipse radii (zone maps are wider than tall).
+  const areaRadii = (a) => [a.radius * canvas.width * view.zoom, a.radius * canvas.height * view.zoom];
+  const areaText = (a) => { const t = a.target ? `${a.target}${a.levels ? ` ${a.levels}` : ""}` : a.label; return t.length > 34 ? t.slice(0, 33) + "…" : t; };
+  function skull(g, x, y, s) {
+    g.save(); g.beginPath(); g.arc(x, y - s * 0.15, s * 0.62, 0, 7); g.rect(x - s * 0.36, y + s * 0.2, s * 0.72, s * 0.42); g.fillStyle = "#f6ead0"; g.fill(); g.strokeStyle = "#2a0d06"; g.lineWidth = 1; g.stroke();
+    g.fillStyle = "#2a0d06"; for (const dx of [-0.24, 0.24]) { g.beginPath(); g.arc(x + dx * s, y - s * 0.15, s * 0.16, 0, 7); g.fill(); } g.fillRect(x - s * 0.04, y + s * 0.18, s * 0.08, s * 0.3); g.restore();
+  }
+  // Soft translucent blobs in the difficulty colour, under every pin; labels only when zoomed in.
+  function drawAreas() {
+    const list = visibleAreas();
+    if (!list.length) return;
+    const w = canvas.width, h = canvas.height, labels = [];
+    for (const a of [...list].sort((p, q) => q.radius - p.radius)) {
+      const [sx, sy] = toScreen(a.x, a.y), [rx, ry] = areaRadii(a);
+      if (sx + rx < 0 || sy + ry < 0 || sx - rx > w || sy - ry > h) continue;
+      const col = areaColor(a), on = a === selected || a === hover;
+      ctx.save();
+      ctx.globalAlpha = (focused && a !== focused.pin ? 0.25 : 1) * (a.status === "available" && !on ? 0.6 : 1);
+      ctx.translate(sx, sy); ctx.scale(1, ry / rx);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+      g.addColorStop(0, rgba(col, 0.42)); g.addColorStop(0.6, rgba(col, 0.24)); g.addColorStop(1, rgba(col, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 7); ctx.fill();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.beginPath(); ctx.ellipse(sx, sy, rx * 0.86, ry * 0.86, 0, 0, 7);
+      ctx.setLineDash(on ? [] : [6, 4]); ctx.lineWidth = on ? 2.4 : 1.4; ctx.strokeStyle = shade(col, 0.6); ctx.stroke(); ctx.setLineDash([]);
+      ctx.restore();
+      if (view.zoom >= 1.8 || on) labels.push(a);
+    }
+    // Labels last so blobs never cover them; overlapping labels are skipped.
+    const placed = [];
+    for (const a of labels.sort((p, q) => (q === selected) - (p === selected))) {
+      const [sx, sy] = toScreen(a.x, a.y), t = areaText(a), elite = a.creature && (a.creature.elite || a.creature.worldboss || a.creature.skull);
+      if (placed.some(([px, py]) => Math.abs(px - sx) < 90 && Math.abs(py - sy) < 18)) continue;
+      placed.push([sx, sy]);
+      ctx.save(); if (focused && a !== focused.pin) ctx.globalAlpha = 0.3;
+      ctx.font = "700 11px 'Source Sans 3', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      const tw = ctx.measureText(t).width + 12 + (elite ? 14 : 0), x0 = sx - tw / 2;
+      ctx.fillStyle = "rgba(30,18,8,0.72)"; ctx.beginPath(); ctx.roundRect(x0, sy - 8, tw, 16, 8); ctx.fill();
+      ctx.strokeStyle = rgba(areaColor(a), 0.9); ctx.lineWidth = 1; ctx.stroke();
+      if (elite) skull(ctx, x0 + 10, sy, 7);
+      ctx.fillStyle = "#fff1d0"; ctx.fillText(t, sx + (elite ? 7 : 0), sy + 0.5);
+      ctx.restore();
+    }
+  }
+  function hitArea(sx, sy) {
+    let best = null;
+    for (const a of visibleAreas()) {
+      const [x, y] = toScreen(a.x, a.y), [rx, ry] = areaRadii(a);
+      if (((sx - x) / rx) ** 2 + ((sy - y) / ry) ** 2 <= 0.86 ** 2 && (!best || a.radius < best.radius)) best = a;
+    }
+    return best;
   }
   function drawPin(p, sx, sy, emphasis) {
     if (focused && p !== focused.pin) { ctx.save(); ctx.globalAlpha = 0.28; drawPinRaw(p, sx, sy, emphasis); ctx.restore(); return; }
@@ -154,6 +215,7 @@ window.WorldMapView = (() => {
     ctx.strokeStyle = art ? "rgba(60,40,18,0.10)" : "rgba(80,55,25,0.18)"; ctx.lineWidth = 1; ctx.fillStyle = "rgba(60,40,18,0.7)"; ctx.font = "11px 'Source Sans 3', sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "top";
     for (let i = 0; i <= 10; i++) { const [gx] = toScreen(i / 10, 0), [, gy] = toScreen(0, i / 10); ctx.beginPath(); ctx.moveTo(gx, oy); ctx.lineTo(gx, ey); ctx.moveTo(ox, gy); ctx.lineTo(ex, gy); ctx.stroke(); if (i < 10) { ctx.fillText(String(i * 10), gx + 3, Math.max(oy, 0) + 3); ctx.fillText(String(i * 10), Math.max(ox, 0) + 3, gy + 3); } }
     if (!art) compassRose(w - 58, h - 62, 38);
+    drawAreas();
     // Pins: overlapping same-kind pins merge into numbered clusters; selection stays visible.
     clusters = [];
     for (const p of visiblePins()) {
@@ -181,7 +243,7 @@ window.WorldMapView = (() => {
       ctx.beginPath(); ctx.moveTo(sx, sy - 6); ctx.lineTo(sx + 5, sy); ctx.lineTo(sx, sy + 6); ctx.lineTo(sx - 5, sy); ctx.closePath(); ctx.fillStyle = "#7a1f14"; ctx.fill();
     }
     if (focused && focused.pin.mapId === model?.mapId) drawFocus(focused);
-    if (selected) { const [sx, sy] = toScreen(selected.x, selected.y); ctx.beginPath(); ctx.arc(sx, sy, 18, 0, 7); ctx.strokeStyle = "#fff6d0"; ctx.lineWidth = 3; ctx.stroke(); ctx.strokeStyle = "#a0701a"; ctx.lineWidth = 1.5; ctx.stroke(); }
+    if (selected && selected.kind !== "objective-area") { const [sx, sy] = toScreen(selected.x, selected.y); ctx.beginPath(); ctx.arc(sx, sy, 18, 0, 7); ctx.strokeStyle = "#fff6d0"; ctx.lineWidth = 3; ctx.stroke(); ctx.strokeStyle = "#a0701a"; ctx.lineWidth = 1.5; ctx.stroke(); }
     if (layers.journey !== false && journey && journey.mapId === model?.mapId) drawJourney(journey);
     // Player: saved marker, live trail, live arrow.
     const pl = model?.player;
@@ -326,6 +388,7 @@ window.WorldMapView = (() => {
     if (focused && focused.pin !== p) focused = null;
     const goal = focused?.goal;
     const goalBox = focused ? `<section class="wm-goal" data-wm-goal><span class="wm-goal-eyebrow">Your goal here</span><h4>${esc(goal?.title || p.label)}</h4>${goal?.steps?.length ? `<ol>${goal.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}<div class="wm-goal-actions">${goal?.questId ? `<button type="button" data-quest-open="${goal.questId}">Open quest</button>` : ""}<button type="button" class="subtle" data-wm-act="unfocus">Show the full map</button></div></section>` : "";
+    if (p.kind === "objective-area") { box.innerHTML = goalBox + areaCard(p); paintIcons(box); return; }
     const details = p.npcId ? (npcFor === p.npcId && npcInfo ? npcSections(npcInfo) : npcInfo === false ? `<p class="wm-note">Details could not be loaded.</p>` : `<p class="wm-note">Loading details…</p>`) : "";
     box.innerHTML = `${goalBox}<div class="wm-card-head">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<div><h3>${esc(p.label)}</h3>${p.sub ? `<p class="wm-sub">${esc(p.sub)}</p>` : ""}</div></div>
       <p class="wm-coords">${esc(model.mapName)} · ${pct(p.x)}, ${pct(p.y)}</p>${relation(p)}
@@ -334,6 +397,41 @@ window.WorldMapView = (() => {
       <p class="wm-src">${esc(p.source || "")}${p.lastSeen ? ` · seen ${esc(p.lastSeen)}` : ""}${p.build ? ` · build ${esc(p.build)}` : ""}</p>`;
     paintIcons(box);
     if (p.npcId && npcFor !== p.npcId) loadNpc(p);
+  }
+  // An objective area: what to do, for which quest, and how hard the creatures are for you.
+  function areaCard(a) {
+    const c = a.creature, lvl = model?.player?.level;
+    const status = a.status === "available" ? "Quest you could pick up (check availability in game)" : "In your quest log";
+    const fight = c ? `<p class="wm-creature"><strong>${esc(c.name || a.target || "Creature")}</strong>${a.levels ? ` · level ${esc(a.levels)}` : ""}${a.difficulty ? ` <span class="wm-diff wm-diff-${esc(a.difficulty)}">${esc(DIFF_WORDS[a.difficulty])}${lvl ? ` at ${esc(lvl)}` : ""}</span>` : ""}${c.elite ? ' <span class="wm-elite">Elite</span>' : ""}${c.hostile ? '<br><small>Attacks on sight.</small>' : ""}</p>` : "";
+    return `<div class="wm-card-head">${ico("objective-area")}<div><h3>${esc(a.label)}</h3><p class="wm-sub">${esc(a.questTitle)}</p></div></div>
+      <p class="wm-roles">${esc(status)}</p>
+      ${a.progress ? `<p class="wm-note">Your progress: <strong>${esc(a.progress)}</strong></p>` : ""}
+      ${fight}
+      ${a.warning ? `<p class="wm-warn" role="note">${esc(a.warning)}</p>` : ""}
+      <p class="wm-coords">${esc(model.mapName)} · ${pct(a.x)}, ${pct(a.y)}</p>${relation(a)}
+      <p class="wm-note">Based on ${esc(a.spots || 1)} spot${a.spots === 1 ? "" : "s"} where players made progress. Spread out nearby if it's busy.</p>
+      <div class="wm-card-actions"><button type="button" class="primary" data-quest-open="${esc(a.questId)}">Open quest</button>${focused?.pin === a ? "" : '<button type="button" data-wm-act="focus-area">Show on map</button>'}<button type="button" data-wm-act="way">Copy waypoint for WoW</button></div>
+      <p class="wm-src">${esc(a.source || "")}</p>`;
+  }
+  // Elite and boss-level objective creatures on this map, as plain warnings.
+  function campsList() {
+    const box = document.querySelector("[data-wm-camps]"); if (!box) return;
+    const camps = layers["objective-area"] === false ? [] : model?.camps || [];
+    box.hidden = !camps.length;
+    box.innerHTML = camps.length ? `<h3>Dangerous here</h3><ul>${camps.map((c, i) => `<li><button type="button" data-wm-camp="${i}">${'<span class="wm-camp-mark" aria-hidden="true">☠</span>'}<span><strong>${esc(c.name)}${c.levels ? ` · ${esc(c.levels)}` : ""}</strong><small>${esc(c.warning || "")}</small><small>For: ${esc(c.quests.map((q) => q.title).join(", "))}</small></span></button></li>`).join("")}</ul>` : "";
+  }
+  // Frame you and the area together when you're on this map, else the area with some margin.
+  function frameArea(a, player) {
+    const me = player?.live || player?.saved;
+    if (me && Number.isFinite(me.x)) { const span = Math.max(Math.abs(me.x - a.x), Math.abs(me.y - a.y)) + a.radius; return { zoom: Math.max(1.4, Math.min(3.2, 0.55 / Math.max(span, 0.05))), cx: (me.x + a.x) / 2, cy: (me.y + a.y) / 2 }; }
+    return { zoom: Math.max(1.6, Math.min(4, 0.15 / Math.max(a.radius, 0.02))), cx: a.x, cy: a.y };
+  }
+  function dialArea(a) {
+    if (!a) return;
+    focused = { pin: a, goal: { title: `Objective: ${a.questTitle}`, questId: a.questId, steps: [a.label, ...(a.warning ? [a.warning] : []), "Your quest log shows how many you still need."] } };
+    selected = a;
+    view = frameArea(a, model?.player);
+    card(); draw();
   }
   // Say why the arrow is not live, in the player's terms.
   function notLive() {
@@ -370,7 +468,7 @@ window.WorldMapView = (() => {
     box._near = near.map((n) => n.p);
     paintIcons(box);
   }
-  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; attrib(); loadArt(model?.mapId); legend(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); draw(); }
+  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; attrib(); loadArt(model?.mapId); legend(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); campsList(); draw(); }
 
   // ---------- data ----------
   // Real zone art from the player's own game install; parchment when unavailable.
@@ -396,6 +494,17 @@ window.WorldMapView = (() => {
       const m = await api.worldMap(next ? { mapId: next } : mapId ? { mapId } : {});
       if (m.mapId !== model?.mapId) { selected = null; view = { zoom: 1, cx: 0.5, cy: 0.5 }; }
       model = m; mapId = m.mapId; error = "";
+      if (pendingFocus && pendingFocus.mapId === m.mapId) {
+        // An objective area from the quest page: the matching area, else a marked spot.
+        const f = pendingFocus;
+        if (f.kind === "objective-area") {
+          const near = (a) => Math.hypot(a.x - f.x, a.y - f.y);
+          let area = (model.areas || []).filter((a) => a.questId === f.questId && (f.index == null || a.index === f.index)).sort((a, b) => near(a) - near(b))[0];
+          if (!area) { area = { id: "focus-area", kind: "objective-area", label: f.sub || f.label, questId: f.questId || null, questTitle: f.goal?.title?.replace(/^Objective: /, "") || f.label, status: "active", mapId: m.mapId, x: f.x, y: f.y, radius: 0.03, spots: 1, creature: null, difficulty: null, source: "From your quest page" }; model.areas = [...(model.areas || []), area]; }
+          pendingFocus = null; selected = area; focused = { pin: area, goal: f.goal || null };
+          view = frameArea(area, m.player);
+        }
+      }
       if (pendingFocus && pendingFocus.mapId === m.mapId) {
         // Prefer the real pin (an NPC from another page); otherwise mark the spot itself.
         const f = pendingFocus;
@@ -446,32 +555,36 @@ window.WorldMapView = (() => {
   }
   function resize() {
     if (!canvas) return;
+    // The canvas's own CSS width (inside the frame's padding), so mouse and canvas pixels agree.
     const box = canvas.parentElement.getBoundingClientRect();
-    const w = Math.max(320, Math.floor(box.width)), h = Math.floor(w * 2 / 3);
+    const w = Math.max(320, Math.floor(canvas.clientWidth || box.width)), h = Math.floor(w * 2 / 3);
     const dpr = 1; canvas.width = w * dpr; canvas.height = h * dpr; canvas.style.height = h + "px";
     parchment = makeParchment(w, h); draw();
   }
+  // Mouse position in canvas pixels (the canvas can be drawn slightly scaled by CSS).
+  const at = (e) => { const r = canvas.getBoundingClientRect(); return [(e.clientX - r.left) * canvas.width / (r.width || canvas.width), (e.clientY - r.top) * canvas.height / (r.height || canvas.height)]; };
   function bind() {
     const root = document.querySelector("[data-world-map]");
     canvas = root.querySelector("[data-wm-canvas]"); ctx = canvas.getContext("2d");
     resize();
     const tip = root.querySelector("[data-wm-tip]");
     canvas.addEventListener("mousemove", (e) => {
-      const r = canvas.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+      const [sx, sy] = at(e);
       if (dragging) { const [ax, ay] = toMap(dragging.x, dragging.y), [bx, by] = toMap(sx, sy); view.cx += ax - bx; view.cy += ay - by; dragging = { x: sx, y: sy, moved: true }; draw(); return; }
-      const p = hit(sx, sy);
-      if (p !== hover) { hover = p; draw(); }
+      const p = hit(sx, sy), a = p ? null : hitArea(sx, sy);
+      if ((p || a) !== hover) { hover = p || a; draw(); }
       const cl = hitCluster(sx, sy);
       if (cl) { tip.hidden = false; tip.style.left = sx + 14 + "px"; tip.style.top = sy + 10 + "px"; tip.innerHTML = `<strong>${cl.pins.length} places</strong><br><small>${cl.pins.slice(0, 4).map((p) => esc(p.label)).join(" · ")}${cl.pins.length > 4 ? " …" : ""}<br>Click to zoom in</small>`; return; }
-      if (p) { tip.hidden = false; tip.style.left = sx + 14 + "px"; tip.style.top = sy + 10 + "px"; tip.innerHTML = `<strong>${esc(p.label)}</strong>${p.sub ? `<br><small>${esc(p.sub)}</small>` : ""}`; } else tip.hidden = true;
+      if (p) { tip.hidden = false; tip.style.left = sx + 14 + "px"; tip.style.top = sy + 10 + "px"; tip.innerHTML = `<strong>${esc(p.label)}</strong>${p.sub ? `<br><small>${esc(p.sub)}</small>` : ""}`; return; }
+      if (a) { tip.hidden = false; tip.style.left = sx + 14 + "px"; tip.style.top = sy + 10 + "px"; tip.innerHTML = `<strong>${esc(a.label)}</strong><br><small>${esc(a.questTitle)}${a.levels ? ` · level ${esc(a.levels)}` : ""}${a.creature?.elite ? " · Elite" : ""}</small>`; } else tip.hidden = true;
     });
     canvas.addEventListener("mouseleave", () => { tip.hidden = true; hover = null; dragging = null; draw(); });
-    canvas.addEventListener("mousedown", (e) => { const r = canvas.getBoundingClientRect(); dragging = { x: e.clientX - r.left, y: e.clientY - r.top, moved: false }; });
-    canvas.addEventListener("mouseup", (e) => { const was = dragging; dragging = null; if (was?.moved) return; const r = canvas.getBoundingClientRect(); const sx = e.clientX - r.left, sy = e.clientY - r.top; const c = hitCluster(sx, sy); if (c && view.zoom < 8) { const [mx, my] = toMap(sx, sy); view = { zoom: Math.min(8, view.zoom * 2), cx: mx, cy: my }; draw(); return; } const p = hit(sx, sy); selected = p; card(); draw(); });
-    canvas.addEventListener("wheel", (e) => { e.preventDefault(); const r = canvas.getBoundingClientRect(); const [mx, my] = toMap(e.clientX - r.left, e.clientY - r.top); const z = Math.min(8, Math.max(1, view.zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2))); view.cx = mx - (mx - view.cx) * (view.zoom / z); view.cy = my - (my - view.cy) * (view.zoom / z); view.zoom = z; if (z === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }, { passive: false });
+    canvas.addEventListener("mousedown", (e) => { const [x, y] = at(e); dragging = { x, y, moved: false }; });
+    canvas.addEventListener("mouseup", (e) => { const was = dragging; dragging = null; if (was?.moved) return; const [sx, sy] = at(e); const c = hitCluster(sx, sy); if (c && view.zoom < 8) { const [mx, my] = toMap(sx, sy); view = { zoom: Math.min(8, view.zoom * 2), cx: mx, cy: my }; draw(); return; } const p = hit(sx, sy) || hitArea(sx, sy); selected = p; card(); draw(); });
+    canvas.addEventListener("wheel", (e) => { e.preventDefault(); const [mx, my] = toMap(...at(e)); const z = Math.min(8, Math.max(1, view.zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2))); view.cx = mx - (mx - view.cx) * (view.zoom / z); view.cy = my - (my - view.cy) * (view.zoom / z); view.zoom = z; if (z === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }, { passive: false });
     canvas.addEventListener("dblclick", () => { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); });
     root.addEventListener("change", (e) => {
-      if (e.target.matches("[data-wm-layer]")) { layers[e.target.dataset.wmLayer] = e.target.checked; savePref(); nearList(); draw(); }
+      if (e.target.matches("[data-wm-layer]")) { layers[e.target.dataset.wmLayer] = e.target.checked; if (!e.target.checked && selected?.kind === e.target.dataset.wmLayer) { selected = null; card(); } savePref(); nearList(); campsList(); draw(); }
       if (e.target.matches("[data-wm-zone]")) { follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; savePref(); load(Number(e.target.value)); }
       if (e.target.matches("[data-wm-follow]")) { follow = e.target.checked; savePref(); if (follow && lastLive) load(lastLive.position.mapId); }
     });
@@ -484,11 +597,14 @@ window.WorldMapView = (() => {
     root.addEventListener("click", async (e) => {
       const np = e.target.closest("[data-wm-near-pin]");
       if (np) { const p = root.querySelector("[data-wm-near]")._near?.[Number(np.dataset.wmNearPin)]; if (p) { selected = p; view = { zoom: Math.max(view.zoom, 2), cx: p.x, cy: p.y }; card(); draw(); } return; }
+      const cp = e.target.closest("[data-wm-camp]");
+      if (cp) { const c = model?.camps?.[Number(cp.dataset.wmCamp)]; dialArea(model?.areas?.find((a) => a.id === c?.areaId)); return; }
       const r = e.target.closest("[data-wm-result]");
       if (r) { const hitR = results.results[Number(r.dataset.wmResult)]; follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; await load(hitR.mapId); selected = model.pins.find((p) => p.id === hitR.id) || { ...hitR }; view = { zoom: 2.2, cx: hitR.x, cy: hitR.y }; card(); draw(); return; }
       const act = e.target.closest("[data-wm-act]")?.dataset.wmAct; if (!act) return;
       if (act === "in" || act === "out") { view.zoom = Math.min(8, Math.max(1, view.zoom * (act === "in" ? 1.5 : 1 / 1.5))); if (view.zoom === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }
       if (act === "reset") { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); }
+      if (act === "focus-area" && selected?.kind === "objective-area") dialArea(selected);
       if (act === "unfocus") { focused = null; view = { zoom: 1, cx: 0.5, cy: 0.5 }; card(); draw(); }
       if (act === "me") { const me = model?.player?.live || model?.player?.saved; if (me) { view = { zoom: Math.max(view.zoom, 2.5), cx: me.x, cy: me.y }; draw(); } }
       if (act === "clear") { results = null; resultsList(); }
@@ -506,5 +622,7 @@ window.WorldMapView = (() => {
   if (api?.onLiveLink) api.onLiveLink(onLive);
   window.addEventListener("resize", () => { if (document.querySelector("[data-world-map]")) resize(); });
   function focus(f) { if (!f || !Number.isSafeInteger(f.mapId)) return; pendingFocus = f; follow = false; mapId = f.mapId; savePref(); if (document.querySelector("[data-world-map]")) load(f.mapId); }
-  return { page, mounted, focus, _state: () => ({ model, selected, view, trail, layers, results, journey, focused }) };
+  // _areaCard renders one objective-area card against a given model (tests).
+  const _areaCard = (a, m) => { const keep = model; model = m; try { return areaCard(a); } finally { model = keep; } };
+  return { page, mounted, focus, _areaCard, _state: () => ({ model, selected, view, trail, layers, results, journey, focused }) };
 })();

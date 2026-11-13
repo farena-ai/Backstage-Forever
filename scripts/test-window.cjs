@@ -14,7 +14,8 @@ async function testWindow(app) {
     for (const window of BrowserWindow.getAllWindows()) {
       place(window);
       window.webContents.setBackgroundThrottling(false);
-      window.show();
+      // Never steal keyboard focus from the player (keys typed in the game must not land here); checks drive input directly.
+      window.showInactive();
     }
     if (other && !globalThis.__bfTestPlacement) {
       globalThis.__bfTestPlacement = true;

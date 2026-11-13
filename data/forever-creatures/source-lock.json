@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "product": "wowf",
+  "build": "1.60.1.70888",
+  "builds": [
+    "1.60.1.70888",
+    "1.60.1.70862",
+    "1.60.1.70840",
+    "1.60.1.70790"
+  ],
+  "commit": "164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1",
+  "license": "CC BY 4.0",
+  "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+  "files": [
+    {
+      "name": "creatures.json",
+      "build": "1.60.1.70888",
+      "bytes": 565733,
+      "sha256": "1bf31b9f4462987773d6f76d269b179153b022442753ec8ead11092e84c2f13a",
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1/data/wowf/1.60.1.70888/creatures.json",
+      "meta": {
+        "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+        "clientBuild": "1.60.1.70888",
+        "collectedOn": {
+          "first": "2026-11-10",
+          "last": "2026-11-12"
+        },
+        "combatLogUploads": 6,
+        "dataset": "creatures",
+        "license": "CC BY 4.0",
+        "product": "wowf",
+        "schemaVersion": 1,
+        "sources": 4
+      }
+    },
+    {
+      "name": "creatures.json",
+      "build": "1.60.1.70862",
+      "bytes": 1154158,
+      "sha256": "e4519dad93fb2394335502f93ae8e33f0282c2e6fae6d1a6fc5fb63b462dbfe7",
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1/data/wowf/1.60.1.70862/creatures.json",
+      "meta": {
+        "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+        "clientBuild": "1.60.1.70862",
+        "collectedOn": {
+          "first": "2026-11-07",
+          "last": "2026-11-12"
+        },
+        "combatLogUploads": 11,
+        "dataset": "creatures",
+        "license": "CC BY 4.0",
+        "product": "wowf",
+        "schemaVersion": 1,
+        "sources": 5
+      }
+    },
+    {
+      "name": "creatures.json",
+      "build": "1.60.1.70840",
+      "bytes": 195916,
+      "sha256": "bfda9311a3698d144cae5feb97b3021a20dfe203f19293039f9a09b63a613b1c",
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1/data/wowf/1.60.1.70840/creatures.json",
+      "meta": {
+        "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+        "clientBuild": "1.60.1.70840",
+        "collectedOn": {
+          "first": "2026-11-09",
+          "last": "2026-11-12"
+        },
+        "dataset": "creatures",
+        "license": "CC BY 4.0",
+        "product": "wowf",
+        "schemaVersion": 1,
+        "sources": 3
+      }
+    },
+    {
+      "name": "creatures.json",
+      "build": "1.60.1.70790",
+      "bytes": 1122140,
+      "sha256": "f4c92a425c4e6c5a2aa559471c29c8b43f7920509740b0fbcd9ea0e00dd46fb7",
+      "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1/data/wowf/1.60.1.70790/creatures.json",
+      "meta": {
+        "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+        "clientBuild": "1.60.1.70790",
+        "collectedOn": {
+          "first": "2026-11-05",
+          "last": "2026-11-12"
+        },
+        "combatLogUploads": 13,
+        "dataset": "creatures",
+        "license": "CC BY 4.0",
+        "product": "wowf",
+        "schemaVersion": 1,
+        "sources": 4
+      }
+    }
+  ],
+  "compiled": {
+    "bytes": 314752,
+    "sha256": "462df142ff5733f8b9b89fc4aeaf8e3fa9033136eaa0bf6475c7ee0b09a96b97"
+  }
+}

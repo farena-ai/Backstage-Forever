@@ -7,12 +7,13 @@ const { loadTravelReference } = require("../src/core/travel-data.cjs");
 const { loadVendorPack } = require("../src/core/vendor-facts.cjs");
 const { loadAcquisitionPack } = require("../src/core/acquisition-data.cjs");
 const { loadBundledInsights } = require("../src/core/insights-data.cjs");
+const { loadCreaturePack, creatureIndex } = require("../src/core/creature-data.cjs");
 const root = path.join(__dirname, "..");
 const read = (p) => JSON.parse(fs.readFileSync(path.join(root, p), "utf8"));
 const index = new KnowledgeIndex(read("data/forever/pack.json"));
 function make(profile, live = null) {
   const state = { activeProfileId: "A", profiles: [{ id: "A", ...profile }] };
-  return new WorldMap({ getState: () => state, knowledge: { bundled: index, index: () => index }, npcReference: read("data/forever-npc-locations/pack.json"), travelReference: loadTravelReference(fs.readFileSync(path.join(root, "data/forever-travel/pack.json"))), vendorPack: loadVendorPack(), insights: loadBundledInsights(), acquisitionPack: loadAcquisitionPack(), live: { status: () => ({ frame: live }) } });
+  return new WorldMap({ getState: () => state, knowledge: { bundled: index, index: () => index }, npcReference: read("data/forever-npc-locations/pack.json"), travelReference: loadTravelReference(fs.readFileSync(path.join(root, "data/forever-travel/pack.json"))), vendorPack: loadVendorPack(), insights: loadBundledInsights(), acquisitionPack: loadAcquisitionPack(), creaturePack: loadCreaturePack(), live: { status: () => ({ frame: live }) } });
 }
 const player = { name: "P", level: 15, faction: "Horde", location: { zone: "The Barrens", mapId: 1413, x: 0.52, y: 0.29 }, quests: [{ id: 96, title: "Call of Water", complete: true, objectives: [] }], gathering: { records: [{ id: "g1", method: "mining", mapId: 1413, x: 0.4, y: 0.5, name: "Copper Vein", observedAt: "2026-11-11T10:00:00Z" }] } };
 
@@ -111,4 +112,87 @@ test("an NPC card says who they are and what they offer this character", () => {
 test("searching a specific trainer ranks the exact match above any nearby trainer", () => {
   const r = make(player).search("hunter trainer").results;
   assert.match(r[0].sub, /Hunter Trainer/);
+});
+
+test("classic difficulty colours follow the grey threshold and the +3/+5 steps", () => {
+  const { difficulty, greyLevel } = require("../src/core/world-map.cjs");
+  assert.deepEqual([1, 5, 10, 20, 39, 40, 60].map(greyLevel), [0, 0, 4, 13, 31, 31, 47]);
+  const at = (L) => (m) => difficulty(L, m);
+  assert.deepEqual([4, 5, 8, 12, 13, 14, 15, 30].map(at(10)), ["grey", "green", "yellow", "yellow", "orange", "orange", "red", "red"]);
+  assert.deepEqual([1, 2, 4, 6, 8].map(at(3)), ["yellow", "yellow", "yellow", "orange", "red"], "nothing is grey or green within two levels");
+  assert.deepEqual([1, 2].map(at(5)), ["green", "green"], "nothing is grey up to level 5");
+  assert.deepEqual([1, 2, 3].map(at(6)), ["grey", "green", "green"]);
+  assert.deepEqual([22, 23, 27, 28, 32, 33, 35].map(at(30)), ["grey", "green", "green", "yellow", "yellow", "orange", "red"]);
+  assert.deepEqual([47, 48, 57, 58, 62, 63, 65].map(at(60)), ["grey", "green", "green", "yellow", "yellow", "orange", "red"]);
+  assert.equal(difficulty(20, null, true), "red", "a skull is always red");
+  assert.equal(difficulty(null, 10), null, "no level, no colour");
+});
+
+test("objective spots become a centre and radius per cluster; lone far spots are dropped", () => {
+  const { areaShapes } = require("../src/core/world-map.cjs");
+  const around = (x, y, n, d = 0.008) => Array.from({ length: n }, (_, i) => ({ mapId: 1, x: x + d * Math.cos(i), y: y + d * Math.sin(i) }));
+  const shapes = areaShapes([...around(0.5, 0.5, 10), ...around(0.8, 0.2, 4), { mapId: 1, x: 0.1, y: 0.9 }]);
+  assert.equal(shapes.length, 2);
+  assert.ok(Math.abs(shapes[0].x - 0.5) < 0.003 && Math.abs(shapes[0].y - 0.5) < 0.003 && shapes[0].spots === 10);
+  assert.ok(shapes[0].radius >= 0.018 && shapes[0].radius <= 0.03, "radius covers the spots with a little margin");
+  assert.equal(shapes[1].spots, 4);
+  assert.deepEqual(areaShapes([{ mapId: 1, x: 0.3, y: 0.3 }]), [{ x: 0.3, y: 0.3, radius: 0.018, spots: 1 }]);
+  assert.deepEqual(areaShapes([]), []);
+  // A huge spread is capped.
+  assert.ok(areaShapes(Array.from({ length: 30 }, (_, i) => ({ mapId: 1, x: 0.1 + i * 0.02, y: 0.5 })))[0].radius <= 0.12);
+});
+
+test("objective areas name the creature, its levels, your difficulty colour and elite warnings", () => {
+  const { objectiveAreas, hostileCamps } = require("../src/core/world-map.cjs");
+  const spots = (x, y) => Array.from({ length: 6 }, (_, i) => ({ mapId: 1411, x: x + i * 0.004, y }));
+  const record = { id: 900, title: "Pirate Trouble", objectives: [{ index: 1, type: "monster", required: 12, objectId: 3381 }, { index: 2, type: "monster", required: 1, objectId: 448 }, { index: 3, type: "item", required: 5, objectId: 5 }, { index: 4, type: "monster", required: 1, objectId: 3098 }] };
+  const locs = [{ index: 1, type: "monster", positions: spots(0.6, 0.4) }, { index: 2, type: "monster", positions: spots(0.2, 0.2) }, { index: 3, type: "item", positions: [...spots(0.7, 0.7), { mapId: 1413, x: 0.1, y: 0.1 }] }, { index: 4, type: "monster", positions: spots(0.4, 0.8) }];
+  const index = { pack: { build: "b", quests: {}, npcs: {}, creatures: { 3381: { name: "Southsea Brigand" }, 448: { name: "Hogger" } }, items: { 5: { name: "Shiny Shell" } } },
+    details: () => ({ status: "match", record, objectiveLocations: locs, turnIns: [] }) };
+  const profile = { level: 10, faction: "Horde", quests: [{ id: 900, title: "Pirate Trouble", complete: false, objectives: [{ text: "3/12 Southsea Brigand slain", done: false }, { text: "0/1 Hogger slain", done: false }, { text: "0/5 Shiny Shell", done: false }, { text: "1/1 Mottled Boar slain", done: true }] }] };
+  const areas = objectiveAreas(profile, index, creatureIndex(loadCreaturePack()), 1411);
+  assert.deepEqual(areas.map((a) => a.label), ["Kill 12 Southsea Brigand", "Kill Hogger", "Collect 5 Shiny Shell"], "done objectives and other maps are left out");
+  const [brigand, hogger, shells] = areas;
+  assert.equal(brigand.kind, "objective-area");
+  assert.equal(brigand.questTitle, "Pirate Trouble");
+  assert.equal(brigand.status, "active");
+  assert.equal(brigand.progress, "3/12 Southsea Brigand slain");
+  assert.equal(brigand.levels, "12–13");
+  assert.equal(brigand.difficulty, "orange", "level 13 is +3 for a level 10");
+  assert.equal(brigand.creature.hostile, true);
+  assert.equal(brigand.warning, null);
+  assert.ok(Math.abs(brigand.x - 0.61) < 0.001 && brigand.y === 0.4 && brigand.radius >= 0.018);
+  assert.equal(hogger.creature.elite, true);
+  assert.equal(hogger.difficulty, "yellow");
+  assert.match(hogger.warning, /^Hogger is elite \(level 11\): much tougher than a normal enemy\. Bring a group/);
+  assert.equal(shells.creature, null);
+  assert.equal(shells.difficulty, null);
+  // At level 16 Hogger is green and soloable (grey from 17), and the camp list warns once per creature.
+  const later = objectiveAreas({ ...profile, level: 16 }, index, creatureIndex(loadCreaturePack()), 1411);
+  assert.equal(later[1].difficulty, "green");
+  assert.match(later[1].warning, /You out-level it/);
+  const camps = hostileCamps(areas);
+  assert.deepEqual(camps.map((c) => [c.name, c.levels, c.elite, c.quests.map((q) => q.title)]), [["Hogger", "11", true, ["Pirate Trouble"]]]);
+  assert.equal(camps[0].areaId, hogger.id);
+  // Without the creature reference the areas remain, without levels or colours.
+  assert.equal(objectiveAreas(profile, index, null, 1411)[0].levels, null);
+});
+
+test("zone maps carry objective areas and hostile camps for the selected character", () => {
+  const durotar = make({ ...player, level: 6, location: { zone: "Durotar", mapId: 1411, x: 0.5, y: 0.5 }, quests: [] }).build({ mapId: 1411 });
+  assert.ok(durotar.areas.length >= 10);
+  assert.equal(durotar.counts["objective-area"], durotar.areas.length);
+  assert.ok(durotar.areas.every((a) => a.mapId === 1411 && a.radius > 0 && a.radius <= 0.12 && a.status === "available"));
+  const sailor = durotar.areas.find((a) => a.target === "Kul Tiras Sailor");
+  assert.equal(sailor.difficulty, "yellow");
+  assert.equal(sailor.creature.hostile, true);
+  const barrens = make({ ...player, level: 20 }).build({ mapId: 1413 });
+  const pillager = barrens.camps.find((c) => c.name === "Outraged Pillager");
+  assert.ok(pillager?.elite && /elite/.test(pillager.warning));
+  // An Alliance character never gets Horde-only quest areas.
+  const elwynn = make({ ...player, faction: "Alliance", level: 6, quests: [] }).build({ mapId: 1429 });
+  assert.ok(elwynn.areas.length >= 5 && elwynn.areas.some((a) => a.target === "Kobold Worker"));
+  const quests = read("data/forever/pack.json").quests;
+  const allyDurotar = make({ ...player, faction: "Alliance", level: 6, quests: [] }).build({ mapId: 1411 }).areas;
+  assert.ok(allyDurotar.length < durotar.areas.length && allyDurotar.every((a) => !quests[a.questId].sides?.length || quests[a.questId].sides.includes("Alliance")));
 });

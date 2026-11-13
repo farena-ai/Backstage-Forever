@@ -40,7 +40,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.waitForTimeout(2500);
     await page.locator(".quest-rewards-section").scrollIntoViewIfNeeded();
     await page.waitForTimeout(500);
-    const box = await page.locator(".quest-rewards-section").boundingBox();
+    const sel = process.env.BF_PREVIEW_SECTION || ".quest-rewards-section"; await page.locator(sel).scrollIntoViewIfNeeded(); const box = await page.locator(sel).boundingBox();
     await page.screenshot({ path: out, fullPage: false, clip: box ? { x: Math.max(0, box.x - 10), y: Math.max(0, box.y - 10), width: Math.min(1100, box.width + 20), height: Math.min(900, box.height + 20) } : undefined });
     console.log("preview", out);
   } catch (e) { console.error(e); process.exitCode = 1; }

@@ -1,6 +1,6 @@
 # Backstage Forever roadmap
 
-Where the companion goes next. Written 2026-11-12, after 0.20.0; updated 2026-11-13 for 0.21.0. Ordered by value to a player: a beginner should feel guided, and a veteran should feel faster.
+Where the companion goes next. Written 2026-11-12, after 0.20.0; updated 2026-11-13 for 0.24.0 (Now fixes, Tier 1.9, Tier 2.5). Ordered by value to a player: a beginner should feel guided, and a veteran should feel faster.
 
 **Sizes:** S = a day or less · M = a few days · L = a week or more · XL = a multi-release program.
 **Where:** Game = the addon · App = the desktop app · Both.
@@ -68,6 +68,48 @@ These come from hands-on use. Clicking through from Now must take you straight t
 | D6 | **Data coverage view.** A small Help page listing how much we know per zone and per faction (quest givers, objectives, trainers, vendors), where data is thin, and when it last refreshed. | S | App | Honest about gaps; guides where to improve. |
 | D7 | **Visual consistency for detail cards.** Quest, NPC, item and zone cards share one visual system: portrait or crest, colour-coded chips, icons and mini maps. This is art pass 2's companion work. | M | App | Keeps "lots of information" beautiful rather than busy. |
 
+## Tier 1.6 — Quest intel: "how do I actually do this?" (top priority, 0.24)
+
+From play: on "That Shadowvale Green Elixir" the companion knew where to go but not how. Are the bottles dropped by enemies or lying in the ruins? A web search answered it at once. The answer was in the quest's own text ("Travel to the ruins of Shadowvale... recover some bottles"), which the app never had. Every quest should get a plain **How to do it**.
+
+| # | Feature | Size | Where | Why it matters |
+|---|---|---|---|---|
+| Q1 | **Your quest log's full text.** The addon saves the description and objectives of quests in your log (your own data, kept locally). Quest pages show them, and the companion reads them. | S–M | Both | The quest text often says exactly what to do and where. |
+| Q2 | **Learn item sources from your own play.** When you loot a quest item, the addon notes whether it came from a creature or an object, and which one and where. The app then says "found in crates and bottles in the ruins" or "dropped by Rot Hide Gnolls". | M | Both | Covers Forever-only quests that no shared data knows. |
+| Q3 | **Community drop data.** Use the shared loot and object datasets: "dropped by Southsea Brigand (31%)", "loot from Food Crate objects". | M | App | Most classic quests are covered. |
+| Q4 | **How to do it box.** Built from objective type (kill / collect from enemies / pick up objects / use an item / talk / explore), the item sources, the area, levels and elites, plus the quest text. It shows on quest pages, Now and the map's goal card. | M | App | One clear answer instead of guesswork. |
+| Q5 | **Smarter companion answers.** The companion gets tools for quest text and item sources. When local knowledge is thin, it can do an opt-in web lookup through your own AI provider, with sources cited. | M | App | Matches what a quick web search gives, inside the app. |
+| Q6 | **`/bf how` in game.** The How to do it answer for your tracked or nearest quest, in chat. | S | Game | Answer without alt-tabbing. |
+
+## Tier 1.7 — Always current, without /reload
+
+Frank asked whether Refresh on Now could do the `/reload` itself. It can't: the app never sends keys or commands to the game. That would be game automation, which Backstage Forever doesn't do and Blizzard's rules forbid. What we can do is make reloads unnecessary for staying current:
+
+| # | Feature | Size | Where | Why it matters |
+|---|---|---|---|---|
+| R1 | **Live strip v4 with pages.** The strip cycles through extra pages a few times per second: the quest log (ids and completion), objective progress counts, money, bag space, equipped item ids. Now, the quest log and the gear review then update while you play, with no `/reload` needed. Saved files still fill in the rest at logout. | M–L | Both | Now never falls behind during play. |
+| R2 | **Clear freshness.** Each Now card shows whether it is live or from your last save, and when that save was. Refresh re-reads the save and live state at once. | S | App | You can see at a glance what's current. |
+| R3 | **Smarter update timing.** After an app update, the reload banner names the exact moment the new addon landed, so a reload done a few seconds too early is obvious. | S | App | Removes "I reloaded but it's still there". |
+
+## Tier 1.8 — A free companion for everyone, one click to start
+
+Frank asked for a companion that costs players nothing, and it must be **one click to install and super easy to get running**: no accounts, no terminals, no separate installs. Backstage Forever won't host an AI service itself (that would be a paid service run by us). The plan:
+
+| # | Feature | Size | Where | Why it matters |
+|---|---|---|---|---|
+| F1 | **Quick answers, zero setup.** Always on, with nothing to install: the most common questions are answered instantly from the app's own knowledge ("how do I do this quest", "where is X", "what should I do next", "what do I train", "how do I get to Y"). Works offline. NPC and travel answers already work this way; this extends it to quests, how-to, training and next steps. | M | App | Every player has a useful companion from the first launch. |
+| F2 | **"Turn on free AI": one click.** A single button in the Companion. The app checks the PC, downloads a small free model that suits it (a progress bar, about 2–5 GB, resumable), and runs it with a local AI engine built into the app. Then it says "Ready" and the chat just works. No Ollama, no account, no key, and nothing leaves the PC. It includes a one-click remove that frees the disk space. | L | App | The free, private, full AI companion, as easy as installing an app. |
+| F3 | **Slow PC? Free cloud option, guided.** If the PC can't run a local model well, the same button offers a free hosted tier instead (for example Google's Gemini API or Groq), opening the provider's own page to get a free key and pasting it back automatically where possible. The app is upfront about rate limits and that some free tiers may use questions for training. | M | App | A free option for every computer. |
+| F4 | **Advanced: Ollama and paid providers.** These stay available in Settings for players who already use them; they're no longer the main path. | S | App | Nothing is taken away. |
+
+## Tier 1.9 — Now page fixes (Frank's report, 0.25)
+
+| # | Fix | Size | Where | Why it matters |
+|---|---|---|---|---|
+| N1 | **Done is done.** Quests this character has already turned in never show up as something to pick up or do. If a finished quest has to appear (a chain, a hand-in history), it wears a clear green **Completed** tag and is dimmed. The completed list comes from the addon's saved quest history, plus the live strip once R1 lands. | S–M | Both | Old quests on Now confuse players about what's left. |
+| N2 | **Tidy right column.** Fix the odd gap between the two boxes in Now's centre-right column, so the cards stack evenly at every window size. A layout check in the Now test keeps it from coming back. | S | App | A neat page reads at a glance. |
+| N3 | **Sidebar fits on open.** At the default window size, the top seven links on the left menu fit without a scroll bar. That means tighter spacing, a compact header, and the scroll area starting below the main links. | S | App | The first thing a new player sees shouldn't need scrolling. |
+
 ## Tier 2 — Core guidance upgrades (next 2–4 releases)
 
 | # | Feature | Size | Where | Why it matters |
@@ -81,6 +123,25 @@ These come from hands-on use. Clicking through from Now must take you straight t
 | 2.7 | **Dungeon readiness.** For each dungeon: the right level band, quests to pick up first and where, what to bring, and a "you're ready" check against your level and gear. | M | App | Dungeons are where new players get lost or underprepared. |
 | 2.8 | **Profession leveling helper.** Skill-up color for each recipe (orange/yellow/green), the cheapest next recipe, a materials shopping list, and gathering routes from the find index. | M–L | Both | Professions are a maze without guidance. |
 | 2.9 | **Hearthstone advice.** "Your hearth is in Razor Hill, but your quests are in the Barrens. Set it at the Crossroads inn." | S | Both | Saves long runs. |
+
+## Tier 2.5 — Everything about where you are and what you can do
+
+The goal: open the app (or type `/bf`) and know everything useful about your spot in the world, as pictures first and words second. Every item is one click, needs no setup, and covers Horde and Alliance equally.
+
+| # | Feature | Size | Where | Why it matters |
+|---|---|---|---|---|
+| E1 | **Zone briefing.** A "You are here" card for the current zone: level band, quest hubs and how many quests are open to you, flight master, inn, trainers for your class and professions, repair and ammo/food vendors, dangerous elites and rares, and herb/ore/fishing spots. Each one opens the map dialed in on it. | M | App | One glance answers "what's around me?" |
+| E2 | **Shopping and supplies.** Knows your class: arrows/bullets, food and water at the right level, reagents, poisons, soul shards. Says when you're running low and the nearest vendor that sells them. | M | Both | Running out mid-quest is a classic beginner trap. |
+| E3 | **Trainer planner.** What you'll learn at the next trainer visits, what it costs, and whether you can afford it, along with weapon skill trainers worth visiting. | S–M | Both | No surprise trips back to town. |
+| E4 | **Mount and gold goals.** A savings tracker for the level 40 mount (and later epic mount): gold per hour this week, whether you're on pace, and which grey items or crafts to sell. | M | App | The biggest money goal in leveling, made visible. |
+| E5 | **Class quest chains and key unlocks.** Class quests, weapon and totem quests, pets, forms, dungeon attunements: when they open, where they start, and the full chain on one page with steps and rewards. | L | App | These are easy to miss and hard to piece together. |
+| E6 | **Reputation and factions.** Where your reputations stand, the fastest quests and turn-ins to raise them, and what each standing unlocks. | M | App | Rewards most players never notice. |
+| E7 | **Death review.** After a death: what killed you (from the combat log your addon already sees), its level and elite status, and one plain tip. | M | Game | Turns deaths into lessons, not frustration. |
+| E8 | **Professions, deep.** Building on 2.8: recipe trainers and vendor recipes on the map, gathering routes for your skill level, what to craft for profit or for your own gear, and a skill-up countdown. | L | Both | "Essentially everything" for professions. |
+| E9 | **Rested and play-time planner.** Rested XP, where to log off (inn or city), and how many levels tonight's session should give you. | S | Both | Small, satisfying, and very useful. |
+| E10 | **One-click setup, all the way.** The first launch finds WoW automatically, installs and updates the addon, turns on the live link, and checks everything with green ticks. No folders, no files, no terminals. Problems are fixed with a "Fix it" button, not instructions. | M | App | Super easy for every player, from the first minute. |
+| E11 | **Info everywhere.** Hover any quest, NPC, item, zone or spell anywhere in the app to get a rich card (icon, level, where, rewards, who drops it), consistent across pages (the D7 card system). | M–L | App | Information is the lifeline. |
+| E12 | **Over-the-top extras.** Animated zone arrival banners in the app, a level-up replay reel for the session, a "story so far" chapter page per character with zone art, and achievement-style badges painted locally with ComfyUI. | M per item | App | Fun keeps people playing. |
 
 ## Tier 3 — Delight and depth
 
@@ -137,9 +198,12 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
   - 2.1 reward picker, 2.2 upgrade tooltips, 2.6 talent coach.
   - 2.9 hearth advice, 1.3 no-XP quest hints, 1.5 helper switches, class crests.
   - Moved to 0.24: D7 card system, gear review with icons on Characters, 1.9 remote live-link check.
-- **0.24:** 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness, D7 card system, gear review with icons.
-- **0.25–0.27:** 2.3 route stepper, 2.8 professions.
-- **0.28+:** Tier 3, then the 4.1 full guided route.
+- **0.24 (shipped):** Quest intel Q1–Q6, 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness, gear review with icons. D7 card system moves to 0.25.
+- **0.25:** N1–N3 Now fixes (first), R1–R3 always current without /reload, F1 quick answers (zero setup), E10 one-click setup, then 2.3 route stepper.
+- **0.26:** F2 "Turn on free AI" one click (built-in local engine), F3 free cloud fallback, E1 zone briefing, E2 supplies, E3 trainer planner.
+- **0.27:** 2.8 + E8 professions, D7/E11 card system, 1.9 remote live-link check, E9 rested planner.
+- **0.28:** E4 mount and gold goals, E5 class quest chains, E6 reputation, E7 death review, Tier 3 starts (session history, world tracker).
+- **0.29+:** the rest of Tier 3 and E12 extras, then the 4.1 full guided route.
 - **1.0:** after Frank's hands-on acceptance.
 
 Keep this file and Help → Commands updated with each release.

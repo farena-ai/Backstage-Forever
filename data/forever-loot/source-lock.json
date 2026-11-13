@@ -1,0 +1,22 @@
+{
+  "publisher": "Efficient Games",
+  "repository": "JIVESCORP/eg-link-output-wowf",
+  "commit": "164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1",
+  "builds": [
+    "1.60.1.70888",
+    "1.60.1.70862",
+    "1.60.1.70840",
+    "1.60.1.70790"
+  ],
+  "license": "CC BY 4.0",
+  "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+  "files": [
+    "loot.json",
+    "npcs.json",
+    "object_details.enUS.json"
+  ],
+  "normalization": "Only items that are quest objectives; per source kind (npc/object), id, name, observed chance and drop count; at most 6 sources per item.",
+  "items": 485,
+  "bytes": 60036,
+  "sha256": "d8af3f243f24d92179167d5cf12614f52f2b49808f2a4c1a184220d38918258c"
+}

@@ -1,7 +1,7 @@
 {
   "name": "backstage-forever",
   "productName": "Backstage Forever",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "releaseChannel": "preview",
   "description": "A local-first adventure companion from Backstage Coding. Designed by Frank Arena.",
   "author": "Frank Arena / Backstage Coding",
@@ -62,11 +62,13 @@
     "check:forever-acquisition": "node scripts/build-forever-acquisition.cjs --check",
     "test:acquisition": "node --test tests/acquisition-data.test.cjs",
     "check:forever-npc-locations": "node scripts/build-forever-npc-locations.cjs --check",
+    "check:forever-creatures": "node scripts/build-forever-creatures.cjs --check",
     "test:npc-companion": "node scripts/npc-companion-smoke.cjs",
     "test:companion-tools": "node scripts/companion-tools-smoke.cjs",
     "test:live-link": "node scripts/live-link-smoke.cjs",
     "test:world-map": "node --test tests/world-map.test.cjs && node scripts/world-map-smoke.cjs",
-    "test:now": "node --test tests/leveling.test.cjs && node scripts/now-smoke.cjs"
+    "test:now": "node --test tests/leveling.test.cjs && node scripts/now-smoke.cjs",
+    "check:forever-loot": "node scripts/build-forever-loot.cjs --check"
   },
   "devDependencies": {
     "electron": "45.2.3",

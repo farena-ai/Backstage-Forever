@@ -106,7 +106,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     await app.evaluate(({ ipcMain }) => { ipcMain.removeHandler("backstage:gameStatus"); ipcMain.handle("backstage:gameStatus", () => ({ connected: true, addonCurrent: true, addonVersion: "0.21.0", loadedCaptureVersion: "0.20.0", runtime: { state: "running" } })); });
     await page.locator('[data-nav="now"]').first().click();
     await page.locator('[data-now-act="refresh"]').click();
-    await page.locator(".now-reload").getByText(/still running Backstage Forever 0\.20\.0/).waitFor();
+    await page.locator(".now-reload").getByText(/last save came from Backstage Forever 0\.20\.0/).waitFor();
     // Help → Commands explains every command and filters as you type.
     await page.locator('[data-nav="guide"]').first().click();
     await page.locator('[data-nav="commands"]').first().click();

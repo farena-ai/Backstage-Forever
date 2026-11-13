@@ -7,3 +7,12 @@
 .cg-hero::after{content:"✧";position:absolute;right:22px;top:13px;color:#e1c67a;opacity:.7;font-size:25px;text-shadow:0 2px 10px #000}
 .cg-race{padding:16px 28px;border-bottom:1px solid #bda47725;background:#060c1329}.cg-race p{margin:6px 0 0}
 .character-guidance .cg-status-message{margin:0;padding:12px 28px;border-bottom:1px solid #bda47725;color:#d2c7ac;font-size:13px}
+
+/* Gear review with game details. */
+.cg-weakest { margin: 8px 0 12px; padding: 10px 12px; border-radius: 8px; background: rgba(217,130,42,.14); border: 1px solid rgba(217,130,42,.6); }
+.cg-weakest ul { margin: 6px 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.cg-rate { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 8px; font-size: 11px; font-weight: 800; color: #fff; background: #d9822a; }
+.cg-rate.replace { background: #b23a2a; }
+.cg-gear .cg-slot canvas { display: block; margin-bottom: 4px; border-radius: 4px; }
+.cg-gear.rate-replace { border-left: 4px solid #b23a2a; } .cg-gear.rate-aging { border-left: 4px solid #d9822a; } .cg-gear.rate-fresh { border-left: 4px solid #3c9a2e; }
+.cg-stats { color: #2e7a22; font-weight: 600; }

@@ -112,7 +112,7 @@ window.NowView = (() => {
     if (sig === "unreadable") return `<div class="now-reload" role="status"><strong>Live link can't read the game</strong><span>The strip is on screen but its colours are being changed (HDR, Night light, a colour filter or a remote session). Type <code>/reload</code> in WoW once; if this stays, turn the filter off for WoW. Until then this page shows your last save.</span></div>`;
     const g = setup?.game;
     if (!g?.connected || !g.addonCurrent || g.runtime?.state !== "running" || !g.loadedCaptureVersion || !g.addonVersion || g.loadedCaptureVersion === g.addonVersion) return "";
-    return `<div class="now-reload" role="status"><strong>Type <code>/reload</code> in WoW</strong><span>The game is still running Backstage Forever ${esc(g.loadedCaptureVersion)}. Reloading loads ${esc(g.addonVersion)} with the newest helpers.</span></div>`;
+    return `<div class="now-reload" role="status"><strong>Type <code>/reload</code> in WoW</strong><span>Your last save came from Backstage Forever ${esc(g.loadedCaptureVersion)}; the installed addon is ${esc(g.addonVersion)}. If you just reloaded, the update probably landed a moment later: reload once more and this goes away within a few seconds.</span></div>`;
   }
   function body() {
     if (error) return `<div class="now-card"><p>${esc(error)}</p></div>`;

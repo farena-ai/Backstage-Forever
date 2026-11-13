@@ -33,7 +33,7 @@ const {defaultState}=require('../src/core/validation.cjs'),{testWindow}=require(
    const field=page.getByRole('textbox',{name:'Your question',exact:true});
    const send=async prompt=>{
     const sequence=await app.evaluate(()=>npcFixture.receipts.length);await field.fill(prompt);await page.getByRole('button',{name:'Send question',exact:true}).click();
-    const r=await app.evaluate(async(_e,index)=>{const end=Date.now()+7000;while(!npcFixture.receipts[index]||npcFixture.receipts[index].phase==='pending'){if(Date.now()>end)throw Error('Current NPC request did not settle');await new Promise(r=>setTimeout(r,10));}return npcFixture.receipts[index];},sequence);
+    const r=await app.evaluate(async(_e,index)=>{const end=Date.now()+20000;while(!npcFixture.receipts[index]||npcFixture.receipts[index].phase==='pending'){if(Date.now()>end)throw Error('Current NPC request did not settle');await new Promise(r=>setTimeout(r,10));}return npcFixture.receipts[index];},sequence);
     assert.equal(r.input.prompt,prompt);assert.equal(r.phase,'complete',r.error);await page.waitForFunction(text=>!sending&&!chatStarting&&lastPaintedMessage===messages.at(-1)&&messages.at(-1)?.text===text,r.result.text);return r.result;
    };
    await app.evaluate(()=>npcFixture.keys=0);

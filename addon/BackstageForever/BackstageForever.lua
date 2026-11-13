@@ -241,6 +241,54 @@ local function clientBuild()
     version=clean(version,30);build=clean(build,12)
     if version and build and version:match('^%d+%.%d+%.%d+$') and build:match('^%d+$') then return version..'.'..build end
 end
+-- Quest text from the player's own quest log, kept only in their local export
+-- (the app never bundles quest text). Escape codes and $ tokens are removed;
+-- whitespace collapses to single spaces and long text is cut at a word.
+local function plainQuestText(value,limit)
+    value=public(value)
+    if type(value)~='string' or value=='' or #value>20000 then return nil end
+    value=value:gsub('|c%x%x%x%x%x%x%x%x',''):gsub('|r',''):gsub('|T.-|t',''):gsub('|H.-|h(.-)|h','%1'):gsub('||','|')
+    value=value:gsub('%$[Gg]([^:;]*):[^;]*;','%1'):gsub('%$[Bb]',' '):gsub('%$[NnCcRr]','adventurer')
+    value=value:gsub('[%z\1-\31\127]',' '):gsub('%s+',' '):gsub('^ ',''):gsub(' $','')
+    if value=='' then return nil end
+    if #value>limit then
+        local cut=value:sub(1,limit-3)
+        cut=cut:match('^(.*%S) ') or cut:gsub('[\192-\255][\128-\191]*$','')
+        value=cut..'...'
+    end
+    return value
+end
+BackstageForeverPlainQuestText=plainQuestText
+-- Quest text never changes, so each quest is read once per session: select the
+-- log entry, read it, and restore the player's own selection straight away.
+local questTextCache,questTextCount,questTextTried={},0,{}
+local function questText(index,id)
+    local cached=questTextCache[id]
+    if cached then return {description=cached.description,objectives=cached.objectives} end
+    -- Text the client has not loaded yet is retried at most every 30 seconds, so a
+    -- selection change can never keep re-triggering captures.
+    local tick=call(GetTime)
+    if type(tick)~='number' then return nil end
+    if questTextTried[id] and tick-questTextTried[id]<30 and tick>=questTextTried[id] then return nil end
+    questTextTried[id]=tick
+    local get,choose,selection=public(GetQuestLogQuestText),public(SelectQuestLogEntry),public(GetQuestLogSelection)
+    if type(get)~='function' or type(choose)~='function' or type(selection)~='function' then return nil end
+    local previous=integer(call(selection),0,1000)
+    if not previous or not integer(index,1,1000) then return nil end
+    local ok,description,objectives=pcall(function()choose(index);return get(index)end)
+    pcall(choose,previous)
+    if not ok then return nil end
+    description=plainQuestText(description,1200);objectives=plainQuestText(objectives,400)
+    if not description and not objectives then return nil end
+    -- Only complete reads are cached; text the client has not loaded yet is retried.
+    if questTextCount>=100 then questTextCache,questTextCount,questTextTried={},0,{} end
+    questTextCache[id]={description=description,objectives=objectives};questTextCount=questTextCount+1
+    return {description=description,objectives=objectives}
+end
+function BackstageForeverQuestLogText(index,id)
+    index=integer(index,1,1000);id=integer(id,1,2147483647)
+    if index and id then return questText(index,id) end
+end
 local function quests(currentMap)
     local api=public(C_QuestLog)
     local rawCount,rawTotal=call(field(api,'GetNumQuestLogEntries'))
@@ -279,6 +327,7 @@ local function quests(currentMap)
                 local q={id=id,title=title,complete=complete,objectives=objectives,zone=zone}
                 q.level=integer(field(info,'level'),0,1000)
                 q.destination=destination(api,q,context)
+                local ok,text=pcall(questText,i,id);if ok and type(text)=='table' then q.text=text end
                 result[#result+1]=q
                 if #result>=25 then break end
             end
@@ -566,7 +615,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.23.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.24.0'
     character.race=clean((call(UnitRace,'player')));character.faction=clean((call(UnitFactionGroup,'player')))
     local previous=roster[guid]
     -- WoW writes saved data only on /reload or logout, so a brand-new character is unknown to the app until then.
@@ -612,6 +661,17 @@ local function capture(event,eventId)
             for _,record in ipairs(character.gathering.records)do array(record.itemIds)end
         end
     end
+    if type(BackstageForeverLootSourcesSnapshot)=='function' then
+        local ok,sources=pcall(BackstageForeverLootSourcesSnapshot,guid)
+        if ok and type(sources)=='table' and type(sources.items)=='table' and #sources.items>0 then
+            array(sources.items)
+            for _,item in ipairs(sources.items) do
+                array(item.questIds);array(item.sources)
+                for _,source in ipairs(item.sources) do if source.positions then array(source.positions) end end
+            end
+            character.lootSources=sources
+        end
+    end
     if type(BackstageForeverMapUpdate)=='function' then pcall(BackstageForeverMapUpdate,character)end
     if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character) end
     roster[guid]=character
@@ -641,6 +701,12 @@ local function capture(event,eventId)
             local small,smallNodes=encode(gathering)
             encodedLength=encodedLength-#old+#small;encodedNodes=encodedNodes-nodes+smallNodes;changed=true
         end
+    end
+    -- Captured quest text and learned item sources are large: shed them, oldest first.
+    for i=#chars,1,-1 do
+        if fits() then break end
+        if type(chars[i].quests)=='table' then for _,q in ipairs(chars[i].quests) do discard(q,'text') end end
+        discard(chars[i],'lootSources')
     end
     -- Workshop is optional: shed it across the roster before older quest/XP/history.
     for i=#chars,1,-1 do

@@ -529,6 +529,7 @@ function BackstageForeverAssistCommand(message)
     if cmd=='help' then
         local lines={
             '/bf next - an arrow to the nearest quest to hand in or pick up',
+            '/bf how - how to do your tracked quest: what to get and where it came from',
             '/bf train - an arrow to your class trainer',
             '/bf repair - an arrow to the nearest repair vendor',
             '/bf flights - which flight paths here you have learned',

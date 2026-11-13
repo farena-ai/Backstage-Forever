@@ -1,0 +1,27 @@
+Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
+License: https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/JIVESCORP/eg-link-output-wowf
+Immutable source commit: 164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1
+Product wowf; merged builds (newest first) 1.60.1.70888, 1.60.1.70862,
+1.60.1.70840, 1.60.1.70790. File collection November 5-12, 2026.
+
+Backstage Forever normalization: each build's creatures.json is normalized
+separately, then merged newest-first into 3272 creature identities: name
+(newest named build wins; 8 rows were never named and stay null), the
+observed level range (lowest and highest level seen in any build; level -1,
+shown in game as "??", is kept as a skull flag), elite (elite or rare elite),
+rare (rare or rare elite) and world boss flags (set if any build saw them),
+hostileTo and the contributing-file count (largest single-build count).
+hostileTo lists the factions (Alliance, Horde) for which any observation
+recorded a UnitReaction of 3 (unfriendly) or lower; 4 is neutral and 5 or
+more friendly. Rows seen only in combat logs (no classification or reaction),
+positions, world coordinates, experience, reputation, deaths, combat log
+details and personal records are excluded. Raw file sizes/hashes/metadata and
+compiled size/hash are pinned in source-lock.json. No runtime network request
+is needed.
+
+These are approximate historical community observations, not guaranteed
+levels, spawns, difficulty or complete coverage. A creature that no player of
+a faction met may still be hostile to that faction. Contributing saved files
+are not distinct witnesses or confidence ratings. The license does not grant
+rights in Blizzard narrative text or game assets.

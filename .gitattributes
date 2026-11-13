@@ -29,3 +29,9 @@ data/forever-npc-locations/NOTICE text eol=lf
 addon/BackstageForever/BackstageForeverAcquisition.lua text eol=lf linguist-generated=true
 addon/BackstageForever/BackstageForeverFind.lua text eol=lf linguist-generated=true
 data/forever-encounters/* text eol=lf whitespace=-blank-at-eof
+data/forever-creatures/*.json text eol=lf
+data/forever-creatures/LICENSE text eol=lf whitespace=-blank-at-eof
+data/forever-creatures/NOTICE text eol=lf
+data/forever-loot/*.json text eol=lf
+data/forever-loot/LICENSE text eol=lf whitespace=-blank-at-eof
+data/forever-loot/NOTICE text eol=lf

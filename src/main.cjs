@@ -331,7 +331,9 @@ app.whenReady().then(async () => {
     getWindow: () => win,
   });
   const insights = loadBundledInsights();
-  characterGuidance = registerCharacterGuidanceHandlers({ handle, getState: () => store.state, saveState: next => store.saveState(next), getInsights: () => insights });
+  // Creature levels, elite flags and hostility (bundled reference; optional).
+  const creaturePack = (() => { try { return require("./core/creature-data.cjs").loadCreaturePack(); } catch { return null; } })();
+  characterGuidance = registerCharacterGuidanceHandlers({ handle, getState: () => store.state, saveState: next => store.saveState(next), getInsights: () => insights, getGameData: () => gameData });
   // Item, spell, icon and talent facts from the player's own WoW install, cached locally per game build.
   const gameData = new (require("./core/game-data.cjs").GameData)({ getRoot: () => game?.root || null, cacheDir: path.join(app.getPath("userData"), "game-data") });
   registerKnowledgeHandlers({
@@ -342,6 +344,7 @@ app.whenReady().then(async () => {
     connected: () => game.status().connected,
     clipboard,
     getInsights: () => insights,
+    getCreatures: () => creaturePack,
     getLocationContext: (...args) => companionService?.previewLocation(...args),
   });
   const syncKnowledge = () => {
@@ -619,7 +622,7 @@ app.whenReady().then(async () => {
   // World Map: one zone of pins plus live position, and a cross-zone finder.
   worldMap = new (require("./core/world-map.cjs").WorldMap)({
     getState: () => store.state, knowledge, npcReference: companionService.npcReference, travelReference,
-    vendorPack: companionService.vendorPack, insights, acquisitionPack: companionService.acquisitionPack, live: liveBridge,
+    vendorPack: companionService.vendorPack, insights, acquisitionPack: companionService.acquisitionPack, creaturePack, live: liveBridge,
   });
   handle("worldMap", (input) => worldMap.build(input || {}));
   handle("worldMapSearch", (query) => worldMap.search(query));
@@ -668,7 +671,7 @@ app.whenReady().then(async () => {
   handle("setRadarTarget", (pin) => radar.setTarget(pin === undefined ? null : pin));
   const { buildAtlas, loadEncounters } = require("./core/dungeon-atlas.cjs");
   const encounters = loadEncounters();
-  handle("dungeonAtlas", () => buildAtlas({ profile: store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null, encounters }));
+  handle("dungeonAtlas", () => buildAtlas({ profile: store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null, encounters, knowledgePack: knowledge?.bundled?.pack }));
   handle("copyWaypoint", (input) => {
     if (!input || typeof input !== "object") throw Error("Invalid waypoint.");
     const { mapId, x, y } = input;
@@ -758,7 +761,11 @@ app.whenReady().then(async () => {
     return true;
   });
   function createWindow() {
+    // Unpackaged test runs only: open behind other windows without taking keyboard focus,
+    // so automated checks never capture keys meant for a game the developer is playing.
+    const testInactive = !app.isPackaged && process.env.BF_TEST_INACTIVE === "1";
     win = new BrowserWindow({
+      ...(testInactive ? { show: false } : {}),
       width: 1440,
       height: 960,
       minWidth: 1000,
@@ -774,6 +781,7 @@ app.whenReady().then(async () => {
         allowRunningInsecureContent: false,
       },
     });
+    if (testInactive) win.once("ready-to-show", () => win.showInactive());
     win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
     win.on("blur", () => voice.blur());
     win.on("hide", () => voice.blur());
