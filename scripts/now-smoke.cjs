@@ -102,6 +102,19 @@ const { defaultState } = require("../src/core/validation.cjs");
     await tile.click();
     await page.locator("[data-world-map]").waitFor();
     await page.waitForFunction((w) => WorldMapView._state().focused?.goal?.title === w.goal.title, wantTile);
+    // Live quest pages: Call of Water was handed in since the last save, so it moves to "Just completed".
+    await page.locator('[data-nav="now"]').first().click();
+    await frame({ seq: 6, level: 17, position: { mapId: 1413, x: 0.51, y: 0.30, facing: 1 }, questLog: [{ id: 5728, complete: false }], turnedIn: [96] });
+    await page.locator(".now-done").getByText("Call of Water").waitFor({ timeout: 15000 });
+    assert.match(await page.locator(".now-questlog h2").innerText(), /Live/);
+    assert.ok(!(await page.locator(".now-step h3").allTextContents()).some((t) => /Call of Water/.test(t)), "a handed-in quest is not a step any more");
+    // Layout: two independent columns (no gaps between cards) and a main menu that fits without scrolling.
+    const layout = await page.evaluate(() => {
+      const gaps = [...document.querySelectorAll(".now-col")].map((col) => { const cards = [...col.children].map((c) => c.getBoundingClientRect()); return Math.max(0, ...cards.slice(1).map((r, i) => r.top - cards[i].bottom)); });
+      const nav = document.querySelector('.rail nav[aria-label="Main navigation"]');
+      return { cols: gaps.length, maxGap: Math.max(...gaps), navScrolls: nav.scrollHeight > nav.clientHeight + 1 };
+    });
+    assert.equal(layout.cols, 2); assert.ok(layout.maxGap <= 20, `cards stack evenly (gap ${layout.maxGap}px)`); assert.equal(layout.navScrolls, false, "main menu fits");
     // The running game still has an older addon: Now asks for one /reload.
     await app.evaluate(({ ipcMain }) => { ipcMain.removeHandler("backstage:gameStatus"); ipcMain.handle("backstage:gameStatus", () => ({ connected: true, addonCurrent: true, addonVersion: "0.21.0", loadedCaptureVersion: "0.20.0", runtime: { state: "running" } })); });
     await page.locator('[data-nav="now"]').first().click();

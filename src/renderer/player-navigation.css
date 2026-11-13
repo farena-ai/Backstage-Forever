@@ -393,3 +393,10 @@
  .shell:has([data-party]) .party-role-select select{min-width:0;max-width:100%;width:100%}
  .shell:has([data-party]) .party-primary-actions button{max-width:100%;white-space:normal}
 }
+
+/* 0.25: the seven main links fit at the default window size without a scroll bar. */
+@media (min-height: 700px) {
+  .rail .brand { margin-bottom: 14px; }
+  .rail nav[aria-label="Main navigation"] { gap: 7px; padding-top: 2px; padding-bottom: 2px; }
+  .rail nav[aria-label="Main navigation"] button:not(.illustrated-card) { min-height: 46px; padding-top: 8px; padding-bottom: 8px; }
+}

@@ -3,6 +3,9 @@
 -- window. The desktop app may read those pixels to know where you are right now.
 -- Nothing is sent anywhere by the addon; no input, automation or protected values.
 -- The strip freezes (combat flag only) while in combat. Toggle with /bf live.
+-- A second row (since 0.25) cycles through pages, one per second: your quest log (ids and
+-- whether each is complete) and the quests you turned in this session, so the app stays
+-- current without a /reload. Older apps read only the first row.
 local CELL = 6                      -- physical pixels per cell edge
 -- Version 3: every colour channel is fully off or fully on (one bit per channel), so
 -- colour-profile, gamma, HDR or remote-session shifts cannot blur neighbouring levels.
@@ -11,6 +14,10 @@ local MARKERS = {{255, 0, 255}, {0, 255, 0}, {255, 255, 255}, {0, 0, 0}}
 local PAYLOAD_BYTES = 27
 local PAYLOAD_CELLS = 72            -- 27 bytes * 8 bits / 3 bits per cell
 local VERSION = 3
+local PAGE_VERSION = 80             -- second-row page frames
+local PAGE_IDS = 6                  -- quest ids per page
+local PAGE_SECONDS = 1              -- each page stays up this long (the app samples twice a second)
+local MAX_TURNED_IN = 18
 
 local function public(value) if type(value)=='function' or type(value)=='table' then return value end end
 local unpackAll=unpack or table.unpack
@@ -98,6 +105,38 @@ function BackstageForeverLivePayload(s)
     b[27]=crc8(b,26)
     return b
 end
+-- Pure: one kind of list -> page byte arrays. kind 1 = quest log ({id,complete}), 2 = turned in (ids).
+-- b1 version, b2 kind, b3 index*16+count, b4 generation (content hash), b5..b22 six 24-bit ids,
+-- b23 complete bits, b24-25 identity, b26 total entries, b27 crc.
+function BackstageForeverLivePages(kind,entries,identity)
+    entries=type(entries)=='table' and entries or {}
+    local n=math.min(#entries,PAGE_IDS*15)
+    local gen=kind
+    for i=1,n do local e=entries[i] local id=type(e)=='table' and e.id or e gen=(gen*31+(tonumber(id) or 0)%65521+(type(e)=='table' and e.complete and 7 or 0))%256 end
+    local count=math.max(1,math.ceil(n/PAGE_IDS))
+    local pages={}
+    for p=1,count do
+        local b={}
+        for i=1,PAYLOAD_BYTES do b[i]=0 end
+        b[1]=PAGE_VERSION b[2]=kind b[3]=(p-1)*16+count b[4]=gen
+        local bits=0
+        for k=1,PAGE_IDS do
+            local at=(p-1)*PAGE_IDS+k
+            local e=entries[at]
+            if e and at<=n then
+                local id=type(e)=='table' and e.id or e
+                put24(b,5+(k-1)*3,id)
+                if type(e)=='table' and e.complete then bits=bits+2^(k-1) end
+            end
+        end
+        b[23]=bits
+        put16(b,24,identity or 0)
+        b[26]=clampByte(n)
+        b[27]=crc8(b,26)
+        pages[p]=b
+    end
+    return pages
+end
 -- Pure: payload bytes -> list of {r,g,b} cells (markers first).
 function BackstageForeverLiveCells(bytes)
     local cells={}
@@ -126,25 +165,31 @@ local function npcIdFromGuid(guid)
     if kind=='Creature' or kind=='Vehicle' then return tonumber(id) end
 end
 local function percent(cur,max) local ok,v=pcall(function() cur,max=tonumber(plain(cur)),tonumber(plain(max)) if cur and max and max>0 then return floor(cur/max*100+.5) end end) if ok then return v end end
-local function quest()
+-- Quest log entries {id, complete} in log order (public APIs only).
+local function questLog()
     local api=public(C_QuestLog)
-    local id
-    local getWatch=field(api,'GetQuestIDForQuestWatchIndex')
-    if type(getWatch)=='function' then id=call(getWatch,1) end
     local n=call(field(api,'GetNumQuestLogEntries')) or call(GetNumQuestLogEntries) or 0
-    local hash,first=0,nil
-    for i=1,math.min(tonumber(n) or 0,40) do
+    local out={}
+    for i=1,math.min(tonumber(n) or 0,60) do
         local info=call(field(api,'GetInfo'),i)
         local qid=type(info)=='table' and not info.isHeader and tonumber(info.questID)
         if not qid and type(GetQuestLogTitle)=='function' then
             local _,_,_,header,_,_,_,legacyId=call(GetQuestLogTitle,i)
             if not header then qid=tonumber(legacyId) end
         end
-        if qid then
-            first=first or qid
-            local done=call(field(api,'IsComplete'),qid) and 1 or 0
-            hash=(hash*31+qid%251+done)%256
-        end
+        if qid and qid>0 then out[#out+1]={id=qid,complete=call(field(api,'IsComplete'),qid) and true or false} end
+    end
+    return out
+end
+local function quest()
+    local api=public(C_QuestLog)
+    local id
+    local getWatch=field(api,'GetQuestIDForQuestWatchIndex')
+    if type(getWatch)=='function' then id=call(getWatch,1) end
+    local hash,first=0,nil
+    for _,e in ipairs(questLog()) do
+        first=first or e.id
+        hash=(hash*31+e.id%251+(e.complete and 1 or 0))%256
     end
     id=tonumber(id) or first or 0
     local mask=0
@@ -215,14 +260,15 @@ local function build()
     pcall(strip.SetFrameStrata,strip,'TOOLTIP')
     pcall(strip.SetFrameLevel,strip,10000)
     local total=#MARKERS+PAYLOAD_CELLS
-    pcall(strip.SetSize,strip,total*CELL,CELL)
+    pcall(strip.SetSize,strip,total*CELL,CELL*2)
     pcall(strip.ClearAllPoints,strip)
     pcall(strip.SetPoint,strip,'TOPLEFT',UIParent,'TOPLEFT',0,0)
     textures={}
-    for i=1,total do
+    for i=1,total*2 do
         local t=strip:CreateTexture(nil,'OVERLAY')
+        local col,row=(i-1)%total,floor((i-1)/total)
         pcall(t.SetSize,t,CELL,CELL)
-        pcall(t.SetPoint,t,'TOPLEFT',strip,'TOPLEFT',(i-1)*CELL,0)
+        pcall(t.SetPoint,t,'TOPLEFT',strip,'TOPLEFT',col*CELL,-row*CELL)
         if type(t.SetSnapToPixelGrid)=='function' then pcall(t.SetSnapToPixelGrid,t,false) pcall(t.SetTexelSnappingBias,t,0) end
         textures[i]=t
     end
@@ -238,18 +284,49 @@ local function paint()
     local cells=BackstageForeverLiveCells(BackstageForeverLivePayload(s))
     for i,c in ipairs(cells) do pcall(textures[i].SetColorTexture,textures[i],c[1]/255,c[2]/255,c[3]/255,1) end
 end
+-- Second row: cycle through quest log and turned-in pages, one per PAGE_SECONDS.
+local turnedIn={}
+local pages,pageIndex,pageClock={},0,99
+function BackstageForeverLiveTurnedIn(id)
+    id=tonumber(plain(id))
+    if not id or id<=0 then return end
+    for i=#turnedIn,1,-1 do if turnedIn[i]==id then table.remove(turnedIn,i) end end
+    table.insert(turnedIn,1,id)
+    while #turnedIn>MAX_TURNED_IN do table.remove(turnedIn) end
+    pageClock=99 pageIndex=#pages
+end
+local function paintPage(dt)
+    pageClock=pageClock+dt
+    if pageClock<PAGE_SECONDS then return end
+    pageClock=0
+    if call(InCombatLockdown) then return end
+    pageIndex=pageIndex+1
+    if pageIndex>#pages then
+        local identity=BackstageForeverLiveIdentity(call(UnitGUID,'player'))
+        pages={}
+        for _,p in ipairs(BackstageForeverLivePages(1,questLog(),identity)) do pages[#pages+1]=p end
+        for _,p in ipairs(BackstageForeverLivePages(2,turnedIn,identity)) do pages[#pages+1]=p end
+        pageIndex=1
+    end
+    local cells=BackstageForeverLiveCells(pages[pageIndex])
+    local total=#MARKERS+PAYLOAD_CELLS
+    for i,c in ipairs(cells) do local t=textures[total+i] if t then pcall(t.SetColorTexture,t,c[1]/255,c[2]/255,c[3]/255,1) end end
+end
 local function apply()
     if not settings().enabled then if strip then pcall(strip.Hide,strip) pcall(strip.SetScript,strip,'OnUpdate',nil) end return end
     if not build() then return end
     rescale()
-    lastKey=nil elapsed=1
+    lastKey=nil elapsed=1 pageClock=99 pageIndex=#pages
     pcall(strip.Show,strip)
     pcall(strip.SetScript,strip,'OnUpdate',function(_,dt)
         elapsed=elapsed+(tonumber(dt) or 0)
         if elapsed<.25 then return end
+        local step=elapsed
         elapsed=0
         local ok,err=pcall(paint)
         if ok then paints=paints+1 lastError=nil else lastError=tostring(err) end
+        local okPage,errPage=pcall(paintPage,step)
+        if not okPage then lastError=tostring(errPage) end
     end)
 end
 -- /bf way MapID X Y [label]: a native user waypoint plus the game's own navigation arrow.
@@ -302,7 +379,7 @@ end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        for _,e in ipairs({'PLAYER_LOGIN','DISPLAY_SIZE_CHANGED','UI_SCALE_CHANGED'}) do pcall(events.RegisterEvent,events,e) end
-        pcall(events.SetScript,events,'OnEvent',function(_,event) if event=='PLAYER_LOGIN' then pcall(apply) pcall(announce) else pcall(rescale) lastKey=nil end end)
+        for _,e in ipairs({'PLAYER_LOGIN','DISPLAY_SIZE_CHANGED','UI_SCALE_CHANGED','QUEST_TURNED_IN'}) do pcall(events.RegisterEvent,events,e) end
+        pcall(events.SetScript,events,'OnEvent',function(_,event,a) if event=='PLAYER_LOGIN' then pcall(apply) pcall(announce) elseif event=='QUEST_TURNED_IN' then pcall(BackstageForeverLiveTurnedIn,a) else pcall(rescale) lastKey=nil end end)
     end
 end
