@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.28.0 — your journey, 2026-11-13
+
+- **Characters → Journey:** a badge wall (20 original painted badges for levels, quests, exploring, firsts and speed, with progress on locked ones), speed splits from `/played` with your best across characters, and a rested planner.
+- **New badge banner:** shown once per badge, and also triggered from Now.
+- **Addon journal (`BackstageForeverJournal.lua`):** levels with a quiet `/played`, firsts, and zones visited, exported as an optional, validated `journal` block. The addon now installs 22 files.
+
 ## 0.27.0 — free AI for everyone, 2026-11-13
 
 - **Free AI on this PC, one click:** a pinned llama.cpp b11856 build (graphics-card build with a processor fallback) and Qwen3 4B or Qwen2.5 1.5B (both Apache-2.0). Downloads are resumable and SHA-256 checked, and the engine listens on localhost only. Remove frees the space.

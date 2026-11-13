@@ -14,3 +14,4 @@ None of these images is taken from World of Warcraft or any Blizzard product, an
 | `classes/*.png` | Class crests on Now and the talent coach (0.23.0) |
 | `zones/*.webp` | Now "Where to level" landscape vistas, one per kind of zone (art pass 2, 0.22.0); city banners `warcamp` and `citadel` (0.26.0) |
 | `pins/*.png` | World Map pin medallions, one per pin kind (0.26.0) |
+| `badges/*.png` | Characters → Journey badge wall and new-badge banner (0.28.0) |

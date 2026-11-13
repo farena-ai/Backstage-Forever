@@ -12,7 +12,7 @@ const { defaultState } = require("../src/core/validation.cjs");
   await fs.mkdir(capture, { recursive: true });
   const watchdog = setTimeout(() => { console.error("Now fixture exceeded 150 seconds"); app?.process().kill(); process.exitCode = 1; }, 150000);
   try {
-    const profile = { id: "Alpha", name: "Alpha", className: "Hunter", realm: "Synthetic", level: 15, race: "Tauren", faction: "Horde", goals: [], notes: "", location: { zone: "The Barrens", mapId: 1413, x: 0.52, y: 0.29 },
+    const profile = { id: "Alpha", name: "Alpha", className: "Hunter", realm: "Synthetic", level: 15, race: "Tauren", faction: "Horde", goals: [], notes: "", location: { zone: "The Barrens", mapId: 1413, x: 0.52, y: 0.29 }, journal: { levels: [{ level: 13, at: 1700000000, played: 30000 }, { level: 14, at: 1700003600, played: 33000 }, { level: 15, at: 1700009000, played: 38400 }], firsts: [{ key: "flight", at: 1700002000 }], zones: [1411, 1413, 1454, 1456, 1412, 1441], played: 39000 },
       quests: [{ id: 96, title: "Call of Water", complete: true, objectives: [] }, { id: 5728, title: "Hidden Enemies", complete: false, objectives: [{ text: "0/1 Bazzalan slain", done: false, type: "monster", required: 1, fulfilled: 0 }, { text: "0/1 Jergosh the Invoker slain", done: false, type: "monster", required: 1, fulfilled: 0 }] }] };
     const initial = { ...defaultState(), onboarded: true, activeProfileId: "Alpha", profiles: [profile], provider: { id: "ollama", model: "fixture", endpoint: "http://127.0.0.1:11434" } };
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(initial));
@@ -163,6 +163,17 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator('[data-nav="talents"]').first().click();
     await page.locator("[data-talents] .tal-empty").first().waitFor();
     assert.match(await page.locator("[data-talents]").innerText(), /Talent trees aren't available yet|Choose a character/);
+    // Characters → Journey: painted badge wall, speed splits, rested planner; a new badge celebrates once.
+    await page.evaluate(() => localStorage.removeItem("bf-badges-seen"));
+    await page.locator('[data-nav="journey"]').first().click();
+    await page.locator(".jr-badge.earned").first().waitFor();
+    const earned = await page.locator(".jr-badge.earned strong").allTextContents();
+    assert.ok(earned.includes("Level 10") && earned.includes("Taking wing") && earned.includes("Wanderer") && earned.includes("Fast learner"), earned.join(","));
+    assert.equal(await page.locator(".jr-splits li").count(), 2);
+    await page.screenshot({ path: path.join(capture, "journey.png"), fullPage: true });
+    await page.evaluate(() => JourneyView._show({ id: "first-dungeon", name: "Into the depths", how: "Enter your first dungeon." }, 1));
+    await page.locator(".bf-badge-pop").getByText("Into the depths").waitFor();
+    await page.screenshot({ path: path.join(capture, "badge-pop.png") });
     console.log("Now smoke passed");
   } catch (e) { console.error(e); process.exitCode = 1; }
   finally { clearTimeout(watchdog); await app?.close().catch(() => {}); await fs.rm(dir, { recursive: true, force: true }).catch(() => {}); }

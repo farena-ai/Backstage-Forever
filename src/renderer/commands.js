@@ -50,7 +50,7 @@
     { name: "Quests", what: "Look up any quest: who gives it, where it goes, rewards. Copies a /bf guide line for the game." },
     { name: "Adventure", what: "Your next step in more depth, dungeons for your level, and profession plans." },
     { name: "Companion", what: "Ask in plain words. With no AI set up it still answers right away: “how do I do <quest>?”, “what should I do next?”, “what do I train?”, “where is <NPC>?” and “how do I get to <place>?”. An AI model (Settings) answers everything else." },
-    { name: "Characters", what: "Each character's journal, gear and training review, and private notes." },
+    { name: "Characters", what: "Each character's journal, gear and training review, talents, and Journey: your badges, how fast each level went, and your rested bonus." },
     { name: "Plans", what: "Checklists and party plans you write yourself." },
     { name: "Settings", what: "Game connection (folder, addon, live link), AI connection and updates." },
   ]);

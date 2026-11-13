@@ -71,6 +71,7 @@ test("every Now step has its painted crest", () => {
   for (const k of kinds) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/steps", k + ".png")), `missing crest ${k}`);
   const wm = read("src/renderer/world-map.js"), pins = /for \(const k of (\[[^\]]+\])\)/.exec(wm.slice(wm.indexOf("const PAINTED")));
   for (const k of JSON.parse(pins[1])) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/pins", k + ".png")), `missing map pin art ${k}`);
+  for (const b of require("../src/core/badges.cjs").BADGES) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/badges", b.id + ".png")), `missing badge art ${b.id}`);
   const biomes = new Set([...(now + read("src/renderer/zone-art.js")).matchAll(/\d+: "([a-z]+)"/g)].map((m) => m[1]));
   assert.ok(biomes.has("warcamp") && biomes.has("citadel"), "capital cities have vistas");
   for (const b of biomes) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/zones", b + ".webp")), `missing vista ${b}`);

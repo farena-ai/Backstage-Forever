@@ -695,6 +695,15 @@ app.whenReady().then(async () => {
   });
   require("./core/game-data-ipc.cjs").registerGameDataHandlers({ handle, gameData });
   // Talent coach: the player's real trees (from their install) plus a leveling path for their class.
+  // Characters → Journey: badges, speed splits and the rested planner.
+  handle("journey", () => {
+    const s = store.state, p = s.profiles.find((x) => x.id === s.activeProfileId);
+    if (!p) return null;
+    const { badgesFor, rested } = require("./core/badges.cjs"), { splits } = require("./core/journal-data.cjs");
+    const others = s.profiles.filter((x) => x.id !== p.id);
+    return { id: p.id, name: p.name, className: p.className || null, level: p.level || null, played: p.journal?.played ?? null, hasJournal: Boolean(p.journal),
+      splits: splits(p, others), badges: badgesFor(p), rested: rested(p), zones: (p.journal?.zones || []).length };
+  });
   handle("talentCoach", (input) => {
     const className = typeof input?.className === "string" ? input.className.slice(0, 20) : null;
     const level = Number.isInteger(input?.level) && input.level >= 1 && input.level <= 100 ? input.level : null;
