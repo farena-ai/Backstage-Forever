@@ -332,9 +332,12 @@ app.whenReady().then(async () => {
   });
   const insights = loadBundledInsights();
   characterGuidance = registerCharacterGuidanceHandlers({ handle, getState: () => store.state, saveState: next => store.saveState(next), getInsights: () => insights });
+  // Item, spell, icon and talent facts from the player's own WoW install, cached locally per game build.
+  const gameData = new (require("./core/game-data.cjs").GameData)({ getRoot: () => game?.root || null, cacheDir: path.join(app.getPath("userData"), "game-data") });
   registerKnowledgeHandlers({
     handle,
     knowledge,
+    gameData,
     getState: () => store.state,
     connected: () => game.status().connected,
     clipboard,
@@ -621,6 +624,7 @@ app.whenReady().then(async () => {
   handle("worldMap", (input) => worldMap.build(input || {}));
   handle("worldMapSearch", (query) => worldMap.search(query));
   handle("worldMapNpc", (npcId) => worldMap.npc(npcId));
+  handle("dataCoverage", () => worldMap.coverage());
   const leveling = new (require("./core/leveling.cjs").LevelingAdvisor)({
     getState: () => store.state, knowledge, insights,
     getLive: () => worldMap.liveFrame(worldMap.profile()),
@@ -648,6 +652,16 @@ app.whenReady().then(async () => {
     if (!Number.isSafeInteger(mapId) || mapId <= 0) throw Error("Invalid map.");
     const r = mapArt.art(mapId);
     return { png: r.png ? new Uint8Array(r.png) : null, source: r.source || null, reason: r.reason || null };
+  });
+  require("./core/game-data-ipc.cjs").registerGameDataHandlers({ handle, gameData });
+  // Talent coach: the player's real trees (from their install) plus a leveling path for their class.
+  handle("talentCoach", (input) => {
+    const className = typeof input?.className === "string" ? input.className.slice(0, 20) : null;
+    const level = Number.isInteger(input?.level) && input.level >= 1 && input.level <= 100 ? input.level : null;
+    if (!className || !level) throw Error("Invalid talent request.");
+    const trees = gameData.talents(className);
+    if (!trees) return { available: false, reason: gameData.status().reason || "Talent trees are not available from your game install yet." };
+    return { available: true, trees, coach: require("./core/talent-coach.cjs").coach(trees, className, level) };
   });
   radar = require("./core/radar-window.cjs").createRadar({ BrowserWindow, ipcMain, worldMap, live: liveBridge, rendererDir: path.join(__dirname, "renderer"), mapArt });
   handle("openRadar", () => radar.open());

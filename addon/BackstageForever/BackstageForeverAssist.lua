@@ -217,6 +217,7 @@ local function onLevel(level)
     local took=lastLevelAt and BackstageForeverDuration(now()-lastLevelAt)
     lastLevelAt=now()
     local sub=t and ('New skills may be waiting: %s in %s. Type /bf train for an arrow.'):format(t.name,mapName(t.mapId)) or 'Visit your class trainer for new skills.'
+    if (tonumber(level) or 0)>=10 then sub=sub..' You also have a talent point: press N; the Talents page in the app suggests which.' end
     if took then sub=sub..' This level took '..took..'.' end
     BackstageForeverToast(('Level %s!'):format(tostring(level)),sub,true)
 end
@@ -476,6 +477,36 @@ local function checkFlightNearby()
 end
 BackstageForeverCheckFlightNearby=checkFlightNearby
 
+-- Pure: should your Hearthstone move? bind = inn name; zones = advisor zone rows; side 'H'|'A'.
+-- -> { home = mapId|nil, town = suggested inn town } or nil when it's already in a sensible place.
+function BackstageForeverHearthAdvice(bind,mapId,level,side,zones)
+    if type(bind)~='string' or not mapId or type(zones)~='table' then return nil end
+    local function towns(z) return (side=='A' and (z.ta or (z.a and {z.a}))) or (side=='H' and (z.th or (z.h and {z.h}))) or {} end
+    local home,here=nil,nil
+    for _,z in ipairs(zones) do
+        for _,t in ipairs(towns(z)) do if t==bind then home=z.m end end
+        if z.m==mapId then here=z end
+    end
+    if not here or home==mapId then return nil end
+    local list=towns(here)
+    if #list==0 then return nil end
+    level=tonumber(level) or 0
+    if level<(here.lo or 0)-1 or level>(here.hi or 99)+2 then return nil end
+    return {home=home,town=list[1]}
+end
+local hearthHinted={}
+local function hearthCheck(force)
+    local bind=call(GetBindLocation)
+    local map=herePosition()
+    local faction=call(UnitFactionGroup,'player')
+    local side=faction=='Horde' and 'H' or faction=='Alliance' and 'A' or nil
+    local zones=type(BackstageForeverAdvisorData)=='table' and BackstageForeverAdvisorData.zones
+    local a=BackstageForeverHearthAdvice(bind,map,num(call(UnitLevel,'player')),side,zones)
+    if not a or (hearthHinted[map] and not force) then return a end
+    hearthHinted[map]=true
+    if not force then BackstageForeverToast('Move your Hearthstone?',('It takes you to %s, but you are questing in %s. Talk to the innkeeper in %s and choose "Make this inn your home".'):format(bind,mapName(map),a.town)) end
+    return a
+end
 function BackstageForeverAssistCommand(message)
     if not settings then loadSettings() end
     local cmd,arg=(type(message)=='string' and message:lower() or ''):match('^(%a+)%s*(%a*)')
@@ -485,6 +516,8 @@ function BackstageForeverAssistCommand(message)
     if cmd=='xp' then return say(BackstageForeverPaceLine()) end
     if cmd=='hearth' then
         local where=call(GetBindLocation)
+        local a=hearthCheck(true)
+        if where and a then return say(('Your Hearthstone takes you to %s. You are questing in %s, so the inn in %s would save you long runs: talk to the innkeeper and choose "Make this inn your home".'):format(where,mapName(herePosition()),a.town)) end
         return say(where and ('Your Hearthstone takes you to %s. To change it, talk to an innkeeper and choose "Make this inn your home".'):format(where) or 'Talk to an innkeeper to set where your Hearthstone takes you.')
     end
     if cmd=='toasts' or cmd=='danger' or cmd=='junk' then
@@ -504,6 +537,7 @@ function BackstageForeverAssistCommand(message)
             '/bf hearth - where your Hearthstone takes you',
             '/bf show, /bf hide - the Adventure Compass panel',
             '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',
+            '/bf gear - turn upgrade hints on item tooltips and the best-quest-reward highlight on or off',
             '/bf live - the small strip that lets the desktop app follow you',
         }
         for _,l in ipairs(lines) do say(l) end
@@ -514,7 +548,7 @@ end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_XP_UPDATE','PLAYER_LEVEL_UP','QUEST_TURNED_IN','PLAYER_DEAD','PLAYER_ALIVE','PLAYER_UNGHOST','PLAYER_TARGET_CHANGED','UNIT_CLASSIFICATION_CHANGED','MERCHANT_SHOW','MERCHANT_CLOSED','BAG_UPDATE_DELAYED','UPDATE_INVENTORY_DURABILITY','TAXIMAP_OPENED','ZONE_CHANGED','ZONE_CHANGED_NEW_AREA','ZONE_CHANGED_INDOORS'}) do pcall(events.RegisterEvent,events,e) end
+        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_XP_UPDATE','PLAYER_LEVEL_UP','QUEST_TURNED_IN','PLAYER_DEAD','PLAYER_ALIVE','PLAYER_UNGHOST','PLAYER_TARGET_CHANGED','UNIT_CLASSIFICATION_CHANGED','MERCHANT_SHOW','MERCHANT_CLOSED','BAG_UPDATE_DELAYED','UPDATE_INVENTORY_DURABILITY','TAXIMAP_OPENED','QUEST_ACCEPTED','ZONE_CHANGED','ZONE_CHANGED_NEW_AREA','ZONE_CHANGED_INDOORS'}) do pcall(events.RegisterEvent,events,e) end
         local merchantOpen=false
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b)
             if event=='PLAYER_LOGIN' then
@@ -533,6 +567,7 @@ if type(CreateFrame)=='function' then
             elseif event=='MERCHANT_SHOW' then merchantOpen=true pcall(learnRepairer) updateJunk(true)
             elseif event=='UPDATE_INVENTORY_DURABILITY' then onDurability()
             elseif event=='TAXIMAP_OPENED' then pcall(learnFlights)
+            elseif event=='QUEST_ACCEPTED' then pcall(hearthCheck)
             elseif event=='ZONE_CHANGED' or event=='ZONE_CHANGED_NEW_AREA' or event=='ZONE_CHANGED_INDOORS' then checkFlightNearby()
             elseif event=='MERCHANT_CLOSED' then merchantOpen=false updateJunk(false)
             elseif event=='BAG_UPDATE_DELAYED' and merchantOpen then updateJunk(true) end

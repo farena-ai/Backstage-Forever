@@ -20,6 +20,11 @@ window.PlayerNavigation = (() => {
       description:
         "Choose a checklist or plan together. Every step stays yours.",
     },
+    characters: {
+      label: "Characters",
+      routes: [["characters", "Journal"], ["talents", "Talents"]],
+      description: "Your characters, their journals and a talent path for leveling.",
+    },
     game: {
       label: "Settings",
       routes: [
@@ -32,7 +37,7 @@ window.PlayerNavigation = (() => {
     },
     guide: {
       label: "Help",
-      routes: [["guide", "Field guide"], ["commands", "Commands"]],
+      routes: [["guide", "Field guide"], ["commands", "Commands"], ["coverage", "Data coverage"]],
       description:
         "Learn the basics, review a support report, or recover your local journal below.",
     },

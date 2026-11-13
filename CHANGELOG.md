@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.23.0 — your game, read for you, 2026-11-13
+
+- **Item, spell and talent facts from your own game install.**
+  - Stats, damage and DPS, armor, quality, required level, binding and icons for items.
+  - Names, icons and descriptions for spells.
+  - Your realm's actual talent trees.
+  - Read locally from your WoW Forever files and cached on your PC. Nothing is bundled or uploaded.
+- **Quest rewards with everything shown.**
+  - Each reward card has the game's icon, stats, damage and DPS, armor and binding.
+  - A **Best choice for you** box names the pick for your class and level, with the reasons (e.g. "+6 ranged DPS, +3 Agility"). It compares against your saved gear when the addon has seen it.
+- **In game: reward picker.** On the quest reward screen, the best choice for you glows gold with a "Best for you" label, and chat says why. You still click.
+- **In game: upgrade hints on item tooltips.** "Upgrade for you: +4 Agility, +1.2 DPS", "Not for you: Priests cannot wear mail" or "Not an upgrade". Use `/bf gear on|off` to switch them, along with the reward glow.
+- **Talent coach** (Characters → Talents):
+  - A leveling path for every class, laid onto your real trees with your game's icons.
+  - Shows how many points you should have by now, with the next point glowing and a "Spend next" list.
+  - You can preview any class.
+  - In game, the level-up banner reminds you to spend your talent point from level 10.
+- **Help → Data coverage.** For each zone, how much the app knows per faction (quest givers, objective areas, trainers, vendors, flight masters), with painted zone headers.
+- **Class crests.** Nine original painted class emblems; yours sits beside your name on Now and heads the talent coach.
+- **Quest log:** quests that no longer give experience say "No XP · safe to drop".
+- **Hearthstone advice in game.** When you pick up quests in a zone while your hearth points elsewhere, a tip names the inn to switch to. `/bf hearth` says the same.
+- **Settings → Game connection** lists every in-game helper and how to switch it.
+- **For development:** test and preview windows open on a secondary monitor when one exists, so they never cover the game.
+- The addon installer now manages eighteen files. Type `/reload` in game after updating.
+- App/lock, TOC and capture metadata align at 0.23.0 preview. **1.0 remains held.**
+
 ## 0.22.1 — level up like you mean it, 2026-11-13
 
 - **A much bigger level-up celebration in the app:**

@@ -1,0 +1,52 @@
+/* Characters → Talents. */
+.talents-page { display: flex; flex-direction: column; gap: 14px; }
+.tal-hero { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: 6px; border: 1px solid #c79a4a; color: #f1dcb0;
+  background: linear-gradient(90deg, rgba(26,6,4,.92), rgba(40,10,6,.55)), url("art/hero-help.webp") center 40% / cover no-repeat, #3a0f09; }
+.tal-crest { width: 96px; height: 96px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.6)); }
+.tal-eyebrow { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .2em; text-transform: uppercase; color: #e8c983; }
+.tal-hero h1 { margin: 2px 0 6px; font: 700 30px Cinzel, Georgia, serif; color: #fff1d6; }
+.tal-hero h1 small { font: 600 16px 'Source Sans 3', sans-serif; color: #e8c983; }
+.tal-pick { font-size: 13px; }
+.tal-pick select { margin-left: 6px; }
+.tal-summary { display: flex; gap: 16px; align-items: center; padding: 12px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; }
+.tal-summary p { margin: 0; }
+.tal-points { display: flex; flex-direction: column; align-items: center; min-width: 90px; }
+.tal-points strong { font: 800 40px/1 Cinzel, Georgia, serif; color: #7a1f14; }
+.tal-points span { font-size: 12px; text-align: center; }
+.tal-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start; }
+.tal-trees { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tal-tree { padding: 10px; border-radius: 8px; background: linear-gradient(180deg, #2b1608, #160a04); border: 1px solid #6b4a22; }
+.tal-tree.main { border-color: #f6c445; box-shadow: 0 0 0 2px rgba(246,196,69,.25); }
+.tal-tree header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: #f1dcb0; }
+.tal-tree header h3 { margin: 0; flex: 1; font: 700 16px Cinzel, Georgia, serif; color: #ffe9b0; }
+.tal-tree header canvas { border-radius: 50%; }
+.tal-tree header span { font-size: 12px; color: #e8c983; }
+.tal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; justify-items: center; }
+.tal-cell { position: relative; width: 44px; height: 44px; border-radius: 6px; border: 2px solid #4a3a2a; background: #0e0703; }
+.tal-cell.empty { border-color: transparent; background: none; }
+.tal-cell canvas { width: 40px; height: 40px; border-radius: 4px; }
+.tal-off canvas, .tal-off .tal-noicon { filter: grayscale(1) brightness(.45); }
+.tal-planned { border-color: #7a6a4a; } .tal-planned canvas { filter: grayscale(.5) brightness(.7); }
+.tal-some { border-color: #3cd04a; } .tal-full { border-color: #f6c445; }
+.tal-rank { position: absolute; right: -6px; bottom: -6px; padding: 0 4px; border-radius: 5px; background: #000; color: #e8e2d4; font-size: 10px; font-weight: 800; border: 1px solid #6b4a22; }
+.tal-some .tal-rank { color: #3cd04a; } .tal-full .tal-rank { color: #f6c445; }
+.tal-noicon { display: grid; place-items: center; width: 40px; height: 40px; color: #8a7a66; }
+.tal-side { padding: 12px 14px; border-radius: 8px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; }
+.tal-side h3 { margin: 0 0 8px; font: 700 18px Cinzel, Georgia, serif; }
+.tal-next-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tal-next-list li { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 6px; background: rgba(255,248,225,.55); border: 1px solid #c4a466; }
+.tal-next-list li.first { border-color: #8a5a18; background: #fff6dc; box-shadow: 0 0 0 2px rgba(246,196,69,.4); }
+.tal-next-list canvas { flex: none; border-radius: 4px; }
+.tal-next-list small { color: #6b4a22; font-weight: 600; }
+.tal-next-list p { margin: 2px 0 0; font-size: 13px; color: #4a3218; }
+.tal-when { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; background: #4e8f3a; color: #fff; font-size: 11px; font-weight: 800; }
+.tal-note { margin: 10px 0 0; font-size: 12px; color: #5a3e1c; }
+.tal-empty { color: #e7d3a6; }
+@keyframes tal-pulse { 0%, 100% { box-shadow: 0 0 8px rgba(246,196,69,.6); } 50% { box-shadow: 0 0 18px rgba(246,196,69,1); } }
+@media (max-width: 1300px) { .tal-layout { grid-template-columns: 1fr; } }
+@media (max-width: 1000px) { .tal-trees { grid-template-columns: 1fr; } }
+
+.tal-side h3 { color: #3d220c; }
+.tal-next-badge { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); padding: 0 5px; border-radius: 6px; background: #f6c445; color: #2b1407; font-size: 10px; font-weight: 800; z-index: 1; }
+.tal-cell.tal-is-next { border-color: #f6c445; box-shadow: 0 0 12px rgba(246,196,69,.9); animation: tal-pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .tal-cell.tal-is-next { animation: none; } }

@@ -176,3 +176,16 @@ fire('TAXIMAP_OPENED') assert(BackstageForeverAssistSettings.flightNpcs[3615],'t
 print('ok')`);
   assert.equal(out, "ok");
 });
+
+test("hearthstone advice: suggests this zone's inn when your hearth is elsewhere and you're questing here", () => {
+  const out = lua(`${LOAD}
+local zones={{m=1411,lo=1,hi=10,th={"Razor Hill","Sen'jin Village"}},{m=1413,lo=10,hi=25,th={"The Crossroads","Camp Taurajo"},ta={"Ratchet"}}}
+local a=BackstageForeverHearthAdvice("Razor Hill",1413,14,"H",zones) print(a.home,a.town)
+print(BackstageForeverHearthAdvice("The Crossroads",1413,14,"H",zones)==nil)
+print(BackstageForeverHearthAdvice("Razor Hill",1413,4,"H",zones)==nil)
+local b=BackstageForeverHearthAdvice("Stormwind",1413,15,"A",zones) print(b.town)`).split(/\r?\n/);
+  assert.equal(out[0], "1411	The Crossroads");
+  assert.equal(out[1], "true", "already home here");
+  assert.equal(out[2], "true", "too low to quest here");
+  assert.equal(out[3], "Ratchet");
+});

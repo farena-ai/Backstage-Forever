@@ -82,6 +82,8 @@ contextBridge.exposeInMainWorld(
     worldMapSearch: (query) => invoke("worldMapSearch", query),
     worldMapNpc: (npcId) => invoke("worldMapNpc", npcId),
     levelingAdvice: () => invoke("levelingAdvice"),
+    dataCoverage: () => invoke("dataCoverage"),
+    talentCoach: (input) => invoke("talentCoach", input),
     playSession: () => invoke("playSession"),
     playTrail: (mapId) => invoke("playTrail", mapId),
     onPlayEvent: (listener) => {
@@ -91,6 +93,11 @@ contextBridge.exposeInMainWorld(
       return () => ipcRenderer.removeListener("backstage:playEvent", handler);
     },
     mapArt: (mapId) => invoke("mapArt", mapId),
+    gameDataStatus: () => invoke("gameDataStatus"),
+    gameItems: (ids) => invoke("gameItems", ids),
+    gameSpell: (spellId) => invoke("gameSpell", spellId),
+    gameIcon: (fileId) => invoke("gameIcon", fileId),
+    gameTalents: (className) => invoke("gameTalents", className),
     copyWaypoint: (input) => invoke("copyWaypoint", input),
     liveLinkStatus: () => invoke("liveLinkStatus"),
     setLiveLink: (enabled) => invoke("setLiveLink", enabled),
