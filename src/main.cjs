@@ -331,7 +331,7 @@ app.whenReady().then(async () => {
     getWindow: () => win,
   });
   const insights = loadBundledInsights();
-  characterGuidance = registerCharacterGuidanceHandlers({ handle, getState: () => store.state, saveState: next => store.saveState(next), getInsights: () => insights });
+  characterGuidance = registerCharacterGuidanceHandlers({ handle, getState: () => store.state, saveState: next => store.saveState(next), getInsights: () => insights, getGameData: () => gameData });
   // Item, spell, icon and talent facts from the player's own WoW install, cached locally per game build.
   const gameData = new (require("./core/game-data.cjs").GameData)({ getRoot: () => game?.root || null, cacheDir: path.join(app.getPath("userData"), "game-data") });
   registerKnowledgeHandlers({

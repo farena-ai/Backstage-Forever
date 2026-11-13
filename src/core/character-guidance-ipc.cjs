@@ -3,7 +3,27 @@ const crypto = require("node:crypto");
 const { buildCharacterGuidance, searchHistoricalTrainers, checklistSteps, guidancePrompt } = require("./character-guidance.cjs");
 const { applyJourneyAction } = require("./journeys.cjs");
 const INVALID = "Invalid character guidance request.", EXPIRED = "Refresh character guidance before using this choice.";
-function registerCharacterGuidanceHandlers({ handle, getState, saveState, getInsights = () => null, now = Date.now }) {
+// Gear review from the player's own install: icon and stats per slot, and how each piece holds up at this level.
+function gearReview(model, profile, gameData) {
+  const rows = model?.gear?.rows || [];
+  if (!gameData || !rows.length) return;
+  const details = gameData.items(rows.map((r) => r.itemId));
+  if (!details.some(Boolean)) return;
+  const level = Number.isInteger(profile?.level) ? profile.level : null;
+  const ctx = { className: profile?.className, level };
+  const { scoreItem } = require("./gear-score.cjs");
+  rows.forEach((r, i) => {
+    const d = details[i]; if (!d) return;
+    r.details = d;
+    const ilvl = d.itemLevel ?? r.itemLevel;
+    const gap = level && ilvl ? level - ilvl : null;
+    r.rating = gap === null ? null : gap <= 3 ? "fresh" : gap <= 8 ? "aging" : "replace";
+    r.score = Math.round(scoreItem(d, ctx).score * 10) / 10;
+  });
+  const skip = new Set(["Shirt", "Tabard", "Body", "Tabard slot"]);
+  model.gear.weakest = rows.filter((r) => r.details && r.rating && r.rating !== "fresh" && !skip.has(r.details.slot)).sort((a, b) => (a.details.itemLevel ?? 0) - (b.details.itemLevel ?? 0)).slice(0, 4).map((r) => ({ slot: r.details.slot || r.slotLabel, name: r.details.name, itemLevel: r.details.itemLevel, rating: r.rating }));
+}
+function registerCharacterGuidanceHandlers({ handle, getState, saveState, getInsights = () => null, getGameData = () => null, now = Date.now }) {
   let current = null;
   const clear = () => { current = null; };
   const arity = (args, n) => { if (args.length !== n) throw Error(INVALID); };
@@ -15,6 +35,7 @@ function registerCharacterGuidanceHandlers({ handle, getState, saveState, getIns
   }
   function read(id) {
     const model = buildCharacterGuidance(active(id, true), id, { insights: getInsights(), now: now() });
+    try { gearReview(model, getState().profiles.find((p) => p.id === id), getGameData()); } catch {}
     if (!current || current.fingerprint !== model.token || current.profileId !== id) current = { fingerprint: model.token, profileId: id, token: crypto.randomUUID() };
     const existing = model.identity ? matchingJourney(getState(), model, id) : null;
     return { ...structuredClone(model), token: current.token, checklistCreated: Boolean(existing || getState().journeys?.some(j => j.id === current.journeyId)) };
@@ -54,4 +75,4 @@ function registerCharacterGuidanceHandlers({ handle, getState, saveState, getIns
   });
   return { clear, sync() { if (current && current.profileId !== getState().activeProfileId) clear(); } };
 }
-module.exports = { registerCharacterGuidanceHandlers };
+module.exports = { gearReview, registerCharacterGuidanceHandlers };
