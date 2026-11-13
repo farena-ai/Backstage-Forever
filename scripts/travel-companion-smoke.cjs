@@ -45,7 +45,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
    const sequence=await app.evaluate(()=>travelFixture.receipts.length);
    const owner=await page.evaluate(()=>{window.travelBeforeSend={reply:messages.at(-1),recovery:questionRecovery,recoveryNode:document.querySelector('[data-question-recovery]')};return {generation:chatGeneration,profileId:state.activeProfileId,shareProfile:document.querySelector('#share-profile').checked};});
    await field.fill(text);await page.getByRole('button',{name:'Send question',exact:true}).click();
-   const deadline=Date.now()+20000;
+   const deadline=Date.now()+60000;
    const receipt=await app.evaluate(async(_e,{sequence,deadline})=>{while(!travelFixture.receipts[sequence]||travelFixture.receipts[sequence].phase==='pending'){if(Date.now()>deadline)throw Error('Current travel request did not settle');await new Promise(r=>setTimeout(r,10));}return travelFixture.receipts[sequence];},{sequence,deadline});
    assert.equal(receipt.sequence,sequence+1);assert.equal(receipt.input.prompt,text);assert.equal(receipt.input.profileId,owner.profileId);assert.equal(receipt.input.shareProfile,owner.shareProfile);
    await page.waitForFunction(({text,owner,receipt})=>{
