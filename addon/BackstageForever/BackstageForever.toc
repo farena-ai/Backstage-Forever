@@ -4,7 +4,7 @@
 ## Author: Backstage Coding
 ## Version: 0.22.1
 ## SavedVariables: BackstageForeverExport
-## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings
+## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings
 BackstageForeverReference.lua
 BackstageForeverAdvisorData.lua
 BackstageForeverPlan.lua
@@ -21,3 +21,4 @@ BackstageForeverHUD.lua
 BackstageForeverLive.lua
 BackstageForeverFind.lua
 BackstageForeverAssist.lua
+BackstageForeverGear.lua

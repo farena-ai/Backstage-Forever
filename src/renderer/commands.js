@@ -20,6 +20,7 @@
     { group: "Helpers on or off", command: "/bf toasts [on|off]", word: "toasts", what: "Turns the pop-up tips on or off: level-ups, finished quests, deaths and the welcome. Chat still gets the message.", when: "If you prefer a quieter screen.", example: "/bf toasts off" },
     { group: "Helpers on or off", command: "/bf danger [on|off]", word: "danger", what: "Turns the warning above dangerous targets on or off (elites, skulls, much higher levels, enemies too low to give experience).", when: "Once you can judge enemies yourself.", example: "/bf danger off" },
     { group: "Helpers on or off", command: "/bf junk [on|off]", word: "junk", what: "Turns the Sell junk button on vendor windows on or off.", when: "If you'd rather sell by hand.", example: "/bf junk off" },
+    { group: "Helpers on or off", command: "/bf gear [on|off]", word: "gear", what: "Turns the gear hints on or off: the gold glow on the quest reward that suits your class best, and the line on item tooltips that says whether something is an upgrade for you.", when: "If you'd rather judge gear yourself.", example: "/bf gear off" },
     { group: "Live link", command: "/bf live [on|off|status]", word: "live", what: "Turns on or off the tiny strip in the top-left corner that lets the desktop app follow you while you play. Status reports what the strip is doing.", when: "Turn it off for screenshots or streaming; turn it back on for live help in the app.", example: "/bf live status" },
     { group: "Advanced", command: "/bf guide …", word: "guide", what: "A waypoint line the app's Quests page prepares for a specific quest step. Copy it in the app and paste it into chat; you never need to type it yourself.", when: "Only when the app hands you one.", example: "/bf guide 840 t 1411 52.0 43.2 1.60.1.70888" },
   ]);
@@ -33,6 +34,8 @@
     { name: "Flight path reminder", where: "Top of the screen", what: "When you pass close to a flight master you haven't talked to, a pop-up suggests learning that flight path." },
     { name: "Hearthstone tip", where: "Top of the screen", what: "When you pick up quests in a zone while your Hearthstone still points somewhere else, a tip names the inn to switch to (once per zone)." },
     { name: "Sell junk button", where: "On every vendor window", what: "Lists your grey items and what they're worth. Sells them only when you click it, and never in combat." },
+    { name: "Reward picker", where: "On the quest reward window", what: "When a quest lets you choose a reward, a gold glow marks the one that suits your class best and chat says why (for example +3 Agility, +12 armor) compared with what you wear. You still pick it yourself." },
+    { name: "Upgrade hints", where: "On item tooltips", what: "One line under each piece of gear: green Upgrade for you with what you gain, red Not for you with the reason (like Priests cannot wear mail), or grey Not an upgrade. /bf gear off hides them." },
     { name: "Live strip", where: "A thin coloured line, top-left corner", what: "How the desktop app knows where you are. It contains no personal data. /bf live off hides it." },
   ]);
   const APP = Object.freeze([
