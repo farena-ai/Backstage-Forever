@@ -91,6 +91,17 @@ Frank asked whether Refresh on Now could do the `/reload` itself. It can't: the 
 | R2 | **Clear freshness.** Each Now card shows whether it is live or from your last save, and when that save was. Refresh re-reads the save and live state at once. | S | App | You can see at a glance what's current. |
 | R3 | **Smarter update timing.** After an app update, the reload banner names the exact moment the new addon landed, so a reload done a few seconds too early is obvious. | S | App | Removes "I reloaded but it's still there". |
 
+## Tier 1.8 — A free companion for everyone
+
+Frank asked for a companion that costs players nothing. Backstage Forever won't host an AI service itself (that would be a paid service run by us), but there are four good free paths, best first:
+
+| # | Feature | Size | Where | Why it matters |
+|---|---|---|---|---|
+| F1 | **Quick answers without any AI.** The most common questions are answered instantly from the app's own knowledge: "how do I do this quest", "where is X", "what should I do next", "what do I train", "how do I get to Y". No account, no cost, works offline. Local NPC and travel answers already work this way; this extends it to quests, how-to, training and next steps. | M | App | Free, instant and private for every player. |
+| F2 | **One-click local AI.** A guided setup for Ollama, which is free and runs on your own PC: detect it, link to its installer, suggest a free model that suits the computer (small for laptops, larger for gaming PCs), download it with a progress bar and test it. | M | App | A full AI companion with no subscription, and nothing leaves the PC. |
+| F3 | **Free hosted tiers, with your own free key.** Add providers that offer free tiers (for example Google's Gemini API, Groq, OpenRouter's free models, GitHub Models), with step-by-step key setup. The app says plainly that free tiers have rate limits and some may use your questions to improve their models. | M | App | Works on any PC, including ones too slow for local AI. |
+| F4 | **Built-in local AI.** Ship a small local runtime inside the app and download a compact model on first use (a few GB), so local AI works without installing anything else. | L | App | The smoothest free option, once the rest is solid. |
+
 ## Tier 2 — Core guidance upgrades (next 2–4 releases)
 
 | # | Feature | Size | Where | Why it matters |
@@ -161,9 +172,9 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
   - 2.9 hearth advice, 1.3 no-XP quest hints, 1.5 helper switches, class crests.
   - Moved to 0.24: D7 card system, gear review with icons on Characters, 1.9 remote live-link check.
 - **0.24 (shipped):** Quest intel Q1–Q6, 2.4 objective areas, 2.5 enemy levels, 2.7 dungeon readiness, gear review with icons. D7 card system moves to 0.25.
-- **0.25:** R1–R3 always current without /reload, then 2.3 route stepper.
-- **0.26–0.27:** 2.8 professions, D7 card system, 1.9 remote live-link check, Tier 3 starts (session history, world tracker).
-- **0.28+:** Tier 3, then the 4.1 full guided route.
+- **0.25:** R1–R3 always current without /reload, F1 quick answers without AI, F2 one-click local AI, then 2.3 route stepper.
+- **0.26–0.27:** F3 free hosted tiers, 2.8 professions, D7 card system, 1.9 remote live-link check, Tier 3 starts (session history, world tracker).
+- **0.28+:** Tier 3, F4 built-in local AI, then the 4.1 full guided route.
 - **1.0:** after Frank's hands-on acceptance.
 
 Keep this file and Help → Commands updated with each release.
