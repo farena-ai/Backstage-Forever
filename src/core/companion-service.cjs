@@ -10,8 +10,8 @@ const {quickAnswer}=require('./quick-answers.cjs');
 // These events cancel work/drafts without changing completed conversation ownership.
 const SOFT_REASONS=new Set(['renderer-context','response-stop','memory-save']);
 class CompanionService {
-  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,lookups=true,live=null,advise=null,onReset=()=>{}}){
-    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,lookups,live,advise,onReset});
+  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,lookups=true,live=null,advise=null,localAi=null,onReset=()=>{}}){
+    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,lookups,live,advise,localAi,onReset});
     this.session=new ConversationSession();this.rootEpoch=0;
     context.subscribe(({reason})=>{
       if(SOFT_REASONS.has(reason))return;
@@ -88,7 +88,11 @@ class CompanionService {
         if(input.provider==='openai')reply=await this.chatgpt.ask(request);
         else if(input.provider==='anthropic')reply=await this.claude.ask({...request,context:input.shareProfile?this.ai.approvedProfile(profile,options):undefined,live:liveFrame?require('./companion-tools.cjs').liveSummary(liveFrame):undefined});
         else throw Error('Subscription inference is unavailable for this provider. Choose API mode explicitly if desired.');
-      }else reply=await this.ai.ask({provider:input.provider,...selected,apiKey:this.store.getKey(input.provider),...request});
+      }else{
+        // The built-in engine starts on first use (a few seconds) and stays up until the app closes.
+        if(input.provider==='local'){if(!this.localAi)throw Error('The free AI is unavailable.');await this.localAi.start();}
+        reply=await this.ai.ask({provider:input.provider,...selected,apiKey:this.store.getKey(input.provider),...request});
+      }
       if(signal.aborted)throw signal.reason;
       if(typeof reply!=='string'||!reply.trim()||reply.length>100000)throw Error('Provider response is invalid.');
       // Eligibility verifies the same current context before either main-owned commit.

@@ -1,0 +1,25 @@
+/* Free AI companion card (0.27). */
+.free-ai { margin-bottom: 14px; padding: 16px 18px; border-radius: 8px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
+.free-ai-head { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+.free-ai-head h2 { margin: 0; font: 700 20px Cinzel, Georgia, serif; color: #3d220c; }
+.free-ai-head p { margin: 2px 0 0; color: #5a3e1c; }
+.free-ai-crest { flex: none; width: 52px; height: 52px; background: url("art/pins/quest-giver.png") center / contain no-repeat; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+.free-ai p { line-height: 1.45; }
+.free-ai-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.free-ai .free-ai-go { font-size: 16px; padding-left: 26px; padding-right: 26px; }
+.free-ai-pick { display: flex; gap: 6px; align-items: center; font-size: 13px; color: #4a3218; }
+.free-ai-pick select { max-width: 320px; }
+.free-ai-on { color: #2e6b1e; }
+.free-ai-warn { color: #8a3a14; font-weight: 600; }
+.free-ai-note { font-weight: 700; color: #3d220c; }
+.free-ai-progress p { margin: 6px 0; }
+.free-ai-bar { height: 14px; border-radius: 7px; background: rgba(60,40,18,.25); border: 1px solid #8a6a32; overflow: hidden; }
+.free-ai-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #4e8f3a, #8fd16a); transition: width .3s ease; }
+.free-ai-cloud { margin-top: 10px; }
+.free-ai-cloud summary { cursor: pointer; font-weight: 700; color: #5a2e0c; }
+.free-ai-cloud ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.free-ai-cloud li { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 6px; background: rgba(255,248,225,.55); border: 1px solid #c4a466; }
+.free-ai-cloud li > span { font-size: 13px; color: #4a3218; }
+.free-ai-tag { align-self: flex-start; padding: 0 6px; border-radius: 8px; font-size: 11px; font-weight: 700; background: #4e8f3a; color: #fff; }
+.free-ai-key { display: flex; gap: 8px; }
+.free-ai-key input { flex: 1; min-width: 0; }

@@ -102,6 +102,16 @@ contextBridge.exposeInMainWorld(
     copyWaypoint: (input) => invoke("copyWaypoint", input),
     liveLinkStatus: () => invoke("liveLinkStatus"),
     setLiveLink: (enabled) => invoke("setLiveLink", enabled),
+    localAiStatus: () => invoke("localAiStatus"),
+    localAiInstall: (tier) => invoke("localAiInstall", tier),
+    localAiCancel: () => invoke("localAiCancel"),
+    localAiRemove: () => invoke("localAiRemove"),
+    onLocalAi: (listener) => {
+      if (typeof listener !== "function") throw new Error("Invalid listener.");
+      const handler = (_event, status) => listener(status);
+      ipcRenderer.on("backstage:localAi", handler);
+      return () => ipcRenderer.removeListener("backstage:localAi", handler);
+    },
     onLiveLink: (listener) => {
       if (typeof listener !== "function") throw new Error("Invalid live link listener.");
       const handler = (_event, status) => listener(status);

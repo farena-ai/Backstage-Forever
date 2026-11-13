@@ -141,7 +141,7 @@ async function ask(
   v.str(model, 200, false);
   v.str(prompt, 12000, false);
   const base = v.endpoint(provider, endpoint);
-  if (provider !== "ollama" && !apiKey)
+  if (!v.NO_KEY.has(provider) && !apiKey)
     throw new Error("Save an API key for this provider first.");
   const input = [context, prompt].filter(Boolean).join("\n\n");
   const headers = { "Content-Type": "application/json" };
@@ -169,8 +169,8 @@ async function ask(
   } else {
     route = ["ollama", "ollama-cloud"].includes(provider)
       ? "/api/chat"
-      : "/v1/chat/completions";
-    if (["xai", "ollama-cloud"].includes(provider))
+      : (v.OPENAI_PREFIX[provider] || "/v1") + "/chat/completions";
+    if (["xai", "ollama-cloud", "gemini", "groq"].includes(provider))
       headers.Authorization = "Bearer " + apiKey;
     body = {
       model,
@@ -179,7 +179,7 @@ async function ask(
         { role: "user", content: input },
       ],
       stream: false,
-      ...(provider === "xai" ? { max_tokens: 2048 } : {}),
+      ...(["xai", "gemini", "groq", "local"].includes(provider) ? { max_tokens: 2048 } : {}),
     };
   }
   const post = (b) => postJson(fetcher, base + route, headers, b, signal);
@@ -194,7 +194,7 @@ async function ask(
             ? await loop.anthropicLoop({ post, model, system, input, tools })
             : provider === "openai"
               ? await loop.responsesLoop({ post, model, instructions: system, input, tools, extra: { max_output_tokens: 2048 } })
-              : await loop.chatLoop({ post, model, system, input, tools, ollama: ["ollama", "ollama-cloud"].includes(provider), extra: provider === "xai" ? { max_tokens: 2048 } : {} });
+              : await loop.chatLoop({ post, model, system, input, tools, ollama: ["ollama", "ollama-cloud"].includes(provider), extra: ["xai", "gemini", "groq", "local"].includes(provider) ? { max_tokens: 2048 } : {} });
       } catch (e) {
         // Some local/cloud models reject tool definitions (HTTP 400). Retry once, same
         // provider and model, as a plain question with the original bounded context.

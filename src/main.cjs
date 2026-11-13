@@ -66,6 +66,7 @@ let win,
   companionContext,
   companionRequest,
   companionService,
+  localAi,
   memory,
   voice,
   diagnostics,
@@ -84,6 +85,9 @@ const links = {
   ollama: "https://ollama.com/",
   "ollama-cloud": "https://ollama.com/settings/keys",
   openai: "https://platform.openai.com/api-keys",
+  gemini: "https://aistudio.google.com/apikey",
+  groq: "https://console.groq.com/keys",
+  "llama-cpp": "https://github.com/ggml-org/llama.cpp",
   anthropic: "https://console.anthropic.com/",
   xai: "https://console.x.ai/",
   "chatgpt-usage": "https://chatgpt.com/settings/usage",
@@ -488,6 +492,8 @@ app.whenReady().then(async () => {
     )
       throw Error("Invalid model selection.");
     const endpoint = v.endpoint(input.provider, input.endpoint);
+    // The built-in engine serves one model; it needs no catalog request.
+    if (input.provider === "local") return require("./core/model-catalog.cjs").result([{ id: "local", label: localAi.status().model?.name || "Free AI on this PC" }], "local-engine", "Runs on this PC.");
     const key = JSON.stringify([input.provider, authMode, endpoint]);
     return catalogs.get(
       key,
@@ -609,7 +615,27 @@ app.whenReady().then(async () => {
   handle("copyTravelGuidance", (...args) => travel.copyGuidance(...args));
   handle("createTravelPlan", (...args) => travel.createPlan(...args));
   handle("openTravelSource", (...args) => travel.openSource(...args));
+  // Free AI on this PC (0.27): one-click install of a pinned engine and model.
+  localAi = new (require("./core/local-ai.cjs").LocalAi)({ dir: path.join(app.getPath("userData"), "local-ai"),
+    onChange: (s) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:localAi", s); } });
+  app.on("before-quit", () => { void localAi.stop(); });
+  handle("localAiStatus", () => localAi.status());
+  handle("localAiCancel", () => { localAi.cancel(); return localAi.status(); });
+  handle("localAiRemove", async () => {
+    const s = await localAi.remove();
+    if (store.state.provider.id === "local") { store.saveState(v.validateState({ ...store.state, provider: { id: "ollama", model: "", endpoint: v.providers[0].endpoint, authMode: "api" } })); companionContext.invalidate("provider-save"); }
+    return s;
+  });
+  handle("localAiInstall", async (tier) => {
+    if (tier !== undefined && !["standard", "light"].includes(tier)) throw Error("Invalid model choice.");
+    const s = await localAi.install(tier);
+    // Ready: make it the companion's model so the chat just works.
+    store.saveState(v.validateState({ ...store.state, provider: { id: "local", model: "local", endpoint: v.endpoint("local"), authMode: "api" } }));
+    companionContext.invalidate("provider-save"); catalogs.clear();
+    return { ...s, state: structuredClone(store.state) };
+  });
   companionService = new CompanionService({
+    localAi,
     store, context: companionContext, requests: companionRequest, memory,
     ai, chatgpt, claude, knowledge, travel,
     npcReference: (()=>{try{return require('./core/npc-location-data.cjs').validateNpcLocationPack(JSON.parse(fs.readFileSync(path.join(__dirname,'..','data','forever-npc-locations','pack.json'),'utf8')));}catch{return null;}})(),
