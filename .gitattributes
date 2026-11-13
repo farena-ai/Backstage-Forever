@@ -32,3 +32,6 @@ data/forever-encounters/* text eol=lf whitespace=-blank-at-eof
 data/forever-creatures/*.json text eol=lf
 data/forever-creatures/LICENSE text eol=lf whitespace=-blank-at-eof
 data/forever-creatures/NOTICE text eol=lf
+data/forever-loot/*.json text eol=lf
+data/forever-loot/LICENSE text eol=lf whitespace=-blank-at-eof
+data/forever-loot/NOTICE text eol=lf
