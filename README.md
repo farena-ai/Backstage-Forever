@@ -1,5 +1,9 @@
 # Backstage Forever
 
+## 0.29: know more, faster
+
+Hover any quest in the app for a rich card. In game, a short review after each death tells you what killed you and what to do next time, and `/bf stats` shows your fights this session. See the [0.29.0 release notes](docs/releases/0.29.0.md).
+
 ## 0.28: your journey
 
 Characters → Journey shows a painted badge wall, how fast each level went, and your rested bonus, with a banner for every new badge. See the [0.28.0 release notes](docs/releases/0.28.0.md).
