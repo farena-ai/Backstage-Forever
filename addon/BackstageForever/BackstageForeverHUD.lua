@@ -366,6 +366,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverHowCommand)=='function' then pcall(BackstageForeverHowCommand,message)end
                 return
             end
+            if word=='nodes' then
+                if type(BackstageForeverNodesCommand)=='function' then pcall(BackstageForeverNodesCommand,message)end
+                return
+            end
             if word=='prof' then
                 if not combat() and type(BackstageForeverProfessionLines)=='function' and type(DEFAULT_CHAT_FRAME)=='table' then
                     local coach=latest and safe(BackstageForeverBuildProfessionCoach,latest,settings and settings.profession or {})

@@ -52,37 +52,42 @@ test('actual capture emits empty typed schema, coalesces no-argument record sign
 });
 
 test('new competing loot before success rejects ambiguous attribution; repeated identical READY remains one record',()=>lua(`sent();loot();source='GameObject-0-1-2-3-1731-OTHER';loot();success();assert(count()==0);sent();loot();loot();success();assert(count()==1)`));
-test('private store retains128, exports64, deduplicates and preserves paused history across unavailable login APIs',()=>lua(`
+test('private store retains 500, exports 500, deduplicates by rounded spot per node type and preserves paused history',()=>lua(`
 -- Derive persisted history from a genuine collector result, then exercise only
--- the boundary transitions instead of replaying 140 full interactions.
+-- the boundary transitions instead of replaying hundreds of full interactions.
 sent();success();loot();assert(count()==1 and signals==1)
 local actual=BackstageForeverGatheringDB.records[1]
 local seeded={}
-for i=1,127 do
+for i=1,499 do
  local r={};for k,v in pairs(actual)do r[k]=v end
- r.itemIds={table.unpack(actual.itemIds)};r.x=i/1000;r.observedAt=epoch-127+i
- r.id='wowf:mining:1731:1411:'..math.floor(r.x*10000+.5)..':4000:1.60.1.70888'
+ r.itemIds={table.unpack(actual.itemIds)};r.x=((i-1)%25)*.04+.01;r.y=math.floor((i-1)/25)*.04+.01;r.observedAt=epoch-499+i
+ r.id='wowf:mining:1731:1411:'..math.floor(r.x*10000+.5)..':'..math.floor(r.y*10000+.5)..':1.60.1.70888'
  seeded[i]=r
 end
 local oldest,second,third=seeded[1].id,seeded[2].id,seeded[3].id
 BackstageForeverGatheringDB={schemaVersion=1,recording=true,records=seeded}
 BackstageForeverGatheringSession('PLAYER_LOGIN')
-assert(#BackstageForeverGatheringDB.records==127,'Every seeded record must pass real persisted-history validation')
-assert(count()==64 and snap().totalRecords==127 and snap().limited)
-for i=128,130 do
- now=now+1;epoch=epoch+1;x=i/1000;sent();success();loot()
- assert(#BackstageForeverGatheringDB.records==128,'128 retained cap across first fill and overflow')
+assert(#BackstageForeverGatheringDB.records==499,'Every seeded record must pass real persisted-history validation')
+assert(count()==499 and snap().totalRecords==499 and not snap().limited)
+y=.9
+for i=1,3 do
+ now=now+1;epoch=epoch+1;x=.03+i*.04;sent();success();loot()
+ assert(#BackstageForeverGatheringDB.records==500,'500 retained cap across first fill and overflow')
 end
 assert(signals==4,'Only one seed-producing and three cap-crossing real interactions')
 local ids={};for _,r in ipairs(BackstageForeverGatheringDB.records)do assert(not ids[r.id]);ids[r.id]=true end
 assert(not ids[oldest] and not ids[second] and ids[third],'Overflow evicts exactly the two oldest records')
-local exported=snap();assert(#exported.records==64 and exported.totalRecords==128 and exported.limited)
-assert(exported.records[1].x==.130 and exported.records[64].x==.067,'Export keeps newest 64 in order')
+local exported=snap();assert(#exported.records==500 and exported.totalRecords==500 and not exported.limited)
+assert(exported.records[1].x==.15,'Export keeps newest first')
 local last=exported.records[1].id;sent();success();loot()
-assert(#BackstageForeverGatheringDB.records==128 and snap().records[1].id==last,'Repeated observation deduplicates at retention cap')
+assert(#BackstageForeverGatheringDB.records==500 and snap().records[1].id==last,'Repeated observation deduplicates at retention cap')
+-- A nearby standing point (same rounded spot) of the same node type replaces, never duplicates.
+x=.1512;now=now+1;epoch=epoch+1;sent();success();loot()
+assert(#BackstageForeverGatheringDB.records==500 and snap().records[1].x==.1512,'Same spot, same node type: one record')
+local stillLast=false;for _,r in ipairs(BackstageForeverGatheringDB.records)do if r.id==last then stillLast=true end end;assert(not stillLast)
 BackstageForeverGatheringSetRecording(false);local previous=owner;UnitGUID=function()return nil end
-BackstageForeverGatheringSession('PLAYER_LOGIN');assert(#BackstageForeverGatheringDB.records==128)
-UnitGUID=function()return previous end;assert(count()==64 and not snap().recording)
+BackstageForeverGatheringSession('PLAYER_LOGIN');assert(#BackstageForeverGatheringDB.records==500)
+UnitGUID=function()return previous end;assert(count()==500 and not snap().recording)
 local clear=BackstageForeverGatheringClearAction();assert(type(clear)=='function');clear()
 assert(count()==0 and snap().totalRecords==0 and not snap().limited and not snap().recording,'Explicit clear removes retained history without enabling recording')
 `));
@@ -151,5 +156,48 @@ local cases={
  {set=function(f)C_Map.GetBestMapForUnit=f end,good=function()return map end},
  {set=function(f)C_Map.GetPlayerMapPosition=f end,good=function()return {x=x,y=y}end},
 }
-for i,case in ipairs(cases)do x=.51+i/1000;sent();success();local reads=0;case.set(function()reads=reads+1;if reads==1 then return case.good()end;return {secret=true}end);loot();assert(reads==1,'Event field read once '..i);case.set(case.good);assert(count()==i+1);for _,r in ipairs(snap().records)do assert(r.observedAt==epoch and r.clientBuild=='1.60.1.70888')end end
+for i,case in ipairs(cases)do x=.51+i/50;sent();success();local reads=0;case.set(function()reads=reads+1;if reads==1 then return case.good()end;return {secret=true}end);loot();assert(reads==1,'Event field read once '..i);case.set(case.good);assert(count()==i+1);for _,r in ipairs(snap().records)do assert(r.observedAt==epoch and r.clientBuild=='1.60.1.70888')end end
+`));
+test('opened world chests are remembered as method chest; coin slots, bag lockboxes and non-chest objects are not',()=>lua(`
+source='GameObject-0-1-2-3-2843-PRIVATE_OBJECT';items={858,2589,'coin'}
+GetLootSlotLink=function(i)if items[i]=='coin' then return nil end;return '|Hitem:'..items[i]..':0|h[Observed]|h' end
+sent('Battered Chest',3365);success(3365);loot();assert(count()==1)
+local r=snap().records[1];assert(r.method=='chest' and r.entityId==2843 and r.name=='Battered Chest' and #r.itemIds==2 and r.itemIds[1]==858)
+assert(BackstageForeverGatheringValidateSnapshot(snap(),epoch).records[1].method=='chest')
+x=.7;sent('Mossy Footlocker',1804);loot();success(1804);assert(count()==2,'Pick Lock on a footlocker')
+x=.8;sent('Wanted Poster',3365);success(3365);loot();assert(count()==2,'Opening a non-chest object is ignored')
+x=.85;sent('Battered Chest',99999);success(99999);loot();assert(count()==2,'Unknown spell is ignored')
+GetSpellInfo=function(id)return id==424242 and 'Opening' or nil end
+x=.9;sent('Solid Chest',424242);success(424242);loot();assert(count()==3,'Opening recognised by English spell name')
+x=.95;source='Item-0-1-2-3-PRIVATE_LOCKBOX';sent('Battered Chest',3365);success(3365);loot();assert(count()==3,'Bag lockbox has no world object')
+x=.6;source='GameObject-0-1-2-3-2843-PRIVATE_OBJECT';items={'coin'};sent('Battered Chest',3365);success(3365);loot();assert(count()==3,'Coin-only chest records nothing')
+items={2770};sent('Copper Vein',2576);success(2576);loot();assert(count()==3,'Chest object is not a mining source')
+`));
+test('/bf nodes pure helpers: compass direction, nearest by type, yards when the map size is known',()=>lua(`
+local D=BackstageForeverGatheringDirection
+assert(D(0,-1)=='north' and D(1,0)=='east' and D(0,1)=='south' and D(-1,0)=='west' and D(1,-1)=='northeast' and D(-1,1)=='southwest' and D(0,0)=='here' and D(0/0,1)==nil)
+local function rec(id,method,mapId,x,y)return {id=id,method=method,mapId=mapId,x=x,y=y,name=id}end
+local rows={rec('far','herbalism',1411,.9,.9),rec('near','mining',1411,.52,.4),rec('chest','chest',1411,.5,.45),rec('other','herbalism',1412,.5,.4)}
+local here={mapId=1411,x=.5,y=.4}
+local all=BackstageForeverGatheringNearest(rows,here,{})
+assert(#all==3 and all[1].record.id=='near' and all[1].direction=='east' and all[2].record.id=='chest' and all[2].direction=='south' and all[3].record.id=='far')
+local herbs=BackstageForeverGatheringNearest(rows,here,{types={herbalism=true}});assert(#herbs==1 and herbs[1].record.id=='far' and herbs[1].kind=='herb')
+local yards=BackstageForeverGatheringNearest(rows,here,{types={mining=true},size={5000,3000}})
+assert(yards[1].unit=='yards' and math.floor(yards[1].distance+.5)==100)
+assert(BackstageForeverGatheringNodeLine(yards[1])=='near (ore) - 100 yd east - 52.0, 40.0')
+assert(BackstageForeverGatheringNodeLine(all[2]):find('5.0% of the map south',1,true))
+assert(#BackstageForeverGatheringNearest(rows,here,{limit=1})==1)
+assert(#BackstageForeverGatheringNearest(rows,{mapId=1411,x={secret=true},y=.4},{})==0)
+assert(#BackstageForeverGatheringNearest(nil,here,{})==0 and #BackstageForeverGatheringNearest(rows,here,{size={'x',1}})==3)
+`));
+test('/bf nodes lists remembered spots of your gathering types in chat and arrows the nearest',()=>lua(`
+local said,way={},nil;DEFAULT_CHAT_FRAME={AddMessage=function(_,m)said[#said+1]=m end};BackstageForeverWay=function(m)way=m end
+BackstageForeverNodesCommand('nodes');assert(said[1]:find('No remembered gathering spots',1,true))
+sent();success();loot();said={};x=.6
+BackstageForeverNodesCommand('nodes');assert(said[1]:find('Nearest remembered spots in map 1411',1,true) and said[2]:find('Copper Vein (ore)',1,true) and said[2]:find('west',1,true));assert(way=='way 1411 50.0 40.0 Copper Vein')
+BackstageForeverGatheringSnapshot({id=owner,clientBuild='1.60.1.'..build,updatedAt=epoch,readiness={workshop={professions={items={{skillLineId=182}}}}}})
+said={};BackstageForeverNodesCommand('nodes');assert(said[1]:find('No remembered herb or chest',1,true))
+said={};BackstageForeverNodesCommand('nodes ore');assert(said[2]:find('Copper Vein',1,true))
+said={};BackstageForeverNodesCommand('nodes bogus');assert(said[1]:find('Use /bf nodes',1,true))
+fighting=true;said={};BackstageForeverNodesCommand('nodes');assert(said[1]:find('combat',1,true))
 `));
