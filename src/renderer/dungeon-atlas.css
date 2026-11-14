@@ -90,6 +90,11 @@
 .loot-bosses { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
 .loot-boss { padding: 8px 10px 10px; border-radius: 6px; background: rgba(255,235,190,.05); border: 1px solid rgba(184,134,46,.35); }
 .loot-boss.empty { opacity: .7; }
+.loot-community { margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(43,138,156,.6); }
+.loot-community-head { margin: 0 0 6px; font-size: 12px; color: #9fd6df; display: flex; align-items: center; gap: 6px; }
+.loot-community-badge { padding: 1px 6px; border-radius: 9px; background: #1f6f80; color: #e9fbff; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: 10px; }
+.loot-tile.community { border-style: dashed; border-color: #2b8a9c; }
+.loot-provenance { display: block; font-size: 11px; color: #9fd6df; }
 .loot-boss header { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(184,134,46,.35); }
 .loot-boss h4 { margin: 0; flex: 1; font: 700 15px Cinzel, Georgia, serif; color: #f3dca0; }
 .loot-boss header small { color: #bfa878; font-size: 12px; }

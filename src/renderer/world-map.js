@@ -6,7 +6,7 @@ window.WorldMapView = (() => {
   const LAYERS = [
     ["quest-turnin", "Turn-ins"], ["quest-objective", "Objectives"], ["objective-area", "Objective areas"], ["quest-giver", "Quests to pick up"],
     ["flight", "Flight masters"], ["class-trainer", "Class trainers"], ["profession-trainer", "Profession trainers"], ["vendor", "Vendors"],
-    ["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["heat", "Your gathering heat"], ["npc", "Other NPCs"],
+    ["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["heat", "Your gathering heat"], ["community", "Community finds"], ["npc", "Other NPCs"],
   ];
   const OFF_BY_DEFAULT = new Set(["npc", "otherFaction"]);
   const PREF = "bf-world-map-v2";
@@ -79,7 +79,7 @@ window.WorldMapView = (() => {
   // ---------- icons ----------
   // One silhouette per kind so pins read at a glance: shields for quests, a diamond for
   // flight, hexagons for trainers (swords: class, hammer: profession), a square for vendors.
-  const COLORS = { "quest-turnin": "#ffd34d", "quest-giver": "#f6c445", "quest-objective": "#d9442e", flight: "#3f86d8", "class-trainer": "#b8462e", "profession-trainer": "#2f9c8f", vendor: "#a8743a", herb: "#5fae3c", ore: "#9a8f86", find: "#e8b33a", npc: "#6b5a48", town: "#3a2a16" };
+  const COLORS = { "quest-turnin": "#ffd34d", "quest-giver": "#f6c445", "quest-objective": "#d9442e", flight: "#3f86d8", "class-trainer": "#b8462e", "profession-trainer": "#2f9c8f", vendor: "#a8743a", herb: "#5fae3c", ore: "#9a8f86", find: "#e8b33a", community: "#2b8a9c", npc: "#6b5a48", town: "#3a2a16" };
   function shade(hex, f = 0.55) { const n = parseInt(hex.slice(1), 16); const m = (v) => Math.max(0, Math.floor(v * f)); return `rgb(${m(n >> 16)},${m((n >> 8) & 255)},${m(n & 255)})`; }
   function fillShape(g, path, fill, x, y, r) {
     g.save(); g.shadowColor = "rgba(0,0,0,0.55)"; g.shadowBlur = 4; g.shadowOffsetY = 1.5;
@@ -102,6 +102,12 @@ window.WorldMapView = (() => {
     g.beginPath(); g.moveTo(x - s, y - s * 0.2); g.quadraticCurveTo(x, y - s * 1.15, x + s, y - s * 0.2); g.closePath(); g.fillStyle = "#a8682e"; g.fill(); g.stroke();
     g.fillStyle = "#f0c23a"; g.fillRect(x - s * 0.18, y - s * 0.38, s * 0.36, s * 0.5); g.strokeRect(x - s * 0.18, y - s * 0.38, s * 0.36, s * 0.5); g.restore();
   }
+  // Community spots: a dashed teal ring and a two-figure badge, so they never read as your own finds (gold star).
+  function people(g, x, y, s) {
+    g.save(); g.beginPath(); g.arc(x, y, s, 0, 7); g.fillStyle = COLORS.community; g.fill(); g.strokeStyle = "#0d3a42"; g.lineWidth = 1; g.stroke();
+    g.fillStyle = "#e9fbff"; for (const dx of [-0.38, 0.38]) { g.beginPath(); g.arc(x + dx * s, y - s * 0.22, s * 0.22, 0, 7); g.fill(); g.beginPath(); g.arc(x + dx * s, y + s * 0.42, s * 0.34, Math.PI, 0); g.fill(); }
+    g.restore();
+  }
   function star(g, x, y, s) { g.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? s * 0.45 : s, a = -Math.PI / 2 + (i * Math.PI) / 5; g.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)); } g.closePath(); g.fillStyle = "#ffe27a"; g.fill(); g.strokeStyle = "#5a3a0c"; g.lineWidth = 1; g.stroke(); }
   // Painted medallions (original ComfyUI art) for the main pin kinds; vector shapes stay as the fallback.
   const PAINTED = {};
@@ -112,6 +118,11 @@ window.WorldMapView = (() => {
   // Draw one pin icon centred on (x, y) with radius r into any 2D context.
   function icon(g, kind, x, y, r, { gather = null, zoom = 1 } = {}) {
     if (kind === "find" && gather === "chest") { chest(g, x, y, r * 0.85); star(g, x + r * 0.65, y - r * 0.65, r * 0.45); return; }
+    if (kind === "community") {
+      g.beginPath(); g.arc(x, y, r * 1.05, 0, 7); g.fillStyle = "rgba(43,138,156,0.18)"; g.fill(); g.setLineDash([2.5, 2]); g.strokeStyle = "#1f6f80"; g.lineWidth = 1.4; g.stroke(); g.setLineDash([]);
+      if (gather === "chest") chest(g, x, y, r * 0.62); else if (gather === "ore") rock(g, x, y, r * 0.62); else leaf(g, x, y, r * 0.7, COLORS.herb);
+      people(g, x + r * 0.72, y - r * 0.72, r * 0.42); return;
+    }
     if (kind === "heat") { for (const [dx, c] of [[-0.45, HEAT.herb], [0.45, HEAT.ore], [0, HEAT.chest]]) { const gr = g.createRadialGradient(x + dx * r, y + (dx ? 0.25 : -0.35) * r, 0, x + dx * r, y + (dx ? 0.25 : -0.35) * r, r * 0.8); gr.addColorStop(0, rgba(c, 0.95)); gr.addColorStop(1, rgba(c, 0)); g.fillStyle = gr; g.beginPath(); g.arc(x + dx * r, y + (dx ? 0.25 : -0.35) * r, r * 0.8, 0, 7); g.fill(); } return; }
     const k = kind === "find" ? (gather === "ore" ? "ore" : "herb") : kind;
     const art = PAINTED[k];
@@ -246,7 +257,8 @@ window.WorldMapView = (() => {
   function paintIcons(box) { for (const c of box?.querySelectorAll?.("canvas[data-ico]") || []) { const g = c.getContext("2d"); g.clearRect(0, 0, 22, 22); icon(g, c.dataset.ico, 11, 11, c.dataset.ico === "quest-objective" ? 7 : 7.5, { gather: c.dataset.gather || null }); } }
 
   // ---------- drawing ----------
-  function visiblePins() { return (model?.pins || []).filter((p) => p.kind === "town" || (layers[p.kind] !== false && (!p.otherFaction || layers.otherFaction))); }
+  // The Community finds switch hides every community pin, including NPCs the bundled data lacks.
+  function visiblePins() { return (model?.pins || []).filter((p) => p.kind === "town" || (layers[p.kind] !== false && (!p.community || layers.community !== false) && (!p.otherFaction || layers.otherFaction))); }
   function draw() {
     if (!canvas || !ctx) return;
     const w = canvas.width, h = canvas.height;
@@ -384,7 +396,7 @@ window.WorldMapView = (() => {
   // ---------- side panel ----------
   function legend() {
     const box = document.querySelector("[data-wm-legend]"); if (!box) return;
-    box.innerHTML = `<h3>Layers</h3>` + LAYERS.map(([k, label]) => `<label class="wm-layer"><input type="checkbox" data-wm-layer="${k}" ${layers[k] !== false ? "checked" : ""}>${ico(k, k === "find" ? 'data-gather="herb"' : "")}${esc(label)} <small>${model?.counts?.[k] || 0}</small></label>`).join("")
+    box.innerHTML = `<h3>Layers</h3>` + LAYERS.map(([k, label]) => `<label class="wm-layer"><input type="checkbox" data-wm-layer="${k}" ${layers[k] !== false ? "checked" : ""}>${ico(k, k === "find" || k === "community" ? 'data-gather="herb"' : "")}${esc(label)} <small>${model?.counts?.[k] || 0}</small></label>`).join("")
       + `<label class="wm-layer wm-layer-journey"><input type="checkbox" data-wm-layer="journey" ${layers.journey !== false ? "checked" : ""}><span class="wm-ico-journey" aria-hidden="true"></span>My path this session <small>${journey && journey.mapId === model?.mapId ? (journey.points?.length || 0) : 0}</small></label>`
       + (model?.counts?.otherFaction ? `<label class="wm-layer wm-layer-other"><input type="checkbox" data-wm-layer="otherFaction" ${layers.otherFaction ? "checked" : ""}><span class="wm-ico-other">⊘</span>Other faction's NPCs <small>${model.counts.otherFaction}</small></label>` : "");
     paintIcons(box);
@@ -424,8 +436,18 @@ window.WorldMapView = (() => {
     if (d.vendor?.items.length) parts.push(`<section class="wm-sec"><details ${d.vendor.items.length <= 8 ? "open" : ""}><summary>Sells (${d.vendor.items.length})</summary><ul class="wm-items">${d.vendor.items.map((i) => `<li${Number.isSafeInteger(i.itemId) ? ` data-card-item="${i.itemId}"` : ""}>${esc(i.name)}</li>`).join("")}</ul></details></section>`);
     const elsewhere = d.places.filter((p) => p.mapId !== model?.mapId);
     if (elsewhere.length) parts.push(`<p class="wm-note">Also seen in ${elsewhere.map((p) => `${esc(p.mapName)} ${pct(p.x)}, ${pct(p.y)}`).join("; ")}.</p>`);
-    if (!d.questsGiven.length && !d.questsTurnedIn.length && !d.trainer && !d.vendor && !d.flight) parts.push(`<p class="wm-note">No quests, training or wares are recorded for this NPC yet.</p>`);
+    if (d.communityRecipes?.length) parts.push(`<section class="wm-sec"><h4>Recipes · community (${d.communityRecipes.length})</h4><ul class="wm-items">${d.communityRecipes.map((r) => r.itemId ? `<li data-card-item="${r.itemId}">Recipe item #${r.itemId}</li>` : `<li>${r.source === "trainer" ? "Teaches" : "Sells"} spell #${r.spellId}</li>`).join("")}</ul></section>`);
+    if (d.communityNotes?.length) parts.push(`<p class="wm-note wm-community-note">${d.communityNotes.map(esc).join("<br>")}</p>`);
+    if (!d.questsGiven.length && !d.questsTurnedIn.length && !d.trainer && !d.vendor && !d.flight && !d.communityRecipes?.length) parts.push(`<p class="wm-note">No quests, training or wares are recorded for this NPC yet.</p>`);
     return parts.join("");
+  }
+  // A community spot: who reported it and what it gave them (names fill in from the game install).
+  function communityDetails(p) {
+    const items = (p.itemIds || []).slice(0, 16);
+    if (items.length && api?.gameItems) api.gameItems(items).then((found) => {
+      for (const el of document.querySelectorAll("[data-wm-community-item]")) { const i = items.indexOf(Number(el.dataset.wmCommunityItem)); if (i >= 0 && found?.[i]?.name) el.textContent = found[i].name; }
+    }).catch(() => {});
+    return `<p class="wm-note wm-community-note">Shared anonymously by ${p.installs} player${p.installs === 1 ? "" : "s"}. A past spot, not a live node; nodes respawn nearby.</p>${items.length ? `<section class="wm-sec"><h4>Gathered here</h4><ul class="wm-items">${items.map((id) => `<li data-card-item="${id}" data-wm-community-item="${id}">Item #${id}</li>`).join("")}</ul></section>` : ""}`;
   }
   async function loadNpc(p) {
     if (!p?.npcId || !api?.worldMapNpc) return;
@@ -441,7 +463,7 @@ window.WorldMapView = (() => {
     const goal = focused?.goal;
     const goalBox = focused ? `<section class="wm-goal" data-wm-goal><span class="wm-goal-eyebrow">Your goal here</span><h4>${esc(goal?.title || p.label)}</h4>${goal?.steps?.length ? `<ol>${goal.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}<div class="wm-goal-actions">${goal?.questId ? `<button type="button" data-quest-open="${goal.questId}">Open quest</button>` : ""}<button type="button" class="subtle" data-wm-act="unfocus">Show the full map</button></div></section>` : "";
     if (p.kind === "objective-area") { box.innerHTML = goalBox + areaCard(p); paintIcons(box); return; }
-    const details = p.npcId ? (npcFor === p.npcId && npcInfo ? npcSections(npcInfo) : npcInfo === false ? `<p class="wm-note">Details could not be loaded.</p>` : `<p class="wm-note">Loading details…</p>`) : "";
+    const details = p.npcId ? (npcFor === p.npcId && npcInfo ? npcSections(npcInfo) : npcInfo === false ? `<p class="wm-note">Details could not be loaded.</p>` : `<p class="wm-note">Loading details…</p>`) : p.kind === "community" ? communityDetails(p) : "";
     box.innerHTML = `${goalBox}<div class="wm-card-head">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<div><h3>${esc(p.label)}</h3>${p.sub ? `<p class="wm-sub">${esc(p.sub)}</p>` : ""}</div></div>
       <p class="wm-coords">${esc(model.mapName)} · ${pct(p.x)}, ${pct(p.y)}</p>${relation(p)}
       ${details}

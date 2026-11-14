@@ -149,3 +149,14 @@ test("live link status shows the strip's mode, placement and the remote desktop 
   assert.match(read("src/renderer/now.js"), /Type <code>\/bf live safe<\/code> if the link drops over remote desktop/);
   assert.match(read("src/renderer/now.js"), /sig === "compact-unreadable"/);
 });
+
+test("Help explains community sharing and how to turn it off", () => {
+  const entry = APP.find((a) => a.name === "Community");
+  assert.ok(entry, "Community entry on the Commands page");
+  assert.match(entry.what, /anonymous/); assert.match(entry.what, /Turn it off under Settings → Game connection → Community/);
+  assert.match(entry.what, /No names, realm, account or chat/);
+  assert.match(read("src/renderer/app.js"), /Community sharing(?:<\/strong>)? is on by default[^<]*Turn it off any time in Settings → Game connection → Community/);
+  const html = read("src/renderer/index.html");
+  assert.match(html, /<script src="community\.js"><\/script>/); assert.match(html, /href="community\.css"/);
+  assert.match(read("src/renderer/app.js"), /CommunityView\.markup\(\)/);
+});

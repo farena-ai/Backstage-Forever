@@ -8,7 +8,8 @@ const MAX_ID = 2147483647;
 const itemId = (x) => { if (!Number.isSafeInteger(x) || x < 1 || x > MAX_ID) throw Error("Invalid item ID."); return x; };
 const count = (args, min, max = min) => { if (args.length < min || args.length > max) throw Error("Invalid loot request."); };
 
-function registerBossLootHandlers({ handle, getState, gameData, wishlist, getPack }) {
+function registerBossLootHandlers({ handle, getState, gameData, wishlist, getPack, getCommunity = () => null, creatureName = () => null }) {
+  const community = () => { try { return getCommunity() || null; } catch { return null; } };
   let index = null, indexFor = null;
   const drops = () => { const p = getPack(); if (p !== indexFor) { indexFor = p; index = p ? dropIndex(p) : new Map(); } return index; };
   // The chosen character (or the active one when null): same rules as the reference handlers.
@@ -25,12 +26,12 @@ function registerBossLootHandlers({ handle, getState, gameData, wishlist, getPac
     const [profileId, instanceId] = args, p = profile(profileId);
     if (typeof instanceId !== "string" || !/^[a-z0-9-]{1,24}$/.test(instanceId)) throw Error("Invalid instance.");
     const pack = getPack();
-    return instanceLoot(pack, instanceId, { profile: p, gameData, wished: wished(p) }) || { instanceId, bosses: [], unavailable: !pack };
+    return instanceLoot(pack, instanceId, { profile: p, gameData, wished: wished(p), community: community() }) || { instanceId, bosses: [], unavailable: !pack };
   });
   handle("itemCard", (...args) => {
     count(args, 2);
     const [profileId, id] = args, p = profile(profileId);
-    return itemCard(getPack(), itemId(id), { profile: p, gameData, wished: wished(p), index: drops() });
+    return itemCard(getPack(), itemId(id), { profile: p, gameData, wished: wished(p), index: drops(), community: community(), creatureName });
   });
   handle("setLootWish", (...args) => {
     count(args, 3);

@@ -108,6 +108,11 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.on("backstage:moment", handler);
       return () => ipcRenderer.removeListener("backstage:moment", handler);
     },
+    communityStatus: () => invoke("communityStatus"),
+    setCommunitySettings: (input) => invoke("setCommunitySettings", input),
+    communityForget: () => invoke("communityForget"),
+    communityReportPreview: () => invoke("communityReportPreview"),
+    communityReport: (input) => invoke("communityReport", input),
     mapArt: (mapId) => invoke("mapArt", mapId),
     gameDataStatus: () => invoke("gameDataStatus"),
     gameItems: (ids) => invoke("gameItems", ids),

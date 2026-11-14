@@ -4,7 +4,7 @@
 const { MAP_NAMES } = require("./companion-tools.cjs");
 
 const GATHER_SPELLS = { 2366: "herb", 2368: "herb", 3570: "herb", 2575: "ore", 2576: "ore", 3564: "ore" };
-const KINDS = ["quest-turnin", "quest-giver", "quest-objective", "flight", "class-trainer", "profession-trainer", "vendor", "herb", "ore", "find", "town", "npc"];
+const KINDS = ["quest-turnin", "quest-giver", "quest-objective", "flight", "class-trainer", "profession-trainer", "vendor", "herb", "ore", "community", "find", "town", "npc"];
 // Class trainers (and weapon/portal masters) teach your class; everything else trains a profession.
 const CLASS_TITLE = /^(warrior|paladin|hunter|rogue|priest|shaman|mage|warlock|druid|portal) trainer$|weapon master/i;
 const trainerKind = (title) => (CLASS_TITLE.test(title || "") ? "class-trainer" : "profession-trainer");
@@ -244,11 +244,37 @@ function gatheringHeat(profile, mapId) {
   return { points, totals, zones: [...zones.values()].sort((a, b) => b.total - a.total || a.mapName.localeCompare(b.mapName)) };
 }
 
+// Community pack (0.34): gathering spots at least 3 players reported, as their own "community" layer
+// (never mixed with your finds), and NPC positions only where the bundled data has none.
+const COMMUNITY_NODE = { herb: "Herb", ore: "Mining node", chest: "Chest" };
+function communityPins(community, mapId, { staticNpcIds = new Set(), npcName = () => null, vendorIds = new Set() } = {}) {
+  if (!community) return [];
+  const { provenance } = require("./community.cjs");
+  const out = [];
+  for (const n of community.nodesByMap?.get(mapId) || []) {
+    out.push({ id: `community:${n.kind}:${n.objectId ?? n.name}:${n.x}:${n.y}`, kind: "community", gather: n.kind, label: n.name || COMMUNITY_NODE[n.kind], sub: `${COMMUNITY_NODE[n.kind]} · ${provenance(n.installs)}`, mapId, x: n.x, y: n.y, installs: n.installs, itemIds: n.items.map((i) => i.itemId), community: true, source: `${provenance(n.installs)} · spots other players gathered, rounded to 0.5% of the map` });
+  }
+  for (const [npcId, positions] of community.npcPositions || []) {
+    if (staticNpcIds.has(npcId)) continue;
+    const p = positions.find((q) => q.mapId === mapId);
+    if (!p) continue;
+    const vendor = vendorIds.has(npcId) || community.vendors?.has(npcId);
+    out.push({ id: `community-npc:${npcId}:${mapId}`, npcId, kind: vendor ? "vendor" : "npc", label: npcName(npcId) || `NPC #${npcId}`, sub: `${vendor ? "Vendor" : "Seen here"} · ${provenance(p.installs)}`, mapId, x: p.x, y: p.y, installs: p.installs, community: true, evidence: "community", source: `${provenance(p.installs)} · not in the bundled reference` });
+  }
+  return out;
+}
+
 class WorldMap {
-  constructor({ getState, knowledge, npcReference, travelReference, vendorPack, insights, acquisitionPack, creaturePack = null, live }) {
-    Object.assign(this, { getState, knowledge, live, npcReference, travelReference, vendorPack, insights });
+  constructor({ getState, knowledge, npcReference, travelReference, vendorPack, insights, acquisitionPack, creaturePack = null, live, getCommunity = () => null }) {
+    Object.assign(this, { getState, knowledge, live, npcReference, travelReference, vendorPack, insights, getCommunity });
     this.creatures = require("./creature-data.cjs").creatureIndex(creaturePack);
     this.static = buildStaticIndex({ knowledgePack: knowledge?.bundled?.pack, npcReference, travelReference, vendorPack, insights, acquisitionPack });
+    this.staticNpcIds = new Set();
+    for (const pins of this.static.values()) for (const p of pins) if (p.npcId) this.staticNpcIds.add(p.npcId);
+  }
+  community() { try { return this.getCommunity?.() || null; } catch { return null; } }
+  npcName(npcId) {
+    return this.knowledge?.bundled?.pack?.npcs?.[`npc:${npcId}`]?.name || this.creatures.get(npcId)?.name || null;
   }
   profile() { const s = this.getState(); return s.profiles.find((p) => p.id === s.activeProfileId) || null; }
   /** How much the bundled reference knows per leveling zone and faction (Help → Data coverage). */
@@ -310,7 +336,9 @@ class WorldMap {
     const requested = Number.isSafeInteger(input.mapId) && input.mapId > 0 ? input.mapId : null;
     const mapId = requested || live?.position.mapId || saved?.mapId || 1454;
     const index = this.knowledge?.index?.(profile || {}) || this.knowledge?.bundled || null;
-    let pins = [...(this.static.get(mapId) || []), ...questPins(profile, index, mapId), ...findPins(profile, mapId)];
+    const community = this.community();
+    const shared = communityPins(community, mapId, { staticNpcIds: this.staticNpcIds, npcName: (id) => this.npcName(id), vendorIds: new Set((this.vendorPack?.vendors || []).map((v) => v.id)) });
+    let pins = [...(this.static.get(mapId) || []), ...shared, ...questPins(profile, index, mapId), ...findPins(profile, mapId)];
     // Quest and personal pins draw above reference pins.
     pins.sort((a, b) => KINDS.indexOf(b.kind) - KINDS.indexOf(a.kind));
     if (pins.length > MAX_PINS) pins = pins.slice(pins.length - MAX_PINS);
@@ -336,7 +364,8 @@ class WorldMap {
         liveKey: profile?.source?.kind === "wow-addon" ? require("./live-bridge.cjs").liveKeyFor(profile.source.id) ?? -1 : null,
       },
       pins, counts, areas, camps: hostileCamps(areas), heat,
-      attribution: "Reference data from Efficient Games (https://efficient.games), CC BY 4.0. Positions are approximate community observations.",
+      attribution: "Reference data from Efficient Games (https://efficient.games), CC BY 4.0. Positions are approximate community observations." + (community ? " Community layer: spots and NPCs at least 3 Backstage Forever players shared anonymously." : ""),
+      community: community ? { version: community.version, generatedAt: community.generatedAt } : null,
     };
   }
   // Everything known about one NPC, in the selected character's terms.
@@ -349,10 +378,22 @@ class WorldMap {
     const vendor = (this.vendorPack?.vendors || []).find((v) => v.id === npcId) || null;
     const located = (this.npcReference?.npcs || []).find((n) => n.id === npcId) || null;
     const flight = (this.travelReference?.nodes || []).find((n) => n.flightMaster?.npcId === npcId) || null;
-    const name = ref?.name || trainer?.name || vendor?.name || located?.name || null;
+    const community = this.community();
+    const cPositions = community?.npcPositions?.get(npcId) || [], cVendor = community?.vendors?.get(npcId) || [];
+    const cRecipes = community?.recipes?.get(npcId) || [];
+    const name = ref?.name || trainer?.name || vendor?.name || located?.name || ((cPositions.length || cVendor.length || cRecipes.length) ? this.npcName(npcId) || `NPC #${npcId}` : null);
     if (!name) return null;
     const sides = ref?.side ? [ref.side] : friendlyTo(trainer?.observedReactionsByFaction || vendor?.observedReactionsByFaction);
-    const positions = ref?.positions?.length ? ref.positions : trainer?.positions || vendor?.positions || located?.positions || [];
+    const bundledPositions = ref?.positions?.length ? ref.positions : trainer?.positions?.length ? trainer.positions : vendor?.positions?.length ? vendor.positions : located?.positions || [];
+    // Community positions, wares and recipes only fill gaps in the bundled reference, and say so.
+    const { provenance } = require("./community.cjs");
+    const positions = bundledPositions.length ? bundledPositions : cPositions;
+    const communityNotes = [];
+    if (!bundledPositions.length && cPositions.length) communityNotes.push(`Position from the community · ${provenance(cPositions[0].installs)}`);
+    const communityVendor = !vendor && cVendor.length ? { items: cVendor.slice(0, 60).map((i) => ({ itemId: i.itemId, name: `Item #${i.itemId}`, installs: i.installs })), source: provenance(Math.max(...cVendor.map((i) => i.installs))) } : null;
+    if (communityVendor) communityNotes.push(`Wares from the community · ${communityVendor.source}`);
+    const communityRecipes = cRecipes.slice(0, 40).map((r) => ({ ...r }));
+    if (communityRecipes.length) communityNotes.push(`Recipes from the community · ${provenance(Math.max(...cRecipes.map((r) => r.installs)))}`);
     const level = Number.isInteger(profile?.level) ? profile.level : null;
     const active = new Map((profile?.quests || []).map((q) => [q.id, q]));
     const done = new Set(profile?.history?.completedIdsKnown ? profile.history.completedIds : []);
@@ -377,7 +418,7 @@ class WorldMap {
     const roles = [];
     if (flight) roles.push(`Flight Master · ${flight.label}`);
     if (trainer) roles.push(trainer.title || "Trainer");
-    if (vendor) roles.push("Vendor");
+    if (vendor || communityVendor) roles.push("Vendor");
     if (given.length) roles.push("Quest giver");
     return {
       npcId, name, roles, sides,
@@ -390,10 +431,11 @@ class WorldMap {
           learnable: tKind === "class-trainer" && forYou && level !== null ? (sv.observedLevel || 0) <= level : null }))
           .sort((a, b) => (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name)),
       } : null,
-      vendor: vendor ? { items: (vendor.listings || []).filter((l) => l.name).map((l) => ({ itemId: l.itemId, name: l.name })) } : null,
+      vendor: vendor ? { items: (vendor.listings || []).filter((l) => l.name).map((l) => ({ itemId: l.itemId, name: l.name })) } : communityVendor,
+      communityRecipes, communityNotes,
       flight: flight ? { town: flight.label } : null,
       lastSeen: ref?.lastSeen || trainer?.lastSeen || vendor?.lastSeen || located?.lastSeen || null,
-      source: "Efficient Games, CC BY 4.0",
+      source: ref || trainer || vendor || located ? "Efficient Games, CC BY 4.0" + (communityNotes.length ? " · Community" : "") : "Community",
     };
   }
   search(query) {
@@ -424,4 +466,4 @@ class WorldMap {
     return { query, results: unique, from: here ? { mapId: here.mapId, mapName: mapName(here.mapId), live: Boolean(live) } : null };
   }
 }
-module.exports = { WorldMap, findPins, gatheringHeat, buildStaticIndex, questPins, relevantQuests, objectiveAreas, hostileCamps, areaShapes, difficulty, greyLevel, creatureWarning, KINDS, mapName, trainerKind, friendlyTo };
+module.exports = { WorldMap, findPins, communityPins, gatheringHeat, buildStaticIndex, questPins, relevantQuests, objectiveAreas, hostileCamps, areaShapes, difficulty, greyLevel, creatureWarning, KINDS, mapName, trainerKind, friendlyTo };

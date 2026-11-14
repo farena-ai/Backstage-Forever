@@ -4,6 +4,7 @@
 const { blockers, replaced, compare } = require("./gear-score.cjs");
 const { dropIndex } = require("./boss-loot-data.cjs");
 const { BASELINE } = require("./dungeon-atlas.cjs");
+const { provenance } = require("./community.cjs");
 const INSTANCE_NAMES = Object.fromEntries(BASELINE.map((b) => [b[0], b[1]]));
 
 // What the character wears, by slot, in the same shape enrichRewards() (knowledge-ipc.cjs) uses.
@@ -66,11 +67,23 @@ function atlasLootSummary(pack, { profile = null, gameData = null, wished = [] }
   }
   return out;
 }
+// Community drops (0.34) for a boss's creatures that the bundled list lacks, best rate first.
+function communityDrops(community, b) {
+  if (!community?.drops) return [];
+  const listed = new Set(b.items.map((x) => x.itemId)), best = new Map();
+  for (const npcId of b.npcIds) for (const d of community.drops.get(npcId) || []) {
+    if (listed.has(d.itemId) || d.rate <= 0) continue;
+    const prev = best.get(d.itemId);
+    if (!prev || d.rate > prev.rate) best.set(d.itemId, d);
+  }
+  return [...best.values()].sort((a, b2) => b2.rate - a.rate).slice(0, 16);
+}
 // One instance, boss by boss, with item facts and verdicts.
-function instanceLoot(pack, instanceId, { profile = null, gameData = null, wished = [] } = {}) {
+function instanceLoot(pack, instanceId, { profile = null, gameData = null, wished = [], community = null } = {}) {
   const inst = pack?.instances?.[instanceId];
   if (!inst) return null;
-  const ids = [...new Set(inst.bosses.flatMap((b) => b.items.map((x) => x.itemId)))];
+  const extra = new Map(inst.bosses.map((b) => [b, communityDrops(community, b)]));
+  const ids = [...new Set(inst.bosses.flatMap((b) => [...b.items.map((x) => x.itemId), ...extra.get(b).map((x) => x.itemId)]))];
   const found = ids.length && gameData ? gameData.items(ids) : [], byId = new Map(ids.map((id, i) => [id, found[i] || null]));
   const eq = equipmentContext(profile, gameData), wish = new Set(wished);
   return {
@@ -78,14 +91,21 @@ function instanceLoot(pack, instanceId, { profile = null, gameData = null, wishe
     bosses: inst.bosses.map((b) => ({ name: b.name, npcIds: b.npcIds, items: b.items.map((x) => {
       const it = byId.get(x.itemId);
       return { itemId: x.itemId, chance: x.chance, drops: x.drops, item: view(it), verdict: upgradeVerdict(it, eq), wished: wish.has(x.itemId) };
+    }), community: extra.get(b).map((x) => {
+      const it = byId.get(x.itemId);
+      return { itemId: x.itemId, chance: x.rate, samples: x.samples, installs: x.installs, source: provenance(x.installs), item: view(it), verdict: upgradeVerdict(it, eq), wished: wish.has(x.itemId) };
     }) })),
     attribution: pack.attribution,
   };
 }
 // Hover card data for one item.
-function itemCard(pack, itemId, { profile = null, gameData = null, wished = [], index = null } = {}) {
+function itemCard(pack, itemId, { profile = null, gameData = null, wished = [], index = null, community = null, creatureName = () => null } = {}) {
   const it = gameData ? gameData.items([itemId])[0] || null : null;
   const sources = ((index || dropIndex(pack)).get(itemId) || []).slice(0, 4).map((s) => ({ boss: s.boss, instanceId: s.instanceId, instance: INSTANCE_NAMES[s.instanceId] || s.instanceId, chance: s.chance }));
-  return { itemId, item: view(it), verdict: upgradeVerdict(it, equipmentContext(profile, gameData)), sources, wished: wished.includes(itemId) };
+  const bosses = new Map();
+  for (const inst of Object.values(pack?.instances || {})) for (const b of inst.bosses) for (const id of b.npcIds) bosses.set(id, b.name);
+  // Community drops: labelled with how many players reported them, never merged into the bundled list.
+  const communitySources = (community?.dropsByItem?.get(itemId) || []).slice(0, 3).map((d) => ({ npcId: d.npcId, name: bosses.get(d.npcId) || creatureName(d.npcId) || `Creature #${d.npcId}`, chance: d.rate, samples: d.samples, installs: d.installs, source: provenance(d.installs) }));
+  return { itemId, item: view(it), verdict: upgradeVerdict(it, equipmentContext(profile, gameData)), sources, communitySources, wished: wished.includes(itemId) };
 }
 module.exports = { equipmentContext, upgradeVerdict, atlasLootSummary, instanceLoot, itemCard, INSTANCE_NAMES };

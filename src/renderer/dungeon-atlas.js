@@ -62,23 +62,25 @@ window.DungeonAtlas = (() => {
     const name = it?.name || `Item #${x.itemId}`;
     const kind = it ? [it.slot, it.kind].filter(Boolean).join(" · ") || (it.itemLevel ? `Item level ${it.itemLevel}` : "") : "";
     const badge = BADGE[v] ? `<span class="loot-badge v-${esc(v)}">${esc(v === "upgrade-later" ? x.verdict.text.replace("Upgrade for you at", "Upgrade at") : BADGE[v])}</span>` : "";
-    return `<li class="loot-tile q-${q} v-${esc(v)}${x.wished ? " wished" : ""}" data-card-item="${x.itemId}">
+    return `<li class="loot-tile q-${q} v-${esc(v)}${x.wished ? " wished" : ""}${x.community ? " community" : ""}" data-card-item="${x.itemId}">
       <span class="loot-icon">${it?.iconFileId && window.GameIcons ? GameIcons.tag(it.iconFileId, 44) : '<span class="loot-gem" aria-hidden="true">◆</span>'}</span>
-      <span class="loot-body"><span class="loot-name">${esc(name)}</span>${kind ? `<span class="loot-kind">${esc(kind)}</span>` : ""}${badge}</span>
-      <span class="loot-side"><span class="loot-chance" title="Seen in ${x.drops} loot${x.drops === 1 ? "" : "s"}">${pct(x.chance)}</span><button type="button" class="loot-star" data-loot-wish="${x.itemId}" aria-pressed="${x.wished}" aria-label="${x.wished ? "Remove from" : "Add to"} wish list: ${esc(name)}">${x.wished ? "★" : "☆"}</button></span></li>`;
+      <span class="loot-body"><span class="loot-name">${esc(name)}</span>${kind ? `<span class="loot-kind">${esc(kind)}</span>` : ""}${badge}${x.community ? `<span class="loot-provenance">${esc(x.source)}</span>` : ""}</span>
+      <span class="loot-side"><span class="loot-chance" title="${x.community ? `${esc(x.source)} · ${x.samples} loot${x.samples === 1 ? "" : "s"} pooled` : `Seen in ${x.drops} loot${x.drops === 1 ? "" : "s"}`}">${pct(x.chance)}</span><button type="button" class="loot-star" data-loot-wish="${x.itemId}" aria-pressed="${x.wished}" aria-label="${x.wished ? "Remove from" : "Add to"} wish list: ${esc(name)}">${x.wished ? "★" : "☆"}</button></span></li>`;
   }
   function lootView(e) {
     const d = loot.get(e.id);
     if (!d) return `<div class="atlas-loot"><p class="atlas-loading">Opening the loot chest…</p></div>`;
     if (d.error) return `<div class="atlas-loot"><p class="loot-none">${esc(d.error)}</p></div>`;
-    const bosses = d.bosses.map((b) => `<section class="loot-boss${b.items.length ? "" : " empty"}"><header><span class="atlas-skull" aria-hidden="true">☠</span><h4>${esc(b.name)}</h4>${b.items.length ? `<small>${b.items.length} item${b.items.length === 1 ? "" : "s"}</small>` : ""}</header>
-      ${b.items.length ? `<ul class="loot-grid">${b.items.map(tile).join("")}</ul>` : `<p class="loot-none">No loot recorded yet</p>`}</section>`).join("");
+    // Community drops sit in their own labelled list under the bundled ones, never mixed in.
+    const shared = (b) => b.community?.length ? `<div class="loot-community"><p class="loot-community-head"><span class="loot-community-badge">Community</span>Also reported by players</p><ul class="loot-grid">${b.community.map((x) => tile({ ...x, community: true })).join("")}</ul></div>` : "";
+    const bosses = d.bosses.map((b) => `<section class="loot-boss${b.items.length || b.community?.length ? "" : " empty"}"><header><span class="atlas-skull" aria-hidden="true">☠</span><h4>${esc(b.name)}</h4>${b.items.length ? `<small>${b.items.length} item${b.items.length === 1 ? "" : "s"}</small>` : ""}</header>
+      ${b.items.length ? `<ul class="loot-grid">${b.items.map(tile).join("")}</ul>` : b.community?.length ? "" : `<p class="loot-none">No loot recorded yet</p>`}${shared(b)}</section>`).join("");
     const notes = [!d.gameData && d.bosses.some((b) => b.items.length) ? "Connect your game folder (Settings → Game connection) to see item names, icons and stats." : "", d.gameData && !d.equipmentKnown ? "Type /reload in game once so the app can compare these with what you wear." : ""].filter(Boolean);
     return `<div class="atlas-loot" data-atlas-loot-view="${esc(e.id)}">
       <div class="loot-legend"><span><i class="loot-key v-upgrade"></i>Upgrade for you</span><span><i class="loot-key v-upgrade-later"></i>Upgrade later</span><span>☆ Star an item for your wish list</span><span>% = seen in that share of loots</span></div>
       ${notes.map((n) => `<p class="loot-note">${esc(n)}</p>`).join("")}
       <div class="loot-bosses">${bosses}</div>
-      <p class="atlas-src">Drops observed in World of Warcraft: Forever by the community. ${esc(d.attribution || "")}</p></div>`;
+      <p class="atlas-src">Drops observed in World of Warcraft: Forever by the community. ${esc(d.attribution || "")}${d.bosses.some((b) => b.community?.length) ? " Community: drop rates pooled from Backstage Forever players who share anonymously (at least 3 per item)." : ""}</p></div>`;
   }
   async function loadLoot(id) {
     try { loot.set(id, await api.dungeonLoot(null, id)); } catch (err) { loot.set(id, { error: err.message }); }
