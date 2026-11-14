@@ -378,6 +378,10 @@ if type(SlashCmdList)=='table' then
                 end
                 return
             end
+            if word=='ledger' or word=='prices' then
+                if type(BackstageForeverLedgerCommand)=='function' then pcall(BackstageForeverLedgerCommand,message)end
+                return
+            end
             if word=='moments' then
                 if type(BackstageForeverMomentsCommand)=='function' then pcall(BackstageForeverMomentsCommand,message)end
                 return
