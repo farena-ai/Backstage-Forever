@@ -115,8 +115,25 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
     place();
     win.loadURL(page);
   }
+  // The page says when the mouse is over it, but a full-screen game can take the mouse back without
+  // the page ever hearing that it left, which held the panel open for good. While held, look where
+  // the mouse really is each second and let go once it is off the panel.
+  let holdCheck = null;
+  function overPanel() {
+    try {
+      const c = screen.getCursorScreenPoint(), b = win && !win.isDestroyed() && win.isVisible() ? win.getBounds() : null;
+      return Boolean(b && c.x >= b.x && c.x < b.x + b.width && c.y >= b.y && c.y < b.y + b.height);
+    } catch { return false; }
+  }
+  function watchHold() {
+    clearTimer(holdCheck); holdCheck = null;
+    if (!hold) return;
+    holdCheck = setTimer(() => { holdCheck = null; if (hold && !overPanel()) { hold = false; schedule(); } else watchHold(); }, 1000);
+    holdCheck?.unref?.();
+  }
   function schedule() {
     clearTimer(timer); timer = null;
+    watchHold();
     if (hold || !state || state.status === "thinking" || !prefs.hideAfterS) return;
     timer = setTimer(() => { timer = null; if (!hold) hide(); }, prefs.hideAfterS * 1000);
     timer?.unref?.();
@@ -133,7 +150,7 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
     schedule();
     return true;
   }
-  function hide() { clearTimer(timer); timer = null; if (win && !win.isDestroyed()) win.hide(); }
+  function hide() { clearTimer(timer); timer = null; hold = false; clearTimer(holdCheck); holdCheck = null; if (win && !win.isDestroyed()) win.hide(); }
   return {
     show, hide, where,
     settings: () => ({ enabled: prefs.enabled, hideAfterS: prefs.hideAfterS, moved: Boolean(prefs.position), choices: [...HIDE_CHOICES] }),

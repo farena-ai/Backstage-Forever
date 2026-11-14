@@ -57,6 +57,7 @@ function fakeElectron() {
     getPosition() { return this.position; }
     showInactive() { this.visible = true; this.calls.push(["showInactive"]); }
     show() { this.calls.push(["show"]); } focus() { this.calls.push(["focus"]); }
+    getBounds() { return this.bounds; }
     hide() { this.visible = false; } isVisible() { return this.visible; } isDestroyed() { return this.destroyed; } destroy() { this.destroyed = true; }
   }
   const ipcMain = { handle: (c, f) => handlers.set(c, f), removeHandler: (c) => handlers.delete(c) };
@@ -94,7 +95,18 @@ test("the panel window: frameless, always on top above full-screen games, off th
   assert.equal(e.handlers.get("askPanel:state")(ev(w.webContents)).status, "answer");
   // Hovering holds it; leaving restarts the clock; the clock hides it.
   e.handlers.get("askPanel:hold")(ev(w.webContents), true);
-  assert.equal(e.timers.filter((t) => !t.cleared).length, 0);
+  // Held: no auto-hide, only a once-a-second look at where the mouse really is.
+  let live2 = e.timers.filter((t) => !t.cleared);
+  assert.deepEqual(live2.map((t) => t.ms), [1000]);
+  // Mouse still on the panel: it stays held and looks again.
+  e.screen.getCursorScreenPoint = () => ({ x: w.bounds.x + 10, y: w.bounds.y + 10 });
+  live2[0].cleared = true; live2[0].fn();
+  assert.deepEqual(e.timers.filter((t) => !t.cleared).map((t) => t.ms), [1000]);
+  // The game took the mouse back without the page hearing it leave: the hold lets go, the clock runs.
+  e.screen.getCursorScreenPoint = () => ({ x: 10, y: 10 });
+  live2 = e.timers.filter((t) => !t.cleared); live2[0].cleared = true; live2[0].fn();
+  assert.deepEqual(e.timers.filter((t) => !t.cleared).map((t) => t.ms), [45000], "a stuck hold releases itself");
+  e.handlers.get("askPanel:hold")(ev(w.webContents), true);
   e.handlers.get("askPanel:hold")(ev(w.webContents), false);
   const due = e.timers.filter((t) => !t.cleared)[0]; due.cleared = true; due.fn();
   assert.equal(w.visible, false);
