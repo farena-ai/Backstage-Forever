@@ -3,7 +3,7 @@
 .free-ai-head { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
 .free-ai-head h2 { margin: 0; font: 700 20px Cinzel, Georgia, serif; color: #3d220c; }
 .free-ai-head p { margin: 2px 0 0; color: #5a3e1c; }
-.free-ai-crest { flex: none; width: 52px; height: 52px; background: url("art/pins/quest-giver.png") center / contain no-repeat; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+.free-ai-crest { flex: none; width: 52px; height: 52px; background: url("art/pins/companion.png") center / contain no-repeat; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
 .free-ai p { line-height: 1.45; }
 .free-ai-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .free-ai .free-ai-go { font-size: 16px; padding-left: 26px; padding-right: 26px; }

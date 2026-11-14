@@ -585,26 +585,9 @@ function classKey(className) {
     .toLowerCase()
     .replace(/[^a-z]/g, "");
 }
+// One painted set of class crests everywhere (art/classes); other classes keep the wolf medallion.
 function portrait(className) {
-  const key = classKey(className);
-  return [
-    "warrior",
-    "paladin",
-    "hunter",
-    "rogue",
-    "priest",
-    "shaman",
-    "mage",
-    "warlock",
-    "druid",
-  ].includes(key)
-    ? `../../assets/class-${key}.png`
-    : "../../assets/wolf-medallion.png";
-}
-function factionBanner(p) {
-  return ["Alliance", "Horde"].includes(p?.faction)
-    ? `<span class="faction-banner"><img src="../../assets/faction-${p.faction.toLowerCase()}.png" alt=""><span>${esc(p.faction)}<small>YOUR CHARACTER’S FACTION</small></span></span>`
-    : `<span class="faction-banner neutral-faction">◈ <span>${esc(p?.faction || "Faction not yet received")}<small>YOUR CHARACTER’S FACTION</small></span></span>`;
+  return PageHero.classCrest(className) || "../../assets/wolf-medallion.png";
 }
 function sigil(className) {
   return (
@@ -634,15 +617,16 @@ function snapshotLabel(p) {
   );
   return `Saved snapshot · ${Number.isFinite(minutes) ? (minutes < 1 ? "less than a minute ago" : minutes < 60 ? minutes + " min ago" : Math.floor(minutes / 60) + " hr ago") : "time unavailable"} · ${timestamp}`;
 }
+// Three painted doors out of Adventure; each opens the page its title names.
 function situationCards() {
-  const p = profile();
-  return `<section class="situation-cards" aria-label="Planning suggestions"><button class="illustrated-card dungeon-card" data-task="dungeon"><span class="eyebrow">PREPARE / PLANNING SUGGESTION</span><strong>Beyond the dungeon gate</strong><span>A checklist for ${esc(p?.className || "your character")}, level ${p?.level || 1} →</span></button><button class="illustrated-card forge-card" data-task="profession"><span class="eyebrow">CRAFT / PLANNING SUGGESTION</span><strong>Make something legendary</strong><span>Choose a profession and plan your next craft →</span></button><button class="illustrated-card expedition-card" data-task="session"><span class="eyebrow">EXPLORE / SAVED LOCATION</span><strong>${esc(p?.location?.zone || "The road ahead")}</strong><span>${esc(p?.location?.subZone || "Plan a relaxed session from your last saved location")} →</span></button></section>`;
-}
-function commandOverview(p, brief) {
-  return `<section class="command-overview" aria-label="Character overview"><div class="overview-xp"><span class="eyebrow">LEVEL ${p?.level || 1} · EXPERIENCE</span><strong>${brief?.progress?.known && brief.progress.percent !== null ? `${esc(brief.progress.percent)}%` : "Unknown"}</strong>${brief?.progress?.known && brief.progress.percent !== null ? `<progress class="xp-track" aria-label="Level experience" max="100" value="${Math.max(0, Math.min(100, brief.progress.percent))}"></progress>` : ""}<small>${esc(brief?.progress?.message || "Experience not received from the game.")}</small></div><div><span class="eyebrow">READY TO TURN IN</span><strong>${brief?.guidance?.counts?.ready ?? "—"}</strong><small>${esc(brief?.quests?.message || "Quest log not yet received.")}</small></div><div><span class="eyebrow">LAST SAVED LOCATION</span><strong class="overview-location">${esc(p?.location?.zone || "Unknown")}</strong><small>${esc(p?.location?.subZone || "No subzone reported")}</small></div></section>`;
-}
-function commandRoster(p) {
-  return `<section class="command-roster"><div class="panel-header"><h3>Your company</h3><button class="subtle" data-nav="characters">Manage roster →</button></div><div class="roster-strip">${state.profiles.map(item => `<button data-character="${esc(item.id)}" class="roster-card ${item.id === p?.id ? "selected" : ""}" ${item.id === p?.id ? 'aria-pressed="true"' : 'aria-pressed="false"'}><img src="${portrait(item.className)}" alt=""><span><strong>${esc(item.name)}</strong><small>Level ${item.level} ${esc(item.className)} · ${esc(item.faction || "Faction unknown")}</small><small>${item.source?.kind === "wow-addon" ? "Game snapshot · " + esc(CommandCenter.age(item)) : "Manual journal"}</small></span></button>`).join("")}</div><p class="corner-note">Another character missing? Play that character and log out to bring their saved snapshot here.</p></section>`;
+  const p = profile(), loc = p?.location || {};
+  const mapId = Number.isSafeInteger(loc.mapId) ? loc.mapId : window.ZoneArt?.idFor(loc.zone);
+  const biome = mapId ? window.ZoneArt?.biome(mapId) : null;
+  const craft = p?.workshop?.professions?.items?.find((x) => x?.name);
+  const lvl = Number(p?.level) || 1;
+  const zone = loc.zone ? `<button class="illustrated-card expedition-card${biome ? ` zone-${esc(biome)}` : ""}" data-task="session" data-map-zone="${esc(mapId || loc.zone)}"><span class="eyebrow">EXPLORE · SAVED LOCATION</span><strong>${esc(loc.zone)}</strong><span>${loc.subZone ? esc(loc.subZone) + " · " : ""}Open it on the World Map →</span></button>`
+    : `<button class="illustrated-card expedition-card" data-task="session" data-nav="world-map"><span class="eyebrow">EXPLORE · WORLD MAP</span><strong>The road ahead</strong><span>Quest givers, trainers, flight masters and herbs on the map →</span></button>`;
+  return `<section class="situation-cards" aria-label="Explore more"><button class="illustrated-card dungeon-card" data-task="dungeon" data-nav="dungeons"><span class="eyebrow">DUNGEONS & RAIDS</span><strong>Beyond the dungeon gate</strong><span>Dungeons around level ${lvl}, their bosses and loot →</span></button><button class="illustrated-card forge-card" data-task="profession" data-nav="preparation"><span class="eyebrow">PROFESSIONS</span><strong>${craft ? esc(craft.name) + (Number.isFinite(craft.rank) ? ` <small>${esc(craft.rank)}${Number.isFinite(craft.maxRank) ? " / " + esc(craft.maxRank) : ""}</small>` : "") : "Learn a profession"}</strong><span>${craft ? "Your next craft, skill-ups and shopping list" : "Pick two, find a trainer and plan your first crafts"} →</span></button>${zone}</section>`;
 }
 // The in-game helpers and how to switch each one (they live in the addon; the app can only explain).
 function inGameHelpers() {
@@ -756,12 +740,19 @@ function refreshModelWidgets() {
 }
 function adventure() {
   const p = profile();
-  if (!p) return LivingSetup.empty(gameStatus, esc) + AdventureCoach.render() + PlayerNavigation.disclosure("coach-quest-plan", "Quest plan & session details", Director.panel(null));
-  const goals = p?.goals || [];
-  const done = goals.filter((g) => g.done).length;
-  const brief = briefProfileId === p?.id ? adventureBrief : null;
   const plan = guidanceProfileId === p?.id ? guidance : null;
-  return `<div class="adventure-brief command-center"><section class="hero command-hero"><img class="hero-class-art" src="${portrait(p?.className)}" alt=""><div class="hero-copy">${factionBanner(p)}<div class="hero-identity"><img class="hero-medallion" src="${portrait(p?.className)}" alt=""><div><div class="eyebrow">YOUR CHARACTER · YOUR NEXT CHAPTER</div><h1>${esc(p?.name || "Your adventure awaits")}</h1><p>${p ? `Level ${p.level} ${esc(p.className)} · ${esc(p.realm || "Realm not set")}` : "Create a character to begin your field journal."}</p></div></div><span class="hero-saved">${esc(CommandCenter.age(p))} · ${esc(brief?.freshness?.status || "unknown")} snapshot${state.followGameCharacter === false ? '<span class="follow-paused"><span>Saved-game follow paused.</span><button data-command="follow-saved">Follow saved game</button></span>' : ""}</span></div><div class="hero-caption">YOUR FIELD JOURNAL / ORIGINAL FANTASY ART</div></section>${AdventureCoach.render()}${PlayerNavigation.disclosure("coach-quest-plan", "Quest plan & session details", Director.panel(plan?.director || null))}<div class="actions"><button data-nav="characters">Character guidance →</button></div>${PlayerNavigation.disclosure("voice", "Voice · optional local reading", Voice.markup("plan"))}${LivingSetup.coverage(gameStatus, esc)}${commandOverview(p, brief)}<div class="command-columns">${CommandCenter.steps(plan, CommandCenter.options(p?.id), esc)}<aside class="command-sidebar">${CommandCenter.readiness(brief, esc)}<section class="saved-source"><div class="eyebrow">YOUR SOURCE OF TRUTH</div><h3>A saved moment in the world.</h3><p>${esc(brief?.freshness?.message || "A manual journal has no saved game observations.")}</p><p>${esc(snapshotLabel(p))}</p><button data-nav="game">Review game connection →</button><p class="corner-note">Live quest guidance updates inside WoW. This desktop view reflects your last game save; it catches up after logout.</p><button class="subtle" data-brief-action="next-quest">Plan my next quest</button></section></aside></div></div>${commandRoster(p)}${situationCards()}<div class="grid adventure-grid"><section class="panel adventure-journal"><div class="panel-header"><h3>Your next adventures</h3><span class="eyebrow">${done} / ${goals.length} complete</span></div>${goals.length ? goals.map((g) => `<div class="goal"><label class="${g.done ? "done" : ""}"><input type="checkbox" data-goal="${esc(g.id)}" ${g.done ? "checked" : ""}><span>${esc(g.text)}</span></label><button data-remove-goal="${esc(g.id)}" aria-label="Delete goal: ${esc(g.text)}">×</button></div>`).join("") : '<div class="empty">An open page. A whole world ahead.<br>Add a goal, from learning a profession to your next dungeon.</div>'}${p ? '<form id="goal-form" class="inline goal-form"><label>New goal<input name="goal" maxlength="1000" placeholder="What would you like to do next?" required></label><button type="submit" aria-label="Add goal">+ Add</button></form>' : '<button data-nav="characters">Create a character</button>'}</section><aside class="panel camp-panel"><div class="panel-header"><h3>A good place to begin</h3><span class="gold" aria-hidden="true">✧</span></div><p class="muted">Less tab juggling.<br>More time in the world.</p><div class="steps"><div class="step"><b>1</b><div><p>Keep your own field journal</p><small>Characters, goals and private notes.</small></div></div><div class="step"><b>2</b><div><p>Choose your AI companion</p><small>Local Ollama or your own cloud API.</small></div></div><div class="step"><b>3</b><div><p>Play on your terms</p><small>You make the decisions. You play the game.</small></div></div></div><button class="subtle" data-nav="connections">Set up a connection &nbsp; →</button><div class="corner-note"><span data-snapshot-age>${esc(snapshotLabel(p))}</span></div></aside></div>`;
+  const brief = briefProfileId === p?.id ? adventureBrief : null;
+  const quests = p?.quests || [], ready = quests.filter((q) => q.complete).length;
+  const goals = p?.goals || [], done = goals.filter((g) => g.done).length;
+  const facts = p ? [`Level ${esc(p.level)} ${esc(p.className || "adventurer")}`,
+    quests.length ? `<strong>${ready}</strong> of ${quests.length} quest${quests.length === 1 ? "" : "s"} ready to hand in` : "No saved quests yet",
+    goals.length ? `<strong>${done}</strong> of ${goals.length} goal${goals.length === 1 ? "" : "s"} done` : ""].filter(Boolean).join(" · ") : "";
+  const paused = p && state.followGameCharacter === false ? `<span class="follow-paused"><span class="ph-chip">Following your pick, not the last played character</span><button data-command="follow-saved">Follow saved game</button></span>` : "";
+  const hero = PageHero.render({ art: "adventure", eyebrow: p ? `Adventure · ${esc(p.name)}` : "Adventure", title: "Your next step",
+    subtitle: facts || "Connect the game and log in once: your quests, goals and professions turn into next steps here.", aside: paused });
+  if (!p) return `<div class="bf-page adventure-page">${hero}${LivingSetup.empty(gameStatus, esc)}${AdventureCoach.render()}${PlayerNavigation.disclosure("coach-quest-plan", "Quest plan & session details", Director.panel(null))}</div>`;
+  const goalCard = `<section class="bf-card adventure-journal"><h2>Your goals <small>${done} / ${goals.length} complete</small></h2>${goals.length ? goals.map((g) => `<div class="goal"><label class="${g.done ? "done" : ""}"><input type="checkbox" data-goal="${esc(g.id)}" ${g.done ? "checked" : ""}><span>${esc(g.text)}</span></label><button data-remove-goal="${esc(g.id)}" aria-label="Delete goal: ${esc(g.text)}">×</button></div>`).join("") : `<p>Write down what you want from this character: a profession at 150, your first mount at 40, a dungeon with friends. Tick them off as you go.</p>`}<form id="goal-form" class="inline goal-form"><label>New goal<input name="goal" maxlength="1000" placeholder="e.g. Reach 150 in Tailoring" required></label><button type="submit" aria-label="Add goal">+ Add</button></form></section>`;
+  return `<div class="bf-page adventure-page">${hero}${LivingSetup.coverage(gameStatus, esc)}<div class="bf-grid"><div class="bf-col">${AdventureCoach.render()}${CommandCenter.steps(plan, CommandCenter.options(p.id), esc)}${PlayerNavigation.disclosure("coach-quest-plan", "Quest plan & session details", Director.panel(plan?.director || null))}</div><div class="bf-col">${goalCard}${CommandCenter.readiness(brief, esc)}</div></div>${situationCards()}${PlayerNavigation.disclosure("voice", "Voice · optional local reading", Voice.markup("plan"))}</div>`;
 }
 function characters() {
   const p = profile();
@@ -1214,7 +1205,7 @@ root.addEventListener("click", (event) => {
   if (button.hasAttribute("data-director-start") || button.hasAttribute("data-preparation-add") || button.hasAttribute("data-preparation-retry") || button.hasAttribute("data-preparation-ask")) return;
   if (button.hasAttribute("data-company-command") || button.hasAttribute("data-company-open") || button.closest("[data-company-form]")) return;
   if (button.dataset.nav || button.dataset.character || ["reset", "import", "new-character", "delete-character"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) { questNavigationRequest++;questStatusRequest++;CharacterGuidance.invalidate(); QuestGuide.invalidate(); Company.invalidate(); Director.invalidate(); Preparation.invalidate(); Party.invalidate(); }
-  if (button.dataset.nav || button.dataset.character || button.dataset.provider || button.dataset.briefAction || button.dataset.task || ["clear-chat", "reset", "import", "new-character", "delete-character", "delete-key", "subscription-login", "subscription-logout", "explain-plan"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) retireCompanion();
+  if (button.dataset.nav || button.dataset.character || button.dataset.provider || ["clear-chat", "reset", "import", "new-character", "delete-character", "delete-key", "subscription-login", "subscription-logout", "explain-plan"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) retireCompanion();
   // A click owns its navigation before the save barrier; reference polls cannot retarget it.
   const navigation=button.dataset.nav?Object.freeze({page:button.dataset.nav,request:questNavigationRequest}):null;
   action(async () => {
@@ -1256,19 +1247,6 @@ root.addEventListener("click", (event) => {
       render();
       await QuestGuide.open(Number(button.dataset.questOpen));
     }
-    if (button.dataset.briefAction) {
-      const selected = adventureBrief?.actions?.find(
-        (a) => a.id === button.dataset.briefAction,
-      );
-      page = "assistant";
-      render();
-      const field = document.querySelector("[name=prompt]");
-      field.value =
-        selected?.prompt ||
-        "Help me plan my next quest using only my observed quest objectives. Ask for missing details; do not invent NPCs or routes.";
-      field.focus();
-      QuestGuide.updateContext();
-    }
     if (button.dataset.character) {
       await persist({ ...state, activeProfileId: button.dataset.character });
       render();
@@ -1286,19 +1264,11 @@ root.addEventListener("click", (event) => {
       await fetchModels();
     }
     if (button.dataset.link) await api.openLink(button.dataset.link);
-    if (button.dataset.task) {
-      const task = button.dataset.task;
-      page = "assistant";
+    if (button.dataset.mapZone) {
+      const where = Number(button.dataset.mapZone);
+      WorldMapView.focusZone(Number.isSafeInteger(where) && where > 0 ? where : button.dataset.mapZone);
+      page = "world-map";
       render();
-      const field = document.querySelector("[name=prompt]");
-      field.value =
-        task === "dungeon"
-          ? "Help my active character prepare for a WoW Forever dungeon. Give a class-aware checklist and mark unverified Forever specifics."
-          : task === "profession"
-            ? "Help my active character choose a WoW Forever profession and a practical crafting plan. Ask about my preferences."
-            : "Help my active character plan a relaxed 45-minute WoW Forever session from the saved location. Mark uncertain quest details.";
-      field.focus();
-      QuestGuide.updateContext();
     }
     if (button.dataset.prompt) {
       const field = document.querySelector("[name=prompt]");
@@ -1337,7 +1307,7 @@ root.addEventListener("click", (event) => {
         const option=message.travel.options.find(o=>o.id===button.dataset.optionId);
         if(option)option.saved=true;
         button.textContent="Saved to Plans";
-        toast(result.reused ? "This trip is already in Plans (Company)." : "Saved to Plans (Company). Check off each step yourself.");
+        toast(result.reused ? "This trip is already in Plans." : "Saved to Plans. Check off each step yourself.");
         break;
       }
       case "explain-plan": {

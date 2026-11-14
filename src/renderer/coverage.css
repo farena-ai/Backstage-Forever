@@ -1,9 +1,9 @@
 /* Help → Data coverage. */
 .coverage-page { display: flex; flex-direction: column; gap: 14px; }
-.cov-hero { padding: 14px 18px; border-radius: 6px; border: 1px solid #c79a4a; color: #f1dcb0; background: linear-gradient(90deg, rgba(26,6,4,.92), rgba(40,10,6,.6)), url("art/hero-help.webp") center 45% / cover no-repeat, #3a0f09; }
-.cov-eyebrow { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .2em; text-transform: uppercase; color: #e8c983; }
-.cov-hero h1 { margin: 2px 0 4px; font: 700 28px Cinzel, Georgia, serif; color: #fff1d6; }
-.cov-hero p { margin: 0 0 10px; }
+
+
+
+
 .cov-toggle { display: inline-flex; gap: 4px; padding: 3px; border-radius: 16px; background: rgba(0,0,0,.35); }
 .coverage-page .cov-toggle button { all: unset; cursor: pointer; padding: 5px 16px; border-radius: 14px; font-weight: 700; color: #f1dcb0; }
 .coverage-page .cov-toggle button[aria-pressed="true"] { background: #f6c445; color: #2b1407; }

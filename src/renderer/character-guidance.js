@@ -78,7 +78,7 @@ window.CharacterGuidance = (() => {
     return `<div class="cg-action-row">
 <button class="primary" data-cg-add data-cg-control="add" data-cg-choice="${choice}" ${ready&&!pending?"":"disabled"}>${pending?"Saving manual checklist…":m.checklistCreated?"Open character checklist":"Create character checklist"}</button>
 <button data-cg-ask data-cg-control="ask" data-cg-choice="${choice}" ${ready&&!pending?"":"disabled"}>Ask about this character</button>
-<small>Checklist opens Company. Ask opens an editable public draft; Send stays separate. No provider needed here.</small>
+<small>Checklist opens Plans. Ask opens an editable question in the companion; nothing is sent until you press Send.</small>
 </div>`;
   }
   function equipmentMarkup(m) {

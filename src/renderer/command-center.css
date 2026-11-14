@@ -6,82 +6,53 @@
 .game-status-chip small { display: block; color: #c5c5ac; font-size: 11px; font-weight: 400; }
 .game-status-chip .dot { flex: 0 0 6px; }
 .content { padding: 23px 28px 40px; }
-.command-center.adventure-brief { margin: 0 0 24px; }
-body[data-class] .hero.command-hero { min-height: 200px; margin: 0; background-position: 65% 41%; overflow: hidden; }
-body[data-class] .command-hero .hero-copy { max-width: 75%; padding: 20px 25px 19px; position: relative; z-index: 2; }
-.command-hero .hero-identity { gap: 16px; }
-body[data-class] .command-hero .hero-medallion { width: 76px; height: 76px; }
-.command-hero .hero-identity .eyebrow { font-size: 9px; margin: 0 0 6px; letter-spacing: 2px; }
-.command-hero h1 { font-size: clamp(30px, 3vw, 44px); margin: 0; overflow-wrap: anywhere; }
-.command-hero p { margin-top: 6px; max-width: none; }
-.command-hero .faction-banner { position: static; margin: 0 0 10px; transform: none; }
-.command-hero .faction-banner img { width: 30px; height: 36px; object-fit: contain; }
-.command-hero .faction-banner span { font-size: 12px; }
-.command-hero .faction-banner small { display: none; }
-.hero-saved { display: block; margin: 9px 0 0 92px; font-size: 12px; color: #ded2b6; }
-body[data-class] .command-hero .hero-class-art { width: 37%; right: 0; opacity: .65; object-position: center 28%; }
-.command-hero .hero-caption { font-size: 8px; max-width: 29%; text-align: right; }
-.command-overview { display: grid; grid-template-columns: 1.3fr .85fr 1fr; border: 1px solid #77613e; border-top: 0; margin-bottom: 24px; background: linear-gradient(100deg,#292b21ee,#17201bee); box-shadow: 0 8px 20px #0004; }
-.command-overview > div { padding: 15px 21px; min-width: 0; border-right: 1px solid #78644066; }
-.command-overview > div:last-child { border: 0; }
-.command-overview .eyebrow { display: block; font-size: 9px; letter-spacing: 1.6px; }
-.command-overview strong { display: block; color: #f0d19a; font: 600 29px Cinzel, Georgia, serif; margin: 5px 0; }
-.command-overview .overview-location { font-size: 20px; line-height: 1.3; overflow-wrap: anywhere; }
-.command-overview small { color: #c6bea7; line-height: 1.35; display: block; font-size: 12px; }
-.command-overview .xp-track { height: 9px; margin: 5px 0 7px; }
-.command-columns { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 23px; align-items: start; }
-.command-plan { min-width: 0; }
-.plan-heading { display: flex; gap: 15px; align-items: center; padding: 0 0 15px; border-bottom: 1px solid #9b7e4a77; }
-.plan-heading .eyebrow { font-size: 9px; letter-spacing: 1.6px; color: #cfb474; }
-.plan-heading h2 { font: 600 23px/1.35 Cinzel, Georgia, serif; margin: 6px 0 0; color: #f2dfb9; }
-.plan-seal { color: var(--class-accent, var(--magic)); font-size: 36px; margin-left: auto; text-shadow: 0 0 22px var(--magic-soft); }
-.plan-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin: 15px 0 9px; }
-.plan-controls label { display: grid; gap: 5px; font-size: 12px; color: #dfd0ad; }
-.plan-controls select { min-width: 140px; padding: 8px 30px 8px 12px; font-size: 13px; margin: 0; }
-.autosaved { font-size: 11px; color: #b8c8b7; padding-bottom: 9px; }
-.plan-context { font-size: 12px; line-height: 1.5; color: #c0bba7; margin: 8px 0 16px; }
-.guidance-list { display: grid; gap: 12px; }
-.guidance-step { position: relative; display: flex; gap: 16px; padding: 20px 19px 18px 14px; border: 1px solid #7a633d; border-left: 3px solid var(--class-accent, #84bdab); border-radius: 2px 13px 2px 2px; background: radial-gradient(ellipse at 100% 0,var(--magic-soft),transparent 70%),linear-gradient(115deg,#35362bd9,#18211c); box-shadow: inset 0 1px #cfb98630,0 5px 12px #0004; overflow-wrap: anywhere; }
-.guidance-step.ready-step { border-left-color: #f0c678; background: radial-gradient(ellipse at 100% 0,#b5903430,transparent 70%),linear-gradient(115deg,#3f3928e8,#20251b); }
-.step-number { flex: 0 0 32px; color: #b69a63; font: 500 24px Cinzel,Georgia,serif; padding-top: 20px; text-shadow: 0 2px #000; }
-.step-kind { color: var(--class-accent, #a8d7c5); font-size: 9px; letter-spacing: 1.8px; font-weight: 650; }
-.ready-step .step-kind { color: #f2c87c; }
-.guidance-step h3 { font: 600 20px/1.35 Cinzel,Georgia,serif; color: #f3dfb5; margin: 6px 24px 8px 0; }
-.guidance-step p { margin: 7px 0; font-size: 14px; line-height: 1.5; color: #d2d0ba; }
-.guidance-step .quest-objectives { padding-left: 0; list-style: none; font-size: 14px; margin: 8px 0 12px; color: #e7e2cd; }
-.step-ornament { position: absolute; right: 15px; top: 16px; color: #bda46e; opacity: .7; }
-.step-evidence { border-top: 1px solid #a18d5744; padding-top: 10px; }
+/* Adventure quest plan and "Before you set out": parchment cards in the Now look. */
+.plan-heading { display: flex; gap: 15px; align-items: center; }
+.plan-heading h2 small { display: block; margin-top: 2px; }
+.plan-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin: 10px 0 9px; }
+.plan-controls label { display: grid; gap: 5px; font-size: 12px; font-weight: 700; color: #5a3e1c; }
+.plan-controls select { min-width: 140px; padding: 6px 30px 6px 10px; font-size: 13px; margin: 0; color: #2b1b0a; background: #fff8e6; border: 1px solid #a5823e; }
+.autosaved { font-size: 11px; color: #6b4a22; padding-bottom: 9px; }
+.plan-context { font-size: 13px; color: #6b4a22; margin: 0 0 10px; }
+.guidance-list { display: grid; gap: 8px; }
+.guidance-step.bf-row + .guidance-step.bf-row { margin-top: 0; }
+.guidance-step.ready-step { background: #fff6dc; border-color: #8a5a18; }
+.step-crest { flex: none; width: 44px; height: 44px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.35)); }
+.step-kind { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .12em; text-transform: uppercase; color: #2a62a8; }
+.ready-step .step-kind { color: #8a5a18; }
+.guidance-step h3 { margin: 2px 0 4px; }
+.guidance-step p { font-size: 14px; }
+.guidance-step .quest-objectives { padding-left: 0; list-style: none; font-size: 14px; margin: 4px 0 8px; color: #3d220c; }
+.guidance-step .quest-objectives li.done { color: #2e6b1e; }
+.command-plan .guidance-reference { margin: 6px 0; padding: 8px 10px; border-radius: 4px; background: rgba(60,40,18,.08); border: 1px solid rgba(138,90,24,.3); }
+.command-plan .guidance-reference strong { color: #5a2e0c; font-size: 12px; }
+.command-plan .guidance-reference p { margin: 2px 0; color: #3d220c; }
+.step-evidence { margin-top: 4px; }
+.step-evidence p { font-size: 12px; color: #6b4a22; }
+.bf-card details summary, .bf-page details summary { color: #7a1f14; }
 details summary { cursor: pointer; color: #dac48f; min-height: 26px; font-size: 13px; }
-.step-evidence p { font-size: 12px; color: #bcbfae; }
-.plan-footer { display: flex; align-items: center; gap: 15px; margin-top: 16px; }
-.plan-footer p { font-size: 12px; color: #bcb9a5; line-height: 1.5; margin-right: auto; }
-.plan-footer button { flex-shrink: 0; font-size: 13px; padding: 11px 20px; }
-.plan-limits { margin-top: 10px; border-top: 1px solid #7d6a4144; padding-top: 12px; font-size: 12px; color: #c8c1ab; line-height: 1.55; }
-.plan-empty { border: 1px dashed #8c764d; padding: 24px; background: #2d30236b; color: #d8d0b8; }
-.plan-empty h3 { font: 500 21px Cinzel,Georgia,serif; color: #f1d8a8; }
-.command-sidebar { display: grid; gap: 20px; }
-.command-sidebar section { padding: 20px; border: 1px solid #6f5b38; background: linear-gradient(140deg,#343126c7,#141e19e8); box-shadow: inset 0 0 0 3px #0d15144d; }
-.command-sidebar h3 { font: 600 19px/1.4 Cinzel,Georgia,serif; color: #edcf98; margin: 6px 0 12px; }
-.command-sidebar .panel-header { display: block; border: 0; margin: 0; padding: 0; }
-.command-sidebar .eyebrow { font-size: 9px; letter-spacing: 1.5px; }
-.command-sidebar p { color: #ccc5b1; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
-.command-sidebar small { color: #acae9c; font-size: 12px; line-height: 1.5; }
-.preparation-facts { display: grid; gap: 10px; margin: 18px 0; color: #ccc7ae; font-size: 12px; }
-.preparation-facts strong { color: #e7d29e; font-size: 19px; }
-.preparation details { font-size: 12px; margin-bottom: 15px; }
-.preparation ul { padding-left: 16px; color: #c9c9b3; line-height: 1.6; }
-.saved-source button { width: 100%; font-size: 12px; padding: 10px 12px; }
-.command-roster { padding: 22px 0; margin-top: 25px; border-top: 1px solid #8c7044; }
-.command-roster .panel-header { margin-bottom: 15px; }
-.command-roster h3 { font: 600 21px Cinzel,Georgia,serif; color: #eed2a0; }
-.command-roster .panel-header button { font-size: 12px; padding: 8px 15px; }
-.roster-strip { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
-.roster-strip .roster-card { display: flex; gap: 14px; align-items: center; text-align: left; padding: 13px; min-width: 0; border-color: #635737; }
-.roster-card.selected { border-color: var(--class-accent,#bdca98); background: linear-gradient(110deg,var(--magic-soft),#18231c); }
-.roster-card img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
-.roster-card strong { display: block; color: #efdab1; font: 600 17px Cinzel,Georgia,serif; }
-.roster-card small { display: block; font-size: 12px; color: #c0c4b0; line-height: 1.5; font-weight: 400; overflow-wrap: anywhere; }
-.command-roster .corner-note { font-size: 12px; }
+.plan-footer { display: flex; align-items: center; gap: 15px; margin-top: 12px; }
+.plan-footer p { font-size: 13px; color: #5a3e1c; margin: 0 auto 0 0; }
+.plan-footer button { flex-shrink: 0; }
+.plan-empty { border: 1px dashed #a5823e; border-radius: 6px; padding: 14px; background: rgba(255,248,225,.5); color: #4a3218; }
+.plan-empty h3 { font: 700 17px Cinzel, Georgia, serif; color: #3d220c; }
+.command-plan .plan-followups h3 { color: #3d220c; }
+.command-plan .plan-followups p { color: #4a3218; }
+.preparation-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 8px; font-size: 13px; color: #5a3e1c; }
+.preparation-facts span { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; background: rgba(255,248,225,.55); border: 1px solid #c4a466; }
+.preparation-facts span.low { background: #fff0c8; border-color: #b8462e; }
+.preparation-facts img { flex: none; }
+.preparation-facts strong { font: 700 18px Georgia, serif; color: #2b1b0a; }
+.preparation details { font-size: 13px; }
+.preparation ul { padding-left: 16px; color: #4a3218; line-height: 1.6; }
+/* Adventure page: goals in the Now look, the director folded beneath the plan. */
+.adventure-page .goal { border-bottom-color: rgba(138,90,24,.3); }
+.adventure-page .goal label, .adventure-page .goal label span { color: #2b1b0a; }
+.adventure-page .goal label.done span { color: #6b4a22; }
+.adventure-page .goal-form label { color: #5a3e1c; font-weight: 700; }
+.adventure-page .goal-form input { background: #fff8e6; color: #2b1b0a; border: 1px solid #a5823e; }
+.adventure-page .player-tool { border-radius: 6px; }
+.adventure-page .situation-cards { margin: 0; }
 button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid #eaddaa; outline-offset: 4px; }
 @media (max-width:1200px) {
   .shell { grid-template-columns: 192px minmax(0,1fr); }
@@ -92,15 +63,6 @@ button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-
   .content { padding: 18px 22px 32px; }
   .topbar { padding: 0 22px; height: 68px; gap: 12px; }
   .breadcrumb span:first-child, .breadcrumb span:nth-child(2) { display: none; }
-  .command-columns { grid-template-columns: minmax(0,1fr) 220px; gap: 18px; }
-  .command-sidebar section { padding: 16px; }
-  body[data-class] .command-hero .hero-copy { padding: 16px 20px; }
-  body[data-class] .hero.command-hero { min-height: 180px; }
-  body[data-class] .command-hero .hero-medallion { width: 64px; height: 64px; }
-  .hero-saved { margin-left: 80px; }
-  .command-overview > div { padding: 13px 16px; }
-  .command-overview strong { font-size: 25px; }
-  .command-overview .overview-location { font-size: 17px; }
   .plan-heading h2 { font-size: 20px; }
   .autosaved { padding-bottom: 9px; font-size: 10px; }
   .plan-controls { gap: 9px; }
@@ -112,21 +74,11 @@ button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-
   .plan-footer p { margin: 0 0 12px; }
 }
 @media (max-width:1150px) {
-  .command-columns { grid-template-columns: minmax(0,1fr); }
-  .command-sidebar { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  body[data-class] .hero.command-hero { min-height: 160px; }
-  body[data-class] .command-hero .hero-copy { max-width: 100%; width: 100%; padding: 18px 20px; }
-  .command-hero .faction-banner { position: absolute; right: 20px; top: 15px; left: auto; margin: 0; }
-  .command-hero .faction-banner img { width: 22px; height: 27px; }
-  .command-hero .hero-caption { display: none; }
-  .command-overview { margin-bottom: 18px; }
-  .command-overview > div { padding: 10px 16px; }
   .plan-heading { padding-bottom: 10px; }
   .plan-controls { margin: 12px 0 6px; }
   .plan-context { margin: 6px 0 12px; }
   .game-status-chip span { max-width: 135px; }
   .topbar select { max-width: 210px; }
-  .command-overview .eyebrow { font-size: 8px; }
 }
 @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 body[data-paused="true"] *, body[data-paused="true"] *::before, body[data-paused="true"] *::after { animation-play-state: paused !important; }

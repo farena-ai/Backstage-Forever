@@ -40,9 +40,8 @@ window.CoverageView = (() => {
   }
   function page() {
     return `<section class="coverage-page" data-coverage>
-      <header class="cov-hero"><span class="cov-eyebrow">Help · Data coverage</span><h1>How much we know, zone by zone</h1>
-        <p>Where the app's advice is rich and where it's still thin, for each faction.</p>
-        <div class="cov-toggle" role="group" aria-label="Faction">${["Horde", "Alliance"].map((f) => `<button type="button" data-cov-faction="${f}" aria-pressed="${f === faction}">${f}</button>`).join("")}</div></header>
+      ${PageHero.render({ art: "coverage", eyebrow: "Help · Data coverage", title: "How much we know, zone by zone", subtitle: "Where the app's advice is rich and where it's still thin, for each faction.",
+        aside: `<div class="cov-toggle" role="group" aria-label="Faction">${["Horde", "Alliance"].map((f) => `<button type="button" data-cov-faction="${f}" aria-pressed="${f === faction}">${f}</button>`).join("")}</div>` })}
       <div data-cov-body>${body()}</div></section>`;
   }
   function paint() {

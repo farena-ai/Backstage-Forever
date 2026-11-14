@@ -34,7 +34,7 @@ window.JourneyView = (() => {
   }
   function page() {
     const cls = String(data?.className || "").toLowerCase();
-    return `<section class="journey-page" data-journey><header class="jr-hero">${cls ? `<img class="jr-crest" src="art/classes/${esc(cls)}.png" alt="" width="96" height="96">` : ""}<div><span class="jr-eyebrow">Characters · Journey</span><h1>${esc(data?.name || "Your journey")}</h1><p>Badges you've earned, how fast each level went, and your rested bonus.</p></div></header>
+    return `<section class="journey-page" data-journey>${PageHero.render({ art: "journey", eyebrow: "Characters · Journey", title: esc(data?.name || "Your journey"), crest: PageHero.classCrest(cls), subtitle: "Badges you've earned, how fast each level went, and your rested bonus." })}
       <div data-journey-body>${body()}</div></section>`;
   }
   function sizes(root) {

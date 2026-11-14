@@ -676,7 +676,9 @@ window.WorldMapView = (() => {
   if (api?.onLiveLink) api.onLiveLink(onLive);
   window.addEventListener("resize", () => { if (document.querySelector("[data-world-map]")) resize(); });
   function focus(f) { if (!f || !Number.isSafeInteger(f.mapId)) return; pendingFocus = f; follow = false; mapId = f.mapId; savePref(); if (document.querySelector("[data-world-map]")) load(f.mapId); }
+  // Open a whole zone (a saved location only knows its name): no pin, just that zone's map.
+  function focusZone(name) { const id = window.ZoneArt?.idFor(name); if (!Number.isSafeInteger(id)) return false; pendingFocus = null; follow = false; mapId = id; savePref(); if (document.querySelector("[data-world-map]")) load(id); return true; }
   // _areaCard renders one objective-area card against a given model (tests).
   const _areaCard = (a, m) => { const keep = model; model = m; try { return areaCard(a); } finally { model = keep; } };
-  return { page, mounted, focus, _areaCard, _state: () => ({ model, selected, view, trail, layers, results, journey, focused }) };
+  return { page, mounted, focus, focusZone, _areaCard, _state: () => ({ model, selected, view, trail, layers, results, journey, focused }) };
 })();
