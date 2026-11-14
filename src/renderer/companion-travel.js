@@ -42,7 +42,7 @@ ${t.cautions.length ? `<ul class="travel-cautions">${t.cautions.map((c) => `<li>
 </details>`}\
 ${t.sources.length ? `<details class="travel-evidence" data-travel-evidence="${index}" ${evidenceStates.get(t) ? "open" : ""}>\
 <summary>How we know</summary>\
-<p class="corner-note">Dated public references, not a live service check. Saved source files are not independent authorities.</p>${t.sources.map((s) => `<article>\
+<p class="bf-note">Community data · may differ in game</p>${t.sources.map((s) => `<article>\
 <strong>${esc(s.publisher)} · ${esc(s.id)}</strong>\
 <p>${esc(sourceScope(s))}<br>Reviewed ${esc(s.reviewedOn)}</p>${s.commit ? `<p class="corner-note">Source revision ${esc(s.commit)}</p>` : ""}<button type="button" data-command="open-travel-source" data-source-id="${esc(s.id)}">Open ${esc(s.publisher)} source</button>\
 </article>`).join("")}</details>` : ""}</section>`;

@@ -198,7 +198,7 @@ const repo = path.resolve(__dirname, ".."),
       page.locator(`.quest-ledger-row[data-quest-id="${id}"]`).click();
     const facts = () =>
       page.getByRole("region", {
-        name: "Supplementary reference facts",
+        name: "Quest facts",
         exact: true,
       });
     await check(
@@ -264,17 +264,15 @@ const repo = path.resolve(__dirname, ".."),
         const text = await facts().innerText();
         assert.match(text, /Sharing was reported mixed/);
         assert.match(text, /2 supported.*1 not supported/);
-        assert.match(text, /recorded answers.*distinct people/i);
-        assert.match(text, /60 seconds.*static/i);
-        assert.match(text, /ownership.*unknown/i);
-        assert.match(text, /drop rate.*unknown/i);
+        assert.match(text, /60 seconds once you accept it/i);
+        assert.match(text, /Community data · may differ in game/);
+        assert.equal((text.match(/Community data/g) || []).length, 1, "one community-data note per card, not a caveat per fact");
         assert.equal(
           (text.match(/Item #21/g) || []).length,
           1,
           "Unknown drop item ID is shown once, rather than repeated as a redundant name suffix",
         );
         assert.match(text, /1\.60\.1\.70888/);
-        assert.match(text, /English.*observation names.*unspecified/i);
         assert.equal(
           await page.evaluate(() =>
             Boolean(
@@ -406,7 +404,7 @@ const repo = path.resolve(__dirname, ".."),
         await facts()
           .getByText(/Synthetic Starter/)
           .waitFor();
-        assert.match(await facts().innerText(), /availability.*unknown/i);
+        assert.match(await facts().innerText(), /Community data · may differ in game/, "reference facts for a manual journal carry the community-data note");
       },
     );
     await check(

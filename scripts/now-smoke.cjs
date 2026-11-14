@@ -187,6 +187,41 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.evaluate(() => JourneyView._show({ id: "first-dungeon", name: "Into the depths", how: "Enter your first dungeon." }, 1));
     await page.locator(".bf-badge-pop").getByText("Into the depths").waitFor();
     await page.screenshot({ path: path.join(capture, "badge-pop.png") });
+    // Adventure link audit (0.31): every painted card and button opens the page its label names.
+    const toAdventure = async () => { await page.locator('[data-nav="adventure"]').first().click(); await page.locator(".adventure-page").waitFor(); };
+    await toAdventure();
+    assert.equal(await page.locator(".adventure-page .page-hero.ph-art-adventure").count(), 1, "Adventure wears the shared banner");
+    assert.match(await page.locator(".adventure-page .ph-sub").innerText(), /Level 15 Hunter.*1.*of 2 quests ready/);
+    await page.screenshot({ path: path.join(capture, "adventure.png"), fullPage: true });
+    for (const [task, dest, ready] of [["dungeon", "dungeons", "[data-atlas]"], ["profession", "preparation", "[data-preparation]"]]) {
+      await page.locator(`.situation-cards [data-task="${task}"]`).click();
+      await page.waitForFunction((d) => page === d, dest); await page.locator(ready).waitFor();
+      await toAdventure();
+    }
+    const zoneCard = page.locator('.situation-cards [data-task="session"]');
+    assert.match(await zoneCard.getAttribute("class"), /zone-canyon/, "the saved zone's card shows that zone's vista");
+    await zoneCard.click();
+    await page.locator("[data-world-map]").waitFor();
+    await page.waitForFunction(() => WorldMapView._state().model?.mapId === 1413, null, { timeout: 15000 });
+    await toAdventure();
+    const navs = await page.locator(".adventure-page button[data-nav]").evaluateAll((ns) => ns.map((n, i) => ({ i, nav: n.dataset.nav, text: n.textContent.trim() })));
+    assert.ok(navs.length >= 3, JSON.stringify(navs));
+    for (const { i, nav, text } of navs) {
+      await page.locator(".adventure-page button[data-nav]").nth(i).click();
+      await page.waitForFunction((d) => page === d, nav, { timeout: 5000 }).catch(() => { throw new Error(`Adventure "${text}" did not open ${nav}`); });
+      await toAdventure();
+    }
+    // Field guide and Characters: their buttons land where they say.
+    for (const from of ["guide", "characters"]) {
+      const open = async () => { await page.locator(`[data-nav="${from}"]`).first().click(); await page.waitForFunction((f) => page === f, from); await page.locator(".page-hero").first().waitFor(); };
+      await open();
+      const list = await page.locator(".content > :not(.player-section) button[data-nav], .content .bf-page button[data-nav]").evaluateAll((ns) => [...new Set(ns.map((n) => n.dataset.nav))]);
+      for (const nav of list) {
+        await open();
+        await page.locator(`.content > :not(.player-section) button[data-nav="${nav}"], .content .bf-page button[data-nav="${nav}"]`).first().click();
+        await page.waitForFunction((d) => page === d, nav, { timeout: 5000 });
+      }
+    }
     console.log("Now smoke passed");
   } catch (e) { console.error(e); process.exitCode = 1; }
   finally { clearTimeout(watchdog); await app?.close().catch(() => {}); await fs.rm(dir, { recursive: true, force: true }).catch(() => {}); }
