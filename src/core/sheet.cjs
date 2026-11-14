@@ -127,7 +127,7 @@ function sheetView(profile, { profiles = [], facts = new Map(), score = null, ve
     const e = bySlot.get(slot);
     const item = e ? piece(e.itemId, e) : null;
     if (item) {
-      item.rating = ageRating(level, item.itemLevel);
+      item.rating = COSMETIC.includes(slot) ? null : ageRating(level, item.itemLevel);
       if (score && fact(item.itemId)) item.score = round1(score(fact(item.itemId)));
     }
     // An off hand is not missing next to a two-handed weapon.
