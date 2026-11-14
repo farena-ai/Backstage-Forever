@@ -44,6 +44,18 @@ const QUESTION_PARTIAL_MS = 90000, QUESTION_SEEN_MS = 30 * 60000;
 const QUESTION_INTERVAL_MS = 120, QUESTION_FAST_MS = 30000;
 // The game window's client rectangle is reported every few samples (for the in-game answer panel).
 const RECT_FRESH_MS = 15000;
+// Version 5 ("hairline", addon 0.38+, the default): one physical pixel tall along the top edge of
+// the game client area, from the left. 2px cells at near-black levels 0/12/24/36 per channel (two
+// bits), so it reads as a thin dark border. 8 header cells (four alternating dark magenta / dark
+// green sync cells, then one grey reference cell per level, measured per channel), then 256 cells =
+// 192 bytes: the 27-byte main payload (version 5), six 27-byte page slots (kinds 1-4, unchanged
+// formats; unused slots zero), the page count and a CRC-16 over bytes 0-189 (the count included). A capture taken while
+// the line was being redrawn fails the CRC and is refused whole (never decoded half old, half new).
+const HAIRLINE = { version: 5, cell: 2, header: 8, levels: [0, 12, 24, 36], slots: 6, bytes: 192, cells: 256, minGap: 4 };
+const HAIRLINE_HEADER = [[3, 0, 3], [0, 3, 0], [3, 0, 3], [0, 3, 0], [0, 0, 0], [1, 1, 1], [2, 2, 2], [3, 3, 3]];
+const HAIRLINE_WIDTH = (HAIRLINE.header + HAIRLINE.cells) * HAIRLINE.cell; // 528 physical pixels
+// Once a hairline is found the worker copies only the top-left of the client area.
+const HAIRLINE_REGION = { width: 544, height: 4 };
 
 // Mirrors BackstageForeverLiveIdentity: binds frames to the saved character (UnitGUID).
 function identityHash(guid) {
@@ -66,6 +78,15 @@ function crc8(bytes, n) {
   for (let i = 0; i < n; i++) {
     crc ^= bytes[i];
     for (let k = 0; k < 8; k++) crc = crc & 0x80 ? ((crc << 1) ^ 7) & 0xff : (crc << 1) & 0xff;
+  }
+  return crc;
+}
+// CRC-16/CCITT (poly 0x1021, start 0xFFFF), mirrors the addon's crc16.
+function crc16(bytes, n) {
+  let crc = 0xffff;
+  for (let i = 0; i < n; i++) {
+    crc ^= (bytes[i] & 255) << 8;
+    for (let k = 0; k < 8; k++) crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
   }
   return crc;
 }
@@ -159,6 +180,46 @@ function levelCells(bytes) {
 }
 const encodeCellsV4 = (bytes) => [...V4_HEADER.map((c) => [...c]), ...levelCells(bytes)];
 const encodePageCellsV4 = (bytes) => levelCells(bytes);
+// Mirror of BackstageForeverLiveHairlineFrame: main payload + up to six pages -> 192 bytes.
+function encodeHairlineFrame(main, pages = []) {
+  const b = new Array(HAIRLINE.bytes).fill(0);
+  if (main) for (let i = 0; i < PAYLOAD_BYTES; i++) b[i] = main[i] & 255;
+  let n = 0;
+  for (const p of pages.slice(0, HAIRLINE.slots)) { if (!p) continue; n++; for (let i = 0; i < PAYLOAD_BYTES; i++) b[PAYLOAD_BYTES * n + i] = p[i] & 255; }
+  b[HAIRLINE.bytes - 3] = n;
+  const c = crc16(b, HAIRLINE.bytes - 2);
+  b[HAIRLINE.bytes - 2] = c >> 8; b[HAIRLINE.bytes - 1] = c & 255;
+  return b;
+}
+// Mirror of BackstageForeverLiveHairlineCells: 192 bytes -> 8 header + 256 payload cells.
+function encodeHairlineCells(frame) {
+  const L = HAIRLINE.levels, bits = bitsOf(frame), cells = HAIRLINE_HEADER.map((h) => h.map((i) => L[i]));
+  for (let c = 0; c < HAIRLINE.cells; c++) cells.push([0, 1, 2].map((ch) => { const i = c * 6 + ch * 2; return L[(bits[i] || 0) * 2 + (bits[i + 1] || 0)]; }));
+  return cells;
+}
+// Hairline levels measured from the four grey reference cells, or null when the sync cells are not
+// there or neighbouring levels are too close to tell apart on this screen.
+function hairlineLevels(cells) {
+  if (!Array.isArray(cells) || cells.length < HAIRLINE.header) return null;
+  const levels = [0, 1, 2].map((ch) => cells.slice(4, 8).map((c) => c[ch]));
+  for (const l of levels) for (let i = 1; i < 4; i++) if (l[i] - l[i - 1] < HAIRLINE.minGap) return null;
+  for (let c = 0; c < 4; c++) for (let ch = 0; ch < 3; ch++) if (nearest(cells[c][ch], levels[ch]) !== HAIRLINE_HEADER[c][ch]) return null;
+  return levels;
+}
+// Header + payload cells -> { bytes (main payload), pages: [page bytes...] }, or null. The whole
+// frame is refused when its CRC-16, the main payload or any page fails its own check.
+function decodeHairlineCells(cells, levels = hairlineLevels(cells)) {
+  if (!levels || cells.length < HAIRLINE.header + HAIRLINE.cells) return null;
+  const bits = bitsFromLevels(cells.slice(HAIRLINE.header, HAIRLINE.header + HAIRLINE.cells), levels);
+  const b = new Uint8Array(HAIRLINE.bytes);
+  for (let i = 0; i < HAIRLINE.bytes; i++) { let v = 0; for (let k = 0; k < 8; k++) v = (v << 1) | bits[i * 8 + k]; b[i] = v; }
+  if (crc16(b, HAIRLINE.bytes - 2) !== ((b[HAIRLINE.bytes - 2] << 8) | b[HAIRLINE.bytes - 1])) return null;
+  const n = b[HAIRLINE.bytes - 3], main = b.slice(0, PAYLOAD_BYTES);
+  if (n > HAIRLINE.slots || !valid(main, HAIRLINE.version)) return null;
+  const pages = [];
+  for (let s = 1; s <= n; s++) { const p = b.slice(PAYLOAD_BYTES * s, PAYLOAD_BYTES * (s + 1)); if (!valid(p, PAGE_VERSION)) return null; pages.push(p); }
+  return { bytes: main, pages };
+}
 // Page frames use the version 3 cell layout with their own version byte.
 function decodePageCells(cells) {
   if (!Array.isArray(cells) || cells.length < MARKERS + PAYLOAD_CELLS) return null;
@@ -290,6 +351,50 @@ function sampleCells(rgb, width, height, x, y, pitch, count) {
   }
   return cells;
 }
+// One row of hairline cells: the pixel in the middle of each cell (the line is one pixel tall).
+function sampleRow(rgb, width, x, y, pitch, count) {
+  if (x + count * pitch > width) return null;
+  const cells = [];
+  for (let c = 0; c < count; c++) cells.push(px(rgb, width, x + c * pitch + (pitch >> 1), y));
+  return cells;
+}
+// The hairline starts at the client area's top-left. Rows 0-2 and small offsets are tried in case
+// the client area starts a pixel early; 2px cells are expected, 1, 3 and 4 cover odd UI setups.
+function decodeHairline(img) {
+  const { width, height, rgb } = img;
+  for (let y = 0; y < Math.min(3, height); y++) {
+    for (const pitch of [2, 1, 3, 4]) {
+      for (let x0 = 0; x0 < Math.min(4, pitch + 2); x0++) {
+        const head = sampleRow(rgb, width, x0, y, pitch, HAIRLINE.header);
+        const levels = head && hairlineLevels(head);
+        if (!levels) continue;
+        const cells = sampleRow(rgb, width, x0, y, pitch, HAIRLINE.header + HAIRLINE.cells);
+        const d = cells && decodeHairlineCells(cells, levels);
+        if (d) return { bytes: d.bytes, pages: d.pages, page: d.pages[0] || null, origin: { x: x0, y }, pitch, version: HAIRLINE.version, mode: "hairline", footprint: { width: (HAIRLINE.header + HAIRLINE.cells) * pitch, height: 1 } };
+      }
+    }
+  }
+  return null;
+}
+// True when the top rows hold what looks like a hairline that does not decode: a near-black,
+// varied line clearly unlike the picture just below it (remote desktop or a colour filter changing
+// its shades). The app then suggests /bf live safe.
+function hairlineHint({ width, height, rgb }) {
+  const n = Math.min(width, HAIRLINE_WIDTH);
+  if (n < 64 || height < 3) return false;
+  for (let y = 0; y + 2 < height && y < 2; y++) {
+    let dark = 0, diff = 0;
+    const distinct = new Set();
+    for (let x = 0; x < n; x++) {
+      const p = px(rgb, width, x, y), q = px(rgb, width, x, y + 2);
+      if (Math.max(p[0], p[1], p[2]) <= 100) dark++;
+      distinct.add(p.join());
+      diff += Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]);
+    }
+    if (dark >= n * 0.95 && distinct.size >= 8 && diff / n >= 24) return true;
+  }
+  return false;
+}
 const okImage = ({ width, height, rgb }) => Number.isInteger(width) && Number.isInteger(height) && Buffer.isBuffer(rgb) && rgb.length === width * height * 3;
 // Magenta finder runs where a strip anchored at `corner` can start. The top-left search keeps
 // the old bounds (within 40 x 10 pixels of the client origin); right corners search the whole
@@ -320,16 +425,20 @@ function tryV4(img, x, y, run) {
       const bytes = levels && decodeCellsV4(cells.slice(V4.header), levels);
       if (!bytes) continue;
       const row2 = y + 2 * pitch <= height ? sampleCells(rgb, width, height, x0, y + pitch, pitch, V4.payloadCells) : null;
-      return { bytes, origin: { x: x0, y }, pitch, version: V4.version, mode: "compact", footprint: { width: (V4.header + V4.payloadCells) * pitch, height: 2 * pitch }, page: (row2 && decodeCellsV4(row2, levels, PAGE_VERSION)) || null };
+      const page = (row2 && decodeCellsV4(row2, levels, PAGE_VERSION)) || null;
+      return { bytes, origin: { x: x0, y }, pitch, version: V4.version, mode: "compact", footprint: { width: (V4.header + V4.payloadCells) * pitch, height: 2 * pitch }, page, pages: page ? [page] : [] };
     }
   }
   return undefined;
 }
-// Find the magenta finder, measure the cell pitch from its run, then try the compact version 4
-// layout, the version 3 layout ("safe" mode) and the older version 2 layout (each checked by CRC).
+// Auto-detects the version drawn. At the top-left the hairline (version 5) is tried first; then the
+// magenta finder, whose run gives the cell pitch, for the compact version 4 layout, the version 3
+// layout ("safe" mode) and the older version 2 layout (each checked by CRC). Results carry the main
+// payload `bytes` and the decoded `pages` (six at most on a hairline, one on a corner strip).
 function decodeStrip(img, { corner = "topleft" } = {}) {
   if (!img || !okImage(img)) return null;
   const { width, height, rgb } = img;
+  if (!CORNERS.includes(corner) || corner === "topleft") { const h = decodeHairline(img); if (h) return h; }
   return scanFinders(img, CORNERS.includes(corner) ? corner : "topleft", (x, y, run) => {
     const v4 = tryV4(img, x, y, run);
     if (v4) return v4;
@@ -340,11 +449,12 @@ function decodeStrip(img, { corner = "topleft" } = {}) {
       const b3 = v3 && decodeCellsV3(v3);
       if (b3) {
         const row2 = y + pitch + 3 <= height ? sampleCells(rgb, width, height, x, y + pitch, pitch, MARKERS + PAYLOAD_CELLS) : null;
-        return { bytes: b3, origin: { x, y }, pitch, version: VERSION, mode: "safe", footprint: { width: (MARKERS + PAYLOAD_CELLS) * pitch, height: 2 * pitch }, page: (row2 && decodePageCells(row2)) || null };
+        const page = (row2 && decodePageCells(row2)) || null;
+        return { bytes: b3, origin: { x, y }, pitch, version: VERSION, mode: "safe", footprint: { width: (MARKERS + PAYLOAD_CELLS) * pitch, height: 2 * pitch }, page, pages: page ? [page] : [] };
       }
       const v2 = sampleCells(rgb, width, height, x, y, pitch, MARKERS + V2.payloadCells);
       const b2 = v2 && decodeCellsV2(v2);
-      if (b2) return { bytes: b2, origin: { x, y }, pitch, version: V2.version, mode: "legacy", footprint: { width: (MARKERS + V2.payloadCells) * pitch, height: pitch } };
+      if (b2) return { bytes: b2, origin: { x, y }, pitch, version: V2.version, mode: "legacy", footprint: { width: (MARKERS + V2.payloadCells) * pitch, height: pitch }, page: null, pages: [] };
     }
     return undefined;
   });
@@ -353,13 +463,14 @@ function decodeStrip(img, { corner = "topleft" } = {}) {
 // grey shades of the version 2 strip (the game still runs an addon from before 0.18.2 and needs a
 // /reload), "compact-unreadable" for a compact (version 4) strip whose grey reference cells are
 // too close together or whose payload fails its checksum (/bf live safe fixes that), "unreadable"
-// for any other visible strip, null when there is no strip at all.
+// for any other visible strip, "hairline-unreadable" when the top edge holds a dark line that looks
+// like a hairline but does not decode (/bf live safe fixes that too), null when there is no strip.
 function stripHint(img, { corner = "topleft" } = {}) {
   if (!img || !okImage(img)) return null;
   const { width, height, rgb } = img;
   const grey = (c) => Math.max(...c) - Math.min(...c) < 40;
   const mean = (c) => (c[0] + c[1] + c[2]) / 3;
-  return scanFinders(img, CORNERS.includes(corner) ? corner : "topleft", (x, y, run) => {
+  const found = scanFinders(img, CORNERS.includes(corner) ? corner : "topleft", (x, y, run) => {
     const head = sampleCells(rgb, width, height, x, y, Math.max(2, Math.round(run / 2)), V4.header);
     if (head && isV4Header(head)) {
       const cal = head.slice(V4.finder);
@@ -373,6 +484,8 @@ function stripHint(img, { corner = "topleft" } = {}) {
     if (greenish && grey(a) && grey(b) && mean(a) > 40 && mean(b) < 245 && mean(b) - mean(a) > 25) return "old-addon";
     return "unreadable";
   });
+  if (found) return found;
+  return (!CORNERS.includes(corner) || corner === "topleft") && hairlineHint(img) ? "hairline-unreadable" : null;
 }
 function parsePayload(b) {
   const u16 = (i) => (b[i] << 8) | b[i + 1], u24 = (i) => (b[i] << 16) | (b[i + 1] << 8) | b[i + 2];
@@ -402,6 +515,13 @@ function parsePayload(b) {
 // Windows-only capture worker. The C# helper copies one small client-area region at one
 // corner. The app may move or resize that region with "region <corner> <w> <h>" lines on
 // stdin (corner names and sizes are checked); nothing else is read from stdin.
+// Since 0.38 it first asks Windows for the game window's own picture with PrintWindow
+// (PW_CLIENTONLY | PW_RENDERFULLCONTENT), which keeps working while another window covers the game.
+// PrintWindow has no source rectangle, so it draws into a reused bitmap only as large as the client
+// area up to the far edge of the region (544 x 4 pixels for a hairline at the top-left). A failed or
+// all-black result falls back to copying the screen (CopyFromScreen) for that sample; after five
+// such misses in a row the worker stays on the screen copy for 20 samples before trying again.
+// Each "ok" line ends with the method used: "pw" (game window) or "screen".
 const WORKER = String.raw`
 $ErrorActionPreference='Stop'
 Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @"
@@ -410,13 +530,47 @@ public static class BFLiveCapture {
   static readonly string[] Corners = { "topleft", "topright", "bottomleft", "bottomright" };
   static readonly object Gate = new object();
   static string corner = "topleft"; static int rw = 640, rh = 28, delay = 500;
+  static bool printing = true; static int printMiss = 0, printSkip = 0;
+  static IntPtr memDC = IntPtr.Zero, dib = IntPtr.Zero, dibBits = IntPtr.Zero, dibOld = IntPtr.Zero; static int dibW = 0, dibH = 0;
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
   [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
+  [StructLayout(LayoutKind.Sequential)] public struct BITMAPINFOHEADER { public int biSize, biWidth, biHeight; public short biPlanes, biBitCount; public int biCompression, biSizeImage, biXPelsPerMeter, biYPelsPerMeter, biClrUsed, biClrImportant; }
   [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
   [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr h, ref POINT p);
   [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
   [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
+  [DllImport("gdi32.dll")] static extern IntPtr CreateCompatibleDC(IntPtr dc);
+  [DllImport("gdi32.dll")] static extern IntPtr SelectObject(IntPtr dc, IntPtr o);
+  [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr o);
+  [DllImport("gdi32.dll")] static extern bool GdiFlush();
+  [DllImport("gdi32.dll")] static extern IntPtr CreateDIBSection(IntPtr dc, ref BITMAPINFOHEADER bi, uint usage, out IntPtr bits, IntPtr section, uint offset);
+  const uint PW_CLIENTONLY_RENDERFULLCONTENT = 3;
+  // The region (x, y, w, ht of the client area) from the game window's own picture, as RGB; null
+  // when PrintWindow fails or the region came back all black (nothing drawn).
+  static byte[] Print(IntPtr h, int x, int y, int w, int ht) {
+    int W = x + w, H = y + ht;
+    if (memDC == IntPtr.Zero) memDC = CreateCompatibleDC(IntPtr.Zero);
+    if (memDC == IntPtr.Zero) return null;
+    if (dib == IntPtr.Zero || dibW != W || dibH != H) {
+      if (dib != IntPtr.Zero) { SelectObject(memDC, dibOld); DeleteObject(dib); dib = IntPtr.Zero; }
+      BITMAPINFOHEADER bi = new BITMAPINFOHEADER(); bi.biSize = 40; bi.biWidth = W; bi.biHeight = -H; bi.biPlanes = 1; bi.biBitCount = 32;
+      dib = CreateDIBSection(memDC, ref bi, 0, out dibBits, IntPtr.Zero, 0);
+      if (dib == IntPtr.Zero) return null;
+      dibOld = SelectObject(memDC, dib); dibW = W; dibH = H;
+    }
+    byte[] row = new byte[w * 4];
+    for (int r = 0; r < ht; r++) Marshal.Copy(row, 0, IntPtr.Add(dibBits, ((y + r) * W + x) * 4), w * 4);
+    if (!PrintWindow(h, memDC, PW_CLIENTONLY_RENDERFULLCONTENT)) return null;
+    GdiFlush();
+    byte[] rgb = new byte[w * ht * 3]; bool any = false;
+    for (int r = 0; r < ht; r++) {
+      Marshal.Copy(IntPtr.Add(dibBits, ((y + r) * W + x) * 4), row, 0, w * 4);
+      for (int c = 0; c < w; c++) { int s = c * 4, o = (r * w + c) * 3; rgb[o] = row[s + 2]; rgb[o + 1] = row[s + 1]; rgb[o + 2] = row[s]; if ((row[s] | row[s + 1] | row[s + 2]) != 0) any = true; }
+    }
+    return any ? rgb : null;
+  }
   static void Set(string c, int w, int h) {
     if (Array.IndexOf(Corners, c) < 0 || w < 16 || w > 1024 || h < 4 || h > 64) return;
     lock (Gate) { corner = c; rw = w; rh = h; }
@@ -432,9 +586,10 @@ public static class BFLiveCapture {
       }
     } catch { }
   }
-  public static void Init(string c, int w, int h, int ms) {
+  public static void Init(string c, int w, int h, int ms, string capture) {
     SetProcessDPIAware(); Set(c, w, h);
     if (ms >= 100 && ms <= 2000) delay = ms;
+    printing = capture != "screen";
     Thread t = new Thread(Listen); t.IsBackground = true; t.Start();
   }
   public static int Delay() { lock (Gate) { return delay; } }
@@ -449,27 +604,39 @@ public static class BFLiveCapture {
     lock (Gate) { c = corner; w = rw; ht = rh; }
     if (!IsWindow(h)) return "gone";
     if (IsIconic(h)) return "minimized";
-    RECT r; if (!GetClientRect(h, out r) || r.R - r.L < w || r.B - r.T < ht) return "small";
-    POINT p = new POINT();
-    if (c.EndsWith("right")) p.X = r.R - w;
-    if (c.StartsWith("bottom")) p.Y = r.B - ht;
+    RECT r; if (!GetClientRect(h, out r)) return "gone";
+    int cw = r.R - r.L, ch = r.B - r.T;
+    // A window with no client area left is minimized in all but name (some games do this).
+    if (cw <= 0 || ch <= 0) return "minimized";
+    if (cw < w || ch < ht) return "small";
+    int rx = c.EndsWith("right") ? cw - w : 0, ry = c.StartsWith("bottom") ? ch - ht : 0;
+    byte[] rgb = null;
+    if (printing) {
+      if (printSkip > 0) printSkip--;
+      else {
+        try { rgb = Print(h, rx, ry, w, ht); } catch { rgb = null; }
+        if (rgb != null) printMiss = 0; else if (++printMiss >= 5) { printMiss = 0; printSkip = 20; }
+      }
+    }
+    if (rgb != null) return "ok " + c + " " + w + " " + ht + " " + Convert.ToBase64String(rgb) + " pw";
+    POINT p = new POINT(); p.X = rx; p.Y = ry;
     if (!ClientToScreen(h, ref p)) return "gone";
     using (Bitmap bmp = new Bitmap(w, ht, PixelFormat.Format24bppRgb)) {
       using (Graphics g = Graphics.FromImage(bmp)) { g.CopyFromScreen(p.X, p.Y, 0, 0, new Size(w, ht)); }
       BitmapData d = bmp.LockBits(new Rectangle(0, 0, w, ht), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
-      byte[] row = new byte[d.Stride]; byte[] rgb = new byte[w * ht * 3];
+      byte[] row = new byte[d.Stride]; rgb = new byte[w * ht * 3];
       for (int y = 0; y < ht; y++) {
         Marshal.Copy(IntPtr.Add(d.Scan0, y * d.Stride), row, 0, d.Stride);
         for (int x = 0; x < w; x++) { int s = x * 3, o = (y * w + x) * 3; rgb[o] = row[s + 2]; rgb[o + 1] = row[s + 1]; rgb[o + 2] = row[s]; }
       }
       bmp.UnlockBits(d);
-      return "ok " + c + " " + w + " " + ht + " " + Convert.ToBase64String(rgb);
+      return "ok " + c + " " + w + " " + ht + " " + Convert.ToBase64String(rgb) + " screen";
     }
   }
 }
 "@
 $name = $env:BF_LIVE_PROCESS
-[BFLiveCapture]::Init($env:BF_LIVE_CORNER, [int]$env:BF_LIVE_W, [int]$env:BF_LIVE_H, [int]$env:BF_LIVE_MS)
+[BFLiveCapture]::Init($env:BF_LIVE_CORNER, [int]$env:BF_LIVE_W, [int]$env:BF_LIVE_H, [int]$env:BF_LIVE_MS, $env:BF_LIVE_CAPTURE)
 $handle = [IntPtr]::Zero; $tick = 0; $looked = [DateTime]::MinValue; $placed = [DateTime]::MinValue
 while ($true) {
   $now = [DateTime]::UtcNow
@@ -489,8 +656,9 @@ while ($true) {
 `;
 
 class LiveBridge {
-  constructor({ dataDir = null, spawn = childProcess.spawn, platform = process.platform, processName = "Wow", processId = null, intervalMs = 500, now = Date.now } = {}) {
-    Object.assign(this, { dataDir, spawn, platform, processName, processId, intervalMs, now });
+  // capture: "auto" (the game window's own picture, falling back to the screen) or "screen".
+  constructor({ dataDir = null, spawn = childProcess.spawn, platform = process.platform, processName = "Wow", processId = null, intervalMs = 500, now = Date.now, capture = "auto" } = {}) {
+    Object.assign(this, { dataDir, spawn, platform, processName, processId, intervalMs, now, capture });
     this.listeners = new Set();
     this.child = null;
     this.frame = null;
@@ -520,7 +688,7 @@ class LiveBridge {
     this.signal = "starting";
     const child = this.spawn(exe, ["-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded], {
       shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"],
-      env: { SystemRoot: process.env.SystemRoot, windir: process.env.windir, PATH: process.env.PATH, TEMP: process.env.TEMP, TMP: process.env.TMP, BF_LIVE_PROCESS: this.processName, BF_LIVE_CORNER: this.corner, BF_LIVE_W: String(this.region.width), BF_LIVE_H: String(this.region.height), BF_LIVE_MS: String(this.intervalMs), ...(Number.isInteger(this.processId) ? { BF_LIVE_PID: String(this.processId) } : {}) },
+      env: { SystemRoot: process.env.SystemRoot, windir: process.env.windir, PATH: process.env.PATH, TEMP: process.env.TEMP, TMP: process.env.TMP, BF_LIVE_PROCESS: this.processName, BF_LIVE_CORNER: this.corner, BF_LIVE_W: String(this.region.width), BF_LIVE_H: String(this.region.height), BF_LIVE_MS: String(this.intervalMs), BF_LIVE_CAPTURE: this.capture === "screen" ? "screen" : "auto", ...(Number.isInteger(this.processId) ? { BF_LIVE_PID: String(this.processId) } : {}) },
     });
     this.child = child;
     child.stdin?.on?.("error", () => {});
@@ -567,11 +735,11 @@ class LiveBridge {
     const before = JSON.stringify([this.signal, this.frame?.seq]);
     let changed = false;
     if (line.startsWith("ok ")) {
-      // "ok <corner> <w> <h> <base64>"; older workers (and saved fixtures) send "ok <base64>"
-      // of a top-left region 640 wide, sized from the data.
+      // "ok <corner> <w> <h> <base64> [pw|screen]"; older workers (and saved fixtures) send
+      // "ok <base64>" of a top-left region 640 wide, sized from the data.
       const parts = line.split(" ");
-      let corner = "topleft", width = REGION.width, height, rgb;
-      if (parts.length === 5 && CORNERS.includes(parts[1])) { corner = parts[1]; width = Number(parts[2]); height = Number(parts[3]); rgb = Buffer.from(parts[4], "base64"); }
+      let corner = "topleft", width = REGION.width, height, rgb, capture = null;
+      if ((parts.length === 5 || parts.length === 6) && CORNERS.includes(parts[1])) { corner = parts[1]; width = Number(parts[2]); height = Number(parts[3]); rgb = Buffer.from(parts[4], "base64"); capture = { pw: "window", screen: "screen" }[parts[5]] || null; }
       else { rgb = Buffer.from(parts[1] || "", "base64"); height = rgb.length % (REGION.width * 3) === 0 ? rgb.length / (REGION.width * 3) : REGION.height; }
       const img = { width, height, rgb }, decoded = decodeStrip(img, { corner });
       if (decoded) {
@@ -581,13 +749,16 @@ class LiveBridge {
         if (!this.beat || this.beat.seq !== frame.seq || this.beat.heartbeat !== frame.heartbeat) this.beat = { seq: frame.seq, heartbeat: frame.heartbeat, at, sameSince: this.beat?.seq === frame.seq ? this.beat.sameSince : at };
         this.frame = { ...frame, receivedAt: at, changedAt: this.beat.at, sameSince: this.beat.sameSince };
         this.signal = "live"; this.misses = 0;
-        if (!this.strip || this.strip.mode !== decoded.mode || this.strip.corner !== corner || this.strip.pitch !== decoded.pitch) changed = true;
-        this.strip = { mode: decoded.mode, version: decoded.version, corner, pitch: decoded.pitch, width: decoded.footprint.width, height: decoded.footprint.height };
-        if (decoded.page && decoded.page[1] === QUESTION_KIND) this.questionPage(parseQuestionPage(decoded.page));
-        else if (decoded.page && decoded.page[1] === MOMENT_KIND) this.momentPage(parseMomentPage(decoded.page));
-        else if (decoded.page && this.page(parsePage(decoded.page))) changed = true;
-        // A compact strip needs only a small slice of its corner.
-        if (decoded.mode === "compact" && decoded.pitch <= 4) this.setRegion(corner, COMPACT_REGION);
+        if (!this.strip || this.strip.mode !== decoded.mode || this.strip.corner !== corner || this.strip.pitch !== decoded.pitch || (this.strip.capture || null) !== capture) changed = true;
+        this.strip = { mode: decoded.mode, version: decoded.version, corner, pitch: decoded.pitch, width: decoded.footprint.width, height: decoded.footprint.height, ...(capture ? { capture } : {}) };
+        for (const page of decoded.pages || (decoded.page ? [decoded.page] : [])) {
+          if (page[1] === QUESTION_KIND) this.questionPage(parseQuestionPage(page));
+          else if (page[1] === MOMENT_KIND) this.momentPage(parseMomentPage(page));
+          else if (this.page(parsePage(page))) changed = true;
+        }
+        // A hairline needs only the top-left of the client area, a compact strip a small slice of its corner.
+        if (decoded.mode === "hairline") this.setRegion(corner, HAIRLINE_REGION);
+        else if (decoded.mode === "compact" && decoded.pitch <= 4) this.setRegion(corner, COMPACT_REGION);
         else this.setRegion(corner, REGION);
       } else {
         const hint = stripHint(img, { corner });
@@ -695,7 +866,7 @@ class LiveBridge {
     if (!this.frame || this.now() - this.frame.receivedAt > FRESH_MS) return null;
     // An unchanged strip stays live while its heartbeat moves; a compact strip whose heartbeat
     // froze (hung game UI) is a picture, not a live game.
-    if (this.frame.version === V4.version && this.frame.changedAt && this.now() - this.frame.changedAt > HEARTBEAT_STALE_MS) return null;
+    if ((this.frame.version === V4.version || this.frame.version === HAIRLINE.version) && this.frame.changedAt && this.now() - this.frame.changedAt > HEARTBEAT_STALE_MS) return null;
     const out = { ...this.frame, ageMs: this.now() - this.frame.receivedAt };
     // Quest pages only count for the same character and while recently seen.
     for (const [kind, v] of Object.entries(this.pageLists || {})) {
@@ -709,9 +880,17 @@ class LiveBridge {
     if (frame?.position) frame.zone = require("./companion-tools.cjs").MAP_NAMES[frame.position.mapId] || `Map ${frame.position.mapId}`;
     // Last strip seen: mode (compact / safe / legacy), corner and footprint in physical pixels.
     const strip = this.enabled && this.strip ? { ...this.strip, idle: Boolean(frame?.sameSince && this.now() - frame.sameSince > IDLE_MS) } : null;
-    return { enabled: this.enabled, signal: this.enabled ? (frame ? "live" : this.signal === "live" ? "stale" : this.signal) : "off", frame, strip };
+    // While nothing live can be read (WoW minimized, closed, covered...), the last live state and its
+    // age, for display only: it is never presented as live and feeds nothing else.
+    let last = null;
+    if (this.enabled && !frame && this.frame?.receivedAt) {
+      const f = this.frame;
+      last = { receivedAt: f.receivedAt, ageMs: this.now() - f.receivedAt, level: f.level || null, combat: Boolean(f.combat), dead: Boolean(f.dead) };
+      if (f.position) last.position = { mapId: f.position.mapId, x: f.position.x, y: f.position.y, zone: require("./companion-tools.cjs").MAP_NAMES[f.position.mapId] || `Map ${f.position.mapId}` };
+    }
+    return { enabled: this.enabled, signal: this.enabled ? (frame ? "live" : this.signal === "live" ? "stale" : this.signal) : "off", frame, strip, last };
   }
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { encodeQuestionPages, parseQuestionPage, assembleQuestion, QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES, QUESTION_MAX_CHARS, QUESTION_INTERVAL_MS, encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };
+module.exports = { HAIRLINE, HAIRLINE_REGION, HAIRLINE_WIDTH, crc16, encodeHairlineFrame, encodeHairlineCells, decodeHairlineCells, decodeHairline, hairlineHint, encodeQuestionPages, parseQuestionPage, assembleQuestion, QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES, QUESTION_MAX_CHARS, QUESTION_INTERVAL_MS, encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };
