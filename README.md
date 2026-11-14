@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.35: the ledger
+## 0.35.1: the ledger
 
-Search every character's bags, bank and mail at once, see gold across characters, auction prices you've seen, reputations and profession cooldowns. See the [0.35.0 release notes](docs/releases/0.35.0.md).
+Search every character's bags, bank and mail at once, see gold across characters, auction prices you've seen, reputations and profession cooldowns. See the [0.35.1 release notes](docs/releases/0.35.1.md).
 
 ## 0.28: your journey
 
