@@ -93,6 +93,17 @@ test("every page banner has its painting, layered over a fallback, and the compa
   assert.match(read("src/renderer/index.html"), /href="page-hero\.css"/); assert.match(read("src/renderer/index.html"), /src="page-hero\.js"/);
 });
 
+test("quest how-to steps and coverage meters use art that exists and fits", () => {
+  const how = JSON.parse(read("src/renderer/quest-guide.js").match(/const HOW_ICON = (\{[^}]*\})/)[1].replace(/(\w+|"[^"]+"):/g, (m, k) => `"${k.replace(/"/g, "")}":`));
+  for (const v of Object.values(how)) assert.ok(fs.existsSync(path.join(root, "src/renderer/art", v + ".png")), v);
+  assert.notEqual(how.item, how["turn-in"], "collecting an item is not a hand-in");
+  const cov = [...read("src/renderer/coverage.js").matchAll(/\["(\w+)", "[^"]+", "([a-z/-]+)", \d+\]/g)];
+  assert.ok(cov.length >= 6);
+  for (const [, , art] of cov) assert.ok(fs.existsSync(path.join(root, "src/renderer/art", art + ".png")), art);
+  const by = Object.fromEntries(cov.map(([, k, a]) => [k, a]));
+  assert.equal(by.professionTrainers, "pins/profession-trainer"); assert.equal(by.questGivers, "pins/quest-giver");
+});
+
 test("every class has its crest", () => {
   for (const c of ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"]) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/classes", c + ".png")), c);
 });

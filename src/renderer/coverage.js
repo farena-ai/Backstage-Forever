@@ -6,12 +6,12 @@ window.CoverageView = (() => {
   let data = null, error = "", faction = null, mountedFor = null, showAll = false;
   // What "good" looks like per category, so meters read at a glance.
   const KINDS = [
-    ["questGivers", "Quest givers", "hand-in", 25],
-    ["objectiveAreas", "Objective areas", "quest", 15],
-    ["classTrainers", "Class trainers", "train", 3],
-    ["professionTrainers", "Profession trainers", "train", 4],
-    ["vendors", "Vendors", "repair", 6],
-    ["flightMasters", "Flight masters", "flight", 1],
+    ["questGivers", "Quest givers", "pins/quest-giver", 25],
+    ["objectiveAreas", "Objective areas", "steps/quest", 15],
+    ["classTrainers", "Class trainers", "steps/train", 3],
+    ["professionTrainers", "Profession trainers", "pins/profession-trainer", 4],
+    ["vendors", "Vendors", "pins/vendor", 6],
+    ["flightMasters", "Flight masters", "pins/flight", 1],
   ];
   const level = (n, good) => (n >= good ? "rich" : n >= Math.ceil(good / 3) ? "some" : n > 0 ? "thin" : "none");
   function zoneCard(z) {
@@ -19,7 +19,7 @@ window.CoverageView = (() => {
     const art = window.ZoneArt?.url(z.mapId);
     const meters = KINDS.map(([k, label, crest, good]) => {
       const n = f[k], l = level(n, good);
-      return `<li class="cov-meter cov-${l}" title="${esc(label)}: ${n}"><img src="art/steps/${crest}.png" alt="" width="22" height="22"><span class="cov-label">${esc(label)}</span><span class="cov-bar"><i data-w="${Math.min(100, Math.round((n / good) * 100))}"></i></span><span class="cov-n">${n}</span></li>`;
+      return `<li class="cov-meter cov-${l}" title="${esc(label)}: ${n}"><img src="art/${crest}.png" alt="" width="22" height="22"><span class="cov-label">${esc(label)}</span><span class="cov-bar"><i data-w="${Math.min(100, Math.round((n / good) * 100))}"></i></span><span class="cov-n">${n}</span></li>`;
     }).join("");
     const score = KINDS.reduce((t, [k, , , good]) => t + Math.min(1, f[k] / good), 0) / KINDS.length;
     const verdict = score >= 0.7 ? ["Well covered", "good"] : score >= 0.35 ? ["Partly covered", "mid"] : ["Thin", "low"];
