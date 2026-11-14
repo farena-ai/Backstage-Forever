@@ -24,7 +24,7 @@ if ! git -C "$ROOT" diff --quiet HEAD -- community-server; then
 fi
 
 git -C "$ROOT" archive --format=tar HEAD:community-server | ssh "$HOST" "
-  set -euo pipefail
+  set -euo pipefail; umask 077
   d=\$HOME/bf-community/releases/$REL
   mkdir -p \$d && tar -xf - -C \$d
   bash \$d/deploy/remote-install.sh '$REL' '$PORT'
