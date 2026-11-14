@@ -3,6 +3,8 @@
 // A bounded PowerShell worker copies only a small region at one corner of the game
 // window's client area twice per second; pixels are decoded here and never stored.
 // The worker sends no input, reads no process memory and touches no game files.
+// While a question typed in game arrives (page kind 4) it samples faster for a short while, and
+// every two seconds it reports the game window's client rectangle (where the answer panel goes).
 const path = require("node:path");
 const fs = require("node:fs");
 const childProcess = require("node:child_process");
@@ -33,6 +35,15 @@ const PAGES_FRESH_MS = 30000; // a full cycle takes a few seconds; older sets ar
 // already older than MOMENT_MAX_AGE_S (the app started late, or a long fight) is remembered, not shown.
 const MOMENT_KIND = 3, MOMENT_FORMAT = 1, MOMENT_RING = 6, MOMENT_MAX_AGE_S = 120, MOMENT_SEEN_MS = 30 * 60000;
 const FRESH_MS = 4000;
+// Fourth page kind (addon 0.38+): a question typed in game, 17 UTF-8 bytes a page (see
+// BackstageForeverLiveQuestionPages). Pages of one question are collected across passes until all
+// are in; a complete question is reported once (dedup by character, id, checksum and length).
+const QUESTION_KIND = 4, QUESTION_CHUNK = 17, QUESTION_MAX_BYTES = 600, QUESTION_MAX_CHARS = 200;
+const QUESTION_PARTIAL_MS = 90000, QUESTION_SEEN_MS = 30 * 60000;
+// While question pages arrive the worker samples faster (question pages stay up about 0.4s).
+const QUESTION_INTERVAL_MS = 120, QUESTION_FAST_MS = 30000;
+// The game window's client rectangle is reported every few samples (for the in-game answer panel).
+const RECT_FRESH_MS = 15000;
 
 // Mirrors BackstageForeverLiveIdentity: binds frames to the saved character (UnitGUID).
 function identityHash(guid) {
@@ -225,6 +236,42 @@ function parseMomentPage(b) {
   }
   return { kind: "moments", index, count, newest: b[3], identity: (b[23] << 8) | b[24], total, moments };
 }
+// Mirror of BackstageForeverLiveQuestionPages (tests and fixtures): text -> pages, or [] when invalid.
+function encodeQuestionPages(id, text, identity = 0) {
+  const all = Buffer.from(String(text ?? ""), "utf8");
+  if (!Number.isInteger(id) || id < 1 || id > 255 || !all.length || all.length > QUESTION_MAX_BYTES) return [];
+  const sum = crc8(all, all.length), count = Math.ceil(all.length / QUESTION_CHUNK), pages = [];
+  for (let p = 0; p < count; p++) {
+    const b = new Array(PAYLOAD_BYTES).fill(0), first = p * QUESTION_CHUNK, n = Math.min(QUESTION_CHUNK, all.length - first);
+    b[0] = PAGE_VERSION; b[1] = QUESTION_KIND; b[2] = id; b[3] = p; b[4] = count;
+    for (let k = 0; k < n; k++) b[5 + k] = all[first + k];
+    b[22] = sum; b[23] = (identity >> 8) & 255; b[24] = identity & 255; b[25] = n;
+    b[26] = crc8(b, PAYLOAD_BYTES - 1);
+    pages.push(b);
+  }
+  return pages;
+}
+// One question page -> { kind: "question", id, index, count, sum, identity, bytes }, or null.
+function parseQuestionPage(b) {
+  if (!b || b[0] !== PAGE_VERSION || b[1] !== QUESTION_KIND) return null;
+  const id = b[2], index = b[3], count = b[4], n = b[25];
+  if (!id || !count || index >= count || count > Math.ceil(QUESTION_MAX_BYTES / QUESTION_CHUNK) || n < 1 || n > QUESTION_CHUNK) return null;
+  // Every page but the last is full.
+  if (index < count - 1 && n !== QUESTION_CHUNK) return null;
+  return { kind: "question", id, index, count, sum: b[22], identity: (b[23] << 8) | b[24], bytes: Array.from(b.slice(5, 5 + n)) };
+}
+// Complete pages (index -> bytes) -> the question text, or null when the checksum or UTF-8 is wrong.
+function assembleQuestion(parts, count, sum) {
+  const all = [];
+  for (let i = 0; i < count; i++) { const p = parts.get(i); if (!p) return null; all.push(...p); }
+  if (!all.length || all.length > QUESTION_MAX_BYTES || crc8(all, all.length) !== sum) return null;
+  let text;
+  try { text = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(all)); } catch { return null; }
+  // Control characters never come from the game's edit box; the text stays one plain line.
+  text = text.replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
+  if (!text || [...text].length > QUESTION_MAX_CHARS) return null;
+  return text;
+}
 function decodeCells(cells) {
   if (!Array.isArray(cells) || cells.length < MARKERS) return null;
   return decodeCellsV4(cells) || (cells.length >= MARKERS + PAYLOAD_CELLS && decodeCellsV3(cells)) || decodeCellsV2(cells.slice(0, MARKERS + V2.payloadCells));
@@ -362,7 +409,7 @@ using System; using System.IO; using System.Threading; using System.Runtime.Inte
 public static class BFLiveCapture {
   static readonly string[] Corners = { "topleft", "topright", "bottomleft", "bottomright" };
   static readonly object Gate = new object();
-  static string corner = "topleft"; static int rw = 640, rh = 28;
+  static string corner = "topleft"; static int rw = 640, rh = 28, delay = 500;
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
   [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
   [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
@@ -379,14 +426,23 @@ public static class BFLiveCapture {
       StreamReader input = new StreamReader(Console.OpenStandardInput());
       string line;
       while ((line = input.ReadLine()) != null) {
-        string[] p = line.Trim().Split(' '); int w, h;
+        string[] p = line.Trim().Split(' '); int w, h, ms;
         if (p.Length == 4 && p[0] == "region" && int.TryParse(p[2], out w) && int.TryParse(p[3], out h)) Set(p[1], w, h);
+        else if (p.Length == 2 && p[0] == "interval" && int.TryParse(p[1], out ms) && ms >= 100 && ms <= 2000) { lock (Gate) { delay = ms; } }
       }
     } catch { }
   }
-  public static void Init(string c, int w, int h) {
+  public static void Init(string c, int w, int h, int ms) {
     SetProcessDPIAware(); Set(c, w, h);
+    if (ms >= 100 && ms <= 2000) delay = ms;
     Thread t = new Thread(Listen); t.IsBackground = true; t.Start();
+  }
+  public static int Delay() { lock (Gate) { return delay; } }
+  // The game window's client area in screen pixels (where the app places its answer panel).
+  public static string Rect(IntPtr h) {
+    RECT r; POINT p = new POINT();
+    if (!IsWindow(h) || IsIconic(h) || !GetClientRect(h, out r) || !ClientToScreen(h, ref p)) return "";
+    return "rect " + p.X + " " + p.Y + " " + (r.R - r.L) + " " + (r.B - r.T);
   }
   public static string Grab(IntPtr h) {
     string c; int w, ht;
@@ -413,19 +469,22 @@ public static class BFLiveCapture {
 }
 "@
 $name = $env:BF_LIVE_PROCESS
-[BFLiveCapture]::Init($env:BF_LIVE_CORNER, [int]$env:BF_LIVE_W, [int]$env:BF_LIVE_H)
-$handle = [IntPtr]::Zero; $tick = 0
+[BFLiveCapture]::Init($env:BF_LIVE_CORNER, [int]$env:BF_LIVE_W, [int]$env:BF_LIVE_H, [int]$env:BF_LIVE_MS)
+$handle = [IntPtr]::Zero; $tick = 0; $looked = [DateTime]::MinValue; $placed = [DateTime]::MinValue
 while ($true) {
-  if ($handle -eq [IntPtr]::Zero -or ($tick % 10) -eq 0) {
+  $now = [DateTime]::UtcNow
+  if ($handle -eq [IntPtr]::Zero -or ($now - $looked).TotalSeconds -ge 5) {
+    $looked = $now
     $proc = if ($env:BF_LIVE_PID) { Get-Process -Id ([int]$env:BF_LIVE_PID) -ErrorAction SilentlyContinue } else { Get-Process -Name $name -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1 }
     if ($proc -and $proc.MainWindowHandle -eq 0) { $proc = $null }
     $handle = if ($proc) { $proc.MainWindowHandle } else { [IntPtr]::Zero }
   }
   if ($handle -eq [IntPtr]::Zero) { [Console]::Out.WriteLine('nogame') } else {
     try { [Console]::Out.WriteLine([BFLiveCapture]::Grab($handle)) } catch { [Console]::Out.WriteLine('error') }
+    if (($now - $placed).TotalSeconds -ge 2) { $placed = $now; try { $r = [BFLiveCapture]::Rect($handle); if ($r) { [Console]::Out.WriteLine($r) } } catch { } }
   }
   [Console]::Out.Flush(); $tick++
-  Start-Sleep -Milliseconds ([int]$env:BF_LIVE_MS)
+  Start-Sleep -Milliseconds ([BFLiveCapture]::Delay())
 }
 `;
 
@@ -484,7 +543,8 @@ class LiveBridge {
     clearTimeout(this.retry);
     const child = this.child; this.child = null;
     try { child?.kill(); } catch {}
-    this.signal = "off"; this.frame = null; this.buffer = ""; this.beat = null;
+    this.signal = "off"; this.frame = null; this.buffer = ""; this.beat = null; this.gameRect = null;
+    clearTimeout(this.slowTimer); this.sampling = null;
   }
   /** Moves the worker's capture to another corner or size (no-op when unchanged). */
   setRegion(corner, region = REGION) {
@@ -523,7 +583,8 @@ class LiveBridge {
         this.signal = "live"; this.misses = 0;
         if (!this.strip || this.strip.mode !== decoded.mode || this.strip.corner !== corner || this.strip.pitch !== decoded.pitch) changed = true;
         this.strip = { mode: decoded.mode, version: decoded.version, corner, pitch: decoded.pitch, width: decoded.footprint.width, height: decoded.footprint.height };
-        if (decoded.page && decoded.page[1] === MOMENT_KIND) this.momentPage(parseMomentPage(decoded.page));
+        if (decoded.page && decoded.page[1] === QUESTION_KIND) this.questionPage(parseQuestionPage(decoded.page));
+        else if (decoded.page && decoded.page[1] === MOMENT_KIND) this.momentPage(parseMomentPage(decoded.page));
         else if (decoded.page && this.page(parsePage(decoded.page))) changed = true;
         // A compact strip needs only a small slice of its corner.
         if (decoded.mode === "compact" && decoded.pitch <= 4) this.setRegion(corner, COMPACT_REGION);
@@ -534,7 +595,14 @@ class LiveBridge {
         if (this.region !== REGION) { this.setRegion(corner, REGION); this.misses = 0; }
         else if (!hint && ++this.misses >= 2) { this.misses = 0; this.setRegion(CORNERS[(CORNERS.indexOf(corner) + 1) % CORNERS.length], REGION); }
       }
-    } else if (["nogame", "minimized", "small", "gone", "error"].includes(line)) this.signal = line === "gone" ? "nogame" : line;
+    } else if (line.startsWith("rect ")) {
+      const [x, y, width, height] = line.split(" ").slice(1).map(Number);
+      if ([x, y].every((v) => Number.isInteger(v) && Math.abs(v) <= 100000) && [width, height].every((v) => Number.isInteger(v) && v > 0 && v <= 100000)) this.gameRect = { x, y, width, height, at: this.now() };
+      return;
+    } else if (["nogame", "minimized", "small", "gone", "error"].includes(line)) {
+      this.signal = line === "gone" ? "nogame" : line;
+      if (line !== "error" && line !== "small") this.gameRect = null;
+    }
     if (changed || JSON.stringify([this.signal, this.frame?.seq]) !== before) this.emit();
   }
   /** Collects second-row pages; returns true when a complete set of one kind changed. */
@@ -580,6 +648,48 @@ class LiveBridge {
     return fresh;
   }
   subscribeMoments(fn) { (this.momentListeners ||= new Set()).add(fn); return () => this.momentListeners.delete(fn); }
+  /**
+   * Collects question pages (kind 4). A question complete for the first time is passed to
+   * subscribeQuestions listeners as { id, text, characterHash, at }; later passes of the same
+   * question (same character, id, checksum and length) are ignored. Returns the question or null.
+   */
+  questionPage(pg) {
+    // Questions bind to the character on the main row, like quest and moment pages.
+    if (!pg || pg.identity !== this.frame?.characterHash) return null;
+    const at = this.now();
+    this.sampleFast(at);
+    this.questionSeen ||= new Map(); this.questionParts ||= new Map();
+    for (const [k, t] of this.questionSeen) if (at - t > QUESTION_SEEN_MS) this.questionSeen.delete(k);
+    for (const [k, set] of this.questionParts) if (at - set.at > QUESTION_PARTIAL_MS) this.questionParts.delete(k);
+    const key = [pg.identity, pg.id, pg.sum, pg.count].join(":");
+    if (this.questionSeen.has(key)) return null;
+    let set = this.questionParts.get(key);
+    if (!set) { set = { parts: new Map(), at }; this.questionParts.set(key, set); }
+    set.parts.set(pg.index, pg.bytes); set.at = at;
+    if (set.parts.size < pg.count) return null;
+    this.questionParts.delete(key);
+    const text = assembleQuestion(set.parts, pg.count, pg.sum);
+    if (!text) return null;
+    this.questionSeen.set(key, at);
+    const question = { id: pg.id, text, characterHash: pg.identity, at };
+    for (const fn of this.questionListeners || []) { try { fn(question); } catch {} }
+    return question;
+  }
+  subscribeQuestions(fn) { (this.questionListeners ||= new Set()).add(fn); return () => this.questionListeners.delete(fn); }
+  /** Faster sampling for a while after a question page (back to intervalMs afterwards). */
+  sampleFast(at = this.now()) {
+    this.fastUntil = at + QUESTION_FAST_MS;
+    if (this.sampling !== QUESTION_INTERVAL_MS) { this.sampling = QUESTION_INTERVAL_MS; this.sendInterval(QUESTION_INTERVAL_MS); }
+    clearTimeout(this.slowTimer);
+    this.slowTimer = setTimeout(() => { if (this.now() >= this.fastUntil) { this.sampling = null; this.sendInterval(this.intervalMs); } }, QUESTION_FAST_MS + 50);
+    this.slowTimer.unref?.();
+  }
+  sendInterval(ms) { try { this.child?.stdin?.write?.(`interval ${ms}\n`); } catch {} }
+  /** The game window's client rectangle in screen pixels while recently reported, else null. */
+  gameWindow() {
+    const r = this.gameRect;
+    return r && this.now() - r.at <= RECT_FRESH_MS ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+  }
   /** Live frame only while fresh; older frames are never presented as live. */
   current() {
     if (!this.frame || this.now() - this.frame.receivedAt > FRESH_MS) return null;
@@ -604,4 +714,4 @@ class LiveBridge {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };
+module.exports = { encodeQuestionPages, parseQuestionPage, assembleQuestion, QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES, QUESTION_MAX_CHARS, QUESTION_INTERVAL_MS, encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };

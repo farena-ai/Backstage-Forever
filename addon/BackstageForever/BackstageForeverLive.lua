@@ -10,6 +10,8 @@
 -- Since 0.32 the strip is "compact" by default (version 4): 2px cells, four calibrated levels
 -- per channel, 84 x 4 physical pixels for both rows. /bf live safe goes back to the larger
 -- one-bit version 3 strip (456 x 12) for displays or remote sessions that mangle colours.
+-- Since 0.38 the pages row also carries questions the player typed in game (/bf ask), only
+-- after they pressed Ask and never in combat; the app answers in its own panel window.
 local CELL = 6                      -- safe mode: physical pixels per cell edge
 -- Version 3 (safe): every colour channel is fully off or fully on (one bit per channel), so
 -- colour-profile, gamma, HDR or remote-session shifts cannot blur neighbouring levels.
@@ -35,6 +37,15 @@ local MAX_TURNED_IN = 18
 -- milestone...): a ring of the newest MOMENT_RING, two to a page. While a moment is new its
 -- page is shown first and then every other page until it has been on screen MOMENT_SHOWS times.
 local MOMENT_KIND, MOMENT_FORMAT, MOMENT_RING, MOMENT_SHOWS = 3, 1, 6, 4
+-- Since 0.38 a fourth page kind carries a question typed in game (/bf ask, the minimap button):
+-- 17 bytes of UTF-8 text a page, at most QUESTION_MAX_BYTES. Question pages stay up QUESTION_SECONDS
+-- (two update ticks; the app samples faster while a question arrives), QUESTION_BURST of them
+-- then one ordinary page so quest and moment pages keep flowing. Each question is shown
+-- QUESTION_PASSES times; the app keeps the first complete copy (it dedups by question id) and
+-- fills pages it missed from the next pass. Questions only go up when the player pressed Ask,
+-- and never in combat (the pages row holds during combat).
+local QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES = 4, 17, 600
+local QUESTION_SECONDS, QUESTION_BURST, QUESTION_PASSES, QUESTION_QUEUE = .39, 4, 2, 3
 -- Update rate: 5 checks a second; after IDLE_AFTER seconds without any change, once a second.
 -- A heartbeat byte still counts up every HEARTBEAT seconds so the app knows the game is live.
 local TICK, IDLE_TICK, IDLE_AFTER, HEARTBEAT = .2, 1, 5, 2
@@ -188,6 +199,32 @@ function BackstageForeverLiveMomentPages(events,identity,now)
             end
         end
         b[23]=MOMENT_FORMAT
+        put16(b,24,identity or 0)
+        b[26]=n
+        b[27]=crc8(b,26)
+        pages[p]=b
+    end
+    return pages
+end
+-- Pure: question (a UTF-8 string, 1..600 bytes) -> page byte arrays. b1 version, b2 kind 4,
+-- b3 question id (1-255), b4 chunk index (0-based), b5 chunk count, b6..b22 seventeen text bytes,
+-- b23 crc8 of the whole question text, b24-25 identity, b26 text bytes on this page, b27 crc.
+function BackstageForeverLiveQuestionPages(id,text,identity)
+    id=floor(tonumber(id) or 0)
+    if type(text)~='string' or #text==0 or #text>QUESTION_MAX_BYTES or id<1 or id>255 then return {} end
+    local all={}
+    for i=1,#text do all[i]=text:byte(i) end
+    local sum=crc8(all,#all)
+    local count=math.ceil(#all/QUESTION_CHUNK)
+    local pages={}
+    for p=1,count do
+        local b={}
+        for i=1,PAYLOAD_BYTES do b[i]=0 end
+        b[1]=PAGE_VERSION b[2]=QUESTION_KIND b[3]=id b[4]=p-1 b[5]=count
+        local first=(p-1)*QUESTION_CHUNK
+        local n=math.min(QUESTION_CHUNK,#all-first)
+        for k=1,n do b[5+k]=all[first+k] end
+        b[23]=sum
         put16(b,24,identity or 0)
         b[26]=n
         b[27]=crc8(b,26)
@@ -431,6 +468,47 @@ local function momentPage()
     for k=0,1 do local e=moments[pick*2-1+k] if e then e.shown=e.shown+1 end end
     return mp[pick]
 end
+-- Questions waiting for the strip: {id, text, pages, next, pass, burst}, oldest first.
+local questions,lastWasQuestion={},false
+-- Puts a question the player typed on the strip (the Ask box and /bf ask call this, only after
+-- the player pressed Ask or Enter, and only out of combat). Returns its id (1-255, kept across
+-- reloads) and its page count, or nil and a reason: 'off' (live link off), 'invalid', 'busy'.
+function BackstageForeverLiveQuestion(text)
+    local s=settings()
+    if not s.enabled then return nil,'off' end
+    if type(text)~='string' or #text==0 or #text>QUESTION_MAX_BYTES then return nil,'invalid' end
+    if #questions>=QUESTION_QUEUE then return nil,'busy' end
+    local id=(floor(tonumber(s.questionSeq) or 0)%255)+1
+    local pages=BackstageForeverLiveQuestionPages(id,text,BackstageForeverLiveIdentity(call(UnitGUID,'player')))
+    if #pages==0 then return nil,'invalid' end
+    s.questionSeq=id
+    questions[#questions+1]={id=id,text=text,pages=pages,next=1,pass=1,burst=0}
+    pageClock=99 quiet=0
+    return id,#pages
+end
+-- What is on its way: nil when no question waits, else {id, page, count, pass, passes, waiting}.
+function BackstageForeverLiveQuestionStatus()
+    local q=questions[1]
+    if not q then return nil end
+    return {id=q.id,page=q.next,count=#q.pages,pass=q.pass,passes=QUESTION_PASSES,waiting=#questions}
+end
+-- The next question page, or nil to give this slot to an ordinary page (after each burst).
+local function questionPage()
+    local q=questions[1]
+    if not q then return nil end
+    if q.burst>=QUESTION_BURST then q.burst=0 return nil end
+    local page=q.pages[q.next]
+    q.burst=q.burst+1
+    q.next=q.next+1
+    if q.next>#q.pages then
+        q.next=1 q.pass=q.pass+1
+        if q.pass>QUESTION_PASSES then
+            table.remove(questions,1)
+            if questions[1] then questions[1].burst=q.burst end
+        end
+    end
+    return page
+end
 function BackstageForeverLiveTurnedIn(id)
     id=tonumber(plain(id))
     if not id or id<=0 then return end
@@ -441,12 +519,21 @@ function BackstageForeverLiveTurnedIn(id)
 end
 local function paintPage(dt,idle)
     pageClock=pageClock+dt
-    if pageClock<(idle and PAGE_SECONDS_IDLE or PAGE_SECONDS) then return end
+    if pageClock<(lastWasQuestion and QUESTION_SECONDS or idle and PAGE_SECONDS_IDLE or PAGE_SECONDS) then return end
     -- In combat the page holds (and a moment waiting to be shown goes up as soon as it ends).
+    -- Questions never go up in combat either.
     if call(InCombatLockdown) then return end
     pageClock=0
+    -- A question the player sent goes first, in bursts; between bursts the ordinary pages.
+    local page=questionPage()
+    lastWasQuestion=page~=nil
+    if page then
+        quiet=0
+        if shape.mode=='safe' then fill(shape.row1+1,BackstageForeverLiveCells(page))
+        else fill(shape.row1+1,BackstageForeverLiveCompactCells(page,false)) end
+        return
+    end
     -- New moments first, then alternating with the quest pages so those stay fresh.
-    local page
     if momentDue or not lastWasMoment then page=momentPage() end
     lastWasMoment=page~=nil
     if not page then
