@@ -46,6 +46,13 @@ window.HoverCards = (() => {
       ${icons ? `<div class="hc-rewards">${icons}${d.rewards?.choices?.length ? '<small>pick one</small>' : ""}</div>` : ""}
       <p class="hc-hint">Click to open the quest</p>`;
   }
+  // Ledger price memory (0.35): copper as "1g 20s", and how long ago the Auction House showed it.
+  const coins = (c) => { const g = Math.floor(c / 10000), s = Math.floor((c % 10000) / 100), k = c % 100; return [g ? `${g}g` : "", s ? `${s}s` : "", k || (!g && !s) ? `${k}c` : ""].filter(Boolean).join(" "); };
+  const ago = (s) => (s < 3600 ? "within the hour" : s < 172800 ? `${Math.round(s / 3600)} hours ago` : `${Math.round(s / 86400)} days ago`);
+  function priceLine(p) {
+    if (!p || !Number.isFinite(p.latest)) return "";
+    return `<p class="hc-price">About <strong>${esc(coins(p.latest))}</strong> each at auction · seen ${esc(ago(p.age))}${p.low < p.latest ? ` · lowest ${esc(coins(p.low))}` : ""}</p>`;
+  }
   const VERDICT = { upgrade: "up", "upgrade-later": "later", "not-for-you": "no", "not-upgrade": "meh", usable: "meh", "no-class": "meh" };
   function itemMarkup(d, fallbackTitle = "") {
     const it = d?.item;
@@ -68,7 +75,7 @@ window.HoverCards = (() => {
       ${meta.length ? `<p class="hc-meta">${meta.map(esc).join(" · ")}</p>` : ""}
       ${stats.length ? `<ul class="hc-stats">${stats.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : ""}
       ${it?.classes?.length ? `<p class="hc-meta">Classes: ${it.classes.map(esc).join(", ")}</p>` : ""}
-      ${verdict}${drops}
+      ${verdict}${drops}${priceLine(d?.price)}
       ${d?.wished ? `<p class="hc-wish">★ On your wish list</p>` : ""}
       ${!it && d ? `<p class="hc-hint">Item details appear once your game folder is connected.</p>` : ""}`;
   }

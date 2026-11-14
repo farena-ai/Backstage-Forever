@@ -7,6 +7,7 @@ window.PlayerNavigation = (() => {
     ["quest-guide", "⌖", "Quests"],
     ["assistant", "✧", "Companion"],
     ["characters", "♙", "Characters"],
+    ["ledger", "⚖", "Ledger"],
     ["company", "♜", "Plans"],
   ]);
   const groups = {
@@ -24,6 +25,11 @@ window.PlayerNavigation = (() => {
       label: "Characters",
       routes: [["characters", "Journal"], ["talents", "Talents"], ["journey", "Journey"]],
       description: "Your characters, their journals and a talent path for leveling.",
+    },
+    ledger: {
+      label: "Ledger",
+      routes: [["ledger", "Bags & bank"], ["ledger-gold", "Gold & prices"], ["ledger-reputation", "Reputation"], ["ledger-cooldowns", "Cooldowns"]],
+      description: "What every character carries, their gold, the auction prices you saw, reputations and cooldowns.",
     },
     game: {
       label: "Settings",
@@ -76,7 +82,7 @@ window.PlayerNavigation = (() => {
   function subtabs(route) {
     const section = groups[group(route)];
     if (!section) return "";
-    return `<section class="player-section" aria-label="${section.label} sections"><div class="player-section-heading"><span class="player-seal" aria-hidden="true">${group(route) === "company" ? "♜" : group(route) === "game" ? "⚙" : "▤"}</span><p>${section.description}</p></div><nav class="player-subtabs" aria-label="${section.label} navigation">${section.routes.map(([id, label]) => button(id, "", label, route === id, "subtab")).join("")}</nav>${group(route)==="company"?'<button class="professions-shortcut" data-professions-shortcut data-nav="preparation" data-shell-control="professions-shortcut">Professions workshop →</button>':""}</section>`;
+    return `<section class="player-section" aria-label="${section.label} sections"><div class="player-section-heading"><span class="player-seal" aria-hidden="true">${group(route) === "company" ? "♜" : group(route) === "game" ? "⚙" : group(route) === "ledger" ? "⚖" : "▤"}</span><p>${section.description}</p></div><nav class="player-subtabs" aria-label="${section.label} navigation">${section.routes.map(([id, label]) => button(id, "", label, route === id, "subtab")).join("")}</nav>${group(route)==="company"?'<button class="professions-shortcut" data-professions-shortcut data-nav="preparation" data-shell-control="professions-shortcut">Professions workshop →</button>':""}</section>`;
   }
   const tools = new Map();
   function remember(container) {

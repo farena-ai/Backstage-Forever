@@ -750,6 +750,27 @@ app.whenReady().then(async () => {
     return { id: p.id, name: p.name, className: p.className || null, level: p.level || null, played: p.journal?.played ?? null, hasJournal: Boolean(p.journal),
       splits: splits(p, others), badges: badgesFor(p), rested: rested(p), zones: (p.journal?.zones || []).length };
   });
+  // Ledger (0.35): bags, bank, mail, gold, prices, reputations and cooldowns of every character.
+  // Read-only; names and qualities come from the player's install, then the reference pack.
+  const ledgerFacts = (ids) => {
+    let found = [];
+    try { found = ids.length ? gameData.items(ids) : []; } catch {}
+    let pack = null;
+    try { pack = (knowledge.packs.get(knowledge.build) || knowledge.bundled).pack; } catch {}
+    return new Map(ids.map((id, i) => [id, { name: found[i]?.name || pack?.items?.[id]?.name || null, quality: Number.isInteger(found[i]?.quality) ? found[i].quality : null }]));
+  };
+  handle("ledger", (...args) => {
+    if (args.length) throw Error("Invalid ledger request.");
+    const L = require("./core/ledger.cjs"), s = store.state;
+    return L.ledgerView(s, { facts: ledgerFacts(L.itemIds(s.profiles)) });
+  });
+  let ledgerPrices = { key: null, index: null };
+  const ledgerPrice = (id) => {
+    const L = require("./core/ledger.cjs"), profiles = store.state.profiles;
+    const key = profiles.map((p) => (p.ledger ? `${p.id}:${p.source?.updatedAt || ""}:${p.ledger.prices.length}` : "")).join("|");
+    if (ledgerPrices.key !== key) ledgerPrices = { key, index: L.priceIndex(profiles) };
+    return L.priceFor(ledgerPrices.index, id);
+  };
   handle("talentCoach", (input) => {
     const className = typeof input?.className === "string" ? input.className.slice(0, 20) : null;
     const level = Number.isInteger(input?.level) && input.level >= 1 && input.level <= 100 ? input.level : null;
@@ -765,7 +786,7 @@ app.whenReady().then(async () => {
   const encounters = loadEncounters();
   // Loot browser, wish list and item hover cards (boss loot pack + the player's own game data).
   wishlist = new (require("./core/wishlist.cjs").WishList)(app.getPath("userData"));
-  const bossLoot = require("./core/boss-loot-ipc.cjs").registerBossLootHandlers({ handle, getState: () => store.state, gameData, wishlist, getPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(), getCommunity: () => community?.index() || null, creatureName: (id) => worldMap?.npcName(id) || null });
+  const bossLoot = require("./core/boss-loot-ipc.cjs").registerBossLootHandlers({ handle, getState: () => store.state, gameData, wishlist, getPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(), getCommunity: () => community?.index() || null, creatureName: (id) => worldMap?.npcName(id) || null, priceFor: (id) => ledgerPrice(id) });
   handle("dungeonAtlas", () => {
     const profile = store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null;
     const atlas = buildAtlas({ profile, encounters, knowledgePack: knowledge?.bundled?.pack }), loot = bossLoot.summary(profile);

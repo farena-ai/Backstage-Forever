@@ -8,7 +8,7 @@ const MAX_ID = 2147483647;
 const itemId = (x) => { if (!Number.isSafeInteger(x) || x < 1 || x > MAX_ID) throw Error("Invalid item ID."); return x; };
 const count = (args, min, max = min) => { if (args.length < min || args.length > max) throw Error("Invalid loot request."); };
 
-function registerBossLootHandlers({ handle, getState, gameData, wishlist, getPack, getCommunity = () => null, creatureName = () => null }) {
+function registerBossLootHandlers({ handle, getState, gameData, wishlist, getPack, getCommunity = () => null, creatureName = () => null, priceFor = () => null }) {
   const community = () => { try { return getCommunity() || null; } catch { return null; } };
   let index = null, indexFor = null;
   const drops = () => { const p = getPack(); if (p !== indexFor) { indexFor = p; index = p ? dropIndex(p) : new Map(); } return index; };
@@ -31,7 +31,11 @@ function registerBossLootHandlers({ handle, getState, gameData, wishlist, getPac
   handle("itemCard", (...args) => {
     count(args, 2);
     const [profileId, id] = args, p = profile(profileId);
-    return itemCard(getPack(), itemId(id), { profile: p, gameData, wished: wished(p), index: drops(), community: community(), creatureName });
+    const card = itemCard(getPack(), itemId(id), { profile: p, gameData, wished: wished(p), index: drops(), community: community(), creatureName });
+    // Ledger price memory (0.35): what this item went for on Auction House pages the player opened.
+    let price = null;
+    try { price = priceFor(id) || null; } catch {}
+    return price ? { ...card, price } : card;
   });
   handle("setLootWish", (...args) => {
     count(args, 3);

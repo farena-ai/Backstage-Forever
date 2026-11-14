@@ -107,7 +107,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.reload();
 
     const primary = page.getByRole("navigation", { name: "Main navigation" });
-    const names = ["Now", "Adventure", "World Map", "Quests", "Companion", "Characters", "Plans"];
+    const names = ["Now", "Adventure", "World Map", "Quests", "Companion", "Characters", "Ledger", "Plans"];
     assert.equal(await primary.getByRole("button").count(), names.length);
     for (let i = 0; i < names.length; i++) {
       const button = primary.getByRole("button", {

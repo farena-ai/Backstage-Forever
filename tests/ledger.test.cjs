@@ -126,3 +126,30 @@ test("the ledger never leaves the computer: not in community observations or the
   const fs = require("node:fs"), path = require("node:path");
   assert.doesNotMatch(fs.readFileSync(path.join(__dirname, "../src/core/community.cjs"), "utf8"), /ledger/);
 });
+
+test("the Ledger pages render every character's items, gold, prices, reputations and cooldowns, and search narrows them", async () => {
+  const fs = require("node:fs"), vm = require("node:vm"), path = require("node:path");
+  const now = Math.floor(Date.now() / 1000);
+  const a = profile("Aeralyn", "Alliance", L.normalizeLedgerCapture(ledger({ cooldowns: [{ key: "transmute", spellId: 17187, readyAt: now + 7200 }, { key: "mooncloth", readyAt: now - 5 }] })));
+  const b = profile("Vaelric", "Horde", L.normalizeLedgerCapture(ledger({ money: 2000000, bank: undefined, reputations: { seenAt: T, factions: [{ id: 76, name: "Orgrimmar", standing: 7, min: 21000, max: 42000, value: 30000 }, { id: 72, name: "Stormwind", standing: 3, min: -3000, max: 0, value: -100 }] } })));
+  const view = L.ledgerView({ activeProfileId: "Aeralyn", profiles: [a, b] }, { facts: new Map([[2592, { name: "Wool Cloth", quality: 1 }]]) });
+  let html = "";
+  const root = () => ({ dataset: { ledger: "ledger" }, querySelectorAll: () => [], querySelector: () => null, set outerHTML(v) { html = v; } });
+  const context = vm.createContext({ backstage: { ledger: async () => structuredClone(view) }, document: { querySelector: (s) => (s === "[data-ledger]" ? root() : null) }, structuredClone });
+  context.window = context; const window = context;
+  for (const f of ["page-hero.js", "ledger.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer", f), "utf8"), context);
+  const V = window.LedgerView;
+  assert.match(V.bags(), /Opening your ledger|loading/);
+  V.mounted(); await new Promise((r) => setTimeout(r, 10));
+  assert.match(html, /Linen Cloth/); assert.match(html, /Wool Cloth/); assert.match(html, /bank never opened/); assert.match(html, /data-card-item="2589"/);
+  assert.match(html, /bags 25 · bank 10/);
+  V._state().query.items = "wool";
+  const narrowed = V.bags();
+  assert.match(narrowed, /Wool Cloth/); assert.doesNotMatch(narrowed, /Linen Cloth<\/strong>/);
+  const gold = V.gold();
+  assert.match(gold, /323g/, "total gold of both characters"); assert.match(gold, /Copper Ore/); assert.match(gold, /data-ledger-price="2589"/);
+  const rep = V.reputation();
+  assert.match(rep, /Stormwind/); assert.match(rep, /Honored/); assert.match(rep, /<h3 class="ldg-group">Alliance<\/h3>/);
+  const cds = V.cooldowns();
+  assert.match(cds, /Transmute/); assert.match(cds, /Ready in 2h|Ready in 1h 60m|Ready in 2h 00m/); assert.match(cds, />Ready</);
+});
