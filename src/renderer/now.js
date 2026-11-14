@@ -96,7 +96,7 @@ window.NowView = (() => {
       { done: Boolean(game?.connected), title: "Connect your WoW Forever folder", how: "Settings → Game connection finds it for you.", action: `<button type="button" data-nav="game">Open Game connection</button>` },
       { done: Boolean(game?.connected && game?.addonCurrent), title: "Install the Backstage Forever addon", how: "One click on the Game connection page. It copies the addon into your game folder." },
       { done: hasCharacter, title: "Log in and type /reload once", how: "In WoW, type <code>/reload</code> in chat and press Enter. Your character appears here." },
-      { done: live?.signal === "live" || Boolean(a?.character?.live), title: "See yourself live", how: live?.enabled === false ? "The live link is off. Turn it on in Settings → Game connection." : "Keep WoW running in a window or borderless window. The small strip at the top-left of the game lets this page follow you." },
+      { done: live?.signal === "live" || Boolean(a?.character?.live), title: "See yourself live", how: live?.enabled === false ? "The live link is off. Turn it on in Settings → Game connection." : `Keep WoW running in a window or borderless window. The tiny strip in a corner of the game (top-left unless you moved it with <code>/bf live pos</code>) lets this page follow you.${window.LiveLink?.stripLine?.(live) ? ` <span class="now-live-strip">${esc(window.LiveLink.stripLine(live))}.</span>` : ""} Type <code>/bf live safe</code> if the link drops over remote desktop.` },
     ];
     if (items.every((i) => i.done)) return "";
     const next = items.findIndex((i) => !i.done);
@@ -111,6 +111,7 @@ window.NowView = (() => {
   function reloadBanner() {
     const sig = setup?.live?.signal;
     if (sig === "old-addon") return `<div class="now-reload" role="status"><strong>Type <code>/reload</code> in WoW</strong><span>The game is still running an older Backstage Forever addon, so this page can't follow you live and shows your last save instead. One /reload fixes it.</span></div>`;
+    if (sig === "compact-unreadable") return `<div class="now-reload" role="status"><strong>Type <code>/bf live safe</code> in WoW</strong><span>The compact live strip is on screen but its colours are changed too much to read (remote desktop, HDR or a colour filter). Safe mode draws a larger, sturdier strip. Until then this page shows your last save.</span></div>`;
     if (sig === "unreadable") return `<div class="now-reload" role="status"><strong>Live link can't read the game</strong><span>The strip is on screen but its colours are being changed (HDR, Night light, a colour filter or a remote session). Type <code>/reload</code> in WoW once; if this stays, turn the filter off for WoW. Until then this page shows your last save.</span></div>`;
     const g = setup?.game;
     if (!g?.connected || !g.addonCurrent || g.runtime?.state !== "running" || !g.loadedCaptureVersion || !g.addonVersion || g.loadedCaptureVersion === g.addonVersion) return "";

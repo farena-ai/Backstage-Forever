@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.31: every page earns its place
+## 0.32: a quiet live link
 
-A painted banner and the same parchment design on every page, Adventure rebuilt, every link checked to land where it says, and filler replaced with real information. See the [0.31.0 release notes](docs/releases/0.31.0.md).
+The live strip shrinks from 456×12 to 84×4 pixels, can sit in any corner (`/bf live pos`), and has a sturdy safe mode for remote desktop (`/bf live safe`). See the [0.32.0 release notes](docs/releases/0.32.0.md).
 
 ## 0.28: your journey
 

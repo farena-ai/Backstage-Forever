@@ -1317,6 +1317,7 @@ body[data-class] .providers {
 /* Live game link status. */
 .live-link-line{font-size:.85rem;margin:.4rem 0;opacity:.85;}
 .live-link-line[data-signal="live"]{color:#7fd18b;opacity:1;font-weight:600;}
+.live-link-strip,.live-link-tip{font-size:.8rem;margin:.2rem 0;opacity:.75;}
 
 /* Field guide: beginner start and glossary. */
 .guide-start, .guide-glossary { grid-column: 1 / -1; }

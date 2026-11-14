@@ -1,6 +1,6 @@
 "use strict";
 // Live game link: decodes the opt-in status strip drawn by BackstageForeverLive.lua.
-// A bounded PowerShell worker copies only a small region at the top-left of the game
+// A bounded PowerShell worker copies only a small region at one corner of the game
 // window's client area twice per second; pixels are decoded here and never stored.
 // The worker sends no input, reads no process memory and touches no game files.
 const path = require("node:path");
@@ -10,7 +10,21 @@ const childProcess = require("node:child_process");
 const CELL = 6, MARKERS = 4, PAYLOAD_CELLS = 72, PAYLOAD_BYTES = 27, VERSION = 3;
 // Version 2 strips (addon 0.18.1 and earlier): 4px cells, four levels per channel.
 const V2 = { cell: 4, payloadCells: 36, version: 2 };
+// Version 4 ("compact", addon 0.32+): 2px cells, four calibrated levels per channel (2 bits),
+// so 27 bytes fit in 36 cells. Header: two magenta finder cells, then grey 0/85/170/255
+// reference cells that the decoder measures per channel. Row 2 (pages) has no header.
+const V4 = { version: 4, cell: 2, finder: 2, header: 6, payloadCells: 36, levels: [0, 85, 170, 255] };
+const V4_HEADER = [[255, 0, 255], [255, 0, 255], [0, 0, 0], [85, 85, 85], [170, 170, 170], [255, 255, 255]];
+// Neighbouring calibrated levels closer than this (per channel) cannot be told apart reliably;
+// such strips are refused (stripHint says "compact-unreadable": /bf live safe switches to 1 bit).
+const MIN_LEVEL_GAP = 16;
 const REGION = { width: 640, height: 28 }; // room for both strip rows at up to 8px per cell
+// Once a compact strip is found the worker copies only this much of its corner.
+const COMPACT_REGION = { width: 200, height: 16 };
+const CORNERS = ["topleft", "topright", "bottomleft", "bottomright"];
+// An idle addon repaints its heartbeat every 2s; a compact strip whose heartbeat has not moved
+// for this long is a frozen picture (hung UI), not a live game.
+const HEARTBEAT_STALE_MS = 20000, IDLE_MS = 6000;
 // Second row (addon 0.25+): pages of the quest log and of quests turned in this session.
 const PAGE_VERSION = 80, PAGE_IDS = 6, KIND = { 1: "questLog", 2: "turnedIn" };
 const PAGES_FRESH_MS = 30000; // a full cycle takes a few seconds; older sets are dropped
@@ -91,6 +105,45 @@ function decodeCellsV2(cells) {
   const bytes = bytesOf(bits);
   return valid(bytes, V2.version) ? bytes : null;
 }
+// Version 4: per channel, the nearest of the four measured reference levels.
+function v4Levels(header) {
+  if (!Array.isArray(header) || header.length < V4.header) return null;
+  const cal = header.slice(V4.finder, V4.header), levels = [0, 1, 2].map((ch) => cal.map((c) => c[ch]));
+  for (const l of levels) {
+    if (l[3] - l[0] < 60) return null;
+    for (let i = 1; i < 4; i++) if (l[i] - l[i - 1] < MIN_LEVEL_GAP) return null;
+  }
+  return levels;
+}
+const isV4Header = (cells) => cells.length >= V4.header && magentaish(cells[0]) && magentaish(cells[1]);
+const nearest = (v, l) => { let best = 0; for (let i = 1; i < l.length; i++) if (Math.abs(v - l[i]) < Math.abs(v - l[best])) best = i; return best; };
+function bitsFromLevels(cells, levels) {
+  const bits = [];
+  for (const rgb of cells) for (let ch = 0; ch < 3; ch++) { const i = nearest(rgb[ch], levels[ch]); bits.push(i >> 1, i & 1); }
+  return bits;
+}
+// Full compact row (header + payload), or a header-less page row decoded with the main row's levels.
+function decodeCellsV4(cells, levels = null, version = V4.version) {
+  if (!Array.isArray(cells)) return null;
+  let payload = cells;
+  if (!levels) {
+    if (cells.length < V4.header + V4.payloadCells || !isV4Header(cells)) return null;
+    levels = v4Levels(cells);
+    if (!levels) return null;
+    payload = cells.slice(V4.header);
+  }
+  if (payload.length < V4.payloadCells) return null;
+  const bytes = bytesOf(bitsFromLevels(payload.slice(0, V4.payloadCells), levels));
+  return valid(bytes, version) ? bytes : null;
+}
+// Encoder mirror of the addon's compact strip (tests and fixtures).
+function levelCells(bytes) {
+  const bits = bitsOf(bytes), cells = [];
+  for (let c = 0; c < V4.payloadCells; c++) cells.push([0, 1, 2].map((ch) => { const i = c * 6 + ch * 2; return V4.levels[(bits[i] || 0) * 2 + (bits[i + 1] || 0)]; }));
+  return cells;
+}
+const encodeCellsV4 = (bytes) => [...V4_HEADER.map((c) => [...c]), ...levelCells(bytes)];
+const encodePageCellsV4 = (bytes) => levelCells(bytes);
 // Page frames use the version 3 cell layout with their own version byte.
 function decodePageCells(cells) {
   if (!Array.isArray(cells) || cells.length < MARKERS + PAYLOAD_CELLS) return null;
@@ -139,10 +192,10 @@ function parsePage(b) {
 }
 function decodeCells(cells) {
   if (!Array.isArray(cells) || cells.length < MARKERS) return null;
-  return (cells.length >= MARKERS + PAYLOAD_CELLS && decodeCellsV3(cells)) || decodeCellsV2(cells.slice(0, MARKERS + V2.payloadCells));
+  return decodeCellsV4(cells) || (cells.length >= MARKERS + PAYLOAD_CELLS && decodeCellsV3(cells)) || decodeCellsV2(cells.slice(0, MARKERS + V2.payloadCells));
 }
 const px = (rgb, width, x, y) => { const i = (y * width + x) * 3; return [rgb[i], rgb[i + 1], rgb[i + 2]]; };
-const magentaish = (p) => p[0] - p[1] > 60 && p[2] - p[1] > 60;
+function magentaish(p) { return p[0] - p[1] > 60 && p[2] - p[1] > 60; }
 // Average the centre of each cell (pitch measured from the image) to resist edge blending.
 function sampleCells(rgb, width, height, x, y, pitch, count) {
   if (x + count * pitch > width) return null;
@@ -155,57 +208,89 @@ function sampleCells(rgb, width, height, x, y, pitch, count) {
   }
   return cells;
 }
-// Find the magenta finder near the client origin, measure the cell pitch from its run,
-// then try the version 3 layout and the older version 2 layout (each checked by CRC).
-function decodeStrip({ width, height, rgb }) {
-  if (!Number.isInteger(width) || !Number.isInteger(height) || !Buffer.isBuffer(rgb) || rgb.length !== width * height * 3) return null;
-  for (let y = 0; y + 3 <= height && y < 10; y++) {
-    for (let x = 0; x < width && x < 40; x++) {
+const okImage = ({ width, height, rgb }) => Number.isInteger(width) && Number.isInteger(height) && Buffer.isBuffer(rgb) && rgb.length === width * height * 3;
+// Magenta finder runs where a strip anchored at `corner` can start. The top-left search keeps
+// the old bounds (within 40 x 10 pixels of the client origin); right corners search the whole
+// width and bottom corners the last 18 rows (two rows of up to 8px cells, plus a small inset).
+// `visit` returns a result to stop.
+function scanFinders({ width, height, rgb }, corner, visit) {
+  const right = corner === "topright" || corner === "bottomright", bottom = corner === "bottomleft" || corner === "bottomright";
+  const y0 = bottom ? Math.max(0, height - 18) : 0, xEnd = right ? width : Math.min(width, 40);
+  for (let y = y0; y + 2 <= height && (bottom || y < 10); y++) {
+    for (let x = 0; x < xEnd; x++) {
       if (!magentaish(px(rgb, width, x, y))) continue;
       let run = 1;
       while (x + run < width && run < 20 && magentaish(px(rgb, width, x + run, y))) run++;
-      if (run < 3) continue;
-      const tries = [];
-      for (const pitch of [run, run + 1, run - 1, CELL, V2.cell]) if (pitch >= 3 && !tries.includes(pitch)) tries.push(pitch);
-      for (const pitch of tries) {
-        const v3 = sampleCells(rgb, width, height, x, y, pitch, MARKERS + PAYLOAD_CELLS);
-        const b3 = v3 && decodeCellsV3(v3);
-        if (b3) {
-          const row2 = y + pitch + 3 <= height ? sampleCells(rgb, width, height, x, y + pitch, pitch, MARKERS + PAYLOAD_CELLS) : null;
-          return { bytes: b3, origin: { x, y }, pitch, version: VERSION, page: (row2 && decodePageCells(row2)) || null };
-        }
-        const v2 = sampleCells(rgb, width, height, x, y, pitch, MARKERS + V2.payloadCells);
-        const b2 = v2 && decodeCellsV2(v2);
-        if (b2) return { bytes: b2, origin: { x, y }, pitch, version: V2.version };
-      }
+      if (run >= 3) { const out = visit(x, y, run); if (out !== undefined) return out; }
       x += run - 1;
     }
   }
   return null;
 }
-// Why a strip that is on screen did not decode: "old-addon" when its calibration cells are the
-// grey shades of the version 2 strip (the game still runs an addon from before 0.18.2 and needs a
-// /reload), "unreadable" for any other visible strip, null when there is no strip at all.
-function stripHint({ width, height, rgb }) {
-  if (!Number.isInteger(width) || !Number.isInteger(height) || !Buffer.isBuffer(rgb) || rgb.length !== width * height * 3) return null;
-  for (let y = 0; y + 3 <= height && y < 10; y++) {
-    for (let x = 0; x < width && x < 40; x++) {
-      if (!magentaish(px(rgb, width, x, y))) continue;
-      let run = 1;
-      while (x + run < width && run < 20 && magentaish(px(rgb, width, x + run, y))) run++;
-      if (run < 3) continue;
-      const cells = sampleCells(rgb, width, height, x, y, run, MARKERS);
-      if (!cells) return "unreadable";
-      const grey = (c) => Math.max(...c) - Math.min(...c) < 40;
-      const mean = (c) => (c[0] + c[1] + c[2]) / 3;
-      const [, green, a, b] = cells;
-      const greenish = green[1] - green[0] > 60 && green[1] - green[2] > 60;
-      // Version 2 markers are dark grey then light grey; version 3 are white then black.
-      if (greenish && grey(a) && grey(b) && mean(a) > 40 && mean(b) < 245 && mean(b) - mean(a) > 25) return "old-addon";
-      return "unreadable";
+const unique = (list) => list.filter((v, i) => list.indexOf(v) === i);
+// Compact strips: the finder is two cells, so the pitch is about half its run.
+function tryV4(img, x, y, run) {
+  const { width, height, rgb } = img;
+  for (const pitch of unique([Math.round(run / 2), Math.floor(run / 2), Math.ceil(run / 2), 2, 3]).filter((p) => p >= 2 && p <= 8)) {
+    for (const x0 of unique([x, x + run - 2 * pitch]).filter((v) => v >= 0)) {
+      const cells = sampleCells(rgb, width, height, x0, y, pitch, V4.header + V4.payloadCells);
+      const levels = cells && isV4Header(cells) && v4Levels(cells);
+      const bytes = levels && decodeCellsV4(cells.slice(V4.header), levels);
+      if (!bytes) continue;
+      const row2 = y + 2 * pitch <= height ? sampleCells(rgb, width, height, x0, y + pitch, pitch, V4.payloadCells) : null;
+      return { bytes, origin: { x: x0, y }, pitch, version: V4.version, mode: "compact", footprint: { width: (V4.header + V4.payloadCells) * pitch, height: 2 * pitch }, page: (row2 && decodeCellsV4(row2, levels, PAGE_VERSION)) || null };
     }
   }
-  return null;
+  return undefined;
+}
+// Find the magenta finder, measure the cell pitch from its run, then try the compact version 4
+// layout, the version 3 layout ("safe" mode) and the older version 2 layout (each checked by CRC).
+function decodeStrip(img, { corner = "topleft" } = {}) {
+  if (!img || !okImage(img)) return null;
+  const { width, height, rgb } = img;
+  return scanFinders(img, CORNERS.includes(corner) ? corner : "topleft", (x, y, run) => {
+    const v4 = tryV4(img, x, y, run);
+    if (v4) return v4;
+    const tries = [];
+    for (const pitch of [run, run + 1, run - 1, CELL, V2.cell]) if (pitch >= 3 && !tries.includes(pitch)) tries.push(pitch);
+    for (const pitch of tries) {
+      const v3 = sampleCells(rgb, width, height, x, y, pitch, MARKERS + PAYLOAD_CELLS);
+      const b3 = v3 && decodeCellsV3(v3);
+      if (b3) {
+        const row2 = y + pitch + 3 <= height ? sampleCells(rgb, width, height, x, y + pitch, pitch, MARKERS + PAYLOAD_CELLS) : null;
+        return { bytes: b3, origin: { x, y }, pitch, version: VERSION, mode: "safe", footprint: { width: (MARKERS + PAYLOAD_CELLS) * pitch, height: 2 * pitch }, page: (row2 && decodePageCells(row2)) || null };
+      }
+      const v2 = sampleCells(rgb, width, height, x, y, pitch, MARKERS + V2.payloadCells);
+      const b2 = v2 && decodeCellsV2(v2);
+      if (b2) return { bytes: b2, origin: { x, y }, pitch, version: V2.version, mode: "legacy", footprint: { width: (MARKERS + V2.payloadCells) * pitch, height: pitch } };
+    }
+    return undefined;
+  });
+}
+// Why a strip that is on screen did not decode: "old-addon" when its calibration cells are the
+// grey shades of the version 2 strip (the game still runs an addon from before 0.18.2 and needs a
+// /reload), "compact-unreadable" for a compact (version 4) strip whose grey reference cells are
+// too close together or whose payload fails its checksum (/bf live safe fixes that), "unreadable"
+// for any other visible strip, null when there is no strip at all.
+function stripHint(img, { corner = "topleft" } = {}) {
+  if (!img || !okImage(img)) return null;
+  const { width, height, rgb } = img;
+  const grey = (c) => Math.max(...c) - Math.min(...c) < 40;
+  const mean = (c) => (c[0] + c[1] + c[2]) / 3;
+  return scanFinders(img, CORNERS.includes(corner) ? corner : "topleft", (x, y, run) => {
+    const head = sampleCells(rgb, width, height, x, y, Math.max(2, Math.round(run / 2)), V4.header);
+    if (head && isV4Header(head)) {
+      const cal = head.slice(V4.finder);
+      if (cal.every(grey) && mean(cal[0]) < mean(cal[3]) && mean(cal[0]) <= mean(cal[1]) && mean(cal[1]) <= mean(cal[2]) && mean(cal[2]) <= mean(cal[3])) return "compact-unreadable";
+    }
+    const cells = sampleCells(rgb, width, height, x, y, run, MARKERS);
+    if (!cells) return "unreadable";
+    const [, green, a, b] = cells;
+    const greenish = green[1] - green[0] > 60 && green[1] - green[2] > 60;
+    // Version 2 markers are dark grey then light grey; version 3 are white then black.
+    if (greenish && grey(a) && grey(b) && mean(a) > 40 && mean(b) < 245 && mean(b) - mean(a) > 25) return "old-addon";
+    return "unreadable";
+  });
 }
 function parsePayload(b) {
   const u16 = (i) => (b[i] << 8) | b[i + 1], u24 = (i) => (b[i] << 16) | (b[i + 1] << 8) | b[i + 2];
@@ -216,6 +301,9 @@ function parsePayload(b) {
     combat: Boolean(flags & 1), dead: Boolean(flags & 2), resting: Boolean(flags & 4), mounted: Boolean(flags & 8), inInstance: Boolean(flags & 16), afk: Boolean(flags & 32),
   };
   out.characterHash = u16(23);
+  // Frames from 0.32+ addons count this up at least every two seconds even when nothing else
+  // changes (idle heartbeat); older addons leave it at 0.
+  out.heartbeat = b[25];
   if (out.combat) return out; // Frozen during combat by design.
   if (flags & 64) out.position = { mapId: u16(2), x: u16(4) / 65535, y: u16(6) / 65535, facing: (b[22] / 256) * 2 * Math.PI };
   out.level = b[8] || null;
@@ -229,12 +317,17 @@ function parsePayload(b) {
   return out;
 }
 
-// Windows-only capture worker. The C# helper copies one small client-area region.
+// Windows-only capture worker. The C# helper copies one small client-area region at one
+// corner. The app may move or resize that region with "region <corner> <w> <h>" lines on
+// stdin (corner names and sizes are checked); nothing else is read from stdin.
 const WORKER = String.raw`
 $ErrorActionPreference='Stop'
 Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @"
-using System; using System.Runtime.InteropServices; using System.Drawing; using System.Drawing.Imaging;
+using System; using System.IO; using System.Threading; using System.Runtime.InteropServices; using System.Drawing; using System.Drawing.Imaging;
 public static class BFLiveCapture {
+  static readonly string[] Corners = { "topleft", "topright", "bottomleft", "bottomright" };
+  static readonly object Gate = new object();
+  static string corner = "topleft"; static int rw = 640, rh = 28;
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
   [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
   [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
@@ -242,12 +335,34 @@ public static class BFLiveCapture {
   [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr h, ref POINT p);
   [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
   [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
-  public static void Init() { SetProcessDPIAware(); }
-  public static string Grab(IntPtr h, int w, int ht) {
+  static void Set(string c, int w, int h) {
+    if (Array.IndexOf(Corners, c) < 0 || w < 16 || w > 1024 || h < 4 || h > 64) return;
+    lock (Gate) { corner = c; rw = w; rh = h; }
+  }
+  static void Listen() {
+    try {
+      StreamReader input = new StreamReader(Console.OpenStandardInput());
+      string line;
+      while ((line = input.ReadLine()) != null) {
+        string[] p = line.Trim().Split(' '); int w, h;
+        if (p.Length == 4 && p[0] == "region" && int.TryParse(p[2], out w) && int.TryParse(p[3], out h)) Set(p[1], w, h);
+      }
+    } catch { }
+  }
+  public static void Init(string c, int w, int h) {
+    SetProcessDPIAware(); Set(c, w, h);
+    Thread t = new Thread(Listen); t.IsBackground = true; t.Start();
+  }
+  public static string Grab(IntPtr h) {
+    string c; int w, ht;
+    lock (Gate) { c = corner; w = rw; ht = rh; }
     if (!IsWindow(h)) return "gone";
     if (IsIconic(h)) return "minimized";
     RECT r; if (!GetClientRect(h, out r) || r.R - r.L < w || r.B - r.T < ht) return "small";
-    POINT p = new POINT(); if (!ClientToScreen(h, ref p)) return "gone";
+    POINT p = new POINT();
+    if (c.EndsWith("right")) p.X = r.R - w;
+    if (c.StartsWith("bottom")) p.Y = r.B - ht;
+    if (!ClientToScreen(h, ref p)) return "gone";
     using (Bitmap bmp = new Bitmap(w, ht, PixelFormat.Format24bppRgb)) {
       using (Graphics g = Graphics.FromImage(bmp)) { g.CopyFromScreen(p.X, p.Y, 0, 0, new Size(w, ht)); }
       BitmapData d = bmp.LockBits(new Rectangle(0, 0, w, ht), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
@@ -257,13 +372,13 @@ public static class BFLiveCapture {
         for (int x = 0; x < w; x++) { int s = x * 3, o = (y * w + x) * 3; rgb[o] = row[s + 2]; rgb[o + 1] = row[s + 1]; rgb[o + 2] = row[s]; }
       }
       bmp.UnlockBits(d);
-      return "ok " + Convert.ToBase64String(rgb);
+      return "ok " + c + " " + w + " " + ht + " " + Convert.ToBase64String(rgb);
     }
   }
 }
 "@
-[BFLiveCapture]::Init()
-$name = $env:BF_LIVE_PROCESS; $w = [int]$env:BF_LIVE_W; $h = [int]$env:BF_LIVE_H
+$name = $env:BF_LIVE_PROCESS
+[BFLiveCapture]::Init($env:BF_LIVE_CORNER, [int]$env:BF_LIVE_W, [int]$env:BF_LIVE_H)
 $handle = [IntPtr]::Zero; $tick = 0
 while ($true) {
   if ($handle -eq [IntPtr]::Zero -or ($tick % 10) -eq 0) {
@@ -272,7 +387,7 @@ while ($true) {
     $handle = if ($proc) { $proc.MainWindowHandle } else { [IntPtr]::Zero }
   }
   if ($handle -eq [IntPtr]::Zero) { [Console]::Out.WriteLine('nogame') } else {
-    try { [Console]::Out.WriteLine([BFLiveCapture]::Grab($handle, $w, $h)) } catch { [Console]::Out.WriteLine('error') }
+    try { [Console]::Out.WriteLine([BFLiveCapture]::Grab($handle)) } catch { [Console]::Out.WriteLine('error') }
   }
   [Console]::Out.Flush(); $tick++
   Start-Sleep -Milliseconds ([int]$env:BF_LIVE_MS)
@@ -288,6 +403,8 @@ class LiveBridge {
     this.signal = "off";
     this.enabled = this.readPreference();
     this.buffer = "";
+    // Capture only the corner where the strip was last seen; walk the others only when it is lost.
+    this.corner = "topleft"; this.region = REGION; this.misses = 0; this.strip = null; this.beat = null;
   }
   prefFile() { return this.dataDir ? path.join(this.dataDir, "live-link.json") : null; }
   readPreference() {
@@ -308,10 +425,11 @@ class LiveBridge {
     const encoded = Buffer.from(WORKER, "utf16le").toString("base64");
     this.signal = "starting";
     const child = this.spawn(exe, ["-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded], {
-      shell: false, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
-      env: { SystemRoot: process.env.SystemRoot, windir: process.env.windir, PATH: process.env.PATH, TEMP: process.env.TEMP, TMP: process.env.TMP, BF_LIVE_PROCESS: this.processName, BF_LIVE_W: String(REGION.width), BF_LIVE_H: String(REGION.height), BF_LIVE_MS: String(this.intervalMs), ...(Number.isInteger(this.processId) ? { BF_LIVE_PID: String(this.processId) } : {}) },
+      shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"],
+      env: { SystemRoot: process.env.SystemRoot, windir: process.env.windir, PATH: process.env.PATH, TEMP: process.env.TEMP, TMP: process.env.TMP, BF_LIVE_PROCESS: this.processName, BF_LIVE_CORNER: this.corner, BF_LIVE_W: String(this.region.width), BF_LIVE_H: String(this.region.height), BF_LIVE_MS: String(this.intervalMs), ...(Number.isInteger(this.processId) ? { BF_LIVE_PID: String(this.processId) } : {}) },
     });
     this.child = child;
+    child.stdin?.on?.("error", () => {});
     // Output and errors from a stopped or replaced worker are ignored.
     const current = () => this.child === child && this.enabled;
     child.stdout.setEncoding("utf8");
@@ -331,7 +449,14 @@ class LiveBridge {
     clearTimeout(this.retry);
     const child = this.child; this.child = null;
     try { child?.kill(); } catch {}
-    this.signal = "off"; this.frame = null; this.buffer = "";
+    this.signal = "off"; this.frame = null; this.buffer = ""; this.beat = null;
+  }
+  /** Moves the worker's capture to another corner or size (no-op when unchanged). */
+  setRegion(corner, region = REGION) {
+    if (!CORNERS.includes(corner)) return;
+    if (corner === this.corner && region.width === this.region.width && region.height === this.region.height) return;
+    this.corner = corner; this.region = region;
+    try { this.child?.stdin?.write?.(`region ${corner} ${region.width} ${region.height}\n`); } catch {}
   }
   read(chunk) {
     if (!this.enabled) return;
@@ -347,12 +472,32 @@ class LiveBridge {
     const before = JSON.stringify([this.signal, this.frame?.seq]);
     let changed = false;
     if (line.startsWith("ok ")) {
-      const rgb = Buffer.from(line.slice(3), "base64");
-      // Older capture workers (and saved fixtures) send a shorter region; size from the data.
-      const height = rgb.length % (REGION.width * 3) === 0 ? rgb.length / (REGION.width * 3) : REGION.height;
-      const decoded = decodeStrip({ width: REGION.width, height, rgb });
-      if (decoded) { this.frame = { ...parsePayload(decoded.bytes), receivedAt: this.now() }; this.signal = "live"; if (decoded.page && this.page(parsePage(decoded.page))) changed = true; }
-      else this.signal = stripHint({ width: REGION.width, height, rgb }) || "no-signal";
+      // "ok <corner> <w> <h> <base64>"; older workers (and saved fixtures) send "ok <base64>"
+      // of a top-left region 640 wide, sized from the data.
+      const parts = line.split(" ");
+      let corner = "topleft", width = REGION.width, height, rgb;
+      if (parts.length === 5 && CORNERS.includes(parts[1])) { corner = parts[1]; width = Number(parts[2]); height = Number(parts[3]); rgb = Buffer.from(parts[4], "base64"); }
+      else { rgb = Buffer.from(parts[1] || "", "base64"); height = rgb.length % (REGION.width * 3) === 0 ? rgb.length / (REGION.width * 3) : REGION.height; }
+      const img = { width, height, rgb }, decoded = decodeStrip(img, { corner });
+      if (decoded) {
+        const at = this.now(), frame = parsePayload(decoded.bytes);
+        // Heartbeat: a frame whose sequence or heartbeat moved is proof the addon is still painting.
+        // The sequence moves only when the game state changed (sameSince feeds the idle flag).
+        if (!this.beat || this.beat.seq !== frame.seq || this.beat.heartbeat !== frame.heartbeat) this.beat = { seq: frame.seq, heartbeat: frame.heartbeat, at, sameSince: this.beat?.seq === frame.seq ? this.beat.sameSince : at };
+        this.frame = { ...frame, receivedAt: at, changedAt: this.beat.at, sameSince: this.beat.sameSince };
+        this.signal = "live"; this.misses = 0;
+        if (!this.strip || this.strip.mode !== decoded.mode || this.strip.corner !== corner || this.strip.pitch !== decoded.pitch) changed = true;
+        this.strip = { mode: decoded.mode, version: decoded.version, corner, pitch: decoded.pitch, width: decoded.footprint.width, height: decoded.footprint.height };
+        if (decoded.page && this.page(parsePage(decoded.page))) changed = true;
+        // A compact strip needs only a small slice of its corner.
+        if (decoded.mode === "compact" && decoded.pitch <= 4) this.setRegion(corner, COMPACT_REGION);
+        else this.setRegion(corner, REGION);
+      } else {
+        const hint = stripHint(img, { corner });
+        this.signal = hint || "no-signal";
+        if (this.region !== REGION) { this.setRegion(corner, REGION); this.misses = 0; }
+        else if (!hint && ++this.misses >= 2) { this.misses = 0; this.setRegion(CORNERS[(CORNERS.indexOf(corner) + 1) % CORNERS.length], REGION); }
+      }
     } else if (["nogame", "minimized", "small", "gone", "error"].includes(line)) this.signal = line === "gone" ? "nogame" : line;
     if (changed || JSON.stringify([this.signal, this.frame?.seq]) !== before) this.emit();
   }
@@ -382,6 +527,9 @@ class LiveBridge {
   /** Live frame only while fresh; older frames are never presented as live. */
   current() {
     if (!this.frame || this.now() - this.frame.receivedAt > FRESH_MS) return null;
+    // An unchanged strip stays live while its heartbeat moves; a compact strip whose heartbeat
+    // froze (hung game UI) is a picture, not a live game.
+    if (this.frame.version === V4.version && this.frame.changedAt && this.now() - this.frame.changedAt > HEARTBEAT_STALE_MS) return null;
     const out = { ...this.frame, ageMs: this.now() - this.frame.receivedAt };
     // Quest pages only count for the same character and while recently seen.
     for (const [kind, v] of Object.entries(this.pageLists || {})) {
@@ -393,9 +541,11 @@ class LiveBridge {
   status() {
     const frame = this.current();
     if (frame?.position) frame.zone = require("./companion-tools.cjs").MAP_NAMES[frame.position.mapId] || `Map ${frame.position.mapId}`;
-    return { enabled: this.enabled, signal: this.enabled ? (frame ? "live" : this.signal === "live" ? "stale" : this.signal) : "off", frame };
+    // Last strip seen: mode (compact / safe / legacy), corner and footprint in physical pixels.
+    const strip = this.enabled && this.strip ? { ...this.strip, idle: Boolean(frame?.sameSince && this.now() - frame.sameSince > IDLE_MS) } : null;
+    return { enabled: this.enabled, signal: this.enabled ? (frame ? "live" : this.signal === "live" ? "stale" : this.signal) : "off", frame, strip };
   }
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { encodePages, parsePage, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, encodeCells, encodeCellsV2, parsePayload, crc8, REGION, CELL, FRESH_MS, WORKER };
+module.exports = { encodePages, parsePage, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };

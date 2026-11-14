@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.32.0 — a quiet live link, 2026-11-14
+
+- **H2 live strip v4:** 2-pixel cells at exact physical size, four calibration greys per strip so the app decodes 2 bits per channel by nearest measured level (handles gamma and remote colour curves), 84×4 px for both rows (was 456×12). Heartbeat byte keeps an idle strip live; the addon slows to 1 Hz after 5 still seconds.
+- **Placement:** `/bf live pos <corner>`; the capture worker accepts region commands and searches corners only when the strip is lost.
+- **Safe mode:** `/bf live safe` draws the v3 strip; v2/v3 still decode. Game connection and Now show mode, corner and size.
+
 ## 0.31.0 — every page earns its place, 2026-11-14
 
 - **H1 quality pass:** shared `PageHero` banner on every page with twelve new painted heroes; Quests, Professions, Plans, Party, Characters and Dungeons restyled to the parchment system; Adventure rebuilt without Now duplicates; filler and repeated caveats replaced; Field guide rewritten as task help.
