@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.35.1: the ledger
+## 0.36: your character
 
-Search every character's bags, bank and mail at once, see gold across characters, auction prices you've seen, reputations and profession cooldowns. See the [0.35.1 release notes](docs/releases/0.35.1.md).
+A character sheet with your gear, item level, stats and upgrades you already own, gear sets you can save and wear with `/bf set`, and a gold goal across all your characters. See the [0.36.0 release notes](docs/releases/0.36.0.md).
 
 ## 0.28: your journey
 
