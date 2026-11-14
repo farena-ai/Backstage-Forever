@@ -126,13 +126,13 @@ test("Help → Commands explains the loot browser, the wish list and hover cards
   assert.match(app, /Hover cards/); assert.match(app, /an item or an NPC/);
 });
 
-test("Help → Commands lists the live strip placement and safe/compact modes the addon accepts", () => {
+test("Help → Commands lists the live strip placement and hairline/compact/safe modes the addon accepts", () => {
   const live = CATALOG.filter((c) => c.word === "live").map((c) => c.command);
   assert.ok(live.includes("/bf live pos topleft|topright|bottomleft|bottomright"), live.join(" / "));
-  assert.ok(live.includes("/bf live safe|compact"), live.join(" / "));
+  assert.ok(live.includes("/bf live hairline|compact|safe"), live.join(" / "));
   const addon = read("addon/BackstageForever/BackstageForeverLive.lua");
   const parse = addon.slice(addon.indexOf("function BackstageForeverLiveParse"), addon.indexOf("function BackstageForeverLiveCommand"));
-  for (const w of ["pos", "safe", "compact"]) assert.match(parse, new RegExp(`'${w}'`), `addon parses /bf live ${w}`);
+  for (const w of ["pos", "safe", "compact", "hairline"]) assert.match(parse, new RegExp(`'${w}'`), `addon parses /bf live ${w}`);
   for (const corner of ["topleft", "topright", "bottomleft", "bottomright"]) assert.match(addon, new RegExp(`${corner}='[A-Z]+'`), corner);
 });
 
