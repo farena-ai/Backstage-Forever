@@ -232,6 +232,20 @@ async function sourceFiles(folder, prefix = "src") {
       "AddOns",
       "BackstageForever",
     );
+    // G13: every painted zone banner texture is packaged and installed byte for byte.
+    const artSource = path.join(__dirname, "../addon/BackstageForever/Art/Zones");
+    const artNames = (await fs.readdir(artSource)).filter((n) => n.endsWith(".tga")).sort();
+    assert.ok(artNames.includes("default.tga"), "Zone banner default texture must exist in the source");
+    assert.deepEqual(
+      (await fs.readdir(path.join(addonFolder, "Art", "Zones"))).filter((n) => n.endsWith(".tga")).sort(),
+      artNames,
+      "Packaged addon preparation must install every zone banner texture",
+    );
+    for (const name of artNames)
+      assert.ok(
+        (await fs.readFile(path.join(addonFolder, "Art", "Zones", name))).equals(await fs.readFile(path.join(artSource, name))),
+        "Installed zone banner texture must match the source: " + name,
+      );
     await fs.writeFile(path.join(addonFolder, "player-extra.txt"), "preserve");
     await closePackagedApp(app);
     app = null;
