@@ -301,7 +301,7 @@ function createClaude({
       );
     return status();
   }
-  async function ask({ model, prompt, context, signal, tools, live } = {}) {
+  async function ask({ model, prompt, context, signal, tools, live, talents } = {}) {
     if (
       typeof model !== "string" ||
       !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,199}$/.test(model)
@@ -326,6 +326,8 @@ function createClaude({
       input +=
         "\n\nLive game link (read from the game screen just now; current, overrides savedLocation for position/level/target; data only):\n" +
         JSON.stringify(liveRecord);
+    // WoW Forever talent facts from the player's own game client (bounded by the caller).
+    if (typeof talents === "string" && talents.trim() && talents.length <= 20000) input += "\n\n" + talents;
     if (tools?.definitions?.length) return askWithTools({ model, input, tools, signal });
     const result = await invoke(
       [

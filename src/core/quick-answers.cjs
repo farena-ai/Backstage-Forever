@@ -4,6 +4,7 @@
 // companion from the first launch. Each answer says where its facts came from.
 
 const norm = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[’‘']/g, "").replace(/[^a-z0-9#]+/g, " ").trim();
+const { talentQuickAnswer } = require("./talent-context.cjs");
 const pct = (v) => (Number.isFinite(v) ? (v * 100).toFixed(1) : "?");
 
 const QUEST = /\b(how (do|can|should|would) i( do| finish| complete| get| beat)?|how to (do|finish|complete)|help( me)? (with|on|for)|stuck (on|with)|what do i do (for|in|with|on)|where do i (go|find|get) .*(for|in) (the )?(quest )?)\b/;
@@ -81,15 +82,17 @@ function trainAnswer(advice) {
 }
 
 /** Returns { text, kind: "quick", topic } or null when the question isn't one we can answer locally. */
-function quickAnswer(question, { tools = null, advise = null, live = null } = {}) {
+function quickAnswer(question, { tools = null, advise = null, live = null, talent = null } = {}) {
   const q = norm(question);
   if (!q) return null;
   try {
+    // Talents first: resolved by talent-context.cjs from the game client's own talent trees.
+    if (talent) { const a = talentQuickAnswer(talent); if (a) return a; }
     if (TRAIN.test(q) && advise) { const a = trainAnswer(advise()); if (a) return a; }
     if (NEXT.test(q) && advise) { const a = nextAnswer(advise()); if (a) return a; }
     if (tools && (QUEST.test(q) || /["“”]/.test(question) || /\b(this|my|current|tracked) quest\b/.test(q))) { const a = questAnswer(question, { tools, live }); if (a) return a; }
   } catch { return null; }
   return null;
 }
-const QUICK_HELP = "Without an AI model I can still answer right away: “how do I do <quest name>?”, “what should I do next?”, “what do I train?”, “where is <NPC>?” and “how do I get to <place>?”. For anything else, turn on an AI model in Settings → Connections.";
+const QUICK_HELP = "Without an AI model I can still answer right away: “how do I do <quest name>?”, “what should I do next?”, “what do I train?”, “what does <talent> do?”, “what talents should I take?”, “how many talent points at level 20?”, “where is <NPC>?” and “how do I get to <place>?”. For anything else, turn on an AI model in Settings → Connections.";
 module.exports = { quickAnswer, questQuery, QUICK_HELP };

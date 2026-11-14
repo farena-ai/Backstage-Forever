@@ -647,6 +647,8 @@ app.whenReady().then(async () => {
     live: liveBridge,
     // Quick answers (no model): the same advice as Now. `leveling` is created just below.
     advise: (profileId) => leveling.advise(profileId),
+    // Talent questions use WoW Forever's own trees from the player's game client (read locally, never bundled).
+    talents: { trees: (className) => gameData.talents(className), build: () => gameData.build(), ready: () => gameData.cached("talents") },
     vendorPack: (()=>{try{return require('./core/vendor-facts.cjs').loadVendorPack();}catch{return null;}})(),
     acquisitionPack: (()=>{try{return require('./core/acquisition-data.cjs').loadAcquisitionPack();}catch{return null;}})(),
     onReset: (reason) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:conversationReset", reason); },
