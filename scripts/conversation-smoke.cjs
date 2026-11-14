@@ -35,7 +35,8 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   const open=()=>navigate(page, "assistant");await open();
   const field=page.getByRole('textbox',{name:'Your question',exact:true});
   const send=async text=>{await field.fill(text);await page.getByRole('button',{name:'Send question',exact:true}).click();};
-  const done=async()=>{const reply=await app.evaluate(()=>conversationFixture.requests.at(-1)?.reply);if(reply)await page.locator('#chatlog').getByText(reply,{exact:true}).last().waitFor();await page.waitForFunction(()=>document.querySelector('#chat-form [type=submit]')?.disabled===false&&!document.querySelector('[data-command="stop-response"]'));};
+  // The reply paints after the memory review settles (Stop stays available until then); slow CI runners need more than 6 s.
+  const done=async()=>{const reply=await app.evaluate(()=>conversationFixture.requests.at(-1)?.reply);if(reply)await page.locator('#chatlog').getByText(reply,{exact:true}).last().waitFor({timeout:20000});await page.waitForFunction(()=>document.querySelector('#chat-form [type=submit]')?.disabled===false&&!document.querySelector('[data-command="stop-response"]'),null,{timeout:20000});};
   const count=()=>app.evaluate(()=>conversationFixture.requests.length);
   const latest=()=>app.evaluate(()=>{const i=conversationFixture.requests.at(-1).input;return {prompt:i.prompt,context:i.context};});
   const pending=()=>page.getByRole('button',{name:'Stop response',exact:true}).waitFor();
