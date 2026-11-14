@@ -169,3 +169,38 @@ test("service: 'Improved renew only goes to 3/3' is a talent remark, never the t
   await g.ask("how do I get from org to tb");
   assert.deepEqual(calls, ["how do I get from org to tb"], "real trips still use the travel reference");
 });
+
+test("everyday words that happen to be talent or tree names do not make a question about talents", () => {
+  for (const q of [
+    "Ask about this supply plan: bring Amber restorative and Coarse Thread for the preparation, bags 0–4",
+    "I need some inspiration for what to do tonight",
+    "Is there any holy water vendor near the Crossroads?",
+    "Where is the shadow cave in Durotar?",
+    "What is the cruelty of the centaurs about in that quest?",
+    "Deflection of blame aside, where do I hand in Raptor Thieves?",
+  ]) assert.equal(resolve(q), null, q);
+  // ...but the same words next to talent wording or a class name still count.
+  assert.ok(resolve("how many ranks does Inspiration have"));
+  assert.ok(resolve("warrior cruelty talent"));
+  assert.ok(resolve("first 7 holy points"));
+  assert.ok(resolve("what does deflection do"));
+});
+
+test("a profession skill like 22 / 75 next to a class name is not a talent rank", () => {
+  assert.equal(resolve("Selected current character: Aeralyn · Hunter · Alliance.\nProfession: Alchemy · 22 / 75.\nCraft attempts / batches: 2"), null);
+  assert.ok(resolve("Improved renew only goes to 3/3"));
+  assert.ok(resolve("is holy specialization 2/5 enough"));
+});
+
+test("the game client's build number is not a talent build", () => {
+  assert.equal(resolve("Saved source: wow-addon · build 1.60.1.70862 · Hunter"), null);
+  assert.ok(resolve("best build for leveling"));
+});
+
+test("a long pasted plan that mentions points, rank and the class is not a talent question", () => {
+  const plan = "Help me review this supply plan. Selected current character: Aeralyn · Hunter · Alliance. Profession: Alchemy. " +
+    "Vendor and approximate interaction points; current stock unknown. Approximate player-standing points: map 1456. " +
+    "Required profession/rank and current prerequisites are listed below for each recipe in the plan.";
+  assert.ok(plan.length > 240);
+  assert.equal(resolve(plan), null);
+});

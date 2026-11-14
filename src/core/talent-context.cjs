@@ -25,7 +25,7 @@ const norm = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[̀
 const has = (q, phrase) => phrase && (" " + q + " ").includes(" " + phrase + " ");
 
 const STRONG = /\b(talents?|spec|specs|specc?ed|speccing|speciali[sz](?:e|ed|ing|ation)|respec\w*|skill tree)\b/;
-const WEAK = /\b(builds?|points?|tiers?|ranks?|first \d{1,2}|\d{1,2} ?\/ ?\d{1,2}|max(?:ed|es)?|trees?)\b/;
+const WEAK = /\b(points?|tiers?|ranks?|first \d{1,2}|[0-5] ?\/ ?[1-5]|max(?:ed|es)?|trees?)\b/;
 const DESCRIBE = /\b(what (?:does|do|is|s|are)|explain|tell me about|describe|how does|is .+ (?:good|worth|any good))\b/;
 const POINTS_Q = /\bhow many (?:talent )?points\b|\b(?:talent )?points (?:do|will|would|should) i (?:have|get)\b|\b(?:talent )?points (?:at|by|for) (?:level|lvl)\b/;
 const RECOMMEND = /\b(?:what|which) (?:talents?|spec)\b|\btalents? (?:should|do|to|for|first)\b|\b(?:best|first \d{1,2}|next|good) (?:talents?|points?)\b|\bfirst \d{1,2}\b|\bwhere should\b|\b(?:talent|spec) build\b|\bhow (?:should|do) i spec\b|\bwhat (?:should|do) i spec\b|\b(?:recommend|suggest)\w*\b/;
@@ -108,10 +108,28 @@ function namedTabs(q, source) {
   for (const className of CLASS_NAMES) for (const tab of safeTrees(source, className)?.tabs || []) if (tab.name && has(q, norm(tab.name))) out.push({ className, tab: tab.name });
   return out;
 }
+// Many talent and tree names are everyday words ("Preparation", "Efficiency", "Silence", "Holy",
+// "Fire", "Combat"), so on their own they only count next to talent wording or a class name; a
+// multi-word talent name ("Improved Renew") counts by itself.
 function intentOf(q, { talents, tabs }) {
   if (POINTS_Q.test(q) || STRONG.test(q)) return "strong";
-  if (talents.length && DESCRIBE.test(q)) return "strong";
-  if (talents.length || tabs.length || WEAK.test(q)) return "weak";
+  const multi = talents.filter((t) => t.key.includes(" "));
+  if (multi.length && DESCRIBE.test(q)) return "strong";
+  // "what does deflection do" / "explain cruelty": a one-word name right after the question words.
+  const padded = " " + q + " ";
+  const ASK_WORDS = ["what does", "what do", "what is", "whats", "what s", "what are", "explain", "describe", "tell me about", "how does"];
+  if (talents.some((t) => ASK_WORDS.some((w) => padded.includes(" " + w + " " + t.key + " ")))) return "strong";
+  if (multi.length) return "weak";
+  // Below here only weak hints (points, rank, a tree or class name): those count in a short question,
+  // not in a long pasted plan or draft full of "points", "rank" and the character's class.
+  if (q.length > 240) return null;
+  // A build or a rank like 3/3 is talent wording by itself; points, max or tiers need more.
+  // "Best build" is talent wording, but "build 1.60.1" (the game client) is not; talent ranks never
+  // exceed 5, so "22 / 75" (a profession skill) is not one either.
+  if (/\b(?:best|good|leveling|levelling|solo|pve|pvp|dps|healing|healer|tank|raid|dungeon|my) builds?\b|\b[0-5] ?\/ ?[1-5]\b/.test(q)) return "weak";
+  const context = WEAK.test(q) || Boolean(namedClass(q));
+  if ((talents.length || tabs.length) && context) return "weak";
+  if (WEAK.test(q) && namedClass(q)) return "weak";
   return null;
 }
 
