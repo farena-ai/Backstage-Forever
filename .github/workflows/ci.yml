@@ -48,6 +48,7 @@ jobs:
       - run: npm run test:live-link
       - run: npm run test:world-map
       - run: npm run test:now
+      - run: npm run test:ledger
       - run: npm run test:conversation
       - run: npm run test:companion-recovery
       - run: npm run test:player-shell
