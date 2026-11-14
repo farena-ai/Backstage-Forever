@@ -259,7 +259,7 @@ print(table.concat({p('live'),p('live on'),p('LIVE OFF'),p('live status'),p('liv
 
 test("addon draws a pixel-exact compact strip, moves corners, switches safe mode and persists all of it", () => {
   const out = lua(HARNESS + String.raw`
-BackstageForeverLiveCommand('live on')
+BackstageForeverLiveCommand('live compact')
 local s=strip()
 assert(s.shown and s.ignore==true and math.abs(s.scale-768/1440)<1e-9,'1 unit = 1 physical pixel')
 assert(s.point=='TOPLEFT' and s.rp=='TOPLEFT' and s.w==84 and s.h==4,'compact 84x4 at the top-left')
@@ -295,7 +295,7 @@ print(messages[#messages])`).split("\n");
 
 test("addon slows down when idle but keeps a heartbeat, and wakes on movement", () => {
   const out = lua(HARNESS + String.raw`
-BackstageForeverLiveCommand('live on')
+BackstageForeverLiveCommand('live compact')
 local paints=0
 local function frame() return row(42) end
 local seen={}

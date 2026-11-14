@@ -98,7 +98,7 @@ window.NowView = (() => {
       { done: Boolean(game?.connected), title: "Connect your WoW Forever folder", how: "Settings → Game connection finds it for you.", action: `<button type="button" data-nav="game">Open Game connection</button>` },
       { done: Boolean(game?.connected && game?.addonCurrent), title: "Install the Backstage Forever addon", how: "One click on the Game connection page. It copies the addon into your game folder." },
       { done: hasCharacter, title: "Log in and type /reload once", how: "In WoW, type <code>/reload</code> in chat and press Enter. Your character appears here." },
-      { done: live?.signal === "live" || Boolean(a?.character?.live), title: "See yourself live", how: live?.enabled === false ? "The live link is off. Turn it on in Settings → Game connection." : `Keep WoW running in a window or borderless window. The tiny strip in a corner of the game (top-left unless you moved it with <code>/bf live pos</code>) lets this page follow you.${window.LiveLink?.stripLine?.(live) ? ` <span class="now-live-strip">${esc(window.LiveLink.stripLine(live))}.</span>` : ""} Type <code>/bf live safe</code> if the link drops over remote desktop.` },
+      { done: live?.signal === "live" || Boolean(a?.character?.live), title: "See yourself live", how: live?.enabled === false ? "The live link is off. Turn it on in Settings → Game connection." : `Keep WoW running in a window or borderless window. The thin dark line along the top edge of the game lets this page follow you, even when another window covers WoW.${window.LiveLink?.stripLine?.(live) ? ` <span class="now-live-strip">${esc(window.LiveLink.stripLine(live))}.</span>` : ""} Type <code>/bf live safe</code> if the link drops over remote desktop.` },
     ];
     if (items.every((i) => i.done)) return "";
     const next = items.findIndex((i) => !i.done);
@@ -113,6 +113,7 @@ window.NowView = (() => {
   function reloadBanner() {
     const sig = setup?.live?.signal;
     if (sig === "old-addon") return `<div class="now-reload" role="status"><strong>Type <code>/reload</code> in WoW</strong><span>The game is still running an older Backstage Forever addon, so this page can't follow you live and shows your last save instead. One /reload fixes it.</span></div>`;
+    if (sig === "hairline-unreadable") return `<div class="now-reload" role="status"><strong>Type <code>/bf live safe</code> in WoW</strong><span>Backstage Forever sees WoW but can't read the thin live line along the top of the game: remote desktop, HDR or a colour filter changes its shades. Safe mode draws a larger, sturdier strip in a corner. Until then this page shows your last save.</span></div>`;
     if (sig === "compact-unreadable") return `<div class="now-reload" role="status"><strong>Type <code>/bf live safe</code> in WoW</strong><span>The compact live strip is on screen but its colours are changed too much to read (remote desktop, HDR or a colour filter). Safe mode draws a larger, sturdier strip. Until then this page shows your last save.</span></div>`;
     if (sig === "unreadable") return `<div class="now-reload" role="status"><strong>Live link can't read the game</strong><span>The strip is on screen but its colours are being changed (HDR, Night light, a colour filter or a remote session). Type <code>/reload</code> in WoW once; if this stays, turn the filter off for WoW. Until then this page shows your last save.</span></div>`;
     const g = setup?.game;
@@ -189,12 +190,20 @@ window.NowView = (() => {
     </div></div>
     <p class="now-src">Zone levels: ${esc(a.source)} Quest, trainer and NPC references: Efficient Games, CC BY 4.0.</p>`;
   }
+  // WoW minimized or gone: say live updates are paused (not that the link failed), with the last live state.
+  function paused() {
+    const live = window.LiveLink?.status?.() || setup?.live, text = PAUSED[live?.signal];
+    if (!live?.enabled || !text) return "";
+    const last = window.LiveLink?.lastLine?.(live) || "";
+    return ` <span class="now-paused" role="status">⏸ ${esc(text)}${last ? ` <span class="now-saved-at">${esc(last)}</span>` : ""}</span>`;
+  }
+  const PAUSED = { minimized: "WoW is minimized — live updates are paused and resume when you bring it back.", nogame: "WoW window not found — live updates are paused and resume when the game is back." };
   function liveLine() {
     const n = document.querySelector("[data-now-live]"); if (!n || !advice?.character) return;
     const c = advice.character;
     const mins = c.savedAt ? Math.max(0, Math.floor((Date.now() - Date.parse(c.savedAt)) / 60000)) : null;
     const ago = Number.isFinite(mins) ? (mins < 1 ? "just now" : mins < 60 ? `${mins} min ago` : mins < 2880 ? `${Math.floor(mins / 60)} hr ago` : `${Math.floor(mins / 1440)} days ago`) : "";
-    n.innerHTML = `Level ${c.level}${c.className ? ` ${esc(c.className)}` : ""}${c.faction ? ` · ${esc(c.faction)}` : ""} · ${c.live ? `<span class="on">● Live</span> in ${esc(c.zone || "")}` : c.zone ? `Last saved in ${esc(c.zone)}` : "Position unknown"}${ago ? ` <span class="now-saved-at">· save from ${esc(ago)}</span>` : ""}`;
+    n.innerHTML = `Level ${c.level}${c.className ? ` ${esc(c.className)}` : ""}${c.faction ? ` · ${esc(c.faction)}` : ""} · ${c.live ? `<span class="on">● Live</span> in ${esc(c.zone || "")}` : c.zone ? `Last saved in ${esc(c.zone)}` : "Position unknown"}${ago ? ` <span class="now-saved-at">· save from ${esc(ago)}</span>` : ""}${c.live ? "" : paused()}`;
   }
   function paint() {
     const b = document.querySelector("[data-now-body]"); if (!b) return;
@@ -236,7 +245,7 @@ window.NowView = (() => {
   function onLive(status) {
     if (!document.querySelector("[data-now]")) return;
     const f = status?.frame;
-    if (setup && setup.live?.signal !== status?.signal) { setup.live = status; lastKey = ""; }
+    if (setup && setup.live?.signal !== status?.signal) { setup.live = status; lastKey = ""; liveLine(); }
     const key = f?.position ? [f.position.mapId, f.level, f.questLogHash, f.quest?.objectivesDone?.length, f.dead, Math.floor((f.xpPercent ?? 0) / 5),
       // Live quest pages: a hand-in or a newly finished objective refreshes too.
       (f.questLog || []).map((q) => q.id + (q.complete ? "c" : "")).join(","), (f.turnedIn || []).join(",")].join("|") : "none";

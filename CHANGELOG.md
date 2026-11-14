@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.38.0 — ask from the game, a hidden live link, 2026-11-14
+
+- **A15:** `BackstageForeverAsk.lua`: owl minimap button (`Art/Buttons/ask.tga`, draggable around the edge, saved per character), a 200-character question box, `/bf ask [question]|hide|show|cancel`; questions travel as strip page kind 4 (never in combat) and the app answers through the Companion path in an always-on-top, non-focusing panel over the game (Settings → Game connection; auto-hide time). The addon now installs 27 files plus art.
+- **H7 hidden live link:** hairline v6 (default): one bit per colour channel (0 or a dark 36), 892×1 physical px along the top edge, 6 calibration cells, main frame + 5 page slots per 165-byte frame with CRC-16; the four-shade v5 failed on the real client (WoW's contrast/vibrance boost and colour bleed) and was replaced before release. The capture worker reads the WoW window with `PrintWindow(…, PW_CLIENTONLY|PW_RENDERFULLCONTENT)` (live while covered), falls back to the screen; minimized / window-not-found show "paused" with the last live state. `BF_LIVE_DUMP=<dir>` saves undecodable top rows. `/bf live hairline|compact|safe`.
+- Checked on the real client: hairline decodes, live through a covered window, both owl questions arrived complete.
+
 ## 0.37.0 — painted zone banners, 2026-11-14
 
 - **G13:** the in-game zone arrival banner is a solid painted frame (`BackstageForeverZoneBanner`, 560×74, same placement and animation as the toast) with one original painting per zone and capital (46, `Art/Zones/<mapId>.tga`, 1024×128 24-bit, plus `default.tga`), the zone name in gold and the level and quest line on a ribbon. Quiet in combat, first zone skipped, chat echo kept, follows `/bf toasts`.

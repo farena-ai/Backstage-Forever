@@ -386,6 +386,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverSetCommand)=='function' then pcall(BackstageForeverSetCommand,message)end
                 return
             end
+            if word=='ask' then
+                if type(BackstageForeverAskCommand)=='function' then pcall(BackstageForeverAskCommand,message)end
+                return
+            end
             if word=='moments' then
                 if type(BackstageForeverMomentsCommand)=='function' then pcall(BackstageForeverMomentsCommand,message)end
                 return
