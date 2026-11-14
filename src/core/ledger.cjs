@@ -4,7 +4,7 @@
 // The addon block is validated strictly and bounded; an invalid block is dropped without
 // touching the rest of the character. Everything here stays on this computer: it is never part
 // of community sharing (community.cjs) or the AI context (providers.cjs).
-const LIMITS = Object.freeze({ items: 400, factions: 120, cooldowns: 16, prices: 1500, history: 5 });
+const LIMITS = Object.freeze({ items: 400, factions: 120, cooldowns: 16, prices: 1500, history: 5, moneyLog: 30 });
 const MAX_T = 253402300799, MONEY = 1e13, ID = 2147483647;
 const COOLDOWNS = Object.freeze({
   transmute: { name: "Transmute", profession: "Alchemy" },
@@ -93,6 +93,17 @@ function normalizeLedgerCapture(l) {
   if (!absent(l.schemaVersion) && l.schemaVersion !== 1) fail();
   const out = { schemaVersion: 1 };
   if (!absent(l.money)) { out.money = int(l.money, 0, MONEY); if (!absent(l.moneyAt)) out.moneyAt = int(l.moneyAt, 0, MAX_T); }
+  // 0.36: one gold sample per day, oldest first ([copper, at]).
+  if (!absent(l.moneyLog)) {
+    let last = -1;
+    out.moneyLog = list(l.moneyLog, LIMITS.moneyLog).map((e) => {
+      if (!Array.isArray(e) || e.length !== 2) fail();
+      const at = int(e[1], 0, MAX_T);
+      if (at <= last) fail();
+      last = at;
+      return [int(e[0], 0, MONEY), at];
+    });
+  }
   for (const key of ["bags", "bank", "mail"]) if (!absent(l[key])) out[key] = place(l[key], key === "mail");
   if (!absent(l.reputations)) out.reputations = reputations(l.reputations);
   out.cooldowns = cooldowns(l.cooldowns);

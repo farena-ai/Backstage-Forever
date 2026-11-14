@@ -15,9 +15,7 @@ function gearReview(model, profile, gameData) {
   rows.forEach((r, i) => {
     const d = details[i]; if (!d) return;
     r.details = d;
-    const ilvl = d.itemLevel ?? r.itemLevel;
-    const gap = level && ilvl ? level - ilvl : null;
-    r.rating = gap === null ? null : gap <= 3 ? "fresh" : gap <= 8 ? "aging" : "replace";
+    r.rating = require("./sheet.cjs").ageRating(level, d.itemLevel ?? r.itemLevel);
     r.score = Math.round(scoreItem(d, ctx).score * 10) / 10;
   });
   const skip = new Set(["Shirt", "Tabard", "Body", "Tabard slot"]);

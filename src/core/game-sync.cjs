@@ -199,6 +199,12 @@ function parseSavedVariables(raw) {
     if (c.ledger !== undefined) {
       try { out.ledger = require("./ledger.cjs").normalizeLedgerCapture(c.ledger); } catch { /* Omit the entire invalid optional block. */ }
     }
+    if (c.stats !== undefined) {
+      try { out.stats = require("./sheet.cjs").normalizeStatsCapture(c.stats); } catch { /* Omit the entire invalid optional block. */ }
+    }
+    if (c.gearSets !== undefined) {
+      try { out.gearSets = require("./sheet.cjs").normalizeGearSetsCapture(c.gearSets); } catch { /* Omit the entire invalid optional block. */ }
+    }
     return out;
   });
   const activeId = s.activeId === null ? null : id(s.activeId);

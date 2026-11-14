@@ -137,6 +137,7 @@ function validateState(s) {
     "followGameCharacter",
     "journeys",
     "memories",
+    "goldGoal",
   ]);
   if (
     s.schemaVersion !== 1 ||
@@ -172,6 +173,8 @@ function validateState(s) {
       "lootSources",
       "journal",
       "ledger",
+      "stats",
+      "gearSets",
       "clientBuild",
       "locale",
       "captureVersion",
@@ -185,6 +188,8 @@ function validateState(s) {
     require("./quest-intel.cjs").validateLootSources(p.lootSources);
     require("./journal-data.cjs").validateJournal(p.journal);
     require("./ledger.cjs").validateLedger(p.ledger);
+    require("./sheet.cjs").validateStats(p.stats);
+    require("./sheet.cjs").validateGearSets(p.gearSets);
     str(p.id, 100, false);
     if (ids.has(p.id)) fail();
     ids.add(p.id);
@@ -251,6 +256,7 @@ function validateState(s) {
     }
   }
   if (s.activeProfileId !== null && !ids.has(s.activeProfileId)) fail();
+  try { require("./gold-goal.cjs").validateGoldGoal(s.goldGoal); } catch { fail(); }
   object(s.provider, ["id", "model", "endpoint", "authMode"]);
   if (
     s.provider.authMode !== undefined &&
