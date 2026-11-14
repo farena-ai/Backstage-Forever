@@ -53,6 +53,7 @@ const { releaseChannel } = require("../package.json");
 const { LiveBridge } = require("./core/live-bridge.cjs");
 let liveBridge = null;
 let radar = null;
+let closeAskPanel = null, dropAskPanelWindow = null;
 let wishlist = null;
 let community = null, collectDiagnostics = null;
 const catalogs = new CatalogCache();
@@ -833,6 +834,30 @@ app.whenReady().then(async () => {
     clipboard.writeText(command);
     return { command, message: "Waypoint copied. Paste it into WoW chat." };
   });
+  // Questions typed in game (0.38, A15): over the live strip, answered like the Companion page,
+  // shown in a panel over the game. The Companion page reports its "Use my active character" choice.
+  let inGameShare = false;
+  const askPanel = require("./core/ask-panel.cjs").createAskPanel({
+    BrowserWindow, ipcMain, screen: require("electron").screen, rendererDir: path.join(__dirname, "renderer"), dataDir: app.getPath("userData"),
+    gameRect: () => liveBridge.gameWindow(),
+    onOpenApp: () => {
+      if (!win || win.isDestroyed()) return;
+      if (win.isMinimized()) win.restore();
+      win.show(); win.focus();
+      if (!win.webContents.isDestroyed()) win.webContents.send("backstage:openPage", "assistant");
+    },
+  });
+  closeAskPanel = () => askPanel.close();
+  dropAskPanelWindow = () => askPanel.destroyWindow();
+  const inGameAsk = new (require("./core/ask-in-game.cjs").InGameAsk)({
+    companion: companionService, getState: () => store.state, liveKeyFor: require("./core/live-bridge.cjs").liveKeyFor,
+    panel: askPanel, getShare: () => inGameShare,
+    notify: (exchange) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:inGameExchange", exchange); },
+  });
+  liveBridge.subscribeQuestions((question) => { void inGameAsk.handle(question); });
+  handle("askInGameSettings", (...args) => { if (args.length) throw Error("Invalid panel settings."); return askPanel.settings(); });
+  handle("setAskInGameSettings", (input) => askPanel.setSettings(input));
+  handle("setInGameShare", (share) => { if (typeof share !== "boolean") throw Error("Invalid sharing choice."); inGameShare = share; return true; });
   handle("ask", (...args) => companionService.legacy(...args));
   handle("askCompanion", (...args) => companionService.ask(...args));
   handle("clearConversation", (...args) => companionService.clear(...args));
@@ -939,6 +964,8 @@ app.whenReady().then(async () => {
     if (testInactive) win.once("ready-to-show", () => win.showInactive());
     win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
     win.on("blur", () => voice.blur());
+    // A hidden answer panel must not keep the app running once the main window is closed.
+    win.on("closed", () => dropAskPanelWindow?.());
     win.on("hide", () => voice.blur());
     win.on("minimize", () => voice.blur());
     win.webContents.on("destroyed", () => companionContext.invalidate("renderer-destroyed"));
@@ -965,6 +992,7 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", (event) => {
   radar?.close();
+  closeAskPanel?.();
   community?.stop();
   liveBridge?.stop();
   store?.closeRecovery();

@@ -142,6 +142,21 @@ contextBridge.exposeInMainWorld(
       return () => ipcRenderer.removeListener("backstage:liveLink", handler);
     },
     cancelAsk: () => invoke("cancelAsk"),
+    askInGameSettings: () => invoke("askInGameSettings"),
+    setAskInGameSettings: (input) => invoke("setAskInGameSettings", input),
+    setInGameShare: (share) => invoke("setInGameShare", share),
+    onInGameExchange: (listener) => {
+      if (typeof listener !== "function") throw new Error("Invalid exchange listener.");
+      const handler = (_event, exchange) => listener(exchange);
+      ipcRenderer.on("backstage:inGameExchange", handler);
+      return () => ipcRenderer.removeListener("backstage:inGameExchange", handler);
+    },
+    onOpenPage: (listener) => {
+      if (typeof listener !== "function") throw new Error("Invalid page listener.");
+      const handler = (_event, page) => listener(page);
+      ipcRenderer.on("backstage:openPage", handler);
+      return () => ipcRenderer.removeListener("backstage:openPage", handler);
+    },
     companionContext: (...args) => invoke("companionContext", ...args),
     memoryList: (...args) => invoke("memoryList", ...args),
     memoryDraft: (...args) => invoke("memoryDraft", ...args),

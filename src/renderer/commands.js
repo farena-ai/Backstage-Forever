@@ -64,6 +64,7 @@
   ]);
   const APP = Object.freeze([
     { name: "Now", what: "What to do next, where to level, your training, quest log and this session's pace. With the live link on, quests you hand in show as Completed straight away, no /reload needed. Start here." },
+    { name: "Answers over the game", what: "Questions you type in game (the owl button on the minimap or /bf ask) are answered here: offline from the bundled reference for where and how questions, otherwise by the AI you chose. The answer appears in a small panel over the top-right of your game that never takes your keyboard; Open in app shows the whole conversation. Switch the panel off or choose when it hides under Settings → Game connection." },
     { name: "Moments", what: "With the live link on, the app answers what just happened in game: a painted card for elite, rare and boss kills, cleared dungeons, profession milestones (and where to train the next rank), new zones and flight paths, gear upgrades and finished quest chains. A death opens a death screen: who did the damage, the way back to your body and one thing to change. Recent moments are listed on Now; switch them off, or pick which kinds, under Settings → Game connection." },
     { name: "World Map", what: "Zone maps with quest givers, hand-ins, trainers, flight masters, herbs and ore. Click anyone for details. Your path this session is drawn on it." },
     { name: "Quests", what: "Look up any quest: who gives it, where it goes, rewards. Copies a /bf guide line for the game." },
