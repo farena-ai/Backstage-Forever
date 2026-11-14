@@ -393,3 +393,10 @@ test("Settings → Community renders the switch, the lists and the reviewed log 
   assert.match(box.innerHTML, /<pre class="community-log"[^>]*>line &lt;1&gt;<\/pre>/);
   assert.equal(V._state().report.attach, true);
 });
+
+test("every checkbox in the community form has an explicit value, so the app does not think the form is being edited", () => {
+  const src = fs.readFileSync(path.join(__dirname, "../src/renderer/community.js"), "utf8");
+  const boxes = src.match(/<input type="checkbox"[^>]*>/g) || [];
+  assert.ok(boxes.length > 0);
+  for (const b of boxes) assert.match(b, /value="on"/, b);
+});

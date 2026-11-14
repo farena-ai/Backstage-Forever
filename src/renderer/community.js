@@ -19,7 +19,7 @@ window.CommunityView = (() => {
       : s.retryAt ? `The community service is not reachable right now. The app will try again around ${esc(when(s.retryAt))}.`
       : s.pending ? `${n(s.pending)} new find${s.pending === 1 ? "" : "s"} will be shared at the next sync (every 30 minutes).`
       : "Everything you found so far has been shared.";
-    return `<label class="check-label community-switch"><input type="checkbox" data-community-share ${s.share ? "checked" : ""} ${s.blocked ? "disabled" : ""}>Share anonymous finds with other players</label>
+    return `<label class="check-label community-switch"><input type="checkbox" value="on" data-community-share ${s.share ? "checked" : ""} ${s.blocked ? "disabled" : ""}>Share anonymous finds with other players</label>
       <p class="community-state" role="status">${state}</p>
       <dl class="community-facts">
         <div><dt>Last shared</dt><dd>${esc(when(s.lastSubmitAt))}</dd></div>
@@ -43,7 +43,7 @@ window.CommunityView = (() => {
     return `<form class="community-report" data-community-report>
       <label>What kind of problem?<select name="category" data-community-category ${sending ? "disabled" : ""}>${CATEGORIES.map(([v, l]) => `<option value="${v}" ${report.category === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>
       <label>What happened?<textarea name="text" maxlength="2000" required data-community-text placeholder="What you did, what you expected and what happened instead. Please leave out your character name." ${sending ? "disabled" : ""}>${esc(report.text)}</textarea></label>
-      <label class="check-label"><input type="checkbox" data-community-attach ${report.attach ? "checked" : ""} ${sending ? "disabled" : ""}>Attach app log</label>
+      <label class="check-label"><input type="checkbox" value="on" data-community-attach ${report.attach ? "checked" : ""} ${sending ? "disabled" : ""}>Attach app log</label>
       ${preview}
       <div class="button-row"><button type="submit" class="primary" ${sending || (report.attach && !p) ? "disabled" : ""}>${sending ? "Sending…" : "Send report"}</button></div>
       ${report.message ? `<p class="community-note ${report.state === "sent" ? "ok" : report.state === "failed" ? "bad" : ""}" role="status">${esc(report.message)}</p>` : ""}
