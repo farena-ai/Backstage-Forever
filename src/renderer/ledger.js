@@ -77,11 +77,32 @@ window.LedgerView = (() => {
     return `<table class="ldg-table"><thead><tr><th>Item</th><th>Last seen, each</th><th>Lowest seen</th><th>When</th></tr></thead><tbody>${rows.slice(0, LIMIT).map((r) => `<tr data-ledger-price="${r.itemId}"><td data-card-item="${r.itemId}"><strong class="ldg-name q-${quality(r.quality)}">${esc(r.name)}</strong></td><td>${coins(r.latest)}</td><td>${coins(r.low)}${r.low < r.latest ? ` <small>${esc(ago(r.lowAt))}</small>` : ""}</td><td>${esc(ago(r.latestAt))}</td></tr>`).join("")}</tbody></table>
       ${rows.length > LIMIT ? `<p class="ldg-more">Showing ${LIMIT} of ${rows.length}. Search to narrow it down.</p>` : ""}`;
   }
+  // Gold goal (0.36, E4): the player's own target, progress across characters, a pace estimate.
+  let goalNote = "";
+  function goalCard() {
+    const v = data.goal;
+    if (!v) return "";
+    const g = v.goal, r = v.rate;
+    const pace = !r ? "No pace yet: the addon notes your gold once a day, so an estimate appears after two days of play."
+      : r.perDay > 0 ? `Your gold grew by about ${coinsText(r.perDay)} a day over the last ${r.days} days (all characters).`
+      : `Your gold did not grow over the last ${r.days} days (all characters), so there is no estimate.`;
+    const inputs = `<div class="ldg-goal-form"><label>Target in gold<input type="number" min="1" max="10000000" step="1" data-ledger-goal="gold" value="${g ? Math.round(g.copper / 10000) : ""}" aria-label="Gold goal in gold"></label><label>What it's for<input type="text" maxlength="60" data-ledger-goal="label" value="${esc(g?.label || "")}" placeholder="e.g. riding and first mount" aria-label="What the gold goal is for"></label><button type="button" class="primary" data-ledger-goal-save>${g ? "Update goal" : "Set goal"}</button>${g ? `<button type="button" class="subtle" data-ledger-goal-clear>Clear</button>` : ""}</div><p class="ldg-goal-msg" role="status">${esc(goalNote)}</p>`;
+    if (!g) return `<section class="ldg-card ldg-goal" data-ledger-goal-card><h2>Gold goal</h2><p class="ldg-note">Saving for riding training and your first mount, or anything else? Set the amount yourself: the app's reference has no trainer or mount prices, so check the price at your riding trainer or mount vendor in game.</p>${inputs}</section>`;
+    const pct = Math.round(v.progress * 100);
+    return `<section class="ldg-card ldg-goal${v.reached ? " done" : ""}" data-ledger-goal-card><div class="ldg-goal-head"><h2>${esc(g.label || "Gold goal")}</h2><span>${coins(v.have)} of ${coins(g.copper)}</span></div>
+      <span class="ldg-bar ldg-goal-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Gold goal progress"><span data-w="${Math.max(2, pct)}"></span></span>
+      <p class="ldg-note" data-ledger-goal-status>${v.reached ? "<strong>Goal reached.</strong> Mail the gold to the character who needs it if it's spread out." : `<strong>${coins(v.left)}</strong> to go${v.daysLeft ? `, about <strong>${v.daysLeft} day${v.daysLeft === 1 ? "" : "s"}</strong> at your recent pace` : ""}.`} Counts gold on ${v.characters} character${v.characters === 1 ? "" : "s"}${v.activeName ? `; ${esc(v.activeName)} has ${coins(v.activeMoney)}` : ""}.</p>
+      <p class="ldg-note">${esc(pace)}</p>${inputs}</section>`;
+  }
+  function coinsText(copper) {
+    const g = Math.floor(copper / 10000), s = Math.floor((copper % 10000) / 100), c = copper % 100;
+    return [g ? `${g.toLocaleString()}g` : "", s ? `${s}s` : "", c || (!g && !s) ? `${c}c` : ""].filter(Boolean).join(" ");
+  }
   function gold() {
     const chars = ledgered();
     if (!chars.length) return empty("No gold or prices yet.");
     const g = data.gold, top = Math.max(1, ...g.characters.map((c) => c.money));
-    return `<div class="ldg-summary"><div><strong>${coins(g.total)}</strong><span>gold on ${g.characters.length} character${g.characters.length === 1 ? "" : "s"}</span></div><div><strong>${coins(data.value.total)}</strong><span>estimated auction value of what you carry</span></div><div><strong>${data.prices.length.toLocaleString()}</strong><span>prices remembered</span></div></div>
+    return `${goalCard()}<div class="ldg-summary"><div><strong>${coins(g.total)}</strong><span>gold on ${g.characters.length} character${g.characters.length === 1 ? "" : "s"}</span></div><div><strong>${coins(data.value.total)}</strong><span>estimated auction value of what you carry</span></div><div><strong>${data.prices.length.toLocaleString()}</strong><span>prices remembered</span></div></div>
       <div class="ldg-two"><section class="ldg-card"><h2>Gold per character</h2><ul class="ldg-goldlist">${g.characters.map((c) => `<li data-ledger-gold="${esc(c.profileId)}"><span class="ldg-who">${esc(c.name)}${c.faction ? ` <small>${esc(c.faction)}</small>` : ""}</span><span class="ldg-bar"><span data-w="${Math.max(2, Math.round((c.money / top) * 100))}"></span></span><span class="ldg-amount">${coins(c.money)}</span></li>`).join("")}</ul>
         ${chars.some((c) => c.mail?.money) ? `<p class="ldg-note">Waiting in the mail: ${chars.filter((c) => c.mail?.money).map((c) => `${esc(c.name)} ${coins(c.mail.money)}`).join(", ")}.</p>` : ""}</section>
       <section class="ldg-card"><h2>What your things are worth</h2>${data.value.items.length ? `<ul class="ldg-worth">${data.value.items.slice(0, 15).map((v) => `<li data-card-item="${v.itemId}"><strong class="ldg-name q-${quality(v.quality)}">${esc(v.name)}</strong><span>${v.count.toLocaleString()} × ${coins(v.unit)}</span><span class="ldg-amount">${coins(v.value)}</span></li>`).join("")}</ul><p class="ldg-note">From the last price you saw at auction; actual sales vary.</p>` : `<p class="ldg-empty">Nothing you carry has a remembered auction price yet.</p>`}</section></div>
@@ -146,6 +167,17 @@ window.LedgerView = (() => {
       if (list && data) { list.innerHTML = kind === "items" ? itemRows() : priceRows(); sizes(list); }
     });
     root.querySelector("[data-ledger-rep]")?.addEventListener("change", (e) => { repFor = e.target.value; root.outerHTML = page(route); mountedFor = null; mounted(); });
+    const repaint = () => { const r = document.querySelector("[data-ledger]"); if (r) { r.outerHTML = page(route); mountedFor = null; mounted(); } };
+    const setGoal = async (input) => {
+      try { data.goal = await api.setGoldGoal(input); goalNote = ""; } catch (e) { goalNote = e.message || "That goal could not be saved."; }
+      repaint();
+    };
+    root.querySelector("[data-ledger-goal-save]")?.addEventListener("click", () => {
+      const gold = Number(root.querySelector('[data-ledger-goal="gold"]')?.value);
+      if (!Number.isInteger(gold) || gold < 1 || gold > 10000000) { goalNote = "Enter a whole number of gold, from 1 to 10,000,000."; repaint(); return; }
+      setGoal({ gold, label: String(root.querySelector('[data-ledger-goal="label"]')?.value || "").slice(0, 60) });
+    });
+    root.querySelector("[data-ledger-goal-clear]")?.addEventListener("click", () => setGoal(null));
     // Each visit reads the newest saved ledger (a game save may have arrived since).
     if (!loading && (!data || Date.now() - loadedAt > 3000)) load();
   }

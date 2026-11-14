@@ -152,3 +152,38 @@ test("sheet data never leaves the computer: not in community observations or the
   const approved = require("../src/core/providers.cjs").approvedProfile(p);
   assert.equal(approved.stats, undefined); assert.equal(approved.gearSets, undefined);
 });
+
+test("the Sheet page paints the paper doll, stats, upgrades and sets; the gold goal card shows progress and pace", async () => {
+  const fs = require("node:fs"), vm = require("node:vm"), path = require("node:path");
+  const facts = new Map([[1002, { name: "Dungeon Helm", quality: 3, itemLevel: 33, iconFileId: 77 }], [3001, { name: "Greatsword", quality: 4, itemLevel: 30, slot: "Two-Hand" }], [4100, { name: "Better Gloves", quality: 2, itemLevel: 31 }]]);
+  const me = { id: "a", name: "Aeralyn", className: "Warrior", race: "Human", faction: "Alliance", level: 30, stats: stats(), gearSets: S.normalizeGearSetsCapture(sets()),
+    readiness: { equipment: [{ slot: 16, itemId: 3001 }, { slot: 1, itemId: 1001, name: "Leveling Helm", quality: 2, itemLevel: 20 }] },
+    ledger: L.normalizeLedgerCapture({ bags: { seenAt: T, items: [{ id: 1002, n: 1 }, { id: 4100, n: 1 }] }, bank: { seenAt: T - DAY, items: [{ id: 5001, n: 1, name: "Bank Boots" }] } }) };
+  const alt = { id: "b", name: "Vaelric", ledger: L.normalizeLedgerCapture({ bank: { seenAt: T, items: [{ id: 7001, n: 1 }] } }) };
+  const view = S.sheetView(me, { profiles: [me, alt], facts, score: (it) => it.itemLevel, verdict: (it) => (it.name === "Better Gloves" ? { verdict: "upgrade", text: "Upgrade for you", delta: 2 } : { verdict: "not-upgrade" }) });
+  let html = "";
+  const root = () => ({ dataset: {}, querySelectorAll: () => [], querySelector: () => null, set outerHTML(v) { html = v; } });
+  const context = vm.createContext({ backstage: { characterSheet: async () => structuredClone(view) }, document: { querySelector: (s) => (s === "[data-sheet]" ? root() : null), getElementById: () => ({ value: "a" }) }, structuredClone });
+  context.window = context;
+  for (const f of ["page-hero.js", "sheet.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer", f), "utf8"), context);
+  assert.match(context.SheetView.page(), /Opening your character sheet/);
+  context.SheetView.mounted(); await new Promise((r) => setTimeout(r, 10));
+  for (const re of [/Characters · Sheet/, /Aeralyn/, /data-sheet-slot="1" data-card-item="1001"/, /Leveling Helm/, /Time to replace/, /q-epic/, /Empty/, /average item level/, /Intellect<\/span><strong>120/, /Fire resistance/,
+    /data-sheet-upgrade="4100"/, /Upgrade for you \(\+2\)/, /data-sheet-set="Dungeon"/, /In the bank <small>seen/, /On Vaelric \(bank\)/, /Not found/, /\/bf set wear Dungeon/])
+    assert.match(html, re);
+  assert.doesNotMatch(html, /data-sheet-slot="17"[^>]*sht-missing|sht-missing[^>]*data-sheet-slot="17"/, "no off hand needed next to a two-hander");
+
+  const goalState = { activeProfileId: "a", goldGoal: { copper: 1000000, label: "Riding & mount", setAt: T }, profiles: [{ id: "a", name: "Aeralyn", ledger: L.normalizeLedgerCapture({ money: 600000, moneyAt: T, moneyLog: [[500000, T - 4 * DAY], [600000, T]] }) }] };
+  const ledgerView = { ...L.ledgerView(goalState), goal: G.goldGoalView(goalState, { now: T }) };
+  let lhtml = "";
+  const lroot = () => ({ dataset: { ledger: "ledger-gold" }, querySelectorAll: () => [], querySelector: () => null, set outerHTML(v) { lhtml = v; } });
+  const lc = vm.createContext({ backstage: { ledger: async () => structuredClone(ledgerView) }, document: { querySelector: (s) => (s === "[data-ledger]" ? lroot() : null) }, structuredClone });
+  lc.window = lc;
+  for (const f of ["page-hero.js", "ledger.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer", f), "utf8"), lc);
+  lc.LedgerView.gold(); lc.LedgerView.mounted(); await new Promise((r) => setTimeout(r, 10));
+  for (const re of [/data-ledger-goal-card/, /Riding &amp; mount/, /aria-valuenow="60"/, /to go, about <strong>16 days<\/strong>/, /about 2g 50s a day over the last 4 days/, /Update goal/, /value="100"/])
+    assert.match(lhtml, re);
+  ledgerView.goal = G.goldGoalView({ ...goalState, goldGoal: undefined }, { now: T });
+  lc.LedgerView.invalidate(); lc.LedgerView.mounted(); await new Promise((r) => setTimeout(r, 10));
+  assert.match(lhtml, /no trainer or mount prices/); assert.match(lhtml, />Set goal</);
+});
