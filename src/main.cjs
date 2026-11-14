@@ -54,6 +54,7 @@ const { LiveBridge } = require("./core/live-bridge.cjs");
 let liveBridge = null;
 let radar = null;
 let wishlist = null;
+let community = null, collectDiagnostics = null;
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
@@ -121,6 +122,7 @@ function handle(name, fn) {
         "The report could not be saved. Choose a text file outside the app data folder.",
       ].includes(e?.message)) throw e;
       if (e?.message === "Secure credential storage is unavailable.") throw e;
+      if (name.startsWith("community") && e?.name === "CommunityError") throw new Error(e.message);
       if (["partyBrief", "partyPreview", "createPartyJourney", "commitPartyPlan", "exportPartyPlan", "importPartyPlan"].includes(name) && /^Party plan/.test(e?.message)) throw e;
       if (["ask", "askCompanion", "memoryPreview", "saveMemory", "deleteMemory", "clearMemory"].includes(name) && /^(Memory |Provider response is no longer current|Choose the current character)/.test(e?.message)) throw e;
       if (
@@ -276,7 +278,7 @@ app.whenReady().then(async () => {
   registerVoiceHandlers({ handle, voice });
   diagnostics = registerDiagnosticsHandlers({
     handle, dialog, clipboard, getWindow: () => win, dataDir: app.getPath("userData"),
-    collect: () => {
+    collect: collectDiagnostics = () => {
       // Read local status only, including bounded recovery metadata. No auth worker, model catalog or network refresh.
       const selected = store.state.provider, gameFacts = game.status();
       const index = knowledge.packs.get(knowledge.build), pack = (index || knowledge.bundled).pack;
@@ -648,10 +650,28 @@ app.whenReady().then(async () => {
     acquisitionPack: (()=>{try{return require('./core/acquisition-data.cjs').loadAcquisitionPack();}catch{return null;}})(),
     onReset: (reason) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:conversationReset", reason); },
   });
+  // Community sharing (0.34): anonymous finds out (on by default, off switch in Settings), a daily pack in.
+  const { CommunityService, BASE_URL, resolveBaseUrl } = require("./core/community.cjs");
+  community = new CommunityService({
+    dir: app.getPath("userData"), appVersion: app.getVersion(),
+    baseUrl: app.isPackaged ? BASE_URL : resolveBaseUrl(), // BF_COMMUNITY_URL is for development and tests only
+    getProfiles: () => store.state.profiles,
+    getSupportText: () => require("./core/diagnostics.cjs").buildDiagnostics(collectDiagnostics()).text,
+  });
+  require("./core/community-ipc.cjs").registerCommunityHandlers({
+    handle, community,
+    confirmForget: async () => (await dialog.showMessageBox(win, {
+      type: "warning", title: "Forget my contributions?",
+      message: "Ask the community service to delete everything this install has shared, including problem reports. Facts already published disappear at the next rebuild if fewer than 3 players still report them. Sharing then continues with a new anonymous install id unless you turn it off.",
+      buttons: ["Cancel", "Forget my contributions"], defaultId: 0, cancelId: 0, noLink: true,
+    })).response === 1,
+  });
+  community.start();
   // World Map: one zone of pins plus live position, and a cross-zone finder.
   worldMap = new (require("./core/world-map.cjs").WorldMap)({
     getState: () => store.state, knowledge, npcReference: companionService.npcReference, travelReference,
     vendorPack: companionService.vendorPack, insights, acquisitionPack: companionService.acquisitionPack, creaturePack, live: liveBridge,
+    getCommunity: () => community?.index() || null,
   });
   handle("worldMap", (input) => worldMap.build(input || {}));
   handle("worldMapSearch", (query) => worldMap.search(query));
@@ -745,7 +765,7 @@ app.whenReady().then(async () => {
   const encounters = loadEncounters();
   // Loot browser, wish list and item hover cards (boss loot pack + the player's own game data).
   wishlist = new (require("./core/wishlist.cjs").WishList)(app.getPath("userData"));
-  const bossLoot = require("./core/boss-loot-ipc.cjs").registerBossLootHandlers({ handle, getState: () => store.state, gameData, wishlist, getPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack() });
+  const bossLoot = require("./core/boss-loot-ipc.cjs").registerBossLootHandlers({ handle, getState: () => store.state, gameData, wishlist, getPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(), getCommunity: () => community?.index() || null, creatureName: (id) => worldMap?.npcName(id) || null });
   handle("dungeonAtlas", () => {
     const profile = store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null;
     const atlas = buildAtlas({ profile, encounters, knowledgePack: knowledge?.bundled?.pack }), loot = bossLoot.summary(profile);
@@ -832,6 +852,7 @@ app.whenReady().then(async () => {
       await claude.clearCredentials();
       const fresh = store.reset();
       wishlist?.clear(); // starred loot belongs to the characters just deleted
+      community?.reset(); // local install id, sent marks and pack; shared facts stay on the server
       return fresh;
     } finally {
       resetting = false;
@@ -892,6 +913,7 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", (event) => {
   radar?.close();
+  community?.stop();
   liveBridge?.stop();
   store?.closeRecovery();
   voice?.close();
