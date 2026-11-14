@@ -397,6 +397,14 @@ class GameData {
     if (!Number.isSafeInteger(id) || id <= 0) return null;
     try { return spellView(id, this.load("spells").spells[id]); } catch { return null; }
   }
+  // True when a table is ready without reading the game (in memory or cached on disk for this build).
+  cached(kind) {
+    try {
+      const build = this.build();
+      if (this.data[kind]?.build === build) return !this.data[kind].error;
+      return fs.existsSync(path.join(this.buildDir(build), `${kind}.json`));
+    } catch { return false; }
+  }
   talents(className) {
     const key = String(className || "").toLowerCase();
     if (!CLASS_IDS[key]) return null;

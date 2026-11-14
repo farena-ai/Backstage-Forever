@@ -1,0 +1,58 @@
+{
+  "format": 1,
+  "build": "0.0.0.test",
+  "kind": "talents",
+  "data": {
+    "notes": ["Synthetic test trees. Priest Holy mirrors the shape of WoW Forever's tree (names, tiers, max ranks, quirks); descriptions are shortened."],
+    "talents": {
+      "Priest": {
+        "className": "Priest",
+        "classId": 5,
+        "tabs": [
+          { "id": 201, "name": "Discipline", "order": 0, "talents": [
+            { "id": 1001, "row": 0, "column": 1, "maxRank": 5, "ranks": [1, 2, 3, 4, 5], "name": "Unbreakable Will", "descriptions": ["Reduces the duration of Stun, Fear and Silence effects on you by 3%.", null, null, null, null], "prerequisites": [] },
+            { "id": 1002, "row": 1, "column": 1, "maxRank": 5, "ranks": [6, 7, 8, 9, 10], "name": "Wand Specialization", "descriptions": ["Increases your damage with Wands by 5%.", null, null, null, null], "prerequisites": [] }
+          ] },
+          { "id": 202, "name": "Holy", "order": 1, "talents": [
+            { "id": 1101, "row": 0, "column": 0, "maxRank": 2, "ranks": [11, 12], "name": "Twilight Focus", "descriptions": ["Gives your spells a 70% chance to not lose casting time when you take damage.", null], "prerequisites": [] },
+            { "id": 1102, "row": 0, "column": 1, "maxRank": 3, "ranks": [13, 14, 15], "name": "Improved Renew", "descriptions": ["Increases the amount healed by your Renew spell by 5%.", null, null], "prerequisites": [] },
+            { "id": 1181, "row": 0, "column": 2, "maxRank": 5, "ranks": [16, 17, 18, 19, 20], "name": "Holy Specialization", "descriptions": ["Increases the critical effect chance of your Holy spells by 1%.", null, null, null, null], "prerequisites": [] },
+            { "id": 1103, "row": 1, "column": 1, "maxRank": 5, "ranks": [21, 22, 23, 24, 25], "name": "Spell Warding", "descriptions": ["Reduces all spell damage taken by 10%.", null, null, null, null], "prerequisites": [] },
+            { "id": 1104, "row": 1, "column": 2, "maxRank": 5, "ranks": [26, 27, 28, 29, 30], "name": "Divine Fury", "descriptions": ["Reduces the casting time of your Smite, Holy Fire, Heal and Greater Heal spells by 0.5 sec.", null, null, null, null], "prerequisites": [] },
+            { "id": 1105, "row": 2, "column": 0, "maxRank": 1, "ranks": [31], "name": "Holy Nova", "descriptions": [""], "prerequisites": [] },
+            { "id": 1106, "row": 2, "column": 1, "maxRank": 3, "ranks": [32, 33, 34], "name": "Blessed Recovery", "descriptions": ["After being struck by a critical hit, heal 8% of the damage taken over 6 sec.", null, null], "prerequisites": [] },
+            { "id": 1107, "row": 2, "column": 2, "maxRank": 3, "ranks": [35, 36, 37], "name": "Inspiration", "descriptions": ["Your non-periodic critical heals increase your target's Armor by 0% for 15 sec.", null, null], "prerequisites": [] },
+            { "id": 1108, "row": 3, "column": 0, "maxRank": 2, "ranks": [38, 39], "name": "Holy Reach", "descriptions": ["Increases the range of your Smite and Holy Fire spells by 10%.", null], "prerequisites": [] },
+            { "id": 1109, "row": 3, "column": 1, "maxRank": 3, "ranks": [40, 41, 42], "name": "Improved Healing", "descriptions": ["Reduces the Mana cost of your heals by 15%.", null, null], "prerequisites": [] },
+            { "id": 1110, "row": 3, "column": 2, "maxRank": 2, "ranks": [43, 44], "name": "Searing Light", "descriptions": ["Increases your Holy damage done by 10%.", null], "prerequisites": [{ "talentId": 1181, "rank": 5 }] },
+            { "id": 1111, "row": 4, "column": 0, "maxRank": 2, "ranks": [45, 46], "name": null, "descriptions": [null, null], "prerequisites": [] },
+            { "id": 1561, "row": 4, "column": 1, "maxRank": 1, "ranks": [47], "name": "Spirit of Redemption", "descriptions": ["Upon death, the priest becomes the Spirit of Redemption for 15 sec.", null], "prerequisites": [] },
+            { "id": 1112, "row": 4, "column": 2, "maxRank": 5, "ranks": [48, 49, 50, 51, 52], "name": "Spiritual Guidance", "descriptions": ["Increases your spell healing by up to 25% of your total Spirit.", null, null, null, null], "prerequisites": [] },
+            { "id": 1113, "row": 5, "column": 1, "maxRank": 5, "ranks": [53, 54, 55, 56, 57], "name": "Spiritual Healing", "descriptions": ["Increases the amount healed by your spells by 2%.", null, null, null, "Increases the amount healed by your spells by 10%."], "prerequisites": [] },
+            { "id": 1114, "row": 6, "column": 1, "maxRank": 1, "ranks": [58], "name": "Lightwell", "descriptions": ["Creates a holy Lightwell near the priest."], "prerequisites": [{ "talentId": 1561, "rank": 1 }] }
+          ] },
+          { "id": 203, "name": "Shadow", "order": 2, "talents": [
+            { "id": 1201, "row": 0, "column": 1, "maxRank": 5, "ranks": [61, 62, 63, 64, 65], "name": "Spirit Tap", "descriptions": ["Gives you a 20% chance to gain 100% bonus Spirit after killing a target.", null, null, null, null], "prerequisites": [] },
+            { "id": 1202, "row": 0, "column": 2, "maxRank": 5, "ranks": [66, 67, 68, 69, 70], "name": "Blackout", "descriptions": ["Gives your Shadow damage spells a 2% chance to stun the target for 3 sec.", null, null, null, null], "prerequisites": [] },
+            { "id": 1203, "row": 1, "column": 0, "maxRank": 2, "ranks": [71, 72], "name": "Improved Shadow Word: Pain", "descriptions": ["Increases the duration of your Shadow Word: Pain spell by 3 sec.", null], "prerequisites": [] },
+            { "id": 1204, "row": 1, "column": 1, "maxRank": 5, "ranks": [73, 74, 75, 76, 77], "name": "Shadow Focus", "descriptions": ["Reduces your target's chance to resist your Shadow spells by 2%.", null, null, null, null], "prerequisites": [] }
+          ] }
+        ]
+      },
+      "Warrior": {
+        "className": "Warrior",
+        "classId": 1,
+        "tabs": [
+          { "id": 101, "name": "Arms", "order": 0, "talents": [
+            { "id": 124, "row": 0, "column": 0, "maxRank": 3, "ranks": [81, 82, 83], "name": "Improved Heroic Strike", "descriptions": ["Reduces the cost of your Heroic Strike ability by 1 Rage.", null, null], "prerequisites": [] },
+            { "id": 130, "row": 0, "column": 1, "maxRank": 5, "ranks": [84, 85, 86, 87, 88], "name": "Deflection", "descriptions": ["Increases your Parry chance by 1%.", null, null, null, null], "prerequisites": [] },
+            { "id": 131, "row": 6, "column": 1, "maxRank": 1, "ranks": [89], "name": "Mortal Strike", "descriptions": ["A vicious strike that deals weapon damage plus 85 and wounds the target."], "prerequisites": [] }
+          ] },
+          { "id": 102, "name": "Fury", "order": 1, "talents": [
+            { "id": 140, "row": 0, "column": 1, "maxRank": 5, "ranks": [90, 91, 92, 93, 94], "name": "Cruelty", "descriptions": ["Increases your chance to get a critical strike with melee weapons by 1%.", null, null, null, null], "prerequisites": [] }
+          ] }
+        ]
+      }
+    }
+  }
+}
