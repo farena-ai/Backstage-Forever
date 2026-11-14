@@ -69,7 +69,8 @@ function near(positions, here) {
 function shoppingList(rows, { crafts = 1, profile = null } = {}) {
   const here = profile?.location && Number.isSafeInteger(profile.location.mapId) && Number.isFinite(profile.location.x) && Number.isFinite(profile.location.y) ? profile.location : null;
   const finds = new Map();
-  for (const r of profile?.gathering?.records || []) for (const id of r.itemIds || []) if (!finds.has(id)) finds.set(id, r);
+  // Gathering finds only: chest loot is random, not a place to gather a material.
+  for (const r of profile?.gathering?.records || []) if (r.method !== "chest") for (const id of r.itemIds || []) if (!finds.has(id)) finds.set(id, r);
   const out = (rows || []).map((row) => {
     const sellers = [...(row.historicalSellers?.suggestions || []), ...(row.historicalSellers?.browse || [])];
     const seller = sellers[0] || null, at = seller ? near(seller.positions, here) : null;

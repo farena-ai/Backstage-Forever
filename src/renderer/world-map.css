@@ -135,3 +135,17 @@
 .world-map-page .wm-camps li button:hover, .world-map-page .wm-camps li button:focus-visible { background: rgba(255,180,150,.12); outline: none; }
 .wm-camps small { display: block; color: #e7b9a6; }
 .wm-camp-mark { flex: none; width: 18px; text-align: center; color: #ffe9c9; }
+/* Your gathering heat: per-zone counts of remembered herbs, ore and chests. */
+.wm-heat { padding: 12px 14px; border-radius: 6px; background: linear-gradient(180deg, #2c2414, #1a150c); border: 1px solid #a8843f; color: #f1e4c4; box-shadow: 0 4px 10px rgba(0,0,0,.4); }
+.wm-heat[hidden] { display: none; }
+.wm-heat h3 { margin: 0 0 6px; font: 700 16px Cinzel, Georgia, serif; color: #f3cf7a; }
+.wm-heat-here { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; font-size: 12px; }
+.wm-heat ol { list-style: none; margin: 0 0 8px; padding: 0; }
+.wm-heat li button { all: unset; box-sizing: border-box; display: flex; justify-content: space-between; gap: 8px; align-items: center; width: 100%; padding: 5px 4px; cursor: pointer; border-bottom: 1px solid rgba(240,200,120,.15); font-size: 13px; }
+.wm-heat li button:hover, .world-map-page .wm-heat li button:focus-visible { background: rgba(240,200,120,.12); outline: none; }
+.wm-heat li button[aria-current="true"] strong { color: #ffe39a; }
+.wm-heat-bars { display: flex; gap: 4px; flex: none; }
+.wm-heat-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 9px; font-size: 11px; font-weight: 700; background: rgba(0,0,0,.35); border: 1px solid currentColor; }
+.wm-heat-chip i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
+.wm-heat-herb { color: #6fdc6a; } .wm-heat-ore { color: #86b2f2; } .wm-heat-chest { color: #f6c654; }
+.wm-heat small { display: block; color: #cdbb93; font-size: 11px; line-height: 1.45; }
