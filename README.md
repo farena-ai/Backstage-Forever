@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.37: painted zone banners
+## 0.38: ask from the game
 
-Every zone and capital gets its own painted arrival banner in game, and the same painting on its card in the app. See the [0.37.0 release notes](docs/releases/0.37.0.md).
+An owl button on your minimap asks the companion without leaving WoW, with the answer in a small panel over the game, and the live colour strip is now a barely visible dark line that keeps working while other windows cover the game. See the [0.38.0 release notes](docs/releases/0.38.0.md).
 
 ## 0.28: your journey
 
