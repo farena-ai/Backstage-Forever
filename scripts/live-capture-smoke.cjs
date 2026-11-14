@@ -50,7 +50,7 @@ async function until(what, fn, ms = 15000) {
     const pw = reader("auto");
     const s1 = await until("a live hairline", () => { const s = pw.status(); return s.signal === "live" && s.strip?.mode === "hairline" && s.strip; }, 30000);
     assert.equal(s1.capture, "window", "read from the game window");
-    assert.deepEqual([s1.width, s1.height], [528, 1]);
+    assert.deepEqual([s1.width, s1.height], [892, 1]);
     assert.equal(pw.status().frame.position.mapId, 1454);
     assert.deepEqual(pw.status().frame.questLog?.map((e) => e.id), [93739, 812]);
     console.log("visible: live hairline read with PrintWindow");

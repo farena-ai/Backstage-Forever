@@ -12,9 +12,9 @@
 -- one-bit version 3 strip (456 x 12) for displays or remote sessions that mangle colours.
 -- Since 0.38 the pages row also carries questions the player typed in game (/bf ask), only
 -- after they pressed Ask and never in combat; the app answers in its own panel window.
--- Since 0.38 the default is the "hairline" (version 5): one physical pixel tall along the top edge
+-- Since 0.38 the default is the "hairline" (version 6): one physical pixel tall along the top edge
 -- of the game, starting at the left, in near-black shades, so it reads as a thin dark border. It
--- carries the frame and six pages at once (see BackstageForeverLiveHairlineFrame). /bf live compact
+-- carries the frame and five pages at once (see BackstageForeverLiveHairlineFrame). /bf live compact
 -- and /bf live safe keep the corner strips; /bf live pos moves only those (the hairline stays on top).
 local CELL = 6                     -- safe mode: physical pixels per cell edge
 -- Version 3 (safe): every colour channel is fully off or fully on (one bit per channel), so
@@ -32,18 +32,21 @@ local COMPACT_VERSION = 4
 local COMPACT_HEADER = {{255, 0, 255}, {255, 0, 255}, {0, 0, 0}, {85, 85, 85}, {170, 170, 170}, {255, 255, 255}}
 local COMPACT_CELLS = 36            -- 27 bytes * 8 bits / 6 bits per cell
 local LEVELS = {0, 85, 170, 255}
--- Version 5 (hairline): 2 x 1 physical pixel cells, two bits per channel at near-black levels.
--- Header: four sync cells (dark magenta / dark green, alternating) and four grey reference cells,
--- one per level, that the app measures; then 256 payload cells = 192 bytes: the 27-byte frame, six
--- 27-byte page slots, the number of pages and a CRC-16 over all of it (a torn frame fails it).
-local HAIRLINE_VERSION = 5
+-- Version 6 (hairline): 2 x 1 physical pixel cells, one bit per channel: off 0, on a dark 36/255.
+-- (The real client bends near-black colours too much for four shades a channel: a gamma curve,
+-- saturated channels boosted, a little bleed into the others. One bit with the app's threshold
+-- halfway between measured off and on survives all of that.) Header: dark magenta, dark green,
+-- magenta, green, black, dark grey (the app measures each channel's off and on there); then 440
+-- payload cells = 165 bytes: the 27-byte frame, five 27-byte page slots, the number of pages and a
+-- CRC-16 over all of it (a torn frame fails it). 892 x 1 physical pixels.
+local HAIRLINE_VERSION = 6
 local HAIRLINE_CELL = 2
-local HAIRLINE_LEVELS = {0, 12, 24, 36}
-local HAIRLINE_HEADER = {{3, 0, 3}, {0, 3, 0}, {3, 0, 3}, {0, 3, 0}, {0, 0, 0}, {1, 1, 1}, {2, 2, 2}, {3, 3, 3}}
-local HAIRLINE_SLOTS = 6
-local HAIRLINE_BYTES = 192
-local HAIRLINE_CELLS = 256          -- 192 bytes * 8 bits / 6 bits per cell
-local HAIRLINE_QUESTION_SLOTS = 5   -- a question takes at most five slots; one stays for quest pages
+local HAIRLINE_ON = 36
+local HAIRLINE_HEADER = {{1, 0, 1}, {0, 1, 0}, {1, 0, 1}, {0, 1, 0}, {0, 0, 0}, {1, 1, 1}}
+local HAIRLINE_SLOTS = 5
+local HAIRLINE_BYTES = 165
+local HAIRLINE_CELLS = 440          -- 165 bytes * 8 bits / 3 bits per cell
+local HAIRLINE_QUESTION_SLOTS = 4   -- a question takes at most four slots; one stays for quest pages
 local HAIRLINE_QUESTION_PASSES = 3  -- a question frame stays 0.4s; three passes outlast a slow sample
 local PAGE_VERSION = 80             -- second-row page frames
 local PAGE_IDS = 6                  -- quest ids per page
@@ -133,7 +136,7 @@ function BackstageForeverLiveIdentity(guid)
     return h
 end
 -- Pure: state table -> 27 payload bytes (1-based array). See src/core/live-bridge.cjs.
--- version: 4 (compact), 3 (safe) or 5 (hairline); the byte layout is the same.
+-- version: 4 (compact), 3 (safe) or 6 (hairline); the byte layout is the same.
 function BackstageForeverLivePayload(s,version)
     s=type(s)=='table' and s or {}
     local b={}
@@ -299,9 +302,9 @@ function BackstageForeverLiveCompactCells(bytes,header)
     if header then for i,m in ipairs(COMPACT_HEADER) do cells[i]={m[1],m[2],m[3]} end end
     return levelCells(cells,bytes,PAYLOAD_BYTES,COMPACT_CELLS,LEVELS)
 end
--- Pure: the 27-byte frame and up to six pages (kinds 1-4, unchanged formats) -> 192 hairline bytes:
--- b1-27 frame, then six 27-byte slots (unused slots stay zero), b190 the number of pages,
--- b191-192 CRC-16 of b1-190.
+-- Pure: the 27-byte frame and up to five pages (kinds 1-4, unchanged formats) -> 165 hairline bytes:
+-- b1-27 frame, then five 27-byte slots (unused slots stay zero), b163 the number of pages,
+-- b164-165 CRC-16 of b1-163.
 function BackstageForeverLiveHairlineFrame(main,pages)
     local b={}
     for i=1,HAIRLINE_BYTES do b[i]=0 end
@@ -318,11 +321,17 @@ function BackstageForeverLiveHairlineFrame(main,pages)
     b[HAIRLINE_BYTES-1]=floor(c/256) b[HAIRLINE_BYTES]=c%256
     return b
 end
--- Pure: 192 hairline bytes -> 8 header cells and 256 near-black payload cells.
+-- Pure: 165 hairline bytes -> 6 header cells and 440 payload cells, each channel 0 or HAIRLINE_ON.
 function BackstageForeverLiveHairlineCells(bytes)
     local cells={}
-    for i,h in ipairs(HAIRLINE_HEADER) do cells[i]={HAIRLINE_LEVELS[h[1]+1],HAIRLINE_LEVELS[h[2]+1],HAIRLINE_LEVELS[h[3]+1]} end
-    return levelCells(cells,bytes,HAIRLINE_BYTES,HAIRLINE_CELLS,HAIRLINE_LEVELS)
+    for i,h in ipairs(HAIRLINE_HEADER) do cells[i]={h[1]*HAIRLINE_ON,h[2]*HAIRLINE_ON,h[3]*HAIRLINE_ON} end
+    local bits={}
+    for i=1,HAIRLINE_BYTES do
+        local v=tonumber(bytes and bytes[i]) or 0
+        for k=7,0,-1 do local p=2^k bits[#bits+1]=floor(v/p)%2 end
+    end
+    for c=0,HAIRLINE_CELLS-1 do cells[#cells+1]={(bits[c*3+1] or 0)*HAIRLINE_ON,(bits[c*3+2] or 0)*HAIRLINE_ON,(bits[c*3+3] or 0)*HAIRLINE_ON} end
+    return cells
 end
 -- Pure: mode ('hairline' default, 'compact', 'safe'; true/false mean safe/compact as before 0.38)
 -- and corner -> strip geometry in physical pixels. Corner strips: row 1 is the frame, row 2 the
@@ -569,7 +578,7 @@ function BackstageForeverLiveQuestion(text)
     pageClock=99 quiet=0
     return id,#pages
 end
--- Each question is shown this many times: the hairline shows it in 0.4s frames of up to five
+-- Each question is shown this many times: the hairline shows it in 0.4s frames of up to four
 -- pages, so it repeats once more than the corner strips to outlast a slow capture.
 local function passes() return shape and shape.mode=='hairline' and HAIRLINE_QUESTION_PASSES or QUESTION_PASSES end
 -- What is on its way: nil when no question waits, else {id, page, count, pass, passes, waiting}.
@@ -632,7 +641,7 @@ local function questPage()
     end
     return pages[pageIndex],#pages
 end
--- Hairline: the six pages of the next frame. A question first (up to five pages), then moments
+-- Hairline: the five pages of the next frame. A question first (up to four pages), then moments
 -- still to be shown (each frame counts as one showing), then the quest pages in turn.
 local function hairlineFrame()
     local out={}

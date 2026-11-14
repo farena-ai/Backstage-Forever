@@ -44,18 +44,24 @@ const QUESTION_PARTIAL_MS = 90000, QUESTION_SEEN_MS = 30 * 60000;
 const QUESTION_INTERVAL_MS = 120, QUESTION_FAST_MS = 30000;
 // The game window's client rectangle is reported every few samples (for the in-game answer panel).
 const RECT_FRESH_MS = 15000;
-// Version 5 ("hairline", addon 0.38+, the default): one physical pixel tall along the top edge of
-// the game client area, from the left. 2px cells at near-black levels 0/12/24/36 per channel (two
-// bits), so it reads as a thin dark border. 8 header cells (four alternating dark magenta / dark
-// green sync cells, then one grey reference cell per level, measured per channel), then 256 cells =
-// 192 bytes: the 27-byte main payload (version 5), six 27-byte page slots (kinds 1-4, unchanged
-// formats; unused slots zero), the page count and a CRC-16 over bytes 0-189 (the count included). A capture taken while
-// the line was being redrawn fails the CRC and is refused whole (never decoded half old, half new).
-const HAIRLINE = { version: 5, cell: 2, header: 8, levels: [0, 12, 24, 36], slots: 6, bytes: 192, cells: 256, minGap: 4 };
-const HAIRLINE_HEADER = [[3, 0, 3], [0, 3, 0], [3, 0, 3], [0, 3, 0], [0, 0, 0], [1, 1, 1], [2, 2, 2], [3, 3, 3]];
-const HAIRLINE_WIDTH = (HAIRLINE.header + HAIRLINE.cells) * HAIRLINE.cell; // 528 physical pixels
+// Version 6 ("hairline", addon 0.38+, the default): one physical pixel tall along the top edge of
+// the game client area, from the left, 892 pixels wide. 2px cells, one bit per colour channel: off
+// is 0 and on is a dark 36 of 255, so it reads as a thin dark border. Six header cells (dark magenta,
+// dark green, magenta, green, black, dark grey) give each channel's measured "off" and "on"; a value
+// is on above their midpoint. That threshold sits far from what real clients do to near-black
+// colours (a gamma S-curve, saturated channels boosted about 1.2x, up to +9 bleeding into an off
+// channel beside a lit one), which broke the four-level version 5 of early 0.38 test builds.
+// Then 440 cells = 165 bytes: the 27-byte main payload (version 6), five 27-byte page slots (kinds
+// 1-4, unchanged formats; unused slots zero), the page count and a CRC-16 over bytes 0-162. A
+// capture taken while the line was being redrawn fails the CRC and is refused whole.
+const HAIRLINE = { version: 6, cell: 2, header: 6, on: 36, slots: 5, bytes: 165, cells: 440, minGap: 12 };
+const HAIRLINE_HEADER = [[1, 0, 1], [0, 1, 0], [1, 0, 1], [0, 1, 0], [0, 0, 0], [1, 1, 1]];
+const HAIRLINE_WIDTH = (HAIRLINE.header + HAIRLINE.cells) * HAIRLINE.cell; // 892 physical pixels
 // Once a hairline is found the worker copies only the top-left of the client area.
-const HAIRLINE_REGION = { width: 544, height: 4 };
+const HAIRLINE_REGION = { width: 900, height: 4 };
+// The top-left search region is wide enough for the whole hairline; other corners keep REGION.
+const TOPLEFT_REGION = { width: 912, height: 28 };
+const searchRegion = (corner) => (corner === "topleft" ? TOPLEFT_REGION : REGION);
 
 // Mirrors BackstageForeverLiveIdentity: binds frames to the saved character (UnitGUID).
 function identityHash(guid) {
@@ -191,26 +197,31 @@ function encodeHairlineFrame(main, pages = []) {
   b[HAIRLINE.bytes - 2] = c >> 8; b[HAIRLINE.bytes - 1] = c & 255;
   return b;
 }
-// Mirror of BackstageForeverLiveHairlineCells: 192 bytes -> 8 header + 256 payload cells.
+// Mirror of BackstageForeverLiveHairlineCells: 165 bytes -> 6 header + 440 payload cells, one bit per channel.
 function encodeHairlineCells(frame) {
-  const L = HAIRLINE.levels, bits = bitsOf(frame), cells = HAIRLINE_HEADER.map((h) => h.map((i) => L[i]));
-  for (let c = 0; c < HAIRLINE.cells; c++) cells.push([0, 1, 2].map((ch) => { const i = c * 6 + ch * 2; return L[(bits[i] || 0) * 2 + (bits[i + 1] || 0)]; }));
+  const on = HAIRLINE.on, bits = bitsOf(frame), cells = HAIRLINE_HEADER.map((h) => h.map((b) => b * on));
+  for (let c = 0; c < HAIRLINE.cells; c++) cells.push([0, 1, 2].map((ch) => (bits[c * 3 + ch] || 0) * on));
   return cells;
 }
-// Hairline levels measured from the four grey reference cells, or null when the sync cells are not
-// there or neighbouring levels are too close to tell apart on this screen.
-function hairlineLevels(cells) {
+// Per-channel thresholds (midpoint of the measured off and on values in the header), or null when
+// the header is not there, off and on are too close, or a sync cell reads wrong.
+function hairlineThresholds(cells) {
   if (!Array.isArray(cells) || cells.length < HAIRLINE.header) return null;
-  const levels = [0, 1, 2].map((ch) => cells.slice(4, 8).map((c) => c[ch]));
-  for (const l of levels) for (let i = 1; i < 4; i++) if (l[i] - l[i - 1] < HAIRLINE.minGap) return null;
-  for (let c = 0; c < 4; c++) for (let ch = 0; ch < 3; ch++) if (nearest(cells[c][ch], levels[ch]) !== HAIRLINE_HEADER[c][ch]) return null;
-  return levels;
+  const head = cells.slice(0, HAIRLINE.header), th = [];
+  for (let ch = 0; ch < 3; ch++) {
+    const off = head.filter((_, i) => !HAIRLINE_HEADER[i][ch]).map((c) => c[ch]), on = head.filter((_, i) => HAIRLINE_HEADER[i][ch]).map((c) => c[ch]);
+    const lo = Math.max(...off), hi = Math.min(...on);
+    if (hi - lo < HAIRLINE.minGap) return null;
+    th.push((off.reduce((a, b) => a + b, 0) / off.length + on.reduce((a, b) => a + b, 0) / on.length) / 2);
+  }
+  return th;
 }
 // Header + payload cells -> { bytes (main payload), pages: [page bytes...] }, or null. The whole
 // frame is refused when its CRC-16, the main payload or any page fails its own check.
-function decodeHairlineCells(cells, levels = hairlineLevels(cells)) {
-  if (!levels || cells.length < HAIRLINE.header + HAIRLINE.cells) return null;
-  const bits = bitsFromLevels(cells.slice(HAIRLINE.header, HAIRLINE.header + HAIRLINE.cells), levels);
+function decodeHairlineCells(cells, th = hairlineThresholds(cells)) {
+  if (!th || cells.length < HAIRLINE.header + HAIRLINE.cells) return null;
+  const bits = [];
+  for (const c of cells.slice(HAIRLINE.header, HAIRLINE.header + HAIRLINE.cells)) for (let ch = 0; ch < 3; ch++) bits.push(c[ch] > th[ch] ? 1 : 0);
   const b = new Uint8Array(HAIRLINE.bytes);
   for (let i = 0; i < HAIRLINE.bytes; i++) { let v = 0; for (let k = 0; k < 8; k++) v = (v << 1) | bits[i * 8 + k]; b[i] = v; }
   if (crc16(b, HAIRLINE.bytes - 2) !== ((b[HAIRLINE.bytes - 2] << 8) | b[HAIRLINE.bytes - 1])) return null;
@@ -366,10 +377,10 @@ function decodeHairline(img) {
     for (const pitch of [2, 1, 3, 4]) {
       for (let x0 = 0; x0 < Math.min(4, pitch + 2); x0++) {
         const head = sampleRow(rgb, width, x0, y, pitch, HAIRLINE.header);
-        const levels = head && hairlineLevels(head);
-        if (!levels) continue;
+        const th = head && hairlineThresholds(head);
+        if (!th) continue;
         const cells = sampleRow(rgb, width, x0, y, pitch, HAIRLINE.header + HAIRLINE.cells);
-        const d = cells && decodeHairlineCells(cells, levels);
+        const d = cells && decodeHairlineCells(cells, th);
         if (d) return { bytes: d.bytes, pages: d.pages, page: d.pages[0] || null, origin: { x: x0, y }, pitch, version: HAIRLINE.version, mode: "hairline", footprint: { width: (HAIRLINE.header + HAIRLINE.cells) * pitch, height: 1 } };
       }
     }
@@ -657,7 +668,7 @@ while ($true) {
 
 class LiveBridge {
   // capture: "auto" (the game window's own picture, falling back to the screen) or "screen".
-  constructor({ dataDir = null, spawn = childProcess.spawn, platform = process.platform, processName = "Wow", processId = null, intervalMs = 500, now = Date.now, capture = "auto" } = {}) {
+  constructor({ dataDir = null, spawn = childProcess.spawn, platform = process.platform, processName = "Wow", processId = null, intervalMs = 500, now = Date.now, capture = "auto", dumpDir = undefined } = {}) {
     Object.assign(this, { dataDir, spawn, platform, processName, processId, intervalMs, now, capture });
     this.listeners = new Set();
     this.child = null;
@@ -666,7 +677,9 @@ class LiveBridge {
     this.enabled = this.readPreference();
     this.buffer = "";
     // Capture only the corner where the strip was last seen; walk the others only when it is lost.
-    this.corner = "topleft"; this.region = REGION; this.misses = 0; this.strip = null; this.beat = null;
+    this.corner = "topleft"; this.region = TOPLEFT_REGION; this.misses = 0; this.strip = null; this.beat = null;
+    // BF_LIVE_DUMP=<dir>: save the raw top rows of a hairline that is there but does not decode.
+    this.dumpDir = dumpDir === undefined ? process.env.BF_LIVE_DUMP || null : dumpDir; this.dumps = 0; this.dumpedAt = 0;
   }
   prefFile() { return this.dataDir ? path.join(this.dataDir, "live-link.json") : null; }
   readPreference() {
@@ -715,7 +728,7 @@ class LiveBridge {
     clearTimeout(this.slowTimer); this.sampling = null;
   }
   /** Moves the worker's capture to another corner or size (no-op when unchanged). */
-  setRegion(corner, region = REGION) {
+  setRegion(corner, region = searchRegion(corner)) {
     if (!CORNERS.includes(corner)) return;
     if (corner === this.corner && region.width === this.region.width && region.height === this.region.height) return;
     this.corner = corner; this.region = region;
@@ -759,12 +772,13 @@ class LiveBridge {
         // A hairline needs only the top-left of the client area, a compact strip a small slice of its corner.
         if (decoded.mode === "hairline") this.setRegion(corner, HAIRLINE_REGION);
         else if (decoded.mode === "compact" && decoded.pitch <= 4) this.setRegion(corner, COMPACT_REGION);
-        else this.setRegion(corner, REGION);
+        else this.setRegion(corner, searchRegion(corner));
       } else {
         const hint = stripHint(img, { corner });
         this.signal = hint || "no-signal";
-        if (this.region !== REGION) { this.setRegion(corner, REGION); this.misses = 0; }
-        else if (!hint && ++this.misses >= 2) { this.misses = 0; this.setRegion(CORNERS[(CORNERS.indexOf(corner) + 1) % CORNERS.length], REGION); }
+        if (hint === "hairline-unreadable") this.dump(img, capture);
+        if (this.region !== searchRegion(corner)) { this.setRegion(corner, searchRegion(corner)); this.misses = 0; }
+        else if (!hint && ++this.misses >= 2) { this.misses = 0; const next = CORNERS[(CORNERS.indexOf(corner) + 1) % CORNERS.length]; this.setRegion(next, searchRegion(next)); }
       }
     } else if (line.startsWith("rect ")) {
       const [x, y, width, height] = line.split(" ").slice(1).map(Number);
@@ -775,6 +789,19 @@ class LiveBridge {
       if (line !== "error" && line !== "small") this.gameRect = null;
     }
     if (changed || JSON.stringify([this.signal, this.frame?.seq]) !== before) this.emit();
+  }
+  /**
+   * Debugging (BF_LIVE_DUMP=<dir>): writes the top three rows of a capture whose hairline did not
+   * decode as hairline-<time>.json ({ at, width, height, capture, rows: [[[r,g,b], ...], ...] }),
+   * at most one every 10 seconds and 20 per run. Only those pixels; nothing else is saved.
+   */
+  dump(img, capture = null) {
+    if (!this.dumpDir || this.dumps >= 20 || this.now() - this.dumpedAt < 10000) return null;
+    this.dumpedAt = this.now(); this.dumps++;
+    const rows = [];
+    for (let y = 0; y < Math.min(3, img.height); y++) { const row = []; for (let x = 0; x < Math.min(img.width, HAIRLINE_WIDTH + 16); x++) row.push(px(img.rgb, img.width, x, y)); rows.push(row); }
+    const file = path.join(this.dumpDir, `hairline-${new Date(this.now()).toISOString().replace(/[:.]/g, "-")}.json`);
+    try { fs.mkdirSync(this.dumpDir, { recursive: true }); fs.writeFileSync(file, JSON.stringify({ at: new Date(this.now()).toISOString(), width: img.width, height: img.height, capture, rows })); return file; } catch { return null; }
   }
   /** Collects second-row pages; returns true when a complete set of one kind changed. */
   page(pg) {
@@ -893,4 +920,4 @@ class LiveBridge {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { HAIRLINE, HAIRLINE_REGION, HAIRLINE_WIDTH, crc16, encodeHairlineFrame, encodeHairlineCells, decodeHairlineCells, decodeHairline, hairlineHint, encodeQuestionPages, parseQuestionPage, assembleQuestion, QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES, QUESTION_MAX_CHARS, QUESTION_INTERVAL_MS, encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };
+module.exports = { HAIRLINE, HAIRLINE_REGION, HAIRLINE_WIDTH, TOPLEFT_REGION, hairlineThresholds, crc16, encodeHairlineFrame, encodeHairlineCells, decodeHairlineCells, decodeHairline, hairlineHint, encodeQuestionPages, parseQuestionPage, assembleQuestion, QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES, QUESTION_MAX_CHARS, QUESTION_INTERVAL_MS, encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };

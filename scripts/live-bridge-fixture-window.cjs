@@ -1,16 +1,16 @@
 "use strict";
 // Electron fixture for scripts/live-capture-smoke.cjs: a "game" window that paints a live hairline
-// (version 5) along the top edge of its client area, 1 CSS px = 1 device px, sRGB, with the heartbeat
+// (version 6) along the top edge of its client area, 1 CSS px = 1 device px, sRGB, with the heartbeat
 // counting up every 0.5s like the addon. Commands (minimize, restore, quit) come through the file
 // named by BF_FIXTURE_CTL. Prints "ready <pid>" once painted.
 const { app, BrowserWindow, screen, Menu } = require("electron");
 const L = require("../src/core/live-bridge.cjs");
 Menu.setApplicationMenu(null);
 app.commandLine.appendSwitch("force-color-profile", "srgb");
-const width = Number(process.env.BF_FIXTURE_W) || 900, height = Number(process.env.BF_FIXTURE_H) || 300;
+const width = Number(process.env.BF_FIXTURE_W) || 1200, height = Number(process.env.BF_FIXTURE_H) || 300;
 function frame(beat) {
   const main = new Array(27).fill(0);
-  Object.assign(main, { 0: 5, 1: 9, 2: 1454 >> 8, 3: 1454 & 255, 4: 0x6e, 5: 0x9d, 6: 0xa7, 7: 0x81, 8: 12, 9: 100, 10: 64, 15: 255, 16: 255, 23: 4242 >> 8, 24: 4242 & 255, 25: beat & 255 });
+  Object.assign(main, { 0: 6, 1: 9, 2: 1454 >> 8, 3: 1454 & 255, 4: 0x6e, 5: 0x9d, 6: 0xa7, 7: 0x81, 8: 12, 9: 100, 10: 64, 15: 255, 16: 255, 23: 4242 >> 8, 24: 4242 & 255, 25: beat & 255 });
   main[26] = L.crc8(main, 26);
   const log = L.encodePages(1, [{ id: 93739, complete: true }, { id: 812, complete: false }], 4242);
   return L.encodeHairlineCells(L.encodeHairlineFrame(main, log));

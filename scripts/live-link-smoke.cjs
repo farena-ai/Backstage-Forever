@@ -53,15 +53,15 @@ const { defaultState } = require("../src/core/validation.cjs");
     // through the real decoder; then WoW is minimized, then the line is there but unreadable.
     await app.evaluate(() => {
       const L = liveLib;
-      const b = liveFixture.bridge, width = 544, height = 4, rgb = Buffer.alloc(width * height * 3, 140);
+      const b = liveFixture.bridge, width = 912, height = 4, rgb = Buffer.alloc(width * height * 3, 140);
       const main = new Array(27).fill(0);
-      Object.assign(main, { 0: 5, 1: 9, 2: 1456 >> 8, 3: 1456 & 255, 4: 0x8d, 5: 0x0f, 6: 0x80, 7: 0x83, 8: 12, 9: 100, 10: 64, 15: 255, 16: 255, 25: 1 });
+      Object.assign(main, { 0: 6, 1: 9, 2: 1456 >> 8, 3: 1456 & 255, 4: 0x8d, 5: 0x0f, 6: 0x80, 7: 0x83, 8: 12, 9: 100, 10: 64, 15: 255, 16: 255, 25: 1 });
       main[26] = L.crc8(main, 26);
       L.encodeHairlineCells(L.encodeHairlineFrame(main, [])).forEach((c, i) => { for (let dx = 0; dx < 2; dx++) { const o = (i * 2 + dx) * 3; rgb[o] = c[0]; rgb[o + 1] = c[1]; rgb[o + 2] = c[2]; } });
       b.frame = null; b.line(`ok topleft ${width} ${height} ${rgb.toString("base64")} pw`);
     });
     await page.locator("[data-live-link-line]").getByText(/^Live · Thunder Bluff 55\.1, 50\.2 · level 12$/).waitFor();
-    await page.locator("[data-live-link-strip]").getByText("Mode: Hairline · Placement: top edge · 528×1 px · read from the game window (works behind other windows)").waitFor();
+    await page.locator("[data-live-link-strip]").getByText("Mode: Hairline · Placement: top edge · 892×1 px · read from the game window (works behind other windows)").waitFor();
     await page.screenshot({ path: path.join(capture, "live-link-hairline.png") });
     await app.evaluate(() => { const b = liveFixture.bridge; b.frame.receivedAt -= 120000; b.line("minimized"); });
     await page.locator("[data-live-link-line]").getByText(/^WoW is minimized — live updates are paused and resume when you bring it back\. Last live: Thunder Bluff 55\.1, 50\.2 · level 12 · 2 min ago\.$/).waitFor();

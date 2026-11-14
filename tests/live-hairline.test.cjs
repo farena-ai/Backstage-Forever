@@ -1,9 +1,10 @@
 "use strict";
-// 0.38 (H7) hidden live link: the "hairline" strip (version 5), one physical pixel tall along the
-// top edge of the game in near-black shades, carrying the frame and six pages at once behind a
-// CRC-16. The Lua encoder and the app decoder must agree byte for byte for every page kind,
-// survive shifted levels, refuse torn frames whole, be told apart from the corner strips, and the
-// app must say "paused" (not "couldn't read") while WoW is minimized or gone.
+// 0.38 (H7) hidden live link: the "hairline" strip (version 6), one physical pixel tall along the
+// top edge of the game, one bit per channel (0 or a dark 36), carrying the frame and five pages at
+// once behind a CRC-16. The Lua encoder and the app decoder must agree byte for byte for every page
+// kind, survive what the real client does to near-black colours (a model fitted from a real capture
+// of the four-level version 5, which it broke), refuse torn frames whole, be told apart from the
+// corner strips, and the app must say "paused" (not "couldn't read") while WoW is minimized or gone.
 const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), path = require("node:path"), vm = require("node:vm");
 const { spawnSync } = require("node:child_process");
@@ -24,23 +25,23 @@ const QUESTION = "Où est le maître de vol à Orgrimmar ? 十字路口";
 // One Lua run: a frame with every page kind, its bytes and its cells.
 const LUA = (() => {
   const out = lua(`dofile('addon/BackstageForever/BackstageForeverLive.lua')
-local main=BackstageForeverLivePayload(${STATE},5)
+local main=BackstageForeverLivePayload(${STATE},6)
 local log=BackstageForeverLivePages(1,{{id=93739,complete=true},{id=812,complete=false},{id=840},{id=844},{id=845},{id=846},{id=869}},${ID})
 local turned=BackstageForeverLivePages(2,{786,788},${ID})
 local moments=BackstageForeverLiveMomentPages({{type=5,seq=3,at=90,a=186,b=75,c=15},{type=2,seq=2,at=80,a=448,b=17,c=1}},${ID},100)
 local q=BackstageForeverLiveQuestionPages(9,${luaString(QUESTION)},${ID})
-local pages={log[1],log[2],turned[1],moments[1],q[1],q[2]}
+local pages={log[1],turned[1],moments[1],q[1],q[2]}
 local f=BackstageForeverLiveHairlineFrame(main,pages)
 ${json("main")} ${json("f")} ${json("BackstageForeverLiveHairlineCells(f)")}
 for _,p in ipairs(pages) do ${json("p")} end
 local e=BackstageForeverLiveHairlineFrame(main,{}) ${json("e")}
 local L=BackstageForeverLiveLayout() print(L.mode..' '..L.width..' '..L.height..' '..L.cell..' '..L.cellH..' '..L.point..' '..L.row1..' '..L.row2)
 local P=BackstageForeverLiveLayout('hairline','bottomright') print(P.point)`).split("\n");
-  return { main: JSON.parse(out[0]), frame: JSON.parse(out[1]), cells: JSON.parse(out[2]), pages: out.slice(3, 9).map(JSON.parse), empty: JSON.parse(out[9]), layout: out[10], cornerPoint: out[11] };
+  return { main: JSON.parse(out[0]), frame: JSON.parse(out[1]), cells: JSON.parse(out[2]), pages: out.slice(3, 8).map(JSON.parse), empty: JSON.parse(out[8]), layout: out[9], cornerPoint: out[10] };
 })();
 
 // A game picture (bright, varied) with `cells` drawn along row `y` from x0, `pitch` pixels a cell.
-function image(cells, { width = L.REGION.width, height = L.REGION.height, pitch = 2, x0 = 0, y = 0, map = null, noise = 0, scene = (x, yy) => [90 + ((x * 7 + yy * 13) % 70), 110 + ((x * 3) % 50), 80 + ((yy * 11) % 60)] } = {}) {
+function image(cells, { width = L.TOPLEFT_REGION.width, height = L.TOPLEFT_REGION.height, pitch = 2, x0 = 0, y = 0, map = null, noise = 0, scene = (x, yy) => [90 + ((x * 7 + yy * 13) % 70), 110 + ((x * 3) % 50), 80 + ((yy * 11) % 60)] } = {}) {
   const rgb = Buffer.alloc(width * height * 3);
   for (let yy = 0; yy < height; yy++) for (let x = 0; x < width; x++) { const o = (yy * width + x) * 3, s = scene(x, yy); rgb[o] = s[0]; rgb[o + 1] = s[1]; rgb[o + 2] = s[2]; }
   let seed = 99;
@@ -51,65 +52,131 @@ function image(cells, { width = L.REGION.width, height = L.REGION.height, pitch 
 }
 const asArray = (b) => Array.from(b);
 
-test("Lua hairline frame and cells match the app encoder byte for byte; layout is 528 x 1 on the top edge", () => {
+test("Lua hairline frame and cells match the app encoder byte for byte; layout is 892 x 1 on the top edge", () => {
   const { main, frame, cells, pages, empty } = LUA;
-  assert.equal(main[0], 5, "the frame payload says version 5");
-  assert.equal(frame.length, 192); assert.equal(cells.length, 264);
+  assert.equal(main[0], 6, "the frame payload says version 6");
+  assert.equal(frame.length, 165); assert.equal(cells.length, 446);
   assert.deepEqual(L.encodeHairlineFrame(main, pages), frame);
   assert.deepEqual(L.encodeHairlineCells(frame), cells);
-  assert.equal(frame[189], 6, "six pages"); assert.equal(empty[189], 0);
-  assert.equal(L.crc16(frame, 190), (frame[190] << 8) | frame[191]);
+  assert.equal(frame[162], 5, "five pages"); assert.equal(empty[162], 0);
+  assert.equal(L.crc16(frame, 163), (frame[163] << 8) | frame[164]);
   assert.equal(L.crc16(Buffer.from("123456789"), 9), 0x29b1, "CRC-16/CCITT-FALSE check value");
-  assert.deepEqual(cells.slice(0, 8), [[36, 0, 36], [0, 36, 0], [36, 0, 36], [0, 36, 0], [0, 0, 0], [12, 12, 12], [24, 24, 24], [36, 36, 36]]);
-  assert.ok(cells.every((c) => c.every((v) => L.HAIRLINE.levels.includes(v))), "near-black levels only (36 at most)");
-  assert.equal(LUA.layout, "hairline 528 1 2 1 TOPLEFT 264 0");
+  assert.deepEqual(cells.slice(0, 6), [[36, 0, 36], [0, 36, 0], [36, 0, 36], [0, 36, 0], [0, 0, 0], [36, 36, 36]]);
+  assert.ok(cells.every((c) => c.every((v) => v === 0 || v === 36)), "one bit a channel: 0 or a dark 36");
+  assert.equal(LUA.layout, "hairline 892 1 2 1 TOPLEFT 446 0");
   assert.equal(LUA.cornerPoint, "TOPLEFT", "the hairline ignores the corner setting");
-  assert.equal(L.HAIRLINE_WIDTH, 528);
+  assert.equal(L.HAIRLINE_WIDTH, 892, "fits a 1280-wide screen");
 });
 
 test("every page kind round-trips through a captured hairline: quest log, turned in, moments, question", () => {
   const d = L.decodeStrip(image(LUA.cells));
   assert.ok(d, "decodes");
-  assert.equal(d.mode, "hairline"); assert.equal(d.version, 5); assert.equal(d.pitch, 2);
-  assert.deepEqual(d.origin, { x: 0, y: 0 }); assert.deepEqual(d.footprint, { width: 528, height: 1 });
+  assert.equal(d.mode, "hairline"); assert.equal(d.version, 6); assert.equal(d.pitch, 2);
+  assert.deepEqual(d.origin, { x: 0, y: 0 }); assert.deepEqual(d.footprint, { width: 892, height: 1 });
   const f = L.parsePayload(d.bytes);
-  assert.equal(f.version, 5); assert.equal(f.position.mapId, 1454); assert.equal(f.characterHash, ID); assert.equal(f.heartbeat, 19);
+  assert.equal(f.version, 6); assert.equal(f.position.mapId, 1454); assert.equal(f.characterHash, ID); assert.equal(f.heartbeat, 19);
   assert.deepEqual(f.quest, { id: 93739, objectivesDone: [1, 3] });
-  assert.equal(d.pages.length, 6);
+  assert.equal(d.pages.length, 5);
   assert.deepEqual(d.pages.map(asArray), LUA.pages);
-  const log0 = L.parsePage(d.pages[0]), log1 = L.parsePage(d.pages[1]);
+  const log0 = L.parsePage(d.pages[0]);
   assert.equal(log0.kind, "questLog"); assert.equal(log0.count, 2); assert.deepEqual(log0.ids[0], { id: 93739, complete: true });
-  assert.deepEqual(log1.ids, [{ id: 869, complete: false }]);
-  assert.deepEqual(L.parsePage(d.pages[2]).ids.map((e) => e.id), [786, 788]);
-  assert.deepEqual(L.parseMomentPage(d.pages[3]).moments.map((m) => [m.type, m.seq, m.ageS, m.a]), [[5, 3, 10, 186], [2, 2, 20, 448]]);
-  const q = [L.parseQuestionPage(d.pages[4]), L.parseQuestionPage(d.pages[5])];
+  assert.deepEqual(L.parsePage(d.pages[1]).ids.map((e) => e.id), [786, 788]);
+  assert.deepEqual(L.parseMomentPage(d.pages[2]).moments.map((m) => [m.type, m.seq, m.ageS, m.a]), [[5, 3, 10, 186], [2, 2, 20, 448]]);
+  const q = [L.parseQuestionPage(d.pages[3]), L.parseQuestionPage(d.pages[4])];
   assert.equal(q[0].count, 4, `${Buffer.byteLength(QUESTION)} bytes = four pages`);
   // An empty frame (no pages yet) decodes too.
   const e = L.decodeStrip(image(L.encodeHairlineCells(LUA.empty)));
   assert.ok(e && e.mode === "hairline"); assert.deepEqual(e.pages, []); assert.equal(e.page, null);
 });
 
-test("calibration: shifted, scaled or noisy levels still decode; levels too close are refused with a hint to use safe mode", () => {
+// What the real client did to the version 5 hairline (WoW Forever, PrintWindow capture, 3440x1440):
+// grey references 0/12/24/36 came back as 4/10/30/48 (an S-shaped gamma curve), a lone lit channel
+// was boosted more than greys (36 -> 51..59), and channels meant to be 0 read up to 9 beside a lit
+// one. This model applies all of that, plus +-2 noise, to every cell of a line.
+function realClient(cells, { seed = 7, boost = 1.2, bleed = [3, 9], noise = 2 } = {}) {
+  const curve = [[0, 4], [12, 10], [24, 30], [36, 48], [255, 255]];
+  const gamma = (v) => { for (let i = 1; i < curve.length; i++) if (v <= curve[i][0]) { const [x0, y0] = curve[i - 1], [x1, y1] = curve[i]; return y0 + ((v - x0) * (y1 - y0)) / (x1 - x0); } return 255; };
+  let r = seed;
+  const rnd = () => { r = (r * 1103515245 + 12345) % 2147483648; return r / 2147483648; };
+  return cells.map((c) => {
+    const lit = c.filter((v) => v > 0).length;
+    return c.map((v) => {
+      let out = gamma(v);
+      if (v > 0 && lit === 1) out *= boost; else if (v > 0 && lit === 2) out *= 1 + (boost - 1) / 2;
+      if (v === 0 && lit > 0) out += bleed[0] + rnd() * (bleed[1] - bleed[0]);
+      return Math.max(0, Math.min(255, Math.round(out + (rnd() * 2 - 1) * noise)));
+    });
+  });
+}
+
+test("the real client's colour handling (fitted from a capture of the four-level line) no longer breaks the hairline", () => {
+  for (let seed = 1; seed <= 40; seed++) {
+    const d = L.decodeStrip(image(realClient(LUA.cells, { seed })));
+    assert.ok(d && d.mode === "hairline", `seed ${seed}`);
+    assert.deepEqual(asArray(d.bytes), LUA.main); assert.deepEqual(d.pages.map(asArray), LUA.pages);
+  }
+  // Harsher than observed: more boost, more bleed, more noise.
+  for (const opts of [{ boost: 1.5 }, { bleed: [6, 14] }, { noise: 5 }, { boost: 1.4, bleed: [5, 12], noise: 4 }]) {
+    const d = L.decodeStrip(image(realClient(LUA.cells, opts)));
+    assert.ok(d && d.pages.length === 5, JSON.stringify(opts));
+  }
+  // The four-level version 5 line of early test builds really was unreadable under the same model
+  // (its 12 and 24 shades land beside the bleed and the boost): the reason for version 6.
+  const levels = [0, 12, 24, 36], v5 = [[36, 0, 36], [0, 36, 0], [36, 0, 36], [0, 36, 0], [0, 0, 0], [12, 12, 12], [24, 24, 24], [36, 36, 36]];
+  for (let i = 0; i < 400; i++) v5.push([0, 1, 2].map((ch) => levels[(i * 7 + ch * 3 + (i >> 3)) % 4]));
+  const hit = realClient(v5);
+  const nearest = (v, l) => l.reduce((b, x, k) => (Math.abs(v - x) < Math.abs(v - l[b]) ? k : b), 0);
+  const refs = [0, 1, 2].map((ch) => hit.slice(4, 8).map((c) => c[ch]));
+  let wrong = 0;
+  for (let i = 8; i < v5.length; i++) for (let ch = 0; ch < 3; ch++) if (levels[nearest(hit[i][ch], refs[ch])] !== v5[i][ch]) wrong++;
+  assert.ok(wrong > 20, `four shades a channel misread under the model: ${wrong} channels`);
+});
+
+test("the header of the real capture (sync cells and the off/on references) calibrates the binary decoder", () => {
+  const { row } = JSON.parse(fs.readFileSync(path.join(root, "tests/fixtures/live-hairline-v5-real-row0.json"), "utf8"));
+  assert.equal(row.length, 400);
+  for (let i = 0; i < row.length; i += 2) assert.deepEqual(row[i], row[i + 1], `2px cells are pixel-exact (cell ${i / 2})`);
+  const cell = (i) => row[i * 2];
+  // Version 5 header: magenta, green, magenta, green, then greys 0, 12, 24, 36. Version 6 uses the
+  // same four sync cells, black and the dark grey "on" (36).
+  const head = [cell(0), cell(1), cell(2), cell(3), cell(4), cell(7)];
+  assert.deepEqual(head, [[51, 6, 50], [3, 56, 2], [51, 6, 50], [3, 56, 2], [4, 3, 3], [48, 47, 47]]);
+  const th = L.hairlineThresholds(head);
+  assert.ok(th, "calibrates");
+  for (const t of th) assert.ok(t > 22 && t < 32, `threshold ${t}`);
+  // Every channel the real client drew as "off" or bled into stays below; every lit one above.
+  const offs = row.flat().filter((v) => v < 20), ons = row.flat().filter((v) => v >= 45);
+  assert.ok(Math.max(...offs) < Math.min(...th) - 6 && Math.min(...ons) > Math.max(...th) + 12, "far from the threshold on both sides");
+  // A line built from exactly these measured colours decodes.
+  const real = (c) => [c[0] ? 51 : 4, c[1] ? 56 : 9, c[2] ? 50 : 3];
+  const built = [...head, ...LUA.cells.slice(6).map((c) => real(c.map((v) => (v ? 1 : 0))))];
+  const d = L.decodeStrip(image(built));
+  assert.ok(d && d.pages.length === 5);
+  // The old four-level line itself is (correctly) not decoded, and the app asks for /bf live safe.
+  const old = image(row.map((p) => p), { pitch: 1 });
+  assert.equal(L.decodeStrip(old), null);
+});
+
+test("calibration: shifted, scaled or noisy colours still decode; off and on too close are refused with a hint to use safe mode", () => {
   const shifts = {
-    "lifted +20": (v) => v + 20, "dimmed -0": (v) => Math.max(0, v * 0.6), "contrast x2": (v) => v * 2, "gamma 0.6": (v) => 255 * Math.pow(v / 255, 0.6),
-    "per-channel tint": null, "noise 2": "noise",
+    "lifted +20": (v) => v + 20, "dimmed x0.6": (v) => v * 0.6, "contrast x3": (v) => v * 3, "gamma 0.6": (v) => 255 * Math.pow(v / 255, 0.6),
+    "per-channel tint": null, "noise 6": "noise",
   };
   for (const [name, map] of Object.entries(shifts)) {
-    const opts = map === "noise" ? { noise: 2 } : map === null ? {} : { map };
+    const opts = map === "noise" ? { noise: 6 } : map === null ? {} : { map };
     let cells = LUA.cells;
     if (map === null) cells = cells.map((c) => [c[0] + 10, c[1] * 1.3, c[2] + 4]);
     const d = L.decodeStrip(image(cells, opts));
     assert.ok(d && d.mode === "hairline", name);
     assert.deepEqual(asArray(d.bytes), LUA.main, name);
-    assert.equal(d.pages.length, 6, name);
+    assert.equal(d.pages.length, 5, name);
   }
-  // Remote desktop crushing the darks: 0, 12 and 24 come out within 3 of each other.
-  const crush = (v) => (v < 30 ? v / 8 : v);
-  const crushed = image(LUA.cells, { map: crush });
-  assert.equal(L.decodeStrip(crushed), null);
-  assert.equal(L.stripHint(crushed), "hairline-unreadable");
-  // Lossy compression noise breaks the CRC: refused, with the same hint.
-  const noisy = image(LUA.cells, { noise: 9 });
+  // Remote desktop flattening the darks: off and on come out within 8 of each other.
+  const flat = image(LUA.cells, { map: (v) => 20 + v * 0.2 });
+  assert.equal(L.decodeStrip(flat), null);
+  assert.equal(L.stripHint(flat), "hairline-unreadable");
+  // Heavy compression noise breaks the CRC: refused, with the same hint.
+  const noisy = image(LUA.cells, { noise: 22 });
   assert.equal(L.decodeStrip(noisy), null);
   assert.equal(L.stripHint(noisy), "hairline-unreadable");
   // No line at all (live off, or an older addon not running) is not mistaken for one.
@@ -122,10 +189,10 @@ test("a capture torn between two frames never decodes as either mix: the whole f
   const other = L.encodeHairlineFrame([...LUA.main.slice(0, 26).map((v, i) => (i === 1 ? 8 : i === 25 ? 20 : v)), 0], []);
   // fix the inner payload CRC so only the whole-line checks can catch a mix
   const m2 = other.slice(0, 27); m2[26] = L.crc8(m2, 26);
-  const b = L.encodeHairlineCells(L.encodeHairlineFrame(m2, [LUA.pages[0], LUA.pages[2]])), a = LUA.cells;
+  const b = L.encodeHairlineCells(L.encodeHairlineFrame(m2, [LUA.pages[0], LUA.pages[1]])), a = LUA.cells;
   assert.ok(L.decodeStrip(image(b)), "the second frame alone decodes");
   let refused = 0;
-  for (let split = 9; split < 264; split++) {
+  for (let split = 7; split < 446; split++) {
     for (const [first, second] of [[a, b], [b, a]]) {
       const mixed = [...first.slice(0, split), ...second.slice(split)];
       const d = L.decodeStrip(image(mixed));
@@ -136,9 +203,9 @@ test("a capture torn between two frames never decodes as either mix: the whole f
       assert.ok(whole.some((w) => JSON.stringify(asArray(w.bytes)) === JSON.stringify(asArray(d.bytes)) && JSON.stringify(w.pages.map(asArray)) === JSON.stringify(d.pages.map(asArray))), `split at ${split} decoded a mix`);
     }
   }
-  assert.ok(refused > 400, `torn captures refused: ${refused}`);
+  assert.ok(refused > 700, `torn captures refused: ${refused}`);
   // Single changed cells anywhere fail the CRC-16.
-  for (let i = 8; i < 264; i += 7) { const bad = a.map((c) => [...c]); bad[i][i % 3] = bad[i][i % 3] === 0 ? 12 : 0; assert.equal(L.decodeStrip(image(bad)), null, `cell ${i}`); }
+  for (let i = 6; i < 446; i += 7) { const bad = a.map((c) => [...c]); bad[i][i % 3] = bad[i][i % 3] === 0 ? 36 : 0; assert.equal(L.decodeStrip(image(bad)), null, `cell ${i}`); }
 });
 
 test("auto-detect: hairline, compact and safe strips are told apart; the hairline only at the top-left", () => {
@@ -153,12 +220,12 @@ test("auto-detect: hairline, compact and safe strips are told apart; the hairlin
   assert.equal(L.decodeStrip(image(LUA.cells), { corner: "topright" }), null);
   // One pixel low (a client area that starts a row early) and 1px / 3px cells still decode.
   assert.equal(L.decodeStrip(image(LUA.cells, { y: 1 })).origin.y, 1);
-  for (const pitch of [1, 3]) assert.equal(L.decodeStrip(image(LUA.cells, { pitch, width: 900 })).pitch, pitch);
+  for (const pitch of [1, 3]) assert.equal(L.decodeStrip(image(LUA.cells, { pitch, width: 1400 })).pitch, pitch);
   // The small hairline capture region holds the whole line.
   const small = image(LUA.cells, { ...L.HAIRLINE_REGION });
   assert.equal(L.decodeStrip(small).mode, "hairline");
   // Random noise never decodes as anything.
-  const noise = { ...L.REGION, rgb: Buffer.from(Array.from({ length: L.REGION.width * L.REGION.height * 3 }, (_, i) => ((i * 2654435761) >>> 0) % 40)) };
+  const noise = { ...L.TOPLEFT_REGION, rgb: Buffer.from(Array.from({ length: L.TOPLEFT_REGION.width * L.TOPLEFT_REGION.height * 3 }, (_, i) => ((i * 2654435761) >>> 0) % 40)) };
   assert.equal(L.decodeStrip(noise), null);
 });
 
@@ -172,24 +239,49 @@ test("bridge: a hairline capture goes live, shrinks the region, reports the capt
   const q = L.encodeQuestionPages(9, QUESTION, ID);
   const frame = (pages) => image(L.encodeHairlineCells(L.encodeHairlineFrame(LUA.main, pages)));
   const send = (img, method = "pw") => b.line(`ok topleft ${img.width} ${img.height} ${img.rgb.toString("base64")} ${method}`);
-  send(frame([q[0], q[1], q[2], LUA.pages[0], LUA.pages[1]]));
+  const log = L.encodePages(1, [{ id: 93739, complete: true }, { id: 812 }, { id: 840 }, { id: 844 }, { id: 845 }, { id: 846 }, { id: 869 }], ID);
+  send(frame([q[0], q[1], q[2], log[0], log[1]]));
   const s = b.status();
   assert.equal(s.signal, "live");
-  assert.deepEqual({ ...s.strip, idle: undefined }, { mode: "hairline", version: 5, corner: "topleft", pitch: 2, width: 528, height: 1, capture: "window", idle: undefined });
-  assert.deepEqual(writes, [`interval ${L.QUESTION_INTERVAL_MS}\n`, "region topleft 544 4\n"], "question pages speed up sampling; a found hairline needs only 544 x 4 pixels");
+  assert.deepEqual({ ...s.strip, idle: undefined }, { mode: "hairline", version: 6, corner: "topleft", pitch: 2, width: 892, height: 1, capture: "window", idle: undefined });
+  assert.deepEqual(writes, [`interval ${L.QUESTION_INTERVAL_MS}\n`, "region topleft 900 4\n"], "question pages speed up sampling; a found hairline needs only 900 x 4 pixels");
   assert.deepEqual(s.frame.questLog.map((e) => e.id), [93739, 812, 840, 844, 845, 846, 869], "both quest log pages from one capture");
   assert.equal(questions.length, 0);
-  t += 400; send(frame([q[3], LUA.pages[2]]), "screen");
+  t += 400; send(frame([q[3], LUA.pages[1]]), "screen");
   assert.equal(questions.length, 1); assert.equal(questions[0].text, QUESTION);
   assert.equal(b.status().strip.capture, "screen");
   // Lost: the small region grows back; a dark unreadable line keeps the corner and asks for safe mode.
-  const blank = { width: 544, height: 4, rgb: Buffer.alloc(544 * 4 * 3, 120) };
+  const blank = { width: 900, height: 4, rgb: Buffer.alloc(900 * 4 * 3, 120) };
   send(blank);
-  assert.equal(writes.at(-1), "region topleft 640 28\n");
+  assert.equal(writes.at(-1), "region topleft 912 28\n");
   const n = writes.length;
-  for (let i = 0; i < 3; i++) send(image(LUA.cells, { noise: 9 }));
+  for (let i = 0; i < 3; i++) send(image(LUA.cells, { noise: 22 }));
   assert.equal(b.signal, "hairline-unreadable"); assert.equal(writes.length, n, "no corner walk while a line is visible");
   clearTimeout(b.slowTimer);
+});
+
+test("BF_LIVE_DUMP saves the raw top rows of a hairline that does not decode (rate-limited), and nothing otherwise", () => {
+  const dir = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "bf-dump-"));
+  let t = 2_000_000;
+  const b = new L.LiveBridge({ now: () => t, platform: "linux", dumpDir: dir });
+  b.enabled = true;
+  const send = (img) => b.line(`ok topleft ${img.width} ${img.height} ${img.rgb.toString("base64")} pw`);
+  send(image(LUA.cells));
+  assert.deepEqual(fs.readdirSync(dir), [], "a good line is not saved");
+  const bad = image(LUA.cells, { noise: 22, height: 4 });
+  send(bad); t += 1000; send(bad);
+  let files = fs.readdirSync(dir);
+  assert.equal(files.length, 1, "at most one every 10 seconds");
+  const dump = JSON.parse(fs.readFileSync(path.join(dir, files[0]), "utf8"));
+  assert.equal(dump.capture, "window"); assert.equal(dump.rows.length, 3); assert.equal(dump.rows[0].length, 908);
+  assert.deepEqual(dump.rows[0][0], [bad.rgb[0], bad.rgb[1], bad.rgb[2]]);
+  t += 11000; send(bad);
+  assert.equal(fs.readdirSync(dir).length, 2);
+  // Off unless asked for: no BF_LIVE_DUMP, no files.
+  const quiet = new L.LiveBridge({ now: () => t, platform: "linux", dumpDir: null });
+  quiet.enabled = true; quiet.line(`ok topleft ${bad.width} ${bad.height} ${bad.rgb.toString("base64")} pw`);
+  assert.equal(quiet.dump(bad), null);
+  fs.rmSync(dir, { recursive: true, force: true });
 });
 
 test("a frozen hairline goes stale like a compact strip (heartbeat), older workers' lines still parse", () => {
@@ -234,7 +326,7 @@ test("minimized and window-not-found say paused, keep the last live state with i
   assert.doesNotMatch(LL.text({ enabled: true, signal: "minimized", last }, now), /couldn.t read|can.t read/i);
   assert.match(LL.text({ enabled: true, signal: "hairline-unreadable" }, now), /Type \/bf live safe in WoW/);
   assert.match(LL.text({ enabled: true, signal: "no-signal" }, now), /\/bf live safe/);
-  assert.equal(LL.stripLine({ enabled: true, strip: { mode: "hairline", corner: "topleft", width: 528, height: 1, capture: "window" } }), "Mode: Hairline · Placement: top edge · 528×1 px · read from the game window (works behind other windows)");
+  assert.equal(LL.stripLine({ enabled: true, strip: { mode: "hairline", corner: "topleft", width: 892, height: 1, capture: "window" } }), "Mode: Hairline · Placement: top edge · 892×1 px · read from the game window (works behind other windows)");
   const now_js = fs.readFileSync(path.join(root, "src/renderer/now.js"), "utf8");
   assert.match(now_js, /WoW is minimized — live updates are paused and resume when you bring it back\./);
   assert.match(now_js, /sig === "hairline-unreadable"/);
@@ -292,17 +384,17 @@ local function shown() local n=0 for _,t in ipairs(textures) do if t.shown then 
 `;
 const decodeRow = (text) => L.decodeStrip(image(JSON.parse(text)));
 
-test("addon: the default is a pixel-exact 528 x 1 hairline on the top edge; modes switch and persist; pos applies to corner strips", () => {
+test("addon: the default is a pixel-exact 892 x 1 hairline on the top edge; modes switch and persist; pos applies to corner strips", () => {
   const out = lua(HARNESS + String.raw`
 fire('PLAYER_LOGIN')
 local s=strip()
 assert(BackstageForeverLiveSettings.enabled==true)
 assert(s.shown and s.ignore==true and math.abs(s.scale-768/1440)<1e-9,'1 unit = 1 physical pixel')
-assert(s.point=='TOPLEFT' and s.rp=='TOPLEFT' and s.w==528 and s.h==1,'528x1 on the top edge')
-assert(#textures==264 and shown()==264)
-assert(textures[1].w==2 and textures[1].h==1 and textures[264].x==526 and textures[264].y==0,'2x1 cells in one row')
+assert(s.point=='TOPLEFT' and s.rp=='TOPLEFT' and s.w==892 and s.h==1,'892x1 on the top edge')
+assert(#textures==446 and shown()==446)
+assert(textures[1].w==2 and textures[1].h==1 and textures[446].x==890 and textures[446].y==0,'2x1 cells in one row')
 print(messages[1])
-tick(1) print(row(264))
+tick(1) print(row(446))
 -- Only changed cells are repainted.
 local before=sets tick(0.2) local quiet=sets-before
 print(quiet)
@@ -317,7 +409,7 @@ BackstageForeverLiveCommand('live off')
 assert(not s.shown)
 BackstageForeverLiveCommand('live hairline')
 assert(BackstageForeverLiveSettings.enabled==true and BackstageForeverLiveSettings.safe==nil and BackstageForeverLiveSettings.compact==nil,'choosing a mode turns the link on')
-assert(s.shown and s.w==528 and s.h==1 and s.point=='TOPLEFT' and shown()==264)
+assert(s.shown and s.w==892 and s.h==1 and s.point=='TOPLEFT' and shown()==446)
 BackstageForeverLiveCommand('live status')
 print(messages[#messages])
 BackstageForeverLiveCommand('live sideways')
@@ -328,12 +420,12 @@ print(p('live hairline')..' '..p('LIVE HAIRLINE')..' '..p('live compact')..' '..
   const d = decodeRow(out[1]);
   assert.ok(d && d.mode === "hairline", "the painted line decodes");
   const f = L.parsePayload(d.bytes);
-  assert.equal(f.version, 5); assert.equal(f.position.mapId, 1454); assert.equal(f.characterHash, L.identityHash("Player-1-ABC"));
+  assert.equal(f.version, 6); assert.equal(f.position.mapId, 1454); assert.equal(f.characterHash, L.identityHash("Player-1-ABC"));
   assert.equal(d.pages.length, 5, "every page in the first frame: four quest log pages (20 quests) and turned in, no repeats");
   assert.deepEqual(d.pages.map((p) => L.parsePage(p).kind), ["questLog", "questLog", "questLog", "questLog", "turnedIn"]);
   assert.ok(Number(out[2]) < 40, `a quiet tick repaints few cells (${out[2]})`);
   assert.match(out[3], /hairline always runs along the top edge/);
-  assert.match(out[4], /hairline 528x1 px at the top edge/);
+  assert.match(out[4], /hairline 892x1 px at the top edge/);
   assert.match(out[5], /\/bf live hairline\|compact\|safe/);
   assert.equal(out[6], "hairline:nil hairline:nil compact:nil safe:nil");
 });
@@ -343,7 +435,7 @@ test("addon: a saved pre-0.38 compact setting becomes the hairline; a saved safe
 BackstageForeverLiveSettings={enabled=true}
 fire('PLAYER_LOGIN') print(strip().w..'x'..strip().h)
 BackstageForeverLiveSettings.safe=true BackstageForeverLiveCommand('live on') print(strip().w..'x'..strip().h)`).split("\n");
-  assert.deepEqual(out, ["528x1", "456x12"]);
+  assert.deepEqual(out, ["892x1", "456x12"]);
 });
 
 // Runs the hairline for `seconds` after queueing `text`; one row per 0.2s tick.
@@ -352,7 +444,7 @@ function run(text, { seconds = 6, during = "" } = {}) {
 fire('PLAYER_LOGIN') tick(1) tick(1)
 local id,count=BackstageForeverLiveQuestion(${luaString(text)})
 print(tostring(id)..' '..tostring(count)..' '..BackstageForeverLiveQuestionStatus().passes)
-for i=1,${Math.round(seconds / 0.2)} do ${during} tick(0.2) print(string.format('%.2f',clock)..'|'..row(264)) end
+for i=1,${Math.round(seconds / 0.2)} do ${during} tick(0.2) print(string.format('%.2f',clock)..'|'..row(446)) end
 print(tostring(BackstageForeverLiveQuestionStatus()))`).split("\n");
   const [id, count, passes] = out[0].split(" ").map(Number);
   const frames = out.slice(1, -1).map((l) => { const [t, r] = l.split("|"); const d = decodeRow(r); assert.ok(d, `line at ${t} decodes`); return { t: Number(t), d }; });
@@ -382,13 +474,13 @@ function deliver(seq, { period = 0.52, fast = 0.14, phase = 0 } = {}) {
   return typeof done === "number" ? Math.round(done * 100) / 100 : null;
 }
 
-test("a 200-character question goes up five pages a frame, three passes, and arrives in about a second (A15 corner strip: 6.8s)", () => {
+test("a 200-character question goes up four pages a frame, three passes, and arrives in about a second (A15 corner strip: 6.8s)", () => {
   const full = "Where do I find the flight master and the innkeeper in Crossroads, and which quests there are good for level 14? Also where can I train First Aid nearby? Thanks a lot for the help, friend!".padEnd(200, "!");
   const { count, passes, frames, after } = run(full, { seconds: 6 });
   assert.equal(count, 12); assert.equal(passes, 3);
   const seq = shownFrames(frames);
   const qFrames = seq.filter((s) => s.pages.some((p) => p[1] === 4));
-  assert.deepEqual(qFrames.map((s) => s.pages.filter((p) => p[1] === 4).map((p) => p[3]).join(",")), ["0,1,2,3,4", "5,6,7,8,9", "10,11", "0,1,2,3,4", "5,6,7,8,9", "10,11", "0,1,2,3,4", "5,6,7,8,9", "10,11"], "a pass never wraps inside a frame");
+  assert.deepEqual(qFrames.map((s) => s.pages.filter((p) => p[1] === 4).map((p) => p[3]).join(",")), ["0,1,2,3", "4,5,6,7", "8,9,10,11", "0,1,2,3", "4,5,6,7", "8,9,10,11", "0,1,2,3", "4,5,6,7", "8,9,10,11"], "a pass never wraps inside a frame");
   for (const s of qFrames) assert.ok(s.pages.some((p) => L.parsePage(p)), "a quest page rides along in every question frame");
   const dwell = qFrames.slice(0, -1).map((s, i) => Math.round((qFrames[i + 1].t - s.t) * 10) / 10);
   assert.ok(dwell.every((d) => d === 0.4), `question frames stay 0.4s: ${dwell}`);
@@ -403,7 +495,7 @@ test("a 200-character question goes up five pages a frame, three passes, and arr
   assert.ok(worst <= 2.0, `worst case ${worst}s`);
   // Even a 2-second sampler that never speeds up gets it from the three passes... or says so.
   const slow = deliver(seq, { period: 0.75, fast: 0.75 });
-  console.log(`[throughput] hairline: 192 bytes a frame (6 pages x 27 + frame); 200 ASCII chars = ${count} pages = 3 frames a pass; one pass ${pass1}s, all ${passes} passes ${all}s; delivered after ${best}-${worst}s with 0.52s/0.14s sampling (A15 corner strip: 6.8s one pass); 0.75s sampler without speed-up: ${slow}s; ${(85 / 0.4).toFixed(0)} question bytes/s`);
+  console.log(`[throughput] hairline v6: 165 bytes a frame (frame + 5 pages x 27), 4 question pages a 0.4s frame; 200 ASCII chars = ${count} pages = 3 frames a pass; one pass ${pass1}s, all ${passes} passes ${all}s; delivered after ${best}-${worst}s with 0.52s/0.14s sampling (A15 corner strip: 6.8s one pass); 0.75s sampler without speed-up: ${slow}s; ${(68 / 0.4).toFixed(0)} question bytes/s`);
 });
 
 test("a short question fits one frame and is shown three times; question pages never go up in combat, and leave the line when combat starts", () => {
@@ -424,10 +516,10 @@ test("a short question fits one frame and is shown three times; question pages n
 test("moments go up on the next frame and are shown in four frames; the quest log cycles six pages at a time", () => {
   const out = lua(HARNESS + `
 fire('PLAYER_LOGIN') tick(1)
-print(row(264))
+print(row(446))
 BackstageForeverLiveMoment(5,186,75,15)
-tick(0.2) print(row(264))
-for _=1,6 do tick(1) print(row(264)) end`).split("\n").map(decodeRow);
+tick(0.2) print(row(446))
+for _=1,6 do tick(1) print(row(446)) end`).split("\n").map(decodeRow);
   const kinds = (d) => d.pages.map((p) => p[1]).join("");
   assert.equal(kinds(out[0]), "11112", "20 quests = four quest log pages + turned in, all in one frame");
   assert.equal(out[1].pages[0][1], 3, "the moment straight away");
