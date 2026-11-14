@@ -147,7 +147,7 @@ async function physicalClick(page, locator, whilePressed) {
   await writeCapture();await page.evaluate(root=>window.backstage.prepareGame(root),game);await page.reload();
   const original=await page.evaluate(()=>window.backstage.bootstrap());
   await navigate(page, "company");
-  await page.getByRole("heading",{name:"Your adventure company.",exact:true}).waitFor();
+  await page.getByRole("heading",{name:"Your plans",exact:true,level:1}).waitFor();
   await page.getByRole("heading",{name:"Lark Ashvale",exact:true}).waitFor();
   let saved=await page.evaluate(()=>window.backstage.bootstrap());
   assert.equal(saved.state.activeProfileId,original.state.activeProfileId);assert.equal(saved.state.followGameCharacter,original.state.followGameCharacter);
@@ -256,11 +256,11 @@ async function physicalClick(page, locator, whilePressed) {
   await page.getByRole("heading",{name:"Rook Emberfall",exact:true}).waitFor();
   saved=await page.evaluate(()=>window.backstage.bootstrap());assert.equal(saved.state.activeProfileId,"rook'\"><b>");assert.equal(saved.state.followGameCharacter,false);
   await navigate(page, "company");
-  await page.getByRole("heading",{name:"Your adventure company.",exact:true}).waitFor();
+  await page.getByRole("heading",{name:"Your plans",exact:true,level:1}).waitFor();
   const evidence=path.join(__dirname,"../work/v08-ui-evidence");await fs.mkdir(evidence,{recursive:true});
   await page.screenshot({path:path.join(evidence,"company-horde.png"),fullPage:true});
   await page.getByLabel("Active character").selectOption("lark");
-  await page.getByRole("heading",{name:"Your adventure company.",exact:true}).waitFor();
+  await page.getByRole("heading",{name:"Your plans",exact:true,level:1}).waitFor();
   await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1440,1160));
   await page.screenshot({path:path.join(evidence,"company-overview-viewport.png"),fullPage:false});
   await page.screenshot({path:path.join(evidence,"company-alliance.png"),fullPage:true});
@@ -454,7 +454,7 @@ async function physicalClick(page, locator, whilePressed) {
   await fs.writeFile(noProfiles,JSON.stringify({...historicalSnapshot,onboarded:true,profiles:[],activeProfileId:null}));
   await app.evaluate((_e,file)=>companyUiFixture.importFile=file,noProfiles);
   await navigate(page, "guide");await page.getByRole("button",{name:"Import backup",exact:true}).click();
-  await navigate(page, "company");await page.getByText("A company begins with one adventurer.",{exact:true}).waitFor();
+  await navigate(page, "company");await page.getByText("No characters yet.",{exact:true}).waitFor();
   assert.equal(await page.getByLabel("Collected character totals").locator("div").nth(1).locator("b").innerText(),"—","No observed logs must not imply known zero quests");
   assert.equal(await page.getByLabel("Collected character totals").locator("div").nth(2).locator("b").innerText(),"—","No observed logs must not imply known zero turn-ins");
   await page.getByText("Historical saved completion",{exact:true}).waitFor();await page.getByText(/Assigned character is missing/).waitFor();
@@ -482,7 +482,7 @@ async function physicalClick(page, locator, whilePressed) {
   await page.getByRole("heading",{name:"Every adventure starts somewhere.",exact:true}).waitFor();
   assert.equal(await page.locator("[data-company]").count(),0,"Late first-use save cannot override a newer setup choice");
   await page.getByRole("button",{name:"Plan without a character",exact:true}).click();
-  await page.getByRole("heading",{name:"Your adventure company.",exact:true}).waitFor();
+  await page.getByRole("heading",{name:"Your plans",exact:true,level:1}).waitFor();
   assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).state.profiles.length,0);
   await page.getByRole("button",{name:"Create plan",exact:true}).click();await page.getByLabel("Plan name").fill("Persistent offline plan");await page.getByRole("button",{name:"Save plan",exact:true}).click();
   await page.getByLabel("Plan title").waitFor();assert.deepEqual(rendererErrors,[]);

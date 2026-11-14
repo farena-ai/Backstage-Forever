@@ -327,7 +327,7 @@ function shortPath(target) {
       await page.waitForFunction(id=>document.querySelector('#active-character')?.value===id,second);
       const thread=page.locator('[data-preparation-reagent="2320"]');
       await thread.waitFor();
-      await page.waitForFunction(()=>document.querySelector('.workshop-hero-copy p')?.textContent.includes('Vaelric'));
+      await page.waitForFunction(()=>document.querySelector('[data-preparation] .ph-sub')?.textContent.includes('Vaelric'));
       assert.equal(await thread.locator('h4').filter({hasText:/^Mahu$/}).count(),1,'Actual shipped reversed Mahu positions merge');
       const merged=thread.locator('.acquisition-sources .seller-observation').filter({hasText:'Mahu'});
       const selectors=['[data-preparation-control="other-characters"]','[data-preparation-control="acquisition-attribution"]','[data-preparation-control="acquisition:2320"]'];
@@ -348,7 +348,7 @@ function shortPath(target) {
       await page.locator('[data-preparation-control="acquisition-attribution"]').scrollIntoViewIfNeeded();
       await page.screenshot({path:path.join(evidence,'review-expanded-evidence.png')});
       await page.getByLabel('Active character',{exact:true}).selectOption(first);
-      await page.waitForFunction(()=>document.querySelector('.workshop-hero-copy p')?.textContent.includes('Aeralyn'));
+      await page.waitForFunction(()=>document.querySelector('[data-preparation] .ph-sub')?.textContent.includes('Aeralyn'));
       assert.equal(await isOpen(),false,'Character switch retires expanded state');
       for(const selector of selectors.slice(0,2)) assert.equal(await page.locator(selector).evaluate(n=>n.parentElement.open),false);
       for(const selector of selectors.slice(0,2)) await page.locator(selector).click();
@@ -1159,7 +1159,7 @@ function shortPath(target) {
       .selectOption(second);
     await page.waitForFunction(() =>
       document
-        .querySelector(".workshop-hero-copy p")
+        .querySelector("[data-preparation] .ph-sub")
         ?.textContent.includes("Vaelric"),
     );
     await capture("horde-compact");
@@ -1183,7 +1183,7 @@ function shortPath(target) {
       .selectOption(first);
     await page.waitForFunction(() =>
       document
-        .querySelector(".workshop-hero-copy p")
+        .querySelector("[data-preparation] .ph-sub")
         ?.textContent.includes("Aeralyn"),
     );
     assert.equal(
@@ -1217,7 +1217,7 @@ function shortPath(target) {
     });
     await page.waitForFunction(() =>
       document
-        .querySelector(".workshop-hero-copy p")
+        .querySelector("[data-preparation] .ph-sub")
         ?.textContent.includes("Vaelric"),
     );
     assert.equal((await state()).journeys.length, 4);
@@ -1272,7 +1272,7 @@ function shortPath(target) {
       .selectOption(first);
     await page.waitForFunction(() =>
       document
-        .querySelector(".workshop-hero-copy p")
+        .querySelector("[data-preparation] .ph-sub")
         ?.textContent.includes("Aeralyn"),
     );
     // Selected recipes disappearing and orphaned professions are explicit, no fallback.
@@ -1506,11 +1506,11 @@ function shortPath(target) {
     await page.waitForFunction(
       () =>
         document
-          .querySelector(".workshop-hero-copy p")
+          .querySelector("[data-preparation] .ph-sub")
           ?.textContent.includes("Aeralyn") &&
         document
           .querySelector(".workshop-source")
-          ?.textContent.includes("quiet bench"),
+          ?.textContent.includes("No profession save yet"),
     );
     assert.equal(await add.isDisabled(), true);
     assert.equal(
