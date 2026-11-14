@@ -30,6 +30,7 @@ const MAX = 1024 * 1024,
     "BackstageForeverCombat.lua",
     "BackstageForeverMoments.lua",
     "BackstageForeverLedger.lua",
+    "BackstageForeverSheet.lua",
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");
@@ -197,6 +198,12 @@ function parseSavedVariables(raw) {
     }
     if (c.ledger !== undefined) {
       try { out.ledger = require("./ledger.cjs").normalizeLedgerCapture(c.ledger); } catch { /* Omit the entire invalid optional block. */ }
+    }
+    if (c.stats !== undefined) {
+      try { out.stats = require("./sheet.cjs").normalizeStatsCapture(c.stats); } catch { /* Omit the entire invalid optional block. */ }
+    }
+    if (c.gearSets !== undefined) {
+      try { out.gearSets = require("./sheet.cjs").normalizeGearSetsCapture(c.gearSets); } catch { /* Omit the entire invalid optional block. */ }
     }
     return out;
   });

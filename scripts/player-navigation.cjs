@@ -10,6 +10,7 @@ const routes = {
   assistant: ["Companion"],
   characters: ["Characters"],
   journey: ["Characters", "Journey"],
+  sheet: ["Characters", "Sheet"],
   ledger: ["Ledger", "Bags & bank"],
   "ledger-gold": ["Ledger", "Gold & prices"],
   "ledger-reputation": ["Ledger", "Reputation"],

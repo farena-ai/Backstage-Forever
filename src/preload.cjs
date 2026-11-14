@@ -93,6 +93,8 @@ contextBridge.exposeInMainWorld(
     talentCoach: (input) => invoke("talentCoach", input),
     journey: () => invoke("journey"),
     ledger: () => invoke("ledger"),
+    setGoldGoal: (goal) => invoke("setGoldGoal", goal),
+    characterSheet: () => invoke("characterSheet"),
     playSession: () => invoke("playSession"),
     playTrail: (mapId) => invoke("playTrail", mapId),
     onPlayEvent: (listener) => {

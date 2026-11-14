@@ -382,6 +382,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverLedgerCommand)=='function' then pcall(BackstageForeverLedgerCommand,message)end
                 return
             end
+            if word=='set' then
+                if type(BackstageForeverSetCommand)=='function' then pcall(BackstageForeverSetCommand,message)end
+                return
+            end
             if word=='moments' then
                 if type(BackstageForeverMomentsCommand)=='function' then pcall(BackstageForeverMomentsCommand,message)end
                 return

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.36.0 — your character, 2026-11-14
+
+- **G5 character sheet (first part):** Characters → Sheet: equipped gear by slot with quality colours, item cards, average item level (shirt and tabard excluded), empty slots, pieces behind your level, upgrades already in bags or bank, and the addon's new `stats` capture (base stats, armor, attack power, health and power, resistances).
+- **A12 gear sets:** new `BackstageForeverSheet.lua` (per-character `BackstageForeverSheetDB`, up to 20 sets); `/bf set save|wear|list|delete`; wearing uses `EquipItemByName` from bags only, refuses in combat or with an item on the cursor; the Sheet shows where each piece is. The addon now installs 26 files.
+- **E4 gold goal:** your own target on Gold & prices, progress across characters and days left from a daily gold log (30 days).
+- **Roadmap:** G13 painted in-game zone banners, one per zone, opens 0.37. E5 class quest chains and mount costs wait for data.
+
 ## 0.35.1 — the ledger, 2026-11-14
 
 - First published 0.35 build: the v0.35.0 tag was cut before the combat-log fix and its installer build failed on a slow-runner NPC smoke; 0.35.1 carries everything below.

@@ -1,0 +1,64 @@
+/* Characters → Sheet (0.36): paper doll, stats, upgrades and gear sets. Same parchment cards as the Ledger. */
+.sheet-page { display: flex; flex-direction: column; gap: 14px; }
+.sht-empty { margin: 0; padding: 12px 14px; border-radius: 6px; background: rgba(239,224,187,.92); color: #3d220c; border: 1px dashed #a5823e; }
+.sht-note { margin: 6px 0 0; font-size: 12px; color: #5a3e1c; }
+.sht-card { padding: 14px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
+.sht-card h2 { margin: 0 0 8px; font: 700 18px Cinzel, Georgia, serif; color: #3d220c; }
+.sht-sub { margin: 12px 0 6px; font: 700 13px Cinzel, Georgia, serif; color: #5a2e0c; letter-spacing: .05em; }
+.sht-doll { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(240px, 1.1fr) minmax(220px, 1fr); grid-template-areas: "left center right" "bottom bottom bottom"; gap: 12px; padding: 16px; border-radius: 8px; background: radial-gradient(ellipse at center, rgba(60,36,14,.92), rgba(24,14,6,.96)); border: 1px solid #a5823e; box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+.sht-col, .sht-bottom { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.sht-left { grid-area: left; } .sht-right { grid-area: right; } .sht-center { grid-area: center; }
+.sht-bottom { grid-area: bottom; flex-direction: row; justify-content: center; flex-wrap: wrap; }
+.sht-bottom .sht-slot { width: 260px; }
+.sht-slot { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: 6px; background: rgba(239,224,187,.1); border: 1px solid rgba(165,130,62,.45); color: #f1e3c0; min-height: 48px; }
+.sht-right .sht-slot { flex-direction: row-reverse; text-align: right; padding: 4px 4px 4px 8px; }
+.sht-frame { flex: 0 0 auto; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 5px; border: 2px solid #6b5a3c; background: rgba(0,0,0,.45); }
+.sht-frame canvas { display: block; border-radius: 3px; }
+.sht-words { display: flex; flex-direction: column; min-width: 0; }
+.sht-words small { font-size: 11px; color: #c9b48a; }
+.sht-words strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sht-rating { font-style: normal; font-size: 11px; }
+.sht-slot.r-fresh .sht-rating { color: #8fd16a; } .sht-slot.r-aging .sht-rating { color: #f0c050; } .sht-slot.r-replace .sht-rating { color: #ff7a5a; }
+.sht-empty-slot { opacity: .65; } .sht-empty-slot.sht-missing { opacity: 1; border-style: dashed; border-color: #f0c050; } .sht-missing strong { color: #f0c050; }
+/* Item quality on the dark doll (bright) and on parchment (dark), like the game. */
+.sht-doll .q-poor { color: #9d9d9d; } .sht-doll .q-common { color: #f4f4f4; } .sht-doll .q-uncommon { color: #1eff00; } .sht-doll .q-rare { color: #3a9bff; } .sht-doll .q-epic { color: #c27bff; } .sht-doll .q-legendary { color: #ff8000; }
+.sht-slot.q-poor .sht-frame { border-color: #9d9d9d; } .sht-slot.q-common .sht-frame { border-color: #e8e8e8; } .sht-slot.q-uncommon .sht-frame { border-color: #1eff00; } .sht-slot.q-rare .sht-frame { border-color: #0070dd; } .sht-slot.q-epic .sht-frame { border-color: #a335ee; } .sht-slot.q-legendary .sht-frame { border-color: #ff8000; }
+.sht-center .q-poor, .sht-card .q-poor { color: #6a6a6a; } .sht-center .q-common, .sht-card .q-common { color: #2b1b0a; } .sht-center .q-uncommon, .sht-card .q-uncommon { color: #1a7a0a; } .sht-center .q-rare, .sht-card .q-rare { color: #0b5cad; } .sht-center .q-epic, .sht-card .q-epic { color: #7a2bb8; } .sht-center .q-legendary, .sht-card .q-legendary { color: #b35a00; }
+.sht-gem { font-size: 16px; }
+.sht-center { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; }
+.sht-ilvl { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.sht-ilvl strong { font: 700 34px Georgia, serif; color: #3d220c; line-height: 1; }
+.sht-ilvl span { font: 700 12px Cinzel, Georgia, serif; color: #5a2e0c; letter-spacing: .05em; }
+.sht-ilvl small, .sht-score { font-size: 12px; color: #5a3e1c; margin: 0; text-align: center; }
+.sht-stats { list-style: none; margin: 0; padding: 6px 0 0; border-top: 1px solid rgba(138,90,24,.35); display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.sht-stats li { display: flex; justify-content: space-between; gap: 8px; }
+.sht-stats strong { color: #3d220c; }
+.sht-advice, .sht-ups { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.sht-up { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; }
+.sht-up em { font-style: normal; color: #2e6b1e; font-weight: 700; }
+.sht-up .sht-gem { font-size: 12px; }
+.sht-sets { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.sht-set { padding: 10px 12px; border-radius: 6px; background: rgba(60,40,18,.08); border: 1px solid rgba(138,90,24,.35); }
+.sht-set header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.sht-set h3 { margin: 0; font: 700 15px Cinzel, Georgia, serif; color: #3d220c; }
+.sht-set header span, .sht-counts { font-size: 12px; color: #5a3e1c; }
+.sht-counts { margin: 4px 0 6px; } .sht-bad { color: #8a1f14; }
+.sht-set ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.sht-set li { display: grid; grid-template-columns: 24px 74px 1fr auto; gap: 6px; align-items: center; }
+.sht-set li .sht-gem { font-size: 11px; text-align: center; }
+.sht-slotname { font-size: 11px; color: #6b5a3c; }
+.sht-where { font-size: 12px; color: #5a3e1c; text-align: right; }
+.sht-where small { color: #6b5a3c; }
+.sht-set li.w-worn .sht-where { color: #2e6b1e; } .sht-set li.w-missing .sht-where { color: #8a1f14; font-weight: 700; } .sht-set li.w-bank .sht-where, .sht-set li.w-mail .sht-where, .sht-set li.w-other .sht-where { color: #8a5a08; font-weight: 700; }
+.sht-cmd { margin: 6px 0 0; font-size: 12px; }
+@media (max-width: 1100px) { .sht-doll { grid-template-columns: 1fr 1fr; grid-template-areas: "center center" "left right" "bottom bottom"; } }
+@media (max-width: 760px) { .sht-doll { grid-template-columns: 1fr; grid-template-areas: "center" "left" "right" "bottom"; } .sht-right .sht-slot { flex-direction: row; text-align: left; } }
+/* Gold goal on Ledger → Gold & prices. */
+.ldg-goal-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-top: 8px; }
+.ldg-goal-form label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: #5a3e1c; }
+.ldg-goal-form input { padding: 6px 8px; border-radius: 5px; border: 1px solid #a5823e; background: #fbf3dd; color: #2b1b0a; font-size: 14px; }
+.ldg-goal-form input[type="number"] { width: 110px; }
+.ldg-goal-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+.ldg-goal .ldg-bar { height: 16px; border-radius: 8px; margin: 8px 0 6px; }
+.ldg-goal.done .ldg-bar > span { background: linear-gradient(90deg, #2e6b1e, #5fb83a); }
+.ldg-goal-msg { min-height: 1em; margin: 4px 0 0; font-size: 12px; color: #8a1f14; }

@@ -36,7 +36,7 @@ local function str(v,limit)
 end
 local function now() return int(call(time),0,253402300799) end
 local MONEY_MAX=1e13
-local LIMITS={items=400,slots=600,letters=100,prices=1500,history=5,factions=120,page=200}
+local LIMITS={items=400,slots=600,letters=100,prices=1500,history=5,factions=120,page=200,moneyLog=30}
 -- The same observation while the player pages through one search (15 minutes).
 local SAME_SEARCH=900
 
@@ -302,14 +302,29 @@ local function copyItems(items)
     end
     return out
 end
+-- One gold sample per calendar day (UTC), oldest first, at most LIMITS.moneyLog days.
+local function rememberMoney(d,money,t)
+    if type(d.moneyLog)~='table' then d.moneyLog={} end
+    local log=d.moneyLog
+    local last=log[#log]
+    if type(last)=='table' and int(last[2],0,253402300799) and floor(last[2]/86400)==floor(t/86400) then last[1]=money;last[2]=t
+    elseif type(last)~='table' or (int(last[2],0,253402300799) or 0)<t then log[#log+1]={money,t} end
+    while #log>LIMITS.moneyLog do table.remove(log,1) end
+end
 -- Export block. BackstageForever.lua marks the lists as JSON arrays.
 function BackstageForeverLedgerSnapshot()
     local d=store();local t=now()
     if not t then return nil end
     local out={schemaVersion=1}
     local money=int(call(GetMoney),0,MONEY_MAX)
-    if money then out.money=money;out.moneyAt=t;d.money=money;d.moneyAt=t
+    if money then out.money=money;out.moneyAt=t;d.money=money;d.moneyAt=t;rememberMoney(d,money,t)
     elseif int(d.money,0,MONEY_MAX) then out.money=d.money;out.moneyAt=d.moneyAt end
+    -- Gold over the last days (one sample per day, the last one seen) for the app's gold goal.
+    local log={}
+    for _,e in ipairs(type(d.moneyLog)=='table' and d.moneyLog or {}) do
+        if type(e)=='table' and int(e[1],0,MONEY_MAX) and int(e[2],0,253402300799) and #log<LIMITS.moneyLog then log[#log+1]={e[1],e[2]} end
+    end
+    out.moneyLog=log
     local items,complete=readContainers(bagList())
     if items then out.bags={seenAt=t,complete=complete,items=items} end
     if bankOpen then readBank() end

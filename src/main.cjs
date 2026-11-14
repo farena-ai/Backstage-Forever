@@ -762,7 +762,38 @@ app.whenReady().then(async () => {
   handle("ledger", (...args) => {
     if (args.length) throw Error("Invalid ledger request.");
     const L = require("./core/ledger.cjs"), s = store.state;
-    return L.ledgerView(s, { facts: ledgerFacts(L.itemIds(s.profiles)) });
+    return { ...L.ledgerView(s, { facts: ledgerFacts(L.itemIds(s.profiles)) }), goal: require("./core/gold-goal.cjs").goldGoalView(s) };
+  });
+  // Gold goal (0.36, E4): the player's own target; null clears it. Only this handler writes it.
+  handle("setGoldGoal", (...args) => {
+    if (args.length !== 1) throw Error("Invalid gold goal.");
+    const GG = require("./core/gold-goal.cjs"), goal = GG.goalFromInput(args[0]);
+    const next = structuredClone(store.state);
+    if (goal) next.goldGoal = goal; else delete next.goldGoal;
+    store.saveState(v.validateState(next));
+    return GG.goldGoalView(store.state);
+  });
+  // Character sheet (0.36, G5 + A12): the active character's gear by slot, stats and gear sets.
+  // Item facts, scores and upgrade verdicts come from the player's own install, as on item cards.
+  handle("characterSheet", (...args) => {
+    if (args.length) throw Error("Invalid character sheet request.");
+    const S = require("./core/sheet.cjs"), s = store.state;
+    const profile = s.profiles.find((p) => p.id === s.activeProfileId) || null;
+    if (!profile) return null;
+    const ids = S.sheetItemIds(profile);
+    let found = [];
+    try { found = ids.length ? gameData.items(ids) : []; } catch {}
+    const facts = new Map();
+    ids.forEach((id, i) => { if (found[i]) facts.set(id, found[i]); });
+    const ctx = { className: profile.className || undefined, level: Number.isInteger(profile.level) ? profile.level : undefined };
+    const { scoreItem } = require("./core/gear-score.cjs"), loot = require("./core/boss-loot.cjs");
+    let worn = null;
+    try { worn = loot.equipmentContext(profile, gameData); } catch {}
+    return S.sheetView(profile, {
+      profiles: s.profiles, facts,
+      score: facts.size && ctx.className ? (it) => { try { return scoreItem(it, ctx).score || 0; } catch { return 0; } } : null,
+      verdict: worn ? (it) => { try { return loot.upgradeVerdict(it, worn); } catch { return null; } } : null,
+    });
   });
   let ledgerPrices = { key: null, index: null };
   const ledgerPrice = (id) => {
