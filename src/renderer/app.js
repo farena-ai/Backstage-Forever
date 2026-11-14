@@ -747,7 +747,7 @@ function adventure() {
   const facts = p ? [`Level ${esc(p.level)} ${esc(p.className || "adventurer")}`,
     quests.length ? `<strong>${ready}</strong> of ${quests.length} quest${quests.length === 1 ? "" : "s"} ready to hand in` : "No saved quests yet",
     goals.length ? `<strong>${done}</strong> of ${goals.length} goal${goals.length === 1 ? "" : "s"} done` : ""].filter(Boolean).join(" · ") : "";
-  const paused = p && state.followGameCharacter === false ? `<span class="follow-paused"><span class="ph-chip">Following your pick, not the last played character</span><button data-command="follow-saved">Follow saved game</button></span>` : "";
+  const paused = p && state.followGameCharacter === false ? `<span class="follow-paused"><span class="ph-chip">Saved-game follow paused · showing your pick</span><button data-command="follow-saved">Follow saved game</button></span>` : "";
   const hero = PageHero.render({ art: "adventure", eyebrow: "Adventure · Your next step", title: p ? esc(p.name) : "Your next step", crest: PageHero.classCrest(p?.className),
     subtitle: facts || "Connect the game and log in once: your quests, goals and professions turn into next steps here.", aside: paused });
   if (!p) return `<div class="bf-page adventure-page">${hero}${LivingSetup.empty(gameStatus, esc)}${AdventureCoach.render()}${PlayerNavigation.disclosure("coach-quest-plan", "Quest plan & session details", Director.panel(null))}</div>`;

@@ -135,13 +135,12 @@ const { testWindow, launch: launchElectron } = require("./test-window.cjs");
       .getByRole("heading", { name: "Compass Hero", exact: true })
       .waitFor();
     await page.getByText("Synthetic rescue", { exact: true }).first().waitFor();
-    assert.match(await page.locator(".adventure-brief").innerText(), /25%/);
-    assert.equal(
-      await page
-        .getByRole("progressbar", { name: "Level experience" })
-        .evaluate((node) => node.value),
-      25,
-    );
+    // The saved quest reaches Adventure; the saved experience (250 / 1000) shows on Now's XP bar.
+    await navigate(page, "adventure");
+    assert.match(await page.locator(".adventure-page .ph-sub").innerText(), /Level 18 Hunter.*1 of 1 quest ready to hand in/);
+    await page.locator('[data-nav="now"]').first().click();
+    await page.getByRole("img", { name: "25% through level 18" }).waitFor();
+    assert.match(await page.locator(".now-xp-line").innerText(), /25%.*level 18/);
     assert.equal((await page.evaluate(()=>window.backstage.gameStatus())).loadedGatheringSchema,1);
     assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).version,releaseVersion);
     assert.equal((await page.evaluate(()=>window.backstage.gameStatus())).loadedCaptureVersion,releaseVersion);
@@ -152,11 +151,12 @@ const { testWindow, launch: launchElectron } = require("./test-window.cjs");
       assert.equal(await page.locator(".companion-dock").count(), 0,
         `Successful setup must not show a repeated banner on ${section}`);
     }
+    // Adventure's "Explain my plan" opens an editable companion question about the saved quest; nothing is sent.
     await page.getByRole("button", { name: "Adventure", exact: true }).click();
     await page
-      .getByRole("button", { name: "Plan my next quest", exact: true })
+      .getByRole("button", { name: "Explain my plan", exact: true })
       .click();
-    assert.match(await page.getByLabel("Your question").inputValue(), /quest/i);
+    assert.match(await page.getByLabel("Your question").inputValue(), /Synthetic rescue/);
     assert.equal(await page.locator(".message.user").count(), 0);
     await page.emulateMedia({ reducedMotion: "reduce" });
     assert.equal(

@@ -148,7 +148,7 @@ async function finishRefresh(page) {
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: path.join(evidence, "fictional-alliance-1000x700.png") });
     // checkedAt-only probes must leave keyboard focus and the actual button intact.
-    const questButton = page.getByRole("button", { name: "Plan my next quest", exact: true });
+    const questButton = page.locator('.situation-cards [data-task="dungeon"]');
     await questButton.focus();
     await questButton.evaluate(node => { window.focusFixture = node; });
     await page.waitForTimeout(5500);
