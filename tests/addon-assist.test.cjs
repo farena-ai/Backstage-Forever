@@ -83,7 +83,7 @@ InCombatLockdown=function()return false end
 UnitExists=function()return true end UnitLevel=function(u)return u=='player' and 10 or 16 end
 UnitClassification=function()return 'normal' end UnitCanAttack=function()return true end UnitIsPlayer=function()return false end UnitIsDead=function()return false end
 `;
-test("events: welcome once, level-up with trainer, quest math, death arrow, junk button and danger line", () => {
+test("events: welcome once, level-up with trainer, quest math, death note, junk button and danger line", () => {
   const out = lua(`${MOCKS}
 ${LOAD}
 local ev=nil for _,f in pairs(frames) do if f.events and f.events.PLAYER_LOGIN then ev=f end end
@@ -97,9 +97,10 @@ xp=400 fire('PLAYER_XP_UPDATE')
 fire('QUEST_TURNED_IN',123,150,0)
 assert(msgs[#msgs]:find('+150 XP',1,true) and msgs[#msgs]:find('about 4 more quests',1,true),msgs[#msgs])
 fire('PLAYER_DEAD') assert(msgs[#msgs]:find('Release Spirit',1,true))
-ghost=true fire('PLAYER_ALIVE')
-assert(way and way:find('^way 1411 0.3100 0.6200 your body'),tostring(way))
-ghost=false fire('PLAYER_UNGHOST') assert(way=='cleared')
+ghost=true way=nil fire('PLAYER_ALIVE')
+-- Events never set or clear waypoints: the game forbids that outside a click or command.
+assert(way==nil,tostring(way)) assert(msgs[#msgs]:find('minimap',1,true),msgs[#msgs])
+ghost=false fire('PLAYER_UNGHOST') assert(way==nil,tostring(way))
 assert(BackstageForeverAssistSession.deaths==1 and BackstageForeverAssistSession.quests==1)
 fire('MERCHANT_SHOW')
 local b=frames.BackstageForeverSellJunkButton

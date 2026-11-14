@@ -175,7 +175,8 @@ local function paint()
     method(lines.body,'SetText',s.text..(' |cff9d9d9d(%.1f, %.1f)|r'):format(s.x*100,s.y*100))
     local n=steps[index+1]
     method(lines.next,'SetText',n and ('|cff9d9d9dThen:|r '..n.text) or '|cff9d9d9dLast step here.|r')
-    if index==1 then setArrow(s) end
+    -- No waypoint here: paint also runs on its own (login, zone and quest changes), and the game
+    -- forbids addons from setting waypoints outside a player's click or command.
 end
 local function build()
     if frame or type(CreateFrame)~='function' then return frame end
@@ -230,8 +231,10 @@ function BackstageForeverRouteCommand(message)
     elseif arg=='' then settings.shown=not settings.shown
     else return say('Use /bf route, /bf route next, /bf route back or /bf route arrow.') end
     if settings.shown then
-        if arg=='' then BackstageForeverRouteRefresh();say('Route on: one step at a time, with the arrow on the current step. /bf route hides it.') end
+        if arg=='' then BackstageForeverRouteRefresh();say('Route on: one step at a time. The arrow points at the step you show; < and > move it. /bf route hides it.') end
         if build() then method(frame,'Show');paint() end
+        -- The player typed or clicked this, so the game allows the waypoint arrow now.
+        if arg~='arrow' or settings.arrow then setArrow(steps[index]) end
     elseif frame then method(frame,'Hide');if arg=='' then say('Route hidden. /bf route shows it again.') end end
 end
 

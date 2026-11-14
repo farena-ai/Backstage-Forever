@@ -2,7 +2,7 @@
 
 ## 0.35.0 — the ledger, 2026-11-14
 
-- **Fix (taint warning):** Blizzard's `AcquirePin` calls the protected `SetPassThroughButtons` on map pins; both World Map pin mixins now define it as a no-op on our own pins, so the default UI no longer reports a blocked action. Guard test added.
+- **Fix (ADDON_ACTION_FORBIDDEN on login):** `C_Map.SetUserWaypoint` / `C_SuperTrack.SetSuperTrackedUserWaypoint` (and `ClearUserWaypoint`) are only allowed from a player action. BF Route set them from its event-driven repaint and Assist on `PLAYER_ALIVE`/`PLAYER_UNGHOST`; both now only run from commands and clicks (found with a diagnostic probe of the forbidden event). Map pins also no-op the protected `SetPassThroughButtons`. Tests cover both.
 - **H6, first part:** new `BackstageForeverLedger.lua` (per-character `BackstageForeverLedgerDB`): money, bags 0–4, bank (container -1 and bags 5–10, last seen), mail items and money (no senders or subjects), reputations, profession cooldowns, and A7 auction price memory from list pages the player opens (lowest buyout per unit, last 5 observations, 1,500 items). Price memory, then the ledger, drop first when the export nears its size budget. The addon now installs 25 files.
 - **App:** Ledger section with Bags & bank (cross-character search), Gold & prices, Reputation and Cooldowns pages; remembered prices on item hover cards; `/bf ledger`, `/bf prices`.
 - **0.36 next:** E4 mount and gold goals, E5 class quest chains, A12 gear sets, G5 character sheet.
