@@ -8,7 +8,7 @@ const { scoreItem, compare, bestReward, blockers } = require("../src/core/gear-s
 const root = path.join(__dirname, "..");
 function lua(body) {
   const r = spawnSync(process.execPath, [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"], { cwd: root, input: body, encoding: "utf8", timeout: 20000 });
-  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.status, 0, r.stderr); assert.equal(r.stderr, "");
   return r.stdout.trim();
 }
 const LOAD = "dofile('addon/BackstageForever/BackstageForeverGear.lua')";

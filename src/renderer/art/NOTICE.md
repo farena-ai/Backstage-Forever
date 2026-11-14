@@ -17,3 +17,4 @@ None of these images is taken from World of Warcraft or any Blizzard product, an
 | `badges/*.png` | Characters → Journey badge wall and new-badge banner (0.28.0) |
 | `heroes/*.webp` | Page banners, one per page (Adventure, Quests, Professions, Plans, Party, Characters, Dungeons, Talents, Journey, Data coverage, Commands, Companion), shown by the shared page banner (art pass 3, 0.31.0) |
 | `pins/companion.png` | AI Companion crest (0.31.0) |
+| `moments/*.png` | Live moments cards, death screen and Now "Recent moments": one medallion per moment kind (death, elite, rare, boss, profession, zone, flight, upgrade, dungeon, chain), generated locally with ComfyUI / Qwen-Image (0.33.0) |

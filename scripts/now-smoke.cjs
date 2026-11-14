@@ -77,6 +77,10 @@ const { defaultState } = require("../src/core/validation.cjs");
     await frame({ seq: 4, level: 17, dead: true, position: { mapId: 1413, x: 0.56, y: 0.34, facing: 1 } });
     await page.locator(".now-step.now-death").waitFor({ timeout: 15000 });
     assert.match(await page.locator(".now-step h3").first().innerText(), /You died/);
+    // Live moments: the death screen opens over the app; "Back to it" closes it.
+    await page.locator(".bf-death").waitFor({ timeout: 15000 });
+    await page.waitForTimeout(1500); await page.screenshot({ path: path.join(capture, "death-screen.png") });
+    await page.locator("[data-death-close]").click(); await page.locator(".bf-death").waitFor({ state: "detached" });
     const s = await page.evaluate(() => NowView._state().session);
     assert.equal(s.deaths, 1); assert.equal(s.level, 17);
     await page.screenshot({ path: path.join(capture, "now-session.png"), fullPage: true });

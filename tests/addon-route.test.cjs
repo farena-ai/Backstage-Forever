@@ -4,7 +4,7 @@ const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 function lua(source) {
   const r = spawnSync(process.execPath, [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"], { cwd: path.join(__dirname, ".."), input: source, encoding: "utf8", timeout: 20000 });
-  assert.equal(r.status, 0, r.stderr); return r.stdout.trim();
+  assert.equal(r.status, 0, r.stderr); assert.equal(r.stderr, ""); return r.stdout.trim();
 }
 const LOAD = "dofile('addon/BackstageForever/BackstageForeverRoute.lua')\n";
 

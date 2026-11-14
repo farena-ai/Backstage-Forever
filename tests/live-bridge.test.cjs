@@ -7,7 +7,7 @@ const root = path.join(__dirname, "..");
 
 function lua(body) {
   const r = spawnSync(process.execPath, [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"], { cwd: root, input: body, encoding: "utf8", timeout: 20000 });
-  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.status, 0, r.stderr); assert.equal(r.stderr, "");
   return r.stdout.trim();
 }
 const STATE = "{seq=7,mapId=1454,x=0.4321,y=0.6543,level=12,health=88,targetNpcId=3057,targetHealth=100,xp=42,freeSlots=9,questId=93739,objectives=5,questHash=201,facing=1.5,resting=true}";

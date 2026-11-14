@@ -77,7 +77,7 @@ InCombatLockdown=function()return true end
 handler(nil,'QUEST_TURNED_IN',42);assert(old==BackstageForeverExport)
 `,
   });
-  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.status, 0, r.stderr); assert.equal(r.stderr, "");
 });
 test("newer missing history clears unknown while stale imports preserve observation", () => {
   const { defaultState } = require("../src/core/validation.cjs");

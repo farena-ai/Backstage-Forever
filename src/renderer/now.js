@@ -180,6 +180,7 @@ window.NowView = (() => {
       </div><div class="now-col now-col-side">
       ${zoneCard()}
       ${sessionCard(a)}
+      ${window.MomentsView ? MomentsView.recentCard() : ""}
       <article class="now-card"><h2>Where to level</h2><ul class="now-zones">${zones}</ul>${top ? `<h3 class="now-sub">Quests to pick up in ${esc(a.next.name)}</h3>${top}` : ""}</article>
       <article class="now-card"><h2>${esc(c.className || "Class")} training</h2>${training}</article>
     </div></div>
@@ -223,6 +224,7 @@ window.NowView = (() => {
       if (z?.mapId && lastZoneId && z.mapId !== lastZoneId && z.live) arrive(z);
       if (z?.mapId) lastZoneId = z.mapId;
       window.JourneyView?.check();
+      window.MomentsView?.refresh();
     } catch (e) { error = e.message || "Advice is unavailable."; }
     loading = false; paint();
   }
