@@ -178,7 +178,7 @@ const { testWindow, launch } = require("./test-window.cjs");
     });
     await navigate(page, "updates");
     await page
-      .getByRole("heading", { name: "Keep your companion ready." })
+      .getByRole("heading", { name: "Keep the app up to date" })
       .waitFor();
     await page.screenshot({
       path: path.join(__dirname, "..", "assets", "updates-preview.png"),

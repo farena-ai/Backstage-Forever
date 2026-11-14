@@ -1328,8 +1328,6 @@ body[data-class] .providers {
 @media (max-width: 700px) { .guide-glossary dl { grid-template-columns: 1fr; } }
 
 /* Art pass: Field guide hero. */
-.section-head.guide-hero { padding: 26px 22px; border-radius: 6px; border: 1px solid #c79a4a; min-height: 170px; display: flex; flex-direction: column; justify-content: flex-end; background: linear-gradient(90deg, rgba(26,6,4,.92) 0%, rgba(40,10,6,.66) 45%, rgba(40,10,6,.12) 100%), url("art/hero-help.webp") center 45% / cover no-repeat, #3a0f09; }
-.section-head.guide-hero h1, .section-head.guide-hero p { text-shadow: 0 2px 10px rgba(0,0,0,.75); }
 
 /* Settings → Game connection: in-game helpers. */
 .ingame-helpers ul { list-style: none; margin: 8px 0 10px; padding: 0; display: grid; gap: 6px; }

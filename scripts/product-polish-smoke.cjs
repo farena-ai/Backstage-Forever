@@ -66,8 +66,9 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
       assert.ok(await page.locator("#main-content").getAttribute("aria-labelledby"));
       assert.ok(await page.locator("#page-heading").innerText());
     });
+    await go("characters");
+    await check("manual roster source is said once", async () => assert.doesNotMatch(await page.locator(".character-list").innerText(), /Manual journal\s*·\s*Manual journal/));
     await go("adventure");
-    await check("manual roster source is said once", async () => assert.doesNotMatch(await page.locator(".roster-strip").innerText(), /Manual journal\s*·\s*Manual journal/));
     await check("disconnected chip is distinct from healthy local journal", async () => {
       const chip = page.locator(".game-status-chip");
       assert.equal(await chip.getAttribute("data-connection-state"), "disconnected");

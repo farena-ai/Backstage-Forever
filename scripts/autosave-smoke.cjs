@@ -124,7 +124,7 @@ const { testWindow, launch } = require("./test-window.cjs");
     await navigate(page, "assistant");
     await page
       .getByRole("heading", {
-        name: "A little wisdom for the journey.",
+        name: "Ask about WoW Forever",
         exact: true,
       })
       .waitFor({ timeout: 2000 });
