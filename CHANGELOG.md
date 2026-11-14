@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.35.0 — the ledger, 2026-11-14
+## 0.35.1 — the ledger, 2026-11-14
+
+- First published 0.35 build: the v0.35.0 tag was cut before the combat-log fix and its installer build failed on a slow-runner NPC smoke; 0.35.1 carries everything below.
+
+## 0.35.0 — the ledger (tagged, not published), 2026-11-14
 
 - **Fix (ADDON_ACTION_FORBIDDEN on login):** found with a diagnostic probe (event + debugstack): registering `COMBAT_LOG_EVENT_UNFILTERED` is forbidden to addons on this client (BackstageForeverCombat.lua and BackstageForeverMoments.lua, once each per load). Kills now come from `UNIT_HEALTH` on a dead, untapped-by-others target after recent combat; the death review from player health loss credited to the hostile target; `/bf stats` from target health loss in solo fights (healing dropped). Waypoints (`SetUserWaypoint`, `SetSuperTrackedUserWaypoint`, `ClearUserWaypoint`) now only run from clicks and commands (BF Route repaint and the corpse arrow set them from events). Map pins no-op the protected `SetPassThroughButtons`. Guard tests keep the combat log and event-driven waypoints out.
 - **H6, first part:** new `BackstageForeverLedger.lua` (per-character `BackstageForeverLedgerDB`): money, bags 0–4, bank (container -1 and bags 5–10, last seen), mail items and money (no senders or subjects), reputations, profession cooldowns, and A7 auction price memory from list pages the player opens (lowest buyout per unit, last 5 observations, 1,500 items). Price memory, then the ledger, drop first when the export nears its size budget. The addon now installs 25 files.
