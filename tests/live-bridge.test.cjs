@@ -11,9 +11,10 @@ function lua(body) {
   return r.stdout.trim();
 }
 const STATE = "{seq=7,mapId=1454,x=0.4321,y=0.6543,level=12,health=88,targetNpcId=3057,targetHealth=100,xp=42,freeSlots=9,questId=93739,objectives=5,questHash=201,facing=1.5,resting=true}";
+// Version 3 ("safe" mode) cells; tests/live-strip-v4.test.cjs covers the compact default.
 function luaCells(state) {
   const out = lua(`dofile('addon/BackstageForever/BackstageForeverLive.lua')
-local b=BackstageForeverLivePayload(${state}) local c=BackstageForeverLiveCells(b)
+local b=BackstageForeverLivePayload(${state},3) local c=BackstageForeverLiveCells(b)
 local a={} for _,v in ipairs(c) do a[#a+1]='['..v[1]..','..v[2]..','..v[3]..']' end
 local bb={} for _,v in ipairs(b) do bb[#bb+1]=v end
 print('['..table.concat(a,',')..']') print('['..table.concat(bb,',')..']')`).split("\n");
@@ -127,7 +128,7 @@ test("bridge reports live only while frames are fresh and maps worker states", (
   assert.deepEqual(seen.slice(0, 2), ["nogame", "live"]);
 });
 
-test("preference persists, and the capture worker is spawned bounded with no shell or stdin", () => {
+test("preference persists, and the capture worker is spawned bounded with no shell; stdin only moves its region", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-live-"));
   const calls = [];
   const fake = (exe, args, opts) => {
@@ -145,10 +146,15 @@ test("preference persists, and the capture worker is spawned bounded with no she
   const { exe, args, opts } = calls[0];
   assert.match(exe, /powershell\.exe$/i);
   assert.ok(args.includes("-EncodedCommand") && args.includes("-NonInteractive"));
-  assert.equal(opts.shell, false); assert.equal(opts.stdio[0], "ignore");
+  // stdin is a pipe only so the app can move the capture region between corners; the worker
+  // accepts nothing but "region <corner> <w> <h>" with checked names and bounds.
+  assert.equal(opts.shell, false); assert.equal(opts.stdio[0], "pipe");
+  assert.equal(opts.env.BF_LIVE_CORNER, "topleft");
   assert.deepEqual(Object.keys(opts.env).filter((k) => /KEY|TOKEN|SECRET/i.test(k)), []);
   const script = Buffer.from(args[args.indexOf("-EncodedCommand") + 1], "base64").toString("utf16le");
   assert.match(script, /CopyFromScreen/);
+  assert.match(script, /p\[0\] == "region"/);
+  assert.match(script, /w < 16 \|\| w > 1024 \|\| h < 4 \|\| h > 64/);
   assert.doesNotMatch(script, /SendInput|keybd_event|mouse_event|ReadProcessMemory|OpenProcess|PostMessage|SendMessage/);
   b.setEnabled(false);
   assert.ok(calls.includes("killed"));
@@ -156,7 +162,7 @@ test("preference persists, and the capture worker is spawned bounded with no she
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test("/bf live toggles a 76-cell pixel-exact strip and persists the account setting", () => {
+test("/bf live toggles a compact pixel-exact strip and persists the account setting", () => {
   const out = lua(String.raw`
 local textures,frames=0,{}
 UIParent={GetEffectiveScale=function()return 0.8 end}
@@ -180,7 +186,7 @@ BackstageForeverLiveCommand('live on')
 local strip=frames[2]
 assert(BackstageForeverLiveSettings.enabled==true)
 assert(strip.shown and strip.ignore==true and math.abs(strip.scale-768/1440)<1e-9,'pixel exact scale')
-assert(textures==152,"two rows of 76 cells")
+assert(textures==78,"compact: a 42-cell frame row and a 36-cell pages row")
 strip.scripts.OnUpdate(strip,1)
 BackstageForeverLiveCommand('live off')
 assert(BackstageForeverLiveSettings.enabled==false and not strip.shown)

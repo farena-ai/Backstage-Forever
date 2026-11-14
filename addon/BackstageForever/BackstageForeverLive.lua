@@ -1,23 +1,42 @@
 -- Backstage Forever live link: an opt-in, display-only status strip.
--- The addon draws a tiny calibrated colour strip in the top-left corner of the game
--- window. The desktop app may read those pixels to know where you are right now.
--- Nothing is sent anywhere by the addon; no input, automation or protected values.
--- The strip freezes (combat flag only) while in combat. Toggle with /bf live.
+-- The addon draws a tiny calibrated colour strip in one corner of the game window
+-- (top-left unless /bf live pos says otherwise). The desktop app may read those pixels to
+-- know where you are right now. Nothing is sent anywhere by the addon; no input,
+-- automation or protected values. The strip freezes (combat flag only) while in combat.
+-- Toggle with /bf live.
 -- A second row (since 0.25) cycles through pages, one per second: your quest log (ids and
 -- whether each is complete) and the quests you turned in this session, so the app stays
 -- current without a /reload. Older apps read only the first row.
-local CELL = 6                      -- physical pixels per cell edge
--- Version 3: every colour channel is fully off or fully on (one bit per channel), so
+-- Since 0.32 the strip is "compact" by default (version 4): 2px cells, four calibrated levels
+-- per channel, 84 x 4 physical pixels for both rows. /bf live safe goes back to the larger
+-- one-bit version 3 strip (456 x 12) for displays or remote sessions that mangle colours.
+local CELL = 6                      -- safe mode: physical pixels per cell edge
+-- Version 3 (safe): every colour channel is fully off or fully on (one bit per channel), so
 -- colour-profile, gamma, HDR or remote-session shifts cannot blur neighbouring levels.
 -- Markers: magenta (finder), green, white and black (per-channel calibration).
 local MARKERS = {{255, 0, 255}, {0, 255, 0}, {255, 255, 255}, {0, 0, 0}}
 local PAYLOAD_BYTES = 27
 local PAYLOAD_CELLS = 72            -- 27 bytes * 8 bits / 3 bits per cell
 local VERSION = 3
+-- Version 4 (compact): two magenta finder cells, then grey reference cells at each level the
+-- payload uses (0/85/170/255) so the app can measure what each level looks like on this
+-- screen; then 36 cells of two bits per channel. The pages row reuses the same references.
+local COMPACT_CELL = 2
+local COMPACT_VERSION = 4
+local COMPACT_HEADER = {{255, 0, 255}, {255, 0, 255}, {0, 0, 0}, {85, 85, 85}, {170, 170, 170}, {255, 255, 255}}
+local COMPACT_CELLS = 36            -- 27 bytes * 8 bits / 6 bits per cell
+local LEVELS = {0, 85, 170, 255}
 local PAGE_VERSION = 80             -- second-row page frames
 local PAGE_IDS = 6                  -- quest ids per page
 local PAGE_SECONDS = 1              -- each page stays up this long (the app samples twice a second)
+local PAGE_SECONDS_IDLE = 2         -- while nothing changes
 local MAX_TURNED_IN = 18
+-- Update rate: 5 checks a second; after IDLE_AFTER seconds without any change, once a second.
+-- A heartbeat byte still counts up every HEARTBEAT seconds so the app knows the game is live.
+local TICK, IDLE_TICK, IDLE_AFTER, HEARTBEAT = .2, 1, 5, 2
+local POINTS = {topleft='TOPLEFT', topright='TOPRIGHT', bottomleft='BOTTOMLEFT', bottomright='BOTTOMRIGHT'}
+local POSITION_ALIASES = {tl='topleft', tr='topright', bl='bottomleft', br='bottomright'}
+local PLACE_NAMES = {topleft='top-left', topright='top-right', bottomleft='bottom-left', bottomright='bottom-right'}
 
 local function public(value) if type(value)=='function' or type(value)=='table' then return value end end
 local unpackAll=unpack or table.unpack
@@ -69,11 +88,12 @@ function BackstageForeverLiveIdentity(guid)
     return h
 end
 -- Pure: state table -> 27 payload bytes (1-based array). See src/core/live-bridge.cjs.
-function BackstageForeverLivePayload(s)
+-- version: 4 (compact, default) or 3 (safe); the byte layout is the same.
+function BackstageForeverLivePayload(s,version)
     s=type(s)=='table' and s or {}
     local b={}
     for i=1,PAYLOAD_BYTES do b[i]=0 end
-    b[1]=VERSION
+    b[1]=(version==VERSION) and VERSION or COMPACT_VERSION
     b[2]=clampByte(s.seq or 0)
     local flags=0
     if s.combat then flags=flags+1 end
@@ -102,6 +122,7 @@ function BackstageForeverLivePayload(s)
         b[10],b[15],b[16],b[17]=255,255,255,255
     end
     put16(b,24,s.identity or 0)
+    b[26]=clampByte(s.heartbeat or 0)
     b[27]=crc8(b,26)
     return b
 end
@@ -152,6 +173,32 @@ function BackstageForeverLiveCells(bytes)
         cells[#cells+1]=rgb
     end
     return cells
+end
+
+-- Pure: payload bytes -> compact cells: two bits per channel at LEVELS. header=true puts the
+-- finder and reference cells first (main row); the pages row has no header.
+function BackstageForeverLiveCompactCells(bytes,header)
+    local cells={}
+    if header then for i,m in ipairs(COMPACT_HEADER) do cells[i]={m[1],m[2],m[3]} end end
+    local bits={}
+    for i=1,PAYLOAD_BYTES do
+        local v=tonumber(bytes and bytes[i]) or 0
+        for k=7,0,-1 do local p=2^k bits[#bits+1]=floor(v/p)%2 end
+    end
+    for c=0,COMPACT_CELLS-1 do
+        local rgb={}
+        for ch=1,3 do local i=c*6+(ch-1)*2 rgb[ch]=LEVELS[(bits[i+1] or 0)*2+(bits[i+2] or 0)+1] end
+        cells[#cells+1]=rgb
+    end
+    return cells
+end
+-- Pure: settings -> strip geometry in physical pixels. Row 1 is the frame, row 2 the pages.
+function BackstageForeverLiveLayout(safe,pos)
+    pos=POINTS[pos] and pos or 'topleft'
+    local cell,row1,row2
+    if safe then cell,row1,row2=CELL,#MARKERS+PAYLOAD_CELLS,#MARKERS+PAYLOAD_CELLS
+    else cell,row1,row2=COMPACT_CELL,#COMPACT_HEADER+COMPACT_CELLS,COMPACT_CELLS end
+    return {mode=safe and 'safe' or 'compact',pos=pos,point=POINTS[pos],cell=cell,row1=row1,row2=row2,width=math.max(row1,row2)*cell,height=2*cell}
 end
 
 -- Live game reads (public APIs only; anything unavailable stays unknown).
@@ -239,13 +286,17 @@ function BackstageForeverLiveState()
 end
 
 -- Drawing (only when enabled).
-local strip,textures,enabled,elapsed,lastKey
+local strip,textures,enabled,elapsed,lastKey,shape
 local paints,lastError=0,nil
+local beat,quiet,sinceBeat=0,0,0
 local function settings()
     if type(BackstageForeverLiveSettings)~='table' then BackstageForeverLiveSettings={enabled=true,announce=true} end
-    return BackstageForeverLiveSettings
+    local s=BackstageForeverLiveSettings
+    if s.pos~=nil and not POINTS[s.pos] then s.pos=nil end
+    return s
 end
--- One UI unit = one physical pixel, independent of UI scale and resolution.
+-- One UI unit = one physical pixel, independent of UI scale and resolution, so a cell is
+-- exactly COMPACT_CELL (or CELL) physical pixels.
 local function rescale()
     if not strip then return end
     local _,height=call(GetPhysicalScreenSize)
@@ -259,30 +310,51 @@ local function build()
     if not strip then return nil end
     pcall(strip.SetFrameStrata,strip,'TOOLTIP')
     pcall(strip.SetFrameLevel,strip,10000)
-    local total=#MARKERS+PAYLOAD_CELLS
-    pcall(strip.SetSize,strip,total*CELL,CELL*2)
-    pcall(strip.ClearAllPoints,strip)
-    pcall(strip.SetPoint,strip,'TOPLEFT',UIParent,'TOPLEFT',0,0)
     textures={}
-    for i=1,total*2 do
-        local t=strip:CreateTexture(nil,'OVERLAY')
-        local col,row=(i-1)%total,floor((i-1)/total)
-        pcall(t.SetSize,t,CELL,CELL)
-        pcall(t.SetPoint,t,'TOPLEFT',strip,'TOPLEFT',col*CELL,-row*CELL)
-        if type(t.SetSnapToPixelGrid)=='function' then pcall(t.SetSnapToPixelGrid,t,false) pcall(t.SetTexelSnappingBias,t,0) end
-        textures[i]=t
-    end
     return strip
 end
-local function paint()
+-- Sizes, anchors and cell textures for the current mode and corner.
+local function layout()
+    local s=settings()
+    shape=BackstageForeverLiveLayout(s.safe,s.pos)
+    pcall(strip.SetSize,strip,shape.width,shape.height)
+    pcall(strip.ClearAllPoints,strip)
+    pcall(strip.SetPoint,strip,shape.point,UIParent,shape.point,0,0)
+    local need=shape.row1+shape.row2
+    for i=1,need do
+        local t=textures[i]
+        if not t then
+            t=strip:CreateTexture(nil,'OVERLAY')
+            if type(t.SetSnapToPixelGrid)=='function' then pcall(t.SetSnapToPixelGrid,t,false) pcall(t.SetTexelSnappingBias,t,0) end
+            textures[i]=t
+        end
+        local row=i>shape.row1 and 1 or 0
+        local col=row==0 and i-1 or i-1-shape.row1
+        pcall(t.SetSize,t,shape.cell,shape.cell)
+        if type(t.ClearAllPoints)=='function' then pcall(t.ClearAllPoints,t) end
+        pcall(t.SetPoint,t,'TOPLEFT',strip,'TOPLEFT',col*shape.cell,-row*shape.cell)
+        if type(t.Show)=='function' then pcall(t.Show,t) end
+    end
+    for i=need+1,#textures do if type(textures[i].Hide)=='function' then pcall(textures[i].Hide,textures[i]) end end
+end
+local function fill(first,cells)
+    for i,c in ipairs(cells) do local t=textures[first+i-1] if t then pcall(t.SetColorTexture,t,c[1]/255,c[2]/255,c[3]/255,1) end end
+end
+-- Repaints when anything changed, or every HEARTBEAT seconds with only the heartbeat moved.
+local function paint(step)
     local s=BackstageForeverLiveState()
     local key=table.concat({tostring(s.combat),tostring(s.mapId),s.x and floor(s.x*2000) or '',s.y and floor(s.y*2000) or '',tostring(s.level),tostring(s.health),tostring(s.targetNpcId),tostring(s.targetHealth),tostring(s.questId),tostring(s.objectives),tostring(s.questHash),tostring(s.freeSlots),s.facing and floor(s.facing*20) or '',tostring(s.xp),tostring(s.dead),tostring(s.mounted),tostring(s.resting),tostring(s.instance),tostring(s.afk),tostring(s.identity)},'|')
-    if key==lastKey then return end
-    lastKey=key
-    seq=(seq+1)%256
-    s.seq=seq
-    local cells=BackstageForeverLiveCells(BackstageForeverLivePayload(s))
-    for i,c in ipairs(cells) do pcall(textures[i].SetColorTexture,textures[i],c[1]/255,c[2]/255,c[3]/255,1) end
+    if key==lastKey then
+        quiet=quiet+step sinceBeat=sinceBeat+step
+        if sinceBeat<HEARTBEAT then return end
+    else
+        lastKey=key quiet=0
+        seq=(seq+1)%256
+    end
+    sinceBeat=0 beat=(beat+1)%256
+    s.seq=seq s.heartbeat=beat
+    if shape.mode=='safe' then fill(1,BackstageForeverLiveCells(BackstageForeverLivePayload(s,VERSION)))
+    else fill(1,BackstageForeverLiveCompactCells(BackstageForeverLivePayload(s,COMPACT_VERSION),true)) end
 end
 -- Second row: cycle through quest log and turned-in pages, one per PAGE_SECONDS.
 local turnedIn={}
@@ -293,11 +365,11 @@ function BackstageForeverLiveTurnedIn(id)
     for i=#turnedIn,1,-1 do if turnedIn[i]==id then table.remove(turnedIn,i) end end
     table.insert(turnedIn,1,id)
     while #turnedIn>MAX_TURNED_IN do table.remove(turnedIn) end
-    pageClock=99 pageIndex=#pages
+    pageClock=99 pageIndex=#pages quiet=0
 end
-local function paintPage(dt)
+local function paintPage(dt,idle)
     pageClock=pageClock+dt
-    if pageClock<PAGE_SECONDS then return end
+    if pageClock<(idle and PAGE_SECONDS_IDLE or PAGE_SECONDS) then return end
     pageClock=0
     if call(InCombatLockdown) then return end
     pageIndex=pageIndex+1
@@ -308,24 +380,25 @@ local function paintPage(dt)
         for _,p in ipairs(BackstageForeverLivePages(2,turnedIn,identity)) do pages[#pages+1]=p end
         pageIndex=1
     end
-    local cells=BackstageForeverLiveCells(pages[pageIndex])
-    local total=#MARKERS+PAYLOAD_CELLS
-    for i,c in ipairs(cells) do local t=textures[total+i] if t then pcall(t.SetColorTexture,t,c[1]/255,c[2]/255,c[3]/255,1) end end
+    if shape.mode=='safe' then fill(shape.row1+1,BackstageForeverLiveCells(pages[pageIndex]))
+    else fill(shape.row1+1,BackstageForeverLiveCompactCells(pages[pageIndex],false)) end
 end
 local function apply()
     if not settings().enabled then if strip then pcall(strip.Hide,strip) pcall(strip.SetScript,strip,'OnUpdate',nil) end return end
     if not build() then return end
+    layout()
     rescale()
-    lastKey=nil elapsed=1 pageClock=99 pageIndex=#pages
+    lastKey=nil elapsed=1 pageClock=99 pageIndex=#pages quiet=0 sinceBeat=0
     pcall(strip.Show,strip)
     pcall(strip.SetScript,strip,'OnUpdate',function(_,dt)
         elapsed=elapsed+(tonumber(dt) or 0)
-        if elapsed<.25 then return end
+        local idle=quiet>=IDLE_AFTER
+        if elapsed<(idle and IDLE_TICK or TICK) then return end
         local step=elapsed
         elapsed=0
-        local ok,err=pcall(paint)
+        local ok,err=pcall(paint,step)
         if ok then paints=paints+1 lastError=nil else lastError=tostring(err) end
-        local okPage,errPage=pcall(paintPage,step)
+        local okPage,errPage=pcall(paintPage,step,idle)
         if not okPage then lastError=tostring(errPage) end
     end)
 end
@@ -351,21 +424,46 @@ function BackstageForeverWay(message)
     label=(label and label~='' and label:sub(1,60)) or 'waypoint'
     say(('Waypoint set: %s at %.1f, %.1f. Follow the arrow on your minimap and screen.'):format(label,x*100,y*100))
 end
+local function say(m) if type(DEFAULT_CHAT_FRAME)=='table' and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,m) end end
+-- Pure: "/bf live ..." text -> action, value. Actions: toggle, on, off, status, pos, safe,
+-- compact, usage. pos carries a corner name, or nil when the corner is not recognised.
+function BackstageForeverLiveParse(message)
+    local arg,value=(type(message)=='string' and message:lower() or ''):match('^live%s*(%a*)%s*(%a*)')
+    arg=arg or ''
+    if arg=='' then return 'toggle' end
+    if arg=='on' or arg=='off' or arg=='status' or arg=='safe' or arg=='compact' then return arg end
+    if arg=='pos' or arg=='position' then value=POSITION_ALIASES[value] or value return 'pos',POINTS[value] and value or nil end
+    return 'usage'
+end
 function BackstageForeverLiveCommand(message)
-    local arg=type(message)=='string' and message:lower():match('^live%s*(%a*)') or ''
+    local action,value=BackstageForeverLiveParse(message)
     local s=settings()
-    if arg=='status' then
+    local where=PLACE_NAMES[s.pos or 'topleft']
+    if action=='status' then
         local w=strip and call(strip.GetWidth,strip) local es=strip and call(strip.GetEffectiveScale,strip)
         local _,ph=call(GetPhysicalScreenSize)
-        local msg=('Backstage Forever live: %s · strip %s · %sx units · scale %.3f · screen %s · paints %d%s'):format(s.enabled and 'on' or 'off',strip and (call(strip.IsVisible,strip) and 'visible' or 'hidden') or 'none',tostring(w),tonumber(es) or -1,tostring(ph),paints,lastError and (' · error: '..lastError:sub(1,160)) or '')
-        if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,msg) end
-        return
+        local L=BackstageForeverLiveLayout(s.safe,s.pos)
+        local msg=('Backstage Forever live: %s · %s %dx%d px at %s · strip %s · %sx units · scale %.3f · screen %s · paints %d%s%s'):format(s.enabled and 'on' or 'off',L.mode,L.width,L.height,PLACE_NAMES[L.pos],strip and (call(strip.IsVisible,strip) and 'visible' or 'hidden') or 'none',tostring(w),tonumber(es) or -1,tostring(ph),paints,quiet>=IDLE_AFTER and ' · idle' or '',lastError and (' · error: '..lastError:sub(1,160)) or '')
+        return say(msg)
     end
-    if arg=='on' then s.enabled=true elseif arg=='off' then s.enabled=false elseif arg=='' then s.enabled=not s.enabled end
+    if action=='usage' then return say('Backstage Forever: use /bf live [on|off|status], /bf live pos topleft|topright|bottomleft|bottomright, or /bf live safe|compact.') end
+    if action=='pos' then
+        if not value then return say('Backstage Forever: use /bf live pos topleft, topright, bottomleft or bottomright.') end
+        s.pos=value~='topleft' and value or nil
+        apply()
+        return say('Backstage Forever live strip moved to the '..PLACE_NAMES[value]..' corner.')
+    end
+    if action=='safe' then
+        s.safe=true apply()
+        return say('Backstage Forever live strip: safe mode (larger, one bit per colour). Use it if the link drops over remote desktop or with colour filters; /bf live compact makes it small again.')
+    end
+    if action=='compact' then
+        s.safe=nil apply()
+        return say('Backstage Forever live strip: compact mode (tiny, calibrated colours). /bf live safe if the desktop app stops reading it.')
+    end
+    if action=='on' then s.enabled=true elseif action=='off' then s.enabled=false else s.enabled=not s.enabled end
     apply()
-    if type(DEFAULT_CHAT_FRAME)=='table' and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then
-        pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever live link '..(s.enabled and 'on: the desktop app can read your position from the small strip at the top-left. /bf live off to stop.' or 'off.'))
-    end
+    say('Backstage Forever live link '..(s.enabled and ('on: the desktop app can read your position from the small strip at the '..where..'. /bf live off to stop.') or 'off.'))
 end
 -- First login with the live link: say once what the strip is and how to hide it.
 local function announce()
@@ -373,7 +471,7 @@ local function announce()
     if not s.announce then return end
     s.announce=nil
     if type(DEFAULT_CHAT_FRAME)=='table' and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then
-        pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever live link is on: the tiny strip at the top-left lets the desktop app show where you are. Type /bf live off to hide it.')
+        pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever live link is on: the tiny strip at the '..PLACE_NAMES[s.pos or 'topleft']..' lets the desktop app show where you are. Type /bf live off to hide it, or /bf live pos to move it.')
     end
 end
 if type(CreateFrame)=='function' then
