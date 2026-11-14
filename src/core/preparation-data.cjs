@@ -21,6 +21,7 @@ function canonical(value) {
   return value;
 }
 const id = value => integer(value, 1, 2147483647);
+const DIFFICULTIES = Object.freeze(["optimal", "medium", "easy", "trivial"]);
 function unique(items, key) {
   const seen = new Set();
   for (const item of items) { if (seen.has(item[key])) invalid(); seen.add(item[key]); }
@@ -43,13 +44,20 @@ function reagent(value) {
   return out;
 }
 function recipe(value) {
-  object(value, ["id", "skillLineId", "name", "reagentsKnown", "reagents", "outputItemId", "outputMin", "outputMax", "canSkillUp"]);
+  object(value, ["id", "skillLineId", "name", "reagentsKnown", "reagents", "outputItemId", "outputMin", "outputMax", "canSkillUp", "difficulty"]);
   const out = { id: id(value.id), skillLineId: id(value.skillLineId), name: name(value.name), reagentsKnown: boolean(value.reagentsKnown), reagents: list(value.reagents, 20, reagent, "itemId") };
   if (!out.reagentsKnown && out.reagents.length) invalid();
   if (value.outputItemId !== undefined) out.outputItemId = id(value.outputItemId);
   for (const key of ["outputMin", "outputMax"]) if (value[key] !== undefined) out[key] = integer(value[key], 1, 10000);
   if (out.outputMin !== undefined && out.outputMax !== undefined && out.outputMin > out.outputMax) invalid();
   if (value.canSkillUp !== undefined) out.canSkillUp = boolean(value.canSkillUp);
+  // Optional skill-up colour from the trade skill API (newer captures only). A grey
+  // recipe cannot skill up and every other colour can; a contradiction is not a fact.
+  if (value.difficulty !== undefined) {
+    if (!DIFFICULTIES.includes(value.difficulty)) invalid();
+    if (out.canSkillUp !== undefined && out.canSkillUp !== (value.difficulty !== "trivial")) invalid();
+    out.difficulty = value.difficulty;
+  }
   return out;
 }
 function material(value) {
@@ -90,4 +98,4 @@ function normalizeWorkshopCapture(value, sourceAt) {
   }
   return validateWorkshop(out);
 }
-module.exports = { validateWorkshop, normalizeWorkshopCapture };
+module.exports = { validateWorkshop, normalizeWorkshopCapture, DIFFICULTIES };
