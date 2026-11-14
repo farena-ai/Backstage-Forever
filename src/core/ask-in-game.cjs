@@ -2,7 +2,9 @@
 // Questions typed in game (0.38, roadmap A15). The live strip delivers the text (see
 // live-bridge.cjs question pages); this answers it through the same path as the AI Companion page
 // (offline reference first for where/how questions, then the AI the player chose) and shows the
-// answer in the panel over the game. Only the typed text is used, plus the active character when
+// answer in the panel over the game. Since 0.39.1 the owl only sends an "open" signal and the
+// question is typed in the panel itself (askTyped); /bf ask QUESTION still arrives over the strip.
+// Only the typed text is used, plus the active character when
 // the Companion page's own "Use my active character" setting is on and the question comes from
 // that character. Nothing is ever sent to the game.
 const RETRY_MS = 2000, RETRY_FOR_MS = 30000;
@@ -32,21 +34,35 @@ class InGameAsk {
     Object.assign(this, { companion, getState, liveKeyFor, panel, notify, getShare, wait, now });
     this.queue = Promise.resolve();
     this.handled = 0;
+    this.seq = 0;
+    this.lastHash = null;
   }
   /** Queues a question from the live strip: { id, text, characterHash }. Resolves when answered. */
   handle(question) {
+    // The owl button (0.39.1): open the panel with the keyboard in its question box.
+    if (question && question.kind === "open") {
+      if (Number.isInteger(question.characterHash)) this.lastHash = question.characterHash;
+      this.panel.open?.();
+      return Promise.resolve(null);
+    }
     if (!question || typeof question.text !== "string" || !question.text.trim() || question.text.length > 1000) return Promise.resolve(null);
     const run = this.queue.then(() => this.answer(question)).catch(() => null);
     this.queue = run;
     return run;
   }
+  /** A question typed in the panel: asked for the character that last opened it from the game. */
+  askTyped(text) {
+    return this.handle({ text, characterHash: this.lastHash });
+  }
   async answer({ text, characterHash = null }) {
+    if (Number.isInteger(characterHash)) this.lastHash = characterHash;
     const prompt = text.trim();
+    const id = ++this.seq;
     const state = this.getState();
     const profile = state.profiles?.find((p) => p.id === state.activeProfileId) || null;
     const expected = profile?.source?.kind === "wow-addon" ? this.liveKeyFor(profile.source.id) : null;
     const { shareProfile, note } = sharing({ share: this.getShare() === true, expected, characterHash });
-    this.panel.show({ status: "thinking", question: prompt, at: this.now() });
+    this.panel.show({ id, status: "thinking", question: prompt, at: this.now() });
     const request = { provider: state.provider.id, prompt, shareProfile, memoryIds: [] };
     if (state.activeProfileId) request.profileId = state.activeProfileId;
     const started = this.now();
@@ -54,7 +70,7 @@ class InGameAsk {
       try {
         const result = await this.companion.ask(request);
         this.handled++;
-        this.panel.show({ status: "answer", question: prompt, answer: { text: result.text, kind: result.kind }, note, at: this.now() });
+        this.panel.show({ id, status: "answer", question: prompt, answer: { text: result.text, kind: result.kind }, note, at: this.now() });
         // The exchange also joins the Companion page's conversation.
         this.notify({ question: prompt, shareProfile, result: { text: result.text, kind: result.kind, npc: result.npc, travel: result.travel, lookups: result.lookups, conversation: result.conversation } });
         return result;
@@ -62,7 +78,7 @@ class InGameAsk {
         // The main window is answering something else: wait for it, a little.
         if (BUSY.test(String(error?.message)) && this.now() - started < RETRY_FOR_MS) { await this.wait(RETRY_MS); continue; }
         const message = playerMessage(error);
-        this.panel.show({ status: "error", question: prompt, message, at: this.now() });
+        this.panel.show({ id, status: "error", question: prompt, message, at: this.now() });
         return null;
       }
     }

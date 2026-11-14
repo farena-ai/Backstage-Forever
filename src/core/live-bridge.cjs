@@ -333,12 +333,15 @@ function parseQuestionPage(b) {
   return { kind: "question", id, index, count, sum: b[22], identity: (b[23] << 8) | b[24], bytes: Array.from(b.slice(5, 5 + n)) };
 }
 // Complete pages (index -> bytes) -> the question text, or null when the checksum or UTF-8 is wrong.
+const OPEN_SIGNAL = "\u0001open";
 function assembleQuestion(parts, count, sum) {
   const all = [];
   for (let i = 0; i < count; i++) { const p = parts.get(i); if (!p) return null; all.push(...p); }
   if (!all.length || all.length > QUESTION_MAX_BYTES || crc8(all, all.length) !== sum) return null;
   let text;
   try { text = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(all)); } catch { return null; }
+  // The owl's "open the panel" signal (0.39.1): a control byte no typed question can contain.
+  if (text === OPEN_SIGNAL) return OPEN_SIGNAL;
   // Control characters never come from the game's edit box; the text stays one plain line.
   text = text.replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
   if (!text || [...text].length > QUESTION_MAX_CHARS) return null;
@@ -869,7 +872,7 @@ class LiveBridge {
     const text = assembleQuestion(set.parts, pg.count, pg.sum);
     if (!text) return null;
     this.questionSeen.set(key, at);
-    const question = { id: pg.id, text, characterHash: pg.identity, at };
+    const question = text === OPEN_SIGNAL ? { id: pg.id, kind: "open", text: "", characterHash: pg.identity, at } : { id: pg.id, text, characterHash: pg.identity, at };
     for (const fn of this.questionListeners || []) { try { fn(question); } catch {} }
     return question;
   }
@@ -920,4 +923,4 @@ class LiveBridge {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { HAIRLINE, HAIRLINE_REGION, HAIRLINE_WIDTH, TOPLEFT_REGION, hairlineThresholds, crc16, encodeHairlineFrame, encodeHairlineCells, decodeHairlineCells, decodeHairline, hairlineHint, encodeQuestionPages, parseQuestionPage, assembleQuestion, QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES, QUESTION_MAX_CHARS, QUESTION_INTERVAL_MS, encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };
+module.exports = { HAIRLINE, HAIRLINE_REGION, HAIRLINE_WIDTH, TOPLEFT_REGION, hairlineThresholds, crc16, encodeHairlineFrame, encodeHairlineCells, decodeHairlineCells, decodeHairline, hairlineHint, encodeQuestionPages, parseQuestionPage, assembleQuestion, OPEN_SIGNAL, QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES, QUESTION_MAX_CHARS, QUESTION_INTERVAL_MS, encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };

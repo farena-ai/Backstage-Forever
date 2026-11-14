@@ -839,6 +839,7 @@ app.whenReady().then(async () => {
   // Questions typed in game (0.38, A15): over the live strip, answered like the Companion page,
   // shown in a panel over the game. The Companion page reports its "Use my active character" choice.
   let inGameShare = false;
+  let inGameAsk = null;
   const askPanel = require("./core/ask-panel.cjs").createAskPanel({
     BrowserWindow, ipcMain, screen: require("electron").screen, rendererDir: path.join(__dirname, "renderer"), dataDir: app.getPath("userData"),
     gameRect: () => liveBridge.gameWindow(),
@@ -848,10 +849,12 @@ app.whenReady().then(async () => {
       win.show(); win.focus();
       if (!win.webContents.isDestroyed()) win.webContents.send("backstage:openPage", "assistant");
     },
+    // Questions typed in the panel itself go the same way as the ones from the game.
+    onAsk: (question) => { void inGameAsk?.askTyped(question); },
   });
   closeAskPanel = () => askPanel.close();
   dropAskPanelWindow = () => askPanel.destroyWindow();
-  const inGameAsk = new (require("./core/ask-in-game.cjs").InGameAsk)({
+  inGameAsk = new (require("./core/ask-in-game.cjs").InGameAsk)({
     companion: companionService, getState: () => store.state, liveKeyFor: require("./core/live-bridge.cjs").liveKeyFor,
     panel: askPanel, getShare: () => inGameShare,
     notify: (exchange) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:inGameExchange", exchange); },

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.1 — ask and answer in one window, 2026-11-14
+
+- **A15 one window:** the owl button and `/bf ask` send a five-byte open signal (`\1open`, which no cleaned question can be) on the question pages; the bridge reports it as `{ kind: "open" }` and the panel opens with the keyboard (`show` + `focus`) and the cursor in its new question box. Questions typed there go through `askPanel:ask` (cleaned, 1–200 characters) to the same `InGameAsk` path, asked for the character that last opened it. The panel keeps the last 8 exchanges (thinking and answer share an id, so answers replace their own line), never hides while it has the keyboard, and Esc closes it. `/bf ask QUESTION` answers land in the same panel, shown inactive. The in-game question box is removed; `BackstageForeverAskToggle` still opens the panel for old macros. Panel 420×380.
+
 ## 0.39.0 — painted message boxes, 2026-11-14
 
 - **G14:** `BackstageForeverToast(title, sub, big, kind)` draws a solid painted box: one original painting per kind (`Art/Messages/<kind>.tga`, 1024×128 24-bit; flight, quest, levelup, death, spirit, revive, gear, hearth, ready, supplies, first, review, victory, profession), a 2px gold frame, the gold title with a shadow and the text on a dark ribbon that hugs it. Long text wraps inside the box, the box grows, and `BackstageForeverMessageCrop` crops the 8:1 painting to the box instead of stretching it. Every caller names its kind; unknown kinds use the ready painting. Same placement, animation, combat queue and `/bf toasts` switch as before.
