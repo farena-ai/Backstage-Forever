@@ -12,5 +12,28 @@
 .hc-item { display: inline-flex; border-radius: 4px; border: 1px solid #5a3a0c; background: #2b1b0a; }
 .hc-rewards small { margin-left: 4px; color: #6b4a22; }
 .hc-hint { color: #7a4b16; font-style: italic; font-size: 12px !important; margin: 0 !important; }
+/* Item and NPC cards (0.30). Item names in their in-game quality colours, darkened for parchment. */
+.hc-item-head { justify-content: flex-start !important; align-items: center !important; }
+.hc-icon { flex: none; line-height: 0; border: 2px solid #8a7a66; border-radius: 6px; overflow: hidden; background: #1b0d05; box-shadow: 0 0 0 1px #000; }
+.hc-gem { display: grid; place-items: center; width: 40px; height: 40px; line-height: 1; font-size: 18px; color: #c8b89c; }
+.hc-title { display: flex; flex-direction: column; min-width: 0; }
+.hc-title small { font-size: 12px; color: #6b4a22; }
+.hc-icon.q-poor { border-color: #9d9d9d; } .hc-icon.q-common { border-color: #e8e8e8; } .hc-icon.q-uncommon { border-color: #1eff00; } .hc-icon.q-rare { border-color: #0070dd; } .hc-icon.q-epic { border-color: #a335ee; } .hc-icon.q-legendary { border-color: #ff8000; }
+.hover-card header strong.hc-q-poor { color: #6a6a6a; } .hover-card header strong.hc-q-common { color: #2b1b0a; } .hover-card header strong.hc-q-uncommon { color: #1a7a0a; } .hover-card header strong.hc-q-rare { color: #0a56b0; } .hover-card header strong.hc-q-epic { color: #7a1fc0; } .hover-card header strong.hc-q-legendary { color: #b85a00; }
+.hc-meta { color: #5a3e1c; font-size: 12px !important; }
+.hc-stats { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-wrap: wrap; gap: 3px 10px; font-size: 13px; font-weight: 700; color: #1a5a0a; }
+.hc-stats li:first-child { color: #2b1b0a; }
+.hc-verdict { padding: 4px 8px; border-radius: 5px; font-weight: 800; }
+.hc-verdict small { display: block; font-weight: 600; font-size: 12px; }
+.hc-v-up { color: #0f3a0a; background: linear-gradient(180deg, #c6f2b0, #95d878); border: 1px solid #2f6a2a; }
+.hc-v-later { color: #3a2a05; background: #f6dc8a; border: 1px solid #a07a1a; }
+.hc-v-no { color: #fff2ee; background: #8f2a1a; }
+.hc-v-meh { color: #4a3a2a; background: rgba(90,62,28,.15); border: 1px solid rgba(90,62,28,.3); }
+.hc-drops strong, .hc-npc strong { color: #7a1f14; }
+.hc-wish { color: #8a5a08; font-weight: 800; }
+.hc-roles { font-weight: 700; color: #5a3608; }
+.hc-npc { margin: 0 0 6px; padding-left: 18px; font-size: 13px; line-height: 1.4; }
+.hc-side { flex: none; padding: 0 6px; border-radius: 8px; font-size: 11px; font-weight: 700; background: #2f6a2a; color: #fff; }
+.hc-side.other { background: #8f1d14; }
 @keyframes hc-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .hover-card { animation: none; } }

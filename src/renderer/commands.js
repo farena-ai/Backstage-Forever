@@ -51,6 +51,8 @@
     { name: "World Map", what: "Zone maps with quest givers, hand-ins, trainers, flight masters, herbs and ore. Click anyone for details. Your path this session is drawn on it." },
     { name: "Quests", what: "Look up any quest: who gives it, where it goes, rewards. Copies a /bf guide line for the game." },
     { name: "Adventure", what: "Your next step in more depth, dungeons for your level, and profession plans." },
+    { name: "Instance Atlas: loot", what: "Every dungeon and raid card has a Loot button: each boss with what it drops, as item tiles with icons, quality colours, slot and how often it drops. Green Upgrade for you marks gear better than what you wear; the card says how many upgrades are inside. Star items for your wish list and they show on that dungeon's card." },
+    { name: "Hover cards", what: "Rest the mouse on a quest, an item or an NPC anywhere in the app for a card. Quests: level, how to do it, rewards. Items: icon, stats, whether it's an upgrade for you, and which boss drops it. NPCs: what they train or sell and where they are." },
     { name: "Companion", what: "Ask in plain words. With no AI set up it still answers right away: “how do I do <quest>?”, “what should I do next?”, “what do I train?”, “where is <NPC>?” and “how do I get to <place>?”. An AI model (Settings) answers everything else." },
     { name: "Characters", what: "Each character's journal, gear and training review, talents, and Journey: your badges, how fast each level went, and your rested bonus." },
     { name: "Plans", what: "Checklists and party plans you write yourself." },

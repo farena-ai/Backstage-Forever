@@ -80,3 +80,9 @@ test("every Now step has its painted crest", () => {
 test("every class has its crest", () => {
   for (const c of ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"]) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/classes", c + ".png")), c);
 });
+
+test("Help → Commands explains the loot browser, the wish list and hover cards", () => {
+  const app = APP.map((a) => `${a.name} ${a.what}`).join("\n");
+  assert.match(app, /Loot/); assert.match(app, /wish list/); assert.match(app, /Upgrade for you/);
+  assert.match(app, /Hover cards/); assert.match(app, /an item or an NPC/);
+});

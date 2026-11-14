@@ -383,7 +383,7 @@ window.WorldMapView = (() => {
         parts.push(`<section class="wm-sec"><h4>Trains · ${esc(d.trainer.title)} (${sv.length})</h4><ul class="wm-spells">${sv.slice(0, 30).map((s) => `<li>${esc(s.name)}${s.rank ? ` <small>${esc(s.rank)}</small>` : ""}${s.skillRank ? ` <small>skill ${s.skillRank}</small>` : s.level ? ` <small>lvl ${s.level}</small>` : ""}</li>`).join("")}</ul></section>`);
       }
     }
-    if (d.vendor?.items.length) parts.push(`<section class="wm-sec"><details ${d.vendor.items.length <= 8 ? "open" : ""}><summary>Sells (${d.vendor.items.length})</summary><ul class="wm-items">${d.vendor.items.map((i) => `<li>${esc(i.name)}</li>`).join("")}</ul></details></section>`);
+    if (d.vendor?.items.length) parts.push(`<section class="wm-sec"><details ${d.vendor.items.length <= 8 ? "open" : ""}><summary>Sells (${d.vendor.items.length})</summary><ul class="wm-items">${d.vendor.items.map((i) => `<li${Number.isSafeInteger(i.itemId) ? ` data-card-item="${i.itemId}"` : ""}>${esc(i.name)}</li>`).join("")}</ul></details></section>`);
     const elsewhere = d.places.filter((p) => p.mapId !== model?.mapId);
     if (elsewhere.length) parts.push(`<p class="wm-note">Also seen in ${elsewhere.map((p) => `${esc(p.mapName)} ${pct(p.x)}, ${pct(p.y)}`).join("; ")}.</p>`);
     if (!d.questsGiven.length && !d.questsTurnedIn.length && !d.trainer && !d.vendor && !d.flight) parts.push(`<p class="wm-note">No quests, training or wares are recorded for this NPC yet.</p>`);
@@ -466,7 +466,7 @@ window.WorldMapView = (() => {
     const box = document.querySelector("[data-wm-results]"); if (!box) return;
     box.hidden = !results;
     if (!results) { box.innerHTML = ""; return; }
-    box.innerHTML = `<h3>Found ${results.results.length} for “${esc(results.query)}”</h3>` + (results.results.length ? `<ol>${results.results.map((r, i) => `<li><button type="button" data-wm-result="${i}">${ico(r.kind, r.gather ? `data-gather="${esc(r.gather)}"` : "")}<span><strong>${esc(r.label)}</strong><small>${esc(r.sub || "")}${r.sub ? " · " : ""}${esc(r.mapName)} ${pct(r.x)}, ${pct(r.y)}</small></span></button></li>`).join("")}</ol>` : `<p>Nothing in the local reference matches. Coverage grows as you and others play.</p>`) + `<button type="button" class="subtle" data-wm-act="clear">Clear search</button>`;
+    box.innerHTML = `<h3>Found ${results.results.length} for “${esc(results.query)}”</h3>` + (results.results.length ? `<ol>${results.results.map((r, i) => `<li><button type="button" data-wm-result="${i}">${ico(r.kind, r.gather ? `data-gather="${esc(r.gather)}"` : "")}<span><strong${r.npcId ? ` data-card-npc="${esc(r.npcId)}"` : ""}>${esc(r.label)}</strong><small>${esc(r.sub || "")}${r.sub ? " · " : ""}${esc(r.mapName)} ${pct(r.x)}, ${pct(r.y)}</small></span></button></li>`).join("")}</ol>` : `<p>Nothing in the local reference matches. Coverage grows as you and others play.</p>`) + `<button type="button" class="subtle" data-wm-act="clear">Clear search</button>`;
     paintIcons(box);
   }
   // Nearest useful places to your live (or saved) position.
@@ -478,7 +478,7 @@ window.WorldMapView = (() => {
     const near = visiblePins().filter((p) => NEAR_KINDS.has(p.kind)).map((p) => ({ p, d: Math.hypot(p.x - me.x, p.y - me.y) })).sort((a, b) => (a.p.kind === "quest-turnin" ? -0.05 : 0) + a.d - ((b.p.kind === "quest-turnin" ? -0.05 : 0) + b.d))
       .filter((n, i, all) => !all.slice(0, i).some((m) => m.p.label === n.p.label && Math.hypot(m.p.x - n.p.x, m.p.y - n.p.y) < 0.03)).slice(0, 5);
     box.hidden = !near.length;
-    box.innerHTML = `<h3>Near you${model.player.live ? "" : " (last saved)"}</h3><ol>${near.map(({ p, d }, i) => `<li><button type="button" data-wm-near-pin="${i}">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<span><strong>${esc(p.label)}</strong><small>${esc(p.sub || "")}${p.sub ? " · " : ""}${d < 0.02 ? "right here" : `${dirName(p.x - me.x, p.y - me.y)}, ${d < 0.08 ? "close" : d < 0.25 ? "short ride" : "far"}`}</small></span></button></li>`).join("")}</ol>`;
+    box.innerHTML = `<h3>Near you${model.player.live ? "" : " (last saved)"}</h3><ol>${near.map(({ p, d }, i) => `<li><button type="button" data-wm-near-pin="${i}">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<span><strong${p.npcId ? ` data-card-npc="${esc(p.npcId)}"` : ""}>${esc(p.label)}</strong><small>${esc(p.sub || "")}${p.sub ? " · " : ""}${d < 0.02 ? "right here" : `${dirName(p.x - me.x, p.y - me.y)}, ${d < 0.08 ? "close" : d < 0.25 ? "short ride" : "far"}`}</small></span></button></li>`).join("")}</ol>`;
     box._near = near.map((n) => n.p);
     paintIcons(box);
   }

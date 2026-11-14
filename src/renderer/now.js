@@ -126,7 +126,7 @@ window.NowView = (() => {
     const z = zone;
     if (!z) return "";
     const w = (p) => ({ mapId: z.mapId, x: p.x, y: p.y });
-    const row = (ico, title, items, goal) => items.length ? `<li class="now-zr"><span class="now-zr-ico now-zr-${ico}" aria-hidden="true"></span><div><strong>${title}</strong>${items.map((p) => `<span class="now-zr-item">${esc(p.label)}${p.sub ? ` <small>${esc(p.sub)}</small>` : ""} ${mapBtn(w(p), p.label, p.sub, p.npcId, goal(p))}</span>`).join("")}</div></li>` : "";
+    const row = (ico, title, items, goal) => items.length ? `<li class="now-zr"><span class="now-zr-ico now-zr-${ico}" aria-hidden="true"></span><div><strong>${title}</strong>${items.map((p) => `<span class="now-zr-item"${p.npcId ? ` data-card-npc="${esc(p.npcId)}"` : ""}>${esc(p.label)}${p.sub ? ` <small>${esc(p.sub)}</small>` : ""} ${mapBtn(w(p), p.label, p.sub, p.npcId, goal(p))}</span>`).join("")}</div></li>` : "";
     const fit = z.fit === "right" ? "Your level" : z.fit === "low" ? "A bit high for you" : z.fit === "high" ? "You've outgrown it" : "";
     const hub = z.hub ? `<li class="now-zr"><span class="now-zr-ico now-zr-quest" aria-hidden="true"></span><div><strong>${z.questsForYou} quests for your level</strong><span class="now-zr-item">Most start around ${pct(z.hub.x)}, ${pct(z.hub.y)} ${mapBtn(w(z.hub), `${z.name} quest hub`, null, null, { title: `Quest hub in ${z.name}`, steps: [`${z.hub.quests} quests start around here.`, "Pick up everything for your level, then do them in one loop."] })}</span></div></li>` : "";
     const art = BIOME[z.mapId] ? ` biome-${BIOME[z.mapId]}` : "";
@@ -161,7 +161,7 @@ window.NowView = (() => {
     const t = a.training;
     const training = !t ? `<p>Pick a class for this character in Characters to see training.</p>`
       : !t.trainer ? `<p>No ${esc(t.className)} trainer is recorded for your faction yet.</p>`
-      : `<p><strong>${esc(t.trainer.name)}</strong> · ${esc(t.trainer.title)}<br><small>${at(t.trainer)}</small></p>
+      : `<p><strong${t.trainer.npcId ? ` data-card-npc="${esc(t.trainer.npcId)}"` : ""}>${esc(t.trainer.name)}</strong> · ${esc(t.trainer.title)}<br><small>${at(t.trainer)}</small></p>
          ${t.newNow.length ? `<p class="now-good">New for you now: ${t.newNow.map((s) => esc(s.name)).join(", ")}</p>` : `<p>Nothing new at level ${c.level}.</p>`}
          ${t.nextAt ? `<p>Next spells at <strong>level ${t.nextAt}</strong>: ${t.nextSpells.slice(0, 6).map((s) => esc(s.name)).join(", ")}${t.nextSpells.length > 6 ? "…" : ""}</p>` : ""}
          ${t.upcoming?.length ? `<h3 class="now-sub">Upcoming training</h3><ol class="now-plan">${t.upcoming.map((u) => `<li class="${u.level - c.level <= 2 ? "soon" : ""}"><span class="now-plan-lv">${u.level}</span><span class="now-plan-spells">${u.spells.slice(0, 6).map((sp) => `<span class="now-spell" title="${esc(sp.name)}${sp.rank ? ` (${esc(sp.rank)})` : ""}">${sp.spellId ? `<canvas class="game-icon now-spell-ico" width="28" height="28" data-spell-icon="${sp.spellId}"></canvas>` : ""}<span>${esc(sp.name)}${sp.rank ? ` <small>${esc(sp.rank.replace("Rank ", "R"))}</small>` : ""}</span></span>`).join("")}</span></li>`).join("")}</ol>` : ""}

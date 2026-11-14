@@ -2,7 +2,10 @@
 // Dungeons & Raids atlas page. Cards are coloured like in-game difficulty for your level.
 window.DungeonAtlas = (() => {
   const api = window.backstage;
-  let atlas = null, tab = "dungeon", open = null, mountedFor = null;
+  let atlas = null, tab = "dungeon", open = null, view = "details", mountedFor = null;
+  const loot = new Map(); // instance id -> dungeonLoot result (or { error })
+  const QUALITY = ["poor", "common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom"];
+  const BADGE = { upgrade: "Upgrade for you", "upgrade-later": "Upgrade later", "not-for-you": "Not for you", "not-upgrade": "Not an upgrade", usable: "Usable", "no-class": "", "not-equipment": "", unknown: "" };
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const LABEL = { right: "Right for your level", easy: "Easy", hard: "Challenging", trivial: "Low level", impossible: "Too high for now", unknown: "Level unknown" };
   function page() {
@@ -30,13 +33,56 @@ window.DungeonAtlas = (() => {
         <h3>${esc(e.name)}</h3>
         <p class="atlas-where">${e.zone ? esc(e.zone) : "Location not yet observed"}${e.faction ? ` · <span class="atlas-side ${esc(e.faction.toLowerCase())}">${esc(e.faction)}</span>` : ""}${e.observedRuns ? ` · <span class="atlas-seen">${e.observedRuns} Forever run${e.observedRuns === 1 ? "" : "s"} observed</span>` : ""}</p>
         <p class="atlas-diff">${esc(LABEL[e.difficulty])}${e.factionNote ? ` · ${esc(e.factionNote)}` : ""}</p>
+        ${scoreChip(e)}${wishRow(e)}
         ${ready}${quests}${pickList}
-        <button type="button" class="atlas-toggle" data-atlas-open="${esc(e.id)}" aria-expanded="${isOpen}">${isOpen ? "Hide details" : `Bosses, roles & prep (${e.bosses.length + e.observedOnly.length} bosses)`}</button>
-        ${isOpen ? `<div class="atlas-details"><ul class="atlas-bosses">${bosses}${extra}</ul>
+        <div class="atlas-toggles"><button type="button" class="atlas-toggle" data-atlas-open="${esc(e.id)}" aria-expanded="${isOpen && view === "details"}">${isOpen && view === "details" ? "Hide details" : `Bosses, roles & prep (${e.bosses.length + e.observedOnly.length} bosses)`}</button>${e.loot ? `<button type="button" class="atlas-loot-btn${isOpen && view === "loot" ? " on" : ""}" data-atlas-loot="${esc(e.id)}" aria-expanded="${isOpen && view === "loot"}"><span class="atlas-chest" aria-hidden="true"></span>${isOpen && view === "loot" ? "Hide loot" : `Loot${e.loot.items ? ` (${e.loot.items} items)` : ""}`}</button>` : ""}</div>
+        ${isOpen && view === "loot" ? lootView(e) : ""}
+        ${isOpen && view === "details" ? `<div class="atlas-details"><ul class="atlas-bosses">${bosses}${extra}</ul>
           <div class="atlas-cols"><div><h4>Group</h4><ul>${e.roles.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div><div><h4>Before you go</h4><ul>${e.prep.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div></div>
           ${e.entrance ? `<div class="atlas-actions"><button type="button" class="primary" data-atlas-way="${esc(e.id)}">Copy entrance waypoint</button><button type="button" data-atlas-map="${esc(e.id)}">Show on World Map</button></div><p class="atlas-src">Entrance around ${(e.entrance.x * 100).toFixed(0)}, ${(e.entrance.y * 100).toFixed(0)} in ${esc(e.zone)} (approximate).</p>` : ""}
           <p class="atlas-src">${esc(e.source)}</p></div>` : ""}
       </div></article>`;
+  }
+  // "3 upgrades for you": counted main-side against what the character wears.
+  function scoreChip(e) {
+    const l = e.loot; if (!l) return "";
+    if (!l.items) return `<p class="atlas-score none">No boss loot recorded yet</p>`;
+    if (l.upgrades) return `<button type="button" class="atlas-score up" data-atlas-loot="${esc(e.id)}"><span class="atlas-score-n">${l.upgrades}</span> upgrade${l.upgrades === 1 ? "" : "s"} for you</button>`;
+    if (l.later) return `<button type="button" class="atlas-score later" data-atlas-loot="${esc(e.id)}"><span class="atlas-score-n">${l.later}</span> upgrade${l.later === 1 ? "" : "s"} at a higher level</button>`;
+    return `<p class="atlas-score">${l.items} item${l.items === 1 ? "" : "s"} from ${l.bossesWithLoot} boss${l.bossesWithLoot === 1 ? "" : "es"}</p>`;
+  }
+  // Starred items that drop here, as small icons (hover for the item card).
+  function wishRow(e) {
+    const w = e.loot?.wished || []; if (!w.length) return "";
+    return `<div class="atlas-wishes"><span class="atlas-wish-label">★ Wish list</span>${w.slice(0, 8).map((x) => `<span class="atlas-wish q-${QUALITY[x.quality] || "unknown"}" data-card-item="${x.itemId}">${x.iconFileId && window.GameIcons ? GameIcons.tag(x.iconFileId, 28) : '<span class="loot-gem" aria-hidden="true">◆</span>'}<span class="sr-only">${esc(x.name || `Item #${x.itemId}`)} from ${esc(x.boss)}</span></span>`).join("")}</div>`;
+  }
+  const pct = (c) => (c >= 0.995 ? "100%" : `${Math.max(1, Math.round(c * 100))}%`);
+  function tile(x) {
+    const it = x.item, q = QUALITY[it?.quality] || "unknown", v = x.verdict?.verdict || "unknown";
+    const name = it?.name || `Item #${x.itemId}`;
+    const kind = it ? [it.slot, it.kind].filter(Boolean).join(" · ") || (it.itemLevel ? `Item level ${it.itemLevel}` : "") : "";
+    const badge = BADGE[v] ? `<span class="loot-badge v-${esc(v)}">${esc(v === "upgrade-later" ? x.verdict.text.replace("Upgrade for you at", "Upgrade at") : BADGE[v])}</span>` : "";
+    return `<li class="loot-tile q-${q} v-${esc(v)}${x.wished ? " wished" : ""}" data-card-item="${x.itemId}">
+      <span class="loot-icon">${it?.iconFileId && window.GameIcons ? GameIcons.tag(it.iconFileId, 44) : '<span class="loot-gem" aria-hidden="true">◆</span>'}</span>
+      <span class="loot-body"><span class="loot-name">${esc(name)}</span>${kind ? `<span class="loot-kind">${esc(kind)}</span>` : ""}${badge}</span>
+      <span class="loot-side"><span class="loot-chance" title="Seen in ${x.drops} loot${x.drops === 1 ? "" : "s"}">${pct(x.chance)}</span><button type="button" class="loot-star" data-loot-wish="${x.itemId}" aria-pressed="${x.wished}" aria-label="${x.wished ? "Remove from" : "Add to"} wish list: ${esc(name)}">${x.wished ? "★" : "☆"}</button></span></li>`;
+  }
+  function lootView(e) {
+    const d = loot.get(e.id);
+    if (!d) return `<div class="atlas-loot"><p class="atlas-loading">Opening the loot chest…</p></div>`;
+    if (d.error) return `<div class="atlas-loot"><p class="loot-none">${esc(d.error)}</p></div>`;
+    const bosses = d.bosses.map((b) => `<section class="loot-boss${b.items.length ? "" : " empty"}"><header><span class="atlas-skull" aria-hidden="true">☠</span><h4>${esc(b.name)}</h4>${b.items.length ? `<small>${b.items.length} item${b.items.length === 1 ? "" : "s"}</small>` : ""}</header>
+      ${b.items.length ? `<ul class="loot-grid">${b.items.map(tile).join("")}</ul>` : `<p class="loot-none">No loot recorded yet</p>`}</section>`).join("");
+    const notes = [!d.gameData && d.bosses.some((b) => b.items.length) ? "Connect your game folder (Settings → Game connection) to see item names, icons and stats." : "", d.gameData && !d.equipmentKnown ? "Type /reload in game once so the app can compare these with what you wear." : ""].filter(Boolean);
+    return `<div class="atlas-loot" data-atlas-loot-view="${esc(e.id)}">
+      <div class="loot-legend"><span><i class="loot-key v-upgrade"></i>Upgrade for you</span><span><i class="loot-key v-upgrade-later"></i>Upgrade later</span><span>☆ Star an item for your wish list</span><span>% = seen in that share of loots</span></div>
+      ${notes.map((n) => `<p class="loot-note">${esc(n)}</p>`).join("")}
+      <div class="loot-bosses">${bosses}</div>
+      <p class="atlas-src">Drops observed in World of Warcraft: Forever by the community. ${esc(d.attribution || "")}</p></div>`;
+  }
+  async function loadLoot(id) {
+    try { loot.set(id, await api.dungeonLoot(null, id)); } catch (err) { loot.set(id, { error: err.message }); }
+    if (open === id && view === "loot") paint();
   }
   function paint() {
     const root = document.querySelector("[data-atlas]"); if (!root || !atlas) return;
@@ -55,8 +101,19 @@ window.DungeonAtlas = (() => {
     if (mountedFor === root) return;
     mountedFor = root;
     root.addEventListener("click", async (ev) => {
+      const star = ev.target.closest("[data-loot-wish]"); if (star) {
+        const itemId = Number(star.dataset.lootWish), on = star.getAttribute("aria-pressed") !== "true";
+        try {
+          await api.setLootWish(null, itemId, on); window.HoverCards?.forget?.();
+          for (const d of loot.values()) for (const b of d.bosses || []) for (const x of b.items) if (x.itemId === itemId) x.wished = on;
+          window.toast?.(on ? "Added to your wish list." : "Removed from your wish list.");
+          atlas = await api.dungeonAtlas().catch(() => atlas);
+        } catch (err) { window.toast?.(err.message); }
+        paint(); return;
+      }
+      const lb = ev.target.closest("[data-atlas-loot]"); if (lb) { const id = lb.dataset.atlasLoot; const same = open === id && view === "loot"; const e = atlas.entries.find((x) => x.id === id); if (e && e.kind !== tab && !e.foreverOriginal) tab = e.kind; open = same ? null : id; view = "loot"; if (!same) { loot.delete(id); loadLoot(id); } paint(); root.querySelector(`[data-atlas-card="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); return; }
       const t = ev.target.closest("[data-atlas-tab]"); if (t) { tab = t.dataset.atlasTab; open = null; paint(); return; }
-      const o = ev.target.closest("[data-atlas-open]"); if (o) { const id = o.dataset.atlasOpen; const e = atlas.entries.find((x) => x.id === id); if (e && e.kind !== tab && !e.foreverOriginal) tab = e.kind; open = open === id ? null : id; paint(); root.querySelector(`[data-atlas-card="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); return; }
+      const o = ev.target.closest("[data-atlas-open]"); if (o) { const id = o.dataset.atlasOpen; const e = atlas.entries.find((x) => x.id === id); if (e && e.kind !== tab && !e.foreverOriginal) tab = e.kind; open = open === id && view === "details" ? null : id; view = "details"; paint(); root.querySelector(`[data-atlas-card="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); return; }
       const w = ev.target.closest("[data-atlas-way]"); if (w) { const e = atlas.entries.find((x) => x.id === w.dataset.atlasWay); try { const r = await api.copyWaypoint({ mapId: e.mapId, x: e.entrance.x, y: e.entrance.y, label: e.name }); w.textContent = "Copied — paste in WoW chat"; window.toast?.(r.message); } catch (err) { w.textContent = err.message; } return; }
       const m = ev.target.closest("[data-atlas-map]"); if (m) { const e = atlas.entries.find((x) => x.id === m.dataset.atlasMap); window.WorldMapView?.focus({ mapId: e.mapId, x: e.entrance.x, y: e.entrance.y, label: `${e.name} entrance`, sub: `${e.kind === "raid" ? "Raid" : "Dungeon"} · levels ${e.levels.min}–${e.levels.max}` }); document.querySelector('[data-nav="world-map"]')?.click(); }
     });
