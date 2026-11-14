@@ -122,7 +122,7 @@ end
 local function first(key)
     if BackstageForeverJournalFirst(key,now()) and type(BackstageForeverToast)=='function' then
         local words={dungeon='First dungeon!',flight='First flight!',mount='First ride on your own mount!',death='First death: it happens to everyone',rested='First rested bonus',group='First group adventure',hearth='First trip home by Hearthstone'}
-        pcall(BackstageForeverToast,words[key] or 'A first!','A new badge waits in the Backstage Forever app.')
+        pcall(BackstageForeverToast,words[key] or 'A first!','A new badge waits in the Backstage Forever app.',nil,'first')
     end
 end
 

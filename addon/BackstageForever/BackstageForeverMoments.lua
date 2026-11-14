@@ -99,7 +99,7 @@ local function inCombat() return call(InCombatLockdown)==true end
 local function flush()
     if inCombat() or #queue==0 then return end
     local t=table.remove(queue,1)
-    if type(BackstageForeverToast)=='function' then pcall(BackstageForeverToast,t[1],t[2]) end
+    if type(BackstageForeverToast)=='function' then pcall(BackstageForeverToast,t[1],t[2],nil,t[3]) end
     if #queue>0 then
         local timer=plain(C_Timer)
         if type(field(timer,'After'))=='function' then pcall(timer.After,4,function() pcall(flush) end) end
@@ -111,7 +111,7 @@ local function push(kind,a,b,c,info)
     if type(BackstageForeverLiveMoment)=='function' then local ok,s=pcall(BackstageForeverLiveMoment,kind,a,b,c) if ok then seq=s end end
     local title,sub=BackstageForeverMomentsToastText(kind,info)
     if title and settings().toasts then
-        queue[#queue+1]={title,sub}
+        queue[#queue+1]={title,sub,kind==TYPES.profession and 'profession' or 'victory'}
         while #queue>5 do table.remove(queue,1) end
         flush()
     end

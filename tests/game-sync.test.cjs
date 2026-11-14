@@ -420,7 +420,7 @@ test("installer copies painted textures byte for byte from the art folders and i
   assert.equal((await sync.prepare()).addonCurrent, true);
   assert.deepEqual(await fs.readdir(path.join(folder, "Art", "Buttons")), ["ask.tga"]);
   assert.deepEqual(await fs.readFile(path.join(folder, "Art", "Buttons", "ask.tga")), tga(5));
-  assert.deepEqual(require("../src/core/game-sync.cjs").ART_DIRS, [["Art", "Zones"], ["Art", "Buttons"]]);
+  assert.deepEqual(require("../src/core/game-sync.cjs").ART_DIRS, [["Art", "Zones"], ["Art", "Buttons"], ["Art", "Messages"]]);
   // Something other than a folder in place of the art folder is refused.
   await fs.rm(path.join(folder, "Art"), { recursive: true });
   await fs.writeFile(path.join(folder, "Art"), "not a folder");
