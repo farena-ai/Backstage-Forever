@@ -384,7 +384,7 @@ test("Settings → Community renders the switch, the lists and the reviewed log 
   const V = c.window.CommunityView;
   await new Promise((r) => setImmediate(r));
   const html = V.markup();
-  assert.match(html, /<input type="checkbox" data-community-share checked >Share anonymous finds with other players/);
+  assert.match(html, /<input type="checkbox" value="on" data-community-share checked >Share anonymous finds with other players/);
   assert.match(html, /Herb &lt;spots&gt;/); assert.match(html, /Never shared/); assert.match(html, /Forget my contributions/);
   assert.match(html, /2 new finds will be shared/); assert.match(html, /Report a problem/); assert.match(html, /Attach app log/);
   const box = { innerHTML: "", querySelector: () => null };

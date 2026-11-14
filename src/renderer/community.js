@@ -32,7 +32,7 @@ window.CommunityView = (() => {
         <div><h4>Never shared</h4><ul>${(s.never || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>
       </div>
       <p class="community-muted">A spot only appears for others once at least 3 players found it. Community data you receive is shown with a teal “Community” label on the World Map, NPC cards and in the loot browser.</p>
-      <label class="check-label"><input type="checkbox" data-community-download ${s.download ? "checked" : ""}>Use community data (downloaded once a day from ${esc(s.host)})</label>
+      <label class="check-label"><input type="checkbox" value="on" data-community-download ${s.download ? "checked" : ""}>Use community data (downloaded once a day from ${esc(s.host)})</label>
       <div class="button-row"><button type="button" class="danger" data-community-forget ${busy ? "disabled" : ""}>Forget my contributions</button></div>
       ${note ? `<p class="community-note" role="status">${esc(note)}</p>` : ""}`;
   }
