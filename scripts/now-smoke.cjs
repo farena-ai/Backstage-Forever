@@ -3,7 +3,7 @@
 const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path"), assert = require("node:assert/strict");
-const { testWindow, launch } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 (async () => {
   const root = await fs.realpath(os.tmpdir()), dir = await fs.mkdtemp(path.join(root, "forever-now-"));
@@ -28,7 +28,7 @@ const { defaultState } = require("../src/core/validation.cjs");
       L.LiveBridge.prototype.readPreference=function(){globalThis.liveFixture={bridge:this};return false;};L.LiveBridge.prototype.start=function(){};
       load('./src/main.cjs');
     `);
-    app = await launch(electron, { args: [dir], env: { ...process.env, BF_USER_DATA: dir }, timeout: 20000 });
+    app = await launchElectron(electron, { args: [dir], env: { ...process.env, BF_USER_DATA: dir }, timeout: 20000 });
     const page = await testWindow(app);
     page.setDefaultTimeout(10000);
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1500, 1000));
@@ -199,15 +199,17 @@ const { defaultState } = require("../src/core/validation.cjs");
       await toAdventure();
     }
     const zoneCard = page.locator('.situation-cards [data-task="session"]');
-    assert.match(await zoneCard.getAttribute("class"), /zone-canyon/, "the saved zone's card shows that zone's vista");
+    assert.match(await zoneCard.getAttribute("class"), /zone-savanna/, "the saved zone's card shows that zone's vista");
     await zoneCard.click();
     await page.locator("[data-world-map]").waitFor();
     await page.waitForFunction(() => WorldMapView._state().model?.mapId === 1413, null, { timeout: 15000 });
     await toAdventure();
-    const navs = await page.locator(".adventure-page button[data-nav]").evaluateAll((ns) => ns.map((n, i) => ({ i, nav: n.dataset.nav, text: n.textContent.trim() })));
-    assert.ok(navs.length >= 3, JSON.stringify(navs));
-    for (const { i, nav, text } of navs) {
-      await page.locator(".adventure-page button[data-nav]").nth(i).click();
+    // Every visible button that names a page, with the quest-session tool unfolded.
+    await page.evaluate(() => PlayerNavigation.reveal(root, "coach-quest-plan"));
+    const navs = await page.locator(".adventure-page button[data-nav]").evaluateAll((ns) => ns.filter((n) => n.getClientRects().length).map((n) => ({ nav: n.dataset.nav, text: n.textContent.trim() })));
+    assert.ok(navs.length >= 4, JSON.stringify(navs));
+    for (const { nav, text } of navs) {
+      await page.locator(`.adventure-page button[data-nav="${nav}"]`, { hasText: text }).filter({ visible: true }).first().click();
       await page.waitForFunction((d) => page === d, nav, { timeout: 5000 }).catch(() => { throw new Error(`Adventure "${text}" did not open ${nav}`); });
       await toAdventure();
     }
@@ -215,10 +217,10 @@ const { defaultState } = require("../src/core/validation.cjs");
     for (const from of ["guide", "characters"]) {
       const open = async () => { await page.locator(`[data-nav="${from}"]`).first().click(); await page.waitForFunction((f) => page === f, from); await page.locator(".page-hero").first().waitFor(); };
       await open();
-      const list = await page.locator(".content > :not(.player-section) button[data-nav], .content .bf-page button[data-nav]").evaluateAll((ns) => [...new Set(ns.map((n) => n.dataset.nav))]);
+      const list = await page.locator(".content > :not(.player-section) button[data-nav], .content .bf-page button[data-nav]").evaluateAll((ns) => [...new Set(ns.filter((n) => n.getClientRects().length).map((n) => n.dataset.nav))]);
       for (const nav of list) {
         await open();
-        await page.locator(`.content > :not(.player-section) button[data-nav="${nav}"], .content .bf-page button[data-nav="${nav}"]`).first().click();
+        await page.locator(`.content > :not(.player-section) button[data-nav="${nav}"], .content .bf-page button[data-nav="${nav}"]`).filter({ visible: true }).first().click();
         await page.waitForFunction((d) => page === d, nav, { timeout: 5000 });
       }
     }

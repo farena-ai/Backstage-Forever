@@ -45,7 +45,7 @@ window.CharacterGuidance = (() => {
 </article>`;}
   function identityMarkup(m, c, faction) {
     return `<header class="cg-hero">${faction?`<img class="cg-banner" src="../../assets/faction-${faction}.png" alt="">`:""}<div>
-<h2>Saved character</h2>
+<h2>${esc(c?.name||"Saved character")}</h2>
 <p>${c?`Level ${esc(c.level)} ${esc(c.className)} · ${esc(c.race||"Race not saved")} · ${esc(c.faction||"Faction not saved")}${c.realm?` · ${esc(c.realm)}`:""}`:"No active saved character"} · ${m.source?`saved ${esc(date(m.source.updatedAt))}`:"kept by hand (no addon save)"}</p>
 <span class="cg-status" data-cg-status>${esc(m.status)}</span>${loading?'<span role="status"> Updating…</span>':""}</div></header>
 ${m.statusMessage?`<p class="cg-status-message">${esc(m.statusMessage)}</p>`:""}`;

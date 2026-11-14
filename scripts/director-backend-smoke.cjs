@@ -2,7 +2,7 @@
 // Source Electron with synthetic saves and bounded, fixture-owned side-effect hooks.
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
-const { testWindow, launch } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 function shortPath(target) {
   const script = `Add-Type -TypeDefinition 'using System; using System.Text; using System.Runtime.InteropServices; public static class BfDirectorShortPath { [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetShortPathName(string path, StringBuilder result, uint length); }'; $buffer = New-Object System.Text.StringBuilder 4096; $length = [BfDirectorShortPath]::GetShortPathName($env:BF_DIRECTOR_ALIAS_PATH,$buffer,4096); if ($length -eq 0 -or $length -ge 4096) { throw 'Short path unavailable' }; $buffer.ToString()`;
@@ -24,7 +24,7 @@ function shortPath(target) {
     const initial={...defaultState(),onboarded:true,profiles:[p("Alpha"),p("Beta")],activeProfileId:"Alpha"};
     await fs.writeFile(path.join(data,"state.json"),JSON.stringify(initial));
     const launch=async()=>{
-      app=await launch(electron, {args:[path.join(__dirname,"..")],env:{...process.env,BF_USER_DATA:data},timeout:20000});
+      app=await launchElectron(electron, {args:[path.join(__dirname,"..")],env:{...process.env,BF_USER_DATA:data},timeout:20000});
       await app.evaluate(({app,dialog})=>{
         const load=process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(),"package.json"));
         globalThis.directorFixture={confirm:1,inference:0,launches:0};

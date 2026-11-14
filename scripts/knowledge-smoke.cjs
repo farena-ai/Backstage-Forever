@@ -5,7 +5,7 @@ const fs = require("node:fs/promises"),
   path = require("node:path"),
   assert = require("node:assert/strict");
 const { _electron: electron } = require("playwright");
-const { testWindow, launch } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const {selectCurrentText,currentControlState}=require("./selection-fixture.cjs");
 function currentQuestPaint({ id, previous }) {
   const detail = document.querySelector(`[data-quest-control="detail:${id}"]`);
@@ -174,7 +174,7 @@ function shortPath(target){
           ),
       );
     await write();
-    app = await launch(electron, {
+    app = await launchElectron(electron, {
       args: [repo],
       env: { ...process.env, BF_USER_DATA: data },
     });
@@ -276,7 +276,7 @@ function shortPath(target){
       (await app.evaluate(() => globalThis.knowledgeCopies)).at(-1),
       "/bf guide 1061 t 999 0.1235 0.6543 1.60.1.70888",
     );
-    assert.equal(await page.locator('.quest-atlas-art').count(),1,"Quest atlas must be image-led with original class art");
+    assert.equal(await page.locator('.quest-guide .page-hero.ph-art-quests .ph-crest[src^="art/classes/"]').count(),1,"Quests opens on its painted banner with the painted class crest");
     assert.match(await page.locator('.quest-waypoint').innerText(),/Quest area reported by the game; not an exact NPC or spawn location/);
     assert.match(await page.locator('.quest-waypoint').innerText(),/Saved game snapshot · saved/);
     assert.ok(await page.locator('[data-quest-copy]').getAttribute('data-quest-intent'));

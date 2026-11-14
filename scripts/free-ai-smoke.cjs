@@ -3,7 +3,7 @@
 // fetch the real engine or model), progress shows, the chat then uses it; or a free cloud key.
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path"), assert = require("node:assert/strict");
-const { testWindow, launch } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 (async () => {
   const dir = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), "forever-free-ai-"));
@@ -31,7 +31,7 @@ const { defaultState } = require("../src/core/validation.cjs");
       const P=load('./src/core/providers.cjs');const ask=P.ask;P.ask=async(o)=>{globalThis.freeAiAsks.push({provider:o.provider,endpoint:o.endpoint,model:o.model});return 'Free local answer.';};
       const M=load('./src/core/model-catalog.cjs');M.listModels=async(o)=>M.result(o.provider==='groq'?[{id:'llama-3.3-70b-versatile',label:'x'},{id:'whisper-large',label:'w'}]:[],'provider-api','ok');
       load('./src/main.cjs');`);
-    app = await launch(electron, { args: [dir], env: { ...process.env, BF_USER_DATA: dir }, timeout: 20000 });
+    app = await launchElectron(electron, { args: [dir], env: { ...process.env, BF_USER_DATA: dir }, timeout: 20000 });
     const page = await testWindow(app);
     page.setDefaultTimeout(15000);
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 960));

@@ -78,7 +78,7 @@
 .bf-parchment .panel :is(p, li, dd, dt, label, small, .muted, .corner-note, summary) { color: #4a3218; }
 .bf-parchment .panel :is(.eyebrow, .tag) { color: #8a5a18; }
 .bf-parchment .panel code { padding: 0 4px; border-radius: 3px; background: rgba(60,40,18,.15); color: #3d220c; }
-.bf-parchment .panel :is(input:not([type=checkbox]):not([type=radio]), textarea, select) { background: #fff8e6; color: #2b1b0a; border: 1px solid #a5823e; }
+.bf-parchment .panel :is(input:not([type=checkbox]):not([type=radio]), textarea) { background: #fff8e6; color: #2b1b0a; border: 1px solid #a5823e; }
 .bf-parchment .panel .callout { background: rgba(255,248,225,.65); border: 1px solid #c4a466; color: #3d220c; }
 .bf-parchment .panel .rule { border-color: #b99a5e; }
 .bf-parchment .panel strong { color: #2b1b0a; }
@@ -114,3 +114,18 @@
 .bf-parchment .message .eyebrow { color: #8a5a18; }
 .bf-parchment .message :is(p, li, span, small) { color: #2b1b0a; }
 .bf-parchment .lookup-trail { color: #6b4a22; }
+/* Companion in a small window: the question box and Send stay in the first screen. */
+@media (max-height: 820px), (max-width: 1150px) {
+  .content:has(.companion-grid) > .page-hero { min-height: 0; padding: 8px 14px; }
+  .content:has(.companion-grid) > .page-hero .ph-sub { display: none; }
+  .content:has(.companion-grid) > .companion-dock { padding: 6px 14px; margin-bottom: 8px; }
+}
+.bf-parchment .ai-setup-hint, .bf-parchment .ai-setup-hint span { color: #5a3e1c; }
+@media (max-height: 820px), (max-width: 1150px) {
+  .content > .companion-dock { padding: 6px 14px; margin-bottom: 8px; gap: 12px; font-size: 12px; line-height: 1.35; }
+  .content > .companion-dock .companion-gem { width: 36px; height: 36px; font-size: 20px; }
+  .content > .companion-dock button { padding: 7px 12px; min-height: 34px; font-size: 12px; }
+  .adventure-coach .coach-head { margin-bottom: 6px; }
+  .adventure-coach .bf-row { padding: 8px 10px; }
+  .adventure-coach footer { margin-top: 6px; padding-top: 4px; }
+}

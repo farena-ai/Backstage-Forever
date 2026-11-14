@@ -4,12 +4,12 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const assert = require("node:assert/strict");
-const { testWindow, launch } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 (async () => {
   const data = await fs.mkdtemp(path.join(os.tmpdir(), "backstage-art-"));
   let app;
   try {
-    app = await launch(electron, {
+    app = await launchElectron(electron, {
       args: [path.join(__dirname, "..")],
       env: { ...process.env, BF_USER_DATA: data },
     });

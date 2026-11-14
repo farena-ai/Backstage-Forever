@@ -7,7 +7,7 @@ const fs = require("node:fs/promises"),
   path = require("node:path"),
   os = require("node:os"),
   assert = require("node:assert/strict");
-const { testWindow, launch } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const { currentControlState } = require("./selection-fixture.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
@@ -163,7 +163,7 @@ function shortPath(target) {
         `const acquisition=load('./src/core/acquisition-data.cjs'),originalAcquisition=acquisition.loadAcquisitionPack;acquisition.loadAcquisitionPack=()=>{const p=originalAcquisition();p.rows.find(r=>r.itemId===2320).limitedStock=true;return p;};load('./src/main.cjs');`,
       );
       await fs.writeFile(entry, boot);
-      app = await launch(electron, {
+      app = await launchElectron(electron, {
         args: [launchRoot],
         env: { ...process.env, BF_USER_DATA: data },
         timeout: 20000,
