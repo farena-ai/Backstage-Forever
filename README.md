@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.33: live moments
+## 0.34: the community map
 
-A death screen that explains what happened, painted moments for boss, elite and rare kills, dungeon clears, profession milestones, new zones, flight paths and upgrades, plus the tiny 84×4 live strip from 0.32. See the [0.33.0 release notes](docs/releases/0.33.0.md).
+Herbs, ore, chests and NPCs that several players agree on now show on your World Map, shared anonymously through Backstage Coding's own server (on by default, one switch to turn off). See the [0.34.0 release notes](docs/releases/0.34.0.md).
 
 ## 0.28: your journey
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.34.0 — the community map, 2026-11-14
+
+- **H4 community:** self-hosted `community-server/` (Node, zero dependencies, `node:sqlite`; submit, daily pack, report, forget, health), deployed behind bf.backstagecoding.com. Facts publish only when 3+ installs agree; install ids stored hashed; no IPs stored.
+- **App:** community sharing service (gathering nodes and NPC positions, rounded and batched, on by default with off switch and forget), community finds on the World Map, NPC cards and the loot browser, Settings → Community with a "Report a problem" preview, Help and Field guide entries. Vendors, recipe sources and boss drops follow once the addon counts loot per creature.
+- **CI:** runs the community server's own tests.
+
 ## 0.33.0 — live moments, 2026-11-14
 
 - **Includes 0.32.0** (tagged, installer build failed on a slow-runner race in the knowledge smoke, now fixed): compact v4 live strip.
