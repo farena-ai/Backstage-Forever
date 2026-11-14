@@ -747,12 +747,15 @@ function shortPath(target){
     await write();
     await page.evaluate(() => window.backstage.refreshGame());
     await search.fill("");
-    await page.locator('.quest-ledger-row[data-quest-id="1061"]').click();
-    await page.waitForFunction(() =>
-      document
-        .querySelector(".quest-detail")
-        ?.textContent.includes("No matching reference"),
-    );
+    // The refreshed save lands asynchronously; on a slow runner the first detail can still be
+    // the old build's. Re-open the quest (another row, then back) until the new build shows.
+    let mismatchShown = false;
+    for (let attempt = 0; attempt < 4 && !mismatchShown; attempt++) {
+      if (attempt) await page.locator(".quest-ledger-row").first().click();
+      await page.locator('.quest-ledger-row[data-quest-id="1061"]').click();
+      mismatchShown = await page.waitForFunction(() => document.querySelector(".quest-detail")?.textContent.includes("No matching reference"), null, { timeout: 15000 }).then(() => true, () => false);
+    }
+    assert.ok(mismatchShown, "a build mismatch shows No matching reference");
     assert.equal(
       await page.locator(".quest-ledger-row").count(),
       characters[0].quests.length,
