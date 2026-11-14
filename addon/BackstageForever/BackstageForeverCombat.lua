@@ -42,7 +42,7 @@ function BackstageForeverDeathReview(hits,now,myLevel)
     local tip,code
     if #list>=3 then tip,code='Several enemies at once: pull one at a time, and back away from groups.',1
     elseif top.elite then tip,code='That was an elite: much tougher than normal. Bring a group or come back a few levels higher.',2
-    elseif top.level and myLevel and top.level>=myLevel+3 then tip,code='It was '..(top.level-myLevel)..' levels above you. Quest somewhere closer to your level first.',3
+    elseif top.level and myLevel and top.level>=myLevel+2 then tip,code='It was '..(top.level-myLevel)..' levels above you. Quest somewhere closer to your level first.',3
     elseif top.spell then tip,code='Most damage came from '..top.spell..'. Interrupt or move out of it next time.',4
     else tip,code='Eat or drink to full health between fights, and use your strongest abilities early.',5 end
     return {killer=top.source,share=floor(top.amount/max(1,total)*100+.5),others=#list-1,level=top.level,elite=top.elite,spell=top.spell,tip=tip,tipCode=code,npc=top.npc}

@@ -35,7 +35,7 @@ test("offline compiler reproduces the entire pinned reference with LF and comple
   assert.match(a, /Blizzard Entertainment/);
   assert.doesNotMatch(a, /\["(?:objectiveEvidence|rewards|raceMask|nextQuestId)"\]/);
   const r = spawnSync(process.execPath, ["scripts/build-addon-reference.cjs", "--check"], { cwd: root, encoding: "utf8", timeout: 20000 });
-  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.status, 0, r.stderr); assert.equal(r.stderr, "");
 });
 
 test("compiled phase facts retain observed finishers, matched objectives and explicitly qualified mentions", () => {
