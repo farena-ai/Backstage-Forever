@@ -6,7 +6,7 @@ const fs = require("node:fs/promises"),
   path = require("node:path"),
   assert = require("node:assert/strict");
 const releaseVersion = require("../package.json").version;
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 (async () => {
   const data = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "bf-setup-")));
   const repo=path.resolve(__dirname,'..'), captures=path.join(repo,'.superpowers/sdd/native-setup-captures',new Date().toISOString().replace(/[:.]/g,'-'));
@@ -25,7 +25,7 @@ const { testWindow } = require("./test-window.cjs");
     }
     await fs.writeFile(path.join(data,'package.json'),JSON.stringify({name:'synthetic-native-map-setup',version:releaseVersion,main:'fixture.cjs'}));
     await fs.writeFile(path.join(data,'fixture.cjs'),`const load=require('node:module').createRequire(${JSON.stringify(path.join(repo,'package.json'))});globalThis.mapSetup={providers:0,keys:0,game:0,external:0};load('./src/core/catalog-cache.cjs').CatalogCache.prototype.get=async()=>({models:[],source:'synthetic'});load('./src/core/model-catalog.cjs').listModels=async()=>({models:[]});load('./src/core/claude.cjs').status=async()=>({installed:false,loggedIn:false});load('./src/core/providers.cjs').ask=async()=>{mapSetup.providers++;throw Error('No provider');};load('./src/core/store.cjs').Store.prototype.getKey=function(){mapSetup.keys++;return '';};load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});load('./src/core/game-runtime.cjs').GameRuntime.prototype.launch=async()=>{mapSetup.game++;throw Error('No game');};load('./src/core/game-sync.cjs').GameSync.prototype.discover=async()=>[{id:'synthetic',label:'Synthetic Forever',path:${JSON.stringify(game)}}];load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});load('./src/core/voice.cjs').VoiceService.prototype.readCapabilities=async()=>({status:'unavailable',recognition:{available:false,cultures:[]},synthesis:{available:false,voices:[]}});load('electron').clipboard.writeText=()=>{mapSetup.external++;};load('electron').shell.openExternal=async()=>{mapSetup.external++;};load('./src/core/knowledge-cache.cjs').KnowledgeService.prototype.maybeRefresh=function(){};load('./src/core/updater.cjs').Updater.prototype.start=function(){};load('./src/main.cjs');`);
-    app = await electron.launch({
+    app = await launchElectron(electron, {
       args: [data],
       env: { ...process.env, BF_USER_DATA: data },
     });
@@ -135,13 +135,12 @@ const { testWindow } = require("./test-window.cjs");
       .getByRole("heading", { name: "Compass Hero", exact: true })
       .waitFor();
     await page.getByText("Synthetic rescue", { exact: true }).first().waitFor();
-    assert.match(await page.locator(".adventure-brief").innerText(), /25%/);
-    assert.equal(
-      await page
-        .getByRole("progressbar", { name: "Level experience" })
-        .evaluate((node) => node.value),
-      25,
-    );
+    // The saved quest reaches Adventure; the saved experience (250 / 1000) shows on Now's XP bar.
+    await navigate(page, "adventure");
+    assert.match(await page.locator(".adventure-page .ph-sub").innerText(), /Level 18 Hunter.*1 of 1 quest ready to hand in/);
+    await page.locator('[data-nav="now"]').first().click();
+    await page.getByRole("img", { name: "25% through level 18" }).waitFor();
+    assert.match(await page.locator(".now-xp-line").innerText(), /25%.*level 18/);
     assert.equal((await page.evaluate(()=>window.backstage.gameStatus())).loadedGatheringSchema,1);
     assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).version,releaseVersion);
     assert.equal((await page.evaluate(()=>window.backstage.gameStatus())).loadedCaptureVersion,releaseVersion);
@@ -152,11 +151,12 @@ const { testWindow } = require("./test-window.cjs");
       assert.equal(await page.locator(".companion-dock").count(), 0,
         `Successful setup must not show a repeated banner on ${section}`);
     }
+    // Adventure's "Explain my plan" opens an editable companion question about the saved quest; nothing is sent.
     await page.getByRole("button", { name: "Adventure", exact: true }).click();
     await page
-      .getByRole("button", { name: "Plan my next quest", exact: true })
+      .getByRole("button", { name: "Explain my plan", exact: true })
       .click();
-    assert.match(await page.getByLabel("Your question").inputValue(), /quest/i);
+    assert.match(await page.getByLabel("Your question").inputValue(), /Synthetic rescue/);
     assert.equal(await page.locator(".message.user").count(), 0);
     await page.emulateMedia({ reducedMotion: "reduce" });
     assert.equal(

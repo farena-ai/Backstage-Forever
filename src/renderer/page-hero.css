@@ -1,0 +1,131 @@
+/* The shared page banner (PageHero) and the "Now look" every page shares: a maroon/brass banner
+   over painted art, parchment cards and Cinzel headings. */
+.page-hero { position: relative; isolation: isolate; overflow: hidden; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; min-height: 210px; margin: 0 0 14px; padding: 16px 20px; border-radius: 6px; border: 1px solid #c79a4a; color: #fff1d6; background: #3a0f09; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+.page-hero.compact { min-height: 132px; }
+/* Pages that lay out as a flex column already space their children. */
+:is(.bf-page, .now-page, .journey-page, .atlas-page, .workshop, .company-page, .party-expedition, .talents-page, .coverage-page, .commands-page) > .page-hero { margin-bottom: 0; }
+/* The painting drifts slowly; the art that has not shipped yet falls back to the Help painting underneath. */
+.page-hero::before { content: ""; position: absolute; inset: -4%; z-index: -2; background-color: #3a0f09; background-position: center 42%; background-size: cover; background-repeat: no-repeat; animation: bf-drift 38s ease-in-out infinite alternate; }
+.page-hero::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(1.6px 1.6px at 12% 80%, rgba(255,190,90,.95), transparent 70%),
+    radial-gradient(1.2px 1.2px at 27% 92%, rgba(255,150,60,.9), transparent 70%),
+    radial-gradient(2px 2px at 44% 86%, rgba(255,210,120,.85), transparent 70%),
+    radial-gradient(1.4px 1.4px at 63% 95%, rgba(255,170,70,.9), transparent 70%),
+    radial-gradient(1.8px 1.8px at 81% 88%, rgba(255,200,110,.85), transparent 70%),
+    linear-gradient(90deg, rgba(26,6,4,.92) 0%, rgba(40,10,6,.62) 40%, rgba(40,10,6,.08) 75%),
+    linear-gradient(0deg, rgba(20,5,3,.78) 0%, rgba(20,5,3,0) 55%);
+  background-size: 100% 240px, 100% 240px, 100% 240px, 100% 240px, 100% 240px, 100% 100%, 100% 100%;
+  animation: bf-embers 9s linear infinite; }
+.ph-art-adventure::before { background-image: url("art/heroes/adventure.webp"), url("art/hero-help.webp"); }
+.ph-art-quests::before { background-image: url("art/heroes/quests.webp"), url("art/hero-help.webp"); }
+.ph-art-professions::before { background-image: url("art/heroes/professions.webp"), url("art/hero-help.webp"); }
+.ph-art-plans::before { background-image: url("art/heroes/plans.webp"), url("art/hero-help.webp"); }
+.ph-art-party::before { background-image: url("art/heroes/party.webp"), url("art/hero-help.webp"); }
+.ph-art-characters::before { background-image: url("art/heroes/characters.webp"), url("art/hero-help.webp"); }
+.ph-art-dungeons::before { background-image: url("art/heroes/dungeons.webp"), url("art/hero-help.webp"); }
+.ph-art-talents::before { background-image: url("art/heroes/talents.webp"), url("art/hero-help.webp"); }
+.ph-art-journey::before { background-image: url("art/heroes/journey.webp"), url("art/hero-help.webp"); }
+.ph-art-coverage::before { background-image: url("art/heroes/coverage.webp"), url("art/hero-help.webp"); }
+.ph-art-commands::before { background-image: url("art/heroes/commands.webp"), url("art/hero-help.webp"); }
+.ph-art-companion::before { background-image: url("art/heroes/companion.webp"), url("art/hero-help.webp"); }
+.ph-art-now::before { background-image: url("art/hero-now.webp"); }
+.ph-art-settings::before { background-image: url("art/hero-help.webp"); }
+.ph-copy { display: flex; gap: 16px; align-items: flex-end; min-width: 0; max-width: 62%; }
+.ph-words { min-width: 0; }
+.ph-crest { flex: none; filter: drop-shadow(0 3px 8px rgba(0,0,0,.6)); }
+.ph-eyebrow { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .2em; text-transform: uppercase; color: #e8c983; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+.page-hero h1 { margin: 2px 0 4px; font: 700 34px/1.15 Cinzel, Georgia, serif; color: #fff1d6; text-shadow: 0 2px 12px rgba(0,0,0,.75); overflow-wrap: anywhere; }
+.page-hero h1 small { font: 600 18px Cinzel, Georgia, serif; color: #f1dcb0; }
+.page-hero.compact h1 { font-size: 28px; }
+.ph-sub { margin: 0; color: #f1dcb0; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+.ph-sub strong { color: #fff1d6; }
+.ph-aside { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; justify-content: flex-end; }
+.ph-aside .ph-chip { padding: 4px 10px; border-radius: 12px; font: 700 12px 'Source Sans 3', sans-serif; color: #2b1b0a; background: rgba(239,224,187,.92); border: 1px solid #a5823e; }
+@media (max-width: 900px) { .ph-copy { max-width: 100%; } .page-hero { flex-direction: column; align-items: flex-start; } }
+@media (prefers-reduced-motion: reduce) { .page-hero::before, .page-hero::after { animation: none; } }
+
+/* Parchment cards: the same card Now, Journey and the World Map side panel use. */
+.bf-page { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.bf-card { position: relative; min-width: 0; padding: 14px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
+.bf-card h2 { margin: 0 0 10px; font: 700 18px Cinzel, Georgia, serif; color: #3d220c; }
+.bf-card h2 small { font: 600 13px 'Source Sans 3', sans-serif; color: #6b4a22; }
+.bf-card h3 { margin: 0 0 4px; font: 700 16px Georgia, serif; color: #2b1b0a; }
+.bf-card p { margin: 0 0 6px; line-height: 1.45; color: #4a3218; }
+.bf-card small { color: #6b4a22; }
+.bf-card .eyebrow { color: #8a5a18; }
+.bf-card code { padding: 0 4px; border-radius: 3px; background: rgba(60,40,18,.15); color: #3d220c; }
+.bf-card.lead { border-color: #8a5a18; box-shadow: 0 0 0 2px rgba(246,196,69,.45), 0 4px 10px rgba(0,0,0,.35); }
+.bf-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.bf-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+@media (max-width: 1100px) { .bf-grid { grid-template-columns: 1fr; } }
+.bf-note { margin: 8px 0 0; font-size: 12px; font-style: italic; color: #7a5a2c; }
+.page-hero + .bf-note, .bf-page > .bf-note { color: #c9b48a; }
+/* A row with a painted crest: steps, coach advice, goals. */
+.bf-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 6px; background: rgba(255,248,225,.6); border: 1px solid #c4a466; }
+.bf-row + .bf-row { margin-top: 8px; }
+.bf-row.first { background: #fff6dc; border-color: #8a5a18; box-shadow: 0 0 0 2px rgba(246,196,69,.45); }
+.bf-row > img { flex: none; width: 52px; height: 52px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.35)); }
+.bf-row > div { min-width: 0; flex: 1; }
+.bf-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.bf-actions:empty { display: none; }
+.bf-page button.bf-link, .bf-card button.bf-link { all: unset; cursor: pointer; color: #7a1f14; font-weight: 700; text-decoration: underline; }
+
+/* Older pages keep their structure but wear parchment: their panels become cards. */
+.bf-parchment .panel { background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; border-radius: 6px; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
+.bf-parchment .panel::before, .bf-parchment .panel::after { border-color: #a5823e; }
+.bf-parchment .panel :is(h2, h3) { font-family: Cinzel, Georgia, serif; color: #3d220c; }
+.bf-parchment .panel :is(p, li, dd, dt, label, small, .muted, .corner-note, summary) { color: #4a3218; }
+.bf-parchment .panel :is(.eyebrow, .tag) { color: #8a5a18; }
+.bf-parchment .panel code { padding: 0 4px; border-radius: 3px; background: rgba(60,40,18,.15); color: #3d220c; }
+.bf-parchment .panel :is(input:not([type=checkbox]):not([type=radio]), textarea) { background: #fff8e6; color: #2b1b0a; border: 1px solid #a5823e; }
+.bf-parchment .panel .callout { background: rgba(255,248,225,.65); border: 1px solid #c4a466; color: #3d220c; }
+.bf-parchment .panel .rule { border-color: #b99a5e; }
+.bf-parchment .panel strong { color: #2b1b0a; }
+.page-hero .cmd-search input { width: min(380px, 100%); }
+.page-hero .tal-pick { color: #f1dcb0; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+/* Small windows (1000×700 and the like): a shorter banner so the page's first action stays in view. */
+@media (max-height: 820px), (max-width: 1150px) {
+  .page-hero, .page-hero.compact { min-height: 112px; padding: 10px 16px; margin-bottom: 10px; }
+  .page-hero h1, .page-hero.compact h1 { font-size: 24px; margin: 0 0 2px; }
+  .page-hero .ph-crest, .page-hero .now-class-crest { width: 52px; height: 52px; }
+  .ph-sub { font-size: 13px; }
+  .bf-page, .bf-col { gap: 10px; }
+}
+
+/* Folded tools (quest filters, reference details, voice, memory, quest session) read as parchment. */
+.player-tool { background: linear-gradient(180deg, #efe0bb, #dcc797); border: 1px solid #a5823e; border-radius: 6px; color: #2b1b0a; }
+.player-tool > summary { color: #7a1f14; font-weight: 700; }
+.player-tool[open] > summary { border-bottom-color: rgba(138,90,24,.35); }
+.bf-card .player-tool, .panel .player-tool, .quest-index .player-tool, .knowledge-status .player-tool { background: rgba(255,248,225,.55); border-color: #c4a466; box-shadow: none; }
+.player-tool :is(label, small, p) { color: #4a3218; }
+/* The setup reminder above a page: a maroon/brass strip like the banner it sits on. */
+.content > .companion-dock { margin: 0 0 14px; border-radius: 6px; border: 1px solid #c79a4a; background: linear-gradient(180deg, #5a1a10, #3a0f09); box-shadow: 0 4px 12px rgba(0,0,0,.4); color: #f1dcb0; }
+.content > .companion-dock strong { color: #fff1d6; }
+/* Parchment panels: tags, roster rows and the companion's character medallion. */
+.bf-parchment .panel .tag { color: #3d220c; background: rgba(255,248,225,.7); border-color: #a5823e; }
+.bf-parchment .character-list button { background: rgba(255,248,225,.6); color: #2b1b0a; border-color: #c4a466; text-shadow: none; }
+.bf-parchment .character-list button.selected { background: #fff6dc; border-color: #8a5a18; box-shadow: 0 0 0 2px rgba(246,196,69,.45); }
+.bf-parchment .character-list button small { color: #5a3e1c; }
+.bf-parchment .companion-intel .hero-medallion { width: 84px; height: 84px; }
+
+.bf-parchment .message { background: #fffaf0; border: 1px solid #c4a466; color: #2b1b0a; box-shadow: 0 2px 6px rgba(60,40,18,.15); }
+.bf-parchment .message.user { background: #f1dfb4; border-color: #a5823e; }
+.bf-parchment .message .eyebrow { color: #8a5a18; }
+.bf-parchment .message :is(p, li, span, small) { color: #2b1b0a; }
+.bf-parchment .lookup-trail { color: #6b4a22; }
+/* Companion in a small window: the question box and Send stay in the first screen. */
+@media (max-height: 820px), (max-width: 1150px) {
+  .content:has(.companion-grid) > .page-hero { min-height: 0; padding: 8px 14px; }
+  .content:has(.companion-grid) > .page-hero .ph-sub { display: none; }
+  .content:has(.companion-grid) > .companion-dock { padding: 6px 14px; margin-bottom: 8px; }
+}
+.bf-parchment .ai-setup-hint, .bf-parchment .ai-setup-hint span { color: #5a3e1c; }
+@media (max-height: 820px), (max-width: 1150px) {
+  .content > .companion-dock { padding: 6px 14px; margin-bottom: 8px; gap: 12px; font-size: 12px; line-height: 1.35; }
+  .content > .companion-dock .companion-gem { width: 36px; height: 36px; font-size: 20px; }
+  .content > .companion-dock button { padding: 7px 12px; min-height: 34px; font-size: 12px; }
+  .adventure-coach .coach-head { margin-bottom: 6px; }
+  .adventure-coach .bf-row { padding: 8px 10px; }
+  .adventure-coach footer { margin-top: 6px; padding-top: 4px; }
+}

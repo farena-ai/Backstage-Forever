@@ -7,7 +7,7 @@ function load(name){
   const handlers={},document={body:{isConnected:true,dataset:{}},addEventListener(){},activeElement:null};document.activeElement=document.body;
   const root={addEventListener(t,f){(handlers[t]??=[]).push(f);},contains:()=>true,querySelector:()=>null,querySelectorAll:()=>[]};
   const c={window:{},document,setTimeout,clearTimeout,console,Intl,localStorage:{getItem:()=>null,setItem(){}}};vm.createContext(c);
-  for(const [f,n] of [["interaction","InteractionGuard"],["command-center","CommandCenter"],[name,name[0].toUpperCase()+name.slice(1)]]){vm.runInContext(fs.readFileSync(require.resolve(`../src/renderer/${f}.js`),"utf8"),c);c[n]=c.window[n];}
+  for(const [f,n] of [["interaction","InteractionGuard"],["command-center","CommandCenter"],["page-hero","PageHero"],[name,name[0].toUpperCase()+name.slice(1)]]){vm.runInContext(fs.readFileSync(require.resolve(`../src/renderer/${f}.js`),"utf8"),c);c[n]=c.window[n];}
   return {c,root,document,emit:(t,e)=>handlers[t]?.forEach(f=>f(e))};
 }
 function party(){

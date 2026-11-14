@@ -2,7 +2,7 @@
 // Real trusted Electron handlers; dialogs and all side effects use synthetic fixtures.
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 const { serializePartyPlan } = require("../src/core/party.cjs");
 function shortPath(target) {
@@ -20,7 +20,7 @@ function shortPath(target) {
     const initial = { ...defaultState(), onboarded: true, profiles: [p("Alpha"), p("Beta")], activeProfileId: "Alpha", followGameCharacter: false };
     await fs.writeFile(path.join(data, "state.json"), JSON.stringify(initial));
     async function launch() {
-      app = await electron.launch({ args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: data }, timeout: 20000 });
+      app = await launchElectron(electron, { args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: data }, timeout: 20000 });
       await app.evaluate(({ app, dialog }, { shared, backup }) => {
         const load = process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(), "package.json"));
         globalThis.partyFixture = { shared, backup, open: shared, save: shared, launches: 0, inference: 0, canceled: false, hold: false };

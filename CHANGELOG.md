@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.31.0 — every page earns its place, 2026-11-14
+
+- **H1 quality pass:** shared `PageHero` banner on every page with twelve new painted heroes; Quests, Professions, Plans, Party, Characters and Dungeons restyled to the parchment system; Adventure rebuilt without Now duplicates; filler and repeated caveats replaced; Field guide rewritten as task help.
+- **Links:** Adventure cards open Dungeons, Professions and the World Map on the saved zone; coach buttons follow the advice kind; Company → Plans and Quest Guide → Quests labels; a smoke clicks every Adventure, Help and Characters button.
+- **H5 art:** one class-art set (`art/classes`), Companion owl crest, map-pin art for trainers and quest givers on Coverage, loot-sack and sword step icons on Quests.
+- **Stability:** hover cards use their own read-only `questCard` IPC; smokes retry once when Electron fails to launch.
+
 ## 0.30.1 — no more "blocked action" notice, 2026-11-14
 
 - **Fixed a taint warning:** the journal's quiet `/played` replaced Blizzard's `ChatFrame_DisplayTimePlayed`. It now mutes `TIME_PLAYED_MSG` on the chat windows for one answer (with a 5-second safety unmute) and never replaces Blizzard functions. New test guards every addon file against global function overrides.

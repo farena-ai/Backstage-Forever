@@ -3,7 +3,7 @@ const { navigate, ensureCompanionTools, setCompanionToolOpen, clickCompanionTool
 // Actual renderer/main/preload; synthetic state and main-owned fake audio workers only.
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const {currentControlState}=require("./selection-fixture.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 function shortPath(target) {
@@ -17,7 +17,7 @@ function shortPath(target) {
   try {
     const normal=path.join(temp,"synthetic-user-data");await fs.mkdir(normal);const data=process.argv.includes("--short-path")?shortPath(normal):normal;
     await fs.writeFile(path.join(data,"state.json"),JSON.stringify({...defaultState(),onboarded:true,activeProfileId:"Aeralyn",profiles:[{id:"Aeralyn",name:"Aeralyn",className:"Hunter",faction:"Alliance",realm:"Synthetic Realm",level:18,goals:[],notes:"PRIVATE NOTE SENTINEL"},{id:"Vaelric",name:"Vaelric",className:"Mage",faction:"Horde",realm:"Synthetic Realm",level:21,goals:[],notes:""}],provider:{...defaultState().provider,model:"synthetic-model"}}));
-    app=await electron.launch({args:[path.join(__dirname,"..")],env:{...process.env,BF_USER_DATA:data},timeout:20000});
+    app=await launchElectron(electron, {args:[path.join(__dirname,"..")],env:{...process.env,BF_USER_DATA:data},timeout:20000});
     const page=await testWindow(app);page.setDefaultTimeout(8000);
     await app.evaluate(({app,dialog,ipcMain})=>{
       const load=process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(),"package.json"));

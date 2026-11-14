@@ -1,10 +1,10 @@
 /* Characters → Journey (0.28): badge wall, speed splits, rested planner. */
 .journey-page { display: flex; flex-direction: column; gap: 14px; }
-.jr-hero { display: flex; gap: 16px; align-items: center; padding: 16px 20px; border-radius: 6px; border: 1px solid #c79a4a; color: #fff1d6; background: linear-gradient(90deg, rgba(26,6,4,.92), rgba(40,10,6,.55)), url("art/hero-help.webp") center 35% / cover no-repeat, #3a0f09; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
-.jr-hero h1 { margin: 2px 0; font: 700 30px Cinzel, Georgia, serif; text-shadow: 0 2px 10px rgba(0,0,0,.8); }
-.jr-hero p { margin: 0; color: #f1dcb0; }
-.jr-eyebrow { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .2em; text-transform: uppercase; color: #e8c983; }
-.jr-crest { flex: none; filter: drop-shadow(0 3px 8px rgba(0,0,0,.6)); }
+
+
+
+
+
 .jr-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .jr-summary div { display: flex; flex-direction: column; padding: 10px 14px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); border: 1px solid #a5823e; color: #2b1b0a; }
 .jr-summary strong { font: 700 24px Georgia, serif; color: #3d220c; }

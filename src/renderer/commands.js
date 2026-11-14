@@ -80,9 +80,8 @@
   }
   function page() {
     return `<section class="commands-page" data-commands>
-      <header class="cmd-hero"><span class="cmd-eyebrow">Help · Commands</span><h1>Everything you can type in game</h1>
-        <p>Type these in WoW's chat box (press Enter, type the command, press Enter again). They only show you things or put an arrow on your map; nothing ever plays for you.</p>
-        <label class="cmd-search"><span class="sr-only">Search commands</span><input type="search" data-cmd-filter placeholder="Search: trainer, arrow, junk, live…" value="${esc(filter)}"></label></header>
+      ${PageHero.render({ art: "commands", eyebrow: "Help · Commands", title: "Everything you can type in game", subtitle: "Press Enter in WoW, type the command, press Enter again. Commands only show you things or put an arrow on your map; nothing plays for you.",
+        aside: `<label class="cmd-search"><span class="sr-only">Search commands</span><input type="search" data-cmd-filter placeholder="Search: trainer, arrow, junk, live…" value="${esc(filter)}"></label>` })}
       <div class="cmd-list" data-cmd-list>${rows()}</div>
       <section class="cmd-group cmd-features"><h2>${icon("in-game")}Things you'll see in game</h2><ul>${FEATURES.map((f) => `<li class="cmd-row"><div class="cmd-head"><strong>${esc(f.name)}</strong><small>${esc(f.where)}</small></div><p>${esc(f.what)}</p></li>`).join("")}</ul></section>
       <section class="cmd-group cmd-app"><h2>${icon("around-the-app")}Around this app</h2><ul>${APP.map((a) => `<li class="cmd-row"><div class="cmd-head"><strong>${esc(a.name)}</strong></div><p>${esc(a.what)}</p></li>`).join("")}</ul></section>

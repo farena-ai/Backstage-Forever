@@ -24,70 +24,54 @@ window.CharacterGuidance = (() => {
   function endRender(){painting=false;}
   function invalidate(clearDrafts=false){generation++;read++;searchRead++;model=null;signature="";modelSignature="";freshnessMinute=-1;loading=false;pending=false;results=null;error="";errorKind="";searchError="";focus=null;disclosures.clear();guard?.invalidate();if(clearDrafts)drafts.clear();}
   function listingSummary(t) {
-    const qualification = "No learned-status, eligibility, current access, cost or route claim.";
-    if (t.serviceMatchCount === undefined) return "Up to six listings shown. " + qualification;
-    return `${t.serviceMatchCount} matching spell listing${t.serviceMatchCount === 1 ? "" : "s"}; ${t.services.length} shown; ${t.additionalServices} additional matches omitted; ${t.otherServices} other trainer listings not shown. ${qualification}`;
+    if (t.serviceMatchCount === undefined) return "Up to six spells shown.";
+    return `${t.serviceMatchCount} matching spell listing${t.serviceMatchCount === 1 ? "" : "s"} · ${t.services.length} shown${t.additionalServices ? ` · ${t.additionalServices} more` : ""}${t.otherServices ? ` · ${t.otherServices} other trainer listings not shown` : ""}`;
   }
   function trainer(t,personal=false){return `<article class="cg-trainer">
 <div class="cg-trainer-heading">
-<span aria-hidden="true">◇</span>
+<img src="art/pins/class-trainer.png" alt="" width="40" height="40">
 <div>
 <h4>${esc(t.name)}</h4>
-<p>${esc(t.title)} · ${personal?"Class-title historical review":"Historical browse only"}</p>
+<p>${esc(t.title)}</p>
 </div>
 </div>
-<p>Last observed ${esc(t.lastSeen)} · ${t.sources} trainer source ${t.sources===1?"file":"files"} · title ${t.titleSources}, NPC ${t.npcSources}, reaction ${t.creatureSources} source files</p>
-<p>Approximate positions: ${t.positions.map(p=>`Map ${p.mapId}: ${(p.x*100).toFixed(1)}%, ${(p.y*100).toFixed(1)}%`).join(" / ")}${t.additionalPositions?` · ${t.additionalPositions} more omitted`:""}</p>
-<p>Observed reactions: ${esc(Object.entries(t.reactions).map(([f,r])=>`${f}: ${r.join(", ")}`).join("; ")||"Unknown")}. Other faction access is unknown.</p>
+<p>Where: ${t.positions.map(p=>`${esc(window.ZoneArt?.nameFor(p.mapId)||`Map ${p.mapId}`)} ${(p.x*100).toFixed(1)}, ${(p.y*100).toFixed(1)}`).join(" / ")}${t.additionalPositions?` · ${t.additionalPositions} more`:""} · last seen ${esc(t.lastSeen)}</p>
 <ul>${t.services.map(s=>`<li>
 <span>${esc(s.name)}${s.rankText?` · ${esc(s.rankText)}`:""}</span>
-<small>${s.observedLevel?`Reported level ${s.observedLevel}`:"Level requirement unknown (0)"} · ${s.sources} source ${s.sources===1?"file":"files"}${s.skill?` · reported skill ${esc(s.skill)} (${s.skillRank})`:""}</small>
+<small>${s.observedLevel?`Level ${s.observedLevel}`:"Level not listed"}${s.skill?` · ${esc(s.skill)} ${esc(s.skillRank)}`:""}</small>
 </li>`).join("")}</ul>
 <small>${esc(listingSummary(t))}</small>
+<p class="bf-note">Community data · may differ in game</p>
 </article>`;}
   function identityMarkup(m, c, faction) {
-    return `<header class="cg-hero">
-<img class="cg-portrait" src="${host.portrait(c?.className)}" alt="">
-<div>
-<span class="eyebrow">CHARACTER FIELD GUIDE · LOCAL, WITHOUT AI</span>
-<h2>${esc(c?.name||"An unwritten adventure")}</h2>
-<p>${c?`Level ${c.level} · ${esc(c.className)} · ${esc(c.race||"Race unknown")} · ${esc(c.faction||"Faction unknown")}`:"No active saved character"}</p>
-<p>${esc(c?.realm||"Realm unknown")}</p>
-<span class="cg-status" data-cg-status>${esc(m.status)}</span>${loading?'<span role="status"> Updating saved guidance…</span>':""}</div>${faction?`<img class="cg-banner" src="../../assets/faction-${faction}.png" alt="">`:""}</header>
-<div class="cg-source-strip">
-<span>${m.source?`Saved addon snapshot ${esc(date(m.source.updatedAt))}`:"Manual journal · no addon observation"}</span>
-<span>Build ${esc(m.source?.build||"unknown")} · locale ${esc(m.source?.locale||"unknown")}</span>
-</div>
-<p class="cg-status-message">${esc(m.statusMessage)}</p>`;
+    return `<header class="cg-hero">${faction?`<img class="cg-banner" src="../../assets/faction-${faction}.png" alt="">`:""}<div>
+<h2>${esc(c?.name||"Saved character")}</h2>
+<p>${c?`Level ${esc(c.level)} ${esc(c.className)} · ${esc(c.race||"Race not saved")} · ${esc(c.faction||"Faction not saved")}${c.realm?` · ${esc(c.realm)}`:""}`:"No active saved character"} · ${m.source?`saved ${esc(date(m.source.updatedAt))}`:"kept by hand (no addon save)"}</p>
+<span class="cg-status" data-cg-status>${esc(m.status)}</span>${loading?'<span role="status"> Updating…</span>':""}</div></header>
+${m.statusMessage?`<p class="cg-status-message">${esc(m.statusMessage)}</p>`:""}`;
   }
   function overviewMarkup(m, c) {
     return `${m.overview?`<section class="cg-class">
-<span class="eyebrow">GENERAL CLASS IDENTITY</span>
+<span class="eyebrow">Your class</span>
 <h3>${esc(c.className)} · ${esc(m.overview.text)}</h3>
 <p>${esc(m.overview.qualification)} Checked ${esc(m.overview.checkedOn)}. <button class="subtle" data-link="forever-class-overview" data-cg-control="official">Read official overview ↗</button>
 </p>
 </section>`:""}`;
   }
-  function raceMarkup(c) {
-    return `<div class="cg-race">
-<span class="eyebrow">SAVED RACE · UNVERIFIED TRAITS</span>
-<p>${esc(c?.race||"Race unknown")}: racial bonuses and traits have no verified reference here. Inspect them in game; custom race names stay literal.</p>
-</div>`;
-  }
   function actionsMarkup(m, choice, ready) {
     return `<div class="cg-action-row">
 <button class="primary" data-cg-add data-cg-control="add" data-cg-choice="${choice}" ${ready&&!pending?"":"disabled"}>${pending?"Saving manual checklist…":m.checklistCreated?"Open character checklist":"Create character checklist"}</button>
 <button data-cg-ask data-cg-control="ask" data-cg-choice="${choice}" ${ready&&!pending?"":"disabled"}>Ask about this character</button>
-<small>Checklist opens Company. Ask opens an editable public draft; Send stays separate. No provider needed here.</small>
+<small>Checklist opens Plans. Ask opens an editable question in the companion; nothing is sent until you press Send.</small>
 </div>`;
   }
   function equipmentMarkup(m) {
     return `<section class="cg-equipment">
 <div class="cg-section-title">
-<span class="eyebrow">OBSERVED LOADOUT</span>
-<h3>Lay your equipment on the table.</h3>
+<span class="eyebrow">Equipped</span>
+<h3>Your gear</h3>
 </div>
-<p>${esc(m.gear.explanation)}</p>${m.gear.weakest?.length?`<div class="cg-weakest"><strong>Upgrade these first</strong><ul>${m.gear.weakest.map(w=>`<li><span class="cg-rate ${esc(w.rating)}">${w.rating==="replace"?"Replace soon":"Aging"}</span>${esc(w.slot)}: ${esc(w.name)} <small>item level ${w.itemLevel??"?"}</small></li>`).join("")}</ul><small>Quest rewards and the Best choice boxes on quest pages are the quickest way to fill these.</small></div>`:""}${m.gear.rows.length?`<div class="cg-gear-list">${m.gear.rows.map(g=>`<article class="cg-gear${g.rating?` rate-${esc(g.rating)}`:""}">
+${m.gear.weakest?.length?`<div class="cg-weakest"><strong>Upgrade these first</strong><ul>${m.gear.weakest.map(w=>`<li><span class="cg-rate ${esc(w.rating)}">${w.rating==="replace"?"Replace soon":"Aging"}</span>${esc(w.slot)}: ${esc(w.name)} <small>item level ${w.itemLevel??"?"}</small></li>`).join("")}</ul><small>Quest rewards and the Best choice boxes on quest pages are the quickest way to fill these.</small></div>`:""}${m.gear.rows.length?`<div class="cg-gear-list">${m.gear.rows.map(g=>`<article class="cg-gear${g.rating?` rate-${esc(g.rating)}`:""}">
 <span class="cg-slot">${g.details?.iconFileId&&window.GameIcons?GameIcons.tag(g.details.iconFileId,40):""}${esc(g.slotLabel)}<small>Slot ${g.slot}</small>
 </span>
 <div>
@@ -97,27 +81,24 @@ window.CharacterGuidance = (() => {
 </span>
 </article>`).join("")}</div>`:`<div class="cg-empty">
 <h4>${m.gear.status==="unknown"?"Equipment not observed":"No equipment rows in this saved observation"}</h4>
-<p>Missing gear metadata stays unknown. It does not establish empty or compulsory slots.</p>
+<p>Log in with the addon on and type /reload: your equipped items show up here.</p>
 </div>`}</section>`;
   }
   function trainingMarkup(m) {
     return `<section data-cg-personal class="cg-training">
 <div class="cg-section-title">
-<span class="eyebrow">QUALIFIED HISTORICAL CLASS LISTINGS</span>
-<h3>A place to review your training.</h3>
+<span class="eyebrow">Training</span>
+<h3>Class trainers</h3>
 </div>
-<p>${esc(m.trainingExplanation)}</p>${m.trainerReason?`<p class="cg-empty">${esc(m.trainerReason)}</p>`:""}<div class="cg-trainers">${m.classTrainers.map(t=>trainer(t,true)).join("")}</div>
+${m.trainerReason?`<p class="cg-empty">${esc(m.trainerReason)}</p>`:""}<div class="cg-trainers">${m.classTrainers.map(t=>trainer(t,true)).join("")}</div>
 </section>`;
   }
   function referenceMarkup(m) {
-    return `<div class="cg-reference">
-<span class="eyebrow">REFERENCE PROVENANCE</span>
-<p>${m.reference?`${esc(m.reference.publisher)} · build ${esc(m.reference.build)} · English ${esc(m.reference.locale)} reference · ${esc(m.reference.license)} · observed through ${esc(m.reference.observedThrough)}. Observation names locale: ${esc(m.reference.observationNamesLocale)}. Extra facts update with app releases, separately from the quest-cache refresh.`:"Supplementary historical reference unavailable. Saved character facts remain usable."}</p>
-</div>`;
+    return m.reference ? `<p class="cg-reference bf-note">Trainer data: ${esc(m.reference.publisher)} · build ${esc(m.reference.build)} · community data, may differ in game</p>` : "";
   }
   function limitationsMarkup(m) {
     return `<details data-cg-disclosure="limits">
-<summary data-cg-control="limits" data-interaction-key="${esc(JSON.stringify([host.profileId(),"cg-limits"]))}">Evidence, racial traits & what remains unknown</summary>${m.limitations.map(s=>`<p>${esc(s)}</p>`).join("")}</details>`;
+<summary data-cg-control="limits" data-interaction-key="${esc(JSON.stringify([host.profileId(),"cg-limits"]))}">What this page can't see</summary>${m.limitations.map(s=>`<p>${esc(s)}</p>`).join("")}</details>`;
   }
   function facts(){
     const m=model,c=m?.identity;
@@ -126,7 +107,7 @@ window.CharacterGuidance = (() => {
     const choice=esc(JSON.stringify({profileId:host.profileId(),token:m.token,generation}));
     const ready=Boolean(c)&&!loading&&signature===modelSignature;
     return [
-      identityMarkup(m, c, faction), overviewMarkup(m, c), raceMarkup(c),
+      identityMarkup(m, c, faction), overviewMarkup(m, c),
       actionsMarkup(m, choice, ready), equipmentMarkup(m), trainingMarkup(m),
       referenceMarkup(m), limitationsMarkup(m)
     ].join("");
@@ -140,8 +121,8 @@ window.CharacterGuidance = (() => {
 <button data-cg-retry data-cg-control="retry">Retry character guidance</button>
 </div>`:""}</div>
 <details data-cg-browse data-cg-disclosure="browse">
-<summary data-cg-control="browse" data-interaction-key="${esc(JSON.stringify([host.profileId(),"cg-browse"]))}">Browse historical training reference</summary>
-<p>Browse any class or faction. A match does not imply personal access or learnability.</p>
+<summary data-cg-control="browse" data-interaction-key="${esc(JSON.stringify([host.profileId(),"cg-browse"]))}">Look up a trainer or spell</summary>
+<p>Look up any trainer, class title or spell, for any class or faction.</p>
 <form data-cg-search-form class="cg-search">
 <label>Trainer, class title or listed spell<input data-cg-search data-cg-control="search" maxlength="120" value="${esc(draft())}" placeholder="Search historical listings…">
 </label>

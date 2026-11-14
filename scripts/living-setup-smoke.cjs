@@ -3,7 +3,7 @@ const { navigate } = require("./player-navigation.cjs");
 // All characters, installs and runtime observations here are fictional fixtures.
 const { _electron: electron } = require("playwright");
 const assert = require("node:assert/strict"), fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
 const { beginRendererAction, finishRendererAction } = require("./renderer-action-fixture.cjs");
 let refreshAction;
@@ -32,7 +32,7 @@ async function finishRefresh(page) {
       await fs.mkdir(path.join(root, "WTF"), { recursive: true });
       await fs.writeFile(path.join(root, ".flavor.info"), "wowf");
     }
-    app = await electron.launch({ args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: path.join(dir, "data") } });
+    app = await launchElectron(electron, { args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: path.join(dir, "data") } });
     await app.evaluate(({ app, dialog, BrowserWindow }) => {
       const p = process.getBuiltinModule("node:path");
       const load = process.getBuiltinModule("node:module").createRequire(p.join(app.getAppPath(), "package.json"));
@@ -148,7 +148,7 @@ async function finishRefresh(page) {
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: path.join(evidence, "fictional-alliance-1000x700.png") });
     // checkedAt-only probes must leave keyboard focus and the actual button intact.
-    const questButton = page.getByRole("button", { name: "Plan my next quest", exact: true });
+    const questButton = page.locator('.situation-cards [data-task="dungeon"]');
     await questButton.focus();
     await questButton.evaluate(node => { window.focusFixture = node; });
     await page.waitForTimeout(5500);

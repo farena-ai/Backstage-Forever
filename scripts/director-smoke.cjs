@@ -3,7 +3,7 @@ const { syntheticLaunch } = require("./synthetic-coach-bootstrap.cjs");
 const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const {currentControlState}=require("./selection-fixture.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
@@ -28,7 +28,7 @@ function shortPath(target) {
     const write=()=>fs.writeFile(saved,"BackstageForeverExport = "+JSON.stringify(JSON.stringify({schema:1,observedAt:clock,activeId:characters[0].id,characters})));
     await write();
     const launch=async()=>{
-      app=await electron.launch({args:[await syntheticLaunch(data)],env:{...process.env,BF_USER_DATA:data},timeout:20000});
+      app=await launchElectron(electron, {args:[await syntheticLaunch(data)],env:{...process.env,BF_USER_DATA:data},timeout:20000});
       await app.evaluate(({app,dialog})=>{
         const load=process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(),"package.json"));
         globalThis.directorUi={inference:0,launches:0,calls:0};
@@ -213,7 +213,7 @@ function shortPath(target) {
     await app.evaluate(({dialog},backup)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[backup]});},backup);
     await navigate(page, "guide");await page.getByRole("button",{name:"Import backup",exact:true}).click();
     await page.getByRole("status").filter({hasText:"Backup imported."}).waitFor();await page.getByRole("button",{name:"Adventure",exact:true}).click();
-    await page.getByRole("heading",{name:"Room for a new chapter.",exact:true}).waitFor();
+    await page.getByRole("heading",{name:"No quest choices yet",exact:true}).waitFor();
     assert.equal(await page.locator("[data-director-choice]").count(),0);assert.equal(await page.getByRole("button",{name:"Start quest session",exact:true}).isDisabled(),true);
     await page.evaluate(()=>{scrollTo(0,0);document.querySelector(".main")?.scrollTo(0,0);});await capture("empty");
     // Reset is actual trusted replacement. Plan without a character remains usable.
@@ -222,7 +222,7 @@ function shortPath(target) {
     await page.getByRole("button",{name:"Plan without a character",exact:true}).click();
     await page.getByRole("button",{name:"Adventure",exact:true}).click();await expandDirector();await page.locator("[data-director]").waitFor();
     assert.equal(await page.getByRole("button",{name:"Start quest session",exact:true}).isDisabled(),true);
-    assert.equal(await page.getByRole("button",{name:"Open Company · plan manually →",exact:true}).count(),1);
+    assert.equal(await page.getByRole("button",{name:"Plan it yourself in Plans →",exact:true}).count(),1);
     await page.locator("[data-director]").scrollIntoViewIfNeeded();await capture("no-characters");
     assert.deepEqual(await app.evaluate(()=>({inference:directorUi.inference,launches:directorUi.launches})),{inference:0,launches:0});
     console.log(`Director UI source Electron ${process.argv.includes("--short-path")?"genuine 8.3":"normal"}: choices/source, compact/reduced-motion, one held physical click/preceding ack/poll, reuse/rename/retry, drafts/selection, pending/late navigation, restart/import/reset/privacy PASS`);

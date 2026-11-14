@@ -74,6 +74,8 @@ function harness(overrides = {}) {
     console,
     structuredClone,
   });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/page-hero.js"), "utf8"), context);
+  context.PageHero = context.window.PageHero;
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, "../src/renderer/quest-guide.js"), "utf8"),
     context,

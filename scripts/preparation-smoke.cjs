@@ -3,7 +3,7 @@ const { syntheticLaunch } = require("./synthetic-coach-bootstrap.cjs");
 const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const {currentControlState}=require("./selection-fixture.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
@@ -29,7 +29,7 @@ function shortPath(target) {
     const write=()=>fs.writeFile(saved,"BackstageForeverExport = "+JSON.stringify(JSON.stringify({schema:1,observedAt:clock,activeId:characters[0].id,characters})));
     await write();
     const launch=async()=>{
-      app=await electron.launch({args:[await syntheticLaunch(data)],env:{...process.env,BF_USER_DATA:data},timeout:20000});
+      app=await launchElectron(electron, {args:[await syntheticLaunch(data)],env:{...process.env,BF_USER_DATA:data},timeout:20000});
       await app.evaluate(({app,dialog})=>{
         const load=process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(),"package.json"));
         globalThis.preparationUi={inference:0,launches:0,calls:0};
@@ -194,19 +194,19 @@ function shortPath(target) {
     // A missing material collection stays unknown rather than becoming zero inventory.
     delete characters[0].readiness.workshop.materials;await update();await workshopPage();await page.waitForFunction(()=>document.querySelector('[data-preparation-reagent="200"]')?.innerText.includes("Unknown"));assert.match(await page.locator(".workshop-supply-summary").innerText(),/Supply check needed/);assert.equal(await add.isEnabled(),true);await capture("unknown-supply");characters[0].readiness.workshop.materials={...col([{itemId:200,name:"Sunleaf",count:5}]),complete:false,scope:"bags-0-4"};await update();
     // Another character keeps independent options and counted supply, not pooled stock.
-    await workshopPage();await page.evaluate(id=>Preparation.save(id,{recipeId:100,crafts:1}),second);await page.getByLabel("Active character",{exact:true}).selectOption(second);await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Vaelric"));await capture("horde-compact");assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"1");
+    await workshopPage();await page.evaluate(id=>Preparation.save(id,{recipeId:100,crafts:1}),second);await page.getByLabel("Active character",{exact:true}).selectOption(second);await page.waitForFunction(()=>document.querySelector("[data-preparation] .ph-sub")?.textContent.includes("Vaelric"));await capture("horde-compact");assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"1");
     await page.getByLabel("Craft attempts",{exact:true}).selectOption("3");await page.waitForFunction(()=>document.querySelector('[data-preparation-reagent="200"] .reagent-copy>span b')?.textContent==="9");
     await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1440,1000));await capture("horde-full");
-    await page.getByLabel("Active character",{exact:true}).selectOption(first);await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Aeralyn"));assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"2");
+    await page.getByLabel("Active character",{exact:true}).selectOption(first);await page.waitForFunction(()=>document.querySelector("[data-preparation] .ph-sub")?.textContent.includes("Aeralyn"));assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"2");
     // Accepted writes survive a later intentional selection, without late navigation.
     await app.evaluate(()=>{preparationUi.hold=true;preparationUi.release=null;preparationUi.before=preparationUi.calls;});await add.click();await untilMain("Boolean(preparationUi.release)");assert.equal(await page.getByRole("button",{name:"Saving shopping checklist…",exact:true}).isDisabled(),true);
     await page.getByLabel("Active character",{exact:true}).selectOption(second,{timeout:8000,noWaitAfter:true}).catch(()=>{});
-    await app.evaluate(()=>{preparationUi.hold=false;preparationUi.release();});await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Vaelric"));assert.equal((await state()).journeys.length,4);assert.equal(await app.evaluate(()=>preparationUi.calls-preparationUi.before),1);assert.equal((await state()).activeProfileId,second);
+    await app.evaluate(()=>{preparationUi.hold=false;preparationUi.release();});await page.waitForFunction(()=>document.querySelector("[data-preparation] .ph-sub")?.textContent.includes("Vaelric"));assert.equal((await state()).journeys.length,4);assert.equal(await app.evaluate(()=>preparationUi.calls-preparationUi.before),1);assert.equal((await state()).activeProfileId,second);
     await app.evaluate(()=>{preparationUi.hold=true;preparationUi.release=null;});await add.click();await untilMain("Boolean(preparationUi.release)");await page.getByRole("button",{name:"Help",exact:true}).click({noWaitAfter:true});await app.evaluate(()=>{preparationUi.hold=false;preparationUi.release();});await page.waitForFunction(()=>document.querySelector('[aria-current="page"]')?.dataset.nav==="guide");assert.equal((await state()).journeys.length,5);assert.equal(await page.locator("[data-company]").count(),0);
     assert.deepEqual(await app.evaluate(()=>({inference:preparationUi.inference,launches:preparationUi.launches})),{inference:0,launches:0});
     // Restart proves local recipe/attempt preferences, while sources remain main-owned.
     await app.close();app=null;await launch();add=page.getByRole("button",{name:"Add shopping checklist",exact:true});await page.getByRole("heading",{name:"Vaelric",exact:true}).waitFor();await workshopPage();assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"3");
-    await page.getByLabel("Active character",{exact:true}).selectOption(first);await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Aeralyn"));
+    await page.getByLabel("Active character",{exact:true}).selectOption(first);await page.waitForFunction(()=>document.querySelector("[data-preparation] .ph-sub")?.textContent.includes("Aeralyn"));
     // Selected recipes disappearing and orphaned professions are explicit, no fallback.
     characters[0].readiness.workshop.recipes.items=characters[0].readiness.workshop.recipes.items.filter(r=>r.id!==100);await update();await page.getByRole("option",{name:"Selected recipe no longer observed",exact:true}).waitFor({state:"attached"});assert.equal(await add.isDisabled(),true);assert.match(await page.locator("[data-preparation]").innerText(),/no longer|not.*observed|unavailable/i);await capture("missing-recipe");
     characters[0].readiness.workshop=workshop(5);characters[0].readiness.workshop.professions.items=[];await update();await page.waitForFunction(()=>document.querySelector("[data-preparation]")?.innerText.includes("currently observed owned profession"));assert.equal(await add.isDisabled(),true);
@@ -241,7 +241,7 @@ function shortPath(target) {
     // Actual same-ID import clears local preferences and replaces sources atomically.
     const imported=await state();const importedFirst=imported.profiles.find(p=>p.id===first);delete importedFirst.readiness;delete importedFirst.source;
     const backup=path.join(dir,"replacement.json");await fs.writeFile(backup,JSON.stringify(imported));await app.evaluate(({dialog},backup)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[backup]});},backup);
-    await navigate(page, "guide");await page.getByRole("button",{name:"Import backup",exact:true}).click();await page.getByRole("status").filter({hasText:"Backup imported."}).waitFor();await navigate(page, "preparation");await page.waitForFunction(()=>document.querySelector(".workshop-hero-copy p")?.textContent.includes("Aeralyn")&&document.querySelector(".workshop-source")?.textContent.includes("quiet bench"));assert.equal(await add.isDisabled(),true);assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"1");await capture("manual-empty");
+    await navigate(page, "guide");await page.getByRole("button",{name:"Import backup",exact:true}).click();await page.getByRole("status").filter({hasText:"Backup imported."}).waitFor();await navigate(page, "preparation");await page.waitForFunction(()=>document.querySelector("[data-preparation] .ph-sub")?.textContent.includes("Aeralyn")&&document.querySelector(".workshop-source")?.textContent.includes("No profession save yet"));assert.equal(await add.isDisabled(),true);assert.equal(await page.getByLabel("Craft attempts",{exact:true}).inputValue(),"1");await capture("manual-empty");
     assert.doesNotMatch(JSON.stringify(await page.evaluate(id=>window.backstage.contextPreview(id,true,"Explain my plan"),first)),/PRIVATE|Amber restorative|Sunleaf|workshop|journeys/);
     assert.deepEqual(await app.evaluate(()=>({inference:preparationUi.inference,launches:preparationUi.launches})),{inference:0,launches:0});
     await navigate(page, "guide");await page.getByRole("button",{name:"Delete all local data",exact:true}).click();await page.getByRole("status").filter({hasText:"Local data and saved keys deleted."}).waitFor();await page.getByRole("button",{name:"Plan without a character",exact:true}).click();await navigate(page, "preparation");await page.locator("[data-preparation]").waitFor();assert.equal(await add.isDisabled(),true);await capture("no-character");

@@ -3,7 +3,7 @@
 // Usage: BF_PREVIEW_ROOT="F:\...\_forever_" node scripts/dev-preview-rewards.cjs OUT.png QUESTID CLASS LEVEL
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 (async () => {
   const dir = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), "forever-preview-"));
@@ -22,7 +22,7 @@ const { defaultState } = require("../src/core/validation.cjs");
       const G=load('./src/core/game-data.cjs'); const Base=G.GameData;
       G.GameData=class extends Base{constructor(o){super({...o,getRoot:()=>process.env.BF_PREVIEW_ROOT});}};
       load('./src/main.cjs');`);
-    app = await electron.launch({ args: [dir], env: { ...process.env, BF_USER_DATA: dir }, timeout: 20000 });
+    app = await launchElectron(electron, { args: [dir], env: { ...process.env, BF_USER_DATA: dir }, timeout: 20000 });
     const page = await testWindow(app);
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1500, 1100));
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "complete")); await page.reload();

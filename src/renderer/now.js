@@ -13,8 +13,7 @@ window.NowView = (() => {
 
   function page() {
     return `<section class="now-page" data-now>
-      <header class="now-head"><img class="now-class-crest" data-now-crest alt="" width="84" height="84" hidden><div><span class="now-eyebrow">Now</span><h1 data-now-title>${esc(advice?.character?.name || "Your next move")}</h1><p class="now-live" data-now-live></p></div>
-        <button type="button" class="subtle" data-now-act="refresh">Refresh</button></header>
+      ${PageHero.render({ art: "now", eyebrow: "Now", title: esc(advice?.character?.name || "Your next move"), titleAttrs: "data-now-title", subAttrs: "data-now-live", crestHtml: '<img class="now-class-crest" data-now-crest alt="" width="84" height="84" hidden>', aside: '<button type="button" class="subtle" data-now-act="refresh">Refresh</button>' })}
       <div class="now-body" data-now-body>${body()}</div>
     </section>`;
   }

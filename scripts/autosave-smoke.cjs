@@ -6,7 +6,7 @@ const { _electron: electron } = require("playwright"),
   path = require("node:path"),
   http = require("node:http"),
   assert = require("node:assert/strict");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 (async () => {
   const data = await fs.mkdtemp(path.join(os.tmpdir(), "bf-autosave-"));
   let app, page;
@@ -35,7 +35,7 @@ const { testWindow } = require("./test-window.cjs");
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const endpoint = `http://127.0.0.1:${server.address().port}`;
   try {
-    app = await electron.launch({
+    app = await launchElectron(electron, {
       args: [path.join(__dirname, "..")],
       env: { ...process.env, BF_USER_DATA: data },
     });
@@ -124,7 +124,7 @@ const { testWindow } = require("./test-window.cjs");
     await navigate(page, "assistant");
     await page
       .getByRole("heading", {
-        name: "A little wisdom for the journey.",
+        name: "Ask about WoW Forever",
         exact: true,
       })
       .waitFor({ timeout: 2000 });

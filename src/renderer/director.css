@@ -1,53 +1,41 @@
 /* An illuminated field order, sharing the character's class and faction palette. */
-.director { position:relative; padding:22px 24px 16px; border:1px solid #927544; border-top:0; background:radial-gradient(ellipse at 0 0,var(--magic-soft),transparent 65%),linear-gradient(125deg,#2a3025,#121e1b); box-shadow:inset 0 0 0 4px #0b17154d,0 12px 26px #0004; }
-.director-heading { display:flex; align-items:center; gap:15px; margin-bottom:15px; }
-.director-heading .eyebrow { font-size:9px; color:#e3c383; letter-spacing:2px; }
-.director h2 { color:#f7e3b9; font:600 25px/1.3 Cinzel,Georgia,serif; margin:6px 0 0; }
-.director-compass { margin-left:auto; color:var(--class-accent,#e9c78e); font-size:46px; line-height:1; text-shadow:0 0 25px var(--magic-soft); }
-.director-choices { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:25px; }
-.director-choice { min-width:0; overflow-wrap:anywhere; }
-.director-priority { color:#e3c383; letter-spacing:1.6px; font-size:9px; font-weight:650; }
-.director-choice h3 { color:#f8e5bd; font:600 22px/1.3 Cinzel,Georgia,serif; margin:6px 0; }
-.director-reason { font-size:13px; line-height:1.5; margin:7px 0; color:#e1ddc9; }
-.director-source { font-size:11px; color:var(--class-accent,#c9e2cc); line-height:1.5; }
-.director-choice details { margin-top:7px; padding:0; border:0; }
-.director-choice summary { font-size:11px; min-height:22px; color:#e4cc96; }
-.director-choice details p { color:#d7d4bf; font-size:12px; line-height:1.5; }
-.director-alternatives { border-left:1px solid #a78a5055; padding-left:22px; display:grid; gap:13px; }
-.director-alternative h3 { font-size:16px; margin:3px 0; }
-.director-alternative .director-reason { margin:3px 0; font-size:12px; }
-.director-alternative .director-priority { font-size:8px; color:#cdb888; }
+/* Quest session picker: a parchment card like the rest of Adventure. */
+.director { position:relative; padding:14px 16px; border-radius:6px; background:linear-gradient(180deg,#efe0bb,#dcc797); color:#2b1b0a; border:1px solid #a5823e; box-shadow:inset 0 0 18px rgba(120,80,30,.25),0 4px 10px rgba(0,0,0,.35); }
+.director-heading { display:flex; align-items:center; gap:15px; margin-bottom:10px; }
+.director-heading .eyebrow { font:700 11px Cinzel,Georgia,serif; color:#8a5a18; letter-spacing:.2em; text-transform:uppercase; }
+.director h2 { color:#3d220c; font:700 18px Cinzel,Georgia,serif; margin:2px 0 0; }
+.director-compass { display:none; }
+.director-choices { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:14px; }
+.director-choice { min-width:0; overflow-wrap:anywhere; padding:10px 12px; border-radius:6px; background:rgba(255,248,225,.6); border:1px solid #c4a466; }
+.director-primary { background:#fff6dc; border-color:#8a5a18; box-shadow:0 0 0 2px rgba(246,196,69,.45); }
+.director-priority { color:#8a5a18; letter-spacing:.12em; font:700 10px Cinzel,Georgia,serif; text-transform:uppercase; }
+.director-choice h3 { color:#2b1b0a; font:700 16px Georgia,serif; margin:4px 0; }
+.director-reason { font-size:14px; line-height:1.45; margin:4px 0; color:#4a3218; }
+.director-source { font-size:12px; color:#6b4a22; line-height:1.5; }
+.director-choice details { margin-top:6px; padding:0; border:0; }
+.director-choice summary { font-size:12px; min-height:22px; color:#7a1f14; }
+.director-choice details p { color:#4a3218; font-size:12px; line-height:1.5; }
+.director-alternatives { display:grid; gap:8px; align-content:start; }
+.director-alternative h3 { font-size:15px; margin:3px 0; }
+.director-alternative .director-reason { margin:3px 0; font-size:13px; }
 .director-alternative details { margin-top:3px; }
-.director-session { display:flex; align-items:center; flex-wrap:wrap; gap:12px 24px; border-top:1px solid #92754466; margin-top:15px; padding-top:12px; }
+.director-session { display:flex; align-items:center; flex-wrap:wrap; gap:12px 24px; border-top:1px solid rgba(138,90,24,.35); margin-top:12px; padding-top:10px; }
 .director .plan-controls { flex:1; margin:0; gap:10px; }
-.director .plan-controls label { font-size:11px; }
-.director .plan-controls select { min-width:120px; padding:7px 25px 7px 10px; }
+.director .plan-controls select { min-width:120px; }
 .director .autosaved { display:none; }
 .director-action { display:grid; justify-items:start; gap:5px; }
-.director-action button { min-height:42px; font-size:13px; padding:11px 20px; }
-.director-action small { color:#d0c7af; font-size:10px; line-height:1.4; }
-.director-footnote { margin:12px 0 0; color:#c6cbb9; font-size:11px; line-height:1.5; }
-.director-preparation { color:#f3cf88; margin:12px 0 0; font-size:12px; }
-.director-private { margin-top:10px; color:#cbd2bd; font-size:12px; }
-.director-private summary { color:#d5dcc5; font-size:12px; }
-.director-error { padding:12px 15px; margin-top:14px; border:1px solid #d19b81; background:#472b24; color:#ffe4d3; }
+.director-action small { color:#6b4a22; font-size:12px; line-height:1.4; }
+.director-footnote { margin:10px 0 0; color:#6b4a22; font-size:12px; line-height:1.5; }
+.director-preparation { color:#8a3a12; margin:10px 0 0; font-size:13px; }
+.director-private { margin-top:10px; color:#4a3218; font-size:12px; }
+.director-private summary { color:#7a1f14; font-size:12px; }
+.director-error { padding:10px 12px; margin-top:12px; border:1px solid #b8462e; border-radius:4px; background:#fbe1d4; color:#5a1a10; }
 .director-error p { font-size:13px; margin:0 0 8px; }
-.director-error button { font-size:12px; }
-.director-empty p { max-width:680px; color:#dfdbc7; font-size:13px; line-height:1.5; }
-.director-empty button { font-size:12px; }
-.director + .setup-coverage { margin-top:14px; }
-.director ~ .command-overview { margin-top:18px; border-top:1px solid #77613e; }
+.director-empty p { max-width:680px; color:#4a3218; font-size:14px; line-height:1.5; }
 @media(max-width:1150px) {
-  body[data-class] .hero.command-hero { min-height:135px; }
-  body[data-class] .command-hero .hero-copy { padding:15px 20px; }
-  body[data-class] .command-hero .hero-medallion { width:55px; height:55px; }
-  .command-hero h1 { font-size:30px; }
-  .hero-saved { margin:7px 0 0 71px; font-size:11px; }
   .director { padding:16px 20px 13px; }
   .director-heading { margin-bottom:10px; }
-  .director h2 { font-size:21px; }
   .director-choices { grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:18px; }
-  .director-alternatives { padding-left:17px; gap:9px; }
   .director-choice h3 { font-size:19px; }
   .director-alternative h3 { font-size:14px; }
   .director-alternative .director-reason { font-size:11px; }
@@ -57,7 +45,6 @@
 }
 @media(max-width:760px) {
   .director-choices { grid-template-columns:1fr; }
-  .director-alternatives { border-left:0; border-top:1px solid #a78a5055; padding:12px 0 0; }
 }
 
 .director-main { min-width:0; }

@@ -10,8 +10,8 @@ window.DungeonAtlas = (() => {
   const LABEL = { right: "Right for your level", easy: "Easy", hard: "Challenging", trivial: "Low level", impossible: "Too high for now", unknown: "Level unknown" };
   function page() {
     return `<section class="atlas-page" data-atlas>
-      <header class="atlas-head"><div class="wm-banner"><span class="wm-banner-eyebrow">Dungeons & raids</span><h1>Instance Atlas</h1><span class="wm-live" data-atlas-level></span></div>
-      <div class="atlas-tabs" role="tablist"><button type="button" role="tab" data-atlas-tab="dungeon">Dungeons</button><button type="button" role="tab" data-atlas-tab="raid">Raids</button><button type="button" role="tab" data-atlas-tab="forever">New in Forever</button></div></header>
+      ${PageHero.render({ art: "dungeons", eyebrow: "Adventure · Dungeons & raids", title: "Instance Atlas", subAttrs: "data-atlas-level",
+        aside: '<div class="atlas-tabs" role="tablist"><button type="button" role="tab" data-atlas-tab="dungeon">Dungeons</button><button type="button" role="tab" data-atlas-tab="raid">Raids</button><button type="button" role="tab" data-atlas-tab="forever">New in Forever</button></div>' })}
       <div class="atlas-suggest" data-atlas-suggest></div>
       <div class="atlas-grid" data-atlas-grid><p class="atlas-loading">Opening the atlas…</p></div>
       <p class="atlas-caution" data-atlas-caution></p>
@@ -86,13 +86,13 @@ window.DungeonAtlas = (() => {
   }
   function paint() {
     const root = document.querySelector("[data-atlas]"); if (!root || !atlas) return;
-    root.querySelector("[data-atlas-level]").textContent = atlas.level ? `Level ${atlas.level}${atlas.faction ? " · " + atlas.faction : ""}` : "Choose a character to colour by level";
+    root.querySelector("[data-atlas-level]").textContent = atlas.level ? `Level ${atlas.level}${atlas.faction ? " · " + atlas.faction : ""} · ${atlas.suggested.length} dungeon${atlas.suggested.length === 1 ? "" : "s"} suggested for you` : "Choose a character to colour dungeons by level";
     root.querySelectorAll("[data-atlas-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.atlasTab === tab)));
     const list = atlas.entries.filter((e) => (tab === "forever" ? e.foreverOriginal || e.observedRuns : e.kind === tab && !e.foreverOriginal));
     const sug = atlas.suggested.map((id) => atlas.entries.find((e) => e.id === id)).filter(Boolean);
     root.querySelector("[data-atlas-suggest]").innerHTML = tab === "dungeon" && sug.length ? `<h2>Suggested for you</h2><div class="atlas-chips">${sug.map((e) => `<button type="button" data-atlas-open="${esc(e.id)}" class="atlas-chip d-${esc(e.difficulty)}">${esc(e.name)} <small>${e.levels.min}–${e.levels.max} · ${esc(e.zone)}</small></button>`).join("")}</div>` : "";
     root.querySelector("[data-atlas-grid]").innerHTML = list.map(card).join("") || `<p>Nothing observed yet.</p>`;
-    root.querySelector("[data-atlas-caution]").textContent = [atlas.caution, atlas.attribution].filter(Boolean).join(" ");
+    root.querySelector("[data-atlas-caution]").textContent = ["Community data · may differ in game. Bosses seen in Forever are marked.", atlas.attribution].filter(Boolean).join(" ");
   }
   async function load() { try { atlas = await api.dungeonAtlas(); } catch (e) { atlas = { entries: [], suggested: [], caution: e.message }; } paint(); }
   function mounted() {

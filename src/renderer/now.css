@@ -1,10 +1,10 @@
 /* Now: the home page. Parchment cards on the dark field, like the World Map side panel. */
 .now-page { display: flex; flex-direction: column; gap: 14px; }
-.now-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 12px 18px; border-radius: 6px; background: linear-gradient(180deg, #5a1a10, #3a0f09); border: 1px solid #c79a4a; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+
 .now-eyebrow { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .2em; text-transform: uppercase; color: #e8c983; }
-.now-head h1 { margin: 2px 0; font: 700 28px Cinzel, Georgia, serif; color: #fff1d6; }
+
 .now-live { margin: 0; color: #f1dcb0; font-weight: 600; }
-.now-live .on { color: #7fe08a; }
+[data-now-live] .on { color: #7fe08a; }
 .now-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 .now-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .now-card { padding: 14px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
@@ -71,10 +71,9 @@
 .now-reload { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 14px; padding: 10px 14px; border-radius: 6px; background: #f6c445; color: #2b1b0a; border: 1px solid #8a5a18; box-shadow: 0 4px 10px rgba(0,0,0,.35); }
 .now-reload code { padding: 0 4px; border-radius: 3px; background: rgba(60,40,18,.15); }
 
-/* Art pass: the Now header becomes a painted vista. */
-.now-page .now-head { position: relative; min-height: 220px; align-items: flex-end; background: linear-gradient(90deg, rgba(26,6,4,.9) 0%, rgba(40,10,6,.62) 40%, rgba(40,10,6,.08) 75%), linear-gradient(0deg, rgba(20,5,3,.75) 0%, rgba(20,5,3,0) 55%), url("art/hero-now.webp") center 42% / cover no-repeat, #3a0f09; }
-.now-page .now-head h1 { font-size: 34px; text-shadow: 0 2px 12px rgba(0,0,0,.75); }
-.now-page .now-head .now-eyebrow, .now-page .now-head .now-live { text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+
+
+
 
 .now-saved { color: #7a4b16; font-style: italic; }
 
@@ -155,8 +154,8 @@
   .bf-news { margin-top: 8px; }
 }
 
-.now-page .now-head { gap: 16px; justify-content: flex-start; }
-.now-page .now-head > div:first-of-type { flex: 1; }
+
+
 .now-class-crest { flex: none; width: 84px; height: 84px; align-self: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
 .now-chip.grey { background: #8a8378; color: #fff; }
 
@@ -167,7 +166,7 @@
 .now-fresh { margin-left: 6px; font: 600 12px 'Source Sans 3', sans-serif; color: #7a4b16; font-style: italic; }
 .now-fresh.live { color: #2e6b1e; font-style: normal; }
 
-.now-live .now-saved-at { font-weight: 500; color: #d9c49a; }
+[data-now-live] .now-saved-at { font-weight: 500; color: #d9c49a; }
 /* One-click setup on the checklist. */
 .now-oneclick { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 0 12px; padding: 10px 12px; border-radius: 6px; background: rgba(255,246,220,.85); border: 1px solid #8a5a18; }
 .now-oneclick span { flex: 1 1 260px; font-size: 14px; color: #4a3218; }
@@ -243,21 +242,9 @@
 .now-spell small { color: #6b4a22; }
 .now-spell-ico { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #5a3a0c; background: #2b1b0a; }
 
-/* G1 living heroes: the painted scene drifts slowly and embers rise. Off with reduced motion. */
-.now-page .now-head { isolation: isolate; overflow: hidden; background: #3a0f09; }
-.now-page .now-head::before { content: ""; position: absolute; inset: -4%; z-index: -2; background: url("art/hero-now.webp") center 42% / cover no-repeat; animation: bf-drift 38s ease-in-out infinite alternate; }
-.now-page .now-head::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(1.6px 1.6px at 12% 80%, rgba(255,190,90,.95), transparent 70%),
-    radial-gradient(1.2px 1.2px at 27% 92%, rgba(255,150,60,.9), transparent 70%),
-    radial-gradient(2px 2px at 44% 86%, rgba(255,210,120,.85), transparent 70%),
-    radial-gradient(1.4px 1.4px at 63% 95%, rgba(255,170,70,.9), transparent 70%),
-    radial-gradient(1.8px 1.8px at 81% 88%, rgba(255,200,110,.85), transparent 70%),
-    radial-gradient(1.2px 1.2px at 92% 97%, rgba(255,160,60,.9), transparent 70%),
-    linear-gradient(90deg, rgba(26,6,4,.9) 0%, rgba(40,10,6,.62) 40%, rgba(40,10,6,.08) 75%),
-    linear-gradient(0deg, rgba(20,5,3,.75) 0%, rgba(20,5,3,0) 55%);
-  background-size: 100% 240px, 100% 240px, 100% 240px, 100% 240px, 100% 240px, 100% 240px, 100% 100%, 100% 100%;
-  animation: bf-embers 9s linear infinite; }
+
+
+
 @keyframes bf-drift { 0% { transform: scale(1.02) translate(0, 0); } 100% { transform: scale(1.09) translate(-1.6%, -1.2%); } }
 @keyframes bf-embers {
   0% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; opacity: .95; }
@@ -268,5 +255,5 @@
 @keyframes bf-zone-pan { from { background-position: 50% 50%; } to { background-position: 62% 40%; } }
 .bf-arrive { animation: bf-arrive-in .9s cubic-bezier(.2,.9,.25,1.15) both, bf-zone-pan 6s ease-in-out .9s both; }
 @media (prefers-reduced-motion: reduce) {
-  .now-page .now-head::before, .now-page .now-head::after, .now-zonecard:hover .now-zc-head, .bf-arrive { animation: none; }
+.now-zonecard:hover .now-zc-head, .bf-arrive { animation: none; }
 }

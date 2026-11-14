@@ -4,7 +4,7 @@ const { mkdtemp, rm } = require("node:fs/promises");
 const { tmpdir } = require("node:os");
 const path = require("node:path");
 const assert = require("node:assert/strict");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
 
 function shortPath(target) {
@@ -21,7 +21,7 @@ function shortPath(target) {
   let data = normalData;
   let app;
   const launch = async () => {
-    app = await electron.launch({
+    app = await launchElectron(electron, {
       args: [path.join(__dirname, "..")],
       env: { ...process.env, BF_USER_DATA: data },
     });
@@ -130,7 +130,7 @@ function shortPath(target) {
     await page.getByLabel("Use my active character").uncheck();
     await navigate(page, "game");
     await page
-      .getByRole("heading", { name: "Bring your adventure home." })
+      .getByRole("heading", { name: "Connect WoW Forever" })
       .waitFor();
     await page
       .getByText(
@@ -144,7 +144,7 @@ function shortPath(target) {
       .waitFor();
     await navigate(page, "connections");
     await page
-      .getByRole("heading", { name: "Choose your intelligence." })
+      .getByRole("heading", { name: "Choose an AI for the companion" })
       .waitFor();
     await page.getByRole("button", { name: "OpenAI API", exact: true }).click();
     await page.getByLabel("Access method").selectOption("subscription");
@@ -186,11 +186,11 @@ function shortPath(target) {
       .waitFor();
     await navigate(page, "guide");
     await page
-      .getByRole("heading", { name: "A little guidance. A longer adventure." })
+      .getByRole("heading", { name: "How to play with Backstage Forever" })
       .waitFor();
     await navigate(page, "updates");
     await page
-      .getByRole("heading", { name: "Keep your companion ready." })
+      .getByRole("heading", { name: "Keep the app up to date" })
       .waitFor();
     await page
       .getByRole("checkbox", {

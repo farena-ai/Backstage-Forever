@@ -49,8 +49,8 @@ window.TalentsView = (() => {
   function page() {
     const cls = preview || who?.className;
     return `<section class="talents-page" data-talents>
-      <header class="tal-hero">${cls && CLASSES.includes(cls) ? crest(cls) : ""}<div><span class="tal-eyebrow">Characters · Talents</span><h1>${esc(cls || "Talents")}${who?.name && !preview ? ` <small>· ${esc(who.name)}</small>` : ""}</h1>
-        <label class="tal-pick">Preview another class <select data-tal-class><option value="">${esc(who?.className || "Your class")}</option>${CLASSES.filter((c) => c !== who?.className).map((c) => `<option ${c === preview ? "selected" : ""}>${c}</option>`).join("")}</select></label></div></header>
+      ${PageHero.render({ art: "talents", eyebrow: "Characters · Talents", title: `${esc(cls || "Talents")}${who?.name && !preview ? ` <small>· ${esc(who.name)}</small>` : ""}`, crestHtml: cls && CLASSES.includes(cls) ? crest(cls) : "",
+        aside: `<label class="tal-pick">Preview another class <select data-tal-class><option value="">${esc(who?.className || "Your class")}</option>${CLASSES.filter((c) => c !== who?.className).map((c) => `<option ${c === preview ? "selected" : ""}>${c}</option>`).join("")}</select></label>` })}
       <div data-tal-body>${body()}</div></section>`;
   }
   function paint() { const b = document.querySelector("[data-tal-body]"); if (b) b.innerHTML = body(); }

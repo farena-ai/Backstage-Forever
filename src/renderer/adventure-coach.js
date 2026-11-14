@@ -78,36 +78,34 @@ window.AdventureCoach = (() => {
         }
       });
   }
+  // Painted crest and the page each kind of advice belongs to: bag advice goes to a vendor, craft advice to Professions.
+  const KIND = {
+    bags: { art: "art/pins/vendor.png", label: "Find a vendor on the map", nav: "world-map", extra: '<button type="button" data-nav="commands">How /bf junk sells greys</button>' },
+    quest: { art: "art/steps/quest.png", label: "Review quest choices", director: true, extra: '<button type="button" data-nav="quest-guide">Open Quests</button>' },
+    "craft-ready": { art: "art/pins/profession-trainer.png", label: "Open Professions", nav: "preparation" },
+    "profession-cap": { art: "art/steps/train.png", label: "Open Professions", nav: "preparation", extra: '<button type="button" data-nav="world-map">Find a profession trainer</button>' },
+    "materials-needed": { art: "art/pins/herb.png", label: "Open Professions", nav: "preparation", extra: '<button type="button" data-nav="world-map">Find herbs and ore on the map</button>' },
+  };
+  const kindOf = (kind) => KIND[kind] || { art: "art/steps/quest.png", label: "Open Quests", nav: "quest-guide" };
   function content() {
     const primary = model?.recommendation,
       alternatives = model?.alternatives || [];
     if (!primary)
-      return `<div class="coach-empty"><h2>${loading ? "Reading your saved trail…" : error ? "Your saved trail is still safe." : "A useful next step starts with an observation."}</h2><p>${esc(error || "Play normally to observe quests. Open your own profession normally to observe learned recipes and carried materials.")}</p>${error ? "<button data-coach-retry>Try saved coaching again</button>" : '<button data-coach-action data-nav="game">Review game connection →</button>'}</div>`;
-    const glyph = {
-      bags: "◈",
-      quest: "✧",
-      "craft-ready": "⚒",
-      "profession-cap": "❧",
-      "materials-needed": "◈",
-    }[primary.kind] || "✧";
-    return `<div class="coach-path"><article data-coach-primary><div class="coach-title"><span class="coach-sigil" aria-hidden="true">${glyph}</span><div><span class="eyebrow">YOUR NEXT STEP</span><h2>${esc(primary.title)}</h2></div></div><p class="coach-reason">${esc(primary.reason)}</p><p class="coach-detail">${esc(primary.detail)}</p><div class="coach-bottom"><span class="coach-evidence">${esc(primary.kind === "craft-ready" ? "Saved recipes and bags" : primary.evidence)}</span><button data-coach-action ${primary.kind === "quest" ? "data-coach-director" : 'data-nav="preparation"'}>${primary.kind === "quest" ? "Review quest choices" : "Open Professions"} →</button></div></article>${alternatives.length ? `<aside class="coach-alternatives" aria-label="Other useful paths">${alternatives.map((a) => `<div><span class="eyebrow">ANOTHER PATH</span><h3>${esc(a.title)}</h3><p>${esc(a.reason)}</p></div>`).join("")}</aside>` : ""}</div>`;
+      return `<div class="coach-empty bf-row"><img class="coach-crest" src="art/steps/quest.png" alt="" width="52" height="52"><div><h3>${loading ? "Reading your saved trail…" : error ? "Your coaching could not be read." : "Your next step appears after your first save."}</h3><p>${esc(error || "Log in with the addon on and type /reload once (or log out). Quests you carry and professions you open in game then turn into advice here.")}</p><div class="bf-actions">${error ? "<button data-coach-retry>Try again</button>" : '<button data-coach-action data-nav="game">Open Game connection</button>'}</div></div></div>`;
+    const k = kindOf(primary.kind);
+    const action = k.director ? `<button data-coach-action data-coach-director>${k.label}</button>` : `<button data-coach-action data-nav="${k.nav}">${k.label}</button>`;
+    return `<div class="coach-path"><article class="bf-row first" data-coach-primary data-coach-kind="${esc(primary.kind)}"><img class="coach-crest" src="${k.art}" alt="" width="52" height="52"><div><span class="eyebrow">Your next step</span><h3>${esc(primary.title)}</h3><p class="coach-reason">${esc(primary.reason)}</p>${primary.detail ? `<p class="coach-detail">${esc(primary.detail)}</p>` : ""}<div class="bf-actions">${action}${k.extra || ""}</div></div></article>${alternatives.length ? `<div class="coach-alternatives" aria-label="Other useful paths">${alternatives.map((a) => `<div class="bf-row"><img class="coach-crest" src="${kindOf(a.kind).art}" alt="" width="40" height="40"><div><span class="eyebrow">Also worth doing</span><h3>${esc(a.title)}</h3><p>${esc(a.reason)}</p></div></div>`).join("")}</div>` : ""}</div>`;
   }
+  const savedLine = () => (model?.source?.updatedAt ? "From your save · " + CommandCenter.savedTime(model.source.updatedAt) : "No save read yet") + (model?.freshness?.status === "stale" ? " · older than 15 minutes" : "");
   function render() {
-    return `<section class="adventure-coach" data-adventure-coach aria-label="Proactive adventure coach"><header><span class="eyebrow">COMPASS · WORKS OFFLINE · NO AI</span><label>Desktop goal<select data-coach-mode aria-label="Desktop coach goal">${modes.map((m) => `<option value="${m}" ${m === preference() ? "selected" : ""}>${labels[m]}</option>`).join("")}</select></label></header><div data-coach-content>${content()}</div><footer><span data-coach-saved>Last saved · ${esc(model?.source?.updatedAt ? CommandCenter.savedTime(model.source.updatedAt) : "No saved observation")}${model?.freshness?.status === "stale" ? " · Older than 15 minutes" : ""}</span><small>Native Compass uses current observations. Goals here and in WoW are independent.</small></footer></section>`;
+    return `<section class="adventure-coach bf-card lead" data-adventure-coach aria-label="Adventure coach"><header class="coach-head"><h2>Coach <small>works offline, no AI</small></h2><label>Focus on<select data-coach-mode aria-label="Desktop coach goal">${modes.map((m) => `<option value="${m}" ${m === preference() ? "selected" : ""}>${labels[m]}</option>`).join("")}</select></label></header><div data-coach-content>${content()}</div><footer><small data-coach-saved>${esc(savedLine())}</small></footer></section>`;
   }
   function paint() {
     if (!active() || guard.defer(paint)) return;
     const node = host.root.querySelector("[data-coach-content]");
     if (node) {
       node.innerHTML = content();
-      host.root.querySelector("[data-coach-saved]").textContent =
-        "Last saved · " +
-        (model?.source?.updatedAt
-          ? CommandCenter.savedTime(model.source.updatedAt)
-          : "No saved observation") +
-        (model?.freshness?.status === "stale"
-          ? " · Older than 15 minutes"
-          : "");
+      host.root.querySelector("[data-coach-saved]").textContent = savedLine();
     }
   }
   function beginRender() {

@@ -1,11 +1,10 @@
 /* Characters → Talents. */
 .talents-page { display: flex; flex-direction: column; gap: 14px; }
-.tal-hero { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: 6px; border: 1px solid #c79a4a; color: #f1dcb0;
-  background: linear-gradient(90deg, rgba(26,6,4,.92), rgba(40,10,6,.55)), url("art/hero-help.webp") center 40% / cover no-repeat, #3a0f09; }
+
 .tal-crest { width: 96px; height: 96px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.6)); }
-.tal-eyebrow { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .2em; text-transform: uppercase; color: #e8c983; }
-.tal-hero h1 { margin: 2px 0 6px; font: 700 30px Cinzel, Georgia, serif; color: #fff1d6; }
-.tal-hero h1 small { font: 600 16px 'Source Sans 3', sans-serif; color: #e8c983; }
+
+
+
 .tal-pick { font-size: 13px; }
 .tal-pick select { margin-left: 6px; }
 .tal-summary { display: flex; gap: 16px; align-items: center; padding: 12px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; }
@@ -41,7 +40,8 @@
 .tal-next-list p { margin: 2px 0 0; font-size: 13px; color: #4a3218; }
 .tal-when { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; background: #4e8f3a; color: #fff; font-size: 11px; font-weight: 800; }
 .tal-note { margin: 10px 0 0; font-size: 12px; color: #5a3e1c; }
-.tal-empty { color: #e7d3a6; }
+.tal-empty { margin: 0; padding: 14px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
+.tal-empty strong { color: #3d220c; }
 @keyframes tal-pulse { 0%, 100% { box-shadow: 0 0 8px rgba(246,196,69,.6); } 50% { box-shadow: 0 0 18px rgba(246,196,69,1); } }
 @media (max-width: 1300px) { .tal-layout { grid-template-columns: 1fr; } }
 @media (max-width: 1000px) { .tal-trees { grid-template-columns: 1fr; } }

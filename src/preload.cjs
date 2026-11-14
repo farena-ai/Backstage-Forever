@@ -37,6 +37,9 @@ contextBridge.exposeInMainWorld(
       invoke("searchQuests", query, profileId, options),
     questDetails: (profileId, questId) =>
       invoke("questDetails", profileId, questId),
+    // Hover cards' own read-only channel (same facts as questDetails).
+    questCard: (profileId, questId) =>
+      invoke("questCard", profileId, questId),
     copyQuestWaypoint: (profileId, questId, phase) =>
       invoke("copyQuestWaypoint", profileId, questId, phase),
     contextPreview: (profileId, share, prompt, memoryIds = []) =>

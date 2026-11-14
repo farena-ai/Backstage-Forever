@@ -2,7 +2,7 @@
 // Real Electron/main/preload/context; every listening/speaking worker is fake.
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), os = require("node:os"), path = require("node:path"), assert = require("node:assert/strict");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 function shortPath(target) {
   const script = `Add-Type -TypeDefinition 'using System; using System.Text; using System.Runtime.InteropServices; public static class BfVoiceShortPath { [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetShortPathName(string path, StringBuilder result, uint length); }'; $buffer = New-Object System.Text.StringBuilder 4096; $length = [BfVoiceShortPath]::GetShortPathName($env:BF_VOICE_ALIAS_PATH,$buffer,4096); if ($length -eq 0 -or $length -ge 4096) { throw 'Short path unavailable' }; $buffer.ToString()`;
@@ -41,7 +41,7 @@ async function main() {
       return;
     }
     await fs.writeFile(path.join(data, "state.json"), JSON.stringify({ ...defaultState(), onboarded: true, activeProfileId: "Alpha", profiles: ["Alpha", "Beta"].map(id => ({ id, name: id, realm: "Synthetic", className: "Mage", level: 12, goals: [], notes: "" })) }));
-    app = await electron.launch({ args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: data }, timeout: 20000 });
+    app = await launchElectron(electron, { args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: data }, timeout: 20000 });
     const page = await testWindow(app); page.setDefaultTimeout(8000);
     assert.equal(await page.evaluate(() => typeof window.backstage.voiceStart), "function");
     await app.evaluate(({ app, dialog }) => {

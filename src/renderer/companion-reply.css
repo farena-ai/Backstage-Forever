@@ -1,4 +1,4 @@
 .message-text.companion-reply { white-space: normal; overflow-wrap: anywhere; }
 .companion-reply p { margin: .65em 0; }
 .companion-reply ul,.companion-reply ol { padding-left: 1.5em; }
-.companion-reply code { background: #111b20; padding: .12em .3em; border-radius: 3px; }
+.companion-reply code { background: rgba(255,248,225,0.70); padding: .12em .3em; border-radius: 3px; }

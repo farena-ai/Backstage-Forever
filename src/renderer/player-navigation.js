@@ -18,7 +18,7 @@ window.PlayerNavigation = (() => {
         ["party", "Party"],
       ],
       description:
-        "Choose a checklist or plan together. Every step stays yours.",
+        "Checklists for a session, a profession or a dungeon run, and party plans to share.",
     },
     characters: {
       label: "Characters",
@@ -33,7 +33,7 @@ window.PlayerNavigation = (() => {
         ["updates", "Updates"],
       ],
       description:
-        "Connect on your terms. Your journal works without an account or AI.",
+        "Your game folder, the AI the companion uses, and app updates.",
     },
     guide: {
       label: "Help",

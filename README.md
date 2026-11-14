@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.30: loot, crafts and every node you've found
+## 0.31: every page earns its place
 
-A dungeon loot browser with upgrade badges and a wish list, hover cards for items and NPCs, profession skill-up colours with a best next recipe and shopping list, and a gathering memory with a heat map and `/bf nodes`. See the [0.30.0 release notes](docs/releases/0.30.0.md).
+A painted banner and the same parchment design on every page, Adventure rebuilt, every link checked to land where it says, and filler replaced with real information. See the [0.31.0 release notes](docs/releases/0.31.0.md).
 
 ## 0.28: your journey
 

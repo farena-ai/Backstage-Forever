@@ -27,4 +27,15 @@ async function testWindow(app) {
   await page.waitForLoadState("domcontentloaded");
   return page;
 }
-module.exports = { testWindow };
+// Electron occasionally fails to start on a busy Windows desktop ("Process failed to launch!").
+// One retry after a short pause; any other failure, or a second failure, is reported as is.
+async function launch(electron, options) {
+  try { return await electron.launch(options); }
+  catch (error) {
+    if (!/Process failed to launch/i.test(String(error?.message))) throw error;
+    console.warn("Electron failed to launch; retrying once.");
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    return electron.launch(options);
+  }
+}
+module.exports = { testWindow, launch };

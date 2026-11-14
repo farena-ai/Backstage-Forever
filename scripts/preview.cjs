@@ -4,12 +4,12 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const assert = require("node:assert/strict");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 (async () => {
   const data = await fs.mkdtemp(path.join(os.tmpdir(), "backstage-art-"));
   let app;
   try {
-    app = await electron.launch({
+    app = await launchElectron(electron, {
       args: [path.join(__dirname, "..")],
       env: { ...process.env, BF_USER_DATA: data },
     });
@@ -178,7 +178,7 @@ const { testWindow } = require("./test-window.cjs");
     });
     await navigate(page, "updates");
     await page
-      .getByRole("heading", { name: "Keep your companion ready." })
+      .getByRole("heading", { name: "Keep the app up to date" })
       .waitFor();
     await page.screenshot({
       path: path.join(__dirname, "..", "assets", "updates-preview.png"),

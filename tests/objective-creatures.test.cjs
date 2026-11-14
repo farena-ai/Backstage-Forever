@@ -31,7 +31,7 @@ function questGuide() {
   const root = { addEventListener() {}, querySelector: (s) => (s === ".quest-guide" ? {} : null), querySelectorAll: () => [] };
   const c = { window: {}, document: { activeElement: null, addEventListener() {} }, setTimeout, clearTimeout, queueMicrotask, console };
   vm.createContext(c);
-  for (const [f, n] of [["interaction", "InteractionGuard"], ["player-navigation", "PlayerNavigation"], ["quest-guide", "QuestGuide"]]) { vm.runInContext(fs.readFileSync(require.resolve(`../src/renderer/${f}.js`), "utf8"), c); c[n] = c.window[n]; }
+  for (const [f, n] of [["interaction", "InteractionGuard"], ["player-navigation", "PlayerNavigation"], ["page-hero", "PageHero"], ["quest-guide", "QuestGuide"]]) { vm.runInContext(fs.readFileSync(require.resolve(`../src/renderer/${f}.js`), "utf8"), c); c[n] = c.window[n]; }
   let details = {};
   c.QuestGuide.init({ root, esc: (v) => String(v ?? "").replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll("'", "&#39;"), portrait: () => "", notify() {}, api: { questDetails: async () => details } });
   c.QuestGuide.sync({ id: "a", name: "A", className: "Hunter", faction: "Horde", quests: [{ id: 1, title: "Pirate Trouble", complete: false }] });
