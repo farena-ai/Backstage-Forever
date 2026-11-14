@@ -182,7 +182,7 @@ CreateFrame=function(kind,name)
   frames[#frames+1]=f return f
 end
 dofile('addon/BackstageForever/BackstageForeverLive.lua')
-BackstageForeverLiveCommand('live on')
+BackstageForeverLiveCommand('live compact')
 local strip=frames[2]
 assert(BackstageForeverLiveSettings.enabled==true)
 assert(strip.shown and strip.ignore==true and math.abs(strip.scale-768/1440)<1e-9,'pixel exact scale')

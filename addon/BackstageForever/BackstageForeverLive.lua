@@ -12,7 +12,11 @@
 -- one-bit version 3 strip (456 x 12) for displays or remote sessions that mangle colours.
 -- Since 0.38 the pages row also carries questions the player typed in game (/bf ask), only
 -- after they pressed Ask and never in combat; the app answers in its own panel window.
-local CELL = 6                      -- safe mode: physical pixels per cell edge
+-- Since 0.38 the default is the "hairline" (version 5): one physical pixel tall along the top edge
+-- of the game, starting at the left, in near-black shades, so it reads as a thin dark border. It
+-- carries the frame and six pages at once (see BackstageForeverLiveHairlineFrame). /bf live compact
+-- and /bf live safe keep the corner strips; /bf live pos moves only those (the hairline stays on top).
+local CELL = 6                     -- safe mode: physical pixels per cell edge
 -- Version 3 (safe): every colour channel is fully off or fully on (one bit per channel), so
 -- colour-profile, gamma, HDR or remote-session shifts cannot blur neighbouring levels.
 -- Markers: magenta (finder), green, white and black (per-channel calibration).
@@ -28,6 +32,19 @@ local COMPACT_VERSION = 4
 local COMPACT_HEADER = {{255, 0, 255}, {255, 0, 255}, {0, 0, 0}, {85, 85, 85}, {170, 170, 170}, {255, 255, 255}}
 local COMPACT_CELLS = 36            -- 27 bytes * 8 bits / 6 bits per cell
 local LEVELS = {0, 85, 170, 255}
+-- Version 5 (hairline): 2 x 1 physical pixel cells, two bits per channel at near-black levels.
+-- Header: four sync cells (dark magenta / dark green, alternating) and four grey reference cells,
+-- one per level, that the app measures; then 256 payload cells = 192 bytes: the 27-byte frame, six
+-- 27-byte page slots, the number of pages and a CRC-16 over all of it (a torn frame fails it).
+local HAIRLINE_VERSION = 5
+local HAIRLINE_CELL = 2
+local HAIRLINE_LEVELS = {0, 12, 24, 36}
+local HAIRLINE_HEADER = {{3, 0, 3}, {0, 3, 0}, {3, 0, 3}, {0, 3, 0}, {0, 0, 0}, {1, 1, 1}, {2, 2, 2}, {3, 3, 3}}
+local HAIRLINE_SLOTS = 6
+local HAIRLINE_BYTES = 192
+local HAIRLINE_CELLS = 256          -- 192 bytes * 8 bits / 6 bits per cell
+local HAIRLINE_QUESTION_SLOTS = 5   -- a question takes at most five slots; one stays for quest pages
+local HAIRLINE_QUESTION_PASSES = 3  -- a question frame stays 0.4s; three passes outlast a slow sample
 local PAGE_VERSION = 80             -- second-row page frames
 local PAGE_IDS = 6                  -- quest ids per page
 local PAGE_SECONDS = 1              -- each page stays up this long (the app samples twice a second)
@@ -73,15 +90,16 @@ local function field(t,k) if type(t)=='table' then return t[k] end end
 local floor = math.floor
 local function clampByte(v) v=tonumber(v) or 0 if v~=v then v=0 end v=floor(v) if v<0 then return 0 elseif v>255 then return 255 end return v end
 
-local function xor8(a,b)
+local function xorBits(a,b,n)
     local r,bit=0,1
-    for _=1,8 do
+    for _=1,n do
         local x,y=a%2,b%2
         if x~=y then r=r+bit end
         a,b,bit=floor(a/2),floor(b/2),bit*2
     end
     return r
 end
+local function xor8(a,b) return xorBits(a,b,8) end
 local function crc8(bytes,n)
     local crc=0
     for i=1,n do
@@ -90,6 +108,18 @@ local function crc8(bytes,n)
             if crc>=128 then crc=xor8((crc*2)%256,7) else crc=(crc*2)%256 end
         end
     end
+    return crc
+end
+-- CRC-16/CCITT (poly 0x1021, start 0xFFFF), table driven; the app mirrors it.
+local CRC16={}
+for i=0,255 do
+    local c=i*256
+    for _=1,8 do if c>=32768 then c=xorBits((c*2)%65536,4129,16) else c=(c*2)%65536 end end
+    CRC16[i]=c
+end
+local function crc16(bytes,n)
+    local crc=65535
+    for i=1,n do crc=xorBits((crc*256)%65536,CRC16[xorBits(floor(crc/256),bytes[i] or 0,8)],16) end
     return crc
 end
 local function put16(bytes,i,v) v=floor(math.max(0,math.min(65535,tonumber(v) or 0))) bytes[i]=floor(v/256) bytes[i+1]=v%256 end
@@ -103,12 +133,12 @@ function BackstageForeverLiveIdentity(guid)
     return h
 end
 -- Pure: state table -> 27 payload bytes (1-based array). See src/core/live-bridge.cjs.
--- version: 4 (compact, default) or 3 (safe); the byte layout is the same.
+-- version: 4 (compact), 3 (safe) or 5 (hairline); the byte layout is the same.
 function BackstageForeverLivePayload(s,version)
     s=type(s)=='table' and s or {}
     local b={}
     for i=1,PAYLOAD_BYTES do b[i]=0 end
-    b[1]=(version==VERSION) and VERSION or COMPACT_VERSION
+    b[1]=(version==VERSION or version==HAIRLINE_VERSION) and version or COMPACT_VERSION
     b[2]=clampByte(s.seq or 0)
     local flags=0
     if s.combat then flags=flags+1 end
@@ -251,29 +281,67 @@ end
 
 -- Pure: payload bytes -> compact cells: two bits per channel at LEVELS. header=true puts the
 -- finder and reference cells first (main row); the pages row has no header.
-function BackstageForeverLiveCompactCells(bytes,header)
-    local cells={}
-    if header then for i,m in ipairs(COMPACT_HEADER) do cells[i]={m[1],m[2],m[3]} end end
+local function levelCells(cells,bytes,nbytes,ncells,levels)
     local bits={}
-    for i=1,PAYLOAD_BYTES do
+    for i=1,nbytes do
         local v=tonumber(bytes and bytes[i]) or 0
         for k=7,0,-1 do local p=2^k bits[#bits+1]=floor(v/p)%2 end
     end
-    for c=0,COMPACT_CELLS-1 do
+    for c=0,ncells-1 do
         local rgb={}
-        for ch=1,3 do local i=c*6+(ch-1)*2 rgb[ch]=LEVELS[(bits[i+1] or 0)*2+(bits[i+2] or 0)+1] end
+        for ch=1,3 do local i=c*6+(ch-1)*2 rgb[ch]=levels[(bits[i+1] or 0)*2+(bits[i+2] or 0)+1] end
         cells[#cells+1]=rgb
     end
     return cells
 end
--- Pure: settings -> strip geometry in physical pixels. Row 1 is the frame, row 2 the pages.
-function BackstageForeverLiveLayout(safe,pos)
-    pos=POINTS[pos] and pos or 'topleft'
-    local cell,row1,row2
-    if safe then cell,row1,row2=CELL,#MARKERS+PAYLOAD_CELLS,#MARKERS+PAYLOAD_CELLS
-    else cell,row1,row2=COMPACT_CELL,#COMPACT_HEADER+COMPACT_CELLS,COMPACT_CELLS end
-    return {mode=safe and 'safe' or 'compact',pos=pos,point=POINTS[pos],cell=cell,row1=row1,row2=row2,width=math.max(row1,row2)*cell,height=2*cell}
+function BackstageForeverLiveCompactCells(bytes,header)
+    local cells={}
+    if header then for i,m in ipairs(COMPACT_HEADER) do cells[i]={m[1],m[2],m[3]} end end
+    return levelCells(cells,bytes,PAYLOAD_BYTES,COMPACT_CELLS,LEVELS)
 end
+-- Pure: the 27-byte frame and up to six pages (kinds 1-4, unchanged formats) -> 192 hairline bytes:
+-- b1-27 frame, then six 27-byte slots (unused slots stay zero), b190 the number of pages,
+-- b191-192 CRC-16 of b1-190.
+function BackstageForeverLiveHairlineFrame(main,pages)
+    local b={}
+    for i=1,HAIRLINE_BYTES do b[i]=0 end
+    if type(main)=='table' then for i=1,PAYLOAD_BYTES do b[i]=clampByte(main[i]) end end
+    local n=0
+    if type(pages)=='table' then
+        for s=1,math.min(#pages,HAIRLINE_SLOTS) do
+            local p=pages[s]
+            if type(p)=='table' then n=n+1 for i=1,PAYLOAD_BYTES do b[PAYLOAD_BYTES*n+i]=clampByte(p[i]) end end
+        end
+    end
+    b[HAIRLINE_BYTES-2]=n
+    local c=crc16(b,HAIRLINE_BYTES-2)
+    b[HAIRLINE_BYTES-1]=floor(c/256) b[HAIRLINE_BYTES]=c%256
+    return b
+end
+-- Pure: 192 hairline bytes -> 8 header cells and 256 near-black payload cells.
+function BackstageForeverLiveHairlineCells(bytes)
+    local cells={}
+    for i,h in ipairs(HAIRLINE_HEADER) do cells[i]={HAIRLINE_LEVELS[h[1]+1],HAIRLINE_LEVELS[h[2]+1],HAIRLINE_LEVELS[h[3]+1]} end
+    return levelCells(cells,bytes,HAIRLINE_BYTES,HAIRLINE_CELLS,HAIRLINE_LEVELS)
+end
+-- Pure: mode ('hairline' default, 'compact', 'safe'; true/false mean safe/compact as before 0.38)
+-- and corner -> strip geometry in physical pixels. Corner strips: row 1 is the frame, row 2 the
+-- pages. The hairline is one row along the top edge from the left; it ignores the corner.
+function BackstageForeverLiveLayout(mode,pos)
+    if mode==true then mode='safe' elseif mode==false then mode='compact' end
+    if mode~='safe' and mode~='compact' then mode='hairline' end
+    pos=POINTS[pos] and pos or 'topleft'
+    if mode=='hairline' then
+        local row1=#HAIRLINE_HEADER+HAIRLINE_CELLS
+        return {mode='hairline',pos='topleft',point='TOPLEFT',cell=HAIRLINE_CELL,cellH=1,row1=row1,row2=0,width=row1*HAIRLINE_CELL,height=1}
+    end
+    local cell,row1,row2
+    if mode=='safe' then cell,row1,row2=CELL,#MARKERS+PAYLOAD_CELLS,#MARKERS+PAYLOAD_CELLS
+    else cell,row1,row2=COMPACT_CELL,#COMPACT_HEADER+COMPACT_CELLS,COMPACT_CELLS end
+    return {mode=mode,pos=pos,point=POINTS[pos],cell=cell,cellH=cell,row1=row1,row2=row2,width=math.max(row1,row2)*cell,height=2*cell}
+end
+-- Saved settings -> mode. Before 0.38 "not safe" meant compact; the new default is the hairline.
+local function modeOf(s) return s.safe and 'safe' or s.compact and 'compact' or 'hairline' end
 
 -- Live game reads (public APIs only; anything unavailable stays unknown).
 local seq=0
@@ -387,10 +455,13 @@ local function build()
     textures={}
     return strip
 end
+-- Colour last set on each texture, so a repaint touches only the cells that changed.
+local colours={}
 -- Sizes, anchors and cell textures for the current mode and corner.
 local function layout()
     local s=settings()
-    shape=BackstageForeverLiveLayout(s.safe,s.pos)
+    shape=BackstageForeverLiveLayout(modeOf(s),s.pos)
+    colours={}
     pcall(strip.SetSize,strip,shape.width,shape.height)
     pcall(strip.ClearAllPoints,strip)
     pcall(strip.SetPoint,strip,shape.point,UIParent,shape.point,0,0)
@@ -404,15 +475,26 @@ local function layout()
         end
         local row=i>shape.row1 and 1 or 0
         local col=row==0 and i-1 or i-1-shape.row1
-        pcall(t.SetSize,t,shape.cell,shape.cell)
+        pcall(t.SetSize,t,shape.cell,shape.cellH)
         if type(t.ClearAllPoints)=='function' then pcall(t.ClearAllPoints,t) end
-        pcall(t.SetPoint,t,'TOPLEFT',strip,'TOPLEFT',col*shape.cell,-row*shape.cell)
+        pcall(t.SetPoint,t,'TOPLEFT',strip,'TOPLEFT',col*shape.cell,-row*shape.cellH)
         if type(t.Show)=='function' then pcall(t.Show,t) end
     end
     for i=need+1,#textures do if type(textures[i].Hide)=='function' then pcall(textures[i].Hide,textures[i]) end end
 end
 local function fill(first,cells)
-    for i,c in ipairs(cells) do local t=textures[first+i-1] if t then pcall(t.SetColorTexture,t,c[1]/255,c[2]/255,c[3]/255,1) end end
+    for i,c in ipairs(cells) do
+        local k=first+i-1
+        local t,key=textures[k],c[1]*65536+c[2]*256+c[3]
+        if t and colours[k]~=key then colours[k]=key pcall(t.SetColorTexture,t,c[1]/255,c[2]/255,c[3]/255,1) end
+    end
+end
+-- Hairline: the newest frame payload and pages; painted together, once per update, when changed.
+local hairMain,hairPages,hairDirty=nil,{},false
+local function flushHairline()
+    if not hairDirty or shape.mode~='hairline' or not hairMain then return end
+    hairDirty=false
+    fill(1,BackstageForeverLiveHairlineCells(BackstageForeverLiveHairlineFrame(hairMain,hairPages)))
 end
 -- Repaints when anything changed, or every HEARTBEAT seconds with only the heartbeat moved.
 local function paint(step)
@@ -427,7 +509,8 @@ local function paint(step)
     end
     sinceBeat=0 beat=(beat+1)%256
     s.seq=seq s.heartbeat=beat
-    if shape.mode=='safe' then fill(1,BackstageForeverLiveCells(BackstageForeverLivePayload(s,VERSION)))
+    if shape.mode=='hairline' then hairMain=BackstageForeverLivePayload(s,HAIRLINE_VERSION) hairDirty=true
+    elseif shape.mode=='safe' then fill(1,BackstageForeverLiveCells(BackstageForeverLivePayload(s,VERSION)))
     else fill(1,BackstageForeverLiveCompactCells(BackstageForeverLivePayload(s,COMPACT_VERSION),true)) end
 end
 -- Second row: cycle through quest log and turned-in pages, one per PAGE_SECONDS.
@@ -486,11 +569,14 @@ function BackstageForeverLiveQuestion(text)
     pageClock=99 quiet=0
     return id,#pages
 end
+-- Each question is shown this many times: the hairline shows it in 0.4s frames of up to five
+-- pages, so it repeats once more than the corner strips to outlast a slow capture.
+local function passes() return shape and shape.mode=='hairline' and HAIRLINE_QUESTION_PASSES or QUESTION_PASSES end
 -- What is on its way: nil when no question waits, else {id, page, count, pass, passes, waiting}.
 function BackstageForeverLiveQuestionStatus()
     local q=questions[1]
     if not q then return nil end
-    return {id=q.id,page=q.next,count=#q.pages,pass=q.pass,passes=QUESTION_PASSES,waiting=#questions}
+    return {id=q.id,page=q.next,count=#q.pages,pass=q.pass,passes=passes(),waiting=#questions}
 end
 -- The next question page, or nil to give this slot to an ordinary page (after each burst).
 local function questionPage()
@@ -502,12 +588,28 @@ local function questionPage()
     q.next=q.next+1
     if q.next>#q.pages then
         q.next=1 q.pass=q.pass+1
-        if q.pass>QUESTION_PASSES then
+        if q.pass>passes() then
             table.remove(questions,1)
             if questions[1] then questions[1].burst=q.burst end
         end
     end
     return page
+end
+-- Hairline: the rest of this pass of the first question, at most HAIRLINE_QUESTION_SLOTS pages;
+-- a pass never wraps inside one frame, so every pass is a separate set of frames.
+local function questionSlots(out)
+    local q=questions[1]
+    if not q then return false end
+    for _=1,HAIRLINE_QUESTION_SLOTS do
+        out[#out+1]=q.pages[q.next]
+        q.next=q.next+1
+        if q.next>#q.pages then
+            q.next=1 q.pass=q.pass+1
+            if q.pass>passes() then table.remove(questions,1) end
+            break
+        end
+    end
+    return true
 end
 function BackstageForeverLiveTurnedIn(id)
     id=tonumber(plain(id))
@@ -517,13 +619,62 @@ function BackstageForeverLiveTurnedIn(id)
     while #turnedIn>MAX_TURNED_IN do table.remove(turnedIn) end
     pageClock=99 pageIndex=#pages quiet=0
 end
+-- The next quest log / turned-in page in turn (the list is rebuilt after its last page), and how
+-- many pages the list has.
+local function questPage()
+    pageIndex=pageIndex+1
+    if pageIndex>#pages then
+        local identity=BackstageForeverLiveIdentity(call(UnitGUID,'player'))
+        pages={}
+        for _,p in ipairs(BackstageForeverLivePages(1,questLog(),identity)) do pages[#pages+1]=p end
+        for _,p in ipairs(BackstageForeverLivePages(2,turnedIn,identity)) do pages[#pages+1]=p end
+        pageIndex=1
+    end
+    return pages[pageIndex],#pages
+end
+-- Hairline: the six pages of the next frame. A question first (up to five pages), then moments
+-- still to be shown (each frame counts as one showing), then the quest pages in turn.
+local function hairlineFrame()
+    local out={}
+    lastWasQuestion=questionSlots(out)
+    local mp=BackstageForeverLiveMomentPages(moments,BackstageForeverLiveIdentity(call(UnitGUID,'player')),call(GetTime) or 0)
+    for j=1,#mp do
+        if #out>=HAIRLINE_SLOTS-1 then break end
+        local e1,e2=moments[j*2-1],moments[j*2]
+        if (e1 and e1.shown<MOMENT_SHOWS) or (e2 and e2.shown<MOMENT_SHOWS) then
+            out[#out+1]=mp[j]
+            for _,e in ipairs({e1,e2}) do e.shown=e.shown+1 end
+        end
+    end
+    momentDue=false
+    local taken=0
+    while #out<HAIRLINE_SLOTS do
+        local p,n=questPage()
+        if not p then break end
+        out[#out+1]=p taken=taken+1
+        if taken>=n then break end
+    end
+    return out
+end
 local function paintPage(dt,idle)
     pageClock=pageClock+dt
     if pageClock<(lastWasQuestion and QUESTION_SECONDS or idle and PAGE_SECONDS_IDLE or PAGE_SECONDS) then return end
     -- In combat the page holds (and a moment waiting to be shown goes up as soon as it ends).
-    -- Questions never go up in combat either.
-    if call(InCombatLockdown) then return end
+    -- Questions never go up in combat either (a hairline frame drops any it was still showing).
+    if call(InCombatLockdown) then
+        if shape.mode=='hairline' then
+            local kept={}
+            for _,p in ipairs(hairPages) do if p[2]~=QUESTION_KIND then kept[#kept+1]=p end end
+            if #kept~=#hairPages then hairPages=kept hairDirty=true end
+        end
+        return
+    end
     pageClock=0
+    if shape.mode=='hairline' then
+        hairPages=hairlineFrame() hairDirty=true
+        if lastWasQuestion then quiet=0 end
+        return
+    end
     -- A question the player sent goes first, in bursts; between bursts the ordinary pages.
     local page=questionPage()
     lastWasQuestion=page~=nil
@@ -536,17 +687,7 @@ local function paintPage(dt,idle)
     -- New moments first, then alternating with the quest pages so those stay fresh.
     if momentDue or not lastWasMoment then page=momentPage() end
     lastWasMoment=page~=nil
-    if not page then
-        pageIndex=pageIndex+1
-        if pageIndex>#pages then
-            local identity=BackstageForeverLiveIdentity(call(UnitGUID,'player'))
-            pages={}
-            for _,p in ipairs(BackstageForeverLivePages(1,questLog(),identity)) do pages[#pages+1]=p end
-            for _,p in ipairs(BackstageForeverLivePages(2,turnedIn,identity)) do pages[#pages+1]=p end
-            pageIndex=1
-        end
-        page=pages[pageIndex]
-    end
+    if not page then page=questPage() end
     if shape.mode=='safe' then fill(shape.row1+1,BackstageForeverLiveCells(page))
     else fill(shape.row1+1,BackstageForeverLiveCompactCells(page,false)) end
 end
@@ -556,6 +697,7 @@ local function apply()
     layout()
     rescale()
     lastKey=nil elapsed=1 pageClock=99 pageIndex=#pages quiet=0 sinceBeat=0
+    hairMain,hairPages,hairDirty=nil,{},false
     pcall(strip.Show,strip)
     pcall(strip.SetScript,strip,'OnUpdate',function(_,dt)
         elapsed=elapsed+(tonumber(dt) or 0)
@@ -567,6 +709,9 @@ local function apply()
         if ok then paints=paints+1 lastError=nil else lastError=tostring(err) end
         local okPage,errPage=pcall(paintPage,step,idle)
         if not okPage then lastError=tostring(errPage) end
+        -- Frame and pages of the hairline go up together, in the same rendered frame.
+        local okLine,errLine=pcall(flushHairline)
+        if not okLine then lastError=tostring(errLine) end
     end)
 end
 -- /bf way MapID X Y [label]: a native user waypoint plus the game's own navigation arrow.
@@ -592,45 +737,53 @@ function BackstageForeverWay(message)
     say(('Waypoint set: %s at %.1f, %.1f. Follow the arrow on your minimap and screen.'):format(label,x*100,y*100))
 end
 local function say(m) if type(DEFAULT_CHAT_FRAME)=='table' and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,m) end end
--- Pure: "/bf live ..." text -> action, value. Actions: toggle, on, off, status, pos, safe,
--- compact, usage. pos carries a corner name, or nil when the corner is not recognised.
+-- Pure: "/bf live ..." text -> action, value. Actions: toggle, on, off, status, pos, hairline,
+-- safe, compact, usage. pos carries a corner name, or nil when the corner is not recognised.
 function BackstageForeverLiveParse(message)
     local arg,value=(type(message)=='string' and message:lower() or ''):match('^live%s*(%a*)%s*(%a*)')
     arg=arg or ''
     if arg=='' then return 'toggle' end
-    if arg=='on' or arg=='off' or arg=='status' or arg=='safe' or arg=='compact' then return arg end
+    if arg=='on' or arg=='off' or arg=='status' or arg=='safe' or arg=='compact' or arg=='hairline' then return arg end
     if arg=='pos' or arg=='position' then value=POSITION_ALIASES[value] or value return 'pos',POINTS[value] and value or nil end
     return 'usage'
 end
 function BackstageForeverLiveCommand(message)
     local action,value=BackstageForeverLiveParse(message)
     local s=settings()
-    local where=PLACE_NAMES[s.pos or 'topleft']
+    -- Where the link is drawn, in words: the hairline is always on the top edge.
+    local function where() return modeOf(s)=='hairline' and 'thin dark line along the top edge of the game' or ('small strip at the '..PLACE_NAMES[s.pos or 'topleft']) end
     if action=='status' then
         local w=strip and call(strip.GetWidth,strip) local es=strip and call(strip.GetEffectiveScale,strip)
         local _,ph=call(GetPhysicalScreenSize)
-        local L=BackstageForeverLiveLayout(s.safe,s.pos)
-        local msg=('Backstage Forever live: %s · %s %dx%d px at %s · strip %s · %sx units · scale %.3f · screen %s · paints %d%s%s'):format(s.enabled and 'on' or 'off',L.mode,L.width,L.height,PLACE_NAMES[L.pos],strip and (call(strip.IsVisible,strip) and 'visible' or 'hidden') or 'none',tostring(w),tonumber(es) or -1,tostring(ph),paints,quiet>=IDLE_AFTER and ' · idle' or '',lastError and (' · error: '..lastError:sub(1,160)) or '')
+        local L=BackstageForeverLiveLayout(modeOf(s),s.pos)
+        local at=L.mode=='hairline' and 'the top edge' or PLACE_NAMES[L.pos]
+        local msg=('Backstage Forever live: %s · %s %dx%d px at %s · strip %s · %sx units · scale %.3f · screen %s · paints %d%s%s'):format(s.enabled and 'on' or 'off',L.mode,L.width,L.height,at,strip and (call(strip.IsVisible,strip) and 'visible' or 'hidden') or 'none',tostring(w),tonumber(es) or -1,tostring(ph),paints,quiet>=IDLE_AFTER and ' · idle' or '',lastError and (' · error: '..lastError:sub(1,160)) or '')
         return say(msg)
     end
-    if action=='usage' then return say('Backstage Forever: use /bf live [on|off|status], /bf live pos topleft|topright|bottomleft|bottomright, or /bf live safe|compact.') end
+    if action=='usage' then return say('Backstage Forever: use /bf live [on|off|status], /bf live hairline|compact|safe, or /bf live pos topleft|topright|bottomleft|bottomright (compact and safe strips).') end
     if action=='pos' then
         if not value then return say('Backstage Forever: use /bf live pos topleft, topright, bottomleft or bottomright.') end
         s.pos=value~='topleft' and value or nil
         apply()
+        if modeOf(s)=='hairline' then return say('Backstage Forever: saved the '..PLACE_NAMES[value]..' corner for the compact and safe strips. The hairline always runs along the top edge; /bf live compact puts the small strip in that corner.') end
         return say('Backstage Forever live strip moved to the '..PLACE_NAMES[value]..' corner.')
     end
+    -- Choosing a mode also turns the link on.
     if action=='safe' then
-        s.safe=true apply()
-        return say('Backstage Forever live strip: safe mode (larger, one bit per colour). Use it if the link drops over remote desktop or with colour filters; /bf live compact makes it small again.')
+        s.safe=true s.compact=nil s.enabled=true apply()
+        return say('Backstage Forever live strip: safe mode (larger, one bit per colour). Use it if the link drops over remote desktop or with colour filters; /bf live hairline goes back to the thin line.')
     end
     if action=='compact' then
-        s.safe=nil apply()
-        return say('Backstage Forever live strip: compact mode (tiny, calibrated colours). /bf live safe if the desktop app stops reading it.')
+        s.safe=nil s.compact=true s.enabled=true apply()
+        return say('Backstage Forever live strip: compact mode (tiny colour strip in a corner, /bf live pos moves it). /bf live hairline goes back to the thin line; /bf live safe if the desktop app stops reading it.')
+    end
+    if action=='hairline' then
+        s.safe=nil s.compact=nil s.enabled=true apply()
+        return say('Backstage Forever live link: hairline (the default), a thin dark line along the top edge of the game. /bf live safe if the desktop app says it cannot read it.')
     end
     if action=='on' then s.enabled=true elseif action=='off' then s.enabled=false else s.enabled=not s.enabled end
     apply()
-    say('Backstage Forever live link '..(s.enabled and ('on: the desktop app can read your position from the small strip at the '..where..'. /bf live off to stop.') or 'off.'))
+    say('Backstage Forever live link '..(s.enabled and ('on: the desktop app can read your position from the '..where()..'. /bf live off to stop.') or 'off.'))
 end
 -- First login with the live link: say once what the strip is and how to hide it.
 local function announce()
@@ -638,7 +791,8 @@ local function announce()
     if not s.announce then return end
     s.announce=nil
     if type(DEFAULT_CHAT_FRAME)=='table' and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then
-        pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever live link is on: the tiny strip at the '..PLACE_NAMES[s.pos or 'topleft']..' lets the desktop app show where you are. Type /bf live off to hide it, or /bf live pos to move it.')
+        local what=modeOf(s)=='hairline' and 'the thin dark line along the top edge of the game' or ('the tiny strip at the '..PLACE_NAMES[s.pos or 'topleft'])
+        pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever live link is on: '..what..' lets the desktop app show where you are. Type /bf live off to hide it.')
     end
 end
 if type(CreateFrame)=='function' then

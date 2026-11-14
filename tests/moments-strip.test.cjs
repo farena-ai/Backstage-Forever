@@ -102,7 +102,7 @@ function strip(rowsText) {
 
 test("a new moment is on the strip at the next page, then alternates with quest pages until shown four times", () => {
   const out = lua(HARNESS + String.raw`
-BackstageForeverLiveCommand('live on')
+BackstageForeverLiveCommand('live compact')
 tick(1) print(rows())                                   -- quest page, nothing happened yet
 BackstageForeverLiveMoment(5,186,75,15)
 tick(0.2) print(rows())                                 -- the moment, straight away

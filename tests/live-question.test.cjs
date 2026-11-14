@@ -126,7 +126,7 @@ function decodeRows(r1, r2) {
 // Runs the painted strip for `seconds` after queueing `text`, one line per 0.2s tick.
 function paint(text, { seconds = 30, before = "", during = "" } = {}) {
   const out = lua(HARNESS + `
-BackstageForeverLiveCommand('live on')
+BackstageForeverLiveCommand('live compact')
 tick(1) tick(1)
 ${before}
 local id,count=BackstageForeverLiveQuestion(${luaString(text)})
