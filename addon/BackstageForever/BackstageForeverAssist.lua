@@ -1,6 +1,6 @@
 -- Beginner assist: plain-language help at the moments new players get lost.
 -- Toasts for level-ups, deaths and finished quests, a warning over dangerous targets,
--- an arrow back to your body, a click-to-sell junk button at vendors and your XP pace.
+-- a click-to-sell junk button at vendors and your XP pace.
 -- Public API only. Nothing acts in game without your click; toasts and chat lines only.
 local floor,ceil=math.floor,math.ceil
 local unpackAll=unpack or table.unpack
@@ -233,26 +233,14 @@ local function onQuestTurnedIn(xp)
     end
     BackstageForeverToast('Quest complete',sub)
 end
-local function corpseArrow()
-    local mapApi=type(C_Map)=='table' and C_Map or nil
-    local map=mapApi and num(call(mapApi.GetBestMapForUnit,'player'))
-    local death=type(C_DeathInfo)=='table' and C_DeathInfo or nil
-    local pos=map and death and call(death.GetCorpseMapPosition,map)
-    local x,y
-    if type(pos)=='table' and type(pos.GetXY)=='function' then x,y=call(pos.GetXY,pos) end
-    if type(x)=='number' and type(y)=='number' and (x>0 or y>0) and type(BackstageForeverWay)=='function' then
-        BackstageForeverWay(('way %d %.4f %.4f your body'):format(map,x,y))
-        return true
-    end
-end
+-- No automatic waypoints: the game forbids addons from setting them outside a click or command,
+-- and these run from events. The game already marks your body on the minimap and map.
 local function onAlive()
     if call(UnitIsGhost,'player')==true then
-        local arrow=corpseArrow()
-        BackstageForeverToast('Run back to your body',(arrow and 'Follow the arrow. ' or 'Your body shows on the minimap. ')..'Walk over it and click Resurrect. The Spirit Healer can revive you here instead, but your gear loses durability and you are weak for a while.')
+        BackstageForeverToast('Run back to your body','Your body shows on the minimap and map. '..'Walk over it and click Resurrect. The Spirit Healer can revive you here instead, but your gear loses durability and you are weak for a while.')
     end
 end
 local function onUnghost()
-    if type(C_Map)=='table' then pcall(C_Map.ClearUserWaypoint) end
     BackstageForeverToast('Back on your feet','Sit and eat or drink to recover health and mana before the next fight.')
 end
 

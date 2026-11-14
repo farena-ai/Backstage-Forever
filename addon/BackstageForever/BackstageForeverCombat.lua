@@ -1,6 +1,7 @@
--- Death review and session stats, from this player's own combat log (public API only).
+-- Death review and session stats, from health changes on you and your target (public API only;
+-- the game no longer lets addons read the combat log).
 -- After a death: what hit you hardest in the last seconds, its level and whether it was elite,
--- and one plain tip. /bf stats: damage and healing per fight this session and your best fight.
+-- and one plain tip. /bf stats: damage per fight this session (solo fights) and your best fight.
 local floor,min,max=math.floor,math.min,math.max
 local function plain(v)
     if v==nil then return nil end
@@ -65,24 +66,29 @@ local function remember(unit)
     local cls=call(UnitClassification,unit)
     levels[guid]={level=call(UnitLevel,unit),elite=cls=='elite' or cls=='rareelite' or cls=='worldboss'}
 end
-local function onCombatLog()
-    local _,sub,_,srcGUID,srcName,_,_,dstGUID,_,_,_,a12,a13,_,a15,_,_,a18=call(CombatLogGetCurrentEventInfo)
-    if not sub then return end
-    me=me or call(UnitGUID,'player')
+-- Health changes stand in for the combat log, which addons may no longer register (doing so raises
+-- "blocked from an action only available to the Blizzard UI"). Damage you take is credited to the
+-- hostile creature you are targeting; damage you deal is your target's health loss, counted only
+-- while you fight alone (in a group it cannot be told apart from your friends' damage).
+local health={}
+local function onHealth(unit)
+    if unit~='player' and unit~='target' then return end
+    local hp,guid=call(UnitHealth,unit),call(UnitGUID,unit)
+    local prev=health[unit]
+    if type(hp)~='number' or not guid then health[unit]=nil return end
+    health[unit]={guid=guid,hp=hp}
+    if not prev or prev.guid~=guid then return end
+    local lost=prev.hp-hp
+    if lost<=0 then return end
     local now=call(GetTime) or 0
-    if dstGUID==me then
-        local amount,spell
-        if sub=='SWING_DAMAGE' then amount=a12
-        elseif sub=='SPELL_DAMAGE' or sub=='SPELL_PERIODIC_DAMAGE' or sub=='RANGE_DAMAGE' then amount=a15;spell=a13 end
-        if type(amount)=='number' and amount>0 then
-            local info=levels[srcGUID] or {}
-            hits[#hits+1]={t=now,source=srcName,amount=amount,spell=spell,level=info.level,elite=info.elite,npc=npcOf(srcGUID)}
-            while #hits>40 or (hits[1] and now-hits[1].t>WINDOW) do table.remove(hits,1) end
-        end
-    elseif srcGUID==me and fight then
-        if sub=='SWING_DAMAGE' and type(a12)=='number' then fight.damage=fight.damage+a12
-        elseif (sub=='SPELL_DAMAGE' or sub=='SPELL_PERIODIC_DAMAGE' or sub=='RANGE_DAMAGE') and type(a15)=='number' then fight.damage=fight.damage+a15
-        elseif (sub=='SPELL_HEAL' or sub=='SPELL_PERIODIC_HEAL') and type(a15)=='number' then fight.healing=fight.healing+a15 end
+    if unit=='player' then
+        local foe=call(UnitGUID,'target')
+        local hostile=foe and call(UnitCanAttack,'player','target')==true and call(UnitIsDead,'target')~=true
+        local info=hostile and levels[foe] or {}
+        hits[#hits+1]={t=now,source=hostile and call(UnitName,'target') or nil,amount=lost,level=info.level,elite=info.elite,npc=hostile and npcOf(foe) or nil}
+        while #hits>40 or (hits[1] and now-hits[1].t>WINDOW) do table.remove(hits,1) end
+    elseif fight and call(IsInGroup)~=true and call(UnitCanAttack,'player','target')==true then
+        fight.damage=fight.damage+lost
     end
 end
 local function startFight() fight={start=call(GetTime) or 0,damage=0,healing=0} end
@@ -108,20 +114,20 @@ function BackstageForeverStatsCommand()
     if #fights==0 then return say('No fights yet this session.') end
     local d,h,t=0,0,0
     for _,f in ipairs(fights) do d=d+f.damage;h=h+f.healing;t=t+f.seconds end
-    say(('This session: %d fights, %d damage, %d healing, %d damage per second on average.'):format(#fights,d,h,floor(d/max(1,t)+.5)))
+    say(('This session: %d fights, %d damage, %d damage per second on average (solo fights).'):format(#fights,d,floor(d/max(1,t)+.5)))
     if best then say(('Best fight: %d damage per second over %d seconds.'):format(best.dps,best.seconds)) end
     local last=fights[#fights];say(('Last fight: %d damage per second, %d seconds.'):format(last.dps,last.seconds))
 end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        for _,e in ipairs({'COMBAT_LOG_EVENT_UNFILTERED','PLAYER_DEAD','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','PLAYER_TARGET_CHANGED','UPDATE_MOUSEOVER_UNIT'}) do pcall(events.RegisterEvent,events,e) end
-        pcall(events.SetScript,events,'OnEvent',function(_,event)
-            if event=='COMBAT_LOG_EVENT_UNFILTERED' then pcall(onCombatLog)
+        for _,e in ipairs({'UNIT_HEALTH','PLAYER_DEAD','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','PLAYER_TARGET_CHANGED','UPDATE_MOUSEOVER_UNIT'}) do pcall(events.RegisterEvent,events,e) end
+        pcall(events.SetScript,events,'OnEvent',function(_,event,unit)
+            if event=='UNIT_HEALTH' then pcall(onHealth,plain(unit))
             elseif event=='PLAYER_DEAD' then endFight();pcall(onDeath)
             elseif event=='PLAYER_REGEN_DISABLED' then startFight()
             elseif event=='PLAYER_REGEN_ENABLED' then endFight()
-            elseif event=='PLAYER_TARGET_CHANGED' then remember('target')
+            elseif event=='PLAYER_TARGET_CHANGED' then remember('target') health.target=nil pcall(onHealth,'target')
             elseif event=='UPDATE_MOUSEOVER_UNIT' then remember('mouseover') end
         end)
     end

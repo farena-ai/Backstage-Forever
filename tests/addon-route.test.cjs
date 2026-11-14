@@ -70,6 +70,9 @@ local second for _,t in pairs(texts) do if t:find('step 2 of 2',1,true) then sec
 assert(second,'browsed to step 2')
 fighting=true;waypoint=nil;BackstageForeverRouteRefresh();assert(waypoint==nil,'no waypoint changes in combat')
 fighting=false
+-- A refresh from events (login, zone, quests) never sets a waypoint: the game forbids that outside a click or command.
+waypoint=nil;BackstageForeverRouteRefresh();assert(waypoint==nil,'refresh alone leaves the waypoint alone')
+BackstageForeverRouteCommand('route back');assert(waypoint and math.abs(waypoint.x-.51)<1e-9,'browsing back points the arrow')
 BackstageForeverRouteCommand('route arrow');assert(BackstageForeverRouteSettings.arrow==false)
 BackstageForeverRouteCommand('route');assert(BackstageForeverRouteSettings.shown==false)
 BackstageForeverRouteCommand('route sideways');assert(said[#said]:find('/bf route next',1,true))
