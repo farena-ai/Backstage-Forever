@@ -171,6 +171,7 @@ function validateState(s) {
       "gathering",
       "lootSources",
       "journal",
+      "ledger",
       "clientBuild",
       "locale",
       "captureVersion",
@@ -183,6 +184,7 @@ function validateState(s) {
     require("./gathering-data.cjs").validateGatheringProfile(p.gathering);
     require("./quest-intel.cjs").validateLootSources(p.lootSources);
     require("./journal-data.cjs").validateJournal(p.journal);
+    require("./ledger.cjs").validateLedger(p.ledger);
     str(p.id, 100, false);
     if (ids.has(p.id)) fail();
     ids.add(p.id);
