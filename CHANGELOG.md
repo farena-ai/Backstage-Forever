@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.30.0 — loot, crafts and every node you've found, 2026-11-14
+
+- **Dungeon loot browser (A4):** boss drops from a new `forever-boss-loot` pack (Efficient Games, CC BY 4.0; 47 of 181 bosses recorded so far), item icons and stats from the local game install, upgrade badges, a per-character wish list and an upgrade count on each dungeon card.
+- **Hover cards for items and NPCs (E11/D7):** new `itemCard` IPC (stats, upgrade verdict, drop sources) and NPC cards from the World Map NPC data.
+- **Professions (2.8/E8):** recipe skill-up colours captured by the addon, best next recipe, skill-up countdown (estimate) and a shopping list with vendor locations. New `/bf prof`.
+- **Gathering memory (A6):** up to 500 remembered nodes per character, chests recorded, a gathering heat layer with per-zone counts, and `/bf nodes`.
+
 ## 0.29.0 — know more, faster, 2026-11-13
 
 - **Hover cards (A14 first part):** rest on any quest anywhere in the app for its level, how-to steps, giver and reward icons.

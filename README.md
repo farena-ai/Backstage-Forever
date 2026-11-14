@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.29: know more, faster
+## 0.30: loot, crafts and every node you've found
 
-Hover any quest in the app for a rich card. In game, a short review after each death tells you what killed you and what to do next time, and `/bf stats` shows your fights this session. See the [0.29.0 release notes](docs/releases/0.29.0.md).
+A dungeon loot browser with upgrade badges and a wish list, hover cards for items and NPCs, profession skill-up colours with a best next recipe and shopping list, and a gathering memory with a heat map and `/bf nodes`. See the [0.30.0 release notes](docs/releases/0.30.0.md).
 
 ## 0.28: your journey
 
