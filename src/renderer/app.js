@@ -634,7 +634,7 @@ function inGameHelpers() {
     ["Pop-up tips", "Level-ups, finished quests, deaths, repairs and nearby flight masters.", "/bf toasts"],
     ["Danger warnings", "Plain words above risky targets: elites, skulls, much higher levels.", "/bf danger"],
     ["Sell junk button", "On vendor windows; sells grey items only when you click it.", "/bf junk"],
-    ["Live strip", "The thin line top-left that lets this app follow you.", "/bf live"],
+    ["Live strip", "The tiny line in a corner of the game (top-left unless you move it with /bf live pos) that lets this app follow you.", "/bf live"],
     ["Adventure Compass", "The small next-step panel.", "/bf"],
   ];
   return `<section class="panel ingame-helpers"><h2>In-game helpers</h2><p>These run inside WoW. Type the command in chat to switch one on or off; add <code>on</code> or <code>off</code> to be explicit.</p><ul>${rows.map(([n, d, c]) => `<li><strong>${esc(n)}</strong><span>${esc(d)}</span><code>${esc(c)}</code></li>`).join("")}</ul><button type="button" class="subtle" data-nav="commands">All commands →</button></section>`;

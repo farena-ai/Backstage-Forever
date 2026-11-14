@@ -113,3 +113,27 @@ test("Help → Commands explains the loot browser, the wish list and hover cards
   assert.match(app, /Loot/); assert.match(app, /wish list/); assert.match(app, /Upgrade for you/);
   assert.match(app, /Hover cards/); assert.match(app, /an item or an NPC/);
 });
+
+test("Help → Commands lists the live strip placement and safe/compact modes the addon accepts", () => {
+  const live = CATALOG.filter((c) => c.word === "live").map((c) => c.command);
+  assert.ok(live.includes("/bf live pos topleft|topright|bottomleft|bottomright"), live.join(" / "));
+  assert.ok(live.includes("/bf live safe|compact"), live.join(" / "));
+  const addon = read("addon/BackstageForever/BackstageForeverLive.lua");
+  const parse = addon.slice(addon.indexOf("function BackstageForeverLiveParse"), addon.indexOf("function BackstageForeverLiveCommand"));
+  for (const w of ["pos", "safe", "compact"]) assert.match(parse, new RegExp(`'${w}'`), `addon parses /bf live ${w}`);
+  for (const corner of ["topleft", "topright", "bottomleft", "bottomright"]) assert.match(addon, new RegExp(`${corner}='[A-Z]+'`), corner);
+});
+
+test("live link status shows the strip's mode, placement and the remote desktop tip", () => {
+  const vm = require("node:vm");
+  const c = { window: {}, document: { querySelectorAll: () => [], addEventListener() {} }, setInterval() {} };
+  vm.createContext(c);
+  vm.runInContext(read("src/renderer/live-link.js"), c);
+  const L = c.window.LiveLink;
+  assert.equal(L.stripLine({ enabled: true, strip: { mode: "compact", corner: "topright", width: 84, height: 4, idle: false } }), "Mode: Compact · Placement: top-right · 84×4 px");
+  assert.equal(L.stripLine({ enabled: true, strip: { mode: "safe", corner: "bottomleft", width: 456, height: 12, idle: true } }), "Mode: Safe · Placement: bottom-left · 456×12 px · idle (nothing changing)");
+  assert.equal(L.stripLine({ enabled: false, strip: { mode: "compact", corner: "topleft", width: 84, height: 4 } }), "");
+  assert.match(L.markup(), /Type \/bf live safe if the link drops over remote desktop\./);
+  assert.match(read("src/renderer/now.js"), /Type <code>\/bf live safe<\/code> if the link drops over remote desktop/);
+  assert.match(read("src/renderer/now.js"), /sig === "compact-unreadable"/);
+});
