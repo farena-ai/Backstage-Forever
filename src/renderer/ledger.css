@@ -1,0 +1,57 @@
+/* Ledger (0.35): Bags & bank, Gold & prices, Reputation, Cooldowns. Same parchment cards as Journey. */
+.ledger-page { display: flex; flex-direction: column; gap: 14px; }
+.ldg-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.ldg-summary div { display: flex; flex-direction: column; padding: 10px 14px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); border: 1px solid #a5823e; color: #2b1b0a; }
+.ldg-summary strong { font: 700 22px Georgia, serif; color: #3d220c; }
+.ldg-summary span { font-size: 13px; color: #5a3e1c; }
+.ldg-card { padding: 14px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
+.ldg-card h2 { margin: 0 0 8px; font: 700 18px Cinzel, Georgia, serif; color: #3d220c; }
+.ldg-group { margin: 12px 0 6px; font: 700 13px Cinzel, Georgia, serif; color: #5a2e0c; letter-spacing: .05em; }
+.ldg-note { margin: 0 0 8px; font-size: 13px; color: #5a3e1c; }
+.ldg-empty { margin: 0; padding: 12px 14px; border-radius: 6px; background: rgba(239,224,187,.92); color: #3d220c; border: 1px dashed #a5823e; }
+.ldg-more { margin: 8px 0 0; font-size: 12px; color: #6b4a22; }
+.ldg-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 1100px) { .ldg-two { grid-template-columns: 1fr; } }
+.ldg-coins { display: inline-flex; gap: 5px; white-space: nowrap; }
+.ldg-gold { color: #8a5a08; font-weight: 700; } .ldg-silver { color: #4a4a4a; } .ldg-copper { color: #8a4a18; }
+.ldg-search input { width: 100%; box-sizing: border-box; padding: 8px 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #a5823e; background: #fbf3dd; color: #2b1b0a; font-size: 14px; }
+.ldg-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.ldg-chips strong { color: #3d220c; }
+.ldg-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ldg-item { padding: 6px 10px; border-radius: 5px; background: rgba(60,40,18,.08); border: 1px solid rgba(138,90,24,.3); }
+.ldg-item-head { display: flex; align-items: center; gap: 8px; cursor: default; }
+.ldg-total { margin-left: auto; font-weight: 700; color: #3d220c; }
+.ldg-holders { list-style: none; margin: 4px 0 0 22px; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.ldg-holders li { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.ldg-holders small { color: #6b5a3c; }
+.ldg-gem { font-size: 12px; }
+.ldg-name { font-weight: 700; }
+.q-poor { color: #6a6a6a; } .q-common { color: #2b1b0a; } .q-uncommon { color: #1a7a0a; } .q-rare { color: #0b5cad; } .q-epic { color: #7a2bb8; } .q-legendary { color: #b35a00; } .q-artifact, .q-heirloom { color: #8a6a1a; }
+.ldg-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ldg-table th { text-align: left; font: 700 12px Cinzel, Georgia, serif; color: #5a2e0c; border-bottom: 1px solid #a5823e; padding: 4px 6px; }
+.ldg-table td { padding: 4px 6px; border-bottom: 1px solid rgba(138,90,24,.2); }
+.ldg-table small { color: #6b5a3c; }
+.ldg-goldlist, .ldg-worth, .ldg-reps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ldg-goldlist li { display: grid; grid-template-columns: 140px 1fr auto; gap: 8px; align-items: center; font-size: 13px; }
+.ldg-who small { color: #6b5a3c; }
+.ldg-worth li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; font-size: 13px; }
+.ldg-amount { text-align: right; }
+.ldg-bar { position: relative; display: block; height: 12px; border-radius: 6px; background: rgba(60,40,18,.18); overflow: hidden; }
+.ldg-bar > span { display: block; height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, #c79a4a, #f6c445); }
+.ldg-pick { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 4px; }
+.ldg-pick select { margin-left: 6px; padding: 4px 8px; border-radius: 4px; border: 1px solid #a5823e; background: #fbf3dd; color: #2b1b0a; }
+.ldg-pick small { color: #6b5a3c; }
+.ldg-rep { display: grid; grid-template-columns: minmax(140px, 220px) 1fr 170px; gap: 10px; align-items: center; font-size: 13px; }
+.ldg-fname { font-weight: 700; color: #3d220c; }
+.ldg-stand strong { color: #3d220c; }
+.ldg-rep.st-1 .ldg-bar > span, .ldg-rep.st-2 .ldg-bar > span { background: linear-gradient(90deg, #8a1f14, #cc3a2a); }
+.ldg-rep.st-3 .ldg-bar > span { background: linear-gradient(90deg, #b35a00, #e08a2a); }
+.ldg-rep.st-4 .ldg-bar > span { background: linear-gradient(90deg, #a08a2a, #e0c84a); }
+.ldg-rep.st-5 .ldg-bar > span, .ldg-rep.st-6 .ldg-bar > span, .ldg-rep.st-7 .ldg-bar > span, .ldg-rep.st-8 .ldg-bar > span { background: linear-gradient(90deg, #2e6b1e, #5fb83a); }
+.ldg-cds { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.ldg-cds ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ldg-cds li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.ldg-cds li small { color: #6b5a3c; }
+.ldg-cds li.ready .ldg-when { color: #2e6b1e; font-weight: 700; }
+.ldg-cds li.wait .ldg-when { color: #6b4a22; }
+@media (max-width: 760px) { .ldg-rep, .ldg-goldlist li { grid-template-columns: 1fr; } }

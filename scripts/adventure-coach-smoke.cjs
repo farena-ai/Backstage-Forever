@@ -413,7 +413,7 @@ const { defaultState } = require("../src/core/validation.cjs"),
         .getByRole("navigation", { name: "Main navigation" })
         .getByRole("button")
         .count(),
-      7,
+      8,
     );
     assert.deepEqual(
       await app.evaluate(() => ({

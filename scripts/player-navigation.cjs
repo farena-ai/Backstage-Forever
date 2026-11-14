@@ -10,6 +10,10 @@ const routes = {
   assistant: ["Companion"],
   characters: ["Characters"],
   journey: ["Characters", "Journey"],
+  ledger: ["Ledger", "Bags & bank"],
+  "ledger-gold": ["Ledger", "Gold & prices"],
+  "ledger-reputation": ["Ledger", "Reputation"],
+  "ledger-cooldowns": ["Ledger", "Cooldowns"],
   company: ["Plans", "My plans"],
   party: ["Plans", "Party"],
   preparation: ["Adventure", "Professions"],
@@ -49,7 +53,7 @@ async function navigate(page, id) {
       { attribute: "data-shell-control", value }));
     else await locator.click();
   };
-  const sectionRoute = { Adventure: "adventure", Plans: "company", Settings: "game", Help: "guide" }[section] || id;
+  const sectionRoute = { Adventure: "adventure", Plans: "company", Settings: "game", Help: "guide", Ledger: "ledger" }[section] || id;
   await click(nav.getByRole("button", { name: section, exact: true }), `nav:${sectionRoute}`);
   if (tab) {
     const subtab = page.getByRole("navigation", { name: `${section} navigation`, exact: true })

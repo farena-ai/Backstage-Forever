@@ -585,7 +585,7 @@ function shortPath(target) {
         .getByRole("navigation", { name: "Main navigation", exact: true })
         .getByRole("button")
         .count(),
-      7,
+      8,
     );
     assert.equal(
       await page

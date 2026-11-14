@@ -92,6 +92,7 @@ contextBridge.exposeInMainWorld(
     dataCoverage: () => invoke("dataCoverage"),
     talentCoach: (input) => invoke("talentCoach", input),
     journey: () => invoke("journey"),
+    ledger: () => invoke("ledger"),
     playSession: () => invoke("playSession"),
     playTrail: (mapId) => invoke("playTrail", mapId),
     onPlayEvent: (listener) => {

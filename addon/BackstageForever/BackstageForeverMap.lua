@@ -62,6 +62,9 @@ local function questCommand(row)
     return command:sub(5)
 end
 local Pin={}
+-- Blizzard's AcquirePin calls pin:SetPassThroughButtons(), which is protected: from an addon pin
+-- it is blocked ("only available to the Blizzard UI"). Our own pins keep it as a no-op.
+function Pin:SetPassThroughButtons()end
 function Pin:OnLoad()
     method(self,'SetSize',20,20)
     self.bfIcon=method(self,'CreateTexture',nil,'ARTWORK')

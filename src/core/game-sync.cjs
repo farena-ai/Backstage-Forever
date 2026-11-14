@@ -29,6 +29,7 @@ const MAX = 1024 * 1024,
     "BackstageForeverJournal.lua",
     "BackstageForeverCombat.lua",
     "BackstageForeverMoments.lua",
+    "BackstageForeverLedger.lua",
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");
@@ -193,6 +194,9 @@ function parseSavedVariables(raw) {
     }
     if (c.journal !== undefined) {
       try { out.journal = require("./journal-data.cjs").normalizeJournalCapture(c.journal); } catch { /* Omit the entire invalid optional block. */ }
+    }
+    if (c.ledger !== undefined) {
+      try { out.ledger = require("./ledger.cjs").normalizeLedgerCapture(c.ledger); } catch { /* Omit the entire invalid optional block. */ }
     }
     return out;
   });

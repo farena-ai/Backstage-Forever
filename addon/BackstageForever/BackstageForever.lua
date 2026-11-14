@@ -615,6 +615,14 @@ local function readiness(guid,build)
     if gear~=nil or space~=nil or workshop then return {equipment=gear,bags=space,workshop=workshop} end
 end
 local roster={}
+-- /bf ledger: names and last saved gold of the characters this account's export knows.
+function BackstageForeverLedgerRoster()
+    local out={}
+    for _,c in pairs(roster) do
+        if type(c)=='table' then out[#out+1]={name=c.name,realm=c.realm,faction=c.faction,money=type(c.ledger)=='table' and c.ledger.money or nil} end
+    end
+    return out
+end
 local newCharacterHinted=false
 local function capture(event,eventId)
     if type(InCombatLockdown) ~= "function" or call(InCombatLockdown) ~= false then return end
@@ -638,7 +646,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.34.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.35.0'
     character.race=clean((call(UnitRace,'player')));character.faction=clean((call(UnitFactionGroup,'player')))
     local previous=roster[guid]
     -- WoW writes saved data only on /reload or logout, so a brand-new character is unknown to the app until then.
@@ -699,6 +707,16 @@ local function capture(event,eventId)
         local ok,journal=pcall(BackstageForeverJournalSnapshot)
         if ok and type(journal)=='table' then array(journal.levels);array(journal.firsts);array(journal.zones);character.journal=journal end
     end
+    if type(BackstageForeverLedgerSnapshot)=='function' then
+        local ok,ledger=pcall(BackstageForeverLedgerSnapshot)
+        if ok and type(ledger)=='table' then
+            for _,key in ipairs({'bags','bank','mail'}) do if type(ledger[key])=='table' then array(ledger[key].items) end end
+            if type(ledger.reputations)=='table' then array(ledger.reputations.factions) end
+            array(ledger.cooldowns or {});array(ledger.prices or {})
+            for _,price in ipairs(ledger.prices or {}) do array(price.hist) end
+            character.ledger=ledger
+        end
+    end
     if type(BackstageForeverMapUpdate)=='function' then pcall(BackstageForeverMapUpdate,character)end
     if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character) end
     roster[guid]=character
@@ -728,6 +746,15 @@ local function capture(event,eventId)
             local small,smallNodes=encode(gathering)
             encodedLength=encodedLength-#old+#small;encodedNodes=encodedNodes-nodes+smallNodes;changed=true
         end
+    end
+    -- Ledger detail is optional too: auction price memory first, then the whole ledger.
+    for i=#chars,1,-1 do
+        if fits() then break end
+        discard(chars[i].ledger,'prices')
+    end
+    for i=#chars,1,-1 do
+        if fits() then break end
+        discard(chars[i],'ledger')
     end
     -- Captured quest text and learned item sources are large: shed them, oldest first.
     for i=#chars,1,-1 do

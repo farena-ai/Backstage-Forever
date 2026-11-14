@@ -107,7 +107,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.reload();
 
     const primary = page.getByRole("navigation", { name: "Main navigation" });
-    const names = ["Now", "Adventure", "World Map", "Quests", "Companion", "Characters", "Plans"];
+    const names = ["Now", "Adventure", "World Map", "Quests", "Companion", "Characters", "Ledger", "Plans"];
     assert.equal(await primary.getByRole("button").count(), names.length);
     for (let i = 0; i < names.length; i++) {
       const button = primary.getByRole("button", {
@@ -136,7 +136,7 @@ const { defaultState } = require("../src/core/validation.cjs");
         await page.getByLabel("Active character", { exact: true }).inputValue(),
         "Alpha",
       );
-      const group = ["preparation","dungeons"].includes(id) ? "adventure" : id === "journey" ? "characters" : id === "party"
+      const group = ["preparation","dungeons"].includes(id) ? "adventure" : id === "journey" ? "characters" : id.startsWith("ledger") ? "ledger" : id === "party"
         ? "company"
         : ["game", "connections", "updates"].includes(id)
           ? "game"

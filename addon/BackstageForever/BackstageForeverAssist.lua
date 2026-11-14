@@ -538,6 +538,8 @@ function BackstageForeverAssistCommand(message)
             '/bf prof - your profession: recipe colour, best next recipe, crafts to your cap',
             '/bf nodes - your remembered herbs, ore and chests nearby, with distance and direction',
             '/bf hearth - where your Hearthstone takes you',
+            '/bf ledger - gold across your characters, and when the addon last saw your bank and mail',
+            '/bf prices - remember Auction House prices on pages you open yourself (on, off or status)',
             '/bf show, /bf hide - the Adventure Compass panel',
             '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',
             '/bf moments - turn the short messages for elite, rare and boss kills and profession milestones on or off',

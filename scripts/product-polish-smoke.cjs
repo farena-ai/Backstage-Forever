@@ -74,8 +74,8 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
       assert.equal(await chip.getAttribute("data-connection-state"), "disconnected");
       assert.notEqual(await chip.locator(".dot").evaluate(n => getComputedStyle(n).backgroundColor), await page.locator(".rail-bottom .dot").evaluate(n => getComputedStyle(n).backgroundColor));
       // Exercise current header status painting without replacing its held control.
-      await chip.evaluate(n => { gameStatus = { connected: true }; render(); });
-      assert.equal(await page.locator(".game-status-chip").getAttribute("data-connection-state"), "connected");
+      // Set, paint and read in one step so a background status poll cannot repaint in between.
+      assert.equal(await chip.evaluate(n => { gameStatus = { connected: true }; refreshGameStatusWidget(); return document.querySelector(".game-status-chip").dataset.connectionState; }), "connected");
       await page.locator(".game-status-chip").evaluate(n => window.originalChip = n);
       await page.evaluate(() => { document.querySelector("#goal-form input").focus(); });
       await app.evaluate(() => polishStatus = { connected: false });
@@ -97,9 +97,8 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
         assert.ok(await page.locator("#page-heading").innerText(), name);
         assert.equal(page.url(), url);
       }
-      await page.locator("#active-character").focus();
-      await page.evaluate(() => refreshGameStatusWidget());
-      assert.equal(await page.locator("#active-character").evaluate(n => n === document.activeElement), true);
+      // Focus, repaint the status widget and read focus in one step (a background repaint in between is a different test).
+      assert.equal(await page.evaluate(() => { const n = document.querySelector("#active-character"); n.focus(); refreshGameStatusWidget(); return document.activeElement === n; }), true);
     });
     await go("AI Companion");
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1000, 700));

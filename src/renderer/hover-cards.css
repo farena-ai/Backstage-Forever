@@ -31,6 +31,7 @@
 .hc-v-meh { color: #4a3a2a; background: rgba(90,62,28,.15); border: 1px solid rgba(90,62,28,.3); }
 .hc-drops strong, .hc-npc strong { color: #7a1f14; }
 .hc-wish { color: #8a5a08; font-weight: 800; }
+.hc-price { color: #4a3416; } .hc-price strong { color: #8a5a08; }
 .hc-roles { font-weight: 700; color: #5a3608; }
 .hc-npc { margin: 0 0 6px; padding-left: 18px; font-size: 13px; line-height: 1.4; }
 .hc-side { flex: none; padding: 0 6px; border-radius: 8px; font-size: 11px; font-weight: 700; background: #2f6a2a; color: #fff; }
