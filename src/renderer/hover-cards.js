@@ -62,7 +62,8 @@ window.HoverCards = (() => {
     const v = d?.verdict, cls = v && VERDICT[v.verdict];
     const why = v?.reasons?.length && ["upgrade", "upgrade-later", "not-upgrade"].includes(v.verdict) ? `<small>${v.reasons.slice(0, 3).map(esc).join(", ")}</small>` : "";
     const verdict = cls && v.text ? `<p class="hc-verdict hc-v-${cls}">${esc(v.text)}${why}</p>` : "";
-    const drops = (d?.sources || []).slice(0, 2).map((s) => `<p class="hc-drops">Drops from <strong>${esc(s.boss)}</strong> (${esc(s.instance)}) · ${s.chance >= 0.995 ? "100" : Math.max(1, Math.round(s.chance * 100))}%</p>`).join("");
+    const drops = (d?.sources || []).slice(0, 2).map((s) => `<p class="hc-drops">Drops from <strong>${esc(s.boss)}</strong> (${esc(s.instance)}) · ${s.chance >= 0.995 ? "100" : Math.max(1, Math.round(s.chance * 100))}%</p>`).join("")
+      + (d?.communitySources || []).slice(0, 2).map((s) => `<p class="hc-drops hc-community">Drops from <strong>${esc(s.name)}</strong> · ${s.chance >= 0.995 ? "100" : Math.max(1, Math.round(s.chance * 100))}% <small>${esc(s.source)}</small></p>`).join("");
     return `<header class="hc-item-head"><span class="hc-icon q-${q}">${it?.iconFileId && window.GameIcons ? GameIcons.tag(it.iconFileId, 40) : '<span class="hc-gem" aria-hidden="true">◆</span>'}</span><span class="hc-title"><strong class="hc-q-${q}">${esc(name)}</strong>${kind ? `<small>${esc(kind)}</small>` : ""}</span></header>
       ${meta.length ? `<p class="hc-meta">${meta.map(esc).join(" · ")}</p>` : ""}
       ${stats.length ? `<ul class="hc-stats">${stats.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : ""}
