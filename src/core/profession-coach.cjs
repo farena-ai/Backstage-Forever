@@ -2,6 +2,7 @@
 const { buildPreparation } = require("./preparation.cjs");
 const { validateState, str } = require("./validation.cjs");
 const { acquisitionFacts } = require("./acquisition-data.cjs");
+const { skillColor, colorRank, materialUnits, skillUpCountdown, shoppingList } = require("./profession-skillup.cjs");
 // Callers establish source/date authority before qualifying an owned observation.
 function professionCapQualification(profession) {
   return profession?.maxRank > 0 && profession.rank === profession.maxRank
@@ -36,6 +37,13 @@ function validateProfessionOptions(value = {}) {
       out[key] = value[key];
     }
   return out;
+}
+function nextRecipe(r, score, crafts) {
+  const c = skillColor(r), [, supply, types] = score;
+  const why = supply === 0 ? `your bags cover ${crafts} craft${crafts === 1 ? "" : "s"}`
+    : supply === 1 ? `${types} material${types === 1 ? "" : "s"} short for ${crafts} craft${crafts === 1 ? "" : "s"}`
+    : `${materialUnits(r)} material${materialUnits(r) === 1 ? "" : "s"} per craft`;
+  return { id: r.id, name: r.name, difficulty: c.difficulty, color: c.color, label: c.label, observed: c.observed, reason: `${c.label}: ${c.words} · ${why}` };
 }
 /** One workshop projection; legacy checklist actions continue to use its resolved recipe/attempts. */
 function buildProfessionCoach(
@@ -91,10 +99,15 @@ function buildProfessionCoach(
         x.required * settings.crafts - (quantities.get(x.itemId) || 0),
       ),
     );
+    // Best next recipe: orange, then yellow (unobserved colour before green), then the
+    // fewest missing materials, then the fewest materials per craft. The vendor pack
+    // carries no prices, so cost cannot rank recipes.
     return [
+      colorRank(r),
       exact ? (missing.every((n) => n === 0) ? 0 : 1) : 2,
       exact ? missing.filter((n) => n > 0).length : 0,
       exact ? missing.reduce((a, b) => a + b, 0) : 0,
+      materialUnits(r),
       r.id,
     ];
   };
@@ -144,7 +157,9 @@ function buildProfessionCoach(
   model.recipeChoices = base.recipes
     .filter((r) => r.skillLineId === skillLineId && profession)
     .sort((a, b) => a.id - b.id)
-    .map((r) => ({ ...r, levelingEligible: eligible(r) }));
+    .map((r) => ({ ...r, levelingEligible: eligible(r), skill: skillColor(r) }));
+  const best = profession ? candidates.find((r) => r.skillLineId === skillLineId) || null : null;
+  model.nextRecipe = best ? nextRecipe(best, score(best), settings.crafts) : null;
   if (!recipe || !requirements(recipe)) {
     model.shoppingRows = [];
     model.status = "unavailable";
@@ -177,6 +192,8 @@ function buildProfessionCoach(
   );
   for (const row of model.shoppingRows)
     row.acquisition = acquisition.rows.find((r) => r.itemId === row.itemId);
+  model.shoppingList = shoppingList(model.shoppingRows, { crafts: settings.crafts, profile });
+  model.skillUp = recipe ? skillUpCountdown(profession, recipe) : null;
   model.acquisitionReference = {
     status: acquisition.status,
     reference: acquisition.reference,
