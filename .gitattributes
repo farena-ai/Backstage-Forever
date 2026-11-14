@@ -38,3 +38,5 @@ data/forever-loot/NOTICE text eol=lf
 data/forever-boss-loot/*.json text eol=lf
 data/forever-boss-loot/LICENSE text eol=lf whitespace=-blank-at-eof
 data/forever-boss-loot/NOTICE text eol=lf
+*.tga binary
+*.webp binary
