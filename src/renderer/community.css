@@ -1,0 +1,15 @@
+/* Settings → Community (0.34). Same card language as the recovery card; teal marks community data. */
+.community-card{grid-column:1 / -1;margin-top:20px;border-top:3px solid #2b8a9c;background:linear-gradient(120deg,rgba(43,138,156,.10),transparent 65%),var(--panel,#111d29)}
+.community-heading{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}.community-heading h2{margin:2px 0}.community-heading .tag{margin-left:auto}.community-seal{font-size:34px;color:#5fc3d3}
+.community-switch{font-weight:600}
+.community-state{color:#c1d8c8;min-height:1.4em}
+.community-facts{display:flex;gap:28px;flex-wrap:wrap;border-block:1px solid rgba(201,173,114,.22);padding:14px 0;margin:14px 0}.community-facts div{display:grid;gap:4px}.community-facts dt{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#a5b8b5}.community-facts dd{margin:0;color:#ecdfc2}
+.community-lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.community-lists h4{margin:6px 0}.community-lists ul{margin:0;padding-left:20px}.community-lists li{margin:3px 0}
+.community-muted{color:#a5b8b5;font-size:13px}
+.community-note{padding:10px 12px;border-left:2px solid #5fc3d3;background:rgba(43,138,156,.08);overflow-wrap:anywhere}.community-note.ok{border-color:#7cc47a}.community-note.bad{border-color:#e08a74;color:#f0b4a4}
+.community-card .button-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.community-report-box{margin-top:18px}.community-report-box summary{cursor:pointer;color:#d6c08c}
+.community-report{display:grid;gap:12px;margin-top:12px}.community-report label{display:grid;gap:6px}.community-report textarea{min-height:110px}
+.community-log{max-height:260px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;padding:10px;border:1px solid rgba(201,173,114,.3);background:rgba(0,0,0,.25);border-radius:4px}
+.community-card button:focus-visible,.community-card input:focus-visible,.community-card select:focus-visible,.community-card textarea:focus-visible,.community-log:focus-visible{outline:2px solid #e0c58a;outline-offset:3px}
+@media(max-width:1050px){.community-heading .tag{margin-left:0}.community-card .button-row button{flex:1 1 180px}}
