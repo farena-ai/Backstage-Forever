@@ -41,6 +41,44 @@ local function acquisition(character,itemIds)
     end
     return result
 end
+-- Skill-up colours from the client's own difficulty. Chances are estimates (classic:
+-- orange always, yellow usually, green rarely, grey never); grey is never inferred.
+local COLORS={optimal={color='orange',label='Orange',chance=1,words='always a skill-up',rank=0},medium={color='yellow',label='Yellow',chance=.75,words='usually a skill-up',rank=1},easy={color='green',label='Green',chance=.25,words='sometimes a skill-up',rank=3},trivial={color='grey',label='Grey',chance=0,words='no skill-ups',rank=4}}
+local UNKNOWN={color='unknown',label='Colour unknown',words='skill-up chance not observed',rank=2}
+function BackstageForeverSkillColor(difficulty)
+    local c=type(difficulty)=='string' and rawget(COLORS,difficulty) or nil
+    local out={difficulty=c and difficulty or 'unknown',observed=c~=nil};for k,v in pairs(c or UNKNOWN)do out[k]=v end;return out
+end
+-- Estimated crafts to the next point and to the current cap, if the recipe kept its colour.
+function BackstageForeverSkillCountdown(profession,recipe)
+    if type(profession)~='table' or type(recipe)~='table' or type(profession.rank)~='number' or type(profession.maxRank)~='number' then return nil end
+    local c=BackstageForeverSkillColor(recipe.difficulty);local points=math.max(0,profession.maxRank-profession.rank)
+    local chance=recipe.canSkillUp==false and 0 or c.chance
+    local out={estimate=true,color=c.color,label=c.label,rank=profession.rank,maxRank=profession.maxRank,pointsToCap=points,chance=chance}
+    if points==0 then out.status='at-cap';out.craftsToCap=0;out.detail=profession.name..' is at its cap ('..profession.maxRank..'). Train the next rank.'
+    elseif chance==nil then out.status='unknown';out.detail='Skill-up colour not observed; open your profession once.'
+    elseif chance==0 then out.status='grey';out.detail=recipe.name..' is grey: no more skill-ups from it.'
+    else out.status='estimate';out.craftsToNextPoint=math.ceil(1/chance);out.craftsToCap=math.ceil(points/chance)
+        out.detail='Estimate: about '..out.craftsToCap..' crafts to '..profession.maxRank..' if it stayed '..c.label:lower()..'.' end
+    return out
+end
+-- Plain chat lines for /bf prof from one built coach model (pure; no API access).
+function BackstageForeverProfessionLines(coach)
+    if type(coach)~='table' then return {'Profession advice is not ready yet. Open your profession once, then try again.'} end
+    local p=coach.profession
+    if not p then return {'No profession observed yet. Open your profession window once so the addon can read it.'} end
+    local lines={p.name..': '..p.rank..' / '..p.maxRank}
+    local sel=coach.selectedRecipe
+    if sel then lines[#lines+1]='Planned: '..sel.name..' - '..(sel.skill and (sel.skill.label..', '..sel.skill.words) or 'colour unknown') end
+    local n=coach.nextRecipe
+    if n then lines[#lines+1]='Best next recipe: '..n.name..' ('..n.reason..')'
+    else lines[#lines+1]='No skill-up recipe observed: train new recipes or open your profession once.' end
+    local c=coach.skillUp
+    if c then lines[#lines+1]=c.craftsToCap and c.status=='estimate' and ('Countdown (estimate): next point in ~'..c.craftsToNextPoint..' craft(s), ~'..c.craftsToCap..' crafts to '..c.maxRank..'.') or c.detail end
+    local short={};for _,row in ipairs(coach.shoppingRows or {})do if row.missing and row.missing>0 and #short<3 then short[#short+1]=row.missing..' x '..row.name end end
+    if #short>0 then lines[#lines+1]='Still need: '..table.concat(short,', ') end
+    return lines
+end
 function BackstageForeverBuildProfessionCoach(character,value)
     local o=options(value);local now=H.stamp(field(character,'updatedAt'));local w=field(field(character,'readiness'),'workshop')
     local pc=collection(w,'professions',20,now);local rc=collection(w,'recipes',100,now);local mc=collection(w,'materials',256,now)
@@ -67,6 +105,8 @@ function BackstageForeverBuildProfessionCoach(character,value)
         local id=number(field(raw,'id'),1,2147483647);local skill=number(field(raw,'skillLineId'),1,2147483647);local name=text(field(raw,'name'))
         if id and not duplicates[id] and skill and name then
             local r={id=id,skillLineId=skill,name=name,canSkillUp=field(raw,'canSkillUp')==true,reagents={},reagentsKnown=false}
+            local difficulty=text(field(raw,'difficulty'),10);if difficulty and rawget(COLORS,difficulty) and (difficulty=='trivial')~=r.canSkillUp then r.difficulty=difficulty end
+            r.skill=BackstageForeverSkillColor(r.difficulty)
             local reagents=sequence(field(raw,'reagents'),10);local known=field(raw,'reagentsKnown')==true and reagents and #reagents>0;local seen={}
             for _,reagent in ipairs(reagents or {})do
                 local item=number(field(reagent,'itemId'),1,2147483647);local required=number(field(reagent,'required'),1,100000)
@@ -76,10 +116,13 @@ function BackstageForeverBuildProfessionCoach(character,value)
             r.levelingEligible=now~=nil and text(field(character,'clientBuild'))~=nil and owners[skill]~=nil and pc.observedAt<=rc.observedAt and r.canSkillUp and r.reagentsKnown
             local missingTypes,units=0,0
             for _,reagent in ipairs(r.reagents)do local missing=math.max(0,reagent.required*o.crafts-(materials[reagent.itemId] and materials[reagent.itemId].count or 0));if missing>0 then missingTypes=missingTypes+1;units=units+missing end end
-            r.score={exact and (units==0 and 0 or 1) or 2,exact and missingTypes or 0,exact and units or 0,id};recipes[#recipes+1]=r
+            local perCraft=0;for _,reagent in ipairs(r.reagents)do perCraft=perCraft+reagent.required end
+            -- Orange, then yellow, then fewest missing (exact bags), else fewest materials per craft.
+            r.missingTypes=missingTypes
+            r.score={r.skill.rank,exact and (units==0 and 0 or 1) or 2,exact and missingTypes or 0,exact and units or 0,exact and 0 or perCraft,id};recipes[#recipes+1]=r
         end
     end
-    table.sort(recipes,function(a,b)for i=1,4 do if a.score[i]~=b.score[i] then return a.score[i]<b.score[i]end end;return false end)
+    table.sort(recipes,function(a,b)for i=1,6 do if a.score[i]~=b.score[i] then return a.score[i]<b.score[i]end end;return false end)
     local explicit,best
     for _,r in ipairs(recipes)do if r.id==o.recipeId then explicit=r end;if r.levelingEligible and not best then best=r end end
     local skill=o.skillLineId or explicit and explicit.skillLineId or best and best.skillLineId or result.ownedProfessionChoices[1] and result.ownedProfessionChoices[1].skillLineId
@@ -87,11 +130,16 @@ function BackstageForeverBuildProfessionCoach(character,value)
     local selected
     for _,r in ipairs(recipes)do if r.skillLineId==skill and owners[skill] then
         if (o.recipeId and r.id==o.recipeId) or (not o.recipeId and r.levelingEligible and not selected)then selected=r end
-        local choice=clone(r);choice.score=nil;result.recipeChoices[#result.recipeChoices+1]=choice
+        local choice=clone(r);choice.score=nil;choice.missingTypes=nil;result.recipeChoices[#result.recipeChoices+1]=choice
     end end
     table.sort(result.recipeChoices,function(a,b)return a.id<b.id end)
+    for _,r in ipairs(recipes)do if r.skillLineId==skill and owners[skill] and r.levelingEligible then
+        local why=r.score[2]==0 and ('your bags cover '..o.crafts..' craft(s)') or r.score[2]==1 and (r.missingTypes..' material(s) short') or (r.score[5]..' material(s) per craft')
+        result.nextRecipe={id=r.id,name=r.name,difficulty=r.skill.difficulty,color=r.skill.color,label=r.skill.label,reason=r.skill.label..': '..r.skill.words..' | '..why};break
+    end end
     if selected then
-        result.selectedRecipe=clone(selected);result.selectedRecipe.score=nil;result.selection.recipeId=selected.id
+        result.selectedRecipe=clone(selected);result.selectedRecipe.score=nil;result.selectedRecipe.missingTypes=nil;result.selection.recipeId=selected.id
+        result.skillUp=BackstageForeverSkillCountdown(owners[skill],selected)
         if selected.reagentsKnown and now and text(field(character,'clientBuild')) then
             result.status='ready';result.planning={available=true,checklistAvailable=true,requirementsKnown=true,inventoryExact=exact==true}
             for _,r in ipairs(selected.reagents)do

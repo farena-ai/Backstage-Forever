@@ -98,3 +98,19 @@ test("native material follow-through names the bounded shortfall and missing bui
   ));
 
 test('native explicit non-skillup goal stays visible as a manual plan, never a quest action',()=>lua(`w.recipes.items[1].canSkillUp=false;local b=BackstageForeverBuildCoach(c,{mode='professions',recipeId=100});assert(b.recommendation and b.recommendation.kind=='craft-plan');assert(not b.recommendation.questStep and not b.recommendation.command)`));
+
+test('native skill colours rank orange over yellow, give the best next recipe, an estimated countdown and chat lines', () =>
+  lua(
+    `local r=w.recipes.items;r[1].difficulty='easy';r[2].difficulty='optimal';r[2].reagents={{itemId=765,required=1}};local m=build();assert(m.selection.recipeId==101,'orange first');assert(m.nextRecipe.id==101 and m.nextRecipe.color=='orange');assert(m.nextRecipe.reason:find('Orange: always',1,true));assert(m.skillUp.estimate and m.skillUp.craftsToCap==55 and m.skillUp.craftsToNextPoint==1)
+local chips={};for _,c in ipairs(m.recipeChoices)do chips[c.id]=c.skill.color end;assert(chips[100]=='green' and chips[101]=='orange')
+m=build({recipeId=100});assert(m.selectedRecipe.id==100 and m.nextRecipe.id==101 and m.skillUp.craftsToCap==220)
+r[2].difficulty='trivial';m=build();assert(m.recipeChoices[2].skill.color=='unknown' and m.selection.recipeId==101,'contradictory grey is dropped')
+r[2].difficulty='nonsense';r[2].canSkillUp=true;m=build();assert(m.recipeChoices[2].skill.color=='unknown')
+r[1].difficulty='medium';r[2].difficulty='trivial';r[2].canSkillUp=false;m=build();assert(m.nextRecipe.id==100 and m.recipeChoices[2].skill.color=='grey' and not m.recipeChoices[2].levelingEligible)
+local lines=BackstageForeverProfessionLines(m);assert(lines[1]=='Alchemy: 20 / 75');local all=table.concat(lines,' ');assert(all:find('Best next recipe: Tonic',1,true) and all:find('Yellow',1,true) and all:find('estimate',1,true))
+assert(BackstageForeverProfessionLines(nil)[1]:find('not ready',1,true));w.professions.items[1].rank=75;assert(build().skillUp.status=='at-cap')`,
+  ));
+test("native /bf prof prints profession colour and next recipe to chat only", () =>
+  hud(
+    `local said={};DEFAULT_CHAT_FRAME={AddMessage=function(_,m)said[#said+1]=m end};SlashCmdList.BACKSTAGEFOREVER('prof');assert(#said>=1 and said[1]:find('^Backstage Forever: '),'no chat output')`,
+  ));
