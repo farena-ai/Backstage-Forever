@@ -21,12 +21,19 @@
     $("[data-ap-source]").textContent = s.status === "answer" ? SOURCE[s.answer?.kind] || SOURCE.ai : s.status === "thinking" ? "Question received from the game" : "";
     $("[data-ap-body]").scrollTop = 0;
   }
-  root.addEventListener("click", (event) => {
+  // Act on the press itself (pointerdown), so a real click always lands even if the window is
+  // still becoming active; the click that follows is ignored.
+  let acted = 0;
+  const act = (event) => {
     const b = event.target.closest("[data-ap]");
     if (!b) return;
+    if (event.type === "click" && Date.now() - acted < 800) return;
+    if (event.type === "pointerdown") { if (event.button !== 0) return; acted = Date.now(); event.preventDefault(); }
     if (b.dataset.ap === "close") api.close().catch(() => {});
     if (b.dataset.ap === "open") api.openApp().catch(() => {});
-  });
+  };
+  root.addEventListener("pointerdown", act);
+  root.addEventListener("click", act);
   root.addEventListener("mouseenter", () => api.hold(true).catch(() => {}));
   root.addEventListener("mouseleave", () => api.hold(false).catch(() => {}));
   api.onState(paint);

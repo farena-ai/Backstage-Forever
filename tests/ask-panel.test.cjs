@@ -66,13 +66,13 @@ function fakeElectron() {
   return { BrowserWindow: Win, ipcMain, screen, handlers, windows, timers, setTimer, clearTimer };
 }
 
-test("the panel window: frameless, always on top above full-screen games, off the taskbar, never focusable, shown inactive", () => {
+test("the panel window: frameless, always on top above full-screen games, off the taskbar, shown inactive (never steals focus when it appears; a click may focus it so real clicks land)", () => {
   const e = fakeElectron(), dir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-ask-panel-"));
   let rect = { x: 1920, y: 0, width: 2560, height: 1440 }, opened = 0;
   const panel = P.createAskPanel({ ...e, rendererDir: path.join(root, "src/renderer"), dataDir: dir, gameRect: () => rect, onOpenApp: () => opened++ });
   assert.equal(panel.show({ status: "thinking", question: "Where is the inn?" }), true);
   const w = e.windows[0];
-  assert.equal(w.opts.frame, false); assert.equal(w.opts.alwaysOnTop, true); assert.equal(w.opts.skipTaskbar, true); assert.equal(w.opts.focusable, false); assert.equal(w.opts.show, false);
+  assert.equal(w.opts.frame, false); assert.equal(w.opts.alwaysOnTop, true); assert.equal(w.opts.skipTaskbar, true); assert.equal(w.opts.focusable, true); assert.equal(w.opts.show, false);
   assert.equal(w.opts.width, 420); assert.equal(w.opts.height, 260);
   assert.equal(w.opts.webPreferences.sandbox, true); assert.equal(w.opts.webPreferences.contextIsolation, true); assert.equal(w.opts.webPreferences.nodeIntegration, false);
   assert.match(w.opts.webPreferences.preload, /ask-panel-preload\.cjs$/);
