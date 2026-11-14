@@ -78,17 +78,31 @@ function BackstageForeverJournalSnapshot()
     return {levels=levels,firsts=firsts,zones=zones,played=d.played}
 end
 
--- Quiet /played: hide exactly the one chat line our own request produces.
-local hideNext=false
+-- Quiet /played: chat windows briefly stop listening for the play-time message while our own
+-- request is answered, then listen again. Blizzard's chat functions are never replaced (replacing
+-- them taints the default UI and triggers "blocked from an action only available to the Blizzard UI").
+local muted=nil
+local function chatFrames()
+    local list,n={},tonumber(plain(NUM_CHAT_WINDOWS)) or 10
+    for i=1,n do local f=plain(_G and _G['ChatFrame'..i]) if type(f)=='table' then list[#list+1]=f end end
+    return list
+end
+local function unmute()
+    if not muted then return end
+    for _,f in ipairs(muted) do if type(f.RegisterEvent)=='function' then pcall(f.RegisterEvent,f,'TIME_PLAYED_MSG') end end
+    muted=nil
+end
 local function requestPlayed()
-    if type(RequestTimePlayed)~='function' then return end
-    hideNext=true
-    local original=ChatFrame_DisplayTimePlayed
-    if type(original)=='function' and not BackstageForeverJournalHooked then
-        BackstageForeverJournalHooked=true
-        ChatFrame_DisplayTimePlayed=function(...) if hideNext then hideNext=false return end return original(...) end
+    if type(RequestTimePlayed)~='function' or muted then return end
+    muted={}
+    for _,f in ipairs(chatFrames()) do
+        local listening=type(f.IsEventRegistered)=='function' and select(2,pcall(f.IsEventRegistered,f,'TIME_PLAYED_MSG'))
+        if listening==true and type(f.UnregisterEvent)=='function' and pcall(f.UnregisterEvent,f,'TIME_PLAYED_MSG') then muted[#muted+1]=f end
     end
-    pcall(RequestTimePlayed)
+    -- Never leave chat deaf: listen again after a few seconds even if no answer comes.
+    local timer=plain(C_Timer)
+    if type(timer)=='table' and type(timer.After)=='function' then pcall(timer.After,5,unmute) end
+    if not pcall(RequestTimePlayed) then unmute() end
 end
 
 local function zoneNow()
@@ -124,6 +138,7 @@ if type(CreateFrame)=='function' then
                 requestPlayed()
             elseif event=='PLAYER_LEVEL_UP' then BackstageForeverJournalLevel(a,now());requestPlayed()
             elseif event=='TIME_PLAYED_MSG' then BackstageForeverJournalPlayed(a)
+                local timer=plain(C_Timer);if type(timer)=='table' and type(timer.After)=='function' then pcall(timer.After,0,unmute) else unmute() end
             elseif event=='PLAYER_ENTERING_WORLD' or event=='ZONE_CHANGED_NEW_AREA' then
                 local inside,kind=call(IsInInstance)
                 if inside and (kind=='party' or kind=='raid') then first('dungeon') end

@@ -50,3 +50,28 @@ test("a stored profile with a journal passes state validation; a bad one is refu
   assert.doesNotThrow(() => validateState(base));
   assert.throws(() => validateState({ ...base, profiles: [{ ...base.profiles[0], journal: { firsts: [{ key: "x", at: 1 }] } }] }));
 });
+test("quiet /played mutes chat windows for one answer and never replaces Blizzard functions", () => lua(String.raw`
+local handler, timers = nil, {}
+local function chat() local f={events={TIME_PLAYED_MSG=true}} function f:IsEventRegistered(e) return self.events[e]==true end function f:UnregisterEvent(e) self.events[e]=nil end function f:RegisterEvent(e) self.events[e]=true end return f end
+ChatFrame1, ChatFrame2 = chat(), chat() NUM_CHAT_WINDOWS=2
+local original=function() end ChatFrame_DisplayTimePlayed=original
+C_Timer={After=function(s,fn) timers[#timers+1]=fn end}
+local requested=0 RequestTimePlayed=function() requested=requested+1 end
+UnitLevel=function() return 12 end
+CreateFrame=function() return {RegisterEvent=function() end, SetScript=function(_,_,fn) handler=fn end} end
+dofile('addon/BackstageForever/BackstageForeverJournal.lua')
+handler(nil,'PLAYER_LOGIN')
+assert(requested==1,'asks for play time once')
+assert(not ChatFrame1:IsEventRegistered('TIME_PLAYED_MSG') and not ChatFrame2:IsEventRegistered('TIME_PLAYED_MSG'),'chat is muted for our own request')
+assert(ChatFrame_DisplayTimePlayed==original,'the Blizzard chat function is untouched')
+handler(nil,'TIME_PLAYED_MSG',43200,600)
+for _,fn in ipairs(timers) do fn() end
+assert(ChatFrame1:IsEventRegistered('TIME_PLAYED_MSG') and ChatFrame2:IsEventRegistered('TIME_PLAYED_MSG'),'chat listens again')
+`));
+test("no addon file replaces a Blizzard global function (that taints the default UI)", () => {
+  const fs = require("node:fs"), dir = path.join(__dirname, "..", "addon", "BackstageForever");
+  for (const f of fs.readdirSync(dir).filter((n) => n.endsWith(".lua"))) {
+    const bad = fs.readFileSync(path.join(dir, f), "utf8").split(/\r?\n/).filter((l) => /^\s*(?!BackstageForever)[A-Z][A-Za-z0-9]*_[A-Za-z0-9_]*\s*=\s*function/.test(l) && !/^\s*local\b/.test(l));
+    assert.deepEqual(bad, [], f);
+  }
+});

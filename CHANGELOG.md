@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.30.1 — no more "blocked action" notice, 2026-11-14
+
+- **Fixed a taint warning:** the journal's quiet `/played` replaced Blizzard's `ChatFrame_DisplayTimePlayed`. It now mutes `TIME_PLAYED_MSG` on the chat windows for one answer (with a 5-second safety unmute) and never replaces Blizzard functions. New test guards every addon file against global function overrides.
+
 ## 0.30.0 — loot, crafts and every node you've found, 2026-11-14
 
 - **Dungeon loot browser (A4):** boss drops from a new `forever-boss-loot` pack (Efficient Games, CC BY 4.0; 47 of 181 bosses recorded so far), item icons and stats from the local game install, upgrade badges, a per-character wish list and an upgrade count on each dungeon card.
