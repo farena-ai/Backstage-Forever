@@ -528,6 +528,7 @@ function BackstageForeverAssistCommand(message)
             '/bf hearth - where your Hearthstone takes you',
             '/bf ledger - gold across your characters, and when the addon last saw your bank and mail',
             '/bf prices - remember Auction House prices on pages you open yourself (on, off or status)',
+            '/bf set save NAME, /bf set wear NAME - save the gear you wear as a set, put it back on later (out of combat); /bf set list, /bf set delete NAME',
             '/bf show, /bf hide - the Adventure Compass panel',
             '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',
             '/bf moments - turn the short messages for elite, rare and boss kills and profession milestones on or off',

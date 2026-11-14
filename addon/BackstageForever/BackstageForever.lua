@@ -712,9 +712,22 @@ local function capture(event,eventId)
         if ok and type(ledger)=='table' then
             for _,key in ipairs({'bags','bank','mail'}) do if type(ledger[key])=='table' then array(ledger[key].items) end end
             if type(ledger.reputations)=='table' then array(ledger.reputations.factions) end
-            array(ledger.cooldowns or {});array(ledger.prices or {})
+            array(ledger.cooldowns or {});array(ledger.prices or {});array(ledger.moneyLog or {})
             for _,price in ipairs(ledger.prices or {}) do array(price.hist) end
             character.ledger=ledger
+        end
+    end
+    -- Character sheet (0.36): base stats and saved gear sets.
+    if type(BackstageForeverSheetStats)=='function' then
+        local ok,stats=pcall(BackstageForeverSheetStats)
+        if ok and type(stats)=='table' then character.stats=stats end
+    end
+    if type(BackstageForeverSheetSets)=='function' then
+        local ok,sets=pcall(BackstageForeverSheetSets)
+        if ok and type(sets)=='table' and type(sets.sets)=='table' then
+            array(sets.sets)
+            for _,set in ipairs(sets.sets) do array(set.items) end
+            character.gearSets=sets
         end
     end
     if type(BackstageForeverMapUpdate)=='function' then pcall(BackstageForeverMapUpdate,character)end
@@ -771,7 +784,7 @@ local function capture(event,eventId)
     -- Retain identities while shedding the oldest remaining optional detail first.
     for i=#chars,1,-1 do
         if fits() then break end
-        for _,key in ipairs({'quests','progress','history','readiness'}) do discard(chars[i],key) end
+        for _,key in ipairs({'gearSets','stats','quests','progress','history','readiness'}) do discard(chars[i],key) end
     end
     if changed then encoded,encodedNodes=encode(payload) end
     if #encoded<1048576 and encodedNodes<=200000 then BackstageForeverExport=encoded;return true end
