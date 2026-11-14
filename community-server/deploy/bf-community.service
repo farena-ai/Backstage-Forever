@@ -1,0 +1,17 @@
+[Unit]
+Description=Backstage Forever community data service (loopback 5081)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/bf-community/current
+ExecStart=/usr/local/bin/node --disable-warning=ExperimentalWarning --env-file=%h/bf-community/secrets/bf-community.env server.js
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+StandardOutput=append:%h/bf-community/data/service.log
+StandardError=append:%h/bf-community/data/service.log
+
+[Install]
+WantedBy=default.target
