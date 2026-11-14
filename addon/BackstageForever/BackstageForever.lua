@@ -484,6 +484,26 @@ local function recipeRequirements(trade,id,recipe)
     end
     recipe.reagentsKnown=true;recipe.reagents=reagents
 end
+-- The trade skill API's own skill-up colour: orange optimal, yellow medium, green easy,
+-- grey trivial. String forms are used as-is; a numeric relativeDifficulty is mapped
+-- through the client's Enum names when present, never guessed past 0-3.
+local difficultyNames={optimal='optimal',medium='medium',easy='easy',trivial='trivial'}
+local function recipeDifficulty(info)
+    for _,key in ipairs({'difficulty','skillType'}) do
+        local value=field(info,key)
+        if type(value)=='string' and difficultyNames[value] then return value end
+    end
+    local value=integer(field(info,'relativeDifficulty'),0,3)
+    if value==nil then return nil end
+    local enum=field(public(Enum),'TradeskillRelativeDifficulty')
+    if type(enum)=='table' then
+        for name,key in pairs({Optimal='optimal',Medium='medium',Easy='easy',Trivial='trivial'}) do
+            if integer(field(enum,name),0,3)==value then return key end
+        end
+        return nil
+    end
+    return ({[0]='optimal','medium','easy','trivial'})[value]
+end
 local function recipes(owned)
     if not owned then return nil end
     local trade=public(C_TradeSkillUI)
@@ -534,6 +554,9 @@ local function recipes(owned)
                         if matches and name then
                             local recipe={id=id,skillLineId=profession.skillLineId,name=name,reagentsKnown=false,reagents=array({})}
                             local skillUp=field(info,'canSkillUp');if type(skillUp)=='boolean' then recipe.canSkillUp=skillUp end
+                            -- Skill-up colour only when it agrees with canSkillUp (grey alone cannot skill up).
+                            local difficulty=recipeDifficulty(info)
+                            if difficulty and (recipe.canSkillUp==nil or recipe.canSkillUp==(difficulty~='trivial')) then recipe.difficulty=difficulty end
                             optional(function()recipeRequirements(trade,id,recipe)end)
                             result.items[#result.items+1]=recipe
                         else result.complete=false end

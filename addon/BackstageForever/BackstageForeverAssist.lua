@@ -535,6 +535,8 @@ function BackstageForeverAssistCommand(message)
             '/bf flights - which flight paths here you have learned',
             '/bf find NAME - find a person or place, e.g. /bf find flight master',
             '/bf xp - your experience per hour and time to the next level',
+            '/bf prof - your profession: recipe colour, best next recipe, crafts to your cap',
+            '/bf nodes - your remembered herbs, ore and chests nearby, with distance and direction',
             '/bf hearth - where your Hearthstone takes you',
             '/bf show, /bf hide - the Adventure Compass panel',
             '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',

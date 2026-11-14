@@ -196,3 +196,18 @@ test("zone maps carry objective areas and hostile camps for the selected charact
   const allyDurotar = make({ ...player, faction: "Alliance", level: 6, quests: [] }).build({ mapId: 1411 }).areas;
   assert.ok(allyDurotar.length < durotar.areas.length && allyDurotar.every((a) => !quests[a.questId].sides?.length || quests[a.questId].sides.includes("Alliance")));
 });
+
+test("your remembered herbs, ore and chests become find pins and a per-zone heat map", () => {
+  const { findPins, gatheringHeat } = require("../src/core/world-map.cjs");
+  const rec = (method, mapId, x, y) => ({ id: `wowf:${method}:1:${mapId}:${x}:${y}:1.60.1.70888`, method, entityId: 1, itemIds: [2770], mapId, x, y, observedAt: "2026-11-11T12:00:00.000Z", clientBuild: "1.60.1.70888", name: method === "chest" ? "Battered Chest" : "Node", evidence: "observed-gathering-loot", precision: "recorded-standing-point", approximate: true });
+  const profile = { gathering: { records: [rec("herbalism", 1411, 0.1, 0.1), rec("herbalism", 1411, 0.12, 0.1), rec("mining", 1411, 0.5, 0.5), rec("chest", 1411, 0.7, 0.2), rec("mining", 1413, 0.4, 0.4), rec("chest", 1411, 2, 0.2)] } };
+  const pins = findPins(profile, 1411);
+  assert.deepEqual(pins.map((p) => p.gather), ["herb", "herb", "ore", "chest"]);
+  assert.match(pins[3].sub, /chest you opened/);
+  const heat = gatheringHeat(profile, 1411);
+  assert.equal(heat.points.length, 4);
+  assert.deepEqual(heat.totals, { herb: 2, ore: 1, chest: 1 });
+  assert.deepEqual(heat.zones.map((z) => [z.mapId, z.herb, z.ore, z.chest, z.total]), [[1411, 2, 1, 1, 4], [1413, 0, 1, 0, 1]]);
+  assert.equal(heat.zones[0].mapName, "Durotar");
+  assert.deepEqual(gatheringHeat(null, 1411), { points: [], totals: { herb: 0, ore: 0, chest: 0 }, zones: [] });
+});

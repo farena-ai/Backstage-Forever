@@ -195,6 +195,9 @@ update=function()
         if current then
             if professionDetails then
                 if current.profession then lines[#lines+1]=text(current.profession.name,40)..': '..current.profession.rank..' / '..current.profession.maxRank end
+                local sel,best,count=current.selectedRecipe,current.nextRecipe,current.skillUp
+                if sel and type(sel.skill)=='table' then lines[#lines+1]=text(sel.name,40)..': '..text(sel.skill.label,20)..(best and best.id~=sel.id and (' | best next: '..text(best.name,30)..' ('..text(best.label,20)..')') or '') elseif best then lines[#lines+1]='Best next: '..text(best.name,40)..' ('..text(best.label,20)..')' end
+                if count and count.status=='estimate' then lines[#lines+1]='~'..count.craftsToCap..' crafts to '..count.maxRank..' (estimate)' end
                 lines[#lines+1]=text(current.planning.reason or current.recommendation.detail,150)
                 safe(body.SetText,body,table.concat(lines,'\n'))
             end
@@ -361,6 +364,18 @@ if type(SlashCmdList)=='table' then
             end
             if word=='how' then
                 if type(BackstageForeverHowCommand)=='function' then pcall(BackstageForeverHowCommand,message)end
+                return
+            end
+            if word=='nodes' then
+                if type(BackstageForeverNodesCommand)=='function' then pcall(BackstageForeverNodesCommand,message)end
+                return
+            end
+            if word=='prof' then
+                if not combat() and type(BackstageForeverProfessionLines)=='function' and type(DEFAULT_CHAT_FRAME)=='table' then
+                    local coach=latest and safe(BackstageForeverBuildProfessionCoach,latest,settings and settings.profession or {})
+                    local ok,lines=pcall(BackstageForeverProfessionLines,coach)
+                    for _,line in ipairs(ok and lines or {})do safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..text(line,200))end
+                end
                 return
             end
             if word=='stats' then
