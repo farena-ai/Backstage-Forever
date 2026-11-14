@@ -246,6 +246,15 @@ async function sourceFiles(folder, prefix = "src") {
         (await fs.readFile(path.join(addonFolder, "Art", "Zones", name))).equals(await fs.readFile(path.join(artSource, name))),
         "Installed zone banner texture must match the source: " + name,
       );
+    // A15 (0.38): the painted minimap Ask button ships from Art/Buttons the same way.
+    const buttonSource = path.join(__dirname, "../addon/BackstageForever/Art/Buttons");
+    const buttonNames = (await fs.readdir(buttonSource)).filter((n) => n.endsWith(".tga")).sort();
+    assert.ok(buttonNames.includes("ask.tga"), "Minimap Ask button texture must exist in the source");
+    for (const name of buttonNames)
+      assert.ok(
+        (await fs.readFile(path.join(addonFolder, "Art", "Buttons", name))).equals(await fs.readFile(path.join(buttonSource, name))),
+        "Installed button texture must match the source: " + name,
+      );
     await fs.writeFile(path.join(addonFolder, "player-extra.txt"), "preserve");
     await closePackagedApp(app);
     app = null;

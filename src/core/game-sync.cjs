@@ -31,6 +31,7 @@ const MAX = 1024 * 1024,
     "BackstageForeverMoments.lua",
     "BackstageForeverLedger.lua",
     "BackstageForeverSheet.lua",
+    "BackstageForeverAsk.lua",
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");
@@ -232,8 +233,9 @@ async function boundedRead(file, limit = MAX) {
   return (await boundedBytes(file, limit)).toString("utf8");
 }
 // Painted textures ship as whole folders: every .tga in these addon subfolders is
-// installed (zone banners: Art/Zones/<mapId>.tga plus default.tga).
-const ART_DIRS = [["Art", "Zones"]],
+// installed (zone banners: Art/Zones/<mapId>.tga plus default.tga; the minimap Ask button:
+// Art/Buttons/ask.tga).
+const ART_DIRS = [["Art", "Zones"], ["Art", "Buttons"]],
   ART_MAX_FILES = 128,
   ART_NAME = /^[A-Za-z0-9_-]{1,40}\.tga$/i;
 async function artFiles(addonDir) {

@@ -37,6 +37,9 @@
     { group: "Live link", command: "/bf live [on|off|status]", word: "live", what: "Turns on or off the tiny strip in a corner of the game (top-left unless you move it) that lets the desktop app follow you while you play. Status reports what the strip is doing.", when: "Turn it off for screenshots or streaming; turn it back on for live help in the app.", example: "/bf live status" },
     { group: "Live link", command: "/bf live pos topleft|topright|bottomleft|bottomright", word: "live", what: "Moves the live strip to another corner of the game window. The app finds it in any corner by itself; the choice is saved.", when: "If the strip sits on top of something you want to see.", example: "/bf live pos topright" },
     { group: "Live link", command: "/bf live safe|compact", word: "live", what: "Safe draws a larger strip with plain on/off colours that survives remote desktop, HDR and colour filters. Compact (the default) is tiny, 84×4 pixels. The choice is saved.", when: "Type /bf live safe if the link drops over remote desktop; /bf live compact to make it small again.", example: "/bf live safe" },
+    { group: "Ask the companion", command: "/bf ask", word: "ask", what: "Opens the question box (the owl button on the minimap does the same). Type a question and press Ask or Enter: it travels to the desktop app over the live strip, and the answer appears in a small Backstage Forever panel over your game.", when: "When you want help without leaving WoW. Keep the app open and the live link on.", example: "/bf ask" },
+    { group: "Ask the companion", command: "/bf ask QUESTION", word: "ask", what: "Sends a question straight away, up to 200 characters. Chat shows exactly what was sent. In combat it waits until combat ends; /bf ask cancel drops it. Where and how questions are answered offline; others go to the AI you chose.", when: "Quick questions from the chat line.", example: "/bf ask where is the flight master in Crossroads?" },
+    { group: "Ask the companion", command: "/bf ask hide|show", word: "ask", what: "Hides or shows the owl button on the minimap. Drag the button to move it around the minimap edge; its place is saved per character.", when: "If the button is in the way, or to bring it back.", example: "/bf ask hide" },
     { group: "Advanced", command: "/bf guide …", word: "guide", what: "A waypoint line the app's Quests page prepares for a specific quest step. Copy it in the app and paste it into chat; you never need to type it yourself.", when: "Only when the app hands you one.", example: "/bf guide 840 t 1411 52.0 43.2 1.60.1.70888" },
   ]);
   const FEATURES = Object.freeze([
@@ -56,6 +59,7 @@
     { name: "Upgrade hints", where: "On item tooltips", what: "One line under each piece of gear: green Upgrade for you with what you gain, red Not for you with the reason (like Priests cannot wear mail), or grey Not an upgrade. /bf gear off hides them." },
     { name: "Learns where quest items come from", where: "Quietly, whenever you loot", what: "When you loot an item a quest in your log asks for, the addon remembers whether an enemy dropped it or you picked it up from an object, and where you were. /bf how and the app use it to explain the quest." },
     { name: "Moments", where: "Top of the screen, after combat", what: "A short message when you defeat an elite, a rare or a boss, or reach a profession milestone (every 25 points, and the rank limit). Each moment also reaches the desktop app over the live strip. /bf moments off silences the in-game ones." },
+    { name: "Ask button on the minimap", where: "The owl crest on the edge of your minimap", what: "Click it to ask the companion a question; drag it around the minimap edge to move it. The answer appears in the Backstage Forever panel over your game. /bf ask hide hides it." },
     { name: "Live strip", where: "A tiny coloured line in a corner (top-left by default)", what: "How the desktop app knows where you are. It contains no personal data. /bf live pos moves it, /bf live off hides it." },
   ]);
   const APP = Object.freeze([
@@ -75,7 +79,7 @@
     { name: "Settings", what: "Game connection (folder, addon, live link, community sharing), AI connection and updates." },
   ]);
   if (typeof module === "object" && module.exports) { module.exports = { CATALOG, FEATURES, APP }; return; }
-  const ICONS = Object.freeze({ "Finding your way": "finding-your-way", "Your character": "your-character", "Adventure Compass": "adventure-compass", "Helpers on or off": "helpers", "Live link": "live-link", "Advanced": "advanced" });
+  const ICONS = Object.freeze({ "Finding your way": "finding-your-way", "Your character": "your-character", "Adventure Compass": "adventure-compass", "Helpers on or off": "helpers", "Live link": "live-link", "Ask the companion": "live-link", "Advanced": "advanced" });
   const icon = (name) => `<img class="cmd-ico" src="art/icons/${name}.png" alt="" width="40" height="40">`;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   let filter = "";

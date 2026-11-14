@@ -534,6 +534,7 @@ function BackstageForeverAssistCommand(message)
             '/bf moments - turn the short messages for elite, rare and boss kills and profession milestones on or off',
             '/bf gear - turn upgrade hints on item tooltips and the best-quest-reward highlight on or off',
             '/bf live - the small strip that lets the desktop app follow you',
+            '/bf ask - ask the companion a question (or click the owl button on the minimap); the answer appears in the Backstage Forever panel over your game',
         }
         for _,l in ipairs(lines) do say(l) end
         return lines
