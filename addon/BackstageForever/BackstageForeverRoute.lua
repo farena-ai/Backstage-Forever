@@ -276,7 +276,114 @@ local function onUnitTooltip(tip)
     method(tip,'Show')
 end
 
--- G2: zone arrival banner with the zone's level band and quests on offer.
+-- G2/G13: painted zone arrival banner with the zone's level band and quests on offer.
+-- Textures and font strings only. Each painting is Art\Zones\<mapId>.tga (1024x128; the dark centre and
+-- the gold frame are part of the painting); maps without their own painting use Art\Zones\default.tga.
+local ZONE_PAINTINGS={1411,1412,1420,1429,1426,1438,1413,1421,1436,1432,1439,1433,1442,1440,1431,1424,1437,1441,1416,1417,1443,1434,1445,1418,1435,1444,1425,1446,1427,1447,1419,1449,1448,1428,1422,1423,1452,1430,1451,1450,1453,1454,1455,1456,1457,1458}
+local PAINTED={}
+for _,id in ipairs(ZONE_PAINTINGS) do PAINTED[id]=true end
+local CAPITALS={[1453]=true,[1454]=true,[1455]=true,[1456]=true,[1457]=true,[1458]=true}
+local ART='Interface\\AddOns\\BackstageForever\\Art\\Zones\\'
+-- Pure: the banner painting for a map.
+function BackstageForeverZoneArt(mapId)
+    return ART..(PAINTED[mapId] and tostring(mapId) or 'default')
+end
+function BackstageForeverZonePaintings() local out={} for i,id in ipairs(ZONE_PAINTINGS) do out[i]=id end return out end
+-- Pure: the line under the zone name. Capitals and Moonglade have no level band.
+function BackstageForeverZoneLine(mapId,band,quests)
+    local sub
+    if type(band)=='table' and int(band.lo,1,100) then sub='Levels '..band.lo..'–'..(int(band.hi,1,100) or band.lo)
+    elseif CAPITALS[mapId] then sub='Capital city' end
+    quests=int(quests,0,10000)
+    if quests and quests>0 then sub=(sub and sub..' · ' or '')..quests..(quests==1 and ' quest' or ' quests')..' for your level' end
+    return sub
+end
+
+local banner,bannerArt,bannerName,bannerSub,ribbon,bannerShown,BANNER_LEN=nil,nil,nil,nil,nil,0,6
+local ribbonParts={}
+local function clock() return tonumber(call(GetTime)) or 0 end
+local function texture(parent,layer,r,g,b,a)
+    local t=method(parent,'CreateTexture',nil,layer)
+    if t and r then pcall(t.SetColorTexture,t,r,g,b,a) end
+    return t
+end
+local function bannerFrame()
+    if banner or type(CreateFrame)~='function' then return banner end
+    local f=call(CreateFrame,'Frame','BackstageForeverZoneBanner',UIParent)
+    if not f then return nil end
+    banner=f
+    pcall(f.SetSize,f,560,74)
+    pcall(f.SetPoint,f,'TOP',UIParent,'TOP',0,-150)
+    pcall(f.SetFrameStrata,f,'HIGH')
+    bannerArt=texture(f,'BACKGROUND')
+    if bannerArt then
+        pcall(bannerArt.SetAllPoints,bannerArt,f)
+        -- The 8:1 painting at 560x74: crop a sliver off each side instead of stretching it.
+        pcall(bannerArt.SetTexCoord,bannerArt,.027,.973,0,1)
+    end
+    ribbon=texture(f,'BORDER',.16,.09,.03,.92)
+    if ribbon then
+        ribbonParts[1]=ribbon
+        pcall(ribbon.SetPoint,ribbon,'BOTTOM',f,'BOTTOM',0,9)
+        pcall(ribbon.SetSize,ribbon,200,20)
+        -- 1px gold-ish edges, kept off the corners so the ribbon reads as rounded.
+        local function edge(p1,x1,y1,p2,x2,y2,w,h)
+            local e=texture(f,'ARTWORK',.78,.6,.29,1)
+            if not e then return end
+            pcall(e.SetPoint,e,p1,ribbon,p1,x1,y1) pcall(e.SetPoint,e,p2,ribbon,p2,x2,y2)
+            if w then pcall(e.SetWidth,e,w) end
+            if h then pcall(e.SetHeight,e,h) end
+            ribbonParts[#ribbonParts+1]=e
+        end
+        edge('TOPLEFT',2,0,'TOPRIGHT',-2,0,nil,1)
+        edge('BOTTOMLEFT',2,0,'BOTTOMRIGHT',-2,0,nil,1)
+        edge('TOPLEFT',0,-2,'BOTTOMLEFT',0,2,1,nil)
+        edge('TOPRIGHT',0,-2,'BOTTOMRIGHT',0,2,1,nil)
+    end
+    bannerName=method(f,'CreateFontString',nil,'OVERLAY','GameFontNormalHuge')
+    if bannerName then
+        pcall(bannerName.SetPoint,bannerName,'TOP',f,'TOP',0,-9)
+        pcall(bannerName.SetWidth,bannerName,540)
+        local font=method(bannerName,'GetFont')
+        if font then pcall(bannerName.SetFont,bannerName,font,28,'') end
+        pcall(bannerName.SetTextColor,bannerName,1,.82,0)
+        pcall(bannerName.SetShadowColor,bannerName,0,0,0,1)
+        pcall(bannerName.SetShadowOffset,bannerName,2,-2)
+    end
+    bannerSub=method(f,'CreateFontString',nil,'OVERLAY','GameFontHighlight')
+    if bannerSub and ribbon then pcall(bannerSub.SetPoint,bannerSub,'CENTER',ribbon,'CENTER',0,0) end
+    pcall(f.Hide,f)
+    pcall(f.SetScript,f,'OnUpdate',function(self)
+        local t=clock()-bannerShown
+        if t<.25 then pcall(self.SetScale,self,1+(.25-t)*1.6) pcall(self.SetAlpha,self,t/.25)
+        elseif t<BANNER_LEN-1 then pcall(self.SetScale,self,1) pcall(self.SetAlpha,self,1)
+        elseif t<BANNER_LEN then pcall(self.SetAlpha,self,BANNER_LEN-t)
+        else pcall(self.Hide,self) end
+    end)
+    return banner
+end
+-- Shows the painted banner, echoed to chat in one line. Returns the painting path (for tests),
+-- or nil when only the chat line was written (pop-ups switched off with /bf toasts).
+function BackstageForeverZoneBanner(mapId,name,sub)
+    name=str(name,60);if not name then return nil end
+    sub=str(sub,160)
+    say(sub and name..' '..sub or name)
+    if field(plain(BackstageForeverAssistSettings),'toasts')==false or not bannerFrame() then return nil end
+    local art=BackstageForeverZoneArt(mapId)
+    if bannerArt then pcall(bannerArt.SetTexture,bannerArt,art) end
+    if bannerName then pcall(bannerName.SetText,bannerName,name) end
+    if bannerSub then pcall(bannerSub.SetText,bannerSub,sub or '') end
+    if ribbon then
+        local w=sub and bannerSub and tonumber(method(bannerSub,'GetStringWidth')) or 0
+        pcall(ribbon.SetWidth,ribbon,min(540,floor(w+.5)+52))
+        for _,part in ipairs(ribbonParts) do pcall(sub and part.Show or part.Hide,part) end
+    end
+    bannerShown=clock()
+    pcall(banner.SetAlpha,banner,0)
+    pcall(banner.Show,banner)
+    return art
+end
+
 local lastZone
 local function arrival()
     if not settings.arrivals or combat() then return end
@@ -288,14 +395,12 @@ local function arrival()
     local name=str(field(info,'name'),60);if not name then return end
     local band
     for _,z in ipairs(field(plain(BackstageForeverAdvisorData),'zones') or {}) do if type(z)=='table' and z.m==mapId then band=z;break end end
-    local sub=band and int(band.lo,1,100) and ('Levels '..band.lo..'–'..(int(band.hi,1,100) or band.lo)) or nil
     local n=0
     if type(BackstageForeverAdvisorPoints)=='function' then
         local ok,rows=pcall(BackstageForeverAdvisorPoints,mapId,me(),{},{},{},{class=false,profession=false,flight=false,handin=false})
         if ok and type(rows)=='table' then n=#rows end
     end
-    if n>0 then sub=(sub and sub..' · ' or '')..n..' quests for your level' end
-    if type(BackstageForeverToast)=='function' then pcall(BackstageForeverToast,name,sub,true) end
+    pcall(BackstageForeverZoneBanner,mapId,name,BackstageForeverZoneLine(mapId,band,n))
 end
 
 if type(CreateFrame)=='function' then
