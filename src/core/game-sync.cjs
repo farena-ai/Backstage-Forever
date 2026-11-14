@@ -234,8 +234,8 @@ async function boundedRead(file, limit = MAX) {
 }
 // Painted textures ship as whole folders: every .tga in these addon subfolders is
 // installed (zone banners: Art/Zones/<mapId>.tga plus default.tga; the minimap Ask button:
-// Art/Buttons/ask.tga).
-const ART_DIRS = [["Art", "Zones"], ["Art", "Buttons"]],
+// Art/Buttons/ask.tga; the painted message boxes: Art/Messages/<kind>.tga).
+const ART_DIRS = [["Art", "Zones"], ["Art", "Buttons"], ["Art", "Messages"]],
   ART_MAX_FILES = 128,
   ART_NAME = /^[A-Za-z0-9_-]{1,40}\.tga$/i;
 async function artFiles(addonDir) {

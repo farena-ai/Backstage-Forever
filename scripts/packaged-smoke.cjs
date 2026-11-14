@@ -255,6 +255,15 @@ async function sourceFiles(folder, prefix = "src") {
         (await fs.readFile(path.join(addonFolder, "Art", "Buttons", name))).equals(await fs.readFile(path.join(buttonSource, name))),
         "Installed button texture must match the source: " + name,
       );
+    // G14 (0.39): the painted message boxes ship from Art/Messages the same way.
+    const messageSource = path.join(__dirname, "../addon/BackstageForever/Art/Messages");
+    const messageNames = (await fs.readdir(messageSource)).filter((n) => n.endsWith(".tga")).sort();
+    assert.equal(messageNames.length, 14, "Every message kind has its painting");
+    for (const name of messageNames)
+      assert.ok(
+        (await fs.readFile(path.join(addonFolder, "Art", "Messages", name))).equals(await fs.readFile(path.join(messageSource, name))),
+        "Installed message texture must match the source: " + name,
+      );
     await fs.writeFile(path.join(addonFolder, "player-extra.txt"), "preserve");
     await closePackagedApp(app);
     app = null;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.39.0 — painted message boxes, 2026-11-14
+
+- **G14:** `BackstageForeverToast(title, sub, big, kind)` draws a solid painted box: one original painting per kind (`Art/Messages/<kind>.tga`, 1024×128 24-bit; flight, quest, levelup, death, spirit, revive, gear, hearth, ready, supplies, first, review, victory, profession), a 2px gold frame, the gold title with a shadow and the text on a dark ribbon that hugs it. Long text wraps inside the box, the box grows, and `BackstageForeverMessageCrop` crops the 8:1 painting to the box instead of stretching it. Every caller names its kind; unknown kinds use the ready painting. Same placement, animation, combat queue and `/bf toasts` switch as before.
+- **Installer and packaging:** `Art/Messages` installs like `Art/Zones` and `Art/Buttons`; the packaged smoke checks all 14 byte for byte.
+
 ## 0.38.1 — talents the companion knows, 2026-11-14
 
 - **Companion talents:** new `src/core/talent-context.cjs`: talent questions send a bounded block of the class's real WoW Forever trees (tier gates, max ranks, prerequisites by name, the game's own descriptions, points at your level, the Talents page plan) with an instruction to answer only from it; offline answers for what a talent does, what to take, the first N talents of a tree and points per level; class from the question, else the active character, else the companion asks. Regression test from a real exchange where the AI invented talents. `game-data.cjs` gains a `cached()` read.

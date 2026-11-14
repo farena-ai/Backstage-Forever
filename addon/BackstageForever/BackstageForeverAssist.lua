@@ -125,8 +125,35 @@ function BackstageForeverPaceLine()
     return table.concat(parts,' · ')
 end
 
--- Toast: a short message at the top of the screen that fades by itself.
-local toast,toastTitle,toastSub,toastShown,toastLen,toastTop=nil,nil,nil,0,6,nil
+-- Toast: a short message at the top of the screen that fades by itself. G14 (0.39): every kind of
+-- message has its own painting (Art/Messages/<kind>.tga, 1024x128) under a gold title and a ribbon,
+-- like the zone banners. The painting is cropped to the box, never stretched.
+local MESSAGE_ART='Interface\\AddOns\\BackstageForever\\Art\\Messages\\'
+local MESSAGE_KINDS={flight=true,quest=true,levelup=true,death=true,spirit=true,revive=true,gear=true,hearth=true,
+    ready=true,supplies=true,first=true,review=true,victory=true,profession=true}
+function BackstageForeverMessageKinds() local out={} for k in pairs(MESSAGE_KINDS) do out[#out+1]=k end table.sort(out) return out end
+function BackstageForeverMessageArt(kind) return MESSAGE_ART..(MESSAGE_KINDS[kind] and kind or 'ready') end
+-- Pure: texture coordinates that fill a w x h box from the 8:1 painting without stretching it.
+function BackstageForeverMessageCrop(w,h)
+    w,h=tonumber(w) or 560,tonumber(h) or 74
+    if w<=0 or h<=0 then return 0,1,0,1 end
+    local r=w/h
+    if r<8 then local u=r/8 return (1-u)/2,(1+u)/2,0,1 end
+    local v=8/r return 0,1,(1-v)/2,(1+v)/2
+end
+-- Pure: the box height for a title and a sub line of the given text size (big = the level-up banner).
+function BackstageForeverMessageHeight(big,subHeight)
+    local sub=tonumber(subHeight) or 0
+    if sub<=0 then return big and 84 or 54 end
+    return (big and 72 or 46)+sub+(big and 26 or 20)
+end
+local toast,toastArt,toastTitle,toastSub,toastRibbon,toastShown,toastLen=nil,nil,nil,nil,nil,0,6
+local toastEdges={}
+local function tex(f,layer,r,g,b,a)
+    local t=f:CreateTexture(nil,layer)
+    if t and r then pcall(t.SetColorTexture,t,r,g,b,a) end
+    return t
+end
 local function toastFrame()
     if toast or type(CreateFrame)~='function' then return toast end
     toast=CreateFrame('Frame','BackstageForeverToast',UIParent)
@@ -134,17 +161,35 @@ local function toastFrame()
     pcall(toast.SetSize,toast,560,74)
     pcall(toast.SetPoint,toast,'TOP',UIParent,'TOP',0,-150)
     pcall(toast.SetFrameStrata,toast,'HIGH')
-    local bg=toast:CreateTexture(nil,'BACKGROUND')
-    if bg then pcall(bg.SetAllPoints,bg,toast) pcall(bg.SetColorTexture,bg,0,0,0,.6) end
-    toastTop=toast:CreateTexture(nil,'BORDER')
-    if toastTop then pcall(toastTop.SetPoint,toastTop,'TOPLEFT',toast,'TOPLEFT',0,0) pcall(toastTop.SetPoint,toastTop,'TOPRIGHT',toast,'TOPRIGHT',0,0) pcall(toastTop.SetHeight,toastTop,2) pcall(toastTop.SetColorTexture,toastTop,1,.82,0,.9) pcall(toastTop.Hide,toastTop) end
-    local line=toast:CreateTexture(nil,'BORDER')
-    if line then pcall(line.SetPoint,line,'BOTTOMLEFT',toast,'BOTTOMLEFT',0,0) pcall(line.SetPoint,line,'BOTTOMRIGHT',toast,'BOTTOMRIGHT',0,0) pcall(line.SetHeight,line,2) pcall(line.SetColorTexture,line,1,.82,0,.9) end
+    -- Solid dark under the painting, so a missing texture still reads.
+    local bg=tex(toast,'BACKGROUND',.04,.025,.01,1)
+    if bg then pcall(bg.SetAllPoints,bg,toast) end
+    toastArt=tex(toast,'BORDER')
+    if toastArt then pcall(toastArt.SetAllPoints,toastArt,toast) end
+    toastRibbon=tex(toast,'ARTWORK',.16,.09,.03,.92)
+    -- Gold frame (2px) all round, like the zone banners.
+    local function edge(p1,p2,w,h)
+        local e=tex(toast,'ARTWORK',.78,.6,.29,1)
+        if not e then return end
+        pcall(e.SetPoint,e,p1,toast,p1,0,0) pcall(e.SetPoint,e,p2,toast,p2,0,0)
+        if w then pcall(e.SetWidth,e,w) end
+        if h then pcall(e.SetHeight,e,h) end
+        toastEdges[#toastEdges+1]=e
+    end
+    edge('TOPLEFT','TOPRIGHT',nil,2) edge('BOTTOMLEFT','BOTTOMRIGHT',nil,2)
+    edge('TOPLEFT','BOTTOMLEFT',2,nil) edge('TOPRIGHT','BOTTOMRIGHT',2,nil)
     toastTitle=toast:CreateFontString(nil,'OVERLAY','GameFontNormalHuge')
-    pcall(toastTitle.SetPoint,toastTitle,'TOP',toast,'TOP',0,-10)
+    pcall(toastTitle.SetPoint,toastTitle,'TOP',toast,'TOP',0,-9)
+    pcall(toastTitle.SetTextColor,toastTitle,1,.82,0)
+    pcall(toastTitle.SetShadowColor,toastTitle,0,0,0,1)
+    pcall(toastTitle.SetShadowOffset,toastTitle,2,-2)
     toastSub=toast:CreateFontString(nil,'OVERLAY','GameFontHighlight')
-    pcall(toastSub.SetPoint,toastSub,'TOP',toastTitle,'BOTTOM',0,-6)
-    pcall(toastSub.SetWidth,toastSub,530)
+    pcall(toastSub.SetPoint,toastSub,'TOP',toastTitle,'BOTTOM',0,-10)
+    pcall(toastSub.SetWidth,toastSub,500)
+    if toastRibbon then
+        pcall(toastRibbon.SetPoint,toastRibbon,'TOPLEFT',toastSub,'TOPLEFT',-14,5)
+        pcall(toastRibbon.SetPoint,toastRibbon,'BOTTOMRIGHT',toastSub,'BOTTOMRIGHT',14,-5)
+    end
     pcall(toast.Hide,toast)
     pcall(toast.SetScript,toast,'OnUpdate',function(self)
         local t=now()-toastShown
@@ -156,19 +201,32 @@ local function toastFrame()
     return toast
 end
 -- Shows a toast (also echoed to chat so it is never missed). Returns the text for tests.
--- big=true: the level-up banner, larger and longer.
-function BackstageForeverToast(title,sub,big)
+-- big=true: the level-up banner, larger and longer. kind: which painting (see MESSAGE_KINDS).
+function BackstageForeverToast(title,sub,big,kind)
     if not settings then loadSettings() end
     if sub then say(title..' '..sub) else say(title) end
     if not settings.toasts or not toastFrame() then return title end
     toastLen=big and 9 or 6
-    pcall(toast.SetSize,toast,big and 760 or 560,big and 124 or 74)
-    pcall(toastSub.SetWidth,toastSub,big and 720 or 530)
+    local w=big and 760 or 560
     local font=type(toastTitle.GetFont)=='function' and select(1,toastTitle:GetFont())
     if font then pcall(toastTitle.SetFont,toastTitle,font,big and 40 or 26,big and 'THICKOUTLINE' or '') end
-    if toastTop then pcall(big and toastTop.Show or toastTop.Hide,toastTop) end
+    pcall(toastTitle.SetPoint,toastTitle,'TOP',toast,'TOP',0,big and -14 or -9)
+    pcall(toastTitle.SetWidth,toastTitle,w-30)
     pcall(toastTitle.SetText,toastTitle,title)
     pcall(toastSub.SetText,toastSub,sub or '')
+    -- The sub line wraps inside the box; the ribbon hugs the text, so measure it first.
+    local textW=num(type(toastSub.GetStringWidth)=='function' and call(toastSub.GetStringWidth,toastSub)) or 0
+    local maxW=w-70
+    local subW=sub and math.max(40,math.min(maxW,floor(textW+.5))) or 0
+    if sub then pcall(toastSub.SetWidth,toastSub,subW) end
+    local subH=sub and (num(type(toastSub.GetStringHeight)=='function' and call(toastSub.GetStringHeight,toastSub)) or 14*math.max(1,ceil(textW/maxW))) or 0
+    local h=BackstageForeverMessageHeight(big,subH)
+    pcall(toast.SetSize,toast,w,h)
+    if toastArt then
+        pcall(toastArt.SetTexture,toastArt,BackstageForeverMessageArt(kind))
+        pcall(toastArt.SetTexCoord,toastArt,BackstageForeverMessageCrop(w,h))
+    end
+    if toastRibbon then pcall(sub and toastRibbon.Show or toastRibbon.Hide,toastRibbon) end
     toastShown=now()
     pcall(toast.SetAlpha,toast,0)
     pcall(toast.Show,toast)
@@ -219,7 +277,7 @@ local function onLevel(level)
     local sub=t and ('New skills may be waiting: %s in %s. Type /bf train for an arrow.'):format(t.name,mapName(t.mapId)) or 'Visit your class trainer for new skills.'
     if (tonumber(level) or 0)>=10 then sub=sub..' You also have a talent point: press N; the Talents page in the app suggests which.' end
     if took then sub=sub..' This level took '..took..'.' end
-    BackstageForeverToast(('Level %s!'):format(tostring(level)),sub,true)
+    BackstageForeverToast(('Level %s!'):format(tostring(level)),sub,true,'levelup')
 end
 local function onQuestTurnedIn(xp)
     session.quests=session.quests+1
@@ -231,17 +289,17 @@ local function onQuestTurnedIn(xp)
         local more=ceil(left/xp)
         sub=('+%d XP · about %d more quest%s like this to level up. /bf next shows the nearest one.'):format(xp,more,more==1 and '' or 's')
     end
-    BackstageForeverToast('Quest complete',sub)
+    BackstageForeverToast('Quest complete',sub,nil,'quest')
 end
 -- No automatic waypoints: the game forbids addons from setting them outside a click or command,
 -- and these run from events. The game already marks your body on the minimap and map.
 local function onAlive()
     if call(UnitIsGhost,'player')==true then
-        BackstageForeverToast('Run back to your body','Your body shows on the minimap and map. '..'Walk over it and click Resurrect. The Spirit Healer can revive you here instead, but your gear loses durability and you are weak for a while.')
+        BackstageForeverToast('Run back to your body','Your body shows on the minimap and map. '..'Walk over it and click Resurrect. The Spirit Healer can revive you here instead, but your gear loses durability and you are weak for a while.',nil,'spirit')
     end
 end
 local function onUnghost()
-    BackstageForeverToast('Back on your feet','Sit and eat or drink to recover health and mana before the next fight.')
+    BackstageForeverToast('Back on your feet','Sit and eat or drink to recover health and mana before the next fight.',nil,'revive')
 end
 
 -- Danger line just above the target frame.
@@ -345,11 +403,11 @@ local function onDurability()
     if not low then return end
     if broken>0 and repairWarned~='broken' then
         repairWarned='broken'
-        return BackstageForeverToast('Gear broken',('%d item%s no longer work until repaired. Visit a blacksmith or armor vendor: /bf repair shows the nearest.'):format(broken,broken==1 and '' or 's'))
+        return BackstageForeverToast('Gear broken',('%d item%s no longer work until repaired. Visit a blacksmith or armor vendor: /bf repair shows the nearest.'):format(broken,broken==1 and '' or 's'),nil,'gear')
     end
     if low<=25 and not repairWarned then
         repairWarned='low'
-        return BackstageForeverToast(('Gear wearing out (%d%%)'):format(low),'Repair soon at a blacksmith or armor vendor. /bf repair shows the nearest.')
+        return BackstageForeverToast(('Gear wearing out (%d%%)'):format(low),'Repair soon at a blacksmith or armor vendor. /bf repair shows the nearest.',nil,'gear')
     end
     if low>50 then repairWarned=nil end
 end
@@ -458,7 +516,7 @@ local function checkFlightNearby()
         local key=r.id or r.name
         if key and not flightHinted[key] and not BackstageForeverFlightKnown(r,known) and ((r.x-x)^2+(r.y-y)^2)^.5<0.035 then
             flightHinted[key]=true
-            BackstageForeverToast('Flight master nearby: '..tostring(r.name),'Talk to them to learn this flight path. Later you can fly back here instead of running.')
+            BackstageForeverToast('Flight master nearby: '..tostring(r.name),'Talk to them to learn this flight path. Later you can fly back here instead of running.',nil,'flight')
             return r
         end
     end
@@ -492,7 +550,7 @@ local function hearthCheck(force)
     local a=BackstageForeverHearthAdvice(bind,map,num(call(UnitLevel,'player')),side,zones)
     if not a or (hearthHinted[map] and not force) then return a end
     hearthHinted[map]=true
-    if not force then BackstageForeverToast('Move your Hearthstone?',('It takes you to %s, but you are questing in %s. Talk to the innkeeper in %s and choose "Make this inn your home".'):format(bind,mapName(map),a.town)) end
+    if not force then BackstageForeverToast('Move your Hearthstone?',('It takes you to %s, but you are questing in %s. Talk to the innkeeper in %s and choose "Make this inn your home".'):format(bind,mapName(map),a.town),nil,'hearth') end
     return a
 end
 function BackstageForeverAssistCommand(message)
@@ -551,12 +609,12 @@ if type(CreateFrame)=='function' then
                 loadSettings() trackXP() lastLevelAt=now()
                 if not settings.welcomed then
                     settings.welcomed=true
-                    BackstageForeverToast('Backstage Forever is ready','Type /bf next any time for an arrow to your next quest. /bf help lists everything.')
+                    BackstageForeverToast('Backstage Forever is ready','Type /bf next any time for an arrow to your next quest. /bf help lists everything.',nil,'ready')
                 end
             elseif event=='PLAYER_XP_UPDATE' then trackXP()
             elseif event=='PLAYER_LEVEL_UP' then trackXP() onLevel(a)
             elseif event=='QUEST_TURNED_IN' then onQuestTurnedIn(b)
-            elseif event=='PLAYER_DEAD' then session.deaths=session.deaths+1 BackstageForeverToast('You died','Click "Release Spirit". You will appear at a graveyard as a ghost; an arrow will lead you back to your body.')
+            elseif event=='PLAYER_DEAD' then session.deaths=session.deaths+1 BackstageForeverToast('You died','Click "Release Spirit". You will appear at a graveyard as a ghost; an arrow will lead you back to your body.',nil,'death')
             elseif event=='PLAYER_ALIVE' then onAlive()
             elseif event=='PLAYER_UNGHOST' then onUnghost()
             elseif event=='PLAYER_TARGET_CHANGED' or (event=='UNIT_CLASSIFICATION_CHANGED' and a=='target') then updateDanger()

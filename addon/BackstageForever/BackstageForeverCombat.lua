@@ -108,7 +108,7 @@ local function onDeath()
     if not review then return end
     local who=review.killer..(review.level and (' (level '..review.level..(review.elite and ', elite' or '')..')') or (review.elite and ' (elite)' or ''))
     local line=who..' did '..review.share..'% of the damage'..(review.others>0 and (', with '..review.others..' other'..(review.others==1 and '' or 's')) or '')..'.'
-    if type(BackstageForeverToast)=='function' then pcall(BackstageForeverToast,'What happened',line..' '..review.tip) else say(line..' '..review.tip) end
+    if type(BackstageForeverToast)=='function' then pcall(BackstageForeverToast,'What happened',line..' '..review.tip,nil,'review') else say(line..' '..review.tip) end
 end
 function BackstageForeverStatsCommand()
     if #fights==0 then return say('No fights yet this session.') end

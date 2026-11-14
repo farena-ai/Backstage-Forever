@@ -95,7 +95,7 @@ local function check(quiet)
     for _,a in ipairs(BackstageForeverSupplyAdvice(readings())) do
         now[a.key]=true
         if not fired[a.key] and not quiet then
-            if type(BackstageForeverToast)=='function' then pcall(BackstageForeverToast,a.title,a.sub) else say(a.title..': '..a.sub) end
+            if type(BackstageForeverToast)=='function' then pcall(BackstageForeverToast,a.title,a.sub,nil,'supplies') else say(a.title..': '..a.sub) end
         end
     end
     -- A reminder can fire again once its problem was fixed and comes back.
