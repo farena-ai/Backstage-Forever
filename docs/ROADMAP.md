@@ -227,6 +227,18 @@ Frank offered ChatGPT/OpenAI, Grok and the local ComfyUI for art. Suggested timi
 
 Rule: generated art must be original. No Blizzard assets, and nothing that imitates their art or logos.
 
+
+## Tier H: owner direction (2026-11-14)
+
+| # | Item | Size | Where | Why |
+|---|---|---|---|---|
+| H1 | **Every page earns its place.** Each page is audited: links go exactly where their label says, filler and repeated caveats give way to real game information, and every page uses the same banner, card, chip and map-button system as Now. A screen test fails if a page drifts. | L | App | Coherence is what makes the app feel premium. |
+| H2 | **Quiet live strip.** The same screen-pixel link, made close to invisible: calibrated colour depth, a thin line, chosen placement, dimmed, idle when nothing changes. | M | Both | The strip was getting big over the game. |
+| H3 | **Live moments.** Feedback on live play beyond level-ups: deaths, profession ranks, boss/elite/rare kills, dungeon clears, chains, zones, flight paths, upgrades. | M–L | Both | Gives the app life next to the game. |
+| H4 | **Community data.** A light self-hosted service shares anonymous locations and drops between players, and takes problem reports. | L | App + server | Accuracy grows with every player. |
+| H5 | **Graphics first.** Every release audits its art: anything missing gets painted, anything out of place is replaced. | ongoing | App | The art is the draw. |
+| H6 | **Top-addon features, built in.** Our own versions of the best addons' ideas where they help. | L | Both | One app for everything. |
+
 ## Suggested release sequence
 
 - **0.21 (shipped):** repair, flight paths, version check, Alliance vendors, flaky checks, art pass 1.
@@ -250,9 +262,12 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 - **0.28 (shipped):** A3 speed splits, E9 rested planner, G7 badge wall with new-badge moments, and the addon journal (levels with /played, firsts, zones). Professions and the card system move to 0.29.
 - **0.29 (shipped):** A14 hover cards for quests, E7 death review, A8 session stats (`/bf stats`).
 - **0.30 (shipped):** 2.8 + E8 professions (skill-up colours, best next recipe, countdown, shopping list, `/bf prof`), A6 gathering memory (500 nodes, chests, heat map, `/bf nodes`), hover cards for NPCs and items (D7/E11), A4 dungeon loot browser with wish list.
-- **0.30.x:** A5 boss tips, G6 dungeon art, G8 celebrations part 2.
-- **0.31:** E4 mount and gold goals with A7 price memory, E5 class quest chains, E6 reputation, A12 gear sets, G5 character sheet.
-- **0.32+:** A10 PvP alerts, A11 QoL pack, A13/3.6 party sync, the rest of Tier 3, G9–G11, then the 4.1 full guided route and the G12 art review.
+- **0.31:** H1 page-by-page quality pass (every link lands on what it says, filler replaced by real information, Adventure rebuilt in the Now style, one design system on every page), H5 art audit (a painted banner per page, one set of class art, a real Companion crest, no reused or out-of-place art), test stability.
+- **0.32:** H2 quiet live strip: calibrated colour depth (many shades per pixel on your own PC, sturdy 2-shade mode over remote sessions), a thin line about 300×4 pixels instead of 640×28, your choice of screen edge or corner, dimmed, and blank while nothing changes.
+- **0.33:** H3 live moments: an app death screen (what killed you, the damage breakdown, a tip), profession rank-ups and trainer reminders, boss, elite and rare kills, dungeon cleared, quest chain finished, new zone, flight path learned, upgrade equipped. Painted art for each; in-game toasts optional and quiet in combat. Also A5 boss tips, G6 dungeon art.
+- **0.34:** H4 community at bf.backstagecoding.com (on by default, easy off switch): anonymous, rounded locations of herbs, ore, chests, NPCs and vendors, boss drops and recipe sources; published only when several installs agree; one daily download, offline as before. "Report a problem" with a preview of exactly what is sent. Self-hosted on Frank's server, no paid services.
+- **0.35:** H6 all-in-one from top addons: inventory across all characters (bags, bank, mail), A7 price memory from your own auction searches, E6 reputation, cooldowns, E4 mount and gold goals, E5 class quest chains, A12 gear sets, G5 character sheet.
+- **0.36+:** A10 PvP alerts, A11 QoL pack, A13/3.6 party sync, the rest of Tier 3, G9–G11, then the 4.1 full guided route and the G12 art review.
 - **1.0:** after Frank's hands-on acceptance.
 
 Keep this file and Help → Commands updated with each release.
