@@ -85,9 +85,13 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
   // explicit transport request keeps incidental level/talent words harmless.
   if (
     !geographic &&
-    /\b(?:level(?:ing)?|lvl|talents?|specs?|specialization|respec|switch(?:ing)?|chang(?:e|ing))\b/i.test(
+    (/\b(?:level(?:ing)?|lvl|talents?|specs?|spec(?:c?ed|cing)|specialization|respec|switch(?:ing)?|chang(?:e|ing)|ranks?|points?|tiers?|max(?:ed)?|improved)\b/i.test(
       q,
-    )
+    ) ||
+      // Talent rank notation ("3/3", "2 / 5") is never a place.
+      /\b\d{1,2}\s*\/\s*\d{1,2}\b/.test(q) ||
+      // "goes up to 5": a destination that starts with a number is a count, not a place.
+      routeParts.some((part) => /^\s*\d/.test(part)))
   )
     return null;
   const travel =
