@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises"),
   os = require("node:os");
 const crypto = require("node:crypto");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch } = require("./test-window.cjs");
 const { checkedPackagedRoot, closePackagedApp, cleanupPackagedRun } = require("./packaged-cleanup.cjs");
 function isInside(parent, target) {
   const relative = path.relative(parent, target);
@@ -75,7 +75,7 @@ async function sourceFiles(folder, prefix = "src") {
     await fs.writeFile(path.join(data, "knowledge-v1", "preferences.json"),
       JSON.stringify({ automatic: false, checked: {} }));
     // Synthetic journal fixtures can be seeded here, before the first launch.
-    app = await electron.launch(launchOptions);
+    app = await launch(electron, launchOptions);
     const page = await testWindow(app);
     await page.locator(".brand").first().waitFor();
     const result = await app.evaluate(({ app, safeStorage }) => ({
@@ -242,7 +242,7 @@ async function sourceFiles(folder, prefix = "src") {
     for (const name of ["BackstageForeverGathering.lua", "BackstageForeverMapPlan.lua", "BackstageForeverMap.lua", "BackstageForeverMap.xml"]) await fs.unlink(path.join(addonFolder, name));
     await fs.unlink(path.join(addonFolder, "BackstageForeverReference.lua"));
     await fs.writeFile(path.join(addonFolder, "BackstageForeverPlan.lua"), "synthetic obsolete planner");
-    app = await electron.launch(launchOptions);
+    app = await launch(electron, launchOptions);
     const reopened = await testWindow(app);
     const restarted = await app.evaluate(({ app }) => ({
       userData: app.getPath("userData"), cwd: process.cwd(),

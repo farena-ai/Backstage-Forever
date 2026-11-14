@@ -3,7 +3,7 @@
 const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path"), assert = require("node:assert/strict");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch } = require("./test-window.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 (async () => {
   const root = await fs.realpath(os.tmpdir()), dir = await fs.mkdtemp(path.join(root, "forever-tools-"));
@@ -25,7 +25,7 @@ const { defaultState } = require("../src/core/validation.cjs");
       load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});
       load('./src/main.cjs');
     `);
-    app = await electron.launch({ args: [dir], env: { ...process.env, BF_USER_DATA: dir }, timeout: 20000 });
+    app = await launch(electron, { args: [dir], env: { ...process.env, BF_USER_DATA: dir }, timeout: 20000 });
     const page = await testWindow(app);
     page.setDefaultTimeout(8000);
     await app.evaluate((_electron, repo) => {

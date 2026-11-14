@@ -1240,7 +1240,8 @@ root.addEventListener("click", (event) => {
       if (candidate) await prepareCompanion(() => api.connectGame(candidate.path));
     }
     if (button.dataset.mapFocus) {
-      try { const f = JSON.parse(button.dataset.mapFocus); page = "world-map"; render(); WorldMapView.focus(f); } catch {}
+      // Focus first, so the map mounts straight onto the target instead of racing a load of the old zone.
+      try { const f = JSON.parse(button.dataset.mapFocus); WorldMapView.focus(f); page = "world-map"; render(); } catch {}
     }
     if (button.dataset.questOpen) {
       page = "quest-guide";

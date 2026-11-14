@@ -19,7 +19,8 @@ window.HoverCards = (() => {
     return profileId;
   }
   const LOAD = {
-    quest: (id) => profile().then((p) => (p ? api.questDetails(p, id) : null)),
+    // Its own channel: a hover never joins (or gets held by) the Quests page's details pipeline.
+    quest: (id) => profile().then((p) => (p ? (api.questCard || api.questDetails)(p, id) : null)),
     item: (id) => (api.itemCard ? profile().then((p) => api.itemCard(p || null, id)) : Promise.resolve(null)),
     npc: (id) => (api.worldMapNpc ? api.worldMapNpc(id) : Promise.resolve(null)),
   };

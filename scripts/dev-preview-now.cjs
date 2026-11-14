@@ -3,7 +3,7 @@
 // Usage: [BF_PREVIEW_ROOT=".../_forever_"] node scripts/dev-preview-now.cjs OUT.png [PROFILE_NAME] [WIDTHxHEIGHT]
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch } = require("./test-window.cjs");
 (async () => {
   const dir = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), "forever-now-preview-"));
   const out = process.argv[2] || path.join(os.tmpdir(), "now-preview.png");
@@ -23,7 +23,7 @@ const { testWindow } = require("./test-window.cjs");
       const L=load('./src/core/live-bridge.cjs'); L.LiveBridge.prototype.readPreference=function(){return false;};L.LiveBridge.prototype.start=function(){};
       if (process.env.BF_PREVIEW_ROOT) { const G=load('./src/core/game-data.cjs'); const Base=G.GameData; G.GameData=class extends Base{constructor(o){super({...o,getRoot:()=>process.env.BF_PREVIEW_ROOT});}}; }
       load('./src/main.cjs');`);
-    app = await electron.launch({ args: [dir], env: { ...process.env, BF_USER_DATA: dir, BF_TEST_INACTIVE: "1" }, timeout: 20000 });
+    app = await launch(electron, { args: [dir], env: { ...process.env, BF_USER_DATA: dir, BF_TEST_INACTIVE: "1" }, timeout: 20000 });
     const page = await testWindow(app);
     await app.evaluate(({ BrowserWindow }, [w, h]) => BrowserWindow.getAllWindows()[0].setSize(w, h), [w, h]);
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "complete")); await page.reload();

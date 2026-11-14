@@ -2,7 +2,7 @@
 // Synthetic profiles, fake local provider responses and blocked launches only.
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), syncFs = require("node:fs"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict"), http = require("node:http");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch } = require("./test-window.cjs");
 const { defaultState, providers } = require("../src/core/validation.cjs");
 function shortPath(target) {
   const script = `Add-Type -TypeDefinition 'using System; using System.Text; using System.Runtime.InteropServices; public static class BfMemoryShortPath { [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetShortPathName(string path, StringBuilder result, uint length); }'; $buffer = New-Object System.Text.StringBuilder 4096; $length = [BfMemoryShortPath]::GetShortPathName($env:BF_MEMORY_ALIAS_PATH,$buffer,4096); if ($length -eq 0 -or $length -ge 4096) { throw 'Short path unavailable' }; $buffer.ToString()`;
@@ -30,7 +30,7 @@ function shortPath(target) {
     const writeGame = () => fs.writeFile(savedGame, "BackstageForeverExport = " + JSON.stringify(JSON.stringify({ schema: 1, observedAt, activeId: "PRIVATE_RAW_SOURCE_Alpha", characters: ["Alpha", "Beta"].map(name => ({ id: `PRIVATE_RAW_SOURCE_${name}`, name, realm: "Synthetic", className: "Mage", level: 13, updatedAt: observedAt })) })));
     await fs.writeFile(path.join(data, "state.json"), JSON.stringify({ ...defaultState(), onboarded: true, profiles: [profile("Alpha"), profile("Beta")], activeProfileId: "Alpha", provider: { id: "ollama", model: "fixture", endpoint } }));
     async function launch() {
-      app = await electron.launch({ args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: data }, timeout: 20000 });
+      app = await launch(electron, { args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: data }, timeout: 20000 });
       await app.evaluate(({ app, dialog }, { endpoint, backup }) => {
         const load = process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(), "package.json")); globalThis.memoryFixture = { backup, launches: 0, requests: [], retrievalPrompts: [] };
         const { GameRuntime } = load("./src/core/game-runtime.cjs"); GameRuntime.prototype.probe = async () => ({ state: "not-running", checkedAt: null, launchAvailable: false }); GameRuntime.prototype.launch = async () => { memoryFixture.launches++; throw Error("Fixture blocks launch"); };

@@ -5,7 +5,7 @@ const fs = require("node:fs/promises"),
   path = require("node:path"),
   assert = require("node:assert/strict");
 const { _electron: electron } = require("playwright");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch } = require("./test-window.cjs");
 const {selectCurrentText,currentControlState}=require("./selection-fixture.cjs");
 function currentQuestPaint({ id, previous }) {
   const detail = document.querySelector(`[data-quest-control="detail:${id}"]`);
@@ -174,7 +174,7 @@ function shortPath(target){
           ),
       );
     await write();
-    app = await electron.launch({
+    app = await launch(electron, {
       args: [repo],
       env: { ...process.env, BF_USER_DATA: data },
     });

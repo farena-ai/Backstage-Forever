@@ -139,6 +139,8 @@ test("knowledge IPC accepts bounded queries only, selects sourced clipboard coor
   p.captureVersion = "0.6.0";
   p.quests = [];
   const reference = handlers.questDetails("p", 5730).waypoint;
+  // Hover cards read the same facts through their own channel.
+  assert.deepEqual(JSON.parse(JSON.stringify(handlers.questCard("p", 5730))), JSON.parse(JSON.stringify(handlers.questDetails("p", 5730))));
   assert.equal(reference.phase, "r");
   assert.equal(reference.source, "reference");
   assert.equal(reference.destination.id, 3216);
@@ -157,6 +159,8 @@ test("knowledge IPC accepts bounded queries only, selects sourced clipboard coor
     ["searchQuests", ["", "p", { url: "https://bad" }]],
     ["questDetails", ["p", "1061"]],
     ["questDetails", ["absent", 1061]],
+    ["questCard", ["p", "1061"]],
+    ["questCard", ["absent", 1061]],
     ["copyQuestWaypoint", ["p", 1061, { mapId: 1, x: 1, y: 1 }]],
     ["copyQuestWaypoint", ["p", 1061, "t", { x: 1 }]],
     ["contextPreview", ["p", "yes", "1061"]],

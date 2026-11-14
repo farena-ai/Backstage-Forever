@@ -79,7 +79,9 @@ function registerKnowledgeHandlers({
     const index = knowledge.index(p) || knowledge.bundled;
     return index.search(query, p, options);
   });
-  handle("questDetails", (...args) => {
+  // One read-only details builder behind two channels: the Quests page's selection pipeline
+  // (questDetails) and hover cards (questCard), so a hover never shares the page's IPC traffic.
+  function questDetails(args) {
     count(args, 2);
     sync();
     const [profileId, questId] = args,
@@ -171,7 +173,9 @@ function registerKnowledgeHandlers({
     // Plain "how to do it" steps from everything above (own looting, community drops, levels, quest text).
     try { const how = require("./quest-howto.cjs").buildHowTo(result, { loot: require("./loot-data.cjs").loadLootPack() }); if (how?.steps.length) result.howTo = how; } catch {}
     return result;
-  });
+  }
+  handle("questDetails", (...args) => questDetails(args));
+  handle("questCard", (...args) => questDetails(args));
   handle("copyQuestWaypoint", (...args) => {
     count(args, 3);
     sync();

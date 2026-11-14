@@ -4,7 +4,7 @@ const { mkdtemp, rm } = require("node:fs/promises");
 const { tmpdir } = require("node:os");
 const path = require("node:path");
 const assert = require("node:assert/strict");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch } = require("./test-window.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
 
 function shortPath(target) {
@@ -21,7 +21,7 @@ function shortPath(target) {
   let data = normalData;
   let app;
   const launch = async () => {
-    app = await electron.launch({
+    app = await launch(electron, {
       args: [path.join(__dirname, "..")],
       env: { ...process.env, BF_USER_DATA: data },
     });

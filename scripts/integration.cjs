@@ -5,7 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const http = require("node:http");
 const assert = require("node:assert/strict");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch } = require("./test-window.cjs");
 
 (async () => {
   const data = await fs.mkdtemp(
@@ -28,7 +28,7 @@ const { testWindow } = require("./test-window.cjs");
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   try {
-    app = await electron.launch({
+    app = await launch(electron, {
       args: [path.join(__dirname, "..")],
       env: { ...process.env, BF_USER_DATA: data },
     });
@@ -54,7 +54,7 @@ const { testWindow } = require("./test-window.cjs");
     );
     await app.close();
     app = null;
-    app = await electron.launch({
+    app = await launch(electron, {
       args: [path.join(__dirname, "..")],
       env: { ...process.env, BF_USER_DATA: data },
     });

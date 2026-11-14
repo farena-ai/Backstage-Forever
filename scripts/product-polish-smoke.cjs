@@ -5,7 +5,7 @@ const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), path = require("node:path"), os = require("node:os"), assert = require("node:assert/strict");
 const { defaultState } = require("../src/core/validation.cjs");
-const { testWindow } = require("./test-window.cjs");
+const { testWindow, launch } = require("./test-window.cjs");
 const { assertSelectContrast } = require("./select-contrast.cjs");
 (async () => {
   const data = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), "bf-product-polish-"));
@@ -19,7 +19,7 @@ const { assertSelectContrast } = require("./select-contrast.cjs");
     await fs.mkdir(path.join(data, "knowledge-v1"));
     await fs.writeFile(path.join(data, "knowledge-v1/preferences.json"), JSON.stringify({ automatic: false, checked: {} }));
     await fs.writeFile(path.join(data, "state.json"), JSON.stringify({ ...defaultState(), onboarded: true, activeProfileId: "manual", profiles: [{ id: "manual", name: "Aeralyn", className: "Hunter", faction: "Alliance", level: 24, realm: "Fictional Realm", notes: "PRIVATE SYNTHETIC NOTE", goals: [] }] }));
-    app = await electron.launch({ args: [await syntheticLaunch(data)], env: { ...process.env, BF_USER_DATA: data }, timeout: 20000 });
+    app = await launch(electron, { args: [await syntheticLaunch(data)], env: { ...process.env, BF_USER_DATA: data }, timeout: 20000 });
     const page = await testWindow(app); page.setDefaultTimeout(4000);
     await app.evaluate(({ app, ipcMain }) => {
       const load = process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(), "package.json"));
