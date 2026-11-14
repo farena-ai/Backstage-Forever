@@ -94,3 +94,12 @@ test("shopping list aggregates N crafts and marks vendor (name + nearest map spo
   assert.equal(plain.rows[0].source, "other"); assert.equal(plain.rows[0].need, 2);
   assert.doesNotMatch(JSON.stringify(m.shoppingList), /PRIVATE_/);
 });
+test("without an exact bag count, equal colours rank by the fewest materials per craft", () => {
+  const s = seed([
+    recipe(100, "Heavy", "medium", [{ itemId: 2447, name: "Peacebloom", required: 6 }]),
+    recipe(101, "Light", "medium", [{ itemId: 2447, name: "Peacebloom", required: 1 }, { itemId: 765, name: "Silverleaf", required: 1 }]),
+  ]);
+  s.profiles[0].readiness.workshop.materials.complete = false;
+  const m = build(s);
+  assert.equal(m.nextRecipe.id, 101); assert.match(m.nextRecipe.reason, /2 materials per craft/);
+});

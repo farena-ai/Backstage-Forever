@@ -100,14 +100,14 @@ function buildProfessionCoach(
       ),
     );
     // Best next recipe: orange, then yellow (unobserved colour before green), then the
-    // fewest missing materials, then the fewest materials per craft. The vendor pack
-    // carries no prices, so cost cannot rank recipes.
+    // fewest missing materials from an exact bag count, else the fewest materials per
+    // craft. The vendor pack carries no prices, so cost cannot rank recipes.
     return [
       colorRank(r),
       exact ? (missing.every((n) => n === 0) ? 0 : 1) : 2,
       exact ? missing.filter((n) => n > 0).length : 0,
       exact ? missing.reduce((a, b) => a + b, 0) : 0,
-      materialUnits(r),
+      exact ? 0 : materialUnits(r),
       r.id,
     ];
   };
