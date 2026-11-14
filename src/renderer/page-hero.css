@@ -2,6 +2,8 @@
    over painted art, parchment cards and Cinzel headings. */
 .page-hero { position: relative; isolation: isolate; overflow: hidden; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; min-height: 210px; margin: 0 0 14px; padding: 16px 20px; border-radius: 6px; border: 1px solid #c79a4a; color: #fff1d6; background: #3a0f09; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
 .page-hero.compact { min-height: 132px; }
+/* Pages that lay out as a flex column already space their children. */
+:is(.bf-page, .now-page, .journey-page, .atlas-page, .workshop, .company-page, .party-expedition, .talents-page, .coverage-page, .commands-page) > .page-hero { margin-bottom: 0; }
 /* The painting drifts slowly; the art that has not shipped yet falls back to the Help painting underneath. */
 .page-hero::before { content: ""; position: absolute; inset: -4%; z-index: -2; background-color: #3a0f09; background-position: center 42%; background-size: cover; background-repeat: no-repeat; animation: bf-drift 38s ease-in-out infinite alternate; }
 .page-hero::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
@@ -82,3 +84,11 @@
 .bf-parchment .panel strong { color: #2b1b0a; }
 .page-hero .cmd-search input { width: min(380px, 100%); }
 .page-hero .tal-pick { color: #f1dcb0; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+/* Small windows (1000×700 and the like): a shorter banner so the page's first action stays in view. */
+@media (max-height: 820px), (max-width: 1150px) {
+  .page-hero, .page-hero.compact { min-height: 112px; padding: 10px 16px; margin-bottom: 10px; }
+  .page-hero h1, .page-hero.compact h1 { font-size: 24px; margin: 0 0 2px; }
+  .page-hero .ph-crest, .page-hero .now-class-crest { width: 52px; height: 52px; }
+  .ph-sub { font-size: 13px; }
+  .bf-page, .bf-col { gap: 10px; }
+}
