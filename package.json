@@ -70,6 +70,7 @@
     "test:now": "node --test tests/leveling.test.cjs && node scripts/now-smoke.cjs",
     "test:ledger": "node --test tests/ledger.test.cjs tests/addon-ledger.test.cjs && node scripts/ledger-smoke.cjs",
     "test:sheet": "node --test tests/sheet.test.cjs tests/addon-sheet.test.cjs && node scripts/sheet-smoke.cjs",
+    "test:ask-panel": "node --test tests/live-question.test.cjs tests/addon-ask.test.cjs tests/ask-panel.test.cjs && node scripts/ask-panel-smoke.cjs",
     "test:free-ai": "node --test tests/local-ai.test.cjs && node scripts/free-ai-smoke.cjs",
     "check:forever-loot": "node scripts/build-forever-loot.cjs --check",
     "check:forever-boss-loot": "node scripts/build-forever-boss-loot.cjs --check"
