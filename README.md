@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.32: a quiet live link
+## 0.33: live moments
 
-The live strip shrinks from 456×12 to 84×4 pixels, can sit in any corner (`/bf live pos`), and has a sturdy safe mode for remote desktop (`/bf live safe`). See the [0.32.0 release notes](docs/releases/0.32.0.md).
+A death screen that explains what happened, painted moments for boss, elite and rare kills, dungeon clears, profession milestones, new zones, flight paths and upgrades, plus the tiny 84×4 live strip from 0.32. See the [0.33.0 release notes](docs/releases/0.33.0.md).
 
 ## 0.28: your journey
 

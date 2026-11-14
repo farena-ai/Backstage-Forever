@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.33.0 — live moments, 2026-11-14
+
+- **Includes 0.32.0** (tagged, installer build failed on a slow-runner race in the knowledge smoke, now fixed): compact v4 live strip.
+- **H3 live moments:** kind 3 "moments" pages on the strip (a ring of up to 6, de-duplicated by sequence), new `BackstageForeverMoments.lua` (deaths with killer id and tip code, elite/rare/boss kills, profession milestones, first zone visits, flight paths, upgrades); the app adds dungeon cleared and quest chain finished, resolves names from the bundled packs, and shows painted moment cards, a death screen and Recent moments on Now. `/bf moments on|off|status`. The addon now installs 24 files.
+- **Tests:** every Lua test now fails on any stderr (the Lua runner exits 0 after a failed assert); this exposed a death-review tip threshold bug (now 2+ levels above you).
+
 ## 0.32.0 — a quiet live link, 2026-11-14
 
 - **H2 live strip v4:** 2-pixel cells at exact physical size, four calibration greys per strip so the app decodes 2 bits per channel by nearest measured level (handles gamma and remote colour curves), 84×4 px for both rows (was 456×12). Heartbeat byte keeps an idle strip live; the addon slows to 1 Hz after 5 still seconds.
