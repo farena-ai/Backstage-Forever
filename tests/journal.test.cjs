@@ -84,3 +84,11 @@ test("world map pins neutralise the protected SetPassThroughButtons that Blizzar
     assert.ok(pin >= 0 && noop > pin && mix > noop, f + ": our pins override SetPassThroughButtons before mixing in");
   }
 });
+
+test("no addon file registers the combat log (the game forbids it: 'blocked from an action only available to the Blizzard UI')", () => {
+  const fs = require("node:fs"), dir = path.join(__dirname, "../addon/BackstageForever");
+  for (const f of fs.readdirSync(dir).filter((n) => n.endsWith(".lua"))) {
+    const src = fs.readFileSync(path.join(dir, f), "utf8");
+    assert.doesNotMatch(src, /COMBAT_LOG_EVENT|CombatLogGetCurrentEventInfo/, f);
+  }
+});

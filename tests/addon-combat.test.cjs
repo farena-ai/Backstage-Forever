@@ -18,20 +18,33 @@ assert(g.tip:find('one at a time',1,true))
 assert(BackstageForeverDeathReview({{t=50,source='Old',amount=500}},100,20)==nil,'hits outside the window do not count')
 local s=BackstageForeverFightSummary(1200,300,20) assert(s.dps==60 and s.hps==15)
 `));
-test("/bf stats summarises this session's fights from the combat log", () => lua(String.raw`
+test("/bf stats and the death review come from health changes (the combat log is off limits to addons)", () => lua(String.raw`
 local said={} DEFAULT_CHAT_FRAME={AddMessage=function(_,m) said[#said+1]=m end}
-local handler CreateFrame=function() return {RegisterEvent=function() end,SetScript=function(_,_,fn) handler=fn end} end
+local handler,registered CreateFrame=function() return {RegisterEvent=function(_,e) registered=registered or {} registered[e]=true end,SetScript=function(_,_,fn) handler=fn end} end
 local t=0 GetTime=function() return t end
+local thp,php,group=1000,500,false
 UnitGUID=function(u) return u=='player' and 'Player-1' or 'Creature-0-1-2-3-4-99' end
-local ev
-CombatLogGetCurrentEventInfo=function() return table.unpack(ev) end
+UnitHealth=function(u) if u=='target' then return thp end return php end
+UnitCanAttack=function() return true end IsInGroup=function() return group end UnitIsDead=function() return false end
+UnitName=function() return 'Boar' end UnitLevel=function(u) return u=='target' and 14 or 12 end UnitClassification=function() return 'normal' end
 dofile('addon/BackstageForever/BackstageForeverCombat.lua')
+assert(registered.UNIT_HEALTH and not registered.COMBAT_LOG_EVENT_UNFILTERED,'never registers the combat log (the game forbids it)')
 BackstageForeverStatsCommand() assert(said[1]:find('No fights yet',1,true))
+handler(nil,'PLAYER_TARGET_CHANGED')
 handler(nil,'PLAYER_REGEN_DISABLED')
-ev={0,'SWING_DAMAGE',false,'Player-1','Me',0,0,'Creature-0-1-2-3-4-99','Boar',0,0,400} handler(nil,'COMBAT_LOG_EVENT_UNFILTERED')
-ev={0,'SPELL_DAMAGE',false,'Player-1','Me',0,0,'Creature-0-1-2-3-4-99','Boar',0,0,133,'Arcane Shot',1,600} handler(nil,'COMBAT_LOG_EVENT_UNFILTERED')
+thp=600 handler(nil,'UNIT_HEALTH','target')
+thp=0 handler(nil,'UNIT_HEALTH','target')
 t=10 handler(nil,'PLAYER_REGEN_ENABLED')
 BackstageForeverStatsCommand()
 assert(said[2]:find('1 fights, 1000 damage',1,true),said[2])
 assert(said[3]:find('Best fight: 100 damage per second over 10 seconds',1,true),said[3])
+-- In a group the target's health loss is not all yours: not counted.
+group=true thp=1000 handler(nil,'PLAYER_TARGET_CHANGED') handler(nil,'PLAYER_REGEN_DISABLED')
+thp=200 handler(nil,'UNIT_HEALTH','target') t=20 handler(nil,'PLAYER_REGEN_ENABLED')
+local n=#said BackstageForeverStatsCommand() assert(said[n+1]:find('1 fights',1,true),said[n+1])
+-- Damage you take is credited to the hostile target: the death review names it.
+handler(nil,'UNIT_HEALTH','player') php=300 t=21 handler(nil,'UNIT_HEALTH','player') php=0 t=22 handler(nil,'UNIT_HEALTH','player')
+n=#said handler(nil,'PLAYER_DEAD')
+local found for i=n+1,#said do if said[i]:find('Boar (level 14) did 100% of the damage',1,true) then found=true end end
+assert(found,table.concat(said,' / '))
 `));

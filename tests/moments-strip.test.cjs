@@ -132,28 +132,27 @@ local real=BackstageForeverLiveMoment
 BackstageForeverLiveMoment=function(k,a,b,c) got[#got+1]=table.concat({k,a,b,c},',') return real(k,a,b,c) end
 local toasts={}
 BackstageForeverToast=function(t,s) toasts[#toasts+1]=t..' | '..(s or '') end
-local ev
-CombatLogGetCurrentEventInfo=function() return table.unpack(ev) end
-local function log(...) ev={0,...} fire('COMBAT_LOG_EVENT_UNFILTERED') end
+-- Kills come from your target dying with your kill credit (addons may not read the combat log).
+local DEAD,TAPPED=false,false
+UnitIsDead=function(u) return u=='target' and DEAD end
+UnitIsTapDenied=function() return TAPPED end
+local function die() DEAD=true fire('UNIT_HEALTH','target') DEAD=false end
 -- An elite you targeted and fought dies: one elite moment; its toast waits for the end of combat.
 TARGET='Creature-0-1-2-3-1732-0000' TARGET_CLASS='elite' TARGET_NAME='Defias Pillager'
 fire('PLAYER_TARGET_CHANGED')
 COMBAT=true
-log('SWING_DAMAGE',false,'Player-1-ABC','Me',0,0,TARGET,'Defias Pillager',0,0,40)
-log('UNIT_DIED',false,'',nil,0,0,TARGET,'Defias Pillager')
-log('PARTY_KILL',false,'Player-1-ABC','Me',0,0,TARGET,'Defias Pillager')
-assert(#got==1 and got[1]=='2,1732,17,1',got[1])
+die() DEAD=true fire('UNIT_HEALTH','target') DEAD=false
+assert(#got==1 and got[1]=='2,1732,17,1','one moment per creature: '..tostring(got[1]))
 assert(#toasts==0,'no toast in combat')
 COMBAT=false fire('PLAYER_REGEN_ENABLED')
 assert(#toasts==1 and toasts[1]:find('Elite defeated',1,true) and toasts[1]:find('Defias Pillager',1,true),toasts[1])
--- A creature you never fought dies: nothing.
-log('UNIT_DIED',false,'',nil,0,0,'Creature-0-1-2-3-99-0001','Boar')
+-- A creature someone else tapped dies: nothing.
+TARGET='Creature-0-1-2-3-99-0001' TARGET_CLASS='elite' fire('PLAYER_TARGET_CHANGED') TAPPED=true die() TAPPED=false
 assert(#got==1)
 -- Dungeon trash is elite: no moment inside an instance; the boss comes from ENCOUNTER_END with the NPC that just died.
 INSTANCE=true
 TARGET='Creature-0-1-2-3-639-0002' TARGET_CLASS='elite' TARGET_NAME='Edwin VanCleef' fire('PLAYER_TARGET_CHANGED')
-log('SPELL_DAMAGE',false,TARGET,'Edwin VanCleef',0,0,'Player-1-ABC','Me',0,0,1,'Strike',1,50)
-log('UNIT_DIED',false,'',nil,0,0,TARGET,'Edwin VanCleef')
+die()
 assert(#got==1,'elite trash inside instances is quiet')
 fire('ENCOUNTER_END',1144,'Edwin VanCleef',1,5,1)
 assert(got[2]=='4,639,1144,1',got[2])
@@ -162,7 +161,7 @@ fire('ENCOUNTER_END',1145,'Wipe',1,5,0) assert(#got==2,'a wipe is not a moment')
 INSTANCE=false
 -- Rares count anywhere; world bosses are bosses.
 TARGET='Creature-0-1-2-3-462-0003' TARGET_CLASS='rareelite' TARGET_NAME='Vultros' fire('PLAYER_TARGET_CHANGED')
-log('SWING_DAMAGE',false,'Player-1-ABC','Me',0,0,TARGET,'Vultros',0,0,40) log('UNIT_DIED',false,'',nil,0,0,TARGET,'Vultros')
+die()
 assert(got[3]=='3,462,17,3',got[3])
 -- Death: the review travels as killer NPC, level and share, elite flag, tip and helpers.
 BackstageForeverMomentsDeath({killer='Defias Pillager',npc=1732,level=17,share=72,elite=true,others=1,tipCode=2})
@@ -197,12 +196,12 @@ local before=#toasts
 BackstageForeverMomentsCommand('moments off')
 assert(BackstageForeverMomentsSettings.toasts==false)
 TARGET='Creature-0-1-2-3-1733-0009' TARGET_CLASS='elite' fire('PLAYER_TARGET_CHANGED')
-log('SWING_DAMAGE',false,'Player-1-ABC','Me',0,0,TARGET,'X',0,0,40) log('UNIT_DIED',false,'',nil,0,0,TARGET,'X')
+die()
 assert(#got==10 and #toasts==before,'moment still sent, toast silent')
 BackstageForeverMomentsCommand('moments on') assert(BackstageForeverMomentsSettings.toasts==true)
 -- Secret values are unknown, never errors.
 TARGET='Creature-0-1-2-3-1734-0010' TARGET_CLASS=SECRET TARGET_NAME=SECRET fire('PLAYER_TARGET_CHANGED')
-log('SWING_DAMAGE',false,'Player-1-ABC','Me',0,0,TARGET,'X',0,0,40) log('UNIT_DIED',false,'',nil,0,0,TARGET,'X')
+die()
 assert(#got==10,'unknown classification: no moment')
 print('ok')`);
   assert.equal(out.split("\n").pop(), "ok");

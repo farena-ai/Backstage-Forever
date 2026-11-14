@@ -134,7 +134,8 @@ end
 -- comes from the target, mouseover and nameplates seen before the kill.
 local me,pet
 local seen,seenCount={},0         -- guid -> {cls, level, name, t}
-local engaged,engagedCount={},0   -- guid -> time last fought
+local credited,creditedCount={},0 -- guid -> time its kill was counted (once per creature)
+local lastCombat=nil               -- GetTime() when the player was last in combat
 local lastKill,lastBossAt=nil,nil
 local function npcOf(guid)
     if type(guid)~='string' then return nil end
@@ -156,12 +157,6 @@ local function remember(unit)
     seen[guid]={cls=type(cls)=='string' and cls or nil,level=int(call(UnitLevel,unit),1,255),name=str(call(UnitName,unit)),t=now()}
     seenCount=prune(seen,seenCount,600)
 end
-local function engage(guid)
-    if not npcOf(guid) then return end
-    if not engaged[guid] then engagedCount=engagedCount+1 end
-    engaged[guid]=now()
-    engagedCount=prune(engaged,engagedCount,180)
-end
 local function killed(guid,name)
     local npc=npcOf(guid)
     if not npc then return end
@@ -173,17 +168,18 @@ local function killed(guid,name)
     if kind==TYPES.boss then lastBossAt=now() end
     push(kind,npc,info.level or 0,CLASS[info.cls] or 0,{name=info.name or str(name)})
 end
-local DAMAGE={SWING_DAMAGE=true,RANGE_DAMAGE=true,SPELL_DAMAGE=true,SPELL_PERIODIC_DAMAGE=true,SWING_MISSED=true,SPELL_MISSED=true,RANGE_MISSED=true}
-local function onCombatLog()
-    local _,sub,_,src,_,_,_,dst,dstName=call(CombatLogGetCurrentEventInfo)
-    if type(sub)~='string' then return end
-    if sub=='UNIT_DIED' or sub=='PARTY_KILL' then
-        if type(dst)=='string' and engaged[dst] then engaged[dst]=nil engagedCount=max(0,engagedCount-1) killed(dst,dstName) end
-        return
-    end
-    if not DAMAGE[sub] then return end
-    me=me or call(UnitGUID,'player')
-    if src==me or (pet and src==pet) then engage(dst) elseif dst==me then engage(src) end
+-- Kills come from your target: the game no longer lets addons read the combat log (registering it
+-- raises "blocked from an action only available to the Blizzard UI"). A creature counts when your
+-- target dies, you have the kill credit (not tapped by someone else) and you were just fighting.
+local function onTargetHealth()
+    local guid=call(UnitGUID,'target')
+    if not npcOf(guid) or credited[guid] or call(UnitIsPlayer,'target') then return end
+    if call(UnitIsDead,'target')~=true or call(UnitIsTapDenied,'target')==true then return end
+    if not (call(InCombatLockdown)==true or (lastCombat and now()-lastCombat<=10)) then return end
+    if not credited[guid] then creditedCount=creditedCount+1 end
+    credited[guid]=now();creditedCount=prune(credited,creditedCount,600)
+    remember('target')
+    killed(guid,call(UnitName,'target'))
 end
 -- A dungeon or raid boss: ENCOUNTER_END reports the win; the creature that died just before is the boss.
 local function onEncounterEnd(encounterId,name,_,_,success)
@@ -307,9 +303,10 @@ end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','COMBAT_LOG_EVENT_UNFILTERED','PLAYER_TARGET_CHANGED','UPDATE_MOUSEOVER_UNIT','NAME_PLATE_UNIT_ADDED','UNIT_PET','ENCOUNTER_END','SKILL_LINES_CHANGED','CHAT_MSG_SKILL','UI_INFO_MESSAGE','PLAYER_EQUIPMENT_CHANGED','PLAYER_REGEN_ENABLED'}) do pcall(events.RegisterEvent,events,e) end
+        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','UNIT_HEALTH','PLAYER_REGEN_DISABLED','PLAYER_TARGET_CHANGED','UPDATE_MOUSEOVER_UNIT','NAME_PLATE_UNIT_ADDED','UNIT_PET','ENCOUNTER_END','SKILL_LINES_CHANGED','CHAT_MSG_SKILL','UI_INFO_MESSAGE','PLAYER_EQUIPMENT_CHANGED','PLAYER_REGEN_ENABLED'}) do pcall(events.RegisterEvent,events,e) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b,c,d,e)
-            if event=='COMBAT_LOG_EVENT_UNFILTERED' then pcall(onCombatLog)
+            if event=='UNIT_HEALTH' then if plain(a)=='target' then pcall(onTargetHealth) end
+            elseif event=='PLAYER_REGEN_DISABLED' then lastCombat=now()
             elseif event=='PLAYER_TARGET_CHANGED' then remember('target')
             elseif event=='UPDATE_MOUSEOVER_UNIT' then remember('mouseover')
             elseif event=='NAME_PLATE_UNIT_ADDED' then if type(plain(a))=='string' then remember(a) end
@@ -317,7 +314,7 @@ if type(CreateFrame)=='function' then
             elseif event=='SKILL_LINES_CHANGED' or event=='CHAT_MSG_SKILL' then pcall(onSkills)
             elseif event=='UI_INFO_MESSAGE' then pcall(onInfoMessage,a,b)
             elseif event=='PLAYER_EQUIPMENT_CHANGED' then pcall(onEquipment,a)
-            elseif event=='PLAYER_REGEN_ENABLED' then pcall(flush)
+            elseif event=='PLAYER_REGEN_ENABLED' then lastCombat=now() pcall(onTargetHealth) pcall(flush)
             elseif event=='UNIT_PET' then if plain(a)=='player' then pet=call(UnitGUID,'pet') end
             elseif event=='PLAYER_LOGIN' or event=='PLAYER_ENTERING_WORLD' then
                 settings() me=call(UnitGUID,'player') pet=call(UnitGUID,'pet')
