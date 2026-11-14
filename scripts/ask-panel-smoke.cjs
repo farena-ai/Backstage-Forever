@@ -128,12 +128,7 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
       const scale = await app.evaluate(({ screen }, bounds) => screen.getDisplayMatching(bounds).scaleFactor, panel.bounds);
       const sx = Math.round((panel.bounds.x + r.x) * scale), sy = Math.round((panel.bounds.y + r.y) * scale);
       const ps = `Add-Type -Name U -Namespace W -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y); [DllImport("user32.dll")] public static extern void mouse_event(uint f,uint x,uint y,uint d,System.UIntPtr e);'; [W.U]::SetCursorPos(${sx},${sy}); Start-Sleep -Milliseconds 150; [W.U]::mouse_event(2,0,0,0,[System.UIntPtr]::Zero); Start-Sleep -Milliseconds 60; [W.U]::mouse_event(4,0,0,0,[System.UIntPtr]::Zero)`;
-      await view2.evaluate(() => { window.__ev = []; for (const t of ["pointerdown","mousedown","mouseup","click","pointermove"]) document.addEventListener(t, (e) => window.__ev.push(t + ":" + (e.target.dataset?.ap || e.target.tagName) + "@" + Math.round(e.clientX) + "," + Math.round(e.clientY)), true); });
-      console.log("DBG target", JSON.stringify({ r, scale, sx, sy, bounds: panel.bounds }));
       require("node:child_process").execFileSync("powershell.exe", ["-NoProfile", "-Command", ps]);
-      await new Promise((res) => setTimeout(res, 400));
-      console.log("DBG events", JSON.stringify(await view2.evaluate(() => window.__ev.slice(-12))));
-      console.log("DBG cursor", require("node:child_process").execFileSync("powershell.exe", ["-NoProfile", "-Command", "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Cursor]::Position"]).toString().trim().replace(/\s+/g, " "));
       let gone = false;
       for (let i = 0; i < 30 && !gone; i++) { await new Promise((res) => setTimeout(res, 100)); gone = !(await panelWindow()).visible; }
       assert.ok(gone, "a real mouse click on the close button hides the panel");
