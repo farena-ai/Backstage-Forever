@@ -28,6 +28,10 @@ const HEARTBEAT_STALE_MS = 20000, IDLE_MS = 6000;
 // Second row (addon 0.25+): pages of the quest log and of quests turned in this session.
 const PAGE_VERSION = 80, PAGE_IDS = 6, KIND = { 1: "questLog", 2: "turnedIn" };
 const PAGES_FRESH_MS = 30000; // a full cycle takes a few seconds; older sets are dropped
+// Third page kind (addon 0.33+): recent "moments", two to a page (see BackstageForeverLiveMomentPages).
+// A moment is new when its (character, seq, type, a, b, c) has not been seen; one first seen
+// already older than MOMENT_MAX_AGE_S (the app started late, or a long fight) is remembered, not shown.
+const MOMENT_KIND = 3, MOMENT_FORMAT = 1, MOMENT_RING = 6, MOMENT_MAX_AGE_S = 120, MOMENT_SEEN_MS = 30 * 60000;
 const FRESH_MS = 4000;
 
 // Mirrors BackstageForeverLiveIdentity: binds frames to the saved character (UnitGUID).
@@ -189,6 +193,37 @@ function parsePage(b) {
     if (id) ids.push({ id, complete: Boolean(b[22] & (1 << k)) });
   }
   return { kind: KIND[b[1]], index, count, generation: b[3], identity: (b[23] << 8) | b[24], total, ids };
+}
+// Mirror of BackstageForeverLiveMomentPages (tests and fixtures). events newest first: { type, seq, age, a, b, c }.
+function encodeMomentPages(events, identity = 0) {
+  const n = Math.min(events.length, MOMENT_RING), count = Math.ceil(n / 2), pages = [];
+  for (let p = 0; p < count; p++) {
+    const b = new Array(PAYLOAD_BYTES).fill(0);
+    b[0] = PAGE_VERSION; b[1] = MOMENT_KIND; b[2] = p * 16 + count; b[3] = events[0].seq & 255;
+    for (let k = 0; k < 2; k++) {
+      const at = p * 2 + k; if (at >= n) break;
+      const e = events[at], o = 4 + k * 9;
+      b[o] = e.type & 255; b[o + 1] = e.seq & 255; b[o + 2] = Math.max(0, Math.min(255, Math.floor(e.age || 0)));
+      b[o + 3] = (e.a >> 16) & 255; b[o + 4] = (e.a >> 8) & 255; b[o + 5] = e.a & 255; b[o + 6] = (e.b >> 8) & 255; b[o + 7] = e.b & 255; b[o + 8] = (e.c || 0) & 255;
+    }
+    b[22] = MOMENT_FORMAT; b[23] = (identity >> 8) & 255; b[24] = identity & 255; b[25] = n;
+    b[26] = crc8(b, PAYLOAD_BYTES - 1);
+    pages.push(b);
+  }
+  return pages;
+}
+// One moments page -> { index, count, newest, identity, total, moments: [{ type, seq, ageS, a, b, c }] }, or null.
+function parseMomentPage(b) {
+  if (!b || b[0] !== PAGE_VERSION || b[1] !== MOMENT_KIND || b[22] !== MOMENT_FORMAT) return null;
+  const index = b[2] >> 4, count = b[2] & 15, total = b[25];
+  if (!count || index >= count || total > MOMENT_RING) return null;
+  const moments = [];
+  for (let k = 0; k < 2 && index * 2 + k < total; k++) {
+    const o = 4 + k * 9;
+    if (!b[o] || !b[o + 1]) continue;
+    moments.push({ type: b[o], seq: b[o + 1], ageS: b[o + 2], a: (b[o + 3] << 16) | (b[o + 4] << 8) | b[o + 5], b: (b[o + 6] << 8) | b[o + 7], c: b[o + 8] });
+  }
+  return { kind: "moments", index, count, newest: b[3], identity: (b[23] << 8) | b[24], total, moments };
 }
 function decodeCells(cells) {
   if (!Array.isArray(cells) || cells.length < MARKERS) return null;
@@ -488,7 +523,8 @@ class LiveBridge {
         this.signal = "live"; this.misses = 0;
         if (!this.strip || this.strip.mode !== decoded.mode || this.strip.corner !== corner || this.strip.pitch !== decoded.pitch) changed = true;
         this.strip = { mode: decoded.mode, version: decoded.version, corner, pitch: decoded.pitch, width: decoded.footprint.width, height: decoded.footprint.height };
-        if (decoded.page && this.page(parsePage(decoded.page))) changed = true;
+        if (decoded.page && decoded.page[1] === MOMENT_KIND) this.momentPage(parseMomentPage(decoded.page));
+        else if (decoded.page && this.page(parsePage(decoded.page))) changed = true;
         // A compact strip needs only a small slice of its corner.
         if (decoded.mode === "compact" && decoded.pitch <= 4) this.setRegion(corner, COMPACT_REGION);
         else this.setRegion(corner, REGION);
@@ -524,6 +560,26 @@ class LiveBridge {
     if (have && have.generation === set.generation) have.at = at;
     return false;
   }
+  /** New moments from a moments page are passed to subscribeMoments listeners, once each. */
+  momentPage(pg) {
+    // Moments bind to the character on the main row, like quest pages.
+    if (!pg || pg.identity !== this.frame?.characterHash) return [];
+    const at = this.now(), fresh = [];
+    this.momentSeen ||= new Map();
+    for (const [k, t] of this.momentSeen) if (at - t > MOMENT_SEEN_MS) this.momentSeen.delete(k);
+    for (const m of pg.moments) {
+      const key = [pg.identity, m.seq, m.type, m.a, m.b, m.c].join(":");
+      if (this.momentSeen.has(key)) continue;
+      this.momentSeen.set(key, at);
+      if (m.ageS > MOMENT_MAX_AGE_S) continue;
+      fresh.push({ ...m, characterHash: pg.identity, at: at - m.ageS * 1000 });
+    }
+    // Oldest first, so a burst is told in the order it happened.
+    fresh.sort((x, y) => x.at - y.at || x.seq - y.seq);
+    for (const m of fresh) for (const fn of this.momentListeners || []) { try { fn(m); } catch {} }
+    return fresh;
+  }
+  subscribeMoments(fn) { (this.momentListeners ||= new Set()).add(fn); return () => this.momentListeners.delete(fn); }
   /** Live frame only while fresh; older frames are never presented as live. */
   current() {
     if (!this.frame || this.now() - this.frame.receivedAt > FRESH_MS) return null;
@@ -548,4 +604,4 @@ class LiveBridge {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { encodePages, parsePage, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };
+module.exports = { encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };

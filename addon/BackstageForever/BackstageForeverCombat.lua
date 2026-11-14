@@ -21,14 +21,15 @@ local function say(m)
 end
 local WINDOW=8 -- seconds of damage taken that explain a death
 
--- Pure: recent hits -> a short review. hits: {{t,source,amount,spell,level,elite}}, now: time of death.
+-- Pure: recent hits -> a short review. hits: {{t,source,amount,spell,level,elite,npc}}, now: time of death.
+-- tipCode (for the desktop app's death screen): 1 several enemies, 2 elite, 3 higher level, 4 a spell, 5 basics.
 function BackstageForeverDeathReview(hits,now,myLevel)
     local by={}
     for _,h in ipairs(type(hits)=='table' and hits or {}) do
         if type(h)=='table' and h.t and now-h.t<=WINDOW and (h.amount or 0)>0 then
             local k=h.source or 'Something'
-            local e=by[k] or {source=k,amount=0,hits=0,level=h.level,elite=h.elite,spell=nil}
-            e.amount=e.amount+h.amount;e.hits=e.hits+1;e.spell=e.spell or h.spell;e.level=e.level or h.level;e.elite=e.elite or h.elite
+            local e=by[k] or {source=k,amount=0,hits=0,level=h.level,elite=h.elite,spell=nil,npc=h.npc}
+            e.amount=e.amount+h.amount;e.hits=e.hits+1;e.spell=e.spell or h.spell;e.level=e.level or h.level;e.elite=e.elite or h.elite;e.npc=e.npc or h.npc
             by[k]=e
         end
     end
@@ -38,13 +39,13 @@ function BackstageForeverDeathReview(hits,now,myLevel)
     if #list==0 then return nil end
     local top,total=list[1],0
     for _,e in ipairs(list) do total=total+e.amount end
-    local tip
-    if #list>=3 then tip='Several enemies at once: pull one at a time, and back away from groups.'
-    elseif top.elite then tip='That was an elite: much tougher than normal. Bring a group or come back a few levels higher.'
-    elseif top.level and myLevel and top.level>=myLevel+3 then tip='It was '..(top.level-myLevel)..' levels above you. Quest somewhere closer to your level first.'
-    elseif top.spell then tip='Most damage came from '..top.spell..'. Interrupt or move out of it next time.'
-    else tip='Eat or drink to full health between fights, and use your strongest abilities early.' end
-    return {killer=top.source,share=floor(top.amount/max(1,total)*100+.5),others=#list-1,level=top.level,elite=top.elite,spell=top.spell,tip=tip}
+    local tip,code
+    if #list>=3 then tip,code='Several enemies at once: pull one at a time, and back away from groups.',1
+    elseif top.elite then tip,code='That was an elite: much tougher than normal. Bring a group or come back a few levels higher.',2
+    elseif top.level and myLevel and top.level>=myLevel+3 then tip,code='It was '..(top.level-myLevel)..' levels above you. Quest somewhere closer to your level first.',3
+    elseif top.spell then tip,code='Most damage came from '..top.spell..'. Interrupt or move out of it next time.',4
+    else tip,code='Eat or drink to full health between fights, and use your strongest abilities early.',5 end
+    return {killer=top.source,share=floor(top.amount/max(1,total)*100+.5),others=#list-1,level=top.level,elite=top.elite,spell=top.spell,tip=tip,tipCode=code,npc=top.npc}
 end
 -- Pure: one fight summary from totals.
 function BackstageForeverFightSummary(damage,healing,seconds)
@@ -53,6 +54,11 @@ function BackstageForeverFightSummary(damage,healing,seconds)
 end
 
 local me,hits,fight,fights,best=nil,{},nil,{},nil
+local function npcOf(guid)
+    if type(guid)~='string' then return nil end
+    local kind,id=guid:match('^(%a+)%-%d+%-%d+%-%d+%-%d+%-(%d+)')
+    if kind=='Creature' or kind=='Vehicle' then return tonumber(id) end
+end
 local levels={} -- guid -> {level,elite} seen on targets/mouseover
 local function remember(unit)
     local guid=call(UnitGUID,unit);if not guid then return end
@@ -70,7 +76,7 @@ local function onCombatLog()
         elseif sub=='SPELL_DAMAGE' or sub=='SPELL_PERIODIC_DAMAGE' or sub=='RANGE_DAMAGE' then amount=a15;spell=a13 end
         if type(amount)=='number' and amount>0 then
             local info=levels[srcGUID] or {}
-            hits[#hits+1]={t=now,source=srcName,amount=amount,spell=spell,level=info.level,elite=info.elite}
+            hits[#hits+1]={t=now,source=srcName,amount=amount,spell=spell,level=info.level,elite=info.elite,npc=npcOf(srcGUID)}
             while #hits>40 or (hits[1] and now-hits[1].t>WINDOW) do table.remove(hits,1) end
         end
     elseif srcGUID==me and fight then
@@ -91,6 +97,8 @@ end
 local function onDeath()
     local review=BackstageForeverDeathReview(hits,call(GetTime) or 0,call(UnitLevel,'player'))
     hits={}
+    -- The desktop app's death screen gets the same review over the live strip.
+    if type(BackstageForeverMomentsDeath)=='function' then pcall(BackstageForeverMomentsDeath,review) end
     if not review then return end
     local who=review.killer..(review.level and (' (level '..review.level..(review.elite and ', elite' or '')..')') or (review.elite and ' (elite)' or ''))
     local line=who..' did '..review.share..'% of the damage'..(review.others>0 and (', with '..review.others..' other'..(review.others==1 and '' or 's')) or '')..'.'

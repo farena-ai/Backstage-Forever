@@ -31,6 +31,10 @@ local PAGE_IDS = 6                  -- quest ids per page
 local PAGE_SECONDS = 1              -- each page stays up this long (the app samples twice a second)
 local PAGE_SECONDS_IDLE = 2         -- while nothing changes
 local MAX_TURNED_IN = 18
+-- Since 0.33 a third page kind carries "moments" (a death, a notable kill, a profession
+-- milestone...): a ring of the newest MOMENT_RING, two to a page. While a moment is new its
+-- page is shown first and then every other page until it has been on screen MOMENT_SHOWS times.
+local MOMENT_KIND, MOMENT_FORMAT, MOMENT_RING, MOMENT_SHOWS = 3, 1, 6, 4
 -- Update rate: 5 checks a second; after IDLE_AFTER seconds without any change, once a second.
 -- A heartbeat byte still counts up every HEARTBEAT seconds so the app knows the game is live.
 local TICK, IDLE_TICK, IDLE_AFTER, HEARTBEAT = .2, 1, 5, 2
@@ -153,6 +157,39 @@ function BackstageForeverLivePages(kind,entries,identity)
         b[23]=bits
         put16(b,24,identity or 0)
         b[26]=clampByte(n)
+        b[27]=crc8(b,26)
+        pages[p]=b
+    end
+    return pages
+end
+-- Pure: moments (newest first: {type,seq,at,a,b,c}) -> page byte arrays, two moments a page.
+-- b1 version, b2 kind 3, b3 index*16+count, b4 newest seq; b5..b13 and b14..b22 one moment each:
+-- type, seq (1-255), age in seconds (capped 255), a (24-bit), b (16-bit), c (8-bit);
+-- b23 moments format (1), b24-25 identity, b26 moments in the ring, b27 crc. No moments: no pages.
+function BackstageForeverLiveMomentPages(events,identity,now)
+    events=type(events)=='table' and events or {}
+    local n=math.min(#events,MOMENT_RING)
+    local pages={}
+    if n==0 then return pages end
+    now=tonumber(now) or 0
+    local count=math.ceil(n/2)
+    for p=1,count do
+        local b={}
+        for i=1,PAYLOAD_BYTES do b[i]=0 end
+        b[1]=PAGE_VERSION b[2]=MOMENT_KIND b[3]=(p-1)*16+count
+        b[4]=clampByte(type(events[1])=='table' and events[1].seq or 0)
+        for k=0,1 do
+            local at=(p-1)*2+k+1
+            local e=events[at]
+            if at<=n and type(e)=='table' then
+                local o=5+k*9
+                b[o]=clampByte(e.type) b[o+1]=clampByte(e.seq) b[o+2]=clampByte(now-(tonumber(e.at) or now))
+                put24(b,o+3,e.a) put16(b,o+6,e.b) b[o+8]=clampByte(e.c)
+            end
+        end
+        b[23]=MOMENT_FORMAT
+        put16(b,24,identity or 0)
+        b[26]=n
         b[27]=crc8(b,26)
         pages[p]=b
     end
@@ -359,6 +396,41 @@ end
 -- Second row: cycle through quest log and turned-in pages, one per PAGE_SECONDS.
 local turnedIn={}
 local pages,pageIndex,pageClock={},0,99
+local moments,momentDue,lastWasMoment,momentIndex={},false,false,0
+-- Records a moment for the desktop app (see BackstageForeverMoments.lua for the types) and
+-- puts it on the strip at the next page. Returns its sequence number (1-255, kept across
+-- reloads so the app never mistakes a new moment for one it has already shown).
+function BackstageForeverLiveMoment(kind,a,b,c)
+    kind=tonumber(plain(kind))
+    if not kind or kind<1 or kind>255 then return nil end
+    local s=settings()
+    local seq=(floor(tonumber(s.momentSeq) or 0)%255)+1
+    s.momentSeq=seq
+    table.insert(moments,1,{type=floor(kind),seq=seq,at=call(GetTime) or 0,a=tonumber(plain(a)) or 0,b=tonumber(plain(b)) or 0,c=tonumber(plain(c)) or 0,shown=0})
+    while #moments>MOMENT_RING do table.remove(moments) end
+    momentDue=true pageClock=99 quiet=0
+    return seq
+end
+function BackstageForeverLiveMomentRing() return moments end
+-- The moments page to show now, or nil when every moment has been shown often enough.
+local function momentPage()
+    local mp=BackstageForeverLiveMomentPages(moments,BackstageForeverLiveIdentity(call(UnitGUID,'player')),call(GetTime) or 0)
+    if #mp==0 then momentDue=false return nil end
+    local pick
+    if momentDue then pick=1
+    else
+        for i=1,#mp do
+            local j=(momentIndex+i-1)%#mp+1
+            local e1,e2=moments[j*2-1],moments[j*2]
+            if (e1 and e1.shown<MOMENT_SHOWS) or (e2 and e2.shown<MOMENT_SHOWS) then pick=j break end
+        end
+    end
+    momentDue=false
+    if not pick then return nil end
+    momentIndex=pick
+    for k=0,1 do local e=moments[pick*2-1+k] if e then e.shown=e.shown+1 end end
+    return mp[pick]
+end
 function BackstageForeverLiveTurnedIn(id)
     id=tonumber(plain(id))
     if not id or id<=0 then return end
@@ -370,18 +442,26 @@ end
 local function paintPage(dt,idle)
     pageClock=pageClock+dt
     if pageClock<(idle and PAGE_SECONDS_IDLE or PAGE_SECONDS) then return end
-    pageClock=0
+    -- In combat the page holds (and a moment waiting to be shown goes up as soon as it ends).
     if call(InCombatLockdown) then return end
-    pageIndex=pageIndex+1
-    if pageIndex>#pages then
-        local identity=BackstageForeverLiveIdentity(call(UnitGUID,'player'))
-        pages={}
-        for _,p in ipairs(BackstageForeverLivePages(1,questLog(),identity)) do pages[#pages+1]=p end
-        for _,p in ipairs(BackstageForeverLivePages(2,turnedIn,identity)) do pages[#pages+1]=p end
-        pageIndex=1
+    pageClock=0
+    -- New moments first, then alternating with the quest pages so those stay fresh.
+    local page
+    if momentDue or not lastWasMoment then page=momentPage() end
+    lastWasMoment=page~=nil
+    if not page then
+        pageIndex=pageIndex+1
+        if pageIndex>#pages then
+            local identity=BackstageForeverLiveIdentity(call(UnitGUID,'player'))
+            pages={}
+            for _,p in ipairs(BackstageForeverLivePages(1,questLog(),identity)) do pages[#pages+1]=p end
+            for _,p in ipairs(BackstageForeverLivePages(2,turnedIn,identity)) do pages[#pages+1]=p end
+            pageIndex=1
+        end
+        page=pages[pageIndex]
     end
-    if shape.mode=='safe' then fill(shape.row1+1,BackstageForeverLiveCells(pages[pageIndex]))
-    else fill(shape.row1+1,BackstageForeverLiveCompactCells(pages[pageIndex],false)) end
+    if shape.mode=='safe' then fill(shape.row1+1,BackstageForeverLiveCells(page))
+    else fill(shape.row1+1,BackstageForeverLiveCompactCells(page,false)) end
 end
 local function apply()
     if not settings().enabled then if strip then pcall(strip.Hide,strip) pcall(strip.SetScript,strip,'OnUpdate',nil) end return end

@@ -142,7 +142,9 @@ if type(CreateFrame)=='function' then
             elseif event=='PLAYER_ENTERING_WORLD' or event=='ZONE_CHANGED_NEW_AREA' then
                 local inside,kind=call(IsInInstance)
                 if inside and (kind=='party' or kind=='raid') then first('dungeon') end
-                local z=zoneNow();if z then BackstageForeverJournalZone(z) end
+                local z=zoneNow()
+                -- A zone visited for the first time is also a moment for the desktop app.
+                if z and BackstageForeverJournalZone(z) and type(BackstageForeverMomentsZone)=='function' then pcall(BackstageForeverMomentsZone,z) end
             elseif event=='PLAYER_DEAD' then first('death')
             elseif event=='PLAYER_CONTROL_LOST' then if call(UnitOnTaxi,'player') then first('flight') end
             elseif event=='PLAYER_MOUNT_DISPLAY_CHANGED' then if call(IsMounted) then first('mount') end
