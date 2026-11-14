@@ -1,7 +1,8 @@
 "use strict";
 // In-game answer panel (0.38, roadmap A15 / 3.4): a small frameless always-on-top window that
 // shows the answer to a question typed in game, over the top-right corner of the game window.
-// It never takes focus from the game (focusable: false, shown inactive), never sends input to the
+// It never takes focus from the game when it appears (shown inactive); a click on it may focus it,
+// which Windows needs for real mouse clicks to reach a frameless always-on-top window, never sends input to the
 // game and only displays. Its own preload and IPC channels, accepted only from that window.
 const path = require("node:path");
 const fs = require("node:fs");
@@ -65,7 +66,9 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
   let win = null, state = null, timer = null, hold = false, prefs = DEFAULTS, placing = false;
   try { prefs = cleanSettings(JSON.parse(fs.readFileSync(file, "utf8"))); } catch { prefs = { ...DEFAULTS }; }
   const persist = () => { try { if (file) fs.writeFileSync(file, JSON.stringify(prefs)); } catch {} };
-  const valid = (event) => win && !win.isDestroyed() && event.sender === win.webContents && event.senderFrame === win.webContents.mainFrame && event.senderFrame.url === page;
+  // The panel window only ever shows our own page (navigation and new windows are blocked), so the
+  // sender being its main frame is the check; comparing file URLs broke in the installed app.
+  const valid = (event) => Boolean(win && !win.isDestroyed() && event.sender === win.webContents && event.senderFrame === win.webContents.mainFrame);
   const guard = (event) => { if (!valid(event)) throw Error("Untrusted panel request."); };
   ipcMain.handle("askPanel:state", (event) => { guard(event); return state; });
   ipcMain.handle("askPanel:close", (event) => { guard(event); hide(); return true; });
@@ -93,7 +96,7 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
   function create() {
     win = new BrowserWindow({
       ...SIZE, show: false, frame: false, resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
-      alwaysOnTop: true, skipTaskbar: true, focusable: false, title: "Backstage Forever answer", backgroundColor: "#16110c",
+      alwaysOnTop: true, skipTaskbar: true, focusable: true, title: "Backstage Forever answer", backgroundColor: "#16110c",
       webPreferences: { preload: path.join(__dirname, "..", "ask-panel-preload.cjs"), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, backgroundThrottling: false },
     });
     // Above full-screen (borderless) games, like the radar.
@@ -112,8 +115,25 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
     place();
     win.loadURL(page);
   }
+  // The page says when the mouse is over it, but a full-screen game can take the mouse back without
+  // the page ever hearing that it left, which held the panel open for good. While held, look where
+  // the mouse really is each second and let go once it is off the panel.
+  let holdCheck = null;
+  function overPanel() {
+    try {
+      const c = screen.getCursorScreenPoint(), b = win && !win.isDestroyed() && win.isVisible() ? win.getBounds() : null;
+      return Boolean(b && c.x >= b.x && c.x < b.x + b.width && c.y >= b.y && c.y < b.y + b.height);
+    } catch { return false; }
+  }
+  function watchHold() {
+    clearTimer(holdCheck); holdCheck = null;
+    if (!hold) return;
+    holdCheck = setTimer(() => { holdCheck = null; if (hold && !overPanel()) { hold = false; schedule(); } else watchHold(); }, 1000);
+    holdCheck?.unref?.();
+  }
   function schedule() {
     clearTimer(timer); timer = null;
+    watchHold();
     if (hold || !state || state.status === "thinking" || !prefs.hideAfterS) return;
     timer = setTimer(() => { timer = null; if (!hold) hide(); }, prefs.hideAfterS * 1000);
     timer?.unref?.();
@@ -130,7 +150,7 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
     schedule();
     return true;
   }
-  function hide() { clearTimer(timer); timer = null; if (win && !win.isDestroyed()) win.hide(); }
+  function hide() { clearTimer(timer); timer = null; hold = false; clearTimer(holdCheck); holdCheck = null; if (win && !win.isDestroyed()) win.hide(); }
   return {
     show, hide, where,
     settings: () => ({ enabled: prefs.enabled, hideAfterS: prefs.hideAfterS, moved: Boolean(prefs.position), choices: [...HIDE_CHOICES] }),

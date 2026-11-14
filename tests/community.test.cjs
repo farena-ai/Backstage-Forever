@@ -162,7 +162,7 @@ test("network down: every call fails quietly, backs off and retries later", asyn
   clock.advance(C.SUBMIT_EVERY);
   assert.equal((await s.submit()).status, "offline");
   assert.equal(fetch.calls.length, before + 1);
-  // Exponential: the second failure waits twice as long as the first (1 min, 2 min, … up to 6 h).
+  // Exponential: the second failure waits twice as long as the first (1 min, 2 min, … up to 1 h).
   assert.equal(Date.parse(s.status().retryAt) - clock.now(), 2 * 60 * 1000);
   assert.equal(s.status().sent, 0);
   await assert.rejects(s.forget(), /could not be reached/);
@@ -399,4 +399,19 @@ test("every checkbox in the community form has an explicit value, so the app doe
   const boxes = src.match(/<input type="checkbox"[^>]*>/g) || [];
   assert.ok(boxes.length > 0);
   for (const b of boxes) assert.match(b, /value="on"/, b);
+});
+
+test("waits after failures never exceed an hour, and turning sharing on again retries straight away", async () => {
+  let down = true;
+  const fetch = fakeFetch(() => { if (down) throw new TypeError("fetch failed"); return json(200, { ok: true, accepted: 1, duplicate: 0, rejected: 0 }); });
+  const { s, clock } = service({ fetch });
+  for (let i = 0; i < 12; i++) { await s.submit({ force: true }); }
+  const wait = Date.parse(s.status().retryAt) - clock.now();
+  assert.ok(wait > 0 && wait <= 60 * 60 * 1000, "capped at one hour, was " + wait);
+  down = false;
+  clock.advance(10 * 60 * 1000);
+  assert.equal((await s.submit()).status, "waiting", "still inside the wait");
+  s.setSettings({ share: true });
+  assert.equal(s.status().retryAt ?? null, null, "turning sharing on clears the wait");
+  assert.notEqual((await s.submit()).status, "waiting");
 });

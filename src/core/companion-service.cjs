@@ -7,11 +7,15 @@ const {resolveNpcLocation}=require('./npc-location.cjs');
 const {uuid}=require('./memory-data.cjs');
 const {createCompanionTools}=require('./companion-tools.cjs');
 const {quickAnswer}=require('./quick-answers.cjs');
+const {resolveTalentQuestion,talentBlock,talentQuickAnswer,TALENT_MAX}=require('./talent-context.cjs');
+// Providers accept at most this much context text (ChatGPT subscription limit).
+const CONTEXT_LIMIT=20000;
 // These events cancel work/drafts without changing completed conversation ownership.
 const SOFT_REASONS=new Set(['renderer-context','response-stop','memory-save']);
 class CompanionService {
-  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,lookups=true,live=null,advise=null,localAi=null,onReset=()=>{}}){
-    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,lookups,live,advise,localAi,onReset});
+  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,lookups=true,live=null,advise=null,localAi=null,talents=null,onReset=()=>{}}){
+    // talents: { trees(className), build() } read from the player's own game client (never bundled).
+    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,lookups,live,advise,localAi,talents,onReset});
     this.session=new ConversationSession();this.rootEpoch=0;
     context.subscribe(({reason})=>{
       if(SOFT_REASONS.has(reason))return;
@@ -44,14 +48,27 @@ class CompanionService {
       if(prepared.meta.resetReason==='scope-change')this.travel?.clear();
       const refusal=scopeResponse(input.prompt);
       if(refusal){this.travel?.clear();return {text:refusal,kind:'scope',conversation:prepared.meta};}
-      const npc=resolveNpcLocation(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile,currentIndex:input.shareProfile?this.knowledge.index(profile||{}):null,historicalPack:this.npcReference});
+      // Talent questions: WoW Forever's own trees from the game client. A clear talent question wins over
+      // NPC and travel matching ("Improved Renew only goes to 3/3" is not a trip).
+      let talent=null;
+      try{talent=this.talents?resolveTalentQuestion(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile,source:this.talents,previousQuestion:this.session.turns.at(-1)?.question}):null;}catch{talent=null;}
+      const talentFirst=Boolean(talent&&(talent.intent==='strong'||talent.talents?.length||talent.tabName||/\b\d{1,2}\s*\/\s*\d{1,2}\b/.test(input.prompt)));
+      if(talent&&(talent.status==='ask'||talent.status==='points')){
+        // No class to answer for (ask, no AI call) or a pure points-per-level question: answered here.
+        const a=talentQuickAnswer(talent);
+        if(signal.aborted)throw signal.reason;
+        this.memory.complete(token,input.prompt,a.text);
+        if(!this.session.commit(prepared.token,{question:input.prompt,answer:a.text,kind:'quick'}))throw Error('Provider response is no longer current.');
+        this.travel?.clear();return {text:a.text,kind:'quick',topic:a.topic,conversation:prepared.meta};
+      }
+      const npc=talentFirst?null:resolveNpcLocation(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile,currentIndex:input.shareProfile?this.knowledge.index(profile||{}):null,historicalPack:this.npcReference});
       if(npc){
         if(signal.aborted)throw signal.reason;
         this.memory.complete(token,input.prompt,npc.text);
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:npc.text,kind:'npc'}))throw Error('Provider response is no longer current.');
         this.travel?.clear();return {text:npc.text,kind:'npc',npc:npc.dto,conversation:prepared.meta};
       }
-      const local=this.travel?.resolve(input.prompt,{profileId,shareProfile:input.shareProfile});
+      const local=talentFirst?null:this.travel?.resolve(input.prompt,{profileId,shareProfile:input.shareProfile});
       if(local){
         if(signal.aborted)throw signal.reason;
         this.memory.complete(token,input.prompt,local.text);
@@ -68,25 +85,30 @@ class CompanionService {
       // No model chosen: answer the common questions locally (quest how-to, next steps, training).
       if(!selected.model){
         const tools=createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow});
-        const quick=quickAnswer(input.prompt,{tools,live:liveFrame,advise:input.shareProfile&&this.advise?()=>this.advise(profileId):null});
+        const quick=quickAnswer(input.prompt,{tools,live:liveFrame,talent,advise:input.shareProfile&&this.advise?()=>this.advise(profileId):null});
         if(quick){
           if(signal.aborted)throw signal.reason;
           this.memory.complete(token,input.prompt,quick.text);
           if(!this.session.commit(prepared.token,{question:input.prompt,answer:quick.text,kind:'quick'}))throw Error('Provider response is no longer current.');
           this.travel?.clear();return {text:quick.text,kind:'quick',topic:quick.topic,conversation:prepared.meta};
         }
-        throw Error('Choose a model in Connections for AI questions. Local NPC locations, travel, quest how-to, next steps and training need no model.');
+        throw Error('Choose a model in Connections for AI questions. Local NPC locations, travel, quest how-to, next steps, training and talents need no model.');
       }
       let context=this.ai.profileContext(state,profileId,input.shareProfile,options);
       // The live link is a current game reading; it outranks the saved snapshot for position.
       if(liveFrame&&context)context+='\n\nLive game link (read from the game screen '+Math.round((liveFrame.ageMs||0)/1000)+'s ago; current, overrides savedLocation for position/level/target): '+JSON.stringify(require('./companion-tools.cjs').liveSummary(liveFrame));
+      // Bounded talent facts for this class, within what every transport accepts. The Claude
+      // subscription transport takes them separately (its context is the approved profile record).
+      const talentText=talent?talentBlock(talent,{maxChars:Math.max(1500,Math.min(TALENT_MAX,CONTEXT_LIMIT-(context||'').length-2))}):'';
+      const claudeSubscription=selected.authMode==='subscription'&&input.provider==='anthropic';
+      if(talentText&&!claudeSubscription)context=[context,talentText].filter(Boolean).join('\n\n');
       // Read-only local lookups (NPCs, quests, items, travel, character) the model may call.
       const tools=this.lookups?createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow}):undefined;
       const request={model:selected.model,prompt:prepared.composedPrompt,context,signal,...(tools?{tools}:{})};
       let reply;
       if(selected.authMode==='subscription'&&input.provider!=='ollama'){
         if(input.provider==='openai')reply=await this.chatgpt.ask(request);
-        else if(input.provider==='anthropic')reply=await this.claude.ask({...request,context:input.shareProfile?this.ai.approvedProfile(profile,options):undefined,live:liveFrame?require('./companion-tools.cjs').liveSummary(liveFrame):undefined});
+        else if(input.provider==='anthropic')reply=await this.claude.ask({...request,context:input.shareProfile?this.ai.approvedProfile(profile,options):undefined,live:liveFrame?require('./companion-tools.cjs').liveSummary(liveFrame):undefined,...(talentText?{talents:talentText}:{})});
         else throw Error('Subscription inference is unavailable for this provider. Choose API mode explicitly if desired.');
       }else{
         // The built-in engine starts on first use (a few seconds) and stays up until the app closes.

@@ -13,7 +13,8 @@ const { atomic } = require("./store.cjs");
 const BASE_URL = "https://bf.backstagecoding.com";
 const SUBMIT_EVERY = 30 * 60 * 1000, SUBMIT_MIN_GAP = 10 * 60 * 1000, START_DELAY = 60 * 1000;
 const PACK_EVERY = 24 * 60 * 60 * 1000, PACK_CHECK = 60 * 60 * 1000;
-const BACKOFF_MIN = 60 * 1000, BACKOFF_MAX = 6 * 60 * 60 * 1000;
+// Waits double after each failed try, up to an hour, so an outage (or a new address) recovers on its own soon.
+const BACKOFF_MIN = 60 * 1000, BACKOFF_MAX = 60 * 60 * 1000;
 const MAX_ENTRIES = 500, MAX_FACTS = 5000, MAX_BODY = 256 * 1024, BATCHES_PER_TICK = 3;
 const MAX_SENT = 60000, MAX_PACK_BYTES = 8 * 1024 * 1024, MAX_RESPONSE = 64 * 1024, MAX_LOG_BYTES = 65536;
 const TIMEOUT = 20000;
@@ -392,6 +393,8 @@ class CommunityService {
   setSettings(input) {
     if (!input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).some((k) => !["share", "download"].includes(k))) throw Error("Invalid community settings.");
     for (const k of ["share", "download"]) if (input[k] !== undefined && typeof input[k] !== "boolean") throw Error("Invalid community settings.");
+    // Turning sharing or download on is a request to try now: drop any wait from earlier failures.
+    if (input.share === true || input.download === true) { this.settings.backoffUntil = null; this.settings.failures = 0; }
     if (typeof input.share === "boolean") this.settings.share = input.share;
     if (typeof input.download === "boolean") { this.settings.download = input.download; this.cachedIndex = undefined; }
     this.saveSettings();

@@ -402,3 +402,18 @@ test("no prices, times, speed rankings or safety promises are manufactured", () 
   assert.match(text, /unknown/i);
 });
 test('generic quest routes do not become city travel, but geographic quest travel remains recognized',()=>{assert.equal(intent('Explain the quest route'),null);assert.equal(intent('What questing route should I use?'),null);assert.equal(intent('quest route from org to tb').status,'ready');assert.equal(intent('travel from unknownville to TB').status,'clarify');});
+test("talent rank remarks never become trips (real exchange: 'Improved renew only goes to 3/3')", () => {
+  for (const q of [
+    "Improved renew only goes to 3/3",
+    "Improved renew only goes to 3 / 3",
+    "Spell Warding goes up to 5",
+    "Divine Fury goes to 5/5",
+    "holy specialization maxes at rank 5",
+    "put my points to divine fury",
+    "Twilight Focus goes to tier 2",
+  ]) {
+    assert.equal(intent(q, { profile: matching }), null, q);
+    assert.equal(intent("This is for wow forever, not retail", { previousQuestion: q, profile: matching }), null, q);
+  }
+  assert.equal(intent("how do I get from org to tb")?.status, "ready");
+});

@@ -207,22 +207,37 @@ local function ago(at)
     local s=math.max(0,now-at)
     if s<60 then return 'just now' elseif s<3600 then return floor(s/60)..' min ago' else return floor(s/3600)..' h ago' end
 end
+-- One line of a question in the box: at most n characters (UTF-8 aware), then an ellipsis.
+local function short(text,n)
+    if type(text)~='string' then return '' end
+    local count,cut=0,nil
+    for pos in text:gmatch('()[^\128-\191]') do count=count+1 if count==n+1 then cut=pos break end end
+    return cut and (text:sub(1,cut-1)..'...') or text
+end
+-- The box grows with its text: the status under the buttons, then the recent list, never overlapping.
+local function fit()
+    if not ui or not box then return end
+    local function h(fs,min) local v=tonumber(method(fs,'GetStringHeight')) return (v and v>0) and v or min end
+    local total=128+h(ui.status,12)+10+h(ui.recentTitle,12)+4+h(ui.recent,12)+14
+    method(box,'SetHeight',math.max(214,floor(total+.5)))
+end
 local function paintBox(status,clean)
     if not ui then return end
     if status then
         local text=BackstageForeverAskMessage(status)
-        if clean and (status=='sent' or status=='queued') then text=text..'\n|cff9d9d9dYou asked:|r '..clean:gsub('|','||') end
+        if clean and (status=='sent' or status=='queued') then text=text..'\n|cff9d9d9dYou asked:|r '..(short(clean,90):gsub('|','||')) end
         method(ui.status,'SetText',text)
     end
     local lines={}
     for i=1,math.min(3,#settings.recent) do
         local r=settings.recent[i]
         local when=ago(r.at)
-        lines[#lines+1]='• '..r.text:gsub('|','||')..' |cff9d9d9d('..(STATUS_WORDS[r.status] or r.status)..(when~='' and ', '..when or '')..')|r'
+        lines[#lines+1]='• '..(short(r.text,64):gsub('|','||'))..' |cff9d9d9d('..(STATUS_WORDS[r.status] or r.status)..(when~='' and ', '..when or '')..')|r'
     end
     method(ui.recent,'SetText',#lines>0 and table.concat(lines,'\n') or '|cff9d9d9dNo questions yet.|r')
     local n=BackstageForeverAskLength(method(ui.edit,'GetText') or '')
     method(ui.count,'SetText',n..'/'..MAX_CHARS)
+    fit()
 end
 local function send()
     if not ui then return end
@@ -292,10 +307,13 @@ local function buildBox()
         method(ui.edit,'SetText','')
         closeBox()
     end)
-    ui.status=text('GameFontHighlightSmall',194,-100,174)
-    ui.recentTitle=text('GameFontNormalSmall',12,-132,356)
+    -- Stacked: each line starts under the one above, however many lines it wraps to.
+    ui.status=text('GameFontHighlightSmall',12,-128,356)
+    ui.recentTitle=method(box,'CreateFontString',nil,'OVERLAY','GameFontNormalSmall')
+    if ui.recentTitle then method(ui.recentTitle,'SetPoint','TOPLEFT',ui.status,'BOTTOMLEFT',0,-10);method(ui.recentTitle,'SetWidth',356);method(ui.recentTitle,'SetJustifyH','LEFT') end
     method(ui.recentTitle,'SetText','Recent questions')
-    ui.recent=text('GameFontHighlightSmall',12,-148,356)
+    ui.recent=method(box,'CreateFontString',nil,'OVERLAY','GameFontHighlightSmall')
+    if ui.recent then method(ui.recent,'SetPoint','TOPLEFT',ui.recentTitle,'BOTTOMLEFT',0,-4);method(ui.recent,'SetWidth',356);method(ui.recent,'SetJustifyH','LEFT') end
     method(box,'Hide')
     return box
 end

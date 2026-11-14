@@ -57,6 +57,7 @@ function fakeElectron() {
     getPosition() { return this.position; }
     showInactive() { this.visible = true; this.calls.push(["showInactive"]); }
     show() { this.calls.push(["show"]); } focus() { this.calls.push(["focus"]); }
+    getBounds() { return this.bounds; }
     hide() { this.visible = false; } isVisible() { return this.visible; } isDestroyed() { return this.destroyed; } destroy() { this.destroyed = true; }
   }
   const ipcMain = { handle: (c, f) => handlers.set(c, f), removeHandler: (c) => handlers.delete(c) };
@@ -66,13 +67,13 @@ function fakeElectron() {
   return { BrowserWindow: Win, ipcMain, screen, handlers, windows, timers, setTimer, clearTimer };
 }
 
-test("the panel window: frameless, always on top above full-screen games, off the taskbar, never focusable, shown inactive", () => {
+test("the panel window: frameless, always on top above full-screen games, off the taskbar, shown inactive (never steals focus when it appears; a click may focus it so real clicks land)", () => {
   const e = fakeElectron(), dir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-ask-panel-"));
   let rect = { x: 1920, y: 0, width: 2560, height: 1440 }, opened = 0;
   const panel = P.createAskPanel({ ...e, rendererDir: path.join(root, "src/renderer"), dataDir: dir, gameRect: () => rect, onOpenApp: () => opened++ });
   assert.equal(panel.show({ status: "thinking", question: "Where is the inn?" }), true);
   const w = e.windows[0];
-  assert.equal(w.opts.frame, false); assert.equal(w.opts.alwaysOnTop, true); assert.equal(w.opts.skipTaskbar, true); assert.equal(w.opts.focusable, false); assert.equal(w.opts.show, false);
+  assert.equal(w.opts.frame, false); assert.equal(w.opts.alwaysOnTop, true); assert.equal(w.opts.skipTaskbar, true); assert.equal(w.opts.focusable, true); assert.equal(w.opts.show, false);
   assert.equal(w.opts.width, 420); assert.equal(w.opts.height, 260);
   assert.equal(w.opts.webPreferences.sandbox, true); assert.equal(w.opts.webPreferences.contextIsolation, true); assert.equal(w.opts.webPreferences.nodeIntegration, false);
   assert.match(w.opts.webPreferences.preload, /ask-panel-preload\.cjs$/);
@@ -94,7 +95,18 @@ test("the panel window: frameless, always on top above full-screen games, off th
   assert.equal(e.handlers.get("askPanel:state")(ev(w.webContents)).status, "answer");
   // Hovering holds it; leaving restarts the clock; the clock hides it.
   e.handlers.get("askPanel:hold")(ev(w.webContents), true);
-  assert.equal(e.timers.filter((t) => !t.cleared).length, 0);
+  // Held: no auto-hide, only a once-a-second look at where the mouse really is.
+  let live2 = e.timers.filter((t) => !t.cleared);
+  assert.deepEqual(live2.map((t) => t.ms), [1000]);
+  // Mouse still on the panel: it stays held and looks again.
+  e.screen.getCursorScreenPoint = () => ({ x: w.bounds.x + 10, y: w.bounds.y + 10 });
+  live2[0].cleared = true; live2[0].fn();
+  assert.deepEqual(e.timers.filter((t) => !t.cleared).map((t) => t.ms), [1000]);
+  // The game took the mouse back without the page hearing it leave: the hold lets go, the clock runs.
+  e.screen.getCursorScreenPoint = () => ({ x: 10, y: 10 });
+  live2 = e.timers.filter((t) => !t.cleared); live2[0].cleared = true; live2[0].fn();
+  assert.deepEqual(e.timers.filter((t) => !t.cleared).map((t) => t.ms), [45000], "a stuck hold releases itself");
+  e.handlers.get("askPanel:hold")(ev(w.webContents), true);
   e.handlers.get("askPanel:hold")(ev(w.webContents), false);
   const due = e.timers.filter((t) => !t.cleared)[0]; due.cleared = true; due.fn();
   assert.equal(w.visible, false);

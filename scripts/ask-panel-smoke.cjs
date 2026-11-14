@@ -84,7 +84,7 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
     assert.match(text, /Companion · AI suggestion/);
     panel = await panelWindow();
     assert.equal(panel.focused, false, "the panel never takes focus"); assert.equal(panel.focusedWindow, false);
-    if (panel.focusable !== null) assert.equal(panel.focusable, false);
+    if (panel.focusable !== null) assert.equal(panel.focusable, true, "focusable on click so real clicks land; it still appears inactive");
     assert.equal(panel.top, true, "always on top");
     const b = panel.bounds, a = where.area;
     assert.deepEqual([b.width, b.height], [420, 260]);
@@ -116,6 +116,24 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
     assert.equal(panel.visible, false, "switched off: no panel");
     await page.locator("#ask-panel-toggle").check();
     await page.waitForFunction(async () => (await window.backstage.askInGameSettings()).enabled === true);
+    // BF_REAL_CLICK=1: a genuine Windows mouse click on the panel's close button (not Chrome's
+    // synthetic input), which is what a player does. Moves the mouse, so it is local only, never CI.
+    if (process.env.BF_REAL_CLICK === "1" && process.platform === "win32") {
+      await ask(9, "Where is the flight master?");
+      panel = null;
+      for (let i = 0; i < 100 && !(panel?.visible); i++) { panel = await panelWindow(); if (!panel?.visible) await new Promise((r) => setTimeout(r, 100)); }
+      assert.ok(panel?.visible, "panel back for the real click");
+      const view2 = app.windows().find((w) => /ask-panel\.html$/.test(w.url()));
+      const r = await view2.locator('[data-ap="close"]').evaluate((n) => { const b = n.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; });
+      const scale = await app.evaluate(({ screen }, bounds) => screen.getDisplayMatching(bounds).scaleFactor, panel.bounds);
+      const sx = Math.round((panel.bounds.x + r.x) * scale), sy = Math.round((panel.bounds.y + r.y) * scale);
+      const ps = `Add-Type -Name U -Namespace W -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y); [DllImport("user32.dll")] public static extern void mouse_event(uint f,uint x,uint y,uint d,System.UIntPtr e);'; [W.U]::SetCursorPos(${sx},${sy}); Start-Sleep -Milliseconds 150; [W.U]::mouse_event(2,0,0,0,[System.UIntPtr]::Zero); Start-Sleep -Milliseconds 60; [W.U]::mouse_event(4,0,0,0,[System.UIntPtr]::Zero)`;
+      require("node:child_process").execFileSync("powershell.exe", ["-NoProfile", "-Command", ps]);
+      let gone = false;
+      for (let i = 0; i < 30 && !gone; i++) { await new Promise((res) => setTimeout(res, 100)); gone = !(await panelWindow()).visible; }
+      assert.ok(gone, "a real mouse click on the close button hides the panel");
+      console.log("Real mouse click on the close button closed the panel.");
+    }
     console.log("Ask panel smoke passed");
   } finally {
     clearTimeout(watchdog);

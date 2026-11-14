@@ -250,3 +250,11 @@ test("the ask module is installed, routed by /bf, listed in help, and stays with
   const tga = fs.readFileSync(path.join(root, "addon/BackstageForever/Art/Buttons/ask.tga"));
   assert.deepEqual([tga[2], tga.readUInt16LE(12), tga.readUInt16LE(14), tga[16]], [2, 64, 64, 32], "64x64 uncompressed 32-bit TGA with alpha");
 });
+
+test("the owl box stacks its text (status, then Recent questions, then the list) and grows instead of overlapping", () => {
+  const src = require("node:fs").readFileSync(require("node:path").join(__dirname, "../addon/BackstageForever/BackstageForeverAsk.lua"), "utf8");
+  assert.match(src, /ui\.recentTitle,'SetPoint','TOPLEFT',ui\.status,'BOTTOMLEFT'/);
+  assert.match(src, /ui\.recent,'SetPoint','TOPLEFT',ui\.recentTitle,'BOTTOMLEFT'/);
+  assert.match(src, /short\(r\.text,64\)/);
+  assert.match(src, /method\(box,'SetHeight',math\.max\(214/);
+});

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.38.1 — talents the companion knows, 2026-11-14
+
+- **Companion talents:** new `src/core/talent-context.cjs`: talent questions send a bounded block of the class's real WoW Forever trees (tier gates, max ranks, prerequisites by name, the game's own descriptions, points at your level, the Talents page plan) with an instruction to answer only from it; offline answers for what a talent does, what to take, the first N talents of a tree and points per level; class from the question, else the active character, else the companion asks. Regression test from a real exchange where the AI invented talents. `game-data.cjs` gains a `cached()` read.
+- **Owl:** the answer panel's close button sits outside the drag region and acts on press (a real mouse click on it could start a window drag); the panel is focusable on click but still appears inactive; the request check no longer compares file URLs; a hover hold checks the real cursor every second, so a game that takes the mouse back can't leave the panel stuck open. The in-game box stacks status and recent questions, shortens long questions and grows. Talent detection ignores everyday words, skill levels like 22 / 75, the client build and long pasted plans.
+- **Travel:** talent remarks ("Improved renew only goes to 3/3"), ranks, points and counts never start a trip.
+- **Live link:** saved safe or compact strips move to the hairline once (chat note); a later `/bf live safe` sticks.
+- **Community:** retry waits stop at one hour; turning sharing on retries at once.
+
 ## 0.38.0 — ask from the game, a hidden live link, 2026-11-14
 
 - **A15:** `BackstageForeverAsk.lua`: owl minimap button (`Art/Buttons/ask.tga`, draggable around the edge, saved per character), a 200-character question box, `/bf ask [question]|hide|show|cancel`; questions travel as strip page kind 4 (never in combat) and the app answers through the Companion path in an always-on-top, non-focusing panel over the game (Settings → Game connection; auto-hide time). The addon now installs 27 files plus art.
