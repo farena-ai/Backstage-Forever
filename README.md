@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.34: the community map
+## 0.35: the ledger
 
-Herbs, ore, chests and NPCs that several players agree on now show on your World Map, shared anonymously through Backstage Coding's own server (on by default, one switch to turn off). See the [0.34.0 release notes](docs/releases/0.34.0.md).
+Search every character's bags, bank and mail at once, see gold across characters, auction prices you've seen, reputations and profession cooldowns. See the [0.35.0 release notes](docs/releases/0.35.0.md).
 
 ## 0.28: your journey
 

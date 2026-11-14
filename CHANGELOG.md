@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.35.0 — the ledger, 2026-11-14
+
+- **H6, first part:** new `BackstageForeverLedger.lua` (per-character `BackstageForeverLedgerDB`): money, bags 0–4, bank (container -1 and bags 5–10, last seen), mail items and money (no senders or subjects), reputations, profession cooldowns, and A7 auction price memory from list pages the player opens (lowest buyout per unit, last 5 observations, 1,500 items). Price memory, then the ledger, drop first when the export nears its size budget. The addon now installs 25 files.
+- **App:** Ledger section with Bags & bank (cross-character search), Gold & prices, Reputation and Cooldowns pages; remembered prices on item hover cards; `/bf ledger`, `/bf prices`.
+- **0.36 next:** E4 mount and gold goals, E5 class quest chains, A12 gear sets, G5 character sheet.
+
 ## 0.34.0 — the community map, 2026-11-14
 
 - **H4 community:** self-hosted `community-server/` (Node, zero dependencies, `node:sqlite`; submit, daily pack, report, forget, health), deployed behind bf.backstagecoding.com. Facts publish only when 3+ installs agree; install ids stored hashed; no IPs stored.
