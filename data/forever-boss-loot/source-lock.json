@@ -1,0 +1,24 @@
+{
+  "publisher": "Efficient Games",
+  "repository": "JIVESCORP/eg-link-output-wowf",
+  "commit": "164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1",
+  "builds": [
+    "1.60.1.70888",
+    "1.60.1.70862",
+    "1.60.1.70840",
+    "1.60.1.70790"
+  ],
+  "license": "CC BY 4.0",
+  "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+  "files": [
+    "loot.json",
+    "npcs.json"
+  ],
+  "normalization": "Instance Atlas bosses matched by exact name to NPC ids; their non-quest drops with an observed chance of at least 0.03 per loot window (or per group-roll kill), at most 16 items per boss.",
+  "instances": 27,
+  "bosses": 181,
+  "bossesWithLoot": 47,
+  "items": 139,
+  "bytes": 15529,
+  "sha256": "709359f842b57088d56d45a16793df1a605a2c23d13f6fd130e6e39da4194f04"
+}

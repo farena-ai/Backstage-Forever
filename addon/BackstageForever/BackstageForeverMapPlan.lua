@@ -85,7 +85,7 @@ function BackstageForeverBuildMap(character,options)
     end
     local gathering=type(BackstageForeverGatheringValidateSnapshot)=='function' and BackstageForeverGatheringValidateSnapshot(field(character,'gathering'),now)
     if enabled('finds') and gathering then for _,r in ipairs(gathering.records)do
-        add({id='find:'..r.id,kind='find',layer='finds',mapId=r.mapId,x=r.x,y=r.y,title=r.name,detail='Past supported gathering loot observed here. Approximate standing point; items collected and current presence are unknown.',evidence=r.evidence,precision=r.precision,qualification='own-recorded',clientBuild=r.clientBuild,observedAt=r.observedAt,itemIds=clone(r.itemIds),sources={{entityId=r.entityId,method=r.method}}})
+        add({id='find:'..r.id,kind='find',layer='finds',mapId=r.mapId,x=r.x,y=r.y,title=r.name,detail=r.method=='chest' and 'You opened a chest here once. Chests move between spots; whether one is here now is unknown.' or 'Past supported gathering loot observed here. Approximate standing point; items collected and current presence are unknown.',evidence=r.evidence,precision=r.precision,qualification='own-recorded',clientBuild=r.clientBuild,observedAt=r.observedAt,itemIds=clone(r.itemIds),sources={{entityId=r.entityId,method=r.method}}})
     end end
     result.counts.total=#result.points;result.status=#result.points>0 and 'ready' or (knownQuests or coach and coach.coverage.professions.status~='unknown' or gathering) and 'empty' or 'unavailable'
     return result

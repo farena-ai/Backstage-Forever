@@ -371,3 +371,28 @@ load();event('PLAYER_LOGIN');save()
     for (const old of retained) assert.deepEqual(old, seed.characters.find(c => c.id === old.id));
   }
 });
+
+test("skill-up colour comes from the client's own enum or string and never contradicts canSkillUp", () => {
+  const rows = run(String.raw`
+local cases={
+ {relativeDifficulty=0,canSkillUp=true},
+ {relativeDifficulty=2,canSkillUp=true},
+ {relativeDifficulty=3,canSkillUp=false},
+ {relativeDifficulty=3,canSkillUp=true},
+ {relativeDifficulty='SECRET',canSkillUp=true},
+ {relativeDifficulty=9,canSkillUp=true},
+ {skillType='medium',canSkillUp=true},
+ {difficulty='header',canSkillUp=true},
+}
+for _,c in ipairs(cases)do
+ local info={recipeID=1001,name='Potion',learned=true};for k,v in pairs(c)do info[k]=v end
+ infos[1001]=info;event('PLAYER_LOGIN');save()
+end
+Enum.TradeskillRelativeDifficulty={Optimal=3,Medium=2,Easy=1,Trivial=0}
+infos[1001]={recipeID=1001,name='Potion',learned=true,relativeDifficulty=0,canSkillUp=false};event('PLAYER_LOGIN');save()
+Enum.TradeskillRelativeDifficulty={Unrelated=0}
+infos[1001]={recipeID=1001,name='Potion',learned=true,relativeDifficulty=0,canSkillUp=true};event('PLAYER_LOGIN');save()
+`);
+  const got = rows.map(p => active(p).readiness.workshop.recipes.items[0].difficulty);
+  assert.deepEqual(got, ["optimal", "easy", "trivial", undefined, undefined, undefined, "medium", undefined, "trivial", undefined]);
+});

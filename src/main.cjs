@@ -53,6 +53,7 @@ const { releaseChannel } = require("../package.json");
 const { LiveBridge } = require("./core/live-bridge.cjs");
 let liveBridge = null;
 let radar = null;
+let wishlist = null;
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
@@ -717,7 +718,15 @@ app.whenReady().then(async () => {
   handle("setRadarTarget", (pin) => radar.setTarget(pin === undefined ? null : pin));
   const { buildAtlas, loadEncounters } = require("./core/dungeon-atlas.cjs");
   const encounters = loadEncounters();
-  handle("dungeonAtlas", () => buildAtlas({ profile: store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null, encounters, knowledgePack: knowledge?.bundled?.pack }));
+  // Loot browser, wish list and item hover cards (boss loot pack + the player's own game data).
+  wishlist = new (require("./core/wishlist.cjs").WishList)(app.getPath("userData"));
+  const bossLoot = require("./core/boss-loot-ipc.cjs").registerBossLootHandlers({ handle, getState: () => store.state, gameData, wishlist, getPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack() });
+  handle("dungeonAtlas", () => {
+    const profile = store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null;
+    const atlas = buildAtlas({ profile, encounters, knowledgePack: knowledge?.bundled?.pack }), loot = bossLoot.summary(profile);
+    for (const e of atlas.entries) if (loot[e.id]) e.loot = loot[e.id];
+    return atlas;
+  });
   handle("copyWaypoint", (input) => {
     if (!input || typeof input !== "object") throw Error("Invalid waypoint.");
     const { mapId, x, y } = input;
@@ -796,7 +805,9 @@ app.whenReady().then(async () => {
       await updateReset;
       await knowledgeReset;
       await claude.clearCredentials();
-      return store.reset();
+      const fresh = store.reset();
+      wishlist?.clear(); // starred loot belongs to the characters just deleted
+      return fresh;
     } finally {
       resetting = false;
     }

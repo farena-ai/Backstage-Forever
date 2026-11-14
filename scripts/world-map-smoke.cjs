@@ -14,6 +14,13 @@ const { defaultState } = require("../src/core/validation.cjs");
   try {
     const profile = { id: "Alpha", name: "Alpha", className: "Hunter", realm: "Synthetic", level: 15, race: "Tauren", faction: "Horde", goals: [], notes: "", location: { zone: "The Barrens", mapId: 1413, x: 0.52, y: 0.29 },
       quests: [{ id: 96, title: "Call of Water", complete: true, objectives: [] }, { id: 5728, title: "Hidden Enemies", complete: false, objectives: [{ text: "0/1 Bazzalan slain", done: false, type: "monster", required: 1, fulfilled: 0 }, { text: "0/1 Jergosh the Invoker slain", done: false, type: "monster", required: 1, fulfilled: 0 }] }] };
+    // Remembered nodes: herbs, ore and chests in the Barrens plus one in Durotar (gathering heat layer).
+    const at = "2026-11-01T12:00:00.000Z", node = (method, entityId, mapId, x, y, name) => ({ id: `wowf:${method}:${entityId}:${mapId}:${Math.floor(x * 10000 + .5)}:${Math.floor(y * 10000 + .5)}:1.60.1.70888`, method, entityId, itemIds: [2449], mapId, x, y, observedAt: at, clientBuild: "1.60.1.70888", name, evidence: "observed-gathering-loot", precision: "recorded-standing-point", approximate: true });
+    const records = [];
+    for (let i = 0; i < 9; i++) records.push(node("herbalism", 1618, 1413, 0.44 + (i % 3) * 0.02, 0.36 + Math.floor(i / 3) * 0.02, "Earthroot"));
+    for (let i = 0; i < 5; i++) records.push(node("mining", 1731, 1413, 0.6 + i * 0.015, 0.5 - i * 0.01, "Copper Vein"));
+    records.push(node("chest", 2843, 1413, 0.55, 0.2, "Battered Chest"), node("herbalism", 1617, 1411, 0.5, 0.5, "Silverleaf"));
+    profile.gathering = { schemaVersion: 1, status: "available", recording: true, observedAt: at, limited: false, totalRecords: records.length, records };
     const initial = { ...defaultState(), onboarded: true, activeProfileId: "Alpha", profiles: [profile], provider: { id: "ollama", model: "fixture", endpoint: "http://127.0.0.1:11434" } };
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(initial));
     const repo = path.resolve(__dirname, "..");
@@ -48,6 +55,13 @@ const { defaultState } = require("../src/core/validation.cjs");
     await app.evaluate(() => { const b = liveFixture.bridge; b.enabled = true; b.frame = { version: 2, seq: 1, combat: false, characterHash: 0, mounted: true, position: { mapId: 1413, x: 0.6, y: 0.08, facing: 2.4 }, level: 15, receivedAt: Date.now() }; b.signal = "live"; b.emit(); });
     await page.locator("[data-wm-live]").getByText(/Live · 60\.0, 8\.0 · mounted/).waitFor();
     await page.screenshot({ path: path.join(capture, "world-map-barrens.png") });
+    // Gathering heat: drawn from the remembered nodes, counted per zone, zone rows switch maps.
+    assert.equal(st.counts.heat, 15);
+    assert.equal(st.counts.find, 15);
+    const heatBox = page.locator("[data-wm-heat]");
+    await heatBox.getByText("9 herbs").waitFor();
+    assert.match(await heatBox.innerText(), /5 ore nodes[\s\S]*1 chest[\s\S]*The Barrens[\s\S]*Durotar/);
+    assert.ok(!(await page.locator(".wm-heat [style]").count()), "no inline styles");
     // Objective areas: on by default, toggled from the legend, clickable, and dialed in from their card.
     const areaLayer = page.locator("[data-wm-layer=objective-area]");
     assert.equal(await areaLayer.isChecked(), true, "objective areas are on by default");
@@ -121,6 +135,14 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator("[data-wm-result]").first().click();
     await page.locator("[data-wm-card]").getByText(/Trains · /).waitFor();
     await page.screenshot({ path: path.join(capture, "world-map-npc-card.png") });
+    // NPC hover card from the search results (0.30).
+    const npcName = page.locator("[data-wm-results] [data-card-npc]").first();
+    await npcName.waitFor();
+    await page.mouse.move(5, 5); await npcName.hover({ position: { x: 6, y: 4 } });
+    await page.locator(".hover-card.hc-kind-npc").waitFor({ timeout: 6000 });
+    assert.match(await page.locator(".hover-card.hc-kind-npc").innerText(), /Trainer|skill/i);
+    await page.screenshot({ path: path.join(capture, "world-map-npc-hover.png") });
+    await page.mouse.move(5, 5);
     // Instance Atlas: difficulty colours, your quests, and the jump to the World Map.
     await navigate(page, "dungeons");
     const rfc = page.locator('[data-atlas-card="rfc"]');
@@ -131,6 +153,24 @@ const { defaultState } = require("../src/core/validation.cjs");
     await rfc.locator("[data-atlas-open]").click();
     await rfc.locator(".atlas-bosses").getByText("Bazzalan").waitFor();
     await page.screenshot({ path: path.join(capture, "dungeon-atlas.png") });
+    // Loot browser (0.30): boss sections with item tiles, hover cards and the wish list.
+    await rfc.locator(".atlas-loot-btn").click();
+    await rfc.locator(".loot-boss", { hasText: "Bazzalan" }).waitFor();
+    assert.equal(await rfc.locator(".loot-boss").count(), 4, "one section per Ragefire Chasm boss");
+    const tiles = rfc.locator(".loot-tile[data-card-item]");
+    assert.ok(await tiles.count() >= 4, "Ragefire Chasm bosses drop recorded items");
+    assert.match(await rfc.locator(".loot-chance").first().innerText(), /^\d+%$/);
+    await page.mouse.move(5, 5); await tiles.first().locator(".loot-body").hover();
+    await page.locator(".hover-card.hc-kind-item").waitFor({ timeout: 6000 });
+    assert.match(await page.locator(".hover-card.hc-kind-item").innerText(), /Drops from .+ \(Ragefire Chasm\)/);
+    await page.screenshot({ path: path.join(capture, "dungeon-atlas-loot.png") });
+    await tiles.first().locator("[data-loot-wish]").click();
+    await rfc.locator(".atlas-wishes [data-card-item]").first().waitFor();
+    assert.equal(await rfc.locator(".loot-tile.wished").count(), 1);
+    assert.equal(await rfc.locator('[data-loot-wish][aria-pressed="true"]').count(), 1);
+    await rfc.locator(".loot-tile.wished [data-loot-wish]").click();
+    await rfc.locator(".atlas-wishes").waitFor({ state: "detached" });
+    await rfc.locator("[data-atlas-open]").click();
     await page.locator('[data-atlas-tab="forever"]').click();
     await page.locator(".atlas-card", { hasText: "Shade of the Archmage" }).first().waitFor().catch(async () => { await page.locator(".atlas-card").first().locator("[data-atlas-open]").click(); });
     await page.locator('[data-atlas-tab="dungeon"]').click();
@@ -139,6 +179,13 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.waitForFunction(() => window.WorldMapView._state().selected?.label === "Ragefire Chasm entrance");
     await page.locator("[data-wm-title]").getByText("Orgrimmar").waitFor();
     await page.screenshot({ path: path.join(capture, "world-map-instance.png") });
+    // Gathering heat zone rows switch maps (from Orgrimmar back to the Barrens) and the layer toggles.
+    await page.locator("[data-wm-heat-zone='1413']").click();
+    await page.locator("[data-wm-title]").getByText("The Barrens").waitFor();
+    await heatBox.getByText("9 herbs").waitFor();
+    await page.locator("[data-wm-canvas]").screenshot({ path: path.join(capture, "world-map-heat.png") });
+    await heatBox.screenshot({ path: path.join(capture, "world-map-heat-panel.png") });
+    await page.locator("[data-wm-layer=heat]").uncheck(); assert.equal(await heatBox.isHidden(), true); await page.locator("[data-wm-layer=heat]").check();
     console.log("World map smoke passed");
   } finally {
     clearTimeout(watchdog);

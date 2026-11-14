@@ -1,0 +1,6 @@
+Backstage Forever boss loot reference
+
+Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
+
+Source: JIVESCORP/eg-link-output-wowf commit 164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1, builds 1.60.1.70888, 70862, 70840, 70790 (loot.json, npcs.json).
+normalization: Instance Atlas bosses matched by exact name to NPC ids; non-quest drops observed per loot window (and group-roll kills) with a chance of at least 3%, at most 16 items per boss, best chance first. Changes were made: observations were merged across builds and filtered.

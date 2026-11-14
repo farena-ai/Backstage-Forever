@@ -249,7 +249,7 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 - **0.27 (shipped):** F2 one-click free AI (llama.cpp engine and Qwen models, pinned and checked), F3 free cloud keys (Gemini, Groq), E3 trainer planner with spell icons, E2/A9 supplies and class helpers, G1 living headers.
 - **0.28 (shipped):** A3 speed splits, E9 rested planner, G7 badge wall with new-badge moments, and the addon journal (levels with /played, firsts, zones). Professions and the card system move to 0.29.
 - **0.29 (shipped):** A14 hover cards for quests, E7 death review, A8 session stats (`/bf stats`).
-- **0.30:** 2.8 + E8 professions with A6 gathering memory, hover cards for NPCs and items (D7/E11), A4 dungeon loot browser.
+- **0.30 (shipped):** 2.8 + E8 professions (skill-up colours, best next recipe, countdown, shopping list, `/bf prof`), A6 gathering memory (500 nodes, chests, heat map, `/bf nodes`), hover cards for NPCs and items (D7/E11), A4 dungeon loot browser with wish list.
 - **0.30.x:** A5 boss tips, G6 dungeon art, G8 celebrations part 2.
 - **0.31:** E4 mount and gold goals with A7 price memory, E5 class quest chains, E6 reputation, A12 gear sets, G5 character sheet.
 - **0.32+:** A10 PvP alerts, A11 QoL pack, A13/3.6 party sync, the rest of Tier 3, G9–G11, then the 4.1 full guided route and the G12 art review.

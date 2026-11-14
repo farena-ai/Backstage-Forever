@@ -86,3 +86,18 @@ test("backups remain canonical and reject collection observations newer than an 
 test("profession metadata cannot duplicate the same profession ID under another skill line",()=>{
  const w=workshop();w.professions.items.push({...w.professions.items[0],skillLineId:999});assert.throws(()=>contract().validateWorkshop(w));
 });
+test("optional skill-up colour is a strict enum consistent with canSkillUp; older saves stay valid", () => {
+  const { validateWorkshop, DIFFICULTIES } = contract();
+  assert.deepEqual(DIFFICULTIES, ["optimal", "medium", "easy", "trivial"]);
+  const old = workshop();
+  assert.equal(validateWorkshop(old).recipes.items[0].difficulty, undefined);
+  for (const [difficulty, canSkillUp] of [["optimal", true], ["medium", true], ["easy", true], ["trivial", false], ["easy", undefined]]) {
+    const value = workshop(), recipe = value.recipes.items[0];
+    recipe.difficulty = difficulty; if (canSkillUp === undefined) delete recipe.canSkillUp; else recipe.canSkillUp = canSkillUp;
+    assert.equal(validateWorkshop(value).recipes.items[0].difficulty, difficulty);
+  }
+  for (const [difficulty, canSkillUp] of [["orange", true], ["", true], [1, true], ["trivial", true], ["optimal", false], [null, false]]) {
+    const value = workshop(); Object.assign(value.recipes.items[0], { difficulty, canSkillUp });
+    assert.throws(() => validateWorkshop(value), `${difficulty}/${canSkillUp}`);
+  }
+});

@@ -22,6 +22,7 @@ jobs:
       - run: npm run check:forever-npc-locations
       - run: npm run check:forever-creatures
       - run: npm run check:forever-loot
+      - run: npm run check:forever-boss-loot
       - run: npm test
       - run: npm run test:ui
       - run: npm run test:setup

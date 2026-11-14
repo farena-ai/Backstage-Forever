@@ -6,7 +6,7 @@ window.WorldMapView = (() => {
   const LAYERS = [
     ["quest-turnin", "Turn-ins"], ["quest-objective", "Objectives"], ["objective-area", "Objective areas"], ["quest-giver", "Quests to pick up"],
     ["flight", "Flight masters"], ["class-trainer", "Class trainers"], ["profession-trainer", "Profession trainers"], ["vendor", "Vendors"],
-    ["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["npc", "Other NPCs"],
+    ["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["heat", "Your gathering heat"], ["npc", "Other NPCs"],
   ];
   const OFF_BY_DEFAULT = new Set(["npc", "otherFaction"]);
   const PREF = "bf-world-map-v2";
@@ -43,6 +43,7 @@ window.WorldMapView = (() => {
           <div class="wm-card" data-wm-card></div>
           <div class="wm-results" data-wm-results></div>
           <div class="wm-legend" data-wm-legend></div>
+          <div class="wm-heat" data-wm-heat hidden></div>
           <label class="check-label wm-follow"><input type="checkbox" data-wm-follow ${follow ? "checked" : ""}>Follow my live position</label>
           <p class="wm-attrib" data-wm-attrib></p>
         </aside>
@@ -96,6 +97,11 @@ window.WorldMapView = (() => {
   function swords(g, x, y, s) { g.save(); g.strokeStyle = "#fff4dc"; g.lineWidth = 2; g.lineCap = "round"; g.beginPath(); g.moveTo(x - s, y + s); g.lineTo(x + s, y - s); g.moveTo(x + s, y + s); g.lineTo(x - s, y - s); g.stroke(); g.lineWidth = 1.6; g.beginPath(); g.moveTo(x - s * 0.95, y + s * 0.35); g.lineTo(x - s * 0.35, y + s * 0.95); g.moveTo(x + s * 0.95, y + s * 0.35); g.lineTo(x + s * 0.35, y + s * 0.95); g.stroke(); g.restore(); }
   function hammer(g, x, y, s) { g.save(); g.translate(x, y); g.rotate(-0.6); g.fillStyle = "#fff4dc"; g.fillRect(-s * 0.15, -s * 0.3, s * 0.3, s * 1.3); g.fillRect(-s * 0.75, -s * 0.85, s * 1.5, s * 0.6); g.restore(); }
   function coin(g, x, y, s) { g.beginPath(); g.arc(x, y, s, 0, 7); g.fillStyle = "#f4cf5a"; g.fill(); g.strokeStyle = "#5a3a0c"; g.lineWidth = 1.3; g.stroke(); text(g, "g", x, y - 0.5, s * 1.4, "#5a3a0c"); }
+  function chest(g, x, y, s) {
+    g.save(); g.beginPath(); g.roundRect(x - s, y - s * 0.2, s * 2, s * 1.1, s * 0.15); g.fillStyle = "#8a5426"; g.fill(); g.strokeStyle = "#2a1406"; g.lineWidth = 1.3; g.stroke();
+    g.beginPath(); g.moveTo(x - s, y - s * 0.2); g.quadraticCurveTo(x, y - s * 1.15, x + s, y - s * 0.2); g.closePath(); g.fillStyle = "#a8682e"; g.fill(); g.stroke();
+    g.fillStyle = "#f0c23a"; g.fillRect(x - s * 0.18, y - s * 0.38, s * 0.36, s * 0.5); g.strokeRect(x - s * 0.18, y - s * 0.38, s * 0.36, s * 0.5); g.restore();
+  }
   function star(g, x, y, s) { g.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? s * 0.45 : s, a = -Math.PI / 2 + (i * Math.PI) / 5; g.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)); } g.closePath(); g.fillStyle = "#ffe27a"; g.fill(); g.strokeStyle = "#5a3a0c"; g.lineWidth = 1; g.stroke(); }
   // Painted medallions (original ComfyUI art) for the main pin kinds; vector shapes stay as the fallback.
   const PAINTED = {};
@@ -105,6 +111,8 @@ window.WorldMapView = (() => {
   }
   // Draw one pin icon centred on (x, y) with radius r into any 2D context.
   function icon(g, kind, x, y, r, { gather = null, zoom = 1 } = {}) {
+    if (kind === "find" && gather === "chest") { chest(g, x, y, r * 0.85); star(g, x + r * 0.65, y - r * 0.65, r * 0.45); return; }
+    if (kind === "heat") { for (const [dx, c] of [[-0.45, HEAT.herb], [0.45, HEAT.ore], [0, HEAT.chest]]) { const gr = g.createRadialGradient(x + dx * r, y + (dx ? 0.25 : -0.35) * r, 0, x + dx * r, y + (dx ? 0.25 : -0.35) * r, r * 0.8); gr.addColorStop(0, rgba(c, 0.95)); gr.addColorStop(1, rgba(c, 0)); g.fillStyle = gr; g.beginPath(); g.arc(x + dx * r, y + (dx ? 0.25 : -0.35) * r, r * 0.8, 0, 7); g.fill(); } return; }
     const k = kind === "find" ? (gather === "ore" ? "ore" : "herb") : kind;
     const art = PAINTED[k];
     if (art && kind !== "find") {
@@ -141,6 +149,35 @@ window.WorldMapView = (() => {
   const DIFF_WORDS = { grey: "too low to give experience", green: "easy for you", yellow: "an even fight", orange: "tough for you", red: "very dangerous for you" };
   const areaColor = (a) => DIFF[a.difficulty] || "#c0822e";
   const rgba = (hex, al) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${al})`; };
+  // ---------- your gathering heat ----------
+  // Soft overlapping glows per remembered node: busy spots burn brighter. Herb, ore and chest apart.
+  const HEAT = { herb: "#3fbf4a", ore: "#4f86d9", chest: "#f0b52a" };
+  const HEAT_WORDS = { herb: ["herb", "herbs"], ore: ["ore node", "ore nodes"], chest: ["chest", "chests"] };
+  function drawHeat() {
+    if (layers.heat === false || !model?.heat?.points?.length) return;
+    const r = Math.max(10, 0.028 * canvas.width * view.zoom ** 0.85), w = canvas.width, h = canvas.height;
+    ctx.save();
+    for (const kind of ["herb", "ore", "chest"]) {
+      for (const p of model.heat.points) {
+        if (p.kind !== kind) continue;
+        const [sx, sy] = toScreen(p.x, p.y);
+        if (sx < -r || sy < -r || sx > w + r || sy > h + r) continue;
+        const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
+        g.addColorStop(0, rgba(HEAT[kind], 0.5)); g.addColorStop(0.45, rgba(HEAT[kind], 0.22)); g.addColorStop(1, rgba(HEAT[kind], 0));
+        ctx.fillStyle = g; ctx.fillRect(sx - r, sy - r, 2 * r, 2 * r);
+      }
+    }
+    ctx.restore();
+  }
+  function heatList() {
+    const box = document.querySelector("[data-wm-heat]"); if (!box) return;
+    const zones = layers.heat === false ? [] : model?.heat?.zones || [];
+    box.hidden = !zones.length;
+    if (!zones.length) { box.innerHTML = ""; return; }
+    const t = model.heat.totals, words = (n, k) => `${n} ${HEAT_WORDS[k][n === 1 ? 0 : 1]}`;
+    const here = ["herb", "ore", "chest"].filter((k) => t[k]).map((k) => `<span class="wm-heat-chip wm-heat-${k}"><i aria-hidden="true"></i>${esc(words(t[k], k))}</span>`).join("");
+    box.innerHTML = `<h3>Your gathering heat</h3><p class="wm-heat-here">${here || "Nothing remembered on this map yet."}</p><ol>${zones.slice(0, 8).map((z) => `<li><button type="button" data-wm-heat-zone="${z.mapId}" ${z.mapId === model.mapId ? 'aria-current="true"' : ""}><strong>${esc(z.mapName)}</strong><span class="wm-heat-bars">${["herb", "ore", "chest"].filter((k) => z[k]).map((k) => `<span class="wm-heat-chip wm-heat-${k}"><i aria-hidden="true"></i>${z[k]}</span>`).join("")}</span></button></li>`).join("")}</ol><small>Spots you gathered or opened chests, remembered by the addon (up to 500). Past spots, not live nodes. In game: /bf nodes.</small>`;
+  }
   function visibleAreas() { return layers["objective-area"] === false ? [] : (model?.areas || []); }
   // Map-fraction radius as screen ellipse radii (zone maps are wider than tall).
   const areaRadii = (a) => [a.radius * canvas.width * view.zoom, a.radius * canvas.height * view.zoom];
@@ -229,6 +266,7 @@ window.WorldMapView = (() => {
     ctx.strokeStyle = art ? "rgba(60,40,18,0.10)" : "rgba(80,55,25,0.18)"; ctx.lineWidth = 1; ctx.fillStyle = "rgba(60,40,18,0.7)"; ctx.font = "11px 'Source Sans 3', sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "top";
     for (let i = 0; i <= 10; i++) { const [gx] = toScreen(i / 10, 0), [, gy] = toScreen(0, i / 10); ctx.beginPath(); ctx.moveTo(gx, oy); ctx.lineTo(gx, ey); ctx.moveTo(ox, gy); ctx.lineTo(ex, gy); ctx.stroke(); if (i < 10) { ctx.fillText(String(i * 10), gx + 3, Math.max(oy, 0) + 3); ctx.fillText(String(i * 10), Math.max(ox, 0) + 3, gy + 3); } }
     if (!art) compassRose(w - 58, h - 62, 38);
+    drawHeat();
     drawAreas();
     // Pins: overlapping same-kind pins merge into numbered clusters; selection stays visible.
     clusters = [];
@@ -383,7 +421,7 @@ window.WorldMapView = (() => {
         parts.push(`<section class="wm-sec"><h4>Trains · ${esc(d.trainer.title)} (${sv.length})</h4><ul class="wm-spells">${sv.slice(0, 30).map((s) => `<li>${esc(s.name)}${s.rank ? ` <small>${esc(s.rank)}</small>` : ""}${s.skillRank ? ` <small>skill ${s.skillRank}</small>` : s.level ? ` <small>lvl ${s.level}</small>` : ""}</li>`).join("")}</ul></section>`);
       }
     }
-    if (d.vendor?.items.length) parts.push(`<section class="wm-sec"><details ${d.vendor.items.length <= 8 ? "open" : ""}><summary>Sells (${d.vendor.items.length})</summary><ul class="wm-items">${d.vendor.items.map((i) => `<li>${esc(i.name)}</li>`).join("")}</ul></details></section>`);
+    if (d.vendor?.items.length) parts.push(`<section class="wm-sec"><details ${d.vendor.items.length <= 8 ? "open" : ""}><summary>Sells (${d.vendor.items.length})</summary><ul class="wm-items">${d.vendor.items.map((i) => `<li${Number.isSafeInteger(i.itemId) ? ` data-card-item="${i.itemId}"` : ""}>${esc(i.name)}</li>`).join("")}</ul></details></section>`);
     const elsewhere = d.places.filter((p) => p.mapId !== model?.mapId);
     if (elsewhere.length) parts.push(`<p class="wm-note">Also seen in ${elsewhere.map((p) => `${esc(p.mapName)} ${pct(p.x)}, ${pct(p.y)}`).join("; ")}.</p>`);
     if (!d.questsGiven.length && !d.questsTurnedIn.length && !d.trainer && !d.vendor && !d.flight) parts.push(`<p class="wm-note">No quests, training or wares are recorded for this NPC yet.</p>`);
@@ -466,7 +504,7 @@ window.WorldMapView = (() => {
     const box = document.querySelector("[data-wm-results]"); if (!box) return;
     box.hidden = !results;
     if (!results) { box.innerHTML = ""; return; }
-    box.innerHTML = `<h3>Found ${results.results.length} for “${esc(results.query)}”</h3>` + (results.results.length ? `<ol>${results.results.map((r, i) => `<li><button type="button" data-wm-result="${i}">${ico(r.kind, r.gather ? `data-gather="${esc(r.gather)}"` : "")}<span><strong>${esc(r.label)}</strong><small>${esc(r.sub || "")}${r.sub ? " · " : ""}${esc(r.mapName)} ${pct(r.x)}, ${pct(r.y)}</small></span></button></li>`).join("")}</ol>` : `<p>Nothing in the local reference matches. Coverage grows as you and others play.</p>`) + `<button type="button" class="subtle" data-wm-act="clear">Clear search</button>`;
+    box.innerHTML = `<h3>Found ${results.results.length} for “${esc(results.query)}”</h3>` + (results.results.length ? `<ol>${results.results.map((r, i) => `<li><button type="button" data-wm-result="${i}">${ico(r.kind, r.gather ? `data-gather="${esc(r.gather)}"` : "")}<span><strong${r.npcId ? ` data-card-npc="${esc(r.npcId)}"` : ""}>${esc(r.label)}</strong><small>${esc(r.sub || "")}${r.sub ? " · " : ""}${esc(r.mapName)} ${pct(r.x)}, ${pct(r.y)}</small></span></button></li>`).join("")}</ol>` : `<p>Nothing in the local reference matches. Coverage grows as you and others play.</p>`) + `<button type="button" class="subtle" data-wm-act="clear">Clear search</button>`;
     paintIcons(box);
   }
   // Nearest useful places to your live (or saved) position.
@@ -478,11 +516,11 @@ window.WorldMapView = (() => {
     const near = visiblePins().filter((p) => NEAR_KINDS.has(p.kind)).map((p) => ({ p, d: Math.hypot(p.x - me.x, p.y - me.y) })).sort((a, b) => (a.p.kind === "quest-turnin" ? -0.05 : 0) + a.d - ((b.p.kind === "quest-turnin" ? -0.05 : 0) + b.d))
       .filter((n, i, all) => !all.slice(0, i).some((m) => m.p.label === n.p.label && Math.hypot(m.p.x - n.p.x, m.p.y - n.p.y) < 0.03)).slice(0, 5);
     box.hidden = !near.length;
-    box.innerHTML = `<h3>Near you${model.player.live ? "" : " (last saved)"}</h3><ol>${near.map(({ p, d }, i) => `<li><button type="button" data-wm-near-pin="${i}">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<span><strong>${esc(p.label)}</strong><small>${esc(p.sub || "")}${p.sub ? " · " : ""}${d < 0.02 ? "right here" : `${dirName(p.x - me.x, p.y - me.y)}, ${d < 0.08 ? "close" : d < 0.25 ? "short ride" : "far"}`}</small></span></button></li>`).join("")}</ol>`;
+    box.innerHTML = `<h3>Near you${model.player.live ? "" : " (last saved)"}</h3><ol>${near.map(({ p, d }, i) => `<li><button type="button" data-wm-near-pin="${i}">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<span><strong${p.npcId ? ` data-card-npc="${esc(p.npcId)}"` : ""}>${esc(p.label)}</strong><small>${esc(p.sub || "")}${p.sub ? " · " : ""}${d < 0.02 ? "right here" : `${dirName(p.x - me.x, p.y - me.y)}, ${d < 0.08 ? "close" : d < 0.25 ? "short ride" : "far"}`}</small></span></button></li>`).join("")}</ol>`;
     box._near = near.map((n) => n.p);
     paintIcons(box);
   }
-  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; attrib(); loadArt(model?.mapId); legend(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); campsList(); draw(); }
+  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; attrib(); loadArt(model?.mapId); legend(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); campsList(); heatList(); draw(); }
 
   // ---------- data ----------
   // Real zone art from the player's own game install; parchment when unavailable.
@@ -598,7 +636,7 @@ window.WorldMapView = (() => {
     canvas.addEventListener("wheel", (e) => { e.preventDefault(); const [mx, my] = toMap(...at(e)); const z = Math.min(8, Math.max(1, view.zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2))); view.cx = mx - (mx - view.cx) * (view.zoom / z); view.cy = my - (my - view.cy) * (view.zoom / z); view.zoom = z; if (z === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }, { passive: false });
     canvas.addEventListener("dblclick", () => { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); });
     root.addEventListener("change", (e) => {
-      if (e.target.matches("[data-wm-layer]")) { layers[e.target.dataset.wmLayer] = e.target.checked; if (!e.target.checked && selected?.kind === e.target.dataset.wmLayer) { selected = null; card(); } savePref(); nearList(); campsList(); draw(); }
+      if (e.target.matches("[data-wm-layer]")) { layers[e.target.dataset.wmLayer] = e.target.checked; if (!e.target.checked && selected?.kind === e.target.dataset.wmLayer) { selected = null; card(); } savePref(); nearList(); campsList(); heatList(); draw(); }
       if (e.target.matches("[data-wm-zone]")) { follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; savePref(); load(Number(e.target.value)); }
       if (e.target.matches("[data-wm-follow]")) { follow = e.target.checked; savePref(); if (follow && lastLive) load(lastLive.position.mapId); }
     });
@@ -611,6 +649,8 @@ window.WorldMapView = (() => {
     root.addEventListener("click", async (e) => {
       const np = e.target.closest("[data-wm-near-pin]");
       if (np) { const p = root.querySelector("[data-wm-near]")._near?.[Number(np.dataset.wmNearPin)]; if (p) { selected = p; view = { zoom: Math.max(view.zoom, 2), cx: p.x, cy: p.y }; card(); draw(); } return; }
+      const hz = e.target.closest("[data-wm-heat-zone]");
+      if (hz) { const id = Number(hz.dataset.wmHeatZone); if (Number.isSafeInteger(id) && id !== model?.mapId) { follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; savePref(); load(id); } return; }
       const cp = e.target.closest("[data-wm-camp]");
       if (cp) { const c = model?.camps?.[Number(cp.dataset.wmCamp)]; dialArea(model?.areas?.find((a) => a.id === c?.areaId)); return; }
       const r = e.target.closest("[data-wm-result]");

@@ -3,6 +3,8 @@
 // rejecting the character. Private backup/state validation remains strict.
 const BLOCK = ["schemaVersion", "status", "recording", "observedAt", "limited", "totalRecords", "records"];
 const RECORD = ["id", "method", "entityId", "itemIds", "mapId", "x", "y", "observedAt", "clientBuild", "name", "evidence", "precision", "approximate"];
+// The addon remembers up to 500 nodes (older saves held at most 128) and exports them all.
+const MAX_RECORDS = 500, METHODS = Object.freeze(["mining", "herbalism", "chest"]);
 function invalid() { throw Error("Invalid personal gathering observations."); }
 function object(value, keys) {
   if (!value || Object.getPrototypeOf(value) !== Object.prototype ||
@@ -42,10 +44,10 @@ function normalize(value, raw, capturedAt) {
       typeof value.recording !== "boolean" || typeof value.limited !== "boolean") invalid();
   const observedAt = stamp(value.observedAt, raw);
   if (capturedAt !== undefined && observedAt > stamp(capturedAt, false)) invalid();
-  const totalRecords = integer(value.totalRecords, 0, 128), seen = new Set();
-  const records = array(value.records, 64).map(record => {
+  const totalRecords = integer(value.totalRecords, 0, MAX_RECORDS), seen = new Set();
+  const records = array(value.records, MAX_RECORDS).map(record => {
     object(record, RECORD);
-    if (!["mining", "herbalism"].includes(record.method) || record.evidence !== "observed-gathering-loot" ||
+    if (!METHODS.includes(record.method) || record.evidence !== "observed-gathering-loot" ||
         record.precision !== "recorded-standing-point" || record.approximate !== true) invalid();
     const entityId = integer(record.entityId, 1, 2147483647), mapId = integer(record.mapId, 1, 2147483647);
     for (const key of ["x", "y"])
@@ -90,4 +92,4 @@ function intersectGatheringProfiles(left, right) {
   b.limited ||= b.records.length < b.totalRecords;
   return b;
 }
-module.exports = { normalizeGatheringCapture, validateGatheringProfile, intersectGatheringProfiles };
+module.exports = { MAX_RECORDS, METHODS, normalizeGatheringCapture, validateGatheringProfile, intersectGatheringProfiles };

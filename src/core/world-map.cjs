@@ -220,13 +220,28 @@ function hostileCamps(areas) {
   return [...by.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+const FIND = { mining: { gather: "ore", label: "Mining node", sub: "Your mining find" }, herbalism: { gather: "herb", label: "Herb", sub: "Your herbalism find" }, chest: { gather: "chest", label: "Chest", sub: "A chest you opened (chests move between spots)" } };
 function findPins(profile, mapId) {
   const out = [];
   for (const r of profile?.gathering?.records || []) {
     if (r.mapId !== mapId || !pt(r)) continue;
-    out.push({ id: `find:${r.id}`, kind: "find", gather: r.method === "mining" ? "ore" : "herb", label: r.name || (r.method === "mining" ? "Mining node" : "Herb"), sub: `Your ${r.method === "mining" ? "mining" : "herbalism"} find`, mapId, x: r.x, y: r.y, lastSeen: r.observedAt?.slice?.(0, 10) || null, source: "Recorded by your addon" });
+    const f = FIND[r.method] || FIND.herbalism;
+    out.push({ id: `find:${r.id}`, kind: "find", gather: f.gather, label: r.name || f.label, sub: f.sub, mapId, x: r.x, y: r.y, lastSeen: r.observedAt?.slice?.(0, 10) || null, source: "Recorded by your addon" });
   }
   return out;
+}
+// Your remembered nodes as a heat map: every point on this map (herb/ore/chest drawn
+// separately) plus counts per zone across all maps, busiest first.
+function gatheringHeat(profile, mapId) {
+  const zones = new Map(), points = [], totals = { herb: 0, ore: 0, chest: 0 };
+  for (const r of profile?.gathering?.records || []) {
+    const kind = FIND[r.method]?.gather;
+    if (!kind || !pt(r)) continue;
+    const z = zones.get(r.mapId) || { mapId: r.mapId, mapName: mapName(r.mapId), herb: 0, ore: 0, chest: 0, total: 0 };
+    z[kind]++; z.total++; zones.set(r.mapId, z);
+    if (r.mapId === mapId) { points.push({ kind, x: r.x, y: r.y }); totals[kind]++; }
+  }
+  return { points, totals, zones: [...zones.values()].sort((a, b) => b.total - a.total || a.mapName.localeCompare(b.mapName)) };
 }
 
 class WorldMap {
@@ -307,6 +322,8 @@ class WorldMap {
     // Soft areas where quest objectives happen, drawn under the pins.
     const areas = objectiveAreas(profile, index, this.creatures, mapId).slice(0, MAX_AREAS);
     counts["objective-area"] = areas.length;
+    const heat = gatheringHeat(profile, mapId);
+    counts.heat = heat.points.length;
     return {
       mapId, mapName: mapName(mapId), maps: this.maps(),
       player: {
@@ -318,7 +335,7 @@ class WorldMap {
         // The renderer applies streamed frames only when they carry this key (null: not an addon character).
         liveKey: profile?.source?.kind === "wow-addon" ? require("./live-bridge.cjs").liveKeyFor(profile.source.id) ?? -1 : null,
       },
-      pins, counts, areas, camps: hostileCamps(areas),
+      pins, counts, areas, camps: hostileCamps(areas), heat,
       attribution: "Reference data from Efficient Games (https://efficient.games), CC BY 4.0. Positions are approximate community observations.",
     };
   }
@@ -407,4 +424,4 @@ class WorldMap {
     return { query, results: unique, from: here ? { mapId: here.mapId, mapName: mapName(here.mapId), live: Boolean(live) } : null };
   }
 }
-module.exports = { WorldMap, buildStaticIndex, questPins, relevantQuests, objectiveAreas, hostileCamps, areaShapes, difficulty, greyLevel, creatureWarning, KINDS, mapName, trainerKind, friendlyTo };
+module.exports = { WorldMap, findPins, gatheringHeat, buildStaticIndex, questPins, relevantQuests, objectiveAreas, hostileCamps, areaShapes, difficulty, greyLevel, creatureWarning, KINDS, mapName, trainerKind, friendlyTo };
