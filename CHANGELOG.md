@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.37.0 — painted zone banners, 2026-11-14
+
+- **G13:** the in-game zone arrival banner is a solid painted frame (`BackstageForeverZoneBanner`, 560×74, same placement and animation as the toast) with one original painting per zone and capital (46, `Art/Zones/<mapId>.tga`, 1024×128 24-bit, plus `default.tga`), the zone name in gold and the level and quest line on a ribbon. Quiet in combat, first zone skipped, chat echo kept, follows `/bf toasts`.
+- **Installer and packaging:** every `.tga` in `Art/Zones` is installed and verified byte for byte; `**/*.tga` packaged; packaged smoke checks them. `.gitattributes` marks `.tga`/`.webp` binary.
+- **App:** `zone-art.js` uses `art/zones/map-<id>.webp` for the 46 maps on the Now zone card, Where to level, the in-app arrival banner, the Adventure saved-location card and Data coverage; biome art otherwise.
+
 ## 0.36.0 — your character, 2026-11-14
 
 - **G5 character sheet (first part):** Characters → Sheet: equipped gear by slot with quality colours, item cards, average item level (shirt and tabard excluded), empty slots, pieces behind your level, upgrades already in bags or bank, and the addon's new `stats` capture (base stats, armor, attack power, health and power, resistances).

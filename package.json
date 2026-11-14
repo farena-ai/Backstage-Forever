@@ -1,7 +1,7 @@
 {
   "name": "backstage-forever",
   "productName": "Backstage Forever",
-  "version": "0.36.0",
+  "version": "0.37.0",
   "releaseChannel": "preview",
   "description": "A local-first adventure companion from Backstage Coding. Designed by Frank Arena.",
   "author": "Frank Arena / Backstage Coding",
@@ -106,6 +106,7 @@
           "**/*.toc",
           "**/*.lua",
           "**/*.xml",
+          "**/*.tga",
           "**/README.md"
         ]
       }

@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.36: your character
+## 0.37: painted zone banners
 
-A character sheet with your gear, item level, stats and upgrades you already own, gear sets you can save and wear with `/bf set`, and a gold goal across all your characters. See the [0.36.0 release notes](docs/releases/0.36.0.md).
+Every zone and capital gets its own painted arrival banner in game, and the same painting on its card in the app. See the [0.37.0 release notes](docs/releases/0.37.0.md).
 
 ## 0.28: your journey
 

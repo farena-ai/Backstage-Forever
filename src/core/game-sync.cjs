@@ -229,6 +229,32 @@ async function safe(target, kind) {
   return st;
 }
 async function boundedRead(file, limit = MAX) {
+  return (await boundedBytes(file, limit)).toString("utf8");
+}
+// Painted textures ship as whole folders: every .tga in these addon subfolders is
+// installed (zone banners: Art/Zones/<mapId>.tga plus default.tga).
+const ART_DIRS = [["Art", "Zones"]],
+  ART_MAX_FILES = 128,
+  ART_NAME = /^[A-Za-z0-9_-]{1,40}\.tga$/i;
+async function artFiles(addonDir) {
+  const out = [];
+  for (const parts of ART_DIRS) {
+    const dir = path.join(addonDir, ...parts);
+    let names;
+    try {
+      await safe(dir, "dir");
+      names = await fs.readdir(dir);
+    } catch (e) {
+      if (e.code === "ENOENT") continue;
+      throw e;
+    }
+    for (const name of names.filter((n) => ART_NAME.test(n)).sort())
+      out.push([...parts, name]);
+    if (out.length > ART_MAX_FILES) invalid();
+  }
+  return out;
+}
+async function boundedBytes(file, limit = MAX) {
   const st = await safe(file, "file");
   if (st.size > limit) invalid();
   const h = await fs.open(file, "r");
@@ -238,7 +264,7 @@ async function boundedRead(file, limit = MAX) {
     const b = Buffer.alloc(limit + 1);
     const { bytesRead } = await h.read(b, 0, b.length, 0);
     if (bytesRead > limit) invalid();
-    return b.subarray(0, bytesRead).toString("utf8");
+    return Buffer.from(b.subarray(0, bytesRead));
   } finally {
     await h.close();
   }
@@ -495,32 +521,48 @@ class GameSync {
     try {
       await this.validateRoot(root);
       if (stale()) return this.status();
-      let folder = root;
-      for (const part of ["Interface", "AddOns", "BackstageForever"]) {
-        folder = path.join(folder, part);
-        try {
-          await safe(folder, "dir");
-        } catch (e) {
+      // Creates missing folders one level at a time, refusing links; null when stale.
+      const ensure = async (base, parts) => {
+        let dir = base;
+        for (const part of parts) {
+          dir = path.join(dir, part);
           try {
-            await fs.lstat(folder);
-            throw e;
-          } catch (check) {
-            if (check.code !== "ENOENT") throw check;
-            if (stale()) return this.status();
-            await fs.mkdir(folder);
+            await safe(dir, "dir");
+          } catch (e) {
+            try {
+              await fs.lstat(dir);
+              throw e;
+            } catch (check) {
+              if (check.code !== "ENOENT") throw check;
+              if (stale()) return null;
+              await fs.mkdir(dir);
+            }
           }
         }
-      }
+        return dir;
+      };
+      const folder = await ensure(root, ["Interface", "AddOns", "BackstageForever"]);
+      if (!folder) return this.status();
       const sources = await Promise.all(
         OWN.map(async (file) => [
           file,
-          await boundedRead(path.join(this.addonDir, file)),
+          await boundedBytes(path.join(this.addonDir, file)),
         ]),
       );
-      // Stage and verify every module before committing the loader last.
+      // Painted textures (binary): every .tga in the addon's art folders.
+      const art = await Promise.all(
+        (await artFiles(this.addonDir)).map(async (parts) => [
+          path.join(...parts),
+          await boundedBytes(path.join(this.addonDir, ...parts)),
+        ]),
+      );
+      const artFolders = [...new Set(art.map(([file]) => path.dirname(file)))];
+      for (const dir of artFolders)
+        if (!(await ensure(folder, dir.split(path.sep)))) return this.status();
+      // Stage and verify every module and texture before committing the loader last.
       const staged = [];
       try {
-        for (const [file, content] of [...sources.slice(1), sources[0]]) {
+        for (const [file, content] of [...sources.slice(1), ...art, sources[0]]) {
           const dest = path.join(folder, file);
           try {
             await safe(dest, "file");
@@ -530,21 +572,22 @@ class GameSync {
           if (stale()) return this.status();
           let previous = null;
           try {
-            previous = await boundedRead(dest);
-            if (previous === content) continue;
+            previous = await boundedBytes(dest);
+            if (previous.equals(content)) continue;
           } catch (error) {
             if (error.code !== "ENOENT") throw error;
           }
           if (stale()) return this.status();
           const temporary = path.join(
-            folder,
+            path.dirname(dest),
             ".backstage-" + crypto.randomUUID() + ".tmp",
           );
           staged.push({ temporary, dest, content, previous });
           await fs.writeFile(temporary, content, { flag: "wx" });
-          if ((await boundedRead(temporary)) !== content) throw Error("Verification failed");
+          if (!(await boundedBytes(temporary)).equals(content)) throw Error("Verification failed");
         }
         await safe(folder, "dir");
+        for (const dir of artFolders) await safe(path.join(folder, dir), "dir");
         if (stale()) return this.status();
         const committed = [];
         try {
@@ -552,7 +595,7 @@ class GameSync {
           for (const entry of staged) {
             fsSync.renameSync(entry.temporary, entry.dest);
             committed.push(entry);
-            if (fsSync.readFileSync(entry.dest, "utf8") !== entry.content)
+            if (!fsSync.readFileSync(entry.dest).equals(entry.content))
               throw Error("Verification failed");
           }
         } catch (error) {
@@ -574,7 +617,7 @@ class GameSync {
           addonInstalled: true,
           addonCurrent: true,
           addonVersion:
-            sources[0][1].match(/^## Version:\s*(.+)$/m)?.[1]?.trim() || null,
+            sources[0][1].toString("utf8").match(/^## Version:\s*(.+)$/m)?.[1]?.trim() || null,
           // When these files landed: a /reload before this moment still runs the old addon.
           addonUpdatedAt: new Date().toISOString(),
           phase: "needs-reload",
@@ -790,4 +833,4 @@ class GameSync {
     };
   }
 }
-module.exports = { GameSync, parseSavedVariables };
+module.exports = { GameSync, parseSavedVariables, ADDON_FILES: OWN, ART_DIRS };

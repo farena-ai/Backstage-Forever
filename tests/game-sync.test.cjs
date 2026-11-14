@@ -388,6 +388,36 @@ test("installer stages all resources, commits TOC last and rolls back a failed c
   assert.deepEqual((await fs.readdir(folder)).sort(),files.sort(),'No staging leftovers');
 });
 
+test("installer copies painted textures byte for byte from the art folders and ignores other files", async (t) => {
+  const { ADDON_FILES } = require("../src/core/game-sync.cjs");
+  const f = await fixture(t), addon = path.join(f.dir, "source"), zones = path.join(addon, "Art", "Zones");
+  await fs.mkdir(zones, { recursive: true });
+  for (const file of ADDON_FILES) await fs.writeFile(path.join(addon, file), file.endsWith(".toc") ? "## Version: 0.37.0\n" : "synthetic " + file);
+  // Not valid UTF-8: must survive the copy unchanged.
+  const tga = (seed) => Buffer.from([0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 1, 0, 24, 0, ...Array.from({ length: 12 }, (_, i) => (seed * 37 + i * 91) & 255), 0xff, 0xfe, 0x80]);
+  await fs.writeFile(path.join(zones, "1411.tga"), tga(1));
+  await fs.writeFile(path.join(zones, "default.tga"), tga(2));
+  await fs.writeFile(path.join(zones, "notes.txt"), "not a texture");
+  await fs.writeFile(path.join(zones, "bad name.tga"), tga(3));
+  const sync = new GameSync({ dataDir: path.join(f.dir, "data"), addonDir: addon }); t.after(() => sync.close());
+  assert.equal((await sync.prepare(f.root)).addonCurrent, true);
+  const folder = path.join(f.root, "Interface", "AddOns", "BackstageForever"), installed = path.join(folder, "Art", "Zones");
+  assert.deepEqual((await fs.readdir(installed)).sort(), ["1411.tga", "default.tga"]);
+  assert.deepEqual(await fs.readFile(path.join(installed, "1411.tga")), tga(1));
+  assert.deepEqual(await fs.readFile(path.join(installed, "default.tga")), tga(2));
+  // A repainted texture is replaced; a damaged one is repaired; no staging leftovers.
+  await fs.writeFile(path.join(zones, "1411.tga"), tga(4));
+  await fs.writeFile(path.join(installed, "default.tga"), "damaged");
+  assert.equal((await sync.prepare()).addonCurrent, true);
+  assert.deepEqual(await fs.readFile(path.join(installed, "1411.tga")), tga(4));
+  assert.deepEqual(await fs.readFile(path.join(installed, "default.tga")), tga(2));
+  assert.deepEqual((await fs.readdir(installed)).sort(), ["1411.tga", "default.tga"]);
+  // Something other than a folder in place of the art folder is refused.
+  await fs.rm(path.join(folder, "Art"), { recursive: true });
+  await fs.writeFile(path.join(folder, "Art"), "not a folder");
+  assert.equal((await sync.prepare()).addonCurrent, false);
+});
+
 test("disconnect during staging commits no resources and removes staging files", async (t) => {
   const f=await fixture(t),addon=path.join(__dirname,'../addon/BackstageForever');
   const sync=new GameSync({dataDir:path.join(f.dir,'data'),addonDir:addon});t.after(()=>sync.close());

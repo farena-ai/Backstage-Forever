@@ -18,3 +18,5 @@ None of these images is taken from World of Warcraft or any Blizzard product, an
 | `heroes/*.webp` | Page banners, one per page (Adventure, Quests, Professions, Plans, Party, Characters, Dungeons, Talents, Journey, Data coverage, Commands, Companion), shown by the shared page banner (art pass 3, 0.31.0) |
 | `pins/companion.png` | AI Companion crest (0.31.0) |
 | `moments/*.png` | Live moments cards, death screen and Now "Recent moments": one medallion per moment kind (death, elite, rare, boss, profession, zone, flight, upgrade, dungeon, chain), generated locally with ComfyUI / Qwen-Image (0.33.0) |
+| `zones/map-*.webp` | One painted landscape per zone (46 zones, file name = map ID): Now "You are here" card, Now "Where to level" list, Adventure saved-location card, Data coverage. Original art by Backstage Coding, generated locally with ComfyUI (0.37.0) |
+| `addon/BackstageForever/Art/Zones/*.tga` | The same zone paintings as the in-game arrival banner (1024x128 TGA, `<mapId>.tga` plus `default.tga` for zones without their own painting). Original art by Backstage Coding, generated locally with ComfyUI (0.37.0) |

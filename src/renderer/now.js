@@ -65,6 +65,8 @@ window.NowView = (() => {
   // Painted crests per step and a painted vista per kind of landscape (original art, art/NOTICE.md).
   const crest = (kind) => `<img class="now-crest" src="art/steps/${kind}.png" alt="" width="44" height="44">`;
   const BIOME = new Proxy({}, { get: (_t, id) => window.ZoneArt?.biome(Number(id)) || undefined });
+  // G13: a zone's own painting when it has one (applied by ZoneArt.paint), else its biome vista.
+  const zoneArt = (mapId) => (window.ZoneArt?.painted(mapId) ? ` data-zone-art="${Number(mapId)}"` : "");
   const minutes = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`);
   // XP bar with rested bonus, plus this session's pace (from the live link).
   function sessionCard(a) {
@@ -130,7 +132,7 @@ window.NowView = (() => {
     const fit = z.fit === "right" ? "Your level" : z.fit === "low" ? "A bit high for you" : z.fit === "high" ? "You've outgrown it" : "";
     const hub = z.hub ? `<li class="now-zr"><span class="now-zr-ico now-zr-quest" aria-hidden="true"></span><div><strong>${z.questsForYou} quests for your level</strong><span class="now-zr-item">Most start around ${pct(z.hub.x)}, ${pct(z.hub.y)} ${mapBtn(w(z.hub), `${z.name} quest hub`, null, null, { title: `Quest hub in ${z.name}`, steps: [`${z.hub.quests} quests start around here.`, "Pick up everything for your level, then do them in one loop."] })}</span></div></li>` : "";
     const art = BIOME[z.mapId] ? ` biome-${BIOME[z.mapId]}` : "";
-    return `<article class="now-card now-zonecard"><div class="now-zc-head${art}"><span class="now-eyebrow">You are here</span><h2>${esc(z.name)}</h2><p>${z.band ? `Levels ${z.band.min}–${z.band.max}` : ""}${fit ? ` · <span class="now-zc-fit now-zc-${esc(z.fit)}">${fit}</span>` : ""}${z.live ? ' · <span class="now-fresh live">● Live</span>' : ""}</p></div>
+    return `<article class="now-card now-zonecard"><div class="now-zc-head${art}"${zoneArt(z.mapId)}><span class="now-eyebrow">You are here</span><h2>${esc(z.name)}</h2><p>${z.band ? `Levels ${z.band.min}–${z.band.max}` : ""}${fit ? ` · <span class="now-zc-fit now-zc-${esc(z.fit)}">${fit}</span>` : ""}${z.live ? ' · <span class="now-fresh live">● Live</span>' : ""}</p></div>
       <ul class="now-zr-list">${hub}
       ${row("inn", "Inn", z.inns, (p) => ({ title: p.label, steps: ["Talk to the innkeeper to make this your home: your Hearthstone brings you back here.", "Logging out in an inn earns rested experience."] }))}
       ${row("flight", "Flight master", z.flights, (p) => ({ title: p.label, steps: ["Talk to them once to learn this flight path.", "Then you can fly here from any flight master you know."] }))}
@@ -145,6 +147,7 @@ window.NowView = (() => {
     const el = document.createElement("div");
     el.className = `bf-arrive${BIOME[z.mapId] ? ` biome-${BIOME[z.mapId]}` : ""}`;
     el.setAttribute("role", "status");
+    if (window.ZoneArt?.painted(z.mapId)) { el.dataset.zoneArt = String(Number(z.mapId)); window.ZoneArt.paint(el); }
     el.innerHTML = `<div class="bf-arrive-art"></div><div class="bf-arrive-text"><span>Now entering</span><strong>${esc(z.name)}</strong><em>${z.band ? `Levels ${z.band.min}–${z.band.max}` : ""}${z.questsForYou ? ` · ${z.questsForYou} quests for your level` : ""}</em></div>`;
     document.body.append(el);
     el.addEventListener("click", () => el.remove());
@@ -157,7 +160,7 @@ window.NowView = (() => {
     if (advice.status === "no-character") return setupCard(advice) || `<div class="now-card"><h2>No character yet</h2><p>Connect your WoW Forever folder in Settings → Game connection, log in once and type <code>/reload</code>. Your characters appear here.</p></div>`;
     if (advice.status === "no-level") return `<div class="now-card"><h2>${esc(advice.name)}</h2><p>Log in on this character and type <code>/reload</code> so the app knows its level.</p></div>`;
     const a = advice, c = a.character, list = steps(a);
-    const zones = a.zones.map((z) => `<li class="now-zone now-fit-${esc(z.fit)}${BIOME[z.mapId] ? ` biome-${BIOME[z.mapId]}` : ""}"><button type="button" ${z.hub ? `data-now-map='${esc(JSON.stringify({ mapId: z.mapId, x: z.hub.x, y: z.hub.y, label: `${z.name} quest hub`, sub: null, goal: { title: `Quest hub in ${z.name}`, steps: [`Levels ${z.min}–${z.max}${z.available ? `, ${z.available} quests you can pick up` : ""}.`, ...(z.quests?.length ? [`Start with: ${z.quests.slice(0, 3).map((q) => q.title).join(", ")}.`] : []), ...(z.towns?.length ? [`Friendly towns: ${z.towns.join(", ")}.`] : [])] } }))}'` : "disabled"}><strong>${esc(z.name)}</strong><span>${z.min}–${z.max}${z.observedLevels ? " · seen in play" : ""}</span><span>${z.available ? `${z.available} quests for you` : "no quests recorded yet"}${z.towns.length ? ` · ${esc(z.towns.join(", "))}` : ""}</span><em>${z.fit === "now" ? "Your level" : "Soon"}</em></button></li>`).join("");
+    const zones = a.zones.map((z) => `<li class="now-zone now-fit-${esc(z.fit)}${BIOME[z.mapId] ? ` biome-${BIOME[z.mapId]}` : ""}"${zoneArt(z.mapId)}><button type="button" ${z.hub ? `data-now-map='${esc(JSON.stringify({ mapId: z.mapId, x: z.hub.x, y: z.hub.y, label: `${z.name} quest hub`, sub: null, goal: { title: `Quest hub in ${z.name}`, steps: [`Levels ${z.min}–${z.max}${z.available ? `, ${z.available} quests you can pick up` : ""}.`, ...(z.quests?.length ? [`Start with: ${z.quests.slice(0, 3).map((q) => q.title).join(", ")}.`] : []), ...(z.towns?.length ? [`Friendly towns: ${z.towns.join(", ")}.`] : [])] } }))}'` : "disabled"}><strong>${esc(z.name)}</strong><span>${z.min}–${z.max}${z.observedLevels ? " · seen in play" : ""}</span><span>${z.available ? `${z.available} quests for you` : "no quests recorded yet"}${z.towns.length ? ` · ${esc(z.towns.join(", "))}` : ""}</span><em>${z.fit === "now" ? "Your level" : "Soon"}</em></button></li>`).join("");
     const t = a.training;
     const training = !t ? `<p>Pick a class for this character in Characters to see training.</p>`
       : !t.trainer ? `<p>No ${esc(t.className)} trainer is recorded for your faction yet.</p>`
@@ -196,6 +199,7 @@ window.NowView = (() => {
   function paint() {
     const b = document.querySelector("[data-now-body]"); if (!b) return;
     b.innerHTML = body();
+    window.ZoneArt?.paint(b);
     for (const el of b.querySelectorAll(".now-xp [data-w]")) { el.style.width = `${Number(el.dataset.w)}%`; if (el.dataset.l) el.style.left = `${Number(el.dataset.l)}%`; }
     const t = document.querySelector("[data-now-title]"); if (t) t.textContent = advice?.character?.name || advice?.name || "Your next move";
     const crestEl = document.querySelector("[data-now-crest]"), cls = String(advice?.character?.className || "").toLowerCase();
