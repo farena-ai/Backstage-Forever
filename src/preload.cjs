@@ -100,6 +100,14 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.on("backstage:playEvent", handler);
       return () => ipcRenderer.removeListener("backstage:playEvent", handler);
     },
+    moments: () => invoke("moments"),
+    setMomentSettings: (input) => invoke("setMomentSettings", input),
+    onMoment: (listener) => {
+      if (typeof listener !== "function") throw new Error("Invalid moment listener.");
+      const handler = (_event, m) => listener(m);
+      ipcRenderer.on("backstage:moment", handler);
+      return () => ipcRenderer.removeListener("backstage:moment", handler);
+    },
     mapArt: (mapId) => invoke("mapArt", mapId),
     gameDataStatus: () => invoke("gameDataStatus"),
     gameItems: (ids) => invoke("gameItems", ids),

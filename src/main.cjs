@@ -671,6 +671,27 @@ app.whenReady().then(async () => {
     const band = zones.find((z) => z.faction === profile.faction) || zones.find((z) => z.faction === "Contested") || zones[0] || null;
     return require("./core/zone-briefing.cjs").zoneBriefing({ build, profile, band, packs: { knowledge: knowledge.bundled?.pack || null, insights, vendors: companionService.vendorPack } });
   });
+  // Live moments (0.33): deaths, notable kills, cleared dungeons, profession milestones, new zones and
+  // flight paths, upgrades and finished quest chains, from the strip's moments pages and live frames.
+  const momentsLib = require("./core/moments.cjs");
+  const moments = new momentsLib.MomentsService({
+    dataDir: app.getPath("userData"),
+    reference: momentsLib.loadReference({ knowledge: knowledge?.bundled?.pack || null, insights, creatures: creaturePack }),
+    getContext: () => {
+      const profile = worldMap.profile(), frame = liveBridge.status().frame;
+      return { level: frame?.level || profile?.level || null, faction: profile?.faction || null, mapId: frame?.position?.mapId || null };
+    },
+    zoneBand: (mapId) => {
+      const faction = worldMap.profile()?.faction;
+      const rows = leveling.pack.zones.filter((z) => z.mapId === mapId);
+      const z = rows.find((r) => r.faction === faction) || rows.find((r) => r.faction === "Contested") || rows[0];
+      return z ? { min: z.min, max: z.max } : null;
+    },
+    send: (m) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:moment", m); },
+  });
+  liveBridge.subscribeMoments((raw) => { try { moments.observe(raw); } catch {} });
+  handle("moments", () => moments.status());
+  handle("setMomentSettings", (input) => moments.setSettings(input));
   // This play session (memory only): pace, deaths, level-ups and where you walked.
   const playSession = new (require("./core/play-session.cjs").PlaySession)();
   liveBridge.subscribe(() => {
@@ -679,7 +700,11 @@ app.whenReady().then(async () => {
       const mine = worldMap.liveFrame(worldMap.profile());
       // Combat frames carry no position; they still count as play for the same character.
       const frame = mine || (raw && raw.characterHash === playSession.key ? { ...raw, position: undefined } : null);
-      for (const e of playSession.observe(frame)) if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:playEvent", e);
+      for (const e of playSession.observe(frame)) {
+        if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:playEvent", e);
+        moments.onPlayEvent(e);
+      }
+      moments.observeFrame(raw);
     } catch {}
   });
   handle("playSession", () => playSession.summary());

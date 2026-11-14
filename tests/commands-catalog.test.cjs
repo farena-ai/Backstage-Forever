@@ -57,7 +57,7 @@ test("the Commands page is reachable from Help", () => {
 
 test("every art file the pages reference ships with the app", () => {
   const referenced = new Set();
-  for (const f of ["src/renderer/now.css", "src/renderer/commands.css", "src/renderer/styles.css", "src/renderer/page-hero.css", "src/renderer/command-center.css"]) for (const m of read(f).matchAll(/url\("(art\/[^"]+)"\)/g)) referenced.add(m[1]);
+  for (const f of ["src/renderer/now.css", "src/renderer/commands.css", "src/renderer/styles.css", "src/renderer/page-hero.css", "src/renderer/command-center.css", "src/renderer/moments.css"]) for (const m of read(f).matchAll(/url\("(art\/[^"]+)"\)/g)) referenced.add(m[1]);
   for (const m of read("src/renderer/commands.js").matchAll(/"([a-z-]+)"/g)) if (fs.existsSync(path.join(root, "src/renderer/art/icons", m[1] + ".png"))) referenced.add(`art/icons/${m[1]}.png`);
   assert.ok(referenced.size >= 10, [...referenced].join(","));
   for (const r of referenced) assert.ok(fs.existsSync(path.join(root, "src/renderer", r)), `missing ${r}`);
@@ -102,6 +102,18 @@ test("quest how-to steps and coverage meters use art that exists and fits", () =
   for (const [, , art] of cov) assert.ok(fs.existsSync(path.join(root, "src/renderer/art", art + ".png")), art);
   const by = Object.fromEntries(cov.map(([, k, a]) => [k, a]));
   assert.equal(by.professionTrainers, "pins/profession-trainer"); assert.equal(by.questGivers, "pins/quest-giver");
+});
+
+test("every moment kind has its painted medallion, and every stand-in art file exists", () => {
+  const js = read("src/renderer/moments.js");
+  const medallions = JSON.parse("{" + js.match(/const MEDALLION = Object\.freeze\(\{([^}]*)\}/)[1].replace(/(\w+):/g, '"$1":') + "}");
+  const { KINDS } = require("../src/core/moments.cjs");
+  assert.deepEqual(Object.keys(medallions).sort(), [...KINDS].sort(), "a medallion per moment kind");
+  for (const f of Object.values(medallions)) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/moments", f + ".png")), `missing medallion ${f}`);
+  for (const m of js.match(/const FALLBACK = Object\.freeze\(\{([^}]*)\}/)[1].matchAll(/"(art\/[^"]+)"/g)) assert.ok(fs.existsSync(path.join(root, "src/renderer", m[1])), `missing ${m[1]}`);
+  assert.match(read("src/renderer/art/NOTICE.md"), /`moments\/\*\.png`/);
+  const html = read("src/renderer/index.html");
+  assert.match(html, /<script src="moments\.js"><\/script>/); assert.match(html, /href="moments\.css"/);
 });
 
 test("every class has its crest", () => {
