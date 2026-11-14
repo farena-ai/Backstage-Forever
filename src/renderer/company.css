@@ -46,7 +46,8 @@
 
 /* Now look (0.31): plans and characters as parchment cards under the shared banner. */
 .company-page { display: flex; flex-direction: column; gap: 14px; color: #2b1b0a; }
-.company-page > :not(.page-hero):not(.company-coverage) { margin: 0; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
+.content .company-page > :not(.page-hero):not(.company-coverage) { margin: 0; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
+.company-page > section, .company-page > form { padding: 14px 16px; }
 .company-page .company-coverage { margin: 0; color: #c9b48a; font-size: 13px; }
 .company-page input, .company-page select, .company-page textarea { color: #2b1b0a; background: #fff8e6; border: 1px solid #a5823e; }
 .company-page :is(h2, h3) { color: #3d220c; }

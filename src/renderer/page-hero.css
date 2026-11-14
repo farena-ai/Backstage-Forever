@@ -92,3 +92,25 @@
   .ph-sub { font-size: 13px; }
   .bf-page, .bf-col { gap: 10px; }
 }
+
+/* Folded tools (quest filters, reference details, voice, memory, quest session) read as parchment. */
+.player-tool { background: linear-gradient(180deg, #efe0bb, #dcc797); border: 1px solid #a5823e; border-radius: 6px; color: #2b1b0a; }
+.player-tool > summary { color: #7a1f14; font-weight: 700; }
+.player-tool[open] > summary { border-bottom-color: rgba(138,90,24,.35); }
+.bf-card .player-tool, .panel .player-tool, .quest-index .player-tool, .knowledge-status .player-tool { background: rgba(255,248,225,.55); border-color: #c4a466; box-shadow: none; }
+.player-tool :is(label, small, p) { color: #4a3218; }
+/* The setup reminder above a page: a maroon/brass strip like the banner it sits on. */
+.content > .companion-dock { margin: 0 0 14px; border-radius: 6px; border: 1px solid #c79a4a; background: linear-gradient(180deg, #5a1a10, #3a0f09); box-shadow: 0 4px 12px rgba(0,0,0,.4); color: #f1dcb0; }
+.content > .companion-dock strong { color: #fff1d6; }
+/* Parchment panels: tags, roster rows and the companion's character medallion. */
+.bf-parchment .panel .tag { color: #3d220c; background: rgba(255,248,225,.7); border-color: #a5823e; }
+.bf-parchment .character-list button { background: rgba(255,248,225,.6); color: #2b1b0a; border-color: #c4a466; text-shadow: none; }
+.bf-parchment .character-list button.selected { background: #fff6dc; border-color: #8a5a18; box-shadow: 0 0 0 2px rgba(246,196,69,.45); }
+.bf-parchment .character-list button small { color: #5a3e1c; }
+.bf-parchment .companion-intel .hero-medallion { width: 84px; height: 84px; }
+
+.bf-parchment .message { background: #fffaf0; border: 1px solid #c4a466; color: #2b1b0a; box-shadow: 0 2px 6px rgba(60,40,18,.15); }
+.bf-parchment .message.user { background: #f1dfb4; border-color: #a5823e; }
+.bf-parchment .message .eyebrow { color: #8a5a18; }
+.bf-parchment .message :is(p, li, span, small) { color: #2b1b0a; }
+.bf-parchment .lookup-trail { color: #6b4a22; }

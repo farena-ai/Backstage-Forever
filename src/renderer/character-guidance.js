@@ -71,7 +71,7 @@ ${m.statusMessage?`<p class="cg-status-message">${esc(m.statusMessage)}</p>`:""}
 <span class="eyebrow">Equipped</span>
 <h3>Your gear</h3>
 </div>
-<p>${esc(m.gear.explanation)}</p>${m.gear.weakest?.length?`<div class="cg-weakest"><strong>Upgrade these first</strong><ul>${m.gear.weakest.map(w=>`<li><span class="cg-rate ${esc(w.rating)}">${w.rating==="replace"?"Replace soon":"Aging"}</span>${esc(w.slot)}: ${esc(w.name)} <small>item level ${w.itemLevel??"?"}</small></li>`).join("")}</ul><small>Quest rewards and the Best choice boxes on quest pages are the quickest way to fill these.</small></div>`:""}${m.gear.rows.length?`<div class="cg-gear-list">${m.gear.rows.map(g=>`<article class="cg-gear${g.rating?` rate-${esc(g.rating)}`:""}">
+${m.gear.weakest?.length?`<div class="cg-weakest"><strong>Upgrade these first</strong><ul>${m.gear.weakest.map(w=>`<li><span class="cg-rate ${esc(w.rating)}">${w.rating==="replace"?"Replace soon":"Aging"}</span>${esc(w.slot)}: ${esc(w.name)} <small>item level ${w.itemLevel??"?"}</small></li>`).join("")}</ul><small>Quest rewards and the Best choice boxes on quest pages are the quickest way to fill these.</small></div>`:""}${m.gear.rows.length?`<div class="cg-gear-list">${m.gear.rows.map(g=>`<article class="cg-gear${g.rating?` rate-${esc(g.rating)}`:""}">
 <span class="cg-slot">${g.details?.iconFileId&&window.GameIcons?GameIcons.tag(g.details.iconFileId,40):""}${esc(g.slotLabel)}<small>Slot ${g.slot}</small>
 </span>
 <div>
@@ -90,7 +90,7 @@ ${m.statusMessage?`<p class="cg-status-message">${esc(m.statusMessage)}</p>`:""}
 <span class="eyebrow">Training</span>
 <h3>Class trainers</h3>
 </div>
-<p>${esc(m.trainingExplanation)}</p>${m.trainerReason?`<p class="cg-empty">${esc(m.trainerReason)}</p>`:""}<div class="cg-trainers">${m.classTrainers.map(t=>trainer(t,true)).join("")}</div>
+${m.trainerReason?`<p class="cg-empty">${esc(m.trainerReason)}</p>`:""}<div class="cg-trainers">${m.classTrainers.map(t=>trainer(t,true)).join("")}</div>
 </section>`;
   }
   function referenceMarkup(m) {

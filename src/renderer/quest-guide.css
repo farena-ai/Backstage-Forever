@@ -377,3 +377,6 @@ button.quest-ledger-row:not(.illustrated-card){display:flex;align-items:center;g
 .quest-guide .quest-detail h2, .quest-guide .quest-waypoint h3, .quest-guide .quest-section h3 { color: #3d220c; }
 .quest-guide .ledger-caption { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .12em; text-transform: uppercase; color: #8a5a18; }
 .quest-guide .ledger-footnote { font-size: 12px; color: #c9b48a; }
+.quest-guide :is(.quest-search-label, .quest-ledger-row strong, .quest-detail h2, .quest-section h3, .quest-section h4, .quest-waypoint h3, .chain-status) { color: #3d220c; }
+.quest-guide .quest-chain button:not(.illustrated-card), .quest-guide .chain-link > span { color: #7a1f14; }
+.quest-guide .ledger-caption span, .quest-guide .atlas-index-label { color: #8a5a18; }
