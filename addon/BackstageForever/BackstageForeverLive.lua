@@ -444,6 +444,12 @@ local function settings()
     if type(BackstageForeverLiveSettings)~='table' then BackstageForeverLiveSettings={enabled=true,announce=true} end
     local s=BackstageForeverLiveSettings
     if s.pos~=nil and not POINTS[s.pos] then s.pos=nil end
+    -- 0.38.1: everyone moves to the hairline once, even a saved safe or compact strip. A choice made
+    -- after this (/bf live safe over remote desktop) sticks.
+    if not s.hairlineOnce then
+        if s.safe or s.compact then s.safe=nil s.compact=nil s.switchedToHairline=true end
+        s.hairlineOnce=true
+    end
     return s
 end
 -- One UI unit = one physical pixel, independent of UI scale and resolution, so a cell is
@@ -797,6 +803,10 @@ end
 -- First login with the live link: say once what the strip is and how to hide it.
 local function announce()
     local s=settings()
+    if s.switchedToHairline then
+        s.switchedToHairline=nil
+        say('Backstage Forever live link: now the thin dark line along the top edge of the game. If the desktop app says it cannot read it (remote desktop, colour filters), type /bf live safe.')
+    end
     if not s.announce then return end
     s.announce=nil
     if type(DEFAULT_CHAT_FRAME)=='table' and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then

@@ -430,12 +430,19 @@ print(p('live hairline')..' '..p('LIVE HAIRLINE')..' '..p('live compact')..' '..
   assert.equal(out[6], "hairline:nil hairline:nil compact:nil safe:nil");
 });
 
-test("addon: a saved pre-0.38 compact setting becomes the hairline; a saved safe mode stays safe", () => {
+test("addon: everyone moves to the hairline once (saved compact or safe too, with a chat note); a later /bf live safe sticks", () => {
   const out = lua(HARNESS + String.raw`
-BackstageForeverLiveSettings={enabled=true}
+local said={} DEFAULT_CHAT_FRAME={AddMessage=function(_,m) said[#said+1]=m end}
+BackstageForeverLiveSettings={enabled=true,safe=true}
 fire('PLAYER_LOGIN') print(strip().w..'x'..strip().h)
-BackstageForeverLiveSettings.safe=true BackstageForeverLiveCommand('live on') print(strip().w..'x'..strip().h)`).split("\n");
-  assert.deepEqual(out, ["892x1", "456x12"]);
+local note=false for _,m in ipairs(said) do if m:find('/bf live safe',1,true) and m:find('thin dark line',1,true) then note=true end end print(tostring(note))
+BackstageForeverLiveCommand('live safe') print(strip().w..'x'..strip().h)
+fire('PLAYER_LOGIN') print(strip().w..'x'..strip().h)
+BackstageForeverLiveSettings={enabled=true,compact=true}
+fire('PLAYER_LOGIN') print(strip().w..'x'..strip().h)
+BackstageForeverLiveSettings={enabled=true}
+fire('PLAYER_LOGIN') print(strip().w..'x'..strip().h)`).split("\n");
+  assert.deepEqual(out, ["892x1", "true", "456x12", "456x12", "892x1", "892x1"]);
 });
 
 // Runs the hairline for `seconds` after queueing `text`; one row per 0.2s tick.
