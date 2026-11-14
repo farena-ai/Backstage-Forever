@@ -121,6 +121,9 @@ local function waypoint(mapId,x,y,label)
     if type(BackstageForeverWay)=='function' then pcall(BackstageForeverWay,('way %d %.2f %.2f %s'):format(mapId,x*100,y*100,label or ''))end
 end
 local Pin={}
+-- Blizzard's AcquirePin calls pin:SetPassThroughButtons(), which is protected: from an addon pin
+-- it is blocked ("only available to the Blizzard UI"). Our own pins keep it as a no-op.
+function Pin:SetPassThroughButtons()end
 function Pin:OnLoad()
     method(self,'SetSize',18,18)
     self.bfIcon=method(self,'CreateTexture',nil,'ARTWORK')

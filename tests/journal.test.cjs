@@ -75,3 +75,12 @@ test("no addon file replaces a Blizzard global function (that taints the default
     assert.deepEqual(bad, [], f);
   }
 });
+
+test("world map pins neutralise the protected SetPassThroughButtons that Blizzard's AcquirePin calls", () => {
+  const fs = require("node:fs");
+  for (const f of ["BackstageForeverMap.lua", "BackstageForeverAdvisorMap.lua"]) {
+    const src = fs.readFileSync(path.join(__dirname, "../addon/BackstageForever", f), "utf8");
+    const pin = src.indexOf("local Pin={}"), noop = src.indexOf("function Pin:SetPassThroughButtons()end"), mix = src.indexOf("call(Mixin,frame,base,Pin)");
+    assert.ok(pin >= 0 && noop > pin && mix > noop, f + ": our pins override SetPassThroughButtons before mixing in");
+  }
+});
