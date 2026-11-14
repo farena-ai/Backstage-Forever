@@ -56,7 +56,7 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
     const mainWait = name => app.evaluate(async (_e, name) => { const end = Date.now() + 4000; while (!supportFixture[name]) { if (Date.now() > end) throw Error("Fixture action did not begin: " + name); await new Promise(r => setTimeout(r, 10)); } }, name);
     await check("Field Guide discovers Support & Recovery without another route", async () => {
       await page.getByRole("region", { name: "Support & Recovery", exact: true }).waitFor();
-      assert.equal(await page.locator("nav[aria-label='Main navigation'] button").count(), 7);assert.equal(await page.getByRole("navigation",{name:"Settings and help",exact:true}).getByRole("button").count(),2); assert.equal(await copy().isDisabled(), true); assert.equal(await save().isDisabled(), true);
+      assert.equal(await page.locator("nav[aria-label='Main navigation'] button").count(), 8);assert.equal(await page.getByRole("navigation",{name:"Settings and help",exact:true}).getByRole("button").count(),2); assert.equal(await copy().isDisabled(), true); assert.equal(await save().isDisabled(), true);
       for (const label of ["Export backup", "Import backup", "Delete all local data", "Open Quests"]) assert.equal(await page.getByRole("button", { name: label, exact: true }).count(), 1);
     });
     await check("physical Enter retains original controls and unrelated Field Guide nodes until release", async () => {

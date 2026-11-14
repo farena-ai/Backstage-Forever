@@ -585,7 +585,7 @@ const repo = path.resolve(__dirname, ".."),
           );
           await page.screenshot({ path: path.join(evidence, `${name}.png`) });
         }
-        assert.equal(await page.locator('nav[aria-label="Main navigation"] button').count(), 7);assert.equal(await page.getByRole("navigation",{name:"Settings and help",exact:true}).getByRole("button").count(),2);
+        assert.equal(await page.locator('nav[aria-label="Main navigation"] button').count(), 8);assert.equal(await page.getByRole("navigation",{name:"Settings and help",exact:true}).getByRole("button").count(),2);
       },
     );
     const calls = await app.evaluate(() => ({
