@@ -207,7 +207,7 @@ Backstage Forever should look like a premium fantasy companion on every page. Al
 
 | # | Program | Size | Notes |
 |---|---|---|---|
-| 4.1 | **Full 1–60 guided route per race and faction.** A complete, curated, step-by-step leveling route, generated from our data and then hand-reviewed. It runs in the in-game step frame (2.3) with auto-advance, skip and "I'm behind or ahead" re-planning. | XL | The flagship. Needs 2.3 and 2.4 first. |
+| 4.1 | *(0.50: built for all eight races from the bundled data, as far as the data reaches (about level 42 for both factions; Dwarf and Gnome start at 10, Tauren skip 4–9). In game `/bf route guide`; in the app Adventure → Guided route with a coverage report. Frank chose "engine and review now" on 2026-11-15; the hand review comes in 0.51.)* **Full 1–60 guided route per race and faction.** A complete, curated, step-by-step leveling route, generated from our data and then hand-reviewed. It runs in the in-game step frame (2.3) with auto-advance, skip and "I'm behind or ahead" re-planning. | XL | The flagship. Needs 2.3 and 2.4 first. |
 | 4.2 | *(Shipped in 0.34 as H4, the opt-in community at bf.backstagecoding.com.)* **Community data loop.** Opt-in, privacy-reviewed export of your own observations (positions of quest givers, objectives and trainers you met), to share with the community dataset. Closes Alliance gaps faster. | L | Must stay opt-in, contain no personal data, and be reviewed. |
 | 4.3 | **Accessibility and localization.** Screen-reader-friendly app and colorblind-safe icons. Localize the app and addon text (deDE, frFR, esES…) as data allows. | L | Data is enUS today. |
 | 4.4 | *(Done in 0.47: planning tools plan_tonight, get_zone_progress, get_gear, get_dungeons, get_characters and get_session, plus an offline "what should I do tonight?" answer.)* **Smarter AI companion.** The companion gets tool access to everything above: routes, gear, dungeons and session history. It answers "what should I do tonight?" with a concrete plan. | L | Works with the user's own provider; no paid services by default. |
@@ -286,7 +286,8 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 - **0.47 (shipped):** 4.4 smarter companion: "what should I do tonight?" gets an ordered plan from the next step, rested XP, zones, dungeons, gear and your other characters, with or without an AI model.
 - **0.48 (shipped):** 3.1 past sessions: Characters → Journey keeps each play session and charts levels per day. Tier 3 is complete.
 - **0.49 (shipped):** G9 painted Compass and step frames in game, G10 welcome splash and tour, G11 Horde and Alliance themes.
-- **0.50+:** G9–G11 (samples first), then the 4.1 full guided route and the G12 art review.
+- **0.50 (shipped):** 4.1 guided route, part 1: a step-by-step route per race from level 1, in game with `/bf route guide` (auto-advance, skip, ahead and behind) and on Adventure → Guided route with a coverage report.
+- **0.51+:** 4.1 part 2 (hand review in the app, exported into the bundled routes), 4.3 accessibility and translations, then the G12 art review before 1.0. 4.6 macOS only if wanted.
 - **1.0:** after Frank's hands-on acceptance.
 
 Keep this file and Help → Commands updated with each release.

@@ -11,7 +11,7 @@ window.PlayerNavigation = (() => {
     ["company", "♜", "Plans"],
   ]);
   const groups = {
-    adventure: {label:"Adventure",routes:[["adventure","Next step"],["zones","Zones"],["dungeons","Dungeons & raids"],["preparation","Professions"]],description:"Your next step, every zone you can level in, dungeons and profession plans."},
+    adventure: {label:"Adventure",routes:[["adventure","Next step"],["guided-route","Guided route"],["zones","Zones"],["dungeons","Dungeons & raids"],["preparation","Professions"]],description:"Your next step, every zone you can level in, dungeons and profession plans."},
     company: {
       label: "Plans",
       routes: [
