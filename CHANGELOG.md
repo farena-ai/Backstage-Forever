@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.51.0 — route review, 2026-11-15
+
+- **4.1 part 2, the hand review:** Adventure → Guided route → Start reviewing. Pick any race and page through its whole route (40 steps a page); per step ✓ keep, ✗ leave out, ↑ ↓ move, ↺ undo. Edits are saved on this computer in `route-review.json` (cleared by Delete all local data) and merged over the bundled `data/forever-route/reviews.json` straight away in the app; **Export review** writes the merged file (without the local undo lists) for the next release, whose build puts it into `BackstageForeverGuideData.lua`.
+- `guided-route.cjs`: `applyReview` gains ordered moves (`[stepId, afterStepId | null]`) and `keepSkipped`; new `mergeReviews`, `reviewAction` and `exportReview`. IPC `routeReview`, `setRouteReview` (action and step checked against the route) and `exportRouteReview` (save dialog).
+- The Guided route page no longer reloads in a loop if the route request answers with nothing.
+
 ## 0.50.0 — guided route, 2026-11-15
 
 - **4.1 guided route (part 1):** `src/core/guided-route.cjs` builds one route per race from the bundled quest data: zone by zone in level order (staying on the same continent when there's a choice), each zone in waves of quests at your level, each wave walked nearest-first (pick up, grouped per giver; objectives where the data has an area; hand in). Quests are filtered by side and race mask; class letters and tablets collapse into one optional step. It reports where each route starts, where it ends and every level gap. Real data: Human, Orc, Night Elf, Undead and Troll 1–42; Tauren 1–42 with 4–9 missing; Dwarf and Gnome 10–42 (no Dun Morogh quests in the data).

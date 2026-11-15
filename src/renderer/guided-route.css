@@ -17,7 +17,7 @@
 .gr-card h2 { margin: 0 0 10px; font: 700 18px Cinzel, Georgia, serif; color: #3d220c; }
 .gr-steps { margin: 0; padding-left: 30px; display: flex; flex-direction: column; gap: 6px; }
 .gr-step { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 6px 10px; border-radius: 5px; background: rgba(255,255,255,.35); border-left: 4px solid #a5823e; }
-.gr-step > :not(button) { grid-column: 1; }
+.gr-step > :not(button):not(.gr-acts) { grid-column: 1; }
 .gr-step button { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
 .gr-pickup { border-left-color: #e6b84a; } .gr-objective { border-left-color: #6a9f45; } .gr-turnin { border-left-color: #c8a24f; } .gr-travel { border-left-color: #3b6fb0; } .gr-class { border-left-color: #7a4bb0; }
 .gr-kind { font: 700 10px Cinzel, Georgia, serif; letter-spacing: .1em; text-transform: uppercase; color: #8a6410; }
@@ -27,3 +27,18 @@
 .gr-cov th, .gr-cov td { padding: 5px 8px; text-align: left; border-bottom: 1px solid rgba(165,130,62,.45); }
 .gr-cov th { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .06em; color: #5a3e1c; }
 .gr-horde td:first-child { color: #9a1f1f; font-weight: 700; } .gr-alliance td:first-child { color: #1f4f9a; font-weight: 700; }
+
+/* 0.51: the hand review. */
+.gr-review-closed p { margin: 0 0 10px; }
+.gr-review-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 13px; }
+.gr-review-bar select { margin-left: 6px; padding: 3px 6px; border-radius: 4px; border: 1px solid #a5823e; background: #fff8e6; color: #2b1b0a; }
+.gr-pager { display: inline-flex; align-items: center; gap: 6px; }
+.gr-ghost { padding: 4px 10px; border-radius: 5px; border: 1px solid #a5823e; background: transparent; color: #3d220c; cursor: pointer; }
+.gr-review-list .gr-step { grid-template-columns: 1fr auto; }
+.gr-acts { grid-column: 2; grid-row: 1 / span 3; align-self: center; display: flex; gap: 4px; }
+.gr-acts button { display: grid; place-items: center; padding: 0; line-height: 1; width: 28px; height: 26px; border-radius: 4px; border: 1px solid #a5823e; background: #fff8e6; color: #3d220c; cursor: pointer; font-size: 14px; }
+.gr-acts button:hover, .gr-acts button:focus-visible { background: #f4cf72; }
+.gr-step.ok { background: rgba(120,190,90,.22); }
+.gr-step.out { opacity: .55; text-decoration: line-through; }
+.gr-step.out .gr-acts { text-decoration: none; }
+.gr-review-bar label { color: #3d220c; font-weight: 600; }

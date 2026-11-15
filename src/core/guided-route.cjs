@@ -120,11 +120,60 @@ function gapsOf(steps) {
   return out;
 }
 /** Hand review (reviews.json): skipped steps drop out, approved ones are marked. */
-function applyReview(route, review) {
-  if (!review) return { ...route, reviewed: 0 };
+// review: { skip: [stepId], approved: [stepId], moves: [[stepId, afterStepId | null], ...] }.
+// Moves apply in order: the step goes right after afterStepId (null: to the start). keepSkipped
+// leaves skipped steps in place, marked, for the review page.
+function applyReview(route, review, { keepSkipped = false } = {}) {
+  if (!review) return { ...route, reviewed: 0, skipped: 0 };
   const skip = new Set(review.skip || []), ok = new Set(review.approved || []);
-  const steps = route.steps.filter((s) => !skip.has(s.id)).map((s) => (ok.has(s.id) ? { ...s, approved: true } : s));
-  return { ...route, steps, reviewed: steps.filter((s) => s.approved).length };
+  let steps = route.steps.slice();
+  for (const m of Array.isArray(review.moves) ? review.moves : []) {
+    if (!Array.isArray(m)) continue;
+    const from = steps.findIndex((s) => s.id === m[0]);
+    if (from < 0) continue;
+    const [step] = steps.splice(from, 1);
+    const after = m[1] === null ? -1 : steps.findIndex((s) => s.id === m[1]);
+    if (m[1] !== null && after < 0) { steps.splice(from, 0, step); continue; }
+    steps.splice(after + 1, 0, step);
+  }
+  steps = steps.filter((s) => keepSkipped || !skip.has(s.id)).map((s) => ({ ...s, ...(ok.has(s.id) ? { approved: true } : {}), ...(skip.has(s.id) ? { skipped: true } : {}) }));
+  return { ...route, steps, reviewed: steps.filter((s) => s.approved).length, skipped: skip.size };
+}
+/** Bundled review plus this computer's edits (later wins): per race, union of lists, moves appended. */
+function mergeReviews(base, local) {
+  const out = { version: 1, routes: {} };
+  for (const src of [base, local]) for (const [race, r] of Object.entries(src?.routes || {})) {
+    const o = (out.routes[race] ||= { skip: [], approved: [], moves: [] });
+    for (const k of ["skip", "approved"]) for (const id of r[k] || []) if (!o[k].includes(id)) o[k].push(id);
+    for (const id of r.unskip || []) o.skip = o.skip.filter((x) => x !== id);
+    for (const id of r.unapprove || []) o.approved = o.approved.filter((x) => x !== id);
+    o.moves.push(...(r.moves || []));
+  }
+  return out;
+}
+/** One review action on a local review (pure): approve, skip, clear, up or down, given the current route. */
+function reviewAction(local, race, id, action, route) {
+  const out = structuredClone(local || { version: 1, routes: {} });
+  out.version = 1; out.routes ||= {};
+  const r = (out.routes[race] ||= { skip: [], approved: [], moves: [], unskip: [], unapprove: [] });
+  for (const k of ["skip", "approved", "moves", "unskip", "unapprove"]) r[k] ||= [];
+  const drop = (k) => { r[k] = r[k].filter((x) => x !== id); };
+  if (action === "approve") { drop("unapprove"); if (!r.approved.includes(id)) r.approved.push(id); drop("skip"); }
+  else if (action === "skip") { drop("unskip"); if (!r.skip.includes(id)) r.skip.push(id); drop("approved"); }
+  else if (action === "clear") { drop("skip"); drop("approved"); r.unskip.push(id); r.unapprove.push(id); }
+  else if (action === "up" || action === "down") {
+    const ids = (route?.steps || []).map((s) => s.id), i = ids.indexOf(id);
+    if (i < 0) throw Error("Unknown step.");
+    if (action === "up" && i > 0) r.moves.push([id, i > 1 ? ids[i - 2] : null]);
+    if (action === "down" && i < ids.length - 1) r.moves.push([id, ids[i + 1]]);
+  } else throw Error("Unknown review action.");
+  return out;
+}
+/** What goes into data/forever-route/reviews.json: the merged review, without the local-only undo lists. */
+function exportReview(base, local) {
+  const m = mergeReviews(base, local);
+  for (const r of Object.values(m.routes)) { delete r.unskip; delete r.unapprove; }
+  return { version: 1, note: base?.note || "Hand review of the guided routes (roadmap 4.1).", routes: m.routes };
 }
 
 /** The same rules as the addon's BackstageForeverGuideDone (scripts/guide-runtime.lua). */
@@ -152,12 +201,14 @@ function position(route, { completed = [], inLog = [], complete = [], level = 1,
   return at < 0 ? { ended: true, index: steps.length, total: steps.length, done: steps.length } : { ended: false, index: at, total: steps.length, done: done.filter(Boolean).length };
 }
 
-function buildGuidedRoutes({ pack, zones, reviews = null }) {
+function buildGuidedRoutes({ pack, zones, reviews = null, raw = null }) {
   const routes = [];
   for (const race of Object.keys(RACES)) {
     const start = zones.find((z) => z.starter?.some((r) => (ALIASES[r] || r) === race));
     if (!start) continue;
-    routes.push(applyReview(buildRoute({ pack, zones, start, faction: start.faction, race }), reviews?.routes?.[race] || null));
+    const built = buildRoute({ pack, zones, start, faction: start.faction, race });
+    if (raw) raw[race] = built; // unreviewed, for the review page
+    routes.push(applyReview(built, reviews?.routes?.[race] || null));
   }
   const coverage = {};
   for (const f of ["Horde", "Alliance"]) {
@@ -166,4 +217,4 @@ function buildGuidedRoutes({ pack, zones, reviews = null }) {
   }
   return { routes, coverage };
 }
-module.exports = { buildGuidedRoutes, buildRoute, applyReview, walk, questsByZone, raceBits, position, stepDone, RACES, ALIASES };
+module.exports = { buildGuidedRoutes, buildRoute, applyReview, mergeReviews, reviewAction, exportReview, walk, questsByZone, raceBits, position, stepDone, RACES, ALIASES };

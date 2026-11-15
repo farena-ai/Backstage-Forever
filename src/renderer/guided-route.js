@@ -7,6 +7,8 @@ window.GuidedRouteView = (() => {
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const KIND = { pickup: "Pick up", class: "Class quest", objective: "Objectives", turnin: "Hand in", travel: "Travel" };
   let data = null, error = "", loading = false, mountedFor = null;
+  // 0.51: the hand review. review = { race, page, data } while the review panel is open.
+  let review = null, reviewBusy = false, reviewNote = "";
   const gapText = (g) => g.map((x) => `${x.from}–${x.to}`).join(", ");
   function coverage(rows) {
     return `<table class="gr-cov"><thead><tr><th>Race</th><th>Starts in</th><th>Levels covered</th><th>Steps</th><th>Not covered yet</th><th>Reviewed</th></tr></thead><tbody>${rows.map((r) => `<tr class="gr-${esc(r.faction.toLowerCase())}"><td>${esc(r.race)}</td><td>${esc(r.start)}</td><td>${r.from ?? "–"}–${r.to}</td><td>${r.steps}</td><td>${r.gaps.length || r.to < 60 ? esc([gapText(r.gaps), r.to < 60 ? `${r.to + 1}–60` : ""].filter(Boolean).join(", ")) : "–"}</td><td>${r.reviewed} of ${r.steps}</td></tr>`).join("")}</tbody></table>`;
@@ -26,13 +28,32 @@ window.GuidedRouteView = (() => {
       <section class="gr-card"><h2>Your next steps</h2>${steps}<p class="gr-note">Worked out from your last save${d.character.level ? ` (level ${d.character.level})` : ""}. In game the guide follows you live. Zones on this route: ${esc(r.zones.join(", "))}.</p></section>
       <section class="gr-card"><h2>How far each route reaches</h2>${coverage(d.coverage)}<p class="gr-note">Routes are built from the quest data we have and grow as community data and your own play fill the gaps. Steps marked reviewed have been checked by hand.</p></section>`;
   }
+  function reviewPanel() {
+    if (!review) return `<section class="gr-card gr-review-closed"><h2>Review the routes</h2><p>Go through any race's route step by step: ✓ keeps a step, ✗ leaves it out, ↑ ↓ move it. Your review shows here at once; <strong>Export review</strong> saves it as <code>reviews.json</code>, and the next release builds it into the addon.</p><button type="button" class="gr-map" data-gr-review="open">Start reviewing</button></section>`;
+    const r = review.data;
+    if (!r) return `<section class="gr-card"><h2>Review the routes</h2><p>${reviewBusy ? "Reading the route…" : esc(reviewNote || "Choose a race.")}</p></section>`;
+    const pager = `<span class="gr-pager"><button type="button" class="gr-map" data-gr-page="${r.page - 1}"${r.page ? "" : " disabled"}>‹ Earlier</button> page ${r.page + 1} of ${r.pages} <button type="button" class="gr-map" data-gr-page="${r.page + 1}"${r.page + 1 < r.pages ? "" : " disabled"}>Later ›</button></span>`;
+    return `<section class="gr-card gr-review"><h2>Review the routes</h2>
+      <div class="gr-review-bar"><label>Race <select data-gr-race>${r.races.map((x) => `<option${x === r.race ? " selected" : ""}>${esc(x)}</option>`).join("")}</select></label>
+      <span>${r.approved} kept · ${r.skipped} left out · ${r.total} steps</span>${pager}
+      <button type="button" class="gr-map" data-gr-review="export">Export review</button><button type="button" class="gr-ghost" data-gr-review="close">Close</button></div>
+      ${reviewNote ? `<p class="gr-note">${esc(reviewNote)}</p>` : ""}
+      <ol class="gr-steps gr-review-list" start="${r.steps[0]?.n || 1}">${r.steps.map((s) => `<li class="gr-step gr-${esc(s.kind)}${s.approved ? " ok" : ""}${s.skipped ? " out" : ""}" data-gr-id="${esc(s.id)}"><span class="gr-kind">${esc(KIND[s.kind] || s.kind)} · level ${s.level}${s.approved ? " · ✓ kept" : ""}${s.skipped ? " · ✗ left out" : ""}</span><strong>${esc(s.text)}</strong>${s.mapName ? `<small>${esc(s.mapName)}${Number.isFinite(s.x) ? ` · ${(s.x * 100).toFixed(1)}, ${(s.y * 100).toFixed(1)}` : ""}</small>` : ""}
+        <span class="gr-acts"><button type="button" title="Keep this step" aria-label="Keep step ${s.n}" data-gr-act="approve">✓</button><button type="button" title="Leave this step out" aria-label="Leave out step ${s.n}" data-gr-act="skip">✗</button><button type="button" title="Move up" aria-label="Move step ${s.n} up" data-gr-act="up">↑</button><button type="button" title="Move down" aria-label="Move step ${s.n} down" data-gr-act="down">↓</button>${s.approved || s.skipped ? `<button type="button" title="Undo" aria-label="Undo step ${s.n}" data-gr-act="clear">↺</button>` : ""}</span></li>`).join("")}</ol>${pager}</section>`;
+  }
+  async function loadReview(race, pageNo) {
+    reviewBusy = true; paintReview();
+    try { const d = await api.routeReview({ race, page: pageNo }); review = { race: d?.race || race, page: d?.page ?? pageNo, data: d }; } catch (e) { reviewNote = e.message || "The review is unavailable."; }
+    reviewBusy = false; paintReview();
+  }
+  function paintReview() { const el = document.querySelector("[data-gr-review-slot]"); if (el) el.innerHTML = reviewPanel(); }
   function page() {
     return `<section class="guided-route-page" data-guided-route>${PageHero.render({ art: "quests", eyebrow: "Adventure · Guided route", title: "Your route, step by step", subtitle: "Every quest from level 1 in order: pick up, do, hand in, then on to the next zone." })}
-      <div data-guided-route-body>${body()}</div></section>`;
+      <div data-guided-route-body>${body()}</div><div data-gr-review-slot>${reviewPanel()}</div></section>`;
   }
   async function load() {
     if (loading) return; loading = true;
-    try { data = await api.guidedRoute(); error = ""; } catch (e) { error = e.message || "The guided route is unavailable."; }
+    try { data = (await api.guidedRoute()) || { character: null, route: null, coverage: [] }; error = ""; } catch (e) { error = e.message || "The guided route is unavailable."; }
     loading = false;
     const root = document.querySelector("[data-guided-route]");
     if (root) { root.outerHTML = page(); mountedFor = null; mounted(); }
@@ -42,6 +63,20 @@ window.GuidedRouteView = (() => {
     if (!root || mountedFor === root) return;
     mountedFor = root;
     for (const el of root.querySelectorAll("[data-w]")) el.style.width = `${Number(el.dataset.w)}%`;
+    root.addEventListener("click", async (e) => {
+      const open = e.target.closest?.("[data-gr-review]")?.dataset.grReview;
+      if (open === "open") { reviewNote = ""; return loadReview(data?.route?.race || "Human", 0); }
+      if (open === "close") { review = null; reviewNote = ""; return paintReview(); }
+      if (open === "export") { try { const ok = await api.exportRouteReview(); reviewNote = ok ? "Review exported. Put the file in data/forever-route/reviews.json for the next release." : ""; } catch (err) { reviewNote = err.message || "Export failed."; } return paintReview(); }
+      const pg = e.target.closest?.("[data-gr-page]")?.dataset.grPage;
+      if (pg !== undefined && review) return loadReview(review.race, Number(pg));
+      const act = e.target.closest?.("[data-gr-act]")?.dataset.grAct, id = e.target.closest?.("[data-gr-id]")?.dataset.grId;
+      if (act && id && review && !reviewBusy) {
+        try { await api.setRouteReview({ race: review.race, id, action: act }); reviewNote = ""; data = null; } catch (err) { reviewNote = err.message || "That change could not be saved."; }
+        return loadReview(review.race, review.page);
+      }
+    });
+    root.addEventListener("change", (e) => { if (e.target.matches?.("[data-gr-race]")) loadReview(e.target.value, 0); });
     if (!data && !loading) load();
   }
   return { page, mounted, invalidate: () => { data = null; }, _state: () => ({ data }) };
