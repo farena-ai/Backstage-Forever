@@ -697,15 +697,57 @@ app.whenReady().then(async () => {
   handle("worldTracker", (...args) => { if (args.length) throw Error("Invalid world tracker request."); return leveling.tracker(); });
   // Guided route (0.50, 4.1): the same routes the addon carries (built once from the bundled data and
   // the hand review), where the active character is on theirs, and how far each race's route reaches.
-  let guided = null;
+  // 0.51: the hand review. Bundled review (data/forever-route/reviews.json) plus this computer's edits
+  // (route-review.json in the app's data folder); Export review writes the merged file for the next release.
+  let guided = null, guidedRaw = null;
+  const G = require("./core/guided-route.cjs");
+  const reviewFile = path.join(app.getPath("userData"), "route-review.json");
+  const readJson = (p) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", p), "utf8"));
+  const bundledReview = () => { try { return readJson("data/forever-route/reviews.json"); } catch { return null; } };
+  const localReview = () => { try { const v = JSON.parse(fs.readFileSync(reviewFile, "utf8")); return v && typeof v === "object" && v.routes && typeof v.routes === "object" ? v : null; } catch { return null; } };
+  const ensureGuided = () => {
+    if (guided) return guided;
+    guidedRaw = {};
+    guided = G.buildGuidedRoutes({ pack: knowledge.bundled?.pack || readJson("data/forever/pack.json"), zones: readJson("data/forever-leveling/pack.json").zones, reviews: G.mergeReviews(bundledReview(), localReview()), raw: guidedRaw });
+    return guided;
+  };
+  handle("routeReview", (...args) => {
+    const [input] = args;
+    if (args.length !== 1 || !input || typeof input !== "object" || typeof input.race !== "string" || !Number.isSafeInteger(input.page) || input.page < 0) throw Error("Invalid review request.");
+    ensureGuided();
+    const raw = guidedRaw[input.race];
+    if (!raw) throw Error("Unknown race.");
+    const { MAP_NAMES } = require("./core/companion-tools.cjs");
+    const merged = G.mergeReviews(bundledReview(), localReview());
+    const view = G.applyReview(raw, merged.routes[input.race] || null, { keepSkipped: true });
+    const PAGE = 40, pages = Math.max(1, Math.ceil(view.steps.length / PAGE)), page = Math.min(input.page, pages - 1);
+    return { race: input.race, races: Object.keys(guidedRaw), page, pages, total: view.steps.length, approved: view.steps.filter((s) => s.approved).length, skipped: view.steps.filter((s) => s.skipped).length,
+      edits: Boolean(localReview()?.routes?.[input.race]),
+      steps: view.steps.slice(page * PAGE, page * PAGE + PAGE).map((s, i) => ({ n: page * PAGE + i + 1, id: s.id, kind: s.kind, text: s.text, level: s.level, mapName: MAP_NAMES[s.mapId] || null, mapId: s.mapId, x: s.x, y: s.y, approved: Boolean(s.approved), skipped: Boolean(s.skipped) })) };
+  });
+  handle("setRouteReview", (...args) => {
+    const [input] = args;
+    if (args.length !== 1 || !input || typeof input !== "object" || typeof input.race !== "string" || typeof input.id !== "string" || input.id.length > 400 || !["approve", "skip", "clear", "up", "down"].includes(input.action)) throw Error("Invalid review action.");
+    ensureGuided();
+    const raw = guidedRaw[input.race];
+    if (!raw) throw Error("Unknown race.");
+    const current = G.applyReview(raw, G.mergeReviews(bundledReview(), localReview()).routes[input.race] || null, { keepSkipped: true });
+    if (!current.steps.some((s) => s.id === input.id)) throw Error("Unknown step.");
+    atomic(reviewFile, JSON.stringify(G.reviewAction(localReview(), input.race, input.id, input.action, current)));
+    guided = null;
+    return true;
+  });
+  handle("exportRouteReview", async (...args) => {
+    if (args.length) throw Error("Invalid export.");
+    const result = await dialog.showSaveDialog(win, { title: "Export the route review (for data/forever-route/reviews.json)", defaultPath: "reviews.json", filters: [{ name: "Route review", extensions: ["json"] }] });
+    if (result.canceled || !result.filePath) return null;
+    atomic(result.filePath, JSON.stringify(G.exportReview(bundledReview(), localReview()), null, 2) + "\n");
+    return true;
+  });
   handle("guidedRoute", (...args) => {
     if (args.length) throw Error("Invalid guided route request.");
-    const G = require("./core/guided-route.cjs"), { MAP_NAMES } = require("./core/companion-tools.cjs");
-    if (!guided) {
-      const read = (p) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", p), "utf8"));
-      let reviews = null; try { reviews = read("data/forever-route/reviews.json"); } catch {}
-      guided = G.buildGuidedRoutes({ pack: knowledge.bundled?.pack || read("data/forever/pack.json"), zones: read("data/forever-leveling/pack.json").zones, reviews });
-    }
+    const { MAP_NAMES } = require("./core/companion-tools.cjs");
+    ensureGuided();
     const p = store.state.profiles.find((x) => x.id === store.state.activeProfileId) || null;
     const race = p?.race ? (G.ALIASES[p.race.replace(/\s/g, "")] || G.ALIASES[p.race] || p.race) : null;
     const route = guided.routes.find((r) => r.key === race) || null;
@@ -974,6 +1016,7 @@ app.whenReady().then(async () => {
     recovery.clear();
     characterGuidance.clear();
     try { sessionHistory?.clear(); } catch {}
+    try { fs.rmSync(path.join(app.getPath("userData"), "route-review.json"), { force: true }); guided = null; } catch {}
     diagnostics.clear();
     companionContext.invalidate("reset");
     subscriptionEpoch++;

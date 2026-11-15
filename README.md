@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.50: guided route
+## 0.51: route review
 
-Type `/bf route guide` in WoW and follow one step at a time from level 1, for your race: pick up, do, hand in, then on to the next zone, with the game's arrow on each step. Adventure → Guided route shows the same route, where you are on it and how far each race's route reaches today. 0.49 painted the in-game frames. See the [0.50.0 release notes](docs/releases/0.50.0.md) and the [0.49.0 notes](docs/releases/0.49.0.md).
+The guided routes can now be reviewed by hand: on Adventure → Guided route, go through any race's route and keep, leave out or move each step, then export the review so the next release builds it in. 0.50 added the guided route itself (`/bf route guide` in game). See the [0.51.0 release notes](docs/releases/0.51.0.md) and the [0.50.0 notes](docs/releases/0.50.0.md).
 
 ## 0.28: your journey
 
