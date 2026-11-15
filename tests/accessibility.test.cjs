@@ -3,7 +3,7 @@
 // text colours, keyboard focus, reduced motion, high-contrast mode and the map's keyboard controls.
 const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), path = require("node:path");
-const dir = path.join(__dirname, "../src/renderer"), read = (f) => fs.readFileSync(path.join(dir, f), "utf8");
+const dir = path.join(__dirname, "../src/renderer"), read = (f) => fs.readFileSync(path.join(dir, f), "utf8").replace(/\r\n/g, "\n");
 const files = fs.readdirSync(dir).filter((f) => /\.(js|html)$/.test(f) && !f.startsWith("_"));
 
 test("every image has alt text, every button a name, every field a label", () => {
