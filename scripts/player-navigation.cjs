@@ -7,6 +7,7 @@ const routes = {
   "quest-guide": ["Quests"],
   "world-map": ["World Map"],
   dungeons: ["Adventure", "Dungeons & raids"],
+  zones: ["Adventure", "Zones"],
   assistant: ["Companion"],
   characters: ["Characters"],
   journey: ["Characters", "Journey"],

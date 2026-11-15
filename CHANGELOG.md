@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.46.0 — zones, replay and journey picture, 2026-11-14
+
+- **3.2 world tracker:** new Adventure → Zones tab (`worldTracker` IPC, `src/core/world-tracker.cjs`, `LevelingAdvisor.tracker`, `world-tracker.js/.css`). Every zone of the leveling pack for the character's faction (contested zones for both), grouped by continent and sorted by level, coloured by level band (1–10 … 50–60), with a progress ring of quests done out of the zone's quests for your side, quests in your log, a ◆ for zones visited (journal) and a ★ for zones with 90% of at least 5 quests done. Suggests the zone at your level with the most quests left. A tile opens that zone on the World Map.
+- **3.3 journey replay and share picture:** World Map ▶ replays this session's path on the shown zone in about 6 s, deaths and level-ups appearing when they happened (trail points now carry their time). 🖼 draws a 1200×800 sepia picture of the path (ink line, start, deaths, level-up stars, zone, levels, minutes, deaths) and saves it through `saveSharePicture` (PNG signature checked, 8 MB cap, save dialog).
+
 ## 0.45.0 — spoken steps, 2026-11-14
 
 - **3.5 spoken steps:** Now → Speak steps (`spoken-steps.js`, off by default, remembered in `localStorage` on this computer). While on, it asks the new `nextStep` handler every 4 s (the same step as Mini Now, with its sentence) and reads a changed step aloud through the existing local Windows voice (`voiceSpeak`), at most once every 8 s; English voices are preferred. Say again repeats the current step. Without an installed Windows voice it says so.

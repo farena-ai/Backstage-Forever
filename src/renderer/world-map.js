@@ -14,6 +14,7 @@ window.WorldMapView = (() => {
   let model = null, mapId = null, follow = true, selected = null, hover = null, trail = [], view = { zoom: 1, cx: 0.5, cy: 0.5 };
   let layers = { ...Object.fromEntries(LAYERS.map(([k]) => [k, !OFF_BY_DEFAULT.has(k)])), otherFaction: false, journey: true };
   let journey = null, journeyAt = 0; // this session's path on the shown map (from the app, memory only)
+  let replay = null; // 0.46 (3.3): { i, timer } while the path is being replayed
   const EXPLORED = "bf-world-map-explored-v1:";
   const explored = (id) => { try { return JSON.parse(localStorage.getItem(EXPLORED + id) || "[]"); } catch { return []; } };
   const remember = (id, p) => { try { const a = explored(id); const last = a[a.length - 1]; if (last && Math.hypot(last[0] - p.x, last[1] - p.y) < 0.004) return; a.push([+p.x.toFixed(4), +p.y.toFixed(4)]); if (a.length > 4000) a.splice(0, a.length - 4000); localStorage.setItem(EXPLORED + id, JSON.stringify(a)); } catch {} };
@@ -34,7 +35,7 @@ window.WorldMapView = (() => {
       </header>
       <div class="wm-body">
         <div class="wm-frame"><canvas class="wm-canvas" data-wm-canvas tabindex="0" aria-label="Zone map"></canvas>
-          <div class="wm-tools"><button type="button" data-wm-act="me" title="Center on me">◎</button><button type="button" data-wm-act="in" title="Zoom in">＋</button><button type="button" data-wm-act="out" title="Zoom out">－</button><button type="button" data-wm-act="reset" title="Whole zone">⤢</button><button type="button" data-wm-act="radar" title="Pop out radar">◉</button></div>
+          <div class="wm-tools"><button type="button" data-wm-act="me" title="Center on me">◎</button><button type="button" data-wm-act="in" title="Zoom in">＋</button><button type="button" data-wm-act="out" title="Zoom out">－</button><button type="button" data-wm-act="reset" title="Whole zone">⤢</button><button type="button" data-wm-act="radar" title="Pop out radar">◉</button><button type="button" data-wm-act="replay" title="Replay my path this session">▶</button><button type="button" data-wm-act="share" title="Save a picture of my path this session">🖼</button></div>
           <div class="wm-tip" data-wm-tip hidden></div>
         </div>
         <aside class="wm-side">
@@ -345,7 +346,9 @@ window.WorldMapView = (() => {
   }
   // Your path this session: a glowing line, with a cross where you died and a star where you levelled.
   function drawJourney(j) {
-    const pts = j.points || [];
+    const all = j.points || [], pts = replay ? all.slice(0, replay.i) : all;
+    const until = replay && pts.length && Number.isFinite(pts[pts.length - 1][2]) ? pts[pts.length - 1][2] : Infinity;
+    j = { ...j, deaths: (j.deaths || []).filter((d) => !(d.at > until)), levelUps: (j.levelUps || []).filter((u) => !(u.at > until)) };
     if (pts.length > 1) {
       ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
       for (const [width, style] of [[9, "rgba(80,200,255,0.18)"], [4, "rgba(80,200,255,0.55)"], [1.8, "rgba(235,250,255,0.95)"]]) {
@@ -367,6 +370,55 @@ window.WorldMapView = (() => {
       star(ctx, sx, sy, 12);
       text(ctx, String(u.level), sx, sy + 0.5, 10, "#5a3a0c");
     }
+  }
+  // Journey replay (0.46, 3.3): the path draws itself again, deaths and level-ups appearing as they happened.
+  function startReplay() {
+    clearInterval(replay?.timer); replay = null;
+    const n = journey?.mapId === model?.mapId ? journey.points?.length || 0 : 0;
+    if (n < 2) { window.toast?.("Walk around with the live link on, and your path this session can be replayed here."); return; }
+    const step = Math.max(1, Math.ceil(n / 150));
+    replay = { i: 1, timer: setInterval(() => { if (!replay) return; replay.i += step; if (replay.i >= n) { clearInterval(replay.timer); replay = null; } draw(); }, 40) };
+    draw();
+  }
+  // Share card (0.46, 3.3): your own path on a sepia copy of the zone, saved as a PNG where you choose.
+  async function sharePicture() {
+    const j = journey?.mapId === model?.mapId ? journey : null, pts = j?.points || [];
+    if (pts.length < 2) { window.toast?.("Walk around with the live link on first: the picture shows your path this session."); return; }
+    let session = null; try { session = await api.playSession(); } catch {}
+    const W = 1200, H = 800, c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d");
+    const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#efe0bb"); bg.addColorStop(1, "#d6bf8c"); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    // Frame the path: its bounding box with a margin, one scale for both axes so the zone keeps its shape.
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const pad = Math.max(0.04, (x1 - x0) * 0.2, (y1 - y0) * 0.2), box = { x: 40, y: 110, w: W - 80, h: H - 170 };
+    x0 -= pad; x1 += pad; y0 -= pad; y1 += pad;
+    const span = Math.max((x1 - x0) / box.w, (y1 - y0) / box.h), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const at = (x, y) => [box.x + box.w / 2 + (x - cx) / span, box.y + box.h / 2 + (y - cy) / span];
+    g.save(); g.beginPath(); g.rect(box.x, box.y, box.w, box.h); g.clip();
+    const art = arts.get(model?.mapId)?.bitmap;
+    if (art) { const [ax, ay] = at(0, 0), [bx, by] = at(1, 1); g.filter = "sepia(0.85) saturate(0.7) brightness(1.05) contrast(0.9)"; g.globalAlpha = 0.75; g.drawImage(art, ax, ay, bx - ax, by - ay); g.filter = "none"; g.globalAlpha = 1; }
+    // Hand-drawn ink: a soft offset stroke under a firm one.
+    g.lineCap = "round"; g.lineJoin = "round";
+    for (const [w, col, off] of [[7, "rgba(90,50,15,0.25)", 1.5], [3, "#5a2e0c", 0]]) {
+      g.lineWidth = w; g.strokeStyle = col; g.beginPath();
+      pts.forEach(([x, y], i) => { const [sx, sy] = at(x, y); const prev = pts[i - 1]; if (i && Math.hypot(prev[0] - x, prev[1] - y) < 0.05) g.lineTo(sx + off, sy + off); else g.moveTo(sx + off, sy + off); });
+      g.stroke();
+    }
+    const [hx, hy] = at(pts[0][0], pts[0][1]); g.beginPath(); g.arc(hx, hy, 8, 0, 7); g.fillStyle = "#efe0bb"; g.fill(); g.lineWidth = 3; g.strokeStyle = "#5a2e0c"; g.stroke();
+    for (const d of j.deaths || []) { const [sx, sy] = at(d.x, d.y); g.strokeStyle = "#9a1f1f"; g.lineWidth = 4; g.beginPath(); g.moveTo(sx - 9, sy - 9); g.lineTo(sx + 9, sy + 9); g.moveTo(sx + 9, sy - 9); g.lineTo(sx - 9, sy + 9); g.stroke(); }
+    for (const u of j.levelUps || []) { const [sx, sy] = at(u.x, u.y); star(g, sx, sy, 16); text(g, String(u.level), sx, sy + 0.5, 12, "#5a3a0c"); }
+    g.restore();
+    g.strokeStyle = "#a5823e"; g.lineWidth = 3; g.strokeRect(box.x, box.y, box.w, box.h);
+    g.fillStyle = "#3d220c"; g.textAlign = "left"; g.textBaseline = "alphabetic";
+    g.font = "700 40px Cinzel, Georgia, serif"; g.fillText(model?.mapName || "My journey", 40, 66);
+    const lv = session?.active && session.startLevel ? (session.level > session.startLevel ? `Levels ${session.startLevel} → ${session.level}` : `Level ${session.level}`) : "";
+    const bits = [lv, session?.active ? `${session.activeMinutes} min played` : "", (j.deaths || []).length ? `${j.deaths.length} death${j.deaths.length === 1 ? "" : "s"}` : "no deaths"].filter(Boolean);
+    g.font = "20px Georgia, serif"; g.fillStyle = "#5a3e1c"; g.fillText(bits.join("  ·  "), 42, 96);
+    g.textAlign = "right"; g.font = "700 18px Cinzel, Georgia, serif"; g.fillStyle = "#6b4e26"; g.fillText("Backstage Forever", W - 40, H - 22);
+    const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+    if (!blob) return;
+    try { const saved = await api.saveSharePicture(new Uint8Array(await blob.arrayBuffer())); if (saved) window.toast?.("Picture saved."); } catch (err) { window.toast?.(err.message || "The picture could not be saved."); }
   }
   async function loadJourney(force) {
     if (!api.playTrail || !model?.mapId || (!force && Date.now() - journeyAt < 5000)) return;
@@ -685,6 +737,8 @@ window.WorldMapView = (() => {
       if (act === "me") { const me = model?.player?.live || model?.player?.saved; if (me) { view = { zoom: Math.max(view.zoom, 2.5), cx: me.x, cy: me.y }; draw(); } }
       if (act === "clear") { results = null; resultsList(); }
       if (act === "radar") { try { await api.openRadar(); } catch {} }
+      if (act === "replay") { await loadJourney(true); startReplay(); }
+      if (act === "share") { await loadJourney(true); await sharePicture(); }
       if (act === "track" && selected) { try { await api.setRadarTarget({ mapId: model.mapId, x: selected.x, y: selected.y, label: selected.label, sub: selected.sub || null, kind: selected.kind }); await api.openRadar(); e.target.textContent = "Tracking on radar"; } catch (err) { e.target.textContent = err.message; } }
       if (act === "way" && selected) { try { const t = await api.copyWaypoint({ mapId: model.mapId, x: selected.x, y: selected.y, label: selected.label }); window.toast?.(t.message); e.target.textContent = "Copied — paste in WoW chat"; } catch (err) { e.target.textContent = err.message; } }
     });
