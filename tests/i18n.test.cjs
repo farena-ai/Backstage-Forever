@@ -52,6 +52,18 @@ dofile('addon/BackstageForever/BackstageForeverLocale.lua')
 print(BackstageForeverTr(${JSON.stringify(en)}))`), en);
 });
 
+test("the compact Adventure Compass speaks German on German clients (0.54)", () => {
+  const out = lua(String.raw`
+GetLocale=function() return 'deDE' end
+dofile('addon/BackstageForever/BackstageForeverLocale.lua')
+for _,s in ipairs({'Adventure Compass','Quests: 3 in your log','2 ready to hand in','1,840 XP to level up','Pace: 12,400 XP/hour','next level in about 9 min','Next:','Drag the title to move  ·  /bf help  ·  /bf show'}) do print(BackstageForeverTr(s)) end
+`).split("\n");
+  assert.deepEqual(out, ["Abenteuer-Kompass", "Quests: 3 in deinem Log", "2 bereit zur Abgabe", "1,840 EP bis zum Stufenaufstieg", "Tempo: 12,400 EP/Stunde", "nächste Stufe in etwa 9 min", "Als Nächstes:", "Titel ziehen zum Verschieben  ·  /bf help  ·  /bf show"]);
+  const hud = read("addon/BackstageForever/BackstageForeverHUD.lua");
+  assert.match(hud, /heading:SetText\(T\('Adventure Compass'\)\)/);
+  assert.match(hud, /hint:SetText\(T\(/);
+});
+
 test("every addon chat helper and the message box go through the translator", () => {
   const dir = path.join(root, "addon/BackstageForever");
   for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".lua"))) {

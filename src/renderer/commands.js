@@ -46,7 +46,7 @@
     { group: "Advanced", command: "/bf guide …", word: "guide", what: "A waypoint line the app's Quests page prepares for a specific quest step. Copy it in the app and paste it into chat; you never need to type it yourself.", when: "Only when the app hands you one.", example: "/bf guide 840 t 1411 52.0 43.2 1.60.1.70888" },
   ]);
   const FEATURES = Object.freeze([
-    { name: "Adventure Compass", where: "A small movable panel in game", what: "Your character, XP and the next step. Drag the title to move it; X hides it, - shrinks it. It hides itself in combat." },
+    { name: "Adventure Compass", where: "A small movable panel in game", what: "Your character, XP and the next step. The - button turns it into a compact summary: level and zone, an XP bar with rested XP, your XP per hour and time to the next level, quests ready to hand in and your next step. Drag the title to move it; X hides it. It hides itself in combat." },
     { name: "BF Guide on the world map", where: "Press M in game", what: "Shows quests you can pick up (checked against your level and faction), hand-ins, your class trainer, profession trainers and flight masters. Click a marker for an arrow. The BF Layers panel turns each kind on or off." },
     { name: "Death review", where: "Pops up after you die", what: "What killed you, how much of the damage it did, its level and whether it was elite, and one plain tip for next time." },
     { name: "Quest progress in tooltips", where: "Hover an enemy in game", what: "If an enemy counts for one of your quests, its tooltip says which quest and how far along you are, like “Raptor Thieves: Raptor Head 3/12”. Drops count once you've looted that item from them." },
