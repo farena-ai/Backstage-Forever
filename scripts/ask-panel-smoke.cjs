@@ -4,7 +4,8 @@
 // A question arrives as question pages -> the answer panel appears with the answer, is not
 // focused, sits at the top-right of the (synthetic) game window on the secondary test display,
 // escapes HTML, joins the Companion conversation, "Open in app" shows the Companion page, and the
-// Settings switch turns the panel off.
+// Settings switch turns the panel off. One window (0.39.1): the owl's open signal brings the panel up
+// ready to type, a question typed there is answered under the first one, and Esc closes it.
 const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path"), assert = require("node:assert/strict");
@@ -78,16 +79,16 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
     const text = await view.locator("[data-ask-panel]").innerText();
     assert.match(text, /You asked\s+Is a two-handed axe good for a level 12 warrior\?/i);
     assert.match(text, /two-handed axe suits a level 12 warrior/);
-    assert.equal(await view.locator("[data-ap-answer] strong").first().innerText(), "two-handed axe", "formatted like the companion chat");
+    assert.equal(await view.locator(".ap-answer strong").first().innerText(), "two-handed axe", "formatted like the companion chat");
     assert.match(text, /Keep the <b>tag<\/b> text as text/, "HTML in an answer is shown as text");
-    assert.equal(await view.locator("[data-ap-answer] b").count(), 0);
+    assert.equal(await view.locator(".ap-answer b").count(), 0);
     assert.match(text, /Companion · AI suggestion/);
     panel = await panelWindow();
     assert.equal(panel.focused, false, "the panel never takes focus"); assert.equal(panel.focusedWindow, false);
     if (panel.focusable !== null) assert.equal(panel.focusable, true, "focusable on click so real clicks land; it still appears inactive");
     assert.equal(panel.top, true, "always on top");
     const b = panel.bounds, a = where.area;
-    assert.deepEqual([b.width, b.height], [420, 260]);
+    assert.deepEqual([b.width, b.height], [420, 380]);
     assert.ok(b.x >= a.x && b.y >= a.y && b.x + b.width <= a.x + a.width && b.y + b.height <= a.y + a.height, `inside the game's display ${JSON.stringify({ b, a })}`);
     assert.ok(Math.abs(b.x - (a.x + a.width - 436)) <= 2 && Math.abs(b.y - (a.y + Math.round(a.height * 0.25) + 8)) <= 2, `top-right of the game, under the minimap ${JSON.stringify({ b, a })}`);
     if (where.secondary) { const p = where.primary; assert.ok(b.x + b.width <= p.x || b.x >= p.x + p.width || b.y + b.height <= p.y || b.y >= p.y + p.height, "never on the primary display"); }
@@ -96,11 +97,40 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
     assert.equal(sent.length, 1, "asked once although every page came twice");
     assert.match(sent[0].prompt, /Is a two-handed axe good for a level 12 warrior\?/);
     await view.screenshot({ path: path.join(capture, "ask-panel.png") });
+    // One window (0.39.1). The panel's show/focus are recorded and kept inactive here, so the test
+    // never takes the keyboard from whoever is at this PC.
+    await app.evaluate(({ BrowserWindow }) => {
+      const w = BrowserWindow.getAllWindows().find((x) => /ask-panel\.html$/.test(x.webContents.getURL()));
+      globalThis.panelCalls = [];
+      w.focus = () => globalThis.panelCalls.push("focus");
+      w.show = () => { globalThis.panelCalls.push("show"); w.showInactive(); };
+    });
+    await ask(11, "\u0001open");
+    await app.evaluate(async () => { for (let i = 0; i < 100 && !globalThis.panelCalls.includes("focus"); i++) await new Promise((r) => setTimeout(r, 50)); });
+    assert.deepEqual(await app.evaluate(() => globalThis.panelCalls), ["show", "focus"], "the owl opens the panel with the keyboard");
+    await view.waitForFunction(() => document.activeElement?.matches("[data-ap-input]"));
+    assert.equal((await app.evaluate(() => globalThis.askFixture.requests)).length, 1, "opening asks nothing");
+    await view.locator("[data-ap-input]").fill("And where do I train?");
+    await view.locator("[data-ap-input]").press("Enter");
+    await view.waitForFunction(() => document.querySelectorAll(".ap-item").length === 2 && document.querySelector("[data-ask-panel]").dataset.status === "answer", null, { timeout: 15000 });
+    assert.equal(await view.locator("[data-ap-input]").inputValue(), "", "the box empties after asking");
+    const items = await view.locator(".ap-item .ap-question").allInnerTexts();
+    assert.match(items[0], /two-handed axe/); assert.match(items[1], /And where do I train\?/);
+    const typed = await app.evaluate(() => globalThis.askFixture.requests);
+    assert.equal(typed.length, 2); assert.match(typed[1].prompt, /And where do I train\?/);
+    await view.screenshot({ path: path.join(capture, "ask-panel-one-window.png") });
+    await view.locator("[data-ap-input]").press("Escape");
+    for (let i = 0; i < 30 && (await panelWindow()).visible; i++) await new Promise((r) => setTimeout(r, 100));
+    assert.equal((await panelWindow()).visible, false, "Esc closes the panel");
+    await ask(12, "\u0001open");
+    for (let i = 0; i < 50 && !(await panelWindow()).visible; i++) await new Promise((r) => setTimeout(r, 100));
+    assert.equal((await panelWindow()).visible, true, "the owl brings it back with the conversation");
+    assert.equal(await view.locator(".ap-item").count(), 2);
     // The exchange joined the Companion conversation; "Open in app" brings that page up
     // (the main window's show/focus are made inactive here so the test never takes the keyboard).
     await app.evaluate(({ BrowserWindow }) => { for (const w of BrowserWindow.getAllWindows()) if (!/ask-panel\.html$/.test(w.webContents.getURL())) { w.focus = () => {}; w.show = () => w.showInactive(); } });
     await view.locator('[data-ap="open"]').click();
-    await page.locator("#chatlog").getByText("You · from the game").waitFor();
+    await page.locator("#chatlog").getByText("You · from the game").first().waitFor();
     const chat = await page.locator("#chatlog").innerText();
     assert.match(chat, /Is a two-handed axe good for a level 12 warrior\?/); assert.match(chat, /two-handed axe suits a level 12 warrior/);
     panel = await panelWindow();

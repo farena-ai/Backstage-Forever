@@ -14,12 +14,12 @@ const PRIMARY = { x: 0, y: 0, width: 1920, height: 1040 }, SECOND = { x: 1920, y
 test("placement: top-right of the game, just under the minimap, inside the screen", () => {
   const game = { x: 1920, y: 0, width: 2560, height: 1440 };
   const p = P.placePanel({ game, areas: [PRIMARY, SECOND], fallback: PRIMARY });
-  assert.deepEqual(p, { x: 1920 + 2560 - 420 - 16, y: Math.round(1440 * 0.25) + 8, width: 420, height: 260, anchor: "game" });
+  assert.deepEqual(p, { x: 1920 + 2560 - 420 - 16, y: Math.round(1440 * 0.25) + 8, width: 420, height: 380, anchor: "game" });
   // A windowed game: the panel follows the window, not the screen.
-  assert.deepEqual(P.placePanel({ game: { x: 200, y: 100, width: 1280, height: 720 }, areas: [PRIMARY] }), { x: 200 + 1280 - 436, y: 100 + 180 + 8, width: 420, height: 260, anchor: "game" });
+  assert.deepEqual(P.placePanel({ game: { x: 200, y: 100, width: 1280, height: 720 }, areas: [PRIMARY] }), { x: 200 + 1280 - 436, y: 100 + 180 + 8, width: 420, height: 380, anchor: "game" });
   // A game window hanging off the right of the screen: clamped back in.
   const off = P.placePanel({ game: { x: 1700, y: 900, width: 1280, height: 720 }, areas: [PRIMARY] });
-  assert.equal(off.x, 1920 - 420); assert.equal(off.y, 1040 - 260);
+  assert.equal(off.x, 1920 - 420); assert.equal(off.y, 1040 - 380);
   // Smaller than the panel: still on screen.
   const tiny = P.placePanel({ game: { x: 0, y: 0, width: 300, height: 200 }, areas: [PRIMARY] });
   assert.ok(tiny.x >= 0 && tiny.y >= 0 && tiny.x + 420 <= 1920);
@@ -29,8 +29,8 @@ test("placement: top-right of the game, just under the minimap, inside the scree
 });
 
 test("placement without a game rectangle uses the display the player is on; a dragged spot wins while it is on screen", () => {
-  assert.deepEqual(P.placePanel({ areas: [PRIMARY, SECOND], fallback: SECOND }), { x: 1920 + 2560 - 436, y: 350 + 8, width: 420, height: 260, anchor: "display" });
-  assert.deepEqual(P.placePanel({ areas: [PRIMARY], fallback: null }), { x: 1920 - 436, y: 260 + 8, width: 420, height: 260, anchor: "display" });
+  assert.deepEqual(P.placePanel({ areas: [PRIMARY, SECOND], fallback: SECOND }), { x: 1920 + 2560 - 436, y: 350 + 8, width: 420, height: 380, anchor: "display" });
+  assert.deepEqual(P.placePanel({ areas: [PRIMARY], fallback: null }), { x: 1920 - 436, y: 260 + 8, width: 420, height: 380, anchor: "display" });
   assert.equal(P.placePanel({ areas: [PRIMARY, SECOND], saved: { x: 2000, y: 40 }, game: { x: 0, y: 0, width: 800, height: 600 } }).anchor, "saved");
   assert.equal(P.placePanel({ areas: [PRIMARY], saved: { x: 1800, y: 40 }, fallback: PRIMARY }).anchor, "display", "a spot that no longer fits (monitor unplugged) is ignored");
   assert.equal(P.placePanel({ areas: [PRIMARY], saved: { x: Number.NaN, y: 1 }, fallback: PRIMARY }).anchor, "display");
@@ -74,25 +74,25 @@ test("the panel window: frameless, always on top above full-screen games, off th
   assert.equal(panel.show({ status: "thinking", question: "Where is the inn?" }), true);
   const w = e.windows[0];
   assert.equal(w.opts.frame, false); assert.equal(w.opts.alwaysOnTop, true); assert.equal(w.opts.skipTaskbar, true); assert.equal(w.opts.focusable, true); assert.equal(w.opts.show, false);
-  assert.equal(w.opts.width, 420); assert.equal(w.opts.height, 260);
+  assert.equal(w.opts.width, 420); assert.equal(w.opts.height, 380);
   assert.equal(w.opts.webPreferences.sandbox, true); assert.equal(w.opts.webPreferences.contextIsolation, true); assert.equal(w.opts.webPreferences.nodeIntegration, false);
   assert.match(w.opts.webPreferences.preload, /ask-panel-preload\.cjs$/);
   assert.deepEqual(w.calls[0], ["setAlwaysOnTop", true, "screen-saver"]);
   assert.match(w.url, /ask-panel\.html$/);
   w.emit("ready-to-show");
-  assert.deepEqual(w.bounds, { x: 1920 + 2560 - 436, y: 368, width: 420, height: 260 });
+  assert.deepEqual(w.bounds, { x: 1920 + 2560 - 436, y: 368, width: 420, height: 380 });
   assert.ok(w.calls.some((c) => c[0] === "showInactive") && !w.calls.some((c) => c[0] === "show" || c[0] === "focus"), "never takes focus");
   assert.equal(e.timers.filter((t) => !t.cleared).length, 0, "no auto-hide while thinking");
   // The answer replaces the thinking state in place and starts the auto-hide clock.
   panel.show({ status: "answer", question: "Where is the inn?", answer: { text: "**North** of the bank.", kind: "npc" } });
   assert.equal(e.windows.length, 1);
-  assert.equal(w.sent.at(-1)[0], "askPanel:state"); assert.equal(w.sent.at(-1)[1].answer.text, "**North** of the bank.");
+  assert.equal(w.sent.at(-1)[0], "askPanel:state"); assert.equal(w.sent.at(-1)[1].log.at(-1).answer.text, "**North** of the bank.");
   const live = e.timers.filter((t) => !t.cleared);
   assert.equal(live.length, 1); assert.equal(live[0].ms, 45000);
   // IPC only from the panel's own page.
   const ev = (sender) => ({ sender, senderFrame: sender.mainFrame });
   assert.throws(() => e.handlers.get("askPanel:state")(ev({ mainFrame: { url: w.url } })), /Untrusted/);
-  assert.equal(e.handlers.get("askPanel:state")(ev(w.webContents)).status, "answer");
+  assert.equal(e.handlers.get("askPanel:state")(ev(w.webContents)).log.at(-1).status, "answer");
   // Hovering holds it; leaving restarts the clock; the clock hides it.
   e.handlers.get("askPanel:hold")(ev(w.webContents), true);
   // Held: no auto-hide, only a once-a-second look at where the mouse really is.
@@ -113,7 +113,7 @@ test("the panel window: frameless, always on top above full-screen games, off th
   // A new question shows it again, placed again (the game window moved).
   rect = { x: 0, y: 0, width: 1920, height: 1040 };
   panel.show({ status: "thinking", question: "Next?" });
-  assert.equal(w.visible, true); assert.deepEqual(w.bounds, { x: 1920 - 436, y: 268, width: 420, height: 260 });
+  assert.equal(w.visible, true); assert.deepEqual(w.bounds, { x: 1920 - 436, y: 268, width: 420, height: 380 });
   // Open in app: hides the panel and asks the main window to show the Companion page.
   e.handlers.get("askPanel:openApp")(ev(w.webContents));
   assert.equal(opened, 1); assert.equal(w.visible, false);
@@ -156,7 +156,7 @@ function routing({ share = true, results = [], activeKey = 4242 } = {}) {
   let t = 0;
   const companion = { ask: async (req) => { asked.push(req); const r = results.shift(); if (r instanceof Error) throw r; return r; } };
   const state = { activeProfileId: "p1", provider: { id: "local", model: "local" }, profiles: [{ id: "p1", name: "Aeralyn", source: { kind: "wow-addon", id: "S1" } }] };
-  const ask = new InGameAsk({ companion, getState: () => state, liveKeyFor: (id) => (id === "S1" ? activeKey : null), panel: { show: (s) => shown.push(s) }, notify: (x) => notified.push(x), getShare: () => share, wait: async (ms) => { waits.push(ms); t += ms; }, now: () => t });
+  const ask = new InGameAsk({ companion, getState: () => state, liveKeyFor: (id) => (id === "S1" ? activeKey : null), panel: { show: (s) => shown.push(s), open: () => shown.push({ open: true }) }, notify: (x) => notified.push(x), getShare: () => share, wait: async (ms) => { waits.push(ms); t += ms; }, now: () => t });
   return { ask, asked, shown, notified, waits };
 }
 
@@ -206,7 +206,7 @@ test("main wires the strip's questions to the panel; the panel page keeps the re
   assert.match(read("src/renderer/ask-panel.js"), /CompanionReply\.render\(/, "answers are formatted and escaped like the companion chat");
   assert.match(html, /<script src="companion-reply\.js"><\/script>/);
   const preload = read("src/ask-panel-preload.cjs");
-  assert.deepEqual([...preload.matchAll(/invoke\("([^"]+)"/g)].map((m) => m[1]), ["askPanel:state", "askPanel:close", "askPanel:openApp", "askPanel:hold"]);
+  assert.deepEqual([...preload.matchAll(/invoke\("([^"]+)"/g)].map((m) => m[1]), ["askPanel:state", "askPanel:close", "askPanel:openApp", "askPanel:hold", "askPanel:ask"]);
   assert.match(read("src/renderer/index.html"), /<script src="ask-in-game\.js"><\/script>/);
 });
 
@@ -229,4 +229,72 @@ test("Settings -> Game connection shows the panel switch (on by default) and the
   assert.equal(JSON.stringify(calls.slice(1)), JSON.stringify([["share", true], ["set", { enabled: false }]]));
   assert.match(read("src/renderer/app.js"), /window\.AskInGame \? AskInGame\.markup\(\) : ""/);
   assert.match(read("src/renderer/app.js"), /data-guide-ask-in-game/);
+});
+
+test("one window (0.39.1): the owl opens the panel with the keyboard in its box; typed questions are asked there and answered under them", () => {
+  const e = fakeElectron(), dir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-ask-panel-"));
+  const asked = [];
+  const panel = P.createAskPanel({ ...e, rendererDir: path.join(root, "src/renderer"), dataDir: dir, gameRect: () => ({ x: 1920, y: 0, width: 2560, height: 1440 }), onAsk: (q) => asked.push(q) });
+  assert.equal(panel.open(), true);
+  const w = e.windows[0];
+  w.emit("ready-to-show");
+  assert.ok(w.calls.some((c) => c[0] === "show") && w.calls.some((c) => c[0] === "focus"), "opened by the player: it takes the keyboard");
+  const ev = { sender: w.webContents, senderFrame: w.webContents.mainFrame };
+  const v = e.handlers.get("askPanel:state")(ev);
+  assert.deepEqual(v.log, []); assert.equal(v.typing, 1, "the page puts the cursor in the box");
+  // Typed in the panel: cleaned, bounded, passed on; nonsense refused.
+  assert.equal(e.handlers.get("askPanel:ask")(ev, "  Where is\nthe inn?  "), true);
+  assert.deepEqual(asked, ["Where is the inn?"]);
+  assert.throws(() => e.handlers.get("askPanel:ask")(ev, "   "), /Type a question/);
+  assert.throws(() => e.handlers.get("askPanel:ask")(ev, "x".repeat(201)), /200 characters/);
+  assert.throws(() => e.handlers.get("askPanel:ask")(ev, 5), /Type a question/);
+  assert.throws(() => e.handlers.get("askPanel:ask")({ sender: {}, senderFrame: {} }, "hi"), /Untrusted/);
+  // While it has the keyboard it never hides by itself; once the player clicks back into WoW the clock runs.
+  w.emit("focus");
+  panel.show({ id: 1, status: "thinking", question: "Where is the inn?" });
+  panel.show({ id: 1, status: "answer", question: "Where is the inn?", answer: { text: "North.", kind: "npc" } });
+  assert.equal(e.timers.filter((t) => !t.cleared && t.ms === 45000).length, 0, "no auto-hide while typing");
+  const log = e.handlers.get("askPanel:state")(ev).log;
+  assert.equal(log.length, 1, "the answer replaces its own thinking line"); assert.equal(log[0].answer.text, "North.");
+  panel.show({ id: 2, status: "thinking", question: "And the bank?" });
+  assert.deepEqual(e.handlers.get("askPanel:state")(ev).log.map((x) => x.question), ["Where is the inn?", "And the bank?"], "follow-ups stack under");
+  panel.show({ id: 2, status: "answer", question: "And the bank?", answer: { text: "South." } });
+  w.emit("blur");
+  assert.deepEqual(e.timers.filter((t) => !t.cleared).map((t) => t.ms), [45000]);
+  // Opening again while it is up: focus again and a new cursor request, same window.
+  panel.open();
+  assert.equal(e.windows.length, 1); assert.equal(e.handlers.get("askPanel:state")(ev).typing, 2);
+  // Bounded history.
+  for (let i = 3; i < 20; i++) panel.show({ id: i, status: "answer", question: "q" + i, answer: { text: "a" } });
+  assert.equal(e.handlers.get("askPanel:state")(ev).log.length, P.LOG_MAX);
+  panel.setSettings({ enabled: false });
+  assert.equal(panel.open(), false, "switched off in Settings: nothing opens");
+  panel.close(); fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("pure: typed questions are cleaned and bounded; exchanges update in place and stack newest last", () => {
+  assert.equal(P.cleanQuestion(" a\tb  c "), "a b c");
+  assert.equal(P.cleanQuestion(""), null); assert.equal(P.cleanQuestion(null), null);
+  assert.equal(P.cleanQuestion("é".repeat(200)), "é".repeat(200)); assert.equal(P.cleanQuestion("é".repeat(201)), null);
+  let log = P.upsert([], { id: 1, status: "thinking" });
+  log = P.upsert(log, { id: 2, status: "thinking" });
+  log = P.upsert(log, { id: 1, status: "answer" });
+  assert.deepEqual(log.map((x) => [x.id, x.status]), [[1, "answer"], [2, "thinking"]]);
+  assert.equal(P.panelState({ id: 7, status: "answer", answer: { text: "x" } }).id, 7);
+  assert.equal(P.panelState({ id: -1, status: "answer", answer: { text: "x" } }).id, undefined);
+});
+
+test("the owl's open signal opens the panel; questions typed there are asked for the character that opened it", async () => {
+  const r = routing({ results: [{ text: "ok", kind: "ai" }, { text: "ok2", kind: "ai" }] });
+  assert.equal(await r.ask.handle({ id: 9, kind: "open", text: "", characterHash: 99 }), null);
+  assert.deepEqual(r.shown, [{ open: true }]); assert.equal(r.asked.length, 0, "opening asks nothing");
+  await r.ask.askTyped("Hi there");
+  assert.equal(r.asked[0].prompt, "Hi there");
+  assert.equal(r.asked[0].shareProfile, false, "character 99 is not the app's active one");
+  assert.match(r.shown.at(-1).note, /another character/);
+  const ids = r.shown.filter((x) => x.id).map((x) => x.id);
+  assert.deepEqual(ids, [1, 1], "thinking and answer share an id");
+  await r.ask.handle({ id: 10, text: "From chat", characterHash: 4242 });
+  assert.equal(r.asked[1].shareProfile, true);
+  assert.deepEqual(r.shown.filter((x) => x.id).map((x) => x.id), [1, 1, 2, 2]);
 });

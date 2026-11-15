@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.39: painted message boxes
+## 0.39.1: ask and answer in one window
 
-Every message Backstage Forever shows you in game (flight master nearby, quest complete, level up, you died and the rest) is now a solid painted banner like the zone banners, each with its own original painting. See the [0.39.0 release notes](docs/releases/0.39.0.md); for the companion's talent answers, the [0.38.1 notes](docs/releases/0.38.1.md).
+Click the owl on your minimap and the companion panel opens over your game, ready to type: ask, read the answer and follow up in the same window. 0.39 painted every in-game message box. See the [0.39.1 release notes](docs/releases/0.39.1.md) and the [0.39.0 notes](docs/releases/0.39.0.md).
 
 ## 0.28: your journey
 

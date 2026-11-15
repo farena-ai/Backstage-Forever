@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'"><title>Backstage Forever answer</title><link rel="stylesheet" href="ask-panel.css"></head>
-<body><main class="ap-shell" data-ask-panel data-status="thinking">
-<header class="ap-bar"><img class="ap-crest" src="art/pins/companion.png" alt="" width="26" height="26"><span class="ap-title">Backstage Forever</span><span class="ap-when" data-ap-when></span><button type="button" class="ap-x" data-ap="close" title="Close" aria-label="Close">✕</button></header>
-<section class="ap-body" data-ap-body>
-<p class="ap-question"><span class="ap-label">You asked</span> <span data-ap-question></span></p>
-<div class="ap-answer companion-reply" data-ap-answer role="status" aria-live="polite"><p class="ap-thinking">Thinking…</p></div>
-<p class="ap-note" data-ap-note hidden></p>
+<html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'"><title>Backstage Forever companion</title><link rel="stylesheet" href="ask-panel.css"></head>
+<body><main class="ap-shell" data-ask-panel>
+<header class="ap-bar"><img class="ap-crest" src="art/pins/companion.png" alt="" width="26" height="26"><span class="ap-title">Ask the companion</span><span class="ap-when" data-ap-when></span><button type="button" class="ap-x" data-ap="close" title="Close (Esc)" aria-label="Close">✕</button></header>
+<section class="ap-body" data-ap-body role="log" aria-live="polite">
+<p class="ap-empty" data-ap-empty>Ask anything about WoW Forever: where to find someone, how to get somewhere, your talents, what to do next. Press Enter to ask.</p>
+<div class="ap-log" data-ap-log></div>
 </section>
-<footer class="ap-foot"><span class="ap-source" data-ap-source></span><button type="button" class="ap-open" data-ap="open">Open in app</button></footer>
+<form class="ap-ask" data-ap-form><input type="text" class="ap-input" data-ap-input maxlength="200" placeholder="Type your question…" aria-label="Your question" autocomplete="off" spellcheck="true"><button type="submit" class="ap-send" data-ap-send>Ask</button></form>
+<footer class="ap-foot"><span class="ap-source" data-ap-source>Enter asks · Esc closes and gives the keyboard back to WoW</span><button type="button" class="ap-open" data-ap="open">Open in app</button></footer>
 </main>
 <script src="companion-reply.js"></script>
 <script src="ask-panel.js"></script></body></html>

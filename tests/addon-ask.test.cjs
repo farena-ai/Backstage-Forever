@@ -1,8 +1,8 @@
 "use strict";
 // 0.38 (A15) ask the companion from inside the game: the minimap button (painted, draggable around
-// the edge, position saved per character), the question box (Ask, Enter, Cancel, Escape, a 200
-// character cap), the send rules (only on Ask/Enter/typed command, never in combat: it waits,
-// visibly, and Cancel drops it) and the typed /bf ask commands, with the real live strip module.
+// the edge, position saved per character); since 0.39.1 a click (or /bf ask) sends only the "open"
+// signal and the question is typed in the app's panel over the game; /bf ask QUESTION still sends
+// the question itself; never in combat (it waits, and /bf ask cancel drops it). Real live strip module.
 const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), path = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -67,12 +67,8 @@ local realQuestion=BackstageForeverLiveQuestion
 BackstageForeverLiveQuestion=function(t) sent[#sent+1]=t return realQuestion(t) end
 fire('PLAYER_LOGIN')
 local button=named.BackstageForeverAskButton
-BackstageForeverAskToggle() BackstageForeverAskToggle()
-local box,edit=named.BackstageForeverAskFrame,named.BackstageForeverAskInput
-assert(box and not box.shown,'the box starts closed')
 local function lastChat() return chat[#chat] or '' end
-local function pushButton(label) for _,o in ipairs(ALL) do if o.kind=='Button' and o.parent==box and o.text==label then return o end end end
-local function texts() local t={} for _,o in ipairs(ALL) do if o.kind=='FontString' and type(o.text)=='string' then t[#t+1]=o.text end end return table.concat(t,'\n') end
+local OPEN='\1open'
 `;
 
 test("pure helpers: what the player typed becomes exactly what is sent", () => {
@@ -114,8 +110,8 @@ assert(BackstageForeverAskSettings.angle==90 and button.point[5]==76,'top edge, 
 -- A reload keeps it (SavedVariablesPerCharacter).
 -- Tooltip and click.
 button.scripts.OnEnter(button) assert(#GameTooltip.calls.AddLine>=2)
-button.scripts.OnClick(button) assert(box.shown and edit.focused,'click opens the box with the cursor in it')
-button.scripts.OnClick(button) assert(not box.shown,'and closes it')
+button.scripts.OnClick(button) assert(#sent==1 and sent[1]==OPEN,'a click sends only the open signal')
+assert(named.BackstageForeverAskFrame==nil and named.BackstageForeverAskInput==nil,'no question box in game any more')
 BackstageForeverAskCommand('ask hide') assert(not button.shown and BackstageForeverAskSettings.hidden==true)
 assert(lastChat():find('/bf ask show',1,true))
 BackstageForeverAskCommand('ASK show') assert(button.shown and BackstageForeverAskSettings.hidden==nil)
@@ -130,71 +126,52 @@ print('ok')`);
   assert.equal(again, "ok");
 });
 
-test("the question box: Enter or Ask sends exactly the cleaned text once, shows it, caps at 200 characters and lists recent questions", () => {
+test("the owl opens the app's panel: one open signal, never in combat, and a clear note when the link is off", () => {
   const out = lua(HARNESS + String.raw`
-BackstageForeverAskToggle()
-assert(edit.maxLetters==200,'the edit box stops at 200 characters')
-edit.text='   ' edit.scripts.OnEnterPressed(edit)
-assert(#sent==0,'nothing typed, nothing sent')
-assert(named.BackstageForeverAskFrame and box.shown)
-edit.text='Where is the |cffffd000flight master|r in Crossroads?'
-edit.scripts.OnTextChanged(edit)
-edit.scripts.OnEnterPressed(edit)
-assert(#sent==1 and sent[1]=='Where is the flight master in Crossroads?',sent[1])
-assert(edit.text=='','the box empties after sending')
-local st=BackstageForeverLiveQuestionStatus()
-assert(st and st.count==3 and st.page==1,'three strip pages wait to go up')
-print(BackstageForeverAskSettings.recent[1].text..'|'..BackstageForeverAskSettings.recent[1].status)
-edit.text=string.rep('y',230) edit.scripts.OnEnterPressed(edit)
-assert(#sent[2]==200,'cut to 200 characters')
-print('done')`).split("\n");
-  assert.equal(out[0], "Where is the flight master in Crossroads?|sent");
-  assert.equal(out.at(-1), "done");
-  // What the box shows after the Ask button (status, the exact text, the recent list and the counter).
-  const shown = lua(HARNESS + String.raw`
-BackstageForeverAskToggle()
-edit.text='How do I train  First Aid?' edit.scripts.OnTextChanged(edit)
-assert(texts():find('26/200',1,true),'a character counter')
-pushButton('Ask').scripts.OnClick()
-print(texts())`);
-  assert.match(shown, /Sent\. The answer appears in the Backstage Forever panel over your game\.\n\|cff9d9d9dYou asked:\|r How do I train First Aid\?/);
-  assert.match(shown, /• How do I train First Aid\? \|cff9d9d9d\(sent, just now\)\|r/);
-  assert.match(shown, /Only what you type is sent, and only when you press Ask, never in combat/);
+assert(BackstageForeverAskOpenSignal==OPEN and #OPEN==5)
+assert(BackstageForeverAskClean(OPEN)=='open','no typed question can be the open signal')
+assert(BackstageForeverAskOpen()=='sent' and sent[1]==OPEN)
+assert(BackstageForeverAskCommand('ask')=='open:sent' and sent[2]==OPEN,'/bf ask opens the panel too')
+assert(#BackstageForeverAskSettings.recent==0,'opening is not a question')
+-- In combat: it waits and opens when combat ends; /bf ask cancel drops it.
+COMBAT=true
+assert(BackstageForeverAskOpen()=='queued' and #sent==2 and lastChat():find('opens when combat ends',1,true))
+COMBAT=false fire('PLAYER_REGEN_ENABLED')
+assert(#sent==3 and sent[3]==OPEN,'opened as soon as combat ends')
+COMBAT=true BackstageForeverAskOpen() BackstageForeverAskCommand('ask cancel')
+COMBAT=false fire('PLAYER_REGEN_ENABLED') assert(#sent==3,'cancelled')
+-- Live link off: nothing is sent and chat says how to fix it.
+BackstageForeverLiveCommand('live off')
+local waiting=BackstageForeverLiveQuestionStatus().waiting
+assert(BackstageForeverAskOpen()=='off' and BackstageForeverLiveQuestionStatus().waiting==waiting and lastChat():find('/bf live on',1,true))
+BackstageForeverLiveCommand('live on')
+-- Old macros calling the toggle still open the panel.
+BackstageForeverAskToggle() assert(sent[#sent]==OPEN,'old macros still ask for the panel')
+print('ok')`);
+  assert.equal(out, "ok");
+  // The app reads the open signal off the strip as an open, never as a question.
+  const pages = L.encodeQuestionPages(7, "\u0001open", 42);
+  const parts = new Map(pages.map((p) => { const pg = L.parseQuestionPage(p); return [pg.index, pg.bytes]; }));
+  assert.equal(L.assembleQuestion(parts, pages.length, L.parseQuestionPage(pages[0]).sum), L.OPEN_SIGNAL);
 });
 
-test("never in combat: a question asked in combat waits, goes up when combat ends, and Cancel drops it", () => {
+test("never in combat: a question asked in combat waits, goes up when combat ends, and cancel drops it", () => {
   const out = lua(HARNESS + String.raw`
 COMBAT=true
-BackstageForeverAskToggle()
-edit.text='Is this elite too strong for me?' edit.scripts.OnEnterPressed(edit)
+assert(BackstageForeverAskCommand('ask Is this elite too strong for me?')=='queued')
 assert(#sent==0,'nothing goes on the strip in combat')
 assert(BackstageForeverAskPending()=='Is this elite too strong for me?')
 assert(BackstageForeverAskSettings.recent[1].status=='waiting')
-fire('PLAYER_REGEN_DISABLED') assert(edit.focused==false,'combat gives the keyboard back to the game')
 COMBAT=false fire('PLAYER_REGEN_ENABLED')
 assert(#sent==1 and sent[1]=='Is this elite too strong for me?','sent as soon as combat ends')
 assert(BackstageForeverAskSettings.recent[1].status=='sent')
 assert(lastChat():find('your question went to the app',1,true))
--- Asked in combat, then dropped with Cancel: never sent.
-COMBAT=true
-edit.text='Second thoughts' edit.scripts.OnEnterPressed(edit)
-assert(texts():find('You are in combat',1,true) and texts():find('Second thoughts',1,true),'the box shows what waits')
-pushButton('Cancel').scripts.OnClick()
-assert(box.shown and texts():find('dropped; nothing was sent',1,true),'Cancel drops the waiting question first')
-pushButton('Cancel').scripts.OnClick()
-assert(not box.shown,'then Cancel closes the box')
-COMBAT=false fire('PLAYER_REGEN_ENABLED')
-assert(#sent==1,'a dropped question is never sent')
-assert(BackstageForeverAskSettings.recent[1].status=='cancelled')
--- Typed in combat: the same rule, and chat says what will be sent.
 COMBAT=true
 assert(BackstageForeverAskCommand('ask where is the graveyard?')=='queued')
 assert(chat[#chat-1]:find('asking the desktop app: "where is the graveyard?"',1,true))
 assert(BackstageForeverAskCommand('ask cancel')=='cancel' and BackstageForeverAskPending()==nil)
 COMBAT=false fire('PLAYER_REGEN_ENABLED') assert(#sent==1)
--- Escape closes the box through the edit box itself.
-BackstageForeverAskToggle() if not box.shown then BackstageForeverAskToggle() end
-edit.scripts.OnEscapePressed(edit) assert(not box.shown and edit.focused==false)
+assert(BackstageForeverAskSettings.recent[1].status=='cancelled')
 print('ok')`);
   assert.equal(out, "ok");
 });
@@ -205,16 +182,15 @@ assert(BackstageForeverAskCommand('ask How do I get to Thunder Bluff?')=='sent')
 assert(sent[1]=='How do I get to Thunder Bluff?')
 assert(chat[#chat-1]=='Backstage Forever: asking the desktop app: "How do I get to Thunder Bluff?"',chat[#chat-1])
 assert(lastChat():find('panel over your game',1,true))
-assert(BackstageForeverAskCommand('ask')=='toggle' and box.shown)
+assert(BackstageForeverAskCommand('ask')=='open:sent' and sent[2]=='\1open')
 assert(BackstageForeverAskCommand('askhow')~='sent','the word must be ask')
 BackstageForeverLiveCommand('live off')
 assert(BackstageForeverAskCommand('ask anyone there?')=='off')
 assert(lastChat():find('/bf live on',1,true))
 assert(BackstageForeverAskSettings.recent[1].status=='off')
 BackstageForeverLiveCommand('live on')
-assert(BackstageForeverAskCommand('ask two')=='sent' and BackstageForeverAskCommand('ask three')=='sent')
-assert(BackstageForeverAskCommand('ask four')=='busy','three questions at most wait for the strip')
-assert(#BackstageForeverAskSettings.recent==5,'five recent questions are kept')
+assert(BackstageForeverAskCommand('ask four')=='busy','three at most wait for the strip (two opens and a question here)')
+assert(#BackstageForeverAskSettings.recent==3,'opening the panel is not a question')
 print('ok')`);
   assert.equal(out, "ok");
 });
@@ -243,18 +219,10 @@ test("the ask module is installed, routed by /bf, listed in help, and stays with
   for (const m of src.matchAll(/^(?:function\s+([A-Za-z_][\w.:]*)|([A-Za-z_][\w.]*)\s*=)/gm)) assert.match(m[1] || m[2], /^BackstageForever/, `global ${m[1] || m[2]}`);
   assert.doesNotMatch(src, /hooksecurefunc|SecureHook|tinsert\(UISpecialFrames|UISpecialFrames\[|table\.insert\(UISpecialFrames|SendChatMessage|SetUserWaypoint|SetSuperTrackedUserWaypoint|ClearUserWaypoint|COMBAT_LOG|SecureActionButton|RunMacro|CastSpell/);
   const events = [...src.matchAll(/'([A-Z_]+)'/g)].map((m) => m[1]).filter((e) => /^(PLAYER|UNIT|COMBAT|CHAT|QUEST)_/.test(e));
-  assert.deepEqual([...new Set(events)].sort(), ["PLAYER_LOGIN", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED"]);
+  assert.deepEqual([...new Set(events)].sort(), ["PLAYER_LOGIN", "PLAYER_REGEN_ENABLED"]);
   assert.doesNotMatch(src, /'Interface\\\\(?!AddOns\\\\BackstageForever)/, "no Blizzard textures");
   assert.match(src, /issecretvalue/);
   assert.ok(fs.existsSync(path.join(root, "addon/BackstageForever/Art/Buttons/ask.tga")), "the painted button ships");
   const tga = fs.readFileSync(path.join(root, "addon/BackstageForever/Art/Buttons/ask.tga"));
   assert.deepEqual([tga[2], tga.readUInt16LE(12), tga.readUInt16LE(14), tga[16]], [2, 64, 64, 32], "64x64 uncompressed 32-bit TGA with alpha");
-});
-
-test("the owl box stacks its text (status, then Recent questions, then the list) and grows instead of overlapping", () => {
-  const src = require("node:fs").readFileSync(require("node:path").join(__dirname, "../addon/BackstageForever/BackstageForeverAsk.lua"), "utf8");
-  assert.match(src, /ui\.recentTitle,'SetPoint','TOPLEFT',ui\.status,'BOTTOMLEFT'/);
-  assert.match(src, /ui\.recent,'SetPoint','TOPLEFT',ui\.recentTitle,'BOTTOMLEFT'/);
-  assert.match(src, /short\(r\.text,64\)/);
-  assert.match(src, /method\(box,'SetHeight',math\.max\(214/);
 });
