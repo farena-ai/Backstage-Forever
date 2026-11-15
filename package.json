@@ -1,7 +1,7 @@
 {
   "name": "backstage-forever",
   "productName": "Backstage Forever",
-  "version": "0.52.0",
+  "version": "0.53.0",
   "releaseChannel": "preview",
   "description": "A local-first adventure companion from Backstage Coding. Designed by Frank Arena.",
   "author": "Frank Arena / Backstage Coding",
@@ -32,6 +32,8 @@
     "check:find-index": "node scripts/build-find-index.cjs --check",
     "build:guided-route": "node scripts/build-guided-route.cjs",
     "check:guided-route": "node scripts/build-guided-route.cjs --check",
+    "build:locales": "node scripts/build-locales.cjs",
+    "check:locales": "node scripts/build-locales.cjs --check",
     "test:living-backend": "node scripts/living-backend-smoke.cjs",
     "test:living-setup": "node scripts/living-setup-smoke.cjs",
     "test:company-backend": "node scripts/company-backend-smoke.cjs",

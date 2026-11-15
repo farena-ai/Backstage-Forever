@@ -26,7 +26,7 @@ local function int(v,lo,hi) v=tonumber(plain(v)) if v and v==v and v>=lo and v<=
 local function str(v) v=plain(v) if type(v)=='string' and v~='' and #v<=80 then return v end end
 local function say(m)
     local chat=plain(DEFAULT_CHAT_FRAME)
-    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..m) end
+    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(m)) end
 end
 local function now() return tonumber(call(GetTime)) or 0 end
 

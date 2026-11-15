@@ -277,7 +277,7 @@ function BackstageForeverGatheringNodeLine(n)
     local far=n.unit=='yards' and (math.floor(n.distance+.5)..' yd') or (string.format('%.1f%% of the map',n.distance*100))
     return string.format('%s (%s) - %s %s - %.1f, %.1f',r.name,n.kind,far,n.direction=='here' and 'right here' or n.direction,r.x*100,r.y*100)
 end
-local function say(m)if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..m)end end
+local function say(m)if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..(BackstageForeverTr or tostring)(m))end end
 local function mapSize(map)
     local api=public(C_Map);local get=property(api,'GetWorldPosFromMapPos');local vector=public(CreateVector2D)
     if type(get)~='function' or type(vector)~='function' then return nil end

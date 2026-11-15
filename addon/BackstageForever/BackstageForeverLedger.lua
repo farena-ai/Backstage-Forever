@@ -51,7 +51,7 @@ local function store()
 end
 local function say(message)
     local chat=plain(DEFAULT_CHAT_FRAME);local add=field(chat,'AddMessage')
-    if type(add)=='function' then pcall(add,chat,'Backstage Forever: '..message) end
+    if type(add)=='function' then pcall(add,chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(message)) end
 end
 local function request()
     if type(BackstageForeverRequestCapture)=='function' then pcall(BackstageForeverRequestCapture) end

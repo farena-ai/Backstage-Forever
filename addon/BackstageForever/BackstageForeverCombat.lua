@@ -18,7 +18,7 @@ local function call(fn,...)
 end
 local function say(m)
     local chat=plain(DEFAULT_CHAT_FRAME)
-    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..m) end
+    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(m)) end
 end
 local WINDOW=8 -- seconds of damage taken that explain a death
 

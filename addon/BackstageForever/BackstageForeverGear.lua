@@ -22,7 +22,7 @@ local function call(fn,...)
     return unpackAll(r,2,math.max(n,2))
 end
 local function num(v) v=tonumber(plain(v)) if v and v==v then return v end end
-local function say(m) if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..m) end end
+local function say(m) if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..(BackstageForeverTr or tostring)(m)) end end
 local function round(x,p) return floor(x*p+0.5)/p end
 -- Numbers as gear-score.cjs prints them: 6, 5.5, 3.38.
 local function fmt(x)

@@ -410,7 +410,7 @@ if type(SlashCmdList)=='table' then
                 if not combat() and type(BackstageForeverProfessionLines)=='function' and type(DEFAULT_CHAT_FRAME)=='table' then
                     local coach=latest and safe(BackstageForeverBuildProfessionCoach,latest,settings and settings.profession or {})
                     local ok,lines=pcall(BackstageForeverProfessionLines,coach)
-                    for _,line in ipairs(ok and lines or {})do safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..text(line,200))end
+                    for _,line in ipairs(ok and lines or {})do safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..(BackstageForeverTr or tostring)(text(line,200)))end
                 end
                 return
             end

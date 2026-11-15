@@ -36,7 +36,7 @@ end
 local function method(o,k,...)return call(field(o,k),o,...)end
 local function say(m)
     local chat=plain(DEFAULT_CHAT_FRAME)
-    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..m) end
+    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(m)) end
 end
 local function combat() return call(InCombatLockdown)==true end
 local function finite(v) return type(v)=='number' and v==v and v>-1e9 and v<1e9 end

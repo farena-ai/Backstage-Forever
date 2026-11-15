@@ -25,7 +25,7 @@ local function int(v,lo,hi) v=plain(v);if type(v)=='number' and v==v and v>=lo a
 local function str(v,max) v=plain(v);if type(v)~='string' or v=='' then return nil end return v:sub(1,max or 60) end
 local function say(m)
     local chat=plain(DEFAULT_CHAT_FRAME)
-    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..m) end
+    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(m)) end
 end
 
 local PREFIX='BFParty'

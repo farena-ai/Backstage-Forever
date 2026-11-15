@@ -29,7 +29,7 @@ local function unit(v) v=plain(v);if type(v)=='number' and v==v and v>=0 and v<=
 local function str(v,limit) v=plain(v);if type(v)=='string' and v~='' and #v<=(limit or 160) and not v:find('[%z\1-\31\127]') then return v end end
 local function say(m)
     local chat=plain(DEFAULT_CHAT_FRAME)
-    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..m) end
+    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(m)) end
 end
 local function combat() return call(InCombatLockdown)==true end
 local MAX_STEPS,MERGE=15,0.012

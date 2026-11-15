@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.53.0 — German, 2026-11-15
+
+- **4.3 part 2, translations:** `data/i18n/de.json` (998 app texts, 73 addon messages, 74 addon message templates), machine-translated with the local model qwen3.8:27b (no cloud) under a German WoW glossary (Ruhestein, Flugmeister, Stufe, Lehrer…), placeholders, colour codes and `/bf` commands checked unchanged, plus hand corrections from a spot check. `scripts/build-locales.cjs` writes `src/renderer/locales/de.js` and `BackstageForeverLocale.lua` (managed file 29, loaded first); `npm run check:locales` in CI.
+- App: `i18n.js` swaps whole text pieces and title/label/placeholder attributes as pages render (a MutationObserver; spacing kept; inputs, code and `data-no-translate` left alone). It follows the active character's game locale unless Help → Field guide → Language says otherwise; German shows "maschinell übersetzt" in the menu. Text built from data (quest and NPC names, sentences with numbers inside) stays English.
+- Addon: every chat helper and `BackstageForeverToast` pass text through `BackstageForeverTr`.
+
 ## 0.52.0 — accessibility, 2026-11-15
 
 - **4.3 part 1, accessibility:** a static audit of every renderer page and window (`tests/accessibility.test.cjs`): images have alt text, buttons have names, fields have labels, windows have a language, a title and live regions where answers and steps change (Mini Now's step is now announced). A global `:focus-visible` ring that pages can't turn off, `prefers-reduced-motion` stops animations everywhere, and `forced-colors` (Windows high-contrast) keeps buttons, cards and bars outlined. The World Map canvas works from the keyboard (arrows pan, + and - zoom, 0 resets) and describes that to screen readers. Item cards name the quality in words ("Uncommon · One-Hand Sword"), not only by colour. Text colours on the newer pages and the in-game step scroll darkened to meet WCAG AA (4.5:1); the test checks the main pairs.
