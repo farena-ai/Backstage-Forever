@@ -54,6 +54,7 @@ const { LiveBridge } = require("./core/live-bridge.cjs");
 let liveBridge = null;
 let radar = null;
 let miniNow = null;
+let sessionHistory = null;
 let closeAskPanel = null, dropAskPanelWindow = null;
 let wishlist = null;
 let community = null, collectDiagnostics = null;
@@ -724,6 +725,8 @@ app.whenReady().then(async () => {
   handle("setMomentSettings", (input) => moments.setSettings(input));
   // This play session (memory only): pace, deaths, level-ups and where you walked.
   const playSession = new (require("./core/play-session.cjs").PlaySession)();
+  // Past sessions (0.48, 3.1), kept on this computer and shown on Characters → Journey.
+  sessionHistory = new (require("./core/session-history.cjs").SessionHistory)({ file: path.join(app.getPath("userData"), "sessions.json") });
   liveBridge.subscribe(() => {
     try {
       const raw = liveBridge.status().frame;
@@ -734,6 +737,7 @@ app.whenReady().then(async () => {
         if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:playEvent", e);
         moments.onPlayEvent(e);
       }
+      if (mine) sessionHistory.checkpoint(playSession.summary(), worldMap.profile());
       moments.observeFrame(raw);
     } catch {}
   });
@@ -758,7 +762,7 @@ app.whenReady().then(async () => {
     const { badgesFor, rested } = require("./core/badges.cjs"), { splits } = require("./core/journal-data.cjs");
     const others = s.profiles.filter((x) => x.id !== p.id);
     return { id: p.id, name: p.name, className: p.className || null, level: p.level || null, played: p.journal?.played ?? null, hasJournal: Boolean(p.journal),
-      splits: splits(p, others), badges: badgesFor(p), rested: rested(p), zones: (p.journal?.zones || []).length };
+      splits: splits(p, others), badges: badgesFor(p), rested: rested(p), zones: (p.journal?.zones || []).length, history: sessionHistory ? sessionHistory.view(p.id) : null };
   });
   // Characters → All characters (0.43, 3.7): every character at a glance and who to play tonight.
   handle("alts", (...args) => {
@@ -947,6 +951,7 @@ app.whenReady().then(async () => {
     resetting = true;
     recovery.clear();
     characterGuidance.clear();
+    try { sessionHistory?.clear(); } catch {}
     diagnostics.clear();
     companionContext.invalidate("reset");
     subscriptionEpoch++;
@@ -1028,6 +1033,7 @@ app.on("window-all-closed", () => {
 app.on("before-quit", (event) => {
   radar?.close();
   miniNow?.close();
+  sessionHistory?.flush();
   closeAskPanel?.();
   community?.stop();
   liveBridge?.stop();

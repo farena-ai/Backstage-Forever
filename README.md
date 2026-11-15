@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.47: plan tonight with the companion
+## 0.48: past sessions
 
-Ask the companion "what should I do tonight?" and it answers with an ordered plan: your next step, the zone to clear, a dungeon for your level, gear to put on and which of your characters has rested XP waiting. It works even without an AI model. 0.46 added Zones and the journey replay. See the [0.47.0 release notes](docs/releases/0.47.0.md) and the [0.46.0 notes](docs/releases/0.46.0.md).
+Characters → Journey now keeps every play session (with the live link on): when, how long, levels gained, deaths and zones, with a two-week chart of levels per day. 0.47 taught the companion to plan your night. See the [0.48.0 release notes](docs/releases/0.48.0.md) and the [0.47.0 notes](docs/releases/0.47.0.md).
 
 ## 0.28: your journey
 

@@ -24,13 +24,23 @@ window.JourneyView = (() => {
       <p>Logging out in an inn or a city adds about <strong>${r.perNight}% of a level every 8 hours</strong>, up to ${r.capPercent}%. ${r.hoursToCap ? `About ${r.hoursToCap} hours offline in an inn fills it.` : "You're full: spend it!"}</p>
       <p class="jr-tip">Rested kills give double experience until the bonus runs out.</p></div></div>`;
   }
+  // Past sessions (0.48, 3.1): levels per day for two weeks, then the latest sessions.
+  function history(h) {
+    if (!h || !h.totals.sessions) return `<p class="jr-empty">Play with the live link on and each session is kept here: when, how long, levels gained, deaths and zones. A break of 30 minutes starts a new session.</p>`;
+    const max = Math.max(0.25, ...h.days.map((d) => d.levels));
+    const when = (ms) => new Date(ms).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    return `<p class="jr-hist-total">${h.totals.sessions} session${h.totals.sessions === 1 ? "" : "s"} · ${esc(dur(h.totals.minutes * 60))} played · ${h.totals.levels} levels · ${h.totals.deaths} death${h.totals.deaths === 1 ? "" : "s"}</p>
+      <ol class="jr-days" aria-label="Levels gained per day, last 14 days">${h.days.map((d) => `<li title="${esc(d.day)}: ${d.levels} levels in ${d.minutes} min"><span class="jr-day-bar"><span data-h="${Math.round((d.levels / max) * 100)}"></span></span><small>${esc(d.day.slice(8))}</small></li>`).join("")}</ol>
+      <ul class="jr-sessions">${h.sessions.slice(0, 8).map((x) => `<li><strong>${esc(when(x.startedAt))}</strong><span>${esc(dur(x.minutes * 60))}${x.startLevel && x.level ? ` · level ${x.startLevel}${x.level > x.startLevel ? ` → ${x.level}` : ""}` : ""}${x.levelsGained ? ` · +${x.levelsGained} levels` : ""} · ${x.deaths} death${x.deaths === 1 ? "" : "s"} · ${x.zones.length} zone${x.zones.length === 1 ? "" : "s"}</span></li>`).join("")}</ul>`;
+  }
   function body() {
     if (error) return `<p class="jr-empty">${esc(error)}</p>`;
     if (!data) return `<p class="jr-empty">${loading ? "Reading your journey…" : "Choose a character in Characters."}</p>`;
     const d = data;
     return `<div class="jr-summary"><div><strong>${d.badges.earned}</strong><span>of ${d.badges.total} badges</span></div><div><strong>${d.level ?? "?"}</strong><span>level</span></div><div><strong>${esc(d.played ? dur(d.played) : "?")}</strong><span>played</span></div><div><strong>${d.zones}</strong><span>zones visited</span></div></div>
       <section class="jr-card"><h2>Badges</h2>${badges(d.badges)}</section>
-      <div class="jr-two"><section class="jr-card"><h2>Speed splits</h2>${splits(d)}</section><section class="jr-card"><h2>Rested planner</h2>${restedCard(d.rested)}</section></div>`;
+      <div class="jr-two"><section class="jr-card"><h2>Speed splits</h2>${splits(d)}</section><section class="jr-card"><h2>Rested planner</h2>${restedCard(d.rested)}</section></div>
+      <section class="jr-card"><h2>Past sessions</h2>${history(d.history)}</section>`;
   }
   function page() {
     const cls = String(data?.className || "").toLowerCase();
@@ -40,6 +50,7 @@ window.JourneyView = (() => {
   function sizes(root) {
     for (const el of root.querySelectorAll("[data-w]")) el.style.width = `${Number(el.dataset.w)}%`;
     for (const el of root.querySelectorAll("[data-l]")) el.style.left = `${Number(el.dataset.l)}%`;
+    for (const el of root.querySelectorAll("[data-h]")) el.style.height = `${Math.max(2, Number(el.dataset.h))}%`;
   }
   async function load() {
     if (loading) return; loading = true;
