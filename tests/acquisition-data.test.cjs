@@ -187,7 +187,7 @@ test("Lua is data-only, deterministic and actually roundtrips every shipped fact
     else checks.push(`assert(${expr} == ${typeof v === "string" ? JSON.stringify(v) : v})`);
   }
   visit(p, "BackstageForeverAcquisition");
-  const r = spawnSync(process.execPath, [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"], { cwd: root, input: lua + checks.join("\n") + "\nprint('ok')", encoding: "utf8", timeout: 20000 });
+  const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], { cwd: root, input: lua + checks.join("\n") + "\nprint('ok')", encoding: "utf8", timeout: 20000 });
   assert.equal(r.status, 0, r.stderr); assert.equal(r.stderr, ""); assert.equal(r.stdout.trim(), "ok");
   const bad = clone(p); bad.rows[0].referenceName = "bad\nname"; assert.throws(() => a.buildAddonAcquisition(bad));
 });

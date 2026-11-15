@@ -53,7 +53,7 @@ local function save()print(BackstageForeverExport)end
 load()
 `;
 function run(scenario, { validate = true, timeout = 30000 } = {}) {
-  const r = spawnSync(process.execPath, [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"], {
+  const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], {
     cwd: path.join(__dirname, ".."), input: fixture + scenario, encoding: "utf8", timeout, maxBuffer: 5 * 1048576,
   });
   assert.equal(r.status, 0, r.stderr || r.error?.message); assert.equal(r.stderr, "");

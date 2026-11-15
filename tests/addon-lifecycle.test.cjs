@@ -41,7 +41,7 @@ assert(first:find('"current":189',1,true))
 `;
 
 function runLua(scenario) {
-  const result = spawnSync(process.execPath, [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"], {
+  const result = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], {
     cwd: path.join(__dirname, ".."), input: fixture + scenario, encoding: "utf8", timeout: 20000,
   });
   assert.equal(result.status, 0, result.stderr);

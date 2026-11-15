@@ -6,7 +6,7 @@ const { normalizeJournalCapture, splits } = require("../src/core/journal-data.cj
 const { badgesFor, rested } = require("../src/core/badges.cjs");
 const { validateState, defaultState } = require("../src/core/validation.cjs");
 function lua(source) {
-  const r = spawnSync(process.execPath, [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"], { cwd: path.join(__dirname, ".."), input: source, encoding: "utf8", timeout: 20000 });
+  const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], { cwd: path.join(__dirname, ".."), input: source, encoding: "utf8", timeout: 20000 });
   assert.equal(r.status, 0, r.stderr); assert.equal(r.stderr, ""); return r.stdout.trim();
 }
 test("the addon journal records levels with /played, firsts once, and zones, within bounds", () => lua(String.raw`

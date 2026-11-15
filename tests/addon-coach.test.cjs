@@ -26,7 +26,7 @@ function lua(s) {
   );
   const r = spawnSync(
     process.execPath,
-    [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"],
+    [require.resolve("./lua-stdin.cjs")],
     {
       cwd: path.join(__dirname, ".."),
       input: prelude + s,
@@ -60,7 +60,7 @@ function hud(s) {
   );
   const r = spawnSync(
     process.execPath,
-    [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"],
+    [require.resolve("./lua-stdin.cjs")],
     {
       cwd: path.join(__dirname, ".."),
       input: source + s,

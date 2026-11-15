@@ -18,7 +18,7 @@ local function plan(c,o) return BackstageForeverBuildPlan(c,o or {minutes=60}) e
 `;
 function runLua(scenario) {
   assert.ok(fs.existsSync(path.join(root, "addon/BackstageForever/BackstageForeverPlan.lua")), "Pure native quest planner must exist");
-  const r = spawnSync(process.execPath, [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"], { cwd: root, input: prelude + scenario + "\nprint('ok')", encoding: "utf8", timeout: 20000 });
+  const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], { cwd: root, input: prelude + scenario + "\nprint('ok')", encoding: "utf8", timeout: 20000 });
   assert.equal(r.status, 0, r.stderr);
   assert.equal(r.stderr, "");
   assert.equal(r.stdout.trim(), "ok");

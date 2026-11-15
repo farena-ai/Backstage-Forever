@@ -36,7 +36,7 @@ test("addon executes persistence, combat, secret-value and unavailable API guard
     return;
   }
   const { spawnSync } = require("node:child_process");
-  const result = spawnSync(process.execPath, [cli, "-"], {
+  const result = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], {
     cwd: path.join(__dirname, ".."),
     input: LUA_HARNESS + `\nassert(BackstageForeverExport:find('"captureVersion":"${require("../package.json").version}"',1,true),'Emitted capture version must match the application')`,
     encoding: "utf8",
@@ -134,7 +134,7 @@ handler(nil,'PLAYER_LEVEL_UP');assert(before==BackstageForeverExport and diagnos
 print('Readiness and fixed diagnostics passed')`;
   const result = require("node:child_process").spawnSync(
     process.execPath,
-    [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"],
+    [require.resolve("./lua-stdin.cjs")],
     {
       cwd: path.join(__dirname, ".."),
       input: script,
@@ -149,7 +149,7 @@ print('Readiness and fixed diagnostics passed')`;
 test("native compass executes visibility, collapse and combat hiding in Lua", () => {
   const { spawnSync } = require("node:child_process");
   const cli = require.resolve("fengari-node-cli/src/lua-cli.js");
-  const result = spawnSync(process.execPath, [cli, "-"], {
+  const result = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], {
     cwd: path.join(__dirname, ".."),
     encoding: "utf8",
     timeout: 10000,
@@ -265,7 +265,7 @@ test("export sheds older optional detail under one MiB while retaining 100 ident
   const { spawnSync } = require("node:child_process");
   const result = spawnSync(
     process.execPath,
-    [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"],
+    [require.resolve("./lua-stdin.cjs")],
     {
       cwd: path.join(__dirname, ".."),
       input: script,
