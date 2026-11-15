@@ -74,7 +74,7 @@ test("G10: the tour shows once for a new player, walks splash → three cards, a
 
 test("G10/G11 wiring: handler, scripts, replay button, faction crest on brand and banners, art notice", () => {
   const main = read("src/main.cjs");
-  assert.match(main, /handle\("onboarding"/); assert.match(main, /process\.env\.BF_TEST_INACTIVE !== "1" && !\(store\.state\.profiles \|\| \[\]\)\.length/);
+  assert.match(main, /handle\("onboarding"/); assert.match(main, /process\.env\.BF_TEST_INACTIVE !== "1" && !\(!app\.isPackaged && process\.env\.BF_USER_DATA && process\.env\.BF_ONBOARDING !== "1"\) && !\(store\.state\.profiles \|\| \[\]\)\.length/);
   assert.match(read("src/preload.cjs"), /onboarding: \(\) => invoke\("onboarding"\)/);
   const html = read("src/renderer/index.html");
   assert.match(html, /<script src="onboarding\.js"><\/script><script src="app\.js"><\/script>/); assert.match(html, /href="onboarding\.css"/);
