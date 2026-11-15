@@ -175,7 +175,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - run: npm test --silent
+      # The full test suite runs in the Windows job above; this job only packages the same, tested commit.
       - run: npm run dist:mac
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
