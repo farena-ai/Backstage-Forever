@@ -92,7 +92,7 @@ event('PLAYER_LOGIN');print(BackstageForeverExport)
   assert.equal(prepared.characters.length, 2);
   assert.equal(prepared.characters.find(c => c.id === "Synthetic-Warrior").history.recent[0].id, 42);
   for (const c of prepared.characters) {
-    assert.deepEqual(c.progress, { current: 189, max: 14400, rested: 1730 });
+    assert.deepEqual(c.progress, { current: 189, max: 14400, rested: 1730, resting: false });
     assert.deepEqual(c.history.completedIds, [11, 22, 33]);
     assert.equal(c.quests[0].objectives[0].fulfilled, 2);
   }
@@ -109,7 +109,7 @@ xp=250;event('PLAYER_ENTERING_WORLD');print(BackstageForeverExport)
 teardown();event('PLAYER_XP_UPDATE');print(BackstageForeverExport)
 `);
   assert.equal(refreshed.characters[0].progress.current, 250);
-  assert.deepEqual(zero.characters[0].progress, { current: 0, max: 0, rested: 0 });
+  assert.deepEqual(zero.characters[0].progress, { current: 0, max: 0, rested: 0, resting: false });
   assert.deepEqual(zero.characters[0].quests[0].objectives, []);
   assert.deepEqual(zero.characters[0].history.completedIds, []);
 });

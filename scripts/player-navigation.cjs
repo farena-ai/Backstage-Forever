@@ -11,6 +11,7 @@ const routes = {
   characters: ["Characters"],
   journey: ["Characters", "Journey"],
   sheet: ["Characters", "Sheet"],
+  alts: ["Characters", "All characters"],
   ledger: ["Ledger", "Bags & bank"],
   "ledger-gold": ["Ledger", "Gold & prices"],
   "ledger-reputation": ["Ledger", "Reputation"],

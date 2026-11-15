@@ -88,10 +88,11 @@ function validateQuestData(value) {
 }
 function validateProgress(value) {
   if (value === undefined) return undefined;
-  obj(value, ["current", "max", "rested"]);
+  obj(value, ["current", "max", "rested", "resting"]);
   const result = { current: num(value.current), max: num(value.max) };
   if (result.current > result.max) fail();
   if (value.rested !== undefined) result.rested = num(value.rested);
+  if (value.resting !== undefined) { if (typeof value.resting !== "boolean") fail(); result.resting = value.resting; }
   return result;
 }
 function validateHistory(value) {

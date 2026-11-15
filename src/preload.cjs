@@ -92,6 +92,7 @@ contextBridge.exposeInMainWorld(
     dataCoverage: () => invoke("dataCoverage"),
     talentCoach: (input) => invoke("talentCoach", input),
     journey: () => invoke("journey"),
+    alts: () => invoke("alts"),
     ledger: () => invoke("ledger"),
     setGoldGoal: (goal) => invoke("setGoldGoal", goal),
     characterSheet: () => invoke("characterSheet"),

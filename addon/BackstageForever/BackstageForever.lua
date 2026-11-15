@@ -340,7 +340,7 @@ local function progress()
     local current=integer(call(UnitXP,'player'),0,2147483647)
     local max=integer(call(UnitXPMax,'player'),0,2147483647)
     if not current or not max or current>max then return nil end
-    return {current=current,max=max,rested=integer(call(GetXPExhaustion),0,2147483647)}
+    return {current=current,max=max,rested=integer(call(GetXPExhaustion),0,2147483647),resting=call(IsResting)==true}
 end
 -- Equipment IDs only. Carried materials below read bags 0-4; no links, money or account storage.
 local function equipment()
@@ -646,7 +646,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.42.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.43.0'
     character.race=clean((call(UnitRace,'player')));character.faction=clean((call(UnitFactionGroup,'player')))
     local previous=roster[guid]
     -- WoW writes saved data only on /reload or logout, so a brand-new character is unknown to the app until then.
