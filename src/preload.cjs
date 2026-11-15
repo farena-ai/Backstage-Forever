@@ -84,6 +84,7 @@ contextBridge.exposeInMainWorld(
     itemCard: (profileId, itemId) => invoke("itemCard", profileId, itemId),
     setLootWish: (profileId, itemId, on) => invoke("setLootWish", profileId, itemId, on),
     openRadar: () => invoke("openRadar"),
+    openMiniNow: () => invoke("openMiniNow"),
     setRadarTarget: (pin) => invoke("setRadarTarget", pin),
     worldMapSearch: (query) => invoke("worldMapSearch", query),
     worldMapNpc: (npcId) => invoke("worldMapNpc", npcId),

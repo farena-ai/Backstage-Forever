@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.43: all characters at a glance
+## 0.44: mini Now
 
-Characters → All characters shows every character's level, experience, rested XP (still growing while you're logged out), gold, bag space and professions, and suggests who to play tonight. 0.42 added party sync. See the [0.43.0 release notes](docs/releases/0.43.0.md) and the [0.42.0 notes](docs/releases/0.42.0.md).
+Now → Mini Now opens a small window that stays on top beside your game: your next step with its direction, your experience and rested bar, and your pace. 0.43 added Characters → All characters. See the [0.44.0 release notes](docs/releases/0.44.0.md) and the [0.43.0 notes](docs/releases/0.43.0.md).
 
 ## 0.28: your journey
 
