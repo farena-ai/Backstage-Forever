@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.44: mini Now
+## 0.45: spoken steps
 
-Now → Mini Now opens a small window that stays on top beside your game: your next step with its direction, your experience and rested bar, and your pace. 0.43 added Characters → All characters. See the [0.44.0 release notes](docs/releases/0.44.0.md) and the [0.43.0 notes](docs/releases/0.43.0.md).
+Now → Speak steps reads your next step aloud whenever it changes, with your computer's own Windows voice: "Hand in Call of Water to Islen Waterseer, south-east." 0.44 added Mini Now. See the [0.45.0 release notes](docs/releases/0.45.0.md) and the [0.44.0 notes](docs/releases/0.44.0.md).
 
 ## 0.28: your journey
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.45.0 — spoken steps, 2026-11-14
+
+- **3.5 spoken steps:** Now → Speak steps (`spoken-steps.js`, off by default, remembered in `localStorage` on this computer). While on, it asks the new `nextStep` handler every 4 s (the same step as Mini Now, with its sentence) and reads a changed step aloud through the existing local Windows voice (`voiceSpeak`), at most once every 8 s; English voices are preferred. Say again repeats the current step. Without an installed Windows voice it says so.
+
 ## 0.44.0 — mini Now, 2026-11-14
 
 - **3.4 mini Now:** Now → Mini Now opens a 320×210 frameless always-on-top window (`mini-now-window.cjs`, `mini-now-preload.cjs`, `mini-now.html/.js/.css`; own IPC `miniNow:state|close`, accepted only from its own page; shown inactive so it never takes the keyboard). It shows one next step from the leveling advice (`src/core/next-step.cjs`: hand-in first, then the nearest objective, a quest to pick up, then a zone; dead first of all) with compass words from where you stand, the XP and rested bar and this session's pace. Refreshes at most every 2 s from live frames and every 5 s otherwise.

@@ -825,6 +825,11 @@ app.whenReady().then(async () => {
   // Mini Now (0.44, 3.4): next step, XP and pace in a small always-on-top window beside the game.
   miniNow = require("./core/mini-now-window.cjs").createMiniNow({ BrowserWindow, ipcMain, advise: () => leveling.advise(), session: () => playSession.summary(), live: liveBridge, rendererDir: path.join(__dirname, "renderer") });
   handle("openMiniNow", () => miniNow.open());
+  // Spoken next steps (0.45, 3.5): the same one step, with its sentence, for the voice.
+  handle("nextStep", (...args) => {
+    if (args.length) throw Error("Invalid next step request.");
+    return { profileId: store.state.activeProfileId ?? null, step: require("./core/next-step.cjs").nextStep(leveling.advise()) };
+  });
   const { buildAtlas, loadEncounters } = require("./core/dungeon-atlas.cjs");
   const encounters = loadEncounters();
   // Loot browser, wish list and item hover cards (boss loot pack + the player's own game data).
