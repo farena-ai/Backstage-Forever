@@ -4,7 +4,7 @@ Backstage Forever is built to keep your play to yourself. This page says, in pla
 
 ## In plain words
 
-- **Everything about your characters stays on your computer:** what the addon saves when you log out, your notes, plans, goals, past sessions, gold, bags, gear sets, route review and settings. They live in the app's own folder (on Windows `%APPDATA%\Backstage Forever`, on a Mac `~/Library/Application Support/Backstage Forever`). Settings → Delete all local data removes them.
+- **Everything about your characters stays on your computer:** what the addon saves when you log out, your notes, plans, goals, past sessions, gold, bags, gear sets, route review and settings. They live in the app's own folder (on Windows `%APPDATA%\Backstage Forever`, on a Mac `~/Library/Application Support/Backstage Forever`). Help → Field guide → Delete all local data removes them.
 - **Backstage Forever never reads your account, password, chat or other players' private data,** never sends input to the game, never reads the game's memory and never plays for you.
 - **Game data** (map art, item and spell details, talent trees) is read from your own World of Warcraft: Forever installation, on your computer, and never uploaded or bundled.
 - **There is no telemetry and no advertising.**
