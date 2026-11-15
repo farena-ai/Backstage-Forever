@@ -886,7 +886,7 @@ function updateSummary() {
     );
   if (!updateInfo.automatic) return "Automatic update checks are off.";
   if (updateInfo.phase === "unsupported")
-    return /Mac/.test(navigator.userAgent) ? "On a Mac, download the new version from the releases page on GitHub when one comes out (automatic updates are Windows-only for now)." : "Automatic checks start in the installed Windows app. Source builds never install updates.";
+    return typeof navigator !== "undefined" && /Mac/.test(navigator.userAgent || "") ? "On a Mac, download the new version from the releases page on GitHub when one comes out (automatic updates are Windows-only for now)." : "Automatic checks start in the installed Windows app. Source builds never install updates.";
   return "Your companion checks for updates while it is open.";
 }
 function refreshUpdateWidgets() {
