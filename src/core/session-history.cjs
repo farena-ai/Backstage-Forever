@@ -39,6 +39,8 @@ class SessionHistory {
     if (!this.dirty || !this.file) return;
     try { this.write(this.file, JSON.stringify({ version: 1, sessions: this.sessions })); this.dirty = false; this.writtenAt = this.now(); } catch {}
   }
+  /** Delete all local data: forget every session and write the empty file now. */
+  clear() { this.sessions = []; this.dirty = true; this.flush(); }
   forget(profileId) { const n = this.sessions.length; this.sessions = this.sessions.filter((s) => s.profileId !== profileId); if (n !== this.sessions.length) { this.dirty = true; this.flush(); } }
   /** One character's sessions, newest first, and the last 14 days of levels and minutes. */
   view(profileId) {

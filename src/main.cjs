@@ -951,7 +951,7 @@ app.whenReady().then(async () => {
     resetting = true;
     recovery.clear();
     characterGuidance.clear();
-    if (sessionHistory) { sessionHistory.sessions = []; sessionHistory.dirty = true; sessionHistory.flush(); }
+    try { sessionHistory?.clear(); } catch {}
     diagnostics.clear();
     companionContext.invalidate("reset");
     subscriptionEpoch++;

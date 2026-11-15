@@ -50,6 +50,6 @@ test("Journey shows past sessions; main keeps and clears them", () => {
   const main = read("src/main.cjs");
   assert.match(main, /sessions\.json/); assert.match(main, /sessionHistory\.checkpoint\(playSession\.summary\(\), worldMap\.profile\(\)\)/);
   assert.match(main, /history: sessionHistory \? sessionHistory\.view\(p\.id\) : null/);
-  assert.match(main, /sessionHistory\.sessions = \[\]; sessionHistory\.dirty = true; sessionHistory\.flush\(\);/, "Delete all local data clears them");
+  assert.match(main, /try \{ sessionHistory\?\.clear\(\); \} catch \{\}/, "Delete all local data clears them");
   assert.match(read("src/renderer/journey.js"), /<h2>Past sessions<\/h2>/);
 });
