@@ -695,6 +695,26 @@ app.whenReady().then(async () => {
   // G10 (0.49): the first-launch tour is for new players only (no characters yet), never in automated tests.
   handle("onboarding", (...args) => { if (args.length) throw Error("Invalid onboarding request."); return { show: process.env.BF_TEST_INACTIVE !== "1" && !(!app.isPackaged && process.env.BF_USER_DATA && process.env.BF_ONBOARDING !== "1") && !(store.state.profiles || []).length }; });
   handle("worldTracker", (...args) => { if (args.length) throw Error("Invalid world tracker request."); return leveling.tracker(); });
+  // Guided route (0.50, 4.1): the same routes the addon carries (built once from the bundled data and
+  // the hand review), where the active character is on theirs, and how far each race's route reaches.
+  let guided = null;
+  handle("guidedRoute", (...args) => {
+    if (args.length) throw Error("Invalid guided route request.");
+    const G = require("./core/guided-route.cjs"), { MAP_NAMES } = require("./core/companion-tools.cjs");
+    if (!guided) {
+      const read = (p) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", p), "utf8"));
+      let reviews = null; try { reviews = read("data/forever-route/reviews.json"); } catch {}
+      guided = G.buildGuidedRoutes({ pack: knowledge.bundled?.pack || read("data/forever/pack.json"), zones: read("data/forever-leveling/pack.json").zones, reviews });
+    }
+    const p = store.state.profiles.find((x) => x.id === store.state.activeProfileId) || null;
+    const race = p?.race ? (G.ALIASES[p.race.replace(/\s/g, "")] || G.ALIASES[p.race] || p.race) : null;
+    const route = guided.routes.find((r) => r.key === race) || null;
+    const coverage = guided.routes.map((r) => ({ race: r.key, faction: r.faction, start: r.startName, from: r.startsLevel, to: r.reachesLevel, steps: r.steps.length, gaps: r.gaps, reviewed: r.reviewed }));
+    if (!route) return { character: p ? { name: p.name, race: p.race || null, level: p.level ?? null } : null, route: null, coverage };
+    const pos = G.position(route, { completed: p.history?.completedIdsKnown ? p.history.completedIds : [], inLog: (p.quests || []).map((q) => q.id), complete: (p.quests || []).filter((q) => q.complete).map((q) => q.id), level: p.level, mapId: p.location?.mapId ?? null });
+    const upcoming = route.steps.slice(pos.index, pos.index + 12).map((s, i) => ({ n: pos.index + i + 1, kind: s.kind, text: s.text, level: s.level, mapId: s.mapId, mapName: MAP_NAMES[s.mapId] || null, x: s.x, y: s.y, approved: Boolean(s.approved) }));
+    return { character: { name: p.name, race: p.race, level: p.level ?? null }, route: { race: route.key, faction: route.faction, start: route.startName, from: route.startsLevel, to: route.reachesLevel, gaps: route.gaps, total: route.steps.length, reviewed: route.reviewed, zones: route.zones.map((m) => MAP_NAMES[m] || `Map ${m}`) }, position: pos, upcoming, coverage };
+  });
   // "You are here": the zone the character is in, for their level and faction.
   handle("zoneBriefing", () => {
     const profile = worldMap.profile();

@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.49: painted frames, welcome tour and faction themes
+## 0.50: guided route
 
-In game, the Adventure Compass now has a carved leather-and-brass frame and the step guide is a parchment scroll. In the app, new players get a painted welcome tour, and every page carries your character's Horde or Alliance crest. 0.48 added past sessions. See the [0.49.0 release notes](docs/releases/0.49.0.md) and the [0.48.0 notes](docs/releases/0.48.0.md).
+Type `/bf route guide` in WoW and follow one step at a time from level 1, for your race: pick up, do, hand in, then on to the next zone, with the game's arrow on each step. Adventure → Guided route shows the same route, where you are on it and how far each race's route reaches today. 0.49 painted the in-game frames. See the [0.50.0 release notes](docs/releases/0.50.0.md) and the [0.49.0 notes](docs/releases/0.49.0.md).
 
 ## 0.28: your journey
 

@@ -88,6 +88,7 @@ contextBridge.exposeInMainWorld(
     nextStep: () => invoke("nextStep"),
     worldTracker: () => invoke("worldTracker"),
     onboarding: () => invoke("onboarding"),
+    guidedRoute: () => invoke("guidedRoute"),
     saveSharePicture: (bytes) => invoke("saveSharePicture", bytes),
     setRadarTarget: (pin) => invoke("setRadarTarget", pin),
     worldMapSearch: (query) => invoke("worldMapSearch", query),

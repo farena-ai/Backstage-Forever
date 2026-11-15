@@ -3,6 +3,8 @@
 -- moves, targets or clicks anything for the player.
 --   /bf route          show or hide the step frame
 --   /bf route next|back browse steps;  /bf route arrow   arrow follows the current step on/off
+--   /bf route guide     the full guided route for your race (0.50, roadmap 4.1); /bf route zone back to this zone
+--   /bf route skip      skip the current guided step
 local floor,min,max,sqrt=math.floor,math.min,math.max,math.sqrt
 local function plain(v)
     if v==nil then return nil end
@@ -40,6 +42,8 @@ local function loadSettings()
     if settings.arrow==nil then settings.arrow=true end
     if settings.tooltips==nil then settings.tooltips=true end
     if settings.arrivals==nil then settings.arrivals=true end
+    if settings.mode~='guide' then settings.mode='zone' end
+    if type(settings.skipped)~='table' then settings.skipped={} end
     return settings
 end
 
@@ -150,13 +154,15 @@ end
 
 -- The step frame.
 local frame,lines,steps,index,mapNow,lastArrow,pending=nil,{},{},1,nil,nil,false
+local guide=nil -- {index,total,note,top} while the guided route is shown
 local function setArrow(step)
-    if not step or not mapNow or combat() or not settings.arrow then return end
-    local key=mapNow..':'..floor(step.x*1000)..':'..floor(step.y*1000)
+    local stepMap=step and step.mapId or mapNow
+    if not step or not stepMap or not step.x or combat() or not settings.arrow then return end
+    local key=stepMap..':'..floor(step.x*1000)..':'..floor(step.y*1000)
     if key==lastArrow then return end
     local mapApi=plain(C_Map)
-    if call(field(mapApi,'CanSetUserWaypointOnMap'),mapNow)~=true then return end
-    local point=call(field(plain(UiMapPoint),'CreateFromCoordinates'),mapNow,step.x,step.y)
+    if call(field(mapApi,'CanSetUserWaypointOnMap'),stepMap)~=true then return end
+    local point=call(field(plain(UiMapPoint),'CreateFromCoordinates'),stepMap,step.x,step.y)
     if not point or not pcall(field(mapApi,'SetUserWaypoint'),point) then return end
     local st=plain(C_SuperTrack)
     if type(field(st,'SetSuperTrackedUserWaypoint'))=='function' then pcall(st.SetSuperTrackedUserWaypoint,true) end
@@ -171,10 +177,16 @@ local function paint()
         method(lines.next,'SetText','')
         return
     end
-    method(lines.title,'SetText',('BF Route · step %d of %d'):format(index,#steps))
-    method(lines.body,'SetText',s.text..(' |cff7a5a30(%.1f, %.1f)|r'):format(s.x*100,s.y*100))
+    if guide then
+        method(lines.title,'SetText',('BF Guide · step %d of %d · level %d'):format(guide.index+index-1,guide.total,s.level or 1))
+    else
+        method(lines.title,'SetText',('BF Route · step %d of %d'):format(index,#steps))
+    end
+    local where=s.x and (' |cff7a5a30(%.1f, %.1f%s)|r'):format(s.x*100,s.y*100,(s.mapId and s.mapId~=mapNow and BackstageForeverFindMaps and BackstageForeverFindMaps[s.mapId]) and (' in '..BackstageForeverFindMaps[s.mapId]) or '') or ''
+    method(lines.body,'SetText',s.text..where)
     local n=steps[index+1]
-    method(lines.next,'SetText',n and ('|cff7a5a30Then:|r '..n.text) or '|cff7a5a30Last step here.|r')
+    local nextLine=n and ('|cff7a5a30Then:|r '..n.text) or (guide and '|cff7a5a30Last guided step for now.|r' or '|cff7a5a30Last step here.|r')
+    method(lines.next,'SetText',(guide and index==1 and guide.note) and ('|cff8a2a10'..guide.note..'|r') or nextLine)
     -- No waypoint here: paint also runs on its own (login, zone and quest changes), and the game
     -- forbids addons from setting waypoints outside a player's click or command.
 end
@@ -215,6 +227,32 @@ function BackstageForeverRouteRefresh()
     local mapId,x,y=where()
     if not mapId then return end
     mapNow=mapId
+    guide=nil
+    if settings.mode=='guide' and type(BackstageForeverGuideRoute)=='function' then
+        local _,race=call(UnitRace,'player')
+        local route=BackstageForeverGuideRoute(str(race,40))
+        if route then
+            local log=questLog();local inLog,complete={},{}
+            for _,q in ipairs(log) do inLog[q.id]=true;if q.complete then complete[q.id]=true end end
+            local completed={}
+            local ids=call(field(plain(C_QuestLog),'GetAllCompletedQuestIDs'))
+            if type(ids)=='table' then for _,v in pairs(ids) do v=int(v,1,2147483647);if v then completed[v]=true end end end
+            local pos=BackstageForeverGuidePosition(route,{completed=completed,inLog=inLog,complete=complete,level=int(call(UnitLevel,'player'),1,1000),mapId=mapId},settings.skipped)
+            if pos.ended then
+                settings.mode='zone'
+                say(('The guided route ends at level %d for now. The zone guide takes over; the desktop app\'s Now page shows where to level next.'):format(pos.top or 1))
+            else
+                steps={}
+                for i,r in ipairs(pos.steps) do steps[i]={kind=r[1],text=r[2],mapId=r[3],x=r[4],y=r[5],level=r[6],id=r[8]} end
+                guide={index=pos.index,total=pos.total,note=pos.note,top=pos.top};index=1
+                if settings.shown and build() then method(frame,'Show');paint() end
+                return steps
+            end
+        else
+            settings.mode='zone'
+            say('There is no guided route for your race yet. The zone guide takes over.')
+        end
+    end
     steps=BackstageForeverRouteSteps(x,y,stopsFor(mapId));index=1
     if settings.shown and build() then method(frame,'Show');paint() end
     return steps
@@ -231,10 +269,16 @@ function BackstageForeverRouteCommand(message)
     if arg=='next' then index=min(#steps,index+1)
     elseif arg=='back' then index=max(1,index-1)
     elseif arg=='arrow' then settings.arrow=not settings.arrow;lastArrow=nil;say('Route arrow '..(settings.arrow and 'on: it follows your current step.' or 'off.'))
+    elseif arg=='guide' then settings.mode='guide';settings.shown=true;BackstageForeverRouteRefresh();if guide then say(('Guided route: step %d of %d. It moves on as you pick up and hand in quests; /bf route skip skips a step, /bf route zone goes back to this zone\'s steps.'):format(guide.index,guide.total)) end
+    elseif arg=='zone' then settings.mode='zone';settings.shown=true;BackstageForeverRouteRefresh();say('Zone guide: the quests around you, in the order that walks least.')
+    elseif arg=='skip' then
+        local s=steps[index]
+        if not guide or not s or not s.id then return say('Skip works on the guided route: /bf route guide.') end
+        settings.skipped[s.id]=true;lastArrow=nil;BackstageForeverRouteRefresh();say('Skipped. /bf route guide picks up from the next step.')
     elseif arg=='' then settings.shown=not settings.shown
-    else return say('Use /bf route, /bf route next, /bf route back or /bf route arrow.') end
+    else return say('Use /bf route, /bf route guide, /bf route zone, /bf route next, /bf route back, /bf route skip or /bf route arrow.') end
     if settings.shown then
-        if arg=='' then BackstageForeverRouteRefresh();say('Route on: one step at a time. The arrow points at the step you show; < and > move it. /bf route hides it.') end
+        if arg=='' then BackstageForeverRouteRefresh();say('Route on: one step at a time. The arrow points at the step you show; < and > move it. /bf route guide follows the full guided route for your race; /bf route hides it.') end
         if build() then method(frame,'Show');paint() end
         -- The player typed or clicked this, so the game allows the waypoint arrow now.
         if arg~='arrow' or settings.arrow then setArrow(steps[index]) end

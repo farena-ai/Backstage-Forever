@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.50.0 — guided route, 2026-11-15
+
+- **4.1 guided route (part 1):** `src/core/guided-route.cjs` builds one route per race from the bundled quest data: zone by zone in level order (staying on the same continent when there's a choice), each zone in waves of quests at your level, each wave walked nearest-first (pick up, grouped per giver; objectives where the data has an area; hand in). Quests are filtered by side and race mask; class letters and tablets collapse into one optional step. It reports where each route starts, where it ends and every level gap. Real data: Human, Orc, Night Elf, Undead and Troll 1–42; Tauren 1–42 with 4–9 missing; Dwarf and Gnome 10–42 (no Dun Morogh quests in the data).
+- `scripts/build-guided-route.cjs` writes `BackstageForeverGuideData.lua` (managed file 28, about 330 KB) with the runtime (`scripts/guide-runtime.lua`); `npm run check:guided-route` in CI. `data/forever-route/reviews.json` holds the hand review (skips and approvals per race; empty for now).
+- In game: `/bf route guide`, `/bf route skip`, `/bf route zone`; the step frame shows the guided step, its level and a note when you're behind it, and the arrow goes to the step's own map.
+- App: Adventure → Guided route (`guidedRoute` IPC): your race's route, where you are on it from your last save, the next 12 steps with Map buttons, and a coverage table for all eight races.
+
 ## 0.49.0 — painted frames, welcome tour and faction themes, 2026-11-14
 
 - **G9 in-game frames:** `Art/Frames/compass.tga` (512×512 nine-slice atlas, 24-bit to stay under the 1 MB install limit), `compass-crest.tga` and `step.tga` (32-bit, transparent edges), cut from the approved ComfyUI paintings. The Compass replaces the stock dialog backdrop with `BackstageForeverPaintNineSlice` plus the crest; the BF Route frame (now 340×104) uses `BackstageForeverPaintScroll`, text inset to the parchment in dark ink (brown instead of grey colour codes), buttons inside the rods. `Art/Frames` added to the installer's art folders and the packaged check.
