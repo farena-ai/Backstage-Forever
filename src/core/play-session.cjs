@@ -2,6 +2,8 @@
 // This play session, built from live frames only (memory only; nothing is stored).
 // Pace counts only time you are actually playing: gaps between frames longer than a
 // minute (alt-tab, AFK, loading) are not counted. Trails keep where you walked per map.
+// A break of 30 minutes or more starts a new session (0.48, kept by session-history.cjs).
+const SESSION_GAP_MS = 30 * 60000;
 const GAP_MS = 60000, MIN_ACTIVE_MS = 3 * 60000, MOVE = 0.004, MAX_POINTS = 1500, MAX_MAPS = 30, MAX_EVENTS = 200;
 
 class PlaySession {
@@ -13,8 +15,8 @@ class PlaySession {
   observe(frame) {
     if (!frame || frame.combat === undefined && !frame.position && !frame.level) return [];
     const key = frame.characterHash ?? null;
-    if (key !== this.key) this.reset(key);
     const t = this.now(), events = [];
+    if (key !== this.key || (this.lastAt != null && t - this.lastAt >= SESSION_GAP_MS)) this.reset(key);
     if (this.lastAt != null) { const d = t - this.lastAt; if (d > 0 && d <= GAP_MS) this.activeMs += d; }
     if (this.startedAt == null) this.startedAt = t;
     this.lastAt = t;
@@ -61,7 +63,7 @@ class PlaySession {
     const perHour = this.activeMs >= MIN_ACTIVE_MS && gained > 0 ? gained / hours : null;
     const left = this.progress != null ? Math.ceil(this.progress + 1e-9) - this.progress : null;
     return {
-      active: true, characterHash: this.key,
+      active: true, characterHash: this.key, startedAt: this.startedAt, lastAt: this.lastAt,
       activeMinutes: Math.round(this.activeMs / 60000),
       startLevel: this.startLevel, level: this.level,
       levelsGained: Math.round(gained * 100) / 100,

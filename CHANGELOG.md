@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.48.0 — past sessions, 2026-11-14
+
+- **3.1 session history:** `src/core/session-history.cjs` keeps past play sessions per character in `sessions.json` in the app's data folder (at most 300, written at most once a minute and on quit; invalid entries dropped; cleared by Delete all local data). Each session: start and end, minutes played, start and end level, levels gained, deaths, zones. Characters → Journey gets a Past sessions card: totals, a 14-day levels-per-day chart and the latest eight sessions.
+- A 30-minute break now starts a new play session (pace, trail and history). The session summary includes `startedAt` and `lastAt`.
+
 ## 0.47.0 — plan tonight with the companion, 2026-11-14
 
 - **4.4 smarter companion:** six read-only planning tools (`src/core/companion-planner.cjs`), offered only when the character is shared: `plan_tonight` (next step with direction, level and rested XP, this session's pace, the zone to clear, dungeons that fit, gear problems, bag space and other characters worth playing), `get_zone_progress`, `get_gear`, `get_dungeons`, `get_characters` and `get_session`. They reuse the exact page views (main keeps every handler by name in `views`), and the tool instruction tells the model to call `plan_tonight` first for planning questions.

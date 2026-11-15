@@ -195,7 +195,7 @@ Backstage Forever should look like a premium fantasy companion on every page. Al
 
 | # | Feature | Size | Where | Why it matters |
 |---|---|---|---|---|
-| 3.1 | **Session history and milestones.** Keep past sessions: levels per day, deaths, zones, time to each level. Celebrate milestones (first dungeon, level 10/20/30/40, mount, first flight path). | M | App | Progress you can see keeps people playing. |
+| 3.1 | *(Done: milestones and time per level on Characters → Journey since 0.28; past sessions and levels per day added in 0.48.)* **Session history and milestones.** Keep past sessions: levels per day, deaths, zones, time to each level. Celebrate milestones (first dungeon, level 10/20/30/40, mount, first flight path). | M | App | Progress you can see keeps people playing. |
 | 3.2 | *(Done in 0.46: Adventure → Zones.)* **World tracker.** A 1–60 world view colored by zone level band, with per-zone progress rings ("Durotar 18/22 quests") and badges for completed zones. | M | App | A satisfying overview and a natural next-zone picker. |
 | 3.3 | *(Done in 0.46: World Map ▶ replay and 🖼 picture of this session's path. Sessions are kept in memory only, so replay covers the current app session.)* **Journey replay and share card.** Replay a session's path on the map with level-up and death markers. Export a PNG of your own hand-drawn-style map. | M | App | Fun to share; no game art involved. |
 | 3.4 | **Always-on-top mini Now.** *(Done in 0.44: Now → Mini Now. First part in 0.38: the answer panel over the game for A15.)* A small window beside the game showing your next step and pace, like the radar. | S–M | App | Live help without alt-tabbing. |
@@ -284,7 +284,8 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 - **0.45 (shipped):** 3.5 spoken steps: Now → Speak steps reads each new next step aloud with the local Windows voice.
 - **0.46 (shipped):** 3.2 world tracker (Adventure → Zones: every zone for your faction with quests done and finished-zone stars) and 3.3 journey replay and share picture on the World Map.
 - **0.47 (shipped):** 4.4 smarter companion: "what should I do tonight?" gets an ordered plan from the next step, rested XP, zones, dungeons, gear and your other characters, with or without an AI model.
-- **0.48+:** G9–G11 (samples first), then the 4.1 full guided route and the G12 art review.
+- **0.48 (shipped):** 3.1 past sessions: Characters → Journey keeps each play session and charts levels per day. Tier 3 is complete.
+- **0.49+:** G9–G11 (samples first), then the 4.1 full guided route and the G12 art review.
 - **1.0:** after Frank's hands-on acceptance.
 
 Keep this file and Help → Commands updated with each release.

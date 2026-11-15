@@ -55,3 +55,13 @@
 @keyframes bf-badge-spin { from { transform: rotateY(180deg) scale(.6); } to { transform: none; } }
 @keyframes bf-badge-out { to { opacity: 0; transform: translateY(20px); } }
 @media (prefers-reduced-motion: reduce) { .bf-badge-pop, .bf-badge-pop img, .bf-badge-pop.out { animation: none; } }
+/* Past sessions (0.48, 3.1): levels per day and the latest sessions. */
+.jr-hist-total { margin: 0 0 10px; font-size: 13px; color: #5a3e1c; }
+.jr-days { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; align-items: end; }
+.jr-days li { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.jr-day-bar { position: relative; display: block; width: 100%; height: 64px; border-radius: 3px; background: rgba(43,27,10,.12); overflow: hidden; }
+.jr-day-bar span { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, #7a4bb0, #a36ee0); }
+.jr-days small { font-size: 10px; color: #6b4e26; }
+.jr-sessions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.jr-sessions li { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 5px 8px; border-radius: 5px; background: rgba(239,224,187,.5); border: 1px solid rgba(165,130,62,.45); font-size: 13px; }
+.jr-sessions strong { color: #3d220c; }
