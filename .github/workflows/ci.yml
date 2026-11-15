@@ -5,6 +5,7 @@ permissions:
 jobs:
   desktop:
     runs-on: windows-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,45 +29,84 @@ jobs:
       - run: npm test
       - run: npm --prefix community-server test
       - run: npm run test:ui
+        timeout-minutes: 10
       - run: npm run test:setup
+        timeout-minutes: 10
       - run: npm run test:autosave
+        timeout-minutes: 10
       - run: npm run test:integration
+        timeout-minutes: 10
       - run: npm run test:living-backend
+        timeout-minutes: 10
       - run: npm run test:living-setup
+        timeout-minutes: 10
       - run: npm run test:company-backend
+        timeout-minutes: 10
       - run: npm run test:company
+        timeout-minutes: 10
       - run: npm run test:director-backend
+        timeout-minutes: 10
       - run: npm run test:director
+        timeout-minutes: 10
       - run: npm run test:preparation-backend
+        timeout-minutes: 10
       - run: npm run test:preparation
+        timeout-minutes: 10
       - run: npm run test:adventure-coach
+        timeout-minutes: 10
       - run: npm run test:profession-coach
+        timeout-minutes: 10
       - run: npm run test:memory-backend
+        timeout-minutes: 10
       - run: npm run test:voice-backend
+        timeout-minutes: 10
       - run: npm run test:voice-memory
+        timeout-minutes: 10
       - run: npm run test:travel-companion
+        timeout-minutes: 10
       - run: npm run test:npc-companion
+        timeout-minutes: 10
       - run: npm run test:companion-tools
+        timeout-minutes: 10
       - run: npm run test:live-link
+        timeout-minutes: 10
       - run: npm run test:world-map
+        timeout-minutes: 10
       - run: npm run test:now
+        timeout-minutes: 10
       - run: npm run test:ledger
+        timeout-minutes: 10
       - run: npm run test:sheet
+        timeout-minutes: 10
       - run: npm run test:ask-panel
+        timeout-minutes: 10
       - run: npm run test:conversation
+        timeout-minutes: 10
       - run: npm run test:companion-recovery
+        timeout-minutes: 10
       - run: npm run test:player-shell
+        timeout-minutes: 10
       - run: npm run test:product-polish
+        timeout-minutes: 10
       - run: npm run test:support
+        timeout-minutes: 10
       - run: npm run test:recovery
+        timeout-minutes: 10
       - run: npm run test:party-backend
+        timeout-minutes: 10
       - run: npm run test:party
+        timeout-minutes: 10
       - run: npm run test:command-center
+        timeout-minutes: 10
       - run: npm run test:knowledge
+        timeout-minutes: 10
       - run: npm run test:insights
+        timeout-minutes: 10
       - run: npm run test:character-guidance
+        timeout-minutes: 10
       - run: npm run dist
       - run: npm run test:packaged
+        timeout-minutes: 10
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

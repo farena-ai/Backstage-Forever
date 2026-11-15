@@ -38,3 +38,13 @@ test("validation and tag publication require acquisition, Compass, Professions a
   assert.match(release, /node scripts\/sign-update\.cjs/);
   assert.match(release, /secrets\.BF_UPDATE_SIGNING_KEY/);
 });
+
+test("a hung check fails in minutes, not after GitHub's six-hour default", () => {
+  for (const [name, ceiling] of [[".github/workflows/ci.yml", 60], [".github/workflows/release.yml", 90]]) {
+    const yml = read(name).replace(/\r\n/g, "\n");
+    assert.match(yml, new RegExp(`runs-on: windows-latest\n    timeout-minutes: ${ceiling}\n`), name);
+    const steps = yml.match(/      - run: npm run test:[a-z:-]+\n.*/g) || [];
+    assert.ok(steps.length > 20, name);
+    for (const s of steps) assert.match(s, /\n        timeout-minutes: 10$/, `${name}: ${s.split("\n")[0].trim()}`);
+  }
+});
