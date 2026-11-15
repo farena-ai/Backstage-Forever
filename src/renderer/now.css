@@ -185,9 +185,10 @@
 .now-zr { display: flex; gap: 10px; align-items: flex-start; }
 .now-zr > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
 .now-zr strong { font: 700 14px Georgia, serif; color: #3d220c; }
-.now-zr-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; color: #2b1b0a; }
-.now-zr-item small { color: #6b4a22; }
-.now-zr-item button { margin-left: auto; }
+/* Name and map button share the first line; the note sits under the name, never pushing the button down. */
+.now-zr-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 8px; font-size: 14px; color: #2b1b0a; }
+.now-zr-item small { color: #6b4a22; grid-column: 1; }
+.now-zr-item button { grid-column: 2; grid-row: 1; }
 .now-zr-ico { flex: none; width: 38px; height: 38px; border-radius: 50%; background: transparent center / contain no-repeat; filter: drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
 .now-zr-danger { background-color: #3a220d; border: 1.5px solid #8a1f14; background-size: cover; }
 .now-zr-quest { background-image: url("art/pins/quest-giver.png"); }

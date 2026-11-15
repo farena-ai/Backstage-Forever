@@ -33,12 +33,42 @@ const { navigate, routes } = require("./player-navigation.cjs");
     const report = [];
     for (const id of Object.keys(routes)) {
       try {
-        await navigate(page, id);
+        if (lang === "en") await navigate(page, id);
+        else {
+          // Translated menus: find each button by its label in the chosen language (the app's own translator).
+          for (const label of routes[id]) {
+            const ok = await page.evaluate((label) => {
+              const want = (window.I18n?.tr?.(label) || label).trim();
+              const b = [...document.querySelectorAll("nav button")].find((x) => x.getBoundingClientRect().width > 0 && (x.textContent || "").replace(/\s+/g, " ").trim().endsWith(want));
+              if (b) b.click();
+              return Boolean(b);
+            }, label);
+            if (!ok) throw new Error(`no menu button for ${label}`);
+            await page.waitForTimeout(600);
+          }
+        }
         await page.waitForTimeout(1800);
         const facts = await page.evaluate(() => {
-          const over = [...document.querySelectorAll("main *")].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && e.scrollWidth > e.clientWidth + 2 && getComputedStyle(e).overflowX === "visible"; }).length;
-          const tiny = [...document.querySelectorAll("main *")].filter((e) => e.childNodes.length && [...e.childNodes].some((n) => n.nodeType === 3 && n.nodeValue.trim()) && parseFloat(getComputedStyle(e).fontSize) < 11).length;
-          return { overflowing: over, tinyText: tiny, height: document.querySelector("main")?.scrollHeight || 0 };
+          const name = (e) => `${e.tagName.toLowerCase()}${e.id ? "#" + e.id : ""}${e.classList.length ? "." + [...e.classList].slice(0, 2).join(".") : ""} "${(e.textContent || "").trim().replace(/\s+/g, " ").slice(0, 50)}"`;
+          const ownText = (e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.nodeValue.trim());
+          const visible = (e) => { const r = e.getBoundingClientRect(), s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && !e.closest("[hidden], details:not([open]) > :not(summary)"); };
+          // Visible spill: an element whose box pokes past its nearest clipping-free container's right edge.
+          const spill = [...document.querySelectorAll("main *")].filter((e) => {
+            if (!visible(e) || !ownText(e)) return false;
+            const box = e.parentElement?.getBoundingClientRect(), r = e.getBoundingClientRect();
+            return box && r.right > box.right + 2 && getComputedStyle(e.parentElement).overflowX === "visible";
+          });
+          // Clipped text: ellipsis or hidden overflow that is actually cutting words off.
+          const clipped = [...document.querySelectorAll("main *")].filter((e) => visible(e) && ownText(e) && !e.classList.contains("sr-only") && e.scrollWidth > e.clientWidth + 2 && getComputedStyle(e).overflowX !== "visible");
+          const tiny = [...document.querySelectorAll("main *")].filter((e) => visible(e) && ownText(e) && parseFloat(getComputedStyle(e).fontSize) < 11);
+          // Framed buttons draw end caps about 12px wide; text needs at least that much side padding.
+          const tight = [...document.querySelectorAll("main button:not(.illustrated-card)")].filter((e) => visible(e) && (e.textContent || "").trim() && (() => { const c = getComputedStyle(e, "::before"); return c.content !== "none" && c.display !== "none" && c.backgroundImage.includes("endcap") && parseFloat(c.width) > 0; })() && parseFloat(getComputedStyle(e).paddingLeft) < 12);
+          // Dark text inside a framed (dark) button: a card that lost its own background to the button style.
+          const lum = (c) => { const m = c.match(/\d+(\.\d+)?/g)?.map(Number) || [255, 255, 255]; return (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255; };
+          const darkOnDark = [...document.querySelectorAll("main button:not(.illustrated-card)")].filter(visible).flatMap((b) => getComputedStyle(b).backgroundImage.includes("rgb(57, 59, 50)") ? [b, ...b.querySelectorAll("*")].filter((e) => ownText(e) && lum(getComputedStyle(e).color) < 0.35) : []);
+          // End caps drawn by a button that is not positioned land on some other box (a card, the window edge).
+          const stray = [...document.querySelectorAll("button:not(.illustrated-card)")].filter((e) => { const r = e.getBoundingClientRect(), c = getComputedStyle(e, "::before"); return r.width > 0 && getComputedStyle(e).position === "static" && c.display !== "none" && c.backgroundImage.includes("endcap"); });
+          return { stray: stray.map(name).slice(0, 6), strayCount: stray.length, darkOnDark:darkOnDark.map(name).slice(0, 6), darkOnDarkCount: darkOnDark.length, tight:tight.map((e) => getComputedStyle(e).paddingLeft + " " + name(e)).slice(0, 8), tightCount: tight.length, spill:spill.map(name).slice(0, 8), spillCount: spill.length, clipped: clipped.map(name).slice(0, 8), clippedCount: clipped.length, tiny: tiny.map((e) => getComputedStyle(e).fontSize + " " + name(e)).slice(0, 6), tinyCount: tiny.length, height: document.querySelector("main")?.scrollHeight || 0 };
         });
         await page.screenshot({ path: path.join(out, `${id}.png`), fullPage: true });
         report.push({ id, ...facts });

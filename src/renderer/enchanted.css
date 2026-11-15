@@ -595,3 +595,31 @@ body[data-class] .xp-fill {
     transform: none;
   }
 }
+
+/* Buttons restyled with "all: unset" lose position: relative, so the framed end caps above would be
+   drawn against the nearest card or the window edge. They are pills and links: no end caps. */
+.commands-page .cmd-copy::before, .commands-page .cmd-copy::after,
+.coverage-page .cov-toggle button::before, .coverage-page .cov-toggle button::after,
+.atlas-page .atlas-chip::before, .atlas-page .atlas-chip::after,
+.atlas-page .atlas-toggle::before, .atlas-page .atlas-toggle::after,
+.atlas-card .atlas-pickup-actions button::before, .atlas-card .atlas-pickup-actions button::after,
+.atlas-page .atlas-loot-btn::before, .atlas-page .atlas-loot-btn::after,
+.atlas-page .atlas-score.up::before, .atlas-page .atlas-score.up::after,
+.atlas-page .atlas-score.later::before, .atlas-page .atlas-score.later::after,
+.atlas-loot .loot-star::before, .atlas-loot .loot-star::after,
+.bf-moment-close::before, .bf-moment-close::after,
+.bf-death .bf-death-ok::before, .bf-death .bf-death-ok::after,
+.now-page .now-tip button.now-link::before, .now-page .now-tip button.now-link::after,
+.bf-celebrate .bf-continue::before, .bf-celebrate .bf-continue::after,
+.bf-celebrate .bf-go::before, .bf-celebrate .bf-go::after,
+.bf-celebrate .bf-sound::before, .bf-celebrate .bf-sound::after,
+.bf-page button.bf-link::before, .bf-page button.bf-link::after,
+.bf-card button.bf-link::before, .bf-card button.bf-link::after,
+.quest-guide .quest-link::before, .quest-guide .quest-link::after,
+.world-map-page .wm-results li button::before, .world-map-page .wm-results li button::after,
+.world-map-page .wm-near li button::before, .world-map-page .wm-near li button::after,
+.world-map-page .wm-camps li button::before, .world-map-page .wm-camps li button::after,
+.wm-heat li button::before, .wm-heat li button::after {
+  /* !important: a single-class selector would lose to button:not(.illustrated-card)::before. */
+  display: none !important;
+}

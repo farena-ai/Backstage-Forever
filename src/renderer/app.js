@@ -622,7 +622,11 @@ function snapshotLabel(p) {
     0,
     Math.floor((Date.now() - new Date(timestamp).getTime()) / 60000),
   );
-  return `Saved snapshot · ${Number.isFinite(minutes) ? (minutes < 1 ? "less than a minute ago" : minutes < 60 ? minutes + " min ago" : Math.floor(minutes / 60) + " hr ago") : "time unavailable"} · ${timestamp}`;
+  const when = new Date(timestamp);
+  const age = !Number.isFinite(minutes) ? "time unavailable" : minutes < 1 ? "less than a minute ago" : minutes < 60 ? minutes + " min ago" : minutes < 2880 ? Math.floor(minutes / 60) + " hr ago" : Math.floor(minutes / 1440) + " days ago";
+  // A readable local date, not the raw ISO string; the exact value stays in the tooltip.
+  const date = Number.isFinite(when.getTime()) ? when.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "";
+  return `Saved snapshot · ${age}${date ? " · " + date : ""}`;
 }
 // Three painted doors out of Adventure; each opens the page its title names.
 function situationCards() {

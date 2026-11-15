@@ -36,7 +36,8 @@ button.quest-ledger-row:not(.illustrated-card){display:flex;align-items:center;g
 }
 .guidance-reference .subtle {
   font-size: 12px;
-  padding: 5px 0;
+  /* Room for the framed button's end caps, which would otherwise cover the first letter. */
+  padding: 6px 20px;
   margin-top: 3px;
 }
 .plan-followups {

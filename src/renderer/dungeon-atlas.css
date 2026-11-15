@@ -58,7 +58,10 @@
 .atlas-pickup-actions { display: flex; gap: 4px; flex: none; }
 .atlas-card .atlas-pickup-actions button { all: unset; cursor: pointer; padding: 2px 9px; border-radius: 10px; font: 700 12px 'Source Sans 3', sans-serif; background: #3d220c; color: #f6dc9a; white-space: nowrap; }
 .atlas-card .atlas-pickup-actions button:hover, .atlas-card .atlas-pickup-actions button:focus-visible { background: #6a1a0e; outline: 2px solid #f6c445; }
-.atlas-pickup li > span:first-child { min-width: 0; }
+/* Cards are narrow: the quest name gets the full line, its buttons sit underneath on the right. */
+.atlas-pickup li { flex-wrap: wrap; row-gap: 3px; }
+.atlas-pickup li > span:first-child { min-width: 0; flex: 1 1 100%; }
+.atlas-pickup-actions { margin-left: auto; }
 
 /* Loot browser (0.30): bosses as sections, items as quality-framed tiles on dark velvet. */
 .atlas-toggles { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 4px; }

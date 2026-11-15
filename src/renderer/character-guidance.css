@@ -24,6 +24,14 @@
 .cg-gear > div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .cg-slot { width: 76px; flex-shrink: 0; color: #5a2e0c; font-size: 13px; font-weight: 700; }
 .cg-gear p { margin: 2px 0; font-size: 13px; }
+/* Item quality in words and colour (never colour alone); every shade meets AA on the parchment. */
+.cg-quality { font-weight: 700; }
+.cg-quality.q-poor { color: #4f4f4f; }
+.cg-quality.q-common { color: #2b1b0a; }
+.cg-quality.q-uncommon { color: #2b5e1f; }
+.cg-quality.q-rare { color: #1d4f8a; }
+.cg-quality.q-epic { color: #6a2c8f; }
+.cg-quality.q-legendary { color: #7a4100; }
 .cg-level { font: 700 22px Georgia, serif; color: #3d220c; text-align: center; flex-shrink: 0; }
 .cg-trainers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .cg-trainer { background: rgba(255,248,225,.6); border: 1px solid #c4a466; border-radius: 6px; padding: 10px 12px; min-width: 0; overflow-wrap: anywhere; }

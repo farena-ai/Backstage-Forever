@@ -63,7 +63,7 @@ function difficulty(level, min, max) {
   return "trivial";
 }
 // Quests that send you into a dungeon: kill/collect objectives naming one of its bosses.
-function dungeonQuests(pack, bossNames, profile, dungeonName = "") {
+function dungeonQuests(pack, bossNames, profile, dungeonName = "", band = null) {
   if (!pack?.quests) return [];
   const faction = profile?.faction || null, level = Number.isInteger(profile?.level) ? profile.level : null;
   const inLog = new Set((profile?.quests || []).map((q) => q.id));
@@ -73,6 +73,9 @@ function dungeonQuests(pack, bossNames, profile, dungeonName = "") {
     if (inLog.has(q.id) || done.has(q.id)) continue;
     if (faction && q.sides?.length && !q.sides.includes(faction)) continue;
     if (level && q.minLevel && q.minLevel > level + 3) continue;
+    // A dungeon quest sits near the dungeon's own levels; a level-6 crafting quest that happens to
+    // mention a boss's name, or a level-60 holiday quest, is not one to pick up before going in.
+    if (band && q.level && (q.level < band.min - 6 || q.level > band.max + 3)) continue;
     const hit = (q.objectives || []).some((o) => {
       const n = o.type === "monster" ? pack.creatures?.[String(o.objectId)]?.name : null;
       return n && bossNames.has(norm(n));
@@ -109,7 +112,7 @@ function buildAtlas({ profile = null, encounters = null, knowledgePack = null } 
       bosses: bosses.map((b) => ({ name: b, observedInForever: observedNames.has(norm(b)), kills: observed.find((o) => norm(o.name) === norm(b))?.kills || 0 })),
       observedOnly: observed.filter((o) => !bosses.some((b) => norm(b) === norm(o.name))).map((o) => ({ name: o.name, kills: o.kills })),
       observedRuns: observed.reduce((m, o) => Math.max(m, o.runs || 0), 0),
-      yourQuests: yours, roles: ROLES[kind], prep: PREP[kind], pickUp: dungeonQuests(knowledgePack, bossNames, profile, name),
+      yourQuests: yours, roles: ROLES[kind], prep: PREP[kind], pickUp: dungeonQuests(knowledgePack, bossNames, profile, name, { min, max }),
       source: "Classic-era baseline (verify in Forever)" + (observed.length ? " + observed Forever encounters" : ""),
     };
   });

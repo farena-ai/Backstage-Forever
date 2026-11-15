@@ -39,6 +39,10 @@ body {
   background: var(--bg);
   color: var(--text);
 }
+/* The browser's own "smaller" turns 13px into 10.8px; keep fine print at the 11px dark-room minimum. */
+small {
+  font-size: max(11px, 0.85em);
+}
 button,
 input,
 select,
@@ -1300,6 +1304,8 @@ body[data-class] .providers {
 .rail nav { min-height:0; overflow-y:auto; flex:1; align-content:start; }
 .rail .brand,.rail .rail-bottom { flex-shrink:0; }
 @media(max-height:800px){.rail .brand{margin-bottom:22px}.rail nav{gap:5px}.rail nav button:not(.illustrated-card){padding:9px 12px}.rail .rail-bottom{padding-top:12px}}
+/* Laptop-height windows (up to 1080px) show every journal page without scrolling the menu. */
+@media(max-height:1080px){.rail nav{gap:4px}.rail nav button:not(.illustrated-card){margin-bottom:0;padding-top:10px;padding-bottom:10px}}
 
 /* Leave one scrolling axis and room for sculpted endcaps and keyboard outlines. */
 .rail nav{min-width:0;overflow-x:hidden;grid-template-columns:minmax(0,1fr);padding:4px 6px 4px 3px;scrollbar-gutter:stable;}
@@ -1360,3 +1366,6 @@ body[data-class] .providers {
 html[data-machine-translated="true"] .rail-bottom .status::after { content: " · maschinell übersetzt"; opacity: .8; }
 .bf-lang { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #f1e3c0; }
 .bf-lang select { padding: 3px 6px; border-radius: 4px; border: 1px solid #a5823e; background: #fff8e6; color: #2b1b0a; }
+
+/* A short choice list does not need the full card width. */
+#ask-panel-hide { display: block; width: auto; min-width: 200px; max-width: 280px; margin-top: 6px; }

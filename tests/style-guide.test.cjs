@@ -36,3 +36,22 @@ test("the old low-contrast chip colours are gone, and the style guide documents 
   const guide = fs.readFileSync(path.join(__dirname, "../docs/STYLE-GUIDE.md"), "utf8");
   for (const word of ["Dark-room minimum: 11px", "WCAG AA, 4.5:1", "prefers-reduced-motion", "Never rely on colour alone", "Show Frank samples"]) assert.ok(guide.includes(word), word);
 });
+
+test("unstyled fine print never drops below the 11px minimum", () => {
+  const css = fs.readFileSync(path.join(__dirname, "../src/renderer/styles.css"), "utf8").replace(/\r\n/g, "\n");
+  assert.match(css, /\nsmall \{\n  font-size: max\(11px, 0\.85em\);\n\}/);
+});
+
+test("every button restyled with all: unset also drops the framed end caps", () => {
+  const dir = path.join(__dirname, "../src/renderer");
+  const enchanted = fs.readFileSync(path.join(dir, "enchanted.css"), "utf8").replace(/\r\n/g, "\n");
+  const missing = [];
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".css"))) {
+    for (const m of fs.readFileSync(path.join(dir, f), "utf8").matchAll(/([^{}]+)\{[^}]*all:\s*unset/g)) {
+      for (const sel of m[1].split(",").map((x) => x.replace(/\/\*[\s\S]*?\*\//g, "").trim()).filter(Boolean)) {
+        if (!enchanted.includes(`${sel}::before, ${sel}::after`)) missing.push(`${f}: ${sel}`);
+      }
+    }
+  }
+  assert.deepEqual(missing, []);
+});

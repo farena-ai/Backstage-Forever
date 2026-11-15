@@ -27,3 +27,12 @@
 .mastered { background: linear-gradient(90deg, var(--band) 0 6px, #f6e7b8 6px, #e8cf86); }
 .wt-band-1-10 { --band: #4f9a3c; } .wt-band-10-20 { --band: #3a8a8a; } .wt-band-20-30 { --band: #3b6fb0; }
 .wt-band-30-40 { --band: #7a4bb0; } .wt-band-40-50 { --band: #b0602c; } .wt-band-50-60 { --band: #a8323a; }
+/* G12 review (0.54): the app-wide framed-button style (button:not(.illustrated-card)) outranks .wt-zone,
+   which left dark text on a dark button. Zone tiles are parchment cards, not framed buttons. */
+.wt-grid button.wt-zone, .wt-grid button.wt-zone:hover:not(:disabled), .wt-grid button.wt-zone:active:not(:disabled) {
+  min-height: 0; border: 1px solid #a5823e; border-radius: 8px; padding: 8px 12px 8px 8px; color: #2b1b0a; text-shadow: none; transform: none;
+  background: linear-gradient(90deg, var(--band) 0 6px, #efe0bb 6px, #dcc797); box-shadow: 0 3px 8px rgba(0,0,0,.3);
+}
+.wt-grid button.wt-zone:hover:not(:disabled) { border-color: #6b4e26; box-shadow: 0 0 0 2px #f4cf72, 0 3px 8px rgba(0,0,0,.3); }
+.wt-grid button.wt-fit-now { box-shadow: 0 0 0 2px #f4cf72, 0 3px 8px rgba(0,0,0,.3); }
+.wt-grid button.wt-zone::before, .wt-grid button.wt-zone::after { display: none; }
