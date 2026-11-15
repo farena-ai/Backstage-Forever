@@ -1337,3 +1337,7 @@ body[data-class] .providers {
 @media (max-width: 760px) { .ingame-helpers li { grid-template-columns: 1fr; } }
 /* G13: the saved-location card shows the zone's own painting when it has one (ZoneArt.paint sets --zone-art). */
 .expedition-card[data-zone-art]::before { background-image: var(--zone-art); }
+
+/* G11 (0.49): the faction crest beside the brand. */
+.brand { position: relative; }
+.brand .brand-faction { width: 34px; height: 34px; margin-left: auto; align-self: center; border: 0; background: none; filter: drop-shadow(0 0 6px var(--faction-glow, rgba(0,0,0,.4))); }

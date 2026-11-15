@@ -129,3 +129,14 @@
   .adventure-coach .bf-row { padding: 8px 10px; }
   .adventure-coach footer { margin-top: 6px; padding-top: 4px; }
 }
+
+/* G11 (0.49): faction themes. The active character's crest watermarks every page banner and a
+   colour set (deep, glow) edges it; Horde and Alliance get the same treatment. */
+body[data-faction="horde"] { --faction-crest: url("art/factions/horde.webp"); --faction-deep: #5a1410; --faction-glow: rgba(226,96,70,.55); }
+body[data-faction="alliance"] { --faction-crest: url("art/factions/alliance.webp"); --faction-deep: #10305a; --faction-glow: rgba(110,170,236,.55); }
+.ph-faction { display: none; }
+body[data-faction="horde"] .ph-faction, body[data-faction="alliance"] .ph-faction {
+  display: block; position: absolute; right: 22px; top: 50%; width: 130px; height: 130px; transform: translateY(-50%); z-index: 0;
+  background: var(--faction-crest) center / contain no-repeat; opacity: .55; filter: drop-shadow(0 0 14px var(--faction-glow)); pointer-events: none; }
+body[data-faction="horde"] .page-hero, body[data-faction="alliance"] .page-hero { border-color: var(--faction-accent); box-shadow: 0 4px 12px rgba(0,0,0,.4), inset 0 -3px 0 var(--faction-deep), 0 0 0 1px var(--faction-glow); }
+body[data-faction="horde"] .ph-eyebrow, body[data-faction="alliance"] .ph-eyebrow { color: var(--faction-accent); }

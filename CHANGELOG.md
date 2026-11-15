@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.49.0 — painted frames, welcome tour and faction themes, 2026-11-14
+
+- **G9 in-game frames:** `Art/Frames/compass.tga` (512×512 nine-slice atlas, 24-bit to stay under the 1 MB install limit), `compass-crest.tga` and `step.tga` (32-bit, transparent edges), cut from the approved ComfyUI paintings. The Compass replaces the stock dialog backdrop with `BackstageForeverPaintNineSlice` plus the crest; the BF Route frame (now 340×104) uses `BackstageForeverPaintScroll`, text inset to the parchment in dark ink (brown instead of grey colour codes), buttons inside the rods. `Art/Frames` added to the installer's art folders and the packaged check.
+- **G10 welcome:** `onboarding.js/.css`: a full-window painted splash (slow drift, reduced-motion aware) and three cards (next step and Mini Now; the field journal; Horde and Alliance crests and one-click setup). Shown once, only when there are no saved characters and never under `BF_TEST_INACTIVE` (`onboarding` IPC). Help → Field guide → Replay the welcome tour.
+- **G11 faction themes:** the active character's crest beside the brand and as a watermark on every page banner (`.ph-faction`), with `--faction-crest`, `--faction-deep` and `--faction-glow` per side; banner edge and eyebrow take the faction accent. Identical treatment for Horde and Alliance.
+
 ## 0.48.0 — past sessions, 2026-11-14
 
 - **3.1 session history:** `src/core/session-history.cjs` keeps past play sessions per character in `sessions.json` in the app's data folder (at most 300, written at most once a minute and on quit; invalid entries dropped; cleared by Delete all local data). Each session: start and end, minutes played, start and end level, levels gained, deaths, zones. Characters → Journey gets a Past sessions card: totals, a 14-day levels-per-day chart and the latest eight sessions.

@@ -172,9 +172,9 @@ local function paint()
         return
     end
     method(lines.title,'SetText',('BF Route · step %d of %d'):format(index,#steps))
-    method(lines.body,'SetText',s.text..(' |cff9d9d9d(%.1f, %.1f)|r'):format(s.x*100,s.y*100))
+    method(lines.body,'SetText',s.text..(' |cff7a5a30(%.1f, %.1f)|r'):format(s.x*100,s.y*100))
     local n=steps[index+1]
-    method(lines.next,'SetText',n and ('|cff9d9d9dThen:|r '..n.text) or '|cff9d9d9dLast step here.|r')
+    method(lines.next,'SetText',n and ('|cff7a5a30Then:|r '..n.text) or '|cff7a5a30Last step here.|r')
     -- No waypoint here: paint also runs on its own (login, zone and quest changes), and the game
     -- forbids addons from setting waypoints outside a player's click or command.
 end
@@ -182,24 +182,27 @@ local function build()
     if frame or type(CreateFrame)~='function' then return frame end
     frame=CreateFrame('Frame','BackstageForeverRouteFrame',UIParent)
     if not frame then return nil end
-    method(frame,'SetSize',300,96);method(frame,'SetPoint','TOP',UIParent,'TOP',0,-120)
+    method(frame,'SetSize',340,104);method(frame,'SetPoint','TOP',UIParent,'TOP',0,-120)
     method(frame,'SetFrameStrata','MEDIUM');method(frame,'SetMovable',true);method(frame,'EnableMouse',true)
     method(frame,'SetClampedToScreen',true);method(frame,'RegisterForDrag','LeftButton')
     method(frame,'SetScript','OnDragStart',function(f) if not combat() then method(f,'StartMoving') end end)
     method(frame,'SetScript','OnDragStop',function(f) method(f,'StopMovingOrSizing') end)
-    local bg=method(frame,'CreateTexture',nil,'BACKGROUND')
-    if bg then method(bg,'SetAllPoints',frame);method(bg,'SetColorTexture',.09,.05,.03,.88) end
-    local edge=method(frame,'CreateTexture',nil,'BORDER')
-    if edge then method(edge,'SetPoint','TOPLEFT',frame,'TOPLEFT',0,0);method(edge,'SetPoint','TOPRIGHT',frame,'TOPRIGHT',0,0);method(edge,'SetHeight',2);method(edge,'SetColorTexture',.78,.6,.29,1) end
+    -- G9 (0.49): a painted scroll (Art/Frames/step.tga, our own art). Text sits on the parchment in dark ink.
+    local painted=type(BackstageForeverPaintScroll)=='function' and BackstageForeverPaintScroll(frame,'step',40)
+    if not painted then
+        local bg=method(frame,'CreateTexture',nil,'BACKGROUND')
+        if bg then method(bg,'SetAllPoints',frame);method(bg,'SetColorTexture',.09,.05,.03,.88) end
+    end
     local function text(font,y,h)
         local t=method(frame,'CreateFontString',nil,'OVERLAY',font)
-        if t then method(t,'SetPoint','TOPLEFT',frame,'TOPLEFT',10,y);method(t,'SetWidth',280);method(t,'SetJustifyH','LEFT');if h then method(t,'SetHeight',h) end end
+        if t then method(t,'SetPoint','TOPLEFT',frame,'TOPLEFT',44,y);method(t,'SetWidth',252);method(t,'SetJustifyH','LEFT');if h then method(t,'SetHeight',h) end;if painted then method(t,'SetShadowOffset',0,0) end end
         return t
     end
-    lines.title=text('GameFontNormal',-8);lines.body=text('GameFontHighlight',-26,32);lines.next=text('GameFontHighlightSmall',-62,26)
+    lines.title=text('GameFontNormal',-10);lines.body=text('GameFontHighlight',-28,34);lines.next=text('GameFontHighlightSmall',-66,26)
+    if painted then method(lines.title,'SetTextColor',.42,.18,.03);method(lines.body,'SetTextColor',.16,.09,.03);method(lines.next,'SetTextColor',.3,.2,.1) end
     local function button(label,x,fn)
         local b=CreateFrame('Button',nil,frame,'UIPanelButtonTemplate')
-        if b then method(b,'SetSize',22,18);method(b,'SetPoint','TOPRIGHT',frame,'TOPRIGHT',x,-5);method(b,'SetText',label);method(b,'SetScript','OnClick',fn) end
+        if b then method(b,'SetSize',22,18);method(b,'SetPoint','TOPRIGHT',frame,'TOPRIGHT',x-40,-7);method(b,'SetText',label);method(b,'SetScript','OnClick',fn) end
     end
     button('x',-4,function() BackstageForeverRouteCommand('route') end)
     button('>',-28,function() BackstageForeverRouteCommand('route next') end)

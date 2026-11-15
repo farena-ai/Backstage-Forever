@@ -264,6 +264,15 @@ async function sourceFiles(folder, prefix = "src") {
         (await fs.readFile(path.join(addonFolder, "Art", "Messages", name))).equals(await fs.readFile(path.join(messageSource, name))),
         "Installed message texture must match the source: " + name,
       );
+    // G9 (0.49): the painted Compass and step frames ship from Art/Frames the same way.
+    const frameSource = path.join(__dirname, "../addon/BackstageForever/Art/Frames");
+    const frameNames = (await fs.readdir(frameSource)).filter((n) => n.endsWith(".tga")).sort();
+    assert.deepEqual(frameNames, ["compass-crest.tga", "compass.tga", "step.tga"], "The Compass and step frames are painted");
+    for (const name of frameNames)
+      assert.ok(
+        (await fs.readFile(path.join(addonFolder, "Art", "Frames", name))).equals(await fs.readFile(path.join(frameSource, name))),
+        "Installed frame texture must match the source: " + name,
+      );
     await fs.writeFile(path.join(addonFolder, "player-extra.txt"), "preserve");
     await closePackagedApp(app);
     app = null;

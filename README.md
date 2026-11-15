@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.48: past sessions
+## 0.49: painted frames, welcome tour and faction themes
 
-Characters → Journey now keeps every play session (with the live link on): when, how long, levels gained, deaths and zones, with a two-week chart of levels per day. 0.47 taught the companion to plan your night. See the [0.48.0 release notes](docs/releases/0.48.0.md) and the [0.47.0 notes](docs/releases/0.47.0.md).
+In game, the Adventure Compass now has a carved leather-and-brass frame and the step guide is a parchment scroll. In the app, new players get a painted welcome tour, and every page carries your character's Horde or Alliance crest. 0.48 added past sessions. See the [0.49.0 release notes](docs/releases/0.49.0.md) and the [0.48.0 notes](docs/releases/0.48.0.md).
 
 ## 0.28: your journey
 

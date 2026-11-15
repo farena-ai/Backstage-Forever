@@ -375,7 +375,7 @@ const profile = () =>
   state.profiles.find((item) => item.id === state.activeProfileId);
 const id = () => crypto.randomUUID();
 const brand = () =>
-  '<div class="brand"><img src="../../assets/crest.svg" alt=""><div><strong>Backstage<br>Forever</strong><div class="eyebrow">Backstage Coding</div></div></div>';
+  `<div class="brand"><img src="../../assets/crest.svg" alt=""><div><strong>Backstage<br>Forever</strong><div class="eyebrow">Backstage Coding</div></div>${["Alliance", "Horde"].includes(profile()?.faction) ? `<img class="brand-faction" src="art/factions/${profile().faction.toLowerCase()}.webp" alt="${profile().faction}" title="${profile().faction}">` : ""}</div>`;
 function toast(message, error = false) {
   const element = document.getElementById("toast");
   element.textContent = message;
@@ -829,7 +829,7 @@ function connections() {
 }
 
 function guide() {
-  return `${PageHero.render({ art: "settings", eyebrow: "Help · Field guide", title: "How to play with Backstage Forever", subtitle: "Start here, look up a word, or find how to do one thing." })}
+  return `${PageHero.render({ art: "settings", eyebrow: "Help · Field guide", title: "How to play with Backstage Forever", subtitle: "Start here, look up a word, or find how to do one thing.", aside: '<button type="button" class="subtle" data-ob-replay>Replay the welcome tour</button>' })}
   <div class="guide-grid bf-parchment">
     <section class="panel guide-start"><div class="eyebrow">New to WoW? · Start here</div><h3>Four steps and you're playing with a guide.</h3><ol class="guide-steps"><li><strong>Connect the game.</strong> Settings → Game connection finds your WoW Forever folder and installs the addon.</li><li><strong>Log in and type <code>/reload</code>.</strong> Do this once per new character so the app can read it.</li><li><strong>Open Now.</strong> It tells you the next thing to do and follows you while you play.</li><li><strong>Ask the game for directions.</strong> In chat type <code>/bf next</code> for an arrow to your next quest, <code>/bf train</code> for your class trainer, <code>/bf find flight master</code> to find anyone, and <code>/bf help</code> for the rest. Every command is explained under Help → Commands.</li></ol><p>The addon also warns you about dangerous enemies, points you back to your body when you die, celebrates level-ups and adds a <strong>Sell junk</strong> button at vendors.</p></section>
     <section class="panel guide-glossary"><div class="eyebrow">Words you'll see</div><h3>A pocket glossary.</h3><dl>

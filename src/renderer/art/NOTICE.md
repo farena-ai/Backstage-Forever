@@ -21,3 +21,5 @@ None of these images is taken from World of Warcraft or any Blizzard product, an
 | `zones/map-*.webp` | One painted landscape per zone (46 zones, file name = map ID): Now "You are here" card, Now "Where to level" list, Adventure saved-location card, Data coverage. Original art by Backstage Coding, generated locally with ComfyUI (0.37.0) |
 | `addon/BackstageForever/Art/Zones/*.tga` | The same zone paintings as the in-game arrival banner (1024x128 TGA, `<mapId>.tga` plus `default.tga` for zones without their own painting). Original art by Backstage Coding, generated locally with ComfyUI (0.37.0) |
 | `addon/BackstageForever/Art/Buttons/ask.tga` | The minimap Ask button: the AI Companion crest (`pins/companion.png`) as a 64x64 TGA with alpha. Original art by Backstage Coding (0.38.0) |
+| `splash/*.webp` | First-launch splash and welcome tour (G10, 0.49.0) |
+| `factions/*.webp` | Horde and Alliance crests: brand, page banners and the tour (G11, 0.49.0) |

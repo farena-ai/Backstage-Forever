@@ -9,6 +9,7 @@ window.PageHero = (() => {
   function render({ art, eyebrow = "", title = "", subtitle = "", crest = "", crestHtml = "", aside = "", compact = false, attrs = "", titleAttrs = "", subAttrs = "" } = {}) {
     const key = known(art);
     return `<header class="page-hero ph-art-${key}${compact ? " compact" : ""}" data-page-hero="${key}"${attrs ? " " + attrs : ""}>`
+      + `<span class="ph-faction" aria-hidden="true"></span>`
       + `<div class="ph-copy">${crestHtml || (crest ? `<img class="ph-crest" src="${crest}" alt="" width="84" height="84">` : "")}<div class="ph-words">`
       + (eyebrow ? `<span class="ph-eyebrow">${eyebrow}</span>` : "")
       + `<h1${titleAttrs ? " " + titleAttrs : ""}>${title}</h1>${subtitle || subAttrs ? `<p class="ph-sub"${subAttrs ? " " + subAttrs : ""}>${subtitle}</p>` : ""}</div></div>`
