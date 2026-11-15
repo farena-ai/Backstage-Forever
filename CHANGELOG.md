@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.40.0 — enemy player alerts, 2026-11-14
+
+- **A10 enemy player alerts:** new addon file `BackstageForeverEnemy.lua` (managed file 26). On `PLAYER_TARGET_CHANGED`, `UPDATE_MOUSEOVER_UNIT` and `NAME_PLATE_UNIT_ADDED` it reads the unit; an enemy player who can attack you (`UnitIsPlayer`, `UnitCanAttack(unit, "player")`, not your faction, name not secret) gives a five-second banner at the top of the screen ("Alliance level 32 Rogue nearby", level -1 reads "??") and a chat line with name and zone. One alert per player until they have been out of sight 5 minutes, alerts at least 4 s apart, nothing in battlegrounds or arenas. History of 20 per character in `BackstageForeverEnemySettings`; `/bf enemy [on|off|sound on|sound off|clear]`. Read-only: no targeting, marking, chat or addon messages.
+- Roadmap: G9 toasts marked done by G13/G14, 4.2 marked shipped by 0.34; the addon README's ask section updated for the one-window panel.
+
 ## 0.39.1 — ask and answer in one window, 2026-11-14
 
 - **A15 one window:** the owl button and `/bf ask` send a five-byte open signal (`\1open`, which no cleaned question can be) on the question pages; the bridge reports it as `{ kind: "open" }` and the panel opens with the keyboard (`show` + `focus`) and the cursor in its new question box. Questions typed there go through `askPanel:ask` (cleaned, 1–200 characters) to the same `InGameAsk` path, asked for the character that last opened it. The panel keeps the last 8 exchanges (thinking and answer share an id, so answers replace their own line), never hides while it has the keyboard, and Esc closes it. `/bf ask QUESTION` answers land in the same panel, shown inactive. The in-game question box is removed; `BackstageForeverAskToggle` still opens the panel for old macros. Panel 420×380.

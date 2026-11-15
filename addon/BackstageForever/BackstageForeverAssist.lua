@@ -590,6 +590,7 @@ function BackstageForeverAssistCommand(message)
             '/bf show, /bf hide - the Adventure Compass panel',
             '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',
             '/bf moments - turn the short messages for elite, rare and boss kills and profession milestones on or off',
+            '/bf enemy - enemy players you saw recently; /bf enemy off silences the alerts, /bf enemy sound on adds a sound',
             '/bf gear - turn upgrade hints on item tooltips and the best-quest-reward highlight on or off',
             '/bf live - the thin line along the top edge that lets the desktop app follow you; /bf live safe if the app cannot read it',
             '/bf ask - ask the companion a question (or click the owl button on the minimap); the answer appears in the Backstage Forever panel over your game',
