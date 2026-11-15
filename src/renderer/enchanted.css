@@ -74,7 +74,7 @@ button.primary:not(.illustrated-card) {
   font-weight: 750;
   background:
     radial-gradient(ellipse at 50% 0, #ffe5a255, transparent 65%),
-    linear-gradient(#a47b36, #6f4c1d 47%, #46371c 49%, #8b632a);
+    linear-gradient(#8a6528, #6f4c1d 47%, #46371c 49%, #7a5624);
   box-shadow:
     inset 0 0 0 2px #36220e,
     inset 0 0 0 3px #e8be7366,

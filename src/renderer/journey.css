@@ -61,7 +61,7 @@
 .jr-days li { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .jr-day-bar { position: relative; display: block; width: 100%; height: 64px; border-radius: 3px; background: rgba(43,27,10,.12); overflow: hidden; }
 .jr-day-bar span { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, #7a4bb0, #a36ee0); }
-.jr-days small { font-size: 10px; color: #6b4e26; }
+.jr-days small { font-size: 11px; color: #6b4e26; }
 .jr-sessions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .jr-sessions li { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 5px 8px; border-radius: 5px; background: rgba(239,224,187,.5); border: 1px solid rgba(165,130,62,.45); font-size: 13px; }
 .jr-sessions strong { color: #3d220c; }

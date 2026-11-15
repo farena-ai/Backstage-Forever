@@ -64,7 +64,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-
   .topbar { padding: 0 22px; height: 68px; gap: 12px; }
   .breadcrumb span:first-child, .breadcrumb span:nth-child(2) { display: none; }
   .plan-heading h2 { font-size: 20px; }
-  .autosaved { padding-bottom: 9px; font-size: 10px; }
+  .autosaved { padding-bottom: 9px; font-size: 11px; }
   .plan-controls { gap: 9px; }
   .plan-controls select { min-width: 127px; }
   .guidance-step { gap: 10px; padding: 16px 13px; }

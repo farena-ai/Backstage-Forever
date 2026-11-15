@@ -181,12 +181,12 @@ input[type="checkbox"] {
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 2.4px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--gold);
   font-weight: 650;
 }
 .brand .eyebrow {
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 1.7px;
   margin-top: 5px;
 }
@@ -271,7 +271,7 @@ nav button.active {
   font-size: 13px;
 }
 .rail-bottom small {
-  font-size: 10px;
+  font-size: 11px;
 }
 .main {
   min-width: 0;
@@ -349,7 +349,7 @@ nav button.active {
   position: absolute;
   right: 21px;
   bottom: 17px;
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 2px;
   color: #c7d1bd;
 }
@@ -375,7 +375,7 @@ nav button.active {
   font-weight: 400;
 }
 .stat .eyebrow {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
   letter-spacing: 1.5px;
 }
@@ -404,7 +404,7 @@ nav button.active {
   margin-bottom: 21px;
 }
 .panel-header .eyebrow {
-  font-size: 9px;
+  font-size: 11px;
 }
 .muted {
   color: var(--muted);
@@ -591,7 +591,7 @@ nav button.active {
   margin-bottom: 9px;
 }
 .provider small {
-  font-size: 10px;
+  font-size: 11px;
 }
 .tag {
   display: inline-block;
@@ -599,7 +599,7 @@ nav button.active {
   border-radius: 20px;
   padding: 5px 9px;
   color: var(--teal);
-  font-size: 10px;
+  font-size: 11px;
 }
 .check-label {
   display: flex;
@@ -635,7 +635,7 @@ nav button.active {
 .message .eyebrow {
   display: block;
   margin-bottom: 8px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .chat-intro {
   margin: auto;
@@ -962,7 +962,7 @@ details p {
 }
 .illustrated-card .eyebrow {
   color: #dfc48c;
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 1.5px;
 }
 .class-sigil {
@@ -1231,7 +1231,7 @@ body[data-class] .hero-medallion {
 .faction-banner small {
   display: block;
   font-family: "Source Sans", sans-serif;
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 1.7px;
   margin-top: 3px;
   color: #d1c5ae;

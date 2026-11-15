@@ -55,7 +55,7 @@ button.primary {
   background: linear-gradient(
     #e7bf74 0%,
     #c6923e 50%,
-    #a46d29 51%,
+    #b8813a 51%,
     #d2a450 100%
   );
   color: #201708;
@@ -174,7 +174,7 @@ h3 {
   position: absolute;
   bottom: -24px;
   left: 43%;
-  font-size: 9px;
+  font-size: 11px;
   color: #aa8645;
   text-shadow:
     -50px 0 #5b4e32,
@@ -197,7 +197,7 @@ h3 {
 }
 .brand .eyebrow {
   color: #ad9465;
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 2.4px;
   margin-top: 8px;
 }
@@ -357,7 +357,7 @@ nav button.active {
 }
 .hero-caption {
   color: #e5d6ad;
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 2px;
   text-shadow: 0 2px #000;
   background: #10130b88;
@@ -400,7 +400,7 @@ nav button.active {
 }
 .stat .eyebrow {
   color: #ccba91;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 1.8px;
 }
 .stat small {
@@ -450,7 +450,7 @@ nav button.active {
   margin-bottom: 20px;
 }
 .panel-header .eyebrow {
-  font-size: 10px;
+  font-size: 11px;
 }
 .panel .rule {
   border-color: #655432;
@@ -806,7 +806,7 @@ nav button.active {
   }
   .hero-caption {
     max-width: 260px;
-    font-size: 8px;
+    font-size: 11px;
   }
   .stat {
     padding: 13px 14px;
@@ -815,7 +815,7 @@ nav button.active {
     font-size: 11px;
   }
   .stat .eyebrow {
-    font-size: 9px;
+    font-size: 11px;
   }
   .stat:before {
     display: none;

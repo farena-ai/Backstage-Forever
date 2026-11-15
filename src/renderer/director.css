@@ -8,7 +8,7 @@
 .director-choices { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:14px; }
 .director-choice { min-width:0; overflow-wrap:anywhere; padding:10px 12px; border-radius:6px; background:rgba(255,248,225,.6); border:1px solid #c4a466; }
 .director-primary { background:#fff6dc; border-color:#8a5a18; box-shadow:0 0 0 2px rgba(246,196,69,.45); }
-.director-priority { color:#8a5a18; letter-spacing:.12em; font:700 10px Cinzel,Georgia,serif; text-transform:uppercase; }
+.director-priority { color:#8a5a18; letter-spacing:.12em; font:700 11px Cinzel,Georgia,serif; text-transform:uppercase; }
 .director-choice h3 { color:#2b1b0a; font:700 16px Georgia,serif; margin:4px 0; }
 .director-reason { font-size:14px; line-height:1.45; margin:4px 0; color:#4a3218; }
 .director-source { font-size:12px; color:#6b4a22; line-height:1.5; }
@@ -41,7 +41,7 @@
   .director-alternative .director-reason { font-size:11px; }
   .director-session { margin-top:11px; padding-top:10px; gap:12px; }
   .director-action button { font-size:12px; padding:10px 16px; }
-  .director-footnote { margin-top:10px; font-size:10px; }
+  .director-footnote { margin-top:10px; font-size:11px; }
 }
 @media(max-width:760px) {
   .director-choices { grid-template-columns:1fr; }

@@ -15,11 +15,11 @@
 .cov-head h3 { margin: 0; font: 700 17px Georgia, serif; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
 .cov-head span { font-size: 12px; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
 .cov-verdict { font-style: normal; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 9px; }
-.cov-verdict.good { background: #4e8f3a; color: #fff; } .cov-verdict.mid { background: #f6c445; color: #2b1407; } .cov-verdict.low { background: #8a2a1a; color: #fff; }
+.cov-verdict.good { background: #468134; color: #fff; } .cov-verdict.mid { background: #f6c445; color: #2b1407; } .cov-verdict.low { background: #8a2a1a; color: #fff; }
 .cov-meters { list-style: none; margin: 0; padding: 8px 12px 10px; display: grid; gap: 5px; }
 .cov-meter { display: grid; grid-template-columns: 22px 1fr 90px 32px; align-items: center; gap: 6px; font-size: 13px; }
 .cov-bar { height: 8px; border-radius: 4px; background: rgba(60,40,18,.2); overflow: hidden; }
-.cov-bar i { display: block; height: 100%; border-radius: 4px; background: #4e8f3a; }
+.cov-bar i { display: block; height: 100%; border-radius: 4px; background: #468134; }
 .cov-some .cov-bar i { background: #d9a23a; } .cov-thin .cov-bar i { background: #c0563a; }
 .cov-none .cov-label, .cov-none .cov-n { color: #8a6a4a; }
 .cov-n { text-align: right; font-weight: 800; }
