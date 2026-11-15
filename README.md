@@ -1,187 +1,74 @@
-# Backstage Forever
+<p align="center"><img src="assets/crest.svg" alt="" width="96" height="96"></p>
 
-## 0.55: Mac
+<h1 align="center">Backstage Forever</h1>
 
-Backstage Forever now comes for the Mac too (Apple Silicon and Intel), without the live link. 0.54 reviewed every page and made the in-game Adventure Compass a summary at a glance. See the [0.55.1 release notes](docs/releases/0.55.1.md) and the [0.54.0 notes](docs/releases/0.54.0.md).
+<p align="center"><strong>A free leveling companion for World of Warcraft: Forever.</strong><br>
+It reads your own game, tells you what to do next, and guides you there: in the game and on your desktop.</p>
 
-## 0.28: your journey
+<p align="center"><a href="https://github.com/farena-ai/Backstage-Forever/releases/latest">Download</a> · <a href="#what-it-does">What it does</a> · <a href="#privacy-at-a-glance">Privacy</a> · <a href="CHANGELOG.md">Changelog</a> · <a href="docs/GETTING-STARTED.md">Getting started</a></p>
 
-Characters → Journey shows a painted badge wall, how fast each level went, and your rested bonus, with a banner for every new badge. See the [0.28.0 release notes](docs/releases/0.28.0.md).
+<p align="center"><img src="docs/screenshots/now.png" alt="The Now page: your next step, where to level, your quest log and training" width="860"></p>
 
-## 0.27: free AI for everyone
+## What's new
 
-One click on the Companion page turns on a free AI that runs on your own PC, or paste a free Gemini or Groq key. Now shows your upcoming training with spell icons, and in game Backstage Forever reminds you about ammo, food, your pet and more. See the [0.27.0 release notes](docs/releases/0.27.0.md).
+**0.55:** a Mac app for Apple Silicon and Intel (without the live link). **0.54:** every page reviewed in English and German, and the in-game Adventure Compass shows your XP, pace, quests ready to hand in and next step at a glance. See the [release notes](docs/releases/0.55.0.md) and the [changelog](CHANGELOG.md) for every version.
 
-## 0.26: follow the steps
+## What it does
 
-`/bf route` puts a step-by-step guide in the game, with the arrow on each step. Enemies you need show your quest progress in their tooltips, Now opens with a painted "You are here" card for your zone, and the World Map has painted pins. See the [0.26.0 release notes](docs/releases/0.26.0.md).
+Backstage Forever is two parts that work together: a **desktop app** and a small **in-game addon**. The app installs and updates the addon for you.
 
-## 0.25: always current
+**In the game**
+- **One step at a time.** `/bf route guide` follows a step-by-step route for your race from level 1: pick up, do, hand in, next zone, with the game's own arrow on each step. `/bf next`, `/bf train` and `/bf find` point the arrow at what you need.
+- **Know what you're looking at.** Quest progress in enemy tooltips, warnings over dangerous targets, enemy player alerts on contested ground, and the best quest reward for your class highlighted.
+- **Small helpers.** Repair and supply reminders, an arrow back to your body, a sell-junk button, flight path and hearthstone tips, and optional quality-of-life switches (`/bf qol`).
+- **Ask without alt-tabbing.** Click the owl on the minimap and ask the companion; the answer appears in a panel over your game.
 
-With the live link on, Now follows your quest log as you play: quests you hand in show as Completed straight away, no `/reload` needed. The companion answers quest how-to, next steps and training with no AI set up, and one click on Now gets everything installed. See the [0.25.0 release notes](docs/releases/0.25.0.md).
+**On your desktop**
+- **Now** shows your next step, where to level, your quest log and training, live as you play. **Mini Now** keeps the next step beside the game, and it can read steps aloud.
+- **World Map** with your game's own map art, painted pins for quest givers, trainers, vendors, herbs and ore, your path this session and a radar.
+- **Characters**: every character at a glance with rested XP and who to play tonight, a character sheet with upgrades and gear sets, talents, badges, speed splits and past sessions.
+- **Adventure**: the guided route, every zone with your quest progress, dungeons and raids with their loot, and profession plans.
+- **Ledger**: bags, bank and mail across characters, gold, the auction prices you saw, reputation and cooldowns.
+- **The companion** answers questions about quests, places, items and talents, and plans your night. It works with no setup, with a free AI on your own PC, or with the AI provider you choose.
 
-## 0.18 preview: a leveling advisor that works with you live
-
-The app now opens on **Now**: what to do next (hand in, train, continue a quest, or where to level), the zones that fit your level with the quests you can pick up there, your class training now and next, and your quest log, all following your live position. Inside WoW, a **BF Guide** layer on the world map shows quests you can pick up (checked live against your level, faction and completed quests), hand-ins, your class trainer, profession trainers and flight masters; `/bf next` points WoW's own arrow at the nearest one. **0.24.0** adds How to do it on every quest (your looting, community drops, levels, quest text), a companion that answers how, objective areas on the map, dungeon readiness and a gear review ([release notes](docs/releases/0.24.0.md)). **0.23.0** read items, spells and talents from your own install: reward cards with stats and icons and a best pick, the in-game reward glow and upgrade tooltips, a talent coach, data coverage, class crests and hearthstone advice ([release notes](docs/releases/0.23.0.md)). **0.22.0** dialed in every Show on map link with a goal card, rebuilds quest pages around where to go and full rewards (XP at your level, reputation, quality colours), and paints the Now page ([release notes](docs/releases/0.22.0.md)). **0.21.0** added repair reminders and `/bf repair`, flight path tracking and `/bf flights`, Alliance vendors, a /reload prompt and the first original art pass ([release notes](docs/releases/0.21.0.md)). **0.20.0** brought real Alliance coverage (four game builds merged; Elwynn, Westfall, Redridge, Stormwind and Teldrassil quest givers and trainers) and Help → Commands, a plain-English guide to every command ([release notes](docs/releases/0.20.0.md)). **0.19.0** added a coach at your side: danger warnings, death help with an arrow to your body, level-up and quest pop-ups, a Sell junk button, `/bf train` and `/bf xp` in game; a Get set up checklist, a This session card, level-up celebrations and your path on the World Map in the app; and a beginner glossary. See the [0.19.0 release notes](docs/releases/0.19.0.md), plus [0.18.0](docs/releases/0.18.0.md), [0.18.1](docs/releases/0.18.1.md) and [0.18.2](docs/releases/0.18.2.md) (live link over remote access).
-
-## 0.16 preview: your game's own maps, live
-
-The World Map and radar draw each zone's real map art straight from your WoW Forever install (read on your PC, never uploaded), with your live arrow on top. The live link is on by default. See the [0.16.0 release notes](docs/releases/0.16.0.md) and [0.17.0](docs/releases/0.17.0.md) for clearer pins and NPC cards.
-
-## 0.15 preview: find anything, see where you are
-
-A graphical **World Map** with your live arrow, quest/flight/trainer/vendor/herb/ore pins, "Near you" and a cross-zone finder; **/bf find** and **/bf way** waypoints inside WoW; and an **Instance Atlas** coloured for your level. See the [0.15.0 release notes](docs/releases/0.15.0.md).
-
-## 0.14 preview: the companion goes live
-
-AI answers now **look things up** in the bundled Forever references, instead of saying "I don't have that". Ask where an NPC is, walk through a quest, find an item or plan a trip, and every fact comes with its source. The optional **live game link** (`/bf live on`, then Settings → Game connection) lets the desktop and AI know where you are right now, without `/reload`. See the [0.14.1 release notes](docs/releases/0.14.1.md) and [Living Companion](docs/LIVING-COMPANION.md#live-game-link-optional). **1.0 remains held.**
-
-## Proactive Compass — 0.13 preview, 1.0 held
-
-Adventure now recommends one useful next step and up to two alternatives: make room in nearly full bags, work on observed quests, attempt a learned skill-up-capable recipe with established carried materials, or check whether further profession training is available. **Adventure**, **Quests**, and **Professions** change the priorities. Unknown or partial inventory never means craft-ready, and skill-ups/output are never guaranteed. No bank/alt pooling, invented trainers, routes, prices or material sources are added.
-
-Inside WoW the Compass updates from permitted current capture events without AI or the desktop. **Not now** quietly dismisses that recommendation for its current facts; unrelated XP or capture timestamps do not bring it back. Relevant progress can resurface it. Dismissals are bounded to 20 entries for the current session and never complete quests. **Quest details** exposes the existing Focus and minutes/card-limit controls; **Less** folds them away. Hide, collapse, drag and `/bf show`, `/bf hide`, `/bf status` remain. Only an explicitly displayed supported quest step can offer a manual waypoint.
-
-On desktop, Adventure's Compass is explicitly **Last saved** and **No AI**. Its goal preference is independent of the in-game preference. Use **Review quest choices** for the detailed Director or **Open Professions** for the single workshop under Adventure → Professions. The five main navigation sections and all existing destinations remain. Native goal preferences survive addon updates; setup/repair owns twelve files and preserves unrelated addon files. This preview is version **0.13.7**; **1.0 and actual in-client acceptance remain held**.
-
-## Find your way around
-
-The journal has five main sections: **Adventure** for your next step, **Quests** for the saved quest atlas, **Companion** for questions and local travel, **Characters** for your roster, and **Plans** for checklists. Adventure contains **Next step**, **Professions** (your saved workshop), and **Map** (last-saved coordinates). Plans contains **My plans** (formerly Company), **Party**, and a shortcut to Professions. **Settings** contains **Game connection**, **AI connection** (formerly Connections), and **Updates**. **Help → Field guide** contains support reports, recovery checkpoints, and backup tools.
-
-Voice, Memory, and quest reference details open when you need them. Folding Voice stops pending or active speech. The memory summary always shows how many exchanges are selected for this question; saving an exchange does not consent to sharing it. Provider costs and character-sharing choices remain visible. Local travel has a **Show road guide** shortcut when a road alternative is documented; **How we know** holds dated source details. These are guides and manual plans, never game actions.
-
-Manual character creation offers Forever's nine confirmed classes plus Other. Existing imported or custom class names remain unchanged. Original class and faction artwork remains in use. The preview version is 0.13.7; 1.0 publication remains held for owner review.
-
-
-**Your character command center and Forever quest companion, from Backstage Coding. Designed by Frank Arena.**
-
-**0.13 preview:** support diagnostics, automatic recovery, richer qualified references, conversation and travel improvements, the reorganized sidebar, Proactive Compass, Professions and Map are prepared for the normal authenticated Windows update channel. Historical local review bundles remain unchanged. **1.0 stays held for the hands-on check.**
-
-![Backstage Forever Quest Guide atlas](assets/quest-guide-preview.png)
-
-*Fictional player state with qualified public reference facts; your selected character shapes the original class and faction presentation.*
-
-**[Download the Windows preview](https://github.com/farena-ai/Backstage-Forever/releases)** · **[Install and get started](docs/GETTING-STARTED.md)** · **[Choose an AI connection](docs/PROVIDERS.md)**
-
-Version **0.14.1 adds tool-using AI lookups and an optional live game link on top of 0.13.7, which prepared local NPC locations, honest current-location context and connection-screen timing polish for the installed preview** before Frank Arena's hands-on 1.0 review. Connection checks and optional activation keep your open or closed choice during same-screen status updates. It retains an explained next-action Director, profession and material planning, optional local Windows voice, deliberate per-character conversation memory, and reviewed party-plan files. Automatic setup and the local in-game Compass work without an AI account or routine reloads. The desktop keeps last-saved snapshots, plans, journal, Quest Guide and optional AI. Local NPC lookup works without a model: compatible observed-build points take priority over a separately qualified 616-NPC historical reference. Explicit current player reports are labelled separately from saved locations; asking where an NPC is does not report where you are. Exact quest IDs, compatible builds and source labels keep reference facts qualified. Each friend installs their own copy and connects their own account. No shared backend or owner's credentials are included.
+Horde and Alliance are covered alike. The full list of in-game commands is on **Help → Commands** in the app.
 
 ## Install
 
-1. Open [Releases](https://github.com/farena-ai/Backstage-Forever/releases), choose the newest published Windows preview, and download its file ending **-Windows-x64-Setup.exe** under **Assets**.
-2. Run that setup executable for your Windows account. The **Source.zip** archive contains developer code, not the installer; normal installation needs no Node.js or source commands.
-3. Launch Backstage Forever and choose **Start my adventure**. It finds your Forever client, prepares and verifies its addon, and offers a simple choice if needed. You can start playing once the files are prepared; no desktop snapshot or AI setup is required first. Enable/load the addon in-game if needed.
+**Windows 10 or 11:** download `Backstage-Forever-<version>-Windows-x64-Setup.exe` from the [latest release](https://github.com/farena-ai/Backstage-Forever/releases/latest) and run it. Windows may warn that the installer is from an unknown publisher (it isn't code-signed yet): choose **More info → Run anyway**. The app updates itself after that.
 
-Once installed, native guidance can work with the desktop app closed. Logout/game exit saves your character back to the desktop. A voluntary UI reload is available when you specifically want a fresh desktop snapshot or need to load an addon update. See [Living Companion](docs/LIVING-COMPANION.md) for the two views of your adventure.
+**macOS (Apple silicon or Intel):** download the `macOS-arm64` or `macOS-x64` zip, unzip it and move **Backstage Forever** to Applications. The first time, right-click it and choose **Open** (it isn't notarized yet). On a Mac the live link is not available yet; everything that works from your saved characters does.
 
-The installer is **unsigned**. Windows may display an unknown-publisher warning; verify the download source before proceeding. Windows publisher signing and clean-machine installation/upgrade acceptance remain pending. App-update downloads use a separate pinned Ed25519 signature and installer hash/size verification. See [Getting started](docs/GETTING-STARTED.md) for full beginner instructions, backups and deletion.
+Then open the app and click **Set it all up**: it finds World of Warcraft: Forever, installs the addon and turns on the live link. Log in and play. The [getting started guide](docs/GETTING-STARTED.md) has the details.
 
-## What this preview includes
+## Privacy at a glance
 
-- **Character field guide** automatically follows the selected saved character, with class/faction artwork, observed equipment, dated class identity and qualified historical training. Search trainer/spell records locally, create a reusable manual Company checklist, or open a reviewed editable public question. No AI account is required. Custom races stay literal; unverified racial mechanics and equipment suitability stay unknown. See [Character guidance](docs/CHARACTER-GUIDANCE.md).
-- **Bundled field notes** add exact-source quest sharing reports, static duration, starting items and reported drops beneath the primary quest action. The base remains 3,884 quests; these facts add evidence types rather than complete prerequisites or missing destinations. See [Reference coverage](docs/FOREVER-DATA.md).
-- **Support diagnostics** prepares a fixed allowlisted report for exact preview, copy and save. No automatic upload, log dump, credentials, character identity, journal text or private paths. See [Support and recovery](docs/SUPPORT-AND-RECOVERY.md).
+Your characters, notes, sessions and settings stay on your computer. Backstage Forever never reads your account, password or chat, never sends input to the game and never plays for you. What can leave your computer, and only when you use it:
 
-- **Adventure Director** explains one next quest action and up to two alternatives. **Start quest session** creates or reuses a tracked Company plan without an AI request. Session length limits plan size, not a promised completion time. See [Director help](docs/ADVENTURE-DIRECTOR.md).
-- **Adventure → Professions** shows observed professions, known recipes and dated carried materials. Auto selects a useful observed learned recipe; choose an owned profession, an explicit saved recipe or 1–20 craft attempts if wanted. Choices autosave separately from native goals; attempts do not guarantee output or skill gains. Exact shortfalls require complete applicable counts; partial observations stay qualified, and alts are not silently pooled. Add a manual shopping checklist without crafting or buying anything. See [Preparation help](docs/PREPARATION.md).
-- **Party** offers an explicit role choice and manual dungeon-preparation checklist. Preview and edit every portable line before saving a plan file; importing adds new manual, unassigned steps without completion proof. Sharing happens only through the method you choose. See [Party plans](docs/PARTY-PLANS.md).
-- Optional **local Windows voice** creates an editable draft while you hold the control; release and review before Send. Explicit reading and Stop are separate. Typed input remains available. Save a reviewed exchange as local character memory only when wanted, then separately select specific memories for each future question. See [Voice and memory](docs/VOICE-AND-MEMORY.md).
-- **Plans → My plans** (Company) brings collected characters, ready turn-ins, private goals and known preparation facts together, with existing class/faction artwork and explicit saved-data labels. Choosing a character is deliberate; browsing the overview does not switch it.
-- Local shared journeys with editable quest-session/dungeon-preparation checklists, manual steps and steps linked to a saved character's observed quest. New compatible completion evidence can check a tracked quest automatically; ready objectives, missing quests and historical completion alone do not prove a new turn-in. Plans remain private and included in deliberate backups. See [Adventure Company](docs/ADVENTURE-COMPANY.md).
-- A quiet native bag-space cue from current supported observations, clearing when space improves. Unknown or zero reported capacity is not treated as a full bag. No sounds, repeated notifications or automatic game actions.
-- An event-driven native Adventure Compass with current quest steps, per-character focus/session preferences, clear source labels and a player-controlled waypoint action. It updates outside combat, hides during combat and works without desktop AI or routine reloads.
-- A local Quest Guide with build-specific Forever facts, reported chains, quest givers/turn-ins, approximate observed locations, reward choices and inspectable sources. The initial pack is bundled; optional automatic whole-build reference checks need no AI account and send no character details. Coverage is partial; cache records and chain links do not prove playability or every prerequisite. See [Forever reference coverage](docs/FOREVER-DATA.md).
-- Player-controlled **Copy game waypoint** commands for compatible supported destinations. Paste the prepared command into WoW; the addon checks the build and quest phase before placing a marker or printing coordinates. No automatic movement, combat, interaction or map opening.
-- Bounded automatic retries and clear recovery for interrupted app updates. If an older updater cannot download the new release, use the official Windows installer once to receive the fixes. See [update recovery](docs/UPDATES.md#recovering-a-failed-update).
+| What | Where it goes | When |
+|---|---|---|
+| Anonymous gathering spots and creature positions (rounded, with a random install id) | The community service at bf.backstagecoding.com | Community sharing is on by default; switch it off in Settings → Game connection |
+| Your question and, if you allow it, your character's details | The AI provider you choose | Only when you ask the companion with a cloud AI (the free local AI and quick answers stay on your PC) |
+| Update checks | GitHub releases | Windows app, automatically; you can turn it off |
+| Quest progress (quest numbers and counts) | Your party members who also run the addon | Party sync, in a party only; `/bf party off` stops it |
 
-- Local character profiles, goals and private notes; automatic bounded local recovery points, deliberate preview/restore and backup/import/reset controls. See [Support and recovery](docs/SUPPORT-AND-RECOVERY.md).
-- Painted citadel scenery, an embossed companion medallion, bronze/leather framing and a parchment journal, with bundled offline fonts.
-- Automatic checks and downloads of authenticated releases, installation on exit, restart-now and preference controls.
-- Optional offline local Ollama, separate Ollama Cloud, or OpenAI, Anthropic and xAI API connections with your own key. Friendly model catalogs refresh on startup, connection opening, authentication, saving and manual refresh; no paid inference probes or silent provider/model/billing fallback.
-- Explicit ChatGPT browser subscription authentication and Claude subscription authentication through the separately installed official Claude Code tool, using app-private credentials.
-- One-action first-run setup discovers the Forever client, prepares/verifies twelve managed addon files and offers a folder choice only when needed. Running-game awareness distinguishes next-launch activation from saved imports. Valid account exports are combined while preserving character identity, notes, goals and intentional selection. Saved-file checks run every five seconds while open.
-- A character command center automatically builds source-backed quest steps from saved objectives, ready turn-ins and game-provided destinations. Session length/focus preferences save per character, and evidence stays inspectable. No AI connection is required for local plans. Missing data remains unknown; the planner does not invent quest chains or routes. See [Guidance](docs/GUIDANCE.md).
-- Optional public equipped-item and bag-capacity observations stay local; unavailable APIs do not block character capture.
-- A local adventure dashboard shows observed quests/objectives, ready turn-ins, XP, recent observed completions and actual public-API waypoints when available. An optional draggable/collapsible in-game Adventure Compass updates out of combat and hides during combat; `/bf show`, `/bf hide` and `/bf status` control it. This is not a complete quest database or optimal route planner.
-- Connections, models and character fields save automatically; text fields and encrypted API keys save when focus leaves them. Notes persist locally. Enter sends an explicit AI question; Shift+Enter adds a line, with input-method composition preserved.
-- A permanent World of Warcraft: Forever specialist, with a local gate for obvious unrelated requests and a shared provider policy. The gate is a heuristic, not a perfect classifier. No code execution or gameplay automation.
-- **Use my active character is on by default**, with a persistent opt-out and visible context preview. The preview shows bounded public identity, race/faction, location, snapshot time, quest/objective details, XP and recent observed completion history that accompany a submitted question; notes, goals, shared journeys, raw GUIDs, account identifiers and paths are excluded.
+The full details are in [docs/PRIVACY.md](docs/PRIVACY.md).
 
-API adapters and subscription transports have fixture coverage. **Live interactive subscription consent and paid inference acceptance have not been performed.** Fixtures do not prove account eligibility, live API access or billing coverage. API mode and subscription mode are separate; errors do not silently switch to API charging. This preview supports one saved ChatGPT registration/account per installation; reset app data to switch accounts, after exporting your profiles if needed.
+## Good to know
 
-Grok subscription mode is currently unavailable in the interface. Official Grok OAuth exists, but an isolated inference adapter is deferred pending a verified tools/hooks boundary. Use xAI API mode in this preview.
+- **The live link.** The addon draws a one-pixel line at the top edge of the game; the app reads it from the game's window to follow you live (Windows). Nothing else is read from the game, and the addon only uses Blizzard's public addon interface.
+- **Fair play.** The addon never automates anything: no auto-accepting, no clicking, no movement, nothing in combat that the game doesn't allow a normal addon.
+- **Languages.** English and German (machine-translated, marked as such). Fixes are welcome: see [docs](scripts/i18n/README.md).
+- **Accessibility.** Screen-reader labels, keyboard navigation, reduced motion and high-contrast support; see the [style guide](docs/STYLE-GUIDE.md).
 
-Native guidance updates while you play outside combat; routine reloads are not required. The desktop receives saved captures on logout/game exit or optional UI reload. Five-second desktop checks cannot make unsaved game data live. Only characters visited with the addon enabled can be known. The latest saved active character controls following; deliberate selection pauses it until you restore the checkbox. No account-wide login or continuous desktop feed is added. Read [Living Companion](docs/LIVING-COMPANION.md), [Game Connection](docs/GAME-CONNECTION.md) and [Compatibility](docs/COMPATIBILITY.md).
+## Building from source
 
-ChatGPT account catalogs determine visible subscription models; API catalogs and Claude CLI initialization do not guarantee plan entitlement. ChatGPT subscription access and API billing are separate. Claude uses the official CLI with an app-private profile and no API fallback.
+Node.js 24 and npm. `npm ci`, then `npm start` runs the app and `npm test` runs the unit tests. `npm run dist` builds the Windows installer and `npm run dist:mac` the Mac zips. See [docs/RELEASING.md](docs/RELEASING.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Nine original class portraits and Alliance/Horde environments shape the selected character's dashboard, roster and journal. Unknown classes and factions retain neutral fallback. These illustrations are not portraits captured from your actual character.
+## Credits
 
-## Your data
+Designed by Frank Arena, made by Backstage Coding. All artwork is original, painted for Backstage Forever (see [art notices](src/renderer/art/NOTICE.md)). Quest, NPC and item reference data comes from Efficient Games (CC BY 4.0) and players' own play; see [third-party notices](docs/THIRD-PARTY-NOTICES.md).
 
-Profiles stay in this Windows account's app-data folder. API keys are encrypted separately and never included in exported backups. Subscription credentials are also excluded; Claude's official tool manages its own app-private credential files. Ordinary chat is temporary; explicitly saved character memory is readable local data and is excluded from profile backups. Replacement import/reset clears memory. Saving an exchange does not select it for future sharing. Prompts you explicitly send go to your selected provider. Read [Privacy](docs/PRIVACY.md) and [Providers](docs/PROVIDERS.md) before connecting.
+**Not affiliated with Blizzard Entertainment.** World of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. Backstage Forever is an independent fan project; it does not include or redistribute any Blizzard game files, and it reads map art and game data only from your own installation, on your own computer.
 
-For an identified journal startup fault, a valid local point can offer **Restore and restart**, preserving the exact damaged original locally. That original may contain memory/private text; see the recovery retention instructions. For any startup failure, choose **Open data folder** in the error dialog to find the actual directory, then follow [If the app cannot start](docs/GETTING-STARTED.md#if-the-app-cannot-start). Preserve a copy of the entire folder before any manual recovery action; a startup failure alone does not identify which component failed.
-
-Installed Windows builds check shortly after startup and every six hours while open, download verified updates, and install on exit by default. The Updates screen offers manual checks, restart-now and preference controls. No forced mid-game restart or external watcher job is created. **0.1.0 needs one manual installer upgrade to gain this updater.** See [Automatic updates](docs/UPDATES.md). Source builds never automatically check or run installers.
-
-## Run or build from source
-
-Install Node.js LTS with npm, extract the complete source archive, and open PowerShell in the project folder:
-
-```powershell
-npm ci
-npm start
-npm test
-npm run check:addon-reference
-npm run check:forever-vendors
-npm run test:ui
-npm run test:setup
-npm run test:autosave
-npm run test:integration
-npm run test:command-center
-npm run test:knowledge
-npm run test:living-backend
-npm run test:living-setup
-npm run test:company-backend
-npm run test:company
-npm run test:director-backend
-npm run test:director
-npm run test:preparation-backend
-npm run test:preparation
-npm run test:memory-backend
-npm run test:voice-backend
-npm run test:voice-memory
-npm run test:companion-recovery
-npm run test:product-polish
-npm run test:support
-npm run test:recovery
-npm run check:forever-insights
-npm run test:insights
-npm run test:character-guidance
-npm run test:party-backend
-npm run test:party
-npm run dist
-npm run test:packaged
-```
-
-`npm start` opens the desktop. `npm run dist` builds the Windows installer in the configured output folder. See [Validation](docs/VALIDATION.md) for measured results and [Releasing](docs/RELEASING.md) for release gates.
-
-Run Electron checks one at a time; competing desktop windows can invalidate keyboard/focus evidence. The recovery and product-polish checks use isolated synthetic data, fake providers and fake audio workers. See the [whole-product readiness assessment](docs/PRODUCT-READINESS.md) for the pre-1.0 corrections and remaining owner checks. See the [0.13 release notes](docs/releases/0.13.7.md) for this preview and the separate owner acceptance gates.
-
-```text
-src/
-  main.cjs            Desktop lifecycle and validated app bridge
-  preload.cjs         Narrow interface available to the screen
-  core/               Local storage, providers and authentication
-  renderer/           Local interface and styles
-assets/               Original vector artwork and preview image
-addon/                Optional guarded SavedVariables companion addon
-tests/                Local, protocol-fixture and integration checks
-docs/                 Setup, privacy, compatibility and release evidence
-```
-
-## Artwork and license
-
-The painted environment and medallion are original generated fantasy artwork bundled locally; no Blizzard artwork or game assets were copied. The original Backstage crest remains in the identity system. Bundled Cinzel and Source Sans 3 fonts include their SIL Open Font License notices. See [Artwork notes](docs/ARTWORK.md). Brand and product design: Frank Arena, Backstage Coding.
-
-Application code is licensed under [MIT](LICENSE). Efficient Games' derived reference compilation retains [CC BY 4.0 attribution and notices](docs/THIRD-PARTY-NOTICES.md). This project is not an official Blizzard product. See [Security](SECURITY.md) and [Changelog](CHANGELOG.md).
+Released under the [MIT License](LICENSE).

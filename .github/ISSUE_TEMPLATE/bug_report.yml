@@ -1,0 +1,32 @@
+name: Something isn't working
+description: A bug in the app or the in-game addon.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for reporting! Please don't paste API keys, backups or anything private. Help → Support in the app makes a report that leaves secrets out."
+  - type: input
+    id: version
+    attributes:
+      label: Backstage Forever version
+      description: Shown at the bottom left of the app (for example 0.55.0).
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did it happen?
+      options: [In the app (Windows), In the app (Mac), In the game (addon), Both]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: Steps to see it again help a lot. A screenshot is welcome.
+    validations:
+      required: true
+  - type: input
+    id: character
+    attributes:
+      label: Faction, race, class and level (if it matters)
