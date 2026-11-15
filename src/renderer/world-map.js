@@ -34,7 +34,7 @@ window.WorldMapView = (() => {
         <label class="wm-zone">Zone <select data-wm-zone aria-label="Choose zone"></select></label>
       </header>
       <div class="wm-body">
-        <div class="wm-frame"><canvas class="wm-canvas" data-wm-canvas tabindex="0" aria-label="Zone map"></canvas>
+        <div class="wm-frame"><canvas class="wm-canvas" data-wm-canvas tabindex="0" aria-label="Zone map. Arrow keys move it, plus and minus zoom, 0 shows the whole zone. Every pin is also in the search and the lists beside the map." aria-describedby="wm-keys"></canvas><p id="wm-keys" class="sr-only">Arrow keys move the map, plus and minus zoom, 0 shows the whole zone. Use the search box and the lists to reach pins with the keyboard or a screen reader.</p>
           <div class="wm-tools"><button type="button" data-wm-act="me" title="Center on me">◎</button><button type="button" data-wm-act="in" title="Zoom in">＋</button><button type="button" data-wm-act="out" title="Zoom out">－</button><button type="button" data-wm-act="reset" title="Whole zone">⤢</button><button type="button" data-wm-act="radar" title="Pop out radar">◉</button><button type="button" data-wm-act="replay" title="Replay my path this session">▶</button><button type="button" data-wm-act="share" title="Save a picture of my path this session">🖼</button></div>
           <div class="wm-tip" data-wm-tip hidden></div>
         </div>
@@ -709,6 +709,16 @@ window.WorldMapView = (() => {
     canvas.addEventListener("mouseup", (e) => { const was = dragging; dragging = null; if (was?.moved) return; const [sx, sy] = at(e); const c = hitCluster(sx, sy); if (c && view.zoom < 8) { const [mx, my] = toMap(sx, sy); view = { zoom: Math.min(8, view.zoom * 2), cx: mx, cy: my }; draw(); return; } const p = hit(sx, sy) || hitArea(sx, sy); selected = p; card(); draw(); });
     canvas.addEventListener("wheel", (e) => { e.preventDefault(); const [mx, my] = toMap(...at(e)); const z = Math.min(8, Math.max(1, view.zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2))); view.cx = mx - (mx - view.cx) * (view.zoom / z); view.cy = my - (my - view.cy) * (view.zoom / z); view.zoom = z; if (z === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }, { passive: false });
     canvas.addEventListener("dblclick", () => { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); });
+    // 4.3 (0.52): the map works from the keyboard too.
+    canvas.addEventListener("keydown", (e) => {
+      const step = 0.08 / view.zoom, pan = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+      if (pan) { view.cx = Math.min(1, Math.max(0, view.cx + pan[0])); view.cy = Math.min(1, Math.max(0, view.cy + pan[1])); }
+      else if (e.key === "+" || e.key === "=") view.zoom = Math.min(8, view.zoom * 1.5);
+      else if (e.key === "-" || e.key === "_") { view.zoom = Math.max(1, view.zoom / 1.5); if (view.zoom === 1) { view.cx = 0.5; view.cy = 0.5; } }
+      else if (e.key === "0") view = { zoom: 1, cx: 0.5, cy: 0.5 };
+      else return;
+      e.preventDefault(); draw();
+    });
     root.addEventListener("change", (e) => {
       if (e.target.matches("[data-wm-layer]")) { layers[e.target.dataset.wmLayer] = e.target.checked; if (!e.target.checked && selected?.kind === e.target.dataset.wmLayer) { selected = null; card(); } savePref(); nearList(); campsList(); heatList(); draw(); }
       if (e.target.matches("[data-wm-zone]")) { follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; savePref(); load(Number(e.target.value)); }

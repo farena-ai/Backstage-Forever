@@ -12,7 +12,7 @@
 .gr-summary strong { font: 700 20px Cinzel, Georgia, serif; }
 .gr-summary span { font-size: 12px; color: #5a3e1c; }
 .gr-bar { height: 10px; border-radius: 5px; background: rgba(239,224,187,.25); overflow: hidden; border: 1px solid #a5823e; }
-.gr-bar span { display: block; height: 100%; background: linear-gradient(90deg, #8a6410, #f4cf72); }
+.gr-bar span { display: block; height: 100%; background: linear-gradient(90deg, #664808, #f4cf72); }
 .gr-card { padding: 14px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
 .gr-card h2 { margin: 0 0 10px; font: 700 18px Cinzel, Georgia, serif; color: #3d220c; }
 .gr-steps { margin: 0; padding-left: 30px; display: flex; flex-direction: column; gap: 6px; }
@@ -20,8 +20,8 @@
 .gr-step > :not(button):not(.gr-acts) { grid-column: 1; }
 .gr-step button { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
 .gr-pickup { border-left-color: #e6b84a; } .gr-objective { border-left-color: #6a9f45; } .gr-turnin { border-left-color: #c8a24f; } .gr-travel { border-left-color: #3b6fb0; } .gr-class { border-left-color: #7a4bb0; }
-.gr-kind { font: 700 10px Cinzel, Georgia, serif; letter-spacing: .1em; text-transform: uppercase; color: #8a6410; }
-.gr-kind em { font-style: normal; color: #3a7a2a; }
+.gr-kind { font: 700 10px Cinzel, Georgia, serif; letter-spacing: .1em; text-transform: uppercase; color: #664808; }
+.gr-kind em { font-style: normal; color: #2b5e1f; }
 .gr-step small { color: #6b4e26; }
 .gr-cov { width: 100%; border-collapse: collapse; font-size: 13px; }
 .gr-cov th, .gr-cov td { padding: 5px 8px; text-align: left; border-bottom: 1px solid rgba(165,130,62,.45); }
