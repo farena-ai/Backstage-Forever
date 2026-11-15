@@ -13,9 +13,9 @@ const CONTEXT_LIMIT=20000;
 // These events cancel work/drafts without changing completed conversation ownership.
 const SOFT_REASONS=new Set(['renderer-context','response-stop','memory-save']);
 class CompanionService {
-  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,lookups=true,live=null,advise=null,localAi=null,talents=null,onReset=()=>{}}){
+  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,lookups=true,live=null,advise=null,localAi=null,talents=null,planner=null,onReset=()=>{}}){
     // talents: { trees(className), build() } read from the player's own game client (never bundled).
-    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,lookups,live,advise,localAi,talents,onReset});
+    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,lookups,live,advise,localAi,talents,planner,onReset});
     this.session=new ConversationSession();this.rootEpoch=0;
     context.subscribe(({reason})=>{
       if(SOFT_REASONS.has(reason))return;
@@ -84,7 +84,7 @@ class CompanionService {
       const liveStatus=liveStatusNow(),liveFrame=liveStatus?.frame||null;
       // No model chosen: answer the common questions locally (quest how-to, next steps, training).
       if(!selected.model){
-        const tools=createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow});
+        const tools=createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow,planner:this.planner});
         const quick=quickAnswer(input.prompt,{tools,live:liveFrame,talent,advise:input.shareProfile&&this.advise?()=>this.advise(profileId):null});
         if(quick){
           if(signal.aborted)throw signal.reason;
@@ -103,7 +103,7 @@ class CompanionService {
       const claudeSubscription=selected.authMode==='subscription'&&input.provider==='anthropic';
       if(talentText&&!claudeSubscription)context=[context,talentText].filter(Boolean).join('\n\n');
       // Read-only local lookups (NPCs, quests, items, travel, character) the model may call.
-      const tools=this.lookups?createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow}):undefined;
+      const tools=this.lookups?createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow,planner:this.planner}):undefined;
       const request={model:selected.model,prompt:prepared.composedPrompt,context,signal,...(tools?{tools}:{})};
       let reply;
       if(selected.authMode==='subscription'&&input.provider!=='ollama'){

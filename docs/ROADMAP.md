@@ -210,7 +210,7 @@ Backstage Forever should look like a premium fantasy companion on every page. Al
 | 4.1 | **Full 1–60 guided route per race and faction.** A complete, curated, step-by-step leveling route, generated from our data and then hand-reviewed. It runs in the in-game step frame (2.3) with auto-advance, skip and "I'm behind or ahead" re-planning. | XL | The flagship. Needs 2.3 and 2.4 first. |
 | 4.2 | *(Shipped in 0.34 as H4, the opt-in community at bf.backstagecoding.com.)* **Community data loop.** Opt-in, privacy-reviewed export of your own observations (positions of quest givers, objectives and trainers you met), to share with the community dataset. Closes Alliance gaps faster. | L | Must stay opt-in, contain no personal data, and be reviewed. |
 | 4.3 | **Accessibility and localization.** Screen-reader-friendly app and colorblind-safe icons. Localize the app and addon text (deDE, frFR, esES…) as data allows. | L | Data is enUS today. |
-| 4.4 | **Smarter AI companion.** The companion gets tool access to everything above: routes, gear, dungeons and session history. It answers "what should I do tonight?" with a concrete plan. | L | Works with the user's own provider; no paid services by default. |
+| 4.4 | *(Done in 0.47: planning tools plan_tonight, get_zone_progress, get_gear, get_dungeons, get_characters and get_session, plus an offline "what should I do tonight?" answer.)* **Smarter AI companion.** The companion gets tool access to everything above: routes, gear, dungeons and session history. It answers "what should I do tonight?" with a concrete plan. | L | Works with the user's own provider; no paid services by default. |
 | 4.5 | **Graphics pass.** Original art for class portraits, page heroes, map pins, celebration effects and the in-game frames, kept consistent across the app. | M–L per pass | See below. |
 | 4.6 | **Other platforms.** macOS support (the live link is Windows-only today). | L | Only if wanted. |
 
@@ -283,7 +283,8 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 - **0.44 (shipped):** 3.4 mini Now: a small always-on-top window with your next step and its direction, XP and rested bar, and this session's pace.
 - **0.45 (shipped):** 3.5 spoken steps: Now → Speak steps reads each new next step aloud with the local Windows voice.
 - **0.46 (shipped):** 3.2 world tracker (Adventure → Zones: every zone for your faction with quests done and finished-zone stars) and 3.3 journey replay and share picture on the World Map.
-- **0.47+:** G9–G11 (samples first), then the 4.1 full guided route and the G12 art review.
+- **0.47 (shipped):** 4.4 smarter companion: "what should I do tonight?" gets an ordered plan from the next step, rested XP, zones, dungeons, gear and your other characters, with or without an AI model.
+- **0.48+:** G9–G11 (samples first), then the 4.1 full guided route and the G12 art review.
 - **1.0:** after Frank's hands-on acceptance.
 
 Keep this file and Help → Commands updated with each release.
