@@ -646,7 +646,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.52.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.53.0'
     character.race=clean((call(UnitRace,'player')));character.faction=clean((call(UnitFactionGroup,'player')))
     local previous=roster[guid]
     -- WoW writes saved data only on /reload or logout, so a brand-new character is unknown to the app until then.
@@ -792,7 +792,7 @@ end
 -- Explicit player command only. No map panels, movement, targeting or game input.
 local function guideMessage(message)
     local chat=public(DEFAULT_CHAT_FRAME)
-    call(field(chat,'AddMessage'),chat,'Backstage Forever: '..message)
+    call(field(chat,'AddMessage'),chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(message))
 end
 function BackstageForeverGuide(message)
     local help='Use /bf guide QuestID t/o/r MapID X Y Build (coordinates 0 to 1).'

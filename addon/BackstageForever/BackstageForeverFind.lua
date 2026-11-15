@@ -1202,7 +1202,7 @@ BackstageForeverFindMaps = {[1411]="Durotar",[1412]="Mulgore",[1413]="The Barren
 -- Lua 5.1 compatible (no goto, no integer division).
 local KIND_WORDS={f={'flight','fly','flightmaster','gryphon','wind','bat'},t={'trainer','train'},v={'vendor','merchant','shop','sell','buy'},h={'herb','herbs','flower'},o={'ore','mine','mining','vein','node'}}
 local function norm(s) local v=tostring(s or ''):lower():gsub("[%'`]",''):gsub('[^%w]+',' ') return v end
-local function say(m) if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..m) end end
+local function say(m) if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..(BackstageForeverTr or tostring)(m)) end end
 local function zone(id) return (BackstageForeverFindMaps or {})[id] or ('map '..id) end
 local function here()
     local api=type(C_Map)=='table' and C_Map or nil

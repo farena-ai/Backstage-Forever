@@ -23,7 +23,7 @@ local function call(fn,...)
 end
 local function method(value,key,...)return call(property(value,key),value,...)end
 local function combat()return call(InCombatLockdown)~=false end
-local function say(m)if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..m)end end
+local function say(m)if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..(BackstageForeverTr or tostring)(m))end end
 local function clean(v,n)v=text(v,n or 200);if v then return (v:gsub('|','||'))end end
 local function loadSettings()
     local saved=public(BackstageForeverAdvisorSettings)

@@ -28,7 +28,7 @@ end
 local function unit(v) v=plain(v);if type(v)=='number' and v==v and v>=0 and v<=1 then return v end end
 local function say(m)
     local chat=plain(DEFAULT_CHAT_FRAME)
-    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..m) end
+    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(m)) end
 end
 
 -- Retained per character: 200 items x 12 sources x 8 positions at most.

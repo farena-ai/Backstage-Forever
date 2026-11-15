@@ -732,7 +732,7 @@ end
 -- /bf way MapID X Y [label]: a native user waypoint plus the game's own navigation arrow.
 -- X and Y accept map percentages (51.5) or fractions (0.515). Never in combat.
 function BackstageForeverWay(message)
-    local say=function(m) if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..m) end end
+    local say=function(m) if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..(BackstageForeverTr or tostring)(m)) end end
     if type(message)~='string' or #message>160 then return say('Use /bf way MapID X Y [name].') end
     local map,x,y,label=message:match('^way%s+(%d+)%s+([%d%.]+)%s+([%d%.]+)%s*(.-)%s*$')
     map,x,y=tonumber(map),tonumber(x),tonumber(y)

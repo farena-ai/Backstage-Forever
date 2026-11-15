@@ -19,7 +19,7 @@ local function call(fn,...)
 end
 local function field(t,k) if type(t)=='table' then return plain(t[k]) end end
 local function num(v) v=tonumber(plain(v)) if v and v==v then return v end end
-local function say(m) if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..m) end end
+local function say(m) if type(DEFAULT_CHAT_FRAME)=='table' then pcall(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..(BackstageForeverTr or tostring)(m)) end end
 local function combat() return call(InCombatLockdown)==true end
 local settings
 local function loadSettings()
@@ -204,6 +204,8 @@ end
 -- big=true: the level-up banner, larger and longer. kind: which painting (see MESSAGE_KINDS).
 function BackstageForeverToast(title,sub,big,kind)
     if not settings then loadSettings() end
+    -- 4.3 (0.53): the game's language when a translation exists.
+    if type(BackstageForeverTr)=='function' then title=BackstageForeverTr(title);if sub then sub=BackstageForeverTr(sub) end end
     if sub then say(title..' '..sub) else say(title) end
     if not settings.toasts or not toastFrame() then return title end
     toastLen=big and 9 or 6

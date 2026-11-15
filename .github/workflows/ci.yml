@@ -15,6 +15,7 @@ jobs:
       - run: npm run check:addon-reference
       - run: npm run check:find-index
       - run: npm run check:guided-route
+      - run: npm run check:locales
       - run: npm run check:addon-advisor
       - run: npm run check:forever-vendors
       - run: npm run check:forever-insights

@@ -20,7 +20,7 @@ local function str(v,max) v=plain(v);if type(v)~='string' or v=='' then return n
 local function num(v,lo,hi) v=plain(v);if type(v)=='number' and v==v and v>=lo and v<=hi then return v end end
 local function say(m)
     local chat=plain(DEFAULT_CHAT_FRAME)
-    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..m) end
+    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(m)) end
 end
 
 local HISTORY_MAX,REPEAT_GAP,ALERT_GAP=20,300,4

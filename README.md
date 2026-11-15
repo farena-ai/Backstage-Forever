@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.52: accessibility
+## 0.53: German
 
-Backstage Forever works better with a screen reader and a keyboard: every control is named, the focus always shows, the World Map moves with the arrow keys, item quality is written out, animations respect Windows' "show less motion", and high-contrast mode works. 0.51 added the route review. See the [0.52.0 release notes](docs/releases/0.52.0.md) and the [0.51.0 notes](docs/releases/0.51.0.md).
+The app and the addon's messages now follow your game's language, starting with German (machine-translated on this computer, and marked as such). You can choose the language yourself on Help → Field guide. 0.52 made the app work better with screen readers and the keyboard. See the [0.53.0 release notes](docs/releases/0.53.0.md) and the [0.52.0 notes](docs/releases/0.52.0.md).
 
 ## 0.28: your journey
 

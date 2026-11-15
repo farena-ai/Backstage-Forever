@@ -191,7 +191,9 @@ const repo = path.resolve(__dirname, ".."),
         throw Error("No inference in fixture");
       });
     });
-    await page.evaluate(() => localStorage.setItem("bf-setup-v4", "manual"));
+    // The "Wrong Locale" character plays a German client; this smoke checks reference-data
+    // compatibility, so the app's own language stays English (0.53 follows the game's otherwise).
+    await page.evaluate(() => { localStorage.setItem("bf-setup-v4", "manual"); localStorage.setItem("bf-lang-v1", "en"); });
     await page.reload();
     await navigate(page, "quest-guide");
     const open = (id) =>
