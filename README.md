@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.53: German
+## 0.54: The finished look
 
-The app and the addon's messages now follow your game's language, starting with German (machine-translated on this computer, and marked as such). You can choose the language yourself on Help → Field guide. 0.52 made the app work better with screen readers and the keyboard. See the [0.53.0 release notes](docs/releases/0.53.0.md) and the [0.52.0 notes](docs/releases/0.52.0.md).
+Every page went through an art review in English and German, and the Adventure Compass in game now shows how you're doing at a glance: your XP, your pace, quests ready to hand in and your next step. 0.53 brought German. See the [0.54.0 release notes](docs/releases/0.54.0.md) and the [0.53.0 notes](docs/releases/0.53.0.md).
 
 ## 0.28: your journey
 

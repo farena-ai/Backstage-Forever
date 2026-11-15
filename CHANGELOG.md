@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.54.0 — The finished look, 2026-11-15
+
+- **G12, art review:** `docs/STYLE-GUIDE.md` (colours, type, spacing, buttons, motion, art, accessibility); chip colours to WCAG AA; 11px minimum text (`small` included). `scripts/dev-preview-pages.cjs` captures every page from your own saved state in English or German and reports stray end caps, dark-on-dark buttons, tight side padding, spilling or clipped text and small text per element.
+- Fixed from the review: Zones tiles (framed-button style outranked `.wt-zone`, dark text on dark); dungeon "Pick these up first" limited to quests within the dungeon's levels (−6/+3) with names on their own line; end caps hidden on all 22 `all: unset` buttons (`!important`, test-enforced); Quest details button padding; gear cards show quality in words and colour and only mention the reference name when it differs; character status badge and messages in plain words (`data-cg-status` keeps the raw state); snapshot dates as local dates; menu compact up to 1080px tall windows; zone card rows on a grid; the ask-panel delay picker no longer full width; 24 new German strings.
+- **H8, the Adventure Compass at a glance:** text centred under the crest and kept inside the brass border; the compact Compass (the − button) shows name, level and zone, an XP bar with rested XP, XP per hour and time to the next level, quests in the log and ready to hand in, and the next step (guided route first). New `BackstageForeverRouteNow()` and `BackstageForeverPaceSummary()`. German included.
+- CI and release: a 10-minute ceiling on every check and 60/90 minutes per job, after 0.53's release sat in a hung smoke test for 30 minutes.
+
 ## 0.53.0 — German, 2026-11-15
 
 - **4.3 part 2, translations:** `data/i18n/de.json` (998 app texts, 73 addon messages, 74 addon message templates), machine-translated with the local model qwen3.8:27b (no cloud) under a German WoW glossary (Ruhestein, Flugmeister, Stufe, Lehrer…), placeholders, colour codes and `/bf` commands checked unchanged, plus hand corrections from a spot check. `scripts/build-locales.cjs` writes `src/renderer/locales/de.js` and `BackstageForeverLocale.lua` (managed file 29, loaded first); `npm run check:locales` in CI.

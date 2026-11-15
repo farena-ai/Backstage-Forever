@@ -45,6 +45,13 @@ Status chips with white text use the AA-safe shades: blue `#3776be`, green `#468
 - Slow and ambient: banner drift (38s), embers, one-off celebrations. Nothing flashes or loops fast.
 - Everything stops when Windows asks for less motion (`prefers-reduced-motion`).
 
+## Buttons
+
+- Framed buttons draw brass end caps about 12px wide on each side: keep at least 12px of side padding so they never cover a letter.
+- A pill or text link restyled with `all: unset` must also drop the end caps (listed in `enchanted.css`; a test checks every such rule), or they land on the nearest card or the window edge.
+- A card that is a `<button>` (zone tiles, list rows) needs a selector stronger than `button:not(.illustrated-card)` for its background and text colour, or it turns into a dark button with dark text.
+- Check a page with `node scripts/dev-preview-pages.cjs OUT 1440x960 en` (and `de`): it saves every page and lists any of the above it finds.
+
 ## Art
 
 - Original only, painted locally with ComfyUI (Qwen-Image), or the earlier original sets listed in `src/renderer/art/NOTICE.md` and `docs/ARTWORK*.md`. Nothing from Blizzard games, no logos, no lettering in paintings.
