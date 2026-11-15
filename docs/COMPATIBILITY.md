@@ -1,4 +1,22 @@
-# Compatibility and evidence
+# Compatibility
+
+## At a glance
+
+| | Supported |
+|---|---|
+| Windows | 10 and 11, 64-bit (installer, automatic updates, live link) |
+| macOS | Apple silicon and Intel, as a zip (no live link yet; updates by hand) |
+| Game | World of Warcraft: Forever, client 1.60.1.x, addon Interface 16001 |
+| Factions and races | Horde and Alliance; all eight starting races |
+| Languages | English; German (machine-translated). The addon follows the game client's language. |
+
+**Checked in the real game client so far:** the addon loads and saves your characters; the live link follows you (including the hairline mode); the World Map draws your install's own map art.
+
+**Built and tested with automated checks, not yet confirmed in the real client:** the guided route (`/bf route guide`), enemy player alerts, the quality-of-life helpers (especially dismount at flight masters), party sync with a second player, the painted Compass and step frames, the ask panel over a full-screen game, and the German messages in a German client. Reports are welcome (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
+
+---
+
+## Evidence record
 
 Evidence date: **2026-11-11**. Local manual profiles and notes work without a game connection or AI. Automated fixtures establish tested behavior, not live account entitlement or game-client acceptance.
 
