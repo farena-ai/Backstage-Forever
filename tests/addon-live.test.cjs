@@ -93,7 +93,7 @@ dofile('addon/BackstageForever/BackstageForeverHUD.lua')
 event('PLAYER_LOGIN');BackstageForeverHUDUpdate(character)
 `;
 test('live compass persists validated focus/card preferences and binds an explicit labelled supported waypoint',()=>lua(hud+String.raw`
-assert(text():find('Updates as you play',1,true) and text():find('/bf help lists commands',1,true))
+assert(text():find('Drag the title to move',1,true) and text():find('/bf help',1,true) and text():find('/bf show',1,true))
 assert(text():find('Hero||cffff0000',1,true),'Untrusted formatting pipes must be escaped')
 assert(text():find('1. First quest',1,true) and text():find('2. Second ||Hquest',1,true),'Native cards retain their identities')
 assert(options.focus=='balanced' and options.minutes==30)
@@ -119,10 +119,21 @@ BackstageForeverBuildPlan=nil;BackstageForeverHUDUpdate(character);assert(text()
 `));
 test('collapsed native body stays above permanent footer instructions',()=>lua(hud+String.raw`
 frames.BackstageForeverCompassCollapse.OnClick()
-assert(fonts[2].point[3]==-35,'Collapsed body must move above its footer')
-assert(frames.BackstageForeverCompass.height==122 and fonts[2].height==30)
+local panel=frames.BackstageForeverCompass
+local function clear() return panel.height+fonts[2].point[3]-fonts[2].height>=38 end
+assert(fonts[2].point[1]=='TOPLEFT' and fonts[2].point[2]==22,'Text sits inside the painted border')
+assert(fonts[2].point[3]==-70 and clear(),'Collapsed body must move above its footer')
+assert(fonts[2].text:find('Quests: 0 in your log',1,true) and fonts[2].text:find('Next:',1,true) and fonts[2].text:find('First quest',1,true),'The compact Compass shows live facts')
+local head;for _,font in ipairs(fonts)do if font.text and font.text:find('Level 12 Mage',1,true) then head=font end end
+assert(head and head.visible and head.text:find('Zone',1,true),'Name, level and zone head the compact view')
+character.progress={current=40,max=100,rested=30};character.quests={{id=1,complete=true},{id=2}}
+BackstageForeverHUDUpdate(character)
+assert(fonts[2].point[3]==-88 and clear(),'The XP bar sits between the heading and the facts')
+assert(text():find('40%  ·  60 XP to level up  ·  rested',1,true))
+assert(fonts[2].text:find('2 in your log',1,true) and fonts[2].text:find('1 ready to hand in',1,true))
 BackstageForeverHUDCaptureStatus('unavailable')
-assert(frames.BackstageForeverCompass.height==152 and fonts[2].height==60)
+assert(fonts[2].point[3]==-40 and clear() and fonts[2].text:find('Snapshot unavailable',1,true))
+assert(not head.visible)
 `));
 test('wide waypoint titles cannot consume the separately reserved source and phase row',()=>lua(hud+String.raw`
 BackstageForeverBuildPlan=function()return {status='ready',steps={
@@ -136,7 +147,7 @@ for _,font in ipairs(fonts)do
 end
 assert(title and qualifier and title~=qualifier,'Action title and source/phase need independent reserved regions')
 for _,font in ipairs({title,qualifier})do
- assert(font.width==312 and font.height==16 and font.maxLines==1 and font.wordWrap==false,'Each action row must explicitly reserve one unwrapped line')
+ assert(font.width==296 and font.height==16 and font.maxLines==1 and font.wordWrap==false,'Each action row must explicitly reserve one unwrapped line')
 end
 assert(title.point[1]=='BOTTOMLEFT' and title.point[3]==qualifier.point[3]+16,'Action rows must not overlap')
 assert(qualifier.point[3]==81 and title.point[3]==97,'Action rows must preserve the existing body/control/footer geometry')
@@ -169,7 +180,7 @@ for _,font in ipairs(fonts)do
 end
 assert(cue,'Low-space fact must have an independent quiet line')
 assert(cue~=fonts[2] and cue~=action and cue~=source)
-assert(cue.width==312 and cue.height==16 and cue.maxLines==1 and cue.wordWrap==false)
+assert(cue.width==296 and cue.height==16 and cue.maxLines==1 and cue.wordWrap==false)
 assert(cue.point[1]=='BOTTOMLEFT' and cue.point[3]==113)
 assert(action.point[3]+action.height<=cue.point[3] and source.point[3]+source.height<=action.point[3])
 local bodyBottom=frames.BackstageForeverCompass.height+fonts[2].point[3]-fonts[2].height

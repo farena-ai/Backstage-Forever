@@ -20,6 +20,11 @@ local function safe(fn,...)
     return value
 end
 local function combat() return safe(InCombatLockdown)~=false end
+-- Nil-safe method call for optional widgets (the XP bar is plain textures; a client without them keeps the text).
+local function invoke(o,k,...) if o and type(o[k])=='function' then return safe(o[k],o,...) end end
+-- Layout (0.54): text and controls sit inside the painted brass border, not on it.
+local INSET,WIDE=22,296
+local head,xpEdge,xpBack,xpRested,xpFill,xpText
 -- Pipes introduce WoW hyperlinks/textures/formatting. Display them literally.
 local function text(value,limit)
     if type(value)~='string' then return '' end
@@ -78,6 +83,60 @@ local function sourceLabel(step)
     if alias then label=label..'; English reference: '..text(alias,48) end
     return label
 end
+-- The game's language for the Compass's own lines (0.54); English when no translation exists.
+local function T(s) local v=type(BackstageForeverTr)=='function' and safe(BackstageForeverTr,s);return type(v)=='string' and v or s end
+local function number(n)
+    n=math.floor(tonumber(n) or 0)
+    if type(BreakUpLargeNumbers)=='function' then local v=safe(BreakUpLargeNumbers,n);if type(v)=='string' then return v end end
+    return tostring(n)
+end
+-- The compact Compass (0.54): what a player wants at a glance while playing, from facts already captured.
+-- -> head text (two lines), XP {cur,max,rested} or nil, body lines
+local function compactView(c)
+    local where=text(c.location and c.location.zone,40)
+    local sub=text(c.location and c.location.subZone,40)
+    if sub~='' and sub~=where then where=where~='' and (where..' - '..sub) or sub end
+    local headText='|cffffd100'..text(c.name,40)..'|r  ·  '..T('Level')..' '..text(tostring(c.level),4)..' '..text(c.className,30)..'\n'..(where~='' and where or T('Somewhere in the world'))
+    local xp=type(c.progress)=='table' and c.progress or nil
+    local cur,max=xp and tonumber(xp.current),xp and tonumber(xp.max)
+    local bar=(cur and max and max>0) and {cur=math.max(0,math.min(cur,max)),max=max,rested=math.max(0,tonumber(xp.rested) or 0)} or nil
+    local out={}
+    if type(c.quests)=='table' then
+        local ready=0
+        for i=1,math.min(#c.quests,50) do if type(c.quests[i])=='table' and c.quests[i].complete then ready=ready+1 end end
+        out[#out+1]=T(('Quests: %d in your log'):format(#c.quests))..(ready>0 and (' · |cff7ad67a'..T(('%d ready to hand in'):format(ready))..'|r') or '')
+    end
+    local pace=type(BackstageForeverPaceSummary)=='function' and safe(BackstageForeverPaceSummary)
+    out[#out+1]=type(pace)=='string' and pace or T('Pace: shown after a few minutes of play')
+    if xp and xp.resting then out[#out+1]=T('Resting: rested XP is building up') end
+    local route=type(BackstageForeverRouteNow)=='function' and safe(BackstageForeverRouteNow)
+    if type(route)=='table' and type(route.text)=='string' then
+        out[#out+1]='|cffffd100Route '..number(route.index)..'/'..number(route.total)..':|r '..text(route.text,120)
+    else
+        local coach=type(BackstageForeverBuildCoach)=='function' and safe(BackstageForeverBuildCoach,c,{mode=settings.mode,skillLineId=settings.profession.skillLineId,recipeId=settings.profession.recipeId,crafts=settings.profession.crafts})
+        local pick=type(coach)=='table' and coach.recommendation
+        if type(pick)~='table' or dismissed[pick.id]==pick.signature then pick=nil
+            for _,v in ipairs(type(coach)=='table' and coach.alternatives or {}) do if type(v)=='table' and dismissed[v.id]~=v.signature then pick=v;break end end
+        end
+        if type(pick)=='table' and pick.title then out[#out+1]='|cffffd100'..T('Next:')..'|r '..text(pick.title,110)
+        else
+            local plan=type(BackstageForeverBuildPlan)=='function' and safe(BackstageForeverBuildPlan,c,{focus=settings.focus,minutes=settings.minutes})
+            local step=type(plan)=='table' and type(plan.steps)=='table' and plan.steps[1]
+            out[#out+1]=type(step)=='table' and ('|cffffd100'..T('Next:')..'|r '..text(step.title,110)) or ('|cffffd100'..T('Next:')..'|r '..T('type /bf next for the nearest quest'))
+        end
+    end
+    return headText,bar,out
+end
+-- Paints the XP bar, or hides it (expanded view, max level, no data).
+local function paintXp(bar)
+    for _,piece in ipairs({xpEdge,xpBack,xpRested,xpFill,xpText}) do invoke(piece,bar and 'Show' or 'Hide') end
+    if not bar then return end
+    local f=bar.cur/bar.max
+    local r=math.min(1,(bar.cur+bar.rested)/bar.max)
+    invoke(xpFill,f>0 and 'Show' or 'Hide');invoke(xpFill,'SetWidth',math.max(1,WIDE*f))
+    invoke(xpRested,r>f and 'Show' or 'Hide');invoke(xpRested,'SetWidth',math.max(1,WIDE*r))
+    invoke(xpText,'SetText',math.floor(f*100)..'%  ·  '..T(('%s XP to level up'):format(number(bar.max-bar.cur)))..(bar.rested>0 and ('  ·  '..T('rested')) or ''))
+end
 local update
 update=function()
     if not panel then return end
@@ -94,6 +153,8 @@ update=function()
         if not collapsed then
             local xp=latest.progress
             lines[#lines+1]=text(latest.location and latest.location.zone,70)..' | '..(xp and ('XP '..text(tostring(xp.current),12)..' / '..text(tostring(xp.max),12)..((tonumber(xp.max) or 0)>0 and (' ('..math.floor((tonumber(xp.current) or 0)/xp.max*100)..'%)') or '')..((tonumber(xp.rested) or 0)>0 and ' | rested' or '')) or 'XP unavailable')
+            local pace=type(BackstageForeverPaceSummary)=='function' and safe(BackstageForeverPaceSummary)
+            if type(pace)=='string' then lines[#lines+1]=pace end
             local coach=safe(BackstageForeverBuildCoach,latest,{mode=settings.mode,skillLineId=settings.profession.skillLineId,recipeId=settings.profession.recipeId,crafts=settings.profession.crafts})
             if type(coach)=='table' then
                 local opportunities={};if coach.recommendation then opportunities[1]=coach.recommendation end
@@ -161,12 +222,25 @@ update=function()
             end
         end
     end
+    local headText,bar
+    if collapsed and latest then headText,bar,lines=compactView(latest) end
     if captureMessage then lines[#lines+1]=captureMessage end
+    invoke(head,'SetText',headText or '');invoke(head,headText and 'Show' or 'Hide')
+    paintXp(bar)
     safe(body.SetText,body,table.concat(lines,'\n'))
     safe(body.ClearAllPoints,body)
-    safe(body.SetPoint,body,'TOPLEFT',14,collapsed and -35 or professionDetails and -148 or type(BackstageForeverBuildProfessionCoach)=='function' and -120 or -94)
-    safe(body.SetHeight,body,collapsed and (captureMessage and 60 or 30) or 216)
-    safe(panel.SetHeight,panel,collapsed and (captureMessage and 152 or 122) or professionDetails and 494 or type(BackstageForeverBuildProfessionCoach)=='function' and 466 or 440)
+    local top=collapsed and (headText and (bar and -88 or -70) or -40) or professionDetails and -148 or type(BackstageForeverBuildProfessionCoach)=='function' and -120 or -94
+    safe(body.SetPoint,body,'TOPLEFT',INSET,top)
+    if collapsed then
+        -- The compact Compass grows with its lines, keeping the footer clear of them.
+        local measured=safe(body.GetStringHeight,body)
+        local h=type(measured)=='number' and measured>0 and math.min(measured,160) or #lines*14
+        safe(body.SetHeight,body,h)
+        safe(panel.SetHeight,panel,math.floor(-top+h+42))
+    else
+        safe(body.SetHeight,body,216)
+        safe(panel.SetHeight,panel,professionDetails and 494 or type(BackstageForeverBuildProfessionCoach)=='function' and 466 or 440)
+    end
     safe(goalButton.SetText,goalButton,'Goal: '..({adventure='Adventure',questing='Quests',professions='Professions'})[settings.mode])
     safe(focusButton.SetText,focusButton,'Focus: '..(({balanced='everything',['turn-ins']='hand-ins'})[settings.focus] or settings.focus))
     safe(sessionButton.SetText,sessionButton,settings.minutes..' min: '..(settings.minutes==15 and 1 or settings.minutes==60 and 3 or 2)..' steps')
@@ -174,8 +248,8 @@ update=function()
     if type(BackstageForeverBuildCoach)=='function' then
         for _,control in ipairs({focusButton,sessionButton})do safe((collapsed or not questDetails) and control.Hide or control.Show,control)end
         safe(detailsButton.SetText,detailsButton,questDetails and 'Less' or 'Quest details')
-        safe(detailsButton.SetPoint,detailsButton,'TOPLEFT',questDetails and 252 or 14,-64)
-        safe(detailsButton.SetSize,detailsButton,questDetails and 74 or 312,22)
+        safe(detailsButton.SetPoint,detailsButton,'TOPLEFT',questDetails and 246 or INSET,-64)
+        safe(detailsButton.SetSize,detailsButton,questDetails and 72 or WIDE,22)
     else safe(detailsButton.Hide,detailsButton)end
     if professionDetailsButton then
         for _,control in ipairs({professionDetailsButton,professionButton,recipeButton,attemptsButton})do
@@ -193,7 +267,7 @@ update=function()
         safe(professionDetailsButton.SetText,professionDetailsButton,professionDetails and 'Less profession detail' or 'Profession details')
         bind(professionDetailsButton,function()professionDetails=not professionDetails end)
         if current then
-            if professionDetails then
+            if professionDetails and not collapsed then
                 if current.profession then lines[#lines+1]=text(current.profession.name,40)..': '..current.profession.rank..' / '..current.profession.maxRank end
                 local sel,best,count=current.selectedRecipe,current.nextRecipe,current.skillUp
                 if sel and type(sel.skill)=='table' then lines[#lines+1]=text(sel.name,40)..': '..text(sel.skill.label,20)..(best and best.id~=sel.id and (' | best next: '..text(best.name,30)..' ('..text(best.label,20)..')') or '') elseif best then lines[#lines+1]='Best next: '..text(best.name,40)..' ('..text(best.label,20)..')' end
@@ -309,9 +383,10 @@ local function initialize()
         save()
     end
     panel:SetScript('OnDragStart',startDrag);panel:SetScript('OnDragStop',stopDrag)
-    local title=CreateFrame('Button',nil,panel);title:SetPoint('TOPLEFT',10,-9);title:SetSize(272,20)
+    -- Centred on the panel, under the compass crest (0.54), clear of the - and X buttons.
+    local title=CreateFrame('Button',nil,panel);title:SetPoint('TOP',0,-11);title:SetSize(212,20)
     title:RegisterForDrag('LeftButton');title:SetScript('OnDragStart',startDrag);title:SetScript('OnDragStop',stopDrag)
-    local heading=title:CreateFontString(nil,'OVERLAY','GameFontNormal');heading:SetAllPoints();heading:SetText('Adventure Compass')
+    local heading=title:CreateFontString(nil,'OVERLAY','GameFontNormal');heading:SetAllPoints();heading:SetText(T('Adventure Compass'))
     local close=CreateFrame('Button','BackstageForeverCompassClose',panel,'UIPanelCloseButton')
     close:SetSize(24,24);close:SetPoint('TOPRIGHT',-4,-4)
     close:SetScript('OnClick',function()
@@ -322,37 +397,51 @@ local function initialize()
     local minimize=CreateFrame('Button','BackstageForeverCompassCollapse',panel,'UIPanelButtonTemplate')
     minimize:SetSize(22,20);minimize:SetPoint('TOPRIGHT',-30,-7);minimize:SetText('-')
     minimize:SetScript('OnClick',function() if not combat() then collapsed=not collapsed;save();update() end end)
-    body=panel:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall');body:SetPoint('TOPLEFT',14,-66);body:SetWidth(312);body:SetJustifyH('LEFT');safe(body.SetJustifyV,body,'TOP')
+    body=panel:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall');body:SetPoint('TOPLEFT',INSET,-66);body:SetWidth(WIDE);body:SetJustifyH('LEFT');safe(body.SetJustifyV,body,'TOP')
     safe(body.SetMaxLines,body,21)
-    hint=panel:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
-    hint:SetPoint('BOTTOMLEFT',14,13);hint:SetWidth(312);hint:SetJustifyH('LEFT')
-    hint:SetText('Updates as you play | /bf help lists commands\nDrag the title to move | X: hide | -: shrink | /bf show')
+    hint=panel:CreateFontString(nil,'OVERLAY','GameFontDisableSmall')
+    hint:SetPoint('BOTTOM',0,21);hint:SetWidth(WIDE);hint:SetJustifyH('CENTER')
+    hint:SetText(T('Drag the title to move  ·  /bf help  ·  /bf show'))
+    -- The compact view's two-line heading and XP bar (0.54).
+    head=panel:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall');head:SetPoint('TOPLEFT',INSET,-38);head:SetWidth(WIDE);head:SetJustifyH('LEFT')
+    safe(head.SetMaxLines,head,2)
+    local function barPiece(sub,r,g,b,a,grow)
+        grow=grow or 0
+        local t=invoke(panel,'CreateTexture',nil,'ARTWORK',nil,sub)
+        invoke(t,'SetColorTexture',r,g,b,a);invoke(t,'SetPoint','TOPLEFT',panel,'TOPLEFT',INSET-grow,-70+grow);invoke(t,'SetSize',WIDE+2*grow,12+2*grow)
+        return t
+    end
+    -- A thin brass edge around a warm dark well, matching the painted frame.
+    xpEdge=barPiece(-1,.62,.47,.22,.9,1);xpBack=barPiece(0,.09,.06,.03,.92)
+    xpRested=barPiece(1,.27,.45,.85,.6);xpFill=barPiece(2,.86,.64,.2,.95)
+    xpText=panel:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall');xpText:SetPoint('TOPLEFT',INSET,-69);xpText:SetWidth(WIDE);xpText:SetJustifyH('CENTER')
+    safe(xpText.SetHeight,xpText,14)
     local function button(name,x,width)
         local control=CreateFrame('Button',name,panel,'UIPanelButtonTemplate');control:SetPoint('TOPLEFT',x,-64);control:SetSize(width,22);return control
     end
-    goalButton=button('BackstageForeverCompassGoal',14,174);goalButton:SetPoint('TOPLEFT',14,-36)
+    goalButton=button('BackstageForeverCompassGoal',INSET,168);goalButton:SetPoint('TOPLEFT',INSET,-38)
     goalButton:SetScript('OnClick',function()if active and not combat() then epoch=epoch+1;settings.mode=({adventure='questing',questing='professions',professions='adventure'})[settings.mode];save();update()end end)
-    notNowButton=button('BackstageForeverCompassNotNow',192,134);notNowButton:SetPoint('TOPLEFT',192,-36);notNowButton:SetText('Not now')
-    focusButton=button('BackstageForeverCompassFocus',14,126)
+    notNowButton=button('BackstageForeverCompassNotNow',194,124);notNowButton:SetPoint('TOPLEFT',194,-38);notNowButton:SetText('Not now')
+    focusButton=button('BackstageForeverCompassFocus',INSET,122)
     focusButton:SetScript('OnClick',function()if active and not combat() then epoch=epoch+1;settings.focus=focuses[settings.focus] or 'balanced';save();update()end end)
-    sessionButton=button('BackstageForeverCompassSession',144,104)
+    sessionButton=button('BackstageForeverCompassSession',148,96)
     sessionButton:SetScript('OnClick',function()if active and not combat() then epoch=epoch+1;settings.minutes=settings.minutes==15 and 30 or settings.minutes==30 and 60 or 15;save();update()end end)
-    detailsButton=button('BackstageForeverCompassDetails',14,312)
+    detailsButton=button('BackstageForeverCompassDetails',INSET,WIDE)
     detailsButton:SetScript('OnClick',function()if active and not combat()then epoch=epoch+1;questDetails=not questDetails;update()end end)
-    professionDetailsButton=button('BackstageForeverCompassProfessionDetails',14,312);professionDetailsButton:SetPoint('TOPLEFT',14,-90)
-    professionButton=button('BackstageForeverCompassProfession',14,126);professionButton:SetPoint('TOPLEFT',14,-118)
-    recipeButton=button('BackstageForeverCompassRecipe',144,104);recipeButton:SetPoint('TOPLEFT',144,-118)
-    attemptsButton=button('BackstageForeverCompassAttempts',252,74);attemptsButton:SetPoint('TOPLEFT',252,-118)
+    professionDetailsButton=button('BackstageForeverCompassProfessionDetails',INSET,WIDE);professionDetailsButton:SetPoint('TOPLEFT',INSET,-90)
+    professionButton=button('BackstageForeverCompassProfession',INSET,122);professionButton:SetPoint('TOPLEFT',INSET,-118)
+    recipeButton=button('BackstageForeverCompassRecipe',148,94);recipeButton:SetPoint('TOPLEFT',148,-118)
+    attemptsButton=button('BackstageForeverCompassAttempts',246,72);attemptsButton:SetPoint('TOPLEFT',246,-118)
     -- Independent rows prevent a wide title from hiding the waypoint qualifier.
     local function actionRow(y)
         local row=panel:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
-        row:SetPoint('BOTTOMLEFT',14,y);row:SetWidth(312);row:SetHeight(16);row:SetJustifyH('LEFT')
+        row:SetPoint('BOTTOMLEFT',INSET,y);row:SetWidth(WIDE);row:SetHeight(16);row:SetJustifyH('LEFT')
         safe(row.SetMaxLines,row,1);safe(row.SetWordWrap,row,false)
         return row
     end
     actionTitle=actionRow(97);actionSource=actionRow(81)
     preparationLine=actionRow(113)
-    waypointButton=CreateFrame('Button','BackstageForeverCompassWaypoint',panel,'UIPanelButtonTemplate');waypointButton:SetPoint('BOTTOMLEFT',14,51);waypointButton:SetSize(312,24);waypointButton:SetText('Show waypoint')
+    waypointButton=CreateFrame('Button','BackstageForeverCompassWaypoint',panel,'UIPanelButtonTemplate');waypointButton:SetPoint('BOTTOMLEFT',INSET,51);waypointButton:SetSize(WIDE,24);waypointButton:SetText('Show waypoint')
     update()
 end
 if type(CreateFrame)=='function' then

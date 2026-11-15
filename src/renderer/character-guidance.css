@@ -24,6 +24,14 @@
 .cg-gear > div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .cg-slot { width: 76px; flex-shrink: 0; color: #5a2e0c; font-size: 13px; font-weight: 700; }
 .cg-gear p { margin: 2px 0; font-size: 13px; }
+/* Item quality in words and colour (never colour alone); every shade meets AA on the parchment. */
+.cg-quality { font-weight: 700; }
+.cg-quality.q-poor { color: #4f4f4f; }
+.cg-quality.q-common { color: #2b1b0a; }
+.cg-quality.q-uncommon { color: #2b5e1f; }
+.cg-quality.q-rare { color: #1d4f8a; }
+.cg-quality.q-epic { color: #6a2c8f; }
+.cg-quality.q-legendary { color: #7a4100; }
 .cg-level { font: 700 22px Georgia, serif; color: #3d220c; text-align: center; flex-shrink: 0; }
 .cg-trainers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .cg-trainer { background: rgba(255,248,225,.6); border: 1px solid #c4a466; border-radius: 6px; padding: 10px 12px; min-width: 0; overflow-wrap: anywhere; }
@@ -49,8 +57,8 @@
 /* Gear review with game details. */
 .cg-weakest { margin: 8px 0 12px; padding: 10px 12px; border-radius: 8px; background: rgba(217,130,42,.14); border: 1px solid rgba(217,130,42,.6); }
 .cg-weakest ul { margin: 6px 0; padding: 0; list-style: none; display: grid; gap: 4px; }
-.cg-rate { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 8px; font-size: 11px; font-weight: 800; color: #fff; background: #d9822a; }
+.cg-rate { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 8px; font-size: 11px; font-weight: 800; color: #fff; background: #a56320; }
 .cg-rate.replace { background: #b23a2a; }
 .cg-gear .cg-slot canvas { display: block; margin-bottom: 4px; border-radius: 4px; }
-.cg-gear.rate-replace { border-left: 4px solid #b23a2a; } .cg-gear.rate-aging { border-left: 4px solid #d9822a; } .cg-gear.rate-fresh { border-left: 4px solid #3c9a2e; }
+.cg-gear.rate-replace { border-left: 4px solid #b23a2a; } .cg-gear.rate-aging { border-left: 4px solid #a56320; } .cg-gear.rate-fresh { border-left: 4px solid #3c9a2e; }
 .cg-stats { color: #2e7a22; font-weight: 600; }

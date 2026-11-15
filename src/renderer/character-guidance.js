@@ -47,7 +47,7 @@ window.CharacterGuidance = (() => {
     return `<header class="cg-hero">${faction?`<img class="cg-banner" src="../../assets/faction-${faction}.png" alt="">`:""}<div>
 <h2>${esc(c?.name||"Saved character")}</h2>
 <p>${c?`Level ${esc(c.level)} ${esc(c.className)} · ${esc(c.race||"Race not saved")} · ${esc(c.faction||"Faction not saved")}${c.realm?` · ${esc(c.realm)}`:""}`:"No active saved character"} · ${m.source?`saved ${esc(date(m.source.updatedAt))}`:"kept by hand (no addon save)"}</p>
-<span class="cg-status" data-cg-status>${esc(m.status)}</span>${loading?'<span role="status"> Updating…</span>':""}</div></header>
+<span class="cg-status" data-cg-status="${esc(m.status)}">${esc(STATUS_LABEL[m.status]||m.status)}</span>${loading?'<span role="status"> Updating…</span>':""}</div></header>
 ${m.statusMessage?`<p class="cg-status-message">${esc(m.statusMessage)}</p>`:""}`;
   }
   function overviewMarkup(m, c) {
@@ -65,6 +65,9 @@ ${m.statusMessage?`<p class="cg-status-message">${esc(m.statusMessage)}</p>`:""}
 <small>Checklist opens Plans. Ask opens an editable question in the companion; nothing is sent until you press Send.</small>
 </div>`;
   }
+  // Plain words for the badge; the raw state stays on data-cg-status.
+  const STATUS_LABEL={"no-character":"No character",manual:"Entered by hand","missing-metadata":"Save details missing","future-date":"Date in the future",stale:"Over a week old",mismatch:"Different game build",observed:"From your last save"};
+  const QUALITY_NAME=["Poor","Common","Uncommon","Rare","Epic","Legendary"];
   function equipmentMarkup(m) {
     return `<section class="cg-equipment">
 <div class="cg-section-title">
@@ -76,7 +79,7 @@ ${m.gear.weakest?.length?`<div class="cg-weakest"><strong>Upgrade these first</s
 </span>
 <div>
 <h4>${esc(g.observedName||"Observed name unknown")}</h4>
-<p>Item ${g.itemId} · saved quality ${g.quality??"unknown"}</p>${g.details?`<p class="cg-stats">${[g.details.kind,g.details.damage?`${g.details.dps?.toFixed(1)} DPS`:"",g.details.armor?`${g.details.armor} armor`:"",...(g.details.stats||[]).map(x=>`+${x.amount} ${x.stat}`)].filter(Boolean).map(esc).join(" · ")}</p>`:""}${g.referenceName?`<p>Reference name: ${esc(g.referenceName)}${g.observedName&&g.referenceName!==g.observedName?" · differs from saved name":""}</p>`:"<p>Reference name unavailable</p>"}</div>
+<p title="Item ${g.itemId}">${QUALITY_NAME[g.quality]?`<span class="cg-quality q-${QUALITY_NAME[g.quality].toLowerCase()}">${QUALITY_NAME[g.quality]}</span>`:"Quality not saved"}</p>${g.details?`<p class="cg-stats">${[g.details.kind,g.details.damage?`${g.details.dps?.toFixed(1)} DPS`:"",g.details.armor?`${g.details.armor} armor`:"",...(g.details.stats||[]).map(x=>`+${x.amount} ${x.stat}`)].filter(Boolean).map(esc).join(" · ")}</p>`:""}${g.referenceName&&g.observedName&&g.referenceName!==g.observedName?`<p>Reference calls it ${esc(g.referenceName)}</p>`:""}</div>
 <span class="cg-level">${g.itemLevel??"?"}<small>item level</small>
 </span>
 </article>`).join("")}</div>`:`<div class="cg-empty">

@@ -114,8 +114,9 @@ assert(BackstageForeverUpdateDanger().tone=='red')
 BackstageForeverAssistCommand('danger off') assert(BackstageForeverUpdateDanger()==nil)
 way=nil BackstageForeverAssistCommand('train') assert(way:find("Mai'ah",1,true))
 local help=BackstageForeverAssistCommand('help') assert(#help>=6)
-clock=100+1800 xp=600 fire('PLAYER_XP_UPDATE')
+assert(BackstageForeverPaceSummary()==nil,'No pace before a few minutes of play') clock=100+1800 xp=600 fire('PLAYER_XP_UPDATE')
 assert(BackstageForeverPaceLine():find('XP/hour',1,true))
+assert(BackstageForeverPaceSummary():find('^Pace: %d+ XP/hour'),BackstageForeverPaceSummary())
 print('ok')`);
   assert.equal(out, "ok");
 });

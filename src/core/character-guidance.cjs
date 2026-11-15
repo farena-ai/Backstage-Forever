@@ -63,12 +63,12 @@ function buildCharacterGuidance(state, profileId, { insights = null, now = Date.
     status, identity, source,
     statusMessage: {
       "no-character": "Choose or create a character to begin a local review.",
-      manual: "Manual identity; no saved addon observations establish current game facts.",
+      manual: "Entered by hand. Play this character with the addon on to fill in gear and training.",
       "missing-metadata": "Saved build, locale or source date is missing. Personal reference qualification is unavailable.",
       "future-date": "The saved date is in the future. Check the date before treating this as a current observation.",
       stale: "This snapshot is over seven days old. Review its dated facts against the game before acting.",
-      mismatch: "Saved build or locale differs from the reference. Saved equipment stays visible; personal training matches are unavailable.",
-      observed: "Last saved addon facts, never a live view or proof of character readiness."
+      mismatch: "Your game is on a different build or language than the bundled reference, so trainer matches are paused until a reference update. Your saved gear still shows.",
+      observed: "From the addon's last save (logout or /reload), not a live view."
     }[status],
     overview: Object.hasOwn(CLASS_OVERVIEWS, p?.className) ? { text: CLASS_OVERVIEWS[p.className], checkedOn: "2026-11-10", qualification: "Dated general Blizzard Forever class overview; not matching-build mechanics.", linkId: "forever-class-overview" } : null,
     reference: insights ? { publisher: "Efficient Games", build: insights.build, locale: insights.textLocale, observedThrough: insights.observedThrough, license: "CC BY 4.0", observationNamesLocale: insights.observationNamesLocale } : null,

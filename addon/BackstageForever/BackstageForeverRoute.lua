@@ -155,6 +155,12 @@ end
 -- The step frame.
 local frame,lines,steps,index,mapNow,lastArrow,pending=nil,{},{},1,nil,nil,false
 local guide=nil -- {index,total,note,top} while the guided route is shown
+-- The Compass shows the current guided step (0.54). Read-only; nil unless the guided route is on.
+function BackstageForeverRouteNow()
+    local s=guide and steps[index]
+    if type(s)~='table' or type(s.text)~='string' then return nil end
+    return {text=s.text,index=guide.index+index-1,total=guide.total}
+end
 local function setArrow(step)
     local stepMap=step and step.mapId or mapNow
     if not step or not stepMap or not step.x or combat() or not settings.arrow then return end

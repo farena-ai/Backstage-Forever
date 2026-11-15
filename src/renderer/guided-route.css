@@ -20,7 +20,7 @@
 .gr-step > :not(button):not(.gr-acts) { grid-column: 1; }
 .gr-step button { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
 .gr-pickup { border-left-color: #e6b84a; } .gr-objective { border-left-color: #6a9f45; } .gr-turnin { border-left-color: #c8a24f; } .gr-travel { border-left-color: #3b6fb0; } .gr-class { border-left-color: #7a4bb0; }
-.gr-kind { font: 700 10px Cinzel, Georgia, serif; letter-spacing: .1em; text-transform: uppercase; color: #664808; }
+.gr-kind { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .1em; text-transform: uppercase; color: #664808; }
 .gr-kind em { font-style: normal; color: #2b5e1f; }
 .gr-step small { color: #6b4e26; }
 .gr-cov { width: 100%; border-collapse: collapse; font-size: 13px; }

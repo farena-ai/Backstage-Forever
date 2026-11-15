@@ -50,7 +50,7 @@
 /* Readiness checklist and quests to pick up first. */
 .atlas-ready { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 3px; font-size: 13px; }
 .atlas-ready li::before { content: "•"; display: inline-block; width: 16px; font-weight: 800; }
-.atlas-ready li.ok::before { content: "✓"; color: #3c9a2e; } .atlas-ready li.warn::before { content: "!"; color: #d9822a; } .atlas-ready li.na::before { color: #8a7a66; }
+.atlas-ready li.ok::before { content: "✓"; color: #3c9a2e; } .atlas-ready li.warn::before { content: "!"; color: #a56320; } .atlas-ready li.na::before { color: #8a7a66; }
 .atlas-pickup h4 { margin: 8px 0 4px; }
 .atlas-pickup ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .atlas-pickup li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; background: rgba(255,248,225,.5); }
@@ -58,7 +58,10 @@
 .atlas-pickup-actions { display: flex; gap: 4px; flex: none; }
 .atlas-card .atlas-pickup-actions button { all: unset; cursor: pointer; padding: 2px 9px; border-radius: 10px; font: 700 12px 'Source Sans 3', sans-serif; background: #3d220c; color: #f6dc9a; white-space: nowrap; }
 .atlas-card .atlas-pickup-actions button:hover, .atlas-card .atlas-pickup-actions button:focus-visible { background: #6a1a0e; outline: 2px solid #f6c445; }
-.atlas-pickup li > span:first-child { min-width: 0; }
+/* Cards are narrow: the quest name gets the full line, its buttons sit underneath on the right. */
+.atlas-pickup li { flex-wrap: wrap; row-gap: 3px; }
+.atlas-pickup li > span:first-child { min-width: 0; flex: 1 1 100%; }
+.atlas-pickup-actions { margin-left: auto; }
 
 /* Loot browser (0.30): bosses as sections, items as quality-framed tiles on dark velvet. */
 .atlas-toggles { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 4px; }
@@ -92,13 +95,13 @@
 .loot-boss.empty { opacity: .7; }
 .loot-community { margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(43,138,156,.6); }
 .loot-community-head { margin: 0 0 6px; font-size: 12px; color: #9fd6df; display: flex; align-items: center; gap: 6px; }
-.loot-community-badge { padding: 1px 6px; border-radius: 9px; background: #1f6f80; color: #e9fbff; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: 10px; }
+.loot-community-badge { padding: 1px 6px; border-radius: 9px; background: #1f6f80; color: #e9fbff; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: 11px; }
 .loot-tile.community { border-style: dashed; border-color: #2b8a9c; }
 .loot-provenance { display: block; font-size: 11px; color: #9fd6df; }
 .loot-boss header { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(184,134,46,.35); }
 .loot-boss h4 { margin: 0; flex: 1; font: 700 15px Cinzel, Georgia, serif; color: #f3dca0; }
 .loot-boss header small { color: #bfa878; font-size: 12px; }
-.loot-boss .atlas-skull { color: #d9442e; text-shadow: 0 0 6px rgba(220,60,30,.6); }
+.loot-boss .atlas-skull { color: #c33d29; text-shadow: 0 0 6px rgba(220,60,30,.6); }
 .loot-none { margin: 4px 0 0; font-style: italic; font-size: 13px; color: #bfa878; }
 .loot-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .loot-tile { position: relative; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 6px; background: linear-gradient(180deg, #2b1608, #160a03); border: 2px solid #8a7a66; box-shadow: inset 0 0 12px rgba(0,0,0,.55); transition: transform .12s ease, box-shadow .12s ease; }

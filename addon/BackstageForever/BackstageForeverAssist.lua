@@ -111,6 +111,16 @@ local function trackXP()
     end
     session.lastXP,session.lastMax=cur,max
 end
+-- The Compass's short pace line (0.54): nil until a few minutes of play give a real pace.
+function BackstageForeverPaceSummary()
+    local cur,max=xpNow()
+    local p=BackstageForeverPace(session,now(),cur,max)
+    if not p then return nil end
+    local rate=type(BreakUpLargeNumbers)=='function' and select(2,pcall(BreakUpLargeNumbers,p.perHour)) or p.perHour
+    local eta=p.toLevel and BackstageForeverDuration(p.toLevel)
+    local T=function(v) local ok,r=pcall(BackstageForeverTr or tostring,v);return ok and type(r)=='string' and r or v end
+    return T(('Pace: %s XP/hour'):format(tostring(rate)))..(eta and (' · '..T(('next level in about %s'):format(T(eta)))) or '')
+end
 function BackstageForeverPaceLine()
     local cur,max=xpNow()
     local p=BackstageForeverPace(session,now(),cur,max)
