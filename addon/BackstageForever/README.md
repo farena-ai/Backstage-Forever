@@ -55,6 +55,10 @@ Entering a new zone shows a painted banner (`BackstageForeverZoneBanner`, 560×7
 
 An owl crest on the edge of the minimap (`BackstageForeverAskButton`, our own painting in `Art/Buttons/ask.tga`; drag it around the edge, its place is saved per character) and `/bf ask` send a short "open" signal on the live strip; the desktop app then opens its panel over the game with the cursor in its question box, and the question and answers stay in that one window. The addon never receives the answer and has no question box of its own any more. `/bf ask QUESTION` (up to 200 characters, links become their names) still sends a question straight from chat. Nothing is sent until you click the owl or type the command; in combat it waits until combat ends (`/bf ask cancel` drops it). `/bf ask hide|show` hides or shows the button. The live link must be on (`/bf live on`).
 
+## Party sync (0.42)
+
+`BackstageForeverParty.lua` registers the addon-message prefix `BFParty` and talks to your `PARTY` only (never raids, guilds or whispers). When you join a party it asks (`R`) and sends your quest log as quest IDs with objective counts: `Q|seq|i/n|101:3/8,0/1;202!;303` (`!` = ready to hand in), at most 40 quests in up to four messages of 255 bytes or less, and again at most every 10 seconds when the log changes. Messages from others are put back together per sender and sequence; leaving the group forgets them. `/bf party` lists each member's quests next to yours (shared quests with both progress lines, and quests only they have); `/bf party way` sends `W|x|y|map|label` (your user waypoint, otherwise where you stand) and `/bf party go` passes the last one received to `/bf way`. `/bf party off` (saved in `BackstageForeverPartySettings`) stops sending and reading. Names, levels, positions and anything else stay out of it. Not yet checked with two real players.
+
 ## Quality of life helpers (0.41)
 
 `BackstageForeverQoL.lua` holds four small helpers, each off until you switch it on with `/bf qol NAME on` (saved per character in `BackstageForeverQoLSettings`; `/bf qol` lists them):

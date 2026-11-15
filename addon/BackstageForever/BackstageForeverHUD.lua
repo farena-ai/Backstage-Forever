@@ -398,6 +398,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverStatsCommand)=='function' then pcall(BackstageForeverStatsCommand)end
                 return
             end
+            if word=='party' then
+                if type(BackstageForeverPartyCommand)=='function' then pcall(BackstageForeverPartyCommand,message)end
+                return
+            end
             if word=='qol' then
                 if type(BackstageForeverQoLCommand)=='function' then pcall(BackstageForeverQoLCommand,message)end
                 return

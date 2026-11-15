@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.0 — party sync, 2026-11-14
+
+- **A13 / 3.6 party sync:** new addon file `BackstageForeverParty.lua` (managed file 28) on the addon-message prefix `BFParty`, `PARTY` channel only (not in raids). Quest IDs with objective counts (`Q|seq|i/n|id:have/need,...;id!`, 40 quests, up to 4 messages of 255 bytes or less, at most every 10 s and only when changed), a request (`R`) when joining, waypoints as `W|x|y|map|label`. Chunks are reassembled per sender and sequence and dropped when someone leaves. `/bf party [way|go|on|off]`; on by default, `BackstageForeverPartySettings`. Help → Commands, `/bf help`, the addon README and the ROADMAP are updated.
+
 ## 0.41.0 — quality of life helpers, 2026-11-14
 
 - **A11 QoL pack:** new addon file `BackstageForeverQoL.lua` (managed file 27) with four helpers, each off by default and saved per character in `BackstageForeverQoLSettings`: `coords` (map coordinates under the minimap, 5 updates a second), `loot` (on `LOOT_READY`, only when the game is auto-looting, `LootSlot` on every slot at once), `dismount` (`Dismount()` on `TAXIMAP_OPENED` or the "already mounted" taxi error, never in combat) and `questtext` (the game's `questFadingDisable` setting, restored when switched off). `/bf qol [NAME] [on|off]`. Help → Commands, the in-game `/bf help`, the addon README and the ROADMAP are updated.
