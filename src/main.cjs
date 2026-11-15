@@ -99,7 +99,10 @@ const links = {
   "claude-subscription": "https://claude.com/download",
   "xai-subscription": "https://grok.com/",
 };
+// 0.47 (4.4): read-only page views by name, so the companion's planning tools reuse exactly what the pages show.
+const views = Object.create(null);
 function handle(name, fn) {
+  views[name] = fn;
   ipcMain.handle("backstage:" + name, async (event, ...args) => {
     if (
       event.sender !== win?.webContents ||
@@ -648,6 +651,8 @@ app.whenReady().then(async () => {
     live: liveBridge,
     // Quick answers (no model): the same advice as Now. `leveling` is created just below.
     advise: (profileId) => leveling.advise(profileId),
+    // Planning tools (0.47, 4.4): the same views as Now, Zones, Sheet, Dungeons, All characters and this session.
+    planner: Object.fromEntries(["nextStep", "alts", "worldTracker", "characterSheet", "dungeonAtlas", "playSession"].map((n) => [n, () => views[n]?.()])),
     // Talent questions use WoW Forever's own trees from the player's game client (read locally, never bundled).
     talents: { trees: (className) => gameData.talents(className), build: () => gameData.build(), ready: () => gameData.cached("talents") },
     vendorPack: (()=>{try{return require('./core/vendor-facts.cjs').loadVendorPack();}catch{return null;}})(),

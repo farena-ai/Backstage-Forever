@@ -10,6 +10,7 @@ const pct = (v) => (Number.isFinite(v) ? (v * 100).toFixed(1) : "?");
 const QUEST = /\b(how (do|can|should|would) i( do| finish| complete| get| beat)?|how to (do|finish|complete)|help( me)? (with|on|for)|stuck (on|with)|what do i do (for|in|with|on)|where do i (go|find|get) .*(for|in) (the )?(quest )?)\b/;
 const NEXT = /\b(what (should|do|can) i do( next| now)?|what now|what next|where should i (level|go|quest)|next step|what to do next|where (do|should) i level)\b/;
 const TRAIN = /\b(what (can|do|should) i (learn|train)|new (spells|skills|abilities)|when do i train|class trainer|where (is|s) my trainer|go train|training)\b/;
+const TONIGHT = /\b(tonight|this evening|plan (my|a|the|this) (session|night|evening|evening s play)|what should i play|who should i play|which (character|alt|toon) (should i|to) play|plan my play)\b/;
 // Words that are question scaffolding, not part of a quest title.
 const FILLER = new Set("how do can should would i to finish complete get beat help me with on for stuck what in where go find the quest quests this that my a an do please".split(" "));
 
@@ -69,6 +70,26 @@ function nextAnswer(advice) {
   return { text: out.join("\n\n"), kind: "quick", topic: "next" };
 }
 
+// 0.47 (4.4): "what should I do tonight?" from the same plan the companion's plan_tonight tool returns.
+function tonightAnswer(plan) {
+  if (!plan || plan.status !== "ok" || !plan.character) return null;
+  const c = plan.character, steps = [];
+  const head = `**Tonight for ${c.name}** (level ${c.level}${c.levelPercent !== null ? `, ${c.levelPercent}% through` : ""}${c.restedPercent ? `, ${c.restedPercent}% of a level rested` : ""})`;
+  if (c.freeBagSlots !== null && c.freeBagSlots <= 3) steps.push(`Empty your bags first: only ${c.freeBagSlots} free slot${c.freeBagSlots === 1 ? "" : "s"} (Sell junk at any vendor).`);
+  if (plan.nextStep) steps.push(`${plan.nextStep.what}${plan.nextStep.detail ? `: ${plan.nextStep.detail}` : ""}${plan.nextStep.direction ? ` (${plan.nextStep.direction})` : ""}.`);
+  if (plan.zoneToClear) steps.push(`Then clear ${plan.zoneToClear.name}: ${plan.zoneToClear.left} quests left there at your level.`);
+  const d = plan.dungeonsForYou?.[0];
+  if (d) steps.push(`If you find a group: ${d.name} (levels ${d.levels}, ${d.difficulty === "right" ? "right for your level" : "easy for you"})${d.pickUpFirst?.length ? `; pick up ${d.pickUpFirst.slice(0, 2).join(" and ")} first` : ""}.`);
+  if (plan.gear?.upgradesInBags?.length) steps.push(`Put on the upgrade${plan.gear.upgradesInBags.length > 1 ? "s" : ""} you already carry: ${plan.gear.upgradesInBags.map((u) => u.item).filter(Boolean).join(", ")}.`);
+  else if (plan.gear?.emptySlots?.length) steps.push(`Fill your empty gear slots: ${plan.gear.emptySlots.join(", ")}.`);
+  if (!steps.length) return null;
+  const out = [head, lines("Do these in order:", steps)];
+  if (c.restedFull) out.push("Your rested XP is full: kills give double experience until it runs out, so tonight is a good night to play this character.");
+  if (plan.otherCharacters?.length) out.push(lines("Your other characters:", plan.otherCharacters.slice(0, 2).map((o) => `${o.name}: ${o.reasons.join("; ")}.`)));
+  out.push("From the Now, Zones, Sheet, Dungeons and All characters pages.");
+  return { text: out.join("\n\n"), kind: "quick", topic: "tonight" };
+}
+
 function trainAnswer(advice) {
   const t = advice?.training;
   if (!t) return null;
@@ -88,11 +109,12 @@ function quickAnswer(question, { tools = null, advise = null, live = null, talen
   try {
     // Talents first: resolved by talent-context.cjs from the game client's own talent trees.
     if (talent) { const a = talentQuickAnswer(talent); if (a) return a; }
+    if (TONIGHT.test(q) && tools) { const a = tonightAnswer(tools.lookup("plan_tonight", {})); if (a) return a; }
     if (TRAIN.test(q) && advise) { const a = trainAnswer(advise()); if (a) return a; }
     if (NEXT.test(q) && advise) { const a = nextAnswer(advise()); if (a) return a; }
     if (tools && (QUEST.test(q) || /["“”]/.test(question) || /\b(this|my|current|tracked) quest\b/.test(q))) { const a = questAnswer(question, { tools, live }); if (a) return a; }
   } catch { return null; }
   return null;
 }
-const QUICK_HELP = "Without an AI model I can still answer right away: “how do I do <quest name>?”, “what should I do next?”, “what do I train?”, “what does <talent> do?”, “what talents should I take?”, “how many talent points at level 20?”, “where is <NPC>?” and “how do I get to <place>?”. For anything else, turn on an AI model in Settings → Connections.";
-module.exports = { quickAnswer, questQuery, QUICK_HELP };
+const QUICK_HELP = "Without an AI model I can still answer right away: “how do I do <quest name>?”, “what should I do next?”, “what should I do tonight?”, “what do I train?”, “what does <talent> do?”, “what talents should I take?”, “how many talent points at level 20?”, “where is <NPC>?” and “how do I get to <place>?”. For anything else, turn on an AI model in Settings → Connections.";
+module.exports = { quickAnswer, questQuery, tonightAnswer, QUICK_HELP };

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.47.0 — plan tonight with the companion, 2026-11-14
+
+- **4.4 smarter companion:** six read-only planning tools (`src/core/companion-planner.cjs`), offered only when the character is shared: `plan_tonight` (next step with direction, level and rested XP, this session's pace, the zone to clear, dungeons that fit, gear problems, bag space and other characters worth playing), `get_zone_progress`, `get_gear`, `get_dungeons`, `get_characters` and `get_session`. They reuse the exact page views (main keeps every handler by name in `views`), and the tool instruction tells the model to call `plan_tonight` first for planning questions.
+- Quick answers (no model): "what should I do tonight?", "who should I play?" and similar get an ordered plan from `plan_tonight`.
+
 ## 0.46.0 — zones, replay and journey picture, 2026-11-14
 
 - **3.2 world tracker:** new Adventure → Zones tab (`worldTracker` IPC, `src/core/world-tracker.cjs`, `LevelingAdvisor.tracker`, `world-tracker.js/.css`). Every zone of the leveling pack for the character's faction (contested zones for both), grouped by continent and sorted by level, coloured by level band (1–10 … 50–60), with a progress ring of quests done out of the zone's quests for your side, quests in your log, a ◆ for zones visited (journal) and a ★ for zones with 90% of at least 5 quests done. Suggests the zone at your level with the most quests left. A tile opens that zone on the World Map.

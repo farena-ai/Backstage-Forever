@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.46: zones, replay and journey picture
+## 0.47: plan tonight with the companion
 
-Adventure → Zones shows every zone for your faction from 1 to 60 with how many of its quests you've done, and stars the ones you've finished. On the World Map, ▶ replays your path this session and 🖼 saves a hand-drawn-style picture of it. 0.45 added spoken steps. See the [0.46.0 release notes](docs/releases/0.46.0.md) and the [0.45.0 notes](docs/releases/0.45.0.md).
+Ask the companion "what should I do tonight?" and it answers with an ordered plan: your next step, the zone to clear, a dungeon for your level, gear to put on and which of your characters has rested XP waiting. It works even without an AI model. 0.46 added Zones and the journey replay. See the [0.47.0 release notes](docs/releases/0.47.0.md) and the [0.46.0 notes](docs/releases/0.46.0.md).
 
 ## 0.28: your journey
 
