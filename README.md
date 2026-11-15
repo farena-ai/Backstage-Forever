@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.42: party sync
+## 0.43: all characters at a glance
 
-Group up with friends who also run Backstage Forever and `/bf party` shows who needs what on each quest you share, plus quests only they have. `/bf party way` shares a waypoint. 0.41 added the `/bf qol` helpers. See the [0.42.0 release notes](docs/releases/0.42.0.md) and the [0.41.0 notes](docs/releases/0.41.0.md).
+Characters → All characters shows every character's level, experience, rested XP (still growing while you're logged out), gold, bag space and professions, and suggests who to play tonight. 0.42 added party sync. See the [0.43.0 release notes](docs/releases/0.43.0.md) and the [0.42.0 notes](docs/releases/0.42.0.md).
 
 ## 0.28: your journey
 

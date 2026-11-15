@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.43.0 — all characters at a glance, 2026-11-14
+
+- **3.7 alt dashboard:** new Characters → All characters tab (`alts` IPC, `src/core/alts.cjs`, `alts.js/.css`). One parchment card per character: class portrait, level, XP bar with rested overlay, gold, free bag slots, professions, zone and days since the last save; "Switch to" uses the shell's own character picker. Rested XP is grown from the saved amount: 5% of a level per 8 hours resting, a quarter of that elsewhere, capped at 150%; without the new flag it shows a range. "Tonight" picks up to three characters with plain reasons (full or high rested XP, one or two levels from 40 or 60, long breaks; nearly full bags are a warning).
+- The addon now saves whether you logged out resting (`progress.resting`, from `IsResting()`), validated as a boolean.
+
 ## 0.42.0 — party sync, 2026-11-14
 
 - **A13 / 3.6 party sync:** new addon file `BackstageForeverParty.lua` (managed file 28) on the addon-message prefix `BFParty`, `PARTY` channel only (not in raids). Quest IDs with objective counts (`Q|seq|i/n|id:have/need,...;id!`, 40 quests, up to 4 messages of 255 bytes or less, at most every 10 s and only when changed), a request (`R`) when joining, waypoints as `W|x|y|map|label`. Chunks are reassembled per sender and sequence and dropped when someone leaves. `/bf party [way|go|on|off]`; on by default, `BackstageForeverPartySettings`. Help → Commands, `/bf help`, the addon README and the ROADMAP are updated.

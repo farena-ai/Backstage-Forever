@@ -753,6 +753,11 @@ app.whenReady().then(async () => {
     return { id: p.id, name: p.name, className: p.className || null, level: p.level || null, played: p.journal?.played ?? null, hasJournal: Boolean(p.journal),
       splits: splits(p, others), badges: badgesFor(p), rested: rested(p), zones: (p.journal?.zones || []).length };
   });
+  // Characters → All characters (0.43, 3.7): every character at a glance and who to play tonight.
+  handle("alts", (...args) => {
+    if (args.length) throw Error("Invalid characters request.");
+    return require("./core/alts.cjs").altsView(store.state);
+  });
   // Ledger (0.35): bags, bank, mail, gold, prices, reputations and cooldowns of every character.
   // Read-only; names and qualities come from the player's install, then the reference pack.
   const ledgerFacts = (ids) => {

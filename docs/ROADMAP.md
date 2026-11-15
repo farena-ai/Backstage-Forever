@@ -201,7 +201,7 @@ Backstage Forever should look like a premium fantasy companion on every page. Al
 | 3.4 | **Always-on-top mini Now.** *(First part in 0.38: the always-on-top answer panel over the game for A15; the mini Now itself is still to do.)* A small window beside the game showing your next step and pace, like the radar. | S–M | App | Live help without alt-tabbing. |
 | 3.5 | **Spoken next steps.** Optional local voice: "Hand in Call of Water to Islen Waterseer, south-east." Uses the existing local voice runtime. | M | App | Hands-free and accessible. |
 | 3.6 | *(Done in 0.42 with A13.)* **Party sync.** Party members running the addon share which quest objectives they still need (addon messages). The app's Party page shows shared quests and who needs what. | L | Both | Grouping is easier when everyone sees the same plan. |
-| 3.7 | **Alt dashboard.** Every character's rested XP, level, professions, gold and bag space at a glance, with "who to play tonight" suggestions. | M | App | For players with several characters. |
+| 3.7 | *(Done in 0.43: Characters → All characters.)* **Alt dashboard.** Every character's rested XP, level, professions, gold and bag space at a glance, with "who to play tonight" suggestions. | M | App | For players with several characters. |
 
 ## Tier 4 — Exhaustive / long-term programs
 
@@ -279,7 +279,8 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 - **0.40 (shipped):** A10 enemy player alerts: "Alliance level 32 Rogue nearby" from your target, mouseover and nameplates, a `/bf enemy` history, never in battlegrounds.
 - **0.41 (shipped):** A11 quality of life pack: `/bf qol coords|loot|dismount|questtext`, each off until switched on.
 - **0.42 (shipped):** A13/3.6 party sync: quest progress swapped with party members who run the addon, `/bf party` who needs what, shared waypoints.
-- **0.43+:** 3.7 alt dashboard, 3.4 mini Now, 3.2 world tracker and 3.3 replay, 3.5 spoken steps, G9–G11 (samples first), then the 4.1 full guided route and the G12 art review.
+- **0.43 (shipped):** 3.7 alt dashboard: Characters → All characters with level, XP, rested XP grown since logout, gold, bags and professions for everyone, and who to play tonight.
+- **0.44+:** 3.4 mini Now, 3.2 world tracker and 3.3 replay, 3.5 spoken steps, G9–G11 (samples first), then the 4.1 full guided route and the G12 art review.
 - **1.0:** after Frank's hands-on acceptance.
 
 Keep this file and Help → Commands updated with each release.
