@@ -26,6 +26,10 @@ function candidateRoots({
         roots.push(
           p.join(String.fromCharCode(code) + ":\\", suffix, "_forever_"),
         );
+  // 4.6 (0.55): macOS installs Battle.net games under /Applications (or the user's own Applications).
+  if (platform === "darwin")
+    for (const base of ["/Applications", env.HOME && path.posix.join(env.HOME, "Applications")].filter(Boolean))
+      roots.push(path.posix.join(base, "World of Warcraft", "_forever_"));
   return [...new Set(roots)];
 }
 async function registryRoots() {

@@ -22,6 +22,7 @@
     "test:packaged": "node scripts/packaged-smoke.cjs",
     "pack": "electron-builder --win --dir",
     "dist": "electron-builder --win nsis --x64 --publish never",
+    "dist:mac": "electron-builder --mac zip --arm64 --x64 --publish never",
     "test:command-center": "node scripts/command-center-smoke.cjs",
     "test:knowledge": "node scripts/knowledge-smoke.cjs",
     "build:addon-reference": "node scripts/build-addon-reference.cjs",
@@ -121,6 +122,13 @@
       "target": "nsis",
       "icon": "assets/icon.ico",
       "signExecutable": false
+    },
+    "mac": {
+      "target": "zip",
+      "icon": "assets/icon.png",
+      "category": "public.app-category.games",
+      "identity": null,
+      "artifactName": "Backstage-Forever-${version}-macOS-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
