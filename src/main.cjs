@@ -686,6 +686,7 @@ app.whenReady().then(async () => {
     getLive: () => worldMap.liveFrame(worldMap.profile()),
   });
   handle("levelingAdvice", () => leveling.advise());
+  handle("worldTracker", (...args) => { if (args.length) throw Error("Invalid world tracker request."); return leveling.tracker(); });
   // "You are here": the zone the character is in, for their level and faction.
   handle("zoneBriefing", () => {
     const profile = worldMap.profile();
@@ -880,6 +881,16 @@ app.whenReady().then(async () => {
   handle("ask", (...args) => companionService.legacy(...args));
   handle("askCompanion", (...args) => companionService.ask(...args));
   handle("clearConversation", (...args) => companionService.clear(...args));
+  // Share card (0.46, 3.3): a PNG the World Map drew of your own path, saved where you choose.
+  handle("saveSharePicture", async (...args) => {
+    const bytes = args[0];
+    if (args.length !== 1 || !(bytes instanceof Uint8Array) || bytes.length < 8 || bytes.length > 8 * 1024 * 1024) throw Error("Invalid picture.");
+    if (![0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((b, i) => bytes[i] === b)) throw Error("Invalid picture.");
+    const result = await dialog.showSaveDialog(win, { title: "Save a picture of your journey", defaultPath: "Backstage-Forever-journey.png", filters: [{ name: "PNG picture", extensions: ["png"] }] });
+    if (result.canceled || !result.filePath) return null;
+    await require("node:fs/promises").writeFile(result.filePath, bytes);
+    return true;
+  });
   handle("exportData", async () => {
     const result = await dialog.showSaveDialog(win, {
       title: "Export profiles and plans (keys and memory excluded)",

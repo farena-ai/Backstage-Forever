@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.45: spoken steps
+## 0.46: zones, replay and journey picture
 
-Now → Speak steps reads your next step aloud whenever it changes, with your computer's own Windows voice: "Hand in Call of Water to Islen Waterseer, south-east." 0.44 added Mini Now. See the [0.45.0 release notes](docs/releases/0.45.0.md) and the [0.44.0 notes](docs/releases/0.44.0.md).
+Adventure → Zones shows every zone for your faction from 1 to 60 with how many of its quests you've done, and stars the ones you've finished. On the World Map, ▶ replays your path this session and 🖼 saves a hand-drawn-style picture of it. 0.45 added spoken steps. See the [0.46.0 release notes](docs/releases/0.46.0.md) and the [0.45.0 notes](docs/releases/0.45.0.md).
 
 ## 0.28: your journey
 

@@ -85,6 +85,12 @@ class LevelingAdvisor {
       (!q.minLevel || q.minLevel <= level) && q.level >= level - WINDOW_BELOW && q.level <= level + WINDOW_ABOVE &&
       (!faction || !q.sides?.length || q.sides.includes(faction)));
   }
+  // World tracker (0.46, 3.2): every zone for the character's faction with quests done per zone.
+  tracker(profileId) {
+    const p = this.profile(profileId);
+    const names = Object.fromEntries(this.pack.zones.map((z) => [z.mapId, mapName(z.mapId)]));
+    return require("./world-tracker.cjs").worldTracker({ zones: this.pack.zones, quests: this.quests(), profile: p, names, continentOf: continent });
+  }
   observedBand(mapId) {
     const lv = (this.quests().get(mapId) || []).filter(({ q }) => q.observedInPlay).map(({ q }) => q.level).sort((a, b) => a - b);
     if (lv.length < 8) return null;

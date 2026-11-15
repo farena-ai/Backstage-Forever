@@ -48,7 +48,7 @@ class PlaySession {
       }
       const last = trail[trail.length - 1];
       if (!last || Math.hypot(last[0] - pos.x, last[1] - pos.y) >= MOVE) {
-        trail.push([Math.round(pos.x * 1e4) / 1e4, Math.round(pos.y * 1e4) / 1e4]);
+        trail.push([Math.round(pos.x * 1e4) / 1e4, Math.round(pos.y * 1e4) / 1e4, t]);
         if (trail.length > MAX_POINTS) trail.splice(0, trail.length - MAX_POINTS);
       }
     }

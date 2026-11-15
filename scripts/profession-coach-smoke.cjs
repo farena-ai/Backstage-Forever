@@ -592,7 +592,8 @@ function shortPath(target) {
         .getByRole("navigation", { name: "Adventure navigation", exact: true })
         .getByRole("button")
         .count(),
-      3,
+      // One button per Adventure tab in the shared route list (Zones 0.46, Guided route 0.50…).
+      Object.values(require("./player-navigation.cjs").routes).filter(([section]) => section === "Adventure").length,
     );
     const originalWorkshops = characters.map((c) =>
       structuredClone(c.readiness.workshop),
