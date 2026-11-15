@@ -59,6 +59,10 @@ An owl crest on the edge of the minimap (`BackstageForeverAskButton`, our own pa
 
 `BackstageForeverParty.lua` registers the addon-message prefix `BFParty` and talks to your `PARTY` only (never raids, guilds or whispers). When you join a party it asks (`R`) and sends your quest log as quest IDs with objective counts: `Q|seq|i/n|101:3/8,0/1;202!;303` (`!` = ready to hand in), at most 40 quests in up to four messages of 255 bytes or less, and again at most every 10 seconds when the log changes. Messages from others are put back together per sender and sequence; leaving the group forgets them. `/bf party` lists each member's quests next to yours (shared quests with both progress lines, and quests only they have); `/bf party way` sends `W|x|y|map|label` (your user waypoint, otherwise where you stand) and `/bf party go` passes the last one received to `/bf way`. `/bf party off` (saved in `BackstageForeverPartySettings`) stops sending and reading. Names, levels, positions and anything else stay out of it. Not yet checked with two real players.
 
+## Painted frames (0.49)
+
+The Adventure Compass and the BF Route step frame are drawn from our own painting in `Art/Frames` (made locally with ComfyUI): the Compass is a nine-piece leather-and-brass frame (`compass.tga`, a 512×512 atlas with 64-pixel corners, shown with 40-pixel corners and a 14-pixel inner edge) with a compass crest on top (`compass-crest.tga`), and the step frame is a parchment scroll between two rods (`step.tga`, 256×128: rod, parchment, rod) with the text in dark ink. `BackstageForeverPaintNineSlice` and `BackstageForeverPaintScroll` in `BackstageForeverHUD.lua` guard every call, so a missing texture leaves a frame plain instead of breaking it. A new art folder is only seen after quitting and restarting WoW.
+
 ## Quality of life helpers (0.41)
 
 `BackstageForeverQoL.lua` holds four small helpers, each off until you switch it on with `/bf qol NAME on` (saved per character in `BackstageForeverQoLSettings`; `/bf qol` lists them):

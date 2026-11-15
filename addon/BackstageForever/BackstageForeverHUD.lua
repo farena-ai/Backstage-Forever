@@ -253,6 +253,40 @@ BackstageForeverHUDCaptureStatus=function(state)
         or state=='unavailable' and 'Snapshot unavailable. Try again outside combat.' or nil
     pcall(update)
 end
+-- G9 (0.49): painted frames for the Compass and the step frame, cut from our own painting
+-- (Art/Frames, made locally with ComfyUI). Every call is guarded: a missing method or texture
+-- leaves the frame plain rather than breaking it.
+local FRAME_ART='Interface\\AddOns\\BackstageForever\\Art\\Frames\\'
+local function call(o,k,...) if o and type(o[k])=='function' then local ok,v=pcall(o[k],o,...);if ok then return v end end end
+local function piece(f,file,size,layer,sub,l,r,t,b)
+    local x=call(f,'CreateTexture',nil,layer,nil,sub)
+    if not x then return nil end
+    call(x,'SetTexture',FRAME_ART..file);call(x,'SetTexCoord',l/size[1],r/size[1],t/size[2],b/size[2])
+    return x
+end
+-- Nine pieces from a 512x512 atlas: 64px corners, 384px edges and centre. corner/edge are on-screen sizes.
+function BackstageForeverPaintNineSlice(f,file,corner,edge)
+    local A={512,512}
+    local c=piece(f,file,A,'BACKGROUND',-1,64,448,64,448)
+    call(c,'SetPoint','TOPLEFT',f,'TOPLEFT',edge,-edge);call(c,'SetPoint','BOTTOMRIGHT',f,'BOTTOMRIGHT',-edge,edge)
+    local t=piece(f,file,A,'BORDER',0,64,448,0,64);call(t,'SetPoint','TOPLEFT',f,'TOPLEFT',corner,0);call(t,'SetPoint','TOPRIGHT',f,'TOPRIGHT',-corner,0);call(t,'SetHeight',corner)
+    local b=piece(f,file,A,'BORDER',0,64,448,448,512);call(b,'SetPoint','BOTTOMLEFT',f,'BOTTOMLEFT',corner,0);call(b,'SetPoint','BOTTOMRIGHT',f,'BOTTOMRIGHT',-corner,0);call(b,'SetHeight',corner)
+    local l=piece(f,file,A,'BORDER',0,0,64,64,448);call(l,'SetPoint','TOPLEFT',f,'TOPLEFT',0,-corner);call(l,'SetPoint','BOTTOMLEFT',f,'BOTTOMLEFT',0,corner);call(l,'SetWidth',corner)
+    local r=piece(f,file,A,'BORDER',0,448,512,64,448);call(r,'SetPoint','TOPRIGHT',f,'TOPRIGHT',0,-corner);call(r,'SetPoint','BOTTOMRIGHT',f,'BOTTOMRIGHT',0,corner);call(r,'SetWidth',corner)
+    for _,k in ipairs({{'TOPLEFT',0,64,0,64},{'TOPRIGHT',448,512,0,64},{'BOTTOMLEFT',0,64,448,512},{'BOTTOMRIGHT',448,512,448,512}}) do
+        local x=piece(f,file,A,'BORDER',1,k[2],k[3],k[4],k[5]);call(x,'SetPoint',k[1],f,k[1],0,0);call(x,'SetSize',corner,corner)
+    end
+    return c
+end
+-- Three pieces from a 256x128 atlas (rod | parchment | rod) for the step scroll.
+function BackstageForeverPaintScroll(f,file,cap)
+    local A={256,128}
+    local m=piece(f,file,A,'BACKGROUND',0,64,192,0,128);call(m,'SetPoint','TOPLEFT',f,'TOPLEFT',cap-6,-4);call(m,'SetPoint','BOTTOMRIGHT',f,'BOTTOMRIGHT',-cap+6,4)
+    local l=piece(f,file,A,'BORDER',0,0,64,0,128);call(l,'SetPoint','TOPLEFT',f,'TOPLEFT',0,0);call(l,'SetPoint','BOTTOMLEFT',f,'BOTTOMLEFT',0,0);call(l,'SetWidth',cap)
+    local r=piece(f,file,A,'BORDER',0,192,256,0,128);call(r,'SetPoint','TOPRIGHT',f,'TOPRIGHT',0,0);call(r,'SetPoint','BOTTOMRIGHT',f,'BOTTOMRIGHT',0,0);call(r,'SetWidth',cap)
+    return m
+end
+BackstageForeverFrameArt=FRAME_ART
 local function initialize()
     if combat() or panel or type(CreateFrame)~='function' then return end
     if not settings then loadSettings() end
@@ -261,8 +295,10 @@ local function initialize()
     if settings.point then panel:SetPoint(settings.point,UIParent,settings.relativePoint,settings.x,settings.y)
     else panel:SetPoint('CENTER',UIParent,'CENTER',260,60) end
     panel:SetMovable(true);panel:EnableMouse(true);panel:RegisterForDrag('LeftButton');panel:SetClampedToScreen(true)
-    panel:SetBackdrop({bgFile='Interface/DialogFrame/UI-DialogBox-Background',edgeFile='Interface/DialogFrame/UI-DialogBox-Border',tile=true,tileSize=32,edgeSize=32,insets={left=8,right=8,top=8,bottom=8}})
-    panel:SetBackdropColor(1,1,1,.96)
+    -- G9 (0.49): our painted leather-and-brass frame and its compass crest instead of the stock dialog border.
+    BackstageForeverPaintNineSlice(panel,'compass',40,14)
+    local crest=piece(panel,'compass-crest',{128,64},'ARTWORK',2,0,128,0,64)
+    call(crest,'SetSize',96,48);call(crest,'SetPoint','BOTTOM',panel,'TOP',0,-16)
     local function startDrag() if not combat() then panel:StartMoving() end end
     local function stopDrag()
         panel:StopMovingOrSizing()

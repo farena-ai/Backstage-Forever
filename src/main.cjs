@@ -692,6 +692,8 @@ app.whenReady().then(async () => {
     getLive: () => worldMap.liveFrame(worldMap.profile()),
   });
   handle("levelingAdvice", () => leveling.advise());
+  // G10 (0.49): the first-launch tour is for new players only (no characters yet), never in automated tests.
+  handle("onboarding", (...args) => { if (args.length) throw Error("Invalid onboarding request."); return { show: process.env.BF_TEST_INACTIVE !== "1" && !(!app.isPackaged && process.env.BF_USER_DATA && process.env.BF_ONBOARDING !== "1") && !(store.state.profiles || []).length }; });
   handle("worldTracker", (...args) => { if (args.length) throw Error("Invalid world tracker request."); return leveling.tracker(); });
   // "You are here": the zone the character is in, for their level and faction.
   handle("zoneBriefing", () => {
