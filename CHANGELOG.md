@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.41.0 — quality of life helpers, 2026-11-14
+
+- **A11 QoL pack:** new addon file `BackstageForeverQoL.lua` (managed file 27) with four helpers, each off by default and saved per character in `BackstageForeverQoLSettings`: `coords` (map coordinates under the minimap, 5 updates a second), `loot` (on `LOOT_READY`, only when the game is auto-looting, `LootSlot` on every slot at once), `dismount` (`Dismount()` on `TAXIMAP_OPENED` or the "already mounted" taxi error, never in combat) and `questtext` (the game's `questFadingDisable` setting, restored when switched off). `/bf qol [NAME] [on|off]`. Help → Commands, the in-game `/bf help`, the addon README and the ROADMAP are updated.
+
 ## 0.40.0 — enemy player alerts, 2026-11-14
 
 - **A10 enemy player alerts:** new addon file `BackstageForeverEnemy.lua` (managed file 26). On `PLAYER_TARGET_CHANGED`, `UPDATE_MOUSEOVER_UNIT` and `NAME_PLATE_UNIT_ADDED` it reads the unit; an enemy player who can attack you (`UnitIsPlayer`, `UnitCanAttack(unit, "player")`, not your faction, name not secret) gives a five-second banner at the top of the screen ("Alliance level 32 Rogue nearby", level -1 reads "??") and a chat line with name and zone. One alert per player until they have been out of sight 5 minutes, alerts at least 4 s apart, nothing in battlegrounds or arenas. History of 20 per character in `BackstageForeverEnemySettings`; `/bf enemy [on|off|sound on|sound off|clear]`. Read-only: no targeting, marking, chat or addon messages.

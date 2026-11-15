@@ -55,6 +55,17 @@ Entering a new zone shows a painted banner (`BackstageForeverZoneBanner`, 560×7
 
 An owl crest on the edge of the minimap (`BackstageForeverAskButton`, our own painting in `Art/Buttons/ask.tga`; drag it around the edge, its place is saved per character) and `/bf ask` send a short "open" signal on the live strip; the desktop app then opens its panel over the game with the cursor in its question box, and the question and answers stay in that one window. The addon never receives the answer and has no question box of its own any more. `/bf ask QUESTION` (up to 200 characters, links become their names) still sends a question straight from chat. Nothing is sent until you click the owl or type the command; in combat it waits until combat ends (`/bf ask cancel` drops it). `/bf ask hide|show` hides or shows the button. The live link must be on (`/bf live on`).
 
+## Quality of life helpers (0.41)
+
+`BackstageForeverQoL.lua` holds four small helpers, each off until you switch it on with `/bf qol NAME on` (saved per character in `BackstageForeverQoLSettings`; `/bf qol` lists them):
+
+- **coords:** your map coordinates (`C_Map.GetPlayerMapPosition`) under the minimap, five times a second; blank where the game gives no position.
+- **loot:** faster auto-loot. On `LOOT_READY`, only when the game itself is auto-looting (the event's flag, or the `autoLootDefault` setting flipped by your auto-loot key), every slot is taken at once with `LootSlot`. Bind-on-pickup confirmations are left to you.
+- **dismount:** `Dismount()` when a flight master's map opens, or when the game says you can't fly while mounted. Never in combat. Not yet checked in the real client.
+- **questtext:** sets the game's own `questFadingDisable` setting so quest text shows at once, and puts your earlier setting back when you switch it off. If the client has no such setting, it says so.
+
+It never accepts, completes or chooses quests, picks flight paths or confirms loot, and it never replaces Blizzard functions.
+
 ## Enemy player alerts (0.40)
 
 `BackstageForeverEnemy.lua` watches your target, the unit under your mouse and new nameplates. When one is an enemy player who can attack you right now (`UnitIsPlayer`, `UnitCanAttack(unit, 'player')`, a different faction), it shows "Alliance level 32 Rogue nearby" (or Horde) for five seconds at the top of the screen and puts the name and zone in chat. The same player alerts again only after five minutes out of sight, alerts are at least four seconds apart, and battlegrounds and arenas are left alone. The last 20 sightings (name, faction, level, class, zone, when, how often) are kept per character in `BackstageForeverEnemySettings`. `/bf enemy` lists them; `/bf enemy on|off`, `/bf enemy sound on|off` (a warning sound, off by default) and `/bf enemy clear`. It only reads public unit info: it never targets, marks, reports or tells anyone.

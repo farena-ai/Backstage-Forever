@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.40: enemy player alerts
+## 0.41: quality of life helpers
 
-On contested ground the addon now tells you when an enemy player who can attack you shows up: "Alliance level 32 Rogue nearby" (or Horde) at the top of the screen, with their name and zone in chat, and `/bf enemy` lists who you saw. 0.39.1 put the question and answer in one window. See the [0.40.0 release notes](docs/releases/0.40.0.md) and the [0.39.1 notes](docs/releases/0.39.1.md).
+Four small helpers you can switch on with `/bf qol`: coordinates under the minimap, faster auto-loot, getting off your mount at flight masters and instant quest text. 0.40 added enemy player alerts. See the [0.41.0 release notes](docs/releases/0.41.0.md) and the [0.40.0 notes](docs/releases/0.40.0.md).
 
 ## 0.28: your journey
 
