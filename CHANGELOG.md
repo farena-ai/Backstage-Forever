@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.44.0 — mini Now, 2026-11-14
+
+- **3.4 mini Now:** Now → Mini Now opens a 320×210 frameless always-on-top window (`mini-now-window.cjs`, `mini-now-preload.cjs`, `mini-now.html/.js/.css`; own IPC `miniNow:state|close`, accepted only from its own page; shown inactive so it never takes the keyboard). It shows one next step from the leveling advice (`src/core/next-step.cjs`: hand-in first, then the nearest objective, a quest to pick up, then a zone; dead first of all) with compass words from where you stand, the XP and rested bar and this session's pace. Refreshes at most every 2 s from live frames and every 5 s otherwise.
+- `nextStep` also writes each step as a spoken sentence, ready for 3.5 spoken steps.
+
 ## 0.43.0 — all characters at a glance, 2026-11-14
 
 - **3.7 alt dashboard:** new Characters → All characters tab (`alts` IPC, `src/core/alts.cjs`, `alts.js/.css`). One parchment card per character: class portrait, level, XP bar with rested overlay, gold, free bag slots, professions, zone and days since the last save; "Switch to" uses the shell's own character picker. Rested XP is grown from the saved amount: 5% of a level per 8 hours resting, a quarter of that elsewhere, capped at 150%; without the new flag it shows a range. "Tonight" picks up to three characters with plain reasons (full or high rested XP, one or two levels from 40 or 60, long breaks; nearly full bags are a warning).

@@ -53,6 +53,7 @@ const { releaseChannel } = require("../package.json");
 const { LiveBridge } = require("./core/live-bridge.cjs");
 let liveBridge = null;
 let radar = null;
+let miniNow = null;
 let closeAskPanel = null, dropAskPanelWindow = null;
 let wishlist = null;
 let community = null, collectDiagnostics = null;
@@ -821,6 +822,9 @@ app.whenReady().then(async () => {
   radar = require("./core/radar-window.cjs").createRadar({ BrowserWindow, ipcMain, worldMap, live: liveBridge, rendererDir: path.join(__dirname, "renderer"), mapArt });
   handle("openRadar", () => radar.open());
   handle("setRadarTarget", (pin) => radar.setTarget(pin === undefined ? null : pin));
+  // Mini Now (0.44, 3.4): next step, XP and pace in a small always-on-top window beside the game.
+  miniNow = require("./core/mini-now-window.cjs").createMiniNow({ BrowserWindow, ipcMain, advise: () => leveling.advise(), session: () => playSession.summary(), live: liveBridge, rendererDir: path.join(__dirname, "renderer") });
+  handle("openMiniNow", () => miniNow.open());
   const { buildAtlas, loadEncounters } = require("./core/dungeon-atlas.cjs");
   const encounters = loadEncounters();
   // Loot browser, wish list and item hover cards (boss loot pack + the player's own game data).
@@ -1002,6 +1006,7 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", (event) => {
   radar?.close();
+  miniNow?.close();
   closeAskPanel?.();
   community?.stop();
   liveBridge?.stop();
