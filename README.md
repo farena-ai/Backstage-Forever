@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.51: route review
+## 0.52: accessibility
 
-The guided routes can now be reviewed by hand: on Adventure → Guided route, go through any race's route and keep, leave out or move each step, then export the review so the next release builds it in. 0.50 added the guided route itself (`/bf route guide` in game). See the [0.51.0 release notes](docs/releases/0.51.0.md) and the [0.50.0 notes](docs/releases/0.50.0.md).
+Backstage Forever works better with a screen reader and a keyboard: every control is named, the focus always shows, the World Map moves with the arrow keys, item quality is written out, animations respect Windows' "show less motion", and high-contrast mode works. 0.51 added the route review. See the [0.52.0 release notes](docs/releases/0.52.0.md) and the [0.51.0 notes](docs/releases/0.51.0.md).
 
 ## 0.28: your journey
 

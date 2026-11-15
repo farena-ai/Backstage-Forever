@@ -17,7 +17,7 @@
 .wt-fit-later { opacity: .78; }
 .wt-words { display: flex; flex-direction: column; min-width: 0; font-size: 12px; }
 .wt-words strong { font: 700 14px Cinzel, Georgia, serif; color: #3d220c; }
-.wt-words em { font-style: normal; font-weight: 700; color: #8a6410; }
+.wt-words em { font-style: normal; font-weight: 700; color: #664808; }
 .wt-ring { flex: 0 0 auto; }
 .wt-ring-bg { fill: rgba(43,27,10,.12); stroke: rgba(43,27,10,.2); stroke-width: 6; }
 .wt-ring-fg { fill: none; stroke: var(--band); stroke-width: 6; stroke-linecap: round; }

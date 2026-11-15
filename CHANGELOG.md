@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.52.0 — accessibility, 2026-11-15
+
+- **4.3 part 1, accessibility:** a static audit of every renderer page and window (`tests/accessibility.test.cjs`): images have alt text, buttons have names, fields have labels, windows have a language, a title and live regions where answers and steps change (Mini Now's step is now announced). A global `:focus-visible` ring that pages can't turn off, `prefers-reduced-motion` stops animations everywhere, and `forced-colors` (Windows high-contrast) keeps buttons, cards and bars outlined. The World Map canvas works from the keyboard (arrows pan, + and - zoom, 0 resets) and describes that to screen readers. Item cards name the quality in words ("Uncommon · One-Hand Sword"), not only by colour. Text colours on the newer pages and the in-game step scroll darkened to meet WCAG AA (4.5:1); the test checks the main pairs.
+
 ## 0.51.0 — route review, 2026-11-15
 
 - **4.1 part 2, the hand review:** Adventure → Guided route → Start reviewing. Pick any race and page through its whole route (40 steps a page); per step ✓ keep, ✗ leave out, ↑ ↓ move, ↺ undo. Edits are saved on this computer in `route-review.json` (cleared by Delete all local data) and merged over the bundled `data/forever-route/reviews.json` straight away in the app; **Export review** writes the merged file (without the local undo lists) for the next release, whose build puts it into `BackstageForeverGuideData.lua`.

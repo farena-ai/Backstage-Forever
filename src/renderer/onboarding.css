@@ -13,13 +13,13 @@
 .ob-crests { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 20px; background: radial-gradient(ellipse at center, #3a2410, #140c05); }
 .ob-crests img { width: 46%; max-width: 200px; filter: drop-shadow(0 6px 14px rgba(0,0,0,.7)); }
 .ob-card-words { display: flex; flex-direction: column; gap: 10px; padding: 28px 26px; color: #2b1b0a; }
-.ob-eyebrow { font: 700 12px Cinzel, Georgia, serif; letter-spacing: .14em; text-transform: uppercase; color: #8a6410; }
+.ob-eyebrow { font: 700 12px Cinzel, Georgia, serif; letter-spacing: .14em; text-transform: uppercase; color: #664808; }
 .ob-card-words h2 { margin: 0; font: 700 24px Cinzel, Georgia, serif; color: #3d220c; }
 .ob-card-words p { margin: 0; line-height: 1.5; }
 .ob-nav { margin-top: auto; display: flex; align-items: center; gap: 10px; }
 .ob-dots { display: flex; gap: 6px; margin-right: auto; }
 .ob-dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(61,34,12,.3); }
-.ob-dots i.on { background: #8a6410; }
+.ob-dots i.on { background: #664808; }
 .ob-primary { padding: 9px 20px; border-radius: 6px; border: 1px solid #c8a24f; background: linear-gradient(180deg, #5a3412, #3d220c); color: #f4cf72; font: 700 14px Cinzel, Georgia, serif; cursor: pointer; }
 .ob-primary:hover, .ob-primary:focus-visible { background: linear-gradient(180deg, #74431a, #4e2c10); outline: 2px solid #f4cf72; outline-offset: 2px; }
 .ob-ghost, .ob-skip { padding: 8px 14px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #5a3e1c; font: 600 13px Georgia, serif; cursor: pointer; }

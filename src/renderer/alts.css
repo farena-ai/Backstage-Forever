@@ -28,13 +28,13 @@
 .alt-line { margin: 0; font-size: 13px; }
 .alt-line small { color: #6b4e26; }
 .alt-prof { color: #4a3216; }
-.alt-muted { color: #7a6040; font-style: italic; }
+.alt-muted { color: #5e4a30; font-style: italic; }
 .alt-facts { display: flex; gap: 16px; margin: 0; }
 .alt-facts div { display: flex; flex-direction: column; }
 .alt-facts dt { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .06em; color: #6b4e26; }
 .alt-facts dd { margin: 0; font-size: 13px; }
-.alt-gold { color: #8a6410; font-weight: 700; } .alt-silver { color: #5d6670; font-weight: 700; } .alt-copper { color: #8a4a20; font-weight: 700; }
+.alt-gold { color: #664808; font-weight: 700; } .alt-silver { color: #5d6670; font-weight: 700; } .alt-copper { color: #8a4a20; font-weight: 700; }
 .alt-play { align-self: flex-start; padding: 6px 12px; border-radius: 5px; border: 1px solid #a5823e; background: #3d220c; color: #f4cf72; font: 700 12px Cinzel, Georgia, serif; cursor: pointer; }
 .alt-play:hover, .alt-play:focus-visible { background: #5a3412; }
-.alt-now { margin: 0; font: 700 12px Cinzel, Georgia, serif; color: #8a6410; }
+.alt-now { margin: 0; font: 700 12px Cinzel, Georgia, serif; color: #664808; }
 .alt-note { margin: 0; font-size: 12px; color: #c9b48a; }

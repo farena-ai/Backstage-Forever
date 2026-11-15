@@ -182,10 +182,10 @@ local function paint()
     else
         method(lines.title,'SetText',('BF Route · step %d of %d'):format(index,#steps))
     end
-    local where=s.x and (' |cff7a5a30(%.1f, %.1f%s)|r'):format(s.x*100,s.y*100,(s.mapId and s.mapId~=mapNow and BackstageForeverFindMaps and BackstageForeverFindMaps[s.mapId]) and (' in '..BackstageForeverFindMaps[s.mapId]) or '') or ''
+    local where=s.x and (' |cff6a4a20(%.1f, %.1f%s)|r'):format(s.x*100,s.y*100,(s.mapId and s.mapId~=mapNow and BackstageForeverFindMaps and BackstageForeverFindMaps[s.mapId]) and (' in '..BackstageForeverFindMaps[s.mapId]) or '') or ''
     method(lines.body,'SetText',s.text..where)
     local n=steps[index+1]
-    local nextLine=n and ('|cff7a5a30Then:|r '..n.text) or (guide and '|cff7a5a30Last guided step for now.|r' or '|cff7a5a30Last step here.|r')
+    local nextLine=n and ('|cff6a4a20Then:|r '..n.text) or (guide and '|cff6a4a20Last guided step for now.|r' or '|cff6a4a20Last step here.|r')
     method(lines.next,'SetText',(guide and index==1 and guide.note) and ('|cff8a2a10'..guide.note..'|r') or nextLine)
     -- No waypoint here: paint also runs on its own (login, zone and quest changes), and the game
     -- forbids addons from setting waypoints outside a player's click or command.
