@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.54: The finished look
+## 0.55: Mac
 
-Every page went through an art review in English and German, and the Adventure Compass in game now shows how you're doing at a glance: your XP, your pace, quests ready to hand in and your next step. 0.53 brought German. See the [0.54.0 release notes](docs/releases/0.54.0.md) and the [0.53.0 notes](docs/releases/0.53.0.md).
+Backstage Forever now comes for the Mac too (Apple Silicon and Intel), without the live link. 0.54 reviewed every page and made the in-game Adventure Compass a summary at a glance. See the [0.55.0 release notes](docs/releases/0.55.0.md) and the [0.54.0 notes](docs/releases/0.54.0.md).
 
 ## 0.28: your journey
 

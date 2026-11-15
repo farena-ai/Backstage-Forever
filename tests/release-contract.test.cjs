@@ -47,4 +47,5 @@ test("a hung check fails in minutes, not after GitHub's six-hour default", () =>
     assert.ok(steps.length > 20, name);
     for (const s of steps) assert.match(s, /\n        timeout-minutes: 10$/, `${name}: ${s.split("\n")[0].trim()}`);
   }
+  assert.match(read(".github/workflows/release.yml").replace(/\r\n/g, "\n"), /runs-on: macos-14\n    timeout-minutes: 40\n/);
 });

@@ -164,6 +164,7 @@ jobs:
     needs: release
     if: github.repository == 'farena-ai/Backstage-Forever'
     runs-on: macos-14
+    timeout-minutes: 40
     permissions:
       contents: write
     steps:

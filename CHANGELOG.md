@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.55.0 — Mac, 2026-11-15
+
+- **4.6, macOS:** `npm run dist:mac` (electron-builder zip, arm64 and x64, unsigned: `identity: null`). The release workflow's `mac` job (macos-14, 40-minute ceiling) runs after the Windows job, packages the same tested commit and adds `Backstage-Forever-0.55.0-macOS-arm64.zip` and `-x64.zip` plus their lines in `SHA256SUMS.txt` to the release.
+- Game discovery looks in `/Applications` and `~/Applications` on a Mac. Windows-only parts say so instead of failing: the live link (`unsupported`), the built-in free AI, voice, starting the game, and automatic updates (the Updates page points to the releases page).
+- Tests: Lua runs through a stdin runner that also works on macOS (fengari's CLI cannot read a pipe there); the knowledge cache accepts macOS's root system links (`/var`, `/tmp`, `/etc` → `/private/…`).
+
 ## 0.54.0 — The finished look, 2026-11-15
 
 - **G12, art review:** `docs/STYLE-GUIDE.md` (colours, type, spacing, buttons, motion, art, accessibility); chip colours to WCAG AA; 11px minimum text (`small` included). `scripts/dev-preview-pages.cjs` captures every page from your own saved state in English or German and reports stray end caps, dark-on-dark buttons, tight side padding, spilling or clipped text and small text per element.
