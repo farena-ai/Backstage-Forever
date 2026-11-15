@@ -398,6 +398,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverStatsCommand)=='function' then pcall(BackstageForeverStatsCommand)end
                 return
             end
+            if word=='enemy' then
+                if type(BackstageForeverEnemyCommand)=='function' then pcall(BackstageForeverEnemyCommand,message)end
+                return
+            end
             if word=='supplies' then
                 if type(BackstageForeverSuppliesCommand)=='function' then pcall(BackstageForeverSuppliesCommand,message)end
                 return

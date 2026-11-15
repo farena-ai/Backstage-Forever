@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.39.1: ask and answer in one window
+## 0.40: enemy player alerts
 
-Click the owl on your minimap and the companion panel opens over your game, ready to type: ask, read the answer and follow up in the same window. 0.39 painted every in-game message box. See the [0.39.1 release notes](docs/releases/0.39.1.md) and the [0.39.0 notes](docs/releases/0.39.0.md).
+On contested ground the addon now tells you when an enemy player who can attack you shows up: "Alliance level 32 Rogue nearby" (or Horde) at the top of the screen, with their name and zone in chat, and `/bf enemy` lists who you saw. 0.39.1 put the question and answer in one window. See the [0.40.0 release notes](docs/releases/0.40.0.md) and the [0.39.1 notes](docs/releases/0.39.1.md).
 
 ## 0.28: your journey
 
