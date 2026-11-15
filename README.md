@@ -1,8 +1,8 @@
 # Backstage Forever
 
-## 0.41: quality of life helpers
+## 0.42: party sync
 
-Four small helpers you can switch on with `/bf qol`: coordinates under the minimap, faster auto-loot, getting off your mount at flight masters and instant quest text. 0.40 added enemy player alerts. See the [0.41.0 release notes](docs/releases/0.41.0.md) and the [0.40.0 notes](docs/releases/0.40.0.md).
+Group up with friends who also run Backstage Forever and `/bf party` shows who needs what on each quest you share, plus quests only they have. `/bf party way` shares a waypoint. 0.41 added the `/bf qol` helpers. See the [0.42.0 release notes](docs/releases/0.42.0.md) and the [0.41.0 notes](docs/releases/0.41.0.md).
 
 ## 0.28: your journey
 
