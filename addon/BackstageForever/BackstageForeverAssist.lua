@@ -590,7 +590,7 @@ function BackstageForeverAssistCommand(message)
             '/bf show, /bf hide - the Adventure Compass panel',
             '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',
             '/bf moments - turn the short messages for elite, rare and boss kills and profession milestones on or off',
-            '/bf party - your party's quests next to yours (party members with Backstage Forever); /bf party way shares your waypoint, /bf party go follows one',
+            '/bf party - the quests of your party next to yours (party members with Backstage Forever); /bf party way shares your waypoint, /bf party go follows one',
             '/bf qol - small helpers, each off until you switch it on: coords, loot, dismount, questtext',
             '/bf enemy - enemy players you saw recently; /bf enemy off silences the alerts, /bf enemy sound on adds a sound',
             '/bf gear - turn upgrade hints on item tooltips and the best-quest-reward highlight on or off',
