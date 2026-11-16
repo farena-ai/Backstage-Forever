@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.57.0 — Getting ready for 1.0, 2026-11-16
+
+- German: the app now translates sentences with numbers and names in them ("Gib 3 fertige Quests ab", "Stufe 21: komm um Stufe 29 wieder") through templates in `data/i18n/de.json` (`appTemplates`; `{#n}` takes only numbers, so quest names are never split). About 180 more phrases. On a full German run of every page, the English left is game names (quests, items, zones), which follow the game data.
+- `scripts/dev-preview-pages.cjs` lists the English still visible on each page when run in German.
+- Updates: an install on the stable channel (1.0 and later) never moves to a pre-release; preview installs take every release, as before.
+- Roadmap: every row is marked done (with its version), partly done (with what moves to after 1.0) or after 1.0. A5 boss tips and G6 dungeon art were wrongly listed as shipped in 0.33; they are after 1.0.
+- New `docs/ACCEPTANCE-1.0.md`: the hands-on checklist for 1.0, about an hour of normal play.
+
 ## 0.56.0 — Ready for the public, 2026-11-15
 
 - README is now a front page: what the app does in game and on your desktop, a screenshot of Now (from an anonymised journal), privacy at a glance and download links.

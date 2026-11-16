@@ -69,7 +69,18 @@ const { navigate, routes } = require("./player-navigation.cjs");
           const darkOnDark = [...document.querySelectorAll("main button:not(.illustrated-card)")].filter(visible).flatMap((b) => getComputedStyle(b).backgroundImage.includes("rgb(57, 59, 50)") ? [b, ...b.querySelectorAll("*")].filter((e) => ownText(e) && lum(getComputedStyle(e).color) < 0.35) : []);
           // End caps drawn by a button that is not positioned land on some other box (a card, the window edge).
           const stray = [...document.querySelectorAll("button:not(.illustrated-card)")].filter((e) => { const r = e.getBoundingClientRect(), c = getComputedStyle(e, "::before"); return r.width > 0 && getComputedStyle(e).position === "static" && c.display !== "none" && c.backgroundImage.includes("endcap"); });
-          return { stray: stray.map(name).slice(0, 6), strayCount: stray.length, darkOnDark:darkOnDark.map(name).slice(0, 6), darkOnDarkCount: darkOnDark.length, tight:tight.map((e) => getComputedStyle(e).paddingLeft + " " + name(e)).slice(0, 8), tightCount: tight.length, spill:spill.map(name).slice(0, 8), spillCount: spill.length, clipped: clipped.map(name).slice(0, 8), clippedCount: clipped.length, tiny: tiny.map((e) => getComputedStyle(e).fontSize + " " + name(e)).slice(0, 6), tinyCount: tiny.length, height: document.querySelector("main")?.scrollHeight || 0 };
+          // Translated runs: visible text still in English (common English words, no German ones), for the dictionary.
+          const english = [];
+          if (document.documentElement.lang !== "en") {
+            const EN = /\b(the|your|you|to|and|of|for|is|with|from|this|next|ready|quests?|levels?|left|here|when|until|no|not|yet|ago|more|set|it|all|up|in|on|at|a)\b/i, DE = /[äöüß]|\b(der|die|das|und|nicht|ist|zu|mit|ein|eine|noch|für|von|bei|im|den|dem|des|dein|deine|sich|auf)\b/i;
+            const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            for (let n; (n = tw.nextNode());) {
+              const t = n.nodeValue.replace(/\s+/g, " ").trim(), el = n.parentElement;
+              if (t.length < 4 || !EN.test(t) || DE.test(t) || !el || el.closest("[data-no-translate], script, style, code, pre") || !visible(el)) continue;
+              if (!english.includes(t)) english.push(t);
+            }
+          }
+          return { english, stray: stray.map(name).slice(0, 6), strayCount: stray.length, darkOnDark:darkOnDark.map(name).slice(0, 6), darkOnDarkCount: darkOnDark.length, tight:tight.map((e) => getComputedStyle(e).paddingLeft + " " + name(e)).slice(0, 8), tightCount: tight.length, spill:spill.map(name).slice(0, 8), spillCount: spill.length, clipped: clipped.map(name).slice(0, 8), clippedCount: clipped.length, tiny: tiny.map((e) => getComputedStyle(e).fontSize + " " + name(e)).slice(0, 6), tinyCount: tiny.length, height: document.querySelector("main")?.scrollHeight || 0 };
         });
         await page.screenshot({ path: path.join(out, `${id}.png`), fullPage: true });
         report.push({ id, ...facts });

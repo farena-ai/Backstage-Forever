@@ -351,6 +351,8 @@ class Updater {
     currentVersion,
     publicKey,
     packaged = false,
+    // "stable" installs (1.0 and later) never move to a pre-release; "preview" installs take every release.
+    channel = "preview",
     platform = process.platform,
     fetch = request,
     installRunner = runInstaller,
@@ -363,6 +365,7 @@ class Updater {
       currentVersion,
       publicKey,
       packaged,
+      channel,
       platform,
       fetch,
       installRunner,
@@ -650,6 +653,7 @@ class Updater {
           (r) =>
             r &&
             !r.draft &&
+            (this.channel !== "stable" || !r.prerelease) &&
             typeof r.tag_name === "string" &&
             r.tag_name.startsWith("v") &&
             newer(r.tag_name.slice(1), this.currentVersion),

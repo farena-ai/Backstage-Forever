@@ -111,3 +111,25 @@ test("wiring: dictionary before the translator, the game locale passed in, the p
   assert.match(read("src/renderer/styles.css"), /html\[data-machine-translated="true"\] \.rail-bottom \.status::after \{ content: " · maschinell übersetzt"/);
   assert.match(read(".github/workflows/ci.yml"), /npm run check:locales/);
 });
+
+test("app sentences with numbers and names translate through templates (0.57)", () => {
+  const { appPattern } = require("../scripts/build-locales.cjs");
+  assert.equal(appPattern("Hand in {#0} finished quests"), "^Hand in ([0-9][0-9.,:/%–-]*) finished quests$");
+  assert.equal(appPattern("Switch to {0}"), "^Switch to (.+?)$");
+  assert.equal(appPattern("Level {0}: come back around {1} (x)."), String.raw`^Level (.+?): come back around (.+?) \(x\)\.$`);
+  const de = JSON.parse(read("data/i18n/de.json"));
+  const ph = (s) => (s.match(/\{#?\d+\}/g) || []).map((x) => x.replace("#", "")).sort().join(" ");
+  assert.ok(Object.keys(de.appTemplates || {}).length > 40, "the common sentences with numbers");
+  for (const [en, v] of Object.entries(de.appTemplates)) assert.equal(ph(v), ph(en), `placeholders changed: ${en}`);
+  const window = {}, storage = { getItem: () => "de", setItem() {} };
+  const document = { readyState: "complete", documentElement: { dataset: {} }, body: null, addEventListener() {} };
+  const ctx = vm.createContext({ window, document, localStorage: storage, location: { reload() {} }, Object });
+  vm.runInContext(read("src/renderer/locales/de.js"), ctx);
+  vm.runInContext(read("src/renderer/i18n.js"), ctx);
+  const I = window.I18n;
+  assert.equal(I.lang, "de");
+  assert.equal(I.tr("Hand in 3 finished quests"), "Gib 3 fertige Quests ab");
+  assert.equal(I.tr("Level 21: come back around 29"), "Stufe 21: komm um Stufe 29 wieder");
+  assert.equal(I.tr("Secrets of the Dreamers"), null, "number placeholders never take names");
+  assert.equal(I.tr("Something nobody wrote"), null);
+});
