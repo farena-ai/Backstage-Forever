@@ -299,7 +299,8 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 - **After 0.58, before and after 1.0:** the companion keeps improving against the benchmark: more questions (gathering spots, class quests, reputation), a live-model voice check, and the opt-in web lookup.
 - **0.59 (shipped):** the companion understood 100% of a held-out question set (56.7% before); the addon zip with every release and packaging for CurseForge, Wago and WoWInterface.
 - **1.0 release candidate (done):** Frank's hands-on check with [the acceptance checklist](ACCEPTANCE-1.0.md), then fixes.
-- **1.0 (shipped 2026-11-16):** after Frank's hands-on acceptance. Known limits, listed rather than required: party sync with a second player, the Mac app on a real Mac, and the German messages in a German game client.
+- **1.0 (shipped 2026-11-16):** after Frank's hands-on acceptance. Known limits, listed rather than required: party sync with a second player, and the German messages in a German game client.
+- **1.0.1 (2026-11-16):** the Mac app tested on a real Mac (Apple silicon, macOS 27, WoW Forever installed): finds the game, installs the addon, reads map art. Fixed: Mac update notices (check-only, signed feed), a Mac first-run checklist that finishes, macOS 15 first-open steps; companion picks the side and starting point from the race or city a question names, zeppelin direction, nearest drops first. Still open: the addon in a Mac game session, live link on Mac.
 - **After 1.0:** the rows marked "After 1.0" above, and the route review (Frank goes through the routes) whenever it suits.
 
 Keep this file and Help → Commands updated with each release.

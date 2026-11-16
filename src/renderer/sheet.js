@@ -28,7 +28,7 @@ window.SheetView = (() => {
     return PageHero.render({ art: "characters", eyebrow: "Characters · Sheet", title: esc(data?.name || "Character sheet"), crest: PageHero.classCrest(cls), subtitle: esc(who || "Your gear, stats and gear sets.") });
   }
   function empty(what) {
-    return `<p class="sht-empty">${what} Log in with the 0.36 addon, then type <code>/reload</code> (or log out) once so the desktop app receives it.</p>`;
+    return `<p class="sht-empty">${what} Log in with the addon on, then type <code>/reload</code> (or log out) once so the desktop app receives it.</p>`;
   }
 
   function slotTile(s) {
@@ -38,7 +38,7 @@ window.SheetView = (() => {
   }
   function stats() {
     const s = data.stats;
-    if (!s) return `<p class="sht-note">Stats arrive with the 0.36 addon after a /reload.</p>`;
+    if (!s) return `<p class="sht-note">Stats arrive after a /reload with the addon on.</p>`;
     const row = (label, v) => (Number.isFinite(v) ? `<li><span>${label}</span><strong>${v.toLocaleString()}</strong></li>` : "");
     const resist = s.resist ? Object.entries(s.resist).filter(([, v]) => v > 0).map(([k, v]) => `<li><span>${esc(k[0].toUpperCase() + k.slice(1))} resistance</span><strong>${v}</strong></li>`).join("") : "";
     const power = s.powerKind ? s.powerKind[0].toUpperCase() + s.powerKind.slice(1) : "Power";

@@ -57,6 +57,16 @@ function hubOf(points) {
   return best;
 }
 
+
+// How far another map is, without coordinates: a capital next to your zone, your continent, the other one.
+const KALIMDOR_MAPS = new Set([1411, 1412, 1413, 1414, 1438, 1439, 1440, 1441, 1442, 1443, 1444, 1445, 1446, 1447, 1448, 1449, 1450, 1451, 1452, 1454, 1456, 1457]);
+const CAPITAL_NEXT_TO = { 1454: [1411, 1413], 1456: [1412, 1413], 1458: [1420, 1421], 1453: [1429, 1436, 1433], 1455: [1426, 1432], 1457: [1438] };
+function farAway(mapId, fromMapId) {
+  if (fromMapId == null) return 10;
+  if ((CAPITAL_NEXT_TO[mapId] || []).includes(fromMapId) || (CAPITAL_NEXT_TO[fromMapId] || []).includes(mapId)) return 2;
+  return KALIMDOR_MAPS.has(mapId) === KALIMDOR_MAPS.has(fromMapId) ? 5 : 10;
+}
+
 class LevelingAdvisor {
   constructor({ getState, knowledge, insights, pack = null, getLive = null }) {
     this.getState = getState;
@@ -201,7 +211,8 @@ class LevelingAdvisor {
     const trainers = sameClass.filter((t) => !p.faction || !t.observedReactionsByFaction || (t.observedReactionsByFaction[p.faction] || []).some((r) => r >= 4));
     if (!trainers.length) return { className: p.className, trainer: null, newNow: [], nextAt: null, nextSpells: [], spellsFromOtherTrainers: false };
     const here = p.location;
-    const dist = (t) => { const pos = t.positions?.[0]; if (!pos) return 99; return pos.mapId === here?.mapId ? Math.hypot(pos.x - here.x, pos.y - here.y) : 10; };
+    // 1.0.1: none in your zone means the capital next door, then your continent, never the other side of the sea first.
+    const dist = (t) => { const pos = t.positions?.[0]; if (!pos) return 99; return pos.mapId === here?.mapId ? Math.hypot(pos.x - here.x, pos.y - here.y) : farAway(pos.mapId, here?.mapId); };
     const t = [...trainers].sort((a, b) => dist(a) - dist(b))[0];
     // Union of spells across this class's trainers (each one only lists what was observed).
     const levelled = (rows) => {

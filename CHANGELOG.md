@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.1 — Found on a real Mac, 2026-11-16
+
+- Tested the 1.0 Mac build on a real Mac (Apple silicon, macOS 27) with WoW Forever installed: it found the game, installed the addon and read the map art from the Mac install by itself.
+- Mac: the Updates page now says what a Mac does. The app checks the same signed release feed and tells you when a new version is out (side menu and Settings → Updates, with Download for Mac); it never downloads or installs anything itself. It used to show the Windows auto-install switches and a Restart and update button.
+- Mac: the first-run checklist on Now no longer asks for the live link, which Macs don't have yet, so it finishes once your character appears. "This session" says what comes from your saves.
+- Mac: README and Getting started give the macOS 15+ way to open an app that isn't notarized (System Settings → Privacy & Security → Open Anyway).
+- Companion: with no character shared, a race or city in the question picks the side ("the dwarf hunter trainer" is Alliance) and "nearest" is measured from the place you name; the other side's starting zones count as hostile. "The Undercity zeppelin to Orgrimmar" now leaves from Tirisfal, and drops "near Goldshire" list Eastern Kingdoms creatures (with their zone) before Kalimdor ones.
+- Now: with no class trainer in your zone, "Train new skills" sends you to the capital next door (Durotar → Orgrimmar), then your own continent. A level 4 Troll mage in Durotar was sent to Tirisfal Glades. The companion's "nearest" uses the same order.
+- Wording: Ledger, Sheet and Journey no longer name old addon versions; the Windows certificate note no longer says "preview".
+
 ## 1.0.0 — Backstage Forever 1.0, 2026-11-16
 
 - The first stable release. `releaseChannel` is `stable`: the GitHub release is not marked pre-release, and stable installs only ever update to stable releases. Every 0.x install updates to 1.0.

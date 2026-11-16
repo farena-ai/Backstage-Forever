@@ -86,7 +86,7 @@ window.NowView = (() => {
       rows.push(`<li><strong>${s.zones.length}</strong><span>zone${s.zones.length === 1 ? "" : "s"} visited</span></li>`);
     }
     return `<article class="now-card now-session"><h2>This session</h2>${bar}
-      ${rows.length ? `<ul class="now-stats">${rows.join("")}</ul>${s.levelsPerHour ? "" : `<p class="now-tip">Your pace appears after a few minutes of play.</p>`}` : `<p class="now-tip">Play with the live link on (it is by default) and your pace, time to the next level and deaths appear here.</p>`}
+      ${rows.length ? `<ul class="now-stats">${rows.join("")}</ul>${s.levelsPerHour ? "" : `<p class="now-tip">Your pace appears after a few minutes of play.</p>`}` : `<p class="now-tip">${setup?.live?.signal === "unsupported" ? "On a Mac your XP comes from your last save (/reload or log out). Pace, time to the next level and deaths need the live link, which is Windows-only for now." : "Play with the live link on (it is by default) and your pace, time to the next level and deaths appear here."}</p>`}
       ${restedPct > 0 ? `<p class="now-tip"><span class="now-rested">Rested</span>: kills give double experience until the blue part of the bar runs out. You build it back by logging out in an inn or a city.</p>` : ""}
     </article>`;
   }
@@ -98,13 +98,14 @@ window.NowView = (() => {
       { done: Boolean(game?.connected), title: "Connect your WoW Forever folder", how: "Settings → Game connection finds it for you.", action: `<button type="button" data-nav="game">Open Game connection</button>` },
       { done: Boolean(game?.connected && game?.addonCurrent), title: "Install the Backstage Forever addon", how: "One click on the Game connection page. It copies the addon into your game folder." },
       { done: hasCharacter, title: "Log in and type /reload once", how: "In WoW, type <code>/reload</code> in chat and press Enter. Your character appears here." },
-      { done: live?.signal === "live" || Boolean(a?.character?.live), title: "See yourself live", how: live?.enabled === false ? "The live link is off. Turn it on in Settings → Game connection." : `Keep WoW running in a window or borderless window. The thin dark line along the top edge of the game lets this page follow you, even when another window covers WoW.${window.LiveLink?.stripLine?.(live) ? ` <span class="now-live-strip">${esc(window.LiveLink.stripLine(live))}.</span>` : ""} Type <code>/bf live safe</code> if the link drops over remote desktop.` },
-    ];
+      // On a Mac there is no live link (1.0.1): the step would never tick, so it isn't asked.
+      live?.signal === "unsupported" ? null : { done: live?.signal === "live" || Boolean(a?.character?.live), title: "See yourself live", how: live?.enabled === false ? "The live link is off. Turn it on in Settings → Game connection." : `Keep WoW running in a window or borderless window. The thin dark line along the top edge of the game lets this page follow you, even when another window covers WoW.${window.LiveLink?.stripLine?.(live) ? ` <span class="now-live-strip">${esc(window.LiveLink.stripLine(live))}.</span>` : ""} Type <code>/bf live safe</code> if the link drops over remote desktop.` },
+    ].filter(Boolean);
     if (items.every((i) => i.done)) return "";
     const next = items.findIndex((i) => !i.done);
     // One click does every step the app can do by itself: find WoW, install the addon, turn on the live link.
     const canDo = !game?.connected || !game?.addonCurrent || live?.enabled === false;
-    const oneClick = canDo ? `<div class="now-oneclick"><button type="button" data-now-act="setup"${setting === "working" ? " disabled" : ""}>${setting === "working" ? "Setting up…" : "Set it all up"}</button><span>${setting && setting !== "working" ? esc(setting) : "Finds WoW Forever, installs the addon and turns on the live link. Nothing to download or type."}</span></div>` : "";
+    const oneClick = canDo ? `<div class="now-oneclick"><button type="button" data-now-act="setup"${setting === "working" ? " disabled" : ""}>${setting === "working" ? "Setting up…" : "Set it all up"}</button><span>${setting && setting !== "working" ? esc(setting) : live?.signal === "unsupported" ? "Finds WoW Forever and installs the addon. Nothing to download or type." : "Finds WoW Forever, installs the addon and turns on the live link. Nothing to download or type."}</span></div>` : "";
     return `<article class="now-card now-setup"><h2>Get set up <small>${items.filter((i) => i.done).length} of ${items.length}</small></h2>
       ${oneClick}<ol class="now-checklist">${items.map((i, n) => `<li class="${i.done ? "done" : n === next ? "next" : ""}"><span class="now-check" aria-hidden="true">${i.done ? "✓" : n + 1}</span><div><strong>${i.title}</strong>${i.done ? "" : `<p>${i.how}</p>${n === next && i.action ? `<div class="now-actions">${i.action}</div>` : ""}`}</div></li>`).join("")}</ol>
       <p class="now-tip">New to WoW? The <button type="button" class="now-link" data-nav="guide">Field guide</button> explains the words you'll see, like rested, hand in and elite, and <button type="button" class="now-link" data-nav="commands">Commands</button> lists everything you can type in game.</p></article>`;

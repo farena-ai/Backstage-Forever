@@ -338,18 +338,23 @@ function friendly(reactions, faction, positions = []) {
   const mine = reactions?.[faction], other = reactions?.[faction === "Horde" ? "Alliance" : "Horde"];
   if (Array.isArray(mine) && mine.length) return mine.every((n) => n >= 4);
   if (Array.isArray(other) && other.length && other.every((n) => n >= 5)) return false;
-  return !positions.some((p) => CAPITAL[p.mapId] && CAPITAL[p.mapId] !== faction);
+  return !positions.some((p) => (CAPITAL[p.mapId] || HOME_ZONE_SIDE()[p.mapId]) && (CAPITAL[p.mapId] || HOME_ZONE_SIDE()[p.mapId]) !== faction);
 }
+let homeZoneSide = null;
+const HOME_ZONE_SIDE = () => homeZoneSide || (homeZoneSide = Object.fromEntries([["Durotar", "Horde"], ["Mulgore", "Horde"], ["Tirisfal Glades", "Horde"], ["Elwynn Forest", "Alliance"], ["Dun Morogh", "Alliance"], ["Teldrassil", "Alliance"]].map(([z, sd]) => [Object.entries(MAP_NAMES).find(([, n]) => n === z)?.[0], sd]).filter(([id]) => id)));
 const here = (profile) => (profile?.location && Number.isFinite(profile.location.mapId) ? profile.location : null);
 // Same map by distance, then the same continent, then across the sea.
 const KALIMDOR_MAPS = new Set([1411, 1412, 1413, 1414, 1438, 1439, 1440, 1441, 1442, 1443, 1444, 1445, 1446, 1447, 1448, 1449, 1450, 1451, 1452, 1454, 1456, 1457]);
-const near = (p, h) => (h && p.mapId === h.mapId && Number.isFinite(h.x) ? Math.hypot(p.x - h.x, p.y - h.y) : p.mapId === h?.mapId ? 0.5 : h && KALIMDOR_MAPS.has(p.mapId) === KALIMDOR_MAPS.has(h.mapId) ? 5 : 9);
+// 1.0.1: a capital next to the zone you're in comes before the rest of the continent.
+const CAPITAL_NEXT_TO = { 1454: [1411, 1413], 1456: [1412, 1413], 1458: [1420, 1421], 1453: [1429, 1436, 1433], 1455: [1426, 1432], 1457: [1438] };
+const nextDoor = (a, b) => (CAPITAL_NEXT_TO[a] || []).includes(b) || (CAPITAL_NEXT_TO[b] || []).includes(a);
+const near = (p, h) => (h && p.mapId === h.mapId && Number.isFinite(h.x) ? Math.hypot(p.x - h.x, p.y - h.y) : p.mapId === h?.mapId ? 0.5 : h && nextDoor(p.mapId, h.mapId) ? 2 : h && KALIMDOR_MAPS.has(p.mapId) === KALIMDOR_MAPS.has(h.mapId) ? 5 : 9);
 let TOWNS = [];
 const townAt = (p) => { let best = null; for (const t of TOWNS) if (t.mapId === p.mapId) { const d = Math.hypot(t.x - p.x, t.y - p.y); if (d < 0.07 && (!best || d < best.d)) best = { ...t, d }; } return best?.name || null; };
 function where(p, h) {
   const z = zoneOf(p.mapId) || `map ${p.mapId}`, town = townAt(p);
   let s = `${town && loose(town) !== loose(z) ? `${town}, ${z}` : z}, around ${pct(p.x)}, ${pct(p.y)}`;
-  if (h && p.mapId === h.mapId && Number.isFinite(h.x)) { const dx = p.x - h.x, dy = p.y - h.y, d = Math.hypot(dx, dy); if (d < 0.015) s += " (right where you are)"; else s += ` (${["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"][Math.round(((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360 / 45) % 8]} of you)`; }
+  if (h && !h.asked && p.mapId === h.mapId && Number.isFinite(h.x)) { const dx = p.x - h.x, dy = p.y - h.y, d = Math.hypot(dx, dy); if (d < 0.015) s += " (right where you are)"; else s += ` (${["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"][Math.round(((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360 / 45) % 8]} of you)`; }
   return s;
 }
 const SRC = "Locations are approximate player-observed points (Efficient Games, CC BY 4.0).";
@@ -425,11 +430,16 @@ function answerItemSource(u, { profile, data }) {
   const q = loose(u.q || ""), ids = itemsFor(u, q, data).slice(0, 3);
   if (!ids.length) return null;
   const id = ids[0], name = data.index.items.get(id) || u.item?.gram;
-  const sources = (data.loot?.items?.[String(id)] || []).filter((s) => s.kind === "npc" && s.name).sort((a, b) => b.chance - a.chance).slice(0, 4);
+  const h = here(profile), area = (s) => data.index.creatureAreas.get(s.id);
+  const dist = (s) => (area(s) && h ? near(centerOf(area(s).positions), h) : 99);
+  const all = (data.loot?.items?.[String(id)] || []).filter((s) => s.kind === "npc" && s.name);
+  const bucket = (s) => { const d = dist(s); return d < 2 ? 0 : d < 6 ? 1 : 2; };
+  const sources = (h ? all.sort((a, b) => bucket(a) - bucket(b) || b.chance - a.chance) : all.sort((a, b) => b.chance - a.chance)).slice(0, 4);
   const parts = [];
   const elite = (s) => (data.index.creatures.get(s.id)?.elite ? ", elite" : "");
-  if (sources.length) parts.push(`dropped by ${sources.map((s) => `${s.name} (${Math.round(s.chance * 100)}%${elite(s)})`).join(", ")}`);
-  const bosses = (data.index.bossSources.get(id) || []).slice(0, 3);
+  const zoneTag = (s) => { const a = area(s); const z = a ? zoneOf(centerOf(a.positions).mapId) : null; return z ? `, ${z}` : ""; };
+  if (sources.length) parts.push(`dropped by ${sources.map((s) => `${s.name} (${Math.round(s.chance * 100)}%${elite(s)}${zoneTag(s)})`).join(", ")}`);
+  const bosses = h && all.some((s) => bucket(s) < 2) ? [] : (data.index.bossSources.get(id) || []).filter((b) => !h || !DUNGEONS.get(b.instance)?.mapId || KALIMDOR_MAPS.has(DUNGEONS.get(b.instance).mapId) === KALIMDOR_MAPS.has(h.mapId) || !all.length).slice(0, 3);
   if (bosses.length) parts.push(`dropped by ${bosses.map((b) => `${b.boss} in ${DUNGEONS.get(b.instance)?.name || b.instance} (${Math.round(b.chance * 100)}%)`).join(", ")}`);
   const forQuest = data.index.itemQuest.get(id);
   if (forQuest) { const t = (forQuest.turnIns || [])[0]; parts.push(`it's for the quest "${forQuest.title}"${t ? `, turned in to ${npcWhere(t, data, here(profile))}` : ""}`); }
@@ -609,7 +619,9 @@ function travelEnds(u, profile) {
   const q = loose(u.q), places = placesIn(u.q);
   const fromM = q.match(/\bfrom\s+(.+?)(?:\s+(?:to|where|how|if|and)\b|$)/);
   let origin = fromM && !/^here\b/.test(fromM[1]) ? placesIn(fromM[1])[0] || null : null;
-  const dest = u.dungeon ? u.dungeon.zone : places.find((pl) => pl !== origin) || null;
+  const toM = q.match(/\bto\s+(.+)$/);
+  const dest = u.dungeon ? u.dungeon.zone : (toM && placesIn(toM[1]).find((pl) => pl !== origin)) || places.find((pl) => pl !== origin) || null;
+  if (!origin && dest && /\b(zeppelin|boat|ship|tram)\b/.test(slang(u.q))) origin = places.find((pl) => pl !== dest) || null;
   return { origin, dest };
 }
 function answerTransport(u, { profile }) {
@@ -626,7 +638,8 @@ function answerTransport(u, { profile }) {
   if (!edges.length && /\b(zeppelin|boat|ship|tram)\b/.test(slang(u.q))) { const mode = slang(u.q).match(/\b(zeppelin|boat|ship|tram)\b/)[1]; const text = `There's no ${mode} to ${dest} in the travel reference${ends.origin ? ` from ${ends.origin}` : ""}. Fly there if you have the flight path, otherwise ride.`; return { text, facts: [text] }; }
   if (!edges.length) return null;
   // Prefer a departure on the player's own continent.
-  edges.sort((a, b) => (STOPS[b.from]?.k === onK ? 1 : 0) - (STOPS[a.from]?.k === onK ? 1 : 0));
+  const fromOrigin = (e) => (ends.origin && STOPS[e.from]?.serves.some((x) => loose(x) === loose(ends.origin)) ? 1 : 0);
+  edges.sort((a, b) => fromOrigin(b) - fromOrigin(a) || (STOPS[b.from]?.k === onK ? 1 : 0) - (STOPS[a.from]?.k === onK ? 1 : 0));
   const e = edges[0], how = (e.steps || [])[0] || "";
   const text = `Take the ${e.mode} from ${label(e.from)} to ${label(e.to)}${STOPS[e.to] ? ` (${STOPS[e.to].serves.join(", ")})` : ""}. ${how}`.trim();
   return { text, facts: [text] };
@@ -655,9 +668,33 @@ function answerTravelPlan(u, { profile, data }) {
   return answerTravel(u, { profile, data });
 }
 const ANSWER = { "npc-location": answerNpc, place: answerPlace, trainer: answerTrainer, vendor: answerVendor, drops: answerDrops, "item-source": answerItemSource, "quest-info": answerQuest, "quest-turnin": answerQuest, dungeon: answerDungeon, travel: answerTravelPlan, role: answerRole, "turnin-which": answerTurninWhich, lore: answerLore, profession: answerProfession, rp: answerRp, gather: answerGather, creature: answerCreature, recipe: answerRecipe };
+// 1.0.1: "the dwarf hunter trainer" or "first aid in Stormwind" with no character shared means the
+// Alliance; a place the question names is where "nearest" is measured from.
+const RACE_SIDE = [[/\b(humans?|dwarf|dwarves|dwarven|gnomes?|gnomish|night ?elf|night ?elves|kaldorei|alliance)\b/, "Alliance"], [/\b(orcs?|orcish|trolls?|tauren|undead|forsaken|horde)\b/, "Horde"]];
+const SIDE_ZONES = { Alliance: ["Stormwind City", "Ironforge", "Darnassus", "Elwynn Forest", "Dun Morogh", "Teldrassil", "Westfall", "Loch Modan", "Darkshore", "Redridge Mountains", "Duskwood", "Wetlands"], Horde: ["Orgrimmar", "Thunder Bluff", "Undercity", "Durotar", "Mulgore", "Tirisfal Glades", "Silverpine Forest", "The Barrens"] };
+function askedSide(question, u) {
+  const q = loose(question), hits = new Set(RACE_SIDE.filter(([rx]) => rx.test(q)).map(([, side]) => side));
+  if (hits.size) return hits.size === 1 ? [...hits][0] : null;
+  if (u.intent === "travel" || !u.place) return null;
+  const at = placeMapId(u.place), zone = at ? zoneOf(at.mapId) : null;
+  return Object.keys(SIDE_ZONES).find((sd) => SIDE_ZONES[sd].includes(u.place) || SIDE_ZONES[sd].includes(zone)) || null;
+}
+const RACE_HOME = [[/\bhumans?\b/, "Stormwind City"], [/\b(dwarf|dwarves|dwarven|gnomes?|gnomish)\b/, "Ironforge"], [/\b(night ?elf|night ?elves|kaldorei)\b/, "Darnassus"], [/\b(orcs?|orcish|trolls?)\b/, "Orgrimmar"], [/\btauren\b/, "Thunder Bluff"], [/\b(undead|forsaken)\b/, "Undercity"]];
+function askedProfile(question, u, p) {
+  let out = p;
+  if (!side(p)) { const sd = askedSide(question, u); if (sd) out = { ...(out || {}), faction: sd }; }
+  if (!here(p) && u.intent !== "travel") {
+    const homes = RACE_HOME.filter(([rx]) => rx.test(loose(question))).map(([, c]) => c);
+    const place = u.place || (homes.length === 1 && ["trainer", "role", "vendor", "profession", "item-source", "gather"].includes(u.intent) ? homes[0] : null);
+    const pt = place ? pointOf(place) : null;
+    if (pt) out = { ...(out || {}), location: { mapId: pt.mapId, x: Number.isFinite(pt.x) ? pt.x : 0.5, y: Number.isFinite(pt.y) ? pt.y : 0.5, asked: true } };
+  }
+  return out;
+}
 function resolve(question, { profile = null, shareProfile = true, data = loadData() } = {}) {
-  const p = shareProfile ? profile : null;
-  const u = understand(question, { profile: p, data }); u.q = question;
+  const shared = shareProfile ? profile : null;
+  const u = understand(question, { profile: shared, data }); u.q = question;
+  const p = askedProfile(question, u, shared);
   const fn = ANSWER[u.intent];
   let a = null;
   try { a = fn ? fn(u, { profile: p, data }) : null; } catch { a = null; }

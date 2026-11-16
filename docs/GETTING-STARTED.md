@@ -12,7 +12,7 @@ Backstage Forever is a free leveling companion for World of Warcraft: Forever: a
 **macOS (Apple silicon or Intel)**
 1. Download the **macOS-arm64** zip (Apple silicon, M1 and later) or the **macOS-x64** zip (Intel) from the same release.
 2. Unzip it and move **Backstage Forever** to Applications.
-3. The first time, right-click it and choose **Open**, then **Open** again (it isn't notarized yet).
+3. Open it. It isn't notarized yet, so the first time macOS says it can't check it: click **Done**, open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**, then **Open Anyway** again. (On macOS 14 and older: right-click the app, choose **Open**, then **Open** again.)
 4. On a Mac the live link isn't available yet, and new versions are downloaded by hand from the releases page. Everything that works from your saved characters works.
 
 You can check a download against `SHA256SUMS.txt` in the same release.

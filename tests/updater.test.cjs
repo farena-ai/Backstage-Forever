@@ -292,3 +292,17 @@ test("a stable install skips pre-releases; a preview install takes them", async 
   const preview = harness(t, { channel: "preview" });
   assert.equal((await preview.updater.check()).phase, "ready");
 });
+test("the Mac app (1.0.1) checks the signed feed and says a version is out, but never downloads or installs", async (t) => {
+  let downloads = 0;
+  const h = harness(t, { platform: "darwin", beforeDownload: () => downloads++, installRunner: () => assert.fail("a Mac never runs an installer") });
+  assert.equal(h.updater.status().phase, "idle");
+  const s = await h.updater.check();
+  assert.equal(s.phase, "available");
+  assert.equal(s.availableVersion, "0.3.0");
+  assert.equal(downloads, 0, "no installer download on a Mac");
+  assert.equal(fs.readdirSync(path.join(h.dir, "updates")).filter((n) => n.endsWith(".exe") || n.endsWith(".partial")).length, 0);
+  assert.equal(await h.updater.install(), false);
+  assert.equal((await h.updater.setPreferences({ automatic: false, installOnQuit: true })).phase, "disabled");
+  // An unpackaged Mac build (npm start) still never checks.
+  assert.equal(new Updater({ dataDir: h.dir, currentVersion: "0.2.0", publicKey: keys.publicKey, packaged: false, platform: "darwin" }).status().phase, "unsupported");
+});

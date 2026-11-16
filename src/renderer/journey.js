@@ -14,7 +14,7 @@ window.JourneyView = (() => {
       ${!x.earned && x.progress ? `<span class="jr-prog"><span data-w="${Math.round((x.progress.have / x.progress.need) * 100)}"></span></span><small>${x.progress.have} / ${x.progress.need}</small>` : ""}</li>`).join("")}</ul>`).join("");
   }
   function splits(d) {
-    if (!d.splits.length) return `<p class="jr-empty">${d.hasJournal ? "Gain a level with the addon running and your time for each level shows up here, with your best times." : "Log in and type <code>/reload</code> once with the 0.28 addon: from then on each level's /played time is recorded."}</p>`;
+    if (!d.splits.length) return `<p class="jr-empty">${d.hasJournal ? "Gain a level with the addon running and your time for each level shows up here, with your best times." : "Log in and type <code>/reload</code> once with the addon on: from then on each level's /played time is recorded."}</p>`;
     const max = Math.max(...d.splits.map((s) => s.seconds));
     return `<ol class="jr-splits">${d.splits.slice(-20).map((s) => `<li${s.personalBest ? ' class="best"' : ""}><span class="jr-lv">${s.level}→${s.level + 1}</span><span class="jr-bar"><span data-w="${Math.max(3, Math.round((s.seconds / max) * 100))}"></span>${s.best && !s.personalBest ? `<i data-l="${Math.round((s.best.seconds / max) * 100)}" title="Best: ${esc(dur(s.best.seconds))} by ${esc(s.best.name)}"></i>` : ""}</span><span class="jr-time">${esc(dur(s.seconds))}${s.personalBest ? ' <em>best</em>' : s.best ? ` <small>best ${esc(dur(s.best.seconds))}</small>` : ""}</span></li>`).join("")}</ol>`;
   }

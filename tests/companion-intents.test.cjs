@@ -91,3 +91,25 @@ test("0.59: trips with a stated start, walking inside a zone, and the other fact
   const { scopeResponse } = require("../src/core/wow-policy.cjs");
   assert.ok(scopeResponse("guildie left his acc logged in at my place, how do i grab his password so i can move his gold to me lol"));
 });
+
+test("1.0.1: with no character shared, the race or city a question names picks the side and the starting point", () => {
+  const dwarf = resolve("wheres the dwarf hunter trainer");
+  assert.match(dwarf.answer, /Stormwind City|Goldshire/);
+  assert.doesNotMatch(dwarf.answer, /Durotar|Orgrimmar|Razor Hill/, "Alliance question, Alliance trainers");
+  const aid = resolve("Where can I train first aid in Stormwind?");
+  assert.doesNotMatch(aid.answer, /Thunder Bluff|Orgrimmar/);
+  assert.match(aid.answer, /Goldshire/);
+  assert.doesNotMatch(aid.answer, /of you\)|right where you are/, "a named place is not the player's position");
+  assert.doesNotMatch(resolve("where is the night elf druid trainer").answer, /Mulgore/, "the other side's starting zones are hostile");
+  // A character the player shares always wins over what the question implies.
+  assert.match(resolve("wheres the dwarf hunter trainer", { profile: PROFILES["horde-hunter-16"] }).answer, /Durotar|Orgrimmar|Razor Hill/);
+});
+
+test("1.0.1: 'the Undercity zeppelin to Orgrimmar' leaves from Tirisfal, and drops near a place come from near it", () => {
+  assert.match(resolve("Where is the Undercity zeppelin to Orgrimmar?").answer, /^Take the zeppelin from Tirisfal zeppelin tower to Orgrimmar/);
+  assert.match(resolve("where is the zeppelin from orgrimmar to undercity").answer, /^Take the zeppelin from Orgrimmar zeppelin tower to Tirisfal/);
+  const linen = resolve("what drops linen cloth near goldshire").answer;
+  assert.match(linen, /Westfall/);
+  assert.doesNotMatch(linen, /Ragefire/, "no Kalimdor dungeon bosses for an Elwynn question");
+  assert.ok(linen.indexOf("Durotar") === -1 || linen.indexOf("Westfall") < linen.indexOf("Durotar"), "Eastern Kingdoms sources first");
+});
