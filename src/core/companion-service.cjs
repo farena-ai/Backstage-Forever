@@ -122,7 +122,8 @@ class CompanionService {
       const talentText=talent?talentBlock(talent,{maxChars:Math.max(1500,Math.min(TALENT_MAX,CONTEXT_LIMIT-(context||'').length-2))}):'';
       const claudeSubscription=selected.authMode==='subscription'&&input.provider==='anthropic';
       if(talentText&&!claudeSubscription)context=[context,talentText].filter(Boolean).join('\n\n');
-      const factsText=verified?.facts?.length?'Verified WoW Forever facts for this question:\n'+verified.facts.slice(0,8).map(f=>'- '+String(f).slice(0,400)).join('\n'):'';
+      // Sharing off sends the model only the player's own text, so the facts stay out too.
+      const factsText=input.shareProfile&&verified?.facts?.length?'Verified WoW Forever facts for this question:\n'+verified.facts.slice(0,8).map(f=>'- '+String(f).slice(0,400)).join('\n'):'';
       if(factsText&&!claudeSubscription)context=[factsText,context].filter(Boolean).join('\n\n');
       // Read-only local lookups (NPCs, quests, items, travel, character) the model may call.
       const tools=this.lookups?createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow,planner:this.planner}):undefined;

@@ -150,9 +150,10 @@ const { defaultState } = require("../src/core/validation.cjs");
     const layout = await page.evaluate(() => {
       const gaps = [...document.querySelectorAll(".now-col")].map((col) => { const cards = [...col.children].map((c) => c.getBoundingClientRect()); return Math.max(0, ...cards.slice(1).map((r, i) => r.top - cards[i].bottom)); });
       const nav = document.querySelector('.rail nav[aria-label="Main navigation"]');
-      return { cols: gaps.length, maxGap: Math.max(...gaps), navScrolls: nav.scrollHeight > nav.clientHeight + 1 };
+      const bottom = document.querySelector(".rail-bottom"), small = document.querySelector(".rail-bottom small");
+      return { cols: gaps.length, maxGap: Math.max(...gaps), navScrolls: nav.scrollHeight > nav.clientHeight + 1, sizes: `nav ${nav.scrollHeight}/${nav.clientHeight}, rail-bottom ${Math.round(bottom?.getBoundingClientRect().height || 0)}, credits ${Math.round(small?.getBoundingClientRect().height || 0)}` };
     });
-    assert.equal(layout.cols, 2); assert.ok(layout.maxGap <= 20, `cards stack evenly (gap ${layout.maxGap}px)`); assert.equal(layout.navScrolls, false, "main menu fits");
+    assert.equal(layout.cols, 2); assert.ok(layout.maxGap <= 20, `cards stack evenly (gap ${layout.maxGap}px)`); assert.equal(layout.navScrolls, false, `main menu fits (${layout.sizes})`);
     // The running game still has an older addon: Now asks for one /reload.
     await app.evaluate(({ ipcMain }) => { ipcMain.removeHandler("backstage:gameStatus"); ipcMain.handle("backstage:gameStatus", () => ({ connected: true, addonCurrent: true, addonVersion: "0.21.0", loadedCaptureVersion: "0.20.0", lastSync: new Date(Date.now() - 60000).toISOString(), addonUpdatedAt: new Date(Date.now() - 33000).toISOString(), runtime: { state: "running" } })); });
     await page.locator('[data-nav="now"]').first().click();
