@@ -131,6 +131,8 @@ async function finishRefresh(page) {
       { id: "Fictional-Horde", name: "Vaelric", className: "Mage", faction: "Horde", realm: "Fictional Realm", race: "Fictional", level: 24, captureVersion: "0.6.1", updatedAt: now - 10, quests: [] },
     ];
     await fs.writeFile(file, "BackstageForeverExport = " + JSON.stringify(JSON.stringify({ schema: 1, activeId: characters[0].id, observedAt: now, characters })));
+    // WoW wrote this save before the files landed: the game still runs the old addon.
+    const before = new Date(Date.now() - 3600000); await fs.utimes(file, before, before);
     await app.evaluate(() => { fixture.runtime = "running"; fixture.launchAvailable = true; });
     await openConnectionChecks(page);
     await beginRefresh(page);
