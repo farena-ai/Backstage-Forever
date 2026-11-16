@@ -79,6 +79,7 @@ window.BF_LOCALE_DE = {
  "Adventure coach": "Abenteuercoach",
  "Adventure Director": "Abenteuerleiter",
  "After a reply, review the exchange here before choosing Save.": "Nach einer Antwort, prüfe den Austausch hier, bevor du auf Speichern klickst.",
+ "After startup and every six hours while the app is open, from this project’s GitHub Releases. Only releases signed by Backstage Forever’s update key count.": "Nach dem Start und alle sechs Stunden, solange die App geöffnet ist, über die GitHub-Releases dieses Projekts. Es zählen nur Releases, die mit dem Update-Schlüssel von Backstage Forever signiert sind.",
  "After the game saves, follow the last played character in this desktop journal. Pausing keeps your manual selection; live guidance in WoW keeps working.": "Nach dem Speichern des Spiels dem zuletzt gespielten Charakter in diesem Desktop-Journal folgen. Pausieren behält deine eigene Auswahl; die Live-Führung in WoW läuft weiter.",
  "Agree roles and the dungeon with your group; any class can pick any role here.": "Sprecht Rollen und Dungeon in der Gruppe ab; hier kann jede Klasse jede Rolle wählen.",
  "AI connection": "KI-Verbindung",
@@ -99,7 +100,7 @@ window.BF_LOCALE_DE = {
  "API key": "API-Schlüssel",
  "App closed": "App geschlossen",
  "App log that will be attached": "App-Protokoll, das angehängt wird",
- "Application update signatures authenticate future downloads. This preview still lacks a Windows publisher certificate, so an initial manual installer may show an unknown-publisher notice.": "Anwendungs-Update-Signaturen authentifizieren zukünftige Downloads. Diese Vorschau hat noch kein Windows-Herausgeberzertifikat, daher kann der manuelle Installer beim ersten Start eine Warnung über unbekannten Herausgeber anzeigen.",
+ "Application update signatures authenticate future downloads. The installer doesn't carry a Windows publisher certificate yet, so the first install may show an unknown-publisher notice.": "Anwendungs-Update-Signaturen authentifizieren zukünftige Downloads. Das Installationsprogramm hat noch kein Windows-Herausgeberzertifikat, daher kann die erste Installation einen Hinweis auf einen unbekannten Herausgeber zeigen.",
  "Arrow keys move the map, plus and minus zoom, 0 shows the whole zone. Use the search box and the lists to reach pins with the keyboard or a screen reader.": "Pfeiltasten bewegen die Karte, Plus und Minus zoomen, 0 zeigt das ganze Gebiet. Nutze das Suchfeld und die Listen, um mit der Tastatur oder einem Screenreader zu Markierungen zu gelangen.",
  "Ask": "Fragen",
  "Ask about this character": "Fragen zu diesem Charakter",
@@ -186,6 +187,7 @@ window.BF_LOCALE_DE = {
  "Characters → Sheet": "Charaktere → Charakterbogen",
  "Chat, party or anything you type": "Chat, Gruppe oder irgendetwas, das du tippst",
  "Check after startup and every six hours while the app is open. Downloads come from this project’s GitHub Releases.": "Prüfe nach dem Start und alle sechs Stunden, während die App geöffnet ist. Downloads stammen aus den GitHub-Releases dieses Projekts.",
+ "Check for new versions": "Nach neuen Versionen suchen",
  "Check for updates": "Auf Updates prüfen",
  "Check local voice": "Lokale Stimme prüfen",
  "Check the plan before you save it": "Prüfe den Plan, bevor du ihn speicherst",
@@ -195,6 +197,7 @@ window.BF_LOCALE_DE = {
  "Checklist opens Plans. Ask opens an editable question in the companion; nothing is sent until you press Send.": "Checkliste öffnet Pläne. Fragen öffnet eine bearbeitbare Frage im Begleiter; nichts wird gesendet, bevor du Senden drückst.",
  "Checklists": "Checklisten",
  "Checklists for a session, a profession or a dungeon run, and party plans to share.": "Checklisten für eine Session, einen Beruf oder einen Dungeon-Lauf sowie Gruppenpläne zum Teilen.",
+ "Checks start in the Backstage Forever app from Applications. Source builds never check.": "Prüfungen starten in der Backstage-Forever-App aus dem Programme-Ordner. Quell-Builds prüfen nie.",
  "Chest": "Brust",
  "Choose a character to keep private exchanges. General typed questions still work.": "Wähle einen Charakter, um private Nachrichten zu erhalten. Allgemeine eingegebene Fragen funktionieren weiterhin.",
  "Choose a character to review saved identity, equipment and qualified historical class listings.": "Wähle einen Charakter, um gespeicherte Identität, Ausrüstung und qualifizierte historische Klassenlisten zu überprüfen.",
@@ -306,6 +309,8 @@ window.BF_LOCALE_DE = {
  "Dismiss": "Verwerfen",
  "Do this next": "Mach das als Nächstes",
  "Do this once per new character so the app can read it.": "Mach das einmal pro neuem Charakter, damit die App es lesen kann.",
+ "Download": "Herunterladen",
+ "Download for Mac ↗": "Download für Mac ↗",
  "draws a larger, sturdier strip in a corner (": "zeichnet einen größeren, stabileren Streifen in einer Ecke (",
  "Drops from": "Droppt von",
  "Druid": "Druide",
@@ -366,6 +371,7 @@ window.BF_LOCALE_DE = {
  "Find herbs and ore on the map": "Kräuter und Erz auf der Karte finden",
  "Find my game": "Mein Spiel finden",
  "Find on the map": "Auf der Karte finden",
+ "Finds WoW Forever and installs the addon. Nothing to download or type.": "Findet WoW Forever und installiert das Addon. Nichts herunterzuladen oder einzutippen.",
  "Finds WoW Forever, installs the addon and turns on the live link. Nothing to download or type.": "Findet WoW Forever, installiert das Addon und schaltet die Live-Verbindung ein. Nichts herunterzuladen oder einzutippen.",
  "Finds you shared": "Gefundene, die du geteilt hast",
  "Five manual checks: agree roles, bag space, consumables, repairs and a meeting point. Opens Plans; you check off each step.": "Fünf Prüfpunkte von Hand: Rollen absprechen, Taschenplatz, Verbrauchsgüter, Reparaturen und ein Treffpunkt. Öffnet Pläne; du hakst jeden Schritt ab.",
@@ -627,7 +633,7 @@ window.BF_LOCALE_DE = {
  "no quests recorded": "keine Quests erfasst",
  "No quests, training or wares are recorded for this NPC yet.": "Für diesen NPC sind noch keine Quests, Trainings oder Waren erfasst.",
  "No recovery points": "Keine Wiederherstellungspunkte",
- "No reputations yet. Log in with the 0.35 addon, then type": "Noch kein Ruf. Logge dich mit dem Addon ab 0.35 ein und tippe dann",
+ "No reputations yet. Log in with the addon on, then type": "Noch kein Ruf. Logge dich mit aktivem Addon ein und tippe dann",
  "No role selected": "Keine Rolle gewählt",
  "No seller observed: gather it, or try the auction house or trade.": "Kein Händler beobachtet: Sammle es, oder versuche den Auktionshaus-Handel.",
  "No skill-up recipe observed": "Kein Skill-up-Rezept beobachtet",
@@ -670,6 +676,7 @@ window.BF_LOCALE_DE = {
  "Older updater stuck? Open Releases and run the latest installer once. Older installed apps cannot receive these retry and recovery improvements until they are upgraded.": "Älterer Updater hängt? Öffne Releases und führe den neuesten Installer einmal aus. Ältere installierte Apps können diese Wiederholungs- und Wiederherstellungsfunktionen nicht erhalten, bis sie aktualisiert werden.",
  "Ollama address": "Ollama-Adresse",
  "On": "An",
+ "On a Mac your XP comes from your last save (/reload or log out). Pace, time to the next level and deaths need the live link, which is Windows-only for now.": "Auf einem Mac stammen deine EP aus dem letzten Speichern (/reload oder Ausloggen). Tempo, Zeit bis zur nächsten Stufe und Tode brauchen die Live-Verbindung, die es vorerst nur unter Windows gibt.",
  "On by default": "Standardmäßig aktiv",
  "ON THIS COMPUTER": "AUF DIESEM COMPUTER",
  "On vendor windows; sells grey items only when you click it.": "An Händlerfenstern; verkauft graue Gegenstände nur, wenn du darauf klickst.",
@@ -814,6 +821,7 @@ window.BF_LOCALE_DE = {
  "Quests in saved logs": "Quests in gespeicherten Logs",
  "quests ready to hand in": "Quests bereit zur Abgabe",
  "Quests to pick up": "Quests zum Annehmen",
+ "Quit Backstage Forever, unzip, and drag the new app into Applications over the old one.": "Beende Backstage Forever, entpacke das Zip und ziehe die neue App in den Programme-Ordner über die alte.",
  "Race": "Rasse",
  "Race, class, reputation and unreported prerequisites remain unknown. Check the game before travelling.": "Rasse, Klasse, Ruf und nicht gemeldete Voraussetzungen bleiben unbekannt. Prüfe das Spiel vor der Reise.",
  "Raids": "Schlachtzüge",
@@ -856,6 +864,7 @@ window.BF_LOCALE_DE = {
  "Remove saved key": "Gespeicherten Schlüssel entfernen",
  "Repair companion addon": "Begleiter-Addon reparieren",
  "Repairs your gear": "Repariert deine Ausrüstung",
+ "Replace": "Ersetzen",
  "replaces them, clears saved memory and disconnects game observation until you reconnect.": "ersetzt sie, löscht den gespeicherten Speicher und trennt die Spielbeobachtung, bis du dich wieder verbindest.",
  "Replay my path this session": "Meinen Pfad in dieser Sitzung wiederholen",
  "Replay the welcome tour": "Willkommensführung wiederholen",
@@ -999,7 +1008,7 @@ window.BF_LOCALE_DE = {
  "Starting checklist": "Start-Checkliste",
  "Starts in": "Startet in",
  "Startup": "Start",
- "Stats arrive with the 0.36 addon after a /reload.": "Statistiken erscheinen mit dem 0.36-Addon nach einem /reload.",
+ "Stats arrive after a /reload with the addon on.": "Statistiken erscheinen nach einem /reload mit aktivem Addon.",
  "Status unknown": "Status unbekannt",
  "Step text": "Schritttext",
  "Steps": "Schritte",
@@ -1024,6 +1033,7 @@ window.BF_LOCALE_DE = {
  "The game is still running an older Backstage Forever addon, so this page can't follow you live and shows your last save instead. One /reload fixes it.": "Das Spiel läuft noch ein älteres Backstage Forever Addon, daher kann diese Seite dich nicht live verfolgen und zeigt stattdessen deinen letzten Stand. Ein /reload behebt das.",
  "The in-game Compass (": "Der In-Game-Kompass (",
  "The live link is off. Turn it on in Settings → Game connection.": "Die Live-Verbindung ist aus. Schalte sie unter Einstellungen → Spielverbindung ein.",
+ "The macOS-arm64 zip for Apple silicon, or macOS-x64 for Intel.": "Das macOS-arm64-Zip für Apple Silicon oder macOS-x64 für Intel.",
  "The quest says": "Die Quest sagt",
  "The reference differs from the current game title. Saved game observations take priority.": "Die Referenz weicht vom aktuellen Spielnamen ab. Gespeicherte Spielbeobachtungen haben Vorrang.",
  "The road ahead": "Der Weg vor dir",
@@ -1069,6 +1079,8 @@ window.BF_LOCALE_DE = {
  "Up to 3 points · 64 MiB each · 128 MiB total. Points contain profiles, private notes, goals, journeys and preferences. They exclude credentials and saved conversation memory, and are readable local files, not encrypted backups.": "Bis zu 3 Punkte · je 64 MiB · insgesamt 128 MiB. Punkte enthalten Profile, private Notizen, Ziele, Reisen und Einstellungen. Zugangsdaten und gespeichertes Gesprächsgedächtnis sind nicht enthalten; es sind lesbare lokale Dateien, keine verschlüsselten Sicherungen.",
  "Upcoming training": "Anstehendes Training",
  "Update download progress": "Fortschritt des Update-Downloads",
+ "Updates: manual": "Updates: von Hand",
+ "Updating on a Mac.": "Aktualisieren auf einem Mac.",
  "Updating…": "Wird aktualisiert…",
  "Upgrade for you": "Upgrade für dich",
  "Upgrade later": "Später upgraden",
@@ -1147,10 +1159,12 @@ window.BF_LOCALE_DE = {
  "You've been here": "Du warst schon hier",
  "Your adventure starts in the world.": "Dein Abenteuer beginnt in der Welt.",
  "Your anonymous id": "Deine anonyme ID",
+ "Your characters and settings stay in your Mac account's app folder. The new app updates the addon; type /reload in WoW once.": "Deine Charaktere und Einstellungen bleiben im App-Ordner deines Mac-Benutzers. Die neue App aktualisiert das Addon; tippe einmal /reload in WoW.",
  "Your characters at a glance": "Deine Charaktere auf einen Blick",
  "Your characters, all of them at a glance, their journals, gear and gear sets, and a talent path for leveling.": "Deine Charaktere, alle auf einen Blick, ihre Journale, Ausrüstung und Ausrüstungssätze sowie ein Talentpfad zum Leveln.",
  "Your chosen role": "Deine gewählte Rolle",
  "Your class": "Deine Klasse",
+ "Your companion checks for a new version while it is open and tells you here when one is out.": "Dein Begleiter sucht nach einer neuen Version, solange er geöffnet ist, und sagt dir hier Bescheid, wenn eine erscheint.",
  "Your companion for World of Warcraft: Forever": "Dein Begleiter für World of Warcraft: Forever",
  "Your companion for WoW Forever": "Dein Begleiter für WoW Forever",
  "Your companion, ready.": "Dein Begleiter, bereit.",
@@ -1203,6 +1217,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
  [
   "^One click downloads a small AI model \\((.+?)\\) and runs it on this PC\\. It's free, private and works offline\\. No account, no key, nothing to install yourself\\.$",
   "Ein Klick lädt ein kleines KI-Modell ({0}) herunter und führt es auf diesem PC aus. Kostenlos, privat und offline. Kein Konto, kein Schlüssel, nichts selbst zu installieren.",
+  [
+   0
+  ]
+ ],
+ [
+  "^Version ([0-9][0-9.,:/%–-]*) is out\\. Choose Download for Mac, unzip it and replace Backstage Forever in Applications\\. Your journal stays\\.$",
+  "Version {#0} ist erschienen. Wähle „Download für Mac“, entpacke sie und ersetze Backstage Forever im Programme-Ordner. Dein Journal bleibt erhalten.",
   [
    0
   ]
@@ -1279,6 +1300,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
   [
    0,
    1
+  ]
+ ],
+ [
+  "^Installed: version (.+?)\\. The app tells you when a new version is out\\.$",
+  "Installiert: Version {0}. Die App sagt dir, wenn eine neue Version erscheint.",
+  [
+   0
   ]
  ],
  [
@@ -1873,6 +1901,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
  [
   "^of ([0-9][0-9.,:/%–-]*) quests done$",
   "von {0} Quests erledigt",
+  [
+   0
+  ]
+ ],
+ [
+  "^Version ([0-9][0-9.,:/%–-]*) is out$",
+  "Version {#0} ist erschienen",
   [
    0
   ]

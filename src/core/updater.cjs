@@ -376,7 +376,10 @@ class Updater {
     this.epoch = 0;
     this.timers = [];
     this.preferences = { automatic: true, installOnQuit: true };
-    this.phase = packaged && platform === "win32" ? "idle" : "unsupported";
+    // 1.0.1: the Mac app checks the same signed feed and says when a new version is out, but never
+    // downloads or installs anything (the player downloads the Mac zip from Releases).
+    this.notifyOnly = packaged && platform === "darwin";
+    this.phase = (packaged && platform === "win32") || this.notifyOnly ? "idle" : "unsupported";
     this.progress = 0;
     this.lastChecked = null;
     this.message = "";
@@ -529,7 +532,7 @@ class Updater {
     if (
       this.installing ||
       !this.packaged ||
-      this.platform !== "win32" ||
+      (this.platform !== "win32" && !this.notifyOnly) ||
       !this.preferences.automatic
     )
       return;
@@ -563,7 +566,7 @@ class Updater {
     this.ready = null;
     this.availableVersion = null;
     this.phase =
-      this.packaged && this.platform === "win32"
+      (this.packaged && this.platform === "win32") || this.notifyOnly
         ? input.automatic
           ? "idle"
           : "disabled"
@@ -701,6 +704,12 @@ class Updater {
       if (manifest.releaseTag !== release.tag_name)
         throw updateError("MANIFEST");
       const chosen = { envelope, manifest };
+      // Mac: the signed manifest proves the release is ours; say so and stop before any download.
+      if (this.notifyOnly) {
+        this.availableVersion = manifest.version;
+        this.phase = "available";
+        return this.status();
+      }
       if (
         this.ready &&
         !newer(chosen.manifest.version, this.ready.manifest.version)
@@ -880,7 +889,7 @@ class Updater {
     fs.rmSync(this.dir, { recursive: true, force: true });
     this.preferences = { automatic: false, installOnQuit: true };
     this.phase =
-      this.packaged && this.platform === "win32" ? "disabled" : "unsupported";
+      (this.packaged && this.platform === "win32") || this.notifyOnly ? "disabled" : "unsupported";
     this.progress = 0;
     this.lastChecked = null;
     this.message = "";

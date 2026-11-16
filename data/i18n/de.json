@@ -80,7 +80,7 @@
   "answers \"where is…\" and \"how do I get to…\" from the bundled reference, offline and without AI. Other questions need an AI connection: Settings → AI connection lets you pick a free local model or your own account.": "beantwortet \"wo ist…\" und \"wie komme ich zu…\" aus dem mitgelieferten Nachschlagewerk, offline und ohne KI. Andere Fragen brauchen eine KI-Verbindung: Einstellungen → KI-Verbindung, dort kannst du ein kostenloses lokales Modell oder dein eigenes Konto wählen.",
   "API key": "API-Schlüssel",
   "App log that will be attached": "App-Protokoll, das angehängt wird",
-  "Application update signatures authenticate future downloads. This preview still lacks a Windows publisher certificate, so an initial manual installer may show an unknown-publisher notice.": "Anwendungs-Update-Signaturen authentifizieren zukünftige Downloads. Diese Vorschau hat noch kein Windows-Herausgeberzertifikat, daher kann der manuelle Installer beim ersten Start eine Warnung über unbekannten Herausgeber anzeigen.",
+  "Application update signatures authenticate future downloads. The installer doesn't carry a Windows publisher certificate yet, so the first install may show an unknown-publisher notice.": "Anwendungs-Update-Signaturen authentifizieren zukünftige Downloads. Das Installationsprogramm hat noch kein Windows-Herausgeberzertifikat, daher kann die erste Installation einen Hinweis auf einen unbekannten Herausgeber zeigen.",
   "Arrow keys move the map, plus and minus zoom, 0 shows the whole zone. Use the search box and the lists to reach pins with the keyboard or a screen reader.": "Pfeiltasten bewegen die Karte, Plus und Minus zoomen, 0 zeigt das ganze Gebiet. Nutze das Suchfeld und die Listen, um mit der Tastatur oder einem Screenreader zu Markierungen zu gelangen.",
   "Ask": "Fragen",
   "Ask about this character": "Fragen zu diesem Charakter",
@@ -744,7 +744,7 @@
   "Start with a quest in your saved log. The ledger keeps game destinations and approximate community locations clearly labelled.": "Starte mit einer Quest aus deinem gespeicherten Log. Das Kontobuch hält Spielziele und ungefähre Community-Standorte klar beschriftet fest.",
   "Starting checklist": "Start-Checkliste",
   "Starts in": "Startet in",
-  "Stats arrive with the 0.36 addon after a /reload.": "Statistiken erscheinen mit dem 0.36-Addon nach einem /reload.",
+  "Stats arrive after a /reload with the addon on.": "Statistiken erscheinen nach einem /reload mit aktivem Addon.",
   "Step text": "Schritttext",
   "Steps": "Schritte",
   "Stop response": "Antwort stoppen",
@@ -1106,7 +1106,7 @@
   "Set goal": "Ziel setzen",
   "Browse the Auction House in game with price memory on (/bf prices on) and the prices you see show up here.": "Stöbere im Spiel im Auktionshaus mit eingeschaltetem Preisgedächtnis (/bf prices on), dann erscheinen die gesehenen Preise hier.",
   "Where each character stands with every faction, Alliance and Horde alike.": "Wie jeder Charakter bei jeder Fraktion steht, Allianz und Horde gleichermaßen.",
-  "No reputations yet. Log in with the 0.35 addon, then type": "Noch kein Ruf. Logge dich mit dem Addon ab 0.35 ein und tippe dann",
+  "No reputations yet. Log in with the addon on, then type": "Noch kein Ruf. Logge dich mit aktivem Addon ein und tippe dann",
   "(or log out) once so the desktop app receives it.": "(oder logge dich aus), damit die Desktop-App ihn erhält.",
   "Transmutes, Mooncloth and the Salt Shaker: which are ready, and when the rest will be.": "Transmutationen, Mondstoff und der Salzstreuer: was bereit ist und wann der Rest es wird.",
   "None of your characters has a tracked cooldown: Alchemy transmutes, Mooncloth (Tailoring) or the Salt Shaker (Leatherworking).": "Keiner deiner Charaktere hat eine verfolgte Abklingzeit: Alchemie-Transmutationen, Mondstoff (Schneiderei) oder den Salzstreuer (Lederverarbeitung).",
@@ -1200,7 +1200,21 @@
   "Gnome": "Gnom",
   "Human": "Mensch",
   "Night Elf": "Nachtelf",
-  "Alliance": "Allianz"
+  "Alliance": "Allianz",
+  "Finds WoW Forever and installs the addon. Nothing to download or type.": "Findet WoW Forever und installiert das Addon. Nichts herunterzuladen oder einzutippen.",
+  "On a Mac your XP comes from your last save (/reload or log out). Pace, time to the next level and deaths need the live link, which is Windows-only for now.": "Auf einem Mac stammen deine EP aus dem letzten Speichern (/reload oder Ausloggen). Tempo, Zeit bis zur nächsten Stufe und Tode brauchen die Live-Verbindung, die es vorerst nur unter Windows gibt.",
+  "Checks start in the Backstage Forever app from Applications. Source builds never check.": "Prüfungen starten in der Backstage-Forever-App aus dem Programme-Ordner. Quell-Builds prüfen nie.",
+  "Your companion checks for a new version while it is open and tells you here when one is out.": "Dein Begleiter sucht nach einer neuen Version, solange er geöffnet ist, und sagt dir hier Bescheid, wenn eine erscheint.",
+  "Updates: manual": "Updates: von Hand",
+  "Check for new versions": "Nach neuen Versionen suchen",
+  "After startup and every six hours while the app is open, from this project’s GitHub Releases. Only releases signed by Backstage Forever’s update key count.": "Nach dem Start und alle sechs Stunden, solange die App geöffnet ist, über die GitHub-Releases dieses Projekts. Es zählen nur Releases, die mit dem Update-Schlüssel von Backstage Forever signiert sind.",
+  "Download for Mac ↗": "Download für Mac ↗",
+  "Updating on a Mac.": "Aktualisieren auf einem Mac.",
+  "Download": "Herunterladen",
+  "Replace": "Ersetzen",
+  "The macOS-arm64 zip for Apple silicon, or macOS-x64 for Intel.": "Das macOS-arm64-Zip für Apple Silicon oder macOS-x64 für Intel.",
+  "Quit Backstage Forever, unzip, and drag the new app into Applications over the old one.": "Beende Backstage Forever, entpacke das Zip und ziehe die neue App in den Programme-Ordner über die alte.",
+  "Your characters and settings stay in your Mac account's app folder. The new app updates the addon; type /reload in WoW once.": "Deine Charaktere und Einstellungen bleiben im App-Ordner deines Mac-Benutzers. Die neue App aktualisiert das Addon; tippe einmal /reload in WoW."
  },
  "addon": {
   "plain": {
@@ -1484,6 +1498,9 @@
   "{#0} of {#1} points · Automatic off": "{0} von {1} Punkten · Automatisch aus",
   "Trainer data: Efficient Games · build {0} · community data, may differ in game": "Trainerdaten: Efficient Games · Build {0} · Community-Daten, können im Spiel abweichen",
   "Back · item level {#0}": "Rücken · Gegenstandsstufe {0}",
-  "✓ Bring {0} to {1} at {2}.": "✓ Bring {0} zu {1} in {2}."
+  "✓ Bring {0} to {1} at {2}.": "✓ Bring {0} zu {1} in {2}.",
+  "Installed: version {0}. The app tells you when a new version is out.": "Installiert: Version {0}. Die App sagt dir, wenn eine neue Version erscheint.",
+  "Version {#0} is out": "Version {#0} ist erschienen",
+  "Version {#0} is out. Choose Download for Mac, unzip it and replace Backstage Forever in Applications. Your journal stays.": "Version {#0} ist erschienen. Wähle „Download für Mac“, entpacke sie und ersetze Backstage Forever im Programme-Ordner. Dein Journal bleibt erhalten."
  }
 }

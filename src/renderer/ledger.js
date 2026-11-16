@@ -37,7 +37,7 @@ window.LedgerView = (() => {
     return rows.filter((r) => String(r.itemId) === q.trim() || words.every((w) => r.name.toLowerCase().includes(w)));
   }
   function empty(what) {
-    return `<p class="ldg-empty">${what} Log in with the 0.35 addon, then type <code>/reload</code> (or log out) once so the desktop app receives it.</p>`;
+    return `<p class="ldg-empty">${what} Log in with the addon on, then type <code>/reload</code> (or log out) once so the desktop app receives it.</p>`;
   }
   function hero(art, page, title, subtitle) {
     const cls = String(active()?.className || "").toLowerCase();
