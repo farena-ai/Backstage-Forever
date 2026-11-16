@@ -18,7 +18,7 @@ npm run test:npc-companion
 The native NPC check uses fictional isolated saved profiles and fake external surfaces. It verifies original Cairne-in-Org lookup, explicit current-report preview/send, sharing/owner boundaries, ambiguity, unavailable/corrupt reference, zero local provider/key requests, compact rendering and caret preservation. It does not prove live game locations, real provider entitlement/audio, installation or public delivery. Both commands are required by Windows validation and tagged release workflows. **1.0 remains held.**
 
 
-Public MIT application repository: farena-ai/Backstage-Forever. Backstage Coding, designed by Frank Arena. Version 0.13.7 remains a Windows-first preview; 1.0 is held for owner acceptance. Reference data retains separate CC BY 4.0 notices. Installers are not Windows Authenticode signed; Ed25519 app-update signatures separately authenticate downloads. See UPDATES.md for trust, key management and rotation.
+Public MIT application repository: farena-ai/Backstage-Forever. Backstage Coding, designed by Frank Arena. Version 1.0.0 (2026-11-16) is the first stable release: `releaseChannel` is `stable`, so the release is not marked pre-release and stable installs never move to a pre-release. Reference data retains separate CC BY 4.0 notices. Installers are not Windows Authenticode signed; Ed25519 app-update signatures separately authenticate downloads. See UPDATES.md for trust, key management and rotation.
 
 ## Local validation
 

@@ -297,8 +297,9 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 - **0.57 (shipped):** hardening for 1.0: every row above marked done, partly done or after 1.0; the rest of the app's German (sentences with numbers and names); stable installs skip pre-releases.
 - **0.58:** the companion understands what you ask (a 100-question benchmark, 15% → 97% covered, answers from Forever's own data, roleplay voice grounded in verified facts, more refusals); portraits matched on race, sex and class (Rolica is a female Forsaken priest); a painting for every dungeon and raid; credits for Frank Arena and Jason Babiuch with the Backstage Coding website.
 - **After 0.58, before and after 1.0:** the companion keeps improving against the benchmark: more questions (gathering spots, class quests, reputation), a live-model voice check, and the opt-in web lookup.
-- **1.0 release candidate:** Frank's hands-on check with [the acceptance checklist](ACCEPTANCE-1.0.md), then fixes.
-- **1.0:** after Frank's hands-on acceptance. Known limits, listed rather than required: party sync with a second player, the Mac app on a real Mac, and the German messages in a German game client.
+- **0.59 (shipped):** the companion understood 100% of a held-out question set (56.7% before); the addon zip with every release and packaging for CurseForge, Wago and WoWInterface.
+- **1.0 release candidate (done):** Frank's hands-on check with [the acceptance checklist](ACCEPTANCE-1.0.md), then fixes.
+- **1.0 (shipped 2026-11-16):** after Frank's hands-on acceptance. Known limits, listed rather than required: party sync with a second player, the Mac app on a real Mac, and the German messages in a German game client.
 - **After 1.0:** the rows marked "After 1.0" above, and the route review (Frank goes through the routes) whenever it suits.
 
 Keep this file and Help → Commands updated with each release.

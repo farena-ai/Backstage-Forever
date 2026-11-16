@@ -7,11 +7,11 @@ It reads your own game, tells you what to do next, and guides you there: in the 
 
 <p align="center"><a href="https://github.com/farena-ai/Backstage-Forever/releases/latest">Download</a> · <a href="#what-it-does">What it does</a> · <a href="#privacy-at-a-glance">Privacy</a> · <a href="CHANGELOG.md">Changelog</a> · <a href="docs/GETTING-STARTED.md">Getting started</a></p>
 
-<p align="center"><img src="docs/screenshots/now.png" alt="The Now page: your next step, where to level, your quest log and training" width="860"></p>
+<p align="center"><img src="docs/screenshots/now.jpg" alt="The Now page: your next step, where to level, your quest log and training" width="860"></p>
 
 ## What's new
 
-**0.59:** the companion understands more (100% on questions it had never seen), the addon on its own with each release. **0.58:** the companion understands what you ask (15% → 97% on a 100-question benchmark), your character's own portrait, a painting for every dungeon. **0.57.3:** one /reload after an update. **0.57.2:** Professions advice from your recipes. **0.57.1:** Professions read your recipes. **0.57:** the rest of the app in German and the 1.0 checklist. **0.56:** ready for the public: this front page, plain-language privacy, a security policy and a new Getting started. **0.55:** a Mac app for Apple Silicon and Intel (without the live link). **0.54:** every page reviewed in English and German, and the in-game Adventure Compass shows your XP, pace, quests ready to hand in and next step at a glance. See the [release notes](docs/releases/0.59.0.md) and the [changelog](CHANGELOG.md) for every version.
+**1.0:** the first stable release. **0.59:** the companion understands more (100% on questions it had never seen), the addon on its own with each release. **0.58:** the companion understands what you ask (15% → 97% on a 100-question benchmark), your character's own portrait, a painting for every dungeon. **0.57.3:** one /reload after an update. **0.57.2:** Professions advice from your recipes. **0.57.1:** Professions read your recipes. **0.57:** the rest of the app in German and the 1.0 checklist. **0.56:** ready for the public: this front page, plain-language privacy, a security policy and a new Getting started. **0.55:** a Mac app for Apple Silicon and Intel (without the live link). **0.54:** every page reviewed in English and German, and the in-game Adventure Compass shows your XP, pace, quests ready to hand in and next step at a glance. See the [release notes](docs/releases/1.0.0.md) and the [changelog](CHANGELOG.md) for every version.
 
 ## What it does
 

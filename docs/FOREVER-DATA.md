@@ -28,7 +28,7 @@ No second external publisher met the compatibility and licensing requirements fo
 
 ## Supplementary field notes (0.13 preview)
 
-The current 0.13 preview includes a separate offline `data/forever-insights/` artifact; 1.0 remains held for hands-on acceptance. Quest Guide places these historical facts after the existing waypoint action. Exact quest ID/title, reference source commit/build and saved build/locale when known must agree. Manual reference browsing does not establish player availability. Incompatible or missing facts stay unavailable.
+The current 0.13 preview includes a separate offline `data/forever-insights/` artifact; 1.0 shipped after hands-on acceptance. Quest Guide places these historical facts after the existing waypoint action. Exact quest ID/title, reference source commit/build and saved build/locale when known must agree. Manual reference browsing does not establish player availability. Incompatible or missing facts stay unavailable.
 
 The same Efficient Games pin supplies 3,677 quest sharing observations, 33 static reported duration limits, 928 starting-item IDs and 131 item/count drop lists. The base remains **3,884 quest cache records**. Sharing counts are recorded answers from contributor files, not distinct people, independent witnesses or probabilities; disagreement remains mixed and absence unknown. A duration is not a countdown. A starting item proves neither ownership nor quest access; a drop entry establishes no drop rate, location or guarantee. Missing optional facts imply no restriction or prerequisite.
 

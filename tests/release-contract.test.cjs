@@ -7,13 +7,14 @@ const { newer } = require("../src/core/updater.cjs");
 const root = path.resolve(__dirname, "..");
 const read = (name) => fs.readFileSync(path.join(root, name), "utf8");
 
-test("installed preview advances beyond the unpublished 0.13.6 candidate with aligned versions", () => {
+test("1.0 is the stable release, newer than every preview, with aligned versions", () => {
   const pkg = JSON.parse(read("package.json"));
   const lock = JSON.parse(read("package-lock.json"));
-  assert.equal(pkg.releaseChannel, "preview");
+  assert.equal(pkg.releaseChannel, "stable");
   assert.ok(newer(pkg.version, "0.12.3"), "Installed 0.12.3 must see a newer version");
   assert.ok(newer(pkg.version, "0.13.6"), "Failed candidate tags remain unchanged; publish a newer patch");
-  assert.ok(newer("1.0.0", pkg.version), "1.0 remains held for owner acceptance");
+  assert.ok(!newer("0.59.0", pkg.version), "1.0 is newer than every preview");
+  assert.ok(newer(pkg.version, "0.59.0"), "previews update to 1.0");
   assert.equal(lock.version, pkg.version);
   assert.equal(lock.packages[""].version, pkg.version);
   const toc = read("addon/BackstageForever/BackstageForever.toc");

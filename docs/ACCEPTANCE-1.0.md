@@ -1,5 +1,7 @@
 # 1.0 acceptance checklist
 
+**Accepted: 1.0.0 shipped on 2026-11-16.** The record is at the end.
+
 Backstage Forever goes to 1.0 after one hands-on session in the real game. This list covers what automated tests can't prove. It takes about an hour of normal play on Windows.
 
 For each item, tick the box or write a few words about what you saw. Anything that doesn't match gets fixed and checked again before 1.0.

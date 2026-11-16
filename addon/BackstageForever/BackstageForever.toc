@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: Backstage Forever
-## Notes: Local saved character snapshots for Backstage Forever. Written to disk on logout or UI reload.
-## Author: Backstage Coding
-## Version: 0.59.0
+## Notes: Leveling companion for WoW Forever: Adventure Compass, guided route, arrows to your next quest, trainer and flight finders, and an ask panel. Pairs with the free Backstage Forever desktop app.
+## Author: Backstage Coding (Frank Arena & Jason Babiuch)
+## Version: 1.0.0
 ## SavedVariables: BackstageForeverExport
 ## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings, BackstageForeverQuestItemSourcesDB, BackstageForeverRouteSettings, BackstageForeverSuppliesSettings, BackstageForeverJournalDB, BackstageForeverMomentsSettings, BackstageForeverLedgerDB, BackstageForeverSheetDB, BackstageForeverAskSettings, BackstageForeverEnemySettings, BackstageForeverQoLSettings, BackstageForeverPartySettings
 BackstageForeverLocale.lua

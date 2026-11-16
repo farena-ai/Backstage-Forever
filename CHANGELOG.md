@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0 — Backstage Forever 1.0, 2026-11-16
+
+- The first stable release. `releaseChannel` is `stable`: the GitHub release is not marked pre-release, and stable installs only ever update to stable releases. Every 0.x install updates to 1.0.
+- Accepted after a hands-on session in the real game (`docs/ACCEPTANCE-1.0.md`). The 1.0 dry run had already passed every release gate.
+- The side menu shows just the version; "Desktop preview" was for 0.x.
+- Known limits, listed rather than required: party sync with a second player, the Mac app on a real Mac, and German messages in a German game client.
+
 ## 0.59.0 — The companion understands more, and the addon heads for the addon sites, 2026-11-16
 
 - Companion: a held-out benchmark of 60 questions written without seeing the code (slang, abbreviations, run-on sentences, roleplay) went from 56.7% covered to 100% (90% correct with no model); the original set stays at 97.9%. New: slang ("zep", "xroads", "uc", "lvl", "hang out"), names found from one distinctive word, trips with a stated start, walking distance inside a zone, the other faction's transports, weapon masters by weapon, quests found by the items you carry, where quest targets were seen, the right quest among same-named ones, recipe skill ranks and gathering spots. Claude subscription answers get the verified facts too. A test keeps both sets from going backwards.
