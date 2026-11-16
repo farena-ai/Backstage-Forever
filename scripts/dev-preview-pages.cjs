@@ -14,7 +14,8 @@ const { navigate, routes } = require("./player-navigation.cjs");
   await fs.mkdir(out, { recursive: true });
   let app;
   try {
-    const state = JSON.parse(await fs.readFile(path.join(process.env.APPDATA, "Backstage Forever", "state.json"), "utf8"));
+    // BF_PREVIEW_STATE: another state file, e.g. an anonymised one for public screenshots.
+    const state = JSON.parse(await fs.readFile(process.env.BF_PREVIEW_STATE || path.join(process.env.APPDATA, "Backstage Forever", "state.json"), "utf8"));
     delete state.gameConnection;
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(state));
     const repo = path.resolve(__dirname, "..");
