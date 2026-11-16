@@ -423,6 +423,8 @@ local function sequence(raw,limit)
     end
     return result,complete
 end
+local ownedLines=setmetatable({},{__mode='k'})
+local readIds=setmetatable({},{__mode='k'})
 local function professions()
     local skills=public(C_SkillInfo);local trade=public(C_TradeSkillUI)
     local count=integer(call(field(skills,'GetNumSkillLines')),0,2147483647)
@@ -448,6 +450,19 @@ local function professions()
             elseif not ok or integer(field(meta,'professionID'),0,2147483647)~=0 then result.complete=false end
         else result.complete=false end
     end
+    -- Forever lists each profession twice (the classic skill line and a newer child
+    -- line with the same name and rank). Show one; recipes from either line map to it.
+    local lines,keep,byName={}, array({}),{}
+    for _,item in ipairs(result.items) do
+        local key=item.name..'|'..item.rank..'|'..item.maxRank
+        local first=byName[key]
+        if first and item.skillLineId<first.skillLineId then
+            for _,line in ipairs(lines) do if line.canonical==first.skillLineId then line.canonical=item.skillLineId end end
+            first.skillLineId=item.skillLineId;first.professionId=item.professionId
+        elseif not first then byName[key]=item;keep[#keep+1]=item end
+        lines[#lines+1]={skillLineId=item.skillLineId,professionId=item.professionId,canonical=(byName[key] or item).skillLineId}
+    end
+    result.items=keep;ownedLines[result]=lines
     result.observedAt=clock()
     if result.observedAt then return result end
 end
@@ -507,7 +522,7 @@ end
 local function recipes(owned)
     if not owned then return nil end
     local trade=public(C_TradeSkillUI)
-    if type(field(trade,'GetProfessionSpells'))~='function' or type(field(trade,'GetRecipeInfo'))~='function' then return nil end
+    if type(field(trade,'GetRecipeInfo'))~='function' or (type(field(trade,'GetProfessionSpells'))~='function' and type(field(trade,'GetFilteredRecipeIDs'))~='function' and type(field(trade,'GetAllRecipeIDs'))~='function') then return nil end
     local result={items=array({}),complete=owned.complete};local blocked=false
     -- These view indicators vary between clients. Never confuse guild-system
     -- availability with viewing another player's or guild's recipe source.
@@ -530,41 +545,65 @@ local function recipes(owned)
     local filter,filterKnown=feature(trade,'GetSourceTypeFilter')
     if not filterKnown or filter~=nil then result.complete=false end
     local seen,queried={},0
-    if not blocked then for _,profession in ipairs(owned.items) do
-        local spells,ok=observed(field(trade,'GetProfessionSpells'),profession.professionId,profession.skillLineId)
+    readIds[result]=seen
+    local lines=ownedLines[owned]
+    if not lines then lines={};for _,p in ipairs(owned.items) do lines[#lines+1]={skillLineId=p.skillLineId,professionId=p.professionId,canonical=p.skillLineId} end end
+    -- One learned recipe of this character, read from the trade skill API. The
+    -- recipe belongs to the first candidate line the client confirms it is in.
+    local function consider(id,candidates)
+        if not id or seen[id] then result.complete=false;return end
+        seen[id]=true
+        local info,read=observed(field(trade,'GetRecipeInfo'),id)
+        if not read then result.complete=false;return end
+        if info==nil then return end
+        local learned=field(info,'learned')
+        if learned~=true then if learned~=false then result.complete=false end;return end
+        local name=label(field(info,'name'))
+        local matches=integer(field(info,'recipeID'),1,2147483647)==id
+        local inLine,lineKnown=feature(trade,'IsRecipeInSkillLine')
+        local owner
+        if lineKnown and inLine~=nil then
+            for _,line in ipairs(candidates) do if call(inLine,id,line.skillLineId)==true then owner=line;break end end
+        elseif lineKnown and #candidates==1 then owner=candidates[1] end
+        if not owner then matches=false end
+        local professionLearned,professionKnown=feature(trade,'IsRecipeProfessionLearned')
+        if not professionKnown or (professionLearned~=nil and call(professionLearned,id)~=true) then matches=false end
+        if not matches or not name then result.complete=false;return end
+        if #result.items>=100 then result.complete=false;return end
+        local recipe={id=id,skillLineId=owner.canonical,name=name,reagentsKnown=false,reagents=array({})}
+        local skillUp=field(info,'canSkillUp');if type(skillUp)=='boolean' then recipe.canSkillUp=skillUp end
+        -- Skill-up colour only when it agrees with canSkillUp (grey alone cannot skill up).
+        local difficulty=recipeDifficulty(info)
+        if difficulty and (recipe.canSkillUp==nil or recipe.canSkillUp==(difficulty~='trivial')) then recipe.difficulty=difficulty end
+        optional(function()recipeRequirements(trade,id,recipe)end)
+        result.items[#result.items+1]=recipe
+    end
+    if not blocked and type(field(trade,'GetProfessionSpells'))=='function' then for _,line in ipairs(lines) do
+        local spells,ok=observed(field(trade,'GetProfessionSpells'),line.professionId,line.skillLineId)
         local ids,complete=sequence(spells,100-queried)
         if not ok or not ids or not complete then result.complete=false end
         if ids then for _,raw in ipairs(ids) do
             queried=queried+1
-            local id=integer(raw,1,2147483647)
-            if not id or seen[id] then result.complete=false
-            else
-                seen[id]=true
-                local info,read=observed(field(trade,'GetRecipeInfo'),id)
-                if not read then result.complete=false
-                elseif info~=nil then
-                    local learned=field(info,'learned')
-                    if learned==true then
-                        local name=label(field(info,'name'))
-                        local matches=integer(field(info,'recipeID'),1,2147483647)==id
-                        local inLine,lineKnown=feature(trade,'IsRecipeInSkillLine')
-                        if not lineKnown or (inLine~=nil and call(inLine,id,profession.skillLineId)~=true) then matches=false end
-                        local professionLearned,professionKnown=feature(trade,'IsRecipeProfessionLearned')
-                        if not professionKnown or (professionLearned~=nil and call(professionLearned,id)~=true) then matches=false end
-                        if matches and name then
-                            local recipe={id=id,skillLineId=profession.skillLineId,name=name,reagentsKnown=false,reagents=array({})}
-                            local skillUp=field(info,'canSkillUp');if type(skillUp)=='boolean' then recipe.canSkillUp=skillUp end
-                            -- Skill-up colour only when it agrees with canSkillUp (grey alone cannot skill up).
-                            local difficulty=recipeDifficulty(info)
-                            if difficulty and (recipe.canSkillUp==nil or recipe.canSkillUp==(difficulty~='trivial')) then recipe.difficulty=difficulty end
-                            optional(function()recipeRequirements(trade,id,recipe)end)
-                            result.items[#result.items+1]=recipe
-                        else result.complete=false end
-                    elseif learned~=false then result.complete=false end
-                end
-            end
+            consider(integer(raw,1,2147483647),{line})
         end end
     end end
+    -- The Professions window's own list (Forever): readable while the window is or
+    -- was open this session. Filters may hide some, so it never claims full coverage.
+    local list=feature(trade,'GetFilteredRecipeIDs')
+    if type(list)~='function' then list=feature(trade,'GetAllRecipeIDs') end
+    if not blocked and type(list)=='function' and #lines>0 then
+        local raw,ok=observed(list)
+        local ids=sequence(raw,300)
+        if not ok then result.complete=false end
+        if ids and #ids>0 then
+            result.complete=false
+            for _,value in ipairs(ids) do
+                local id=integer(value,1,2147483647)
+                if id and not seen[id] then consider(id,lines) end
+                if #result.items>=100 then break end
+            end
+        end
+    end
     result.observedAt=clock()
     if result.observedAt then return result end
 end
@@ -602,19 +641,59 @@ local function materials()
     if result.observedAt then return result end
 end
 local workshopCache
+local roster={}
+-- Recipes are only listed while the Professions window is (or was) open. Keep the
+-- ones this character's last save already had, re-checked, so closing the window,
+-- /reload or logging in again never forgets them. Fresh reads win.
+local function sanitizedRecipe(raw,owned)
+    if type(raw)~='table' then return nil end
+    local id=integer(raw.id,1,2147483647);local line=integer(raw.skillLineId,1,2147483647);local name=label(raw.name)
+    if not id or not line or not owned[line] or not name or type(raw.reagentsKnown)~='boolean' or type(raw.reagents)~='table' then return nil end
+    local recipe={id=id,skillLineId=line,name=name,reagentsKnown=raw.reagentsKnown,reagents=array({})}
+    for i,r in ipairs(raw.reagents) do
+        local itemId=type(r)=='table' and integer(r.itemId,1,2147483647);local required=type(r)=='table' and integer(r.required,1,100000)
+        if i>20 or not itemId or not required then return nil end
+        recipe.reagents[i]={itemId=itemId,required=required,name=label(r.name)}
+    end
+    recipe.outputItemId=integer(raw.outputItemId,1,2147483647)
+    local min,max=integer(raw.outputMin,1,10000),integer(raw.outputMax,1,10000)
+    if min and max and min<=max then recipe.outputMin=min;recipe.outputMax=max end
+    if type(raw.canSkillUp)=='boolean' then recipe.canSkillUp=raw.canSkillUp end
+    if difficultyNames[raw.difficulty] and (recipe.canSkillUp==nil or recipe.canSkillUp==(raw.difficulty~='trivial')) then recipe.difficulty=raw.difficulty end
+    return recipe
+end
+local function remembered(guid,owned,fresh)
+    local previous=field(field(field(roster[guid],'readiness'),'workshop'),'recipes')
+    local at=integer(field(previous,'observedAt'),0,253402300799)
+    if not owned or type(field(previous,'items'))~='table' or not at then return fresh end
+    local lines={};for _,p in ipairs(owned.items) do lines[p.skillLineId]=true end
+    local result=fresh or {items=array({}),complete=false,observedAt=at}
+    -- A recipe the client was just asked about and did not confirm stays out.
+    local have={};for id in pairs(fresh and readIds[fresh] or {}) do have[id]=true end
+    local added=false
+    for i,raw in ipairs(previous.items) do
+        if i>100 or #result.items>=100 then break end
+        local recipe=sanitizedRecipe(raw,lines)
+        if recipe and not have[recipe.id] then have[recipe.id]=true;result.items[#result.items+1]=recipe;added=true end
+    end
+    if not added then return fresh end
+    result.complete=false
+    if not result.observedAt or at<result.observedAt then result.observedAt=at end
+    return result
+end
 local function readiness(guid,build)
     local gear=optional(equipment)
     local space=optional(bags)
     if not workshopCache or workshopCache.guid~=guid or workshopCache.build~=build then
         local owned=optional(professions)
-        workshopCache={guid=guid,build=build,professions=owned,recipes=optional(function()return recipes(owned)end)}
+        local fresh=optional(function()return recipes(owned)end)
+        workshopCache={guid=guid,build=build,professions=owned,recipes=optional(function()return remembered(guid,owned,fresh)end) or fresh}
     end
     local carried=optional(materials)
     local workshop
     if workshopCache.professions or workshopCache.recipes or carried then workshop={professions=workshopCache.professions,recipes=workshopCache.recipes,materials=carried} end
     if gear~=nil or space~=nil or workshop then return {equipment=gear,bags=space,workshop=workshop} end
 end
-local roster={}
 -- /bf ledger: names and last saved gold of the characters this account's export knows.
 function BackstageForeverLedgerRoster()
     local out={}
@@ -646,7 +725,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.57.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.57.1'
     character.race=clean((call(UnitRace,'player')));character.faction=clean((call(UnitFactionGroup,'player')))
     local previous=roster[guid]
     -- WoW writes saved data only on /reload or logout, so a brand-new character is unknown to the app until then.

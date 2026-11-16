@@ -145,7 +145,8 @@ C_SkillInfo=nil;C_TradeSkillUI=nil;C_Container=nil;event('PLAYER_LOGIN');save()
   assert.equal(active(rows[0]).readiness.workshop.professions.complete, false);
   assert.equal(active(rows[0]).readiness.workshop.recipes.complete, false);
   for (const p of rows.slice(1, 4)) assert.equal(active(p).readiness.workshop.recipes.complete, false);
-  for (const p of rows.slice(1, 3)) assert.deepEqual(active(p).readiness.workshop.recipes.items, []);
+  // Linked or guild views read nothing fresh; this character's own recipes from its last save stay.
+  for (const p of rows.slice(1, 3)) assert.deepEqual(active(p).readiness.workshop.recipes.items.map(r => r.id), [1001]);
   assert.equal(active(rows[3]).readiness.workshop.recipes.items[0].id, 1001, "Filter ambiguity permits positive owned facts, not completeness");
   assert.equal(active(rows[4]).readiness.workshop.professions.items.length, 1);
   assert.equal(active(rows[4]).readiness.workshop.professions.complete, false);
@@ -395,4 +396,35 @@ infos[1001]={recipeID=1001,name='Potion',learned=true,relativeDifficulty=0,canSk
 `);
   const got = rows.map(p => active(p).readiness.workshop.recipes.items[0].difficulty);
   assert.deepEqual(got, ["optimal", "easy", "trivial", undefined, undefined, undefined, "medium", undefined, "trivial", undefined]);
+});
+
+test("Forever: recipes come from the Professions window list and are remembered after it closes and after /reload (0.57.1)", () => {
+  const rows = run(String.raw`
+lines={{skillID=197,name='Tailoring',isHeader=false,isCollapsed=false,rank=80,maxRank=150},{skillID=2948,name='Tailoring',isHeader=false,isCollapsed=false,rank=80,maxRank=150},{skillID=129,name='First Aid',isHeader=false,isCollapsed=false,rank=77,maxRank=150}}
+C_TradeSkillUI.GetProfessionInfoBySkillLineID=function(id)return {professionID=id}end
+-- The spellbook path returns the profession's own spells, which are not recipes.
+C_TradeSkillUI.GetProfessionSpells=function()return {3908}end
+infos={[3908]=nil,[2001]={recipeID=2001,name='Bolt of Woolen Cloth',learned=true,canSkillUp=true,relativeDifficulty=1},[2002]={recipeID=2002,name='Unlearned Shirt',learned=false},[2003]={recipeID=2003,name='Linen Bandage',learned=true,canSkillUp=false,relativeDifficulty=3}}
+C_TradeSkillUI.GetRecipeInfo=function(id)return infos[id] end
+C_TradeSkillUI.GetRecipeSchematic=function()return nil end
+local inLine={[2001]=2948,[2002]=2948,[2003]=129}
+C_TradeSkillUI.IsRecipeInSkillLine=function(id,line)return inLine[id]==line end
+local open={}
+C_TradeSkillUI.GetFilteredRecipeIDs=function()return open end
+event('PLAYER_LOGIN');save()
+open={2001,2002};event('TRADE_SKILL_SHOW');flush();save()
+open={2003};event('TRADE_SKILL_LIST_UPDATE');flush();save()
+open={};event('TRADE_SKILL_CLOSE');flush();save()
+local kept=BackstageForeverExport;load();BackstageForeverExport=kept;event('PLAYER_LOGIN');save()
+`);
+  const w = (i) => active(rows[i]).readiness.workshop;
+  assert.deepEqual(w(0).professions.items.map((p) => [p.skillLineId, p.name]), [[197, "Tailoring"], [129, "First Aid"]], "one Tailoring, not two");
+  assert.deepEqual(w(0).recipes.items, [], "nothing until the window lists recipes");
+  assert.deepEqual(w(1).recipes.items.map((r) => [r.id, r.skillLineId, r.difficulty]), [[2001, 197, "medium"]], "listed, learned, mapped to the shown line");
+  assert.equal(w(1).recipes.complete, false, "a filtered window list is never full coverage");
+  const ids = (i) => w(i).recipes.items.map((r) => r.id).sort();
+  assert.deepEqual(ids(2), [2001, 2003], "a second profession adds to the first");
+  assert.deepEqual(ids(3), [2001, 2003], "closing the window forgets nothing");
+  assert.deepEqual(ids(4), [2001, 2003], "a /reload keeps the last save's recipes");
+  assert.ok(w(4).recipes.observedAt <= active(rows[4]).updatedAt);
 });

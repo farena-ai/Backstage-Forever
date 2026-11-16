@@ -25,18 +25,20 @@ For each item, tick the box or write a few words about what you saw. Anything th
    - [ ] Alert is useful, not noisy (or: not seen this session)
 7. **Ask panel.** Click the owl on the minimap and ask "where is the nearest flight master?". The answer appears under your question, and Esc gives the keyboard back to the game. Try it in full-screen mode too.
    - [ ] Opens, answers and closes cleanly
+8. **Professions.** Open one of your professions in game (for example Tailoring) and close it again. On the desktop, Professions shows your recipes and the next one worth making, not "Open a profession in game once". Your professions are listed once each.
+   - [ ] Recipes show up
 
 ## On the desktop
 
-8. **Live link.** With the game running, Now follows you: your zone changes when you move, and a quest you hand in shows as done without `/reload`. Minimize WoW: the app says live updates are paused, then picks up again when you bring the game back.
+9. **Live link.** With the game running, Now follows you: your zone changes when you move, and a quest you hand in shows as done without `/reload`. Minimize WoW: the app says live updates are paused, then picks up again when you bring the game back.
    - [ ] Follows you and recovers
-9. **Now and Mini Now.** "Do this next" matches what the game shows. Mini Now stays beside the game and shows the same step.
-   - [ ] Matches
-10. **World Map.** Your arrow is in the right place on your zone's map, and a "Show on map" link from Now opens the map on that exact spot.
+10. **Now and Mini Now.** "Do this next" matches what the game shows. Mini Now stays beside the game and shows the same step.
+    - [ ] Matches
+11. **World Map.** Your arrow is in the right place on your zone's map, and a "Show on map" link from Now opens the map on that exact spot.
     - [ ] Right place
-11. **Log out.** Log out of the game. Within a few seconds the app shows the fresh save, and your notes and goals are still there.
+12. **Log out.** Log out of the game. Within a few seconds the app shows the fresh save, and your notes and goals are still there.
     - [ ] Saved and nothing lost
-12. **Problem report.** Help → Field guide → prepare a diagnostic report. Read it: no character names, no realm, nothing private.
+13. **Problem report.** Help → Field guide → prepare a diagnostic report. Read it: no character names, no realm, nothing private.
     - [ ] Clean
 
 ## Known limits for 1.0

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.57.1 — Professions read your recipes, 2026-11-16
+
+- Fix: Professions kept saying "Open a profession in game once" even after you had. The addon asked the game for the profession's spellbook spells, which on WoW Forever are not recipes, so no recipe was ever saved. It now reads the same recipe list as the Professions window while it's open (`C_TradeSkillUI.GetFilteredRecipeIDs`) and keeps each character's recipes from its last save, so closing the window, `/reload` or logging in again forgets nothing. A recipe the game freshly says isn't yours is dropped.
+- Each profession showed up twice (Forever has two skill lines per profession with the same name and rank); it's shown once now.
+- The 1.0 checklist has a Professions item.
+
 ## 0.57.0 — Getting ready for 1.0, 2026-11-16
 
 - German: the app now translates sentences with numbers and names in them ("Gib 3 fertige Quests ab", "Stufe 21: komm um Stufe 29 wieder") through templates in `data/i18n/de.json` (`appTemplates`; `{#n}` takes only numbers, so quest names are never split). About 180 more phrases. On a full German run of every page, the English left is game names (quests, items, zones), which follow the game data.
