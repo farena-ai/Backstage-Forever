@@ -373,7 +373,7 @@ load();event('PLAYER_LOGIN');save()
   }
 });
 
-test("skill-up colour comes from the client's own enum or string and never contradicts canSkillUp", () => {
+test("skill-up colour comes from the client's own enum or string; grey wins over canSkillUp", () => {
   const rows = run(String.raw`
 local cases={
  {relativeDifficulty=0,canSkillUp=true},
@@ -395,7 +395,9 @@ Enum.TradeskillRelativeDifficulty={Unrelated=0}
 infos[1001]={recipeID=1001,name='Potion',learned=true,relativeDifficulty=0,canSkillUp=true};event('PLAYER_LOGIN');save()
 `);
   const got = rows.map(p => active(p).readiness.workshop.recipes.items[0].difficulty);
-  assert.deepEqual(got, ["optimal", "easy", "trivial", undefined, undefined, undefined, "medium", undefined, "trivial", undefined]);
+  assert.deepEqual(got, ["optimal", "easy", "trivial", "trivial", undefined, undefined, "medium", undefined, "trivial", undefined]);
+  // Forever: a grey recipe reported as canSkillUp=true is grey and cannot skill up now.
+  assert.equal(active(rows[3]).readiness.workshop.recipes.items[0].canSkillUp, false);
 });
 
 test("Forever: recipes come from the Professions window list and are remembered after it closes and after /reload (0.57.1)", () => {
@@ -416,6 +418,7 @@ open={2001,2002};event('TRADE_SKILL_SHOW');flush();save()
 open={2003};event('TRADE_SKILL_LIST_UPDATE');flush();save()
 open={};event('TRADE_SKILL_CLOSE');flush();save()
 local kept=BackstageForeverExport;load();BackstageForeverExport=kept;event('PLAYER_LOGIN');save()
+now=now+60;lines[1].rank=81;lines[2].rank=81;event('SKILL_LINES_CHANGED');flush();save()
 `);
   const w = (i) => active(rows[i]).readiness.workshop;
   assert.deepEqual(w(0).professions.items.map((p) => [p.skillLineId, p.name]), [[197, "Tailoring"], [129, "First Aid"]], "one Tailoring, not two");
@@ -427,4 +430,11 @@ local kept=BackstageForeverExport;load();BackstageForeverExport=kept;event('PLAY
   assert.deepEqual(ids(3), [2001, 2003], "closing the window forgets nothing");
   assert.deepEqual(ids(4), [2001, 2003], "a /reload keeps the last save's recipes");
   assert.ok(w(4).recipes.observedAt <= active(rows[4]).updatedAt);
+  // The coach only trusts recipes read no earlier than the ranks they're coloured for.
+  for (const i of [3, 4, 5]) assert.ok(w(i).recipes.observedAt >= w(i).professions.observedAt, `row ${i}: remembered recipes dated with the unchanged ranks`);
+  const colour = (i, id) => w(i).recipes.items.find((r) => r.id === id);
+  assert.equal(colour(4, 2001).difficulty, "medium", "same rank: colour still current");
+  assert.equal(colour(5, 2001).difficulty, undefined, "rank moved: a non-grey colour is no longer known");
+  assert.equal(colour(5, 2003).difficulty, "trivial", "grey stays grey as ranks only rise");
+  assert.equal(colour(5, 2003).canSkillUp, false);
 });
