@@ -1,9 +1,11 @@
 name: Addon sites
 
 # Packages the in-game addon (addon/BackstageForever) with the BigWigs packager, which knows the
-# WoW Forever flavor (Interface 16xxx). Pull requests only build and check the package. A release
-# tag also uploads it to CurseForge, Wago Addons and WoWInterface, each only once its project ID
-# (repository variable) and API token (repository secret) are set; see docs/DISTRIBUTION.md.
+# WoW Forever flavor (Interface 16xxx). The packager needs the addon to be its own checkout, so it
+# packages a throwaway repository holding only the addon, tagged with the release version.
+# Pull requests only build and check the package. A release tag also uploads it to CurseForge,
+# Wago Addons and WoWInterface, each only once its project ID (repository variable) and API token
+# (repository secret) are set; see docs/DISTRIBUTION.md.
 on:
   pull_request:
   push:
@@ -19,13 +21,22 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Put the addon in its own repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/BackstageForever"
+          mkdir -p "$dest" && cp -R addon/BackstageForever/. "$dest/"
+          version="$(node -p "require('./package.json').version")"
+          tag="$GITHUB_REF_NAME"; [[ "$GITHUB_REF_TYPE" == "tag" ]] || tag="v$version"
+          cd "$dest"
+          git init -q && git config user.name "Backstage Coding" && git config user.email "actions@users.noreply.github.com"
+          git add -A && git commit -qm "Backstage Forever addon $tag" && git tag "$tag"
       - name: Package the addon (uploads only on release tags with tokens set)
         uses: BigWigsMods/packager@v2
         with:
           args: >-
-            -t addon/BackstageForever -g forever -n "BackstageForever-{project-version}"
+            -t ${{ runner.temp }}/BackstageForever -g forever -n "BackstageForever-{project-version}"
             ${{ github.event_name != 'push' && '-d' || '' }}
             ${{ vars.CURSEFORGE_PROJECT_ID && format('-p {0}', vars.CURSEFORGE_PROJECT_ID) || '' }}
             ${{ vars.WAGO_PROJECT_ID && format('-a {0}', vars.WAGO_PROJECT_ID) || '' }}
@@ -38,5 +49,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: BackstageForever-addon
-          path: addon/BackstageForever/.release/*.zip
+          path: ${{ runner.temp }}/BackstageForever/.release/*.zip
           if-no-files-found: error
