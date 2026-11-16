@@ -11,7 +11,7 @@ It reads your own game, tells you what to do next, and guides you there: in the 
 
 ## What's new
 
-**0.57.2:** Professions advice from your recipes. **0.57.1:** Professions read your recipes. **0.57:** the rest of the app in German and the 1.0 checklist. **0.56:** ready for the public: this front page, plain-language privacy, a security policy and a new Getting started. **0.55:** a Mac app for Apple Silicon and Intel (without the live link). **0.54:** every page reviewed in English and German, and the in-game Adventure Compass shows your XP, pace, quests ready to hand in and next step at a glance. See the [release notes](docs/releases/0.57.2.md) and the [changelog](CHANGELOG.md) for every version.
+**0.57.3:** one /reload after an update. **0.57.2:** Professions advice from your recipes. **0.57.1:** Professions read your recipes. **0.57:** the rest of the app in German and the 1.0 checklist. **0.56:** ready for the public: this front page, plain-language privacy, a security policy and a new Getting started. **0.55:** a Mac app for Apple Silicon and Intel (without the live link). **0.54:** every page reviewed in English and German, and the in-game Adventure Compass shows your XP, pace, quests ready to hand in and next step at a glance. See the [release notes](docs/releases/0.57.3.md) and the [changelog](CHANGELOG.md) for every version.
 
 ## What it does
 

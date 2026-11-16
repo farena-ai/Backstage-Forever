@@ -159,6 +159,10 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator('[data-now-act="refresh"]').click();
     await page.locator(".now-reload").getByText(/last save came from Backstage Forever 0\.20\.0/).waitFor();
     assert.match(await page.locator(".now-reload").innerText(), /27 seconds before the update landed/, "an early reload is named with times");
+    // WoW wrote a save after the update landed: one /reload is enough, the banner goes.
+    await app.evaluate(({ ipcMain }) => { ipcMain.removeHandler("backstage:gameStatus"); ipcMain.handle("backstage:gameStatus", () => ({ connected: true, addonCurrent: true, addonVersion: "0.21.0", loadedCaptureVersion: "0.20.0", lastSync: new Date(Date.now() - 60000).toISOString(), addonUpdatedAt: new Date(Date.now() - 33000).toISOString(), savedAt: new Date(Date.now() - 10000).toISOString(), runtime: { state: "running" } })); });
+    await page.locator('[data-now-act="refresh"]').click();
+    await page.waitForFunction(() => !document.querySelector(".now-reload"));
     // Help → Commands explains every command and filters as you type.
     await page.locator('[data-nav="guide"]').first().click();
     await page.locator('[data-nav="commands"]').first().click();
