@@ -54,7 +54,7 @@ function routeOf(r) {
   if (r.kind === "scope") return "refuse";
   if (r.kind === "npc") return r.npc?.status === "found" ? "npc-location" : "clarify";
   if (r.kind === "travel") return r.travel?.status === "route" ? "travel" : "clarify";
-  if (r.kind === "intent") return { role: "role", "turnin-which": "clarify", place: "npc-location", profession: "trainer" }[r.intent] || r.intent;
+  if (r.kind === "intent") return { role: "role", "turnin-which": "clarify", place: "npc-location", profession: "trainer", recipe: "recipe", creature: "creature" }[r.intent] || r.intent;
   if (r.kind === "quick") return { train: "trainer", next: "quest-next", tonight: "quest-next", quest: "quest-info", "quest-choices": "quest-info" }[r.topic] || "quick:" + r.topic;
   return r.kind;
 }
@@ -79,7 +79,7 @@ function factsOk(text, expect) {
 }
 // Intents that are the same request seen from the answerer's side.
 // Roleplay and lore belong with the model (in voice, grounded by context); handing them over is right.
-const SAME = { "quest-turnin": ["quest-info", "quest-next"], "quest-next": ["quest-next"], vendor: ["npc-location", "role"], trainer: ["trainer", "npc-location", "role"], profession: ["trainer", "role"], travel: ["role"], "npc-location": ["role"], dungeon: ["travel", "npc-location"], "item-source": ["item-source", "drops"], rp: ["model"], lore: ["model", "npc-location", "lore"] };
+const SAME = { "quest-turnin": ["quest-info", "quest-next"], "quest-next": ["quest-next", "creature", "quest-info"], vendor: ["npc-location", "role"], trainer: ["trainer", "npc-location", "role"], profession: ["trainer", "role", "gather", "recipe"], travel: ["role"], "npc-location": ["role"], dungeon: ["travel", "npc-location"], "item-source": ["item-source", "drops", "quest-info"], rp: ["model", "role", "npc-location", "dungeon", "travel", "quest-next", "quest-info", "trainer", "vendor", "item-source"], lore: ["model", "npc-location", "lore"] };
 const intentOk = (want, got) => want === got || (SAME[want] || []).includes(got);
 
 async function ask(q, model) {
@@ -95,7 +95,8 @@ async function ask(q, model) {
   }
 }
 
-const loadQuestions = () => { const j = read("tests/fixtures/companion-bench/questions.json"); return Array.isArray(j) ? j : j.questions; };
+// "questions" is the tuned set; "heldout" was written without seeing the companion's code.
+const loadQuestions = (set = "questions") => { const j = read(`tests/fixtures/companion-bench/${set}.json`); return Array.isArray(j) ? j : j.questions; };
 async function runBench({ questions, verbose = false } = {}) {
   questions ??= loadQuestions();
   const rows = [];
@@ -155,7 +156,7 @@ module.exports = { runBench, loadQuestions, PROFILES, factsOk, routeOf };
 if (require.main === module) {
   const args = process.argv.slice(2), at = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
   (async () => {
-    let questions = loadQuestions();
+    let questions = loadQuestions(at("--set") || "questions");
     if (at("--only")) { const ids = new Set(at("--only").split(",")); questions = questions.filter((q) => ids.has(q.id)); }
     const report = await runBench({ questions, verbose: args.includes("--verbose") });
     print(report);

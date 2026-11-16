@@ -37,7 +37,7 @@ function scopeResponse(prompt) {
   // A deliberately conservative fast gate; the shared instruction handles ambiguity.
   const prohibited =
     /\b(?:bypass|disable|evade|circumvent)\b.{0,45}\banti[- ]?cheat\b|\b(?:read|scan|access|inspect|write|modify)\b.{0,40}\b(?:process(?:es)?|game)\s+memory\b|\b(?:farming|farm|combat)\s*bot\b|\b(?:automatically|automate)\b.{0,50}\b(?:press|keys|combat|farm|play)\b|\blive combat\b.{0,60}\b(?:decision|ability|cast|use)\b|\b(?:ability|cast|use)\b.{0,60}\blive combat\b/;
-  if (/\b(?:get|break|log)\s+in(?:to)?\b.{0,40}\b(?:his|her|their|someone'?s|another|(?:guild ?mate|friend|brother|sister)'?s)\b.{0,25}\baccount\b|\b(?:steal|hack|phish)\b.{0,30}\b(?:account|password|login)\b|\b(?:his|her|their|someone'?s)\s+(?:account|password)\b.{0,40}\b(?:take|steal|get)\b/.test(text))
+  if (/\b(?:grab|get|steal|take|use|find)\b.{0,20}\b(?:his|her|their|someone'?s|(?:guild ?(?:mate|ie)|friend)'?s?)\s+(?:password|login|acc(?:ount)?)\b|\bmove (?:his|her|their) gold to me\b|\b(?:get|break|log)\s+in(?:to)?\b.{0,40}\b(?:his|her|their|someone'?s|another|(?:guild ?mate|friend|brother|sister)'?s)\b.{0,25}\baccount\b|\b(?:steal|hack|phish)\b.{0,30}\b(?:account|password|login)\b|\b(?:his|her|their|someone'?s)\s+(?:account|password)\b.{0,40}\b(?:take|steal|get)\b/.test(text))
     return ACCOUNT;
   if (/\b(?:dupe|duping|duplicat(?:e|ing))\b.{0,30}\b(?:gold|items?|money|coins?)\b|\b(?:speed|teleport|fly|wall|no ?clip)\s*hacks?\b|\baimbot\b|\b(?:gold|item)\s+(?:dupe|exploit|glitch)\b|\bexploit\b.{0,30}\b(?:gold|server|dupe)\b/.test(text))
     return CHEAT;

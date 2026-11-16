@@ -13,6 +13,8 @@ const norm = (s) => String(s || "").toLowerCase().replace(/[’‘`´]/g, "'").r
 const loose = (s) => norm(s).replace(/'/g, "");
 const pct = (v) => (v * 100).toFixed(1);
 const zoneOf = (mapId) => MAP_NAMES[mapId] || null;
+// Words too common in names to identify anyone on their own.
+const COMMON = new Set(["young", "great", "greater", "lesser", "elder", "master", "trainer", "keeper", "defias", "scarlet", "bloodscalp", "skullsplitter", "venture", "captain", "lieutenant", "sergeant", "commander", "apprentice", "journeyman", "expert", "artisan", "guard", "guardian", "warrior", "hunter", "priest", "rogue", "shaman", "warlock", "paladin", "druid", "mage", "innkeeper", "banker", "auctioneer", "vendor", "merchant", "supplier", "quartermaster", "brother", "sister", "father", "mother", "elite", "plainstrider", "goretusk", "thunderhead", "stranglethorn", "barrens", "ashenvale", "westfall", "durotar", "mulgore", "orgrimmar", "undercity", "stormwind", "ironforge", "darnassus", "thunder", "bluff", "warsong", "horde", "alliance", "silverwing"]);
 const STOP = new Set(["the", "a", "an", "of", "to", "in", "at", "is", "my", "i", "me", "do", "where", "can", "how", "what", "who", "for", "and", "on"]);
 
 // ---------- data (loaded once per process; injectable for tests) ----------
@@ -63,7 +65,7 @@ function buildIndex(d) {
       const one = !m && o.required === 1 && objs.length === 1 ? ev.match(/(?:\b(?:his|her|its|their)|^(?:Bring|Collect|Obtain|Retrieve|Recover|Find)|\. (?:Bring|Collect|Obtain|Retrieve|Recover|Find))\s+([A-Z][a-z']+(?: [A-Z][A-Za-z']+){1,4})(?=\s+(?:to|from|and|for|in|at|of the|back)\b|[,.;]|$)/) : null;
       const hit = m || one;
       if (hit && (placeLike(hit[1]) || /^(?:the|a|an|his|her|its|their)\b/i.test(hit[1]))) continue;
-      if (hit) addItem(o.objectId, hit[1].trim().replace(/(?<=[a-rt-z])s$/, (x) => (o.required > 1 ? "" : x)));
+      if (hit) addItem(o.objectId, hit[1].trim());
     }
   }
   const creatures = new Map();
@@ -104,11 +106,37 @@ function buildIndex(d) {
     const ids = names.npc.get(loose(anchor)) || []; const n = ids.map((id) => npcs.get(id)).find((x) => x?.positions.length);
     if (n) towns.push({ name: town, mapId: n.positions[0].mapId, x: n.positions[0].x, y: n.positions[0].y });
   }
-  return { npcs, items, creatures, drops, quests, names, trainers, flight, towns, itemQuest, bossSources };
+  // Distinctive words of names ("helbrim", "vancleef", "outrunner") for questions that use only one.
+  const tokens = { npc: new Map(), creature: new Map() };
+  for (const kind of ["npc", "creature"]) for (const [name, ids] of names[kind]) for (const w of name.split(" ")) {
+    if (w.length < 5 || COMMON.has(w)) continue;
+    const a = tokens[kind].get(w) || []; for (const id of ids) if (!a.includes(id)) a.push(id); tokens[kind].set(w, a);
+  }
+  // Where quest targets were observed: creature id -> positions and the quest that sends you.
+  const creatureAreas = new Map();
+  for (const q of Object.values(d.pack?.quests || {})) for (const loc of q.objectiveLocations || []) {
+    if (loc.type !== "monster") continue;
+    const o = (q.objectives || []).find((x) => x.index === loc.index && x.type === "monster");
+    if (!o || !Number.isSafeInteger(o.objectId) || !loc.positions?.length) continue;
+    const cur = creatureAreas.get(o.objectId) || { positions: [], quests: [] };
+    for (const pt of loc.positions) if (cur.positions.length < 24) cur.positions.push(pt);
+    if (q.title && !cur.quests.includes(q.title)) cur.quests.push(q.title);
+    creatureAreas.set(o.objectId, cur);
+  }
+  // Recipes taught by trainers, with the skill rank they need.
+  const recipes = new Map();
+  for (const t of trainers) for (const sv of t.services || []) {
+    if (!sv.skill || !Number.isSafeInteger(sv.skillRank) || !sv.name) continue;
+    const k = loose(sv.name), cur = recipes.get(k) || { name: sv.name, skill: sv.skill, rank: sv.skillRank, trainers: [] };
+    cur.rank = Math.min(cur.rank, sv.skillRank); if (!cur.trainers.includes(t)) cur.trainers.push(t);
+    recipes.set(k, cur);
+  }
+  names.recipe = new Map([...recipes.keys()].map((k) => [k, [k]]));
+  return { npcs, items, creatures, drops, quests, names, trainers, flight, towns, itemQuest, bossSources, tokens, creatureAreas, recipes };
 }
 
 // ---------- understanding ----------
-const DUNGEON_ALIASES = { rfc: "rfc", ragefire: "rfc", wc: "wc", "wailing caverns": "wc", deadmines: "dm", "the deadmines": "dm", vc: "dm", vancleef: "dm", "van cleef": "dm", sfk: "sfk", shadowfang: "sfk", bfd: "bfd", "blackfathom": "bfd", stocks: "stocks", stockade: "stocks", gnomer: "gnomer", gnomeregan: "gnomer", rfk: "rfk", "razorfen kraul": "rfk", sm: "sm", scarlet: "sm", "scarlet monastery": "sm", rfd: "rfd", "razorfen downs": "rfd", ulda: "ulda", uldaman: "ulda", zf: "zf", "zul'farrak": "zf", zulfarrak: "zf", mara: "mara", maraudon: "mara", "sunken temple": "st", "temple of atal'hakkar": "st", brd: "brd", "blackrock depths": "brd", lbrs: "lbrs", "lower blackrock": "lbrs", "dire maul": "dme", scholo: "scholo", scholomance: "scholo", strat: "strat", stratholme: "strat", ubrs: "ubrs", "upper blackrock": "ubrs", zg: "zg", "zul'gurub": "zg", zulgurub: "zg", mc: "mc", "molten core": "mc", ony: "ony", onyxia: "ony", "onyxia's lair": "ony", bwl: "bwl", "blackwing lair": "bwl", aq20: "aq20", "ruins of ahn'qiraj": "aq20", aq40: "aq40", "temple of ahn'qiraj": "aq40", naxx: "naxx", naxxramas: "naxx" };
+const DUNGEON_ALIASES = { dm: "dm", rfc: "rfc", ragefire: "rfc", wc: "wc", "wailing caverns": "wc", deadmines: "dm", "the deadmines": "dm", vc: "dm", vancleef: "dm", "van cleef": "dm", sfk: "sfk", shadowfang: "sfk", bfd: "bfd", "blackfathom": "bfd", stocks: "stocks", stockade: "stocks", gnomer: "gnomer", gnomeregan: "gnomer", rfk: "rfk", "razorfen kraul": "rfk", sm: "sm", scarlet: "sm", "scarlet monastery": "sm", rfd: "rfd", "razorfen downs": "rfd", ulda: "ulda", uldaman: "ulda", zf: "zf", "zul'farrak": "zf", zulfarrak: "zf", mara: "mara", maraudon: "mara", "sunken temple": "st", "temple of atal'hakkar": "st", brd: "brd", "blackrock depths": "brd", lbrs: "lbrs", "lower blackrock": "lbrs", "dire maul": "dme", scholo: "scholo", scholomance: "scholo", strat: "strat", stratholme: "strat", ubrs: "ubrs", "upper blackrock": "ubrs", zg: "zg", "zul'gurub": "zg", zulgurub: "zg", mc: "mc", "molten core": "mc", ony: "ony", onyxia: "ony", "onyxia's lair": "ony", bwl: "bwl", "blackwing lair": "bwl", aq20: "aq20", "ruins of ahn'qiraj": "aq20", aq40: "aq40", "temple of ahn'qiraj": "aq40", naxx: "naxx", naxxramas: "naxx" };
 const DUNGEONS = new Map(BASELINE.map((r) => [r[0], { id: r[0], name: r[1], kind: r[2], min: r[3], max: r[4], faction: r[5], zone: r[6], mapId: r[7], entrance: r[8], bosses: r[10] || [] }]));
 const PLACES = { org: "Orgrimmar", orgrimmar: "Orgrimmar", ogrimmar: "Orgrimmar", tb: "Thunder Bluff", "thunder bluff": "Thunder Bluff", uc: "Undercity", undercity: "Undercity", sw: "Stormwind City", stormwind: "Stormwind City", "stormwind city": "Stormwind City", if: null, ironforge: "Ironforge", darnassus: "Darnassus", xroads: "The Crossroads", crossroads: "The Crossroads", "the crossroads": "The Crossroads", "booty bay": "Booty Bay", bb: "Booty Bay", ratchet: "Ratchet", "sentinel hill": "Sentinel Hill", "grom'gol": "Grom'gol Base Camp", gromgol: "Grom'gol Base Camp", "splintertree post": "Splintertree Post", splintertree: "Splintertree Post", "camp taurajo": "Camp Taurajo", auberdine: "Auberdine", goldshire: "Goldshire", brill: "Brill", razor_hill: null, "razor hill": "Razor Hill" };
 // Towns and the zone they are in, for travel and "where is" answers about places.
@@ -176,6 +204,36 @@ function placeIn(question) {
   for (const name of Object.values(MAP_NAMES)) { const k = loose(name).replace(/^the /, ""); if (q.includes(` ${k} `) && (!best || k.length > best.alias.length)) best = { alias: k, place: name }; }
   return best?.place || null;
 }
+function placesIn(question) {
+  const q = ` ${loose(question)} `, found = [];
+  const add = (alias, place) => { const k = loose(alias).replace(/^the /, ""); if (k.length < 2) return; let i = q.indexOf(` ${k} `); while (i >= 0) { found.push({ place, start: i, end: i + k.length }); i = q.indexOf(` ${k} `, i + 1); } };
+  for (const [alias, place] of Object.entries(PLACES)) if (place) add(alias, place);
+  for (const [alias, place] of Object.entries(ZONE_SHORT)) add(alias, place);
+  for (const name of Object.values(MAP_NAMES)) add(name, name);
+  for (const t of TOWNS) add(t.name, t.name);
+  found.sort((a, b) => b.end - b.start - (a.end - a.start));
+  const kept = [];
+  for (const f of found) if (!kept.some((k) => f.start < k.end && k.start < f.end)) kept.push(f);
+  return kept.sort((a, b) => a.start - b.start).map((f) => f.place);
+}
+function pointOf(place) {
+  if (!place) return null;
+  const t = TOWNS.find((x) => loose(x.name).replace(/^the /, "") === loose(place).replace(/^the /, ""));
+  if (t) return { mapId: t.mapId, x: t.x, y: t.y, town: t.name };
+  const z = Object.entries(MAP_NAMES).find(([, n]) => n === place);
+  return z ? { mapId: Number(z[0]) } : TOWN_ZONE[place] ? { mapId: TOWN_ZONE[place] } : null;
+}
+// A name found through one distinctive word ("the apothecary dude, helbrim" -> Apothecary Helbrim).
+function byToken(question, kind, index) {
+  const words = new Set(variants(question).flatMap((v) => v.split(" ")));
+  const score = new Map();
+  for (const w of words) for (const id of index.tokens[kind].get(w) || []) score.set(id, (score.get(id) || 0) + 1);
+  if (!score.size) return null;
+  const top = Math.max(...score.values()), ids = [...score].filter(([, n]) => n === top).map(([id]) => id);
+  if (ids.length > 12) return null;
+  const pick = kind === "npc" ? index.npcs.get(ids[0]) : index.creatures.get(ids[0]);
+  return { gram: loose(pick?.name || ""), ids, kind };
+}
 function dungeonIn(question) {
   const q = ` ${loose(question)} `;
   let best = null;
@@ -192,13 +250,13 @@ function professionIn(question) {
 }
 
 const RX = {
-  turnin: /\b(turn(?:ing)? ?in|hand(?:ing)? ?in|hand (?:it|this|them|.+?) (?:in )?to|who do i (?:give|hand|bring|take)|deliver|complete the quest)\b/,
+  turnin: /\b(turn(?:ing)? ?in|hand(?:ing)? ?in|hand (?:it|this|them|.+?) (?:in )?to|who do i (?:give|hand|bring|take)|who wants (?:them|it|these|those)|who (?:takes|gets) (?:them|it)|deliver|complete the quest)\b/,
   trainer: /\b(trainers?|train(?:ing)?|learn (?:new )?(?:spells|skills|abilities|ranks))\b/,
-  vendor: /\b(buy|buying|purchase|sells?|selling|vendors?|merchant|shop|restock|supplies)\b|\bneed (?:some )?(?:food|water|drinks?|arrows|ammo|bullets|thread|reagents|bags?)\b/,
+  vendor: /\b(buy|buying|purchase|sells?|selling|vendors?|merchant|shop|restock|supplies)\b|\b(?:need|grab|get|pick up|stock up on)\s+(?:some |more )?(?:food|water|drinks?|arrows|ammo|bullets|thread|reagents|candles|bags?|bread|vials?)\b/,
   drops: /\bwhat (?:does|do|did) (.+?) drop\b|\bloot (?:from|of)\b/,
-  source: /\bwhere (?:do|can|could|should) i (?:get|find|farm|obtain|loot|collect|gather)\b|\bhow (?:do|can) i get (?!to\b)|\bfarm(?:ing)?\b|\bwhere (?:are|is|does) .+? (?:found|dropped|drop)\b|\bwho drops\b|\bwhat drops\b|\bwhere does .+ drop\b/,
-  travel: /\b(how (?:do|can|should) i get to|take me to|way to|way from|route to|path to|directions? to|go to|fly to|get to|travel to|how far|run to|walk to|head to|reach|catch the (?:zeppelin|boat|ship|tram)|take the (?:zeppelin|boat|ship|tram)|zeppelin to|boat to|tram to|from here)\b/,
-  who: /\b(who(?:'s| is| are)|where(?:'s| is| are)|wheres|where can i find|where do i find|how (?:do|can) i find|looking for|location of|find|seen|is there an?)\b/,
+  source: /\bwhere (?:do|can|could|should) i (?:get|find|farm|obtain|loot|collect|gather)\b|\bhow (?:do|can) i get (?!to\b)|\bfarm(?:ing)?\b|\bwhere (?:are|is|does) .+? (?:found|dropped|drop)\b|\bwho drops\b|\bwhat drops\b|\bwhere does .+ drop\b|\bwhich .+? drops?\b|\bdo .+? drop (?:em|them|it)\b|\bdrop (?:em|them)\b|\bwho has (?:it|them|one)\b/,
+  travel: /\b(how (?:do|can|should) i (?:even )?get (?:to|there)|take me to|way to|way from|route to|path to|directions? to|go to|fly to|get to|travel to|how far|run to|walk to|head to|reach|catch the (?:zeppelin|boat|ship|tram)|take the (?:zeppelin|boat|ship|tram)|hop on the (?:zeppelin|boat|ship|tram)|zeppelin (?:to|from)|boat (?:to|from)|tram (?:to|from)|from here|never been to)\b/,
+  who: /\b(who(?:'s| is| are)|where(?:'s| is| are)|wheres|where can i find|where do i find|how (?:do|can) i find|looking for|location of|find|seen|is there an?|where does .+? (?:hang out|live|stay|hide)|where (?:are|is) (?:they|it) (?:hiding|at))\b/,
   next: /\b(what (?:should|do|can) i do|what(?:'s| is) next|next (?:quest|step)|what quest(?:s)? (?:should|can|do)|i(?:'m| am) (?:lost|stuck|bored)|help me level|where (?:should|do) i (?:level|quest|go)|what now|lost,? help|any (?:tasks|work|quests|errands|jobs)|anything (?:to do|for me)|need (?:work|a task))\b/,
   quest: /\bquests?\b|\bwhat(?:'s| is|s) .+? about\b/,
   lore: /\b(lore|story|history|tell me about|who rules|leader of|why (?:does|do|did|is))\b/,
@@ -210,7 +268,7 @@ const ROLES = [
   { id: "inn", rx: /\b(inn ?keeper|innkeeper|an inn|the inn|tavern|hearth(?:stone)? (?:at|in|to))\b/, name: /^innkeeper\b/ },
   { id: "auction", rx: /\b(auction ?(?:house|eer)?|(?:the|to|at|nearest|an?) ah)\b/, name: /^auctioneer\b/ },
   { id: "bank", rx: /\b(bank(?:er)?)\b/, name: /^banker\b/ },
-  { id: "weapon", rx: /\b(weapon ?master|weapon skills?|learn (?:to use )?(?:swords|axes|maces|daggers|staves|bows|guns|polearms|fist weapons|thrown))\b/, title: /weapon master/i },
+  { id: "weapon", rx: /\b(weapon ?master|weapon skills?|(?:learn|teach(?:es)?|train) (?:to use |me )?(?:two ?handed |one ?handed |2h |1h )?(?:swords?|axes?|maces?|daggers?|staves|staff|bows?|guns?|crossbows?|polearms?|fist weapons?|thrown)|who teaches (?:two ?handed |one ?handed |2h |1h )?(?:swords?|axes?|maces?|daggers?|staves|staff|bows?|guns?|crossbows?|polearms?|fist weapons?|thrown))\b/, title: /weapon master/i },
   { id: "stable", rx: /\b(stable ?master|stables?)\b/, name: /^stable ?master\b/ },
 ];
 // Names that contain every word of the question's subject ("lady sylvanas" -> Lady Sylvanas Windrunner).
@@ -224,34 +282,48 @@ function partial(phrase, kind, index) {
   }
   return best;
 }
+const slang = (s) => norm(s).replace(/\bwheres\b/g, "where's").replace(/\bwhats\b/g, "what's").replace(/\bwhos\b/g, "who's").replace(/\bzeps?\b/g, "zeppelin").replace(/\blvl\b/g, "level").replace(/\bw\/e\b/g, "").replace(/\br\b/g, "are");
 function understand(question, { profile = null, data = loadData() } = {}) {
-  const q = norm(question).replace(/\bwheres\b/g, "where's").replace(/\bwhats\b/g, "what's").replace(/\bwhos\b/g, "who's"), idx = data.index;
+  const q = slang(question), idx = data.index;
   const dungeon = dungeonIn(question), place = placeIn(question), cls = classIn(question), prof = professionIn(question);
   const npc = mentioned(question, "npc", idx), quest = mentioned(question, "quest", idx, { minLen: 6 }), item = mentioned(question, "item", idx), creature = mentioned(question, "creature", idx);
+  const recipe = mentioned(question, "recipe", idx, { minLen: 6 });
   const role = ROLES.find((r) => r.rx.test(q)) || null;
-  const out = { intent: null, dungeon, place, cls, prof, npc, quest, item, creature, role };
+  const out = { intent: null, dungeon, place, cls, prof, npc, quest, item, creature, role, recipe };
   const who = RX.who.test(q), subj = subject(q);
-  const someone = () => npc || partial(subj, "npc", idx) || fuzzy(subj, "npc", idx);
-  if (RX.turnin.test(q)) out.intent = quest ? "quest-turnin" : "turnin-which";
+  const someone = () => npc || partial(subj, "npc", idx) || byToken(q, "npc", idx) || fuzzy(subj, "npc", idx);
+  const beast = () => {
+    if (creature && (!npc || creature.gram.length > npc.gram.length) && !(npc && creature.ids.every((id) => npc.ids.includes(id)))) return creature;
+    const t = byToken(q.split(" ").filter((w) => !npc || !npc.gram.split(" ").includes(w.replace(/'/g, ""))).join(" "), "creature", idx);
+    if (!t) return null;
+    const located = t.ids.filter((id) => idx.creatureAreas.has(id));
+    return located.length ? { ...t, ids: located, gram: loose(idx.creatures.get(located[0])?.name || t.gram) } : t;
+  };
+  const questy = quest && quest.gram.split(" ").length >= 2;
+  if (RX.turnin.test(q)) { out.intent = quest || (item && idx.itemQuest.get(item.ids[0])) ? "quest-turnin" : "turnin-which"; if (!quest && item) out.questFromItem = idx.itemQuest.get(item.ids[0]) || null; }
+  else if (recipe && /\b(skill|level|rank|need|make|craft|learn)\b/.test(q)) out.intent = "recipe";
   else if ((RX.trainer.test(q) || /\b(learn|teach(?:es)?|taught)\b/.test(q)) && (cls || prof || /\b(my|class) (?:spells|skills|abilities|trainer)\b|\btrain my\b/.test(q)) && role?.id !== "weapon") out.intent = "trainer";
-  else if (role && (who || /\b(near|in|at|nearest|closest|any)\b/.test(q) || RX.vendor.test(q) === false)) out.intent = "role";
+  else if (role && (who || role.id === "weapon" || /\b(near|in|at|nearest|closest|any)\b/.test(q) || RX.vendor.test(q) === false)) out.intent = "role";
   else if (who && /\bwhy\b|\bstory\b|\blore\b/.test(q)) out.intent = "lore";
-  else if (quest && (!npc || quest.gram.length > npc.gram.length) && !RX.travel.test(q) && (RX.quest.test(q) || who)) out.intent = "quest-info";
-  else if (who && npc && (!item || npc.gram.length >= item.gram.length) && !/\b(drop|drops|farm|loot)\b/.test(q)) { out.intent = "npc-location"; }
+  else if (questy && (!npc || quest.gram.length > npc.gram.length) && !RX.travel.test(q) && (RX.quest.test(q) || who || /\?|\bwants?\b|\bwhich\b/.test(q))) out.intent = "quest-info";
+  else if (/\bwhat (?:does|do|did) .+? drop\b/.test(q) && (creature || npc || byToken(q, "creature", idx) || fuzzy(subject(q.replace(/^what (?:does|do|did)\s+/, "").replace(/\s+drop.*$/, "")), "creature", idx))) { out.intent = "drops"; out.creature = creature || (npc && idx.creatures.has(npc.ids[0]) ? npc : null) || byToken(q, "creature", idx) || fuzzy(subject(q.replace(/^what (?:does|do|did)\s+/, "").replace(/\s+drop.*$/, "")), "creature", idx); }
+  else if (/\b(mine|mining|pick|picking|gather|gathering|herb(?:s|alism)?|nodes?|veins?)\b/.test(q) && Object.keys(GATHER_WORDS).some((k) => new RegExp(`\\b${k}\\b`).test(q)) && !/\b(learn|train|teach|trainer)\b/.test(q)) out.intent = "gather";
   else if (RX.source.test(q) && (item || Object.keys(CATEGORY_ITEMS).some((k) => q.includes(k)))) out.intent = "item-source";
-  else if (RX.drops.test(q) && (creature || npc || fuzzy(subject(q.replace(/^what (?:does|do|did)\s+/, "").replace(/\s+drop.*$/, "")), "creature", idx))) out.intent = "drops";
+  else if (quest && RX.source.test(q)) out.intent = "quest-info";
   else if (RX.vendor.test(q) && !/\bsell (?:my )?junk\b/.test(q)) out.intent = "vendor";
-  else if (dungeon) out.intent = RX.travel.test(q) ? "travel" : "dungeon";
-  else if (RX.travel.test(q) && (place || /\bfrom here\b/.test(q))) out.intent = "travel";
+  else if (dungeon && !RX.travel.test(q)) out.intent = "dungeon";
+  else if (RX.travel.test(q) && (place || dungeon || /\bfrom here\b/.test(q))) out.intent = "travel";
+  else if (who && /\b(kill|slay|hunt|hiding|mobs?|they|them)\b/.test(q) && beast()) { out.intent = "creature"; out.creature = beast(); }
+  else if (who && creature && (!npc || creature.gram.length > npc.gram.length) && creature.ids.some((id) => idx.creatureAreas.has(id)) && beast()) { out.intent = "creature"; out.creature = beast(); }
+  else if (who && npc && (!item || npc.gram.length >= item.gram.length) && !/\b(drop|drops|farm|loot)\b/.test(q)) out.intent = "npc-location";
   else if (RX.next.test(q)) out.intent = "quest-next";
   else if (quest && (RX.quest.test(q) || who || /\bwhat(?:'s| is)\b/.test(q))) out.intent = "quest-info";
-  else if (who && /\bwhy\b|\bstory\b|\blore\b/.test(q)) out.intent = "lore";
   else if (who && someone()) { out.intent = "npc-location"; out.npc = someone(); }
+  else if (who && beast()) { out.intent = "creature"; out.creature = beast(); }
   else if (who && place) out.intent = "place";
   else if (prof) out.intent = "profession";
   else if (RX.lore.test(q)) out.intent = "lore";
   else out.intent = "rp";
-  if (out.intent === "drops" && !out.creature) out.creature = fuzzy(subject(q.replace(/^what (?:does|do|did)\s+/, "").replace(/\s+drop.*$/, "")), "creature", idx) || null;
   if (out.intent === "lore" && !out.npc) out.npc = someone();
   return out;
 }
@@ -269,7 +341,9 @@ function friendly(reactions, faction, positions = []) {
   return !positions.some((p) => CAPITAL[p.mapId] && CAPITAL[p.mapId] !== faction);
 }
 const here = (profile) => (profile?.location && Number.isFinite(profile.location.mapId) ? profile.location : null);
-const near = (p, h) => (h && p.mapId === h.mapId && Number.isFinite(h.x) ? Math.hypot(p.x - h.x, p.y - h.y) : p.mapId === h?.mapId ? 0.5 : 9);
+// Same map by distance, then the same continent, then across the sea.
+const KALIMDOR_MAPS = new Set([1411, 1412, 1413, 1414, 1438, 1439, 1440, 1441, 1442, 1443, 1444, 1445, 1446, 1447, 1448, 1449, 1450, 1451, 1452, 1454, 1456, 1457]);
+const near = (p, h) => (h && p.mapId === h.mapId && Number.isFinite(h.x) ? Math.hypot(p.x - h.x, p.y - h.y) : p.mapId === h?.mapId ? 0.5 : h && KALIMDOR_MAPS.has(p.mapId) === KALIMDOR_MAPS.has(h.mapId) ? 5 : 9);
 let TOWNS = [];
 const townAt = (p) => { let best = null; for (const t of TOWNS) if (t.mapId === p.mapId) { const d = Math.hypot(t.x - p.x, t.y - p.y); if (d < 0.07 && (!best || d < best.d)) best = { ...t, d }; } return best?.name || null; };
 function where(p, h) {
@@ -368,13 +442,17 @@ function questById(u, data, profile) {
   if (!u.quest) return null;
   const list = u.quest.ids.map((id) => data.index.quests.get(id)).filter(Boolean);
   const active = new Set((profile?.quests || []).map((q) => q.id));
+  const asked = new Set(loose(u.q || "").split(" ").filter((w) => w.length >= 3 && !STOP.has(w) && !loose(list[0]?.title || "").split(" ").includes(w)));
+  const textScore = (q) => [...asked].filter((w) => loose(`${q.objectiveEvidence || ""}`).split(" ").some((x) => x.startsWith(w))).length;
+  if (list.length > 1 && asked.size) { const best = [...list].sort((a, b) => textScore(b) - textScore(a)); if (textScore(best[0]) > textScore(best[1])) return best[0]; }
+  if (/\b(last|final)\b/.test(loose(u.q || "")) && list.length > 1) return [...list].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0];
   // The one in the player's log, else the one nearest their level.
   return list.find((q) => active.has(q.id)) || list.sort((a, b) => Math.abs((a.level ?? 99) - (profile?.level ?? 0)) - Math.abs((b.level ?? 99) - (profile?.level ?? 0)))[0] || null;
 }
 function npcWhere(ref, data, h) { const id = ref?.id ?? ref; const n = data.index.npcs.get(id); return n?.positions.length ? `${n.name} in ${where(n.positions[0], h)}` : ref?.name || null; }
 function answerQuest(u, { profile, data }) {
-  const q = questById(u, data, profile); if (!q) return null;
-  const others = (u.quest.ids || []).map((id) => data.index.quests.get(id)).filter((x) => x && x.id !== q.id);
+  const q = questById(u, data, profile) || u.questFromItem || null; if (!q) return null;
+  const others = (u.quest?.ids || []).map((id) => data.index.quests.get(id)).filter((x) => x && x.id !== q.id);
   const h = here(profile);
   const turnin = (q.turnIns || q.turnin || []).map((t) => npcWhere(t, data, h)).filter(Boolean)[0];
   const giver = (q.givers || []).map((t) => npcWhere(t, data, h)).filter(Boolean)[0];
@@ -386,7 +464,13 @@ function answerQuest(u, { profile, data }) {
   }
   const lines = [`"${q.title}"${q.level ? ` (level ${q.level})` : ""}${giver ? `, from ${giver}` : ""}.`];
   if (obj) lines.push(`Goal: ${String(obj).slice(0, 240)}`);
-  if (area) lines.push(`Objective area: ${where(area, h)}.`);
+  const areas = (q.objectiveLocations || []).filter((l) => l.positions?.length);
+  for (const l of areas.slice(0, 3)) lines.push(`Objective ${l.index}${l.type === "monster" ? ` (${data.index.creatures.get((q.objectives || []).find((o) => o.index === l.index)?.objectId)?.name || "targets"})` : ""}: around ${where(centerOf(l.positions), h)}.`);
+  if (!areas.length && area) lines.push(`Objective area: ${where(area, h)}.`);
+  for (const o of (q.objectives || []).filter((x) => x.type === "item").slice(0, 2)) {
+    const name = data.index.items.get(o.objectId), from = (data.loot?.items?.[String(o.objectId)] || []).filter((x) => x.name).sort((a, b) => b.chance - a.chance).slice(0, 2);
+    if (name && from.length) lines.push(`${name} drops from ${from.map((x) => `${x.name} (${Math.round(x.chance * 100)}%)`).join(", ")}.`);
+  }
   if (turnin) lines.push(`Turn in to ${turnin}.`);
   for (const o of others.slice(0, 2)) { const g = (o.givers || []).map((t) => npcWhere(t, data, h)).filter(Boolean)[0]; lines.push(`There's also a "${o.title}"${o.level ? ` (level ${o.level})` : ""}${g ? ` from ${g}` : ""}.`); }
   return { text: lines.join("\n"), facts: [lines.join(" ")] };
@@ -406,13 +490,16 @@ function flightNear(profile, data) {
   return list[0] || null;
 }
 function answerTravel(u, { profile, data }) {
-  const dest = u.dungeon ? `${u.dungeon.name} (${u.dungeon.zone})` : u.place;
+  const ends = travelEnds(u, profile);
+  const dest = u.dungeon ? `${u.dungeon.name} (${u.dungeon.zone})` : ends.dest;
   if (!dest) return null;
-  const destZone = u.dungeon ? u.dungeon.zone : TOWN_ZONE[u.place] ? zoneOf(TOWN_ZONE[u.place]) : u.place;
-  const h = here(profile), fm = flightNear(profile, data);
+  const dp = pointOf(ends.dest), destZone = u.dungeon ? u.dungeon.zone : dp ? zoneOf(dp.mapId) : ends.dest;
+  const startPt = ends.origin ? pointOf(ends.origin) : here(profile);
+  const h = startPt && Number.isFinite(startPt.x) ? startPt : ends.origin ? { ...startPt, x: 0.5, y: 0.5 } : here(profile);
+  const fm = h ? flightNear({ ...(profile || {}), location: h }, data) : null;
   const lines = [`${dest}${destZone && destZone !== dest && !u.dungeon ? ` is in ${destZone}` : ""}.`];
-  if (h && zoneOf(h.mapId) === destZone) lines.push("You're already in that zone.");
-  else if (fm) lines.push(`Your nearest flight master is ${fm.name} in ${where(fm.positions.find((p) => p.mapId === h.mapId), h)}; fly toward ${destZone} if you have that flight path, otherwise ride there.`);
+  if (h && zoneOf(h.mapId) === destZone && !ends.origin) lines.push("You're already in that zone.");
+  else if (fm) lines.push(`${ends.origin ? `From ${ends.origin}, the` : "Your nearest"} flight master is ${fm.name} in ${where(fm.positions.find((p) => p.mapId === h.mapId), ends.origin ? null : h)}; fly toward ${destZone} if you have that flight path, otherwise ride there.`);
   else return null;
   return { text: lines.join(" "), facts: [lines.join(" ")] };
 }
@@ -438,8 +525,13 @@ function answerRole(u, { profile, data }) {
   else if (r.title) rows = data.index.trainers.filter((t) => r.title.test(t.title) && friendly(t.observedReactionsByFaction, faction, t.positions));
   else rows = [...data.index.npcs.values()].filter((n) => r.name.test(loose(n.name)) && n.positions.length && npcSide(n, faction) && friendly(null, faction, n.positions));
   const label = { flight: "flight master", inn: "innkeeper", auction: "auctioneer", bank: "banker", weapon: "weapon master", stable: "stable master" }[r.id];
+  if (r.id === "weapon") {
+    const q = slang(u.q), two = /\b(two ?handed|2h)\b/.test(q), one = /\b(one ?handed|1h)\b/.test(q);
+    const w = (q.match(/\b(swords?|axes?|maces?|daggers?|staves|staff|bows?|guns?|crossbows?|polearms?|fist|thrown)\b/) || [])[1];
+    if (w) { const stem = w.replace(/s$/, "").replace(/^staff$|^stave$/, "stave").replace(/^bow$/, "bow"); const want = (sv) => { const n = loose(sv.name); return n.includes(stem) && (!two || n.startsWith("two")) && (!one || n.startsWith("one")) && !(stem === "bow" && n.includes("crossbow")); }; const teach = rows.filter((t) => (t.services || []).some(want)); if (teach.length) rows = teach; }
+  }
   if (u.place) rows = inPlace(rows, u.place, (x) => x.positions);
-  else if (h) { const local = rows.filter((x) => x.positions.some((p) => p.mapId === h.mapId)); if (local.length) rows = local; }
+  else if (h && r.id !== "weapon") { const local = rows.filter((x) => x.positions.some((p) => p.mapId === h.mapId)); if (local.length) rows = local; }
   if (!rows.length) return { text: `I don't have a ${faction ? faction + " " : ""}${label}${u.place ? ` in ${u.place}` : " near you"} in the Forever reference, so I won't guess one.`, facts: [] };
   rows.sort((a, b) => near(a.positions[0], h) - near(b.positions[0], h));
   const top = rows.slice(0, 2).map((n) => { const p = [...n.positions].sort((a, b) => near(a, h) - near(b, h))[0]; return `${n.name}${n.title ? ` (${n.title})` : ""} in ${where(p, h)}`; });
@@ -464,17 +556,74 @@ function answerRp(u, { profile, data }) {
   if (u.npc) { const n = answerNpc(u, { profile, data }); if (n) facts.push(...n.facts); }
   return facts.length ? { text: null, facts, model: true } : null;
 }
+const GATHER_WORDS = { copper: ["copper"], tin: ["tin"], silver: ["silver"], iron: ["iron"], gold: ["gold"], mithril: ["mithril"], peacebloom: ["peacebloom"], silverleaf: ["silverleaf"], earthroot: ["earthroot"], mageroyal: ["mageroyal"], briarthorn: ["briarthorn"], bruiseweed: ["bruiseweed"], stranglekelp: ["stranglekelp"], herbs: ["peacebloom", "silverleaf", "earthroot", "mageroyal", "briarthorn", "bruiseweed"], ore: ["copper", "tin", "iron", "silver"] };
+function answerGather(u, { profile, data }) {
+  const q = loose(u.q || ""), key = Object.keys(GATHER_WORDS).find((k) => new RegExp(`\\b${k}\\b`).test(q));
+  if (!key) return null;
+  const words = GATHER_WORDS[key], h = here(profile);
+  let rows = [];
+  try { rows = (require("./acquisition-data.cjs").loadAcquisitionPack().rows || []).filter((r) => r.kind === "gathered-object-loot" && words.some((w) => loose(`${r.referenceName} ${data.index.items.get(r.itemId) || ""}`).includes(w))); } catch {}
+  const own = (profile?.gathering?.records || []).filter((r) => r && Number.isFinite(r.x) && words.some((w) => loose(r.name || "").includes(w)));
+  const spots = [];
+  for (const r of rows) for (const p of r.positions || []) spots.push({ name: r.referenceName || data.index.items.get(r.itemId), p, own: false });
+  for (const r of own) spots.push({ name: r.name, p: { mapId: r.mapId, x: r.x, y: r.y }, own: true });
+  if (u.place) { const at = placeMapId(u.place); if (at) { const there = spots.filter((x) => x.p.mapId === at.mapId); if (there.length) spots.splice(0, spots.length, ...there); } }
+  if (!spots.length) return { text: `I don't have a recorded ${key} spot in the Forever reference yet. Spots you gather yourself are remembered and shown here and on the World Map.`, facts: [] };
+  spots.sort((a, b) => (b.own ? 1 : 0) - (a.own ? 1 : 0) || near(a.p, h) - near(b.p, h));
+  // One line per spot, even when two records stood at the same point.
+  const seen = new Set();
+  const unique = spots.filter((x) => { const k = `${x.p.mapId}:${Math.round(x.p.x * 200)}:${Math.round(x.p.y * 200)}`; if (seen.has(k)) return false; seen.add(k); return true; });
+  spots.length = 0; spots.push(...unique);
+  const lines = spots.slice(0, 4).map((x) => `${x.name} in ${where(x.p, h)}${x.own ? " (you gathered here)" : ""}`);
+  const skill = /copper|tin|iron|silver|gold|mithril|ore/.test(key) ? "Mining" : "Herbalism";
+  return { text: `${skill} spots:\n${lines.map((l) => "• " + l).join("\n")}\nRecorded gathering points; nodes respawn and move, so check nearby.`, facts: lines.map((l) => `${skill}: ${l}.`) };
+}
+function centerOf(points) {
+  const byMap = new Map(); for (const pt of points) byMap.set(pt.mapId, [...(byMap.get(pt.mapId) || []), pt]);
+  const best = [...byMap.values()].sort((a, b) => b.length - a.length)[0];
+  return { mapId: best[0].mapId, x: best.reduce((n, pt) => n + pt.x, 0) / best.length, y: best.reduce((n, pt) => n + pt.y, 0) / best.length };
+}
+function answerCreature(u, { profile, data }) {
+  const ids = u.creature?.ids || [];
+  for (const id of ids) {
+    const area = data.index.creatureAreas.get(id), name = data.index.creatures.get(id)?.name || u.creature.gram;
+    if (!area) continue;
+    const c = centerOf(area.positions), h = here(profile);
+    const text = `${name} were seen around ${where(c, h)}${area.quests.length ? ` (for "${area.quests[0]}")` : ""}. That's where players fought them; they spread around that spot.`;
+    return { text, facts: [`${name}: around ${where(c, null)}${area.quests.length ? `, quest "${area.quests[0]}"` : ""}.`] };
+  }
+  return null;
+}
+function answerRecipe(u, { profile, data }) {
+  const r = data.index.recipes.get(u.recipe?.gram); if (!r) return null;
+  const faction = side(profile), h = here(profile);
+  const ts = r.trainers.filter((t) => friendly(t.observedReactionsByFaction, faction, t.positions)).sort((a, b) => near(a.positions[0], h) - near(b.positions[0], h)).slice(0, 2);
+  const text = `${r.name} needs ${r.skill} ${r.rank}.${ts.length ? ` It's taught by ${ts.map((t) => `${t.name} (${t.title}) in ${where(t.positions[0], h)}`).join(" or ")}.` : ""}`;
+  return { text, facts: [text] };
+}
 function answerProfession(u, ctx) { return answerTrainer({ ...u, cls: null }, ctx); }
 const KALIMDOR = new Set([1411, 1412, 1413, 1414, 1438, 1439, 1440, 1441, 1442, 1443, 1444, 1445, 1446, 1447, 1448, 1449, 1450, 1451, 1452, 1454, 1456, 1457]);
 // Transport stops and the places they serve.
 const STOPS = { "orgrimmar-zeppelin-tower": { serves: ["Orgrimmar", "Durotar"], k: true }, "tirisfal-zeppelin-tower": { serves: ["Undercity", "Tirisfal Glades"], k: false }, "gromgol-zeppelin-tower": { serves: ["Stranglethorn Vale", "Grom'gol Base Camp"], k: false }, "stormwind-harbour": { serves: ["Stormwind City", "Elwynn Forest"], k: false }, "auberdine-dock": { serves: ["Darkshore", "Auberdine"], k: true }, "stormwind-tram": { serves: ["Stormwind City"], k: false }, "ironforge-tram": { serves: ["Ironforge", "Dun Morogh"], k: false } };
+function travelEnds(u, profile) {
+  const q = loose(u.q), places = placesIn(u.q);
+  const fromM = q.match(/\bfrom\s+(.+?)(?:\s+(?:to|where|how|if|and)\b|$)/);
+  let origin = fromM && !/^here\b/.test(fromM[1]) ? placesIn(fromM[1])[0] || null : null;
+  const dest = u.dungeon ? u.dungeon.zone : places.find((pl) => pl !== origin) || null;
+  return { origin, dest };
+}
 function answerTransport(u, { profile }) {
   const ref = readJson("data/forever-travel/pack.json"); if (!ref) return null;
-  const dest = u.dungeon ? u.dungeon.zone : u.place; if (!dest) return null;
-  const faction = side(profile), h = here(profile), onK = h ? KALIMDOR.has(h.mapId) : null;
+  const ends = travelEnds(u, profile), dest = ends.dest; if (!dest) return null;
+  const startPt = ends.origin ? pointOf(ends.origin) : here(profile);
+  const faction = side(profile), h = startPt, onK = h ? KALIMDOR.has(h.mapId) : null;
   const label = (id) => ref.nodes.find((n) => n.id === id)?.label || id;
-  const want = new RegExp(`\\b(${(norm(u.q).match(/\b(zeppelin|boat|ship|tram)\b/) || [])[1] || "zeppelin|boat|tram"})\\b`.replace("ship", "boat"));
-  const edges = ref.edges.filter((e) => e.mode !== "flight" && STOPS[e.to]?.serves.includes(dest) && (!faction || !e.faction || e.faction === faction) && want.test(e.mode));
+  const want = new RegExp(`\\b(${(slang(u.q).match(/\b(zeppelin|boat|ship|tram)\b/) || [])[1] || "zeppelin|boat|tram"})\\b`.replace("ship", "boat"));
+  const served = (e) => STOPS[e.to]?.serves.includes(dest) || STOPS[e.to]?.serves.some((x) => loose(x).replace(/^the /, "") === loose(dest).replace(/^the /, ""));
+  const all = ref.edges.filter((e) => e.mode !== "flight" && served(e) && want.test(e.mode.replace("ship", "boat")));
+  const edges = all.filter((e) => !faction || !e.faction || e.faction === faction);
+  if (!edges.length && all.length && faction) { const other = all[0].faction; const text = `The ${all[0].mode} from ${label(all[0].from)} to ${label(all[0].to)} is a ${other} route. As ${faction} you'd be boarding in hostile territory, so take your own faction's way instead.`; return { text, facts: [text] }; }
+  if (!edges.length && /\b(zeppelin|boat|ship|tram)\b/.test(slang(u.q))) { const mode = slang(u.q).match(/\b(zeppelin|boat|ship|tram)\b/)[1]; const text = `There's no ${mode} to ${dest} in the travel reference${ends.origin ? ` from ${ends.origin}` : ""}. Fly there if you have the flight path, otherwise ride.`; return { text, facts: [text] }; }
   if (!edges.length) return null;
   // Prefer a departure on the player's own continent.
   edges.sort((a, b) => (STOPS[b.from]?.k === onK ? 1 : 0) - (STOPS[a.from]?.k === onK ? 1 : 0));
@@ -483,22 +632,29 @@ function answerTransport(u, { profile }) {
   return { text, facts: [text] };
 }
 function answerTravelPlan(u, { profile, data }) {
-  const t = /\b(zeppelin|boat|ship|tram)\b/.test(norm(u.q)) || ["Undercity", "Tirisfal Glades", "Stranglethorn Vale", "Darkshore", "Auberdine", "Ironforge", "Stormwind City"].includes(u.dungeon ? u.dungeon.zone : u.place) ? answerTransport(u, { profile }) : null;
+  const ends = travelEnds(u, profile), startPt = ends.origin ? pointOf(ends.origin) : here(profile), destPt = pointOf(ends.dest);
+  // Walking within one zone: direction and the spot.
+  if (startPt && destPt && startPt.mapId === destPt.mapId && Number.isFinite(destPt.x) && !/\b(zeppelin|boat|ship|tram)\b/.test(slang(u.q))) {
+    const text = `${ends.dest} is ${where(destPt, startPt).replace(/^[^,]+, /, "in ")}.`.replace(/ \(([a-z-]+) of you\)/, " ($1 of you)");
+    return { text, facts: [text] };
+  }
+  const transportDest = ["Undercity", "Tirisfal Glades", "Stranglethorn Vale", "Grom'gol Base Camp", "Darkshore", "Auberdine", "Ironforge", "Dun Morogh", "Stormwind City", "Orgrimmar", "Durotar"].includes(ends.dest);
+  const crossSea = startPt && destPt && KALIMDOR.has(startPt.mapId) !== KALIMDOR.has(destPt.mapId);
+  const t = /\b(zeppelin|boat|ship|tram)\b/.test(slang(u.q)) || (transportDest && (crossSea || ["Ironforge", "Dun Morogh"].includes(ends.dest))) ? answerTransport(u, { profile }) : null;
   if (t) return t;
   try {
     const { parseTravelIntent, planTravel } = require("./travel.cjs");
     const ref = readJson("data/forever-travel/pack.json");
-    const h = here(profile), fromTown = h ? townAt(h) || zoneOf(h.mapId) : null;
-    const dest = u.dungeon ? u.dungeon.zone : u.place;
-    const m = norm(u.q).match(/\bfrom\s+([a-z' ]+?)\s+to\s+([a-z' ]+)$/);
-    const question = m ? `from ${m[1]} to ${m[2]}` : fromTown && dest ? `from ${fromTown} to ${dest}` : null;
+    const h = here(profile), fromTown = ends.origin || (h ? townAt(h) || zoneOf(h.mapId) : null);
+    const dest = ends.dest;
+    const question = fromTown && dest ? `from ${fromTown} to ${dest}` : null;
     const intent = question ? parseTravelIntent(question, { profile }) : null;
     const plan = intent ? planTravel(ref, intent, { profile }) : null;
     if (plan?.status === "route" && plan.text) return { text: plan.text, facts: [plan.text.split("\n").slice(0, 6).join(" ")] };
   } catch {}
   return answerTravel(u, { profile, data });
 }
-const ANSWER = { "npc-location": answerNpc, place: answerPlace, trainer: answerTrainer, vendor: answerVendor, drops: answerDrops, "item-source": answerItemSource, "quest-info": answerQuest, "quest-turnin": answerQuest, dungeon: answerDungeon, travel: answerTravelPlan, role: answerRole, "turnin-which": answerTurninWhich, lore: answerLore, profession: answerProfession, rp: answerRp };
+const ANSWER = { "npc-location": answerNpc, place: answerPlace, trainer: answerTrainer, vendor: answerVendor, drops: answerDrops, "item-source": answerItemSource, "quest-info": answerQuest, "quest-turnin": answerQuest, dungeon: answerDungeon, travel: answerTravelPlan, role: answerRole, "turnin-which": answerTurninWhich, lore: answerLore, profession: answerProfession, rp: answerRp, gather: answerGather, creature: answerCreature, recipe: answerRecipe };
 function resolve(question, { profile = null, shareProfile = true, data = loadData() } = {}) {
   const p = shareProfile ? profile : null;
   const u = understand(question, { profile: p, data }); u.q = question;

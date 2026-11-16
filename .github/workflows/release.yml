@@ -132,7 +132,10 @@ jobs:
         run: |
           git archive --format=zip --output="dist/Backstage-Forever-$env:RELEASE_VERSION-Source.zip" "$env:GITHUB_REF_NAME"
           if ($LASTEXITCODE -ne 0) { throw 'Source archive failed' }
-          $names = @("Backstage-Forever-$env:RELEASE_VERSION-Windows-x64-Setup.exe", "Backstage-Forever-$env:RELEASE_VERSION-Source.zip", 'backstage-update.json')
+          # The in-game addon alone (unzips to AddOns\BackstageForever), for manual installs and addon sites.
+          git archive --format=zip --prefix=BackstageForever/ --output="dist/BackstageForever-Addon-$env:RELEASE_VERSION.zip" "$($env:GITHUB_REF_NAME):addon/BackstageForever"
+          if ($LASTEXITCODE -ne 0) { throw 'Addon archive failed' }
+          $names = @("Backstage-Forever-$env:RELEASE_VERSION-Windows-x64-Setup.exe", "Backstage-Forever-$env:RELEASE_VERSION-Source.zip", "BackstageForever-Addon-$env:RELEASE_VERSION.zip", 'backstage-update.json')
           $lines = foreach ($name in $names) { $hash = (Get-FileHash -LiteralPath "dist/$name" -Algorithm SHA256).Hash.ToLowerInvariant(); "$hash  $name" }
           [IO.File]::WriteAllLines((Join-Path $pwd 'dist/SHA256SUMS.txt'), $lines, [Text.UTF8Encoding]::new($false))
       - name: Publish or update versioned release
@@ -151,7 +154,7 @@ jobs:
             gh @createArguments
             if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed' }
           }
-          gh release upload $tag "dist/Backstage-Forever-$env:RELEASE_VERSION-Windows-x64-Setup.exe" "dist/Backstage-Forever-$env:RELEASE_VERSION-Source.zip" dist/backstage-update.json dist/SHA256SUMS.txt --clobber --repo "$env:GITHUB_REPOSITORY"
+          gh release upload $tag "dist/Backstage-Forever-$env:RELEASE_VERSION-Windows-x64-Setup.exe" "dist/Backstage-Forever-$env:RELEASE_VERSION-Source.zip" "dist/BackstageForever-Addon-$env:RELEASE_VERSION.zip" dist/backstage-update.json dist/SHA256SUMS.txt --clobber --repo "$env:GITHUB_REPOSITORY"
           if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed' }
           # Published releases retain their current preview/stable status on reruns.
           if (-not $existed -or ($existing | ConvertFrom-Json).isDraft) {

@@ -1,0 +1,5 @@
+# BigWigs packager settings for the addon sites (.github/workflows/addon-sites.yml).
+package-as: BackstageForever
+enable-nolib-creation: no
+ignore:
+  - .release
