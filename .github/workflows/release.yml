@@ -163,7 +163,8 @@ jobs:
     # 4.6 (0.55): an unsigned Mac build of the same version, added to the release the Windows job published.
     needs: release
     if: github.repository == 'farena-ai/Backstage-Forever'
-    runs-on: macos-14
+    # macos-14 is not offered to this repository (0.55.0's Mac job was refused); macos-latest builds both archs.
+    runs-on: macos-latest
     timeout-minutes: 40
     permissions:
       contents: write
@@ -180,6 +181,19 @@ jobs:
       - run: npm run dist:mac
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # electron-builder leaves the app with no signature at all (identity: null), and Apple Silicon will not
+      # run that. An ad-hoc signature is free, needs no Apple account, and lets "Open Anyway" work.
+      - name: Ad-hoc sign each Mac app and zip it again
+        run: |
+          set -euo pipefail
+          cd dist
+          for z in Backstage-Forever-*-macOS-*.zip; do
+            rm -rf sign && mkdir sign && ditto -x -k "$z" sign
+            codesign --force --deep --sign - "sign/Backstage Forever.app"
+            codesign --verify --deep --strict "sign/Backstage Forever.app"
+            rm "$z" && ditto -c -k --sequesterRsrc --keepParent "sign/Backstage Forever.app" "$z"
+          done
+          rm -rf sign
       - name: Add the Mac builds and their checksums to the release
         env:
           GH_TOKEN: ${{ github.token }}

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.55.1 — Mac downloads, 2026-11-15
+
+- 0.55.0's `mac` job was refused before it started ("The configuration 'macos-14-arm64-us-default' is not supported"), so that release has no Mac zips. The job now runs on `macos-latest` (checked: it builds both the arm64 and x64 zips).
+- electron-builder with `identity: null` leaves the app with no signature at all, which Apple Silicon will not run. The job now signs each app ad hoc (`codesign --force --deep --sign -`), verifies it (`--verify --deep --strict`) and zips it again with `ditto` before the checksums and upload. Checked on a GitHub Mac: both apps verify, and the arm64 app starts and keeps running. The release contract test covers both steps.
+
 ## 0.55.0 — Mac, 2026-11-15
 
 - **4.6, macOS:** `npm run dist:mac` (electron-builder zip, arm64 and x64, unsigned: `identity: null`). The release workflow's `mac` job (macos-14, 40-minute ceiling) runs after the Windows job, packages the same tested commit and adds `Backstage-Forever-0.55.0-macOS-arm64.zip` and `-x64.zip` plus their lines in `SHA256SUMS.txt` to the release.
