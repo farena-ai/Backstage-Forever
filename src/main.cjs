@@ -85,6 +85,7 @@ let latestObservation = null;
 let latestObservationRoot = null;
 let gameActionEpoch = 0;
 const links = {
+  website: "https://www.backstagecoding.com/",
   "forever-class-overview": "https://news.blizzard.com/en-us/article/24304075/create-the-hero-you-want-to-be-in-world-of-warcraft-forever",
   releases: "https://github.com/farena-ai/Backstage-Forever/releases",
   ollama: "https://ollama.com/",

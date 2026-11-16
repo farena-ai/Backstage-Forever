@@ -130,3 +130,7 @@
 .loot-tile.q-epic, .atlas-wish.q-epic { border-color: #a335ee; } .loot-tile.q-epic .loot-name, .loot-tile.q-epic .loot-icon { color: #c27bff; }
 .loot-tile.q-legendary, .atlas-wish.q-legendary { border-color: #ff8000; } .loot-tile.q-legendary .loot-name, .loot-tile.q-legendary .loot-icon { color: #ff9f40; }
 @media (prefers-reduced-motion: reduce) { .loot-tile { transition: none; } .loot-tile:hover { transform: none; } }
+
+/* 0.58: each instance's painting heads its card. */
+.atlas-art { display: block; width: calc(100% + 28px); max-width: none; height: 132px; margin: -12px -14px 10px; object-fit: cover; object-position: center 40%; border-bottom: 1px solid #8c6a2e; filter: saturate(1.05); }
+.atlas-card.raid .atlas-art { height: 150px; }

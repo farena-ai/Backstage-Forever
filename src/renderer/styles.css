@@ -277,6 +277,44 @@ nav button.active {
 .rail-bottom small {
   font-size: 11px;
 }
+/* Credits link: reads as a link and opens the site outside the app. */
+.rail-link {
+  all: unset;
+  cursor: pointer;
+  color: #dfc792;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+/* Later sheets style every button; the credits link stays plain text at any depth. */
+.rail-bottom .rail-link,
+.corner-note .rail-link {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  min-height: 0;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+  color: #dfc792;
+  text-shadow: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  position: static;
+  isolation: auto;
+  cursor: pointer;
+}
+.rail-link:hover {
+  color: #f3e2b6;
+}
+.rail-link:focus-visible {
+  outline: 2px solid #dfc792;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
 .main {
   min-width: 0;
 }

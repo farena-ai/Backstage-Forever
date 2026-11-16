@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.58.0 — A companion that understands, and your character's own portrait, 2026-11-16
+
+- Companion: a new understanding layer (`src/core/companion-intents.cjs`) works out what a player means in everyday words (possessives, partial names, jobs like "the gryphon guy", roleplay greetings) and answers from WoW Forever's own data. It covers people, trainers (filtered to your faction, neutral towns for both), vendors, drops, boss loot and quest items, quests and turn-ins, dungeons, and zeppelins, boats and the tram. With a model, the verified facts go into its context first, so it answers in voice from those facts. NPC answers name the town and zone instead of a map number.
+- Companion benchmark: 100 real player questions checked against the bundled data (`tests/fixtures/companion-bench`, `node scripts/companion-bench.cjs`). 0.57: 15% covered, 5% correct with no model, 19% understood. 0.58: 96.9%, 93.8%, 99%. A test keeps it from going backwards.
+- Companion voice: a seasoned fellow adventurer who answers in character when you write in character and uses your character's name and pronouns. New refusals: gold duping, speed or teleport hacks, AFK farm bots, getting into someone else's account.
+- Portraits: the addon records your character's sex, and every character picture (Characters, Adventure, Now, Company, All characters) uses an original portrait matched on race, sex and class. 112 portraits, including High Order and Windshaper Skyborne, made locally with ComfyUI. The Characters page shows it as a framed medallion.
+- Dungeons: an original painting for each of the 27 dungeons and raids heads its card.
+- Credits: designed by Frank Arena and Jason Babiuch, with a link to backstagecoding.com in the side menu and About.
+
 ## 0.57.3 — One /reload after an update, 2026-11-16
 
 - Fix: after an update, the "Type /reload in WoW" banner on Now needed two reloads. On a /reload WoW writes the save from the addon that was running, the old one, so the first save after an update still names the old version. The app now also records when WoW wrote the save file (`savedAt`): a save written after the update landed means the game has reloaded, so the new addon runs and the banner goes after one /reload.

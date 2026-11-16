@@ -1,13 +1,16 @@
 {
   "name": "backstage-forever",
   "productName": "Backstage Forever",
-  "version": "0.57.3",
+  "version": "0.58.0",
   "releaseChannel": "preview",
-  "description": "A free leveling companion for World of Warcraft: Forever: a desktop app and in-game addon that read your own game, tell you what to do next and guide you there. From Backstage Coding. Designed by Frank Arena.",
+  "description": "A free leveling companion for World of Warcraft: Forever: a desktop app and in-game addon that read your own game, tell you what to do next and guide you there. From Backstage Coding (https://www.backstagecoding.com). Designed by Frank Arena and Jason Babiuch.",
   "homepage": "https://github.com/farena-ai/Backstage-Forever#readme",
   "bugs": { "url": "https://github.com/farena-ai/Backstage-Forever/issues" },
   "keywords": ["world of warcraft", "wow", "addon", "leveling", "quest guide", "companion", "electron"],
   "author": "Frank Arena / Backstage Coding",
+  "contributors": [
+    "Jason Babiuch"
+  ],
   "private": true,
   "license": "MIT",
   "repository": {

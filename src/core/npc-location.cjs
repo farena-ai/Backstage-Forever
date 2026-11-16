@@ -1,6 +1,7 @@
 "use strict";
 const {validateNpcLocationPack}=require('./npc-location-data.cjs');
 const {MAP_LABELS}=require('./npc-location-sources.cjs');
+const {MAP_NAMES}=require('./map-names.cjs');
 const normalize=s=>String(s).toLowerCase().replace(/[’‘']/g,'').replace(/\s+/g,' ').trim();
 const PLACES={org:'Orgrimmar',orgrimmar:'Orgrimmar',tb:'Thunder Bluff','thunder bluff':'Thunder Bluff',thunderbluff:'Thunder Bluff',uc:'Undercity',undercity:'Undercity',sw:'Stormwind City',stormwind:'Stormwind City','stormwind city':'Stormwind City',ironforge:'Ironforge',darnassus:'Darnassus'};
 const nonNpc=/\b(?:bank|auction house|mailbox|ore|copper|peacebloom|silverleaf|herb|herbs|hearthstone|material|materials|item|items|village|dungeon|profession|trainer supplies|cloth|leather|thread|reagent|potion|food)\b/i;
@@ -41,11 +42,12 @@ function resolveNpcLocation(prompt,{profile,shareProfile=false,currentIndex,hist
  const entity=candidates.find(n=>n.positions?.length)||identities[0];
  if(!entity.positions?.length)return result(`I don't have a verified location for ${entity.name} in this local reference. No coordinates were guessed.`);
  const hasRequestedPlace=!intent.place||entity.positions.some(p=>normalize(MAP_LABELS[p.mapId]||'')===normalize(intent.place));
- const positions=entity.positions.slice(0,3).map(p=>({...p,...(MAP_LABELS[p.mapId]?{mapLabel:MAP_LABELS[p.mapId]}:{})}));
+ const label=p=>{let town=null;try{town=require('./companion-intents.cjs').placeLabel(p);}catch{}return town||MAP_LABELS[p.mapId]||MAP_NAMES[p.mapId]||null;};
+ const positions=entity.positions.slice(0,3).map(p=>({...p,...(label(p)?{mapLabel:label(p)}:{})}));
  const out={id:entity.id,name:entity.name,evidenceTier:entity.evidenceTier,build:entity.build,sourceCommit:entity.sourceCommit,lastSeen:entity.lastSeen||null,contributingFiles:entity.contributingFiles,positions,additionalPositions:Math.max(0,entity.positions.length-3)};
  dto.status='found';dto.entities=[out];dto.cautions=['Approximate historical player interaction points, not guaranteed spawns or live NPC locations.'];
  const url=`https://github.com/JIVESCORP/eg-link-output-wowf/tree/${entity.sourceCommit}/data/wowf/${entity.build}`;dto.sources=[{publisher:'Efficient Games',url,build:entity.build,sourceCommit:entity.sourceCommit}];
- const lines=positions.map(p=>`${p.mapLabel||'Map '+p.mapId}, around ${(p.x*100).toFixed(1)}, ${(p.y*100).toFixed(1)} (Map ${p.mapId})`);
+ const lines=positions.map(p=>`${p.mapLabel||'Map '+p.mapId}, around ${(p.x*100).toFixed(1)}, ${(p.y*100).toFixed(1)}`);
  let text=`The reference I have for ${entity.name} is in ${lines[0]}.`;
  if(lines.length>1)text+='\nOther observed interaction points:\n'+lines.slice(1).map(x=>'- '+x).join('\n');
  if(out.additionalPositions)text+=`\n${out.additionalPositions} additional historical points are not shown.`;

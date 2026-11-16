@@ -623,3 +623,5 @@ body[data-class] .xp-fill {
   /* !important: a single-class selector would lose to button:not(.illustrated-card)::before. */
   display: none !important;
 }
+.rail-link::before, .rail-link::after { content: none; display: none; }
+.rail-bottom .rail-link::before, .rail-bottom .rail-link::after, .corner-note .rail-link::before, .corner-note .rail-link::after { content: none; display: none; }

@@ -39,6 +39,7 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
       "className",
       "level",
       "race",
+      "sex",
       "faction",
       "location",
       "updatedAt",
@@ -72,6 +73,7 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
     };
     for (const key of [
       "race",
+      "sex",
       "faction",
       "location",
       "quests",
@@ -133,6 +135,7 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
         "className",
         "level",
         "race",
+        "sex",
         "faction",
         "location",
         "quests",

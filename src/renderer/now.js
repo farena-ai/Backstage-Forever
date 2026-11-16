@@ -215,7 +215,7 @@ window.NowView = (() => {
     for (const el of b.querySelectorAll(".now-xp [data-w]")) { el.style.width = `${Number(el.dataset.w)}%`; if (el.dataset.l) el.style.left = `${Number(el.dataset.l)}%`; }
     const t = document.querySelector("[data-now-title]"); if (t) t.textContent = advice?.character?.name || advice?.name || "Your next move";
     const crestEl = document.querySelector("[data-now-crest]"), cls = String(advice?.character?.className || "").toLowerCase();
-    if (crestEl) { if (CLASSES.has(cls)) { crestEl.src = `art/classes/${cls}.png`; crestEl.hidden = false; } else crestEl.hidden = true; }
+    if (crestEl) { const art = CLASSES.has(cls) ? window.PageHero?.portrait(advice?.character) : ""; if (art) { crestEl.src = art; crestEl.hidden = false; } else crestEl.hidden = true; }
     liveLine();
     spellIcons(b);
   }

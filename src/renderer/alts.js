@@ -12,7 +12,7 @@ window.AltsView = (() => {
     return `<span class="alt-coins">${g ? `<span class="alt-gold">${g.toLocaleString()}g</span> ` : ""}${s ? `<span class="alt-silver">${s}s</span> ` : ""}${c || (!g && !s) ? `<span class="alt-copper">${c}c</span>` : ""}</span>`;
   }
   const away = (c) => c.daysAway === null ? "never saved" : c.daysAway === 0 ? "saved today" : c.daysAway === 1 ? "saved yesterday" : `saved ${c.daysAway} days ago`;
-  const portrait = (c) => { const src = PageHero.classCrest(c.className); return src ? `<img class="alt-portrait" src="${esc(src)}" alt="" width="64" height="64">` : `<span class="alt-portrait alt-blank" aria-hidden="true"></span>`; };
+  const portrait = (c) => { const src = PageHero.portrait(c); return src ? `<img class="alt-portrait" src="${esc(src)}" alt="" width="64" height="64">` : `<span class="alt-portrait alt-blank" aria-hidden="true"></span>`; };
   function xpBar(c) {
     if (c.level >= 60) return `<p class="alt-line"><strong>Level 60</strong>, the top.</p>`;
     if (!c.xp) return `<p class="alt-line alt-muted">Experience shows after the next save.</p>`;

@@ -17,7 +17,7 @@ function buildCompany(state, { now = Date.now() } = {}) {
     const pending = p.goals.filter((g) => !g.done);
     return {
       id: p.id, name: p.name, realm: p.realm, className: p.className,
-      race: p.race ?? null, faction: p.faction ?? null, level: p.level,
+      race: p.race ?? null, sex: p.sex ?? null, faction: p.faction ?? null, level: p.level,
       source: {
         kind: observed ? "saved-addon" : "manual", savedAt, ageMs,
         freshness: ageMs === null ? "unknown" : ageMs < 0 ? "future" : ageMs > 86400000 ? "old" : "recent",

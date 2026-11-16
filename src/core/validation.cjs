@@ -162,6 +162,7 @@ function validateState(s) {
       "notes",
       "goals",
       "race",
+      "sex",
       "faction",
       "source",
       "location",
@@ -199,6 +200,7 @@ function validateState(s) {
     str(p.notes, 20000);
     for (const key of ["race", "faction"])
       if (p[key] !== undefined) str(p[key], 100);
+    if (p.sex !== undefined && p.sex !== "male" && p.sex !== "female") fail();
     if (p.source !== undefined) {
       object(p.source, ["kind", "id", "updatedAt"]);
       if (p.source.kind !== "wow-addon") fail();

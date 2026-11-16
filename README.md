@@ -11,7 +11,7 @@ It reads your own game, tells you what to do next, and guides you there: in the 
 
 ## What's new
 
-**0.57.3:** one /reload after an update. **0.57.2:** Professions advice from your recipes. **0.57.1:** Professions read your recipes. **0.57:** the rest of the app in German and the 1.0 checklist. **0.56:** ready for the public: this front page, plain-language privacy, a security policy and a new Getting started. **0.55:** a Mac app for Apple Silicon and Intel (without the live link). **0.54:** every page reviewed in English and German, and the in-game Adventure Compass shows your XP, pace, quests ready to hand in and next step at a glance. See the [release notes](docs/releases/0.57.3.md) and the [changelog](CHANGELOG.md) for every version.
+**0.58:** the companion understands what you ask (15% → 97% on a 100-question benchmark), your character's own portrait, a painting for every dungeon. **0.57.3:** one /reload after an update. **0.57.2:** Professions advice from your recipes. **0.57.1:** Professions read your recipes. **0.57:** the rest of the app in German and the 1.0 checklist. **0.56:** ready for the public: this front page, plain-language privacy, a security policy and a new Getting started. **0.55:** a Mac app for Apple Silicon and Intel (without the live link). **0.54:** every page reviewed in English and German, and the in-game Adventure Compass shows your XP, pace, quests ready to hand in and next step at a glance. See the [release notes](docs/releases/0.58.0.md) and the [changelog](CHANGELOG.md) for every version.
 
 ## What it does
 
@@ -67,7 +67,7 @@ Node.js 24 and npm. `npm ci`, then `npm start` runs the app and `npm test` runs 
 
 ## Credits
 
-Designed by Frank Arena, made by Backstage Coding. All artwork is original, painted for Backstage Forever (see [art notices](src/renderer/art/NOTICE.md)). Quest, NPC and item reference data comes from Efficient Games (CC BY 4.0) and players' own play; see [third-party notices](docs/THIRD-PARTY-NOTICES.md).
+Designed by Frank Arena and Jason Babiuch, made by [Backstage Coding](https://www.backstagecoding.com). All artwork is original, painted for Backstage Forever (see [art notices](src/renderer/art/NOTICE.md)). Quest, NPC and item reference data comes from Efficient Games (CC BY 4.0) and players' own play; see [third-party notices](docs/THIRD-PARTY-NOTICES.md).
 
 **Not affiliated with Blizzard Entertainment.** World of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. Backstage Forever is an independent fan project; it does not include or redistribute any Blizzard game files, and it reads map art and game data only from your own installation, on your own computer.
 

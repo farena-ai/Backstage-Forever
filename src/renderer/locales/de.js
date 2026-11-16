@@ -293,7 +293,6 @@ window.BF_LOCALE_DE = {
  "Delete everything": "Alles löschen",
  "Delete exchange": "Austausch löschen",
  "Delete plan": "Plan löschen",
- "Designed by Frank Arena": "Entworfen von Frank Arena",
  "DESIGNED BY FRANK ARENA": "ENTWORFEN VON FRANK ARENA",
  "Desktop coach goal": "Desktop-Coach-Ziel",
  "Desktop last saved progress is older than 15 minutes. Live guidance continues inside WoW; desktop progress updates when the game saves.": "Der zuletzt gespeicherte Fortschritt auf dem Desktop ist älter als 15 Minuten. Die Live-Führung läuft in WoW weiter; der Desktop aktualisiert sich, wenn das Spiel speichert.",

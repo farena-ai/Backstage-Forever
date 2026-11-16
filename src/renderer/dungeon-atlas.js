@@ -4,6 +4,8 @@ window.DungeonAtlas = (() => {
   const api = window.backstage;
   let atlas = null, tab = "dungeon", open = null, view = "details", mountedFor = null;
   const loot = new Map(); // instance id -> dungeonLoot result (or { error })
+  // One original painting per dungeon and raid (art/dungeons/<id>.webp, local ComfyUI, 0.58).
+  const ART = new Set(["rfc", "wc", "dm", "sfk", "bfd", "stocks", "gnomer", "rfk", "sm", "rfd", "ulda", "zf", "mara", "st", "brd", "lbrs", "dme", "scholo", "strat", "ubrs", "zg", "mc", "ony", "bwl", "aq20", "aq40", "naxx"]);
   const QUALITY = ["poor", "common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom"];
   const BADGE = { upgrade: "Upgrade for you", "upgrade-later": "Upgrade later", "not-for-you": "Not for you", "not-upgrade": "Not an upgrade", usable: "Usable", "no-class": "", "not-equipment": "", unknown: "" };
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -30,6 +32,7 @@ window.DungeonAtlas = (() => {
     return `<article class="atlas-card d-${esc(e.difficulty)} ${e.kind}${isOpen ? " open" : ""}" data-atlas-card="${esc(e.id)}">
       <div class="atlas-ribbon"><span>${e.levels ? `${e.levels.min}${e.levels.max !== e.levels.min ? "–" + e.levels.max : ""}` : "?"}</span></div>
       <div class="atlas-card-body">
+        ${ART.has(e.id) ? `<img class="atlas-art" src="art/dungeons/${e.id}.webp" alt="" width="960" height="536" loading="lazy">` : ""}
         <h3>${esc(e.name)}</h3>
         <p class="atlas-where">${e.zone ? esc(e.zone) : "Location not yet observed"}${e.faction ? ` · <span class="atlas-side ${esc(e.faction.toLowerCase())}">${esc(e.faction)}</span>` : ""}${e.observedRuns ? ` · <span class="atlas-seen">${e.observedRuns} Forever run${e.observedRuns === 1 ? "" : "s"} observed</span>` : ""}</p>
         <p class="atlas-diff">${esc(LABEL[e.difficulty])}${e.factionNote ? ` · ${esc(e.factionNote)}` : ""}</p>

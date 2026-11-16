@@ -9,6 +9,7 @@ function approvedProfile(p, { knowledge, prompt = "", reportedLocation } = {}) {
     "level",
     "realm",
     "race",
+    "sex",
     "faction",
   ]) {
     if (typeof p[key] === "string") out[key] = p[key].slice(0, 200);
