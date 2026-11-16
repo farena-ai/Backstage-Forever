@@ -70,7 +70,7 @@ Grok subscription remains unavailable because the tools/hooks isolation boundary
 
 ## Windows distribution
 
-The public GitHub preview release channel is independent of app-store testing tracks. Update manifests use pinned Ed25519 integrity and installer hash/size checks. The installer is still unsigned with Windows Authenticode. Clean-machine installation, real installed self-upgrade/uninstall, keyboard and screen-reader acceptance remain separate gates. No publication or successful live upgrade is certified by this page.
+The public GitHub release channel is stable from 1.0 (earlier versions were marked pre-release) and is independent of app-store testing tracks. Update manifests use pinned Ed25519 integrity and installer hash/size checks. The installer is still unsigned with Windows Authenticode. Clean-machine installation, real installed self-upgrade/uninstall, keyboard and screen-reader acceptance remain separate gates. No publication or successful live upgrade is certified by this page.
 
 ## Native adventure map foundation (0.13 preview)
 
