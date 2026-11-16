@@ -623,3 +623,4 @@ body[data-class] .xp-fill {
   /* !important: a single-class selector would lose to button:not(.illustrated-card):not(.rail-link)::before. */
   display: none !important;
 }
+.rail-link::before, .rail-link::after { content: none; display: none; }

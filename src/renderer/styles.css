@@ -277,7 +277,7 @@ nav button.active {
 .rail-bottom small {
   font-size: 11px;
 }
-/* Credits link: reads as a link, keyboard-focusable, opens the site outside the app. */
+/* Credits link: reads as a link and opens the site outside the app. */
 .rail-link {
   all: unset;
   cursor: pointer;
