@@ -2,7 +2,7 @@
 
 ## 0.55: Mac
 
-Backstage Forever now comes for the Mac too (Apple Silicon and Intel), without the live link. 0.54 reviewed every page and made the in-game Adventure Compass a summary at a glance. See the [0.55.0 release notes](docs/releases/0.55.0.md) and the [0.54.0 notes](docs/releases/0.54.0.md).
+Backstage Forever now comes for the Mac too (Apple Silicon and Intel), without the live link. 0.54 reviewed every page and made the in-game Adventure Compass a summary at a glance. See the [0.55.1 release notes](docs/releases/0.55.1.md) and the [0.54.0 notes](docs/releases/0.54.0.md).
 
 ## 0.28: your journey
 
