@@ -277,6 +277,22 @@ nav button.active {
 .rail-bottom small {
   font-size: 11px;
 }
+/* Credits link: reads as a link, keyboard-focusable, opens the site outside the app. */
+.rail-link {
+  all: unset;
+  cursor: pointer;
+  color: #dfc792;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rail-link:hover {
+  color: #f3e2b6;
+}
+.rail-link:focus-visible {
+  outline: 2px solid #dfc792;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
 .main {
   min-width: 0;
 }

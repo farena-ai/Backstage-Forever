@@ -6,7 +6,7 @@ const { buildCompany } = require("./company.cjs");
 const { preserveMemories } = require("./memory-data.cjs");
 const captured = [
   "source", "location", "quests", "progress", "history", "readiness", "gathering", "lootSources", "journal", "ledger", "stats", "gearSets",
-  "clientBuild", "locale", "captureVersion",
+  "clientBuild", "locale", "captureVersion", "sex",
 ];
 
 /** Renderer forms edit journals/manual identity, never captured evidence/plans. */

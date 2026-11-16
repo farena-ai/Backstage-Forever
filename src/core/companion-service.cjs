@@ -7,6 +7,7 @@ const {resolveNpcLocation}=require('./npc-location.cjs');
 const {uuid}=require('./memory-data.cjs');
 const {createCompanionTools}=require('./companion-tools.cjs');
 const {quickAnswer}=require('./quick-answers.cjs');
+const {resolve:resolveIntent}=require('./companion-intents.cjs');
 const {resolveTalentQuestion,talentBlock,talentQuickAnswer,TALENT_MAX}=require('./talent-context.cjs');
 // Providers accept at most this much context text (ChatGPT subscription limit).
 const CONTEXT_LIMIT=20000;
@@ -61,19 +62,38 @@ class CompanionService {
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:a.text,kind:'quick'}))throw Error('Provider response is no longer current.');
         this.travel?.clear();return {text:a.text,kind:'quick',topic:a.topic,conversation:prepared.meta};
       }
-      const npc=talentFirst?null:resolveNpcLocation(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile,currentIndex:input.shareProfile?this.knowledge.index(profile||{}):null,historicalPack:this.npcReference});
+      // 0.58: understand the request and answer from WoW Forever's own data. With no model the answer
+      // is returned as is; with a model its verified facts go into the model's context instead.
+      let intents=null;
+      if(!talentFirst){try{intents=resolveIntent(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile});}catch{intents=null;}}
+      const verified=intents&&(intents.answer||intents.facts?.length)&&intents.intent!=='quest-next'?intents:null;
+      // The NPC answer wins when it finds the person; otherwise a better understood answer wins.
+      const npcAll=talentFirst?null:resolveNpcLocation(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile,currentIndex:input.shareProfile?this.knowledge.index(profile||{}):null,historicalPack:this.npcReference});
+      const npc=npcAll&&(npcAll.dto?.status==='found'||!verified?.answer||['npc-location','lore','rp'].includes(verified.intent))?npcAll:null;
       if(npc){
         if(signal.aborted)throw signal.reason;
         this.memory.complete(token,input.prompt,npc.text);
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:npc.text,kind:'npc'}))throw Error('Provider response is no longer current.');
         this.travel?.clear();return {text:npc.text,kind:'npc',npc:npc.dto,conversation:prepared.meta};
       }
-      const local=talentFirst?null:this.travel?.resolve(input.prompt,{profileId,shareProfile:input.shareProfile});
+      // A travel route or a follow-up to an open trip stays with the travel planner.
+      const tripOpen=Boolean(this.travel?.trip?.pending);
+      const localAll=talentFirst?null:this.travel?.resolve(input.prompt,{profileId,shareProfile:input.shareProfile});
+      // The new answer only replaces a "where are you starting?" kind of clarification, or a trip
+      // the planner misread (a flight master in a town is a person, not a trip).
+      const kept=['route','unavailable','same-place'].includes(localAll?.dto?.status);
+      const local=localAll&&(kept||tripOpen||!verified?.answer)?localAll:null;
       if(local){
         if(signal.aborted)throw signal.reason;
         this.memory.complete(token,input.prompt,local.text);
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:local.text,kind:'travel'}))throw Error('Provider response is no longer current.');
         return {text:local.text,kind:'travel',conversation:prepared.meta,travel:this.travel.commit(local)};
+      }
+      if(verified?.answer&&!selected.model){
+        if(signal.aborted)throw signal.reason;
+        this.memory.complete(token,input.prompt,verified.answer);
+        if(!this.session.commit(prepared.token,{question:input.prompt,answer:verified.answer,kind:'intent'}))throw Error('Provider response is no longer current.');
+        this.travel?.clear();return {text:verified.answer,kind:'intent',intent:verified.intent,conversation:prepared.meta};
       }
       const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence,reportedLocation:prepared.reportedLocation};
       // Live frames count only when they carry the selected character's identity.
@@ -102,9 +122,11 @@ class CompanionService {
       const talentText=talent?talentBlock(talent,{maxChars:Math.max(1500,Math.min(TALENT_MAX,CONTEXT_LIMIT-(context||'').length-2))}):'';
       const claudeSubscription=selected.authMode==='subscription'&&input.provider==='anthropic';
       if(talentText&&!claudeSubscription)context=[context,talentText].filter(Boolean).join('\n\n');
+      const factsText=verified?.facts?.length?'Verified WoW Forever facts for this question:\n'+verified.facts.slice(0,8).map(f=>'- '+String(f).slice(0,400)).join('\n'):'';
+      if(factsText&&!claudeSubscription)context=[factsText,context].filter(Boolean).join('\n\n');
       // Read-only local lookups (NPCs, quests, items, travel, character) the model may call.
       const tools=this.lookups?createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow,planner:this.planner}):undefined;
-      const request={model:selected.model,prompt:prepared.composedPrompt,context,signal,...(tools?{tools}:{})};
+      const request={model:selected.model,prompt:claudeSubscription&&factsText?factsText+'\n\n'+prepared.composedPrompt:prepared.composedPrompt,context,signal,...(tools?{tools}:{})};
       let reply;
       if(selected.authMode==='subscription'&&input.provider!=='ollama'){
         if(input.provider==='openai')reply=await this.chatgpt.ask(request);

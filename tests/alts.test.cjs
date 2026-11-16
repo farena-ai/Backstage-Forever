@@ -51,7 +51,7 @@ test("the All characters page lists every card and picks tonight's character; Sw
   assert.match(read("src/renderer/index.html"), /<script src="alts\.js"><\/script>/);
   assert.match(read("src/preload.cjs"), /alts: \(\) => invoke\("alts"\)/);
   const view = A.altsView({ activeProfileId: "a", profiles: [prof({ id: "a", name: "Ann <b>", progress: { rested: 1500, resting: true } }), prof({ id: "b", name: "Bo", level: 38 })] }, { now: NOW });
-  const ctx = { window: { backstage: { alts: async () => view } }, PageHero: { render: (o) => `<h1>${o.title}</h1>`, classCrest: () => "art/classes/mage.png" }, document: { querySelector: () => null } };
+  const ctx = { window: { backstage: { alts: async () => view } }, PageHero: { render: (o) => `<h1>${o.title}</h1>`, portrait: () => "art/classes/mage.png" }, document: { querySelector: () => null } };
   vm.createContext(ctx); vm.runInContext(read("src/renderer/alts.js"), ctx);
   ctx.window.AltsView._state();
   // Render with data in place.

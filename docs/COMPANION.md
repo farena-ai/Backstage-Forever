@@ -8,6 +8,41 @@ Use it for class and leveling choices, zone and quest planning, dungeon preparat
 
 Adventure builds a deterministic plan from your saved observed quest log without calling a provider. Session/focus controls save per character. Each step retains its reported source and save timestamp. Turn-ins and unfinished objectives can be prioritized, but unobserved prerequisites, NPCs and routes are not invented. Explain my plan drafts a public quest question for review; you still choose whether to send it. Equipment/bag preparation details stay local and are excluded from automatic provider context. See [Guidance](GUIDANCE.md).
 
+## Understanding what you ask (0.58)
+
+Before anything else, the companion works out what you actually want and answers from WoW Forever's own data. It understands everyday phrasing: "wheres voljin at", "where is mankriks wife", "the gryphon guy in westfall", "who drops sharptalon's claw", "need food near sentinel hill", "take me to Booty Bay", plus misspellings, possessives and roleplay greetings.
+
+| You ask about | It answers from |
+|---|---|
+| A person by name or by job (innkeeper, flight master, auctioneer, banker, weapon master) | NPC positions, with town and zone ("Sentinel Hill, Westfall") |
+| A class or profession trainer | Trainer observations, filtered to your faction; neutral towns serve both |
+| Where to buy something | Vendor listings, nearest friendly seller first, or the town you name |
+| Where an item comes from, or what a creature drops | Loot and boss loot, plus the quest the item is for |
+| A quest by name, or where to turn it in | Quest givers, objectives, objective area and turn-in |
+| A dungeon or raid | Zone, level range, entrance and bosses; whether your level fits |
+| Getting somewhere | The travel planner first (flights, zeppelins, boats, tram), else your nearest flight master |
+
+With no AI model chosen, these answers come straight from the data. With a model, the same verified facts go into its context, headed "Verified WoW Forever facts for this question", so it can answer in voice while using exactly those names, places and numbers. When the data doesn't have something, the companion says so instead of guessing.
+
+**Voice.** The model is a seasoned fellow adventurer. Write in character ("Lok'tar ogar!", "*bows*", "Greetings, traveller") and it answers in character, true to your race, faction and class. Otherwise it speaks plainly with a little of the world's flavour. It uses your character's name and, when the addon has recorded it, the right pronouns.
+
+**Refusals.** Gold duping, speed or teleport hacks, AFK farm bots and getting into someone else's account are declined with a short reason and an honest alternative.
+
+### The benchmark
+
+`tests/fixtures/companion-bench/questions.json` holds 100 real player questions, balanced between Horde and Alliance. Each one's expected facts were checked against the bundled data, and each entry cites its evidence. `node scripts/companion-bench.cjs` asks every question exactly as the app would, offline, and reports:
+
+- **covered:** answered correctly without a model, or the model receives the needed facts;
+- **correct locally:** answered correctly with no model;
+- **understood:** the request was routed to the right kind of answer.
+
+`--fails` lists what is still wrong. Coordinates match within 0.6, because positions are approximate. Roleplay questions with nothing factual to check are judged on voice, which needs a live model, so they are reported separately. `tests/companion-bench.test.cjs` keeps the scores from going backwards.
+
+| Version | Covered | Correct locally | Understood |
+|---|---|---|---|
+| 0.57 | 15% | 5% | 19% |
+| 0.58 | 96.9% | 93.8% | 99% |
+
 ## Local NPC reference
 
 Ask an NPC location by full name, a unique short name, or exact **NPC #ID**. Recognized names and explicit NPC questions are handled locally before model/key/provider access; no AI account is needed. Ambiguous names ask for an exact ID, and unknown/unavailable evidence stays unknown. Ordinary material, item, bank and geography questions retain their existing planning path.

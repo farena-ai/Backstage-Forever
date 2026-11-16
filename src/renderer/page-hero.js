@@ -10,7 +10,7 @@ window.PageHero = (() => {
     const key = known(art);
     return `<header class="page-hero ph-art-${key}${compact ? " compact" : ""}" data-page-hero="${key}"${attrs ? " " + attrs : ""}>`
       + `<span class="ph-faction" aria-hidden="true"></span>`
-      + `<div class="ph-copy">${crestHtml || (crest ? `<img class="ph-crest" src="${crest}" alt="" width="84" height="84">` : "")}<div class="ph-words">`
+      + `<div class="ph-copy">${crestHtml || (crest ? (crest.startsWith("art/portraits/") ? `<img class="ph-crest ph-portrait" src="${crest}" alt="" width="128" height="128">` : `<img class="ph-crest" src="${crest}" alt="" width="84" height="84">`) : "")}<div class="ph-words">`
       + (eyebrow ? `<span class="ph-eyebrow">${eyebrow}</span>` : "")
       + `<h1${titleAttrs ? " " + titleAttrs : ""}>${title}</h1>${subtitle || subAttrs ? `<p class="ph-sub"${subAttrs ? " " + subAttrs : ""}>${subtitle}</p>` : ""}</div></div>`
       + (aside ? `<div class="ph-aside">${aside}</div>` : "")
@@ -22,7 +22,20 @@ window.PageHero = (() => {
     const key = String(className || "").toLowerCase().replace(/[^a-z]/g, "");
     return CLASSES.includes(key) ? `art/classes/${key}.png` : "";
   };
+  // A character's own portrait: the most specific painting that ships, matched on race, sex and
+  // class (Rolica, a female Forsaken priest, gets exactly that), then race and sex, then class and
+  // sex, then the class crest. Unknown sex never guesses one.
+  const slug = (v) => String(v || "").toLowerCase().replace(/[^a-z]/g, "");
+  const RACE = { forsaken: "undead", scourge: "undead" };
+  const portrait = (who) => {
+    const c = typeof who === "string" ? { className: who } : who || {};
+    const cls = slug(c.className), sex = c.sex === "male" || c.sex === "female" ? c.sex : "", race = RACE[slug(c.race)] || slug(c.race);
+    const have = new Set(window.BF_PORTRAITS || []);
+    for (const key of sex ? [race && cls && `${race}-${sex}-${cls}`, race && `${race}-${sex}`, cls && `${cls}-${sex}`] : [])
+      if (key && have.has(key)) return `art/portraits/${key}.webp`;
+    return classCrest(c.className);
+  };
   // The one small, consistent note for community-sourced facts.
   const note = (text = "Community data · may differ in game") => `<p class="bf-note">${text}</p>`;
-  return { render, classCrest, note, ART };
+  return { render, classCrest, portrait, note, ART };
 })();

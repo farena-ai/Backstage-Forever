@@ -744,7 +744,10 @@ local function capture(event,eventId)
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
     character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.57.3'
-    character.race=clean((call(UnitRace,'player')));character.faction=clean((call(UnitFactionGroup,'player')))
+    character.race=clean((call(UnitRace,'player')));
+    -- UnitSex: 2 male, 3 female; 1 (unknown) and anything else is left out.
+    local sex=integer(call(UnitSex,'player'),1,3);if sex==2 then character.sex='male' elseif sex==3 then character.sex='female' end
+    character.faction=clean((call(UnitFactionGroup,'player')))
     local previous=roster[guid]
     -- WoW writes saved data only on /reload or logout, so a brand-new character is unknown to the app until then.
     if not previous and not newCharacterHinted and type(DEFAULT_CHAT_FRAME)=='table' and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then

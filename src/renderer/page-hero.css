@@ -34,6 +34,8 @@
 .ph-copy { display: flex; gap: 16px; align-items: flex-end; min-width: 0; max-width: 62%; }
 .ph-words { min-width: 0; }
 .ph-crest { flex: none; filter: drop-shadow(0 3px 8px rgba(0,0,0,.6)); }
+/* 0.58: the character's own painted portrait, framed like a medallion card. */
+.page-hero .ph-portrait { width: 128px; height: 128px; object-fit: cover; border-radius: 12px; border: 2px solid #c9a35b; box-shadow: 0 0 0 3px rgba(20,12,4,.65), 0 6px 18px rgba(0,0,0,.6); filter: none; }
 .ph-eyebrow { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .2em; text-transform: uppercase; color: #e8c983; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
 .page-hero h1 { margin: 2px 0 4px; font: 700 34px/1.15 Cinzel, Georgia, serif; color: #fff1d6; text-shadow: 0 2px 12px rgba(0,0,0,.75); overflow-wrap: anywhere; }
 .page-hero h1 small { font: 600 18px Cinzel, Georgia, serif; color: #f1dcb0; }
@@ -89,6 +91,7 @@
   .page-hero, .page-hero.compact { min-height: 112px; padding: 10px 16px; margin-bottom: 10px; }
   .page-hero h1, .page-hero.compact h1 { font-size: 24px; margin: 0 0 2px; }
   .page-hero .ph-crest, .page-hero .now-class-crest { width: 52px; height: 52px; }
+  .page-hero .ph-portrait { width: 84px; height: 84px; }
   .ph-sub { font-size: 13px; }
   .bf-page, .bf-col { gap: 10px; }
 }

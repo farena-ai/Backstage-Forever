@@ -159,6 +159,8 @@ function parseSavedVariables(raw) {
     };
     for (const k of ["race", "faction"])
       if (c[k] !== undefined) out[k] = text(c[k]);
+    // UnitSex: the art and the companion's pronouns. Anything else stays unknown.
+    if (c.sex === "male" || c.sex === "female") out.sex = c.sex;
     if (c.location) {
       const l = c.location;
       out.location = { zone: text(l.zone), subZone: text(l.subZone) };

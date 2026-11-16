@@ -438,3 +438,15 @@ now=now+60;lines[1].rank=81;lines[2].rank=81;event('SKILL_LINES_CHANGED');flush(
   assert.equal(colour(5, 2003).difficulty, "trivial", "grey stays grey as ranks only rise");
   assert.equal(colour(5, 2003).canSkillUp, false);
 });
+
+test("the addon records the character's sex for portraits and pronouns; unknown stays out (0.58)", () => {
+  const rows = run(String.raw`
+UnitSex=function(u)assert(u=='player');return 3 end;event('PLAYER_LOGIN');save()
+UnitSex=function()return 2 end;event('PLAYER_LEVEL_UP');save()
+UnitSex=function()return 1 end;event('PLAYER_LEVEL_UP');save()
+UnitSex=function()return 'SECRET' end;event('PLAYER_LEVEL_UP');save()
+`);
+  assert.deepEqual(rows.map((p) => active(p).sex), ["female", "male", undefined, undefined]);
+  const parsed = parseSavedVariables("BackstageForeverExport = " + JSON.stringify(JSON.stringify(rows[0])));
+  assert.equal(parsed.characters[0].sex, "female");
+});

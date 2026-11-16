@@ -1,0 +1,2813 @@
+{
+ "n": 100,
+ "scores": {
+  "covered": 15,
+  "localCorrect": 5,
+  "understood": 19,
+  "groundedWhenModel": 13.9
+ },
+ "byCategory": {
+  "npc-location": {
+   "n": 14,
+   "local": 1,
+   "understood": 4,
+   "grounded": 0,
+   "fallthrough": 9
+  },
+  "travel": {
+   "n": 14,
+   "local": 1,
+   "understood": 2,
+   "grounded": 0,
+   "fallthrough": 1
+  },
+  "trainer": {
+   "n": 8,
+   "local": 0,
+   "understood": 0,
+   "grounded": 0,
+   "fallthrough": 8
+  },
+  "vendor": {
+   "n": 10,
+   "local": 0,
+   "understood": 0,
+   "grounded": 0,
+   "fallthrough": 10
+  },
+  "item-source": {
+   "n": 12,
+   "local": 0,
+   "understood": 0,
+   "grounded": 2,
+   "fallthrough": 12
+  },
+  "quest": {
+   "n": 12,
+   "local": 1,
+   "understood": 1,
+   "grounded": 5,
+   "fallthrough": 10
+  },
+  "dungeon": {
+   "n": 8,
+   "local": 0,
+   "understood": 0,
+   "grounded": 1,
+   "fallthrough": 6
+  },
+  "profession": {
+   "n": 6,
+   "local": 0,
+   "understood": 0,
+   "grounded": 0,
+   "fallthrough": 6
+  },
+  "rp-greeting": {
+   "n": 6,
+   "local": 0,
+   "understood": 6,
+   "grounded": 2,
+   "fallthrough": 6
+  },
+  "lore-in-world": {
+   "n": 4,
+   "local": 0,
+   "understood": 4,
+   "grounded": 0,
+   "fallthrough": 4
+  },
+  "refuse": {
+   "n": 6,
+   "local": 2,
+   "understood": 2,
+   "grounded": 0,
+   "fallthrough": 0
+  }
+ },
+ "rows": [
+  {
+   "id": "npc-01",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 3,
+    "missing": [
+     "Thrall",
+     "Orgrimmar"
+    ],
+    "groups": [
+     "32.0, 37.8|32.0,37.8|32, 38"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Orgrimmar"
+    ],
+    "groups": [
+     "32.0, 37.8|32.0,37.8|32, 38"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "npc-02",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "quest-info",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Orgrimmar"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "I found several quests matching “thrall”:\n• <nyi> <TXT> Thrall's Dirty Work (level 0)\n• <nyi> <TXT> Thrall's Dirty Work (level 0)\n• Thrall Needs to Know (level ",
+   "error": null
+  },
+  {
+   "id": "npc-03",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 3,
+    "missing": [
+     "Mankrik",
+     "Crossroads"
+    ],
+    "groups": [
+     "52.0, 31.6|52.0,31.6|52, 32"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [],
+    "groups": [
+     "52.0, 31.6|52.0,31.6|52, 32"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "npc-04",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "npc-location",
+   "answeredLocally": true,
+   "localCorrect": true,
+   "facts": {
+    "ok": true,
+    "needed": 2,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "The reference I have for Lady Sylvanas Windrunner is in Undercity, around 57.8, 91.7 (Map 1458).\n\nObserved character-build reference 1.60.1.70888 · last observe",
+   "error": null
+  },
+  {
+   "id": "npc-05",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Orgrimmar"
+    ],
+    "groups": [
+     "Vol'jin|Voljin|Vol’jin"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Orgrimmar"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "npc-06",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "npc-location",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 3,
+    "missing": [
+     "Ashenvale"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "The reference I have for Senani Thunderheart is in Map 1440, around 73.8, 61.6 (Map 1440).\nOther observed interaction points:\n- Map 1440, around 73.7, 61.4 (Map",
+   "error": null
+  },
+  {
+   "id": "npc-07",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Boorand Plainswind"
+    ],
+    "groups": [
+     "52.0, 29.9|52.0,29.9|52, 30"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Boorand Plainswind"
+    ],
+    "groups": [
+     "52.0, 29.9|52.0,29.9|52, 30"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "npc-08",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "npc-location",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 3,
+    "missing": [
+     "Sentinel Hill"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "The reference I have for Gryan Stoutmantle is in Map 1436, around 56.3, 47.6 (Map 1436).\nOther observed interaction points:\n- Map 1436, around 56.3, 47.6 (Map 1",
+   "error": null
+  },
+  {
+   "id": "npc-09",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 3,
+    "missing": [
+     "Marshal Dughan",
+     "Elwynn Forest"
+    ],
+    "groups": [
+     "42.1, 66.0|42.1,66.0|42, 66"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Elwynn Forest"
+    ],
+    "groups": [
+     "42.1, 66.0|42.1,66.0|42, 66"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "npc-10",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "npc-location",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Stranglethorn"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "The reference I have for Hemet Nesingwary is in Map 1434, around 35.6, 10.8 (Map 1434).\n\nObserved character-build reference 1.60.1.70888 · last observed 2026-11",
+   "error": null
+  },
+  {
+   "id": "npc-11",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Krazek",
+     "Booty Bay"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Booty Bay"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "npc-12",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Stormwind"
+    ],
+    "groups": [
+     "Auctioneer Chilton|Auctioneer Fitch"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Auctioneer Chilton|Auctioneer Fitch"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "npc-13",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Darnassus"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Darnassus"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "npc-14",
+   "category": "npc-location",
+   "intent": "npc-location",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 3,
+    "missing": [
+     "Innkeeper Heather",
+     "Westfall"
+    ],
+    "groups": [
+     "52.9, 53.6|52.9,53.6|53, 54"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Innkeeper Heather"
+    ],
+    "groups": [
+     "52.9, 53.6|52.9,53.6|53, 54"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "travel-01",
+   "category": "travel",
+   "intent": "travel",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Barrens"
+    ],
+    "groups": [
+     "Crossroads|Devrak|Vhulgra"
+    ],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "Where are you starting this trip?",
+   "error": null
+  },
+  {
+   "id": "travel-02",
+   "category": "travel",
+   "intent": "travel",
+   "route": "travel",
+   "answeredLocally": true,
+   "localCorrect": true,
+   "facts": {
+    "ok": true,
+    "needed": 2,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "From Orgrimmar to Thunder Bluff:\n\nDocumented road fallback [E2, E3]\n1. Leave Orgrimmar through the main gate and follow the road south toward Razor Hill.\n2. Tur",
+   "error": null
+  },
+  {
+   "id": "travel-03",
+   "category": "travel",
+   "intent": "travel",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Devrak"
+    ],
+    "groups": [
+     "51.5, 30.4|51.5,30.4|52, 30"
+    ],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "Which destination or transport stop do you mean from Crossroads?\n\nStarting from your last-saved location, not a live position. Confirm you are still at Crossroa",
+   "error": null
+  },
+  {
+   "id": "travel-04",
+   "category": "travel",
+   "intent": "travel",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Orgrimmar"
+    ],
+    "groups": [
+     "main gate|Tirisfal"
+    ],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "Where are you starting this trip?",
+   "error": null
+  },
+  {
+   "id": "travel-05",
+   "category": "travel",
+   "intent": "travel",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "zeppelin"
+    ],
+    "groups": [
+     "Grom'gol|Gromgol|Grom’gol"
+    ],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "Where are you starting this trip?",
+   "error": null
+  },
+  {
+   "id": "travel-06",
+   "category": "travel",
+   "intent": "travel",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Vhulgra"
+    ],
+    "groups": [
+     "73.2, 61.6|73.2,61.6|73, 62"
+    ],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "What are your starting place and destination?",
+   "error": null
+  },
+  {
+   "id": "travel-07",
+   "category": "travel",
+   "intent": "travel",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "zeppelin",
+     "Tirisfal"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "This reference lacks a verified usable connection from Crossroads to Undercity.\n\nStarting from your last-saved location, not a live position. Confirm you are st",
+   "error": null
+  },
+  {
+   "id": "travel-08",
+   "category": "travel",
+   "intent": "travel",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [],
+    "groups": [
+     "Stranglethorn|27.0, 77.2|27.0,77.2|27, 77"
+    ],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "This local reference does not cover a verified connection from take me to Booty Bay. Small dated reference: six conditional flights, ten directed scheduled-tran",
+   "error": null
+  },
+  {
+   "id": "travel-09",
+   "category": "travel",
+   "intent": "travel",
+   "route": "travel",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [],
+    "groups": [],
+    "wrong": [
+     "zeppelin"
+    ]
+   },
+   "grounded": null,
+   "text": "From Stormwind to Ironforge:\n\nDocumented tram segment [E4]\n1. This covered segment starts at Stormwind tram entrance; the approach from elsewhere in the city is",
+   "error": null
+  },
+  {
+   "id": "travel-10",
+   "category": "travel",
+   "intent": "travel",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Thor"
+    ],
+    "groups": [
+     "56.5, 52.7|56.5,52.7|56, 53"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Thor"
+    ],
+    "groups": [
+     "56.5, 52.7|56.5,52.7|56, 53"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "travel-11",
+   "category": "travel",
+   "intent": "travel",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Auberdine",
+     "boat"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "Where are you starting this trip?",
+   "error": null
+  },
+  {
+   "id": "travel-12",
+   "category": "travel",
+   "intent": "travel",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Dungar Longdrink"
+    ],
+    "groups": [
+     "71.2, 72.4|71.2,72.4|71, 72"
+    ],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "What are your starting place and destination?",
+   "error": null
+  },
+  {
+   "id": "travel-13",
+   "category": "travel",
+   "intent": "travel",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Stormwind"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "Where are you starting this trip?",
+   "error": null
+  },
+  {
+   "id": "travel-14",
+   "category": "travel",
+   "intent": "travel",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Gryth Thurden"
+    ],
+    "groups": [
+     "55.9, 47.5|55.9,47.5|56, 47"
+    ],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "What are your starting place and destination?",
+   "error": null
+  },
+  {
+   "id": "trainer-01",
+   "category": "trainer",
+   "intent": "trainer",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Ormak Grimshot"
+    ],
+    "groups": [
+     "66.1, 18.8|66.1,18.8|66, 19"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Ormak Grimshot"
+    ],
+    "groups": [
+     "66.1, 18.8|66.1,18.8|66, 19"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "trainer-02",
+   "category": "trainer",
+   "intent": "trainer",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Thotar",
+     "Durotar"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Thotar",
+     "Durotar"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "trainer-03",
+   "category": "trainer",
+   "intent": "trainer",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Dark Cleric Beryl|Dark Cleric Duesten|Tirisfal|Brill"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Dark Cleric Beryl|Dark Cleric Duesten|Tirisfal|Brill"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "trainer-04",
+   "category": "trainer",
+   "intent": "trainer",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Anastasia Hartwell"
+    ],
+    "groups": [
+     "84.8, 10.5|84.8,10.5|85, 11"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Anastasia Hartwell"
+    ],
+    "groups": [
+     "84.8, 10.5|84.8,10.5|85, 11"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "trainer-05",
+   "category": "trainer",
+   "intent": "trainer",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": true,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "trainer-06",
+   "category": "trainer",
+   "intent": "trainer",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Woo Ping",
+     "Stormwind"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Woo Ping"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "trainer-07",
+   "category": "trainer",
+   "intent": "trainer",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Brother Benjamin"
+    ],
+    "groups": [
+     "50.8, 44.7|50.8,44.7|51, 45"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Brother Benjamin"
+    ],
+    "groups": [
+     "50.8, 44.7|50.8,44.7|51, 45"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "trainer-08",
+   "category": "trainer",
+   "intent": "trainer",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Josephine Carson"
+    ],
+    "groups": [
+     "41.0, 66.2|41.0,66.2|41, 66"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Josephine Carson"
+    ],
+    "groups": [
+     "41.0, 66.2|41.0,66.2|41, 66"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "vendor-01",
+   "category": "vendor",
+   "intent": "vendor",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Barg|Uthrok"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Barg|Uthrok"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "vendor-02",
+   "category": "vendor",
+   "intent": "vendor",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Uthrok"
+    ],
+    "groups": [
+     "Medium Quiver|Small Quiver"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Uthrok"
+    ],
+    "groups": [
+     "Medium Quiver|Small Quiver"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "vendor-03",
+   "category": "vendor",
+   "intent": "vendor",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Moorane Hearthgrain"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Moorane Hearthgrain"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "vendor-04",
+   "category": "vendor",
+   "intent": "vendor",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Reagent Bot|Horthus|Hagrus|Magenius|Hula'mahi|Hulamahi|Thomas Mordan|Hannah Akeley"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Reagent Bot|Horthus|Hagrus|Magenius|Hula'mahi|Hulamahi|Thomas Mordan|Hannah Akeley"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "vendor-05",
+   "category": "vendor",
+   "intent": "vendor",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Innkeeper Kaylisk"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Innkeeper Kaylisk"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "vendor-06",
+   "category": "vendor",
+   "intent": "vendor",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Quartermaster Lewis|William MacGregor"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Quartermaster Lewis|William MacGregor"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "vendor-07",
+   "category": "vendor",
+   "intent": "vendor",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Quartermaster Lewis"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Quartermaster Lewis"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "vendor-08",
+   "category": "vendor",
+   "intent": "vendor",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Stormwind"
+    ],
+    "groups": [
+     "Keldric Boucher|Brother Cassius"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Stormwind"
+    ],
+    "groups": [
+     "Keldric Boucher|Brother Cassius"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "vendor-09",
+   "category": "vendor",
+   "intent": "vendor",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Old Man Heming"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Old Man Heming"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "vendor-10",
+   "category": "vendor",
+   "intent": "vendor",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Blixrez Goodstitch"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Blixrez Goodstitch"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "item-01",
+   "category": "item-source",
+   "intent": "item-source",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Mangletooth"
+    ],
+    "groups": [
+     "Blood Shard|quest|friendly|not hostile|doesn't drop|does not drop"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": true,
+    "needed": 1,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "item-02",
+   "category": "item-source",
+   "intent": "item-source",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Linen Cloth"
+    ],
+    "groups": [
+     "Defias Pillager|Defias Looter|Defias|Oggleflint"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Defias Pillager|Defias Looter|Defias|Oggleflint"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "item-03",
+   "category": "item-source",
+   "intent": "item-source",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Bristleback"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "item-04",
+   "category": "item-source",
+   "intent": "item-source",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Plainstrider"
+    ],
+    "groups": [
+     "Greater Plainstrider"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Greater Plainstrider"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "item-05",
+   "category": "item-source",
+   "intent": "item-source",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Sharptalon"
+    ],
+    "groups": [
+     "Senani Thunderheart|Splintertree"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": true,
+    "needed": 1,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "item-06",
+   "category": "item-source",
+   "intent": "item-source",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Wailing Caverns"
+    ],
+    "groups": [
+     "Deep Fathom Ring|Defender Girdle|Scouting Belt|Mutant Scale Breastplate"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Wailing Caverns"
+    ],
+    "groups": [
+     "Deep Fathom Ring|Defender Girdle|Scouting Belt|Mutant Scale Breastplate"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "item-07",
+   "category": "item-source",
+   "intent": "item-source",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Lord Cobrahn",
+     "Wailing Caverns"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Lord Cobrahn",
+     "Wailing Caverns"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "item-08",
+   "category": "item-source",
+   "intent": "item-source",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Goretusk"
+    ],
+    "groups": [
+     "Young Goretusk|Great Goretusk"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Young Goretusk|Great Goretusk"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "item-09",
+   "category": "item-source",
+   "intent": "item-source",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Defias"
+    ],
+    "groups": [
+     "Defias Smuggler|Defias Trapper"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Defias"
+    ],
+    "groups": [
+     "Defias Smuggler|Defias Trapper"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "item-10",
+   "category": "item-source",
+   "intent": "item-source",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Hogger"
+    ],
+    "groups": [
+     "Marshal Dughan|elite"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Hogger"
+    ],
+    "groups": [
+     "Marshal Dughan|elite"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "item-11",
+   "category": "item-source",
+   "intent": "item-source",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Bloodscalp"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "item-12",
+   "category": "item-source",
+   "intent": "item-source",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Corsair's Overshirt|Corsairs Overshirt|Burnished Boots"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Corsair's Overshirt|Corsairs Overshirt|Burnished Boots"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "quest-01",
+   "category": "quest",
+   "intent": "quest-next",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Crossroads|Barrens|Camp Taurajo"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": true,
+    "needed": 1,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "quest-02",
+   "category": "quest",
+   "intent": "quest-next",
+   "route": "quest-next",
+   "answeredLocally": true,
+   "localCorrect": true,
+   "facts": {
+    "ok": true,
+    "needed": 1,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "**Next for Edric** (level 12 Warrior)\n\nDo these in order:\n• Level in Westfall (levels 10–20): 13 quests for you, starting with Westfall Stew, A Swift Message, C",
+   "error": null
+  },
+  {
+   "id": "quest-03",
+   "category": "quest",
+   "intent": "clarify",
+   "route": "quest-info",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": true,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "I found several quests matching “turn”:\n• Return to Verner (level 18)\n• Return the Comb (level 24)\n• Return to Jitters (level 20)\n• Return to Sven (level 25)\n• ",
+   "error": null
+  },
+  {
+   "id": "quest-04",
+   "category": "quest",
+   "intent": "quest-turnin",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 3,
+    "missing": [
+     "Sergra Darkthorn",
+     "Crossroads"
+    ],
+    "groups": [
+     "52.2, 31.0|52.2,31.0|52, 31"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 3,
+    "missing": [],
+    "groups": [
+     "52.2, 31.0|52.2,31.0|52, 31"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "quest-05",
+   "category": "quest",
+   "intent": "quest-turnin",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Mankrik"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": true,
+    "needed": 1,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "quest-06",
+   "category": "quest",
+   "intent": "quest-turnin",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Marukai"
+    ],
+    "groups": [
+     "Zoram|11.7, 34.9|11.7,34.9|12, 35"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": true,
+    "needed": 1,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "quest-07",
+   "category": "quest",
+   "intent": "quest-info",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Senani Thunderheart"
+    ],
+    "groups": [
+     "Sharptalon|Ursangous|Shadumbra|Splintertree"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": true,
+    "needed": 2,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "quest-08",
+   "category": "quest",
+   "intent": "quest-info",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Barrens"
+    ],
+    "groups": [
+     "49.3, 50.3|49.3,50.3|49, 50"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [],
+    "groups": [
+     "49.3, 50.3|49.3,50.3|49, 50"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "quest-09",
+   "category": "quest",
+   "intent": "quest-turnin",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Gryan Stoutmantle",
+     "Sentinel Hill"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": true,
+    "needed": 2,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "quest-10",
+   "category": "quest",
+   "intent": "quest-info",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Salma Saldean"
+    ],
+    "groups": [
+     "Okra|Murloc Eye|Goretusk Snout|Stringy Vulture Meat"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [],
+    "groups": [
+     "Okra|Murloc Eye|Goretusk Snout|Stringy Vulture Meat"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "quest-11",
+   "category": "quest",
+   "intent": "quest-info",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Hemet Nesingwary"
+    ],
+    "groups": [
+     "Stranglethorn Raptor"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [],
+    "groups": [
+     "Stranglethorn Raptor"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "quest-12",
+   "category": "quest",
+   "intent": "quest-turnin",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Ajeck Rouack"
+    ],
+    "groups": [
+     "Nesingwary|35.6, 10.7|35.6,10.7|36, 11"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [],
+    "groups": [
+     "Nesingwary|35.6, 10.7|35.6,10.7|36, 11"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "dungeon-01",
+   "category": "dungeon",
+   "intent": "dungeon",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Barrens"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "Do you mean an NPC? Give its exact name or NPC ID so I can check the local reference.",
+   "error": null
+  },
+  {
+   "id": "dungeon-02",
+   "category": "dungeon",
+   "intent": "dungeon",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Orgrimmar"
+    ],
+    "groups": [
+     "Oggleflint|Taragaman|Jergosh|Bazzalan"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Orgrimmar"
+    ],
+    "groups": [
+     "Oggleflint|Taragaman|Jergosh|Bazzalan"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "dungeon-03",
+   "category": "dungeon",
+   "intent": "dungeon",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Ashenvale"
+    ],
+    "groups": [
+     "24|24-32"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [],
+    "groups": [
+     "24|24-32"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "dungeon-04",
+   "category": "dungeon",
+   "intent": "dungeon",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Silverpine"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Silverpine"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "dungeon-05",
+   "category": "dungeon",
+   "intent": "dungeon",
+   "route": "clarify",
+   "answeredLocally": true,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Westfall"
+    ],
+    "groups": [
+     "VanCleef"
+    ],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "Which NPC should I look up first? Ask for one exact name or NPC ID.",
+   "error": null
+  },
+  {
+   "id": "dungeon-06",
+   "category": "dungeon",
+   "intent": "dungeon",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Stormwind"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Stormwind"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "dungeon-07",
+   "category": "dungeon",
+   "intent": "dungeon",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Tirisfal"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Tirisfal"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "dungeon-08",
+   "category": "dungeon",
+   "intent": "dungeon",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Stranglethorn"
+    ],
+    "groups": [
+     "raid|60"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": true,
+    "needed": 2,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "prof-01",
+   "category": "profession",
+   "intent": "profession",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Thuwd"
+    ],
+    "groups": [
+     "63.1, 45.3|63.1,45.3|63, 45"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Thuwd"
+    ],
+    "groups": [
+     "63.1, 45.3|63.1,45.3|63, 45"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "prof-02",
+   "category": "profession",
+   "intent": "profession",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Mary Edras"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Mary Edras"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "prof-03",
+   "category": "profession",
+   "intent": "profession",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Copper"
+    ],
+    "groups": [
+     "Durotar"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "prof-04",
+   "category": "profession",
+   "intent": "profession",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Stephen Ryback"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Stephen Ryback"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "prof-05",
+   "category": "profession",
+   "intent": "profession",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Lawrence Schneider"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Lawrence Schneider"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "prof-06",
+   "category": "profession",
+   "intent": "vendor",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Gina MacGregor"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Gina MacGregor"
+    ],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "rp-01",
+   "category": "rp-greeting",
+   "intent": "rp",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Sentinel Hill|Gryan Stoutmantle|Salma Saldean|Westfall|Quartermaster Lewis"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": true,
+    "needed": 1,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "rp-02",
+   "category": "rp-greeting",
+   "intent": "rp",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": true,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "rp-03",
+   "category": "rp-greeting",
+   "intent": "rp",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": true,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "rp-04",
+   "category": "rp-greeting",
+   "intent": "rp",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Stranglethorn|Booty Bay|Nesingwary|Rebel Camp"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": true,
+    "needed": 1,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "rp-05",
+   "category": "rp-greeting",
+   "intent": "rp",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": true,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "rp-06",
+   "category": "rp-greeting",
+   "intent": "rp",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 1,
+    "missing": [
+     "Orgrimmar"
+    ],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "lore-01",
+   "category": "lore-in-world",
+   "intent": "lore",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Cairne"
+    ],
+    "groups": [
+     "Thunder Bluff"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Thunder Bluff"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "lore-02",
+   "category": "lore-in-world",
+   "intent": "lore",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 3,
+    "missing": [
+     "Varimathras",
+     "Undercity"
+    ],
+    "groups": [
+     "Sylvanas"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Sylvanas"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "lore-03",
+   "category": "lore-in-world",
+   "intent": "lore",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Magni"
+    ],
+    "groups": [
+     "Ironforge"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Ironforge"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "lore-04",
+   "category": "lore-in-world",
+   "intent": "lore",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": false,
+    "needed": 2,
+    "missing": [
+     "Tyrande"
+    ],
+    "groups": [
+     "Darnassus"
+    ],
+    "wrong": []
+   },
+   "grounded": {
+    "ok": false,
+    "needed": 1,
+    "missing": [],
+    "groups": [
+     "Darnassus"
+    ],
+    "wrong": [],
+    "reached": "model"
+   },
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "refuse-01",
+   "category": "refuse",
+   "intent": "refuse",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": true,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "refuse-02",
+   "category": "refuse",
+   "intent": "refuse",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": true,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "refuse-03",
+   "category": "refuse",
+   "intent": "refuse",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": true,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "",
+   "error": null
+  },
+  {
+   "id": "refuse-04",
+   "category": "refuse",
+   "intent": "refuse",
+   "route": "refuse",
+   "answeredLocally": true,
+   "localCorrect": true,
+   "facts": {
+    "ok": true,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "I’m here for World of Warcraft: Forever. I can help with your class, leveling route, quests, dungeons, professions, or group plans.",
+   "error": null
+  },
+  {
+   "id": "refuse-05",
+   "category": "refuse",
+   "intent": "refuse",
+   "route": "refuse",
+   "answeredLocally": true,
+   "localCorrect": true,
+   "facts": {
+    "ok": true,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "I’m here for World of Warcraft: Forever. I can help with your class, leveling route, quests, dungeons, professions, or group plans.",
+   "error": null
+  },
+  {
+   "id": "refuse-06",
+   "category": "refuse",
+   "intent": "refuse",
+   "route": "model",
+   "answeredLocally": false,
+   "localCorrect": false,
+   "facts": {
+    "ok": true,
+    "needed": 0,
+    "missing": [],
+    "groups": [],
+    "wrong": []
+   },
+   "grounded": null,
+   "text": "",
+   "error": null
+  }
+ ]
+}

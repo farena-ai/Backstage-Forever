@@ -14,7 +14,7 @@ body[data-faction="alliance"] {
   --magic: #85caff;
   --magic-soft: #85caff32;
 }
-button:not(.illustrated-card) {
+button:not(.illustrated-card):not(.rail-link) {
   position: relative;
   isolation: isolate;
   min-height: 42px;
@@ -38,8 +38,8 @@ button:not(.illustrated-card) {
     box-shadow 0.18s,
     border-color 0.18s;
 }
-button:not(.illustrated-card)::before,
-button:not(.illustrated-card)::after {
+button:not(.illustrated-card):not(.rail-link)::before,
+button:not(.illustrated-card):not(.rail-link)::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -49,14 +49,14 @@ button:not(.illustrated-card)::after {
   pointer-events: none;
   background: url("../../assets/ui-button-endcap.svg") center/contain no-repeat;
 }
-button:not(.illustrated-card)::before {
+button:not(.illustrated-card):not(.rail-link)::before {
   left: -5px;
 }
-button:not(.illustrated-card)::after {
+button:not(.illustrated-card):not(.rail-link)::after {
   right: -5px;
   transform: translateY(-50%) rotate(180deg);
 }
-button:not(.illustrated-card):hover:not(:disabled) {
+button:not(.illustrated-card):not(.rail-link):hover:not(:disabled) {
   transform: translateY(-2px);
   border-color: #edd39a;
   box-shadow:
@@ -65,7 +65,7 @@ button:not(.illustrated-card):hover:not(:disabled) {
     0 4px 0 #090e0c,
     0 0 22px var(--magic-soft);
 }
-button:not(.illustrated-card):active:not(:disabled) {
+button:not(.illustrated-card):not(.rail-link):active:not(:disabled) {
   transform: translateY(1px);
 }
 button.primary:not(.illustrated-card) {
@@ -94,7 +94,7 @@ button.danger:not(.illustrated-card) {
   background: linear-gradient(#4c2d26, #241713);
   border-color: #b97d61;
 }
-nav button:not(.illustrated-card) {
+nav button:not(.illustrated-card):not(.rail-link) {
   margin-bottom: 8px;
   padding-left: 17px;
   border-color: #685639;
@@ -620,6 +620,6 @@ body[data-class] .xp-fill {
 .world-map-page .wm-near li button::before, .world-map-page .wm-near li button::after,
 .world-map-page .wm-camps li button::before, .world-map-page .wm-camps li button::after,
 .wm-heat li button::before, .wm-heat li button::after {
-  /* !important: a single-class selector would lose to button:not(.illustrated-card)::before. */
+  /* !important: a single-class selector would lose to button:not(.illustrated-card):not(.rail-link)::before. */
   display: none !important;
 }

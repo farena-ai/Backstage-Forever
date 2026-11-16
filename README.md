@@ -67,7 +67,7 @@ Node.js 24 and npm. `npm ci`, then `npm start` runs the app and `npm test` runs 
 
 ## Credits
 
-Designed by Frank Arena, made by Backstage Coding. All artwork is original, painted for Backstage Forever (see [art notices](src/renderer/art/NOTICE.md)). Quest, NPC and item reference data comes from Efficient Games (CC BY 4.0) and players' own play; see [third-party notices](docs/THIRD-PARTY-NOTICES.md).
+Designed by Frank Arena and Jason Babiuch, made by [Backstage Coding](https://www.backstagecoding.com). All artwork is original, painted for Backstage Forever (see [art notices](src/renderer/art/NOTICE.md)). Quest, NPC and item reference data comes from Efficient Games (CC BY 4.0) and players' own play; see [third-party notices](docs/THIRD-PARTY-NOTICES.md).
 
 **Not affiliated with Blizzard Entertainment.** World of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. Backstage Forever is an independent fan project; it does not include or redistribute any Blizzard game files, and it reads map art and game data only from your own installation, on your own computer.
 
