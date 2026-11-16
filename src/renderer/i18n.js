@@ -6,6 +6,8 @@
 window.I18n = (() => {
   const KEY = "bf-lang-v1";
   const DICTS = { de: window.BF_LOCALE_DE || {} };
+  // Sentences with numbers or names ("Hand in {0} finished quests"): [pattern, translation, placeholder order].
+  const TEMPLATES = { de: (window.BF_LOCALE_DE_TEMPLATES || []).map(([src, to, order]) => [new RegExp(src), to, order]) };
   const NAMES = { auto: "Same as the game", en: "English", de: "Deutsch (machine-translated)" };
   let lang = "en", gameLang = null, observer = null;
   const pref = () => { try { return localStorage.getItem(KEY) || "auto"; } catch { return "auto"; } };
@@ -16,7 +18,17 @@ window.I18n = (() => {
     return want !== "en" && DICTS[want] && Object.keys(DICTS[want]).length ? want : "en";
   }
   const norm = (s) => s.replace(/\s+/g, " ").trim();
-  function tr(s) { const d = DICTS[lang]; if (!d || typeof s !== "string") return null; const v = d[norm(s)]; return typeof v === "string" ? v : null; }
+  function tr(s) {
+    const d = DICTS[lang]; if (!d || typeof s !== "string") return null;
+    const key = norm(s), v = d[key];
+    if (typeof v === "string") return v;
+    for (const [re, to, order] of TEMPLATES[lang] || []) {
+      const m = re.exec(key); if (!m) continue;
+      const parts = {}; order.forEach((n, i) => { const x = m[i + 1]; parts[n] = typeof d[x] === "string" ? d[x] : x; });
+      return to.replace(/\{(\d+)\}/g, (_, n) => parts[n] ?? "");
+    }
+    return null;
+  }
   const SKIP = "[data-no-translate], script, style, textarea, code, pre, input, select option[data-keep]";
   function walk(n) {
     if (!n) return;

@@ -285,3 +285,10 @@ test("automatic opt-out still permits an explicitly checked and requested restar
   assert.equal(await h.updater.install({ onQuit: false }), true);
   assert.equal(restart, true);
 });
+test("a stable install skips pre-releases; a preview install takes them", async (t) => {
+  const stable = harness(t, { channel: "stable" });
+  assert.equal((await stable.updater.check()).phase, "current");
+  assert.equal(stable.launches(), 0);
+  const preview = harness(t, { channel: "preview" });
+  assert.equal((await preview.updater.check()).phase, "ready");
+});

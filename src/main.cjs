@@ -189,6 +189,7 @@ app.whenReady().then(async () => {
         path.join(__dirname, "..", "assets", "update-public-key.pem"),
       ),
       packaged: app.isPackaged,
+      channel: releaseChannel,
     });
     updater.start();
     knowledge = new KnowledgeService({ dataDir: app.getPath("userData") });
