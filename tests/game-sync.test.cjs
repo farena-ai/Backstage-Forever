@@ -542,10 +542,17 @@ test("prepared status permits play without an export and runtime does not prove 
   const runtime={probe:async()=>({state:"running",checkedAt:"2026-01-01T00:00:00.000Z",launchAvailable:true})};
   const sync=new GameSync({dataDir:path.join(f.dir,"data"),addonDir:path.join(__dirname,"../addon/BackstageForever"),runtime});t.after(()=>sync.close());
   await sync.prepare(f.root);assert.equal(sync.status().companionState,"update-next-launch");assert.equal(sync.status().loadedCaptureVersion,null);assert.equal(sync.status().nextAction.id,"play");assert.doesNotMatch(sync.status().message,/use \/reload/i);
-  const old=snapshot();old.characters[0].captureVersion="0.6.1";await fs.writeFile(f.file,saved(old));await sync.refresh();
+  // A save WoW wrote before the files landed came from a game still running the old addon.
+  const old=snapshot();old.characters[0].captureVersion="0.6.1";await fs.writeFile(f.file,saved(old));
+  const before=new Date(Date.parse(sync.status().addonUpdatedAt)-60000);await fs.utimes(f.file,before,before);await sync.refresh();
   assert.equal(sync.status().loadedCaptureVersion,"0.6.1");assert.equal(sync.status().companionState,"update-next-launch");
+  assert.equal(sync.status().savedAt,before.toISOString(),"the file's write time, not the capture time");
   runtime.probe=async()=>({state:"not-running",checkedAt:"2026-01-01T00:01:00.000Z",launchAvailable:true});
   await sync.refresh();assert.equal(sync.status().companionState,"prepared");
+  // WoW wrote it after they landed (a /reload, logout or exit): the new addon runs now,
+  // although this save still names the old version. One /reload is enough.
+  const after=new Date(Date.parse(sync.status().addonUpdatedAt)+5000);await fs.utimes(f.file,after,after);await sync.refresh();
+  assert.equal(sync.status().loadedCaptureVersion,"0.6.1");assert.equal(sync.status().companionState,"saved");
   await sync.disconnect();assert.equal(sync.status().runtime.launchAvailable,false);assert.equal(sync.lastSnapshot,null);
 });
 

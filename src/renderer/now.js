@@ -119,6 +119,9 @@ window.NowView = (() => {
     const g = setup?.game;
     if (!g?.connected || !g.addonCurrent || g.runtime?.state !== "running" || !g.loadedCaptureVersion || !g.addonVersion || g.loadedCaptureVersion === g.addonVersion) return "";
     const saved = Date.parse(g.lastSync || ""), landed = Date.parse(g.addonUpdatedAt || "");
+    // WoW wrote a save after the update landed: the game has reloaded, so the new addon runs.
+    const written = Date.parse(g.savedAt || "");
+    if (Number.isFinite(written) && Number.isFinite(landed) && written > landed) return "";
     const clock = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
     const early = Number.isFinite(saved) && Number.isFinite(landed) && saved < landed && landed - saved < 15 * 60000;
     const when = early ? ` Your last /reload was at ${clock(saved)}, ${Math.max(1, Math.round((landed - saved) / 1000))} seconds before the update landed at ${clock(landed)}, so the game is still running the old addon: one more /reload fixes it.` : Number.isFinite(landed) ? ` The update landed at ${clock(landed)}. If you just reloaded, the update probably landed a moment later: reload once more and this goes away within a few seconds.` : " If you just reloaded, the update probably landed a moment later: reload once more and this goes away within a few seconds.";

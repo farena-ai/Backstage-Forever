@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.57.3 — One /reload after an update, 2026-11-16
+
+- Fix: after an update, the "Type /reload in WoW" banner on Now needed two reloads. On a /reload WoW writes the save from the addon that was running, the old one, so the first save after an update still names the old version. The app now also records when WoW wrote the save file (`savedAt`): a save written after the update landed means the game has reloaded, so the new addon runs and the banner goes after one /reload.
+
 ## 0.57.2 — Professions give advice, 2026-11-16
 
 - Fix: with 0.57.1 your recipes reached the app, but Professions still had no advice. Remembered recipes kept the date they were first read, the profession ranks were re-read on every save, and the coach only trusts recipes read after the ranks. The addon now dates remembered recipes with the current ranks when those ranks haven't changed, because a skill-up colour depends only on rank. Where a rank moved, it drops that profession's colours (grey stays grey) until you open the profession again.

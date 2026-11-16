@@ -276,6 +276,13 @@ async function boundedBytes(file, limit = MAX) {
     await h.close();
   }
 }
+// WoW writes the save on /reload, logout or exit, from the addon that was running.
+// A save written after the update landed means the game has reloaded since, so the
+// new addon is running even though that save still names the old version.
+function addonLoaded(state) {
+  const written = Date.parse(state.savedAt || ""), landed = Date.parse(state.addonUpdatedAt || "");
+  return Number.isFinite(written) && Number.isFinite(landed) && written > landed;
+}
 class GameSync {
   constructor({ dataDir, addonDir, onSnapshot = () => {}, onRootChange = () => {}, runtime = new GameRuntime() }) {
     this.dataDir = dataDir;
@@ -303,6 +310,7 @@ class GameSync {
       runtime: unknownRuntime(),
       loadedCaptureVersion: null,
       loadedGatheringSchema: null,
+      savedAt: null,
       coverage: { partial: false, unreadableAccountCount: 0, omittedCharacterCount: 0, omittedProfileCount: 0 },
     };
     this.ready = this.restore();
@@ -331,7 +339,7 @@ class GameSync {
           : "Available saved characters imported within the profile limit.";
     state.companionState = state.phase === "folder-unavailable" ? "unavailable"
       : !state.addonCurrent ? "not-prepared"
-      : state.lastSync && state.loadedCaptureVersion === state.addonVersion ? "saved"
+      : state.lastSync && (state.loadedCaptureVersion === state.addonVersion || addonLoaded(state)) ? "saved"
       : state.runtime.state === "running" ? "update-next-launch" : "prepared";
     state.companionMessage = state.companionState === "unavailable" || !state.addonCurrent ? state.message
       : state.runtime.state === "running" ? "Companion files are prepared for your next game login. Live guidance runs inside WoW; desktop shows the last saved progress."
@@ -690,7 +698,7 @@ class GameSync {
       }
       if (entries.length > 256) throw Error("Too many entries");
       const snapshots = new Map(this.accountSnapshots), freshlyRead = [];
-      let malformed = false, unreadableAccountCount = 0;
+      let malformed = false, unreadableAccountCount = 0, newestWrite = 0;
       const seenAccounts = new Set();
       for (const e of entries.sort((a,b)=>a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
         if (!e.isDirectory() || e.isSymbolicLink()) continue;
@@ -705,6 +713,9 @@ class GameSync {
           const s = parseSavedVariables(await boundedRead(file, SAVED_MAX));
           snapshots.set(e.name, s);
           freshlyRead.push(s);
+          // When WoW wrote the file (a /reload, logout or exit), not when the addon captured.
+          const written = (await fs.stat(file).catch(() => null))?.mtimeMs;
+          if (Number.isFinite(written) && written > newestWrite) newestWrite = written;
         } catch (error) {
           if (error.code !== "ENOENT" || snapshots.has(e.name)) { malformed = true; unreadableAccountCount++; }
         }
@@ -741,6 +752,7 @@ class GameSync {
         characterCount: best.characters.length,
         loadedCaptureVersion: activeCharacter?.captureVersion || null,
         loadedGatheringSchema: receivedGathering ? 1 : null,
+        savedAt: newestWrite ? new Date(newestWrite).toISOString() : this.state.savedAt || null,
       };
       if (malformed) this.state.message = "Some game saves are unavailable. Valid last saved progress and previous characters are preserved; live guidance continues inside WoW.";
       if (digest !== this.lastDigest) {
