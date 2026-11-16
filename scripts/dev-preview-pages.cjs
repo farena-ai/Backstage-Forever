@@ -19,7 +19,7 @@ const { navigate, routes } = require("./player-navigation.cjs");
     delete state.gameConnection;
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(state));
     const repo = path.resolve(__dirname, "..");
-    await fs.writeFile(path.join(dir, "package.json"), JSON.stringify({ name: "bf-pages-preview", version: "0.54.0", main: "m.cjs" }));
+    await fs.writeFile(path.join(dir, "package.json"), JSON.stringify({ name: "bf-pages-preview", version: require(path.join(repo, "package.json")).version, main: "m.cjs" }));
     await fs.writeFile(path.join(dir, "m.cjs"), `
       const load=require('node:module').createRequire(${JSON.stringify(path.join(repo, "package.json"))});
       load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});

@@ -81,7 +81,8 @@ class CompanionService {
       const localAll=talentFirst?null:this.travel?.resolve(input.prompt,{profileId,shareProfile:input.shareProfile});
       // The new answer only replaces a "where are you starting?" kind of clarification, or a trip
       // the planner misread (a flight master in a town is a person, not a trip).
-      const kept=['route','unavailable','same-place'].includes(localAll?.dto?.status);
+      // A trip the planner fully recognized stays with it, even when it must ask (your faction, say).
+      const kept=['route','unavailable','same-place'].includes(localAll?.dto?.status)||Boolean(localAll?.dto?.status==='clarify'&&localAll?.dto?.origin&&localAll?.dto?.destination);
       const local=localAll&&(kept||tripOpen||!verified?.answer)?localAll:null;
       if(local){
         if(signal.aborted)throw signal.reason;
@@ -127,11 +128,11 @@ class CompanionService {
       if(factsText&&!claudeSubscription)context=[factsText,context].filter(Boolean).join('\n\n');
       // Read-only local lookups (NPCs, quests, items, travel, character) the model may call.
       const tools=this.lookups?createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow,planner:this.planner}):undefined;
-      const request={model:selected.model,prompt:claudeSubscription&&factsText?factsText+'\n\n'+prepared.composedPrompt:prepared.composedPrompt,context,signal,...(tools?{tools}:{})};
+      const request={model:selected.model,prompt:prepared.composedPrompt,context,signal,...(tools?{tools}:{})};
       let reply;
       if(selected.authMode==='subscription'&&input.provider!=='ollama'){
         if(input.provider==='openai')reply=await this.chatgpt.ask(request);
-        else if(input.provider==='anthropic')reply=await this.claude.ask({...request,context:input.shareProfile?this.ai.approvedProfile(profile,options):undefined,live:liveFrame?require('./companion-tools.cjs').liveSummary(liveFrame):undefined,...(talentText?{talents:talentText}:{})});
+        else if(input.provider==='anthropic')reply=await this.claude.ask({...request,context:input.shareProfile?this.ai.approvedProfile(profile,options):undefined,live:liveFrame?require('./companion-tools.cjs').liveSummary(liveFrame):undefined,...(talentText||factsText?{talents:[factsText,talentText].filter(Boolean).join('\n\n')}:{})});
         else throw Error('Subscription inference is unavailable for this provider. Choose API mode explicitly if desired.');
       }else{
         // The built-in engine starts on first use (a few seconds) and stays up until the app closes.

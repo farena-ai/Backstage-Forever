@@ -30,3 +30,15 @@ test("the companion understands and answers from Forever data at least as well a
   for (const k of ["npc-location", "travel", "trainer", "vendor", "item-source", "dungeon"]) assert.ok(r.byCategory[k].local >= r.byCategory[k].n - 1, `${k}: ${r.byCategory[k].local}/${r.byCategory[k].n}`);
   assert.equal(r.rows.filter((x) => x.error).length, 0, r.rows.filter((x) => x.error).map((x) => `${x.id}: ${x.error}`).join("; "));
 });
+
+test("questions written without seeing the companion's code are understood and answered too (held-out set, 0.59)", { timeout: 120000 }, async () => {
+  const qs = loadQuestions("heldout");
+  assert.equal(qs.length, 60);
+  for (const q of qs) assert.ok(INTENTS.has(q.expect.intent) && q.evidence, q.id);
+  const r = await runBench({ questions: qs });
+  // First measured at 56.7% covered, 46.7% correct locally, 61.7% understood.
+  assert.ok(r.scores.covered >= 95, `covered ${r.scores.covered}%`);
+  assert.ok(r.scores.localCorrect >= 85, `correct locally ${r.scores.localCorrect}%`);
+  assert.ok(r.scores.understood >= 88, `understood ${r.scores.understood}%`);
+  assert.equal(r.byCategory.refuse.local, r.byCategory.refuse.n);
+});

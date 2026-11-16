@@ -50,3 +50,18 @@ These are listed as unconfirmed rather than required for 1.0:
 - **German messages in the game** need a German game client. The app's German is reviewed on every page.
 
 If you happen to try any of them, note what you saw here and it moves out of this list.
+
+## Record (2026-11-16)
+
+Frank played on Windows with 0.57.0 to 0.58.0 and reported the app "functional". What came up and what was confirmed:
+
+| Item | Result |
+|---|---|
+| 8. Professions | **Fixed and confirmed.** It kept saying "Open a profession in game once" even after the window was opened: the addon never read recipes on Forever. After 0.57.1 and 0.57.2, the real save held 41 Tailoring recipes with reagents and colours, and Professions advised "Gather supplies for Heavy Woolen Gloves". Each profession is listed once. |
+| Update banner | **Fixed and confirmed.** It needed two `/reload`s after every update; 0.57.3 clears it after one. |
+| 12. Log out / save | **Confirmed.** Several real saves (0.57.1 to 0.58.0) reached the app within seconds, with notes and characters intact. |
+| Portraits | **Confirmed.** Rolica's save records Undead, female, Priest (0.58.0), and the app picks the matching portrait. |
+| 13. Problem report | **Confirmed.** Generated from the real app state: no character name or realm appears. The report is built only from fixed values such as version, platform, counts and phases. |
+| 1–7, 9–11 | Used during play and reported working. No problems reported. |
+
+The 1.0 dry run (version 1.0.0, stable channel) passed all 55 release gates and built the 1.0 installer. It found one real bug, quest waypoints refusing 1.x addon saves, fixed in 0.58.

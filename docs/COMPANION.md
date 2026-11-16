@@ -42,6 +42,25 @@ With no AI model chosen, these answers come straight from the data. With a model
 |---|---|---|---|
 | 0.57 | 15% | 5% | 19% |
 | 0.58 | 96.9% | 93.8% | 99% |
+| 0.59 | 97.9% | 94.8% | 99% |
+
+**Held-out set.** `tests/fixtures/companion-bench/heldout.json` has 60 more questions, written by someone who never saw the companion's code: slang, abbreviations, run-on sentences, roleplay. This measures whether improvements generalize instead of fitting the first set. Run it with `node scripts/companion-bench.cjs --set heldout`.
+
+| Version | Covered | Correct locally | Understood |
+|---|---|---|---|
+| 0.58 | 56.7% | 46.7% | 61.7% |
+| 0.59 | 100% | 90% | 91.7% |
+
+0.59 added what the held-out set showed was missing:
+- slang ("zep", "xroads", "uc", "lvl", "hang out", "who has it", "do mobs drop em");
+- names found from one distinctive word ("the apothecary dude, helbrim");
+- trips with a stated start ("to tb from xroads"), walking distance inside a zone, and transports that belong to the other faction;
+- weapon masters by weapon ("who teaches guns");
+- quests found by the items you carry ("got all 15 centaur bracers, who wants them?");
+- where quest targets were seen ("where are the outrunners");
+- the right quest among same-named ones;
+- recipe skill ranks;
+- gathering spots.
 
 ## Local NPC reference
 

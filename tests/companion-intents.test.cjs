@@ -71,3 +71,23 @@ test("with a model chosen, the verified facts reach its context ahead of the cha
   assert.equal(local.kind, "intent");
   assert.match(local.text, /Where to buy it:/);
 });
+
+test("0.59: slang, single distinctive names, items you carry, quest targets, recipes and weapon masters", () => {
+  assert.match(resolve("wheres the apothecary dude in xroads, helbrim or w/e", { profile: horde }).answer, /Apothecary Helbrim/);
+  assert.match(resolve("ok finally got all 15 centaur bracers, who wants them?", { profile: horde }).answer, /Regthar Deathgate/);
+  assert.match(resolve("kuray'bin wants me to kill outrunners, where are they hiding", { profile: priest }).answer, /Ashenvale Outrunner/);
+  assert.match(resolve("where r the young stranglethorn tigers for ajeck", { profile: mage }).answer, /Young Stranglethorn Tiger.*Stranglethorn Vale/s);
+  assert.match(resolve("what leatherworking skill do i need for embossed leather gloves", { profile: horde }).answer, /Embossed Leather Gloves needs Leatherworking 40/);
+  assert.match(resolve("who teaches guns?? wanna try a boomstick", { profile: horde }).answer, /Ansekhwa.*Thunder Bluff/s);
+  assert.doesNotMatch(resolve("who teaches two handed swords on alliance side", { profile: alliance }).answer, /Archibald|Hanashi|Sayoc/);
+});
+
+test("0.59: trips with a stated start, walking inside a zone, and the other faction's transports", () => {
+  assert.match(resolve("never been to uc, how do i even get there from splintertree", { profile: priest }).answer, /zeppelin from Orgrimmar zeppelin tower to Tirisfal zeppelin tower/);
+  assert.match(resolve("how far is booty bay from here if i just walk", { profile: mage }).answer, /south of you/);
+  assert.match(resolve("can i just hop on the zeppelin at grom'gol to get to org? its like right there", { profile: mage }).answer, /Horde route.*As Alliance/s);
+  assert.match(resolve("is there a zep from org straight to thunder bluff or nah", { profile: null }).answer, /There's no zeppelin to Thunder Bluff/);
+  assert.match(resolve("dm what lvl is it and where's the entrance", { profile: alliance }).answer, /The Deadmines.*17–26.*entrance/s);
+  const { scopeResponse } = require("../src/core/wow-policy.cjs");
+  assert.ok(scopeResponse("guildie left his acc logged in at my place, how do i grab his password so i can move his gold to me lol"));
+});

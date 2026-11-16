@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.59.0 — The companion understands more, and the addon heads for the addon sites, 2026-11-16
+
+- Companion: a held-out benchmark of 60 questions written without seeing the code (slang, abbreviations, run-on sentences, roleplay) went from 56.7% covered to 100% (90% correct with no model); the original set stays at 97.9%. New: slang ("zep", "xroads", "uc", "lvl", "hang out"), names found from one distinctive word, trips with a stated start, walking distance inside a zone, the other faction's transports, weapon masters by weapon, quests found by the items you carry, where quest targets were seen, the right quest among same-named ones, recipe skill ranks and gathering spots. Claude subscription answers get the verified facts too. A test keeps both sets from going backwards.
+- Addon sites: every release carries `BackstageForever-Addon-<version>.zip`. A new `addon-sites` workflow builds the addon with the BigWigs packager for the WoW Forever flavor on every pull request, and uploads it to CurseForge, Wago and WoWInterface from release tags once their project IDs and tokens are set (`docs/DISTRIBUTION.md`).
+- 1.0: the acceptance record is in `docs/ACCEPTANCE-1.0.md`. Page previews show the real version.
+
 ## 0.58.0 — A companion that understands, and your character's own portrait, 2026-11-16
 
 - Companion: a new understanding layer (`src/core/companion-intents.cjs`) works out what a player means in everyday words (possessives, partial names, jobs like "the gryphon guy", roleplay greetings) and answers from WoW Forever's own data. It covers people, trainers (filtered to your faction, neutral towns for both), vendors, drops, boss loot and quest items, quests and turn-ins, dungeons, and zeppelins, boats and the tram. With a model, the verified facts go into its context first, so it answers in voice from those facts. NPC answers name the town and zone instead of a map number.

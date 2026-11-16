@@ -8,3 +8,4 @@ work/
 !assets/update-public-key.pem
 *.key
 .superpowers/
+addon/BackstageForever/.release/
