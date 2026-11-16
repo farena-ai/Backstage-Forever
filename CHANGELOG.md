@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.57.2 — Professions give advice, 2026-11-16
+
+- Fix: with 0.57.1 your recipes reached the app, but Professions still had no advice. Remembered recipes kept the date they were first read, the profession ranks were re-read on every save, and the coach only trusts recipes read after the ranks. The addon now dates remembered recipes with the current ranks when those ranks haven't changed, because a skill-up colour depends only on rank. Where a rank moved, it drops that profession's colours (grey stays grey) until you open the profession again.
+- Fix: WoW Forever marks grey recipes as able to skill up; grey now wins, so they show as grey instead of "colour not observed".
+- 1.0 readiness: quest waypoints accept saves from 1.0 and later addons. A 1.0 dry run found the check only matched 0.6 to 0.x.
+
 ## 0.57.1 — Professions read your recipes, 2026-11-16
 
 - Fix: Professions kept saying "Open a profession in game once" even after you had. The addon asked the game for the profession's spellbook spells, which on WoW Forever are not recipes, so no recipe was ever saved. It now reads the same recipe list as the Professions window while it's open (`C_TradeSkillUI.GetFilteredRecipeIDs`) and keeps each character's recipes from its last save, so closing the window, `/reload` or logging in again forgets nothing. A recipe the game freshly says isn't yours is dropped.

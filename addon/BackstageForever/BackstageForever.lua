@@ -573,7 +573,10 @@ local function recipes(owned)
         local recipe={id=id,skillLineId=owner.canonical,name=name,reagentsKnown=false,reagents=array({})}
         local skillUp=field(info,'canSkillUp');if type(skillUp)=='boolean' then recipe.canSkillUp=skillUp end
         -- Skill-up colour only when it agrees with canSkillUp (grey alone cannot skill up).
+        -- Forever reports canSkillUp=true on grey recipes too; grey is the current
+        -- colour, so it wins and the recipe cannot skill up now.
         local difficulty=recipeDifficulty(info)
+        if difficulty=='trivial' then recipe.canSkillUp=false end
         if difficulty and (recipe.canSkillUp==nil or recipe.canSkillUp==(difficulty~='trivial')) then recipe.difficulty=difficulty end
         optional(function()recipeRequirements(trade,id,recipe)end)
         result.items[#result.items+1]=recipe
@@ -663,10 +666,20 @@ local function sanitizedRecipe(raw,owned)
     return recipe
 end
 local function remembered(guid,owned,fresh)
-    local previous=field(field(field(roster[guid],'readiness'),'workshop'),'recipes')
+    local saved=field(field(roster[guid],'readiness'),'workshop')
+    local previous=field(saved,'recipes')
     local at=integer(field(previous,'observedAt'),0,253402300799)
     if not owned or type(field(previous,'items'))~='table' or not at then return fresh end
-    local lines={};for _,p in ipairs(owned.items) do lines[p.skillLineId]=true end
+    local lines={};for _,p in ipairs(owned.items) do lines[p.skillLineId]=p.rank end
+    -- Skill-up colours depend only on rank. Where the rank is what the last save saw,
+    -- the remembered colours are current; where it moved, only grey is still certain.
+    local before={}
+    local oldItems=field(field(saved,'professions'),'items')
+    if type(oldItems)=='table' then for i,p in ipairs(oldItems) do
+        if i>20 then break end
+        local id,rank=integer(field(p,'skillLineId'),1,2147483647),integer(field(p,'rank'),0,10000)
+        if id and rank then before[id]=rank end
+    end end
     local result=fresh or {items=array({}),complete=false,observedAt=at}
     -- A recipe the client was just asked about and did not confirm stays out.
     local have={};for id in pairs(fresh and readIds[fresh] or {}) do have[id]=true end
@@ -674,11 +687,16 @@ local function remembered(guid,owned,fresh)
     for i,raw in ipairs(previous.items) do
         if i>100 or #result.items>=100 then break end
         local recipe=sanitizedRecipe(raw,lines)
-        if recipe and not have[recipe.id] then have[recipe.id]=true;result.items[#result.items+1]=recipe;added=true end
+        if recipe and not have[recipe.id] then
+            if before[recipe.skillLineId]~=lines[recipe.skillLineId] and recipe.difficulty~='trivial' then recipe.difficulty=nil end
+            have[recipe.id]=true;result.items[#result.items+1]=recipe;added=true
+        end
     end
     if not added then return fresh end
     result.complete=false
-    if not result.observedAt or at<result.observedAt then result.observedAt=at end
+    -- Checked against this capture's ranks, so dated with them (never after the save).
+    local checked=owned.observedAt or at
+    if not result.observedAt or result.observedAt<checked then result.observedAt=checked end
     return result
 end
 local function readiness(guid,build)
@@ -725,7 +743,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.57.1'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='0.57.2'
     character.race=clean((call(UnitRace,'player')));character.faction=clean((call(UnitFactionGroup,'player')))
     local previous=roster[guid]
     -- WoW writes saved data only on /reload or logout, so a brand-new character is unknown to the app until then.

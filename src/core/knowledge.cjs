@@ -1406,7 +1406,7 @@ class KnowledgeIndex {
     if (!this.compatible(p)) return descriptor;
     if (
       typeof p?.captureVersion !== "string" ||
-      !/^0\.(?:[6-9]|[1-9]\d+)\./.test(p.captureVersion)
+      !/^(?:0\.(?:[6-9]|[1-9]\d+)|[1-9]\d*)\./.test(p.captureVersion)
     ) {
       descriptor.reason =
         "Update the addon and reload the game before copying a waypoint.";

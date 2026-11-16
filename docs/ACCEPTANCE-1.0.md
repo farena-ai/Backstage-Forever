@@ -25,7 +25,7 @@ For each item, tick the box or write a few words about what you saw. Anything th
    - [ ] Alert is useful, not noisy (or: not seen this session)
 7. **Ask panel.** Click the owl on the minimap and ask "where is the nearest flight master?". The answer appears under your question, and Esc gives the keyboard back to the game. Try it in full-screen mode too.
    - [ ] Opens, answers and closes cleanly
-8. **Professions.** Open one of your professions in game (for example Tailoring) and close it again. On the desktop, Professions shows your recipes and the next one worth making, not "Open a profession in game once". Your professions are listed once each.
+8. **Professions.** Open one of your professions in game (for example Tailoring), close it, then type `/reload` so the game writes your save. On the desktop, Professions shows your recipes and the next one worth making, not "Open a profession in game once". Your professions are listed once each.
    - [ ] Recipes show up
 
 ## On the desktop

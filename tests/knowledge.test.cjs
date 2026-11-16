@@ -272,6 +272,11 @@ test("waypoint command uses sourced coordinates and capture proof only", () => {
       index.waypoint({ ...profile(), captureVersion: undefined }, 1061, "t"),
     /reload/i,
   );
+  // 1.0 and later addons are current too; only saves from before 0.6 must reload.
+  for (const captureVersion of ["0.57.1", "1.0.0", "1.2.3", "2.0.0"])
+    assert.equal(index.waypoint({ ...profile(), captureVersion }, 1061, "t"), "/bf guide 1061 t 1413 0.3528 0.2786 1.60.1.70862", captureVersion);
+  for (const captureVersion of ["0.5.9", "0.0.1", "01.0.0"])
+    assert.throws(() => index.waypoint({ ...profile(), captureVersion }, 1061, "t"), /reload/i, captureVersion);
   assert.throws(() => index.waypoint(profile(), 1061, "evil"));
   assert.throws(() => index.waypoint(profile(), 1061, "o"));
 });
