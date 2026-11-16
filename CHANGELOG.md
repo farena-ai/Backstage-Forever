@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.56.0 — Ready for the public, 2026-11-15
+
+- README is now a front page: what the app does in game and on your desktop, a screenshot of Now (from an anonymised journal), privacy at a glance and download links.
+- Plain-language PRIVACY.md, SECURITY.md (how to report a problem privately), CONTRIBUTING.md, CODE_OF_CONDUCT.md and issue templates for bugs and translations.
+- Getting started rewritten for today's app; COMPATIBILITY.md says what is checked in the real game and what isn't yet.
+- package.json carries a public description, homepage, issues link and keywords. Old development notes are no longer in the repository.
+
 ## 0.55.1 — Mac downloads, 2026-11-15
 
 - 0.55.0's `mac` job was refused before it started ("The configuration 'macos-14-arm64-us-default' is not supported"), so that release has no Mac zips. The job now runs on `macos-latest` (checked: it builds both the arm64 and x64 zips).

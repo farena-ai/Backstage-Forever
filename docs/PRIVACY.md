@@ -1,6 +1,40 @@
-# Privacy and local data
+# Privacy
 
-The bundled 0.13 preview supplementary Forever field notes are a separately bundled offline reference. They update with app releases; the existing public quest-reference refresh remains separate. Local quest-detail lookup makes no extra network request, reads no additional player files and sends no question. Supplementary sharing/start-item/duration/drop/trainer/item-name facts are not silently included in automatic AI context, Director rankings or the native addon reference. Missing or invalid optional reference data disables these field notes alone. These facts ship with the 0.13 preview; 1.0 remains held for hands-on acceptance.
+Backstage Forever is built to keep your play to yourself. This page says, in plain words, what stays on your computer and what can leave it. The detailed notes per feature follow below.
+
+## In plain words
+
+- **Everything about your characters stays on your computer:** what the addon saves when you log out, your notes, plans, goals, past sessions, gold, bags, gear sets, route review and settings. They live in the app's own folder (on Windows `%APPDATA%\Backstage Forever`, on a Mac `~/Library/Application Support/Backstage Forever`). Help → Field guide → Delete all local data removes them.
+- **Backstage Forever never reads your account, password, chat or other players' private data,** never sends input to the game, never reads the game's memory and never plays for you.
+- **Game data** (map art, item and spell details, talent trees) is read from your own World of Warcraft: Forever installation, on your computer, and never uploaded or bundled.
+- **There is no telemetry and no advertising.**
+
+## What can leave your computer
+
+| What | Goes to | When, and how to stop it |
+|---|---|---|
+| Anonymous gathering spots and creature positions, rounded to 0.5% of the map, with a random install id (no names, character ids, realm or account) | The community service at bf.backstagecoding.com, which shares them with other players | On by default. Settings → Game connection → Community turns it off. The exact fields are listed in [community-server/CLIENT-CONTRACT.md](../community-server/CLIENT-CONTRACT.md). |
+| Your question, and your character's details if you allow it | The AI provider you choose (for example OpenAI, Anthropic, Google, Groq) | Only when you ask the companion with a cloud AI. Quick answers and the free local AI stay on your computer. The "share my character" switch in the Companion decides whether character details are included. |
+| An update check | GitHub (this project's releases) | The Windows app checks automatically; Settings → Updates turns it off. |
+| Quest progress: quest numbers and objective counts | Party members who also run the addon, through the game's own addon messages | Only while you're in a party (never raids). `/bf party off` stops it. Shared waypoints are sent only when you type `/bf party way`. |
+| A support report | Only where you save or send it yourself | Help → Support makes a report with secrets left out; nothing is sent automatically. |
+
+## Features that stay on your computer
+
+- **The live link** (Windows): the addon draws a one-pixel line at the top edge of the game; the app reads only that line from the game's window to follow you live. It reads nothing else on your screen. `/bf live off` turns it off.
+- **Asking from inside the game**: your question travels to the app over the live link, on your computer. Where it goes from there is the same as asking in the app (see the table).
+- **Enemy player alerts**: the faction, level, class and name of enemy players you saw are kept in the addon's saved settings on your computer. `/bf enemy clear` empties the list.
+- **Past sessions**, **the route review**, **translations** (made on our computer, shipped with the app), **spoken steps** (the Windows voice on your computer) and **the free local AI** all work without sending anything out.
+
+---
+
+# Details by feature
+
+The notes below describe each feature's data handling precisely, as it was written when the feature shipped.
+
+## Bundled reference notes
+
+The bundled 0.13 preview supplementary Forever field notes are a separately bundled offline reference. They update with app releases; the existing public quest-reference refresh remains separate. Local quest-detail lookup makes no extra network request, reads no additional player files and sends no question. Supplementary sharing/start-item/duration/drop/trainer/item-name facts are not silently included in automatic AI context, Director rankings or the native addon reference. Missing or invalid optional reference data disables these field notes alone.
 
 ## Local NPC questions and temporary location reports
 

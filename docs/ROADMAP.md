@@ -293,7 +293,8 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 - **0.53 (shipped):** 4.3 part 2: translations. The app and the addon follow the game's language; German first, machine-translated with the local model and marked.
 - **0.54 (shipped):** G12 art review and H8, the Adventure Compass at a glance.
 - **0.55 (shipped):** 4.6 the Mac app (no live link).
-- **0.56+:** public readiness before 1.0. The route review itself (Frank goes through the routes) whenever it suits.
+- **0.56 (shipped):** public readiness: a front page with a screenshot, plain-language privacy, a security policy, contributing guide, code of conduct and issue templates, a rewritten Getting started and compatibility at a glance.
+- **0.57+:** before 1.0. The route review itself (Frank goes through the routes) whenever it suits.
 - **1.0:** after Frank's hands-on acceptance.
 
 Keep this file and Help → Commands updated with each release.

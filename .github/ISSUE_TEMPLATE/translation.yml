@@ -1,0 +1,22 @@
+name: Translation fix
+description: A word or sentence that reads wrong in German (or another language).
+labels: [translation]
+body:
+  - type: input
+    id: english
+    attributes:
+      label: The English text (Settings → Language → English shows it)
+    validations:
+      required: true
+  - type: input
+    id: now
+    attributes:
+      label: What it says now
+    validations:
+      required: true
+  - type: input
+    id: better
+    attributes:
+      label: What it should say
+    validations:
+      required: true
