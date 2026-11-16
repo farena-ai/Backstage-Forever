@@ -52,7 +52,7 @@ local function save()print(BackstageForeverExport)end
 dofile('addon/BackstageForever/BackstageForever.lua')
 `;
 function run(scenario) {
-  const r = spawnSync(process.execPath, [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"], {
+  const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], {
     cwd: path.join(__dirname, ".."), input: fixture + scenario + "\nassert(actions==0,'Collection must never invoke a game action')", encoding: "utf8", timeout: 30000,
   });
   assert.equal(r.status, 0, r.stderr || r.error?.message); assert.equal(r.stderr, "");

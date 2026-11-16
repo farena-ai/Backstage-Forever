@@ -159,3 +159,37 @@ jobs:
             gh release edit $tag --repo "$env:GITHUB_REPOSITORY" --draft=false "--prerelease=$preview"
             if ($LASTEXITCODE -ne 0) { throw 'Release publication failed; assets remain in draft' }
           }
+  mac:
+    # 4.6 (0.55): an unsigned Mac build of the same version, added to the release the Windows job published.
+    needs: release
+    if: github.repository == 'farena-ai/Backstage-Forever'
+    runs-on: macos-14
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      # The full test suite runs in the Windows job above; this job only packages the same, tested commit.
+      - run: npm run dist:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Add the Mac builds and their checksums to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"; version="${tag#v}"
+          cd dist
+          ls Backstage-Forever-"$version"-macOS-*.zip
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS.txt --clobber
+          grep -v -- '-macOS-' SHA256SUMS.txt > sums.tmp || true
+          shasum -a 256 Backstage-Forever-"$version"-macOS-*.zip >> sums.tmp
+          mv sums.tmp SHA256SUMS.txt
+          gh release upload "$tag" Backstage-Forever-"$version"-macOS-*.zip SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"

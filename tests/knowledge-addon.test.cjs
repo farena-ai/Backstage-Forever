@@ -4,7 +4,7 @@ const { test } = require("node:test"),
 test("Lua captures guarded build, complete IDs and objective counters; waypoint parsing checks phase/build/combat/APIs", () => {
   const result = spawnSync(
     process.execPath,
-    [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"],
+    [require.resolve("./lua-stdin.cjs")],
     {
       cwd: require("node:path").join(__dirname, ".."),
       encoding: "utf8",

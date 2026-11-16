@@ -16,7 +16,7 @@
     "no-signal": "Game found but no live line. Type /bf live on in WoW once; if WoW shows a thin dark line along its top edge and this stays, type /bf live safe.",
     stale: "Signal paused (the live line is hidden or the game stopped drawing it).",
     error: "The screen reader stopped; retrying shortly.",
-    unsupported: "Live link needs Windows.",
+    unsupported: "The live link is Windows-only for now. Everything that works from your saved characters works here: log out or type /reload in WoW and the app updates.",
   };
   // "3 min ago" from a time in milliseconds (the app and its window share one clock).
   function ago(at, now = Date.now()) {

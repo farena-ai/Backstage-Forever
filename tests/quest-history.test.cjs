@@ -44,7 +44,7 @@ test("history is bounded observed turnins and destinations are validated", () =>
 test("Lua records actual turnin, persists history, guards secrets and count bounds", () => {
   const { spawnSync } = require("node:child_process");
   const cli = require.resolve("fengari-node-cli/src/lua-cli.js");
-  const r = spawnSync(process.execPath, [cli, "-"], {
+  const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], {
     cwd: require("node:path").join(__dirname, ".."),
     encoding: "utf8",
     timeout: 20000,

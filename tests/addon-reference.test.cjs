@@ -13,7 +13,7 @@ function compiler() {
   return require("../scripts/build-addon-reference.cjs");
 }
 function runLua(input) {
-  const r = spawnSync(process.execPath, [require.resolve("fengari-node-cli/src/lua-cli.js"), "-"], { cwd: root, input, encoding: "utf8", timeout: 20000 });
+  const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], { cwd: root, input, encoding: "utf8", timeout: 20000 });
   assert.equal(r.status, 0, r.stderr);
   assert.equal(r.stderr, "");
   assert.equal(r.stdout.trim(), "ok");

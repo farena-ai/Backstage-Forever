@@ -67,7 +67,10 @@ class KnowledgeService {
     while (true) {
       if (fs.existsSync(current)) {
         const s = fs.lstatSync(current);
-        if (!s.isDirectory() || s.isSymbolicLink())
+        // macOS ships /var, /tmp and /etc as links to /private/…; those root-level system links are
+        // allowed (4.6, 0.55). Any other link on the way to the cache is still refused.
+        const systemLink = s.isSymbolicLink() && process.platform === "darwin" && path.dirname(current) === "/";
+        if (!systemLink && (!s.isDirectory() || s.isSymbolicLink()))
           throw Error("Invalid reference directory.");
         // Native realpath expands Windows 8.3 aliases. Anchor the expected child
         // to an existing checked parent before creation, not its lexical spelling.
