@@ -36,7 +36,7 @@ jobs:
         uses: BigWigsMods/packager@v2
         with:
           args: >-
-            -t ${{ runner.temp }}/BackstageForever -g forever -n "BackstageForever-{project-version}"
+            -t ${{ runner.temp }}/BackstageForever -r ${{ runner.temp }}/addon-release -g forever -n "BackstageForever-{project-version}"
             ${{ github.event_name != 'push' && '-d' || '' }}
             ${{ vars.CURSEFORGE_PROJECT_ID && format('-p {0}', vars.CURSEFORGE_PROJECT_ID) || '' }}
             ${{ vars.WAGO_PROJECT_ID && format('-a {0}', vars.WAGO_PROJECT_ID) || '' }}
@@ -49,5 +49,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: BackstageForever-addon
-          path: ${{ runner.temp }}/BackstageForever/.release/*.zip
+          path: ${{ runner.temp }}/addon-release/*.zip
           if-no-files-found: error

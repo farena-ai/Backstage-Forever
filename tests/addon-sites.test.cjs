@@ -19,7 +19,9 @@ test("the addon-sites workflow builds the Forever flavor on every PR and uploads
   // The packager needs its own checkout: a throwaway repository with only the addon, tagged with the version.
   assert.match(wf, /cp -R addon\/BackstageForever\/\. "\$dest\/"/);
   assert.match(wf, /git tag "\$tag"/);
-  assert.match(wf, /-t \$\{\{ runner\.temp \}\}\/BackstageForever -g forever/);
+  assert.match(wf, /-t \$\{\{ runner\.temp \}\}\/BackstageForever -r \$\{\{ runner\.temp \}\}\/addon-release -g forever/);
+  // Artifact upload skips hidden folders, so the package goes to a visible one.
+  assert.match(wf, /path: \$\{\{ runner\.temp \}\}\/addon-release\/\*\.zip/);
   assert.match(wf, /github\.event_name != 'push' && '-d'/, "pull requests never upload");
   assert.match(wf, /tags: \["v\*"\]/);
   for (const v of ["CURSEFORGE_PROJECT_ID", "WAGO_PROJECT_ID", "WOWI_ADDON_ID"]) assert.match(wf, new RegExp(`vars\\.${v}`), v);
