@@ -3,7 +3,7 @@
 .page-hero { position: relative; isolation: isolate; overflow: hidden; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; min-height: 210px; margin: 0 0 14px; padding: 16px 20px; border-radius: 6px; border: 1px solid #c79a4a; color: #fff1d6; background: #3a0f09; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
 .page-hero.compact { min-height: 132px; }
 /* Pages that lay out as a flex column already space their children. */
-:is(.bf-page, .now-page, .journey-page, .atlas-page, .workshop, .company-page, .party-expedition, .talents-page, .coverage-page, .commands-page) > .page-hero { margin-bottom: 0; }
+:is(.bf-page, .now-page, .journey-page, .badges-page, .atlas-page, .workshop, .company-page, .party-expedition, .talents-page, .coverage-page, .commands-page) > .page-hero { margin-bottom: 0; }
 /* The painting drifts slowly; the art that has not shipped yet falls back to the Help painting underneath. */
 .page-hero::before { content: ""; position: absolute; inset: -4%; z-index: -2; background-color: #3a0f09; background-position: center 42%; background-size: cover; background-repeat: no-repeat; animation: bf-drift 38s ease-in-out infinite alternate; }
 .page-hero::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
@@ -26,6 +26,7 @@
 .ph-art-dungeons::before { background-image: url("art/heroes/dungeons.webp"), url("art/hero-help.webp"); }
 .ph-art-talents::before { background-image: url("art/heroes/talents.webp"), url("art/hero-help.webp"); }
 .ph-art-journey::before { background-image: url("art/heroes/journey.webp"), url("art/hero-help.webp"); }
+.ph-art-badges::before { background-image: url("art/heroes/badges.webp"), url("art/hero-help.webp"); }
 .ph-art-coverage::before { background-image: url("art/heroes/coverage.webp"), url("art/hero-help.webp"); }
 .ph-art-commands::before { background-image: url("art/heroes/commands.webp"), url("art/hero-help.webp"); }
 .ph-art-companion::before { background-image: url("art/heroes/companion.webp"), url("art/hero-help.webp"); }

@@ -42,7 +42,7 @@ test("badges: earned from level, quests, zones and firsts, with progress for loc
   assert.equal(get("quests-100").earned, true); assert.equal(get("explorer-5").earned, true);
   assert.equal(get("first-dungeon").earned, true); assert.equal(get("first-dungeon").at, 1700000000);
   assert.equal(get("speed").earned, true, "a level in 2000 seconds");
-  assert.equal(b.total, 20);
+  assert.equal(b.total, 30, "20 badges, plus 10 for professions, gold and reputation in 1.1");
   assert.deepEqual(rested({ progress: { current: 10, max: 1000, rested: 300 } }), { xp: 300, percentOfLevel: 30, capPercent: 150, hoursToCap: 192, perNight: 5 });
 });
 test("a stored profile with a journal passes state validation; a bad one is refused", () => {

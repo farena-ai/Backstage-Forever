@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0 — Badges you can look back on, 2026-11-17
+
+- New page: Characters → Badges. Every badge a character has earned, with the date, grouped and filterable (all, earned, still to earn); the latest five; the three closest to earning with progress; a chip per character to switch; who else on your account holds each badge; and account badges earned by all your characters together. The new-badge banner now says "See all your badges" and opens the page on that badge.
+- 14 new badges, painted locally: professions (skill 75, 150, 225, 300 in any profession), gold carried (10, 100, 1000), reputation (Honored, Revered, Exalted with any faction), and account badges (2, 5 and 10 characters; a Horde and an Alliance character).
+- ROADMAP: Tier J, the plan after 1.0 (owner direction, 2026-11-17).
+
 ## 1.0.2 — Checksums that check on a Mac, 2026-11-16
 
 - Release: `SHA256SUMS.txt` uses LF line endings. The Windows release job wrote CRLF, so `shasum -a 256 -c SHA256SUMS.txt` on a Mac (or `sha256sum -c` on Linux) rejected every line but the Mac ones, although the files were fine. Found checking the 1.0.1 download on a real Mac.

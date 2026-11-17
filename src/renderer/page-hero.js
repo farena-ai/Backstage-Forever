@@ -4,7 +4,7 @@
 // painting that has not shipped yet falls back without breaking the page.
 // eyebrow, title, subtitle and aside are HTML: callers escape any player or game text.
 window.PageHero = (() => {
-  const ART = Object.freeze(["adventure", "quests", "professions", "plans", "party", "characters", "dungeons", "talents", "journey", "coverage", "commands", "companion", "now", "settings"]);
+  const ART = Object.freeze(["adventure", "quests", "professions", "plans", "party", "characters", "dungeons", "talents", "journey", "badges", "coverage", "commands", "companion", "now", "settings"]);
   const known = (art) => (ART.includes(art) ? art : "settings");
   function render({ art, eyebrow = "", title = "", subtitle = "", crest = "", crestHtml = "", aside = "", compact = false, attrs = "", titleAttrs = "", subAttrs = "" } = {}) {
     const key = known(art);
