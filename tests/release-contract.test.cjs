@@ -53,3 +53,10 @@ test("a hung check fails in minutes, not after GitHub's six-hour default", () =>
   assert.match(read(".github/workflows/release.yml"), /codesign --force --deep --sign - "sign\/Backstage Forever\.app"/);
   assert.match(read(".github/workflows/release.yml"), /codesign --verify --deep --strict/);
 });
+
+test("1.0.2: SHA256SUMS.txt uses LF line endings so shasum -c works on a Mac", () => {
+  const workflow = read(".github/workflows/release.yml");
+  assert.doesNotMatch(workflow, /WriteAllLines\([^)]*SHA256SUMS/, "WriteAllLines writes CRLF on the Windows runner");
+  assert.match(workflow, /SHA256SUMS\.txt'\), \(\(\$lines -join "`n"\) \+ "`n"\)/);
+  assert.ok(workflow.includes("tr -d '\\r' < SHA256SUMS.txt | grep -v -- '-macOS-'"), "the Mac job strips CR before adding its lines");
+});

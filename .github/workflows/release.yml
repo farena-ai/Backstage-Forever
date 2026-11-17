@@ -137,7 +137,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Addon archive failed' }
           $names = @("Backstage-Forever-$env:RELEASE_VERSION-Windows-x64-Setup.exe", "Backstage-Forever-$env:RELEASE_VERSION-Source.zip", "BackstageForever-Addon-$env:RELEASE_VERSION.zip", 'backstage-update.json')
           $lines = foreach ($name in $names) { $hash = (Get-FileHash -LiteralPath "dist/$name" -Algorithm SHA256).Hash.ToLowerInvariant(); "$hash  $name" }
-          [IO.File]::WriteAllLines((Join-Path $pwd 'dist/SHA256SUMS.txt'), $lines, [Text.UTF8Encoding]::new($false))
+          # LF line endings so `shasum -c` / `sha256sum -c` work on Mac and Linux too.
+          [IO.File]::WriteAllText((Join-Path $pwd 'dist/SHA256SUMS.txt'), (($lines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
       - name: Publish or update versioned release
         shell: pwsh
         env:
@@ -206,7 +207,7 @@ jobs:
           cd dist
           ls Backstage-Forever-"$version"-macOS-*.zip
           gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS.txt --clobber
-          grep -v -- '-macOS-' SHA256SUMS.txt > sums.tmp || true
+          tr -d '\r' < SHA256SUMS.txt | grep -v -- '-macOS-' > sums.tmp || true
           shasum -a 256 Backstage-Forever-"$version"-macOS-*.zip >> sums.tmp
           mv sums.tmp SHA256SUMS.txt
           gh release upload "$tag" Backstage-Forever-"$version"-macOS-*.zip SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"
