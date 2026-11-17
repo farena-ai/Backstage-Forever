@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2 — Checksums that check on a Mac, 2026-11-16
+
+- Release: `SHA256SUMS.txt` uses LF line endings. The Windows release job wrote CRLF, so `shasum -a 256 -c SHA256SUMS.txt` on a Mac (or `sha256sum -c` on Linux) rejected every line but the Mac ones, although the files were fine. Found checking the 1.0.1 download on a real Mac.
+- Verified on that Mac: the 1.0.1 Apple silicon download matches its checksum, is signed, opens and shows 1.0.1; in game, the addon saves your character, quests, stats and ledger there.
+
 ## 1.0.1 — Found on a real Mac, 2026-11-16
 
 - Tested the 1.0 Mac build on a real Mac (Apple silicon, macOS 27) with WoW Forever installed: it found the game, installed the addon and read the map art from the Mac install by itself.
