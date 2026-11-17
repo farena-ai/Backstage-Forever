@@ -147,3 +147,14 @@ print('ok')`;
   const lua = [...read("addon/BackstageForever/BackstageForeverJournal.lua").matchAll(/add\('([a-z0-9-]+)'(\.\.n)?/g)].length;
   assert.ok(app.length === 30 && lua > 0);
 });
+
+test("J28 (1.6): the Compass line names the badge you're closest to", () => {
+  const { spawnSync } = require("node:child_process");
+  const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], { cwd: root, encoding: "utf8", timeout: 20000, input: String.raw`
+UnitLevel=function() return 18 end GetMoney=function() return 0 end
+dofile('addon/BackstageForever/BackstageForeverJournal.lua')
+print(BackstageForeverNextBadgeLine())` });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout.trim(), "Next badge: Level 20 18/20");
+  assert.match(read("addon/BackstageForever/BackstageForeverHUD.lua"), /BackstageForeverNextBadgeLine/);
+});

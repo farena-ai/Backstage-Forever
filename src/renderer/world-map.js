@@ -19,6 +19,17 @@ window.WorldMapView = (() => {
   const explored = (id) => { try { return JSON.parse(localStorage.getItem(EXPLORED + id) || "[]"); } catch { return []; } };
   const remember = (id, p) => { try { const a = explored(id); const last = a[a.length - 1]; if (last && Math.hypot(last[0] - p.x, last[1] - p.y) < 0.004) return; a.push([+p.x.toFixed(4), +p.y.toFixed(4)]); if (a.length > 4000) a.splice(0, a.length - 4000); localStorage.setItem(EXPLORED + id, JSON.stringify(a)); } catch {} };
   let canvas, ctx, parchment, results = null, loading = false, lastLive = null, dragging = null, mountedFor = null, error = "";
+  // 1.5 (J19): the route to a dialed-in target flows toward it and the target pulses; footprints
+  // mark your trail. Still pictures for players who ask their system for less motion.
+  let flow = 0, anim = null, lastFrame = 0;
+  const still = () => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return true; } };
+  function animate(ts) {
+    anim = null;
+    if (!focused || !canvas?.isConnected || still() || document.hidden) return;
+    if (ts - lastFrame >= 33) { lastFrame = ts; flow = ts / 40; draw(); }
+    anim = requestAnimationFrame(animate);
+  }
+  function keepFlowing() { if (!anim && focused && !still() && typeof requestAnimationFrame === "function") anim = requestAnimationFrame(animate); }
   try { const p = JSON.parse(localStorage.getItem(PREF) || "{}"); if (p.layers) layers = { ...layers, ...p.layers }; if (typeof p.follow === "boolean") follow = p.follow; } catch {}
   const savePref = () => { try { localStorage.setItem(PREF, JSON.stringify({ layers, follow })); } catch {} };
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -313,7 +324,16 @@ window.WorldMapView = (() => {
     // Player: saved marker, live trail, live arrow.
     const pl = model?.player;
     if (pl?.saved && !pl.live) { const [sx, sy] = toScreen(pl.saved.x, pl.saved.y); ctx.beginPath(); ctx.arc(sx, sy, 8, 0, 7); ctx.setLineDash([3, 3]); ctx.strokeStyle = "#3a2410"; ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); ctx.font = "600 11px 'Source Sans 3'"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; const lw = ctx.measureText("last saved").width + 10; ctx.fillStyle = "rgba(245,232,200,0.92)"; ctx.beginPath(); ctx.roundRect(sx - lw / 2, sy + 11, lw, 15, 3); ctx.fill(); ctx.fillStyle = "#3a2410"; ctx.fillText("last saved", sx, sy + 19); }
-    trail.forEach((t, i) => { if (t.mapId !== model?.mapId) return; const [sx, sy] = toScreen(t.x, t.y); ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, 7); ctx.fillStyle = `rgba(70,190,255,${(i + 1) / trail.length * 0.85})`; ctx.fill(); });
+    // Footprints along the trail, turned the way you walked, left and right in turn.
+    trail.forEach((t, i) => {
+      if (t.mapId !== model?.mapId) return;
+      const [sx, sy] = toScreen(t.x, t.y), prev = trail[i - 1];
+      const [px, py] = prev && prev.mapId === t.mapId ? toScreen(prev.x, prev.y) : [sx, sy - 1];
+      const a = Math.atan2(sy - py, sx - px), side = i % 2 ? 1 : -1;
+      ctx.save(); ctx.translate(sx + Math.cos(a + Math.PI / 2) * 3 * side, sy + Math.sin(a + Math.PI / 2) * 3 * side); ctx.rotate(a);
+      ctx.beginPath(); ctx.ellipse(0, 0, 3.6, 2, 0, 0, 7); ctx.fillStyle = `rgba(70,190,255,${(i + 1) / trail.length * 0.85})`; ctx.fill();
+      ctx.restore();
+    });
     if (pl?.live) arrow(...toScreen(pl.live.x, pl.live.y), pl.live.facing, pl.live.combat);
   }
   // Dialed-in target: a glowing route from you, a double ring on the target and how far it is.
@@ -323,9 +343,9 @@ window.WorldMapView = (() => {
     ctx.save();
     if (me) {
       const [mx, my] = toScreen(me.x, me.y);
-      ctx.lineCap = "round"; ctx.setLineDash([10, 8]);
+      ctx.lineCap = "round"; ctx.setLineDash([10, 8]); ctx.lineDashOffset = -(flow % 18);
       for (const [width, style] of [[10, "rgba(246,196,69,0.22)"], [4, "rgba(246,196,69,0.85)"]]) { ctx.lineWidth = width; ctx.strokeStyle = style; ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(tx, ty); ctx.stroke(); }
-      ctx.setLineDash([]);
+      ctx.setLineDash([]); ctx.lineDashOffset = 0;
       const label = howFar(f.pin);
       if (label) {
         const lx = (mx + tx) / 2, ly = (my + ty) / 2 - 14;
@@ -335,8 +355,10 @@ window.WorldMapView = (() => {
         ctx.fillStyle = "#ffe9b0"; ctx.fillText(label, lx, ly + 1);
       }
     }
-    for (const [r, style, width] of [[34, "rgba(246,196,69,0.35)", 6], [24, "#f6c445", 3], [24, "#5a1a10", 1]]) { ctx.beginPath(); ctx.arc(tx, ty, r, 0, 7); ctx.strokeStyle = style; ctx.lineWidth = width; ctx.stroke(); }
+    const pulse = still() ? 0 : (Math.sin(flow / 6) + 1) / 2;
+    for (const [r, style, width] of [[34 + pulse * 8, `rgba(246,196,69,${0.45 - pulse * 0.3})`, 6], [24, "#f6c445", 3], [24, "#5a1a10", 1]]) { ctx.beginPath(); ctx.arc(tx, ty, r, 0, 7); ctx.strokeStyle = style; ctx.lineWidth = width; ctx.stroke(); }
     ctx.restore();
+    keepFlowing();
   }
   function howFar(p) {
     const me = model?.player?.live || model?.player?.saved;

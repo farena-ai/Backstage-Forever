@@ -15,6 +15,8 @@ None of these images is taken from World of Warcraft or any Blizzard product, an
 | `zones/*.webp` | Now "Where to level" landscape vistas, one per kind of zone (art pass 2, 0.22.0); city banners `warcamp` and `citadel` (0.26.0) |
 | `pins/*.png` | World Map pin medallions, one per pin kind (0.26.0) |
 | `badges/*.png` | Characters → Journey badge wall and new-badge banner (0.28.0) |
+| `bosses/*.webp` | Instance Atlas final-boss silhouettes, one per dungeon and raid, original art generated locally with ComfyUI / Qwen-Image (1.5.0) |
+| `heroes/badges.webp`, `badges/profession-*.png`, `badges/gold-*.png`, `badges/rep-*.png`, `badges/account-*.png` | Characters → Badges page and its new badges, generated locally with ComfyUI / Qwen-Image (1.1.0) |
 | `heroes/*.webp` | Page banners, one per page (Adventure, Quests, Professions, Plans, Party, Characters, Dungeons, Talents, Journey, Data coverage, Commands, Companion), shown by the shared page banner (art pass 3, 0.31.0) |
 | `pins/companion.png` | AI Companion crest (0.31.0) |
 | `moments/*.png` | Live moments cards, death screen and Now "Recent moments": one medallion per moment kind (death, elite, rare, boss, profession, zone, flight, upgrade, dungeon, chain), generated locally with ComfyUI / Qwen-Image (0.33.0) |

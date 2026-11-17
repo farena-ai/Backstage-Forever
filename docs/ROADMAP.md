@@ -290,18 +290,29 @@ Frank asked for everything below, built one release at a time through the usual 
 
 | # | Item | Size | Where | Why |
 |---|---|---|---|---|
-| J19 | **Flowing routes** [G4]: lines that flow toward the next step, footprints and a pulsing target. | M | App | The map feels alive. |
-| J20 | **Boss silhouettes and loot trays** [G6]. | M | App | Dungeons look as good as they read. |
-| J21 | **Celebrations, part 2** [G8]: new mount and finished zone, and painted class crests everywhere. | M | App | Big moments feel big. |
+| J19 | **Flowing routes** [G4]: lines that flow toward the next step, footprints and a pulsing target. **Done in 1.5.** | M | App | The map feels alive. |
+| J20 | **Boss silhouettes and loot trays** [G6]. **Done in 1.5:** a painted final-boss silhouette for each dungeon and raid on the Instance Atlas, and loot on velvet trays. | M | App | Dungeons look as good as they read. |
+| J21 | **Celebrations, part 2** [G8]: new mount and finished zone, and painted class crests everywhere. **Done in 1.5:** a big moment for your own mount, levels 40 and 60 and the other top badges; a finished zone is celebrated once; class crests on Ledger rows too. | M | App | Big moments feel big. |
 
 ### Longer term
 
 | # | Item | Size | Where | Why |
 |---|---|---|---|---|
-| J22 | **Live link on the Mac.** Opt-in Screen Recording permission the player grants, clearly explained; the decoder is shared with Windows. | L | App | Mac players get pace, deaths and time to level. |
-| J23 | **Party sync with two real players** and **German in a German client**, tested. | S | Both | Built but not checked in the real game. |
-| J24 | **Publish to the addon sites with each release**, once the owner sets up the three projects. | S | CI | One release, every site. |
-| J25 | **Backup and move your journal**: one file to export and import on another PC. | S | App | Nothing lost on a new computer. |
+| J22 | **Live link on the Mac.** Opt-in Screen Recording permission the player grants, clearly explained; the decoder is shared with Windows. **Waiting on the owner:** it needs a small Mac capture helper (the window picture, the same hairline decoder) and can only be tested once Screen Recording is allowed for the app on the test Mac, a privacy setting only the owner should change. | L | App | Mac players get pace, deaths and time to level. |
+| J23 | **Party sync with two real players** and **German in a German client**, tested. **Needs people:** two players in a party, and a German game client. | S | Both | Built but not checked in the real game. |
+| J24 | **Publish to the addon sites with each release**, once the owner sets up the three projects. **Built (Addon sites workflow); waiting on the owner's projects and tokens.** | S | CI | One release, every site. |
+| J25 | **Backup and move your journal**: one file to export and import on another PC. **Already in the app:** Settings → Export and Import (with a recovery point before every import). | S | App | Nothing lost on a new computer. |
+
+### Ideas added while building (2026-11-17)
+
+| # | Item | Size | Where | Why |
+|---|---|---|---|---|
+| J26 | **Share learned quest givers** through the opt-in community data, and carry them into the in-game route the addon builds. | M | Both | One player's play fills the route for everyone, in the game too. |
+| J27 | **Badge case picture.** A painted PNG of a character's badges to save or share, like the journey picture. | S | App | Something to show off. |
+| J28 | **Badges in the Compass.** The in-game Adventure Compass shows the next badge and its progress. **Done in 1.5.** | S | Addon | Goals in view while you play. |
+| J29 | **Reminders in game.** At login: another character's rested XP is full, a cooldown is ready, mail is expiring. **Done in 1.5.** | S | Addon | Same reminders without opening the app. |
+| J30 | **Profession shopping list.** What to buy or gather for your next skill-ups, minus what is already in bags, bank and mail across your characters. | M | App | Skill-ups without guesswork. |
+| J31 | **Boss tips for the remaining raid bosses**, reviewed before they ship. | M | Both | Raids deserve the same help as dungeons. |
 
 ## Suggested release sequence
 
@@ -368,3 +379,4 @@ Keep this file and Help → Commands updated with each release.
 - **1.2.0 (2026-11-17):** J3 badges in game; phase 1.2: J4 gathering spots on the World Map, J5 price lines and `/bf sell`, J6 Gear sets button, J7 quest use on item tooltips, J8 quest icons over enemies. Reputation badges read the saved ledger shape.
 - **1.3.0 (2026-11-17):** phase 1.3: J9 class unlocks, J10 training costs, J11 riding-and-mount goal, J12 reputation advice, J13 boss tips.
 - **1.4.0 (2026-11-17):** phase 1.4: J14 routes learn quest givers from play, J15 local answers for unlocks/boss tips/reputation, J16 plan by time, J17 weekly recap, J18 reminders.
+- **1.5.0 (2026-11-17):** phase 1.5: J19 flowing routes and footprints, J20 final-boss paintings and velvet loot trays, J21 big moments and finished zones. J25 found already built. Added J26-J31; J28 (next badge in the Compass) and J29 (reminders in game) done too.

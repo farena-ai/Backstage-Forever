@@ -1239,6 +1239,7 @@ window.BF_LOCALE_DE = {
  "Your world, 1 to 60": "Deine Welt, 1 bis 60",
  "Your world. Your adventure.": "Deine Welt. Dein Abenteuer.",
  "Zone": "Gebiet",
+ "Zone finished": "Gebiet abgeschlossen",
  "Zone finished: 90% of its quests done": "Gebiet abgeschlossen: 90 % der Quests erledigt",
  "Zone levels: Backstage Coding review of classic zone level ranges and quest towns. WoW Forever may differ; quest data observed in play overrides these bands where it exists. Quest, trainer and NPC references: Efficient Games, CC BY 4.0.": "Gebietsstufen: Backstage-Coding-Übersicht der klassischen Stufenbereiche und Questorte. WoW Forever kann abweichen; im Spiel beobachtete Questdaten haben Vorrang, wo es sie gibt. Quest-, Lehrer- und NPC-Daten: Efficient Games, CC BY 4.0.",
  "Zone map. Arrow keys move it, plus and minus zoom, 0 shows the whole zone. Every pin is also in the search and the lists beside the map.": "Gebietskarte. Pfeiltasten verschieben sie, Plus und Minus zoomen, 0 zeigt das gesamte Gebiet. Jede Markierung ist auch in der Suche und den Listen neben der Karte.",
