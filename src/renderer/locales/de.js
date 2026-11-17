@@ -954,7 +954,7 @@ window.BF_LOCALE_DE = {
  "Saved-game follow paused · showing your pick": "Spielstand-Follow pausiert · zeigt deine Auswahl",
  "saves it as": "speichert es als",
  "saves your characters, notes, goals and plans to a file; it leaves out credentials and saved memory.": "speichert deine Charaktere, Notizen, Ziele und Pläne in einer Datei; Zugangsdaten und gespeichertes Gedächtnis bleiben draußen.",
- "Saving for riding training and your first mount, or anything else? Set the amount yourself: the app's reference has no trainer or mount prices, so check the price at your riding trainer or mount vendor in game.": "Sparst du für Reittraining und dein erstes Reittier, oder für etwas anderes? Setze den Betrag selbst: Die Referenz der App hat keine Preise für Lehrer oder Reittiere, also prüfe den Preis bei deinem Reitlehrer oder Reittierhändler im Spiel.",
+ "Saving for riding training and your first mount, or anything else? Set the amount yourself, or open your riding trainer's window and a mount vendor once in game (then /reload): the app adds up what they charge.": "Sparst du für Reittraining und dein erstes Reittier, oder für etwas anderes? Setze den Betrag selbst, oder öffne einmal im Spiel das Fenster deines Reitlehrers und eines Reittierhändlers (dann /reload): Die App rechnet zusammen, was sie verlangen.",
  "Say again": "Nochmal sagen",
  "Search by item name, e.g. linen cloth": "Suche nach Itemname, z. B. Leinengewebe",
  "Search everything": "Alles durchsuchen",
