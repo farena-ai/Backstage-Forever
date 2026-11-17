@@ -158,3 +158,15 @@ print(BackstageForeverNextBadgeLine())` });
   assert.equal(r.stdout.trim(), "Next badge: Level 20 18/20");
   assert.match(read("addon/BackstageForever/BackstageForeverHUD.lua"), /BackstageForeverNextBadgeLine/);
 });
+
+test("J27 (1.6): Save a picture draws the earned badges from bytes the app hands over, and saves as a badges picture", () => {
+  const main = read("src/main.cjs");
+  assert.match(main, /handle\("badgeArt"/);
+  assert.match(main, /\["journey", "badges"\]\.includes\(kind\)/);
+  assert.match(main, /Backstage-Forever-badges\.png/);
+  assert.match(read("src/preload.cjs"), /badgeArt: \(ids\) => invoke\("badgeArt", ids\)/);
+  const page = read("src/renderer/badges.js");
+  assert.match(page, /data-badge-picture/);
+  assert.match(page, /createImageBitmap\(new Blob\(\[bytes\]/, "no file:// images on the canvas");
+  assert.match(page, /api\.saveSharePicture\(new Uint8Array\(await blob\.arrayBuffer\(\)\), "badges"\)/);
+});

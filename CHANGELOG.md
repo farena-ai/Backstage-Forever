@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.0 — Show it off, stock up, 2026-11-17
+
+- Characters → Badges: Save a picture. A painted picture of a character's earned badges, saved where you choose, to share.
+- Adventure → Professions: the shopping list now says where you already have each material (your bank and mail, and every other character's bags, bank and mail, as last seen) and how many are still to get.
+
 ## 1.5.0 — Graphics, part 2, 2026-11-17
 
 - World Map: the line to a target you dialed in now flows toward it and the target pulses; your trail is footprints turned the way you walked. Still pictures when your system asks for less motion.

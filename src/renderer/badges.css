@@ -58,3 +58,5 @@
 @media (max-width: 1100px) { .bd-summary { grid-template-columns: 140px 1fr; } .bd-next { grid-column: 1 / -1; } }
 @media (prefers-reduced-motion: reduce) { .bd-badge.focus { animation: none; } .bd-badge img { transition: none; } }
 .badges-page .bd-char, .badges-page .bd-filter button { text-shadow: none; }
+.badges-page .bd-picture { margin-left: auto; padding: 4px 12px; border-radius: 6px; border: 1px solid #a5823e; background: #6b3f12; color: #fff1d6; font: 600 13px Georgia, serif; cursor: pointer; text-shadow: none; }
+.badges-page .bd-picture::before, .badges-page .bd-picture::after { display: none; }

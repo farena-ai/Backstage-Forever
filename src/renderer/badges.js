@@ -39,7 +39,7 @@ window.BadgesView = (() => {
         <div class="bd-next"><h2>Closest next</h2>${d.next.length ? `<ul>${d.next.map((b) => `<li><button type="button" data-badge-jump="${esc(b.id)}"><img src="art/badges/${esc(b.id)}.png" alt="" width="40" height="40"><span><strong>${esc(b.name)}</strong><small>${b.progress.have.toLocaleString()} / ${b.progress.need.toLocaleString()} · ${esc(b.how)}</small></span></button></li>`).join("")}</ul>` : `<p>${d.book.earned === d.book.total ? "Every badge earned. Well played!" : "Play on: progress shows up here."}</p>`}</div>
       </div>
       ${chooser(d)}
-      <section class="bd-card"><div class="bd-card-head"><h2>${esc(d.character.name)}'s badges</h2>${filters()}</div>
+      <section class="bd-card"><div class="bd-card-head"><h2>${esc(d.character.name)}'s badges</h2>${filters()}<button type="button" class="bd-picture" data-badge-picture>Save a picture</button></div>
         ${groups.length ? groups.map(([g, list]) => `<h3 class="bd-group">${esc(g)} <small>${list.filter((b) => b.earned).length} / ${d.book.badges.filter((b) => b.group === g).length}</small></h3><ul class="bd-badges">${list.map((b) => badge(b, d.holders[b.id] || [])).join("")}</ul>`).join("") : `<p class="bd-empty">${show === "earned" ? "None earned yet: the first ones come quickly." : "All earned here."}</p>`}
       </section>
       <section class="bd-card"><div class="bd-card-head"><h2>Account badges</h2><small>${d.account.earned} of ${d.account.total} · earned by all your characters together</small></div>
@@ -73,12 +73,39 @@ window.BadgesView = (() => {
     mountedFor = root; sizes(root);
     root.addEventListener("click", (ev) => {
       const ch = ev.target.closest("[data-badge-char]"), sh = ev.target.closest("[data-badge-show]"), jump = ev.target.closest("[data-badge-jump]");
+      if (ev.target.closest("[data-badge-picture]")) { picture(); return; }
       if (ch) { chosen = ch.dataset.badgeChar; focus = null; load(); }
       else if (sh) { show = sh.dataset.badgeShow; redraw(); }
       else if (jump) { focus = jump.dataset.badgeJump; show = "all"; redraw(); }
     });
     // Fresh each visit (a /reload may have earned something), not on every redraw.
     if (!loading && ((!data && !error) || (data && Date.now() - loadedAt > 4000))) load();
+  }
+  // J27 (1.6): a painted picture of this character's earned badges, saved where you choose.
+  async function picture() {
+    const d = data;
+    if (!d?.book) return;
+    const earned = d.book.badges.filter((b) => b.earned);
+    const cols = 6, cell = 150, pad = 40, head = 130, rows = Math.max(1, Math.ceil(earned.length / cols));
+    const c = document.createElement("canvas"); c.width = pad * 2 + cols * cell; c.height = head + rows * (cell + 30) + pad;
+    const g = c.getContext("2d");
+    const bg = g.createLinearGradient(0, 0, 0, c.height); bg.addColorStop(0, "#2a1208"); bg.addColorStop(1, "#120804");
+    g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height);
+    g.strokeStyle = "#b8862e"; g.lineWidth = 4; g.strokeRect(10, 10, c.width - 20, c.height - 20);
+    g.fillStyle = "#f6dc9a"; g.textAlign = "center"; g.font = "700 40px Cinzel, Georgia, serif"; g.fillText(`${d.character.name}'s badge case`, c.width / 2, 66);
+    g.font = "600 20px Georgia, serif"; g.fillStyle = "#e8c983";
+    g.fillText(`${d.book.earned} of ${d.book.total} badges${d.character.level ? ` · level ${d.character.level}` : ""}${d.character.className ? ` ${d.character.className}` : ""} · Backstage Forever`, c.width / 2, 100);
+    const art = await api.badgeArt(earned.map((b) => b.id)).catch(() => []);
+    for (let i = 0; i < earned.length; i++) {
+      const x = pad + (i % cols) * cell, y = head + Math.floor(i / cols) * (cell + 30);
+      const bytes = art?.[i];
+      if (bytes) { try { const bmp = await createImageBitmap(new Blob([bytes], { type: "image/png" })); g.drawImage(bmp, x + 15, y, 120, 120); } catch {} }
+      g.fillStyle = "#f6dc9a"; g.font = "700 15px Georgia, serif"; g.fillText(earned[i].name, x + cell / 2, y + 140);
+    }
+    if (!earned.length) { g.fillStyle = "#e8c983"; g.font = "600 22px Georgia, serif"; g.fillText("The first badges come quickly.", c.width / 2, head + 60); }
+    const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+    try { const saved = await api.saveSharePicture(new Uint8Array(await blob.arrayBuffer()), "badges"); if (saved) window.toast?.("Picture saved."); }
+    catch (e) { window.toast?.(e.message || "The picture could not be saved."); }
   }
   // Opened from the new-badge banner: that character, that badge.
   function open(profileId, badgeId) { chosen = profileId || null; focus = badgeId || null; show = "all"; data = null; }

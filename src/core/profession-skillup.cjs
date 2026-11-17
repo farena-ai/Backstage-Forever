@@ -66,7 +66,21 @@ function near(positions, here) {
  * vendor seen selling it (name and map position, nearest to you when it was seen on your
  * map), gathering (your own finds or a historical gathering source), or gather/buy.
  */
-function shoppingList(rows, { crafts = 1, profile = null } = {}) {
+// J30 (1.6): where you already have a material: this character's bank and mail, and every other
+// character's bags, bank and mail, from their ledgers (as last seen).
+function elsewhereOf(itemId, profile, profiles) {
+  const out = [];
+  for (const p of profiles || []) {
+    const l = p?.ledger;
+    if (!l) continue;
+    const count = (key) => (l[key]?.items || []).filter((e) => e.id === itemId).reduce((t, e) => t + e.n, 0);
+    const mine = p.id === profile?.id;
+    const bags = mine ? 0 : count("bags"), bank = count("bank"), mail = count("mail");
+    if (bags + bank + mail > 0) out.push({ profileId: p.id, name: p.name, mine, bags, bank, mail, total: bags + bank + mail });
+  }
+  return out.sort((a, b) => (b.mine ? 1 : 0) - (a.mine ? 1 : 0) || b.total - a.total);
+}
+function shoppingList(rows, { crafts = 1, profile = null, profiles = [] } = {}) {
   const here = profile?.location && Number.isSafeInteger(profile.location.mapId) && Number.isFinite(profile.location.x) && Number.isFinite(profile.location.y) ? profile.location : null;
   const finds = new Map();
   // Gathering finds only: chest loot is random, not a place to gather a material.
@@ -78,8 +92,10 @@ function shoppingList(rows, { crafts = 1, profile = null } = {}) {
     const own = finds.get(row.itemId) || null;
     const source = seller ? "vendor" : own || gathered ? "gather" : "other";
     const need = row.missing ?? row.required;
+    const elsewhere = elsewhereOf(row.itemId, profile, profiles), stored = elsewhere.reduce((t, e) => t + e.total, 0);
     return {
       itemId: row.itemId, name: row.name, required: row.required, have: row.have, missing: row.missing, need, quantityKind: row.quantityKind, source,
+      elsewhere, stillToGet: Number.isFinite(need) ? Math.max(0, need - stored) : null,
       vendor: seller ? { id: seller.id, name: seller.name, suggested: Boolean(seller.suggested), mapId: at?.mapId ?? null, mapName: at ? MAP_NAMES[at.mapId] || `Map ${at.mapId}` : null, x: at?.x ?? null, y: at?.y ?? null, otherSellers: Math.max(0, (row.historicalSellers?.observedSellerCount || sellers.length) - 1) } : null,
       gather: own ? { kind: own.method, name: own.name, mapId: own.mapId, mapName: MAP_NAMES[own.mapId] || `Map ${own.mapId}`, x: own.x, y: own.y, yours: true }
         : gathered ? { kind: gathered.gatherSpellId === 2368 ? "herbalism" : gathered.gatherSpellId === 2576 ? "mining" : "gathering", name: gathered.referenceName, mapId: gathered.positions?.[0]?.mapId ?? null, mapName: gathered.positions?.[0] ? MAP_NAMES[gathered.positions[0].mapId] || `Map ${gathered.positions[0].mapId}` : null, x: gathered.positions?.[0]?.x ?? null, y: gathered.positions?.[0]?.y ?? null, yours: false }
@@ -93,4 +109,4 @@ function shoppingList(rows, { crafts = 1, profile = null } = {}) {
     note: "Vendor listings are historical observations: stock, price and access are unverified. Gather/buy means no seller was observed; try gathering, the auction house or trade.",
   };
 }
-module.exports = { SKILL_COLORS, RANK, difficultyOf, skillColor, colorRank, materialUnits, skillUpCountdown, shoppingList };
+module.exports = { SKILL_COLORS, RANK, difficultyOf, skillColor, colorRank, materialUnits, skillUpCountdown, shoppingList, elsewhereOf };
