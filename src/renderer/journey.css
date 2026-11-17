@@ -65,3 +65,9 @@
 .jr-sessions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .jr-sessions li { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 5px 8px; border-radius: 5px; background: rgba(239,224,187,.5); border: 1px solid rgba(165,130,62,.45); font-size: 13px; }
 .jr-sessions strong { color: #3d220c; }
+/* 1.4 (J17): this week. */
+.jr-week { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.jr-week li { display: flex; flex-direction: column; padding: 8px 10px; border-radius: 6px; background: rgba(60,40,18,.12); border: 1px solid rgba(138,90,24,.35); }
+.jr-week strong { font: 700 20px Georgia, serif; color: #3d220c; }
+.jr-week span { font-size: 12px; color: #5a3e1c; }
+.jr-week-badges, .jr-week-all { margin: 8px 0 0; font-size: 13px; color: #4a3218; }

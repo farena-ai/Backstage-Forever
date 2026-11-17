@@ -26,7 +26,7 @@ window.GuidedRouteView = (() => {
       <div class="gr-bar" role="img" aria-label="${pct}% of the route done"><span data-w="${pct}"></span></div>
       ${r.gaps.length ? `<p class="gr-note">Not covered yet for ${esc(r.race)}: levels ${esc(gapText(r.gaps))}. Do the quests around you there (/bf route zone); the route picks up again after.</p>` : ""}
       <section class="gr-card"><h2>Your next steps</h2>${steps}<p class="gr-note">Worked out from your last save${d.character.level ? ` (level ${d.character.level})` : ""}. In game the guide follows you live. Zones on this route: ${esc(r.zones.join(", "))}.</p></section>
-      <section class="gr-card"><h2>How far each route reaches</h2>${coverage(d.coverage)}<p class="gr-note">Routes are built from the quest data we have and grow as community data and your own play fill the gaps. Steps marked reviewed have been checked by hand.</p></section>`;
+      <section class="gr-card"><h2>How far each route reaches</h2>${coverage(d.coverage)}<p class="gr-note">Routes are built from the quest data we have and grow as community data and your own play fill the gaps: each quest you accept teaches the app where its giver stands, so routes past level 42 fill in as your characters play there. Steps marked reviewed have been checked by hand.</p></section>`;
   }
   function reviewPanel() {
     if (!review) return `<section class="gr-card gr-review-closed"><h2>Review the routes</h2><p>Go through any race's route step by step: ✓ keeps a step, ✗ leaves it out, ↑ ↓ move it. Your review shows here at once; <strong>Export review</strong> saves it as <code>reviews.json</code>, and the next release builds it into the addon.</p><button type="button" class="gr-map" data-gr-review="open">Start reviewing</button></section>`;

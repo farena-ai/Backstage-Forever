@@ -15,19 +15,36 @@ const ALIASES = { Scourge: "Undead", NightElf: "Night Elf" };
 const raceBits = (mask) => (typeof mask === "string" && /^[0-9a-f]{16}$/i.test(mask) ? parseInt(mask.slice(8), 16) >>> 0 : 0xffffffff);
 const singleRace = (mask) => { const b = raceBits(mask); return b !== 0 && (b & (b - 1)) === 0; };
 
-function spot(pack, ref) {
+function spot(pack, ref, learned = null) {
   const n = ref && pack.npcs?.[`${ref.kind}:${ref.id}`];
   const p = n?.positions?.[0];
-  return n && p && Number.isFinite(p.x) && Number.isFinite(p.y) ? { npc: n.name, mapId: p.mapId, x: p.x, y: p.y } : null;
+  if (n && p && Number.isFinite(p.x) && Number.isFinite(p.y)) return { npc: n.name, mapId: p.mapId, x: p.x, y: p.y };
+  // 1.4 (J14): a position the player's own characters learned, or the NPC location pack.
+  const l = ref && ref.kind !== "object" ? learned?.npcs?.get(ref.id) : null;
+  return l ? { npc: n?.name || l.name || "the quest giver", mapId: l.mapId, x: l.x, y: l.y, learned: true } : null;
 }
-function questsByZone(pack, faction, race = null) {
+/**
+ * 1.4 (J14): quest givers learned from play (journal givers of every character) plus the NPC
+ * location pack. npcs: npcId -> { mapId, x, y, name? }; quests: questId -> npcId.
+ */
+function learnedGivers(profiles = [], npcLocations = null) {
+  const npcs = new Map(), quests = new Map();
+  for (const n of npcLocations?.npcs || []) { const p = n?.positions?.[0]; if (Number.isSafeInteger(n.id) && p && Number.isFinite(p.x)) npcs.set(n.id, { mapId: p.mapId, x: p.x, y: p.y, name: n.name || null }); }
+  for (const pr of profiles || []) for (const g of pr?.journal?.givers || []) {
+    if (!npcs.has(g.n) || npcs.get(g.n).fromPlay !== true) npcs.set(g.n, { mapId: g.m, x: g.x, y: g.y, name: npcs.get(g.n)?.name || null, fromPlay: true });
+    if (!quests.has(g.q)) quests.set(g.q, g.n);
+  }
+  return { npcs, quests };
+}
+function questsByZone(pack, faction, race = null, learned = null) {
   const by = new Map(), bit = race ? RACES[race] : 0;
   for (const q of Object.values(pack.quests || {})) {
     if (!q.level || (q.sides?.length && !q.sides.includes(faction))) continue;
     if (bit && !(raceBits(q.raceMask) & bit)) continue;
-    const g = spot(pack, q.givers?.find((r) => r.kind === "npc") || q.givers?.[0]);
+    const giverRef = q.givers?.find((r) => r.kind === "npc") || q.givers?.[0] || (learned?.quests?.has(q.id) ? { kind: "npc", id: learned.quests.get(q.id) } : null);
+    const g = spot(pack, giverRef, learned);
     if (!g) continue;
-    const t = spot(pack, q.turnIns?.find((r) => r.kind === "npc") || q.turnIns?.[0]);
+    const t = spot(pack, q.turnIns?.find((r) => r.kind === "npc") || q.turnIns?.[0], learned);
     const o = (q.objectiveLocations || []).map((l) => l.positions?.[0]).find((p) => p && Number.isFinite(p.x) && p.mapId === g.mapId) || null;
     const row = { id: q.id, title: q.title, level: q.level, minLevel: q.minLevel || 1, giver: g, turnIn: t, objective: o, single: singleRace(q.raceMask) };
     if (!by.has(g.mapId)) by.set(g.mapId, []);
@@ -77,7 +94,7 @@ function wave(quests, mapId, from) {
 }
 
 /** A route from one starting zone. zones: the leveling pack's zones. */
-function buildRoute({ pack, zones, start, faction, race = null, byZone = questsByZone(pack, faction, race) }) {
+function buildRoute({ pack, zones, start, faction, race = null, learned = null, byZone = questsByZone(pack, faction, race, learned) }) {
   const open = zones.filter((z) => z.mapId !== start.mapId && !z.starter && (z.faction === faction || z.faction === "Contested"));
   const steps = [], used = new Set(), visited = [];
   let level = 1, here = start.mapId, last = null, zone = start;
@@ -201,12 +218,12 @@ function position(route, { completed = [], inLog = [], complete = [], level = 1,
   return at < 0 ? { ended: true, index: steps.length, total: steps.length, done: steps.length } : { ended: false, index: at, total: steps.length, done: done.filter(Boolean).length };
 }
 
-function buildGuidedRoutes({ pack, zones, reviews = null, raw = null }) {
+function buildGuidedRoutes({ pack, zones, reviews = null, raw = null, learned = null }) {
   const routes = [];
   for (const race of Object.keys(RACES)) {
     const start = zones.find((z) => z.starter?.some((r) => (ALIASES[r] || r) === race));
     if (!start) continue;
-    const built = buildRoute({ pack, zones, start, faction: start.faction, race });
+    const built = buildRoute({ pack, zones, start, faction: start.faction, race, learned });
     if (raw) raw[race] = built; // unreviewed, for the review page
     routes.push(applyReview(built, reviews?.routes?.[race] || null));
   }
@@ -217,4 +234,4 @@ function buildGuidedRoutes({ pack, zones, reviews = null, raw = null }) {
   }
   return { routes, coverage };
 }
-module.exports = { buildGuidedRoutes, buildRoute, applyReview, mergeReviews, reviewAction, exportReview, walk, questsByZone, raceBits, position, stepDone, RACES, ALIASES };
+module.exports = { buildGuidedRoutes, buildRoute, learnedGivers, applyReview, mergeReviews, reviewAction, exportReview, walk, questsByZone, raceBits, position, stepDone, RACES, ALIASES };

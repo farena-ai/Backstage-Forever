@@ -102,6 +102,7 @@ contextBridge.exposeInMainWorld(
     talentCoach: (input) => invoke("talentCoach", input),
     journey: () => invoke("journey"),
     badges: (profileId = null) => invoke("badges", profileId),
+    weekly: () => invoke("weekly"),
     alts: () => invoke("alts"),
     ledger: () => invoke("ledger"),
     setGoldGoal: (goal) => invoke("setGoldGoal", goal),

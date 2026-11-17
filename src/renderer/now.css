@@ -266,3 +266,13 @@
 .now-cost .now-warn { color: #a3361f; font-weight: 600; }
 .now-costs li { grid-template-columns: 40px 1fr; }
 .now-cost-hint small { opacity: .85; }
+/* 1.4 (J17, J18): reminders and this week. */
+.now-weekly { margin: 0 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.now-reminders { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.now-rem { padding: 4px 12px; border-radius: 14px; font-size: 13px; background: rgba(40,20,8,.75); border: 1px solid #a5823e; color: #f1dcb0; }
+.now-rem-rested { border-color: #4a8ad8; }
+.now-rem-cooldown { border-color: #2e9b4e; }
+.now-rem-mail { border-color: #d89a2e; }
+.now-rem-goal { border-color: #f6c445; }
+.now-week { margin: 0; color: #f1dcb0; font-size: 14px; }
+.now-week .now-link { margin-left: 6px; }

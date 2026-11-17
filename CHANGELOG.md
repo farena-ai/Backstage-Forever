@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0 — Your evenings, planned, 2026-11-17
+
+- Companion: "how do I get Bear Form", "when do I get my Voidwalker", "tips for VanCleef", "fastest way to Honored with Orgrimmar" are answered right away from the class unlocks, boss tips and reputation quests, without an AI service. Nine new benchmark questions cover them; the existing benchmarks score the same as before.
+- Plan my evening: tell the Companion how long you have ("I have 90 minutes") and it lays out bags, the next step, a dungeon if there's time, and how many quests of your zone fit, with rough minutes and the levels to expect at your pace.
+- This week: Now shows a one-line summary (levels, badges, time played, gold) and Characters → Journey a This week card with your fastest level and every character's progress.
+- Reminders on Now: a character whose rested XP is full, a ready profession cooldown, mail about to expire, a gold goal reached.
+- Guided route: each quest you accept teaches the app where its giver stands (the addon notes the quest giver and your spot when you accept). Routes stop where the bundled data stops (level 42 today) and now grow past it as your characters play there.
+- Fix (addon): a quest giver's id is read correctly from its GUID.
+
 ## 1.3.0 — Deeper guidance, 2026-11-17
 
 - Characters → Talents: Class quests and key unlocks for your class (Bear Form, your pet, totems, demons, stances, Redemption, poisons, teleports and more), with past ones dimmed and the next ones highlighted. Shown even before your talent trees are read.

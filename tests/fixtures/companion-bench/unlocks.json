@@ -1,0 +1,14 @@
+{
+  "note": "1.4 (J15): questions answered from the 1.3 knowledge (boss tips, class unlocks, reputation quests). Facts from src/core/boss-tips.cjs, src/core/class-unlocks.cjs and data/forever/pack.json quest reputation rewards.",
+  "questions": [
+    { "id": "boss-01", "category": "boss-tip", "profile": "alliance-warrior-12", "question": "any tips for edwin vancleef?", "expect": { "intent": "boss-tip", "mustInclude": ["VanCleef", "Blackguard"] } },
+    { "id": "boss-02", "category": "boss-tip", "profile": "horde-hunter-16", "question": "how do we beat mutanus", "expect": { "intent": "boss-tip", "mustInclude": ["Mutanus", "Nightmare"] } },
+    { "id": "boss-03", "category": "boss-tip", "profile": "horde-priest-21", "question": "tactics for Arugal in shadowfang", "expect": { "intent": "boss-tip", "mustInclude": ["Arugal", "curse"] } },
+    { "id": "unlock-01", "category": "class-unlock", "profile": "horde-hunter-16", "question": "when do I get my pet?", "expect": { "intent": "class-unlock", "mustInclude": ["level 10", "hunter trainer"] } },
+    { "id": "unlock-02", "category": "class-unlock", "profile": "alliance-warrior-12", "question": "how do i get defensive stance", "expect": { "intent": "class-unlock", "mustInclude": ["Defensive Stance", "level 10"] } },
+    { "id": "unlock-03", "category": "class-unlock", "profile": "alliance-mage-34", "question": "what level do mages learn portals", "expect": { "intent": "class-unlock", "mustInclude": ["Portals", "40"] } },
+    { "id": "unlock-04", "category": "class-unlock", "profile": "horde-priest-21", "question": "how do druids get bear form", "expect": { "intent": "class-unlock", "mustInclude": ["Bear Form", "Moonglade"] } },
+    { "id": "rep-01", "category": "reputation", "profile": "horde-hunter-16", "question": "fastest way to honored with orgrimmar", "expect": { "intent": "reputation", "mustInclude": ["Orgrimmar", "+"] } },
+    { "id": "rep-02", "category": "reputation", "profile": "alliance-warrior-12", "question": "how do I get reputation with stormwind", "expect": { "intent": "reputation", "mustInclude": ["Stormwind", "+"] } }
+  ]
+}
