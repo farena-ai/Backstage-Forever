@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 — Badges in game, and what was half-built, 2026-11-17
+
+- In game: `/bf badges` says how many badges this character has earned and the three closest to earning; `/bf badges all` lists them by group. A newly earned badge gets a small banner in game. Same 30 badges and rules as the app.
+- World Map (M): a Gathering spots layer in the BF Guide shows herbs, ore and chests you gathered before, greyed when the node needs more skill than you have; `/bf nodes` leaves those out and says how many. Classic skill levels for every common node.
+- Item tooltips: what you saw the item sell for at auction and what a vendor pays, in green with "Worth more at the Auction House" when auction clearly pays more after its 5% cut; and which quest in your log needs the item ("Needed for Rites of the Earthmother: 3/8"). `/bf prices tips` hides the price line.
+- `/bf sell`: what in your bags is worth more at auction than at a vendor, and what a vendor should get. It never sells or posts anything.
+- A Gear sets button beside the character window lists your saved sets; one click wears one from your bags. Disabled in combat.
+- Quest icons over enemies: a small ! above the nameplate of any enemy a quest in your log still needs. `/bf plates off` hides them. Icons are kept in the addon's own table; nothing is written onto the game's frames.
+- Fix: reputation badges read saved reputations correctly, so Honored, Revered and Exalted unlock from real saves.
+- Help → Commands and `/bf help` list the new commands and features.
+
 ## 1.1.0 — Badges you can look back on, 2026-11-17
 
 - New page: Characters → Badges. Every badge a character has earned, with the date, grouped and filterable (all, earned, still to earn); the latest five; the three closest to earning with progress; a chip per character to switch; who else on your account holds each badge; and account badges earned by all your characters together. The new-badge banner now says "See all your badges" and opens the page on that badge.

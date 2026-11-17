@@ -507,6 +507,18 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverLedgerCommand)=='function' then pcall(BackstageForeverLedgerCommand,message)end
                 return
             end
+            if word=='plates' then
+                if type(BackstageForeverPlatesCommand)=='function' then pcall(BackstageForeverPlatesCommand,message)end
+                return
+            end
+            if word=='sell' then
+                if type(BackstageForeverSellCommand)=='function' then pcall(BackstageForeverSellCommand,message)end
+                return
+            end
+            if word=='badges' then
+                if type(BackstageForeverBadgesCommand)=='function' then pcall(BackstageForeverBadgesCommand,message)end
+                return
+            end
             if word=='set' then
                 if type(BackstageForeverSetCommand)=='function' then pcall(BackstageForeverSetCommand,message)end
                 return

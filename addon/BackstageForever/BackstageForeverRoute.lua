@@ -42,6 +42,7 @@ local function loadSettings()
     if settings.arrow==nil then settings.arrow=true end
     if settings.tooltips==nil then settings.tooltips=true end
     if settings.arrivals==nil then settings.arrivals=true end
+    if settings.plates==nil then settings.plates=true end
     if settings.mode~='guide' then settings.mode='zone' end
     if type(settings.skipped)~='table' then settings.skipped={} end
     return settings
@@ -329,6 +330,80 @@ local function onUnitTooltip(tip)
     method(tip,'Show')
 end
 
+-- A1 part 2 (1.2, J8): a small quest icon over enemies a quest in your log still needs, on their
+-- nameplates. Textures only, on nameplates the game lets addons touch; nothing in combat is created.
+local plateLog,plateLogAt=nil,0
+local plateIcons=setmetatable({},{__mode='k'}) -- our own map: nothing is written onto the game's frames
+local function plateQuests()
+    local t=call(GetTime) or 0
+    if not plateLog or t-plateLogAt>2 then
+        plateLog=questLog();for _,q in ipairs(plateLog) do q.objectives=objectives(q.id) end;plateLogAt=t
+    end
+    return plateLog
+end
+local function npcOf(u)
+    local guid=str(call(UnitGUID,u),80)
+    if guid then local kind,id=guid:match('^(%a+)%-%d+%-%d+%-%d+%-%d+%-(%d+)');if kind=='Creature' then return tonumber(id) end end
+end
+function BackstageForeverPlateNeeds(u)
+    if not u or call(UnitIsPlayer,u) or call(UnitIsDead,u) then return false end
+    local db=plain(BackstageForeverQuestItemSourcesDB)
+    local lines=BackstageForeverObjectiveLines(str(call(UnitName,u),80),npcOf(u),plateQuests(),type(db)=='table' and db.items or nil)
+    return #lines>0,lines[1]
+end
+local function plateFor(u)
+    local np=plain(C_NamePlate);local plate=np and call(field(np,'GetNamePlateForUnit'),u)
+    if not plate or method(plate,'IsForbidden')==true then return nil end
+    return plate
+end
+local function markPlate(u)
+    local plate=plateFor(u);if not plate then return end
+    local need=settings and settings.plates~=false and BackstageForeverPlateNeeds(u)
+    local icon=plateIcons[plate]
+    if need and not icon then
+        if combat() then return end
+        icon=method(plate,'CreateTexture',nil,'OVERLAY');if not icon then return end
+        method(icon,'SetTexture','Interface\\GossipFrame\\AvailableQuestIcon');method(icon,'SetSize',18,18)
+        method(icon,'SetPoint','BOTTOM',plate,'TOP',0,-2)
+        plateIcons[plate]=icon
+    end
+    if icon then method(icon,need and 'Show' or 'Hide') end
+end
+local function unmarkPlate(u)
+    local plate=plateFor(u);local icon=plate and plateIcons[plate]
+    if icon then method(icon,'Hide') end
+end
+local function markAll()
+    local np=plain(C_NamePlate);local plates=np and call(field(np,'GetNamePlates'))
+    plateLog=nil
+    for _,plate in ipairs(type(plates)=='table' and plates or {}) do
+        local u=str(field(field(plate,'UnitFrame'),'unit'),40) or str(field(plate,'namePlateUnitToken'),40)
+        if u then pcall(markPlate,u) end
+    end
+end
+BackstageForeverPlatesRefresh=markAll
+function BackstageForeverPlatesCommand(message)
+    if not settings then loadSettings() end
+    local arg=(type(message)=='string' and message:lower() or ''):match('^%a+%s*(%a*)') or ''
+    if arg=='on' then settings.plates=true elseif arg=='off' then settings.plates=false else settings.plates=settings.plates==false end
+    markAll()
+    local chat=plain(DEFAULT_CHAT_FRAME)
+    if type(chat)=='table' then pcall(chat.AddMessage,chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(settings.plates and 'Quest icons over enemies on: a ! shows over enemies a quest in your log still needs (nameplates must be on, V key).' or 'Quest icons over enemies off.')) end
+    return settings.plates
+end
+if type(CreateFrame)=='function' then
+    local pf=CreateFrame('Frame')
+    if pf then
+        for _,e in ipairs({'NAME_PLATE_UNIT_ADDED','NAME_PLATE_UNIT_REMOVED','QUEST_LOG_UPDATE','UNIT_QUEST_LOG_CHANGED'}) do pcall(pf.RegisterEvent,pf,e) end
+        pcall(pf.SetScript,pf,'OnEvent',function(_,event,u)
+            if not settings then loadSettings() end
+            u=str(u,40)
+            if event=='NAME_PLATE_UNIT_ADDED' then if u then pcall(markPlate,u) end
+            elseif event=='NAME_PLATE_UNIT_REMOVED' then if u then pcall(unmarkPlate,u) end
+            else pcall(markAll) end
+        end)
+    end
+end
 -- G2/G13: painted zone arrival banner with the zone's level band and quests on offer.
 -- Textures and font strings only. Each painting is Art\Zones\<mapId>.tga (1024x128; the dark centre and
 -- the gold frame are part of the painting); maps without their own painting use Art\Zones\default.tga.

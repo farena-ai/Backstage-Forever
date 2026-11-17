@@ -78,6 +78,81 @@ function BackstageForeverJournalSnapshot()
     return {levels=levels,firsts=firsts,zones=zones,played=d.played}
 end
 
+-- Badges in game (1.1.1): the same rules as the app's Characters → Badges, from what this
+-- character knows right now. /bf badges lists them; a new one gets a small toast.
+local BADGES={}
+local function add(id,group,name,how,test) BADGES[#BADGES+1]={id=id,group=group,name=name,how=how,test=test} end
+for _,n in ipairs({10,20,30,40,50,60}) do add('level-'..n,'Levels','Level '..n,'Reach level '..n..'.',function(f) return f.level>=n,f.level,n end) end
+for _,b in ipairs({{25,'Errand runner'},{100,'Quest hero'},{500,'Living legend'}}) do add('quests-'..b[1],'Quests',b[2],'Complete '..b[1]..' quests.',function(f) return f.quests>=b[1],f.quests,b[1] end) end
+for _,b in ipairs({{5,'Wanderer'},{15,'Pathfinder'},{30,'World explorer'}}) do add('explorer-'..b[1],'Exploring',b[2],'Visit '..b[1]..' zones.',function(f) return f.zones>=b[1],f.zones,b[1] end) end
+for _,b in ipairs({{'dungeon','Into the depths','Enter your first dungeon.'},{'flight','Taking wing','Take your first flight.'},{'mount','Saddle up','Ride your own mount.'},{'group','Better together','Join a group.'},{'hearth','Home again','Use your Hearthstone.'},{'rested','Well rested','Earn a rested bonus by logging out in an inn or city.'},{'death','Back from the dead','Die once (it happens to everyone) and run back.'}}) do
+    add('first-'..b[1],'Firsts',b[2],b[3],function(f) return f.firsts[b[1]]==true end)
+end
+add('speed','Speed','Fast learner','Gain a level in under one hour of play.',function(f) return f.fastest~=nil and f.fastest<3600 end)
+for _,b in ipairs({{75,'Apprentice'},{150,'Journeyman'},{225,'Expert'},{300,'Artisan'}}) do add('profession-'..b[1],'Professions',b[2],'Reach skill '..b[1]..' in any profession.',function(f) return f.profession>=b[1],f.profession,b[1] end) end
+for _,b in ipairs({{10,'Pocket money'},{100,'Mount money'},{1000,'Gold baron'}}) do add('gold-'..b[1],'Gold',b[2],'Carry '..b[1]..' gold at once.',function(f) return f.gold>=b[1],f.gold,b[1] end) end
+for _,b in ipairs({{6,'rep-honored','Good friends','Honored'},{7,'rep-revered','Trusted ally','Revered'},{8,'rep-exalted','Exalted','Exalted'}}) do add(b[2],'Reputation',b[3],'Reach '..b[4]..' with any faction.',function(f) return f.standing>=b[1] end) end
+
+-- Facts: the journal here, live values from the game, the rest from the last save of this character.
+function BackstageForeverBadgeFacts()
+    local d=store()
+    local saved=type(BackstageForeverSavedFacts)=='function' and select(2,pcall(BackstageForeverSavedFacts)) or nil
+    if type(saved)~='table' then saved={} end
+    local f={level=int(call(UnitLevel,'player'),0,1000) or int(saved.level,0,1000) or 0,zones=#d.zones,firsts={},fastest=nil,
+        quests=int(saved.quests,0,100000) or 0,profession=int(saved.profession,0,10000) or 0,standing=int(saved.standing,0,8) or 0}
+    local copper=int(call(GetMoney),0,10^12) or int(saved.money,0,10^12) or 0
+    f.gold=floor(copper/10000)
+    for _,x in ipairs(d.firsts) do f.firsts[x.key]=true end
+    for i=2,#d.levels do
+        local a,b=d.levels[i-1],d.levels[i]
+        if a.played and b.played and b.level==a.level+1 and b.played>a.played then local s=b.played-a.played;if not f.fastest or s<f.fastest then f.fastest=s end end
+    end
+    return f
+end
+function BackstageForeverBadgeList(f)
+    f=f or BackstageForeverBadgeFacts()
+    local out,earned={},0
+    for _,b in ipairs(BADGES) do
+        local ok,done,have,need=pcall(b.test,f)
+        done=ok and done==true
+        if done then earned=earned+1 end
+        out[#out+1]={id=b.id,group=b.group,name=b.name,how=b.how,earned=done,have=ok and have or nil,need=ok and need or nil}
+    end
+    return out,earned
+end
+-- Newly earned since last check: a toast each (at most two), the first check is the baseline.
+function BackstageForeverBadgeCheck(quiet)
+    local d=store();local list=BackstageForeverBadgeList()
+    local first=type(d.badges)~='table';if first then d.badges={} end
+    local seen={};for _,id in ipairs(d.badges) do seen[id]=true end
+    local fresh={}
+    for _,b in ipairs(list) do if b.earned and not seen[b.id] then fresh[#fresh+1]=b;d.badges[#d.badges+1]=b.id end end
+    if not first and not quiet and type(BackstageForeverToast)=='function' then
+        for i=1,min(#fresh,2) do pcall(BackstageForeverToast,'Badge earned: '..fresh[i].name,fresh[i].how..' See them all with /bf badges or in the app.',nil,'badge') end
+    end
+    return fresh
+end
+local function say(line)
+    local chat=plain(DEFAULT_CHAT_FRAME)
+    if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(line)) end
+end
+function BackstageForeverBadgesCommand(message)
+    local list,earned=BackstageForeverBadgeList()
+    BackstageForeverBadgeCheck(true)
+    local wantAll=type(message)=='string' and message:lower():match('^badges%s+all')
+    say(string.format('%d of %d badges earned.',earned,#list))
+    if wantAll then
+        local groups,order={},{}
+        for _,b in ipairs(list) do if b.earned then if not groups[b.group] then groups[b.group]={};order[#order+1]=b.group end;table.insert(groups[b.group],b.name) end end
+        for _,g in ipairs(order) do say(g..': '..table.concat(groups[g],', ')) end
+    end
+    local upcoming={}
+    for _,b in ipairs(list) do if not b.earned and type(b.have)=='number' and type(b.need)=='number' and b.need>0 and b.have>0 then upcoming[#upcoming+1]=b end end
+    table.sort(upcoming,function(x,y) local a,c=x.have/x.need,y.have/y.need;if a~=c then return a>c end;return x.need<y.need end)
+    for i=1,min(#upcoming,3) do local b=upcoming[i];say(string.format('Next: %s, %d / %d. %s',b.name,min(b.have,b.need),b.need,b.how)) end
+    if not wantAll then say('Type /bf badges all for the full list; the app shows them all with dates in Characters > Badges.') end
+end
+
 -- Quiet /played: chat windows briefly stop listening for the play-time message while our own
 -- request is answered, then listen again. Blizzard's chat functions are never replaced (replacing
 -- them taints the default UI and triggers "blocked from an action only available to the Blizzard UI").
@@ -136,7 +211,8 @@ if type(CreateFrame)=='function' then
                 local level=int(call(UnitLevel,'player'),1,1000)
                 if level and #db.levels==0 then BackstageForeverJournalLevel(level,now()) end
                 requestPlayed()
-            elseif event=='PLAYER_LEVEL_UP' then BackstageForeverJournalLevel(a,now());requestPlayed()
+                local timer=plain(C_Timer);if type(timer)=='table' and type(timer.After)=='function' then pcall(timer.After,20,function() pcall(BackstageForeverBadgeCheck) end) end
+            elseif event=='PLAYER_LEVEL_UP' then BackstageForeverJournalLevel(a,now());requestPlayed();pcall(BackstageForeverBadgeCheck)
             elseif event=='TIME_PLAYED_MSG' then BackstageForeverJournalPlayed(a)
                 local timer=plain(C_Timer);if type(timer)=='table' and type(timer.After)=='function' then pcall(timer.After,0,unmute) else unmute() end
             elseif event=='PLAYER_ENTERING_WORLD' or event=='ZONE_CHANGED_NEW_AREA' then

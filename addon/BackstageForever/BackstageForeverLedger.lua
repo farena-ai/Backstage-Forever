@@ -375,15 +375,158 @@ end
 local function priceCount(d)
     local n=0;for _ in pairs(d.prices) do n=n+1 end;return n
 end
+-- Price advice (1.2, J5): what you saw at auction against what a vendor pays. Pure; the auction
+-- house keeps 5% of a sale, so "worth auctioning" means clearly more than the vendor after that cut.
+local AH_CUT=0.95
+function BackstageForeverPriceAdvice(id,vendor,quality,count,at)
+    local d=store();id=int(id,1,2147483647);if not id then return nil end
+    vendor=int(vendor,0,MONEY_MAX);count=int(count,1,100000) or 1;quality=int(quality,0,7)
+    local e=d.prices[id];local top=type(e)=='table' and type(e.hist)=='table' and e.hist[1] or nil
+    local auction=type(top)=='table' and int(top[1],1,MONEY_MAX) or nil
+    local seenAt=type(top)=='table' and int(top[2],0,253402300799) or nil
+    if not auction and not (vendor and vendor>0) then return nil end
+    local verdict=nil
+    if auction and auction*AH_CUT>(vendor or 0)*1.5 and auction*AH_CUT-(vendor or 0)>=20 then verdict='auction'
+    elseif quality==0 or (auction and vendor and vendor>0 and auction*AH_CUT<=vendor) then verdict='vendor' end
+    return {id=id,auction=auction,seenAt=seenAt,vendor=vendor,count=count,verdict=verdict,
+        each=verdict=='auction' and floor(auction*AH_CUT) or vendor or 0}
+end
+function BackstageForeverPriceLine(advice,at)
+    if type(advice)~='table' then return nil end
+    local parts={}
+    if advice.auction then parts[#parts+1]='auction ~'..coins(advice.auction)..(advice.seenAt and (' ('..ago(advice.seenAt)..')') or '') end
+    if advice.vendor and advice.vendor>0 then parts[#parts+1]='vendor '..coins(advice.vendor) end
+    if #parts==0 then return nil end
+    local line='BF: '..table.concat(parts,' · ')
+    if advice.count>1 and advice.each>0 then line=line..' · stack '..coins(advice.each*advice.count) end
+    if advice.verdict=='auction' then return line,0.25,1,0.25,'Worth more at the Auction House' end
+    if advice.verdict=='vendor' then return line,0.8,0.8,0.8,'Sell to a vendor' end
+    return line,0.8,0.8,0.8
+end
+-- Quest use (1.2, J7): "Needed for The Sacred Flame: 3/8" on items your quest log asks for.
+-- Read from your own quest log on demand and kept until the log changes.
+local questUse=nil
+function BackstageForeverQuestUseIndex()
+    if questUse then return questUse end
+    questUse={}
+    local api=plain(C_QuestLog);if type(api)~='table' then return questUse end
+    local n=int(call(api.GetNumQuestLogEntries),0,100) or 0
+    for i=1,n do
+        local info=call(api.GetInfo,i)
+        if type(info)=='table' and field(info,'isHeader')~=true then
+            local id=int(field(info,'questID'),1,2147483647);local title=str(field(info,'title'),100)
+            local objectives=id and call(api.GetQuestObjectives,id)
+            if title and type(objectives)=='table' then
+                for _,o in ipairs(objectives) do
+                    local text=str(field(o,'text'),200)
+                    if field(o,'type')=='item' and text then
+                        local name,have,need=text:match('^(.-):%s*(%d+)%s*/%s*(%d+)$')
+                        if not name then have,need,name=text:match('^(%d+)%s*/%s*(%d+)%s+(.+)$') end
+                        if name then questUse[name:lower()]={quest=title,have=tonumber(have),need=tonumber(need),done=field(o,'finished')==true} end
+                    end
+                end
+            end
+        end
+    end
+    return questUse
+end
+function BackstageForeverQuestUseLine(name)
+    name=str(name,100);if not name then return nil end
+    local u=BackstageForeverQuestUseIndex()[name:lower()];if not u then return nil end
+    if u.done then return ('Quest item: %s (done, %d/%d)'):format(u.quest,u.have or 0,u.need or 0),.6,.6,.6 end
+    return ('Needed for %s: %d/%d'):format(u.quest,u.have or 0,u.need or 0),1,.82,0
+end
+if type(CreateFrame)=='function' then
+    local qf=CreateFrame('Frame')
+    if qf then pcall(qf.RegisterEvent,qf,'QUEST_LOG_UPDATE');pcall(qf.SetScript,qf,'OnEvent',function() questUse=nil end) end
+end
+local function tooltipItem(tooltip,data)
+    local link
+    if type(tooltip)=='table' and type(tooltip.GetItem)=='function' then local ok,_,l=pcall(tooltip.GetItem,tooltip);if ok then link=plain(l) end end
+    if type(link)~='string' and type(data)=='table' then link=plain(data.hyperlink) end
+    local id=linkId(link) or (type(data)=='table' and int(plain(data.id),1,2147483647)) or nil
+    return id,link
+end
+local tipShown=setmetatable({},{__mode='k'})
+local function onTooltip(tooltip,data,resize)
+    local d=store();if d.priceTips==false or (tooltip~=GameTooltip and tooltip~=ItemRefTooltip) then return end
+    local id,link=tooltipItem(tooltip,data);if not id then return end
+    if tipShown[tooltip]==id then return end
+    local r={call(GetItemInfo,link or id)}
+    local quest,qr,qg,qb=BackstageForeverQuestUseLine(r[1])
+    local advice=BackstageForeverPriceAdvice(id,r[11],r[3],1)
+    local line,cr,cg,cb,verdict=BackstageForeverPriceLine(advice)
+    if not line and not quest then return end
+    tipShown[tooltip]=id
+    if quest then pcall(tooltip.AddLine,tooltip,quest,qr,qg,qb) end
+    if not line then if resize then pcall(tooltip.Show,tooltip) end;return end
+    pcall(tooltip.AddLine,tooltip,line,cr,cg,cb)
+    if verdict=='Worth more at the Auction House' then pcall(tooltip.AddLine,tooltip,verdict,0.25,1,0.25) end
+    if resize then pcall(tooltip.Show,tooltip) end
+end
+local function clearShown(tooltip) tipShown[tooltip]=nil end
+local function hookPriceTips()
+    if type(TooltipDataProcessor)=='table' and type(TooltipDataProcessor.AddTooltipPostCall)=='function' and type(Enum)=='table' and type(Enum.TooltipDataType)=='table' and Enum.TooltipDataType.Item~=nil then
+        pcall(TooltipDataProcessor.AddTooltipPostCall,Enum.TooltipDataType.Item,function(tooltip,data) clearShown(tooltip);pcall(onTooltip,tooltip,data,false) end)
+        return 'postcall'
+    end
+    local hooked
+    for _,tip in ipairs({GameTooltip,ItemRefTooltip}) do
+        if type(tip)=='table' and type(tip.HookScript)=='function' then
+            if pcall(tip.HookScript,tip,'OnTooltipSetItem',function(self) pcall(onTooltip,self,nil,true) end) then hooked='script' end
+            pcall(tip.HookScript,tip,'OnTooltipCleared',clearShown)
+        end
+    end
+    return hooked
+end
+BackstageForeverPriceTipMode=hookPriceTips()
+-- /bf sell: what in your bags is worth more at auction, and what a vendor should get.
+function BackstageForeverSellAdvice(items)
+    local auction,vendor,vendorTotal={},{},0
+    for _,it in ipairs(type(items)=='table' and items or {}) do
+        local a=BackstageForeverPriceAdvice(it.id,it.vendor,it.quality,it.count)
+        if a and a.verdict=='auction' then auction[#auction+1]={name=it.name or ('item '..it.id),count=a.count,total=a.each*a.count}
+        elseif a and a.verdict=='vendor' and (a.vendor or 0)>0 then vendor[#vendor+1]=it;vendorTotal=vendorTotal+a.vendor*a.count end
+    end
+    table.sort(auction,function(x,y)return x.total>y.total end)
+    return auction,vendor,vendorTotal
+end
+local function bagContents()
+    local api=plain(C_Container);local out={}
+    if type(api)~='table' then return out end
+    for bag=0,4 do
+        local slots=int(call(api.GetContainerNumSlots,bag),0,64) or 0
+        for slot=1,slots do
+            local info=call(api.GetContainerItemInfo,bag,slot)
+            local id=int(field(info,'itemID'),1,2147483647)
+            if id then
+                local r={call(GetItemInfo,id)}
+                out[#out+1]={id=id,name=str(r[1],100),quality=int(field(info,'quality'),0,7) or int(r[3],0,7),count=int(field(info,'stackCount'),1,100000) or 1,vendor=int(r[11],0,MONEY_MAX)}
+            end
+        end
+    end
+    return out
+end
+function BackstageForeverSellCommand()
+    local auction,vendor,vendorTotal=BackstageForeverSellAdvice(bagContents())
+    if #auction==0 then say('Nothing in your bags is clearly worth more at auction than at a vendor, from the prices you have seen. Browse the Auction House and the addon remembers what it shows you.')
+    else
+        say('Worth more at the Auction House (after its 5% cut):')
+        for i=1,min(#auction,6) do local a=auction[i];say(('  %s%s: about %s'):format(a.name,a.count>1 and (' x'..a.count) or '',coins(a.total))) end
+        if #auction>6 then say(('  and %d more.'):format(#auction-6)) end
+    end
+    if #vendor>0 then say(('Sell to a vendor: %d item%s for %s (the Sell junk button on a vendor does the greys).'):format(#vendor,#vendor==1 and '' or 's',coins(vendorTotal))) end
+end
 function BackstageForeverLedgerCommand(message)
     local d=store()
     local word,arg=(type(message)=='string' and message:lower() or ''):match('^(%a+)%s*(%a*)')
     if word=='prices' then
+        if arg=='tips' then d.priceTips=d.priceTips==false;say(d.priceTips and 'Price lines on item tooltips are on.' or 'Price lines on item tooltips are off.');return d.priceTips end
         if arg=='on' then d.pricesOn=true elseif arg=='off' then d.pricesOn=false
         elseif arg=='' or arg=='status' then
             say(('Price memory is %s: %d item prices remembered from Auction House pages you opened.'):format(d.pricesOn and 'on' or 'off',priceCount(d)))
             return d.pricesOn
-        else say('Use /bf prices on, /bf prices off or /bf prices status.');return end
+        else say('Use /bf prices on, off, status or tips.');return end
         say(d.pricesOn and 'Price memory on: the addon remembers the lowest buyout on Auction House pages you open yourself. It never searches or buys.' or 'Price memory off. Prices you saw before stay in the desktop app.')
         return d.pricesOn
     end

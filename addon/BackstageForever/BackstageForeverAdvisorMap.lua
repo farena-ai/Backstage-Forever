@@ -9,9 +9,9 @@ local provider,attached,panel,settings=nil,nil,nil,nil
 local generation=0
 local hooks=setmetatable({},{__mode='k'})
 local refresh
-local LAYERS={'pickup','handin','class','profession','flight'}
-local LABELS={pickup='Quests to pick up',handin='Quest hand-ins',class='My class trainer',profession='Profession trainers',flight='Flight masters'}
-local ICONS={pickup='Interface\\GossipFrame\\AvailableQuestIcon',handin='Interface\\GossipFrame\\ActiveQuestIcon',class='Interface\\Minimap\\Tracking\\Class',profession='Interface\\Minimap\\Tracking\\Profession',flight='Interface\\Minimap\\Tracking\\FlightMaster'}
+local LAYERS={'pickup','handin','class','profession','flight','gather'}
+local LABELS={pickup='Quests to pick up',handin='Quest hand-ins',class='My class trainer',profession='Profession trainers',flight='Flight masters',gather='Gathering spots'}
+local ICONS={pickup='Interface\\GossipFrame\\AvailableQuestIcon',handin='Interface\\GossipFrame\\ActiveQuestIcon',class='Interface\\Minimap\\Tracking\\Class',profession='Interface\\Minimap\\Tracking\\Profession',flight='Interface\\Minimap\\Tracking\\FlightMaster',gather='Interface\\Icons\\INV_Misc_Flower_02'}
 local MAX_PINS=150
 local function property(value,key)
     value=public(value);if type(value)~='table' and type(value)~='userdata' then return nil end
@@ -114,6 +114,11 @@ function BackstageForeverAdvisorPoints(mapId,who,completed,inLog,complete,layers
             elseif n.k=='f' and on('flight')then add({layer='flight',x=n.x,y=n.y,title=n.n,detail=n.r})end
         end
     end
+    -- 1.2: remembered gathering spots, gatherable ones first, after everything else.
+    if on('gather') and type(BackstageForeverGatheringMapPoints)=='function' then
+        local ok,rows=pcall(BackstageForeverGatheringMapPoints,mapId,nil,nil,nil,MAX_PINS-#out)
+        if ok and type(rows)=='table' then for _,r in ipairs(rows)do add(r)end end
+    end
     return out
 end
 
@@ -131,10 +136,12 @@ function Pin:OnLoad()
 end
 function Pin:OnAcquired(row,token,mapId)
     self.bfRow=row
-    method(self.bfIcon,'SetTexture',ICONS[row.layer])
+    method(self.bfIcon,'SetTexture',row.icon or ICONS[row.layer])
+    method(self.bfIcon,'SetDesaturated',row.dim==true)
+    method(self.bfIcon,'SetAlpha',row.dim==true and .55 or 1)
     -- Above WoW's own quest markers, below the super-tracked quest.
     method(self,'UseFrameLevelType','PIN_FRAME_LEVEL_SUPER_TRACKED_CONTENT')
-    local size=row.layer=='pickup' and 16 or row.layer=='handin' and 20 or 18
+    local size=row.layer=='pickup' and 16 or row.layer=='handin' and 20 or row.layer=='gather' and 14 or 18
     method(self,'SetSize',size,size)
     local function current()return self.bfRow==row and token==generation and not combat()end
     self.OnMouseClickAction=function(_,button)
@@ -246,7 +253,7 @@ function BackstageForeverNext()
     local px,py=nil,nil;if pos then px,py=method(pos,'GetXY')end
     if not mapId or type(px)~='number' or type(py)~='number' then return say('Your position is unavailable here.')end
     local inLog,complete=questLog()
-    local rows=BackstageForeverAdvisorPoints(mapId,me(),completedSet(),inLog,complete,{class=false,profession=false,flight=false},gameQuestSpots(mapId))
+    local rows=BackstageForeverAdvisorPoints(mapId,me(),completedSet(),inLog,complete,{class=false,profession=false,flight=false,gather=false},gameQuestSpots(mapId))
     local best,bestD=nil,nil
     for _,r in ipairs(rows)do local d=((r.x-px)^2+(r.y-py)^2)^.5+(r.layer=='handin' and 0 or 1);if not bestD or d<bestD then best,bestD=r,d end end
     if not best then return say('Nothing recorded for your level in this zone. The desktop app\'s Now page suggests where to go next.')end

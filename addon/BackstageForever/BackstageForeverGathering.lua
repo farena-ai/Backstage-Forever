@@ -145,10 +145,11 @@ function BackstageForeverGatheringSession(event)
     if event=='PLAYER_LOGIN' then active=true;bind();store()end
 end
 local ownedTypes=nil -- nil: unknown; else {herbalism=true,mining=true}
+local ownedRanks={} -- 1.2: skill per gathering profession from the last save
 function BackstageForeverGatheringSnapshot(character)
     local at=number(field(character,'updatedAt'),0,253402300799);if not at then return nil end
     local items=sequence(field(field(field(field(character,'readiness'),'workshop'),'professions'),'items'),20)
-    if items then ownedTypes={};for _,p in ipairs(items)do local id=number(field(p,'skillLineId'),1,2147483647);if id==182 then ownedTypes.herbalism=true elseif id==186 then ownedTypes.mining=true end end end
+    if items then ownedTypes={};for _,p in ipairs(items)do local id=number(field(p,'skillLineId'),1,2147483647);local rank=number(field(p,'rank'),0,10000);if id==182 then ownedTypes.herbalism=true;ownedRanks.herbalism=rank elseif id==186 then ownedTypes.mining=true;ownedRanks.mining=rank end end end
     local id=bind();local db=store();local rows={}
     if id and text(field(character,'id'),200)==id and buildValue(field(character,'clientBuild'))==clientBuild()then
         for _,r in ipairs(db.records)do if r.observedAt<=at and #rows<KEEP then rows[#rows+1]=record(r,at)end end
@@ -288,6 +289,51 @@ local function mapSize(map)
     local w,h=math.abs(by-ay),math.abs(bx-ax)
     if w>=1 and h>=1 and w<=100000 and h<=100000 then return {w,h} end
 end
+-- Skill each classic node needs (1.2): matched on the node's English name.
+local NODE_SKILL={
+    {'Copper Vein',1},{'Tin Vein',65},{'Incendicite',65},{'Silver Vein',75},{'Lesser Bloodstone',75},{'Iron Deposit',125},{'Indurium',150},{'Gold Vein',155},
+    {'Mithril Deposit',175},{'Truesilver Deposit',230},{'Dark Iron Deposit',230},{'Small Thorium Vein',245},{'Ooze Covered Thorium Vein',245},{'Rich Thorium Vein',275},{'Ooze Covered Rich Thorium Vein',275},
+    {'Peacebloom',1},{'Silverleaf',1},{'Earthroot',15},{'Mageroyal',50},{'Briarthorn',70},{'Stranglekelp',85},{'Bruiseweed',100},{'Wild Steelbloom',115},{'Grave Moss',120},
+    {'Kingsblood',125},{'Liferoot',150},{'Fadeleaf',160},{'Goldthorn',170},{"Khadgar's Whisker",185},{'Wintersbite',195},{'Firebloom',205},{'Purple Lotus',210},
+    {"Arthas' Tears",220},{'Sungrass',230},{'Blindweed',235},{'Ghost Mushroom',245},{'Gromsblood',250},{'Golden Sansam',260},{'Dreamfoil',270},
+    {'Mountain Silversage',280},{'Plaguebloom',285},{'Icecap',290},{'Black Lotus',300},
+}
+function BackstageForeverNodeSkill(name)
+    name=text(name,120);if not name then return nil end
+    local best=nil
+    for _,row in ipairs(NODE_SKILL)do if name:find(row[1],1,true) and (not best or #row[1]>#best[1])then best=row end end
+    return best and best[2] or nil
+end
+-- Can this character gather that node? true / false / nil (unknown skill or not a skill node).
+function BackstageForeverNodeGatherable(r,ranks)
+    if type(r)~='table' or r.method=='chest' then return true end
+    local need=BackstageForeverNodeSkill(r.name);local have=type(ranks)=='table' and ranks[r.method] or nil
+    if not need or type(have)~='number' then return nil end
+    return have>=need,need,have
+end
+-- World Map layer (1.2): remembered spots on one map, gatherable ones first, as advisor pins.
+local NODE_ICON={mining='Interface\\Icons\\INV_Ore_Copper_01',herbalism='Interface\\Icons\\INV_Misc_Flower_02',chest='Interface\\Icons\\INV_Box_01'}
+function BackstageForeverGatheringMapPoints(mapId,records,types,ranks,limit)
+    mapId=number(mapId,1,2147483647);if not mapId then return {} end
+    records=records or (type(BackstageForeverGatheringDB)=='table' and BackstageForeverGatheringDB.records) or {}
+    if types==nil then types=ownedTypes and (function()local t={chest=true};for k in pairs(ownedTypes)do t[k]=true end;return t end)() or nil end
+    ranks=ranks or ownedRanks
+    local out={}
+    for _,r in ipairs(type(records)=='table' and records or {})do
+        if type(r)=='table' and r.mapId==mapId and decimal(r.x) and decimal(r.y) and (not types or types[r.method]) then
+            local ok,need,have=BackstageForeverNodeGatherable(r,ranks)
+            local when=type(r.observedAt)=='number' and type(date)=='function' and date('%b %d',r.observedAt) or nil
+            local detail=(({mining='Mining',herbalism='Herbalism',chest='Chest'})[r.method] or r.method)..(need and (' '..need) or '')
+            if ok==true and need then detail=detail..' - you can gather this ('..have..')' elseif ok==false then detail=detail..' - needs '..need..', you have '..have end
+            if when then detail=detail..'. Last gathered '..when..'.' end
+            out[#out+1]={layer='gather',x=r.x,y=r.y,title=r.name,detail=detail,icon=NODE_ICON[r.method],dim=ok==false,order=ok==false and 1 or 0}
+        end
+    end
+    table.sort(out,function(a,b)if a.order~=b.order then return a.order<b.order end;return a.title<b.title end)
+    limit=number(limit,1,500) or 100
+    while #out>limit do table.remove(out)end
+    return out
+end
 local WORDS={herb='herbalism',herbs='herbalism',herbalism='herbalism',ore='mining',ores='mining',mining='mining',chest='chest',chests='chest'}
 function BackstageForeverNodesCommand(message)
     if call(InCombatLockdown)~=false then return say('Node lists wait until you leave combat.')end
@@ -299,7 +345,9 @@ function BackstageForeverNodesCommand(message)
     elseif ownedTypes then types={chest=true};for k in pairs(ownedTypes)do types[k]=true end end
     local here=position();if not here then return say('Your position is not available here.')end
     local db=store();local zone=type(BackstageForeverFindMaps)=='table' and text(BackstageForeverFindMaps[here.mapId],60) or ('map '..here.mapId)
-    local list=BackstageForeverGatheringNearest(db.records,here,{types=types,limit=5,size=mapSize(here.mapId)})
+    local usable,tooHigh={},0
+    for _,r in ipairs(db.records)do if BackstageForeverNodeGatherable(r,ownedRanks)==false then tooHigh=tooHigh+1 else usable[#usable+1]=r end end
+    local list=BackstageForeverGatheringNearest(usable,here,{types=types,limit=5,size=mapSize(here.mapId)})
     if #list==0 then
         local what=types and (types.herbalism and types.mining and 'herb, ore or chest' or types.herbalism and 'herb or chest' or types.mining and 'ore or chest' or 'chest') or 'gathering'
         return say('No remembered '..what..' spots in '..zone..' yet. Gather or open chests here and they are remembered (up to 500).'..(db.recording and '' or ' Recording is paused on the BF map panel.'))
@@ -308,6 +356,7 @@ function BackstageForeverNodesCommand(message)
     for i,n in ipairs(list)do say((i==1 and '> ' or '  ')..BackstageForeverGatheringNodeLine(n))end
     local best=list[1].record
     if type(BackstageForeverWay)=='function' then pcall(BackstageForeverWay,string.format('way %d %.1f %.1f %s',best.mapId,best.x*100,best.y*100,best.name))end
+    if tooHigh>0 then say(tooHigh..' remembered spot'..(tooHigh==1 and ' needs' or 's need')..' more skill than you have and '..(tooHigh==1 and 'is' or 'are')..' left out.')end
     if not types or types.herbalism or types.mining then say('Past spots, not live nodes: someone may have gathered them already.')end
 end
 if type(CreateFrame)=='function' then
