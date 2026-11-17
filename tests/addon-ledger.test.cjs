@@ -185,3 +185,36 @@ test("the ledger is installed, saved per character and never replaces a Blizzard
     assert.ok(!src.includes(call + "("), `ledger must not call ${call}`);
   assert.doesNotMatch(src, /^\s*(?!BackstageForever)[A-Z][A-Za-z0-9_]*\s*=\s*function/m, "no global function replaced");
 });
+
+test("1.2: price advice on tooltips and /bf sell weigh auction prices you saw against the vendor", () => lua(WORLD + String.raw`
+local said={} DEFAULT_CHAT_FRAME={AddMessage=function(_,m) said[#said+1]=m end}
+local info={[2589]={'Linen Cloth',nil,1,nil,nil,nil,nil,nil,nil,nil,13},[118]={'Minor Healing Potion',nil,1,nil,nil,nil,nil,nil,nil,nil,5},[4865]={'Ruined Pelt',nil,0,nil,nil,nil,nil,nil,nil,nil,5}}
+GetItemInfo=function(id) local r=info[tonumber(id) or tonumber(tostring(id):match('item:(%d+)'))] if r then return (table.unpack or unpack)(r,1,11) end end
+BackstageForeverLedgerRemember(2589,90,t,'Linen Cloth',1)
+BackstageForeverLedgerRemember(118,4,t,'Minor Healing Potion',1)
+local a=BackstageForeverPriceAdvice(2589,13,1,20)
+assert(a.verdict=='auction' and a.each==85 and a.auction==90,'auction after the 5% cut beats the vendor')
+local line,r,g,b,verdict=BackstageForeverPriceLine(a)
+assert(line:find('BF: auction ~',1,true) and line:find('vendor 13c',1,true) and line:find('stack 17s',1,true) and verdict=='Worth more at the Auction House',line)
+assert(BackstageForeverPriceAdvice(118,5,1,1).verdict=='vendor','vendor pays more than the auction seen')
+assert(BackstageForeverPriceAdvice(4865,5,0,1).verdict=='vendor','greys go to the vendor')
+assert(BackstageForeverPriceAdvice(999,0,1,1)==nil,'nothing known, no line')
+local auction,vendor,total=BackstageForeverSellAdvice({{id=2589,name='Linen Cloth',count=20,quality=1,vendor=13},{id=4865,name='Ruined Pelt',count=2,quality=0,vendor=5},{id=118,name='Minor Healing Potion',count=1,quality=1,vendor=5}})
+assert(#auction==1 and auction[1].total==1700 and #vendor==2 and total==15)
+local tip={lines={},AddLine=function(self,l) self.lines[#self.lines+1]=l end,GetItem=function() return 'Linen Cloth','|Hitem:2589|h[Linen Cloth]|h' end,Show=function()end}
+GameTooltip=tip
+BackstageForeverLedgerCommand('prices tips') assert(BackstageForeverLedgerDB.priceTips==false)
+BackstageForeverLedgerCommand('prices tips') assert(BackstageForeverLedgerDB.priceTips==true)
+print('ok')
+`));
+
+test("1.2: item tooltips say which quest in your log needs the item", () => lua(WORLD + String.raw`
+C_QuestLog={GetNumQuestLogEntries=function() return 2 end,
+  GetInfo=function(i) if i==1 then return {isHeader=true,title='Mulgore'} end return {questID=776,title='Rites of the Earthmother',isHeader=false} end,
+  GetQuestObjectives=function(id) return {{type='item',text='Plainstrider Beak: 3/8',finished=false},{type='monster',text='Bristleback Quilboar slain: 2/10'}} end}
+local line,r,g,b=BackstageForeverQuestUseLine('Plainstrider Beak')
+assert(line=='Needed for Rites of the Earthmother: 3/8' and r==1,line)
+assert(BackstageForeverQuestUseLine('Linen Cloth')==nil)
+assert(BackstageForeverQuestUseLine('Bristleback Quilboar slain')==nil,'only item objectives')
+print('ok')
+`));

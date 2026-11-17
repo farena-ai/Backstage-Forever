@@ -254,17 +254,17 @@ Frank asked for everything below, built one release at a time through the usual 
 |---|---|---|---|---|
 | J1 | **Badges page.** **Done in 1.1.** *(Asked for by Frank, 2026-11-17: the new-badge banner shows once and there was no way to see them again.)* Characters → Badges: every badge per character with the date it was earned, filters (all, earned, still to earn), the latest five, the three closest to earning, a chip per character, who else on the account holds each badge, and account badges earned by all your characters together. The new-badge banner opens it on that badge. | M | App | What you have earned should stay visible. |
 | J2 | **More badges.** **Done in 1.1.** Professions (skill 75, 150, 225, 300), gold carried (10, 100, 1000), reputation (Honored, Revered, Exalted), and account badges (2, 5 and 10 characters; Horde and Alliance both). Painted locally like the rest. | S–M | App | Milestones beyond levels and quests. |
-| J3 | **Badges in game.** `/bf badges` lists what this character has earned and what's next; a small banner in game when one is earned on a save. | S | Addon | Same rewards without alt-tabbing. |
+| J3 | **Badges in game.** **Done in 1.2.** `/bf badges` lists what this character has earned and what's next; a small banner in game when one is earned on a save. | S | Addon | Same rewards without alt-tabbing. |
 
 ### Phase 1.2: Finish what's half-built
 
 | # | Item | Size | Where | Why |
 |---|---|---|---|---|
-| J4 | **Gathering spots on the in-game map** [A6], plus a route through them for your skill level. | M | Addon | The app remembers 500 spots; the map in game should show them. |
-| J5 | **Price memory, part 2** [A7]: vendor prices in tooltips, and bags flag what's worth selling. | M | Both | Gold for training and the mount. |
-| J6 | **Gear-set button in game** [A12]. | S | Addon | No typing `/bf set wear`. |
-| J7 | **One tooltip everywhere** [A14]: what an item is for, where it drops, its price and whether it's an upgrade, the same in game and in the app. | M | Both | One answer, everywhere. |
-| J8 | **Quest icons over enemies** [A1]. | M | Addon | See at a glance what you still need. |
+| J4 | **Gathering spots on the in-game map** [A6], plus a route through them for your skill level. **Done in 1.2:** a Gathering spots layer on the World Map, greyed above your skill; `/bf nodes` arrows the nearest node you can gather. | M | Addon | The app remembers 500 spots; the map in game should show them. |
+| J5 | **Price memory, part 2** [A7]: vendor prices in tooltips, and bags flag what's worth selling. **Done in 1.2:** auction and vendor price on item tooltips, green when auction pays more, and `/bf sell` for your bags. | M | Both | Gold for training and the mount. |
+| J6 | **Gear-set button in game** [A12]. **Done in 1.2:** a Gear sets button beside the character window. | S | Addon | No typing `/bf set wear`. |
+| J7 | **One tooltip everywhere** [A14]: what an item is for, where it drops, its price and whether it's an upgrade, the same in game and in the app. **Done in 1.2 in game:** quest use, price and upgrade lines on one tooltip; drop sources stay in the app's hover cards (the addon carries no loot tables). | M | Both | One answer, everywhere. |
+| J8 | **Quest icons over enemies** [A1]. **Done in 1.2:** a ! over nameplates of enemies a quest still needs (`/bf plates`). | M | Addon | See at a glance what you still need. |
 
 ### Phase 1.3: Deeper guidance
 
@@ -365,3 +365,4 @@ Frank asked for everything below, built one release at a time through the usual 
 
 Keep this file and Help → Commands updated with each release.
 - **1.1.0 (2026-11-17):** J1 Badges page (Characters → Badges: every badge per character with its date, filters, latest, closest next, who else holds it, account badges; the new-badge banner opens it) and J2 more badges (professions, gold, reputation, account). Next: the rest of Tier J, phase by phase.
+- **1.2.0 (2026-11-17):** J3 badges in game; phase 1.2: J4 gathering spots on the World Map, J5 price lines and `/bf sell`, J6 Gear sets button, J7 quest use on item tooltips, J8 quest icons over enemies. Reputation badges read the saved ledger shape.

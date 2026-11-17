@@ -220,6 +220,88 @@ local function delete(name,key)
     request()
     return true
 end
+-- Gear-set button (1.2, J6): a small "Gear sets" button beside the character window opens a list
+-- of your sets; one click wears one. Never in combat (the button disables itself), never on a timer.
+function BackstageForeverSetMenuRows()
+    local db=store();local bags=bagCounts();local rows={}
+    for key,set in pairs(db.sets) do
+        if type(set)=='table' and type(set.slots)=='table' then
+            local on,ready,total=0,0,0
+            for slot,id in pairs(set.slots) do total=total+1;if worn(slot)==id then on=on+1 elseif (bags[id] or 0)>0 then ready=ready+1 end end
+            rows[#rows+1]={key=key,name=set.name,total=total,on=on,ready=ready,missing=total-on-ready}
+        end
+    end
+    table.sort(rows,function(a,b)return a.name:lower()<b.name:lower()end)
+    return rows
+end
+function BackstageForeverSetMenuWear(key)
+    local set=store().sets[key];if type(set)~='table' then return nil end
+    return wear(set.name,key)
+end
+local setButton,setMenu
+local function inCombat() return call(InCombatLockdown)~=false end
+local function hideMenu() if setMenu then pcall(setMenu.Hide,setMenu) end end
+local function menuLabel(r)
+    if r.on==r.total then return r.name..' (worn)' end
+    return r.name..(r.missing>0 and (' ('..r.missing..' not in bags)') or '')
+end
+local function showMenu()
+    if inCombat() or not setButton then return end
+    if not setMenu then
+        setMenu=call(CreateFrame,'Frame','BackstageForeverSetMenu',setButton,'BackdropTemplate');if not setMenu then return end
+        pcall(setMenu.SetBackdrop,setMenu,{bgFile='Interface/DialogFrame/UI-DialogBox-Background',edgeFile='Interface/Tooltips/UI-Tooltip-Border',tile=true,tileSize=16,edgeSize=12,insets={left=3,right=3,top=3,bottom=3}})
+        pcall(setMenu.SetFrameStrata,setMenu,'DIALOG');pcall(setMenu.SetPoint,setMenu,'TOPLEFT',setButton,'BOTTOMLEFT',0,-2)
+        setMenu.rows={}
+        setMenu.hint=call(setMenu.CreateFontString,setMenu,nil,'OVERLAY','GameFontHighlightSmall')
+    end
+    local rows=BackstageForeverSetMenuRows()
+    for i=1,math.max(#rows,#setMenu.rows) do
+        local b=setMenu.rows[i]
+        if not b and rows[i] then
+            b=call(CreateFrame,'Button',nil,setMenu,'UIPanelButtonTemplate');setMenu.rows[i]=b
+            if b then pcall(b.SetSize,b,196,20);pcall(b.SetPoint,b,'TOPLEFT',setMenu,'TOPLEFT',8,-8-(i-1)*22) end
+        end
+        if b then
+            local r=rows[i]
+            if r then
+                pcall(b.SetText,b,menuLabel(r))
+                pcall(b.SetScript,b,'OnClick',function() if not inCombat() then BackstageForeverSetMenuWear(r.key) end;hideMenu() end)
+                pcall(b.Show,b)
+            else pcall(b.Hide,b) end
+        end
+    end
+    if setMenu.hint then
+        pcall(setMenu.hint.ClearAllPoints,setMenu.hint);pcall(setMenu.hint.SetPoint,setMenu.hint,'TOPLEFT',setMenu,'TOPLEFT',10,-10-#rows*22)
+        pcall(setMenu.hint.SetWidth,setMenu.hint,192);pcall(setMenu.hint.SetJustifyH,setMenu.hint,'LEFT')
+        pcall(setMenu.hint.SetText,setMenu.hint,(BackstageForeverTr or tostring)(#rows==0 and 'No sets yet. Wear the gear, then type /bf set save NAME.' or 'Save the gear you wear: /bf set save NAME.'))
+    end
+    pcall(setMenu.SetSize,setMenu,212,16+#rows*22+30)
+    pcall(setMenu.Show,setMenu)
+end
+local function makeButton()
+    if setButton or inCombat() then return end
+    local parent=plain(PaperDollFrame);local anchor=plain(CharacterFrame) or parent
+    if type(parent)~='table' or type(CreateFrame)~='function' then return end
+    setButton=call(CreateFrame,'Button','BackstageForeverSetButton',parent,'UIPanelButtonTemplate');if not setButton then return end
+    pcall(setButton.SetSize,setButton,96,22)
+    pcall(setButton.SetPoint,setButton,'TOPLEFT',anchor,'TOPRIGHT',-30,-30)
+    pcall(setButton.SetText,setButton,(BackstageForeverTr or tostring)('Gear sets'))
+    pcall(setButton.SetScript,setButton,'OnClick',function() if setMenu and call(setMenu.IsShown,setMenu)==true then hideMenu() else showMenu() end end)
+    pcall(setButton.SetScript,setButton,'OnHide',hideMenu)
+end
+BackstageForeverSetButtonMake=makeButton
+BackstageForeverSetMenuShow=showMenu
+if type(CreateFrame)=='function' then
+    local f=CreateFrame('Frame')
+    if f then
+        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED'}) do pcall(f.RegisterEvent,f,e) end
+        pcall(f.SetScript,f,'OnEvent',function(_,event)
+            if event=='PLAYER_LOGIN' then makeButton()
+            elseif event=='PLAYER_REGEN_DISABLED' then hideMenu();if setButton then pcall(setButton.Disable,setButton) end
+            elseif event=='PLAYER_REGEN_ENABLED' then makeButton();if setButton then pcall(setButton.Enable,setButton) end end
+        end)
+    end
+end
 function BackstageForeverSetCommand(message)
     local rest=type(message)=='string' and message:match('^%s*[Ss][Ee][Tt]%s*(.*)$') or ''
     local sub,arg=rest:match('^(%a*)%s*(.*)$')

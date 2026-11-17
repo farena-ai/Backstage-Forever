@@ -169,3 +169,43 @@ test("the sheet module is installed, saved per character and never replaces a Bl
   assert.doesNotMatch(src, /^\s*(?!BackstageForever)[A-Za-z][A-Za-z0-9_]*\s*=\s*function/m, "no global function replaced");
   assert.match(fs.readFileSync(path.join(dir, "BackstageForeverHUD.lua"), "utf8"), /word=='set'[\s\S]{0,120}BackstageForeverSetCommand/);
 });
+
+test("1.2: the Gear sets button lists your sets and wears one with a click, never in combat", () => lua(String.raw`
+local made={}
+local function widget(kind,name)
+  local w={kind=kind,name=name,shown=false,enabled=true,scripts={}}
+  for _,m in ipairs({'SetSize','SetPoint','ClearAllPoints','SetBackdrop','SetFrameStrata','SetWidth','SetJustifyH','RegisterEvent'}) do w[m]=function() end end
+  function w:SetText(t) self.text=t end
+  function w:SetScript(k,fn) self.scripts[k]=fn end
+  function w:Show() self.shown=true end
+  function w:Hide() self.shown=false end
+  function w:IsShown() return self.shown end
+  function w:Disable() self.enabled=false end
+  function w:Enable() self.enabled=true end
+  function w:CreateFontString() return widget('FontString') end
+  made[#made+1]=w
+  return w
+end
+CreateFrame=function(kind,name) return widget(kind,name) end
+PaperDollFrame=widget('Frame','PaperDollFrame') CharacterFrame=widget('Frame','CharacterFrame')
+` + WORLD.replace("dofile('addon/BackstageForever/BackstageForeverSheet.lua')", "") + String.raw`
+dofile('addon/BackstageForever/BackstageForeverSheet.lua')
+local events for _,w in ipairs(made) do if w.scripts.OnEvent then events=w.scripts.OnEvent end end
+events(nil,'PLAYER_LOGIN')
+local button for _,w in ipairs(made) do if w.name=='BackstageForeverSetButton' then button=w end end
+assert(button and button.text=='Gear sets','the button sits on the character window')
+BackstageForeverSetCommand('set save Leveling')
+wornBy[1]=nil bag[1]=1001
+local rows=BackstageForeverSetMenuRows()
+assert(#rows==1 and rows[1].name=='Leveling' and rows[1].ready==1 and rows[1].missing==0,'one piece back in the bags')
+button.scripts.OnClick()
+local menu for _,w in ipairs(made) do if w.name=='BackstageForeverSetMenu' then menu=w end end
+assert(menu and menu.shown and menu.rows[1].text=='Leveling','the list opens')
+menu.rows[1].scripts.OnClick()
+assert(wornBy[1]==1001 and #equips==1 and not menu.shown,'one click wears the set and closes the list')
+combat=true events(nil,'PLAYER_REGEN_DISABLED')
+assert(button.enabled==false,'disabled in combat')
+button.scripts.OnClick() assert(not menu.shown,'no list in combat')
+combat=false events(nil,'PLAYER_REGEN_ENABLED') assert(button.enabled==true)
+print('ok')
+`));

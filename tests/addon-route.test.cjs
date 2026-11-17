@@ -77,3 +77,33 @@ BackstageForeverRouteCommand('route arrow');assert(BackstageForeverRouteSettings
 BackstageForeverRouteCommand('route');assert(BackstageForeverRouteSettings.shown==false)
 BackstageForeverRouteCommand('route sideways');assert(said[#said]:find('/bf route next',1,true))
 `));
+
+test("1.2: a quest icon over enemies a quest still needs, on nameplates only, created out of combat, /bf plates toggles", () => lua(String.raw`
+local frames={}
+CreateFrame=function() local f={RegisterEvent=function() end,SetScript=function(self,k,fn) self[k]=fn end} frames[#frames+1]=f return f end
+local fighting=false InCombatLockdown=function() return fighting end
+GetTime=function() return 100 end
+local said={} DEFAULT_CHAT_FRAME={AddMessage=function(_,m) said[#said+1]=m end}
+C_QuestLog={GetNumQuestLogEntries=function() return 1 end,GetInfo=function() return {questID=1,title='Raptor Thieves',isHeader=false} end,IsComplete=function() return false end,
+  GetQuestObjectives=function() return {{text='Raptor slain: 3/12',finished=false,type='monster'}} end}
+local function plate() local p={shown=nil} function p:IsForbidden() return false end function p:CreateTexture() local t={} for _,k in ipairs({'SetTexture','SetSize','SetPoint'}) do t[k]=function() end end function t:Show() t.shown=true end function t:Hide() t.shown=false end p.icon=t return t end return p end
+local plates={nameplate1=plate(),nameplate2=plate()}
+C_NamePlate={GetNamePlateForUnit=function(u) return plates[u] end,GetNamePlates=function() return {} end}
+local names={nameplate1='Raptor',nameplate2='Kobold'}
+UnitName=function(u) return names[u] end UnitIsPlayer=function() return false end UnitIsDead=function() return false end UnitGUID=function() return nil end
+` + LOAD + String.raw`
+local ev for _,f in ipairs(frames) do if f.OnEvent then ev=f.OnEvent end end
+local handlers={} for _,f in ipairs(frames) do if f.OnEvent then handlers[#handlers+1]=f.OnEvent end end
+local function fire(...) for _,h in ipairs(handlers) do h(nil,...) end end
+fire('NAME_PLATE_UNIT_ADDED','nameplate1') fire('NAME_PLATE_UNIT_ADDED','nameplate2')
+assert(plates.nameplate1.icon and plates.nameplate1.icon.shown==true,'the raptor counts for the quest')
+assert(plates.nameplate2.icon==nil,'the kobold gets nothing')
+assert(rawget(plates.nameplate1,'bfQuestIcon')==nil,'nothing is written onto the game frame')
+fire('NAME_PLATE_UNIT_REMOVED','nameplate1') assert(plates.nameplate1.icon.shown==false)
+fighting=true plates.nameplate2=plate() names.nameplate2='Raptor'
+fire('NAME_PLATE_UNIT_ADDED','nameplate2') assert(plates.nameplate2.icon==nil,'no new textures in combat')
+fighting=false
+BackstageForeverPlatesCommand('plates off') fire('NAME_PLATE_UNIT_ADDED','nameplate1') assert(plates.nameplate1.icon.shown==false)
+assert(said[#said]:find('off',1,true))
+print('ok')
+`));

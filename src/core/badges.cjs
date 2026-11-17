@@ -40,8 +40,13 @@ function facts(profile) {
     fastest: sp.length ? Math.min(...sp.map((s) => s.seconds)) : null,
     profession: Math.max(0, ...professionRanks(profile)),
     gold: Number.isSafeInteger(profile?.ledger?.money) ? profile.ledger.money / 10000 : 0,
-    standing: Math.max(0, ...((Array.isArray(profile?.ledger?.reputations) ? profile.ledger.reputations : []).map((r) => Number(r?.standing) || 0))),
+    standing: Math.max(0, ...factionsOf(profile).map((r) => Number(r?.standing) || 0)),
   };
+}
+// Saved ledgers keep reputations as { seenAt, factions: [...] } (1.1.1: 1.1.0 read only a bare list).
+function factionsOf(p) {
+  const r = p?.ledger?.reputations;
+  return Array.isArray(r) ? r : Array.isArray(r?.factions) ? r.factions : [];
 }
 function professionRanks(p) {
   const items = p?.readiness?.workshop?.professions?.items;

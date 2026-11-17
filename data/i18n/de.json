@@ -1242,7 +1242,8 @@
   "Both sides of the war": "Beide Seiten des Krieges",
   "Have a Horde and an Alliance character.": "Habe einen Horde- und einen Allianz-Charakter.",
   "Opening your badge case…": "Deine Abzeichenvitrine wird geöffnet …",
-  "Badges appear once a character has been saved.": "Abzeichen erscheinen, sobald ein Charakter gespeichert wurde."
+  "Badges appear once a character has been saved.": "Abzeichen erscheinen, sobald ein Charakter gespeichert wurde.",
+  "How many badges this character has earned and the three closest to earning, with progress. /bf badges all lists every earned badge by group. A new badge also gets a small banner in game. The app's Characters → Badges page shows them all with dates.": "Wie viele Abzeichen dieser Charakter verdient hat und die drei, die am nächsten sind, mit Fortschritt. /bf badges all listet jedes verdiente Abzeichen nach Gruppe. Ein neues Abzeichen bekommt auch im Spiel ein kleines Banner. Die Seite Charaktere → Abzeichen in der App zeigt sie alle mit Datum."
  },
  "addon": {
   "plain": {
@@ -1327,7 +1328,23 @@
    "minimap button hidden. /bf ask show brings it back; /bf ask still opens the companion panel.": "Minikarten-Button ausgeblendet. /bf ask show bringt ihn zurück; /bf ask öffnet weiterhin das Begleiter-Panel.",
    "minimap button shown. Drag it around the minimap edge to move it.": "Minikarten-Button angezeigt. Ziehe ihn am Rand der Minikarte, um ihn zu verschieben.",
    "rested": "ausgeruht",
-   "type /bf next for the nearest quest": "gib /bf next für die nächste Quest ein"
+   "type /bf next for the nearest quest": "gib /bf next für die nächste Quest ein",
+   "Type /bf badges all for the full list; the app shows them all with dates in Characters > Badges.": "Gib /bf badges all für die ganze Liste ein; die App zeigt sie alle mit Datum unter Charaktere > Abzeichen.",
+   "/bf badges - badges earned and the three closest next (/bf badges all for the list)": "/bf badges - verdiente Abzeichen und die drei nächsten (/bf badges all für die Liste)",
+   "Gear sets": "Ausrüstungssets",
+   "No sets yet. Wear the gear, then type /bf set save NAME.": "Noch keine Sets. Leg die Ausrüstung an und gib /bf set save NAME ein.",
+   "Save the gear you wear: /bf set save NAME.": "Speichere deine getragene Ausrüstung: /bf set save NAME.",
+   "Quest icons over enemies on: a ! shows over enemies a quest in your log still needs (nameplates must be on, V key).": "Questsymbole über Gegnern an: Ein ! erscheint über Gegnern, die eine Quest in deinem Log noch braucht (Namensplaketten müssen an sein, Taste V).",
+   "Quest icons over enemies off.": "Questsymbole über Gegnern aus.",
+   "Price lines on item tooltips are on.": "Preiszeilen in Gegenstands-Tooltips sind an.",
+   "Price lines on item tooltips are off.": "Preiszeilen in Gegenstands-Tooltips sind aus.",
+   "Worth more at the Auction House (after its 5% cut):": "Im Auktionshaus mehr wert (nach dessen 5 % Gebühr):",
+   "Nothing in your bags is clearly worth more at auction than at a vendor, from the prices you have seen. Browse the Auction House and the addon remembers what it shows you.": "Nichts in deinen Taschen ist laut den gesehenen Preisen im Auktionshaus deutlich mehr wert als beim Händler. Stöbere im Auktionshaus, und das Addon merkt sich, was es dir zeigt.",
+   "Worth more at the Auction House": "Im Auktionshaus mehr wert",
+   "/bf sell - what in your bags is worth more at auction than at a vendor": "/bf sell - was in deinen Taschen im Auktionshaus mehr wert ist als beim Händler",
+   "/bf plates - quest icons over enemies a quest still needs (on or off)": "/bf plates - Questsymbole über Gegnern, die eine Quest noch braucht (an oder aus)",
+   "/bf prices - remember Auction House prices on pages you open yourself (on, off, status, or tips for tooltip lines)": "/bf prices - Auktionshauspreise auf selbst geöffneten Seiten merken (on, off, status oder tips für Tooltip-Zeilen)",
+   "Use /bf prices on, off, status or tips.": "Nutze /bf prices on, off, status oder tips."
   },
   "templates": {
    "  %s: %d items, %d worn now, %d in your bags, %d elsewhere.": "  %s: %d Gegenstände, %d aktuell getragen, %d in deinen Taschen, %d woanders.",
@@ -1408,7 +1425,12 @@
    "next level in about %s": "nächste Stufe in etwa %s",
    "way %d %.1f %.1f %s": "weg %d %.1f %.1f %s",
    "way %d %.2f %.2f %s": "weg %d %.2f %.2f %s",
-   "way %d %.4f %.4f %s": "weg %d %.4f %.4f %s"
+   "way %d %.4f %.4f %s": "weg %d %.4f %.4f %s",
+   "%d of %d badges earned.": "%d von %d Abzeichen verdient.",
+   "Next: %s, %d / %d. %s": "Als Nächstes: %s, %d / %d. %s",
+   "Badge earned: %s": "Abzeichen verdient: %s",
+   "Needed for %s: %d/%d": "Benötigt für %s: %d/%d",
+   "Sell to a vendor: %d item%s for %s (the Sell junk button on a vendor does the greys).": "An einen Händler verkaufen: %d Gegenstand%s für %s (der Plunder-Knopf beim Händler erledigt die grauen)."
   }
  },
  "appTemplates": {

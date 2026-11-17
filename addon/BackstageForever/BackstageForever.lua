@@ -720,6 +720,20 @@ function BackstageForeverLedgerRoster()
     end
     return out
 end
+-- Badges in game (1.1.1): what the last save of this character knows that the game doesn't say
+-- at a glance (quests completed, best profession skill, best reputation standing).
+function BackstageForeverSavedFacts()
+    local guid=clean(call(UnitGUID,'player'),200);local c=guid and roster[guid]
+    if type(c)~='table' then return {} end
+    local out={level=c.level,quests=type(c.history)=='table' and c.history.completedCount or nil}
+    local ledger=type(c.ledger)=='table' and c.ledger or {}
+    out.money=ledger.money
+    local items=type(c.readiness)=='table' and type(c.readiness.workshop)=='table' and type(c.readiness.workshop.professions)=='table' and c.readiness.workshop.professions.items
+    for _,p in ipairs(type(items)=='table' and items or {}) do if type(p)=='table' and type(p.rank)=='number' and p.rank>(out.profession or 0) then out.profession=p.rank end end
+    local reps=type(ledger.reputations)=='table' and ledger.reputations.factions
+    for _,f in ipairs(type(reps)=='table' and reps or {}) do if type(f)=='table' and type(f.standing)=='number' and f.standing>(out.standing or 0) then out.standing=f.standing end end
+    return out
+end
 local newCharacterHinted=false
 local function capture(event,eventId)
     if type(InCombatLockdown) ~= "function" or call(InCombatLockdown) ~= false then return end
@@ -743,7 +757,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.1.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.2.0'
     character.race=clean((call(UnitRace,'player')));
     -- UnitSex: 2 male, 3 female; 1 (unknown) and anything else is left out.
     local sex=integer(call(UnitSex,'player'),1,3);if sex==2 then character.sex='male' elseif sex==3 then character.sex='female' end

@@ -478,6 +478,7 @@ window.BF_LOCALE_DE = {
  "Horde and Alliance alike": "Horde und Allianz gleichberechtigt",
  "How /bf junk sells greys": "Wie /bf junk graue Items verkauft",
  "How far each route reaches": "Wie weit jede Route reicht",
+ "How many badges this character has earned and the three closest to earning, with progress. /bf badges all lists every earned badge by group. A new badge also gets a small banner in game. The app's Characters → Badges page shows them all with dates.": "Wie viele Abzeichen dieser Charakter verdient hat und die drei, die am nächsten sind, mit Fortschritt. /bf badges all listet jedes verdiente Abzeichen nach Gruppe. Ein neues Abzeichen bekommt auch im Spiel ein kleines Banner. Die Seite Charaktere → Abzeichen in der App zeigt sie alle mit Datum.",
  "How much we know, zone by zone": "Wie viel wir wissen, Gebiet für Gebiet",
  "How the app follows you.": "Wie die App dich begleitet.",
  "How to do it": "So geht's",
