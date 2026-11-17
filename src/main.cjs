@@ -830,6 +830,11 @@ app.whenReady().then(async () => {
     return { id: p.id, name: p.name, className: p.className || null, level: p.level || null, played: p.journal?.played ?? null, hasJournal: Boolean(p.journal),
       splits: splits(p, others), badges: badgesFor(p), rested: rested(p), zones: (p.journal?.zones || []).length, history: sessionHistory ? sessionHistory.view(p.id) : null };
   });
+  // Characters → Badges (1.1): every badge a character has earned, kept to look back on.
+  handle("badges", (...args) => {
+    if (args.length > 1 || (args.length && args[0] !== null && typeof args[0] !== "string")) throw Error("Invalid badges request.");
+    return require("./core/badges.cjs").badgeBook(store.state, args[0] || null);
+  });
   // Characters → All characters (0.43, 3.7): every character at a glance and who to play tonight.
   handle("alts", (...args) => {
     if (args.length) throw Error("Invalid characters request.");

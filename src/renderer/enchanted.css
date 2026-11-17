@@ -599,6 +599,10 @@ body[data-class] .xp-fill {
 /* Buttons restyled with "all: unset" lose position: relative, so the framed end caps above would be
    drawn against the nearest card or the window edge. They are pills and links: no end caps. */
 .commands-page .cmd-copy::before, .commands-page .cmd-copy::after,
+.bd-latest button::before, .bd-latest button::after,
+.bd-next button::before, .bd-next button::after,
+.badges-page .bd-char::before, .badges-page .bd-char::after,
+.badges-page .bd-filter button::before, .badges-page .bd-filter button::after,
 .coverage-page .cov-toggle button::before, .coverage-page .cov-toggle button::after,
 .atlas-page .atlas-chip::before, .atlas-page .atlas-chip::after,
 .atlas-page .atlas-toggle::before, .atlas-page .atlas-toggle::after,

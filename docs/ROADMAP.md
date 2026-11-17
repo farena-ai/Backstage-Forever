@@ -244,6 +244,65 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 | H7 | **Hidden live link.** *(Asked for by Frank, 2026-11-14. Built in 0.38, to be checked in the real client.)* The live strip becomes a one-pixel "hairline" along the top edge of the game in near-black shades, so it reads as a thin dark border: 892×1 physical pixels, 2-pixel cells, one bit per colour (0 or a dark 36 of 255), sync and off/on reference cells the app measures, and 165 bytes per frame (the live frame plus five pages, kinds 1–4 unchanged) behind a CRC-16 so a torn capture is refused whole. A first four-shade version failed in the real client (its gamma curve, saturation boost and colour bleed blur near-black shades), hence one bit a colour; `BF_LIVE_DUMP=<folder>` saves the top rows of an unreadable line for diagnosis. Pages go five at a time: a 200-character question needs 3 frames of 0.4 s (1.2 s a pass, three passes) and arrives in about 0.8–1.3 s instead of 6.8 s. The app reads the game window's own picture (Windows PrintWindow), so it keeps working when another window covers WoW, and falls back to a screen copy by itself. Minimized or closed WoW is "paused" with the last live state and its age, never "couldn't read", and resumes by itself. `/bf live safe` (sturdy corner strip for remote desktop; the app asks for it when it sees an unreadable line) and `/bf live compact` stay; `/bf live hairline` goes back; `/bf live pos` moves only the corner strips. | M | Both | The strip was too visible, and it stopped when another window or a minimized game hid it. |
 | H8 | **The Adventure Compass at a glance.** *(Asked for by Frank, 2026-11-15: line the words up with the frame's art, and make the box useful as you play.)* The title sits centred under the compass crest and every line and button sits inside the painted brass border. The compact Compass (the - button) becomes a live summary: name, level and zone; an XP bar in a brass edge with rested XP in blue; your XP pace and time to the next level; quests in your log and how many are ready to hand in; and your next step (the guided route's step when you follow it, otherwise the Compass's own suggestion). German clients see it in German. **Built in 0.54.** | S–M | Addon | The box was mostly empty space; now a glance answers "how am I doing and what's next". |
 
+## Tier J: after 1.0 (owner direction, 2026-11-17)
+
+Frank asked for everything below, built one release at a time through the usual gates, plus anything else that clearly improves the app. Each phase ships as its own minor version; rows say "Done in 1.x" as they land. Rows carried over from the tiers above keep their old number in brackets.
+
+### Phase 1.1: Badges you can look back on
+
+| # | Item | Size | Where | Why |
+|---|---|---|---|---|
+| J1 | **Badges page.** **Done in 1.1.** *(Asked for by Frank, 2026-11-17: the new-badge banner shows once and there was no way to see them again.)* Characters → Badges: every badge per character with the date it was earned, filters (all, earned, still to earn), the latest five, the three closest to earning, a chip per character, who else on the account holds each badge, and account badges earned by all your characters together. The new-badge banner opens it on that badge. | M | App | What you have earned should stay visible. |
+| J2 | **More badges.** **Done in 1.1.** Professions (skill 75, 150, 225, 300), gold carried (10, 100, 1000), reputation (Honored, Revered, Exalted), and account badges (2, 5 and 10 characters; Horde and Alliance both). Painted locally like the rest. | S–M | App | Milestones beyond levels and quests. |
+| J3 | **Badges in game.** `/bf badges` lists what this character has earned and what's next; a small banner in game when one is earned on a save. | S | Addon | Same rewards without alt-tabbing. |
+
+### Phase 1.2: Finish what's half-built
+
+| # | Item | Size | Where | Why |
+|---|---|---|---|---|
+| J4 | **Gathering spots on the in-game map** [A6], plus a route through them for your skill level. | M | Addon | The app remembers 500 spots; the map in game should show them. |
+| J5 | **Price memory, part 2** [A7]: vendor prices in tooltips, and bags flag what's worth selling. | M | Both | Gold for training and the mount. |
+| J6 | **Gear-set button in game** [A12]. | S | Addon | No typing `/bf set wear`. |
+| J7 | **One tooltip everywhere** [A14]: what an item is for, where it drops, its price and whether it's an upgrade, the same in game and in the app. | M | Both | One answer, everywhere. |
+| J8 | **Quest icons over enemies** [A1]. | M | Addon | See at a glance what you still need. |
+
+### Phase 1.3: Deeper guidance
+
+| # | Item | Size | Where | Why |
+|---|---|---|---|---|
+| J9 | **Class quests and key unlocks** [E5], from hand-written lists per class, community data filling the gaps. | L | App | Easy to miss, hard to piece together. |
+| J10 | **Trainer planner, part 2** [E3]: what the next visits cost and whether you can afford them. | M | App | No surprise empty purse at the trainer. |
+| J11 | **Riding and mount savings goal** [E4], with costs from saves or community data. | M | App | The biggest money goal in leveling. |
+| J12 | **Reputation advice** [E6]: fastest turn-ins and what each level unlocks. | M | App | Rep is slow without a plan. |
+| J13 | **Boss tips** [A5]: short plain tips when you target a dungeon boss, and a pull checklist. Text only. | M | Both | New players wipe less. |
+
+### Phase 1.4: Companion and the route
+
+| # | Item | Size | Where | Why |
+|---|---|---|---|---|
+| J14 | **Guided route past level 42** for both factions, and the Dwarf, Gnome and Tauren early gaps [4.1]. | L | Both | The route should reach 60. |
+| J15 | **Smarter Companion**: more benchmark questions (gathering, class quests, reputation), an opt-in web lookup through your own AI provider with sources, a live-model voice check. | M | App | Better answers. |
+| J16 | **Plan my evening.** Tell it how long you have; it lays out quests, training and selling that fit. | M | App | A plan sized to tonight. |
+| J17 | **Weekly recap.** Each week: levels, badges, gold, best split and deaths, per character, on Now and Journey. | S–M | App | A reason to come back and a sense of progress. |
+| J18 | **Rested and alt reminders.** "Beta is fully rested", "Alpha's cooldown is ready", on All characters and Now. | S | App | Play the right character tonight. |
+
+### Phase 1.5: Graphics, part 2
+
+| # | Item | Size | Where | Why |
+|---|---|---|---|---|
+| J19 | **Flowing routes** [G4]: lines that flow toward the next step, footprints and a pulsing target. | M | App | The map feels alive. |
+| J20 | **Boss silhouettes and loot trays** [G6]. | M | App | Dungeons look as good as they read. |
+| J21 | **Celebrations, part 2** [G8]: new mount and finished zone, and painted class crests everywhere. | M | App | Big moments feel big. |
+
+### Longer term
+
+| # | Item | Size | Where | Why |
+|---|---|---|---|---|
+| J22 | **Live link on the Mac.** Opt-in Screen Recording permission the player grants, clearly explained; the decoder is shared with Windows. | L | App | Mac players get pace, deaths and time to level. |
+| J23 | **Party sync with two real players** and **German in a German client**, tested. | S | Both | Built but not checked in the real game. |
+| J24 | **Publish to the addon sites with each release**, once the owner sets up the three projects. | S | CI | One release, every site. |
+| J25 | **Backup and move your journal**: one file to export and import on another PC. | S | App | Nothing lost on a new computer. |
+
 ## Suggested release sequence
 
 - **0.21 (shipped):** repair, flight paths, version check, Alliance vendors, flaky checks, art pass 1.
@@ -305,3 +364,4 @@ Rule: generated art must be original. No Blizzard assets, and nothing that imita
 - **After 1.0:** the rows marked "After 1.0" above, and the route review (Frank goes through the routes) whenever it suits.
 
 Keep this file and Help → Commands updated with each release.
+- **1.1.0 (2026-11-17):** J1 Badges page (Characters → Badges: every badge per character with its date, filters, latest, closest next, who else holds it, account badges; the new-badge banner opens it) and J2 more badges (professions, gold, reputation, account). Next: the rest of Tier J, phase by phase.

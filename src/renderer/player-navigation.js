@@ -23,8 +23,8 @@ window.PlayerNavigation = (() => {
     },
     characters: {
       label: "Characters",
-      routes: [["characters", "Journal"], ["alts", "All characters"], ["sheet", "Sheet"], ["talents", "Talents"], ["journey", "Journey"]],
-      description: "Your characters, all of them at a glance, their journals, gear and gear sets, and a talent path for leveling.",
+      routes: [["characters", "Journal"], ["alts", "All characters"], ["sheet", "Sheet"], ["talents", "Talents"], ["journey", "Journey"], ["badges", "Badges"]],
+      description: "Your characters, all of them at a glance, their journals, gear and gear sets, a talent path for leveling, and every badge they have earned.",
     },
     ledger: {
       label: "Ledger",

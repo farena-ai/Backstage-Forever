@@ -66,17 +66,18 @@ window.JourneyView = (() => {
     let seen = {};
     try { seen = JSON.parse(localStorage.getItem("bf-badges-seen") || "{}"); } catch {}
     const mine = new Set(seen[d.id] || []), fresh = d.badges.badges.filter((b) => b.earned && !mine.has(b.id));
-    if (seen[d.id] && fresh.length) show(fresh[0], fresh.length);
+    if (seen[d.id] && fresh.length) show(fresh[0], fresh.length, d.id);
     seen[d.id] = d.badges.badges.filter((b) => b.earned).map((b) => b.id);
     try { localStorage.setItem("bf-badges-seen", JSON.stringify(seen)); } catch {}
   }
-  function show(b, n) {
+  function show(b, n, profileId = null) {
     document.querySelector(".bf-badge-pop")?.remove();
     const el = document.createElement("div");
     el.className = "bf-badge-pop"; el.setAttribute("role", "status");
-    el.innerHTML = `<img src="art/badges/${esc(b.id)}.png" alt="" width="120" height="120"><div><span>New badge${n > 1 ? `, and ${n - 1} more` : ""}</span><strong>${esc(b.name)}</strong><em>${esc(b.how)}</em></div>`;
+    el.innerHTML = `<img src="art/badges/${esc(b.id)}.png" alt="" width="120" height="120"><div><span>New badge${n > 1 ? `, and ${n - 1} more` : ""}</span><strong>${esc(b.name)}</strong><em>${esc(b.how)}</em><span class="bd-pop-link">See all your badges →</span></div>`;
     document.body.append(el);
-    el.addEventListener("click", () => el.remove());
+    el.title = "Open Characters → Badges";
+    el.addEventListener("click", () => { el.remove(); window.BadgesView?.open(profileId, b.id); const root = document.getElementById("app"); if (root) { const go = document.createElement("button"); go.type = "button"; go.hidden = true; go.dataset.nav = "badges"; root.append(go); go.click(); go.remove(); } });
     setTimeout(() => el.classList.add("out"), 5200); setTimeout(() => el.remove(), 6000);
   }
   function mounted() {
