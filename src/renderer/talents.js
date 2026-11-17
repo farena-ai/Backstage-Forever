@@ -26,11 +26,16 @@ window.TalentsView = (() => {
     const pts = c.order.slice(0, c.spentByNow.length).filter((s) => s.tab === tab.name).length;
     return `<section class="tal-tree${tab.name === c.tree ? " main" : ""}"><header>${tab.iconFileId && window.GameIcons ? GameIcons.tag(tab.iconFileId, 28) : ""}<h3>${esc(tab.name)}</h3><span>${pts} point${pts === 1 ? "" : "s"}</span></header><div class="tal-grid">${cells.join("")}</div></section>`;
   }
+  // 1.3 (J9): class quests and key unlocks for this class, past ones dimmed.
+  function unlocksCard(u) {
+    if (!u?.rows?.length) return "";
+    return `<section class="tal-unlocks" data-tal-unlocks><h3>Class quests and key unlocks</h3><ol>${u.rows.map((r) => `<li class="tal-u-${r.state}"><span class="tal-u-lv">${r.level}</span><div><strong>${esc(r.what)}</strong>${r.kind === "quest" ? ' <span class="tal-u-kind">quest</span>' : ""}<p>${esc(r.how)}</p></div></li>`).join("")}</ol><p class="tal-note">Your class trainer has the details; Forever may move a level or two.</p></section>`;
+  }
   function body() {
     if (error) return `<p class="tal-empty">${esc(error)}</p>`;
     if (!who) return `<p class="tal-empty">Choose a character with a class in Characters to see talents.</p>`;
     if (!data) return `<p class="tal-empty">Reading your talent trees…</p>`;
-    if (!data.available) return `<div class="tal-empty"><strong>Talent trees aren't available yet.</strong><p>${esc(data.reason || "")} Connect your WoW Forever folder in Settings → Game connection; the app reads your talents from your own game files.</p></div>`;
+    if (!data.available) return unlocksCard(data.unlocks) + `<div class="tal-empty"><strong>Talent trees aren't available yet.</strong><p>${esc(data.reason || "")} Connect your WoW Forever folder in Settings → Game connection; the app reads your talents from your own game files.</p></div>`;
     const c = data.coach, trees = data.trees;
     const descOf = (s) => { const t = trees.tabs.find((x) => x.name === s.tab)?.talents.find((x) => x.id === s.talentId); return t?.descriptions?.[s.rank - 1] || t?.descriptions?.[0] || ""; };
     const iconOf = (s) => trees.tabs.find((x) => x.name === s.tab)?.talents.find((x) => x.id === s.talentId)?.iconFileId;
@@ -44,6 +49,7 @@ window.TalentsView = (() => {
     const nextOld = c.next.length ? `<ol class="tal-next-list">${c.next.map((s, i) => `<li${i === 0 ? ' class="first"' : ""}>${iconOf(s) && window.GameIcons ? GameIcons.tag(iconOf(s), 36) : ""}<div><strong>${esc(s.name)} <small>rank ${s.rank}/${s.maxRank} · ${esc(s.tab)}</small></strong>${i === 0 ? `<span class="tal-when">${c.points >= 1 ? "Spend now" : "At level 10"}</span>` : `<span class="tal-when">Level ${9 + c.spentByNow.length + i + 1}</span>`}${descOf(s) ? `<p>${esc(descOf(s))}</p>` : ""}</div></li>`).join("")}</ol>` : `<p class="tal-empty">Every point on this path is spent. 🎉</p>`;
     const totals = Object.entries(c.totals).map(([k, v]) => `${v} ${esc(k)}`).join(" / ") || "none yet";
     return `<div class="tal-summary"><div class="tal-points"><strong>${c.points}</strong><span>talent point${c.points === 1 ? "" : "s"} at level ${c.level}</span></div><p>${c.points ? `By now: ${totals}.` : "Talents start at level 10: one point every level after that."} The path leans <strong>${esc(c.tree)}</strong>. ${esc(c.why)}</p></div>
+      ${unlocksCard(data.unlocks)}
       <div class="tal-layout"><div class="tal-trees">${trees.tabs.map((t) => tree(t, c)).join("")}</div><aside class="tal-side"><h3>Spend next</h3>${next}<p class="tal-note">In game: press <code>N</code> to open Talents. This path is a suggestion for solo leveling; your choices are yours.</p></aside></div>`;
   }
   function page() {

@@ -685,7 +685,7 @@
   "Saved recipe": "Rezept gespeichert",
   "Saved-game follow paused · showing your pick": "Spielstand-Follow pausiert · zeigt deine Auswahl",
   "saves it as": "speichert es als",
-  "Saving for riding training and your first mount, or anything else? Set the amount yourself: the app's reference has no trainer or mount prices, so check the price at your riding trainer or mount vendor in game.": "Sparst du für Reittraining und dein erstes Reittier, oder für etwas anderes? Setze den Betrag selbst: Die Referenz der App hat keine Preise für Lehrer oder Reittiere, also prüfe den Preis bei deinem Reitlehrer oder Reittierhändler im Spiel.",
+  "Saving for riding training and your first mount, or anything else? Set the amount yourself, or open your riding trainer's window and a mount vendor once in game (then /reload): the app adds up what they charge.": "Sparst du für Reittraining und dein erstes Reittier, oder für etwas anderes? Setze den Betrag selbst, oder öffne einmal im Spiel das Fenster deines Reitlehrers und eines Reittierhändlers (dann /reload): Die App rechnet zusammen, was sie verlangen.",
   "Say again": "Nochmal sagen",
   "Search by item name, e.g. linen cloth": "Suche nach Itemname, z. B. Leinengewebe",
   "Search everything": "Alles durchsuchen",
@@ -1243,7 +1243,10 @@
   "Have a Horde and an Alliance character.": "Habe einen Horde- und einen Allianz-Charakter.",
   "Opening your badge case…": "Deine Abzeichenvitrine wird geöffnet …",
   "Badges appear once a character has been saved.": "Abzeichen erscheinen, sobald ein Charakter gespeichert wurde.",
-  "How many badges this character has earned and the three closest to earning, with progress. /bf badges all lists every earned badge by group. A new badge also gets a small banner in game. The app's Characters → Badges page shows them all with dates.": "Wie viele Abzeichen dieser Charakter verdient hat und die drei, die am nächsten sind, mit Fortschritt. /bf badges all listet jedes verdiente Abzeichen nach Gruppe. Ein neues Abzeichen bekommt auch im Spiel ein kleines Banner. Die Seite Charaktere → Abzeichen in der App zeigt sie alle mit Datum."
+  "How many badges this character has earned and the three closest to earning, with progress. /bf badges all lists every earned badge by group. A new badge also gets a small banner in game. The app's Characters → Badges page shows them all with dates.": "Wie viele Abzeichen dieser Charakter verdient hat und die drei, die am nächsten sind, mit Fortschritt. /bf badges all listet jedes verdiente Abzeichen nach Gruppe. Ein neues Abzeichen bekommt auch im Spiel ein kleines Banner. Die Seite Charaktere → Abzeichen in der App zeigt sie alle mit Datum.",
+  "Class quests and key unlocks": "Klassenquests und wichtige Freischaltungen",
+  "Fastest ways up": "Schnellste Wege nach oben",
+  "Training costs": "Trainingskosten"
  },
  "addon": {
   "plain": {
@@ -1344,7 +1347,11 @@
    "/bf sell - what in your bags is worth more at auction than at a vendor": "/bf sell - was in deinen Taschen im Auktionshaus mehr wert ist als beim Händler",
    "/bf plates - quest icons over enemies a quest still needs (on or off)": "/bf plates - Questsymbole über Gegnern, die eine Quest noch braucht (an oder aus)",
    "/bf prices - remember Auction House prices on pages you open yourself (on, off, status, or tips for tooltip lines)": "/bf prices - Auktionshauspreise auf selbst geöffneten Seiten merken (on, off, status oder tips für Tooltip-Zeilen)",
-   "Use /bf prices on, off, status or tips.": "Nutze /bf prices on, off, status oder tips."
+   "Use /bf prices on, off, status or tips.": "Nutze /bf prices on, off, status oder tips.",
+   "Boss tips off.": "Boss-Tipps aus.",
+   "Boss tips on: the first time you target a dungeon boss, a short tip.": "Boss-Tipps an: Wenn du einen Dungeon-Boss zum ersten Mal anvisierst, ein kurzer Tipp.",
+   "Target a dungeon boss first. Tips cover the bosses of the leveling dungeons and a few raid bosses.": "Visiere zuerst einen Dungeon-Boss an. Tipps gibt es für die Bosse der Level-Dungeons und einige Schlachtzugsbosse.",
+   "/bf boss - the tip for the dungeon boss you target (on or off for the pop-ups)": "/bf boss - der Tipp für den anvisierten Dungeon-Boss (on oder off für die Einblendungen)"
   },
   "templates": {
    "  %s: %d items, %d worn now, %d in your bags, %d elsewhere.": "  %s: %d Gegenstände, %d aktuell getragen, %d in deinen Taschen, %d woanders.",

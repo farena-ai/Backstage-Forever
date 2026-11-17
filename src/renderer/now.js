@@ -18,6 +18,18 @@ window.NowView = (() => {
     </section>`;
   }
 
+  // 1.3 (J10): what the next training visits cost, from the trainer window you opened, and your gold.
+  const gsc = (copper) => { const v = Math.max(0, Math.round(copper || 0)), g = Math.floor(v / 10000), sv = Math.floor(v / 100) % 100, cc = v % 100; return [g ? `${g}g` : "", sv ? `${sv}s` : "", !g && cc ? `${cc}c` : ""].filter(Boolean).join(" ") || "0c"; };
+  function trainingCost(t, c) {
+    if (!t?.trainer) return "";
+    const k = t.costs;
+    if (!k) return `<p class="now-cost-hint"><small>Open your trainer's window once in game and /reload: the app then shows what each visit costs and whether you can afford it.</small></p>`;
+    const first = k.levels[0];
+    const rows = k.levels.filter((l) => l.known).map((l) => `<li><span class="now-plan-lv">${l.level}</span><span>${esc(gsc(l.total))}${l.known < l.of ? ` <small>(${l.known} of ${l.of} spells priced)</small>` : ""}</span></li>`).join("");
+    const verdict = !first || !first.known ? "" : k.canAffordNext === true ? `<p class="now-good">You have ${esc(gsc(k.money))}: enough for level ${first.level}'s training.</p>`
+      : k.canAffordNext === false ? `<p class="now-warn">Level ${first.level}'s training costs ${esc(gsc(first.total))}; you're short by ${esc(gsc(k.shortBy))}.</p>` : "";
+    return `<div class="now-cost" data-now-cost>${k.nowTotal ? `<p>Ready to learn now: about <strong>${esc(gsc(k.nowTotal))}</strong>.</p>` : ""}${rows ? `<h3 class="now-sub">Training costs</h3><ol class="now-plan now-costs">${rows}</ol>` : ""}${verdict}<p><small>Prices from your trainer's window${k.seenAt ? `, seen ${esc(new Date(k.seenAt * 1000).toLocaleDateString([], { month: "short", day: "numeric" }))}` : ""}. Spells you haven't seen there yet aren't counted.</small></p></div>`;
+  }
   // The few things worth doing right now, most urgent first.
   function steps(a) {
     const out = [];
@@ -173,6 +185,7 @@ window.NowView = (() => {
          ${t.newNow.length ? `<p class="now-good">New for you now: ${t.newNow.map((s) => esc(s.name)).join(", ")}</p>` : `<p>Nothing new at level ${c.level}.</p>`}
          ${t.nextAt ? `<p>Next spells at <strong>level ${t.nextAt}</strong>: ${t.nextSpells.slice(0, 6).map((s) => esc(s.name)).join(", ")}${t.nextSpells.length > 6 ? "…" : ""}</p>` : ""}
          ${t.upcoming?.length ? `<h3 class="now-sub">Upcoming training</h3><ol class="now-plan">${t.upcoming.map((u) => `<li class="${u.level - c.level <= 2 ? "soon" : ""}"><span class="now-plan-lv">${u.level}</span><span class="now-plan-spells">${u.spells.slice(0, 6).map((sp) => `<span class="now-spell" title="${esc(sp.name)}${sp.rank ? ` (${esc(sp.rank)})` : ""}">${sp.spellId ? `<canvas class="game-icon now-spell-ico" width="28" height="28" data-spell-icon="${sp.spellId}"></canvas>` : ""}<span>${esc(sp.name)}${sp.rank ? ` <small>${esc(sp.rank.replace("Rank ", "R"))}</small>` : ""}</span></span>`).join("")}</span></li>`).join("")}</ol>` : ""}
+         ${trainingCost(t, c)}
          <div class="now-actions">${mapBtn(t.trainer, t.trainer.name, t.trainer.title, t.trainer.npcId, { title: `Your ${t.className} trainer`, steps: [`${t.trainer.name}, ${t.trainer.title}.`, t.newNow.length ? `Ready to learn: ${t.newNow.map((s) => s.name).join(", ")}.` : `Nothing new until level ${t.nextAt || c.level + 1}.`] })}</div>`;
     const log = a.log;
     const questLog = log.inLog ? `<ul class="now-log">${log.ready.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip ready">Hand in</span>${esc(q.title)}</button></li>`).join("")}${log.active.slice(0, 8).map((q) => { const grey = q.level && q.level <= greyAt(c.level); return `<li><button type="button" data-quest-open="${q.id}"${grey ? ' title="This quest no longer gives experience at your level. Finish it only if you want the reward or the story; otherwise it\'s safe to abandon to free up your log."' : ""}><span class="now-chip">${q.total ? `${q.done}/${q.total}` : "…"}</span>${esc(q.title)}${q.level ? ` <small>lvl ${q.level}</small>` : ""}${grey ? ` <span class="now-chip grey">No XP · safe to drop</span>` : ""}</button></li>`; }).join("")}</ul>` : `<p>Your quest log is empty. ${a.next ? `Pick up quests in ${esc(a.next.name)}.` : ""}</p>`;

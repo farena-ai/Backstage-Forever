@@ -507,6 +507,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverLedgerCommand)=='function' then pcall(BackstageForeverLedgerCommand,message)end
                 return
             end
+            if word=='boss' then
+                if type(BackstageForeverBossCommand)=='function' then pcall(BackstageForeverBossCommand,message)end
+                return
+            end
             if word=='plates' then
                 if type(BackstageForeverPlatesCommand)=='function' then pcall(BackstageForeverPlatesCommand,message)end
                 return

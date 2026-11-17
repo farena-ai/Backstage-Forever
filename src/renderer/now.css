@@ -261,3 +261,8 @@
 }
 /* G13: a zone's own painting (art/zones/map-<mapId>.webp) wins over its biome vista; ZoneArt.paint sets --zone-art. */
 .now-zc-head[data-zone-art], .bf-arrive[data-zone-art], .now-page .now-zones li[data-zone-art] button { background-image: var(--zone-art); }
+/* 1.3 (J10): training costs. */
+.now-cost p { margin: 6px 0; }
+.now-cost .now-warn { color: #a3361f; font-weight: 600; }
+.now-costs li { grid-template-columns: 40px 1fr; }
+.now-cost-hint small { opacity: .85; }

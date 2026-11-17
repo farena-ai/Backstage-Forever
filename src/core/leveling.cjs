@@ -236,8 +236,29 @@ class LevelingAdvisor {
       upcoming: [...new Set(all.filter((s) => s.level > p.level).map((s) => s.level))].sort((a, b) => a - b).slice(0, 3)
         .map((lv) => ({ level: lv, spells: all.filter((s) => s.level === lv).sort((a, b) => a.name.localeCompare(b.name)).map((s) => ({ name: s.name, rank: s.rank, spellId: s.spellId })) })),
       spellsFromOtherTrainers,
+      ...trainingCosts(p, all),
     };
   }
 }
 
+// 1.3 (J10): what the next training visits cost, from what this character's trainer charged
+// (Ledger: the trainer window you opened), against the gold you carry.
+function trainingCosts(p, all) {
+  const seen = p?.ledger?.training;
+  if (!seen || !Array.isArray(seen.services) || !seen.services.length) return { costs: null };
+  const price = new Map(seen.services.map((s) => [`${s.name}|${s.rank || ""}`, s.cost]));
+  const level = Number(p.level) || 1, money = Number.isSafeInteger(p.ledger.money) ? p.ledger.money : null;
+  const costOf = (rows) => {
+    let total = 0, known = 0;
+    for (const s of rows) { const c = price.get(`${s.name}|${s.rank || ""}`); if (Number.isFinite(c)) { total += c; known++; } }
+    return { total, known, of: rows.length };
+  };
+  const now = costOf(all.filter((s) => s.level <= level));
+  const levels = [...new Set(all.filter((s) => s.level > level).map((s) => s.level))].sort((a, b) => a - b).slice(0, 3)
+    .map((lv) => ({ level: lv, ...costOf(all.filter((s) => s.level === lv)) }));
+  // Everything at or below your level that the trainer listed: what you could still buy now.
+  const due = seen.services.filter((s) => s.level <= level).reduce((t, s) => t + s.cost, 0);
+  const next3 = levels.reduce((t, l) => t + l.total, 0);
+  return { costs: { seenAt: seen.seenAt, money, nowTotal: due, levels, nextThree: next3, canAffordNext: money == null || !levels.length ? null : money >= levels[0].total, shortBy: money == null || !levels.length ? null : Math.max(0, levels[0].total - money), knownNow: now } };
+}
 module.exports = { LevelingAdvisor, loadLevelingPack, validateLevelingPack, hubOf };

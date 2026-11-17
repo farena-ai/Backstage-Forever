@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0 — Deeper guidance, 2026-11-17
+
+- Characters → Talents: Class quests and key unlocks for your class (Bear Form, your pet, totems, demons, stances, Redemption, poisons, teleports and more), with past ones dimmed and the next ones highlighted. Shown even before your talent trees are read.
+- Now → Your training: what the next training visits cost and whether the gold you carry covers the next one ("you're short by 45s"), from the prices your class trainer showed when you opened its window. Before that, Now says how to get the prices.
+- Ledger → Gold & prices: a riding-and-mount goal from prices your characters saw at the riding trainer and a mount vendor, saved with one click.
+- Ledger → Reputation: Fastest ways up. For each faction, the quests your character hasn't done that give the most reputation, with where they start and what the next standing brings (Honored: 10% off at that city's vendors; Exalted: its mounts for any race of your side).
+- Boss tips: a short plain tip for the bosses of the leveling dungeons (and Onyxia and Ragnaros) on the Instance Atlas, and in game the first time you target one; `/bf boss` repeats it, `/bf boss off` stops the pop-ups. Text only, no timers.
+- The addon remembers what your class trainer, the riding trainer and mount vendors charge when you open their windows yourself.
+
 ## 1.2.0 — Badges in game, and what was half-built, 2026-11-17
 
 - In game: `/bf badges` says how many badges this character has earned and the three closest to earning; `/bf badges all` lists them by group. A newly earned badge gets a small banner in game. Same 30 badges and rules as the app.

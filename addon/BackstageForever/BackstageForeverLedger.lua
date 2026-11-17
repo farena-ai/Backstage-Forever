@@ -294,6 +294,46 @@ local function readAuctions()
     trimPrices(d)
 end
 
+-- Trainer costs (1.3, J10): what your class trainer charges, read from the trainer window you
+-- opened yourself. Kept per character; the app works out what the next visits cost.
+local TRAIN_MAX=200
+local function readTrainer()
+    local d=store();local t=now();if not t then return end
+    if call(IsTradeskillTrainer)==true then return end
+    local n=int(call(GetNumTrainerServices),0,1000);if not n or n==0 then return end
+    local services,seen={},{}
+    for i=1,min(n,TRAIN_MAX) do
+        local name,rank,category=call(GetTrainerServiceInfo,i)
+        name=str(name,100);rank=str(rank,40)
+        local cost=int(call(GetTrainerServiceCost,i),0,MONEY_MAX)
+        local level=int(call(GetTrainerServiceLevelReq,i),0,1000)
+        if name and cost and level and category~='header' then
+            local key=name..'|'..(rank or '')
+            if not seen[key] then seen[key]=true;services[#services+1]={name=name,rank=rank,level=level,cost=cost} end
+        end
+    end
+    if #services==0 then return end
+    local riding=false
+    for _,s in ipairs(services) do if s.name:find('Riding',1,true) then riding=true end end
+    if riding then d.riding={seenAt=t,services=services} else d.training={seenAt=t,services=services} end
+end
+-- 1.3 (J11): mount prices from a vendor window you open (items the game files as mounts).
+local function readMerchantMounts()
+    local d=store();local t=now();if not t then return end
+    local n=int(call(GetMerchantNumItems),0,500);if not n or n==0 then return end
+    local items={}
+    for i=1,min(n,200) do
+        local name,_,price=call(GetMerchantItemInfo,i)
+        local id=int(call(GetMerchantItemID,i),1,2147483647)
+        local classId,subclassId
+        if id then local r={call(GetItemInfoInstant,id)};classId,subclassId=r[6],r[7] end
+        name=str(name,100);price=int(price,0,MONEY_MAX)
+        if id and name and price and price>0 and classId==15 and subclassId==5 and #items<20 then items[#items+1]={id=id,name=name,cost=price} end
+    end
+    if #items>0 then d.mounts={seenAt=t,items=items} end
+end
+BackstageForeverLedgerReadMounts=readMerchantMounts
+BackstageForeverLedgerReadTrainer=readTrainer
 local function copyItems(items)
     local out={}
     for _,e in ipairs(type(items)=='table' and items or {}) do
@@ -341,6 +381,21 @@ function BackstageForeverLedgerSnapshot()
     table.sort(factions,function(a,b)return a.id<b.id end)
     if #factions>0 then out.reputations={seenAt=int(d.reputationsAt,0,253402300799) or t,factions=factions} end
     out.cooldowns=cooldowns()
+    if type(d.training)=='table' and int(d.training.seenAt,0,253402300799) and type(d.training.services)=='table' then
+        local list={}
+        for _,s in ipairs(d.training.services) do if type(s)=='table' and str(s.name,100) and int(s.level,0,1000) and int(s.cost,0,MONEY_MAX) and #list<TRAIN_MAX then list[#list+1]={name=s.name,rank=str(s.rank,40),level=s.level,cost=s.cost} end end
+        out.training={seenAt=d.training.seenAt,services=list}
+    end
+    if type(d.riding)=='table' and int(d.riding.seenAt,0,253402300799) and type(d.riding.services)=='table' then
+        local list={}
+        for _,s in ipairs(d.riding.services) do if type(s)=='table' and str(s.name,100) and int(s.level,0,1000) and int(s.cost,0,MONEY_MAX) and #list<20 then list[#list+1]={name=s.name,rank=str(s.rank,40),level=s.level,cost=s.cost} end end
+        out.riding={seenAt=d.riding.seenAt,services=list}
+    end
+    if type(d.mounts)=='table' and int(d.mounts.seenAt,0,253402300799) and type(d.mounts.items)=='table' then
+        local list={}
+        for _,m in ipairs(d.mounts.items) do if type(m)=='table' and int(m.id,1,2147483647) and str(m.name,100) and int(m.cost,0,MONEY_MAX) and #list<20 then list[#list+1]={id=m.id,name=m.name,cost=m.cost} end end
+        out.mounts={seenAt=d.mounts.seenAt,items=list}
+    end
     local prices={}
     for id,e in pairs(d.prices) do
         if type(e)=='table' and type(e.hist)=='table' and #e.hist>0 then
@@ -555,9 +610,11 @@ end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_MONEY','UPDATE_FACTION','BANKFRAME_OPENED','BANKFRAME_CLOSED','PLAYERBANKSLOTS_CHANGED','BAG_UPDATE','MAIL_SHOW','MAIL_INBOX_UPDATE','MAIL_CLOSED','AUCTION_ITEM_LIST_UPDATE','AUCTION_HOUSE_CLOSED'}) do pcall(events.RegisterEvent,events,e) end
+        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_MONEY','UPDATE_FACTION','BANKFRAME_OPENED','BANKFRAME_CLOSED','PLAYERBANKSLOTS_CHANGED','BAG_UPDATE','MAIL_SHOW','MAIL_INBOX_UPDATE','MAIL_CLOSED','AUCTION_ITEM_LIST_UPDATE','AUCTION_HOUSE_CLOSED','TRAINER_SHOW','TRAINER_UPDATE','TRAINER_CLOSED','MERCHANT_SHOW'}) do pcall(events.RegisterEvent,events,e) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             store()
+            if event=='TRAINER_SHOW' or event=='TRAINER_UPDATE' then pcall(readTrainer) elseif event=='TRAINER_CLOSED' then request() end
+            if event=='MERCHANT_SHOW' then pcall(readMerchantMounts) end
             if event=='PLAYER_LOGIN' then bankOpen=false;mailOpen=false;pcall(readFactions)
             elseif event=='PLAYER_MONEY' then request()
             elseif event=='UPDATE_FACTION' then pcall(readFactions)

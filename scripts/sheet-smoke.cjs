@@ -83,7 +83,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     // Gold goal on Gold & prices: set, progress across both characters, pace, clear.
     await navigate(page, "ledger-gold");
     await page.locator("[data-ledger-goal-card]").waitFor();
-    assert.match(await page.locator("[data-ledger-goal-card]").innerText(), /no trainer or mount prices/);
+    assert.match(await page.locator("[data-ledger-goal-card]").innerText(), /open your riding trainer.s window and a mount vendor/);
     await page.getByLabel("Gold goal in gold", { exact: true }).fill("100");
     await page.getByLabel("What the gold goal is for", { exact: true }).fill("Riding and first mount");
     await page.locator("[data-ledger-goal-save]").click();

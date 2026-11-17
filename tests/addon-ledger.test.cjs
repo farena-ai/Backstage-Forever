@@ -218,3 +218,40 @@ assert(BackstageForeverQuestUseLine('Linen Cloth')==nil)
 assert(BackstageForeverQuestUseLine('Bristleback Quilboar slain')==nil,'only item objectives')
 print('ok')
 `));
+
+test("1.3: the trainer window you open is remembered with its costs; profession trainers are not", () => lua(WORLD + String.raw`
+local svc={{'Frostbolt','Rank 2','available',190,8},{'Arcane Missiles','Rank 1','unavailable',400,8},{'Polymorph','Rank 1','used',300,8}}
+GetNumTrainerServices=function() return #svc end
+GetTrainerServiceInfo=function(i) return svc[i][1],svc[i][2],svc[i][3] end
+GetTrainerServiceCost=function(i) return svc[i][4] end
+GetTrainerServiceLevelReq=function(i) return svc[i][5] end
+local tradeskill=true IsTradeskillTrainer=function() return tradeskill end
+BackstageForeverLedgerReadTrainer()
+assert(BackstageForeverLedgerDB.training==nil,'profession trainers are skipped')
+tradeskill=false
+BackstageForeverLedgerReadTrainer()
+local s=BackstageForeverLedgerSnapshot()
+assert(s.training and #s.training.services==3 and s.training.services[1].cost==190 and s.training.services[2].level==8 and s.training.seenAt==t)
+print('ok')
+`));
+
+test("1.3 (J11): the riding trainer is kept apart from the class trainer, and vendor mounts are remembered", () => lua(WORLD + String.raw`
+IsTradeskillTrainer=function() return false end
+local svc={{'Apprentice Riding','','available',200000,40}}
+GetNumTrainerServices=function() return #svc end
+GetTrainerServiceInfo=function(i) return svc[i][1],svc[i][2],svc[i][3] end
+GetTrainerServiceCost=function(i) return svc[i][4] end
+GetTrainerServiceLevelReq=function(i) return svc[i][5] end
+BackstageForeverLedgerReadTrainer()
+assert(BackstageForeverLedgerDB.riding and BackstageForeverLedgerDB.training==nil,'riding does not replace class training')
+local wares={{'Horn of the Timber Wolf',700000,1132,15,5},{'Wolf Meat',50,12,0,5}}
+GetMerchantNumItems=function() return #wares end
+GetMerchantItemInfo=function(i) return wares[i][1],nil,wares[i][2] end
+GetMerchantItemID=function(i) return wares[i][3] end
+GetItemInfoInstant=function(id) for _,w in ipairs(wares) do if w[3]==id then return id,nil,nil,nil,nil,w[4],w[5] end end end
+BackstageForeverLedgerReadMounts()
+local s0=BackstageForeverLedgerSnapshot()
+assert(s0.riding and s0.riding.services[1].cost==200000)
+assert(s0.mounts and #s0.mounts.items==1 and s0.mounts.items[1].name=='Horn of the Timber Wolf','only mounts are kept')
+print('ok')
+`));
