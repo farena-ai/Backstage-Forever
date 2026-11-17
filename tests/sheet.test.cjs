@@ -185,5 +185,5 @@ test("the Sheet page paints the paper doll, stats, upgrades and sets; the gold g
     assert.match(lhtml, re);
   ledgerView.goal = G.goldGoalView({ ...goalState, goldGoal: undefined }, { now: T });
   lc.LedgerView.invalidate(); lc.LedgerView.mounted(); await new Promise((r) => setTimeout(r, 10));
-  assert.match(lhtml, /no trainer or mount prices/); assert.match(lhtml, />Set goal</);
+  assert.match(lhtml, /open your riding trainer.s window and a mount vendor once/); assert.match(lhtml, />Set goal</);
 });

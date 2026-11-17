@@ -270,11 +270,11 @@ Frank asked for everything below, built one release at a time through the usual 
 
 | # | Item | Size | Where | Why |
 |---|---|---|---|---|
-| J9 | **Class quests and key unlocks** [E5], from hand-written lists per class, community data filling the gaps. | L | App | Easy to miss, hard to piece together. |
-| J10 | **Trainer planner, part 2** [E3]: what the next visits cost and whether you can afford them. | M | App | No surprise empty purse at the trainer. |
-| J11 | **Riding and mount savings goal** [E4], with costs from saves or community data. | M | App | The biggest money goal in leveling. |
-| J12 | **Reputation advice** [E6]: fastest turn-ins and what each level unlocks. | M | App | Rep is slow without a plan. |
-| J13 | **Boss tips** [A5]: short plain tips when you target a dungeon boss, and a pull checklist. Text only. | M | Both | New players wipe less. |
+| J9 | **Class quests and key unlocks** [E5], from hand-written lists per class, community data filling the gaps. **Done in 1.3:** hand-written unlocks for all nine classes on Characters → Talents. | L | App | Easy to miss, hard to piece together. |
+| J10 | **Trainer planner, part 2** [E3]: what the next visits cost and whether you can afford them. **Done in 1.3:** prices from the trainer window you open; Now says what the next visits cost and what you're short. | M | App | No surprise empty purse at the trainer. |
+| J11 | **Riding and mount savings goal** [E4], with costs from saves or community data. **Done in 1.3:** riding trainer and mount vendor prices you saw add up to a one-click goal. | M | App | The biggest money goal in leveling. |
+| J12 | **Reputation advice** [E6]: fastest turn-ins and what each level unlocks. **Done in 1.3:** Fastest ways up on Ledger → Reputation. | M | App | Rep is slow without a plan. |
+| J13 | **Boss tips** [A5]: short plain tips when you target a dungeon boss, and a pull checklist. Text only. **Done in 1.3:** tips for the leveling dungeons (and Onyxia, Ragnaros) on the atlas and in game; the pull checklist is the atlas's existing preparation list. | M | Both | New players wipe less. |
 
 ### Phase 1.4: Companion and the route
 
@@ -366,3 +366,4 @@ Frank asked for everything below, built one release at a time through the usual 
 Keep this file and Help → Commands updated with each release.
 - **1.1.0 (2026-11-17):** J1 Badges page (Characters → Badges: every badge per character with its date, filters, latest, closest next, who else holds it, account badges; the new-badge banner opens it) and J2 more badges (professions, gold, reputation, account). Next: the rest of Tier J, phase by phase.
 - **1.2.0 (2026-11-17):** J3 badges in game; phase 1.2: J4 gathering spots on the World Map, J5 price lines and `/bf sell`, J6 Gear sets button, J7 quest use on item tooltips, J8 quest icons over enemies. Reputation badges read the saved ledger shape.
+- **1.3.0 (2026-11-17):** phase 1.3: J9 class unlocks, J10 training costs, J11 riding-and-mount goal, J12 reputation advice, J13 boss tips.

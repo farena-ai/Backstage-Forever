@@ -852,7 +852,18 @@ app.whenReady().then(async () => {
   handle("ledger", (...args) => {
     if (args.length) throw Error("Invalid ledger request.");
     const L = require("./core/ledger.cjs"), s = store.state;
-    return { ...L.ledgerView(s, { facts: ledgerFacts(L.itemIds(s.profiles)) }), goal: require("./core/gold-goal.cjs").goldGoalView(s) };
+    const view = L.ledgerView(s, { facts: ledgerFacts(L.itemIds(s.profiles)) });
+    // 1.3 (J12): the quests that raise each faction most, for every character with reputations.
+    let pack = null;
+    try { pack = (knowledge.packs.get(knowledge.build) || knowledge.bundled).pack; } catch {}
+    if (pack) {
+      const { repAdvice } = require("./core/rep-advice.cjs");
+      for (const c of view.characters) {
+        const p = s.profiles.find((x) => x.id === c.profileId);
+        if (c.reputations && p) { try { c.repAdvice = repAdvice(p, pack); } catch { c.repAdvice = null; } }
+      }
+    }
+    return { ...view, goal: require("./core/gold-goal.cjs").goldGoalView(s) };
   });
   // Gold goal (0.36, E4): the player's own target; null clears it. Only this handler writes it.
   handle("setGoldGoal", (...args) => {
@@ -897,8 +908,10 @@ app.whenReady().then(async () => {
     const level = Number.isInteger(input?.level) && input.level >= 1 && input.level <= 100 ? input.level : null;
     if (!className || !level) throw Error("Invalid talent request.");
     const trees = gameData.talents(className);
-    if (!trees) return { available: false, reason: gameData.status().reason || "Talent trees are not available from your game install yet." };
-    return { available: true, trees, coach: require("./core/talent-coach.cjs").coach(trees, className, level) };
+    // 1.3 (J9): class quests and key unlocks, with or without the talent trees.
+    const unlocks = require("./core/class-unlocks.cjs").classUnlocks(className, level);
+    if (!trees) return { available: false, unlocks, reason: gameData.status().reason || "Talent trees are not available from your game install yet." };
+    return { available: true, trees, unlocks, coach: require("./core/talent-coach.cjs").coach(trees, className, level) };
   });
   radar = require("./core/radar-window.cjs").createRadar({ BrowserWindow, ipcMain, worldMap, live: liveBridge, rendererDir: path.join(__dirname, "renderer"), mapArt });
   handle("openRadar", () => radar.open());

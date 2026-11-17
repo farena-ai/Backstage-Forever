@@ -6,6 +6,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+const { tipFor } = require("./boss-tips.cjs");
 const BASELINE = [
   // id, name, kind, min, max, faction, zone, mapId, entrance [x,y] (approximate), instance map, bosses
   ["rfc", "Ragefire Chasm", "dungeon", 13, 18, "Horde", "Orgrimmar", 1454, [52, 49], 389, ["Oggleflint", "Taragaman the Hungerer", "Jergosh the Invoker", "Bazzalan"]],
@@ -109,7 +110,7 @@ function buildAtlas({ profile = null, encounters = null, knowledgePack = null } 
       id, name, kind, levels: { min, max }, faction: side, zone, mapId, entrance: { x: ex / 100, y: ey / 100, approximate: true },
       difficulty: difficulty(level, min, max),
       factionNote: side && faction && side !== faction ? `${side}-side entrance; reachable but deep in enemy territory.` : null,
-      bosses: bosses.map((b) => ({ name: b, observedInForever: observedNames.has(norm(b)), kills: observed.find((o) => norm(o.name) === norm(b))?.kills || 0 })),
+      bosses: bosses.map((b) => ({ name: b, observedInForever: observedNames.has(norm(b)), kills: observed.find((o) => norm(o.name) === norm(b))?.kills || 0, tip: tipFor(b) })),
       observedOnly: observed.filter((o) => !bosses.some((b) => norm(b) === norm(o.name))).map((o) => ({ name: o.name, kills: o.kills })),
       observedRuns: observed.reduce((m, o) => Math.max(m, o.runs || 0), 0),
       yourQuests: yours, roles: ROLES[kind], prep: PREP[kind], pickUp: dungeonQuests(knowledgePack, bossNames, profile, name, { min, max }),

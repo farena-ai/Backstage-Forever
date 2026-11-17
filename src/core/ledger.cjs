@@ -4,7 +4,7 @@
 // The addon block is validated strictly and bounded; an invalid block is dropped without
 // touching the rest of the character. Everything here stays on this computer: it is never part
 // of community sharing (community.cjs) or the AI context (providers.cjs).
-const LIMITS = Object.freeze({ items: 400, factions: 120, cooldowns: 16, prices: 1500, history: 5, moneyLog: 30 });
+const LIMITS = Object.freeze({ items: 400, factions: 120, cooldowns: 16, prices: 1500, history: 5, moneyLog: 30, training: 200 });
 const MAX_T = 253402300799, MONEY = 1e13, ID = 2147483647;
 const COOLDOWNS = Object.freeze({
   transmute: { name: "Transmute", profession: "Alchemy" },
@@ -87,6 +87,15 @@ function prices(v) {
   }
   return out;
 }
+// 1.3 (J10): what the class trainer charged, from the trainer window the player opened.
+function training(v) {
+  obj(v);
+  const services = list(v.services, LIMITS.training).map((s) => {
+    obj(s);
+    return { name: text(s.name), ...(absent(s.rank) ? {} : { rank: text(s.rank) }), level: int(s.level, 0, 1000), cost: int(s.cost, 0, MONEY) };
+  });
+  return { seenAt: int(v.seenAt, 0, MAX_T), services };
+}
 /** Addon ledger block -> bounded copy with only known fields; throws when anything is invalid. */
 function normalizeLedgerCapture(l) {
   obj(l);
@@ -109,6 +118,12 @@ function normalizeLedgerCapture(l) {
   out.cooldowns = cooldowns(l.cooldowns);
   out.prices = prices(l.prices);
   if (typeof l.pricesOn === "boolean") out.pricesOn = l.pricesOn;
+  if (!absent(l.training)) out.training = training(l.training);
+  if (!absent(l.riding)) out.riding = training(l.riding);
+  if (!absent(l.mounts)) {
+    obj(l.mounts);
+    out.mounts = { seenAt: int(l.mounts.seenAt, 0, MAX_T), items: list(l.mounts.items, 20).map((m) => { obj(m); return { id: int(m.id, 1, ID), name: text(m.name), cost: int(m.cost, 0, MONEY) }; }) };
+  }
   return out;
 }
 // Stored profiles are re-validated with the same rules.

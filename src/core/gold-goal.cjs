@@ -2,8 +2,8 @@
 // Gold goal (0.36, E4): a gold target the player sets themselves (for example their riding
 // training and first mount), with progress from the ledger's gold across every character and,
 // when the addon has seen gold on at least two days, an estimate from the recent daily gold log.
-// The bundled reference has no trainer or mount prices, so the app never suggests a target or a
-// level of its own. Stored in the app state as `goldGoal`; never shared or sent to an AI.
+// The bundled reference has no trainer or mount prices; since 1.3 (J11) the app suggests a
+// riding-and-mount target only from prices your own characters saw in game. Stored in the app state as `goldGoal`; never shared or sent to an AI.
 const MAX_GOLD = 10000000, COPPER = 10000, DAY = 86400, WINDOW_DAYS = 14;
 const fail = () => { throw Error("Invalid gold goal."); };
 
@@ -49,6 +49,19 @@ function recentRate(profiles, now = Math.floor(Date.now() / 1000)) {
   const days = (end - start) / DAY, gained = total(end) - total(start);
   return { perDay: Math.round(gained / days), days: Math.round(days * 10) / 10, gained, from: start, to: end };
 }
+// 1.3 (J11): a riding-and-mount target from prices this account's characters saw in game:
+// the riding trainer's window and a vendor's mounts. Cheapest first-riding skill plus the
+// cheapest mount; null until both were seen.
+function mountSuggestion(profiles) {
+  let riding = null, mount = null;
+  for (const p of profiles || []) {
+    for (const s of p?.ledger?.riding?.services || []) if (s.cost > 0 && (!riding || s.cost < riding.cost || (s.cost === riding.cost && s.level < riding.level))) riding = { ...s, by: p.name, seenAt: p.ledger.riding.seenAt };
+    for (const m of p?.ledger?.mounts?.items || []) if (m.cost > 0 && (!mount || m.cost < mount.cost)) mount = { ...m, by: p.name, seenAt: p.ledger.mounts.seenAt };
+  }
+  if (!riding && !mount) return null;
+  const total = (riding?.cost || 0) + (mount?.cost || 0);
+  return { riding, mount, copper: total, gold: Math.ceil(total / COPPER), complete: Boolean(riding && mount) };
+}
 /** Everything the gold goal card shows. */
 function goldGoalView(state, { now = Math.floor(Date.now() / 1000) } = {}) {
   const goal = state?.goldGoal || null;
@@ -56,7 +69,7 @@ function goldGoalView(state, { now = Math.floor(Date.now() / 1000) } = {}) {
   const have = profiles.reduce((n, p) => n + p.ledger.money, 0);
   const active = profiles.find((p) => p.id === state?.activeProfileId) || null;
   const rate = recentRate(profiles, now);
-  const base = { goal, have, characters: profiles.length, activeMoney: active ? active.ledger.money : null, activeName: active?.name || null, rate,
+  const base = { goal, have, mountSuggestion: mountSuggestion(state?.profiles), characters: profiles.length, activeMoney: active ? active.ledger.money : null, activeName: active?.name || null, rate,
     // What the bundled reference knows about riding and mount costs: nothing, so the player sets the target.
     referenceCosts: false };
   if (!goal) return base;
@@ -64,4 +77,4 @@ function goldGoalView(state, { now = Math.floor(Date.now() / 1000) } = {}) {
   const days = left === 0 ? 0 : rate && rate.perDay > 0 ? Math.ceil(left / rate.perDay) : null;
   return { ...base, left, progress: Math.min(1, have / goal.copper), reached: left === 0, daysLeft: days };
 }
-module.exports = { validateGoldGoal, goalFromInput, recentRate, goldGoalView, MAX_GOLD };
+module.exports = { mountSuggestion, validateGoldGoal, goalFromInput, recentRate, goldGoalView, MAX_GOLD };

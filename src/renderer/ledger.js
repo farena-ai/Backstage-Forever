@@ -79,6 +79,13 @@ window.LedgerView = (() => {
   }
   // Gold goal (0.36, E4): the player's own target, progress across characters, a pace estimate.
   let goalNote = "";
+  // 1.3 (J11): a riding-and-mount target from prices your characters saw at the riding trainer and a mount vendor.
+  function mountHint(m) {
+    if (!m) return `<p class="ldg-note">Saving for riding training and your first mount, or anything else? Set the amount yourself, or open your riding trainer's window and a mount vendor once in game (then /reload): the app adds up what they charge.</p>`;
+    const parts = [m.riding ? `${esc(m.riding.name)} ${coins(m.riding.cost)}` : null, m.mount ? `${esc(m.mount.name)} ${coins(m.mount.cost)}` : null].filter(Boolean).join(" + ");
+    if (!m.complete) return `<p class="ldg-note">Seen so far: ${parts}. Open ${m.riding ? "a mount vendor" : "your riding trainer"}'s window once in game too, and the app adds them up for a riding-and-mount goal.</p>`;
+    return `<p class="ldg-note">From prices your characters saw in game: ${parts} = <strong>${coins(m.copper)}</strong>.</p><p><button type="button" class="primary" data-ledger-goal-mount="${m.gold}">Save ${m.gold.toLocaleString()} gold for riding and a mount</button></p>`;
+  }
   function goalCard() {
     const v = data.goal;
     if (!v) return "";
@@ -87,7 +94,7 @@ window.LedgerView = (() => {
       : r.perDay > 0 ? `Your gold grew by about ${coinsText(r.perDay)} a day over the last ${r.days} days (all characters).`
       : `Your gold did not grow over the last ${r.days} days (all characters), so there is no estimate.`;
     const inputs = `<div class="ldg-goal-form"><label>Target in gold<input type="number" min="1" max="10000000" step="1" data-ledger-goal="gold" value="${g ? Math.round(g.copper / 10000) : ""}" aria-label="Gold goal in gold"></label><label>What it's for<input type="text" maxlength="60" data-ledger-goal="label" value="${esc(g?.label || "")}" placeholder="e.g. riding and first mount" aria-label="What the gold goal is for"></label><button type="button" class="primary" data-ledger-goal-save>${g ? "Update goal" : "Set goal"}</button>${g ? `<button type="button" class="subtle" data-ledger-goal-clear>Clear</button>` : ""}</div><p class="ldg-goal-msg" role="status">${esc(goalNote)}</p>`;
-    if (!g) return `<section class="ldg-card ldg-goal" data-ledger-goal-card><h2>Gold goal</h2><p class="ldg-note">Saving for riding training and your first mount, or anything else? Set the amount yourself: the app's reference has no trainer or mount prices, so check the price at your riding trainer or mount vendor in game.</p>${inputs}</section>`;
+    if (!g) return `<section class="ldg-card ldg-goal" data-ledger-goal-card><h2>Gold goal</h2>${mountHint(v.mountSuggestion)}${inputs}</section>`;
     const pct = Math.round(v.progress * 100);
     return `<section class="ldg-card ldg-goal${v.reached ? " done" : ""}" data-ledger-goal-card><div class="ldg-goal-head"><h2>${esc(g.label || "Gold goal")}</h2><span>${coins(v.have)} of ${coins(g.copper)}</span></div>
       <span class="ldg-bar ldg-goal-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Gold goal progress"><span data-w="${Math.max(2, pct)}"></span></span>
@@ -117,7 +124,17 @@ window.LedgerView = (() => {
     const groups = [["Alliance", pick.reputations.factions.filter((f) => f.side === "Alliance")], ["Horde", pick.reputations.factions.filter((f) => f.side === "Horde")], ["Other factions", pick.reputations.factions.filter((f) => !f.side)]];
     if (pick.faction === "Horde") groups.unshift(groups.splice(1, 1)[0]);
     return `<section class="ldg-card"><div class="ldg-pick"><label>Character <select data-ledger-rep aria-label="Reputation of">${chars.map((c) => `<option value="${esc(c.profileId)}"${c === pick ? " selected" : ""}>${esc(c.name)}${c.faction ? ` · ${esc(c.faction)}` : ""}</option>`).join("")}</select></label><small>Seen ${esc(ago(pick.reputations.seenAt))}. Collapsed groups in your reputation window keep their last values.</small></div>
-      ${groups.filter(([, list]) => list.length).map(([name, list]) => `<h3 class="ldg-group">${esc(name)}</h3><ul class="ldg-reps">${list.map((f) => `<li class="ldg-rep st-${f.standing}" data-ledger-faction="${f.id}"><span class="ldg-fname">${esc(f.name)}</span><span class="ldg-bar"><span data-w="${Math.round(f.progress * 100)}"></span></span><span class="ldg-stand"><strong>${esc(f.standingName)}</strong> ${f.standing < 8 ? `${f.current.toLocaleString()} / ${f.need.toLocaleString()}` : ""}</span></li>`).join("")}</ul>`).join("")}</section>`;
+      ${groups.filter(([, list]) => list.length).map(([name, list]) => `<h3 class="ldg-group">${esc(name)}</h3><ul class="ldg-reps">${list.map((f) => `<li class="ldg-rep st-${f.standing}" data-ledger-faction="${f.id}"><span class="ldg-fname">${esc(f.name)}</span><span class="ldg-bar"><span data-w="${Math.round(f.progress * 100)}"></span></span><span class="ldg-stand"><strong>${esc(f.standingName)}</strong> ${f.standing < 8 ? `${f.current.toLocaleString()} / ${f.need.toLocaleString()}` : ""}</span></li>`).join("")}</ul>`).join("")}</section>
+      ${repUp(pick)}`;
+  }
+  // 1.3 (J12): the quests that raise each faction most, that this character can still do.
+  function repUp(c) {
+    const list = (c.repAdvice?.factions || []).filter((f) => f.quests.length).slice(0, 6);
+    if (!list.length) return "";
+    return `<section class="ldg-card ldg-repup" data-ledger-repup><h2>Fastest ways up</h2><p class="ldg-note">Quests ${esc(c.name)} hasn't done yet that give the most reputation, from the bundled quest data. Points are before any bonus.</p>
+      <div class="ldg-repup-grid">${list.map((f) => `<div class="ldg-repup-f"><h3>${esc(f.name)} <small>${esc(f.standingName || "")}${f.toNext != null ? ` · ${f.toNext.toLocaleString()} to ${esc(f.next)}` : ""}</small></h3>
+        ${f.nextUnlock ? `<p class="ldg-unlock">${esc(f.nextUnlock)}</p>` : ""}
+        <ol>${f.quests.map((q) => `<li><strong>${esc(q.title)}</strong>${q.level ? ` <small>level ${q.level}</small>` : ""} <span class="ldg-pts">+${q.points}</span>${q.giver?.name ? `<br><small>${q.starts ? "From" : "Hand in to"} ${esc(q.giver.name)}${q.giver.zone ? `, ${esc(q.giver.zone)}` : ""}${q.starts ? "" : " (part of a chain)"}</small>` : ""}</li>`).join("")}</ol></div>`).join("")}</div></section>`;
   }
 
   // Cooldowns: every character's profession cooldowns, ready now or when.
@@ -178,6 +195,7 @@ window.LedgerView = (() => {
       setGoal({ gold, label: String(root.querySelector('[data-ledger-goal="label"]')?.value || "").slice(0, 60) });
     });
     root.querySelector("[data-ledger-goal-clear]")?.addEventListener("click", () => setGoal(null));
+    root.querySelector("[data-ledger-goal-mount]")?.addEventListener("click", (e) => setGoal({ gold: Number(e.currentTarget.dataset.ledgerGoalMount), label: "Riding and first mount" }));
     // Each visit reads the newest saved ledger (a game save may have arrived since).
     if (!loading && (!data || Date.now() - loadedAt > 3000)) load();
   }
