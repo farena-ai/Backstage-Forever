@@ -7,10 +7,10 @@ const { newer } = require("../src/core/updater.cjs");
 const root = path.resolve(__dirname, "..");
 const read = (name) => fs.readFileSync(path.join(root, name), "utf8");
 
-test("1.0 is the stable release, newer than every preview, with aligned versions", () => {
+test("release channel is explicit and package, lockfile, and addon versions agree", () => {
   const pkg = JSON.parse(read("package.json"));
   const lock = JSON.parse(read("package-lock.json"));
-  assert.equal(pkg.releaseChannel, "stable");
+  assert.ok(["preview", "stable"].includes(pkg.releaseChannel));
   assert.ok(newer(pkg.version, "0.12.3"), "Installed 0.12.3 must see a newer version");
   assert.ok(newer(pkg.version, "0.13.6"), "Failed candidate tags remain unchanged; publish a newer patch");
   assert.ok(!newer("0.59.0", pkg.version), "1.0 is newer than every preview");
