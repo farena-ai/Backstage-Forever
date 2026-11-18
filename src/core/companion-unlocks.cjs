@@ -1,9 +1,10 @@
 "use strict";
 // 1.4 (J15): the companion answers from the 1.3 knowledge: boss tips, class quests and unlocks,
-// and the fastest reputation quests. Strict patterns, so ordinary questions keep their old route.
+// and reference leads for reputation. Strict patterns keep ordinary questions on their old route.
 const { TIPS } = require("./boss-tips.cjs");
 const { UNLOCKS } = require("./class-unlocks.cjs");
-const { repAdvice, CITIES } = require("./rep-advice.cjs");
+const { repAdvice } = require("./rep-advice.cjs");
+const CITIES = Object.freeze({ 72: "Stormwind", 47: "Ironforge", 69: "Darnassus", 54: "Gnomeregan Exiles", 76: "Orgrimmar", 81: "Thunder Bluff", 68: "Undercity", 530: "Darkspear Trolls" });
 
 const loose = (s) => String(s || "").toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
 const BOSSES = Object.keys(TIPS).map((name) => ({ name, key: loose(name), short: loose(name).split(" ").filter((w) => w.length >= 5 && !["the", "lord", "lady", "high", "baron", "captain", "commander", "princess", "chief"].includes(w)) }));
@@ -52,13 +53,14 @@ function answerSpecial(question, { profile = null, pack = null } = {}) {
     const f = factionIn(q, profile);
     if (f) {
       const mine = (Array.isArray(profile?.ledger?.reputations?.factions) ? profile.ledger.reputations.factions : []).find((x) => x.id === f.id);
-      const who = { level: Number(profile?.level) || 20, faction: profile?.faction || null, history: profile?.history || null,
-        ledger: { reputations: { factions: [mine || { id: f.id, name: f.name, standing: 4, min: 0, max: 3000, value: 0 }] } } };
+      const who = { level: profile?.level, faction: profile?.faction, race: profile?.race, history: profile?.history, quests: profile?.quests,
+        ledger: { reputations: { factions: [mine || f] } } };
       const r = repAdvice(who, pack, { perFaction: 3 })?.factions?.[0];
       if (r?.quests?.length) {
-        const list = r.quests.map((x) => `${x.title}${x.level ? ` (level ${x.level})` : ""} +${x.points}${x.giver?.name ? `, from ${x.giver.name}${x.giver.zone ? ` in ${x.giver.zone}` : ""}` : ""}`).join("; ");
-        const where = mine ? `You're ${r.standingName}${r.toNext != null ? `, ${r.toNext.toLocaleString()} from ${r.next}` : ""}. ` : "";
-        return { intent: "reputation", text: `**${f.name}:** ${where}The quests that give the most: ${list}.${r.nextUnlock ? ` ${r.nextUnlock}` : ""}`, facts: [`Reputation quests for ${f.name}: ${list}`] };
+        const list = r.quests.map(x => `${x.title}${x.minLevel ? ` (minimum level ${x.minLevel})` : ""}${x.status === "turn-in" ? " — ready in your saved log" : ""}`).join("; ");
+        const where = mine ? `Last saved at ${r.standingName}. ` : "";
+        const note = `Reference leads: ${list}. Server amounts and unlisted requirements are unknown.`;
+        return { intent: "reputation", text: `**${f.name}:** ${where}${note}`, facts: [`${f.name} reputation · ${note}`] };
       }
     }
   }

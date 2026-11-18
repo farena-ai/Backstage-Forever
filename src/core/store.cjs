@@ -22,9 +22,10 @@ function atomic(file, text) {
   }
 }
 class Store {
-  constructor(dir, safeStorage, { recovery, now } = {}) {
+  constructor(dir, safeStorage, { recovery, now = Date.now } = {}) {
     this.dir = dir;
     this.safe = safeStorage;
+    this.now = now;
     fs.mkdirSync(dir, { recursive: true });
     this.file = path.join(dir, "state.json");
     this.keyFile = path.join(dir, "credentials.json");
@@ -61,7 +62,7 @@ class Store {
     return this.#writeState({ ...next, objectives: this.state.objectives.filter(o => ids.has(o.profileId)) }, true);
   }
   changeObjective(action) {
-    return this.#writeState({ ...this.state, objectives: changeObjective(this.state, action) }, true);
+    return this.#writeState({ ...this.state, objectives: changeObjective(this.state, action, this.now) }, true);
   }
   saveMemories(memories) {
     return this.#writeState({ ...this.state, memories }, true);

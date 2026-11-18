@@ -1,6 +1,7 @@
 "use strict";
 const { randomUUID } = require("node:crypto");
 const { validateCapture } = require("./quest-data.cjs");
+const { SIDES } = require("./ledger.cjs");
 
 const fail = () => { throw new Error("Invalid objective data."); };
 function fields(value, keys) {
@@ -21,7 +22,8 @@ function validateObjectives(value, profileIds) {
   const owners = new Set();
   for (const o of value) {
     const quest = o?.kind === "quest";
-    fields(o, ["id", "profileId", "sourceId", "build", "baselineAt", "kind", "title", "completion", ...(quest ? ["questId", "baselineAbsent"] : ["skillLineId", "targetRank"])]);
+    const rep = o?.kind === "reputation";
+    fields(o, ["id", "profileId", "sourceId", "build", "baselineAt", "kind", "title", "completion", ...(quest ? ["questId", "baselineAbsent"] : rep ? ["factionId", "targetStanding"] : ["skillLineId", "targetRank"])]);
     if (!profileIds.has(o.profileId) || owners.has(o.profileId)) fail();
     owners.add(o.profileId);
     text(o.id, 100);
@@ -32,6 +34,10 @@ function validateObjectives(value, profileIds) {
     if (quest) {
       number(o.questId);
       if (typeof o.baselineAbsent !== "boolean") fail();
+    } else if (rep) {
+      number(o.factionId, 100000);
+      number(o.targetStanding, 8);
+      if (o.targetStanding < 2) fail();
     } else {
       if (o.kind !== "profession") fail();
       number(o.skillLineId);
@@ -42,7 +48,7 @@ function validateObjectives(value, profileIds) {
       time(o.completion.at);
       if (o.completion.at <= o.baselineAt || !(quest
         ? o.completion.via === "turn-in" || (o.baselineAbsent && o.completion.via === "completed-id")
-        : o.completion.via === "profession-rank")) fail();
+        : o.completion.via === (rep ? "reputation-standing" : "profession-rank")) || (rep && !o.build)) fail();
     }
   }
   return structuredClone(value);
@@ -50,8 +56,9 @@ function validateObjectives(value, profileIds) {
 const matches = (o, p) => p?.source?.id === o.sourceId && p.clientBuild === o.build;
 const completed = (p, id) => p.history?.completedIdsKnown === true && p.history.completedIds.includes(id);
 const professionFor = (p, id) => p.readiness?.workshop?.professions?.items.find(row => row.skillLineId === id);
+const factionFor = (p, id) => p.ledger?.reputations?.factions.find(row => row.id === id);
 
-function changeObjective(state, action) {
+function changeObjective(state, action, now = Date.now) {
   fields(action, ["profileId", "expectedId", "target", "sourceId", "build"]);
   const { profileId, expectedId, target } = action;
   const p = state.profiles.find(row => row.id === profileId);
@@ -84,6 +91,17 @@ function changeObjective(state, action) {
     const row = professionFor(p, target.skillLineId);
     if (!row || target.targetRank !== row.rank + 1 || target.targetRank > row.maxRank) throw new Error("The saved profession checkpoint is no longer available. Review the latest rank.");
     Object.assign(o, { kind: "profession", skillLineId: target.skillLineId, targetRank: target.targetRank, title: row.name });
+  } else if (target?.kind === "reputation") {
+    fields(target, ["kind", "factionId", "targetStanding"]);
+    number(target.factionId, 100000);
+    number(target.targetStanding, 8);
+    if (current?.kind === "reputation" && current.factionId === target.factionId && current.targetStanding === target.targetStanding && matches(current, p)) return state.objectives;
+    const row = factionFor(p, target.factionId);
+    const wrongSide = (p.faction === "Alliance" && SIDES.Horde.includes(target.factionId)) || (p.faction === "Horde" && SIDES.Alliance.includes(target.factionId));
+    if (!row || wrongSide || target.targetStanding !== row.standing + 1) throw new Error("The saved reputation target is not available. Review the latest faction standing.");
+    // A later export can contain a retained observation from before the pin.
+    o.baselineAt = new Date(Math.max(Date.parse(o.baselineAt), now())).toISOString();
+    Object.assign(o, { kind: "reputation", factionId: row.id, targetStanding: target.targetStanding, title: row.name });
   } else fail();
   return [...state.objectives.filter(row => row !== current), o];
 }
@@ -100,6 +118,11 @@ function reconcileObjectives(objectives, profiles) {
       const turns = (p.history?.recent || []).filter(e => e.id === o.questId && e.completedAt * 1000 > baseline && e.completedAt * 1000 <= saved);
       if (turns.length) completion = { at: new Date(Math.min(...turns.map(e => e.completedAt)) * 1000).toISOString(), via: "turn-in" };
       else if (o.baselineAbsent && completed(p, o.questId)) completion = { at: p.source.updatedAt, via: "completed-id" };
+    } else if (o.kind === "reputation") {
+      const row = factionFor(p, o.factionId), observed = row?.observedAt * 1000;
+      if (row?.observedBuild === o.build && row.standing >= o.targetStanding && observed > Date.parse(o.baselineAt) && observed <= Date.parse(p.source.updatedAt)) {
+        completion = { at: new Date(observed).toISOString(), via: "reputation-standing" };
+      }
     } else {
       const at = p.readiness?.workshop?.professions?.observedAt;
       if (at > o.baselineAt && at <= p.source.updatedAt && professionFor(p, o.skillLineId)?.rank >= o.targetRank) completion = { at, via: "profession-rank" };

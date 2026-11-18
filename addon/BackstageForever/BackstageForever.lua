@@ -761,7 +761,7 @@ function BackstageForeverReminderLines(now,me)
     return out
 end
 local newCharacterHinted=false
-local prepared,encounterPending
+local prepared,encounterPending,reputationPending
 local function exportFits(length,nodes) return length<1048576 and nodes<=200000 end
 local function copy(t)
     local out={};for k,v in pairs(t) do out[k]=v end;return out
@@ -769,16 +769,25 @@ end
 
 -- Only add detached evidence to a capture prepared for this session. Never
 -- poll live APIs during logout, or stamp old observations with logout time.
-local function flushEncounters()
-    if not prepared or not encounterPending then return end
+local function flushEvidence()
+    if not prepared then return end
+    local reputation=reputationPending and reputationPending.guid==prepared.activeId and reputationPending.snapshot
+    if not encounterPending and not reputation then return end
     local payload=copy(prepared)
     local chars=array(copy(prepared.characters));payload.characters=chars
     for i,c in ipairs(chars) do
         if c.id==payload.activeId then
             local character=copy(c);chars[i]=character
-            local journal=c.journal and copy(c.journal) or {}
-            journal.encounters=array(encounterPending.rows);character.journal=journal
-            character.updatedAt=math.max(c.updatedAt,encounterPending.at)
+            if encounterPending then
+                local journal=c.journal and copy(c.journal) or {}
+                journal.encounters=array(encounterPending.rows);character.journal=journal
+                character.updatedAt=math.max(character.updatedAt,encounterPending.at)
+            end
+            if reputation then
+                local ledger=c.ledger and copy(c.ledger) or {schemaVersion=1}
+                ledger.reputations=reputation;character.ledger=ledger
+                character.updatedAt=math.max(character.updatedAt,reputation.seenAt)
+            end
             payload.observedAt=math.max(payload.observedAt,character.updatedAt)
             local encoded,nodes=encode(payload)
             if exportFits(#encoded,nodes) then BackstageForeverExport=encoded end
@@ -972,7 +981,11 @@ local function capture(event,eventId)
         roster={}
         for _,c in ipairs(chars) do
             roster[c.id]=c
-            if c.id==guid and c.journal and c.journal.encounters then encounterPending=nil end
+            if c.id==guid then
+                if c.journal and c.journal.encounters then encounterPending=nil end
+                local reps=c.ledger and c.ledger.reputations
+                if reputationPending and reputationPending.guid==guid and reps and reps.seenAt>=reputationPending.snapshot.seenAt then reputationPending=nil end
+            end
         end
         BackstageForeverExport=encoded;prepared=payload;return true
     end
@@ -1045,14 +1058,23 @@ if type(CreateFrame)=='function' then
         encounterPending={rows=rows,at=at}
         queue('ENCOUNTER_END')
     end
+    BackstageForeverRequestReputationCapture=function(snapshot)
+        if not loggedIn then return end
+        local guid=clean(call(UnitGUID,'player'),200)
+        if guid and snapshot and integer(snapshot.seenAt,1,253402300799) then
+            array(snapshot.factions)
+            reputationPending={guid=guid,snapshot=snapshot}
+        end
+        queue('UPDATE_FACTION')
+    end
     for _,event in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_LEVEL_UP','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LOGOUT','QUEST_LOG_UPDATE','QUEST_ACCEPTED','QUEST_TURNED_IN','UNIT_QUEST_LOG_CHANGED','PLAYER_XP_UPDATE','UPDATE_EXHAUSTION','PLAYER_EQUIPMENT_CHANGED','BAG_UPDATE_DELAYED','GET_ITEM_INFO_RECEIVED','PLAYER_STOPPED_MOVING'}) do pcall(frame.RegisterEvent,frame,event) end
     for event in pairs(workshopDirty) do pcall(frame.RegisterEvent,frame,event) end
     frame:SetScript('OnEvent',function(_,event,eventId)
         -- Logout APIs may already be torn down; only flush already recorded evidence.
         if event=='PLAYER_LOGOUT' or event=='PLAYER_LOGIN' then
             generation=generation+1;pending=nil;loggedIn=false
-            if event=='PLAYER_LOGOUT' then flushEncounters() end
-            prepared,encounterPending=nil,nil
+            if event=='PLAYER_LOGOUT' then flushEvidence() end
+            prepared,encounterPending,reputationPending=nil,nil,nil
             workshopCache=nil
             if type(BackstageForeverHUDSession)=='function' then pcall(BackstageForeverHUDSession,event) end
             if type(BackstageForeverGatheringSession)=='function' then pcall(BackstageForeverGatheringSession,event)end

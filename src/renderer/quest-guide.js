@@ -329,7 +329,7 @@ window.QuestGuide = (() => {
     const g = Math.floor(copper / 10000), s = Math.floor((copper % 10000) / 100), c = copper % 100;
     return `<span class="quest-coins">${g ? `<span class="coin gold">${g}g</span>` : ""}${s ? `<span class="coin silver">${s}s</span>` : ""}${c || (!g && !s) ? `<span class="coin copper">${c}c</span>` : ""}</span>`;
   }
-  const TIER = { 1: "a little", 2: "a little", 3: "some", 4: "good", 5: "big", 6: "big", 7: "huge" };
+
   function linksMarkup(links) {
     const row = (label, list) => list?.length ? `<div class="quest-link-row"><span>${label}</span>${list.slice(0, 4).map((q) => `<button type="button" class="quest-link" data-quest-open="${q.id}">${esc(q.title || `Quest #${q.id}`)}</button>`).join("")}</div>` : "";
     const html = row("Comes after", links?.previous) + row("Leads to", links?.next);
@@ -357,7 +357,7 @@ window.QuestGuide = (() => {
       const chips = [
         rewards.moneyCopper !== undefined ? `<li class="reward-chip">${coins(rewards.moneyCopper)}</li>` : "",
         xpNow ? `<li class="reward-chip xp">≈ ${xpNow.toLocaleString()} XP at level ${lvl}</li>` : observed ? `<li class="reward-chip xp">${observed.xp.toLocaleString()} XP seen at level ${observed.level}</li>` : "",
-        ...(rewards.reputation || []).map((r) => `<li class="reward-chip rep">${r.amount ? `${r.amount > 0 ? "+" : ""}${r.amount} ` : TIER[r.tier] ? `${TIER[r.tier]} ` : ""}${esc(r.name || "faction")} reputation</li>`),
+        ...(rewards.reputation || []).map((r) => `<li class="reward-chip rep">${esc(r.name || "Faction")} reputation · ${Number.isInteger(r.amount) ? `reference ${r.amount > 0 ? "+" : ""}${r.amount}; ` : ""}server amount unknown</li>`),
         ...(rewards.spells || []).map((sp) => `<li class="reward-chip spell">Teaches ${esc(sp.name || `spell #${sp.spellId}`)}</li>`),
       ].filter(Boolean).join("");
       return `<section class="quest-section quest-rewards-section"><h3>Rewards</h3>

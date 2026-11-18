@@ -56,6 +56,8 @@ The bundled `data/forever` pack, source lock, CC BY license and change notice mu
 
 ## Signed publication
 
+**Living Journal Windows release gate:** Sign the final Windows build with the owner's Azure Artifact Signing Public Trust profile. Verify the timestamped Authenticode signature and expected publisher on the final installer before generating its SHA-256 or signed updater manifest. The existing update-feed signature is separate from Windows publisher signing. An unsigned or unverifiable installer does not pass this gate. Signing configuration and credentials stay outside the package and repository; the existing published v1.7.0 assets are not changed by this gate.
+
 Set package version and releaseChannel explicitly (preview/stable), update docs, review/test/commit, then push an exact vMAJOR.MINOR.PATCH tag. The release workflow validates version/channel, runs locked installation and tests, builds, signs with the protected repository secret, archives source and generates checksums. New releases remain drafts until all assets upload. Never put private keys on command lines, in logs or in source. Do not upload competing manual builds while that workflow owns the version’s assets.
 
 App checks run only while open. No watcher service, scheduled task, cron, chat automation or recurring polling job is created. Tag-triggered CI produces releases only when deliberately triggered.

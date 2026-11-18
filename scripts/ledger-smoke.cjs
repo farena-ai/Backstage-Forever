@@ -1,5 +1,5 @@
 "use strict";
-// Ledger (0.35): a synthetic saved export with an Alliance and a Horde character, read through the
+// Ledger (0.35): a synthetic roster across factions and builds, read through the
 // real game sync, main IPC, preload and renderer. Each Ledger page shows its data; search narrows.
 const { syntheticLaunch } = require("./synthetic-coach-bootstrap.cjs");
 const { navigate } = require("./player-navigation.cjs");
@@ -8,7 +8,7 @@ const fs = require("node:fs/promises"), path = require("node:path"), os = requir
 const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 (async () => {
-  const tempRoot = await fs.realpath(os.tmpdir()), dir = await fs.mkdtemp(path.join(tempRoot, "forever-ledger-"));
+  const tempRoot = await fs.realpath(process.env.TMPDIR || os.tmpdir()), dir = await fs.mkdtemp(path.join(tempRoot, "forever-ledger-"));
   const compact = process.argv.includes("--compact"), size = compact ? "compact" : "standard";
   const bounds = compact ? [1000, 700] : [1440, 900];
   let app;
@@ -22,8 +22,13 @@ const { defaultState } = require("../src/core/validation.cjs");
     await fs.writeFile(path.join(data, "state.json"), JSON.stringify({ ...defaultState(), onboarded: true, profiles: [], activeProfileId: null, provider: { ...defaultState().provider, model: "synthetic-model" } }));
     const clock = Math.floor(Date.now() / 1000);
     const item = (id, n, name, q = 1) => ({ id, n, q, name });
+    const reference = require("../data/forever/pack.json");
+    const stormwindQuest = Object.values(reference.quests).find(q => q.id > 100 && q.observedInPlay &&
+      q.rewards?.reputation?.some(r => r.factionId === 72 && (r.amount ?? r.tier) > 0));
+    assert.ok(stormwindQuest);
     const characters = [
-      { id: "Synthetic-Aeralyn", name: "Aeralyn", faction: "Alliance", race: "Human", className: "Mage", ledger: {
+      { id: "Synthetic-Aeralyn", name: "Aeralyn", faction: "Alliance", race: "Human", className: "Mage",
+        quests: [{ id: stormwindQuest.id, title: stormwindQuest.title, complete: true, objectives: [] }], ledger: {
         schemaVersion: 1, money: 1523045, moneyAt: clock,
         bags: { seenAt: clock, complete: true, items: [item(2589, 25, "Linen Cloth"), item(118, 3, "Minor Healing Potion"),
           ...Array.from({ length: 24 }, (_, i) => item(90000 + i, i + 1, `Supply sample ${i + 1}`))] },
@@ -37,7 +42,9 @@ const { defaultState } = require("../src/core/validation.cjs");
         bags: { seenAt: clock, complete: true, items: [item(2589, 7, "Linen Cloth"), item(12359, 12, "Thorium Bar")] },
         reputations: { seenAt: clock, factions: [{ id: 76, name: "Orgrimmar", standing: 7, min: 21000, max: 42000, value: 30000 }, { id: 530, name: "Darkspear Trolls", standing: 4, min: 0, max: 3000, value: 1200 }] },
         cooldowns: [{ key: "mooncloth", spellId: 18560, readyAt: clock - 60 }], prices: [], pricesOn: true } },
-    ].map((c) => ({ realm: "Synthetic Realm", level: 40, updatedAt: clock, clientBuild: "1.60.1.70862", captureVersion: require("../package.json").version, ...c }));
+      { id: "Synthetic-Outlander", name: "Outlander", faction: "Horde", race: "Orc", className: "Warrior", clientBuild: "1.60.1.99999", level: 1, ledger: {
+        schemaVersion: 1, reputations: { seenAt: clock, factions: [{ id: 72, name: "Stormwind", standing: 4, min: 0, max: 3000, value: 0 }] } } },
+    ].map((c) => ({ realm: "Synthetic Realm", level: 40, updatedAt: clock, clientBuild: reference.build, captureVersion: require("../package.json").version, ...c }));
     await fs.writeFile(saved, "BackstageForeverExport = " + JSON.stringify(JSON.stringify({ schema: 1, observedAt: clock, activeId: characters[0].id, characters })));
     app = await launchElectron(electron, { args: [await syntheticLaunch(data)], env: { ...process.env, BF_USER_DATA: data }, timeout: 20000 });
     const page = await testWindow(app);
@@ -46,7 +53,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "complete"));
     await page.evaluate((root) => window.backstage.prepareGame(root), game);
     await page.reload();
-    await page.waitForFunction(() => document.querySelectorAll("#active-character option").length === 2);
+    await page.waitForFunction(() => document.querySelectorAll("#active-character option").length === 3);
     await page.waitForFunction(([w, h]) => innerWidth === w && innerHeight === h, bounds);
     const capture = path.resolve(process.env.BF_SMOKE_CAPTURE_ROOT || "work/ledger-smoke");
     await fs.mkdir(capture, { recursive: true });
@@ -130,6 +137,43 @@ const { defaultState } = require("../src/core/validation.cjs");
     assert.match(await page.locator('[data-ledger-faction="76"]').innerText(), /Orgrimmar[\s\S]*Revered/);
     assert.match(await page.locator("[data-ledger]").innerText(), /Horde/);
     await shot("reputation-horde");
+    assert.equal(await page.getByRole("button", { name: "Pin reputation target" }).count(), 0);
+    const plan = page.locator("[data-ledger-rep-plan]");
+    assert.equal(await plan.locator("[data-quest-open]").count(), 0, "alt links must not open as the active character");
+    assert.match(await plan.innerText(), /Switch the active character to Vaelric to open quests/);
+    const activeCharacter = page.getByLabel("Active character", { exact: true });
+    await activeCharacter.selectOption({ label: "Vaelric · Level 40" });
+    await plan.locator("[data-quest-open]").first().waitFor();
+    await activeCharacter.selectOption({ label: "Aeralyn · Level 40" });
+    await plan.getByText(/Switch the active character to Vaelric to open quests/).waitFor();
+    await page.getByLabel("Reputation of", { exact: true }).selectOption({ label: "Outlander · Horde" });
+    assert.match(await plan.innerText(), /Browse only.*1\.60\.1\.99999/s);
+    assert.match(await plan.innerText(), /Minimum level/);
+    assert.doesNotMatch(await plan.innerText(), /Saved log:|Reference lead: check availability/);
+    assert.equal(await plan.locator("[data-quest-open]").count(), 0);
+    await page.getByLabel("Reputation of", { exact: true }).selectOption({ label: "Aeralyn · Alliance" });
+    await page.getByLabel("Plan for faction").selectOption("72");
+    const pin = page.getByRole("button", { name: "Pin reputation target" });
+    await pin.focus();
+    await page.keyboard.press("Enter");
+    await page.getByText("Stormwind · Revered", { exact: true }).waitFor();
+    const resume = page.getByRole("button", { name: "Resume reputation" });
+    await resume.focus();
+    await page.keyboard.press("Enter");
+    const heading = page.getByRole("heading", { name: "Stormwind reputation plan" });
+    await heading.waitFor();
+    await page.waitForFunction(() => document.activeElement?.matches("[data-ledger-rep-heading]"));
+    const questAction = plan.locator(`[data-quest-open="${stormwindQuest.id}"]`);
+    await questAction.waitFor();
+    assert.equal(await plan.locator("[data-quest-open]").first().getAttribute("data-quest-open"), String(stormwindQuest.id));
+    assert.ok(await questAction.evaluate(n => { const b = n.getBoundingClientRect(); return b.top >= 0 && b.bottom <= innerHeight; }));
+    assert.match(await plan.innerText(), /Saved log: ready to turn in/);
+    assert.match(await plan.innerText(), /server reward amount.*unknown/i);
+    assert.ok(await plan.evaluate(n => n.scrollWidth - n.clientWidth <= 1));
+    await page.screenshot({ path: path.join(capture, `${size}-reputation-plan.png`) });
+    await questAction.click();
+    await page.locator(`[data-quest-control="detail:${stormwindQuest.id}"]`).waitFor();
+    assert.match(await page.locator(".reward-chip.rep").first().innerText(), /server amount unknown/);
 
     // Cooldowns: one waiting, one ready.
     await navigate(page, "ledger-cooldowns");

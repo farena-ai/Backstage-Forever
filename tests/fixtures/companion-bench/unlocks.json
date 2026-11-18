@@ -8,7 +8,7 @@
     { "id": "unlock-02", "category": "class-unlock", "profile": "alliance-warrior-12", "question": "how do i get defensive stance", "expect": { "intent": "class-unlock", "mustInclude": ["Defensive Stance", "level 10"] } },
     { "id": "unlock-03", "category": "class-unlock", "profile": "alliance-mage-34", "question": "what level do mages learn portals", "expect": { "intent": "class-unlock", "mustInclude": ["Portals", "40"] } },
     { "id": "unlock-04", "category": "class-unlock", "profile": "horde-priest-21", "question": "how do druids get bear form", "expect": { "intent": "class-unlock", "mustInclude": ["Bear Form", "Moonglade"] } },
-    { "id": "rep-01", "category": "reputation", "profile": "horde-hunter-16", "question": "fastest way to honored with orgrimmar", "expect": { "intent": "reputation", "mustInclude": ["Orgrimmar", "+"] } },
-    { "id": "rep-02", "category": "reputation", "profile": "alliance-warrior-12", "question": "how do I get reputation with stormwind", "expect": { "intent": "reputation", "mustInclude": ["Stormwind", "+"] } }
+    { "id": "rep-01", "category": "reputation", "profile": "horde-hunter-16", "question": "fastest way to honored with orgrimmar", "expect": { "intent": "reputation", "mustInclude": ["Orgrimmar", "Reference leads", "Server amounts and unlisted requirements are unknown"] } },
+    { "id": "rep-02", "category": "reputation", "profile": "alliance-warrior-12", "question": "how do I get reputation with stormwind", "expect": { "intent": "reputation", "mustInclude": ["Stormwind", "Reference leads", "Server amounts and unlisted requirements are unknown"] } }
   ]
 }

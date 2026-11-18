@@ -1097,6 +1097,7 @@ Memory.init({api, root, esc,
   },
 });
 window.ObjectiveView?.init(() => state);
+LedgerView.init(() => state?.activeProfileId);
 QuestGuide.init({ api, root, esc, portrait, selectedMemoryIds: () => Memory.selectedIds(), ready: () => companionReady, notify: toast, onStatus: value => { questStatusRequest++;knowledgeStatus = value; } });
 AdventureCoach.init({api,root,esc,profile,active:()=>page === "adventure" && !setupOpen && Boolean(state?.onboarded)});
 Director.init({
@@ -1297,6 +1298,10 @@ root.addEventListener("click", (event) => {
         render();
         await QuestGuide.open(objective.questId);
         if (request === questNavigationRequest && page === "quest-guide") root.querySelector('.quest-detail[tabindex="-1"]')?.focus();
+      } else if (objective.kind === "reputation") {
+        LedgerView.selectReputation(objective.profileId, objective.factionId);
+        page = "ledger-reputation";
+        render();
       } else {
         Preparation.invalidate();
         Preparation.selectProfession(objective.profileId, objective.skillLineId);
@@ -1353,6 +1358,7 @@ root.addEventListener("click", (event) => {
       try { const f = JSON.parse(button.dataset.mapFocus); WorldMapView.focus(f); page = "world-map"; render(); } catch {}
     }
     if (button.dataset.questOpen) {
+      if (button.dataset.ledgerQuestProfile && button.dataset.ledgerQuestProfile !== state.activeProfileId) return;
       page = "quest-guide";
       render();
       await QuestGuide.open(Number(button.dataset.questOpen));

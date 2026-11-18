@@ -9,6 +9,12 @@ Develop on `feat/living-field-journal`; do not change the installed addon or v1.
 | 3 | Get a useful detour on the way, or prepare for a dungeon and review what happened afterward. | Suggestions respect the selected objective, can be dismissed, and are quiet in combat. Separate reference boss/quest notes from observed encounters. No inference of a clear from entering an instance. |
 | 4 | Pin a reputation target and follow eligible quests and turn-ins. | Build on Ledger standings; show provenance and known prerequisites. Unknown server-specific rewards stay unknown. |
 
+### Reputation targets
+
+In **Ledger → Reputation**, choose a saved faction and pin its next standing for the active character. This uses the same single objective slot as quests and profession ranks; replacement requires confirmation. **Now → Resume reputation** returns to that faction. The plan lists saved quests and ready turn-ins first when Forever reference data associates them with the faction. Other leads are filtered by known eligibility and show reported chain links, not guaranteed prerequisites. Server reward amounts, repeatability, and unlisted requirements are not inferred.
+
+A target completes only after a newer saved observation of that exact faction reaches the standing on the pinned character and matching known client build. Legacy rows still display but cannot prove completion. Collapsed faction rows keep their own previous observation; expand the faction in WoW and reload or log out to export a fresh save. This plan never writes a target or performs an action in game.
+
 ## Release gates
 
 - **Truth and input:** use existing public game APIs and documented local live/saved interfaces. No automated gameplay or changes to protected actions. Distinguish Live, Last saved, Unknown and reference information where the player acts on it. Check combat, character switch, stale/lost link, restart and duplicate events.

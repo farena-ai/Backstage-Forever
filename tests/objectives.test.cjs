@@ -15,7 +15,7 @@ const toon = id => ({ id, name: id, realm: "Fixture", className: "Mage", level: 
 function fixture(t) {
   const dir = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), "bf-objective-"));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  const store = new Store(dir, {});
+  const store = new Store(dir, {}, { now: () => Date.parse(at(5)) });
   store.saveState({ ...defaultState(), profiles: [toon("alpha"), toon("beta")], activeProfileId: "alpha" });
   return store;
 }
@@ -64,6 +64,61 @@ function objectiveView(store) {
   window.ObjectiveView.init(() => store.state);
   return window.ObjectiveView;
 }
+
+test("an observation captured after the last save but before pinning cannot complete reputation", t => {
+  const { dir } = fixture(t);
+  const pinTime = Date.parse(at(10)) + 400;
+  const store = new Store(dir, {}, { now: () => pinTime });
+  const ledger = (standing, observed, seen = observed) => ({ ledger: { reputations: {
+    seenAt: Date.parse(at(seen)) / 1000,
+    factions: [{ id: 72, name: "Stormwind", standing, min: 3000, max: 9000, value: 4000,
+      observedAt: Date.parse(at(observed)) / 1000, observedBuild: "1.15.2.12345" }],
+  } } });
+  importSaved(store, 5, ledger(5, 5));
+  store.changeObjective({ profileId: store.state.activeProfileId, expectedId: null, target: { kind: "reputation", factionId: 72, targetStanding: 6 } });
+  importSaved(store, 12, ledger(6, 10, 12));
+  assert.equal(new Store(dir, {}).state.objectives[0].completion, undefined, "a pre-pin observation arrived in a post-pin save");
+  importSaved(store, 13, ledger(6, 11, 13));
+  assert.deepEqual(new Store(dir, {}).state.objectives[0].completion, { at: at(11), via: "reputation-standing" });
+});
+
+test("a reputation pin survives roster imports and completes only from a fresh matching faction observation", t => {
+  const store = fixture(t);
+  store.saveState(defaultState());
+  const build = "1.15.2.12345";
+  const ledger = (standing, n, buildOfRow = build, factionId = 72) => ({ ledger: { reputations: {
+    seenAt: Date.parse(at(n || 5)) / 1000,
+    factions: [{ id: factionId, name: "Stormwind", standing, min: 3000, max: 9000, value: 4000,
+      ...(n ? { observedAt: Date.parse(at(n)) / 1000, observedBuild: buildOfRow } : {}) }],
+  } } });
+  importSaved(store, 5, ledger(5, null));
+  const profileId = store.state.activeProfileId;
+  const action = { profileId, expectedId: null, target: { kind: "reputation", factionId: 72, targetStanding: 6 } };
+  const view = objectiveView(store);
+  assert.throws(() => store.changeObjective({ ...action, target: { ...action.target, targetStanding: 8 } }), /standing/);
+  const [pin] = store.changeObjective(action).objectives;
+  assert.equal(pin.title, "Stormwind");
+  assert.match(view.card(), /Stormwind · Honored[\s\S]*Friendly[\s\S]*Resume reputation/);
+  const alt = store.state.profiles.find(p => p.id !== profileId);
+  assert.equal(view.pin(action.target, alt.id), "");
+  assert.throws(() => store.changeObjective({ ...action, profileId: alt.id }), /active character/);
+  for (const [n, active, other] of [
+    [6, {}, ledger(6, 6)], [7, ledger(6, null)], [8, ledger(6, 5)],
+    [9, ledger(6, 10)], [10, ledger(6, 9, "1.15.2.55555")],
+    [11, ledger(6, 11, build, 47)], [12, { ...ledger(6, 12), clientBuild: undefined }],
+    [13, { ...ledger(6, 13), clientBuild: "1.15.2.55555" }],
+    [14, ledger(5, 14)],
+  ]) {
+    importSaved(store, n, active, other);
+    assert.equal(new Store(store.dir, {}).state.objectives[0].completion, undefined, `save ${n}`);
+  }
+  importSaved(store, 15, ledger(7, 15));
+  importSaved(store, 16, {});
+  const [finished] = new Store(store.dir, {}).state.objectives;
+  assert.equal(finished.id, pin.id);
+  assert.deepEqual(finished.completion, { at: at(15), via: "reputation-standing" });
+  assert.match(view.card(), /Completed from a saved faction standing/);
+});
 
 test("a quest back in the saved log can be pinned again but needs a newly dated turn-in", t => {
   const store = fixture(t), view = objectiveView(store);

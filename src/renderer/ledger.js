@@ -8,6 +8,8 @@ window.LedgerView = (() => {
   const QUALITY = ["poor", "common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom"];
   const LIMIT = 150;
   let data = null, error = "", loading = false, loadedAt = 0, mountedFor = null, route = "ledger", repFor = null;
+  let repFaction = null, focusRepFor = null, loadGeneration = 0;
+  let activeProfile = () => data?.activeProfileId;
   let cdGroup = "readiness";
   const query = { items: "", prices: "" };
   const nowSec = () => Math.floor(Date.now() / 1000);
@@ -135,24 +137,49 @@ window.LedgerView = (() => {
   // Reputation: one character at a time; their own side's factions first.
   function reputation() {
     const chars = ledgered().filter((c) => c.reputations);
-    if (!chars.length) return empty("No reputations yet.");
-    const pick = chars.find((c) => c.profileId === repFor) || chars.find((c) => c.profileId === data.activeProfileId) || chars[0];
+    if (!chars.length) return `<section class="ldg-card"><h2 tabindex="-1" data-ledger-rep-heading>Faction standings</h2>${empty("No reputations yet.")}</section>`;
+    if (focusRepFor && !chars.some(c => c.profileId === focusRepFor)) return `<section class="ldg-card"><h2 tabindex="-1" data-ledger-rep-heading>Reputation plan</h2>${empty("No saved standings for this character.")}</section>`;
+    const pick = chars.find((c) => c.profileId === repFor) || chars.find((c) => c.profileId === activeProfile()) || chars[0];
     const groups = [["Alliance", pick.reputations.factions.filter((f) => f.side === "Alliance")], ["Horde", pick.reputations.factions.filter((f) => f.side === "Horde")], ["Other factions", pick.reputations.factions.filter((f) => !f.side)]];
     if (pick.faction === "Horde") groups.unshift(groups.splice(1, 1)[0]);
     const count = pick.reputations.factions.length;
     const rows = groups.filter(([, list]) => list.length).map(([name, list]) => rowGroup(name, 3, list.map((f) => `<tr data-ledger-faction="${f.id}"><th scope="row">${esc(f.name)}</th><td>${esc(f.standingName)}</td><td${num}>${f.standing < 8 ? `${f.current.toLocaleString()} / ${f.need.toLocaleString()}` : "Max"}</td></tr>`).join(""))).join("");
     return `<section class="ldg-card"><div class="ldg-toolbar"><h2>Faction standings</h2><label class="ldg-pick">Character <select data-ledger-rep aria-label="Reputation of">${chars.map((c) => `<option value="${esc(c.profileId)}"${c === pick ? " selected" : ""}>${esc(c.name)}${c.faction ? ` · ${esc(c.faction)}` : ""}</option>`).join("")}</select></label></div>
       <p class="ldg-note">Seen ${esc(ago(pick.reputations.seenAt))}. Collapsed groups in game keep their last values.</p>${count ? table("factions", "Faction standings", [["Faction"], ["Standing"], ["Progress to next", true]], rows, count) : `<p class="ldg-empty">No factions recorded for this character.</p>`}</section>
-      ${repUp(pick)}`;
+      ${repPlan(pick)}`;
   }
-  // 1.3 (J12): the quests that raise each faction most, that this character can still do.
-  function repUp(c) {
-    const list = (c.repAdvice?.factions || []).filter((f) => f.quests.length).slice(0, 6);
-    if (!list.length) return "";
-    return `<section class="ldg-card ldg-repup" data-ledger-repup><h2>Fastest ways up</h2><p class="ldg-note">Quests ${esc(c.name)} hasn't done yet that give the most reputation, from the bundled quest data. Points are before any bonus.</p>
-      <div class="ldg-repup-grid">${list.map((f) => `<div class="ldg-repup-f"><h3>${esc(f.name)} <small>${esc(f.standingName || "")}${f.toNext != null ? ` · ${f.toNext.toLocaleString()} to ${esc(f.next)}` : ""}</small></h3>
-        ${f.nextUnlock ? `<p class="ldg-unlock">${esc(f.nextUnlock)}</p>` : ""}
-        <ol>${f.quests.map((q) => `<li><strong>${esc(q.title)}</strong>${q.level ? ` <small>level ${q.level}</small>` : ""} <span class="ldg-pts">+${q.points}</span>${q.giver?.name ? `<br><small>${q.starts ? "From" : "Hand in to"} ${esc(q.giver.name)}${q.giver.zone ? `, ${esc(q.giver.zone)}` : ""}${q.starts ? "" : " (part of a chain)"}</small>` : ""}</li>`).join("")}</ol></div>`).join("")}</div></section>`;
+  function repPlan(c) {
+    const rows = c.reputations.factions;
+    const f = rows.find(row => row.id === repFaction) || (repFaction === null ? rows[0] : null);
+    const heading = `<h2 tabindex="-1" data-ledger-rep-heading>${f ? `${esc(f.name)} reputation plan` : "Reputation plan"}</h2>`;
+    const picker = rows.length ? `<label class="ldg-pick">Plan for faction <select data-ledger-rep-faction>${f ? "" : '<option value="" selected disabled>Choose a saved faction</option>'}${rows.map(row => `<option value="${row.id}"${row === f ? " selected" : ""}>${esc(row.name)}</option>`).join("")}</select></label>` : "";
+    if (!f) return `<section class="ldg-card" data-ledger-rep-plan>${heading}${picker}<p>No saved standing for the selected faction. Expand its group in WoW and save again.</p></section>`;
+    const advice = c.repAdvice;
+    const list = advice?.factions.find(row => row.id === f.id)?.quests || [];
+    const isActive = c.profileId === activeProfile();
+    const browseOnly = advice?.browseOnly === true;
+    const reference = browseOnly
+      ? `Browse only · Forever reference build ${esc(advice.referenceBuild)} does not match ${advice.characterBuild ? `saved build ${esc(advice.characterBuild)}` : "an unknown saved build"}. Quest matches are not checked against your log or eligibility.`
+      : advice ? `Quest matches and requirements come from Forever reference build ${esc(advice.referenceBuild)}. In-log status comes from this character’s last save.` : "No quest reference available.";
+    const view = window.ObjectiveView;
+    const next = f.standing < 8 ? view?.standingName(f.standing + 1) : null;
+    const pin = next && (!f.side || !c.faction || f.side === c.faction) && view.pin({ kind: "reputation", factionId: f.id, targetStanding: f.standing + 1 }, c.profileId);
+    return `<section class="ldg-card" data-ledger-rep-plan>${heading}${picker}
+      <p class="ldg-note">Saved Ledger: ${esc(f.standingName)}${f.observedAt ? ` · seen ${esc(ago(f.observedAt))}` : " · observation time unknown"}${next ? ` · ${Math.max(0, f.need - f.current).toLocaleString()} to ${esc(next)}` : ""}.</p>
+      ${pin || (next && !isActive ? '<p class="ldg-note">Switch the active character to pin their target.</p>' : "")}
+      <h3>Quests and turn-ins</h3><p class="ldg-note">${reference} Current server reward amounts and unlisted requirements are unknown.</p>
+      ${list.length && !isActive && !browseOnly ? `<p class="ldg-note">Switch the active character to ${esc(c.name)} to open quests from this plan.</p>` : ""}
+      ${list.length ? `<ul class="ldg-rep-quests">${list.map(q => repQuest(q, isActive && !browseOnly ? c.profileId : null, browseOnly)).join("")}</ul>` : '<p class="ldg-empty">No matching quests in the available reference. Check eligibility and rewards in game.</p>'}</section>`;
+  }
+  function repQuest(q, profileId, browseOnly) {
+    const status = browseOnly ? "Reference only" : q.status === "turn-in" ? "Saved log: ready to turn in" : q.status === "in-log" ? "Saved log: in progress" : "Reference lead: check availability in game";
+    const gates = [q.minLevel ? `Minimum level ${q.minLevel}` : null, q.sides.length ? q.sides.join(" / ") : null].filter(Boolean).join(" · ");
+    const from = q.linkedFrom.map(p => `${p.title} (${p.completed === true ? "completion saved" : p.completed === false ? "not in completed history" : "completion unknown"})`).join("; ");
+    const place = q.status === "turn-in" ? q.turnIn : q.giver;
+    return `<li><strong>${esc(q.title)}</strong><small>${status}${gates ? ` · ${esc(gates)}` : ""}</small>
+      ${from ? `<small>Reported chain link from ${esc(from)}.</small>` : ""}
+      ${place ? `<small>${q.status === "turn-in" ? "Hand in to" : "Starts with"} ${esc(place.name)}${place.zone ? `, ${esc(place.zone)}` : ""} (reference)</small>` : ""}
+      ${profileId ? `<button type="button" data-quest-open="${q.id}" data-ledger-quest-profile="${esc(profileId)}" aria-label="Open quest: ${esc(q.title)}">Open quest</button>` : ""}</li>`;
   }
 
   // Cooldowns: every character's profession cooldowns, ready now or when.
@@ -222,10 +249,16 @@ window.LedgerView = (() => {
   }
   async function load() {
     if (loading) return; loading = true;
-    try { data = await api.ledger(); error = ""; } catch (e) { error = e.message || "Your ledger is unavailable."; }
+    const generation = loadGeneration;
+    try { const fresh = await api.ledger(); if (generation === loadGeneration) { data = fresh; error = ""; } }
+    catch (e) { if (generation === loadGeneration) error = e.message || "Your ledger is unavailable."; }
     loading = false; loadedAt = Date.now();
     const root = document.querySelector("[data-ledger]");
+    if (generation !== loadGeneration) { if (root) load(); return; }
     if (root) { root.outerHTML = page(root.dataset.ledger); mountedFor = null; mounted(); }
+    const focus = focusRepFor === activeProfile() && route === "ledger-reputation" && document.querySelector("[data-ledger-rep-heading]");
+    focusRepFor = null;
+    if (focus) { focus.scrollIntoView({ block: "start" }); focus.focus({ preventScroll: true }); }
   }
   function mounted() {
     const root = document.querySelector("[data-ledger]");
@@ -239,8 +272,13 @@ window.LedgerView = (() => {
       if (list && data) { list.innerHTML = kind === "items" ? itemRows() : priceRows(); watchTables(root); }
     });
     root.querySelector("[data-ledger-rep]")?.addEventListener("change", (e) => {
-      repFor = e.target.value; root.outerHTML = page(route); mountedFor = null; mounted();
+      repFor = e.target.value; repFaction = null; focusRepFor = null; root.outerHTML = page(route); mountedFor = null; mounted();
       document.querySelector("[data-ledger-rep]")?.focus({ preventScroll: true });
+    });
+    root.querySelector("[data-ledger-rep-faction]")?.addEventListener("change", (e) => {
+      // page() escapes saved titles and names; IDs are validated integers.
+      repFaction = Number(e.target.value); root.outerHTML = page(route); mountedFor = null; mounted();
+      document.querySelector("[data-ledger-rep-faction]")?.focus({ preventScroll: true });
     });
     root.querySelector("[data-ledger-cd-group]")?.addEventListener("change", (e) => {
       cdGroup = e.target.value;
@@ -265,5 +303,9 @@ window.LedgerView = (() => {
     // Each visit reads the newest saved ledger (a game save may have arrived since).
     if (!loading && (!data || Date.now() - loadedAt > 3000)) load();
   }
-  return { bags: () => page("ledger"), gold: () => page("ledger-gold"), reputation: () => page("ledger-reputation"), cooldowns: () => page("ledger-cooldowns"), page, mounted, invalidate: () => { data = null; }, _state: () => ({ data, query, route }) };
+  function selectReputation(profileId, factionId) {
+    repFor = profileId; repFaction = factionId; focusRepFor = profileId;
+    data = null; error = ""; loadGeneration++;
+  }
+  return { init: readActive => { activeProfile = readActive; }, bags: () => page("ledger"), gold: () => page("ledger-gold"), reputation: () => page("ledger-reputation"), cooldowns: () => page("ledger-cooldowns"), page, mounted, selectReputation, invalidate: () => { data = null; }, _state: () => ({ data, query, route }) };
 })();
