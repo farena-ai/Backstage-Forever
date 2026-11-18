@@ -122,7 +122,7 @@ async function physicalClick(page, locator, whilePressed) {
   const page=await testWindow(app); page.setDefaultTimeout(7000);
   const rendererErrors=[];page.on("pageerror",error=>rendererErrors.push(error.message));
   await app.evaluate(({ipcMain})=>{
-   for(const channel of ["backstage:companyBrief","backstage:journeyAction","backstage:saveState"]){
+   for(const channel of ["backstage:companyBrief","backstage:journeyAction","backstage:saveState","backstage:gameSnapshot"]){
     const original=ipcMain._invokeHandlers.get(channel);ipcMain.removeHandler(channel);
     ipcMain.handle(channel,async(event,...args)=>{
      if(channel==="backstage:companyBrief"&&companyUiFixture.failRead) throw Error("Synthetic read failure");
@@ -483,6 +483,15 @@ async function physicalClick(page, locator, whilePressed) {
   await page.waitForFunction(()=>stateMutationBusy===0);
   await page.getByRole("heading",{name:"Every adventure starts somewhere.",exact:true}).waitFor();
   assert.equal(await page.locator("[data-company]").count(),0,"Late first-use save cannot override a newer setup choice");
+  // The old save already reached disk. Replay the real background poll before
+  // retrying, rather than relying on the next click to beat its 5-second timer.
+  assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).state.onboarded,true);
+  await app.evaluate(()=>{companyUiFixture.delay="backstage:gameSnapshot";companyUiFixture.release=null;});
+  await app.evaluate(async()=>{const end=Date.now()+6500;while(!companyUiFixture.release){if(Date.now()>end)throw Error("Setup snapshot delay did not start");await new Promise(r=>setTimeout(r,10));}});
+  assert.equal(await page.evaluate(()=>snapshotPolling),true,"Real renderer poll is awaiting the saved setup state");
+  await app.evaluate(()=>companyUiFixture.release());
+  await page.waitForFunction(()=>!snapshotPolling);
+  assert.equal(await page.getByRole("heading",{name:"Every adventure starts somewhere.",exact:true}).count(),1,"Polling the retired offline save cannot dismiss the newer manual onboarding form");
   await page.getByRole("button",{name:"Plan without a character",exact:true}).click();
   await page.getByRole("heading",{name:"Your plans",exact:true,level:1}).waitFor();
   assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).state.profiles.length,0);
