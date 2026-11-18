@@ -564,7 +564,13 @@ window.WorldMapView = (() => {
     const p = selected;
     if (focused && focused.pin !== p) focused = null;
     const goal = focused?.goal;
-    const goalBox = focused ? `<section class="wm-goal" data-wm-goal><span class="wm-goal-eyebrow">Your goal here</span><h4>${esc(goal?.title || p.label)}</h4>${goal?.steps?.length ? `<ol>${goal.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}<div class="wm-goal-actions">${goal?.questId ? `<button type="button" data-quest-open="${goal.questId}">Open quest</button>` : ""}<button type="button" class="subtle" data-wm-act="unfocus">Show the full map</button></div></section>` : "";
+    const goalBox = focused ? `<section class="wm-goal" data-wm-goal><span class="wm-goal-eyebrow">Your goal here</span><h4>${esc(goal?.title || p.label)}</h4>${goal?.steps?.length ? `<ol>${goal.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}<div class="wm-goal-actions">${goal?.questId ? `<button type="button" data-quest-open="${esc(goal.questId)}"${p.routeBuild ? ` data-ledger-quest-profile="${esc(p.profileId)}"` : ""}>Open quest</button>` : ""}<button type="button" class="subtle" data-wm-act="unfocus">Show the full map</button></div></section>` : "";
+    if (p.routeBuild) {
+      // Route focus contains only escaped display data and a scoped quest action, not a waypoint command.
+      box.innerHTML = `${goalBox}<p class="wm-coords">${esc(model.mapName)} · ${pct(p.x)}, ${pct(p.y)}</p><p class="wm-src">Approximate route reference</p>`;
+      window.I18n?.apply(box);
+      return;
+    }
     if (p.kind === "objective-area") { box.innerHTML = goalBox + areaCard(p); paintIcons(box); return; }
     const details = p.npcId ? (npcFor === p.npcId && npcInfo ? npcSections(npcInfo) : npcInfo === false ? `<p class="wm-note">Details could not be loaded.</p>` : `<p class="wm-note">Loading details…</p>`) : p.kind === "community" ? communityDetails(p) : "";
     box.innerHTML = `${goalBox}<div class="wm-card-head">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<div><h3>${esc(p.label)}</h3>${p.sub ? `<p class="wm-sub">${esc(p.sub)}</p>` : ""}</div></div>
@@ -667,8 +673,15 @@ window.WorldMapView = (() => {
   }
   async function load(next) {
     if (loading) return; loading = true;
+    const wanted = pendingFocus;
+    let revealRoute = false;
     try {
       const m = await api.worldMap(next ? { mapId: next } : mapId ? { mapId } : {});
+      if (wanted?.routeBuild && (wanted !== pendingFocus || !routeOwner(wanted) || m.profileId !== wanted.profileId || m.mapId !== wanted.mapId)) {
+        if (wanted === pendingFocus) pendingFocus = null;
+        return;
+      }
+      if (pendingFocus?.routeBuild && wanted !== pendingFocus) return;
       if (m.mapId !== model?.mapId) { selected = null; view = { zoom: 1, cx: 0.5, cy: 0.5 }; }
       model = m; mapId = m.mapId; error = "";
       if (pendingFocus && pendingFocus.mapId === m.mapId) {
@@ -686,18 +699,37 @@ window.WorldMapView = (() => {
         // Prefer the real pin (an NPC from another page); otherwise mark the spot itself.
         const f = pendingFocus;
         const real = f.npcId ? model.pins.filter((p) => p.npcId === f.npcId).sort((a, b) => Math.hypot(a.x - f.x, a.y - f.y) - Math.hypot(b.x - f.x, b.y - f.y))[0] : null;
-        const pin = real || { id: "focus", kind: f.kind || (f.npcId ? "npc" : "instance"), npcId: f.npcId || undefined, label: f.label, sub: f.sub || null, mapId: m.mapId, x: f.x, y: f.y, source: f.source || (f.kind || f.npcId ? "From your advisor" : "Classic-era baseline (approximate entrance)") };
+        const pin = real || { id: "focus", kind: f.kind || (f.npcId ? "npc" : "instance"), npcId: f.npcId || undefined, label: f.label, sub: f.sub || null, mapId: m.mapId, x: f.x, y: f.y, source: f.source || (f.kind || f.npcId ? "From your advisor" : "Classic-era baseline (approximate entrance)"),
+          ...(f.routeBuild ? { questId: f.questId, profileId: f.profileId, routeBuild: f.routeBuild, routeSource: f.routeSource } : {}) };
         if (!real) model.pins.push(pin);
         selected = pin; pendingFocus = null;
         focused = { pin, goal: f.goal || null };
+        revealRoute = Boolean(f.routeBuild);
         // Frame you and the target together when you're on this map, else zoom in on the target.
         const me = m.player?.live || m.player?.saved;
         if (me && Number.isFinite(me.x)) { const span = Math.max(Math.abs(me.x - pin.x), Math.abs(me.y - pin.y)); view = { zoom: Math.max(1.4, Math.min(3.2, 0.55 / Math.max(span, 0.05))), cx: (me.x + pin.x) / 2, cy: (me.y + pin.y) / 2 }; }
         else view = { zoom: 2.6, cx: pin.x, cy: pin.y };
       }
       if (m.player?.live) pushTrail(m.mapId, m.player.live);
-    } catch (e) { error = e.message; }
-    loading = false; paintAll(); loadJourney(true);
+    } catch (e) {
+      if (wanted?.routeBuild && wanted === pendingFocus) pendingFocus = null;
+      error = e.message;
+    } finally {
+      loading = false;
+      const root = document.querySelector("[data-world-map]");
+      if (root && pendingFocus?.routeBuild && pendingFocus !== wanted && routeOwner(pendingFocus)) {
+        void load(pendingFocus.mapId);
+      } else if (root && wanted?.routeBuild && !routeOwner(wanted)) {
+        void load(); // A character change may have mounted this view while the old request was busy.
+      } else if (root) {
+        paintAll(); loadJourney(true);
+        if (revealRoute) {
+          const action = root.querySelector("[data-wm-goal] [data-quest-open]");
+          action?.focus({ preventScroll: true });
+          action?.scrollIntoView({ block: "center" });
+        }
+      }
+    }
   }
   function pushTrail(id, p) { remember(id, p); const last = trail[trail.length - 1]; if (!last || last.mapId !== id || Math.hypot(last.x - p.x, last.y - p.y) > 0.002) { trail.push({ mapId: id, x: p.x, y: p.y }); if (trail.length > 60) trail.shift(); } }
   let foreignKey = null;
@@ -808,7 +840,7 @@ window.WorldMapView = (() => {
       if (act === "in" || act === "out") { view.zoom = Math.min(8, Math.max(1, view.zoom * (act === "in" ? 1.5 : 1 / 1.5))); if (view.zoom === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }
       if (act === "reset") { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); }
       if (act === "focus-area" && selected?.kind === "objective-area") dialArea(selected);
-      if (act === "unfocus") { focused = null; view = { zoom: 1, cx: 0.5, cy: 0.5 }; card(); draw(); }
+      if (act === "unfocus") { if (selected?.routeBuild) clearRoutePin(); focused = null; view = { zoom: 1, cx: 0.5, cy: 0.5 }; card(); draw(); }
       if (act === "me") { const me = model?.player?.live || model?.player?.saved; if (me) { view = { zoom: Math.max(view.zoom, 2.5), cx: me.x, cy: me.y }; draw(); } }
       if (act === "clear") { results = null; resultsList(); root.querySelector("[data-wm-search] input").focus(); }
       if (act === "radar") { try { await api.openRadar(); } catch {} }
@@ -820,13 +852,24 @@ window.WorldMapView = (() => {
   }
   function mounted() {
     const root = document.querySelector("[data-world-map]");
+    if (pendingFocus?.routeBuild && (!root || !routeOwner(pendingFocus))) pendingFocus = null;
+    if (model?.pins.some((p) => p.routeBuild && (!root || !routeOwner(p)))) clearRoutePin();
     if (!root) { mountedFor = null; return; }
     if (mountedFor === root) return;
     mountedFor = root; bind(); load();
   }
   if (api?.onLiveLink) api.onLiveLink(onLive);
   window.addEventListener("resize", () => { if (document.querySelector("[data-world-map]")) resize(); });
-  function focus(f) { if (!f || !Number.isSafeInteger(f.mapId)) return; pendingFocus = f; follow = false; mapId = f.mapId; savePref(); if (document.querySelector("[data-world-map]")) load(f.mapId); }
+  function routeOwner(f) {
+    const p = profile();
+    return p?.id === f.profileId && p.clientBuild === f.routeBuild && p.source?.id === f.routeSource && p.quests?.some((q) => q.id === f.questId);
+  }
+  function clearRoutePin() {
+    if (model) model.pins = model.pins.filter((p) => !p.routeBuild);
+    if (selected?.routeBuild) selected = null;
+    if (focused?.pin?.routeBuild) focused = null;
+  }
+  function focus(f) { if (!f || !Number.isSafeInteger(f.mapId) || (f.routeBuild && !routeOwner(f))) return; pendingFocus = f; follow = false; mapId = f.mapId; savePref(); if (document.querySelector("[data-world-map]")) load(f.mapId); }
   // Open a whole zone (a saved location only knows its name): no pin, just that zone's map.
   function focusZone(name) { const id = window.ZoneArt?.idFor(name); if (!Number.isSafeInteger(id)) return false; pendingFocus = null; follow = false; mapId = id; savePref(); if (document.querySelector("[data-world-map]")) load(id); return true; }
   // _areaCard renders one objective-area card against a given model (tests).
