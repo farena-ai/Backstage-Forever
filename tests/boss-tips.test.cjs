@@ -33,6 +33,12 @@ const reviewedZulGurub = [
   ["High Priestess Arlokk", 14515, /panthers.+marked player.+tank.+reappears/i],
   ["Bloodlord Mandokir", 11382, /Threatening Gaze.+stop moving, casting, and attacking.+Ohgan.+enrage/i],
   ["Jin'do the Hexxer", 11380, /healing wards.+Brain Wash Totems.+Delusions.+shades/i],
+  ["Gri'lek", 15082, /roots.+grows/i],
+  ["Hazza'rah", 15083, /sleep.+illusions/i],
+  ["Renataki", 15084, /vanish.+tank.+reappears/i],
+  ["Wushoolay", 15085, /spread out.+lightning/i],
+  ["Gahz'ranka", 15114, /Massive Geyser.+knock.+tank.+regain control/i],
+  ["Hakkar", 14834, /Son of Hakkar.+poison cloud.+Blood Siphon/i],
 ];
 function lua(source) {
   const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], { cwd: root, input: source, encoding: "utf8", timeout: 20000 });
@@ -91,22 +97,26 @@ test("Blackwing Lair exposes all eight reviewed Classic reference tips in the At
   }
 });
 
-test("Zul'Gurub exposes only the seven reviewed Classic reference tips in the Atlas and Companion", () => {
+test("Zul'Gurub exposes only the reviewed Classic reference tips in the Atlas and Companion", () => {
   const { buildAtlas } = require("../src/core/dungeon-atlas.cjs");
   const { answerSpecial } = require("../src/core/companion-unlocks.cjs");
   const zg = buildAtlas({}).entries.find((e) => e.id === "zg");
-  assert.deepEqual(zg.bosses.filter((boss) => boss.tip).map((boss) => boss.name), reviewedZulGurub.map(([name]) => name));
+  assert.deepEqual(zg.bosses.map((boss) => boss.name), reviewedZulGurub.map(([name]) => name));
   for (const [name, , cue] of reviewedZulGurub) {
     const boss = zg.bosses.find((b) => b.name === name);
     assert.match(boss.tip, /^Classic reference: /);
     assert.match(boss.tip, cue);
     assert.equal(boss.tip, tipFor(name));
     assert.equal(boss.observedInForever, false);
+    assert.equal(boss.kills, 0);
     assert.ok(answerSpecial(`Tips for ${name}?`).text.includes(boss.tip));
   }
   assert.equal(tipFor("High Priestess Mar’li"), tipFor("High Priestess Mar'li"));
   assert.equal(tipFor("Jin’do the Hexxer"), tipFor("Jin'do the Hexxer"));
-  for (const name of ["Hakkar", "Gahz'ranka", "Edge of Madness", "Gong of Bethekk", "Ohgan"]) {
+  assert.equal(tipFor("Gahz’ranka"), tipFor("Gahz'ranka"));
+  assert.equal(tipFor("Gri’lek"), tipFor("Gri'lek"));
+  assert.equal(tipFor("Hazza’rah"), tipFor("Hazza'rah"));
+  for (const name of ["Son of Hakkar", "Mudskunk Lure", "Edge of Madness", "Brazier of Madness", "Gong of Bethekk", "Ohgan"]) {
     assert.equal(tipFor(name), null, name);
   }
 });
@@ -162,7 +172,12 @@ target='Unknown' reject() target='Lucifron' id=99999 reject() id=12118
 target='The Molten Core' id=3018 reject()
 map=469 target='Nefarian' id=10162 reject()
 target='Lord Victor Nefarius' id=11583 reject()
-map=309 target='Hakkar' id=14834 reject()
+map=309 target='Hakkar' id=11357 reject() -- Son of Hakkar, not the boss
+target="Gahz'ranka" id=9104 reject() -- spell event, not the boss
+id=19974 reject() -- summoning item, not the boss
+target="Gri'lek" id=180327 reject() -- brazier, not the boss
+id=15083 reject() -- a different boss in the same rotation
+target='Edge of Madness' id=15082 reject() -- event label, not the boss name
 target="High Priestess Mar'li" id=14517 reject()
 target='High Priestess Arlokk' id=180526 reject() -- gong, not the summoned creature
 id=791 reject() -- encounter ID, not the creature
