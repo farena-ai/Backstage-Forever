@@ -1,6 +1,7 @@
 "use strict";
 const fs = require("node:fs"), path = require("node:path"), crypto = require("node:crypto");
 const { validateState } = require("./validation.cjs");
+const { encodeJournalState, decodeJournalState } = require("./journal-persistence.cjs");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const MAX_POINT_BYTES = 64 * 1024 * 1024, MAX_TOTAL_BYTES = 128 * 1024 * 1024;
 const REASONS = ["startup", "save", "close", "manual", "import", "restore"];
@@ -77,7 +78,7 @@ class RecoveryCheckpoints {
       if (Object.keys(envelope).sort().join() !== "createdAt,id,payload,reason,sha256,version" || envelope.version !== 1 || envelope.id !== id || !REASONS.includes(envelope.reason) || typeof envelope.createdAt !== "string" || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(envelope.createdAt) || new Date(envelope.createdAt).toISOString() !== envelope.createdAt || Date.parse(envelope.createdAt) > this.now() + 300000 || typeof envelope.payload !== "object" || !envelope.payload || Object.hasOwn(envelope.payload, "memories")) throw Error();
       const sha256 = hash(JSON.stringify(envelope.payload));
       if (sha256 !== envelope.sha256 || expectedHash && sha256 !== expectedHash) throw new RecoveryError("changed");
-      const state = validateState(envelope.payload);
+      const state = decodeJournalState(envelope.payload);
       return { id, createdAt: envelope.createdAt, reason: envelope.reason, bytes: bytes.length, profileCount: state.profiles.length, journeyCount: state.journeys.length, sha256, state, fileHash: hash(bytes) };
     } catch (e) { throw e instanceof RecoveryError ? e : new RecoveryError("unavailable"); }
   }
@@ -111,7 +112,7 @@ class RecoveryCheckpoints {
       if (!REASONS.includes(reason)) throw new RecoveryError("invalid");
       if (["startup", "save", "close", "import"].includes(reason) && !this.preference()) return null;
       this.#clearAbandonedStages();
-      const { memories, ...payload } = validateState(input), sha256 = hash(JSON.stringify(payload));
+      const { memories, ...validated } = validateState(input), payload = encodeJournalState(validated), sha256 = hash(JSON.stringify(payload));
       const points = this.list(), identical = points.find(p => p.sha256 === sha256);
       if (identical) { this.phase = "ready"; return identical; }
       const last = this.lastCapture ?? (points[0] ? Date.parse(points[0].createdAt) : null);
@@ -186,7 +187,7 @@ class RecoveryCheckpoints {
       const current = readRegular(file, MAX_POINT_BYTES);
       if (!sameFile(current.identity, token.identity) || hash(current.bytes) !== token.originalHash || this.read(token.id, token.sha256).fileHash !== token.fileHash) throw new RecoveryError("changed");
       this.disconnectSavedGame();
-      writeAtomic(file, JSON.stringify({ ...point.state, memories: [] }, null, 2));
+      writeAtomic(file, JSON.stringify(encodeJournalState({ ...point.state, memories: [] }), null, 2));
     } catch (e) { throw e instanceof RecoveryError ? e : new RecoveryError("unavailable"); }
   }
 }

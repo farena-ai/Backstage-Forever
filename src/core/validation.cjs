@@ -2,6 +2,7 @@
 const { validateJourneys } = require("./journeys.cjs");
 const { validateMemories } = require("./memory-data.cjs");
 const { validateObjectives } = require("./objectives.cjs");
+const PERSISTED_BADGE_AWARDS = "desktopBadgeAwards";
 const {
   validateQuestData,
   validateProgress,
@@ -191,6 +192,7 @@ function validateState(s) {
     require("./readiness.cjs").validateReadiness(p.readiness);
     require("./gathering-data.cjs").validateGatheringProfile(p.gathering);
     require("./quest-intel.cjs").validateLootSources(p.lootSources);
+    if (p.journal && Object.hasOwn(p.journal, PERSISTED_BADGE_AWARDS)) fail();
     require("./journal-data.cjs").validateJournal(p.journal);
     require("./ledger.cjs").validateLedger(p.ledger);
     require("./sheet.cjs").validateStats(p.stats);
@@ -283,6 +285,7 @@ function validateState(s) {
   return valid;
 }
 module.exports = {
+  PERSISTED_BADGE_AWARDS,
   providers,
   OPENAI_PREFIX,
   NO_KEY,

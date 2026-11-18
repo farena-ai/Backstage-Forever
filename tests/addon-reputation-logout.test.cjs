@@ -5,6 +5,9 @@ const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const { parseSavedVariables } = require("../src/core/game-sync.cjs");
+const { mergeSnapshot } = require("../src/core/profile-sync.cjs");
+const { Store } = require("../src/core/store.cjs");
+const { badgesFor } = require("../src/core/badges.cjs");
 
 const root = path.join(__dirname, "..");
 const addon = "addon/BackstageForever/";
@@ -56,6 +59,119 @@ function replay(source) {
   return r.stdout.trim().split(/\r?\n/);
 }
 const parseExport = (json) => parseSavedVariables(`BackstageForeverExport = [=[${json}]=]`);
+const tmpdir = process.env.TMPDIR || require("node:os").tmpdir();
+
+test("a qualifying row hidden by a second scan in the same second cannot award a medal", (testContext) => {
+  const scan = String.raw`
+    standing=8
+    fire('PLAYER_LOGIN')
+    fire('PLAYER_ENTERING_WORLD')
+    print(BackstageForeverExport)
+    GetNumFactions=function() return 1 end
+    local visible=GetFactionInfo
+    GetFactionInfo=function() return visible(2) end
+    fire('UPDATE_FACTION')
+    time,GetNumFactions,GetFactionInfo=unavailable,unavailable,unavailable
+    fire('PLAYER_LOGOUT')
+    assert(reads==0,'logout queried live APIs')
+    print(BackstageForeverExport)
+  `;
+  const [visible, hidden] = replay(scan).map(parseExport);
+  const r = hidden.characters[0].ledger.reputations;
+  assert.equal(r.seenAt, visible.characters[0].ledger.reputations.seenAt);
+  assert.equal(r.factions.find(f => f.id === 72).observedAt, r.seenAt);
+  assert.equal(r.factions.find(f => f.id === 47).observedAt, r.seenAt);
+  const dir = fs.mkdtempSync(path.join(tmpdir, "bf-same-second-rep-"));
+  testContext.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  let store = new Store(dir);
+  store.saveState(mergeSnapshot(store.state, hidden));
+  store = new Store(dir);
+  const [profile] = store.state.profiles;
+  assert.equal(profile.badgeAwards, undefined, "a hidden row must not latch a medal");
+  const medal = badgesFor(profile, { desktop: true }).badges.find(b => b.id === "rep-stormwind-revered");
+  assert.equal(medal.earned, false);
+  assert.equal(medal.progressUnavailable, true);
+  const [nextVisible] = replay("t=t+1;standing=8;fire('PLAYER_LOGIN');fire('PLAYER_ENTERING_WORLD');print(BackstageForeverExport)").map(parseExport);
+  store.saveState(mergeSnapshot(store.state, nextVisible));
+  assert.deepEqual(new Store(dir).state.profiles[0].badgeAwards, ["rep-stormwind-revered", "rep-stormwind-exalted"]);
+});
+
+test("sequential same-second imports latch newly visible reputation medals and persist them", (t) => {
+  const [first, second, third] = replay(String.raw`
+    standing=8
+    local visible=GetFactionInfo
+    GetNumFactions=function() return 1 end
+    GetFactionInfo=function() return visible(2) end
+    fire('PLAYER_LOGIN')
+    fire('PLAYER_ENTERING_WORLD')
+    print(BackstageForeverExport)
+    GetFactionInfo=visible
+    fire('UPDATE_FACTION')
+    for _,fn in ipairs(timers) do fn() end
+    print(BackstageForeverExport)
+    GetFactionInfo=function() return visible(2) end
+    fire('UPDATE_FACTION')
+    fire('PLAYER_LOGOUT')
+    print(BackstageForeverExport)
+  `).map(parseExport);
+  const scans = [first, second, third].map(snapshot => snapshot.characters[0].ledger.reputations);
+  assert.equal(first.characters[0].updatedAt, second.characters[0].updatedAt);
+  assert.equal(second.characters[0].updatedAt, third.characters[0].updatedAt);
+  assert.ok(scans[0].scanId < scans[1].scanId && scans[1].scanId < scans[2].scanId);
+  const dir = fs.mkdtempSync(path.join(tmpdir, "bf-sequential-rep-"));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  let store = new Store(dir);
+  store.saveState(mergeSnapshot(store.state, first));
+  assert.equal(store.state.profiles[0].badgeAwards, undefined);
+  store = new Store(dir);
+  store.saveState(mergeSnapshot(store.state, second));
+  const [visible] = new Store(dir).state.profiles;
+  assert.deepEqual(visible.ledger.reputations, scans[1]);
+  const awards = ["rep-stormwind-revered", "rep-stormwind-exalted"];
+  assert.deepEqual(visible.badgeAwards, awards);
+  store.saveState(mergeSnapshot(store.state, third));
+  store.saveState(mergeSnapshot(store.state, second)); // A replay cannot make Stormwind current again.
+  const [hidden] = new Store(dir).state.profiles;
+  assert.deepEqual(hidden.ledger.reputations, scans[2]);
+  assert.deepEqual(hidden.badgeAwards, awards);
+  assert.equal(badgesFor(hidden, { desktop: true }).badges.find(b => b.id === awards[0]).at, undefined);
+});
+
+test("reload in the same second retires a saved scan when login sees only another faction", () => {
+  const [account, native] = replay(String.raw`
+    standing=8
+    fire('PLAYER_LOGIN')
+    fire('PLAYER_ENTERING_WORLD')
+    print(BackstageForeverExport)
+    local function literal(v)
+        if type(v)=='string' then return string.format('%q',v) end
+        if type(v)~='table' then return tostring(v) end
+        local parts={}
+        for k,item in pairs(v) do parts[#parts+1]='['..literal(k)..']='..literal(item) end
+        return '{'..table.concat(parts,',')..'}'
+    end
+    print(literal(BackstageForeverLedgerDB))
+  `);
+  const [reloaded] = replay(`
+    BackstageForeverExport=[=[${account}]=]
+    BackstageForeverLedgerDB=${native}
+    GetNumFactions=function() return 1 end
+    local visible=GetFactionInfo
+    GetFactionInfo=function() return visible(2) end
+    fire('PLAYER_LOGIN')
+    time,GetNumFactions,GetFactionInfo=unavailable,unavailable,unavailable
+    fire('PLAYER_LOGOUT')
+    assert(reads==0,'logout queried live APIs')
+    print(BackstageForeverExport)
+  `).map(parseExport);
+  const saved = reloaded.characters[0].ledger.reputations;
+  const prior = parseExport(account).characters[0].ledger.reputations;
+  assert.equal(saved.seenAt, prior.seenAt);
+  assert.equal(saved.scanId, prior.scanId + 1);
+  assert.equal(saved.factions.find(f => f.id === 72).scanId, prior.scanId);
+  assert.equal(saved.factions.find(f => f.id === 47).scanId, saved.scanId);
+  assert.equal(mergeSnapshot(require("../src/core/validation.cjs").defaultState(), reloaded).profiles[0].badgeAwards, undefined);
+});
 
 test("immediate logout patches only recorded reputation and encounter evidence into the prepared export", () => {
   const [beforeJson, afterJson] = replay(String.raw`
@@ -95,7 +211,7 @@ test("immediate logout patches only recorded reputation and encounter evidence i
   assert.deepEqual(after.characters.find((c) => c.name === "Alt"), before.characters.find((c) => c.name === "Alt"));
   assert.equal(reputations.seenAt, 1700000001);
   assert.deepEqual(reputations.factions[0], oldReps.factions[0], "hidden faction was not observed again");
-  assert.deepEqual(reputations.factions[1], { ...oldReps.factions[1], standing: 6, observedAt: 1700000001, observedBuild: "1.15.2.55555" });
+  assert.deepEqual(reputations.factions[1], { ...oldReps.factions[1], standing: 6, observedAt: 1700000001, observedBuild: "1.15.2.55555", scanId: reputations.scanId });
   assert.equal(encounters[0].encounterId, 1144);
 });
 

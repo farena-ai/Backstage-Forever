@@ -7,6 +7,7 @@ const { reconcileJourneys } = require("./journeys.cjs");
 const { changeObjective, reconcileObjectives } = require("./objectives.cjs");
 const { preserveMemories } = require("./memory-data.cjs");
 const { RecoveryCheckpoints } = require("./recovery-checkpoints.cjs");
+const { encodeJournalState, decodeJournalState, hasInlineDesktopAwards } = require("./journal-persistence.cjs");
 class StoreStartupError extends Error {
   constructor(kind) { super("Saved local data could not be opened."); this.name = "StoreStartupError"; this.kind = kind; }
 }
@@ -29,9 +30,13 @@ class Store {
     fs.mkdirSync(dir, { recursive: true });
     this.file = path.join(dir, "state.json");
     this.keyFile = path.join(dir, "credentials.json");
-    try { this.state = fs.existsSync(this.file)
-      ? v.validateState(JSON.parse(fs.readFileSync(this.file, "utf8")))
-      : v.defaultState(); } catch { throw new StoreStartupError("journal"); }
+    let persisted;
+    try {
+      if (fs.existsSync(this.file)) {
+        persisted = JSON.parse(fs.readFileSync(this.file, "utf8"));
+        this.state = decodeJournalState(persisted);
+      } else this.state = v.defaultState();
+    } catch { throw new StoreStartupError("journal"); }
     this.state.journeys = reconcileJourneys(
       this.state.journeys,
       this.state.profiles,
@@ -46,6 +51,12 @@ class Store {
     );
     for (const val of Object.values(this.keys)) v.str(val, 20000, false);
     } catch { throw new StoreStartupError("credentials"); }
+    // Rewrite only the validated wire format, without persisting startup reconciliation.
+    // A blocked write is not journal damage and must not offer checkpoint replacement.
+    if (persisted && hasInlineDesktopAwards(persisted)) {
+      try { atomic(this.file, JSON.stringify(encodeJournalState(persisted), null, 2)); }
+      catch { throw new StoreStartupError("migration"); }
+    }
     this.recovery = recovery || new RecoveryCheckpoints(dir, { now });
     this.recoveryStarted = false;
   }
@@ -97,16 +108,19 @@ class Store {
     valid.objectives = reconcileObjectives(valid.objectives, valid.profiles);
     const deleting = preserveObserved && this.state.profiles.some(p => !valid.profiles.some(next => next.id === p.id));
     if (deleting) this.recovery.clear();
-    atomic(this.file, JSON.stringify(valid, null, 2));
+    atomic(this.file, JSON.stringify(encodeJournalState(valid), null, 2));
     this.state = valid;
     if (capture && !deleting) this.#automaticPoint("save");
     this.onStateChange?.();
     return structuredClone(valid);
   }
-  importData(text) {
+  validateBackup(text) {
     if (Buffer.byteLength(text) > MAX_BACKUP_BYTES)
       throw new Error("Backup is too large.");
-    const valid = v.validateState(JSON.parse(text));
+    return decodeJournalState(JSON.parse(text));
+  }
+  importData(text) {
+    const valid = this.validateBackup(text);
     this.clearRecoveryOriginal();
     if (this.state.profiles.length || this.state.journeys.length || this.state.onboarded) this.recovery.create(this.state, "import");
     return this.#writeState({ ...valid, memories: [] }, false, false);
@@ -118,7 +132,7 @@ class Store {
   }
   exportData() {
     const { memories, ...exported } = this.state;
-    return JSON.stringify(exported, null, 2);
+    return JSON.stringify(encodeJournalState(exported), null, 2);
   }
   secretStatus() {
     return Object.fromEntries(

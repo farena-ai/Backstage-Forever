@@ -12,8 +12,8 @@ const { defaultState } = require("../src/core/validation.cjs");
 
 const stamp = 1795000000, build = "1.60.1.70888", oldBuild = "1.60.1.70862";
 const storm = "rep-stormwind-revered", exalted = "rep-stormwind-exalted";
-const row = (fields = {}) => ({ id: 72, name: "Sturmwind", standing: 7, min: 21000, max: 42000, value: 21000, observedAt: stamp, observedBuild: build, ...fields });
-const ledger = (factions, seenAt = stamp) => ({ reputations: { seenAt, factions } });
+const row = (fields = {}) => ({ id: 72, name: "Sturmwind", standing: 7, min: 21000, max: 42000, value: 21000, observedAt: stamp, observedBuild: build, scanId: 2, ...fields });
+const ledger = (factions, seenAt = stamp, scanId = 2) => ({ reputations: { seenAt, factions, scanId } });
 const character = (fields = {}) => ({ id: "Owner", name: "Traveler", realm: "Fixture", className: "Mage", faction: "Alliance", level: 25, updatedAt: stamp, clientBuild: build, ...fields });
 function merge(state, ...characters) {
   const { id: activeId, updatedAt: observedAt } = characters[0];
@@ -46,9 +46,16 @@ test("each medal uses the exact numeric faction and standing, not the saved name
 test("missing, hidden, future, mismatched, malformed and wrong-side observations cannot award medals", () => {
   for (const [capture, fields] of [
     [undefined],
-    [ledger([row({ observedAt: undefined, observedBuild: undefined })])],
+    [ledger([row({ observedAt: undefined, observedBuild: undefined, scanId: undefined })])],
     [ledger([row({ observedBuild: undefined })])],
-    [ledger([row({ observedAt: stamp - 1 })])],
+    [ledger([row({ observedAt: stamp - 1, scanId: 1 })])],
+    [ledger([row({ scanId: 1 }), row({ id: 47 })])],
+    [ledger([row({ scanId: undefined })])],
+    [ledger([row()], stamp, null)],
+    [ledger([row()], stamp, "2")],
+    [ledger([row({ scanId: 2.5 })])],
+    [ledger([row({ scanId: 3 })])],
+    [ledger([row()], stamp, 2147483647)],
     [ledger([row({ observedAt: stamp + 1 })], stamp + 1)],
     [ledger([row({ observedAt: stamp + 1 })])],
     [ledger([row({ observedBuild: oldBuild })])],
@@ -78,7 +85,7 @@ test("only accepted character-owned saves latch medals; later omissions and rest
     const state = merge(store.state, character({ updatedAt, ledger: ledger([row({ standing: 8, observedAt: updatedAt })], updatedAt) }));
     assert.deepEqual(badgeBook(state).holders[storm], []);
   }
-  const hidden = ledger([row({ standing: 8 }), row({ id: 47, observedAt: stamp + 1 })], stamp + 1);
+  const hidden = ledger([row({ standing: 8, scanId: 1 }), row({ id: 47, observedAt: stamp + 1 })], stamp + 1);
   store.saveState(merge(store.state, character({ updatedAt: stamp + 1, ledger: hidden }), alt));
   assert.equal(badge(store.state.profiles[0]).progressUnavailable, true);
   store.saveState(merge(store.state, character({ updatedAt: stamp + 2, ledger: ledger([row({ observedAt: stamp + 2 })], stamp + 2) }), alt));
@@ -95,7 +102,7 @@ test("only accepted character-owned saves latch medals; later omissions and rest
   assert.equal(badgeBook(store.state).character.id, other.id);
 });
 
-test("a pre-medal save backfills before the first newer save can replace the standing", () => {
+test("a scan-aware save backfills before a newer save can replace the standing", () => {
   const state = merge(defaultState(), character({ ledger: ledger([row()]) }));
   delete state.profiles[0].badgeAwards;
   const updatedAt = stamp + 1;
@@ -103,4 +110,58 @@ test("a pre-medal save backfills before the first newer save can replace the sta
   assert.equal(profile.ledger.reputations.factions[0].standing, 6);
   assert.deepEqual(profile.badgeAwards, [storm]);
   assert.equal(badge(profile).earned, true);
+});
+
+test("same-second scans replace only reputation and cannot backfill unrelated awards", () => {
+  const history = { recent: [], completedIdsKnown: true, completedIds: [], completedCount: 0 };
+  const qualifyingJournal = { levels: [], firsts: [], zones: [], encounters: [
+    { encounterId: 1144, name: "Edwin VanCleef", instanceMap: 36, instanceType: "party", difficultyId: 1, at: stamp },
+  ] };
+  const state = merge(defaultState(), character({ history, ledger: { money: 123, ...ledger([row({ standing: 6 })]) } }));
+  const [prior] = state.profiles;
+  prior.notes = "Keep my notes";
+  prior.journal = qualifyingJournal;
+  assert.ok(badgesFor(prior, { desktop: true }).badges.some(b => b.desktopOnly && b.earned));
+  const capture = ledger([row({ scanId: 3, standing: 8 })], stamp, 3);
+  const [updated] = merge(state, character({ name: "Changed", level: 30, ledger: { money: 999, ...capture } })).profiles;
+  assert.deepEqual(updated, {
+    ...prior,
+    ledger: { ...prior.ledger, reputations: capture.reputations },
+    badgeAwards: [storm, exalted],
+  });
+});
+
+test("same-second scans require comparable identity and valid observation clocks", () => {
+  const latest = ledger([row({ standing: 6 })]);
+  const legacy = ledger([row({ standing: 6, scanId: undefined })], stamp, null);
+  const candidate = (scanId, seenAt = stamp) => ledger([row({ scanId, observedAt: seenAt, standing: 8 })], seenAt, scanId);
+  for (const [before, after, priorBuild = build, incomingBuild = build, updatedAt = stamp] of [
+    [latest, candidate(1)],
+    [latest, candidate(2)],
+    [latest, candidate(null)],
+    [legacy, candidate(3)],
+    [latest, undefined],
+    [latest, candidate("3")],
+    [latest, candidate(3, stamp + 1)],
+    [latest, candidate(3, stamp - 1)],
+    [latest, candidate(3), build, oldBuild],
+    [latest, candidate(3), build, null],
+    [latest, candidate(3), null, null],
+    [latest, candidate(3, stamp - 1), build, build, stamp - 1],
+  ]) {
+    const state = merge(defaultState(), character({ ledger: before, clientBuild: priorBuild ?? undefined }));
+    assert.deepEqual(merge(state, character({ ledger: after, clientBuild: incomingBuild ?? undefined, updatedAt })), state);
+  }
+});
+
+test("legacy timestamp-only saves display standing but never backfill a new medal", () => {
+  const legacy = { reputations: { seenAt: stamp, factions: [row({ scanId: undefined })] } };
+  const state = merge(defaultState(), character({ ledger: legacy }));
+  const [prior] = state.profiles;
+  assert.equal(prior.ledger.reputations.factions[0].standing, 7);
+  assert.equal(prior.ledger.reputations.scanId, undefined);
+  assert.equal(badge(prior).progressUnavailable, true);
+  assert.equal(prior.badgeAwards, undefined);
+  const [updated] = merge(state, character({ updatedAt: stamp + 1 })).profiles;
+  assert.equal(updated.badgeAwards, undefined);
 });

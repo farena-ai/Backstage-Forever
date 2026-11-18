@@ -156,14 +156,14 @@ function observedMedalStandings(profile) {
   if (!source || !build || !capture) return standings;
   const characterSide = side(profile);
   try {
-    const { reputations: { seenAt, factions } } = normalizeLedgerCapture({ reputations: capture });
-    if (seenAt * 1000 > Date.parse(source.updatedAt)) return standings;
+    const { reputations: { seenAt, scanId, factions } } = normalizeLedgerCapture({ reputations: capture });
+    if (scanId === undefined || seenAt * 1000 > Date.parse(source.updatedAt)) return standings;
     for (const [id] of MEDAL_FACTIONS) {
       const requiredSide = SIDES.Alliance.includes(id) ? "alliance" : SIDES.Horde.includes(id) ? "horde" : null;
       if (requiredSide && characterSide !== requiredSide) continue;
       const row = factions.find(f => f.id === id);
-      // Other rows can advance the collection clock while this faction is hidden.
-      if (row && row.observedAt === seenAt && row.observedBuild === build) standings.set(id, row.standing);
+      // A hidden row can share the latest scan's clock second without belonging to it.
+      if (row?.scanId === scanId && row.observedAt === seenAt && row.observedBuild === build) standings.set(id, row.standing);
     }
   } catch { /* Invalid optional evidence cannot count. */ }
   return standings;
