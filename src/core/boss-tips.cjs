@@ -3,6 +3,13 @@
 // in game when you target the boss. Text only: no timers. These are general tips from how the
 // classic encounters work; Forever may tune a fight, so each tip says what to watch for, not when.
 // The addon gets the same tips from scripts/build-boss-tips.cjs (BackstageForeverBossTips.lua).
+// J31 review and scope: docs/raid-boss-tip-review.md.
+const REVIEWED_RAID_TIPS = Object.freeze({
+  Lucifron: { instanceMap: 409, npcId: 12118, advice: "Dispel Impending Doom as magic and remove Lucifron's Curse separately." },
+  Magmadar: { instanceMap: 409, npcId: 11982, advice: "Have hunters use Tranquilizing Shot to remove Frenzy; plan fear protection for the tank." },
+  Gehennas: { instanceMap: 409, npcId: 12259, advice: "Step out of Rain of Fire and remove the curse that cuts healing." },
+  Garr: { instanceMap: 409, npcId: 12057, advice: "Banish or tank the Firesworn and back away before they die: they explode." },
+});
 const TIPS = Object.freeze({
   // Ragefire Chasm
   "Taragaman the Hungerer": "Fire Nova burns everyone close to him: healers and casters stay at range.",
@@ -88,8 +95,9 @@ const TIPS = Object.freeze({
   // Raids (one line each)
   "Onyxia": "When she flies, never stand under her sides or in the line of her Deep Breath; when she lands again, Bellowing Roar fears.",
   "Ragnaros": "Wrath of Ragnaros knocks melee back; when he submerges, Sons of Flame rush the raid.",
+  ...Object.fromEntries(Object.entries(REVIEWED_RAID_TIPS).map(([name, { advice }]) => [name, `Classic reference: ${advice}`])),
 });
 const norm = (s) => String(s || "").toLowerCase().replace(/[’‘']/g, "'").trim();
 const BY = new Map(Object.entries(TIPS).map(([k, v]) => [norm(k), v]));
 const tipFor = (name) => BY.get(norm(name)) || null;
-module.exports = { TIPS, tipFor };
+module.exports = { TIPS, tipFor, REVIEWED_RAID_TIPS };
