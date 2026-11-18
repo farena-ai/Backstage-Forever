@@ -70,10 +70,51 @@ function nextAnswer(advice) {
   return { text: out.join("\n\n"), kind: "quick", topic: "next" };
 }
 
+// 1.4 (J16): "I have 90 minutes", "an hour", "2 hours", "half an hour" -> minutes (10 to 600).
+function minutesIn(q) {
+  const s = String(q || "").toLowerCase();
+  let m = s.match(/\b(\d{1,3}(?:\.\d)?)\s*(?:hours?|hrs?|h)\b/);
+  if (m) return Math.min(600, Math.max(10, Math.round(Number(m[1]) * 60)));
+  m = s.match(/\b(\d{1,3})\s*(?:minutes?|mins?|m)\b/);
+  if (m) return Math.min(600, Math.max(10, Number(m[1])));
+  if (/\bhalf an hour\b/.test(s)) return 30;
+  if (/\ban hour and a half\b/.test(s)) return 90;
+  if (/\b(?:an|one) hour\b/.test(s)) return 60;
+  if (/\bcouple (?:of )?hours\b/.test(s)) return 120;
+  return null;
+}
+// Rough minutes per kind of step, for fitting a plan into the time you have.
+const COST = { bags: 5, next: 10, train: 5, zone: 6, dungeon: 60, gear: 2 };
+function budgeted(plan, minutes) {
+  const c = plan.character, out = [];
+  let left = minutes;
+  const take = (min, text) => { if (min <= left) { out.push(`${text} (about ${min} min)`); left -= min; return true; } return false; };
+  if (c.freeBagSlots !== null && c.freeBagSlots <= 3) take(COST.bags, `Empty your bags: only ${c.freeBagSlots} free slot${c.freeBagSlots === 1 ? "" : "s"}`);
+  if (plan.gear?.upgradesInBags?.length) take(COST.gear, `Put on ${plan.gear.upgradesInBags.map((u) => u.item).filter(Boolean).join(", ")}`);
+  if (plan.nextStep) take(COST.next, `${plan.nextStep.what}${plan.nextStep.detail ? `: ${plan.nextStep.detail}` : ""}${plan.nextStep.direction ? ` (${plan.nextStep.direction})` : ""}`);
+  const d = plan.dungeonsForYou?.[0];
+  if (d && left >= COST.dungeon + 10) take(COST.dungeon, `With a group: ${d.name} (levels ${d.levels})`);
+  if (plan.zoneToClear && left >= COST.zone * 2) {
+    const n = Math.min(plan.zoneToClear.left, Math.floor(left / COST.zone));
+    take(n * COST.zone, `Quest in ${plan.zoneToClear.name}: about ${n} of the ${plan.zoneToClear.left} quests left there`);
+  }
+  return { steps: out, left };
+}
 // 0.47 (4.4): "what should I do tonight?" from the same plan the companion's plan_tonight tool returns.
-function tonightAnswer(plan) {
+function tonightAnswer(plan, { minutes = null } = {}) {
   if (!plan || plan.status !== "ok" || !plan.character) return null;
   const c = plan.character, steps = [];
+  if (minutes) {
+    const b = budgeted(plan, minutes);
+    if (b.steps.length) {
+      const pace = plan.session?.levelsPerHour;
+      const out = [`**${minutes} minutes for ${c.name}** (level ${c.level}${c.restedPercent ? `, ${c.restedPercent}% of a level rested` : ""})`, lines("In this order:", b.steps)];
+      if (pace > 0) out.push(`At this session's pace (${pace} levels an hour) that's about ${Math.round(pace * minutes / 6) / 10} level${Math.round(pace * minutes / 6) / 10 === 1 ? "" : "s"}.`);
+      if (b.left >= 10) out.push(`About ${b.left} minutes spare: pick up whatever the Now page shows next.`);
+      out.push("Times are rough guesses; the Now page keeps the next step current.");
+      return { text: out.join("\n\n"), kind: "quick", topic: "tonight" };
+    }
+  }
   const head = `**Tonight for ${c.name}** (level ${c.level}${c.levelPercent !== null ? `, ${c.levelPercent}% through` : ""}${c.restedPercent ? `, ${c.restedPercent}% of a level rested` : ""})`;
   if (c.freeBagSlots !== null && c.freeBagSlots <= 3) steps.push(`Empty your bags first: only ${c.freeBagSlots} free slot${c.freeBagSlots === 1 ? "" : "s"} (Sell junk at any vendor).`);
   if (plan.nextStep) steps.push(`${plan.nextStep.what}${plan.nextStep.detail ? `: ${plan.nextStep.detail}` : ""}${plan.nextStep.direction ? ` (${plan.nextStep.direction})` : ""}.`);
@@ -109,7 +150,8 @@ function quickAnswer(question, { tools = null, advise = null, live = null, talen
   try {
     // Talents first: resolved by talent-context.cjs from the game client's own talent trees.
     if (talent) { const a = talentQuickAnswer(talent); if (a) return a; }
-    if (TONIGHT.test(q) && tools) { const a = tonightAnswer(tools.lookup("plan_tonight", {})); if (a) return a; }
+    const minutes = minutesIn(q);
+    if ((TONIGHT.test(q) || (minutes && /\b(i have|i've got|ive got|got|only have|plan|what (?:can|should) i do)\b/.test(q))) && tools) { const a = tonightAnswer(tools.lookup("plan_tonight", {}), { minutes }); if (a) return a; }
     if (TRAIN.test(q) && advise) { const a = trainAnswer(advise()); if (a) return a; }
     if (NEXT.test(q) && advise) { const a = nextAnswer(advise()); if (a) return a; }
     if (tools && (QUEST.test(q) || /["“”]/.test(question) || /\b(this|my|current|tracked) quest\b/.test(q))) { const a = questAnswer(question, { tools, live }); if (a) return a; }
@@ -117,4 +159,4 @@ function quickAnswer(question, { tools = null, advise = null, live = null, talen
   return null;
 }
 const QUICK_HELP = "Without an AI model I can still answer right away: “how do I do <quest name>?”, “what should I do next?”, “what should I do tonight?”, “what do I train?”, “what does <talent> do?”, “what talents should I take?”, “how many talent points at level 20?”, “where is <NPC>?” and “how do I get to <place>?”. For anything else, turn on an AI model in Settings → Connections.";
-module.exports = { quickAnswer, questQuery, tonightAnswer, QUICK_HELP };
+module.exports = { quickAnswer, questQuery, tonightAnswer, QUICK_HELP, minutesIn };

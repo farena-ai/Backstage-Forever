@@ -3,6 +3,7 @@
 // advisor and the live link. Every action is a suggestion; nothing happens in game by itself.
 window.NowView = (() => {
   const api = window.backstage;
+  let weekly = null;
   let advice = null, zone = null, lastZoneId = null, session = null, setup = null, error = "", loading = false, setting = "", mountedFor = null, lastKey = "", lastFetch = 0, timer = null;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pct = (v) => (v * 100).toFixed(1);
@@ -14,10 +15,18 @@ window.NowView = (() => {
   function page() {
     return `<section class="now-page" data-now>
       ${PageHero.render({ art: "now", eyebrow: "Now", title: esc(advice?.character?.name || "Your next move"), titleAttrs: "data-now-title", subAttrs: "data-now-live", crestHtml: '<img class="now-class-crest" data-now-crest alt="" width="84" height="84" hidden>', aside: (window.SpokenSteps ? SpokenSteps.control() + " " : "") + '<button type="button" class="subtle" data-now-act="mini" title="A small always-on-top window with your next step, beside the game">Mini Now</button> <button type="button" class="subtle" data-now-act="refresh">Refresh</button>' })}
-      <div class="now-body" data-now-body>${body()}</div>
+      <div class="now-body" data-now-body>${weekStrip()}${body()}</div>
     </section>`;
   }
 
+  // 1.4 (J17, J18): reminders across your characters, and this week in one line.
+  const mins = (m) => (m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`);
+  function weekStrip() {
+    const r = weekly?.reminders || [], me = weekly?.recap?.active;
+    const line = me && me.played ? `<p class="now-week"><strong>This week:</strong> ${me.levelsGained ? `+${me.levelsGained} level${me.levelsGained === 1 ? "" : "s"}` : "no new levels"}${me.badges.length ? ` · ${me.badges.length} badge${me.badges.length === 1 ? "" : "s"}` : ""}${me.minutes ? ` · ${mins(me.minutes)} played` : ""}${me.gold ? ` · ${me.gold > 0 ? "+" : "−"}${gsc(Math.abs(me.gold))}` : ""} <button type="button" class="now-link" data-nav="journey">Journey →</button></p>` : "";
+    const chips = r.length ? `<ul class="now-reminders" aria-label="Reminders">${r.map((x) => `<li class="now-rem now-rem-${x.kind}">${esc(x.text)}</li>`).join("")}</ul>` : "";
+    return chips || line ? `<div class="now-weekly" data-now-weekly>${chips}${line}</div>` : "";
+  }
   // 1.3 (J10): what the next training visits cost, from the trainer window you opened, and your gold.
   const gsc = (copper) => { const v = Math.max(0, Math.round(copper || 0)), g = Math.floor(v / 10000), sv = Math.floor(v / 100) % 100, cc = v % 100; return [g ? `${g}g` : "", sv ? `${sv}s` : "", !g && cc ? `${cc}c` : ""].filter(Boolean).join(" ") || "0c"; };
   function trainingCost(t, c) {
@@ -246,9 +255,10 @@ window.NowView = (() => {
   async function load() {
     if (loading) return; loading = true; lastFetch = Date.now();
     try {
-      const [a, s, game, live, z] = await Promise.all([api.levelingAdvice(), api.playSession ? api.playSession().catch(() => null) : null,
+      const [a, s, game, live, z, wk] = await Promise.all([api.levelingAdvice(), api.playSession ? api.playSession().catch(() => null) : null,
         api.gameStatus ? api.gameStatus().catch(() => null) : null, api.liveLinkStatus ? api.liveLinkStatus().catch(() => null) : null,
-        api.zoneBriefing ? api.zoneBriefing().catch(() => null) : null]);
+        api.zoneBriefing ? api.zoneBriefing().catch(() => null) : null, api.weekly ? api.weekly().catch(() => null) : null]);
+      weekly = wk;
       advice = a; session = s; setup = { game, live }; zone = z; error = "";
       // Entering a new zone while playing: a painted arrival banner.
       if (z?.mapId && lastZoneId && z.mapId !== lastZoneId && z.live) arrive(z);

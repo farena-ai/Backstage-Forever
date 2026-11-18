@@ -280,11 +280,11 @@ Frank asked for everything below, built one release at a time through the usual 
 
 | # | Item | Size | Where | Why |
 |---|---|---|---|---|
-| J14 | **Guided route past level 42** for both factions, and the Dwarf, Gnome and Tauren early gaps [4.1]. | L | Both | The route should reach 60. |
-| J15 | **Smarter Companion**: more benchmark questions (gathering, class quests, reputation), an opt-in web lookup through your own AI provider with sources, a live-model voice check. | M | App | Better answers. |
-| J16 | **Plan my evening.** Tell it how long you have; it lays out quests, training and selling that fit. | M | App | A plan sized to tonight. |
-| J17 | **Weekly recap.** Each week: levels, badges, gold, best split and deaths, per character, on Now and Journey. | S–M | App | A reason to come back and a sense of progress. |
-| J18 | **Rested and alt reminders.** "Beta is fully rested", "Alpha's cooldown is ready", on All characters and Now. | S | App | Play the right character tonight. |
+| J14 | **Guided route past level 42** for both factions, and the Dwarf, Gnome and Tauren early gaps [4.1]. **Partly done in 1.4:** the bundled data has almost no quest-giver positions above 40, so the addon now learns each giver when you accept its quest and the app's route grows from that. The in-game route (built into the addon) still stops at 42; next: carry learned givers into community data. | L | Both | The route should reach 60. |
+| J15 | **Smarter Companion**: more benchmark questions (gathering, class quests, reputation), an opt-in web lookup through your own AI provider with sources, a live-model voice check. **Partly done in 1.4:** class unlocks, boss tips and reputation answered locally, with nine new benchmark questions. Still to do: the opt-in web lookup and a live-model voice check. | M | App | Better answers. |
+| J16 | **Plan my evening.** Tell it how long you have; it lays out quests, training and selling that fit. **Done in 1.4.** | M | App | A plan sized to tonight. |
+| J17 | **Weekly recap.** Each week: levels, badges, gold, best split and deaths, per character, on Now and Journey. **Done in 1.4.** | S–M | App | A reason to come back and a sense of progress. |
+| J18 | **Rested and alt reminders.** "Beta is fully rested", "Alpha's cooldown is ready", on All characters and Now. **Done in 1.4:** on Now (rested, cooldowns, mail, gold goal). | S | App | Play the right character tonight. |
 
 ### Phase 1.5: Graphics, part 2
 
@@ -367,3 +367,4 @@ Keep this file and Help → Commands updated with each release.
 - **1.1.0 (2026-11-17):** J1 Badges page (Characters → Badges: every badge per character with its date, filters, latest, closest next, who else holds it, account badges; the new-badge banner opens it) and J2 more badges (professions, gold, reputation, account). Next: the rest of Tier J, phase by phase.
 - **1.2.0 (2026-11-17):** J3 badges in game; phase 1.2: J4 gathering spots on the World Map, J5 price lines and `/bf sell`, J6 Gear sets button, J7 quest use on item tooltips, J8 quest icons over enemies. Reputation badges read the saved ledger shape.
 - **1.3.0 (2026-11-17):** phase 1.3: J9 class unlocks, J10 training costs, J11 riding-and-mount goal, J12 reputation advice, J13 boss tips.
+- **1.4.0 (2026-11-17):** phase 1.4: J14 routes learn quest givers from play, J15 local answers for unlocks/boss tips/reputation, J16 plan by time, J17 weekly recap, J18 reminders.

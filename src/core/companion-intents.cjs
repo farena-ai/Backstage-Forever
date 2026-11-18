@@ -693,6 +693,11 @@ function askedProfile(question, u, p) {
 }
 function resolve(question, { profile = null, shareProfile = true, data = loadData() } = {}) {
   const shared = shareProfile ? profile : null;
+  // 1.4 (J15): boss tips, class unlocks and reputation quests answer first when clearly asked.
+  try {
+    const sp = require("./companion-unlocks.cjs").answerSpecial(question, { profile: shared, pack: data.pack });
+    if (sp) return { intent: sp.intent, understood: { intent: sp.intent, q: question }, answer: sp.text, facts: sp.facts, preferModel: false, clarify: false };
+  } catch { /* fall through to the ordinary route */ }
   const u = understand(question, { profile: shared, data }); u.q = question;
   const p = askedProfile(question, u, shared);
   const fn = ANSWER[u.intent];

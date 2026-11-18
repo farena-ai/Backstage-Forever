@@ -707,10 +707,15 @@ app.whenReady().then(async () => {
   const readJson = (p) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", p), "utf8"));
   const bundledReview = () => { try { return readJson("data/forever-route/reviews.json"); } catch { return null; } };
   const localReview = () => { try { const v = JSON.parse(fs.readFileSync(reviewFile, "utf8")); return v && typeof v === "object" && v.routes && typeof v.routes === "object" ? v : null; } catch { return null; } };
+  // 1.4 (J14): rebuilt when the characters have learned new quest givers.
+  let guidedLearnedKey = "";
+  const npcLocationsPack = (() => { try { return readJson("data/forever-npc-locations/pack.json"); } catch { return null; } })();
   const ensureGuided = () => {
-    if (guided) return guided;
+    const learnedKey = (store.state.profiles || []).map((p) => `${p.id}:${p.journal?.givers?.length || 0}`).join("|");
+    if (guided && learnedKey === guidedLearnedKey) return guided;
+    guidedLearnedKey = learnedKey;
     guidedRaw = {};
-    guided = G.buildGuidedRoutes({ pack: knowledge.bundled?.pack || readJson("data/forever/pack.json"), zones: readJson("data/forever-leveling/pack.json").zones, reviews: G.mergeReviews(bundledReview(), localReview()), raw: guidedRaw });
+    guided = G.buildGuidedRoutes({ pack: knowledge.bundled?.pack || readJson("data/forever/pack.json"), zones: readJson("data/forever-leveling/pack.json").zones, reviews: G.mergeReviews(bundledReview(), localReview()), raw: guidedRaw, learned: G.learnedGivers(store.state.profiles, npcLocationsPack) });
     return guided;
   };
   handle("routeReview", (...args) => {
@@ -829,6 +834,12 @@ app.whenReady().then(async () => {
     const others = s.profiles.filter((x) => x.id !== p.id);
     return { id: p.id, name: p.name, className: p.className || null, level: p.level || null, played: p.journal?.played ?? null, hasJournal: Boolean(p.journal),
       splits: splits(p, others), badges: badgesFor(p), rested: rested(p), zones: (p.journal?.zones || []).length, history: sessionHistory ? sessionHistory.view(p.id) : null };
+  });
+  // 1.4 (J17, J18): this week's recap and reminders across your characters.
+  handle("weekly", (...args) => {
+    if (args.length) throw Error("Invalid weekly request.");
+    const W = require("./core/weekly.cjs");
+    return { recap: W.weeklyRecap(store.state, { history: (id) => (sessionHistory ? sessionHistory.view(id) : null) }), reminders: W.reminders(store.state) };
   });
   // Characters → Badges (1.1): every badge a character has earned, kept to look back on.
   handle("badges", (...args) => {

@@ -20,16 +20,18 @@ local function field(t,k)
     local ok,v=pcall(function()return t[k]end);if ok then return plain(v) end
 end
 local function int(v,lo,hi) v=plain(v);if type(v)=='number' and v==v and v>=lo and v<=hi then return floor(v) end end
-local MAX_LEVELS,MAX_FIRSTS,MAX_ZONES=80,40,120
+local MAX_LEVELS,MAX_FIRSTS,MAX_ZONES,MAX_GIVERS=80,40,120,400
 local FIRSTS={dungeon=true,flight=true,mount=true,death=true,rested=true,group=true,hearth=true}
 
 local db
+local pendingNpc=nil
 local function store()
     if type(BackstageForeverJournalDB)~='table' then BackstageForeverJournalDB={} end
     db=BackstageForeverJournalDB
     if type(db.levels)~='table' then db.levels={} end
     if type(db.firsts)~='table' then db.firsts={} end
     if type(db.zones)~='table' then db.zones={} end
+    if type(db.givers)~='table' then db.givers={} end
     return db
 end
 local function now() return int(call(time),0,253402300799) end
@@ -67,6 +69,17 @@ function BackstageForeverJournalZone(mapId)
     d.zones[#d.zones+1]=mapId
     return true
 end
+-- 1.4 (J14): who gave each quest and where you stood when you accepted it. Teaches the app's
+-- guided route the quest givers its bundled data has no position for.
+function BackstageForeverJournalGiver(questId,npcId,mapId,x,y,at)
+    local d=store();questId=int(questId,1,2147483647);npcId=int(npcId,1,2147483647);mapId=int(mapId,1,2147483647);at=int(at,0,253402300799)
+    x=plain(x);y=plain(y)
+    if not questId or not npcId or not mapId or not at or type(x)~='number' or type(y)~='number' or x<0 or x>1 or y<0 or y>1 then return false end
+    for _,g in ipairs(d.givers) do if g.q==questId then return false end end
+    d.givers[#d.givers+1]={q=questId,n=npcId,m=mapId,x=floor(x*10000+.5)/10000,y=floor(y*10000+.5)/10000,at=at}
+    while #d.givers>MAX_GIVERS do table.remove(d.givers,1) end
+    return true
+end
 -- Export block (arrays only; BackstageForever.lua marks them as JSON arrays).
 function BackstageForeverJournalSnapshot()
     local d=store()
@@ -74,8 +87,10 @@ function BackstageForeverJournalSnapshot()
     for i=1,min(#d.levels,MAX_LEVELS) do local e=d.levels[i];levels[#levels+1]={level=e.level,at=e.at,played=e.played} end
     for i=1,min(#d.firsts,MAX_FIRSTS) do firsts[#firsts+1]={key=d.firsts[i].key,at=d.firsts[i].at} end
     for i=1,min(#d.zones,MAX_ZONES) do zones[#zones+1]=d.zones[i] end
-    if #levels==0 and #firsts==0 and #zones==0 and not d.played then return nil end
-    return {levels=levels,firsts=firsts,zones=zones,played=d.played}
+    local givers={}
+    for i=1,min(#d.givers,MAX_GIVERS) do local g=d.givers[i];givers[#givers+1]={q=g.q,n=g.n,m=g.m,x=g.x,y=g.y,at=g.at} end
+    if #levels==0 and #firsts==0 and #zones==0 and #givers==0 and not d.played then return nil end
+    return {levels=levels,firsts=firsts,zones=zones,givers=givers,played=d.played}
 end
 
 -- Badges in game (1.1.1): the same rules as the app's Characters → Badges, from what this
@@ -204,7 +219,7 @@ end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_LEVEL_UP','TIME_PLAYED_MSG','PLAYER_ENTERING_WORLD','ZONE_CHANGED_NEW_AREA','PLAYER_DEAD','PLAYER_CONTROL_LOST','PLAYER_MOUNT_DISPLAY_CHANGED','UPDATE_EXHAUSTION','GROUP_ROSTER_UPDATE','UNIT_SPELLCAST_SUCCEEDED'}) do pcall(events.RegisterEvent,events,e) end
+        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_LEVEL_UP','TIME_PLAYED_MSG','PLAYER_ENTERING_WORLD','ZONE_CHANGED_NEW_AREA','PLAYER_DEAD','PLAYER_CONTROL_LOST','PLAYER_MOUNT_DISPLAY_CHANGED','UPDATE_EXHAUSTION','GROUP_ROSTER_UPDATE','UNIT_SPELLCAST_SUCCEEDED','QUEST_DETAIL','QUEST_ACCEPTED'}) do pcall(events.RegisterEvent,events,e) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b,c)
             store()
             if event=='PLAYER_LOGIN' then
@@ -226,6 +241,18 @@ if type(CreateFrame)=='function' then
             elseif event=='PLAYER_MOUNT_DISPLAY_CHANGED' then if call(IsMounted) then first('mount') end
             elseif event=='UPDATE_EXHAUSTION' then if call(GetXPExhaustion) then first('rested') end
             elseif event=='GROUP_ROSTER_UPDATE' then if call(IsInGroup) then first('group') end
+            elseif event=='QUEST_DETAIL' then
+                local guid=call(UnitGUID,'questnpc') or call(UnitGUID,'npc')
+                local kind,id=nil,nil;if type(guid)=='string' then kind,id=guid:match('^(%a+)%-%d+%-%d+%-%d+%-%d+%-(%d+)') end
+                pendingNpc=kind=='Creature' and tonumber(id) or nil
+            elseif event=='QUEST_ACCEPTED' then
+                local questId=int(b,1,2147483647) or int(a,1,2147483647)
+                if b==nil then questId=int(a,1,2147483647) end
+                local mapApi=plain(C_Map);local mapId=zoneNow()
+                local pos=mapId and call(field(mapApi,'GetPlayerMapPosition'),mapId,'player')
+                local x,y=nil,nil;if pos then local fx,fy=field(pos,'x'),field(pos,'y');if type(fx)=='number' then x,y=fx,fy else x,y=call(field(pos,'GetXY'),pos) end end
+                if pendingNpc and questId then BackstageForeverJournalGiver(questId,pendingNpc,mapId,x,y,now()) end
+                pendingNpc=nil
             elseif event=='UNIT_SPELLCAST_SUCCEEDED' then if a=='player' and (c==8690) then first('hearth') end end
         end)
     end

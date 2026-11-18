@@ -42,3 +42,13 @@ test("questions written without seeing the companion's code are understood and a
   assert.ok(r.scores.understood >= 88, `understood ${r.scores.understood}%`);
   assert.equal(r.byCategory.refuse.local, r.byCategory.refuse.n);
 });
+
+test("1.4 (J15): boss tips, class unlocks and reputation questions are answered locally", async () => {
+  const { runBench } = require("../scripts/companion-bench.cjs");
+  const qs = require("./fixtures/companion-bench/unlocks.json").questions;
+  const res = await runBench({ questions: qs });
+  const rows = res.rows || res;
+  assert.equal(rows.length, 9);
+  const wrong = rows.filter((r) => !r.localCorrect).map((r) => `${r.id} → ${r.route}: ${r.text}`);
+  assert.deepEqual(wrong, []);
+});

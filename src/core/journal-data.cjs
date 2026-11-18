@@ -2,7 +2,7 @@
 // Journey journal from the addon: levels reached (with /played seconds), first-time moments and
 // zones visited. Bounded and validated; an invalid block is dropped without touching the rest.
 const FIRSTS = ["dungeon", "flight", "mount", "death", "rested", "group", "hearth"];
-const LIMITS = { levels: 80, firsts: 40, zones: 120 };
+const LIMITS = { levels: 80, firsts: 40, zones: 120, givers: 400 };
 const fail = () => { throw Error("Invalid journal."); };
 const int = (v, lo, hi) => (Number.isSafeInteger(v) && v >= lo && v <= hi ? v : fail());
 const MAX_T = 253402300799;
@@ -24,7 +24,16 @@ function normalizeJournalCapture(j) {
     firsts.push({ key: f.key, at: int(f.at, 0, MAX_T) });
   }
   const zones = [...new Set(arr(j.zones, LIMITS.zones).map((z) => int(z, 1, 2147483647)))];
-  return { levels, firsts, zones, ...(j.played === undefined || j.played === null ? {} : { played: int(j.played, 0, 1e10) }) };
+  // 1.4 (J14): where this character stood when it accepted each quest, and from whom.
+  const givers = [], quests = new Set();
+  const frac = (v) => (typeof v === "number" && v >= 0 && v <= 1 ? Math.round(v * 10000) / 10000 : fail());
+  for (const g of arr(j.givers, LIMITS.givers)) {
+    if (!g || typeof g !== "object" || Array.isArray(g)) fail();
+    const q = int(g.q, 1, 2147483647);
+    if (quests.has(q)) continue; quests.add(q);
+    givers.push({ q, n: int(g.n, 1, 2147483647), m: int(g.m, 1, 2147483647), x: frac(g.x), y: frac(g.y), at: int(g.at, 0, MAX_T) });
+  }
+  return { levels, firsts, zones, ...(givers.length ? { givers } : {}), ...(j.played === undefined || j.played === null ? {} : { played: int(j.played, 0, 1e10) }) };
 }
 // Stored profiles are re-validated with the same rules.
 const validateJournal = (j) => { if (j !== undefined) normalizeJournalCapture(j); };

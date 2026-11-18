@@ -3,7 +3,7 @@
 window.JourneyView = (() => {
   const api = window.backstage;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  let data = null, error = "", loading = false, mountedFor = null;
+  let data = null, error = "", loading = false, mountedFor = null, week = null;
   const dur = (s) => { if (!Number.isFinite(s)) return "?"; const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`; };
   const day = (t) => new Date(t * 1000).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
   function badges(b) {
@@ -33,11 +33,23 @@ window.JourneyView = (() => {
       <ol class="jr-days" aria-label="Levels gained per day, last 14 days">${h.days.map((d) => `<li title="${esc(d.day)}: ${d.levels} levels in ${d.minutes} min"><span class="jr-day-bar"><span data-h="${Math.round((d.levels / max) * 100)}"></span></span><small>${esc(d.day.slice(8))}</small></li>`).join("")}</ol>
       <ul class="jr-sessions">${h.sessions.slice(0, 8).map((x) => `<li><strong>${esc(when(x.startedAt))}</strong><span>${esc(dur(x.minutes * 60))}${x.startLevel && x.level ? ` · level ${x.startLevel}${x.level > x.startLevel ? ` → ${x.level}` : ""}` : ""}${x.levelsGained ? ` · +${x.levelsGained} levels` : ""} · ${x.deaths} death${x.deaths === 1 ? "" : "s"} · ${x.zones.length} zone${x.zones.length === 1 ? "" : "s"}</span></li>`).join("")}</ul>`;
   }
+  // 1.4 (J17): the last seven days, for this character and all of them.
+  function weekCard() {
+    const r = week?.recap;
+    if (!r) return "";
+    const me = r.active, t = r.totals;
+    const coins = (c) => { const v = Math.abs(c), g = Math.floor(v / 10000), s = Math.floor(v / 100) % 100; return `${c < 0 ? "−" : "+"}${g ? `${g}g ` : ""}${s}s`; };
+    const mine = me && me.played ? `<ul class="jr-week"><li><strong>${me.levelsGained}</strong><span>level${me.levelsGained === 1 ? "" : "s"}</span></li><li><strong>${me.badges.length}</strong><span>badge${me.badges.length === 1 ? "" : "s"}</span></li><li><strong>${esc(dur(me.minutes * 60))}</strong><span>played</span></li><li><strong>${me.deaths}</strong><span>death${me.deaths === 1 ? "" : "s"}</span></li>${me.gold !== null ? `<li><strong>${esc(coins(me.gold))}</strong><span>gold</span></li>` : ""}${me.bestSplit ? `<li><strong>${esc(dur(me.bestSplit.seconds))}</strong><span>fastest level (${me.bestSplit.level}→${me.bestSplit.level + 1})</span></li>` : ""}</ul>${me.badges.length ? `<p class="jr-week-badges">New: ${me.badges.map((b) => esc(b.name)).join(", ")}</p>` : ""}`
+      : `<p class="jr-empty">Nothing recorded for this character in the last seven days.</p>`;
+    const others = r.characters.filter((c) => c.profileId !== me?.profileId);
+    return `<section class="jr-card" data-journey-week><h2>This week</h2>${mine}${others.length ? `<p class="jr-week-all">All characters: ${t.levels} level${t.levels === 1 ? "" : "s"}, ${t.badges} badge${t.badges === 1 ? "" : "s"}, ${esc(dur(t.minutes * 60))} played. ${others.map((c) => `${esc(c.name)} +${c.levelsGained}`).join(", ")}.</p>` : ""}</section>`;
+  }
   function body() {
     if (error) return `<p class="jr-empty">${esc(error)}</p>`;
     if (!data) return `<p class="jr-empty">${loading ? "Reading your journey…" : "Choose a character in Characters."}</p>`;
     const d = data;
     return `<div class="jr-summary"><div><strong>${d.badges.earned}</strong><span>of ${d.badges.total} badges</span></div><div><strong>${d.level ?? "?"}</strong><span>level</span></div><div><strong>${esc(d.played ? dur(d.played) : "?")}</strong><span>played</span></div><div><strong>${d.zones}</strong><span>zones visited</span></div></div>
+      ${weekCard()}
       <section class="jr-card"><h2>Badges</h2>${badges(d.badges)}</section>
       <div class="jr-two"><section class="jr-card"><h2>Speed splits</h2>${splits(d)}</section><section class="jr-card"><h2>Rested planner</h2>${restedCard(d.rested)}</section></div>
       <section class="jr-card"><h2>Past sessions</h2>${history(d.history)}</section>`;
@@ -55,6 +67,7 @@ window.JourneyView = (() => {
   async function load() {
     if (loading) return; loading = true;
     try { data = await api.journey(); error = ""; } catch (e) { error = e.message || "Your journey is unavailable."; }
+    try { week = api.weekly ? await api.weekly() : null; } catch { week = null; }
     loading = false;
     const root = document.querySelector("[data-journey]");
     if (root) { root.outerHTML = page(); mountedFor = null; mounted(); }
