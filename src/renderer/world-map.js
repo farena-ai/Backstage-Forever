@@ -3,16 +3,17 @@
 // Original procedural artwork (no game assets). Coordinates are game map percentages.
 window.WorldMapView = (() => {
   const api = window.backstage;
-  const LAYERS = [
-    ["quest-turnin", "Turn-ins"], ["quest-objective", "Objectives"], ["objective-area", "Objective areas"], ["quest-giver", "Quests to pick up"],
-    ["flight", "Flight masters"], ["class-trainer", "Class trainers"], ["profession-trainer", "Profession trainers"], ["vendor", "Vendors"],
-    ["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["heat", "Your gathering heat"], ["community", "Community finds"], ["npc", "Other NPCs"],
-  ];
+  const LAYER_GROUPS = {
+    Questing: [["quest-turnin", "Turn-ins"], ["quest-objective", "Objectives"], ["objective-area", "Objective areas"], ["quest-giver", "Quests to pick up"]],
+    Gathering: [["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["heat", "Your gathering heat"], ["community", "Community finds"]],
+    Services: [["flight", "Flight masters"], ["class-trainer", "Class trainers"], ["profession-trainer", "Profession trainers"], ["vendor", "Vendors"], ["npc", "Other NPCs"], ["otherFaction", "Other faction's NPCs"]],
+    Journey: [["journey", "My path this session"]],
+  };
   const OFF_BY_DEFAULT = new Set(["npc", "otherFaction"]);
   const PREF = "bf-world-map-v2";
   let clusters = [], pendingFocus = null, focused = null; // focused: { pin, goal } while a link's target is dialed in
   let model = null, mapId = null, follow = true, selected = null, hover = null, trail = [], view = { zoom: 1, cx: 0.5, cy: 0.5 };
-  let layers = { ...Object.fromEntries(LAYERS.map(([k]) => [k, !OFF_BY_DEFAULT.has(k)])), otherFaction: false, journey: true };
+  let layers = Object.fromEntries(Object.values(LAYER_GROUPS).flat().map(([k]) => [k, !OFF_BY_DEFAULT.has(k)]));
   let journey = null, journeyAt = 0; // this session's path on the shown map (from the app, memory only)
   let replay = null; // 0.46 (3.3): { i, timer } while the path is being replayed
   const EXPLORED = "bf-world-map-explored-v1:";
@@ -41,22 +42,38 @@ window.WorldMapView = (() => {
     return `<section class="world-map-page" data-world-map>
       <header class="wm-head">
         <div class="wm-banner"><span class="wm-banner-eyebrow">World map</span><h1 data-wm-title>${esc(model?.mapName || "Your world")}</h1><span class="wm-live" data-wm-live></span></div>
-        <form class="wm-search" data-wm-search><input type="search" name="q" maxlength="80" placeholder="Find an NPC, flight master, trainer, herb…" aria-label="Find on the map"><button type="submit">Find</button></form>
+        <form class="wm-search" data-wm-search><input type="search" name="q" maxlength="80" placeholder="NPC, trainer, herb…" aria-label="Find on the map"><button type="submit">Find</button></form>
         <label class="wm-zone">Zone <select data-wm-zone aria-label="Choose zone"></select></label>
       </header>
       <div class="wm-body">
-        <div class="wm-frame"><canvas class="wm-canvas" data-wm-canvas tabindex="0" aria-label="Zone map. Arrow keys move it, plus and minus zoom, 0 shows the whole zone. Every pin is also in the search and the lists beside the map." aria-describedby="wm-keys"></canvas><p id="wm-keys" class="sr-only">Arrow keys move the map, plus and minus zoom, 0 shows the whole zone. Use the search box and the lists to reach pins with the keyboard or a screen reader.</p>
-          <div class="wm-tools"><button type="button" data-wm-act="me" title="Center on me">◎</button><button type="button" data-wm-act="in" title="Zoom in">＋</button><button type="button" data-wm-act="out" title="Zoom out">－</button><button type="button" data-wm-act="reset" title="Whole zone">⤢</button><button type="button" data-wm-act="radar" title="Pop out radar">◉</button><button type="button" data-wm-act="replay" title="Replay my path this session">▶</button><button type="button" data-wm-act="share" title="Save a picture of my path this session">🖼</button></div>
-          <div class="wm-tip" data-wm-tip hidden></div>
+        <div class="wm-frame">
+          <div class="wm-tools">
+            <div class="wm-tool-group" role="group" aria-label="Map view">
+              <button type="button" data-wm-act="me" title="Center on me">Center on me</button>
+              <button type="button" data-wm-act="out" title="Zoom out" aria-label="Zoom out">−</button>
+              <button type="button" data-wm-act="in" title="Zoom in" aria-label="Zoom in">+</button>
+              <button type="button" data-wm-act="reset" title="Whole zone">Whole zone</button>
+            </div>
+            <div class="wm-tool-group" role="group" aria-label="Radar and journey">
+              <button type="button" data-wm-act="radar" title="Pop out radar">Radar</button>
+              <button type="button" data-wm-act="replay" title="Replay my path this session">Replay path</button>
+              <button type="button" data-wm-act="share" title="Save a picture of my path this session">Save path image</button>
+            </div>
+          </div>
+          <div class="wm-map-surface">
+            <canvas class="wm-canvas" data-wm-canvas tabindex="0" aria-label="Zone map" aria-describedby="wm-keys"></canvas>
+            <p id="wm-keys" class="sr-only">Arrow keys move the map, plus and minus zoom, 0 shows the whole zone. Use Find and the map lists to reach pins with the keyboard or a screen reader.</p>
+            <div class="wm-tip" data-wm-tip hidden></div>
+          </div>
+          <label class="check-label wm-follow"><input type="checkbox" data-wm-follow ${follow ? "checked" : ""}>Follow my live position</label>
         </div>
-        <aside class="wm-side">
+        <aside class="wm-side" aria-label="Map details and layers">
+          <section class="wm-card" data-wm-card tabindex="-1" aria-label="Map selection"></section>
+          <section class="wm-results" data-wm-results tabindex="-1" aria-label="Map search results" hidden></section>
+          <div class="wm-legend" data-wm-legend>${layerControls()}</div>
           <div class="wm-near" data-wm-near hidden></div>
           <div class="wm-camps" data-wm-camps hidden></div>
-          <div class="wm-card" data-wm-card></div>
-          <div class="wm-results" data-wm-results></div>
-          <div class="wm-legend" data-wm-legend></div>
           <div class="wm-heat" data-wm-heat hidden></div>
-          <label class="check-label wm-follow"><input type="checkbox" data-wm-follow ${follow ? "checked" : ""}>Follow my live position</label>
           <p class="wm-attrib" data-wm-attrib></p>
         </aside>
       </div>
@@ -265,7 +282,7 @@ window.WorldMapView = (() => {
     if (p.otherFaction) { ctx.globalAlpha = 1; ctx.beginPath(); ctx.moveTo(sx - r * 0.8, sy + r * 0.8); ctx.lineTo(sx + r * 0.8, sy - r * 0.8); ctx.strokeStyle = "#c0261a"; ctx.lineWidth = 2.2; ctx.stroke(); }
   }
   // Small canvas icons for lists (legend, search results, near you, card header).
-  const ico = (kind, extra = "") => `<canvas class="wm-ico" width="22" height="22" data-ico="${esc(kind)}" ${extra}></canvas>`;
+  const ico = (kind, extra = "") => `<canvas class="wm-ico" aria-hidden="true" width="22" height="22" data-ico="${esc(kind)}" ${extra}></canvas>`;
   function paintIcons(box) { for (const c of box?.querySelectorAll?.("canvas[data-ico]") || []) { const g = c.getContext("2d"); g.clearRect(0, 0, 22, 22); icon(g, c.dataset.ico, 11, 11, c.dataset.ico === "quest-objective" ? 7 : 7.5, { gather: c.dataset.gather || null }); } }
 
   // ---------- drawing ----------
@@ -468,11 +485,23 @@ window.WorldMapView = (() => {
   }
 
   // ---------- side panel ----------
+  function layerControls() {
+    return `<h3>Map layers</h3><div class="wm-layer-groups">${Object.entries(LAYER_GROUPS).map(([name, entries]) => `
+      <fieldset class="wm-layer-group"><legend>${name}</legend>${entries.map(([k, label]) => {
+        const marker = k === "journey" ? '<span class="wm-ico-journey" aria-hidden="true"></span>' : k === "otherFaction" ? '<span class="wm-ico-other" aria-hidden="true">⊘</span>' : ico(k, k === "find" || k === "community" ? 'data-gather="herb"' : "");
+        return `<label class="wm-layer" ${k === "otherFaction" ? "hidden" : ""}><input type="checkbox" data-wm-layer="${k}" ${layers[k] !== false ? "checked" : ""}>${marker}<span>${esc(label)}</span><small>0</small></label>`;
+      }).join("")}</fieldset>`).join("")}</div>`;
+  }
   function legend() {
     const box = document.querySelector("[data-wm-legend]"); if (!box) return;
-    box.innerHTML = `<h3>Layers</h3>` + LAYERS.map(([k, label]) => `<label class="wm-layer"><input type="checkbox" data-wm-layer="${k}" ${layers[k] !== false ? "checked" : ""}>${ico(k, k === "find" || k === "community" ? 'data-gather="herb"' : "")}${esc(label)} <small>${model?.counts?.[k] || 0}</small></label>`).join("")
-      + `<label class="wm-layer wm-layer-journey"><input type="checkbox" data-wm-layer="journey" ${layers.journey !== false ? "checked" : ""}><span class="wm-ico-journey" aria-hidden="true"></span>My path this session <small>${journey && journey.mapId === model?.mapId ? (journey.points?.length || 0) : 0}</small></label>`
-      + (model?.counts?.otherFaction ? `<label class="wm-layer wm-layer-other"><input type="checkbox" data-wm-layer="otherFaction" ${layers.otherFaction ? "checked" : ""}><span class="wm-ico-other">⊘</span>Other faction's NPCs <small>${model.counts.otherFaction}</small></label>` : "");
+    // Live trail refreshes update counts without replacing a focused checkbox.
+    for (const input of box.querySelectorAll("[data-wm-layer]")) {
+      const k = input.dataset.wmLayer, row = input.parentElement;
+      const count = k === "journey" ? (journey?.mapId === model?.mapId ? journey?.points?.length || 0 : 0) : model?.counts?.[k] || 0;
+      if (k === "otherFaction") row.hidden = !count;
+      const badge = row.querySelector("small");
+      if (badge.textContent !== String(count)) badge.textContent = count;
+    }
     paintIcons(box);
   }
   function relation(p) {
@@ -531,7 +560,7 @@ window.WorldMapView = (() => {
   }
   function card() {
     const box = document.querySelector("[data-wm-card]"); if (!box) return;
-    if (!selected) { box.innerHTML = `<div class="wm-card-empty"><strong>Click any pin</strong> to see who it is, what they offer you and how to get there.<br>Use <em>Find</em> to search every zone.</div>`; return; }
+    if (!selected) { box.innerHTML = `<div class="wm-card-empty"><h3>Map selection</h3>Pick a pin or a place from the lists to see its details and coordinates. Use <em>Find</em> to search every zone.</div>`; return; }
     const p = selected;
     if (focused && focused.pin !== p) focused = null;
     const goal = focused?.goal;
@@ -703,10 +732,10 @@ window.WorldMapView = (() => {
   }
   function resize() {
     if (!canvas) return;
-    // The canvas's own CSS width (inside the frame's padding), so mouse and canvas pixels agree.
-    const box = canvas.parentElement.getBoundingClientRect();
-    const w = Math.max(320, Math.floor(canvas.clientWidth || box.width)), h = Math.floor(w * 2 / 3);
-    const dpr = 1; canvas.width = w * dpr; canvas.height = h * dpr; canvas.style.height = h + "px";
+    // Match the drawing buffer to the responsive CSS surface.
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!w || !h || (parchment?.width === w && parchment?.height === h && canvas.width === w && canvas.height === h)) return;
+    canvas.width = w; canvas.height = h;
     parchment = makeParchment(w, h); draw();
   }
   // Mouse position in canvas pixels (the canvas can be drawn slightly scaled by CSS).
@@ -716,19 +745,32 @@ window.WorldMapView = (() => {
     canvas = root.querySelector("[data-wm-canvas]"); ctx = canvas.getContext("2d");
     resize();
     const tip = root.querySelector("[data-wm-tip]");
+    const showTip = (sx, sy, html) => {
+      tip.innerHTML = html; // Callers escape dynamic labels and quest data.
+      tip.hidden = false;
+      tip.style.left = Math.max(0, Math.min(sx + 14, canvas.clientWidth - tip.offsetWidth)) + "px";
+      tip.style.top = Math.max(0, Math.min(sy + 10, canvas.clientHeight - tip.offsetHeight)) + "px";
+    };
+    const reveal = (selector) => {
+      const panel = root.querySelector(selector);
+      if (!panel?.isConnected) return;
+      panel.focus({ preventScroll: true });
+      (panel.querySelector(".wm-goal, h3") || panel).scrollIntoView({ block: "nearest" });
+    };
     canvas.addEventListener("mousemove", (e) => {
       const [sx, sy] = at(e);
       if (dragging) { const [ax, ay] = toMap(dragging.x, dragging.y), [bx, by] = toMap(sx, sy); view.cx += ax - bx; view.cy += ay - by; dragging = { x: sx, y: sy, moved: true }; draw(); return; }
       const p = hit(sx, sy), a = p ? null : hitArea(sx, sy);
       if ((p || a) !== hover) { hover = p || a; draw(); }
       const cl = hitCluster(sx, sy);
-      if (cl) { tip.hidden = false; tip.style.left = sx + 14 + "px"; tip.style.top = sy + 10 + "px"; tip.innerHTML = `<strong>${cl.pins.length} places</strong><br><small>${cl.pins.slice(0, 4).map((p) => esc(p.label)).join(" · ")}${cl.pins.length > 4 ? " …" : ""}<br>Click to zoom in</small>`; return; }
-      if (p) { tip.hidden = false; tip.style.left = sx + 14 + "px"; tip.style.top = sy + 10 + "px"; tip.innerHTML = `<strong>${esc(p.label)}</strong>${p.sub ? `<br><small>${esc(p.sub)}</small>` : ""}`; return; }
-      if (a) { tip.hidden = false; tip.style.left = sx + 14 + "px"; tip.style.top = sy + 10 + "px"; tip.innerHTML = `<strong>${esc(a.label)}</strong><br><small>${esc(a.questTitle)}${a.levels ? ` · level ${esc(a.levels)}` : ""}${a.creature?.elite ? " · Elite" : ""}</small>`; } else tip.hidden = true;
+      if (cl) showTip(sx, sy, `<strong>${cl.pins.length} places</strong><br><small>${cl.pins.slice(0, 4).map((p) => esc(p.label)).join(" · ")}${cl.pins.length > 4 ? " …" : ""}<br>Click to zoom in</small>`);
+      else if (p) showTip(sx, sy, `<strong>${esc(p.label)}</strong>${p.sub ? `<br><small>${esc(p.sub)}</small>` : ""}`);
+      else if (a) showTip(sx, sy, `<strong>${esc(a.label)}</strong><br><small>${esc(a.questTitle)}${a.levels ? ` · level ${esc(a.levels)}` : ""}${a.creature?.elite ? " · Elite" : ""}</small>`);
+      else tip.hidden = true;
     });
     canvas.addEventListener("mouseleave", () => { tip.hidden = true; hover = null; dragging = null; draw(); });
     canvas.addEventListener("mousedown", (e) => { const [x, y] = at(e); dragging = { x, y, moved: false }; });
-    canvas.addEventListener("mouseup", (e) => { const was = dragging; dragging = null; if (was?.moved) return; const [sx, sy] = at(e); const c = hitCluster(sx, sy); if (c && view.zoom < 8) { const [mx, my] = toMap(sx, sy); view = { zoom: Math.min(8, view.zoom * 2), cx: mx, cy: my }; draw(); return; } const p = hit(sx, sy) || hitArea(sx, sy); selected = p; card(); draw(); });
+    canvas.addEventListener("mouseup", (e) => { const was = dragging; dragging = null; if (was?.moved) return; const [sx, sy] = at(e); const c = hitCluster(sx, sy); if (c && view.zoom < 8) { const [mx, my] = toMap(sx, sy); view = { zoom: Math.min(8, view.zoom * 2), cx: mx, cy: my }; draw(); return; } selected = hit(sx, sy) || hitArea(sx, sy); card(); draw(); });
     canvas.addEventListener("wheel", (e) => { e.preventDefault(); const [mx, my] = toMap(...at(e)); const z = Math.min(8, Math.max(1, view.zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2))); view.cx = mx - (mx - view.cx) * (view.zoom / z); view.cy = my - (my - view.cy) * (view.zoom / z); view.zoom = z; if (z === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }, { passive: false });
     canvas.addEventListener("dblclick", () => { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); });
     // 4.3 (0.52): the map works from the keyboard too.
@@ -751,23 +793,24 @@ window.WorldMapView = (() => {
       const q = e.target.elements.q.value.trim(); if (!q) return;
       try { results = await api.worldMapSearch(q); } catch (err) { results = { query: q, results: [] }; }
       resultsList();
+      if (e.target.contains(document.activeElement)) reveal("[data-wm-results]");
     });
     root.addEventListener("click", async (e) => {
       const np = e.target.closest("[data-wm-near-pin]");
-      if (np) { const p = root.querySelector("[data-wm-near]")._near?.[Number(np.dataset.wmNearPin)]; if (p) { selected = p; view = { zoom: Math.max(view.zoom, 2), cx: p.x, cy: p.y }; card(); draw(); } return; }
+      if (np) { const p = root.querySelector("[data-wm-near]")._near?.[Number(np.dataset.wmNearPin)]; if (p) { selected = p; view = { zoom: Math.max(view.zoom, 2), cx: p.x, cy: p.y }; card(); draw(); reveal("[data-wm-card]"); } return; }
       const hz = e.target.closest("[data-wm-heat-zone]");
       if (hz) { const id = Number(hz.dataset.wmHeatZone); if (Number.isSafeInteger(id) && id !== model?.mapId) { follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; savePref(); load(id); } return; }
       const cp = e.target.closest("[data-wm-camp]");
-      if (cp) { const c = model?.camps?.[Number(cp.dataset.wmCamp)]; dialArea(model?.areas?.find((a) => a.id === c?.areaId)); return; }
+      if (cp) { const c = model?.camps?.[Number(cp.dataset.wmCamp)]; dialArea(model?.areas?.find((a) => a.id === c?.areaId)); reveal("[data-wm-card]"); return; }
       const r = e.target.closest("[data-wm-result]");
-      if (r) { const hitR = results.results[Number(r.dataset.wmResult)]; follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; await load(hitR.mapId); selected = model.pins.find((p) => p.id === hitR.id) || { ...hitR }; view = { zoom: 2.2, cx: hitR.x, cy: hitR.y }; card(); draw(); return; }
+      if (r) { const hitR = results.results[Number(r.dataset.wmResult)]; follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; await load(hitR.mapId); selected = model.pins.find((p) => p.id === hitR.id) || { ...hitR }; view = { zoom: 2.2, cx: hitR.x, cy: hitR.y }; card(); draw(); reveal("[data-wm-card]"); return; }
       const act = e.target.closest("[data-wm-act]")?.dataset.wmAct; if (!act) return;
       if (act === "in" || act === "out") { view.zoom = Math.min(8, Math.max(1, view.zoom * (act === "in" ? 1.5 : 1 / 1.5))); if (view.zoom === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }
       if (act === "reset") { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); }
       if (act === "focus-area" && selected?.kind === "objective-area") dialArea(selected);
       if (act === "unfocus") { focused = null; view = { zoom: 1, cx: 0.5, cy: 0.5 }; card(); draw(); }
       if (act === "me") { const me = model?.player?.live || model?.player?.saved; if (me) { view = { zoom: Math.max(view.zoom, 2.5), cx: me.x, cy: me.y }; draw(); } }
-      if (act === "clear") { results = null; resultsList(); }
+      if (act === "clear") { results = null; resultsList(); root.querySelector("[data-wm-search] input").focus(); }
       if (act === "radar") { try { await api.openRadar(); } catch {} }
       if (act === "replay") { await loadJourney(true); startReplay(); }
       if (act === "share") { await loadJourney(true); await sharePicture(); }

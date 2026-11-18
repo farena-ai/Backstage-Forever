@@ -64,6 +64,7 @@ contextBridge.exposeInMainWorld(
     disconnectSubscription: (provider) =>
       invoke("disconnectSubscription", provider),
     saveState: (state, base) => invoke("saveState", state, base),
+    changeObjective: (choice) => invoke("changeObjective", choice),
     saveProvider: (settings) => invoke("saveProvider", settings),
     deleteKey: (provider) => invoke("deleteKey", provider),
     ask: (request) => invoke("ask", request),

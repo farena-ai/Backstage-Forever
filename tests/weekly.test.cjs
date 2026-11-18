@@ -36,6 +36,11 @@ test("wiring: weekly IPC, Now's reminder strip and Journey's This week card", ()
   const read = (f) => fs.readFileSync(path.join(__dirname, "..", f), "utf8");
   assert.match(read("src/main.cjs"), /handle\("weekly"/);
   assert.match(read("src/preload.cjs"), /weekly: \(\) => invoke\("weekly"\)/);
-  assert.match(read("src/renderer/now.js"), /\$\{weekStrip\(\)\}\$\{body\(\)\}/);
+  // Now renders the reminder strip below the next action; its rendered order
+  // and reminder content are also exercised in now-dashboard.test.cjs.
+  const now = read("src/renderer/now.js");
+  assert.match(now, /api\.weekly\(/);
+  assert.match(now, /\$\{weekStrip\(\)\}/);
+  assert.match(now, /data-now-weekly/);
   assert.match(read("src/renderer/journey.js"), /<h2>This week<\/h2>/);
 });

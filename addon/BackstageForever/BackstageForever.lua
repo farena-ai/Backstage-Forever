@@ -761,6 +761,41 @@ function BackstageForeverReminderLines(now,me)
     return out
 end
 local newCharacterHinted=false
+local prepared,encounterPending,reputationPending
+local function exportFits(length,nodes) return length<1048576 and nodes<=200000 end
+local function copy(t)
+    local out={};for k,v in pairs(t) do out[k]=v end;return out
+end
+
+-- Only add detached evidence to a capture prepared for this session. Never
+-- poll live APIs during logout, or stamp old observations with logout time.
+local function flushEvidence()
+    if not prepared then return end
+    local reputation=reputationPending and reputationPending.guid==prepared.activeId and reputationPending.snapshot
+    if not encounterPending and not reputation then return end
+    local payload=copy(prepared)
+    local chars=array(copy(prepared.characters));payload.characters=chars
+    for i,c in ipairs(chars) do
+        if c.id==payload.activeId then
+            local character=copy(c);chars[i]=character
+            if encounterPending then
+                local journal=c.journal and copy(c.journal) or {}
+                journal.encounters=array(encounterPending.rows);character.journal=journal
+                character.updatedAt=math.max(character.updatedAt,encounterPending.at)
+            end
+            if reputation then
+                local ledger=c.ledger and copy(c.ledger) or {schemaVersion=1}
+                ledger.reputations=reputation;character.ledger=ledger
+                character.updatedAt=math.max(character.updatedAt,reputation.seenAt)
+            end
+            payload.observedAt=math.max(payload.observedAt,character.updatedAt)
+            local encoded,nodes=encode(payload)
+            if exportFits(#encoded,nodes) then BackstageForeverExport=encoded end
+            return
+        end
+    end
+end
+
 local function capture(event,eventId)
     if type(InCombatLockdown) ~= "function" or call(InCombatLockdown) ~= false then return end
     local guid=clean(call(UnitGUID,'player'),200)
@@ -783,7 +818,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.7.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.8.0'
     character.race=clean((call(UnitRace,'player')));
     -- UnitSex: 2 male, 3 female; 1 (unknown) and anything else is left out.
     local sex=integer(call(UnitSex,'player'),1,3);if sex==2 then character.sex='male' elseif sex==3 then character.sex='female' end
@@ -875,21 +910,33 @@ local function capture(event,eventId)
     end
     if type(BackstageForeverMapUpdate)=='function' then pcall(BackstageForeverMapUpdate,character)end
     if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character) end
-    roster[guid]=character
-    local chars=array({});for _,c in pairs(roster) do chars[#chars+1]=c end
+    local chars=array({character});for id,c in pairs(roster) do if id~=guid then chars[#chars+1]=c end end
     table.sort(chars,function(a,b) return a.updatedAt>b.updatedAt end)
-    while #chars>100 do roster[chars[#chars].id]=nil;table.remove(chars) end
+    while #chars>100 do table.remove(chars) end
     local payload={schema=1,characters=chars,activeId=guid,observedAt=now}
     local encoded,encodedNodes=encode(payload)
     local encodedLength=#encoded
     local changed=false
-    local function fits()return encodedLength<1048576 and encodedNodes<=200000 end
+    local function fits()return exportFits(encodedLength,encodedNodes) end
     local function discard(parent,key)
         if type(parent)~='table' or parent[key]==nil then return end
         -- Measure only the removed subtree, not the entire character twice.
         local detail,nodes=encode(parent[key]);parent[key]=nil;changed=true
         encodedLength=encodedLength-#quote(key)-1-#detail-(next(parent) and 1 or 0)
         encodedNodes=encodedNodes-nodes
+    end
+    if not fits() then
+        -- Budget trimming must not mutate the last successfully prepared export.
+        for i,c in ipairs(chars) do
+            local detached=copy(c);chars[i]=detached
+            for _,key in ipairs({'gathering','ledger','readiness'}) do
+                if type(c[key])=='table' then detached[key]=copy(c[key]) end
+            end
+            if type(c.quests)=='table' then
+                detached.quests=array({})
+                for j,q in ipairs(c.quests) do detached.quests[j]=type(q)=='table' and copy(q) or q end
+            end
+        end
     end
     -- Personal history is the first optional export detail to shed. The private
     -- native store is detached; trimming never deletes retained observations.
@@ -930,7 +977,18 @@ local function capture(event,eventId)
         for _,key in ipairs({'gearSets','stats','quests','progress','history','readiness'}) do discard(chars[i],key) end
     end
     if changed then encoded,encodedNodes=encode(payload) end
-    if #encoded<1048576 and encodedNodes<=200000 then BackstageForeverExport=encoded;return true end
+    if exportFits(#encoded,encodedNodes) then
+        roster={}
+        for _,c in ipairs(chars) do
+            roster[c.id]=c
+            if c.id==guid then
+                if c.journal and c.journal.encounters then encounterPending=nil end
+                local reps=c.ledger and c.ledger.reputations
+                if reputationPending and reputationPending.guid==guid and reps and reps.seenAt>=reputationPending.snapshot.seenAt then reputationPending=nil end
+            end
+        end
+        BackstageForeverExport=encoded;prepared=payload;return true
+    end
 end
 -- Explicit player command only. No map panels, movement, targeting or game input.
 local function guideMessage(message)
@@ -995,12 +1053,28 @@ if type(CreateFrame)=='function' then
     end
     -- Focused signal: no character injection, disk write or recursive capture.
     BackstageForeverRequestCapture=function()queue('GATHERING')end
+    BackstageForeverRequestEncounterCapture=function(rows,at)
+        if not loggedIn then return end
+        encounterPending={rows=rows,at=at}
+        queue('ENCOUNTER_END')
+    end
+    BackstageForeverRequestReputationCapture=function(snapshot)
+        if not loggedIn then return end
+        local guid=clean(call(UnitGUID,'player'),200)
+        if guid and snapshot and integer(snapshot.seenAt,1,253402300799) then
+            array(snapshot.factions)
+            reputationPending={guid=guid,snapshot=snapshot}
+        end
+        queue('UPDATE_FACTION')
+    end
     for _,event in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_LEVEL_UP','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LOGOUT','QUEST_LOG_UPDATE','QUEST_ACCEPTED','QUEST_TURNED_IN','UNIT_QUEST_LOG_CHANGED','PLAYER_XP_UPDATE','UPDATE_EXHAUSTION','PLAYER_EQUIPMENT_CHANGED','BAG_UPDATE_DELAYED','GET_ITEM_INFO_RECEIVED','PLAYER_STOPPED_MOVING'}) do pcall(frame.RegisterEvent,frame,event) end
     for event in pairs(workshopDirty) do pcall(frame.RegisterEvent,frame,event) end
     frame:SetScript('OnEvent',function(_,event,eventId)
-        -- Logout APIs may already be torn down; persist the last prepared export.
+        -- Logout APIs may already be torn down; only flush already recorded evidence.
         if event=='PLAYER_LOGOUT' or event=='PLAYER_LOGIN' then
             generation=generation+1;pending=nil;loggedIn=false
+            if event=='PLAYER_LOGOUT' then flushEvidence() end
+            prepared,encounterPending,reputationPending=nil,nil,nil
             workshopCache=nil
             if type(BackstageForeverHUDSession)=='function' then pcall(BackstageForeverHUDSession,event) end
             if type(BackstageForeverGatheringSession)=='function' then pcall(BackstageForeverGatheringSession,event)end

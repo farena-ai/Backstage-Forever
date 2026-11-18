@@ -7,10 +7,10 @@ const { newer } = require("../src/core/updater.cjs");
 const root = path.resolve(__dirname, "..");
 const read = (name) => fs.readFileSync(path.join(root, name), "utf8");
 
-test("1.0 is the stable release, newer than every preview, with aligned versions", () => {
+test("release channel is explicit and package, lockfile, and addon versions agree", () => {
   const pkg = JSON.parse(read("package.json"));
   const lock = JSON.parse(read("package-lock.json"));
-  assert.equal(pkg.releaseChannel, "stable");
+  assert.ok(["preview", "stable"].includes(pkg.releaseChannel));
   assert.ok(newer(pkg.version, "0.12.3"), "Installed 0.12.3 must see a newer version");
   assert.ok(newer(pkg.version, "0.13.6"), "Failed candidate tags remain unchanged; publish a newer patch");
   assert.ok(!newer("0.59.0", pkg.version), "1.0 is newer than every preview");
@@ -38,6 +38,16 @@ test("validation and tag publication require acquisition, Compass, Professions a
   assert.match(release, /Tag must match strict package version/);
   assert.match(release, /node scripts\/sign-update\.cjs/);
   assert.match(release, /secrets\.BF_UPDATE_SIGNING_KEY/);
+});
+
+test("stable update manifests are signed only after checking the staged Authenticode installer", () => {
+  const release = read(".github/workflows/release.yml");
+  const start = release.indexOf("- name: Verify staged Windows publisher signature");
+  const end = release.indexOf("- name: Sign application update manifest");
+  assert.ok(start >= 0 && start < end);
+  const gate = release.slice(start, end);
+  for (const proof of ["Get-AuthenticodeSignature", "TimeStamperCertificate", "Frank Arena", "ProductVersion", "targetCommitish", "GITHUB_SHA"]) assert.ok(gate.includes(proof), proof);
+  assert.match(release, /if \(\$env:RELEASE_CHANNEL -cne 'stable'\).*\$files \+=/);
 });
 
 test("a hung check fails in minutes, not after GitHub's six-hour default", () => {

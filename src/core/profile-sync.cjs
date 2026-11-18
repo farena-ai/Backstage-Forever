@@ -2,6 +2,8 @@
 const { createHash } = require("node:crypto");
 const { validateState, object, str } = require("./validation.cjs");
 const { preserveMemories } = require("./memory-data.cjs");
+const { latchProfessionAwards } = require("./badges.cjs");
+const { normalizeEncounterHistory } = require("./journal-data.cjs");
 
 function timestamp(value) {
   if (
@@ -94,6 +96,7 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
     return validateState({
       ...next,
       profiles: [profile],
+      objectives: [],
       memories: [],
       activeProfileId: null,
     }).profiles[0];
@@ -124,11 +127,21 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
       while (usedIds.has(id)) id = `${base}-${++suffix}`;
       usedIds.add(id);
       profile = { ...incoming, id };
+      latchProfessionAwards(profile);
       next.profiles.push(profile);
     } else if (
       !profile.source ||
       incoming.source.updatedAt > profile.source.updatedAt
     ) {
+      // Backfill from legacy saved evidence before a newer snapshot can replace it.
+      if (profile.source) latchProfessionAwards(profile);
+      // Omission is not evidence of a reset. Carry only the bounded encounter
+      // history from this source, not any of the previous journal's other fields.
+      const encounters = profile.source && incoming.journal?.encounters === undefined
+        ? normalizeEncounterHistory(profile.journal?.encounters) : [];
+      if (encounters.length) {
+        incoming.journal = { ...(incoming.journal ?? { levels: [], firsts: [], zones: [] }), encounters };
+      }
       for (const key of [
         "name",
         "realm",
@@ -156,6 +169,7 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
         if (incoming[key] !== undefined) profile[key] = incoming[key];
         else delete profile[key];
       }
+      latchProfessionAwards(profile);
     } else if (incoming.source.updatedAt === profile.source.updatedAt) {
       const gathering = require("./gathering-data.cjs").intersectGatheringProfiles(profile.gathering, incoming.gathering);
       if (gathering === undefined) delete profile.gathering;

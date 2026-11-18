@@ -145,11 +145,11 @@ test("the Ledger pages render every character's items, gold, prices, reputations
   assert.match(html, /bags 25 · bank 10/);
   V._state().query.items = "wool";
   const narrowed = V.bags();
-  assert.match(narrowed, /Wool Cloth/); assert.doesNotMatch(narrowed, /Linen Cloth<\/strong>/);
+  assert.match(narrowed, /Wool Cloth/); assert.doesNotMatch(narrowed, /Linen Cloth/);
   const gold = V.gold();
   assert.match(gold, /323g/, "total gold of both characters"); assert.match(gold, /Copper Ore/); assert.match(gold, /data-ledger-price="2589"/);
   const rep = V.reputation();
-  assert.match(rep, /Stormwind/); assert.match(rep, /Honored/); assert.match(rep, /<h3 class="ldg-group">Alliance<\/h3>/);
+  assert.match(rep, /Stormwind/); assert.match(rep, /Honored/); assert.match(rep, /<th scope="rowgroup" colspan="3">Alliance<\/th>/);
   const cds = V.cooldowns();
-  assert.match(cds, /Transmute/); assert.match(cds, /Ready in 2h|Ready in 1h 60m|Ready in 2h 00m/); assert.match(cds, />Ready</);
+  assert.match(cds, /Transmute/); assert.match(cds, /Ready in 2h 00m/); assert.match(cds, />Ready</);
 });

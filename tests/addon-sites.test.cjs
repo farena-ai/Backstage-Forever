@@ -10,7 +10,8 @@ test("every release carries the addon alone, unzipping to AddOns\\BackstageForev
   const release = read(".github/workflows/release.yml");
   assert.match(release, /git archive --format=zip --prefix=BackstageForever\/ --output="dist\/BackstageForever-Addon-\$env:RELEASE_VERSION\.zip" "\$\(\$env:GITHUB_REF_NAME\):addon\/BackstageForever"/);
   assert.match(release, /\$names = @\([^)]*"BackstageForever-Addon-\$env:RELEASE_VERSION\.zip"/, "in the checksums");
-  assert.match(release, /gh release upload \$tag [^\n]*"dist\/BackstageForever-Addon-\$env:RELEASE_VERSION\.zip"/, "uploaded with the app");
+  assert.match(release, /\$files = @\([^\n]*"dist\/BackstageForever-Addon-\$env:RELEASE_VERSION\.zip"/, "included in the unconditional upload list");
+  assert.match(release, /gh release upload \$tag @files --clobber/, "uploads that list");
 });
 
 test("the addon-sites workflow builds the Forever flavor on every PR and uploads only from release tags", () => {

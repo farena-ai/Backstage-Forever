@@ -3,7 +3,7 @@
 // advisor and the live link. Every action is a suggestion; nothing happens in game by itself.
 window.NowView = (() => {
   const api = window.backstage;
-  let weekly = null;
+  let weekly = null, history = null, loadedFor = null;
   let advice = null, zone = null, lastZoneId = null, session = null, setup = null, error = "", loading = false, setting = "", mountedFor = null, lastKey = "", lastFetch = 0, timer = null;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pct = (v) => (v * 100).toFixed(1);
@@ -12,10 +12,22 @@ window.NowView = (() => {
   const mapBtn = (w, label, sub, npcId, goal) => (w && Number.isSafeInteger(w.mapId) && Number.isFinite(w.x)
     ? `<button type="button" data-now-map='${esc(JSON.stringify({ mapId: w.mapId, x: w.x, y: w.y, label, sub: sub || null, npcId: npcId || null, goal: goal || null }))}'>Show on map</button>` : "");
 
+  const activeId = () => document.querySelector("#active-character")?.value || null;
+  const heroTitle = (a) => a?.character?.name || a?.name || "Your next move";
+  const heroIdentity = (c) => c ? JSON.stringify([c.race, c.sex, c.className, c.faction]) : "";
+  const hero = (a) => PageHero.render({ art: "now", compact: true, character: a?.character,
+    eyebrow: "Now", title: esc(heroTitle(a)), titleAttrs: "data-now-title", subAttrs: "data-now-live",
+    attrs: `data-now-identity="${esc(heroIdentity(a?.character))}"`,
+    aside: '<button type="button" class="now-badge-case" data-nav="badges" data-active-badge-case data-now-badge-case><img src="art/badge-level.webp" alt="" width="24" height="24">Open Badge Case <span aria-hidden="true">→</span></button>' +
+      (window.SpokenSteps ? SpokenSteps.control() + " " : "") + '<button type="button" class="subtle" data-now-act="mini" title="A small always-on-top window with your next step, beside the game">Mini Now</button> <button type="button" class="subtle" data-now-act="refresh">Refresh</button>' });
+
   function page() {
+    // The shell's character selector is replaced just after this markup is built. Only
+    // mount/paint reads the new selection, so no previous character flashes on a switch.
     return `<section class="now-page" data-now>
-      ${PageHero.render({ art: "now", eyebrow: "Now", title: esc(advice?.character?.name || "Your next move"), titleAttrs: "data-now-title", subAttrs: "data-now-live", crestHtml: '<img class="now-class-crest" data-now-crest alt="" width="84" height="84" hidden>', aside: (window.SpokenSteps ? SpokenSteps.control() + " " : "") + '<button type="button" class="subtle" data-now-act="mini" title="A small always-on-top window with your next step, beside the game">Mini Now</button> <button type="button" class="subtle" data-now-act="refresh">Refresh</button>' })}
-      <div class="now-body" data-now-body>${weekStrip()}${body()}</div>
+      ${hero(null)}
+      ${window.ObjectiveView?.card() || ""}
+      <div class="now-body" data-now-body><p class="now-card" role="status">Working out your next move…</p></div>
     </section>`;
   }
 
@@ -25,7 +37,7 @@ window.NowView = (() => {
     const r = weekly?.reminders || [], me = weekly?.recap?.active;
     const line = me && me.played ? `<p class="now-week"><strong>This week:</strong> ${me.levelsGained ? `+${me.levelsGained} level${me.levelsGained === 1 ? "" : "s"}` : "no new levels"}${me.badges.length ? ` · ${me.badges.length} badge${me.badges.length === 1 ? "" : "s"}` : ""}${me.minutes ? ` · ${mins(me.minutes)} played` : ""}${me.gold ? ` · ${me.gold > 0 ? "+" : "−"}${gsc(Math.abs(me.gold))}` : ""} <button type="button" class="now-link" data-nav="journey">Journey →</button></p>` : "";
     const chips = r.length ? `<ul class="now-reminders" aria-label="Reminders">${r.map((x) => `<li class="now-rem now-rem-${x.kind}">${esc(x.text)}</li>`).join("")}</ul>` : "";
-    return chips || line ? `<div class="now-weekly" data-now-weekly>${chips}${line}</div>` : "";
+    return chips || line ? `<aside class="now-weekly" data-now-weekly aria-label="Weekly recap and reminders">${chips}${line}</aside>` : "";
   }
   // 1.3 (J10): what the next training visits cost, from the trainer window you opened, and your gold.
   const gsc = (copper) => { const v = Math.max(0, Math.round(copper || 0)), g = Math.floor(v / 10000), sv = Math.floor(v / 100) % 100, cc = v % 100; return [g ? `${g}g` : "", sv ? `${sv}s` : "", !g && cc ? `${cc}c` : ""].filter(Boolean).join(" ") || "0c"; };
@@ -50,7 +62,7 @@ window.NowView = (() => {
     const ready = a.log.ready;
     if (ready.length) {
       const first = ready[0];
-      out.push({ kind: "hand-in", title: ready.length === 1 ? `Hand in “${first.title}”` : `Hand in ${ready.length} finished quests`,
+      out.push({ kind: "hand-in", title: ready.length === 1 ? `Hand in “${esc(first.title)}”` : `Hand in ${ready.length} finished quests`,
         detail: first.turnIn ? `Nearest: ${esc(first.turnIn.name)}${first.turnIn.guess ? " (usually the quest giver)" : ""} · ${at(first.turnIn)}${ready.length > 1 ? ` · also ${ready.slice(1, 3).map((q) => `“${esc(q.title)}”`).join(", ")}${ready.length > 3 ? "…" : ""}` : ""}` : "Hand-in location not recorded yet.",
         actions: mapBtn(first.turnIn, first.turnIn?.name || first.title, `Turn in: ${first.title}`, first.turnIn?.npcId,
           { title: `Hand in “${first.title}”`, questId: first.id, steps: [`Go to ${first.turnIn?.name || "the quest giver"}${first.turnIn?.guess ? " (quests usually go back to whoever gave them)" : ""}.`, `Talk to them and choose “${first.title}”.`, "Pick your reward and click Complete Quest.", ...(ready.length > 1 ? [`Also ready: ${ready.slice(1, 4).map((q) => q.title).join(", ")}.`] : [])] }) + `<button type="button" data-quest-open="${first.id}">Open quest</button>` });
@@ -79,24 +91,39 @@ window.NowView = (() => {
     }
     return out.slice(0, 4);
   }
-  const CLASSES = new Set(["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"]);
+  const stepRow = (s, primary = false) => `<li class="now-step now-${s.kind}${primary ? " now-step-priority" : ""}"><span class="now-ico now-ico-art" aria-hidden="true">${crest(s.kind)}</span><div><h3>${s.title}</h3><p>${s.detail}</p><div class="now-actions">${primary ? s.actions.replace('<button ', '<button class="primary" ') : s.actions}</div></div></li>`;
+
   // Classic rule: at or below this quest/mob level you get no experience.
   const greyAt = (lvl) => (lvl <= 5 ? 0 : lvl <= 39 ? lvl - 5 - Math.floor(lvl / 10) : lvl - 1 - Math.floor(lvl / 5));
-  const ICON = { death: "✝", "hand-in": "?", train: "⚔", quest: "◎", zone: "➶" };
+
   // Painted crests per step and a painted vista per kind of landscape (original art, art/NOTICE.md).
   const crest = (kind) => `<img class="now-crest" src="art/steps/${kind}.png" alt="" width="44" height="44">`;
   const BIOME = new Proxy({}, { get: (_t, id) => window.ZoneArt?.biome(Number(id)) || undefined });
   // G13: a zone's own painting when it has one (applied by ZoneArt.paint), else its biome vista.
   const zoneArt = (mapId) => (window.ZoneArt?.painted(mapId) ? ` data-zone-art="${Number(mapId)}"` : "");
   const minutes = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`);
-  // XP bar with rested bonus, plus this session's pace (from the live link).
+  function sessionChart() {
+    const recent = (history?.sessions || []).filter((s) => Number.isFinite(s.startedAt) && Number.isFinite(s.levelsGained) && s.levelsGained >= 0)
+      .sort((a, b) => a.startedAt - b.startedAt).slice(-5);
+    if (!recent.length) return "";
+    const max = Math.max(1, ...recent.map((s) => s.levelsGained));
+    const date = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+    return `<figure class="now-history" aria-labelledby="now-history-label">
+      <figcaption id="now-history-label"><strong>Level gain by session</strong><span>Last ${recent.length} recorded session${recent.length === 1 ? "" : "s"} · oldest first</span></figcaption>
+      <ol>${recent.map((s) => `<li><span>${esc(date.format(s.startedAt))}</span><meter min="0" max="${max}" value="${s.levelsGained}" aria-hidden="true"></meter><strong data-gain="${s.levelsGained}">${s.levelsGained > 0 ? "+" : ""}${s.levelsGained} lvl</strong></li>`).join("")}</ol>
+    </figure>`;
+  }
+  // One visualization: recorded gains, or current XP when there's no session history.
   function sessionCard(a) {
     const c = a.character, s = session?.active ? session : null;
-    const saved = c.xp && c.xp.savedLevel === c.level ? c.xp : null;
-    const pctNow = Number.isFinite(c.xpPercent) ? c.xpPercent : saved ? Math.floor((saved.current / saved.max) * 100) : null;
+    const saved = c.xp?.savedLevel === c.level && Number.isFinite(c.xp.current) && Number.isFinite(c.xp.max) && c.xp.max > 0 && c.xp.current >= 0 && c.xp.current <= c.xp.max ? c.xp : null;
+    const liveXp = Number.isFinite(c.xpPercent) && c.xpPercent >= 0 && c.xpPercent <= 100;
+    const pctNow = liveXp ? c.xpPercent : saved ? Math.floor((saved.current / saved.max) * 100) : null;
     const restedPct = saved && saved.rested > 0 && pctNow != null ? Math.min(100 - pctNow, (saved.rested / saved.max) * 100) : 0;
-    const bar = pctNow == null ? "" : `<div class="now-xp" role="img" aria-label="${pctNow}% through level ${c.level}"><span class="now-xp-fill" data-w="${pctNow}"></span>${restedPct > 0 ? `<span class="now-xp-rested" data-l="${pctNow}" data-w="${restedPct.toFixed(1)}"></span>` : ""}</div>
-      <p class="now-xp-line"><strong>${pctNow}%</strong> of level ${c.level}${restedPct > 0 ? ` · <span class="now-rested">rested bonus</span>` : ""}${c.live ? "" : ` · <span class="now-saved">from your last save (logout or /reload)</span>`}</p>`;
+    const chart = sessionChart();
+    const xp = pctNow == null ? (chart ? "" : `<p class="now-tip">No XP reading yet. Play with the live link or save in WoW with <code>/reload</code>.</p>`)
+      : `<p class="now-xp-line"><strong>${pctNow}%</strong> of level ${c.level} · ${liveXp ? "live XP" : `<span class="now-saved">XP from your last save</span>`}${!chart && restedPct > 0 ? ` · <span class="now-rested">rested bonus from your last save</span>` : ""}</p>
+        ${chart ? "" : `<div class="now-xp" role="img" aria-label="${pctNow}% through level ${c.level}"><span class="now-xp-fill" data-w="${pctNow}"></span>${restedPct > 0 ? `<span class="now-xp-rested" data-l="${pctNow}" data-w="${restedPct}"></span>` : ""}</div>`}`;
     const rows = [];
     if (s) {
       rows.push(`<li><strong>${minutes(s.activeMinutes)}</strong><span>played this session</span></li>`);
@@ -106,9 +133,9 @@ window.NowView = (() => {
       rows.push(`<li><strong>${s.deaths}</strong><span>death${s.deaths === 1 ? "" : "s"}</span></li>`);
       rows.push(`<li><strong>${s.zones.length}</strong><span>zone${s.zones.length === 1 ? "" : "s"} visited</span></li>`);
     }
-    return `<article class="now-card now-session"><h2>This session</h2>${bar}
-      ${rows.length ? `<ul class="now-stats">${rows.join("")}</ul>${s.levelsPerHour ? "" : `<p class="now-tip">Your pace appears after a few minutes of play.</p>`}` : `<p class="now-tip">${setup?.live?.signal === "unsupported" ? "On a Mac your XP comes from your last save (/reload or log out). Pace, time to the next level and deaths need the live link, which is Windows-only for now." : "Play with the live link on (it is by default) and your pace, time to the next level and deaths appear here."}</p>`}
-      ${restedPct > 0 ? `<p class="now-tip"><span class="now-rested">Rested</span>: kills give double experience until the blue part of the bar runs out. You build it back by logging out in an inn or a city.</p>` : ""}
+    return `<article class="now-card now-session"><h2>Progress</h2>${xp}${chart}
+      ${rows.length ? `<h3 class="now-sub">This session · Live</h3><ul class="now-stats">${rows.join("")}</ul>${s.levelsPerHour ? "" : `<p class="now-tip">Your pace appears after a few minutes of play.</p>`}` : `<p class="now-tip">${setup?.live?.signal === "unsupported" ? "Live session stats are Windows-only. On Mac, XP updates after /reload or logout." : "Live play adds session pace, time to next level and deaths."}</p>`}
+      ${!chart && restedPct > 0 ? `<p class="now-tip">The striped part shows rested XP. Rested kills give double XP until the bonus runs out.</p>` : ""}
     </article>`;
   }
   // First-run checklist: ticks itself off as each piece starts working.
@@ -181,11 +208,15 @@ window.NowView = (() => {
     setTimeout(() => el.remove(), 5000);
   }
   function body() {
-    if (error) return `<div class="now-card"><p>${esc(error)}</p></div>`;
+    if (error) return `<div class="now-card"><p role="status">${esc(error)}</p></div>`;
     if (!advice) return `<div class="now-card"><p>${loading ? "Working out your next move…" : "Loading…"}</p></div>`;
-    if (advice.status === "no-character") return setupCard(advice) || `<div class="now-card"><h2>No character yet</h2><p>Connect your WoW Forever folder in Settings → Game connection, log in once and type <code>/reload</code>. Your characters appear here.</p></div>`;
-    if (advice.status === "no-level") return `<div class="now-card"><h2>${esc(advice.name)}</h2><p>Log in on this character and type <code>/reload</code> so the app knows its level.</p></div>`;
-    const a = advice, c = a.character, list = steps(a);
+    if (advice.status !== "ok") {
+      const hint = advice.status === "no-level" || setup?.game?.connected
+        ? "Log in on your character and type <code>/reload</code> in WoW to bring in a fresh save."
+        : "Connect your WoW Forever folder to bring your character into the journal.";
+      return `<article class="now-card now-next"><h2>Do this next</h2><p>${hint}</p></article>${reloadBanner()}${setupCard(advice)}${weekStrip()}`;
+    }
+    const a = advice, c = a.character, [first, ...followups] = steps(a);
     const zones = a.zones.map((z) => `<li class="now-zone now-fit-${esc(z.fit)}${BIOME[z.mapId] ? ` biome-${BIOME[z.mapId]}` : ""}"${zoneArt(z.mapId)}><button type="button" ${z.hub ? `data-now-map='${esc(JSON.stringify({ mapId: z.mapId, x: z.hub.x, y: z.hub.y, label: `${z.name} quest hub`, sub: null, goal: { title: `Quest hub in ${z.name}`, steps: [`Levels ${z.min}–${z.max}${z.available ? `, ${z.available} quests you can pick up` : ""}.`, ...(z.quests?.length ? [`Start with: ${z.quests.slice(0, 3).map((q) => q.title).join(", ")}.`] : []), ...(z.towns?.length ? [`Friendly towns: ${z.towns.join(", ")}.`] : [])] } }))}'` : "disabled"}><strong>${esc(z.name)}</strong><span>${z.min}–${z.max}${z.observedLevels ? " · seen in play" : ""}</span><span>${z.available ? `${z.available} quests for you` : "no quests recorded yet"}${z.towns.length ? ` · ${esc(z.towns.join(", "))}` : ""}</span><em>${z.fit === "now" ? "Your level" : "Soon"}</em></button></li>`).join("");
     const t = a.training;
     const training = !t ? `<p>Pick a class for this character in Characters to see training.</p>`
@@ -201,19 +232,22 @@ window.NowView = (() => {
     // Quests handed in since the last save (live): shown done, so nothing old reads as still to do.
     const done = log.justDone?.length ? `<h3 class="now-sub">Just completed</h3><ul class="now-log now-done">${log.justDone.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip done">✓ Completed</span>${esc(q.title)}</button></li>`).join("")}</ul>` : "";
     const top = a.next?.quests?.length ? `<ul class="now-log">${a.next.quests.slice(0, 6).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip new">lvl ${q.level}</span>${esc(q.title)} <small>from ${esc(q.giver)}</small></button></li>`).join("")}</ul>` : "";
-    // Two independent columns, so a tall card on one side never leaves a gap on the other.
-    return `${reloadBanner()}${setupCard(a)}<div class="now-grid"><div class="now-col now-col-main">
+    // Each row shares a baseline; no independent stacks or visually reordered controls.
+    return `<div class="now-grid now-overview">
       <article class="now-card now-next"><h2>Do this next</h2>
-        ${list.length ? `<ol class="now-steps">${list.map((s) => `<li class="now-step now-${s.kind}"><span class="now-ico now-ico-art" aria-hidden="true">${crest(s.kind)}</span><div><h3>${s.title}</h3><p>${s.detail}</p><div class="now-actions">${s.actions}</div></div></li>`).join("")}</ol>` : `<p>You're all caught up. Explore, gather or run a dungeon.</p>`}
+        ${first ? `<ol class="now-steps">${stepRow(first, true)}</ol>` : `<p>You're all caught up. Explore, gather or run a dungeon.</p>`}
       </article>
-      <article class="now-card now-questlog"><h2>Quest log <small>${log.inLog}</small>${log.live ? ' <span class="now-fresh live">● Live</span>' : ' <span class="now-fresh">from your last save</span>'}</h2>${questLog}${done}</article>
-      </div><div class="now-col now-col-side">
-      ${zoneCard()}
       ${sessionCard(a)}
-      ${window.MomentsView ? MomentsView.recentCard() : ""}
+    </div>
+    ${followups.length ? `<section class="now-card now-followups"><h2>After that</h2><ol class="now-steps" start="2">${followups.map((s) => stepRow(s)).join("")}</ol></section>` : ""}
+    ${reloadBanner()}${weekStrip()}${setupCard(a)}
+    <div class="now-grid now-reference">
+      <article class="now-card now-questlog"><h2>Quest log <small>${log.inLog}</small>${log.live ? ' <span class="now-fresh live">● Live</span>' : ' <span class="now-fresh">from your last save</span>'}</h2>${questLog}${done}</article>
+      ${zoneCard()}
       <article class="now-card"><h2>Where to level</h2><ul class="now-zones">${zones}</ul>${top ? `<h3 class="now-sub">Quests to pick up in ${esc(a.next.name)}</h3>${top}` : ""}</article>
       <article class="now-card"><h2>${esc(c.className || "Class")} training</h2>${training}</article>
-    </div></div>
+      ${window.MomentsView ? MomentsView.recentCard() : ""}
+    </div>
     <p class="now-src">Zone levels: ${esc(a.source)} Quest, trainer and NPC references: Efficient Games, CC BY 4.0.</p>`;
   }
   // WoW minimized or gone: say live updates are paused (not that the link failed), with the last live state.
@@ -236,9 +270,18 @@ window.NowView = (() => {
     b.innerHTML = body();
     window.ZoneArt?.paint(b);
     for (const el of b.querySelectorAll(".now-xp [data-w]")) { el.style.width = `${Number(el.dataset.w)}%`; if (el.dataset.l) el.style.left = `${Number(el.dataset.l)}%`; }
-    const t = document.querySelector("[data-now-title]"); if (t) t.textContent = advice?.character?.name || advice?.name || "Your next move";
-    const crestEl = document.querySelector("[data-now-crest]"), cls = String(advice?.character?.className || "").toLowerCase();
-    if (crestEl) { const art = CLASSES.has(cls) ? window.PageHero?.portrait(advice?.character) : ""; if (art) { crestEl.src = art; crestEl.hidden = false; } else crestEl.hidden = true; }
+    const header = document.querySelector('[data-now] > [data-page-hero="now"]');
+    if (header && header.dataset.nowIdentity !== heroIdentity(advice?.character)) {
+      const active = header.contains(document.activeElement) ? document.activeElement : null;
+      const focused = active?.dataset.nowAct;
+      // Shared PageHero markup; hero() escapes the player title and identity attributes.
+      header.outerHTML = hero(advice);
+      if (active?.hasAttribute("data-now-badge-case")) document.querySelector("[data-now-badge-case]")?.focus({ preventScroll: true });
+      else if (focused) document.querySelector(`[data-now-act="${focused}"]`)?.focus({ preventScroll: true });
+    } else {
+      const title = header?.querySelector("[data-now-title]");
+      if (title) title.textContent = heroTitle(advice);
+    }
     liveLine();
     spellIcons(b);
   }
@@ -254,11 +297,15 @@ window.NowView = (() => {
   }
   async function load() {
     if (loading) return; loading = true; lastFetch = Date.now();
+    const requestedFor = activeId();
     try {
-      const [a, s, game, live, z, wk] = await Promise.all([api.levelingAdvice(), api.playSession ? api.playSession().catch(() => null) : null,
+      const [a, s, game, live, z, wk, journey] = await Promise.all([api.levelingAdvice(), api.playSession ? api.playSession().catch(() => null) : null,
         api.gameStatus ? api.gameStatus().catch(() => null) : null, api.liveLinkStatus ? api.liveLinkStatus().catch(() => null) : null,
-        api.zoneBriefing ? api.zoneBriefing().catch(() => null) : null, api.weekly ? api.weekly().catch(() => null) : null]);
+        api.zoneBriefing ? api.zoneBriefing().catch(() => null) : null, api.weekly ? api.weekly().catch(() => null) : null,
+        api.journey ? api.journey().catch(() => null) : null]);
+      if (activeId() !== requestedFor) return;
       weekly = wk;
+      history = journey?.id === requestedFor && journey?.name === a?.character?.name ? journey?.history : null;
       advice = a; session = s; setup = { game, live }; zone = z; error = "";
       // Entering a new zone while playing: a painted arrival banner.
       if (z?.mapId && lastZoneId && z.mapId !== lastZoneId && z.live) arrive(z);
@@ -266,8 +313,12 @@ window.NowView = (() => {
       window.JourneyView?.check();
       window.WorldTrackerView?.check?.();
       window.MomentsView?.refresh();
-    } catch (e) { error = e.message || "Advice is unavailable."; }
-    loading = false; paint();
+    } catch (e) { if (activeId() === requestedFor) error = e.message || "Advice is unavailable."; }
+    finally {
+      loading = false;
+      if (activeId() === requestedFor) { loadedFor = requestedFor; paint(); }
+      else if (document.querySelector("[data-now]")) load();
+    }
   }
   // Live frames: refresh when you change zone, level or quest progress; at most every few seconds.
   function onLive(status) {
@@ -311,10 +362,10 @@ window.NowView = (() => {
     if (!root) { mountedFor = null; return; }
     if (mountedFor === root) return;
     mountedFor = root; bind(root);
-    if (advice) paint();
+    if (advice && loadedFor === activeId()) paint();
     load();
   }
-  function invalidate() { advice = null; lastKey = ""; }
+  function invalidate() { advice = null; history = null; lastKey = ""; }
   if (api?.onLiveLink) api.onLiveLink(onLive);
   // Level-up: a big celebration wherever you are in the app. Click, Continue or Escape to dismiss.
   const MILESTONES = Object.freeze({

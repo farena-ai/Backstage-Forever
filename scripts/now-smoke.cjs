@@ -146,14 +146,23 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator(".now-done").getByText("Call of Water").waitFor({ timeout: 15000 });
     assert.match(await page.locator(".now-questlog h2").innerText(), /Live/);
     assert.ok(!(await page.locator(".now-step h3").allTextContents()).some((t) => /Call of Water/.test(t)), "a handed-in quest is not a step any more");
-    // Layout: two independent columns (no gaps between cards) and a main menu that fits without scrolling.
-    const layout = await page.evaluate(() => {
-      const gaps = [...document.querySelectorAll(".now-col")].map((col) => { const cards = [...col.children].map((c) => c.getBoundingClientRect()); return Math.max(0, ...cards.slice(1).map((r, i) => r.top - cards[i].bottom)); });
-      const nav = document.querySelector('.rail nav[aria-label="Main navigation"]');
-      const bottom = document.querySelector(".rail-bottom"), small = document.querySelector(".rail-bottom small");
-      return { cols: gaps.length, maxGap: Math.max(...gaps), navScrolls: nav.scrollHeight > nav.clientHeight + 1, sizes: `nav ${nav.scrollHeight}/${nav.clientHeight}, rail-bottom ${Math.round(bottom?.getBoundingClientRect().height || 0)}, credits ${Math.round(small?.getBoundingClientRect().height || 0)}` };
-    });
-    assert.equal(layout.cols, 2); assert.ok(layout.maxGap <= 20, `cards stack evenly (gap ${layout.maxGap}px)`); assert.equal(layout.navScrolls, false, `main menu fits (${layout.sizes})`);
+    // Layout: the action leads at both sizes, with a paired desktop row and a compact stack.
+    for (const [width, height, compact] of [[1500, 1000, false], [1000, 700, true]]) {
+      await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0].setSize(...size), [width, height]);
+      await page.waitForFunction((w) => Math.abs(innerWidth - w) < 50, width);
+      await page.locator(".now-overview").evaluate((el) => el.scrollIntoView({ block: "start" }));
+      const layout = await page.evaluate(() => {
+        const rect = (sel) => document.querySelector(sel).getBoundingClientRect();
+        const next = rect(".now-next"), progress = rect(".now-session"), setup = rect(".now-setup");
+        const region = document.querySelector(".now-page");
+        return { sameRow: Math.abs(next.top - progress.top) < 1 && progress.left >= next.right,
+          stacked: progress.top >= next.bottom, setupBelow: setup.top >= Math.max(next.bottom, progress.bottom),
+          overflows: region.scrollWidth > region.clientWidth + 1 };
+      });
+      assert.ok(compact ? layout.stacked : layout.sameRow, JSON.stringify(layout));
+      assert.ok(layout.setupBelow && !layout.overflows, JSON.stringify(layout));
+    }
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1500, 1000));
     // The running game still has an older addon: Now asks for one /reload.
     await app.evaluate(({ ipcMain }) => { ipcMain.removeHandler("backstage:gameStatus"); ipcMain.handle("backstage:gameStatus", () => ({ connected: true, addonCurrent: true, addonVersion: "0.21.0", loadedCaptureVersion: "0.20.0", lastSync: new Date(Date.now() - 60000).toISOString(), addonUpdatedAt: new Date(Date.now() - 33000).toISOString(), runtime: { state: "running" } })); });
     await page.locator('[data-nav="now"]').first().click();

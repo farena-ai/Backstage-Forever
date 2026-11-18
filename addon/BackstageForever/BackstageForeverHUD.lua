@@ -1,6 +1,9 @@
 -- Native display and explicit waypoint clicks only; capture remains event driven.
 local panel,body,hint,actionTitle,actionSource,preparationLine,focusButton,sessionButton,waypointButton
 local goalButton,notNowButton,detailsButton,selectedCoach
+local onMyWayTitle,onMyWayEvidence,onMyWayNotNow
+local onMyWayFresh=false
+local onMyWayShown
 local questDetails=false
 local professionDetails=false
 local professionDetailsButton,professionButton,recipeButton,attemptsButton
@@ -138,16 +141,29 @@ local function paintXp(bar)
     invoke(xpText,'SetText',math.floor(f*100)..'%  ·  '..T(('%s XP to level up'):format(number(bar.max-bar.cur)))..(bar.rested>0 and ('  ·  '..T('rested')) or ''))
 end
 local update
+local function rememberDismissal(chosen)
+    if not dismissed[chosen.id] then dismissOrder[#dismissOrder+1]=chosen.id end
+    dismissed[chosen.id]=chosen.signature
+    while #dismissOrder>20 do dismissed[table.remove(dismissOrder,1)]=nil end
+    epoch=epoch+1;update()
+end
+local function clearOnMyWay()
+    onMyWayShown=nil
+    for _,row in ipairs({onMyWayTitle,onMyWayEvidence})do invoke(row,'SetText','');invoke(row,'Hide')end
+    invoke(onMyWayNotNow,'SetScript','OnClick',nil)
+    invoke(onMyWayNotNow,'Disable');invoke(onMyWayNotNow,'Hide')
+end
 update=function()
     if not panel then return end
     safe(preparationLine.SetText,preparationLine,'')
     selectedCoach=nil
+    clearOnMyWay()
     if notNowButton then safe(notNowButton.Disable,notNowButton);safe(notNowButton.SetScript,notNowButton,'OnClick',nil)end
     safe(waypointButton.Disable,waypointButton)
     safe(waypointButton.SetScript,waypointButton,'OnClick',nil)
     if combat() or not visible or not active then safe(panel.Hide,panel);return end
     local lines={'Getting ready. If this stays, type /reload once.'}
-    local selected,command,stepIndex
+    local selected,command,stepIndex,onMyWay
     if latest then
         lines={text(latest.name,60)..'  |  Level '..text(tostring(latest.level),4)..' '..text(latest.className,30)}
         if not collapsed then
@@ -162,21 +178,25 @@ update=function()
                 local shown={};for _,v in ipairs(opportunities)do if dismissed[v.id]~=v.signature then shown[#shown+1]=v end end
                 selectedCoach=shown[1]
                 if selectedCoach then
+                    local extra=coach.onMyWay
+                    if onMyWayFresh and not captureMessage and not questDetails and not professionDetails
+                        and selectedCoach==coach.recommendation and extra and not safe(BackstageForeverRouteNow) then
+                        if dismissed[extra.id]~=extra.signature then onMyWay=extra end
+                    else extra=nil end
                     lines[#lines+1]='Next: '..text(selectedCoach.title,80)
                     lines[#lines+1]=text(selectedCoach.reason,150)
                     if not questDetails then lines[#lines+1]=text(selectedCoach.detail,170)end
                     lines[#lines+1]='Evidence: '..(selectedCoach.questStep and sourceLabel(selectedCoach.questStep) or text(selectedCoach.evidence,100))
-                    if not questDetails then for i=2,math.min(3,#shown)do lines[#lines+1]='Or: '..text(shown[i].title,70)end end
+                    if not questDetails then for i=2,math.min(3,#shown)do
+                        if not extra or shown[i].id~='quest:'..extra.questId then lines[#lines+1]='Or: '..text(shown[i].title,70)end
+                    end end
                     local step=selectedCoach.kind=='quest' and selectedCoach.questStep or nil
                     local candidate=step and validCommand(step)
                     if candidate and type(BackstageForeverGuide)=='function' then selected=step;command=candidate;stepIndex=1 end
                     local clickEpoch,clickCharacter,chosen=epoch,latest,selectedCoach
                     safe(notNowButton.SetScript,notNowButton,'OnClick',function()
                         if not active or not visible or collapsed or combat() or epoch~=clickEpoch or latest~=clickCharacter or not selectedCoach or selectedCoach.id~=chosen.id or selectedCoach.signature~=chosen.signature then return end
-                        if not dismissed[chosen.id] then dismissOrder[#dismissOrder+1]=chosen.id end
-                        dismissed[chosen.id]=chosen.signature
-                        while #dismissOrder>20 do dismissed[table.remove(dismissOrder,1)]=nil end
-                        epoch=epoch+1;update()
+                        rememberDismissal(chosen)
                     end)
                     safe(notNowButton.Enable,notNowButton)
                 else
@@ -239,7 +259,8 @@ update=function()
         safe(panel.SetHeight,panel,math.floor(-top+h+42))
     else
         safe(body.SetHeight,body,216)
-        safe(panel.SetHeight,panel,professionDetails and 494 or type(BackstageForeverBuildProfessionCoach)=='function' and 466 or 440)
+        local height=professionDetails and 494 or type(BackstageForeverBuildCoach)=='function' and 466 or 440
+        safe(panel.SetHeight,panel,height+(onMyWay and 48 or 0))
     end
     safe(goalButton.SetText,goalButton,'Goal: '..({adventure='Adventure',questing='Quests',professions='Professions'})[settings.mode])
     safe(focusButton.SetText,focusButton,'Focus: '..(({balanced='everything',['turn-ins']='hand-ins'})[settings.focus] or settings.focus))
@@ -289,11 +310,17 @@ update=function()
             bind(attemptsButton,function()choice.crafts=({[1]=5,[5]=10,[10]=20,[20]=1})[choice.crafts] or 1 end)
         end
     end
-    if preparation and not collapsed then safe(preparationLine.SetText,preparationLine,text(preparation.text,80)) end
-    -- J28 (1.6): with nothing to prepare, the Compass shows the next badge and its progress.
-    if not preparation and not collapsed and type(BackstageForeverNextBadgeLine)=='function' then
-        local ok,line=pcall(BackstageForeverNextBadgeLine)
-        if ok and type(line)=='string' then safe(preparationLine.SetText,preparationLine,text(line,80)) end
+    BackstageForeverHUDRefreshBadge()
+    if onMyWay then
+        onMyWayShown=onMyWay
+        invoke(onMyWayTitle,'SetText','On my way: '..text(onMyWay.title,60))
+        invoke(onMyWayEvidence,'SetText','Current game: hand-in on this map')
+        invoke(onMyWayNotNow,'SetScript','OnClick',function()
+            if onMyWayShown~=onMyWay or combat() or safe(BackstageForeverRouteNow) then return end
+            rememberDismissal(onMyWay)
+        end)
+        invoke(onMyWayTitle,'Show');invoke(onMyWayEvidence,'Show')
+        invoke(onMyWayNotNow,'Enable');invoke(onMyWayNotNow,'Show')
     end
     if selected and not collapsed then
         local qualifier=selected.source=='reference' and 'Approximate reference' or 'Current game'
@@ -312,22 +339,30 @@ update=function()
     end
     safe(panel.Show,panel)
 end
+function BackstageForeverHUDRefreshBadge()
+    if not preparationLine or not active or not visible or collapsed or combat() then return end
+    local line=safe(BackstageForeverPinnedBadgeLine) or (preparation and preparation.text) or safe(BackstageForeverNextBadgeLine)
+    safe(preparationLine.SetText,preparationLine,text(line,80))
+end
 BackstageForeverHUDUpdate=function(character)
     epoch=epoch+1
     if ownerId and character and ownerId~=character.id then epoch=epoch+1;dismissed={};dismissOrder={};questDetails=false;professionDetails=false end
     latest=character;ownerId=character and character.id or ownerId
+    onMyWayFresh=character~=nil and not combat()
     preparation=safe(BackstageForeverBuildPreparation,character)
     update()
 end
 BackstageForeverHUDSession=function(event)
     epoch=epoch+1;latest=nil;ownerId=nil;preparation=nil;captureMessage=nil;selectedCoach=nil;dismissed={};dismissOrder={};questDetails=false;professionDetails=false
     if preparationLine then safe(preparationLine.SetText,preparationLine,'') end
+    onMyWayFresh=false;clearOnMyWay()
     active=event=='PLAYER_LOGIN'
     if not active and panel then safe(panel.Hide,panel) end
 end
 BackstageForeverHUDCaptureStatus=function(state)
     -- Status changes cannot revive facts from a previously successful capture.
     if state=='unavailable' then epoch=epoch+1;latest=nil;preparation=nil;selectedCoach=nil end
+    if state~='ready' then onMyWayFresh=false end
     captureMessage=state=='partial' and 'Some public data is unavailable. Try again outside combat.'
         or state=='unavailable' and 'Snapshot unavailable. Try again outside combat.' or nil
     pcall(update)
@@ -446,6 +481,10 @@ local function initialize()
     end
     actionTitle=actionRow(97);actionSource=actionRow(81)
     preparationLine=actionRow(113)
+    onMyWayTitle=actionRow(155);onMyWayEvidence=actionRow(137)
+    onMyWayEvidence:SetWidth(204)
+    onMyWayNotNow=CreateFrame('Button','BackstageForeverCompassOnMyWayNotNow',panel,'UIPanelButtonTemplate')
+    onMyWayNotNow:SetPoint('BOTTOMLEFT',238,134);onMyWayNotNow:SetSize(80,22);onMyWayNotNow:SetText('Not now')
     waypointButton=CreateFrame('Button','BackstageForeverCompassWaypoint',panel,'UIPanelButtonTemplate');waypointButton:SetPoint('BOTTOMLEFT',INSET,51);waypointButton:SetSize(WIDE,24);waypointButton:SetText('Show waypoint')
     update()
 end
@@ -454,7 +493,7 @@ if type(CreateFrame)=='function' then
     for _,event in ipairs({'PLAYER_LOGIN','PLAYER_LOGOUT','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED'})do safe(events.RegisterEvent,events,event)end
     events:SetScript('OnEvent',function(_,event)
         if event=='PLAYER_LOGOUT' then BackstageForeverHUDSession(event);return end
-        if event=='PLAYER_REGEN_DISABLED' then epoch=epoch+1;if waypointButton then safe(waypointButton.SetScript,waypointButton,'OnClick',nil);safe(waypointButton.Disable,waypointButton)end;if notNowButton then safe(notNowButton.SetScript,notNowButton,'OnClick',nil)end;if panel then safe(panel.Hide,panel)end;return end
+        if event=='PLAYER_REGEN_DISABLED' then epoch=epoch+1;onMyWayFresh=false;clearOnMyWay();if waypointButton then safe(waypointButton.SetScript,waypointButton,'OnClick',nil);safe(waypointButton.Disable,waypointButton)end;if notNowButton then safe(notNowButton.SetScript,notNowButton,'OnClick',nil)end;if panel then safe(panel.Hide,panel)end;return end
         if event=='PLAYER_LOGIN' then active=true;epoch=epoch+1;loadSettings()end
         pcall(initialize);pcall(update)
     end)

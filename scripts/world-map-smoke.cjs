@@ -37,8 +37,11 @@ const { defaultState } = require("../src/core/validation.cjs");
     `);
     app = await launchElectron(electron, { args: [dir], env: { ...process.env, BF_USER_DATA: dir }, timeout: 20000 });
     const page = await testWindow(app);
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
     page.setDefaultTimeout(10000);
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1500, 1000));
+    const setSize = (width, height) => app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0].setSize(...size), [width, height]);
+    await setSize(1500, 1000);
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "complete"));
     await page.reload();
     await navigate(page, "world-map");
@@ -48,6 +51,35 @@ const { defaultState } = require("../src/core/validation.cjs");
     assert.equal(st.mapId, 1413);
     assert.ok(st.counts["quest-turnin"] >= 1, "turn-in pin");
     assert.ok(st.counts["quest-giver"] >= 5 && st.counts.flight >= 1 && st.counts.vendor >= 5);
+    const legend = page.locator("[data-wm-legend]");
+    const layerGroups = {
+      Questing: ["quest-turnin", "quest-objective", "objective-area", "quest-giver"],
+      Gathering: ["herb", "ore", "find", "heat", "community"],
+      Services: ["flight", "class-trainer", "profession-trainer", "vendor", "npc", "otherFaction"],
+      Journey: ["journey"],
+    };
+    for (const [name, keys] of Object.entries(layerGroups)) {
+      const group = legend.getByRole("group", { name, exact: true });
+      assert.deepEqual(await group.locator("[data-wm-layer]").evaluateAll((inputs) => inputs.map((input) => input.dataset.wmLayer)), keys, `${name} contains its own layer choices`);
+    }
+    assert.equal(await legend.getByRole("checkbox", { name: /Other NPCs/ }).isChecked(), false);
+    assert.equal(await legend.getByRole("checkbox", { name: /My path this session/ }).isChecked(), true);
+    assert.equal(await legend.getByRole("checkbox", { name: /Other faction's NPCs/ }).count(), st.counts.otherFaction ? 1 : 0);
+    const community = legend.getByRole("checkbox", { name: /Community finds/ });
+    await community.focus();
+    await page.keyboard.press("Space");
+    assert.equal(await community.isChecked(), false, "a focused layer toggles with Space");
+    await page.keyboard.press("Space");
+    assert.equal(await community.isChecked(), true);
+    const layout = () => page.evaluate(() => {
+      const bounds = (selector) => document.querySelector(selector).getBoundingClientRect().toJSON();
+      const root = document.querySelector("[data-world-map]");
+      return { root: bounds("[data-world-map]"), canvas: bounds("[data-wm-canvas]"), card: bounds("[data-wm-card]"), tools: bounds(".wm-tools"), overflow: root.scrollWidth - root.clientWidth };
+    });
+    const desktop = await layout();
+    assert.ok(desktop.tools.bottom <= desktop.canvas.top, "map controls do not cover the drawing");
+    assert.ok(desktop.card.left >= desktop.canvas.right && desktop.card.top <= desktop.canvas.top, "selection starts beside the desktop workspace");
+    assert.ok(desktop.canvas.width > desktop.card.width * 1.5 && desktop.overflow <= 1, "the desktop map is the widest surface");
     // Canvas really painted parchment (not blank).
     const painted = await page.evaluate(() => { const c = document.querySelector("[data-wm-canvas]"); const d = c.getContext("2d").getImageData(c.width / 2, c.height / 2, 1, 1).data; return [d[0], d[1], d[2]]; });
     assert.ok(painted[0] > 120 && painted[0] > painted[2], "parchment tone at map centre");
@@ -143,14 +175,44 @@ const { defaultState } = require("../src/core/validation.cjs");
     assert.match(await page.locator(".hover-card.hc-kind-npc").innerText(), /Trainer|skill/i);
     await page.screenshot({ path: path.join(capture, "world-map-npc-hover.png") });
     await page.mouse.move(5, 5);
+    // At the minimum native window width, the map stacks directly above the selection.
+    await setSize(1000, 720);
+    await page.waitForFunction(() => innerWidth < 1050);
+    const compact = await layout();
+    assert.ok(compact.card.top >= compact.canvas.bottom && compact.card.top - compact.canvas.bottom < 80, "compact selection immediately follows the map");
+    assert.ok(compact.tools.bottom <= compact.canvas.top && compact.canvas.width > compact.root.width * .9 && compact.overflow <= 1, "compact map and toolbar fit without overlap or sideways scrolling");
+    await page.locator("[data-wm-canvas]").focus();
+    await page.keyboard.press("0");
+    assert.equal(await page.evaluate(() => WorldMapView._state().view.zoom), 1);
+    await page.keyboard.press("=");
+    assert.ok(await page.evaluate(() => WorldMapView._state().view.zoom > 1), "the focused canvas still zooms from the keyboard");
+    const search = page.getByRole("searchbox", { name: "Find on the map" });
+    await search.fill("flight master");
+    await search.press("Enter");
+    const resultsPanel = page.getByRole("region", { name: "Map search results" });
+    await page.waitForFunction(() => document.activeElement.matches("[data-wm-results]"));
+    await resultsPanel.getByRole("button", { name: /Devrak/ }).press("Enter");
+    const selection = page.getByRole("region", { name: "Map selection" });
+    const heading = selection.getByRole("heading", { name: "Devrak" });
+    await heading.waitFor();
+    await page.waitForFunction(() => document.activeElement.matches("[data-wm-card]"));
+    const headingBounds = await heading.boundingBox();
+    assert.ok(headingBounds.y >= 0 && headingBounds.y + headingBounds.height <= await page.evaluate(() => innerHeight), "compact search selection is brought into view");
+    await page.screenshot({ path: path.join(capture, "world-map-compact-selection.png") });
+    await page.locator(".wm-head").scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(capture, "world-map-compact.png") });
+    await resultsPanel.getByRole("button", { name: "Clear search" }).press("Enter");
+    assert.equal(await search.evaluate((input) => input === document.activeElement), true);
+    await setSize(1500, 1000);
+    await page.waitForFunction(() => innerWidth > 1400);
     // Instance Atlas: difficulty colours, your quests, and the jump to the World Map.
     await navigate(page, "dungeons");
     const rfc = page.locator('[data-atlas-card="rfc"]');
     await rfc.waitFor();
     assert.match(await rfc.getAttribute("class"), /d-right/);
-    await rfc.getByText("Hidden Enemies").waitFor();
     await page.locator(".atlas-chip", { hasText: "Ragefire Chasm" }).waitFor();
     await rfc.locator("[data-atlas-open]").click();
+    await rfc.getByText("Hidden Enemies").waitFor();
     await rfc.locator(".atlas-bosses").getByText("Bazzalan").waitFor();
     await page.screenshot({ path: path.join(capture, "dungeon-atlas.png") });
     // Loot browser (0.30): boss sections with item tiles, hover cards and the wish list.
@@ -186,6 +248,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator("[data-wm-canvas]").screenshot({ path: path.join(capture, "world-map-heat.png") });
     await heatBox.screenshot({ path: path.join(capture, "world-map-heat-panel.png") });
     await page.locator("[data-wm-layer=heat]").uncheck(); assert.equal(await heatBox.isHidden(), true); await page.locator("[data-wm-layer=heat]").check();
+    assert.deepEqual(pageErrors, [], "no uncaught errors in the main renderer");
     console.log("World map smoke passed");
   } finally {
     clearTimeout(watchdog);

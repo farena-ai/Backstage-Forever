@@ -8,6 +8,9 @@ window.LedgerView = (() => {
   const QUALITY = ["poor", "common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom"];
   const LIMIT = 150;
   let data = null, error = "", loading = false, loadedAt = 0, mountedFor = null, route = "ledger", repFor = null;
+  let repFaction = null, focusRepFor = null, loadGeneration = 0;
+  let activeProfile = () => data?.activeProfileId;
+  let cdGroup = "readiness";
   const query = { items: "", prices: "" };
   const nowSec = () => Math.floor(Date.now() / 1000);
   function coins(copper) {
@@ -24,7 +27,8 @@ window.LedgerView = (() => {
     return `${Math.round(s / 86400)} days ago`;
   }
   function wait(seconds) {
-    const h = Math.floor(seconds / 3600), m = Math.ceil((seconds % 3600) / 60);
+    const minutes = Math.ceil(seconds / 60);
+    const h = Math.floor(minutes / 60), m = minutes % 60;
     if (h >= 48) return `${Math.floor(h / 24)}d ${h % 24}h`;
     return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
   }
@@ -39,9 +43,23 @@ window.LedgerView = (() => {
   function empty(what) {
     return `<p class="ldg-empty">${what} Log in with the addon on, then type <code>/reload</code> (or log out) once so the desktop app receives it.</p>`;
   }
+  const num = ' class="ldg-num"';
+  function table(id, label, columns, content, count = 0) {
+    const heading = `ldg-${id}-heading`;
+    return `<div class="ldg-table-frame${count > 10 ? " ldg-long" : ""}" data-table-heading="${heading}"><table class="ldg-table ldg-table-${id}" aria-labelledby="${heading}">
+      <caption id="${heading}" class="sr-only">${label}</caption><thead><tr>${columns.map(([text, numeric]) => `<th scope="col"${numeric ? num : ""}>${text}</th>`).join("")}</tr></thead>${content}</table></div>`;
+  }
+  const resultLimit = (count) => count > LIMIT ? `<p class="ldg-more">Showing ${LIMIT} of ${count}. Search to narrow it down.</p>` : "";
+  function rowGroup(label, columns, rows) {
+    return `<tbody><tr class="ldg-group"><th scope="rowgroup" colspan="${columns}">${esc(label)}</th></tr>${rows}</tbody>`;
+  }
+  function searchBar(id, heading, placeholder) {
+    const label = id === "items" ? "Search items" : "Search prices";
+    return `<div class="ldg-toolbar"><h2>${heading}</h2><label class="ldg-search"><span class="sr-only">${label}</span><input type="search" data-ledger-search="${id}" placeholder="${placeholder}" value="${esc(query[id])}" autocomplete="off" aria-label="${label}"></label></div>`;
+  }
   function hero(art, page, title, subtitle) {
     const cls = String(active()?.className || "").toLowerCase();
-    return PageHero.render({ art, eyebrow: `Ledger · ${page}`, title: esc(title), crest: PageHero.classCrest(cls), subtitle });
+    return PageHero.render({ art, eyebrow: `Ledger · ${page}`, title: esc(title), crest: PageHero.classCrest(cls), subtitle, compact: true });
   }
 
   // Bags & bank: one row per item, with who holds it where.
@@ -53,10 +71,9 @@ window.LedgerView = (() => {
   function itemRows() {
     const rows = search(data.items, query.items);
     if (!rows.length) return `<p class="ldg-empty">${data.items.length ? "Nothing your characters carry matches that." : "No items yet."}</p>`;
-    return `<ul class="ldg-items">${rows.slice(0, LIMIT).map((r) => `<li class="ldg-item" data-ledger-item="${r.itemId}">
-      <div class="ldg-item-head" data-card-item="${r.itemId}"><span class="ldg-gem q-${quality(r.quality)}" aria-hidden="true">◆</span><strong class="ldg-name q-${quality(r.quality)}">${esc(r.name)}</strong><span class="ldg-total">×${r.total.toLocaleString()}</span></div>
-      <ul class="ldg-holders">${r.holders.map(placeLine).join("")}</ul></li>`).join("")}</ul>
-      ${rows.length > LIMIT ? `<p class="ldg-more">Showing ${LIMIT} of ${rows.length}. Search to narrow it down.</p>` : ""}`;
+    return table("inventory", "Inventory", [["Item"], ["Quantity", true], ["Held by"]], `<tbody>${rows.slice(0, LIMIT).map((r) => `<tr data-ledger-item="${r.itemId}">
+      <th scope="row" data-card-item="${r.itemId}"><span class="ldg-name q-${quality(r.quality)}">${esc(r.name)}</span></th><td${num}><strong>${r.total.toLocaleString()}</strong></td>
+      <td><ul class="ldg-holders">${r.holders.map(placeLine).join("")}</ul></td></tr>`).join("")}</tbody>`, rows.length) + resultLimit(rows.length);
   }
   function seenChips() {
     return `<ul class="ldg-chips">${ledgered().map((c) => `<li><strong>${esc(c.name)}</strong> <span>bags ${esc(ago(c.bagsSeenAt))}</span> · <span>${c.bankSeenAt ? `bank ${esc(ago(c.bankSeenAt))}` : "bank never opened"}</span> · <span>${c.mailSeenAt ? `mail ${esc(ago(c.mailSeenAt))}` : "mailbox never opened"}</span></li>`).join("")}</ul>`;
@@ -66,16 +83,15 @@ window.LedgerView = (() => {
     if (!chars.length) return empty("No ledger yet.");
     const neverBank = chars.filter((c) => !c.bankSeenAt).length;
     return `<div class="ldg-summary"><div><strong>${data.items.length.toLocaleString()}</strong><span>different items</span></div><div><strong>${chars.length}</strong><span>characters</span></div><div><strong>${data.items.reduce((s, r) => s + r.total, 0).toLocaleString()}</strong><span>items in all</span></div><div><strong>${neverBank}</strong><span>bank${neverBank === 1 ? "" : "s"} never opened</span></div></div>
-      <section class="ldg-card"><h2>Last seen</h2><p class="ldg-note">Bags update whenever the addon saves. Bank and mail are as they were the last time you opened them in game.</p>${seenChips()}</section>
-      <section class="ldg-card"><h2>Search everything</h2><label class="ldg-search"><span class="sr-only">Search items</span><input type="search" data-ledger-search="items" placeholder="Search by item name, e.g. linen cloth" value="${esc(query.items)}" autocomplete="off" aria-label="Search items"></label><div data-ledger-list="items">${itemRows()}</div></section>`;
+      <section class="ldg-card">${searchBar("items", "Inventory", "Search items by name or ID")}<div data-ledger-list="items">${itemRows()}</div>
+      <details class="ldg-source"><summary>When bags, banks and mail were last seen</summary><p class="ldg-note">Bags update whenever the addon saves. Bank and mail reflect the last time you opened them in game.</p>${seenChips()}</details></section>`;
   }
 
   // Gold & prices.
   function priceRows() {
     const rows = search(data.prices, query.prices);
     if (!rows.length) return `<p class="ldg-empty">${data.prices.length ? "No remembered price matches that." : "Browse the Auction House in game with price memory on (/bf prices on) and the prices you see show up here."}</p>`;
-    return `<table class="ldg-table"><thead><tr><th>Item</th><th>Last seen, each</th><th>Lowest seen</th><th>When</th></tr></thead><tbody>${rows.slice(0, LIMIT).map((r) => `<tr data-ledger-price="${r.itemId}"><td data-card-item="${r.itemId}"><strong class="ldg-name q-${quality(r.quality)}">${esc(r.name)}</strong></td><td>${coins(r.latest)}</td><td>${coins(r.low)}${r.low < r.latest ? ` <small>${esc(ago(r.lowAt))}</small>` : ""}</td><td>${esc(ago(r.latestAt))}</td></tr>`).join("")}</tbody></table>
-      ${rows.length > LIMIT ? `<p class="ldg-more">Showing ${LIMIT} of ${rows.length}. Search to narrow it down.</p>` : ""}`;
+    return table("prices", "Price memory", [["Item"], ["Last seen, each", true], ["Lowest seen", true], ["Last seen when"]], `<tbody>${rows.slice(0, LIMIT).map((r) => `<tr data-ledger-price="${r.itemId}"><th scope="row" data-card-item="${r.itemId}"><span class="ldg-name q-${quality(r.quality)}">${esc(r.name)}</span></th><td${num}>${coins(r.latest)}</td><td${num}>${coins(r.low)}${r.low < r.latest ? `<small class="ldg-cell-note">${esc(ago(r.lowAt))}</small>` : ""}</td><td>${esc(ago(r.latestAt))}</td></tr>`).join("")}</tbody>`, rows.length) + resultLimit(rows.length);
   }
   // Gold goal (0.36, E4): the player's own target, progress across characters, a pace estimate.
   let goalNote = "";
@@ -97,7 +113,7 @@ window.LedgerView = (() => {
     if (!g) return `<section class="ldg-card ldg-goal" data-ledger-goal-card><h2>Gold goal</h2>${mountHint(v.mountSuggestion)}${inputs}</section>`;
     const pct = Math.round(v.progress * 100);
     return `<section class="ldg-card ldg-goal${v.reached ? " done" : ""}" data-ledger-goal-card><div class="ldg-goal-head"><h2>${esc(g.label || "Gold goal")}</h2><span>${coins(v.have)} of ${coins(g.copper)}</span></div>
-      <span class="ldg-bar ldg-goal-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Gold goal progress"><span data-w="${Math.max(2, pct)}"></span></span>
+      <span class="ldg-bar ldg-goal-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Gold goal progress"><span data-w="${v.progress * 100}"></span></span>
       <p class="ldg-note" data-ledger-goal-status>${v.reached ? "<strong>Goal reached.</strong> Mail the gold to the character who needs it if it's spread out." : `<strong>${coins(v.left)}</strong> to go${v.daysLeft ? `, about <strong>${v.daysLeft} day${v.daysLeft === 1 ? "" : "s"}</strong> at your recent pace` : ""}.`} Counts gold on ${v.characters} character${v.characters === 1 ? "" : "s"}${v.activeName ? `; ${esc(v.activeName)} has ${coins(v.activeMoney)}` : ""}.</p>
       <p class="ldg-note">${esc(pace)}</p>${inputs}</section>`;
   }
@@ -108,45 +124,85 @@ window.LedgerView = (() => {
   function gold() {
     const chars = ledgered();
     if (!chars.length) return empty("No gold or prices yet.");
-    const g = data.gold, top = Math.max(1, ...g.characters.map((c) => c.money));
-    return `${goalCard()}<div class="ldg-summary"><div><strong>${coins(g.total)}</strong><span>gold on ${g.characters.length} character${g.characters.length === 1 ? "" : "s"}</span></div><div><strong>${coins(data.value.total)}</strong><span>estimated auction value of what you carry</span></div><div><strong>${data.prices.length.toLocaleString()}</strong><span>prices remembered</span></div></div>
-      <div class="ldg-two"><section class="ldg-card"><h2>Gold per character</h2><ul class="ldg-goldlist">${g.characters.map((c) => `<li data-ledger-gold="${esc(c.profileId)}"><span class="ldg-who">${window.PageHero?.classCrest(c.className) ? `<img class="ldg-crest" src="${PageHero.classCrest(c.className)}" alt="" width="20" height="20">` : ""}${esc(c.name)}${c.faction ? ` <small>${esc(c.faction)}</small>` : ""}</span><span class="ldg-bar"><span data-w="${Math.max(2, Math.round((c.money / top) * 100))}"></span></span><span class="ldg-amount">${coins(c.money)}</span></li>`).join("")}</ul>
-        ${chars.some((c) => c.mail?.money) ? `<p class="ldg-note">Waiting in the mail: ${chars.filter((c) => c.mail?.money).map((c) => `${esc(c.name)} ${coins(c.mail.money)}`).join(", ")}.</p>` : ""}</section>
-      <section class="ldg-card"><h2>What your things are worth</h2>${data.value.items.length ? `<ul class="ldg-worth">${data.value.items.slice(0, 15).map((v) => `<li data-card-item="${v.itemId}"><strong class="ldg-name q-${quality(v.quality)}">${esc(v.name)}</strong><span>${v.count.toLocaleString()} × ${coins(v.unit)}</span><span class="ldg-amount">${coins(v.value)}</span></li>`).join("")}</ul><p class="ldg-note">From the last price you saw at auction; actual sales vary.</p>` : `<p class="ldg-empty">Nothing you carry has a remembered auction price yet.</p>`}</section></div>
-      <section class="ldg-card"><h2>Price memory</h2><p class="ldg-note">Lowest buyout per item on Auction House pages you opened yourself. The addon never searches or buys.</p><label class="ldg-search"><span class="sr-only">Search prices</span><input type="search" data-ledger-search="prices" placeholder="Search remembered prices" value="${esc(query.prices)}" autocomplete="off" aria-label="Search prices"></label><div data-ledger-list="prices">${priceRows()}</div></section>`;
+    const g = data.gold;
+    const balances = table("balances", "Gold per character", [["Character"], ["On hand", true]], `<tbody>${g.characters.map((c) => `<tr data-ledger-gold="${esc(c.profileId)}"><th scope="row">${esc(c.name)}${c.faction ? ` <small>${esc(c.faction)}</small>` : ""}</th><td${num}>${coins(c.money)}</td></tr>`).join("")}</tbody>`);
+    const worth = table("value", "Estimated auction value", [["Item"], ["Qty", true], ["Each", true], ["Value", true]], `<tbody>${data.value.items.slice(0, 15).map((v) => `<tr><th scope="row" data-card-item="${v.itemId}"><span class="ldg-name q-${quality(v.quality)}">${esc(v.name)}</span></th><td${num}>${v.count.toLocaleString()}</td><td${num}>${coins(v.unit)}</td><td${num}>${coins(v.value)}</td></tr>`).join("")}</tbody>`);
+    const mail = chars.filter((c) => c.mail?.money);
+    return `<div class="ldg-summary"><div><strong>${coins(g.total)}</strong><span>gold on ${g.characters.length} character${g.characters.length === 1 ? "" : "s"}</span></div><div><strong>${data.value.items.length ? coins(data.value.total) : "—"}</strong><span>estimated auction value</span></div><div><strong>${data.prices.length.toLocaleString()}</strong><span>prices remembered</span></div></div>
+      <section class="ldg-card">${searchBar("prices", "Price memory", "Search remembered prices")}<p class="ldg-note">Lowest buyout per item on Auction House pages you opened. The addon never searches or buys.</p><div data-ledger-list="prices">${priceRows()}</div></section>
+      <div class="ldg-two"><section class="ldg-card"><h2>Gold per character</h2>${balances}${mail.length ? `<p class="ldg-note ldg-after">Waiting in the mail: ${mail.map((c) => `${esc(c.name)} ${coins(c.mail.money)}`).join(", ")}.</p>` : ""}</section>
+      <section class="ldg-card"><h2>Estimated auction value</h2>${data.value.items.length ? `${worth}<p class="ldg-note ldg-after">Based on last seen prices; actual sales vary.${data.value.items.length > 15 ? " Showing the 15 highest-value items." : ""}</p>` : `<p class="ldg-empty">Nothing you carry has a remembered auction price yet.</p>`}</section></div>${goalCard()}`;
   }
 
   // Reputation: one character at a time; their own side's factions first.
   function reputation() {
     const chars = ledgered().filter((c) => c.reputations);
-    if (!chars.length) return empty("No reputations yet.");
-    const pick = chars.find((c) => c.profileId === repFor) || chars.find((c) => c.profileId === data.activeProfileId) || chars[0];
+    if (!chars.length) return `<section class="ldg-card"><h2 tabindex="-1" data-ledger-rep-heading>Faction standings</h2>${empty("No reputations yet.")}</section>`;
+    if (focusRepFor && !chars.some(c => c.profileId === focusRepFor)) return `<section class="ldg-card"><h2 tabindex="-1" data-ledger-rep-heading>Reputation plan</h2>${empty("No saved standings for this character.")}</section>`;
+    const pick = chars.find((c) => c.profileId === repFor) || chars.find((c) => c.profileId === activeProfile()) || chars[0];
     const groups = [["Alliance", pick.reputations.factions.filter((f) => f.side === "Alliance")], ["Horde", pick.reputations.factions.filter((f) => f.side === "Horde")], ["Other factions", pick.reputations.factions.filter((f) => !f.side)]];
     if (pick.faction === "Horde") groups.unshift(groups.splice(1, 1)[0]);
-    return `<section class="ldg-card"><div class="ldg-pick"><label>Character <select data-ledger-rep aria-label="Reputation of">${chars.map((c) => `<option value="${esc(c.profileId)}"${c === pick ? " selected" : ""}>${esc(c.name)}${c.faction ? ` · ${esc(c.faction)}` : ""}</option>`).join("")}</select></label><small>Seen ${esc(ago(pick.reputations.seenAt))}. Collapsed groups in your reputation window keep their last values.</small></div>
-      ${groups.filter(([, list]) => list.length).map(([name, list]) => `<h3 class="ldg-group">${esc(name)}</h3><ul class="ldg-reps">${list.map((f) => `<li class="ldg-rep st-${f.standing}" data-ledger-faction="${f.id}"><span class="ldg-fname">${esc(f.name)}</span><span class="ldg-bar"><span data-w="${Math.round(f.progress * 100)}"></span></span><span class="ldg-stand"><strong>${esc(f.standingName)}</strong> ${f.standing < 8 ? `${f.current.toLocaleString()} / ${f.need.toLocaleString()}` : ""}</span></li>`).join("")}</ul>`).join("")}</section>
-      ${repUp(pick)}`;
+    const count = pick.reputations.factions.length;
+    const rows = groups.filter(([, list]) => list.length).map(([name, list]) => rowGroup(name, 3, list.map((f) => `<tr data-ledger-faction="${f.id}"><th scope="row">${esc(f.name)}</th><td>${esc(f.standingName)}</td><td${num}>${f.standing < 8 ? `${f.current.toLocaleString()} / ${f.need.toLocaleString()}` : "Max"}</td></tr>`).join(""))).join("");
+    return `<section class="ldg-card"><div class="ldg-toolbar"><h2>Faction standings</h2><label class="ldg-pick">Character <select data-ledger-rep aria-label="Reputation of">${chars.map((c) => `<option value="${esc(c.profileId)}"${c === pick ? " selected" : ""}>${esc(c.name)}${c.faction ? ` · ${esc(c.faction)}` : ""}</option>`).join("")}</select></label></div>
+      <p class="ldg-note">Seen ${esc(ago(pick.reputations.seenAt))}. Collapsed groups in game keep their last values.</p>${count ? table("factions", "Faction standings", [["Faction"], ["Standing"], ["Progress to next", true]], rows, count) : `<p class="ldg-empty">No factions recorded for this character.</p>`}</section>
+      ${repPlan(pick)}`;
   }
-  // 1.3 (J12): the quests that raise each faction most, that this character can still do.
-  function repUp(c) {
-    const list = (c.repAdvice?.factions || []).filter((f) => f.quests.length).slice(0, 6);
-    if (!list.length) return "";
-    return `<section class="ldg-card ldg-repup" data-ledger-repup><h2>Fastest ways up</h2><p class="ldg-note">Quests ${esc(c.name)} hasn't done yet that give the most reputation, from the bundled quest data. Points are before any bonus.</p>
-      <div class="ldg-repup-grid">${list.map((f) => `<div class="ldg-repup-f"><h3>${esc(f.name)} <small>${esc(f.standingName || "")}${f.toNext != null ? ` · ${f.toNext.toLocaleString()} to ${esc(f.next)}` : ""}</small></h3>
-        ${f.nextUnlock ? `<p class="ldg-unlock">${esc(f.nextUnlock)}</p>` : ""}
-        <ol>${f.quests.map((q) => `<li><strong>${esc(q.title)}</strong>${q.level ? ` <small>level ${q.level}</small>` : ""} <span class="ldg-pts">+${q.points}</span>${q.giver?.name ? `<br><small>${q.starts ? "From" : "Hand in to"} ${esc(q.giver.name)}${q.giver.zone ? `, ${esc(q.giver.zone)}` : ""}${q.starts ? "" : " (part of a chain)"}</small>` : ""}</li>`).join("")}</ol></div>`).join("")}</div></section>`;
+  function repPlan(c) {
+    const rows = c.reputations.factions;
+    const f = rows.find(row => row.id === repFaction) || (repFaction === null ? rows[0] : null);
+    const heading = `<h2 tabindex="-1" data-ledger-rep-heading>${f ? `${esc(f.name)} reputation plan` : "Reputation plan"}</h2>`;
+    const picker = rows.length ? `<label class="ldg-pick">Plan for faction <select data-ledger-rep-faction>${f ? "" : '<option value="" selected disabled>Choose a saved faction</option>'}${rows.map(row => `<option value="${row.id}"${row === f ? " selected" : ""}>${esc(row.name)}</option>`).join("")}</select></label>` : "";
+    if (!f) return `<section class="ldg-card" data-ledger-rep-plan>${heading}${picker}<p>No saved standing for the selected faction. Expand its group in WoW and save again.</p></section>`;
+    const advice = c.repAdvice;
+    const list = advice?.factions.find(row => row.id === f.id)?.quests || [];
+    const isActive = c.profileId === activeProfile();
+    const browseOnly = advice?.browseOnly === true;
+    const reference = browseOnly
+      ? `Browse only · Forever reference build ${esc(advice.referenceBuild)} does not match ${advice.characterBuild ? `saved build ${esc(advice.characterBuild)}` : "an unknown saved build"}. Quest matches are not checked against your log or eligibility.`
+      : advice ? `Quest matches and requirements come from Forever reference build ${esc(advice.referenceBuild)}. In-log status comes from this character’s last save.` : "No quest reference available.";
+    const view = window.ObjectiveView;
+    const next = f.standing < 8 ? view?.standingName(f.standing + 1) : null;
+    const pin = next && (!f.side || !c.faction || f.side === c.faction) && view.pin({ kind: "reputation", factionId: f.id, targetStanding: f.standing + 1 }, c.profileId);
+    return `<section class="ldg-card" data-ledger-rep-plan>${heading}${picker}
+      <p class="ldg-note">Saved Ledger: ${esc(f.standingName)}${f.observedAt ? ` · seen ${esc(ago(f.observedAt))}` : " · observation time unknown"}${next ? ` · ${Math.max(0, f.need - f.current).toLocaleString()} to ${esc(next)}` : ""}.</p>
+      ${pin || (next && !isActive ? '<p class="ldg-note">Switch the active character to pin their target.</p>' : "")}
+      <h3>Quests and turn-ins</h3><p class="ldg-note">${reference} Current server reward amounts and unlisted requirements are unknown.</p>
+      ${list.length && !isActive && !browseOnly ? `<p class="ldg-note">Switch the active character to ${esc(c.name)} to open quests from this plan.</p>` : ""}
+      ${list.length ? `<ul class="ldg-rep-quests">${list.map(q => repQuest(q, isActive && !browseOnly ? c.profileId : null, browseOnly)).join("")}</ul>` : '<p class="ldg-empty">No matching quests in the available reference. Check eligibility and rewards in game.</p>'}</section>`;
+  }
+  function repQuest(q, profileId, browseOnly) {
+    const status = browseOnly ? "Reference only" : q.status === "turn-in" ? "Saved log: ready to turn in" : q.status === "in-log" ? "Saved log: in progress" : "Reference lead: check availability in game";
+    const gates = [q.minLevel ? `Minimum level ${q.minLevel}` : null, q.sides.length ? q.sides.join(" / ") : null].filter(Boolean).join(" · ");
+    const from = q.linkedFrom.map(p => `${p.title} (${p.completed === true ? "completion saved" : p.completed === false ? "not in completed history" : "completion unknown"})`).join("; ");
+    const place = q.status === "turn-in" ? q.turnIn : q.giver;
+    return `<li><strong>${esc(q.title)}</strong><small>${status}${gates ? ` · ${esc(gates)}` : ""}</small>
+      ${from ? `<small>Reported chain link from ${esc(from)}.</small>` : ""}
+      ${place ? `<small>${q.status === "turn-in" ? "Hand in to" : "Starts with"} ${esc(place.name)}${place.zone ? `, ${esc(place.zone)}` : ""} (reference)</small>` : ""}
+      ${profileId ? `<button type="button" data-quest-open="${q.id}" data-ledger-quest-profile="${esc(profileId)}" aria-label="Open quest: ${esc(q.title)}">Open quest</button>` : ""}</li>`;
   }
 
   // Cooldowns: every character's profession cooldowns, ready now or when.
+  function cooldownRows(chars, t) {
+    const entries = chars.flatMap((c) => c.cooldowns.map((x) => ({ c, x })));
+    const byTime = (a, b) => a.x.readyAt - b.x.readyAt;
+    const groups = cdGroup === "character"
+      ? [...chars].sort((a, b) => a.name.localeCompare(b.name)).map((c) => [c.name, c.cooldowns.map((x) => ({ c, x })).sort(byTime)])
+      : [["Ready now", entries.filter(({ x }) => x.readyAt <= t)], ["Waiting", entries.filter(({ x }) => x.readyAt > t).sort(byTime)]];
+    const rows = groups.filter(([, list]) => list.length).map(([label, list]) => rowGroup(label, 4, list.map(({ c, x }) => {
+      const left = Math.max(0, x.readyAt - t);
+      return `<tr data-ledger-cd="${esc(c.profileId)}"><th scope="row">${esc(x.name)}</th><td>${esc(c.name)}</td><td>${esc(x.profession)}</td><td${num}>${left ? `Ready in ${esc(wait(left))}` : '<strong class="ldg-ready">Ready</strong>'}</td></tr>`;
+    }).join(""))).join("");
+    return table("cooldowns", "Profession cooldowns", [["Cooldown"], ["Character"], ["Profession"], ["Status", true]], rows, entries.length);
+  }
   function cooldowns() {
     const chars = ledgered();
     if (!chars.length) return empty("No cooldowns yet.");
     const withCd = chars.filter((c) => c.cooldowns.length), t = nowSec();
     const ready = withCd.reduce((n, c) => n + c.cooldowns.filter((x) => x.readyAt <= t).length, 0);
-    return `<div class="ldg-summary"><div><strong>${ready}</strong><span>ready now</span></div><div><strong>${withCd.reduce((n, c) => n + c.cooldowns.length, 0)}</strong><span>cooldowns tracked</span></div><div><strong>${withCd.length}</strong><span>crafting characters</span></div></div>
-      ${withCd.length ? `<div class="ldg-cds">${withCd.map((c) => `<section class="ldg-card" data-ledger-cd="${esc(c.profileId)}"><h2>${esc(c.name)}</h2><ul>${c.cooldowns.map((x) => { const left = Math.max(0, x.readyAt - t); return `<li class="${left ? "wait" : "ready"}"><span><strong>${esc(x.name)}</strong> <small>${esc(x.profession)}</small></span><span class="ldg-when">${left ? `Ready in ${esc(wait(left))}` : "Ready"}</span></li>`; }).join("")}</ul></section>`).join("")}</div>`
-        : `<p class="ldg-empty">None of your characters has a tracked cooldown: Alchemy transmutes, Mooncloth (Tailoring) or the Salt Shaker (Leatherworking).</p>`}
-      <p class="ldg-note">Times come from the game when the addon last saved; they keep counting down here.</p>`;
+    return `<section class="ldg-card"><div class="ldg-toolbar"><h2>Cooldown queue <span class="ldg-count" data-ledger-ready>${ready} ready now</span></h2>${withCd.length ? `<label class="ldg-pick">Group by <select data-ledger-cd-group aria-label="Group cooldowns by"><option value="readiness"${cdGroup === "readiness" ? " selected" : ""}>Readiness</option><option value="character"${cdGroup === "character" ? " selected" : ""}>Character</option></select></label>` : ""}</div>
+      ${withCd.length ? `<div data-ledger-cd-list>${cooldownRows(withCd, t)}</div><p class="ldg-note ldg-after">Readiness is calculated from the last saved in-game times.</p>`
+        : `<p class="ldg-empty">None of your characters has a tracked cooldown: Alchemy transmutes, Mooncloth (Tailoring) or the Salt Shaker (Leatherworking).</p>`}</section>`;
   }
 
   const PAGES = {
@@ -166,24 +222,72 @@ window.LedgerView = (() => {
     return `<section class="ledger-page" data-ledger="${route}">${hero(art, label, title, subtitle)}<div data-ledger-body>${body()}</div></section>`;
   }
   function sizes(root) { for (const el of root.querySelectorAll("[data-w]")) el.style.width = `${Number(el.dataset.w)}%`; }
+  function syncScroll(frame) {
+    const vertical = frame.scrollHeight > frame.clientHeight + 1;
+    const scrollable = vertical || frame.scrollWidth > frame.clientWidth + 1;
+    frame.toggleAttribute("data-scroll-y", vertical);
+    if (scrollable) {
+      frame.tabIndex = 0;
+      frame.setAttribute("role", "region");
+      frame.setAttribute("aria-labelledby", frame.dataset.tableHeading);
+    } else {
+      frame.removeAttribute("tabindex");
+      frame.removeAttribute("role");
+      frame.removeAttribute("aria-labelledby");
+    }
+  }
+  let tableResize;
+  function watchTables(root) {
+    tableResize?.disconnect();
+    for (const frame of root?.querySelectorAll(".ldg-table-frame") || []) {
+      syncScroll(frame);
+      tableResize ??= new ResizeObserver((entries) => {
+        for (const { target } of entries) if (target.isConnected) syncScroll(target);
+      });
+      tableResize.observe(frame);
+    }
+  }
   async function load() {
     if (loading) return; loading = true;
-    try { data = await api.ledger(); error = ""; } catch (e) { error = e.message || "Your ledger is unavailable."; }
+    const generation = loadGeneration;
+    try { const fresh = await api.ledger(); if (generation === loadGeneration) { data = fresh; error = ""; } }
+    catch (e) { if (generation === loadGeneration) error = e.message || "Your ledger is unavailable."; }
     loading = false; loadedAt = Date.now();
     const root = document.querySelector("[data-ledger]");
+    if (generation !== loadGeneration) { if (root) load(); return; }
     if (root) { root.outerHTML = page(root.dataset.ledger); mountedFor = null; mounted(); }
+    const focus = focusRepFor === activeProfile() && route === "ledger-reputation" && document.querySelector("[data-ledger-rep-heading]");
+    focusRepFor = null;
+    if (focus) { focus.scrollIntoView({ block: "start" }); focus.focus({ preventScroll: true }); }
   }
   function mounted() {
     const root = document.querySelector("[data-ledger]");
-    if (!root || mountedFor === root) return;
-    mountedFor = root; sizes(root);
+    if (!root) { mountedFor = null; watchTables(null); return; }
+    if (mountedFor === root) return;
+    mountedFor = root; sizes(root); watchTables(root);
     for (const input of root.querySelectorAll("[data-ledger-search]")) input.addEventListener("input", () => {
       const kind = input.dataset.ledgerSearch;
       query[kind] = input.value.slice(0, 100);
       const list = root.querySelector(`[data-ledger-list="${kind}"]`);
-      if (list && data) { list.innerHTML = kind === "items" ? itemRows() : priceRows(); sizes(list); }
+      if (list && data) { list.innerHTML = kind === "items" ? itemRows() : priceRows(); watchTables(root); }
     });
-    root.querySelector("[data-ledger-rep]")?.addEventListener("change", (e) => { repFor = e.target.value; root.outerHTML = page(route); mountedFor = null; mounted(); });
+    root.querySelector("[data-ledger-rep]")?.addEventListener("change", (e) => {
+      repFor = e.target.value; repFaction = null; focusRepFor = null; root.outerHTML = page(route); mountedFor = null; mounted();
+      document.querySelector("[data-ledger-rep]")?.focus({ preventScroll: true });
+    });
+    root.querySelector("[data-ledger-rep-faction]")?.addEventListener("change", (e) => {
+      // page() escapes saved titles and names; IDs are validated integers.
+      repFaction = Number(e.target.value); root.outerHTML = page(route); mountedFor = null; mounted();
+      document.querySelector("[data-ledger-rep-faction]")?.focus({ preventScroll: true });
+    });
+    root.querySelector("[data-ledger-cd-group]")?.addEventListener("change", (e) => {
+      cdGroup = e.target.value;
+      const t = nowSec(), chars = ledgered().filter((c) => c.cooldowns.length);
+      root.querySelector("[data-ledger-ready]").textContent = `${chars.reduce((n, c) => n + c.cooldowns.filter((x) => x.readyAt <= t).length, 0)} ready now`;
+      // The table templates escape player data before inserting it.
+      root.querySelector("[data-ledger-cd-list]").innerHTML = cooldownRows(chars, t);
+      watchTables(root);
+    });
     const repaint = () => { const r = document.querySelector("[data-ledger]"); if (r) { r.outerHTML = page(route); mountedFor = null; mounted(); } };
     const setGoal = async (input) => {
       try { data.goal = await api.setGoldGoal(input); goalNote = ""; } catch (e) { goalNote = e.message || "That goal could not be saved."; }
@@ -199,5 +303,9 @@ window.LedgerView = (() => {
     // Each visit reads the newest saved ledger (a game save may have arrived since).
     if (!loading && (!data || Date.now() - loadedAt > 3000)) load();
   }
-  return { bags: () => page("ledger"), gold: () => page("ledger-gold"), reputation: () => page("ledger-reputation"), cooldowns: () => page("ledger-cooldowns"), page, mounted, invalidate: () => { data = null; }, _state: () => ({ data, query, route }) };
+  function selectReputation(profileId, factionId) {
+    repFor = profileId; repFaction = factionId; focusRepFor = profileId;
+    data = null; error = ""; loadGeneration++;
+  }
+  return { init: readActive => { activeProfile = readActive; }, bags: () => page("ledger"), gold: () => page("ledger-gold"), reputation: () => page("ledger-reputation"), cooldowns: () => page("ledger-cooldowns"), page, mounted, selectReputation, invalidate: () => { data = null; }, _state: () => ({ data, query, route }) };
 })();

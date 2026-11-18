@@ -131,5 +131,21 @@ function BackstageForeverBuildCoach(character,options)
     result.status=#rows>0 and 'ready' or questStatus=='unavailable' and not pc and 'unavailable' or 'empty'
     result.recommendation=rows[1] and rows[1].value or nil
     for i=2,math.min(3,#rows)do result.alternatives[#result.alternatives+1]=rows[i].value end
+    -- Optional, not a new primary or a route. Quest log headings and reference
+    -- points cannot establish where a current hand-in actually is.
+    local primary=result.recommendation
+    local map=number(c.location.mapId,1,2147483647)
+    if map and primary and mode~='professions' then
+        for _,step in ipairs(questSteps)do
+            local marker=step.destination
+            local id='on-my-way:'..step.questId
+            if step.phase=='t' and step.source=='game' and marker and marker.mapId==map
+                and meaningful(step.title) and 'quest:'..step.questId~=primary.id then
+                result.onMyWay={id=id,questId=step.questId,title=step.title,
+                    signature=signature(id,{step.title,map,marker.x,marker.y})}
+                break
+            end
+        end
+    end
     return result
 end

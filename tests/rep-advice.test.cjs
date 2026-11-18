@@ -2,7 +2,7 @@
 // 1.3 (J12): reputation advice from the bundled quest data.
 const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), path = require("node:path");
-const { repAdvice, unlockOf, TIER_POINTS } = require("../src/core/rep-advice.cjs");
+const { repAdvice } = require("../src/core/rep-advice.cjs");
 const pack = {
   quests: {
     1: { id: 1, title: "Big One", level: 12, minLevel: 10, sides: ["Horde"], givers: [{ id: 10, kind: "npc" }], rewards: { reputation: [{ factionId: 76, tier: 7 }] } },
@@ -18,20 +18,17 @@ const pack = {
 const horde = { level: 12, faction: "Horde", history: { completedIdsKnown: true, completedIds: [3] },
   ledger: { reputations: { seenAt: 1, factions: [{ id: 76, name: "Orgrimmar", standing: 5, min: 3000, max: 9000, value: 4000 }, { id: 81, name: "Thunder Bluff", standing: 8, min: 42000, max: 43000, value: 42999 }] } } };
 
-test("fastest ways up: biggest rewards first, starting quests before chain middles, nothing done, wrong side, too high or tiny", () => {
+test("reference leads filter completed and known ineligible quests and distinguish givers from turn-ins", () => {
   const r = repAdvice(horde, pack);
-  assert.equal(r.factions.length, 1, "Exalted factions are left out");
   const f = r.factions[0];
-  assert.deepEqual(f.quests.map((q) => q.title), ["Big One", "Middle Of Chain", "Small One"]);
-  assert.equal(f.quests[0].points, TIER_POINTS[7]);
-  assert.deepEqual(f.quests[0].giver, { name: "Thrall", mapId: 1454, zone: f.quests[0].giver.zone, x: 0.3, y: 0.4 });
-  assert.equal(f.quests[1].starts, false, "hand-in NPC shown for a chain middle");
-  assert.equal(f.quests[1].giver.name, "Nazgrel");
-  assert.equal(f.toNext, 5000);
-  assert.equal(f.next, "Honored");
-  assert.match(f.nextUnlock, /10% off at Orgrimmar vendors/);
+  assert.deepEqual(f.quests.map((q) => q.title), ["Big One", "Small One", "Middle Of Chain", "Tiny"]);
+  assert.equal(f.quests[0].giver.name, "Thrall");
+  assert.equal(f.quests[0].minLevel, 10);
+  assert.deepEqual(f.quests[0].sides, ["Horde"]);
+  assert.equal(f.quests[2].giver, null);
+  assert.equal(f.quests[2].turnIn.name, "Nazgrel");
+  assert.equal(f.nextUnlock, undefined);
   assert.equal(repAdvice({ level: 5 }, pack), null, "no reputations, no advice");
-  assert.match(unlockOf(72, 8), /Stormwind's mounts/);
 });
 
 test("real data: a level 12 Horde character gets Orgrimmar quests with givers and zones", () => {
@@ -39,14 +36,37 @@ test("real data: a level 12 Horde character gets Orgrimmar quests with givers an
   const r = repAdvice({ ...horde, history: { completedIdsKnown: true, completedIds: [] } }, real);
   const org = r.factions.find((f) => f.id === 76);
   assert.ok(org.quests.length >= 3);
-  assert.ok(org.quests.every((q) => q.points >= 25));
+  assert.ok(org.quests.every((q) => q.status === "reference" && q.points === undefined));
   assert.ok(org.quests.some((q) => q.giver?.zone), "at least one quest says where");
 });
 
-test("wiring: the ledger handler adds advice and Ledger → Reputation shows Fastest ways up", () => {
+test("wiring: the ledger handler adds advice and Ledger → Reputation shows the faction plan", () => {
   const main = fs.readFileSync(path.join(__dirname, "../src/main.cjs"), "utf8");
-  assert.match(main, /c\.repAdvice = repAdvice\(p, pack\)/);
+  assert.match(main, /knowledge\.index\(p\)/);
   const r = fs.readFileSync(path.join(__dirname, "../src/renderer/ledger.js"), "utf8");
-  assert.match(r, /Fastest ways up/);
-  assert.match(r, /\$\{repUp\(pick\)\}/);
+  assert.match(r, /Quests and turn-ins/);
+  assert.match(r, /\$\{repPlan\(pick\)\}/);
+});
+
+test("saved repeat turn-ins come first, while reference candidates disclose links and unknown rewards", () => {
+  const source = structuredClone(pack);
+  source.quests[6].nextQuestId = 2;
+  source.quests[7].rewards.reputation[0].amount = -25;
+  const rows = repAdvice({ ...horde, quests: [{ id: 3, title: "Saved repeat", complete: true }, { id: 6, title: "Saved chain", complete: false }] }, source).factions[0].quests;
+  assert.deepEqual(rows.map(q => [q.id, q.status]), [[3, "turn-in"], [6, "in-log"], [1, "reference"], [2, "reference"]]);
+  assert.deepEqual(rows.find(q => q.id === 2).linkedFrom, [{ id: 6, title: "Middle Of Chain", completed: false }]);
+  assert.equal(rows[0].title, "Saved repeat");
+  assert.equal(rows[0].points, undefined, "a reference reward is not an observed server amount");
+});
+
+test("browse-only reputation reference does not use saved quest IDs, history, or eligibility", () => {
+  const source = structuredClone(pack);
+  source.quests[6].nextQuestId = 2;
+  const profile = { ...horde, level: 1, quests: [{ id: 3, title: "Unmatched log title", complete: true }] };
+  const advice = repAdvice(profile, source, { browseOnly: true, perFaction: 10 });
+  const rows = advice.factions[0].quests;
+  assert.equal(advice.browseOnly, true);
+  assert.deepEqual(rows.map(q => q.id).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7]);
+  assert.ok(rows.every(q => q.status === "reference" && q.linkedFrom.length === 0));
+  assert.equal(rows.find(q => q.id === 3).title, "Done Already");
 });

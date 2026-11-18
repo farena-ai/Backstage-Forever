@@ -52,7 +52,7 @@ function place(v, mail) {
 }
 function reputations(v) {
   obj(v);
-  const factions = [], seen = new Set();
+  const factions = [], seen = new Set(), seenAt = int(v.seenAt, 0, MAX_T);
   for (const f of list(v.factions, LIMITS.factions)) {
     obj(f);
     const id = int(f.id, 1, 100000);
@@ -60,9 +60,13 @@ function reputations(v) {
     seen.add(id);
     const min = int(f.min, -100000, 100000), max = int(f.max, -100000, 100000);
     if (max <= min) fail();
-    factions.push({ id, name: text(f.name), standing: int(f.standing, 1, 8), min, max, value: int(f.value, -100000, 100000) });
+    const observedAt = absent(f.observedAt) ? undefined : int(f.observedAt, 1, seenAt);
+    const observedBuild = absent(f.observedBuild) ? undefined : f.observedBuild;
+    if (observedBuild !== undefined && (observedAt === undefined || typeof observedBuild !== "string" || !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/.test(observedBuild))) fail();
+    factions.push({ id, name: text(f.name), standing: int(f.standing, 1, 8), min, max, value: int(f.value, -100000, 100000),
+      ...(observedAt === undefined ? {} : { observedAt }), ...(observedBuild === undefined ? {} : { observedBuild }) });
   }
-  return { seenAt: int(v.seenAt, 0, MAX_T), factions };
+  return { seenAt, factions };
 }
 function cooldowns(v) {
   const out = [], seen = new Set();
@@ -243,7 +247,7 @@ function reputationView(profile) {
   const order = (f) => (f.side && f.side === mine ? 0 : f.side ? 2 : 1);
   const factions = r.factions.map((f) => {
     const need = f.max - f.min, current = Math.min(need, Math.max(0, f.value - f.min));
-    return { id: f.id, name: f.name, standing: f.standing, standingName: STANDINGS[f.standing], current, need, progress: need ? current / need : 0, side: sideOf(f.id), value: f.value };
+    return { id: f.id, name: f.name, standing: f.standing, standingName: STANDINGS[f.standing], current, need, progress: need ? current / need : 0, side: sideOf(f.id), value: f.value, observedAt: f.observedAt ?? null };
   }).sort((a, b) => order(a) - order(b) || b.standing - a.standing || b.progress - a.progress || a.name.localeCompare(b.name));
   return { seenAt: r.seenAt, factions };
 }

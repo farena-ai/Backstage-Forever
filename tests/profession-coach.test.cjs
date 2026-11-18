@@ -170,6 +170,50 @@ test("source kinds, build, context and limited stock stay qualified, missing ref
   assert.equal(m.planning.checklistAvailable, true);
   assert.equal(m.acquisitionReference.status, "unavailable");
 });
+test("next rank checkpoint suggests a bounded batch without changing the selected attempts", () => {
+  const s = seed();
+  s.profiles[0].readiness.workshop.recipes.items[0].difficulty = "medium";
+  const m = build(s, { recipeId: 100 });
+  assert.deepEqual(m.nextRankCheckpoint, {
+    kind: "plan-attempts", targetRank: 21, suggestedAttempts: 2,
+  });
+  assert.equal(m.selection.crafts, 1);
+  assert.equal(m.shoppingRows[0].required, 2);
+  assert.equal(m.shoppingList.rows[0].workshopStatus, "covered");
+});
+test("workshop separates alt leads from exact shortfalls without pooling inventory", () => {
+  const s = seed(), w = s.profiles[0].readiness.workshop;
+  w.recipes.items[0].reagents.push({ itemId: 2447, required: 2 }, { itemId: 2320, required: 1 });
+  const bags = { seenAt: Date.parse(at) / 1000, complete: true, items: [{ id: 2447, n: 1 }] };
+  s.profiles.push({ ...s.profiles[0], id: "alt", name: "Alt", ledger: { schemaVersion: 1, bags } });
+  const m = build(s, { recipeId: 100 });
+  assert.deepEqual(m.shoppingList.rows.map((r) => [r.workshopStatus, r.missing]), [
+    ["covered", 0], ["alt-transfer", 2], ["missing", 1],
+  ]);
+  assert.equal(m.shoppingList.rows[1].elsewhere[0].name, "Alt");
+  assert.equal(m.recommendation.kind, "materials-needed");
+  for (const materials of [undefined, { ...w.materials, complete: false },
+    { ...w.materials, observedAt: "2026-11-10T12:00:00.000Z" }]) {
+    w.materials = materials;
+    if (!materials) delete w.materials;
+    const uncertain = build(s, { recipeId: 100 });
+    assert.ok(uncertain.shoppingList.rows.every((r) => r.workshopStatus === "unknown" && r.missing === null));
+    assert.equal(uncertain.shoppingList.rows[1].elsewhere[0].bags, 1);
+  }
+});
+
+test("checkpoint does not suggest attempts for unobserved color, stale recipes, or a reached cap", () => {
+  const s = seed(), w = s.profiles[0].readiness.workshop;
+  const checkpoint = () => build(s, { recipeId: 100 }).nextRankCheckpoint;
+  assert.deepEqual(checkpoint(), { kind: "observe", targetRank: 21, suggestedAttempts: null });
+  w.recipes.items[0].difficulty = "optimal";
+  w.recipes.observedAt = "2026-11-10T12:00:00.000Z";
+  assert.equal(checkpoint().suggestedAttempts, null);
+  w.recipes.observedAt = at;
+  w.professions.items[0].rank = 75;
+  assert.deepEqual(checkpoint(), { kind: "check-training", targetRank: null, suggestedAttempts: null });
+  assert.equal(build(s, { recipeId: 100 }).recommendation.kind, "profession-cap");
+});
 module.exports = { seed };
 
 test("exact IDs preserve corpse context, limited stock, faction and missing coverage without fabricated availability", () => {

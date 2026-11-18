@@ -416,6 +416,10 @@ app.whenReady().then(async () => {
   });
   handle("gameStatus", () => game.status());
   handle("gameSnapshot", gameSnapshot);
+  handle("changeObjective", (...args) => {
+    if (args.length !== 1) throw Error("Invalid objective request.");
+    return store.changeObjective(args[0]);
+  });
   handle("discoverGame", () => game.discover());
   handle("startCompanion", async (...args) => {
     if (args.length) throw Error("Invalid setup request.");
@@ -870,15 +874,17 @@ app.whenReady().then(async () => {
     if (args.length) throw Error("Invalid ledger request.");
     const L = require("./core/ledger.cjs"), s = store.state;
     const view = L.ledgerView(s, { facts: ledgerFacts(L.itemIds(s.profiles)) });
-    // 1.3 (J12): the quests that raise each faction most, for every character with reputations.
-    let pack = null;
-    try { pack = (knowledge.packs.get(knowledge.build) || knowledge.bundled).pack; } catch {}
-    if (pack) {
-      const { repAdvice } = require("./core/rep-advice.cjs");
-      for (const c of view.characters) {
-        const p = s.profiles.find((x) => x.id === c.profileId);
-        if (c.reputations && p) { try { c.repAdvice = repAdvice(p, pack); } catch { c.repAdvice = null; } }
-      }
+    // Only an exact pack can associate reference rewards with this character's saved log.
+    const { repAdvice } = require("./core/rep-advice.cjs");
+    for (const c of view.characters) {
+      const p = s.profiles.find((x) => x.id === c.profileId);
+      if (!c.reputations || !p) continue;
+      try {
+        const exact = p.clientBuild ? knowledge.index(p)?.pack : null;
+        const pack = exact || knowledge.bundled?.pack;
+        c.repAdvice = exact ? repAdvice(p, pack) : repAdvice(p, pack, { browseOnly: true });
+        if (c.repAdvice) Object.assign(c.repAdvice, { referenceBuild: pack.build, characterBuild: p.clientBuild ?? null });
+      } catch { c.repAdvice = null; }
     }
     return { ...view, goal: require("./core/gold-goal.cjs").goldGoalView(s) };
   });

@@ -760,7 +760,7 @@ function adventure() {
     quests.length ? `<strong>${ready}</strong> of ${quests.length} quest${quests.length === 1 ? "" : "s"} ready to hand in` : "No saved quests yet",
     goals.length ? `<strong>${done}</strong> of ${goals.length} goal${goals.length === 1 ? "" : "s"} done` : ""].filter(Boolean).join(" · ") : "";
   const paused = p && state.followGameCharacter === false ? `<span class="follow-paused"><span class="ph-chip">Saved-game follow paused · showing your pick</span><button data-command="follow-saved">Follow saved game</button></span>` : "";
-  const hero = PageHero.render({ art: "adventure", eyebrow: "Adventure · Your next step", title: p ? esc(p.name) : "Your next step", crest: PageHero.portrait(p),
+  const hero = PageHero.render({ art: "adventure", eyebrow: "Adventure · Your next step", title: p ? esc(p.name) : "Your next step", character: p,
     subtitle: facts || "Connect the game and log in once: your quests, goals and professions turn into next steps here.", aside: paused });
   if (!p) return `<div class="bf-page adventure-page">${hero}${LivingSetup.empty(gameStatus, esc)}${AdventureCoach.render()}${PlayerNavigation.disclosure("coach-quest-plan", "Quest plan & session details", Director.panel(null))}</div>`;
   const goalCard = `<section class="bf-card adventure-journal"><h2>Your goals <small>${done} / ${goals.length} complete</small></h2>${goals.length ? goals.map((g) => `<div class="goal"><label class="${g.done ? "done" : ""}"><input type="checkbox" data-goal="${esc(g.id)}" ${g.done ? "checked" : ""}><span>${esc(g.text)}</span></label><button data-remove-goal="${esc(g.id)}" aria-label="Delete goal: ${esc(g.text)}">×</button></div>`).join("") : `<p>Write down what you want from this character: a profession at 150, your first mount at 40, a dungeon with friends. Tick them off as you go.</p>`}<form id="goal-form" class="inline goal-form"><label>New goal<input name="goal" maxlength="1000" placeholder="e.g. Reach 150 in Tailoring" required></label><button type="submit" aria-label="Add goal">+ Add</button></form></section>`;
@@ -768,7 +768,7 @@ function adventure() {
 }
 function characters() {
   const p = profile();
-  return `<div class="bf-page bf-parchment characters-page">${PageHero.render({ art: "characters", eyebrow: "Characters · Journal", title: p ? esc(p.name) : "Your characters", crest: PageHero.portrait(p), subtitle: p ? `Level ${esc(p.level)} ${esc(p.className || "")} · ${esc(CommandCenter.age(p))}` : "Play a character with the addon on and log out: they appear here. Or add one by hand below.", aside: `<span class="ph-chip">${state.profiles.length} character${state.profiles.length === 1 ? "" : "s"}</span>` })}${CharacterGuidance.page()}<div class="grid"><section class="panel"><div class="panel-header"><h3>${p ? "Character journal" : "Create a character"}</h3><span class="tag">Stored locally</span></div><form id="character-form">${characterFields(p)}<label class="full notes-label">Private notes<textarea name="notes" maxlength="20000" placeholder="Build ideas, profession plans, places to revisit…">${esc(p?.notes || "")}</textarea></label><div class="actions"><button type="submit" class="${p ? "subtle" : "primary"}">${p ? "Save character" : "Create character"}</button>${p ? '<button type="button" data-command="delete-character" class="danger">Delete character</button>' : ""}</div></form><p class="snapshot-hint"><span data-snapshot-age>${esc(snapshotLabel(p))}</span><br>${savedHelp}</p><p class="corner-note">Private notes and goals are never automatically included in AI requests.</p></section><aside class="panel"><div class="panel-header"><h3>Your roster</h3><button data-command="new-character" class="subtle">+ New</button></div><div class="character-list">${state.profiles.map((item) => `<button data-character="${esc(item.id)}" class="${item.id === p?.id ? "selected" : ""}"><span class="avatar class-sigil" data-class="${esc(item.className)}"><img src="${portrait(item.className)}" alt=""><span>${sigil(item.className)}</span></span><span>${esc(item.name)}<small>${esc(item.className)} · Level ${item.level} · ${esc(item.realm || "Realm not set")}</small><small>${item.source?.kind === "wow-addon" ? "Game snapshot · " + esc(CommandCenter.age(item)) : "Manual journal"}</small></span></button>`).join("") || '<div class="empty">No characters yet.</div>'}</div><div class="callout">Another character missing? Play them with the addon on and log out (or type /reload): they appear here.</div></aside></div></div>`;
+  return `<div class="bf-page bf-parchment characters-page">${PageHero.render({ art: "characters", eyebrow: "Characters · Journal", title: p ? esc(p.name) : "Your characters", character: p, subtitle: p ? `Level ${esc(p.level)} ${esc(p.className || "")} · ${esc(CommandCenter.age(p))}` : "Play a character with the addon on and log out: they appear here. Or add one by hand below.", aside: `<span class="ph-chip">${state.profiles.length} character${state.profiles.length === 1 ? "" : "s"}</span>` })}${CharacterGuidance.page()}<div class="grid"><section class="panel"><div class="panel-header"><h3>${p ? "Character journal" : "Create a character"}</h3>${p ? '<button type="button" class="subtle" data-nav="badges" data-active-badge-case>View badge case</button>' : '<span class="tag">Stored locally</span>'}</div><form id="character-form">${characterFields(p)}<label class="full notes-label">Private notes<textarea name="notes" maxlength="20000" placeholder="Build ideas, profession plans, places to revisit…">${esc(p?.notes || "")}</textarea></label><div class="actions"><button type="submit" class="${p ? "subtle" : "primary"}">${p ? "Save character" : "Create character"}</button>${p ? '<button type="button" data-command="delete-character" class="danger">Delete character</button>' : ""}</div></form><p class="snapshot-hint"><span data-snapshot-age>${esc(snapshotLabel(p))}</span><br>${savedHelp}</p><p class="corner-note">Private notes and goals are never automatically included in AI requests.</p></section><aside class="panel"><div class="panel-header"><h3>Your roster</h3><button data-command="new-character" class="subtle">+ New</button></div><div class="character-list">${state.profiles.map((item) => `<button data-character="${esc(item.id)}" class="${item.id === p?.id ? "selected" : ""}"><span class="avatar class-sigil" data-class="${esc(item.className)}"><img src="${portrait(item.className)}" alt=""><span>${sigil(item.className)}</span></span><span>${esc(item.name)}<small>${esc(item.className)} · Level ${item.level} · ${esc(item.realm || "Realm not set")}</small><small>${item.source?.kind === "wow-addon" ? "Game snapshot · " + esc(CommandCenter.age(item)) : "Manual journal"}</small></span></button>`).join("") || '<div class="empty">No characters yet.</div>'}</div><div class="callout">Another character missing? Play them with the addon on and log out (or type /reload): they appear here.</div></aside></div></div>`;
 }
 function assistant() {
   const p = profile();
@@ -1096,6 +1096,8 @@ Memory.init({api, root, esc,
     return result;
   },
 });
+window.ObjectiveView?.init(() => state);
+LedgerView.init(() => state?.activeProfileId);
 QuestGuide.init({ api, root, esc, portrait, selectedMemoryIds: () => Memory.selectedIds(), ready: () => companionReady, notify: toast, onStatus: value => { questStatusRequest++;knowledgeStatus = value; } });
 AdventureCoach.init({api,root,esc,profile,active:()=>page === "adventure" && !setupOpen && Boolean(state?.onboarded)});
 Director.init({
@@ -1249,6 +1251,67 @@ root.addEventListener("click", (event) => {
     root.querySelector("#main-content")?.focus();
     return;
   }
+  if (button.hasAttribute("data-objective-confirm") || button.hasAttribute("data-objective-cancel")) {
+    const group = button.closest(".objective-confirm"), toggle = group.querySelector("[data-objective-confirm]"), prompt = group.querySelector("[data-objective-confirmation]");
+    const open = button === toggle && prompt.hidden;
+    prompt.hidden = !open;
+    toggle.setAttribute("aria-expanded", String(open));
+    (open ? prompt.querySelector("[data-objective-cancel]") : toggle).focus();
+    return;
+  }
+  if (button.dataset.objectiveChange) {
+    const choice = JSON.parse(button.dataset.objectiveChange), from = page, request = questNavigationRequest, generation = autosaveGeneration;
+    button.disabled = true;
+    const task = async () => {
+      try {
+        if (generation !== autosaveGeneration || from !== page || request !== questNavigationRequest) return;
+        const next = await mutateStateCall(() => api.changeObjective(choice));
+        if (generation !== autosaveGeneration) return;
+        state = next;
+        if (from === page && request === questNavigationRequest && state.activeProfileId === choice.profileId) {
+          page = "now";
+          render();
+          root.querySelector("[data-objective-heading]")?.focus();
+        }
+      } finally { button.disabled = false; }
+    };
+    const result = autosaveQueue.then(task, task);
+    autosaveQueue = result.catch(() => {});
+    action(() => result);
+    return;
+  }
+  if (button.dataset.objectiveResume) {
+    const id = button.dataset.objectiveResume, request = ++questNavigationRequest;
+    action(async () => {
+      await autosaveQueue;
+      if (request !== questNavigationRequest || page !== "now") return;
+      if (pendingSnapshot?.epoch === stateMutationEpoch && !stateMutationBusy) {
+        state = pendingSnapshot.result.state;
+        gameStatus = pendingSnapshot.result.gameStatus || {};
+        acceptBrief(pendingSnapshot.result);
+        pendingSnapshot = null;
+      }
+      const objective = ObjectiveView.resume(id);
+      if (!objective) { render(); return; }
+      if (objective.kind === "quest") {
+        page = "quest-guide";
+        render();
+        await QuestGuide.open(objective.questId);
+        if (request === questNavigationRequest && page === "quest-guide") root.querySelector('.quest-detail[tabindex="-1"]')?.focus();
+      } else if (objective.kind === "reputation") {
+        LedgerView.selectReputation(objective.profileId, objective.factionId);
+        page = "ledger-reputation";
+        render();
+      } else {
+        Preparation.invalidate();
+        Preparation.selectProfession(objective.profileId, objective.skillLineId);
+        page = "preparation";
+        render();
+        root.querySelector('[aria-label="Owned profession"]')?.focus();
+      }
+    });
+    return;
+  }
   if (button.hasAttribute("data-company-share")) { if(page==="company")Party.shareJourney(button.dataset.companyShare); return; }
   if (button.closest("[data-support], [data-recovery]")) return;
   if (button.closest("[data-party]") && !button.dataset.nav) return;
@@ -1268,6 +1331,7 @@ root.addEventListener("click", (event) => {
         acceptBrief(pendingSnapshot.result);
         pendingSnapshot = null;
       }
+      if (navigation.page === "badges" && button.hasAttribute("data-active-badge-case")) BadgesView.open();
       page = navigation.page;
       render();
       if (page === "quest-guide") {
@@ -1294,6 +1358,7 @@ root.addEventListener("click", (event) => {
       try { const f = JSON.parse(button.dataset.mapFocus); WorldMapView.focus(f); page = "world-map"; render(); } catch {}
     }
     if (button.dataset.questOpen) {
+      if (button.dataset.ledgerQuestProfile && button.dataset.ledgerQuestProfile !== state.activeProfileId) return;
       page = "quest-guide";
       render();
       await QuestGuide.open(Number(button.dataset.questOpen));

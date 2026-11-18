@@ -194,6 +194,13 @@ function buildProfessionCoach(
     row.acquisition = acquisition.rows.find((r) => r.itemId === row.itemId);
   model.shoppingList = shoppingList(model.shoppingRows, { crafts: settings.crafts, profile, profiles: state?.profiles || [] });
   model.skillUp = recipe ? skillUpCountdown(profession, recipe) : null;
+  for (const row of model.shoppingList.rows) {
+    // Stored observations are leads, never carried supply or proof of transferability.
+    row.workshopStatus = row.missing === null ? "unknown"
+      : row.missing === 0 ? "covered"
+      : row.elsewhere.some((e) => !e.mine) ? "alt-transfer"
+      : "missing";
+  }
   model.acquisitionReference = {
     status: acquisition.status,
     reference: acquisition.reference,
@@ -217,12 +224,21 @@ function buildProfessionCoach(
   const qualification = dated ? professionCapQualification(profession) : null;
   const cap = Boolean(qualification);
   const leveling = recipe && eligible(recipe) && model.planning.available;
+  const targetRank = dated && profession && profession.rank < profession.maxRank
+    ? profession.rank + 1 : null;
+  const suggestedAttempts = targetRank !== null && leveling
+    ? model.skillUp?.craftsToNextPoint ?? null : null;
+  model.nextRankCheckpoint = profession ? {
+    kind: cap ? "check-training" : suggestedAttempts ? "plan-attempts" : "observe",
+    targetRank,
+    suggestedAttempts,
+  } : null;
   const missing = model.shoppingRows.filter((r) => r.missing > 0);
   const kind =
-    leveling && model.planning.inventoryExact && !missing.length
-      ? "craft-ready"
-      : cap
-        ? "profession-cap"
+    cap
+      ? "profession-cap"
+      : leveling && model.planning.inventoryExact && !missing.length
+        ? "craft-ready"
         : leveling && model.planning.inventoryExact
           ? "materials-needed"
           : recipe

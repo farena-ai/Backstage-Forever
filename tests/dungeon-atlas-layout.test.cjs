@@ -1,0 +1,28 @@
+"use strict";
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+test('the atlas previews readiness in the catalog and keeps quest actions in the expanded entry',async()=>{
+  const els=new Map(); let handle;
+  const root={addEventListener(_type,fn){handle=fn;},querySelector(selector){ if(!els.has(selector))els.set(selector,{});return els.get(selector); },querySelectorAll:()=>[]};
+  const dungeon={id:'rfc',name:'Ragefire Chasm',kind:'dungeon',difficulty:'right',zone:'Orgrimmar',levels:{min:13,max:18},bosses:[],observedOnly:[],roles:[],prep:[],yourQuests:[],pickUp:[{id:5723,title:'Search for the Lost Satchel'}]};
+  const window={backstage:{dungeonAtlas:async()=>({level:15,suggested:[],entries:[dungeon]})}};
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../src/renderer/dungeon-atlas.js'),'utf8'),{window,document:{querySelector:()=>root},CSS:{escape:s=>s},PageHero:{render:()=>''}});
+  window.DungeonAtlas.mounted();
+  await new Promise(setImmediate);
+  const grid=root.querySelector('[data-atlas-grid]');
+  assert.match(grid.innerHTML,/1 possible quest pickup/);
+  assert.doesNotMatch(grid.innerHTML,/data-quest-open=/);
+  root.querySelector('[data-atlas-card="rfc"]').scrollIntoView=()=>{};
+  const click=()=>handle({target:{closest:selector=>selector==='[data-atlas-open]'?{dataset:{atlasOpen:'rfc'}}:null}});
+  await click();
+  assert.match(grid.innerHTML,/aria-expanded="true"/);
+  assert.match(grid.innerHTML,/Search for the Lost Satchel/);
+  assert.match(grid.innerHTML,/Possible quest pickups · Reference/);
+  assert.match(grid.innerHTML,/data-quest-open="5723"/);
+  await click();
+  assert.doesNotMatch(grid.innerHTML,/data-quest-open=/);
+});

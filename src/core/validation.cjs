@@ -1,6 +1,7 @@
 "use strict";
 const { validateJourneys } = require("./journeys.cjs");
 const { validateMemories } = require("./memory-data.cjs");
+const { validateObjectives } = require("./objectives.cjs");
 const {
   validateQuestData,
   validateProgress,
@@ -122,6 +123,7 @@ function defaultState() {
     onboarded: false,
     profiles: [],
     journeys: [],
+    objectives: [],
     memories: [],
     activeProfileId: null,
     provider: { id: "ollama", model: "", endpoint: providers[0].endpoint },
@@ -136,6 +138,7 @@ function validateState(s) {
     "provider",
     "followGameCharacter",
     "journeys",
+    "objectives",
     "memories",
     "goldGoal",
   ]);
@@ -179,6 +182,7 @@ function validateState(s) {
       "clientBuild",
       "locale",
       "captureVersion",
+      "badgeAwards",
     ]);
     require("./quest-data.cjs").validateCapture(p);
     validateQuestData(p.quests);
@@ -215,6 +219,7 @@ function validateState(s) {
       )
         fail();
     }
+    if (p.badgeAwards !== undefined && (!p.source || !require("./badges.cjs").validProfessionAwards(p.badgeAwards))) fail();
     if (
       p.source && p.readiness?.workshop &&
       Object.values(p.readiness.workshop).some(collection =>
@@ -271,6 +276,7 @@ function validateState(s) {
   endpoint(s.provider.id, s.provider.endpoint);
   const valid = JSON.parse(JSON.stringify(s));
   valid.journeys = validateJourneys(s.journeys);
+  valid.objectives = validateObjectives(s.objectives, ids);
   valid.memories = validateMemories(s.memories, valid.profiles);
   if (valid.activeProfileId === null && valid.profiles.length)
     valid.activeProfileId = valid.profiles[0].id;

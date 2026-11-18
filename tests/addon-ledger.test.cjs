@@ -110,6 +110,22 @@ known={} GetItemCount=function() return 0 end GetSpellCooldown=function() return
 assert(#BackstageForeverLedgerSnapshot().cooldowns==0,'unknown recipes and a missing salt shaker are not listed')
 print('ok')
 `));
+test("a collapsed faction keeps its observation time and build while other rows refresh", () => lua(WORLD + String.raw`
+GetBuildInfo=function() return '1.15.2','12345' end
+handler(nil,'PLAYER_LOGIN')
+local function byId(id)
+  for _,f in ipairs(BackstageForeverLedgerSnapshot().reputations.factions) do if f.id==id then return f end end
+end
+assert(byId(76).observedAt==t and byId(76).observedBuild=='1.15.2.12345')
+table.remove(factions,4)
+t=t+10
+GetBuildInfo=function() return '1.15.2','55555' end
+handler(nil,'UPDATE_FACTION')
+assert(byId(76).observedAt==t-10 and byId(76).observedBuild=='1.15.2.12345')
+assert(byId(72).observedAt==t and byId(72).observedBuild=='1.15.2.55555')
+assert(captures==1,'faction changes request a saved capture')
+print('ok')
+`));
 test("price memory keeps the lowest buyout per unit on opened pages, a short history, a cap, and an off switch", () => lua(WORLD + String.raw`
 handler(nil,'PLAYER_LOGIN')
 auctions={{name='Linen Cloth',id=2589,count=20,buyout=2000},{name='Linen Cloth',id=2589,count=5,buyout=400},{name='Bid only',id=118,count=1,buyout=0}}

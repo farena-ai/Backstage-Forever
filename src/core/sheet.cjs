@@ -163,7 +163,7 @@ function sheetView(profile, { profiles = [], facts = new Map(), score = null, ve
       counts: { worn: count("worn"), bags: count("bags"), away: count("bank") + count("mail") + count("other"), missing: count("missing") } };
   });
   return {
-    profileId: profile.id, name: profile.name, className: profile.className || null, race: profile.race || null, faction: profile.faction || null, level,
+    profileId: profile.id, name: profile.name, className: profile.className || null, race: profile.race || null, sex: profile.sex || null, faction: profile.faction || null, level,
     savedAt: profile.source?.updatedAt || null, equipmentKnown: Boolean(equipment), slots, averageItemLevel, countedSlots: counted.length,
     missing: slots.filter((s) => s.missing).map((s) => s.label), weakest, wornScore,
     stats: profile.stats || null, upgrades: upgrades.slice(0, 6), setsKnown: Boolean(profile.gearSets), sets,

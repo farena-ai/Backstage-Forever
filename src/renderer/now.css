@@ -1,18 +1,39 @@
 /* Now: the home page. Parchment cards on the dark field, like the World Map side panel. */
-.now-page { display: flex; flex-direction: column; gap: 14px; }
+.now-page, .now-body { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.now-page { container-type: inline-size; }
+.now-page > .page-hero.compact { align-items: center; }
+.now-page .ph-copy { align-items: center; }
+.now-page .ph-aside { z-index: 1; }
+.now-page .now-badge-case { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 4px 10px; border: 1px solid #e0b86a; border-radius: 6px; background: #4c2912; color: #fff1ce; font: 700 14px Georgia, serif; white-space: nowrap; }
+.now-page .now-badge-case::before, .now-page .now-badge-case::after { display: none; }
+.now-page .now-badge-case:hover { background: #6b3e1b; }
+.now-page .now-badge-case:focus-visible { outline: 2px solid #ffe19b; outline-offset: 2px; }
+.now-badge-case img { object-fit: contain; }
+/* The shell still owns the setup dock. On Now it reads as a utility, not a second hero. */
+.content:has(> .now-page) > .companion-dock { padding: 6px 12px; gap: 10px; font-size: 13px; }
+.content:has(> .now-page) > .companion-dock .companion-gem { width: 32px; height: 32px; font-size: 18px; }
+.content:has(> .now-page) > .companion-dock button { min-height: 34px; padding-block: 5px; }
 
 .now-eyebrow { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .2em; text-transform: uppercase; color: #e8c983; }
 
 .now-live { margin: 0; color: #f1dcb0; font-weight: 600; }
 [data-now-live] .on { color: #7fe08a; }
-.now-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; align-items: start; }
-.now-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.now-card { padding: 14px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
+.now-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.now-overview { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.now-reference > .now-questlog:has(+ :not(.now-zonecard)), .now-moments { grid-column: 1 / -1; }
+
+.now-card { min-width: 0; overflow-wrap: anywhere; padding: 14px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
 .now-card h2 { margin: 0 0 10px; font: 700 18px Cinzel, Georgia, serif; color: #3d220c; }
 .now-card h2 small { font: 600 13px 'Source Sans 3', sans-serif; color: #6b4a22; }
+.now-next { background: linear-gradient(180deg, #f8edce, #ead6a6); border-color: #c79a4a; }
+.now-next h2 { font-size: 21px; }
+.now-next > p { margin: 0; }
 .now-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .now-step { display: flex; gap: 12px; padding: 10px 12px; border-radius: 6px; background: rgba(255,248,225,.6); border: 1px solid #c4a466; }
-.now-step:first-child { background: #fff6dc; border-color: #8a5a18; box-shadow: 0 0 0 2px rgba(246,196,69,.45); }
+.now-step.now-step-priority { background: #fff6dc; border-color: #8a5a18; border-inline-start-width: 4px; }
+.now-step.now-step-priority h3 { font-size: 19px; }
+.now-followups .now-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.now-step > div { min-width: 0; }
 .now-step h3 { margin: 0 0 3px; font: 700 16px Georgia, serif; color: #2b1b0a; }
 .now-step p { margin: 0; font-size: 14px; line-height: 1.4; color: #4a3218; }
 .now-ico { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font: 800 18px Georgia, serif; color: #1d1207; border: 1.5px solid #1b1006; background: #f6c445; }
@@ -36,29 +57,42 @@
 .now-log small { color: #6b4a22; }
 .now-good { color: #2e6b1e; font-weight: 700; }
 .now-src { margin: 0; font-size: 12px; color: #c9b48a; }
-@media (max-width: 1100px) { .now-grid { grid-template-columns: 1fr; } }
+@container (max-width: 800px) {
+  .now-grid { grid-template-columns: minmax(0, 1fr); }
+  .now-page .now-step .now-ico-art, .now-page .now-step .now-crest { width: 40px; height: 40px; }
+}
 /* List rows are plain rows, not the ornate action buttons. */
 .now-page .now-zones button, .now-page .now-log button { min-height: 0; border-radius: 4px; padding: 6px 8px; box-shadow: none; text-shadow: none; color: #2b1b0a; background: rgba(255,248,225,.55); }
 .now-page .now-zones button::before, .now-page .now-zones button::after, .now-page .now-log button::before, .now-page .now-log button::after { display: none; }
 .now-page .now-zones button:hover:not(:disabled), .now-page .now-log button:hover:not(:disabled) { transform: none; background: #fff6dc; box-shadow: none; }
 .now-card small { color: #6b4a22; }
 
-/* This session: XP bar with rested bonus and the session's pace. */
+/* Recorded session gains share a scale; XP is the fallback when no history exists. */
+.now-history { margin: 0; padding: 10px 12px; border: 1px solid #c4a466; border-radius: 6px; background: rgba(255,248,225,.55); }
+.now-history figcaption { display: flex; flex-direction: column; margin-bottom: 6px; }
+.now-history figcaption span, .now-history li > span { font-size: 13px; color: #5a3e1c; }
+.now-history ol { display: grid; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.now-history li { display: grid; grid-template-columns: 6ch minmax(0, 1fr) 8ch; align-items: center; gap: 8px; }
+.now-history li strong { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+.now-history meter { width: 100%; min-width: 0; height: 12px; }
+.now-history meter::-webkit-meter-bar { background: #ddc99f; border: 1px solid #9c7d49; border-radius: 3px; }
+.now-history meter::-webkit-meter-optimum-value { background: #65418b; }
 .now-death .now-ico { background: #2b2b38; color: #e9e2ff; }
 .now-xp { position: relative; height: 14px; border-radius: 7px; background: rgba(60,40,18,.25); border: 1px solid #8a6a32; overflow: hidden; }
 .now-page .now-xp .now-xp-fill { display: block; position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #c58cff, #7a3fd0); }
 .now-page .now-xp .now-xp-rested { display: block; position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(90deg, rgba(63,134,216,.85) 0 6px, rgba(63,134,216,.6) 6px 12px); }
 .now-xp-line { margin: 6px 0 8px; font-size: 14px; color: #4a3218; }
 .now-rested { color: #2a62a8; font-weight: 700; }
-.now-stats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.now-stats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 95px), 1fr)); gap: 6px; }
 .now-stats li { display: flex; flex-direction: column; padding: 6px 8px; border-radius: 4px; background: rgba(255,248,225,.55); border: 1px solid #c4a466; }
 .now-stats strong { font: 700 18px Georgia, serif; color: #2b1b0a; }
 .now-stats span { font-size: 12px; color: #5a3e1c; }
 .now-tip { margin: 8px 0 0; font-size: 13px; color: #4a3218; }
 
 /* First-run checklist. */
-.now-setup { border-color: #8a5a18; box-shadow: 0 0 0 2px rgba(246,196,69,.45), 0 4px 10px rgba(0,0,0,.35); }
-.now-checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.now-setup { background: #e3d3ad; }
+.now-setup h2 { font-size: 16px; }
+.now-checklist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; }
 .now-checklist li { display: flex; gap: 10px; align-items: flex-start; }
 .now-checklist li.done strong { color: #2e6b1e; }
 .now-checklist p { margin: 2px 0 0; font-size: 14px; color: #4a3218; }
@@ -68,8 +102,8 @@
 .now-page .now-tip button.now-link { all: unset; cursor: pointer; color: #7a1f14; font-weight: 700; text-decoration: underline; }
 
 /* Outdated addon in the running game. */
-.now-reload { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 14px; padding: 10px 14px; border-radius: 6px; background: #f6c445; color: #2b1b0a; border: 1px solid #8a5a18; box-shadow: 0 4px 10px rgba(0,0,0,.35); }
-.now-reload code { padding: 0 4px; border-radius: 3px; background: rgba(60,40,18,.15); }
+.now-reload { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin: 0; padding: 10px 14px; border-radius: 6px; background: #30251c; color: #f1dcb0; border: 1px solid #a5823e; }
+.now-reload code { padding: 0 4px; border-radius: 3px; background: rgba(255,246,220,.1); }
 
 
 
@@ -156,7 +190,7 @@
 
 
 
-.now-class-crest { flex: none; width: 84px; height: 84px; align-self: center; filter: drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
+
 .now-chip.grey { background: #79736a; color: #fff; }
 
 /* Completed quests and freshness labels. */
@@ -169,7 +203,7 @@
 [data-now-live] .now-saved-at { font-weight: 500; color: #d9c49a; }
 [data-now-live] .now-paused { display: inline; font-weight: 500; color: #f0d9a8; }
 /* One-click setup on the checklist. */
-.now-oneclick { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 0 12px; padding: 10px 12px; border-radius: 6px; background: rgba(255,246,220,.85); border: 1px solid #8a5a18; }
+.now-oneclick { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 0 12px; padding: 0 0 10px; border-bottom: 1px solid #b99a5e; }
 .now-oneclick span { flex: 1 1 260px; font-size: 14px; color: #4a3218; }
 
 /* Zone briefing: "You are here". */
@@ -267,7 +301,7 @@
 .now-costs li { grid-template-columns: 40px 1fr; }
 .now-cost-hint small { opacity: .85; }
 /* 1.4 (J17, J18): reminders and this week. */
-.now-weekly { margin: 0 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.now-weekly { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
 .now-reminders { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .now-rem { padding: 4px 12px; border-radius: 14px; font-size: 13px; background: rgba(40,20,8,.75); border: 1px solid #a5823e; color: #f1dcb0; }
 .now-rem-rested { border-color: #4a8ad8; }
@@ -276,3 +310,8 @@
 .now-rem-goal { border-color: #f6c445; }
 .now-week { margin: 0; color: #f1dcb0; font-size: 14px; }
 .now-week .now-link { margin-left: 6px; }
+.now-objective { margin-block: 12px; overflow-wrap: anywhere; }
+.now-objective .objective-title { margin-block: 6px; font-size: 1.12rem; }
+.now-objective .now-actions { flex-wrap: wrap; }
+.objective-pin { margin-top: 8px; }
+.objective-confirm [data-objective-confirmation]:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }

@@ -478,7 +478,9 @@ async function physicalClick(page, locator, whilePressed) {
   await page.getByRole("button",{name:"Plan without a character",exact:true}).click();
   await app.evaluate(async()=>{const end=Date.now()+5000;while(!companyUiFixture.release){if(Date.now()>end)throw Error("First-use delay did not start");await new Promise(r=>setTimeout(r,10));}});
   await page.getByRole("button",{name:"Use a manual character",exact:true}).click();
+  await page.getByRole("heading",{name:"Every adventure starts somewhere.",exact:true}).waitFor();
   await app.evaluate(()=>companyUiFixture.release());
+  await page.waitForFunction(()=>stateMutationBusy===0);
   await page.getByRole("heading",{name:"Every adventure starts somewhere.",exact:true}).waitFor();
   assert.equal(await page.locator("[data-company]").count(),0,"Late first-use save cannot override a newer setup choice");
   await page.getByRole("button",{name:"Plan without a character",exact:true}).click();
