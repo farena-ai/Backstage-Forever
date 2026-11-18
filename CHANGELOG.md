@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.10.0 — All-in-One, 2026-11-18
+
+- Now and Adventure Compass narrow the next step; desktop presets, addon setup recovery, and Guided Route resume/skip make it easier to get back on track.
+- Professions separates carried needs from last-seen storage; Ledger shows saved turn-in materials. Instance Atlas links loot to the exact saved gear comparison, and Journey shows retained personal dungeon defeats.
+- Companion answers supported saved recipe-material questions offline without forwarding the exchange. Added reviewed Classic Zul’Gurub references.
+- See the [release notes](docs/releases/1.10.0.md) for scope and qualification limits.
+
 ## 1.9.0 — Badges and Classic raid tips, 2026-11-18
 
 - Added desktop badges for distinct confirmed dungeon boss wins, three reviewed quest chains, and Revered and Exalted standings with Stormwind, Orgrimmar, and Timbermaw Hold.
