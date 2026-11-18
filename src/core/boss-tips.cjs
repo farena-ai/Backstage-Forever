@@ -9,6 +9,11 @@ const REVIEWED_RAID_TIPS = Object.freeze({
   Magmadar: { instanceMap: 409, npcId: 11982, advice: "Have hunters use Tranquilizing Shot to remove Frenzy; plan fear protection for the tank." },
   Gehennas: { instanceMap: 409, npcId: 12259, advice: "Step out of Rain of Fire and remove the curse that cuts healing." },
   Garr: { instanceMap: 409, npcId: 12057, advice: "Banish or tank the Firesworn and back away before they die: they explode." },
+  Shazzrah: { instanceMap: 409, npcId: 12264, advice: "Remove Shazzrah's Curse and back away from his Arcane Explosion after he teleports." },
+  "Baron Geddon": { instanceMap: 409, npcId: 12056, advice: "If you get Living Bomb, move away from the raid. Dispel Ignite Mana as magic." },
+  "Golemagg the Incinerator": { instanceMap: 409, npcId: 11988, advice: "Off-tank the Core Ragers and swap Golemagg's tanks as Magma Splash stacks build." },
+  "Sulfuron Harbinger": { instanceMap: 409, npcId: 12098, advice: "Kill the Flamewaker Priests first and interrupt their heals." },
+  "Majordomo Executus": { instanceMap: 409, npcId: 12018, advice: "Defeat the Flamewaker adds so Majordomo surrenders; don't cast into Magic Reflection." },
 });
 const TIPS = Object.freeze({
   // Ragefire Chasm

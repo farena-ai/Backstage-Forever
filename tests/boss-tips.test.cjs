@@ -4,6 +4,17 @@ const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), path = require("node:path"), { spawnSync } = require("node:child_process");
 const root = path.join(__dirname, "..");
 const { TIPS, tipFor } = require("../src/core/boss-tips.cjs");
+const reviewedMoltenCore = [
+  ["Lucifron", 12118, /Impending Doom/],
+  ["Magmadar", 11982, /Tranquilizing Shot/],
+  ["Gehennas", 12259, /Rain of Fire/],
+  ["Garr", 12057, /Firesworn/],
+  ["Shazzrah", 12264, /Shazzrah's Curse/],
+  ["Baron Geddon", 12056, /Living Bomb/],
+  ["Golemagg the Incinerator", 11988, /Magma Splash/],
+  ["Sulfuron Harbinger", 12098, /Flamewaker Priests/],
+  ["Majordomo Executus", 12018, /surrenders/],
+];
 function lua(source) {
   const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], { cwd: root, input: source, encoding: "utf8", timeout: 20000 });
   assert.equal(r.status, 0, r.stderr); assert.equal(r.stderr, ""); return r.stdout.trim();
@@ -33,7 +44,7 @@ test("reviewed Molten Core tips are labeled Classic reference, not Forever obser
   const { buildAtlas } = require("../src/core/dungeon-atlas.cjs");
   const { answerSpecial } = require("../src/core/companion-unlocks.cjs");
   const mc = buildAtlas({}).entries.find((e) => e.id === "mc");
-  for (const [name, cue] of Object.entries({ Lucifron: /Impending Doom/, Magmadar: /Tranquilizing Shot/, Gehennas: /Rain of Fire/, Garr: /Firesworn/ })) {
+  for (const [name, , cue] of reviewedMoltenCore) {
     const boss = mc.bosses.find((b) => b.name === name);
     assert.match(boss.tip || "", /^Classic reference: /, name);
     assert.match(boss.tip, cue);
@@ -41,7 +52,8 @@ test("reviewed Molten Core tips are labeled Classic reference, not Forever obser
     assert.equal(boss.observedInForever, false);
     assert.ok(answerSpecial(`Tips for ${name}?`).text.includes(boss.tip));
   }
-  assert.equal(mc.bosses.find((b) => b.name === "Shazzrah").tip, null);
+  assert.equal(tipFor("The Molten Core"), null, "an encounter label alone does not establish an NPC tip");
+  assert.match(mc.bosses.find((b) => b.name === "Ragnaros").tip, /^Wrath of Ragnaros/);
 });
 
 test("the addon copy is generated from the same tips and loads in the TOC", () => {
@@ -71,9 +83,9 @@ local addon='addon/BackstageForever/'
 dofile(addon..'BackstageForeverAssist.lua')
 dofile(addon..'BackstageForeverBossTips.lua')
 BackstageForeverToast=function(title,body) toasts[#toasts+1]=title..'|'..body end
-local function reject()
+local function reject(expectedCount)
     targetChanged()
-    assert(#toasts==0,'unexpected toast: '..tostring(toasts[1]))
+    assert(#toasts==(expectedCount or 0),'unexpected toast: '..tostring(toasts[#toasts]))
     assert(not BackstageForeverBossCommand('boss'),'unexpected manual tip')
 end
 map=469 reject() map=nil reject() map=409
@@ -82,10 +94,14 @@ id=11982 reject() id=nil reject() id=12118
 isPlayer=true reject() isPlayer=false
 guidKind='Pet' reject() guidKind='Creature'
 target='Unknown' reject() target='Lucifron' id=99999 reject() id=12118
+target='The Molten Core' id=3018 reject()
 local rows={
-${Object.entries({ Lucifron: 12118, Magmadar: 11982, Gehennas: 12259, Garr: 12057 }).map(([name, id]) => `{'${name}',${id},${JSON.stringify(tipFor(name))}},`).join(' ')}
+${reviewedMoltenCore.map(([name, id]) => `{'${name}',${id},${JSON.stringify(tipFor(name) || 'MISSING CLASSIC REFERENCE')}},`).join(' ')}
 }
 for i,row in ipairs(rows) do
+    target,id=row[1],99999 reject(i-1)
+    id=row[2] map=469 reject(i-1) map=409
+    kind='party' reject(i-1) kind='raid'
     target,id=row[1],row[2]
     targetChanged() targetChanged()
     assert(#toasts==i and toasts[i]=='Boss: '..target..'|'..row[3],tostring(toasts[i]))
