@@ -4,7 +4,7 @@ const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path"), assert = require("node:assert/strict");
 const { testWindow, launch: launchElectron } = require("./test-window.cjs");
-const { defaultState } = require("../src/core/validation.cjs");
+const { defaultState, validateState } = require("../src/core/validation.cjs");
 (async () => {
   const root = await fs.realpath(os.tmpdir()), dir = await fs.mkdtemp(path.join(root, "forever-now-"));
   let app;
@@ -15,7 +15,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     const profile = { id: "Alpha", name: "Alpha", className: "Hunter", realm: "Synthetic", level: 15, race: "Tauren", faction: "Horde", goals: [], notes: "", location: { zone: "The Barrens", mapId: 1413, x: 0.52, y: 0.29 }, journal: { levels: [{ level: 13, at: 1700000000, played: 30000 }, { level: 14, at: 1700003600, played: 33000 }, { level: 15, at: 1700009000, played: 38400 }], firsts: [{ key: "flight", at: 1700002000 }], zones: [1411, 1413, 1454, 1456, 1412, 1441], played: 39000 },
       quests: [{ id: 96, title: "Call of Water", complete: true, objectives: [] }, { id: 5728, title: "Hidden Enemies", complete: false, objectives: [{ text: "0/1 Bazzalan slain", done: false, type: "monster", required: 1, fulfilled: 0 }, { text: "0/1 Jergosh the Invoker slain", done: false, type: "monster", required: 1, fulfilled: 0 }] }] };
     const initial = { ...defaultState(), onboarded: true, activeProfileId: "Alpha", profiles: [profile], provider: { id: "ollama", model: "fixture", endpoint: "http://127.0.0.1:11434" } };
-    await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(initial));
+    await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(validateState(initial)));
     const repo = path.resolve(__dirname, "..");
     await fs.writeFile(path.join(dir, "package.json"), JSON.stringify({ name: "backstage-forever-now-fixture", version: "0.15.0", main: "fixture-main.cjs" }));
     await fs.writeFile(path.join(dir, "fixture-main.cjs"), `
@@ -45,6 +45,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     const steps = await page.locator(".now-step h3").allTextContents();
     assert.match(steps[0], /Hand in/);
     assert.ok(steps.some((t) => /Continue/.test(t)), "active quest step");
+    assert.equal(await page.locator(".now-step:visible").count(), 1);
     await page.locator("[data-now-live]").getByText(/Level 15 Hunter/).waitFor();
     // You are here: the zone card, with every row able to open the map dialed in.
     await page.locator(".now-zonecard h2").getByText("The Barrens").waitFor();
@@ -86,12 +87,18 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.screenshot({ path: path.join(capture, "now-session.png"), fullPage: true });
     await frame({ seq: 5, level: 17, dead: false, position: { mapId: 1413, x: 0.51, y: 0.30, facing: 1 } });
     // Link audit: every "Show on map" on Now dials in on exactly its target, with what to do there.
-    const mapLinks = await page.locator("[data-now-map]").evaluateAll((els) => els.map((e) => JSON.parse(e.dataset.nowMap)));
+    const showMore = async () => {
+      const summary = page.locator(".now-followups:not([open]) > summary");
+      if (await summary.count()) await summary.click();
+    };
+    await showMore();
+    const mapLinks = await page.locator("[data-now-map]:visible").evaluateAll((els) => els.map((e) => JSON.parse(e.dataset.nowMap)));
     assert.ok(mapLinks.length >= 4, `expected several map links, got ${mapLinks.length}`);
     assert.ok(mapLinks.every((l) => l.goal && l.goal.title), "every map link says what to do there");
     for (let i = 0; i < mapLinks.length; i++) {
       const want = mapLinks[i];
       if (i) { await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor(); }
+      await showMore();
       // Click the link for this exact target (nearest-first lists may reorder as the position updates).
       const at = await page.locator("[data-now-map]").evaluateAll((els, w) => els.findIndex((e) => e.dataset.nowMap === JSON.stringify(w)), want);
       if (at < 0) continue;
@@ -105,14 +112,14 @@ const { defaultState } = require("../src/core/validation.cjs");
     }
     // Leave the audit on a map focused on a Now link (the loop may end on Now).
     await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
-    await page.locator("[data-now-map]").first().click(); await page.locator("[data-world-map]").waitFor();
+    await page.locator("[data-now-map]:visible").first().click(); await page.locator("[data-world-map]").waitFor();
     await page.waitForFunction(() => Boolean(WorldMapView._state().focused));
     // "Show the full map" leaves focus mode.
     await page.locator('[data-wm-act="unfocus"]').click();
     assert.equal(await page.evaluate(() => WorldMapView._state().focused), null);
     // Hover any quest: a rich card with how to do it (no click needed).
     await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
-    const hoverTarget = page.locator("[data-now-body] [data-quest-open]").first();
+    const hoverTarget = page.locator("[data-now-body] [data-quest-open]:visible").first();
     await hoverTarget.hover();
     // Now may redraw under the resting pointer on a slow runner: nudge the mouse once more if needed.
     if (!(await page.locator(".hover-card").waitFor({ timeout: 4000 }).then(() => true, () => false))) { await page.mouse.move(5, 5); await hoverTarget.hover({ position: { x: 12, y: 8 } }); }
@@ -122,14 +129,16 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.mouse.move(5, 5); await page.mouse.down(); await page.mouse.up();
     // Every "Open quest" on Now opens that exact quest.
     await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor();
+    await showMore();
     const questIds = [...new Set(await page.locator("[data-now-body] [data-quest-open]").evaluateAll((els) => els.map((e) => Number(e.dataset.questOpen))))].slice(0, 4);
     assert.ok(questIds.length >= 2);
     // Now can refresh between visits (new advice after a live frame), so read its quests each time.
     for (let i = 0; i < questIds.length; i++) {
       await page.locator('[data-nav="now"]').first().click(); await page.locator("[data-now-body] .now-step").first().waitFor(); await page.waitForTimeout(300);
-      const shown = [...new Set(await page.locator("[data-now-body] [data-quest-open]").evaluateAll((els) => els.map((e) => Number(e.dataset.questOpen))))];
+      await showMore();
+      const shown = [...new Set(await page.locator("[data-now-body] [data-quest-open]:visible").evaluateAll((els) => els.map((e) => Number(e.dataset.questOpen))))];
       const id = shown[i] ?? shown[0];
-      await page.locator(`[data-now-body] [data-quest-open="${id}"]`).first().click();
+      await page.locator(`[data-now-body] [data-quest-open="${id}"]:visible`).first().click();
       await page.locator(`[data-quest-control="detail:${id}"]`).waitFor();
     }
     // The quest page shows where to go; each place opens the map dialed in with what to do.

@@ -6,14 +6,17 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const src = (name) => readFileSync(join(__dirname, "../src/renderer", `${name}.js`), "utf8");
 
-function dashboard(overrides = {}, toon = {}) {
+function dashboard(overrides = {}, toon = {}, { storage = new Map(), state, day = new Date(2026, 10, 18) } = {}) {
   const character = { name: "Rolica", className: "Priest", race: "Undead", sex: "female", level: 15, xp: { savedLevel: 15, current: 300, max: 500, rested: 100 }, ...toon };
   const body = { innerHTML: "", querySelectorAll: () => [] };
   const header = { dataset: { nowIdentity: "" }, outerHTML: "", querySelector: () => null, contains: () => false };
-  const root = { addEventListener() {} };
+  let click;
+  const root = { addEventListener: (_name, handler) => { click = handler; } };
   const active = { value: "active" };
   const nodes = { "[data-now]": root, '[data-now] > [data-page-hero="now"]': header, "[data-now-body]": body, "#active-character": active };
   const globals = {
+    Date: class extends Date { constructor(...args) { super(...(args.length ? args : [day.getTime()])); } },
+    localStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) },
     document: { querySelector: (sel) => nodes[sel] },
     BF_PORTRAITS: ["undead-female-priest"],
     backstage: {
@@ -25,9 +28,13 @@ function dashboard(overrides = {}, toon = {}) {
     },
   };
   globals.window = globals;
-  for (const script of ["page-hero", "now"]) runInNewContext(src(script), globals);
+  for (const script of ["page-hero", "objectives", "now"]) runInNewContext(src(script), globals);
+  globals.ObjectiveView.init(() => state);
   const view = globals.NowView;
-  return { view, header, body, active, async mount() { view.mounted(); await new Promise(setImmediate); return body.innerHTML; } };
+  return { view, header, body, active,
+    click: selector => click({ target: { closest: s => s === selector ? {} : null } }),
+    remount() { nodes["[data-now]"] = { ...root }; view.mounted(); },
+    async mount() { view.mounted(); await new Promise(setImmediate); return body.innerHTML; } };
 }
 
 test("next action precedes notices, support cards and visible setup", async () => {
@@ -74,4 +81,85 @@ test("without matching history, current XP is labeled from a valid same-level sa
   const stale = await dashboard({}, { xp: { savedLevel: 14, current: 300, max: 500 } }).mount();
   assert.match(stale, /No XP reading yet/);
   assert.doesNotMatch(stale, /class="now-xp"/);
+});
+
+const priority = html => html.match(/<article class="[^"]*\bnow-next\b[^"]*"[^>]*>([\s\S]*?)<\/article>/)?.[1] || "";
+const savedAt = "2026-11-17T18:00:00.000Z";
+function pinnedState() {
+  return { activeProfileId: "active", profiles: [{ id: "active", name: "Rolica", source: { id: "source", updatedAt: savedAt }, clientBuild: "fixture", quests: [{ id: 99, objectives: [{ text: "Collect 3 herbs" }] }] }],
+    objectives: [{ id: "pin", profileId: "active", sourceId: "source", build: "fixture", kind: "quest", questId: 99, title: "Herbal aid" }] };
+}
+
+test("the valid active pin is the sole prominent recommendation and explains its saved evidence", async () => {
+  const html = await dashboard({}, {}, { state: pinnedState() }).mount();
+  assert.match(priority(html), /Herbal aid[\s\S]*Collect 3 herbs[\s\S]*Why this\?[\s\S]*pinned[\s\S]*Character snapshot[\s\S]*Resume quest/);
+  assert.equal((html.match(/data-now-objective/g) || []).length, 1);
+  assert.doesNotMatch(priority(html), /Finish the task/);
+});
+
+test("Not now hides only today's suggestion for this character without clearing the pin", async () => {
+  const state = pinnedState(), storage = new Map();
+  const app = dashboard({}, { savedAt }, { state, storage });
+  assert.match(await app.mount(), /data-now-dismiss/);
+  app.click("[data-now-dismiss]");
+  assert.match(priority(app.body.innerHTML), /Finish the task[\s\S]*Why this\?[\s\S]*saved quest log/);
+  assert.equal(state.objectives[0].id, "pin");
+  assert.match(await dashboard({}, { savedAt }, { state, storage }).mount(), /Your objective[\s\S]*Herbal aid/);
+  const other = dashboard({}, {}, { storage });
+  other.active.value = "other";
+  assert.match(priority(await other.mount()), /Finish the task/);
+  const tomorrow = dashboard({}, {}, { state, storage, day: new Date(2026, 10, 19) });
+  assert.match(priority(await tomorrow.mount()), /Herbal aid/);
+});
+
+test("a new pin can lead today after the old one is dismissed", async () => {
+  const storage = new Map(), state = pinnedState();
+  const app = dashboard({}, {}, { storage, state });
+  await app.mount();
+  app.click("[data-now-dismiss]");
+  state.objectives[0] = { ...state.objectives[0], id: "new-pin", title: "New goal" };
+  app.remount();
+  assert.match(priority(app.body.innerHTML), /New goal/);
+});
+
+test("dismissing a pinned quest does not immediately recommend the same quest from the log", async () => {
+  const app = dashboard({ levelingAdvice: async () => ({ status: "ok", character: { name: "Rolica", level: 20 }, zones: [], log: { inLog: 1, ready: [], active: [{ id: 99, title: "Herbal aid" }] } }) }, {}, { state: pinnedState() });
+  await app.mount();
+  app.click("[data-now-dismiss]");
+  assert.match(priority(app.body.innerHTML), /No more suggestions/);
+  assert.match(app.body.innerHTML, /data-quest-open="99"/);
+});
+
+test("completed and mismatched pins remain visible without leading Now", async () => {
+  for (const change of [{ completion: { at: savedAt } }, { build: "other" }]) {
+    const state = pinnedState();
+    Object.assign(state.objectives[0], change);
+    const html = await dashboard({}, {}, { state }).mount();
+    assert.match(priority(html), /Finish the task/);
+    assert.match(html, /Your objective[\s\S]*Herbal aid/);
+    assert.doesNotMatch(html, /data-objective-resume/);
+  }
+});
+
+test("an unobserved quest log does not read as zero quests", async () => {
+  const html = await dashboard({ levelingAdvice: async () => ({ status: "ok", character: { name: "Rolica", level: 20 }, zones: [], log: { known: false, inLog: 0, ready: [], active: [] } }) }).mount();
+  assert.match(html, /No quest log has been observed/);
+  assert.doesNotMatch(html, /Quest log <small>0|quest log is empty|from your last save<\/span><\/h2>/);
+});
+
+test("a delayed recommendation cannot replace the newly selected character's action", async () => {
+  const reply = title => ({ status: "ok", character: { name: title, level: 20 }, zones: [], log: { inLog: 1, ready: [{ id: 50, title }], active: [] } });
+  let release;
+  const pending = new Promise(resolve => { release = resolve; });
+  let calls = 0;
+  const app = dashboard({ levelingAdvice: () => ++calls === 1 ? pending : Promise.resolve(reply("Bravo")) });
+  await app.mount();
+  app.active.value = "bravo";
+  app.remount();
+  await new Promise(setImmediate);
+  assert.match(priority(app.body.innerHTML), /Bravo/);
+  release(reply("Alpha"));
+  await new Promise(setImmediate);
+  assert.match(priority(app.body.innerHTML), /Bravo/);
+  assert.doesNotMatch(app.body.innerHTML, /Alpha/);
 });
