@@ -27,6 +27,12 @@ In **Characters → Badges → Quest chains**, each badge counts exact completed
 
 The IDs, titles and reported next links were checked separately in the byte- and SHA-256-locked `quests.enUS.json` files for **1.60.1.70888** and **1.60.1.70862**, product `wowf`. Every selected step also has a played turn-in observation in the bundled pack. See the [source lock](../data/forever/source-lock.json) and [Efficient Games attribution and license](../data/forever/NOTICE). The reviewed paths define badge criteria, not prerequisite or availability claims.
 
+### Faction-specific reputation medals
+
+In **Characters → Badges → Reputation**, earn separate **Revered** and **Exalted** medals for Stormwind (`72`, Alliance), Orgrimmar (`76`, Horde), and Timbermaw Hold (`576`, either side). These IDs match the Ledger and Forever reference faction mappings. The medals use the character’s saved faction ID and standing tier, not the displayed name, reputation bar points, or quest/reference data. Progress shows the current saved tier toward the target tier.
+
+An observation must be dated within the character export, match its known client build, and belong to the latest reputation scan. If a collapsed header hides a faction during that scan, its older row can still display in Ledger but cannot establish new medal progress. Expand the faction in WoW and reload or log out to save a fresh observation. Once confirmed, medals stay earned on that character even if a later save omits the row or the standing falls. No award date is inferred. These are desktop-only; the existing any-faction badges, in-game Compass, and reputation target workflow are unchanged. Medals make no claims about quest eligibility or server rewards.
+
 ### Reputation targets
 
 In **Ledger → Reputation**, choose a saved faction and pin its next standing for the active character. This uses the same single objective slot as quests and profession ranks; replacement requires confirmation. **Now → Resume reputation** returns to that faction. The plan lists saved quests and ready turn-ins first when Forever reference data associates them with the faction. Other leads are filtered by known eligibility and show reported chain links, not guaranteed prerequisites. Server reward amounts, repeatability, and unlisted requirements are not inferred.

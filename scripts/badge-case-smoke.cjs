@@ -20,6 +20,8 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
       },
         source: { kind: "wow-addon", id: "synthetic-alpha", updatedAt: "2026-11-09T12:00:00.000Z" },
         clientBuild: "1.60.1.70888",
+        ledger: { reputations: { seenAt: 1794225600, factions: [{ id: 76, name: "Orgrimmar", standing: 7,
+          min: 21000, max: 42000, value: 21000, observedAt: 1794225600, observedBuild: "1.60.1.70888" }] } },
         history: { recent: [], completedIdsKnown: true, completedIds: [440, 441, 530, 887, 890] },
         readiness: { workshop: { professions: { observedAt: "2026-11-09T12:00:00.000Z", complete: false, items: [{ skillLineId: 171, professionId: 1171, name: "Alchemy", rank: 150, maxRank: 300 }] } } } },
       { id: "beta", name: "Bellan", className: "Priest", race: "Human", faction: "Alliance", level: 7 },
@@ -120,6 +122,18 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     assert.equal(await shipment.getAttribute("aria-valuemax"), "4");
     await badges.getByRole("button", { name: /Bellan/ }).press("Enter");
     await revenge.getByText("No saved progress", { exact: true }).waitFor();
+    await category.selectOption("Reputation");
+    const medal = badges.locator('[data-badge="rep-orgrimmar-revered"]');
+    await medal.getByText("No saved progress", { exact: true }).waitFor();
+    await badges.getByRole("button", { name: /Aelora/ }).press("Enter");
+    await medal.getByText("Earned", { exact: true }).waitFor();
+    await medal.getByText("Desktop only", { exact: true }).waitFor();
+    assert.match(await medal.locator("img").getAttribute("src"), /\/rep-revered\.png$/);
+    const exalted = badges.getByRole("progressbar", { name: "Progress toward Orgrimmar · Exalted" });
+    assert.equal(await exalted.getAttribute("aria-valuenow"), "7");
+    assert.equal(await exalted.getAttribute("aria-valuemax"), "8");
+    await badges.getByRole("button", { name: /Bellan/ }).press("Enter");
+    await medal.getByText("No saved progress", { exact: true }).waitFor();
     await resize(940, 760);
     await badges.getByRole("heading", { name: "Bellan's Badge Case" }).scrollIntoViewIfNeeded();
     assert.ok(await badges.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "Badge Case fits compact content width");
@@ -137,6 +151,8 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     assert.ok(!keys.includes("profession-alchemy-150"), "export does not request a missing ID image");
     assert.ok(keys.includes("first-dungeon"), "dungeon victories reuse the original dungeon artwork in the picture");
     assert.ok(keys.includes("quests-100"), "quest chains reuse the original quest artwork in the picture");
+    assert.equal(keys.filter((id) => id === "rep-revered").length, 1, "generic and faction badges share reputation artwork in the picture");
+    assert.ok(!keys.includes("rep-orgrimmar-revered"), "medals do not request nonexistent per-faction artwork");
     await badges.locator('[data-badge="level-20"]:not(.earned)').waitFor();
     await app.evaluate(() => { const store = globalThis.badgeFixtureStore; const state = structuredClone(store.state); state.profiles[0].level = 20; store.saveState(state); });
     await badges.locator('[data-badge="level-20"].earned').waitFor();

@@ -4,6 +4,7 @@
 const { splits, normalizeEncounterHistory } = require("./journal-data.cjs");
 const { validateWorkshop } = require("./preparation-data.cjs");
 const { ALL_CLASSES } = require("./class-unlocks.cjs");
+const { normalizeLedgerCapture, SIDES, STANDINGS } = require("./ledger.cjs");
 
 const BADGES = [
   ...[10, 20, 30, 40, 50, 60].map((n) => ({ id: `level-${n}`, group: "Levels", name: `Level ${n}`, how: `Reach level ${n}.`, test: (c) => ({ done: c.level >= n, have: c.level, need: n }) })),
@@ -64,7 +65,22 @@ const QUEST_CHAIN_BADGES = [
     return { done: have === ids.length, have, need: ids.length };
   },
 }));
-const LATCHED_BADGES = [...EXPANSION_BADGES, ...DUNGEON_BADGES, ...QUEST_CHAIN_BADGES];
+// A bounded catalog, not a medal for every faction that appears in a save.
+const MEDAL_FACTIONS = [
+  [72, "stormwind", "Stormwind"],
+  [76, "orgrimmar", "Orgrimmar"],
+  [576, "timbermaw-hold", "Timbermaw Hold"],
+];
+const REPUTATION_MEDALS = MEDAL_FACTIONS.flatMap(([factionId, slug, label]) => [7, 8].map((n) => ({
+  id: `rep-${slug}-${STANDINGS[n].toLowerCase()}`, group: "Reputation", name: `${label} · ${STANDINGS[n]}`,
+  how: `Reach ${STANDINGS[n]} with ${label}.`, desktopOnly: true,
+  art: `rep-${STANDINGS[n].toLowerCase()}`, threshold: n,
+  test: ({ reputation }) => {
+    const have = reputation.get(factionId);
+    return have === undefined ? { progressUnavailable: true } : { done: have >= n, have, need: n };
+  },
+})));
+const LATCHED_BADGES = [...EXPANSION_BADGES, ...DUNGEON_BADGES, ...QUEST_CHAIN_BADGES, ...REPUTATION_MEDALS];
 const CHARACTER_CATALOG = [...BADGES, ...LATCHED_BADGES];
 const GROUPS = Object.freeze(["Levels", "Quests", "Quest chains", "Exploring", "Firsts", "Speed", "Professions", "Gold", "Reputation", "Dungeons"]);
 
@@ -134,11 +150,30 @@ function observedDungeonVictories(profile) {
       .map(e => `${e.instanceMap}:${e.encounterId}`)).size;
   } catch { return 0; }
 }
+function observedMedalStandings(profile) {
+  const source = savedSource(profile), build = profile?.clientBuild, capture = profile?.ledger?.reputations;
+  const standings = new Map();
+  if (!source || !build || !capture) return standings;
+  const characterSide = side(profile);
+  try {
+    const { reputations: { seenAt, factions } } = normalizeLedgerCapture({ reputations: capture });
+    if (seenAt * 1000 > Date.parse(source.updatedAt)) return standings;
+    for (const [id] of MEDAL_FACTIONS) {
+      const requiredSide = SIDES.Alliance.includes(id) ? "alliance" : SIDES.Horde.includes(id) ? "horde" : null;
+      if (requiredSide && characterSide !== requiredSide) continue;
+      const row = factions.find(f => f.id === id);
+      // Other rows can advance the collection clock while this faction is hidden.
+      if (row && row.observedAt === seenAt && row.observedBuild === build) standings.set(id, row.standing);
+    }
+  } catch { /* Invalid optional evidence cannot count. */ }
+  return standings;
+}
 function awardFacts(profile) {
   const history = profile?.history;
   const chainCompletions = savedSource(profile) && QUEST_CHAIN_BUILDS.has(profile.clientBuild) &&
     history?.completedIdsKnown === true && Array.isArray(history.completedIds) ? new Set(history.completedIds) : null;
-  return { professions: observedProfessionRanks(profile), dungeonVictories: observedDungeonVictories(profile), chainCompletions };
+  return { professions: observedProfessionRanks(profile), dungeonVictories: observedDungeonVictories(profile), chainCompletions,
+    reputation: observedMedalStandings(profile) };
 }
 const AWARD_IDS = new Set(LATCHED_BADGES.map(b => b.id));
 function validBadgeAwards(awards) {
