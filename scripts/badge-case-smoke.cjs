@@ -156,6 +156,61 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await badges.locator('[data-badge="level-20"]:not(.earned)').waitFor();
     await app.evaluate(() => { const store = globalThis.badgeFixtureStore; const state = structuredClone(store.state); state.profiles[0].level = 20; store.saveState(state); });
     await badges.locator('[data-badge="level-20"].earned').waitFor();
+    const picker = page.locator('#active-character');
+    const toJourney = async () => {
+      await page.locator('[data-nav="characters"]').first().press("Enter");
+      await page.locator('[data-nav="journey"]').first().press("Enter");
+    };
+    await resize(1480, 980);
+    await toJourney();
+    const defeats = page.locator('[data-journey-defeats]');
+    const boss = defeats.getByText('Edwin VanCleef', { exact: true });
+    await boss.waitFor();
+    assert.equal(await defeats.locator('li time').getAttribute('datetime'), new Date(1700002001 * 1000).toISOString());
+    assert.match(await defeats.innerText(), /1 distinct boss encounter in retained history/);
+    await page.locator('.bf-badge-pop').waitFor({ state: 'hidden' });
+    await screenshot('journey-defeats-desktop');
+    await page.evaluate(() => I18n.choose('de'));
+    await page.locator('html[lang="de"]').waitFor({ state: 'attached' });
+    await resize(1000, 700);
+    await toJourney();
+    await defeats.getByRole('heading', { name: 'Persönliche Bosssiege in Dungeons' }).waitFor();
+    await boss.waitFor();
+    assert.ok(await defeats.evaluate(el => el.closest('[data-journey]').scrollWidth <= el.closest('[data-journey]').clientWidth + 1));
+    await screenshot('journey-defeats-compact-de-top');
+    await defeats.evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    const compact = await defeats.boundingBox();
+    assert.ok(compact.y >= 0 && compact.y + compact.height <= await page.evaluate(() => innerHeight));
+    await screenshot('journey-defeats-compact-de');
+
+    // Arm after leaving Now, which also uses the Journey IPC.
+    await page.reload();
+    await page.locator('[data-nav="characters"]').first().press("Enter");
+    // Hold the real completed Alpha result, not the invocation (which could read Beta).
+    await app.evaluate(({ ipcMain }) => {
+      const channel = 'backstage:journey', original = ipcMain._invokeHandlers.get(channel);
+      ipcMain.removeHandler(channel);
+      ipcMain.handle(channel, async (...args) => {
+        const result = await original(...args);
+        if (result?.id === 'alpha' && !globalThis.journeyHeld) {
+          globalThis.journeyHeld = true;
+          await new Promise(resolve => { globalThis.releaseJourney = resolve; });
+        }
+        return result;
+      });
+    });
+    await page.locator('[data-nav="journey"]').first().press("Enter");
+    await app.evaluate(async () => {
+      for (let i = 0; i < 100 && !globalThis.releaseJourney; i++) await new Promise(resolve => setTimeout(resolve, 20));
+      if (!globalThis.releaseJourney) throw Error('Alpha Journey IPC did not reach the hold');
+    });
+    await picker.selectOption('beta');
+    await defeats.getByText('Keine persönlichen Bosssiege in Dungeons gespeichert.', { exact: true }).waitFor();
+    await app.evaluate(() => globalThis.releaseJourney());
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await boss.count(), 0);
+    assert.equal(await defeats.locator('li,time').count(), 0, 'missing evidence has no count, rows or dates');
+    assert.equal(await page.evaluate(() => JourneyView._state().data.id), 'beta');
     assert.deepEqual(errors, []);
     console.log("Badge Case smoke passed");
   } finally {

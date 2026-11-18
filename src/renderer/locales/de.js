@@ -38,6 +38,7 @@ window.BF_LOCALE_DE = {
  "07 · Help without oversharing": "07 · Hilfe ohne zu viel zu teilen",
  "07 · Your ledger": "07 · Dein Kontobuch",
  "08 · Your character sheet": "08 · Dein Charakterbogen",
+ "1 distinct boss encounter in retained history": "1 unterschiedlicher Bosskampf im gespeicherten Verlauf",
  "1. Get a free key": "1. Hol dir einen kostenlosen Schlüssel",
  "2. Paste it": "2. Füge ihn ein",
  "A chest you opened (chests move between spots)": "Eine geöffnete Truhe (Truhen wechseln ihren Platz)",
@@ -555,6 +556,7 @@ window.BF_LOCALE_DE = {
  "Key stored: Yes. Keys are encrypted by your operating system and excluded from backups.": "Schlüssel gespeichert: Ja. Schlüssel werden von deinem Betriebssystem verschlüsselt und nicht gesichert.",
  "Kill": "Töte",
  "Known empty equipment snapshot.": "Bekannter leerer Ausrüstungsschnappschuss.",
+ "Last character save:": "Letzter Charakter-Spielstand:",
  "Last checked: Not checked in this session": "Zuletzt geprüft: In dieser Sitzung nicht geprüft",
  "Last saved · not live": "Letzter Spielstand · nicht live",
  "Last seen": "Zuletzt gesehen",
@@ -676,6 +678,7 @@ window.BF_LOCALE_DE = {
  "No matching reference for this saved build. Browse only.": "Keine passende Referenz für diese Spielversion. Nur zum Stöbern.",
  "No material checks available": "Keine Materialprüfung verfügbar",
  "No next link reported.": "Kein nächster Link gemeldet.",
+ "No personal dungeon boss defeats recorded.": "Keine persönlichen Bosssiege in Dungeons gespeichert.",
  "No plan is added or shared by opening this preview.": "Durch das Öffnen dieser Vorschau wird kein Plan hinzugefügt oder geteilt.",
  "No plans yet.": "Noch keine Pläne.",
  "No point yet": "Noch kein Punkt",
@@ -798,6 +801,7 @@ window.BF_LOCALE_DE = {
  "Party expedition": "Gruppenexpedition",
  "Past sessions": "Vergangene Sitzungen",
  "Paste your free key": "Füge deinen kostenlosen Schlüssel ein",
+ "Personal dungeon boss defeats": "Persönliche Bosssiege in Dungeons",
  "Personal training review needs a saved addon character with matching reference build and enUS locale.": "Die persönliche Trainingsübersicht braucht einen vom Addon gespeicherten Charakter mit passendem Referenz-Build und enUS-Sprache.",
  "Pick a class for this character in Characters to see training.": "Wähle in Charaktere eine Klasse für diesen Charakter, um das Training zu sehen.",
  "Pick a pin on the World Map and choose “Track on radar”.": "Wähle einen Pin auf der Weltkarte und wähle „Auf Radar verfolgen“.",
@@ -915,6 +919,7 @@ window.BF_LOCALE_DE = {
  "Ready to turn in · Last saved": "Bereit zur Abgabe · Zuletzt gespeichert",
  "Realm": "Server",
  "Recent messages accompany follow-ups in this session (up to 6 exchanges; older text may be omitted). Saved memory is separate: select it for each question.": "Letzte Nachrichten begleiten Nachfragen in dieser Sitzung (bis zu 6 Wechsel; älterer Text kann wegfallen). Das gespeicherte Gedächtnis ist getrennt: wähle es für jede Frage aus.",
+ "Recent recorded defeats, not full runs, lockouts or loot.": "Zuletzt aufgezeichnete Bosssiege, keine vollständigen Durchläufe, Instanzsperren oder Beute.",
  "Recovery point": "Wiederherstellungspunkt",
  "Reference edition": "Referenzausgabe",
  "Reference missing": "Referenz fehlt",
@@ -1477,6 +1482,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
  [
   "^\\(at least ([0-9][0-9.,:/%–-]*) if they logged out outside an inn\\)$",
   "(mindestens {0}, wenn außerhalb eines Gasthauses ausgeloggt)",
+  [
+   0
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) distinct boss encounters in retained history$",
+  "{0} unterschiedliche Bosskämpfe im gespeicherten Verlauf",
   [
    0
   ]

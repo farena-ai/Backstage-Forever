@@ -10,6 +10,8 @@ const { buildAtlas } = require("../src/core/dungeon-atlas.cjs");
 const { badgeBook } = require("../src/core/badges.cjs");
 const { mergeSnapshot } = require("../src/core/profile-sync.cjs");
 const { Store } = require("../src/core/store.cjs");
+const { defaultState } = require("../src/core/validation.cjs");
+const { savedDungeonDefeats } = require("../src/core/journal-data.cjs");
 
 const addonPath = "addon/BackstageForever/";
 const toc = fs.readFileSync(path.join(__dirname, "..", addonPath, "BackstageForever.toc"), "utf8");
@@ -127,6 +129,7 @@ test("logout exports a recorded encounter before the queued capture can run", (t
   assert.deepEqual(buildAtlas({ profile }).recap.encounters, [
     { ...encounter, atlasId: "dm", atlasName: "The Deadmines" },
   ]);
+  assert.deepEqual(savedDungeonDefeats(profile)?.recent, [encounter], "Journey sees the actual muted Lua win after reopen");
   const book = badgeBook(reopened);
   assert.deepEqual(book.holders["dungeon-first-victory"], ["Example"]);
   assert.deepEqual(book.book.badges.find(b => b.id === "dungeon-victories-5").progress, { have: 1, need: 5 });
@@ -274,6 +277,10 @@ test("distinct wins within the toast cooldown and repeat kills are retained in a
   assert.equal(history.length, 100);
   assert.equal(history[0].encounterId, 3);
   assert.deepEqual(history.slice(-2).map((e) => [e.encounterId, e.at]), [[101, 1700000001], [101, 1700000011]]);
+  const [profile] = mergeSnapshot(defaultState(), capture).profiles;
+  assert.equal(savedDungeonDefeats(profile)?.distinct, 99);
+  assert.equal(savedDungeonDefeats(profile)?.recent.length, 5);
+  assert.equal(savedDungeonDefeats(profile)?.recent[0].at, 1700000011);
 });
 
 const saved = (journal) => `BackstageForeverExport = [=[${JSON.stringify({
@@ -290,6 +297,29 @@ test("the parser ignores invalid optional encounter history without discarding t
     assert.deepEqual(journal?.levels, levels);
     assert.equal(journal?.encounters, undefined);
   }
+});
+
+test("Journey counts only distinct, retained dungeon defeats supported by the selected character's save", (t) => {
+  const directory = fixtureDir(t), store = new Store(directory);
+  const repeat = { ...encounter, at: encounter.at + 2, name: "Renamed boss", difficultyId: 2 };
+  const sameName = { ...encounter, encounterId: 99 };
+  const sameId = { ...repeat, instanceMap: 123 };
+  const future = { ...encounter, encounterId: 100, at: 1700000021 };
+  const capture = parseSavedVariables(saved({ encounters: [encounter, repeat, repeat, sameName, sameId,
+    { ...encounter, instanceType: "raid", instanceMap: 409 }, future] }));
+  const alt = { ...capture.characters[0], id: "Player-alt", name: "Alt", journal: { firsts: [{ key: "dungeon", at: encounter.at }] } };
+  store.saveState(mergeSnapshot(store.state, { ...capture, characters: [...capture.characters, alt] }));
+  const [owner, other] = new Store(directory).state.profiles;
+  const evidence = savedDungeonDefeats(owner);
+  assert.equal(evidence.savedAt, owner.source.updatedAt);
+  assert.equal(evidence.distinct, 3);
+  assert.deepEqual(evidence.recent, [repeat, sameId, encounter, sameName]);
+  assert.equal(savedDungeonDefeats(other), null, "entry is not a defeat or proof of zero defeats");
+  assert.equal(savedDungeonDefeats({ journal: owner.journal }), null, "no addon provenance");
+  const newer = parseSavedVariables(saved({}).replaceAll("1700000020", "1700000040"));
+  store.saveState(mergeSnapshot(store.state, newer));
+  const carried = savedDungeonDefeats(new Store(directory).state.profiles[0]);
+  assert.deepEqual(carried.recent, evidence.recent, "a later omitted block cannot legitimize the previously future row");
 });
 
 test("the Atlas recap is saved character evidence, newest first, separate from reference observations", (t) => {
