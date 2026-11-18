@@ -1,6 +1,6 @@
 /* World Map: gilded frame, parchment map, quiet side panel. Original styling. */
-.world-map-page { display: flex; flex-direction: column; gap: 14px; }
-.wm-head { display: grid; grid-template-columns: 1fr minmax(260px, 420px) auto; gap: 14px; align-items: end; }
+.world-map-page { display: flex; flex-direction: column; gap: 14px; min-width: 0; container: world-map / inline-size; }
+.wm-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px) minmax(155px, 220px); gap: 14px; align-items: end; }
 .wm-banner { position: relative; padding: 10px 22px 12px; border: 2px solid #c9a24a; border-radius: 6px; box-shadow: inset 0 0 0 1px #2a0805, 0 6px 18px rgba(0,0,0,.45);
   /* An illustrated title plaque, not a layer on the interactive zone map. */
   background: linear-gradient(90deg, rgba(28,9,7,.97) 0%, rgba(34,13,10,.88) 54%, rgba(34,13,10,.28) 100%), url("art/heroes/map.webp") right 78% / cover no-repeat, linear-gradient(180deg, #5a1a12, #3a0f0a); }
@@ -11,23 +11,28 @@
 .wm-live { display: inline-block; margin-top: 6px; font: 600 12px "Source Sans 3", sans-serif; color: #d9c79c; }
 .wm-live.on { color: #8ee08f; text-shadow: 0 0 8px rgba(120,230,120,.5); }
 .wm-search { display: flex; gap: 6px; }
-.wm-search input { flex: 1; padding: 9px 12px; border-radius: 4px; border: 1px solid #8a6a2c; background: #f3e6c4; color: #2a1a08; font: 15px "Source Sans 3", sans-serif; box-shadow: inset 0 2px 4px rgba(60,35,10,.25); }
+.wm-search input { flex: 1; min-width: 0; padding: 9px 12px; border-radius: 4px; border: 1px solid #8a6a2c; background: #f3e6c4; color: #2a1a08; font: 15px "Source Sans 3", sans-serif; box-shadow: inset 0 2px 4px rgba(60,35,10,.25); }
 .wm-search button { padding: 8px 16px; }
 .wm-zone { display: flex; flex-direction: column; gap: 4px; font: 600 11px "Source Sans 3", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #d9c79c; }
-.wm-zone select { padding: 8px; min-width: 190px; background: #2a1a0c; color: #f3e3b8; border: 1px solid #8a6a2c; border-radius: 4px; font: 14px "Source Sans 3"; }
-.wm-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+.wm-zone select { padding: 8px; width: 100%; min-width: 0; background: #2a1a0c; color: #f3e3b8; border: 1px solid #8a6a2c; border-radius: 4px; font: 14px "Source Sans 3"; }
+.wm-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(290px, 28%); gap: 14px; align-items: start; }
 .wm-frame { position: relative; padding: 14px; border-radius: 10px; background: linear-gradient(145deg, #3b2614, #1e1209); border: 2px solid #b8913f; box-shadow: inset 0 0 0 2px #120a04, inset 0 0 22px rgba(0,0,0,.6), 0 10px 30px rgba(0,0,0,.5); }
 .wm-frame::before { content: ""; position: absolute; inset: 6px; border: 1px solid rgba(232,200,120,.35); border-radius: 7px; pointer-events: none; }
-.wm-canvas { display: block; width: 100%; border-radius: 3px; cursor: grab; box-shadow: 0 0 0 1px #5c4320, 0 0 18px rgba(0,0,0,.6); }
+.wm-map-surface { position: relative; }
+.wm-canvas { display: block; width: 100%; aspect-ratio: 3 / 2; border-radius: 3px; cursor: grab; box-shadow: 0 0 0 1px #5c4320, 0 0 18px rgba(0,0,0,.6); }
 .wm-canvas:active { cursor: grabbing; }
-.wm-tools { position: absolute; top: 24px; right: 24px; display: flex; flex-direction: column; gap: 6px; }
-.wm-tools button { width: 34px; height: 34px; padding: 0; border-radius: 50%; font-size: 17px; line-height: 1; background: radial-gradient(circle at 35% 30%, #6a4a22, #2c1a0a); color: #f6dc9a; border: 1px solid #c9a24a; box-shadow: 0 2px 6px rgba(0,0,0,.6); }
-.wm-tip { position: absolute; z-index: 3; max-width: 260px; padding: 7px 10px; pointer-events: none; background: rgba(16,10,4,.94); border: 1px solid #c9a24a; border-radius: 4px; color: #f5e6bd; font: 13px "Source Sans 3", sans-serif; box-shadow: 0 6px 14px rgba(0,0,0,.5); }
+.wm-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 7px 14px; margin-bottom: 10px; }
+.wm-tool-group { display: flex; flex-wrap: wrap; gap: 5px; }
+.world-map-page .wm-tools button { min-width: 34px; min-height: 34px; padding: 4px 9px; border-radius: 4px; font: 700 12px/1.2 "Source Sans 3", sans-serif; background: #2c1a0a; color: #f6dc9a; border: 1px solid #9b7837; box-shadow: none; }
+.world-map-page .wm-tools button:hover:not(:disabled) { background: #56381b; transform: none; }
+.world-map-page .wm-tools button:is([data-wm-act="in"], [data-wm-act="out"]) { font-size: 18px; }
+.wm-tip { position: absolute; z-index: 3; width: max-content; max-width: min(260px, 100%); overflow-wrap: anywhere; padding: 7px 10px; pointer-events: none; background: rgba(16,10,4,.94); border: 1px solid #c9a24a; border-radius: 4px; color: #f5e6bd; font: 13px "Source Sans 3", sans-serif; box-shadow: 0 6px 14px rgba(0,0,0,.5); }
 .wm-tip small { color: #cdb57a; }
-.wm-side { display: flex; flex-direction: column; gap: 12px; }
+.wm-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow-wrap: anywhere; }
 .wm-card, .wm-results, .wm-legend { padding: 12px 14px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
 .wm-card h3, .wm-results h3, .wm-legend h3 { margin: 0 0 6px; font: 700 16px Cinzel, Georgia, serif; color: #3d220c; }
 .wm-card-empty { font-size: 14px; line-height: 1.45; }
+.wm-card { border-top: 3px solid #b4822d; }
 .wm-card-head { display: flex; gap: 10px; align-items: flex-start; }
 .wm-sub { margin: 0; font-style: italic; color: #5a3d18; }
 .wm-coords { margin: 8px 0 2px; font-weight: 700; }
@@ -36,14 +41,18 @@
 .wm-src, .wm-attrib { font-size: 11px; color: #6a5030; }
 .wm-community-note { border-left: 3px solid #2b8a9c; padding-left: 8px; color: #1f5560; }
 .wm-attrib { color: #bfa878; }
-.wm-card-actions { margin: 8px 0; }
+.wm-card-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .wm-results ol { list-style: none; margin: 0 0 8px; padding: 0; max-height: 300px; overflow: auto; }
 .wm-results li button { display: flex; gap: 8px; width: 100%; padding: 6px 4px; text-align: left; background: none; border: 0; border-bottom: 1px solid rgba(120,80,30,.25); color: inherit; cursor: pointer; }
 .wm-results li button:hover { background: rgba(255,240,200,.6); }
 .wm-results small { display: block; color: #5a3d18; }
-.wm-layer { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 14px; cursor: pointer; }
-.wm-layer small { margin-left: auto; color: #6a5030; }
-.wm-follow { color: #e9d7a8; }
+.wm-layer-groups { display: grid; gap: 8px 12px; align-items: start; }
+.wm-layer-group { min-width: 0; margin: 0; padding: 3px 8px 5px; border: 1px solid #a5823e; border-radius: 4px; }
+.world-map-page .wm-layer-group legend { padding: 0 4px; color: #664808; font: 700 11px/1.4 Cinzel, Georgia, serif; letter-spacing: .1em; text-transform: uppercase; }
+.wm-layer { display: grid; grid-template-columns: auto 22px minmax(0, 1fr) auto; align-items: center; gap: 6px; min-height: 28px; padding: 2px 0; font-size: 14px; cursor: pointer; }
+.wm-layer[hidden] { display: none; }
+.wm-layer small { color: #6a5030; font-variant-numeric: tabular-nums; }
+.world-map-page .wm-follow { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 0; color: #e9d7a8; }
 .wm-swatch { flex: none; display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #2a1c0c; box-shadow: inset -2px -2px 3px rgba(0,0,0,.35); }
 .wm-k-quest-turnin, .wm-k-quest-giver { background: #f6c445; }
 .wm-k-quest-objective { background: #c33d29; }
@@ -55,19 +64,35 @@
 .wm-k-find { background: #e8b33a; box-shadow: 0 0 6px #ffd76a; }
 .wm-k-npc { background: #5b4630; width: 10px; height: 10px; }
 .wm-k-town { background: #7a1f14; border-radius: 2px; transform: rotate(45deg); }
-@media (max-width: 1100px) { .wm-body { grid-template-columns: 1fr; } .wm-head { grid-template-columns: 1fr; } }
+@container world-map (width < 850px) {
+  .wm-head { grid-template-columns: minmax(0, 1fr) minmax(0, 36%); gap: 8px 12px; }
+  .wm-banner { grid-column: 1 / -1; }
+  .wm-banner::before { left: 2px; }
+  .wm-banner::after { right: 2px; }
+  .wm-body { grid-template-columns: minmax(0, 1fr); }
+  .wm-layer-groups { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+}
+@container world-map (width < 400px) {
+  .wm-head { grid-template-columns: minmax(0, 1fr); }
+  .wm-frame { padding: 9px; }
+}
 
 /* Scope resets: keep the app's ornate global controls out of map cards. */
 .world-map-page .wm-legend label, .world-map-page .wm-layer { color: #2b1b0a; font-weight: 600; }
-.world-map-page .wm-layer input { accent-color: #7a1f14; }
+.world-map-page .wm-layer input { accent-color: #7a1f14; margin: 0; }
+.world-map-page .wm-layer :is(.wm-ico, .wm-ico-other) { margin-right: 0; }
 .world-map-page .wm-results li button { all: unset; box-sizing: border-box; display: flex; gap: 8px; width: 100%; padding: 7px 6px; cursor: pointer; border-bottom: 1px solid rgba(120,80,30,.25); color: #2b1b0a; }
 .world-map-page .wm-results li button:hover, .world-map-page .wm-results li button:focus-visible { background: rgba(255,240,200,.7); outline: none; }
 .world-map-page .wm-results li strong { display: block; font: 700 14px Cinzel, Georgia, serif; }
 .world-map-page .wm-results ol { overflow-x: hidden; }
 .world-map-page .wm-results[hidden] { display: none; }
 
-.world-map-page { min-width: 0; max-width: 100%; overflow-x: hidden; }
 .wm-body, .wm-head { min-width: 0; }
+.wm-card h3, .wm-results h3 { scroll-margin-block: 8px; }
+.world-map-page :is(.wm-tools button, .wm-canvas, .wm-follow input, .wm-search input, .wm-search button, .wm-zone select):focus-visible { outline: 2px solid #f4cf72; outline-offset: 2px; }
+.world-map-page :is(.wm-card, .wm-results):focus-visible,
+.world-map-page :is(.wm-layer input, .wm-results li button):focus-visible { outline: 2px solid #7a1f14; outline-offset: -2px; }
+.world-map-page :is(.wm-near, .wm-camps, .wm-heat) li button:focus-visible { outline: 2px solid #f4cf72; outline-offset: -2px; }
 
 .wm-k-instance { background: radial-gradient(circle, #f3d9ff, #8a3fd1 60%, #2a0d3d); }
 .wm-near { padding: 12px 14px; border-radius: 6px; background: linear-gradient(180deg, #2b1a0c, #1a0f06); border: 1px solid #b8913f; color: #f1dfb2; box-shadow: 0 4px 10px rgba(0,0,0,.4); }

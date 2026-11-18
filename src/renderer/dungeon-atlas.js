@@ -12,7 +12,7 @@ window.DungeonAtlas = (() => {
   const LABEL = { right: "Right for your level", easy: "Easy", hard: "Challenging", trivial: "Low level", impossible: "Too high for now", unknown: "Level unknown" };
   function page() {
     return `<section class="atlas-page" data-atlas>
-      ${PageHero.render({ art: "dungeons", eyebrow: "Adventure · Dungeons & raids", title: "Instance Atlas", subAttrs: "data-atlas-level",
+      ${PageHero.render({ art: "dungeons", compact: true, eyebrow: "Adventure · Dungeons & raids", title: "Instance Atlas", subAttrs: "data-atlas-level",
         aside: '<div class="atlas-tabs" role="tablist"><button type="button" role="tab" data-atlas-tab="dungeon">Dungeons</button><button type="button" role="tab" data-atlas-tab="raid">Raids</button><button type="button" role="tab" data-atlas-tab="forever">New in Forever</button></div>' })}
       <div class="atlas-suggest" data-atlas-suggest></div>
       <div class="atlas-grid" data-atlas-grid><p class="atlas-loading">Opening the atlas…</p></div>
@@ -38,10 +38,10 @@ window.DungeonAtlas = (() => {
         <p class="atlas-where">${e.zone ? esc(e.zone) : "Location not yet observed"}${e.faction ? ` · <span class="atlas-side ${esc(e.faction.toLowerCase())}">${esc(e.faction)}</span>` : ""}${e.observedRuns ? ` · <span class="atlas-seen">${e.observedRuns} Forever run${e.observedRuns === 1 ? "" : "s"} observed</span>` : ""}</p>
         <p class="atlas-diff">${esc(LABEL[e.difficulty])}${e.factionNote ? ` · ${esc(e.factionNote)}` : ""}</p>
         ${scoreChip(e)}${wishRow(e)}
-        ${ready}${quests}${pickList}
+        ${!isOpen && (e.yourQuests.length || pick.length) ? `<p class="atlas-brief">${e.yourQuests.length ? `${e.yourQuests.length} of your quests lead here` : `${pick.length} quest${pick.length === 1 ? "" : "s"} to pick up first`}</p>` : ""}
         <div class="atlas-toggles"><button type="button" class="atlas-toggle" data-atlas-open="${esc(e.id)}" aria-expanded="${isOpen && view === "details"}">${isOpen && view === "details" ? "Hide details" : `Bosses, roles & prep (${e.bosses.length + e.observedOnly.length} bosses)`}</button>${e.loot ? `<button type="button" class="atlas-loot-btn${isOpen && view === "loot" ? " on" : ""}" data-atlas-loot="${esc(e.id)}" aria-expanded="${isOpen && view === "loot"}"><span class="atlas-chest" aria-hidden="true"></span>${isOpen && view === "loot" ? "Hide loot" : `Loot${e.loot.items ? ` (${e.loot.items} items)` : ""}`}</button>` : ""}</div>
         ${isOpen && view === "loot" ? lootView(e) : ""}
-        ${isOpen && view === "details" ? `<div class="atlas-details"><ul class="atlas-bosses">${bosses}${extra}</ul>
+        ${isOpen && view === "details" ? `<div class="atlas-details"><div class="atlas-preflight">${ready}${quests}${pickList}</div><ul class="atlas-bosses">${bosses}${extra}</ul>
           <div class="atlas-cols"><div><h4>Group</h4><ul>${e.roles.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div><div><h4>Before you go</h4><ul>${e.prep.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div></div>
           ${e.entrance ? `<div class="atlas-actions"><button type="button" class="primary" data-atlas-way="${esc(e.id)}">Copy entrance waypoint</button><button type="button" data-atlas-map="${esc(e.id)}">Show on World Map</button></div><p class="atlas-src">Entrance around ${(e.entrance.x * 100).toFixed(0)}, ${(e.entrance.y * 100).toFixed(0)} in ${esc(e.zone)} (approximate).</p>` : ""}
           <p class="atlas-src">${esc(e.source)}</p></div>` : ""}

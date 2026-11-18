@@ -66,7 +66,7 @@ test("every art file the pages reference ships with the app", () => {
 
 test("every Now step has its painted crest", () => {
   const now = read("src/renderer/now.js");
-  const kinds = [...now.match(/const ICON = \{([^}]*)\}/)[1].matchAll(/"?([a-z-]+)"?:/g)].map((m) => m[1]);
+  const kinds = [...new Set([...now.matchAll(/out\.push\(\{ kind: "([a-z-]+)"/g)].map((m) => m[1]))];
   assert.ok(kinds.length >= 5, kinds.join(","));
   for (const k of kinds) assert.ok(fs.existsSync(path.join(root, "src/renderer/art/steps", k + ".png")), `missing crest ${k}`);
   const wm = read("src/renderer/world-map.js"), pins = /for \(const k of (\[[^\]]+\])\)/.exec(wm.slice(wm.indexOf("const PAINTED")));

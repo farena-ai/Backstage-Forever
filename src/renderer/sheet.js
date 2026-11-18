@@ -23,9 +23,8 @@ window.SheetView = (() => {
   }
   const icon = (it, size = 40) => (it?.iconFileId && window.GameIcons ? GameIcons.tag(it.iconFileId, size) : `<span class="sht-gem q-${quality(it?.quality)}" aria-hidden="true">◆</span>`);
   function hero() {
-    const cls = String(data?.className || "").toLowerCase();
     const who = data ? [data.level ? `Level ${data.level}` : "", data.race, data.className, data.faction].filter(Boolean).join(" · ") : "";
-    return PageHero.render({ art: "characters", eyebrow: "Characters · Sheet", title: esc(data?.name || "Character sheet"), crest: PageHero.classCrest(cls), subtitle: esc(who || "Your gear, stats and gear sets.") });
+    return PageHero.render({ art: "characters", eyebrow: "Characters · Sheet", title: esc(data?.name || "Character sheet"), character: data, subtitle: esc(who || "Your gear, stats and gear sets.") });
   }
   function empty(what) {
     return `<p class="sht-empty">${what} Log in with the addon on, then type <code>/reload</code> (or log out) once so the desktop app receives it.</p>`;

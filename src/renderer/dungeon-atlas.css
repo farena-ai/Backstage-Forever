@@ -1,7 +1,9 @@
 /* Instance Atlas: difficulty-coloured cards in the style of in-game level colours. */
 .atlas-page { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .atlas-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; justify-content: space-between; }
-.atlas-tabs { display: flex; gap: 6px; }
+.atlas-brief { margin: 0 0 6px; font-size: 13px; color: #4a3214; }
+.atlas-preflight { padding: 10px 14px; margin: 0 0 14px; border: 1px solid #8c6a2e; border-radius: 5px; background: #f5e9c8; }
+.atlas-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
 .atlas-tabs button[aria-selected="true"] { outline: 2px solid #f0c75a; outline-offset: 2px; }
 .atlas-suggest h2 { margin: 0 0 8px; font: 700 18px Cinzel, Georgia, serif; color: #f3dca0; }
 .atlas-chips { display: flex; flex-wrap: wrap; gap: 10px; }

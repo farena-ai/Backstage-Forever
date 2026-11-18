@@ -1,67 +1,128 @@
-/* Ledger (0.35): Bags & bank, Gold & prices, Reputation, Cooldowns. Same parchment cards as Journey. */
-.ledger-page { display: flex; flex-direction: column; gap: 14px; }
-.ldg-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-.ldg-summary div { display: flex; flex-direction: column; padding: 10px 14px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); border: 1px solid #a5823e; color: #2b1b0a; }
-.ldg-summary strong { font: 700 22px Georgia, serif; color: #3d220c; }
-.ldg-summary span { font-size: 13px; color: #5a3e1c; }
-.ldg-card { padding: 14px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
-.ldg-card h2 { margin: 0 0 8px; font: 700 18px Cinzel, Georgia, serif; color: #3d220c; }
-.ldg-group { margin: 12px 0 6px; font: 700 13px Cinzel, Georgia, serif; color: #5a2e0c; letter-spacing: .05em; }
+/* Ledger — compact navigation and parchment working tables. */
+.content:has(> .ledger-page) > .player-section {
+  padding: 4px 7px;
+  margin-bottom: 10px;
+}
+.content:has(> .ledger-page) > .player-section .player-section-heading { display: none; }
+.content:has(> .ledger-page) > .player-section .player-subtabs { gap: 4px; }
+.content:has(> .ledger-page) .player-subtabs button {
+  min-height: 36px;
+  max-width: 100%;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  font: 600 14px/1.3 "Segoe UI", sans-serif;
+  white-space: normal;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.content:has(> .ledger-page) .player-subtabs button::before,
+.content:has(> .ledger-page) .player-subtabs button::after { content: none; }
+.content:has(> .ledger-page) .player-subtabs button:hover:not(:disabled) {
+  background: #26333a;
+  color: var(--text);
+  box-shadow: none;
+}
+.content:has(> .ledger-page) .player-subtabs button[aria-current="page"] {
+  background: #302b22;
+  color: #ffedc9;
+  border-color: #bba06c;
+  box-shadow: inset 0 -2px #dab77a;
+}
+.ledger-page :is(input, select, summary, .ldg-table-frame):focus-visible,
+.content:has(> .ledger-page) .player-subtabs button:focus-visible {
+  outline: 2px solid #785017;
+  outline-offset: 2px;
+}
+.content:has(> .ledger-page) .player-subtabs button:focus-visible { outline-color: #f4cf72; }
+.ledger-page :is(summary, .ldg-table-frame):focus-visible { box-shadow: 0 0 0 2px #785017; }
+
+.ledger-page, .ledger-page > [data-ledger-body] { display: grid; gap: 12px; min-width: 0; }
+.ledger-page > .page-hero.compact { min-height: 96px; margin: 0; padding: 9px 16px; align-items: center; justify-content: center; flex-direction: row; }
+.ledger-page > .page-hero .ph-copy { width: 100%; max-width: none; align-items: center; gap: 12px; }
+.ledger-page > .page-hero .ph-crest { width: 54px; height: 54px; }
+.ledger-page > .page-hero.compact h1 { font-size: 25px; }
+.ledger-page > .page-hero .ph-sub { font-size: 13px; }
+@media (max-height: 760px) {
+  .ledger-page > .page-hero.compact { min-height: 82px; }
+  .ledger-page > .page-hero.compact h1 { font-size: 22px; }
+}
+.ldg-summary { display: flex; flex-wrap: wrap; gap: 0; border: 1px solid #b59a5d66; border-radius: 6px; background: #17232b; }
+.ldg-summary > div { display: flex; flex: 1 1 auto; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; padding: 7px 12px; border-inline-end: 1px solid #b59a5d44; }
+.ldg-summary > div:last-child { border-inline-end: 0; }
+.ldg-summary strong { font: 700 16px/1.4 "Segoe UI", sans-serif; color: #ffedc9; font-variant-numeric: tabular-nums; }
+.ldg-summary > div > span { font-size: 13px; color: #cbd5d6; }
+.ldg-summary .ldg-coins > span { color: inherit; }
+.ldg-card { min-width: 0; padding: 12px 14px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: 0 4px 10px #0004; }
+.ldg-card h2 { margin: 0 0 8px; font: 700 17px/1.3 Cinzel, Georgia, serif; color: #3d220c; }
+.ldg-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-bottom: 8px; }
+.ldg-toolbar h2 { margin: 0; }
 .ldg-note { margin: 0 0 8px; font-size: 13px; color: #5a3e1c; }
-.ldg-empty { margin: 0; padding: 12px 14px; border-radius: 6px; background: rgba(239,224,187,.92); color: #3d220c; border: 1px dashed #a5823e; }
-.ldg-more { margin: 8px 0 0; font-size: 12px; color: #6b4a22; }
-.ldg-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
-@media (max-width: 1100px) { .ldg-two { grid-template-columns: 1fr; } }
-.ldg-coins { display: inline-flex; gap: 5px; white-space: nowrap; }
-.ldg-gold { color: #8a5a08; font-weight: 700; } .ldg-silver { color: #4a4a4a; } .ldg-copper { color: #8a4a18; }
-.ldg-search input { width: 100%; box-sizing: border-box; padding: 8px 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #a5823e; background: #fbf3dd; color: #2b1b0a; font-size: 14px; }
-.ldg-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
-.ldg-chips strong { color: #3d220c; }
-.ldg-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.ldg-item { padding: 6px 10px; border-radius: 5px; background: rgba(60,40,18,.08); border: 1px solid rgba(138,90,24,.3); }
-.ldg-item-head { display: flex; align-items: center; gap: 8px; cursor: default; }
-.ldg-total { margin-left: auto; font-weight: 700; color: #3d220c; }
-.ldg-holders { list-style: none; margin: 4px 0 0 22px; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
-.ldg-holders li { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
-.ldg-holders small { color: #6b5a3c; }
-.ldg-gem { font-size: 12px; }
+.ldg-note.ldg-after { margin: 8px 0 0; }
+.ldg-empty { margin: 0; padding: 12px 14px; border-radius: 5px; background: #efe0bb; color: #3d220c; border: 1px dashed #a5823e; }
+.ldg-more { margin: 8px 0 0; font-size: 13px; color: #5a3e1c; }
+.ldg-two { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .ldg-two { grid-template-columns: minmax(0, 1fr); } }
+.ldg-coins { display: inline-flex; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ldg-gold { color: #694305; font-weight: 700; }
+.ldg-silver { color: #45474a; }
+.ldg-copper { color: #713914; }
+.ldg-search { flex: 0 1 320px; min-width: 0; }
+.ledger-page :is(.ldg-search input, .ldg-pick select) { box-sizing: border-box; min-height: 34px; padding: 5px 8px; border: 1px solid #8d6c36; border-radius: 5px; background: #fbf3dd; color: #2b1b0a; font: 400 14px/1.3 "Segoe UI", sans-serif; }
+.ldg-search input { width: 100%; }
+.ldg-search input::placeholder { color: #6b4e26; opacity: 1; }
+.ledger-page .ldg-pick { display: flex; flex-flow: row wrap; align-items: center; gap: 8px; color: #5a3e1c; font-size: 13px; font-weight: 600; min-width: 0; }
+.ldg-pick select { max-width: 100%; }
+.ldg-count { display: inline-block; margin-inline-start: 6px; padding: 2px 8px; border: 1px solid #607245; border-radius: 4px; background: #e1e6c9; color: #305219; font: 700 13px/1.4 "Segoe UI", sans-serif; }
+.ldg-ready { color: #305219; }
+.ldg-chips, .ldg-holders { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.ldg-holders li { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
+.ldg-source { margin-top: 8px; padding: 0; border: 0; color: #5a3e1c; font-size: 13px; }
+.ldg-source summary { width: fit-content; padding-block: 3px; color: #5a3e1c; font-weight: 600; cursor: pointer; }
+.ldg-source[open] > summary { margin-bottom: 6px; }
 .ldg-name { font-weight: 700; }
-.q-poor { color: #6a6a6a; } .q-common { color: #2b1b0a; } .q-uncommon { color: #1a7a0a; } .q-rare { color: #0b5cad; } .q-epic { color: #7a2bb8; } .q-legendary { color: #b35a00; } .q-artifact, .q-heirloom { color: #8a6a1a; }
-.ldg-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.ldg-table th { text-align: left; font: 700 12px Cinzel, Georgia, serif; color: #5a2e0c; border-bottom: 1px solid #a5823e; padding: 4px 6px; }
-.ldg-table td { padding: 4px 6px; border-bottom: 1px solid rgba(138,90,24,.2); }
-.ldg-table small { color: #6b5a3c; }
-.ldg-goldlist, .ldg-worth, .ldg-reps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.ldg-goldlist li { display: grid; grid-template-columns: 140px 1fr auto; gap: 8px; align-items: center; font-size: 13px; }
-.ldg-who small { color: #6b5a3c; }
-.ldg-worth li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; font-size: 13px; }
-.ldg-amount { text-align: right; }
-.ldg-bar { position: relative; display: block; height: 12px; border-radius: 6px; background: rgba(60,40,18,.18); overflow: hidden; }
-.ldg-bar > span { display: block; height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, #c79a4a, #f6c445); }
-.ldg-pick { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 4px; }
-.ldg-pick select { margin-left: 6px; padding: 4px 8px; border-radius: 4px; border: 1px solid #a5823e; background: #fbf3dd; color: #2b1b0a; }
-.ldg-pick small { color: #6b5a3c; }
-.ldg-rep { display: grid; grid-template-columns: minmax(140px, 220px) 1fr 170px; gap: 10px; align-items: center; font-size: 13px; }
-.ldg-fname { font-weight: 700; color: #3d220c; }
-.ldg-stand strong { color: #3d220c; }
-.ldg-rep.st-1 .ldg-bar > span, .ldg-rep.st-2 .ldg-bar > span { background: linear-gradient(90deg, #8a1f14, #cc3a2a); }
-.ldg-rep.st-3 .ldg-bar > span { background: linear-gradient(90deg, #b35a00, #e08a2a); }
-.ldg-rep.st-4 .ldg-bar > span { background: linear-gradient(90deg, #a08a2a, #e0c84a); }
-.ldg-rep.st-5 .ldg-bar > span, .ldg-rep.st-6 .ldg-bar > span, .ldg-rep.st-7 .ldg-bar > span, .ldg-rep.st-8 .ldg-bar > span { background: linear-gradient(90deg, #2e6b1e, #5fb83a); }
-.ldg-cds { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-.ldg-cds ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.ldg-cds li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
-.ldg-cds li small { color: #6b5a3c; }
-.ldg-cds li.ready .ldg-when { color: #2e6b1e; font-weight: 700; }
-.ldg-cds li.wait .ldg-when { color: #6b4a22; }
-@media (max-width: 760px) { .ldg-rep, .ldg-goldlist li { grid-template-columns: 1fr; } }
-/* 1.3 (J12): fastest ways up per faction. */
-.ldg-repup { margin-top: 14px; }
-.ldg-repup-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.ledger-page .q-poor { color: #514d44; }
+.ledger-page .q-common { color: #2b1b0a; }
+.ledger-page .q-uncommon { color: #2c601c; }
+.ledger-page .q-rare { color: #154e84; }
+.ledger-page .q-epic { color: #692b89; }
+.ledger-page .q-legendary { color: #793d06; }
+.ledger-page :is(.q-artifact, .q-heirloom) { color: #69500e; }
+
+.ldg-table-frame { position: relative; max-width: 100%; overflow: auto; border: 1px solid #aa8e56; border-radius: 5px; color: #2b1b0a; background: #f2e5c5; }
+.ldg-table-frame.ldg-long { max-height: clamp(210px, 48vh, 450px); }
+.ldg-table { width: 100%; border-collapse: separate; border-spacing: 0; font: 400 14px/1.4 "Segoe UI", sans-serif; }
+.ldg-table :is(th, td) { padding: 7px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid #b89e684d; overflow-wrap: anywhere; }
+.ldg-table tbody:last-child tr:last-child > * { border-bottom: 0; }
+.ldg-table thead th { background: #dcca9f; color: #3d220c; font-size: 12px; letter-spacing: .035em; border-bottom-color: #aa8e56; }
+.ldg-table-frame[data-scroll-y] thead th { position: sticky; top: 0; z-index: 1; }
+.ldg-table tbody tr:nth-child(even):not(.ldg-group) { background: #e9d9b4; }
+.ldg-table .ldg-group th { color: #5a3e1c; background: #e6d4ad; font-size: 12px; }
+.ldg-table .ldg-num { text-align: right; font-variant-numeric: tabular-nums; }
+.ldg-table td.ldg-num { white-space: nowrap; }
+.ldg-table small { color: #5a3e1c; font-size: 12px; }
+.ldg-cell-note { display: block; }
+.ldg-table-inventory th:first-child { width: 31%; }
+.ldg-table-inventory th:nth-child(2) { width: 12%; }
+.ldg-table-prices th:first-child { width: 37%; }
+.ldg-table-prices th:last-child { width: 23%; }
+.ldg-table-factions th:first-child { width: 45%; }
+
+/* Only a saved gold target has a progress meter. */
+.ldg-bar { position: relative; display: block; background: #c4ad7a; overflow: hidden; }
+.ldg-bar > span { display: block; height: 100%; width: 0; border-radius: inherit; background: #8b590d; }
+.ldg-repup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
 .ldg-repup-f h3 { margin: 0 0 4px; font: 700 15px Georgia, serif; color: #3d220c; }
-.ldg-repup-f h3 small { font: 600 12px Georgia, serif; color: #5a3e1c; }
-.ldg-unlock { margin: 0 0 6px; font-size: 13px; color: #2e6b1e; font-weight: 600; }
-.ldg-repup-f ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #2b1b0a; }
 .ldg-repup-f small { color: #5a3e1c; }
-.ldg-pts { font-weight: 700; color: #2a62a8; }
-.ldg-crest { width: 20px; height: 20px; vertical-align: -5px; margin-right: 6px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+.ldg-unlock { margin: 0 0 6px; font-size: 13px; color: #305219; font-weight: 600; }
+.ldg-repup-f ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 13px; }
+.ldg-pts { font-weight: 700; color: #154e84; }
+@media (forced-colors: active) {
+  .content:has(> .ledger-page) .player-subtabs button[aria-current="page"] { border-color: Highlight; }
+  .ldg-table-frame, .ldg-table thead th { border-color: CanvasText; }
+  .ldg-bar { border: 1px solid CanvasText; }
+  .ldg-bar > span { forced-color-adjust: none; background: Highlight; }
+}

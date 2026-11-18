@@ -9,6 +9,8 @@ const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 (async () => {
   const tempRoot = await fs.realpath(os.tmpdir()), dir = await fs.mkdtemp(path.join(tempRoot, "forever-ledger-"));
+  const compact = process.argv.includes("--compact"), size = compact ? "compact" : "standard";
+  const bounds = compact ? [1000, 700] : [1440, 900];
   let app;
   const watchdog = setTimeout(() => { console.error("Ledger fixture exceeded 150 seconds"); process.exitCode = 1; app?.process().kill(); }, 150000);
   try {
@@ -23,7 +25,8 @@ const { defaultState } = require("../src/core/validation.cjs");
     const characters = [
       { id: "Synthetic-Aeralyn", name: "Aeralyn", faction: "Alliance", race: "Human", className: "Mage", ledger: {
         schemaVersion: 1, money: 1523045, moneyAt: clock,
-        bags: { seenAt: clock, complete: true, items: [item(2589, 25, "Linen Cloth"), item(118, 3, "Minor Healing Potion")] },
+        bags: { seenAt: clock, complete: true, items: [item(2589, 25, "Linen Cloth"), item(118, 3, "Minor Healing Potion"),
+          ...Array.from({ length: 24 }, (_, i) => item(90000 + i, i + 1, `Supply sample ${i + 1}`))] },
         bank: { seenAt: clock - 86400 * 2, complete: true, items: [item(2589, 10, "Linen Cloth"), item(4306, 40, "Silk Cloth")] },
         mail: { seenAt: clock - 3600, complete: true, letters: 1, money: 2500, expiresAt: clock + 86400 * 20, items: [item(2770, 8, "Copper Ore")] },
         reputations: { seenAt: clock, factions: [{ id: 72, name: "Stormwind", standing: 6, min: 9000, max: 21000, value: 15000 }, { id: 47, name: "Ironforge", standing: 5, min: 3000, max: 9000, value: 4000 }, { id: 576, name: "Timbermaw Hold", standing: 2, min: -6000, max: -3000, value: -5000 }] },
@@ -39,44 +42,87 @@ const { defaultState } = require("../src/core/validation.cjs");
     app = await launchElectron(electron, { args: [await syntheticLaunch(data)], env: { ...process.env, BF_USER_DATA: data }, timeout: 20000 });
     const page = await testWindow(app);
     page.setDefaultTimeout(10000);
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000));
+    await app.evaluate(({ BrowserWindow }, [w, h]) => BrowserWindow.getAllWindows()[0].setContentSize(w, h), bounds);
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "complete"));
     await page.evaluate((root) => window.backstage.prepareGame(root), game);
     await page.reload();
     await page.waitForFunction(() => document.querySelectorAll("#active-character option").length === 2);
+    await page.waitForFunction(([w, h]) => innerWidth === w && innerHeight === h, bounds);
     const capture = path.resolve(process.env.BF_SMOKE_CAPTURE_ROOT || "work/ledger-smoke");
     await fs.mkdir(capture, { recursive: true });
-    const shot = (name) => page.screenshot({ path: path.join(capture, `${name}.png`), fullPage: true });
+    const shot = async (name) => {
+      const geometry = await page.locator("[data-ledger]").evaluate((root) => {
+        for (const el of [document.scrollingElement, root.closest(".main"), root.parentElement]) el.scrollTop = 0;
+        const tabs = [...root.parentElement.querySelectorAll(".player-subtabs button")];
+        return { banner: root.querySelector(".page-hero").offsetHeight,
+          tabs: tabs.map((b) => ({ top: b.getBoundingClientRect().top, font: parseFloat(getComputedStyle(b).fontSize) })),
+          overflow: root.scrollWidth - root.clientWidth, tableTop: root.querySelector("table").getBoundingClientRect().top };
+      });
+      assert.ok(geometry.banner <= 120, `${size} ${name}: compact banner`);
+      assert.equal(geometry.tabs.length, 4);
+      const tops = geometry.tabs.map(({ top }) => top);
+      assert.ok(Math.max(...tops) - Math.min(...tops) < 3, `subtabs stay together: ${tops}`);
+      assert.ok(geometry.tabs.every(({ font }) => font >= 14), "subtabs stay readable");
+      assert.ok(geometry.overflow <= 1 && geometry.tableTop < bounds[1] - 120, `${size} ${name}: table fits without lateral spill and starts above the fold`);
+      await page.screenshot({ path: path.join(capture, `${size}-${name}.png`) });
+    };
 
     // Bags & bank: both characters, bank and mail with last seen, a bank never opened, search.
     await navigate(page, "ledger");
     await page.locator('[data-ledger-item="2589"]').waitFor();
+    assert.equal(await page.getByRole("table", { name: "Inventory", exact: true }).count(), 1);
+    assert.equal(await page.getByRole("columnheader", { name: "Quantity" }).count(), 1);
+    assert.equal(await page.getByRole("rowheader", { name: "Linen Cloth" }).count(), 1);
     const linen = await page.locator('[data-ledger-item="2589"]').innerText();
-    assert.match(linen, /×42/); assert.match(linen, /Aeralyn/); assert.match(linen, /bags 25 · bank 10/); assert.match(linen, /Vaelric/);
-    assert.match(await page.locator("[data-ledger]").innerText(), /bank never opened/);
+    assert.match(linen, /\b42\b/); assert.match(linen, /Aeralyn/); assert.match(linen, /bags 25 · bank 10/); assert.match(linen, /Vaelric/);
+    const lastSeen = page.locator(".ldg-source");
+    await lastSeen.locator("summary").click();
+    assert.match(await lastSeen.innerText(), /bank never opened/);
+    await lastSeen.locator("summary").click();
     assert.match(await page.locator('[data-ledger-item="2770"]').innerText(), /mail 8/);
     await shot("bags");
-    await page.getByLabel("Search items", { exact: true }).fill("thorium");
+    const itemSearch = page.getByLabel("Search items", { exact: true });
+    const inventoryScroll = page.getByRole("region", { name: "Inventory", exact: true });
+    await itemSearch.focus();
+    await page.keyboard.press("Tab");
+    assert.ok(await inventoryScroll.evaluate((n) => n === document.activeElement));
+    await page.keyboard.press("PageDown");
+    await page.waitForFunction(() => document.activeElement.scrollTop > 30);
+    const stickyOffset = await inventoryScroll.evaluate((n) => n.querySelector("thead th").getBoundingClientRect().top - n.getBoundingClientRect().top);
+    assert.ok(Math.abs(stickyOffset) <= 2, `${size}: inventory header stays in view during keyboard scroll`);
+    await itemSearch.fill("thorium");
     await page.waitForFunction(() => document.querySelectorAll("[data-ledger-item]").length === 1);
     assert.match(await page.locator("[data-ledger-item]").innerText(), /Thorium Bar[\s\S]*Vaelric/);
-    await page.getByLabel("Search items", { exact: true }).fill("cloth");
+    assert.equal(await inventoryScroll.count(), 0, "short search results don't add a scroll stop");
+    await itemSearch.fill("no such item");
+    await page.getByText("Nothing your characters carry matches that.").waitFor();
+    assert.equal(await page.getByRole("table", { name: "Inventory", exact: true }).count(), 0);
+    await itemSearch.fill("cloth");
     await page.waitForFunction(() => document.querySelectorAll("[data-ledger-item]").length === 2);
 
     // Gold & prices: gold per character and total, remembered prices, search.
     await navigate(page, "ledger-gold");
     await page.locator('[data-ledger-gold]').first().waitFor();
+    assert.equal(await page.getByRole("table", { name: "Price memory", exact: true }).count(), 1);
+    assert.equal(await page.getByRole("table", { name: "Gold per character", exact: true }).count(), 1);
+    assert.ok(await page.locator("[data-ledger-list=prices]").evaluate((n) => n.compareDocumentPosition(document.querySelector("[data-ledger-goal-card]")) & Node.DOCUMENT_POSITION_FOLLOWING));
     const gold = await page.locator("[data-ledger]").innerText();
     assert.match(gold, /239g\s*30s\s*45c/, "total gold of both characters");
     assert.equal(await page.locator("[data-ledger-gold]").count(), 2);
     assert.equal(await page.locator("[data-ledger-price]").count(), 2);
+    assert.equal(await page.getByRole("progressbar").count(), 0, "no goal means no progress chart");
+    assert.equal(await page.getByRole("region", { name: "Price memory", exact: true }).count(), 0);
+    const priceAlignment = await page.getByRole("columnheader", { name: "Last seen, each" }).evaluate((th) => [th, th.closest("table").tBodies[0].rows[0].cells[1]].map((cell) => getComputedStyle(cell).textAlign));
+    assert.deepEqual(priceAlignment, ["right", "right"]);
+    await shot("gold");
     await page.getByLabel("Search prices", { exact: true }).fill("silk");
     await page.waitForFunction(() => document.querySelectorAll("[data-ledger-price]").length === 1);
     assert.match(await page.locator("[data-ledger-price]").innerText(), /Silk Cloth[\s\S]*4s/);
-    await shot("gold");
 
     // Reputation: Alliance character first, then the Horde one through the picker.
     await navigate(page, "ledger-reputation");
     await page.locator('[data-ledger-faction="72"]').waitFor();
+    assert.equal(await page.getByRole("table", { name: "Faction standings" }).count(), 1);
     assert.match(await page.locator('[data-ledger-faction="72"]').innerText(), /Stormwind[\s\S]*Honored/);
     await shot("reputation-alliance");
     await page.getByLabel("Reputation of", { exact: true }).selectOption({ label: "Vaelric · Horde" });
@@ -89,10 +135,20 @@ const { defaultState } = require("../src/core/validation.cjs");
     await navigate(page, "ledger-cooldowns");
     await page.locator('[data-ledger-cd]').first().waitFor();
     assert.equal(await page.locator("[data-ledger-cd]").count(), 2);
+    assert.match(await page.locator("[data-ledger-cd]").first().innerText(), /Mooncloth/);
+    const grouping = page.getByLabel("Group cooldowns by");
+    await grouping.focus(); // selectOption dispatches change without focusing the control.
+    await grouping.selectOption("character");
+    await page.getByRole("rowheader", { name: "Aeralyn", exact: true }).waitFor();
+    assert.match(await page.locator("[data-ledger-cd]").first().innerText(), /Transmute/);
+    assert.ok(await grouping.evaluate((n) => n === document.activeElement));
+    await grouping.selectOption("readiness");
+    await page.getByRole("rowheader", { name: "Waiting", exact: true }).waitFor();
     assert.match(await page.locator("[data-ledger]").innerText(), /Transmute[\s\S]*Ready in [45]h/);
+    assert.doesNotMatch(await page.locator("[data-ledger-cd]").last().innerText(), /\b60m\b/);
     assert.match(await page.locator("[data-ledger]").innerText(), /Mooncloth[\s\S]*Ready/);
     await shot("cooldowns");
-    console.log("Ledger smoke passed");
+    console.log(`Ledger smoke passed (${size}: ${bounds.join("×")} content)`);
   } catch (e) { console.error(e); process.exitCode = 1; }
   finally { clearTimeout(watchdog); await app?.close().catch(() => {}); await fs.rm(dir, { recursive: true, force: true }).catch(() => {}); }
 })();
