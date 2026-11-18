@@ -20,6 +20,7 @@ local function field(t,k)
 end
 local function int(v,lo,hi) v=plain(v);if type(v)=='number' and v==v and v>=lo and v<=hi then return floor(v) end end
 local MAX_LEVELS,MAX_FIRSTS,MAX_ZONES,MAX_GIVERS=80,40,120,400
+local MAX_ENCOUNTERS=100
 local FIRSTS={dungeon=true,flight=true,mount=true,death=true,rested=true,group=true,hearth=true}
 
 local db
@@ -31,6 +32,7 @@ local function store()
     if type(db.firsts)~='table' then db.firsts={} end
     if type(db.zones)~='table' then db.zones={} end
     if type(db.givers)~='table' then db.givers={} end
+    if type(db.encounters)~='table' then db.encounters={} end
     return db
 end
 local function now() return int(call(time),0,253402300799) end
@@ -79,7 +81,45 @@ function BackstageForeverJournalGiver(questId,npcId,mapId,x,y,at)
     while #d.givers>MAX_GIVERS do table.remove(d.givers,1) end
     return true
 end
--- Export block (arrays only; BackstageForever.lua marks them as JSON arrays).
+local function encounterInt(v,lo,hi)
+    local n=int(v,lo,hi)
+    if n and n==v then return n end
+end
+
+local function encounterSnapshot(d)
+    local encounters={}
+    for i=math.max(1,#d.encounters-MAX_ENCOUNTERS+1),#d.encounters do
+        local e=d.encounters[i]
+        if type(e)=='table' then encounters[#encounters+1]={encounterId=e.encounterId,name=e.name,instanceMap=e.instanceMap,instanceType=e.instanceType,difficultyId=e.difficultyId,at=e.at} end
+    end
+    return #encounters>0 and encounters or nil
+end
+
+-- Called only for a successful ENCOUNTER_END. Use the instance ID, not a UI map or target NPC.
+function BackstageForeverJournalEncounter(encounterId,name,difficultyId)
+    local _,kind,_,_,_,_,_,instanceMap=call(GetInstanceInfo)
+    if kind~='party' and kind~='raid' then return end
+    instanceMap=encounterInt(instanceMap,1,2147483647)
+    encounterId=encounterInt(encounterId,1,2147483647)
+    difficultyId=encounterInt(difficultyId,0,2147483647)
+    name=plain(name)
+    local at=now()
+    if not instanceMap or not encounterId or not difficultyId or not at or at==0
+        or type(name)~='string' or #name>120 or name:find('[%z\1-\31\127]') or not name:find('%S') then return end
+    local d=store()
+    for i=math.max(1,#d.encounters-MAX_ENCOUNTERS+1),#d.encounters do
+        local e=d.encounters[i]
+        if type(e)=='table' and type(e.at)=='number' and math.abs(at-e.at)<10 and e.encounterId==encounterId
+            and e.instanceMap==instanceMap and e.instanceType==kind and e.difficultyId==difficultyId then return end
+    end
+    d.encounters[#d.encounters+1]={encounterId=encounterId,name=name,instanceMap=instanceMap,instanceType=kind,difficultyId=difficultyId,at=at}
+    while #d.encounters>MAX_ENCOUNTERS do table.remove(d.encounters,1) end
+    if type(BackstageForeverRequestEncounterCapture)=='function' then
+        pcall(BackstageForeverRequestEncounterCapture,encounterSnapshot(d),at)
+    end
+end
+
+-- Export block (the optional encounters array is only sent when nonempty).
 function BackstageForeverJournalSnapshot()
     local d=store()
     local levels,firsts,zones={},{},{}
@@ -88,8 +128,9 @@ function BackstageForeverJournalSnapshot()
     for i=1,min(#d.zones,MAX_ZONES) do zones[#zones+1]=d.zones[i] end
     local givers={}
     for i=1,min(#d.givers,MAX_GIVERS) do local g=d.givers[i];givers[#givers+1]={q=g.q,n=g.n,m=g.m,x=g.x,y=g.y,at=g.at} end
-    if #levels==0 and #firsts==0 and #zones==0 and #givers==0 and not d.played then return nil end
-    return {levels=levels,firsts=firsts,zones=zones,givers=givers,played=d.played}
+    local encounters=encounterSnapshot(d)
+    if #levels==0 and #firsts==0 and #zones==0 and #givers==0 and not encounters and not d.played then return nil end
+    return {levels=levels,firsts=firsts,zones=zones,givers=givers,encounters=encounters,played=d.played}
 end
 
 -- Badges in game (1.1.1): the same rules as the app's Characters → Badges, from what this

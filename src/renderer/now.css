@@ -310,3 +310,8 @@
 .now-rem-goal { border-color: #f6c445; }
 .now-week { margin: 0; color: #f1dcb0; font-size: 14px; }
 .now-week .now-link { margin-left: 6px; }
+.now-objective { margin-block: 12px; overflow-wrap: anywhere; }
+.now-objective .objective-title { margin-block: 6px; font-size: 1.12rem; }
+.now-objective .now-actions { flex-wrap: wrap; }
+.objective-pin { margin-top: 8px; }
+.objective-confirm [data-objective-confirmation]:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }

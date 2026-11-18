@@ -1096,6 +1096,7 @@ Memory.init({api, root, esc,
     return result;
   },
 });
+window.ObjectiveView?.init(() => state);
 QuestGuide.init({ api, root, esc, portrait, selectedMemoryIds: () => Memory.selectedIds(), ready: () => companionReady, notify: toast, onStatus: value => { questStatusRequest++;knowledgeStatus = value; } });
 AdventureCoach.init({api,root,esc,profile,active:()=>page === "adventure" && !setupOpen && Boolean(state?.onboarded)});
 Director.init({
@@ -1247,6 +1248,63 @@ root.addEventListener("click", (event) => {
   if (!button) return;
   if (button.dataset.action === "skip-content") {
     root.querySelector("#main-content")?.focus();
+    return;
+  }
+  if (button.hasAttribute("data-objective-confirm") || button.hasAttribute("data-objective-cancel")) {
+    const group = button.closest(".objective-confirm"), toggle = group.querySelector("[data-objective-confirm]"), prompt = group.querySelector("[data-objective-confirmation]");
+    const open = button === toggle && prompt.hidden;
+    prompt.hidden = !open;
+    toggle.setAttribute("aria-expanded", String(open));
+    (open ? prompt.querySelector("[data-objective-cancel]") : toggle).focus();
+    return;
+  }
+  if (button.dataset.objectiveChange) {
+    const choice = JSON.parse(button.dataset.objectiveChange), from = page, request = questNavigationRequest, generation = autosaveGeneration;
+    button.disabled = true;
+    const task = async () => {
+      try {
+        if (generation !== autosaveGeneration || from !== page || request !== questNavigationRequest) return;
+        const next = await mutateStateCall(() => api.changeObjective(choice));
+        if (generation !== autosaveGeneration) return;
+        state = next;
+        if (from === page && request === questNavigationRequest && state.activeProfileId === choice.profileId) {
+          page = "now";
+          render();
+          root.querySelector("[data-objective-heading]")?.focus();
+        }
+      } finally { button.disabled = false; }
+    };
+    const result = autosaveQueue.then(task, task);
+    autosaveQueue = result.catch(() => {});
+    action(() => result);
+    return;
+  }
+  if (button.dataset.objectiveResume) {
+    const id = button.dataset.objectiveResume, request = ++questNavigationRequest;
+    action(async () => {
+      await autosaveQueue;
+      if (request !== questNavigationRequest || page !== "now") return;
+      if (pendingSnapshot?.epoch === stateMutationEpoch && !stateMutationBusy) {
+        state = pendingSnapshot.result.state;
+        gameStatus = pendingSnapshot.result.gameStatus || {};
+        acceptBrief(pendingSnapshot.result);
+        pendingSnapshot = null;
+      }
+      const objective = ObjectiveView.resume(id);
+      if (!objective) { render(); return; }
+      if (objective.kind === "quest") {
+        page = "quest-guide";
+        render();
+        await QuestGuide.open(objective.questId);
+        if (request === questNavigationRequest && page === "quest-guide") root.querySelector('.quest-detail[tabindex="-1"]')?.focus();
+      } else {
+        Preparation.invalidate();
+        Preparation.selectProfession(objective.profileId, objective.skillLineId);
+        page = "preparation";
+        render();
+        root.querySelector('[aria-label="Owned profession"]')?.focus();
+      }
+    });
     return;
   }
   if (button.hasAttribute("data-company-share")) { if(page==="company")Party.shareJourney(button.dataset.companyShare); return; }

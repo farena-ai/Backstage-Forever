@@ -416,6 +416,10 @@ app.whenReady().then(async () => {
   });
   handle("gameStatus", () => game.status());
   handle("gameSnapshot", gameSnapshot);
+  handle("changeObjective", (...args) => {
+    if (args.length !== 1) throw Error("Invalid objective request.");
+    return store.changeObjective(args[0]);
+  });
   handle("discoverGame", () => game.discover());
   handle("startCompanion", async (...args) => {
     if (args.length) throw Error("Invalid setup request.");

@@ -121,7 +121,8 @@ window.Preparation = (() => {
       :"No estimate for this recipe. Check learned recipes and their colours in game.";
     const action=kind!=="plan-attempts"?"":suggestedAttempts===m.selection.crafts?'<small tabindex="-1" data-preparation-control="rank-checkpoint-result">Current batch matches the estimate.</small>'
       :`<button type="button" class="skill-use" data-preparation-checkpoint="${esc(checkpointChoice(m))}" data-preparation-control="rank-checkpoint" ${workshopCurrent()&&!pending?"":"disabled"}>Set batch to ${batch}</button>`;
-    return `<article class="skill-next skill-unknown" data-rank-checkpoint><span class="skill-seal" aria-hidden="true">◇</span><div><h3>${title}</h3><p>${detail}</p>${action}</div></article>`;
+    const pin=targetRank!==null&&workshopCurrent()&&!pending?window.ObjectiveView?.pin({kind:"profession",skillLineId:m.profession.skillLineId,targetRank},host.profileId()):"";
+    return `<article class="skill-next skill-unknown" data-rank-checkpoint><span class="skill-seal" aria-hidden="true">◇</span><div><h3>${title}</h3><p>${detail}</p>${action}${pin?`<div class="objective-pin">${pin}</div>`:""}</div></article>`;
   }
   function workshopShopping(list){
     if(!list?.rows?.length)return "";
@@ -185,5 +186,6 @@ window.Preparation = (() => {
     document.addEventListener("keydown",e=>{if(active()&&!painting&&e.key==="Tab")newerFocus();},true);
     guard=InteractionGuard.create({root:host.root,active,painting:()=>painting});host.root.addEventListener("click",e=>{const checkpoint=e.target.closest("[data-preparation-checkpoint]");if(checkpoint){applyCheckpoint(checkpoint);return;}const pick=e.target.closest("[data-preparation-pick]");if(pick&&active()){const id=Number(pick.dataset.preparationPick);if(Number.isInteger(id)&&id>0&&id<=2147483647)choose({recipeId:id,...(model?.selection?.skillLineId?{skillLineId:model.selection.skillLineId}:{})});return;}const button=e.target.closest("[data-preparation-add]");if(button)add(button);const askButton=e.target.closest("[data-preparation-ask]");if(askButton)ask(askButton);if(e.target.closest("[data-preparation-retry]")){signature="";retryFocus=focusRevision;refresh();}});host.root.addEventListener("change",e=>{const field=e.target.dataset.preparationOption;if(!field||!active())return;const choice={...options(host.profileId())};if(e.target.value==="")delete choice[field];else choice[field]=Number(e.target.value);if(field==="skillLineId")delete choice.recipeId;choose(choice,true);});}
   function choose(value,replace=false){const choice=replace?value:{...options(host.profileId()),...value};save(host.profileId(),choice);generation++;pending=false;choicePending=true;host.root.querySelectorAll("[data-preparation-add]").forEach(n=>n.disabled=true);error="";errorKind="";signature="";refresh();}
-  return {init,page,mounted,refresh,paint,invalidate,beginRender,endRender,options,save,remove,supplyDraft,deferRender:fn=>guard?.defer(fn,"root")||false};
+  function selectProfession(id,skillLineId){const saved=options(id);if(saved.skillLineId!==skillLineId)save(id,{skillLineId,crafts:1});}
+  return {init,page,mounted,refresh,paint,invalidate,beginRender,endRender,options,save,remove,selectProfession,supplyDraft,deferRender:fn=>guard?.defer(fn,"root")||false};
 })();

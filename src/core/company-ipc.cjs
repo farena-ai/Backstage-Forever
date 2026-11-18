@@ -12,7 +12,8 @@ const captured = [
 /** Renderer forms edit journals/manual identity, never captured evidence/plans. */
 function mergeOrdinaryState(current, edited, base = current) {
   current = validateState(current);
-  edited = validateState(preserveMemories(current, edited));
+  // A character deletion can arrive with its old, main-owned objective attached.
+  edited = validateState(preserveMemories(current, { ...edited, objectives: [] }));
   base = validateState(preserveMemories(current, base));
   const owned = new Map(current.profiles.map((p) => [p.id, p]));
   for (const p of edited.profiles) {
@@ -23,8 +24,10 @@ function mergeOrdinaryState(current, edited, base = current) {
     )
       throw Error("Captured game data can only be added through a saved game snapshot or confirmed backup import.");
   }
-  const next = mergeUserEdits(current, edited, base);
+  const next = mergeUserEdits({ ...current, objectives: [] }, edited, base);
   next.journeys = structuredClone(current.journeys);
+  const ids = new Set(next.profiles.map(p => p.id));
+  next.objectives = current.objectives.filter(o => ids.has(o.profileId));
   return next;
 }
 

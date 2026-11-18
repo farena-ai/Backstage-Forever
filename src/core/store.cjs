@@ -4,6 +4,7 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const v = require("./validation.cjs");
 const { reconcileJourneys } = require("./journeys.cjs");
+const { changeObjective, reconcileObjectives } = require("./objectives.cjs");
 const { preserveMemories } = require("./memory-data.cjs");
 const { RecoveryCheckpoints } = require("./recovery-checkpoints.cjs");
 class StoreStartupError extends Error {
@@ -34,6 +35,7 @@ class Store {
       this.state.journeys,
       this.state.profiles,
     );
+    this.state.objectives = reconcileObjectives(this.state.objectives, this.state.profiles);
     try { this.keys = fs.existsSync(this.keyFile)
       ? JSON.parse(fs.readFileSync(this.keyFile, "utf8"))
       : {};
@@ -54,7 +56,12 @@ class Store {
     try { this.recovery.create(this.state, reason); } catch { /* Journaling remains available when protection fails. */ }
   }
   saveState(s) {
-    return this.#writeState(preserveMemories(this.state, s), true);
+    const next = preserveMemories(this.state, s);
+    const ids = new Set(next.profiles.map(p => p.id));
+    return this.#writeState({ ...next, objectives: this.state.objectives.filter(o => ids.has(o.profileId)) }, true);
+  }
+  changeObjective(action) {
+    return this.#writeState({ ...this.state, objectives: changeObjective(this.state, action) }, true);
   }
   saveMemories(memories) {
     return this.#writeState({ ...this.state, memories }, true);
@@ -86,6 +93,7 @@ class Store {
         }
     }
     valid.journeys = reconcileJourneys(valid.journeys, valid.profiles);
+    valid.objectives = reconcileObjectives(valid.objectives, valid.profiles);
     const deleting = preserveObserved && this.state.profiles.some(p => !valid.profiles.some(next => next.id === p.id));
     if (deleting) this.recovery.clear();
     atomic(this.file, JSON.stringify(valid, null, 2));

@@ -182,8 +182,12 @@ local function onTargetHealth()
     killed(guid,call(UnitName,'target'))
 end
 -- A dungeon or raid boss: ENCOUNTER_END reports the win; the creature that died just before is the boss.
-local function onEncounterEnd(encounterId,name,_,_,success)
+local function onEncounterEnd(encounterId,name,difficultyId,_,success)
     if not (plain(success)==1 or plain(success)==true) then return end
+    -- Persistent evidence is independent of the toast throttle and recent-target heuristic.
+    if type(BackstageForeverJournalEncounter)=='function' then
+        pcall(BackstageForeverJournalEncounter,encounterId,name,difficultyId)
+    end
     if lastBossAt and now()-lastBossAt<10 then return end
     lastBossAt=now()
     local recent=lastKill and now()-lastKill.at<=6 and lastKill or nil

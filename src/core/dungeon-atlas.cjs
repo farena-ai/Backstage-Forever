@@ -1,5 +1,5 @@
 "use strict";
-// Dungeons & Raids atlas. Two clearly separated layers:
+// Dungeons & Raids atlas. Reference layers are kept separate from your own saved encounter recap:
 //  - "Observed in Forever": bundled community encounter observations (CC BY 4.0).
 //  - "Classic-era baseline": a hand-curated guide to the original instances (level band,
 //    zone, approximate entrance, boss roster). Forever may differ; it is labelled as such.
@@ -7,6 +7,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { tipFor } = require("./boss-tips.cjs");
+const { normalizeEncounterHistory } = require("./journal-data.cjs");
 const BASELINE = [
   // id, name, kind, min, max, faction, zone, mapId, entrance [x,y] (approximate), instance map, bosses
   ["rfc", "Ragefire Chasm", "dungeon", 13, 18, "Horde", "Orgrimmar", 1454, [52, 49], 389, ["Oggleflint", "Taragaman the Hungerer", "Jergosh the Invoker", "Bazzalan"]],
@@ -90,6 +91,22 @@ function dungeonQuests(pack, bossNames, profile, dungeonName = "", band = null) 
   }
   return out.sort((a, b) => (a.level || 0) - (b.level || 0)).slice(0, 8);
 }
+// Renderer handoff (`dungeonAtlas` IPC): show recap.encounters only when recap.profileId
+// matches the currently selected local profile. `at` is Unix seconds; null Atlas labels mean
+// unmatched or ambiguous. Escape names, label it Last saved, and never infer runs or clears.
+function encounterRecap(profile, entriesByMap) {
+  let rows;
+  try { rows = normalizeEncounterHistory(profile?.journal?.encounters); }
+  catch { rows = []; }
+  return {
+    profileId: profile?.id ?? null,
+    encounters: rows.sort((a, b) => b.at - a.at).map((row) => {
+      const match = entriesByMap.get(row.instanceMap);
+      return { ...row, atlasId: match?.id ?? null, atlasName: match?.name ?? null };
+    }),
+  };
+}
+
 function buildAtlas({ profile = null, encounters = null, knowledgePack = null } = {}) {
   const level = Number.isInteger(profile?.level) ? profile.level : null;
   const faction = profile?.faction || null;
@@ -99,7 +116,10 @@ function buildAtlas({ profile = null, encounters = null, knowledgePack = null } 
     observedByMap.get(e.instanceMap).push(e);
   }
   const quests = profile?.quests || [];
+  const entriesByMap = new Map();
   const entries = BASELINE.map(([id, name, kind, min, max, side, zone, mapId, [ex, ey], instanceMap, bosses]) => {
+    // Several reference entries can share an instance map (e.g. Blackrock Spire).
+    entriesByMap.set(instanceMap, entriesByMap.has(instanceMap) ? null : { id, name });
     const observed = observedByMap.get(instanceMap) || [];
     observedByMap.delete(instanceMap);
     const bossNames = new Set([...bosses, ...observed.map((o) => o.name)].map(norm));
@@ -119,8 +139,10 @@ function buildAtlas({ profile = null, encounters = null, knowledgePack = null } 
   });
   // Instances observed in Forever that the baseline does not know (new Forever content).
   for (const [instanceMap, list] of observedByMap) {
+    const id = `forever-${instanceMap}`, name = `Forever instance ${instanceMap}`;
+    entriesByMap.set(instanceMap, { id, name });
     entries.push({
-      id: `forever-${instanceMap}`, name: `Forever instance ${instanceMap}`, kind: "dungeon", levels: null, faction: null, zone: null, mapId: null, entrance: null,
+      id, name, kind: "dungeon", levels: null, faction: null, zone: null, mapId: null, entrance: null,
       difficulty: "unknown", factionNote: null, foreverOriginal: true,
       bosses: list.map((o) => ({ name: o.name, observedInForever: true, kills: o.kills })), observedOnly: [], observedRuns: list.reduce((m, o) => Math.max(m, o.runs || 0), 0),
       yourQuests: [], roles: ROLES.dungeon, prep: PREP.dungeon, source: "Observed Forever encounters only (name, level and entrance not yet observed)",
@@ -129,7 +151,7 @@ function buildAtlas({ profile = null, encounters = null, knowledgePack = null } 
   const order = { right: 0, easy: 1, hard: 2, trivial: 3, impossible: 4, unknown: 5 };
   const suggested = entries.filter((e) => e.kind === "dungeon" && ["right", "easy"].includes(e.difficulty)).sort((a, b) => order[a.difficulty] - order[b.difficulty] || a.levels.min - b.levels.min).slice(0, 3).map((e) => e.id);
   return {
-    level, faction, suggested, entries,
+    level, faction, suggested, entries, recap: encounterRecap(profile, entriesByMap),
     attribution: encounters ? `${encounters.attribution} Encounters observed through ${encounters.source?.collectedOn?.last || "unknown"}.` : null,
     caution: "Baseline levels, entrances and bosses come from the original game era; World of Warcraft: Forever may differ. Observed Forever encounters are marked.",
   };

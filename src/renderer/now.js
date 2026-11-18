@@ -26,6 +26,7 @@ window.NowView = (() => {
     // mount/paint reads the new selection, so no previous character flashes on a switch.
     return `<section class="now-page" data-now>
       ${hero(null)}
+      ${window.ObjectiveView?.card() || ""}
       <div class="now-body" data-now-body><p class="now-card" role="status">Working out your next move…</p></div>
     </section>`;
   }

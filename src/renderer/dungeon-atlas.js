@@ -15,9 +15,37 @@ window.DungeonAtlas = (() => {
       ${PageHero.render({ art: "dungeons", compact: true, eyebrow: "Adventure · Dungeons & raids", title: "Instance Atlas", subAttrs: "data-atlas-level",
         aside: '<div class="atlas-tabs" role="tablist"><button type="button" role="tab" data-atlas-tab="dungeon">Dungeons</button><button type="button" role="tab" data-atlas-tab="raid">Raids</button><button type="button" role="tab" data-atlas-tab="forever">New in Forever</button></div>' })}
       <div class="atlas-suggest" data-atlas-suggest></div>
+      <section class="atlas-recap" aria-labelledby="atlas-recap-heading">
+        <h2 id="atlas-recap-heading">Your encounter recap</h2>
+        <p class="atlas-recap-note">Boss defeats saved in this character’s local journal. Community observations are shown separately below.</p>
+        <div data-atlas-recap aria-live="polite"><p>Opening your recap…</p></div>
+      </section>
       <div class="atlas-grid" data-atlas-grid><p class="atlas-loading">Opening the atlas…</p></div>
       <p class="atlas-caution" data-atlas-caution></p>
     </section>`;
+  }
+  function activeProfileId() {
+    // The placeholder option has no value attribute; do not use its text as an ID.
+    return document.querySelector("#active-character")?.selectedOptions?.[0]?.getAttribute("value") || null;
+  }
+  function paintRecap(root, recap, loading = false) {
+    const profileId = activeProfileId();
+    const panel = root.querySelector("[data-atlas-recap]");
+    const rows = profileId && recap?.profileId === profileId ? recap.encounters : null;
+    if (!profileId) panel.innerHTML = "<p>Choose a character to see their saved encounters.</p>";
+    else if (loading) panel.innerHTML = "<p>Opening your recap…</p>";
+    else if (!Array.isArray(rows)) panel.innerHTML = "<p>Recap unavailable for the active character.</p>";
+    else if (!rows.length) panel.innerHTML = "<p>No saved encounter defeats yet. If you’ve just played, reload or log out in game to save your journal.</p>";
+    else {
+      const recent = rows.slice(0, 3); // The atlas supplies newest first.
+      // Capture names and displayed labels are escaped; datetime comes from validated Unix seconds.
+      panel.innerHTML = `<ol class="atlas-recap-list">${recent.map((row) => {
+        const when = new Date(row.at * 1000);
+        const location = row.atlasName || (row.instanceType === "raid" ? "Unknown raid" : "Unknown dungeon");
+        return `<li><div><strong>${esc(row.name)}</strong><small>${esc(location)}</small></div>
+          <small>Last saved <time datetime="${when.toISOString()}">${esc(when.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}</time></small></li>`;
+      }).join("")}</ol>${rows.length > recent.length ? `<p class="atlas-recap-note">Showing the latest ${recent.length} of ${rows.length} saved defeats.</p>` : ""}`;
+    }
   }
   function card(e) {
     const isOpen = open === e.id;
@@ -100,12 +128,25 @@ window.DungeonAtlas = (() => {
     root.querySelector("[data-atlas-grid]").innerHTML = list.map(card).join("") || `<p>Nothing observed yet.</p>`;
     root.querySelector("[data-atlas-caution]").textContent = ["Community data · may differ in game. Bosses seen in Forever are marked.", atlas.attribution].filter(Boolean).join(" ");
   }
-  async function load() { try { atlas = await api.dungeonAtlas(); } catch (e) { atlas = { entries: [], suggested: [], caution: e.message }; } paint(); }
+  async function load(root, fallback) {
+    const profileId = activeProfileId();
+    let next;
+    try { next = await api.dungeonAtlas(); } catch { next = fallback || { entries: [], suggested: [] }; }
+    // Shell repaints replace the atlas root, including on profile changes. A request
+    // from a detached root (or from before the picker changed) must not repaint it.
+    if (mountedFor !== root || document.querySelector("[data-atlas]") !== root || activeProfileId() !== profileId) return;
+    atlas = next;
+    paintRecap(root, next.recap);
+    paint();
+  }
   function mounted() {
     const root = document.querySelector("[data-atlas]");
     if (!root) { mountedFor = null; return; }
     if (mountedFor === root) return;
     mountedFor = root;
+    // Clear immediately, before the shell finishes saving the selection and remounts.
+    document.querySelector("#active-character")?.addEventListener("change", () => paintRecap(root, null, true));
+    paintRecap(root, null, true);
     root.addEventListener("click", async (ev) => {
       const star = ev.target.closest("[data-loot-wish]"); if (star) {
         const itemId = Number(star.dataset.lootWish), on = star.getAttribute("aria-pressed") !== "true";
@@ -113,9 +154,9 @@ window.DungeonAtlas = (() => {
           await api.setLootWish(null, itemId, on); window.HoverCards?.forget?.();
           for (const d of loot.values()) for (const b of d.bosses || []) for (const x of b.items) if (x.itemId === itemId) x.wished = on;
           window.toast?.(on ? "Added to your wish list." : "Removed from your wish list.");
-          atlas = await api.dungeonAtlas().catch(() => atlas);
+          await load(root, atlas);
         } catch (err) { window.toast?.(err.message); }
-        paint(); return;
+        return;
       }
       const lb = ev.target.closest("[data-atlas-loot]"); if (lb) { const id = lb.dataset.atlasLoot; const same = open === id && view === "loot"; const e = atlas.entries.find((x) => x.id === id); if (e && e.kind !== tab && !e.foreverOriginal) tab = e.kind; open = same ? null : id; view = "loot"; if (!same) { loot.delete(id); loadLoot(id); } paint(); root.querySelector(`[data-atlas-card="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); return; }
       const t = ev.target.closest("[data-atlas-tab]"); if (t) { tab = t.dataset.atlasTab; open = null; paint(); return; }
@@ -123,7 +164,7 @@ window.DungeonAtlas = (() => {
       const w = ev.target.closest("[data-atlas-way]"); if (w) { const e = atlas.entries.find((x) => x.id === w.dataset.atlasWay); try { const r = await api.copyWaypoint({ mapId: e.mapId, x: e.entrance.x, y: e.entrance.y, label: e.name }); w.textContent = "Copied — paste in WoW chat"; window.toast?.(r.message); } catch (err) { w.textContent = err.message; } return; }
       const m = ev.target.closest("[data-atlas-map]"); if (m) { const e = atlas.entries.find((x) => x.id === m.dataset.atlasMap); window.WorldMapView?.focus({ mapId: e.mapId, x: e.entrance.x, y: e.entrance.y, label: `${e.name} entrance`, sub: `${e.kind === "raid" ? "Raid" : "Dungeon"} · levels ${e.levels.min}–${e.levels.max}` }); document.querySelector('[data-nav="world-map"]')?.click(); }
     });
-    load();
+    load(root);
   }
   return { page, mounted };
 })();
