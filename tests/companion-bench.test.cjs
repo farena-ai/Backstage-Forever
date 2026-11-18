@@ -2,7 +2,8 @@
 // The companion benchmark as a gate (0.58): 100 real player questions with answers checked against
 // WoW Forever's own data. A change may not make the companion understand less or answer worse.
 const test = require("node:test"), assert = require("node:assert/strict");
-const { runBench, loadQuestions } = require("../scripts/companion-bench.cjs");
+const { runBench, loadQuestions, makeService, PROFILES } = require("../scripts/companion-bench.cjs");
+const { buildProfessionCoach } = require("../src/core/profession-coach.cjs");
 
 const INTENTS = new Set(["npc-location", "travel", "trainer", "vendor", "item-source", "quest-next", "quest-turnin", "quest-info", "dungeon", "profession", "rp", "lore", "refuse", "clarify"]);
 
@@ -51,4 +52,84 @@ test("1.4 (J15): boss tips, class unlocks and reputation questions are answered 
   assert.equal(rows.length, 9);
   const wrong = rows.filter((r) => !r.localCorrect).map((r) => `${r.id} → ${r.route}: ${r.text}`);
   assert.deepEqual(wrong, []);
+});
+
+const workshopAt = "2026-11-11T12:00:00.000Z";
+const supplyQuestion = "What materials do I need for recipe #2330 for 2 crafts?";
+function workshopService({ model = false, build = "1.60.1.70862" } = {}) {
+  const profile = structuredClone(PROFILES["alliance-mage-34"]);
+  delete profile.updatedAt;
+  profile.realm = "Synthetic";
+  profile.clientBuild = build;
+  profile.source.updatedAt = workshopAt;
+  const col = items => ({ items, observedAt: workshopAt, complete: true });
+  profile.readiness = { workshop: {
+    professions: col([{ skillLineId: 171, professionId: 4, name: "Alchemy", rank: 20, maxRank: 75 }]),
+    recipes: col([{ id: 2330, name: "Minor Healing Potion", skillLineId: 171, canSkillUp: true,
+      reagentsKnown: true, reagents: [{ itemId: 765, name: "Silverleaf", required: 2 }] }]),
+    materials: { ...col([{ itemId: 765, count: 3 }]), scope: "bags-0-4" },
+  } };
+  const { service, store, seen } = makeService(profile, { model });
+  return { service, store, seen, profileId: profile.id, ask: (prompt = supplyQuestion, shareProfile = true) =>
+    service.ask({ provider: "ollama", prompt, profileId: store.state.activeProfileId, shareProfile, memoryIds: [] }) };
+}
+
+test("E1: exact recipe material answers use the Workshop carried projection without a provider", async (t) => {
+  const fetch = t.mock.method(globalThis, "fetch", () => assert.fail("offline answer requested the network"));
+  for (const model of [false, true]) {
+    const { store, seen, profileId, ask } = workshopService({ model });
+    const [row] = buildProfessionCoach(store.state, profileId, { recipeId: 2330, crafts: 2 }).shoppingList.rows;
+    const before = structuredClone(store.state);
+    store.getKey = () => assert.fail("offline answer read credentials");
+    const reply = await ask();
+    assert.equal(reply.kind, "quick");
+    assert.equal(reply.topic, "profession-materials");
+    assert.match(reply.text, /Minor Healing Potion \(recipe #2330\)/);
+    assert.match(reply.text, /Tinkla.*1\.60\.1\.70862.*2026-11-11/);
+    assert.ok(reply.text.includes(`${row.name} (item #${row.itemId}): ${row.required} required, ${row.have} saved carried, ${row.projectedPurchase} short`), reply.text);
+    assert.match(reply.text, /not live/i);
+    assert.deepEqual(seen, []);
+    assert.deepEqual(store.state, before);
+  }
+  assert.equal(fetch.mock.callCount(), 0);
+});
+
+test("E1: a matching reference is historical only, and cannot follow the active character across builds", async () => {
+  const { store, ask, seen } = workshopService({ model: true });
+  assert.match((await ask()).text, /Historical gathering reference: Silverleaf .*70862.*current availability and access unknown/);
+  const alt = structuredClone(store.state.profiles[0]);
+  Object.assign(alt, { id: "other", name: "Other Mage", clientBuild: "1.60.1.70888" });
+  alt.source.id = "other-source";
+  alt.readiness.workshop.materials.items = [];
+  store.state.profiles.push(alt);
+  store.state.activeProfileId = alt.id;
+  const { text } = await ask();
+  assert.match(text, /Other Mage.*70888/);
+  assert.match(text, /4 required, 0 saved carried, 4 short/);
+  assert.doesNotMatch(text, /Tinkla|historical gathering reference/i);
+  assert.deepEqual(seen, []);
+});
+
+test("E1: partial and superseded carried counts do not establish a shortfall", async () => {
+  const { store, ask } = workshopService();
+  const profile = store.state.profiles[0], materials = profile.readiness.workshop.materials;
+  materials.complete = false;
+  assert.match((await ask()).text, /at least 3 saved carried, shortfall unknown/);
+  materials.items = [];
+  const missing = (await ask()).text;
+  assert.match(missing, /carried unknown, shortfall unknown/);
+  assert.match(missing, /log out and import/);
+  materials.complete = true;
+  materials.observedAt = "2026-11-10T12:00:00.000Z";
+  assert.match((await ask()).text, /carried unknown, shortfall unknown/);
+});
+
+test("E1: missing recipe, invalid attempt count and disabled sharing recover locally", async () => {
+  const { ask, seen } = workshopService({ model: true });
+  assert.match((await ask("Can I craft recipe #2331?")).text, /Recipe #2331: requirements unavailable.*log out and import/);
+  assert.match((await ask("Can I craft recipe #2330 for 21 crafts?")).text, /1–20 craft attempts/);
+  const off = await ask(supplyQuestion, false);
+  assert.match(off.text, /Use my active character/);
+  assert.doesNotMatch(off.text, /Silverleaf|Minor Healing Potion|70862/);
+  assert.deepEqual(seen, []);
 });

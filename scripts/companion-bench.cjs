@@ -31,7 +31,7 @@ const PROFILES = {
 
 function makeService(profile, { model }) {
   const profiles = profile ? [structuredClone(profile)] : [];
-  const state = { schemaVersion: 1, activeProfileId: profile ? profile.id : null, profiles, provider: { id: "ollama", model: model ? "bench" : "", endpoint: "http://localhost:11434", authMode: "api" }, memories: [], journeys: [] };
+  const state = { schemaVersion: 1, onboarded: true, activeProfileId: profile ? profile.id : null, profiles, provider: { id: "ollama", model: model ? "bench" : "", endpoint: "http://localhost:11434", authMode: "api" }, memories: [], journeys: [] };
   const store = { state, getKey: () => "", saveState(next) { store.state = next; return next; } };
   const context = new CompanionContext(() => store.state), requests = new CompanionRequest(context), memory = new MemoryService({ store, context });
   const travel = new TravelCompanion({ store, context, reference: read("data/forever-travel/pack.json"), openExternal: async () => {}, writeClipboard: () => {} });
@@ -152,7 +152,7 @@ function print(report) {
   console.log("  by category (n · local · understood · grounded/fallthrough):");
   for (const [k, c] of Object.entries(report.byCategory)) console.log(`    ${k.padEnd(16)} ${String(c.n).padStart(3)} · ${String(c.local).padStart(3)} · ${String(c.understood).padStart(3)} · ${c.grounded}/${c.fallthrough}`);
 }
-module.exports = { runBench, loadQuestions, PROFILES, factsOk, routeOf };
+module.exports = { runBench, loadQuestions, makeService, PROFILES, factsOk, routeOf };
 if (require.main === module) {
   const args = process.argv.slice(2), at = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
   (async () => {
