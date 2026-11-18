@@ -29,6 +29,10 @@ const reviewedZulGurub = [
   ["High Priestess Jeklik", 14517, /bat adds.+interrupt.+heal.+fire/i],
   ["High Priest Venoxis", 14507, /snake adds.+poison clouds/i],
   ["High Priestess Mar'li", 14510, /spider adds.+off-tank.+Enveloping Webs/i],
+  ["High Priest Thekal", 14509, /Thekal and both zealots.+die together.+tiger adds/i],
+  ["High Priestess Arlokk", 14515, /panthers.+marked player.+tank.+reappears/i],
+  ["Bloodlord Mandokir", 11382, /Threatening Gaze.+stop moving, casting, and attacking.+Ohgan.+enrage/i],
+  ["Jin'do the Hexxer", 11380, /healing wards.+Brain Wash Totems.+Delusions.+shades/i],
 ];
 function lua(source) {
   const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], { cwd: root, input: source, encoding: "utf8", timeout: 20000 });
@@ -87,7 +91,7 @@ test("Blackwing Lair exposes all eight reviewed Classic reference tips in the At
   }
 });
 
-test("Zul'Gurub exposes only the three reviewed Classic reference tips in the Atlas and Companion", () => {
+test("Zul'Gurub exposes only the seven reviewed Classic reference tips in the Atlas and Companion", () => {
   const { buildAtlas } = require("../src/core/dungeon-atlas.cjs");
   const { answerSpecial } = require("../src/core/companion-unlocks.cjs");
   const zg = buildAtlas({}).entries.find((e) => e.id === "zg");
@@ -101,6 +105,10 @@ test("Zul'Gurub exposes only the three reviewed Classic reference tips in the At
     assert.ok(answerSpecial(`Tips for ${name}?`).text.includes(boss.tip));
   }
   assert.equal(tipFor("High Priestess Mar’li"), tipFor("High Priestess Mar'li"));
+  assert.equal(tipFor("Jin’do the Hexxer"), tipFor("Jin'do the Hexxer"));
+  for (const name of ["Hakkar", "Gahz'ranka", "Edge of Madness", "Gong of Bethekk", "Ohgan"]) {
+    assert.equal(tipFor(name), null, name);
+  }
 });
 
 test("the addon copy is generated from the same tips and loads in the TOC", () => {
@@ -128,13 +136,22 @@ UnitIsPlayer=function() return isPlayer end
 UnitGUID=function(unit) if unit=='target' and id then return guidKind..'-0-0-0-0-'..id..'-ABC' end end
 GetInstanceInfo=function() return nil,kind,nil,nil,nil,nil,nil,map end
 local addon='addon/BackstageForever/'
+SlashCmdList={}
+dofile(addon..'BackstageForeverHUD.lua')
 dofile(addon..'BackstageForeverAssist.lua')
 dofile(addon..'BackstageForeverBossTips.lua')
+assert(SLASH_BACKSTAGEFOREVER1=='/bf')
 BackstageForeverToast=function(title,body) toasts[#toasts+1]=title..'|'..body end
+local function bossCommand()
+    local previous=#said
+    SlashCmdList.BACKSTAGEFOREVER('boss')
+    assert(#said==previous+1,'missing /bf boss response')
+    return said[#said]
+end
 local function reject(expectedCount)
     targetChanged()
     assert(#toasts==(expectedCount or 0),'unexpected toast: '..tostring(toasts[#toasts]))
-    assert(not BackstageForeverBossCommand('boss'),'unexpected manual tip')
+    assert(bossCommand():find('Target a covered dungeon or raid boss first',1,true),'unexpected manual tip')
 end
 map=469 reject() map=nil reject() map=409
 kind='party' reject() kind='raid'
@@ -147,6 +164,10 @@ map=469 target='Nefarian' id=10162 reject()
 target='Lord Victor Nefarius' id=11583 reject()
 map=309 target='Hakkar' id=14834 reject()
 target="High Priestess Mar'li" id=14517 reject()
+target='High Priestess Arlokk' id=180526 reject() -- gong, not the summoned creature
+id=791 reject() -- encounter ID, not the creature
+target='Bloodlord Mandokir' id=14988 reject() -- Ohgan, not the boss
+target='High Priest Thekal' id=11347 reject() -- Lor'Khan, not the boss
 local rows={
 ${[[409, reviewedMoltenCore], [469, reviewedBlackwingLair], [309, reviewedZulGurub]].flatMap(([instanceMap, bosses]) =>
   bosses.map(([name, id]) => `{${JSON.stringify(name)},${id},${instanceMap},${JSON.stringify(tipFor(name) || 'MISSING CLASSIC REFERENCE')}},`)).join(' ')}
@@ -162,8 +183,7 @@ for i,row in ipairs(rows) do
     kind='party' reject(i-1) kind='raid'
     targetChanged() targetChanged()
     assert(#toasts==i and toasts[i]=='Boss: '..target..'|'..row[4],'missing or incorrect toast for '..target)
-    assert(BackstageForeverBossCommand('boss')==row[4])
-    assert(said[#said]:find(target..': '..row[4],1,true))
+    assert(bossCommand():find(target..': '..row[4],1,true),'missing or incorrect manual tip for '..target)
 end
 `));
 

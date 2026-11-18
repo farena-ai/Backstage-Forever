@@ -4,7 +4,7 @@
 // classic encounters work; Forever may tune a fight, so each tip says what to watch for, not when.
 // The addon gets the same tips from scripts/build-boss-tips.cjs (BackstageForeverBossTips.lua).
 // J31 reviews and scope: docs/raid-boss-tip-review.md, docs/blackwing-lair-tip-review.md,
-// and docs/zulgurub-tip-review.md.
+// docs/zulgurub-tip-review.md, and docs/zulgurub-next-tip-review.md.
 const REVIEWED_RAID_TIPS = Object.freeze({
   Lucifron: { instanceMap: 409, npcId: 12118, advice: "Dispel Impending Doom as magic and remove Lucifron's Curse separately." },
   Magmadar: { instanceMap: 409, npcId: 11982, advice: "Have hunters use Tranquilizing Shot to remove Frenzy; plan fear protection for the tank." },
@@ -26,6 +26,10 @@ const REVIEWED_RAID_TIPS = Object.freeze({
   "High Priestess Jeklik": { instanceMap: 309, npcId: 14517, advice: "Kill the bat adds, interrupt her heal, and move out of the fire." },
   "High Priest Venoxis": { instanceMap: 309, npcId: 14507, advice: "Control and kill the snake adds early. Move out of poison clouds once he transforms." },
   "High Priestess Mar'li": { instanceMap: 309, npcId: 14510, advice: "Kill spider adds quickly. Have an off-tank ready to pick her up after Enveloping Webs." },
+  "High Priest Thekal": { instanceMap: 309, npcId: 14509, advice: "Bring Thekal and both zealots down evenly so they die together. Kill the tiger adds after he transforms." },
+  "High Priestess Arlokk": { instanceMap: 309, npcId: 14515, advice: "Control the panthers chasing the marked player. Have the tank pick Arlokk up again when she reappears." },
+  "Bloodlord Mandokir": { instanceMap: 309, npcId: 11382, advice: "If Threatening Gaze targets you, stop moving, casting, and attacking until it ends. When Ohgan dies, Mandokir enrages." },
+  "Jin'do the Hexxer": { instanceMap: 309, npcId: 11380, advice: "Destroy healing wards and Brain Wash Totems. If you have Delusions of Jin'do, use it to kill the shades only cursed players can hit." },
 });
 const TIPS = Object.freeze({
   // Ragefire Chasm
