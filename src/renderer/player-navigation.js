@@ -74,7 +74,7 @@ window.PlayerNavigation = (() => {
     return `<button type="button" aria-label="${label}" data-shell-control="${kind}:${route}" data-nav="${route}" class="${selected ? "active" : ""}" ${selected ? 'aria-current="page"' : ""}><span class="glyph" aria-hidden="true">${glyph}</span><span>${label}</span></button>`;
   }
   function main(route) {
-    return `<nav aria-label="Main navigation">${primary.map(([id, glyph, label]) => button(id, glyph, label, group(route) === id, "nav")).join("")}</nav>`;
+    return `<nav class="primary-navigation" aria-label="Main navigation">${primary.map(([id, glyph, label]) => button(id, glyph, label, group(route) === id, "nav")).join("")}</nav>`;
   }
   function secondary(route) {
     return `<nav class="secondary-navigation" aria-label="Settings and help">${button("game", "⚙", "Settings", group(route) === "game", "nav")}${button("guide", "▤", "Help", group(route) === "guide", "nav")}</nav><small class="settings-update-status" data-update-label>Updates</small>`;

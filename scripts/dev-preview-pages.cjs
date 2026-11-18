@@ -6,6 +6,8 @@ const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path");
 const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const { navigate, routes } = require("./player-navigation.cjs");
+// Include destinations that the narrower player-shell smoke does not traverse.
+const visualRoutes = { ...routes, talents: ["Characters", "Talents"], badges: ["Characters", "Badges"], commands: ["Help", "Commands"], coverage: ["Help", "Data coverage"] };
 (async () => {
   const dir = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), "forever-pages-preview-"));
   const out = process.argv[2] || path.join(os.tmpdir(), "bf-pages");
@@ -32,12 +34,12 @@ const { navigate, routes } = require("./player-navigation.cjs");
     await page.reload();
     await page.waitForTimeout(2500);
     const report = [];
-    for (const id of Object.keys(routes)) {
+    for (const id of Object.keys(visualRoutes)) {
       try {
-        if (lang === "en") await navigate(page, id);
+        if (lang === "en" && routes[id]) await navigate(page, id);
         else {
           // Translated menus: find each button by its label in the chosen language (the app's own translator).
-          for (const label of routes[id]) {
+          for (const label of visualRoutes[id]) {
             const ok = await page.evaluate((label) => {
               const want = (window.I18n?.tr?.(label) || label).trim();
               const b = [...document.querySelectorAll("nav button")].find((x) => x.getBoundingClientRect().width > 0 && (x.textContent || "").replace(/\s+/g, " ").trim().endsWith(want));
@@ -48,7 +50,8 @@ const { navigate, routes } = require("./player-navigation.cjs");
             await page.waitForTimeout(600);
           }
         }
-        await page.waitForTimeout(1800);
+        await page.waitForFunction(id => [...document.querySelectorAll('nav [aria-current="page"]')].some(el => el.dataset.nav === id), id, { timeout: 7000 });
+        await page.waitForTimeout(1200);
         const facts = await page.evaluate(() => {
           const name = (e) => `${e.tagName.toLowerCase()}${e.id ? "#" + e.id : ""}${e.classList.length ? "." + [...e.classList].slice(0, 2).join(".") : ""} "${(e.textContent || "").trim().replace(/\s+/g, " ").slice(0, 50)}"`;
           const ownText = (e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.nodeValue.trim());
@@ -80,7 +83,11 @@ const { navigate, routes } = require("./player-navigation.cjs");
               if (!english.includes(t)) english.push(t);
             }
           }
-          return { english, stray: stray.map(name).slice(0, 6), strayCount: stray.length, darkOnDark:darkOnDark.map(name).slice(0, 6), darkOnDarkCount: darkOnDark.length, tight:tight.map((e) => getComputedStyle(e).paddingLeft + " " + name(e)).slice(0, 8), tightCount: tight.length, spill:spill.map(name).slice(0, 8), spillCount: spill.length, clipped: clipped.map(name).slice(0, 8), clippedCount: clipped.length, tiny: tiny.map((e) => getComputedStyle(e).fontSize + " " + name(e)).slice(0, 6), tinyCount: tiny.length, height: document.querySelector("main")?.scrollHeight || 0 };
+          const rail = document.querySelector('.rail');
+          const primary = rail?.querySelector('nav');
+          const navOverflow = primary ? Math.max(0, primary.scrollHeight - primary.clientHeight) : null;
+          const railHorizontalOverflow = rail ? Math.max(0, rail.scrollWidth - rail.clientWidth) : null;
+          return { navOverflow, railHorizontalOverflow, english, stray: stray.map(name).slice(0, 6), strayCount: stray.length, darkOnDark:darkOnDark.map(name).slice(0, 6), darkOnDarkCount: darkOnDark.length, tight:tight.map((e) => getComputedStyle(e).paddingLeft + " " + name(e)).slice(0, 8), tightCount: tight.length, spill:spill.map(name).slice(0, 8), spillCount: spill.length, clipped: clipped.map(name).slice(0, 8), clippedCount: clipped.length, tiny: tiny.map((e) => getComputedStyle(e).fontSize + " " + name(e)).slice(0, 6), tinyCount: tiny.length, height: document.querySelector("main")?.scrollHeight || 0 };
         });
         await page.screenshot({ path: path.join(out, `${id}.png`), fullPage: true });
         report.push({ id, ...facts });

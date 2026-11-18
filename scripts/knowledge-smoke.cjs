@@ -566,7 +566,11 @@ function shortPath(target){
     characters[1].quests.find(q=>q.id===5730).complete=false;characters[1].updatedAt+=2;await write();await page.evaluate(()=>window.backstage.refreshGame());
     await app.evaluate(({ipcMain})=>{const original=ipcMain._invokeHandlers.get('backstage:questDetails');ipcMain.removeHandler('backstage:questDetails');ipcMain.handle('backstage:questDetails',async(...args)=>{if(globalThis.atlasFailDetails)throw Error('Synthetic evidence unavailable');return original(...args);});globalThis.atlasFailDetails=true;});
     await page.locator('.quest-ledger-row[data-quest-id="5730"]').click();await page.getByRole('button',{name:'Retry quest evidence',exact:true}).waitFor();await capture('quest-guide-detail-error.png');
-    await app.evaluate(()=>globalThis.atlasFailDetails=false);await page.getByRole('button',{name:'Retry quest evidence',exact:true}).click();await page.locator('.quest-detail h2').waitFor();
+    await app.evaluate(()=>globalThis.atlasFailDetails=false);
+    // Use keyboard activation: this exercises the real retry control even when a source repaint replaces it.
+    const retryDetail=page.getByRole('button',{name:'Retry quest evidence',exact:true});
+    await retryDetail.press('Enter');
+    await page.locator('[data-quest-control="detail:5730"] h2').waitFor();
     await search.fill('99999999');await page.getByText('No matching quests.',{exact:true}).waitFor();await capture('quest-guide-empty.png');await search.fill('');
 
     await navigate(page, "assistant");
