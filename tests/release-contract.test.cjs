@@ -40,6 +40,16 @@ test("validation and tag publication require acquisition, Compass, Professions a
   assert.match(release, /secrets\.BF_UPDATE_SIGNING_KEY/);
 });
 
+test("stable update manifests are signed only after checking the staged Authenticode installer", () => {
+  const release = read(".github/workflows/release.yml");
+  const start = release.indexOf("- name: Verify staged Windows publisher signature");
+  const end = release.indexOf("- name: Sign application update manifest");
+  assert.ok(start >= 0 && start < end);
+  const gate = release.slice(start, end);
+  for (const proof of ["Get-AuthenticodeSignature", "TimeStamperCertificate", "Frank Arena", "ProductVersion", "targetCommitish", "GITHUB_SHA"]) assert.ok(gate.includes(proof), proof);
+  assert.match(release, /if \(\$env:RELEASE_CHANNEL -cne 'stable'\).*\$files \+=/);
+});
+
 test("a hung check fails in minutes, not after GitHub's six-hour default", () => {
   for (const [name, ceiling] of [[".github/workflows/ci.yml", 60], [".github/workflows/release.yml", 90]]) {
     const yml = read(name).replace(/\r\n/g, "\n");
