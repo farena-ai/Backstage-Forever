@@ -837,6 +837,9 @@ function shortPath(target){
     });
     await navigate(page, "assistant");
     await page.getByLabel("Use my active character", { exact: true }).check();
+    // A checked box precedes the IPC clear and its final repaint. Seed the
+    // held draft only after the new sharing scope has actually settled.
+    await page.waitForFunction(() => localStorage.getItem("bf-share-character") === "true");
     await page
       .getByLabel("Your question", { exact: true })
       .fill("SLOW CONTEXT");
