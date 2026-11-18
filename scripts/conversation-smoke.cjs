@@ -3,7 +3,7 @@ const { navigate } = require("./player-navigation.cjs");
 // Real main/preload/renderer; only synthetic journals and fake inference.
 const {_electron:electron}=require('playwright');
 const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict');
-const {testWindow}=require('./test-window.cjs');const {defaultState}=require('../src/core/validation.cjs');
+const {testWindow}=require('./test-window.cjs');const {defaultState,validateState}=require('../src/core/validation.cjs');
 (async()=>{
  const root=await fs.realpath(os.tmpdir()),dir=await fs.mkdtemp(path.join(root,'forever-conversation-'));let app;
  const capture=path.join(__dirname,'..','.superpowers','sdd','conversation-captures');await fs.mkdir(capture,{recursive:true});
@@ -16,7 +16,8 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
     recipes:col([{id:2330,skillLineId:171,name:'Minor Healing Potion',reagentsKnown:true,reagents:[{itemId:765,name:'Silverleaf',required:1}]}]),
     materials:{...col([{itemId:765,count:1}]),scope:'bags-0-4'},
   }}});
-  await fs.writeFile(path.join(dir,'state.json'),JSON.stringify(initial));
+ validateState(initial);
+ await fs.writeFile(path.join(dir,'state.json'),JSON.stringify(initial));
   const repo=path.resolve(__dirname,'..');
   // Install fake external surfaces before bootstrap can enumerate providers or speech.
   await fs.writeFile(path.join(dir,'package.json'),JSON.stringify({name:'backstage-forever-conversation-fixture',version:'0.12.3',main:'fixture-main.cjs'}));
@@ -92,8 +93,22 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   assert.match(await page.locator('#chatlog').innerText(),/Silverleaf \(item #765\): 2 required, 1 saved carried, 1 short/);
   assert.match(await page.locator('#chatlog').innerText(),/Companion · offline answer/i);
   assert.equal(await count(),0,'saved recipe answer bypasses the configured model');
+  assert.equal(await call('memoryDraft','Alpha'),null,'offline Workshop answer is not eligible for saved memory');
+  assert.equal(await page.locator('[data-memory-save]').count(),0);
+  assert.doesNotMatch((await call('diagnosticsPreview')).text,/recipe #2330|Silverleaf|Minor Healing Potion|saved carried|2026-11-11/);
+  await answer('Tell me some lore about the Titans.');
+  const wire=await latest();
+  assert.equal(wire.prompt,'Tell me some lore about the Titans.');
+  // Normal approved context may contain the active character; Workshop evidence must not be added to it.
+  assert.doesNotMatch(JSON.stringify(wire.context),/recipe #2330|Silverleaf|Minor Healing Potion|saved carried/);
+  assert.match(await page.locator('#chatlog').innerText(),/Minor Healing Potion/,'the local reply remains visible');
+  assert.equal(await count(),1);
+  const previousDraft=await call('memoryDraft','Alpha');
+  assert.equal(previousDraft.question,'Tell me some lore about the Titans.');
   await app.evaluate(()=>{globalThis.holdWorkshop=true;});await send(supply);await pendingOffline();
   await app.evaluate(async()=>{const until=Date.now()+6000;while(!globalThis.releaseWorkshop){if(Date.now()>until)throw Error('Workshop IPC did not reach hold');await new Promise(r=>setTimeout(r,20));}});
+  assert.equal(await call('memoryDraft','Alpha'),null);
+  await assert.rejects(call('saveMemory',{profileId:'Alpha',responseId:previousDraft.responseId}),/Memory draft is no longer current/);
   const picker=page.getByLabel('Active character',{exact:true});await picker.selectOption('Beta');
   await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');
   await app.evaluate(()=>{globalThis.holdWorkshop=false;});
@@ -101,7 +116,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   await app.evaluate(()=>globalThis.releaseWorkshop());
   await app.evaluate(async()=>{while(!globalThis.workshopReleased)await new Promise(r=>setTimeout(r,20));});
   assert.doesNotMatch(await page.locator('#chatlog').innerText(),/Silverleaf|Minor Healing Potion/);
-  assert.equal(await count(),0);
+  assert.equal(await count(),1);
   await picker.selectOption('Alpha');await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');
   await answer('Which pet should my hunter use in WoW Forever');
   await answer('This is for wow forever, not retail');

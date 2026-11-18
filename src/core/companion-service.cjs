@@ -46,9 +46,19 @@ class CompanionService {
       const token=this.memory.begin(profileId),memoryIds=input.memoryIds===undefined?[]:input.memoryIds;
       const augmented=buildMemoryPrompt(state,{profileId,prompt:input.prompt,memoryIds});
       const profile=state.profiles.find(p=>p.id===profileId);
-      const prepared=this.session.prepare({owner:this.owner(profileId),shareProfile:input.shareProfile,memoryIds,prompt:input.prompt,currentPrompt:augmented.prompt});
-      if(prepared.meta.resetReason==='scope-change')this.travel?.clear();
+      const scope={owner:this.owner(profileId),shareProfile:input.shareProfile,memoryIds};
       const refusal=scopeResponse(input.prompt);
+      // Saved Workshop questions stay local even with a model configured.
+      const workshop=!refusal&&workshopQuestion(input.prompt);
+      if(workshop){
+        const conversation=this.session.skip(scope);
+        const text=workshopAnswer(workshop,{state,profile,shareProfile:input.shareProfile,acquisitionPack:this.acquisitionPack});
+        if(signal.aborted)throw signal.reason;
+        // Do not make saved Workshop evidence eligible for later sharing via Memory.
+        this.travel?.clear();return {text,kind:'quick',topic:'profession-materials',conversation};
+      }
+      const prepared=this.session.prepare({...scope,prompt:input.prompt,currentPrompt:augmented.prompt});
+      if(prepared.meta.resetReason==='scope-change')this.travel?.clear();
       if(refusal){this.travel?.clear();return {text:refusal,kind:'scope',conversation:prepared.meta};}
       const finishQuick=({text,topic})=>{
         if(signal.aborted)throw signal.reason;
@@ -56,9 +66,6 @@ class CompanionService {
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:text,kind:'quick'}))throw Error('Provider response is no longer current.');
         this.travel?.clear();return {text,kind:'quick',topic,conversation:prepared.meta};
       };
-      // Saved Workshop questions are deterministic even with a model configured.
-      const workshop=workshopQuestion(input.prompt);
-      if(workshop)return finishQuick({text:workshopAnswer(workshop,{state,profile,shareProfile:input.shareProfile,acquisitionPack:this.acquisitionPack}),topic:'profession-materials'});
       // Talent questions: WoW Forever's own trees from the game client. A clear talent question wins over
       // NPC and travel matching ("Improved Renew only goes to 3/3" is not a trip).
       let talent=null;
