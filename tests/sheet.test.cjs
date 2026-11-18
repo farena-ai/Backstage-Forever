@@ -153,6 +153,41 @@ test("sheet data never leaves the computer: not in community observations or the
   assert.equal(approved.stats, undefined); assert.equal(approved.gearSets, undefined);
 });
 
+test("Sheet comparison shows the saved age of exact worn-item evidence", async (t) => {
+  const fs = require("node:fs"), vm = require("node:vm"), path = require("node:path");
+  const { itemCard } = require("../src/core/boss-loot.cjs");
+  const wornAt = T - 3 * DAY;
+  const saved = new Date(wornAt * 1000).toISOString();
+  for (const [label, itemId, updatedAt, expected, location, age] of [
+    ["worn", 101, saved, wornAt, "Worn", "3 days ago"],
+    ["same name in bank", 102, saved, T - 5 * DAY, "In the bank", "5 days ago"],
+    ["undated worn", 101, undefined, null, "Worn", null],
+    ["invalid worn date", 101, "not a date", null, "Worn", null],
+    ["undated mail", 103, saved, 0, "In the mail", null],
+    ["same name without evidence", 104, saved, undefined, "Ownership unknown", null],
+  ]) await t.test(label, async () => {
+    const profile = { source: updatedAt === undefined ? undefined : { updatedAt },
+      readiness: { equipment: [{ slot: 1, itemId: 101, name: "Same name" }] },
+      ledger: { bank: { seenAt: T - 5 * DAY, items: [{ id: 102, name: "Same name" }] },
+        mail: { seenAt: 0, items: [{ id: 103, name: "Same name" }] } } };
+    const card = itemCard(null, itemId, { profile, gameData: { items: (ids) => ids.map(() => ({ name: "Same name" })) }, wished: [104] });
+    const panel = { innerHTML: "", querySelector: () => null };
+    const parts = { ".page-hero": {}, "[data-sheet-body]": {}, "[data-sheet-compare]": panel };
+    const root = { querySelector: (key) => parts[key] };
+    const context = vm.createContext({ Date: class extends Date { static now() { return T * 1000; } },
+      backstage: { characterSheet: async () => null, itemCard: async () => card },
+      document: { querySelector: () => root, getElementById: () => ({ value: "a", addEventListener() {} }) } });
+    context.window = context;
+    for (const f of ["page-hero.js", "sheet.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer", f), "utf8"), context);
+    context.SheetView.focusItem("a", itemId); context.SheetView.mounted();
+    await new Promise(setImmediate);
+    assert.ok(panel.innerHTML.includes(`<strong>${location}</strong>`));
+    if (age) assert.ok(panel.innerHTML.includes(`· Last saved</span> · ${age}`), panel.innerHTML);
+    else assert.doesNotMatch(panel.innerHTML, /Last saved|ago|just now/);
+    assert.equal(card.ownership?.seenAt, expected);
+  });
+});
+
 test("a late Sheet comparison cannot replace the newer character's exact selected item", async () => {
   const fs = require("node:fs"), vm = require("node:vm"), path = require("node:path");
   let root, profile = "a";

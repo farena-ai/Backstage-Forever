@@ -9,7 +9,13 @@ const INSTANCE_NAMES = Object.fromEntries(BASELINE.map((b) => [b[0], b[1]]));
 const unknown = (text) => ({ verdict: "unknown", text, reasons: [] });
 
 function ownership(profile, itemId) {
-  if (profile?.readiness?.equipment?.some((e) => e.itemId === itemId)) return { where: "worn", seenAt: profile.source?.updatedAt ?? null };
+  if (profile?.readiness?.equipment?.some((e) => e.itemId === itemId)) {
+    // The profile stores an ISO timestamp; item cards use epoch seconds like ledger scans.
+    const updatedAt = profile.source?.updatedAt;
+    const ms = typeof updatedAt === "string" ? Date.parse(updatedAt) : NaN;
+    const seenAt = Number.isFinite(ms) && ms > 0 && new Date(ms).toISOString() === updatedAt ? ms / 1000 : null;
+    return { where: "worn", seenAt };
+  }
   for (const where of ["bags", "bank", "mail"]) {
     const scan = profile?.ledger?.[where];
     if (scan?.items?.some((e) => e.id === itemId)) return { where, seenAt: scan.seenAt ?? null };

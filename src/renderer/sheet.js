@@ -89,14 +89,14 @@ window.SheetView = (() => {
   function comparison() {
     if (!selection || selection.profileId !== active()) return "";
     const { itemId, card, failed } = selection, verdict = card?.verdict;
-    const owned = card?.ownership, when = owned?.seenAt ? ago(owned.seenAt) : "";
+    const owned = card?.ownership, when = owned?.seenAt > 0 ? ago(owned.seenAt) : "";
     return `<section class="sht-card sht-comparison" data-sheet-comparison="${itemId}" aria-labelledby="sheet-compare-heading">
       <h2 id="sheet-compare-heading" tabindex="-1">Gear comparison</h2>
       <p data-card-item="${itemId}"><strong>${esc(card?.item?.name || `Item #${itemId}`)}</strong>${card?.item?.name ? ` · #${itemId}` : ""}</p>
       ${card ? `<p><strong>${esc(verdict?.text || "Not equipment")}</strong>${Number.isFinite(verdict?.delta) ? ` · ${verdict.delta > 0 ? "+" : ""}${verdict.delta}` : ""}</p>
         ${verdict?.replaces?.length ? `<p><span>Compared with:</span> ${verdict.replaces.map((it) => `${esc(it.name)} (#${it.itemId})`).join(", ")}</p>` : ""}
         ${verdict?.reasons?.length ? `<ul>${verdict.reasons.filter((r) => r !== verdict.text).map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
-        <p><strong>${esc(owned ? WHERE[owned.where] : "Ownership unknown")}</strong>${owned ? ` <span>· Last saved</span>${when ? ` · ${esc(when)}` : ""}` : ""}</p>
+        <p><strong>${esc(owned ? WHERE[owned.where] : "Ownership unknown")}</strong>${when ? ` <span>· Last saved</span> · ${esc(when)}` : ""}</p>
         <p class="sht-note">Leveling estimate from saved equipment. Check all equip restrictions in game. Loot listings and wishes do not prove ownership.</p>` : `<p role="status">${failed ? "Could not load this item comparison." : "Opening the item comparison…"}</p>`}
     </section>`;
   }
