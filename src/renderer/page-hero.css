@@ -33,10 +33,10 @@
 .ph-art-now::before { background-image: url("art/hero-now.webp"); }
 .ph-art-settings::before { background-image: url("art/heroes/settings.webp"), url("art/hero-help.webp"); }
 .ph-art-field-guide::before { background-image: url("art/heroes/field-guide.webp"), url("art/hero-help.webp"); }
-.ph-art-ledger::before { background-image: url("art/heroes/ledger.webp"), url("art/heroes/characters.webp"); }
-.ph-art-ledger-gold::before { background-image: url("art/heroes/ledger-gold.webp"), url("art/heroes/plans.webp"); }
-.ph-art-ledger-reputation::before { background-image: url("art/heroes/ledger-reputation.webp"), url("art/heroes/journey.webp"); }
-.ph-art-ledger-cooldowns::before { background-image: url("art/heroes/ledger-cooldowns.webp"), url("art/heroes/professions.webp"); }
+.ph-art-ledger::before { background-image: url("art/heroes/ledger.webp"), url("art/hero-help.webp"); }
+.ph-art-ledger-gold::before { background-image: url("art/heroes/ledger-gold.webp"), url("art/hero-help.webp"); }
+.ph-art-ledger-reputation::before { background-image: url("art/heroes/ledger-reputation.webp"), url("art/hero-help.webp"); }
+.ph-art-ledger-cooldowns::before { background-image: url("art/heroes/ledger-cooldowns.webp"), url("art/hero-help.webp"); }
 /* Keep the faction watermark readable without masking the new right-side focal subjects. */
 body[data-faction] :is(.ph-art-ledger, .ph-art-ledger-gold, .ph-art-ledger-reputation, .ph-art-ledger-cooldowns, .ph-art-settings, .ph-art-field-guide) .ph-faction { opacity: .28; }
 .ph-copy { display: flex; gap: 16px; align-items: flex-end; min-width: 0; max-width: 62%; }
