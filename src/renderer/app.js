@@ -1660,6 +1660,7 @@ root.addEventListener("click", (event) => {
               draft.activeProfileId = draft.profiles[0]?.id || null;
           });
           state = await mutateStateCall(() => api.saveState(next, state));
+          NowView.removeDismissals(target);
           GuidedRouteView.removeSkips(target);
           CommandCenter.remove(target);
           Preparation.remove(target);
@@ -1725,6 +1726,7 @@ root.addEventListener("click", (event) => {
           Party.invalidate(); Party.remove();
           CommandCenter.remove();
           GuidedRouteView.removeSkips();
+          NowView.removeDismissals();
           QuestGuide.invalidate(true);
           knowledgeStatus = null;
           chatGeneration++;
