@@ -13,6 +13,17 @@ html, body { margin: 0; height: 100%; background: #16110c; overflow: hidden; fon
 .ap-body { flex: 1; overflow-y: auto; padding: 8px 12px; font-size: 14px; line-height: 1.4; }
 .ap-question { margin: 0 0 4px; color: #e8d6a8; }
 .ap-empty { margin: 4px 0; color: #b9a57a; font-size: 13px; }
+/* Use the open space in the welcome state, not the transcript or the input. */
+@media (forced-colors: none) {
+  .ap-body:has(> .ap-empty:not([hidden])) { position: relative; isolation: isolate; }
+  .ap-body:has(> .ap-empty:not([hidden]))::before {
+    content: ""; position: absolute; inset: auto 0 0 auto; width: min(53%, 250px); height: min(100%, 150px);
+    z-index: -1; pointer-events: none; opacity: .38;
+    background: url("art/reference/ask.webp") center / cover no-repeat;
+    mask-image: linear-gradient(90deg, transparent, #000 65%), linear-gradient(transparent, #000 75%);
+    mask-composite: intersect;
+  }
+}
 .ap-item { padding: 6px 0 8px; border-bottom: 1px solid rgba(201,162,74,.2); }
 .ap-item:last-child { border-bottom: 0; }
 .ap-kind { margin: 2px 0 0; font-size: 11px; color: #b9a57a; }

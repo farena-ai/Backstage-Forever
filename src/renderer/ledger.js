@@ -150,10 +150,10 @@ window.LedgerView = (() => {
   }
 
   const PAGES = {
-    ledger: ["characters", "Bags & bank", "Everything you carry", "Bags, bank and mail of every character, searchable in one place.", bags],
-    "ledger-gold": ["plans", "Gold & prices", "Gold and prices", "Gold on each character, and the Auction House prices you saw yourself.", gold],
-    "ledger-reputation": ["journey", "Reputation", "Reputation", "Where each character stands with every faction, Alliance and Horde alike.", reputation],
-    "ledger-cooldowns": ["professions", "Cooldowns", "Profession cooldowns", "Transmutes, Mooncloth and the Salt Shaker: which are ready, and when the rest will be.", cooldowns],
+    ledger: ["ledger", "Bags & bank", "Everything you carry", "Bags, bank and mail of every character, searchable in one place.", bags],
+    "ledger-gold": ["ledger-gold", "Gold & prices", "Gold and prices", "Gold on each character, and the Auction House prices you saw yourself.", gold],
+    "ledger-reputation": ["ledger-reputation", "Reputation", "Reputation", "Where each character stands with every faction, Alliance and Horde alike.", reputation],
+    "ledger-cooldowns": ["ledger-cooldowns", "Cooldowns", "Profession cooldowns", "Transmutes, Mooncloth and the Salt Shaker: which are ready, and when the rest will be.", cooldowns],
   };
   function body() {
     if (error) return `<p class="ldg-empty">${esc(error)}</p>`;

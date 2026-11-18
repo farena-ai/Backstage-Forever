@@ -1,9 +1,9 @@
 /* Original faction materials and bundled typefaces remain the journal's identity. */
-.rail nav[aria-label="Main navigation"] {
+.rail nav.primary-navigation {
   gap: 9px;
   margin-top: 24px;
 }
-.rail nav[aria-label="Main navigation"] button {
+.rail nav.primary-navigation button {
   min-height: 51px;
   position: relative;
   font-size: 15px;
@@ -91,11 +91,11 @@
   background: #826a382e;
 }
 @media (max-width: 1000px) {
-  .rail nav[aria-label="Main navigation"] {
+  .rail nav.primary-navigation {
     gap: 5px;
     margin-top: 12px;
   }
-  .rail nav[aria-label="Main navigation"] button {
+  .rail nav.primary-navigation button {
     min-height: 43px;
   }
   .player-section {
@@ -365,8 +365,8 @@
  .shell:has(.workshop, [data-party]) .brand{gap:6px;margin-bottom:8px}
  .shell:has(.workshop, [data-party]) .brand strong{font-size:13px}.shell:has(.workshop, [data-party]) .brand img{width:26px}
  .shell:has(.workshop, [data-party]) .brand small,.shell:has(.workshop, [data-party]) .rail-bottom>small,.shell:has(.workshop, [data-party]) .rail-bottom .status{display:none}
- .shell:has(.workshop, [data-party]) .rail nav[aria-label="Main navigation"]{margin-top:7px;gap:5px;min-height:65px}
- .shell:has(.workshop, [data-party]) .rail nav[aria-label="Main navigation"] button{min-height:38px;font-size:12px;padding:7px 6px}
+ .shell:has(.workshop, [data-party]) .rail nav.primary-navigation{margin-top:7px;gap:5px;min-height:65px}
+ .shell:has(.workshop, [data-party]) .rail nav.primary-navigation button{min-height:38px;font-size:12px;padding:7px 6px}
  .shell:has(.workshop, [data-party]) .rail-bottom{padding-top:7px}.shell:has(.workshop, [data-party]) .secondary-navigation button{font-size:12px}
  .shell:has(.workshop, [data-party]) .topbar{height:auto;min-height:66px;padding:10px 14px;gap:8px;flex-wrap:wrap;align-items:center}
  .shell:has(.workshop, [data-party]) .breadcrumb{width:100%;font-size:11px;gap:6px}
@@ -394,9 +394,24 @@
  .shell:has([data-party]) .party-primary-actions button{max-width:100%;white-space:normal}
 }
 
-/* 0.25: the seven main links fit at the default window size without a scroll bar. */
+/* The 1000 × 700 window has less than 700 px of content once Windows adds its frame. */
+@media (min-width: 761px) and (max-height: 699px) {
+  .rail { overflow-x: hidden; padding-top: 12px; padding-bottom: 10px; }
+  .rail .brand { margin-top: 0; margin-bottom: 8px; }
+  .rail nav.primary-navigation { margin-top: 0; }
+  .rail .brand-faction { display: none; }
+  .rail .brand::after { display: none; }
+  .rail nav.primary-navigation { gap: 2px; padding-top: 2px; padding-bottom: 2px; }
+  .rail nav.primary-navigation button:not(.illustrated-card) { min-height: 32px; padding-top: 3px; padding-bottom: 3px; }
+  .rail nav.primary-navigation button .glyph { font-size: 17px; }
+  .rail .rail-bottom { gap: 5px; padding-top: 8px; }
+  .rail-bottom .secondary-navigation button:not(.illustrated-card) { min-height: 34px; padding-top: 4px; padding-bottom: 4px; }
+  .rail .rail-bottom .status { display: block; overflow-wrap: anywhere; }
+}
+
+/* Main links fit at the default window size without a scroll bar. */
 @media (min-height: 700px) {
   .rail .brand { margin-bottom: 14px; }
-  .rail nav[aria-label="Main navigation"] { gap: 7px; padding-top: 2px; padding-bottom: 2px; }
-  .rail nav[aria-label="Main navigation"] button:not(.illustrated-card) { min-height: 46px; padding-top: 8px; padding-bottom: 8px; }
+  .rail nav.primary-navigation { gap: 7px; padding-top: 2px; padding-bottom: 2px; }
+  .rail nav.primary-navigation button:not(.illustrated-card) { min-height: 46px; padding-top: 8px; padding-bottom: 8px; }
 }

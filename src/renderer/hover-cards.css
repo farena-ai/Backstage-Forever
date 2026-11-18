@@ -3,6 +3,20 @@
   background: linear-gradient(180deg, #f5e8c6, #e2cc98); border: 1px solid #8a5a18; box-shadow: 0 0 0 1px rgba(246,196,69,.35), 0 14px 34px rgba(0,0,0,.55); animation: hc-in .15s ease-out both; }
 .hover-card header { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 6px; }
 .hover-card header strong { font: 700 16px Georgia, serif; color: #3d220c; }
+/* Subject vignettes stay behind the header, without resizing the card or touching game icons. */
+.hc-kind-quest { --hc-art: url("art/reference/quest.webp"); }
+.hc-kind-npc { --hc-art: url("art/reference/npc.webp"); }
+.hc-kind-item { --hc-art: url("art/reference/item.webp"); }
+@media (forced-colors: none) {
+  .hover-card > header { position: relative; isolation: isolate; }
+  .hover-card > header::before {
+    content: ""; position: absolute; inset: -9px -11px -3px auto; width: 45%; max-width: 150px;
+    z-index: -1; pointer-events: none; border-radius: 0 5px 0 0;
+    background: var(--hc-art, none) center / cover no-repeat; opacity: .20;
+    mask-image: linear-gradient(90deg, transparent, #000 75%), linear-gradient(#000 35%, transparent);
+    mask-composite: intersect;
+  }
+}
 .hc-lv { flex: none; padding: 0 6px; border-radius: 8px; font-size: 11px; font-weight: 700; background: #3776be; color: #fff; }
 .hc-steps { margin: 0 0 6px; padding-left: 18px; font-size: 13px; line-height: 1.4; }
 .hc-steps li { margin-bottom: 3px; }

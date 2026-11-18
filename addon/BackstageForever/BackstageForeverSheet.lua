@@ -251,6 +251,14 @@ local function showMenu()
         setMenu=call(CreateFrame,'Frame','BackstageForeverSetMenu',setButton,'BackdropTemplate');if not setMenu then return end
         pcall(setMenu.SetBackdrop,setMenu,{bgFile='Interface/DialogFrame/UI-DialogBox-Background',edgeFile='Interface/Tooltips/UI-Tooltip-Border',tile=true,tileSize=16,edgeSize=12,insets={left=3,right=3,top=3,bottom=3}})
         pcall(setMenu.SetFrameStrata,setMenu,'DIALOG');pcall(setMenu.SetPoint,setMenu,'TOPLEFT',setButton,'BOTTOMLEFT',0,-2)
+        -- Reuse the 8:1 gear painting inside the existing footer, behind the hint and clear of the rows.
+        local art=call(setMenu.CreateTexture,setMenu,nil,'BACKGROUND',nil,1)
+        if art then
+            pcall(art.SetSize,art,200,25)
+            pcall(art.SetPoint,art,'BOTTOM',setMenu,'BOTTOM',0,10)
+            pcall(art.SetVertexColor,art,.42,.42,.42)
+            pcall(art.SetTexture,art,'Interface\\AddOns\\BackstageForever\\Art\\Messages\\gear')
+        end
         setMenu.rows={}
         setMenu.hint=call(setMenu.CreateFontString,setMenu,nil,'OVERLAY','GameFontHighlightSmall')
     end

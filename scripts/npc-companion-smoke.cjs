@@ -52,8 +52,14 @@ const {defaultState}=require('../src/core/validation.cjs'),{testWindow}=require(
    await send('Where is Cairne?');assert.deepEqual(await app.evaluate(()=>[npcFixture.calls.length,npcFixture.keys]),[0,0]);
    const ambiguity=await send('Where is Valennia Stormfist?');assert.equal(ambiguity.npc.status,'ambiguous');assert.equal(ambiguity.npc.candidates.length,3);assert.doesNotMatch(ambiguity.text,/around/);await page.screenshot({path:path.join(capture,'npc-ambiguity.png'),fullPage:true});
    assert.equal((await send('Where is NPC Unknown?')).npc.status,'unknown');
-   await page.getByLabel('Use my active character',{exact:true}).uncheck();await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');assert.match(await page.locator('[data-context-body]').innerText(),/No character context/);assert.equal((await send('Where is Cairne?')).npc.entities[0].evidenceTier,'historical-reference');
-   await page.getByLabel('Use my active character',{exact:true}).check();await send("I'm in Org. Where is Cairne?");
+   await page.getByLabel('Use my active character',{exact:true}).uncheck();
+   await page.waitForFunction(()=>localStorage.getItem('bf-share-character')==='false'&&document.querySelector('#chatlog')?.textContent==='');
+   assert.match(await page.locator('[data-context-body]').innerText(),/No character context/);assert.equal((await send('Where is Cairne?')).npc.entities[0].evidenceTier,'historical-reference');
+   await page.getByLabel('Use my active character',{exact:true}).check();
+   // The native checkbox flips before the conversation clear finishes. The app persists
+   // this setting only after that clear, so the next submit cannot race its repaint.
+   await page.waitForFunction(()=>localStorage.getItem('bf-share-character')==='true');
+   await send("I'm in Org. Where is Cairne?");
    await page.getByLabel('Active character',{exact:true}).selectOption('Beta');await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await field.fill('Help me plan my next quest');await page.waitForFunction(()=>document.querySelector('[data-context-body] pre')?.textContent.includes('saved-snapshot'));assert.equal(JSON.parse(await preview().textContent()).location.zone,'Boulder Lode Mine');
    await call('saveProvider',{provider:'ollama',model:'fixture',endpoint:'http://127.0.0.1:11434',authMode:'api'});await page.reload();await navigate(page,'assistant');await send("I'm in Org. Help me plan my next quest");const sent=await app.evaluate(()=>npcFixture.calls.at(-1).context);assert.match(sent,/user-report/);assert.equal(JSON.parse(sent.slice(sent.indexOf('{'))).location.zone,'Orgrimmar');assert.doesNotMatch(sent,/PRIVATE_/);
    // Hold actual IPC boundaries, preserving the unchanged physical draft. Old

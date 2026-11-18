@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.0 — The painted field journal, 2026-11-18
+
+- Repainted the welcome and desktop banners, and added individual Ledger illustrations for bags and bank, gold and prices, reputation, and cooldowns.
+- Refreshed Ragefire Chasm, selected in-game notifications, and matching desktop and in-game vistas for Durotar, the Barrens, and Elwynn Forest.
+- See the [release notes](docs/releases/1.7.0.md) for the full visual changes.
+
 ## 1.6.0 — Show it off, stock up, 2026-11-17
 
 - Characters → Badges: Save a picture. A painted picture of a character's earned badges, saved where you choose, to share.
