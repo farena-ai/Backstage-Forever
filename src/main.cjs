@@ -421,6 +421,10 @@ app.whenReady().then(async () => {
     return store.changeObjective(args[0]);
   });
   handle("discoverGame", () => game.discover());
+  handle("cancelCompanion", (...args) => {
+    if (args.length) throw Error("Invalid setup request.");
+    gameActionEpoch++;
+  });
   handle("startCompanion", async (...args) => {
     if (args.length) throw Error("Invalid setup request.");
     const epoch = subscriptionEpoch, actionEpoch = ++gameActionEpoch;
@@ -472,7 +476,7 @@ app.whenReady().then(async () => {
           properties: ["openDirectory"],
           ...(candidates[0] ? { defaultPath: candidates[0].path } : {}),
         });
-        if (result.canceled || cancelled()) return gameSnapshot();
+        if (result.canceled || cancelled()) return { ...gameSnapshot(), setupCancelled: true };
         root = result.filePaths[0];
       }
     }

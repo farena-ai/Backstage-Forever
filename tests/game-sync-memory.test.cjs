@@ -15,7 +15,7 @@ async function fixture(t) {
   for (const name of ["one", "two"]) { const root = path.join(dir, name); await fs.mkdir(path.join(root, "WTF"), { recursive: true }); await fs.writeFile(path.join(root, ".flavor.info"), "wowf"); roots.push(await fs.realpath(root)); }
   return { dir, roots, resources };
 }
-test("actual root clear and assignment synchronously retire responses before held source preparation completes", { timeout: 20000 }, async t => {
+test("the old source stays current during preparation and retires at committed source switch", { timeout: 20000 }, async t => {
   const f = await fixture(t), store = new Store(path.join(f.dir, "state"), {});
   store.saveState({ ...defaultState(), profiles: [{ id: "p", name: "Synthetic", realm: "Test", className: "Mage", level: 12, notes: "", goals: [] }], activeProfileId: "p" });
   const context = new CompanionContext(() => store.state), memory = new MemoryService({ store, context }), events = [];
@@ -28,13 +28,14 @@ test("actual root clear and assignment synchronously retire responses before hel
   sync._installAddon = async (...args) => { if (args[1] === f.roots[1]) { installing.release(); await installRelease.promise; } return originalInstall(...args); };
   try {
     pending = sync.prepare(f.roots[1]); await bounded(validating.promise);
-    assert.equal(sync.root, null); assert.equal(context.isCurrent(token), false, "root clearing must invalidate before validation settles");
+    assert.equal(sync.root, f.roots[0]); assert.equal(context.isCurrent(token), true);
+    validateRelease.release(); await bounded(installing.promise);
+    assert.equal(sync.root, f.roots[0]); assert.equal(context.isCurrent(token), true);
+    installRelease.release(); await bounded(pending); assert.deepEqual(events.map(event => event.root), f.roots);
+    assert.equal(sync.root, f.roots[1]); assert.equal(context.isCurrent(token), false);
     assert.throws(() => memory.complete(token, "Old question", "Old-source reply"), /no longer current/); assert.equal(memory.draft("p"), null);
-    const duringClear = memory.begin("p"); validateRelease.release(); await bounded(installing.promise);
-    assert.equal(sync.root, f.roots[1]); assert.equal(context.isCurrent(duringClear), false, "new root must invalidate before addon preparation settles");
-    assert.throws(() => memory.complete(duringClear, "Interim question", "Interim reply"), /no longer current/); assert.equal(memory.draft("p"), null);
     assert.throws(() => memory.save({ profileId: "p", responseId: token.responseId }), /no longer current/); assert.deepEqual(store.state.memories, []);
-    installRelease.release(); await bounded(pending); assert.deepEqual(events.map(event => event.root), [f.roots[0], null, f.roots[1]]);
+
     const current = memory.begin("p"), count = events.length; await sync.refresh(); await sync.prepare(); assert.equal(events.length, count); assert.equal(context.isCurrent(current), true);
     memory.complete(current, "Current question", "Current-source answer"); assert.equal(memory.draft("p").answer, "Current-source answer");
   } finally { validateRelease.release(); installRelease.release(); if (pending) await bounded(pending); }

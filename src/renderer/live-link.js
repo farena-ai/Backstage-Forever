@@ -44,6 +44,14 @@
   const MODES = { hairline: "Hairline", compact: "Compact", safe: "Safe", legacy: "Older addon" };
   const CAPTURE = { window: " · read from the game window (works behind other windows)", screen: " · read from the screen (keep WoW uncovered)" };
   const TIP = "Type /bf live safe if the link drops over remote desktop.";
+  function recovery(s = status) {
+    if (!s.enabled) return "Keep using saved progress without turning on the live link. Play and log out normally to update the desktop journal.";
+    if (s.signal === "unsupported") return "Keep using saved progress: play and log out normally to update the desktop journal.";
+    if (s.signal === "minimized") return "Restore the game window to resume live updates; no reload is needed.";
+    if (s.signal === "nogame") return "Open WoW Forever from your usual launcher, or keep using the last saved progress.";
+    if (s.signal === "stale") return "Bring WoW back into view. If the line is hidden, type /bf live on in WoW. The desktop journal can still use saved progress.";
+    return "";
+  }
   // Mode, placement and size of the strip the app last read (null until one is seen).
   function stripLine(s = status) {
     const k = s?.strip;
@@ -53,12 +61,17 @@
   }
   function paint() {
     for (const n of document.querySelectorAll("[data-live-link-line]")) { n.textContent = line(); n.dataset.signal = status.signal; }
+    const step = recovery();
+    for (const n of document.querySelectorAll("[data-live-link-recovery]")) {
+      if (n.textContent !== step) n.textContent = step;
+      n.hidden = !step;
+    }
     for (const n of document.querySelectorAll("[data-live-link-strip]")) { n.textContent = stripLine(); n.hidden = !stripLine(); }
     for (const n of document.querySelectorAll("#live-link-toggle")) n.checked = status.enabled;
   }
   window.LiveLink = {
     markup() {
-      return `<hr class="rule"><h3>Live game link <span class="tag">On by default</span></h3><label class="check-label"><input type="checkbox" id="live-link-toggle" ${status.enabled ? "checked" : ""}>Read my live position from the game window</label><p>With this on, the addon draws a thin dark line, one pixel tall, along the top edge of the game. Backstage Forever reads only that line, twice a second, from the game window itself (so it keeps working when another window covers WoW), and the companion knows where you are right now without a reload. While WoW is minimized nothing can be read: live updates pause and resume when you bring it back. It sends no input, reads no game memory, stores no screenshots and pauses details during combat. Over remote desktop, <code>/bf live safe</code> draws a larger, sturdier strip in a corner (<code>/bf live pos</code> moves it); <code>/bf live compact</code> is the small 84×4 corner strip.</p><p class="live-link-line" data-live-link-line role="status">${esc(line())}</p><p class="live-link-strip" data-live-link-strip${stripLine() ? "" : " hidden"}>${esc(stripLine())}</p><p class="live-link-tip">${esc(TIP)}</p>`;
+      return `<hr class="rule"><h3>Live game link <span class="tag">On by default</span></h3><label class="check-label"><input type="checkbox" id="live-link-toggle" ${status.enabled ? "checked" : ""}>Read my live position from the game window</label><p>With this on, the addon draws a thin dark line, one pixel tall, along the top edge of the game. Backstage Forever reads only that line, twice a second, from the game window itself (so it keeps working when another window covers WoW), and the companion knows where you are right now without a reload. While WoW is minimized nothing can be read: live updates pause and resume when you bring it back. It sends no input, reads no game memory, stores no screenshots and pauses details during combat. Over remote desktop, <code>/bf live safe</code> draws a larger, sturdier strip in a corner (<code>/bf live pos</code> moves it); <code>/bf live compact</code> is the small 84×4 corner strip.</p><p class="live-link-line" data-live-link-line role="status">${esc(line())}</p><p class="live-link-strip" data-live-link-strip${stripLine() ? "" : " hidden"}>${esc(stripLine())}</p><p class="live-link-tip">${esc(TIP)}</p><p class="corner-note" data-live-link-recovery${recovery() ? "" : " hidden"}>${esc(recovery())}</p>`;
     },
     stripLine,
     lastLine,

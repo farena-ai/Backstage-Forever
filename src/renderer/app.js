@@ -282,10 +282,11 @@ function setupJourney() {
 }
 function setupDock() {
   if (setupReady() || (setupChoice === "manual" && !LivingSetup.unavailable(gameStatus))) return "";
-  return `<div class="companion-dock"><span class="companion-gem" aria-hidden="true">✧</span><span><strong>${LivingSetup.unavailable(gameStatus) ? "Your game folder is unavailable." : "Connect WoW Forever to fill these pages."}</strong><br>${LivingSetup.unavailable(gameStatus) ? "Reconnect its folder. Your saved characters and private journals are preserved." : "One setup finds the game, installs the addon and turns on the live link."}</span><button data-command="setup-open">Companion setup</button></div>`;
+  return `<div class="companion-dock"><span class="companion-gem" aria-hidden="true">✧</span><span><strong>${LivingSetup.unavailable(gameStatus) ? "Your game folder is unavailable." : "Connect WoW Forever to fill these pages."}</strong><br>${LivingSetup.unavailable(gameStatus) ? "Reconnect its folder. Your saved characters and private journals are preserved." : "Setup finds your game and prepares the addon. Live link settings stay as they are."}</span><button data-command="setup-open">Companion setup</button></div>`;
 }
 const savedHelp = "Live guidance runs inside WoW. The desktop journal catches up after the game saves on logout.";
 function closeSetup(choice) {
+  if (setupBusy) void api.cancelCompanion().catch(() => {});
   setupGeneration++;
   setupBusy = false;
   setupCandidates = null;
@@ -313,9 +314,10 @@ async function prepareCompanion(fn) {
   try {
     const result = await mutateStateCall(fn);
     if (generation !== setupGeneration || !setupOpen) return;
+    if (result.setupCancelled) return;
     setupCandidates = Object.hasOwn(result, "setupCandidates") ? result.setupCandidates : null;
     await applyGame(result);
-    await enterPrepared(generation);
+    if (!result.gameStatus?.setupIssue) await enterPrepared(generation);
   } finally {
     if (generation === setupGeneration) { setupBusy = false; render(); }
   }
@@ -652,7 +654,7 @@ function inGameHelpers() {
   return `<section class="panel ingame-helpers"><h2>In-game helpers</h2><p>These run inside WoW. Type the command in chat to switch one on or off; add <code>on</code> or <code>off</code> to be explicit.</p><ul>${rows.map(([n, d, c]) => `<li><strong>${esc(n)}</strong><span>${esc(d)}</span><code>${esc(c)}</code></li>`).join("")}</ul><button type="button" class="subtle" data-nav="commands">All commands →</button></section>`;
 }
 function gameConnection() {
-  return `${PageHero.render({ art: "settings", compact: true, eyebrow: "Settings · Game connection", title: "Connect WoW Forever", subtitle: gameStatus.connected ? (gameStatus.addonCurrent ? "Connected · addon up to date" : "Connected · addon needs an update") : "Not connected yet: find your game folder below." })}<section class="panel"><h2>${setupReady() ? "Companion files prepared" : "Game connection"}</h2><p class="setup-status">${esc(gameStatus.companionMessage || gameStatus.message || "Choose your game folder to begin.")}</p><div class="actions">${LivingSetup.unavailable(gameStatus) ? '<button class="primary" data-command="game-connect">Choose game folder</button>' : ""}<button class="${LivingSetup.unavailable(gameStatus) ? "subtle" : "primary"}" data-command="setup-open">Set up my companion</button></div>${LivingSetup.activation(gameStatus, esc)}${LivingSetup.coverage(gameStatus, esc)}<hr class="rule"><h3>Desktop saved characters</h3><label class="check-label"><input type="checkbox" id="follow-game-character" ${state.followGameCharacter !== false ? "checked" : ""}>Follow my last played character</label><p>After the game saves, follow the last played character in this desktop journal. Pausing keeps your manual selection; live guidance in WoW keeps working.</p><p>${esc(profile() ? snapshotLabel(profile()) : "Desktop · no saved character yet")}</p><p>${savedHelp}</p><details data-living-disclosure="connection-checks"><summary>Connection checks and tools</summary>${setupChecks()}<div class="actions"><button data-command="game-discover">Find my game</button><button data-command="game-connect">Choose game folder</button>${gameStatus.connected ? '<button data-command="game-install">Repair companion addon</button><button data-command="game-refresh">Refresh saved snapshot</button><button data-command="game-disconnect">Disconnect game</button>' : ""}</div><p>Refresh reads existing saved files. It does not request a save or interrupt your game.</p></details>${window.LiveLink ? LiveLink.markup() : ""}${window.AskInGame ? AskInGame.markup() : ""}${window.MomentsView ? MomentsView.settingsMarkup() : ""}${window.CommunityView ? CommunityView.markup() : ""}</section>${inGameHelpers()}`;
+  return `${PageHero.render({ art: "settings", compact: true, eyebrow: "Settings · Game connection", title: "Connect WoW Forever", subtitle: gameStatus.connected ? (gameStatus.addonCurrent ? "Connected · addon up to date" : "Connected · addon needs an update") : "Not connected yet: find your game folder below." })}<section class="panel"><h2>${setupReady() ? "Companion files prepared" : "Game connection"}</h2><p class="setup-status">${esc(gameStatus.companionMessage || gameStatus.message || "Choose your game folder to begin.")}</p><div class="actions">${(LivingSetup.unavailable(gameStatus) || gameStatus.setupIssue) ? '<button class="primary" data-command="game-connect">Choose game folder</button>' : ""}<button class="${(LivingSetup.unavailable(gameStatus) || gameStatus.setupIssue) ? "subtle" : "primary"}" data-command="setup-open">Set up my companion</button></div>${LivingSetup.activation(gameStatus, esc)}${LivingSetup.savedRecovery(gameStatus, esc)}${LivingSetup.coverage(gameStatus, esc)}<hr class="rule"><h3>Desktop saved characters</h3><label class="check-label"><input type="checkbox" id="follow-game-character" ${state.followGameCharacter !== false ? "checked" : ""}>Follow my last played character</label><p>After the game saves, follow the last played character in this desktop journal. Pausing keeps your manual selection; live guidance in WoW keeps working.</p><p>${esc(profile() ? snapshotLabel(profile()) : "Desktop · no saved character yet")}</p><p>${savedHelp}</p><details data-living-disclosure="connection-checks"><summary>Connection checks and tools</summary>${setupChecks()}<div class="actions"><button data-command="game-discover">Find my game</button><button data-command="game-connect">Choose game folder</button>${gameStatus.connected ? '<button data-command="game-install">Repair companion addon</button><button data-command="game-refresh">Refresh saved snapshot</button><button data-command="game-disconnect">Disconnect game</button>' : ""}</div><p>Refresh reads existing saved files. It does not request a save or interrupt your game.</p></details>${window.LiveLink ? LiveLink.markup() : ""}${window.AskInGame ? AskInGame.markup() : ""}${window.MomentsView ? MomentsView.settingsMarkup() : ""}${window.CommunityView ? CommunityView.markup() : ""}</section>${inGameHelpers()}`;
 }
 async function mutateGame(fn) {
   const generation = setupGeneration;
@@ -1313,7 +1315,7 @@ root.addEventListener("click", (event) => {
     return;
   }
   if (button.hasAttribute("data-company-share")) { if(page==="company")Party.shareJourney(button.dataset.companyShare); return; }
-  if (button.closest("[data-support], [data-recovery]")) return;
+  if (button.closest("[data-recovery]") || (button.closest("[data-support]") && button.dataset.nav !== "game")) return;
   if (button.closest("[data-party]") && !button.dataset.nav) return;
   if (button.hasAttribute("data-director-start") || button.hasAttribute("data-preparation-add") || button.hasAttribute("data-preparation-retry") || button.hasAttribute("data-preparation-ask")) return;
   if (button.hasAttribute("data-company-command") || button.hasAttribute("data-company-open") || button.closest("[data-company-form]")) return;
@@ -1449,6 +1451,12 @@ root.addEventListener("click", (event) => {
         break;
       case "setup-defer":
         closeSetup("deferred");
+        render();
+        break;
+      case "setup-cancel":
+        setupGeneration++;
+        setupBusy = false;
+        void api.cancelCompanion().catch(() => {});
         render();
         break;
       case "setup-ai":

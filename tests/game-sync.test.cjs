@@ -144,6 +144,36 @@ test("refuses a symlink connection and symlink saved exports", async (t) => {
   await sync.refresh();
   assert.equal(sync.status().characterCount, 0);
 });
+test("cancelling a staged replacement preserves the prior connection and permits retry", async (t) => {
+  const f = await fixture(t);
+  const dataDir = path.join(f.dir, "data"), config = path.join(dataDir, "game-connection.private.json");
+  const next = path.join(f.dir, "replacement"), folder = path.join(next, "Interface", "AddOns", "BackstageForever");
+  await fs.mkdir(path.join(next, "WTF"), { recursive: true });
+  await fs.writeFile(path.join(next, ".flavor.info"), "wowf");
+  await fs.mkdir(folder, { recursive: true });
+  await fs.writeFile(path.join(folder, "user.txt"), "unrelated");
+  const sync = new GameSync({ dataDir, addonDir: path.join(__dirname, "../addon/BackstageForever") });
+  t.after(() => sync.close());
+  assert.equal((await sync.connect(f.root)).addonCurrent, true);
+  const previous = await fs.readFile(config);
+  const write = fs.writeFile;
+  let cancelled = false;
+  fs.writeFile = async function (file, ...args) {
+    const result = await write.call(this, file, ...args);
+    if (path.basename(file).startsWith(".backstage-")) cancelled = true;
+    return result;
+  };
+  try { await sync.prepare(next, () => cancelled); }
+  finally { fs.writeFile = write; }
+  assert.equal(cancelled, true);
+  assert.deepEqual(await fs.readFile(config), previous);
+  assert.equal(sync.root, await fs.realpath(f.root));
+  assert.equal(sync.status().addonCurrent, true);
+  assert.deepEqual((await fs.readdir(folder, { recursive: true, withFileTypes: true })).filter(entry => entry.isFile()).map(entry => entry.name), ["user.txt"]);
+  assert.equal((await sync.prepare(next)).addonCurrent, true);
+  assert.equal(JSON.parse(await fs.readFile(config)).root, await fs.realpath(next));
+  assert.equal(await fs.readFile(path.join(folder, "user.txt"), "utf8"), "unrelated");
+});
 test("closing before restore resolves prevents saved connection resurrection", async (t) => {
   const f = await fixture(t);
   await fs.mkdir(path.join(f.dir, "data"));
@@ -214,7 +244,7 @@ test("disconnect during addon checks cannot rewrite the private connection or re
     await fs.writeFile(path.join(folder, file), "fixture");
   const sync = new GameSync({
     dataDir: path.join(f.dir, "data"),
-    addonDir: "unused",
+    addonDir: path.join(__dirname, "../addon/BackstageForever"),
   });
   t.after(() => sync.close());
   await sync.ready;
