@@ -1,5 +1,7 @@
 "use strict";
 
+// The sandboxed desktop renderer consumes the same pure resolver as Node tests.
+(function () {
 // V1 owns only the initial open state of two existing desktop disclosures.
 // Keep these legacy defaults stable; introducing new defaults requires a new version.
 const VERSION = 1;
@@ -62,4 +64,7 @@ function previewViewPreset(record, preset) {
   return { preset, changes };
 }
 
-module.exports = { resolveViewPreferences, previewViewPreset, applyViewPreset, setViewOverride, resetViewPreferences };
+const model = { resolveViewPreferences, previewViewPreset, applyViewPreset, setViewOverride, resetViewPreferences };
+if (typeof module !== "undefined") module.exports = model;
+else window.DesktopViewPresetModel = model;
+})();

@@ -83,6 +83,10 @@ function harness(overrides = {}) {
   context.QuestGuide = context.window.QuestGuide;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/living-setup.js"), "utf8"), context);
   context.LivingSetup = context.window.LivingSetup;
+  for (const file of ["core/desktop-view-presets.cjs", "renderer/desktop-view-presets.js"]) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "../src", file), "utf8"), context);
+  }
+  context.DesktopViewPresets = context.window.DesktopViewPresets;
   for (const name of ["interaction", "command-center", "director"]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${name}.js`), "utf8"), context);
   }

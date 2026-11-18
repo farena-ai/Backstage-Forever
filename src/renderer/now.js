@@ -306,7 +306,7 @@ window.NowView = (() => {
     // The view templates escape dynamic text and serialized action attributes before interpolation.
     b.innerHTML = body();
     const followups = b.querySelector?.(".now-followups");
-    if (followups && followupsOpen) followups.open = true;
+    if (followups) followups.open = followupsOpen ?? DesktopViewPresets.defaults(activeId()).nowMoreSuggestions;
     if (focusAttr) {
       const match = (focusAttr !== "data-now-dismiss" || oldSuggestion === displayedDismissal?.key) &&
         [...b.querySelectorAll(`.now-next [${focusAttr}], .now-objective [${focusAttr}]`)].find(el => el.getAttribute(focusAttr) === focusValue);

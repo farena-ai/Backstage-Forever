@@ -1,0 +1,166 @@
+"use strict";
+const assert = require("node:assert/strict");
+const fs = require("node:fs/promises");
+const os = require("node:os");
+const path = require("node:path");
+const { _electron } = require("playwright");
+const { launch, testWindow } = require("./test-window.cjs");
+const { defaultState, validateState } = require("../src/core/validation.cjs");
+
+(async () => {
+  const dir = await fs.mkdtemp(path.join(await fs.realpath(process.env.BF_TEST_TMP || os.tmpdir()), "bf-view-presets-"));
+  let app, page;
+  const errors = [];
+  try {
+    const profile = { id: "Alpha", name: "Alpha", className: "Hunter", realm: "Synthetic", level: 15, race: "Tauren", faction: "Horde", goals: [], notes: "", location: { zone: "The Barrens", mapId: 1413, x: 0.52, y: 0.29 }, quests: [{ id: 96, title: "Call of Water", complete: true, objectives: [] }, { id: 5728, title: "Hidden Enemies", complete: false, objectives: [] }] };
+    const initial = validateState({ ...defaultState(), onboarded: true, activeProfileId: "Alpha", profiles: [profile, { ...profile, id: "Beta", name: "Beta" }] });
+    await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(initial));
+    const repo = path.resolve(__dirname, "..");
+    await fs.writeFile(path.join(dir, "package.json"), JSON.stringify({ name: "backstage-view-presets-fixture", version: "1.0.0", main: "fixture.cjs" }));
+    await fs.writeFile(path.join(dir, "fixture.cjs"), `
+      const load = require('node:module').createRequire(${JSON.stringify(path.join(repo, "package.json"))});
+      load('./src/core/model-catalog.cjs').listModels=async()=>({models:[],source:'fixture'});
+      load('./src/core/claude.cjs').status=async()=>({available:false,connected:false});
+      load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});
+      load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});
+      const L=load('./src/core/live-bridge.cjs').LiveBridge;
+      L.prototype.readPreference=()=>false; L.prototype.start=()=>{};
+      load('./src/main.cjs');
+    `);
+    const start = async () => {
+      app = await launch(_electron, { args: [dir], env: { ...process.env, BF_USER_DATA: dir, BF_TEST_INACTIVE: "1" }, timeout: 20000 });
+      page = await testWindow(app);
+      page.setDefaultTimeout(8000);
+      page.on("pageerror", error => errors.push(error.message));
+    };
+    const key = "bf-desktop-view-prefs:Alpha";
+    const stored = (name = key) => page.evaluate(name => localStorage.getItem(name), name);
+    const otherStorage = () => page.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([key]) => !key.startsWith("bf-desktop-view-prefs:"))));
+    const waitOpen = (selector, open) => page.waitForFunction(([selector, open]) => document.querySelector(selector)?.open === open, [selector, open]);
+    const now = ".now-followups", sources = "[data-preparation] summary[data-preparation-control=sources]";
+    const workshopOpen = open => page.waitForFunction(([selector, open]) => document.querySelector(selector)?.parentElement.open === open, [sources, open]);
+    const enter = selector => page.locator(selector).press("Enter");
+    const nav = (name, group) => enter(`${group ? `.${group} ` : ""}[data-nav="${name}"]`);
+    const action = name => `[data-view-preset-action="${name}"]`;
+    const settings = async () => {
+      await nav("game", "secondary-navigation");
+      await enter("[data-view-presets] > summary");
+    };
+    await start();
+    await page.evaluate(() => { localStorage.setItem("bf-setup-v4", "complete"); localStorage.setItem("bf-share-character", "false"); });
+    await page.reload();
+    await waitOpen(now, false);
+    assert.equal(await stored(), null);
+    await settings();
+    const originalStorage = await otherStorage();
+    const originalJournal = await fs.readFile(path.join(dir, "state.json"), "utf8");
+    await page.locator("[data-view-preset-choice]").press("End");
+    assert.equal(await page.locator("[data-view-preset-choice]").inputValue(), "planner");
+    await enter(action("preview"));
+    assert.equal(await page.locator(`${action("apply")}:focus`).count(), 1);
+    assert.equal(await page.locator("[data-view-preset-preview] li").count(), 2);
+    assert.equal(await stored(), null);
+    await enter(action("cancel"));
+    assert.equal(await page.locator("[data-view-preset-preview]").count(), 0);
+    assert.equal(await stored(), null);
+    await enter(action("preview"));
+    await enter(action("apply"));
+    assert.deepEqual(JSON.parse(await stored()), { version: 1, preset: "planner", overrides: {} });
+    assert.deepEqual(await otherStorage(), originalStorage);
+    assert.equal(await fs.readFile(path.join(dir, "state.json"), "utf8"), originalJournal);
+    await nav("now");
+    await waitOpen(now, true);
+    await enter(`${now} > summary`);
+    await waitOpen(now, false);
+    await enter('[data-now-act="refresh"]');
+    await waitOpen(now, false);
+    await nav("adventure", "primary-navigation");
+    await nav("preparation", "player-subtabs");
+    await workshopOpen(true);
+    await enter(sources);
+    await workshopOpen(false);
+    await settings();
+    const override = () => page.locator('[data-view-override="nowMoreSuggestions"]');
+    await override().press("End");
+    assert.equal(JSON.parse(await stored()).overrides.nowMoreSuggestions, false);
+    await page.locator("[data-view-preset-choice]").press("Home");
+    await enter(action("preview"));
+    const picker = page.locator("#active-character");
+    await picker.press("End");
+    await page.waitForFunction(() => document.querySelector('[data-view-presets]')?.dataset.viewPresets === "Beta");
+    assert.equal(await page.locator("[data-view-preset-preview]").count(), 0);
+    assert.equal(await stored("bf-desktop-view-prefs:Beta"), null);
+    await nav("now");
+    await waitOpen(now, false);
+    await picker.press("Home");
+    await page.waitForFunction(() => document.querySelector('[data-now-title]')?.textContent === "Alpha");
+    await app.close(); app = null;
+    await start();
+    await waitOpen(now, false);
+    assert.deepEqual(JSON.parse(await stored()), { version: 1, preset: "planner", overrides: { nowMoreSuggestions: false } });
+    await settings();
+    await override().press("Home");
+    await nav("now");
+    await waitOpen(now, true);
+    await settings();
+    await enter(action("reset"));
+    assert.equal(await stored(), null);
+    assert.equal(await stored("bf-share-character"), "false");
+    await nav("now");
+    await waitOpen(now, false);
+    await nav("adventure", "primary-navigation");
+    await nav("preparation", "player-subtabs");
+    await workshopOpen(false);
+
+    // A changed record must be previewed again, not overwritten by the old Apply button.
+    await settings();
+    await page.locator("[data-view-preset-choice]").press("End");
+    await enter(action("preview"));
+    const intervening = '{"version":1,"preset":"guided","overrides":{}}';
+    await page.evaluate(([key, raw]) => localStorage.setItem(key, raw), [key, intervening]);
+    await enter(action("apply"));
+    assert.equal(await stored(), intervening);
+    assert.equal(await page.locator("[data-view-preset-preview]").count(), 0);
+
+    await app.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      if (window.isMaximized()) window.unmaximize();
+      window.setSize(...window.getMinimumSize());
+    });
+    await page.evaluate(() => localStorage.setItem("bf-lang-v1", "de"));
+    await page.reload();
+    await waitOpen(now, true);
+    await settings();
+    await page.locator("[data-view-preset-choice]").press("End");
+    await enter(action("preview"));
+    const preview = page.locator("[data-view-preset-preview]");
+    await preview.getByText("Vorschau der Ansicht", { exact: true }).waitFor();
+    assert.equal(await preview.locator("li").count(), 1);
+    // Keyboard preview must bring its own confirmation into the actual content viewport.
+    const geometry = await preview.evaluate(node => {
+      const content = node.closest(".content"), main = node.closest(".main"), apply = node.querySelector('[data-view-preset-action="apply"]');
+      const c = content.getBoundingClientRect(), p = node.getBoundingClientRect(), a = apply.getBoundingClientRect();
+      return { viewport: [innerWidth, innerHeight], bounds: { content: c.toJSON(), preview: p.toJSON(), apply: a.toJSON() }, inside: p.left >= c.left && p.right <= c.right && a.top >= 0 && a.bottom <= innerHeight, overflow: main.scrollWidth > main.clientWidth, primary: node.closest("section").querySelectorAll(".primary:not([disabled])").length };
+    });
+    const native = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getSize());
+    assert.deepEqual(native, [1000, 700]);
+    assert.equal(geometry.inside, true, JSON.stringify(geometry));
+    assert.equal(geometry.overflow, false);
+    assert.equal(geometry.primary, 1);
+    if (process.env.BF_PRESET_CAPTURE) await page.screenshot({ path: process.env.BF_PRESET_CAPTURE });
+    await enter(action("cancel"));
+
+    const future = '{"version":99,"preset":"planner","overrides":{}}';
+    await page.evaluate(([key, raw]) => localStorage.setItem(key, raw), [key, future]);
+    await page.reload();
+    await waitOpen(now, false);
+    await settings();
+    assert.equal(await page.locator("[data-view-preset-choice]").count(), 0);
+    assert.equal(await stored(), future);
+    assert.deepEqual(errors, []);
+    console.log(`Desktop view presets keyboard, cancellation, stale preview, overrides, restart, isolation and reset passed. Compact German: native ${native.join("x")}, renderer ${geometry.viewport.join("x")}.`);
+  } finally {
+    if (app) await app.close();
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 5 });
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; });

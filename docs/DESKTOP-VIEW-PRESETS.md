@@ -1,18 +1,17 @@
-# A2 foundation: desktop view presets
+# A2: desktop view presets
 
-The resolver in `src/core/desktop-view-presets.cjs` is not wired to the app. It describes initial open states for two existing disclosures, not a change to recommendation order, navigation, or available actions.
+Open **Settings → Game connection → Desktop view presets** and select a saved character in the desktop character picker. Choose a preset, then **Preview preset**. The preview lists changes to which sections start open. **Apply preset** saves the choice; **Cancel preview** saves nothing. If the selected character or the saved record changes, preview again before applying.
 
-| Preset ID | Now: More suggestions (`nowMoreSuggestions`) | Professions: Where this comes from (`preparationSources`) |
+| Desktop preset | Now: More suggestions | Professions: Where this comes from |
 | --- | --- | --- |
-| `compact` | Closed | Closed |
-| `guided` | Open | Closed |
-| `planner` | Open | Open |
+| Compact (`compact`) | Closed | Closed |
+| Guided (`guided`) | Open | Closed |
+| Planner (`planner`) | Open | Open |
 
-The caller owns storage for one desktop scope and passes only its dedicated JSON record: `{ version: 1, preset: null | "compact" | "guided" | "planner", overrides: { … } }`. The resolver does not select a character or read or write storage. Keep this record separate from account/game settings, permissions, capture, sharing, notifications, pins and goals. Do not sync it to the addon. The roadmap's Quiet/Leveling/Workshop names remain product/UI decisions; the table documents this foundation's desktop IDs.
+The two overrides save immediately and take precedence over the preset. **Use preset default** removes that override. **Reset view preferences** removes the current character’s preset and overrides, restoring both closed defaults. You can still open or close each section with its normal disclosure control. That temporary choice is not a saved override.
 
-- `resolveViewPreferences(record)` returns the two effective booleans. A missing or unsupported record uses the existing closed defaults without creating or migrating anything.
-- `previewViewPreset(record, id)` returns `{ preset, changes }`, with only effective changes as `{ key, from, to }`. Cancel by discarding that result. On confirmation, call `applyViewPreset(currentRecord, id)` on the current record for that same scope; do not persist a preview diff. If the record or scope changed since preview, re-preview before asking for confirmation.
-- `setViewOverride(record, key, boolean)` returns a replacement record. Overrides take precedence across preset changes and JSON round trips. Pass `null` as the value to remove one override.
-- `resetViewPreferences(record)` returns `null` to remove that scope's whole view record and restore prior defaults. All command functions reject malformed/unsupported records rather than silently replacing them.
+The renderer stores `{ version: 1, preset: null | "compact" | "guided" | "planner", overrides: { … } }` in desktop storage under `bf-desktop-view-prefs:<profileId>`. It does not migrate existing preferences or create records on read. Unsupported or malformed records fall back to the default view without being overwritten. These display-only choices stay out of journal backups and are cleared when the character is deleted or the journal is replaced/reset.
 
-Subsequent wiring should use these values only for initial disclosure state; ordinary in-session disclosure toggles and existing focus behavior remain available. Storage ownership and real keyboard acceptance belong to that later slice. No renderer, IPC, Store, or addon changes are part of this foundation.
+The pure resolver in `src/core/desktop-view-presets.cjs` is shared by the renderer and Node tests. Its preview is an effective diff, not a write token. No recommendation order, goals, privacy or permissions, capture, provider settings, Mini Now, or addon/Compass settings change. Nothing syncs to the game or the cloud.
+
+Run `npm run test:desktop-view-presets` for the resolver and isolated Electron keyboard flow, including cancellation, stale preview, overrides, character isolation, restart, reset, and compact German layout. No native game option is involved.

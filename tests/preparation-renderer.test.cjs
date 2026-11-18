@@ -1,10 +1,15 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+function loadPresetDefaults(c) {
+ for(const file of ['core/desktop-view-presets.cjs','renderer/desktop-view-presets.js']) vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../src',file),'utf8'),c);
+ return id=>c.window.DesktopViewPresets.defaults(id).preparationSources;
+}
 function fixture(){
  const events={},storage={},root={addEventListener(t,f){(events[t]??=[]).push(f)},querySelector:()=>null,querySelectorAll:()=>[]};
  const c={window:{},document:{addEventListener(){},activeElement:null},localStorage:{getItem:k=>storage[k]??null,setItem:(k,v)=>storage[k]=v,removeItem:k=>delete storage[k]},setTimeout,console};Object.assign(c.localStorage,{});
  vm.createContext(c);
+ const sourcesInitiallyOpen=loadPresetDefaults(c);
  for(const [file,name] of [['interaction','InteractionGuard'],['command-center','CommandCenter'],['page-hero','PageHero'],['preparation','Preparation']]){const p=require('node:path').join(__dirname,`../src/renderer/${file}.js`);if(fs.existsSync(p))vm.runInContext(fs.readFileSync(p,'utf8'),c);c[name]=c.window[name];}
- const host={root,esc:v=>String(v??'').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;'),portrait:()=>'/art.png',active:()=>true,profileId:()=>'a',epoch:()=>0,api:{professionCoach:async()=>model()},mutate:async()=>({journeyId:'j'}),open(){}};
+ const host={root,esc:v=>String(v??'').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;'),portrait:()=>'/art.png',active:()=>true,profileId:()=>'a',sourcesInitiallyOpen,epoch:()=>0,api:{professionCoach:async()=>model()},mutate:async()=>({journeyId:'j'}),open(){}};
  return {c,root,storage,events,host};
 }
 function model(){return {character:{id:'a',name:'Aeralyn',className:'Hunter',faction:'Alliance'},source:{updatedAt:'2026-11-09T12:00:00.000Z',clientBuild:'1.60.1.70862'},coverage:Object.fromEntries(['professions','recipes','materials'].map(k=>[k,{status:'complete',observedAt:'2026-11-09T12:00:00.000Z',itemCount:1}])),professions:[{name:'Alchemy',rank:22,maxRank:75}],recipes:[{id:100,name:'Amber restorative'}],selection:{recipeId:100,crafts:1},selectedRecipe:{id:100,name:'Amber restorative'},planning:{available:true,inventoryExact:false,checklistAvailable:true},shoppingRows:[{itemId:200,name:'Sunleaf',required:3,have:2,missing:null,quantityKind:'lower-bound'}],otherCharacters:[{character:{name:'Vaelric'},coverage:{materials:{status:'complete',observedAt:'2026-11-08T12:00:00.000Z'}},materials:[{itemId:200,name:'Sunleaf',count:99}],professions:[]}],limitations:[]};}
@@ -13,6 +18,14 @@ test('bounded local preferences keep characters separate and exclude evidence',(
 test('partial materials retain unknown shortfalls and separate dated alt counts',()=>{const {c,host}=fixture();c.Preparation.init(host);const html=c.Preparation.page(model());assert.match(html,/At least 2/);assert.match(html,/Shortfall unknown/);assert.match(html,/Total required/);assert.match(html,/99/);assert.match(html,/never subtracted/);assert.match(html,/backpack and bags, not the bank or mail/i);assert.doesNotMatch(html,/Ready to craft|guaranteed skill/);});
 test('explicit checklist availability governs action, including missing recipe selection',()=>{const {c,host}=fixture();c.Preparation.init(host);const m=model();m.planning.checklistAvailable=false;m.selectedRecipe=null;m.shoppingRows=[];m.planning.reason='Selected recipe is no longer observed.';const html=c.Preparation.page(m);assert.match(html,/data-preparation-add[^>]* disabled/);assert.match(html,/no longer observed/);assert.match(html,/data-nav="company">Plan it yourself in Plans/);});
 test('stable source disclosure identity uses profile and recipe rather than row index',()=>{const {c,host}=fixture();c.Preparation.init(host);const html=c.Preparation.page(model());assert.ok(html.includes('&quot;a&quot;,100,&quot;workshop-source&quot;'));});
+test('Workshop source disclosure uses only the active character’s desktop preset',()=>{
+ const {c,host,storage}=fixture();c.Preparation.init(host);
+ const sourcesOpen=()=>/<details class="workshop-details" open><summary data-preparation-control="sources"/.test(c.Preparation.page(model()));
+ storage['bf-desktop-view-prefs:b']=JSON.stringify({version:1,preset:'planner',overrides:{}});
+ assert.equal(sourcesOpen(),false);
+ storage['bf-desktop-view-prefs:a']=storage['bf-desktop-view-prefs:b'];
+ assert.equal(sourcesOpen(),true);
+});
 
 test('rapid native choice changes preserve the newest recipe while its read is pending',async()=>{
  const {c,host,events}=fixture();host.sourceSignature=()=>'';host.api.professionCoach=async(_id,opts)=>({...model(),selection:{recipeId:opts.recipeId??100,crafts:opts.crafts}});c.Preparation.init(host);c.Preparation.mounted();await new Promise(r=>setImmediate(r));
@@ -39,7 +52,7 @@ function actionFixture(){
  const region={set outerHTML(value){html=value;const raw=value.match(/data-preparation-choice="([^"]*)"/)?.[1];button={tagName:'BUTTON',disabled:/data-preparation-add[^>]*disabled/.test(value),dataset:raw?{preparationChoice:raw.replaceAll('&quot;','"').replaceAll('&amp;','&')}:{},closest:s=>s==='[data-preparation-add]'?button:null};},get outerHTML(){return html}};
  const storage={},c={window:{},document,setTimeout,console,localStorage:{getItem:k=>storage[k]??null,setItem:(k,v)=>storage[k]=v,removeItem:k=>delete storage[k]}};vm.createContext(c);
  for(const [file,name] of [['interaction','InteractionGuard'],['command-center','CommandCenter'],['page-hero','PageHero'],['preparation','Preparation']]){vm.runInContext(fs.readFileSync(require.resolve(`../src/renderer/${file}.js`),'utf8'),c);c[name]=c.window[name];}
- c.Preparation.init({root,esc:v=>String(v??'').replaceAll('&','&amp;').replaceAll('"','&quot;'),portrait:()=>'/art.png',active:()=>true,profileId:()=>'a',epoch:()=>0,sourceSignature:()=>source,api:{professionCoach:(_id,options)=>new Promise(resolve=>requests.push({options,resolve}))},mutate:async(id,options)=>{calls.push({id,options:JSON.parse(JSON.stringify(options))});return null;},open(){}});
+ c.Preparation.init({root,esc:v=>String(v??'').replaceAll('&','&amp;').replaceAll('"','&quot;'),portrait:()=>'/art.png',active:()=>true,profileId:()=>'a',sourcesInitiallyOpen:loadPresetDefaults(c),epoch:()=>0,sourceSignature:()=>source,api:{professionCoach:(_id,options)=>new Promise(resolve=>requests.push({options,resolve}))},mutate:async(id,options)=>{calls.push({id,options:JSON.parse(JSON.stringify(options))});return null;},open(){}});
  const emit=(type,event)=>handlers[type]?.forEach(f=>f(event)),doc=(type,event={})=>docHandlers[type]?.forEach(f=>f(event));
  return {c,calls,requests,emit,doc,button:()=>button,html:()=>html,source:()=>source++,settle:()=>new Promise(r=>setImmediate(r))};
 }
