@@ -14,8 +14,23 @@ window.NowView = (() => {
 
   const activeId = () => document.querySelector("#active-character")?.value || null;
   const day = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
-  const dismissStorage = id => `bf-now-dismissed-v1:${id}`;
+  const dismissPrefix = "bf-now-dismissed-v1:";
+  const dismissStorage = id => dismissPrefix + id;
   let dismissals = null, displayedDismissal = null;
+  function removeDismissals(profileId = null) {
+    if (profileId === null || dismissals?.id === profileId) dismissals = null;
+    if (profileId === null || displayedDismissal?.id === profileId) displayedDismissal = null;
+    // The old picker and controls can still be mounted while the shell refreshes.
+    if (mountedFor && (profileId === null || activeId() === profileId)) {
+      mountedFor = null;
+      request = null;
+      clearTimeout(timer);
+    }
+    try {
+      if (profileId !== null) localStorage.removeItem(dismissStorage(profileId));
+      else for (const key of Object.keys(localStorage)) if (key.startsWith(dismissPrefix)) localStorage.removeItem(key);
+    } catch {}
+  }
   function dismissed() {
     const id = activeId(), today = day();
     if (dismissals?.id === id && dismissals.day === today) return dismissals;
@@ -501,5 +516,5 @@ window.NowView = (() => {
     if (e?.kind === "level" && Number.isInteger(e.level)) celebrate(e.level);
     if (document.querySelector("[data-now]")) { clearTimeout(timer); timer = setTimeout(load, 300); }
   });
-  return { _arrive: (z) => arrive(z), page, mounted, invalidate, celebrate, _state: () => ({ advice, session, zone }) };
+  return { _arrive: (z) => arrive(z), page, mounted, invalidate, removeDismissals, celebrate, _state: () => ({ advice, session, zone }) };
 })();

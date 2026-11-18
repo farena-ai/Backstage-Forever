@@ -113,7 +113,7 @@ function harness(overrides = {}) {
     context[name === "voice" ? "Voice" : "Memory"] = context.window[name === "voice" ? "Voice" : "Memory"];
   }
   for(const [file,name] of [["adventure-coach","AdventureCoach"],["player-navigation","PlayerNavigation"]]){vm.runInContext(fs.readFileSync(path.join(__dirname,`../src/renderer/${file}.js`),"utf8"),context);context[name]=context.window[name];}
-  for (const [file, name] of [["guided-route", "GuidedRouteView"], ["world-map", "WorldMapView"]]) {
+  for (const [file, name] of [["guided-route", "GuidedRouteView"], ["world-map", "WorldMapView"], ["now", "NowView"]]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${file}.js`), "utf8"), context);
     context[name] = context.window[name];
   }
