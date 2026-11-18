@@ -43,6 +43,7 @@ const fsSync = require("node:fs");
 const { GameRuntime } = require("./game-runtime.cjs");
 const { combineSnapshots } = require("./game-roster.cjs");
 const unknownRuntime = () => ({ state: "unknown", checkedAt: null, launchAvailable: false });
+const INSTALL_FAILURE = "Addon installation failed. Check the selected folder and permissions.";
 function invalid() {
   throw new Error("Invalid addon snapshot");
 }
@@ -331,6 +332,8 @@ class GameSync {
   }
   status() {
     const state = structuredClone(this.state);
+    // Snapshot polling must not hide an unsuccessful install while repair is needed.
+    if (state.phase === "needs-addon" && state.setupIssue === "install-failed") state.message = INSTALL_FAILURE;
     if (!state.connected || state.phase === "folder-unavailable") state.runtime = unknownRuntime();
     state.coverage.message = state.coverage.omittedProfileCount
       ? `${state.coverage.omittedProfileCount} saved character(s) could not fit in the 100-profile capacity. Existing profiles and journals were preserved.`
@@ -484,7 +487,7 @@ class GameSync {
         if (persist) this.state.setupIssue = validated ? "install-failed" : "wrong-client";
         if (!this.root) this.state = {
           ...this.state, phase: "folder-unavailable",
-          message: "Choose a valid World of Warcraft: Forever client folder.",
+          message: validated ? INSTALL_FAILURE : "Choose a valid World of Warcraft: Forever client folder.",
         };
       }
     }
@@ -519,21 +522,23 @@ class GameSync {
       const ensure = async (base, parts) => {
         let dir = base;
         for (const part of parts) {
+          if (stale()) return null;
           dir = path.join(dir, part);
           try {
             await safe(dir, "dir");
           } catch (e) {
+            if (e.code !== "ENOENT") throw e;
+            if (stale()) return null;
             try {
-              await fs.lstat(dir);
-              throw e;
-            } catch (check) {
-              if (check.code !== "ENOENT") throw check;
-              if (stale()) return null;
               await fs.mkdir(dir);
+            } catch (createError) {
+              if (createError.code !== "EEXIST") throw createError;
+              // A retired attempt may have finished its mkdir. Trust only a checked directory.
+              await safe(dir, "dir");
             }
           }
         }
-        return dir;
+        return stale() ? null : dir;
       };
       const folder = await ensure(root, ["Interface", "AddOns", "BackstageForever"]);
       if (!folder) return this.status();
@@ -616,12 +621,12 @@ class GameSync {
       if (!stale() && selectRoot(false))
         this.state = {
           ...this.state,
+          setupIssue: "install-failed",
           addonInstalled: false,
           addonCurrent: false,
           addonVersion: null,
           phase: "needs-addon",
-          message:
-            "Addon installation failed. Check the selected folder and permissions.",
+          message: INSTALL_FAILURE,
         };
     }
     return this.status();

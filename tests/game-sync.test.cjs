@@ -174,6 +174,95 @@ test("cancelling a staged replacement preserves the prior connection and permits
   assert.equal(JSON.parse(await fs.readFile(config)).root, await fs.realpath(next));
   assert.equal(await fs.readFile(path.join(folder, "user.txt"), "utf8"), "unrelated");
 });
+test("fresh setup retry adopts a safe folder created by the cancelled attempt", async (t) => {
+  const f = await fixture(t);
+  const dataDir = path.join(f.dir, "data"), config = path.join(dataDir, "game-connection.private.json");
+  const interfaceDir = path.join(f.root, "Interface");
+  const folder = path.join(interfaceDir, "AddOns", "BackstageForever");
+  const addonDir = path.join(__dirname, "../addon/BackstageForever");
+  const sync = new GameSync({ dataDir, addonDir });
+  t.after(() => sync.close());
+  const mkdir = fs.mkdir;
+  const first = Promise.withResolvers(), second = Promise.withResolvers();
+  const releaseFirst = Promise.withResolvers(), releaseSecond = Promise.withResolvers();
+  let cancelled = false, arrivals = 0, retry;
+  fs.mkdir = async function (dir, ...args) {
+    if (dir === interfaceDir) {
+      if (++arrivals === 1) { first.resolve(); await releaseFirst.promise; }
+      else if (arrivals === 2) { second.resolve(); await releaseSecond.promise; }
+    }
+    return mkdir.call(this, dir, ...args);
+  };
+  const pending = sync.prepare(f.root, () => cancelled);
+  try {
+    await withinDeadline(first.promise, "first Interface mkdir");
+    cancelled = true;
+    retry = sync.prepare(f.root);
+    await withinDeadline(second.promise, "retry Interface mkdir");
+    releaseFirst.resolve();
+    const retired = await withinDeadline(pending, "cancelled setup");
+    assert.equal(retired.connected, false);
+    assert.notEqual(retired.setupIssue, "install-failed");
+    await assert.rejects(fs.stat(config), { code: "ENOENT" });
+    assert.deepEqual(await fs.readdir(interfaceDir), [], "Cancelled setup must not proceed past the held mkdir");
+    const unrelated = path.join(interfaceDir, "keep.txt");
+    await fs.writeFile(unrelated, "unrelated");
+
+    releaseSecond.resolve();
+    const status = await withinDeadline(retry, "fresh setup retry");
+    assert.equal(status.addonCurrent, true, "Retry must not treat a safe existing directory as an install failure");
+    assert.equal(status.setupIssue, null);
+    assert.equal(JSON.parse(await fs.readFile(config)).root, f.root);
+    assert.deepEqual(await fs.readFile(path.join(folder, "BackstageForever.toc")), await fs.readFile(path.join(addonDir, "BackstageForever.toc")));
+    assert.equal(await fs.readFile(unrelated, "utf8"), "unrelated");
+    assert.equal((await fs.readdir(folder, { recursive: true })).some(name => name.endsWith(".tmp")), false);
+  } finally {
+    fs.mkdir = mkdir;
+    releaseFirst.resolve();
+    releaseSecond.resolve();
+    await withinDeadline(Promise.allSettled([pending, retry]), "setup cleanup");
+  }
+});
+test("first install reports a blocked addon directory and clears the issue after repair", async (t) => {
+  const f = await fixture(t);
+  const interfaceDir = path.join(f.root, "Interface");
+  const dataDir = path.join(f.dir, "data");
+  const config = path.join(dataDir, "game-connection.private.json");
+  const sync = new GameSync({ dataDir, addonDir: path.join(__dirname, "../addon/BackstageForever") });
+  t.after(() => sync.close());
+  const mkdir = fs.mkdir;
+  // The path was missing when checked, but a file wins the race before mkdir.
+  let blocked = false;
+  fs.mkdir = async function (dir, ...args) {
+    if (dir === interfaceDir) {
+      await fs.writeFile(dir, "unrelated", { flag: "wx" });
+      blocked = true;
+    }
+    return mkdir.call(this, dir, ...args);
+  };
+  let status;
+  try { status = await sync.prepare(f.root); }
+  finally { fs.mkdir = mkdir; }
+
+  assert.equal(blocked, true);
+  assert.equal(status.connected, true, "A validated first source remains available for saved imports");
+  assert.equal(status.addonCurrent, false);
+  assert.equal(status.phase, "needs-addon");
+  assert.equal(status.setupIssue, "install-failed");
+  assert.match(status.message, /installation failed/i);
+  assert.equal(await fs.readFile(interfaceDir, "utf8"), "unrelated");
+  assert.equal(JSON.parse(await fs.readFile(config)).root, f.root);
+  await fs.writeFile(f.file, saved());
+  status = await sync.refresh();
+  assert.equal(status.characterCount, 1);
+  assert.equal(status.setupIssue, "install-failed");
+  assert.match(status.message, /installation failed/i);
+
+  await fs.unlink(interfaceDir);
+  status = await sync.prepare();
+  assert.equal(status.addonCurrent, true);
+  assert.equal(status.setupIssue, null);
+});
 test("closing before restore resolves prevents saved connection resurrection", async (t) => {
   const f = await fixture(t);
   await fs.mkdir(path.join(f.dir, "data"));
