@@ -474,6 +474,7 @@ function render() {
   if (Support.deferRender(render)) return;
   if (Voice.deferRender(render) || Memory.deferRender(render)) return;
   if (AdventureCoach.deferRender(render) || CharacterGuidance.deferRender(render) || QuestGuide.deferRender(render) || Company.deferRender(render) || Director.deferRender(render) || Preparation.deferRender(render) || Party.deferRender(render)) return;
+  DesktopViewPresets.sync(page === "game" && !setupOpen ? profile()?.id ?? null : null);
   // Snapshot the executed paint, after native interaction guards have released.
   // Disclosure choices belong only to this screen, character and setup lifecycle.
   const disclosureOwner = JSON.stringify([page, setupOpen, setupGeneration, autosaveGeneration,
@@ -654,7 +655,7 @@ function inGameHelpers() {
   return `<section class="panel ingame-helpers"><h2>In-game helpers</h2><p>These run inside WoW. Type the command in chat to switch one on or off; add <code>on</code> or <code>off</code> to be explicit.</p><ul>${rows.map(([n, d, c]) => `<li><strong>${esc(n)}</strong><span>${esc(d)}</span><code>${esc(c)}</code></li>`).join("")}</ul><button type="button" class="subtle" data-nav="commands">All commands →</button></section>`;
 }
 function gameConnection() {
-  return `${PageHero.render({ art: "settings", compact: true, eyebrow: "Settings · Game connection", title: "Connect WoW Forever", subtitle: gameStatus.connected ? (gameStatus.addonCurrent ? "Connected · addon up to date" : "Connected · addon needs an update") : "Not connected yet: find your game folder below." })}<section class="panel"><h2>${setupReady() ? "Companion files prepared" : "Game connection"}</h2><p class="setup-status">${esc(gameStatus.companionMessage || gameStatus.message || "Choose your game folder to begin.")}</p><div class="actions">${(LivingSetup.unavailable(gameStatus) || gameStatus.setupIssue) ? '<button class="primary" data-command="game-connect">Choose game folder</button>' : ""}<button class="${(LivingSetup.unavailable(gameStatus) || gameStatus.setupIssue) ? "subtle" : "primary"}" data-command="setup-open">Set up my companion</button></div>${LivingSetup.activation(gameStatus, esc)}${LivingSetup.savedRecovery(gameStatus, esc)}${LivingSetup.coverage(gameStatus, esc)}<hr class="rule"><h3>Desktop saved characters</h3><label class="check-label"><input type="checkbox" id="follow-game-character" ${state.followGameCharacter !== false ? "checked" : ""}>Follow my last played character</label><p>After the game saves, follow the last played character in this desktop journal. Pausing keeps your manual selection; live guidance in WoW keeps working.</p><p>${esc(profile() ? snapshotLabel(profile()) : "Desktop · no saved character yet")}</p><p>${savedHelp}</p><details data-living-disclosure="connection-checks"><summary>Connection checks and tools</summary>${setupChecks()}<div class="actions"><button data-command="game-discover">Find my game</button><button data-command="game-connect">Choose game folder</button>${gameStatus.connected ? '<button data-command="game-install">Repair companion addon</button><button data-command="game-refresh">Refresh saved snapshot</button><button data-command="game-disconnect">Disconnect game</button>' : ""}</div><p>Refresh reads existing saved files. It does not request a save or interrupt your game.</p></details>${window.LiveLink ? LiveLink.markup() : ""}${window.AskInGame ? AskInGame.markup() : ""}${window.MomentsView ? MomentsView.settingsMarkup() : ""}${window.CommunityView ? CommunityView.markup() : ""}</section>${inGameHelpers()}`;
+  return `${PageHero.render({ art: "settings", compact: true, eyebrow: "Settings · Game connection", title: "Connect WoW Forever", subtitle: gameStatus.connected ? (gameStatus.addonCurrent ? "Connected · addon up to date" : "Connected · addon needs an update") : "Not connected yet: find your game folder below." })}<section class="panel"><h2>${setupReady() ? "Companion files prepared" : "Game connection"}</h2><p class="setup-status">${esc(gameStatus.companionMessage || gameStatus.message || "Choose your game folder to begin.")}</p><div class="actions">${(LivingSetup.unavailable(gameStatus) || gameStatus.setupIssue) ? '<button class="primary" data-command="game-connect">Choose game folder</button>' : ""}<button class="${(LivingSetup.unavailable(gameStatus) || gameStatus.setupIssue) ? "subtle" : "primary"}" data-command="setup-open">Set up my companion</button></div>${LivingSetup.activation(gameStatus, esc)}${LivingSetup.savedRecovery(gameStatus, esc)}${LivingSetup.coverage(gameStatus, esc)}<hr class="rule"><h3>Desktop saved characters</h3><label class="check-label"><input type="checkbox" id="follow-game-character" ${state.followGameCharacter !== false ? "checked" : ""}>Follow my last played character</label><p>After the game saves, follow the last played character in this desktop journal. Pausing keeps your manual selection; live guidance in WoW keeps working.</p><p>${esc(profile() ? snapshotLabel(profile()) : "Desktop · no saved character yet")}</p><p>${savedHelp}</p><details data-living-disclosure="connection-checks"><summary>Connection checks and tools</summary>${setupChecks()}<div class="actions"><button data-command="game-discover">Find my game</button><button data-command="game-connect">Choose game folder</button>${gameStatus.connected ? '<button data-command="game-install">Repair companion addon</button><button data-command="game-refresh">Refresh saved snapshot</button><button data-command="game-disconnect">Disconnect game</button>' : ""}</div><p>Refresh reads existing saved files. It does not request a save or interrupt your game.</p></details>${window.LiveLink ? LiveLink.markup() : ""}${window.AskInGame ? AskInGame.markup() : ""}${window.MomentsView ? MomentsView.settingsMarkup() : ""}${window.CommunityView ? CommunityView.markup() : ""}</section><section class="panel">${DesktopViewPresets.markup(profile()?.id ?? null, esc)}</section>${inGameHelpers()}`;
 }
 async function mutateGame(fn) {
   const generation = setupGeneration;
@@ -1049,7 +1050,7 @@ Recovery.init({ api, root, esc, active: () => Boolean(state?.onboarded) && !setu
     if (next) {
       retireCompanion(false); Support.invalidate();
       Company.invalidate(true); Director.invalidate(); QuestGuide.invalidate(true);
-      CharacterGuidance.invalidate(true); Preparation.invalidate(); Preparation.remove(); Party.invalidate(); Party.remove();
+      CharacterGuidance.invalidate(true); Preparation.invalidate(); Preparation.remove(); DesktopViewPresets.remove(); Party.invalidate(); Party.remove();
       autosaveGeneration++; formDrafts.clear(); state = next; messages = [];
       gameStatus = { connected: false };
       connection = state.provider.id; authChoice = state.provider.authMode || "api";
@@ -1162,9 +1163,11 @@ CharacterGuidance.init({
   },
   open: result => { CharacterGuidance.invalidate(); Company.showJourney(result.journeyId); page="company"; render(); toast("Character checklist saved. Every step is a manual check."); }
 });
+DesktopViewPresets.init({ root, esc, activeId: () => page === "game" && !setupOpen ? profile()?.id : null });
 Preparation.init({
   api, root, esc, portrait,
   openDraft: openQuestionDraft,
+  sourcesInitiallyOpen: id => DesktopViewPresets.defaults(id).preparationSources,
   character: () => profile(),
   active: () => page === "preparation" && !setupOpen && Boolean(state?.onboarded),
   profileId: () => state?.activeProfileId,
@@ -1316,6 +1319,7 @@ root.addEventListener("click", (event) => {
   }
   if (button.hasAttribute("data-company-share")) { if(page==="company")Party.shareJourney(button.dataset.companyShare); return; }
   if (button.closest("[data-recovery]") || (button.closest("[data-support]") && button.dataset.nav !== "game")) return;
+  if (button.closest("[data-view-presets]")) return;
   if (button.closest("[data-party]") && !button.dataset.nav) return;
   if (button.hasAttribute("data-director-start") || button.hasAttribute("data-preparation-add") || button.hasAttribute("data-preparation-retry") || button.hasAttribute("data-preparation-ask")) return;
   if (button.hasAttribute("data-company-command") || button.hasAttribute("data-company-open") || button.closest("[data-company-form]")) return;
@@ -1634,6 +1638,7 @@ root.addEventListener("click", (event) => {
                 next.activeProfileId = next.profiles[0]?.id || null;
             }),
           );
+          DesktopViewPresets.remove(button.dataset.profileId);
           render();
         }
         break;
@@ -1658,7 +1663,7 @@ root.addEventListener("click", (event) => {
           Company.invalidate(true);
           CharacterGuidance.invalidate(true);
           Preparation.invalidate();
-          Preparation.remove();
+          Preparation.remove(); DesktopViewPresets.remove();
           Party.invalidate(); Party.remove();
           chatGeneration++;
           autosaveGeneration++;
@@ -1688,7 +1693,7 @@ root.addEventListener("click", (event) => {
           Company.invalidate(true);
           CharacterGuidance.invalidate(true);
           Preparation.invalidate();
-          Preparation.remove();
+          Preparation.remove(); DesktopViewPresets.remove();
           Party.invalidate(); Party.remove();
           CommandCenter.remove();
           QuestGuide.invalidate(true);
@@ -1736,7 +1741,7 @@ root.addEventListener("click", (event) => {
 });
 root.addEventListener("change", (event) =>
   action(async () => {
-    if (event.target.closest("[data-company],[data-preparation],[data-party]")) return;
+    if (event.target.closest("[data-company],[data-preparation],[data-party],[data-view-presets]")) return;
     if (event.target.id === "active-character" || event.target.id === "access-method") retireCompanion();
     if (event.target.id === "active-character") { questNavigationRequest++;questStatusRequest++;CharacterGuidance.invalidate(); QuestGuide.invalidate(); Company.invalidate(); Director.invalidate(); Preparation.invalidate(); Party.invalidate(); }
     if (event.target.dataset.planOption && state.activeProfileId) {
