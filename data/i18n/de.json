@@ -1142,6 +1142,11 @@
   "Dated general Blizzard Forever class overview; not matching-build mechanics. Checked 2026-11-10.": "Datierte allgemeine Klassenübersicht von Blizzard Forever; keine Mechaniken des passenden Builds. Geprüft 2026-11-10.",
   "Checklist opens Plans. Ask opens an editable question in the companion; nothing is sent until you press Send.": "Checkliste öffnet Pläne. Fragen öffnet eine bearbeitbare Frage im Begleiter; nichts wird gesendet, bevor du Senden drückst.",
   "Personal training review needs a saved addon character with matching reference build and enUS locale.": "Die persönliche Trainingsübersicht braucht einen vom Addon gespeicherten Charakter mit passendem Referenz-Build und enUS-Sprache.",
+  "Personal dungeon boss defeats": "Persönliche Bosssiege in Dungeons",
+  "1 distinct boss encounter in retained history": "1 unterschiedlicher Bosskampf im gespeicherten Verlauf",
+  "Last character save:": "Letzter Charakter-Spielstand:",
+  "Recent recorded defeats, not full runs, lockouts or loot.": "Zuletzt aufgezeichnete Bosssiege, keine vollständigen Durchläufe, Instanzsperren oder Beute.",
+  "No personal dungeon boss defeats recorded.": "Keine persönlichen Bosssiege in Dungeons gespeichert.",
   "Live guidance runs inside WoW. The desktop journal catches up after the game saves on logout.": "Die Live-Führung läuft in WoW. Das Desktop-Journal holt auf, nachdem das Spiel beim Ausloggen speichert.",
   "Another character missing? Play them with the addon on and log out (or type /reload): they appear here.": "Fehlt ein Charakter? Spiel ihn mit eingeschaltetem Addon und logge dich aus (oder tippe /reload): dann erscheint er hier.",
   "level": "Stufe",
@@ -1517,6 +1522,7 @@
   }
  },
  "appTemplates": {
+  "{#0} distinct boss encounters in retained history": "{0} unterschiedliche Bosskämpfe im gespeicherten Verlauf",
   "Compare item #{0} in Sheet": "Gegenstand Nr. {0} im Charakterbogen vergleichen",
   "Approximate Classic entrance: {0} · {1}, {2}. Verify in Forever.": "Ungefährer Eingang in Classic: {0} · {1}, {2}. Prüfe den Eingang in Forever.",
   "Desktop · Saved · {#0}h ago": "Desktop · Gespeichert · vor {0} Std.",

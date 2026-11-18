@@ -3,9 +3,20 @@
 window.JourneyView = (() => {
   const api = window.backstage;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  let data = null, error = "", loading = false, mountedFor = null, week = null;
+  let data = null, error = "", mountedFor = null, week = null, request = null, scope = null;
+  let selected = () => null;
+  const scopeOf = (p) => JSON.stringify([p?.id, p?.source?.id, p?.source?.updatedAt]);
   const dur = (s) => { if (!Number.isFinite(s)) return "?"; const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`; };
   const day = (t) => new Date(t * 1000).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  function dungeonDefeats(evidence) {
+    const date = value => `<time datetime="${esc(value.toISOString())}">${esc(value.toLocaleString(window.I18n?.lang, { dateStyle: "medium", timeStyle: "short" }))}</time>`;
+    return `<section class="jr-card" data-journey-defeats><h2>Personal dungeon boss defeats</h2>${evidence ? `
+      <p><strong>${evidence.distinct === 1 ? "1 distinct boss encounter in retained history" : `${evidence.distinct} distinct boss encounters in retained history`}</strong></p>
+      <p>Last character save: ${date(new Date(evidence.savedAt))}</p>
+      <p>Recent recorded defeats, not full runs, lockouts or loot.</p>
+      <ul class="jr-sessions jr-defeats">${evidence.recent.map(row => `<li><strong data-no-translate>${esc(row.name)}</strong>${date(new Date(row.at * 1000))}</li>`).join("")}</ul>` :
+      `<p class="jr-empty">No personal dungeon boss defeats recorded.</p>`}</section>`;
+  }
   function badges(b) {
     const groups = [...new Set(b.badges.map((x) => x.group))];
     return groups.map((g) => `<h3 class="jr-group">${esc(g)}</h3><ul class="jr-badges">${b.badges.filter((x) => x.group === g).map((x) => `<li class="jr-badge${x.earned ? " earned" : ""}" title="${esc(x.how)}">
@@ -46,15 +57,18 @@ window.JourneyView = (() => {
   }
   function body() {
     if (error) return `<p class="jr-empty">${esc(error)}</p>`;
-    if (!data) return `<p class="jr-empty">${loading ? "Reading your journey…" : "Choose a character in Characters."}</p>`;
+    if (!data) return `<p class="jr-empty">${selected() ? "Reading your journey…" : "Choose a character in Characters."}</p>`;
     const d = data;
     return `<div class="jr-summary"><div><strong>${d.badges.earned}</strong><span>of ${d.badges.total} badges</span></div><div><strong>${d.level ?? "?"}</strong><span>level</span></div><div><strong>${esc(d.played ? dur(d.played) : "?")}</strong><span>played</span></div><div><strong>${d.zones}</strong><span>zones visited</span></div></div>
       ${weekCard()}
+      ${dungeonDefeats(d.dungeonDefeats)}
       <section class="jr-card"><h2>Badges</h2>${badges(d.badges)}</section>
       <div class="jr-two"><section class="jr-card"><h2>Speed splits</h2>${splits(d)}</section><section class="jr-card"><h2>Rested planner</h2>${restedCard(d.rested)}</section></div>
       <section class="jr-card"><h2>Past sessions</h2>${history(d.history)}</section>`;
   }
   function page() {
+    const next = scopeOf(selected());
+    if (scope !== next) { scope = next; data = week = request = null; error = ""; }
     const cls = String(data?.className || "").toLowerCase();
     return `<section class="journey-page" data-journey>${PageHero.render({ art: "journey", eyebrow: "Characters · Journey", title: esc(data?.name || "Your journey"), crest: PageHero.classCrest(cls), subtitle: "Badges you've earned, how fast each level went, and your rested bonus." })}
       <div data-journey-body>${body()}</div></section>`;
@@ -65,12 +79,22 @@ window.JourneyView = (() => {
     for (const el of root.querySelectorAll("[data-h]")) el.style.height = `${Math.max(2, Number(el.dataset.h))}%`;
   }
   async function load() {
-    if (loading) return; loading = true;
-    try { data = await api.journey(); error = ""; } catch (e) { error = e.message || "Your journey is unavailable."; }
-    try { week = api.weekly ? await api.weekly() : null; } catch { week = null; }
-    loading = false;
+    const owner = { scope, id: selected()?.id };
+    if (!owner.id || request) return;
+    request = owner;
+    const [result, recap] = await Promise.allSettled([api.journey(), api.weekly?.()]);
+    if (request !== owner) return;
+    request = null;
     const root = document.querySelector("[data-journey]");
-    if (root) { root.outerHTML = page(); mountedFor = null; mounted(); }
+    if (!root || owner.scope !== scopeOf(selected()) || document.getElementById("active-character")?.value !== owner.id) return;
+    if (result.status === "fulfilled" && result.value?.id === owner.id) {
+      data = result.value;
+      week = recap.status === "fulfilled" && recap.value?.recap?.active?.profileId === owner.id ? recap.value : null;
+    } else {
+      error = "Your journey is unavailable.";
+    }
+    // page() escapes saved names/dates and renders numeric counts from the validated IPC model.
+    root.outerHTML = page(); mounted();
     announce(data);
   }
   // A newly earned badge gets its moment: a painted banner, once per badge per character.
@@ -110,7 +134,9 @@ window.JourneyView = (() => {
     const root = document.querySelector("[data-journey]");
     if (!root || mountedFor === root) return;
     mountedFor = root; sizes(root);
-    if (!data && !loading) load();
+    if (!data && !error && !request) void load();
   }
-  return { celebrate, page, mounted, check: () => api.journey?.().then(announce).catch(() => {}), invalidate: () => { data = null; }, _state: () => ({ data }), _show: show };
+  return { init: (getProfile) => { selected = getProfile; }, celebrate, page, mounted,
+    check: () => api.journey?.().then(d => { if (d?.id === selected()?.id) announce(d); }).catch(() => {}),
+    invalidate: () => { scope = null; }, _state: () => ({ data }), _show: show };
 })();

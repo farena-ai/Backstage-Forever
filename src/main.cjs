@@ -845,10 +845,11 @@ app.whenReady().then(async () => {
   handle("journey", () => {
     const s = store.state, p = s.profiles.find((x) => x.id === s.activeProfileId);
     if (!p) return null;
-    const { badgesFor, rested } = require("./core/badges.cjs"), { splits } = require("./core/journal-data.cjs");
+    const { badgesFor, rested } = require("./core/badges.cjs"), { splits, savedDungeonDefeats } = require("./core/journal-data.cjs");
     const others = s.profiles.filter((x) => x.id !== p.id);
     return { id: p.id, name: p.name, className: p.className || null, level: p.level || null, played: p.journal?.played ?? null, hasJournal: Boolean(p.journal),
-      splits: splits(p, others), badges: badgesFor(p), rested: rested(p), zones: (p.journal?.zones || []).length, history: sessionHistory ? sessionHistory.view(p.id) : null };
+      splits: splits(p, others), badges: badgesFor(p), rested: rested(p), zones: (p.journal?.zones || []).length, history: sessionHistory ? sessionHistory.view(p.id) : null,
+      dungeonDefeats: savedDungeonDefeats(p) };
   });
   // 1.4 (J17, J18): this week's recap and reminders across your characters.
   handle("weekly", (...args) => {

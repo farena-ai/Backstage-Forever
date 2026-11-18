@@ -1125,6 +1125,7 @@ Memory.init({api, root, esc,
 });
 window.ObjectiveView?.init(() => state);
 LedgerView.init(() => state?.activeProfileId);
+JourneyView.init(profile);
 QuestGuide.init({ api, root, esc, portrait, selectedMemoryIds: () => Memory.selectedIds(), ready: () => companionReady, notify: toast, onStatus: value => { questStatusRequest++;knowledgeStatus = value; } });
 AdventureCoach.init({api,root,esc,profile,active:()=>page === "adventure" && !setupOpen && Boolean(state?.onboarded)});
 Director.init({
