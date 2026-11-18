@@ -3,7 +3,7 @@
 // in game when you target the boss. Text only: no timers. These are general tips from how the
 // classic encounters work; Forever may tune a fight, so each tip says what to watch for, not when.
 // The addon gets the same tips from scripts/build-boss-tips.cjs (BackstageForeverBossTips.lua).
-// J31 review and scope: docs/raid-boss-tip-review.md.
+// J31 reviews and scope: docs/raid-boss-tip-review.md and docs/blackwing-lair-tip-review.md.
 const REVIEWED_RAID_TIPS = Object.freeze({
   Lucifron: { instanceMap: 409, npcId: 12118, advice: "Dispel Impending Doom as magic and remove Lucifron's Curse separately." },
   Magmadar: { instanceMap: 409, npcId: 11982, advice: "Have hunters use Tranquilizing Shot to remove Frenzy; plan fear protection for the tank." },
@@ -14,6 +14,9 @@ const REVIEWED_RAID_TIPS = Object.freeze({
   "Golemagg the Incinerator": { instanceMap: 409, npcId: 11988, advice: "Off-tank the Core Ragers and swap Golemagg's tanks as Magma Splash stacks build." },
   "Sulfuron Harbinger": { instanceMap: 409, npcId: 12098, advice: "Kill the Flamewaker Priests first and interrupt their heals." },
   "Majordomo Executus": { instanceMap: 409, npcId: 12018, advice: "Defeat the Flamewaker adds so Majordomo surrenders; don't cast into Magic Reflection." },
+  "Razorgore the Untamed": { instanceMap: 469, npcId: 12435, advice: "Use the control orb to make Razorgore destroy the eggs while the raid holds off the adds." },
+  "Vaelastrasz the Corrupt": { instanceMap: 469, npcId: 13020, advice: "Set a tank order. If you get Burning Adrenaline and aren't tanking, move away from the raid." },
+  "Broodlord Lashlayer": { instanceMap: 469, npcId: 12017, advice: "Keep backup tanks ready for Knock Away; Mortal Strike makes the tank harder to heal." },
 });
 const TIPS = Object.freeze({
   // Ragefire Chasm
