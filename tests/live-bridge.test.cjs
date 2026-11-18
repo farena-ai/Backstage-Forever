@@ -109,7 +109,7 @@ test("older version 2 strips from earlier addons still decode", () => {
 
 test("bridge reports live only while frames are fresh and maps worker states", () => {
   let now = 1000;
-  const b = new L.LiveBridge({ now: () => now, platform: "linux" });
+  const b = new L.LiveBridge({ now: () => now, platform: "win32" });
   b.enabled = true;
   const seen = [];
   b.subscribe((s) => seen.push(s.signal));
@@ -139,10 +139,10 @@ test("preference persists, and the capture worker is spawned bounded with no she
   const b = new L.LiveBridge({ dataDir: dir, spawn: fake, platform: "win32" });
   assert.equal(b.enabled, true, "on by default for new installs");
   b.setEnabled(false);
-  assert.equal(new L.LiveBridge({ dataDir: dir }).enabled, false, "an explicit off is remembered");
+  assert.equal(new L.LiveBridge({ dataDir: dir, platform: "win32" }).enabled, false, "an explicit off is remembered");
   b.setEnabled(true);
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "live-link.json"), "utf8")).enabled, true);
-  assert.equal(new L.LiveBridge({ dataDir: dir }).enabled, true);
+  assert.equal(new L.LiveBridge({ dataDir: dir, platform: "win32" }).enabled, true);
   const { exe, args, opts } = calls[0];
   assert.match(exe, /powershell\.exe$/i);
   assert.ok(args.includes("-EncodedCommand") && args.includes("-NonInteractive"));
@@ -276,7 +276,7 @@ test("review fixes: identity binding, Claude live context, stale worker output, 
   assert.equal(seen[1].live.zone, "Orgrimmar", "Claude subscription receives the live summary");
 
   // Output from a stopped worker is ignored.
-  const b = new L.LiveBridge({ platform: "linux" });
+  const b = new L.LiveBridge({ platform: "win32" });
   b.enabled = true;
   b.read("ok " + image(mine ? luaCells(STATE).cells : []).rgb.toString("base64") + "\n");
   assert.equal(b.status().signal, "live");
@@ -353,7 +353,7 @@ test("a strip on screen that can't be read says why: old addon still running, or
   const cells = luaCells(STATE).cells.map((c) => [...c]); cells[2] = [255, 0, 0]; cells[3] = [0, 0, 255];
   assert.equal(L.stripHint(image(cells)), "unreadable");
   assert.equal(L.stripHint(image([])), null, "no strip at all");
-  const b = new L.LiveBridge({ platform: "linux" }); b.enabled = true;
+  const b = new L.LiveBridge({ platform: "win32" }); b.enabled = true;
   b.read("ok " + real.rgb.toString("base64") + "\n");
   assert.equal(b.status().signal, "old-addon");
 });
@@ -395,7 +395,7 @@ test("the second row decodes under colour shifts and older one-row strips still 
 });
 test("LiveBridge assembles page sets per character and drops stale or foreign ones", () => {
   let t = 1000;
-  const b = new L.LiveBridge({ now: () => t });
+  const b = new L.LiveBridge({ now: () => t, platform: "win32" });
   b.enabled = true;
   const main = Array.from(luaCells(STATE).bytes), identity = (main[23] << 8) | main[24];
   const log = Array.from({ length: 8 }, (_, i) => ({ id: 2000 + i, complete: i === 2 }));

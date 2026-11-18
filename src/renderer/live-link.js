@@ -1,7 +1,8 @@
 "use strict";
 // Live game link panel and status line. Updates its own nodes in place; no page re-render.
 (() => {
-  let status = { enabled: false, signal: "off", frame: null };
+  let status = { enabled: false, signal: "checking", frame: null };
+  const showControls = () => !["checking", "unsupported"].includes(status.signal);
   const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const SIGNALS = {
     off: "Off. Turn it on to show your live position on the map and radar.",
@@ -16,7 +17,8 @@
     "no-signal": "Game found but no live line. Type /bf live on in WoW once; if WoW shows a thin dark line along its top edge and this stays, type /bf live safe.",
     stale: "Signal paused (the live line is hidden or the game stopped drawing it).",
     error: "The screen reader stopped; retrying shortly.",
-    unsupported: "The live link is Windows-only for now. Everything that works from your saved characters works here: log out or type /reload in WoW and the app updates.",
+    checking: "Checking live link availability…",
+    unsupported: "Saved-only: the live link is Windows-only. Screen Recording is not needed. Play and log out normally to update your desktop journal.",
   };
   // "3 min ago" from a time in milliseconds (the app and its window share one clock).
   function ago(at, now = Date.now()) {
@@ -45,8 +47,8 @@
   const CAPTURE = { window: " · read from the game window (works behind other windows)", screen: " · read from the screen (keep WoW uncovered)" };
   const TIP = "Type /bf live safe if the link drops over remote desktop.";
   function recovery(s = status) {
+    if (s.signal === "unsupported" || s.signal === "checking") return "";
     if (!s.enabled) return "Keep using saved progress without turning on the live link. Play and log out normally to update the desktop journal.";
-    if (s.signal === "unsupported") return "Keep using saved progress: play and log out normally to update the desktop journal.";
     if (s.signal === "minimized") return "Restore the game window to resume live updates; no reload is needed.";
     if (s.signal === "nogame") return "Open WoW Forever from your usual launcher, or keep using the last saved progress.";
     if (s.signal === "stale") return "Bring WoW back into view. If the line is hidden, type /bf live on in WoW. The desktop journal can still use saved progress.";
@@ -60,6 +62,7 @@
     return `Mode: ${MODES[k.mode] || k.mode} · Placement: ${place} · ${k.width}×${k.height} px${k.idle ? " · idle (nothing changing)" : ""}${CAPTURE[k.capture] || ""}`;
   }
   function paint() {
+    for (const n of document.querySelectorAll("[data-live-link-controls]")) n.hidden = !showControls();
     for (const n of document.querySelectorAll("[data-live-link-line]")) { n.textContent = line(); n.dataset.signal = status.signal; }
     const step = recovery();
     for (const n of document.querySelectorAll("[data-live-link-recovery]")) {
@@ -71,7 +74,7 @@
   }
   window.LiveLink = {
     markup() {
-      return `<hr class="rule"><h3>Live game link <span class="tag">On by default</span></h3><label class="check-label"><input type="checkbox" id="live-link-toggle" ${status.enabled ? "checked" : ""}>Read my live position from the game window</label><p>With this on, the addon draws a thin dark line, one pixel tall, along the top edge of the game. Backstage Forever reads only that line, twice a second, from the game window itself (so it keeps working when another window covers WoW), and the companion knows where you are right now without a reload. While WoW is minimized nothing can be read: live updates pause and resume when you bring it back. It sends no input, reads no game memory, stores no screenshots and pauses details during combat. Over remote desktop, <code>/bf live safe</code> draws a larger, sturdier strip in a corner (<code>/bf live pos</code> moves it); <code>/bf live compact</code> is the small 84×4 corner strip.</p><p class="live-link-line" data-live-link-line role="status">${esc(line())}</p><p class="live-link-strip" data-live-link-strip${stripLine() ? "" : " hidden"}>${esc(stripLine())}</p><p class="live-link-tip">${esc(TIP)}</p><p class="corner-note" data-live-link-recovery${recovery() ? "" : " hidden"}>${esc(recovery())}</p>`;
+      return `<hr class="rule"><h3>Live game link</h3><div data-live-link-controls${showControls() ? "" : " hidden"}><span class="tag">On by default</span><label class="check-label"><input type="checkbox" id="live-link-toggle" ${status.enabled ? "checked" : ""}>Read my live position from the game window</label><p>With this on, the addon draws a thin dark line, one pixel tall, along the top edge of the game. Backstage Forever reads only that line, twice a second, from the game window itself (so it keeps working when another window covers WoW), and the companion knows where you are right now without a reload. While WoW is minimized nothing can be read: live updates pause and resume when you bring it back. It sends no input, reads no game memory, stores no screenshots and pauses details during combat. Over remote desktop, <code>/bf live safe</code> draws a larger, sturdier strip in a corner (<code>/bf live pos</code> moves it); <code>/bf live compact</code> is the small 84×4 corner strip.</p><p class="live-link-tip">${esc(TIP)}</p></div><p class="live-link-line" data-live-link-line role="status">${esc(line())}</p><p class="live-link-strip" data-live-link-strip${stripLine() ? "" : " hidden"}>${esc(stripLine())}</p><p class="corner-note" data-live-link-recovery${recovery() ? "" : " hidden"}>${esc(recovery())}</p>`;
     },
     stripLine,
     lastLine,
@@ -86,7 +89,7 @@
   api.onLiveLink((s) => { status = s; paint(); });
   setInterval(() => api.liveLinkStatus().then((s) => { status = s; paint(); }).catch(() => {}), 3000);
   document.addEventListener("change", (event) => {
-    if (event.target?.id !== "live-link-toggle") return;
+    if (event.target?.id !== "live-link-toggle" || !showControls()) return;
     const wanted = event.target.checked;
     api.setLiveLink(wanted).then((s) => { status = s; paint(); }).catch(() => { event.target.checked = !wanted; });
   });

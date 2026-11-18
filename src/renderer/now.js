@@ -170,7 +170,7 @@ window.NowView = (() => {
     if (items.every((i) => i.done)) return "";
     const next = items.findIndex((i) => !i.done);
     // One click does every step the app can do by itself: find WoW, install the addon, turn on the live link.
-    const canDo = !game?.connected || !game?.addonCurrent || live?.enabled === false;
+    const canDo = !game?.connected || !game?.addonCurrent || (live?.signal !== "unsupported" && live?.enabled === false);
     const oneClick = canDo ? `<div class="now-oneclick"><button type="button" data-now-act="setup"${setting === "working" ? " disabled" : ""}>${setting === "working" ? "Setting up…" : "Set it all up"}</button><span>${setting && setting !== "working" ? esc(setting) : live?.signal === "unsupported" ? "Finds WoW Forever and installs the addon. Nothing to download or type." : "Finds WoW Forever, installs the addon and turns on the live link. Nothing to download or type."}</span></div>` : "";
     return `<article class="now-card now-setup"><h2>Get set up <small>${items.filter((i) => i.done).length} of ${items.length}</small></h2>
       ${oneClick}<ol class="now-checklist">${items.map((i, n) => `<li class="${i.done ? "done" : n === next ? "next" : ""}"><span class="now-check" aria-hidden="true">${i.done ? "✓" : n + 1}</span><div><strong>${i.title}</strong>${i.done ? "" : `<p>${i.how}</p>${n === next && i.action ? `<div class="now-actions">${i.action}</div>` : ""}`}</div></li>`).join("")}</ol>
@@ -390,7 +390,7 @@ window.NowView = (() => {
       else if (!r?.connected) setting = "Couldn't find WoW Forever automatically. Pick its folder on the Game connection page (Settings).";
       else {
         const live = await api.liveLinkStatus?.().catch(() => null);
-        if (live && live.enabled === false) await api.setLiveLink(true);
+        if (live && live.signal !== "unsupported" && live.enabled === false) await api.setLiveLink(true);
         setting = "Done. Log in to WoW (or type /reload if it's running) and your character appears here.";
       }
     } catch (e) { setting = e?.message || "Setup couldn't finish. Try the Game connection page in Settings."; }

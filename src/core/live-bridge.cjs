@@ -677,7 +677,7 @@ class LiveBridge {
     this.child = null;
     this.frame = null;
     this.signal = "off";
-    this.enabled = this.readPreference();
+    this.enabled = platform === "win32" && this.readPreference();
     this.buffer = "";
     // Capture only the corner where the strip was last seen; walk the others only when it is lost.
     this.corner = "topleft"; this.region = TOPLEFT_REGION; this.misses = 0; this.strip = null; this.beat = null;
@@ -690,6 +690,7 @@ class LiveBridge {
   }
   setEnabled(enabled) {
     if (typeof enabled !== "boolean") throw Error("Invalid live link preference.");
+    if (this.platform !== "win32") return this.status();
     this.enabled = enabled;
     try { if (this.prefFile()) fs.writeFileSync(this.prefFile(), JSON.stringify({ enabled })); } catch {}
     if (enabled) this.start(); else this.stop();
@@ -697,8 +698,7 @@ class LiveBridge {
     return this.status();
   }
   start() {
-    if (this.child || !this.enabled) return;
-    if (this.platform !== "win32") { this.signal = "unsupported"; return; }
+    if (this.platform !== "win32" || this.child || !this.enabled) return;
     const exe = path.join(process.env.SystemRoot || "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
     const encoded = Buffer.from(WORKER, "utf16le").toString("base64");
     this.signal = "starting";
@@ -906,6 +906,7 @@ class LiveBridge {
     return out;
   }
   status() {
+    if (this.platform !== "win32") return { enabled: false, signal: "unsupported", frame: null, strip: null, last: null };
     const frame = this.current();
     if (frame?.position) frame.zone = require("./companion-tools.cjs").MAP_NAMES[frame.position.mapId] || `Map ${frame.position.mapId}`;
     // Last strip seen: mode (compact / safe / legacy), corner and footprint in physical pixels.
