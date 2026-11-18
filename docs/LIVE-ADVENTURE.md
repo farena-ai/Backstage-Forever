@@ -9,6 +9,12 @@ Develop on `feat/living-field-journal`; do not change the installed addon or v1.
 | 3 | Get a useful detour on the way, or prepare for a dungeon and review what happened afterward. | Suggestions respect the selected objective, can be dismissed, and are quiet in combat. Separate reference boss/quest notes from observed encounters. No inference of a clear from entering an instance. |
 | 4 | Pin a reputation target and follow eligible quests and turn-ins. | Build on Ledger standings; show provenance and known prerequisites. Unknown server-specific rewards stay unknown. |
 
+### Confirmed dungeon victory badges
+
+In **Characters → Badges → Dungeons**, earn **First dungeon victory** for one saved dungeon boss win and **Dungeon veteran** for five distinct wins. A dungeon map and encounter ID count once, even across repeat kills, name changes, or difficulties. Entering a dungeon still has its own badge; entry, raid wins, and Atlas reference data do not count as dungeon boss wins or prove a full clear.
+
+These are desktop-only awards for the character that recorded the wins. Unfinished progress reflects the saved encounter journal; earned awards survive that bounded history rolling over. The desktop records the award without assigning an achievement date, and the in-game badge list and Compass are unchanged.
+
 ### Reputation targets
 
 In **Ledger → Reputation**, choose a saved faction and pin its next standing for the active character. This uses the same single objective slot as quests and profession ranks; replacement requires confirmation. **Now → Resume reputation** returns to that faction. The plan lists saved quests and ready turn-ins first when Forever reference data associates them with the faction. Other leads are filtered by known eligibility and show reported chain links, not guaranteed prerequisites. Server reward amounts, repeatability, and unlisted requirements are not inferred.

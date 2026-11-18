@@ -14,7 +14,10 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
   let app;
   try {
     const profiles = [
-      { id: "alpha", name: "Aelora", className: "Hunter", race: "Tauren", faction: "Horde", level: 19, journal: { firsts: [{ key: "flight", at: 1700002000 }] },
+      { id: "alpha", name: "Aelora", className: "Hunter", race: "Tauren", faction: "Horde", level: 19, journal: {
+        firsts: [{ key: "flight", at: 1700002000 }],
+        encounters: [{ encounterId: 1144, name: "Edwin VanCleef", instanceMap: 36, instanceType: "party", difficultyId: 1, at: 1700002001 }],
+      },
         source: { kind: "wow-addon", id: "synthetic-alpha", updatedAt: "2026-11-09T12:00:00.000Z" },
         readiness: { workshop: { professions: { observedAt: "2026-11-09T12:00:00.000Z", complete: false, items: [{ skillLineId: 171, professionId: 1171, name: "Alchemy", rank: 150, maxRank: 300 }] } } } },
       { id: "beta", name: "Bellan", className: "Priest", race: "Human", faction: "Alliance", level: 7 },
@@ -92,8 +95,17 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await badges.locator('[data-badge-jump="first-flight"]').press("Enter");
     await page.waitForFunction(() => document.activeElement?.dataset.badge === "first-flight");
     assert.equal(await category.inputValue(), "");
+    await category.selectOption("Dungeons");
+    const victory = badges.locator('[data-badge="dungeon-first-victory"]');
+    await victory.getByText("Desktop only", { exact: true }).waitFor();
+    await victory.getByText("Earned", { exact: true }).waitFor();
+    const progress = badges.getByRole("progressbar", { name: "Progress toward Dungeon veteran" });
+    assert.equal(await progress.getAttribute("aria-valuenow"), "1");
+    assert.equal(await progress.getAttribute("aria-valuemax"), "5");
     await badges.getByRole("button", { name: /Bellan/ }).press("Enter");
     await badges.getByRole("heading", { name: "Bellan's Badge Case" }).waitFor();
+    await victory.getByText("No saved progress", { exact: true }).waitFor();
+    assert.equal(await progress.count(), 0);
     assert.equal(await badges.getByRole("button", { name: /Bellan/ }).getAttribute("aria-pressed"), "true");
     await resize(940, 760);
     await badges.getByRole("heading", { name: "Bellan's Badge Case" }).scrollIntoViewIfNeeded();
@@ -110,6 +122,7 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     const keys = await app.evaluate(() => globalThis.exportArtKeys);
     assert.equal(keys.filter((id) => id === "profession-150").length, 1, "earned profession badges share one artwork request");
     assert.ok(!keys.includes("profession-alchemy-150"), "export does not request a missing ID image");
+    assert.ok(keys.includes("first-dungeon"), "dungeon victories reuse the original dungeon artwork in the picture");
     await badges.locator('[data-badge="level-20"]:not(.earned)').waitFor();
     await app.evaluate(() => { const store = globalThis.badgeFixtureStore; const state = structuredClone(store.state); state.profiles[0].level = 20; store.saveState(state); });
     await badges.locator('[data-badge="level-20"].earned').waitFor();

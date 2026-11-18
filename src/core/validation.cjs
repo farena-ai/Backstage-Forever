@@ -219,7 +219,7 @@ function validateState(s) {
       )
         fail();
     }
-    if (p.badgeAwards !== undefined && (!p.source || !require("./badges.cjs").validProfessionAwards(p.badgeAwards))) fail();
+    if (p.badgeAwards !== undefined && (!p.source || !require("./badges.cjs").validBadgeAwards(p.badgeAwards))) fail();
     if (
       p.source && p.readiness?.workshop &&
       Object.values(p.readiness.workshop).some(collection =>

@@ -7,6 +7,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const { parseSavedVariables } = require("../src/core/game-sync.cjs");
 const { buildAtlas } = require("../src/core/dungeon-atlas.cjs");
+const { badgeBook } = require("../src/core/badges.cjs");
 const { mergeSnapshot } = require("../src/core/profile-sync.cjs");
 const { Store } = require("../src/core/store.cjs");
 
@@ -126,6 +127,9 @@ test("logout exports a recorded encounter before the queued capture can run", (t
   assert.deepEqual(buildAtlas({ profile }).recap.encounters, [
     { ...encounter, atlasId: "dm", atlasName: "The Deadmines" },
   ]);
+  const book = badgeBook(reopened);
+  assert.deepEqual(book.holders["dungeon-first-victory"], ["Example"]);
+  assert.deepEqual(book.book.badges.find(b => b.id === "dungeon-victories-5").progress, { have: 1, need: 5 });
 });
 
 test("a pending win cannot update a previous character's export when the new login capture fails", () => {

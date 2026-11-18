@@ -1,7 +1,7 @@
 "use strict";
 // Badges: milestones a character has earned, from its own saved data. Each badge says plainly
 // what it's for and, when locked, what's left to earn it.
-const { splits } = require("./journal-data.cjs");
+const { splits, normalizeEncounterHistory } = require("./journal-data.cjs");
 const { validateWorkshop } = require("./preparation-data.cjs");
 const { ALL_CLASSES } = require("./class-unlocks.cjs");
 
@@ -39,8 +39,16 @@ const EXPANSION_BADGES = PROFESSION_LINES.flatMap(([line, slug, label]) => [150,
     return have === undefined ? { progressUnavailable: true } : { done: have >= n, have, need: n };
   },
 })));
-const CHARACTER_CATALOG = [...BADGES, ...EXPANSION_BADGES];
-const GROUPS = Object.freeze(["Levels", "Quests", "Exploring", "Firsts", "Speed", "Professions", "Gold", "Reputation"]);
+const DUNGEON_BADGES = [
+  [1, "dungeon-first-victory", "First dungeon victory", "Win a boss encounter in a dungeon."],
+  [5, "dungeon-victories-5", "Dungeon veteran", "Win 5 distinct dungeon boss encounters."],
+].map(([n, id, name, how]) => ({
+  id, group: "Dungeons", name, how, desktopOnly: true, art: "first-dungeon", threshold: n,
+  test: ({ dungeonVictories: have }) => have ? { done: have >= n, have, need: n } : { progressUnavailable: true },
+}));
+const LATCHED_BADGES = [...EXPANSION_BADGES, ...DUNGEON_BADGES];
+const CHARACTER_CATALOG = [...BADGES, ...LATCHED_BADGES];
+const GROUPS = Object.freeze(["Levels", "Quests", "Exploring", "Firsts", "Speed", "Professions", "Gold", "Reputation", "Dungeons"]);
 
 // Account badges: earned across all your characters together.
 const ACCOUNT_BADGES = [
@@ -68,7 +76,7 @@ function facts(profile, desktop) {
     firstAt: new Map((j.firsts || []).map((f) => [f.key, f.at])),
     fastest: sp.length ? Math.min(...sp.map((s) => s.seconds)) : null,
     profession: Math.max(0, ...professionRanks(profile)),
-    ...(desktop ? { professions: observedProfessionRanks(profile) } : {}),
+    ...(desktop ? awardFacts(profile) : {}),
     gold: Number.isSafeInteger(profile?.ledger?.money) ? profile.ledger.money / 10000 : 0,
     standing: Math.max(0, ...factionsOf(profile).map((r) => Number(r?.standing) || 0)),
   };
@@ -98,17 +106,30 @@ function observedProfessionRanks(p) {
   } catch { /* Missing or invalid owned-profession evidence cannot count. */ }
   return new Map();
 }
-const PROFESSION_AWARD_IDS = new Set(EXPANSION_BADGES.map(b => b.id));
-function validProfessionAwards(awards) {
-  return Array.isArray(awards) && awards.length <= PROFESSION_AWARD_IDS.size &&
-    new Set(awards).size === awards.length && [...awards].every(id => PROFESSION_AWARD_IDS.has(id));
+function observedDungeonVictories(profile) {
+  const source = savedSource(profile);
+  if (!source) return 0;
+  const savedAt = Date.parse(source.updatedAt) / 1000;
+  try {
+    const rows = normalizeEncounterHistory(profile.journal?.encounters);
+    return new Set(rows.filter(e => e.instanceType === "party" && e.at <= savedAt)
+      .map(e => `${e.instanceMap}:${e.encounterId}`)).size;
+  } catch { return 0; }
+}
+function awardFacts(profile) {
+  return { professions: observedProfessionRanks(profile), dungeonVictories: observedDungeonVictories(profile) };
+}
+const AWARD_IDS = new Set(LATCHED_BADGES.map(b => b.id));
+function validBadgeAwards(awards) {
+  return Array.isArray(awards) && awards.length <= AWARD_IDS.size &&
+    new Set(awards).size === awards.length && [...awards].every(id => AWARD_IDS.has(id));
 }
 // Only the snapshot merger writes awards, on its validated copy of the character.
-// Keep IDs, not ranks or guessed achievement dates.
-function latchProfessionAwards(profile) {
-  const facts = { professions: observedProfessionRanks(profile) };
+// Keep IDs, not evidence rows or guessed achievement dates.
+function latchBadgeAwards(profile) {
+  const facts = awardFacts(profile);
   const awards = new Set(profile.badgeAwards);
-  for (const badge of EXPANSION_BADGES) if (badge.test(facts).done) awards.add(badge.id);
+  for (const badge of LATCHED_BADGES) if (badge.test(facts).done) awards.add(badge.id);
   if (awards.size) profile.badgeAwards = [...awards];
 }
 function badgeResult(b, r, group = b.group) {
@@ -120,7 +141,7 @@ function badgeResult(b, r, group = b.group) {
 /** The shared Journey catalog by default; opt in to the expanded desktop Badge Case catalog. */
 function badgesFor(profile, { desktop = false } = {}) {
   const f = facts(profile, desktop);
-  const awards = desktop && savedSource(profile) && validProfessionAwards(profile.badgeAwards)
+  const awards = desktop && savedSource(profile) && validBadgeAwards(profile.badgeAwards)
     ? new Set(profile.badgeAwards) : null;
   const list = (desktop ? CHARACTER_CATALOG : BADGES).map((b) => {
     const key = b.id.startsWith("first-") ? b.id.slice(6) : null;
@@ -142,7 +163,7 @@ function classVariety(profiles) {
   return new Set([...byIdentity.values()].filter(Boolean)).size;
 }
 /** Account badges (including class variety) still reflect the current saved roster.
- *  Removing a qualifying profile can relock them; only character profession awards are latched. */
+ *  Removing a qualifying profile can relock them; character profession and dungeon awards are latched. */
 function accountBadges(profiles) {
   const list = Array.isArray(profiles) ? profiles : [];
   const a = { characters: list.length, horde: list.some((p) => side(p) === "horde"), alliance: list.some((p) => side(p) === "alliance"), classes: classVariety(list) };
@@ -179,4 +200,4 @@ function rested(profile) {
   const capPct = 150, toCap = Math.max(0, capPct - pct);
   return { xp: r, percentOfLevel: pct, capPercent: capPct, hoursToCap: Math.ceil((toCap / 5) * 8), perNight: 5 };
 }
-module.exports = { badgesFor, badgeBook, accountBadges, nextUp, rested, BADGES, ACCOUNT_BADGES, EXPANSION_BADGES, EXPANSION_ACCOUNT_BADGES, GROUPS, validProfessionAwards, latchProfessionAwards };
+module.exports = { badgesFor, badgeBook, accountBadges, nextUp, rested, BADGES, ACCOUNT_BADGES, EXPANSION_BADGES, EXPANSION_ACCOUNT_BADGES, GROUPS, validBadgeAwards, latchBadgeAwards };
