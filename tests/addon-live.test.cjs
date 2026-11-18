@@ -357,3 +357,70 @@ event('PLAYER_XP_UPDATE');flush();assert(#said==1,'hint is shown once per sessio
 -- After /reload the addon loads again with the saved roster: a known character is not told.
 event('PLAYER_LOGOUT');said={};dofile('addon/BackstageForever/BackstageForever.lua');event('PLAYER_LOGIN');assert(#said==0,'known character is not told again')
 `));
+
+test('live On my way is a quiet, dismissible hand-in separate from the main quest',()=>lua(hud.slice(0,hud.indexOf('local character='))+String.raw`
+local who,map,xp,ready,detourX='A',1413,10,true,.3
+UnitGUID=function()return who end
+UnitFullName=function()return 'Hero','Realm' end
+UnitClass=function()return 'Mage' end
+UnitLevel=function()return 12 end
+UnitXP=function()return xp end
+UnitXPMax=function()return 100 end
+GetZoneText=function()return 'Forest' end
+GetBuildInfo=function()return '1.60.1','70888' end
+time=function()return 1700000000 end
+C_Map={GetBestMapForUnit=function()return map end,GetMapInfo=function(id)return {mapID=id}end,
+ CanSetUserWaypointOnMap=function()return true end,SetUserWaypoint=function(p)guideCalls[#guideCalls+1]=p end}
+UiMapPoint={CreateFromCoordinates=function(id,x,y)return {id=id,x=x,y=y}end}
+C_QuestLog={GetNumQuestLogEntries=function()return 2,2 end,
+ GetInfo=function(i)return {questID=i,title=i==1 and 'Main work' or 'Extra |check',isHeader=false}end,
+ GetLogIndexForQuestID=function(id)return id end,
+ IsComplete=function(id)return id==1 or ready end,
+ GetQuestObjectives=function()return {}end,
+ GetNextWaypoint=function(id)return 1413,id==1 and .2 or detourX,.4 end}
+dofile('addon/BackstageForever/BackstageForeverCoach.lua')
+dofile('addon/BackstageForever/BackstageForeverProfession.lua')
+dofile('addon/BackstageForever/BackstageForever.lua')
+dofile('addon/BackstageForever/BackstageForeverHUD.lua')
+event('PLAYER_LOGIN')
+local dismiss=frames.BackstageForeverCompassOnMyWayNotNow
+local function shown()return dismiss.visible and dismiss.enabled end
+assert(dismiss and shown(),'Optional local hand-in should have its own dismiss button')
+assert(text():find('Next: Main work',1,true) and text():find('On my way: Extra ||check',1,true))
+assert(text():find('Current game: hand-in on this map',1,true) and not text():find('Or: Extra',1,true))
+local title,evidence
+for _,font in ipairs(fonts)do
+ if font.text=='On my way: Extra ||check' then title=font end
+ if font.text=='Current game: hand-in on this map' then evidence=font end
+end
+local bodyBottom=frames.BackstageForeverCompass.height+fonts[2].point[3]-fonts[2].height
+assert(bodyBottom>=title.point[3]+title.height and title.point[3]>=evidence.point[3]+evidence.height)
+assert(#guideCalls==0)
+frames.BackstageForeverCompassWaypoint.OnClick();local point=guideCalls[1]
+assert(point and point.id==1413 and point.x==.2 and point.y==.4,'Only the primary waypoint may be set')
+local click=dismiss.OnClick
+click();assert(not shown() and not text():find('On my way:',1,true) and text():find('Next: Main work',1,true) and #guideCalls==1)
+xp=20;event('PLAYER_XP_UPDATE');assert(not shown(),'XP alone does not undo dismissal')
+frames.BackstageForeverCompassNotNow.OnClick()
+assert(text():find('Next: Extra ||check',1,true),'Dismissing the side note does not dismiss the quest as primary work')
+event('PLAYER_LOGOUT');event('PLAYER_LOGIN');assert(shown())
+detourX=.35;event('QUEST_LOG_UPDATE');assert(shown(),'Changed live marker is new evidence')
+click();assert(shown(),'Stale callback cannot dismiss changed evidence')
+click=dismiss.OnClick;fighting=true;event('PLAYER_REGEN_DISABLED');assert(not frames.BackstageForeverCompass.visible and not shown())
+fighting=false;click();event('PLAYER_REGEN_ENABLED');assert(shown(),'Combat must retire the old dismiss callback')
+ready=false;event('QUEST_LOG_UPDATE');assert(not shown())
+ready=true;map=nil;event('ZONE_CHANGED_NEW_AREA');assert(not shown(),'Missing map cannot borrow last location')
+map=1413;event('ZONE_CHANGED_NEW_AREA');assert(shown())
+BackstageForeverRouteNow=function()return {text='Existing route'}end
+event('PLAYER_XP_UPDATE');assert(not shown(),'Existing guided route wins')
+BackstageForeverRouteNow=nil;event('PLAYER_XP_UPDATE');assert(shown())
+click=dismiss.OnClick
+SlashCmdList.BACKSTAGEFOREVER('hide');SlashCmdList.BACKSTAGEFOREVER('show');assert(shown())
+click();assert(shown(),'Hiding the Compass retires a callback even without a new capture')
+click=dismiss.OnClick;click();assert(not shown())
+who=nil;event('PLAYER_ENTERING_WORLD');assert(not shown())
+who='B';event('PLAYER_ENTERING_WORLD');assert(shown(),'The other character inherits no dismissal')
+click();assert(shown(),'Prior character callback is retired')
+frames.BackstageForeverCompassCollapse.OnClick();assert(not shown() and not text():find('On my way:',1,true))
+event('PLAYER_LOGOUT');assert(not shown() and #guideCalls==1)
+`));

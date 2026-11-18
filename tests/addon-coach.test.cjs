@@ -204,3 +204,29 @@ c.readiness.workshop=nil;assert(ids(coach())=='quest:1,quest:2,quest:3')
 c.quests={};for i=1,26 do c.quests[i]={id=i,title='Task '..i,complete=i==26,objectives={{text='   ',done=false}}}end
 assert(ids(coach())=='quest:1,quest:2,quest:3','Native only observes first 25 quests')
 `));
+
+test("On my way finds one other current-map turn-in without reranking the coach", () =>
+  lua(`
+c.location.mapId=1413
+c.quests={
+ {id=1,title='Other map',complete=true,zone='Forest',destination={mapId=1414,x=.2,y=.3}},
+ {id=2,title='No marker',complete=true,zone='Forest'},
+ {id=3,title='Local turn-in',complete=true,destination={mapId=1413,x=.2,y=.3}},
+ {id=4,title='Another local turn-in',complete=true,destination={mapId=1413,x=.3,y=.4}},
+}
+local b=coach();assert(b.recommendation.kind=='bags');assert(b.alternatives[1].id=='quest:1' and b.alternatives[2].id=='quest:2')
+assert(b.onMyWay and b.onMyWay.title=='Local turn-in','A same-map turn-in outside the preview should qualify')
+assert(not b.onMyWay.command and not b.onMyWay.questStep,'The suggestion is informational only')
+assert(not coach('professions').onMyWay)
+c.readiness.bags.free=5;c.quests={c.quests[3],c.quests[4]};b=coach()
+assert(b.recommendation.id=='quest:3' and b.onMyWay.title=='Another local turn-in')
+c.quests[2].complete=false;assert(not coach().onMyWay)
+c.quests[2].complete=true;c.quests[2].destination.x=0/0;assert(not coach().onMyWay)
+c.quests[2].destination.x=.3;c.location.mapId={secret=true};assert(not coach().onMyWay)
+c.location.mapId=nil;assert(not coach().onMyWay)
+dofile('addon/BackstageForever/BackstageForeverReference.lua')
+c.clientBuild=BackstageForeverReference.build;c.locale='enUS';c.location.mapId=1413
+c.quests[2]={id=1061,title='The Spirits of Stonetalon',complete=true}
+b=coach();assert(b.alternatives[1].questStep.source=='reference','Fixture must have a same-map reference marker')
+assert(not b.onMyWay,'An approximate reference marker does not qualify as live evidence')
+`));
