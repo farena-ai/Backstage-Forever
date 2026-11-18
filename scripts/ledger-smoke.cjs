@@ -28,9 +28,10 @@ const { defaultState } = require("../src/core/validation.cjs");
     assert.ok(stormwindQuest);
     const characters = [
       { id: "Synthetic-Aeralyn", name: "Aeralyn", faction: "Alliance", race: "Human", className: "Mage",
-        quests: [{ id: stormwindQuest.id, title: stormwindQuest.title, complete: true, objectives: [] }], ledger: {
+        quests: [{ id: stormwindQuest.id, title: stormwindQuest.title, complete: true, objectives: [] },
+          { id: 11, title: "Riverpaw Gnoll Bounty", complete: false, objectives: [] }], ledger: {
         schemaVersion: 1, money: 1523045, moneyAt: clock,
-        bags: { seenAt: clock, complete: true, items: [item(2589, 25, "Linen Cloth"), item(118, 3, "Minor Healing Potion"),
+        bags: { seenAt: clock, complete: true, items: [item(2589, 25, "Linen Cloth"), item(118, 3, "Minor Healing Potion"), item(782, 3, "Painted Gnoll Armband"),
           ...Array.from({ length: 24 }, (_, i) => item(90000 + i, i + 1, `Supply sample ${i + 1}`))] },
         bank: { seenAt: clock - 86400 * 2, complete: true, items: [item(2589, 10, "Linen Cloth"), item(4306, 40, "Silk Cloth")] },
         mail: { seenAt: clock - 3600, complete: true, letters: 1, money: 2500, expiresAt: clock + 86400 * 20, items: [item(2770, 8, "Copper Ore")] },
@@ -151,6 +152,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     assert.match(await plan.innerText(), /Minimum level/);
     assert.doesNotMatch(await plan.innerText(), /Saved log:|Reference lead: check availability/);
     assert.equal(await plan.locator("[data-quest-open]").count(), 0);
+    assert.equal(await plan.locator("[data-ledger-turn-in]").count(), 0);
     await page.getByLabel("Reputation of", { exact: true }).selectOption({ label: "Aeralyn · Alliance" });
     await page.getByLabel("Plan for faction").selectOption("72");
     const pin = page.getByRole("button", { name: "Pin reputation target" });
@@ -169,11 +171,18 @@ const { defaultState } = require("../src/core/validation.cjs");
     assert.ok(await questAction.evaluate(n => { const b = n.getBoundingClientRect(); return b.top >= 0 && b.bottom <= innerHeight; }));
     assert.match(await plan.innerText(), /Saved log: ready to turn in/);
     assert.match(await plan.innerText(), /server reward amount.*unknown/i);
+    const materials = plan.locator('[data-ledger-turn-in="11"]');
+    await materials.waitFor({ timeout: 2500 });
+    assert.match(await materials.innerText(), /Aeralyn[\s\S]*Painted Gnoll Armband[\s\S]*8 required.*3 carried.*5 short/i);
+    assert.match(await plan.innerText(), /resume or clear.*Now/i);
     assert.ok(await plan.evaluate(n => n.scrollWidth - n.clientWidth <= 1));
     await page.screenshot({ path: path.join(capture, `${size}-reputation-plan.png`) });
     await questAction.click();
     await page.locator(`[data-quest-control="detail:${stormwindQuest.id}"]`).waitFor();
     assert.match(await page.locator(".reward-chip.rep").first().innerText(), /server amount unknown/);
+    await navigate(page, "now");
+    await page.locator("[data-now-objective]").getByRole("button", { name: "Clear objective" }).press("Enter");
+    await page.locator("[data-now-objective]").getByText(/No objective pinned/).waitFor();
 
     // Cooldowns: one waiting, one ready.
     await navigate(page, "ledger-cooldowns");

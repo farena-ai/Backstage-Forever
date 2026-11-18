@@ -166,12 +166,12 @@ window.LedgerView = (() => {
     const pin = next && (!f.side || !c.faction || f.side === c.faction) && view.pin({ kind: "reputation", factionId: f.id, targetStanding: f.standing + 1 }, c.profileId);
     return `<section class="ldg-card" data-ledger-rep-plan>${heading}${picker}
       <p class="ldg-note">Saved Ledger: ${esc(f.standingName)}${f.observedAt ? ` · seen ${esc(ago(f.observedAt))}` : " · observation time unknown"}${next ? ` · ${Math.max(0, f.need - f.current).toLocaleString()} to ${esc(next)}` : ""}.</p>
-      ${pin || (next && !isActive ? '<p class="ldg-note">Switch the active character to pin their target.</p>' : "")}
+      ${pin ? `${pin}<p class="ldg-note">Resume or clear this objective in Now. Only a qualifying saved standing change can complete it.</p>` : (next && !isActive ? '<p class="ldg-note">Switch the active character to pin their target.</p>' : "")}
       <h3>Quests and turn-ins</h3><p class="ldg-note">${reference} Current server reward amounts and unlisted requirements are unknown.</p>
       ${list.length && !isActive && !browseOnly ? `<p class="ldg-note">Switch the active character to ${esc(c.name)} to open quests from this plan.</p>` : ""}
-      ${list.length ? `<ul class="ldg-rep-quests">${list.map(q => repQuest(q, isActive && !browseOnly ? c.profileId : null, browseOnly)).join("")}</ul>` : '<p class="ldg-empty">No matching quests in the available reference. Check eligibility and rewards in game.</p>'}</section>`;
+      ${list.length ? `<ul class="ldg-rep-quests">${list.map(q => repQuest(q, c, isActive && !browseOnly, browseOnly)).join("")}</ul>` : '<p class="ldg-empty">No matching quests in the available reference. Check eligibility and rewards in game.</p>'}</section>`;
   }
-  function repQuest(q, profileId, browseOnly) {
+  function repQuest(q, character, canOpen, browseOnly) {
     const status = browseOnly ? "Reference only" : q.status === "turn-in" ? "Saved log: ready to turn in" : q.status === "in-log" ? "Saved log: in progress" : "Reference lead: check availability in game";
     const gates = [q.minLevel ? `Minimum level ${q.minLevel}` : null, q.sides.length ? q.sides.join(" / ") : null].filter(Boolean).join(" · ");
     const from = q.linkedFrom.map(p => `${p.title} (${p.completed === true ? "completion saved" : p.completed === false ? "not in completed history" : "completion unknown"})`).join("; ");
@@ -179,7 +179,12 @@ window.LedgerView = (() => {
     return `<li><strong>${esc(q.title)}</strong><small>${status}${gates ? ` · ${esc(gates)}` : ""}</small>
       ${from ? `<small>Reported chain link from ${esc(from)}.</small>` : ""}
       ${place ? `<small>${q.status === "turn-in" ? "Hand in to" : "Starts with"} ${esc(place.name)}${place.zone ? `, ${esc(place.zone)}` : ""} (reference)</small>` : ""}
-      ${profileId ? `<button type="button" data-quest-open="${q.id}" data-ledger-quest-profile="${esc(profileId)}" aria-label="Open quest: ${esc(q.title)}">Open quest</button>` : ""}</li>`;
+      ${canOpen ? `<button type="button" data-quest-open="${q.id}" data-ledger-quest-profile="${esc(character.profileId)}" aria-label="Open quest: ${esc(q.title)}">Open quest</button>` : ""}
+      ${q.materials ? `<div data-ledger-turn-in="${q.id}">
+        <small>Reference materials · ${esc(character.name)}’s bags: ${q.materials.seenAt ? `last saved ${esc(ago(q.materials.seenAt))}` : "unknown"}. Bank, mail and alts are not counted.</small>
+        ${q.materials.rows.map(row => `<div><small><strong>${esc(row.name)}</strong> · ${row.required.toLocaleString()} required · ${row.carried === null ? "carried unknown" : `${row.carried.toLocaleString()} carried`} · ${row.missing === null ? "shortfall unknown" : row.missing === 0 ? "quantity covered at save" : `${row.missing.toLocaleString()} short at save`}</small></div>`).join("")}
+        <small>Materials do not verify a turn-in or reputation gain.</small>
+      </div>` : ""}</li>`;
   }
 
   // Cooldowns: every character's profession cooldowns, ready now or when.
