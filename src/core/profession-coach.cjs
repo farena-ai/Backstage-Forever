@@ -192,7 +192,7 @@ function buildProfessionCoach(
   );
   for (const row of model.shoppingRows)
     row.acquisition = acquisition.rows.find((r) => r.itemId === row.itemId);
-  model.shoppingList = shoppingList(model.shoppingRows, { crafts: settings.crafts, profile });
+  model.shoppingList = shoppingList(model.shoppingRows, { crafts: settings.crafts, profile, profiles: state?.profiles || [] });
   model.skillUp = recipe ? skillUpCountdown(profession, recipe) : null;
   model.acquisitionReference = {
     status: acquisition.status,

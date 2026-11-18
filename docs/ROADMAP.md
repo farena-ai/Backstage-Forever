@@ -307,11 +307,11 @@ Frank asked for everything below, built one release at a time through the usual 
 
 | # | Item | Size | Where | Why |
 |---|---|---|---|---|
-| J26 | **Share learned quest givers** through the opt-in community data, and carry them into the in-game route the addon builds. | M | Both | One player's play fills the route for everyone, in the game too. |
-| J27 | **Badge case picture.** A painted PNG of a character's badges to save or share, like the journey picture. | S | App | Something to show off. |
+| J26 | **Share learned quest givers** through the opt-in community data, and carry them into the in-game route the addon builds. **Needs a community server update** (a new kind of shared fact), which is the owner's to deploy. | M | Both | One player's play fills the route for everyone, in the game too. |
+| J27 | **Badge case picture.** A painted PNG of a character's badges to save or share, like the journey picture. **Done in 1.6.** | S | App | Something to show off. |
 | J28 | **Badges in the Compass.** The in-game Adventure Compass shows the next badge and its progress. **Done in 1.5.** | S | Addon | Goals in view while you play. |
 | J29 | **Reminders in game.** At login: another character's rested XP is full, a cooldown is ready, mail is expiring. **Done in 1.5.** | S | Addon | Same reminders without opening the app. |
-| J30 | **Profession shopping list.** What to buy or gather for your next skill-ups, minus what is already in bags, bank and mail across your characters. | M | App | Skill-ups without guesswork. |
+| J30 | **Profession shopping list.** What to buy or gather for your next skill-ups, minus what is already in bags, bank and mail across your characters. **Done in 1.6:** each row says where you already stored it and how many are still to get. | M | App | Skill-ups without guesswork. |
 | J31 | **Boss tips for the remaining raid bosses**, reviewed before they ship. | M | Both | Raids deserve the same help as dungeons. |
 
 ## Suggested release sequence
@@ -380,3 +380,4 @@ Keep this file and Help → Commands updated with each release.
 - **1.3.0 (2026-11-17):** phase 1.3: J9 class unlocks, J10 training costs, J11 riding-and-mount goal, J12 reputation advice, J13 boss tips.
 - **1.4.0 (2026-11-17):** phase 1.4: J14 routes learn quest givers from play, J15 local answers for unlocks/boss tips/reputation, J16 plan by time, J17 weekly recap, J18 reminders.
 - **1.5.0 (2026-11-17):** phase 1.5: J19 flowing routes and footprints, J20 final-boss paintings and velvet loot trays, J21 big moments and finished zones. J25 found already built. Added J26-J31; J28 (next badge in the Compass) and J29 (reminders in game) done too.
+- **1.6.0 (2026-11-17):** J27 badge case picture, J30 shopping list knows your stored materials.
