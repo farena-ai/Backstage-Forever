@@ -19,7 +19,8 @@
   animation: bf-embers 9s linear infinite; }
 .ph-art-adventure::before { background-image: url("art/heroes/adventure.webp"), url("art/hero-help.webp"); }
 .ph-art-quests::before { background-image: url("art/heroes/quests.webp"), url("art/hero-help.webp"); }
-.ph-art-professions::before { background-image: url("art/heroes/professions.webp"), url("art/hero-help.webp"); }
+/* Keep the Workshop's scale and bottles in the shallow banner crop. */
+.ph-art-professions::before { background-image: url("art/heroes/professions.webp"), url("art/hero-help.webp"); background-position: center 58%, center 42%; }
 .ph-art-plans::before { background-image: url("art/heroes/plans.webp"), url("art/hero-help.webp"); }
 .ph-art-party::before { background-image: url("art/heroes/party.webp"), url("art/hero-help.webp"); }
 .ph-art-characters::before { background-image: url("art/heroes/characters.webp"), url("art/hero-help.webp"); }
