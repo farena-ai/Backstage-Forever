@@ -124,20 +124,31 @@ window.Preparation = (() => {
     const pin=targetRank!==null&&workshopCurrent()&&!pending?window.ObjectiveView?.pin({kind:"profession",skillLineId:m.profession.skillLineId,targetRank},host.profileId()):"";
     return `<article class="skill-next skill-unknown" data-rank-checkpoint><span class="skill-seal" aria-hidden="true">◇</span><div><h3>${title}</h3><p>${detail}</p>${action}${pin?`<div class="objective-pin">${pin}</div>`:""}</div></article>`;
   }
+  const copperText=n=>[Math.floor(n/10000)?`${Math.floor(n/10000).toLocaleString()}g`:"",Math.floor(n/100)%100?`${Math.floor(n/100)%100}s`:"",n%100||!n?`${n%100}c`:""].filter(Boolean).join(" ");
+  const savedStockTime=at=>new Date(at*1000).toLocaleString(undefined,{dateStyle:"medium",timeStyle:"short"});
+  function stockLeads(label, leads, alt=false){
+    if(!leads?.length)return "";
+    const shown=leads.slice(0,3);
+    return `<small class="shop-elsewhere">${label}: ${shown.map(e=>`${alt?`${esc(e.name)}${e.realm?` (${esc(e.realm)})`:""} · `:""}${e.place} ${e.complete?"":"at least "}${e.count} · ${esc(savedStockTime(e.seenAt))}`).join("; ")}${leads.length>shown.length?` (+${leads.length-shown.length} more in Ledger)`:""}</small>`;
+  }
   function workshopShopping(list){
     if(!list?.rows?.length)return "";
-    const groups=[["covered","Covered by saved bags"],["alt-transfer","Check alt transfers"],["missing","Missing from saved bags"],["unknown","Shortfall unknown"]];
+    const groups=[["covered","Covered by saved bags"],["missing","Missing from saved bags"],["unknown","Shortfall unknown"]];
     const rowHtml=row=>{
       const amount=row.missing===null?"?":row.missing||row.required;
       const label=row.missing===null?"unknown":row.missing===0?"in bags":"short";
-      const elsewhere=row.missing!==0&&row.elsewhere?.length?`<small class="shop-elsewhere">Already stored: ${row.elsewhere.slice(0,3).map(e=>`${e.mine?"your":esc(e.name)+"'s"} ${[e.bags?`bags ${e.bags}`:"",e.bank?`bank ${e.bank}`:"",e.mail?`mail ${e.mail}`:""].filter(Boolean).join(", ")}`).join("; ")}${row.elsewhere.length>3?` (+${row.elsewhere.length-3} more)`:""} · last seen${row.missing>0?` · ${row.stillToGet} still to get if all stored counts can be fetched`:""}</small>`:"";
-      return `<li class="shop-row shop-${esc(row.source)}"><span class="shop-count"><b>${amount}</b><small>${label}</small></span><span class="shop-item"><b>${esc(row.name)}</b><small>${row.required} total${row.have!==null?` · ${row.quantityKind==="lower-bound"?"at least ":""}${row.have} saved in bags`:""}</small>${elsewhere}</span>${row.workshopStatus==="covered"?"":shopSource(row)}</li>`;
+      const storage=stockLeads("Own storage, last seen",row.ownStorage)+stockLeads("Alt stock, last seen",row.altStock,true);
+      const price=row.price?`Saved AH buyout: ${copperText(row.price.unitCopper)} each on ${esc(savedStockTime(row.price.seenAt))}`:"No dated AH price saved for this character";
+      const purchase=row.projectedPurchase===0?(list.nextPointEstimate?`<small>${price}</small>`:""):`<small data-workshop-purchase>${row.projectedPurchase===null?"Projected purchase need unknown":`If buying the whole shortfall: ${row.projectedPurchase}`}${row.estimatedCopper===null?" · Cost unknown":` · Estimated cost ${copperText(row.estimatedCopper)}`} · ${price}</small>`;
+      return `<li class="shop-row shop-${esc(row.source)}"><span class="shop-count"><b>${amount}</b><small>${label}</small></span><span class="shop-item"><b>${esc(row.name)}</b><small>${row.required} total · ${row.have===null?"saved bag count unknown":`${row.quantityKind==="lower-bound"?"at least ":""}${row.have} in saved bags`}</small>${purchase}${storage}</span>${row.workshopStatus==="covered"?"":shopSource(row)}</li>`;
     };
     const sections=groups.map(([status,label])=>{
       const rows=list.rows.filter(r=>r.workshopStatus===status);
       return rows.length?`<section data-workshop-supply="${status}"><h3>${label}</h3><ul class="shop-list">${rows.map(rowHtml).join("")}</ul></section>`:"";
     }).join("");
-    return `<section class="skill-shopping"><div class="workshop-section-heading"><div><span class="eyebrow">SHOPPING LIST · ${list.crafts} ATTEMPT${list.crafts===1?"":"S"}</span><h2>Materials for this batch</h2></div></div>${sections}<p class="workshop-caveat">Storage and alt counts are last seen and never reduce a bag shortfall. Verify stock and transfer access in game. ${esc(list.note)}</p></section>`;
+    const point=list.nextPointEstimate;
+    const estimate=point?`<p class="workshop-caveat" data-workshop-point-cost>Next skill point · estimated purchase cost for about ${point.attempts} attempt${point.attempts===1?"":"s"}: ${point.estimatedCopper===null?"unknown":copperText(point.estimatedCopper)}. Based on saved bags and this character’s dated AH buyouts; skill gains are not guaranteed.</p>`:"";
+    return `<section class="skill-shopping"><div class="workshop-section-heading"><div><span class="eyebrow">SHOPPING LIST · ${list.crafts} ATTEMPT${list.crafts===1?"":"S"}</span><h2>Materials for this batch</h2></div></div>${sections}${estimate}<p class="workshop-caveat">Storage and alt snapshots can overlap and are never pooled or subtracted. Verify actual stock, bank access and whether items can be transferred. AH prices and quantities on offer now are unknown. ${esc(list.note)}</p></section>`;
   }
   function skillLedger(m){
     if(!m||m.nextRecipe===undefined||!m.profession)return "";
