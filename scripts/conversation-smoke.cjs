@@ -34,64 +34,86 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   const call=(method,...args)=>page.evaluate(({method,args})=>window.backstage[method](...args),{method,args});
   const open=()=>navigate(page, "assistant");await open();
   const field=page.getByRole('textbox',{name:'Your question',exact:true});
-  const send=async text=>{await field.fill(text);await page.getByRole('button',{name:'Send question',exact:true}).click();};
-  // The reply paints after the memory review settles (Stop stays available until then); slow CI runners need more than 6 s.
-  const done=async()=>{const reply=await app.evaluate(()=>conversationFixture.requests.at(-1)?.reply);if(reply)await page.locator('#chatlog').getByText(reply,{exact:true}).last().waitFor({timeout:20000});await page.waitForFunction(()=>document.querySelector('#chat-form [type=submit]')?.disabled===false&&!document.querySelector('[data-command="stop-response"]'),null,{timeout:20000});};
   const count=()=>app.evaluate(()=>conversationFixture.requests.length);
+  // A click doesn't await the provider IPC. Observe the slot reserved before this
+  // send, not the previous reply (which a memory scope change can remove).
+  const admitted=(index,timeout=20000)=>app.evaluate(async(_e,{index,timeout})=>{
+   const deadline=Date.now()+timeout;
+   while(!conversationFixture.requests[index]){
+    if(Date.now()>=deadline)throw Error('Provider request '+(index+1)+' was not admitted');
+    await new Promise(resolve=>setTimeout(resolve,10));
+   }
+   return conversationFixture.requests[index].reply;
+  },{index,timeout});
+  const send=async text=>{
+   await field.fill(text);
+   const index=await count();
+   await page.getByRole('button',{name:'Send question',exact:true}).click();
+   return index;
+  };
+  const idle=()=>page.waitForFunction(()=>document.querySelector('#chat-form [type=submit]')?.disabled===false&&!document.querySelector('[data-command="stop-response"]'),null,{timeout:20000});
+  const done=async index=>{
+   const reply=await admitted(index);
+   assert.ok(reply,'Expected a successful fixture reply for request '+(index+1));
+   // The reply paints after memory review settles.
+   await page.locator('#chatlog .message.assistant:last-child').getByText(reply,{exact:true}).waitFor({timeout:20000});
+   await idle();
+  };
+  const answer=async text=>done(await send(text));
   const latest=()=>app.evaluate(()=>{const i=conversationFixture.requests.at(-1).input;return {prompt:i.prompt,context:i.context};});
-  const pending=()=>page.getByRole('button',{name:'Stop response',exact:true}).waitFor();
-  await send('Which pet should my hunter use in WoW Forever');await done();
-  await send('This is for wow forever, not retail');await done();
+  const pending=async index=>{await admitted(index);await page.getByRole('button',{name:'Stop response',exact:true}).waitFor();return index;};
+  await answer('Which pet should my hunter use in WoW Forever');
+  await answer('This is for wow forever, not retail');
   const second=await latest();assert.match(second.prompt,/Which pet should my hunter use/,'Follow-up must include original pet question in actual outgoing main request');assert.match(second.prompt,/untrusted/i);assert.match(second.prompt,/This is for wow forever, not retail/);assert.doesNotMatch(JSON.stringify(second),/PRIVATE_NOTE_CANARY|PRIVATE_GOAL_CANARY/);
   assert.match(await page.locator('[data-conversation-notice]').innerText(),/recent messages/i);
   const chat=await page.locator('#chatlog').innerText(),beforeNav=await count();await navigate(page, "guide");await open();assert.equal(await page.locator('#chatlog').innerText(),chat);assert.equal(await count(),beforeNav);
   // Private edits and public observations neither insert their text nor reset the owner.
-  let state=(await call('bootstrap')).state;const next=structuredClone(state);next.profiles[0].notes='EDITED_PRIVATE_CANARY';next.profiles[0].level=13;await call('saveState',next,state);await send('Where next?');await done();assert.match((await latest()).prompt,/Which pet should my hunter use/);assert.doesNotMatch(JSON.stringify(await latest()),/EDITED_PRIVATE/);
-  const verbatim='  Where next, exactly?\n  ';await send(verbatim);await done();assert.ok((await latest()).prompt.endsWith(verbatim),'Typed current question must remain verbatim, including surrounding whitespace');
+  let state=(await call('bootstrap')).state;const next=structuredClone(state);next.profiles[0].notes='EDITED_PRIVATE_CANARY';next.profiles[0].level=13;await call('saveState',next,state);await answer('Where next?');assert.match((await latest()).prompt,/Which pet should my hunter use/);assert.doesNotMatch(JSON.stringify(await latest()),/EDITED_PRIVATE/);
+  const verbatim='  Where next, exactly?\n  ';await answer(verbatim);assert.ok((await latest()).prompt.endsWith(verbatim),'Typed current question must remain verbatim, including surrounding whitespace');
   const boundaryQuestion=' '.repeat(1000)+'Where should I level after this quest?';
-  const boundaryReply='Synthetic Forever answer '+((await count())+1);await send(boundaryQuestion);
+  const boundaryIndex=await send(boundaryQuestion);const boundaryReply='Synthetic Forever answer '+(boundaryIndex+1);
   await page.waitForFunction(reply=>document.querySelector('[data-question-recovery]')||document.querySelector('#chatlog .message.assistant:last-child')?.textContent.includes(reply),boundaryReply);
   assert.equal(await page.locator('[data-question-recovery]').count(),0,'Valid original question with 1000 leading spaces must deliver its completed answer');
-  await done();assert.ok((await latest()).prompt.endsWith(boundaryQuestion),'Full outgoing question must preserve the whitespace prefix');
+  await done(boundaryIndex);assert.ok((await latest()).prompt.endsWith(boundaryQuestion),'Full outgoing question must preserve the whitespace prefix');
   const boundedDraft=await call('memoryDraft','Alpha');assert.equal(boundedDraft.question,boundaryQuestion.trimStart());assert.match(await page.locator('[data-memory-review]').innerText(),/Where should I level after this quest/);
-  await send('Continue after the whitespace-prefixed question');await done();const recent=(await latest()).prompt.split('\n').find(line=>line.startsWith('[{'));assert.equal(JSON.parse(recent).at(-1).question,boundaryQuestion,'Main history preserves the complete original question');
+  await answer('Continue after the whitespace-prefixed question');const recent=(await latest()).prompt.split('\n').find(line=>line.startsWith('[{'));assert.equal(JSON.parse(recent).at(-1).question,boundaryQuestion,'Main history preserves the complete original question');
   await page.screenshot({path:path.join(capture,'conversation-full.png'),fullPage:true});
   // Same IDs restored/imported/root changed are explicit process epochs.
   for(const reason of ['source-root','import','restore','reset']){
-   await app.evaluate((_e,reason)=>conversationFixture.context.invalidate(reason),reason);await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await send('Fresh '+reason+' question');await done();assert.doesNotMatch((await latest()).prompt,/Which pet should my hunter use/);
+   await app.evaluate((_e,reason)=>conversationFixture.context.invalidate(reason),reason);await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await answer('Fresh '+reason+' question');assert.doesNotMatch((await latest()).prompt,/Which pet should my hunter use/);
   }
-  await page.getByLabel('Use my active character',{exact:true}).uncheck();await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');assert.equal(await page.locator('#chatlog').innerText(),'');await send('Sharing off question');await done();assert.doesNotMatch((await latest()).prompt,/Fresh reset question/);
+  await page.getByLabel('Use my active character',{exact:true}).uncheck();await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');assert.equal(await page.locator('#chatlog').innerText(),'');await answer('Sharing off question');assert.doesNotMatch((await latest()).prompt,/Fresh reset question/);
   // Save an explicitly reviewed synthetic private exchange, select it anew, then omit it.
-  await call('clearConversation');await send('SAVED_PRIVATE_CANARY quest');await done();const draft=await call('memoryDraft','Alpha');await call('saveMemory',{profileId:'Alpha',responseId:draft.responseId});await page.getByRole('button',{name:'Refresh memory',exact:true}).click();
-  const select=page.locator('[data-memory-select]').first();await select.waitFor();await select.check();await send('Use selected memory');await done();assert.match((await latest()).prompt,/SAVED_PRIVATE_CANARY/);assert.equal(await select.isChecked(),false);await send('Ordinary following question');await done();assert.doesNotMatch((await latest()).prompt,/SAVED_PRIVATE_CANARY|MEMORY_DERIVED_CANARY/);assert.equal(await page.locator('#chatlog').getByText('MEMORY_DERIVED_CANARY',{exact:true}).count(),0);
+  await call('clearConversation');await answer('SAVED_PRIVATE_CANARY quest');const draft=await call('memoryDraft','Alpha');await call('saveMemory',{profileId:'Alpha',responseId:draft.responseId});await page.getByRole('button',{name:'Refresh memory',exact:true}).click();
+  const select=page.locator('[data-memory-select]').first();await select.waitFor();await select.check();await answer('Use selected memory');assert.match((await latest()).prompt,/SAVED_PRIVATE_CANARY/);assert.equal(await select.isChecked(),false);await answer('Ordinary following question');assert.doesNotMatch((await latest()).prompt,/SAVED_PRIVATE_CANARY|MEMORY_DERIVED_CANARY/);assert.equal(await page.locator('#chatlog').getByText('MEMORY_DERIVED_CANARY',{exact:true}).count(),0);
   // Clear in-flight, Stop/edit/retry, and late success cannot reinsert old work.
-  await send('HOLD clear quest');await pending();const heldClear=(await count())-1;await page.getByRole('button',{name:'Clear conversation',exact:true}).click();await done();assert.equal(await page.locator('#chatlog').innerText(),'');assert.equal(await call('memoryDraft','Alpha'),null);await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_CLEAR_CANARY'),heldClear);
-  await send('HOLD stop quest');await pending();const heldStop=(await count())-1;await page.getByRole('button',{name:'Stop response',exact:true}).click();await page.getByRole('button',{name:'Edit question',exact:true}).click();assert.equal(await field.inputValue(),'HOLD stop quest');await send('Recovered quest');await done();await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_STOP_CANARY'),heldStop);assert.doesNotMatch((await latest()).prompt,/HOLD stop quest|LATE_/);
+  const heldClear=await pending(await send('HOLD clear quest'));await page.getByRole('button',{name:'Clear conversation',exact:true}).click();await idle();assert.equal(await page.locator('#chatlog').innerText(),'');assert.equal(await call('memoryDraft','Alpha'),null);await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_CLEAR_CANARY'),heldClear);
+  const heldStop=await pending(await send('HOLD stop quest'));await page.getByRole('button',{name:'Stop response',exact:true}).click();await page.getByRole('button',{name:'Edit question',exact:true}).click();assert.equal(await field.inputValue(),'HOLD stop quest');await answer('Recovered quest');await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_STOP_CANARY'),heldStop);assert.doesNotMatch((await latest()).prompt,/HOLD stop quest|LATE_/);
   await send('FAIL quest');await page.getByRole('button',{name:'Edit question',exact:true}).waitFor();assert.match(await page.locator('#chatlog').innerText(),/Recovered quest/);
   // Physical input hold preserves the original node; completion preserves newer draft/caret.
   await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(984,635));
   await field.fill('HOLD physical quest');const submit=page.getByRole('button',{name:'Send question',exact:true});await submit.focus();await page.evaluate(()=>{window.heldConversationSend=document.querySelector('#chat-form [type=submit]');});const beforeHeld=await count();await page.keyboard.down('Enter');
-  await app.evaluate(async(_e,n)=>{const end=Date.now()+4000;while(conversationFixture.requests.length<=n){if(Date.now()>end)throw Error('Held send not admitted');await new Promise(r=>setTimeout(r,10));}},beforeHeld);
-  assert.deepEqual(await page.evaluate(()=>[heldConversationSend.isConnected,heldConversationSend===document.querySelector('#chat-form [type=submit]')]),[true,true]);await page.keyboard.up('Enter');await pending();await page.getByRole('button',{name:'Stop response',exact:true}).click();await field.fill('New editable draft');await field.evaluate(n=>{window.originalConversationField=n;n.focus();n.setSelectionRange(4,9);});await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_PHYSICAL_CANARY'),beforeHeld);
+  await admitted(beforeHeld,4000);
+  assert.deepEqual(await page.evaluate(()=>[heldConversationSend.isConnected,heldConversationSend===document.querySelector('#chat-form [type=submit]')]),[true,true]);await page.keyboard.up('Enter');await pending(beforeHeld);await page.getByRole('button',{name:'Stop response',exact:true}).click();await field.fill('New editable draft');await field.evaluate(n=>{window.originalConversationField=n;n.focus();n.setSelectionRange(4,9);});await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_PHYSICAL_CANARY'),beforeHeld);
   assert.deepEqual(await field.evaluate(n=>[n===originalConversationField,n.isConnected,document.activeElement===n,n.selectionStart,n.selectionEnd]),[true,true,true,4,9]);
   await page.screenshot({path:path.join(capture,'conversation-984x635.png'),fullPage:true});
   const sendsBeforeKeys=await count();await field.press('Shift+Enter');assert.equal(await count(),sendsBeforeKeys);await field.evaluate(n=>{n.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));n.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,isComposing:true}));n.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}));});assert.equal(await count(),sendsBeforeKeys);
   // Character away/back, provider and reload boundaries clear both presentation and wire history.
-  for(const id of ['Beta','Alpha']){await page.getByLabel('Active character',{exact:true}).selectOption(id);await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await send('Quest for '+id);await done();assert.doesNotMatch((await latest()).prompt,/Recovered quest|physical quest/);}
-  await call('saveProvider',{provider:'ollama',model:'fixture-two',endpoint:'http://127.0.0.1:11434',authMode:'api'});await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await page.reload();await open();assert.equal(await page.locator('#chatlog').innerText(),'');await send('Reloaded quest');await done();assert.equal((await latest()).prompt,'Reloaded quest');
+  for(const id of ['Beta','Alpha']){await page.getByLabel('Active character',{exact:true}).selectOption(id);await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await answer('Quest for '+id);assert.doesNotMatch((await latest()).prompt,/Recovered quest|physical quest/);}
+  await call('saveProvider',{provider:'ollama',model:'fixture-two',endpoint:'http://127.0.0.1:11434',authMode:'api'});await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await page.reload();await open();assert.equal(await page.locator('#chatlog').innerText(),'');await answer('Reloaded quest');assert.equal((await latest()).prompt,'Reloaded quest');
   // Exercise actual same-ID replacement transactions, including late in-flight replies.
   await app.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1});});
   const point=(await call('checkpointNow')).points[0];
-  await send('HOLD actual restore');await pending();const restoreHeld=(await count())-1;
+  const restoreHeld=await pending(await send('HOLD actual restore'));
   const preview=await call('previewCheckpoint',point.id);const restored=await call('restoreCheckpoint',{id:preview.id,sha256:preview.sha256});assert.equal(restored.activeProfileId,'Alpha');
   await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_RESTORE_CANARY'),restoreHeld);
-  await send('After actual restore');await done();assert.equal((await latest()).prompt,'After actual restore');
+  await answer('After actual restore');assert.equal((await latest()).prompt,'After actual restore');
   const backup=path.join(dir,'synthetic-backup.json');await fs.writeFile(backup,JSON.stringify((await call('bootstrap')).state));
   await app.evaluate(({dialog},backup)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[backup]});},backup);
-  await send('HOLD actual import');await pending();const importHeld=(await count())-1;const imported=await call('importData');assert.equal(imported.activeProfileId,'Alpha');
+  const importHeld=await pending(await send('HOLD actual import'));const imported=await call('importData');assert.equal(imported.activeProfileId,'Alpha');
   await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_IMPORT_CANARY'),importHeld);
-  await send('After actual import');await done();assert.equal((await latest()).prompt,'After actual import');
-  await send('HOLD actual reset');await pending();const resetHeld=(await count())-1;const reset=await call('resetData');assert.deepEqual(reset.profiles,[]);
+  await answer('After actual import');assert.equal((await latest()).prompt,'After actual import');
+  const resetHeld=await pending(await send('HOLD actual reset'));const reset=await call('resetData');assert.deepEqual(reset.profiles,[]);
   await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_RESET_CANARY'),resetHeld);assert.equal(await call('memoryDraft',null),null);
   const ipcChecks=await app.evaluate(async({ipcMain,BrowserWindow})=>{const win=BrowserWindow.getAllWindows()[0],event={sender:win.webContents,senderFrame:win.webContents.mainFrame};const rejects=async(name,e,...args)=>{try{await ipcMain._invokeHandlers.get('backstage:'+name)(e,...args);return false;}catch{return true;}};return [await rejects('clearConversation',event,'extra'),await rejects('askCompanion',event,{},{}),await rejects('askCompanion',event,{provider:'ollama',prompt:'q',shareProfile:true,history:[]}),await rejects('clearConversation',{sender:{},senderFrame:{}})];});assert.ok(ipcChecks.every(Boolean));
   await fs.writeFile(path.join(capture,'requests.json'),JSON.stringify(await app.evaluate(()=>conversationFixture.requests.map(({input})=>({prompt:input.prompt,context:input.context}))),null,2));
