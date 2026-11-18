@@ -95,7 +95,26 @@ local function number(n)
 end
 -- The compact Compass (0.54): what a player wants at a glance while playing, from facts already captured.
 -- -> head text (two lines), XP {cur,max,rested} or nil, body lines
-local function compactView(c)
+local function currentRoute()
+    local route=safe(BackstageForeverRouteNow)
+    if type(route)=='table' and type(route.text)=='string' and route.text~='' then return route end
+end
+local function routeLine(route)
+    return '|cffffd100'..T('Route')..' '..number(route.index)..'/'..number(route.total)..':|r '..text(route.text,120)
+end
+local function recommendation(coach)
+    local function eligible(pick)
+        return type(pick)=='table' and type(pick.id)=='string' and type(pick.signature)=='string' and dismissed[pick.id]~=pick.signature
+    end
+    if eligible(coach.recommendation) then return coach.recommendation end
+    for _,pick in ipairs(coach.alternatives or {}) do if eligible(pick) then return pick end end
+end
+local function quietLine(coach)
+    if coach.recommendation then return T('Quiet for now. Continue at your own pace.') end
+    if coach.status=='unavailable' then return T('No advice available. Check your quest log.') end
+    return T('Nothing to suggest yet. Type /bf next for the nearest quest.')
+end
+local function compactView(c,route,coach)
     local where=text(c.location and c.location.zone,40)
     local sub=text(c.location and c.location.subZone,40)
     if sub~='' and sub~=where then where=where~='' and (where..' - '..sub) or sub end
@@ -112,21 +131,15 @@ local function compactView(c)
     local pace=type(BackstageForeverPaceSummary)=='function' and safe(BackstageForeverPaceSummary)
     out[#out+1]=type(pace)=='string' and pace or T('Pace: shown after a few minutes of play')
     if xp and xp.resting then out[#out+1]=T('Resting: rested XP is building up') end
-    local route=type(BackstageForeverRouteNow)=='function' and safe(BackstageForeverRouteNow)
-    if type(route)=='table' and type(route.text)=='string' then
-        out[#out+1]='|cffffd100Route '..number(route.index)..'/'..number(route.total)..':|r '..text(route.text,120)
+    if route then
+        out[#out+1]=routeLine(route)
+    elseif type(coach)=='table' then
+        local pick=recommendation(coach)
+        out[#out+1]=pick and ('|cffffd100'..T('Next:')..'|r '..text(pick.title,110)) or quietLine(coach)
     else
-        local coach=type(BackstageForeverBuildCoach)=='function' and safe(BackstageForeverBuildCoach,c,{mode=settings.mode,skillLineId=settings.profession.skillLineId,recipeId=settings.profession.recipeId,crafts=settings.profession.crafts})
-        local pick=type(coach)=='table' and coach.recommendation
-        if type(pick)~='table' or dismissed[pick.id]==pick.signature then pick=nil
-            for _,v in ipairs(type(coach)=='table' and coach.alternatives or {}) do if type(v)=='table' and dismissed[v.id]~=v.signature then pick=v;break end end
-        end
-        if type(pick)=='table' and pick.title then out[#out+1]='|cffffd100'..T('Next:')..'|r '..text(pick.title,110)
-        else
-            local plan=type(BackstageForeverBuildPlan)=='function' and safe(BackstageForeverBuildPlan,c,{focus=settings.focus,minutes=settings.minutes})
-            local step=type(plan)=='table' and type(plan.steps)=='table' and plan.steps[1]
-            out[#out+1]=type(step)=='table' and ('|cffffd100'..T('Next:')..'|r '..text(step.title,110)) or ('|cffffd100'..T('Next:')..'|r '..T('type /bf next for the nearest quest'))
-        end
+        local plan=safe(BackstageForeverBuildPlan,c,{focus=settings.focus,minutes=settings.minutes})
+        local step=type(plan)=='table' and type(plan.steps)=='table' and plan.steps[1]
+        out[#out+1]='|cffffd100'..T('Next:')..'|r '..(type(step)=='table' and text(step.title,110) or T('type /bf next for the nearest quest'))
     end
     return headText,bar,out
 end
@@ -155,6 +168,8 @@ local function clearOnMyWay()
 end
 update=function()
     if not panel then return end
+    -- A redraw (including hide/show and route changes) retires earlier clicks.
+    epoch=epoch+1
     safe(preparationLine.SetText,preparationLine,'')
     selectedCoach=nil
     clearOnMyWay()
@@ -164,6 +179,8 @@ update=function()
     if combat() or not visible or not active then safe(panel.Hide,panel);return end
     local lines={'Getting ready. If this stays, type /reload once.'}
     local selected,command,stepIndex,onMyWay
+    local route=latest and currentRoute()
+    local coach=latest and not route and safe(BackstageForeverBuildCoach,latest,{mode=settings.mode,skillLineId=settings.profession.skillLineId,recipeId=settings.profession.recipeId,crafts=settings.profession.crafts})
     if latest then
         lines={text(latest.name,60)..'  |  Level '..text(tostring(latest.level),4)..' '..text(latest.className,30)}
         if not collapsed then
@@ -171,37 +188,35 @@ update=function()
             lines[#lines+1]=text(latest.location and latest.location.zone,70)..' | '..(xp and ('XP '..text(tostring(xp.current),12)..' / '..text(tostring(xp.max),12)..((tonumber(xp.max) or 0)>0 and (' ('..math.floor((tonumber(xp.current) or 0)/xp.max*100)..'%)') or '')..((tonumber(xp.rested) or 0)>0 and ' | rested' or '')) or 'XP unavailable')
             local pace=type(BackstageForeverPaceSummary)=='function' and safe(BackstageForeverPaceSummary)
             if type(pace)=='string' then lines[#lines+1]=pace end
-            local coach=safe(BackstageForeverBuildCoach,latest,{mode=settings.mode,skillLineId=settings.profession.skillLineId,recipeId=settings.profession.recipeId,crafts=settings.profession.crafts})
-            if type(coach)=='table' then
-                local opportunities={};if coach.recommendation then opportunities[1]=coach.recommendation end
-                for _,v in ipairs(coach.alternatives or {})do opportunities[#opportunities+1]=v end
-                local shown={};for _,v in ipairs(opportunities)do if dismissed[v.id]~=v.signature then shown[#shown+1]=v end end
-                selectedCoach=shown[1]
+            if route then
+                lines[#lines+1]=routeLine(route)
+            elseif type(coach)=='table' then
+                selectedCoach=recommendation(coach)
                 if selectedCoach then
                     local extra=coach.onMyWay
                     if onMyWayFresh and not captureMessage and not questDetails and not professionDetails
-                        and selectedCoach==coach.recommendation and extra and not safe(BackstageForeverRouteNow) then
+                        and selectedCoach==coach.recommendation and extra then
                         if dismissed[extra.id]~=extra.signature then onMyWay=extra end
-                    else extra=nil end
-                    lines[#lines+1]='Next: '..text(selectedCoach.title,80)
-                    lines[#lines+1]=text(selectedCoach.reason,150)
-                    if not questDetails then lines[#lines+1]=text(selectedCoach.detail,170)end
-                    lines[#lines+1]='Evidence: '..(selectedCoach.questStep and sourceLabel(selectedCoach.questStep) or text(selectedCoach.evidence,100))
-                    if not questDetails then for i=2,math.min(3,#shown)do
-                        if not extra or shown[i].id~='quest:'..extra.questId then lines[#lines+1]='Or: '..text(shown[i].title,70)end
-                    end end
+                    end
+                    lines[#lines+1]=T('Next:')..' '..text(selectedCoach.title,80)
+                    local why,detail=selectedCoach.reason,selectedCoach.detail
+                    if type(why)=='string' and why~='' then
+                        lines[#lines+1]=text(T(why),150)
+                        if type(detail)=='string' and detail:sub(1,#why)==why then detail=detail:sub(#why+1):match('^%s*(.*)') end
+                    end
+                    lines[#lines+1]=T('Evidence:')..' '..(selectedCoach.questStep and sourceLabel(selectedCoach.questStep) or text(T(selectedCoach.evidence),100))
+                    if not questDetails and detail and detail~='' then lines[#lines+1]=text(detail,170)end
                     local step=selectedCoach.kind=='quest' and selectedCoach.questStep or nil
                     local candidate=step and validCommand(step)
                     if candidate and type(BackstageForeverGuide)=='function' then selected=step;command=candidate;stepIndex=1 end
                     local clickEpoch,clickCharacter,chosen=epoch,latest,selectedCoach
                     safe(notNowButton.SetScript,notNowButton,'OnClick',function()
-                        if not active or not visible or collapsed or combat() or epoch~=clickEpoch or latest~=clickCharacter or not selectedCoach or selectedCoach.id~=chosen.id or selectedCoach.signature~=chosen.signature then return end
+                        if not active or not visible or collapsed or combat() or epoch~=clickEpoch or latest~=clickCharacter or currentRoute() or not selectedCoach or selectedCoach.id~=chosen.id or selectedCoach.signature~=chosen.signature then return end
                         rememberDismissal(chosen)
                     end)
                     safe(notNowButton.Enable,notNowButton)
                 else
-                    lines[#lines+1]=#opportunities>0 and 'Quiet for now. Continue at your own pace.' or 'Nothing to suggest yet. Type /bf next for the nearest quest.'
-                    lines[#lines+1]='Open your own profession normally for recipe advice.'
+                    lines[#lines+1]=quietLine(coach)
                 end
                 if questDetails then
                     local plan=safe(BackstageForeverBuildPlan,latest,{focus=settings.focus,minutes=settings.minutes})
@@ -243,16 +258,16 @@ update=function()
         end
     end
     local headText,bar
-    if collapsed and latest then headText,bar,lines=compactView(latest) end
+    if collapsed and latest then headText,bar,lines=compactView(latest,route,coach) end
     if captureMessage then lines[#lines+1]=captureMessage end
     invoke(head,'SetText',headText or '');invoke(head,headText and 'Show' or 'Hide')
     paintXp(bar)
     safe(body.SetText,body,table.concat(lines,'\n'))
     safe(body.ClearAllPoints,body)
-    local top=collapsed and (headText and (bar and -88 or -70) or -40) or professionDetails and -148 or type(BackstageForeverBuildProfessionCoach)=='function' and -120 or -94
+    local top=collapsed and (headText and (bar and -88 or -70) or -40) or route and -46 or professionDetails and -148 or type(BackstageForeverBuildProfessionCoach)=='function' and -120 or -94
     safe(body.SetPoint,body,'TOPLEFT',INSET,top)
-    if collapsed then
-        -- The compact Compass grows with its lines, keeping the footer clear of them.
+    if collapsed or route then
+        -- Short views grow with their lines, keeping the footer clear of them.
         local measured=safe(body.GetStringHeight,body)
         local h=type(measured)=='number' and measured>0 and math.min(measured,160) or #lines*14
         safe(body.SetHeight,body,h)
@@ -267,7 +282,7 @@ update=function()
     safe(sessionButton.SetText,sessionButton,settings.minutes..' min: '..(settings.minutes==15 and 1 or settings.minutes==60 and 3 or 2)..' steps')
     for _,control in ipairs({focusButton,sessionButton,goalButton,notNowButton,detailsButton,waypointButton,actionTitle,actionSource,preparationLine})do safe(collapsed and control.Hide or control.Show,control) end
     if type(BackstageForeverBuildCoach)=='function' then
-        for _,control in ipairs({focusButton,sessionButton})do safe((collapsed or not questDetails) and control.Hide or control.Show,control)end
+        for _,control in ipairs({focusButton,sessionButton})do safe((collapsed or route or not questDetails) and control.Hide or control.Show,control)end
         safe(detailsButton.SetText,detailsButton,questDetails and 'Less' or 'Quest details')
         safe(detailsButton.SetPoint,detailsButton,'TOPLEFT',questDetails and 246 or INSET,-64)
         safe(detailsButton.SetSize,detailsButton,questDetails and 72 or WIDE,22)
@@ -275,9 +290,9 @@ update=function()
     if professionDetailsButton then
         for _,control in ipairs({professionDetailsButton,professionButton,recipeButton,attemptsButton})do
             safe(control.SetScript,control,'OnClick',nil)
-            safe((collapsed or not latest or (control~=professionDetailsButton and not professionDetails)) and control.Hide or control.Show,control)
+            safe((collapsed or route or not latest or (control~=professionDetailsButton and not professionDetails)) and control.Hide or control.Show,control)
         end
-        local current=safe(BackstageForeverBuildProfessionCoach,latest,settings.profession)
+        local current=not route and safe(BackstageForeverBuildProfessionCoach,latest,settings.profession)
         local clickEpoch,clickCharacter=epoch,latest
         local function bind(control,fn)
             safe(control.SetScript,control,'OnClick',function()
@@ -310,13 +325,18 @@ update=function()
             bind(attemptsButton,function()choice.crafts=({[1]=5,[5]=10,[10]=20,[20]=1})[choice.crafts] or 1 end)
         end
     end
-    BackstageForeverHUDRefreshBadge()
+    if route then
+        for _,control in ipairs({focusButton,sessionButton,goalButton,detailsButton,notNowButton,waypointButton,actionTitle,actionSource,preparationLine})do invoke(control,'Hide')end
+    else
+        if not selectedCoach then invoke(notNowButton,'Hide')end
+        BackstageForeverHUDRefreshBadge()
+    end
     if onMyWay then
         onMyWayShown=onMyWay
         invoke(onMyWayTitle,'SetText','On my way: '..text(onMyWay.title,60))
         invoke(onMyWayEvidence,'SetText','Current game: hand-in on this map')
         invoke(onMyWayNotNow,'SetScript','OnClick',function()
-            if onMyWayShown~=onMyWay or combat() or safe(BackstageForeverRouteNow) then return end
+            if onMyWayShown~=onMyWay or combat() or currentRoute() then return end
             rememberDismissal(onMyWay)
         end)
         invoke(onMyWayTitle,'Show');invoke(onMyWayEvidence,'Show')
@@ -328,7 +348,7 @@ update=function()
         safe(actionSource.SetText,actionSource,qualifier..' — '..(selected.phase=='t' and 'turn-in' or 'objective'))
         local clickEpoch,clickCharacter,clickCoach=epoch,latest,selectedCoach
         safe(waypointButton.SetScript,waypointButton,'OnClick',function()
-            if not active or not visible or collapsed or epoch~=clickEpoch or latest~=clickCharacter or combat() or type(BackstageForeverGuide)~='function' then return end
+            if not active or not visible or collapsed or epoch~=clickEpoch or latest~=clickCharacter or combat() or currentRoute() or type(BackstageForeverGuide)~='function' then return end
             if clickCoach and (not selectedCoach or selectedCoach.id~=clickCoach.id or selectedCoach.signature~=clickCoach.signature)then return end
             safe(BackstageForeverGuide,command)
         end)
@@ -340,9 +360,12 @@ update=function()
     safe(panel.Show,panel)
 end
 function BackstageForeverHUDRefreshBadge()
-    if not preparationLine or not active or not visible or collapsed or combat() then return end
+    if not preparationLine or not active or not visible or collapsed or combat() or currentRoute() then return end
     local line=safe(BackstageForeverPinnedBadgeLine) or (preparation and preparation.text) or safe(BackstageForeverNextBadgeLine)
     safe(preparationLine.SetText,preparationLine,text(line,80))
+end
+function BackstageForeverHUDRouteChanged()
+    update()
 end
 BackstageForeverHUDUpdate=function(character)
     epoch=epoch+1
