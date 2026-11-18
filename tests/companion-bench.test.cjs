@@ -94,6 +94,37 @@ test("E1: exact recipe material answers use the Workshop carried projection with
   assert.equal(fetch.mock.callCount(), 0);
 });
 
+test("E1: Workshop exchanges never join provider history or correction continuity", async () => {
+  const { ask, seen, service, profileId } = workshopService({ model: true });
+  const ordinary = "Which pet should my hunter use in WoW Forever?";
+  assert.equal((await ask(ordinary)).kind, "ai");
+  const local = await ask();
+  assert.match(local.text, /Tinkla.*1\.60\.1\.70862.*2026-11-11/);
+  assert.match(local.text, /3 saved carried, 1 short/);
+  assert.equal(seen.length, 1);
+  const correction = service.session.prepare({ owner: service.owner(profileId), shareProfile: true, memoryIds: [],
+    prompt: "This is for wow forever, not retail" });
+  assert.equal(correction.questionForEvidence, ordinary);
+  const next = await ask("Tell me some lore about the Titans.");
+  assert.equal(next.kind, "ai");
+  assert.doesNotMatch(seen[1].prompt, /recipe #2330|Silverleaf|Tinkla|70862|2026-11-11|saved carried/);
+  assert.ok(seen[1].prompt.includes(ordinary), "ordinary provider continuity survives the offline exchange");
+  assert.equal(next.conversation.usedTurns, 1);
+  assert.equal(local.conversation.usedTurns, 0);
+});
+
+test("E1: a sharing change on a Workshop turn still retires earlier provider history", async () => {
+  const { ask, seen } = workshopService({ model: true });
+  assert.equal((await ask("Which pet should my hunter use in WoW Forever?")).kind, "ai");
+  const off = await ask(supplyQuestion, false);
+  assert.match(off.text, /Use my active character/);
+  assert.equal(off.conversation.resetReason, "scope-change");
+  assert.equal(seen.length, 1);
+  const next = "Tell me some lore about the Titans.";
+  assert.equal((await ask(next)).kind, "ai");
+  assert.equal(seen[1].prompt, next);
+});
+
 test("E1: a matching reference is historical only, and cannot follow the active character across builds", async () => {
   const { store, ask, seen } = workshopService({ model: true });
   assert.match((await ask()).text, /Historical gathering reference: Silverleaf .*70862.*current availability and access unknown/);
