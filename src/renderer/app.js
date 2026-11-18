@@ -2045,13 +2045,20 @@ setInterval(async () => {
   snapshotPolling = true;
   const pollingMutationEpoch = stateMutationEpoch;
   try {
-    const result = await api.gameSnapshot();
+    let result = await api.gameSnapshot();
     if (
       !result?.state ||
       stateMutationBusy ||
       pollingMutationEpoch !== stateMutationEpoch
     )
       return;
+    // A retired "Plan without a character" save may have reached the store.
+    // While manual onboarding is open, only an imported character can finish
+    // onboarding via a poll; a bare saved flag cannot dismiss the form.
+    if (!setupOpen && setupChoice === "manual" && !state.onboarded && result.state.onboarded &&
+        !result.state.profiles.some(p => p.source?.kind === "wow-addon")) {
+      result = { ...result, state: { ...result.state, onboarded: false } };
+    }
     refreshGameStatusWidget(result.gameStatus || {});
     const editing = isEditing();
     if (page === "party") {

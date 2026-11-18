@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.0 — Badges and Classic raid tips, 2026-11-18
+
+- Added desktop badges for distinct confirmed dungeon boss wins, three reviewed quest chains, and Revered and Exalted standings with Stormwind, Orgrimmar, and Timbermaw Hold.
+- Completed reviewed Classic boss tips for Molten Core and Blackwing Lair in the Instance Atlas and addon.
+- Preserved journal rollback compatibility with v1.8.0 and ordered reputation scans captured in the same second.
+- See the [release notes](docs/releases/1.9.0.md) for qualification and rollback caveats.
+
 ## 1.7.0 — The painted field journal, 2026-11-18
 
 - Repainted the welcome and desktop banners, and added individual Ledger illustrations for bags and bank, gold and prices, reputation, and cooldowns.
