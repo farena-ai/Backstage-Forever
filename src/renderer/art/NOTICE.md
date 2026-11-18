@@ -4,6 +4,8 @@ Original artwork made for Backstage Forever by Backstage Coding (art pass 1, 0.2
 
 None of these images is taken from World of Warcraft or any Blizzard product, and none reproduces Blizzard characters, logos or landmarks.
 
+In 1.7.0, Backstage Coding created new original illustrations locally with ComfyUI and Qwen-Image 2.1 and cropped and compressed them for the existing interfaces. This pass includes the desktop page and welcome banners, Ledger and World Map illustrations, quest and reference backgrounds, the Ragefire Chasm entry and boss portrait, matching Durotar, Barrens and Elwynn vistas, and selected in-game message textures. In-game display remains text over local addon textures; no game art is redistributed.
+
 | File | Used on |
 |---|---|
 | `hero-now.webp` | Now page header |

@@ -9,6 +9,10 @@ function lua(source) {
   const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], { cwd: path.join(__dirname, ".."), input: source, encoding: "utf8", timeout: 20000 });
   assert.equal(r.status, 0, r.stderr); assert.equal(r.stderr, ""); return r.stdout.trim();
 }
+test("Gear Sets paints its footer once and preserves the no-texture and combat paths", () => {
+  const fixture = fs.readFileSync(path.join(__dirname, "addon-sheet-art.lua"), "utf8");
+  assert.equal(lua(fixture), "Gear Sets art fixture passed");
+});
 // A synthetic client: what is worn, what sits in the bags, and an EquipItemByName that moves an
 // item from the bags to the slot it is given. Automation entry points error.
 const WORLD = String.raw`
