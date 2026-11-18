@@ -27,12 +27,18 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
       load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});
       const L=load('./src/core/live-bridge.cjs'); L.LiveBridge.prototype.readPreference=()=>false; L.LiveBridge.prototype.start=()=>{};
       const {ipcMain}=require('electron'), handle=ipcMain.handle.bind(ipcMain);
-      globalThis.routeFixture={arm:false, release:null};
+      globalThis.routeFixture={gates: {}, calls: {}};
       ipcMain.handle=(name,fn)=>handle(name,async (...args)=>{
-        const held=name==='backstage:worldMap' && routeFixture.arm;
-        if(held) routeFixture.arm=false;
+        routeFixture.calls[name]=(routeFixture.calls[name] || 0)+1;
+        const gate=routeFixture.gates[name];
+        const held=gate && !gate.claimed;
+        if(held) gate.claimed=true;
+        if(held && gate.reject){
+          await new Promise(resolve=>{gate.release=resolve;});
+          throw Error('Fixture character selection rejected');
+        }
         const result=await fn(...args);
-        if(held) await new Promise(resolve=>{routeFixture.release=resolve;});
+        if(held) await new Promise(resolve=>{gate.release=resolve;});
         return result;
       });
       load('./src/main.cjs');
@@ -50,14 +56,89 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await navigate(page, "guided-route");
     const press = async (el) => { await el.focus(); await page.keyboard.press("Enter"); };
     const route = page.locator("[data-gr-recovery]");
+    const picker = page.locator("#active-character");
+    const arm = (channel, reject = false) => app.evaluate((_, { channel, reject }) => {
+      routeFixture.gates[`backstage:${channel}`] = { reject };
+    }, { channel, reject });
+    const held = (channel) => app.evaluate(async (_, channel) => {
+      const gate = routeFixture.gates[`backstage:${channel}`];
+      for (let i = 0; i < 100 && !gate.release; i++) await new Promise((r) => setTimeout(r, 20));
+      if (!gate.release) throw Error(`Expected a held ${channel} response`);
+    }, channel);
+    const release = (channel) => app.evaluate((_, channel) => routeFixture.gates[`backstage:${channel}`].release(), channel);
+    const skipEntries = () => page.evaluate(() => Object.entries(localStorage).filter(([key]) => key.startsWith("bf-desktop-route-skips-v1:")));
     await route.getByText(/availability/i).waitFor();
     await route.locator('[data-quest-open="788"]').waitFor();
+
+    // Dispatch the old quest and Skip controls while the picker has changed but its save is unacknowledged.
+    const oldQuest = await route.locator('[data-quest-open="788"]').elementHandle();
+    const oldSkip = await route.getByRole("button", { name: "Skip this step" }).elementHandle();
+    await arm("saveState", true);
+    await picker.focus();
+    await picker.selectOption("Beta");
+    await held("saveState");
+    assert.equal(await picker.inputValue(), "Beta");
+    const requestsBefore = await app.evaluate(() => routeFixture.calls["backstage:guidedRoute"]);
+    await oldQuest.evaluate(el => el.click());
+    assert.equal(await page.locator("body").getAttribute("data-page"), "guided-route", "stale saved quest must not navigate");
+    await oldSkip.evaluate(el => el.click());
+    assert.equal(await app.evaluate(() => routeFixture.calls["backstage:guidedRoute"]), requestsBefore, "stale Skip must not request a route write");
+    assert.deepEqual(await skipEntries(), []);
+    await release("saveState");
+    await page.getByText("Fixture character selection rejected", { exact: true }).waitFor();
+    await route.getByText(/availability/i).waitFor();
+    assert.equal(await picker.inputValue(), "Alpha");
+    assert.equal(await picker.evaluate(el => el === document.activeElement), true);
+
+    // A repaint and a second picker change must not give the previous route its controls back.
+    await arm("saveState");
+    await picker.selectOption("Beta");
+    await held("saveState");
+    await navigate(page, "world-map");
+    await navigate(page, "guided-route");
+    assert.equal(await picker.inputValue(), "Beta");
+    await picker.selectOption("Alpha");
+    assert.equal(await route.count(), 0);
+    await release("saveState");
+    await route.getByText(/availability/i).waitFor();
+    assert.equal(await picker.inputValue(), "Alpha");
+    assert.equal(JSON.parse(await fs.readFile(path.join(dir, "state.json"), "utf8")).activeProfileId, "Alpha");
+
+    // A Skip admitted before the switch must not persist or steal focus when its reply arrives during it.
+    await arm("guidedRoute");
+    await press(route.getByRole("button", { name: "Skip this step" }));
+    await held("guidedRoute");
+    await arm("saveState");
+    await picker.focus();
+    await picker.selectOption("Beta");
+    await held("saveState");
+    await release("guidedRoute");
+    // Round-trip through the same IPC channel after the held reply before inspecting the renderer.
+    await page.evaluate(() => backstage.guidedRoute({ profileId: "Beta", skips: [] }));
+    assert.deepEqual(await skipEntries(), [], "retired Skip reply must not persist");
+    assert.equal(await picker.evaluate(el => el === document.activeElement), true);
+    await release("saveState");
+    await route.getByText(/matching reference/i).waitFor();
+    await picker.selectOption("Alpha");
+    await route.getByText(/availability/i).waitFor();
+
     await press(route.getByRole("button", { name: "Skip this step" }));
     await route.getByRole("button", { name: "Show on Map" }).waitFor();
     await page.reload();
     await navigate(page, "guided-route");
     await route.getByRole("button", { name: "Show on Map" }).waitFor();
+    const oldMap = await route.getByRole("button", { name: "Show on Map" }).elementHandle();
+    const oldRestore = await route.getByRole("button", { name: "Restore skipped steps" }).elementHandle();
+    const savedSkips = await skipEntries();
+    await arm("saveState");
     await page.locator("#active-character").selectOption("Beta");
+    await held("saveState");
+    await oldMap.evaluate(el => el.click());
+    assert.equal(await page.locator("body").getAttribute("data-page"), "guided-route", "stale map must not navigate");
+    await oldRestore.evaluate(el => el.click());
+    await page.evaluate(() => backstage.guidedRoute({ profileId: "Beta", skips: [] }));
+    assert.deepEqual(await skipEntries(), savedSkips, "stale Restore must not erase Alpha's skip");
+    await release("saveState");
     await route.getByText(/matching reference/i).waitFor();
     assert.equal(await route.locator("[data-map-focus], [data-quest-open]").count(), 0);
     await page.locator("#active-character").selectOption("Alpha");
@@ -78,17 +159,18 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await page.getByRole("heading", { name: "Cutting Teeth", exact: true }).first().waitFor();
     // Retire a genuine Alpha map response when the player selects Beta before it settles.
     await navigate(page, "guided-route");
-    await app.evaluate(() => { routeFixture.arm = true; });
+    await arm("worldMap");
     await press(route.getByRole("button", { name: "Show on Map" }));
     await page.locator("[data-world-map]").waitFor();
-    const held = await app.evaluate(async () => {
-      for (let i = 0; i < 100 && !routeFixture.release; i++) await new Promise((r) => setTimeout(r, 20));
-      return Boolean(routeFixture.release);
-    });
-    assert.equal(held, true, "Alpha map response held before changing character");
+    await held("worldMap");
+    await arm("saveState");
     await page.locator("#active-character").selectOption("Beta");
+    await held("saveState");
+    await release("worldMap");
+    await page.evaluate(() => backstage.worldMap({ mapId: 1411 }));
+    assert.equal(await first.count(), 0, "retired map reply must not reveal Alpha's goal during the switch");
+    await release("saveState");
     await page.waitForFunction(() => profile()?.id === "Beta");
-    await app.evaluate(() => routeFixture.release());
     await page.waitForFunction(() => WorldMapView._state().model?.profileId === "Beta");
     assert.equal(await first.count(), 0);
     await navigate(page, "guided-route");

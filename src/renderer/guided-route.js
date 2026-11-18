@@ -73,9 +73,18 @@ window.GuidedRouteView = (() => {
     reviewBusy = false; paintReview();
   }
   function paintReview() { const el = document.querySelector("[data-gr-review-slot]"); if (el) el.innerHTML = reviewPanel(); }
+  const reading = '<p class="gr-empty" role="status">Reading the route…</p>';
+  function retireRecovery() {
+    request++;
+    const slot = document.querySelector("[data-guided-route-body]");
+    if (slot) {
+      slot.innerHTML = reading;
+      window.I18n?.apply(slot);
+    }
+  }
   function page() {
     return `<section class="guided-route-page" data-guided-route>${PageHero.render({ art: "quests", eyebrow: "Adventure · Guided route", title: "Your route, step by step", subtitle: "Find your place from your last save, or see what is missing." })}
-      <div data-guided-route-body><p class="gr-empty">Reading the route…</p></div><div data-gr-review-slot>${reviewPanel()}</div></section>`;
+      <div data-guided-route-body>${reading}</div><div data-gr-review-slot>${reviewPanel()}</div></section>`;
   }
   function mounted() {
     const root = document.querySelector("[data-guided-route]");
@@ -83,7 +92,7 @@ window.GuidedRouteView = (() => {
     mountedFor = root;
     const owner = profile(), slot = root.querySelector("[data-guided-route-body]");
     let data = null, busy = false;
-    const current = () => root.isConnected && mountedFor === root && profile() === owner;
+    const current = () => !characterSelectionPending() && root.isConnected && mountedFor === root && profile() === owner;
     async function load(skips = readSkips(owner), save = false) {
       const id = ++request;
       busy = true;
@@ -122,7 +131,7 @@ window.GuidedRouteView = (() => {
       }
     });
     root.addEventListener("change", (e) => { if (e.target.matches?.("[data-gr-race]")) loadReview(e.target.value, 0); });
-    void load();
+    if (current()) void load();
   }
-  return { page, mounted };
+  return { page, mounted, retireRecovery };
 })();

@@ -410,6 +410,29 @@ async function mutateStateCall(fn) {
     stateMutationEpoch++;
   }
 }
+let pendingCharacterSelection = null;
+function characterSelectionPending() { return pendingCharacterSelection !== null; }
+async function selectActiveCharacter(id) {
+  const previous = pendingCharacterSelection;
+  const selection = { id };
+  pendingCharacterSelection = selection;
+  GuidedRouteView.retireRecovery();
+  WorldMapView.retireRouteFocus();
+  // Keep saves in picker order, including when the player changes their mind mid-save.
+  selection.save = (async () => {
+    if (previous) await previous.save.catch(() => {});
+    if (pendingCharacterSelection === selection) await persist({ ...state, activeProfileId: id });
+  })();
+  try {
+    await selection.save;
+  } finally {
+    if (pendingCharacterSelection === selection) {
+      pendingCharacterSelection = null;
+      // A failed save leaves the committed character in charge again.
+      render();
+    }
+  }
+}
 async function persist(next) {
   state = await mutateStateCall(() => api.saveState(next, state));
   await refreshBrief();
@@ -526,6 +549,7 @@ function render() {
   }
   const current = PlayerNavigation.current(page);
   root.innerHTML = `<button type="button" class="skip-content" data-shell-control="skip-content" data-action="skip-content">Skip to content</button><div class="shell"><aside class="rail">${brand()}${PlayerNavigation.main(page)}<div class="rail-bottom">${PlayerNavigation.secondary(page)}<div class="status"><i class="dot"></i>Local journal · private</div><small><button type="button" class="rail-link" data-link="website" title="Open backstagecoding.com in your browser">BACKSTAGE CODING</button><br>Frank Arena &amp; Jason Babiuch<br>v${esc(version)}${/^0./.test(String(version)) ? " · Desktop preview" : ""}</small></div></aside><main class="main" id="main-content" tabindex="-1" aria-labelledby="page-heading"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span id="page-heading" role="heading" aria-level="1">${current.label}${current.label !== current.pageLabel ? " / " + current.pageLabel : ""}</span></div><button data-shell-control="connection-status" class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span><span data-game-connection-label>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}</span><small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select data-shell-control="active-character" id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content${["game", "connections", "updates", "assistant"].includes(page) ? " bf-parchment" : ""}">${PlayerNavigation.subtabs(page)}${setupDock()}${{ now: NowView.page, adventure: adventure, company: Company.page, party: Party.page, preparation: Preparation.page, "world-map": WorldMapView.page, dungeons: DungeonAtlas.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, commands: CommandsView.page, coverage: CoverageView.page, talents: TalentsView.page, journey: JourneyView.page, badges: BadgesView.page, alts: AltsView.page, zones: WorldTrackerView.page, "guided-route": GuidedRouteView.page, sheet: SheetView.page, ledger: LedgerView.bags, "ledger-gold": LedgerView.gold, "ledger-reputation": LedgerView.reputation, "ledger-cooldowns": LedgerView.cooldowns, updates: updatesPage }[page]()}</div></main></div>`;
+  if (pendingCharacterSelection) document.getElementById("active-character").value = pendingCharacterSelection.id;
   PlayerNavigation.mounted(root);
   window.ZoneArt?.paint(root);
   refreshGameStatusWidget();
@@ -1365,7 +1389,7 @@ root.addEventListener("click", (event) => {
     }
     if (button.dataset.mapFocus) {
       // Focus first, so the map mounts straight onto the target instead of racing a load of the old zone.
-      try { const f = JSON.parse(button.dataset.mapFocus); WorldMapView.focus(f); page = "world-map"; render(); } catch {}
+      try { const f = JSON.parse(button.dataset.mapFocus); if (WorldMapView.focus(f)) { page = "world-map"; render(); } } catch {}
     }
     if (button.dataset.questOpen) {
       if (button.dataset.ledgerQuestProfile && button.dataset.ledgerQuestProfile !== state.activeProfileId) return;
@@ -1802,8 +1826,7 @@ root.addEventListener("change", (event) =>
       await fetchModels();
     }
     if (event.target.id === "active-character") {
-      await persist({ ...state, activeProfileId: event.target.value });
-      render();
+      await selectActiveCharacter(event.target.value);
     }
     if (event.target.dataset.goal) {
       await persist(

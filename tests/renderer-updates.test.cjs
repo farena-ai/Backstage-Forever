@@ -54,6 +54,7 @@ function harness(overrides = {}) {
   }
   const context = vm.createContext({
     window: {
+      addEventListener: () => {},
       backstage: { bootstrap: () => new Promise(() => {}), voiceCancel: async () => ({phase:"idle"}), ...overrides },
     },
     document: {
@@ -110,6 +111,10 @@ function harness(overrides = {}) {
     context[name === "voice" ? "Voice" : "Memory"] = context.window[name === "voice" ? "Voice" : "Memory"];
   }
   for(const [file,name] of [["adventure-coach","AdventureCoach"],["player-navigation","PlayerNavigation"]]){vm.runInContext(fs.readFileSync(path.join(__dirname,`../src/renderer/${file}.js`),"utf8"),context);context[name]=context.window[name];}
+  for (const [file, name] of [["guided-route", "GuidedRouteView"], ["world-map", "WorldMapView"]]) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${file}.js`), "utf8"), context);
+    context[name] = context.window[name];
+  }
   let recoveryHost;
   const recoveryInit = context.Recovery.init;
   context.Recovery.init = host => { recoveryHost = host; recoveryInit(host); };

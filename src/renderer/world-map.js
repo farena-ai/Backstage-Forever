@@ -720,7 +720,8 @@ window.WorldMapView = (() => {
       if (root && pendingFocus?.routeBuild && pendingFocus !== wanted && routeOwner(pendingFocus)) {
         void load(pendingFocus.mapId);
       } else if (root && wanted?.routeBuild && !routeOwner(wanted)) {
-        void load(); // A character change may have mounted this view while the old request was busy.
+        // The settling selection will mount a fresh map; don't reload the old character meanwhile.
+        if (!characterSelectionPending()) void load();
       } else if (root) {
         paintAll(); loadJourney(true);
         if (revealRoute) {
@@ -861,6 +862,7 @@ window.WorldMapView = (() => {
   if (api?.onLiveLink) api.onLiveLink(onLive);
   window.addEventListener("resize", () => { if (document.querySelector("[data-world-map]")) resize(); });
   function routeOwner(f) {
+    if (characterSelectionPending()) return false;
     const p = profile();
     return p?.id === f.profileId && p.clientBuild === f.routeBuild && p.source?.id === f.routeSource && p.quests?.some((q) => q.id === f.questId);
   }
@@ -869,10 +871,17 @@ window.WorldMapView = (() => {
     if (selected?.routeBuild) selected = null;
     if (focused?.pin?.routeBuild) focused = null;
   }
-  function focus(f) { if (!f || !Number.isSafeInteger(f.mapId) || (f.routeBuild && !routeOwner(f))) return; pendingFocus = f; follow = false; mapId = f.mapId; savePref(); if (document.querySelector("[data-world-map]")) load(f.mapId); }
+  function retireRouteFocus() {
+    if (pendingFocus?.routeBuild) pendingFocus = null;
+    if (model?.pins.some((p) => p.routeBuild)) {
+      clearRoutePin();
+      if (document.querySelector("[data-world-map]")) { card(); draw(); }
+    }
+  }
+  function focus(f) { if (!f || !Number.isSafeInteger(f.mapId) || (f.routeBuild && !routeOwner(f))) return false; pendingFocus = f; follow = false; mapId = f.mapId; savePref(); if (document.querySelector("[data-world-map]")) load(f.mapId); return true; }
   // Open a whole zone (a saved location only knows its name): no pin, just that zone's map.
   function focusZone(name) { const id = window.ZoneArt?.idFor(name); if (!Number.isSafeInteger(id)) return false; pendingFocus = null; follow = false; mapId = id; savePref(); if (document.querySelector("[data-world-map]")) load(id); return true; }
   // _areaCard renders one objective-area card against a given model (tests).
   const _areaCard = (a, m) => { const keep = model; model = m; try { return areaCard(a); } finally { model = keep; } };
-  return { page, mounted, focus, focusZone, _areaCard, _state: () => ({ model, selected, view, trail, layers, results, journey, focused }) };
+  return { page, mounted, focus, focusZone, retireRouteFocus, _areaCard, _state: () => ({ model, selected, view, trail, layers, results, journey, focused }) };
 })();
