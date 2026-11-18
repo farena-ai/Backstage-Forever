@@ -3,6 +3,15 @@
  "machineTranslated": true,
  "note": "German, machine-translated with the local model qwen3.8:27b and spot-checked; fixes welcome. Keys are the exact English text.",
  "app": {
+  "Compare in Sheet": "Im Charakterbogen vergleichen",
+  "Gear comparison": "Ausrüstungsvergleich",
+  "Ownership unknown": "Besitz unbekannt",
+  "Compared with:": "Verglichen mit:",
+  "Leveling estimate from saved equipment. Check all equip restrictions in game. Loot listings and wishes do not prove ownership.": "Schätzung fürs Leveln anhand der gespeicherten Ausrüstung. Prüfe alle Ausrüstungsbeschränkungen im Spiel. Beutelisten und Wünsche belegen keinen Besitz.",
+  "Gear comparisons are estimates from saved equipment.": "Ausrüstungsvergleiche sind Schätzungen anhand gespeicherter Ausrüstung.",
+  "Listed loot is reference, not a personal drop.": "Die Beuteliste dient als Referenz und zeigt keine persönlichen Funde.",
+  "No usable entrance waypoint in this reference.": "Diese Referenz enthält keinen verwendbaren Wegpunkt zum Eingang.",
+  "Ready to turn in · Last saved": "Bereit zur Abgabe · Zuletzt gespeichert",
   ", and the next release builds it into the addon.": ", und die nächste Version baut es in das Addon ein.",
   ", the top.": ", die höchste Stufe.",
   ": kills give double experience until the blue part of the bar runs out. You build it back by logging out in an inn or a city.": ": Kills geben doppelte Erfahrung, bis der blaue Teil der Leiste leer ist. Du baust sie wieder auf, indem du dich in einem Gasthaus oder einer Stadt abmeldest.",
@@ -1479,6 +1488,8 @@
   }
  },
  "appTemplates": {
+  "Compare item #{0} in Sheet": "Gegenstand Nr. {0} im Charakterbogen vergleichen",
+  "Approximate Classic entrance: {0} · {1}, {2}. Verify in Forever.": "Ungefährer Eingang in Classic: {0} · {1}, {2}. Prüfe den Eingang in Forever.",
   "Desktop · Saved · {#0}h ago": "Desktop · Gespeichert · vor {0} Std.",
   "Level {#0} {1} · {2} · Last saved in {3}": "Stufe {0} {1} · {2} · Zuletzt gespeichert in {3}",
   "· save from {#0} hr ago": "· Speicherstand von vor {0} Std.",

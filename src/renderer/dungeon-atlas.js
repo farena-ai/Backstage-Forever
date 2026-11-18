@@ -10,6 +10,7 @@ window.DungeonAtlas = (() => {
   const QUALITY = ["poor", "common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom"];
   const BADGE = { upgrade: "Upgrade for you", "upgrade-later": "Upgrade later", "not-for-you": "Not for you", "not-upgrade": "Not an upgrade", usable: "Usable", "no-class": "", "not-equipment": "", unknown: "" };
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const validPoint = (mapId, { x, y } = {}) => Number.isSafeInteger(mapId) && mapId > 0 && [x, y].every((v) => Number.isFinite(v) && v > 0 && v < 1);
   const LABEL = { right: "Right for your level", easy: "Easy", hard: "Challenging", trivial: "Low level", impossible: "Too high for now", unknown: "Level unknown" };
   function page() {
     return `<section class="atlas-page" data-atlas>
@@ -54,12 +55,13 @@ window.DungeonAtlas = (() => {
   }
   function card(e) {
     const isOpen = open === e.id;
+    const entrance = e.entrance && validPoint(e.mapId, e.entrance);
     const last = e.bosses.length - 1;
     const bosses = e.bosses.map((b, i) => `<li class="${b.observedInForever ? "seen" : ""}${i === last && window.BF_BOSS_ART?.includes(e.id) ? " atlas-final" : ""}">${i === last && window.BF_BOSS_ART?.includes(e.id) ? `<img class="atlas-final-art" src="art/bosses/${esc(e.id)}.webp" alt="" width="72" height="72">` : ""}<span class="atlas-skull" aria-hidden="true">☠</span>${esc(b.name)}${b.observedInForever ? `<small>seen in Forever${b.kills ? ` · ${b.kills} kill${b.kills === 1 ? "" : "s"}` : ""}</small>` : ""}${b.tip ? `<p class="atlas-tip"><strong>Tip:</strong> ${esc(b.tip)}</p>` : ""}</li>`).join("");
     const extra = e.observedOnly.map((b) => `<li class="seen new"><span class="atlas-skull">☠</span>${esc(b.name)}<small>Forever-only boss</small></li>`).join("");
     const saved = savedEncounters(atlas?.recap);
     const yourQuests = saved ? e.yourQuests : [];
-    const questList = (rows, title) => rows.length ? `<section class="atlas-quests" aria-label="${title}"><h5>${title}</h5><ul>${rows.map((q) => `<li><strong>${esc(q.title)}</strong>${q.objectives.length ? `<small>${q.objectives.map((o) => esc(o.text)).join(" · ")}</small>` : ""}<button type="button" data-quest-open="${esc(q.id)}" aria-label="Open quest: ${esc(q.title)}">Open quest</button></li>`).join("")}</ul></section>` : "";
+    const questList = (rows, title) => rows.length ? `<section class="atlas-quests" aria-label="${title}"><h5>${title}</h5><ul>${rows.map((q) => `<li><strong>${esc(q.title)}</strong>${q.objectives.length ? `<small>${q.objectives.map((o) => esc(o.text)).join(" · ")}</small>` : ""}<button type="button" data-quest-open="${esc(q.id)}" data-atlas-profile="${esc(activeProfileId())}" aria-label="Open quest: ${esc(q.title)}">Open quest</button></li>`).join("")}</ul></section>` : "";
     // Readiness: level, quests to grab first, group.
     const lvlOk = ["right", "easy"].includes(e.difficulty), lvlLine = atlas?.level && e.levels ? (lvlOk ? `Level ${atlas.level} fits (${e.levels.min}–${e.levels.max})` : e.difficulty === "hard" || e.difficulty === "impossible" ? `Level ${atlas.level}: come back around ${e.levels.min}` : `Level ${atlas.level}: easy now, little XP`) : "Level range not yet observed";
     const pick = e.pickUp || [];
@@ -77,10 +79,11 @@ window.DungeonAtlas = (() => {
         <div class="atlas-toggles"><button type="button" class="atlas-toggle" data-atlas-open="${esc(e.id)}" aria-expanded="${isOpen && view === "details"}">${isOpen && view === "details" ? "Hide details" : `Bosses, roles & prep (${e.bosses.length + e.observedOnly.length} bosses)`}</button>${e.loot ? `<button type="button" class="atlas-loot-btn${isOpen && view === "loot" ? " on" : ""}" data-atlas-loot="${esc(e.id)}" aria-expanded="${isOpen && view === "loot"}"><span class="atlas-chest" aria-hidden="true"></span>${isOpen && view === "loot" ? "Hide loot" : `Loot${e.loot.items ? ` (${e.loot.items} items)` : ""}`}</button>` : ""}</div>
         ${isOpen && view === "loot" ? lootView(e) : ""}
         ${isOpen && view === "details" ? `<div class="atlas-details"><div class="atlas-preflight"><h4 tabindex="-1" data-atlas-prep-heading>Prepare for ${esc(e.name)}</h4>${ready}
-          <div class="atlas-actions">${e.entrance ? `<button type="button" class="primary" data-atlas-way="${esc(e.id)}">Copy entrance waypoint</button><button type="button" data-atlas-map="${esc(e.id)}">Show on World Map</button>` : ""}${e.loot?.items ? `<button type="button" data-atlas-loot="${esc(e.id)}">Browse recorded loot</button>` : ""}</div>
-          ${e.entrance ? `<p class="atlas-src">Entrance around ${(e.entrance.x * 100).toFixed(0)}, ${(e.entrance.y * 100).toFixed(0)} in ${esc(e.zone)} (approximate).</p>` : ""}
+          <div class="atlas-actions">${entrance ? `<button type="button" class="primary" data-atlas-way="${esc(e.id)}">Copy entrance waypoint</button><button type="button" data-atlas-map="${esc(e.id)}">Show on World Map</button>` : ""}</div>
+          ${entrance ? `<p class="atlas-src">Approximate Classic entrance: ${esc(e.zone)} · ${(e.entrance.x * 100).toFixed(0)}, ${(e.entrance.y * 100).toFixed(0)}. Verify in Forever.</p>` : `<p class="atlas-src">No usable entrance waypoint in this reference.</p>`}
           ${questList(yourQuests.filter((q) => q.complete), "Ready to turn in · Last saved")}
-          ${questList(yourQuests.filter((q) => !q.complete), "In your quest log · Last saved")}${pickList}</div>
+          ${questList(yourQuests.filter((q) => !q.complete), "In your quest log · Last saved")}
+          ${e.loot?.items ? `<div class="atlas-actions"><button type="button" data-atlas-loot="${esc(e.id)}">Browse recorded loot</button></div>` : ""}${pickList}</div>
           <section class="atlas-recap atlas-instance-recap" aria-label="Saved defeats here"><h4>Saved defeats here</h4>${recapContent(saved?.filter((row) => row.atlasId === e.id), { entry: e })}</section>
           <h4>Boss reference & tips</h4><p class="atlas-src">${esc(e.source)}. Community marks aren’t your character’s defeats.</p><ul class="atlas-bosses">${bosses}${extra}</ul>
           <div class="atlas-cols"><div><h4>Group</h4><ul>${e.roles.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div><div><h4>Before you go</h4><ul>${e.prep.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div></div></div>` : ""}
@@ -90,8 +93,8 @@ window.DungeonAtlas = (() => {
   function scoreChip(e) {
     const l = e.loot; if (!l) return "";
     if (!l.items) return `<p class="atlas-score none">No boss loot recorded yet</p>`;
-    if (l.upgrades) return `<button type="button" class="atlas-score up" data-atlas-loot="${esc(e.id)}"><span class="atlas-score-n">${l.upgrades}</span> upgrade${l.upgrades === 1 ? "" : "s"} for you</button>`;
-    if (l.later) return `<button type="button" class="atlas-score later" data-atlas-loot="${esc(e.id)}"><span class="atlas-score-n">${l.later}</span> upgrade${l.later === 1 ? "" : "s"} at a higher level</button>`;
+    if (l.upgrades) return `<button type="button" class="atlas-score up" data-atlas-loot="${esc(e.id)}">Estimated upgrades: <span class="atlas-score-n">${l.upgrades}</span></button>`;
+    if (l.later) return `<button type="button" class="atlas-score later" data-atlas-loot="${esc(e.id)}">Estimated upgrades at higher levels: <span class="atlas-score-n">${l.later}</span></button>`;
     return `<p class="atlas-score">${l.items} item${l.items === 1 ? "" : "s"} from ${l.bossesWithLoot} boss${l.bossesWithLoot === 1 ? "" : "es"}</p>`;
   }
   // Starred items that drop here, as small icons (hover for the item card).
@@ -104,10 +107,10 @@ window.DungeonAtlas = (() => {
     const it = x.item, q = QUALITY[it?.quality] || "unknown", v = x.verdict?.verdict || "unknown";
     const name = it?.name || `Item #${x.itemId}`;
     const kind = it ? [it.slot, it.kind].filter(Boolean).join(" · ") || (it.itemLevel ? `Item level ${it.itemLevel}` : "") : "";
-    const badge = BADGE[v] ? `<span class="loot-badge v-${esc(v)}">${esc(v === "upgrade-later" ? x.verdict.text.replace("Upgrade for you at", "Upgrade at") : BADGE[v])}</span>` : "";
+    const badge = BADGE[v] ? `<span class="loot-badge v-${esc(v)}">${esc(BADGE[v])}</span>` : "";
     return `<li class="loot-tile q-${q} v-${esc(v)}${x.wished ? " wished" : ""}${x.community ? " community" : ""}" data-card-item="${x.itemId}">
       <span class="loot-icon">${it?.iconFileId && window.GameIcons ? GameIcons.tag(it.iconFileId, 44) : '<span class="loot-gem" aria-hidden="true">◆</span>'}</span>
-      <span class="loot-body"><span class="loot-name">${esc(name)}</span>${kind ? `<span class="loot-kind">${esc(kind)}</span>` : ""}${badge}${x.community ? `<span class="loot-provenance">${esc(x.source)}</span>` : ""}</span>
+      <span class="loot-body"><span class="loot-name">${esc(name)}</span>${kind ? `<span class="loot-kind">${esc(kind)}</span>` : ""}${badge}${x.community ? `<span class="loot-provenance">${esc(x.source)}</span>` : ""}${activeProfileId() ? `<button type="button" class="loot-compare" data-nav="sheet" data-atlas-compare="${x.itemId}" data-atlas-profile="${esc(activeProfileId())}" aria-label="Compare item #${x.itemId} in Sheet">Compare in Sheet</button>` : ""}</span>
       <span class="loot-side"><span class="loot-chance" title="${x.community ? `${esc(x.source)} · ${x.samples} loot${x.samples === 1 ? "" : "s"} pooled` : `Seen in ${x.drops} loot${x.drops === 1 ? "" : "s"}`}">${pct(x.chance)}</span><button type="button" class="loot-star" data-loot-wish="${x.itemId}" aria-pressed="${x.wished}" aria-label="${x.wished ? "Remove from" : "Add to"} wish list: ${esc(name)}">${x.wished ? "★" : "☆"}</button></span></li>`;
   }
   function lootView(e) {
@@ -120,7 +123,7 @@ window.DungeonAtlas = (() => {
       ${b.items.length ? `<ul class="loot-grid">${b.items.map(tile).join("")}</ul>` : b.community?.length ? "" : `<p class="loot-none">No loot recorded yet</p>`}${shared(b)}</section>`).join("");
     const notes = [!d.gameData && d.bosses.some((b) => b.items.length) ? "Connect your game folder (Settings → Game connection) to see item names, icons and stats." : "", d.gameData && !d.equipmentKnown ? "Type /reload in game once so the app can compare these with what you wear." : ""].filter(Boolean);
     return `<div class="atlas-loot" data-atlas-loot-view="${esc(e.id)}">
-      <div class="loot-legend"><span><i class="loot-key v-upgrade"></i>Upgrade for you</span><span><i class="loot-key v-upgrade-later"></i>Upgrade later</span><span>☆ Star an item for your wish list</span><span>% = seen in that share of loots</span></div>
+      <div class="loot-legend"><span>Gear comparisons are estimates from saved equipment.</span><span>☆ Star an item for your wish list</span><span>Listed loot is reference, not a personal drop.</span><span>% = seen in that share of loots</span></div>
       ${notes.map((n) => `<p class="loot-note">${esc(n)}</p>`).join("")}
       <div class="loot-bosses">${bosses}</div>
       <p class="atlas-src">Drops observed in World of Warcraft: Forever by the community. ${esc(d.attribution || "")}${d.bosses.some((b) => b.community?.length) ? " Community: drop rates pooled from Backstage Forever players who share anonymously (at least 3 per item)." : ""}</p></div>`;
@@ -191,21 +194,40 @@ window.DungeonAtlas = (() => {
     root.addEventListener("click", async (ev) => {
       if (!atlas) return;
       const star = ev.target.closest("[data-loot-wish]"); if (star) {
+        const profileId = activeProfileId();
+        if (!profileId || atlas.recap?.profileId !== profileId || star.disabled) return;
         const itemId = Number(star.dataset.lootWish), on = star.getAttribute("aria-pressed") !== "true";
+        star.disabled = true;
         try {
-          await api.setLootWish(null, itemId, on); window.HoverCards?.forget?.();
-          for (const d of loot.values()) for (const b of d.bosses || []) for (const x of b.items) if (x.itemId === itemId) x.wished = on;
+          await api.setLootWish(profileId, itemId, on); window.HoverCards?.forget?.();
+          if (mountedFor !== root || activeProfileId() !== profileId || atlas?.recap?.profileId !== profileId) return;
+          const bossIndex = [...root.querySelectorAll(".loot-boss")].indexOf(star.closest(".loot-boss"));
+          for (const d of loot.values()) for (const b of d.bosses || []) for (const x of [...b.items, ...(b.community || [])]) if (x.itemId === itemId) x.wished = on;
           window.toast?.(on ? "Added to your wish list." : "Removed from your wish list.");
+          const restoreFocus = document.activeElement === star;
           await load(root, atlas);
-        } catch (err) { window.toast?.(err.message); }
+          if (restoreFocus && mountedFor === root && activeProfileId() === profileId && document.activeElement === document.body) root.querySelectorAll(".loot-boss")[bossIndex]?.querySelector(`[data-loot-wish="${itemId}"]`)?.focus();
+        } catch (err) { if (mountedFor === root && activeProfileId() === profileId) window.toast?.(err.message); }
+        finally { star.disabled = false; }
         return;
       }
       const lb = ev.target.closest("[data-atlas-loot]"); if (lb) { const id = lb.dataset.atlasLoot; const same = open === id && view === "loot"; open = same ? null : id; view = "loot"; if (!same) { loot.delete(id); void loadLoot(root, id); } paint(); root.querySelector(`[data-atlas-card="${CSS.escape(id)}"] .atlas-loot-btn`)?.focus(); return; }
       const t = ev.target.closest("[data-atlas-tab]"); if (t) { tab = t.dataset.atlasTab; open = null; paint(); return; }
       const p = ev.target.closest("[data-atlas-prep]"); if (p) { openDetails(root, p.dataset.atlasPrep, false); return; }
       const o = ev.target.closest("[data-atlas-open]"); if (o) { openDetails(root, o.dataset.atlasOpen, true); return; }
-      const w = ev.target.closest("[data-atlas-way]"); if (w) { const e = atlas.entries.find((x) => x.id === w.dataset.atlasWay); try { const r = await api.copyWaypoint({ mapId: e.mapId, x: e.entrance.x, y: e.entrance.y, label: e.name }); w.textContent = "Copied — paste in WoW chat"; window.toast?.(r.message); } catch (err) { w.textContent = err.message; } return; }
-      const m = ev.target.closest("[data-atlas-map]"); if (m) { const e = atlas.entries.find((x) => x.id === m.dataset.atlasMap); window.WorldMapView?.focus({ mapId: e.mapId, x: e.entrance.x, y: e.entrance.y, label: `${e.name} entrance`, sub: `${e.kind === "raid" ? "Raid" : "Dungeon"} · levels ${e.levels.min}–${e.levels.max}` }); document.querySelector('[data-nav="world-map"]')?.click(); }
+      const w = ev.target.closest("[data-atlas-way]");
+      const m = ev.target.closest("[data-atlas-map]");
+      if (w || m) {
+        const e = atlas.entries.find((x) => x.id === (w ? w.dataset.atlasWay : m.dataset.atlasMap));
+        if (!e?.entrance || !validPoint(e.mapId, e.entrance)) return;
+        const point = { mapId: e.mapId, x: e.entrance.x, y: e.entrance.y };
+        if (w) {
+          try { const r = await api.copyWaypoint({ ...point, label: e.name }); w.textContent = "Copied — paste in WoW chat"; window.toast?.(r.message); } catch (err) { w.textContent = err.message; }
+        } else {
+          window.WorldMapView?.focus({ ...point, label: `${e.name} entrance`, sub: "Approximate Classic entrance · verify in Forever" });
+          document.querySelector('[data-nav="world-map"]')?.click();
+        }
+      }
     });
     void load(root).then(() => {
       if (mountedFor === root && open && view === "loot" && atlas?.entries.some((e) => e.id === open && e.loot) && !lootRequests.has(open) && !loot.has(open)) void loadLoot(root, open);

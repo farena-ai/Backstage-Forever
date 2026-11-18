@@ -1334,6 +1334,10 @@ root.addEventListener("click", (event) => {
         pendingSnapshot = null;
       }
       if (navigation.page === "badges" && button.hasAttribute("data-active-badge-case")) BadgesView.open();
+      if (navigation.page === "sheet" && button.dataset.atlasCompare) {
+        if (button.dataset.atlasProfile !== state.activeProfileId || document.getElementById("active-character")?.value !== state.activeProfileId) return;
+        SheetView.focusItem(state.activeProfileId, Number(button.dataset.atlasCompare));
+      }
       page = navigation.page;
       render();
       if (page === "quest-guide") {
@@ -1361,6 +1365,7 @@ root.addEventListener("click", (event) => {
     }
     if (button.dataset.questOpen) {
       if (button.dataset.ledgerQuestProfile && button.dataset.ledgerQuestProfile !== state.activeProfileId) return;
+      if (button.dataset.atlasProfile && (button.dataset.atlasProfile !== state.activeProfileId || document.getElementById("active-character")?.value !== state.activeProfileId)) return;
       page = "quest-guide";
       render();
       await QuestGuide.open(Number(button.dataset.questOpen));

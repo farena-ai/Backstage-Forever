@@ -6,35 +6,55 @@ const { dropIndex } = require("./boss-loot-data.cjs");
 const { BASELINE } = require("./dungeon-atlas.cjs");
 const { provenance } = require("./community.cjs");
 const INSTANCE_NAMES = Object.fromEntries(BASELINE.map((b) => [b[0], b[1]]));
+const unknown = (text) => ({ verdict: "unknown", text, reasons: [] });
+
+function ownership(profile, itemId) {
+  if (profile?.readiness?.equipment?.some((e) => e.itemId === itemId)) return { where: "worn", seenAt: profile.source?.updatedAt ?? null };
+  for (const where of ["bags", "bank", "mail"]) {
+    const scan = profile?.ledger?.[where];
+    if (scan?.items?.some((e) => e.id === itemId)) return { where, seenAt: scan.seenAt ?? null };
+  }
+  return null;
+}
 
 // What the character wears, by slot, in the same shape enrichRewards() (knowledge-ipc.cjs) uses.
 function equipmentContext(p, gameData) {
   const equipment = Array.isArray(p?.readiness?.equipment) ? p.readiness.equipment : null;
-  const worn = equipment?.length && gameData ? gameData.items(equipment.map((e) => e.itemId)) : [];
+  let buildMatches = false;
+  try { buildMatches = Boolean(p?.clientBuild && p.clientBuild === gameData?.build()); } catch {}
+  const worn = equipment?.length && buildMatches ? gameData.items(equipment.map((e) => e.itemId)) : [];
   const bySlot = {};
   // Worn items the game tables do not cover still occupy their slot; they are compared as unknown.
   (equipment || []).forEach((e, i) => { bySlot[e.slot] = worn[i] || { id: e.itemId, name: e.name || `Item #${e.itemId}`, unknown: true, stats: [], armor: 0 }; });
   const ctx = { className: p?.className || undefined, level: Number.isInteger(p?.level) ? p.level : undefined, equipmentKnown: !!equipment };
-  return { ctx, bySlot, equipmentKnown: !!equipment };
+  return { ctx, bySlot, equipmentKnown: !!equipment, buildMatches };
 }
 
 // One item against what the character wears now.
 // verdict: upgrade | upgrade-later | not-upgrade | not-for-you | not-equipment | usable | no-class | unknown
-function upgradeVerdict(item, { ctx = {}, bySlot = {}, equipmentKnown = false } = {}) {
-  if (!item) return { verdict: "unknown", text: "Not in your game data yet", reasons: [] };
+function upgradeVerdict(item, { ctx = {}, bySlot = {}, equipmentKnown = false, buildMatches = false } = {}) {
+  if (!item) return unknown("Not in your game data yet");
   if (!replaced(item, ctx, bySlot).slots.length) return { verdict: "not-equipment", text: null, reasons: [] };
   if (!ctx.className) return { verdict: "no-class", text: "Pick a class for this character to compare", reasons: [] };
+  if (!buildMatches) return unknown("Saved character and installed game builds do not match or are unknown.");
+  if (!Number.isInteger(ctx.level) || !Number.isInteger(item.requiredLevel) || !Number.isInteger(item.classId) || !Number.isInteger(item.subclassId) || !(item.classes === null || Array.isArray(item.classes))) return unknown("Equip requirements are unknown.");
   const block = blockers(item, ctx);
   const levelOnly = block.length && block.every((r) => /^Requires level/.test(r));
   if (block.length && !levelOnly) return { verdict: "not-for-you", text: block[0], reasons: block };
   const at = levelOnly ? { ...ctx, level: item.requiredLevel } : ctx;
   if (levelOnly && blockers(item, at).length) return { verdict: "not-for-you", text: blockers(item, at)[0], reasons: blockers(item, at) };
   if (!equipmentKnown) return { verdict: "usable", text: levelOnly ? `Usable by you from level ${item.requiredLevel}` : "Usable by you", reasons: ["/reload in game once so the app can compare it with what you wear"] };
-  const rep = replaced(item, at, bySlot), cmp = compare(item, rep.items, at);
-  if (!cmp.better) return { verdict: "not-upgrade", text: "Not an upgrade", delta: cmp.delta, reasons: cmp.reasons };
+  const rep = replaced(item, at, bySlot);
+  const comparisonItems = rep.slots.some((slot) => slot === 11 || slot === 12) ? [bySlot[11], bySlot[12]] : rep.slots.some((slot) => slot === 13 || slot === 14) ? [bySlot[13], bySlot[14]] : rep.items;
+  const mainHand = bySlot[16];
+  if (rep.slots.includes(17) && !rep.slots.includes(16) && mainHand && (mainHand.unknown || mainHand.inventoryType === 17)) return unknown("Check the off-hand slot and main-hand weapon in game.");
+  if (!Array.isArray(item.stats) || comparisonItems.some((it) => it && (it.unknown || !Array.isArray(it.stats)))) return unknown("Item stats are missing for this comparison.");
+  const cmp = compare(item, rep.items, at);
+  const detail = { delta: cmp.delta, reasons: cmp.reasons, replaces: rep.items.map((it) => ({ itemId: it.id, name: it.name })) };
+  if (!cmp.better) return { verdict: "not-upgrade", text: "Not an upgrade", ...detail };
   return levelOnly
-    ? { verdict: "upgrade-later", text: `Upgrade for you at level ${item.requiredLevel}`, delta: cmp.delta, reasons: cmp.reasons }
-    : { verdict: "upgrade", text: "Upgrade for you", delta: cmp.delta, reasons: cmp.reasons };
+    ? { verdict: "upgrade-later", text: `Upgrade for you at level ${item.requiredLevel}`, ...detail }
+    : { verdict: "upgrade", text: "Upgrade for you", ...detail };
 }
 
 // Item view fields the renderer needs (no sell price, class masks etc.).
@@ -106,6 +126,6 @@ function itemCard(pack, itemId, { profile = null, gameData = null, wished = [], 
   for (const inst of Object.values(pack?.instances || {})) for (const b of inst.bosses) for (const id of b.npcIds) bosses.set(id, b.name);
   // Community drops: labelled with how many players reported them, never merged into the bundled list.
   const communitySources = (community?.dropsByItem?.get(itemId) || []).slice(0, 3).map((d) => ({ npcId: d.npcId, name: bosses.get(d.npcId) || creatureName(d.npcId) || `Creature #${d.npcId}`, chance: d.rate, samples: d.samples, installs: d.installs, source: provenance(d.installs) }));
-  return { itemId, item: view(it), verdict: upgradeVerdict(it, equipmentContext(profile, gameData)), sources, communitySources, wished: wished.includes(itemId) };
+  return { itemId, item: view(it), verdict: upgradeVerdict(it, equipmentContext(profile, gameData)), ownership: ownership(profile, itemId), sources, communitySources, wished: wished.includes(itemId) };
 }
 module.exports = { equipmentContext, upgradeVerdict, atlasLootSummary, instanceLoot, itemCard, INSTANCE_NAMES };

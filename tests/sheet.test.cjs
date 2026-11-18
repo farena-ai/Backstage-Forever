@@ -153,6 +153,35 @@ test("sheet data never leaves the computer: not in community observations or the
   assert.equal(approved.stats, undefined); assert.equal(approved.gearSets, undefined);
 });
 
+test("a late Sheet comparison cannot replace the newer character's exact selected item", async () => {
+  const fs = require("node:fs"), vm = require("node:vm"), path = require("node:path");
+  let root, profile = "a";
+  const requests = [];
+  const picker = { get value() { return profile; }, addEventListener(_type, fn) { this.change = fn; } };
+  const mountRoot = () => {
+    const panel = { innerHTML: "", querySelector: () => null };
+    const parts = { ".page-hero": {}, "[data-sheet-body]": {}, "[data-sheet-compare]": panel };
+    root = { querySelector: (key) => parts[key] };
+    return panel;
+  };
+  const context = vm.createContext({ backstage: { characterSheet: async () => null, itemCard: (id, itemId) => new Promise(resolve => requests.push({ id, itemId, resolve })) }, document: { querySelector: () => root, getElementById: () => picker } });
+  context.window = context;
+  for (const f of ["page-hero.js", "sheet.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer", f), "utf8"), context);
+  const old = mountRoot();
+  context.SheetView.focusItem("a", 5202); context.SheetView.mounted();
+  profile = "b"; picker.change();
+  const current = mountRoot();
+  context.SheetView.focusItem("b", 2991); context.SheetView.mounted();
+  assert.deepEqual(requests.map(({ id, itemId }) => [id, itemId]), [["a", 5202], ["b", 2991]]);
+  requests[1].resolve({ itemId: 2991, item: { name: "Same name" }, ownership: null });
+  await new Promise(setImmediate);
+  requests[0].resolve({ itemId: 5202, item: { name: "Same name" }, ownership: { where: "bank" } });
+  await new Promise(setImmediate);
+  assert.equal(old.innerHTML, "");
+  assert.match(current.innerHTML, /data-sheet-comparison="2991"[\s\S]*Ownership unknown/);
+  assert.doesNotMatch(current.innerHTML, /5202|In the bank/);
+});
+
 test("the Sheet page paints the paper doll, stats, upgrades and sets; the gold goal card shows progress and pace", async () => {
   const fs = require("node:fs"), vm = require("node:vm"), path = require("node:path");
   const facts = new Map([[1002, { name: "Dungeon Helm", quality: 3, itemLevel: 33, iconFileId: 77 }], [3001, { name: "Greatsword", quality: 4, itemLevel: 30, slot: "Two-Hand" }], [4100, { name: "Better Gloves", quality: 2, itemLevel: 31 }]]);
@@ -162,8 +191,8 @@ test("the Sheet page paints the paper doll, stats, upgrades and sets; the gold g
   const alt = { id: "b", name: "Vaelric", ledger: L.normalizeLedgerCapture({ bank: { seenAt: T, items: [{ id: 7001, n: 1 }] } }) };
   const view = S.sheetView(me, { profiles: [me, alt], facts, score: (it) => it.itemLevel, verdict: (it) => (it.name === "Better Gloves" ? { verdict: "upgrade", text: "Upgrade for you", delta: 2 } : { verdict: "not-upgrade" }) });
   let html = "";
-  const root = () => ({ dataset: {}, querySelectorAll: () => [], querySelector: () => null, set outerHTML(v) { html = v; } });
-  const context = vm.createContext({ backstage: { characterSheet: async () => structuredClone(view) }, document: { querySelector: (s) => (s === "[data-sheet]" ? root() : null), getElementById: () => ({ value: "a" }) }, structuredClone });
+  const root = { querySelector: (s) => s === ".page-hero" ? { set outerHTML(v) { html = v; } } : s === "[data-sheet-body]" ? { set innerHTML(v) { html += v; } } : null };
+  const context = vm.createContext({ backstage: { characterSheet: async () => structuredClone(view) }, document: { querySelector: (s) => (s === "[data-sheet]" ? root : null), getElementById: () => ({ value: "a", addEventListener() {} }) }, structuredClone });
   context.window = context;
   for (const f of ["page-hero.js", "sheet.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer", f), "utf8"), context);
   assert.match(context.SheetView.page(), /Opening your character sheet/);

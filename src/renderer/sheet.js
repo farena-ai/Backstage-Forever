@@ -2,7 +2,7 @@
 // Characters → Sheet (0.36, G5 + A12): the active character's gear as a paper doll with quality
 // colours, item level and how each piece holds up, empty slots, base stats the addon read in
 // game, upgrades already in the bags or bank, and the gear sets saved with /bf set with where
-// every piece is now. Read-only: one `characterSheet` request. Item hover cards come from
+// every piece is now. An Atlas handoff looks up one exact item. Item hover cards come from
 // data-card-item (hover-cards.js).
 window.SheetView = (() => {
   const api = window.backstage;
@@ -11,7 +11,8 @@ window.SheetView = (() => {
   const quality = (q) => QUALITY[q] || "common";
   const RATING = { fresh: "Holds up", aging: "Getting old", replace: "Time to replace" };
   const WHERE = { worn: "Worn", bags: "In your bags", bank: "In the bank", mail: "In the mail", other: "On", missing: "Not found" };
-  let data = null, error = "", loading = false, loadedAt = 0, mountedFor = null;
+  let data = null, error = "", loadedAt = 0, loadedProfile = null, mountedFor = null, selection = null;
+  const active = () => document.getElementById("active-character")?.value || null;
   const nowSec = () => Math.floor(Date.now() / 1000);
   function ago(at) {
     if (!Number.isFinite(at)) return "";
@@ -81,27 +82,71 @@ window.SheetView = (() => {
   }
   function body() {
     if (error) return `<p class="sht-empty">${esc(error)}</p>`;
-    if (!data) return `<p class="sht-empty">${loading || !loadedAt ? "Opening your character sheet…" : "Pick or create a character first."}</p>`;
+    if (!data) return `<p class="sht-empty">${!loadedAt ? "Opening your character sheet…" : "Pick or create a character first."}</p>`;
     if (!data.equipmentKnown && !data.stats && !data.setsKnown) return empty("No gear seen for this character yet.");
     return `${doll()}${advice()}${sets()}`;
   }
-  function page() {
-    return `<section class="sheet-page" data-sheet>${hero()}<div data-sheet-body>${body()}</div></section>`;
+  function comparison() {
+    if (!selection || selection.profileId !== active()) return "";
+    const { itemId, card, failed } = selection, verdict = card?.verdict;
+    const owned = card?.ownership, when = owned?.seenAt ? ago(owned.seenAt) : "";
+    return `<section class="sht-card sht-comparison" data-sheet-comparison="${itemId}" aria-labelledby="sheet-compare-heading">
+      <h2 id="sheet-compare-heading" tabindex="-1">Gear comparison</h2>
+      <p data-card-item="${itemId}"><strong>${esc(card?.item?.name || `Item #${itemId}`)}</strong>${card?.item?.name ? ` · #${itemId}` : ""}</p>
+      ${card ? `<p><strong>${esc(verdict?.text || "Not equipment")}</strong>${Number.isFinite(verdict?.delta) ? ` · ${verdict.delta > 0 ? "+" : ""}${verdict.delta}` : ""}</p>
+        ${verdict?.replaces?.length ? `<p><span>Compared with:</span> ${verdict.replaces.map((it) => `${esc(it.name)} (#${it.itemId})`).join(", ")}</p>` : ""}
+        ${verdict?.reasons?.length ? `<ul>${verdict.reasons.filter((r) => r !== verdict.text).map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
+        <p><strong>${esc(owned ? WHERE[owned.where] : "Ownership unknown")}</strong>${owned ? ` <span>· Last saved</span>${when ? ` · ${esc(when)}` : ""}` : ""}</p>
+        <p class="sht-note">Leveling estimate from saved equipment. Check all equip restrictions in game. Loot listings and wishes do not prove ownership.</p>` : `<p role="status">${failed ? "Could not load this item comparison." : "Opening the item comparison…"}</p>`}
+    </section>`;
   }
-  async function load() {
-    if (loading) return; loading = true;
-    try { data = await api.characterSheet(); error = ""; } catch (e) { error = e.message || "Your character sheet is unavailable."; }
-    loading = false; loadedAt = Date.now();
-    const root = document.querySelector("[data-sheet]");
-    if (root) { root.outerHTML = page(); mountedFor = null; mounted(); }
+  function page() {
+    return `<section class="sheet-page" data-sheet>${hero()}<div data-sheet-compare>${comparison()}</div><div data-sheet-body>${body()}</div></section>`;
+  }
+  function paintSheet(root) {
+    // Both templates escape text from saved state and use validated numeric item IDs.
+    root.querySelector(".page-hero").outerHTML = hero();
+    root.querySelector("[data-sheet-body]").innerHTML = body();
+  }
+  const owns = (root, id) => mountedFor === root && document.querySelector("[data-sheet]") === root && active() === id;
+  async function load(root, id) {
+    let result, message = "";
+    try { result = await api.characterSheet(); } catch (e) { message = e.message || "Your character sheet is unavailable."; }
+    if (!owns(root, id) || (result && result.profileId !== id)) return;
+    data = result || null; error = message; loadedAt = Date.now(); loadedProfile = id;
+    // Leave the comparison and keyboard focus intact while refreshing the paper doll.
+    paintSheet(root);
   }
   function mounted() {
     const root = document.querySelector("[data-sheet]");
-    if (!root || mountedFor === root) return;
+    if (!root) { mountedFor = null; selection = null; return; }
+    if (mountedFor === root) return;
     mountedFor = root;
-    // A new character or a newer game save: read again.
-    const active = document.getElementById("active-character")?.value;
-    if (!loading && (!loadedAt || Date.now() - loadedAt > 3000 || (data && active && data.profileId !== active))) load();
+    const id = active();
+    if (loadedProfile !== id) { data = null; error = ""; loadedAt = 0; }
+    if (selection && selection.profileId !== id) selection = null;
+    document.getElementById("active-character")?.addEventListener("change", () => {
+      if (mountedFor !== root) return;
+      mountedFor = null; selection = null; data = null; error = ""; loadedAt = 0;
+      root.querySelector("[data-sheet-compare]").innerHTML = "";
+      paintSheet(root);
+    });
+    if (!loadedAt || Date.now() - loadedAt > 3000) void load(root, id);
+    const target = selection, panel = root.querySelector("[data-sheet-compare]");
+    if (!target || !panel || target.card || target.failed) return;
+    void (async () => {
+      let card;
+      try { card = await api.itemCard(id, target.itemId); } catch {}
+      if (!owns(root, id) || selection !== target) return;
+      if (card?.itemId === target.itemId) target.card = card; else target.failed = true;
+      panel.innerHTML = comparison();
+      const heading = panel.querySelector("h2");
+      heading?.focus({ preventScroll: true });
+      heading?.closest(".sht-comparison")?.scrollIntoView({ block: "start", behavior: "instant" });
+    })();
   }
-  return { page, mounted, invalidate: () => { data = null; loadedAt = 0; }, _state: () => ({ data }) };
+  function focusItem(profileId, itemId) {
+    selection = profileId && Number.isSafeInteger(itemId) && itemId > 0 && itemId <= 2147483647 ? { profileId, itemId } : null;
+  }
+  return { page, mounted, focusItem, invalidate: () => { data = null; loadedAt = 0; }, _state: () => ({ data }) };
 })();
