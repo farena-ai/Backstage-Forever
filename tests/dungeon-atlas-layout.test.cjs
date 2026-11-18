@@ -14,13 +14,14 @@ test('the atlas previews readiness in the catalog and keeps quest actions in the
   window.DungeonAtlas.mounted();
   await new Promise(setImmediate);
   const grid=root.querySelector('[data-atlas-grid]');
-  assert.match(grid.innerHTML,/1 quest to pick up first/);
+  assert.match(grid.innerHTML,/1 possible quest pickup/);
   assert.doesNotMatch(grid.innerHTML,/data-quest-open=/);
   root.querySelector('[data-atlas-card="rfc"]').scrollIntoView=()=>{};
   const click=()=>handle({target:{closest:selector=>selector==='[data-atlas-open]'?{dataset:{atlasOpen:'rfc'}}:null}});
   await click();
   assert.match(grid.innerHTML,/aria-expanded="true"/);
   assert.match(grid.innerHTML,/Search for the Lost Satchel/);
+  assert.match(grid.innerHTML,/Possible quest pickups · Reference/);
   assert.match(grid.innerHTML,/data-quest-open="5723"/);
   await click();
   assert.doesNotMatch(grid.innerHTML,/data-quest-open=/);

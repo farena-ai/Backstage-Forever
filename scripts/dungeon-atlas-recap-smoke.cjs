@@ -14,7 +14,9 @@ const { defaultState, validateState } = require('../src/core/validation.cjs');
     const boss = { encounterId: 1144, name: 'Edwin VanCleef', instanceMap: 36, instanceType: 'party', difficultyId: 1, at: 1700000000 };
     const encounters = [boss, { ...boss, encounterId: 99, name: 'Unmapped <boss>', instanceMap: 99999, instanceType: 'raid', at: boss.at + 1 }];
     const profile = { className: 'Rogue', faction: 'Alliance', realm: 'Synthetic', level: 20, notes: '', goals: [] };
-    const profiles = [{ ...profile, id: 'main', name: 'Example', journal: { encounters } }, { ...profile, id: 'alt', name: 'Alt' }];
+    const profiles = [{ ...profile, id: 'main', name: 'Example', journal: { encounters }, quests: [
+      { id: 166, title: 'The Defias Brotherhood', complete: true, objectives: [{ text: 'Edwin VanCleef defeated', done: true }] },
+    ] }, { ...profile, id: 'alt', name: 'Alt' }];
     const state = validateState({ ...defaultState(), onboarded: true, activeProfileId: 'main', profiles });
     await fs.writeFile(path.join(dir, 'state.json'), JSON.stringify(state));
     await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify({ name: 'atlas-recap-fixture', version: require('../package.json').version, main: 'main.cjs' }));
@@ -58,15 +60,46 @@ const { defaultState, validateState } = require('../src/core/validation.cjs');
     }
     await atlas.getByRole('tab', { name: 'Raids', exact: true }).click();
     await recap.getByText(boss.name, { exact: true }).waitFor();
-    await atlas.getByRole('tab', { name: 'Dungeons', exact: true }).click();
     const deadmines = atlas.locator('[data-atlas-card="dm"]');
-    await deadmines.getByRole('button', { name: /Bosses, roles & prep/ }).click();
+    assert.equal(await rows.first().getByRole('button', { name: /Open prep/ }).count(), 0);
+    await rows.last().getByRole('button', { name: 'Open prep for The Deadmines' }).press('Enter');
+    const prep = deadmines.getByRole('heading', { name: 'Prepare for The Deadmines' });
+    await prep.waitFor();
+    assert.equal(await prep.evaluate(el => document.activeElement === el), true);
+    assert.equal(await atlas.getByRole('tab', { name: 'Dungeons', exact: true }).getAttribute('aria-selected'), 'true');
+    const entrance = deadmines.getByRole('button', { name: 'Show on World Map' });
+    const bounds = await entrance.boundingBox();
+    assert.ok(bounds.y >= 0 && bounds.y + bounds.height <= await page.evaluate(() => innerHeight), 'prep arrival brings the first actions into view');
+    const handIn = deadmines.getByRole('region', { name: 'Ready to turn in · Last saved' });
+    assert.equal(await handIn.getByRole('button', { name: 'Open quest: The Defias Brotherhood' }).getAttribute('data-quest-open'), '166');
+    await deadmines.getByRole('button', { name: 'Browse recorded loot' }).waitFor();
+    await deadmines.getByRole('heading', { name: 'Boss reference & tips' }).waitFor();
+    const instanceRecap = deadmines.getByRole('region', { name: 'Saved defeats here' });
+    assert.deepEqual(await instanceRecap.locator('li strong').allTextContents(), [boss.name]);
+    assert.ok(await deadmines.evaluate(el => el.scrollWidth <= el.clientWidth + 1), 'expanded entry fits available width');
+    if (process.argv[2]) {
+      await page.screenshot({ path: path.join(process.argv[2], 'atlas-prep-1000.png'), animations: 'disabled' });
+      await instanceRecap.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(process.argv[2], 'atlas-instance-recap-1000.png'), animations: 'disabled' });
+    }
     await deadmines.getByRole('heading', { name: 'Before you go' }).waitFor();
     await picker.selectOption('alt');
     await recap.getByText(/No saved encounter defeats yet/).waitFor();
+    await instanceRecap.getByText('No saved encounter defeats for this instance.').waitFor();
+    assert.equal(await handIn.count(), 0);
     assert.equal(await rows.count(), 0);
     await picker.selectOption('main');
     await recap.getByText(boss.name, { exact: true }).waitFor();
+    await deadmines.getByRole('button', { name: 'Browse recorded loot' }).press('Enter');
+    const loot = deadmines.locator('.atlas-loot');
+    await loot.getByRole('heading', { name: boss.name }).waitFor();
+    await picker.selectOption('alt');
+    await recap.getByText(/No saved encounter defeats yet/).waitFor();
+    await loot.getByRole('heading', { name: boss.name }).waitFor();
+    await picker.selectOption('main');
+    await recap.getByRole('button', { name: 'Open prep for The Deadmines' }).press('Enter');
+    await handIn.getByRole('button', { name: 'Open quest: The Defias Brotherhood' }).press('Enter');
+    await page.locator('[data-quest-control="detail:166"]').getByText('Ready to turn in in your saved snapshot.').waitFor();
     assert.deepEqual(errors, []);
     console.log('Dungeon Atlas recap smoke passed');
   } finally {
