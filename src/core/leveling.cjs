@@ -120,6 +120,7 @@ class LevelingAdvisor {
     // and the log is exactly what's in the game right now.
     const pack = this.knowledge?.bundled?.pack || null;
     const liveLog = Array.isArray(live?.questLog) ? live.questLog : null;
+    const logKnown = liveLog !== null || Array.isArray(p.quests);
     const turnedIn = Array.isArray(live?.turnedIn) ? live.turnedIn : [];
     const saved = p.history?.completedIdsKnown ? p.history.completedIds : [];
     const done = new Set([...saved, ...turnedIn]);
@@ -169,7 +170,7 @@ class LevelingAdvisor {
       next: next && { ...next, why: this.why(next, p, here) },
       zones: (shown.length ? shown : zones).slice(0, 6),
       training: this.training(p),
-      log: { ...this.log(p), justDone, live: Boolean(liveLog) },
+      log: { ...this.log(p), justDone, known: logKnown, live: Boolean(liveLog) },
       source: this.pack.source,
     };
   }
