@@ -109,7 +109,7 @@ test("desktop expansion is reflected in holder and progress views without changi
   assert.equal(BADGES.length, 30);
   assert.equal(ACCOUNT_BADGES.length, 4);
   assert.deepEqual(badgesFor(profile).badges.map(b => b.id), BADGES.map(b => b.id));
-  assert.equal(data.book.total, 56);
+  assert.equal(data.book.total, 59);
   assert.equal(data.account.total, 7);
   assert.equal(data.totals.kinds, data.book.total);
   const entries = [...data.book.badges, ...data.account.badges];

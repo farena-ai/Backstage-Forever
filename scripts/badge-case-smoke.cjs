@@ -19,6 +19,8 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
         encounters: [{ encounterId: 1144, name: "Edwin VanCleef", instanceMap: 36, instanceType: "party", difficultyId: 1, at: 1700002001 }],
       },
         source: { kind: "wow-addon", id: "synthetic-alpha", updatedAt: "2026-11-09T12:00:00.000Z" },
+        clientBuild: "1.60.1.70888",
+        history: { recent: [], completedIdsKnown: true, completedIds: [440, 441, 530, 887, 890] },
         readiness: { workshop: { professions: { observedAt: "2026-11-09T12:00:00.000Z", complete: false, items: [{ skillLineId: 171, professionId: 1171, name: "Alchemy", rank: 150, maxRank: 300 }] } } } },
       { id: "beta", name: "Bellan", className: "Priest", race: "Human", faction: "Alliance", level: 7 },
     ].map((p) => ({ realm: "Synthetic", notes: "", goals: [], ...p }));
@@ -107,6 +109,17 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await victory.getByText("No saved progress", { exact: true }).waitFor();
     assert.equal(await progress.count(), 0);
     assert.equal(await badges.getByRole("button", { name: /Bellan/ }).getAttribute("aria-pressed"), "true");
+    await category.selectOption("Quest chains");
+    const revenge = badges.locator('[data-badge="quest-chain-husbands-revenge"]');
+    await revenge.getByText("No saved progress", { exact: true }).waitFor();
+    await badges.getByRole("button", { name: /Aelora/ }).press("Enter");
+    await revenge.getByText("Earned", { exact: true }).waitFor();
+    await revenge.getByText("Desktop only", { exact: true }).waitFor();
+    const shipment = badges.getByRole("progressbar", { name: "Progress toward The Missing Shipment" });
+    assert.equal(await shipment.getAttribute("aria-valuenow"), "2");
+    assert.equal(await shipment.getAttribute("aria-valuemax"), "4");
+    await badges.getByRole("button", { name: /Bellan/ }).press("Enter");
+    await revenge.getByText("No saved progress", { exact: true }).waitFor();
     await resize(940, 760);
     await badges.getByRole("heading", { name: "Bellan's Badge Case" }).scrollIntoViewIfNeeded();
     assert.ok(await badges.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "Badge Case fits compact content width");
@@ -123,6 +136,7 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     assert.equal(keys.filter((id) => id === "profession-150").length, 1, "earned profession badges share one artwork request");
     assert.ok(!keys.includes("profession-alchemy-150"), "export does not request a missing ID image");
     assert.ok(keys.includes("first-dungeon"), "dungeon victories reuse the original dungeon artwork in the picture");
+    assert.ok(keys.includes("quests-100"), "quest chains reuse the original quest artwork in the picture");
     await badges.locator('[data-badge="level-20"]:not(.earned)').waitFor();
     await app.evaluate(() => { const store = globalThis.badgeFixtureStore; const state = structuredClone(store.state); state.profiles[0].level = 20; store.saveState(state); });
     await badges.locator('[data-badge="level-20"].earned').waitFor();

@@ -15,6 +15,18 @@ In **Characters → Badges → Dungeons**, earn **First dungeon victory** for on
 
 These are desktop-only awards for the character that recorded the wins. Unfinished progress reflects the saved encounter journal; earned awards survive that bounded history rolling over. The desktop records the award without assigning an achievement date, and the in-game badge list and Compass are unchanged.
 
+### Named quest-chain badges
+
+In **Characters → Badges → Quest chains**, each badge counts exact completed quest IDs from one character's saved history on a reviewed Forever build. Every listed step must be present: a finale alone, a matching title, a quest in the log, a reference entry, or an aggregate quest count cannot earn the badge. If the client didn't supply a known completed-ID list or the saved build hasn't been reviewed, progress is unavailable rather than zero. These desktop-only awards stay earned if later history is unavailable; BF doesn't guess when they were earned. The in-game badge list and Compass are unchanged.
+
+| Badge | Reviewed path (quest IDs in reported order) |
+| --- | --- |
+| The Defias Brotherhood (Westfall) | `65 → 132 → 135 → 141 → 142` (Westfall investigation only; no link to the separately reported `155 → 166` sequence is assumed) |
+| A Husband's Revenge | `440 → 441 → 530` (The Engraved Ring → Raleigh and the Undercity → A Husband's Revenge) |
+| The Missing Shipment | `887 → 890 → 892 → 888` (Southsea Freebooters → both Missing Shipment steps → Stolen Booty) |
+
+The IDs, titles and reported next links were checked separately in the byte- and SHA-256-locked `quests.enUS.json` files for **1.60.1.70888** and **1.60.1.70862**, product `wowf`. Every selected step also has a played turn-in observation in the bundled pack. See the [source lock](../data/forever/source-lock.json) and [Efficient Games attribution and license](../data/forever/NOTICE). The reviewed paths define badge criteria, not prerequisite or availability claims.
+
 ### Reputation targets
 
 In **Ledger → Reputation**, choose a saved faction and pin its next standing for the active character. This uses the same single objective slot as quests and profession ranks; replacement requires confirmation. **Now → Resume reputation** returns to that faction. The plan lists saved quests and ready turn-ins first when Forever reference data associates them with the faction. Other leads are filtered by known eligibility and show reported chain links, not guaranteed prerequisites. Server reward amounts, repeatability, and unlisted requirements are not inferred.

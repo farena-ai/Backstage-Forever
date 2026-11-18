@@ -46,9 +46,27 @@ const DUNGEON_BADGES = [
   id, group: "Dungeons", name, how, desktopOnly: true, art: "first-dungeon", threshold: n,
   test: ({ dungeonVictories: have }) => have ? { done: have >= n, have, need: n } : { progressUnavailable: true },
 }));
-const LATCHED_BADGES = [...EXPANSION_BADGES, ...DUNGEON_BADGES];
+// Reviewed exact-build next links and saved evidence rules: docs/LIVE-ADVENTURE.md.
+// Do not expand this list from the merged reference or infer links from titles.
+const QUEST_CHAIN_BUILDS = new Set(["1.60.1.70888", "1.60.1.70862"]);
+const QUEST_CHAIN_BADGES = [
+  ["quest-chain-defias-westfall", "The Defias Brotherhood (Westfall)",
+    "Complete the five Westfall investigation quests in The Defias Brotherhood.", [65, 132, 135, 141, 142]],
+  ["quest-chain-husbands-revenge", "A Husband's Revenge",
+    "Complete The Engraved Ring, Raleigh and the Undercity, and A Husband's Revenge.", [440, 441, 530]],
+  ["quest-chain-missing-shipment", "The Missing Shipment",
+    "Complete Southsea Freebooters, both Missing Shipment quests, and Stolen Booty.", [887, 890, 892, 888]],
+].map(([id, name, how, ids]) => ({
+  id, group: "Quest chains", name, how, desktopOnly: true, art: "quests-100", threshold: ids.length,
+  test: ({ chainCompletions }) => {
+    if (!chainCompletions) return { progressUnavailable: true };
+    const have = ids.filter(id => chainCompletions.has(id)).length;
+    return { done: have === ids.length, have, need: ids.length };
+  },
+}));
+const LATCHED_BADGES = [...EXPANSION_BADGES, ...DUNGEON_BADGES, ...QUEST_CHAIN_BADGES];
 const CHARACTER_CATALOG = [...BADGES, ...LATCHED_BADGES];
-const GROUPS = Object.freeze(["Levels", "Quests", "Exploring", "Firsts", "Speed", "Professions", "Gold", "Reputation", "Dungeons"]);
+const GROUPS = Object.freeze(["Levels", "Quests", "Quest chains", "Exploring", "Firsts", "Speed", "Professions", "Gold", "Reputation", "Dungeons"]);
 
 // Account badges: earned across all your characters together.
 const ACCOUNT_BADGES = [
@@ -117,7 +135,10 @@ function observedDungeonVictories(profile) {
   } catch { return 0; }
 }
 function awardFacts(profile) {
-  return { professions: observedProfessionRanks(profile), dungeonVictories: observedDungeonVictories(profile) };
+  const history = profile?.history;
+  const chainCompletions = savedSource(profile) && QUEST_CHAIN_BUILDS.has(profile.clientBuild) &&
+    history?.completedIdsKnown === true && Array.isArray(history.completedIds) ? new Set(history.completedIds) : null;
+  return { professions: observedProfessionRanks(profile), dungeonVictories: observedDungeonVictories(profile), chainCompletions };
 }
 const AWARD_IDS = new Set(LATCHED_BADGES.map(b => b.id));
 function validBadgeAwards(awards) {
@@ -163,7 +184,7 @@ function classVariety(profiles) {
   return new Set([...byIdentity.values()].filter(Boolean)).size;
 }
 /** Account badges (including class variety) still reflect the current saved roster.
- *  Removing a qualifying profile can relock them; character profession and dungeon awards are latched. */
+ *  Removing a qualifying profile can relock them; desktop character awards are latched. */
 function accountBadges(profiles) {
   const list = Array.isArray(profiles) ? profiles : [];
   const a = { characters: list.length, horde: list.some((p) => side(p) === "horde"), alliance: list.some((p) => side(p) === "alliance"), classes: classVariety(list) };
