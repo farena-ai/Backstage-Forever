@@ -120,6 +120,26 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - run: npm run test:packaged
         timeout-minutes: 10
+      - name: Verify staged Windows publisher signature
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ($env:RELEASE_CHANNEL -cne 'stable') { return }
+          $tag = $env:GITHUB_REF_NAME
+          $name = "Backstage-Forever-$env:RELEASE_VERSION-Windows-x64-Setup.exe"
+          $json = gh release view $tag --repo $env:GITHUB_REPOSITORY --json targetCommitish,assets
+          if ($LASTEXITCODE -ne 0) { throw 'Stable release needs a draft with a locally signed installer' }
+          $staged = $json | ConvertFrom-Json
+          if ($staged.targetCommitish -cne $env:GITHUB_SHA) { throw 'Staged release must target this exact release commit' }
+          $assets = @($staged.assets | Where-Object { $_.name -ceq $name })
+          if ($assets.Count -ne 1) { throw 'Exactly one staged Windows installer is required' }
+          gh release download $tag --repo $env:GITHUB_REPOSITORY --pattern $name --dir dist --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Could not download the staged Windows installer' }
+          $file = Get-Item -LiteralPath "dist/$name"
+          $sig = Get-AuthenticodeSignature -LiteralPath $file.FullName
+          if ($sig.Status -ne 'Valid' -or !$sig.TimeStamperCertificate -or $sig.SignerCertificate.GetNameInfo('SimpleName', $false) -cne 'Frank Arena') { throw 'Expected a valid timestamped Frank Arena publisher signature' }
+          if ($file.VersionInfo.ProductVersion -cnotin @($env:RELEASE_VERSION, "$env:RELEASE_VERSION.0")) { throw 'Staged installer version does not match the release' }
       - name: Sign application update manifest
         shell: pwsh
         env:
@@ -155,7 +175,9 @@ jobs:
             gh @createArguments
             if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed' }
           }
-          gh release upload $tag "dist/Backstage-Forever-$env:RELEASE_VERSION-Windows-x64-Setup.exe" "dist/Backstage-Forever-$env:RELEASE_VERSION-Source.zip" "dist/BackstageForever-Addon-$env:RELEASE_VERSION.zip" dist/backstage-update.json dist/SHA256SUMS.txt --clobber --repo "$env:GITHUB_REPOSITORY"
+          $files = @("dist/Backstage-Forever-$env:RELEASE_VERSION-Source.zip", "dist/BackstageForever-Addon-$env:RELEASE_VERSION.zip", 'dist/backstage-update.json', 'dist/SHA256SUMS.txt')
+          if ($env:RELEASE_CHANNEL -cne 'stable') { $files += "dist/Backstage-Forever-$env:RELEASE_VERSION-Windows-x64-Setup.exe" }
+          gh release upload $tag @files --clobber --repo "$env:GITHUB_REPOSITORY"
           if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed' }
           # Published releases retain their current preview/stable status on reruns.
           if (-not $existed -or ($existing | ConvertFrom-Json).isDraft) {
