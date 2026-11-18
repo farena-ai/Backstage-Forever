@@ -734,6 +734,32 @@ function BackstageForeverSavedFacts()
     for _,f in ipairs(type(reps)=='table' and reps or {}) do if type(f)=='table' and type(f.standing)=='number' and f.standing>(out.standing or 0) then out.standing=f.standing end end
     return out
 end
+-- J29 (1.5): reminders about your other characters at login, from their last saves: rested XP
+-- full (counting inn time since then), a profession cooldown ready, mail about to expire.
+local COOLDOWN_NAMES={transmute='Transmute',mooncloth='Mooncloth',['salt-shaker']='Salt Shaker'}
+function BackstageForeverReminderLines(now,me)
+    local out={};now=type(now)=='number' and now or call(time)
+    if type(now)~='number' then return out end
+    for _,c in pairs(roster) do
+        if type(c)=='table' and c.id~=me and type(c.name)=='string' then
+            local p=type(c.progress)=='table' and c.progress
+            if p and type(p.max)=='number' and p.max>0 and type(c.level)=='number' and c.level<60 and type(c.updatedAt)=='number' then
+                local rate=p.resting==false and 0.05/32 or 0.05/8
+                local rested=math.min(p.max*1.5,(tonumber(p.rested) or 0)+rate*p.max*math.max(0,now-c.updatedAt)/3600)
+                if rested>=p.max*1.5 then out[#out+1]=c.name.."'s rested XP is full." end
+            end
+            local l=type(c.ledger)=='table' and c.ledger or {}
+            for _,cd in ipairs(type(l.cooldowns)=='table' and l.cooldowns or {}) do
+                if type(cd)=='table' and type(cd.readyAt)=='number' and cd.readyAt<=now then out[#out+1]=c.name..': '..(COOLDOWN_NAMES[cd.key] or 'a cooldown')..' is ready.' end
+            end
+            local mail=type(l.mail)=='table' and l.mail
+            if mail and type(mail.expiresAt)=='number' and mail.expiresAt>now and mail.expiresAt-now<=3*86400 then local days=math.max(1,math.ceil((mail.expiresAt-now)/86400));out[#out+1]=c.name..': mail expires in '..days..(days==1 and ' day.' or ' days.') end
+        end
+    end
+    table.sort(out)
+    while #out>4 do table.remove(out) end
+    return out
+end
 local newCharacterHinted=false
 local function capture(event,eventId)
     if type(InCombatLockdown) ~= "function" or call(InCombatLockdown) ~= false then return end
@@ -757,7 +783,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.4.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.5.0'
     character.race=clean((call(UnitRace,'player')));
     -- UnitSex: 2 male, 3 female; 1 (unknown) and anything else is left out.
     local sex=integer(call(UnitSex,'player'),1,3);if sex==2 then character.sex='male' elseif sex==3 then character.sex='female' end

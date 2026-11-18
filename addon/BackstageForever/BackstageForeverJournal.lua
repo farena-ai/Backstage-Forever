@@ -151,6 +151,26 @@ local function say(line)
     local chat=plain(DEFAULT_CHAT_FRAME)
     if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(line)) end
 end
+-- J28 (1.6): one line for the Compass: the badge you're closest to.
+function BackstageForeverNextBadgeLine()
+    local list=BackstageForeverBadgeList()
+    local best,share=nil,-1
+    for _,b in ipairs(list) do
+        if not b.earned and type(b.have)=='number' and type(b.need)=='number' and b.need>0 and b.have>0 then
+            local s=b.have/b.need;if s>share then best,share=b,s end
+        end
+    end
+    if not best then return nil end
+    return string.format('Next badge: %s %d/%d',best.name,min(best.have,best.need),best.need)
+end
+-- J29 (1.5): at login, a few reminders about your other characters (from BackstageForever.lua).
+function BackstageForeverRemind()
+    if type(BackstageForeverReminderLines)~='function' then return 0 end
+    local ok,lines=pcall(BackstageForeverReminderLines,nil,call(UnitGUID,'player'))
+    if not ok or type(lines)~='table' then return 0 end
+    for _,l in ipairs(lines) do say('Reminder: '..l) end
+    return #lines
+end
 function BackstageForeverBadgesCommand(message)
     local list,earned=BackstageForeverBadgeList()
     BackstageForeverBadgeCheck(true)
@@ -226,7 +246,7 @@ if type(CreateFrame)=='function' then
                 local level=int(call(UnitLevel,'player'),1,1000)
                 if level and #db.levels==0 then BackstageForeverJournalLevel(level,now()) end
                 requestPlayed()
-                local timer=plain(C_Timer);if type(timer)=='table' and type(timer.After)=='function' then pcall(timer.After,20,function() pcall(BackstageForeverBadgeCheck) end) end
+                local timer=plain(C_Timer);if type(timer)=='table' and type(timer.After)=='function' then pcall(timer.After,20,function() pcall(BackstageForeverBadgeCheck);pcall(BackstageForeverRemind) end) end
             elseif event=='PLAYER_LEVEL_UP' then BackstageForeverJournalLevel(a,now());requestPlayed();pcall(BackstageForeverBadgeCheck)
             elseif event=='TIME_PLAYED_MSG' then BackstageForeverJournalPlayed(a)
                 local timer=plain(C_Timer);if type(timer)=='table' and type(timer.After)=='function' then pcall(timer.After,0,unmute) else unmute() end

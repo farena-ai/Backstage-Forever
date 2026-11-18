@@ -71,3 +71,13 @@
 .jr-week strong { font: 700 20px Georgia, serif; color: #3d220c; }
 .jr-week span { font-size: 12px; color: #5a3e1c; }
 .jr-week-badges, .jr-week-all { margin: 8px 0 0; font-size: 13px; color: #4a3218; }
+/* 1.5 (J21): the big moments. */
+.bf-badge-pop.big { left: 50%; right: auto; bottom: auto; top: 18%; transform: translateX(-50%); padding: 22px 30px 22px 22px; border-width: 3px; box-shadow: 0 24px 70px rgba(0,0,0,.7), 0 0 80px rgba(246,196,69,.55); animation: bf-badge-big-in 1s cubic-bezier(.2,.9,.25,1.25) both; }
+.bf-badge-pop.big img { width: 160px; height: 160px; }
+.bf-badge-pop.big strong { font-size: 32px; }
+.bf-badge-pop.big::after { content: ""; position: absolute; inset: -40px; pointer-events: none; border-radius: 50%; background: radial-gradient(circle, rgba(255,230,140,0) 40%, rgba(255,230,140,.35) 41%, rgba(255,230,140,0) 44%); animation: bf-big-ring 1.6s ease-out .2s 2 both; }
+.bf-badge-pop.big.out { animation: bf-badge-big-out .8s ease-in both; }
+@keyframes bf-badge-big-in { from { opacity: 0; transform: translateX(-50%) scale(.6); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+@keyframes bf-badge-big-out { to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+@keyframes bf-big-ring { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .bf-badge-pop.big, .bf-badge-pop.big.out, .bf-badge-pop.big::after { animation: none; } }

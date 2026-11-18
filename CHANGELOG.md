@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0 — Graphics, part 2, 2026-11-17
+
+- World Map: the line to a target you dialed in now flows toward it and the target pulses; your trail is footprints turned the way you walked. Still pictures when your system asks for less motion.
+- Instance Atlas: every dungeon and raid shows a painted silhouette of its final boss (original art, made locally), and boss loot sits on velvet trays.
+- Big moments: your own mount, level 40 and 60, Artisan, Exalted, 1000 gold, 500 quests and World explorer get a big centred banner; finishing a zone (90% of its quests) is celebrated once, with a click to Adventure → Zones.
+- Ledger: class crests beside each character's gold.
+- In game: the Adventure Compass shows the badge you're closest to when there's nothing to prepare, and a little after login the chat reminds you about your other characters (rested XP full, a profession cooldown ready, mail about to expire).
+- ROADMAP: phase 1.5 done; J25 (backup) was already in the app; new ideas J26-J31.
+
 ## 1.4.0 — Your evenings, planned, 2026-11-17
 
 - Companion: "how do I get Bear Form", "when do I get my Voidwalker", "tips for VanCleef", "fastest way to Honored with Orgrimmar" are answered right away from the class unlocks, boss tips and reputation quests, without an AI service. Nine new benchmark questions cover them; the existing benchmarks score the same as before.

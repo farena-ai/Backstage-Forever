@@ -290,6 +290,11 @@ update=function()
         end
     end
     if preparation and not collapsed then safe(preparationLine.SetText,preparationLine,text(preparation.text,80)) end
+    -- J28 (1.6): with nothing to prepare, the Compass shows the next badge and its progress.
+    if not preparation and not collapsed and type(BackstageForeverNextBadgeLine)=='function' then
+        local ok,line=pcall(BackstageForeverNextBadgeLine)
+        if ok and type(line)=='string' then safe(preparationLine.SetText,preparationLine,text(line,80)) end
+    end
     if selected and not collapsed then
         local qualifier=selected.source=='reference' and 'Approximate reference' or 'Current game'
         safe(actionTitle.SetText,actionTitle,'Step '..stepIndex..': '..text(selected.title,62))

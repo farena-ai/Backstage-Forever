@@ -46,5 +46,17 @@ window.WorldTrackerView = (() => {
     mountedFor = root;
     if (!data && !loading) load();
   }
-  return { page, mounted, invalidate: () => { data = null; }, _state: () => ({ data }) };
+  // 1.5 (J21): a zone you just finished gets a celebration once (per character, on this computer).
+  function announce(d) {
+    const zones = (d?.zones || []).filter((z) => z.mastered);
+    const id = d?.profileId || d?.character?.id || d?.name || "active";
+    let seen = {};
+    try { seen = JSON.parse(localStorage.getItem("bf-zones-done") || "{}"); } catch {}
+    const before = new Set(seen[id] || []), fresh = zones.filter((z) => !before.has(z.mapId));
+    if (seen[id] && fresh.length && window.JourneyView?.celebrate) window.JourneyView.celebrate({ img: "art/badges/explorer-15.png", kicker: "Zone finished", title: fresh[0].name, line: `${fresh[0].done} of ${fresh[0].total} quests done.${fresh.length > 1 ? ` And ${fresh.length - 1} more zone${fresh.length > 2 ? "s" : ""}.` : ""}`, big: true, nav: "zones" });
+    seen[id] = zones.map((z) => z.mapId);
+    try { localStorage.setItem("bf-zones-done", JSON.stringify(seen)); } catch {}
+  }
+  const check = () => api.worldTracker?.().then(announce).catch(() => {});
+  return { page, mounted, check, _announce: announce, invalidate: () => { data = null; }, _state: () => ({ data }) };
 })();

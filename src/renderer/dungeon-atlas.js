@@ -21,7 +21,8 @@ window.DungeonAtlas = (() => {
   }
   function card(e) {
     const isOpen = open === e.id;
-    const bosses = e.bosses.map((b) => `<li class="${b.observedInForever ? "seen" : ""}"><span class="atlas-skull" aria-hidden="true">☠</span>${esc(b.name)}${b.observedInForever ? `<small>seen in Forever${b.kills ? ` · ${b.kills} kill${b.kills === 1 ? "" : "s"}` : ""}</small>` : ""}${b.tip ? `<p class="atlas-tip"><strong>Tip:</strong> ${esc(b.tip)}</p>` : ""}</li>`).join("");
+    const last = e.bosses.length - 1;
+    const bosses = e.bosses.map((b, i) => `<li class="${b.observedInForever ? "seen" : ""}${i === last && window.BF_BOSS_ART?.includes(e.id) ? " atlas-final" : ""}">${i === last && window.BF_BOSS_ART?.includes(e.id) ? `<img class="atlas-final-art" src="art/bosses/${esc(e.id)}.webp" alt="" width="72" height="72">` : ""}<span class="atlas-skull" aria-hidden="true">☠</span>${esc(b.name)}${b.observedInForever ? `<small>seen in Forever${b.kills ? ` · ${b.kills} kill${b.kills === 1 ? "" : "s"}` : ""}</small>` : ""}${b.tip ? `<p class="atlas-tip"><strong>Tip:</strong> ${esc(b.tip)}</p>` : ""}</li>`).join("");
     const extra = e.observedOnly.map((b) => `<li class="seen new"><span class="atlas-skull">☠</span>${esc(b.name)}<small>Forever-only boss</small></li>`).join("");
     const quests = e.yourQuests.length ? `<div class="atlas-quests"><h4>Your quests here</h4><ul>${e.yourQuests.map((q) => `<li class="${q.complete ? "done" : ""}"><strong>${esc(q.title)}</strong>${q.complete ? " · ready to turn in" : ""}${q.objectives.length ? `<small>${q.objectives.map((o) => esc(o.text)).join(" · ")}</small>` : ""}</li>`).join("")}</ul></div>` : "";
     // Readiness: level, quests to grab first, group.

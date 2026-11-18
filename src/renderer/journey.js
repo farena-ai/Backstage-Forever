@@ -83,10 +83,23 @@ window.JourneyView = (() => {
     seen[d.id] = d.badges.badges.filter((b) => b.earned).map((b) => b.id);
     try { localStorage.setItem("bf-badges-seen", JSON.stringify(seen)); } catch {}
   }
+  const BIG = new Set(["first-mount", "level-40", "level-60", "profession-300", "rep-exalted", "gold-1000", "quests-500", "explorer-30"]);
+  // 1.5 (J21): a finished zone gets its moment too: the zone's painting and a gold banner.
+  function celebrate({ img, kicker, title, line, big = false, nav = null }) {
+    document.querySelector(".bf-badge-pop")?.remove();
+    const el = document.createElement("div");
+    el.className = `bf-badge-pop${big ? " big" : ""} bf-zone-pop`; el.setAttribute("role", "status");
+    el.innerHTML = `${img ? `<img src="${esc(img)}" alt="" width="120" height="120">` : ""}<div><span>${esc(kicker)}</span><strong>${esc(title)}</strong><em>${esc(line)}</em></div>`;
+    document.body.append(el);
+    el.addEventListener("click", () => { el.remove(); if (nav) { const root = document.getElementById("app"); if (root) { const go = document.createElement("button"); go.type = "button"; go.hidden = true; go.dataset.nav = nav; root.append(go); go.click(); go.remove(); } } });
+    setTimeout(() => el.classList.add("out"), 6200); setTimeout(() => el.remove(), 7000);
+    return el;
+  }
   function show(b, n, profileId = null) {
     document.querySelector(".bf-badge-pop")?.remove();
     const el = document.createElement("div");
-    el.className = "bf-badge-pop"; el.setAttribute("role", "status");
+    // 1.5 (J21): the big ones (your own mount, level 40 and 60, Artisan, Exalted) get the big moment.
+    el.className = `bf-badge-pop${BIG.has(b.id) ? " big" : ""}`; el.setAttribute("role", "status");
     el.innerHTML = `<img src="art/badges/${esc(b.id)}.png" alt="" width="120" height="120"><div><span>New badge${n > 1 ? `, and ${n - 1} more` : ""}</span><strong>${esc(b.name)}</strong><em>${esc(b.how)}</em><span class="bd-pop-link">See all your badges →</span></div>`;
     document.body.append(el);
     el.title = "Open Characters → Badges";
@@ -99,5 +112,5 @@ window.JourneyView = (() => {
     mountedFor = root; sizes(root);
     if (!data && !loading) load();
   }
-  return { page, mounted, check: () => api.journey?.().then(announce).catch(() => {}), invalidate: () => { data = null; }, _state: () => ({ data }), _show: show };
+  return { celebrate, page, mounted, check: () => api.journey?.().then(announce).catch(() => {}), invalidate: () => { data = null; }, _state: () => ({ data }), _show: show };
 })();

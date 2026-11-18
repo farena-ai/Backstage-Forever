@@ -264,6 +264,7 @@ window.NowView = (() => {
       if (z?.mapId && lastZoneId && z.mapId !== lastZoneId && z.live) arrive(z);
       if (z?.mapId) lastZoneId = z.mapId;
       window.JourneyView?.check();
+      window.WorldTrackerView?.check?.();
       window.MomentsView?.refresh();
     } catch (e) { error = e.message || "Advice is unavailable."; }
     loading = false; paint();

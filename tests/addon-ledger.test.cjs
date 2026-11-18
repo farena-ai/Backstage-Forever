@@ -255,3 +255,23 @@ assert(s0.riding and s0.riding.services[1].cost==200000)
 assert(s0.mounts and #s0.mounts.items==1 and s0.mounts.items[1].name=='Horn of the Timber Wolf','only mounts are kept')
 print('ok')
 `));
+
+test("J29 (1.5): at login, reminders about your other characters from their saves", () => {
+  const harness = fs.readFileSync(path.join(__dirname, "addon.test.cjs"), "utf8");
+  const start = harness.indexOf("const LUA_HARNESS = String.raw`") + "const LUA_HARNESS = String.raw`".length;
+  const base = harness.slice(start, harness.indexOf("dofile('addon", start));
+  lua(base + String.raw`
+GetMoney=function() return 1 end GetNumFactions=function() return 0 end
+local now=1800000000 time=function() return now end
+local other={id='Player-other',name='Beta',realm='R',className='Mage',level=30,updatedAt=now-300*3600,progress={current=0,max=1000,rested=0},ledger={cooldowns={{key='transmute',readyAt=now-5}},mail={expiresAt=now+86400}}}
+BackstageForeverExport='{"schema":1,"characters":[{"id":"Player-other","name":"Beta","realm":"R","className":"Mage","level":30,"updatedAt":'..(now-300*3600)..',"progress":{"current":0,"max":1000,"rested":0},"ledger":{"cooldowns":[{"key":"transmute","readyAt":'..(now-5)..'}],"mail":{"expiresAt":'..(now+86400)..'}}}]}'
+dofile('addon/BackstageForever/BackstageForever.lua')
+handler(nil,'PLAYER_LOGIN')
+local lines=BackstageForeverReminderLines(now,'someone-else-entirely')
+local all=table.concat(lines,'|')
+assert(all:find("Beta's rested XP is full.",1,true),all)
+assert(all:find('Beta: Transmute is ready.',1,true),all)
+assert(all:find('Beta: mail expires in 1 day.',1,true),all)
+print('ok')
+`);
+});
