@@ -312,7 +312,7 @@ Frank asked for everything below, built one release at a time through the usual 
 | J28 | **Badges in the Compass.** The in-game Adventure Compass shows the next badge and its progress. **Done in 1.5.** | S | Addon | Goals in view while you play. |
 | J29 | **Reminders in game.** At login: another character's rested XP is full, a cooldown is ready, mail is expiring. **Done in 1.5.** | S | Addon | Same reminders without opening the app. |
 | J30 | **Profession shopping list.** What to buy or gather for your next skill-ups, minus what is already in bags, bank and mail across your characters. **Done in 1.6:** each row says where you already stored it and how many are still to get. | M | App | Skill-ups without guesswork. |
-| J31 | **Boss tips for the remaining raid bosses**, reviewed before they ship. **Molten Core:** nine [reviewed Classic reference tips](raid-boss-tip-review.md) plus the unchanged Ragnaros tip; the additional client encounter has no verified target or tip. **Blackwing Lair:** [Classic reference tips for the first three bosses](blackwing-lair-tip-review.md). The later five bosses and other raids remain open. | M | Both | Raids deserve the same help as dungeons. |
+| J31 | **Boss tips for the remaining raid bosses**, reviewed before they ship. **Molten Core:** nine [reviewed Classic reference tips](raid-boss-tip-review.md) plus the unchanged Ragnaros tip; the additional client encounter has no verified target or tip. **Blackwing Lair:** [eight reviewed Classic reference tips](blackwing-lair-tip-review.md); live Forever validation has not been performed. Other raids remain open. | M | Both | Raids deserve the same help as dungeons. |
 
 ## Suggested release sequence
 

@@ -17,6 +17,11 @@ const REVIEWED_RAID_TIPS = Object.freeze({
   "Razorgore the Untamed": { instanceMap: 469, npcId: 12435, advice: "Use the control orb to make Razorgore destroy the eggs while the raid holds off the adds." },
   "Vaelastrasz the Corrupt": { instanceMap: 469, npcId: 13020, advice: "Set a tank order. If you get Burning Adrenaline and aren't tanking, move away from the raid." },
   "Broodlord Lashlayer": { instanceMap: 469, npcId: 12017, advice: "Keep backup tanks ready for Knock Away; Mortal Strike makes the tank harder to heal." },
+  Firemaw: { instanceMap: 469, npcId: 11983, advice: "Break line of sight to let Flame Buffet stacks fall off; tanks coordinate Wing Buffet." },
+  Ebonroc: { instanceMap: 469, npcId: 14601, advice: "Swap tanks when Shadow of Ebonroc lands so his hits don't heal him." },
+  Flamegor: { instanceMap: 469, npcId: 11981, advice: "Have hunters use Tranquilizing Shot to remove Frenzy; tanks coordinate Wing Buffet." },
+  Chromaggus: { instanceMap: 469, npcId: 14020, advice: "Break line of sight for breaths and clear Brood Afflictions; use Hourglass Sand for the bronze affliction." },
+  Nefarian: { instanceMap: 469, npcId: 11583, advice: "Handle the opening drakonids, prepare for class calls, and control the resurrected skeletons late in the fight." },
 });
 const TIPS = Object.freeze({
   // Ragefire Chasm

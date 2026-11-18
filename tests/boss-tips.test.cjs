@@ -19,6 +19,11 @@ const reviewedBlackwingLair = [
   ["Razorgore the Untamed", 12435, /orb.+eggs/i],
   ["Vaelastrasz the Corrupt", 13020, /Burning Adrenaline/],
   ["Broodlord Lashlayer", 12017, /Mortal Strike/],
+  ["Firemaw", 11983, /line of sight.+Flame Buffet/],
+  ["Ebonroc", 14601, /Swap tanks.+Shadow of Ebonroc/],
+  ["Flamegor", 11981, /Tranquilizing Shot.+Frenzy/],
+  ["Chromaggus", 14020, /line of sight.+breaths.+afflictions/i],
+  ["Nefarian", 11583, /class calls.+skeletons/],
 ];
 function lua(source) {
   const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], { cwd: root, input: source, encoding: "utf8", timeout: 20000 });
@@ -61,10 +66,11 @@ test("reviewed Molten Core tips are labeled Classic reference, not Forever obser
   assert.match(mc.bosses.find((b) => b.name === "Ragnaros").tip, /^Wrath of Ragnaros/);
 });
 
-test("Blackwing Lair exposes only the opening three Classic reference tips in the Atlas and Companion", () => {
+test("Blackwing Lair exposes all eight reviewed Classic reference tips in the Atlas and Companion", () => {
   const { buildAtlas } = require("../src/core/dungeon-atlas.cjs");
   const { answerSpecial } = require("../src/core/companion-unlocks.cjs");
   const bwl = buildAtlas({}).entries.find((e) => e.id === "bwl");
+  assert.equal(tipFor("Lord Victor Nefarius"), null, "the encounter starter is not the dragon target");
   assert.deepEqual(bwl.bosses.filter((boss) => boss.tip).map((boss) => boss.name), reviewedBlackwingLair.map(([name]) => name));
   for (const [name, , cue] of reviewedBlackwingLair) {
     const boss = bwl.bosses.find((b) => b.name === name);
@@ -77,8 +83,9 @@ test("Blackwing Lair exposes only the opening three Classic reference tips in th
 });
 
 test("the addon copy is generated from the same tips and loads in the TOC", () => {
-  const lua = fs.readFileSync(path.join(root, "addon/BackstageForever/BackstageForeverBossTips.lua"), "utf8");
-  assert.equal((lua.match(/^\s+\['/gm) || []).length, Object.keys(TIPS).length, "regenerate with node scripts/build-boss-tips.cjs");
+  const check = spawnSync(process.execPath, ["scripts/build-boss-tips.cjs", "--check"], { cwd: root, encoding: "utf8" });
+  assert.equal(check.status, 0, check.stderr || check.error);
+  assert.match(check.stdout, /Boss tips are up to date/);
   assert.match(fs.readFileSync(path.join(root, "addon/BackstageForever/BackstageForever.toc"), "utf8"), /BackstageForeverBossTips\.lua/);
 });
 
@@ -115,6 +122,8 @@ isPlayer=true reject() isPlayer=false
 guidKind='Pet' reject() guidKind='Creature'
 target='Unknown' reject() target='Lucifron' id=99999 reject() id=12118
 target='The Molten Core' id=3018 reject()
+map=469 target='Nefarian' id=10162 reject()
+target='Lord Victor Nefarius' id=11583 reject()
 local rows={
 ${[[409, reviewedMoltenCore], [469, reviewedBlackwingLair]].flatMap(([instanceMap, bosses]) =>
   bosses.map(([name, id]) => `{'${name}',${id},${instanceMap},${JSON.stringify(tipFor(name) || 'MISSING CLASSIC REFERENCE')}},`)).join(' ')}
@@ -125,6 +134,8 @@ for i,row in ipairs(rows) do
     id=row[2] map=(row[3]==409 and 469 or 409) reject(i-1)
     map=nil reject(i-1) map=row[3]
     id=nil reject(i-1) id=row[2]
+    target='Unknown' reject(i-1) target=row[1]
+    guidKind='Pet' reject(i-1) guidKind='Creature'
     kind='party' reject(i-1) kind='raid'
     targetChanged() targetChanged()
     assert(#toasts==i and toasts[i]=='Boss: '..target..'|'..row[4],'missing or incorrect toast for '..target)
