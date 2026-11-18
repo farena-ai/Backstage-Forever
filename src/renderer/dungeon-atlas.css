@@ -127,6 +127,7 @@
 .loot-icon { flex: none; line-height: 0; border: 2px solid currentColor; border-radius: 6px; overflow: hidden; color: #8a7a66; box-shadow: 0 0 0 1px #000; }
 .loot-gem { display: grid; place-items: center; width: 44px; height: 44px; line-height: 1; font-size: 20px; background: #1b0d05; }
 .loot-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.loot-body .loot-compare { align-self: flex-start; margin-top: 4px; max-width: 100%; overflow-wrap: anywhere; }
 .loot-name { overflow: hidden; font-weight: 700; font-size: 14px; color: #e8e2d4; text-overflow: ellipsis; white-space: nowrap; }
 .loot-kind { font-size: 12px; color: #c8b89c; }
 .loot-badge { align-self: flex-start; margin-top: 2px; padding: 0 7px; border-radius: 8px; font-size: 11px; font-weight: 800; letter-spacing: .02em; color: #e8e2d4; background: #4a3a2a; }

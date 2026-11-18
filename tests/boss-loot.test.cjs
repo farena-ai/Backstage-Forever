@@ -23,8 +23,31 @@ const ITEMS = {
   9004: chest(9004, 3, [{ stat: "Strength", amount: 8 }], { requiredLevel: 24 }),
   9005: { id: 9005, name: "Linen Cloth", quality: 1, itemLevel: 5, requiredLevel: 0, classId: 7, subclassId: 0, inventoryType: 0, slot: null, kind: null, armor: 0, stats: [], iconFileId: 77 },
 };
-const gameData = { items: (ids) => ids.map((id) => ITEMS[id] || null) };
-const warrior = { id: "p1", name: "Thrall", className: "Warrior", level: 20, faction: "Horde", readiness: { equipment: [{ slot: 5, itemId: 500, name: "Old Chest" }] } };
+const gameData = { build: () => "1.60.1.70888", items: (ids) => ids.map((id) => ITEMS[id] || null) };
+const warrior = { id: "p1", name: "Thrall", className: "Warrior", level: 20, faction: "Horde", clientBuild: "1.60.1.70888", readiness: { equipment: [{ slot: 5, itemId: 500, name: "Old Chest" }] } };
+
+test("gear decisions use exact saved item IDs, never names, wishes or loot sources as ownership", () => {
+  const pack = tiny(), profile = { ...warrior, source: { updatedAt: 200 }, ledger: { bank: { seenAt: 100, items: [{ id: 9002, name: ITEMS[9001].name }] } } };
+  const opts = { profile, gameData, wished: [9001] };
+  const card = itemCard(pack, 9001, opts);
+  assert.equal(card.ownership, null);
+  assert.deepEqual(card.verdict.replaces, [{ itemId: 500, name: ITEMS[500].name }]);
+  assert.deepEqual(itemCard(pack, 9002, opts).ownership, { where: "bank", seenAt: 100 });
+  assert.equal(itemCard(pack, 9002, { ...opts, profile: warrior }).ownership, null);
+  assert.deepEqual(instanceLoot(pack, "dm", opts).bosses[0].items[0].verdict, card.verdict);
+});
+
+test("missing restriction facts, unknown worn stats and wrong builds do not imply an upgrade", () => {
+  const options = { profile: warrior, gameData };
+  for (const profile of [{ ...warrior, clientBuild: undefined }, { ...warrior, clientBuild: "1.60.1.1" }]) {
+    assert.equal(itemCard(tiny(), 9001, { ...options, profile }).verdict.verdict, "unknown");
+    assert.equal(atlasLootSummary(tiny(), { ...options, profile }).dm.upgrades, 0);
+  }
+  const eq = equipmentContext(warrior, gameData);
+  assert.equal(upgradeVerdict({ ...ITEMS[9001], requiredLevel: null }, eq).verdict, "unknown");
+  assert.equal(upgradeVerdict({ ...ITEMS[9001], classes: undefined }, eq).verdict, "unknown");
+  assert.equal(upgradeVerdict(ITEMS[9001], { ...eq, bySlot: { 5: { unknown: true } } }).verdict, "unknown");
+});
 
 test("bundled boss loot pack: checksum, coverage and every atlas boss", () => {
   const dir = path.join(root, "data/forever-boss-loot"), b = fs.readFileSync(path.join(dir, "pack.json"));

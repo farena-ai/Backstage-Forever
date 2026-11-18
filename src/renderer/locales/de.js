@@ -254,7 +254,9 @@ window.BF_LOCALE_DE = {
  "Companion": "Begleiter",
  "COMPANION ANSWER · REVIEW BEFORE SAVING": "BEGLEITER-ANTWORT · PRÜFEN VOR DEM SPEICHERN",
  "Companion setup": "Begleiter einrichten",
+ "Compare in Sheet": "Im Charakterbogen vergleichen",
  "Compared with what you wear, the same way as item cards. Bags and bank as the ledger last saw them.": "Verglichen mit deinem Equipment, wie bei den Gegenstandskarten. Taschen und Bank so, wie das Kontobuch sie zuletzt gesehen hat.",
+ "Compared with:": "Verglichen mit:",
  "Completed": "Abgeschlossen",
  "Conditional options · confirm availability in game. Unlocks, timing, costs and safety are unknown.": "Bedingte Optionen · Verfügbarkeit im Spiel prüfen. Freischaltungen, Timing, Kosten und Sicherheit sind unbekannt.",
  "Configure AI connection": "KI-Verbindung einrichten",
@@ -428,6 +430,8 @@ window.BF_LOCALE_DE = {
  "Game connection": "Spielverbindung",
  "Gather / buy": "Sammeln / Kaufen",
  "Gathered here": "Hier gesammelt",
+ "Gear comparison": "Ausrüstungsvergleich",
+ "Gear comparisons are estimates from saved equipment.": "Ausrüstungsvergleiche sind Schätzungen anhand gespeicherter Ausrüstung.",
  "Gear score for your class:": "Ausrüstungswert für deine Klasse:",
  "Gear sets": "Ausrüstungssätze",
  "Gear wears out when you die or fight. Repair it at blacksmiths and many vendors.": "Ausrüstung verschleißt, wenn du stirbst oder kämpfst. Repariere sie bei Schmieden und vielen Händlern.",
@@ -560,10 +564,12 @@ window.BF_LOCALE_DE = {
  "Level unknown": "Stufe unbekannt",
  "Level up!": "Stufe aufgestiegen!",
  "Level-ups, finished quests, deaths, repairs and nearby flight masters.": "Stufenaufstiege, fertige Quests, Tode, Reparaturen und Flugmeister in der Nähe.",
+ "Leveling estimate from saved equipment. Check all equip restrictions in game. Loot listings and wishes do not prove ownership.": "Schätzung fürs Leveln anhand der gespeicherten Ausrüstung. Prüfe alle Ausrüstungsbeschränkungen im Spiel. Beutelisten und Wünsche belegen keinen Besitz.",
  "Levels": "Stufen",
  "levels covered": "abgedeckte Stufen",
  "Levels covered": "Abgedeckte Stufen",
  "Levels gained per day, last 14 days": "Stufen pro Tag, letzte 14 Tage",
+ "Listed loot is reference, not a personal drop.": "Die Beuteliste dient als Referenz und zeigt keine persönlichen Funde.",
  "lists everything you can type in game.": "listet alles auf, was du im Spiel eingeben kannst.",
  "lists the dungeons around your level with their bosses and loot.": "listet die Dungeons in deiner Stufenregion mit ihren Bossen und Beute auf.",
  "lists what to do next: hand-ins first, then training, then the quest you're on. Every step has": "listet auf, was als Nächstes zu tun ist: zuerst Quests abgeben, dann trainieren, dann die aktuelle Quest. Jeder Schritt hat",
@@ -664,6 +670,7 @@ window.BF_LOCALE_DE = {
  "No seller observed: gather it, or try the auction house or trade.": "Kein Händler beobachtet: Sammle es, oder versuche den Auktionshaus-Handel.",
  "No skill-up recipe observed": "Kein Skill-up-Rezept beobachtet",
  "No step right now. Pick a zone on Now.": "Gerade kein Schritt. Wähle ein Gebiet auf Jetzt.",
+ "No usable entrance waypoint in this reference.": "Diese Referenz enthält keinen verwendbaren Wegpunkt zum Eingang.",
  "No XP · safe to drop": "Keine EP · kann abgebrochen werden",
  "None of your characters has a tracked cooldown: Alchemy transmutes, Mooncloth (Tailoring) or the Salt Shaker (Leatherworking).": "Keiner deiner Charaktere hat eine verfolgte Abklingzeit: Alchemie-Transmutationen, Mondstoff (Schneiderei) oder den Salzstreuer (Lederverarbeitung).",
  "north": "Norden",
@@ -760,6 +767,7 @@ window.BF_LOCALE_DE = {
  "Other useful paths": "Weitere nützliche Wege",
  "Over a week old": "Älter als eine Woche",
  "Owned profession": "Besessener Beruf",
+ "Ownership unknown": "Besitz unbekannt",
  "Partial snapshot": "Teilweiser Snapshot",
  "Party": "Gruppe",
  "Party expedition": "Gruppenexpedition",
@@ -873,6 +881,7 @@ window.BF_LOCALE_DE = {
  "Ready to hand in": "Bereit zur Abgabe",
  "ready to hand in · search any quest below": "bereit zur Abgabe · suche unten nach jeder Quest",
  "Ready to turn in": "Bereit zum Abgeben",
+ "Ready to turn in · Last saved": "Bereit zur Abgabe · Zuletzt gespeichert",
  "Realm": "Server",
  "Recent messages accompany follow-ups in this session (up to 6 exchanges; older text may be omitted). Saved memory is separate: select it for each question.": "Letzte Nachrichten begleiten Nachfragen in dieser Sitzung (bis zu 6 Wechsel; älterer Text kann wegfallen). Das gespeicherte Gedächtnis ist getrennt: wähle es für jede Frage aus.",
  "Recovery point": "Wiederherstellungspunkt",
@@ -1378,6 +1387,15 @@ window.BF_LOCALE_DE_TEMPLATES = [
   ]
  ],
  [
+  "^Approximate Classic entrance: (.+?) · (.+?), (.+?)\\. Verify in Forever\\.$",
+  "Ungefährer Eingang in Classic: {0} · {1}, {2}. Prüfe den Eingang in Forever.",
+  [
+   0,
+   1,
+   2
+  ]
+ ],
+ [
   "^With your gear and buffs, as the game reported (.+?) ago\\.$",
   "Mit deiner Ausrüstung und deinen Buffs, wie das Spiel vor {0} meldete.",
   [
@@ -1609,6 +1627,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
  [
   "^([0-9][0-9.,:/%–-]*) quest to pick up first$",
   "{0} Quest vorher annehmen",
+  [
+   0
+  ]
+ ],
+ [
+  "^Compare item #(.+?) in Sheet$",
+  "Gegenstand Nr. {0} im Charakterbogen vergleichen",
   [
    0
   ]
