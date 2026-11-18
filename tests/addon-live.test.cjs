@@ -424,3 +424,76 @@ click();assert(shown(),'Prior character callback is retired')
 frames.BackstageForeverCompassCollapse.OnClick();assert(not shown() and not text():find('On my way:',1,true))
 event('PLAYER_LOGOUT');assert(not shown() and #guideCalls==1)
 `));
+
+const dailyCompass=hud.slice(0,hud.indexOf("dofile('addon/BackstageForever/BackstageForeverPlan.lua')"))+String.raw`
+methods.RegisterEvent=function(self,name)self[name]=true end
+event=function(name)for _,f in ipairs(handlers)do if f[name] and f.OnEvent then f.OnEvent(f,name,'player') end end end
+local said={}
+DEFAULT_CHAT_FRAME={AddMessage=function(_,m)said[#said+1]=m end}
+UnitGUID=function()return 'Synthetic-A' end
+UnitFullName=function()return 'Hero','Realm' end
+UnitClass=function()return 'Warrior','WARRIOR' end
+UnitRace=function()return 'Human','Human' end
+UnitFactionGroup=function()return 'Alliance' end
+UnitLevel=function()return 1 end
+GetZoneText=function()return 'Elwynn Forest' end
+GetBuildInfo=function()return '1.60.1','70888' end
+time=function()return 1700000000 end
+local xp,map=10,1429
+UnitXP=function()return xp end
+UnitXPMax=function()return 100 end
+C_Map={GetBestMapForUnit=function()return map end,GetMapInfo=function(id)return {mapID=id}end,
+ GetPlayerMapPosition=function()return {GetXY=function()return .2,.3 end}end,
+ CanSetUserWaypointOnMap=function()return true end,SetUserWaypoint=function(p)guideCalls[#guideCalls+1]=p end}
+UiMapPoint={CreateFromCoordinates=function(id,x,y)return {id=id,x=x,y=y}end}
+C_QuestLog={GetNumQuestLogEntries=function()return 2,2 end,
+ GetInfo=function(i)return {questID=i,title=i==1 and 'First hand-in' or 'Second hand-in',isHeader=false}end,
+ GetLogIndexForQuestID=function(id)return id end,
+ IsComplete=function()return true end,GetQuestObjectives=function()return {}end,
+ GetNextWaypoint=function(id)return 1429,id==1 and .2 or .9,.3 end}
+BackstageForeverRouteSettings={arrow=false}
+BackstageForeverAssistSettings={toasts=false}
+`+require('node:fs').readFileSync(path.join(__dirname,'../addon/BackstageForever/BackstageForever.toc'),'utf8')
+ .split(/\r?\n/).filter(line=>line.endsWith('.lua')).map(line=>`dofile('addon/BackstageForever/${line}')`).join('\n')+String.raw`
+
+event('PLAYER_LOGIN')
+local body=fonts[2]
+local dismiss=frames.BackstageForeverCompassNotNow
+local detour=frames.BackstageForeverCompassOnMyWayNotNow
+local goal=frames.BackstageForeverCompassGoal
+local waypoint=frames.BackstageForeverCompassWaypoint
+local collapse=frames.BackstageForeverCompassCollapse
+local function has(value) return body.text:find(value,1,true) end
+local function extra()return detour.visible and detour.enabled end
+`;
+
+test('daily Compass shows one recommendation, keeps the goal, and stays quiet when all previews are dismissed',()=>lua(dailyCompass+String.raw`
+assert(has('Next: First hand-in') and has('Reported ready to turn in.') and has('Current game'),body.text)
+local _,reasons=body.text:gsub('Reported ready to turn in%.','');assert(reasons==1,'Do not repeat the reason inside the details')
+assert(not has('Or:'),'Only the primary recommendation belongs in the summary')
+assert(extra() and text():find('Current game: hand-in on this map',1,true) and not text():find('nearby',1,true),text())
+assert(#guideCalls==0 and waypoint.enabled,text())
+detour.OnClick();xp=20;event('PLAYER_XP_UPDATE');assert(not extra() and has('Next: First hand-in') and not has('Second hand-in'))
+dismiss.OnClick();assert(has('Next: Second hand-in') and BackstageForeverHUDSettings.mode=='adventure')
+dismiss.OnClick();assert(has('Quiet for now') and not waypoint.enabled)
+collapse.OnClick();assert(has('Quiet for now') and not has('First hand-in') and not has('Second hand-in'),'Compact must honor the same dismissals')
+collapse.OnClick();goal.OnClick();assert(BackstageForeverHUDSettings.mode=='questing' and has('Quiet for now') and not extra())
+assert(#guideCalls==0)
+`));
+
+test('the real guided route takes over immediately, then releases Compass advice when hidden',()=>lua(dailyCompass+String.raw`
+local click,dismissClick=waypoint.OnClick,dismiss.OnClick
+SlashCmdList.BACKSTAGEFOREVER('route guide')
+local route=BackstageForeverRouteNow();assert(route and route.text,'Fixture must start an actual guided route')
+assert(has('Route ') and not has('Next:') and not extra() and not dismiss.visible and not waypoint.visible,'Route replaces advice instead of competing with it')
+assert(BackstageForeverHUDSettings.mode=='adventure' and not BackstageForeverHUDSettings.collapsed,'Guided presentation does not change saved Compass preferences')
+SlashCmdList.BACKSTAGEFOREVER('route next');assert(has('Route '..(route.index+1)..'/'),'Browsing the route updates the Compass without waiting for capture')
+SlashCmdList.BACKSTAGEFOREVER('route back');assert(has('Route '..route.index..'/'))
+local speech=#said;click();dismissClick();assert(#guideCalls==0)
+fighting=true;event('PLAYER_REGEN_DISABLED');assert(not frames.BackstageForeverCompass.visible and not extra())
+fighting=false;event('PLAYER_REGEN_ENABLED');assert(frames.BackstageForeverCompass.visible and has('Route ') and not extra() and #said==speech)
+collapse.OnClick();assert(has('Route ') and not has('Next:'));collapse.OnClick()
+SlashCmdList.BACKSTAGEFOREVER('route');assert(not BackstageForeverRouteNow() and has('Next: First hand-in') and waypoint.visible and waypoint.enabled)
+click();assert(#guideCalls==0,'Previous waypoint callback cannot revive after the route')
+waypoint.OnClick();assert(#guideCalls==1 and guideCalls[1].x==.2)
+`));
