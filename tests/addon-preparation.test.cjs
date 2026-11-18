@@ -67,6 +67,34 @@ function run(scenario, { validate = true, timeout = 30000 } = {}) {
   });
 }
 const active = p => p.characters.find(c => c.id === p.activeId);
+test("recipe pickup and manual craft result replay through saved import and reopen", t => {
+  const fs = require("node:fs"), os = require("node:os");
+  const { mergeSnapshot } = require("../src/core/profile-sync.cjs");
+  const { Store } = require("../src/core/store.cjs");
+  const { buildProfessionCoach } = require("../src/core/profession-coach.cjs");
+  const dir = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), "bf-c1-replay-"));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const saves = run(String.raw`
+assert(registered.PLAYER_LOGIN and registered.BAG_UPDATE_DELAYED and registered.SKILL_LINES_CHANGED)
+local craftCalls=0;C_TradeSkillUI.CraftRecipe=function()craftCalls=craftCalls+1 end
+contents={};event('PLAYER_LOGIN');save()
+now=now+1;contents={[0]={{itemID=765,stackCount=2},{itemID=2447,stackCount=1}}};event('BAG_UPDATE_DELAYED');flush();save()
+assert(craftCalls==0,'a ready recipe must not craft on its own')
+-- Simulate the world state after a manual player craft; the addon only observes it.
+now=now+1;contents={};lines[1].rank=51;event('SKILL_LINES_CHANGED');event('BAG_UPDATE_DELAYED');flush();save()
+assert(craftCalls==0,'a rank change must not start another craft')
+`);
+  const models = saves.map(saved => {
+    const store = new Store(dir, {});
+    const snapshot = parseSavedVariables(`BackstageForeverExport = [=[${JSON.stringify(saved)}]=]`);
+    store.saveState(mergeSnapshot(store.state, snapshot));
+    const { state } = new Store(dir, {});
+    return buildProfessionCoach(state, state.activeProfileId, { skillLineId: 171, recipeId: 1001 });
+  });
+  assert.deepEqual(models.map(m => m.profession.rank), [50, 50, 51]);
+  assert.deepEqual(models.map(m => m.recommendation.kind), ["materials-needed", "craft-ready", "materials-needed"]);
+  assert.deepEqual(models.map(m => m.shoppingList.rows[0].projectedPurchase), [2, 0, 2]);
+});
 // Decoder counts JSON values (containers included), never object property keys.
 const jsonValueNodes = value => 1 + (value && typeof value === "object"
   ? Object.values(value).reduce((sum, child) => sum + jsonValueNodes(child), 0) : 0);
