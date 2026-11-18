@@ -1352,6 +1352,7 @@ root.addEventListener("click", (event) => {
   if (button.dataset.nav || button.dataset.character || button.dataset.provider || ["clear-chat", "reset", "import", "new-character", "delete-character", "delete-key", "subscription-login", "subscription-logout", "explain-plan"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) retireCompanion();
   // A click owns its navigation before the save barrier; reference polls cannot retarget it.
   const navigation=button.dataset.nav?Object.freeze({page:button.dataset.nav,request:questNavigationRequest}):null;
+  const deleteTarget = button.dataset.command === "delete-character" && !characterSelectionPending() ? profile()?.id : null;
   action(async () => {
     await autosaveQueue;
     if (navigation) {
@@ -1650,23 +1651,25 @@ root.addEventListener("click", (event) => {
         await persist({ ...state, activeProfileId: null });
         render();
         break;
-      case "delete-character":
-        if (confirm("Delete this character, their goals, private notes and saved memory? This also clears ALL local recovery points and any preserved damaged original. Exported backups remain separate.")) {
-          CommandCenter.remove(button.dataset.profileId);
-          Preparation.remove(button.dataset.profileId);
-          Party.remove(button.dataset.profileId);
-          await persist(
-            editedState((next) => {
-              const target = button.dataset.profileId;
-              next.profiles = next.profiles.filter((p) => p.id !== target);
-              if (next.activeProfileId === target)
-                next.activeProfileId = next.profiles[0]?.id || null;
-            }),
-          );
-          DesktopViewPresets.remove(button.dataset.profileId);
+      case "delete-character": {
+        const target = deleteTarget;
+        if (target && !characterSelectionPending() && profile()?.id === target && confirm("Delete this character, their goals, private notes and saved memory? This also clears ALL local recovery points and any preserved damaged original. Exported backups remain separate.")) {
+          const next = editedState((draft) => {
+            draft.profiles = draft.profiles.filter((p) => p.id !== target);
+            if (draft.activeProfileId === target)
+              draft.activeProfileId = draft.profiles[0]?.id || null;
+          });
+          state = await mutateStateCall(() => api.saveState(next, state));
+          GuidedRouteView.removeSkips(target);
+          CommandCenter.remove(target);
+          Preparation.remove(target);
+          Party.remove(target);
+          DesktopViewPresets.remove(target);
+          await refreshBrief();
           render();
         }
         break;
+      }
       case "clear-chat":
         await clearMainConversation();
         toast("Conversation cleared from this session.");
@@ -1721,6 +1724,7 @@ root.addEventListener("click", (event) => {
           Preparation.remove(); DesktopViewPresets.remove();
           Party.invalidate(); Party.remove();
           CommandCenter.remove();
+          GuidedRouteView.removeSkips();
           QuestGuide.invalidate(true);
           knowledgeStatus = null;
           chatGeneration++;

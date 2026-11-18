@@ -18,6 +18,8 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     const initial = { ...defaultState(), onboarded: true, activeProfileId: alpha.id, profiles: [alpha, beta] };
     assert.equal(validateState(initial).activeProfileId, alpha.id);
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(initial));
+    const backup = path.join(dir, "fixture-backup.json");
+    await fs.writeFile(backup, JSON.stringify(initial));
     await fs.writeFile(path.join(dir, "package.json"), JSON.stringify({ name: "bf-route-recovery-fixture", version: "1.0.0", main: "fixture-main.cjs" }));
     await fs.writeFile(path.join(dir, "fixture-main.cjs"), `
       const load=require('node:module').createRequire(${JSON.stringify(path.join(repo, "package.json"))});
@@ -26,19 +28,24 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
       load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});
       load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});
       const L=load('./src/core/live-bridge.cjs'); L.LiveBridge.prototype.readPreference=()=>false; L.LiveBridge.prototype.start=()=>{};
-      const {ipcMain}=require('electron'), handle=ipcMain.handle.bind(ipcMain);
-      globalThis.routeFixture={gates: {}, calls: {}};
+      const {ipcMain,dialog}=require('electron'), handle=ipcMain.handle.bind(ipcMain);
+      globalThis.routeFixture={gates: {}, calls: {}, resetResponse: 0};
+      const messageBox=dialog.showMessageBox.bind(dialog);
+      dialog.showMessageBox=(win,options)=>options.title==='Delete all local data?'
+        ? Promise.resolve({response:routeFixture.resetResponse}) : options.title==='Replace saved profiles?'
+          ? Promise.resolve({response:1}) : messageBox(win,options);
+      dialog.showOpenDialog=async()=>({canceled:false,filePaths:[${JSON.stringify(backup)}]});
       ipcMain.handle=(name,fn)=>handle(name,async (...args)=>{
         routeFixture.calls[name]=(routeFixture.calls[name] || 0)+1;
         const gate=routeFixture.gates[name];
         const held=gate && !gate.claimed;
         if(held) gate.claimed=true;
-        if(held && gate.reject){
+        if(held && (gate.reject || gate.before)){
           await new Promise(resolve=>{gate.release=resolve;});
-          throw Error('Fixture character selection rejected');
+          if(gate.reject) throw Error('Fixture character selection rejected');
         }
         const result=await fn(...args);
-        if(held) await new Promise(resolve=>{gate.release=resolve;});
+        if(held && !gate.before) await new Promise(resolve=>{gate.release=resolve;});
         return result;
       });
       load('./src/main.cjs');
@@ -57,9 +64,9 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     const press = async (el) => { await el.focus(); await page.keyboard.press("Enter"); };
     const route = page.locator("[data-gr-recovery]");
     const picker = page.locator("#active-character");
-    const arm = (channel, reject = false) => app.evaluate((_, { channel, reject }) => {
-      routeFixture.gates[`backstage:${channel}`] = { reject };
-    }, { channel, reject });
+    const arm = (channel, reject = false, before = false) => app.evaluate((_, { channel, reject, before }) => {
+      routeFixture.gates[`backstage:${channel}`] = { reject, before };
+    }, { channel, reject, before });
     const held = (channel) => app.evaluate(async (_, channel) => {
       const gate = routeFixture.gates[`backstage:${channel}`];
       for (let i = 0; i < 100 && !gate.release; i++) await new Promise((r) => setTimeout(r, 20));
@@ -177,6 +184,105 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await page.locator("#active-character").selectOption("Alpha");
     await press(route.getByRole("button", { name: "Restore skipped steps" }));
     await route.getByText(/availability/i).waitFor();
+
+    const skip = () => press(route.getByRole("button", { name: "Skip this step" }));
+    const prefix = "bf-desktop-route-skips-v1:";
+    const skipKey = (...scope) => prefix + JSON.stringify(scope);
+    const alphaKey = skipKey(alpha.id, alpha.source.id, alpha.clientBuild);
+    const olderAlphaKey = skipKey(alpha.id, 'Alpha-Previous"Source', beta.clientBuild);
+    // Give another character a key that includes Alpha's ID in a different tuple position.
+    const betaKey = skipKey(beta.id, alpha.id, alpha.clientBuild);
+    const orphanKey = skipKey("Alpha-Other", alpha.source.id, alpha.clientBuild);
+    const malformedKey = prefix + "not-json";
+    const otherPreference = "bf-desktop-route-skips-v1-unrelated";
+    const read = (key) => page.evaluate(key => localStorage.getItem(key), key);
+    await skip();
+    await route.getByRole("button", { name: "Show on Map" }).waitFor();
+    const stored = await read(alphaKey);
+    assert.ok(JSON.parse(stored).length > 0);
+    await page.evaluate(({ keys, stored, otherPreference }) => {
+      for (const key of keys) localStorage.setItem(key, stored);
+      localStorage.setItem(otherPreference, "keep me");
+    }, { keys: [olderAlphaKey, betaKey, orphanKey, malformedKey], stored, otherPreference });
+
+    const restoreIdentity = async () => {
+      await navigate(page, "guide");
+      await page.locator('[data-command="import"]').click();
+      await page.getByText("Backup imported. Existing API keys preserved.", { exact: true }).waitFor();
+      await navigate(page, "guided-route");
+      await route.getByText(/availability/i).waitFor();
+      assert.equal(await picker.inputValue(), alpha.id);
+      assert.equal(await route.getByRole("button", { name: "Restore skipped steps" }).count(), 0);
+    };
+
+    if (!process.argv.includes("--reset-only")) {
+      await navigate(page, "characters");
+      const remove = page.locator('[data-command="delete-character"]');
+      await page.evaluate(() => { window.confirm = () => false; });
+      const beforeDelete = await skipEntries();
+      await remove.click();
+      assert.deepEqual(await skipEntries(), beforeDelete, "cancelled deletion must preserve skips");
+      await page.evaluate(() => { window.confirm = () => true; });
+      await arm("saveState", true);
+      await remove.click();
+      await held("saveState");
+      await release("saveState");
+      await page.getByText("Fixture character selection rejected", { exact: true }).waitFor();
+      assert.deepEqual(await skipEntries(), beforeDelete, "failed deletion must preserve skips");
+
+      await arm("saveState", false, true);
+      await remove.click();
+      await held("saveState");
+      // Admit a real Skip while the deletion awaits its commit, then deliver it after the commit.
+      await navigate(page, "guided-route");
+      await route.getByRole("button", { name: "Restore skipped steps" }).waitFor();
+      await arm("guidedRoute");
+      await skip();
+      await held("guidedRoute");
+      await release("saveState");
+      await page.waitForFunction(() => !state.profiles.some(p => p.id === "Alpha"));
+      await release("guidedRoute");
+      await page.evaluate(() => backstage.guidedRoute({ profileId: "Beta", skips: [] }));
+      assert.equal(await read(alphaKey), null, "a late Skip must not re-create the deleted character's key");
+      await page.reload();
+      assert.equal(await read(alphaKey), null, "successful deletion must remove the character's current skips");
+      assert.equal(await read(olderAlphaKey), null, "successful deletion must remove older source/build variants");
+      for (const key of [betaKey, orphanKey, malformedKey]) assert.equal(await read(key), stored, key);
+      assert.equal(await read(otherPreference), "keep me");
+      await restoreIdentity();
+      await skip();
+      await route.getByRole("button", { name: "Show on Map" }).waitFor();
+    }
+
+    await navigate(page, "guide");
+    const reset = page.locator('[data-command="reset"]');
+    const beforeReset = await skipEntries();
+    await arm("resetData");
+    await reset.click();
+    await held("resetData");
+    await release("resetData");
+    await page.waitForFunction(() => stateMutationBusy === 0);
+    assert.deepEqual(await skipEntries(), beforeReset, "cancelled reset must preserve skips");
+    await app.evaluate(() => { routeFixture.resetResponse = 1; });
+    await arm("resetData", false, true);
+    await reset.click();
+    await held("resetData");
+    await navigate(page, "guided-route");
+    await route.getByRole("button", { name: "Restore skipped steps" }).waitFor();
+    await arm("guidedRoute");
+    await skip();
+    await held("guidedRoute");
+    await release("resetData");
+    await page.getByText("Local data and saved keys deleted.", { exact: true }).waitFor();
+    await release("guidedRoute");
+    await page.evaluate(() => backstage.guidedRoute({ profileId: null, skips: [] }));
+    assert.deepEqual(await skipEntries(), [], "a late Skip must not re-create storage after reset");
+    await page.reload();
+    assert.deepEqual(await skipEntries(), [], "reset must remove every skip entry, including orphans");
+    assert.equal(await read(otherPreference), "keep me");
+    await page.locator('[data-command="setup-company"]').click();
+    await page.waitForFunction(() => state.onboarded && !setupOpen);
+    await restoreIdentity();
     assert.deepEqual(errors, []);
     console.log(`Desktop route recovery passed at ${outer.join("×")} outer, ${geometry.viewport.join("×")} renderer.`);
   } finally {
