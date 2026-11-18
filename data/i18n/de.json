@@ -1356,9 +1356,9 @@
    "/bf prices - remember Auction House prices on pages you open yourself (on, off, status, or tips for tooltip lines)": "/bf prices - Auktionshauspreise auf selbst geöffneten Seiten merken (on, off, status oder tips für Tooltip-Zeilen)",
    "Use /bf prices on, off, status or tips.": "Nutze /bf prices on, off, status oder tips.",
    "Boss tips off.": "Boss-Tipps aus.",
-   "Boss tips on: the first time you target a dungeon boss, a short tip.": "Boss-Tipps an: Wenn du einen Dungeon-Boss zum ersten Mal anvisierst, ein kurzer Tipp.",
-   "Target a dungeon boss first. Tips cover the bosses of the leveling dungeons and a few raid bosses.": "Visiere zuerst einen Dungeon-Boss an. Tipps gibt es für die Bosse der Level-Dungeons und einige Schlachtzugsbosse.",
-   "/bf boss - the tip for the dungeon boss you target (on or off for the pop-ups)": "/bf boss - der Tipp für den anvisierten Dungeon-Boss (on oder off für die Einblendungen)"
+   "Boss tips on: a short tip when you first target a covered boss.": "Boss-Tipps an: Ein kurzer Tipp, wenn du einen erfassten Boss zum ersten Mal anvisierst.",
+   "Target a covered dungeon or raid boss first.": "Visiere zuerst einen erfassten Dungeon- oder Schlachtzugsboss an.",
+   "/bf boss - the tip for the boss you target (on or off for the pop-ups)": "/bf boss - der Tipp für den anvisierten Boss (on oder off für die Einblendungen)"
   },
   "templates": {
    "  %s: %d items, %d worn now, %d in your bags, %d elsewhere.": "  %s: %d Gegenstände, %d aktuell getragen, %d in deinen Taschen, %d woanders.",

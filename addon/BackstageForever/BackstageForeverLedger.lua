@@ -172,10 +172,19 @@ end
 
 -- Reputation: every faction row with a bar. Collapsed headers hide their factions; those keep
 -- their last-seen values (the addon never expands or collapses the player's list).
+local MAX_REPUTATION_SCAN=2147483646
+local function reputationScan(value,limit)
+    local id=int(value,1,limit)
+    if id==value then return id end
+end
 local function readFactions()
     local n=int(call(GetNumFactions),0,1000)
     if not n then return end
     local d=store();local seen=false;local t=now()
+    -- Persist the sequence with this character's rows; clocks and UI sessions can repeat.
+    local lastScan=reputationScan(d.reputationsScan,MAX_REPUTATION_SCAN+1) or 0
+    local nextScan=min(lastScan,MAX_REPUTATION_SCAN)+1
+    local scan=t and t>0 and nextScan<=MAX_REPUTATION_SCAN and nextScan or nil
     local version,build=call(GetBuildInfo)
     version=str(version,11);build=str(build,8)
     local observedBuild=version and build and version:match('^%d%d?%d?%.%d%d?%d?%.%d%d?%d?$') and build:match('^%d+$') and (version..'.'..build) or nil
@@ -190,21 +199,23 @@ local function readFactions()
                 local known=d.reputations[id]~=nil
                 local count=0;if not known then for _ in pairs(d.reputations) do count=count+1 end end
                 if known or count<LIMITS.factions then
-                    d.reputations[id]={id=id,name=name,standing=standing,min=lo,max=hi,value=value,observedAt=t and t>0 and t or nil,observedBuild=t and t>0 and observedBuild or nil}
+                    d.reputations[id]={id=id,name=name,standing=standing,min=lo,max=hi,value=value,observedAt=t and t>0 and t or nil,observedBuild=t and t>0 and observedBuild or nil,scanId=scan}
                     seen=true
                 end
             end
         end
     end
-    if seen then d.reputationsAt=t end
+    if seen then d.reputationsAt=t;d.reputationsScan=nextScan end
     return seen
 end
 
 local function reputationSnapshot(d,t)
     local factions={}
-    for _,f in pairs(d.reputations) do if type(f)=='table' then factions[#factions+1]={id=f.id,name=f.name,standing=f.standing,min=f.min,max=f.max,value=f.value,observedAt=f.observedAt,observedBuild=f.observedBuild} end end
+    local seenAt=int(d.reputationsAt,0,253402300799)
+    local scan=seenAt and seenAt>0 and reputationScan(d.reputationsScan,MAX_REPUTATION_SCAN) or nil
+    for _,f in pairs(d.reputations) do if type(f)=='table' then factions[#factions+1]={id=f.id,name=f.name,standing=f.standing,min=f.min,max=f.max,value=f.value,observedAt=f.observedAt,observedBuild=f.observedBuild,scanId=scan and reputationScan(f.scanId,scan) or nil} end end
     table.sort(factions,function(a,b)return a.id<b.id end)
-    if #factions>0 then return {seenAt=int(d.reputationsAt,0,253402300799) or t,factions=factions} end
+    if #factions>0 then return {seenAt=seenAt or t,scanId=scan,factions=factions} end
 end
 
 -- Profession cooldowns this addon is sure about. Transmutes are one shared group.
@@ -626,15 +637,15 @@ if type(CreateFrame)=='function' then
             store()
             if event=='TRAINER_SHOW' or event=='TRAINER_UPDATE' then pcall(readTrainer) elseif event=='TRAINER_CLOSED' then request() end
             if event=='MERCHANT_SHOW' then pcall(readMerchantMounts) end
-            if event=='PLAYER_LOGIN' then bankOpen=false;mailOpen=false;pcall(readFactions)
-            elseif event=='PLAYER_MONEY' then request()
-            elseif event=='UPDATE_FACTION' then
+            if event=='PLAYER_LOGIN' then bankOpen=false;mailOpen=false end
+            if event=='PLAYER_MONEY' then request()
+            elseif event=='PLAYER_LOGIN' or event=='UPDATE_FACTION' then
                 local ok,seen=pcall(readFactions)
                 if ok and seen then
                     if type(BackstageForeverRequestReputationCapture)=='function' then
                         local copied,snapshot=pcall(reputationSnapshot,db)
                         if copied then pcall(BackstageForeverRequestReputationCapture,snapshot) end
-                    else request() end
+                    elseif event=='UPDATE_FACTION' then request() end
                 end
             elseif event=='BANKFRAME_OPENED' then bankOpen=true;pcall(readBank);request()
             elseif event=='BANKFRAME_CLOSED' then bankOpen=false;request()

@@ -1031,7 +1031,7 @@ app.whenReady().then(async () => {
     if (fs.statSync(file).size > MAX_BACKUP_BYTES)
       throw new Error("Invalid backup.");
     const text = fs.readFileSync(file, "utf8");
-    v.validateState(JSON.parse(text));
+    store.validateBackup(text);
     const confirm = await dialog.showMessageBox(win, {
       type: "warning",
       title: "Replace saved profiles?",

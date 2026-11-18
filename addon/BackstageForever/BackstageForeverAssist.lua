@@ -601,7 +601,7 @@ function BackstageForeverAssistCommand(message)
             '/bf prices - remember Auction House prices on pages you open yourself (on, off, status, or tips for tooltip lines)',
             '/bf sell - what in your bags is worth more at auction than at a vendor',
             '/bf plates - quest icons over enemies a quest still needs (on or off)',
-            '/bf boss - the tip for the dungeon boss you target (on or off for the pop-ups)',
+            '/bf boss - the tip for the boss you target (on or off for the pop-ups)',
             '/bf set save NAME, /bf set wear NAME - save the gear you wear as a set, put it back on later (out of combat); /bf set list, /bf set delete NAME',
             '/bf show, /bf hide - the Adventure Compass panel',
             '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',
@@ -652,22 +652,31 @@ if type(CreateFrame)=='function' then
 end
 BackstageForeverAssistSession=session
 
--- Boss tips (1.3, J13): the first time you target a dungeon boss this session, a short tip as a
+-- Boss tips: the first time you target a covered boss this session, a short tip as a
 -- toast. Text only, no timers. /bf boss repeats the tip for your target; /bf boss off|on.
 local bossShown={}
-function BackstageForeverBossTip(name)
+local function currentBossTip()
+    if call(UnitIsPlayer,'target') then return nil end
+    local name=call(UnitName,'target')
     local tips=BackstageForeverBossTips
     if type(tips)~='table' or type(name)~='string' then return nil end
     local tip=tips[name:lower()]
-    return type(tip)=='string' and tip or nil
+    if type(tip)=='table' then
+        -- Reference advice is not evidence: require the actual creature and raid map.
+        local _,kind,_,_,_,_,_,map=call(GetInstanceInfo)
+        local id=npcIdOf('target')
+        if kind~='raid' or not map or map~=tip.instanceMap or not id or id~=tip.npcId then return nil end
+        tip=tip.tip
+    end
+    if type(tip)=='string' then return name,tip end
 end
 local function targetBoss(force)
     if type(BackstageForeverAssistSettings)=='table' and BackstageForeverAssistSettings.bossTips==false and not force then return nil end
-    if call(UnitIsPlayer,'target') then return nil end
-    local name=call(UnitName,'target');local tip=BackstageForeverBossTip(name)
+    local name,tip=currentBossTip()
     if not tip then return nil end
-    if bossShown[name] and not force then return nil end
-    bossShown[name]=true
+    local key=name:lower()
+    if bossShown[key] and not force then return nil end
+    bossShown[key]=true
     if type(BackstageForeverToast)=='function' then pcall(BackstageForeverToast,'Boss: '..name,tip,nil,'boss') end
     return tip
 end
@@ -676,9 +685,9 @@ function BackstageForeverBossCommand(message)
     local arg=(type(message)=='string' and message:lower() or ''):match('^%a+%s*(%a*)') or ''
     if type(BackstageForeverAssistSettings)~='table' then BackstageForeverAssistSettings={} end
     if arg=='off' then BackstageForeverAssistSettings.bossTips=false;say('Boss tips off.');return false end
-    if arg=='on' then BackstageForeverAssistSettings.bossTips=true;say('Boss tips on: the first time you target a dungeon boss, a short tip.');return true end
-    local name=call(UnitName,'target');local tip=BackstageForeverBossTip(name)
-    if tip then say(name..': '..tip) else say('Target a dungeon boss first. Tips cover the bosses of the leveling dungeons and a few raid bosses.') end
+    if arg=='on' then BackstageForeverAssistSettings.bossTips=true;say('Boss tips on: a short tip when you first target a covered boss.');return true end
+    local name,tip=currentBossTip()
+    if tip then say(name..': '..tip) else say('Target a covered dungeon or raid boss first.') end
     return tip
 end
 

@@ -26,6 +26,10 @@ For a journal-specific startup failure, a valid newest point enables **Restore a
 
 Support reports include only recovery phase (`ready`, `unavailable`, `limit`), automatic choice and bounded point count. Point dates, IDs, paths and private journal text never enter a support report. Recovery is local protection, not a promise that a failing disk or an administrator modifying app files can be repaired automatically.
 
+## Returning to v1.8.0
+
+The current journal, newly created recovery points and newly exported backups are readable by v1.8.0. Opening this release once converts a valid journal saved by an earlier preview if needed; no edit or save is required. Existing recovery files and backup exports are not rewritten. v1.8.0 shows the badges it knows, not the newer badge awards. Before rolling back, export a backup to keep the newer awards: ordinary edits in v1.8.0 preserve them, but accepting a newer game snapshot there can replace that character's journal and drop awards that the newer release cannot earn again from the remaining evidence.
+
 ## Developer verification
 
 Use synthetic local data only:
@@ -34,7 +38,9 @@ Use synthetic local data only:
 node --test tests/diagnostics.test.cjs tests/diagnostics-ipc.test.cjs
 npm run test:support
 node --test --test-concurrency=1 tests/recovery-checkpoints.test.cjs tests/recovery-store.test.cjs tests/recovery-ipc.test.cjs tests/startup-recovery.test.cjs
+node --test tests/rollback-journal.test.cjs
 npm run test:recovery
 ```
 
 The Electron fixture uses isolated temporary data, fake native clipboard/dialog surfaces and synthetic canaries. It checks exact preview/copy/export equality, trusted requests, held controls/focus, layout and navigation/reset races without real player files, account sign-in, audio capture, inference or installers.
+The rollback test uses the actual v1.8.0 Store when the tagged release commit is available locally; use a full Git history to run that case.

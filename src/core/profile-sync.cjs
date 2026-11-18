@@ -2,7 +2,7 @@
 const { createHash } = require("node:crypto");
 const { validateState, object, str } = require("./validation.cjs");
 const { preserveMemories } = require("./memory-data.cjs");
-const { latchProfessionAwards } = require("./badges.cjs");
+const { latchBadgeAwards } = require("./badges.cjs");
 const { normalizeEncounterHistory } = require("./journal-data.cjs");
 
 function timestamp(value) {
@@ -13,6 +13,24 @@ function timestamp(value) {
   )
     throw Error("Invalid snapshot timestamp");
   return value;
+}
+
+// A character's validated scan counter can break a timestamp tie only within
+// the same build. It does not make any other fields in the export newer.
+function mergeReputationScan(profile, incoming) {
+  const previous = profile.ledger?.reputations;
+  const reputations = incoming.ledger?.reputations;
+  if (!profile.clientBuild || profile.clientBuild !== incoming.clientBuild ||
+      previous?.scanId === undefined || reputations?.scanId === undefined ||
+      reputations.scanId <= previous.scanId || reputations.seenAt < previous.seenAt ||
+      reputations.seenAt * 1000 > Date.parse(incoming.source.updatedAt)) return;
+
+  profile.ledger.reputations = reputations;
+  // Evaluate only reputation evidence, not unrelated badge inputs from either export.
+  const { source, clientBuild, faction, badgeAwards } = profile;
+  const evidence = { source, clientBuild, faction, badgeAwards, ledger: { reputations } };
+  latchBadgeAwards(evidence);
+  if (evidence.badgeAwards) profile.badgeAwards = evidence.badgeAwards;
 }
 
 /** Merge a validated saved export without sharing mutable data with either input. */
@@ -127,18 +145,19 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
       while (usedIds.has(id)) id = `${base}-${++suffix}`;
       usedIds.add(id);
       profile = { ...incoming, id };
-      latchProfessionAwards(profile);
+      latchBadgeAwards(profile);
       next.profiles.push(profile);
     } else if (
       !profile.source ||
       incoming.source.updatedAt > profile.source.updatedAt
     ) {
       // Backfill from legacy saved evidence before a newer snapshot can replace it.
-      if (profile.source) latchProfessionAwards(profile);
+      if (profile.source) latchBadgeAwards(profile);
       // Omission is not evidence of a reset. Carry only the bounded encounter
       // history from this source, not any of the previous journal's other fields.
+      // A later save must not legitimize rows dated after their original export.
       const encounters = profile.source && incoming.journal?.encounters === undefined
-        ? normalizeEncounterHistory(profile.journal?.encounters) : [];
+        ? normalizeEncounterHistory(profile.journal?.encounters).filter(e => e.at <= Date.parse(profile.source.updatedAt) / 1000) : [];
       if (encounters.length) {
         incoming.journal = { ...(incoming.journal ?? { levels: [], firsts: [], zones: [] }), encounters };
       }
@@ -169,11 +188,12 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
         if (incoming[key] !== undefined) profile[key] = incoming[key];
         else delete profile[key];
       }
-      latchProfessionAwards(profile);
+      latchBadgeAwards(profile);
     } else if (incoming.source.updatedAt === profile.source.updatedAt) {
       const gathering = require("./gathering-data.cjs").intersectGatheringProfiles(profile.gathering, incoming.gathering);
       if (gathering === undefined) delete profile.gathering;
       else profile.gathering = gathering;
+      mergeReputationScan(profile, incoming);
     }
     sources.set(incoming.source.id, profile);
   }

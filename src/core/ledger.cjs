@@ -5,7 +5,7 @@
 // touching the rest of the character. Everything here stays on this computer: it is never part
 // of community sharing (community.cjs) or the AI context (providers.cjs).
 const LIMITS = Object.freeze({ items: 400, factions: 120, cooldowns: 16, prices: 1500, history: 5, moneyLog: 30, training: 200 });
-const MAX_T = 253402300799, MONEY = 1e13, ID = 2147483647;
+const MAX_T = 253402300799, MONEY = 1e13, ID = 2147483647, MAX_REPUTATION_SCAN = 2147483646;
 const COOLDOWNS = Object.freeze({
   transmute: { name: "Transmute", profession: "Alchemy" },
   mooncloth: { name: "Mooncloth", profession: "Tailoring" },
@@ -53,6 +53,8 @@ function place(v, mail) {
 function reputations(v) {
   obj(v);
   const factions = [], seen = new Set(), seenAt = int(v.seenAt, 0, MAX_T);
+  const scanId = absent(v.scanId) ? undefined : int(v.scanId, 1, MAX_REPUTATION_SCAN);
+  if (scanId !== undefined && seenAt === 0) fail();
   for (const f of list(v.factions, LIMITS.factions)) {
     obj(f);
     const id = int(f.id, 1, 100000);
@@ -63,10 +65,13 @@ function reputations(v) {
     const observedAt = absent(f.observedAt) ? undefined : int(f.observedAt, 1, seenAt);
     const observedBuild = absent(f.observedBuild) ? undefined : f.observedBuild;
     if (observedBuild !== undefined && (observedAt === undefined || typeof observedBuild !== "string" || !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/.test(observedBuild))) fail();
+    const rowScanId = absent(f.scanId) ? undefined : int(f.scanId, 1, scanId);
+    if (rowScanId !== undefined && (observedAt === undefined || (rowScanId === scanId && observedAt !== seenAt))) fail();
     factions.push({ id, name: text(f.name), standing: int(f.standing, 1, 8), min, max, value: int(f.value, -100000, 100000),
-      ...(observedAt === undefined ? {} : { observedAt }), ...(observedBuild === undefined ? {} : { observedBuild }) });
+      ...(observedAt === undefined ? {} : { observedAt }), ...(observedBuild === undefined ? {} : { observedBuild }),
+      ...(rowScanId === undefined ? {} : { scanId: rowScanId }) });
   }
-  return { seenAt, factions };
+  return { seenAt, factions, ...(scanId === undefined ? {} : { scanId }) };
 }
 function cooldowns(v) {
   const out = [], seen = new Set();
