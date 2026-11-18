@@ -179,6 +179,7 @@ function validateState(s) {
       "clientBuild",
       "locale",
       "captureVersion",
+      "badgeAwards",
     ]);
     require("./quest-data.cjs").validateCapture(p);
     validateQuestData(p.quests);
@@ -215,6 +216,7 @@ function validateState(s) {
       )
         fail();
     }
+    if (p.badgeAwards !== undefined && (!p.source || !require("./badges.cjs").validProfessionAwards(p.badgeAwards))) fail();
     if (
       p.source && p.readiness?.workshop &&
       Object.values(p.readiness.workshop).some(collection =>

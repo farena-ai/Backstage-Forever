@@ -4,6 +4,11 @@
 .now-page > .page-hero.compact { align-items: center; }
 .now-page .ph-copy { align-items: center; }
 .now-page .ph-aside { z-index: 1; }
+.now-page .now-badge-case { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 4px 10px; border: 1px solid #e0b86a; border-radius: 6px; background: #4c2912; color: #fff1ce; font: 700 14px Georgia, serif; white-space: nowrap; }
+.now-page .now-badge-case::before, .now-page .now-badge-case::after { display: none; }
+.now-page .now-badge-case:hover { background: #6b3e1b; }
+.now-page .now-badge-case:focus-visible { outline: 2px solid #ffe19b; outline-offset: 2px; }
+.now-badge-case img { object-fit: contain; }
 /* The shell still owns the setup dock. On Now it reads as a utility, not a second hero. */
 .content:has(> .now-page) > .companion-dock { padding: 6px 12px; gap: 10px; font-size: 13px; }
 .content:has(> .now-page) > .companion-dock .companion-gem { width: 32px; height: 32px; font-size: 18px; }

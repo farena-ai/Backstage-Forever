@@ -289,12 +289,7 @@ update=function()
             bind(attemptsButton,function()choice.crafts=({[1]=5,[5]=10,[10]=20,[20]=1})[choice.crafts] or 1 end)
         end
     end
-    if preparation and not collapsed then safe(preparationLine.SetText,preparationLine,text(preparation.text,80)) end
-    -- J28 (1.6): with nothing to prepare, the Compass shows the next badge and its progress.
-    if not preparation and not collapsed and type(BackstageForeverNextBadgeLine)=='function' then
-        local ok,line=pcall(BackstageForeverNextBadgeLine)
-        if ok and type(line)=='string' then safe(preparationLine.SetText,preparationLine,text(line,80)) end
-    end
+    BackstageForeverHUDRefreshBadge()
     if selected and not collapsed then
         local qualifier=selected.source=='reference' and 'Approximate reference' or 'Current game'
         safe(actionTitle.SetText,actionTitle,'Step '..stepIndex..': '..text(selected.title,62))
@@ -311,6 +306,11 @@ update=function()
         safe(actionSource.SetText,actionSource,'Check the quest log for directions.')
     end
     safe(panel.Show,panel)
+end
+function BackstageForeverHUDRefreshBadge()
+    if not preparationLine or not active or not visible or collapsed or combat() then return end
+    local line=safe(BackstageForeverPinnedBadgeLine) or (preparation and preparation.text) or safe(BackstageForeverNextBadgeLine)
+    safe(preparationLine.SetText,preparationLine,text(line,80))
 end
 BackstageForeverHUDUpdate=function(character)
     epoch=epoch+1

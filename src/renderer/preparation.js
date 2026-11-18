@@ -101,17 +101,55 @@ window.Preparation = (() => {
     if(row.source==="gather"){const g=row.gather;return `<span class="shop-tag gather">${g.yours?"Your find":"Gather"}</span><span class="shop-where"><b>${esc(g.name||"Gathering")}</b>${g.mapId?` · ${esc(place(g))}`:""}${g.mapId?`<code>${esc(wayLine(g,g.name))}</code>`:""}</span>`;}
     return `<span class="shop-tag other">Gather / buy</span><span class="shop-where">No seller observed: gather it, or try the auction house or trade.</span>`;
   }
+  const workshopCurrent=()=>!choicePending&&!loading&&modelSignature===signature&&modelSignature===currentSignature();
+  const checkpointChoice=m=>JSON.stringify([generation,sourceRevision,m?.selection?.recipeId,m?.nextRankCheckpoint?.suggestedAttempts]);
+  function applyCheckpoint(button){
+    if(!active()||pending||!workshopCurrent()||button.dataset.preparationCheckpoint!==checkpointChoice(model))return;
+    if(model?.nextRankCheckpoint?.kind!=="plan-attempts")return;
+    const {recipeId,skillLineId}=model.selection;
+    choose({recipeId,skillLineId,crafts:model.nextRankCheckpoint.suggestedAttempts});
+    requestFocus("rank-checkpoint-result");
+  }
+  function rankCheckpoint(m){
+    const checkpoint=m.nextRankCheckpoint;
+    if(!checkpoint)return "";
+    const {kind,targetRank,suggestedAttempts}=checkpoint;
+    const title=targetRank===null?"Next rank checkpoint":`Next rank checkpoint · ${targetRank}`;
+    const batch=`${suggestedAttempts} attempt${suggestedAttempts===1?"":"s"}`;
+    const detail=kind==="check-training"?"At your saved cap. Check whether further training is available."
+      :kind==="plan-attempts"?`About ${batch} with this recipe. Skill gains aren't guaranteed.`
+      :"No estimate for this recipe. Check learned recipes and their colours in game.";
+    const action=kind!=="plan-attempts"?"":suggestedAttempts===m.selection.crafts?'<small tabindex="-1" data-preparation-control="rank-checkpoint-result">Current batch matches the estimate.</small>'
+      :`<button type="button" class="skill-use" data-preparation-checkpoint="${esc(checkpointChoice(m))}" data-preparation-control="rank-checkpoint" ${workshopCurrent()&&!pending?"":"disabled"}>Set batch to ${batch}</button>`;
+    return `<article class="skill-next skill-unknown" data-rank-checkpoint><span class="skill-seal" aria-hidden="true">◇</span><div><h3>${title}</h3><p>${detail}</p>${action}</div></article>`;
+  }
+  function workshopShopping(list){
+    if(!list?.rows?.length)return "";
+    const groups=[["covered","Covered by saved bags"],["alt-transfer","Check alt transfers"],["missing","Missing from saved bags"],["unknown","Shortfall unknown"]];
+    const rowHtml=row=>{
+      const amount=row.missing===null?"?":row.missing||row.required;
+      const label=row.missing===null?"unknown":row.missing===0?"in bags":"short";
+      const elsewhere=row.missing!==0&&row.elsewhere?.length?`<small class="shop-elsewhere">Already stored: ${row.elsewhere.slice(0,3).map(e=>`${e.mine?"your":esc(e.name)+"'s"} ${[e.bags?`bags ${e.bags}`:"",e.bank?`bank ${e.bank}`:"",e.mail?`mail ${e.mail}`:""].filter(Boolean).join(", ")}`).join("; ")}${row.elsewhere.length>3?` (+${row.elsewhere.length-3} more)`:""} · last seen${row.missing>0?` · ${row.stillToGet} still to get if all stored counts can be fetched`:""}</small>`:"";
+      return `<li class="shop-row shop-${esc(row.source)}"><span class="shop-count"><b>${amount}</b><small>${label}</small></span><span class="shop-item"><b>${esc(row.name)}</b><small>${row.required} total${row.have!==null?` · ${row.quantityKind==="lower-bound"?"at least ":""}${row.have} saved in bags`:""}</small>${elsewhere}</span>${row.workshopStatus==="covered"?"":shopSource(row)}</li>`;
+    };
+    const sections=groups.map(([status,label])=>{
+      const rows=list.rows.filter(r=>r.workshopStatus===status);
+      return rows.length?`<section data-workshop-supply="${status}"><h3>${label}</h3><ul class="shop-list">${rows.map(rowHtml).join("")}</ul></section>`:"";
+    }).join("");
+    return `<section class="skill-shopping"><div class="workshop-section-heading"><div><span class="eyebrow">SHOPPING LIST · ${list.crafts} ATTEMPT${list.crafts===1?"":"S"}</span><h2>Materials for this batch</h2></div></div>${sections}<p class="workshop-caveat">Storage and alt counts are last seen and never reduce a bag shortfall. Verify stock and transfer access in game. ${esc(list.note)}</p></section>`;
+  }
   function skillLedger(m){
     if(!m||m.nextRecipe===undefined||!m.profession)return "";
     const chips=(m.recipeChoices||[]).slice().sort((a,b)=>(SKILL_ORDER[a.skill?.difficulty]??2)-(SKILL_ORDER[b.skill?.difficulty]??2)||a.name.localeCompare(b.name));
     const current=m.selection?.recipeId,shown=chips.slice(0,48);
     const chip=r=>{const c=r.skill?.color||"unknown";return `<button type="button" class="skill-chip skill-${esc(c)}${r.id===current?" chosen":""}" data-preparation-pick="${r.id}" data-preparation-control="pick:${r.id}" aria-pressed="${r.id===current}" title="${esc(`${r.skill?.label||"Colour unknown"}: ${r.skill?.words||""}`)}"><span class="skill-gem" aria-hidden="true"></span><span class="skill-chip-name">${esc(r.name)}</span><small>${esc(r.skill?.label||"Unknown")}</small></button>`;};
-    const n=m.nextRecipe,c=m.skillUp,list=m.shoppingList;
+    const atCap=m.nextRankCheckpoint?.kind==="check-training";
+    const n=m.nextRecipe,c=atCap?null:m.skillUp;
     const next=n?`<article class="skill-next skill-${esc(n.color)}"><span class="skill-seal" aria-hidden="true">✦</span><div><span class="eyebrow">BEST NEXT RECIPE</span><h3>${esc(n.name)}</h3><p>${esc(n.reason)}</p>${n.id!==current?`<button type="button" class="skill-use" data-preparation-pick="${n.id}" data-preparation-control="use-next">Plan this recipe</button>`:"<small>Planned below.</small>"}</div></article>`
       :`<article class="skill-next skill-unknown"><span class="skill-seal" aria-hidden="true">✧</span><div><span class="eyebrow">BEST NEXT RECIPE</span><h3>No skill-up recipe observed</h3><p>Open ${esc(m.profession.name)} in game once, or train new recipes. Grey recipes no longer give skill-ups.</p></div></article>`;
     const count=c?`<article class="skill-countdown skill-${esc(c.color)}"><span class="eyebrow">SKILL-UP COUNTDOWN · ESTIMATE</span><div class="skill-countdown-numbers"><span><b>${c.rank}</b><small>now</small></span><span class="skill-countdown-mid">${c.craftsToCap===null?"—":`≈${c.craftsToCap}`}<small>${c.status==="at-cap"?"at your cap":c.craftsToCap===null?"crafts unknown":`craft${c.craftsToCap===1?"":"s"} to ${c.maxRank}`}</small></span><span><b>${c.maxRank}</b><small>trainer cap</small></span></div><progress class="skill-countdown-track" aria-label="Skill toward your current cap" value="${c.rank}" max="${c.maxRank||1}">${c.rank} / ${c.maxRank}</progress><p>${c.craftsToNextPoint?`Next point in about ${c.craftsToNextPoint} craft${c.craftsToNextPoint===1?"":"s"} (≈${c.craftsPerPoint} per point). `:""}${esc(c.detail)}</p></article>`:"";
-    const shop=list?.rows?.length?`<section class="skill-shopping"><div class="workshop-section-heading"><div><span class="eyebrow">SHOPPING LIST · ${list.crafts} CRAFT${list.crafts===1?"":"S"}</span><h2>What to bring back.</h2></div><span>${list.counts.vendor} at vendors · ${list.counts.gather} to gather · ${list.counts.other} gather or buy</span></div><ol class="shop-list">${list.rows.map(row=>`<li class="shop-row shop-${esc(row.source)}"><span class="shop-count"><b>${row.need}</b><small>${row.missing===null?"needed":row.missing===0?"in bags":"to get"}</small></span><span class="shop-item"><b>${esc(row.name||`Item ${row.itemId}`)}</b><small>${row.required} for ${list.crafts} craft${list.crafts===1?"":"s"}${row.have!==null&&row.have!==undefined?` · ${row.quantityKind==="lower-bound"?"at least ":""}${row.have} carried`:""}</small>${row.need>0&&row.elsewhere?.length?`<small class="shop-elsewhere">Already stored: ${row.elsewhere.slice(0,3).map(e=>`${e.mine?"your":esc(e.name)+"'s"} ${[e.bags?`bags ${e.bags}`:"",e.bank?`bank ${e.bank}`:"",e.mail?`mail ${e.mail}`:""].filter(Boolean).join(", ")}`).join("; ")}${row.stillToGet===0?" (enough: fetch it)":row.stillToGet?` · still to get ${row.stillToGet}`:""}</small>`:""}</span>${shopSource(row)}</li>`).join("")}</ol><p class="workshop-caveat">${esc(list.note)}</p></section>`:"";
-    return `<section class="skill-ledger" data-skill-ledger><div class="workshop-section-heading"><div><span class="eyebrow">SKILL-UP COLOURS · ${esc(m.profession.name.toUpperCase())}</span><h2>Read the colours before you craft.</h2></div><span class="skill-legend"><i class="skill-orange" aria-hidden="true"></i>Orange always <i class="skill-yellow" aria-hidden="true"></i>Yellow usually <i class="skill-green" aria-hidden="true"></i>Green rarely <i class="skill-grey" aria-hidden="true"></i>Grey never</span></div><div class="skill-chips">${shown.map(chip).join("")||'<p class="workshop-caveat">No learned recipes observed for this profession yet.</p>'}${chips.length>shown.length?`<small class="skill-more">${chips.length-shown.length} more in the recipe list above.</small>`:""}</div><div class="skill-cards">${next}${count}</div>${shop}</section>`;
+    const shop=workshopShopping(m.shoppingList);
+    return `<section class="skill-ledger" data-skill-ledger><div class="workshop-section-heading"><div><span class="eyebrow">SKILL-UP COLOURS · ${esc(m.profession.name.toUpperCase())}</span><h2>Read the colours before you craft.</h2></div><span class="skill-legend"><i class="skill-orange" aria-hidden="true"></i>Orange always <i class="skill-yellow" aria-hidden="true"></i>Yellow usually <i class="skill-green" aria-hidden="true"></i>Green rarely <i class="skill-grey" aria-hidden="true"></i>Grey never</span></div><div class="skill-chips">${shown.map(chip).join("")||'<p class="workshop-caveat">No learned recipes observed for this profession yet.</p>'}${chips.length>shown.length?`<small class="skill-more">${chips.length-shown.length} more in the recipe list above.</small>`:""}</div><div class="skill-cards">${rankCheckpoint(m)}${atCap?"":next}${count}</div>${shop}</section>`;
   }
   function page(brief=model){
     const m=brief,c=m?.character||host.character?.()||{},selected=options(host.profileId()),recipe=m?.selectedRecipe,recipeId=choicePending?selected.recipeId:m?.selection?.recipeId??selected.recipeId,can=Boolean(m?.planning?.checklistAvailable)&&!choicePending,crafts=choicePending?selected.crafts:m?.selection?.crafts??selected.crafts;
@@ -145,7 +183,7 @@ window.Preparation = (() => {
     document.addEventListener("focusin",e=>{if(active()&&!painting&&e.target!==document.body)newerFocus();});
     document.addEventListener("pointerdown",()=>{if(active()&&!painting)newerFocus();},true);
     document.addEventListener("keydown",e=>{if(active()&&!painting&&e.key==="Tab")newerFocus();},true);
-    guard=InteractionGuard.create({root:host.root,active,painting:()=>painting});host.root.addEventListener("click",e=>{const pick=e.target.closest("[data-preparation-pick]");if(pick&&active()){const id=Number(pick.dataset.preparationPick);if(Number.isInteger(id)&&id>0&&id<=2147483647)choose({recipeId:id,...(model?.selection?.skillLineId?{skillLineId:model.selection.skillLineId}:{})});return;}const button=e.target.closest("[data-preparation-add]");if(button)add(button);const askButton=e.target.closest("[data-preparation-ask]");if(askButton)ask(askButton);if(e.target.closest("[data-preparation-retry]")){signature="";retryFocus=focusRevision;refresh();}});host.root.addEventListener("change",e=>{const field=e.target.dataset.preparationOption;if(!field||!active())return;const choice={...options(host.profileId())};if(e.target.value==="")delete choice[field];else choice[field]=Number(e.target.value);if(field==="skillLineId")delete choice.recipeId;choose(choice,true);});}
+    guard=InteractionGuard.create({root:host.root,active,painting:()=>painting});host.root.addEventListener("click",e=>{const checkpoint=e.target.closest("[data-preparation-checkpoint]");if(checkpoint){applyCheckpoint(checkpoint);return;}const pick=e.target.closest("[data-preparation-pick]");if(pick&&active()){const id=Number(pick.dataset.preparationPick);if(Number.isInteger(id)&&id>0&&id<=2147483647)choose({recipeId:id,...(model?.selection?.skillLineId?{skillLineId:model.selection.skillLineId}:{})});return;}const button=e.target.closest("[data-preparation-add]");if(button)add(button);const askButton=e.target.closest("[data-preparation-ask]");if(askButton)ask(askButton);if(e.target.closest("[data-preparation-retry]")){signature="";retryFocus=focusRevision;refresh();}});host.root.addEventListener("change",e=>{const field=e.target.dataset.preparationOption;if(!field||!active())return;const choice={...options(host.profileId())};if(e.target.value==="")delete choice[field];else choice[field]=Number(e.target.value);if(field==="skillLineId")delete choice.recipeId;choose(choice,true);});}
   function choose(value,replace=false){const choice=replace?value:{...options(host.profileId()),...value};save(host.profileId(),choice);generation++;pending=false;choicePending=true;host.root.querySelectorAll("[data-preparation-add]").forEach(n=>n.disabled=true);error="";errorKind="";signature="";refresh();}
   return {init,page,mounted,refresh,paint,invalidate,beginRender,endRender,options,save,remove,supplyDraft,deferRender:fn=>guard?.defer(fn,"root")||false};
 })();

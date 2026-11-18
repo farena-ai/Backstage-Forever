@@ -148,6 +148,17 @@ const { defaultState } = require("../src/core/validation.cjs");
         group,
       );
     }
+    await navigate(page, "characters");
+    await page.getByRole("button", { name: "Badges", exact: true }).click();
+    await page.locator('[data-badge-char="Beta"]').click();
+    await page.getByRole("heading", { name: "Beta's Badge Case", exact: true }).waitFor();
+    await navigate(page, "characters");
+    const badgeCase = page.getByRole("button", { name: "View badge case", exact: true });
+    await badgeCase.focus();
+    await badgeCase.press("Enter");
+    await page.getByRole("heading", { name: "Alpha's Badge Case", exact: true }).waitFor();
+    assert.equal(await page.getByLabel("Active character", { exact: true }).inputValue(), "Alpha");
+
     await navigate(page, "quest-guide");
     assert.equal(
       await page.locator("[data-player-tool=quest-details]").count(),

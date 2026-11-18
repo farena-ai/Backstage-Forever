@@ -18,7 +18,8 @@ window.NowView = (() => {
   const hero = (a) => PageHero.render({ art: "now", compact: true, character: a?.character,
     eyebrow: "Now", title: esc(heroTitle(a)), titleAttrs: "data-now-title", subAttrs: "data-now-live",
     attrs: `data-now-identity="${esc(heroIdentity(a?.character))}"`,
-    aside: (window.SpokenSteps ? SpokenSteps.control() + " " : "") + '<button type="button" class="subtle" data-now-act="mini" title="A small always-on-top window with your next step, beside the game">Mini Now</button> <button type="button" class="subtle" data-now-act="refresh">Refresh</button>' });
+    aside: '<button type="button" class="now-badge-case" data-nav="badges" data-active-badge-case data-now-badge-case><img src="art/badge-level.webp" alt="" width="24" height="24">Open Badge Case <span aria-hidden="true">→</span></button>' +
+      (window.SpokenSteps ? SpokenSteps.control() + " " : "") + '<button type="button" class="subtle" data-now-act="mini" title="A small always-on-top window with your next step, beside the game">Mini Now</button> <button type="button" class="subtle" data-now-act="refresh">Refresh</button>' });
 
   function page() {
     // The shell's character selector is replaced just after this markup is built. Only
@@ -270,10 +271,12 @@ window.NowView = (() => {
     for (const el of b.querySelectorAll(".now-xp [data-w]")) { el.style.width = `${Number(el.dataset.w)}%`; if (el.dataset.l) el.style.left = `${Number(el.dataset.l)}%`; }
     const header = document.querySelector('[data-now] > [data-page-hero="now"]');
     if (header && header.dataset.nowIdentity !== heroIdentity(advice?.character)) {
-      const focused = header.contains(document.activeElement) ? document.activeElement.dataset.nowAct : null;
+      const active = header.contains(document.activeElement) ? document.activeElement : null;
+      const focused = active?.dataset.nowAct;
       // Shared PageHero markup; hero() escapes the player title and identity attributes.
       header.outerHTML = hero(advice);
-      if (focused) document.querySelector(`[data-now-act="${focused}"]`)?.focus({ preventScroll: true });
+      if (active?.hasAttribute("data-now-badge-case")) document.querySelector("[data-now-badge-case]")?.focus({ preventScroll: true });
+      else if (focused) document.querySelector(`[data-now-act="${focused}"]`)?.focus({ preventScroll: true });
     } else {
       const title = header?.querySelector("[data-now-title]");
       if (title) title.textContent = heroTitle(advice);

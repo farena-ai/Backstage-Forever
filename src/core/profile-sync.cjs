@@ -2,6 +2,7 @@
 const { createHash } = require("node:crypto");
 const { validateState, object, str } = require("./validation.cjs");
 const { preserveMemories } = require("./memory-data.cjs");
+const { latchProfessionAwards } = require("./badges.cjs");
 
 function timestamp(value) {
   if (
@@ -124,11 +125,14 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
       while (usedIds.has(id)) id = `${base}-${++suffix}`;
       usedIds.add(id);
       profile = { ...incoming, id };
+      latchProfessionAwards(profile);
       next.profiles.push(profile);
     } else if (
       !profile.source ||
       incoming.source.updatedAt > profile.source.updatedAt
     ) {
+      // Backfill from legacy saved evidence before a newer snapshot can replace it.
+      if (profile.source) latchProfessionAwards(profile);
       for (const key of [
         "name",
         "realm",
@@ -156,6 +160,7 @@ function mergeSnapshot(state, snapshot, { allowActiveSelection = true, onOmitted
         if (incoming[key] !== undefined) profile[key] = incoming[key];
         else delete profile[key];
       }
+      latchProfessionAwards(profile);
     } else if (incoming.source.updatedAt === profile.source.updatedAt) {
       const gathering = require("./gathering-data.cjs").intersectGatheringProfiles(profile.gathering, incoming.gathering);
       if (gathering === undefined) delete profile.gathering;

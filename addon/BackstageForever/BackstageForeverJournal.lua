@@ -3,7 +3,6 @@
 -- badges. Public API only; the /played request is made quietly (its chat line is hidden once).
 local floor,min=math.floor,math.min
 local function plain(v)
-    if v==nil then return nil end
     local check=issecretvalue
     if type(check)=='function' then local ok,secret=pcall(check,v) if not ok or secret then return nil end end
     return v
@@ -96,7 +95,13 @@ end
 -- Badges in game (1.1.1): the same rules as the app's Characters → Badges, from what this
 -- character knows right now. /bf badges lists them; a new one gets a small toast.
 local BADGES={}
-local function add(id,group,name,how,test) BADGES[#BADGES+1]={id=id,group=group,name=name,how=how,test=test} end
+local PIN_FACT={Levels='level',Exploring='zones',Gold='gold'}
+local PIN_BADGES={}
+local function add(id,group,name,how,test)
+    local badge={id=id,group=group,name=name,how=how,test=test}
+    BADGES[#BADGES+1]=badge
+    if PIN_FACT[group] then PIN_BADGES[id]=badge end
+end
 for _,n in ipairs({10,20,30,40,50,60}) do add('level-'..n,'Levels','Level '..n,'Reach level '..n..'.',function(f) return f.level>=n,f.level,n end) end
 for _,b in ipairs({{25,'Errand runner'},{100,'Quest hero'},{500,'Living legend'}}) do add('quests-'..b[1],'Quests',b[2],'Complete '..b[1]..' quests.',function(f) return f.quests>=b[1],f.quests,b[1] end) end
 for _,b in ipairs({{5,'Wanderer'},{15,'Pathfinder'},{30,'World explorer'}}) do add('explorer-'..b[1],'Exploring',b[2],'Visit '..b[1]..' zones.',function(f) return f.zones>=b[1],f.zones,b[1] end) end
@@ -151,17 +156,81 @@ local function say(line)
     local chat=plain(DEFAULT_CHAT_FRAME)
     if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,'Backstage Forever: '..(BackstageForeverTr or tostring)(line)) end
 end
--- J28 (1.6): one line for the Compass: the badge you're closest to.
+-- Compass progress uses public game readings and recorded zone visits only. In particular,
+-- saved balances, quest counts and profession ranks are not live progress.
+local eventLevel,eventLevelOwner
+local function liveLevel(d)
+    local level=int(call(UnitLevel,'player'),1,1000)
+    -- The level-up payload can arrive before UnitLevel reflects the new level.
+    if d==eventLevelOwner and eventLevel then
+        if not level or level<eventLevel then return eventLevel end
+        eventLevel,eventLevelOwner=nil,nil
+    end
+    return level
+end
+local function liveBadgeFacts()
+    local copper=int(call(GetMoney),0,10^12)
+    local d=store()
+    return {level=liveLevel(d),zones=min(#d.zones,MAX_ZONES),gold=copper and floor(copper/10000)}
+end
+local function liveProgress(b,f)
+    if f[PIN_FACT[b.group]]~=nil then return b.test(f) end
+end
+local function pinnedLine(b,done,have,need)
+    local prefix='Pinned: '..b.name
+    if done then return prefix..' (goal reached)' end
+    if done==nil then return prefix..' (progress unavailable)' end
+    return string.format('%s %d/%d',prefix,have,need)
+end
+local function pinnedBadge()
+    local id=plain(store().pinnedBadge)
+    return type(id)=='string' and PIN_BADGES[id] or nil
+end
+local function pinCompleted(d,b)
+    local completed=plain(d.completedPins)
+    return type(completed)=='table' and plain(completed[b.id])==true
+end
+local function observePin(b)
+    local d=store()
+    if pinCompleted(d,b) then return true end
+    local done,have,need=liveProgress(b,liveBadgeFacts())
+    if done then
+        -- Separate from legacy badge/toast history, which can use saved facts.
+        if type(plain(d.completedPins))~='table' then d.completedPins={} end
+        d.completedPins[b.id]=true
+    end
+    return done,have,need
+end
+function BackstageForeverPinnedBadgeLine()
+    local b=pinnedBadge()
+    if b then return pinnedLine(b,observePin(b)) end
+end
+-- Optional badge-only repaint: do not capture or replace the current HUD snapshot.
+local function refreshBadge(fact)
+    local b=fact and pinnedBadge()
+    local matches=b and PIN_FACT[b.group]==fact
+    -- Record confirmed progress even if there is no visible HUD or we're in combat.
+    if matches then observePin(b) end
+    if (not fact or matches or (not b and fact=='level')) and type(BackstageForeverHUDRefreshBadge)=='function' and call(InCombatLockdown)==false then
+        pcall(BackstageForeverHUDRefreshBadge)
+    end
+end
+-- J28 (1.6): the pin takes precedence over the closest live badge on the Compass.
 function BackstageForeverNextBadgeLine()
-    local list=BackstageForeverBadgeList()
-    local best,share=nil,-1
-    for _,b in ipairs(list) do
-        if not b.earned and type(b.have)=='number' and type(b.need)=='number' and b.need>0 and b.have>0 then
-            local s=b.have/b.need;if s>share then best,share=b,s end
+    local pinned=BackstageForeverPinnedBadgeLine()
+    if pinned then return pinned end
+    local f,d=liveBadgeFacts(),store()
+    local best,share,progress=nil,-1,nil
+    for _,b in ipairs(BADGES) do
+        if PIN_BADGES[b.id] and not pinCompleted(d,b) then
+            local done,have,need=liveProgress(b,f)
+            if done==false and have>0 and have/need>share then
+                best,share,progress=b,have/need,string.format('%d/%d',have,need)
+            end
         end
     end
     if not best then return nil end
-    return string.format('Next badge: %s %d/%d',best.name,min(best.have,best.need),best.need)
+    return 'Next badge: '..best.name..' '..progress
 end
 -- J29 (1.5): at login, a few reminders about your other characters (from BackstageForever.lua).
 function BackstageForeverRemind()
@@ -171,21 +240,70 @@ function BackstageForeverRemind()
     for _,l in ipairs(lines) do say('Reminder: '..l) end
     return #lines
 end
+local PIN_HELP='Use /bf badges pin to see Compass goals, or /bf badges clear to remove your pin.'
+local function badgePinFeedback(line)
+    if type(BackstageForeverHUDRefreshBadge)~='function' then line=line..' Use /bf show to refresh the Compass.' end
+    say(line)
+end
+local function badgePinCommand(args)
+    if call(InCombatLockdown)~=false then return say('Compass badge changes wait until you leave combat.') end
+    local d=store()
+    if args=='clear' then
+        d.pinnedBadge=nil
+        refreshBadge()
+        return badgePinFeedback('Cleared the Compass badge pin.')
+    elseif args=='pin' then
+        local f,count=liveBadgeFacts(),0
+        for _,b in ipairs(BADGES) do
+            if PIN_BADGES[b.id] and not pinCompleted(d,b) then
+                local done,have,need=liveProgress(b,f)
+                if done==false then
+                    say(string.format('%s %d/%d. %s /bf badges pin %s',b.name,have,need,b.how,b.id))
+                    count=count+1
+                end
+            end
+        end
+        if count==0 then say('No unfinished badge goals with available progress.') end
+        return
+    end
+    local id=args:match('^pin%s+([%w-]+)$')
+    if not id then return say(PIN_HELP) end
+    local b=PIN_BADGES[id]
+    if not b then return say('That badge cannot be pinned. Use /bf badges pin to see available goals.') end
+    local f=liveBadgeFacts()
+    local done,have,need=liveProgress(b,f)
+    if done or pinCompleted(d,b) then return say(b.name..' is already at its goal; your pin was not changed.') end
+    if done==nil then return say('Progress is unavailable for '..b.name..'; your pin was not changed.') end
+    d.pinnedBadge=b.id
+    refreshBadge()
+    badgePinFeedback(pinnedLine(b,done,have,need)..'. '..b.how..' Clear with /bf badges clear.')
+end
 function BackstageForeverBadgesCommand(message)
+    message=plain(message)
+    local args=type(message)=='string' and message:lower():match('^badges%s+(.-)%s*$') or ''
+    if args~='' and args~='all' then return badgePinCommand(args) end
     local list,earned=BackstageForeverBadgeList()
     BackstageForeverBadgeCheck(true)
-    local wantAll=type(message)=='string' and message:lower():match('^badges%s+all')
+    local wantAll=args=='all'
     say(string.format('%d of %d badges earned.',earned,#list))
     if wantAll then
         local groups,order={},{}
         for _,b in ipairs(list) do if b.earned then if not groups[b.group] then groups[b.group]={};order[#order+1]=b.group end;table.insert(groups[b.group],b.name) end end
         for _,g in ipairs(order) do say(g..': '..table.concat(groups[g],', ')) end
     end
-    local upcoming={}
-    for _,b in ipairs(list) do if not b.earned and type(b.have)=='number' and type(b.need)=='number' and b.need>0 and b.have>0 then upcoming[#upcoming+1]=b end end
+    local upcoming,f,d={},liveBadgeFacts(),store()
+    for _,b in ipairs(BADGES) do
+        if PIN_BADGES[b.id] and not pinCompleted(d,b) then
+            local done,have,need=liveProgress(b,f)
+            if done==false and have>0 then upcoming[#upcoming+1]={name=b.name,how=b.how,have=have,need=need} end
+        end
+    end
     table.sort(upcoming,function(x,y) local a,c=x.have/x.need,y.have/y.need;if a~=c then return a>c end;return x.need<y.need end)
     for i=1,min(#upcoming,3) do local b=upcoming[i];say(string.format('Next: %s, %d / %d. %s',b.name,min(b.have,b.need),b.need,b.how)) end
     if not wantAll then say('Type /bf badges all for the full list; the app shows them all with dates in Characters > Badges.') end
+    local pinned=BackstageForeverPinnedBadgeLine()
+    if pinned then say(pinned) end
+    say(PIN_HELP)
 end
 
 -- Quiet /played: chat windows briefly stop listening for the play-time message while our own
@@ -239,15 +357,25 @@ end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_LEVEL_UP','TIME_PLAYED_MSG','PLAYER_ENTERING_WORLD','ZONE_CHANGED_NEW_AREA','PLAYER_DEAD','PLAYER_CONTROL_LOST','PLAYER_MOUNT_DISPLAY_CHANGED','UPDATE_EXHAUSTION','GROUP_ROSTER_UPDATE','UNIT_SPELLCAST_SUCCEEDED','QUEST_DETAIL','QUEST_ACCEPTED'}) do pcall(events.RegisterEvent,events,e) end
+        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_LEVEL_UP','PLAYER_MONEY','TIME_PLAYED_MSG','PLAYER_ENTERING_WORLD','ZONE_CHANGED_NEW_AREA','PLAYER_DEAD','PLAYER_CONTROL_LOST','PLAYER_MOUNT_DISPLAY_CHANGED','UPDATE_EXHAUSTION','GROUP_ROSTER_UPDATE','UNIT_SPELLCAST_SUCCEEDED','QUEST_DETAIL','QUEST_ACCEPTED'}) do pcall(events.RegisterEvent,events,e) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b,c)
             store()
             if event=='PLAYER_LOGIN' then
+                eventLevel,eventLevelOwner=nil,nil
                 local level=int(call(UnitLevel,'player'),1,1000)
                 if level and #db.levels==0 then BackstageForeverJournalLevel(level,now()) end
+                local pin=pinnedBadge();if pin then observePin(pin) end
                 requestPlayed()
                 local timer=plain(C_Timer);if type(timer)=='table' and type(timer.After)=='function' then pcall(timer.After,20,function() pcall(BackstageForeverBadgeCheck);pcall(BackstageForeverRemind) end) end
-            elseif event=='PLAYER_LEVEL_UP' then BackstageForeverJournalLevel(a,now());requestPlayed();pcall(BackstageForeverBadgeCheck)
+            elseif event=='PLAYER_LEVEL_UP' then
+                local level=int(a,1,1000)
+                if level then
+                    eventLevel=(eventLevelOwner==db and eventLevel and math.max(eventLevel,level)) or level
+                    eventLevelOwner=db
+                    BackstageForeverJournalLevel(level,now())
+                end
+                requestPlayed();pcall(BackstageForeverBadgeCheck);refreshBadge('level')
+            elseif event=='PLAYER_MONEY' then refreshBadge('gold')
             elseif event=='TIME_PLAYED_MSG' then BackstageForeverJournalPlayed(a)
                 local timer=plain(C_Timer);if type(timer)=='table' and type(timer.After)=='function' then pcall(timer.After,0,unmute) else unmute() end
             elseif event=='PLAYER_ENTERING_WORLD' or event=='ZONE_CHANGED_NEW_AREA' then
@@ -255,7 +383,10 @@ if type(CreateFrame)=='function' then
                 if inside and (kind=='party' or kind=='raid') then first('dungeon') end
                 local z=zoneNow()
                 -- A zone visited for the first time is also a moment for the desktop app.
-                if z and BackstageForeverJournalZone(z) and type(BackstageForeverMomentsZone)=='function' then pcall(BackstageForeverMomentsZone,z) end
+                if z and BackstageForeverJournalZone(z) then
+                    if type(BackstageForeverMomentsZone)=='function' then pcall(BackstageForeverMomentsZone,z) end
+                    refreshBadge('zones')
+                end
             elseif event=='PLAYER_DEAD' then first('death')
             elseif event=='PLAYER_CONTROL_LOST' then if call(UnitOnTaxi,'player') then first('flight') end
             elseif event=='PLAYER_MOUNT_DISPLAY_CHANGED' then if call(IsMounted) then first('mount') end
