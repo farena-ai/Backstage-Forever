@@ -89,7 +89,7 @@ contextBridge.exposeInMainWorld(
     nextStep: () => invoke("nextStep"),
     worldTracker: () => invoke("worldTracker"),
     onboarding: () => invoke("onboarding"),
-    guidedRoute: () => invoke("guidedRoute"),
+    guidedRoute: (input) => invoke("guidedRoute", input),
     routeReview: (input) => invoke("routeReview", input),
     setRouteReview: (input) => invoke("setRouteReview", input),
     exportRouteReview: () => invoke("exportRouteReview"),

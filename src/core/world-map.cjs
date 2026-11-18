@@ -353,7 +353,7 @@ class WorldMap {
     const heat = gatheringHeat(profile, mapId);
     counts.heat = heat.points.length;
     return {
-      mapId, mapName: mapName(mapId), maps: this.maps(),
+      mapId, mapName: mapName(mapId), maps: this.maps(), profileId: profile?.id ?? null,
       player: {
         live: live && live.position.mapId === mapId ? { x: live.position.x, y: live.position.y, facing: live.position.facing, ageMs: live.ageMs, mounted: live.mounted, combat: live.combat } : null,
         liveElsewhere: live && live.position.mapId !== mapId ? { mapId: live.position.mapId, mapName: mapName(live.position.mapId) } : null,

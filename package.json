@@ -40,6 +40,7 @@
     "check:find-index": "node scripts/build-find-index.cjs --check",
     "build:guided-route": "node scripts/build-guided-route.cjs",
     "check:guided-route": "node scripts/build-guided-route.cjs --check",
+    "test:desktop-route-recovery": "node --test tests/desktop-route-recovery.test.cjs && node scripts/desktop-route-recovery-smoke.cjs",
     "build:locales": "node scripts/build-locales.cjs",
     "check:locales": "node scripts/build-locales.cjs --check",
     "test:living-backend": "node scripts/living-backend-smoke.cjs",

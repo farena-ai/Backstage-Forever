@@ -126,7 +126,7 @@ assert(said[#said]:find('no guided route for your race',1,true) and BackstageFor
 
 test("the app page and the build are wired", () => {
   assert.match(read("src/main.cjs"), /handle\("guidedRoute"/);
-  assert.match(read("src/preload.cjs"), /guidedRoute: \(\) => invoke\("guidedRoute"\)/);
+  assert.match(read("src/preload.cjs"), /guidedRoute: \(input\) => invoke\("guidedRoute", input\)/);
   assert.match(read("src/renderer/player-navigation.js"), /\["guided-route","Guided route"\]/);
   assert.match(read("src/renderer/index.html"), /<script src="guided-route\.js"><\/script>/);
   assert.match(read(".github/workflows/ci.yml"), /npm run check:guided-route/);

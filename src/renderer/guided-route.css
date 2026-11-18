@@ -42,3 +42,7 @@
 .gr-step.out { opacity: .55; text-decoration: line-through; }
 .gr-step.out .gr-acts { text-decoration: none; }
 .gr-review-bar label { color: #3d220c; font-weight: 600; }
+.gr-recovery-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-guided-route-body] { display: grid; gap: 12px; min-width: 0; }
+.gr-coverage > summary { color: #3d220c; cursor: pointer; font-weight: 700; }
+.gr-coverage > div { overflow-x: auto; }
