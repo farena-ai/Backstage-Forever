@@ -7,6 +7,7 @@
 // Only the typed text is used, plus the active character when
 // the Companion page's own "Use my active character" setting is on and the question comes from
 // that character. Nothing is ever sent to the game.
+const { workshopQuestion } = require("./companion-workshop.cjs");
 const RETRY_MS = 2000, RETRY_FOR_MS = 30000;
 // Companion errors meant for the player (same list as the main window's ask handler); others become generic.
 const PLAYER_ERRORS = /^(Provider |Could not reach|Save an API|Choose a model|Choose a character|Choose the current character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription |The free AI)/;
@@ -61,9 +62,14 @@ class InGameAsk {
     const state = this.getState();
     const profile = state.profiles?.find((p) => p.id === state.activeProfileId) || null;
     const expected = profile?.source?.kind === "wow-addon" ? this.liveKeyFor(profile.source.id) : null;
-    const { shareProfile, note } = sharing({ share: this.getShare() === true, expected, characterHash });
+    const isWorkshop = Boolean(workshopQuestion(prompt));
+    let { shareProfile, note } = sharing({ share: this.getShare() === true, expected, characterHash });
+    if (shareProfile && isWorkshop && !(Number.isInteger(expected) && expected > 0 && expected === characterHash)) {
+      shareProfile = false;
+      note = "The game character could not be matched to the active save. Ask in the desktop Companion instead.";
+    }
     this.panel.show({ id, status: "thinking", question: prompt, at: this.now() });
-    const request = { provider: state.provider.id, prompt, shareProfile, memoryIds: [] };
+    let request = { provider: state.provider.id, prompt, shareProfile, memoryIds: [] };
     if (state.activeProfileId) request.profileId = state.activeProfileId;
     const started = this.now();
     for (;;) {
@@ -72,11 +78,22 @@ class InGameAsk {
         this.handled++;
         this.panel.show({ id, status: "answer", question: prompt, answer: { text: result.text, kind: result.kind }, note, at: this.now() });
         // The exchange also joins the Companion page's conversation.
-        this.notify({ question: prompt, shareProfile, result: { text: result.text, kind: result.kind, npc: result.npc, travel: result.travel, lookups: result.lookups, conversation: result.conversation } });
+        this.notify({ question: prompt, shareProfile: request.shareProfile, result: { text: result.text, kind: result.kind, npc: result.npc, travel: result.travel, lookups: result.lookups, conversation: result.conversation } });
         return result;
       } catch (error) {
         // The main window is answering something else: wait for it, a little.
-        if (BUSY.test(String(error?.message)) && this.now() - started < RETRY_FOR_MS) { await this.wait(RETRY_MS); continue; }
+        if (BUSY.test(String(error?.message)) && this.now() - started < RETRY_FOR_MS) {
+          await this.wait(RETRY_MS);
+          if (isWorkshop && request.shareProfile) {
+            const current = this.getState();
+            const source = current.profiles?.find(p => p.id === current.activeProfileId)?.source;
+            if (this.getShare() !== true || current.activeProfileId !== request.profileId || source?.kind !== "wow-addon" || this.liveKeyFor(source.id) !== characterHash) {
+              request = { ...request, shareProfile: false };
+              note = "Saved character context changed while waiting. You can ask again in Companion.";
+            }
+          }
+          continue;
+        }
         const message = playerMessage(error);
         this.panel.show({ id, status: "error", question: prompt, message, at: this.now() });
         return null;

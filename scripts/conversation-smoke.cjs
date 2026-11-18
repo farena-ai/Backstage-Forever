@@ -10,6 +10,12 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
  const watchdog=setTimeout(()=>{console.error('Conversation fixture exceeded 120 seconds');app?.process().kill();process.exitCode=1;},120000);
  try{
   const initial={...defaultState(),onboarded:true,activeProfileId:'Alpha',profiles:['Alpha','Beta'].map(id=>({id,name:id,className:'Mage',realm:'Synthetic',level:12,goals:[{id:'g',text:'PRIVATE_GOAL_CANARY',done:false}],notes:'PRIVATE_NOTE_CANARY'})),provider:{id:'ollama',model:'fixture',endpoint:'http://127.0.0.1:11434'}};
+  const at='2026-11-11T12:00:00.000Z',col=items=>({items,observedAt:at,complete:true});
+  Object.assign(initial.profiles[0],{source:{kind:'wow-addon',id:'fixture-alpha',updatedAt:at},clientBuild:'1.60.1.70862',readiness:{workshop:{
+    professions:col([{skillLineId:171,professionId:4,name:'Alchemy',rank:20,maxRank:75}]),
+    recipes:col([{id:2330,skillLineId:171,name:'Minor Healing Potion',reagentsKnown:true,reagents:[{itemId:765,name:'Silverleaf',required:1}]}]),
+    materials:{...col([{itemId:765,count:1}]),scope:'bags-0-4'},
+  }}});
   await fs.writeFile(path.join(dir,'state.json'),JSON.stringify(initial));
   const repo=path.resolve(__dirname,'..');
   // Install fake external surfaces before bootstrap can enumerate providers or speech.
@@ -21,6 +27,17 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
     load('./src/core/providers.cjs').ask=async()=>{throw Error('Fixture inference is not installed');};
     load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});
     load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});
+    load('./src/core/knowledge-cache.cjs').KnowledgeService.prototype.maybeRefresh=function(){};
+    load('./src/core/updater.cjs').Updater.prototype.start=function(){};
+    const ipc=load('electron').ipcMain,register=ipc.handle.bind(ipc);
+    ipc.handle=(name,handler)=>register(name,name!=='backstage:askCompanion'?handler:async (...args)=>{
+      const reply=await handler(...args);
+      if(reply.topic==='profession-materials'&&globalThis.holdWorkshop){
+        await new Promise(resolve=>{globalThis.releaseWorkshop=resolve;});
+        globalThis.workshopReleased=true;
+      }
+      return reply;
+    });
     load('./src/main.cjs');
   `);
   app=await electron.launch({args:[dir],env:{...process.env,BF_USER_DATA:dir},timeout:20000});const page=await testWindow(app);page.setDefaultTimeout(6000);
@@ -40,6 +57,29 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   const count=()=>app.evaluate(()=>conversationFixture.requests.length);
   const latest=()=>app.evaluate(()=>{const i=conversationFixture.requests.at(-1).input;return {prompt:i.prompt,context:i.context};});
   const pending=()=>page.getByRole('button',{name:'Stop response',exact:true}).waitFor();
+  const supply='What materials do I need for recipe #2330 for 2 crafts?';
+  const sharing=page.getByLabel('Use my active character',{exact:true});
+  await sharing.uncheck();await page.reload();await open();
+  assert.equal(await sharing.isChecked(),false,'sharing off survives reload');
+  await send(supply);await page.locator('#chatlog').getByText(/Turn on .Use my active character/).waitFor();await done();
+  assert.doesNotMatch(await page.locator('#chatlog').innerText(),/Silverleaf|Minor Healing Potion/);
+  assert.equal(await count(),0,'sharing-off response does not fall through to the configured model');
+  await sharing.check();await send(supply);
+  await page.locator('#chatlog').getByText('Minor Healing Potion (recipe #2330)',{exact:true}).waitFor();await done();
+  assert.match(await page.locator('#chatlog').innerText(),/Silverleaf \(item #765\): 2 required, 1 saved carried, 1 short/);
+  assert.match(await page.locator('#chatlog').innerText(),/Companion · offline answer/i);
+  assert.equal(await count(),0,'saved recipe answer bypasses the configured model');
+  await app.evaluate(()=>{globalThis.holdWorkshop=true;});await send(supply);await pending();
+  await app.evaluate(async()=>{const until=Date.now()+6000;while(!globalThis.releaseWorkshop){if(Date.now()>until)throw Error('Workshop IPC did not reach hold');await new Promise(r=>setTimeout(r,20));}});
+  const picker=page.getByLabel('Active character',{exact:true});await picker.selectOption('Beta');
+  await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');
+  await app.evaluate(()=>{globalThis.holdWorkshop=false;});
+  await send(supply);await page.locator('#chatlog').getByText(/No dated addon save/).waitFor();await done();
+  await app.evaluate(()=>globalThis.releaseWorkshop());
+  await app.evaluate(async()=>{while(!globalThis.workshopReleased)await new Promise(r=>setTimeout(r,20));});
+  assert.doesNotMatch(await page.locator('#chatlog').innerText(),/Silverleaf|Minor Healing Potion/);
+  assert.equal(await count(),0);
+  await picker.selectOption('Alpha');await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');
   await send('Which pet should my hunter use in WoW Forever');await done();
   await send('This is for wow forever, not retail');await done();
   const second=await latest();assert.match(second.prompt,/Which pet should my hunter use/,'Follow-up must include original pet question in actual outgoing main request');assert.match(second.prompt,/untrusted/i);assert.match(second.prompt,/This is for wow forever, not retail/);assert.doesNotMatch(JSON.stringify(second),/PRIVATE_NOTE_CANARY|PRIVATE_GOAL_CANARY/);

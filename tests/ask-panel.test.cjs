@@ -177,6 +177,27 @@ test("an in-game question goes through the Companion's answer path with only the
   assert.equal(other.asked[0].shareProfile, false); assert.match(other.shown[1].note, /another character/);
 });
 
+test("saved Workshop questions in the game panel require both consent and a verified character match", async () => {
+  for (const [activeKey, characterHash, share, allowed] of [
+    [4242, 4242, true, true], [4242, 4242, false, false], [null, 4242, true, false],
+    [4242, undefined, true, false], [4242, 99, true, false],
+  ]) {
+    const r = routing({ share, activeKey, results: [{ text: "Local Workshop reply", kind: "quick" }] });
+    await r.ask.handle({ text: "Can I craft recipe #2330?", characterHash });
+    assert.equal(r.asked[0].shareProfile, allowed, JSON.stringify([activeKey, characterHash, share]));
+    assert.equal(r.shown[1].answer.kind, "quick");
+  }
+});
+
+test("a queued Workshop retry cannot reuse consent revoked while waiting", async () => {
+  const r = routing({ results: [Error("Provider request already in progress."), { text: "Enable sharing", kind: "quick" }] });
+  const wait = r.ask.wait;
+  r.ask.wait = async ms => { await wait(ms); r.ask.getShare = () => false; };
+  await r.ask.handle({ text: "Can I craft recipe #2330?", characterHash: 4242 });
+  assert.deepEqual(r.asked.map(x => x.shareProfile), [true, false]);
+  assert.equal(r.notified[0].shareProfile, false);
+});
+
 test("in-game questions are answered one at a time, wait briefly for a busy companion, and explain a missing AI", async () => {
   const busy = Error("Provider request already in progress.");
   const r = routing({ results: [busy, busy, { text: "first", kind: "quick" }, Error("Choose a model in Connections for AI questions. Local NPC locations need no model."), { text: "third", kind: "ai" }] });
