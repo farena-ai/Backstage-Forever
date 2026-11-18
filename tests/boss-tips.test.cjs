@@ -25,6 +25,11 @@ const reviewedBlackwingLair = [
   ["Chromaggus", 14020, /line of sight.+breaths.+afflictions/i],
   ["Nefarian", 11583, /class calls.+skeletons/],
 ];
+const reviewedZulGurub = [
+  ["High Priestess Jeklik", 14517, /bat adds.+interrupt.+heal.+fire/i],
+  ["High Priest Venoxis", 14507, /snake adds.+poison clouds/i],
+  ["High Priestess Mar'li", 14510, /spider adds.+off-tank.+Enveloping Webs/i],
+];
 function lua(source) {
   const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], { cwd: root, input: source, encoding: "utf8", timeout: 20000 });
   assert.equal(r.status, 0, r.stderr); assert.equal(r.stderr, ""); return r.stdout.trim();
@@ -82,6 +87,22 @@ test("Blackwing Lair exposes all eight reviewed Classic reference tips in the At
   }
 });
 
+test("Zul'Gurub exposes only the three reviewed Classic reference tips in the Atlas and Companion", () => {
+  const { buildAtlas } = require("../src/core/dungeon-atlas.cjs");
+  const { answerSpecial } = require("../src/core/companion-unlocks.cjs");
+  const zg = buildAtlas({}).entries.find((e) => e.id === "zg");
+  assert.deepEqual(zg.bosses.filter((boss) => boss.tip).map((boss) => boss.name), reviewedZulGurub.map(([name]) => name));
+  for (const [name, , cue] of reviewedZulGurub) {
+    const boss = zg.bosses.find((b) => b.name === name);
+    assert.match(boss.tip, /^Classic reference: /);
+    assert.match(boss.tip, cue);
+    assert.equal(boss.tip, tipFor(name));
+    assert.equal(boss.observedInForever, false);
+    assert.ok(answerSpecial(`Tips for ${name}?`).text.includes(boss.tip));
+  }
+  assert.equal(tipFor("High Priestess Mar’li"), tipFor("High Priestess Mar'li"));
+});
+
 test("the addon copy is generated from the same tips and loads in the TOC", () => {
   const check = spawnSync(process.execPath, ["scripts/build-boss-tips.cjs", "--check"], { cwd: root, encoding: "utf8" });
   assert.equal(check.status, 0, check.stderr || check.error);
@@ -124,9 +145,11 @@ target='Unknown' reject() target='Lucifron' id=99999 reject() id=12118
 target='The Molten Core' id=3018 reject()
 map=469 target='Nefarian' id=10162 reject()
 target='Lord Victor Nefarius' id=11583 reject()
+map=309 target='Hakkar' id=14834 reject()
+target="High Priestess Mar'li" id=14517 reject()
 local rows={
-${[[409, reviewedMoltenCore], [469, reviewedBlackwingLair]].flatMap(([instanceMap, bosses]) =>
-  bosses.map(([name, id]) => `{'${name}',${id},${instanceMap},${JSON.stringify(tipFor(name) || 'MISSING CLASSIC REFERENCE')}},`)).join(' ')}
+${[[409, reviewedMoltenCore], [469, reviewedBlackwingLair], [309, reviewedZulGurub]].flatMap(([instanceMap, bosses]) =>
+  bosses.map(([name, id]) => `{${JSON.stringify(name)},${id},${instanceMap},${JSON.stringify(tipFor(name) || 'MISSING CLASSIC REFERENCE')}},`)).join(' ')}
 }
 for i,row in ipairs(rows) do
     map=row[3]
