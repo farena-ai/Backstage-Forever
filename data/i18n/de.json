@@ -431,6 +431,8 @@
   "lists the dungeons around your level with their bosses and loot.": "listet die Dungeons in deiner Stufenregion mit ihren Bossen und Beute auf.",
   "lists what to do next: hand-ins first, then training, then the quest you're on. Every step has": "listet auf, was als Nächstes zu tun ist: zuerst Quests abgeben, dann trainieren, dann die aktuelle Quest. Jeder Schritt hat",
   "Live game link": "Live-Spielverbindung",
+  "Checking live link availability…": "Verfügbarkeit der Live-Verbindung wird geprüft…",
+  "Saved-only: the live link is Windows-only. Screen Recording is not needed. Play and log out normally to update your desktop journal.": "Nur Spielstände: Die Live-Verbindung gibt es nur unter Windows. Eine Bildschirmaufnahme ist nicht nötig. Spiele und logge dich wie gewohnt aus, um dein Desktop-Tagebuch zu aktualisieren.",
   "Live link can't read the game": "Live-Verbindung kann das Spiel nicht lesen",
   "Live link off: showing your last save.": "Live-Verbindung aus: Zeige deinen letzten Stand.",
   "Live moments": "Live-Momente",

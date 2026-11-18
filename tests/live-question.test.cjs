@@ -169,7 +169,7 @@ test("a 200-character question goes up in bursts of four 0.4s pages between ordi
   assert.equal(after, "nil", "nothing left to send");
   // The bridge assembles it once, from the first pass alone.
   let t = 1_000;
-  const bridge = new L.LiveBridge({ platform: "linux", now: () => t });
+  const bridge = new L.LiveBridge({ platform: "win32", now: () => t });
   bridge.frame = { characterHash: L.identityHash("Player-1-ABC") };
   const got = [];
   bridge.subscribeQuestions((x) => got.push(x));
@@ -186,7 +186,7 @@ test("missed pages are filled from the second pass; non-ASCII arrives intact; qu
   const seq = shown(frames);
   assert.equal(count, Math.ceil(Buffer.byteLength(text) / 17));
   let t = 0;
-  const bridge = new L.LiveBridge({ platform: "linux", now: () => t });
+  const bridge = new L.LiveBridge({ platform: "win32", now: () => t });
   bridge.frame = { characterHash: L.identityHash("Player-1-ABC") };
   const got = [];
   bridge.subscribeQuestions((x) => got.push(x));
@@ -229,7 +229,7 @@ print((BackstageForeverLiveQuestion('b')))`).split("\n");
 test("bridge: questions bind to the character on the main row, are reported once and speed up sampling for a while", () => {
   let t = 10_000;
   const writes = [];
-  const bridge = new L.LiveBridge({ platform: "linux", now: () => t });
+  const bridge = new L.LiveBridge({ platform: "win32", now: () => t });
   bridge.child = { stdin: { write: (s) => writes.push(s) } };
   const got = [];
   bridge.subscribeQuestions((q) => got.push(q));
@@ -261,7 +261,7 @@ test("bridge: questions bind to the character on the main row, are reported once
 
 test("bridge: question pages on a captured compact strip reach subscribers through line(); the game window rectangle is kept while fresh", () => {
   let t = 5_000_000;
-  const bridge = new L.LiveBridge({ platform: "linux", now: () => t });
+  const bridge = new L.LiveBridge({ platform: "win32", now: () => t });
   bridge.enabled = true;
   const got = [];
   bridge.subscribeQuestions((q) => got.push(q));
