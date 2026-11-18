@@ -46,6 +46,7 @@ contextBridge.exposeInMainWorld(
       invoke("contextPreview", profileId, share, prompt, memoryIds),
     prepareGame: (root) => invoke("prepareGame", root),
     startCompanion: () => invoke("startCompanion"),
+    cancelCompanion: () => invoke("cancelCompanion"),
     launchGame: () => invoke("launchGame"),
     gameSnapshot: () => invoke("gameSnapshot"),
     discoverGame: () => invoke("discoverGame"),

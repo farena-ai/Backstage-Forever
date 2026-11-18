@@ -321,7 +321,7 @@ class GameSync {
     const previousRoot = this.root;
     if (root === previousRoot) return;
     this.root = root;
-    // Retire old-source effects before any asynchronous source preparation.
+    // Retire effects from the previous committed source synchronously.
     this.onRootChange({ previousRoot, root, reason: "root" });
   }
   _sourceUnavailable() {
@@ -441,10 +441,10 @@ class GameSync {
   async _connect(root, persist, cancelled = () => false) {
     const gen = ++this.generation;
     const stale = () => gen !== this.generation || cancelled();
-    clearInterval(this.timer);
-    this._setRoot(null);
+    let validated = false;
     try {
       root = await this.validateRoot(root);
+      validated = true;
       let version = null;
       try {
         version =
@@ -452,61 +452,38 @@ class GameSync {
             /\b1\.60\.\d+\.\d+\b/,
           )?.[0] || null;
       } catch {}
+      if (persist) await fs.mkdir(this.dataDir, { recursive: true });
       if (stale()) return this.status();
-      this._setRoot(root);
-      this.lastDigest = null;
-      this.lastSnapshot = null;
-      this.accountSnapshots.clear();
-      this.state = {
-        ...this.state,
-        connected: true,
-        lastSync: null,
-        characterCount: 0,
-        addonInstalled: false,
-        addonCurrent: false,
-        addonVersion: null,
-        phase: "waiting",
-        message:
-          "Snapshots reach disk when you log out or reload the UI. No live feed.",
-        clientVersion: version,
-        interfaceVersion: 16001,
-        runtime: unknownRuntime(),
-        loadedCaptureVersion: null,
-        loadedGatheringSchema: null,
-        coverage: { partial: false, unreadableAccountCount: 0, omittedCharacterCount: 0, omittedProfileCount: 0 },
-      };
-      try {
-        for (const file of OWN)
-          await safe(
-            path.join(root, "Interface", "AddOns", "BackstageForever", file),
-            "file",
-          );
-        if (!stale()) this.state.addonInstalled = true;
-      } catch {}
-      if (persist) {
-        await fs.mkdir(this.dataDir, { recursive: true });
-        if (stale()) return this.status();
-        // No await between the generation check and the atomic settings write.
-        atomic(
-          path.join(this.dataDir, "game-connection.private.json"),
-          JSON.stringify({ root }),
-        );
-      }
-      if (stale()) return this.status();
-      this.timer = setInterval(() => this.refresh().catch(() => {}), 5000);
-      this.timer.unref?.();
-      await this._installAddon(gen, root, cancelled);
+      await this._installAddon(gen, root, cancelled, (installed) => {
+        // A failed replacement must not take an existing saved source offline.
+        if (!installed && this.root && this.root !== root) {
+          this.state.setupIssue = "install-failed";
+          return false;
+        }
+        if (persist) atomic(path.join(this.dataDir, "game-connection.private.json"), JSON.stringify({ root }));
+        clearInterval(this.timer);
+        ++this.refreshEpoch;
+        this._setRoot(root);
+        this.lastDigest = null;
+        this.lastSnapshot = null;
+        this.accountSnapshots.clear();
+        this.state = {
+          ...this.state, connected: true, setupIssue: null, lastSync: null, characterCount: 0,
+          addonInstalled: false, addonCurrent: false, addonVersion: null, addonUpdatedAt: null,
+          clientVersion: version, interfaceVersion: 16001, runtime: unknownRuntime(),
+          loadedCaptureVersion: null, loadedGatheringSchema: null, savedAt: null,
+          coverage: { partial: false, unreadableAccountCount: 0, omittedCharacterCount: 0, omittedProfileCount: 0 },
+        };
+        this.timer = setInterval(() => this.refresh().catch(() => {}), 5000);
+        this.timer.unref?.();
+        return true;
+      });
       if (!stale()) await this.refresh();
     } catch {
       if (!stale()) {
-        this._sourceUnavailable();
-        this.state = {
-          ...this.state,
-          connected: false,
-          addonInstalled: false,
-          addonCurrent: false,
-          addonVersion: null,
-          phase: "folder-unavailable",
+        if (persist) this.state.setupIssue = validated ? "install-failed" : "wrong-client";
+        if (!this.root) this.state = {
+          ...this.state, phase: "folder-unavailable",
           message: "Choose a valid World of Warcraft: Forever client folder.",
         };
       }
@@ -532,7 +509,7 @@ class GameSync {
     await this.ready;
     return this._installAddon(++this.generation, this.root);
   }
-  async _installAddon(gen, root, cancelled = () => false) {
+  async _installAddon(gen, root, cancelled = () => false, selectRoot = () => true) {
     const stale = () => gen !== this.generation || cancelled();
     if (!root) return this.status();
     try {
@@ -608,13 +585,20 @@ class GameSync {
         if (stale()) return this.status();
         const committed = [];
         try {
-          // No await: disconnect/reset cannot interleave the commit and rollback.
+          // Publish files and connection at the same cancellation boundary.
           for (const entry of staged) {
             fsSync.renameSync(entry.temporary, entry.dest);
             committed.push(entry);
             if (!fsSync.readFileSync(entry.dest).equals(entry.content))
               throw Error("Verification failed");
           }
+          selectRoot(true);
+          this.state = {
+            ...this.state, setupIssue: null, addonInstalled: true, addonCurrent: true,
+            addonVersion: sources[0][1].toString("utf8").match(/^## Version:\s*(.+)$/m)?.[1]?.trim() || null,
+            addonUpdatedAt: new Date().toISOString(), phase: "needs-reload",
+            message: "Companion prepared. You can play now; the files activate at your next game login. Desktop progress reflects game saves.",
+          };
         } catch (error) {
           for (const entry of committed.reverse()) {
             if (entry.previous === null) fsSync.unlinkSync(entry.dest);
@@ -628,21 +612,8 @@ class GameSync {
       } finally {
         await Promise.all(staged.map(({ temporary }) => fs.unlink(temporary).catch(() => {})));
       }
-      if (!stale())
-        this.state = {
-          ...this.state,
-          addonInstalled: true,
-          addonCurrent: true,
-          addonVersion:
-            sources[0][1].toString("utf8").match(/^## Version:\s*(.+)$/m)?.[1]?.trim() || null,
-          // When these files landed: a /reload before this moment still runs the old addon.
-          addonUpdatedAt: new Date().toISOString(),
-          phase: "needs-reload",
-          message:
-            "Companion prepared. You can play now; the files activate at your next game login. Desktop progress reflects game saves.",
-        };
     } catch {
-      if (!stale())
+      if (!stale() && selectRoot(false))
         this.state = {
           ...this.state,
           addonInstalled: false,
@@ -815,6 +786,7 @@ class GameSync {
       loadedGatheringSchema: null,
       phase: "disconnected",
       message: "Game disconnected.",
+      setupIssue: null,
     };
     try {
       fsSync.unlinkSync(

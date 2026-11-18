@@ -32,7 +32,10 @@ async function finishRefresh(page) {
       await fs.mkdir(path.join(root, "WTF"), { recursive: true });
       await fs.writeFile(path.join(root, ".flavor.info"), "wowf");
     }
-    app = await launchElectron(electron, { args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: path.join(dir, "data") } });
+    const profile = path.join(dir, "data");
+    await fs.mkdir(profile);
+    await fs.writeFile(path.join(profile, "live-link.json"), '{"enabled":false}');
+    app = await launchElectron(electron, { args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: profile } });
     await app.evaluate(({ app, dialog, BrowserWindow }) => {
       const p = process.getBuiltinModule("node:path");
       const load = process.getBuiltinModule("node:module").createRequire(p.join(app.getAppPath(), "package.json"));
@@ -73,12 +76,21 @@ async function finishRefresh(page) {
     assert.equal(await app.evaluate(() => fixture.pickers), 0, "Discovery never opens a picker");
     await page.getByRole("button", { name: "Choose game folder", exact: true }).click();
     assert.equal(await app.evaluate(() => fixture.pickers), 1);
+    const wrong = path.join(dir, "Fictional non-Forever client");
+    await fs.mkdir(path.join(wrong, "WTF"), { recursive: true });
+    await fs.writeFile(path.join(wrong, ".flavor.info"), "wow");
+    await app.evaluate((_electron, root) => { fixture.pickerPath = root; }, wrong);
+    await page.getByRole("button", { name: "Choose game folder", exact: true }).click();
+    await page.getByText(/That folder is not a usable WoW Forever installation/).waitFor({ timeout: 3000 });
+    await assert.rejects(fs.stat(path.join(wrong, "Interface")), { code: "ENOENT" });
+    await page.evaluate(() => window.backstage.disconnectGame());
+    await app.evaluate(() => { fixture.pickerPath = null; });
     await app.evaluate((_electron, roots) => { fixture.candidates = roots.map((root, i) => ({ id: String(i), label: "Fictional Forever " + (i + 1), path: root })); }, roots);
     await page.reload();
     await page.getByRole("button", { name: "Start my adventure", exact: true }).click();
     await page.getByRole("button", { name: /Fictional Forever 1/ }).waitFor();
     await page.screenshot({ path: path.join(evidence, "fictional-install-choices-1000x700.png") });
-    assert.equal(await app.evaluate(() => fixture.pickers), 1);
+    assert.equal(await app.evaluate(() => fixture.pickers), 2);
     assert.equal((await page.evaluate(() => window.backstage.bootstrap())).gameStatus.connected, false);
     await app.evaluate(({ ipcMain }) => {
       const original = ipcMain._invokeHandlers.get("backstage:saveState");
@@ -114,6 +126,9 @@ async function finishRefresh(page) {
     await navigate(page, "quest-guide");
     assert.equal(await page.locator(".companion-dock").count(), 0);
     await navigate(page, "game");
+    assert.equal(await page.locator("#live-link-toggle").isChecked(), false);
+    assert.equal(await fs.readFile(path.join(profile, "live-link.json"), "utf8"), '{"enabled":false}');
+    await page.locator("[data-setup-recovery]").getByText(/No new save yet/).waitFor();
     await page.getByRole("button", { name: "Set up my companion", exact: true }).click();
     await page.getByRole("heading", { name: "Your companion is prepared", exact: true }).waitFor();
     await page.getByRole("button", { name: "Enter my adventure", exact: true }).click();
@@ -319,26 +334,44 @@ async function finishRefresh(page) {
     assert.equal(snapshot.state.profiles.length, 0);
     assert.equal(snapshot.gameStatus.connected, false);
     await page.getByRole("button", { name: "Start my adventure", exact: true }).waitFor();
-    // A candidate click paused before preparation must respect disconnect and close.
+    // Continue later alone must retire a candidate held before preparation.
     await app.evaluate(({ app }, roots) => {
       const p = process.getBuiltinModule("node:path");
       const load = process.getBuiltinModule("node:module").createRequire(p.join(app.getAppPath(), "package.json"));
       const prototype = load("./src/core/game-sync.cjs").GameSync.prototype;
       const original = prototype.prepare;
-      prototype.prepare = async function (...args) { await new Promise(resolve => fixture.releaseCandidate = resolve); return original.apply(this, args); };
+      fixture.attempts = 0;
+      prototype.prepare = async function (...args) {
+        const attempt = ++fixture.attempts;
+        if (attempt <= 2) await new Promise(resolve => fixture.releaseCandidate = resolve);
+        try { return await original.apply(this, args); }
+        finally { fixture.finishedCandidate = attempt; }
+      };
       fixture.candidates = roots.map((root, i) => ({ id: String(i), label: "Fictional delayed " + i, path: root }));
     }, roots);
     await page.getByRole("button", { name: "Start my adventure", exact: true }).click();
     await page.getByRole("button", { name: /Fictional delayed 1/ }).click();
     await app.evaluate(async () => { while (!fixture.releaseCandidate) await new Promise(resolve => setTimeout(resolve, 10)); });
     await page.getByRole("button", { name: "Continue later", exact: true }).click();
-    await page.evaluate(() => window.backstage.disconnectGame());
     await app.evaluate(() => fixture.releaseCandidate());
-    await page.waitForTimeout(100);
+    await app.evaluate(async () => { while (fixture.finishedCandidate !== 1) await new Promise(resolve => setTimeout(resolve, 10)); });
     snapshot = await page.evaluate(() => window.backstage.bootstrap());
     assert.equal(snapshot.gameStatus.connected, false);
     assert.equal(snapshot.state.onboarded, false);
     assert.equal(await page.getByRole("heading", { name: "Every adventure starts somewhere.", exact: true }).count(), 1);
+    // Retry before the cancelled attempt settles. Only the explicitly retried root commits.
+    await page.reload();
+    await page.evaluate(() => localStorage.removeItem("bf-setup-v4"));
+    await page.reload();
+    await page.getByRole("button", { name: "Start my adventure", exact: true }).click();
+    await page.getByRole("button", { name: /Fictional delayed 0/ }).click();
+    await app.evaluate(async () => { while (fixture.attempts !== 2) await new Promise(resolve => setTimeout(resolve, 10)); });
+    await page.getByRole("button", { name: "Cancel setup", exact: true }).press("Enter");
+    await page.getByRole("button", { name: /Fictional delayed 1/ }).click();
+    await page.locator("[data-now]").waitFor();
+    await app.evaluate(() => fixture.releaseCandidate());
+    await app.evaluate(async () => { while (fixture.finishedCandidate !== 2) await new Promise(resolve => setTimeout(resolve, 10)); });
+    assert.equal(JSON.parse(await fs.readFile(path.join(profile, "game-connection.private.json"), "utf8")).root, await fs.realpath(roots[1]));
     assert.deepEqual(errors, []);
     console.log("PASS: living UI no/one/multiple installs, explicit picker, prepared no-snapshot entry, closed/running/unknown, unavailable-folder loss/restoration/recovery with preserved journals, launch-request semantics, optional activation, cached follow/private journal, partial coverage, timestamp focus preservation, reset/close cancellation, compact keyboard/reduced-motion, fictional faction evidence.");
   } finally {
