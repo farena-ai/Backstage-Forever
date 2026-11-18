@@ -15,7 +15,25 @@ function place(pack, refs) {
   return { name: npc.name, zone: pos ? MAP_NAMES[pos.mapId] || null : null };
 }
 
-function repAdvice(profile, pack, { perFaction = 5, browseOnly = false } = {}) {
+// A reference requirement can be compared with bags, but cannot establish
+// readiness, turn-in, or a reputation gain. Storage never counts as carried.
+function turnInMaterials(profile, pack, quest, now) {
+  if (profile.source?.kind !== "wow-addon" || !profile.clientBuild || profile.clientBuild !== pack.build) return;
+  const items = (quest.objectives || []).filter(o => o.type === "item");
+  if (!items.length || new Set(items.map(o => o.objectId)).size !== items.length ||
+      items.some(o => !Number.isSafeInteger(o.objectId) || o.objectId < 1 || !Number.isSafeInteger(o.required) || o.required < 1)) return;
+  const bags = profile.ledger?.bags, savedAt = Math.floor(Date.parse(profile.source.updatedAt) / 1000);
+  const dated = bags?.seenAt > 0 && bags.seenAt <= Math.min(savedAt, now);
+  const exact = dated && bags.complete === true && bags.seenAt === savedAt;
+  const carried = new Map((dated ? bags.items : []).map(row => [row.id, row]));
+  return { seenAt: dated ? bags.seenAt : null, rows: items.map(({ objectId: itemId, required }) => {
+    const item = carried.get(itemId), count = item?.n ?? (exact ? 0 : null);
+    return { itemId, required, name: item?.name || pack.items?.[itemId]?.name || `Item #${itemId}`,
+      carried: count, missing: exact ? Math.max(0, required - count) : null };
+  }) };
+}
+
+function repAdvice(profile, pack, { perFaction = 5, browseOnly = false, now = Math.floor(Date.now() / 1000) } = {}) {
   const factions = profile?.ledger?.reputations?.factions;
   if (!factions?.length || !pack?.quests) return null;
   const level = browseOnly ? 0 : profile.level, side = profile.faction, bit = RACE_BITS[profile.race];
@@ -40,10 +58,12 @@ function repAdvice(profile, pack, { perFaction = 5, browseOnly = false } = {}) {
     || Number(Boolean(b.q.givers?.length)) - Number(Boolean(a.q.givers?.length))
     || Math.abs((a.q.level || level) - level) - Math.abs((b.q.level || level) - level) || a.q.id - b.q.id;
   return { browseOnly, factions: factions.map(f => ({ id: f.id, name: f.name, standingName: STANDINGS[f.standing],
-    quests: byFaction.get(f.id).sort(order).slice(0, perFaction).map(({ q, saved, status }) => ({
-      id: q.id, title: saved?.title || q.title, status, minLevel: q.minLevel || null, sides: q.sides || [],
-      linkedFrom: links.get(q.id) || [], giver: place(pack, q.givers), turnIn: place(pack, q.turnIns),
-    })),
+    quests: byFaction.get(f.id).sort(order).slice(0, perFaction).map(({ q, saved, status }) => {
+      const materials = status === "in-log" ? turnInMaterials(profile, pack, q, now) : undefined;
+      return { id: q.id, title: saved?.title || q.title, status, minLevel: q.minLevel || null, sides: q.sides || [],
+        linkedFrom: links.get(q.id) || [], giver: place(pack, q.givers), turnIn: place(pack, q.turnIns),
+        ...(materials ? { materials } : {}) };
+    }),
   })) };
 }
 module.exports = { repAdvice };
