@@ -22,7 +22,22 @@ window.GuidedRouteView = (() => {
     "not-ready": "Your last save does not show this quest ready to hand in.",
   };
   let mountedFor = null, request = 0;
-  const keyFor = (p) => `bf-desktop-route-skips-v1:${JSON.stringify([p.id, p.source?.id, p.clientBuild])}`;
+  const skipPrefix = "bf-desktop-route-skips-v1:";
+  const keyFor = (p) => skipPrefix + JSON.stringify([p.id, p.source?.id, p.clientBuild]);
+  function removeSkips(profileId = null) {
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (!key.startsWith(skipPrefix)) continue;
+        if (profileId !== null) {
+          // A character may have stored skips under more than one source or build.
+          let scope;
+          try { scope = JSON.parse(key.slice(skipPrefix.length)); } catch { continue; }
+          if (!Array.isArray(scope) || scope.length !== 3 || scope[0] !== profileId) continue;
+        }
+        localStorage.removeItem(key);
+      }
+    } catch {}
+  }
   function readSkips(p) {
     if (!p) return [];
     try {
@@ -133,5 +148,5 @@ window.GuidedRouteView = (() => {
     root.addEventListener("change", (e) => { if (e.target.matches?.("[data-gr-race]")) loadReview(e.target.value, 0); });
     if (current()) void load();
   }
-  return { page, mounted, retireRecovery };
+  return { page, mounted, retireRecovery, removeSkips };
 })();
