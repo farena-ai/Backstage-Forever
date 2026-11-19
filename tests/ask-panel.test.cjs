@@ -198,6 +198,14 @@ test("a queued Workshop retry cannot reuse consent revoked while waiting", async
   assert.equal(r.notified[0].shareProfile, false);
 });
 
+test("dungeon preparation in the game panel requires a verified active character before reading saved evidence", async () => {
+  for (const [activeKey, characterHash, allowed] of [[4242, 4242, true], [4242, 99, false], [4242, undefined, false], [null, 4242, false]]) {
+    const r = routing({ activeKey, results: [{ text: "Local dungeon reply", kind: "quick" }] });
+    await r.ask.handle({ text: "Dungeon prep for #dm", characterHash });
+    assert.equal(r.asked[0].shareProfile, allowed);
+  }
+});
+
 test("in-game questions are answered one at a time, wait briefly for a busy companion, and explain a missing AI", async () => {
   const busy = Error("Provider request already in progress.");
   const r = routing({ results: [busy, busy, { text: "first", kind: "quick" }, Error("Choose a model in Connections for AI questions. Local NPC locations need no model."), { text: "third", kind: "ai" }] });

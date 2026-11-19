@@ -70,6 +70,12 @@ The resolver prefers compatible observed-build points, then a separate historica
 
 A direct **I'm already in Org** statement can supply a user-reported planning city for the retained conversation. The preview shows that source and keeps the old saved location separate; old mine coordinates are never attached to a newly reported city. Reports expire with their retained turn (at most six exchanges) and clear with existing character/provider/source/sharing/memory/clear boundaries. Failed/cancelled questions cannot retain a new report. Quotes, past/future/hypothetical statements, AI replies and saved memory cannot create one. Sharing off omits automatic character context. Desktop location remains last saved even if its timestamp is today; native Compass updates inside the game.
 
+## Offline dungeon preparation
+
+In Companion, try **Dungeon prep for The Deadmines?** or **Dungeon prep for #dm?** Use a full Dungeon Atlas name or an exact `#ID`; the suggestion button fills an editable example. No model, account, or connection is needed. The entrance and level band are approximate Classic-era reference, not verified Forever access.
+
+With **Use my active character** on, the answer can show possible matches in the active character’s dated addon quest log and starred item IDs whose boss-loot reference includes the saved build. The loot observations are pooled across builds: they are not per-build confirmation, personal drops, or gear recommendations. The answer does not establish quest eligibility, clears, lockouts, or live mechanics. The exchange is not added to model conversation history or made available to save in Memory.
+
 ## Character context and honest uncertainty
 
 0.6 adds bounded relevant Forever reference facts to the shared approved context: compatible exact-ID quest links, NPC/reference coordinates, listed rewards, chain status and source provenance. The same whitelist supplies the visible preview and every provider route. Character-sharing opt-out applies to these facts too. Full completed-ID sets and full reference packs remain local. The AI can explain supplied evidence, but its own answer does not establish a new verified quest fact. Local Quest Guide remains usable without a model.

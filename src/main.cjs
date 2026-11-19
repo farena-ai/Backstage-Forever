@@ -668,6 +668,10 @@ app.whenReady().then(async () => {
     talents: { trees: (className) => gameData.talents(className), build: () => gameData.build(), ready: () => gameData.cached("talents") },
     vendorPack: (()=>{try{return require('./core/vendor-facts.cjs').loadVendorPack();}catch{return null;}})(),
     acquisitionPack: (()=>{try{return require('./core/acquisition-data.cjs').loadAcquisitionPack();}catch{return null;}})(),
+    dungeonEvidence: {
+      lootPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(),
+      wishes: (profileId) => wishlist.get(profileId),
+    },
     onReset: (reason) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:conversationReset", reason); },
   });
   // Community sharing (0.34): anonymous finds out (on by default, off switch in Settings), a daily pack in.
