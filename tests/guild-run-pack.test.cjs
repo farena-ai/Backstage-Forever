@@ -46,8 +46,12 @@ test("requires an explicit offset for ambiguous wall time and rejects DST gaps",
   assert.throws(() => start("2026-11-01T01:30", "-06:00"), /invalid/i);
   assert.throws(() => start("2026-03-08T02:30", "-05:00"), /invalid/i);
   assert.throws(() => start("2026-02-30T14:00", "-05:00"), /invalid/i);
-  assert.match(guild.previewGuildRunPack(draft({ start: first }), "Europe/Paris").text, /Viewer time: .*06:30.*GMT\+01:00/);
-  assert.match(guild.previewGuildRunPack(draft({ start: second }), "Europe/Paris").text, /Viewer time: .*07:30.*GMT\+01:00/);
+  const firstPreview = guild.previewGuildRunPack(draft({ start: first }), "Europe/Paris");
+  const secondPreview = guild.previewGuildRunPack(draft({ start: second }), "Europe/Paris");
+  assert.match(firstPreview.viewerTime, /06:30.*GMT\+01:00.*Europe\/Paris/);
+  assert.match(secondPreview.viewerTime, /07:30.*GMT\+01:00.*Europe\/Paris/);
+  assert.equal(firstPreview.text, guild.previewGuildRunPack(draft({ start: first }), "UTC").text);
+  assert.doesNotMatch(firstPreview.text, /Europe\/Paris|Viewer time/);
 });
 
 test("imports once by event ID and revision; stale and conflicting copies cannot overwrite it", () => {
@@ -87,13 +91,14 @@ test("keeps private completion only for unchanged actions after a restart and re
 test("cancellation works as a first import and cannot be reverted by a scheduled copy", () => {
   const original = pack();
   const record = guild.setGuildRunPrepDone(guild.applyGuildRunPack(null, original).record, "repair", true);
-  const cancellation = guild.previewGuildRunPack(draft({ revision: 2, status: "cancelled" }), "UTC");
+  const cancellation = guild.previewGuildRunPack(draft({ revision: 2, status: "cancelled", duties: [], prep: [] }), "UTC");
   const imported = guild.applyGuildRunPack(null, cancellation.pack);
   const result = guild.applyGuildRunPack(record, cancellation.pack);
   assert.equal(imported.outcome, "imported");
   assert.equal(result.outcome, "updated");
   assert.equal(result.record.pack.status, "cancelled");
-  assert.deepEqual(result.record.completedPrepIds, ["repair"]);
+  assert.deepEqual(imported.record.completedPrepIds, []);
+  assert.deepEqual(result.record.completedPrepIds, []);
   assert.match(cancellation.text, /CANCELLED.*revision 2/);
   assert.match(cancellation.text, /Former start/);
   assert.doesNotMatch(cancellation.text, /Prep:|Mark the first target/);
@@ -101,6 +106,21 @@ test("cancellation works as a first import and cannot be reverted by a scheduled
   assert.equal(guild.applyGuildRunPack(result.record, original).outcome, "stale");
   assert.equal(guild.applyGuildRunPack(result.record, cancellation.pack).outcome, "duplicate");
   assert.deepEqual(guild.applyGuildRunPack(result.record, pack({ revision: 3 })), { outcome: "conflict", record: result.record });
+});
+
+test("cancellations cannot carry hidden duties or prep in a preview, wire copy or applied revision", () => {
+  const original = pack();
+  const record = guild.setGuildRunPrepDone(guild.applyGuildRunPack(null, original).record, "repair", true);
+  const cancelled = { ...original, revision: 2, status: "cancelled", duties: [], prep: [] };
+  for (const hidden of [{ duties: original.duties }, { prep: original.prep }]) {
+    const invalid = { ...cancelled, ...hidden };
+    assert.throws(() => guild.previewGuildRunPack(invalid, "UTC"), /invalid/i);
+    assert.throws(() => guild.serializeGuildRunPack(invalid), /invalid/i);
+    assert.throws(() => guild.parseGuildRunPack(JSON.stringify(invalid)), /invalid/i);
+    assert.throws(() => guild.applyGuildRunPack(null, invalid), /invalid/i);
+    assert.throws(() => guild.applyGuildRunPack(record, invalid), /invalid/i);
+    assert.deepEqual(record.completedPrepIds, ["repair"]);
+  }
 });
 
 test("rejects malformed or ambiguous imported copies without echoing their contents", () => {

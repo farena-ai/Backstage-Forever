@@ -81,6 +81,7 @@ function validatePack(pack) {
       return { id: action.id, text: text(action.text, 240) };
     }),
   };
+  if (status === "cancelled" && (result.duties.length || result.prep.length)) invalid();
   if (new Set(result.prep.map(action => action.id)).size !== result.prep.length) invalid();
   return result;
 }
@@ -124,16 +125,15 @@ function parseGuildRunPack(raw) {
   } catch { invalid(); }
 }
 
-function renderGuildRunText(pack, viewerZone) {
+function renderGuildRunText(pack) {
   const { title, eventId, revision, status, destination, meetingPoint, start, duties, prep } = pack;
   const at = new Date(start.utc);
   const organizerTime = formatter(start.timeZone).format(at);
-  const localTime = formatter(viewerZone).format(at);
+
   return [
     `${title} [${status === "cancelled" ? "CANCELLED" : "Scheduled"}, revision ${revision}]`,
     `Event: ${eventId}`, `Destination: ${destination}`, `Meeting point: ${meetingPoint}`,
     `${status === "cancelled" ? "Former start" : "Start"}: ${organizerTime} (${start.timeZone}) / ${start.utc}`,
-    `Viewer time: ${localTime} (${viewerZone})`,
     ...(status === "cancelled" ? ["This run is cancelled; do not use the prep plan."] : [
       ...duties.map(duty => `${duty.role}: ${duty.text}`),
       ...prep.map(action => `Prep: ${action.text}`),
@@ -157,7 +157,8 @@ function previewGuildRunPack(draft, viewerZone = Intl.DateTimeFormat().resolvedO
     Object.freeze(pack[field]);
   }
   Object.freeze(pack.start);
-  return { pack: Object.freeze(pack), text: renderGuildRunText(pack, viewerZone) };
+  const viewerTime = `${formatter(viewerZone).format(new Date(pack.start.utc))} (${viewerZone})`;
+  return { pack: Object.freeze(pack), text: renderGuildRunText(pack), viewerTime };
 }
 
 function validateMemberRecord(record) {

@@ -16,7 +16,7 @@ window.GuildRun = (() => {
   const button = (op, label, arg = "", primary = false) => `<button type="button" ${control(op + (arg ? "-" + e(arg) : ""))} data-guild-action="${op}" data-guild-arg="${e(arg)}" ${primary ? 'class="primary"' : ""} ${busy ? "disabled" : ""}>${e(label)}</button>`;
   const heading = text => `<h3 id="guild-run-panel-title" tabindex="-1" ${control("panel")}>${e(text)}</h3>`;
   const actions = content => `<div class="guild-run-actions">${content}</div>`;
-  const textPreview = text => `<pre class="guild-run-copy">${e(text)}</pre>`;
+  const textPreview = ({ text, viewerTime }, sharing = false) => `<p data-guild-viewer-time>Viewer time (only shown here): ${e(viewerTime)}</p>${sharing ? '<p id="guild-run-share-label">Shareable plain text</p>' : ""}<pre class="guild-run-copy" ${sharing ? 'aria-labelledby="guild-run-share-label"' : ""}>${e(text)}</pre>`;
   const key = pack => ({ eventId: pack.eventId, revision: pack.revision });
   const lines = text => text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   function form(value = {}) {
@@ -51,18 +51,19 @@ window.GuildRun = (() => {
       ${actions(button("close", "Close run panel"))}`;
   }
   function reviewView({ kind, value }) {
-    const { pack, text, outcome } = value;
+    const { pack, outcome } = value;
     if (kind === "incoming") {
       const confirm = outcome === "imported" ? "Add received run" : outcome === "updated" ? "Apply received revision" : "";
-      return `${heading("Review the received run")}<p>${outcomes[outcome]}</p>${textPreview(text)}${actions(`${confirm ? button("accept", confirm, "", true) : ""}${button("close", "Close run panel")}`)}`;
+      return `${heading("Review the received run")}<p>${outcomes[outcome]}</p>${textPreview(value)}${actions(`${confirm ? button("accept", confirm, "", true) : ""}${button("close", "Close run panel")}`)}`;
     }
     if (kind === "unsaved") return `${heading("Review the run before sharing")}
       <p>${pack.status === "cancelled" ? "Save this cancellation as the next revision, then share it manually. You cannot reopen a cancelled run; create a new one if needed." : "Check the start time and every line for private wording. Only this reviewed run will be exported; saving it locally does not share it."}</p>
-      ${textPreview(text)}${actions(`${button("save", "Save run locally", "", true)}${draft && pack.status === "scheduled" ? button("back", "Back to edit") : ""}${button("close", "Close run panel")}`)}`;
-    return `${heading("Reviewed run · ready to export")}${textPreview(text)}${actions(`${button("export", "Export JSON", "json", true)}${button("export", "Export plain text", "text")}${pack.status === "scheduled" ? button("edit", "Edit next revision") + button("cancelRun", "Review cancellation") : ""}${button("close", "Close run panel")}`)}`;
+      ${textPreview(value, true)}${actions(`${button("save", "Save run locally", "", true)}${draft && pack.status === "scheduled" ? button("back", "Back to edit") : ""}${button("close", "Close run panel")}`)}`;
+    return `${heading("Reviewed run · ready to export")}${textPreview(value, true)}${actions(`${button("export", "Export JSON", "json", true)}${button("export", "Export plain text", "text")}${pack.status === "scheduled" ? button("edit", "Edit next revision") + button("cancelRun", "Review cancellation") : ""}${button("close", "Close run panel")}`)}`;
   }
-  function member({ pack, completedPrepIds, text }) {
-    return `${heading("Received run on this installation")}${textPreview(text)}
+  function member(value) {
+    const { pack, completedPrepIds } = value;
+    return `${heading("Received run on this installation")}${textPreview(value)}
       ${pack.status === "scheduled" && pack.prep.length ? `<fieldset><legend>Private prep checklist</legend><p>Checks stay on this installation. They are not shared or sent to the organizer.</p>${pack.prep.map(p => `<label class="guild-run-check"><input type="checkbox" ${control("check-" + e(p.id))} data-guild-check="${e(p.id)}" ${completedPrepIds.includes(p.id) ? "checked" : ""} ${busy ? "disabled" : ""}><span>${e(p.text)}</span></label>`).join("")}</fieldset>` : ""}
       ${actions(button("close", "Close run panel"))}`;
   }

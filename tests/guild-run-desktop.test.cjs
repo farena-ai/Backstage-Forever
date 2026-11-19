@@ -42,7 +42,7 @@ test("author preview is read-only and export writes exactly the saved review, ne
   const review = f.call("preview", { draft, base: null });
   assert.deepEqual(f.call("list"), { organized: [], received: [] });
   assert.equal(review.pack.start.utc, "2026-11-01T06:30:00.000Z");
-  assert.match(review.text, /31\/10\/2026.*23:30:00.*America\/Los_Angeles/);
+  assert.match(review.viewerTime, /31\/10\/2026.*23:30:00.*America\/Los_Angeles/);
   assert.throws(() => f.call("preview", { draft: { ...draft, note: "PRIVATE" }, base: null }), /invalid/);
   assert.throws(() => f.call("preview", { draft: { ...draft, local: "2026-03-08T02:30" }, base: null }), /invalid/);
   await assert.rejects(async () => f.call("export", review.token, "json"), /Save/);
@@ -52,7 +52,10 @@ test("author preview is read-only and export writes exactly the saved review, ne
   assert.equal(await f.call("export", review.token, "json"), true);
   assert.deepEqual(parseGuildRunPack(fs.readFileSync(f.destination)), review.pack);
   assert.equal(await f.call("export", review.token, "text"), true);
-  assert.equal(fs.readFileSync(f.destination, "utf8"), review.text);
+  const text = fs.readFileSync(f.destination, "utf8");
+  assert.equal(text, review.text);
+  assert.match(text, /America\/New_York.*2026-11-01T06:30:00\.000Z/);
+  assert.doesNotMatch(text, /Viewer time|America\/Los_Angeles/);
   const restarted = f.connect();
   assert.deepEqual(restarted.call("organized", review.pack.eventId).pack, review.pack);
 });
@@ -84,10 +87,19 @@ test("import requires confirmation; revisions retain only unchanged private chec
   const cancelled = f.call("cancelRun", { eventId, revision: 2 });
   f.call("save", cancelled.token);
   await f.call("export", cancelled.token, "json");
+  const cancellationBytes = fs.readFileSync(f.destination);
+  const beforeCancellation = fs.readFileSync(path.join(f.dir, "guild-runs.json"));
+  for (const hidden of [{ prep: r2.pack.prep }, { duties: r2.pack.duties }]) {
+    fs.writeFileSync(f.destination, JSON.stringify({ ...cancelled.pack, ...hidden }));
+    await assert.rejects(f.call("import"), /Guild Run Pack is invalid/);
+    assert.deepEqual(fs.readFileSync(path.join(f.dir, "guild-runs.json")), beforeCancellation);
+  }
+  fs.writeFileSync(f.destination, cancellationBytes);
   incoming = await f.call("import");
   f.call("accept", incoming.token);
   assert.throws(() => f.call("check", { eventId, revision: 3, actionId: prep[0].id, done: false }), /invalid/);
   assert.match(f.call("received", eventId).text, /CANCELLED/);
+  assert.deepEqual(f.connect().call("received", eventId).completedPrepIds, []);
 });
 
 test("cancelled, stale and app-owned file exports do not write; reset retires pending reviews", async t => {
@@ -126,4 +138,50 @@ test("cancelled, malformed and oversized imports preserve an open organizer revi
   await assert.rejects(f.call("import"), /up to 32 KiB/);
   assert.deepEqual(fs.readFileSync(storeFile), before);
   assert.equal(await f.call("export", review.token, "json"), true);
+});
+
+test("reset removes only the Guild Run store and its interrupted atomic writes", async t => {
+  const f = fixture(t);
+  const review = author(f);
+  const bytes = fs.readFileSync(path.join(f.dir, "guild-runs.json"));
+  const owned = ["guild-runs.json.b6a14782-91f9-4fe3-83e2-19fcd39f48fd.tmp",
+    "guild-runs.json.c6a14782-91f9-4fe3-83e2-19fcd39f48fd.tmp"];
+  const unrelated = ["state.json.b6a14782-91f9-4fe3-83e2-19fcd39f48fd.tmp", "guild-runs.json.not-a-uuid.tmp",
+    "guild-runs.json.b6a14782-91f9-1fe3-83e2-19fcd39f48fd.tmp", owned[0] + ".bak"];
+  for (const name of [...owned, ...unrelated]) fs.writeFileSync(path.join(f.dir, name), bytes);
+  f.hold();
+  const pending = f.call("export", review.token, "json");
+  f.reset();
+  f.release();
+  assert.equal(await pending, null);
+  assert.equal(fs.existsSync(f.destination), false);
+  const queued = f.call("preview", { draft, base: null });
+  f.reset();
+  assert.throws(() => f.call("save", queued.token), /current/i);
+  assert.deepEqual(fs.readdirSync(f.dir).sort(), unrelated.sort());
+  assert.deepEqual(f.connect().call("list"), { organized: [], received: [] });
+  for (const name of unrelated) assert.deepEqual(fs.readFileSync(path.join(f.dir, name)), bytes);
+});
+
+test("failed orphan removal does not report reset success and can be retried", t => {
+  const f = fixture(t);
+  author(f);
+  const store = path.join(f.dir, "guild-runs.json"), bytes = fs.readFileSync(store);
+  const orphan = `${store}.b6a14782-91f9-4fe3-83e2-19fcd39f48fd.tmp`;
+  fs.writeFileSync(orphan, bytes);
+  const queued = f.call("preview", { draft, base: null });
+  const rm = fs.rmSync;
+  const fault = t.mock.method(fs, "rmSync", (file, options) => {
+    if (file === orphan) throw Object.assign(new Error(`Cannot unlink ${file}`), { code: "EPERM" });
+    return rm(file, options);
+  });
+  try {
+    assert.throws(() => f.reset(), { message: "Guild Run Pack local runs could not be deleted. Try again." });
+    assert.equal(fault.mock.callCount(), 1);
+    assert.deepEqual(fs.readFileSync(store), bytes);
+    assert.deepEqual(fs.readFileSync(orphan), bytes);
+    assert.throws(() => f.call("save", queued.token), /current/i);
+  } finally { fault.mock.restore(); }
+  f.reset();
+  assert.deepEqual(fs.readdirSync(f.dir), []);
 });

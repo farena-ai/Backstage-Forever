@@ -8,6 +8,9 @@ const { MAX_GUILD_RUN_BYTES, previewGuildRunPack, serializeGuildRunPack, parseGu
 
 const LIMIT = 32; // Per list, per local installation; never evict a run or its private checks silently.
 const STORE_LIMIT = LIMIT * 2 * (MAX_GUILD_RUN_BYTES + 2048) + 1024;
+const STORE_NAME = "guild-runs.json";
+// Match only this store's siblings produced by atomic(): <filename>.<randomUUID()>.tmp.
+const STORE_TEMP_NAME = /^guild-runs\.json\.[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\.tmp$/;
 const invalid = () => new Error("Guild Run Pack request is invalid.");
 const expired = () => new Error("Guild Run Pack review is no longer current. Open a new preview.");
 const updated = new Set(["imported", "updated"]);
@@ -48,7 +51,7 @@ function editable(base) {
 
 function registerGuildRunHandlers({ handle, dataDir, dialog, getWindow, context,
   viewerZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone, isBlocked = () => false }) {
-  const file = path.join(dataDir, "guild-runs.json");
+  const file = path.join(dataDir, STORE_NAME);
   let generation = 0, review = null;
   function retire() { generation++; review = null; }
   function load() {
@@ -82,7 +85,10 @@ function registerGuildRunHandlers({ handle, dataDir, dialog, getWindow, context,
   const event = (list, id, wrapped = false) => list.find(entry => (wrapped ? entry.pack : entry).eventId === id);
   const summary = ({ eventId, title, status, revision }) => ({ eventId, title, status, revision });
   const current = (stamp, source) => !isBlocked() && generation === stamp && context.isCurrent(source);
-  const memberView = record => ({ ...record, text: previewGuildRunPack(record.pack, viewerZone()).text });
+  const memberView = record => {
+    const { text, viewerTime } = previewGuildRunPack(record.pack, viewerZone());
+    return { ...record, text, viewerTime };
+  };
   function stage(kind, pack, extra = {}) {
     retire();
     const preview = previewGuildRunPack(pack, viewerZone());
@@ -215,7 +221,18 @@ function registerGuildRunHandlers({ handle, dataDir, dialog, getWindow, context,
     if (typeof op !== "string" || !Object.hasOwn(commands, op) || args.length !== commands[op][0] || isBlocked()) throw invalid();
     return commands[op][1](...args);
   });
-  return { reset: () => { retire(); fs.rmSync(file, { force: true }); } };
+  return { reset: () => {
+    retire();
+    try {
+      // Keep the committed store available for a retry if orphan cleanup fails.
+      for (const entry of fs.readdirSync(dataDir, { withFileTypes: true })) {
+        if (entry.isFile() && STORE_TEMP_NAME.test(entry.name)) fs.rmSync(path.join(dataDir, entry.name), { force: true });
+      }
+      fs.rmSync(file, { force: true });
+    } catch (error) {
+      if (error.code !== "ENOENT") throw new Error("Guild Run Pack local runs could not be deleted. Try again.");
+    }
+  } };
 }
 
 module.exports = { registerGuildRunHandlers };
