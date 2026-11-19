@@ -66,6 +66,8 @@
 .bd-prog { width: 80%; height: 6px; border-radius: 3px; background: rgba(60,40,18,.2); overflow: hidden; }
 .bd-prog span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #c79a4a, #f6c445); }
 .bd-badge small { font-size: 11px; color: #6b5a3c; }
+.bd-quest-steps { align-self: stretch; list-style: decimal; margin: 4px 0 0; padding-inline-start: 1.5em; text-align: start; font-size: 12px; color: #5a4a32; overflow-wrap: anywhere; }
+.bd-quest-steps li + li { margin-top: 4px; }
 .bd-foot { margin: 10px 0 0; font-size: 13px; color: #5a3e1c; }
 .bd-empty { color: #f1dcb0; }
 .bd-card .bd-empty { color: #4a3218; }

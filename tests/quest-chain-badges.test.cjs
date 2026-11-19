@@ -47,6 +47,9 @@ for (const [id, steps] of chains) {
         const [partial] = merge(defaultState(), character("Partial", { clientBuild, history: history(...steps.filter(q => q !== missing), 155, 166) })).profiles;
         assert.equal(find(partial, id).earned, false);
         assert.deepEqual(find(partial, id).progress, { have: steps.length - 1, need: steps.length });
+        assert.deepEqual(find(partial, id).questSteps, steps.map(questId => ({
+          questId, title: pack.quests[questId].title, confirmed: questId !== missing,
+        })));
       }
     }
   });
@@ -55,6 +58,7 @@ for (const [id, steps] of chains) {
 test("known empty history is zero; unsupported builds and counts without known IDs are unavailable", () => {
   const zero = merge(defaultState(), character("Zero", { history: history() })).profiles[0];
   assert.deepEqual(find(zero).progress, { have: 0, need: ids.length });
+  assert.deepEqual(find(zero).questSteps?.map(step => step.confirmed), ids.map(() => false));
   for (const fields of [
     { clientBuild: undefined, history: history(...ids) },
     { clientBuild: "1.60.1.70840", history: history(...ids) },
@@ -67,6 +71,7 @@ test("known empty history is zero; unsupported builds and counts without known I
     assert.equal(find(profile).earned, false);
     assert.equal(find(profile).progress, undefined);
     assert.equal(find(profile).progressUnavailable, true);
+    assert.equal(find(profile).questSteps, undefined);
   }
   assert.throws(() => merge(defaultState(), character("Malformed", {
     history: { ...history(...ids), completedIds: [...ids, ids[0]] },
@@ -93,7 +98,9 @@ test("qualifying saved awards are character-owned and survive history loss and r
   assert.deepEqual(badgeBook(store.state, owner.id).holders[defias], [owner.name]);
   assert.equal(find(owner).earned, true);
   assert.equal(find(owner).at, undefined);
+  assert.equal(find(owner).questSteps, undefined);
   assert.equal(find(alt).earned, false);
+  assert.equal(find(alt).questSteps, undefined);
   assert.equal(badgeBook(store.state).character.id, alt.id);
 });
 

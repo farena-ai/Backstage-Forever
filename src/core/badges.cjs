@@ -58,7 +58,7 @@ const QUEST_CHAIN_BADGES = [
   ["quest-chain-missing-shipment", "The Missing Shipment",
     "Complete Southsea Freebooters, both Missing Shipment quests, and Stolen Booty.", [887, 890, 892, 888]],
 ].map(([id, name, how, ids]) => ({
-  id, group: "Quest chains", name, how, desktopOnly: true, art: "quests-100", threshold: ids.length,
+  id, group: "Quest chains", name, how, desktopOnly: true, art: "quests-100", threshold: ids.length, questIds: ids,
   test: ({ chainCompletions }) => {
     if (!chainCompletions) return { progressUnavailable: true };
     const have = ids.filter(id => chainCompletions.has(id)).length;
@@ -187,7 +187,16 @@ function badgesFor(profile, { desktop = false } = {}) {
   const list = (desktop ? CHARACTER_CATALOG : BADGES).map((b) => {
     const key = b.id.startsWith("first-") ? b.id.slice(6) : null;
     const result = awards?.has(b.id) ? { done: true, have: b.threshold, need: b.threshold } : b.test(f);
-    return { ...badgeResult(b, result), ...(key && f.firstAt.get(key) ? { at: f.firstAt.get(key) } : {}) };
+    const badge = badgeResult(b, result);
+    if (key && f.firstAt.get(key)) badge.at = f.firstAt.get(key);
+    if (!badge.earned && b.questIds && f.chainCompletions) {
+      // Reference titles label reviewed IDs; only the selected character's save confirms them.
+      const { quests } = require("../../data/forever/pack.json");
+      badge.questSteps = b.questIds.map(questId => ({
+        questId, title: quests[questId]?.title || `Quest #${questId}`, confirmed: f.chainCompletions.has(questId),
+      }));
+    }
+    return badge;
   });
   return { earned: list.filter((b) => b.earned).length, total: list.length, badges: list };
 }

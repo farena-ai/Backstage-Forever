@@ -21,6 +21,7 @@ window.BadgesView = (() => {
       ${art(b, 96)}<strong>${esc(b.name)}</strong>
       <span class="bd-how">${esc(b.how)}${b.desktopOnly ? '<small class="bd-scope">Desktop only</small>' : ""}</span>
       ${b.earned ? `<span class="bd-when">${b.at ? `Earned ${esc(day(b.at))}` : "Earned"}</span>` : b.progress ? `<span class="bd-prog" role="progressbar" aria-label="Progress toward ${esc(b.name)}" aria-valuemin="0" aria-valuemax="${Number(b.progress.need)}" aria-valuenow="${Number(b.progress.have)}"><span data-w="${pct}"></span></span><small>${Number(b.progress.have).toLocaleString()} / ${Number(b.progress.need).toLocaleString()}</small>` : `<span class="bd-when locked">${b.progressUnavailable ? "No saved progress" : "Not yet"}</span>`}
+      ${b.questSteps ? `<ol class="bd-quest-steps" aria-label="Quest steps in this save">${b.questSteps.map(step => `<li><span>${esc(step.title)}</span> — <small>${step.confirmed ? "Confirmed in save" : "Not confirmed in save"}</small></li>`).join("")}</ol>` : ""}
       ${others.length ? `<small class="bd-also" title="${esc(others.join(", "))}">Also: ${esc(others.slice(0, 3).join(", "))}${others.length > 3 ? ` +${others.length - 3}` : ""}</small>` : ""}</li>`;
   }
   function chooser(d) {
