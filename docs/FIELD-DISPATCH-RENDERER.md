@@ -20,7 +20,7 @@ Both open methods return `false` without changing the view if already open, or i
 
 ## Public model adapter
 
-Use trusted release-journal data and sort release groups newest first before passing them in. The UI preserves supplied release/category order; it does not infer an installed range or deduplicate by title, which could hide corrections.
+Use trusted release-journal data and sort release groups newest first before passing them in. The UI preserves supplied release/category order; it does not infer an installed range or deduplicate by title, which could hide corrections. If the recap needs range-specific deduplication, supply `recapReleases` separately; `releases` remains the full searchable history.
 
 ```js
 {
@@ -52,3 +52,5 @@ Use trusted release-journal data and sort release groups newest first before pas
 ## Test
 
 Run `node scripts/field-dispatch-smoke.cjs` with the project's Electron and Playwright dependencies installed. It mounts the shipping renderer in an isolated Electron window with public fixture data. `BF_DISPATCH_SCREENSHOTS` optionally writes screenshot files to a named directory.
+
+Run `npm run test:field-dispatch` for the full desktop flow. It launches the real main, preload, and renderer in isolated profiles; the fixture supplies the installed identity and foreground focus without stealing system focus. It exercises fresh and legacy startup, deferred and acknowledged upgrades across process restarts, and search and navigation from **Settings → Updates → What’s New**. Network and live-game integrations are disabled in this fixture; it does not run a Windows installer.

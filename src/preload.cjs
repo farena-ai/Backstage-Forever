@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld(
   "backstage",
   Object.freeze({
     bootstrap: () => invoke("bootstrap"),
+    fieldDispatchHistory: () => invoke("fieldDispatchHistory"),
+    fieldDispatchStartup: () => invoke("fieldDispatchStartup"),
+    fieldDispatchPresented: (id) => invoke("fieldDispatchPresented", id),
+    fieldDispatchAcknowledge: (id) => invoke("fieldDispatchAcknowledge", id),
     gameStatus: () => invoke("gameStatus"),
     guidancePlan: (profileId, options) =>
       invoke("guidancePlan", profileId, options),

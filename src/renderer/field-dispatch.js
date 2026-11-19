@@ -62,7 +62,8 @@ window.FieldDispatch = (() => {
       const { openedFrom, update, invoker } = session;
       session = null;
       if (root.open) root.close();
-      if (invoker?.isConnected) invoker.focus({ preventScroll: true });
+      const target = typeof invoker === "function" ? invoker() : invoker;
+      if (target?.isConnected) target.focus({ preventScroll: true });
       if (openedFrom === "recap" && update && (reason === "acknowledged" || reason === "later")) onDismiss(reason);
     }
 
@@ -99,7 +100,8 @@ window.FieldDispatch = (() => {
       const releases = items(session.model.releases).filter(acceptRelease);
       if (view === "history") return releases;
       const versions = session.update ? items(session.model.rangeVersions) : [session.model.toVersion];
-      return releases.filter((release) => versions.includes(release.version));
+      const source = Array.isArray(session.model.recapReleases) ? session.model.recapReleases.filter(acceptRelease) : releases;
+      return source.filter((release) => versions.includes(release.version));
     }
     function category(kind) { return categories.has(kind) ? tr(kind) : ""; }
     function platformKeys(entry) { return items(entry.platforms).filter((key) => platforms.has(key)); }
@@ -130,7 +132,7 @@ window.FieldDispatch = (() => {
       const matches = (release, section, entry) => {
         if (!acceptEntry(entry)) return false;
         const names = platformKeys(entry);
-        const input = [release.version, section.kind, category(section.kind), entry.title, entry.summary, ...names, ...names.map(tr)]
+        const input = [release.version, section.kind, category(section.kind), section.label, entry.title, entry.summary, ...names, ...names.map(tr)]
           .join(" ").toLocaleLowerCase(session.lang);
         return words.every((word) => input.includes(word));
       };
@@ -149,7 +151,7 @@ window.FieldDispatch = (() => {
         for (const section of items(release.sections)) {
           const entries = items(section?.entries).filter((entry) => matches(release, section, entry));
           if (!entries.length) continue;
-          const sectionLabel = category(section.kind);
+          const sectionLabel = category(section.kind) || (typeof section.label === "string" ? section.label : "");
           if (sectionLabel) group.append(el("h4", "field-dispatch__category", sectionLabel));
           const list = el("ul", "field-dispatch__entries");
           for (const entry of entries) list.append(renderEntry(entry));

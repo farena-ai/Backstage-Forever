@@ -28,6 +28,7 @@
     "test:packaged": "node scripts/packaged-smoke.cjs",
     "build:whats-new": "node scripts/build-whats-new.cjs",
     "check:whats-new": "node scripts/build-whats-new.cjs --check",
+    "test:field-dispatch": "node scripts/field-dispatch-desktop-smoke.cjs",
     "pack": "electron-builder --win --dir",
     "dist": "electron-builder --win nsis --x64 --publish never",
     "dist:signed": "node scripts/dist-signed.cjs",
