@@ -101,13 +101,15 @@ const {testWindow}=require('./test-window.cjs');const {defaultState,validateStat
   assert.doesNotMatch(await page.locator('#chatlog').innerText(),/Silverleaf|Minor Healing Potion/);
   assert.equal(await count(),0,'sharing-off response does not fall through to the configured model');
   await sharing.check();await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');
+  await send(dungeon);
+  await page.locator('#chatlog').getByText(/The Deadmines fixture quest \(quest #900001\)/).waitFor();await idle();
   const verifiedPrep='Dungeon prep for Scarlet Monastery?';
   await send(verifiedPrep);
   await page.locator('#chatlog').getByText(/Interrogator Vishas \(encounter #444\)/).waitFor();await idle();
   assert.match(await page.locator('#chatlog').innerText(),/1\.60\.1\.70888 · collection window 2026-11-10 to 2026-11-11/);
   const wrongPrep='How should I prepare for The Deadmines in Retail?';
   await send(wrongPrep);await page.locator('#chatlog').getByText(/only covers World of Warcraft: Forever/).waitFor();await idle();
-  assert.doesNotMatch(await page.locator('#chatlog').innerText(),/900001|5202|Classic-era baseline|VanCleef|Westfall|42\.0|Tirisfal/);
+  assert.doesNotMatch(await page.locator('#chatlog').innerText(),/5202|Classic-era baseline|VanCleef|Westfall|42\.0|Tirisfal/);
   assert.equal(await count(),0);
   assert.equal(await call('memoryDraft','Alpha'),null);
   await answer('Tell me some lore about the Titans.');
