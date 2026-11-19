@@ -2,7 +2,7 @@
 const { buildPreparation } = require("./preparation.cjs");
 const { validateState, str } = require("./validation.cjs");
 const { acquisitionFacts } = require("./acquisition-data.cjs");
-const { skillColor, colorRank, materialUnits, skillUpCountdown, shoppingList } = require("./profession-skillup.cjs");
+const { skillColor, colorRank, materialUnits, skillUpCountdown, shoppingList, nextPointPurchaseEstimate } = require("./profession-skillup.cjs");
 // Callers establish source/date authority before qualifying an owned observation.
 function professionCapQualification(profession) {
   return profession?.maxRank > 0 && profession.rank === profession.maxRank
@@ -88,10 +88,7 @@ function buildProfessionCoach(
     r.canSkillUp === true &&
     requirements(r);
   const quantities = new Map(base.materials.map((m) => [m.itemId, m.count]));
-  const exact =
-    dated &&
-    w?.materials?.complete &&
-    w.materials.observedAt >= w.recipes?.observedAt;
+  const exact = base.planning.inventoryExact;
   const score = (r) => {
     const missing = r.reagents.map((x) =>
       Math.max(
@@ -192,13 +189,12 @@ function buildProfessionCoach(
   );
   for (const row of model.shoppingRows)
     row.acquisition = acquisition.rows.find((r) => r.itemId === row.itemId);
-  model.shoppingList = shoppingList(model.shoppingRows, { crafts: settings.crafts, profile, profiles: state?.profiles || [] });
+  model.shoppingList = shoppingList(model.shoppingRows, { crafts: settings.crafts, profile, profiles: valid.profiles });
   model.skillUp = recipe ? skillUpCountdown(profession, recipe) : null;
   for (const row of model.shoppingList.rows) {
     // Stored observations are leads, never carried supply or proof of transferability.
     row.workshopStatus = row.missing === null ? "unknown"
       : row.missing === 0 ? "covered"
-      : row.elsewhere.some((e) => !e.mine) ? "alt-transfer"
       : "missing";
   }
   model.acquisitionReference = {
@@ -228,6 +224,7 @@ function buildProfessionCoach(
     ? profession.rank + 1 : null;
   const suggestedAttempts = targetRank !== null && leveling
     ? model.skillUp?.craftsToNextPoint ?? null : null;
+  model.shoppingList.nextPointEstimate = nextPointPurchaseEstimate(model.shoppingList, suggestedAttempts);
   model.nextRankCheckpoint = profession ? {
     kind: cap ? "check-training" : suggestedAttempts ? "plan-attempts" : "observe",
     targetRank,

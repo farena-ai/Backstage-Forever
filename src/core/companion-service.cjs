@@ -7,6 +7,7 @@ const {resolveNpcLocation}=require('./npc-location.cjs');
 const {uuid}=require('./memory-data.cjs');
 const {createCompanionTools}=require('./companion-tools.cjs');
 const {quickAnswer}=require('./quick-answers.cjs');
+const {workshopQuestion,workshopAnswer}=require('./companion-workshop.cjs');
 const {resolve:resolveIntent}=require('./companion-intents.cjs');
 const {resolveTalentQuestion,talentBlock,talentQuickAnswer,TALENT_MAX}=require('./talent-context.cjs');
 // Providers accept at most this much context text (ChatGPT subscription limit).
@@ -45,10 +46,26 @@ class CompanionService {
       const token=this.memory.begin(profileId),memoryIds=input.memoryIds===undefined?[]:input.memoryIds;
       const augmented=buildMemoryPrompt(state,{profileId,prompt:input.prompt,memoryIds});
       const profile=state.profiles.find(p=>p.id===profileId);
-      const prepared=this.session.prepare({owner:this.owner(profileId),shareProfile:input.shareProfile,memoryIds,prompt:input.prompt,currentPrompt:augmented.prompt});
-      if(prepared.meta.resetReason==='scope-change')this.travel?.clear();
+      const scope={owner:this.owner(profileId),shareProfile:input.shareProfile,memoryIds};
       const refusal=scopeResponse(input.prompt);
+      // Saved Workshop questions stay local even with a model configured.
+      const workshop=!refusal&&workshopQuestion(input.prompt);
+      if(workshop){
+        const conversation=this.session.skip(scope);
+        const text=workshopAnswer(workshop,{state,profile,shareProfile:input.shareProfile,acquisitionPack:this.acquisitionPack});
+        if(signal.aborted)throw signal.reason;
+        // Do not make saved Workshop evidence eligible for later sharing via Memory.
+        this.travel?.clear();return {text,kind:'quick',topic:'profession-materials',conversation};
+      }
+      const prepared=this.session.prepare({...scope,prompt:input.prompt,currentPrompt:augmented.prompt});
+      if(prepared.meta.resetReason==='scope-change')this.travel?.clear();
       if(refusal){this.travel?.clear();return {text:refusal,kind:'scope',conversation:prepared.meta};}
+      const finishQuick=({text,topic})=>{
+        if(signal.aborted)throw signal.reason;
+        this.memory.complete(token,input.prompt,text);
+        if(!this.session.commit(prepared.token,{question:input.prompt,answer:text,kind:'quick'}))throw Error('Provider response is no longer current.');
+        this.travel?.clear();return {text,kind:'quick',topic,conversation:prepared.meta};
+      };
       // Talent questions: WoW Forever's own trees from the game client. A clear talent question wins over
       // NPC and travel matching ("Improved Renew only goes to 3/3" is not a trip).
       let talent=null;
@@ -56,11 +73,7 @@ class CompanionService {
       const talentFirst=Boolean(talent&&(talent.intent==='strong'||talent.talents?.length||talent.tabName||/\b\d{1,2}\s*\/\s*\d{1,2}\b/.test(input.prompt)));
       if(talent&&(talent.status==='ask'||talent.status==='points')){
         // No class to answer for (ask, no AI call) or a pure points-per-level question: answered here.
-        const a=talentQuickAnswer(talent);
-        if(signal.aborted)throw signal.reason;
-        this.memory.complete(token,input.prompt,a.text);
-        if(!this.session.commit(prepared.token,{question:input.prompt,answer:a.text,kind:'quick'}))throw Error('Provider response is no longer current.');
-        this.travel?.clear();return {text:a.text,kind:'quick',topic:a.topic,conversation:prepared.meta};
+        return finishQuick(talentQuickAnswer(talent));
       }
       // 0.58: understand the request and answer from WoW Forever's own data. With no model the answer
       // is returned as is; with a model its verified facts go into the model's context instead.
@@ -107,12 +120,7 @@ class CompanionService {
       if(!selected.model){
         const tools=createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow,planner:this.planner});
         const quick=quickAnswer(input.prompt,{tools,live:liveFrame,talent,advise:input.shareProfile&&this.advise?()=>this.advise(profileId):null});
-        if(quick){
-          if(signal.aborted)throw signal.reason;
-          this.memory.complete(token,input.prompt,quick.text);
-          if(!this.session.commit(prepared.token,{question:input.prompt,answer:quick.text,kind:'quick'}))throw Error('Provider response is no longer current.');
-          this.travel?.clear();return {text:quick.text,kind:'quick',topic:quick.topic,conversation:prepared.meta};
-        }
+        if(quick)return finishQuick(quick);
         throw Error('Choose a model in Connections for AI questions. Local NPC locations, travel, quest how-to, next steps, training and talents need no model.');
       }
       let context=this.ai.profileContext(state,profileId,input.shareProfile,options);

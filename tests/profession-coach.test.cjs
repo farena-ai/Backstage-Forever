@@ -188,9 +188,9 @@ test("workshop separates alt leads from exact shortfalls without pooling invento
   s.profiles.push({ ...s.profiles[0], id: "alt", name: "Alt", ledger: { schemaVersion: 1, bags } });
   const m = build(s, { recipeId: 100 });
   assert.deepEqual(m.shoppingList.rows.map((r) => [r.workshopStatus, r.missing]), [
-    ["covered", 0], ["alt-transfer", 2], ["missing", 1],
+    ["covered", 0], ["missing", 2], ["missing", 1],
   ]);
-  assert.equal(m.shoppingList.rows[1].elsewhere[0].name, "Alt");
+  assert.equal(m.shoppingList.rows[1].altStock[0].name, "Alt");
   assert.equal(m.recommendation.kind, "materials-needed");
   for (const materials of [undefined, { ...w.materials, complete: false },
     { ...w.materials, observedAt: "2026-11-10T12:00:00.000Z" }]) {
@@ -198,8 +198,27 @@ test("workshop separates alt leads from exact shortfalls without pooling invento
     if (!materials) delete w.materials;
     const uncertain = build(s, { recipeId: 100 });
     assert.ok(uncertain.shoppingList.rows.every((r) => r.workshopStatus === "unknown" && r.missing === null));
-    assert.equal(uncertain.shoppingList.rows[1].elsewhere[0].bags, 1);
+    assert.equal(uncertain.shoppingList.rows[1].altStock[0].count, 1);
   }
+});
+
+test("a newer carried ledger observation retires older workshop supply without substituting its scope", () => {
+  const s = seed(), p = s.profiles[0];
+  p.source.updatedAt = "2026-11-11T12:01:00.000Z";
+  p.ledger = { schemaVersion: 1, bags: { seenAt: Date.parse(p.source.updatedAt) / 1000, complete: false, items: [] } };
+  const m = build(s, { recipeId: 100 });
+  assert.equal(m.planning.inventoryExact, false);
+  assert.equal(m.shoppingList.rows[0].projectedPurchase, null);
+  assert.notEqual(m.recommendation.kind, "craft-ready");
+});
+
+test("cost to attempt the next point reuses saved bags for that batch, not the selected batch", () => {
+  const s = seed(), p = s.profiles[0];
+  p.readiness.workshop.recipes.items[0].difficulty = "medium";
+  const opts = { recipeId: 100, crafts: 1 };
+  assert.deepEqual(build(s, opts).shoppingList.nextPointEstimate, { attempts: 2, estimatedCopper: null });
+  p.ledger = { schemaVersion: 1, prices: [{ id: 765, hist: [[20, Date.parse(at) / 1000]] }] };
+  assert.deepEqual(build(s, opts).shoppingList.nextPointEstimate, { attempts: 2, estimatedCopper: 20 });
 });
 
 test("checkpoint does not suggest attempts for unobserved color, stale recipes, or a reached cap", () => {

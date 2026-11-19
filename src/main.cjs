@@ -421,6 +421,10 @@ app.whenReady().then(async () => {
     return store.changeObjective(args[0]);
   });
   handle("discoverGame", () => game.discover());
+  handle("cancelCompanion", (...args) => {
+    if (args.length) throw Error("Invalid setup request.");
+    gameActionEpoch++;
+  });
   handle("startCompanion", async (...args) => {
     if (args.length) throw Error("Invalid setup request.");
     const epoch = subscriptionEpoch, actionEpoch = ++gameActionEpoch;
@@ -472,7 +476,7 @@ app.whenReady().then(async () => {
           properties: ["openDirectory"],
           ...(candidates[0] ? { defaultPath: candidates[0].path } : {}),
         });
-        if (result.canceled || cancelled()) return gameSnapshot();
+        if (result.canceled || cancelled()) return { ...gameSnapshot(), setupCancelled: true };
         root = result.filePaths[0];
       }
     }
@@ -707,6 +711,7 @@ app.whenReady().then(async () => {
   // (route-review.json in the app's data folder); Export review writes the merged file for the next release.
   let guided = null, guidedRaw = null;
   const G = require("./core/guided-route.cjs");
+  const desktopRoute = require("./core/desktop-route-recovery.cjs");
   const reviewFile = path.join(app.getPath("userData"), "route-review.json");
   const readJson = (p) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", p), "utf8"));
   const bundledReview = () => { try { return readJson("data/forever-route/reviews.json"); } catch { return null; } };
@@ -714,6 +719,7 @@ app.whenReady().then(async () => {
   // 1.4 (J14): rebuilt when the characters have learned new quest givers.
   let guidedLearnedKey = "";
   const npcLocationsPack = (() => { try { return readJson("data/forever-npc-locations/pack.json"); } catch { return null; } })();
+  let desktopGuided = null;
   const ensureGuided = () => {
     const learnedKey = (store.state.profiles || []).map((p) => `${p.id}:${p.journal?.givers?.length || 0}`).join("|");
     if (guided && learnedKey === guidedLearnedKey) return guided;
@@ -745,7 +751,7 @@ app.whenReady().then(async () => {
     const current = G.applyReview(raw, G.mergeReviews(bundledReview(), localReview()).routes[input.race] || null, { keepSkipped: true });
     if (!current.steps.some((s) => s.id === input.id)) throw Error("Unknown step.");
     atomic(reviewFile, JSON.stringify(G.reviewAction(localReview(), input.race, input.id, input.action, current)));
-    guided = null;
+    guided = desktopGuided = null;
     return true;
   });
   handle("exportRouteReview", async (...args) => {
@@ -756,17 +762,22 @@ app.whenReady().then(async () => {
     return true;
   });
   handle("guidedRoute", (...args) => {
-    if (args.length) throw Error("Invalid guided route request.");
+    const [input] = args;
+    if (args.length !== 1 || !input || typeof input !== "object" || Array.isArray(input) ||
+      (input.profileId !== null && typeof input.profileId !== "string") || !Array.isArray(input.skips) ||
+      input.skips.length > desktopRoute.MAX_SKIPS || input.skips.some((id) => typeof id !== "string" || id.length > 400)) throw Error("Invalid guided route request.");
     const { MAP_NAMES } = require("./core/companion-tools.cjs");
-    ensureGuided();
     const p = store.state.profiles.find((x) => x.id === store.state.activeProfileId) || null;
+    if (input.profileId !== (p?.id ?? null)) return null;
+    const pack = knowledge.bundled?.pack || readJson("data/forever/pack.json");
+    // Never use the mixed-character learned giver cache to recommend a route point.
+    desktopGuided ||= G.buildGuidedRoutes({ pack, zones: readJson("data/forever-leveling/pack.json").zones, reviews: G.mergeReviews(bundledReview(), localReview()) });
     const race = p?.race ? (G.ALIASES[p.race.replace(/\s/g, "")] || G.ALIASES[p.race] || p.race) : null;
-    const route = guided.routes.find((r) => r.key === race) || null;
-    const coverage = guided.routes.map((r) => ({ race: r.key, faction: r.faction, start: r.startName, from: r.startsLevel, to: r.reachesLevel, steps: r.steps.length, gaps: r.gaps, reviewed: r.reviewed }));
-    if (!route) return { character: p ? { name: p.name, race: p.race || null, level: p.level ?? null } : null, route: null, coverage };
-    const pos = G.position(route, { completed: p.history?.completedIdsKnown ? p.history.completedIds : [], inLog: (p.quests || []).map((q) => q.id), complete: (p.quests || []).filter((q) => q.complete).map((q) => q.id), level: p.level, mapId: p.location?.mapId ?? null });
-    const upcoming = route.steps.slice(pos.index, pos.index + 12).map((s, i) => ({ n: pos.index + i + 1, kind: s.kind, text: s.text, level: s.level, mapId: s.mapId, mapName: MAP_NAMES[s.mapId] || null, x: s.x, y: s.y, approved: Boolean(s.approved) }));
-    return { character: { name: p.name, race: p.race, level: p.level ?? null }, route: { race: route.key, faction: route.faction, start: route.startName, from: route.startsLevel, to: route.reachesLevel, gaps: route.gaps, total: route.steps.length, reviewed: route.reviewed, zones: route.zones.map((m) => MAP_NAMES[m] || `Map ${m}`) }, position: pos, upcoming, coverage };
+    const route = desktopGuided.routes.find((r) => r.key === race) || null;
+    const coverage = desktopGuided.routes.map((r) => ({ race: r.key, faction: r.faction, start: r.startName, from: r.startsLevel, to: r.reachesLevel, steps: r.steps.length, gaps: r.gaps, reviewed: r.reviewed }));
+    const recovery = desktopRoute.recover({ route, profile: p, pack, skips: input.skips });
+    return { profileId: p?.id ?? null, build: p?.clientBuild ?? null, route: route ? { race: route.key, total: route.steps.length } : null,
+      recovery, coverage, skipLimit: desktopRoute.MAX_SKIPS, mapName: MAP_NAMES[recovery.map?.mapId] || null };
   });
   // "You are here": the zone the character is in, for their level and faction.
   handle("zoneBriefing", () => {
@@ -834,10 +845,11 @@ app.whenReady().then(async () => {
   handle("journey", () => {
     const s = store.state, p = s.profiles.find((x) => x.id === s.activeProfileId);
     if (!p) return null;
-    const { badgesFor, rested } = require("./core/badges.cjs"), { splits } = require("./core/journal-data.cjs");
+    const { badgesFor, rested } = require("./core/badges.cjs"), { splits, savedDungeonDefeats } = require("./core/journal-data.cjs");
     const others = s.profiles.filter((x) => x.id !== p.id);
     return { id: p.id, name: p.name, className: p.className || null, level: p.level || null, played: p.journal?.played ?? null, hasJournal: Boolean(p.journal),
-      splits: splits(p, others), badges: badgesFor(p), rested: rested(p), zones: (p.journal?.zones || []).length, history: sessionHistory ? sessionHistory.view(p.id) : null };
+      splits: splits(p, others), badges: badgesFor(p), rested: rested(p), zones: (p.journal?.zones || []).length, history: sessionHistory ? sessionHistory.view(p.id) : null,
+      dungeonDefeats: savedDungeonDefeats(p) };
   });
   // 1.4 (J17, J18): this week's recap and reminders across your characters.
   handle("weekly", (...args) => {
@@ -1061,7 +1073,7 @@ app.whenReady().then(async () => {
     recovery.clear();
     characterGuidance.clear();
     try { sessionHistory?.clear(); } catch {}
-    try { fs.rmSync(path.join(app.getPath("userData"), "route-review.json"), { force: true }); guided = null; } catch {}
+    try { fs.rmSync(path.join(app.getPath("userData"), "route-review.json"), { force: true }); guided = desktopGuided = null; } catch {}
     diagnostics.clear();
     companionContext.invalidate("reset");
     subscriptionEpoch++;

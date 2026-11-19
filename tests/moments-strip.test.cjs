@@ -225,7 +225,7 @@ print('ok')`);
 
 test("bridge: moments are reported once, bound to the character, oldest first, and stale ones are skipped", () => {
   let t = 1_000_000;
-  const bridge = new L.LiveBridge({ platform: "linux", now: () => t });
+  const bridge = new L.LiveBridge({ platform: "win32", now: () => t });
   const got = [];
   bridge.subscribeMoments((m) => got.push(m));
   bridge.frame = { characterHash: 4242 };
@@ -246,7 +246,7 @@ test("bridge: moments are reported once, bound to the character, oldest first, a
 
 test("bridge: a moments page on a captured compact strip reaches subscribers through line()", () => {
   let t = 5_000_000;
-  const bridge = new L.LiveBridge({ platform: "linux", now: () => t });
+  const bridge = new L.LiveBridge({ platform: "win32", now: () => t });
   bridge.enabled = true;
   const got = [];
   bridge.subscribeMoments((m) => got.push(m));

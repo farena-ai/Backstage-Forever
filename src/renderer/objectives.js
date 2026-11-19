@@ -26,10 +26,10 @@ window.ObjectiveView = (() => {
     return `<span class="objective-confirm"><button type="button" data-objective-confirm aria-expanded="false">Replace pinned objective</button><span data-objective-confirmation hidden><small>Replace ${esc(label(o))}?</small> <button type="button" data-objective-change="${intent}">Confirm replacement</button> <button type="button" data-objective-cancel>Keep current objective</button></span></span>`;
   }
 
-  function card() {
+  function card({ suggested = false, dismiss = "" } = {}) {
     const p = character(), o = pinned(p);
     if (!p) return "";
-    const heading = '<h2 tabindex="-1" data-objective-heading>Your objective</h2>';
+    const heading = `<h2 tabindex="-1" data-objective-heading${suggested ? " data-now-next-heading" : ""}>${suggested ? "Do this next" : "Your objective"}</h2>`;
     if (!o) return `<article class="now-card now-objective" data-now-objective>${heading}<p>No objective pinned for ${esc(p.name)}. ${p.source ? "Pin a quest, profession rank, or reputation target to resume it here." : "Save this character from WoW before pinning an objective."}</p>${p.source ? '<div class="now-actions"><button type="button" data-nav="quest-guide">Find a quest</button><button type="button" data-nav="preparation">Professions</button><button type="button" data-nav="ledger-reputation">Reputation</button></div>' : ""}</article>`;
     const same = matches(o, p), quest = o.kind === "quest", rep = o.kind === "reputation";
     let step, evidence;
@@ -54,11 +54,15 @@ window.ObjectiveView = (() => {
       if (skill) evidence = `Profession snapshot · ${date(saved.observedAt)}`;
     }
     if (same && !o.build && !o.completion) step += " Completion remains unverified without a known client build.";
-    return `<article class="now-card now-objective" data-now-objective>${heading}<p class="objective-title"><strong>${esc(label(o))}</strong></p><p>${esc(step)}</p><small>Desktop-only plan · ${evidence ? esc(evidence) : "No matching evidence"}. Not sent to WoW.</small><div class="now-actions">${same && !o.completion ? `<button type="button" class="primary" data-objective-resume="${esc(o.id)}">${quest ? "Resume quest" : rep ? "Resume reputation" : "Resume profession"}</button>` : ""}<button type="button" data-objective-change="${action(p, o, null)}">Clear objective</button></div></article>`;
+    return `<article class="now-card now-objective${suggested ? " now-next" : ""}" data-now-objective>${heading}<p class="objective-title"><strong>${esc(label(o))}</strong></p><p>${esc(step)}</p>${suggested ? '<p class="now-reason"><strong>Why this?</strong> You pinned this objective.</p>' : ""}<small>Desktop-only plan · ${evidence ? esc(evidence) : "No matching evidence"}. Not sent to WoW.</small><div class="now-actions">${same && !o.completion ? `<button type="button"${suggested ? ' class="primary"' : ""} data-objective-resume="${esc(o.id)}">${quest ? "Resume quest" : rep ? "Resume reputation" : "Resume profession"}</button>` : ""}${dismiss}<button type="button" data-objective-change="${action(p, o, null)}">Clear objective</button></div></article>`;
+  }
+  function recommendation(profileId) {
+    const p = character(), o = pinned(p);
+    return p?.id === profileId && o ? resume(o.id) : null;
   }
   function resume(id) {
     const p = character(), o = pinned(p);
     return o?.id === id && matches(o, p) && !o.completion ? o : null;
   }
-  return { init: read => { getState = read; }, card, pin, resume, standingName: n => standings[n] };
+  return { init: read => { getState = read; }, card, recommendation, pin, resume, standingName: n => standings[n] };
 })();

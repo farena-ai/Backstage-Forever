@@ -3,14 +3,21 @@ const { navigate } = require("./player-navigation.cjs");
 // Real main/preload/renderer; only synthetic journals and fake inference.
 const {_electron:electron}=require('playwright');
 const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict');
-const {testWindow}=require('./test-window.cjs');const {defaultState}=require('../src/core/validation.cjs');
+const {testWindow}=require('./test-window.cjs');const {defaultState,validateState}=require('../src/core/validation.cjs');
 (async()=>{
  const root=await fs.realpath(os.tmpdir()),dir=await fs.mkdtemp(path.join(root,'forever-conversation-'));let app;
  const capture=path.join(__dirname,'..','.superpowers','sdd','conversation-captures');await fs.mkdir(capture,{recursive:true});
  const watchdog=setTimeout(()=>{console.error('Conversation fixture exceeded 120 seconds');app?.process().kill();process.exitCode=1;},120000);
  try{
   const initial={...defaultState(),onboarded:true,activeProfileId:'Alpha',profiles:['Alpha','Beta'].map(id=>({id,name:id,className:'Mage',realm:'Synthetic',level:12,goals:[{id:'g',text:'PRIVATE_GOAL_CANARY',done:false}],notes:'PRIVATE_NOTE_CANARY'})),provider:{id:'ollama',model:'fixture',endpoint:'http://127.0.0.1:11434'}};
-  await fs.writeFile(path.join(dir,'state.json'),JSON.stringify(initial));
+  const at='2026-11-11T12:00:00.000Z',col=items=>({items,observedAt:at,complete:true});
+  Object.assign(initial.profiles[0],{source:{kind:'wow-addon',id:'fixture-alpha',updatedAt:at},clientBuild:'1.60.1.70862',readiness:{workshop:{
+    professions:col([{skillLineId:171,professionId:4,name:'Alchemy',rank:20,maxRank:75}]),
+    recipes:col([{id:2330,skillLineId:171,name:'Minor Healing Potion',reagentsKnown:true,reagents:[{itemId:765,name:'Silverleaf',required:1}]}]),
+    materials:{...col([{itemId:765,count:1}]),scope:'bags-0-4'},
+  }}});
+ validateState(initial);
+ await fs.writeFile(path.join(dir,'state.json'),JSON.stringify(initial));
   const repo=path.resolve(__dirname,'..');
   // Install fake external surfaces before bootstrap can enumerate providers or speech.
   await fs.writeFile(path.join(dir,'package.json'),JSON.stringify({name:'backstage-forever-conversation-fixture',version:'0.12.3',main:'fixture-main.cjs'}));
@@ -21,6 +28,17 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
     load('./src/core/providers.cjs').ask=async()=>{throw Error('Fixture inference is not installed');};
     load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});
     load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});
+    load('./src/core/knowledge-cache.cjs').KnowledgeService.prototype.maybeRefresh=function(){};
+    load('./src/core/updater.cjs').Updater.prototype.start=function(){};
+    const ipc=load('electron').ipcMain,register=ipc.handle.bind(ipc);
+    ipc.handle=(name,handler)=>register(name,name!=='backstage:askCompanion'?handler:async (...args)=>{
+      const reply=await handler(...args);
+      if(reply.topic==='profession-materials'&&globalThis.holdWorkshop){
+        await new Promise(resolve=>{globalThis.releaseWorkshop=resolve;});
+        globalThis.workshopReleased=true;
+      }
+      return reply;
+    });
     load('./src/main.cjs');
   `);
   app=await electron.launch({args:[dir],env:{...process.env,BF_USER_DATA:dir},timeout:20000});const page=await testWindow(app);page.setDefaultTimeout(6000);
@@ -61,7 +79,45 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   };
   const answer=async text=>done(await send(text));
   const latest=()=>app.evaluate(()=>{const i=conversationFixture.requests.at(-1).input;return {prompt:i.prompt,context:i.context};});
-  const pending=async index=>{await admitted(index);await page.getByRole('button',{name:'Stop response',exact:true}).waitFor();return index;};
+  const pendingOffline=()=>page.getByRole('button',{name:'Stop response',exact:true}).waitFor();
+  const pending=async index=>{await admitted(index);await pendingOffline();return index;};
+  const supply='What materials do I need for recipe #2330 for 2 crafts?';
+  const sharing=page.getByLabel('Use my active character',{exact:true});
+  await sharing.uncheck();await page.reload();await open();
+  assert.equal(await sharing.isChecked(),false,'sharing off survives reload');
+  await send(supply);await page.locator('#chatlog').getByText(/Turn on .Use my active character/).waitFor();await idle();
+  assert.doesNotMatch(await page.locator('#chatlog').innerText(),/Silverleaf|Minor Healing Potion/);
+  assert.equal(await count(),0,'sharing-off response does not fall through to the configured model');
+  await sharing.check();await send(supply);
+  await page.locator('#chatlog').getByText('Minor Healing Potion (recipe #2330)',{exact:true}).waitFor();await idle();
+  assert.match(await page.locator('#chatlog').innerText(),/Silverleaf \(item #765\): 2 required, 1 saved carried, 1 short/);
+  assert.match(await page.locator('#chatlog').innerText(),/Companion · offline answer/i);
+  assert.equal(await count(),0,'saved recipe answer bypasses the configured model');
+  assert.equal(await call('memoryDraft','Alpha'),null,'offline Workshop answer is not eligible for saved memory');
+  assert.equal(await page.locator('[data-memory-save]').count(),0);
+  assert.doesNotMatch((await call('diagnosticsPreview')).text,/recipe #2330|Silverleaf|Minor Healing Potion|saved carried|2026-11-11/);
+  await answer('Tell me some lore about the Titans.');
+  const wire=await latest();
+  assert.equal(wire.prompt,'Tell me some lore about the Titans.');
+  // Normal approved context may contain the active character; Workshop evidence must not be added to it.
+  assert.doesNotMatch(JSON.stringify(wire.context),/recipe #2330|Silverleaf|Minor Healing Potion|saved carried/);
+  assert.match(await page.locator('#chatlog').innerText(),/Minor Healing Potion/,'the local reply remains visible');
+  assert.equal(await count(),1);
+  const previousDraft=await call('memoryDraft','Alpha');
+  assert.equal(previousDraft.question,'Tell me some lore about the Titans.');
+  await app.evaluate(()=>{globalThis.holdWorkshop=true;});await send(supply);await pendingOffline();
+  await app.evaluate(async()=>{const until=Date.now()+6000;while(!globalThis.releaseWorkshop){if(Date.now()>until)throw Error('Workshop IPC did not reach hold');await new Promise(r=>setTimeout(r,20));}});
+  assert.equal(await call('memoryDraft','Alpha'),null);
+  await assert.rejects(call('saveMemory',{profileId:'Alpha',responseId:previousDraft.responseId}),/Memory draft is no longer current/);
+  const picker=page.getByLabel('Active character',{exact:true});await picker.selectOption('Beta');
+  await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');
+  await app.evaluate(()=>{globalThis.holdWorkshop=false;});
+  await send(supply);await page.locator('#chatlog').getByText(/No dated addon save/).waitFor();await idle();
+  await app.evaluate(()=>globalThis.releaseWorkshop());
+  await app.evaluate(async()=>{while(!globalThis.workshopReleased)await new Promise(r=>setTimeout(r,20));});
+  assert.doesNotMatch(await page.locator('#chatlog').innerText(),/Silverleaf|Minor Healing Potion/);
+  assert.equal(await count(),1);
+  await picker.selectOption('Alpha');await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');
   await answer('Which pet should my hunter use in WoW Forever');
   await answer('This is for wow forever, not retail');
   const second=await latest();assert.match(second.prompt,/Which pet should my hunter use/,'Follow-up must include original pet question in actual outgoing main request');assert.match(second.prompt,/untrusted/i);assert.match(second.prompt,/This is for wow forever, not retail/);assert.doesNotMatch(JSON.stringify(second),/PRIVATE_NOTE_CANARY|PRIVATE_GOAL_CANARY/);
@@ -85,7 +141,13 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   await page.getByLabel('Use my active character',{exact:true}).uncheck();await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');assert.equal(await page.locator('#chatlog').innerText(),'');await answer('Sharing off question');assert.doesNotMatch((await latest()).prompt,/Fresh reset question/);
   // Save an explicitly reviewed synthetic private exchange, select it anew, then omit it.
   await call('clearConversation');await answer('SAVED_PRIVATE_CANARY quest');const draft=await call('memoryDraft','Alpha');await call('saveMemory',{profileId:'Alpha',responseId:draft.responseId});await page.getByRole('button',{name:'Refresh memory',exact:true}).click();
-  const select=page.locator('[data-memory-select]').first();await select.waitFor();await select.check();await answer('Use selected memory');assert.match((await latest()).prompt,/SAVED_PRIVATE_CANARY/);assert.equal(await select.isChecked(),false);await answer('Ordinary following question');assert.doesNotMatch((await latest()).prompt,/SAVED_PRIVATE_CANARY|MEMORY_DERIVED_CANARY/);assert.equal(await page.locator('#chatlog').getByText('MEMORY_DERIVED_CANARY',{exact:true}).count(),0);
+  const select=page.locator('[data-memory-select]').first();await select.waitFor();await select.check();
+  // Checking memory changes the conversation scope. The pointer guard can defer
+  // the repaint that replaces the composer, so wait for the old chat to clear
+  // before filling the question into the new composer.
+  await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');
+  await answer('Use selected memory');assert.match((await latest()).prompt,/SAVED_PRIVATE_CANARY/);assert.equal(await select.isChecked(),false);
+  await answer('Ordinary following question');assert.doesNotMatch((await latest()).prompt,/SAVED_PRIVATE_CANARY|MEMORY_DERIVED_CANARY/);assert.equal(await page.locator('#chatlog').getByText('MEMORY_DERIVED_CANARY',{exact:true}).count(),0);
   // Clear in-flight, Stop/edit/retry, and late success cannot reinsert old work.
   const heldClear=await pending(await send('HOLD clear quest'));await page.getByRole('button',{name:'Clear conversation',exact:true}).click();await idle();assert.equal(await page.locator('#chatlog').innerText(),'');assert.equal(await call('memoryDraft','Alpha'),null);await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_CLEAR_CANARY'),heldClear);
   const heldStop=await pending(await send('HOLD stop quest'));await page.getByRole('button',{name:'Stop response',exact:true}).click();await page.getByRole('button',{name:'Edit question',exact:true}).click();assert.equal(await field.inputValue(),'HOLD stop quest');await answer('Recovered quest');await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_STOP_CANARY'),heldStop);assert.doesNotMatch((await latest()).prompt,/HOLD stop quest|LATE_/);

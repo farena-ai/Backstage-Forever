@@ -79,7 +79,10 @@ function buildPreparation(state, profileId, options = {}, { vendorPack = null } 
     : null;
   const available = reason === null;
   // A material collection older than the recipe is useful dated context, not an exact shortfall source.
-  const inventoryExact = Boolean(available && workshop.materials?.complete && workshop.materials.observedAt >= workshop.recipes.observedAt);
+  // A newer Ledger bag scan also supersedes it, but Ledger doesn't establish the exact bags 0–4 scope.
+  const ledgerBagsAt = (profile?.ledger?.bags?.seenAt ?? 0) * 1000;
+  const superseded = ledgerBagsAt > Date.parse(workshop?.materials?.observedAt) && ledgerBagsAt <= Date.parse(profile?.source?.updatedAt);
+  const inventoryExact = Boolean(available && !superseded && workshop.materials?.complete && workshop.materials.observedAt >= workshop.recipes.observedAt);
   const materialById = new Map(selected.materials.map(m => [m.itemId, m]));
   const shoppingRows = available ? recipe.reagents.map(reagent => {
     const material = materialById.get(reagent.itemId), required = reagent.required * settings.crafts;

@@ -11,10 +11,12 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
 (async () => {
   const dir = await fs.mkdtemp(path.join(process.env.TMPDIR || os.tmpdir(), "bf-objectives-ui-"));
   const stamp = "2026-11-10T12:00:00.000Z";
+  const captures = path.resolve(__dirname, "../.superpowers/sdd/daily-loop-captures");
   const saved = (id, name) => ({ id, name, realm: "Fixture", className: "Mage", level: 20, notes: "", goals: [], clientBuild: "1.15.2.12345", source: { kind: "wow-addon", id: `source-${id}`, updatedAt: stamp }, history: { recent: [], completedIdsKnown: true, completedIds: [] } });
-  const alpha = { ...saved("alpha", "Aelora"), quests: [{ id: 666001, title: "Sample Delivery", complete: false, objectives: [{ text: "Collect the parcel", done: false }] }], readiness: { workshop: { professions: { observedAt: stamp, complete: false, items: [{ skillLineId: 171, professionId: 171, name: "Alchemy", rank: 75, maxRank: 150 }] } } } };
+  const alpha = { ...saved("alpha", "Aelora"), race: "Human", sex: "female", faction: "Alliance", location: { mapId: 1436, zone: "Westfall", x: 0.56, y: 0.47 }, progress: { current: 9500, max: 23200, rested: 1200 }, quests: [{ id: 666001, title: "Sample Delivery", complete: false, objectives: [{ text: "Collect the parcel", done: false }] }], readiness: { workshop: { professions: { observedAt: stamp, complete: false, items: [{ skillLineId: 171, professionId: 171, name: "Alchemy", rank: 75, maxRank: 150 }] } } } };
   let app;
   try {
+    await fs.mkdir(captures, { recursive: true });
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(validateState({ ...defaultState(), onboarded: true, activeProfileId: "alpha", profiles: [alpha, saved("beta", "Bellan")] })));
     await fs.writeFile(path.join(dir, "package.json"), JSON.stringify({ name: "objectives-fixture", version: require("../package.json").version, main: "main.cjs" }));
     await fs.writeFile(path.join(dir, "main.cjs"), `
@@ -43,10 +45,20 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     const nav = name => page.locator(`[data-nav="${name}"]:visible`).first().click();
     const objective = () => page.locator("[data-now-objective]");
     await objective().getByRole("heading", { name: "Your objective" }).waitFor();
-    await page.locator('[data-now] [data-quest-open="666001"]').first().click();
+    await page.locator('.now-questlog [data-quest-open="666001"]').click();
     await page.getByRole("button", { name: "Pin quest objective" }).press("Enter");
     await objective().getByText("Sample Delivery", { exact: true }).waitFor();
     await objective().getByText("Collect the parcel", { exact: true }).waitFor();
+    const next = () => page.locator(".now-next");
+    assert.equal(await next().count(), 1);
+    assert.match(await next().innerText(), /Why this\? You pinned this objective\.[\s\S]*Character snapshot/);
+    await next().getByRole("button", { name: "Not now" }).press("Enter");
+    await page.waitForFunction(() => document.activeElement?.hasAttribute("data-now-next-heading"));
+    await next().getByText("Sample Delivery", { exact: false }).waitFor({ state: "hidden" });
+    await objective().getByText("Sample Delivery", { exact: true }).waitFor();
+    assert.equal(JSON.parse(await fs.readFile(path.join(dir, "state.json"), "utf8")).objectives[0].questId, 666001);
+    await page.reload();
+    await objective().getByRole("heading", { name: "Your objective" }).waitFor();
     await objective().getByRole("button", { name: "Resume quest" }).press("Enter");
     await page.locator(".quest-detail").getByRole("heading", { name: "Sample Delivery" }).waitFor();
     await nav("adventure");
@@ -63,13 +75,24 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await app.close(); app = null;
     page = await open();
     await objective().getByText("Alchemy · Rank 76", { exact: true }).waitFor();
-    await app.evaluate(({ BrowserWindow }) => { const win = BrowserWindow.getAllWindows()[0]; win.unmaximize(); win.setSize(1000, 760); });
-    await page.waitForFunction(() => innerWidth <= 1000);
-    console.log(`Compact renderer: ${await page.evaluate(() => `${innerWidth}×${innerHeight}`)}`);
-    assert.ok(await objective().evaluate(el => el.scrollWidth <= el.clientWidth + 1));
     const resume = objective().getByRole("button", { name: "Resume profession" });
-    const box = await resume.boundingBox();
-    assert.ok(box.y >= 0 && box.y + box.height <= await page.evaluate(() => innerHeight));
+    for (const [name, width, height] of [["desktop", 1500, 1000], ["compact", 1000, 760]]) {
+      const outer = await app.evaluate(({ BrowserWindow }, [width, height]) => { const win = BrowserWindow.getAllWindows()[0]; win.unmaximize(); win.setSize(width, height); return win.getSize(); }, [width, height]);
+      await page.waitForFunction(w => Math.abs(innerWidth - w) < 50, width);
+      await page.locator(".now-session").waitFor();
+      await page.locator('[data-page-hero="now"] img').first().evaluate(img => img.decode());
+      const viewport = await page.evaluate(() => [innerWidth, innerHeight]);
+      const box = await resume.boundingBox();
+      assert.ok(box.y >= 0 && box.y + box.height <= viewport[1], JSON.stringify({ box, viewport }));
+      assert.ok(await page.locator(".now-page").evaluate(el => el.scrollWidth <= el.clientWidth + 1));
+      const layout = await page.evaluate(() => {
+        const action = document.querySelector(".now-next").getBoundingClientRect(), progress = document.querySelector(".now-session").getBoundingClientRect();
+        return progress.top >= action.bottom ? "compact" : Math.abs(progress.top - action.top) < 1 && progress.left >= action.right ? "desktop" : "misaligned";
+      });
+      assert.equal(layout, name);
+      await page.screenshot({ path: path.join(captures, `now-${name}.png`) });
+      console.log(`${name}: outer ${outer.join("×")}, viewport ${viewport.join("×")}`);
+    }
     await resume.press("Enter");
     await page.waitForFunction(() => document.querySelector('[aria-label="Owned profession"]')?.value === "171");
     await app.evaluate(() => {

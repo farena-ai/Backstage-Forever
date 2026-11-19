@@ -158,9 +158,12 @@ local frame,lines,steps,index,mapNow,lastArrow,pending=nil,{},{},1,nil,nil,false
 local guide=nil -- {index,total,note,top} while the guided route is shown
 -- The Compass shows the current guided step (0.54). Read-only; nil unless the guided route is on.
 function BackstageForeverRouteNow()
-    local s=guide and steps[index]
+    local s=settings and settings.shown and settings.mode=='guide' and guide and steps[index]
     if type(s)~='table' or type(s.text)~='string' then return nil end
     return {text=s.text,index=guide.index+index-1,total=guide.total}
+end
+local function refreshCompass()
+    call(BackstageForeverHUDRouteChanged)
 end
 local function setArrow(step)
     local stepMap=step and step.mapId or mapNow
@@ -231,6 +234,7 @@ end
 function BackstageForeverRouteRefresh()
     pending=false
     if not settings then loadSettings() end
+    local wasGuided=guide~=nil
     local mapId,x,y=where()
     if not mapId then return end
     mapNow=mapId
@@ -253,6 +257,7 @@ function BackstageForeverRouteRefresh()
                 for i,r in ipairs(pos.steps) do steps[i]={kind=r[1],text=r[2],mapId=r[3],x=r[4],y=r[5],level=r[6],id=r[8]} end
                 guide={index=pos.index,total=pos.total,note=pos.note,top=pos.top};index=1
                 if settings.shown and build() then method(frame,'Show');paint() end
+                if settings.shown then refreshCompass() end
                 return steps
             end
         else
@@ -262,6 +267,7 @@ function BackstageForeverRouteRefresh()
     end
     steps=BackstageForeverRouteSteps(x,y,stopsFor(mapId));index=1
     if settings.shown and build() then method(frame,'Show');paint() end
+    if wasGuided then refreshCompass() end
     return steps
 end
 local function soon()
@@ -272,6 +278,7 @@ local function soon()
 end
 function BackstageForeverRouteCommand(message)
     if not settings then loadSettings() end
+    local previous=BackstageForeverRouteNow()
     local arg=type(message)=='string' and message:lower():match('^route%s*(%a*)') or ''
     if arg=='next' then index=min(#steps,index+1)
     elseif arg=='back' then index=max(1,index-1)
@@ -290,6 +297,9 @@ function BackstageForeverRouteCommand(message)
         -- The player typed or clicked this, so the game allows the waypoint arrow now.
         if arg~='arrow' or settings.arrow then setArrow(steps[index]) end
     elseif frame then method(frame,'Hide');if arg=='' then say('Route hidden. /bf route shows it again.') end end
+    -- Refresh handles freshly computed steps. Browsing, hiding, and switching
+    -- to zone mode (even if map data is unavailable) can change the Compass too.
+    if previous and (arg=='next' or arg=='back' or arg=='' or arg=='zone') then refreshCompass() end
 end
 
 -- A1: quest progress in enemy tooltips (kills by name; drops from what this player has looted).

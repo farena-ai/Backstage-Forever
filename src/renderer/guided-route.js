@@ -1,32 +1,73 @@
 "use strict";
-// Adventure → Guided route (0.50, roadmap 4.1): your race's step-by-step route from the bundled data,
-// where you are on it (from your last save), the next steps, and how far every race's route reaches.
-// In game: /bf route guide. Read-only: one `guidedRoute` request.
+// Adventure → Guided route: project the next step from the last save, not from live guesses.
 window.GuidedRouteView = (() => {
   const api = window.backstage;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const KIND = { pickup: "Pick up", class: "Class quest", objective: "Objectives", turnin: "Hand in", travel: "Travel" };
-  let data = null, error = "", loading = false, mountedFor = null;
+  const REASON = {
+    "no-character": "Import an addon save or choose a saved character.",
+    build: "No matching reference for this saved build. Browse only.",
+    "route-side": "This route does not match your saved faction.",
+    "no-route": "No bundled route for this race.",
+    end: "No remaining step in this part of the route.",
+    travel: "The last save does not confirm this route transition.",
+    reference: "The quest reference does not match the saved evidence.",
+    "quest-side": "This quest does not match your faction or race.",
+    "missing-location": "No verified route point for this step. The giver or objective location may be missing.",
+    level: "This step is above your saved level.",
+    "unknown-history": "Saved quest history is unavailable; eligibility is unknown.",
+    prerequisite: "A possible prerequisite is not confirmed by the last save.",
+    "unconfirmed-pickup": "Quest availability at the giver is not confirmed. Check in game.",
+    "not-in-log": "This quest is not in your saved log. That does not mean you finished it.",
+    "not-ready": "Your last save does not show this quest ready to hand in.",
+  };
+  let mountedFor = null, request = 0;
+  const skipPrefix = "bf-desktop-route-skips-v1:";
+  const keyFor = (p) => skipPrefix + JSON.stringify([p.id, p.source?.id, p.clientBuild]);
+  function removeSkips(profileId = null) {
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (!key.startsWith(skipPrefix)) continue;
+        if (profileId !== null) {
+          // A character may have stored skips under more than one source or build.
+          let scope;
+          try { scope = JSON.parse(key.slice(skipPrefix.length)); } catch { continue; }
+          if (!Array.isArray(scope) || scope.length !== 3 || scope[0] !== profileId) continue;
+        }
+        localStorage.removeItem(key);
+      }
+    } catch {}
+  }
+  function readSkips(p) {
+    if (!p) return [];
+    try {
+      const list = JSON.parse(localStorage.getItem(keyFor(p)));
+      return Array.isArray(list) ? list.filter((id) => typeof id === "string" && id.length <= 400).slice(0, 512) : [];
+    } catch { return []; }
+  }
   // 0.51: the hand review. review = { race, page, data } while the review panel is open.
   let review = null, reviewBusy = false, reviewNote = "";
   const gapText = (g) => g.map((x) => `${x.from}–${x.to}`).join(", ");
   function coverage(rows) {
     return `<table class="gr-cov"><thead><tr><th>Race</th><th>Starts in</th><th>Levels covered</th><th>Steps</th><th>Not covered yet</th><th>Reviewed</th></tr></thead><tbody>${rows.map((r) => `<tr class="gr-${esc(r.faction.toLowerCase())}"><td>${esc(r.race)}</td><td>${esc(r.start)}</td><td>${r.from ?? "–"}–${r.to}</td><td>${r.steps}</td><td>${r.gaps.length || r.to < 60 ? esc([gapText(r.gaps), r.to < 60 ? `${r.to + 1}–60` : ""].filter(Boolean).join(", ")) : "–"}</td><td>${r.reviewed} of ${r.steps}</td></tr>`).join("")}</tbody></table>`;
   }
-  function body() {
-    if (error) return `<p class="gr-empty">${esc(error)}</p>`;
-    if (!data) return `<p class="gr-empty">${loading ? "Reading the route…" : "Choose a character in Characters."}</p>`;
-    const d = data, r = d.route;
-    const intro = `<p class="gr-how">In WoW, type <code>/bf route guide</code>: the scroll shows one step at a time, the game's arrow points at it, and it moves on as you pick up and hand in quests. <code>/bf route skip</code> skips a step; if you're well ahead of a step's level the guide moves past it, and if you're behind it says so. Where the route ends, <code>/bf route</code> shows the quests in your zone and Now suggests where to level.</p>`;
-    if (!r) return `${intro}<p class="gr-empty">${d.character ? `No guided route for ${esc(d.character.race || "this character's race")} yet.` : "Log in with the addon to see your route."}</p><section class="gr-card"><h2>How far each route reaches</h2>${coverage(d.coverage)}</section>`;
-    const p = d.position, pct = r.total ? Math.round(((p.ended ? r.total : p.index) / r.total) * 100) : 0;
-    const steps = p.ended ? `<p class="gr-empty">You've reached the end of the guided route for now (level ${r.to}). The zone guide and Now take over from here.</p>`
-      : `<ol class="gr-steps" start="${p.index + 1}">${d.upcoming.map((s) => `<li class="gr-step gr-${esc(s.kind)}"><span class="gr-kind">${esc(KIND[s.kind] || s.kind)} · level ${s.level}${s.approved ? ' · <em title="Hand-reviewed">✓ reviewed</em>' : ""}</span><strong>${esc(s.text)}</strong>${s.mapName ? `<small>${esc(s.mapName)}${Number.isFinite(s.x) ? ` · ${(s.x * 100).toFixed(1)}, ${(s.y * 100).toFixed(1)}` : ""}</small>` : ""}${s.mapId && Number.isFinite(s.x) ? `<button type="button" class="gr-map" data-map-zone="${s.mapId}">Map</button>` : ""}</li>`).join("")}</ol>`;
-    return `${intro}<div class="gr-summary"><div><strong>${esc(r.race)}</strong><span>from ${esc(r.start)}</span></div><div><strong>${p.ended ? r.total : p.index + 1} / ${r.total}</strong><span>step</span></div><div><strong>${r.from}–${r.to}</strong><span>levels covered</span></div><div><strong>${pct}%</strong><span>of the route behind you</span></div></div>
-      <div class="gr-bar" role="img" aria-label="${pct}% of the route done"><span data-w="${pct}"></span></div>
-      ${r.gaps.length ? `<p class="gr-note">Not covered yet for ${esc(r.race)}: levels ${esc(gapText(r.gaps))}. Do the quests around you there (/bf route zone); the route picks up again after.</p>` : ""}
-      <section class="gr-card"><h2>Your next steps</h2>${steps}<p class="gr-note">Worked out from your last save${d.character.level ? ` (level ${d.character.level})` : ""}. In game the guide follows you live. Zones on this route: ${esc(r.zones.join(", "))}.</p></section>
-      <section class="gr-card"><h2>How far each route reaches</h2>${coverage(d.coverage)}<p class="gr-note">Routes are built from the quest data we have and grow as community data and your own play fill the gaps: each quest you accept teaches the app where its giver stands, so routes past level 42 fill in as your characters play there. Steps marked reviewed have been checked by hand.</p></section>`;
+  function body(d, owner) {
+    const { step, reason, map, quest, fallback, skipped } = d.recovery;
+    const focus = map && { ...map, routeBuild: d.build, routeSource: owner.source.id, kind: step.kind === "turnin" ? "quest-turnin" : "quest-objective", label: quest.title,
+      source: "Approximate route reference", goal: { title: quest.title, questId: quest.id } };
+    const primary = focus ? `<button type="button" class="gr-map" data-map-focus="${esc(JSON.stringify(focus))}">Show on Map</button>`
+      : fallback ? `<button type="button" class="gr-map" data-quest-open="${fallback.id}" data-ledger-quest-profile="${esc(d.profileId)}">Open saved quest</button>`
+      : `<button type="button" class="gr-map" data-nav="zones">Browse zones</button>`;
+    return `<section class="gr-card" data-gr-recovery aria-labelledby="gr-heading"><h2 id="gr-heading" tabindex="-1">Resume your route</h2>
+      ${owner ? `<p class="gr-note"><b>${esc(owner.name)}</b>${owner.source?.updatedAt ? ` · ${esc(new Date(owner.source.updatedAt).toLocaleString())} · <span>Last saved · not live</span>` : ""}</p>` : ""}
+      ${step ? `<p class="gr-note">${esc(KIND[step.kind] || step.kind)} · ${step.index + 1} / ${d.route.total}</p><p><strong>${esc(step.text)}</strong></p>` : ""}
+      ${reason ? `<p>${esc(REASON[reason])}</p>` : `<p class="gr-note">${esc(d.mapName || `Map ${map.mapId}`)} · <span>Approximate route reference</span></p>`}
+      ${fallback ? `<p class="gr-note"><span>In your saved quest log</span> · ${esc(fallback.title)}</p>` : ""}
+      <div class="gr-recovery-actions">${primary}${step && skipped.length < d.skipLimit ? `<button type="button" class="gr-ghost" data-gr-player="skip">Skip this step</button>` : ""}${skipped.length ? `<button type="button" class="gr-ghost" data-gr-player="restore">Restore skipped steps</button>` : ""}</div>
+      ${skipped.length ? `<p class="gr-note">${skipped.length} · <span>Skipped here, not completed in game.</span></p>` : ""}
+    </section>
+    <details class="gr-card gr-coverage"><summary>How far each route reaches</summary><div>${coverage(d.coverage)}</div><p class="gr-note">Level ranges are reference coverage, not a continuous guide. Missing givers may leave quests out.</p></details>
+    <p class="gr-how"><span>Desktop skips stay here. In WoW, use</span> <code>/bf route guide</code>.</p>`;
   }
   function reviewPanel() {
     if (!review) return `<section class="gr-card gr-review-closed"><h2>Review the routes</h2><p>Go through any race's route step by step: ✓ keeps a step, ✗ leaves it out, ↑ ↓ move it. Your review shows here at once; <strong>Export review</strong> saves it as <code>reviews.json</code>, and the next release builds it into the addon.</p><button type="button" class="gr-map" data-gr-review="open">Start reviewing</button></section>`;
@@ -47,23 +88,51 @@ window.GuidedRouteView = (() => {
     reviewBusy = false; paintReview();
   }
   function paintReview() { const el = document.querySelector("[data-gr-review-slot]"); if (el) el.innerHTML = reviewPanel(); }
-  function page() {
-    return `<section class="guided-route-page" data-guided-route>${PageHero.render({ art: "quests", eyebrow: "Adventure · Guided route", title: "Your route, step by step", subtitle: "Every quest from level 1 in order: pick up, do, hand in, then on to the next zone." })}
-      <div data-guided-route-body>${body()}</div><div data-gr-review-slot>${reviewPanel()}</div></section>`;
+  const reading = '<p class="gr-empty" role="status">Reading the route…</p>';
+  function retireRecovery() {
+    request++;
+    const slot = document.querySelector("[data-guided-route-body]");
+    if (slot) {
+      slot.innerHTML = reading;
+      window.I18n?.apply(slot);
+    }
   }
-  async function load() {
-    if (loading) return; loading = true;
-    try { data = (await api.guidedRoute()) || { character: null, route: null, coverage: [] }; error = ""; } catch (e) { error = e.message || "The guided route is unavailable."; }
-    loading = false;
-    const root = document.querySelector("[data-guided-route]");
-    if (root) { root.outerHTML = page(); mountedFor = null; mounted(); }
+  function page() {
+    return `<section class="guided-route-page" data-guided-route>${PageHero.render({ art: "quests", eyebrow: "Adventure · Guided route", title: "Your route, step by step", subtitle: "Find your place from your last save, or see what is missing." })}
+      <div data-guided-route-body>${reading}</div><div data-gr-review-slot>${reviewPanel()}</div></section>`;
   }
   function mounted() {
     const root = document.querySelector("[data-guided-route]");
     if (!root || mountedFor === root) return;
     mountedFor = root;
-    for (const el of root.querySelectorAll("[data-w]")) el.style.width = `${Number(el.dataset.w)}%`;
+    const owner = profile(), slot = root.querySelector("[data-guided-route-body]");
+    let data = null, busy = false;
+    const current = () => !characterSelectionPending() && root.isConnected && mountedFor === root && profile() === owner;
+    async function load(skips = readSkips(owner), save = false) {
+      const id = ++request;
+      busy = true;
+      try {
+        const next = await api.guidedRoute({ profileId: owner?.id ?? null, skips });
+        if (!current() || id !== request) return;
+        if (!next || next.profileId !== (owner?.id ?? null) || next.build !== (owner?.clientBuild ?? null)) throw Error();
+        if (save) localStorage.setItem(keyFor(owner), JSON.stringify(next.recovery.skipped));
+        data = next;
+        slot.innerHTML = body(data, owner); // Dynamic display text and JSON attributes are escaped in body().
+        window.I18n?.apply(slot);
+        if (save) slot.querySelector("#gr-heading").focus();
+      } catch {
+        if (!current() || id !== request) return;
+        data = null;
+        slot.innerHTML = `<p class="gr-empty">The guided route is unavailable.</p><button type="button" class="gr-map" data-gr-player="retry">Try again</button>`;
+        window.I18n?.apply(slot);
+      } finally { if (id === request) busy = false; }
+    }
     root.addEventListener("click", async (e) => {
+      if (slot.contains(e.target) && (!current() || busy)) { e.stopPropagation(); return; }
+      const player = e.target.closest?.("[data-gr-player]")?.dataset.grPlayer;
+      if (player === "retry") return load();
+      if (player === "skip" && data?.recovery.step) return load([...data.recovery.skipped, data.recovery.step.id], true);
+      if (player === "restore" && data?.recovery.skipped.length) return load([], true);
       const open = e.target.closest?.("[data-gr-review]")?.dataset.grReview;
       if (open === "open") { reviewNote = ""; return loadReview(data?.route?.race || "Human", 0); }
       if (open === "close") { review = null; reviewNote = ""; return paintReview(); }
@@ -72,12 +141,12 @@ window.GuidedRouteView = (() => {
       if (pg !== undefined && review) return loadReview(review.race, Number(pg));
       const act = e.target.closest?.("[data-gr-act]")?.dataset.grAct, id = e.target.closest?.("[data-gr-id]")?.dataset.grId;
       if (act && id && review && !reviewBusy) {
-        try { await api.setRouteReview({ race: review.race, id, action: act }); reviewNote = ""; data = null; } catch (err) { reviewNote = err.message || "That change could not be saved."; }
+        try { await api.setRouteReview({ race: review.race, id, action: act }); reviewNote = ""; if (current()) void load(); } catch (err) { reviewNote = err.message || "That change could not be saved."; }
         return loadReview(review.race, review.page);
       }
     });
     root.addEventListener("change", (e) => { if (e.target.matches?.("[data-gr-race]")) loadReview(e.target.value, 0); });
-    if (!data && !loading) load();
+    if (current()) void load();
   }
-  return { page, mounted, invalidate: () => { data = null; }, _state: () => ({ data }) };
+  return { page, mounted, retireRecovery, removeSkips };
 })();

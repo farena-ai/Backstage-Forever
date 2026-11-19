@@ -54,6 +54,7 @@ function harness(overrides = {}) {
   }
   const context = vm.createContext({
     window: {
+      addEventListener: () => {},
       backstage: { bootstrap: () => new Promise(() => {}), voiceCancel: async () => ({phase:"idle"}), ...overrides },
     },
     document: {
@@ -83,6 +84,10 @@ function harness(overrides = {}) {
   context.QuestGuide = context.window.QuestGuide;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/living-setup.js"), "utf8"), context);
   context.LivingSetup = context.window.LivingSetup;
+  for (const file of ["core/desktop-view-presets.cjs", "renderer/desktop-view-presets.js"]) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "../src", file), "utf8"), context);
+  }
+  context.DesktopViewPresets = context.window.DesktopViewPresets;
   for (const name of ["interaction", "command-center", "director"]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${name}.js`), "utf8"), context);
   }
@@ -95,6 +100,8 @@ function harness(overrides = {}) {
   context.Preparation = context.window.Preparation;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/ledger.js"), "utf8"), context);
   context.LedgerView = context.window.LedgerView;
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/journey.js"), "utf8"), context);
+  context.JourneyView = context.window.JourneyView;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/party.js"), "utf8"), context);
   context.Party = context.window.Party;
   for (const [file, name] of [["support", "Support"], ["recovery", "Recovery"], ["character-guidance", "CharacterGuidance"]]) {
@@ -106,6 +113,10 @@ function harness(overrides = {}) {
     context[name === "voice" ? "Voice" : "Memory"] = context.window[name === "voice" ? "Voice" : "Memory"];
   }
   for(const [file,name] of [["adventure-coach","AdventureCoach"],["player-navigation","PlayerNavigation"]]){vm.runInContext(fs.readFileSync(path.join(__dirname,`../src/renderer/${file}.js`),"utf8"),context);context[name]=context.window[name];}
+  for (const [file, name] of [["guided-route", "GuidedRouteView"], ["world-map", "WorldMapView"], ["now", "NowView"]]) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${file}.js`), "utf8"), context);
+    context[name] = context.window[name];
+  }
   let recoveryHost;
   const recoveryInit = context.Recovery.init;
   context.Recovery.init = host => { recoveryHost = host; recoveryInit(host); };

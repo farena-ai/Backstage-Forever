@@ -1,7 +1,7 @@
 "use strict";
 // Badges: milestones a character has earned, from its own saved data. Each badge says plainly
 // what it's for and, when locked, what's left to earn it.
-const { splits, normalizeEncounterHistory } = require("./journal-data.cjs");
+const { splits, savedSource, savedDungeonDefeats } = require("./journal-data.cjs");
 const { validateWorkshop } = require("./preparation-data.cjs");
 const { ALL_CLASSES } = require("./class-unlocks.cjs");
 const { normalizeLedgerCapture, SIDES, STANDINGS } = require("./ledger.cjs");
@@ -124,13 +124,7 @@ function professionRanks(p) {
   const items = p?.readiness?.workshop?.professions?.items;
   return Array.isArray(items) ? items.map((x) => Number(x?.rank)).filter(Number.isFinite) : [];
 }
-function savedSource(p) {
-  const s = p?.source;
-  if (s?.kind !== "wow-addon" || typeof s.id !== "string" || !s.id.trim() || s.id.length > 200 ||
-      typeof s.updatedAt !== "string" || !Number.isFinite(Date.parse(s.updatedAt)) ||
-      new Date(s.updatedAt).toISOString() !== s.updatedAt) return null;
-  return s;
-}
+
 function observedProfessionRanks(p) {
   const source = savedSource(p), collection = p?.readiness?.workshop?.professions;
   if (!source || !collection) return new Map();
@@ -140,16 +134,7 @@ function observedProfessionRanks(p) {
   } catch { /* Missing or invalid owned-profession evidence cannot count. */ }
   return new Map();
 }
-function observedDungeonVictories(profile) {
-  const source = savedSource(profile);
-  if (!source) return 0;
-  const savedAt = Date.parse(source.updatedAt) / 1000;
-  try {
-    const rows = normalizeEncounterHistory(profile.journal?.encounters);
-    return new Set(rows.filter(e => e.instanceType === "party" && e.at <= savedAt)
-      .map(e => `${e.instanceMap}:${e.encounterId}`)).size;
-  } catch { return 0; }
-}
+
 function observedMedalStandings(profile) {
   const source = savedSource(profile), build = profile?.clientBuild, capture = profile?.ledger?.reputations;
   const standings = new Map();
@@ -172,7 +157,7 @@ function awardFacts(profile) {
   const history = profile?.history;
   const chainCompletions = savedSource(profile) && QUEST_CHAIN_BUILDS.has(profile.clientBuild) &&
     history?.completedIdsKnown === true && Array.isArray(history.completedIds) ? new Set(history.completedIds) : null;
-  return { professions: observedProfessionRanks(profile), dungeonVictories: observedDungeonVictories(profile), chainCompletions,
+  return { professions: observedProfessionRanks(profile), dungeonVictories: savedDungeonDefeats(profile)?.distinct ?? 0, chainCompletions,
     reputation: observedMedalStandings(profile) };
 }
 const AWARD_IDS = new Set(LATCHED_BADGES.map(b => b.id));

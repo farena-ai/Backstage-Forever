@@ -15,6 +15,8 @@
 .sht-frame { flex: 0 0 auto; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 5px; border: 2px solid #6b5a3c; background: rgba(0,0,0,.45); }
 .sht-frame canvas { display: block; border-radius: 3px; }
 .sht-words { display: flex; flex-direction: column; min-width: 0; }
+.sht-comparison { scroll-margin-top: 76px; overflow-wrap: anywhere; }
+[data-sheet-compare]:empty { display: none; }
 .sht-words small { font-size: 11px; color: #c9b48a; }
 .sht-words strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sht-rating { font-style: normal; font-size: 11px; }

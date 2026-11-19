@@ -135,6 +135,9 @@ function shortPath(target) {
       updatedAt: clock,
       clientBuild: "1.60.1.70862",
       captureVersion: require("../package.json").version,
+      ledger: i ? { schemaVersion: 1, bags: { seenAt: clock, complete: true, items: [{ id: 200, n: 99 }] } }
+        : { schemaVersion: 1, bank: { seenAt: clock - 3600, complete: true, items: [{ id: 200, n: 10 }] },
+            prices: [{ id: 200, hist: [[42, clock - 120]] }] },
       readiness: {
         bags: { free: 4, total: 40 },
         workshop: workshop(i ? 99 : 2),
@@ -260,6 +263,11 @@ function shortPath(target) {
       await page.locator("[data-preparation]").innerText(),
       /Amber restorative/,
     );
+    const shopping = page.locator(".skill-shopping");
+    await shopping.waitFor();
+    assert.match(await shopping.innerText(), /If buying the whole shortfall: 1 · Estimated cost 42c · Saved AH buyout/);
+    assert.match(await shopping.innerText(), /Own storage, last seen: bank 10/);
+    assert.match(await shopping.innerText(), /Alt stock, last seen: Vaelric \(Synthetic Realm\) · bags 99/);
 
     const evidence = path.resolve(
       process.env.BF_SMOKE_CAPTURE_ROOT ||

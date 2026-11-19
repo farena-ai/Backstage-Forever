@@ -10,6 +10,7 @@ In 1.7.0, Backstage Coding created new original illustrations locally with Comfy
 |---|---|
 | `hero-now.webp` | Now page header |
 | `hero-help.webp` | Help → Commands and Field guide headers |
+| `heroes/professions.webp` | Adventure → Professions (Workshop) banner, “Workshop Supply Bench.” Original by Backstage Coding, generated locally with ComfyUI / Qwen-Image 2.1 (seed `1840951`, master `workshop-supply-bench_00001_.png`); encoded as WebP for the desktop banner. |
 | `badge-level.webp` | Level-up celebration crest |
 | `icons/*.png` | Commands group crests |
 | `steps/*.png` | Now "Do this next" step crests (art pass 2, 0.22.0) |

@@ -232,7 +232,7 @@ test("auto-detect: hairline, compact and safe strips are told apart; the hairlin
 test("bridge: a hairline capture goes live, shrinks the region, reports the capture method and delivers several pages per capture", () => {
   let t = 1_000_000;
   const writes = [], questions = [];
-  const b = new L.LiveBridge({ now: () => t, platform: "linux" });
+  const b = new L.LiveBridge({ now: () => t, platform: "win32" });
   b.enabled = true; b.child = { stdin: { write: (s) => writes.push(s) } };
   b.subscribeQuestions((q) => questions.push(q));
   // A whole 4-page question in two frames of the line.
@@ -263,7 +263,7 @@ test("bridge: a hairline capture goes live, shrinks the region, reports the capt
 test("BF_LIVE_DUMP saves the raw top rows of a hairline that does not decode (rate-limited), and nothing otherwise", () => {
   const dir = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "bf-dump-"));
   let t = 2_000_000;
-  const b = new L.LiveBridge({ now: () => t, platform: "linux", dumpDir: dir });
+  const b = new L.LiveBridge({ now: () => t, platform: "win32", dumpDir: dir });
   b.enabled = true;
   const send = (img) => b.line(`ok topleft ${img.width} ${img.height} ${img.rgb.toString("base64")} pw`);
   send(image(LUA.cells));
@@ -278,7 +278,7 @@ test("BF_LIVE_DUMP saves the raw top rows of a hairline that does not decode (ra
   t += 11000; send(bad);
   assert.equal(fs.readdirSync(dir).length, 2);
   // Off unless asked for: no BF_LIVE_DUMP, no files.
-  const quiet = new L.LiveBridge({ now: () => t, platform: "linux", dumpDir: null });
+  const quiet = new L.LiveBridge({ now: () => t, platform: "win32", dumpDir: null });
   quiet.enabled = true; quiet.line(`ok topleft ${bad.width} ${bad.height} ${bad.rgb.toString("base64")} pw`);
   assert.equal(quiet.dump(bad), null);
   fs.rmSync(dir, { recursive: true, force: true });
@@ -286,7 +286,7 @@ test("BF_LIVE_DUMP saves the raw top rows of a hairline that does not decode (ra
 
 test("a frozen hairline goes stale like a compact strip (heartbeat), older workers' lines still parse", () => {
   let t = 1000;
-  const b = new L.LiveBridge({ now: () => t, platform: "linux" });
+  const b = new L.LiveBridge({ now: () => t, platform: "win32" });
   b.enabled = true;
   const img = image(LUA.cells);
   for (let i = 0; i < 50; i++) { t += 500; b.line(`ok topleft ${img.width} ${img.height} ${img.rgb.toString("base64")}`); }
@@ -296,7 +296,7 @@ test("a frozen hairline goes stale like a compact strip (heartbeat), older worke
 
 test("minimized and window-not-found say paused, keep the last live state with its age, and resume by themselves", () => {
   let t = 10_000_000;
-  const b = new L.LiveBridge({ now: () => t, platform: "linux" });
+  const b = new L.LiveBridge({ now: () => t, platform: "win32" });
   b.enabled = true;
   const img = image(LUA.cells);
   b.line(`ok topleft ${img.width} ${img.height} ${img.rgb.toString("base64")} pw`);
@@ -466,7 +466,7 @@ function shownFrames(frames) {
 // The app sampling every `period` seconds (from `phase`), then every `fast` seconds once it has seen a
 // question page; returns when the question was complete (seconds after the first question frame) or null.
 function deliver(seq, { period = 0.52, fast = 0.14, phase = 0 } = {}) {
-  const bridge = new L.LiveBridge({ platform: "linux", now: () => 0 });
+  const bridge = new L.LiveBridge({ platform: "win32", now: () => 0 });
   bridge.frame = { characterHash: L.identityHash("Player-1-ABC") };
   let done = null;
   bridge.subscribeQuestions(() => { done = done ?? true; });

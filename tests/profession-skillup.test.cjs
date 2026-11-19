@@ -91,7 +91,7 @@ test("shopping list aggregates N crafts and marks vendor (name + nearest map spo
   assert.equal(by(999999).source, "gather"); assert.equal(by(999999).gather.yours, true); assert.equal(by(999999).gather.mapName, "The Barrens");
   assert.deepEqual(list.counts, { vendor: 2, gather: 1, other: 0 });
   const plain = shoppingList([{ itemId: 1, name: "X", required: 2, have: null, missing: null, quantityKind: "unknown", historicalSellers: null, acquisition: null }]);
-  assert.equal(plain.rows[0].source, "other"); assert.equal(plain.rows[0].need, 2);
+  assert.equal(plain.rows[0].source, "other"); assert.equal(plain.rows[0].need, null);
   assert.doesNotMatch(JSON.stringify(m.shoppingList), /PRIVATE_/);
 });
 test("without an exact bag count, equal colours rank by the fewest materials per craft", () => {

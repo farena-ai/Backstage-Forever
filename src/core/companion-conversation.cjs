@@ -22,11 +22,25 @@ class ConversationSession {
   clear(reason){this.turns=[];this.dropped=0;this.scope=null;this.pending=null;this.resetReason=reason;this.report=null;this.turnCount=0;}
   status(){return {turns:this.turns.length};}
   previewLocation(input){const parsed=reportedLocationState(input.prompt);return parsed.conflict?null:parsed.location||(this.scope===scopeKey(input)?this.report?.location:null)||null;}
-  prepare({owner,shareProfile,memoryIds,prompt,currentPrompt=prompt}){
-    if(typeof prompt!=='string'||!prompt.trim()||prompt.length>MAX_PROMPT||typeof currentPrompt!=='string'||currentPrompt.length>MAX_PROMPT)throw Error('Invalid conversation prompt.');
-    const scope=scopeKey({owner,shareProfile,memoryIds});
+  setScope(input){
+    const scope=scopeKey(input);
     if(this.scope!==null&&this.scope!==scope)this.clear('scope-change');
     this.scope=scope;
+  }
+  takeMeta(usedTurns,omittedTurns){
+    const meta={usedTurns,omittedTurns,...(this.resetReason?{resetReason:this.resetReason}:{})};
+    this.resetReason=undefined;
+    return meta;
+  }
+  // An offline-only exchange honors ownership changes without reading or recording a turn.
+  skip(input){
+    this.setScope(input);
+    this.pending=null;
+    return this.takeMeta(0,0);
+  }
+  prepare({owner,shareProfile,memoryIds,prompt,currentPrompt=prompt}){
+    if(typeof prompt!=='string'||!prompt.trim()||prompt.length>MAX_PROMPT||typeof currentPrompt!=='string'||currentPrompt.length>MAX_PROMPT)throw Error('Invalid conversation prompt.');
+    this.setScope({owner,shareProfile,memoryIds});
     const available=Math.min(MAX_HISTORY,MAX_PROMPT-currentPrompt.length),chosen=[];
     let budget=available-PREFIX.length-SUFFIX.length-2;
     for(let i=this.turns.length-1;i>=0;i--){
@@ -34,8 +48,7 @@ class ConversationSession {
       chosen.unshift(pair);budget-=JSON.stringify(pair).length+(chosen.length>1?1:0);
       if(pair.truncated)break;
     }
-    const meta={usedTurns:chosen.length,omittedTurns:this.dropped+this.turns.length-chosen.length,...(this.resetReason?{resetReason:this.resetReason}:{})};
-    this.resetReason=undefined;
+    const meta=this.takeMeta(chosen.length,this.dropped+this.turns.length-chosen.length);
     const token={},reportedLocation=this.previewLocation({owner,shareProfile,memoryIds,prompt}),parsed=reportedLocationState(prompt);this.pending={token,question:prompt,newReport:parsed.location,reportConflict:parsed.conflict};
     return {composedPrompt:chosen.length?PREFIX+JSON.stringify(chosen)+SUFFIX+currentPrompt:currentPrompt,questionForEvidence:questionForEvidence(prompt,this.turns.at(-1)?.question),reportedLocation,token,meta};
   }

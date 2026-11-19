@@ -70,3 +70,37 @@ test("browse-only reputation reference does not use saved quest IDs, history, or
   assert.ok(rows.every(q => q.status === "reference" && q.linkedFrom.length === 0));
   assert.equal(rows.find(q => q.id === 3).title, "Done Already");
 });
+
+test("turn-in materials use exact objective IDs and this character’s dated bags only", () => {
+  const build = "1.60.1.70888", seenAt = 1794312000;
+  const source = structuredClone(pack);
+  source.build = build;
+  source.items = { 101: { name: "Runecloth" }, 102: { name: "Token" } };
+  source.quests[3].objectives = [
+    { index: 1, type: "item", objectId: 101, required: 20 },
+    { index: 2, type: "item", objectId: 102, required: 2 },
+    { index: 3, type: "kill", objectId: 103, required: 1 },
+  ];
+  source.quests[1].objectives = source.quests[3].objectives;
+  const profile = { ...structuredClone(horde), clientBuild: build, source: { kind: "wow-addon", updatedAt: new Date(seenAt * 1000).toISOString() },
+    quests: [{ id: 3, title: "Saved repeat", complete: false }] };
+  profile.ledger.bags = { seenAt, complete: true, items: [{ id: 101, n: 12, name: "Runecloth" }, { id: 999, n: 100, name: "Token" }] };
+  profile.ledger.bank = { seenAt, complete: true, items: [{ id: 102, n: 25, name: "Token" }] };
+  const rows = (p = profile, options) => repAdvice(p, source, { now: seenAt + 1, ...options }).factions[0].quests;
+  assert.deepEqual(rows()[0].materials, { seenAt, rows: [
+    { itemId: 101, name: "Runecloth", required: 20, carried: 12, missing: 8 },
+    { itemId: 102, name: "Token", required: 2, carried: 0, missing: 2 },
+  ] });
+  assert.equal(rows()[0].status, "in-log");
+  assert.equal(rows().find(q => q.id === 1).materials, undefined);
+  for (const bags of [{ ...profile.ledger.bags, seenAt: seenAt - 1 }, { ...profile.ledger.bags, complete: false }]) {
+    const m = rows({ ...profile, ledger: { ...profile.ledger, bags } })[0].materials;
+    assert.equal(m.rows[0].carried, 12);
+    assert.equal(m.rows[0].missing, null);
+    assert.equal(m.rows[1].carried, null);
+  }
+  const future = { ...profile.ledger.bags, seenAt: seenAt + 1 };
+  assert.equal(rows({ ...profile, ledger: { ...profile.ledger, bags: future } })[0].materials.seenAt, null);
+  assert.ok(rows(profile, { browseOnly: true }).every(q => !q.materials));
+  assert.ok(rows({ ...profile, clientBuild: "1.60.1.99999" }).every(q => !q.materials));
+});

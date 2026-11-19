@@ -122,6 +122,10 @@ function buildAtlas({ profile = null, encounters = null, knowledgePack = null } 
     entriesByMap.set(instanceMap, entriesByMap.has(instanceMap) ? null : { id, name });
     const observed = observedByMap.get(instanceMap) || [];
     observedByMap.delete(instanceMap);
+    // These optional Classic targets belong in the reference list, not the boss loot generator's BASELINE.
+    const referenceBosses = id === "zg"
+      ? [...bosses.slice(0, -1), "Gri'lek", "Hazza'rah", "Renataki", "Wushoolay", "Gahz'ranka", bosses.at(-1)]
+      : bosses;
     const bossNames = new Set([...bosses, ...observed.map((o) => o.name)].map(norm));
     // Your quests that point here: dungeon-tagged titles, or objectives naming a boss.
     const yours = quests.filter((q) => (q.objectives || []).some((o) => [...bossNames].some((b) => b && norm(o.text).includes(b))) || norm(q.title).includes(norm(name))).map((q) => ({ id: q.id, title: q.title, complete: Boolean(q.complete), objectives: (q.objectives || []).slice(0, 6) }));
@@ -130,8 +134,8 @@ function buildAtlas({ profile = null, encounters = null, knowledgePack = null } 
       id, name, kind, levels: { min, max }, faction: side, zone, mapId, entrance: { x: ex / 100, y: ey / 100, approximate: true },
       difficulty: difficulty(level, min, max),
       factionNote: side && faction && side !== faction ? `${side}-side entrance; reachable but deep in enemy territory.` : null,
-      bosses: bosses.map((b) => ({ name: b, observedInForever: observedNames.has(norm(b)), kills: observed.find((o) => norm(o.name) === norm(b))?.kills || 0, tip: tipFor(b) })),
-      observedOnly: observed.filter((o) => !bosses.some((b) => norm(b) === norm(o.name))).map((o) => ({ name: o.name, kills: o.kills })),
+      bosses: referenceBosses.map((b) => ({ name: b, observedInForever: observedNames.has(norm(b)), kills: observed.find((o) => norm(o.name) === norm(b))?.kills || 0, tip: tipFor(b) })),
+      observedOnly: observed.filter((o) => !referenceBosses.some((b) => norm(b) === norm(o.name))).map((o) => ({ name: o.name, kills: o.kills })),
       observedRuns: observed.reduce((m, o) => Math.max(m, o.runs || 0), 0),
       yourQuests: yours, roles: ROLES[kind], prep: PREP[kind], pickUp: dungeonQuests(knowledgePack, bossNames, profile, name, { min, max }),
       source: "Classic-era baseline (verify in Forever)" + (observed.length ? " + observed Forever encounters" : ""),

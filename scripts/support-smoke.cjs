@@ -58,6 +58,9 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
       await page.getByRole("region", { name: "Support & Recovery", exact: true }).waitFor();
       assert.equal(await page.locator("nav[aria-label='Main navigation'] button").count(), 8);assert.equal(await page.getByRole("navigation",{name:"Settings and help",exact:true}).getByRole("button").count(),2); assert.equal(await copy().isDisabled(), true); assert.equal(await save().isDisabled(), true);
       for (const label of ["Export backup", "Import backup", "Delete all local data", "Open Quests"]) assert.equal(await page.getByRole("button", { name: label, exact: true }).count(), 1);
+      await page.getByRole("region", { name: "Support & Recovery", exact: true }).getByRole("button", { name: "Review Game connection", exact: true }).press("Enter");
+      await page.locator("#live-link-toggle").waitFor();
+      await navigate(page, "guide");
     });
     await check("physical Enter retains original controls and unrelated Field Guide nodes until release", async () => {
       await app.evaluate(() => supportFixture.hold = true); await prepare().focus();

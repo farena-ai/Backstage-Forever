@@ -33,9 +33,12 @@
 .now-step.now-step-priority { background: #fff6dc; border-color: #8a5a18; border-inline-start-width: 4px; }
 .now-step.now-step-priority h3 { font-size: 19px; }
 .now-followups .now-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.now-followups > summary { cursor: pointer; font-weight: 700; color: #5a2e0c; }
+.now-followups[open] > summary { margin-bottom: 10px; }
 .now-step > div { min-width: 0; }
 .now-step h3 { margin: 0 0 3px; font: 700 16px Georgia, serif; color: #2b1b0a; }
 .now-step p { margin: 0; font-size: 14px; line-height: 1.4; color: #4a3218; }
+.now-next .now-reason { margin: 6px 0 0; font-size: 14px; color: #4a3218; }
 .now-ico { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font: 800 18px Georgia, serif; color: #1d1207; border: 1.5px solid #1b1006; background: #f6c445; }
 .now-train .now-ico { background: #b8462e; color: #fff4dc; }
 .now-quest .now-ico { background: #c33d29; color: #fff4dc; }
@@ -311,6 +314,7 @@
 .now-week { margin: 0; color: #f1dcb0; font-size: 14px; }
 .now-week .now-link { margin-left: 6px; }
 .now-objective { margin-block: 12px; overflow-wrap: anywhere; }
+.now-objective.now-next { margin-block: 0; }
 .now-objective .objective-title { margin-block: 6px; font-size: 1.12rem; }
 .now-objective .now-actions { flex-wrap: wrap; }
 .objective-pin { margin-top: 8px; }

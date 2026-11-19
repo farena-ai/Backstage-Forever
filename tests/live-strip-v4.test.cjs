@@ -149,7 +149,7 @@ test("corruption and noise never decode as a compact strip", () => {
 test("bridge reads corner captures, shrinks to a compact region and walks the corners when lost", () => {
   let t = 1000;
   const writes = [];
-  const b = new L.LiveBridge({ now: () => t, platform: "linux" });
+  const b = new L.LiveBridge({ now: () => t, platform: "win32" });
   b.enabled = true; b.child = { stdin: { write: (s) => writes.push(s) } };
   const line = (corner, img) => b.line(`ok ${corner} ${img.width} ${img.height} ${img.rgb.toString("base64")}`);
   const empty = (w = 640, h = 28) => ({ width: w, height: h, rgb: Buffer.alloc(w * h * 3, 30) });
@@ -184,7 +184,7 @@ test("bridge reads corner captures, shrinks to a compact region and walks the co
 
 test("an unchanged strip stays live while its heartbeat moves; a frozen compact strip goes stale", () => {
   let t = 1000;
-  const b = new L.LiveBridge({ now: () => t, platform: "linux" });
+  const b = new L.LiveBridge({ now: () => t, platform: "win32" });
   b.enabled = true;
   const frame = (heartbeat, seq = 7) => { const x = Uint8Array.from(COMPACT.bytes); x[1] = seq; x[25] = heartbeat; x[26] = L.crc8(x, 26); return L.encodeCellsV4(x); };
   const feed = (cells) => b.line("ok topleft 640 28 " + region([cells]).rgb.toString("base64"));
@@ -197,7 +197,7 @@ test("an unchanged strip stays live while its heartbeat moves; a frozen compact 
   assert.equal(b.status().signal, "stale");
   assert.equal(b.current(), null);
   // Version 3 strips (older addons never move the heartbeat) are not held to that rule.
-  const c = new L.LiveBridge({ now: () => t, platform: "linux" }); c.enabled = true;
+  const c = new L.LiveBridge({ now: () => t, platform: "win32" }); c.enabled = true;
   for (let i = 0; i < 50; i++) { t += 500; c.line("ok topleft 640 28 " + region([L.encodeCells(V3BYTES)], { cell: 6 }).rgb.toString("base64")); }
   assert.equal(c.status().signal, "live");
 });

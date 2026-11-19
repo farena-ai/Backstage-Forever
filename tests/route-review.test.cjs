@@ -58,11 +58,12 @@ test("the review panel lists steps with keep, leave out, move and undo, and send
   const view = { race: "Orc", races: ["Human", "Orc"], page: 0, pages: 2, total: 50, approved: 1, skipped: 1, edits: true,
     steps: [{ n: 1, id: "pickup:1", kind: "pickup", text: "Pick up <b>", level: 1, mapName: "Durotar", mapId: 1411, x: 0.5, y: 0.5, approved: true, skipped: false }, { n: 2, id: "turnin:1", kind: "turnin", text: "Hand in", level: 1, approved: false, skipped: true }] };
   const listeners = {};
-  const root = { addEventListener: (k, f) => { listeners[k] = f; }, querySelectorAll: () => [] };
+  const body = { contains: () => false, innerHTML: "" };
+  const root = { isConnected: true, addEventListener: (k, f) => { listeners[k] = f; }, querySelector: () => body };
   const slot = { innerHTML: "" };
   const ctx = {
     window: { backstage: { guidedRoute: async () => null, routeReview: async (i) => { calls.push(["read", i]); return view; }, setRouteReview: async (i) => { calls.push(["set", i]); return true; }, exportRouteReview: async () => true } },
-    PageHero: { render: () => "" }, document: { querySelector: (q) => (q === "[data-guided-route]" ? root : q === "[data-gr-review-slot]" ? slot : null) },
+    profile: () => null, characterSelectionPending: () => false, PageHero: { render: () => "" }, document: { querySelector: (q) => (q === "[data-guided-route]" ? root : q === "[data-gr-review-slot]" ? slot : null) },
   };
   vm.createContext(ctx); vm.runInContext(read("src/renderer/guided-route.js"), ctx);
   const V = ctx.window.GuidedRouteView;

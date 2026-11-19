@@ -61,26 +61,38 @@ function near(positions, here) {
   const d = (p) => Math.hypot(p.x - here.x, p.y - here.y);
   return same.length ? same.reduce((a, b) => (d(b) < d(a) ? b : a)) : list[0] || null;
 }
-/**
- * Materials for the selected number of crafts, each marked with where it comes from: a
- * vendor seen selling it (name and map position, nearest to you when it was seen on your
- * map), gathering (your own finds or a historical gathering source), or gather/buy.
- */
-// J30 (1.6): where you already have a material: this character's bank and mail, and every other
-// character's bags, bank and mail, from their ledgers (as last seen).
-function elsewhereOf(itemId, profile, profiles) {
-  const out = [];
-  for (const p of profiles || []) {
-    const l = p?.ledger;
-    if (!l) continue;
-    const count = (key) => (l[key]?.items || []).filter((e) => e.id === itemId).reduce((t, e) => t + e.n, 0);
-    const mine = p.id === profile?.id;
-    const bags = mine ? 0 : count("bags"), bank = count("bank"), mail = count("mail");
-    if (bags + bank + mail > 0) out.push({ profileId: p.id, name: p.name, mine, bags, bank, mail, total: bags + bank + mail });
-  }
-  return out.sort((a, b) => (b.mine ? 1 : 0) - (a.mine ? 1 : 0) || b.total - a.total);
+function savedThrough(profile, now) {
+  return profile?.source?.kind === "wow-addon" && profile.clientBuild
+    ? Math.min(now, Math.floor(Date.parse(profile.source.updatedAt) / 1000)) : 0;
 }
-function shoppingList(rows, { crafts = 1, profile = null, profiles = [] } = {}) {
+const dated = (at, through) => Number.isSafeInteger(at) && at > 0 && at <= through;
+// Each location has its own clock. Never sum observations of potentially moved stock.
+function storageLeads(itemId, profile, places, now) {
+  const through = savedThrough(profile, now), out = [];
+  for (const place of places) {
+    const snapshot = profile?.ledger?.[place];
+    if (!dated(snapshot?.seenAt, through)) continue;
+    const item = snapshot.items.find(e => e.id === itemId);
+    if (item) out.push({ profileId: profile.id, name: profile.name, realm: profile.realm ?? null,
+      clientBuild: profile.clientBuild, place, count: item.n, seenAt: snapshot.seenAt, complete: snapshot.complete === true });
+  }
+  return out;
+}
+function rememberedPrice(profile, itemId, now) {
+  const through = savedThrough(profile, now);
+  const item = profile?.ledger?.prices?.find(e => e.id === itemId);
+  const latest = item?.hist.reduce((best, entry) => {
+    const [price, at] = entry;
+    if (!dated(at, through)) return best;
+    return !best || at > best[1] || (at === best[1] && price < best[0]) ? entry : best;
+  }, null);
+  return latest ? { source: "saved-auction-buyout", unitCopper: latest[0], seenAt: latest[1], ageSeconds: now - latest[1] } : null;
+}
+const purchaseCost = (quantity, unit) => quantity === 0 ? 0 :
+  quantity !== null && Number.isSafeInteger(quantity * unit) && unit > 0 ? quantity * unit : null;
+
+/** Materials and historical source leads; the purchase scenario uses only the carried shortfall. */
+function shoppingList(rows, { crafts = 1, profile = null, profiles = [], now = Math.floor(Date.now() / 1000) } = {}) {
   const here = profile?.location && Number.isSafeInteger(profile.location.mapId) && Number.isFinite(profile.location.x) && Number.isFinite(profile.location.y) ? profile.location : null;
   const finds = new Map();
   // Gathering finds only: chest loot is random, not a place to gather a material.
@@ -91,11 +103,13 @@ function shoppingList(rows, { crafts = 1, profile = null, profiles = [] } = {}) 
     const gathered = (row.acquisition?.sources || []).find((s) => s.kind === "gathered-object-loot") || null;
     const own = finds.get(row.itemId) || null;
     const source = seller ? "vendor" : own || gathered ? "gather" : "other";
-    const need = row.missing ?? row.required;
-    const elsewhere = elsewhereOf(row.itemId, profile, profiles), stored = elsewhere.reduce((t, e) => t + e.total, 0);
+    const need = row.quantityKind === "exact" && Number.isSafeInteger(row.missing) && row.missing >= 0 ? row.missing : null;
+    const price = rememberedPrice(profile, row.itemId, now);
     return {
       itemId: row.itemId, name: row.name, required: row.required, have: row.have, missing: row.missing, need, quantityKind: row.quantityKind, source,
-      elsewhere, stillToGet: Number.isFinite(need) ? Math.max(0, need - stored) : null,
+      ownStorage: storageLeads(row.itemId, profile, ["bank", "mail"], now),
+      altStock: profile ? profiles.filter(p => p.id !== profile.id).flatMap(p => storageLeads(row.itemId, p, ["bags", "bank", "mail"], now)) : [],
+      projectedPurchase: need, price, estimatedCopper: purchaseCost(need, price?.unitCopper),
       vendor: seller ? { id: seller.id, name: seller.name, suggested: Boolean(seller.suggested), mapId: at?.mapId ?? null, mapName: at ? MAP_NAMES[at.mapId] || `Map ${at.mapId}` : null, x: at?.x ?? null, y: at?.y ?? null, otherSellers: Math.max(0, (row.historicalSellers?.observedSellerCount || sellers.length) - 1) } : null,
       gather: own ? { kind: own.method, name: own.name, mapId: own.mapId, mapName: MAP_NAMES[own.mapId] || `Map ${own.mapId}`, x: own.x, y: own.y, yours: true }
         : gathered ? { kind: gathered.gatherSpellId === 2368 ? "herbalism" : gathered.gatherSpellId === 2576 ? "mining" : "gathering", name: gathered.referenceName, mapId: gathered.positions?.[0]?.mapId ?? null, mapName: gathered.positions?.[0] ? MAP_NAMES[gathered.positions[0].mapId] || `Map ${gathered.positions[0].mapId}` : null, x: gathered.positions?.[0]?.x ?? null, y: gathered.positions?.[0]?.y ?? null, yours: false }
@@ -109,4 +123,11 @@ function shoppingList(rows, { crafts = 1, profile = null, profiles = [] } = {}) 
     note: "Vendor listings are historical observations: stock, price and access are unverified. Gather/buy means no seller was observed; try gathering, the auction house or trade.",
   };
 }
-module.exports = { SKILL_COLORS, RANK, difficultyOf, skillColor, colorRank, materialUnits, skillUpCountdown, shoppingList, elsewhereOf };
+function nextPointPurchaseEstimate(list, attempts) {
+  if (!attempts || !list.rows.length) return null;
+  const amounts = list.rows.map(r => purchaseCost(r.quantityKind === "exact"
+    ? Math.max(0, (r.required / list.crafts) * attempts - r.have) : null, r.price?.unitCopper));
+  const total = amounts.reduce((sum, amount) => sum + amount, 0);
+  return { attempts, estimatedCopper: amounts.includes(null) || !Number.isSafeInteger(total) ? null : total };
+}
+module.exports = { SKILL_COLORS, RANK, difficultyOf, skillColor, colorRank, materialUnits, skillUpCountdown, shoppingList, nextPointPurchaseEstimate };

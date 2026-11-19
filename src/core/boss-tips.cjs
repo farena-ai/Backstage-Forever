@@ -3,7 +3,8 @@
 // in game when you target the boss. Text only: no timers. These are general tips from how the
 // classic encounters work; Forever may tune a fight, so each tip says what to watch for, not when.
 // The addon gets the same tips from scripts/build-boss-tips.cjs (BackstageForeverBossTips.lua).
-// J31 reviews and scope: docs/raid-boss-tip-review.md and docs/blackwing-lair-tip-review.md.
+// J31 reviews and scope: docs/raid-boss-tip-review.md, docs/blackwing-lair-tip-review.md,
+// docs/zulgurub-tip-review.md, docs/zulgurub-next-tip-review.md, and docs/zulgurub-final-tip-review.md.
 const REVIEWED_RAID_TIPS = Object.freeze({
   Lucifron: { instanceMap: 409, npcId: 12118, advice: "Dispel Impending Doom as magic and remove Lucifron's Curse separately." },
   Magmadar: { instanceMap: 409, npcId: 11982, advice: "Have hunters use Tranquilizing Shot to remove Frenzy; plan fear protection for the tank." },
@@ -22,6 +23,19 @@ const REVIEWED_RAID_TIPS = Object.freeze({
   Flamegor: { instanceMap: 469, npcId: 11981, advice: "Have hunters use Tranquilizing Shot to remove Frenzy; tanks coordinate Wing Buffet." },
   Chromaggus: { instanceMap: 469, npcId: 14020, advice: "Break line of sight for breaths and clear Brood Afflictions; use Hourglass Sand for the bronze affliction." },
   Nefarian: { instanceMap: 469, npcId: 11583, advice: "Handle the opening drakonids, prepare for class calls, and control the resurrected skeletons late in the fight." },
+  "High Priestess Jeklik": { instanceMap: 309, npcId: 14517, advice: "Kill the bat adds, interrupt her heal, and move out of the fire." },
+  "High Priest Venoxis": { instanceMap: 309, npcId: 14507, advice: "Control and kill the snake adds early. Move out of poison clouds once he transforms." },
+  "High Priestess Mar'li": { instanceMap: 309, npcId: 14510, advice: "Kill spider adds quickly. Have an off-tank ready to pick her up after Enveloping Webs." },
+  "High Priest Thekal": { instanceMap: 309, npcId: 14509, advice: "Bring Thekal and both zealots down evenly so they die together. Kill the tiger adds after he transforms." },
+  "High Priestess Arlokk": { instanceMap: 309, npcId: 14515, advice: "Control the panthers chasing the marked player. Have the tank pick Arlokk up again when she reappears." },
+  "Bloodlord Mandokir": { instanceMap: 309, npcId: 11382, advice: "If Threatening Gaze targets you, stop moving, casting, and attacking until it ends. When Ohgan dies, Mandokir enrages." },
+  "Jin'do the Hexxer": { instanceMap: 309, npcId: 11380, advice: "Destroy healing wards and Brain Wash Totems. If you have Delusions of Jin'do, use it to kill the shades only cursed players can hit." },
+  "Gri'lek": { instanceMap: 309, npcId: 15082, advice: "Edge of Madness rotation: Watch for roots. Keep your distance if he comes after you when he grows." },
+  "Hazza'rah": { instanceMap: 309, npcId: 15083, advice: "Edge of Madness rotation: Watch for Sleep and kill the summoned illusions quickly." },
+  "Renataki": { instanceMap: 309, npcId: 15084, advice: "Edge of Madness rotation: Expect a strike after Vanish. The tank should pick him up when he reappears." },
+  "Wushoolay": { instanceMap: 309, npcId: 15085, advice: "Edge of Madness rotation: Spread out to limit lightning damage." },
+  "Gahz'ranka": { instanceMap: 309, npcId: 15114, advice: "Massive Geyser knocks players into the air. Give the tank a moment to regain control after the knockup." },
+  "Hakkar": { instanceMap: 309, npcId: 14834, advice: "Use a Son of Hakkar's poison cloud before Blood Siphon. Control the mind-controlled tank while another tank takes over." },
 });
 const TIPS = Object.freeze({
   // Ragefire Chasm

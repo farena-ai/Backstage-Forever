@@ -7,6 +7,7 @@ const fs = require("node:fs/promises"),
   assert = require("node:assert/strict");
 const releaseVersion = require("../package.json").version;
 const { testWindow, launch: launchElectron } = require("./test-window.cjs");
+const macSavedOnly = process.argv.includes("--mac-saved-only");
 (async () => {
   const data = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "bf-setup-")));
   const repo=path.resolve(__dirname,'..'), captures=path.join(repo,'.superpowers/sdd/native-setup-captures',new Date().toISOString().replace(/[:.]/g,'-'));
@@ -23,7 +24,24 @@ const { testWindow, launch: launchElectron } = require("./test-window.cjs");
     for(const [folder,preferences] of [['updates',{automatic:false,installOnQuit:false}],['knowledge-v1',{automatic:false,checked:{}}]]){
       await fs.mkdir(path.join(data,folder),{recursive:true});await fs.writeFile(path.join(data,folder,'preferences.json'),JSON.stringify(preferences));
     }
-    await fs.writeFile(path.join(data,'package.json'),JSON.stringify({name:'synthetic-native-map-setup',version:releaseVersion,main:'fixture.cjs'}));
+    await fs.mkdir(path.join(data, "community"));
+    await fs.writeFile(path.join(data, "community", "settings.json"), JSON.stringify({ share: false, download: false }));
+    const livePreference = macSavedOnly ? '{ "enabled": true }\n' : '{"enabled":false}';
+    const pref = path.join(data, "live-link.json");
+    await fs.writeFile(pref, livePreference);
+    await fs.writeFile(path.join(data,'package.json'),JSON.stringify({name:'synthetic-native-map-setup',version:releaseVersion,main:'entry.cjs'}));
+    await fs.writeFile(path.join(data, "entry.cjs"), `
+      const load = require('node:module').createRequire(${JSON.stringify(path.join(repo, "package.json"))});
+      const live = load('./src/core/live-bridge.cjs');
+      live.LiveBridge = class FixtureBridge extends live.LiveBridge {
+        constructor(options) {
+          super({ ...options, ${macSavedOnly ? 'platform: "darwin",' : ''} spawn: () => {
+            throw Error('Capture is forbidden in the saved setup fixture');
+          } });
+        }
+      };
+      require('./fixture.cjs');
+    `);
     await fs.writeFile(path.join(data,'fixture.cjs'),`const load=require('node:module').createRequire(${JSON.stringify(path.join(repo,'package.json'))});globalThis.mapSetup={providers:0,keys:0,game:0,external:0};load('./src/core/catalog-cache.cjs').CatalogCache.prototype.get=async()=>({models:[],source:'synthetic'});load('./src/core/model-catalog.cjs').listModels=async()=>({models:[]});load('./src/core/claude.cjs').status=async()=>({installed:false,loggedIn:false});load('./src/core/providers.cjs').ask=async()=>{mapSetup.providers++;throw Error('No provider');};load('./src/core/store.cjs').Store.prototype.getKey=function(){mapSetup.keys++;return '';};load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});load('./src/core/game-runtime.cjs').GameRuntime.prototype.launch=async()=>{mapSetup.game++;throw Error('No game');};load('./src/core/game-sync.cjs').GameSync.prototype.discover=async()=>[{id:'synthetic',label:'Synthetic Forever',path:${JSON.stringify(game)}}];load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});load('./src/core/voice.cjs').VoiceService.prototype.readCapabilities=async()=>({status:'unavailable',recognition:{available:false,cultures:[]},synthesis:{available:false,voices:[]}});load('electron').clipboard.writeText=()=>{mapSetup.external++;};load('electron').shell.openExternal=async()=>{mapSetup.external++;};load('./src/core/knowledge-cache.cjs').KnowledgeService.prototype.maybeRefresh=function(){};load('./src/core/updater.cjs').Updater.prototype.start=function(){};load('./src/main.cjs');`);
     app = await launchElectron(electron, {
       args: [data],
@@ -146,6 +164,30 @@ const { testWindow, launch: launchElectron } = require("./test-window.cjs");
     assert.equal((await page.evaluate(()=>window.backstage.gameStatus())).loadedCaptureVersion,releaseVersion);
     assert.equal((await page.evaluate(()=>window.backstage.bootstrap())).state.profiles[0].gathering.status,'unavailable');
     await page.screenshot({path:path.join(captures,'setup-new-format-saved-character.png'),fullPage:true});
+    if (macSavedOnly) {
+      await navigate(page, "game");
+      await page.getByText(/Saved-only:.*Screen Recording is not needed/).waitFor({ timeout: 5000 });
+      assert.equal(await page.locator("#live-link-toggle").isVisible(), false);
+      assert.deepEqual(await page.evaluate(() => window.backstage.setLiveLink(true)), {
+        enabled: false, signal: "unsupported", frame: null, strip: null, last: null,
+      });
+      assert.equal(await fs.readFile(pref, "utf8"), livePreference);
+      const before = (await page.evaluate(() => window.backstage.bootstrap())).state.profiles[0];
+      await page.screenshot({ path: path.join(captures, "mac-saved-only-settings.png"), fullPage: true });
+      await app.close(); app = null;
+      // Remove the input before restart so an import cannot masquerade as durable journal state.
+      await fs.unlink(exportFile);
+      app = await launchElectron(electron, { args: [data], env: { ...process.env, BF_USER_DATA: data } });
+      const reopened = await testWindow(app);
+      const after = (await reopened.evaluate(() => window.backstage.bootstrap())).state.profiles[0];
+      assert.equal(after.id, before.id);
+      assert.equal(after.name, "Compass Hero");
+      assert.equal(after.level, 18);
+      assert.equal(await fs.readFile(pref, "utf8"), livePreference);
+      assert.deepEqual(cspErrors, []);
+      console.log("PASS: synthetic darwin bridge, real Electron saved setup/import and journal restart, hidden capture control, unchanged preference.");
+      return;
+    }
     for (const section of ["Adventure", "Characters", "AI Companion", "Game Connection", "Connections", "Field Guide", "Updates"]) {
       await navigate(page, section);
       assert.equal(await page.locator(".companion-dock").count(), 0,

@@ -50,7 +50,7 @@ body[data-faction="horde"] .workshop-bench{background:linear-gradient(115deg,rgb
 .shop-list{list-style:none;margin:0;padding:0;border-top:1px solid #b6a06644}
 .shop-row{display:grid;grid-template-columns:62px minmax(150px,1fr) 104px minmax(0,1.6fr);gap:14px;align-items:center;padding:11px 4px;border-bottom:1px dotted #b6a16a44}
 .shop-count{display:flex;flex-direction:column;align-items:center;font:24px 'Cinzel',serif;color:#8a5a18}.shop-count small{font:11px 'Source Sans 3',sans-serif;color:#4a3218}
-.shop-item b{display:block;font-size:14px;color:#8a5a18;font-weight:500;overflow-wrap:anywhere}.shop-item small{font-size:11px;color:#4a3218}
+.shop-item b{display:block;font-size:14px;color:#8a5a18;font-weight:500;overflow-wrap:anywhere}.shop-item small{display:block;font-size:11px;color:#4a3218;overflow-wrap:anywhere}
 .shop-tag{justify-self:start;padding:3px 9px;border-radius:10px;font-size:11px;letter-spacing:.5px;text-transform:uppercase;font-weight:700;border:1px solid}
 .shop-tag.vendor{color:#f4cf5a;border-color:#a8743a;background:#a8743a26}.shop-tag.gather{color:#8fd16a;border-color:#5fae3c;background:#5fae3c22}.shop-tag.other{color:#c9c2b0;border-color:#8a8270;background:#8a827022}
 .shop-where{font-size:12px;line-height:1.55;color:#2b1b0a;min-width:0;overflow-wrap:anywhere}.shop-where b{color:#8a5a18;font-weight:600}.shop-where code{display:block;width:fit-content;max-width:100%;margin-top:4px;padding:2px 7px;font:11px Consolas,monospace;color:#8a5a18;background:rgba(255,248,225,0.70);border:1px solid #a9884b40;border-radius:3px;user-select:all}

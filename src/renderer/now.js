@@ -4,7 +4,7 @@
 window.NowView = (() => {
   const api = window.backstage;
   let weekly = null, history = null, loadedFor = null;
-  let advice = null, zone = null, lastZoneId = null, session = null, setup = null, error = "", loading = false, setting = "", mountedFor = null, lastKey = "", lastFetch = 0, timer = null;
+  let advice = null, zone = null, lastZoneId = null, session = null, setup = null, error = "", request = null, setting = "", mountedFor = null, lastKey = "", lastFetch = 0, timer = null;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pct = (v) => (v * 100).toFixed(1);
   const at = (w) => (w && Number.isFinite(w.x) ? `${esc(w.mapName || "")} ${pct(w.x)}, ${pct(w.y)}` : "");
@@ -13,6 +13,40 @@ window.NowView = (() => {
     ? `<button type="button" data-now-map='${esc(JSON.stringify({ mapId: w.mapId, x: w.x, y: w.y, label, sub: sub || null, npcId: npcId || null, goal: goal || null }))}'>Show on map</button>` : "");
 
   const activeId = () => document.querySelector("#active-character")?.value || null;
+  const day = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+  const dismissPrefix = "bf-now-dismissed-v1:";
+  const dismissStorage = id => dismissPrefix + id;
+  let dismissals = null, displayedDismissal = null;
+  function removeDismissals(profileId = null) {
+    if (profileId === null || dismissals?.id === profileId) dismissals = null;
+    if (profileId === null || displayedDismissal?.id === profileId) displayedDismissal = null;
+    // The old picker and controls can still be mounted while the shell refreshes.
+    if (mountedFor && (profileId === null || activeId() === profileId)) {
+      mountedFor = null;
+      request = null;
+      clearTimeout(timer);
+    }
+    try {
+      if (profileId !== null) localStorage.removeItem(dismissStorage(profileId));
+      else for (const key of Object.keys(localStorage)) if (key.startsWith(dismissPrefix)) localStorage.removeItem(key);
+    } catch {}
+  }
+  function dismissed() {
+    const id = activeId(), today = day();
+    if (dismissals?.id === id && dismissals.day === today) return dismissals;
+    let keys = [];
+    try {
+      const saved = JSON.parse(localStorage.getItem(dismissStorage(id)));
+      if (saved?.day === today && Array.isArray(saved.keys)) keys = saved.keys.filter(k => typeof k === "string").slice(-32);
+    } catch {}
+    return dismissals = { id, day: today, keys };
+  }
+  function dismissButton(key) {
+    if (!key || !activeId()) return "";
+    displayedDismissal = { id: activeId(), key };
+    return '<button type="button" data-now-dismiss title="Hide this suggestion for this character until tomorrow">Not now</button>';
+  }
+  const nextHeading = '<h2 tabindex="-1" data-now-next-heading>Do this next</h2>';
   const heroTitle = (a) => a?.character?.name || a?.name || "Your next move";
   const heroIdentity = (c) => c ? JSON.stringify([c.race, c.sex, c.className, c.faction]) : "";
   const hero = (a) => PageHero.render({ art: "now", compact: true, character: a?.character,
@@ -26,7 +60,6 @@ window.NowView = (() => {
     // mount/paint reads the new selection, so no previous character flashes on a switch.
     return `<section class="now-page" data-now>
       ${hero(null)}
-      ${window.ObjectiveView?.card() || ""}
       <div class="now-body" data-now-body><p class="now-card" role="status">Working out your next move…</p></div>
     </section>`;
   }
@@ -52,31 +85,31 @@ window.NowView = (() => {
     return `<div class="now-cost" data-now-cost>${k.nowTotal ? `<p>Ready to learn now: about <strong>${esc(gsc(k.nowTotal))}</strong>.</p>` : ""}${rows ? `<h3 class="now-sub">Training costs</h3><ol class="now-plan now-costs">${rows}</ol>` : ""}${verdict}<p><small>Prices from your trainer's window${k.seenAt ? `, seen ${esc(new Date(k.seenAt * 1000).toLocaleDateString([], { month: "short", day: "numeric" }))}` : ""}. Spells you haven't seen there yet aren't counted.</small></p></div>`;
   }
   // The few things worth doing right now, most urgent first.
-  function steps(a) {
+  function steps(a, hidden, pinnedQuest) {
     const out = [];
     if (a.character.dead || session?.dead) {
-      out.push({ kind: "death", title: "You died: run back to your body",
+      out.push({ kind: "death", title: "You died: run back to your body", reason: "The live link reported your character is dead.",
         detail: "In game, click <strong>Release Spirit</strong>. You appear at a graveyard as a ghost; Backstage Forever puts an arrow on your body. Walk over it and click <strong>Resurrect</strong>. The Spirit Healer at the graveyard can revive you on the spot, but your gear loses durability and you stay weak for a while.",
         actions: "" });
     }
-    const ready = a.log.ready;
-    if (ready.length) {
-      const first = ready[0];
-      out.push({ kind: "hand-in", title: ready.length === 1 ? `Hand in “${esc(first.title)}”` : `Hand in ${ready.length} finished quests`,
-        detail: first.turnIn ? `Nearest: ${esc(first.turnIn.name)}${first.turnIn.guess ? " (usually the quest giver)" : ""} · ${at(first.turnIn)}${ready.length > 1 ? ` · also ${ready.slice(1, 3).map((q) => `“${esc(q.title)}”`).join(", ")}${ready.length > 3 ? "…" : ""}` : ""}` : "Hand-in location not recorded yet.",
+    const questSource = a.log.live ? "your latest live quest log" : a.character.savedAt ? "your saved quest log" : "the character’s quest log (save time unknown)";
+    const first = a.log.ready.find(q => q.id !== pinnedQuest && !hidden.includes(`hand-in:${q.id}`));
+    if (first) {
+      out.push({ kind: "hand-in", key: `hand-in:${first.id}`, title: `Hand in “${esc(first.title)}”`, reason: `Ready to turn in according to ${questSource}.`,
+        detail: first.turnIn ? `${esc(first.turnIn.name)}${first.turnIn.guess ? " (usually the quest giver)" : ""}${at(first.turnIn) ? ` · ${at(first.turnIn)}` : ""}` : "Hand-in location not recorded yet.",
         actions: mapBtn(first.turnIn, first.turnIn?.name || first.title, `Turn in: ${first.title}`, first.turnIn?.npcId,
-          { title: `Hand in “${first.title}”`, questId: first.id, steps: [`Go to ${first.turnIn?.name || "the quest giver"}${first.turnIn?.guess ? " (quests usually go back to whoever gave them)" : ""}.`, `Talk to them and choose “${first.title}”.`, "Pick your reward and click Complete Quest.", ...(ready.length > 1 ? [`Also ready: ${ready.slice(1, 4).map((q) => q.title).join(", ")}.`] : [])] }) + `<button type="button" data-quest-open="${first.id}">Open quest</button>` });
+          { title: `Hand in “${first.title}”`, questId: first.id, steps: [`Go to ${first.turnIn?.name || "the quest giver"}${first.turnIn?.guess ? " (quests usually go back to whoever gave them)" : ""}.`, `Talk to them and choose “${first.title}”.`, "Pick your reward and click Complete Quest."] }) + `<button type="button" data-quest-open="${first.id}">Open quest</button>` });
     }
     const t = a.training;
     if (t?.newNow?.length && t.trainer) {
-      out.push({ kind: "train", title: `Train ${t.newNow.length} new ${esc(t.className)} skill${t.newNow.length === 1 ? "" : "s"}`,
+      out.push({ kind: "train", key: `train:${a.character.level}:${t.className}`, title: `Check ${t.newNow.length} ${esc(t.className)} skill${t.newNow.length === 1 ? "" : "s"} at your trainer`, reason: `Training reference for level ${a.character.level}; check in game what you already know.`,
         detail: `${t.newNow.slice(0, 5).map((s) => esc(s.name) + (s.rank ? ` <small>${esc(s.rank)}</small>` : "")).join(", ")}${t.newNow.length > 5 ? "…" : ""} · ${esc(t.trainer.name)}, ${at(t.trainer)}`,
         actions: mapBtn(t.trainer, t.trainer.name, t.trainer.title, t.trainer.npcId,
           { title: `Train at ${t.trainer.name}`, steps: [`Go to ${t.trainer.name}, ${t.trainer.title}.`, `Talk to them and learn: ${t.newNow.slice(0, 6).map((s) => s.name + (s.rank ? ` (${s.rank})` : "")).join(", ")}${t.newNow.length > 6 ? "…" : ""}.`, "Training costs a little money; drag new abilities onto your action bar."] }) });
     }
-    const act = a.log.active[0];
+    const act = a.log.active.find(q => q.id !== pinnedQuest && !hidden.includes(`quest:${q.id}`));
     if (act) {
-      out.push({ kind: "quest", title: `Continue “${esc(act.title)}”`,
+      out.push({ kind: "quest", key: `quest:${act.id}`, title: `Continue “${esc(act.title)}”`, reason: `Still in progress in ${questSource}.${a.log.live && act.total ? " Objective details come from saved data." : ""}`,
         detail: `${act.next ? esc(act.next) : "Objectives in progress"}${act.total ? ` · ${act.done}/${act.total} done` : ""}${act.where ? ` · ${at(act.where)}` : ""}`,
         actions: mapBtn(act.where, act.title, act.next, null,
           { title: `Continue “${act.title}”`, questId: act.id, steps: [act.next ? `${act.next}.` : "Work on the quest objectives around here.", ...(act.total ? [`${act.done} of ${act.total} objectives done.`] : []), "Come back to the quest giver when it says complete."] }) + `<button type="button" data-quest-open="${act.id}">Open quest</button>` });
@@ -84,14 +117,14 @@ window.NowView = (() => {
     const n = a.next;
     if (n && (n.mapId !== a.character.position?.mapId || out.length < 2)) {
       const where = n.hub ? { mapId: n.mapId, mapName: n.name, x: n.hub.x, y: n.hub.y } : null;
-      out.push({ kind: "zone", title: n.mapId === a.character.position?.mapId ? `Keep leveling in ${esc(n.name)}` : `Head to ${esc(n.name)}`,
+      out.push({ kind: "zone", key: `zone:${n.mapId}`, title: n.mapId === a.character.position?.mapId ? `Keep leveling in ${esc(n.name)}` : `Head to ${esc(n.name)}`, reason: `Leveling reference for your character at level ${a.character.level}. Check quest availability in game.`,
         detail: esc(n.why) + (n.hub ? ` · most quests start around ${pct(n.hub.x)}, ${pct(n.hub.y)}` : ""),
         actions: mapBtn(where, `${n.name} quest hub`, n.why, null,
           { title: `Quest hub in ${n.name}`, steps: [n.why, ...(n.quests?.length ? [`Pick up: ${n.quests.slice(0, 4).map((q) => q.title).join(", ")}${n.quests.length > 4 ? "…" : ""}.`] : []), "Look for the yellow ! over people's heads."] }) });
     }
-    return out.slice(0, 4);
+    return out.filter(s => !hidden.includes(s.key)).slice(0, 4);
   }
-  const stepRow = (s, primary = false) => `<li class="now-step now-${s.kind}${primary ? " now-step-priority" : ""}"><span class="now-ico now-ico-art" aria-hidden="true">${crest(s.kind)}</span><div><h3>${s.title}</h3><p>${s.detail}</p><div class="now-actions">${primary ? s.actions.replace('<button ', '<button class="primary" ') : s.actions}</div></div></li>`;
+  const stepRow = (s, primary = false, savedAt = null) => `<li class="now-step now-${s.kind}${primary ? " now-step-priority" : ""}"><span class="now-ico now-ico-art" aria-hidden="true">${crest(s.kind)}</span><div><h3>${s.title}</h3><p>${s.detail}</p>${primary ? `<p class="now-reason"><strong>Why this?</strong> ${esc(s.reason)}${savedAt ? ` <small>Saved ${esc(savedAt)}.</small>` : ""}</p>` : ""}<div class="now-actions">${primary ? s.actions.replace('<button ', '<button class="primary" ') + dismissButton(s.key) : s.actions}</div></div></li>`;
 
   // Classic rule: at or below this quest/mob level you get no experience.
   const greyAt = (lvl) => (lvl <= 5 ? 0 : lvl <= 39 ? lvl - 5 - Math.floor(lvl / 10) : lvl - 1 - Math.floor(lvl / 5));
@@ -152,7 +185,7 @@ window.NowView = (() => {
     if (items.every((i) => i.done)) return "";
     const next = items.findIndex((i) => !i.done);
     // One click does every step the app can do by itself: find WoW, install the addon, turn on the live link.
-    const canDo = !game?.connected || !game?.addonCurrent || live?.enabled === false;
+    const canDo = !game?.connected || !game?.addonCurrent || (live?.signal !== "unsupported" && live?.enabled === false);
     const oneClick = canDo ? `<div class="now-oneclick"><button type="button" data-now-act="setup"${setting === "working" ? " disabled" : ""}>${setting === "working" ? "Setting up…" : "Set it all up"}</button><span>${setting && setting !== "working" ? esc(setting) : live?.signal === "unsupported" ? "Finds WoW Forever and installs the addon. Nothing to download or type." : "Finds WoW Forever, installs the addon and turns on the live link. Nothing to download or type."}</span></div>` : "";
     return `<article class="now-card now-setup"><h2>Get set up <small>${items.filter((i) => i.done).length} of ${items.length}</small></h2>
       ${oneClick}<ol class="now-checklist">${items.map((i, n) => `<li class="${i.done ? "done" : n === next ? "next" : ""}"><span class="now-check" aria-hidden="true">${i.done ? "✓" : n + 1}</span><div><strong>${i.title}</strong>${i.done ? "" : `<p>${i.how}</p>${n === next && i.action ? `<div class="now-actions">${i.action}</div>` : ""}`}</div></li>`).join("")}</ol>
@@ -208,15 +241,25 @@ window.NowView = (() => {
     setTimeout(() => el.remove(), 5000);
   }
   function body() {
-    if (error) return `<div class="now-card"><p role="status">${esc(error)}</p></div>`;
-    if (!advice) return `<div class="now-card"><p>${loading ? "Working out your next move…" : "Loading…"}</p></div>`;
+    displayedDismissal = null;
+    const { keys } = dismissed();
+    const pin = window.ObjectiveView?.recommendation(activeId());
+    const pinKey = pin && `pin:${pin.id}`;
+    const suggestPin = Boolean(pinKey && !keys.includes(pinKey));
+    const objective = window.ObjectiveView?.card({ suggested: suggestPin, dismiss: suggestPin ? dismissButton(pinKey) : "" }) || "";
+    const priorityPin = suggestPin ? objective : "", supportingPin = suggestPin ? "" : objective;
+    if (error) return `${priorityPin}<div class="now-card"><p role="status">${esc(error)}</p></div>${supportingPin}`;
+    if (!advice) return `${priorityPin}<div class="now-card"><p role="status">Working out your next move…</p></div>${supportingPin}`;
     if (advice.status !== "ok") {
       const hint = advice.status === "no-level" || setup?.game?.connected
         ? "Log in on your character and type <code>/reload</code> in WoW to bring in a fresh save."
         : "Connect your WoW Forever folder to bring your character into the journal.";
-      return `<article class="now-card now-next"><h2>Do this next</h2><p>${hint}</p></article>${reloadBanner()}${setupCard(advice)}${weekStrip()}`;
+      return `${priorityPin || `<article class="now-card now-next">${nextHeading}<p>${hint}</p></article>`}${reloadBanner()}${setupCard(advice)}${weekStrip()}${supportingPin}`;
     }
-    const a = advice, c = a.character, [first, ...followups] = steps(a);
+    const a = advice, c = a.character, [first, ...followups] = steps(a, keys, pin?.questId);
+    const alternatives = priorityPin ? [first, ...followups].filter(Boolean) : followups;
+    const date = Date.parse(c.savedAt || "");
+    const savedAt = !a.log.live && (first?.kind === "hand-in" || first?.kind === "quest") && Number.isFinite(date) ? new Date(date).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : null;
     const zones = a.zones.map((z) => `<li class="now-zone now-fit-${esc(z.fit)}${BIOME[z.mapId] ? ` biome-${BIOME[z.mapId]}` : ""}"${zoneArt(z.mapId)}><button type="button" ${z.hub ? `data-now-map='${esc(JSON.stringify({ mapId: z.mapId, x: z.hub.x, y: z.hub.y, label: `${z.name} quest hub`, sub: null, goal: { title: `Quest hub in ${z.name}`, steps: [`Levels ${z.min}–${z.max}${z.available ? `, ${z.available} quests you can pick up` : ""}.`, ...(z.quests?.length ? [`Start with: ${z.quests.slice(0, 3).map((q) => q.title).join(", ")}.`] : []), ...(z.towns?.length ? [`Friendly towns: ${z.towns.join(", ")}.`] : [])] } }))}'` : "disabled"}><strong>${esc(z.name)}</strong><span>${z.min}–${z.max}${z.observedLevels ? " · seen in play" : ""}</span><span>${z.available ? `${z.available} quests for you` : "no quests recorded yet"}${z.towns.length ? ` · ${esc(z.towns.join(", "))}` : ""}</span><em>${z.fit === "now" ? "Your level" : "Soon"}</em></button></li>`).join("");
     const t = a.training;
     const training = !t ? `<p>Pick a class for this character in Characters to see training.</p>`
@@ -228,21 +271,23 @@ window.NowView = (() => {
          ${trainingCost(t, c)}
          <div class="now-actions">${mapBtn(t.trainer, t.trainer.name, t.trainer.title, t.trainer.npcId, { title: `Your ${t.className} trainer`, steps: [`${t.trainer.name}, ${t.trainer.title}.`, t.newNow.length ? `Ready to learn: ${t.newNow.map((s) => s.name).join(", ")}.` : `Nothing new until level ${t.nextAt || c.level + 1}.`] })}</div>`;
     const log = a.log;
+    const logLabel = log.known === false ? "" : `<small>${log.inLog}</small> <span class="now-fresh${log.live ? " live" : ""}">${log.live ? "● Live" : c.savedAt ? "from your last save" : "save time unknown"}</span>`;
     const questLog = log.inLog ? `<ul class="now-log">${log.ready.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip ready">Hand in</span>${esc(q.title)}</button></li>`).join("")}${log.active.slice(0, 8).map((q) => { const grey = q.level && q.level <= greyAt(c.level); return `<li><button type="button" data-quest-open="${q.id}"${grey ? ' title="This quest no longer gives experience at your level. Finish it only if you want the reward or the story; otherwise it\'s safe to abandon to free up your log."' : ""}><span class="now-chip">${q.total ? `${q.done}/${q.total}` : "…"}</span>${esc(q.title)}${q.level ? ` <small>lvl ${q.level}</small>` : ""}${grey ? ` <span class="now-chip grey">No XP · safe to drop</span>` : ""}</button></li>`; }).join("")}</ul>` : `<p>Your quest log is empty. ${a.next ? `Pick up quests in ${esc(a.next.name)}.` : ""}</p>`;
     // Quests handed in since the last save (live): shown done, so nothing old reads as still to do.
     const done = log.justDone?.length ? `<h3 class="now-sub">Just completed</h3><ul class="now-log now-done">${log.justDone.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip done">✓ Completed</span>${esc(q.title)}</button></li>`).join("")}</ul>` : "";
     const top = a.next?.quests?.length ? `<ul class="now-log">${a.next.quests.slice(0, 6).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip new">lvl ${q.level}</span>${esc(q.title)} <small>from ${esc(q.giver)}</small></button></li>`).join("")}</ul>` : "";
     // Each row shares a baseline; no independent stacks or visually reordered controls.
     return `<div class="now-grid now-overview">
-      <article class="now-card now-next"><h2>Do this next</h2>
-        ${first ? `<ol class="now-steps">${stepRow(first, true)}</ol>` : `<p>You're all caught up. Explore, gather or run a dungeon.</p>`}
-      </article>
+      ${priorityPin || `<article class="now-card now-next">${nextHeading}
+        ${first ? `<ol class="now-steps">${stepRow(first, true, savedAt)}</ol>` : `<p>${keys.length ? "No more suggestions for this character today. Your quest log and other tools are still available below." : "No next action found in the available data. You can still browse your quest log and other tools below."}</p>`}
+      </article>`}
       ${sessionCard(a)}
     </div>
-    ${followups.length ? `<section class="now-card now-followups"><h2>After that</h2><ol class="now-steps" start="2">${followups.map((s) => stepRow(s)).join("")}</ol></section>` : ""}
+    ${supportingPin}
+    ${alternatives.length ? `<details class="now-card now-followups"><summary>More suggestions</summary><ol class="now-steps">${alternatives.map(s => stepRow(s)).join("")}</ol></details>` : ""}
     ${reloadBanner()}${weekStrip()}${setupCard(a)}
     <div class="now-grid now-reference">
-      <article class="now-card now-questlog"><h2>Quest log <small>${log.inLog}</small>${log.live ? ' <span class="now-fresh live">● Live</span>' : ' <span class="now-fresh">from your last save</span>'}</h2>${questLog}${done}</article>
+      <article class="now-card now-questlog"><h2>Quest log ${logLabel}</h2>${log.known === false ? "<p>No quest log has been observed for this character yet.</p>" : questLog}${done}</article>
       ${zoneCard()}
       <article class="now-card"><h2>Where to level</h2><ul class="now-zones">${zones}</ul>${top ? `<h3 class="now-sub">Quests to pick up in ${esc(a.next.name)}</h3>${top}` : ""}</article>
       <article class="now-card"><h2>${esc(c.className || "Class")} training</h2>${training}</article>
@@ -267,7 +312,23 @@ window.NowView = (() => {
   }
   function paint() {
     const b = document.querySelector("[data-now-body]"); if (!b) return;
+    const followupsOpen = b.querySelector?.(".now-followups")?.open;
+    const focused = document.activeElement;
+    const focusAttrs = ["data-now-next-heading", "data-objective-heading", "data-now-dismiss", "data-objective-resume", "data-objective-change", "data-now-map", "data-quest-open"];
+    const focusAttr = focused?.closest(".now-next, .now-objective") && focusAttrs.find(attr => focused.hasAttribute(attr));
+    const focusValue = focusAttr && focused.getAttribute(focusAttr);
+    const oldSuggestion = displayedDismissal?.key;
+    // The view templates escape dynamic text and serialized action attributes before interpolation.
     b.innerHTML = body();
+    const followups = b.querySelector?.(".now-followups");
+    if (followups) followups.open = followupsOpen ?? DesktopViewPresets.defaults(activeId()).nowMoreSuggestions;
+    if (focusAttr) {
+      const match = (focusAttr !== "data-now-dismiss" || oldSuggestion === displayedDismissal?.key) &&
+        [...b.querySelectorAll(`.now-next [${focusAttr}], .now-objective [${focusAttr}]`)].find(el => el.getAttribute(focusAttr) === focusValue);
+      (match || b.querySelector?.("[data-now-next-heading]"))?.focus({ preventScroll: true });
+    } else if (followupsOpen !== undefined && focused?.matches(".now-followups > summary")) {
+      followups?.querySelector("summary").focus({ preventScroll: true });
+    }
     window.ZoneArt?.paint(b);
     for (const el of b.querySelectorAll(".now-xp [data-w]")) { el.style.width = `${Number(el.dataset.w)}%`; if (el.dataset.l) el.style.left = `${Number(el.dataset.l)}%`; }
     const header = document.querySelector('[data-now] > [data-page-hero="now"]');
@@ -296,14 +357,17 @@ window.NowView = (() => {
     }
   }
   async function load() {
-    if (loading) return; loading = true; lastFetch = Date.now();
     const requestedFor = activeId();
+    if (!mountedFor || request?.profileId === requestedFor) return;
+    const current = request = { profileId: requestedFor };
+    const ownsView = () => request === current && activeId() === requestedFor && mountedFor;
+    lastFetch = Date.now();
     try {
       const [a, s, game, live, z, wk, journey] = await Promise.all([api.levelingAdvice(), api.playSession ? api.playSession().catch(() => null) : null,
         api.gameStatus ? api.gameStatus().catch(() => null) : null, api.liveLinkStatus ? api.liveLinkStatus().catch(() => null) : null,
         api.zoneBriefing ? api.zoneBriefing().catch(() => null) : null, api.weekly ? api.weekly().catch(() => null) : null,
         api.journey ? api.journey().catch(() => null) : null]);
-      if (activeId() !== requestedFor) return;
+      if (!ownsView()) return;
       weekly = wk;
       history = journey?.id === requestedFor && journey?.name === a?.character?.name ? journey?.history : null;
       advice = a; session = s; setup = { game, live }; zone = z; error = "";
@@ -313,11 +377,10 @@ window.NowView = (() => {
       window.JourneyView?.check();
       window.WorldTrackerView?.check?.();
       window.MomentsView?.refresh();
-    } catch (e) { if (activeId() === requestedFor) error = e.message || "Advice is unavailable."; }
+    } catch (e) { if (ownsView()) error = e.message || "Advice is unavailable."; }
     finally {
-      loading = false;
-      if (activeId() === requestedFor) { loadedFor = requestedFor; paint(); }
-      else if (document.querySelector("[data-now]")) load();
+      if (ownsView()) { loadedFor = requestedFor; paint(); }
+      if (request === current) request = null;
     }
   }
   // Live frames: refresh when you change zone, level or quest progress; at most every few seconds.
@@ -342,7 +405,7 @@ window.NowView = (() => {
       else if (!r?.connected) setting = "Couldn't find WoW Forever automatically. Pick its folder on the Game connection page (Settings).";
       else {
         const live = await api.liveLinkStatus?.().catch(() => null);
-        if (live && live.enabled === false) await api.setLiveLink(true);
+        if (live && live.signal !== "unsupported" && live.enabled === false) await api.setLiveLink(true);
         setting = "Done. Log in to WoW (or type /reload if it's running) and your character appears here.";
       }
     } catch (e) { setting = e?.message || "Setup couldn't finish. Try the Game connection page in Settings."; }
@@ -350,6 +413,16 @@ window.NowView = (() => {
   }
   function bind(root) {
     root.addEventListener("click", (e) => {
+      if (e.target.closest("[data-now-dismiss]")) {
+        const current = displayedDismissal;
+        if (!current || current.id !== activeId() || root !== mountedFor) return;
+        const hidden = dismissed();
+        hidden.keys = [...hidden.keys.filter(key => key !== current.key), current.key].slice(-32);
+        try { localStorage.setItem(dismissStorage(hidden.id), JSON.stringify({ day: hidden.day, keys: hidden.keys })); } catch {}
+        paint();
+        (document.querySelector("[data-now-next-heading]") || document.querySelector("[data-objective-heading]"))?.focus({ preventScroll: true });
+        return;
+      }
       const m = e.target.closest("[data-now-map]");
       if (m) { try { window.WorldMapView?.focus(JSON.parse(m.dataset.nowMap)); document.querySelector('[data-nav="world-map"]')?.click(); } catch {} return; }
       if (e.target.closest('[data-now-act="refresh"]')) load();
@@ -359,10 +432,11 @@ window.NowView = (() => {
   }
   function mounted() {
     const root = document.querySelector("[data-now]");
-    if (!root) { mountedFor = null; return; }
+    if (!root) { mountedFor = null; request = null; clearTimeout(timer); return; }
     if (mountedFor === root) return;
     mountedFor = root; bind(root);
-    if (advice && loadedFor === activeId()) paint();
+    if (loadedFor !== activeId()) { advice = null; history = null; error = ""; lastZoneId = null; lastKey = ""; }
+    paint();
     load();
   }
   function invalidate() { advice = null; history = null; lastKey = ""; }
@@ -442,5 +516,5 @@ window.NowView = (() => {
     if (e?.kind === "level" && Number.isInteger(e.level)) celebrate(e.level);
     if (document.querySelector("[data-now]")) { clearTimeout(timer); timer = setTimeout(load, 300); }
   });
-  return { _arrive: (z) => arrive(z), page, mounted, invalidate, celebrate, _state: () => ({ advice, session, zone }) };
+  return { _arrive: (z) => arrive(z), page, mounted, invalidate, removeDismissals, celebrate, _state: () => ({ advice, session, zone }) };
 })();

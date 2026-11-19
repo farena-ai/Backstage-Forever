@@ -25,6 +25,32 @@ function normalizeEncounterHistory(value) {
   return rows;
 }
 
+function savedSource(p) {
+  const s = p?.source;
+  if (s?.kind !== "wow-addon" || typeof s.id !== "string" || !s.id.trim() || s.id.length > 200 ||
+      typeof s.updatedAt !== "string" || !Number.isFinite(Date.parse(s.updatedAt)) ||
+      new Date(s.updatedAt).toISOString() !== s.updatedAt) return null;
+  return s;
+}
+
+// Positive evidence only: an empty retained journal cannot prove a character has never won.
+function savedDungeonDefeats(profile) {
+  const source = savedSource(profile);
+  if (!source) return null;
+  const cutoff = Date.parse(source.updatedAt) / 1000;
+  let rows;
+  try {
+    rows = normalizeEncounterHistory(profile.journal?.encounters)
+      .filter(e => e.instanceType === "party" && e.at <= cutoff);
+  } catch { return null; }
+  if (!rows.length) return null;
+  return {
+    savedAt: source.updatedAt,
+    distinct: new Set(rows.map(e => `${e.instanceMap}:${e.encounterId}`)).size,
+    recent: rows.sort((a, b) => b.at - a.at).slice(0, 5),
+  };
+}
+
 function normalizeJournalCapture(j, { ignoreInvalidEncounters = false } = {}) {
   if (!j || typeof j !== "object" || Array.isArray(j)) fail();
   const levels = [], seen = new Set();
@@ -74,4 +100,4 @@ function splits(profile, others = []) {
   }
   return rows.map((r) => ({ ...r, best: best.get(r.level) || null, personalBest: best.get(r.level)?.name === profile.name && best.get(r.level)?.seconds === r.seconds }));
 }
-module.exports = { normalizeJournalCapture, normalizeEncounterHistory, validateJournal, splits, FIRSTS, LIMITS };
+module.exports = { normalizeJournalCapture, normalizeEncounterHistory, savedSource, savedDungeonDefeats, validateJournal, splits, FIRSTS, LIMITS };
