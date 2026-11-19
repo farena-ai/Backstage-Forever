@@ -7,6 +7,37 @@ const { buildProfessionCoach } = require("../src/core/profession-coach.cjs");
 
 const INTENTS = new Set(["npc-location", "travel", "trainer", "vendor", "item-source", "quest-next", "quest-turnin", "quest-info", "dungeon", "profession", "rp", "lore", "refuse", "clarify"]);
 
+test("named instances do not override trainer, flight master, or outbound travel questions", async (t) => {
+  for (const [prompt, route] of [
+    ["What level do I learn Alchemy for Scarlet Monastery?", "trainer"],
+    ["Where is the flight master near Scarlet Monastery dungeon?", "role"],
+    ["How do I get from Scarlet Monastery to Undercity?", "travel"],
+  ]) await t.test(prompt, async () => {
+    const { service, store } = makeService(PROFILES["horde-priest-21"], { model: false });
+    const r = await service.ask({ provider: "ollama", prompt, profileId: store.state.activeProfileId, shareProfile: true });
+    assert.equal(r.intent || r.kind, route);
+    if (route === "travel") {
+      assert.equal(r.travel.destination.id, "undercity");
+      assert.equal(r.travel.origin.label, "Scarlet Monastery");
+      assert.equal(r.travel.origin.id, null);
+    }
+    assert.notEqual(r.topic, "dungeon-facts");
+  });
+});
+
+test("instance abstentions affect local handling but not factual coverage", async () => {
+  const abstention = loadQuestions().find((q) => q.expect.outcome === "unknown-current");
+  const clarification = loadQuestions("heldout").find((q) => q.expect.outcome === "clarify-instance");
+  const factual = { ...abstention, id: "missing-fact", expect: {
+    intent: "dungeon", mustInclude: ["unavailable-factual-canary"],
+  } };
+  const r = await runBench({ questions: [abstention, clarification, factual] });
+  assert.deepEqual(r.abstention, { n: 2, correct: 2 });
+  assert.deepEqual(r.factualCoverage, { n: 1, covered: 0 });
+  assert.equal(r.scores.localCorrect, 66.7);
+  assert.equal(r.scores.covered, 0);
+});
+
 test("every benchmark question names a known character, a real intent and the data it was checked against", () => {
   const qs = loadQuestions();
   assert.equal(qs.length, 100);

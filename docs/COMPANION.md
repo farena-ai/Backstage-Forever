@@ -33,7 +33,7 @@ Recognized dungeon preparation and instance fact questions stay local even with 
 
 `tests/fixtures/companion-bench/questions.json` holds 100 real player questions, balanced between Horde and Alliance. Each one's expected facts were checked against the bundled data, and each entry cites its evidence. `node scripts/companion-bench.cjs` asks every question exactly as the app would, offline, and reports:
 
-- **covered:** answered correctly without a model, or the model receives the needed facts;
+- **factual coverage:** among questions with checkable facts, the local answer is correct or the model receives the needed facts. Refusals and designated instance abstentions or clarifications are excluded from this denominator;
 - **correct locally:** answered correctly with no model;
 - **understood:** the request was routed to the right kind of answer.
 

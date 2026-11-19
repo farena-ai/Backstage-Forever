@@ -292,7 +292,11 @@ function partial(phrase, kind, index) {
 const slang = (s) => norm(s).replace(/\bwheres\b/g, "where's").replace(/\bwhats\b/g, "what's").replace(/\bwhos\b/g, "who's").replace(/\bzeps?\b/g, "zeppelin").replace(/\blvl\b/g, "level").replace(/\bw\/e\b/g, "").replace(/\br\b/g, "are");
 function understand(question, { profile = null, data = loadData() } = {}) {
   const q = slang(question), idx = data.index;
-  const dungeon = dungeonIn(question), place = placeIn(question), cls = classIn(question), prof = professionIn(question);
+  // An instance mentioned as the origin is not the destination. Let ordinary
+  // travel clarify that endpoint rather than substituting an Atlas zone.
+  const tripDestination = q.match(/\bfrom\s+.+?\s+to\s+(.+)$/)?.[1] ?? q.match(/\bto\s+(.+?)\s+from\s+.+$/)?.[1];
+  const travel = RX.travel.test(q) || /\bhow (?:do|can|should) i (?:get|go) from\b/.test(q);
+  const dungeon = dungeonIn(travel ? tripDestination ?? question : question), place = placeIn(question), cls = classIn(question), prof = professionIn(question);
   const npc = mentioned(question, "npc", idx), quest = mentioned(question, "quest", idx, { minLen: 6 }), item = mentioned(question, "item", idx), creature = mentioned(question, "creature", idx);
   const recipe = mentioned(question, "recipe", idx, { minLen: 6 });
   const role = ROLES.find((r) => r.rx.test(q)) || null;

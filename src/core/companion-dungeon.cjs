@@ -11,6 +11,7 @@ const nameKey = (value) => value.toLowerCase().replace(/[‘’]/g, "'").replace
 const phrase = (value) => ` ${nameKey(value).replace(/[^a-z0-9#']/g, " ").trim().replace(/ +/g, " ")} `;
 const EXAMPLE = "Try ‘Dungeon prep for The Deadmines’ or use the exact #ID shown in the Dungeon Atlas.";
 const OTHER_EDITION = /\b(?:retail|classic|season of discovery|the war within|midnight|dragonflight)\b/i;
+const FACT_OTHER_EDITION = /\b(?:retail|classic|season of discovery|the war within|dragonflight)\b|\b(?:in|wow) midnight\b|\(midnight\)/i;
 const EDITION_SUFFIX = /\s+in\s+(?:wow\s+)?(?:retail|classic|season of discovery|the war within|midnight|dragonflight)$|\s+\((?:wow\s+)?(?:retail|classic|season of discovery|the war within|midnight|dragonflight)\)$/i;
 const ENCOUNTER_URL = "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/3067c6919046428152f2152fa551f44a8c215d79/data/wowf/1.60.1.70888/encounters.json";
 const ENCOUNTER_BUILD = "1.60.1.70888";
@@ -61,15 +62,19 @@ function encounterEvidence(pack, id, build) {
 
 const FACT_EXAMPLE = "Use the full instance name or exact Dungeon Atlas #ID, for example ‘Where is #dm?’";
 const WRONG_EDITION = "Companion only covers World of Warcraft: Forever. Ask about a Forever instance instead.";
-const LOCATION = /^(?:where(?:'s|s| is| are)|how (?:do|can|should) i (?:get|travel) to|(?:directions|route) to)\s+/i;
-const FACT_CUE = /\b(?:boss(?:es)?|encounters?|entrance|level(?:s| range)?|lvl|attunement|lockouts?|doable|too high|too low|can i (?:still )?(?:do|enter|run)|access requirements?|mechanics)\b/i;
+const LOCATION = /^(?:where(?:'s|s| is| are| (?:can|do) i find)|how (?:do|can|should) i (?:get|travel) to|(?:directions|route) to)\s+/i;
+const FACT_CUE = /\b(?:boss(?:es)?|encounters?|entrance|level(?:s| range)?|lvl|attunement|lockouts?|doable|too high|too low|can i (?:still )?(?:do|enter|run)|requirements?|mechanics)\b/i;
+const LEARNING = /\b(?:learn|train)(?:ing)?\b/i;
 const INSTANCE_CUE = /\b(?:dungeon|raid|instance)\b/i;
 
 function dungeonFactsQuestion(prompt, { legacyInstanceIntent = false } = {}) {
-  const text = prompt.trim().replace(/[‘’]/g, "'").replace(/[.?!]+$/, "").toLowerCase();
+  const raw = prompt.trim().replace(/[‘’]/g, "'").toLowerCase();
+  // Sentence punctuation cannot repair a malformed explicit build token.
+  const explicitBuild = /^historical encounters?\b.*\bon build\b/.test(raw);
+  const text = raw.replace(explicitBuild ? /[?!]+$/ : /[.?!]+$/, "");
   const editionText = text.replace(/\s+(?:in (?:wow |world of warcraft: )?forever\s*)?[,;—-]?\s*not (?:retail|classic)$/i, "");
   const historical = /^historical encounters?\b/i.test(editionText);
-  const wrongEdition = OTHER_EDITION.test(editionText);
+  const wrongEdition = FACT_OTHER_EDITION.test(editionText);
   if (historical) {
     const historic = /^historical encounters?\s+(?:for|in)\s+(.+?)(?: on build (\S+))?$/i.exec(editionText);
     const target = historic?.[1] ?? "";
@@ -77,7 +82,7 @@ function dungeonFactsQuestion(prompt, { legacyInstanceIntent = false } = {}) {
     return { id: match?.id, wrongEdition, historical, build: historic?.[2] ?? ENCOUNTER_BUILD };
   }
   const loc = LOCATION.test(editionText);
-  const facts = FACT_CUE.test(editionText);
+  const facts = FACT_CUE.test(editionText) && !LEARNING.test(editionText);
   const entrance = /^(?:the )?entrance (?:to|of|for|in)\s+/;
   const locationTarget = editionText.replace(LOCATION, "");
   const subject = locationTarget.replace(entrance, "")
@@ -89,7 +94,9 @@ function dungeonFactsQuestion(prompt, { legacyInstanceIntent = false } = {}) {
   const directLocation = loc && (/^#[a-z]/.test(subject) || names.some(({name}) => subjectWords.startsWith(phrase(name).trimStart())));
   // Exact IDs are meaningful only in instance fact shapes, not in quests or arbitrary prose.
   const genericInstance = loc
-    ? /^(?:the )?(?:dungeon|raid|instance)\b|\b(?:dungeon|raid|instance)$/.test(subject) || (entrance.test(locationTarget) && INSTANCE_CUE.test(subject))
+    ? /^(?:the )?(?:dungeon|raid|instance)\b/.test(subject) ||
+      (/\b(?:dungeon|raid|instance)$/.test(subject) && !/\b(?:near|in|at|by)\b/.test(subject)) ||
+      (entrance.test(locationTarget) && (INSTANCE_CUE.test(subject) || wrongEdition))
     : INSTANCE_CUE.test(editionText) && /\b(?:boss(?:es)?|entrance|attunement|lockouts?|access requirements?|can i (?:still )?(?:enter|run))\b/i.test(editionText);
   const aliasTarget = subject.match(/^(?:what bosses are in\s+)?([a-z]{2,4})$/)?.[1];
   const alias = (loc || facts) && aliasTarget && mentionsDungeonAlias(aliasTarget);

@@ -155,6 +155,32 @@ test('a dungeon name or token alone does not override unrelated Companion intent
   const r=await f.ask(prompt);assert.notEqual(r.topic,'dungeon-facts',prompt);
  }
 });
+test('exact instance location and requirements questions stay out of providers, history and Memory',async(t)=>{
+ for(const prompt of ['Where can I find #dme?','What are the requirements for #dme?'])await t.test(prompt,async()=>{
+  const f=fixture();
+  await f.ask('Tell me some lore about the Titans.');
+  assert.ok(f.memory.draft('Alpha'));
+  f.store.getKey=()=>assert.fail('instance answer read provider credentials');
+  assert.match((await f.ask(prompt)).text,/Dire Maul.*#dme.*No verified current Forever/s);
+  assert.equal(f.seen.length,1);assert.equal(f.memory.draft('Alpha'),null);assert.equal(f.service.session.status().turns,1);
+  f.store.getKey=()=>'';
+  await f.ask('Tell me some lore about the bronze dragonflight.');
+  assert.equal(f.seen.length,2);assert.ok(!f.seen[1].prompt.includes(prompt));
+  assert.doesNotMatch(f.seen[1].prompt,/No verified current Forever/);
+ });
+});
+test('dungeon fact edition and build qualifiers do not infer or repair evidence',async(t)=>{
+ for(const [prompt, expected] of [
+  ['Where is the entrance to Scarlet Monastery at midnight?',/Scarlet Monastery.*No verified current Forever/s],
+  ['Where is the entrance to Scarlet Monastery in Midnight?',/only covers World of Warcraft: Forever/],
+  ['Where is the entrance to the Rookery in Retail?',/only covers World of Warcraft: Forever/],
+  ['Historical encounters for #sm on build 1.60.1.70888.?',/No verified historical Forever/],
+ ])await t.test(prompt,async()=>{
+  const f=fixture();f.transport(()=>assert.fail('instance answer reached inference'));
+  const r=await f.ask(prompt);assert.equal(r.topic,'dungeon-facts');assert.match(r.text,expected);
+  assert.doesNotMatch(r.text,/Interrogator Vishas/);
+ });
+});
 test('all seven transports receive identical composed main prompt and original draft question',async()=>{
  let expected;
  for(const [id,mode] of [['ollama','api'],['ollama-cloud','api'],['openai','api'],['anthropic','api'],['xai','api'],['openai','subscription'],['anthropic','subscription']]){
