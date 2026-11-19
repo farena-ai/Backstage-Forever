@@ -1,0 +1,35 @@
+@font-face { font-family: Cinzel; src: url('../../assets/fonts/Cinzel.ttf'); font-display: swap; }
+@font-face { font-family: 'Source Sans 3'; src: url('../../assets/fonts/SourceSans3.ttf'); font-display: swap; }
+
+:root {
+  color-scheme: dark;
+  color: #f2e4c6;
+  background: #16110c;
+  font: 1rem/1.45 'Source Sans 3', 'Segoe UI', sans-serif;
+  --gold: #f6d791;
+  --border: #9a7845;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { width: min(100%, 47rem); margin-inline: auto; padding: clamp(1rem, 4vw, 2rem); }
+h1, h2, h3 { color: var(--gold); line-height: 1.18; margin: 0; }
+h1, h2 { font-family: Cinzel, Georgia, serif; }
+h1 { font-size: clamp(2rem, 5vw, 2.75rem); }
+h2 { font-size: 1.375rem; }
+p { margin: .5rem 0; }
+.muted { color: #cfbb95; }
+.eyebrow { color: var(--gold); font-size: .825rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.panel { margin-top: 1.125rem; padding: clamp(.875rem, 3vw, 1.375rem); border: 1px solid var(--border); border-radius: .75rem; background: #23180e; }
+label { display: block; font-weight: 700; margin-bottom: .25rem; }
+.badge { margin: 1.125rem 0 .375rem; }
+button, select { font: inherit; min-height: 2.75rem; color: inherit; background: #342314; border: 1px solid var(--border); border-radius: .45rem; padding: .45rem .75rem; }
+select { width: min(100%, 20rem); }
+button { text-align: left; }
+button:not(:disabled), select { cursor: pointer; }
+button:not(:disabled):hover { background: #4b331b; }
+button:disabled { color: #c9b48f; border-color: #785c39; }
+button.chosen { background: #4b331b; color: #fff0c9; border-color: var(--gold); }
+button:focus-visible, select:focus-visible, h3:focus { outline: 2px solid #ffe08a; outline-offset: 3px; }
+#drill-options { display: grid; gap: .375rem; margin-top: .75rem; }
+#drill-result { margin-top: 1rem; border-top: 1px solid var(--border); padding-top: .875rem; }
+#drill-retry { margin-top: .25rem; font-weight: 700; }
