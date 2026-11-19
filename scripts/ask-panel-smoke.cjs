@@ -10,7 +10,7 @@ const { navigate } = require("./player-navigation.cjs");
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path"), assert = require("node:assert/strict");
 const { testWindow, launch: launchElectron } = require("./test-window.cjs");
-const { defaultState } = require("../src/core/validation.cjs");
+const { defaultState, validateState } = require("../src/core/validation.cjs");
 const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>tag</b> text as text\n- Train at level 14";
 (async () => {
   const tmp = await fs.realpath(os.tmpdir()), dir = await fs.mkdtemp(path.join(tmp, "forever-ask-panel-"));
@@ -20,6 +20,13 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
   const watchdog = setTimeout(() => { console.error("Ask panel fixture exceeded 120 seconds"); app?.process().kill(); process.exitCode = 1; }, 120000);
   try {
     const initial = { ...defaultState(), onboarded: true, activeProfileId: "Alpha", profiles: [{ id: "Alpha", name: "Alpha", className: "Warrior", realm: "Synthetic", level: 12, race: "Orc", faction: "Horde", goals: [], notes: "", location: { zone: "The Barrens", mapId: 1413, x: 0.6, y: 0.2 } }], provider: { id: "ollama", model: "fixture", endpoint: "http://127.0.0.1:11434", authMode: "api" } };
+    const at = "2025-01-01T00:00:00.000Z", col = (items) => ({ items, observedAt: at, complete: true });
+    Object.assign(initial.profiles[0], { source: { kind: "wow-addon", id: "fixture-alpha", updatedAt: at }, clientBuild: "1.60.1.70862", readiness: { workshop: {
+      professions: col([{ skillLineId: 171, professionId: 4, name: "Alchemy", rank: 20, maxRank: 75 }]),
+      recipes: col([{ id: 2330, skillLineId: 171, name: "Fixture Private Potion", reagentsKnown: true, reagents: [{ itemId: 765, name: "Silverleaf", required: 1 }] }]),
+      materials: { ...col([{ itemId: 765, count: 7 }]), scope: "bags-0-4" },
+    } } });
+    validateState(initial);
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(initial));
     const repo = path.resolve(__dirname, "..");
     await fs.writeFile(path.join(dir, "package.json"), JSON.stringify({ name: "backstage-forever-ask-panel-fixture", version: require("../package.json").version, main: "fixture-main.cjs" }));
@@ -36,6 +43,7 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
       providers.ask=async(req)=>{globalThis.askFixture.requests.push({prompt:req.prompt,context:req.context?'character':'none'});return ${JSON.stringify(REPLY)};};
       globalThis.askFixture={requests:[]};
       const L=load('./src/core/live-bridge.cjs');
+      L.rememberLiveKey('fixture-alpha','Player-1-00000001');
       L.LiveBridge.prototype.start=function(){globalThis.liveFixture={bridge:this,L};this.signal='no-signal';};
       L.LiveBridge.prototype.stop=function(){this.signal='off';this.frame=null;};
       load('./src/main.cjs');
@@ -51,19 +59,20 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
     assert.equal(await toggle.isChecked(), true, "panel on by default");
     await page.locator("#ask-panel-hide").waitFor();
     // The synthetic game window: the secondary display when there is one (test windows never use the primary).
-    const ask = (id, text) => app.evaluate(({ screen }, { id, text }) => {
-      const { bridge, L } = globalThis.liveFixture, hash = 4242;
+    const ask = (id, text, other = false) => app.evaluate(({ screen }, { id, text, other }) => {
+      const { bridge, L } = globalThis.liveFixture, owner = L.liveKeyFor("fixture-alpha"), hash = other ? owner % 65535 + 1 : owner;
       const displays = screen.getAllDisplays(), primary = screen.getPrimaryDisplay();
       const target = displays.find((d) => d.id !== primary.id) || primary;
       const r = screen.dipToScreenRect ? screen.dipToScreenRect(null, target.workArea) : target.workArea;
       bridge.gameRect = { x: r.x, y: r.y, width: r.width, height: r.height, at: Date.now() };
       bridge.frame = { version: 4, seq: 1, combat: false, characterHash: hash, receivedAt: Date.now(), changedAt: Date.now() };
+      bridge.signal = "live";
       // Pages arrive out of order and twice (two passes); the question is reported once.
       const pages = L.encodeQuestionPages(id, text, hash).map(L.parseQuestionPage);
       for (const p of [...pages.reverse(), ...pages]) bridge.questionPage(p);
       clearTimeout(bridge.slowTimer);
       return { area: target.workArea, secondary: target.id !== primary.id, primary: primary.bounds };
-    }, { id, text });
+    }, { id, text, other });
     const panelWindow = () => app.evaluate(({ BrowserWindow }) => {
       const w = BrowserWindow.getAllWindows().find((x) => /ask-panel\.html$/.test(x.webContents.getURL()));
       return w ? { visible: w.isVisible(), focused: w.isFocused(), focusable: typeof w.isFocusable === "function" ? w.isFocusable() : null, top: w.isAlwaysOnTop(), bounds: w.getBounds(), taskbar: null, focusedWindow: BrowserWindow.getFocusedWindow()?.id === w.id } : null;
@@ -146,6 +155,38 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
     assert.equal(panel.visible, false, "switched off: no panel");
     await page.locator("#ask-panel-toggle").check();
     await page.waitForFunction(async () => (await window.backstage.askInGameSettings()).enabled === true);
+    // Use the real share IPC and panel submit; the stored inventory is synthetic.
+    const privateReply = view.getByText("7 saved carried", { exact: false }).last();
+    const providerCount = () => app.evaluate(() => globalThis.askFixture.requests.length);
+    const submitSaved = async () => {
+      await view.locator("[data-ap-input]").fill("Can I craft recipe #2330?");
+      await view.locator("[data-ap-input]").press("Enter");
+    };
+    await page.evaluate(() => window.backstage.setInGameShare(true));
+    const beforeSaved = await providerCount();
+    await ask(20, "\u0001open");
+    await submitSaved();
+    await privateReply.waitFor();
+    assert.equal(await providerCount(), beforeSaved, "verified saved stock stays local");
+    await ask(21, "\u0001open", true);
+    await privateReply.waitFor({ state: "detached" });
+    assert.equal(await view.evaluate(async () => (await window.askPanel.state()).log.some(x => x.answer?.text.includes("7 saved carried"))), false);
+    assert.ok(await view.getByText("And where do I train?", { exact: false }).count(), "public exchanges survive the game switch");
+    await submitSaved();
+    await view.getByText("another character is active", { exact: false }).last().waitFor();
+    assert.equal(await providerCount(), beforeSaved, "unverified saved question also stays local");
+    await ask(22, "\u0001open");
+    await submitSaved();
+    await privateReply.waitFor();
+    await page.evaluate(() => window.backstage.setInGameShare(false));
+    await privateReply.waitFor({ state: "detached" });
+    await ask(23, "Is a two-handed axe good for a level 13 warrior?");
+    await view.getByText("Is a two-handed axe good for a level 13 warrior?", { exact: false }).last().waitFor();
+    await view.waitForFunction(() => document.querySelector(".ap-item:last-child")?.dataset.status === "answer");
+    const next = await app.evaluate(() => globalThis.askFixture.requests.at(-1));
+    assert.equal(await providerCount(), beforeSaved + 1);
+    assert.equal(next.context, "none");
+    assert.doesNotMatch(next.prompt, /Fixture Private Potion|saved carried|#2330/);
     // BF_REAL_CLICK=1: a genuine Windows mouse click on the panel's close button (not Chrome's
     // synthetic input), which is what a player does. Moves the mouse, so it is local only, never CI.
     if (process.env.BF_REAL_CLICK === "1" && process.platform === "win32") {

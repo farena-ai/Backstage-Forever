@@ -8,7 +8,7 @@
   const $ = (sel) => root.querySelector(sel);
   const SOURCE = { travel: "Forever travel reference · offline", npc: "Forever NPC reference · offline", quick: "Companion · offline answer", scope: "Companion", ai: "Companion · AI suggestion" };
   const input = $("[data-ap-input]"), form = $("[data-ap-form]"), list = $("[data-ap-log]"), body = $("[data-ap-body]");
-  let typing = 0, sending = false;
+  let typing = 0, sending = false, revision = -1;
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
   function entry(s) {
     const item = el("article", "ap-item");
@@ -24,7 +24,8 @@
     return item;
   }
   function paint(v) {
-    if (!v || !Array.isArray(v.log)) return;
+    if (!v || !Array.isArray(v.log) || !Number.isSafeInteger(v.revision) || v.revision < revision) return;
+    revision = v.revision;
     list.replaceChildren(...v.log.map(entry));
     $("[data-ap-empty]").hidden = v.log.length > 0;
     const last = v.log.at(-1), at = last && Number.isFinite(last.at) ? new Date(last.at) : null;

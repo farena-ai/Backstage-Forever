@@ -14,6 +14,9 @@ const RETRY_MS = 2000, RETRY_FOR_MS = 30000;
 const PLAYER_ERRORS = /^(Provider |Could not reach|Save an API|Choose a model|Choose a character|Choose the current character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription |The free AI)/;
 const BUSY = /^Provider request (already in progress|is still stopping)/;
 const NO_MODEL = /^Choose a model in Connections/;
+const validHash = (hash) => Number.isInteger(hash) && hash > 0 && hash <= 0xffff;
+const UNVERIFIED = "The game character could not be matched to the active save. Ask in the desktop Companion instead.";
+const RETIRED = "Saved character context changed while waiting. You can ask again in Companion.";
 
 /**
  * Who the question may describe: share is the Companion page's "Use my active character" setting;
@@ -32,52 +35,99 @@ function playerMessage(error) {
 }
 
 class InGameAsk {
-  constructor({ companion, getState, liveKeyFor = () => null, panel, notify = () => {}, getShare = () => false, wait = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now }) {
-    Object.assign(this, { companion, getState, liveKeyFor, panel, notify, getShare, wait, now });
+  constructor({ companion, getState, liveKeyFor = () => null, getLiveHash = () => null, panel, notify = () => {}, getShare = () => false, wait = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now }) {
+    Object.assign(this, { companion, getState, liveKeyFor, getLiveHash, panel, notify, getShare, wait, now });
     this.queue = Promise.resolve();
     this.handled = 0;
     this.seq = 0;
     this.lastHash = null;
+    this.originCurrent = false;
+    this.savedEpoch = 0;
+    this.savedKey = null;
+    this.liveHash = null;
+  }
+  retireSavedScope() {
+    this.savedEpoch++;
+    this.panel.clearSaved?.();
+  }
+  syncSavedScope() {
+    const state = this.getState();
+    const source = state.profiles?.find(p => p.id === state.activeProfileId)?.source;
+    const expected = source?.kind === "wow-addon" ? this.liveKeyFor(source.id) : null;
+    const observed = this.getLiveHash();
+    const live = validHash(observed) ? observed : null;
+    const share = this.getShare() === true;
+    const key = JSON.stringify([state.activeProfileId, source?.kind, source?.id, expected, live, share]);
+    if (live !== this.liveHash) { this.liveHash = live; this.originCurrent = false; }
+    if (key !== this.savedKey) {
+      this.savedKey = key;
+      this.retireSavedScope();
+    }
+    return { state, expected, live, share };
+  }
+  rememberOrigin(hash) {
+    const next = validHash(hash) ? hash : null;
+    if (next !== this.lastHash) {
+      this.lastHash = next;
+      this.retireSavedScope();
+    }
+    this.originCurrent = next !== null && next === this.liveHash;
   }
   /** Queues a question from the live strip: { id, text, characterHash }. Resolves when answered. */
   handle(question) {
     // The owl button (0.39.1): open the panel with the keyboard in its question box.
     if (question && question.kind === "open") {
-      if (Number.isInteger(question.characterHash)) this.lastHash = question.characterHash;
+      this.syncSavedScope();
+      this.rememberOrigin(question.characterHash);
       this.panel.open?.();
       return Promise.resolve(null);
     }
     if (!question || typeof question.text !== "string" || !question.text.trim() || question.text.length > 1000) return Promise.resolve(null);
-    const run = this.queue.then(() => this.answer(question)).catch(() => null);
+    return this.enqueue(question.text, question.characterHash, this.syncSavedScope(), true);
+  }
+  enqueue(text, characterHash, { expected, live, share }, fromStrip = false) {
+    if (fromStrip) this.rememberOrigin(characterHash);
+    const prompt = text.trim();
+    const saved = Boolean(workshopQuestion(prompt) || dungeonQuestion(prompt));
+    // Capture permission before joining the queue; a later opener or opt-in cannot upgrade it.
+    const savedOwner = saved && share && this.originCurrent && validHash(expected) && expected === characterHash && live === characterHash
+      ? this.savedEpoch : null;
+    const run = this.queue.then(() => this.answer({ prompt, characterHash, saved, savedOwner })).catch(() => null);
     this.queue = run;
     return run;
   }
   /** A question typed in the panel: asked for the character that last opened it from the game. */
   askTyped(text) {
-    return this.handle({ text, characterHash: this.lastHash });
+    if (typeof text !== "string" || !text.trim() || text.length > 1000) return Promise.resolve(null);
+    const scope = this.syncSavedScope();
+    return this.enqueue(text, this.lastHash, scope);
   }
-  async answer({ text, characterHash = null }) {
-    if (Number.isInteger(characterHash)) this.lastHash = characterHash;
-    const prompt = text.trim();
+  async answer({ prompt, characterHash, saved, savedOwner }) {
     const id = ++this.seq;
-    const state = this.getState();
-    const profile = state.profiles?.find((p) => p.id === state.activeProfileId) || null;
-    const expected = profile?.source?.kind === "wow-addon" ? this.liveKeyFor(profile.source.id) : null;
-    const savedPreparation = Boolean(workshopQuestion(prompt) || dungeonQuestion(prompt));
-    let { shareProfile, note } = sharing({ share: this.getShare() === true, expected, characterHash });
-    if (shareProfile && savedPreparation && !(Number.isInteger(expected) && expected > 0 && expected === characterHash)) {
+    const { state, expected, share } = this.syncSavedScope();
+    let { shareProfile, note } = sharing({ share, expected, characterHash });
+    if (shareProfile && saved && savedOwner !== this.savedEpoch) {
       shareProfile = false;
-      note = "The game character could not be matched to the active save. Ask in the desktop Companion instead.";
+      note = savedOwner === null ? UNVERIFIED : RETIRED;
     }
-    this.panel.show({ id, status: "thinking", question: prompt, at: this.now() });
+    this.panel.show({ id, status: "thinking", question: prompt, at: this.now() }, { saved: saved && shareProfile });
     let request = { provider: state.provider.id, prompt, shareProfile, memoryIds: [] };
     if (state.activeProfileId) request.profileId = state.activeProfileId;
     const started = this.now();
+    const retired = () => {
+      this.syncSavedScope();
+      return saved && request.shareProfile && savedOwner !== this.savedEpoch;
+    };
     for (;;) {
+      if (retired()) {
+        request = { ...request, shareProfile: false };
+        note = RETIRED;
+      }
       try {
         const result = await this.companion.ask(request);
+        if (retired()) return null;
         this.handled++;
-        this.panel.show({ id, status: "answer", question: prompt, answer: { text: result.text, kind: result.kind }, note, at: this.now() });
+        this.panel.show({ id, status: "answer", question: prompt, answer: { text: result.text, kind: result.kind }, note, at: this.now() }, { saved: saved && request.shareProfile });
         // The exchange also joins the Companion page's conversation.
         this.notify({ question: prompt, shareProfile: request.shareProfile, result: { text: result.text, kind: result.kind, npc: result.npc, travel: result.travel, lookups: result.lookups, conversation: result.conversation } });
         return result;
@@ -85,18 +135,11 @@ class InGameAsk {
         // The main window is answering something else: wait for it, a little.
         if (BUSY.test(String(error?.message)) && this.now() - started < RETRY_FOR_MS) {
           await this.wait(RETRY_MS);
-          if (savedPreparation && request.shareProfile) {
-            const current = this.getState();
-            const source = current.profiles?.find(p => p.id === current.activeProfileId)?.source;
-            if (this.getShare() !== true || current.activeProfileId !== request.profileId || source?.kind !== "wow-addon" || this.liveKeyFor(source.id) !== characterHash) {
-              request = { ...request, shareProfile: false };
-              note = "Saved character context changed while waiting. You can ask again in Companion.";
-            }
-          }
           continue;
         }
+        if (retired()) return null;
         const message = playerMessage(error);
-        this.panel.show({ id, status: "error", question: prompt, message, at: this.now() });
+        this.panel.show({ id, status: "error", question: prompt, message, at: this.now() }, { saved: saved && request.shareProfile });
         return null;
       }
     }

@@ -748,7 +748,8 @@ class LiveBridge {
     }
   }
   line(line) {
-    const before = JSON.stringify([this.signal, this.frame?.seq]);
+    const eventKey = () => JSON.stringify([this.signal, this.frame?.seq, this.frame?.characterHash]);
+    const before = eventKey();
     let changed = false;
     if (line.startsWith("ok ")) {
       // "ok <corner> <w> <h> <base64> [pw|screen]"; older workers (and saved fixtures) send
@@ -791,7 +792,7 @@ class LiveBridge {
       this.signal = line === "gone" ? "nogame" : line;
       if (line !== "error" && line !== "small") this.gameRect = null;
     }
-    if (changed || JSON.stringify([this.signal, this.frame?.seq]) !== before) this.emit();
+    if (changed || eventKey() !== before) this.emit();
   }
   /**
    * Debugging (BF_LIVE_DUMP=<dir>): writes the top three rows of a capture whose hairline did not
