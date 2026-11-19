@@ -6902,6 +6902,47 @@
           "text": "Know what this covers. Saved preparation still belongs in desktop Companion, not the in-game Ask Panel. This change does not qualify general Companion Q&A as Forever evidence. Atlas remains a separately labeled reference, not a substitute for verified Forever facts."
         }
       ]
+    },
+    {
+      "version": "1.12.1",
+      "channel": "stable",
+      "source": "docs/releases/1.12.1.md",
+      "title": "Backstage Forever 1.12.1 — Forever dungeon and raid questions",
+      "changes": [
+        {
+          "id": "forever-instance-facts-offline",
+          "kind": "fixed",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": "companion",
+          "section": "Changes",
+          "text": "Recognized dungeon and raid fact questions stay local. Ask Companion Where is #dm? or What bosses are in Scarlet Monastery?. If there is no verified current Forever answer, it says so rather than using Classic Atlas facts or asking a model. Atlas remains a separate reference."
+        },
+        {
+          "id": "forever-instance-travel-origin",
+          "kind": "fixed",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Travel keeps the destination separate from the starting point. A dungeon named as the origin is not treated as the destination, and an unresolved explicit origin does not silently fall back to your character’s location."
+        },
+        {
+          "id": "forever-historical-instance-observations",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Historical observations are not a current boss list. Historical encounters for #sm and Historical encounters for #rfk label the Forever build and collection window. These are not proof of access or of your character’s defeats."
+        }
+      ]
     }
   ],
   "excluded": [
