@@ -15,7 +15,15 @@ namespace System.Speech.Recognition
     public class RecognizeCompletedEventArgs : System.EventArgs { public System.Exception Error; public bool Cancelled; }
     public sealed class SpeechRecognitionEngine : System.IDisposable
     {
-        public static RecognizerInfo[] InstalledRecognizers() { if (System.Environment.GetEnvironmentVariable("BF_VOICE_STUB_BLOCK") == "1") System.Threading.Thread.Sleep(20000); return new RecognizerInfo[] { new RecognizerInfo() }; }
+        public static RecognizerInfo[] InstalledRecognizers()
+        {
+            if (System.Environment.GetEnvironmentVariable("BF_VOICE_STUB_BLOCK") == "1")
+            {
+                BackstageVoiceStub.Record("block-fake-enumeration");
+                System.Threading.Thread.Sleep(20000);
+            }
+            return new RecognizerInfo[] { new RecognizerInfo() };
+        }
         public SpeechRecognitionEngine(RecognizerInfo info) {}
         public System.TimeSpan InitialSilenceTimeout, BabbleTimeout, EndSilenceTimeout, EndSilenceTimeoutAmbiguous;
         public event System.EventHandler<SpeechHypothesizedEventArgs> SpeechHypothesized;
