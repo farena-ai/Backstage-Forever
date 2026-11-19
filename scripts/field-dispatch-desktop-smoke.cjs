@@ -1,5 +1,6 @@
 "use strict";
 const assert = require("node:assert/strict");
+const { once } = require("node:events");
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
@@ -204,14 +205,25 @@ const { version } = require("../package.json");
       const before = await fs.readFile(file, "utf8");
       await close();
       await installed("combat", version, { setup: `
+        const { HAIRLINE, HAIRLINE_WIDTH, crc8, encodeHairlineFrame, encodeHairlineCells } = load('./src/core/live-bridge.cjs');
         const subscribe = L.prototype.subscribe;
         L.prototype.subscribe = function(fn) {
           this.platform = 'win32'; this.enabled = true;
           let now = 10000;
           this.now = () => now;
-          app.fixtureCombat = combat => {
-            this.frame = { combat, receivedAt: now };
-            this.signal = 'live'; this.emit();
+          app.fixtureCombat = (combat, seq) => {
+            const payload = Buffer.alloc(27);
+            payload[0] = HAIRLINE.version;
+            payload[1] = seq;
+            payload[10] = Number(combat);
+            payload.writeUInt16BE(4242, 23);
+            payload[25] = ++now % 256;
+            payload[26] = crc8(payload, 26);
+            const cells = encodeHairlineCells(encodeHairlineFrame(payload, []));
+            const rgb = Buffer.from(cells.flatMap(cell => [...cell, ...cell]));
+            this.read('ok topleft ' + HAIRLINE_WIDTH + ' 1 ' + rgb.toString('base64') + ' pw\\n');
+            const frame = this.current();
+            return { seq: frame?.seq, characterHash: frame?.characterHash, combat: frame?.combat };
           };
           app.fixtureCombatExpires = () => {
             this.line('nogame'); // Signal changes but the last frame is still fresh.
@@ -231,7 +243,10 @@ const { version } = require("../package.json");
         } : fn);
       ` });
       await page.locator("#main-content").waitFor();
-      await app.evaluate(({ app }) => app.fixtureCombat(true));
+      const frame = async (combat, seq) => assert.deepEqual(
+        await app.evaluate(({ app }, [combat, seq]) => app.fixtureCombat(combat, seq), [combat, seq]),
+        { seq, characterHash: 4242, combat }, "The worker sample must decode to the intended live frame");
+      await frame(true, 6);
       await gate(true);
       assert.equal(await page.evaluate(() => backstage.fieldDispatchStartup()), null, "Main must defer during fresh combat");
       await noRecap();
@@ -241,24 +256,42 @@ const { version } = require("../package.json");
       await shown().getByRole("heading", { name: "Dispatch history" }).waitFor();
       await page.keyboard.press("Escape");
       await shown().waitFor({ state: "hidden" });
-      await app.evaluate(({ app }) => { app.holdFixtureDispatch = true; app.fixtureCombat(false); });
-      await expectMain(() => app.evaluate(({ app }) => !!app.releaseFixtureDispatch));
       await page.evaluate(() => backstage.onLiveLink(status => { window.fixtureLive = status; }));
-      await app.evaluate(({ app }) => app.fixtureCombat(true));
-      await page.waitForFunction(() => window.fixtureLive?.frame?.combat === true);
-      await app.evaluate(({ app }) => app.releaseFixtureDispatch());
+      await app.evaluate(({ app }) => { app.holdFixtureDispatch = true; });
+      await frame(false, 7);
+      await expectMain(() => app.evaluate(({ app }) => !!app.releaseFixtureDispatch));
+      await frame(true, 7); // Same sequence, identity and worker signal as the held offer.
       assert.equal(await page.evaluate(() => backstage.fieldDispatchStartup()), null);
+      await app.evaluate(({ app }) => app.releaseFixtureDispatch());
+      const result = await page.waitForFunction(() => {
+        if (document.querySelector("dialog.field-dispatch[open]")) return "stale recap opened";
+        if (window.fixtureLive?.frame?.combat === true && window.fixtureLive.frame.seq === 7) return "combat delivered";
+      });
+      assert.equal(await result.jsonValue(), "combat delivered", "A held offer cannot open on same-sequence combat entry");
       await noRecap();
       assert.equal((await read(file)).pending.id, `stable:1.9.0..${version}`);
-      // Retire the combat observation without inventing a fresh out-of-combat frame.
+      // Keep verifying that repeated worker status can retire a stale frame, but
+      // do it in the background so it cannot mask the same-sequence exit below.
+      await gate(false);
       await app.evaluate(({ app }) => app.fixtureCombatExpires());
       await page.waitForFunction(() => window.fixtureLive?.signal === "nogame" && !window.fixtureLive.frame);
+      await frame(true, 7);
+      await page.waitForFunction(() => window.fixtureLive?.frame?.combat === true);
+      await gate(true);
+      assert.equal(await page.evaluate(() => backstage.fieldDispatchStartup()), null);
+      await frame(false, 7);
       await shown().getByRole("heading", { name: `Updated from 1.9.0 to ${version}` }).waitFor();
       await close();
-      console.log("Fresh combat deferred automatic recap, not manual history; safe readiness resumed it");
+      console.log("Same-sequence combat blocked the held recap, not manual history; same-sequence combat exit resumed it");
     }
     if (run("reset")) {
       const file = await installed("reset", "1.9.0");
+      const dir = path.dirname(file);
+      const journalPath = path.join(dir, "state.json");
+      const marker = path.join(dir, "field-dispatch.reset");
+      const routeReview = path.join(dir, "route-review.json");
+      const routeBytes = Buffer.from('{ "routes": {} }\n');
+      await fs.writeFile(routeReview, routeBytes);
       await complete();
       await gate(true);
       await recorded(file, state => state.lastRun.version === "1.9.0");
@@ -274,6 +307,21 @@ const { version } = require("../package.json");
         };
       `;
       await installed("reset", version, { setup: failUnlink + `
+        const rename = fixtureFs.renameSync;
+        const marker = require('node:path').join(app.getPath('userData'), 'field-dispatch.reset');
+        fixtureFs.renameSync = (from, to) => {
+          if (to === marker && app.fixtureFailRetirement) {
+            app.fixtureFailRetirement = false;
+            throw Object.assign(new Error('fixture retirement promotion failure'), { code: 'EBUSY' });
+          }
+          return rename(from, to);
+        };
+        const GameSync = load('./src/core/game-sync.cjs').GameSync;
+        const reset = GameSync.prototype.reset;
+        GameSync.prototype.reset = function (...args) {
+          app.fixtureGameReset = (app.fixtureGameReset || 0) + 1;
+          return reset.apply(this, args);
+        };
         electron.dialog.showMessageBox = async (_win, options) => {
           if (options.title !== 'Delete all local data?') throw Error('Unexpected dialog');
           return { response: app.fixtureConfirmReset ? 1 : 0 };
@@ -288,7 +336,20 @@ const { version } = require("../package.json");
       assert.equal(await page.evaluate(() => backstage.resetData()), null);
       assert.equal(await fs.readFile(file, "utf8"), old);
       assert.equal(await page.evaluate(async () => (await backstage.bootstrap()).state.profiles[0]?.id), "Fixture");
-      await app.evaluate(({ app }) => { app.fixtureConfirmReset = true; });
+      const journalBytes = await fs.readFile(journalPath);
+      await app.evaluate(({ app }) => { app.fixtureConfirmReset = app.fixtureFailRetirement = true; });
+      await page.locator('[data-command="reset"]').press("Enter");
+      await page.locator('#toast.error').getByText('The action could not be completed. Check your input or file and try again.', { exact: true }).waitFor();
+      assert.equal(await app.evaluate(({ app }) => app.fixtureFailRetirement), false, "The retirement promotion fault must fire");
+      assert.equal(await app.evaluate(({ app }) => app.fixtureGameReset || 0), 0,
+        "Failed retirement must not start resetting game state");
+      assert.deepEqual(await fs.readFile(routeReview), routeBytes, "Failed retirement must preserve local route review bytes");
+      assert.deepEqual(await fs.readFile(journalPath), journalBytes);
+      assert.equal(await fs.readFile(file, "utf8"), old);
+      await absent(marker);
+      assert.deepEqual((await fs.readdir(dir)).filter(name => /^field-dispatch.*\.tmp$/.test(name)), []);
+
+      // Retry the same action with only the failed promotion released; the old file stays locked.
       await page.locator('[data-command="reset"]').press("Enter");
       await expectMain(() => app.evaluate(({ app }) => !!app.fixtureFailedUnlink));
       const journal = await page.evaluate(async () => (await backstage.bootstrap()).state);
@@ -296,20 +357,28 @@ const { version } = require("../package.json");
       assert.equal(journal.onboarded, false);
       await page.getByText("Local data and saved keys deleted.", { exact: true }).waitFor({ timeout: 2500 });
       await noRecap();
-      assert.equal(await fs.readFile(file, "utf8"), old, "The locked predecessor must still exist at process exit");
-      await close();
+      await absent(routeReview);
+      await cdp.detach();
+      const child = app.process(), exited = once(child, "exit");
+      // app.exit bypasses before-quit and its cleanup, without stranding Chromium subprocesses.
+      await app.evaluate(({ app }) => { setTimeout(() => app.exit(23), 50); });
+      assert.deepEqual(await exited, [23, null]);
+      app = null;
+      assert.equal(await fs.readFile(file, "utf8"), old, "The locked predecessor must survive forced exit");
+      assert.equal(await fs.readFile(marker, "utf8"), "reset\n");
       await installed("reset", version, { legacy: false, setup: failUnlink });
       await gate(true);
       await page.locator('[data-command="setup-manual"]').press("Enter");
       await page.locator('.onboarding-form [data-command="setup-company"]').press("Enter");
       await page.locator("#main-content").waitFor();
       await recorded(file, state => state.lastRun.version === version && !state.pending && !state.acknowledged);
+      await absent(marker);
       await noRecap();
       await updates();
       await opener().press("Enter");
       await shown().getByRole("heading", { name: "Dispatch history" }).waitFor();
       await close();
-      console.log("Confirmed reset stayed successful after unlink failed; restart did not revive the old recap");
+      console.log("Failed retirement preserved local data; retry succeeded with a locked predecessor and forced restart did not revive it");
     }
   };
   try {

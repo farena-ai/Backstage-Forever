@@ -1106,6 +1106,8 @@ app.whenReady().then(async () => {
       noLink: true,
     });
     if (result.response !== 1) return null;
+    // If retirement cannot be persisted, leave the journal and its related state untouched.
+    fieldDispatch.beginReset();
     resetting = true;
     recovery.clear();
     characterGuidance.clear();
@@ -1120,7 +1122,6 @@ app.whenReady().then(async () => {
       const knowledgeReset = knowledge.reset();
       await game.reset();
       store.recovery.disconnectSavedGame();
-      fieldDispatch.beginReset();
       latestObservation = null;
       const updateReset = updater.reset();
       chatgpt.reset();

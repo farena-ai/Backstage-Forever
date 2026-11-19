@@ -748,7 +748,7 @@ class LiveBridge {
     }
   }
   line(line) {
-    const eventKey = () => JSON.stringify([this.signal, this.frame?.seq, this.frame?.characterHash]);
+    const eventKey = () => JSON.stringify([this.signal, this.frame?.seq, this.frame?.characterHash, this.frame?.combat]);
     const before = eventKey();
     let changed = false;
     if (line.startsWith("ok ")) {
