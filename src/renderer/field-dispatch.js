@@ -62,6 +62,7 @@ window.FieldDispatch = (() => {
       const { openedFrom, update, invoker } = session;
       session = null;
       if (root.open) root.close();
+      if (reason === "reset") return;
       const target = typeof invoker === "function" ? invoker() : invoker;
       if (target?.isConnected) target.focus({ preventScroll: true });
       if (openedFrom === "recap" && update && (reason === "acknowledged" || reason === "later")) onDismiss(reason);
@@ -250,6 +251,7 @@ window.FieldDispatch = (() => {
       return true;
     }
     return {
+      reset: () => finish("reset"),
       openRecap: (model, invoker, locale) => open("recap", model, invoker, locale),
       openHistory: (model, invoker, locale) => open("history", model, invoker, locale),
     };

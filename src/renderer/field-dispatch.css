@@ -144,7 +144,8 @@
 .field-dispatch__title:focus-visible { outline: 2px solid #f6d999; outline-offset: 2px; }
 .field-dispatch__content button { border-color: #796043; background: #fff8e9; color: var(--dispatch-ink); }
 .field-dispatch__content button:hover { background: #e5d2ae; }
-.field-dispatch__content :is(button, input, summary):focus-visible { outline: 2px solid #205953; outline-offset: 2px; }
+/* Override the shell's important gold outline only on the light paper surface. */
+.field-dispatch__content :is(button, input, summary):focus-visible { outline: 2px solid #205953 !important; outline-offset: 2px; }
 .field-dispatch button.field-dispatch__action { margin: .4em 0 0; }
 @media (max-width: 32rem) {
   .field-dispatch__search { grid-template-columns: minmax(0, 1fr); }

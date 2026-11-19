@@ -8,6 +8,11 @@ const catalog = require("../../data/whats-new-catalog.json");
 const STATE_LIMIT = 4096;
 const INVALID = Symbol("invalid dispatch state");
 
+function exists(file) {
+  try { fs.lstatSync(file); return true; }
+  catch (error) { if (error.code === "ENOENT") return false; throw error; }
+}
+
 function read(file) {
   try {
     const stat = fs.lstatSync(file);
@@ -52,6 +57,7 @@ class FieldDispatchStore {
   #presented;
   constructor({ dir, running, installed, freshInstall = false, write = atomic }) {
     this.file = path.join(dir, "field-dispatch.json");
+    this.resetMarker = path.join(dir, "field-dispatch.reset");
     this.running = releaseIdentity(running);
     this.installed = installed;
     this.freshInstall = freshInstall;
@@ -61,8 +67,11 @@ class FieldDispatchStore {
     if (!this.installed) return "source";
     if (this.#state) return "same";
     try {
-      const result = recordSuccessfulRun(read(this.file), this.running, { freshInstall: this.freshInstall });
+      const retired = exists(this.resetMarker);
+      const result = recordSuccessfulRun(retired ? null : read(this.file), this.running,
+        { freshInstall: retired || this.freshInstall });
       if (result.changed) this.write(this.file, JSON.stringify(result.state));
+      if (retired && result.changed) fs.rmSync(this.resetMarker, { force: true });
       this.#state = result.state;
       return result.reason;
     } catch { return "unavailable"; }
@@ -93,10 +102,20 @@ class FieldDispatchStore {
     this.#state = result.state;
     return true;
   }
-  reset() {
-    if (this.installed) fs.rmSync(this.file, { force: true });
+  beginReset() {
+    // Persist the retirement before the destructive reset. If the old file is
+    // locked or the process exits during cleanup, it cannot become a predecessor.
+    if (this.installed) this.write(this.resetMarker, "reset\n");
     this.#state = null;
+    this.#presented = null;
     this.freshInstall = true;
+  }
+  finishReset() {
+    if (!this.installed) return;
+    try {
+      fs.rmSync(this.file, { force: true });
+      fs.rmSync(this.resetMarker, { force: true });
+    } catch { /* The retirement marker stays in force until a fresh baseline can be saved. */ }
   }
 }
 module.exports = { FieldDispatchStore };

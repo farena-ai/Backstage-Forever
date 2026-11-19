@@ -56,7 +56,7 @@ function harness(overrides = {}) {
   const context = vm.createContext({
     window: {
       addEventListener: () => {},
-      backstage: { bootstrap: () => new Promise(() => {}), voiceCancel: async () => ({phase:"idle"}), ...overrides },
+      backstage: { bootstrap: () => new Promise(() => {}), onLiveLink: () => {}, voiceCancel: async () => ({phase:"idle"}), ...overrides },
     },
     document: {
       addEventListener: (name, fn) => (documentHandlers[name] ??= []).push(fn),

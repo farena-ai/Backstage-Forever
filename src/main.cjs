@@ -579,7 +579,9 @@ app.whenReady().then(async () => {
   handle("fieldDispatchStartup", (...args) => {
     if (args.length) throw new Error("Invalid release recap request.");
     if (!store.state.onboarded || !win.isVisible() || win.isMinimized() || !win.isFocused()) return null;
-    fieldDispatch.start();
+    if (liveBridge.enabled && liveBridge.current()?.combat) return null;
+    const status = fieldDispatch.start();
+    if (status === "unavailable") return { retry: true };
     return { offer: fieldDispatch.offer() };
   });
   handle("fieldDispatchPresented", (id, ...extra) => !extra.length && fieldDispatch.presented(id));
@@ -1104,6 +1106,8 @@ app.whenReady().then(async () => {
       noLink: true,
     });
     if (result.response !== 1) return null;
+    // If retirement cannot be persisted, leave the journal and its related state untouched.
+    fieldDispatch.beginReset();
     resetting = true;
     recovery.clear();
     characterGuidance.clear();
@@ -1127,7 +1131,7 @@ app.whenReady().then(async () => {
       const fresh = store.reset();
       wishlist?.clear(); // starred loot belongs to the characters just deleted
       community?.reset(); // local install id, sent marks and pack; shared facts stay on the server
-      fieldDispatch.reset();
+      fieldDispatch.finishReset();
       return fresh;
     } finally {
       resetting = false;

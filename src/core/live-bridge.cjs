@@ -748,7 +748,7 @@ class LiveBridge {
     }
   }
   line(line) {
-    const eventKey = () => JSON.stringify([this.signal, this.frame?.seq, this.frame?.characterHash]);
+    const eventKey = () => JSON.stringify([this.signal, this.frame?.seq, this.frame?.characterHash, this.frame?.combat]);
     const before = eventKey();
     let changed = false;
     if (line.startsWith("ok ")) {
@@ -792,7 +792,8 @@ class LiveBridge {
       this.signal = line === "gone" ? "nogame" : line;
       if (line !== "error" && line !== "small") this.gameRect = null;
     }
-    if (changed || eventKey() !== before) this.emit();
+    // The worker can repeat the same status as the last frame ages out.
+    if (changed || eventKey() !== before || this.hasFreshFrame() !== Boolean(this.emittedFreshFrame)) this.emit();
   }
   /**
    * Debugging (BF_LIVE_DUMP=<dir>): writes the top three rows of a capture whose hairline did not
@@ -892,12 +893,16 @@ class LiveBridge {
     const r = this.gameRect;
     return r && this.now() - r.at <= RECT_FRESH_MS ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
   }
-  /** Live frame only while fresh; older frames are never presented as live. */
-  current() {
-    if (!this.frame || this.now() - this.frame.receivedAt > FRESH_MS) return null;
+  hasFreshFrame() {
+    if (!this.frame || this.now() - this.frame.receivedAt > FRESH_MS) return false;
     // An unchanged strip stays live while its heartbeat moves; a compact strip whose heartbeat
     // froze (hung game UI) is a picture, not a live game.
-    if ((this.frame.version === V4.version || this.frame.version === HAIRLINE.version) && this.frame.changedAt && this.now() - this.frame.changedAt > HEARTBEAT_STALE_MS) return null;
+    if ((this.frame.version === V4.version || this.frame.version === HAIRLINE.version) && this.frame.changedAt && this.now() - this.frame.changedAt > HEARTBEAT_STALE_MS) return false;
+    return true;
+  }
+  /** Live frame only while fresh; older frames are never presented as live. */
+  current() {
+    if (!this.hasFreshFrame()) return null;
     const out = { ...this.frame, ageMs: this.now() - this.frame.receivedAt };
     // Quest pages only count for the same character and while recently seen.
     for (const [kind, v] of Object.entries(this.pageLists || {})) {
@@ -923,6 +928,6 @@ class LiveBridge {
     return { enabled: this.enabled, signal: this.enabled ? (frame ? "live" : this.signal === "live" ? "stale" : this.signal) : "off", frame, strip, last };
   }
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
-  emit() { const s = this.status(); for (const fn of this.listeners) { try { fn(s); } catch {} } }
+  emit() { const s = this.status(); this.emittedFreshFrame = !!s.frame; for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
 module.exports = { HAIRLINE, HAIRLINE_REGION, HAIRLINE_WIDTH, TOPLEFT_REGION, hairlineThresholds, crc16, encodeHairlineFrame, encodeHairlineCells, decodeHairlineCells, decodeHairline, hairlineHint, encodeQuestionPages, parseQuestionPage, assembleQuestion, OPEN_SIGNAL, QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES, QUESTION_MAX_CHARS, QUESTION_INTERVAL_MS, encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };

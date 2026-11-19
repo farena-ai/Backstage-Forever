@@ -1743,6 +1743,7 @@ root.addEventListener("click", (event) => {
           formDrafts.clear();
           chooseSetup("");
           setupOpen = true;
+          desktopDispatch.reset();
           gameStatus = {};
           adventureBrief = null;
           briefProfileId = null;

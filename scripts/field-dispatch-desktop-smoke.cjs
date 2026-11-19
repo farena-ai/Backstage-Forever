@@ -1,5 +1,6 @@
 "use strict";
 const assert = require("node:assert/strict");
+const { once } = require("node:events");
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
@@ -9,11 +10,14 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
 const { version } = require("../package.json");
 
 (async () => {
+  const cases = new Set(process.argv.slice(2));
+  const reviews = ["focus", "retry", "combat", "reset"];
+  for (const name of cases) assert.ok(reviews.includes(name), `Unknown regression: ${name}`);
   const scratch = await fs.mkdtemp(path.join(process.env.BF_TEST_TMP || os.tmpdir(), "bf-dispatch-desktop-"));
   let app, page, cdp;
   const errors = [];
   const repo = path.resolve(__dirname, "..");
-  const installed = async (name, running, { legacy = true, source = false, holdTour = false } = {}) => {
+  const installed = async (name, running, { legacy = true, source = false, holdTour = false, setup = "" } = {}) => {
     const dir = path.join(scratch, name);
     await fs.mkdir(dir, { recursive: true });
     const journal = validateState({ ...defaultState(), onboarded: true, activeProfileId: "Fixture", profiles: [
@@ -55,6 +59,9 @@ const { version } = require("../package.json");
       load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe = async () => ({ state: 'not-running', launchAvailable: false });
       const L = load('./src/core/live-bridge.cjs').LiveBridge;
       L.prototype.readPreference = () => false; L.prototype.start = () => {};
+      const fixtureFs = require('node:fs');
+      const fixtureFile = ${JSON.stringify(path.join(dir, "field-dispatch.json"))};
+      ${setup}
       load('./src/main.cjs');
     `);
     app = await launch(_electron, { args: [dir], env: { ...process.env, BF_USER_DATA: dir, BF_TEST_INACTIVE: "1" }, timeout: 25000 });
@@ -126,7 +133,257 @@ const { version } = require("../package.json");
     }
     return bounds.viewport;
   };
+  const expectMain = async check => {
+    for (let i = 0; i < 100; i++) {
+      if (await check()) return;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    assert.fail("Timed out waiting for the fixture's main-process checkpoint");
+  };
+  const run = name => !cases.size || cases.has(name);
+  const reviewScenarios = async () => {
+    if (run("focus")) {
+      await installed("focus", version);
+      await gate(true);
+      await complete("de");
+      await updates();
+      await opener().press("Enter");
+      await shown().getByRole("heading", { name: "Änderungsverlauf" }).waitFor();
+      await checkLayout("review-focus-compact-de.png");
+      await page.keyboard.press("Tab");
+      assert.equal(await shown().getByRole("searchbox").evaluate(el => el === document.activeElement), true);
+      await page.keyboard.press("Tab");
+      const ring = await shown().getByRole("button", { name: "Suche leeren" }).evaluate(el => {
+        const luminance = css => css.match(/\d+/g).slice(0, 3).map(Number).reduce((sum, n, i) => {
+          const c = n / 255;
+          return sum + (c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4) * [.2126, .7152, .0722][i];
+        }, 0);
+        const style = getComputedStyle(el);
+        const outline = luminance(style.outlineColor);
+        const paper = luminance(getComputedStyle(el.closest(".field-dispatch__content")).backgroundColor);
+        return { visible: el.matches(":focus-visible") && style.outlineStyle === "solid" && parseFloat(style.outlineWidth) >= 2,
+          contrast: (Math.max(outline, paper) + .05) / (Math.min(outline, paper) + .05) };
+      });
+      assert.ok(ring.visible && ring.contrast >= 3, `Clear search focus: ${JSON.stringify(ring)}`);
+      await close();
+      console.log(`German compact Clear search keyboard outline: ${ring.contrast.toFixed(2)}:1`);
+    }
+    if (run("retry")) {
+      const file = await installed("retry", "1.9.0");
+      await complete();
+      await gate(true);
+      await recorded(file, state => state.lastRun.version === "1.9.0");
+      const before = await fs.readFile(file, "utf8");
+      await close();
+      await installed("retry", version, { setup: `
+        const rename = fixtureFs.renameSync;
+        fixtureFs.renameSync = (from, to) => {
+          if (to === fixtureFile && !app.fixtureFailedRename) {
+            app.fixtureFailedRename = true;
+            throw Object.assign(new Error('fixture promotion failure'), { code: 'EBUSY' });
+          }
+          return rename(from, to);
+        };
+      ` });
+      await page.locator("#main-content").waitFor();
+      await gate(true);
+      await expectMain(() => app.evaluate(({ app }) => !!app.fixtureFailedRename));
+      await noRecap();
+      assert.equal(await fs.readFile(file, "utf8"), before);
+      assert.deepEqual((await fs.readdir(path.dirname(file))).filter(name => /^field-dispatch.*\.tmp$/.test(name)), []);
+      await gate(true);
+      await shown().getByRole("heading", { name: `Updated from 1.9.0 to ${version}` }).waitFor();
+      assert.equal((await read(file)).pending.id, `stable:1.9.0..${version}`);
+      await close();
+      console.log("Failed promotion preserved exact bytes; the next foreground readiness event retried");
+    }
+    if (run("combat")) {
+      const file = await installed("combat", "1.9.0");
+      await complete();
+      await gate(true);
+      await recorded(file, state => state.lastRun.version === "1.9.0");
+      const before = await fs.readFile(file, "utf8");
+      await close();
+      await installed("combat", version, { setup: `
+        const { HAIRLINE, HAIRLINE_WIDTH, crc8, encodeHairlineFrame, encodeHairlineCells } = load('./src/core/live-bridge.cjs');
+        const subscribe = L.prototype.subscribe;
+        L.prototype.subscribe = function(fn) {
+          this.platform = 'win32'; this.enabled = true;
+          let now = 10000;
+          this.now = () => now;
+          app.fixtureCombat = (combat, seq) => {
+            const payload = Buffer.alloc(27);
+            payload[0] = HAIRLINE.version;
+            payload[1] = seq;
+            payload[10] = Number(combat);
+            payload.writeUInt16BE(4242, 23);
+            payload[25] = ++now % 256;
+            payload[26] = crc8(payload, 26);
+            const cells = encodeHairlineCells(encodeHairlineFrame(payload, []));
+            const rgb = Buffer.from(cells.flatMap(cell => [...cell, ...cell]));
+            this.read('ok topleft ' + HAIRLINE_WIDTH + ' 1 ' + rgb.toString('base64') + ' pw\\n');
+            const frame = this.current();
+            return { seq: frame?.seq, characterHash: frame?.characterHash, combat: frame?.combat };
+          };
+          app.fixtureCombatExpires = () => {
+            this.line('nogame'); // Signal changes but the last frame is still fresh.
+            now += 5000;
+            this.line('nogame'); // Same worker signal, but the observation is now stale.
+          };
+          return subscribe.call(this, fn);
+        };
+        const handle = electron.ipcMain.handle.bind(electron.ipcMain);
+        electron.ipcMain.handle = (name, fn) => handle(name, name === 'backstage:fieldDispatchStartup' ? async (...args) => {
+          const result = await fn(...args);
+          if (app.holdFixtureDispatch && result?.offer) {
+            app.holdFixtureDispatch = false;
+            await new Promise(resolve => { app.releaseFixtureDispatch = resolve; });
+          }
+          return result;
+        } : fn);
+      ` });
+      await page.locator("#main-content").waitFor();
+      const frame = async (combat, seq) => assert.deepEqual(
+        await app.evaluate(({ app }, [combat, seq]) => app.fixtureCombat(combat, seq), [combat, seq]),
+        { seq, characterHash: 4242, combat }, "The worker sample must decode to the intended live frame");
+      await frame(true, 6);
+      await gate(true);
+      assert.equal(await page.evaluate(() => backstage.fieldDispatchStartup()), null, "Main must defer during fresh combat");
+      await noRecap();
+      assert.equal(await fs.readFile(file, "utf8"), before);
+      await updates();
+      await opener().press("Enter");
+      await shown().getByRole("heading", { name: "Dispatch history" }).waitFor();
+      await page.keyboard.press("Escape");
+      await shown().waitFor({ state: "hidden" });
+      await page.evaluate(() => backstage.onLiveLink(status => { window.fixtureLive = status; }));
+      await app.evaluate(({ app }) => { app.holdFixtureDispatch = true; });
+      await frame(false, 7);
+      await expectMain(() => app.evaluate(({ app }) => !!app.releaseFixtureDispatch));
+      await frame(true, 7); // Same sequence, identity and worker signal as the held offer.
+      assert.equal(await page.evaluate(() => backstage.fieldDispatchStartup()), null);
+      await app.evaluate(({ app }) => app.releaseFixtureDispatch());
+      const result = await page.waitForFunction(() => {
+        if (document.querySelector("dialog.field-dispatch[open]")) return "stale recap opened";
+        if (window.fixtureLive?.frame?.combat === true && window.fixtureLive.frame.seq === 7) return "combat delivered";
+      });
+      assert.equal(await result.jsonValue(), "combat delivered", "A held offer cannot open on same-sequence combat entry");
+      await noRecap();
+      assert.equal((await read(file)).pending.id, `stable:1.9.0..${version}`);
+      // Keep verifying that repeated worker status can retire a stale frame, but
+      // do it in the background so it cannot mask the same-sequence exit below.
+      await gate(false);
+      await app.evaluate(({ app }) => app.fixtureCombatExpires());
+      await page.waitForFunction(() => window.fixtureLive?.signal === "nogame" && !window.fixtureLive.frame);
+      await frame(true, 7);
+      await page.waitForFunction(() => window.fixtureLive?.frame?.combat === true);
+      await gate(true);
+      assert.equal(await page.evaluate(() => backstage.fieldDispatchStartup()), null);
+      await frame(false, 7);
+      await shown().getByRole("heading", { name: `Updated from 1.9.0 to ${version}` }).waitFor();
+      await close();
+      console.log("Same-sequence combat blocked the held recap, not manual history; same-sequence combat exit resumed it");
+    }
+    if (run("reset")) {
+      const file = await installed("reset", "1.9.0");
+      const dir = path.dirname(file);
+      const journalPath = path.join(dir, "state.json");
+      const marker = path.join(dir, "field-dispatch.reset");
+      const routeReview = path.join(dir, "route-review.json");
+      const routeBytes = Buffer.from('{ "routes": {} }\n');
+      await fs.writeFile(routeReview, routeBytes);
+      await complete();
+      await gate(true);
+      await recorded(file, state => state.lastRun.version === "1.9.0");
+      await close();
+      const failUnlink = `
+        const rm = fixtureFs.rmSync;
+        fixtureFs.rmSync = (file, options) => {
+          if (file === fixtureFile) {
+            app.fixtureFailedUnlink = true;
+            throw Object.assign(new Error('fixture unlink failure'), { code: 'EBUSY' });
+          }
+          return rm(file, options);
+        };
+      `;
+      await installed("reset", version, { setup: failUnlink + `
+        const rename = fixtureFs.renameSync;
+        const marker = require('node:path').join(app.getPath('userData'), 'field-dispatch.reset');
+        fixtureFs.renameSync = (from, to) => {
+          if (to === marker && app.fixtureFailRetirement) {
+            app.fixtureFailRetirement = false;
+            throw Object.assign(new Error('fixture retirement promotion failure'), { code: 'EBUSY' });
+          }
+          return rename(from, to);
+        };
+        const GameSync = load('./src/core/game-sync.cjs').GameSync;
+        const reset = GameSync.prototype.reset;
+        GameSync.prototype.reset = function (...args) {
+          app.fixtureGameReset = (app.fixtureGameReset || 0) + 1;
+          return reset.apply(this, args);
+        };
+        electron.dialog.showMessageBox = async (_win, options) => {
+          if (options.title !== 'Delete all local data?') throw Error('Unexpected dialog');
+          return { response: app.fixtureConfirmReset ? 1 : 0 };
+        };
+      ` });
+      await gate(true);
+      await shown().getByRole("heading", { name: `Updated from 1.9.0 to ${version}` }).waitFor();
+      await shown().getByRole("button", { name: "Not now" }).press("Enter");
+      await shown().waitFor({ state: "hidden" });
+      const old = await fs.readFile(file, "utf8");
+      await page.locator('.secondary-navigation [data-nav="guide"]').press("Enter");
+      assert.equal(await page.evaluate(() => backstage.resetData()), null);
+      assert.equal(await fs.readFile(file, "utf8"), old);
+      assert.equal(await page.evaluate(async () => (await backstage.bootstrap()).state.profiles[0]?.id), "Fixture");
+      const journalBytes = await fs.readFile(journalPath);
+      await app.evaluate(({ app }) => { app.fixtureConfirmReset = app.fixtureFailRetirement = true; });
+      await page.locator('[data-command="reset"]').press("Enter");
+      await page.locator('#toast.error').getByText('The action could not be completed. Check your input or file and try again.', { exact: true }).waitFor();
+      assert.equal(await app.evaluate(({ app }) => app.fixtureFailRetirement), false, "The retirement promotion fault must fire");
+      assert.equal(await app.evaluate(({ app }) => app.fixtureGameReset || 0), 0,
+        "Failed retirement must not start resetting game state");
+      assert.deepEqual(await fs.readFile(routeReview), routeBytes, "Failed retirement must preserve local route review bytes");
+      assert.deepEqual(await fs.readFile(journalPath), journalBytes);
+      assert.equal(await fs.readFile(file, "utf8"), old);
+      await absent(marker);
+      assert.deepEqual((await fs.readdir(dir)).filter(name => /^field-dispatch.*\.tmp$/.test(name)), []);
+
+      // Retry the same action with only the failed promotion released; the old file stays locked.
+      await page.locator('[data-command="reset"]').press("Enter");
+      await expectMain(() => app.evaluate(({ app }) => !!app.fixtureFailedUnlink));
+      const journal = await page.evaluate(async () => (await backstage.bootstrap()).state);
+      assert.deepEqual(journal.profiles, []);
+      assert.equal(journal.onboarded, false);
+      await page.getByText("Local data and saved keys deleted.", { exact: true }).waitFor({ timeout: 2500 });
+      await noRecap();
+      await absent(routeReview);
+      await cdp.detach();
+      const child = app.process(), exited = once(child, "exit");
+      // app.exit bypasses before-quit and its cleanup, without stranding Chromium subprocesses.
+      await app.evaluate(({ app }) => { setTimeout(() => app.exit(23), 50); });
+      assert.deepEqual(await exited, [23, null]);
+      app = null;
+      assert.equal(await fs.readFile(file, "utf8"), old, "The locked predecessor must survive forced exit");
+      assert.equal(await fs.readFile(marker, "utf8"), "reset\n");
+      await installed("reset", version, { legacy: false, setup: failUnlink });
+      await gate(true);
+      await page.locator('[data-command="setup-manual"]').press("Enter");
+      await page.locator('.onboarding-form [data-command="setup-company"]').press("Enter");
+      await page.locator("#main-content").waitFor();
+      await recorded(file, state => state.lastRun.version === version && !state.pending && !state.acknowledged);
+      await absent(marker);
+      await noRecap();
+      await updates();
+      await opener().press("Enter");
+      await shown().getByRole("heading", { name: "Dispatch history" }).waitFor();
+      await close();
+      console.log("Failed retirement preserved local data; retry succeeded with a locked predecessor and forced restart did not revive it");
+    }
+  };
   try {
+    await reviewScenarios();
+    if (cases.size) { assert.deepEqual(errors, []); return; }
     let file = await installed("fresh", version, { legacy: false });
     await gate(true);
     await page.locator('[data-command="setup-manual"]').press("Enter");
@@ -164,7 +421,7 @@ const { version } = require("../package.json");
     await shown().getByRole("heading", { name: `Updated from 1.9.0 to ${version}` }).waitFor();
     const pending = (await read(file)).pending;
     assert.equal(pending.id, `stable:1.9.0..${version}`);
-    assert.deepEqual(await shown().locator(".field-dispatch__version").allTextContents(), [`Version ${version}`, "Version 1.10.0"]);
+    assert.deepEqual(await shown().locator(".field-dispatch__version").allTextContents(), [`Version ${version}`, "Version 1.11.0", "Version 1.10.0"]);
     assert.equal(await shown().locator("#field-dispatch-title:focus").count(), 1);
     assert.equal(await page.evaluate(() => backstage.fieldDispatchAcknowledge("stable:1.10.0..1.11.0")), false);
     await checkLayout();
@@ -228,8 +485,8 @@ const { version } = require("../package.json");
     await shown().getByRole("heading", { name: "Dispatch history" }).waitFor();
     await absent(file);
     await close();
-    assert.deepEqual(errors, []);
     console.log("Source build opened bundled history without creating installed release state");
+    assert.deepEqual(errors, []);
   } finally {
     if (app) await app.close();
     await fs.rm(scratch, { recursive: true, force: true, maxRetries: 10 });

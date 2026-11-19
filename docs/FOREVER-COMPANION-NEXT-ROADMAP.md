@@ -4,6 +4,17 @@ Planning baseline: [v1.11.0](https://github.com/farena-ai/Backstage-Forever/rele
 
 The [expansion backlog](FOREVER-EXPANSION-BACKLOG.md) ranks additional ideas for Companion, knowledge coverage, onboarding, leveling, professions, endgame, art, and platform support. This document remains the delivery plan; backlog ideas do not increase first-release scope by default.
 
+## Post-1.12 delivery order
+
+[1.12.0 Field Dispatch](https://github.com/farena-ai/Backstage-Forever/releases/tag/v1.12.0) shipped cumulative update recaps, offline release history and the first Forever-only slice for recognized desktop dungeon and raid prep. This did not qualify general Companion Q&A. The 1.11.0 baseline and A–E dependency table below are retained for context and acceptance details.
+
+Keep the four standing priorities, in order: **(1)** finish Forever-only Companion, **(2)** make answers easier to find and act on, **(3)** close verified leveling-route gaps, and **(4)** deepen planning and polish. The release sequence below adds flagship workflows without dropping those priorities. The [Academy, Fieldbook and Guild backlog](ACADEMY-FIELDBOOK-GUILD-BACKLOG.md) supplies scoped work and acceptance checks.
+
+1. **Companion — next release cut.** Qualify the locally tested dungeon routing fixes, then take quest pickup and turn-in from a natural question to a verified Forever answer and exact Quest Guide or Map destination. Keep general provider output gated until it meets the evidence contract. Follow with disambiguation, exact actions and search improvements.
+2. **Class & Role Academy — next flagship.** Ship one reviewed DPS teaching pack and Practice Lab. An optional one-spell bar cue can join only after live-client qualification; the guide and practice ship independently. Expand separately to tank, healer and level-band packs. Continue reviewed route evidence work alongside the pilot.
+3. **Dungeon Fieldbook — next complete group workflow.** Qualify one dungeon from entrance and quest pickups to role prep, wishlist and observed recap. Extend existing Party/Company sharing with a previewed, manually shared Guild Run Pack after that workflow works. Officer features follow; sync and integrations remain gated.
+4. **Everyday depth and polish — successive small releases.** Alternate verified leveling legs, Workshop and gear progression with more spec packs, guild operations and original art/accessibility improvements to populated screens. Keep the existing live WoW, native Mac, installed Windows upgrade/rollback and signed release gates.
+
 ## 1. Product outcomes
 
 - On the first successful launch after upgrading, show one useful, beautiful **What’s New** panel: exactly which installed versions the player moved between, everything player-facing that changed in the releases they skipped, and where to try it. Make the full history available later without interrupting the game.
@@ -38,7 +49,7 @@ Baseline reproduced with `node scripts/companion-bench.cjs` and `node scripts/co
 | **D2 — Content refresh and diagnosis** (after B1 + first reviewed content bundle) | Knowledge: manual review/staging and reversible pack promotion, source age checks, conflict reports, build coverage screen and unknown-question issue workflows. Support shareable, redacted diagnostics with explicit user action. | Schema/hash/version verification, tamper and incomplete pack checks, atomic install/rollback, offline fallback, old-reader compatibility and no private canaries in diagnostics. Start with shipping in app releases; no service or live web lookup needed. |
 | **E — Next All-in-One slices** (parallel, after source contracts) | Qualify one leveling leg at a time; improve Map/Atlas/Journal original art and keyboard flow; expand Gear/Wishlist and saved combat/collection evidence only when public capture supports it; verify real party, install, locales and platform flows. | Prior roadmap gates. Mac stays saved-only for capture until native consent and revocation tests; community sharing remains default off and undeployed without separate approval. |
 
-**First release candidate:** A0 + A1 + A2 plus the smallest end-to-end B1 correction (e.g. exclude non-Forever dungeon directions everywhere in Companion and qualify that path). If the broader provider validation is not ready, keep it on the next branch, and label scope honestly. Next candidate: B1 across all factual paths + B2 for the highest-volume answer types, then C1/C2 increments. Content breadth follows correctness, not the reverse. One integration owner for main, preload, renderer shell, and generated locales; the release UI and evidence model can develop in separate worktrees.
+**Original Field Dispatch cut and dependencies:** A0 + A1 + A2 plus the smallest end-to-end B1 correction. The shipped 1.12.0 correction is limited to recognized desktop dungeon and raid preparation; broader provider validation remains a separate gate. Continue B1 across factual paths and B2 for high-volume answer types, then C1/C2 increments in the [post-1.12 order](#post-112-delivery-order). Content breadth follows correctness, not the reverse. One integration owner for main, preload, renderer shell, and generated locales.
 
 ## 4. What’s New: product and state contract
 
