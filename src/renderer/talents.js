@@ -33,12 +33,11 @@ window.TalentsView = (() => {
         <h3>Single-target priority</h3>
         <ol><li>If the target is visibly frozen and Ice Lance (Rank 1) is ready, use it for the frozen-target bonus. A slow alone is not a freeze. [1, 3]</li>
         <li>Otherwise, use Frostbolt when you can stand still and cast safely. This is a two-spell practice priority, not a complete rotation. [1, 2]</li></ol>
-        <p><strong>Mana and cooldown:</strong> Both casts spend mana. Save Ice Lance for a frozen window rather than spending mana on its weaker unfrozen hit. Fire Blast uses the same shared cooldown, so using it can leave Ice Lance unavailable when a freeze happens. [3, 4]</p>
+        <p><strong>Mana:</strong> Both casts spend mana. Save Ice Lance for a frozen window rather than spending mana on its weaker unfrozen hit. [2, 3]</p>
         <details><summary>Evidence and limits</summary><ol>
           <li>wow4ever.quest Mage guide, Frost single-target section.</li>
           <li>wow4ever.quest Frostbolt spellbook, Rank 4 (7322).</li>
           <li>wow4ever.quest Ice Lance spellbook, Rank 1 (1312002).</li>
-          <li>Blizzard, WoW Forever Beta Development Notes, November 2 update (shared cooldown).</li>
         </ol><p>Community spellbook entries reviewed for ${ACADEMY_BUILD}, updated 19 Nov 2026. Not a live combat check or a DPS benchmark.</p></details>` : "";
     };
   }

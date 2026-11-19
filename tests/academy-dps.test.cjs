@@ -41,7 +41,7 @@ test("the guide is withheld until both exact ranks are self-confirmed and is rem
       assert.match(result.innerHTML, /Opener/);
       assert.match(result.innerHTML, /Single-target priority/);
       assert.match(result.innerHTML, /mana/i);
-      assert.match(result.innerHTML, /shared cooldown/i);
+      assert.doesNotMatch(result.innerHTML, /shared cooldown|fire blast/i);
       assert.match(result.innerHTML, /19 Nov 2026/);
       assert.doesNotMatch(result.innerHTML, /triple|best DPS|guaranteed/i);
     } else assert.equal(result.innerHTML, "");
