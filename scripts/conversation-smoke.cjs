@@ -175,7 +175,13 @@ const {testWindow}=require('./test-window.cjs');const {defaultState,validateStat
   await page.getByLabel('Use my active character',{exact:true}).uncheck();await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');assert.equal(await page.locator('#chatlog').innerText(),'');await answer('Sharing off question');assert.doesNotMatch((await latest()).prompt,/Fresh reset question/);
   // Save an explicitly reviewed synthetic private exchange, select it anew, then omit it.
   await call('clearConversation');await answer('SAVED_PRIVATE_CANARY quest');const draft=await call('memoryDraft','Alpha');await call('saveMemory',{profileId:'Alpha',responseId:draft.responseId});await page.getByRole('button',{name:'Refresh memory',exact:true}).click();
-  const select=page.locator('[data-memory-select]').first();await select.waitFor();await select.check();await answer('Use selected memory');assert.match((await latest()).prompt,/SAVED_PRIVATE_CANARY/);assert.equal(await select.isChecked(),false);await answer('Ordinary following question');assert.doesNotMatch((await latest()).prompt,/SAVED_PRIVATE_CANARY|MEMORY_DERIVED_CANARY/);assert.equal(await page.locator('#chatlog').getByText('MEMORY_DERIVED_CANARY',{exact:true}).count(),0);
+  const select=page.locator('[data-memory-select]').first();await select.waitFor();await select.check();
+  // Checking memory changes the conversation scope. The pointer guard can defer
+  // the repaint that replaces the composer, so wait for the old chat to clear
+  // before filling the question into the new composer.
+  await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');
+  await answer('Use selected memory');assert.match((await latest()).prompt,/SAVED_PRIVATE_CANARY/);assert.equal(await select.isChecked(),false);
+  await answer('Ordinary following question');assert.doesNotMatch((await latest()).prompt,/SAVED_PRIVATE_CANARY|MEMORY_DERIVED_CANARY/);assert.equal(await page.locator('#chatlog').getByText('MEMORY_DERIVED_CANARY',{exact:true}).count(),0);
   // Clear in-flight, Stop/edit/retry, and late success cannot reinsert old work.
   const heldClear=await pending(await send('HOLD clear quest'));await page.getByRole('button',{name:'Clear conversation',exact:true}).click();await idle();assert.equal(await page.locator('#chatlog').innerText(),'');assert.equal(await call('memoryDraft','Alpha'),null);await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_CLEAR_CANARY'),heldClear);
   const heldStop=await pending(await send('HOLD stop quest'));await page.getByRole('button',{name:'Stop response',exact:true}).click();await page.getByRole('button',{name:'Edit question',exact:true}).click();assert.equal(await field.inputValue(),'HOLD stop quest');await answer('Recovered quest');await app.evaluate((_e,i)=>conversationFixture.requests[i].resolve('LATE_STOP_CANARY'),heldStop);assert.doesNotMatch((await latest()).prompt,/HOLD stop quest|LATE_/);
