@@ -2,6 +2,8 @@
 
 Planning baseline: [v1.11.0](https://github.com/farena-ai/Backstage-Forever/releases/tag/v1.11.0), `1b010072089ac02ba85c493510d41f112270283d`. The milestones below are proposed cuts, not promised release numbers or shipped features. This plan extends [the All-in-One roadmap](ALL-IN-ONE-ROADMAP.md), not a replacement for its game, platform, or evidence gates.
 
+The [expansion backlog](FOREVER-EXPANSION-BACKLOG.md) ranks additional ideas for Companion, knowledge coverage, onboarding, leveling, professions, endgame, art, and platform support. This document remains the delivery plan; backlog ideas do not increase first-release scope by default.
+
 ## 1. Product outcomes
 
 - On the first successful launch after upgrading, show one useful, beautiful **What’s New** panel: exactly which installed versions the player moved between, everything player-facing that changed in the releases they skipped, and where to try it. Make the full history available later without interrupting the game.
