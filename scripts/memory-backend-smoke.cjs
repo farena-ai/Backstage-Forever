@@ -103,7 +103,17 @@ function shortPath(target) {
     const emptyGame = path.join(dir, "synthetic-empty-client"); await fs.mkdir(path.join(emptyGame, "WTF"), { recursive: true }); await fs.writeFile(path.join(emptyGame, ".flavor.info"), "wowf");
     await app.evaluate(({ app }) => {
       const load = process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(), "package.json")), { GameSync } = load("./src/core/game-sync.cjs"), install = GameSync.prototype._installAddon;
-      GameSync.prototype._installAddon = async function (...args) { if (memoryFixture.holdPreparation) { memoryFixture.preparationRootChanged = this.root === memoryFixture.expectedRoot; await new Promise(resolve => memoryFixture.releasePreparation = resolve); } return install.apply(this, args); };
+      GameSync.prototype._installAddon = async function (...args) {
+        // Preparation stages the addon before committing the replacement source. Pause
+        // after the real install/selection boundary, but before prepare can refresh.
+        const result = await install.apply(this, args);
+        if (memoryFixture.holdPreparation) {
+          const { realpathSync } = load("node:fs");
+          memoryFixture.preparationRootChanged = this.root === realpathSync(memoryFixture.expectedRoot);
+          await new Promise(resolve => memoryFixture.releasePreparation = resolve);
+        }
+        return result;
+      };
     });
     await startPending(); await app.evaluate((_electron, root) => { memoryFixture.holdPreparation = true; memoryFixture.expectedRoot = root; }, emptyGame);
     await page.evaluate(root => { window.pendingPreparation = window.backstage.prepareGame(root); }, emptyGame);
@@ -122,6 +132,7 @@ function shortPath(target) {
       const load = process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(), "package.json")), { GameSync } = load("./src/core/game-sync.cjs"), disconnect = GameSync.prototype.disconnect;
       GameSync.prototype.disconnect = async function () { if (memoryFixture.holdDisconnect) await new Promise(resolve => memoryFixture.releaseDisconnect = resolve); return disconnect.call(this); }; memoryFixture.holdDisconnect = true;
     });
+    await call("companionContext", { profileId: "Alpha", view: "ai" });
     await startPending(); await page.evaluate(() => { window.pendingImport = window.backstage.importData(); });
     await app.evaluate(async () => { const end = Date.now() + 5000; while (!memoryFixture.releaseDisconnect) { if (Date.now() > end) throw Error("Import never started"); await new Promise(r => setTimeout(r, 10)); } });
     await assert.rejects(() => call("memoryList", "Alpha")); await assert.rejects(() => ask());
