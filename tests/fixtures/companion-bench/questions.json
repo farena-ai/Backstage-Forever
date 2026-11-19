@@ -1393,15 +1393,18 @@
       "question": "Where is Wailing Caverns?",
       "expect": {
         "intent": "dungeon",
+        "outcome": "unknown-current",
         "mustInclude": [
-          "Barrens"
+          "No verified current Forever",
+          "#wc"
         ],
         "mustNotInclude": [
-          "Westfall"
+          "The Barrens",
+          "46.0, 36.0"
         ],
         "faction": "Horde"
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"wc\" Wailing Caverns (dungeon, levels 17-24) zone The Barrens mapId 1413 entrance~[46,36] (Classic-era baseline layer); data/forever-boss-loot/pack.json instances.wc bosses Lady Anacondra, Lord Cobrahn, Kresh, Lord Pythas, Skum, Lord Serpentis, Verdan the Everliving, Mutanus the Devourer"
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"wc\" Wailing Caverns (dungeon, levels 17-24) zone The Barrens mapId 1413 entrance~[46,36] (Classic-era baseline layer); data/forever-boss-loot/pack.json instances.wc bosses Lady Anacondra, Lord Cobrahn, Kresh, Lord Pythas, Skum, Lord Serpentis, Verdan the Everliving, Mutanus the Devourer Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "dungeon-02",
@@ -1410,20 +1413,21 @@
       "question": "what bosses are in ragefire chasm",
       "expect": {
         "intent": "dungeon",
+        "outcome": "unknown-current",
         "mustInclude": [
-          "Orgrimmar"
+          "No verified current Forever",
+          "#rfc"
         ],
-        "anyOf": [
-          [
-            "Oggleflint",
-            "Taragaman",
-            "Jergosh",
-            "Bazzalan"
-          ]
+        "mustNotInclude": [
+          "Orgrimmar",
+          "Oggleflint",
+          "Taragaman",
+          "Jergosh",
+          "Bazzalan"
         ],
         "faction": "Horde"
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"rfc\" Ragefire Chasm (dungeon, levels 13-18) zone Orgrimmar mapId 1454 entrance~[52,49] (Classic-era baseline layer); data/forever-boss-loot/pack.json instances.rfc bosses Oggleflint, Taragaman the Hungerer, Jergosh the Invoker, Bazzalan"
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"rfc\" Ragefire Chasm (dungeon, levels 13-18) zone Orgrimmar mapId 1454 entrance~[52,49] (Classic-era baseline layer); data/forever-boss-loot/pack.json instances.rfc bosses Oggleflint, Taragaman the Hungerer, Jergosh the Invoker, Bazzalan Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "dungeon-03",
@@ -1432,18 +1436,18 @@
       "question": "is blackfathom deeps ok for my level? where is it",
       "expect": {
         "intent": "dungeon",
+        "outcome": "unknown-current",
         "mustInclude": [
-          "Ashenvale"
+          "No verified current Forever",
+          "#bfd"
         ],
-        "anyOf": [
-          [
-            "24",
-            "24-32"
-          ]
+        "mustNotInclude": [
+          "Ashenvale",
+          "24–32"
         ],
         "faction": "Horde"
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"bfd\" Blackfathom Deeps (dungeon, levels 24-32) zone Ashenvale mapId 1440 entrance~[14,14] (Classic-era baseline layer); data/forever-boss-loot/pack.json instances.bfd bosses Ghamoo-ra, Lady Sarevess, Gelihast, Lorgus Jett, Baron Aquanis, Twilight Lord Kelris, Old Serra'kis, Aku'mai"
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"bfd\" Blackfathom Deeps (dungeon, levels 24-32) zone Ashenvale mapId 1440 entrance~[14,14] (Classic-era baseline layer); data/forever-boss-loot/pack.json instances.bfd bosses Ghamoo-ra, Lady Sarevess, Gelihast, Lorgus Jett, Baron Aquanis, Twilight Lord Kelris, Old Serra'kis, Aku'mai Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "dungeon-04",
@@ -1452,12 +1456,17 @@
       "question": "where is shadowfang keep",
       "expect": {
         "intent": "dungeon",
+        "outcome": "unknown-current",
         "mustInclude": [
+          "No verified current Forever",
+          "#sfk"
+        ],
+        "mustNotInclude": [
           "Silverpine"
         ],
         "faction": "Horde"
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"sfk\" Shadowfang Keep (dungeon, levels 22-30) zone Silverpine Forest mapId 1421 entrance~[44,67] (Classic-era baseline layer); data/forever-boss-loot/pack.json instances.sfk bosses Rethilgore, Razorclaw the Butcher, Baron Silverlaine, Commander Springvale, Odo the Blindwatcher, Fenrus the Devourer, Wolf Master Nandos, Archmage Arugal"
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"sfk\" Shadowfang Keep (dungeon, levels 22-30) zone Silverpine Forest mapId 1421 entrance~[44,67] (Classic-era baseline layer); data/forever-boss-loot/pack.json instances.sfk bosses Rethilgore, Razorclaw the Butcher, Baron Silverlaine, Commander Springvale, Odo the Blindwatcher, Fenrus the Devourer, Wolf Master Nandos, Archmage Arugal Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "dungeon-05",
@@ -1466,17 +1475,18 @@
       "question": "where is deadmines and whos the last boss",
       "expect": {
         "intent": "dungeon",
+        "outcome": "unknown-current",
         "mustInclude": [
-          "Westfall"
+          "No verified current Forever",
+          "#dm"
         ],
-        "anyOf": [
-          [
-            "VanCleef"
-          ]
+        "mustNotInclude": [
+          "Westfall",
+          "VanCleef"
         ],
         "faction": "Alliance"
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"dm\" The Deadmines (dungeon, levels 17-26) zone Westfall mapId 1436 entrance~[42,72] (Classic-era baseline layer); data/forever-boss-loot/pack.json instances.dm bosses Rhahk'Zor, Sneed, Gilnid, Mr. Smite, Captain Greenskin, Edwin VanCleef; data/forever/pack.json quests[\"166\"] \"The Defias Brotherhood\" level 22 giver Gryan Stoutmantle (Westfall) turnIn Gryan Stoutmantle (Westfall) objectiveEvidence \"Kill Edwin VanCleef and bring his head to Gryan Stoutmantle.\""
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"dm\" The Deadmines (dungeon, levels 17-26) zone Westfall mapId 1436 entrance~[42,72] (Classic-era baseline layer); data/forever-boss-loot/pack.json instances.dm bosses Rhahk'Zor, Sneed, Gilnid, Mr. Smite, Captain Greenskin, Edwin VanCleef; data/forever/pack.json quests[\"166\"] \"The Defias Brotherhood\" level 22 giver Gryan Stoutmantle (Westfall) turnIn Gryan Stoutmantle (Westfall) objectiveEvidence \"Kill Edwin VanCleef and bring his head to Gryan Stoutmantle.\" Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "dungeon-06",
@@ -1485,12 +1495,17 @@
       "question": "where's the stockade",
       "expect": {
         "intent": "dungeon",
+        "outcome": "unknown-current",
         "mustInclude": [
+          "No verified current Forever",
+          "#stocks"
+        ],
+        "mustNotInclude": [
           "Stormwind"
         ],
         "faction": "Alliance"
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"stocks\" The Stockade (dungeon, levels 24-32) zone Stormwind City mapId 1453 entrance~[50,67] (Classic-era baseline layer)"
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"stocks\" The Stockade (dungeon, levels 24-32) zone Stormwind City mapId 1453 entrance~[50,67] (Classic-era baseline layer) Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "dungeon-07",
@@ -1499,12 +1514,18 @@
       "question": "where's scarlet monastery? going with my guild",
       "expect": {
         "intent": "dungeon",
+        "outcome": "unknown-current",
         "mustInclude": [
-          "Tirisfal"
+          "No verified current Forever",
+          "#sm"
+        ],
+        "mustNotInclude": [
+          "Tirisfal",
+          "Interrogator Vishas"
         ],
         "faction": "Alliance"
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"sm\" Scarlet Monastery (dungeon, levels 34-45) zone Tirisfal Glades mapId 1420 entrance~[85,32] (Classic-era baseline layer); data/forever-encounters/pack.json encounters instanceMap 189: Interrogator Vishas, Houndmaster Loksey, Arcanist Doan, Herod, Bloodmage Thalnos observed in Forever; data/forever-boss-loot/pack.json instances.sm bosses Interrogator Vishas, Bloodmage Thalnos, Houndmaster Loksey, Arcanist Doan, Herod, High Inquisitor Fairbanks, Scarlet Commander Mograine, High Inquisitor Whitemane"
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"sm\" Scarlet Monastery (dungeon, levels 34-45) zone Tirisfal Glades mapId 1420 entrance~[85,32] (Classic-era baseline layer); data/forever-encounters/pack.json encounters instanceMap 189: Interrogator Vishas, Houndmaster Loksey, Arcanist Doan, Herod, Bloodmage Thalnos observed in Forever; data/forever-boss-loot/pack.json instances.sm bosses Interrogator Vishas, Bloodmage Thalnos, Houndmaster Loksey, Arcanist Doan, Herod, High Inquisitor Fairbanks, Scarlet Commander Mograine, High Inquisitor Whitemane Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "dungeon-08",
@@ -1513,18 +1534,18 @@
       "question": "where's zul'gurub, can i do it at 34",
       "expect": {
         "intent": "dungeon",
+        "outcome": "unknown-current",
         "mustInclude": [
-          "Stranglethorn"
+          "No verified current Forever",
+          "#zg"
         ],
-        "anyOf": [
-          [
-            "raid",
-            "60"
-          ]
+        "mustNotInclude": [
+          "Stranglethorn",
+          "58–60"
         ],
         "faction": "Alliance"
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"zg\" Zul'Gurub (raid, levels 58-60) zone Stranglethorn Vale mapId 1434 entrance~[53,17] (Classic-era baseline layer)"
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE \"zg\" Zul'Gurub (raid, levels 58-60) zone Stranglethorn Vale mapId 1434 entrance~[53,17] (Classic-era baseline layer) Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "prof-01",
