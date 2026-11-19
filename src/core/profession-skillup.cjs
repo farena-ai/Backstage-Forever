@@ -90,6 +90,11 @@ function rememberedPrice(profile, itemId, now) {
 }
 const purchaseCost = (quantity, unit) => quantity === 0 ? 0 :
   quantity !== null && Number.isSafeInteger(quantity * unit) && unit > 0 ? quantity * unit : null;
+function fullPurchaseCost(amounts) {
+  if (!amounts.length || amounts.includes(null)) return null;
+  const total = amounts.reduce((sum, amount) => sum + amount, 0);
+  return Number.isSafeInteger(total) ? total : null;
+}
 
 /** Materials and historical source leads; the purchase scenario uses only the carried shortfall. */
 function shoppingList(rows, { crafts = 1, profile = null, profiles = [], now = Math.floor(Date.now() / 1000) } = {}) {
@@ -119,6 +124,7 @@ function shoppingList(rows, { crafts = 1, profile = null, profiles = [], now = M
   return {
     crafts,
     rows: out,
+    batchPurchaseEstimate: fullPurchaseCost(out.map(row => row.estimatedCopper)),
     counts: { vendor: out.filter((r) => r.source === "vendor").length, gather: out.filter((r) => r.source === "gather").length, other: out.filter((r) => r.source === "other").length },
     note: "Vendor listings are historical observations: stock, price and access are unverified. Gather/buy means no seller was observed; try gathering, the auction house or trade.",
   };
@@ -127,7 +133,6 @@ function nextPointPurchaseEstimate(list, attempts) {
   if (!attempts || !list.rows.length) return null;
   const amounts = list.rows.map(r => purchaseCost(r.quantityKind === "exact"
     ? Math.max(0, (r.required / list.crafts) * attempts - r.have) : null, r.price?.unitCopper));
-  const total = amounts.reduce((sum, amount) => sum + amount, 0);
-  return { attempts, estimatedCopper: amounts.includes(null) || !Number.isSafeInteger(total) ? null : total };
+  return { attempts, estimatedCopper: fullPurchaseCost(amounts) };
 }
 module.exports = { SKILL_COLORS, RANK, difficultyOf, skillColor, colorRank, materialUnits, skillUpCountdown, shoppingList, nextPointPurchaseEstimate };
