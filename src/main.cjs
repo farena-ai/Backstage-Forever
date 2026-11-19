@@ -50,6 +50,7 @@ const { registerVoiceHandlers } = require("./core/voice-ipc.cjs");
 const { registerDiagnosticsHandlers } = require("./core/diagnostics-ipc.cjs");
 const { registerRecoveryHandlers, RECOVERY_MESSAGES } = require("./core/recovery-ipc.cjs");
 const { releaseChannel } = require("../package.json");
+const { FieldDispatchStore } = require("./core/field-dispatch-desktop.cjs");
 const { LiveBridge } = require("./core/live-bridge.cjs");
 let liveBridge = null;
 let radar = null;
@@ -167,7 +168,12 @@ app.on("second-instance", () => {
 });
 app.whenReady().then(async () => {
   if (!ownsInstance) return;
+  let fieldDispatch;
   try {
+    const dataDir = app.getPath("userData");
+    // Old profiles do not establish a version. Check before startup creates any app-owned files.
+    const freshInstall = !["state.json", "credentials.json", "game-connection.private.json", "updates/preferences.json", "Local Storage"]
+      .some(name => fs.existsSync(path.join(dataDir, name)));
     store = new Store(app.getPath("userData"), safeStorage);
     companionContext = new CompanionContext(() => store.state);
     companionRequest = new CompanionRequest(companionContext);
@@ -192,6 +198,8 @@ app.whenReady().then(async () => {
       packaged: app.isPackaged,
       channel: releaseChannel,
     });
+    fieldDispatch = new FieldDispatchStore({ dir: dataDir, installed: app.isPackaged,
+      running: { version: app.getVersion(), channel: releaseChannel }, freshInstall });
     updater.start();
     knowledge = new KnowledgeService({ dataDir: app.getPath("userData") });
     game = new GameSync({
@@ -564,6 +572,18 @@ app.whenReady().then(async () => {
     secretStatus: store.secretStatus(),
     subscriptionStatus: await subscriptionStatus(),
   }));
+  handle("fieldDispatchHistory", (...args) => {
+    if (args.length) throw new Error("Invalid release history request.");
+    return fieldDispatch.manual();
+  });
+  handle("fieldDispatchStartup", (...args) => {
+    if (args.length) throw new Error("Invalid release recap request.");
+    if (!store.state.onboarded || !win.isVisible() || win.isMinimized() || !win.isFocused()) return null;
+    fieldDispatch.start();
+    return { offer: fieldDispatch.offer() };
+  });
+  handle("fieldDispatchPresented", (id, ...extra) => !extra.length && fieldDispatch.presented(id));
+  handle("fieldDispatchAcknowledge", (id, ...extra) => !extra.length && fieldDispatch.acknowledge(id));
   handle("saveState", (state, base) => {
     let next = mergeOrdinaryState(store.state, state, base);
     const previousActive =
@@ -1107,6 +1127,7 @@ app.whenReady().then(async () => {
       const fresh = store.reset();
       wishlist?.clear(); // starred loot belongs to the characters just deleted
       community?.reset(); // local install id, sent marks and pack; shared facts stay on the server
+      fieldDispatch.reset();
       return fresh;
     } finally {
       resetting = false;

@@ -37,12 +37,14 @@ window.Onboarding = (() => {
     });
     el.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
   }
-  async function start() {
+  async function decide() {
     if (seen()) return;
     let allowed = null;
     try { allowed = await api.onboarding(); } catch {}
     if (allowed?.show) open(); else if (allowed && !allowed.show) done();
   }
+  let decision;
+  const start = () => decision ??= decide();
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else void start();
   document.addEventListener("click", (e) => { if (e.target.closest?.("[data-ob-replay]")) open(); });
   return { open, start, CARDS };
