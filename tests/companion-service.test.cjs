@@ -96,6 +96,92 @@ test('unrelated natural preparation is not made a dungeon question by a non-game
  const f=fixture();
  assert.equal((await f.ask('How do I prepare for a midnight fishing trip?')).kind,'ai');
 });
+test('general instance facts stay local, including edition mismatches and unsupported current facts',async()=>{
+ for(const [id,mode] of [['local','api'],['ollama','api'],['ollama-cloud','api'],['openai','api'],['anthropic','api'],['xai','api'],['openai','subscription'],['anthropic','subscription']]){
+  for(const model of ['', 'fixture']){
+   const f=fixture(id,mode);f.state.provider.model=model;f.service.lookups=false;
+   f.store.getKey=()=>assert.fail('instance answer read credentials');
+   f.transport(()=>assert.fail('instance answer reached inference'));
+   f.service.localAi={start:()=>assert.fail('instance answer started the local model')};
+   for(const [prompt,expected] of [
+    ['Where is Wailing Caverns?',/Wailing Caverns.*#wc/s],
+    ['What bosses are in #sm?',/Scarlet Monastery.*#sm/s],
+    ['How do I get to The Deadmines?',/The Deadmines.*#dm/s],
+    ['Can I do Scarlet Monastery at level 30?',/No verified current Forever/],
+    ['Where is the entrance to the Rookery dungeon?',/Which instance/],
+    ['Where is the Rookery dungeon?',/Which instance/],
+    ['Where is The Deadmines in Retail?',/only covers World of Warcraft: Forever/],
+    ['What bosses are in Classic #sm?',/only covers World of Warcraft: Forever/],
+    ['Where is #dm-extra?',/Which instance/],
+    ['Where is #dm.extra?',/Which instance/],
+    ['What bosses are in DM?',/Which instance/],
+    ['Compare bosses in Scarlet Monastery and Razorfen Kraul',/Which instance/],
+   ]){
+    const r=await f.ask(prompt);assert.equal(r.topic,'dungeon-facts',prompt);
+    assert.match(r.text,expected,prompt);
+    assert.doesNotMatch(r.text,/Barrens|Westfall|Tirisfal|VanCleef|Interrogator Vishas|17–24|46\.0/);
+   }
+   assert.equal(f.memory.draft('Alpha'),null);assert.equal(f.service.session.status().turns,0);
+  }
+ }
+});
+test('only an explicit historical instance question can show bounded public encounter observations',async(t)=>{
+ const f=fixture(), pack=require('../src/core/dungeon-atlas.cjs').loadEncounters();
+ const fetch=t.mock.method(globalThis,'fetch',()=>assert.fail('instance answer accessed the network'));
+ const prompt='Historical encounters for #sm?';
+ const r=await f.ask(prompt,{shareProfile:false});
+ assert.equal(r.topic,'dungeon-facts');
+ assert.match(r.text,/Interrogator Vishas \(encounter #444\)/);
+ assert.match(r.text,/Efficient Games.*1\.60\.1\.70888.*2026-11-10 to 2026-11-11/);
+ assert.match(r.text,/Not a full roster/);assert.doesNotMatch(r.text,/Alpha|Tirisfal|85\.0|PRIVATE_/);
+ const rfk=await f.ask('Historical encounters for #rfk on build 1.60.1.70888?',{shareProfile:false});
+ assert.match(rfk.text,/Roogug \(encounter #2773\)/);assert.doesNotMatch(rfk.text,/Interrogator Vishas|Charlga Razorflank/);
+ assert.equal(rfk.text.match(/\(encounter #\d+\)/g).length,4);
+ for(const q of ['Historical encounters for #sm on build 1.60.1.77777?', 'Historical encounters for #dm?', 'Historical encounters for #sm on build 1.60.1.70888-extra?']){
+  assert.doesNotMatch((await f.ask(q)).text,/Interrogator Vishas|VanCleef/);
+ }
+ for(const invalid of [null,{...pack,product:'wow'},{...pack,source:{...pack.source,url:'https://example.invalid/wowf/encounters.json'}}]){
+  f.service.dungeonEvidence={encounters:()=>invalid};
+  const answer=await f.ask(prompt);assert.match(answer.text,/No verified historical Forever/);assert.doesNotMatch(answer.text,/Interrogator Vishas/);
+ }
+ assert.equal(fetch.mock.callCount(),0);assert.equal(f.seen.length,0);
+ assert.equal(f.memory.draft('Alpha'),null);assert.equal(f.service.session.status().turns,0);
+ await f.ask('Tell me some lore about the Titans.');
+ assert.doesNotMatch(f.seen[0].prompt,/Historical encounters|Interrogator Vishas/);
+});
+test('a dungeon name or token alone does not override unrelated Companion intents',async()=>{
+ const f=fixture();
+ for(const prompt of ["Where does Cobrahn's Grasp drop?", 'Where is the bank in Scarlet Monastery?', 'Where is the level 30 trainer in The Deadmines?', 'What level do I need to learn Alchemy for a raid?', 'What is quest #166 about?', 'How do I get to Thunder Bluff?']){
+  const r=await f.ask(prompt);assert.notEqual(r.topic,'dungeon-facts',prompt);
+ }
+});
+test('exact instance location and requirements questions stay out of providers, history and Memory',async(t)=>{
+ for(const prompt of ['Where can I find #dme?','What are the requirements for #dme?'])await t.test(prompt,async()=>{
+  const f=fixture();
+  await f.ask('Tell me some lore about the Titans.');
+  assert.ok(f.memory.draft('Alpha'));
+  f.store.getKey=()=>assert.fail('instance answer read provider credentials');
+  assert.match((await f.ask(prompt)).text,/Dire Maul.*#dme.*No verified current Forever/s);
+  assert.equal(f.seen.length,1);assert.equal(f.memory.draft('Alpha'),null);assert.equal(f.service.session.status().turns,1);
+  f.store.getKey=()=>'';
+  await f.ask('Tell me some lore about the bronze dragonflight.');
+  assert.equal(f.seen.length,2);assert.ok(!f.seen[1].prompt.includes(prompt));
+  assert.doesNotMatch(f.seen[1].prompt,/No verified current Forever/);
+ });
+});
+test('dungeon fact edition and build qualifiers do not infer or repair evidence',async(t)=>{
+ for(const [prompt, expected] of [
+  ['Where is the entrance to Scarlet Monastery at midnight?',/Scarlet Monastery.*No verified current Forever/s],
+  ['Where is the entrance to Scarlet Monastery in Midnight?',/only covers World of Warcraft: Forever/],
+  ['Where is the entrance to Scarlet Monastery (Midnight expansion)?',/only covers World of Warcraft: Forever/],
+  ['Where is the entrance to the Rookery in Retail?',/only covers World of Warcraft: Forever/],
+  ['Historical encounters for #sm on build 1.60.1.70888.?',/No verified historical Forever/],
+ ])await t.test(prompt,async()=>{
+  const f=fixture();f.transport(()=>assert.fail('instance answer reached inference'));
+  const r=await f.ask(prompt);assert.equal(r.topic,'dungeon-facts');assert.match(r.text,expected);
+  assert.doesNotMatch(r.text,/Interrogator Vishas/);
+ });
+});
 test('all seven transports receive identical composed main prompt and original draft question',async()=>{
  let expected;
  for(const [id,mode] of [['ollama','api'],['ollama-cloud','api'],['openai','api'],['anthropic','api'],['xai','api'],['openai','subscription'],['anthropic','subscription']]){

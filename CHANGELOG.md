@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.1 — Forever dungeon and raid questions
+
+- Keep recognized instance fact questions local and decline unsupported current facts rather than falling back to another edition.
+- Keep an explicit travel origin separate from the destination and label historical encounters with their Forever build and collection window.
+- See the [release notes](docs/releases/1.12.1.md) for scope.
+
 ## 1.12.0 — Field Dispatch
 
 - Catch up on missed releases with an illustrated recap and search offline history from Settings → Updates → What’s New.

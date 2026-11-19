@@ -7,6 +7,57 @@ const { buildProfessionCoach } = require("../src/core/profession-coach.cjs");
 
 const INTENTS = new Set(["npc-location", "travel", "trainer", "vendor", "item-source", "quest-next", "quest-turnin", "quest-info", "dungeon", "profession", "rp", "lore", "refuse", "clarify"]);
 
+test("named instances do not override trainer, flight master, or outbound travel questions", async (t) => {
+  for (const [prompt, route] of [
+    ["What level do I learn Alchemy for Scarlet Monastery?", "trainer"],
+    ["Where is the flight master near Scarlet Monastery dungeon?", "role"],
+    ["How do I get from Scarlet Monastery to Undercity?", "travel"],
+  ]) await t.test(prompt, async () => {
+    const { service, store } = makeService(PROFILES["horde-priest-21"], { model: false });
+    const r = await service.ask({ provider: "ollama", prompt, profileId: store.state.activeProfileId, shareProfile: true });
+    assert.equal(r.intent || r.kind, route);
+    if (route === "travel") {
+      assert.equal(r.travel.destination.id, "undercity");
+      assert.equal(r.travel.origin.label, "Scarlet Monastery");
+      assert.equal(r.travel.origin.id, null);
+    }
+    assert.notEqual(r.topic, "dungeon-facts");
+  });
+});
+
+test("outbound instance travel preserves the explicit unverified origin in either order", async (t) => {
+  for (const model of [false, true]) for (const prompt of [
+    "How do I get from Scarlet Monastery to Undercity?",
+    "How do I get to Undercity from Scarlet Monastery?",
+  ]) await t.test(`${prompt} (model ${model ? "configured" : "off"})`, async () => {
+    const profile = { ...PROFILES["horde-priest-21"], location: { zone: "Orgrimmar", mapId: 1454, x: 0.5, y: 0.5 } };
+    const { service, store, seen } = makeService(profile, { model });
+    const r = await service.ask({ provider: "ollama", prompt, profileId: store.state.activeProfileId, shareProfile: true });
+    assert.equal(r.kind, "travel", r.text);
+    assert.equal(r.travel.status, "uncovered");
+    assert.deepEqual(r.travel.origin, { id: null, label: "Scarlet Monastery" });
+    assert.equal(r.travel.destination.id, "undercity");
+    assert.deepEqual(r.travel.options, []);
+    assert.match(r.text, /^This local reference does not cover a verified connection from Scarlet Monastery to Undercity\./);
+    assert.deepEqual(r.travel.claims, []);
+    assert.equal(r.travel.choiceToken, null);
+    assert.deepEqual(seen, []);
+  });
+});
+
+test("instance abstentions affect local handling but not factual coverage", async () => {
+  const abstention = loadQuestions().find((q) => q.expect.outcome === "unknown-current");
+  const clarification = loadQuestions("heldout").find((q) => q.expect.outcome === "clarify-instance");
+  const factual = { ...abstention, id: "missing-fact", expect: {
+    intent: "dungeon", mustInclude: ["unavailable-factual-canary"],
+  } };
+  const r = await runBench({ questions: [abstention, clarification, factual] });
+  assert.deepEqual(r.abstention, { n: 2, correct: 2 });
+  assert.deepEqual(r.factualCoverage, { n: 1, covered: 0 });
+  assert.equal(r.scores.localCorrect, 66.7);
+  assert.equal(r.scores.covered, 0);
+});
+
 test("every benchmark question names a known character, a real intent and the data it was checked against", () => {
   const qs = loadQuestions();
   assert.equal(qs.length, 100);
@@ -27,6 +78,7 @@ test("the companion understands and answers from Forever data at least as well a
   assert.ok(r.scores.covered >= 95, `covered ${r.scores.covered}%`);
   assert.ok(r.scores.localCorrect >= 92, `correct locally ${r.scores.localCorrect}%`);
   assert.ok(r.scores.understood >= 97, `understood ${r.scores.understood}%`);
+  assert.deepEqual(r.abstention, { n: 8, correct: 8 });
   assert.equal(r.byCategory.refuse.local, r.byCategory.refuse.n, "every cheating or off-topic request is declined");
   for (const k of ["npc-location", "travel", "trainer", "vendor", "item-source", "dungeon"]) assert.ok(r.byCategory[k].local >= r.byCategory[k].n - 1, `${k}: ${r.byCategory[k].local}/${r.byCategory[k].n}`);
   assert.equal(r.rows.filter((x) => x.error).length, 0, r.rows.filter((x) => x.error).map((x) => `${x.id}: ${x.error}`).join("; "));
@@ -41,6 +93,7 @@ test("questions written without seeing the companion's code are understood and a
   assert.ok(r.scores.covered >= 95, `covered ${r.scores.covered}%`);
   assert.ok(r.scores.localCorrect >= 85, `correct locally ${r.scores.localCorrect}%`);
   assert.ok(r.scores.understood >= 88, `understood ${r.scores.understood}%`);
+  assert.deepEqual(r.abstention, { n: 7, correct: 7 });
   assert.equal(r.byCategory.refuse.local, r.byCategory.refuse.n);
 });
 
