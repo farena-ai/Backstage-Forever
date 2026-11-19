@@ -120,8 +120,21 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     const shipment = badges.getByRole("progressbar", { name: "Progress toward The Missing Shipment" });
     assert.equal(await shipment.getAttribute("aria-valuenow"), "2");
     assert.equal(await shipment.getAttribute("aria-valuemax"), "4");
+    const shipmentTile = badges.locator('[data-badge="quest-chain-missing-shipment"]');
+    const rows = shipmentTile.locator('ol li');
+    await rows.first().waitFor();
+    assert.deepEqual(await rows.allTextContents(), [
+      'Southsea Freebooters — Confirmed in save',
+      'The Missing Shipment — Confirmed in save',
+      'The Missing Shipment — Not confirmed in save',
+      'Stolen Booty — Not confirmed in save',
+    ]);
+    assert.equal(await revenge.locator('ol').count(), 0);
+    await shipmentTile.evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    await screenshot('badge-case-quest-steps-desktop');
     await badges.getByRole("button", { name: /Bellan/ }).press("Enter");
     await revenge.getByText("No saved progress", { exact: true }).waitFor();
+    assert.equal(await rows.count(), 0);
     await category.selectOption("Reputation");
     const medal = badges.locator('[data-badge="rep-orgrimmar-revered"]');
     await medal.getByText("No saved progress", { exact: true }).waitFor();
@@ -173,6 +186,16 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await page.evaluate(() => I18n.choose('de'));
     await page.locator('html[lang="de"]').waitFor({ state: 'attached' });
     await resize(1000, 700);
+    await page.locator('[data-nav="characters"]').first().press("Enter");
+    await page.locator('[data-nav="badges"]').first().press("Enter");
+    await badges.locator('[data-badge-category]').selectOption('Quest chains');
+    await shipmentTile.getByRole('list', { name: 'Questschritte in diesem Spielstand' }).waitFor();
+    await rows.nth(2).getByText('Im Spielstand nicht bestätigt', { exact: true }).waitFor();
+    await shipmentTile.evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    assert.ok(await shipmentTile.evaluate(el => el.scrollWidth <= el.clientWidth + 1));
+    const stepBox = await shipmentTile.boundingBox();
+    assert.ok(stepBox.y >= 0 && stepBox.y + stepBox.height <= await page.evaluate(() => innerHeight));
+    await screenshot('badge-case-quest-steps-compact-de');
     await toJourney();
     await defeats.getByRole('heading', { name: 'Persönliche Bosssiege in Dungeons' }).waitFor();
     await boss.waitFor();
