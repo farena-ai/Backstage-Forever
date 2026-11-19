@@ -315,24 +315,33 @@ window.LedgerView = (() => {
       watchTables(root);
     });
     const repaint = () => { const r = document.querySelector("[data-ledger]"); if (r) { r.outerHTML = page(route); mountedFor = null; mounted(); } };
-    const setGoal = async (input, review = null) => {
+    const setGoal = async (input, review = null, expectedGoal = null) => {
       if (savingGoal) return;
       savingGoal = true;
       try {
-        const goal = await api.setGoldGoal(input);
-        if (data) data.goal = goal;
-        goalNote = "";
-        if (savings === review) savings = null;
+        const goal = review ? await api.setGoldGoal(input, { profileId: review.profileId, expectedGoal }) : await api.setGoldGoal(input);
+        if (goal.reviewExpired) {
+          if (savings === review) {
+            savings = null;
+            goalNote = "The character or gold goal changed. Review the Workshop estimate again before saving.";
+          }
+          data = null; error = ""; loadGeneration++;
+        } else {
+          if (data) data.goal = goal;
+          goalNote = "";
+          if (savings === review) savings = null;
+        }
       } catch (e) { goalNote = e.message || "That goal could not be saved."; }
       finally { savingGoal = false; }
       repaint();
     };
     const apply = root.querySelector("[data-ledger-savings-apply]");
     const review = savings;
+    const expectedGoal = data?.goal?.goal ?? null;
     apply?.addEventListener("click", () => {
       if (review !== savings || !ownsSavings(review) || !root.isConnected || savingGoal) return;
       apply.disabled = true;
-      void setGoal({ gold: review.gold, label: `Materials: ${review.recipe}`.slice(0, 60) }, review);
+      void setGoal({ gold: review.gold, label: `Materials: ${review.recipe}`.slice(0, 60) }, review, expectedGoal);
     });
     const cancel = root.querySelector("[data-ledger-savings-cancel]");
     cancel?.addEventListener("click", () => {

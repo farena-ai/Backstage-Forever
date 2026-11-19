@@ -108,7 +108,7 @@ contextBridge.exposeInMainWorld(
     weekly: () => invoke("weekly"),
     alts: () => invoke("alts"),
     ledger: () => invoke("ledger"),
-    setGoldGoal: (goal) => invoke("setGoldGoal", goal),
+    setGoldGoal: (...args) => invoke("setGoldGoal", ...args),
     characterSheet: () => invoke("characterSheet"),
     playSession: () => invoke("playSession"),
     playTrail: (mapId) => invoke("playTrail", mapId),

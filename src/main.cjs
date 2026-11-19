@@ -906,9 +906,21 @@ app.whenReady().then(async () => {
   });
   // Gold goal (0.36, E4): the player's own target; null clears it. Only this handler writes it.
   handle("setGoldGoal", (...args) => {
-    if (args.length !== 1) throw Error("Invalid gold goal.");
+    if (args.length < 1 || args.length > 2) throw Error("Invalid gold goal.");
     const GG = require("./core/gold-goal.cjs"), goal = GG.goalFromInput(args[0]);
-    const next = structuredClone(store.state);
+    const current = store.state;
+    if (args.length === 2) {
+      v.object(args[1], ["profileId", "expectedGoal"]);
+      const { profileId, expectedGoal } = args[1], saved = current.goldGoal;
+      v.str(profileId, 100, false);
+      if (!goal || expectedGoal === undefined) throw Error("Invalid gold goal.");
+      if (expectedGoal !== null) GG.validateGoldGoal(expectedGoal);
+      // Compare with committed state: both the picker and review can be stale.
+      if (profileId !== current.activeProfileId || expectedGoal?.copper !== saved?.copper ||
+          expectedGoal?.label !== saved?.label || expectedGoal?.setAt !== saved?.setAt)
+        return { reviewExpired: true };
+    }
+    const next = structuredClone(current);
     if (goal) next.goldGoal = goal; else delete next.goldGoal;
     store.saveState(v.validateState(next));
     return GG.goldGoalView(store.state);

@@ -326,6 +326,57 @@ function shortPath(target) {
       await page.getByLabel("Active character", { exact: true }).selectOption(initial.activeProfileId);
       await navigate(page, "preparation");
       await review.click();
+      await preview.waitFor();
+      await app.evaluate(({ ipcMain }) => {
+        const channel = "backstage:gameSnapshot";
+        const snapshot = ipcMain._invokeHandlers.get(channel);
+        preparationUi.holdSavingsPoll = () => {
+          preparationUi.savingsPollGate = new Promise(resolve => { preparationUi.releaseSavingsPoll = resolve; });
+        };
+        preparationUi.holdSavingsPoll();
+        ipcMain.removeHandler(channel);
+        ipcMain.handle(channel, async (...args) => {
+          const result = await snapshot(...args);
+          await preparationUi.savingsPollGate;
+          return result;
+        });
+      });
+      // Reverse the ordering: commit the switch in main without letting the
+      // renderer apply a new snapshot. Both renderer ownership checks still pass.
+      await page.evaluate(async id => {
+        const { state } = await window.backstage.bootstrap();
+        await window.backstage.saveState({ ...state, activeProfileId: id }, state);
+      }, alt);
+      assert.equal(await page.evaluate(async () => (await window.backstage.bootstrap()).state.activeProfileId), alt);
+      assert.equal(await page.locator("#active-character").inputValue(), initial.activeProfileId);
+      assert.match(await preview.innerText(), /Aeralyn.*Riding fund/s);
+      await replace.click();
+      await page.waitForFunction(() => !document.querySelector("[data-ledger-savings-apply]:disabled"));
+      assert.deepEqual(await savedGoal(), original, "the outgoing character's confirmation must not change the stored goal");
+      await preview.waitFor({ state: "detached" });
+      await app.evaluate(() => preparationUi.releaseSavingsPoll());
+      await page.waitForFunction(id => document.querySelector("#active-character")?.value === id, alt);
+      await page.getByLabel("Active character", { exact: true }).selectOption(initial.activeProfileId);
+      await navigate(page, "preparation");
+      await review.click();
+      await preview.waitFor();
+      // A newer account goal also requires a fresh confirmation, even for the same character.
+      await app.evaluate(() => preparationUi.holdSavingsPoll());
+      await page.evaluate(() => window.backstage.setGoldGoal({ gold: 75, label: "New riding fund" }));
+      const newer = await savedGoal();
+      assert.match(await preview.innerText(), /Current goal: Riding fund/);
+      const staleApply = await replace.elementHandle();
+      assert.ok(staleApply);
+      await staleApply.click();
+      await page.waitForFunction(() => !document.querySelector("[data-ledger-savings-apply]:disabled"));
+      assert.deepEqual(await savedGoal(), newer, "a review must not overwrite a goal it did not show");
+      await preview.waitFor({ state: "detached" });
+      await page.getByText("Review the Workshop estimate again", { exact: false }).waitFor();
+      await page.locator("[data-ledger-goal-card] h2").filter({ hasText: "New riding fund" }).waitFor();
+      await app.evaluate(() => preparationUi.releaseSavingsPoll());
+      await navigate(page, "preparation");
+      await review.click();
+      await preview.getByText("New riding fund", { exact: false }).waitFor();
       await replace.click();
       await page.locator("[data-ledger-goal-card] h2").filter({ hasText: "Amber restorative" }).waitFor();
       assert.equal((await savedGoal()).copper, 10000);
@@ -341,7 +392,7 @@ function shortPath(target) {
       await shopping.getByText("Batch purchase estimate unavailable", { exact: false }).waitFor();
       assert.equal(await review.count(), 0);
       assert.deepEqual(errors, []);
-      console.log("Workshop savings Electron PASS: compact keyboard review, cancel, pending character switch, explicit replacement, reload, clear and unpriced batch.");
+      console.log("Workshop savings Electron PASS: compact keyboard review, cancel, both character switch orderings, newer goal protection, explicit replacement, reload, clear and unpriced batch.");
       return;
     }
 
