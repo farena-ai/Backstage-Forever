@@ -8,7 +8,7 @@ const {uuid}=require('./memory-data.cjs');
 const {createCompanionTools}=require('./companion-tools.cjs');
 const {quickAnswer}=require('./quick-answers.cjs');
 const {workshopQuestion,workshopAnswer}=require('./companion-workshop.cjs');
-const {dungeonQuestion,dungeonAnswer}=require('./companion-dungeon.cjs');
+const {dungeonQuestion,dungeonAnswer,dungeonFactsQuestion,dungeonFactsAnswer}=require('./companion-dungeon.cjs');
 const {resolve:resolveIntent}=require('./companion-intents.cjs');
 const {resolveTalentQuestion,talentBlock,talentQuickAnswer,TALENT_MAX}=require('./talent-context.cjs');
 // Providers accept at most this much context text (ChatGPT subscription limit).
@@ -49,18 +49,19 @@ class CompanionService {
       const profile=state.profiles.find(p=>p.id===profileId);
       const scope={owner:this.owner(profileId),shareProfile:input.shareProfile,memoryIds};
       const refusal=scopeResponse(input.prompt);
-      // Saved preparation questions stay local even with a model configured.
+      const finishPrivateQuick=(text,topic,meta)=>{
+        if(signal.aborted)throw signal.reason;
+        const conversation=this.session.skip(scope);
+        this.travel?.clear();
+        return {text,kind:'quick',topic,conversation:meta?.resetReason?{...conversation,resetReason:meta.resetReason}:conversation};
+      };
+      // Preparation and instance facts stay offline and out of conversation history and Memory.
       const workshop=!refusal&&workshopQuestion(input.prompt);
       const dungeon=!refusal&&dungeonQuestion(input.prompt);
-      if(workshop||dungeon){
-        const conversation=this.session.skip(scope);
-        const text=workshop
-          ? workshopAnswer(workshop,{state,profile,shareProfile:input.shareProfile,acquisitionPack:this.acquisitionPack})
-          : dungeonAnswer(dungeon,{...this.dungeonEvidence,profile,shareProfile:input.shareProfile});
-        if(signal.aborted)throw signal.reason;
-        // Neither side of this exchange is eligible for provider history or Memory.
-        this.travel?.clear();return {text,kind:'quick',topic:workshop?'profession-materials':'dungeon-prep',conversation};
-      }
+      if(workshop)return finishPrivateQuick(workshopAnswer(workshop,{state,profile,shareProfile:input.shareProfile,acquisitionPack:this.acquisitionPack}),'profession-materials');
+      if(dungeon)return finishPrivateQuick(dungeonAnswer(dungeon,{...this.dungeonEvidence,profile,shareProfile:input.shareProfile}),'dungeon-prep');
+      const dungeonFacts=!refusal&&dungeonFactsQuestion(input.prompt);
+      if(dungeonFacts)return finishPrivateQuick(dungeonFactsAnswer(dungeonFacts,this.dungeonEvidence),'dungeon-facts');
       const prepared=this.session.prepare({...scope,prompt:input.prompt,currentPrompt:augmented.prompt});
       if(prepared.meta.resetReason==='scope-change')this.travel?.clear();
       if(refusal){this.travel?.clear();return {text:refusal,kind:'scope',conversation:prepared.meta};}
@@ -83,6 +84,11 @@ class CompanionService {
       // is returned as is; with a model its verified facts go into the model's context instead.
       let intents=null;
       if(!talentFirst){try{intents=resolveIntent(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile});}catch{intents=null;}}
+      // The old dungeon classifier and its Atlas-derived travel destination are detection only.
+      if(intents?.intent==='dungeon'){
+        const facts=dungeonFactsQuestion(prepared.questionForEvidence,{legacyInstanceIntent:true});
+        return finishPrivateQuick(dungeonFactsAnswer(facts,this.dungeonEvidence),'dungeon-facts',prepared.meta);
+      }
       const verified=intents&&(intents.answer||intents.facts?.length)&&intents.intent!=='quest-next'?intents:null;
       // The NPC answer wins when it finds the person; otherwise a better understood answer wins.
       const npcAll=talentFirst?null:resolveNpcLocation(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile,currentIndex:input.shareProfile?this.knowledge.index(profile||{}):null,historicalPack:this.npcReference});

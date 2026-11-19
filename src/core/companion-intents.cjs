@@ -137,7 +137,7 @@ function buildIndex(d) {
 
 // ---------- understanding ----------
 const DUNGEON_ALIASES = { dm: "dm", rfc: "rfc", ragefire: "rfc", wc: "wc", "wailing caverns": "wc", deadmines: "dm", "the deadmines": "dm", vc: "dm", vancleef: "dm", "van cleef": "dm", sfk: "sfk", shadowfang: "sfk", bfd: "bfd", "blackfathom": "bfd", stocks: "stocks", stockade: "stocks", gnomer: "gnomer", gnomeregan: "gnomer", rfk: "rfk", "razorfen kraul": "rfk", sm: "sm", scarlet: "sm", "scarlet monastery": "sm", rfd: "rfd", "razorfen downs": "rfd", ulda: "ulda", uldaman: "ulda", zf: "zf", "zul'farrak": "zf", zulfarrak: "zf", mara: "mara", maraudon: "mara", "sunken temple": "st", "temple of atal'hakkar": "st", brd: "brd", "blackrock depths": "brd", lbrs: "lbrs", "lower blackrock": "lbrs", "dire maul": "dme", scholo: "scholo", scholomance: "scholo", strat: "strat", stratholme: "strat", ubrs: "ubrs", "upper blackrock": "ubrs", zg: "zg", "zul'gurub": "zg", zulgurub: "zg", mc: "mc", "molten core": "mc", ony: "ony", onyxia: "ony", "onyxia's lair": "ony", bwl: "bwl", "blackwing lair": "bwl", aq20: "aq20", "ruins of ahn'qiraj": "aq20", aq40: "aq40", "temple of ahn'qiraj": "aq40", naxx: "naxx", naxxramas: "naxx" };
-const DUNGEONS = new Map(BASELINE.map((r) => [r[0], { id: r[0], name: r[1], kind: r[2], min: r[3], max: r[4], faction: r[5], zone: r[6], mapId: r[7], entrance: r[8], bosses: r[10] || [] }]));
+const DUNGEONS = new Map(BASELINE.map(([id, name, , , , , zone, mapId]) => [id, { id, name, zone, mapId }]));
 const PLACES = { org: "Orgrimmar", orgrimmar: "Orgrimmar", ogrimmar: "Orgrimmar", tb: "Thunder Bluff", "thunder bluff": "Thunder Bluff", uc: "Undercity", undercity: "Undercity", sw: "Stormwind City", stormwind: "Stormwind City", "stormwind city": "Stormwind City", if: null, ironforge: "Ironforge", darnassus: "Darnassus", xroads: "The Crossroads", crossroads: "The Crossroads", "the crossroads": "The Crossroads", "booty bay": "Booty Bay", bb: "Booty Bay", ratchet: "Ratchet", "sentinel hill": "Sentinel Hill", "grom'gol": "Grom'gol Base Camp", gromgol: "Grom'gol Base Camp", "splintertree post": "Splintertree Post", splintertree: "Splintertree Post", "camp taurajo": "Camp Taurajo", auberdine: "Auberdine", goldshire: "Goldshire", brill: "Brill", razor_hill: null, "razor hill": "Razor Hill" };
 // Towns and the zone they are in, for travel and "where is" answers about places.
 const TOWN_ZONE = { "The Crossroads": 1413, "Camp Taurajo": 1413, Ratchet: 1413, "Booty Bay": 1434, "Grom'gol Base Camp": 1434, "Sentinel Hill": 1436, "Splintertree Post": 1440, Auberdine: 1439, Goldshire: 1429, Brill: 1420, "Razor Hill": 1411 };
@@ -318,7 +318,7 @@ function understand(question, { profile = null, data = loadData() } = {}) {
   else if (RX.source.test(q) && (item || Object.keys(CATEGORY_ITEMS).some((k) => q.includes(k)))) out.intent = "item-source";
   else if (quest && RX.source.test(q)) out.intent = "quest-info";
   else if (RX.vendor.test(q) && !/\bsell (?:my )?junk\b/.test(q)) out.intent = "vendor";
-  else if (dungeon && !RX.travel.test(q)) out.intent = "dungeon";
+  else if (dungeon && !RX.travel.test(q) && !(who && /\btrainers?\b/.test(q))) out.intent = "dungeon";
   else if (RX.travel.test(q) && (place || dungeon || /\bfrom here\b/.test(q))) out.intent = "travel";
   else if (who && /\b(kill|slay|hunt|hiding|mobs?|they|them)\b/.test(q) && beast()) { out.intent = "creature"; out.creature = beast(); }
   else if (who && creature && (!npc || creature.gram.length > npc.gram.length) && creature.ids.some((id) => idx.creatureAreas.has(id)) && beast()) { out.intent = "creature"; out.creature = beast(); }
@@ -492,14 +492,7 @@ function answerQuest(u, { profile, data }) {
   for (const o of others.slice(0, 2)) { const g = (o.givers || []).map((t) => npcWhere(t, data, h)).filter(Boolean)[0]; lines.push(`There's also a "${o.title}"${o.level ? ` (level ${o.level})` : ""}${g ? ` from ${g}` : ""}.`); }
   return { text: lines.join("\n"), facts: [lines.join(" ")] };
 }
-function answerDungeon(u, { profile }) {
-  const d = u.dungeon; if (!d) return null;
-  const lvl = profile?.level;
-  const fit = Number.isFinite(lvl) ? (lvl < d.min - 2 ? ` At level ${lvl} it's still too hard; come back around ${d.min}.` : lvl > d.max + 3 ? ` At level ${lvl} it's easy and gives little XP.` : ` Level ${lvl} fits.`) : "";
-  const ent = d.entrance ? ` The entrance is around ${d.entrance[0]}, ${d.entrance[1]} in ${d.zone}.` : "";
-  const text = `${d.name} is a ${d.kind === "raid" ? "raid" : "dungeon"} in ${d.zone} for levels ${d.min}–${d.max}${d.faction ? ` (mainly ${d.faction})` : ""}.${ent}${fit}${d.bosses.length ? `\nBosses: ${d.bosses.join(", ")}.` : ""}`;
-  return { text, facts: [`${d.name}: ${d.kind} in ${d.zone}, levels ${d.min}-${d.max}${d.entrance ? `, entrance ~${d.entrance[0]}, ${d.entrance[1]}` : ""}; bosses ${d.bosses.join(", ")}.`] };
-}
+
 function flightNear(profile, data) {
   const h = here(profile), faction = side(profile);
   if (!h) return null;
@@ -674,7 +667,7 @@ function answerTravelPlan(u, { profile, data }) {
   } catch {}
   return answerTravel(u, { profile, data });
 }
-const ANSWER = { "npc-location": answerNpc, place: answerPlace, trainer: answerTrainer, vendor: answerVendor, drops: answerDrops, "item-source": answerItemSource, "quest-info": answerQuest, "quest-turnin": answerQuest, dungeon: answerDungeon, travel: answerTravelPlan, role: answerRole, "turnin-which": answerTurninWhich, lore: answerLore, profession: answerProfession, rp: answerRp, gather: answerGather, creature: answerCreature, recipe: answerRecipe };
+const ANSWER = { "npc-location": answerNpc, place: answerPlace, trainer: answerTrainer, vendor: answerVendor, drops: answerDrops, "item-source": answerItemSource, "quest-info": answerQuest, "quest-turnin": answerQuest, travel: answerTravelPlan, role: answerRole, "turnin-which": answerTurninWhich, lore: answerLore, profession: answerProfession, rp: answerRp, gather: answerGather, creature: answerCreature, recipe: answerRecipe };
 // 1.0.1: "the dwarf hunter trainer" or "first aid in Stormwind" with no character shared means the
 // Alliance; a place the question names is where "nearest" is measured from.
 const RACE_SIDE = [[/\b(humans?|dwarf|dwarves|dwarven|gnomes?|gnomish|night ?elf|night ?elves|kaldorei|alliance)\b/, "Alliance"], [/\b(orcs?|orcish|trolls?|tauren|undead|forsaken|horde)\b/, "Horde"]];
@@ -706,6 +699,10 @@ function resolve(question, { profile = null, shareProfile = true, data = loadDat
     if (sp) return { intent: sp.intent, understood: { intent: sp.intent, q: question }, answer: sp.text, facts: sp.facts, preferModel: false, clarify: false };
   } catch { /* fall through to the ordinary route */ }
   const u = understand(question, { profile: shared, data }); u.q = question;
+  // Atlas-derived instance matches can route a question, but cannot supply facts or a travel destination.
+  if (u.intent === "dungeon" || (u.intent === "travel" && u.dungeon)) {
+    return { intent: "dungeon", understood: u, answer: null, facts: [], preferModel: false, clarify: true };
+  }
   const p = askedProfile(question, u, shared);
   const fn = ANSWER[u.intent];
   let a = null;

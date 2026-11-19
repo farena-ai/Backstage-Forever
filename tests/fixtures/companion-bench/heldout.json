@@ -582,11 +582,16 @@
       "question": "where is wc, the entrance i mean",
       "expect": {
         "intent": "dungeon",
-        "mustInclude": ["Wailing Caverns", "Barrens"],
-        "anyOf": [["46.0, 36.0"]],
-        "mustNotInclude": []
+        "outcome": "clarify-instance",
+        "mustInclude": [
+          "Which instance"
+        ],
+        "mustNotInclude": [
+          "Barrens",
+          "46.0, 36.0"
+        ]
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['wc','Wailing Caverns','dungeon',17,24,null,'The Barrens',1413,[46,36],...]."
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['wc','Wailing Caverns','dungeon',17,24,null,'The Barrens',1413,[46,36],...]. Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "h-dng-02",
@@ -595,11 +600,16 @@
       "question": "can i do sfk at 21 or is that dumb",
       "expect": {
         "intent": "dungeon",
-        "mustInclude": ["Shadowfang Keep", "22"],
-        "anyOf": [["Silverpine"]],
-        "mustNotInclude": []
+        "outcome": "clarify-instance",
+        "mustInclude": [
+          "Which instance"
+        ],
+        "mustNotInclude": [
+          "Silverpine",
+          "22–30"
+        ]
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['sfk','Shadowfang Keep','dungeon',22,30,null,'Silverpine Forest',1421,[44,67],...]: min level 22, so a 21 is one level under the range."
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['sfk','Shadowfang Keep','dungeon',22,30,null,'Silverpine Forest',1421,[44,67],...]: min level 22, so a 21 is one level under the range. Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "h-dng-03",
@@ -608,11 +618,18 @@
       "question": "rfk bosses list pls",
       "expect": {
         "intent": "dungeon",
-        "mustInclude": ["Charlga Razorflank"],
-        "anyOf": [["Agathelos the Raging", "Overlord Ramtusk", "Death Speaker Jargba", "Aggem Thorncurse", "Roogug"]],
-        "mustNotInclude": ["Mutanus the Devourer", "Amnennar the Coldbringer"]
+        "outcome": "clarify-instance",
+        "mustInclude": [
+          "Which instance"
+        ],
+        "mustNotInclude": [
+          "Charlga Razorflank",
+          "Roogug",
+          "Mutanus the Devourer",
+          "Amnennar the Coldbringer"
+        ]
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['rfk','Razorfen Kraul',...,bosses ['Roogug','Aggem Thorncurse','Death Speaker Jargba','Overlord Ramtusk','Agathelos the Raging','Charlga Razorflank']]. Mutanus is a WC boss, Amnennar an RFD boss."
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['rfk','Razorfen Kraul',...,bosses ['Roogug','Aggem Thorncurse','Death Speaker Jargba','Overlord Ramtusk','Agathelos the Raging','Charlga Razorflank']]. Mutanus is a WC boss, Amnennar an RFD boss. Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "h-dng-04",
@@ -621,11 +638,16 @@
       "question": "dm what lvl is it and where's the entrance",
       "expect": {
         "intent": "dungeon",
-        "mustInclude": ["Deadmines", "Westfall", "17"],
-        "anyOf": [["42.0, 72.0", "26"]],
-        "mustNotInclude": []
+        "outcome": "clarify-instance",
+        "mustInclude": [
+          "Which instance"
+        ],
+        "mustNotInclude": [
+          "Westfall",
+          "42.0, 72.0"
+        ]
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['dm','The Deadmines','dungeon',17,26,'Alliance','Westfall',1436,[42,72],...]."
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['dm','The Deadmines','dungeon',17,26,'Alliance','Westfall',1436,[42,72],...]. Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "h-dng-05",
@@ -634,11 +656,16 @@
       "question": "zg is literally next to me, doable at 34? lol",
       "expect": {
         "intent": "dungeon",
-        "mustInclude": ["Zul'Gurub"],
-        "anyOf": [["58"], ["raid"]],
-        "mustNotInclude": []
+        "outcome": "clarify-instance",
+        "mustInclude": [
+          "Which instance"
+        ],
+        "mustNotInclude": [
+          "Stranglethorn",
+          "58–60"
+        ]
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['zg',\"Zul'Gurub\",'raid',58,60,null,'Stranglethorn Vale',1434,[53,17],...]."
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['zg',\"Zul'Gurub\",'raid',58,60,null,'Stranglethorn Vale',1434,[53,17],...]. Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "h-dng-06",
@@ -647,11 +674,16 @@
       "question": "can i still do gnomer at 34 or am i too high",
       "expect": {
         "intent": "dungeon",
-        "mustInclude": ["Gnomeregan", "Dun Morogh"],
-        "anyOf": [["29", "38"]],
-        "mustNotInclude": []
+        "outcome": "clarify-instance",
+        "mustInclude": [
+          "Which instance"
+        ],
+        "mustNotInclude": [
+          "Dun Morogh",
+          "29–38"
+        ]
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['gnomer','Gnomeregan','dungeon',29,38,null,'Dun Morogh',1426,[24,39],...]: 34 is inside 29-38."
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['gnomer','Gnomeregan','dungeon',29,38,null,'Dun Morogh',1426,[24,39],...]: 34 is inside 29-38. Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     },
     {
       "id": "h-prf-01",
@@ -776,12 +808,17 @@
       "profile": "none",
       "question": "Hail, wanderer of the roads! Tell an old adventurer where the black dragon Onyxia keeps her lair, aye?",
       "expect": {
-        "intent": "rp",
-        "mustInclude": ["Dustwallow Marsh"],
-        "anyOf": [["52.0, 76.0", "Onyxia's Lair"]],
-        "mustNotInclude": []
+        "intent": "dungeon",
+        "outcome": "clarify-instance",
+        "mustInclude": [
+          "Which instance"
+        ],
+        "mustNotInclude": [
+          "Dustwallow Marsh",
+          "52.0, 76.0"
+        ]
       },
-      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['ony',\"Onyxia's Lair\",'raid',60,60,null,'Dustwallow Marsh',1445,[52,76],...]."
+      "evidence": "src/core/dungeon-atlas.cjs BASELINE ['ony',\"Onyxia's Lair\",'raid',60,60,null,'Dustwallow Marsh',1445,[52,76],...]. Prior expectation used Atlas or historical reference, not verified current Forever facts; this case now checks local abstention."
     }
   ]
 }

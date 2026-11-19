@@ -40,7 +40,10 @@ test("items: drops, bosses and the quest they are for; nothing guessed when the 
 });
 
 test("dungeons, transports and quests", () => {
-  assert.match(resolve("Where is Wailing Caverns?", { profile: horde }).answer, /The Barrens for levels 17–24/);
+  const dungeon = resolve("Where is Wailing Caverns?", { profile: horde });
+  assert.equal(dungeon.intent, "dungeon"); assert.equal(dungeon.answer, null); assert.deepEqual(dungeon.facts, []);
+  const route = resolve("How do I get to Wailing Caverns?", { profile: horde });
+  assert.equal(route.intent, "dungeon"); assert.equal(route.answer, null); assert.deepEqual(route.facts, []);
   assert.match(resolve("how do i get to undercity", { profile: horde }).answer, /zeppelin from Orgrimmar zeppelin tower to Tirisfal zeppelin tower/);
   assert.match(resolve("how do i get to darkshore", { profile: alliance }).answer, /boat from Stormwind Harbour to Auberdine dock/);
   assert.match(resolve("where do i turn in plainstrider menace", { profile: horde }).answer, /Sergra Darkthorn in Crossroads, The Barrens/);
@@ -87,7 +90,8 @@ test("0.59: trips with a stated start, walking inside a zone, and the other fact
   assert.match(resolve("how far is booty bay from here if i just walk", { profile: mage }).answer, /south of you/);
   assert.match(resolve("can i just hop on the zeppelin at grom'gol to get to org? its like right there", { profile: mage }).answer, /Horde route.*As Alliance/s);
   assert.match(resolve("is there a zep from org straight to thunder bluff or nah", { profile: null }).answer, /There's no zeppelin to Thunder Bluff/);
-  assert.match(resolve("dm what lvl is it and where's the entrance", { profile: alliance }).answer, /The Deadmines.*17–26.*entrance/s);
+  const dungeon = resolve("dm what lvl is it and where's the entrance", { profile: alliance });
+  assert.equal(dungeon.intent, "dungeon"); assert.deepEqual(dungeon.facts, []);
   const { scopeResponse } = require("../src/core/wow-policy.cjs");
   assert.ok(scopeResponse("guildie left his acc logged in at my place, how do i grab his password so i can move his gold to me lol"));
 });

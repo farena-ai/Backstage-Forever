@@ -20,9 +20,10 @@ Before anything else, the companion works out what you actually want and answers
 | Where an item comes from, or what a creature drops | Loot and boss loot, plus the quest the item is for |
 | A quest by name, or where to turn it in | Quest givers, objectives, objective area and turn-in |
 | Recognized offline dungeon or raid preparation | Possible matches in your saved quest log and compatible historical Forever encounter observations, when available; no Classic fallback |
+| Recognized dungeon or raid fact question | A local evidence gap for unverified current facts, or dated Forever observations when you explicitly ask for history |
 | Getting somewhere | The travel planner first (flights, zeppelins, boats, tram), else your nearest flight master |
 
-Recognized offline preparation stays local even with a model configured. Other questions can use the existing local answers or send reference context to a configured model. The offline preparation correction does not qualify general dungeon Q&A, travel, or model-generated answers as Forever-verified. Legacy general dungeon answers can still draw on Atlas reference; do not treat those as Forever confirmation.
+Recognized dungeon preparation and instance fact questions stay local even with a model configured. Other questions can use existing local answers or send reference context to a configured model. This change does not validate general model-generated answers or other evidence paths, such as loot and boss tips.
 
 **Voice.** The model is a seasoned fellow adventurer. Write in character ("Lok'tar ogar!", "*bows*", "Greetings, traveller") and it answers in character, true to your race, faction and class. Otherwise it speaks plainly with a little of the world's flavour. It uses your character's name and, when the addon has recorded it, the right pronouns.
 
@@ -35,6 +36,8 @@ Recognized offline preparation stays local even with a model configured. Other q
 - **covered:** answered correctly without a model, or the model receives the needed facts;
 - **correct locally:** answered correctly with no model;
 - **understood:** the request was routed to the right kind of answer.
+
+The benchmark separately reports correct abstentions and clarifications. These count as correct local handling, not as factual coverage. Eight original and seven held-out instance prompts previously expected Atlas reference or historical names as current facts; those prompts are unchanged, but now test for withholding unsupported claims. The tables below describe the old scoring contract.
 
 `--fails` lists what is still wrong. Coordinates match within 0.6, because positions are approximate. Roleplay questions with nothing factual to check are judged on voice, which needs a live model, so they are reported separately. `tests/companion-bench.test.cjs` keeps the scores from going backwards.
 
@@ -75,6 +78,12 @@ A direct **I'm already in Org** statement can supply a user-reported planning ci
 In desktop Companion, try **Dungeon prep for The Deadmines?** or **Dungeon prep for #dm?** Use a full Dungeon Atlas name or an exact `#ID`; the suggestion button fills an editable example. Recognized shorthand and follow-ups without an exact target ask you to name the instance again. Recognized requests for other editions are declined locally. No model, account, or connection is needed. The in-game Ask Panel hands recognized preparation questions off to desktop without reading your save.
 
 With **Use my active character** on, this answer can show possible matches by instance name from the active character’s dated addon quest log. For Scarlet Monastery and Razorfen Kraul, it can also show some historical Forever encounters when the reviewed instance map and bundled build exactly match. The pack’s collection window is not a per-encounter date or a record of your defeats. This answer does not use Classic entrance directions, level bands or boss lists, or infer quests to pick up, access, loot, lockouts, or live mechanics. Check current requirements in the Forever client. The exchange is not added to model conversation history or made available to save in Memory. Atlas remains a separate reference surface.
+
+## Offline dungeon and raid facts
+
+Try **Where is #dm?** or **What bosses are in Scarlet Monastery?** If there are no verified current Forever facts for the question, Companion says so and points you to the Forever client. It does not use the Atlas’s Classic-era directions, coordinates, level bands, or boss rosters to fill that gap. Shorthand alone can ask for an exact `#ID` instead of guessing, and recognized other-edition questions are declined locally.
+
+Try **Historical encounters for #sm** or **Historical encounters for #rfk** for up to four public observations from Forever build `1.60.1.70888`. The answer labels the source, build, and collection window. It is not a current roster, proof of access, or a record of your character. This historical reference does not require character sharing. Neither the question nor the answer enters provider history or Memory.
 
 ## Character context and honest uncertainty
 

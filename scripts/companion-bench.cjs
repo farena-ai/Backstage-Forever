@@ -55,7 +55,7 @@ function routeOf(r) {
   if (r.kind === "npc") return r.npc?.status === "found" ? "npc-location" : "clarify";
   if (r.kind === "travel") return r.travel?.status === "route" ? "travel" : "clarify";
   if (r.kind === "intent") return { role: "role", "turnin-which": "clarify", place: "npc-location", profession: "trainer", recipe: "recipe", creature: "creature" }[r.intent] || r.intent;
-  if (r.kind === "quick") return { train: "trainer", next: "quest-next", tonight: "quest-next", quest: "quest-info", "quest-choices": "quest-info" }[r.topic] || "quick:" + r.topic;
+  if (r.kind === "quick") return { train: "trainer", next: "quest-next", tonight: "quest-next", quest: "quest-info", "quest-choices": "quest-info", "dungeon-facts": "dungeon" }[r.topic] || "quick:" + r.topic;
   return r.kind;
 }
 const norm = (s) => String(s || "").toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, " ");
@@ -120,7 +120,7 @@ async function runBench({ questions, verbose = false } = {}) {
         grounded.reached = "model";
       } else if (m.r) grounded = { ok: false, reached: routeOf(m.r), needed: 0, missing: [], groups: [], wrong: [] };
     }
-    rows.push({ id: q.id, category: q.category, intent: q.expect.intent, route, answeredLocally, localCorrect, facts, grounded, text: verbose ? text : text.slice(0, 160), error: local.error || null });
+    rows.push({ id: q.id, category: q.category, intent: q.expect.intent, outcome: q.expect.outcome || null, route, answeredLocally, localCorrect, facts, grounded, text: verbose ? text : text.slice(0, 160), error: local.error || null });
   }
   return summarize(rows);
 }
@@ -140,13 +140,15 @@ function summarize(all) {
   // Overall: a question is "covered" if answered correctly locally or the model gets the facts.
   const covered = rows.filter((r) => r.localCorrect || r.grounded?.ok).length;
   const voice = all.filter(voiceOnly);
-  return { n, voiceOnly: voice.length, voiceUnderstood: voice.filter((r) => intentOk(r.intent, r.route)).length, scores: { covered: pct(covered, n), localCorrect: pct(local, n), understood: pct(understood, n), groundedWhenModel: pct(grounded, fall.length) }, byCategory: by, rows: all };
+  const abstentions = rows.filter(r => ["unknown-current", "clarify-instance"].includes(r.outcome));
+  return { n, voiceOnly: voice.length, voiceUnderstood: voice.filter((r) => intentOk(r.intent, r.route)).length, abstention: { n: abstentions.length, correct: abstentions.filter(r => r.localCorrect).length }, scores: { covered: pct(covered, n), localCorrect: pct(local, n), understood: pct(understood, n), groundedWhenModel: pct(grounded, fall.length) }, byCategory: by, rows: all };
 }
 function print(report) {
   const s = report.scores;
   console.log(`Companion benchmark: ${report.n} scored questions (+${report.voiceOnly} roleplay questions judged on voice, which needs a live model; ${report.voiceUnderstood} of them routed to the model as they should be)`);
   console.log(`  covered (correct locally, or the model gets the facts): ${s.covered}%`);
   console.log(`  correct locally with no model:                         ${s.localCorrect}%`);
+  if (report.abstention.n) console.log(`    includes correct abstentions/clarifications: ${report.abstention.correct}/${report.abstention.n}, not factual answers`);
   console.log(`  request understood (intent):                           ${s.understood}%`);
   console.log(`  facts in the model's context when it falls through:    ${s.groundedWhenModel}%`);
   console.log("  by category (n · local · understood · grounded/fallthrough):");

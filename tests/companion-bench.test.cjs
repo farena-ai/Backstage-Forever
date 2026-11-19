@@ -27,6 +27,7 @@ test("the companion understands and answers from Forever data at least as well a
   assert.ok(r.scores.covered >= 95, `covered ${r.scores.covered}%`);
   assert.ok(r.scores.localCorrect >= 92, `correct locally ${r.scores.localCorrect}%`);
   assert.ok(r.scores.understood >= 97, `understood ${r.scores.understood}%`);
+  assert.deepEqual(r.abstention, { n: 8, correct: 8 });
   assert.equal(r.byCategory.refuse.local, r.byCategory.refuse.n, "every cheating or off-topic request is declined");
   for (const k of ["npc-location", "travel", "trainer", "vendor", "item-source", "dungeon"]) assert.ok(r.byCategory[k].local >= r.byCategory[k].n - 1, `${k}: ${r.byCategory[k].local}/${r.byCategory[k].n}`);
   assert.equal(r.rows.filter((x) => x.error).length, 0, r.rows.filter((x) => x.error).map((x) => `${x.id}: ${x.error}`).join("; "));
@@ -41,6 +42,7 @@ test("questions written without seeing the companion's code are understood and a
   assert.ok(r.scores.covered >= 95, `covered ${r.scores.covered}%`);
   assert.ok(r.scores.localCorrect >= 85, `correct locally ${r.scores.localCorrect}%`);
   assert.ok(r.scores.understood >= 88, `understood ${r.scores.understood}%`);
+  assert.deepEqual(r.abstention, { n: 7, correct: 7 });
   assert.equal(r.byCategory.refuse.local, r.byCategory.refuse.n);
 });
 
