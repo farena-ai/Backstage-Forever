@@ -6853,6 +6853,55 @@
           "text": "See progress on reviewed quest chains. Unfinished quest-chain badges show completed steps from the saved character and the remaining reviewed steps when evidence is available. Progress does not award the badge early or establish quest eligibility."
         }
       ]
+    },
+    {
+      "version": "1.12.0",
+      "channel": "stable",
+      "source": "docs/releases/1.12.0.md",
+      "title": "Backstage Forever 1.12.0 — Field Dispatch",
+      "changes": [
+        {
+          "id": "field-dispatch-update-recap",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Catch up after an update. The illustrated Field Dispatch covers the releases you skipped when the app knows your previous installed version. Choose Not now to defer it or Got it to acknowledge it. A fresh install or an unknown predecessor does not claim an upgrade range."
+        },
+        {
+          "id": "field-dispatch-settings-history",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Find past changes in Settings. Open Settings → Updates → What’s New to search the bundled release history offline, even after dismissing the recap."
+        },
+        {
+          "id": "forever-evidence-for-offline-instance-prep",
+          "kind": "improved",
+          "platforms": [
+            "desktop"
+          ],
+          "action": "companion",
+          "section": "Changes",
+          "text": "Recognized dungeon and raid preparation questions stay offline. Ask desktop Companion a question such as Dungeon prep for The Deadmines?. The reply uses eligible World of Warcraft: Forever evidence and identifies gaps rather than filling them with facts from another edition. Saved-character context is optional. These exchanges are not sent to a model or reused in provider history or Companion Memory."
+        },
+        {
+          "id": "forever-preparation-scope",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Know what this covers. Saved preparation still belongs in desktop Companion, not the in-game Ask Panel. This change does not qualify general Companion Q&A as Forever evidence. Atlas remains a separately labeled reference, not a substitute for verified Forever facts."
+        }
+      ]
     }
   ],
   "excluded": [
