@@ -2,6 +2,8 @@
 
 Parent: [Field Dispatch and Forever-only Companion](FOREVER-COMPANION-NEXT-ROADMAP.md). Baseline: shipped 1.11.0 plus the code and docs audit used for the parent plan. These are proposals, not implemented features or release promises. **Next** means a candidate after the first vertical slice; **Later** requires other work first; **Gated** needs new evidence, native hardware, explicit consent, or operator approval. Advance complete workflows, not entire categories at once. Existing surfaces listed below are starting points, not claims about their live-client coverage.
 
+For work added after Field Dispatch, see the [Academy, Fieldbook and Guild backlog](ACADEMY-FIELDBOOK-GUILD-BACKLOG.md) and its [post-1.12 delivery order](FOREVER-COMPANION-NEXT-ROADMAP.md#post-112-delivery-order). Its Guild Run Pack extends the local Party workflow first; two-client sync and external integrations remain gated.
+
 ## 1. Updates, onboarding, and recovery
 
 Build on the signed updater, release notes, setup repair, [Support and Recovery](SUPPORT-AND-RECOVERY.md), and existing desktop view presets. The cumulative What’s New popup and its update-range contract stay first in the parent roadmap.
