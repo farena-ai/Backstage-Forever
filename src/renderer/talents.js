@@ -5,6 +5,43 @@ window.TalentsView = (() => {
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const CLASSES = ["Warrior", "Paladin", "Hunter", "Rogue", "Priest", "Shaman", "Mage", "Warlock", "Druid"];
   let data = null, error = "", who = null, preview = null, mountedFor = null, loading = false;
+  const ACADEMY_BUILD = "1.60.1.70959";
+  function academy(profile) {
+    const eligible = profile?.className === "Mage" && Number.isInteger(profile.level) && profile.level >= 23 && profile.level <= 25 &&
+      profile.clientBuild === ACADEMY_BUILD && profile.source?.kind === "wow-addon" && Boolean(profile.source.id) &&
+      Date.parse(profile.source.updatedAt) <= Date.now();
+    return `<section class="tal-academy" data-academy-dps aria-labelledby="academy-dps-title">
+      <h2 id="academy-dps-title">Academy · Frost Mage DPS</h2>
+      <p>Solo, one target · levels 23–25 · WoW Forever build ${ACADEMY_BUILD} · offline</p>
+      ${eligible ? `<fieldset><legend>Check ${esc(profile.name || "your selected Mage")}’s current spellbook</legend>
+        <p>The app does not read your spellbook. Only check ranks you see learned on this character while still in the listed level band and build. These checks aren't saved.</p>
+        <label><input type="checkbox" data-academy-rank="frostbolt"> Frostbolt, Rank 4</label>
+        <label><input type="checkbox" data-academy-rank="iceLance"> Ice Lance, Rank 1</label>
+      </fieldset><div data-academy-result aria-live="polite"></div>` : `<p>No recommendations for this selection. Select an imported Mage save with a matching build and level.</p>`}
+    </section>`;
+  }
+  function mountAcademy() {
+    const panel = document.querySelector("[data-academy-dps]");
+    const result = panel?.querySelector("[data-academy-result]");
+    if (!result || panel.onchange) return;
+    panel.onchange = () => {
+      const confirmed = panel.querySelector('[data-academy-rank="frostbolt"]').checked &&
+        panel.querySelector('[data-academy-rank="iceLance"]').checked;
+      // Only bundled copy and the fixed pilot build go into this result.
+      result.innerHTML = confirmed ? `<h3>Opener</h3>
+        <p>Start with Frostbolt (Rank 4) from range. It deals damage and slows the target's approach. [1, 2]</p>
+        <h3>Single-target priority</h3>
+        <ol><li>If the target is visibly frozen and Ice Lance (Rank 1) is ready, use it for the frozen-target bonus. A slow alone is not a freeze. [1, 3]</li>
+        <li>Otherwise, use Frostbolt when you can stand still and cast safely. This is a two-spell practice priority, not a complete rotation. [1, 2]</li></ol>
+        <p><strong>Mana and cooldown:</strong> Both casts spend mana. Save Ice Lance for a frozen window rather than spending mana on its weaker unfrozen hit. Fire Blast uses the same shared cooldown, so using it can leave Ice Lance unavailable when a freeze happens. [3, 4]</p>
+        <details><summary>Evidence and limits</summary><ol>
+          <li>wow4ever.quest Mage guide, Frost single-target section.</li>
+          <li>wow4ever.quest Frostbolt spellbook, Rank 4 (7322).</li>
+          <li>wow4ever.quest Ice Lance spellbook, Rank 1 (1312002).</li>
+          <li>Blizzard, WoW Forever Beta Development Notes, November 2 update (shared cooldown).</li>
+        </ol><p>Community spellbook entries reviewed for ${ACADEMY_BUILD}, updated 19 Nov 2026. Not a live combat check or a DPS benchmark.</p></details>` : "";
+    };
+  }
   const crest = (cls) => `<img class="tal-crest" src="art/classes/${esc(String(cls).toLowerCase())}.png" alt="" width="96" height="96">`;
   function tree(tab, c) {
     const now = new Map(), planned = new Map();
@@ -73,11 +110,12 @@ window.TalentsView = (() => {
     if (root) { root.outerHTML = page(); mountedFor = null; mounted(); }
   }
   function mounted() {
+    mountAcademy();
     const root = document.querySelector("[data-talents]");
     if (!root || mountedFor === root) return;
     mountedFor = root;
     root.addEventListener("change", (e) => { if (e.target.matches("[data-tal-class]")) { preview = e.target.value || null; data = null; paint(); load(); } });
     if (!data && !loading) load();
   }
-  return { page, mounted, invalidate: () => { data = null; }, _state: () => ({ data, who, preview }) };
+  return { page, academy, mounted, invalidate: () => { data = null; }, _state: () => ({ data, who, preview }) };
 })();

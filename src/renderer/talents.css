@@ -61,3 +61,10 @@
 .tal-u-past { opacity: .6; }
 .tal-u-kind { font: 600 11px Georgia, serif; padding: 1px 6px; border-radius: 8px; background: #3d220c; color: #f6dc9a; }
 .tal-unlocks .tal-note { margin-top: 8px; }
+
+.tal-academy { margin: 0 0 16px; padding: 12px 16px; border: 1px solid #a5823e; border-radius: 6px; background: #efe0bb; color: #2b1b0a; }
+.tal-academy h2, .tal-academy h3 { margin: 0 0 8px; color: #3d220c; }
+.tal-academy fieldset { min-inline-size: 0; margin: 8px 0; border: 1px solid #a5823e; }
+.tal-academy label { display: block; margin: 4px 0; cursor: pointer; color: #2b1b0a; }
+.tal-academy details summary { color: #5a3608; font-weight: 700; }
+.tal-academy input:focus-visible, .tal-academy summary:focus-visible { outline: 2px solid #654018; outline-offset: 3px; }
