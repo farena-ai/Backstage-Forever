@@ -131,6 +131,15 @@ window.Preparation = (() => {
     const shown=leads.slice(0,3);
     return `<small class="shop-elsewhere">${label}: ${shown.map(e=>`${alt?`${esc(e.name)}${e.realm?` (${esc(e.realm)})`:""} · `:""}${e.place} ${e.complete?"":"at least "}${e.count} · ${esc(savedStockTime(e.seenAt))}`).join("; ")}${leads.length>shown.length?` (+${leads.length-shown.length} more in Ledger)`:""}</small>`;
   }
+  const MAX_GOAL_COPPER=100000000000; // Ledger accepts at most 10,000,000 whole gold.
+  const savingsToken=()=>`${generation}:${sourceRevision}`;
+  function reviewSavings(button){
+    const profileId=host.profileId(), copper=model?.shoppingList?.batchPurchaseEstimate;
+    if(!active()||!profileId||host.root.querySelector("#active-character")?.value!==profileId||!workshopCurrent()||
+      button.disabled||button.dataset.preparationSavings!==savingsToken()||!Number.isSafeInteger(copper)||copper<1||copper>MAX_GOAL_COPPER)return false;
+    window.LedgerView.reviewSavings({profileId, copper, character:model.character.name, recipe:model.selectedRecipe.name, crafts:model.shoppingList.crafts});
+    return true;
+  }
   function workshopShopping(list){
     if(!list?.rows?.length)return "";
     const groups=[["covered","Covered by saved bags"],["missing","Missing from saved bags"],["unknown","Shortfall unknown"]];
@@ -148,7 +157,11 @@ window.Preparation = (() => {
     }).join("");
     const point=list.nextPointEstimate;
     const estimate=point?`<p class="workshop-caveat" data-workshop-point-cost>Next skill point · estimated purchase cost for about ${point.attempts} attempt${point.attempts===1?"":"s"}: ${point.estimatedCopper===null?"unknown":copperText(point.estimatedCopper)}. Based on saved bags and this character’s dated AH buyouts; skill gains are not guaranteed.</p>`:"";
-    return `<section class="skill-shopping"><div class="workshop-section-heading"><div><span class="eyebrow">SHOPPING LIST · ${list.crafts} ATTEMPT${list.crafts===1?"":"S"}</span><h2>Materials for this batch</h2></div></div>${sections}${estimate}<p class="workshop-caveat">Storage and alt snapshots can overlap and are never pooled or subtracted. Verify actual stock, bank access and whether items can be transferred. AH prices and quantities on offer now are unknown. ${esc(list.note)}</p></section>`;
+    const copper=list.batchPurchaseEstimate;
+    const batch=!workshopCurrent()?"":!Number.isSafeInteger(copper)?"Batch purchase estimate unavailable: requires known carried shortfalls and dated Auction House buyouts for everything missing."
+      :copper===0?"Saved bags cover this batch. No purchase target suggested."
+      :`Estimated purchase cost for this batch: ${copperText(copper)}. Based on this character’s saved bags and dated Auction House buyouts, not current prices. ${copper>MAX_GOAL_COPPER?"This exceeds the Ledger gold goal limit.":`<button type="button" class="skill-use" data-nav="ledger-gold" data-preparation-control="savings" data-preparation-savings="${savingsToken()}">Review savings goal</button>`}`;
+    return `<section class="skill-shopping"><div class="workshop-section-heading"><div><span class="eyebrow">SHOPPING LIST · ${list.crafts} ATTEMPT${list.crafts===1?"":"S"}</span><h2>Materials for this batch</h2></div></div>${sections}${batch?`<p class="workshop-caveat" data-workshop-batch-cost>${batch}</p>`:""}${estimate}<p class="workshop-caveat">Storage and alt snapshots can overlap and are never pooled or subtracted. Verify actual stock, bank access and whether items can be transferred. AH prices and quantities on offer now are unknown. ${esc(list.note)}</p></section>`;
   }
   function skillLedger(m){
     if(!m||m.nextRecipe===undefined||!m.profession)return "";
@@ -191,6 +204,10 @@ window.Preparation = (() => {
     finally{if(valid()){pending=false;paint();}}
   }
   function init(value){host=value;
+    host.root.addEventListener("click",e=>{
+      const button=e.target.closest("[data-preparation-savings]");
+      if(button&&!reviewSavings(button))e.stopImmediatePropagation();
+    });
     const newerFocus=()=>{focusRevision++;suspendedFocus=null;requestedFocus=null;};
     document.addEventListener("focusin",e=>{if(active()&&!painting&&e.target!==document.body)newerFocus();});
     document.addEventListener("pointerdown",()=>{if(active()&&!painting)newerFocus();},true);

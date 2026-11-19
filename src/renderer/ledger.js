@@ -95,6 +95,26 @@ window.LedgerView = (() => {
   }
   // Gold goal (0.36, E4): the player's own target, progress across characters, a pace estimate.
   let goalNote = "";
+  let savings = null, focusSavings = false, savingGoal = false;
+  const ownsSavings = review => review && review.profileId === activeProfile() &&
+    review.profileId === document.querySelector("#active-character")?.value;
+  function reviewSavings(review) {
+    savings = { ...review, gold: Math.ceil(review.copper / 10000) };
+    focusSavings = true;
+    goalNote = "";
+    data = null; error = ""; loadGeneration++;
+  }
+  function savingsReview() {
+    if (!ownsSavings(savings) || savings.profileId !== data.activeProfileId || !data.goal) return "";
+    const { character, recipe, crafts, gold, copper } = savings;
+    const current = data.goal.goal;
+    return `<section class="ldg-card" data-ledger-savings-review><h2>Workshop savings estimate</h2>
+      <p>${esc(character)} · ${esc(recipe)} · ${crafts} craft attempt${crafts === 1 ? "" : "s"}: ${coins(copper)} estimated, rounded up to <strong>${gold.toLocaleString()} gold</strong> for the goal.</p>
+      <p class="ldg-note">Based on saved carried quantities and dated Auction House buyouts, not current prices. The goal tracks saved gold across characters, not purchases or crafting progress.</p>
+      ${current ? `<p>Current goal: ${esc(current.label || "Gold goal")} · ${coins(current.copper)}. Replacing it keeps just one gold goal.</p>` : ""}
+      <div class="actions"><button type="button" class="primary" data-ledger-savings-apply>${current ? "Replace gold goal" : "Set gold goal"}</button><button type="button" data-ledger-savings-cancel>${current ? "Keep current goal" : "Cancel"}</button></div>
+      <p class="ldg-goal-msg" role="status">${esc(goalNote)}</p></section>`;
+  }
   // 1.3 (J11): a riding-and-mount target from prices your characters saw at the riding trainer and a mount vendor.
   function mountHint(m) {
     if (!m) return `<p class="ldg-note">Saving for riding training and your first mount, or anything else? Set the amount yourself, or open your riding trainer's window and a mount vendor once in game (then /reload): the app adds up what they charge.</p>`;
@@ -131,7 +151,7 @@ window.LedgerView = (() => {
     return `<div class="ldg-summary"><div><strong>${coins(g.total)}</strong><span>gold on ${g.characters.length} character${g.characters.length === 1 ? "" : "s"}</span></div><div><strong>${data.value.items.length ? coins(data.value.total) : "—"}</strong><span>estimated auction value</span></div><div><strong>${data.prices.length.toLocaleString()}</strong><span>prices remembered</span></div></div>
       <section class="ldg-card">${searchBar("prices", "Price memory", "Search remembered prices")}<p class="ldg-note">Lowest buyout per item on Auction House pages you opened. The addon never searches or buys.</p><div data-ledger-list="prices">${priceRows()}</div></section>
       <div class="ldg-two"><section class="ldg-card"><h2>Gold per character</h2>${balances}${mail.length ? `<p class="ldg-note ldg-after">Waiting in the mail: ${mail.map((c) => `${esc(c.name)} ${coins(c.mail.money)}`).join(", ")}.</p>` : ""}</section>
-      <section class="ldg-card"><h2>Estimated auction value</h2>${data.value.items.length ? `${worth}<p class="ldg-note ldg-after">Based on last seen prices; actual sales vary.${data.value.items.length > 15 ? " Showing the 15 highest-value items." : ""}</p>` : `<p class="ldg-empty">Nothing you carry has a remembered auction price yet.</p>`}</section></div>${goalCard()}`;
+      <section class="ldg-card"><h2>Estimated auction value</h2>${data.value.items.length ? `${worth}<p class="ldg-note ldg-after">Based on last seen prices; actual sales vary.${data.value.items.length > 15 ? " Showing the 15 highest-value items." : ""}</p>` : `<p class="ldg-empty">Nothing you carry has a remembered auction price yet.</p>`}</section></div>${savingsReview()}${goalCard()}`;
   }
 
   // Reputation: one character at a time; their own side's factions first.
@@ -267,6 +287,7 @@ window.LedgerView = (() => {
   }
   function mounted() {
     const root = document.querySelector("[data-ledger]");
+    if (root?.dataset.ledger !== "ledger-gold" || !ownsSavings(savings)) { savings = null; focusSavings = false; }
     if (!root) { mountedFor = null; watchTables(null); return; }
     if (mountedFor === root) return;
     mountedFor = root; sizes(root); watchTables(root);
@@ -294,10 +315,36 @@ window.LedgerView = (() => {
       watchTables(root);
     });
     const repaint = () => { const r = document.querySelector("[data-ledger]"); if (r) { r.outerHTML = page(route); mountedFor = null; mounted(); } };
-    const setGoal = async (input) => {
-      try { data.goal = await api.setGoldGoal(input); goalNote = ""; } catch (e) { goalNote = e.message || "That goal could not be saved."; }
+    const setGoal = async (input, review = null) => {
+      if (savingGoal) return;
+      savingGoal = true;
+      try {
+        const goal = await api.setGoldGoal(input);
+        if (data) data.goal = goal;
+        goalNote = "";
+        if (savings === review) savings = null;
+      } catch (e) { goalNote = e.message || "That goal could not be saved."; }
+      finally { savingGoal = false; }
       repaint();
     };
+    const apply = root.querySelector("[data-ledger-savings-apply]");
+    const review = savings;
+    apply?.addEventListener("click", () => {
+      if (review !== savings || !ownsSavings(review) || !root.isConnected || savingGoal) return;
+      apply.disabled = true;
+      void setGoal({ gold: review.gold, label: `Materials: ${review.recipe}`.slice(0, 60) }, review);
+    });
+    const cancel = root.querySelector("[data-ledger-savings-cancel]");
+    cancel?.addEventListener("click", () => {
+      if (savingGoal) return;
+      savings = null; goalNote = ""; repaint();
+      document.querySelector('[data-ledger-goal="gold"]')?.focus();
+    });
+    if (cancel && focusSavings) {
+      focusSavings = false;
+      cancel.scrollIntoView({ block: "center" });
+      cancel.focus({ preventScroll: true });
+    }
     root.querySelector("[data-ledger-goal-save]")?.addEventListener("click", () => {
       const gold = Number(root.querySelector('[data-ledger-goal="gold"]')?.value);
       if (!Number.isInteger(gold) || gold < 1 || gold > 10000000) { goalNote = "Enter a whole number of gold, from 1 to 10,000,000."; repaint(); return; }
@@ -312,5 +359,5 @@ window.LedgerView = (() => {
     repFor = profileId; repFaction = factionId; focusRepFor = profileId;
     data = null; error = ""; loadGeneration++;
   }
-  return { init: readActive => { activeProfile = readActive; }, bags: () => page("ledger"), gold: () => page("ledger-gold"), reputation: () => page("ledger-reputation"), cooldowns: () => page("ledger-cooldowns"), page, mounted, selectReputation, invalidate: () => { data = null; }, _state: () => ({ data, query, route }) };
+  return { init: readActive => { activeProfile = readActive; }, bags: () => page("ledger"), gold: () => page("ledger-gold"), reputation: () => page("ledger-reputation"), cooldowns: () => page("ledger-cooldowns"), page, mounted, selectReputation, reviewSavings, invalidate: () => { data = null; }, _state: () => ({ data, query, route }) };
 })();
