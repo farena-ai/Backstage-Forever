@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.0 — Field Dispatch
+
+- Catch up on missed releases with an illustrated recap and search offline history from Settings → Updates → What’s New.
+- Keep recognized offline dungeon and raid preparation scoped to supported Forever evidence; Atlas remains a separate reference.
+- See the [release notes](docs/releases/1.12.0.md) for scope.
+
 ## 1.11.0 — Dungeon preparation, savings goals, and quest-chain progress
 
 - Companion can answer supported dungeon preparation questions offline using matching saved character evidence.

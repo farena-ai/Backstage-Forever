@@ -1,13 +1,13 @@
 "use strict";
 // Smarter companion (0.47, roadmap 4.4): tools over everything the app already works out, so
 // "what should I do tonight?" gets a concrete plan. Each tool returns a small summary of what a
-// page shows (Now's next step, Zones, Sheet, Dungeons, All characters, this session); it never
+// page shows (Now's next step, Zones, Sheet, All characters, this session); it never
 // changes anything. Only offered when the player shares their character with the companion.
 const DEFINITIONS = [
-  { name: "plan_tonight", description: "Everything needed to plan tonight's play session for the shared character in one call: the next step (hand in / objective / pick up, with direction), rested XP and level progress, this session's pace, the zone with the most quests left at their level, dungeons that fit their level, gear problems, bag space and which of their other characters stand out tonight. Use it first for 'what should I do tonight', 'plan my session', 'what next'.", parameters: { type: "object", properties: {}, additionalProperties: false } },
+  { name: "plan_tonight", description: "Plan tonight's play session for the shared character: the next step, rested XP and level progress, session pace, zone progress, gear, bag space and other characters. Use it first for 'what should I do tonight', 'plan my session', 'what next'.", parameters: { type: "object", properties: {}, additionalProperties: false } },
   { name: "get_zone_progress", description: "Zones for the character's faction near their level: level range, quests done out of the zone's quests, finished zones. Use for 'where should I level', 'which zones have I finished'.", parameters: { type: "object", properties: {}, additionalProperties: false } },
   { name: "get_gear", description: "The character's gear summary from the last save: average item level, empty slots, weakest pieces to replace and upgrades already in bags or bank, plus saved gear sets.", parameters: { type: "object", properties: {}, additionalProperties: false } },
-  { name: "get_dungeons", description: "Dungeons and raids for the character's level and faction: level range, difficulty for them (right, easy, hard), zone, bosses, quests to pick up first, and items there that would be upgrades.", parameters: { type: "object", properties: {}, additionalProperties: false } },
+  { name: "get_dungeons", description: "Check whether verified Forever dungeon recommendations are available. Do not substitute Classic or model knowledge when they are unavailable.", parameters: { type: "object", properties: {}, additionalProperties: false } },
   { name: "get_characters", description: "All of the player's characters at a glance: level, class, rested XP grown since logout, gold, bag space, professions, days since played, and 'who to play tonight' suggestions with reasons.", parameters: { type: "object", properties: {}, additionalProperties: false } },
   { name: "get_session", description: "This play session so far: minutes played, levels gained, levels per hour, minutes to the next level, deaths, zones visited, level-ups.", parameters: { type: "object", properties: {}, additionalProperties: false } },
 ];
@@ -23,13 +23,7 @@ function gear(s) {
     upgradesInBags: (s.upgrades || []).slice(0, 4).map((u) => ({ slot: u.label || u.slot, item: u.item?.name || u.name || null, where: u.where || null })),
     sets: (s.sets || []).map((x) => x.name) };
 }
-function dungeons(a) {
-  if (!a) return null;
-  const fit = (a.entries || []).filter((e) => ["right", "easy", "hard"].includes(e.difficulty)).slice(0, 6);
-  return { level: a.level, caution: a.caution, dungeons: fit.map((e) => ({ name: e.name, kind: e.kind, levels: e.levels ? `${e.levels.min}-${e.levels.max}` : null, difficulty: e.difficulty, zone: e.zone,
-    bosses: (e.bosses || []).slice(0, 8).map((b) => b.name), pickUpFirst: (e.pickUp || []).slice(0, 4).map((q) => q.title || q.name).filter(Boolean),
-    upgrades: e.loot?.upgrades ?? e.loot?.upgradeCount ?? null })) };
-}
+
 function characters(v) {
   if (!v) return null;
   return { characters: v.cards.map((c) => ({ name: c.name, level: c.level, className: c.className, faction: c.faction, restedPercent: c.rested?.percent ?? null, gold: c.money === null ? null : Math.floor(c.money / 10000), freeBagSlots: c.bags?.free ?? null, professions: c.professions.map((p) => `${p.name} ${p.rank}/${p.maxRank}`), daysAway: c.daysAway, active: c.active })),
@@ -45,20 +39,20 @@ function createPlannerTools(views) {
   const v = (name) => safe(() => views?.[name]?.());
   const handlers = {
     plan_tonight() {
-      const step = v("nextStep")?.step || null, alts = v("alts"), tracker = v("worldTracker"), sheet = v("characterSheet"), atlas = v("dungeonAtlas"), s = v("playSession");
+      const step = v("nextStep")?.step || null, alts = v("alts"), tracker = v("worldTracker"), sheet = v("characterSheet"), s = v("playSession");
       const me = alts?.cards?.find((c) => c.active) || null;
       return { status: "ok",
         nextStep: step ? { kind: step.kind, what: step.title, detail: step.detail, direction: step.dir, progress: step.progress || null } : null,
         character: me ? { name: me.name, level: me.level, levelPercent: me.xp?.percent ?? null, restedPercent: me.rested?.percent ?? null, restedFull: me.rested?.full ?? false, freeBagSlots: me.bags?.free ?? null } : null,
         session: session(s), zoneToClear: tracker?.suggestion || null, zonesNearYourLevel: zonesNear(tracker).slice(0, 5),
-        dungeonsForYou: dungeons(atlas)?.dungeons?.filter((d) => d.difficulty !== "hard").slice(0, 3) || [],
         gear: (() => { const g = gear(sheet); return g ? { emptySlots: g.emptySlots, weakest: g.weakest.slice(0, 2), upgradesInBags: g.upgradesInBags } : null; })(),
         otherCharacters: alts?.tonight?.filter((t) => !me || t.name !== me.name) || [],
         note: "Plan from these facts: say what to do first, then next, with names and directions. Rested XP doubles kill XP until it runs out." };
     },
     get_zone_progress() { const t = v("worldTracker"); return t ? { status: "ok", completedQuestsKnown: t.completedKnown, totals: t.totals, zones: zonesNear(t), next: t.suggestion } : { status: "unavailable" }; },
     get_gear() { const g = gear(v("characterSheet")); return g ? { status: "ok", ...g } : { status: "unavailable" }; },
-    get_dungeons() { const d = dungeons(v("dungeonAtlas")); return d ? { status: "ok", ...d } : { status: "unavailable" }; },
+    // Atlas reference rows do not qualify as evidence of suitability or access.
+    get_dungeons() { return { status: "no-evidence", message: "No verified Forever dungeon recommendations are available. Do not infer access, level range, entrance, applicable quests or loot." }; },
     get_characters() { const c = characters(v("alts")); return c ? { status: "ok", ...c } : { status: "unavailable" }; },
     get_session() { return { status: "ok", ...session(v("playSession")) }; },
   };

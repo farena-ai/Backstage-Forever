@@ -22,8 +22,8 @@ test('explicit dungeon preparation answers offline with no character, model, or 
  f.store.getKey=()=>assert.fail('offline answer read a credential');
  const r=await f.ask('Dungeon prep for #dm?',{shareProfile:false});
  assert.equal(r.kind,'quick');assert.equal(r.topic,'dungeon-prep');
- assert.match(r.text,/The Deadmines.*#dm/);assert.match(r.text,/Classic-era baseline/i);
- assert.match(r.text,/Westfall.*42\.0, 72\.0/);assert.match(r.text,/Repair gear/);
+ assert.match(r.text,/The Deadmines.*#dm/);assert.match(r.text,/No verified Forever preparation details/);
+ assert.doesNotMatch(r.text,/Westfall|42\.0|Classic-era baseline|Repair gear/);
  assert.match(r.text,/Use my active character/);assert.equal(f.seen.length,0);
 });
 
@@ -34,37 +34,67 @@ test('dungeon prep never guesses a partial name or turns a clarification into a 
   assert.equal(r.topic,'dungeon-prep');assert.match(r.text,/Which instance/);assert.doesNotMatch(r.text,/approximate entrance/);
  }
  const raid=await f.ask('How should I prepare for Onyxia’s Lair?');
- assert.match(raid.text,/Onyxia's Lair.*#ony/);assert.match(raid.text,/Attunement or key requirements checked/);
+ assert.match(raid.text,/Onyxia's Lair.*#ony/);assert.doesNotMatch(raid.text,/attunement|Dustwallow/i);
  assert.equal(f.seen.length,0);
 });
 
-test('only the active dated save and compatible historical wishes can inform the local answer',async()=>{
+test('only exact-build Forever encounters can supplement local preparation',async()=>{
  const f=fixture(),at='2026-11-10T00:00:00.000Z',reads=[];
  const pack=require('../src/core/boss-loot-data.cjs').loadBossLootPack();
  const alpha=f.state.profiles[0];
- Object.assign(alpha,{clientBuild:pack.builds[0],quests:[{id:900001,title:'The Deadmines Alpha quest',complete:false,objectives:[]}]});alpha.source.updatedAt=at;
+ Object.assign(alpha,{clientBuild:pack.builds[0],quests:[{id:900001,title:'Scarlet Monastery Alpha quest',complete:false,objectives:[]},{id:900003,title:'Herod',complete:false,objectives:[]},{id:900004,title:'Scarlet Monasteryyard',complete:false,objectives:[]}],journal:{encounters:[{name:'Personal defeat canary',encounterId:444,instanceMap:189,instanceType:'party',difficultyId:1,at:Date.parse('2026-11-09')/1000}]}});alpha.source.updatedAt=at;
  f.state.profiles.push({...alpha,id:'Beta',name:'Beta',clientBuild:'1.60.1.99999',quests:[{id:900002,title:'The Deadmines Beta quest',complete:false,objectives:[]}]});
  f.service.dungeonEvidence={lootPack:()=>pack,wishes:id=>{reads.push(id);return [5202];}};
- const prompt='Dungeon prep for #dm?';
+ const prompt='Dungeon prep for #sm?';
  const local=await f.ask(prompt);
- assert.match(local.text,/Last saved.*Alpha.*2026-11-10|Last saved\*\* for Alpha.*2026-11-10/);
- assert.match(local.text,/Deadmines Alpha quest \(quest #900001\)/);
- assert.match(local.text,/Item #5202 · Edwin VanCleef/);assert.match(local.text,/pooled across builds.*no per-build confirmation/);
- assert.doesNotMatch(local.text,/Beta|PRIVATE_|opaque/);assert.equal(f.seen.length,0);
+ assert.match(local.text,/Interrogator Vishas \(encounter #444\)/);
+ assert.match(local.text,/1\.60\.1\.70888.*2026-11-10.*2026-11-11/);
+ assert.match(local.text,/From your saved quest log.*2026-11-10/);
+ assert.match(local.text,/Scarlet Monastery Alpha quest \(quest #900001\)/);
+ assert.doesNotMatch(local.text,/900003|900004|Personal defeat canary|5202|Beta|PRIVATE_|opaque|Tirisfal|85\.0|Roogug/);assert.equal(f.seen.length,0);
  assert.equal(f.memory.draft('Alpha'),null);
  await f.ask('Tell me some lore about the Titans.');
- assert.doesNotMatch(f.seen[0].prompt,/Dungeon prep|Item #5202|900001/);
- assert.doesNotMatch(JSON.stringify(f.seen[0].context),/Item #5202|historical boss-loot listings/);
- assert.doesNotMatch((await f.ask(prompt,{shareProfile:false})).text,/Alpha|900001|5202/);
+ assert.doesNotMatch(f.seen[0].prompt,/Dungeon prep|Interrogator Vishas|900001/);
+ assert.doesNotMatch(JSON.stringify(f.seen[0].context),/Interrogator Vishas|historical boss-loot listings/);
+ assert.doesNotMatch((await f.ask(prompt,{shareProfile:false})).text,/Alpha|900001|5202|Interrogator Vishas/);
  await assert.rejects(f.ask(prompt,{profileId:'Beta'}),/Choose the current character/);
  f.state.activeProfileId='Beta';
  const mixed=await f.ask(prompt);
- assert.match(mixed.text,/No bundled boss-loot reference covers this save’s build/);
- assert.match(mixed.text,/Deadmines Beta quest \(quest #900002\)/);
- assert.doesNotMatch(mixed.text,/900001|5202|Alpha/);assert.deepEqual(reads,['Alpha']);
+ assert.match(mixed.text,/No verified Forever encounter observations match this instance and saved build/);
+ assert.doesNotMatch(mixed.text,/900001|900002|5202|Alpha|Interrogator Vishas/);assert.deepEqual(reads,[]);
  f.state.profiles[1].source={kind:'wow-addon',id:'future',updatedAt:'2999-01-01T00:00:00.000Z'};
  assert.match((await f.ask(prompt)).text,/No dated addon save/);
  assert.equal(f.seen.length,1);
+});
+test('a same-build pack with an unreviewed source URL is not Forever encounter evidence',async()=>{
+ const f=fixture(), pack=require('../src/core/dungeon-atlas.cjs').loadEncounters();
+ Object.assign(f.state.profiles[0],{clientBuild:pack.build});
+ f.state.profiles[0].source.updatedAt='2026-11-09T00:00:00.000Z';
+ assert.match((await f.ask('Dungeon prep for #sm')).text,/collection window 2026-11-10 to 2026-11-11/);
+ f.service.dungeonEvidence={encounters:()=>({...pack,source:{...pack.source,url:`https://example.invalid/data/wowf/${pack.build}/encounters.json`}})};
+ const answer=await f.ask('Dungeon prep for #sm');
+ assert.match(answer.text,/No verified Forever encounter observations/);
+ assert.doesNotMatch(answer.text,/Interrogator Vishas|collection window/);
+ assert.equal(f.seen.length,0);
+});
+test('recognized preparation never reaches local, API or subscription providers, even for the wrong edition',async()=>{
+ for(const [id,mode] of [['local','api'],['ollama','api'],['ollama-cloud','api'],['openai','api'],['anthropic','api'],['xai','api'],['openai','subscription'],['anthropic','subscription']]){
+  for(const lookups of [true,false]){
+   const f=fixture(id,mode);f.service.lookups=lookups;
+   f.service.localAi={start:()=>assert.fail('offline preparation started the local model')};
+   f.transport(async()=>assert.fail('offline preparation reached inference'));
+   for(const prompt of ['How do I prepare for the Deadmines?','What should I do to prepare for The Deadmines in Retail?','Dungeon prep for Classic Deadmines','How should I prepare for the Rookery dungeon?','How do I prep for the Deadmines and where is the entrance?','How should I prepare for the Rookery in Retail?','How do I prep for SM?','How do I prep for SM and where is the entrance?','How do I prep for SM (Retail)?','How to prepare for Shadowfang?','Dungeon prep: Deadmines','What do I need before entering it?','How do I prep for it?','How do I prepare for Retail Rookery?']){
+    const r=await f.ask(prompt);assert.equal(r.topic,'dungeon-prep',prompt);
+    assert.doesNotMatch(r.text,/Westfall|42\.0|VanCleef/);
+    if(/Retail|Classic/.test(prompt))assert.match(r.text,/only covers World of Warcraft: Forever/);
+   }
+   assert.equal(f.service.session.status().turns,0);
+  }
+ }
+});
+test('unrelated natural preparation is not made a dungeon question by a non-game use of midnight',async()=>{
+ const f=fixture();
+ assert.equal((await f.ask('How do I prepare for a midnight fishing trip?')).kind,'ai');
 });
 test('all seven transports receive identical composed main prompt and original draft question',async()=>{
  let expected;

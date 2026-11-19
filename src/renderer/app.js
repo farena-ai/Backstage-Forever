@@ -599,6 +599,7 @@ function render() {
   Memory.mounted();
   Recovery.paint();
   if (focusedOption) root.querySelector(`[data-plan-option="${focusedOption}"]`)?.focus();
+  void desktopDispatch.startup();
   } finally {
     for (const node of root.querySelectorAll("details[data-living-disclosure]")) {
       if (disclosures.has(node.dataset.livingDisclosure)) node.open = disclosures.get(node.dataset.livingDisclosure);
@@ -973,7 +974,7 @@ function updatesPage() {
   return `${PageHero.render({ art: "settings", compact: true, eyebrow: "Settings · Updates", title: "Keep the app up to date", subtitle: `Installed: version ${esc(version)}. Updates download in the background and install when you close the app.` })}
   <div class="grid"><section class="panel update-panel"><div class="panel-header"><h3>Backstage Forever updates</h3><span class="tag" data-update-version>Installed: ${esc(version)}</span></div><p class="update-summary" data-update-summary>${esc(updateSummary())}</p><progress data-update-progress max="100" value="${Number(updateInfo.progress) || 0}" ${updateInfo.phase === "downloading" ? "" : "hidden"} aria-label="Update download progress"></progress>
   <div class="update-options"><label class="check-label"><input type="checkbox" data-update-pref="automatic" ${updateInfo.automatic ? "checked" : ""}>Automatically check and download updates</label><p>Check after startup and every six hours while the app is open. Downloads come from this project’s GitHub Releases.</p><label class="check-label"><input type="checkbox" data-update-pref="installOnQuit" ${updateInfo.installOnQuit ? "checked" : ""}>Install downloaded updates when I close the app</label><p>No forced restart during your game. You can also restart here when you’re ready.</p></div>
-  <div class="actions"><button class="primary" data-command="check-updates">Check for updates</button><button data-command="install-update" ${updateInfo.phase === "ready" ? "" : "disabled"}>Restart and update</button><button data-link="releases">Open Releases ↗</button></div><p class="corner-note">Last checked: ${updateInfo.lastChecked ? esc(new Date(updateInfo.lastChecked).toLocaleString()) : "Not checked in this session"}</p></section>
+  <div class="actions">${FieldDispatchDesktop.button()}<button class="primary" data-command="check-updates">Check for updates</button><button data-command="install-update" ${updateInfo.phase === "ready" ? "" : "disabled"}>Restart and update</button><button data-link="releases">Open Releases ↗</button></div><p class="corner-note">Last checked: ${updateInfo.lastChecked ? esc(new Date(updateInfo.lastChecked).toLocaleString()) : "Not checked in this session"}</p></section>
   <aside class="panel"><h3>A trusted path forward.</h3><div class="steps"><div class="step"><b>1</b><div><p>Authenticate the release</p><small>Only releases signed by Backstage Forever’s update key are accepted.</small></div></div><div class="step"><b>2</b><div><p>Verify the download</p><small>The complete installer’s size and fingerprint must match before it can run.</small></div></div><div class="step"><b>3</b><div><p>Keep your journal</p><small>Profiles and provider settings remain in your Windows account’s app folder.</small></div></div></div><div class="callout brass">Older updater stuck? Open Releases and run the latest installer once. Older installed apps cannot receive these retry and recovery improvements until they are upgraded.</div><p class="corner-note">Application update signatures authenticate future downloads. The installer doesn't carry a Windows publisher certificate yet, so the first install may show an unknown-publisher notice.</p></aside></div>`;
 }
 // Mac (1.0.1): checks only. Nothing downloads or installs by itself; the player replaces the app.
@@ -981,7 +982,7 @@ function macUpdatesPage() {
   return `${PageHero.render({ art: "settings", compact: true, eyebrow: "Settings · Updates", title: "Keep the app up to date", subtitle: `Installed: version ${esc(version)}. The app tells you when a new version is out.` })}
   <div class="grid"><section class="panel update-panel"><div class="panel-header"><h3>Backstage Forever updates</h3><span class="tag" data-update-version>Installed: ${esc(version)}</span></div><p class="update-summary" data-update-summary>${esc(updateSummary())}</p>
   <div class="update-options"><label class="check-label"><input type="checkbox" data-update-pref="automatic" ${updateInfo.automatic ? "checked" : ""}>Check for new versions</label><p>After startup and every six hours while the app is open, from this project’s GitHub Releases. Only releases signed by Backstage Forever’s update key count.</p></div>
-  <div class="actions"><button class="primary" data-command="check-updates">Check for updates</button><button data-link="releases">Download for Mac ↗</button></div><p class="corner-note">Last checked: ${updateInfo.lastChecked ? esc(new Date(updateInfo.lastChecked).toLocaleString()) : "Not checked in this session"}</p></section>
+  <div class="actions">${FieldDispatchDesktop.button()}<button class="primary" data-command="check-updates">Check for updates</button><button data-link="releases">Download for Mac ↗</button></div><p class="corner-note">Last checked: ${updateInfo.lastChecked ? esc(new Date(updateInfo.lastChecked).toLocaleString()) : "Not checked in this session"}</p></section>
   <aside class="panel"><h3>Updating on a Mac.</h3><div class="steps"><div class="step"><b>1</b><div><p>Download</p><small>The macOS-arm64 zip for Apple silicon, or macOS-x64 for Intel.</small></div></div><div class="step"><b>2</b><div><p>Replace</p><small>Quit Backstage Forever, unzip, and drag the new app into Applications over the old one.</small></div></div><div class="step"><b>3</b><div><p>Keep your journal</p><small>Your characters and settings stay in your Mac account's app folder. The new app updates the addon; type /reload in WoW once.</small></div></div></div></aside></div>`;
 }
 let companionSignature = "", conversationOwner = "", conversationScope = null, companionReady = Promise.resolve();
@@ -1370,6 +1371,7 @@ root.addEventListener("click", (event) => {
       }
       page = navigation.page;
       render();
+      if (button.hasAttribute("data-dispatch-destination")) root.querySelector("#main-content")?.focus();
       if (page === "quest-guide") {
         const epoch = stateMutationEpoch;
         const id = state.activeProfileId,request=++questStatusRequest,saved=JSON.stringify(profile());
@@ -1557,6 +1559,9 @@ root.addEventListener("click", (event) => {
         setupCandidates = null;
         await mutateGame(() => api.disconnectGame());
         break;
+      case "field-dispatch":
+        await desktopDispatch.history(button);
+        break;
       case "check-updates":
         if (updateSaving) break;
         const checkingEpoch = ++updateEpoch;
@@ -1738,6 +1743,7 @@ root.addEventListener("click", (event) => {
           formDrafts.clear();
           chooseSetup("");
           setupOpen = true;
+          desktopDispatch.reset();
           gameStatus = {};
           adventureBrief = null;
           briefProfileId = null;
@@ -2007,6 +2013,20 @@ root.addEventListener("submit", (event) => {
 window.addEventListener?.("bf-provider-changed", async () => {
   try { const fresh = await api.bootstrap(); state = fresh.state; keys = fresh.secretStatus; authChoice = state.provider.authMode || "api"; connection = state.provider.id; render(); fetchModels(); } catch {}
 });
+let tourReady = false;
+const desktopDispatch = FieldDispatchDesktop.create({
+  api, root,
+  ready: () => Boolean(tourReady && state?.onboarded && !setupOpen && !setupBusy && !stateMutationBusy && root.querySelector("#main-content")),
+  navigate(target) {
+    const trigger = document.createElement("button");
+    trigger.hidden = true;
+    trigger.dataset.nav = target;
+    trigger.dataset.dispatchDestination = "";
+    root.append(trigger); trigger.click(); trigger.remove();
+  },
+  notify: message => toast(message, true),
+});
+
 (async () => {
   try {
     const initial = await api.bootstrap();
@@ -2021,6 +2041,7 @@ window.addEventListener?.("bf-provider-changed", async () => {
     authChoice = state.provider.authMode || "api";
     connection = state.provider.id;
     render();
+    void window.Onboarding.start().then(() => { tourReady = true; return desktopDispatch.startup(); });
     fetchModels();
   } catch {
     root.innerHTML =

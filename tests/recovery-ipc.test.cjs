@@ -51,6 +51,8 @@ test("real persisted-disconnect sharing failure aborts the main replacement tran
     await assert.rejects(() => scope.replace(() => f.store.restoreCheckpoint(point.id, point.sha256)), /Recovery/);
     assert.deepEqual(fs.readFileSync(f.store.file), before); assert.equal(fs.readFileSync(path.join(f.dir, "credentials.json"), "utf8"), "KEY_SENTINEL"); assert.equal(fs.existsSync(connection), true);
     Object.assign(scope, { handle: (_name, fn) => scope.reset = fn, dialog: { showMessageBox: async () => ({ response: 1 }) }, win: {}, updater: { reset: async () => {} }, chatgpt: { reset() {} }, claude: { clearCredentials: async () => {} } }); scope.knowledge.reset = async () => {};
+    const { FieldDispatchStore } = require("../src/core/field-dispatch-desktop.cjs");
+    scope.fieldDispatch = new FieldDispatchStore({ dir: f.dir, installed: false });
     vm.runInNewContext(source.slice(source.indexOf('  handle("resetData"'), source.indexOf('  handle("openLink"')), scope);
     await assert.rejects(() => scope.reset(), /Recovery/); assert.deepEqual(fs.readFileSync(f.store.file), before); assert.equal(fs.existsSync(connection), true);
   } finally { child.stdin.end("release\n"); await new Promise(resolve => child.once("exit", resolve)); }

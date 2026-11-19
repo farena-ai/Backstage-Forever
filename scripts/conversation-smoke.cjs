@@ -11,7 +11,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState,validateStat
  try{
   const initial={...defaultState(),onboarded:true,activeProfileId:'Alpha',profiles:['Alpha','Beta'].map(id=>({id,name:id,className:'Mage',realm:'Synthetic',level:12,goals:[{id:'g',text:'PRIVATE_GOAL_CANARY',done:false}],notes:'PRIVATE_NOTE_CANARY'})),provider:{id:'ollama',model:'fixture',endpoint:'http://127.0.0.1:11434'}};
   const at='2026-11-11T12:00:00.000Z',col=items=>({items,observedAt:at,complete:true});
-  Object.assign(initial.profiles[0],{source:{kind:'wow-addon',id:'fixture-alpha',updatedAt:at},clientBuild:'1.60.1.70862',readiness:{workshop:{
+  Object.assign(initial.profiles[0],{source:{kind:'wow-addon',id:'fixture-alpha',updatedAt:at},clientBuild:'1.60.1.70888',readiness:{workshop:{
     professions:col([{skillLineId:171,professionId:4,name:'Alchemy',rank:20,maxRank:75}]),
     recipes:col([{id:2330,skillLineId:171,name:'Minor Healing Potion',reagentsKnown:true,reagents:[{itemId:765,name:'Silverleaf',required:1}]}]),
     materials:{...col([{itemId:765,count:1}]),scope:'bags-0-4'},
@@ -95,21 +95,28 @@ const {testWindow}=require('./test-window.cjs');const {defaultState,validateStat
   const shortcut=page.getByRole('button',{name:'Dungeon preparation · offline',exact:true});
   await shortcut.press('Enter');assert.equal(await field.inputValue(),dungeon);
   assert.equal(await page.locator('#chatlog .message').count(),0,'shortcut only opens an editable draft');
-  await send(dungeon);await page.locator('#chatlog').getByText(/Classic-era baseline/).waitFor();await idle();
+  await send(dungeon);await page.locator('#chatlog').getByText(/No verified Forever preparation details/).waitFor();await idle();
   assert.doesNotMatch(await page.locator('#chatlog').innerText(),/900001|5202/);
   await send(supply);await page.locator('#chatlog').getByText(/Turn on .Use my active character. in Companion to check saved recipe materials/).waitFor();await idle();
   assert.doesNotMatch(await page.locator('#chatlog').innerText(),/Silverleaf|Minor Healing Potion/);
   assert.equal(await count(),0,'sharing-off response does not fall through to the configured model');
-  await sharing.check();await send(dungeon);
-  await page.locator('#chatlog').getByText(/Item #5202 · Edwin VanCleef/).waitFor();await idle();
-  assert.match(await page.locator('#chatlog').innerText(),/quest #900001/);
+  await sharing.check();await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');
+  await send(dungeon);
+  await page.locator('#chatlog').getByText(/The Deadmines fixture quest \(quest #900001\)/).waitFor();await idle();
+  const verifiedPrep='Dungeon prep for Scarlet Monastery?';
+  await send(verifiedPrep);
+  await page.locator('#chatlog').getByText(/Interrogator Vishas \(encounter #444\)/).waitFor();await idle();
+  assert.match(await page.locator('#chatlog').innerText(),/1\.60\.1\.70888 · collection window 2026-11-10 to 2026-11-11/);
+  const wrongPrep='How should I prepare for The Deadmines in Retail?';
+  await send(wrongPrep);await page.locator('#chatlog').getByText(/only covers World of Warcraft: Forever/).waitFor();await idle();
+  assert.doesNotMatch(await page.locator('#chatlog').innerText(),/5202|Classic-era baseline|VanCleef|Westfall|42\.0|Tirisfal/);
   assert.equal(await count(),0);
   assert.equal(await call('memoryDraft','Alpha'),null);
   await answer('Tell me some lore about the Titans.');
-  assert.doesNotMatch(JSON.stringify(await latest()),/Dungeon prep for|Item #5202|historical boss-loot listings/);
+  assert.doesNotMatch(JSON.stringify(await latest()),/Dungeon prep for|Interrogator Vishas|historical boss-loot listings|Deadmines in Retail/);
   const beforeDungeon=await call('memoryDraft','Alpha');
   await app.evaluate(()=>{conversationFixture.requests.length=0;globalThis.holdDungeon=true;});
-  await send(dungeon);await pendingOffline();
+  await send(verifiedPrep);await pendingOffline();
   await app.evaluate(async()=>{const until=Date.now()+6000;while(!globalThis.releaseDungeon){if(Date.now()>until)throw Error('Dungeon IPC did not reach hold');await new Promise(r=>setTimeout(r,20));}});
   await assert.rejects(call('saveMemory',{profileId:'Alpha',responseId:beforeDungeon.responseId}),/Memory draft is no longer current/);
   const dungeonPicker=page.getByLabel('Active character',{exact:true});await dungeonPicker.selectOption('Beta');
@@ -118,7 +125,7 @@ const {testWindow}=require('./test-window.cjs');const {defaultState,validateStat
   await send(dungeon);await page.locator('#chatlog').getByText(/No dated addon save/).waitFor();await idle();
   await app.evaluate(()=>globalThis.releaseDungeon());
   await call('memoryDraft','Beta');
-  assert.doesNotMatch(await page.locator('#chatlog').innerText(),/900001|5202/);
+  assert.doesNotMatch(await page.locator('#chatlog').innerText(),/900001|5202|Interrogator Vishas/);
   assert.equal(await count(),0);
   await dungeonPicker.selectOption('Alpha');
   await page.waitForFunction(()=>document.querySelector('#chatlog')?.textContent==='');

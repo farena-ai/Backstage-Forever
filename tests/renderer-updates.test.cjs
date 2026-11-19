@@ -33,6 +33,7 @@ function harness(overrides = {}) {
     '[data-command="install-update"]': {},
     '[data-command="check-updates"]': {},
   };
+  const dispatchHost = { isConnected: true, append() {}, querySelector: () => ({ addEventListener() {} }) };
   const root = {
     addEventListener: (name, fn) => (handlers[name] ??= []).push(event => {
       // Synthetic elements expose the ordinary DOM surface used by the loaded modules.
@@ -55,13 +56,16 @@ function harness(overrides = {}) {
   const context = vm.createContext({
     window: {
       addEventListener: () => {},
-      backstage: { bootstrap: () => new Promise(() => {}), voiceCancel: async () => ({phase:"idle"}), ...overrides },
+      backstage: { bootstrap: () => new Promise(() => {}), onLiveLink: () => {}, voiceCancel: async () => ({phase:"idle"}), ...overrides },
     },
     document: {
       addEventListener: (name, fn) => (documentHandlers[name] ??= []).push(fn),
       body: { dataset: {} },
+      readyState: "loading",
+      documentElement: { lang: "en" },
       hidden: false,
-      getElementById: (id) => (id === "app" ? root : {}),
+      getElementById: (id) => id === "app" ? root : id === "field-dispatch-host" ? dispatchHost : {},
+      createElement: () => ({ setAttribute() {}, addEventListener() {} }),
       querySelector: (selector) => select(selector)[0] || null,
       querySelectorAll: select,
     },
@@ -74,7 +78,9 @@ function harness(overrides = {}) {
     crypto: {},
     console,
     structuredClone,
+    MutationObserver: class { observe() {} },
   });
+  dispatchHost.ownerDocument = context.document;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/page-hero.js"), "utf8"), context);
   context.PageHero = context.window.PageHero;
   vm.runInContext(
@@ -120,6 +126,11 @@ function harness(overrides = {}) {
   let recoveryHost;
   const recoveryInit = context.Recovery.init;
   context.Recovery.init = host => { recoveryHost = host; recoveryInit(host); };
+  for (const [file, name] of [["field-dispatch", "FieldDispatch"], ["field-dispatch-desktop", "FieldDispatchDesktop"]]) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, `../src/renderer/${file}.js`), "utf8"), context);
+    context[name] = context.window[name];
+  }
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/onboarding.js"), "utf8"), context);
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, "../src/renderer/app.js"), "utf8"),
     context,

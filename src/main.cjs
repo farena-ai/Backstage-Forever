@@ -50,6 +50,7 @@ const { registerVoiceHandlers } = require("./core/voice-ipc.cjs");
 const { registerDiagnosticsHandlers } = require("./core/diagnostics-ipc.cjs");
 const { registerRecoveryHandlers, RECOVERY_MESSAGES } = require("./core/recovery-ipc.cjs");
 const { releaseChannel } = require("../package.json");
+const { FieldDispatchStore } = require("./core/field-dispatch-desktop.cjs");
 const { LiveBridge } = require("./core/live-bridge.cjs");
 let liveBridge = null;
 let radar = null;
@@ -167,7 +168,12 @@ app.on("second-instance", () => {
 });
 app.whenReady().then(async () => {
   if (!ownsInstance) return;
+  let fieldDispatch;
   try {
+    const dataDir = app.getPath("userData");
+    // Old profiles do not establish a version. Check before startup creates any app-owned files.
+    const freshInstall = !["state.json", "credentials.json", "game-connection.private.json", "updates/preferences.json", "Local Storage"]
+      .some(name => fs.existsSync(path.join(dataDir, name)));
     store = new Store(app.getPath("userData"), safeStorage);
     companionContext = new CompanionContext(() => store.state);
     companionRequest = new CompanionRequest(companionContext);
@@ -192,6 +198,8 @@ app.whenReady().then(async () => {
       packaged: app.isPackaged,
       channel: releaseChannel,
     });
+    fieldDispatch = new FieldDispatchStore({ dir: dataDir, installed: app.isPackaged,
+      running: { version: app.getVersion(), channel: releaseChannel }, freshInstall });
     updater.start();
     knowledge = new KnowledgeService({ dataDir: app.getPath("userData") });
     game = new GameSync({
@@ -564,6 +572,20 @@ app.whenReady().then(async () => {
     secretStatus: store.secretStatus(),
     subscriptionStatus: await subscriptionStatus(),
   }));
+  handle("fieldDispatchHistory", (...args) => {
+    if (args.length) throw new Error("Invalid release history request.");
+    return fieldDispatch.manual();
+  });
+  handle("fieldDispatchStartup", (...args) => {
+    if (args.length) throw new Error("Invalid release recap request.");
+    if (!store.state.onboarded || !win.isVisible() || win.isMinimized() || !win.isFocused()) return null;
+    if (liveBridge.enabled && liveBridge.current()?.combat) return null;
+    const status = fieldDispatch.start();
+    if (status === "unavailable") return { retry: true };
+    return { offer: fieldDispatch.offer() };
+  });
+  handle("fieldDispatchPresented", (id, ...extra) => !extra.length && fieldDispatch.presented(id));
+  handle("fieldDispatchAcknowledge", (id, ...extra) => !extra.length && fieldDispatch.acknowledge(id));
   handle("saveState", (state, base) => {
     let next = mergeOrdinaryState(store.state, state, base);
     const previousActive =
@@ -662,16 +684,12 @@ app.whenReady().then(async () => {
     live: liveBridge,
     // Quick answers (no model): the same advice as Now. `leveling` is created just below.
     advise: (profileId) => leveling.advise(profileId),
-    // Planning tools (0.47, 4.4): the same views as Now, Zones, Sheet, Dungeons, All characters and this session.
-    planner: Object.fromEntries(["nextStep", "alts", "worldTracker", "characterSheet", "dungeonAtlas", "playSession"].map((n) => [n, () => views[n]?.()])),
+    // Planning tools use these page views, excluding the reference-only Dungeon Atlas.
+    planner: Object.fromEntries(["nextStep", "alts", "worldTracker", "characterSheet", "playSession"].map((n) => [n, () => views[n]?.()])),
     // Talent questions use WoW Forever's own trees from the player's game client (read locally, never bundled).
     talents: { trees: (className) => gameData.talents(className), build: () => gameData.build(), ready: () => gameData.cached("talents") },
     vendorPack: (()=>{try{return require('./core/vendor-facts.cjs').loadVendorPack();}catch{return null;}})(),
     acquisitionPack: (()=>{try{return require('./core/acquisition-data.cjs').loadAcquisitionPack();}catch{return null;}})(),
-    dungeonEvidence: {
-      lootPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(),
-      wishes: (profileId) => wishlist.get(profileId),
-    },
     onReset: (reason) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:conversationReset", reason); },
   });
   // Community sharing (0.34): anonymous finds out (on by default, off switch in Settings), a daily pack in.
@@ -1088,6 +1106,8 @@ app.whenReady().then(async () => {
       noLink: true,
     });
     if (result.response !== 1) return null;
+    // If retirement cannot be persisted, leave the journal and its related state untouched.
+    fieldDispatch.beginReset();
     resetting = true;
     recovery.clear();
     characterGuidance.clear();
@@ -1111,6 +1131,7 @@ app.whenReady().then(async () => {
       const fresh = store.reset();
       wishlist?.clear(); // starred loot belongs to the characters just deleted
       community?.reset(); // local install id, sent marks and pack; shared facts stay on the server
+      fieldDispatch.finishReset();
       return fresh;
     } finally {
       resetting = false;

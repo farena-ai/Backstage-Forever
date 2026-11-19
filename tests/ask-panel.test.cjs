@@ -166,7 +166,7 @@ test("both saved preparation intents stop at the desktop handoff, even with a ma
       const r = routing({ share, activeKey });
       r.ask.getState = () => assert.fail("handoffs must not read state");
       await r.ask.handle({ kind: "open", characterHash });
-      for (const text of ["Can I craft recipe #2330?", "Dungeon prep for #dm"]) {
+      for (const text of ["Can I craft recipe #2330?", "Dungeon prep for #dm", "How do I prep for SM?"]) {
         await r.ask.askTyped(text);
         assert.match(r.shown.at(-1).answer.text, /desktop Companion/i);
         await r.ask.handle({ text, characterHash });

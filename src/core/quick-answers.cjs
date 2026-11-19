@@ -127,7 +127,7 @@ function tonightAnswer(plan, { minutes = null } = {}) {
   const out = [head, lines("Do these in order:", steps)];
   if (c.restedFull) out.push("Your rested XP is full: kills give double experience until it runs out, so tonight is a good night to play this character.");
   if (plan.otherCharacters?.length) out.push(lines("Your other characters:", plan.otherCharacters.slice(0, 2).map((o) => `${o.name}: ${o.reasons.join("; ")}.`)));
-  out.push("From the Now, Zones, Sheet, Dungeons and All characters pages.");
+  out.push("From the Now, Zones, Sheet and All characters pages.");
   return { text: out.join("\n\n"), kind: "quick", topic: "tonight" };
 }
 
