@@ -58,7 +58,7 @@ The bundled `data/forever` pack, source lock, CC BY license and change notice mu
 
 Write player-facing copy once in `docs/releases/<version>.md`. After the title, set `<!-- whats-new: stable -->` (or `preview`) to match `package.json`. Immediately before each change bullet or reviewed limits paragraph, add `<!-- change: stable-change-id | improved | desktop,addon | none -->`. Categories are `new`, `improved`, `fixed` and `compatibility`; platforms are `desktop`, `windows`, `macos` and `addon`. Use `none` or one of the internal action IDs in `scripts/build-whats-new.cjs`, never a URL. Keep a correction or removal under a new ID. Treat the output as text, not HTML or Markdown; source paths are provenance only. Older notes retain their historical copy and do not have inferred platform or action tags. Superseded candidates stay in the source archive and do not appear in player ranges.
 
-Run `npm run build:whats-new` and commit `data/whats-new-catalog.json` with the notes. `npm run check:whats-new` rejects missing current notes and stale bundle bytes in CI and tagged release qualification. Catalog membership documents a historical version, not availability on an update feed.
+Run `npm run build:whats-new` and commit `data/whats-new-catalog.json` with the notes. `npm run check:whats-new` rejects missing current notes and stale bundle bytes. The existing `npm test` gate independently checks that the bundled catalog equals the projection of the reviewed sources. Catalog membership documents a historical version, not availability on an update feed.
 
 ## Signed publication
 

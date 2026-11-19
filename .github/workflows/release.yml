@@ -44,7 +44,6 @@ jobs:
       - run: npm run check:forever-npc-locations
       - run: npm run check:forever-creatures
       - run: npm run check:forever-loot
-      - run: npm run check:whats-new
       - run: npm test
       - run: npm run test:ui
         timeout-minutes: 10
