@@ -18,19 +18,21 @@ const views = {
   playSession: () => ({ active: true, activeMinutes: 40, startLevel: 19, level: 20, levelsGained: 0.8, levelsPerHour: 1.2, minutesToLevel: 30, deaths: 1, zones: [1413] }),
 };
 
-test("plan_tonight gathers the next step, rested XP, pace, zone, dungeons, gear and the other characters in one call", () => {
-  const t = createPlannerTools(views), p = t.call("plan_tonight");
+test("planning retains supported facts without treating the Atlas as dungeon evidence", () => {
+  let atlasReads = 0;
+  const t = createPlannerTools({ ...views, dungeonAtlas: () => { atlasReads++; return views.dungeonAtlas(); } }), p = t.call("plan_tonight");
   assert.equal(p.status, "ok");
   assert.deepEqual(p.nextStep, { kind: "turnin", what: "Hand in Call of Water", detail: "To Islen Waterseer at 70.0, 70.0", direction: "south-east", progress: null });
   assert.deepEqual(p.character, { name: "Vael", level: 20, levelPercent: 45, restedPercent: 80, restedFull: false, freeBagSlots: 2 });
   assert.equal(p.zoneToClear.name, "The Barrens");
-  assert.deepEqual(p.dungeonsForYou.map((d) => d.name), ["Wailing Caverns"], "hard ones are left for get_dungeons");
+  assert.doesNotMatch(JSON.stringify(p), /dungeonsForYou|Wailing Caverns|Mutanus|Leaders of the Fang/);
   assert.equal(p.gear.upgradesInBags[0].item, "Barbed Leggings");
   assert.deepEqual(p.otherCharacters.map((o) => o.name), ["Ann"], "the active character isn't suggested to itself");
   assert.equal(p.session.levelsPerHour, 1.2);
   assert.equal(t.call("get_zone_progress").zones.length, 1, "only zones near your level");
   assert.equal(t.call("get_characters").characters[0].gold, 12);
-  assert.equal(t.call("get_dungeons").dungeons.length, 2);
+  assert.equal(t.call("get_dungeons").status, "no-evidence");
+  assert.equal(atlasReads, 0);
   assert.equal(t.call("nope").status, "invalid");
   assert.equal(createPlannerTools({ alts: () => { throw Error("x"); } }).call("get_characters").status, "unavailable", "a failing view is just unavailable");
 });
@@ -44,6 +46,9 @@ test("the planning tools are offered only when the character is shared with the 
   assert.match(on.instruction, /call plan_tonight first/);
   const r = JSON.parse(await on.call("plan_tonight", "{}"));
   assert.equal(r.status, "ok"); assert.match(on.trace[0].summary, /Planned tonight/);
+  const dungeon = JSON.parse(await on.call("get_dungeons", "{}"));
+  assert.equal(dungeon.status, "no-evidence");
+  assert.doesNotMatch(JSON.stringify(dungeon), /Wailing Caverns|Baseline levels|Mutanus/);
 });
 
 test("without an AI model, 'what should I do tonight?' gets an ordered plan from the same facts", () => {
@@ -51,7 +56,8 @@ test("without an AI model, 'what should I do tonight?' gets an ordered plan from
   const a = quickAnswer("What should I do tonight?", { tools });
   assert.equal(a.topic, "tonight");
   assert.match(a.text, /\*\*Tonight for Vael\*\* \(level 20, 45% through, 80% of a level rested\)/);
-  const order = ["Empty your bags first", "Hand in Call of Water", "clear The Barrens: 14 quests left", "Wailing Caverns", "Barbed Leggings"].map((s) => a.text.indexOf(s));
+  assert.doesNotMatch(a.text, /Wailing Caverns/);
+  const order = ["Empty your bags first", "Hand in Call of Water", "clear The Barrens: 14 quests left", "Barbed Leggings"].map((s) => a.text.indexOf(s));
   assert.ok(order.every((i, k) => i > 0 && (k === 0 || i > order[k - 1])), a.text);
   assert.match(a.text, /Ann: rested XP is full/);
   assert.equal(quickAnswer("who should I play tonight", { tools }).topic, "tonight");
@@ -62,5 +68,5 @@ test("without an AI model, 'what should I do tonight?' gets an ordered plan from
 test("main exposes the page views to the planner by name", () => {
   const main = fs.readFileSync(path.join(__dirname, "../src/main.cjs"), "utf8");
   assert.match(main, /views\[name\] = fn;/);
-  assert.match(main, /planner: Object\.fromEntries\(\["nextStep", "alts", "worldTracker", "characterSheet", "dungeonAtlas", "playSession"\]/);
+  assert.match(main, /planner: Object\.fromEntries\(\["nextStep", "alts", "worldTracker", "characterSheet", "playSession"\]/);
 });

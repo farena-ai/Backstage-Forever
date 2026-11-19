@@ -158,7 +158,7 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
     await page.locator("#ask-panel-toggle").check();
     await page.waitForFunction(async () => (await window.backstage.askInGameSettings()).enabled === true);
     // Use the real share IPC, panel submit and decoded slash questions, with synthetic inventory.
-    const workshop = "Can I craft recipe #2330?", dungeon = "Dungeon prep for The Deadmines?";
+    const workshop = "Can I craft recipe #2330?", dungeon = "How do I prepare for The Deadmines in Retail?";
     const mismatch = "Player-1-00000002", collision = "Player-1-0000265C";
     const hashes = await app.evaluate((_, guids) => {
       const { L } = globalThis.liveFixture;
@@ -203,14 +203,14 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
     assert.deepEqual(await counts(), beforeSaved, "handoffs never enter the Companion service or provider");
     await view.locator('[data-ap="open"]').click();
     await page.locator("#chatlog").waitFor();
-    assert.doesNotMatch(await page.locator("#chatlog").innerText(), /#2330|Dungeon prep for The Deadmines|Fixture Private Potion/);
+    assert.doesNotMatch(await page.locator("#chatlog").innerText(), /#2330|Deadmines in Retail|Fixture Private Potion/);
     await ask(24, "Is a two-handed axe good for a level 13 warrior?");
     await view.getByText("Is a two-handed axe good for a level 13 warrior?", { exact: false }).last().waitFor();
     await view.waitForFunction(() => document.querySelector(".ap-item:last-child")?.dataset.status === "answer");
     const next = await app.evaluate(() => globalThis.askFixture.requests.at(-1));
     assert.deepEqual(await counts(), beforeSaved.map(n => n + 1));
     assert.equal(next.context, "none");
-    assert.doesNotMatch(next.prompt, /Fixture Private Potion|saved carried|#2330|Dungeon prep for The Deadmines/i);
+    assert.doesNotMatch(next.prompt, /Fixture Private Potion|saved carried|#2330|Deadmines in Retail/i);
     // BF_REAL_CLICK=1: a genuine Windows mouse click on the panel's close button (not Chrome's
     // synthetic input), which is what a player does. Moves the mouse, so it is local only, never CI.
     if (process.env.BF_REAL_CLICK === "1" && process.platform === "win32") {
