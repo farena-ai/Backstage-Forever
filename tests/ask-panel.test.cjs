@@ -160,6 +160,40 @@ function routing({ share = true, results = [], activeKey = 4242 } = {}) {
   return { ask, asked, shown, notified, waits };
 }
 
+test("both saved preparation intents stop at the desktop handoff, even with a matching or colliding hash", async () => {
+  for (const share of [true, false]) {
+    for (const [activeKey, characterHash] of [[4242, 4242], [4242, 99], [4242, undefined], [null, 4242]]) {
+      const r = routing({ share, activeKey });
+      r.ask.getState = () => assert.fail("handoffs must not read state");
+      await r.ask.handle({ kind: "open", characterHash });
+      for (const text of ["Can I craft recipe #2330?", "Dungeon prep for #dm"]) {
+        await r.ask.askTyped(text);
+        assert.match(r.shown.at(-1).answer.text, /desktop Companion/i);
+        await r.ask.handle({ text, characterHash });
+        assert.match(r.shown.at(-1).answer.text, /desktop Companion/i);
+      }
+      assert.deepEqual(r.asked, [], "no saved reads or provider requests via Companion");
+      assert.deepEqual(r.notified, [], "handoffs do not join the desktop conversation");
+      assert.deepEqual(r.waits, []);
+    }
+  }
+});
+
+test("saved preparation queued behind a public busy retry stays a handoff after switching away and back", async () => {
+  const r = routing({ results: [Error("Provider request already in progress."), { text: "Public reply", kind: "quick" }] });
+  r.ask.wait = async () => {
+    await r.ask.handle({ kind: "open", characterHash: 99 });
+    await r.ask.handle({ kind: "open", characterHash: 4242 });
+  };
+  await Promise.all([
+    r.ask.handle({ text: "Public question", characterHash: 4242 }),
+    r.ask.askTyped("Dungeon prep for #dm"),
+  ]);
+  assert.deepEqual(r.asked.map(x => x.prompt), ["Public question", "Public question"]);
+  assert.deepEqual(r.notified.map(x => x.result.text), ["Public reply"]);
+  assert.match(r.shown.at(-1).answer.text, /desktop Companion/i);
+});
+
 test("an in-game question goes through the Companion's answer path with only the typed text and the existing sharing choice", async () => {
   const r = routing({ results: [{ text: "Head **north**.", kind: "travel", conversation: { usedTurns: 0 } }] });
   await r.ask.handle({ id: 3, text: "  How do I get to Thunder Bluff?  ", characterHash: 4242 });
@@ -177,26 +211,6 @@ test("an in-game question goes through the Companion's answer path with only the
   assert.equal(other.asked[0].shareProfile, false); assert.match(other.shown[1].note, /another character/);
 });
 
-test("saved Workshop questions in the game panel require both consent and a verified character match", async () => {
-  for (const [activeKey, characterHash, share, allowed] of [
-    [4242, 4242, true, true], [4242, 4242, false, false], [null, 4242, true, false],
-    [4242, undefined, true, false], [4242, 99, true, false],
-  ]) {
-    const r = routing({ share, activeKey, results: [{ text: "Local Workshop reply", kind: "quick" }] });
-    await r.ask.handle({ text: "Can I craft recipe #2330?", characterHash });
-    assert.equal(r.asked[0].shareProfile, allowed, JSON.stringify([activeKey, characterHash, share]));
-    assert.equal(r.shown[1].answer.kind, "quick");
-  }
-});
-
-test("a queued Workshop retry cannot reuse consent revoked while waiting", async () => {
-  const r = routing({ results: [Error("Provider request already in progress."), { text: "Enable sharing", kind: "quick" }] });
-  const wait = r.ask.wait;
-  r.ask.wait = async ms => { await wait(ms); r.ask.getShare = () => false; };
-  await r.ask.handle({ text: "Can I craft recipe #2330?", characterHash: 4242 });
-  assert.deepEqual(r.asked.map(x => x.shareProfile), [true, false]);
-  assert.equal(r.notified[0].shareProfile, false);
-});
 
 test("in-game questions are answered one at a time, wait briefly for a busy companion, and explain a missing AI", async () => {
   const busy = Error("Provider request already in progress.");

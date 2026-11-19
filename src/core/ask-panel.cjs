@@ -81,10 +81,11 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
   const page = pathToFileURL(path.join(rendererDir, "ask-panel.html")).toString();
   const file = dataDir ? path.join(dataDir, "ask-panel.json") : null;
   let win = null, log = [], typing = 0, timer = null, hold = false, focused = false, prefs = DEFAULTS, placing = false, wantFocus = false;
+  let revision = 0;
   try { prefs = cleanSettings(JSON.parse(fs.readFileSync(file, "utf8"))); } catch { prefs = { ...DEFAULTS }; }
   const persist = () => { try { if (file) fs.writeFileSync(file, JSON.stringify(prefs)); } catch {} };
   // What the page shows: the exchanges, and a counter that tells it to put the cursor in the box.
-  const view = () => ({ log, typing });
+  const view = () => ({ log: [...log], typing, revision });
   const latest = () => log.at(-1) || null;
   // The panel window only ever shows our own page (navigation and new windows are blocked), so the
   // sender being its main frame is the check; comparing file URLs broke in the installed app.
@@ -179,6 +180,7 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
   /** Adds or updates an exchange (same id) and shows the panel without taking focus. False when switched off. */
   function show(input) {
     log = upsert(log, panelState(input));
+    revision++;
     if (!prefs.enabled) return false;
     if (!win || win.isDestroyed()) create();
     else { send(); present(); }
@@ -188,7 +190,7 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
   /** Opens the panel with the keyboard in its question box (the owl button, /bf ask). False when switched off. */
   function open() {
     if (!prefs.enabled) return false;
-    typing++; wantFocus = true;
+    typing++; revision++; wantFocus = true;
     if (!win || win.isDestroyed()) create();
     else { send(); present(); }
     schedule();
@@ -211,8 +213,8 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
     },
     window: () => (win && !win.isDestroyed() ? win : null),
     destroyWindow() { clearTimer(timer); timer = null; if (win && !win.isDestroyed()) win.destroy(); win = null; },
-    state: () => latest(),
-    log: () => log.slice(),
+    state: () => view().log.at(-1) || null,
+    log: () => view().log,
     close() { clearTimer(timer); timer = null; for (const c of ["askPanel:state", "askPanel:close", "askPanel:openApp", "askPanel:hold", "askPanel:ask"]) ipcMain.removeHandler(c); if (win && !win.isDestroyed()) win.destroy(); win = null; },
   };
 }

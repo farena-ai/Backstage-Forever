@@ -4,15 +4,19 @@
 // (offline reference first for where/how questions, then the AI the player chose) and shows the
 // answer in the panel over the game. Since 0.39.1 the owl only sends an "open" signal and the
 // question is typed in the panel itself (askTyped); /bf ask QUESTION still arrives over the strip.
+// Saved preparation is desktop-only; the strip's short hash cannot authorize saved evidence.
 // Only the typed text is used, plus the active character when
 // the Companion page's own "Use my active character" setting is on and the question comes from
 // that character. Nothing is ever sent to the game.
 const { workshopQuestion } = require("./companion-workshop.cjs");
+const { dungeonQuestion } = require("./companion-dungeon.cjs");
 const RETRY_MS = 2000, RETRY_FOR_MS = 30000;
 // Companion errors meant for the player (same list as the main window's ask handler); others become generic.
 const PLAYER_ERRORS = /^(Provider |Could not reach|Save an API|Choose a model|Choose a character|Choose the current character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription |The free AI)/;
 const BUSY = /^Provider request (already in progress|is still stopping)/;
 const NO_MODEL = /^Choose a model in Connections/;
+const validHash = (hash) => Number.isInteger(hash) && hash > 0 && hash <= 0xffff;
+const DESKTOP_PREP = "Workshop and dungeon preparation are available in the desktop Companion. Choose Open in app and ask there.";
 
 /**
  * Who the question may describe: share is the Companion page's "Use my active character" setting;
@@ -38,38 +42,44 @@ class InGameAsk {
     this.seq = 0;
     this.lastHash = null;
   }
+  rememberOrigin(hash) {
+    this.lastHash = validHash(hash) ? hash : null;
+  }
   /** Queues a question from the live strip: { id, text, characterHash }. Resolves when answered. */
   handle(question) {
     // The owl button (0.39.1): open the panel with the keyboard in its question box.
     if (question && question.kind === "open") {
-      if (Number.isInteger(question.characterHash)) this.lastHash = question.characterHash;
+      this.rememberOrigin(question.characterHash);
       this.panel.open?.();
       return Promise.resolve(null);
     }
     if (!question || typeof question.text !== "string" || !question.text.trim() || question.text.length > 1000) return Promise.resolve(null);
-    const run = this.queue.then(() => this.answer(question)).catch(() => null);
+    this.rememberOrigin(question.characterHash);
+    return this.enqueue(question.text, question.characterHash);
+  }
+  enqueue(text, characterHash) {
+    const run = this.queue.then(() => this.answer(text.trim(), characterHash)).catch(() => null);
     this.queue = run;
     return run;
   }
   /** A question typed in the panel: asked for the character that last opened it from the game. */
   askTyped(text) {
-    return this.handle({ text, characterHash: this.lastHash });
+    if (typeof text !== "string" || !text.trim() || text.length > 1000) return Promise.resolve(null);
+    return this.enqueue(text, this.lastHash);
   }
-  async answer({ text, characterHash = null }) {
-    if (Number.isInteger(characterHash)) this.lastHash = characterHash;
-    const prompt = text.trim();
+  async answer(prompt, characterHash) {
     const id = ++this.seq;
-    const state = this.getState();
-    const profile = state.profiles?.find((p) => p.id === state.activeProfileId) || null;
-    const expected = profile?.source?.kind === "wow-addon" ? this.liveKeyFor(profile.source.id) : null;
-    const isWorkshop = Boolean(workshopQuestion(prompt));
-    let { shareProfile, note } = sharing({ share: this.getShare() === true, expected, characterHash });
-    if (shareProfile && isWorkshop && !(Number.isInteger(expected) && expected > 0 && expected === characterHash)) {
-      shareProfile = false;
-      note = "The game character could not be matched to the active save. Ask in the desktop Companion instead.";
+    // Use the same intent matchers as desktop Companion, but never enter its request path.
+    if (workshopQuestion(prompt) || dungeonQuestion(prompt)) {
+      this.panel.show({ id, status: "answer", question: prompt, answer: { text: DESKTOP_PREP, kind: "scope" }, at: this.now() });
+      return null;
     }
+    const state = this.getState();
+    const source = state.profiles?.find(p => p.id === state.activeProfileId)?.source;
+    const expected = source?.kind === "wow-addon" ? this.liveKeyFor(source.id) : null;
+    const { shareProfile, note } = sharing({ share: this.getShare() === true, expected, characterHash });
     this.panel.show({ id, status: "thinking", question: prompt, at: this.now() });
-    let request = { provider: state.provider.id, prompt, shareProfile, memoryIds: [] };
+    const request = { provider: state.provider.id, prompt, shareProfile, memoryIds: [] };
     if (state.activeProfileId) request.profileId = state.activeProfileId;
     const started = this.now();
     for (;;) {
@@ -84,14 +94,6 @@ class InGameAsk {
         // The main window is answering something else: wait for it, a little.
         if (BUSY.test(String(error?.message)) && this.now() - started < RETRY_FOR_MS) {
           await this.wait(RETRY_MS);
-          if (isWorkshop && request.shareProfile) {
-            const current = this.getState();
-            const source = current.profiles?.find(p => p.id === current.activeProfileId)?.source;
-            if (this.getShare() !== true || current.activeProfileId !== request.profileId || source?.kind !== "wow-addon" || this.liveKeyFor(source.id) !== characterHash) {
-              request = { ...request, shareProfile: false };
-              note = "Saved character context changed while waiting. You can ask again in Companion.";
-            }
-          }
           continue;
         }
         const message = playerMessage(error);

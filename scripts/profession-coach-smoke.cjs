@@ -269,6 +269,133 @@ function shortPath(target) {
     assert.match(await shopping.innerText(), /Own storage, last seen: bank 10/);
     assert.match(await shopping.innerText(), /Alt stock, last seen: Vaelric \(Synthetic Realm\) · bags 99/);
 
+    if (process.argv.includes("--workshop-savings-only")) {
+      const errors = [];
+      page.on("pageerror", e => errors.push(e.message));
+      await app.evaluate(({ BrowserWindow }) => {
+        const win = BrowserWindow.getAllWindows()[0];
+        if (win.isMaximized()) win.unmaximize();
+        win.setContentSize(984, 635);
+      });
+      const savedGoal = () => page.evaluate(async () => (await window.backstage.bootstrap()).state.goldGoal);
+      await page.evaluate(() => window.backstage.setGoldGoal({ gold: 90, label: "Riding fund" }));
+      const original = await savedGoal();
+      const review = page.getByRole("button", { name: "Review savings goal", exact: true });
+      await review.focus();
+      await page.keyboard.press("Enter");
+      const preview = page.locator("[data-ledger-savings-review]");
+      await preview.waitFor();
+      assert.match(await preview.innerText(), /42c.*1 gold/s);
+      assert.match(await preview.innerText(), /Riding fund/);
+      assert.deepEqual(await savedGoal(), original);
+      const replace = preview.getByRole("button", { name: "Replace gold goal", exact: true });
+      await page.waitForFunction(() => document.activeElement?.hasAttribute("data-ledger-savings-cancel"));
+      assert.ok(await replace.evaluate(n => {
+        const { top, bottom } = n.getBoundingClientRect();
+        return top >= 0 && bottom <= innerHeight;
+      }));
+      await preview.getByRole("button", { name: "Keep current goal", exact: true }).click();
+      await preview.waitFor({ state: "detached" });
+      assert.deepEqual(await savedGoal(), original);
+      await navigate(page, "preparation");
+      await review.click();
+      await preview.waitFor();
+      const alt = initial.profiles.find(p => p.name === "Vaelric").id;
+      await app.evaluate(({ ipcMain }) => {
+        const save = ipcMain._invokeHandlers.get("backstage:saveState");
+        ipcMain.removeHandler("backstage:saveState");
+        ipcMain.handle("backstage:saveState", async (...args) => {
+          if (preparationUi.holdGoalPicker) await new Promise(r => { preparationUi.releaseGoalPicker = r; });
+          return save(...args);
+        });
+        preparationUi.holdGoalPicker = true;
+      });
+      await page.getByLabel("Active character", { exact: true }).selectOption(alt);
+      await app.evaluate(async () => {
+        const deadline = Date.now() + 4000;
+        while (!preparationUi.releaseGoalPicker && Date.now() < deadline) await new Promise(r => setTimeout(r, 10));
+        if (!preparationUi.releaseGoalPicker) throw Error("Picker save was not held");
+      });
+      await replace.dispatchEvent("click");
+      assert.deepEqual(await savedGoal(), original);
+      await app.evaluate(() => {
+        preparationUi.holdGoalPicker = false;
+        preparationUi.releaseGoalPicker();
+      });
+      await preview.waitFor({ state: "detached" });
+      await page.getByLabel("Active character", { exact: true }).selectOption(initial.activeProfileId);
+      await navigate(page, "preparation");
+      await review.click();
+      await preview.waitFor();
+      await app.evaluate(({ ipcMain }) => {
+        const channel = "backstage:gameSnapshot";
+        const snapshot = ipcMain._invokeHandlers.get(channel);
+        preparationUi.holdSavingsPoll = () => {
+          preparationUi.savingsPollGate = new Promise(resolve => { preparationUi.releaseSavingsPoll = resolve; });
+        };
+        preparationUi.holdSavingsPoll();
+        ipcMain.removeHandler(channel);
+        ipcMain.handle(channel, async (...args) => {
+          const result = await snapshot(...args);
+          await preparationUi.savingsPollGate;
+          return result;
+        });
+      });
+      // Reverse the ordering: commit the switch in main without letting the
+      // renderer apply a new snapshot. Both renderer ownership checks still pass.
+      await page.evaluate(async id => {
+        const { state } = await window.backstage.bootstrap();
+        await window.backstage.saveState({ ...state, activeProfileId: id }, state);
+      }, alt);
+      assert.equal(await page.evaluate(async () => (await window.backstage.bootstrap()).state.activeProfileId), alt);
+      assert.equal(await page.locator("#active-character").inputValue(), initial.activeProfileId);
+      assert.match(await preview.innerText(), /Aeralyn.*Riding fund/s);
+      await replace.click();
+      await page.waitForFunction(() => !document.querySelector("[data-ledger-savings-apply]:disabled"));
+      assert.deepEqual(await savedGoal(), original, "the outgoing character's confirmation must not change the stored goal");
+      await preview.waitFor({ state: "detached" });
+      await app.evaluate(() => preparationUi.releaseSavingsPoll());
+      await page.waitForFunction(id => document.querySelector("#active-character")?.value === id, alt);
+      await page.getByLabel("Active character", { exact: true }).selectOption(initial.activeProfileId);
+      await navigate(page, "preparation");
+      await review.click();
+      await preview.waitFor();
+      // A newer account goal also requires a fresh confirmation, even for the same character.
+      await app.evaluate(() => preparationUi.holdSavingsPoll());
+      await page.evaluate(() => window.backstage.setGoldGoal({ gold: 75, label: "New riding fund" }));
+      const newer = await savedGoal();
+      assert.match(await preview.innerText(), /Current goal: Riding fund/);
+      const staleApply = await replace.elementHandle();
+      assert.ok(staleApply);
+      await staleApply.click();
+      await page.waitForFunction(() => !document.querySelector("[data-ledger-savings-apply]:disabled"));
+      assert.deepEqual(await savedGoal(), newer, "a review must not overwrite a goal it did not show");
+      await preview.waitFor({ state: "detached" });
+      await page.getByText("Review the Workshop estimate again", { exact: false }).waitFor();
+      await page.locator("[data-ledger-goal-card] h2").filter({ hasText: "New riding fund" }).waitFor();
+      await app.evaluate(() => preparationUi.releaseSavingsPoll());
+      await navigate(page, "preparation");
+      await review.click();
+      await preview.getByText("New riding fund", { exact: false }).waitFor();
+      await replace.click();
+      await page.locator("[data-ledger-goal-card] h2").filter({ hasText: "Amber restorative" }).waitFor();
+      assert.equal((await savedGoal()).copper, 10000);
+      await page.reload();
+      await navigate(page, "ledger-gold");
+      await page.locator("[data-ledger-goal-card] h2").filter({ hasText: "Amber restorative" }).waitFor();
+      assert.equal(await preview.count(), 0);
+      await page.getByRole("button", { name: "Clear", exact: true }).click();
+      await page.getByRole("button", { name: "Set goal", exact: true }).waitFor();
+      assert.equal(await savedGoal(), undefined);
+      await navigate(page, "preparation");
+      await page.getByLabel("Craft attempts", { exact: true }).selectOption("2");
+      await shopping.getByText("Batch purchase estimate unavailable", { exact: false }).waitFor();
+      assert.equal(await review.count(), 0);
+      assert.deepEqual(errors, []);
+      console.log("Workshop savings Electron PASS: compact keyboard review, cancel, both character switch orderings, newer goal protection, explicit replacement, reload, clear and unpriced batch.");
+      return;
+    }
+
     const evidence = path.resolve(
       process.env.BF_SMOKE_CAPTURE_ROOT ||
         ".superpowers/sdd/profession-coach-captures/" +

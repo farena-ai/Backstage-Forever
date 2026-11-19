@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.11.0 — Dungeon preparation, savings goals, and quest-chain progress
+
+- Companion can answer supported dungeon preparation questions offline using matching saved character evidence.
+- Review a priced Workshop estimate before setting or replacing a Ledger savings goal; a stale review cannot overwrite the current goal.
+- Unfinished quest-chain badges list saved completed and remaining reviewed steps without granting the badge early.
+- See the [release notes](docs/releases/1.11.0.md) for scope and qualification limits.
+
 ## 1.10.0 — All-in-One, 2026-11-18
 
 - Now and Adventure Compass narrow the next step; desktop presets, addon setup recovery, and Guided Route resume/skip make it easier to get back on track.

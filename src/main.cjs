@@ -668,6 +668,10 @@ app.whenReady().then(async () => {
     talents: { trees: (className) => gameData.talents(className), build: () => gameData.build(), ready: () => gameData.cached("talents") },
     vendorPack: (()=>{try{return require('./core/vendor-facts.cjs').loadVendorPack();}catch{return null;}})(),
     acquisitionPack: (()=>{try{return require('./core/acquisition-data.cjs').loadAcquisitionPack();}catch{return null;}})(),
+    dungeonEvidence: {
+      lootPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(),
+      wishes: (profileId) => wishlist.get(profileId),
+    },
     onReset: (reason) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:conversationReset", reason); },
   });
   // Community sharing (0.34): anonymous finds out (on by default, off switch in Settings), a daily pack in.
@@ -902,9 +906,21 @@ app.whenReady().then(async () => {
   });
   // Gold goal (0.36, E4): the player's own target; null clears it. Only this handler writes it.
   handle("setGoldGoal", (...args) => {
-    if (args.length !== 1) throw Error("Invalid gold goal.");
+    if (args.length < 1 || args.length > 2) throw Error("Invalid gold goal.");
     const GG = require("./core/gold-goal.cjs"), goal = GG.goalFromInput(args[0]);
-    const next = structuredClone(store.state);
+    const current = store.state;
+    if (args.length === 2) {
+      v.object(args[1], ["profileId", "expectedGoal"]);
+      const { profileId, expectedGoal } = args[1], saved = current.goldGoal;
+      v.str(profileId, 100, false);
+      if (!goal || expectedGoal === undefined) throw Error("Invalid gold goal.");
+      if (expectedGoal !== null) GG.validateGoldGoal(expectedGoal);
+      // Compare with committed state: both the picker and review can be stale.
+      if (profileId !== current.activeProfileId || expectedGoal?.copper !== saved?.copper ||
+          expectedGoal?.label !== saved?.label || expectedGoal?.setAt !== saved?.setAt)
+        return { reviewExpired: true };
+    }
+    const next = structuredClone(current);
     if (goal) next.goldGoal = goal; else delete next.goldGoal;
     store.saveState(v.validateState(next));
     return GG.goldGoalView(store.state);
@@ -995,7 +1011,6 @@ app.whenReady().then(async () => {
     // Questions typed in the panel itself go the same way as the ones from the game.
     onAsk: (question) => { void inGameAsk?.askTyped(question); },
   });
-  closeAskPanel = () => askPanel.close();
   dropAskPanelWindow = () => askPanel.destroyWindow();
   inGameAsk = new (require("./core/ask-in-game.cjs").InGameAsk)({
     companion: companionService, getState: () => store.state, liveKeyFor: require("./core/live-bridge.cjs").liveKeyFor,
@@ -1003,6 +1018,10 @@ app.whenReady().then(async () => {
     notify: (exchange) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:inGameExchange", exchange); },
   });
   liveBridge.subscribeQuestions((question) => { void inGameAsk.handle(question); });
+  const stopAskContext = companionContext.subscribe(({ reason }) => {
+    if (["source-root", "source-disconnect", "reset", "import", "restore"].includes(reason)) inGameAsk.rememberOrigin(null);
+  });
+  closeAskPanel = () => { stopAskContext(); askPanel.close(); };
   handle("askInGameSettings", (...args) => { if (args.length) throw Error("Invalid panel settings."); return askPanel.settings(); });
   handle("setAskInGameSettings", (input) => askPanel.setSettings(input));
   handle("setInGameShare", (share) => { if (typeof share !== "boolean") throw Error("Invalid sharing choice."); inGameShare = share; return true; });
