@@ -131,6 +131,10 @@ function harness(overrides = {}) {
     context[name] = context.window[name];
   }
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/onboarding.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/practice-lab-model.js"), "utf8"), context);
+  context.window.BFPracticeLab = context.BFPracticeLab;
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/practice-lab.js"), "utf8"), context);
+  context.PracticeLabView = context.window.PracticeLabView;
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, "../src/renderer/app.js"), "utf8"),
     context,

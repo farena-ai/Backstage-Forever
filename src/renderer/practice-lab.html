@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="practice-lab-document">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,28 +10,7 @@
   <script defer src="practice-lab.js"></script>
 </head>
 <body>
-  <main>
-    <header>
-      <p class="eyebrow">Class &amp; Role Academy</p>
-      <h1>Practice Lab</h1>
-      <p class="muted">Try one decision at a time. These fictional drills use no live game data and do not measure your in-game performance.</p>
-    </header>
-    <div class="panel">
-      <label for="drill-picker">Choose a drill</label>
-      <select id="drill-picker"></select>
-      <section aria-labelledby="drill-title">
-        <p class="eyebrow badge">Simulated scenario</p>
-        <h2 id="drill-title"></h2>
-        <p id="drill-prompt"></p>
-        <div id="drill-options" role="group" aria-label="Choose an action" aria-describedby="drill-prompt"></div>
-      </section>
-      <section id="drill-result" aria-labelledby="result-title" hidden>
-        <h3 id="result-title" tabindex="-1" aria-describedby="result-feedback result-improvement">Simulated result</h3>
-        <p id="result-feedback"></p>
-        <p id="result-improvement"><strong>One thing to practice:</strong> <span></span></p>
-        <button id="drill-retry" type="button">Retry drill</button>
-      </section>
-    </div>
+  <main data-practice-standalone>
     <noscript>Enable JavaScript to run the offline drills.</noscript>
   </main>
 </body>
