@@ -241,6 +241,13 @@ function dungeonIn(question) {
   // "dm" alone means The Deadmines only when it is not "dire maul".
   return best ? DUNGEONS.get(best.id) : null;
 }
+// Detection only: shorthand can trigger a local clarification, never an evidence join.
+function mentionsDungeonAlias(text) {
+  const q = loose(text);
+  const firstTarget = q.split(/ (?:and|or) /, 1)[0];
+  return Object.hasOwn(DUNGEON_ALIASES, firstTarget) || Object.keys(DUNGEON_ALIASES).some(alias =>
+    alias.includes(" ") && ` ${q} `.includes(` ${loose(alias)} `));
+}
 function classIn(question) { const q = ` ${loose(question)} `; return CLASSES.find((c) => q.includes(` ${c} `) || q.includes(` ${c}s `)) || null; }
 function professionIn(question) {
   const q = ` ${loose(question)} `;
@@ -709,4 +716,4 @@ function resolve(question, { profile = null, shareProfile = true, data = loadDat
 }
 // "Sentinel Hill, Westfall" for a point, for answers built elsewhere.
 function placeLabel(p) { loadData(); const z = zoneOf(p.mapId), town = townAt(p); return z ? (town && loose(town) !== loose(z) ? `${town}, ${z}` : z) : null; }
-module.exports = { understand, resolve, loadData, norm, placeLabel };
+module.exports = { understand, resolve, loadData, norm, placeLabel, mentionsDungeonAlias };

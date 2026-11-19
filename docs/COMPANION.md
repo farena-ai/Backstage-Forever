@@ -19,10 +19,10 @@ Before anything else, the companion works out what you actually want and answers
 | Where to buy something | Vendor listings, nearest friendly seller first, or the town you name |
 | Where an item comes from, or what a creature drops | Loot and boss loot, plus the quest the item is for |
 | A quest by name, or where to turn it in | Quest givers, objectives, objective area and turn-in |
-| A dungeon or raid | Zone, level range, entrance and bosses; whether your level fits |
+| Recognized offline dungeon or raid preparation | Possible matches in your saved quest log and compatible historical Forever encounter observations, when available; no Classic fallback |
 | Getting somewhere | The travel planner first (flights, zeppelins, boats, tram), else your nearest flight master |
 
-With no AI model chosen, these answers come straight from the data. With a model, the same verified facts go into its context, headed "Verified WoW Forever facts for this question", so it can answer in voice while using exactly those names, places and numbers. When the data doesn't have something, the companion says so instead of guessing.
+Recognized offline preparation stays local even with a model configured. Other questions can use the existing local answers or send reference context to a configured model. The offline preparation correction does not qualify general dungeon Q&A, travel, or model-generated answers as Forever-verified. Legacy general dungeon answers can still draw on Atlas reference; do not treat those as Forever confirmation.
 
 **Voice.** The model is a seasoned fellow adventurer. Write in character ("Lok'tar ogar!", "*bows*", "Greetings, traveller") and it answers in character, true to your race, faction and class. Otherwise it speaks plainly with a little of the world's flavour. It uses your character's name and, when the addon has recorded it, the right pronouns.
 
@@ -72,9 +72,9 @@ A direct **I'm already in Org** statement can supply a user-reported planning ci
 
 ## Offline dungeon preparation
 
-In Companion, try **Dungeon prep for The Deadmines?** or **Dungeon prep for #dm?** Use a full Dungeon Atlas name or an exact `#ID`; the suggestion button fills an editable example. No model, account, or connection is needed. The entrance and level band are approximate Classic-era reference, not verified Forever access.
+In desktop Companion, try **Dungeon prep for The Deadmines?** or **Dungeon prep for #dm?** Use a full Dungeon Atlas name or an exact `#ID`; the suggestion button fills an editable example. Recognized shorthand and follow-ups without an exact target ask you to name the instance again. Recognized requests for other editions are declined locally. No model, account, or connection is needed. The in-game Ask Panel hands recognized preparation questions off to desktop without reading your save.
 
-With **Use my active character** on, the answer can show possible matches in the active character’s dated addon quest log and starred item IDs whose boss-loot reference includes the saved build. The loot observations are pooled across builds: they are not per-build confirmation, personal drops, or gear recommendations. The answer does not establish quest eligibility, clears, lockouts, or live mechanics. The exchange is not added to model conversation history or made available to save in Memory.
+With **Use my active character** on, this answer can show possible matches by instance name from the active character’s dated addon quest log. For Scarlet Monastery and Razorfen Kraul, it can also show some historical Forever encounters when the reviewed instance map and bundled build exactly match. The pack’s collection window is not a per-encounter date or a record of your defeats. This answer does not use Classic entrance directions, level bands or boss lists, or infer quests to pick up, access, loot, lockouts, or live mechanics. Check current requirements in the Forever client. The exchange is not added to model conversation history or made available to save in Memory. Atlas remains a separate reference surface.
 
 ## Character context and honest uncertainty
 
