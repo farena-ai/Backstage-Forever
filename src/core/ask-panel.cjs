@@ -77,7 +77,7 @@ function upsert(log, entry) {
   return out.slice(-LOG_MAX);
 }
 
-function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir = null, gameRect = () => null, onOpenApp = () => {}, onAsk = () => {}, onRead = () => {}, setTimer = setTimeout, clearTimer = clearTimeout }) {
+function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir = null, gameRect = () => null, onOpenApp = () => {}, onAsk = () => {}, setTimer = setTimeout, clearTimer = clearTimeout }) {
   const page = pathToFileURL(path.join(rendererDir, "ask-panel.html")).toString();
   const file = dataDir ? path.join(dataDir, "ask-panel.json") : null;
   let win = null, log = [], typing = 0, timer = null, hold = false, focused = false, prefs = DEFAULTS, placing = false, wantFocus = false;
@@ -85,13 +85,13 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
   try { prefs = cleanSettings(JSON.parse(fs.readFileSync(file, "utf8"))); } catch { prefs = { ...DEFAULTS }; }
   const persist = () => { try { if (file) fs.writeFileSync(file, JSON.stringify(prefs)); } catch {} };
   // What the page shows: the exchanges, and a counter that tells it to put the cursor in the box.
-  const view = () => ({ log: log.map(({ saved, ...entry }) => entry), typing, revision });
+  const view = () => ({ log: [...log], typing, revision });
   const latest = () => log.at(-1) || null;
   // The panel window only ever shows our own page (navigation and new windows are blocked), so the
   // sender being its main frame is the check; comparing file URLs broke in the installed app.
   const valid = (event) => Boolean(win && !win.isDestroyed() && event.sender === win.webContents && event.senderFrame === win.webContents.mainFrame);
   const guard = (event) => { if (!valid(event)) throw Error("Untrusted panel request."); };
-  ipcMain.handle("askPanel:state", (event) => { guard(event); onRead(); return view(); });
+  ipcMain.handle("askPanel:state", (event) => { guard(event); return view(); });
   ipcMain.handle("askPanel:close", (event) => { guard(event); hide(); return true; });
   ipcMain.handle("askPanel:openApp", (event) => { guard(event); hide(); onOpenApp(); return true; });
   ipcMain.handle("askPanel:hold", (event, on) => { guard(event); hold = on === true; schedule(); return true; });
@@ -178,8 +178,8 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
   }
   function send() { if (win && !win.isDestroyed()) win.webContents.send("askPanel:state", view()); }
   /** Adds or updates an exchange (same id) and shows the panel without taking focus. False when switched off. */
-  function show(input, { saved = false } = {}) {
-    log = upsert(log, { ...panelState(input), saved });
+  function show(input) {
+    log = upsert(log, panelState(input));
     revision++;
     if (!prefs.enabled) return false;
     if (!win || win.isDestroyed()) create();
@@ -197,16 +197,8 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
     return true;
   }
   function hide() { clearTimer(timer); timer = null; hold = false; clearTimer(holdCheck); holdCheck = null; if (win && !win.isDestroyed()) win.hide(); }
-  function clearSaved() {
-    const publicLog = log.filter(entry => !entry.saved);
-    if (publicLog.length === log.length) return;
-    log = publicLog;
-    revision++;
-    send();
-    schedule();
-  }
   return {
-    show, open, hide, where, clearSaved,
+    show, open, hide, where,
     settings: () => ({ enabled: prefs.enabled, hideAfterS: prefs.hideAfterS, moved: Boolean(prefs.position), choices: [...HIDE_CHOICES] }),
     setSettings(input) {
       if (!input || typeof input !== "object" || Array.isArray(input)) throw Error("Invalid panel settings.");

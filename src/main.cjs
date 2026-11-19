@@ -1010,29 +1010,21 @@ app.whenReady().then(async () => {
     },
     // Questions typed in the panel itself go the same way as the ones from the game.
     onAsk: (question) => { void inGameAsk?.askTyped(question); },
-    onRead: () => inGameAsk?.syncSavedScope(),
   });
   dropAskPanelWindow = () => askPanel.destroyWindow();
   inGameAsk = new (require("./core/ask-in-game.cjs").InGameAsk)({
     companion: companionService, getState: () => store.state, liveKeyFor: require("./core/live-bridge.cjs").liveKeyFor,
-    // status() can retain a recently read frame even after a worker reports signal loss.
-    getLiveHash: () => liveBridge.signal === "live" ? liveBridge.status().frame?.characterHash : null,
     panel: askPanel, getShare: () => inGameShare,
     notify: (exchange) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:inGameExchange", exchange); },
   });
   liveBridge.subscribeQuestions((question) => { void inGameAsk.handle(question); });
-  const stopAskLive = liveBridge.subscribe(() => inGameAsk.syncSavedScope());
   const stopAskContext = companionContext.subscribe(({ reason }) => {
     if (["source-root", "source-disconnect", "reset", "import", "restore"].includes(reason)) inGameAsk.rememberOrigin(null);
-    inGameAsk.syncSavedScope();
   });
-  // Freshness can expire without another bridge event (e.g. a frozen frame).
-  const askFreshness = setInterval(() => inGameAsk.syncSavedScope(), 500);
-  askFreshness.unref();
-  closeAskPanel = () => { clearInterval(askFreshness); stopAskLive(); stopAskContext(); askPanel.close(); };
+  closeAskPanel = () => { stopAskContext(); askPanel.close(); };
   handle("askInGameSettings", (...args) => { if (args.length) throw Error("Invalid panel settings."); return askPanel.settings(); });
   handle("setAskInGameSettings", (input) => askPanel.setSettings(input));
-  handle("setInGameShare", (share) => { if (typeof share !== "boolean") throw Error("Invalid sharing choice."); inGameShare = share; inGameAsk.syncSavedScope(); return true; });
+  handle("setInGameShare", (share) => { if (typeof share !== "boolean") throw Error("Invalid sharing choice."); inGameShare = share; return true; });
   handle("ask", (...args) => companionService.legacy(...args));
   handle("askCompanion", (...args) => companionService.ask(...args));
   handle("clearConversation", (...args) => companionService.clear(...args));

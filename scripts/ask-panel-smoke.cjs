@@ -41,7 +41,9 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
       load('./src/core/updater.cjs').Updater.prototype.start=function(){};
       const providers=load('./src/core/providers.cjs');
       providers.ask=async(req)=>{globalThis.askFixture.requests.push({prompt:req.prompt,context:req.context?'character':'none'});return ${JSON.stringify(REPLY)};};
-      globalThis.askFixture={requests:[]};
+      globalThis.askFixture={requests:[], companionPrompts:[]};
+      const service=load('./src/core/companion-service.cjs').CompanionService.prototype, originalAsk=service.ask;
+      service.ask=function(...args){globalThis.askFixture.companionPrompts.push(args[0]?.prompt);return originalAsk.apply(this,args);};
       const L=load('./src/core/live-bridge.cjs');
       L.rememberLiveKey('fixture-alpha','Player-1-00000001');
       L.LiveBridge.prototype.start=function(){globalThis.liveFixture={bridge:this,L};this.signal='no-signal';};
@@ -59,8 +61,8 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
     assert.equal(await toggle.isChecked(), true, "panel on by default");
     await page.locator("#ask-panel-hide").waitFor();
     // The synthetic game window: the secondary display when there is one (test windows never use the primary).
-    const ask = (id, text, other = false) => app.evaluate(({ screen }, { id, text, other }) => {
-      const { bridge, L } = globalThis.liveFixture, owner = L.liveKeyFor("fixture-alpha"), hash = other ? owner % 65535 + 1 : owner;
+    const ask = (id, text, guid = "Player-1-00000001") => app.evaluate(({ screen }, { id, text, guid }) => {
+      const { bridge, L } = globalThis.liveFixture, hash = L.identityHash(guid);
       const displays = screen.getAllDisplays(), primary = screen.getPrimaryDisplay();
       const target = displays.find((d) => d.id !== primary.id) || primary;
       const r = screen.dipToScreenRect ? screen.dipToScreenRect(null, target.workArea) : target.workArea;
@@ -72,7 +74,7 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
       for (const p of [...pages.reverse(), ...pages]) bridge.questionPage(p);
       clearTimeout(bridge.slowTimer);
       return { area: target.workArea, secondary: target.id !== primary.id, primary: primary.bounds };
-    }, { id, text, other });
+    }, { id, text, guid });
     const panelWindow = () => app.evaluate(({ BrowserWindow }) => {
       const w = BrowserWindow.getAllWindows().find((x) => /ask-panel\.html$/.test(x.webContents.getURL()));
       return w ? { visible: w.isVisible(), focused: w.isFocused(), focusable: typeof w.isFocusable === "function" ? w.isFocusable() : null, top: w.isAlwaysOnTop(), bounds: w.getBounds(), taskbar: null, focusedWindow: BrowserWindow.getFocusedWindow()?.id === w.id } : null;
@@ -155,38 +157,60 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
     assert.equal(panel.visible, false, "switched off: no panel");
     await page.locator("#ask-panel-toggle").check();
     await page.waitForFunction(async () => (await window.backstage.askInGameSettings()).enabled === true);
-    // Use the real share IPC and panel submit; the stored inventory is synthetic.
-    const privateReply = view.getByText("7 saved carried", { exact: false }).last();
-    const providerCount = () => app.evaluate(() => globalThis.askFixture.requests.length);
-    const submitSaved = async () => {
-      await view.locator("[data-ap-input]").fill("Can I craft recipe #2330?");
-      await view.locator("[data-ap-input]").press("Enter");
+    // Use the real share IPC, panel submit and decoded slash questions, with synthetic inventory.
+    const workshop = "Can I craft recipe #2330?", dungeon = "Dungeon prep for The Deadmines?";
+    const mismatch = "Player-1-00000002", collision = "Player-1-0000265C";
+    const hashes = await app.evaluate((_, guids) => {
+      const { L } = globalThis.liveFixture;
+      return [L.liveKeyFor("fixture-alpha"), ...guids.map(L.identityHash)];
+    }, [mismatch, collision]);
+    assert.notEqual(hashes[0], hashes[1]);
+    assert.equal(hashes[0], hashes[2], "a distinct synthetic GUID actually collides with the active save");
+    const counts = () => app.evaluate(() => [globalThis.askFixture.companionPrompts.length, globalThis.askFixture.requests.length]);
+    const waitHandoff = async (question, total) => {
+      await view.waitForFunction(({ question, total }) => {
+        const items = document.querySelectorAll(".ap-item");
+        const last = items[items.length - 1];
+        return items.length === total && last?.dataset.status === "answer" && last.textContent.includes(question);
+      }, { question, total });
+      const log = await view.evaluate(async () => (await window.askPanel.state()).log);
+      assert.equal(log.at(-1).question, question);
+      assert.equal(log.at(-1).answer.kind, "scope");
+      assert.match(log.at(-1).answer.text, /desktop Companion.*Open in app/);
+      assert.doesNotMatch(JSON.stringify(log), /Fixture Private Potion|saved carried|starred loot|saved quest log/i);
+      assert.doesNotMatch(await view.locator("[data-ask-panel]").innerText(), /Fixture Private Potion|saved carried|starred loot|saved quest log/i);
     };
     await page.evaluate(() => window.backstage.setInGameShare(true));
-    const beforeSaved = await providerCount();
+    const beforeSaved = await counts();
     await ask(20, "\u0001open");
-    await submitSaved();
-    await privateReply.waitFor();
-    assert.equal(await providerCount(), beforeSaved, "verified saved stock stays local");
-    await ask(21, "\u0001open", true);
-    await privateReply.waitFor({ state: "detached" });
-    assert.equal(await view.evaluate(async () => (await window.askPanel.state()).log.some(x => x.answer?.text.includes("7 saved carried"))), false);
-    assert.ok(await view.getByText("And where do I train?", { exact: false }).count(), "public exchanges survive the game switch");
-    await submitSaved();
-    await view.getByText("another character is active", { exact: false }).last().waitFor();
-    assert.equal(await providerCount(), beforeSaved, "unverified saved question also stays local");
-    await ask(22, "\u0001open");
-    await submitSaved();
-    await privateReply.waitFor();
+    const publicCount = await view.evaluate(async () => (await window.askPanel.state()).log.length);
+    await view.locator("[data-ap-input]").fill(workshop);
+    await view.locator("[data-ap-input]").press("Enter");
+    await waitHandoff(workshop, publicCount + 1);
+    await ask(21, dungeon, mismatch);
+    await waitHandoff(dungeon, publicCount + 2);
+    await ask(22, workshop, collision);
+    await waitHandoff(workshop, publicCount + 3);
     await page.evaluate(() => window.backstage.setInGameShare(false));
-    await privateReply.waitFor({ state: "detached" });
-    await ask(23, "Is a two-handed axe good for a level 13 warrior?");
+    await view.locator("[data-ap-input]").press("Escape");
+    for (let i = 0; i < 30 && (await panelWindow()).visible; i++) await new Promise((r) => setTimeout(r, 100));
+    assert.equal((await panelWindow()).visible, false, "the panel closes after the handoffs");
+    await ask(23, "\u0001open", collision);
+    for (let i = 0; i < 30 && !(await panelWindow()).visible; i++) await new Promise((r) => setTimeout(r, 100));
+    assert.equal((await panelWindow()).visible, true, "a colliding opener can only reopen public history");
+    await waitHandoff(workshop, publicCount + 3);
+    assert.ok(await view.getByText("And where do I train?", { exact: false }).count(), "public exchanges survive the game switch and reopen");
+    assert.deepEqual(await counts(), beforeSaved, "handoffs never enter the Companion service or provider");
+    await view.locator('[data-ap="open"]').click();
+    await page.locator("#chatlog").waitFor();
+    assert.doesNotMatch(await page.locator("#chatlog").innerText(), /#2330|Dungeon prep for The Deadmines|Fixture Private Potion/);
+    await ask(24, "Is a two-handed axe good for a level 13 warrior?");
     await view.getByText("Is a two-handed axe good for a level 13 warrior?", { exact: false }).last().waitFor();
     await view.waitForFunction(() => document.querySelector(".ap-item:last-child")?.dataset.status === "answer");
     const next = await app.evaluate(() => globalThis.askFixture.requests.at(-1));
-    assert.equal(await providerCount(), beforeSaved + 1);
+    assert.deepEqual(await counts(), beforeSaved.map(n => n + 1));
     assert.equal(next.context, "none");
-    assert.doesNotMatch(next.prompt, /Fixture Private Potion|saved carried|#2330/);
+    assert.doesNotMatch(next.prompt, /Fixture Private Potion|saved carried|#2330|Dungeon prep for The Deadmines/i);
     // BF_REAL_CLICK=1: a genuine Windows mouse click on the panel's close button (not Chrome's
     // synthetic input), which is what a player does. Moves the mouse, so it is local only, never CI.
     if (process.env.BF_REAL_CLICK === "1" && process.platform === "win32") {
