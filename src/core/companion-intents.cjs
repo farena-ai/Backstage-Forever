@@ -8,6 +8,7 @@ const fs = require("node:fs"), path = require("node:path");
 const { MAP_NAMES } = require("./map-names.cjs");
 const { MASTERS } = require("./flight-masters.cjs");
 const { BASELINE } = require("./dungeon-atlas.cjs");
+const { parseTravelIntent, planTravel } = require("./travel.cjs");
 
 const norm = (s) => String(s || "").toLowerCase().replace(/[’‘`´]/g, "'").replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
 const loose = (s) => norm(s).replace(/'/g, "");
@@ -649,6 +650,10 @@ function answerTransport(u, { profile }) {
   return { text, facts: [text] };
 }
 function answerTravelPlan(u, { profile, data }) {
+  const trip = parseTravelIntent(u.q);
+  // An unverified instance origin must stay with the travel planner, not fall
+  // back to a saved position or an Atlas-derived starting point.
+  if (trip?.originSource === "explicit" && !trip.originId && trip.originLabel && dungeonIn(trip.originLabel)) return null;
   const ends = travelEnds(u, profile), startPt = ends.origin ? pointOf(ends.origin) : here(profile), destPt = pointOf(ends.dest);
   // Walking within one zone: direction and the spot.
   if (startPt && destPt && startPt.mapId === destPt.mapId && Number.isFinite(destPt.x) && !/\b(zeppelin|boat|ship|tram)\b/.test(slang(u.q))) {
@@ -660,7 +665,6 @@ function answerTravelPlan(u, { profile, data }) {
   const t = /\b(zeppelin|boat|ship|tram)\b/.test(slang(u.q)) || (transportDest && (crossSea || ["Ironforge", "Dun Morogh"].includes(ends.dest))) ? answerTransport(u, { profile }) : null;
   if (t) return t;
   try {
-    const { parseTravelIntent, planTravel } = require("./travel.cjs");
     const ref = readJson("data/forever-travel/pack.json");
     const h = here(profile), fromTown = ends.origin || (h ? townAt(h) || zoneOf(h.mapId) : null);
     const dest = ends.dest;

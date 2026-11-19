@@ -173,6 +173,7 @@ test('dungeon fact edition and build qualifiers do not infer or repair evidence'
  for(const [prompt, expected] of [
   ['Where is the entrance to Scarlet Monastery at midnight?',/Scarlet Monastery.*No verified current Forever/s],
   ['Where is the entrance to Scarlet Monastery in Midnight?',/only covers World of Warcraft: Forever/],
+  ['Where is the entrance to Scarlet Monastery (Midnight expansion)?',/only covers World of Warcraft: Forever/],
   ['Where is the entrance to the Rookery in Retail?',/only covers World of Warcraft: Forever/],
   ['Historical encounters for #sm on build 1.60.1.70888.?',/No verified historical Forever/],
  ])await t.test(prompt,async()=>{

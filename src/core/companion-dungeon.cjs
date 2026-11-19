@@ -11,7 +11,7 @@ const nameKey = (value) => value.toLowerCase().replace(/[‘’]/g, "'").replace
 const phrase = (value) => ` ${nameKey(value).replace(/[^a-z0-9#']/g, " ").trim().replace(/ +/g, " ")} `;
 const EXAMPLE = "Try ‘Dungeon prep for The Deadmines’ or use the exact #ID shown in the Dungeon Atlas.";
 const OTHER_EDITION = /\b(?:retail|classic|season of discovery|the war within|midnight|dragonflight)\b/i;
-const FACT_OTHER_EDITION = /\b(?:retail|classic|season of discovery|the war within|dragonflight)\b|\b(?:in|wow) midnight\b|\(midnight\)/i;
+const FACT_OTHER_EDITION = /\b(?:retail|classic|season of discovery|the war within|dragonflight)\b|\b(?:in|wow) midnight\b|\bmidnight\s+expansion\b|\(midnight\)/i;
 const EDITION_SUFFIX = /\s+in\s+(?:wow\s+)?(?:retail|classic|season of discovery|the war within|midnight|dragonflight)$|\s+\((?:wow\s+)?(?:retail|classic|season of discovery|the war within|midnight|dragonflight)\)$/i;
 const ENCOUNTER_URL = "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/3067c6919046428152f2152fa551f44a8c215d79/data/wowf/1.60.1.70888/encounters.json";
 const ENCOUNTER_BUILD = "1.60.1.70888";

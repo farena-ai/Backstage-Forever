@@ -25,6 +25,26 @@ test("named instances do not override trainer, flight master, or outbound travel
   });
 });
 
+test("outbound instance travel preserves the explicit unverified origin in either order", async (t) => {
+  for (const model of [false, true]) for (const prompt of [
+    "How do I get from Scarlet Monastery to Undercity?",
+    "How do I get to Undercity from Scarlet Monastery?",
+  ]) await t.test(`${prompt} (model ${model ? "configured" : "off"})`, async () => {
+    const profile = { ...PROFILES["horde-priest-21"], location: { zone: "Orgrimmar", mapId: 1454, x: 0.5, y: 0.5 } };
+    const { service, store, seen } = makeService(profile, { model });
+    const r = await service.ask({ provider: "ollama", prompt, profileId: store.state.activeProfileId, shareProfile: true });
+    assert.equal(r.kind, "travel", r.text);
+    assert.equal(r.travel.status, "uncovered");
+    assert.deepEqual(r.travel.origin, { id: null, label: "Scarlet Monastery" });
+    assert.equal(r.travel.destination.id, "undercity");
+    assert.deepEqual(r.travel.options, []);
+    assert.match(r.text, /^This local reference does not cover a verified connection from Scarlet Monastery to Undercity\./);
+    assert.deepEqual(r.travel.claims, []);
+    assert.equal(r.travel.choiceToken, null);
+    assert.deepEqual(seen, []);
+  });
+});
+
 test("instance abstentions affect local handling but not factual coverage", async () => {
   const abstention = loadQuestions().find((q) => q.expect.outcome === "unknown-current");
   const clarification = loadQuestions("heldout").find((q) => q.expect.outcome === "clarify-instance");
