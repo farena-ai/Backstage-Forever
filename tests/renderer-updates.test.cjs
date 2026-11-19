@@ -108,6 +108,8 @@ function harness(overrides = {}) {
   context.LedgerView = context.window.LedgerView;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/journey.js"), "utf8"), context);
   context.JourneyView = context.window.JourneyView;
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/guild-run.js"), "utf8"), context);
+  context.GuildRun = context.window.GuildRun;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/party.js"), "utf8"), context);
   context.Party = context.window.Party;
   for (const [file, name] of [["support", "Support"], ["recovery", "Recovery"], ["character-guidance", "CharacterGuidance"]]) {

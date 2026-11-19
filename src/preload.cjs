@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld(
     preparationBrief: (...args) => invoke("preparationBrief", ...args),
     createPreparationJourney: (...args) => invoke("createPreparationJourney", ...args),
     partyBrief: (...args) => invoke("partyBrief", ...args),
+    guildRun: (...args) => invoke("guildRun", ...args),
     partyPreview: (...args) => invoke("partyPreview", ...args),
     createPartyJourney: (...args) => invoke("createPartyJourney", ...args),
     exportPartyPlan: (...args) => invoke("exportPartyPlan", ...args),

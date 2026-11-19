@@ -15,3 +15,24 @@
 .party-expedition .party-role b, .party-expedition .party-role small { text-shadow: none; color: #2b1b0a; }
 .party-expedition .party-role small { color: #5a3e1c; }
 .party-expedition .party-role-select { color: #5a3e1c; font-weight: 700; }
+
+.guild-run { padding: clamp(12px, 2.4vw, 24px); min-width: 0; }
+.guild-run :is(p, li, button, pre, label) { overflow-wrap: anywhere; }
+.guild-run p { color: #4a3218; }
+.guild-run-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: .75rem; }
+.guild-run-actions button { max-width: 100%; }
+.guild-run-panel { border-top: 1px solid #a5823e; margin-top: .75rem; padding-top: .5rem; }
+.guild-run-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 215px), 1fr)); gap: .75rem; }
+.guild-run-grid > *, .guild-run fieldset { min-width: 0; }
+.guild-run form { display: block; }
+.guild-run form label { display: grid; gap: .25rem; color: #3d220c; }
+.guild-run form :is(input, textarea) { width: 100%; min-width: 0; }
+.guild-run textarea { resize: vertical; }
+.guild-run fieldset { border: 1px solid #a5823e; border-radius: 4px; padding: .75rem; }
+.guild-run legend { font-weight: 700; color: #3d220c; }
+.guild-run-copy { white-space: pre-wrap; background: #fff8e6; color: #2b1b0a; border: 1px solid #a5823e; border-radius: 4px; padding: .8rem; font: inherit; line-height: 1.5; }
+.guild-run-check { display: flex; align-items: baseline; gap: .5rem; margin: .5rem 0; color: #3d220c; }
+.guild-run-check input { flex: none; }
+.guild-run-feedback p:empty { margin: 0; }
+.guild-run-feedback [role="alert"] { font-weight: 700; }
+.guild-run [tabindex="-1"], .guild-run-actions button { scroll-margin-top: 12px; }
