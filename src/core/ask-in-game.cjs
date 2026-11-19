@@ -8,6 +8,7 @@
 // the Companion page's own "Use my active character" setting is on and the question comes from
 // that character. Nothing is ever sent to the game.
 const { workshopQuestion } = require("./companion-workshop.cjs");
+const { dungeonQuestion } = require("./companion-dungeon.cjs");
 const RETRY_MS = 2000, RETRY_FOR_MS = 30000;
 // Companion errors meant for the player (same list as the main window's ask handler); others become generic.
 const PLAYER_ERRORS = /^(Provider |Could not reach|Save an API|Choose a model|Choose a character|Choose the current character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription |The free AI)/;
@@ -62,9 +63,9 @@ class InGameAsk {
     const state = this.getState();
     const profile = state.profiles?.find((p) => p.id === state.activeProfileId) || null;
     const expected = profile?.source?.kind === "wow-addon" ? this.liveKeyFor(profile.source.id) : null;
-    const isWorkshop = Boolean(workshopQuestion(prompt));
+    const savedPreparation = Boolean(workshopQuestion(prompt) || dungeonQuestion(prompt));
     let { shareProfile, note } = sharing({ share: this.getShare() === true, expected, characterHash });
-    if (shareProfile && isWorkshop && !(Number.isInteger(expected) && expected > 0 && expected === characterHash)) {
+    if (shareProfile && savedPreparation && !(Number.isInteger(expected) && expected > 0 && expected === characterHash)) {
       shareProfile = false;
       note = "The game character could not be matched to the active save. Ask in the desktop Companion instead.";
     }
@@ -84,7 +85,7 @@ class InGameAsk {
         // The main window is answering something else: wait for it, a little.
         if (BUSY.test(String(error?.message)) && this.now() - started < RETRY_FOR_MS) {
           await this.wait(RETRY_MS);
-          if (isWorkshop && request.shareProfile) {
+          if (savedPreparation && request.shareProfile) {
             const current = this.getState();
             const source = current.profiles?.find(p => p.id === current.activeProfileId)?.source;
             if (this.getShare() !== true || current.activeProfileId !== request.profileId || source?.kind !== "wow-addon" || this.liveKeyFor(source.id) !== characterHash) {

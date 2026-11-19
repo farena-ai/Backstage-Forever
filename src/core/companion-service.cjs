@@ -8,6 +8,7 @@ const {uuid}=require('./memory-data.cjs');
 const {createCompanionTools}=require('./companion-tools.cjs');
 const {quickAnswer}=require('./quick-answers.cjs');
 const {workshopQuestion,workshopAnswer}=require('./companion-workshop.cjs');
+const {dungeonQuestion,dungeonAnswer}=require('./companion-dungeon.cjs');
 const {resolve:resolveIntent}=require('./companion-intents.cjs');
 const {resolveTalentQuestion,talentBlock,talentQuickAnswer,TALENT_MAX}=require('./talent-context.cjs');
 // Providers accept at most this much context text (ChatGPT subscription limit).
@@ -15,9 +16,9 @@ const CONTEXT_LIMIT=20000;
 // These events cancel work/drafts without changing completed conversation ownership.
 const SOFT_REASONS=new Set(['renderer-context','response-stop','memory-save']);
 class CompanionService {
-  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,lookups=true,live=null,advise=null,localAi=null,talents=null,planner=null,onReset=()=>{}}){
+  constructor({store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference=null,vendorPack=null,acquisitionPack=null,dungeonEvidence={},lookups=true,live=null,advise=null,localAi=null,talents=null,planner=null,onReset=()=>{}}){
     // talents: { trees(className), build() } read from the player's own game client (never bundled).
-    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,lookups,live,advise,localAi,talents,planner,onReset});
+    Object.assign(this,{store,context,requests,memory,ai,chatgpt,claude,knowledge,travel,npcReference,travelReference,vendorPack,acquisitionPack,dungeonEvidence,lookups,live,advise,localAi,talents,planner,onReset});
     this.session=new ConversationSession();this.rootEpoch=0;
     context.subscribe(({reason})=>{
       if(SOFT_REASONS.has(reason))return;
@@ -48,14 +49,17 @@ class CompanionService {
       const profile=state.profiles.find(p=>p.id===profileId);
       const scope={owner:this.owner(profileId),shareProfile:input.shareProfile,memoryIds};
       const refusal=scopeResponse(input.prompt);
-      // Saved Workshop questions stay local even with a model configured.
+      // Saved preparation questions stay local even with a model configured.
       const workshop=!refusal&&workshopQuestion(input.prompt);
-      if(workshop){
+      const dungeon=!refusal&&dungeonQuestion(input.prompt);
+      if(workshop||dungeon){
         const conversation=this.session.skip(scope);
-        const text=workshopAnswer(workshop,{state,profile,shareProfile:input.shareProfile,acquisitionPack:this.acquisitionPack});
+        const text=workshop
+          ? workshopAnswer(workshop,{state,profile,shareProfile:input.shareProfile,acquisitionPack:this.acquisitionPack})
+          : dungeonAnswer(dungeon,{...this.dungeonEvidence,profile,shareProfile:input.shareProfile});
         if(signal.aborted)throw signal.reason;
-        // Do not make saved Workshop evidence eligible for later sharing via Memory.
-        this.travel?.clear();return {text,kind:'quick',topic:'profession-materials',conversation};
+        // Neither side of this exchange is eligible for provider history or Memory.
+        this.travel?.clear();return {text,kind:'quick',topic:workshop?'profession-materials':'dungeon-prep',conversation};
       }
       const prepared=this.session.prepare({...scope,prompt:input.prompt,currentPrompt:augmented.prompt});
       if(prepared.meta.resetReason==='scope-change')this.travel?.clear();

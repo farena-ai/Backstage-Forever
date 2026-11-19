@@ -342,6 +342,7 @@ window.BF_LOCALE_DE = {
  "Druid": "Druide",
  "Dungeon cleared": "Dungeon geschafft",
  "Dungeon preparation": "Dungeon-Vorbereitung",
+ "Dungeon preparation · offline": "Dungeon-Vorbereitung · offline",
  "Dungeons & raids": "Dungeons & Schlachtzüge",
  "DUNGEONS & RAIDS": "DUNGEONS & SCHLACHTZÜGE",
  "Durability and repair": "Haltbarkeit und Reparatur",
