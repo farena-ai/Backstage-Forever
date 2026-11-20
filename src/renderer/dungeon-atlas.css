@@ -51,6 +51,19 @@
 .atlas-skull { display: inline-block; width: 18px; margin-right: 4px; color: #5a3d18; text-align: center; }
 .atlas-bosses li.seen .atlas-skull { color: #8f1d14; text-shadow: 0 0 6px rgba(200,40,20,.5); }
 .atlas-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 10px; }
+.atlas-fieldbook { overflow-wrap: anywhere; }
+.atlas-fieldbook-prep { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); margin-top: 14px; }
+.atlas-fieldbook h5 { margin: 0 0 4px; font: 700 13px Cinzel, Georgia, serif; color: #5a3608; }
+.atlas-fieldbook .atlas-pickup h5 { margin-top: 8px; }
+.atlas-fieldbook-wishes { margin: 12px 0; }
+.atlas-fieldbook-wishes ul, .atlas-fieldbook-cues { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 6px; }
+.atlas-fieldbook-wishes li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.atlas-fieldbook-encounters { margin: 0 0 14px; }
+
+.atlas-fieldbook-cues { grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+.atlas-fieldbook-cues li { padding: 8px 10px; border: 1px solid #9a763d; border-radius: 5px; background: #f5e9c8; }
+.atlas-fieldbook-cues p { margin: 4px 0 0; }
+.atlas-fieldbook [data-fieldbook-stage="after"] .atlas-recap-note { margin-bottom: 8px; }
 .atlas-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .atlas-src, .atlas-caution { font-size: 11px; color: #6a5030; }
 .atlas-caution { color: #bfa878; }

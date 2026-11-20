@@ -12,6 +12,12 @@ window.DungeonAtlas = (() => {
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const validPoint = (mapId, { x, y } = {}) => Number.isSafeInteger(mapId) && mapId > 0 && [x, y].every((v) => Number.isFinite(v) && v > 0 && v < 1);
   const LABEL = { right: "Right for your level", easy: "Easy", hard: "Challenging", trivial: "Low level", impossible: "Too high for now", unknown: "Level unknown" };
+  // Only cues corroborated by both Classic references in docs/DUNGEON-FIELDBOOK.md.
+  const DEADMINES_CUES = new Map([
+    ["Mr. Smite", "Expect a group stun as Smite changes weapons. Deal with the guards first."],
+    ["Captain Greenskin", "Plan how to control the guards before pulling the captain."],
+    ["Edwin VanCleef", "Agree who will pick up or control the hidden guards before the pull."],
+  ]);
   function page() {
     return `<section class="atlas-page" data-atlas>
       ${PageHero.render({ art: "dungeons", compact: true, eyebrow: "Adventure · Dungeons & raids", title: "Instance Atlas", subAttrs: "data-atlas-level",
@@ -53,8 +59,41 @@ window.DungeonAtlas = (() => {
   function paintRecap(root, recap, loading = false) {
     root.querySelector("[data-atlas-recap]").innerHTML = recapContent(savedEncounters(recap), { loading });
   }
+  function compareButton(itemId) {
+    return `<button type="button" class="loot-compare" data-nav="sheet" data-atlas-compare="${itemId}" data-atlas-profile="${esc(activeProfileId())}" aria-label="Compare in Sheet: item #${itemId}">Compare in Sheet</button>`;
+  }
+  function fieldbookWishes(entry, saved) {
+    const wished = entry.loot?.wished || [];
+    const message = !saved ? "Choose an active character with an available Atlas snapshot to see their wish list." :
+      !entry.loot?.items ? "No bundled loot records available here." : "No starred items from the bundled loot records for this dungeon.";
+    return `<section class="atlas-fieldbook-wishes" aria-label="Your wish list here"><h5>Your wish list here</h5>
+      ${saved && wished.length ? `<p class="atlas-src">From bundled loot records. A star is not an owned item or a personal drop.</p>
+      <ul>${wished.map((item) => `<li><span><strong>${esc(item.name || `Item #${item.itemId}`)}</strong> · ${esc(item.boss)}</span>${compareButton(item.itemId)}</li>`).join("")}</ul>` : `<p class="atlas-src">${message}</p>`}</section>`;
+  }
+  function fieldbook(entry, saved, preflight, lootAction, recap) {
+    return `<div class="atlas-details atlas-fieldbook" data-dungeon-fieldbook>
+      <section class="atlas-preflight" data-fieldbook-stage="before" aria-labelledby="fieldbook-prep-heading">
+        ${preflight}
+        <div class="atlas-cols atlas-fieldbook-prep">
+          <section><h5>Supplies to check in game</h5><p class="atlas-src">Manual checks, not a bag or readiness reading.</p><ul>${entry.prep.map((item) => `<li>${esc(item)}</li>`).join("")}</ul></section>
+          <section><h5>Plan your role</h5><ul><li><strong>Tank</strong> · Agree on the first target and check healer mana before each pull.</li>
+          <li><strong>Healer</strong> · Call for a drink break before the group moves on.</li>
+          <li><strong>Damage</strong> · Follow the marked target and agree who handles interrupts or crowd control.</li></ul></section>
+        </div>
+        ${fieldbookWishes(entry, saved)}${lootAction}
+      </section>
+      <section class="atlas-fieldbook-encounters" data-fieldbook-stage="inside" aria-labelledby="fieldbook-encounters-heading">
+        <h4 id="fieldbook-encounters-heading">Boss reference &amp; tips</h4>
+        <p class="atlas-src">Reviewed Classic reference · mechanics not verified in Forever</p>
+        <ul class="atlas-fieldbook-cues">${entry.bosses.filter((boss) => DEADMINES_CUES.has(boss.name)).map((boss) => `<li><strong>${esc(boss.name)}</strong><p>${esc(DEADMINES_CUES.get(boss.name))}</p></li>`).join("")}</ul>
+        <section aria-labelledby="fieldbook-roster-heading"><h5 id="fieldbook-roster-heading">Selected Classic roster &amp; community observations</h5><p class="atlas-src">Not a complete boss roster. Forever community marks aren’t this character’s defeats.</p>
+          <ul class="atlas-bosses">${entry.bosses.map((boss) => `<li>${esc(boss.name)}${boss.observedInForever ? "<small>Seen in Forever · community</small>" : ""}</li>`).join("")}${entry.observedOnly.map((boss) => `<li>${esc(boss.name)}<small>Reported in Forever · community</small></li>`).join("")}</ul></section>
+      </section>
+      ${recap}</div>`;
+  }
   function card(e) {
     const isOpen = open === e.id;
+    const pilot = e.id === "dm";
     const entrance = e.entrance && validPoint(e.mapId, e.entrance);
     const last = e.bosses.length - 1;
     const bosses = e.bosses.map((b, i) => `<li class="${b.observedInForever ? "seen" : ""}${i === last && window.BF_BOSS_ART?.includes(e.id) ? " atlas-final" : ""}">${i === last && window.BF_BOSS_ART?.includes(e.id) ? `<img class="atlas-final-art" src="art/bosses/${esc(e.id)}.webp" alt="" width="72" height="72">` : ""}<span class="atlas-skull" aria-hidden="true">☠</span>${esc(b.name)}${b.observedInForever ? `<small>seen in Forever${b.kills ? ` · ${b.kills} kill${b.kills === 1 ? "" : "s"}` : ""}</small>` : ""}${b.tip ? `<p class="atlas-tip"><strong>Tip:</strong> ${esc(b.tip)}</p>` : ""}</li>`).join("");
@@ -67,6 +106,15 @@ window.DungeonAtlas = (() => {
     const pick = e.pickUp || [];
     const ready = `<ul class="atlas-ready"><li class="${lvlOk ? "ok" : "warn"}">${esc(lvlLine)}</li><li class="na">${e.kind === "raid" ? "Check raid size and roles in game" : "Group of five: a tank, a healer and three damage"}</li></ul>`;
     const pickList = pick.length ? `<div class="atlas-pickup"><h5>Possible quest pickups · Reference</h5><p class="atlas-src">Check availability and prerequisites in game.</p><ul>${pick.map((q) => `<li><span><strong>${esc(q.title)}</strong>${q.level ? ` <small>lvl ${q.level}</small>` : ""}${q.giver ? `<small>from ${esc(q.giver.name)}</small>` : ""}</span><span class="atlas-pickup-actions">${q.giver && Number.isSafeInteger(q.giver.mapId) ? `<button type="button" data-map-focus='${esc(JSON.stringify({ mapId: q.giver.mapId, x: q.giver.x, y: q.giver.y, npcId: q.giver.npcId, label: q.giver.name, sub: q.title, goal: { title: `Check availability: “${q.title}”`, questId: q.id, steps: [`Ask ${q.giver.name} whether this quest is available before heading into ${e.name}.`] } }))}'>Show on map</button>` : ""}<button type="button" data-quest-open="${esc(q.id)}">Open quest</button></span></li>`).join("")}</ul></div>` : "";
+    const lootAction = e.loot?.items ? `<div class="atlas-actions"><button type="button" data-atlas-loot="${esc(e.id)}">Browse recorded loot</button></div>` : "";
+    const preflight = `<h4 tabindex="-1" data-atlas-prep-heading${pilot ? ' id="fieldbook-prep-heading"' : ""}>Prepare for ${esc(e.name)}</h4>${ready}
+      <div class="atlas-actions">${entrance ? `<button type="button" class="primary" data-atlas-way="${esc(e.id)}">Copy entrance waypoint</button><button type="button" data-atlas-map="${esc(e.id)}">Show on World Map</button>` : ""}</div>
+      ${entrance ? `<p class="atlas-src">Approximate Classic entrance: ${esc(e.zone)} · ${(e.entrance.x * 100).toFixed(0)}, ${(e.entrance.y * 100).toFixed(0)}. Verify in Forever.</p>` : `<p class="atlas-src">No usable entrance waypoint in this reference.</p>`}
+      ${questList(yourQuests.filter((q) => q.complete), "Ready to turn in · Last saved")}
+      ${questList(yourQuests.filter((q) => !q.complete), "In your quest log · Last saved")}`;
+    const recap = `<section class="atlas-recap atlas-instance-recap" aria-label="Saved defeats here"${pilot ? ' data-fieldbook-stage="after"' : ""}><h4>Saved defeats here</h4>
+      ${pilot ? '<p class="atlas-recap-note">This is saved encounter evidence, not a record of a clear, personal loot or lockout. Reload or log out in game to save new observations.</p>' : ""}
+      ${recapContent(saved?.filter((row) => row.atlasId === e.id && (!pilot || row.instanceType === "party")), { entry: e })}</section>`;
     return `<article class="atlas-card d-${esc(e.difficulty)} ${e.kind}${isOpen ? " open" : ""}" data-atlas-card="${esc(e.id)}">
       <div class="atlas-ribbon"><span>${e.levels ? `${e.levels.min}${e.levels.max !== e.levels.min ? "–" + e.levels.max : ""}` : "?"}</span></div>
       <div class="atlas-card-body">
@@ -76,15 +124,10 @@ window.DungeonAtlas = (() => {
         <p class="atlas-diff">${esc(LABEL[e.difficulty])}${e.factionNote ? ` · ${esc(e.factionNote)}` : ""}</p>
         ${scoreChip(e)}${wishRow(e)}
         ${!isOpen && (yourQuests.length || pick.length) ? `<p class="atlas-brief">${yourQuests.length ? `${yourQuests.length} related quest${yourQuests.length === 1 ? "" : "s"} in your saved log` : `${pick.length} possible quest pickup${pick.length === 1 ? "" : "s"}`}</p>` : ""}
-        <div class="atlas-toggles"><button type="button" class="atlas-toggle" data-atlas-open="${esc(e.id)}" aria-expanded="${isOpen && view === "details"}">${isOpen && view === "details" ? "Hide details" : `Bosses, roles & prep (${e.bosses.length + e.observedOnly.length} bosses)`}</button>${e.loot ? `<button type="button" class="atlas-loot-btn${isOpen && view === "loot" ? " on" : ""}" data-atlas-loot="${esc(e.id)}" aria-expanded="${isOpen && view === "loot"}"><span class="atlas-chest" aria-hidden="true"></span>${isOpen && view === "loot" ? "Hide loot" : `Loot${e.loot.items ? ` (${e.loot.items} items)` : ""}`}</button>` : ""}</div>
+        <div class="atlas-toggles"><button type="button" class="atlas-toggle" data-atlas-open="${esc(e.id)}" aria-expanded="${isOpen && view === "details"}">${pilot ? (isOpen && view === "details" ? "Hide Dungeon Fieldbook" : "Open Dungeon Fieldbook") : isOpen && view === "details" ? "Hide details" : `Bosses, roles & prep (${e.bosses.length + e.observedOnly.length} bosses)`}</button>${e.loot ? `<button type="button" class="atlas-loot-btn${isOpen && view === "loot" ? " on" : ""}" data-atlas-loot="${esc(e.id)}" aria-expanded="${isOpen && view === "loot"}"><span class="atlas-chest" aria-hidden="true"></span>${isOpen && view === "loot" ? "Hide loot" : `Loot${e.loot.items ? ` (${e.loot.items} items)` : ""}`}</button>` : ""}</div>
         ${isOpen && view === "loot" ? lootView(e) : ""}
-        ${isOpen && view === "details" ? `<div class="atlas-details"><div class="atlas-preflight"><h4 tabindex="-1" data-atlas-prep-heading>Prepare for ${esc(e.name)}</h4>${ready}
-          <div class="atlas-actions">${entrance ? `<button type="button" class="primary" data-atlas-way="${esc(e.id)}">Copy entrance waypoint</button><button type="button" data-atlas-map="${esc(e.id)}">Show on World Map</button>` : ""}</div>
-          ${entrance ? `<p class="atlas-src">Approximate Classic entrance: ${esc(e.zone)} · ${(e.entrance.x * 100).toFixed(0)}, ${(e.entrance.y * 100).toFixed(0)}. Verify in Forever.</p>` : `<p class="atlas-src">No usable entrance waypoint in this reference.</p>`}
-          ${questList(yourQuests.filter((q) => q.complete), "Ready to turn in · Last saved")}
-          ${questList(yourQuests.filter((q) => !q.complete), "In your quest log · Last saved")}
-          ${e.loot?.items ? `<div class="atlas-actions"><button type="button" data-atlas-loot="${esc(e.id)}">Browse recorded loot</button></div>` : ""}${pickList}</div>
-          <section class="atlas-recap atlas-instance-recap" aria-label="Saved defeats here"><h4>Saved defeats here</h4>${recapContent(saved?.filter((row) => row.atlasId === e.id), { entry: e })}</section>
+        ${isOpen && view === "details" ? pilot ? fieldbook(e, saved, preflight + (pickList || '<p class="atlas-src">No possible quest pickups listed in this reference. Check availability in game.</p>'), lootAction, recap) : `<div class="atlas-details"><div class="atlas-preflight">${preflight}${lootAction}${pickList}</div>
+          ${recap}
           <h4>Boss reference & tips</h4><p class="atlas-src">${esc(e.source)}. Community marks aren’t your character’s defeats.</p><ul class="atlas-bosses">${bosses}${extra}</ul>
           <div class="atlas-cols"><div><h4>Group</h4><ul>${e.roles.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div><div><h4>Before you go</h4><ul>${e.prep.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div></div></div>` : ""}
       </div></article>`;
