@@ -1,6 +1,8 @@
 # Backstage Forever roadmap
 
-**Current planning:** Start with [Field Dispatch and Forever-only Companion](FOREVER-COMPANION-NEXT-ROADMAP.md) and its [expansion backlog](FOREVER-EXPANSION-BACKLOG.md). The existing [All-in-One roadmap](ALL-IN-ONE-ROADMAP.md) carries the broader delivery and live validation gates. The historical suggestion below for open-web lookups through providers is superseded by the current Forever-only evidence rules.
+**Current product roadmap:** [Live All-in-One roadmap](LIVE-ALL-IN-ONE-ROADMAP.md) is the delivery order and backlog for native play, Academy, Fieldbook, guild tools and patch resilience.
+
+**Supporting plans:** Start with [Field Dispatch and Forever-only Companion](FOREVER-COMPANION-NEXT-ROADMAP.md) and its [expansion backlog](FOREVER-EXPANSION-BACKLOG.md). The existing [All-in-One roadmap](ALL-IN-ONE-ROADMAP.md) carries the broader delivery and live validation gates. The historical suggestion below for open-web lookups through providers is superseded by the current Forever-only evidence rules.
 
 Where the companion goes next. Written 2026-11-12, after 0.20.0; updated 2026-11-13 after 0.25.0 (Tier 2.6 best-addon features, Tier G graphics program). Ordered by value to a player: a beginner should feel guided, and a veteran should feel faster.
 
