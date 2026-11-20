@@ -3,6 +3,25 @@ const { navigate, ensureCompanionTools } = require("./player-navigation.cjs");
 // Isolated real Electron/main/preload/renderer with synthetic journals only.
 const { _electron: electron } = require("playwright"), fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path"), assert = require("node:assert/strict");
 const { defaultState } = require("../src/core/validation.cjs"), { testWindow } = require("./test-window.cjs");
+const { randomUUID } = require("node:crypto"), { spawn } = require("node:child_process"), { once } = require("node:events");
+async function blockStageRemoval(file) {
+  if (process.platform !== "win32") {
+    const alias = file + ".hardlink";
+    await fs.link(file, alias);
+    return () => fs.unlink(alias);
+  }
+  // Read sharing lets the test compare exact bytes while Windows denies deletion.
+  const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+    "$ErrorActionPreference = 'Stop'; $f = [IO.File]::Open($env:BF_TEST_LOCK_FILE, 'Open', 'Read', 'ReadWrite'); try { [Console]::WriteLine('locked'); [void][Console]::ReadLine() } finally { $f.Dispose() }"],
+    { env: { ...process.env, BF_TEST_LOCK_FILE: file }, stdio: ["pipe", "pipe", "inherit"], windowsHide: true });
+  const closed = once(child, "close");
+  const release = async () => { child.stdin.end(); await closed; };
+  try {
+    const line = await Promise.race([once(child.stdout, "data", { signal: AbortSignal.timeout(10000) }), closed.then(() => [])]);
+    assert.equal(String(line[0]).trim(), "locked");
+    return release;
+  } catch (error) { await release(); throw error; }
+}
 (async () => {
   const dir = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), "bf-recovery-ui-")), evidence = path.resolve("work/recovery-ui"); let app, checks = 0;
   const check = async (name, fn) => { await fn(); console.log("PASS " + name); checks++; };
@@ -11,7 +30,7 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
     await fs.mkdir(evidence, { recursive: true }); await fs.mkdir(path.join(dir, "knowledge-v1")); await fs.writeFile(path.join(dir, "knowledge-v1/preferences.json"), JSON.stringify({ automatic: false, checked: {} }));
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify({ ...defaultState(), onboarded: true, activeProfileId: "p", profiles: [{ id: "p", name: "Synthetic Mage", realm: "Fixture", className: "Mage", level: 10, notes: "ORIGINAL_PRIVATE_NOTES", goals: [] }], memories: [{ profileId: "p", exchanges: [{ id: "820e520e-e64b-4c71-93d1-36c2ade326fd", createdAt: new Date().toISOString(), question: "PRIVATE_MEMORY", answer: "PRIVATE_ANSWER" }] }] }));
     const credentials = '{"openai":"c3ludGhldGlj"}'; await fs.writeFile(path.join(dir, "credentials.json"), credentials);
-    app = await electron.launch({ args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: dir }, timeout: 20000 });
+    app = await electron.launch({ args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: dir, BF_TEST_INACTIVE: "1" }, timeout: 20000 });
     const page = await testWindow(app); page.setDefaultTimeout(6000);
     await app.evaluate(({ app, ipcMain, dialog }) => {
       const load = process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(), "package.json"));
@@ -21,6 +40,8 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
       load("./src/core/voice.cjs").VoiceService.prototype.capabilities = async () => ({ available: false, recognizers: [], voices: [] });
       const GameSync = load("./src/core/game-sync.cjs").GameSync, gameStatus = GameSync.prototype.status;
       GameSync.prototype.status = function () { recoveryFixture.game = this; return gameStatus.call(this); };
+      const gameReset = GameSync.prototype.reset;
+      GameSync.prototype.reset = function (...args) { recoveryFixture.gameResets = (recoveryFixture.gameResets || 0) + 1; return gameReset.apply(this, args); };
       const Recovery = load("./src/core/recovery-checkpoints.cjs"), createPoint = Recovery.RecoveryCheckpoints.prototype.create;
       Recovery.RecoveryCheckpoints.prototype.create = function (...args) { const limit = this.maxPointBytes; if (recoveryFixture.limit) this.maxPointBytes = 64; try { return createPoint.apply(this, args); } finally { this.maxPointBytes = limit; } };
       dialog.showMessageBox = async (_win, options) => { recoveryFixture.dialogs.push(options); if (recoveryFixture.holdDialog && options.title === "Restore this recovery point?") await new Promise(r => recoveryFixture.releaseDialog = r); return { response: recoveryFixture.response }; };
@@ -188,13 +209,42 @@ const { defaultState } = require("../src/core/validation.cjs"), { testWindow } =
       const result = await page.evaluate(() => window.backstage.recoveryList()); assert.equal(result.points.length, 0); assert.equal(result.status.automatic, false);
       await create().click(); await page.getByText("Recovery point saved locally.", { exact: true }).waitFor(); assert.equal((await page.evaluate(() => window.backstage.recoveryList())).status.count, 1);
     });
-    await check("reset purges recovery and preference without recapturing, and preserves unrelated files", async () => {
+    await check("reset cancels unchanged, rejects a blocked root stage, and purges owned stages on retry", async () => {
       await fs.writeFile(path.join(dir, "recovery", "sentinel.txt"), "keep"); await fs.writeFile(path.join(dir, "recovery", "damaged-original.bin"), "PRIVATE_DAMAGED_MEMORY");
       const p = await page.evaluate(async () => { const list = await window.backstage.recoveryList(); return window.backstage.previewCheckpoint(list.points[0].id); });
-      await app.evaluate(() => { recoveryFixture.holdDialog = true; recoveryFixture.releaseDialog = null; }); const pending = page.evaluate(p => window.backstage.restoreCheckpoint({ id: p.id, sha256: p.sha256 }).catch(e => e.message), p); await mainWait("releaseDialog");
-      await page.getByRole("button", { name: "Delete all local data", exact: true }).click(); await page.getByRole("button", { name: "Plan without a character", exact: true }).waitFor();
+      const stageId = randomUUID(), stages = ["credentials.json", "recovery-preferences.json", "state.json"].map(name => path.join(dir, `${name}.${stageId}.tmp`));
+      const lookalike = path.join(dir, `state.json.extra.${stageId}.tmp`);
+      const reset = page.getByRole("button", { name: "Delete all local data", exact: true });
+      const onboarding = page.getByRole("button", { name: "Plan without a character", exact: true });
+      const preserved = [path.join(dir, "state.json"), path.join(dir, "credentials.json"), path.join(dir, "recovery-preferences.json"), path.join(dir, "recovery", `${p.id}.json`), stages[0], lookalike];
+      const readBytes = files => Promise.all(files.map(file => fs.readFile(file)));
+      await fs.writeFile(stages[0], "private stage bytes"); await fs.writeFile(lookalike, "lookalike bytes");
+      const before = await readBytes(preserved);
+      await app.evaluate(() => recoveryFixture.response = 0);
+      assert.equal(await page.evaluate(() => window.backstage.resetData()), null);
+      assert.deepEqual(await readBytes(preserved), before);
+      assert.deepEqual(await app.evaluate(() => { const d = recoveryFixture.dialogs.at(-1); return [d.defaultId, d.cancelId]; }), [0, 0]);
+      await app.evaluate(() => recoveryFixture.response = 1);
+      const release = await blockStageRemoval(stages[0]);
+      try {
+        const error = page.getByText("Recovery is unavailable. Check local storage and try again.", { exact: true });
+        await reset.click(); await error.or(onboarding).waitFor();
+        assert.equal(await error.isVisible(), true, "Reset must reject while an owned root stage cannot be removed");
+        assert.deepEqual(await readBytes(preserved), before);
+        assert.equal(await app.evaluate(() => recoveryFixture.gameResets || 0), 0, "Rejected reset must not reset the game source");
+      } finally { await release(); }
+      for (const stage of stages.slice(1)) await fs.writeFile(stage, "private stage bytes");
+      // The renderer retires its prior action scope on a reset gesture, even if reset fails.
+      const retryPreview = await page.evaluate(id => window.backstage.previewCheckpoint(id), p.id);
+      await app.evaluate(() => { recoveryFixture.holdDialog = true; recoveryFixture.releaseDialog = null; }); const pending = page.evaluate(p => window.backstage.restoreCheckpoint({ id: p.id, sha256: p.sha256 }).catch(e => e.message), retryPreview); await mainWait("releaseDialog");
+      await reset.click(); await onboarding.waitFor();
+      assert.equal(await app.evaluate(() => recoveryFixture.gameResets), 1);
       await app.evaluate(() => { recoveryFixture.holdDialog = false; recoveryFixture.releaseDialog(); }); assert.match(await pending, /Preview/);
       assert.deepEqual(await fs.readdir(path.join(dir, "recovery")), ["sentinel.txt"]); await assert.rejects(() => fs.stat(path.join(dir, "recovery-preferences.json")), { code: "ENOENT" });
+      for (const stage of stages) await assert.rejects(() => fs.lstat(stage), { code: "ENOENT" });
+      assert.deepEqual(await fs.readFile(lookalike), before.at(-1));
+      assert.deepEqual((await page.evaluate(() => window.backstage.bootstrap())).state.profiles, []);
+      assert.equal(await fs.readFile(path.join(dir, "credentials.json"), "utf8"), "{}");
     });
     console.log(`${checks} recovery checks passed; screenshots: ${evidence}`);
   } catch (error) { console.error(error); if (app) await (await app.firstWindow()).screenshot({ path: path.join(evidence, "recovery-failure.png"), fullPage: true }).catch(() => {}); process.exitCode = 1; }

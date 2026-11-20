@@ -167,6 +167,7 @@ class Store {
     return this.secretStatus();
   }
   reset() {
+    this.recovery.clearRootStages();
     this.recovery.clear({ preferences: true });
     this.#writeState(v.defaultState(), false, false);
     atomic(this.keyFile, "{}");
