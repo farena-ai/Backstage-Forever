@@ -21,18 +21,25 @@ local function say(text)
     end
 end
 
-local function set(key,value)
-    local changed=BackstageForeverHelperEnabled(key)~=value
+local function updater(key,value)
+    if key=='questTracker' or key=='questDetours' or key=='beforeLeaving' then return BackstageForeverHUDHelpersChanged
+    elseif key=='gatheringMarks' then return BackstageForeverGatheringMarksChanged
+    elseif key=='rewardReasons' then return BackstageForeverRewardReasonsChanged
+    elseif key=='spellRankReminder' and value then return BackstageForeverSpellRankRefresh end
+end
+
+local function setChoices(choices)
     if type(BackstageForeverHelperSettings)~='table' then BackstageForeverHelperSettings={} end
-    BackstageForeverHelperSettings[key]=value
-    if checks[key] then checks[key]:SetChecked(value) end
-    if not changed then return end
-    local update
-    if key=='questTracker' or key=='questDetours' or key=='beforeLeaving' then update=BackstageForeverHUDHelpersChanged
-    elseif key=='gatheringMarks' then update=BackstageForeverGatheringMarksChanged
-    elseif key=='rewardReasons' then update=BackstageForeverRewardReasonsChanged
-    elseif key=='spellRankReminder' and value then update=BackstageForeverSpellRankRefresh end
-    if type(update)=='function' then pcall(update) end
+    local updates={}
+    for key,value in pairs(choices) do
+        local update=BackstageForeverHelperEnabled(key)~=value and updater(key,value)
+        if type(update)=='function' then updates[update]=true end
+        BackstageForeverHelperSettings[key]=value
+    end
+    for key,value in pairs(choices) do
+        if checks[key] then checks[key]:SetChecked(value) end
+    end
+    for update in pairs(updates) do pcall(update) end
 end
 
 local function read(fn,...)
@@ -92,14 +99,39 @@ local function openPanel()
         check:SetScript('OnClick',function(widget)
             if token~=generation or not panel:IsShown() then return end
             if owner()~=current then panel:Hide();return end
-            set(key,widget:GetChecked()==true)
+            setChoices({[key]=widget:GetChecked()==true})
         end)
     end
     panel:Show()
 end
 
+local function applyBatch(message)
+    -- A required final literal prevents a truncated chat paste from applying a valid prefix.
+    local payload=#message<=251 and not message:find('[^A-Za-z= ]') and
+        message:match('^helpers +apply +(.+) +commit *$')
+    local function invalid() say('No helper settings changed. Paste the full helper command, including commit.') end
+    if not payload then invalid();return end
+    local choices={}
+    for token in payload:gmatch('[^ ]+') do
+        local key,value=token:match('^(%a+)=(%a+)$')
+        if not key or not known[key] or choices[key]~=nil or (value~='on' and value~='off') then invalid();return end
+        choices[key]=value=='on'
+    end
+    if not next(choices) then invalid();return end
+    if not owner() then say('No helper settings changed. Log in to the intended character and leave combat first.');return end
+    setChoices(choices)
+    local confirmed={}
+    for _,row in ipairs(rows) do
+        local key=row[1]
+        if choices[key]~=nil then confirmed[#confirmed+1]=key..' — '..(choices[key] and T('On') or T('Off')) end
+    end
+    say(T('Helpers updated for this character:')..' '..table.concat(confirmed,', '))
+end
+
 function BackstageForeverHelpersCommand(message)
-    if type(message)~='string' or #message>80 then return end
+    if type(message)~='string' then return end
+    if message:match('^helpers%s+apply%f[%A]') then applyBatch(message);return end
+    if #message>80 then return end
     if message:match('^helpers%s+panel%s*$') then openPanel();return end
     local key,value=message:match('^helpers%s+(%a+)%s+(%a+)%s*$')
     key=key or message:match('^helpers%s+(%a+)%s*$')
@@ -115,7 +147,7 @@ function BackstageForeverHelpersCommand(message)
         return
     end
     if value then
-        set(key,value=='on')
+        setChoices({[key]=value=='on'})
     end
     say(key..' — '..(BackstageForeverHelperEnabled(key) and T('On') or T('Off')))
 end

@@ -4,6 +4,17 @@
  "note": "German, machine-translated with the local model qwen3.8:27b and spot-checked; fixes welcome. Keys are the exact English text.",
  "app": {
   "In-Game Helpers": "Helfer im Spiel",
+  "Prepare changes for WoW": "Änderungen für WoW vorbereiten",
+  "Draft for:": "Entwurf für:",
+  "Leave unchanged": "Unverändert lassen",
+  "Choose only the settings to change. Leave unchanged does not mean On or Off.": "Wähle nur die Einstellungen, die du ändern willst. Unverändert lassen bedeutet weder An noch Aus.",
+  "Confirm the character in WoW before pasting. The command changes whoever you are playing, not the selected desktop character. Apply it outside combat with the updated addon.": "Prüfe vor dem Einfügen deinen Charakter in WoW. Der Befehl gilt für den gespielten Charakter, nicht für den in der App ausgewählten. Führe ihn außerhalb des Kampfes mit dem aktualisierten Addon aus.",
+  "Command to paste in WoW": "Befehl zum Einfügen in WoW",
+  "Select command": "Befehl markieren",
+  "Copy the selected line yourself, paste it into WoW chat, and press Enter. Check the addon's reply in WoW.": "Kopiere die markierte Zeile, füge sie in den WoW-Chat ein und drücke Enter. Prüfe die Antwort des Addons in WoW.",
+  "Select a desktop character to prepare a batch, or change settings directly in WoW.": "Wähle in der App einen Charakter, um Änderungen vorzubereiten, oder ändere die Einstellungen direkt in WoW.",
+  "Applies only the listed helper changes to the character you are playing. Check the addon's chat reply.": "Ändert nur die aufgeführten Helfer für den Charakter, den du gerade spielst. Prüfe die Antwort des Addons im Chat.",
+  "After preparing changes in desktop Settings, while logged in to the intended character and outside combat.": "Nach dem Vorbereiten in den App-Einstellungen: mit dem gewünschten Charakter angemeldet und außerhalb des Kampfes.",
   "Open the checkboxes in WoW chat:": "Öffne die Einstellungen über den WoW-Chat:",
   "Opens the in-game helper checkboxes for your current character.": "Öffnet die Helfereinstellungen im Spiel für deinen aktuellen Charakter.",
   "Track an exact quest in your log, return to the game watch, explain the current blocker, or review one nearby ready hand-in.": "Verfolge eine bestimmte Quest aus deinem Log, kehre zur Spielverfolgung zurück, prüfe das aktuelle Hindernis oder sieh dir eine abgabebereite Quest in der Nähe an.",
@@ -1422,6 +1433,10 @@
  "addon": {
   "plain": {
    "In-Game Helpers": "Helfer im Spiel",
+   "Helpers updated for this character:": "Helfer für diesen Charakter aktualisiert:",
+   "No helper settings changed. Paste the full helper command, including commit.": "Keine Helfereinstellungen geändert. Füge den vollständigen Befehl einschließlich commit ein.",
+   "No helper settings changed. Log in to the intended character and leave combat first.": "Keine Helfereinstellungen geändert. Melde dich mit dem gewünschten Charakter an und warte, bis der Kampf endet.",
+   "/bf helpers apply key=on|off … commit - apply a prepared batch to this character, outside combat": "/bf helpers apply key=on|off … commit - übernimmt vorbereitete Änderungen für diesen Charakter außerhalb des Kampfes",
    "Settings for this character only.": "Einstellungen nur für diesen Charakter.",
    "Turning off item tips does not turn off quest-item sale protection.": "Auch ohne Gegenstandshinweise bleibt der Verkaufsschutz für Questgegenstände aktiv.",
    "Open helper settings in game, outside combat.": "Öffne die Helfereinstellungen im Spiel außerhalb des Kampfes.",

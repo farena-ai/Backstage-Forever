@@ -635,6 +635,7 @@ function BackstageForeverAssistCommand(message)
             '/bf show, /bf hide - the Adventure Compass panel',
             '/bf helpers - list individual helper settings for this character',
             '/bf helpers panel - open this character’s helper checkboxes',
+            '/bf helpers apply key=on|off … commit - apply a prepared batch to this character, outside combat',
             'Quest helpers: /bf compass track QuestID, /bf compass track clear, /bf compass missing, /bf compass review.',
             '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',
             '/bf moments - turn the short messages for elite, rare and boss kills and profession milestones on or off',

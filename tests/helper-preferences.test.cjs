@@ -51,6 +51,46 @@ test("standalone slash preferences are default-on, independent and survive a fre
   assert.match(fs.readFileSync(path.join(root, "addon/BackstageForever/BackstageForever.toc"), "utf8"), /^## SavedVariablesPerCharacter:.*\bBackstageForeverHelperSettings\b/m);
 });
 
+test("the batch handoff validates through the real slash dispatcher before writing any preference", () => {
+  const seed = replay(`
+    for _,bad in ipairs({
+      'questTracker=on spellRankReminder=off',
+      'questTracker=on dps=off commit',
+      'questTracker=on questTracker=off commit',
+      'questTracker=on objectiveHints=toggle commit',
+      'questTracker=on commit extra',
+      'questTracker=on\\nobjectiveHints=off commit',
+      'questTracker=on'..string.rep(' ',240)..'commit',
+      'commit',
+    }) do
+      cmd('helpers apply '..bad)
+      assert(BackstageForeverHelperSettings.questTracker==false and BackstageForeverHelperSettings.spellRankReminder==nil,bad)
+    end
+    fighting=true
+    cmd('helpers apply questTracker=on commit');assert(BackstageForeverHelperSettings.questTracker==false)
+    fighting=false;guid=nil
+    cmd('helpers apply questTracker=on commit');assert(BackstageForeverHelperSettings.questTracker==false)
+    guid='Player-Synthetic'
+    local redraws=0
+    BackstageForeverHUDHelpersChanged=function()
+      assert(not BackstageForeverHelperEnabled('questDetours'))
+      redraws=redraws+1
+    end
+    cmd('helpers apply objectiveHints=on questDetours=off spellRankReminder=off commit')
+    local s=BackstageForeverHelperSettings
+    assert(s.questTracker==false and s.questDetours==false and s.spellRankReminder==false and s.objectiveHints==true)
+    assert(s.keepQuestItems==nil and BackstageForeverLiveSettings==nil and redraws==1)
+    assert(last:find('questDetours',1,true) and last:find('Aus',1,true) and not last:find(guid,1,true))
+    print('{questTracker='..tostring(s.questTracker)..',questDetours='..tostring(s.questDetours)..'}')
+  `, '{questTracker=false}', 'deDE', `
+    local guid,fighting='Player-Synthetic',false
+    UnitGUID=function()return guid end
+    InCombatLockdown=function()return fighting end
+  `);
+  replay(`assert(not BackstageForeverHelperEnabled('questTracker') and not BackstageForeverHelperEnabled('questDetours'))`, seed);
+  replay(`assert(BackstageForeverHelperEnabled('questTracker') and BackstageForeverHelperEnabled('questDetours'))`);
+});
+
 test("the standalone list and acknowledgement use localized text with literal keys and commands", () => {
   replay(`
     cmd('helpers');assert(last:find('spellRankReminder',1,true) and last:find('An',1,true))
@@ -122,10 +162,42 @@ test("desktop renders only reviewed explicit commands and never implies an appli
   const window = {};
   vm.runInNewContext(renderer, { window });
   const markup = window.HelperPreferences.markup(String);
-  assert.match(app, /MomentsView\.settingsMarkup\(\).*?HelperPreferences\.markup\(esc\).*?CommunityView\.markup\(\)/);
+  assert.match(app, /MomentsView\.settingsMarkup\(\).*?HelperPreferences\.markup\(esc,.*?CommunityView\.markup\(\)/);
   assert.match(markup, /Not sent/);
   assert.match(markup, /Desktop cannot verify/);
   assert.match(markup, /<code>\/bf helpers panel<\/code>/);
   assert.deepEqual([...markup.matchAll(/\/bf helpers (\w+) (on|off)<\/code>/g)].map(m => m[1]+" "+m[2]), keys.flatMap(key => [key+" on", key+" off"]));
   assert.doesNotMatch(markup, /<input|\bdps\b/i);
+});
+
+test("the longest desktop preview is a bounded identity-free command accepted by the shipped slash dispatcher", () => {
+  const window = {};
+  require("node:vm").runInNewContext(fs.readFileSync(path.join(root, "src/renderer/helper-preferences.js"), "utf8"), { window });
+  const character = { id: "PRIVATE_ID", name: "PRIVATE_NAME", realm: "PRIVATE_REALM", source: { id: "PRIVATE_SOURCE", kind: "wow-addon" } };
+  const owner = JSON.stringify([character.id, character.name, character.realm, character.source.kind, character.source.id, null]);
+  const previous = {
+    dataset: { helperOwner: owner },
+    querySelectorAll: () => [...keys, "dps"].reverse().map(helperChoice => ({ dataset: { helperChoice }, value: "off" })),
+  };
+  const markup = window.HelperPreferences.markup(String, character, previous);
+  const preview = markup.match(/<textarea[^>]*>([^<]*)<\/textarea>/)[1];
+  assert.equal(preview, `/bf helpers apply ${keys.map(key => `${key}=off`).join(" ")} commit`);
+  assert.ok(Buffer.byteLength(preview) <= 255);
+  assert.match(window.HelperPreferences.markup(String, { ...character, source: { ...character.source, id: "REPLACED" } }, previous), /data-helper-preview hidden/);
+  replay(`
+    cmd(${JSON.stringify(preview.slice(4))})
+    for _,key in ipairs({${keys.map(key => `'${key}'`).join(",")}}) do
+      assert(BackstageForeverHelperSettings[key]==false,key)
+    end
+    cmd('help');assert(sawBatchHelp)
+  `, "nil", "deDE", `
+    local sawBatchHelp=false
+    local original=DEFAULT_CHAT_FRAME.AddMessage
+    DEFAULT_CHAT_FRAME.AddMessage=function(self,text)
+      original(self,text)
+      if text:find('/bf helpers apply key=on|off',1,true) and text:find('vorbereitete',1,true) then sawBatchHelp=true end
+    end
+    UnitGUID=function()return 'Player-Synthetic' end
+    InCombatLockdown=function()return false end
+  `);
 });

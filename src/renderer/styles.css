@@ -1380,6 +1380,10 @@ body[data-class] .providers {
 .ingame-helpers dl { margin-block: .25em .75em; }
 .ingame-helpers dd { margin-inline-start: 1em; }
 .ingame-helpers code { user-select: text; overflow-wrap: anywhere; }
+.ingame-helpers .helper-choice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .6rem 1rem; margin-block: .75rem; }
+.ingame-helpers .helper-choice-grid label, .ingame-helpers [data-helper-preview] label { display: block; color: inherit; }
+.ingame-helpers :is(select, textarea, button) { scroll-margin-block: .75rem; }
+.ingame-helpers :is(select, textarea) { width: 100%; }
 /* G13: the saved-location card shows the zone's own painting when it has one (ZoneArt.paint sets --zone-art). */
 .expedition-card[data-zone-art]::before { background-image: var(--zone-art); }
 
