@@ -7104,6 +7104,56 @@
           "text": "This desktop-first update does not add new native Compass commands or expand Companion quest pickup and turn-in coverage. Classic reference, fictional drills and saved observations are not live WoW Forever verification."
         }
       ]
+    },
+    {
+      "version": "1.17.0",
+      "channel": "stable",
+      "source": "docs/releases/1.17.0.md",
+      "title": "Backstage Forever 1.17.0 — In-Game Helpers",
+      "changes": [
+        {
+          "id": "ingame-compass-quest-loop",
+          "kind": "improved",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Track a watched quest in Adventure Compass, check missing objectives, and review a nearby hand-in when the game confirms it is ready. If objective data is unreadable or incomplete, Compass withholds the hand-in tip and its waypoint. Eligible detours and waypoints still require your action. Reviewed objective hints use exact quest and target matches."
+        },
+        {
+          "id": "ingame-evidence-helpers",
+          "kind": "new",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Gathering map marks show approximate, recent last-seen Copper Vein and Silverleaf spots on Forever build 1.60.1.70862 when your current gathering skill is verified. The separate /bf nodes command lists remembered spots. Supported quest reward comparisons and a narrow Mage Frostbolt rank reminder do not select rewards, equip items, cast spells or change action slots for you."
+        },
+        {
+          "id": "ingame-helper-preferences",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Use /bf helpers panel to change eleven per-character preferences in WoW. In desktop Settings → Game connection → In-Game Helpers, open Prepare changes for WoW to draft only the choices you want to change. Verify the character logged into WoW before pasting the whole command outside combat. The desktop neither applies nor verifies it. Quest-item sale protection remains independent of the optional helpers."
+        },
+        {
+          "id": "ingame-reviewed-scope",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Helpers depend on the game data available to the addon. A last-seen spot is not a live spawn, and a missing hint does not prove there is nothing nearby. This update does not add general DPS coaching or expand Companion quest or Workshop recipe-chain advice."
+        }
+      ]
     }
   ],
   "excluded": [

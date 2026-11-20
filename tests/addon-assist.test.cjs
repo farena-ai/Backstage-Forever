@@ -66,7 +66,7 @@ local function frame(name)
   return setmetatable(f,{__index=function()return function()end end})
 end
 CreateFrame=function(_,name)return frame(name)end
-UIParent={} MerchantFrame={} TargetFrame={}
+UIParent={} MerchantFrame={IsShown=function() return true end} TargetFrame={}
 UnitClass=function()return 'Mage' end
 UnitFactionGroup=function()return 'Horde' end
 C_Map={GetBestMapForUnit=function()return 1411 end,GetPlayerMapPosition=function()return {GetXY=function()return 0.5,0.5 end}end,GetMapInfo=function(id)return {name=id==1411 and 'Durotar' or 'Orgrimmar'}end,ClearUserWaypoint=function()way='cleared' end}
@@ -78,6 +78,7 @@ C_DeathInfo={GetCorpseMapPosition=function()return {GetXY=function()return 0.31,
 local ghost=false UnitIsGhost=function()return ghost end
 local bag={[1]={itemID=1,quality=0,stackCount=2},[2]={itemID=2,quality=3,stackCount=1},[3]={itemID=3,quality=0,stackCount=1}}
 C_Container={GetContainerNumSlots=function(b)return b==0 and 3 or 0 end,GetContainerItemInfo=function(b,s)return b==0 and bag[s] or nil end,UseContainerItem=function(b,s)sold[#sold+1]=s bag[s]=nil end}
+C_Container.GetContainerItemQuestInfo=function() return {isQuestItem=false,isActive=false} end
 GetItemInfo=function(id)return 'n',nil,nil,nil,nil,nil,nil,nil,nil,nil,({[1]=12,[2]=5000,[3]=40})[id] end
 InCombatLockdown=function()return false end
 UnitExists=function()return true end UnitLevel=function(u)return u=='player' and 10 or 16 end

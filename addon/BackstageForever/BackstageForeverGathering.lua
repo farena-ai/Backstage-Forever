@@ -158,6 +158,7 @@ function BackstageForeverGatheringSnapshot(character)
     return {schemaVersion=1,status=id and capabilities() and 'available' or 'unavailable',recording=db.recording,observedAt=at,limited=total>#rows,totalRecords=total,records=rows}
 end
 local function signal()if type(BackstageForeverRequestCapture)=='function' then pcall(BackstageForeverRequestCapture)end end
+local function marksChanged()if type(BackstageForeverGatheringMarksChanged)=='function' then pcall(BackstageForeverGatheringMarksChanged)end end
 function BackstageForeverGatheringSetRecording(enabled)
     if type(public(enabled))~='boolean' or not bind() or call(InCombatLockdown)~=false then return end
     retire();store().recording=enabled;signal()
@@ -168,7 +169,7 @@ function BackstageForeverGatheringClearAction()
     local token,id=generation,owner
     return function()
         if token~=generation or not active or text(call(UnitGUID,'player'),200)~=id or call(InCombatLockdown)~=false then return end
-        retire();store().records={}
+        retire();store().records={};marksChanged()
         if type(BackstageForeverMapUpdate)=='function' then pcall(BackstageForeverMapUpdate,nil)end
         signal()
     end
@@ -239,7 +240,7 @@ local function reconcile()
     table.sort(r.itemIds)
     r=record(r,ctx.at);if not r then return end
     table.insert(kept,1,r);while #kept>KEEP do table.remove(kept)end
-    db.records=kept;signal()
+    db.records=kept;signal();marksChanged()
 end
 -- /bf nodes: nearest remembered nodes of your gathering types on this map.
 -- Pure helpers (no API access) are global for tests; the command reads only public APIs.
@@ -311,25 +312,65 @@ function BackstageForeverNodeGatherable(r,ranks)
     if not need or type(have)~='number' then return nil end
     return have>=need,need,have
 end
--- World Map layer (1.2): remembered spots on one map, gatherable ones first, as advisor pins.
+-- Advisor pins are approximate last-seen standing points, never world objects.
 local NODE_ICON={mining='Interface\\Icons\\INV_Ore_Copper_01',herbalism='Interface\\Icons\\INV_Misc_Flower_02',chest='Interface\\Icons\\INV_Box_01'}
-function BackstageForeverGatheringMapPoints(mapId,records,types,ranks,limit)
-    mapId=number(mapId,1,2147483647);if not mapId then return {} end
-    records=records or (type(BackstageForeverGatheringDB)=='table' and BackstageForeverGatheringDB.records) or {}
-    if types==nil then types=ownedTypes and (function()local t={chest=true};for k in pairs(ownedTypes)do t[k]=true end;return t end)() or nil end
-    ranks=ranks or ownedRanks
-    local out={}
-    for _,r in ipairs(type(records)=='table' and records or {})do
-        if type(r)=='table' and r.mapId==mapId and decimal(r.x) and decimal(r.y) and (not types or types[r.method]) then
-            local ok,need,have=BackstageForeverNodeGatherable(r,ranks)
-            local when=type(r.observedAt)=='number' and type(date)=='function' and date('%b %d',r.observedAt) or nil
-            local detail=(({mining='Mining',herbalism='Herbalism',chest='Chest'})[r.method] or r.method)..(need and (' '..need) or '')
-            if ok==true and need then detail=detail..' - you can gather this ('..have..')' elseif ok==false then detail=detail..' - needs '..need..', you have '..have end
-            if when then detail=detail..'. Last gathered '..when..'.' end
-            out[#out+1]={layer='gather',x=r.x,y=r.y,title=r.name,detail=detail,icon=NODE_ICON[r.method],dim=ok==false,order=ok==false and 1 or 0}
+-- Existing acquisition reference corroborates both identities on 70862; the skill
+-- threshold remains a starter-node reference, not an observed tooltip requirement.
+local STARTER_NODES={[1731]={name='Copper Vein',method='mining',skill=186},[1617]={name='Silverleaf',method='herbalism',skill=182}}
+local MARK_TTL=7*24*60*60
+local function mapContext(mapId)
+    if type(BackstageForeverHelperEnabled)=='function' and call(BackstageForeverHelperEnabled,'gatheringMarks')~=true then return end
+    if call(InCombatLockdown)~=false or not bind() then return end
+    local build=clientBuild()
+    if build~='1.60.1.70862' or call(property(C_Map,'GetBestMapForUnit'),'player')~=mapId then return end
+    return build,epoch()
+end
+local function liveRanks()
+    local api=public(C_SkillInfo)
+    local count=number(call(property(api,'GetNumSkillLines')),0,100)
+    if not count then return {} end
+    local ranks={}
+    for i=1,count do
+        local info=call(property(api,'GetSkillLineInfo'),i)
+        local skill=field(info,'skillID')
+        if field(info,'isHeader')==false and (skill==182 or skill==186) then
+            local rank=number(field(info,'rank'),1,10000)
+            local cap=number(field(info,'maxRank'),1,10000)
+            if ranks[skill]~=nil or not rank or not cap or rank>cap then ranks[skill]=false else ranks[skill]=rank end
         end
     end
-    table.sort(out,function(a,b)if a.order~=b.order then return a.order<b.order end;return a.title<b.title end)
+    return ranks
+end
+function BackstageForeverGatheringMarkCurrent(mapId,mark)
+    if type(mark)~='table' then return false end
+    local build,at=mapContext(mapId)
+    return build==mark.build and owner==mark.owner and at~=nil and mark.at<=at and at-mark.at<MARK_TTL
+        and (liveRanks()[mark.skill] or 0)>=mark.need
+end
+function BackstageForeverGatheringMapPoints(mapId,records,types,_,limit)
+    mapId=number(mapId,1,2147483647);if not mapId then return {} end
+    local build,at=mapContext(mapId)
+    if not at then return {} end
+    records=sequence(records or field(BackstageForeverGatheringDB,'records'),KEEP) or {}
+    -- Only a current visible skill-line read qualifies. Captured ranks can outlive unlearning.
+    local ranks=liveRanks()
+    local out={}
+    for _,value in ipairs(records)do
+        local r=record(value,at)
+        local node=r and STARTER_NODES[r.entityId]
+        if node and r.name==node.name and r.method==node.method and r.mapId==mapId and r.clientBuild==build
+            and at-r.observedAt<MARK_TTL and (not types or types[r.method]) then
+            local need,have=BackstageForeverNodeSkill(node.name),ranks[node.skill]
+            if need and have and have>=need then
+                local tr=BackstageForeverTr or tostring
+                local detail=tr('Last-seen gathering spot (approximate, not a live spawn).')..' '..
+                    tr('Skill: %d / %d (starter-node reference).'):format(have,need)
+                out[#out+1]={layer='gather',x=r.x,y=r.y,title=r.name,detail=detail,icon=NODE_ICON[r.method],
+                    expiresIn=MARK_TTL-(at-r.observedAt),mark={owner=owner,build=build,at=r.observedAt,skill=node.skill,need=need}}
+            end
+        end
+    end
+    table.sort(out,function(a,b)if a.mark.at~=b.mark.at then return a.mark.at>b.mark.at end;if a.x~=b.x then return a.x<b.x end;return a.y<b.y end)
     limit=number(limit,1,500) or 100
     while #out>limit do table.remove(out)end
     return out

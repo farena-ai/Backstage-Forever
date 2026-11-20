@@ -818,7 +818,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.16.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.17.0'
     character.race=clean((call(UnitRace,'player')));
     -- UnitSex: 2 male, 3 female; 1 (unknown) and anything else is left out.
     local sex=integer(call(UnitSex,'player'),1,3);if sex==2 then character.sex='male' elseif sex==3 then character.sex='female' end
@@ -909,7 +909,7 @@ local function capture(event,eventId)
         end
     end
     if type(BackstageForeverMapUpdate)=='function' then pcall(BackstageForeverMapUpdate,character)end
-    if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character) end
+    if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character,event=='QUEST_TURNED_IN' and integer(eventId,1,2147483647) or nil) end
     local chars=array({character});for id,c in pairs(roster) do if id~=guid then chars[#chars+1]=c end end
     table.sort(chars,function(a,b) return a.updatedAt>b.updatedAt end)
     while #chars>100 do table.remove(chars) end
@@ -989,6 +989,23 @@ local function capture(event,eventId)
         end
         BackstageForeverExport=encoded;prepared=payload;return true
     end
+end
+function BackstageForeverCompassQuestContext()
+    if call(InCombatLockdown)~=false then return nil end
+    local owner=clean(call(UnitGUID,'player'),200)
+    local build=clientBuild()
+    local map=integer(call(field(public(C_Map),'GetBestMapForUnit'),'player'),1,2147483647)
+    if owner and build then return {owner=owner,build=build,map=map} end
+end
+
+function BackstageForeverDetourCurrent(owner,build,quest,map,x,y)
+    if call(InCombatLockdown)~=false or clean(call(UnitGUID,'player'),200)~=owner or clientBuild()~=build
+        or call(field(public(C_Map),'GetBestMapForUnit'),'player')~=map then return false end
+    local api=public(C_QuestLog)
+    if not integer(call(field(api,'GetLogIndexForQuestID'),quest),1,1000)
+        or call(field(api,'IsComplete'),quest)~=true then return false end
+    local point=destination(api,{id=quest,complete=true},{currentMap=map,maps={},areas={}})
+    return point and point.mapId==map and math.floor(point.x*10000+.5)/10000==x and math.floor(point.y*10000+.5)/10000==y
 end
 -- Explicit player command only. No map panels, movement, targeting or game input.
 local function guideMessage(message)
@@ -1092,6 +1109,12 @@ if type(CreateFrame)=='function' then
         -- Startup events must not replace the saved roster before it is restored.
         if not loggedIn then return end
         if workshopDirty[event] then workshopCache=nil end
+        if (event=='QUEST_LOG_UPDATE' or event=='QUEST_ACCEPTED' or (event=='UNIT_QUEST_LOG_CHANGED' and public(eventId)=='player'))
+            and type(BackstageForeverHUDQuestChanged)=='function' then pcall(BackstageForeverHUDQuestChanged) end
+        if (event=='ZONE_CHANGED' or event=='ZONE_CHANGED_INDOORS' or event=='ZONE_CHANGED_NEW_AREA')
+            and type(BackstageForeverHUDMapChanged)=='function' and call(BackstageForeverHUDNeedsDetourMap)==true then
+            pcall(BackstageForeverHUDMapChanged,call(field(public(C_Map),'GetBestMapForUnit'),'player'))
+        end
         if immediate[event] then pending=nil;refresh(event,public(eventId));return end
         queue(event,public(eventId))
     end)

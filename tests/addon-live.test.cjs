@@ -217,7 +217,7 @@ event('PLAYER_LOGIN');assert(cue.text=='','Previous session cue cannot revive on
 `));
 test('TOC loads planner dependencies before capture and HUD',()=>{
  const fs=require('node:fs');const toc=fs.readFileSync(path.join(__dirname,'../addon/BackstageForever/BackstageForever.toc'),'utf8');
- assert.deepEqual(toc.split(/\r?\n/).filter(x=>x.endsWith('.lua')),['BackstageForeverLocale.lua','BackstageForeverReference.lua','BackstageForeverAdvisorData.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverProfession.lua','BackstageForeverGathering.lua','BackstageForeverMapPlan.lua','BackstageForeverMap.lua','BackstageForeverAdvisorMap.lua','BackstageForever.lua','BackstageForeverHUD.lua','BackstageForeverLive.lua','BackstageForeverFind.lua','BackstageForeverAssist.lua','BackstageForeverGear.lua','BackstageForeverQuestIntel.lua','BackstageForeverRoute.lua','BackstageForeverSupplies.lua','BackstageForeverJournal.lua','BackstageForeverCombat.lua','BackstageForeverMoments.lua','BackstageForeverLedger.lua','BackstageForeverSheet.lua','BackstageForeverAsk.lua','BackstageForeverEnemy.lua','BackstageForeverQoL.lua','BackstageForeverParty.lua','BackstageForeverGuideData.lua','BackstageForeverBossTips.lua']);
+ assert.deepEqual(toc.split(/\r?\n/).filter(x=>x.endsWith('.lua')),['BackstageForeverLocale.lua','BackstageForeverHelpers.lua','BackstageForeverReference.lua','BackstageForeverAdvisorData.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverProfession.lua','BackstageForeverGathering.lua','BackstageForeverMapPlan.lua','BackstageForeverMap.lua','BackstageForeverAdvisorMap.lua','BackstageForever.lua','BackstageForeverHUD.lua','BackstageForeverLive.lua','BackstageForeverFind.lua','BackstageForeverAssist.lua','BackstageForeverGear.lua','BackstageForeverQuestIntel.lua','BackstageForeverRoute.lua','BackstageForeverSupplies.lua','BackstageForeverJournal.lua','BackstageForeverCombat.lua','BackstageForeverMoments.lua','BackstageForeverLedger.lua','BackstageForeverSheet.lua','BackstageForeverAsk.lua','BackstageForeverEnemy.lua','BackstageForeverQoL.lua','BackstageForeverParty.lua','BackstageForeverGuideData.lua','BackstageForeverBossTips.lua']);
 });
 test('long localized reference cards retain relationship and English-title qualification',()=>lua(hud+String.raw`
 BackstageForeverBuildPlan=function()return {status='ready',steps={{questId=2,phase='o',title='Localized title',source='reference',detail=string.rep('Current objective ',20)..' Approximate reference: Reference NPC mentioned in objective; verify your quest details. English reference: Original quest title.',command='/bf guide 2 o 1413 0.4 0.5 1.60.1.70888'}}}end
@@ -376,6 +376,7 @@ C_QuestLog={GetNumQuestLogEntries=function()return 2,2 end,
  GetInfo=function(i)return {questID=i,title=i==1 and 'Main work' or 'Extra |check',isHeader=false}end,
  GetLogIndexForQuestID=function(id)return id end,
  IsComplete=function(id)return id==1 or ready end,
+ ReadyForTurnIn=function(id)return id==1 or ready end,
  GetQuestObjectives=function()return {}end,
  GetNextWaypoint=function(id)return 1413,id==1 and .2 or detourX,.4 end}
 dofile('addon/BackstageForever/BackstageForeverCoach.lua')
@@ -449,7 +450,7 @@ UiMapPoint={CreateFromCoordinates=function(id,x,y)return {id=id,x=x,y=y}end}
 C_QuestLog={GetNumQuestLogEntries=function()return 2,2 end,
  GetInfo=function(i)return {questID=i,title=i==1 and 'First hand-in' or 'Second hand-in',isHeader=false}end,
  GetLogIndexForQuestID=function(id)return id end,
- IsComplete=function()return true end,GetQuestObjectives=function()return {}end,
+ IsComplete=function()return true end,ReadyForTurnIn=function()return true end,GetQuestObjectives=function()return {}end,
  GetNextWaypoint=function(id)return 1429,id==1 and .2 or .9,.3 end}
 BackstageForeverRouteSettings={arrow=false}
 BackstageForeverAssistSettings={toasts=false}
@@ -482,6 +483,7 @@ assert(#guideCalls==0)
 `));
 
 test('the real guided route takes over immediately, then releases Compass advice when hidden',()=>lua(dailyCompass+String.raw`
+SlashCmdList.BACKSTAGEFOREVER('helpers questDetours off')
 local click,dismissClick=waypoint.OnClick,dismiss.OnClick
 SlashCmdList.BACKSTAGEFOREVER('route guide')
 local route=BackstageForeverRouteNow();assert(route and route.text,'Fixture must start an actual guided route')

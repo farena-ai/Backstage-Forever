@@ -216,7 +216,7 @@ c.quests={
 }
 local b=coach();assert(b.recommendation.kind=='bags');assert(b.alternatives[1].id=='quest:1' and b.alternatives[2].id=='quest:2')
 assert(b.onMyWay and b.onMyWay.title=='Local turn-in','A same-map turn-in outside the preview should qualify')
-assert(not b.onMyWay.command and not b.onMyWay.questStep,'The suggestion is informational only')
+assert(not b.onMyWay.command and b.onMyWay.questStep.questId==3 and b.onMyWay.questStep.source=='game','The candidate carries the exact game marker, not a direct command')
 assert(not coach('professions').onMyWay)
 c.readiness.bags.free=5;c.quests={c.quests[3],c.quests[4]};b=coach()
 assert(b.recommendation.id=='quest:3' and b.onMyWay.title=='Another local turn-in')

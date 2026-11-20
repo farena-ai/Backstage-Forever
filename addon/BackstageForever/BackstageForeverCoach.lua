@@ -6,6 +6,61 @@ end
 local function field(value,key) value=public(value);if type(value)=='table' then local item=public(rawget(value,key));return item end end
 local function number(value,min,max) value=public(value);if type(value)=='number' and value==value and value>=min and value<=max and value%1==0 then return value end end
 local function text(value,max) value=public(value);if type(value)=='string' and #value>0 and #value<=(max or 200) and not value:find('[%z\1-\31\127]') then return value end end
+
+-- Read-only rank maintenance, not a rotation cue. Exact Forever Frostbolt 3 -> 4 pilot.
+local rankOwner, rankNotice
+local function rankRead(fn,...)
+    if type(public(fn))~='function' then return end
+    local ok,a,b=pcall(fn,...);if ok then return public(a),public(b) end
+end
+local function rankEnabled()
+    return type(BackstageForeverHelperEnabled)~='function' or rankRead(BackstageForeverHelperEnabled,'spellRankReminder')==true
+end
+function BackstageForeverSpellRankRefresh()
+    if not rankEnabled() or not rankOwner or text(rankRead(UnitGUID,'player'),200)~=rankOwner or rankRead(InCombatLockdown)~=false then return end
+    local version,build=rankRead(GetBuildInfo)
+    if version~='1.60.1' or build~='70959' then return end
+    local _,class=rankRead(UnitClass,'player');if class~='MAGE' then return end
+    local bank=field(field(Enum,'SpellBookSpellBank'),'Player')
+    local spell=field(field(Enum,'SpellBookItemType'),'Spell')
+    if type(bank)~='number' or type(spell)~='number' then return end
+    local book=public(C_SpellBook)
+    local function learned(id,rank)
+        if rankRead(field(book,'IsSpellKnown'),id,bank)~=true then return end
+        local slot,foundBank=rankRead(field(book,'FindSpellBookSlotForSpell'),id,true,false,false,false)
+        if foundBank~=bank or not number(slot,1,1000) then return end
+        local row=rankRead(field(book,'GetSpellBookItemInfo'),slot,bank)
+        local pattern=text(SPELL_RANK,80)
+        local ok,label=pcall(string.format,pattern or 'Rank %d',rank)
+        if not ok or (not pattern and rankRead(GetLocale)~='enUS') or field(row,'subName')~=label then return end
+        if field(row,'itemType')==spell and field(row,'actionID')==id and field(row,'spellID')==id
+            and field(row,'isPassive')==false and field(row,'isOffSpec')==false then return text(field(row,'name'),120) end
+    end
+    local lower,higher=learned(837,3),learned(7322,4)
+    if not higher or lower~=higher or type(public(GetActionInfo))~='function' then return end
+    local slots={}
+    for slot=1,120 do
+        local kind,id=rankRead(GetActionInfo,slot)
+        if kind=='spell' and id==837 then slots[#slots+1]=slot end
+    end
+    local signature=table.concat(slots,', ')
+    if signature==rankNotice then return end
+    rankNotice=signature
+    if #slots>0 then
+        local tr=BackstageForeverTr or tostring
+        rankRead(DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,
+            'Backstage Forever: '..tr('%s: action slot(s) %s still use rank %d. Rank %d is learned; update the bar manually if wanted.'):format(higher,signature,3,4))
+    end
+end
+if type(CreateFrame)=='function' then
+    local frame=CreateFrame('Frame')
+    for _,event in ipairs({'PLAYER_LOGIN','PLAYER_LOGOUT','SPELLS_CHANGED','ACTIONBAR_SLOT_CHANGED','PLAYER_REGEN_ENABLED'}) do pcall(frame.RegisterEvent,frame,event) end
+    pcall(frame.SetScript,frame,'OnEvent',function(_,event)
+        if event=='PLAYER_LOGOUT' then rankOwner=nil;rankNotice=nil;return end
+        if event=='PLAYER_LOGIN' then rankOwner=text(rankRead(UnitGUID,'player'),200);rankNotice=nil end
+        BackstageForeverSpellRankRefresh()
+    end)
+end
 -- Validate shape before interpreting absence. Raw next avoids metatable iteration;
 -- guard keys and rows before comparisons, indexing, or coercion.
 local function sequence(value,cap)
@@ -135,14 +190,19 @@ function BackstageForeverBuildCoach(character,options)
     -- points cannot establish where a current hand-in actually is.
     local primary=result.recommendation
     local map=number(c.location.mapId,1,2147483647)
-    if map and primary and mode~='professions' then
+    local route=field(options,'route')
+    local exclude=field(options,'detourQuestId')
+    local wanted=field(options,'activeDetourId')
+    if map and ((route and route.mapId==map) or (not route and primary and mode~='professions')) then
         for _,step in ipairs(questSteps)do
             local marker=step.destination
             local id='on-my-way:'..step.questId
             if step.phase=='t' and step.source=='game' and marker and marker.mapId==map
-                and meaningful(step.title) and 'quest:'..step.questId~=primary.id then
+                and meaningful(step.title) and (not wanted or wanted==id)
+                and (route and not route.questIds[step.questId]
+                    or not route and step.questId~=exclude and (exclude or 'quest:'..step.questId~=primary.id)) then
                 result.onMyWay={id=id,questId=step.questId,title=step.title,
-                    signature=signature(id,{step.title,map,marker.x,marker.y})}
+                    signature=signature(id,{step.title,map,marker.x,marker.y}),mapId=map,questStep=step}
                 break
             end
         end

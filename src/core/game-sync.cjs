@@ -37,6 +37,7 @@ const MAX = 1024 * 1024,
     "BackstageForeverParty.lua",
     "BackstageForeverGuideData.lua",
     "BackstageForeverLocale.lua",
+    "BackstageForeverHelpers.lua",
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");

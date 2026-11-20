@@ -368,12 +368,170 @@ function BackstageForeverHowCommand(message)
     return lines
 end
 
+-- Same rows independently checked against quests.enUS.json for 70862 and 70888
+-- in data/forever/source-lock.json (Efficient Games, CC BY 4.0). Objective order
+-- is the log's one-based index; the public API does not expose the source ID.
+-- Only review ordinary kill objectives here; e.g. a 'monster' row can mean Use.
+local reviewedQuests={
+    {quest=788, amount=10, targets={3098}},
+    {quest=1434,amount=7, targets={4670,4672,4673,4675}},
+    {quest=97265,amount=2,targets={4671,4675,4674,4672,4670}},
+}
+local peons={quest=5441,npc=10556,item=16114,map=1411,area=363}
+local function supportedBuild()
+    local version,build=call(GetBuildInfo)
+    return version=='1.60.1' and (build=='70862' or build=='70888')
+end
+local function helper(key)
+    local fn=BackstageForeverHelperEnabled
+    return fn==nil or call(fn,key)==true
+end
+local function activeQuests(wanted)
+    local api=plain(C_QuestLog);local out={}
+    local n=int(call(field(api,'GetNumQuestLogEntries')),0,200)
+    for i=1,n or 0 do
+        local info=call(field(api,'GetInfo'),i)
+        local id=int(field(info,'questID'),1,2147483647)
+        if id and wanted[id] and field(info,'isHeader')==false then
+            local title=str(field(info,'title'),160)
+            if title then out[id]=title end
+        end
+    end
+    return out
+end
+local function objectivesFor(id)
+    local api=plain(C_QuestLog)
+    if call(field(api,'IsComplete'),id)==false then return call(field(api,'GetQuestObjectives'),id) end
+end
+local function stage(row,kind,need)
+    return field(row,'type')==kind and field(row,'numRequired')==need
+end
+local function remaining(row,need)
+    local have=int(field(row,'numFulfilled'),0,need-1)
+    if have and field(row,'finished')==false then return need-have end
+end
+local function watchedQuests()
+    local api=plain(C_QuestLog);local out={}
+    local n=int(call(field(api,'GetNumQuestWatches')),0,100)
+    for i=1,n or 0 do
+        local id=int(call(field(api,'GetQuestIDForQuestWatchIndex'),i),1,2147483647)
+        if id then out[id]=true end
+    end
+    return out
+end
+local function carried(item)
+    local api=plain(C_Container)
+    for bag=0,4 do
+        local slots=int(call(field(api,'GetContainerNumSlots'),bag),0,100)
+        for slot=1,slots or 0 do
+            local info=call(field(api,'GetContainerItemInfo'),bag,slot)
+            if field(info,'itemID')==item and int(field(info,'stackCount'),1,1000000) then return true end
+        end
+    end
+end
+local function peonCue()
+    local map=plain(C_Map)
+    if call(field(map,'GetBestMapForUnit'),'player')~=peons.map then return end
+    local area=str(call(field(map,'GetAreaInfo'),peons.area),120)
+    if not area or call(GetSubZoneText)~=area then return end
+    local rows=objectivesFor(peons.quest)
+    local use,item=field(rows,1),field(rows,2)
+    if not stage(use,'monster',5) or not stage(item,'item',1) or field(rows,3)~=nil or not remaining(use,5) then return end
+    if not carried(peons.item) then return end
+    local name=str(call(GetItemInfo,peons.item),160)
+    -- No public proof that this live peon is asleep: keep that condition in the cue.
+    if name then return (BackstageForeverTr or tostring)('Use %s here on a sleeping peon.'):format(name) end
+end
+function BackstageForeverReviewedQuestItem(itemId)
+    if itemId==peons.item and supportedBuild() then return activeQuests({[peons.quest]=true})[peons.quest] end
+end
+local function onBagTooltip(tip,bag,slot)
+    if tip~=plain(GameTooltip) or call(InCombatLockdown)~=false or not helper('keepQuestItems') then return end
+    if not int(bag,0,4) or not int(slot,1,100) then return end
+    local api=plain(C_Container)
+    local item=call(field(api,'GetContainerItemInfo'),bag,slot)
+    local itemId=int(field(item,'itemID'),1,2147483647)
+    if not itemId then return end
+    local quest=call(field(api,'GetContainerItemQuestInfo'),bag,slot)
+    local isQuest=field(quest,'isQuestItem')==true or field(quest,'isActive')==true
+    local id=isQuest and int(field(quest,'questID'),1,2147483647)
+    local title=id and activeQuests({[id]=true})[id] or BackstageForeverReviewedQuestItem(itemId)
+    if title then call(field(tip,'AddLine'),tip,(BackstageForeverTr or tostring)('Keep this item for %s'):format(title),1,.82,0,true) end
+end
+local function unitHelp(tip,data)
+    if tip~=plain(GameTooltip) or call(InCombatLockdown)~=false then return end
+    local hints,shared,cue=helper('objectiveHints'),helper('sharedObjectives'),helper('questItemCue')
+    if not (hints or shared or cue) or not supportedBuild() then return end
+    local _,u,displayedGuid=call(field(tip,'GetUnit'),tip)
+    if not str(u,40) or call(UnitIsPlayer,u)~=false or call(UnitIsDead,u)~=false then return end
+    local guid=call(UnitGUID,u)
+    if (data~=nil and field(data,'guid')~=guid) or (displayedGuid and displayedGuid~=guid) then return end
+    local kind,id=BackstageForeverLootSourceKind(guid)
+    if kind~='creature' or guid:sub(1,9)~='Creature-' then return end
+    local wanted,matched={},{}
+    if hints or shared then
+        for _,q in ipairs(reviewedQuests) do
+            for i,npc in ipairs(q.targets) do
+                if npc==id then wanted[q.quest]=true;matched[q.quest]=i;break end
+            end
+        end
+    end
+    local showCue=cue and id==peons.npc
+    if showCue then wanted[peons.quest]=true end
+    if not next(wanted) then return end
+    local active=activeQuests(wanted)
+    local lines,group={},{}
+    local watched=shared and watchedQuests() or {}
+    for _,q in ipairs(reviewedQuests) do
+        local index,title=matched[q.quest],active[q.quest]
+        if index and title and (hints or watched[q.quest]) then
+            local rows=objectivesFor(q.quest)
+            local valid=type(rows)=='table' and field(rows,#q.targets+1)==nil
+            for i=1,#q.targets do valid=valid and stage(field(rows,i),'monster',q.amount) end
+            local left=valid and remaining(field(rows,index),q.amount)
+            if left then
+                local tr=BackstageForeverTr or tostring
+                local line=tr('%s: %d remaining'):format(title,left)
+                lines[#lines+1]={quest=q.quest,text=line}
+                if watched[q.quest] then group[#group+1]=line end
+            end
+        end
+    end
+    local add=field(tip,'AddLine')
+    if #group>=2 then
+        call(add,tip,(BackstageForeverTr or tostring)('Two quests, one stop'),1,.82,0,true)
+        for _,line in ipairs(group) do call(add,tip,line,1,1,1,true) end
+        if hints then
+            for _,entry in ipairs(lines) do
+                if not watched[entry.quest] then call(add,tip,entry.text,1,1,1,true) end
+            end
+        end
+    elseif hints then
+        for _,entry in ipairs(lines) do call(add,tip,entry.text,1,1,1,true) end
+    end
+    local message=showCue and active[peons.quest] and peonCue()
+    if message then call(add,tip,message,1,.82,0,true) end
+end
+
+local function installObjectiveTooltip()
+    local tip=plain(GameTooltip)
+    if not tip then return end
+    if type(field(tip,'SetBagItem'))=='function' and type(hooksecurefunc)=='function' then
+        pcall(hooksecurefunc,tip,'SetBagItem',onBagTooltip)
+    end
+    local post=field(TooltipDataProcessor,'AddTooltipPostCall')
+    local unitType=field(field(Enum,'TooltipDataType'),'Unit')
+    if type(post)=='function' and type(unitType)=='number' and pcall(post,unitType,unitHelp) then return end
+    local hook=field(tip,'HookScript')
+    if type(hook)=='function' then pcall(hook,tip,'OnTooltipSetUnit',unitHelp) end
+end
+
 if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
     if frame then
         for _,e in ipairs({'PLAYER_LOGIN','LOOT_READY','LOOT_OPENED','PLAYER_TARGET_CHANGED','UPDATE_MOUSEOVER_UNIT'}) do pcall(frame.RegisterEvent,frame,e) end
         pcall(frame.SetScript,frame,'OnEvent',function(_,event)
-            if event=='PLAYER_LOGIN' then db=nil;names,nameCount={},0;pcall(store)
+            if event=='PLAYER_LOGIN' then db=nil;names,nameCount={},0;pcall(store);pcall(installObjectiveTooltip)
             elseif event=='PLAYER_TARGET_CHANGED' then pcall(remember,'target')
             elseif event=='UPDATE_MOUSEOVER_UNIT' then pcall(remember,'mouseover')
             elseif event=='LOOT_READY' or event=='LOOT_OPENED' then pcall(onLoot) end

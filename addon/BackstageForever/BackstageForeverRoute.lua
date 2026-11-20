@@ -156,14 +156,27 @@ end
 -- The step frame.
 local frame,lines,steps,index,mapNow,lastArrow,pending=nil,{},{},1,nil,nil,false
 local guide=nil -- {index,total,note,top} while the guided route is shown
+local compassPaused=false
+local resumeCursor
 -- The Compass shows the current guided step (0.54). Read-only; nil unless the guided route is on.
 function BackstageForeverRouteNow()
     local s=settings and settings.shown and settings.mode=='guide' and guide and steps[index]
     if type(s)~='table' or type(s.text)~='string' then return nil end
-    return {text=s.text,index=guide.index+index-1,total=guide.total}
+    return {text=s.text,index=guide.index+index-1,total=guide.total,id=s.id,mapId=s.mapId,questIds=s.questIds}
 end
-local function refreshCompass()
-    call(BackstageForeverHUDRouteChanged)
+function BackstageForeverRouteCompassPause(paused,restore)
+    compassPaused=paused==true
+    if compassPaused then
+        -- Ignore already queued observations while the manual detour owns the cursor.
+        pending=false;lastArrow=nil
+        resumeCursor=guide and steps[index] and {id=steps[index].id,anchor=guide.index} or nil
+    elseif not restore then
+        resumeCursor=nil
+    end
+    if frame then method(frame,not compassPaused and settings.shown and 'Show' or 'Hide') end
+end
+local function refreshCompass(explicit,reviewStop)
+    call(BackstageForeverHUDRouteChanged,explicit,reviewStop)
 end
 local function setArrow(step)
     local stepMap=step and step.mapId or mapNow
@@ -233,11 +246,13 @@ local function build()
 end
 function BackstageForeverRouteRefresh()
     pending=false
+    if compassPaused then return end
     if not settings then loadSettings() end
     local wasGuided=guide~=nil
     local mapId,x,y=where()
     if not mapId then return end
     mapNow=mapId
+    local cursor=resumeCursor;resumeCursor=nil
     guide=nil
     if settings.mode=='guide' and type(BackstageForeverGuideRoute)=='function' then
         local _,race=call(UnitRace,'player')
@@ -254,9 +269,17 @@ function BackstageForeverRouteRefresh()
                 say(('The guided route ends at level %d for now. The zone guide takes over; the desktop app\'s Now page shows where to level next.'):format(pos.top or 1))
             else
                 steps={}
-                for i,r in ipairs(pos.steps) do steps[i]={kind=r[1],text=r[2],mapId=r[3],x=r[4],y=r[5],level=r[6],id=r[8]} end
+                for i,r in ipairs(pos.steps) do
+                    local ids={};for _,id in ipairs(r[7] or {})do ids[id]=true end
+                    steps[i]={kind=r[1],text=r[2],mapId=r[3],x=r[4],y=r[5],level=r[6],id=r[8],questIds=ids}
+                end
                 guide={index=pos.index,total=pos.total,note=pos.note,top=pos.top};index=1
-                if settings.shown and build() then method(frame,'Show');paint() end
+                -- The turn-in can queue a refresh after the HUD resumes the guide.
+                -- Keep a browsed step if actual route progress hasn't moved the anchor.
+                if cursor and cursor.anchor==pos.index then
+                    for i,s in ipairs(steps)do if s.id==cursor.id then index=i;break end end
+                end
+                if settings.shown and build() then if not compassPaused then method(frame,'Show') end;paint() end
                 if settings.shown then refreshCompass() end
                 return steps
             end
@@ -271,15 +294,21 @@ function BackstageForeverRouteRefresh()
     return steps
 end
 local function soon()
-    if pending then return end
-    pending=true
+    if pending or compassPaused then return end
+    local token={};pending=token
     local t=plain(C_Timer)
-    if type(field(t,'After'))=='function' then pcall(t.After,.5,function() pcall(BackstageForeverRouteRefresh) end) else pcall(BackstageForeverRouteRefresh) end
+    if not pcall(field(t,'After'),.5,function()
+        if pending==token then pcall(BackstageForeverRouteRefresh) end
+    end) then pcall(BackstageForeverRouteRefresh) end
 end
 function BackstageForeverRouteCommand(message)
     if not settings then loadSettings() end
     local previous=BackstageForeverRouteNow()
     local arg=type(message)=='string' and message:lower():match('^route%s*(%a*)') or ''
+    if arg=='' or arg=='next' or arg=='back' or arg=='guide' or arg=='zone' or arg=='skip' then
+        refreshCompass(true,previous~=nil and (arg=='next' or arg=='skip' or arg=='zone'))
+        resumeCursor=nil
+    end
     if arg=='next' then index=min(#steps,index+1)
     elseif arg=='back' then index=max(1,index-1)
     elseif arg=='arrow' then settings.arrow=not settings.arrow;lastArrow=nil;say('Route arrow '..(settings.arrow and 'on: it follows your current step.' or 'off.'))
@@ -293,9 +322,9 @@ function BackstageForeverRouteCommand(message)
     else return say('Use /bf route, /bf route guide, /bf route zone, /bf route next, /bf route back, /bf route skip or /bf route arrow.') end
     if settings.shown then
         if arg=='' then BackstageForeverRouteRefresh();say('Route on: one step at a time. The arrow points at the step you show; < and > move it. /bf route guide follows the full guided route for your race; /bf route hides it.') end
-        if build() then method(frame,'Show');paint() end
+        if build() then if not compassPaused then method(frame,'Show') end;paint() end
         -- The player typed or clicked this, so the game allows the waypoint arrow now.
-        if arg~='arrow' or settings.arrow then setArrow(steps[index]) end
+        if not compassPaused and (arg~='arrow' or settings.arrow) then setArrow(steps[index]) end
     elseif frame then method(frame,'Hide');if arg=='' then say('Route hidden. /bf route shows it again.') end end
     -- Refresh handles freshly computed steps. Browsing, hiding, and switching
     -- to zone mode (even if map data is unavailable) can change the Compass too.
