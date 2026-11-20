@@ -28,8 +28,9 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     page.on("pageerror", error => errors.push(error.message));
     await page.evaluate(() => localStorage.setItem("bf-setup-v4", "complete"));
     await page.reload();
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1000, 700));
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(984, 635));
     page.setDefaultTimeout(8000);
+    await page.waitForFunction(() => innerWidth === 984 && innerHeight === 635);
     await page.locator('[data-shell-control="nav:characters"]').click();
     const entry = page.locator('[data-shell-control="subtab:talents"]');
     await entry.focus();
@@ -38,7 +39,14 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     const first = card.getByLabel("Frostbolt, Rank 4");
     const second = card.getByLabel("Ice Lance, Rank 1");
     const opener = card.getByRole("heading", { name: "Opener", exact: true });
+    const template = card.getByText("Just learned this?", { exact: true });
+    const placement = card.getByLabel("Ice Lance (Rank 1) on an action bar?", { exact: true });
+    const binding = card.getByLabel("A key bound to the Ice Lance slot?");
+    const readout = card.locator("[data-spellbook-readout]");
     const initial = await fs.readFile(stateFile, "utf8");
+    const storage = () => page.evaluate(() => JSON.stringify(localStorage));
+    const initialStorage = await storage();
+    assert.equal(await template.count(), 0);
     await first.focus();
     await page.keyboard.press("Space");
     assert.equal(await opener.count(), 0);
@@ -59,9 +67,82 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
         return (Math.max(...values) + 0.05) / (Math.min(...values) + 0.05) >= 4.5;
       }), "Interactive text should have at least 4.5:1 contrast against the card");
     }
-    assert.ok(await card.evaluate(node => node.getBoundingClientRect().right <= innerWidth));
+    const focusFailures = [];
+    const checkFocus = async (control, arrival) => {
+      const result = await control.evaluate(node => {
+        const style = getComputedStyle(node);
+        const luminance = value => value.match(/[\d.]+/g).slice(0, 3).map((v, i) => {
+          const c = Number(v) / 255;
+          return [0.2126, 0.7152, 0.0722][i] * (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+        }).reduce((a, b) => a + b);
+        const colors = [style.outlineColor, getComputedStyle(node.closest("[data-academy-dps]")).backgroundColor].map(luminance);
+        const contrast = (Math.max(...colors) + 0.05) / (Math.min(...colors) + 0.05);
+        const width = parseFloat(style.outlineWidth), outset = Math.max(0, width + parseFloat(style.outlineOffset));
+        const rect = node.getBoundingClientRect();
+        const ring = [rect.left - outset, rect.top - outset, rect.right + outset, rect.bottom + outset];
+        const clip = [0, 0, innerWidth, innerHeight];
+        for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+          const { overflowX, overflowY } = getComputedStyle(parent);
+          const bounds = parent.getBoundingClientRect();
+          const x = bounds.left + parent.clientLeft, y = bounds.top + parent.clientTop;
+          if (overflowX !== "visible") { clip[0] = Math.max(clip[0], x); clip[2] = Math.min(clip[2], x + parent.clientWidth); }
+          if (overflowY !== "visible") { clip[1] = Math.max(clip[1], y); clip[3] = Math.min(clip[3], y + parent.clientHeight); }
+        }
+        return {
+          visible: node === document.activeElement && node.matches(":focus-visible") && style.outlineStyle !== "none" && width > 0,
+          contrast, ring, clip
+        };
+      });
+      const { visible, contrast, ring, clip } = result;
+      if (!visible || contrast < 3 || ring.some((edge, i) => i < 2 ? edge < clip[i] : edge > clip[i])) {
+        focusFailures.push({ arrival, ...result });
+      }
+    };
+    await page.keyboard.press("Tab");
+    await checkFocus(template, "forward to disclosure");
+    await page.keyboard.press("Enter");
+    await placement.waitFor();
+    assert.match(await card.locator("[data-spellbook-review]").innerText(), /Ice Lance · Rank 1 \(spell 1312002\) · learned rank self-reported/);
+    assert.match(await readout.innerText(), /Action bar: unknown.*Keybind: unknown/s);
+    await page.keyboard.press("Tab");
+    await checkFocus(placement, "forward to placement");
+    await page.keyboard.press("End");
+    assert.match(await readout.innerText(), /Action bar: not placed \(self-reported\).*Keybind: unknown/s);
+    await page.keyboard.press("ArrowUp");
+    assert.match(await readout.innerText(), /Action bar: placed \(self-reported\).*Keybind: unknown/s);
+    await page.keyboard.press("Tab");
+    await checkFocus(binding, "forward to binding");
+    await page.keyboard.press("End");
+    assert.match(await readout.innerText(), /Keybind: no key bound \(self-reported\)/);
+    await page.keyboard.press("ArrowUp");
+    assert.match(await readout.innerText(), /Keybind: key bound \(self-reported\)/);
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await checkFocus(binding, "reverse to binding");
+    await page.keyboard.press("Shift+Tab");
+    await checkFocus(placement, "reverse to placement");
+    await page.keyboard.press("Shift+Tab");
+    await checkFocus(template, "reverse to disclosure");
+    assert.deepEqual(focusFailures, [], "Spellbook focus rings must have at least 3:1 contrast and fit inside the scrollport");
+    await placement.selectOption("unknown");
+    assert.match(await readout.innerText(), /Action bar: unknown.*Keybind: unknown/s);
+    assert.equal(await binding.inputValue(), "unknown");
+    assert.ok(await binding.isDisabled());
+    await placement.selectOption("yes");
+    await binding.selectOption("yes");
+    assert.ok(await card.evaluate(node => node.getBoundingClientRect().right <= innerWidth && node.scrollWidth <= node.clientWidth));
     assert.equal(await fs.readFile(stateFile, "utf8"), initial);
+    assert.equal(await storage(), initialStorage);
     if (process.env.BF_ACADEMY_PNG) await card.screenshot({ path: process.env.BF_ACADEMY_PNG });
+    await second.focus();
+    await page.keyboard.press("Space");
+    assert.equal(await template.count(), 0);
+    await page.keyboard.press("Space");
+    await template.focus();
+    await page.keyboard.press("Enter");
+    assert.match(await readout.innerText(), /Action bar: unknown.*Keybind: unknown/s);
+    await placement.selectOption("yes");
+    await binding.selectOption("yes");
     const picker = page.getByLabel("Active character");
     await app.evaluate(({ ipcMain }) => {
       const channel = "backstage:saveState", save = ipcMain._invokeHandlers.get(channel);
@@ -75,6 +156,8 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     });
     await picker.selectOption("other-mage");
     await opener.waitFor({ state: "detached" });
+    assert.equal(await readout.count(), 0);
+    assert.equal(await fs.readFile(stateFile, "utf8"), initial);
     await app.evaluate(() => globalThis.releaseAcademyPicker());
     await card.getByText(/No recommendations/).waitFor();
     assert.equal(await opener.count(), 0);
@@ -83,8 +166,14 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await first.waitFor();
     assert.equal(await first.isChecked(), false);
     assert.equal(await opener.count(), 0);
+    assert.equal(await template.count(), 0);
+    await first.check();
+    await second.check();
+    await template.focus();
+    await page.keyboard.press("Enter");
+    assert.match(await readout.innerText(), /Action bar: unknown.*Keybind: unknown/s);
     assert.deepEqual(errors, []);
-    console.log("PASS desktop Academy DPS: offline, exact rank checks via keyboard, sources, private temporary result, wrong-build switch and clean return");
+    console.log("PASS desktop Academy DPS and Spellbook: exact rank gates, keyboard review, unknown/self-reported states, no persistence, held character switch and clean return");
   } finally {
     try { await app?.close(); } finally { await fs.rm(dir, { recursive: true, force: true }); }
   }

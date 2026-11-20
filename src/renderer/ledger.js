@@ -8,8 +8,9 @@ window.LedgerView = (() => {
   const QUALITY = ["poor", "common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom"];
   const LIMIT = 150;
   let data = null, error = "", loading = false, loadedAt = 0, mountedFor = null, route = "ledger", repFor = null;
-  let repFaction = null, focusRepFor = null, loadGeneration = 0;
+  let repFaction = null, focusRepFor = null, loadGeneration = 0, loadedFor = null;
   let activeProfile = () => data?.activeProfileId;
+  let characterPending = () => false;
   let cdGroup = "readiness";
   const query = { items: "", prices: "" };
   const nowSec = () => Math.floor(Date.now() / 1000);
@@ -230,11 +231,19 @@ window.LedgerView = (() => {
         : `<p class="ldg-empty">None of your characters has a tracked cooldown: Alchemy transmutes, Mooncloth (Tailoring) or the Salt Shaker (Leatherworking).</p>`}</section>`;
   }
 
+  function localCraft() {
+    if (characterPending() || !activeProfile() || activeProfile() !== data.activeProfileId) return "";
+    const leads = data.localCraft || [];
+    return `<section class="ldg-card" data-ledger-local-craft><h2>Local craft capabilities</h2>
+      ${leads.length ? `<ul>${leads.map(lead => `<li><strong>${esc(lead.character)}${lead.realm ? ` · ${esc(lead.realm)}` : ""}</strong> — ${esc(lead.recipe)} (item ${lead.itemId})<br><small>Recipe observed ${esc(new Date(lead.observedAt).toLocaleString())}${lead.stale ? " · Older than 24 hours" : ""}</small></li>`).join("")}</ul>` : '<p class="ldg-note">No compatible recipes listed.</p>'}
+      <p class="ldg-note">Opt in or remove a recipe in the Professions workshop. A listed recipe is not proof of stock, readiness or transfer.</p>
+      <button type="button" data-nav="preparation">Open Professions workshop</button></section>`;
+  }
   const PAGES = {
     ledger: ["ledger", "Bags & bank", "Everything you carry", "Bags, bank and mail of every character, searchable in one place.", bags],
     "ledger-gold": ["ledger-gold", "Gold & prices", "Gold and prices", "Gold on each character, and the Auction House prices you saw yourself.", gold],
     "ledger-reputation": ["ledger-reputation", "Reputation", "Reputation", "Where each character stands with every faction, Alliance and Horde alike.", reputation],
-    "ledger-cooldowns": ["ledger-cooldowns", "Cooldowns", "Profession cooldowns", "Transmutes, Mooncloth and the Salt Shaker: which are ready, and when the rest will be.", cooldowns],
+    "ledger-cooldowns": ["ledger-cooldowns", "Cooldowns", "Profession cooldowns", "Transmutes, Mooncloth and the Salt Shaker: which are ready, and when the rest will be.", () => cooldowns() + localCraft()],
   };
   function body() {
     if (error) return `<p class="ldg-empty">${esc(error)}</p>`;
@@ -274,10 +283,10 @@ window.LedgerView = (() => {
   }
   async function load() {
     if (loading) return; loading = true;
-    const generation = loadGeneration;
+    const generation = loadGeneration, owner = activeProfile();
     try { const fresh = await api.ledger(); if (generation === loadGeneration) { data = fresh; error = ""; } }
     catch (e) { if (generation === loadGeneration) error = e.message || "Your ledger is unavailable."; }
-    loading = false; loadedAt = Date.now();
+    loading = false; loadedAt = Date.now(); loadedFor = owner;
     const root = document.querySelector("[data-ledger]");
     if (generation !== loadGeneration) { if (root) load(); return; }
     if (root) { root.outerHTML = page(root.dataset.ledger); mountedFor = null; mounted(); }
@@ -362,11 +371,11 @@ window.LedgerView = (() => {
     root.querySelector("[data-ledger-goal-clear]")?.addEventListener("click", () => setGoal(null));
     root.querySelector("[data-ledger-goal-mount]")?.addEventListener("click", (e) => setGoal({ gold: Number(e.currentTarget.dataset.ledgerGoalMount), label: "Riding and first mount" }));
     // Each visit reads the newest saved ledger (a game save may have arrived since).
-    if (!loading && (!data || Date.now() - loadedAt > 3000)) load();
+    if (!loading && !characterPending() && (loadedFor !== activeProfile() || (!data && !error) || Date.now() - loadedAt > 3000)) load();
   }
   function selectReputation(profileId, factionId) {
     repFor = profileId; repFaction = factionId; focusRepFor = profileId;
     data = null; error = ""; loadGeneration++;
   }
-  return { init: readActive => { activeProfile = readActive; }, bags: () => page("ledger"), gold: () => page("ledger-gold"), reputation: () => page("ledger-reputation"), cooldowns: () => page("ledger-cooldowns"), page, mounted, selectReputation, reviewSavings, invalidate: () => { data = null; }, _state: () => ({ data, query, route }) };
+  return { init: (readActive, pending = () => false) => { activeProfile = readActive; characterPending = pending; }, bags: () => page("ledger"), gold: () => page("ledger-gold"), reputation: () => page("ledger-reputation"), cooldowns: () => page("ledger-cooldowns"), page, mounted, selectReputation, reviewSavings, invalidate: () => { data = null; error = ""; loadGeneration++; }, _state: () => ({ data, query, route }) };
 })();

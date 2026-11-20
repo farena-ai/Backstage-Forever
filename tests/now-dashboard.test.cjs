@@ -32,7 +32,7 @@ function dashboard(overrides = {}, toon = {}, { storage = new Map(), state, day 
   globals.ObjectiveView.init(() => state);
   const view = globals.NowView;
   return { view, header, body, active,
-    click: selector => click({ target: { closest: s => s === selector ? {} : null } }),
+    click: (selector, stopPropagation) => click({ target: { closest: s => s === selector ? {} : null }, stopPropagation }),
     remount() { nodes["[data-now]"] = { ...root }; view.mounted(); },
     async mount() { view.mounted(); await new Promise(setImmediate); return body.innerHTML; } };
 }
@@ -95,6 +95,49 @@ test("the valid active pin is the sole prominent recommendation and explains its
   assert.match(priority(html), /Herbal aid[\s\S]*Collect 3 herbs[\s\S]*Why this\?[\s\S]*pinned[\s\S]*Character snapshot[\s\S]*Resume quest/);
   assert.equal((html.match(/data-now-objective/g) || []).length, 1);
   assert.doesNotMatch(priority(html), /Finish the task/);
+});
+
+test("returning briefing ages the character save independently of live advice", async () => {
+  const html = await dashboard({}, { live: true }, { state: pinnedState(), day: new Date("2026-11-18T00:00:00Z") }).mount();
+  assert.match(priority(html), /Returning briefing[\s\S]*Herbal aid[\s\S]*Collect 3 herbs[\s\S]*Last character save: 6 hr ago · not live/);
+  assert.equal((priority(html).match(/data-objective-resume=/g) || []).length, 1);
+});
+
+test("a blocked returning quest keeps the original pin and offers only manual review", async () => {
+  for (const [modify, reason] of [
+    [p => { p.source.updatedAt = "2026-11-15T00:00:00Z"; }, /last save is too old/i],
+    [p => { p.source.updatedAt = "2026-11-19T00:00:00Z"; }, /save time is unknown/i],
+    [p => { p.quests = [{ ...p.quests[0], id: 100 }]; }, /not in the last saved quest log/i],
+  ]) {
+    const state = pinnedState();
+    modify(state.profiles[0]);
+    const before = JSON.stringify(state);
+    const html = priority(await dashboard({}, { live: true }, { state, day: new Date("2026-11-18T00:00:00Z") }).mount());
+    assert.match(html, /Herbal aid[\s\S]*Plan B[\s\S]*No supported next step/);
+    assert.match(html, reason);
+    assert.match(html, /data-objective-resume="pin">Review pinned quest/);
+    assert.doesNotMatch(html, /Collect 3 herbs|Resume quest|data-now-map|data-quest-open/);
+    assert.equal(JSON.stringify(state), before);
+  }
+});
+
+test("the ready quest stage requires a hand-in, not a completed turn-in", async () => {
+  const state = pinnedState();
+  state.profiles[0].quests[0].complete = true;
+  const html = priority(await dashboard({}, {}, { state, day: new Date("2026-11-18T00:00:00Z") }).mount());
+  assert.match(html, /Required: hand in this quest[\s\S]*Ready to turn in is not a completed turn-in/);
+  assert.match(html, /data-objective-resume="pin">Resume quest/);
+});
+
+test("a pending picker change cannot show or dispatch the outgoing pin", async () => {
+  const app = dashboard({}, {}, { state: pinnedState() });
+  await app.mount();
+  app.active.value = "other";
+  let stopped = false;
+  app.click("[data-objective-resume]", () => { stopped = true; });
+  assert.ok(stopped);
+  app.remount();
+  assert.doesNotMatch(app.body.innerHTML, /Herbal aid|data-objective-resume/);
 });
 
 test("Not now hides only today's suggestion for this character without clearing the pin", async () => {

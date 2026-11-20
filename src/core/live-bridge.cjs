@@ -894,6 +894,9 @@ class LiveBridge {
     return r && this.now() - r.at <= RECT_FRESH_MS ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
   }
   hasFreshFrame() {
+    // An explicit window loss is authoritative even inside the frame's freshness window.
+    // Keep the observation for the dated “Last live” label, not for live consumers.
+    if (this.signal === "minimized" || this.signal === "nogame") return false;
     if (!this.frame || this.now() - this.frame.receivedAt > FRESH_MS) return false;
     // An unchanged strip stays live while its heartbeat moves; a compact strip whose heartbeat
     // froze (hung game UI) is a picture, not a live game.

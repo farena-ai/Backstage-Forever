@@ -2,8 +2,8 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { drills, createAttempt, choose, retry } = require('../src/renderer/practice-lab-model.js');
 
-test('the standalone lab offers four distinctly labeled simulated drills', () => {
-  assert.deepEqual(drills.map(({ id }) => id), ['opener', 'resource', 'defensive', 'triage']);
+test('the lab preserves the original drills and appends the two simulated role exercises', () => {
+  assert.deepEqual(drills.map(({ id }) => id), ['opener', 'resource', 'defensive', 'triage', 'tank-first-pull', 'healer-mana-triage']);
   for (const drill of drills) {
     assert.equal(drill.evidence, 'simulated');
     assert.ok(drill.prompt && drill.improvement);
@@ -12,6 +12,19 @@ test('the standalone lab offers four distinctly labeled simulated drills', () =>
     assert.ok(drill.options.every(option => option.label && option.feedback));
   }
 });
+
+for (const [role, pack] of [['tank', require('../src/renderer/academy-tank-pack.js')], ['healer', require('../src/renderer/academy-healer-pack.js')]]) {
+  test(`the ${role} curriculum uses the shared Lab attempt lifecycle`, () => {
+    const attempt = createAttempt(pack.drill.id);
+    assert.equal(attempt?.drill, pack.drill);
+    for (const option of pack.drill.options) {
+      const answered = choose(attempt, option.id);
+      assert.deepEqual(answered.result, { evidence: 'simulated', preferred: option.preferred,
+        feedback: option.feedback, improvement: pack.drill.improvement });
+      assert.deepEqual(retry(answered), attempt);
+    }
+  });
+}
 
 test('a choice reveals its modeled consequence and one improvement, never a live score', () => {
   const attempt = createAttempt('resource');

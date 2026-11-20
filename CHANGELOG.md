@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.16.0 - Desktop Field Journal
+
+- Add desktop preparation, local officer review, and saved-evidence improvements. See the [release notes](docs/releases/1.16.0.md).
+
 ## 1.15.1 — Local Data Reset
 
 - Delete all local data now removes private staging files left by interrupted writes, and stops before changing the saved journal or credentials if an owned stage is blocked. Unrelated files and exports are left alone.

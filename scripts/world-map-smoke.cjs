@@ -12,7 +12,7 @@ const { defaultState } = require("../src/core/validation.cjs");
   await fs.mkdir(capture, { recursive: true });
   const watchdog = setTimeout(() => { console.error("World map fixture exceeded 150 seconds"); app?.process().kill(); process.exitCode = 1; }, 150000);
   try {
-    const profile = { id: "Alpha", name: "Alpha", className: "Hunter", realm: "Synthetic", level: 15, race: "Tauren", faction: "Horde", goals: [], notes: "", location: { zone: "The Barrens", mapId: 1413, x: 0.52, y: 0.29 },
+    const profile = { id: "Alpha", name: "Alpha", className: "Hunter", realm: "Synthetic", level: 15, race: "Tauren", faction: "Horde", clientBuild: "1.60.1.70888", goals: [], notes: "", location: { zone: "The Barrens", mapId: 1413, x: 0.52, y: 0.29 },
       quests: [{ id: 96, title: "Call of Water", complete: true, objectives: [] }, { id: 5728, title: "Hidden Enemies", complete: false, objectives: [{ text: "0/1 Bazzalan slain", done: false, type: "monster", required: 1, fulfilled: 0 }, { text: "0/1 Jergosh the Invoker slain", done: false, type: "monster", required: 1, fulfilled: 0 }] }] };
     // Remembered nodes: herbs, ore and chests in the Barrens plus one in Durotar (gathering heat layer).
     const at = "2026-11-01T12:00:00.000Z", node = (method, entityId, mapId, x, y, name) => ({ id: `wowf:${method}:${entityId}:${mapId}:${Math.floor(x * 10000 + .5)}:${Math.floor(y * 10000 + .5)}:1.60.1.70888`, method, entityId, itemIds: [2449], mapId, x, y, observedAt: at, clientBuild: "1.60.1.70888", name, evidence: "observed-gathering-loot", precision: "recorded-standing-point", approximate: true });
@@ -31,6 +31,17 @@ const { defaultState } = require("../src/core/validation.cjs");
       load('./src/core/claude.cjs').status=async()=>({available:false,connected:false});
       load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});
       load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});
+      const { clipboard, ipcMain } = require('electron');
+      clipboard.writeText=value=>{globalThis.fixtureClipboard=value;};
+      const handle = ipcMain.handle.bind(ipcMain);
+      ipcMain.handle = (channel, fn) => handle(channel, async (...args) => {
+        const result = await fn(...args);
+        if (channel.endsWith(':worldMapNpc') && globalThis.holdNpcDetails) {
+          globalThis.holdNpcDetails = false;
+          await new Promise(resolve => { globalThis.releaseNpcDetails = resolve; });
+        }
+        return result;
+      });
       const L=load('./src/core/live-bridge.cjs');
       L.LiveBridge.prototype.readPreference=function(){globalThis.liveFixture={bridge:this};return false;};L.LiveBridge.prototype.start=function(){};
       load('./src/main.cjs');
@@ -121,6 +132,10 @@ const { defaultState } = require("../src/core/validation.cjs");
     const picked = await page.evaluate(() => { const a = WorldMapView._state().selected; return { id: a.id, label: a.label }; });
     await page.locator("[data-wm-card] h3").getByText(picked.label, { exact: true }).waitFor();
     await page.locator("[data-wm-card] [data-quest-open]").first().waitFor();
+    const areaReason = page.locator("[data-wm-card] details[data-wm-provenance]");
+    await areaReason.locator("summary").press("Enter");
+    await areaReason.getByText(/Approximate area/).waitFor();
+    assert.match(await areaReason.innerText(), /Efficient Games · merged Forever quest reference[\s\S]*Exact build not recorded[\s\S]*not a live spawn/i);
     await page.screenshot({ path: path.join(capture, "world-map-objective-area.png") });
     await page.locator('[data-wm-card] [data-wm-act="focus-area"]').click();
     await page.waitForFunction((id) => { const v = WorldMapView._state(); return v.focused?.pin?.id === id && v.focused.pin.kind === "objective-area" && v.view.zoom > 1; }, picked.id);
@@ -128,17 +143,36 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator(".wm-head").scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(capture, "world-map-objective-focus.png") });
     await page.locator('[data-wm-act="unfocus"]').click();
+    // A quest-page point with no matched observation may be marked, but must not invent an area.
+    await page.evaluate(() => WorldMapView.focus({ kind: "objective-area", questId: 999999, index: 1, mapId: 1413, x: 0.5, y: 0.5, label: "Unmatched objective" }));
+    await page.waitForFunction(() => WorldMapView._state().selected?.label === "Unmatched objective");
+    await page.locator("[data-wm-card]").getByText(/No matching objective area/).waitFor();
+    assert.equal(await page.evaluate(() => WorldMapView._state().model.areas.length), areaCount);
     // Search across zones, open a result.
     await page.locator("[data-wm-search] input").fill("flight master");
     await page.locator("[data-wm-search] button").click();
     await page.locator("[data-wm-results] li").first().waitFor();
     st = await s();
     assert.ok(st.results >= 3);
+    await app.evaluate(() => { globalThis.holdNpcDetails = true; });
     await page.locator("[data-wm-results] li button", { hasText: "Devrak" }).click();
     await page.locator("[data-wm-card] h3").getByText("Devrak").waitFor();
     await page.locator("[data-wm-card]").getByText(/From you \(live\): /).waitFor();
+    const firstPinReason = page.locator("[data-wm-card] details[data-wm-provenance]");
+    const firstPinSummary = firstPinReason.locator('summary');
+    const loadingNpc = page.locator('[data-wm-card]').getByText('Loading details…');
+    await loadingNpc.waitFor();
+    await firstPinSummary.press('Enter');
+    await firstPinReason.getByText('Verified reference pin').waitFor();
+    await app.evaluate(async () => {
+      for (let i = 0; i < 100 && !globalThis.releaseNpcDetails; i++) await new Promise(resolve => setTimeout(resolve, 50));
+      if (!globalThis.releaseNpcDetails) throw Error('NPC details did not reach the hold');
+      globalThis.releaseNpcDetails();
+    });
+    await loadingNpc.waitFor({ state: 'hidden' });
+    assert.deepEqual(await firstPinSummary.evaluate(el => [el.parentElement.open, el === document.activeElement]), [true, true], 'NPC enrichment preserves the open keyboard disclosure');
     await page.locator("[data-wm-act=way]").click();
-    const clip = await app.evaluate(({ clipboard }) => clipboard.readText());
+    const clip = await app.evaluate(() => globalThis.fixtureClipboard);
     assert.match(clip, /^\/bf way 1413 \d+\.\d \d+\.\d Devrak$/);
     await page.screenshot({ path: path.join(capture, "world-map-search.png") });
     // Pop-out radar tracks the chosen pin around the live position.
@@ -198,6 +232,18 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.waitForFunction(() => document.activeElement.matches("[data-wm-card]"));
     const headingBounds = await heading.boundingBox();
     assert.ok(headingBounds.y >= 0 && headingBounds.y + headingBounds.height <= await page.evaluate(() => innerHeight), "compact search selection is brought into view");
+    await selection.getByText("Loading details…").waitFor({ state: "hidden" });
+    const pinReason = selection.locator("details[data-wm-provenance]");
+    const summary = pinReason.locator("summary", { hasText: "Why is this pin here?" });
+    assert.equal(await pinReason.evaluate((el) => el.open), false);
+    await summary.press("Enter");
+    await pinReason.getByText(/Verified reference pin/).waitFor();
+    assert.deepEqual(await summary.evaluate((el) => {
+      const style = getComputedStyle(el);
+      return [style.color, style.outlineColor, style.outlineWidth, el === document.activeElement];
+    }), ["rgb(74, 50, 24)", "rgb(122, 31, 20)", "2px", true], "the keyboard disclosure and focus ring use dark ink on parchment");
+    assert.match(await pinReason.innerText(), /Efficient Games · reviewed travel reference[\s\S]*1\.60\.1\.70862[\s\S]*not a live spawn/i);
+    assert.doesNotMatch(await pinReason.innerText(), /1\.60\.1\.70888/);
     await page.screenshot({ path: path.join(capture, "world-map-compact-selection.png") });
     await page.locator(".wm-head").scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(capture, "world-map-compact.png") });
@@ -205,6 +251,12 @@ const { defaultState } = require("../src/core/validation.cjs");
     assert.equal(await search.evaluate((input) => input === document.activeElement), true);
     await setSize(1500, 1000);
     await page.waitForFunction(() => innerWidth > 1400);
+    await app.evaluate(() => { const b = liveFixture.bridge; b.frame = { ...b.frame, seq: 2, receivedAt: Date.now(), position: { mapId: 1413, x: 0.55, y: 0.2, facing: 0 } }; b.emit(); });
+    await page.locator("[data-wm-near]").getByRole("button", { name: /Battered Chest/ }).press("Enter");
+    const findReason = selection.locator("details[data-wm-provenance]");
+    await findReason.locator("summary").press("Enter");
+    await findReason.getByText("Private find", { exact: true }).waitFor();
+    assert.match(await findReason.innerText(), /Source: Your addon[\s\S]*1\.60\.1\.70888[\s\S]*where you stood[\s\S]*not a live spawn/);
     // Instance Atlas: difficulty colours, your quests, and the jump to the World Map.
     await navigate(page, "dungeons");
     const rfc = page.locator('[data-atlas-card="rfc"]');

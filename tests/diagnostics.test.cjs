@@ -28,6 +28,7 @@ test("bounded primitive grammar rejects coercion, oversized counts and versions"
 test("text is exact fixed-order readable projection with no source metadata", () => {
   const { report, text } = buildDiagnostics({}, { now });
   assert.equal(Object.keys(report).join(","), "schema,generatedAt,version,channel,platform,arch,secureStorage,profileCount,provider,game,reference,updater,recovery");
+  assert.doesNotMatch(text, /Patch impact/);
   assert.equal(text.split("\n")[0], "Backstage Forever — local support report");
   assert.ok(text.endsWith("\n")); assert.doesNotMatch(text, /undefined|null|\[object Object\]/);
 });
@@ -38,6 +39,14 @@ test("real four-part reference builds remain useful while malformed suffixes are
 test("current waiting and offline states remain diagnostic facts", () => {
   const { report } = buildDiagnostics({ game: { phase: "waiting" }, reference: { phase: "offline" } }, { now });
   assert.equal(report.game.phase, "waiting"); assert.equal(report.reference.phase, "offline");
+});
+test("patch impact ignores unreviewed fields and malformed build strings in support input", () => {
+  const { report, text } = buildDiagnostics({ patchImpact: { savedBuild: "1.60.1.70959\n", routeBuild: canary, rows: [canary], name: canary, path: canary } }, { now });
+  assert.equal(report.patchImpact.savedBuild, null);
+  assert.match(text, /Patch impact \(saved build\): unknown/);
+  assert.equal(report.patchImpact.rows.length, 3);
+  assert.ok(report.patchImpact.rows.every(row => row.status === "unknown-build"));
+  assert.doesNotMatch(JSON.stringify(report) + text, /PRIVATE_CANARY/);
 });
 test("recovery projects only fixed phase, automatic and count; never dates or identity", () => {
   const { report, text } = buildDiagnostics({ recovery: { phase: "limit", automatic: false, count: 3, latestAt: canary, id: canary, path: canary } }, { now });

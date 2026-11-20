@@ -17,16 +17,17 @@ function fixture(t) {
   const destination = path.join(root, "pack.json");
   let version = 0, release, held = false;
   let savePath = destination, cancelled = false;
+  const copies = [];
   function connect() {
     const handlers = new Map();
     const service = registerGuildRunHandlers({ handle: (name, fn) => handlers.set(name, fn), dataDir: dir,
       context: { snapshot: () => version, isCurrent: value => version === value },
       dialog: { showSaveDialog: () => held ? new Promise(r => release = r) : { canceled: cancelled, filePath: savePath },
         showOpenDialog: () => ({ canceled: cancelled, filePaths: [destination] }) }, getWindow: () => null,
-      viewerZone: () => "America/Los_Angeles" });
+      clipboard: { writeText: text => copies.push(text) }, viewerZone: () => "America/Los_Angeles" });
     return { call: (op, ...args) => handlers.get("guildRun")(op, ...args), reset: service.reset };
   }
-  return { ...connect(), connect, dir, destination, changeContext: () => version++, hold: () => held = true,
+  return { ...connect(), connect, dir, destination, copies, changeContext: () => version++, hold: () => held = true,
     release: () => release({ canceled: false, filePath: savePath }), target: value => savePath = value,
     cancel: value => cancelled = value };
 }
@@ -36,6 +37,299 @@ function author(f, fields = draft, base = null) {
   f.call("save", review.token);
   return review;
 }
+
+const facts = { attendance: ["Confirmed player"], progression: ["Cleared the first wing"],
+  assignments: ["Tank handles the first pull"], followUps: ["Review the second pull"], privateNote: "PRIVATE_OFFICER_NOTE" };
+
+test("officer debrief copies only saved manual facts, exactly as reviewed", async t => {
+  const f = fixture(t), { token, pack, text } = author(f);
+  await f.call("export", token, "json");
+  const portable = fs.readFileSync(f.destination);
+  const board = f.call("boardChange", token, 0, { type: "entry", id: null, name: "UNCONFIRMED_YES", role: "tank", rsvp: "yes", slot: "assigned" });
+  const localBytes = fs.readFileSync(path.join(f.dir, "guild-runs.json"));
+  assert.deepEqual(f.call("debrief", token).facts.attendance, []);
+  assert.throws(() => f.call("nextRunPreview", token, 0), /confirmed/i);
+  assert.throws(() => f.call("nextRunCopy", token, token), /current/i);
+  const saved = f.call("debriefSave", token, 0, facts);
+  const reopened = f.connect(), reopenedToken = reopened.call("organized", pack.eventId).token;
+  assert.deepEqual(reopened.call("debrief", reopenedToken), saved);
+  const preview = reopened.call("nextRunPreview", reopenedToken, saved.revision);
+  const expected = "Next-run handoff: Synthetic run\n\nConfirmed attendance\n- Confirmed player\n\nProgression\n- Cleared the first wing\n\nAssignments\n- Tank handles the first pull\n\nFollow-ups\n- Review the second pull";
+  assert.equal(preview.text, expected);
+  assert.deepEqual(f.copies, []);
+  assert.equal(reopened.call("nextRunCopy", reopenedToken, preview.token), true);
+  assert.deepEqual(f.copies, [expected]);
+  assert.deepEqual(f.call("board", token), board);
+  assert.deepEqual(fs.readFileSync(path.join(f.dir, "guild-runs.json")), localBytes);
+  await f.call("export", token, "json");
+  assert.deepEqual(fs.readFileSync(f.destination), portable);
+  await f.call("export", token, "text");
+  assert.equal(fs.readFileSync(f.destination, "utf8"), text);
+});
+
+test("officer debrief rejects stale approvals, unreviewed copies and received ownership", async t => {
+  const f = fixture(t), run = author(f), { token, pack: { eventId, revision } } = run;
+  for (const input of [{ ...facts, loot: ["Not allowed"] }, { ...facts, attendance: ["a\nb"] },
+    { ...facts, progression: Array(17).fill("Too many") }]) assert.throws(() => f.call("debriefSave", token, 0, input), /invalid/i);
+  f.call("debriefSave", token, 0, facts);
+  let preview = f.call("nextRunPreview", token, 1);
+  const other = f.connect(), seen = other.call("organized", eventId);
+  other.call("debriefSave", seen.token, 1, { ...facts, progression: ["Correction"] });
+  assert.throws(() => f.call("nextRunCopy", token, preview.token), /current/i);
+  assert.throws(() => f.call("debriefSave", token, 1, facts), /changed/i);
+  preview = f.call("nextRunPreview", token, 2);
+  f.call("nextRunDiscard", token);
+  assert.throws(() => f.call("nextRunCopy", token, preview.token), /current/i);
+  preview = f.call("nextRunPreview", token, 2);
+  await f.call("export", token, "json");
+  const incoming = await other.call("import");
+  assert.throws(() => other.call("debrief", incoming.token), /current/i);
+  assert.throws(() => other.call("nextRunCopy", incoming.token, preview.token), /current/i);
+  other.call("accept", incoming.token);
+  const next = author(other, { ...draft, title: "Revised run" }, { eventId, revision });
+  assert.equal(other.call("debrief", next.token).revision, 2);
+  assert.throws(() => f.call("nextRunCopy", token, preview.token), /current/i);
+  const cancel = other.call("cancelRun", { eventId, revision: 2 });
+  other.call("save", cancel.token);
+  assert.equal(other.call("debrief", cancel.token).readOnly, true);
+  assert.throws(() => other.call("nextRunPreview", cancel.token, 2), /cancelled/i);
+  assert.throws(() => other.call("debriefSave", cancel.token, 2, facts), /cancelled/i);
+  const different = author(f, { ...draft, title: "Different run" });
+  assert.deepEqual(f.call("debrief", different.token).facts.attendance, []);
+  const newRecord = f.call("debriefSave", different.token, 0, facts);
+  const newPreview = f.call("nextRunPreview", different.token, newRecord.revision);
+  f.changeContext();
+  assert.throws(() => f.call("nextRunCopy", different.token, newPreview.token), /current/i);
+  assert.deepEqual(f.copies, []);
+});
+
+test("failed debrief promotion preserves committed bytes and can be retried", t => {
+  const f = fixture(t), { token } = author(f);
+  const file = path.join(f.dir, "guild-officer-debrief.json");
+  const saved = f.call("debriefSave", token, 0, facts);
+  const preview = f.call("nextRunPreview", token, saved.revision);
+  const original = fs.readFileSync(file), rename = fs.renameSync;
+  const fault = t.mock.method(fs, "renameSync", (from, to) => {
+    if (to === file) throw Object.assign(new Error("fixture promotion failure"), { code: "EPERM" });
+    return rename(from, to);
+  });
+  const edited = { ...facts, followUps: ["Revised follow-up"] };
+  try {
+    assert.throws(() => f.call("debriefSave", token, saved.revision, edited), /could not be saved/);
+    assert.equal(fault.mock.callCount(), 1);
+    assert.deepEqual(fs.readFileSync(file), original);
+    assert.deepEqual(fs.readdirSync(f.dir).sort(), ["guild-officer-debrief.json", "guild-runs.json"]);
+    assert.equal(f.call("nextRunCopy", token, preview.token), true);
+  } finally { fault.mock.restore(); }
+  assert.deepEqual(f.call("debriefSave", token, saved.revision, edited).facts, edited);
+  assert.throws(() => f.call("nextRunCopy", token, preview.token), /current/i);
+  fs.writeFileSync(file, '{"unexpected":"private"}');
+  assert.throws(() => f.call("debriefSave", token, 2, edited), /could not be opened/);
+  assert.equal(fs.readFileSync(file, "utf8"), '{"unexpected":"private"}');
+});
+
+test("manual organizer coverage persists without touching either portable format", async t => {
+  const f = fixture(t), run = author(f);
+  const boardFile = path.join(f.dir, "guild-organizer.json");
+  const packFile = path.join(f.dir, "guild-runs.json"), packBytes = fs.readFileSync(packFile);
+  await f.call("export", run.token, "json");
+  const portable = fs.readFileSync(f.destination);
+  let board = f.call("board", run.token);
+  assert.equal(board.revision, 0);
+  assert.equal(fs.existsSync(boardFile), false);
+  const update = change => (board = f.call("boardChange", run.token, board.revision, change));
+  update({ type: "targets", targets: { tank: 1, healer: 1, damage: 0 } });
+  const put = (id, name, role, rsvp, slot) => update({ type: "entry", id, name, role, rsvp, slot });
+  put(null, "PRIVATE_TANK", "tank", "yes", "bench");
+  put(null, "PRIVATE_HEALER", "healer", "maybe", "assigned");
+  put(null, "PRIVATE_BACKUP", "healer", "yes", "backup");
+  assert.deepEqual(board.coverage.healer, { target: 1, yes: 0, maybe: 1, gap: 1 });
+  assert.deepEqual(board.coverage.tank, { target: 1, yes: 0, maybe: 0, gap: 1 });
+  put(board.entries[0].id, "PRIVATE_TANK", "tank", "yes", "assigned");
+  assert.deepEqual(board.coverage.tank, { target: 1, yes: 1, maybe: 0, gap: 0 });
+  assert.equal(board.history.at(-1).before.slot, "bench");
+  assert.equal(board.history.at(-1).after.slot, "assigned");
+  const other = f.connect(), review = other.call("organized", run.pack.eventId);
+  assert.deepEqual(other.call("board", review.token), board);
+  assert.deepEqual(fs.readFileSync(packFile), packBytes);
+  await f.call("export", run.token, "json");
+  assert.deepEqual(fs.readFileSync(f.destination), portable);
+  await f.call("export", run.token, "text");
+  assert.equal(fs.readFileSync(f.destination, "utf8"), run.text);
+});
+
+test("board writes require the current authored review, board revision and a scheduled run", async t => {
+  const f = fixture(t), run = author(f), { eventId, revision } = run.pack;
+  const other = f.connect(), seen = other.call("organized", eventId);
+  const add = { type: "entry", id: null, name: "Manual RSVP", role: "tank", rsvp: "no", slot: "assigned" };
+  assert.throws(() => f.call("boardChange", run.token, 0, { ...add, attendance: true }), /invalid/);
+  const saved = f.call("boardChange", run.token, 0, add);
+  assert.equal(saved.coverage.tank.yes, 0);
+  assert.throws(() => other.call("boardChange", seen.token, 0, add), /board changed/);
+  const second = author(other, { ...draft, title: "Other event" });
+  assert.equal(other.call("board", second.token).revision, 0);
+  assert.throws(() => other.call("boardChange", second.token, 0, { type: "remove", id: saved.entries[0].id }), /invalid/);
+  await f.call("export", run.token, "json");
+  const incoming = await other.call("import");
+  other.call("accept", incoming.token);
+  assert.throws(() => other.call("board", incoming.token), /current/i);
+  const next = author(other, { ...draft, title: "Updated title" }, { eventId, revision });
+  assert.deepEqual(other.call("board", next.token), saved);
+  assert.throws(() => f.call("boardChange", run.token, saved.revision, add), /current/i);
+  f.changeContext();
+  assert.throws(() => other.call("boardChange", next.token, saved.revision, add), /current/i);
+  const cancel = f.call("cancelRun", { eventId, revision: 2 });
+  f.call("save", cancel.token);
+  assert.deepEqual(f.call("board", cancel.token), { ...saved, readOnly: true });
+  assert.throws(() => f.call("boardChange", cancel.token, saved.revision, add), /read-only/);
+  f.reset();
+  assert.throws(() => f.call("board", cancel.token), /current/i);
+  assert.deepEqual(fs.readdirSync(f.dir), []);
+});
+
+test("failed organizer promotion preserves committed bytes and permits retry", t => {
+  const f = fixture(t), run = author(f);
+  const boardFile = path.join(f.dir, "guild-organizer.json");
+  const change = { type: "targets", targets: { tank: 1, healer: 1, damage: 3 } };
+  const saved = f.call("boardChange", run.token, 0, change);
+  const original = fs.readFileSync(boardFile);
+  const rename = fs.renameSync;
+  const fault = t.mock.method(fs, "renameSync", (from, to) => {
+    if (to === boardFile) throw Object.assign(new Error("fixture promotion failure"), { code: "EPERM" });
+    return rename(from, to);
+  });
+  const edit = { ...change, targets: { ...change.targets, damage: 4 } };
+  try {
+    assert.throws(() => f.call("boardChange", run.token, saved.revision, edit), /could not be saved/);
+    assert.equal(fault.mock.callCount(), 1);
+    assert.deepEqual(fs.readFileSync(boardFile), original);
+    assert.deepEqual(fs.readdirSync(f.dir).sort(), ["guild-organizer.json", "guild-runs.json"]);
+    assert.deepEqual(f.call("board", run.token), saved);
+  } finally { fault.mock.restore(); }
+  assert.equal(f.call("boardChange", run.token, saved.revision, edit).targets.damage, 4);
+  fs.writeFileSync(boardFile, '{"unexpected":"private"}');
+  assert.throws(() => f.call("boardChange", run.token, 2, change), /could not be opened/);
+  assert.equal(fs.readFileSync(boardFile, "utf8"), '{"unexpected":"private"}');
+});
+
+test("officer corrections append to the local authored event without changing either Run Pack format", async t => {
+  const f = fixture(t), run = author(f), { eventId, revision } = run.pack;
+  const decision = { corrects: null, by: "Officer One", decision: "PRIVATE_MANUAL_DECISION", reason: "PRIVATE_TRIAL_NOTE" };
+  const packFile = path.join(f.dir, "guild-runs.json"), packBytes = fs.readFileSync(packFile);
+  await f.call("export", run.token, "json");
+  const portable = fs.readFileSync(f.destination);
+  assert.deepEqual(f.call("officerLog", run.token), { readOnly: false, revision: 0, rows: [] });
+  const first = f.call("officerAppend", run.token, 0, decision);
+  const corrected = { ...decision, corrects: first.rows[0].id, by: "Officer Two", decision: "PRIVATE_CORRECTED", reason: "PRIVATE_EXPLANATION" };
+  assert.throws(() => f.call("officerAppend", run.token, 0, corrected), /changed/);
+  assert.throws(() => f.call("officerAppend", run.token, 1, { ...corrected, awarded: true }), /invalid/);
+  const second = f.call("officerAppend", run.token, 1, corrected);
+  assert.equal(second.revision, 2);
+  assert.deepEqual(second.rows[0], first.rows[0]);
+  for (const [field, value] of Object.entries(corrected)) assert.equal(second.rows[1][field], value);
+  assert.throws(() => f.call("officerAppend", run.token, 2, corrected), /invalid/);
+  assert.deepEqual(fs.readFileSync(packFile), packBytes);
+  await f.call("export", run.token, "json");
+  assert.deepEqual(fs.readFileSync(f.destination), portable);
+  const incoming = await f.call("import");
+  assert.throws(() => f.call("officerLog", incoming.token), /current/);
+  f.call("accept", incoming.token);
+  assert.equal(f.call("received", eventId).pack.eventId, eventId);
+  assert.throws(() => f.call("officerLog", eventId), /current/);
+  assert.throws(() => f.call("officerAppend", run.token, 2, decision), /current/);
+  const other = f.connect(), next = author(other, { ...draft, title: "Revised" }, { eventId, revision });
+  assert.deepEqual(other.call("officerLog", next.token), second);
+  await other.call("export", next.token, "text");
+  assert.equal(fs.readFileSync(f.destination, "utf8"), next.text);
+  const cancel = other.call("cancelRun", { eventId, revision: 2 });
+  other.call("save", cancel.token);
+  assert.deepEqual(other.call("officerLog", cancel.token), { ...second, readOnly: true });
+  assert.throws(() => other.call("officerAppend", cancel.token, 2, decision), /read-only/);
+});
+
+const welcome = { guild: "Synthetic Guild", greeting: "New players are welcome!", recruiting: "Casual dungeon groups", contact: "Ask for a volunteer mentor" };
+
+test("failed officer log promotion leaves every committed row and the previous revision intact", t => {
+  const f = fixture(t), run = author(f);
+  const file = path.join(f.dir, "guild-officer-log.json");
+  const input = { corrects: null, by: "Officer One", decision: "PRIVATE_DECISION", reason: "" };
+  const first = f.call("officerAppend", run.token, 0, input), bytes = fs.readFileSync(file);
+  const correction = { ...input, corrects: first.rows[0].id, decision: "PRIVATE_CORRECTED", reason: "New facts" };
+  const rename = fs.renameSync, fault = t.mock.method(fs, "renameSync", (from, to) => {
+    if (to === file) throw Object.assign(new Error("fixture promotion failure"), { code: "EPERM" });
+    return rename(from, to);
+  });
+  try {
+    assert.throws(() => f.call("officerAppend", run.token, first.revision, correction), /could not be saved/);
+    assert.equal(fault.mock.callCount(), 1);
+    assert.deepEqual(fs.readFileSync(file), bytes);
+    assert.deepEqual(fs.readdirSync(f.dir).sort(), ["guild-officer-log.json", "guild-runs.json"]);
+    assert.deepEqual(f.call("officerLog", run.token), first);
+  } finally { fault.mock.restore(); }
+  assert.equal(f.call("officerAppend", run.token, first.revision, correction).revision, 2);
+});
+
+test("welcome export requires a separate review of exactly the allowlisted text", async t => {
+  const f = fixture(t), run = author(f);
+  const store = path.join(f.dir, "guild-runs.json"), bytes = fs.readFileSync(store);
+  f.call("officerAppend", run.token, 0, { corrects: null, by: "PRIVATE_OFFICER", decision: "PRIVATE_DECISION", reason: "PRIVATE_TRIAL" });
+  await assert.rejects(async () => f.call("welcomeExport", run.token), /current/);
+  assert.throws(() => f.call("welcomePreview", run.token, { ...welcome, notes: "PRIVATE_TRIAL" }), /invalid/);
+  assert.throws(() => f.call("welcomePreview", run.token, { ...welcome, guild: "Injected\nOfficer record" }), /invalid/);
+  const first = f.call("welcomePreview", run.token, welcome);
+  assert.equal(fs.existsSync(f.destination), false);
+  const second = f.call("welcomePreview", run.token, { ...welcome, contact: "Message the guild greeter" });
+  assert.deepEqual(Object.keys(second).sort(), ["text", "token"]);
+  await assert.rejects(async () => f.call("welcomeExport", first.token), /current/);
+  await assert.rejects(async () => f.call("welcomeExport", second.token, "unexpected"), /invalid/);
+  await assert.rejects(async () => f.call("export", second.token, "text"), /current/);
+  assert.throws(() => f.call("officerLog", second.token), /current/);
+  assert.equal(second.text, "Welcome to Synthetic Guild\n\nNew players are welcome!\n\nRecruiting: Casual dungeon groups\nContact: Message the guild greeter\n");
+  f.target(store);
+  await assert.rejects(f.call("welcomeExport", second.token), /outside/);
+  assert.deepEqual(fs.readFileSync(store), bytes);
+  f.target(f.destination);
+  assert.equal(await f.call("welcomeExport", second.token), true);
+  assert.deepEqual(fs.readFileSync(f.destination), Buffer.from(second.text));
+  assert.deepEqual(fs.readFileSync(store), bytes);
+  assert.equal(f.call("welcomeClose", second.token), undefined);
+  await assert.rejects(async () => f.call("welcomeExport", second.token), /current/);
+  assert.equal(f.call("officerLog", run.token).revision, 1);
+});
+
+test("welcome picker cannot publish after review, context, run revision or reset changes", async t => {
+  const f = fixture(t), run = author(f);
+  const approve = token => f.call("welcomePreview", token, welcome).token;
+  f.hold();
+  for (const retire of [token => f.call("welcomeClose", token), () => f.changeContext()]) {
+    const token = approve(f.call("organized", run.pack.eventId).token), pending = f.call("welcomeExport", token);
+    retire(token); f.release();
+    assert.equal(await pending, null);
+    assert.equal(fs.existsSync(f.destination), false);
+  }
+  const current = f.call("organized", run.pack.eventId), pending = f.call("welcomeExport", approve(current.token));
+  const other = f.connect(), revised = author(other, { ...draft, title: "Revision changed" }, { eventId: run.pack.eventId, revision: 1 });
+  f.release();
+  assert.equal(await pending, null);
+  const revision = f.call("organized", revised.pack.eventId), after = f.call("welcomeExport", approve(revision.token));
+  f.reset(); f.release();
+  assert.equal(await after, null);
+  assert.equal(fs.existsSync(f.destination), false);
+});
+
+test("newcomer template offers only generic, editable event wording without creating a run", t => {
+  const f = fixture(t);
+  const template = f.call("template", "newcomer-mentor");
+  assert.equal(template.title, "Newcomer dungeon run");
+  assert.equal(template.timeZone, "America/Los_Angeles");
+  assert.deepEqual(Object.keys(template).sort(), ["duties", "prep", "timeZone", "title"]);
+  assert.match(template.duties[0].text, /volunteer.*mentor/i);
+  assert.ok(template.prep.length > 0);
+  assert.throws(() => f.call("template", "other"), /invalid/i);
+  assert.throws(() => f.call("template", "newcomer-mentor", { journal: "PRIVATE" }), /invalid/i);
+  assert.deepEqual(f.call("list"), { organized: [], received: [] });
+  assert.deepEqual(fs.readdirSync(f.dir), []);
+});
 
 test("author preview is read-only and export writes exactly the saved review, never caller-supplied data", async t => {
   const f = fixture(t);

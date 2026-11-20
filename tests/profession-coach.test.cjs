@@ -99,6 +99,71 @@ test("automatic partial-catalog selection ranks observed supply and returns deta
   m.selectedRecipe.name = "changed";
   assert.deepEqual(s, before);
 });
+function decisionSeed() {
+  const s = seed(), p = s.profiles[0], w = p.readiness.workshop;
+  w.recipes.items[0].reagents.push({ itemId: 900, name: "Tonic base", required: 2 });
+  w.recipes.items.push({ id: 102, skillLineId: 171, name: "Mix tonic base", outputItemId: 900,
+    outputMin: 2, outputMax: 2, reagentsKnown: true, reagents: [
+      { itemId: 765, name: "Silverleaf", required: 3 }, { itemId: 2447, name: "Peacebloom", required: 1 },
+      { itemId: 2320, name: "Coarse Thread", required: 1 },
+    ] });
+  w.materials.items.push({ itemId: 900, count: 1 }, { itemId: 2447, count: 2 });
+  const seenAt = Date.parse(at) / 1000;
+  p.ledger = { schemaVersion: 1, bank: { complete: true, seenAt, items: [{ id: 765, n: 99 }] },
+    prices: [{ id: 765, hist: [[42, seenAt], [1, seenAt + 1]] }, { id: 2320, hist: [[15, seenAt]] }] };
+  return s;
+}
+test("batch decision expands one observed producer and charges shared materials only once", () => {
+  const m = build(decisionSeed(), { recipeId: 100, crafts: 2 });
+  const trace = m.batchDecision;
+  assert.ok(trace, "Workshop exposes a batch decision");
+  assert.equal(trace.status, "planned");
+  assert.equal(trace.directReady, false);
+  assert.deepEqual(trace.steps.map(r => [r.recipeId, r.attempts, r.fromBags, r.output]), [[102, 2, 1, 4]]);
+  const rows = new Map(trace.rows.map(r => [r.itemId, r]));
+  assert.deepEqual([rows.get(765).required, rows.get(765).have, rows.get(765).missing], [10, 3, 7]);
+  assert.ok(rows.get(765).options.includes("gather"));
+  assert.ok(rows.get(765).options.includes("buy"));
+  assert.equal(rows.get(765).price.seenAt, Date.parse(at) / 1000);
+  assert.equal(rows.get(765).estimatedCopper, 294);
+  assert.equal(rows.get(765).ownStorage[0].count, 99);
+  assert.deepEqual(rows.get(2447).options, ["already-have"]);
+  assert.equal(rows.get(2320).vendor.name, "Mahu");
+  assert.equal(rows.get(2320).vendor.observedAt, "2026-11-09");
+  assert.ok(rows.get(2320).options.includes("buy"));
+  assert.equal(trace.batchPurchaseEstimate, 324);
+  assert.equal(m.shoppingList.batchPurchaseEstimate, null, "expanded estimate must not change existing savings");
+});
+test("dependency cycle, unknown yield, and incomplete bags withhold the expanded plan", () => {
+  for (const [edit, reason] of [
+    [w => w.recipes.items[2].reagents.push({ itemId: 900, required: 1 }), /cycle/i],
+    [w => delete w.recipes.items[2].outputMax, /fixed output/i],
+    [w => w.recipes.items.push({ ...w.recipes.items[2], id: 103 }), /single owned/i],
+    [w => { w.materials.complete = false; }, /carried-bag/i],
+  ]) {
+    const s = decisionSeed();
+    edit(s.profiles[0].readiness.workshop);
+    const trace = build(s, { recipeId: 100, crafts: 2 }).batchDecision;
+    assert.equal(trace.status, "unknown");
+    assert.match(trace.reason, reason);
+    assert.deepEqual(trace.rows, []);
+    assert.deepEqual(trace.steps, []);
+    assert.equal(trace.batchPurchaseEstimate, null);
+  }
+});
+test("wrong-build reference cannot become a decision lead, even with same-item alt price and stock", () => {
+  const s = decisionSeed(), p = s.profiles[0];
+  s.profiles.push({ ...structuredClone(p), id: "alt", ledger: { ...p.ledger, bags: p.ledger.bank } });
+  p.clientBuild = "1.60.1.70888";
+  delete p.ledger.prices;
+  const trace = build(s,{ recipeId: 100, crafts: 2 }).batchDecision;
+  const herb = trace.rows.find(r => r.itemId === 765), thread = trace.rows.find(r => r.itemId === 2320);
+  assert.deepEqual(herb.options, []);
+  assert.deepEqual(thread.options, []);
+  assert.equal(herb.altStock[0].count, 99);
+  assert.equal(herb.missing, 7);
+  assert.equal(trace.batchPurchaseEstimate, null);
+});
 test("manual non-skillup stays a plan and unavailable or mismatched explicit choice is never silently changed", () => {
   const s = seed();
   s.profiles[0].readiness.workshop.recipes.items[0].canSkillUp = false;

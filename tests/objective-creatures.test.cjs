@@ -31,7 +31,7 @@ function questGuide() {
   const root = { addEventListener() {}, querySelector: (s) => (s === ".quest-guide" ? {} : null), querySelectorAll: () => [] };
   const c = { window: {}, document: { activeElement: null, addEventListener() {} }, setTimeout, clearTimeout, queueMicrotask, console };
   vm.createContext(c);
-  for (const [f, n] of [["interaction", "InteractionGuard"], ["player-navigation", "PlayerNavigation"], ["page-hero", "PageHero"], ["quest-guide", "QuestGuide"]]) { vm.runInContext(fs.readFileSync(require.resolve(`../src/renderer/${f}.js`), "utf8"), c); c[n] = c.window[n]; }
+  for (const [f, n] of [["interaction", "InteractionGuard"], ["player-navigation", "PlayerNavigation"], ["page-hero", "PageHero"], ["commands", "CommandsView"], ["quest-guide", "QuestGuide"]]) { vm.runInContext(fs.readFileSync(require.resolve(`../src/renderer/${f}.js`), "utf8"), c); c[n] = c.window[n]; }
   let details = {};
   c.QuestGuide.init({ root, esc: (v) => String(v ?? "").replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll("'", "&#39;"), portrait: () => "", notify() {}, api: { questDetails: async () => details } });
   c.QuestGuide.sync({ id: "a", name: "A", className: "Hunter", faction: "Horde", quests: [{ id: 1, title: "Pirate Trouble", complete: false }] });
@@ -82,8 +82,12 @@ test("the World Map area card states the objective, quest, levels, difficulty an
   assert.match(html, /data-wm-act="focus-area">Show on map/);
   assert.match(html, /From your last saved spot: <strong>northwest, across the zone<\/strong>|From your last saved spot: <strong>northwest, a short ride<\/strong>/);
   assert.doesNotMatch(html, /style=/, "no inline styles (CSP)");
-  const plain = view._areaCard({ ...area, status: "available", creature: null, levels: null, difficulty: null, warning: null, progress: null, label: "Collect 5 Shell", spots: 1 }, model);
+  const plain = view._areaCard({ ...area, status: "available", creature: null, levels: null, difficulty: null, warning: null, progress: null, label: "Collect 5 Shell", spots: 1,
+    provenance: { kind: "approximate-reference", geometry: "creature-reference-area", source: "Reference <catalog>", build: null },
+  }, model);
   assert.match(plain, /Quest you could pick up \(check availability in game\)/);
-  assert.match(plain, /Based on 1 spot where/);
+  assert.match(plain, /Reference &lt;catalog&gt;/);
+  assert.match(plain, /around 1 reference spot where the creature was seen/);
+  assert.doesNotMatch(plain, /where players made objective progress/);
   assert.doesNotMatch(plain, /wm-warn|wm-elite|wm-diff|Your progress/);
 });

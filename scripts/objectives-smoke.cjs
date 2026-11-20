@@ -10,7 +10,8 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
 
 (async () => {
   const dir = await fs.mkdtemp(path.join(process.env.TMPDIR || os.tmpdir(), "bf-objectives-ui-"));
-  const stamp = "2026-11-10T12:00:00.000Z";
+  const base = Date.now() - 60 * 60000;
+  const stamp = new Date(base).toISOString();
   const captures = path.resolve(__dirname, "../.superpowers/sdd/daily-loop-captures");
   const saved = (id, name) => ({ id, name, realm: "Fixture", className: "Mage", level: 20, notes: "", goals: [], clientBuild: "1.15.2.12345", source: { kind: "wow-addon", id: `source-${id}`, updatedAt: stamp }, history: { recent: [], completedIdsKnown: true, completedIds: [] } });
   const alpha = { ...saved("alpha", "Aelora"), race: "Human", sex: "female", faction: "Alliance", location: { mapId: 1436, zone: "Westfall", x: 0.56, y: 0.47 }, progress: { current: 9500, max: 23200, rested: 1200 }, quests: [{ id: 666001, title: "Sample Delivery", complete: false, objectives: [{ text: "Collect the parcel", done: false }] }], readiness: { workshop: { professions: { observedAt: stamp, complete: false, items: [{ skillLineId: 171, professionId: 171, name: "Alchemy", rank: 75, maxRank: 150 }] } } } };
@@ -49,6 +50,7 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await page.getByRole("button", { name: "Pin quest objective" }).press("Enter");
     await objective().getByText("Sample Delivery", { exact: true }).waitFor();
     await objective().getByText("Collect the parcel", { exact: true }).waitFor();
+    await objective().getByText(/Last character save: .*not live/).waitFor();
     const next = () => page.locator(".now-next");
     assert.equal(await next().count(), 1);
     assert.match(await next().innerText(), /Why this\? You pinned this objective\.[\s\S]*Character snapshot/);
@@ -61,6 +63,15 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await objective().getByRole("heading", { name: "Your objective" }).waitFor();
     await objective().getByRole("button", { name: "Resume quest" }).press("Enter");
     await page.locator(".quest-detail").getByRole("heading", { name: "Sample Delivery" }).waitFor();
+    const pinned = JSON.parse(await fs.readFile(path.join(dir, "state.json"), "utf8")).objectives;
+    await page.clock.setFixedTime(base + 25 * 3600000);
+    await nav("now");
+    await objective().getByText(/Plan B:.*No supported next step/).waitFor();
+    assert.equal(await objective().getByRole("button", { name: "Resume quest" }).count(), 0);
+    await objective().getByRole("button", { name: "Review pinned quest" }).press("Enter");
+    await page.locator(".quest-detail").getByRole("heading", { name: "Sample Delivery" }).waitFor();
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(dir, "state.json"), "utf8")).objectives, pinned);
+    await page.clock.setFixedTime(Date.now());
     await nav("adventure");
     await nav("preparation");
     await page.getByRole("button", { name: "Replace pinned objective" }).press("Enter");
@@ -95,13 +106,13 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     }
     await resume.press("Enter");
     await page.waitForFunction(() => document.querySelector('[aria-label="Owned profession"]')?.value === "171");
-    await app.evaluate(() => {
+    await app.evaluate((_, at) => {
       const store = globalThis.objectiveFixtureStore, next = structuredClone(store.state);
       const p = next.profiles.find(p => p.id === "alpha"), professions = p.readiness.workshop.professions;
-      p.source.updatedAt = professions.observedAt = "2026-11-10T12:15:00.000Z";
+      p.source.updatedAt = professions.observedAt = at;
       professions.items[0].rank = 76;
       store.saveState(next);
-    });
+    }, new Date(base + 15 * 60000).toISOString());
     await nav("now");
     await objective().getByText(/Completed from a saved profession rank/).waitFor();
     await objective().getByRole("button", { name: "Clear objective" }).press("Enter");

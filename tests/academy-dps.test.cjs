@@ -6,12 +6,14 @@ const fs = require("node:fs");
 const source = fs.readFileSync(require.resolve("../src/renderer/talents.js"), "utf8");
 const window = {};
 const controls = { frostbolt: { checked: false }, iceLance: { checked: false } };
-const result = { innerHTML: "" };
+const result = { innerHTML: "", dataset: { abilityStatus: "reviewed" } };
 const panel = { querySelector(selector) {
   if (selector === "[data-academy-result]") return result;
   return controls[selector.match(/="(\w+)"/)?.[1]];
 } };
-vm.runInNewContext(source, { window, document: { querySelector: selector => selector === "[data-academy-dps]" ? panel : null } });
+const context = vm.createContext({ window, document: { querySelector: selector => selector === "[data-academy-dps]" ? panel : null } });
+vm.runInContext(fs.readFileSync(require.resolve("../src/core/patch-impact.cjs"), "utf8"), context);
+vm.runInContext(source, context);
 const view = window.TalentsView;
 const mage = { id: "mage", className: "Mage", level: 23, clientBuild: "1.60.1.70959", source: { kind: "wow-addon", id: "mage-source", updatedAt: "2026-11-19T09:00:00Z" } };
 
@@ -31,12 +33,23 @@ test("only the selected, matching addon Mage save can open the rank checklist", 
   }
 });
 
+test("an unreviewed manual layout does not retire the reviewed DPS guide", () => {
+  view.mounted();
+  controls.frostbolt.checked = controls.iceLance.checked = true;
+  result.dataset.abilityStatus = "needs-review";
+  panel.onchange({ target: { matches: selector => selector === "[data-academy-rank]" } });
+  assert.match(result.innerHTML, /Opener/);
+  assert.match(result.innerHTML, /Action-bar and keybind checks need review/);
+  assert.doesNotMatch(result.innerHTML, /data-spellbook-review/);
+  result.dataset.abilityStatus = "reviewed";
+});
+
 test("the guide is withheld until both exact ranks are self-confirmed and is removed if either is cleared", () => {
   view.mounted();
   for (const [frostbolt, iceLance] of [[false, false], [true, false], [false, true], [true, true], [false, true]]) {
     controls.frostbolt.checked = frostbolt;
     controls.iceLance.checked = iceLance;
-    panel.onchange();
+    panel.onchange({ target: { matches: selector => selector === "[data-academy-rank]" } });
     if (frostbolt && iceLance) {
       assert.match(result.innerHTML, /Opener/);
       assert.match(result.innerHTML, /Single-target priority/);

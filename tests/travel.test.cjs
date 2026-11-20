@@ -48,6 +48,39 @@ test("Org to TB fastest question gives conditional Doras flight, road and scoped
   );
   assert.equal(r.options[0].conditional, true);
 });
+test("the documented Org to TB pair is compared on evidence and requirements, not ranked", () => {
+  const requested = trip("compare travel options from Orgrimmar to Thunder Bluff");
+  const fastest = trip("what is the fastest way from org to tb");
+  assert.equal(requested.text, fastest.text);
+  assert.match(requested.text, /^Compare two documented options from Orgrimmar to Thunder Bluff:/);
+  assert.deepEqual(requested.options.map(({ id, sourceIds }) => [id, sourceIds]), [
+    ["flight-orgrimmar-thunder-bluff", ["E1"]],
+    ["org-tb-road", ["E2", "E3"]],
+  ]);
+  assert.ok(requested.cautions.some((line) => /Flight.*unlock.*unknown.*Doras.*not offered/i.test(line)));
+  assert.ok(requested.cautions.some((line) => /Road.*does not require a flight unlock.*landmarks/i.test(line)));
+  assert.ok(requested.cautions.some((line) => /fastest route is unknown/i.test(line)));
+  assert.doesNotMatch(requested.text, /may save walking|road fallback|\b\d+\s*(minutes|seconds)\b/i);
+  assert.match(requested.text, /no direct Orgrimmar to Thunder Bluff zeppelin/);
+});
+test("missing build or a missing direction cannot supply a second option", () => {
+  const roadOnly = trip("compare travel options from org to tb", { ...matching, clientBuild: "1.60.1.0" });
+  assert.deepEqual(roadOnly.options.map((o) => o.mode), ["road"]);
+  assert.deepEqual(roadOnly.sources.map((s) => s.id), ["E2", "E3"]);
+  assert.match(roadOnly.text, /matching build/);
+  const flightOnly = trip("compare travel options from tb to org");
+  assert.deepEqual(flightOnly.options.map((o) => o.mode), ["flight"]);
+  for (const result of [roadOnly, flightOnly]) {
+    assert.doesNotMatch(result.text, /Compare two documented options/);
+    assert.match(result.text, /No second eligible option is verified for this direction/);
+  }
+});
+test("a known transport segment does not fill in onward travel or hearth evidence", () => {
+  const result = trip("compare travel options from org to uc");
+  assert.deepEqual(result.options.map((o) => o.mode), ["zeppelin"]);
+  assert.match(result.text, /ends at Tirisfal zeppelin tower; onward travel is not covered/);
+  assert.match(result.text, /Hearth travel is not covered/);
+});
 test("other Horde zeppelins are positive, dated and distinguish city from boarding point", () => {
   const r = trip("how do I get from org to uc");
   assert.equal(r.status, "route");

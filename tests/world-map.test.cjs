@@ -54,6 +54,14 @@ test("search finds flight masters, trainers and named NPCs across zones, nearest
   assert.throws(() => wm.build([]));
 });
 
+test("Devrak's verified reference pin uses the reviewed point and its own build", () => {
+  const wm = make({ ...player, clientBuild: "1.60.1.70888" });
+  const pin = wm.build().pins.find((p) => p.npcId === 3615);
+  assert.deepEqual(pin.provenance, { kind: "verified-reference", geometry: "reference-point", build: "1.60.1.70862", source: "Efficient Games · reviewed travel reference", observedOn: "2026-11-09" });
+  assert.deepEqual([pin.mapId, pin.x, pin.y], [1413, 0.5151, 0.304]);
+  assert.deepEqual(wm.search("Devrak").results[0].provenance, pin.provenance);
+});
+
 test("a live frame never binds to a character whose live key has not been read", () => {
   const { identityHash } = require("../src/core/live-bridge.cjs");
   const frame = { characterHash: identityHash("guid-unread"), position: { mapId: 1456, x: 0.5, y: 0.5, facing: 1 }, mounted: false };
@@ -195,6 +203,26 @@ test("zone maps carry objective areas and hostile camps for the selected charact
   const quests = read("data/forever/pack.json").quests;
   const allyDurotar = make({ ...player, faction: "Alliance", level: 6, quests: [] }).build({ mapId: 1411 }).areas;
   assert.ok(allyDurotar.length < durotar.areas.length && allyDurotar.every((a) => !quests[a.questId].sides?.length || quests[a.questId].sides.includes("Alliance")));
+});
+
+test("Plainstrider Menace explains clustered objective observations without borrowing the saved build", () => {
+  const wm = make({ ...player, clientBuild: "1.60.1.70888" });
+  const area = wm.build().areas.find((a) => a.id === "oa:844:1:0");
+  assert.ok(area.spots > 1 && area.radius > 0);
+  assert.deepEqual(area.provenance, { kind: "approximate-reference", geometry: "objective-progress-area", build: null, source: "Efficient Games · merged Forever quest reference" });
+});
+
+test("private find provenance uses the row's build without changing the community projection", () => {
+  const { collectObservations } = require("../src/core/community.cjs");
+  const profile = { ...player, source: { kind: "wow-addon", id: "synthetic" }, clientBuild: "1.60.1.70888", gathering: { records: [{
+    ...player.gathering.records[0], entityId: 1731, x: 0.40123, clientBuild: "1.60.1.70862",
+  }] } };
+  const pin = make(profile).build().pins.find((p) => p.id === "find:g1");
+  assert.deepEqual(pin.provenance, { kind: "private-find", geometry: "standing-point", build: "1.60.1.70862", source: "Your addon" });
+  assert.deepEqual(collectObservations([profile]).map(({ build, entry }) => ({ build, entry })), [{
+    build: "1.60.1.70862", entry: { kind: "ore", objectId: 1731, mapId: 1413, x: 0.4, y: 0.5 },
+  }]);
+  assert.equal(make({ ...player, gathering: null }).build().pins.some((p) => p.kind === "find"), false);
 });
 
 test("your remembered herbs, ore and chests become find pins and a per-zone heat map", () => {

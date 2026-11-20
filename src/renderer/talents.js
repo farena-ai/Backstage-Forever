@@ -5,26 +5,58 @@ window.TalentsView = (() => {
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const CLASSES = ["Warrior", "Paladin", "Hunter", "Rogue", "Priest", "Shaman", "Mage", "Warlock", "Druid"];
   let data = null, error = "", who = null, preview = null, mountedFor = null, loading = false;
-  const ACADEMY_BUILD = "1.60.1.70959";
+  const patch = window.PatchImpact;
+  const guideBuilds = () => patch.MAGE_GUIDE_BUILDS.join(", ");
   function academy(profile) {
-    const eligible = profile?.className === "Mage" && Number.isInteger(profile.level) && profile.level >= 23 && profile.level <= 25 &&
-      profile.clientBuild === ACADEMY_BUILD && profile.source?.kind === "wow-addon" && Boolean(profile.source.id) &&
-      Date.parse(profile.source.updatedAt) <= Date.now();
+    const build = patch.savedBuild(profile, Date.now());
+    const guideStatus = patch.reviewStatus(build, patch.MAGE_GUIDE_BUILDS);
+    const abilityStatus = patch.reviewStatus(build, patch.MAGE_ABILITY_BUILDS);
+    const matchingMage = profile?.className === "Mage" && Number.isInteger(profile.level) && profile.level >= 23 && profile.level <= 25;
+    const eligible = matchingMage && guideStatus === "reviewed";
     return `<section class="tal-academy" data-academy-dps aria-labelledby="academy-dps-title">
       <h2 id="academy-dps-title">Academy · Frost Mage DPS</h2>
-      <p>Solo, one target · levels 23–25 · WoW Forever build ${ACADEMY_BUILD} · offline</p>
+      <p>Solo, one target · levels 23–25 · WoW Forever · <span>Reviewed builds:</span> ${guideBuilds()} · offline</p>
       ${eligible ? `<fieldset><legend>Check ${esc(profile.name || "your selected Mage")}’s current spellbook</legend>
         <p>The app does not read your spellbook. Only check ranks you see learned on this character while still in the listed level band and build. These checks aren't saved.</p>
         <label><input type="checkbox" data-academy-rank="frostbolt"> Frostbolt, Rank 4</label>
         <label><input type="checkbox" data-academy-rank="iceLance"> Ice Lance, Rank 1</label>
-      </fieldset><div data-academy-result aria-live="polite"></div>` : `<p>No recommendations for this selection. Select an imported Mage save with a matching build and level.</p>`}
+      </fieldset><div data-academy-result data-ability-status="${abilityStatus}" aria-live="polite"></div>` : matchingMage && guideStatus === "needs-review" ? `<p>Frost Mage DPS guidance needs review for this saved build. The talent planner is still available.</p>` : `<p>No recommendations for this selection. Select an imported Mage save with a matching build and level.</p>`}
     </section>`;
+  }
+  function spellbookReview() {
+    const choices = `<option value="unknown">Not checked / unsure</option><option value="yes">Yes</option><option value="no">No</option>`;
+    return `<details class="tal-spellbook" data-spellbook-review><summary>Just learned this?</summary>
+      <h3>Manual solo Frost layout</h3>
+      <p>Ice Lance · Rank 1 (spell 1312002) · learned rank self-reported above.</p>
+      <p>Compare the rank in your spellbook with the tooltip on your action bar. For this two-spell setup, put Frostbolt (Rank 4) in a comfortable primary slot and Ice Lance (Rank 1) in a separate, easy-to-reach slot. Choose your own keys in game; this is a template, not your current layout.</p>
+      <p>Check for that exact Ice Lance rank on your bars. If you find it, check the binding for that same slot. Leave either answer unconfirmed if you’re unsure. The app can’t inspect or change your bars or keys, and these answers aren’t saved.</p>
+      <label for="tal-ice-lance-placement">Ice Lance (Rank 1) on an action bar?</label>
+      <select id="tal-ice-lance-placement" data-spellbook-placement>${choices}</select>
+      <label for="tal-ice-lance-binding">A key bound to the Ice Lance slot?</label>
+      <select id="tal-ice-lance-binding" data-spellbook-binding disabled>${choices}</select>
+      <p data-spellbook-readout role="status">Action bar: unknown · Keybind: unknown</p>
+    </details>`;
+  }
+  function updateSpellbookReview(review) {
+    const placement = review.querySelector("[data-spellbook-placement]");
+    const binding = review.querySelector("[data-spellbook-binding]");
+    const readout = review.querySelector("[data-spellbook-readout]");
+    binding.disabled = placement.value !== "yes";
+    if (binding.disabled) binding.value = "unknown";
+    const bar = placement.value === "yes" ? "placed (self-reported)" : placement.value === "no" ? "not placed (self-reported)" : "unknown";
+    const key = binding.value === "yes" ? "key bound (self-reported)" : binding.value === "no" ? "no key bound (self-reported)" : "unknown";
+    readout.textContent = `Action bar: ${bar} · Keybind: ${key}`;
   }
   function mountAcademy() {
     const panel = document.querySelector("[data-academy-dps]");
     const result = panel?.querySelector("[data-academy-result]");
     if (!result || panel.onchange) return;
-    panel.onchange = () => {
+    panel.onchange = ({ target }) => {
+      if (!target.matches("[data-academy-rank]")) {
+        const review = target.closest("[data-spellbook-review]");
+        if (review) updateSpellbookReview(review);
+        return;
+      }
       const confirmed = panel.querySelector('[data-academy-rank="frostbolt"]').checked &&
         panel.querySelector('[data-academy-rank="iceLance"]').checked;
       // Only bundled copy and the fixed pilot build go into this result.
@@ -38,7 +70,8 @@ window.TalentsView = (() => {
           <li>wow4ever.quest Mage guide, Frost single-target section.</li>
           <li>wow4ever.quest Frostbolt spellbook, Rank 4 (7322).</li>
           <li>wow4ever.quest Ice Lance spellbook, Rank 1 (1312002).</li>
-        </ol><p>Community spellbook entries reviewed for ${ACADEMY_BUILD}, updated 19 Nov 2026. Not a live combat check or a DPS benchmark.</p></details>` : "";
+        </ol><p>Community spellbook entries reviewed for ${guideBuilds()}, updated 19 Nov 2026. Not a live combat check or a DPS benchmark.</p></details>
+        ${result.dataset.abilityStatus === "reviewed" ? spellbookReview() : "<p>Action-bar and keybind checks need review for this saved build.</p>"}` : "";
     };
   }
   const crest = (cls) => `<img class="tal-crest" src="art/classes/${esc(String(cls).toLowerCase())}.png" alt="" width="96" height="96">`;

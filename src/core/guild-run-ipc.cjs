@@ -3,14 +3,24 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { atomic } = require("./store.cjs");
+const { emptyBoard, validateBoard, validId, changeBoard, boardView } = require("./guild-organizer.cjs");
+const { emptyDebrief, validateDebrief, nextRunText } = require("./guild-officer-debrief.cjs");
+const { appendDecision, validateLog } = require("./guild-officer-log.cjs");
+const { newcomerMentorDraft } = require("./guild-run-templates.cjs");
 const { MAX_GUILD_RUN_BYTES, previewGuildRunPack, serializeGuildRunPack, parseGuildRunPack,
   resolveGuildRunStart, applyGuildRunPack, setGuildRunPrepDone } = require("./guild-run-pack.cjs");
 
 const LIMIT = 32; // Per list, per local installation; never evict a run or its private checks silently.
 const STORE_LIMIT = LIMIT * 2 * (MAX_GUILD_RUN_BYTES + 2048) + 1024;
 const STORE_NAME = "guild-runs.json";
+const BOARD_NAME = "guild-organizer.json";
+const BOARD_LIMIT = 2 * 1024 * 1024;
+const DEBRIEF_NAME = "guild-officer-debrief.json";
+const DEBRIEF_LIMIT = 2 * 1024 * 1024;
+const OFFICER_NAME = "guild-officer-log.json";
+const OFFICER_LIMIT = 6 * 1024 * 1024;
 // Match only this store's siblings produced by atomic(): <filename>.<randomUUID()>.tmp.
-const STORE_TEMP_NAME = /^guild-runs\.json\.[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\.tmp$/;
+const STORE_TEMP_NAME = /^guild-(?:runs|organizer|officer-debrief|officer-log)\.json\.[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\.tmp$/;
 const invalid = () => new Error("Guild Run Pack request is invalid.");
 const expired = () => new Error("Guild Run Pack review is no longer current. Open a new preview.");
 const updated = new Set(["imported", "updated"]);
@@ -49,11 +59,14 @@ function editable(base) {
     timeZone: start.timeZone, offset: parts.timeZoneName === "GMT" ? "+00:00" : parts.timeZoneName.slice(3) };
 }
 
-function registerGuildRunHandlers({ handle, dataDir, dialog, getWindow, context,
+function registerGuildRunHandlers({ handle, dataDir, dialog, clipboard, getWindow, context,
   viewerZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone, isBlocked = () => false }) {
   const file = path.join(dataDir, STORE_NAME);
-  let generation = 0, review = null;
-  function retire() { generation++; review = null; }
+  const boardFile = path.join(dataDir, BOARD_NAME);
+  const debriefFile = path.join(dataDir, DEBRIEF_NAME);
+  const officerFile = path.join(dataDir, OFFICER_NAME);
+  let generation = 0, review = null, nextRunReview = null, welcome = null;
+  function retire() { generation++; review = nextRunReview = welcome = null; }
   function load() {
     try {
       const stored = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readBounded(file, STORE_LIMIT)));
@@ -140,8 +153,10 @@ function registerGuildRunHandlers({ handle, dataDir, dialog, getWindow, context,
       defaultPath: `Backstage-Forever-guild-run-r${entry.pack.revision}.${extension}`,
       filters: [{ name: format === "json" ? "Guild Run Pack" : "Plain text", extensions: [extension] }] });
     if (!current(stamp, entry.source) || result.canceled) return null;
+    return writeShare(result.filePath, bytes);
+  }
+  function writeShare(target, bytes) {
     try {
-      const target = result.filePath;
       if (typeof target !== "string" || !path.isAbsolute(target)) throw invalid();
       const owned = fs.realpathSync(dataDir);
       const parent = fs.realpathSync(path.dirname(target));
@@ -195,9 +210,154 @@ function registerGuildRunHandlers({ handle, dataDir, dialog, getWindow, context,
     }
     return memberView(next);
   }
+  function authoredReview(token) {
+    const { pack } = reviewed(token, "saved");
+    const stored = load();
+    const currentPack = event(stored.organized, pack.eventId);
+    if (!currentPack || serializeGuildRunPack(currentPack) !== serializeGuildRunPack(pack)) throw expired();
+    return { pack, stored, readOnly: pack.status !== "scheduled" };
+  }
+  function welcomeClose(token) {
+    if (welcome && welcome.token === token) { generation++; welcome = null; }
+  }
+  function welcomePreview(runToken, input) {
+    if (authoredReview(runToken).readOnly) throw new Error("Guild Run Pack welcome copy is unavailable for a cancelled run.");
+    fields(input, ["guild", "greeting", "recruiting", "contact"]);
+    const { guild, greeting, recruiting, contact } = input;
+    const line = (value, max) => typeof value === "string" && value.length <= max && value === value.trim() &&
+      !/[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u.test(value);
+    if (!guild || !greeting || !line(guild, 100) || !line(greeting, 400) || !line(recruiting, 240) || !line(contact, 160)) throw invalid();
+    // Only explicitly entered public fields contribute to the welcome bytes.
+    const details = [recruiting && `Recruiting: ${recruiting}\n`, contact && `Contact: ${contact}\n`].join("");
+    const text = `Welcome to ${guild}\n\n${greeting}\n${details ? `\n${details}` : ""}`;
+    generation++;
+    welcome = { runToken, token: randomUUID(), text };
+    return { token: welcome.token, text };
+  }
+  async function welcomeExport(token) {
+    const entry = welcome;
+    if (!entry || token !== entry.token || authoredReview(entry.runToken).readOnly) throw expired();
+    const stamp = ++generation, { source } = review;
+    const result = await dialog.showSaveDialog(getWindow(), { title: "Export reviewed guild welcome copy",
+      defaultPath: "Backstage-Forever-guild-welcome.txt", filters: [{ name: "Plain text", extensions: ["txt"] }] });
+    if (result.canceled || !current(stamp, source)) return null;
+    // Recheck the committed authored run after the picker, including edits by another window.
+    try { if (authoredReview(entry.runToken).readOnly) return null; } catch { return null; }
+    return writeShare(result.filePath, entry.text);
+  }
+  function organizer(token, mutation) {
+    const { pack, stored, readOnly } = authoredReview(token);
+    if (mutation && readOnly) throw new Error("Guild Run Pack organizer board is read-only for a cancelled run.");
+    let boards;
+    try {
+      boards = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readBounded(boardFile, BOARD_LIMIT)));
+      if (!boards || typeof boards !== "object" || Array.isArray(boards) || Object.keys(boards).length > LIMIT) throw invalid();
+      for (const [id, board] of Object.entries(boards)) {
+        if (!validId(id)) throw invalid();
+        validateBoard(board);
+      }
+    } catch (error) {
+      if (error.code !== "ENOENT") throw new Error("Guild Run Pack organizer boards could not be opened. Existing data was not changed.");
+      boards = {};
+    }
+    const board = boards[pack.eventId] ?? emptyBoard();
+    if (!mutation) return boardView(board, readOnly);
+    if (board.revision !== mutation.revision) throw new Error("Guild Run Pack organizer board changed. Reopen it before editing.");
+    const next = changeBoard(board, mutation.change);
+    if (next !== board) {
+      // Only locally authored event IDs may own a board. Never reattach orphaned data to an imported pack.
+      const liveBoards = Object.fromEntries(stored.organized.filter(p => Object.hasOwn(boards, p.eventId)).map(p => [p.eventId, boards[p.eventId]]));
+      liveBoards[pack.eventId] = next;
+      try {
+        const bytes = JSON.stringify(liveBoards);
+        if (Buffer.byteLength(bytes) > BOARD_LIMIT) throw invalid();
+        atomic(boardFile, bytes);
+      } catch { throw new Error("Guild Run Pack organizer board could not be saved. Try again."); }
+    }
+    return boardView(next, false);
+  }
+  function readDebrief(token, forWrite = false) {
+    const { pack, stored, readOnly } = authoredReview(token);
+    if (readOnly && forWrite) throw new Error("Guild Run Pack officer debrief is read-only for a cancelled run.");
+    let debriefs;
+    try {
+      debriefs = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readBounded(debriefFile, DEBRIEF_LIMIT)));
+      if (!debriefs || typeof debriefs !== "object" || Array.isArray(debriefs) || Object.keys(debriefs).length > LIMIT) throw invalid();
+      for (const [id, record] of Object.entries(debriefs)) {
+        if (!validId(id)) throw invalid();
+        validateDebrief(record);
+      }
+    } catch (error) {
+      if (error.code !== "ENOENT") throw new Error("Guild Run Pack officer debriefs could not be opened. Existing data was not changed.");
+      debriefs = {};
+    }
+    return { pack, stored, debriefs, record: debriefs[pack.eventId] ?? emptyDebrief(), readOnly };
+  }
+  function saveDebrief(token, revision, facts) {
+    const { pack, stored, debriefs, record } = readDebrief(token, true);
+    if (record.revision !== revision) throw new Error("Guild Run Pack officer debrief changed. Reopen it before editing.");
+    const next = { revision: revision + 1, facts };
+    validateDebrief(next);
+    const live = Object.fromEntries(stored.organized.filter(p => Object.hasOwn(debriefs, p.eventId)).map(p => [p.eventId, debriefs[p.eventId]]));
+    live[pack.eventId] = next;
+    try {
+      const bytes = JSON.stringify(live);
+      if (Buffer.byteLength(bytes) > DEBRIEF_LIMIT) throw invalid();
+      atomic(debriefFile, bytes);
+    } catch { throw new Error("Guild Run Pack officer debrief could not be saved. Try again."); }
+    nextRunReview = null;
+    return { ...next, readOnly: false };
+  }
+  function previewNextRun(token, revision) {
+    const { pack, record } = readDebrief(token, true);
+    if (record.revision !== revision) throw expired();
+    const text = nextRunText(pack.title, record.facts), approval = randomUUID();
+    nextRunReview = { owner: token, approval, record: JSON.stringify(record), text };
+    return { token: approval, text };
+  }
+  function copyNextRun(token, approval) {
+    if (!nextRunReview || nextRunReview.owner !== token || nextRunReview.approval !== approval) throw expired();
+    const { record } = readDebrief(token, true);
+    if (JSON.stringify(record) !== nextRunReview.record) throw expired();
+    clipboard.writeText(nextRunReview.text);
+    return true;
+  }
+  function officerLog(token, mutation) {
+    const { pack, stored, readOnly } = authoredReview(token);
+    if (mutation && readOnly) throw new Error("Guild Run Pack officer log is read-only for a cancelled run.");
+    let logs;
+    try {
+      logs = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readBounded(officerFile, OFFICER_LIMIT)));
+      if (!logs || typeof logs !== "object" || Array.isArray(logs) || Object.keys(logs).length > LIMIT) throw invalid();
+      for (const [id, rows] of Object.entries(logs)) {
+        if (!validId(id)) throw invalid();
+        validateLog(rows);
+      }
+    } catch (error) {
+      if (error.code !== "ENOENT") throw new Error("Guild Run Pack officer logs could not be opened. Existing data was not changed.");
+      logs = {};
+    }
+    let rows = logs[pack.eventId] ?? [];
+    if (mutation) {
+      if (rows.length !== mutation.revision) throw new Error("Guild Run Pack officer log changed. Reopen it before editing.");
+      rows = appendDecision(rows, mutation.input);
+      const liveLogs = Object.fromEntries(stored.organized.filter(p => Object.hasOwn(logs, p.eventId)).map(p => [p.eventId, logs[p.eventId]]));
+      liveLogs[pack.eventId] = rows;
+      try {
+        const bytes = JSON.stringify(liveLogs);
+        if (Buffer.byteLength(bytes) > OFFICER_LIMIT) throw invalid();
+        atomic(officerFile, bytes);
+      } catch { throw new Error("Guild Run Pack officer log could not be saved. Try again."); }
+    }
+    return { rows, revision: rows.length, readOnly };
+  }
   const commands = {
     list: [0, () => { const stored = load(); return { organized: stored.organized.map(summary), received: stored.received.map(r => summary(r.pack)) }; }],
     defaults: [0, () => ({ timeZone: viewerZone() })],
+    template: [1, id => {
+      if (id !== "newcomer-mentor") throw invalid();
+      return { ...newcomerMentorDraft(), timeZone: viewerZone() };
+    }],
     close: [0, retire],
     preview: [1, input => { fields(input, ["draft", "base"]); return makePreview(input); }],
     organized: [1, id => {
@@ -213,14 +373,25 @@ function registerGuildRunHandlers({ handle, dataDir, dialog, getWindow, context,
     received: [1, id => {
       const record = event(load().received, id, true);
       if (!record) throw expired();
+      retire();
       return memberView(record);
     }],
     save: [1, save], export: [2, exportReview], import: [0, importReview], accept: [1, accept], check: [1, check],
+    board: [1, token => organizer(token)],
+    boardChange: [3, (token, revision, change) => organizer(token, { revision, change })],
+    debrief: [1, token => { const { record, readOnly } = readDebrief(token); return { ...record, readOnly }; }],
+    debriefSave: [3, saveDebrief],
+    nextRunPreview: [2, previewNextRun],
+    nextRunDiscard: [1, token => { reviewed(token, "saved"); nextRunReview = null; }],
+    nextRunCopy: [2, copyNextRun],
+    officerLog: [1, token => officerLog(token)],
+    officerAppend: [3, (token, revision, input) => officerLog(token, { revision, input })],
+    welcomePreview: [2, welcomePreview], welcomeExport: [1, welcomeExport], welcomeClose: [1, welcomeClose],
   };
   handle("guildRun", (op, ...args) => {
     if (typeof op !== "string" || !Object.hasOwn(commands, op) || args.length !== commands[op][0] || isBlocked()) throw invalid();
     return commands[op][1](...args);
-  });
+  }, { privateOnly: true });
   return { reset: () => {
     retire();
     try {
@@ -228,6 +399,9 @@ function registerGuildRunHandlers({ handle, dataDir, dialog, getWindow, context,
       for (const entry of fs.readdirSync(dataDir, { withFileTypes: true })) {
         if (entry.isFile() && STORE_TEMP_NAME.test(entry.name)) fs.rmSync(path.join(dataDir, entry.name), { force: true });
       }
+      fs.rmSync(officerFile, { force: true });
+      fs.rmSync(boardFile, { force: true });
+      fs.rmSync(debriefFile, { force: true });
       fs.rmSync(file, { force: true });
     } catch (error) {
       if (error.code !== "ENOENT") throw new Error("Guild Run Pack local runs could not be deleted. Try again.");

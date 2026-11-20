@@ -64,6 +64,7 @@ function weightsFor(ctx) {
   return { ...COMMON, ...(cls ? WEIGHTS[cls] : { Strength: 0.5, Agility: 0.5, Stamina: 0.5, Intellect: 0.5, Spirit: 0.3, armor: 0.01, meleeDps: 2, rangedDps: 1, wandDps: 1 }), ...(SPECS[ctx?.spec] || {}) };
 }
 const isWeapon = (item) => item?.classId === 2;
+const statWeight = (weights, stat) => Object.hasOwn(weights, stat) ? weights[stat] : (/Resistance$/.test(stat) ? 0.05 : 0.1);
 function dpsKey(item) {
   if (!isWeapon(item)) return null;
   if (item.subclassId === 19) return "wandDps";
@@ -71,15 +72,16 @@ function dpsKey(item) {
   return "meleeDps";
 }
 
-// Can this class equip it now? -> list of reasons it cannot (empty when usable).
-function blockers(item, ctx) {
+// Can this class equip it now? Pass the actual slot when checking a saved placement.
+function blockers(item, ctx, equippedSlot) {
   const cls = className(ctx), level = Number.isInteger(ctx?.level) ? ctx.level : null, out = [];
   if (!item) return ["Unknown item"];
   if (level !== null && item.requiredLevel > level) out.push(`Requires level ${item.requiredLevel}`);
   if (cls && Array.isArray(item.classes) && !item.classes.includes(cls)) out.push(`${cls}s cannot use it`);
   if (!cls) return out;
   if (isWeapon(item) && ![14, 20].includes(item.subclassId) && !WEAPONS[cls].includes(item.subclassId)) out.push(`${cls}s cannot use ${item.kind ? item.kind.toLowerCase() + "s" : "this weapon"}`);
-  if (isWeapon(item) && item.inventoryType === 22 && !(DUAL_WIELD[cls] && (level === null || level >= DUAL_WIELD[cls]))) out.push(`${cls}s cannot dual wield${DUAL_WIELD[cls] ? " yet" : ""}`);
+  const offhandWeapon = isWeapon(item) && (item.inventoryType === 22 || (item.inventoryType === 13 && equippedSlot === 17));
+  if (offhandWeapon && !(DUAL_WIELD[cls] && (level === null || level >= DUAL_WIELD[cls]))) out.push(`${cls}s cannot dual wield${DUAL_WIELD[cls] ? " yet" : ""}`);
   if (item.classId === 4) {
     const sub = item.subclassId;
     if (sub >= 1 && sub <= 4 && item.inventoryType !== 16) {
@@ -97,7 +99,7 @@ function scoreItem(item, ctx = {}) {
   if (!item) return { score: 0, usable: false, reasons: ["Unknown item"] };
   const w = weightsFor(ctx);
   let score = 0;
-  for (const s of item.stats || []) if (s.stat !== "Armor") score += (w[s.stat] ?? (/Resistance$/.test(s.stat) ? 0.05 : 0.1)) * s.amount;
+  for (const s of item.stats || []) if (s.stat !== "Armor") score += statWeight(w, s.stat) * s.amount;
   const armor = (item.armor || 0) + (item.stats || []).filter((s) => s.stat === "Armor").reduce((n, s) => n + s.amount, 0);
   score += armor * (w.armor || 0);
   const key = dpsKey(item);
@@ -190,4 +192,4 @@ function bestReward(choices, ctx = {}, equippedBySlot = {}) {
   };
 }
 
-module.exports = { WEIGHTS, SPECS, WEAPONS, ARMOR, scoreItem, compare, bestReward, blockers, slotsFor, replaced };
+module.exports = { WEIGHTS, SPECS, WEAPONS, ARMOR, scoreItem, compare, bestReward, blockers, slotsFor, replaced, weightsFor, statWeight, dpsKey };

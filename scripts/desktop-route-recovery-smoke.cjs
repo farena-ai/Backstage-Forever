@@ -11,7 +11,7 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
   try {
     const repo = path.resolve(__dirname, "..");
     const alpha = { id: "Alpha", name: "Alpha", className: "Warrior", realm: "Fixture", level: 2, race: "Orc", faction: "Horde", goals: [], notes: "", locale: "enUS",
-      source: { kind: "wow-addon", id: "Alpha-Fixture", updatedAt: "2026-11-12T13:00:00.000Z" }, clientBuild: "1.60.1.70888",
+      source: { kind: "wow-addon", id: "Alpha-Fixture", updatedAt: new Date(Date.now() - 3600000).toISOString() }, clientBuild: "1.60.1.70888",
       location: { zone: "Durotar", mapId: 1411, x: .42, y: .68 }, quests: [{ id: 788, title: "Cutting Teeth", complete: false, objectives: [] }],
       history: { recent: [], completedIdsKnown: true, completedIds: [789, 4402, 97279] } };
     const beta = { ...alpha, id: "Beta", name: "Beta", source: { ...alpha.source, id: "Beta-Fixture" }, clientBuild: "1.60.1.70862", quests: [] };
@@ -76,6 +76,8 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     const skipEntries = () => page.evaluate(() => Object.entries(localStorage).filter(([key]) => key.startsWith("bf-desktop-route-skips-v1:")));
     await route.getByText(/availability/i).waitFor();
     await route.locator('[data-quest-open="788"]').waitFor();
+    await route.getByText(/Plan B:.*In your saved quest log/).waitFor();
+    assert.equal(await route.locator('[data-quest-open], [data-map-focus]').count(), 1);
 
     // Dispatch the old quest and Skip controls while the picker has changed but its save is unacknowledged.
     const oldQuest = await route.locator('[data-quest-open="788"]').elementHandle();
@@ -149,6 +151,18 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await route.getByText(/matching reference/i).waitFor();
     assert.equal(await route.locator("[data-map-focus], [data-quest-open]").count(), 0);
     await page.locator("#active-character").selectOption("Alpha");
+    await route.getByRole("button", { name: "Show on Map" }).waitFor();
+    // Age the already-painted action without changing the character or its saved bytes.
+    const freshRendererTime = Date.now();
+    await page.clock.setFixedTime(Date.parse(alpha.source.updatedAt) + 24 * 3600000);
+    await press(route.getByRole("button", { name: "Show on Map" }));
+    assert.equal(await page.locator("body").getAttribute("data-page"), "guided-route", "an expired painted route must not open the map");
+    await route.getByText(/last save is too old/i).waitFor();
+    assert.equal(await route.locator("[data-map-focus], [data-quest-open]").count(), 0);
+    assert.deepEqual(await skipEntries(), savedSkips);
+    await page.clock.setFixedTime(freshRendererTime);
+    await navigate(page, "adventure");
+    await navigate(page, "guided-route");
     await press(route.getByRole("button", { name: "Show on Map" }));
     const first = page.locator('[data-wm-goal] [data-quest-open="788"]');
     await first.waitFor();

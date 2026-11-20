@@ -353,6 +353,10 @@
   .companion-conversation .button-row {
     margin-top: 6px;
   }
+  /* Leave room for the focus outline when Tab scrolls the composer at high zoom. */
+  .companion-conversation .chat-form .button-row button {
+    scroll-margin-block: 8px;
+  }
 }
 
 .professions-shortcut{margin-top:10px;font-size:12px;color:#e2c88e;border-color:#b79a5b55;background:#172b2d}

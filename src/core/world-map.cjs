@@ -30,12 +30,20 @@ function buildStaticIndex({ knowledgePack = null, npcReference = null, travelRef
   const flightNpcs = new Map();
   for (const n of travelReference?.nodes || []) {
     if (n.position) add({ id: `town:${n.id}`, kind: "town", label: n.label, sub: n.kind === "city" ? "City" : "Town", mapId: n.position.uiMap, x: n.position.mapX, y: n.position.mapY, source: "Reviewed travel reference" });
-    if (n.flightMaster?.npcId) flightNpcs.set(n.flightMaster.npcId, n.label);
+    if (n.flightMaster?.npcId) flightNpcs.set(n.flightMaster.npcId, n);
   }
   const special = new Map(); // npcId -> {kind, sub, extra}
   for (const t of insights?.trainers || []) special.set(t.id, { kind: trainerKind(t.title), sub: t.title || "Trainer", label: t.name, positions: t.positions, lastSeen: t.lastSeen, sides: friendlyTo(t.observedReactionsByFaction), extra: { services: (t.services || []).length } });
   for (const v of vendorPack?.vendors || []) if (!special.has(v.id)) special.set(v.id, { kind: "vendor", sub: "Vendor", label: v.name, positions: v.positions, lastSeen: v.lastSeen, sides: friendlyTo(v.observedReactionsByFaction), extra: { sells: (v.listings || []).slice(0, 6).map((l) => l.name).filter(Boolean) } });
-  for (const [id, town] of flightNpcs) special.set(id, { ...(special.get(id) || {}), kind: "flight", sub: `Flight Master · ${town}` });
+  for (const [id, town] of flightNpcs) special.set(id, { ...(special.get(id) || {}), kind: "flight", sub: `Flight Master · ${town.label}` });
+  const reviewedPoints = new Map();
+  for (const [id, town] of flightNpcs) {
+    const source = travelReference.sources?.find((s) => town.sourceIds?.includes(s.id) && s.scope === "exact-build-observation" && s.build);
+    if (!source || !town.position) continue;
+    const { uiMap: mapId, mapX: x, mapY: y } = town.position;
+    if (!pt({ mapId, x, y })) continue;
+    reviewedPoints.set(id, { mapId, x, y, provenance: { kind: "verified-reference", geometry: "reference-point", build: source.build, source: `${source.publisher} · reviewed travel reference`, observedOn: source.observedOn } });
+  }
   const seen = new Set();
   const npcRows = [];
   if (knowledgePack) for (const n of Object.values(knowledgePack.npcs || {})) if (n.kind === "npc") npcRows.push({ ...n, build: knowledgePack.build, tier: "observed" });
@@ -43,12 +51,16 @@ function buildStaticIndex({ knowledgePack = null, npcReference = null, travelRef
   for (const n of npcRows) {
     const s = special.get(n.id);
     const positions = n.positions?.length ? n.positions : s?.positions || [];
-    for (const p of positions.slice(0, 3)) {
+    // Prefer the independently reviewed geometry over nearby merged points in the same deduplication bucket.
+    const reviewed = reviewedPoints.get(n.id);
+    const candidates = positions.slice(0, 3);
+    if (reviewed) candidates.unshift(reviewed);
+    for (const p of candidates) {
       const key = `${n.id}:${p.mapId}:${Math.round(p.x * 200)}:${Math.round(p.y * 200)}`;
       if (seen.has(key)) continue;
       seen.add(key);
       const sides = n.side ? [n.side] : s?.sides || null;
-      add({ id: `npc:${n.id}:${p.mapId}:${Math.round(p.x * 1000)}`, npcId: n.id, kind: s?.kind || "npc", label: n.name, sub: s?.sub || null, sides, mapId: p.mapId, x: p.x, y: p.y, lastSeen: n.lastSeen || s?.lastSeen || null, build: n.build, evidence: n.tier, ...(s?.extra || {}), source: "Efficient Games, CC BY 4.0" });
+      add({ id: `npc:${n.id}:${p.mapId}:${Math.round(p.x * 1000)}`, npcId: n.id, kind: s?.kind || "npc", label: n.name, sub: s?.sub || null, sides, mapId: p.mapId, x: p.x, y: p.y, lastSeen: p.provenance ? p.provenance.observedOn : n.lastSeen || s?.lastSeen || null, build: p.provenance?.build || n.build, evidence: n.tier, ...(s?.extra || {}), source: "Efficient Games, CC BY 4.0", ...(p.provenance ? { provenance: p.provenance } : {}) });
     }
   }
   // Trainers/vendors that the NPC packs do not list still appear.
@@ -175,6 +187,8 @@ function objectiveAreas(profile, index, creatures, mapId) {
   const out = [];
   if (!index || !profile) return out;
   const level = Number.isInteger(profile.level) ? profile.level : null;
+  const merged = index.pack.builds?.some(({ build }) => build !== index.pack.build);
+  const reference = { kind: "approximate-reference", build: merged ? null : index.pack.build || null, source: `Efficient Games · ${merged ? "merged " : ""}Forever quest reference` };
   for (const r of relevantQuests(profile, index)) {
     if (r.status === "ready") continue;
     const rec = r.record || {};
@@ -188,6 +202,7 @@ function objectiveAreas(profile, index, creatures, mapId) {
       const logged = r.log?.objectives?.[i - 1];
       if (logged?.done) continue;
       let points = (loc?.positions || []).filter((p) => p.mapId === mapId && pt(p));
+      const geometry = points.length ? "objective-progress-area" : "creature-reference-area";
       // Kill objectives without progress observations here fall back to where the creature itself was seen.
       if (!points.length && type === "monster" && o?.objectId) points = (index.pack.npcs[`npc:${o.objectId}`]?.positions || []).filter((p) => p.mapId === mapId && pt(p));
       if (!points.length) continue;
@@ -202,6 +217,7 @@ function objectiveAreas(profile, index, creatures, mapId) {
         id: `oa:${r.id}:${i}:${k}`, kind: "objective-area", questId: r.id, questTitle: r.title || rec.title || `Quest #${r.id}`, status: r.status, index: i, type,
         label, target: name, progress: logged?.text || null, mapId, ...shape, creature, levels: creature ? levelText(creature) || null : null, difficulty: diff,
         warning: creatureWarning(creature, level), source: r.status === "available" ? "Reference; availability unverified" : "Your quest log + reference",
+        provenance: { ...reference, geometry },
       }));
     }
   }
@@ -226,7 +242,8 @@ function findPins(profile, mapId) {
   for (const r of profile?.gathering?.records || []) {
     if (r.mapId !== mapId || !pt(r)) continue;
     const f = FIND[r.method] || FIND.herbalism;
-    out.push({ id: `find:${r.id}`, kind: "find", gather: f.gather, label: r.name || f.label, sub: f.sub, mapId, x: r.x, y: r.y, lastSeen: r.observedAt?.slice?.(0, 10) || null, source: "Recorded by your addon" });
+    out.push({ id: `find:${r.id}`, kind: "find", gather: f.gather, label: r.name || f.label, sub: f.sub, mapId, x: r.x, y: r.y, lastSeen: r.observedAt?.slice?.(0, 10) || null, source: "Recorded by your addon",
+      provenance: { kind: "private-find", geometry: "standing-point", build: r.clientBuild || null, source: "Your addon" } });
   }
   return out;
 }

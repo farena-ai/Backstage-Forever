@@ -1,7 +1,7 @@
 ;(function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.BFPracticeLab = factory();
-})(globalThis, function () {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./academy-tank-pack.js'), require('./academy-healer-pack.js'));
+  else root.BFPracticeLab = factory(root.BFAcademyTankPack, root.BFAcademyHealerPack);
+})(globalThis, function (tank, healer) {
   'use strict';
 
   function drill(id, title, prompt, improvement, options) {
@@ -36,8 +36,11 @@
       'Check incoming danger as well as current health when choosing whom to heal.', [
         ['lowest', 'Heal the ally at 45%', 'The safer ally recovers, but the incoming hit still exceeds the other ally’s health.'],
         ['incoming', 'Heal the ally about to take the hit', 'The incoming hit leaves the healed ally at 10% health.', true]
-      ])
+      ]),
+    tank.drill, healer.drill
   ]);
+
+  const lessons = Object.freeze({ [tank.drill.id]: tank.lesson, [healer.drill.id]: healer.lesson });
 
   function createAttempt(drillId) {
     const scenario = drills.find(entry => entry.id === drillId);
@@ -58,5 +61,5 @@
     return createAttempt(attempt?.drill.id);
   }
 
-  return Object.freeze({ drills, createAttempt, choose, retry });
+  return Object.freeze({ drills, lessons, createAttempt, choose, retry });
 });

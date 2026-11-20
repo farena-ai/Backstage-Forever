@@ -129,7 +129,7 @@ function draftKey(form) {
 }
 function rememberDrafts() {
   root.querySelectorAll("form[data-draft-key]").forEach((form) => {
-    if (form.closest("[data-company]")) return;
+    if (form.closest("[data-company], [data-private-weekly], [data-private-after-action]")) return;
     const fields = [...form.elements].filter(
       (e) => e.name && !e.disabled && !e.readOnly,
     );
@@ -152,7 +152,7 @@ function rememberDrafts() {
 }
 function restoreDrafts() {
   root.querySelectorAll("form").forEach((form) => {
-    if (form.closest("[data-company]")) return;
+    if (form.closest("[data-company], [data-private-weekly], [data-private-after-action]")) return;
     const key = draftKey(form);
     form.dataset.draftKey = key;
     const draft = formDrafts.get(key);
@@ -346,6 +346,7 @@ let state,
   metadata = [],
   keys = {},
   version = "",
+  desktopRouteBuild = null,
   page = "now",
   connection = "ollama",
   messages = [],
@@ -411,12 +412,21 @@ async function mutateStateCall(fn) {
   }
 }
 let pendingCharacterSelection = null;
+let fieldbookTrip = null;
 function characterSelectionPending() { return pendingCharacterSelection !== null; }
 async function selectActiveCharacter(id) {
   const previous = pendingCharacterSelection;
   const selection = { id };
   pendingCharacterSelection = selection;
+  JourneyView.invalidate();
+  fieldbookTrip = null;
+  if (page === "practice-lab") root.querySelector("#fieldbook-return")?.setAttribute("hidden", "");
   root.querySelector("[data-academy-dps]")?.remove();
+  root.querySelector(".cov-patch")?.setAttribute("hidden", "");
+  root.querySelector("[data-activity-packing]")?.remove();
+  root.querySelector("[data-local-craft]")?.remove();
+  root.querySelector("[data-craft-handoff]")?.remove();
+  root.querySelector("[data-ledger-local-craft]")?.remove();
   GuidedRouteView.retireRecovery();
   WorldMapView.retireRouteFocus();
   // Keep saves in picker order, including when the player changes their mind mid-save.
@@ -498,6 +508,7 @@ function render() {
   if (Support.deferRender(render)) return;
   if (Voice.deferRender(render) || Memory.deferRender(render)) return;
   if (AdventureCoach.deferRender(render) || CharacterGuidance.deferRender(render) || QuestGuide.deferRender(render) || Company.deferRender(render) || Director.deferRender(render) || Preparation.deferRender(render) || Party.deferRender(render)) return;
+  if (fieldbookTrip && !fieldbookTripCurrent(fieldbookTrip)) fieldbookTrip = null;
   DesktopViewPresets.sync(page === "game" && !setupOpen ? profile()?.id ?? null : null);
   // Snapshot the executed paint, after native interaction guards have released.
   // Disclosure choices belong only to this screen, character and setup lifecycle.
@@ -549,11 +560,24 @@ function render() {
     return;
   }
   const current = PlayerNavigation.current(page);
+  const previousSupplyDesk = root.querySelector("[data-supply-desk]");
+  const supplyFocus = previousSupplyDesk?.contains(document.activeElement) ? document.activeElement : null;
   const previousPracticeLab = page === "practice-lab" ? root.querySelector("[data-practice-lab]") : null;
-  root.innerHTML = `<button type="button" class="skip-content" data-shell-control="skip-content" data-action="skip-content">Skip to content</button><div class="shell"><aside class="rail">${brand()}${PlayerNavigation.main(page)}<div class="rail-bottom">${PlayerNavigation.secondary(page)}<div class="status"><i class="dot"></i>Local journal · private</div><small><button type="button" class="rail-link" data-link="website" title="Open backstagecoding.com in your browser">BACKSTAGE CODING</button><br>Frank Arena &amp; Jason Babiuch<br>v${esc(version)}${/^0./.test(String(version)) ? " · Desktop preview" : ""}</small></div></aside><main class="main" id="main-content" tabindex="-1" aria-labelledby="page-heading"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span id="page-heading" role="heading" aria-level="1">${current.label}${current.label !== current.pageLabel ? " / " + current.pageLabel : ""}</span></div><button data-shell-control="connection-status" class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span><span data-game-connection-label>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}</span><small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select data-shell-control="active-character" id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content${["game", "connections", "updates", "assistant"].includes(page) ? " bf-parchment" : ""}">${PlayerNavigation.subtabs(page)}${page === "practice-lab" ? "" : setupDock()}${{ now: NowView.page, adventure: adventure, company: Company.page, party: Party.page, preparation: Preparation.page, "practice-lab": () => '<div data-practice-lab-host></div>', "world-map": WorldMapView.page, dungeons: DungeonAtlas.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, commands: CommandsView.page, coverage: CoverageView.page, talents: () => TalentsView.academy(characterSelectionPending() ? null : profile()) + TalentsView.page(), journey: JourneyView.page, badges: BadgesView.page, alts: AltsView.page, zones: WorldTrackerView.page, "guided-route": GuidedRouteView.page, sheet: SheetView.page, ledger: LedgerView.bags, "ledger-gold": LedgerView.gold, "ledger-reputation": LedgerView.reputation, "ledger-cooldowns": LedgerView.cooldowns, updates: updatesPage }[page]()}</div></main></div>`;
+  root.innerHTML = `<button type="button" class="skip-content" data-shell-control="skip-content" data-action="skip-content">Skip to content</button><div class="shell"><aside class="rail">${brand()}${PlayerNavigation.main(page)}<div class="rail-bottom">${PlayerNavigation.secondary(page)}<div class="status"><i class="dot"></i>Local journal · private</div><small><button type="button" class="rail-link" data-link="website" title="Open backstagecoding.com in your browser">BACKSTAGE CODING</button><br>Frank Arena &amp; Jason Babiuch<br>v${esc(version)}${/^0./.test(String(version)) ? " · Desktop preview" : ""}</small></div></aside><main class="main" id="main-content" tabindex="-1" aria-labelledby="page-heading"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span id="page-heading" role="heading" aria-level="1">${current.label}${current.label !== current.pageLabel ? " / " + current.pageLabel : ""}</span></div><button data-shell-control="connection-status" class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span><span data-game-connection-label>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}</span><small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select data-shell-control="active-character" id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content${["game", "connections", "updates", "assistant"].includes(page) ? " bf-parchment" : ""}">${PlayerNavigation.subtabs(page)}${page === "practice-lab" ? "" : setupDock()}${{ now: NowView.page, adventure: adventure, company: Company.page, party: Party.page, preparation: Preparation.page, "practice-lab": () => '<div data-practice-lab-host></div>', "world-map": WorldMapView.page, dungeons: DungeonAtlas.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, commands: CommandsView.page, coverage: () => CoverageView.page(characterSelectionPending() ? null : profile(), desktopRouteBuild), talents: () => TalentsView.academy(characterSelectionPending() ? null : profile()) + TalentsView.page(), journey: JourneyView.page, badges: BadgesView.page, alts: AltsView.page, zones: WorldTrackerView.page, "guided-route": GuidedRouteView.page, sheet: SheetView.page, ledger: LedgerView.bags, "ledger-gold": LedgerView.gold, "ledger-reputation": LedgerView.reputation, "ledger-cooldowns": LedgerView.cooldowns, updates: updatesPage }[page]()}</div></main></div>`;
   if (pendingCharacterSelection) document.getElementById("active-character").value = pendingCharacterSelection.id;
   PlayerNavigation.mounted(root);
-  if (page === "practice-lab") PracticeLabView.mount(root.querySelector("[data-practice-lab-host]"), { previous: previousPracticeLab });
+  if (page === "company" || page === "preparation")
+    SupplyDesk.mount({ root, page, previous: previousSupplyDesk, focus: supplyFocus, api, esc });
+  if (page === "practice-lab") {
+    const trip = fieldbookTrip;
+    PracticeLabView.mount(root.querySelector("[data-practice-lab-host]"), {
+      previous: previousPracticeLab,
+      fieldbook: trip && {
+        drillId: trip.action.drillId,
+        returnToPlan: (instanceId, drillId) => returnToFieldbook(trip, instanceId, drillId),
+      },
+    });
+  }
   window.ZoneArt?.paint(root);
   refreshGameStatusWidget();
   restoreDrafts();
@@ -592,8 +616,8 @@ function render() {
   WorldTrackerView.mounted();
   GuidedRouteView.mounted();
   LedgerView.mounted();
-  SheetView.mounted();
-  DungeonAtlas.mounted();
+  SheetView.mounted(characterSelectionPending() ? null : profile());
+  DungeonAtlas.mounted(openAtlasQuestion, { open: openFieldbookPractice, returning: restoreFieldbookPlan }, ownsDungeonProgression);
   Preparation.mounted();
   Party.mounted();
   Director.mounted();
@@ -894,6 +918,7 @@ function guide() {
     <section class="panel"><div class="eyebrow">07 · Your ledger</div><h3>Where did that item go?</h3><p><strong>Ledger</strong> shows the bags, bank and mail of every character in one searchable list, their gold, reputations with every faction (Alliance and Horde alike) and profession cooldowns such as transmutes. Open your bank and mailbox once in game so the addon can see them; it keeps what it saw last, with the time. With <code>/bf prices</code> on, the addon remembers the lowest buyout on Auction House pages you open yourself. It never searches, bids or buys, and your ledger stays on this computer: it is not part of community sharing.</p></section>
     <section class="panel"><div class="eyebrow">08 · Your character sheet</div><h3>Gear, stats and gear sets.</h3><p><strong>Characters → Sheet</strong> shows what your character wears slot by slot, in quality colours, with the average item level, empty slots, pieces that are falling behind your level and upgrades already in your bags or bank. The addon also reads your base stats, armor, attack power and resistances whenever it saves.</p><p>In game, <code>/bf set save dungeon</code> remembers what you wear; <code>/bf set wear dungeon</code> puts it back on from your bags, only when you type it and never in combat. The Sheet page lists every set and where each missing piece is: bank, mail or another character. On <strong>Ledger → Gold & prices</strong> you can set a gold goal, for example for riding and your first mount; the app counts gold on every character and estimates the days left from your recent pace.</p><div class="actions"><button data-nav="sheet">Open Sheet</button><button data-nav="ledger-gold">Gold & prices</button></div></section>
     ${Recovery.markup()}
+    <section class="panel"><h3>Local plan pack</h3><p>Review a Deadmines preparation checklist before importing it on this computer.</p><button type="button" data-open-local-plan-pack>Open local plan pack</button></section>
     ${Support.markup()}
   </div><p class="corner-note">Backstage Forever v${esc(version)} · Backstage Coding · Designed by Frank Arena and Jason Babiuch · <button type="button" class="rail-link" data-link="website">backstagecoding.com ↗</button><br>World of Warcraft is a trademark of Blizzard Entertainment. This independent project is not endorsed by Blizzard.</p>`;
 }
@@ -1076,9 +1101,10 @@ Recovery.init({ api, root, esc, active: () => Boolean(state?.onboarded) && !setu
     await autosaveQueue;
     const next = await mutateStateCall(() => api.restoreCheckpoint(input));
     if (next) {
+      JourneyView.invalidate();
       retireCompanion(false); Support.invalidate();
       Company.invalidate(true); Director.invalidate(); QuestGuide.invalidate(true);
-      CharacterGuidance.invalidate(true); Preparation.invalidate(); Preparation.remove(); DesktopViewPresets.remove(); Party.invalidate(); Party.remove();
+      CharacterGuidance.invalidate(true); Preparation.invalidate(); Preparation.remove(); LedgerView.invalidate(); DesktopViewPresets.remove(); Party.invalidate(); Party.remove();
       autosaveGeneration++; formDrafts.clear(); state = next; messages = [];
       gameStatus = { connected: false };
       connection = state.provider.id; authChoice = state.provider.authMode || "api";
@@ -1128,8 +1154,8 @@ Memory.init({api, root, esc,
   },
 });
 window.ObjectiveView?.init(() => state);
-LedgerView.init(() => state?.activeProfileId);
-JourneyView.init(profile);
+LedgerView.init(() => state?.activeProfileId, characterSelectionPending);
+JourneyView.init(profile, characterSelectionPending);
 QuestGuide.init({ api, root, esc, portrait, selectedMemoryIds: () => Memory.selectedIds(), ready: () => companionReady, notify: toast, onStatus: value => { questStatusRequest++;knowledgeStatus = value; } });
 AdventureCoach.init({api,root,esc,profile,active:()=>page === "adventure" && !setupOpen && Boolean(state?.onboarded)});
 Director.init({
@@ -1161,19 +1187,74 @@ Director.init({
     toast(result.created ? "Quest session saved. Tracking starts from this saved capture." : "Opened your existing quest session. No duplicate plan was created.");
   },
 });
-async function openQuestionDraft(question,valid=()=>true){
+function fieldbookTripCurrent(trip) {
+  return fieldbookTrip === trip && page === trip.page && state.onboarded && !setupOpen && !characterSelectionPending() &&
+    trip.generation === autosaveGeneration &&
+    CommandsView.scopedPractice.resolve(trip.action, profile(), trip.action.instanceId, trip.action.drillId);
+}
+function openFieldbookPractice(instanceId, drillId, mode, modelOwner) {
+  if (page !== "dungeons" || setupOpen || characterSelectionPending()) return;
+  const action = CommandsView.scopedPractice.create(profile(), instanceId, drillId, mode);
+  if (!action || modelOwner === undefined || !CommandsView.scopedPractice.resolve(action, modelOwner, instanceId, drillId)) return;
+  questNavigationRequest++;
+  page = "practice-lab";
+  fieldbookTrip = { action, page, generation: autosaveGeneration };
+  render();
+}
+function returnToFieldbook(trip, instanceId, drillId) {
+  if (page !== "practice-lab" || !fieldbookTripCurrent(trip) ||
+      !CommandsView.scopedPractice.resolve(trip.action, profile(), instanceId, drillId)) return;
+  questNavigationRequest++;
+  DungeonAtlas.awaitPracticeReturn();
+  page = "dungeons";
+  fieldbookTrip = { ...trip, page };
+  render();
+}
+function restoreFieldbookPlan(modelOwner, hasPlan) {
+  const trip = fieldbookTrip;
+  if (trip?.page !== "dungeons") return null;
+  const mode = fieldbookTripCurrent(trip);
+  fieldbookTrip = null;
+  return mode && hasPlan && modelOwner !== undefined &&
+    CommandsView.scopedPractice.resolve(trip.action, modelOwner, trip.action.instanceId, trip.action.drillId) ? mode : null;
+}
+function ownsDungeonProgression(model) {
+  const p = profile();
+  return !characterSelectionPending() && p?.source?.kind === "wow-addon" &&
+    p.id === model.owner?.profileId && p.source.id === model.owner?.sourceId &&
+    p.source.updatedAt === model.savedAt && p.clientBuild === model.clientBuild;
+}
+function openAtlasQuestion(entity, sourceCurrent) {
+  if (entity.kind !== "dungeon-prep" || entity.id !== "dm") return;
+  const profileId = state.activeProfileId;
+  const current = () => page === "dungeons" && !setupOpen && !characterSelectionPending() &&
+    state.activeProfileId === profileId && sourceCurrent();
+  if (current()) return openQuestionDraft("Dungeon prep for #dm", current, { keepExisting: true });
+}
+async function openQuestionDraft(question,valid=()=>true,{keepExisting=false}={}){
   const revision=questionRevision,generation=autosaveGeneration;
   await autosaveQueue;
-  if(!valid()||revision!==questionRevision||generation!==autosaveGeneration||sending)return;
+  if(!valid()||revision!==questionRevision||generation!==autosaveGeneration||sending||chatStarting)return;
   retireCompanion();
   page="assistant";render();
   const field=root.querySelector('#chat-form [name="prompt"]');
   if(!field)return;
-  field.value=question;questionRevision++;
-  field.dispatchEvent(new Event("input",{bubbles:true}));field.focus();
+  if (keepExisting && field.value.trim()) {
+    toast("Kept your unsent question. Clear it before opening another draft.");
+  } else {
+    field.value=question;questionRevision++;
+    field.dispatchEvent(new Event("input",{bubbles:true}));
+  }
+  field.focus();
+  field.setSelectionRange(field.value.length, field.value.length);
   QuestGuide.updateContext();
 }
-root.addEventListener("input",event=>{if(event.target.matches?.('#chat-form [name="prompt"]'))questionRevision++;});
+root.addEventListener("input", event => {
+  const field = event.target;
+  if (!field.matches?.('#chat-form [name="prompt"]')) return;
+  questionRevision++;
+  if (field.value === "") formDrafts.delete(field.form.dataset.draftKey);
+});
 CharacterGuidance.init({
   api, root, esc, portrait, openDraft: openQuestionDraft,
   active: () => page === "characters" && !setupOpen && Boolean(state?.onboarded),
@@ -1198,9 +1279,10 @@ Preparation.init({
   openDraft: openQuestionDraft,
   sourcesInitiallyOpen: id => DesktopViewPresets.defaults(id).preparationSources,
   character: () => profile(),
+  characterPending: characterSelectionPending,
   active: () => page === "preparation" && !setupOpen && Boolean(state?.onboarded),
   profileId: () => state?.activeProfileId,
-  sourceSignature: () => JSON.stringify(state?.profiles.map(p => [p.id,p.clientBuild,p.source,p.readiness,p.name,p.className,p.faction])),
+  sourceSignature: () => JSON.stringify(state?.profiles.map(p => [p.id,p.clientBuild,p.source,p.readiness,p.ledger?.bags?.seenAt,p.name,p.realm,p.className,p.faction])),
   epoch: () => stateMutationEpoch,
   mutate: (id, options, valid) => {
     const generation = autosaveGeneration;
@@ -1347,11 +1429,19 @@ root.addEventListener("click", (event) => {
     return;
   }
   if (button.hasAttribute("data-company-share")) { if(page==="company")Party.shareJourney(button.dataset.companyShare); return; }
+  if (button.hasAttribute("data-journey-newcomer")) {
+    if (page === "journey" && !setupOpen && !characterSelectionPending()) Party.openNewcomerRun();
+    return;
+  }
   if (button.closest("[data-recovery]") || (button.closest("[data-support]") && button.dataset.nav !== "game")) return;
   if (button.closest("[data-view-presets]") || button.closest("[data-practice-lab]")) return;
   if (button.closest("[data-party]") && !button.dataset.nav) return;
   if (button.hasAttribute("data-director-start") || button.hasAttribute("data-preparation-add") || button.hasAttribute("data-preparation-retry") || button.hasAttribute("data-preparation-ask")) return;
   if (button.hasAttribute("data-company-command") || button.hasAttribute("data-company-open") || button.closest("[data-company-form]")) return;
+  if (button.dataset.nav && fieldbookTrip) {
+    fieldbookTrip = null;
+    root.querySelector("#fieldbook-return")?.setAttribute("hidden", "");
+  }
   if (button.dataset.nav || button.dataset.character || ["reset", "import", "new-character", "delete-character"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) { questNavigationRequest++;questStatusRequest++;CharacterGuidance.invalidate(); QuestGuide.invalidate(); Company.invalidate(); Director.invalidate(); Preparation.invalidate(); Party.invalidate(); }
   if (button.dataset.nav || button.dataset.character || button.dataset.provider || ["clear-chat", "reset", "import", "new-character", "delete-character", "delete-key", "subscription-login", "subscription-logout", "explain-plan"].includes(button.dataset.command) || button.dataset.command?.startsWith("setup-")) retireCompanion();
   // A click owns its navigation before the save barrier; reference polls cannot retarget it.
@@ -1671,7 +1761,7 @@ root.addEventListener("click", (event) => {
           NowView.removeDismissals(target);
           GuidedRouteView.removeSkips(target);
           CommandCenter.remove(target);
-          Preparation.remove(target);
+          Preparation.remove(target); LedgerView.invalidate();
           Party.remove(target);
           DesktopViewPresets.remove(target);
           await refreshBrief();
@@ -1697,10 +1787,11 @@ root.addEventListener("click", (event) => {
         stateMutationEpoch++;
         const next = await mutateStateCall(() => api.importData());
         if (next) {
+          JourneyView.invalidate();
           Company.invalidate(true);
           CharacterGuidance.invalidate(true);
           Preparation.invalidate();
-          Preparation.remove(); DesktopViewPresets.remove();
+          Preparation.remove(); LedgerView.invalidate(); DesktopViewPresets.remove();
           Party.invalidate(); Party.remove();
           chatGeneration++;
           autosaveGeneration++;
@@ -1727,10 +1818,11 @@ root.addEventListener("click", (event) => {
         stateMutationEpoch++;
         const next = await mutateStateCall(() => api.resetData());
         if (next) {
+          JourneyView.invalidate();
           Company.invalidate(true);
           CharacterGuidance.invalidate(true);
           Preparation.invalidate();
-          Preparation.remove(); DesktopViewPresets.remove();
+          Preparation.remove(); LedgerView.invalidate(); DesktopViewPresets.remove();
           Party.invalidate(); Party.remove();
           CommandCenter.remove();
           GuidedRouteView.removeSkips();
@@ -1860,7 +1952,7 @@ root.addEventListener("change", (event) =>
 root.addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.target;
-  if (form.dataset.companyForm) return;
+  if (form.dataset.companyForm || form.dataset.privateWeeklyForm || form.hasAttribute("data-after-action-form")) return;
   if (form.id === "chat-form") {
     if (sending || chatStarting) return;
     chatStarting = true;
@@ -2037,6 +2129,7 @@ const desktopDispatch = FieldDispatchDesktop.create({
     metadata = initial.providers;
     keys = initial.secretStatus;
     version = initial.version;
+    desktopRouteBuild = initial.desktopRouteBuild ?? null;
     gameStatus = initial.gameStatus || {};
     acceptBrief(initial);
     updateInfo = initial.updateStatus || updateInfo;
@@ -2122,6 +2215,7 @@ setInterval(async () => {
       gameStatus = result.gameStatus || {};
       acceptBrief(result);
       if (chromeChanged) render();
+      else if (Preparation.packingChanged()) Preparation.paint();
       const savedAge = root.querySelector(".game-status-chip small");
       if (savedAge) savedAge.textContent = profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character";
       Preparation.refresh();
@@ -2203,6 +2297,7 @@ root.addEventListener("keydown", (event) => {
     event.keyCode !== 229
   ) {
     event.preventDefault();
-    if (!sending) event.target.form.requestSubmit();
+    // A held Enter can follow focus from an opener into the newly mounted draft.
+    if (!event.repeat && !sending) event.target.form.requestSubmit();
   }
 });

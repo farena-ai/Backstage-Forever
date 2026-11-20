@@ -106,7 +106,58 @@
     { name: "Community", what: "Herb, ore and chest spots you gather, and where you looted quest creatures, are shared anonymously so other players can find them, and theirs show on your World Map (teal Community finds layer), NPC cards and in the loot browser, always labelled Community with how many players reported them. No names, realm, account or chat are ever sent. Turn it off under Settings → Game connection → Community, where you can also forget your contributions or report a problem." },
     { name: "Settings", what: "Game connection (folder, addon, live link, community sharing), AI connection and updates." },
   ]);
-  if (typeof module === "object" && module.exports) { module.exports = { CATALOG, FEATURES, APP }; return; }
+  // Local navigation descriptor, not a slash command or a second action catalog.
+  const markerKind = "saved-quest-marker";
+  const fields = ["kind", "questId", "profileId", "sourceId", "build", "phase", "mapId", "x", "y"];
+  const positiveId = (v) => Number.isSafeInteger(v) && v > 0 && v <= 2147483647;
+  const present = (v) => typeof v === "string" && v.length > 0;
+  const coordinate = (v) => Number.isFinite(v) && v >= 0 && v <= 1;
+  function resolveMarker(a, p) {
+    if (!a || Object.keys(a).length !== fields.length || !fields.every((key) => Object.hasOwn(a, key)) ||
+        a.kind !== markerKind || !positiveId(a.questId) || !positiveId(a.mapId) || !coordinate(a.x) || !coordinate(a.y) ||
+        !present(a.profileId) || !present(a.sourceId) || typeof a.build !== "string" ||
+        !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/.test(a.build) ||
+        p?.id !== a.profileId || p.source?.kind !== "wow-addon" || p.source.id !== a.sourceId || p.clientBuild !== a.build) return null;
+    const quest = p.quests?.find((q) => q.id === a.questId);
+    const point = quest?.destination;
+    // Match the Guide's server-approved clipboard precision, not map/reference points.
+    return typeof quest?.complete === "boolean" && a.phase === (quest.complete ? "t" : "o") &&
+      point?.mapId === a.mapId && coordinate(point.x) && coordinate(point.y) &&
+      Number(point.x.toFixed(4)) === a.x && Number(point.y.toFixed(4)) === a.y ? quest : null;
+  }
+  const scopedQuest = Object.freeze({
+    create(p, questId, w) {
+      if (w?.source !== "game" || w.canCopy !== true || !w.destination) return null;
+      const { mapId, x, y } = w.destination;
+      const a = { kind: markerKind, questId, profileId: p?.id, sourceId: p?.source?.id, build: p?.clientBuild, phase: w.phase, mapId, x, y };
+      return resolveMarker(a, p) ? a : null;
+    },
+    mapTarget(a, p) {
+      const q = resolveMarker(a, p);
+      if (!q) return null;
+      return { mapId: a.mapId, x: a.x, y: a.y, questId: a.questId, profileId: a.profileId,
+        routeBuild: a.build, routeSource: a.sourceId, kind: a.phase === "t" ? "quest-turnin" : "quest-objective",
+        label: q.title || `Quest #${a.questId}`, scopedQuest: a };
+    },
+    returnQuestId(a, p) { return resolveMarker(a, p)?.id ?? null; },
+  });
+  // A public fictional drill does not require a game save. Even a null/manual
+  // context must match on return; a build here is identity, not evidence.
+  const practiceIdentity = p => ({ profileId: p?.id ?? null, sourceKind: p?.source?.kind ?? null,
+    sourceId: p?.source?.id ?? null, build: p?.clientBuild ?? null });
+  const scopedPractice = Object.freeze({
+    create(p, instanceId, drillId, mode) {
+      if (instanceId !== "dm" || drillId !== "opener" || !["full", "compact"].includes(mode) ||
+          (p && !present(p.id))) return null;
+      return Object.freeze({ kind: "fieldbook-practice", instanceId, drillId, mode, ...practiceIdentity(p) });
+    },
+    resolve(action, p, instanceId, drillId) {
+      const expected = scopedPractice.create(p, instanceId, drillId, action?.mode);
+      return expected && Object.keys(action).length === Object.keys(expected).length &&
+        Object.keys(expected).every(key => Object.hasOwn(action, key) && action[key] === expected[key]) ? expected.mode : null;
+    },
+  });
+  if (typeof module === "object" && module.exports) { module.exports = { CATALOG, FEATURES, APP, scopedQuest, scopedPractice }; return; }
   const ICONS = Object.freeze({ "Finding your way": "finding-your-way", "Your character": "your-character", "Adventure Compass": "adventure-compass", "Helpers on or off": "helpers", "Live link": "live-link", "Ask the companion": "live-link", "Advanced": "advanced" });
   const icon = (name) => `<img class="cmd-ico" src="art/icons/${name}.png" alt="" width="40" height="40">`;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -150,5 +201,5 @@
       setTimeout(() => { b.textContent = "Copy"; }, 1500);
     });
   }
-  window.CommandsView = { page, mounted, CATALOG, FEATURES, APP };
+  window.CommandsView = { page, mounted, CATALOG, FEATURES, APP, scopedQuest, scopedPractice };
 })();

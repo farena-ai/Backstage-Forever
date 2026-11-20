@@ -62,7 +62,14 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   };
   await app.evaluate(()=>{travelFixture.keys=0;});
   await send('what is the fastest way from org to tb');
-  assert.match(await page.locator('[data-travel-result]').innerText(),/Thunder Bluff/);assert.equal(await page.locator('.travel-option').count(),2);
+  const comparison = page.locator('[data-travel-result]');
+  assert.match(await comparison.locator('h3').innerText(), /Compare two documented options from Orgrimmar to Thunder Bluff/);
+  assert.equal(await comparison.locator('.travel-option').count(), 2);
+  const comparisonLabels = await comparison.locator('.travel-option .eyebrow').allTextContents();
+  assert.deepEqual(comparisonLabels, ['Documented option · flight', 'Documented option · road']);
+  assert.match(await comparison.innerText(), /Flight: your unlock is unknown\. Check Doras/);
+  assert.match(await comparison.innerText(), /Road: this itinerary does not require a flight unlock/);
+  assert.match(await comparison.innerText(), /The fastest route is unknown/);
   const primaryVisible=()=>page.evaluate(()=>{const log=document.querySelector('#chatlog').getBoundingClientRect(),h=document.querySelector('[data-travel-result] h3').getBoundingClientRect(),o=document.querySelector('.travel-option h4').getBoundingClientRect();return h.top>=log.top&&h.bottom<=log.bottom&&o.top>=log.top&&o.bottom<=log.bottom;});
   assert.equal(await primaryVisible(),true,'New route headline and primary option must be visible without scrolling');
   const roadJump=page.getByRole('button',{name:'Show road guide',exact:true}).last();

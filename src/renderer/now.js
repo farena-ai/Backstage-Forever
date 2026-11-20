@@ -246,7 +246,7 @@ window.NowView = (() => {
     const pin = window.ObjectiveView?.recommendation(activeId());
     const pinKey = pin && `pin:${pin.id}`;
     const suggestPin = Boolean(pinKey && !keys.includes(pinKey));
-    const objective = window.ObjectiveView?.card({ suggested: suggestPin, dismiss: suggestPin ? dismissButton(pinKey) : "" }) || "";
+    const objective = window.ObjectiveView?.card({ profileId: activeId(), suggested: suggestPin, dismiss: suggestPin ? dismissButton(pinKey) : "" }) || "";
     const priorityPin = suggestPin ? objective : "", supportingPin = suggestPin ? "" : objective;
     if (error) return `${priorityPin}<div class="now-card"><p role="status">${esc(error)}</p></div>${supportingPin}`;
     if (!advice) return `${priorityPin}<div class="now-card"><p role="status">Working out your next move…</p></div>${supportingPin}`;
@@ -276,15 +276,17 @@ window.NowView = (() => {
     // Quests handed in since the last save (live): shown done, so nothing old reads as still to do.
     const done = log.justDone?.length ? `<h3 class="now-sub">Just completed</h3><ul class="now-log now-done">${log.justDone.map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip done">✓ Completed</span>${esc(q.title)}</button></li>`).join("")}</ul>` : "";
     const top = a.next?.quests?.length ? `<ul class="now-log">${a.next.quests.slice(0, 6).map((q) => `<li><button type="button" data-quest-open="${q.id}"><span class="now-chip new">lvl ${q.level}</span>${esc(q.title)} <small>from ${esc(q.giver)}</small></button></li>`).join("")}</ul>` : "";
-    // Each row shares a baseline; no independent stacks or visually reordered controls.
+    // Keep alternative steps with the primary task, before supporting progress on the keyboard and at compact widths.
     return `<div class="now-grid now-overview">
+      <div class="now-task-stack">
       ${priorityPin || `<article class="now-card now-next">${nextHeading}
         ${first ? `<ol class="now-steps">${stepRow(first, true, savedAt)}</ol>` : `<p>${keys.length ? "No more suggestions for this character today. Your quest log and other tools are still available below." : "No next action found in the available data. You can still browse your quest log and other tools below."}</p>`}
       </article>`}
+      ${alternatives.length ? `<details class="now-card now-followups"><summary>More suggestions</summary><ol class="now-steps">${alternatives.map(s => stepRow(s)).join("")}</ol></details>` : ""}
+      </div>
       ${sessionCard(a)}
     </div>
     ${supportingPin}
-    ${alternatives.length ? `<details class="now-card now-followups"><summary>More suggestions</summary><ol class="now-steps">${alternatives.map(s => stepRow(s)).join("")}</ol></details>` : ""}
     ${reloadBanner()}${weekStrip()}${setupCard(a)}
     <div class="now-grid now-reference">
       <article class="now-card now-questlog"><h2>Quest log ${logLabel}</h2>${log.known === false ? "<p>No quest log has been observed for this character yet.</p>" : questLog}${done}</article>
@@ -413,6 +415,11 @@ window.NowView = (() => {
   }
   function bind(root) {
     root.addEventListener("click", (e) => {
+      if (e.target.closest("[data-objective-resume]") &&
+          (window.characterSelectionPending?.() || root !== mountedFor || !window.ObjectiveView?.recommendation(activeId()))) {
+        e.stopPropagation();
+        return;
+      }
       if (e.target.closest("[data-now-dismiss]")) {
         const current = displayedDismissal;
         if (!current || current.id !== activeId() || root !== mountedFor) return;
@@ -424,7 +431,7 @@ window.NowView = (() => {
         return;
       }
       const m = e.target.closest("[data-now-map]");
-      if (m) { try { window.WorldMapView?.focus(JSON.parse(m.dataset.nowMap)); document.querySelector('[data-nav="world-map"]')?.click(); } catch {} return; }
+      if (m) { try { if (window.WorldMapView?.focus(JSON.parse(m.dataset.nowMap), { revealGoal: true })) document.querySelector('[data-nav="world-map"]')?.click(); } catch {} return; }
       if (e.target.closest('[data-now-act="refresh"]')) load();
       if (e.target.closest('[data-now-act="mini"]')) api.openMiniNow?.().catch(() => {});
       if (e.target.closest('[data-now-act="setup"]')) oneClickSetup();

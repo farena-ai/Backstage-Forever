@@ -20,8 +20,10 @@ window.GuidedRouteView = (() => {
     "unconfirmed-pickup": "Quest availability at the giver is not confirmed. Check in game.",
     "not-in-log": "This quest is not in your saved log. That does not mean you finished it.",
     "not-ready": "Your last save does not show this quest ready to hand in.",
+    "stale-save": "The last save is too old to recommend a route step. Save again in WoW to refresh the evidence.",
+    "unknown-save-time": "The save time is unknown. No route step can be recommended from this save.",
   };
-  let mountedFor = null, request = 0;
+  let mountedFor = null, request = 0, expiryTimer;
   const skipPrefix = "bf-desktop-route-skips-v1:";
   const keyFor = (p) => skipPrefix + JSON.stringify([p.id, p.source?.id, p.clientBuild]);
   function removeSkips(profileId = null) {
@@ -57,12 +59,12 @@ window.GuidedRouteView = (() => {
       source: "Approximate route reference", goal: { title: quest.title, questId: quest.id } };
     const primary = focus ? `<button type="button" class="gr-map" data-map-focus="${esc(JSON.stringify(focus))}">Show on Map</button>`
       : fallback ? `<button type="button" class="gr-map" data-quest-open="${fallback.id}" data-ledger-quest-profile="${esc(d.profileId)}">Open saved quest</button>`
-      : `<button type="button" class="gr-map" data-nav="zones">Browse zones</button>`;
+      : "";
     return `<section class="gr-card" data-gr-recovery aria-labelledby="gr-heading"><h2 id="gr-heading" tabindex="-1">Resume your route</h2>
       ${owner ? `<p class="gr-note"><b>${esc(owner.name)}</b>${owner.source?.updatedAt ? ` · ${esc(new Date(owner.source.updatedAt).toLocaleString())} · <span>Last saved · not live</span>` : ""}</p>` : ""}
       ${step ? `<p class="gr-note">${esc(KIND[step.kind] || step.kind)} · ${step.index + 1} / ${d.route.total}</p><p><strong>${esc(step.text)}</strong></p>` : ""}
       ${reason ? `<p>${esc(REASON[reason])}</p>` : `<p class="gr-note">${esc(d.mapName || `Map ${map.mapId}`)} · <span>Approximate route reference</span></p>`}
-      ${fallback ? `<p class="gr-note"><span>In your saved quest log</span> · ${esc(fallback.title)}</p>` : ""}
+      ${reason ? `<p class="gr-note"><strong>Plan B:</strong> ${fallback ? `<span>In your saved quest log</span> · ${esc(fallback.title)}` : "No supported alternative in the last save."}</p>` : ""}
       <div class="gr-recovery-actions">${primary}${step && skipped.length < d.skipLimit ? `<button type="button" class="gr-ghost" data-gr-player="skip">Skip this step</button>` : ""}${skipped.length ? `<button type="button" class="gr-ghost" data-gr-player="restore">Restore skipped steps</button>` : ""}</div>
       ${skipped.length ? `<p class="gr-note">${skipped.length} · <span>Skipped here, not completed in game.</span></p>` : ""}
     </section>
@@ -91,6 +93,7 @@ window.GuidedRouteView = (() => {
   const reading = '<p class="gr-empty" role="status">Reading the route…</p>';
   function retireRecovery() {
     request++;
+    clearTimeout(expiryTimer);
     const slot = document.querySelector("[data-guided-route-body]");
     if (slot) {
       slot.innerHTML = reading;
@@ -103,13 +106,23 @@ window.GuidedRouteView = (() => {
   }
   function mounted() {
     const root = document.querySelector("[data-guided-route]");
-    if (!root || mountedFor === root) return;
+    if (mountedFor === root) return;
+    clearTimeout(expiryTimer);
     mountedFor = root;
+    if (!root) return;
     const owner = profile(), slot = root.querySelector("[data-guided-route-body]");
     let data = null, busy = false;
     const current = () => !characterSelectionPending() && root.isConnected && mountedFor === root && profile() === owner;
+    function expire() {
+      if (!Number.isFinite(data?.recovery.freshUntil) || Date.now() < data.recovery.freshUntil) return false;
+      data = { ...data, recovery: { reason: "stale-save", skipped: data.recovery.skipped } };
+      slot.innerHTML = body(data, owner); // body() escapes dynamic text and JSON attributes.
+      window.I18n?.apply(slot);
+      return true;
+    }
     async function load(skips = readSkips(owner), save = false) {
       const id = ++request;
+      clearTimeout(expiryTimer);
       busy = true;
       try {
         const next = await api.guidedRoute({ profileId: owner?.id ?? null, skips });
@@ -117,8 +130,13 @@ window.GuidedRouteView = (() => {
         if (!next || next.profileId !== (owner?.id ?? null) || next.build !== (owner?.clientBuild ?? null)) throw Error();
         if (save) localStorage.setItem(keyFor(owner), JSON.stringify(next.recovery.skipped));
         data = next;
-        slot.innerHTML = body(data, owner); // Dynamic display text and JSON attributes are escaped in body().
-        window.I18n?.apply(slot);
+        if (!expire()) {
+          slot.innerHTML = body(data, owner);
+          window.I18n?.apply(slot);
+          if (Number.isFinite(data.recovery.freshUntil)) expiryTimer = setTimeout(() => {
+            if (id === request && current()) expire();
+          }, Math.max(0, data.recovery.freshUntil - Date.now()));
+        }
         if (save) slot.querySelector("#gr-heading").focus();
       } catch {
         if (!current() || id !== request) return;
@@ -129,6 +147,8 @@ window.GuidedRouteView = (() => {
     }
     root.addEventListener("click", async (e) => {
       if (slot.contains(e.target) && (!current() || busy)) { e.stopPropagation(); return; }
+      // Timers may be suspended or the wall clock may jump while the desktop sleeps.
+      if (slot.contains(e.target) && expire()) { e.stopPropagation(); slot.querySelector("#gr-heading")?.focus(); return; }
       const player = e.target.closest?.("[data-gr-player]")?.dataset.grPlayer;
       if (player === "retry") return load();
       if (player === "skip" && data?.recovery.step) return load([...data.recovery.skipped, data.recovery.step.id], true);

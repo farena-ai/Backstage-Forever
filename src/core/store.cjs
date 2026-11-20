@@ -8,6 +8,7 @@ const { changeObjective, reconcileObjectives } = require("./objectives.cjs");
 const { preserveMemories } = require("./memory-data.cjs");
 const { RecoveryCheckpoints } = require("./recovery-checkpoints.cjs");
 const { encodeJournalState, decodeJournalState, hasInlineDesktopAwards } = require("./journal-persistence.cjs");
+const { MAX_TOKEN, candidate, sameScope, removalToken, workshopCraft, clearLegacyLocalCraft } = require("./local-craft.cjs");
 class StoreStartupError extends Error {
   constructor(kind) { super("Saved local data could not be opened."); this.name = "StoreStartupError"; this.kind = kind; }
 }
@@ -23,6 +24,10 @@ function atomic(file, text) {
   }
 }
 class Store {
+  #craftGeneration = crypto.randomUUID();
+  // Legacy writers replace journals without knowing about the craft sidecar.
+  // Never read consent from disk; a new desktop session needs a fresh opt-in.
+  localCraft = [];
   constructor(dir, safeStorage, { recovery, now = Date.now } = {}) {
     this.dir = dir;
     this.safe = safeStorage;
@@ -30,6 +35,7 @@ class Store {
     fs.mkdirSync(dir, { recursive: true });
     this.file = path.join(dir, "state.json");
     this.keyFile = path.join(dir, "credentials.json");
+
     let persisted;
     try {
       if (fs.existsSync(this.file)) {
@@ -78,6 +84,26 @@ class Store {
   saveMemories(memories) {
     return this.#writeState({ ...this.state, memories }, true);
   }
+  workshopCraft(model) {
+    return workshopCraft(this.state, this.localCraft, model, this.now(), this.#craftGeneration);
+  }
+  changeLocalCraft(profileId, token) {
+    if (profileId !== this.state.activeProfileId || typeof token !== "string" || token.length > MAX_TOKEN) return false;
+    const profile = this.state.profiles.find(p => p.id === profileId);
+    if (!profile) return false;
+    const next = this.localCraft.filter(c => c.profileId !== profileId);
+    if (token === removalToken(this.#craftGeneration)) {
+      if (next.length === this.localCraft.length) return false;
+    } else {
+      const recipeId = Number(token.split(":", 1)[0]);
+      const current = candidate(profile, recipeId, this.now(), this.#craftGeneration);
+      if (!current || current.token !== token) return false;
+      next.push(current.choice);
+    }
+    this.localCraft = next;
+    this.#craftGeneration = crypto.randomUUID();
+    return true;
+  }
   clearRecoveryOriginal() { this.recovery.clearDamagedOriginal(); }
   #writeState(s, preserveObserved, capture = true) {
     const valid = v.validateState(s);
@@ -108,7 +134,15 @@ class Store {
     valid.objectives = reconcileObjectives(valid.objectives, valid.profiles);
     const deleting = preserveObserved && this.state.profiles.some(p => !valid.profiles.some(next => next.id === p.id));
     if (deleting) this.recovery.clear();
+    const active = state => state.profiles.find(p => p.id === state.activeProfileId);
+    const before = active(this.state), after = active(valid);
+    const retireOffer = !preserveObserved || before?.id !== after?.id || before?.clientBuild !== after?.clientBuild ||
+      before?.source?.kind !== after?.source?.kind || before?.source?.id !== after?.source?.id;
+    const retained = preserveObserved ? this.localCraft.filter(c => sameScope(c, valid.profiles.find(p => p.id === c.profileId))) : [];
     atomic(this.file, JSON.stringify(encodeJournalState(valid), null, 2));
+    // Failed promotion must leave both the old journal and live consent intact.
+    this.localCraft = retained;
+    if (retireOffer) this.#craftGeneration = crypto.randomUUID();
     this.state = valid;
     if (capture && !deleting) this.#automaticPoint("save");
     this.onStateChange?.();
@@ -170,6 +204,9 @@ class Store {
     this.recovery.clearRootStages();
     this.recovery.clear({ preferences: true });
     this.#writeState(v.defaultState(), false, false);
+    // This retired store is never read. A locked leftover must not interrupt
+    // credential cleanup or make the already-committed reset report failure.
+    if (!clearLegacyLocalCraft(this.dir)) console.warn("Reset could not remove all retired local craft files.");
     atomic(this.keyFile, "{}");
     this.keys = {};
     return structuredClone(this.state);

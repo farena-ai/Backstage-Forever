@@ -21,6 +21,6 @@ Revoke it right away in the provider's console; deleting it from the app cannot 
 
 ## Builds
 
-Windows installers and Mac zips are built by GitHub Actions from tagged commits; each release lists SHA-256 checksums in `SHA256SUMS.txt`. Builds are not code-signed yet, so Windows and macOS warn the first time you open them.
+Release assets are published from tagged commits, with SHA-256 checksums in `SHA256SUMS.txt`. Current Windows installers carry a timestamped Authenticode signature from **Frank Arena**; the Windows updater also verifies a signed update manifest. macOS builds are ad-hoc signed, not notarized.
 
 Licensed under the [MIT License](LICENSE).

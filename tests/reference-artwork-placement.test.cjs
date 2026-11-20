@@ -6,7 +6,7 @@ const vm = require('node:vm');
 function questGuide(details) {
   const root = { addEventListener() {}, querySelector: (s) => s === '.quest-guide' ? {} : null, querySelectorAll: () => [] };
   const ctx = vm.createContext({ window: {}, document: { activeElement: null, addEventListener() {} }, setTimeout, clearTimeout, queueMicrotask });
-  for (const [file, global] of [['interaction', 'InteractionGuard'], ['player-navigation', 'PlayerNavigation'], ['page-hero', 'PageHero'], ['zone-art', 'ZoneArt'], ['quest-guide', 'QuestGuide']]) {
+  for (const [file, global] of [['interaction', 'InteractionGuard'], ['player-navigation', 'PlayerNavigation'], ['page-hero', 'PageHero'], ['zone-art', 'ZoneArt'], ['commands', 'CommandsView'], ['quest-guide', 'QuestGuide']]) {
     vm.runInContext(fs.readFileSync(require.resolve(`../src/renderer/${file}.js`), 'utf8'), ctx);
     ctx[global] = ctx.window[global];
   }

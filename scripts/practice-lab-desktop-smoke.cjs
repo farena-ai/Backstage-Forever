@@ -75,6 +75,39 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
       await press(lab.getByRole("button", { name: label, exact: true }));
       assert.match(await tip.innerText(), feedback);
     }
+    for (const [id, pack] of [
+      ["tank-first-pull", require("../src/renderer/academy-tank-pack.js")],
+      ["healer-mana-triage", require("../src/renderer/academy-healer-pack.js")],
+    ]) {
+      await picker.focus();
+      await page.keyboard.press("ArrowDown");
+      await page.waitForFunction(value => document.querySelector('#drill-picker').value === value, id);
+      const lesson = lab.getByRole("region", { name: pack.lesson.title });
+      assert.deepEqual(await lesson.locator('p').allTextContents(), Object.values(pack.lesson).slice(1));
+      assert.equal(await lab.getByText('Simulated scenario', { exact: true }).isVisible(), true);
+      if (process.env.BF_PRACTICE_SCREENSHOTS) {
+        await lesson.evaluate(el => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
+        await page.screenshot({ path: path.join(process.env.BF_PRACTICE_SCREENSHOTS, `${id}-electron.png`) });
+      }
+      for (const option of pack.drill.options) {
+        await press(lab.getByRole("button", { name: option.label, exact: true }));
+        await focused("#result-title");
+        assert.equal(await tip.locator('#result-feedback').innerText(), option.feedback);
+        assert.equal(await tip.locator('#result-improvement span').innerText(), pack.drill.improvement);
+        await page.evaluate(() => render());
+        await focused("#result-title");
+        await page.keyboard.press("Tab");
+        await focused("#drill-retry");
+        assert.ok(await inView(lab.getByRole("button", { name: "Retry drill" })));
+        await page.keyboard.press("Space");
+        assert.equal(await tip.isVisible(), false);
+        await focused(`#practice-action-${pack.drill.options[0].id}`);
+      }
+    }
+    await picker.focus();
+    await page.keyboard.press('Home');
+    assert.equal(await lab.locator('#drill-lesson').isVisible(), false);
+    assert.equal(await lab.locator('#drill-lesson').innerText(), '');
     const back = '[data-shell-control="subtab:adventure"]';
     await press(page.locator(back));
     await lab.waitFor({ state: "detached" });
@@ -85,7 +118,7 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     assert.equal(await tip.isVisible(), false);
     assert.equal(await fs.readFile(path.join(dir, "state.json"), "utf8"), fixture);
     assert.deepEqual(errors, []);
-    console.log("PASS desktop Practice Lab: offline/no character, compact viewport, keyboard entry/answer/retry/back, four drills, repaint focus, fresh re-entry and unchanged journal");
+    console.log("PASS desktop Practice Lab: offline/no character, compact viewport, keyboard entry/answer/retry/back, six drills (all nine W4 branches), repaint focus, fresh re-entry and unchanged journal");
   } finally {
     try { await app?.close(); } finally { await fs.rm(dir, { recursive: true, force: true }); }
   }

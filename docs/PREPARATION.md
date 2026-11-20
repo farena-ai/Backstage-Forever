@@ -8,6 +8,14 @@ Add shopping checklist deliberately creates a local plan in **Plans → My plans
 
 Recipe lists can be partial or unavailable when the game's public APIs do not expose them safely. BF never opens profession windows, changes filters, or adopts another player's linked recipe list to fill a gap. Characters with unavailable observations can still use manual checklists in **Plans → My plans**. Existing notes and private goals remain private, and preparation refreshes do not send an AI request.
 
+## Local craft capabilities
+
+In **Professions**, select a recipe with a saved owned profession and a known output item. Open **Local craft capability** and choose **List this recipe locally**. It is off by default, and each character can list one recipe. **Ledger → Cooldowns** lists compatible saved capabilities with their observation dates.
+
+If another character’s Workshop batch has a confirmed shortfall for that exact output item on the same saved client build, **Manual craft handoff** shows who last knew the recipe and what to check in game. It never subtracts alt stock or promises that a character can craft now or that an item can be transferred. Any character switch, craft or transfer is yours to make in WoW.
+
+Choose **Remove local capability** on the listing character to hide the lead without deleting its journal or saved inventory. Permission lasts only until you quit the desktop app, replace or reset the journal, or delete the listing character. A window reload is not an app restart. The app never adopts permissions from older preview files, journal backups, shared plans or Companion input.
+
 ## Historical places to look
 
 The workshop now shows qualified historical source cards beneath matching material IDs. The same reference is available to the current native profession model, without creating a marker or route. It holds seven material/source relations and seventeen approximate historical standing points: Silverleaf (765), Peacebloom (2447), Earthroot (2449), Copper Ore (2770), Rough Stone (2835), corpse-looted Linen Cloth (2589), and the historical Coarse Thread merchant listing (2320). These item labels describe the reference coverage; a consumer must display material names from actual same-ID recipe/material observations. Source labels are bounded reference names of unspecified locale.

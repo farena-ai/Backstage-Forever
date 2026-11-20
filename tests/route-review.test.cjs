@@ -62,6 +62,7 @@ test("the review panel lists steps with keep, leave out, move and undo, and send
   const root = { isConnected: true, addEventListener: (k, f) => { listeners[k] = f; }, querySelector: () => body };
   const slot = { innerHTML: "" };
   const ctx = {
+    setTimeout, clearTimeout,
     window: { backstage: { guidedRoute: async () => null, routeReview: async (i) => { calls.push(["read", i]); return view; }, setRouteReview: async (i) => { calls.push(["set", i]); return true; }, exportRouteReview: async () => true } },
     profile: () => null, characterSelectionPending: () => false, PageHero: { render: () => "" }, document: { querySelector: (q) => (q === "[data-guided-route]" ? root : q === "[data-gr-review-slot]" ? slot : null) },
   };

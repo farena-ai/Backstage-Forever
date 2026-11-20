@@ -1,0 +1,15 @@
+#local-plan-pack {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  box-sizing: border-box;
+  width: min(38rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  overflow: auto;
+}
+#local-plan-pack::backdrop { background: rgb(0 0 0 / 68%); }
+#local-plan-pack label { display: block; margin-block-start: 0.75rem; }
+#local-plan-pack textarea { box-sizing: border-box; width: 100%; font-family: monospace; }
+#local-plan-pack h3:focus { scroll-margin-block-start: 1rem; }
+#local-plan-pack button { scroll-margin-block: 0.75rem; }
+#local-plan-pack [hidden] { display: none; }

@@ -3,6 +3,8 @@
 window.DungeonAtlas = (() => {
   const api = window.backstage;
   let atlas = null, tab = "dungeon", open = null, view = "details", mountedFor = null;
+  let fieldbookMode = "full";
+  let ownsProgression;
   const loot = new Map(); // instance id -> dungeonLoot result (or { error })
   const lootRequests = new Map();
   // One original painting per dungeon and raid (art/dungeons/<id>.webp, local ComfyUI, 0.58).
@@ -21,15 +23,21 @@ window.DungeonAtlas = (() => {
   function page() {
     return `<section class="atlas-page" data-atlas>
       ${PageHero.render({ art: "dungeons", compact: true, eyebrow: "Adventure · Dungeons & raids", title: "Instance Atlas", subAttrs: "data-atlas-level",
-        aside: '<div class="atlas-tabs" role="tablist"><button type="button" role="tab" data-atlas-tab="dungeon">Dungeons</button><button type="button" role="tab" data-atlas-tab="raid">Raids</button><button type="button" role="tab" data-atlas-tab="forever">New in Forever</button></div>' })}
+        aside: `<div class="atlas-tabs" role="tablist" aria-label="Instance types">${[["dungeon", "Dungeons"], ["raid", "Raids"], ["forever", "New in Forever"]].map(([id, label]) =>
+          `<button type="button" role="tab" id="atlas-tab-${id}" data-atlas-tab="${id}" aria-controls="atlas-results" aria-selected="${tab === id}" tabindex="${tab === id ? 0 : -1}">${label}</button>`).join("")}</div>` })}
+      <div class="atlas-results" id="atlas-results" role="tabpanel" aria-labelledby="atlas-tab-${tab}">
       <div class="atlas-suggest" data-atlas-suggest></div>
       <section class="atlas-recap" aria-labelledby="atlas-recap-heading">
         <h2 id="atlas-recap-heading">Your encounter recap</h2>
         <p class="atlas-recap-note">Boss defeats saved in this character’s local journal. Community observations are shown separately below.</p>
         <div data-atlas-recap aria-live="polite"><p>Opening your recap…</p></div>
       </section>
+      <details class="atlas-recap atlas-chest-leads" data-chest-pilot><summary>Chest gear acquisition leads</summary>
+        <div data-chest-leads aria-live="polite"></div>
+      </details>
       <div class="atlas-grid" data-atlas-grid><p class="atlas-loading">Opening the atlas…</p></div>
       <p class="atlas-caution" data-atlas-caution></p>
+      </div>
     </section>`;
   }
   function activeProfileId() {
@@ -59,6 +67,42 @@ window.DungeonAtlas = (() => {
   function paintRecap(root, recap, loading = false) {
     root.querySelector("[data-atlas-recap]").innerHTML = recapContent(savedEncounters(recap), { loading });
   }
+  const CHEST_NAMES = { quest: "Quest", vendor: "Vendor", craft: "Craft", dungeon: "Dungeon" };
+  function chestContent(model) {
+    if (model?.status !== "available") return `<p>${esc(model?.reason || "Chest gear leads are unavailable. Close and reopen to retry.")}</p>`;
+    const profile = esc(model.profileId);
+    return `<p>Forever build ${esc(model.clientBuild)} · Character last saved <time datetime="${esc(model.savedAt)}">${esc(new Date(model.savedAt).toLocaleString())}</time>.</p>
+      <p class="atlas-recap-note">Source leads, not a ranking or confirmation of current availability. A wish-list star does not mean you own the item.</p>
+      ${model.leads.length ? `<ul class="atlas-chest-list">${model.leads.map(r => {
+        const src = `${esc(r.sourceName)} #${esc(r.sourceId)}`;
+        const level = r.requiredLevel === null ? "Equip level unknown" : r.requiredLevel === 0 ? "No minimum equip level listed" : `Equip level ${esc(r.requiredLevel)}${r.equipLevel === "not-met" ? " (not met in this save)" : ""}`;
+        const classes = r.allowedClasses?.length ? ` · Class restriction: ${esc(r.allowedClasses.join(", "))}${r.equipClass === "not-met" ? " (not met in this save)" : ""}` : r.equipClass === "unknown" ? " · Class requirement unknown" : "";
+        let details, action = "";
+        if (r.kind === "quest") {
+          details = `Reward choice from ${src} · Minimum quest level ${esc(r.questMinLevel)} · Reference collected ${esc(r.collectionWindow)}. ${r.qualification === "saved-in-log" ? (r.savedReadyToTurnIn ? "Ready to turn in at last save; this does not confirm that you received the reward." : "In your last saved quest log; finish its objectives first.") : "Reference only: this save does not establish eligibility. Quest prerequisites outside the saved log are unknown."}`;
+          action = `<button type="button" data-quest-open="${esc(r.sourceId)}" data-atlas-profile="${profile}">Open quest #${esc(r.sourceId)}</button>`;
+        } else if (r.kind === "vendor") {
+          details = `Listed by ${src} · Reference collected ${esc(r.collectionWindow)} · Merchant interaction observed for ${esc(r.observedFaction)}. ${r.qualification === "reference-only" ? "Reference only: access for your faction is not established. " : "Historical lead only. "}Stock, price and current access are unknown.`;
+        } else if (r.kind === "craft") {
+          details = `${src} · Saved ${esc(r.professionName)} rank ${esc(r.savedRank)} (skill #${esc(r.skillLineId)}) · ${esc(new Date(r.observedAt).toLocaleString())}. Reagents: ${r.reagents.map(x => `${esc(x.required)} × item #${esc(x.itemId)}`).join(", ")}. Minimum rank, material ownership and current craftability are not confirmed.`;
+        } else {
+          details = `Observed from ${src} in ${esc(r.instanceName)} · Reference collected ${esc(r.collectionWindow)}. Entry requirements and current drop availability are unknown.`;
+          action = `<button type="button" data-chest-dungeon="${esc(r.instanceId)}" data-atlas-profile="${profile}" disabled>Open ${esc(r.instanceName)} details</button>`;
+        }
+        return `<li data-chest-kind="${esc(r.kind)}" data-item-id="${esc(r.itemId)}"><strong>${CHEST_NAMES[r.kind]} · ${esc(r.itemName || `Item #${r.itemId}`)} (#${esc(r.itemId)})</strong>
+          ${r.wished ? '<span class="atlas-chest-wished">On your wish list</span>' : ""}<p>${level}${classes}${r.armorKind ? ` · ${esc(r.armorKind)}` : ""}. Check armor proficiency and other equip requirements in game.</p><p>${details}</p>${action}</li>`;
+      }).join("")}</ul>` : ""}
+      ${Object.keys(model.gaps).length ? `<ul class="atlas-chest-gaps">${Object.entries(model.gaps).map(([kind, reason]) => `<li><strong>${CHEST_NAMES[kind]}:</strong> ${esc(reason)}</li>`).join("")}</ul>` : ""}
+      ${model.attribution ? `<p class="atlas-recap-note">${esc(model.attribution)} Selected exact-ID relations; not a complete loot or vendor catalog.</p>` : ""}`;
+  }
+  function syncChestDungeon(root) {
+    const profileId = activeProfileId();
+    const ready = profileId && atlas?.recap?.profileId === profileId;
+    for (const button of root.querySelectorAll("[data-chest-dungeon]")) {
+      button.disabled = !ready || button.dataset.atlasProfile !== profileId ||
+        !atlas.entries.some(entry => entry.id === button.dataset.chestDungeon);
+    }
+  }
   function compareButton(itemId) {
     return `<button type="button" class="loot-compare" data-nav="sheet" data-atlas-compare="${itemId}" data-atlas-profile="${esc(activeProfileId())}" aria-label="Compare in Sheet: item #${itemId}">Compare in Sheet</button>`;
   }
@@ -71,25 +115,53 @@ window.DungeonAtlas = (() => {
       <ul>${wished.map((item) => `<li><span><strong>${esc(item.name || `Item #${item.itemId}`)}</strong> · ${esc(item.boss)}</span>${compareButton(item.itemId)}</li>`).join("")}</ul>` : `<p class="atlas-src">${message}</p>`}</section>`;
   }
   function fieldbook(entry, saved, preflight, lootAction, recap) {
-    return `<div class="atlas-details atlas-fieldbook" data-dungeon-fieldbook>
+    const compact = fieldbookMode === "compact";
+    const supporting = (label, content) => compact ? `<details class="atlas-fieldbook-support"><summary>${label}</summary>${content}</details>` : content;
+    return `<div class="atlas-details atlas-fieldbook" data-dungeon-fieldbook="${fieldbookMode}">
       <section class="atlas-preflight" data-fieldbook-stage="before" aria-labelledby="fieldbook-prep-heading">
         ${preflight}
         <div class="atlas-cols atlas-fieldbook-prep">
           <section><h5>Supplies to check in game</h5><p class="atlas-src">Manual checks, not a bag or readiness reading.</p><ul>${entry.prep.map((item) => `<li>${esc(item)}</li>`).join("")}</ul></section>
           <section><h5>Plan your role</h5><ul><li><strong>Tank</strong> · Agree on the first target and check healer mana before each pull.</li>
           <li><strong>Healer</strong> · Call for a drink break before the group moves on.</li>
-          <li><strong>Damage</strong> · Follow the marked target and agree who handles interrupts or crowd control.</li></ul></section>
+          </ul></section>
         </div>
+        <section class="atlas-fieldbook-role" aria-labelledby="fieldbook-damage-heading">
+          <h5 id="fieldbook-damage-heading"><span>Damage</span> · Before the pull</h5>
+          <p>Follow the marked target and agree who handles interrupts or crowd control. Wait for the tank’s signal.</p>
+          <p class="atlas-src">Manual group prep, not a verified Forever encounter mechanic.</p>
+          <button type="button" data-fieldbook-practice="opener" data-fieldbook-instance="dm">Practice the opener</button>
+          <p class="atlas-src">Opens a fictional drill. Nothing is sent to the game.</p>
+        </section>
         ${fieldbookWishes(entry, saved)}${lootAction}
       </section>
-      <section class="atlas-fieldbook-encounters" data-fieldbook-stage="inside" aria-labelledby="fieldbook-encounters-heading">
+      ${supporting("Boss reference &amp; tips · Classic", `<section class="atlas-fieldbook-encounters" data-fieldbook-stage="inside" aria-labelledby="fieldbook-encounters-heading">
         <h4 id="fieldbook-encounters-heading">Boss reference &amp; tips</h4>
         <p class="atlas-src">Reviewed Classic reference · mechanics not verified in Forever</p>
         <ul class="atlas-fieldbook-cues">${entry.bosses.filter((boss) => DEADMINES_CUES.has(boss.name)).map((boss) => `<li><strong>${esc(boss.name)}</strong><p>${esc(DEADMINES_CUES.get(boss.name))}</p></li>`).join("")}</ul>
         <section aria-labelledby="fieldbook-roster-heading"><h5 id="fieldbook-roster-heading">Selected Classic roster &amp; community observations</h5><p class="atlas-src">Not a complete boss roster. Forever community marks aren’t this character’s defeats.</p>
           <ul class="atlas-bosses">${entry.bosses.map((boss) => `<li>${esc(boss.name)}${boss.observedInForever ? "<small>Seen in Forever · community</small>" : ""}</li>`).join("")}${entry.observedOnly.map((boss) => `<li>${esc(boss.name)}<small>Reported in Forever · community</small></li>`).join("")}</ul></section>
-      </section>
-      ${recap}</div>`;
+      </section>`)}
+      ${supporting("Saved defeats here", recap)}</div>`;
+  }
+  function progressionContent(model) {
+    if (!model) return "";
+    const current = model.status === "available" && activeProfileId() === model.owner?.profileId && ownsProgression?.(model);
+    const time = (date) => `<time datetime="${date.toISOString()}">${esc(date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}</time>`;
+    const list = (rows, render, empty) => rows.length ? `<ul>${rows.map(row => `<li>${render(row)}</li>`).join("")}</ul>` : `<p>${empty}</p>`;
+    return `<details class="atlas-recap" data-dungeon-progression><summary>Observed dungeon progression</summary>${current ? `
+      <p>Private · Last saved ${time(new Date(model.savedAt))} · Saved Forever build ${esc(model.clientBuild)}.</p>
+      <h4>Unfinished quests in your saved log</h4>
+      ${list(model.quests, q => `${esc(q.title)} (#${esc(q.id)})`, "No reviewed unfinished quest in this save. This is not a complete quest list.")}
+      <h4>Starred gear goals</h4>
+      ${model.gearGoals === null ? '<p>No gear source reviewed for this saved build.</p>' : list(model.gearGoals,
+        g => `<strong>${esc(g.name)} (#${esc(g.itemId)})</strong> · Historical community source: ${esc(g.sourceName)} (Efficient Games, CC BY 4.0)`, "No starred item among the reviewed gear sources.")}
+      <p class="atlas-recap-note">A wish-list star does not establish eligibility, ownership or a drop received.</p>
+      <h4>Retained boss defeats</h4>
+      ${list(model.defeats.rows, row => `${esc(row.name)} · ${time(new Date(row.at * 1000))}`, "No matching retained observations. This doesn’t mean you’ve never defeated a boss here.")}
+      ${model.defeats.moreRetained ? '<p>Showing the latest five retained observations for this dungeon.</p>' : ""}
+      <p class="atlas-recap-note">The capture build was not recorded for these historical defeats. They don’t establish a clear, personal loot or lockout.</p>` :
+      `<p>${esc(model.reason || "Progression unavailable for the active character.")}</p>`}</details>`;
   }
   function card(e) {
     const isOpen = open === e.id;
@@ -110,8 +182,10 @@ window.DungeonAtlas = (() => {
     const preflight = `<h4 tabindex="-1" data-atlas-prep-heading${pilot ? ' id="fieldbook-prep-heading"' : ""}>Prepare for ${esc(e.name)}</h4>${ready}
       <div class="atlas-actions">${entrance ? `<button type="button" class="primary" data-atlas-way="${esc(e.id)}">Copy entrance waypoint</button><button type="button" data-atlas-map="${esc(e.id)}">Show on World Map</button>` : ""}</div>
       ${entrance ? `<p class="atlas-src">Approximate Classic entrance: ${esc(e.zone)} · ${(e.entrance.x * 100).toFixed(0)}, ${(e.entrance.y * 100).toFixed(0)}. Verify in Forever.</p>` : `<p class="atlas-src">No usable entrance waypoint in this reference.</p>`}
+      ${pilot ? `<button type="button" data-fieldbook-mode aria-pressed="${fieldbookMode === "compact"}">Compact view</button>${fieldbookMode === "full" ? '<p class="atlas-src" data-fieldbook-intro>First run? Start with the entrance, quests and manual checks below. Boss reference and saved defeats are separate from your preparation.</p>' : ""}` : ""}
       ${questList(yourQuests.filter((q) => q.complete), "Ready to turn in · Last saved")}
-      ${questList(yourQuests.filter((q) => !q.complete), "In your quest log · Last saved")}`;
+      ${questList(yourQuests.filter((q) => !q.complete), "In your quest log · Last saved")}
+      ${pilot ? '<div class="atlas-actions"><button type="button" data-atlas-ask="dm" aria-describedby="atlas-ask-hint">Ask about this</button></div><p class="atlas-src" id="atlas-ask-hint">Opens an editable Companion draft for The Deadmines (#dm). Nothing is sent until you choose Send.</p>' : ""}`;
     const recap = `<section class="atlas-recap atlas-instance-recap" aria-label="Saved defeats here"${pilot ? ' data-fieldbook-stage="after"' : ""}><h4>Saved defeats here</h4>
       ${pilot ? '<p class="atlas-recap-note">This is saved encounter evidence, not a record of a clear, personal loot or lockout. Reload or log out in game to save new observations.</p>' : ""}
       ${recapContent(saved?.filter((row) => row.atlasId === e.id && (!pilot || row.instanceType === "party")), { entry: e })}</section>`;
@@ -126,7 +200,7 @@ window.DungeonAtlas = (() => {
         ${!isOpen && (yourQuests.length || pick.length) ? `<p class="atlas-brief">${yourQuests.length ? `${yourQuests.length} related quest${yourQuests.length === 1 ? "" : "s"} in your saved log` : `${pick.length} possible quest pickup${pick.length === 1 ? "" : "s"}`}</p>` : ""}
         <div class="atlas-toggles"><button type="button" class="atlas-toggle" data-atlas-open="${esc(e.id)}" aria-expanded="${isOpen && view === "details"}">${pilot ? (isOpen && view === "details" ? "Hide Dungeon Fieldbook" : "Open Dungeon Fieldbook") : isOpen && view === "details" ? "Hide details" : `Bosses, roles & prep (${e.bosses.length + e.observedOnly.length} bosses)`}</button>${e.loot ? `<button type="button" class="atlas-loot-btn${isOpen && view === "loot" ? " on" : ""}" data-atlas-loot="${esc(e.id)}" aria-expanded="${isOpen && view === "loot"}"><span class="atlas-chest" aria-hidden="true"></span>${isOpen && view === "loot" ? "Hide loot" : `Loot${e.loot.items ? ` (${e.loot.items} items)` : ""}`}</button>` : ""}</div>
         ${isOpen && view === "loot" ? lootView(e) : ""}
-        ${isOpen && view === "details" ? pilot ? fieldbook(e, saved, preflight + (pickList || '<p class="atlas-src">No possible quest pickups listed in this reference. Check availability in game.</p>'), lootAction, recap) : `<div class="atlas-details"><div class="atlas-preflight">${preflight}${lootAction}${pickList}</div>
+        ${isOpen && view === "details" ? pilot ? fieldbook(e, saved, preflight + (pickList || '<p class="atlas-src">No possible quest pickups listed in this reference. Check availability in game.</p>'), lootAction, recap) + progressionContent(atlas?.progression) : `<div class="atlas-details"><div class="atlas-preflight">${preflight}${lootAction}${pickList}</div>
           ${recap}
           <h4>Boss reference & tips</h4><p class="atlas-src">${esc(e.source)}. Community marks aren’t your character’s defeats.</p><ul class="atlas-bosses">${bosses}${extra}</ul>
           <div class="atlas-cols"><div><h4>Group</h4><ul>${e.roles.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div><div><h4>Before you go</h4><ul>${e.prep.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div></div></div>` : ""}
@@ -185,7 +259,13 @@ window.DungeonAtlas = (() => {
   function paint() {
     const root = document.querySelector("[data-atlas]"); if (!root || !atlas) return;
     root.querySelector("[data-atlas-level]").textContent = atlas.level ? `Level ${atlas.level}${atlas.faction ? " · " + atlas.faction : ""} · ${atlas.suggested.length} dungeon${atlas.suggested.length === 1 ? "" : "s"} suggested for you` : "Choose a character to colour dungeons by level";
-    root.querySelectorAll("[data-atlas-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.atlasTab === tab)));
+    const tabs = [...root.querySelectorAll("[data-atlas-tab]")];
+    for (const button of tabs) {
+      const selected = button.dataset.atlasTab === tab;
+      button.setAttribute("aria-selected", String(selected));
+      button.tabIndex = (tabs.includes(document.activeElement) ? button === document.activeElement : selected) ? 0 : -1;
+    }
+    root.querySelector("#atlas-results").setAttribute("aria-labelledby", `atlas-tab-${tab}`);
     const list = atlas.entries.filter((e) => (tab === "forever" ? e.foreverOriginal || e.observedRuns : e.kind === tab && !e.foreverOriginal));
     const sug = atlas.suggested.map((id) => atlas.entries.find((e) => e.id === id)).filter(Boolean);
     root.querySelector("[data-atlas-suggest]").innerHTML = tab === "dungeon" && sug.length ? `<h2>Suggested for you</h2><div class="atlas-chips">${sug.map((e) => `<button type="button" data-atlas-prep="${esc(e.id)}" class="atlas-chip d-${esc(e.difficulty)}">${esc(e.name)} <small>${e.levels.min}–${e.levels.max} · ${esc(e.zone)}</small></button>`).join("")}</div>` : "";
@@ -202,8 +282,10 @@ window.DungeonAtlas = (() => {
     atlas = next;
     paintRecap(root, next.recap);
     paint();
+    syncChestDungeon(root);
+    return next;
   }
-  function openDetails(root, id, toggle) {
+  function openDetails(root, id, toggle, focus = "[data-atlas-prep-heading]") {
     const entry = atlas.entries.find((e) => e.id === id);
     if (!entry) return;
     if (tab !== "forever" || !(entry.foreverOriginal || entry.observedRuns)) tab = entry.foreverOriginal ? "forever" : entry.kind;
@@ -211,21 +293,58 @@ window.DungeonAtlas = (() => {
     view = "details";
     paint();
     const card = root.querySelector(`[data-atlas-card="${CSS.escape(id)}"]`);
-    const target = card?.querySelector?.(open ? "[data-atlas-prep-heading]" : "[data-atlas-open]");
+    const target = card?.querySelector?.(open ? focus : "[data-atlas-open]");
     target?.focus({ preventScroll: true });
-    target?.scrollIntoView({ block: open ? "start" : "nearest", behavior: "instant" });
+    const context = focus === "[data-fieldbook-practice]" ? target?.closest(".atlas-fieldbook-role") : target;
+    context?.scrollIntoView({ block: open ? "start" : "nearest", behavior: "instant" });
   }
-  function mounted() {
+  function mounted(openQuestion, practice, matchesProgressionOwner) {
     const root = document.querySelector("[data-atlas]");
     if (!root) { mountedFor = null; return; }
     if (mountedFor === root) return;
     mountedFor = root;
+    ownsProgression = matchesProgressionOwner;
+    const tabs = [...root.querySelectorAll("[data-atlas-tab]")];
+    const tablist = root.querySelector(".atlas-tabs");
+    tablist.addEventListener("keydown", (event) => {
+      const index = tabs.indexOf(event.target);
+      if (index < 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      const next = { ArrowLeft: (index + tabs.length - 1) % tabs.length, ArrowRight: (index + 1) % tabs.length, Home: 0, End: tabs.length - 1 };
+      if (!Object.hasOwn(next, event.key)) return;
+      event.preventDefault();
+      const target = tabs[next[event.key]];
+      tabs.forEach(button => { button.tabIndex = button === target ? 0 : -1; });
+      target.focus();
+    });
+    tablist.addEventListener("focusout", (event) => {
+      if (!tablist.contains(event.relatedTarget)) tabs.forEach(button => { button.tabIndex = button.dataset.atlasTab === tab ? 0 : -1; });
+    });
     atlas = null;
     loot.clear();
     lootRequests.clear();
+    const chest = root.querySelector("[data-chest-pilot]"), chestBody = root.querySelector("[data-chest-leads]");
+    let chestRequest = 0;
+    const mountedHere = () => mountedFor === root && document.querySelector("[data-atlas]") === root;
+    async function loadChest() {
+      const request = ++chestRequest, profileId = activeProfileId();
+      if (!mountedHere() || !chest.open) return;
+      chestBody.textContent = "Checking exact chest sources…";
+      let next;
+      try { next = await api.gearAcquisition(profileId, "chest"); } catch {}
+      if (!mountedHere() || !chest.open || request !== chestRequest || activeProfileId() !== profileId) return;
+      // chestContent escapes all dynamic text and attributes from the IPC model.
+      chestBody.innerHTML = chestContent(next?.profileId === profileId ? next : null);
+      syncChestDungeon(root);
+      const summary = chest.querySelector("summary");
+      if (document.activeElement === summary) summary.scrollIntoView({ block: "start", behavior: "instant" });
+    }
+    chest.addEventListener("toggle", loadChest);
     // Clear immediately, before the shell finishes saving the selection and remounts.
     document.querySelector("#active-character")?.addEventListener("change", () => {
       if (mountedFor !== root) return;
+      ++chestRequest;
+      chest.open = false;
+      chestBody.replaceChildren();
       atlas = null;
       lootRequests.clear();
       paintRecap(root, null, true);
@@ -236,6 +355,28 @@ window.DungeonAtlas = (() => {
     paintRecap(root, null, true);
     root.addEventListener("click", async (ev) => {
       if (!atlas) return;
+      const mode = ev.target.closest("[data-fieldbook-mode]");
+      const launch = ev.target.closest("[data-fieldbook-practice]");
+      if (mode || launch) {
+        if (open !== "dm" || view !== "details" || !root.contains(mode || launch)) return;
+        if (mode) {
+          fieldbookMode = fieldbookMode === "full" ? "compact" : "full";
+          paint();
+          root.querySelector("[data-fieldbook-mode]")?.focus();
+        } else if (atlas.recap?.profileId === activeProfileId()) {
+          practice?.open(launch.dataset.fieldbookInstance, launch.dataset.fieldbookPractice, fieldbookMode, atlas.practiceOwner);
+        }
+        return;
+      }
+      const ask = ev.target.closest("[data-atlas-ask]");
+      if (ask) {
+        const id = ask.dataset.atlasAsk, profileId = activeProfileId();
+        const current = () => id === "dm" && ask.dataset.atlasAsk === id &&
+          mountedHere() && root.contains(ask) && open === id && view === "details" &&
+          activeProfileId() === profileId && atlas?.entries.some(e => e.id === id);
+        if (current()) void openQuestion?.({ kind: "dungeon-prep", id }, current);
+        return;
+      }
       const star = ev.target.closest("[data-loot-wish]"); if (star) {
         const profileId = activeProfileId();
         if (!profileId || atlas.recap?.profileId !== profileId || star.disabled) return;
@@ -249,9 +390,15 @@ window.DungeonAtlas = (() => {
           window.toast?.(on ? "Added to your wish list." : "Removed from your wish list.");
           const restoreFocus = document.activeElement === star;
           await load(root, atlas);
+          if (mountedHere() && chest.open) void loadChest();
           if (restoreFocus && mountedFor === root && activeProfileId() === profileId && document.activeElement === document.body) root.querySelectorAll(".loot-boss")[bossIndex]?.querySelector(`[data-loot-wish="${itemId}"]`)?.focus();
         } catch (err) { if (mountedFor === root && activeProfileId() === profileId) window.toast?.(err.message); }
         finally { star.disabled = false; }
+        return;
+      }
+      const chestDungeon = ev.target.closest("[data-chest-dungeon]");
+      if (chestDungeon && !chestDungeon.disabled && chest.open && chestDungeon.dataset.atlasProfile === activeProfileId() && atlas.recap?.profileId === activeProfileId()) {
+        openDetails(root, chestDungeon.dataset.chestDungeon, false);
         return;
       }
       const lb = ev.target.closest("[data-atlas-loot]"); if (lb) { const id = lb.dataset.atlasLoot; const same = open === id && view === "loot"; open = same ? null : id; view = "loot"; if (!same) { loot.delete(id); void loadLoot(root, id); } paint(); root.querySelector(`[data-atlas-card="${CSS.escape(id)}"] .atlas-loot-btn`)?.focus(); return; }
@@ -272,9 +419,18 @@ window.DungeonAtlas = (() => {
         }
       }
     });
-    void load(root).then(() => {
+    void load(root).then((loaded) => {
+      if (mountedHere() && loaded && practice?.returning) {
+        const mode = practice.returning(loaded.practiceOwner, loaded.entries.some(e => e.id === "dm"));
+        if (mode) {
+          fieldbookMode = mode;
+          openDetails(root, "dm", false, "[data-fieldbook-practice]");
+        }
+      }
       if (mountedFor === root && open && view === "loot" && atlas?.entries.some((e) => e.id === open && e.loot) && !lootRequests.has(open) && !loot.has(open)) void loadLoot(root, open);
     });
   }
-  return { page, mounted };
+  // Do not show a retained card until a scoped return has matched the fresh Atlas.
+  function awaitPracticeReturn() { open = null; }
+  return { page, mounted, awaitPracticeReturn };
 })();

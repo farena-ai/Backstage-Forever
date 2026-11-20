@@ -23,3 +23,11 @@ In **Plans → Party → Guild Run Pack**, choose **Create run** to write a date
 Members choose **Import run pack** to review a JSON file, including the start in their own local time. Nothing is added until they confirm. Duplicate, older, and conflicting revisions do not replace the saved run. A newer revision preserves checks only for unchanged prep actions. A cancellation retires the checklist. Checks are private to this installation and are never included in exports.
 
 Guild Run Packs are separate from ordinary Party plans, Company journeys, and journal backups. This first version keeps up to 32 organized runs and 32 received runs locally per installation. It does not use an account, relay, RSVP collection, or live sync.
+
+### Officer debrief and next-run handoff
+
+Open **Saved runs → Organized runs**, select the run, then choose **Open officer debrief**. Record confirmed attendance, progression, assignments and follow-ups yourself. A Yes RSVP, a board assignment or a game observation never fills in attendance. Leave unknown facts blank and keep anything you do not want to share in **Private officer note**.
+
+Choose **Save confirmed debrief**, then **Review next-run copy**. The preview shows the run title and the saved facts you entered in the shareable fields. Read every line before choosing **Copy reviewed text**: the app does not redact personal wording you type into those fields. The private officer note, organizer board records, private after-action review, loot records and journal are never pulled into the copy. Paste the text yourself where you want it to go. Copying does not create or reschedule a run, change a Run Pack export, or send a message.
+
+Debriefs stay on this installation and follow the organized run across revisions. A cancelled run's debrief is read-only and cannot be copied. Received runs do not have access to the organizer's debrief, even when the same installation imports a copy. Resetting local data removes the local debriefs, but cannot recall text you have already copied or shared.

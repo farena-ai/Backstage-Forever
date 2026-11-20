@@ -143,6 +143,13 @@ function shortPath(target) {
         workshop: workshop(i ? 99 : 2),
       },
     }));
+    if (process.argv.includes("--local-craft-only")) {
+      Object.assign(characters[1].readiness.workshop.recipes.items[1], { outputItemId: 200, outputMin: 1, outputMax: 1 });
+      characters[1].readiness.workshop.recipes.items[1].reagents = [{ itemId: 202, name: "Synthetic ingredient", required: 2 }];
+      // Age the profession evidence, not just the surrounding export date.
+      for (const key of ["professions", "recipes"])
+        characters[1].readiness.workshop[key].observedAt -= 86401;
+    }
     const write = () =>
       fs.writeFile(
         saved,
@@ -268,6 +275,117 @@ function shortPath(target) {
     assert.match(await shopping.innerText(), /If buying the whole shortfall: 1 · Estimated cost 42c · Saved AH buyout/);
     assert.match(await shopping.innerText(), /Own storage, last seen: bank 10/);
     assert.match(await shopping.innerText(), /Alt stock, last seen: Vaelric \(Synthetic Realm\) · bags 99/);
+
+    if (process.argv.includes("--local-craft-only")) {
+      await app.evaluate(({ BrowserWindow }) => {
+        const win = BrowserWindow.getAllWindows()[0];
+        if (win.isMaximized()) win.unmaximize();
+        win.setContentSize(984, 635);
+      });
+      await page.waitForFunction(() => innerWidth === 984 && innerHeight === 635);
+      const handoff = page.locator("[data-craft-handoff]"), consent = page.locator("[data-local-craft]");
+      const ledger = page.locator("[data-ledger-local-craft]");
+      const toggle = async panel => {
+        const summary = panel.locator("summary");
+        await summary.focus();
+        await summary.press("Enter");
+      };
+      const select = async (name, recipe) => {
+        const id = initial.profiles.find(p => p.name === name).id;
+        await page.locator("#active-character").selectOption(id);
+        await page.waitForFunction(id => !characterSelectionPending() && state.activeProfileId === id, id);
+        await page.getByLabel("Saved recipe", { exact: true }).selectOption(recipe);
+        await page.waitForFunction(() => document.querySelector("[data-local-craft]"));
+        return id;
+      };
+      await consent.waitFor();
+      assert.equal(await handoff.count(), 0, "matching observed recipe is not consent");
+      await select("Vaelric", "101");
+      await toggle(consent);
+      const journal = path.join(data, "state.json");
+      const beforeOptIn = await fs.readFile(journal);
+      await consent.getByRole("button", { name: "List this recipe locally" }).press("Enter");
+      await consent.getByRole("button", { name: "Remove local capability" }).waitFor();
+      assert.deepEqual(await fs.readFile(journal), beforeOptIn);
+      await assert.rejects(fs.access(path.join(data, "local-craft.json")), { code: "ENOENT" });
+      await select("Aeralyn", "100");
+      await page.reload();
+      await navigate(page, "ledger-cooldowns");
+      await ledger.getByText(/Silverleaf infusion/).waitFor();
+      assert.match(await ledger.innerText(), /Older than 24 hours/);
+      await navigate(page, "preparation");
+      await handoff.waitFor();
+      const beforeHandoff = await fs.readFile(journal);
+      await toggle(handoff);
+      assert.ok(await handoff.evaluate(panel => {
+        const summary = panel.querySelector("summary"), r = summary.getBoundingClientRect();
+        return panel.open && document.activeElement === summary && r.top >= 0 && r.bottom <= innerHeight && panel.scrollWidth <= panel.clientWidth + 1;
+      }), "the keyboard-opened compact handoff keeps a visible focus and fits horizontally");
+      assert.match(await handoff.innerText(), /Vaelric.*Silverleaf infusion \(item 200\)/);
+      assert.match(await handoff.innerText(), /not proof of stock, readiness or transfer/);
+      assert.doesNotMatch(await handoff.innerText(), /bags 99|Sunleaf/);
+      assert.equal(await handoff.locator("button,a,input").count(), 0);
+      assert.match(await shopping.innerText(), /If buying the whole shortfall: 1 · Estimated cost 42c/);
+      assert.deepEqual(await fs.readFile(journal), beforeHandoff);
+      await select("Vaelric", "101");
+      await toggle(consent);
+      const beforeRemoval = await fs.readFile(journal);
+      await consent.getByRole("button", { name: "Remove local capability" }).press("Enter");
+      await consent.getByRole("button", { name: "List this recipe locally" }).waitFor();
+      assert.deepEqual(await fs.readFile(journal), beforeRemoval);
+      await assert.rejects(fs.access(path.join(data, "local-craft.json")), { code: "ENOENT" });
+      await select("Aeralyn", "100");
+      assert.equal(await handoff.count(), 0);
+      await navigate(page, "ledger-cooldowns");
+      await ledger.getByText("No compatible recipes listed.").waitFor();
+      await navigate(page, "preparation");
+      const altId = await select("Vaelric", "101");
+      await toggle(consent);
+      const optIn = consent.getByRole("button", { name: "List this recipe locally" });
+      const retired = await optIn.getAttribute("data-craft-consent");
+      await optIn.press("Enter");
+      await consent.getByRole("button", { name: "Remove local capability" }).waitFor();
+      await select("Aeralyn", "100");
+      await handoff.waitFor();
+      await app.close();
+      app = null;
+      await launch();
+      await navigate(page, "ledger-cooldowns");
+      await page.locator("[data-ledger-local-craft]").getByText("No compatible recipes listed.").waitFor();
+      await navigate(page, "preparation");
+      await select("Vaelric", "101");
+      assert.equal(await page.evaluate(({ id, token }) => window.backstage.changeLocalCraft(id, token), { id: altId, token: retired }), false);
+      assert.equal(await page.locator('[data-preparation-control="craft-opt-in"]').count(), 1);
+      console.log("Local craft: keyboard opt-in, renderer reload, Ledger and Workshop handoff, unchanged journal on opt-out, and fresh consent required after desktop restart passed.");
+      return;
+    }
+    if (process.argv.includes("--workshop-decision-only")) {
+      // Clear vial is now an intermediate: two are needed, one is in bags,
+      // and one attempt uses two more Sunleaf (shared with the root recipe).
+      characters[0].readiness.workshop.recipes.items[1].outputItemId = 201;
+      characters[0].readiness.workshop.recipes.items[1].outputMin = 1;
+      characters[0].readiness.workshop.recipes.items[1].outputMax = 1;
+      // Advance the source, but keep its timestamp within the actual wall clock.
+      while (Math.floor(Date.now() / 1000) <= clock) await new Promise(r => setTimeout(r, 100));
+      characters[0].updatedAt = ++clock;
+      await write();
+      await page.evaluate(() => window.backstage.refreshGame());
+      await page.getByLabel("Craft attempts", { exact: true }).selectOption("2");
+      const panel = page.locator("[data-workshop-decision]");
+      const summary = panel.locator("summary");
+      await summary.focus();
+      await summary.press("Enter");
+      await panel.getByRole("heading", { name: "Craft these inputs first" }).waitFor();
+      const text = await panel.innerText();
+      assert.match(text, /Silverleaf infusion · 1 attempt for 1 × Clear vial \(1 of 2 needed from saved bags\)/);
+      assert.match(text, /Sunleaf · 2 of 8 from saved bags · 6 short/);
+      assert.match(text, /Historical AH buyout: 42c each/);
+      assert.match(text, /Cash break-even for the shortfall: 2s 52c/);
+      assert.match(text, /Already have/);
+      assert.match(text, /not current availability or prices/);
+      console.log("Workshop decision: saved export → real desktop IPC → keyboard-opened batch trace passed.");
+      return;
+    }
 
     if (process.argv.includes("--workshop-savings-only")) {
       const errors = [];

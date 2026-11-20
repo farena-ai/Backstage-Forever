@@ -556,12 +556,47 @@ window.WorldMapView = (() => {
     if (!p?.npcId || !api?.worldMapNpc) return;
     if (npcFor === p.npcId && npcInfo) return;
     npcFor = p.npcId; npcInfo = null;
-    try { const d = await api.worldMapNpc(p.npcId); if (npcFor === p.npcId) { npcInfo = d; card(); } } catch { if (npcFor === p.npcId) { npcInfo = false; card(); } }
+    let info;
+    try { info = await api.worldMapNpc(p.npcId); } catch { info = false; }
+    if (npcFor !== p.npcId) return;
+    npcInfo = info || false;
+    // Enrich the NPC section without replacing the user's disclosure or another pin's controls.
+    if (selected?.npcId === p.npcId) {
+      const details = document.querySelector('[data-wm-npc-details]');
+      // Same rendering helper as the initial card: escaped labels and typed IPC metadata.
+      if (details) details.innerHTML = npcDetails(p);
+    }
+  }
+  function npcDetails(p) {
+    if (npcFor === p.npcId && npcInfo) return npcSections(npcInfo);
+    return `<p class="wm-note">${npcFor === p.npcId && npcInfo === false ? "Details could not be loaded." : "Loading details…"}</p>`;
+  }
+  function provenanceCard(p) {
+    const info = p.provenance;
+    if (!info) return "";
+    const area = info.kind === "approximate-reference";
+    const privateFind = info.kind === "private-find";
+    const label = area ? "Approximate area" : privateFind ? "Private find" : "Verified reference pin";
+    const geometry = area
+      ? `A search area around ${p.spots} reference ${p.spots === 1 ? "spot" : "spots"} ${info.geometry === "creature-reference-area" ? "where the creature was seen" : "where players made objective progress"}. The centre is a guide, not a live spawn.`
+      : privateFind ? "A saved point where you stood when you made this find, not a live spawn. This map entry is personal; Community sharing is controlled separately."
+        : "The point is a reviewed flight-master observation on that build. The coordinates are approximate; this is not a live spawn.";
+    return `<details class="wm-note" data-wm-provenance><summary>${area ? "Why is this area here?" : "Why is this pin here?"}</summary>
+      <p><strong>${label}</strong></p><p>Source: ${esc(info.source)}${info.observedOn ? ` · ${esc(info.observedOn)}` : ""}<br>${info.build ? `WoW Forever build ${esc(info.build)}` : "Exact build not recorded"}</p>
+      <p>${esc(geometry)}</p></details>`;
   }
   function card() {
     const box = document.querySelector("[data-wm-card]"); if (!box) return;
     if (!selected) { box.innerHTML = `<div class="wm-card-empty"><h3>Map selection</h3>Pick a pin or a place from the lists to see its details and coordinates. Use <em>Find</em> to search every zone.</div>`; return; }
     const p = selected;
+    if (p.scopedQuest && !routeOwner(p)) { clearRoutePin(); card(); return; }
+    if (p.scopedQuest) {
+      const a = p.scopedQuest;
+      // The descriptor's ID/point are validated numbers; escape all text and serialized data.
+      box.innerHTML = `<section class="wm-goal" data-wm-goal><span class="wm-goal-eyebrow">Saved game marker · Quest #${a.questId}</span><h4>${esc(p.label)}</h4><p>${esc(model.mapName)} · ${pct(p.x)}, ${pct(p.y)} · build ${esc(a.build)}</p><p>To use this marker in WoW, return to Quest Guide, copy the waypoint, then paste it into game chat and press Enter. The desktop does not set the waypoint in game.</p><div class="wm-goal-actions"><button type="button" data-quest-open="${a.questId}" data-scoped-quest-return="${esc(JSON.stringify(a))}">Return to Quest Guide</button><button type="button" class="subtle" data-wm-act="unfocus">Show the full map</button></div></section>`;
+      window.I18n?.apply(box);
+      return;
+    }
     if (focused && focused.pin !== p) focused = null;
     const goal = focused?.goal;
     const goalBox = focused ? `<section class="wm-goal" data-wm-goal><span class="wm-goal-eyebrow">Your goal here</span><h4>${esc(goal?.title || p.label)}</h4>${goal?.steps?.length ? `<ol>${goal.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}<div class="wm-goal-actions">${goal?.questId ? `<button type="button" data-quest-open="${esc(goal.questId)}"${p.routeBuild ? ` data-ledger-quest-profile="${esc(p.profileId)}"` : ""}>Open quest</button>` : ""}<button type="button" class="subtle" data-wm-act="unfocus">Show the full map</button></div></section>` : "";
@@ -572,11 +607,12 @@ window.WorldMapView = (() => {
       return;
     }
     if (p.kind === "objective-area") { box.innerHTML = goalBox + areaCard(p); paintIcons(box); return; }
-    const details = p.npcId ? (npcFor === p.npcId && npcInfo ? npcSections(npcInfo) : npcInfo === false ? `<p class="wm-note">Details could not be loaded.</p>` : `<p class="wm-note">Loading details…</p>`) : p.kind === "community" ? communityDetails(p) : "";
+    const details = p.npcId ? `<div data-wm-npc-details>${npcDetails(p)}</div>` : p.kind === "community" ? communityDetails(p) : "";
     box.innerHTML = `${goalBox}<div class="wm-card-head">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<div><h3>${esc(p.label)}</h3>${p.sub ? `<p class="wm-sub">${esc(p.sub)}</p>` : ""}</div></div>
       <p class="wm-coords">${esc(model.mapName)} · ${pct(p.x)}, ${pct(p.y)}</p>${relation(p)}
       ${details}
-      <div class="wm-card-actions"><button type="button" class="primary" data-wm-act="way">Copy waypoint for WoW</button><button type="button" data-wm-act="track">Track on radar</button>${p.questId ? `<button type="button" data-quest-open="${p.questId}">Open quest</button>` : ""}</div>
+      <div class="wm-card-actions"><button type="button" class="primary" data-wm-act="way">Copy waypoint for WoW</button>${p.objectivePoint ? "" : '<button type="button" data-wm-act="track">Track on radar</button>'}${p.questId ? `<button type="button" data-quest-open="${esc(p.questId)}">Open quest</button>` : ""}</div>
+      ${p.objectivePoint ? '<p class="wm-note">No matching objective area. This reference point is a guide, not a live spawn.</p>' : provenanceCard(p)}
       <p class="wm-src">${esc(p.source || "")}${p.lastSeen ? ` · seen ${esc(p.lastSeen)}` : ""}${p.build ? ` · build ${esc(p.build)}` : ""}</p>`;
     paintIcons(box);
     if (p.npcId && npcFor !== p.npcId) loadNpc(p);
@@ -592,9 +628,9 @@ window.WorldMapView = (() => {
       ${fight}
       ${a.warning ? `<p class="wm-warn" role="note">${esc(a.warning)}</p>` : ""}
       <p class="wm-coords">${esc(model.mapName)} · ${pct(a.x)}, ${pct(a.y)}</p>${relation(a)}
-      <p class="wm-note">Based on ${esc(a.spots || 1)} spot${a.spots === 1 ? "" : "s"} where players made progress. Spread out nearby if it's busy.</p>
+      ${a.provenance ? "" : '<p class="wm-note">Approximate guide marker, not a live spawn.</p>'}
       <div class="wm-card-actions"><button type="button" class="primary" data-quest-open="${esc(a.questId)}">Open quest</button>${focused?.pin === a ? "" : '<button type="button" data-wm-act="focus-area">Show on map</button>'}<button type="button" data-wm-act="way">Copy waypoint for WoW</button></div>
-      <p class="wm-src">${esc(a.source || "")}</p>`;
+      ${provenanceCard(a)}<p class="wm-src">${esc(a.source || "")}</p>`;
   }
   // Elite and boss-level objective creatures on this map, as plain warnings.
   function campsList() {
@@ -674,25 +710,29 @@ window.WorldMapView = (() => {
   async function load(next) {
     if (loading) return; loading = true;
     const wanted = pendingFocus;
-    let revealRoute = false;
+    let revealRoute = false, revealGoal = false;
     try {
       const m = await api.worldMap(next ? { mapId: next } : mapId ? { mapId } : {});
       if (wanted?.routeBuild && (wanted !== pendingFocus || !routeOwner(wanted) || m.profileId !== wanted.profileId || m.mapId !== wanted.mapId)) {
         if (wanted === pendingFocus) pendingFocus = null;
         return;
       }
-      if (pendingFocus?.routeBuild && wanted !== pendingFocus) return;
-      if (m.mapId !== model?.mapId) { selected = null; view = { zoom: 1, cx: 0.5, cy: 0.5 }; }
+      if (pendingFocus && wanted !== pendingFocus) return;
+      if (m.mapId !== model?.mapId || m.profileId !== model?.profileId) { selected = null; focused = null; }
+      if (m.mapId !== model?.mapId) view = { zoom: 1, cx: 0.5, cy: 0.5 };
       model = m; mapId = m.mapId; error = "";
       if (pendingFocus && pendingFocus.mapId === m.mapId) {
         // An objective area from the quest page: the matching area, else a marked spot.
         const f = pendingFocus;
         if (f.kind === "objective-area") {
           const near = (a) => Math.hypot(a.x - f.x, a.y - f.y);
-          let area = (model.areas || []).filter((a) => a.questId === f.questId && (f.index == null || a.index === f.index)).sort((a, b) => near(a) - near(b))[0];
-          if (!area) { area = { id: "focus-area", kind: "objective-area", label: f.sub || f.label, questId: f.questId || null, questTitle: f.goal?.title?.replace(/^Objective: /, "") || f.label, status: "active", mapId: m.mapId, x: f.x, y: f.y, radius: 0.03, spots: 1, creature: null, difficulty: null, source: "From your quest page" }; model.areas = [...(model.areas || []), area]; }
-          pendingFocus = null; selected = area; focused = { pin: area, goal: f.goal || null };
-          view = frameArea(area, m.player);
+          const area = (model.areas || []).filter((a) => a.questId === f.questId && (f.index == null || a.index === f.index)).sort((a, b) => near(a) - near(b))[0];
+          if (area) {
+            pendingFocus = null; selected = area; focused = { pin: area, goal: f.goal || null };
+            view = frameArea(area, m.player);
+          } else {
+            pendingFocus = { ...f, kind: "quest-objective", objectivePoint: true };
+          }
         }
       }
       if (pendingFocus && pendingFocus.mapId === m.mapId) {
@@ -700,11 +740,14 @@ window.WorldMapView = (() => {
         const f = pendingFocus;
         const real = f.npcId ? model.pins.filter((p) => p.npcId === f.npcId).sort((a, b) => Math.hypot(a.x - f.x, a.y - f.y) - Math.hypot(b.x - f.x, b.y - f.y))[0] : null;
         const pin = real || { id: "focus", kind: f.kind || (f.npcId ? "npc" : "instance"), npcId: f.npcId || undefined, label: f.label, sub: f.sub || null, mapId: m.mapId, x: f.x, y: f.y, source: f.source || (f.kind || f.npcId ? "From your advisor" : "Classic-era baseline (approximate entrance)"),
-          ...(f.routeBuild ? { questId: f.questId, profileId: f.profileId, routeBuild: f.routeBuild, routeSource: f.routeSource } : {}) };
+          ...(f.objectivePoint ? { objectivePoint: true, questId: f.questId, source: "From your quest page" } : {}),
+          ...(f.routeBuild ? { questId: f.questId, profileId: f.profileId, routeBuild: f.routeBuild, routeSource: f.routeSource } : {}),
+          ...(f.scopedQuest ? { scopedQuest: f.scopedQuest } : {}) };
         if (!real) model.pins.push(pin);
         selected = pin; pendingFocus = null;
         focused = { pin, goal: f.goal || null };
         revealRoute = Boolean(f.routeBuild);
+        revealGoal = Boolean(f.revealGoal && f.goal);
         // Frame you and the target together when you're on this map, else zoom in on the target.
         const me = m.player?.live || m.player?.saved;
         if (me && Number.isFinite(me.x)) { const span = Math.max(Math.abs(me.x - pin.x), Math.abs(me.y - pin.y)); view = { zoom: Math.max(1.4, Math.min(3.2, 0.55 / Math.max(span, 0.05))), cx: (me.x + pin.x) / 2, cy: (me.y + pin.y) / 2 }; }
@@ -717,7 +760,7 @@ window.WorldMapView = (() => {
     } finally {
       loading = false;
       const root = document.querySelector("[data-world-map]");
-      if (root && pendingFocus?.routeBuild && pendingFocus !== wanted && routeOwner(pendingFocus)) {
+      if (root && pendingFocus && pendingFocus !== wanted && (!pendingFocus.routeBuild || routeOwner(pendingFocus))) {
         void load(pendingFocus.mapId);
       } else if (root && wanted?.routeBuild && !routeOwner(wanted)) {
         // The settling selection will mount a fresh map; don't reload the old character meanwhile.
@@ -728,6 +771,11 @@ window.WorldMapView = (() => {
           const action = root.querySelector("[data-wm-goal] [data-quest-open]");
           action?.focus({ preventScroll: true });
           action?.scrollIntoView({ block: "center" });
+        } else if (revealGoal && document.activeElement === document.body) {
+          const goal = root.querySelector("[data-wm-goal]");
+          const action = goal?.querySelector("button");
+          action?.focus({ preventScroll: true });
+          goal?.scrollIntoView({ block: "nearest", behavior: "instant" });
         }
       }
     }
@@ -837,6 +885,16 @@ window.WorldMapView = (() => {
       if (cp) { const c = model?.camps?.[Number(cp.dataset.wmCamp)]; dialArea(model?.areas?.find((a) => a.id === c?.areaId)); reveal("[data-wm-card]"); return; }
       const r = e.target.closest("[data-wm-result]");
       if (r) { const hitR = results.results[Number(r.dataset.wmResult)]; follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; await load(hitR.mapId); selected = model.pins.find((p) => p.id === hitR.id) || { ...hitR }; view = { zoom: 2.2, cx: hitR.x, cy: hitR.y }; card(); draw(); reveal("[data-wm-card]"); return; }
+      const back = e.target.closest("[data-scoped-quest-return]");
+      if (back) {
+        // Guard the existing shell quest-open dispatch before the click bubbles to it.
+        const a = selected?.scopedQuest;
+        if (!a || !routeOwner(selected) || back.dataset.scopedQuestReturn !== JSON.stringify(a) || back.dataset.questOpen !== String(a.questId)) {
+          e.stopPropagation();
+          window.toast?.("That saved quest marker is no longer current. Open it again from Quest Guide.");
+        }
+        return;
+      }
       const act = e.target.closest("[data-wm-act]")?.dataset.wmAct; if (!act) return;
       if (act === "in" || act === "out") { view.zoom = Math.min(8, Math.max(1, view.zoom * (act === "in" ? 1.5 : 1 / 1.5))); if (view.zoom === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }
       if (act === "reset") { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); }
@@ -854,7 +912,8 @@ window.WorldMapView = (() => {
   function mounted() {
     const root = document.querySelector("[data-world-map]");
     if (pendingFocus?.routeBuild && (!root || !routeOwner(pendingFocus))) pendingFocus = null;
-    if (model?.pins.some((p) => p.routeBuild && (!root || !routeOwner(p)))) clearRoutePin();
+    if ((selected?.scopedQuest && (!root || !routeOwner(selected))) ||
+        model?.pins.some((p) => p.routeBuild && (!root || !routeOwner(p)))) clearRoutePin();
     if (!root) { mountedFor = null; return; }
     if (mountedFor === root) return;
     mountedFor = root; bind(); load();
@@ -864,7 +923,9 @@ window.WorldMapView = (() => {
   function routeOwner(f) {
     if (characterSelectionPending()) return false;
     const p = profile();
-    return p?.id === f.profileId && p.clientBuild === f.routeBuild && p.source?.id === f.routeSource && p.quests?.some((q) => q.id === f.questId);
+    if (f.scopedQuest) return window.CommandsView.scopedQuest.returnQuestId(f.scopedQuest, p) === f.questId;
+    return p?.id === f.profileId && p.clientBuild === f.routeBuild && p.source?.id === f.routeSource &&
+      p.quests?.some((q) => q.id === f.questId);
   }
   function clearRoutePin() {
     if (model) model.pins = model.pins.filter((p) => !p.routeBuild);
@@ -873,12 +934,23 @@ window.WorldMapView = (() => {
   }
   function retireRouteFocus() {
     if (pendingFocus?.routeBuild) pendingFocus = null;
-    if (model?.pins.some((p) => p.routeBuild)) {
+    if (selected?.scopedQuest || model?.pins.some((p) => p.routeBuild)) {
       clearRoutePin();
       if (document.querySelector("[data-world-map]")) { card(); draw(); }
     }
   }
-  function focus(f) { if (!f || !Number.isSafeInteger(f.mapId) || (f.routeBuild && !routeOwner(f))) return false; pendingFocus = f; follow = false; mapId = f.mapId; savePref(); if (document.querySelector("[data-world-map]")) load(f.mapId); return true; }
+  function focus(f, { revealGoal = false } = {}) {
+    if (f?.scopedQuest) {
+      const target = !characterSelectionPending() && window.CommandsView.scopedQuest.mapTarget(f.scopedQuest, profile());
+      if (!target) { window.toast?.("That saved quest marker is no longer current. Open it again from Quest Guide."); return false; }
+      f = target;
+    }
+    if (!f || !Number.isSafeInteger(f.mapId) || (f.routeBuild && !routeOwner(f))) return false;
+    pendingFocus = revealGoal ? { ...f, revealGoal } : f; follow = false; mapId = f.mapId;
+    if (!f.scopedQuest) savePref();
+    if (document.querySelector("[data-world-map]")) load(f.mapId);
+    return true;
+  }
   // Open a whole zone (a saved location only knows its name): no pin, just that zone's map.
   function focusZone(name) { const id = window.ZoneArt?.idFor(name); if (!Number.isSafeInteger(id)) return false; pendingFocus = null; follow = false; mapId = id; savePref(); if (document.querySelector("[data-world-map]")) load(id); return true; }
   // _areaCard renders one objective-area card against a given model (tests).

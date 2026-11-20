@@ -26,6 +26,7 @@
 .practice-lab-panel { margin-top: 1.125rem; padding: clamp(.875rem, 3vw, 1.375rem); border: 1px solid var(--practice-border); border-radius: .75rem; background: #23180e; }
 .practice-lab label { display: block; font-weight: 700; margin-bottom: .25rem; }
 .practice-lab .practice-lab-badge { margin: 1.125rem 0 .375rem; }
+.practice-lab #drill-lesson { margin-top: 1.125rem; border-block: 1px solid var(--practice-border); padding-block: .875rem; }
 .practice-lab :is(button,select) { font: inherit; min-height: 2.75rem; color: inherit; background: #342314; border: 1px solid var(--practice-border); border-radius: .45rem; padding: .45rem .75rem; }
 .practice-lab select { width: min(100%, 20rem); }
 .practice-lab button { text-align: left; }
@@ -33,7 +34,9 @@
 .practice-lab button:not(:disabled):hover { background: #4b331b; }
 .practice-lab button:disabled { color: #c9b48f; border-color: #785c39; }
 .practice-lab button.chosen { background: #4b331b; color: #fff0c9; border-color: var(--practice-gold); }
-.practice-lab :is(button:focus-visible, select:focus-visible, #practice-lab-title:focus, #result-title:focus) { outline: 2px solid #ffe08a; outline-offset: 3px; }
+.practice-lab :is(button:focus-visible, select:focus-visible, #practice-lab-title:focus, #drill-title:focus, #result-title:focus) { outline: 2px solid #ffe08a; outline-offset: 3px; }
+.practice-lab #drill-title { scroll-margin-top: 16px; }
+.practice-lab #fieldbook-return { margin-top: 12px; }
 .practice-lab #drill-options { display: grid; gap: .375rem; margin-top: .75rem; }
 .practice-lab #drill-result { margin-top: 1rem; border-top: 1px solid var(--practice-border); padding-top: .875rem; }
 .practice-lab #drill-retry { margin-top: .25rem; font-weight: 700; }

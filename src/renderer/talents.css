@@ -67,4 +67,12 @@
 .tal-academy fieldset { min-inline-size: 0; margin: 8px 0; border: 1px solid #a5823e; }
 .tal-academy label { display: block; margin: 4px 0; cursor: pointer; color: #2b1b0a; }
 .tal-academy details summary { color: #5a3608; font-weight: 700; }
-.tal-academy input:focus-visible, .tal-academy summary:focus-visible { outline: 2px solid #654018; outline-offset: 3px; }
+/* Preserve the full focus ring when native Tab scrolling lands near a viewport edge. */
+.tal-academy :is(input, summary, select) { scroll-margin-block: 8px; }
+.tal-academy :is(input, summary, select):focus-visible {
+  outline: 2px solid #654018 !important; /* Override the shell's gold focus outline on parchment. */
+  outline-offset: 3px;
+}
+.tal-spellbook { margin-block-start: 10px; }
+.tal-spellbook h3 { margin-block-start: 8px; }
+.tal-spellbook select { max-inline-size: 100%; min-block-size: 32px; background: #fff7e5; color: #2b1b0a; border: 1px solid #825b2a; }

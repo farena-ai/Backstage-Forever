@@ -7,6 +7,12 @@
 .cov-toggle { display: inline-flex; gap: 4px; padding: 3px; border-radius: 16px; background: rgba(0,0,0,.35); }
 .coverage-page .cov-toggle button { all: unset; cursor: pointer; padding: 5px 16px; border-radius: 14px; font-weight: 700; color: #f1dcb0; }
 .coverage-page .cov-toggle button[aria-pressed="true"] { background: #f6c445; color: #2b1407; }
+.cov-patch { padding: 14px 16px; border: 1px solid #a5823e; border-radius: 8px; background: #2b170f; color: #f1dcb0; overflow-wrap: anywhere; }
+.cov-patch h2 { margin: 0 0 8px; color: #fff1d6; }
+.cov-patch p { margin: 0; }
+.cov-patch p + p, .cov-patch li + li { margin-top: 4px; }
+.cov-patch ul { padding-inline-start: 1.35em; margin-block: 10px; }
+.cov-patch small { display: block; color: #ddc8a2; }
 .cov-summary { margin: 0; color: #f1dcb0; }
 .cov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 .cov-card { border-radius: 8px; overflow: hidden; border: 1px solid #a5823e; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; box-shadow: 0 4px 10px rgba(0,0,0,.35); }

@@ -42,6 +42,25 @@
 .jr-empty { color: #4a3218; }
 .journey-page .jr-empty { color: #f1dcb0; }
 .jr-card .jr-empty { color: #4a3218; }
+.jr-private-weekly { border-top: 1px solid #9b7c43; margin-top: 14px; padding-top: 14px; }
+.jr-private-weekly h3 { color: inherit; margin-top: 0; }
+.jr-private-weekly p { overflow-wrap: anywhere; }
+.jr-private-rows { padding-inline-start: 1.6em; }
+.jr-private-rows li { margin-block: 8px; }
+.jr-private-rows li p { margin: 4px 0; white-space: pre-wrap; }
+.jr-private-forms { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.jr-private-forms fieldset { display: grid; gap: 8px; min-width: 0; border: 1px solid #927242; border-radius: 4px; }
+.jr-private-forms :is(input, select, textarea) { width: 100%; min-width: 0; box-sizing: border-box; }
+.jr-private-forms button { justify-self: start; max-width: 100%; white-space: normal; }
+.jr-private-forms [role="status"]:empty { margin: 0; }
+.jr-private-rows [tabindex="-1"]:focus { outline: 2px solid #3d220c; outline-offset: 3px; }
+.jr-private-weekly :is(button, input, select, textarea, [tabindex]):focus-visible { outline-color: #3d220c !important; }
+.journey-page .jr-after-action :is(summary, label) { color: #3d220c; }
+.jr-after-action summary { cursor: pointer; font-weight: 700; }
+.jr-after-action :is(summary, textarea, button) { scroll-margin-block: 20px; }
+.jr-after-action :is(summary, textarea, button):focus-visible { outline: 2px solid #3d220c !important; outline-offset: 3px; }
+.jr-after-action .jr-after-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.jr-after-action p, .jr-after-action li { overflow-wrap: anywhere; }
 /* New badge moment. */
 .bf-badge-pop { position: fixed; z-index: 9001; right: 28px; bottom: 28px; display: flex; gap: 14px; align-items: center; padding: 14px 20px 14px 14px; border-radius: 10px; color: #fff1d6; cursor: pointer;
   background: radial-gradient(circle at 15% 50%, rgba(246,196,69,.35), rgba(40,10,6,.96) 60%), #2a0d06; border: 2px solid #c79a4a; box-shadow: 0 18px 50px rgba(0,0,0,.6), 0 0 40px rgba(246,196,69,.3); animation: bf-badge-in .8s cubic-bezier(.2,.9,.25,1.2) both; }
