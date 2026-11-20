@@ -3,6 +3,7 @@ const fs = require("node:fs"), path = require("node:path"), crypto = require("no
 const { validateState } = require("./validation.cjs");
 const { encodeJournalState, decodeJournalState } = require("./journal-persistence.cjs");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const ROOT_STAGE_PREFIXES = new Set(["state.json.", "credentials.json.", "recovery-preferences.json."]);
 const MAX_POINT_BYTES = 64 * 1024 * 1024, MAX_TOTAL_BYTES = 128 * 1024 * 1024;
 const REASONS = ["startup", "save", "close", "manual", "import", "restore"];
 const pointName = name => name.endsWith(".json") && UUID.test(name.slice(0, -5));
@@ -144,6 +145,17 @@ class RecoveryCheckpoints {
       this.lastCapture = this.now(); this.phase = "ready";
       const { state, fileHash, ...point } = this.read(envelope.id); return point;
     } catch (e) { this.phase = e.kind === "limit" ? "limit" : "unavailable"; throw e instanceof RecoveryError ? e : new RecoveryError("unavailable"); }
+  }
+  clearRootStages() {
+    try {
+      const root = this.root();
+      // Only these root siblings belong to this reset; never recurse or inspect their payloads.
+      const files = fs.readdirSync(root).filter(name => name.endsWith(".tmp") &&
+        ROOT_STAGE_PREFIXES.has(name.slice(0, -40)) && UUID.test(name.slice(-40, -4)))
+        .map(name => path.join(root, name));
+      for (const file of files) regular(file);
+      for (const file of files) { regular(file); fs.unlinkSync(file); }
+    } catch { throw new RecoveryError("unavailable"); }
   }
   clear({ preferences = false } = {}) {
     try {

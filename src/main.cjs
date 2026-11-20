@@ -1110,6 +1110,8 @@ app.whenReady().then(async () => {
       noLink: true,
     });
     if (result.response !== 1) return null;
+    // A blocked private root stage must reject before this reset changes any other store.
+    store.recovery.clearRootStages();
     // If retirement cannot be persisted, leave the journal and its related state untouched.
     fieldDispatch.beginReset();
     resetting = true;

@@ -7007,6 +7007,24 @@
           "text": "Plan a guild run in Plans → Party → Guild Run Pack. Preview an event with its organizer time zone, meeting point, roles and preparation checklist. Save it locally, then export a JSON pack or plain-text copy to share yourself. Recipients can review a pack before saving it, apply later revisions or cancellations, and keep their own preparation checks private. There is no account, RSVP collection, automatic delivery or sync."
         }
       ]
+    },
+    {
+      "version": "1.15.1",
+      "channel": "stable",
+      "source": "docs/releases/1.15.1.md",
+      "title": "Backstage Forever 1.15.1 — Local Data Reset",
+      "changes": [
+        {
+          "id": "local-reset-root-stages",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Delete all local data removes leftover private staging files. Reset now clears temporary files left by interrupted journal, credential, or recovery-preference writes. If one of those files is blocked, reset stops before changing the saved journal or credentials so you can retry. Unrelated files and exports are left alone."
+        }
+      ]
     }
   ],
   "excluded": [
