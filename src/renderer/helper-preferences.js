@@ -21,9 +21,12 @@
   function read(batch) {
     return new Map(Array.from(batch?.querySelectorAll("select[data-helper-choice]") || [], el => [el.dataset.helperChoice, el.value]));
   }
+  function owner(character) {
+    return character && JSON.stringify([character.id, character.name, character.realm, character.source?.kind, character.source?.id, character.clientBuild]);
+  }
   function markup(esc, character, previous) {
     const t = text => esc(window.I18n?.tr(text) ?? text);
-    const identity = character && JSON.stringify([character.id, character.name, character.realm, character.source?.kind, character.source?.id, character.clientBuild]);
+    const identity = owner(character);
     const choices = read(identity && previous?.dataset.helperOwner === identity ? previous : null);
     const preview = command(choices);
     return `<section class="ingame-helpers" aria-labelledby="helper-preferences-title">
@@ -66,5 +69,5 @@
       text.select();
     });
   }
-  window.HelperPreferences = { markup, mount };
+  window.HelperPreferences = { markup, mount, owner };
 })();
