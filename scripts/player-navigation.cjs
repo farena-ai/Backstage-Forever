@@ -9,6 +9,7 @@ const routes = {
   dungeons: ["Adventure", "Dungeons & raids"],
   zones: ["Adventure", "Zones"],
   "guided-route": ["Adventure", "Guided route"],
+  "practice-lab": ["Adventure", "Practice Lab"],
   assistant: ["Companion"],
   characters: ["Characters"],
   journey: ["Characters", "Journey"],
