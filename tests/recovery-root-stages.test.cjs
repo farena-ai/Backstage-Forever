@@ -38,13 +38,20 @@ test("blocked root stage rejects reset without changing canonical bytes or histo
   fs.writeFileSync(stage, "private stage");
   const files = [store.file, store.keyFile, stage, path.join(dir, "recovery-preferences.json"), path.join(dir, "recovery", `${point.id}.json`)];
   const before = files.map(file => fs.readFileSync(file)), saved = store.state;
+  // The sweep uses a native realpath root, which can differ in spelling from TEMP.
+  const target = path.join(fs.realpathSync.native(dir), path.basename(stage));
   const unlink = fs.unlinkSync;
+  let blocked = 0;
   const fault = t.mock.method(fs, "unlinkSync", file => {
-    if (file === stage) throw Object.assign(Error("private native error"), { code: "EPERM" });
+    if (file === target) {
+      blocked++;
+      throw Object.assign(Error("private native error"), { code: "EPERM" });
+    }
     return unlink(file);
   });
   try { assert.throws(() => store.reset(), e => e.kind === "unavailable" && !e.message.includes("private")); }
   finally { fault.mock.restore(); }
+  assert.equal(blocked, 1, "reset must attempt to unlink the exact staged file");
   assert.deepEqual(files.map(file => fs.readFileSync(file)), before);
   assert.equal(store.state, saved); assert.equal(store.getKey("openai"), "synthetic key");
   assert.deepEqual(store.reset().profiles, []);
