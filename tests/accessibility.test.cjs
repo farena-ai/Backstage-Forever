@@ -29,7 +29,7 @@ test("every image has alt text, every button a name, every field a label", () =>
 test("every window has a language, a title and a live region where answers or steps change", () => {
   for (const f of files.filter((x) => x.endsWith(".html"))) {
     const s = read(f);
-    assert.match(s, /<html lang="en">/, f); assert.match(s, /<title>[^<]+<\/title>/, f);
+    assert.match(s, /<html\b[^>]*\slang="en"(?=\s|>)[^>]*>/, f); assert.match(s, /<title>[^<]+<\/title>/, f);
   }
   assert.match(read("ask-panel.html"), /aria-live="polite"/);
   assert.match(read("mini-now.html"), /aria-live="polite"/);

@@ -6943,6 +6943,34 @@
           "text": "Historical observations are not a current boss list. Historical encounters for #sm and Historical encounters for #rfk label the Forever build and collection window. These are not proof of access or of your character’s defeats."
         }
       ]
+    },
+    {
+      "version": "1.13.0",
+      "channel": "stable",
+      "source": "docs/releases/1.13.0.md",
+      "title": "Backstage Forever 1.13.0 — Academy",
+      "changes": [
+        {
+          "id": "academy-practice-lab",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Try four offline drills in Adventure → Practice Lab. Practice an opener, resource pooling, defensive timing and heal targeting. Each choice gives a simulated result and a tip. No game, character import, account or provider is needed; the scenarios are fictional and attempts are not saved."
+        },
+        {
+          "id": "academy-frost-mage-pilot",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Try the Frost Mage pilot in Characters → Talents. The solo, single-target guide is available for an imported active Frost Mage at levels 23–25 on WoW Forever build 1.60.1.70959, after you confirm Frostbolt Rank 4 and Ice Lance Rank 1 in your spellbook. This is offline teaching, not live rotation advice or spellbook detection. Your confirmations are not saved."
+        }
+      ]
     }
   ],
   "excluded": [

@@ -1,7 +1,7 @@
 {
   "name": "backstage-forever",
   "productName": "Backstage Forever",
-  "version": "1.12.1",
+  "version": "1.13.0",
   "releaseChannel": "stable",
   "description": "A free leveling companion for World of Warcraft: Forever: a desktop app and in-game addon that read your own game, tell you what to do next and guide you there. From Backstage Coding (https://www.backstagecoding.com). Designed by Frank Arena and Jason Babiuch.",
   "homepage": "https://github.com/farena-ai/Backstage-Forever#readme",
@@ -67,6 +67,7 @@
     "test:recovery": "node scripts/recovery-smoke.cjs",
     "test:party-backend": "node scripts/party-backend-smoke.cjs",
     "test:party": "node scripts/party-smoke.cjs",
+    "test:practice-lab": "node scripts/practice-lab-desktop-smoke.cjs",
     "check:forever-vendors": "node scripts/build-forever-vendors.cjs --check",
     "check:forever-insights": "node scripts/build-forever-insights.cjs --check",
     "check:forever-travel": "node scripts/build-forever-travel.cjs --check",

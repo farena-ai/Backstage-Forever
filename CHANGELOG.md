@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.13.0 — Academy
+
+- Add four offline, fictional drills in Adventure → Practice Lab.
+- Add a bounded Frost Mage teaching pilot in Characters → Talents, gated on the supported build, level range and player-confirmed spell ranks.
+- See the [release notes](docs/releases/1.13.0.md) for scope.
+
 ## 1.12.1 — Forever dungeon and raid questions
 
 - Keep recognized instance fact questions local and decline unsupported current facts rather than falling back to another edition.

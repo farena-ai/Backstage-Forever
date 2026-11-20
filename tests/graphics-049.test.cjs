@@ -77,7 +77,14 @@ test("G10/G11 wiring: handler, scripts, replay button, faction crest on brand an
   assert.match(main, /handle\("onboarding"/); assert.match(main, /process\.env\.BF_TEST_INACTIVE !== "1" && !\(!app\.isPackaged && process\.env\.BF_USER_DATA && process\.env\.BF_ONBOARDING !== "1"\) && !\(store\.state\.profiles \|\| \[\]\)\.length/);
   assert.match(read("src/preload.cjs"), /onboarding: \(\) => invoke\("onboarding"\)/);
   const html = read("src/renderer/index.html");
-  assert.match(html, /<script src="onboarding\.js"><\/script><script src="app\.js"><\/script>/); assert.match(html, /href="onboarding\.css"/);
+  const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map((match) => match[1]);
+  const appIndex = scripts.indexOf("app.js");
+  for (const dependency of ["onboarding.js", "practice-lab-model.js", "practice-lab.js"]) {
+    const index = scripts.indexOf(dependency);
+    assert.ok(index >= 0 && index < appIndex, `${dependency} must load before app.js`);
+  }
+  assert.ok(scripts.indexOf("practice-lab-model.js") < scripts.indexOf("practice-lab.js"));
+  assert.match(html, /href="onboarding\.css"/);
   const app = read("src/renderer/app.js");
   assert.match(app, /data-ob-replay/); assert.match(app, /class="brand-faction" src="art\/factions\/\$\{profile\(\)\.faction\.toLowerCase\(\)\}\.webp"/);
   assert.match(read("src/renderer/page-hero.js"), /<span class="ph-faction" aria-hidden="true"><\/span>/);
