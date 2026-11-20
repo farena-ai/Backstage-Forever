@@ -6989,6 +6989,24 @@
           "text": "Open the Dungeon Fieldbook in Adventure → Dungeons & raids → The Deadmines. Before the run, review the approximate entrance, quest records, manual preparation checks and the active character’s wish list for this dungeon. Inside, three boss cues are labeled Classic reference, not verified Forever mechanics. Afterward, see dated defeats from the active character’s saved Journal. This is not a run, lockout or personal-loot tracker; other dungeons keep the standard Atlas details."
         }
       ]
+    },
+    {
+      "version": "1.15.0",
+      "channel": "stable",
+      "source": "docs/releases/1.15.0.md",
+      "title": "Backstage Forever 1.15.0 — Guild Run Pack",
+      "changes": [
+        {
+          "id": "guild-run-pack",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Plan a guild run in Plans → Party → Guild Run Pack. Preview an event with its organizer time zone, meeting point, roles and preparation checklist. Save it locally, then export a JSON pack or plain-text copy to share yourself. Recipients can review a pack before saving it, apply later revisions or cancellations, and keep their own preparation checks private. There is no account, RSVP collection, automatic delivery or sync."
+        }
+      ]
     }
   ],
   "excluded": [
