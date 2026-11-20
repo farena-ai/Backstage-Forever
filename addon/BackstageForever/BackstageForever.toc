@@ -2,8 +2,8 @@
 ## Title: Backstage Forever
 ## Notes: Leveling companion for WoW Forever: Adventure Compass, guided route, arrows to your next quest, trainer and flight finders, and an ask panel. Pairs with the free Backstage Forever desktop app.
 ## Author: Backstage Coding (Frank Arena & Jason Babiuch)
-## Version: 1.16.902
-## X-Backstage-Candidate: in-game-helpers-qa.2 (local only)
+## Version: 1.16.903
+## X-Backstage-Candidate: in-game-helpers-qa.3 (local only)
 ## SavedVariables: BackstageForeverExport
 ## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings, BackstageForeverQuestItemSourcesDB, BackstageForeverRouteSettings, BackstageForeverSuppliesSettings, BackstageForeverJournalDB, BackstageForeverMomentsSettings, BackstageForeverLedgerDB, BackstageForeverSheetDB, BackstageForeverAskSettings, BackstageForeverEnemySettings, BackstageForeverQoLSettings, BackstageForeverPartySettings, BackstageForeverHelperSettings
 BackstageForeverLocale.lua

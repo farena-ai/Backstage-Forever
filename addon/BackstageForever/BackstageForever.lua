@@ -818,7 +818,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.16.902'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.16.903'
     character.race=clean((call(UnitRace,'player')));
     -- UnitSex: 2 male, 3 female; 1 (unknown) and anything else is left out.
     local sex=integer(call(UnitSex,'player'),1,3);if sex==2 then character.sex='male' elseif sex==3 then character.sex='female' end
