@@ -1375,10 +1375,11 @@ body[data-class] .providers {
 /* Art pass: Field guide hero. */
 
 /* Settings → Game connection: in-game helpers. */
-.ingame-helpers ul { list-style: none; margin: 8px 0 10px; padding: 0; display: grid; gap: 6px; }
-.ingame-helpers li { display: grid; grid-template-columns: 170px 1fr auto; gap: 10px; align-items: baseline; }
-.ingame-helpers code { padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,.25); }
-@media (max-width: 760px) { .ingame-helpers li { grid-template-columns: 1fr; } }
+.ingame-helpers { margin-block-start: 1rem; }
+.ingame-helpers summary { cursor: pointer; padding-block: .35em; scroll-margin-block: .75rem; }
+.ingame-helpers dl { margin-block: .25em .75em; }
+.ingame-helpers dd { margin-inline-start: 1em; }
+.ingame-helpers code { user-select: text; overflow-wrap: anywhere; }
 /* G13: the saved-location card shows the zone's own painting when it has one (ZoneArt.paint sets --zone-art). */
 .expedition-card[data-zone-art]::before { background-image: var(--zone-art); }
 

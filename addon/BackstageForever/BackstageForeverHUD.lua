@@ -546,6 +546,10 @@ if type(SlashCmdList)=='table' then
         end
         if type(message)=='string' then
             local word=message:lower():match('^(%a+)')
+            if word=='helpers' then
+                if type(BackstageForeverHelpersCommand)=='function' then pcall(BackstageForeverHelpersCommand,message)end
+                return
+            end
             if word=='train' or word=='repair' or word=='flights' or word=='xp' or word=='hearth' or word=='help' or word=='toasts' or word=='danger' or word=='junk' then
                 if type(BackstageForeverAssistCommand)=='function' then pcall(BackstageForeverAssistCommand,message)end
                 return

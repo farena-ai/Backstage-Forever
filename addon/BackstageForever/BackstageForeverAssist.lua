@@ -604,6 +604,7 @@ function BackstageForeverAssistCommand(message)
             '/bf boss - the tip for the boss you target (on or off for the pop-ups)',
             '/bf set save NAME, /bf set wear NAME - save the gear you wear as a set, put it back on later (out of combat); /bf set list, /bf set delete NAME',
             '/bf show, /bf hide - the Adventure Compass panel',
+            '/bf helpers - list individual helper settings for this character',
             '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',
             '/bf moments - turn the short messages for elite, rare and boss kills and profession milestones on or off',
             '/bf party - the quests of your party next to yours (party members with Backstage Forever); /bf party way shares your waypoint, /bf party go follows one',
