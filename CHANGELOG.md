@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.15.0 — Guild Run Pack
+
+- Add local Guild Run Packs in Plans > Party: preview, save, export and review manually shared run plans.
+- See the [release notes](docs/releases/1.15.0.md) for scope.
+
+
 ## 1.14.0 — Deadmines Fieldbook
 
 - Add the desktop Dungeon Fieldbook for The Deadmines, with before-run preparation, Classic reference cues, and saved Journal defeats.

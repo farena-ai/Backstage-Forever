@@ -40,6 +40,7 @@ const { registerAdventureCoachHandlers } = require("./core/adventure-coach-ipc.c
 const { registerProfessionCoachHandlers } = require("./core/profession-coach-ipc.cjs");
 const { registerPreparationHandlers } = require("./core/preparation-ipc.cjs");
 const { registerPartyHandlers } = require("./core/party-ipc.cjs");
+const { registerGuildRunHandlers } = require("./core/guild-run-ipc.cjs");
 const { CompanionRequest } = require("./core/companion-request.cjs");
 const { CompanionContext } = require("./core/companion-context.cjs");
 const { MemoryService } = require("./core/memory.cjs");
@@ -132,6 +133,7 @@ function handle(name, fn) {
       if (e?.message === "Secure credential storage is unavailable.") throw e;
       if (name.startsWith("community") && e?.name === "CommunityError") throw new Error(e.message);
       if (["partyBrief", "partyPreview", "createPartyJourney", "commitPartyPlan", "exportPartyPlan", "importPartyPlan"].includes(name) && /^Party plan/.test(e?.message)) throw e;
+      if (name === "guildRun" && /^Guild Run Pack/.test(e?.message)) throw e;
       if (["ask", "askCompanion", "memoryPreview", "saveMemory", "deleteMemory", "clearMemory"].includes(name) && /^(Memory |Provider response is no longer current|Choose the current character)/.test(e?.message)) throw e;
       if (
         name === "copyQuestWaypoint" &&
@@ -353,6 +355,8 @@ app.whenReady().then(async () => {
     dialog,
     getWindow: () => win,
   });
+  const guildRuns = registerGuildRunHandlers({ handle, dataDir: app.getPath("userData"),
+    context: companionContext, isBlocked: () => resetting, dialog, getWindow: () => win });
   const insights = loadBundledInsights();
   // Creature levels, elite flags and hostility (bundled reference; optional).
   const creaturePack = (() => { try { return require("./core/creature-data.cjs").loadCreaturePack(); } catch { return null; } })();
@@ -1128,6 +1132,7 @@ app.whenReady().then(async () => {
       await updateReset;
       await knowledgeReset;
       await claude.clearCredentials();
+      guildRuns.reset();
       const fresh = store.reset();
       wishlist?.clear(); // starred loot belongs to the characters just deleted
       community?.reset(); // local install id, sent marks and pack; shared facts stay on the server

@@ -7,14 +7,14 @@ function load(name){
   const handlers={},document={body:{isConnected:true,dataset:{}},addEventListener(){},activeElement:null};document.activeElement=document.body;
   const root={addEventListener(t,f){(handlers[t]??=[]).push(f);},contains:()=>true,querySelector:()=>null,querySelectorAll:()=>[]};
   const c={window:{},document,setTimeout,clearTimeout,console,Intl,localStorage:{getItem:()=>null,setItem(){}}};vm.createContext(c);
-  for(const [f,n] of [["interaction","InteractionGuard"],["command-center","CommandCenter"],["page-hero","PageHero"],[name,name[0].toUpperCase()+name.slice(1)]]){vm.runInContext(fs.readFileSync(require.resolve(`../src/renderer/${f}.js`),"utf8"),c);c[n]=c.window[n];}
+  for(const [f,n] of [["interaction","InteractionGuard"],["command-center","CommandCenter"],["page-hero","PageHero"],...(name==="party"?[["guild-run","GuildRun"]]:[]),[name,name[0].toUpperCase()+name.slice(1)]]){vm.runInContext(fs.readFileSync(require.resolve(`../src/renderer/${f}.js`),"utf8"),c);c[n]=c.window[n];}
   return {c,root,document,emit:(t,e)=>handlers[t]?.forEach(f=>f(e))};
 }
 function party(){
   const f=load("party");let observation=0,context="source-A",epoch=0,previewResolve,writeResolve,notified=0;
   const host={root:f.root,esc,active:()=>true,profileId:()=>"Alpha",sourceSignature:()=>observation,contextSignature:()=>context,epoch:()=>epoch,portrait:()=>"art",ready:async()=>{},show(){},cancelPreview(){},cleanError:e=>e.message,notify:()=>notified++,api:{partyBrief:async()=>({bags:{known:true,free:observation,total:20}}),partyPreview:()=>new Promise(r=>previewResolve=r),exportPartyPlan:()=>new Promise(r=>writeResolve=r)}};
   f.c.Party.init(host);
-  const click=kind=>{const html=f.c.Party.page(),raw=html.match(new RegExp(`data-party-${kind} data-party-intent="([^"]*)"`))[1];const n={dataset:{partyIntent:decode(raw)},hasAttribute:k=>k===`data-party-${kind}`,closest:()=>n};f.emit("click",{target:n});};
+  const click=kind=>{const html=f.c.Party.page(),raw=html.match(new RegExp(`data-party-${kind} data-party-intent="([^"]*)"`))[1];const n={dataset:{partyIntent:decode(raw)},hasAttribute:k=>k===`data-party-${kind}`,closest:selector=>selector==="button"?n:null};f.emit("click",{target:n});};
   return {...f,host,click,refresh:async()=>{observation++;await f.c.Party.refresh();},context:value=>context=value,epoch:()=>epoch++,preview:()=>previewResolve({title:"Original",steps:[{text:"Original step"}]}),write:()=>writeResolve(true),notified:()=>notified};
 }
 test("Party ordinary reads preserve dirty portable title and step with fresh facts",async()=>{
