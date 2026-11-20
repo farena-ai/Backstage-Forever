@@ -24,6 +24,9 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
       load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});
       const L=load('./src/core/live-bridge.cjs').LiveBridge;
       L.prototype.readPreference=()=>false; L.prototype.start=()=>{};
+      const GameSync=load('./src/core/game-sync.cjs').GameSync;
+      const restore=GameSync.prototype.restore;
+      GameSync.prototype.restore=function(){globalThis.fixtureGame=this;return restore.call(this)};
       globalThis.clipboardWrites=[];
       const {clipboard,ipcMain}=require('electron');
       clipboard.writeText=(value)=>globalThis.clipboardWrites.push(value);
@@ -33,6 +36,10 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
           await new Promise(resolve=>{globalThis.releaseBeta=resolve});
         }
         return fn(event,...args);
+      } : channel==='backstage:gameSnapshot' ? async (event,...args)=>{
+        const result=await fn(event,...args);
+        globalThis.lastHelperPoll=result;
+        return result;
       } : fn);
       load('./src/main.cjs');
     `);
@@ -119,6 +126,101 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await page.waitForFunction(() => document.querySelector('.ingame-helpers')?.textContent.includes('Alpha'));
     await batch.locator('summary').press('Enter');
     assert.equal(await preview.isVisible(), false);
+    // Feed real saved exports through GameSync, the Store and the renderer poll.
+    const client = path.join(dir, 'client');
+    const saved = path.join(client, 'WTF', 'Account', 'SyntheticAccount', 'SavedVariables', 'BackstageForever.lua');
+    await fs.mkdir(path.dirname(saved), { recursive: true });
+    await fs.writeFile(path.join(client, '.flavor.info'), 'wowf');
+    const start = Math.floor(Date.now() / 1000) - 30;
+    const publish = async (name, offset) => {
+      const observedAt = start + offset;
+      const bytes = 'BackstageForeverExport = ' + JSON.stringify(JSON.stringify({
+        schema: 1, observedAt, activeId: `Player-synthetic-${name}`,
+        characters: ['Alpha', 'Beta'].map(name => ({
+          id: `Player-synthetic-${name}`, name, realm: 'Synthetic', className: 'Hunter', level: 15, updatedAt: observedAt,
+        })),
+      }));
+      await fs.writeFile(saved, bytes);
+      const status = await app.evaluate(async (_, root) => {
+        const game = globalThis.fixtureGame;
+        if (!root) return game.refresh();
+        const status = await game.connect(root);
+        clearInterval(game.timer); // Advance fixture reads only at publish().
+        return status;
+      }, offset === 0 ? client : null);
+      const stamp = new Date(observedAt * 1000).toISOString();
+      assert.equal(status.lastSync, stamp);
+      const journalBytes = await fs.readFile(journal);
+      assert.equal(JSON.parse(journalBytes).activeProfileId, name, 'follow-game must commit the saved owner in main');
+      return { stamp, bytes, journalBytes };
+    };
+    const waitForPoll = async ({ stamp }, name) => {
+      const deadline = Date.now() + 12000;
+      do {
+        const seen = await app.evaluate((_, { stamp, name }) => {
+          const result = globalThis.lastHelperPoll;
+          return result?.gameStatus.lastSync === stamp && result.state.activeProfileId === name;
+        }, { stamp, name });
+        if (seen) return;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } while (Date.now() < deadline);
+      assert.fail(`Renderer did not poll the ${name} saved snapshot (${stamp})`);
+    };
+    await waitForPoll(await publish('Alpha', 0), 'Alpha');
+    await page.waitForFunction(() => JSON.parse(document.querySelector('[data-helper-owner]')?.dataset.helperOwner || 'null')?.[3] === 'wow-addon');
+    assert.equal(await page.locator('#follow-game-character').isChecked(), true);
+    const questChoice = batch.getByLabel('Quest tracker', { exact: true });
+    // The picker round-trip may already have left the disclosure open.
+    if (await batch.getAttribute('open') === null) await batch.locator('summary').press('Enter');
+    await questChoice.selectOption('off');
+    await batch.getByRole('button', { name: 'Select command' }).press('Enter');
+    const selectedCommand = () => preview.evaluate(el => el === document.activeElement && el.readOnly &&
+      el.value === '/bf helpers apply questTracker=off commit' && el.selectionStart === 0 && el.selectionEnd === el.value.length);
+    assert.equal(await selectedCommand(), true);
+    const followPrefs = await page.evaluate(() => Object.entries(localStorage));
+    await waitForPoll(await publish('Alpha', 1), 'Alpha');
+    await page.waitForFunction(() => !snapshotPolling);
+    assert.equal(await selectedCommand(), true, 'a same-owner poll must preserve the selected command');
+    const switched = await publish('Beta', 2);
+    await waitForPoll(switched, 'Beta');
+    await page.waitForFunction(() => !snapshotPolling);
+    assert.equal(await page.evaluate(() => {
+      const text = document.querySelector('#helper-batch-command');
+      return text?.value === '/bf helpers apply questTracker=off commit';
+    }), false, 'Observed Beta snapshot left the Alpha command mounted and copyable');
+    const expectEmptyDraft = async name => {
+      await page.waitForFunction(name => document.querySelector('[data-helper-owner] strong')?.textContent === `${name} · Synthetic`, name);
+      assert.equal(await picker.inputValue(), name);
+      if (await batch.getAttribute('open') === null) await batch.locator('summary').press('Enter');
+      assert.equal(await questChoice.inputValue(), '');
+      assert.equal(await batch.locator('#helper-batch-command').inputValue(), '');
+      assert.equal(await preview.isVisible(), false);
+    };
+    await expectEmptyDraft('Beta');
+    assert.deepEqual(await fs.readFile(journal), switched.journalBytes);
+    await questChoice.selectOption('on');
+    // Exercise the shell's ordinary edit guard independently of helper focus.
+    const editor = await page.evaluateHandle(() => {
+      const form = document.createElement('form');
+      const input = form.appendChild(document.createElement('textarea'));
+      document.body.append(form);
+      input.focus();
+      return input;
+    });
+    await page.keyboard.insertText('unsaved unrelated edit');
+    const returned = await publish('Alpha', 3);
+    await waitForPoll(returned, 'Alpha');
+    await page.waitForFunction(() => !snapshotPolling);
+    assert.equal(await batch.count(), 0, 'retire the outgoing batch even while a genuine edit defers repaint');
+    assert.equal(await picker.inputValue(), 'Beta', 'the shell must still defer repaint during the edit');
+    assert.equal(await editor.evaluate(el => el === document.activeElement && el.value === 'unsaved unrelated edit'), true);
+    await editor.evaluate(el => el.form.remove());
+    await editor.dispose();
+    await expectEmptyDraft('Alpha');
+    assert.deepEqual(await fs.readFile(journal), returned.journalBytes);
+    assert.equal(await fs.readFile(saved, 'utf8'), returned.bytes);
+    assert.deepEqual(await page.evaluate(() => Object.entries(localStorage)), followPrefs);
+
     await page.evaluate(() => localStorage.setItem('bf-lang-v1', 'de'));
     await page.reload();
     await check(1180, 740, 1, 'Helfer im Spiel');
@@ -138,7 +240,7 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     assert.equal(await section.evaluate(node => node.scrollWidth <= node.clientWidth), true);
     assert.deepEqual(errors, []);
     assert.deepEqual(await app.evaluate(() => globalThis.clipboardWrites), []);
-    console.log('Helper handoff verified in Electron at normal and compact zoomed widths (English/German, keyboard, unchanged journal and storage, no clipboard writes).');
+    console.log('Helper handoff verified in Electron (English/German, keyboard, picker and follow-game retirement, no draft persistence or clipboard writes).');
   } finally {
     await app?.close();
     await fs.rm(dir, { recursive: true, force: true });
