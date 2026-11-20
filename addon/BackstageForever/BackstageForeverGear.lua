@@ -1,5 +1,5 @@
--- Gear helper: the best quest reward for your class and a one-line upgrade hint on item tooltips.
--- Scoring mirrors src/core/gear-score.cjs (same weights, armor/weapon rules and wording).
+-- Gear helper: verified quest reward comparisons and a one-line upgrade hint on item tooltips.
+-- The legacy score model mirrors src/core/gear-score.cjs; reward highlights do not use its weights.
 -- Public API only. It only highlights and explains: it never picks a reward, completes a quest
 -- or equips anything for you.
 local floor=math.floor
@@ -295,6 +295,8 @@ local STAT_KEYS={
     {'RESISTANCE1_NAME','Holy Resistance'},{'RESISTANCE2_NAME','Fire Resistance'},{'RESISTANCE3_NAME','Nature Resistance'},
     {'RESISTANCE4_NAME','Frost Resistance'},{'RESISTANCE5_NAME','Shadow Resistance'},{'RESISTANCE6_NAME','Arcane Resistance'},
 }
+local COMPARED_KEYS={RESISTANCE0_NAME=true}
+for _,row in ipairs(STAT_KEYS)do COMPARED_KEYS[row[1]]=true end
 local function itemInfo(link)
     if type(C_Item)=='table' and type(C_Item.GetItemInfo)=='function' then
         local r={call(C_Item.GetItemInfo,link)}
@@ -306,7 +308,7 @@ local function itemStats(link)
     local s
     if type(C_Item)=='table' and type(C_Item.GetItemStats)=='function' then s=call(C_Item.GetItemStats,link) end
     if type(s)~='table' then s=call(GetItemStats,link) end
-    return type(s)=='table' and s or {}
+    return type(s)=='table' and s or nil
 end
 local cache=setmetatable({},{__mode='v'})
 -- An item table shaped like game-data.cjs item(), or nil while the client has not cached it.
@@ -316,7 +318,8 @@ function G.item(link)
     local name,_,quality,itemLevel,reqLevel,_,_,_,equipLoc,_,sellPrice,classId,subclassId=itemInfo(link)
     if not name then return nil end
     classId,subclassId=num(classId),num(subclassId)
-    local raw,stats=itemStats(link),{}
+    local observed,stats=itemStats(link),{}
+    local raw=observed or {}
     local seen={}
     for _,p in ipairs(STAT_KEYS) do
         local v=num(raw[p[1]])
@@ -326,7 +329,17 @@ function G.item(link)
         classId=classId,subclassId=subclassId,inventoryType=INVTYPES[equipLoc],equipLoc=equipLoc,
         kind=classId==2 and WEAPON_KINDS[subclassId] or classId==4 and ARMOR_KINDS[subclassId] or nil,
         armor=num(raw.RESISTANCE0_NAME) or 0,stats=stats,dps=num(raw.ITEM_MOD_DAMAGE_PER_SECOND_SHORT),sellPrice=num(sellPrice) or 0}
-    cache[link]=item
+    item.statsKnown=observed~=nil
+    item.rewardStatsKnown=item.statsKnown and getmetatable(raw)==nil
+    if item.rewardStatsKnown then
+        for key,value in next,raw do
+            key,value=plain(key),plain(value)
+            if not key or not COMPARED_KEYS[key] or type(value)~='number' or value~=value or math.abs(value)>1000000 then
+                item.rewardStatsKnown=false;break
+            end
+        end
+    end
+    if observed then cache[link]=item end
     return item
 end
 function G.context()
@@ -428,29 +441,21 @@ G.hookMode=hookTooltips()
 -- ---------------------------------------------------------------- quest reward picker
 -- The classic quest frame's reward button for choice #index (first one that matches).
 function G.rewardButton(index)
-    local function ok(b,strict)
+    local function ok(b)
         if type(b)~='table' then return false end
-        if b.type~=nil and b.type~='choice' then return false end
-        if strict then
-            if b.type~='choice' then return false end
-            local id=type(b.GetID)=='function' and num(call(b.GetID,b))
-            if id~=index then return false end
-        end
-        if type(b.IsShown)=='function' and call(b.IsShown,b)==false then return false end
-        return true
+        return plain(b.type)=='choice' and num(call(b.GetID,b))==index and call(b.IsShown,b)==true
     end
     local rf=type(QuestInfoFrame)=='table' and QuestInfoFrame.rewardsFrame or (type(QuestInfoRewardsFrame)=='table' and QuestInfoRewardsFrame) or nil
     local env=_G or {}
     -- Choice buttons carry type 'choice' and their choice number as ID.
     for i=1,index+12 do
         local b=env['QuestInfoRewardsFrameQuestInfoItem'..i]
-        if ok(b,true) then return b,'QuestInfoRewardsFrameQuestInfoItem'..i end
+        if ok(b) then return b,'QuestInfoRewardsFrameQuestInfoItem'..i end
     end
-    if type(QuestInfo_GetRewardButton)=='function' and rf then
-        local b=call(QuestInfo_GetRewardButton,rf,index)
-        if ok(b) then return b,'QuestInfo_GetRewardButton' end
+    -- QuestInfo_GetRewardButton can allocate a Blizzard button. Read the existing list only.
+    if rf and type(rf.RewardButtons)=='table' then
+        for i=1,index+12 do if ok(rf.RewardButtons[i]) then return rf.RewardButtons[i],'rewardsFrame.RewardButtons' end end
     end
-    if rf and type(rf.RewardButtons)=='table' and ok(rf.RewardButtons[index]) then return rf.RewardButtons[index],'rewardsFrame.RewardButtons' end
     for _,name in ipairs({'QuestInfoRewardsFrameQuestInfoItem'..index,'QuestRewardItem'..index}) do
         if ok(env[name]) then return env[name],name end
     end
@@ -497,65 +502,130 @@ local function showGlow(button,name)
     if f.bfLabel then
         pcall(f.bfLabel.ClearAllPoints,f.bfLabel)
         pcall(f.bfLabel.SetPoint,f.bfLabel,'TOPRIGHT',f,'TOPRIGHT',-2,-1)
-        pcall(f.bfLabel.SetText,f.bfLabel,'Best for you')
+        pcall(f.bfLabel.SetText,f.bfLabel,(BackstageForeverTr or tostring)('Higher observed stats'))
     end
     f.bfButton=button
     pcall(f.Show,f)
 end
 
-local pending,spoken=false,nil
--- Score the quest's reward choices; highlight the best one. Never selects or completes anything.
+local pending,spoken,scope=false,nil,nil
+local function rewardEnabled()
+    return enabled() and (type(BackstageForeverHelperEnabled)~='function' or call(BackstageForeverHelperEnabled,'rewardReasons')==true)
+end
+local function validScope(token)
+    return token and token==scope and rewardEnabled() and call(InCombatLockdown)==false
+        and call(UnitGUID,'player')==token.owner and call(GetQuestID)==token.quest
+end
+-- Limit the first verified comparison to fixed-slot armor. No assumptions about
+-- weapon proficiency, both-hand replacement, empty slots, trinkets or set bonuses.
+local fixedArmor={[1]=true,[3]=true,[5]=true,[6]=true,[7]=true,[8]=true,[9]=true,[10]=true,[15]=true}
+local function rewardEvidence(link,slot)
+    local item=G.item(link)
+    if not item or not item.rewardStatsKnown or item.classId~=4 then return end
+    local slots=G.slotsFor(item).slots
+    if #slots~=1 or not fixedArmor[slots[1]] or (slot and slot~=slots[1]) then return end
+    return item,slots[1]
+end
+local function statDelta(candidate,current)
+    local a,b=totals({candidate}),totals({current})
+    local more,less,lines=false,false,{}
+    local function change(delta,stat)
+        if delta~=0 then lines[#lines+1]=signed(delta)..' '..stat end
+        more=more or delta>0;less=less or delta<0
+    end
+    change(a.armor-b.armor,(BackstageForeverTr or tostring)('armor'))
+    for _,key in ipairs(a.order)do change(a.stats[key]-(b.stats[key] or 0),key)end
+    for _,key in ipairs(b.order)do if not a.stats[key] then change(-b.stats[key],key)end end
+    return more,less,table.concat(lines,', ')
+end
+-- Only a same-slot, strictly dominating observed-stat comparison can glow.
+-- Otherwise report trade-offs/unknowns without making a selection or sale suggestion.
 function G.pickRewards()
     G.clearPick()
     pending=false
-    if not enabled() then return nil end
-    local n=num(call(GetNumQuestChoices)) or 0
-    if n<2 then return nil end
-    local choices,missing={},false
+    local token=scope
+    if not validScope(token) then return end
+    local n=num(call(GetNumQuestChoices))
+    if not n or n<2 or n>12 or n%1~=0 then return end
+    local tr=BackstageForeverTr or tostring
+    local function once(line)
+        if spoken~=line and validScope(token) then spoken=line;say(line)end
+    end
+    local ctx=G.context()
+    if not className(ctx) or not levelOf(ctx) then return end
+    local choices,currentSlot,current,missing,unknown={},nil,nil,false,false
     for i=1,n do
         local link=call(GetQuestItemLink,'choice',i)
-        local item=link and G.item(link)
-        choices[i]=item or false
-        if not item then missing=true end
+        local base=G.item(link)
+        local _,_,_,_,usable=call(GetQuestItemInfo,'choice',i)
+        if not base then missing=true
+        elseif usable~=false then
+            local item,slot=rewardEvidence(link)
+            if not item then unknown=true;missing=missing or not base.statsKnown
+            elseif usable~=true or #G.blockers(item,ctx)>0 then unknown=true
+            elseif currentSlot and currentSlot~=slot then unknown=true
+            else
+                currentSlot=slot
+                choices[#choices+1]={item=item,index=i}
+            end
+        end
     end
-    if missing then pending=true return {pending=true} end
-    local ctx=G.context()
-    local pick=G.bestReward(choices,ctx,G.equipped(choices),n)
-    if not pick then return nil end
-    local key=tostring(call(GetQuestID) or '')..':'..pick.index..':'..tostring(pick.upgrade)
-    local function once(m) if spoken~=key then spoken=key say(m) end end
-    if pick.upgrade and not pick.tie then
-        local button,name=G.rewardButton(pick.index)
+    if currentSlot then
+        local link=call(GetInventoryItemLink,'player',currentSlot)
+        current=rewardEvidence(link,currentSlot)
+        if link and not current then local base=G.item(link);missing=missing or not base or not base.statsKnown end
+    end
+    if missing and validScope(token) then pending=true;return {pending=true} end
+    if not current or unknown then
+        local line=tr('Quest rewards unranked: no verified same-slot comparison for all choices.')
+        once(line);return {line=line}
+    end
+    local winner
+    for _,row in ipairs(choices)do
+        local more,less,deltas=statDelta(row.item,current)
+        row.deltas=deltas
+        if more and not less then
+            local dominates=true
+            for _,other in ipairs(choices)do
+                if row~=other then local m,l=statDelta(row.item,other.item);if not m or l then dominates=false;break end end
+            end
+            if dominates then winner=row end
+        end
+    end
+    if winner and validScope(token) then
+        local button,name=G.rewardButton(winner.index)
         if button then showGlow(button,name) end
-        local top={}
-        for i=1,math.min(3,#pick.reasons) do top[i]=pick.reasons[i] end
-        pick.line='Best for you: '..table.concat(top,', ')
-        pick.button=button
-        once(('%s %s'):format(pick.line,pick.item.link and ('('..pick.item.link..')') or ('('..pick.name..')')))
-    elseif pick.upgrade then
-        pick.line='Two or more rewards are about equal for you.'
-        once(pick.line)
-    elseif pick.usable then
-        pick.line='None of these rewards is an upgrade for you.'
-        once(pick.line)
-    else
-        pick.line='None of these rewards fit your character; pick the one that sells for the most.'
-        once(pick.line)
     end
-    return pick
+    local details={}
+    for _,row in ipairs(choices)do
+        if row.deltas~='' then details[#details+1]=tr('%s vs. equipped %s: %s.'):format(row.item.name,current.name,row.deltas) end
+    end
+    local line=(winner and tr('Higher observed stats:') or tr('No clear quest reward winner on observed stats.'))
+    if #details>0 then line=line..' '..table.concat(details,' ') end
+    once(line)
+    return {line=line,index=winner and winner.index}
 end
 
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        for _,e in ipairs({'QUEST_COMPLETE','QUEST_FINISHED','GET_ITEM_INFO_RECEIVED'}) do pcall(events.RegisterEvent,events,e) end
-        local function later(fn)
-            if type(C_Timer)=='table' and type(C_Timer.After)=='function' then pcall(C_Timer.After,0,function() pcall(fn) end) else pcall(fn) end
+        for _,e in ipairs({'QUEST_COMPLETE','QUEST_FINISHED','GET_ITEM_INFO_RECEIVED','PLAYER_EQUIPMENT_CHANGED','PLAYER_REGEN_DISABLED','PLAYER_ENTERING_WORLD','PLAYER_LOGOUT'}) do pcall(events.RegisterEvent,events,e) end
+        local function later(token)
+            local function refresh() if validScope(token) then pcall(G.pickRewards) end end
+            if type(C_Timer)=='table' and type(C_Timer.After)=='function' then pcall(C_Timer.After,0,refresh) else refresh() end
         end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
-            if event=='QUEST_COMPLETE' then spoken=nil later(G.pickRewards)
-            elseif event=='QUEST_FINISHED' then pending=false G.clearPick()
-            elseif event=='GET_ITEM_INFO_RECEIVED' and pending then later(G.pickRewards) end
+            if event=='QUEST_COMPLETE' then
+                scope=nil;pending=false;spoken=nil;G.clearPick()
+                if not rewardEnabled() or call(InCombatLockdown)~=false then return end
+                local id,quest=call(UnitGUID,'player'),call(GetQuestID)
+                if type(id)=='string' and id~='' and type(quest)=='number' and quest>0 and quest%1==0 then
+                    scope={owner=id,quest=quest};later(scope)
+                end
+            elseif event=='GET_ITEM_INFO_RECEIVED' or event=='PLAYER_EQUIPMENT_CHANGED' then
+                if not validScope(scope) then scope=nil;pending=false;G.clearPick()
+                elseif pending or event=='PLAYER_EQUIPMENT_CHANGED' then G.clearPick();later(scope) end
+            else scope=nil;pending=false;G.clearPick() end
         end)
     end
 end

@@ -11,12 +11,22 @@ function lua(body) {
 const prelude = String.raw`
 CreateFrame=function()return {RegisterEvent=function()end,SetScript=function()end}end
 InCombatLockdown=function()return false end
-date=function(f,t)return 'Nov 14' end
+local rank=1
+time=function()return 1794398400 end
+UnitGUID=function()return 'PLAYER' end
+GetBuildInfo=function()return '1.60.1','70862' end
+C_Map={GetBestMapForUnit=function()return 1411 end}
+C_SkillInfo={GetNumSkillLines=function()return rank and 1 or 0 end,GetSkillLineInfo=function()return {isHeader=false,skillID=186,rank=rank,maxRank=75}end}
 dofile('addon/BackstageForever/BackstageForeverCoach.lua')
 dofile('addon/BackstageForever/BackstageForeverAcquisition.lua')
 dofile('addon/BackstageForever/BackstageForeverGathering.lua')
-local function node(method,name,x,y)return {method=method,name=name,mapId=1411,x=x,y=y,observedAt=1794398400,id=name..x}end
-local recs={node('mining','Copper Vein',.1,.1),node('mining','Iron Deposit',.2,.2),node('herbalism','Peacebloom',.3,.3),node('chest','Battered Chest',.4,.4),node('mining','Tin Vein',.5,.5),{method='mining',name='Elsewhere',mapId=1,x=.5,y=.5}}
+local function node(method,id,name,xy,map)
+ return {method=method,entityId=id,name=name,mapId=map,x=xy/10000,y=xy/10000,observedAt=1794398400,clientBuild='1.60.1.70862',
+   id=('wowf:%s:%d:%d:%d:%d:1.60.1.70862'):format(method,id,map,xy,xy),itemIds={2770},evidence='observed-gathering-loot',precision='recorded-standing-point',approximate=true}
+end
+local recs={node('mining',1731,'Copper Vein',1000,1411),node('mining',1731,'Copper Vein',2000,1411),node('herbalism',1617,'Silverleaf',3000,1411),node('mining',1731,'Copper Vein',3000,1)}
+BackstageForeverGatheringDB={schemaVersion=1,recording=true,records=recs}
+BackstageForeverGatheringSession('PLAYER_LOGIN')
 `;
 
 test("node skills: classic requirements by name, longest name wins", () => lua(prelude + String.raw`
@@ -31,15 +41,13 @@ assert(BackstageForeverNodeGatherable({method='mining',name='Iron Deposit'},{})=
 assert(BackstageForeverNodeGatherable({method='chest',name='Battered Chest'},{})==true)
 `));
 
-test("map points: this map only, your professions, gatherable first, the rest dimmed with the skill they need", () => lua(prelude + String.raw`
+test("map points: same zone and current profession, with approximate historical labeling", () => lua(prelude + String.raw`
 local rows=BackstageForeverGatheringMapPoints(1411,recs,{mining=true,chest=true},{mining=100})
-assert(#rows==4,'herbs left out, other map left out: '..#rows)
-assert(rows[#rows].title=='Iron Deposit' and rows[#rows].dim==true and rows[#rows].detail:find('needs 125, you have 100',1,true),rows[#rows].detail)
-for i=1,3 do assert(rows[i].dim==false and rows[i].layer=='gather') end
-assert(rows[1].icon:find('Icons',1,true))
-local copper for _,r in ipairs(rows)do if r.title=='Copper Vein' then copper=r end end
-assert(copper.detail:find('Mining 1 - you can gather this (100)',1,true) and copper.detail:find('Last gathered Nov 14',1,true),copper.detail)
-assert(#BackstageForeverGatheringMapPoints(1411,recs,nil,{},2)==2,'limit holds')
+assert(#rows==2 and rows[1].title=='Copper Vein')
+assert(rows[1].icon:find('INV_Ore',1,true) and rows[1].detail:find('not a live spawn',1,true))
+assert(#BackstageForeverGatheringMapPoints(1411,recs,nil,{},1)==1,'limit holds')
+rank=nil
+assert(#BackstageForeverGatheringMapPoints(1411,recs,nil,{mining=100})==0,'cached/caller skill cannot qualify the mark')
 assert(#BackstageForeverGatheringMapPoints(nil,recs)==0)
 `));
 
@@ -55,7 +63,9 @@ BackstageForeverGatheringDB={schemaVersion=1,recording=true,records=recs}
 dofile('addon/BackstageForever/BackstageForeverAdvisorMap.lua')
 local rows=BackstageForeverAdvisorPoints(1411,{level=20,faction='H',className='Mage'},{},{},{},nil)
 local n=0 for _,r in ipairs(rows)do if r.layer=='gather' then n=n+1 end end
-assert(n==5,'every remembered spot here while professions are unknown: '..n)
+assert(n==2,'only the same-zone verified profession points: '..n)
+rank=nil
+assert(#BackstageForeverAdvisorPoints(1411,{level=20,faction='H',className='Mage'},{},{},{},nil)==0)
 assert(#BackstageForeverAdvisorPoints(1411,{level=20,faction='H'},{},{},{},{gather=false})==0)`);
 });
 

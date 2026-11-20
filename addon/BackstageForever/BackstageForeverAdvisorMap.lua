@@ -114,8 +114,8 @@ function BackstageForeverAdvisorPoints(mapId,who,completed,inLog,complete,layers
             elseif n.k=='f' and on('flight')then add({layer='flight',x=n.x,y=n.y,title=n.n,detail=n.r})end
         end
     end
-    -- 1.2: remembered gathering spots, gatherable ones first, after everything else.
-    if on('gather') and type(BackstageForeverGatheringMapPoints)=='function' then
+    -- Recent documented standing points, not active spawn markers.
+    if #out<MAX_PINS and on('gather') and type(BackstageForeverGatheringMapPoints)=='function' then
         local ok,rows=pcall(BackstageForeverGatheringMapPoints,mapId,nil,nil,nil,MAX_PINS-#out)
         if ok and type(rows)=='table' then for _,r in ipairs(rows)do add(r)end end
     end
@@ -143,7 +143,10 @@ function Pin:OnAcquired(row,token,mapId)
     method(self,'UseFrameLevelType','PIN_FRAME_LEVEL_SUPER_TRACKED_CONTENT')
     local size=row.layer=='pickup' and 16 or row.layer=='handin' and 20 or row.layer=='gather' and 14 or 18
     method(self,'SetSize',size,size)
-    local function current()return self.bfRow==row and token==generation and not combat()end
+    local function current()
+        return self.bfRow==row and token==generation and not combat() and
+            (row.layer~='gather' or (type(BackstageForeverGatheringMarkCurrent)=='function' and BackstageForeverGatheringMarkCurrent(mapId,row.mark)))
+    end
     self.OnMouseClickAction=function(_,button)
         if public(button)~='LeftButton' or not current()then return end
         waypoint(mapId,row.x,row.y,row.title)
@@ -171,7 +174,12 @@ function BackstageForeverAdvisorPin_OnLoad(frame)
     call(Mixin,frame,base,Pin)
 end
 
-local function remove()generation=generation+1;if attached then method(attached,'RemoveAllPinsByTemplate',template)end end
+local expiryTimer
+local function remove()
+    generation=generation+1
+    if expiryTimer then method(expiryTimer,'Cancel');expiryTimer=nil end
+    if attached then method(attached,'RemoveAllPinsByTemplate',template)end
+end
 local function controls()
     if panel or not attached or combat()then return end
     panel=call(CreateFrame,'Frame',nil,attached,'BackdropTemplate');if not panel then return end
@@ -210,13 +218,18 @@ refresh=function()
     local mapId=number(method(attached,'GetMapID'),1,2147483647);if not mapId then return end
     local inLog,complete=questLog()
     local rows=BackstageForeverAdvisorPoints(mapId,me(),completedSet(),inLog,complete,settings.layers,gameQuestSpots(mapId))
-    local token=generation
+    local token,nextExpiry=generation,nil
     for _,row in ipairs(rows)do
         local pin=method(attached,'AcquirePin',template,row,token,mapId)
         if not pin or type(property(pin,'SetPosition'))~='function' then remove();return end
         if not pcall(property(pin,'SetPosition'),pin,row.x,row.y)then remove();return end
+        if row.expiresIn and (not nextExpiry or row.expiresIn<nextExpiry) then nextExpiry=row.expiresIn end
     end
+    if nextExpiry then expiryTimer=call(property(C_Timer,'NewTimer'),nextExpiry,function()
+        if token==generation then expiryTimer=nil;refresh()end
+    end)end
 end
+function BackstageForeverGatheringMarksChanged()if provider and attached then refresh()end end
 local Provider={}
 function Provider:OnAdded(map)call(property(MapCanvasDataProviderMixin,'OnAdded'),self,map)end
 function Provider:RefreshAllData()if self==provider then refresh()end end
@@ -262,11 +275,11 @@ function BackstageForeverNext()
 end
 if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
-    for _,e in ipairs({'ADDON_LOADED','PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','QUEST_LOG_UPDATE','QUEST_TURNED_IN','PLAYER_LEVEL_UP'})do pcall(frame.RegisterEvent,frame,e)end
+    for _,e in ipairs({'ADDON_LOADED','PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_LOGOUT','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','SKILL_LINES_CHANGED','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','QUEST_LOG_UPDATE','QUEST_TURNED_IN','PLAYER_LEVEL_UP'})do pcall(frame.RegisterEvent,frame,e)end
     frame:SetScript('OnEvent',function(_,event)
         event=text(event,50)
         if event=='PLAYER_LOGIN' or not settings then loadSettings()end
-        if event=='PLAYER_REGEN_DISABLED' then remove();if panel then method(panel,'Hide')end;return end
+        if event=='PLAYER_REGEN_DISABLED' or event=='PLAYER_LOGOUT' then remove();if panel then method(panel,'Hide')end;return end
         attach();if provider and attached and method(attached,'IsShown')==true then refresh()end
     end)
     attach()

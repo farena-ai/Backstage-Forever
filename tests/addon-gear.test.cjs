@@ -155,6 +155,9 @@ end
 CreateFrame=function(_,name) local f=obj(name) frames[#frames+1]=f if name then frames[name]=f end return f end
 UIParent=obj('UIParent')
 local items,stats,equipped={},{},{}
+InCombatLockdown=function()return false end
+UnitGUID=function()return 'player-guid' end
+
 local function def(link,info,st) items[link]=info stats[link]=st end
 GetItemInfo=function(link) local i=items[link] if not i then return nil end return i[1],link,2,25,i[2],'Armor','Mail',1,i[3],1,i[4] or 100,i[5],i[6] end
 GetItemStats=function(link) return stats[link] end
@@ -162,6 +165,8 @@ GetInventoryItemLink=function(_,slot) return equipped[slot] end
 local class,classFile,level='Hunter','HUNTER',40
 UnitClass=function() return class,classFile end
 UnitLevel=function() return level end
+IsUsableItem=function(link)return class~='Priest' and (link~='item:102' or class=='Warrior') end
+GetQuestItemInfo=function(kind,i)local link=GetQuestItemLink(kind,i);return 'reward',1,1,2,IsUsableItem(link) end
 -- Items: name, required level, equip slot, sell price, classID, subclassID.
 def('item:101',{'Chain Vest',20,'INVTYPE_CHEST',900,4,3},{ITEM_MOD_AGILITY_SHORT=6,ITEM_MOD_STAMINA_SHORT=3,RESISTANCE0_NAME=210})
 def('item:102',{'Plated Chest',20,'INVTYPE_CHEST',1500,4,4},{ITEM_MOD_STRENGTH_SHORT=7,ITEM_MOD_STAMINA_SHORT=4,RESISTANCE0_NAME=380})
@@ -186,20 +191,37 @@ QuestInfoFrame={rewardsFrame=obj('rewards')}
 `;
 const fire = (event) => `for _,f in ipairs(frames) do if f.events['${event}'] and f.scripts.OnEvent then f.scripts.OnEvent(f,'${event}') end end`;
 
+test("rewards explain a verified comparison and withhold the highlight when facts or scope are lost", () => lua(`${GAME}${PICKER}${LOAD}
+${fire("QUEST_COMPLETE")}
+local glow=frames.BackstageForeverGearPick
+assert(glow and glow.shown and msgs[1]:find('Worn Leather Vest',1,true),'the comparison names the actual equipped piece')
+equipped[5]='item:999'
+${fire("QUEST_COMPLETE")}
+assert(not glow.shown,'uncached equipped stats are not an empty slot')
+equipped[5]='item:104';InCombatLockdown=function()return true end
+${fire("QUEST_COMPLETE")}
+assert(not glow.shown)
+InCombatLockdown=function()return false end
+local reads=0;GetNumQuestChoices=function()reads=reads+1;return 2 end
+BackstageForeverHelperEnabled=function()return false end
+${fire("QUEST_COMPLETE")}
+assert(reads==0 and not glow.shown and #touched==0)
+`));
+
 test("reward picker glows the best choice for the class and never takes the reward", () => {
   const out = lua(`${GAME}${PICKER}${LOAD}
 ${fire("QUEST_COMPLETE")}
 local glow=frames.BackstageForeverGearPick
 assert(glow and glow.shown,'glow shown')
 assert(glow.parent==second,'hunter at 40 gets the agility mail (choice 2), found by type and ID')
-assert(glow.bfLabel.text=='Best for you')
+assert(glow.bfLabel.text=='Higher observed stats')
 assert(#touched==0,'never completes or selects')
 print(msgs[1])
 local pick=BackstageForeverGear.pickRewards() print(pick.line, pick.index, #msgs)
--- A warrior at 40 wants the plate instead.
+-- Plate exchanges agility for strength and armor. No weighted winner.
 class,classFile='Warrior','WARRIOR'
 ${fire("QUEST_COMPLETE")}
-assert(glow.parent==first and glow.shown,'warrior gets choice 1')
+assert(not glow.shown and msgs[#msgs]:find('No clear quest reward winner',1,true),'trade-offs do not pick a winner')
 -- A priest can use neither: no glow, one brief line.
 class,classFile='Priest','PRIEST'
 ${fire("QUEST_COMPLETE")}
@@ -207,29 +229,42 @@ assert(not glow.shown,'no glow when nothing fits') print(msgs[#msgs])
 ${fire("QUEST_FINISHED")}
 assert(#touched==0)
 print(BackstageForeverGear.rewardButton(2)==second, select(2,BackstageForeverGear.rewardButton(1)))`).split("\n");
-  assert.equal(out[0], "Backstage Forever: Best for you: +3 Agility, +3 Stamina, +12 armor (item:101)");
-  assert.equal(out[1], "Best for you: +3 Agility, +3 Stamina, +12 armor\t2\t1", "re-evaluating does not repeat the chat line");
-  assert.equal(out[2], "Backstage Forever: None of these rewards fit your character; pick the one that sells for the most.");
+  assert.equal(out[0], "Backstage Forever: Higher observed stats: Chain Vest vs. equipped Worn Leather Vest: +12 armor, +3 Agility, +3 Stamina.");
+  assert.equal(out[1], "Higher observed stats: Chain Vest vs. equipped Worn Leather Vest: +12 armor, +3 Agility, +3 Stamina.\t2\t1", "re-evaluating does not repeat the chat line");
+  assert.equal(out[2], "Backstage Forever: Quest rewards unranked: no verified same-slot comparison for all choices.");
   assert.equal(out[3], "true\tQuestInfoRewardsFrameQuestInfoItem2");
 });
 
-test("reward picker waits for uncached items and falls back to QuestInfo_GetRewardButton", () => {
+test("reward picker waits for uncached items and reads existing choice buttons without allocating game UI", () => {
   const out = lua(`${GAME}
 GetNumQuestChoices=function() return 2 end
+GetQuestID=function()return 77 end
 GetQuestItemLink=function(_,i) return ({'item:102','item:999'})[i] end
 local b1,b2=obj('b1'),obj('b2') b1.shown=true b2.shown=true
-QuestInfoFrame={rewardsFrame=obj('rewards')}
-QuestInfo_GetRewardButton=function(frame,i) assert(frame==QuestInfoFrame.rewardsFrame) return ({b1,b2})[i] end
+b1.type='choice';b1.GetID=function()return 1 end;b2.type='choice';b2.GetID=function()return 2 end
+QuestInfoFrame={rewardsFrame={RewardButtons={b1,b2}}}
+QuestInfo_GetRewardButton=function()touched[#touched+1]='allocated button' end
 ${LOAD}
 ${fire("QUEST_COMPLETE")}
 local glow=frames.BackstageForeverGearPick
 print(glow==nil or not glow.shown, #msgs)
 def('item:999',{'Ranger Chain',20,'INVTYPE_CHEST',900,4,3},{ITEM_MOD_AGILITY_SHORT=8,RESISTANCE0_NAME=220})
 ${fire("GET_ITEM_INFO_RECEIVED")}
-glow=frames.BackstageForeverGearPick
+glow=frames.BackstageForeverGearPick;assert(#touched==0,'no Blizzard reward-button allocations')
 print(glow.shown, glow.parent==b2, #msgs)`).split("\n");
   assert.deepEqual(out, ["true\t0", "true\ttrue\t1"]);
 });
+
+test("closing the quest retires delayed reward work even if a new frame has the same quest ID",()=>lua(`${GAME}${PICKER}${LOAD}
+local jobs={};C_Timer={After=function(_,fn)jobs[#jobs+1]=fn end}
+${fire("QUEST_COMPLETE")}
+${fire("QUEST_FINISHED")}
+${fire("QUEST_COMPLETE")}
+assert(#jobs==2);jobs[1]();assert(#msgs==0 and not frames.BackstageForeverGearPick)
+jobs[2]();assert(#msgs==1 and frames.BackstageForeverGearPick.shown)
+${fire("PLAYER_REGEN_DISABLED")}
+assert(not frames.BackstageForeverGearPick.shown)
+`));
 
 const TIP = String.raw`
 local tipLines,current={},nil
