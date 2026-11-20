@@ -30,7 +30,7 @@ During development, actual installed Electron requests sometimes received HTTP 5
 
 The bundled Ed25519 public key authenticates `backstage-update.json`. Its envelope contains exactly base64 `payload` and `signature`; the signature covers the original UTF-8 payload bytes. The payload contains `schemaVersion` (1), `version`, `releaseTag`, `url`, `sha256`, `size`, and `publishedAt`. The version, tag, installer filename and URL must agree and point to this repository. The updater verifies downloaded byte count and SHA256, then verifies again immediately before execution. GitHub metadata alone never authorizes an installer.
 
-This app-update signature is separate from Windows Authenticode. The installer currently has no Windows publisher certificate; Windows can display an unknown-publisher warning during manual installation. Do not describe the installer as Authenticode signed.
+This app-update signature is separate from Windows Authenticode. Current Windows release installers carry a timestamped signature from Frank Arena. Verify the publisher in the installer’s Digital Signatures properties; SmartScreen may still warn about a validly signed download. macOS builds are ad-hoc signed, not notarized.
 
 ## Publishing
 
