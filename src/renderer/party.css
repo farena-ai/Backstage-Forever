@@ -22,15 +22,20 @@
 .guild-run-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: .75rem; }
 .guild-run-actions button { max-width: 100%; }
 .guild-run-panel { border-top: 1px solid #a5823e; margin-top: .75rem; padding-top: .5rem; }
+.guild-run-groups { display: grid; gap: .75rem; margin-block: .75rem; }
+.guild-run-groups > section { min-width: 0; padding: .65rem .75rem; border: 1px solid #a5823e; border-radius: 4px; }
+.guild-run-groups h4 { margin: 0; color: #3d220c; }
+.guild-run-groups .guild-run-actions { margin: .35rem 0 0; }
 .guild-run-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 215px), 1fr)); gap: .75rem; }
 .guild-run-grid > *, .guild-run fieldset { min-width: 0; }
 .guild-run form { display: block; }
 .guild-run form label { display: grid; gap: .25rem; color: #3d220c; }
-.guild-run form :is(input, textarea) { width: 100%; min-width: 0; }
+.guild-run form :is(input, textarea, select) { width: 100%; min-width: 0; }
 .guild-run textarea { resize: vertical; }
 .guild-run fieldset { border: 1px solid #a5823e; border-radius: 4px; padding: .75rem; }
 .guild-run legend { font-weight: 700; color: #3d220c; }
 .guild-run-copy { white-space: pre-wrap; background: #fff8e6; color: #2b1b0a; border: 1px solid #a5823e; border-radius: 4px; padding: .8rem; font: inherit; line-height: 1.5; }
+.guild-run-private-note { white-space: pre-wrap; }
 .guild-run-check { display: flex; align-items: baseline; gap: .5rem; margin: .5rem 0; color: #3d220c; }
 .guild-run-check input { flex: none; }
 .guild-run-feedback p:empty { margin: 0; }

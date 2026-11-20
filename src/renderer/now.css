@@ -1,7 +1,7 @@
 /* Now: the home page. Parchment cards on the dark field, like the World Map side panel. */
 .now-page, .now-body { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .now-page { container-type: inline-size; }
-.now-page > .page-hero.compact { align-items: center; }
+.now-page > .page-hero.compact { align-items: center; margin-bottom: 0; }
 .now-page .ph-copy { align-items: center; }
 .now-page .ph-aside { z-index: 1; }
 .now-page .now-badge-case { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 4px 10px; border: 1px solid #e0b86a; border-radius: 6px; background: #4c2912; color: #fff1ce; font: 700 14px Georgia, serif; white-space: nowrap; }
@@ -20,6 +20,7 @@
 [data-now-live] .on { color: #7fe08a; }
 .now-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .now-overview { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.now-task-stack { display: grid; align-content: start; gap: 8px; min-width: 0; }
 .now-reference > .now-questlog:has(+ :not(.now-zonecard)), .now-moments { grid-column: 1 / -1; }
 
 .now-card { min-width: 0; overflow-wrap: anywhere; padding: 14px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
@@ -33,6 +34,7 @@
 .now-step.now-step-priority { background: #fff6dc; border-color: #8a5a18; border-inline-start-width: 4px; }
 .now-step.now-step-priority h3 { font-size: 19px; }
 .now-followups .now-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.now-followups { padding-block: 8px; }
 .now-followups > summary { cursor: pointer; font-weight: 700; color: #5a2e0c; }
 .now-followups[open] > summary { margin-bottom: 10px; }
 .now-step > div { min-width: 0; }

@@ -24,7 +24,7 @@ function harness() {
       root = {
         addEventListener() {},
         querySelector(selector) {
-          if (!elements.has(selector)) elements.set(selector, {});
+          if (!elements.has(selector)) elements.set(selector, { addEventListener() {}, setAttribute() {}, replaceChildren() { this.innerHTML = ''; } });
           return elements.get(selector);
         },
         querySelectorAll: () => [],

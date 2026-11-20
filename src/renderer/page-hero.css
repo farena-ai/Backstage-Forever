@@ -128,8 +128,15 @@ body[data-faction] :is(.ph-art-ledger, .ph-art-ledger-gold, .ph-art-ledger-reput
 .bf-parchment .lookup-trail { color: #6b4a22; }
 /* Companion in a small window: the question box and Send stay in the first screen. */
 @media (max-height: 820px), (max-width: 1150px) {
-  .content:has(.companion-grid) > .page-hero { min-height: 0; padding: 8px 14px; }
-  .content:has(.companion-grid) > .page-hero .ph-sub { display: none; }
+  .content > .ph-art-companion { min-height: 0; padding: 8px 14px; }
+  .content > .ph-art-companion .ph-copy { max-width: 100%; }
+  .content > .ph-art-companion .ph-words {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 14px;
+  }
+  .content > .ph-art-companion .ph-sub { display: none; }
   .content:has(.companion-grid) > .companion-dock { padding: 6px 14px; margin-bottom: 8px; }
 }
 .bf-parchment .ai-setup-hint, .bf-parchment .ai-setup-hint span { color: #5a3e1c; }

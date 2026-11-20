@@ -1,6 +1,6 @@
 window.PracticeLabView = (() => {
   'use strict';
-  const { drills, createAttempt, choose, retry } = window.BFPracticeLab;
+  const { drills, lessons, createAttempt, choose, retry } = window.BFPracticeLab;
   function markup(standalone) {
     const heading = standalone ? 'h1' : 'h2';
     const drillHeading = standalone ? 'h2' : 'h3';
@@ -13,9 +13,10 @@ window.PracticeLabView = (() => {
       <div class="practice-lab-panel">
         <label for="drill-picker">Choose a drill</label>
         <select id="drill-picker"></select>
+        <section id="drill-lesson" aria-labelledby="drill-lesson-title" hidden></section>
         <section aria-labelledby="drill-title">
           <p class="practice-lab-kicker practice-lab-badge">Simulated scenario</p>
-          <${drillHeading} id="drill-title"></${drillHeading}>
+          <${drillHeading} id="drill-title" tabindex="-1"></${drillHeading}>
           <p id="drill-prompt"></p>
           <div id="drill-options" role="group" aria-label="Choose an action" aria-describedby="drill-prompt"></div>
         </section>
@@ -26,22 +27,35 @@ window.PracticeLabView = (() => {
           <button id="drill-retry" type="button">Retry drill</button>
         </section>
       </div>
+      ${standalone ? '' : '<button id="fieldbook-return" type="button" data-fieldbook-instance="dm" data-fieldbook-drill="opener" hidden>Back to Deadmines Fieldbook</button>'}
     </div>`;
   }
 
-  function mount(host, { standalone = false, previous = null } = {}) {
+  function mount(host, { standalone = false, previous = null, fieldbook = null } = {}) {
     // Shell paints replace #app. Keep this in-memory exercise only while its route stays mounted.
-    if (previous) {
-      host.append(previous);
-      return;
+    if (previous) host.append(previous);
+    else {
+      // Fixed markup; drill copy is set separately through textContent.
+      host.innerHTML = markup(standalone);
+      bind(host.firstElementChild, fieldbook?.drillId);
     }
-    // Markup is static; the only interpolation chooses fixed heading tags.
-    host.innerHTML = markup(standalone);
-    bind(host.firstElementChild);
-    if (!standalone) host.querySelector('#practice-lab-title').focus();
+    if (standalone) return;
+    const back = host.querySelector('#fieldbook-return');
+    const picker = host.querySelector('#drill-picker');
+    back.hidden = !fieldbook;
+    picker.disabled = Boolean(fieldbook);
+    back.onclick = fieldbook ? () => {
+      if (!back.hidden && back.isConnected && picker.value === back.dataset.fieldbookDrill)
+        fieldbook.returnToPlan(back.dataset.fieldbookInstance, back.dataset.fieldbookDrill);
+    } : null;
+    if (!previous) {
+      const heading = host.querySelector(fieldbook ? '#drill-title' : '#practice-lab-title');
+      heading.focus();
+      if (fieldbook) heading.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
   }
 
-  function bind(host) {
+  function bind(host, initialDrill) {
     const byId = id => host.querySelector(`#${id}`);
     const picker = byId('drill-picker');
     const options = byId('drill-options');
@@ -50,6 +64,22 @@ window.PracticeLabView = (() => {
 
     function renderDrill() {
       const { drill } = attempt;
+      const lesson = Object.hasOwn(lessons, drill.id) ? lessons[drill.id] : null;
+      const lessonRegion = byId('drill-lesson');
+      lessonRegion.hidden = !lesson;
+      lessonRegion.replaceChildren();
+      if (lesson) {
+        const { title, scope, ...sections } = lesson;
+        const heading = document.createElement(host.querySelector('#drill-title').localName);
+        heading.id = 'drill-lesson-title';
+        heading.textContent = title;
+        lessonRegion.append(heading, ...[scope, ...Object.values(sections)].map((text, index) => {
+          const paragraph = document.createElement('p');
+          if (index === 0) paragraph.className = 'practice-lab-muted';
+          paragraph.textContent = text;
+          return paragraph;
+        }));
+      }
       result.hidden = true;
       byId('result-feedback').textContent = '';
       byId('result-improvement').querySelector('span').textContent = '';
@@ -77,7 +107,7 @@ window.PracticeLabView = (() => {
     }
 
     for (const drill of drills) picker.add(new Option(drill.title, drill.id));
-    picker.value = drills[0].id;
+    picker.value = createAttempt(initialDrill) ? initialDrill : drills[0].id;
     picker.addEventListener('change', () => {
       const next = createAttempt(picker.value);
       if (!next) return;

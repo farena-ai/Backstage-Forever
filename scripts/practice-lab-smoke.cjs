@@ -51,6 +51,25 @@ async function main() {
       assert.match(await result.innerText(), feedback);
       assert.match(await result.innerText(), /One thing to practice/);
     }
+    for (const pack of [require('../src/renderer/academy-tank-pack.js'), require('../src/renderer/academy-healer-pack.js')]) {
+      await select.focus();
+      await page.keyboard.press('ArrowDown');
+      assert.equal(await select.inputValue(), pack.drill.id);
+      const lesson = page.getByRole('region', { name: pack.lesson.title });
+      assert.deepEqual(await lesson.locator('p').allTextContents(), Object.values(pack.lesson).slice(1));
+      assert.equal(await page.locator('#fieldbook-return').count(), 0);
+      await page.keyboard.press('Tab');
+      assert.equal(await focused(), pack.drill.options[0].label);
+      await page.keyboard.press('Space');
+      assert.equal(await focused(), 'Simulated result');
+      assert.equal(await result.locator('#result-feedback').innerText(), pack.drill.options[0].feedback);
+      await page.keyboard.press('Tab');
+      assert.equal(await focused(), 'Retry drill');
+      await page.keyboard.press('Enter');
+      assert.equal(await result.isVisible(), false);
+      assert.equal(await focused(), pack.drill.options[0].label);
+      await page.keyboard.press('Enter');
+    }
     if (process.env.BF_PRACTICE_SCREENSHOTS) {
       await page.screenshot({ path: path.join(process.env.BF_PRACTICE_SCREENSHOTS, 'practice-lab-desktop.png') });
     }
@@ -69,7 +88,7 @@ async function main() {
     assert.equal(await select.inputValue(), 'opener');
     assert.deepEqual(errors, []);
     assert.deepEqual(remote, []);
-    console.log('PASS Practice Lab: offline keyboard, all four drills, retry, compact layout and clean reload');
+    console.log('PASS standalone Practice Lab: six drills, both lessons, offline keyboard/retry, compact layout and clean reload');
   } finally {
     await browser.close();
   }

@@ -13,16 +13,32 @@ const { defaultState, validateState } = require('../src/core/validation.cjs');
   try {
     const boss = { encounterId: 1144, name: 'Edwin VanCleef', instanceMap: 36, instanceType: 'party', difficultyId: 1, at: 1700000000 };
     const encounters = [boss, { ...boss, encounterId: 99, name: 'Unmapped <boss>', instanceMap: 99999, instanceType: 'raid', at: boss.at + 1 }];
-    const profile = { className: 'Rogue', faction: 'Alliance', realm: 'Synthetic', level: 20, notes: '', goals: [], clientBuild: '1.60.1.70888' };
+    const profile = { className: 'Rogue', faction: 'Alliance', realm: 'Synthetic', level: 20, notes: '', goals: [], clientBuild: '1.60.1.70862' };
     const profiles = [{ ...profile, id: 'main', name: 'Example', journal: { encounters }, readiness: { equipment: [{ slot: 5, itemId: 2991, name: 'Synthetic Vest', quality: 2, itemLevel: 11 }] }, quests: [
       { id: 166, title: 'The Defias Brotherhood', complete: true, objectives: [{ text: 'Edwin VanCleef defeated', done: true }] },
-    ] }, { ...profile, id: 'alt', name: 'Alt' }];
+      { id: 2040, title: 'Underground Assault', complete: false, objectives: [] },
+    ], source: { kind: 'wow-addon', id: 'Player-fixture-main', updatedAt: '2026-11-12T00:00:00.000Z' } }, { ...profile, id: 'alt', name: 'Alt' }];
     const state = validateState({ ...defaultState(), onboarded: true, activeProfileId: 'main', profiles });
     await fs.writeFile(path.join(dir, 'state.json'), JSON.stringify(state));
+    const wishFile = path.join(dir, 'wishlist.json');
+    await fs.writeFile(wishFile, JSON.stringify({ schemaVersion: 1, profiles: {} }));
     await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify({ name: 'atlas-recap-fixture', version: require('../package.json').version, main: 'main.cjs' }));
     await fs.writeFile(path.join(dir, 'main.cjs'), `
       const load = require('node:module').createRequire(${JSON.stringify(path.resolve(__dirname, '../package.json'))});
-      require('electron').clipboard.writeText = value => { globalThis.fixtureClipboard = value; };
+      const { app, clipboard, ipcMain, session } = require('electron');
+      app.whenReady().then(() => session.defaultSession.webRequest.onBeforeRequest({ urls: ['http://*/*', 'https://*/*'] }, (_details, done) => done({ cancel: true })));
+      globalThis.practiceTrace = { asks: 0, copies: 0 };
+      clipboard.writeText = value => { globalThis.fixtureClipboard = value; practiceTrace.copies++; };
+      const handle = ipcMain.handle.bind(ipcMain);
+      ipcMain.handle = (channel, fn) => handle(channel, async (event, ...args) => {
+        if (channel === 'backstage:askCompanion') practiceTrace.asks++;
+        const result = await fn(event, ...args);
+        if (channel === 'backstage:dungeonAtlas' && globalThis.holdPracticeReturn) {
+          globalThis.holdPracticeReturn = false;
+          await new Promise(resolve => { globalThis.releasePracticeReturn = resolve; });
+        }
+        return result;
+      });
       load('./src/core/model-catalog.cjs').listModels = async () => ({models:[], source:'fixture'});
       load('./src/core/claude.cjs').status = async () => ({available:false, connected:false});
       load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe = async () => ({state:'not-running', launchAvailable:false});
@@ -30,8 +46,17 @@ const { defaultState, validateState } = require('../src/core/validation.cjs');
       const Live = load('./src/core/live-bridge.cjs').LiveBridge;
       Live.prototype.readPreference = () => false; Live.prototype.start = () => {};
       const GameData = load('./src/core/game-data.cjs').GameData;
-      GameData.prototype.build = () => '1.60.1.70888';
+      GameData.prototype.build = () => '1.60.1.70862';
       GameData.prototype.items = ids => ids.map(id => [5202, 2991].includes(id) ? ({ id, name: 'Synthetic Vest', quality: 2, itemLevel: 15, requiredLevel: 15, classId: 4, subclassId: 2, inventoryType: 5, slot: 'Chest', armor: 50, stats: [{ stat: 'Agility', amount: id === 5202 ? 6 : 2 }], classes: null }) : null);
+      const atlas = load('./src/core/dungeon-atlas.cjs');
+      const buildAtlas = atlas.buildAtlas;
+      atlas.buildAtlas = input => {
+        if (globalThis.replaceAtlasSource && input.profile?.id === 'main') {
+          globalThis.replaceAtlasSource = false;
+          return buildAtlas({ ...input, profile: { ...input.profile, source: { kind: 'wow-addon', id: 'different-source' } } });
+        }
+        return buildAtlas(input);
+      };
       load('./src/main.cjs');
     `);
     app = await launch(electron, { args: [dir], env: { ...process.env, BF_USER_DATA: dir, BF_TEST_INACTIVE: '1' }, timeout: 20000 });
@@ -110,6 +135,16 @@ const { defaultState, validateState } = require('../src/core/validation.cjs');
     await fieldbook.getByText(/not a record of a clear, personal loot or lockout/).waitFor();
     const instanceRecap = deadmines.getByRole('region', { name: 'Saved defeats here' });
     assert.deepEqual(await instanceRecap.locator('li strong').allTextContents(), [boss.name]);
+    const progress = deadmines.locator('[data-dungeon-progression]');
+    const stateBeforeProgress = await fs.readFile(path.join(dir, 'state.json'), 'utf8');
+    const wishesBeforeProgress = await fs.readFile(wishFile, 'utf8');
+    await progress.getByText('Observed dungeon progression', { exact: true }).press('Enter');
+    await progress.getByText('Underground Assault (#2040)', { exact: true }).waitFor();
+    await progress.getByText('No starred item among the reviewed gear sources.').waitFor();
+    assert.equal(await progress.locator('time').last().getAttribute('datetime'), new Date(boss.at * 1000).toISOString());
+    await progress.getByText(/capture build was not recorded/i).waitFor();
+    assert.equal(await fs.readFile(path.join(dir, 'state.json'), 'utf8'), stateBeforeProgress);
+    assert.equal(await fs.readFile(wishFile, 'utf8'), wishesBeforeProgress);
     assert.ok(await deadmines.evaluate(el => el.scrollWidth <= el.clientWidth + 1), 'expanded entry fits available width');
     if (process.argv[2]) {
       await prep.evaluate(el => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
@@ -131,6 +166,7 @@ const { defaultState, validateState } = require('../src/core/validation.cjs');
     await picker.selectOption('alt');
     await recap.getByText(/No saved encounter defeats yet/).waitFor();
     await instanceRecap.getByText('No saved encounter defeats for this instance.').waitFor();
+    assert.equal(await progress.getByText('Underground Assault (#2040)', { exact: true }).count(), 0);
     assert.equal(await handIn.count(), 0);
     assert.equal(await rows.count(), 0);
     await picker.selectOption('main');
@@ -147,6 +183,13 @@ const { defaultState, validateState } = require('../src/core/validation.cjs');
     await target.locator('[data-loot-wish][aria-pressed="true"]').waitFor();
     await deadmines.getByRole('button', { name: 'Open Dungeon Fieldbook' }).press('Enter');
     const wishes = fieldbook.getByRole('region', { name: 'Your wish list here' });
+    await progress.locator('summary').press('Enter');
+    await progress.getByText("Corsair's Overshirt (#5202)", { exact: true }).waitFor();
+    assert.ok(await progress.evaluate(el => el.scrollWidth <= el.clientWidth + 1));
+    if (process.argv[2]) {
+      await progress.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(process.argv[2], 'atlas-progression-1000.png'), animations: 'disabled' });
+    }
     const comparison = wishes.getByRole('button', { name: /^Compare in Sheet/ });
     assert.equal(await comparison.count(), 1, 'accessible name begins with the visible label');
     assert.equal(await comparison.getAttribute('data-atlas-compare'), '5202');
@@ -171,6 +214,104 @@ const { defaultState, validateState } = require('../src/core/validation.cjs');
     await loot.getByRole('heading', { name: boss.name }).waitFor();
     await picker.selectOption('main');
     await recap.getByRole('button', { name: 'Open prep for The Deadmines' }).press('Enter');
+    const mode = fieldbook.getByRole('button', { name: 'Compact view', exact: true });
+    const launchDrill = fieldbook.getByRole('button', { name: 'Practice the opener', exact: true });
+    const back = page.getByRole('button', { name: 'Back to Deadmines Fieldbook', exact: true });
+    const focused = selector => page.waitForFunction(s => document.activeElement?.matches(s), selector);
+    const journal = await fs.readFile(path.join(dir, 'state.json'), 'utf8');
+    const trace = await app.evaluate(() => practiceTrace);
+    const plan = () => phases.evaluateAll(nodes => nodes.map(node => {
+      const copy = node.cloneNode(true);
+      for (const viewOnly of copy.querySelectorAll('[data-fieldbook-mode], [data-fieldbook-intro]')) viewOnly.remove();
+      return copy.outerHTML;
+    }));
+    assert.equal(await fieldbook.getAttribute('data-dungeon-fieldbook'), 'full');
+    const full = await plan();
+    await launchDrill.press('Enter');
+    await focused('#drill-title');
+    assert.equal(await page.locator('#drill-picker').isDisabled(), true);
+    await back.press('Enter');
+    await focused('[data-fieldbook-practice="opener"][data-fieldbook-instance="dm"]');
+    assert.equal(await fieldbook.getAttribute('data-dungeon-fieldbook'), 'full');
+    assert.deepEqual(await plan(), full);
+    await mode.press('Enter');
+    await focused('[data-fieldbook-mode]');
+    assert.equal(await mode.getAttribute('aria-pressed'), 'true');
+    assert.deepEqual(await plan(), full, 'both views render the same facts and exact action payloads');
+    assert.equal(await fieldbook.locator('details[open]').count(), 0);
+    await fieldbook.locator('summary').first().press('Enter');
+    await fieldbook.getByText('Reviewed Classic reference · mechanics not verified in Forever').waitFor();
+    await fieldbook.locator('summary').first().press('Enter');
+    assert.equal(await fieldbook.locator('details[open]').count(), 0);
+    await launchDrill.evaluate(button => { button.dataset.fieldbookPractice = 'triage'; button.click(); button.dataset.fieldbookPractice = 'opener'; });
+    assert.equal(await back.count(), 0);
+    await launchDrill.press('Enter');
+    await focused('#drill-title');
+    assert.equal(await page.locator('#drill-title').textContent(), 'Plan an opener');
+    assert.equal(await page.locator('#drill-picker').inputValue(), 'opener');
+    const firstChoice = page.locator('#practice-action-start');
+    assert.ok(await firstChoice.evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }));
+    await back.evaluate(button => { button.dataset.fieldbookInstance = 'dme'; button.click(); button.dataset.fieldbookInstance = 'dm'; });
+    await back.waitFor();
+    await firstChoice.press('Space');
+    await focused('#result-title');
+    await page.evaluate(() => render());
+    await focused('#result-title');
+    await page.keyboard.press('Tab');
+    await focused('#drill-retry');
+    await page.keyboard.press('Tab');
+    await focused('#fieldbook-return');
+    if (process.argv[2]) await page.screenshot({ path: path.join(process.argv[2], 'atlas-lab-return-1000.png'), animations: 'disabled' });
+    await page.keyboard.press('Enter');
+    await focused('[data-fieldbook-practice="opener"][data-fieldbook-instance="dm"]');
+    assert.equal(await fieldbook.getAttribute('data-dungeon-fieldbook'), 'compact');
+    assert.deepEqual(await plan(), full);
+    assert.ok(await launchDrill.evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }));
+    if (process.argv[2]) await page.screenshot({ path: path.join(process.argv[2], 'atlas-fieldbook-return-1000.png'), animations: 'disabled' });
+    assert.equal(await fs.readFile(path.join(dir, 'state.json'), 'utf8'), journal);
+    assert.deepEqual(await app.evaluate(() => practiceTrace), trace);
+    // The fresh main-side model can already belong to a different saved source
+    // while the shell still owns the original same-ID profile snapshot.
+    await launchDrill.press('Enter');
+    await back.waitFor();
+    await app.evaluate(() => { globalThis.replaceAtlasSource = true; });
+    await back.press('Enter');
+    await deadmines.locator('[data-atlas-open="dm"]').waitFor();
+    assert.equal(await app.evaluate(() => globalThis.replaceAtlasSource), false);
+    assert.equal(await deadmines.locator('[data-atlas-open="dm"]').getAttribute('aria-expanded'), 'false', 'a fresh same-character Atlas from a different source cannot restore the retired plan');
+    await page.locator('[data-shell-control="subtab:adventure"]').press('Enter');
+    await page.locator('[data-shell-control="subtab:dungeons"]').press('Enter');
+    await deadmines.locator('[data-atlas-open="dm"]').press('Enter');
+    // Hold the old model after its real handler ran; the newer character must not inherit the pending return.
+    await launchDrill.press('Enter');
+    await back.waitFor();
+    await app.evaluate(() => { globalThis.holdPracticeReturn = true; });
+    await back.press('Enter');
+    await atlas.waitFor();
+    for (let tries = 0; !await app.evaluate(() => Boolean(globalThis.releasePracticeReturn)); tries++) {
+      assert.ok(tries < 100, 'the admitted Atlas response was held');
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    await picker.selectOption('alt');
+    await recap.getByText(/No saved encounter defeats yet/).waitFor();
+    await app.evaluate(() => { globalThis.releasePracticeReturn(); });
+    await deadmines.locator('[data-atlas-open="dm"][aria-expanded="false"]').waitFor();
+    assert.equal(await launchDrill.count(), 0);
+    assert.equal(await back.count(), 0);
+    await deadmines.locator('[data-atlas-open="dm"]').press('Enter');
+    await progress.locator('summary').press('Enter');
+    await progress.getByText('A dated addon save is required to see this character’s progression.').waitFor();
+    assert.equal(await progress.getByText("Corsair's Overshirt (#5202)", { exact: true }).count(), 0);
+    await page.locator('[data-shell-control="subtab:practice-lab"]').press('Enter');
+    await focused('#practice-lab-title');
+    assert.equal(await page.locator('#drill-picker').isEnabled(), true);
+    assert.equal(await back.count(), 0);
+    assert.equal(await page.locator('#drill-result').isVisible(), false);
+    await page.locator('[data-shell-control="subtab:dungeons"]').press('Enter');
+    await recap.getByText(/No saved encounter defeats yet/).waitFor();
+    await picker.selectOption('main');
+    await recap.getByRole('button', { name: 'Open prep for The Deadmines' }).press('Enter');
+    await mode.press('Enter'); // Restore the default presentation for the existing checks below.
     await handIn.getByRole('button', { name: 'Open quest: The Defias Brotherhood' }).press('Enter');
     await page.locator('[data-quest-control="detail:166"]').getByText('Ready to turn in in your saved snapshot.').waitFor();
     await page.evaluate(() => localStorage.setItem('bf-lang-v1', 'de'));
@@ -187,7 +328,7 @@ const { defaultState, validateState } = require('../src/core/validation.cjs');
     assert.ok(await review.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().top >= 0 && el.getBoundingClientRect().bottom <= innerHeight));
     if (process.argv[2]) await page.screenshot({ path: path.join(process.argv[2], 'atlas-gear-de-1000.png'), animations: 'disabled' });
     assert.deepEqual(errors, []);
-    console.log('Dungeon Atlas recap smoke passed');
+    console.log('Dungeon Atlas recap + Fieldbook Practice round trip smoke passed');
   } finally {
     await app?.close();
     await fs.rm(dir, { recursive: true, force: true });

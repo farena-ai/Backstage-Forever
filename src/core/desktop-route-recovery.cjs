@@ -1,17 +1,26 @@
 "use strict";
 // Desktop policy only. Route order is reference data, not a record of play.
-const { observedBuild } = require("./knowledge.cjs");
+const { savedBuild, reviewStatus } = require("./patch-impact.cjs");
 const { ALIASES, RACES, raceBits } = require("./guided-route.cjs");
 const MAX_SKIPS = 512;
+const MAX_SAVE_AGE = 24 * 60 * 60 * 1000;
 const point = (s) => Number.isSafeInteger(s.mapId) && s.mapId > 0 &&
   [s.x, s.y].every((n) => Number.isFinite(n) && n >= 0 && n <= 1);
 
-function recover({ route, profile, pack, skips = [] }) {
+function recover({ route, profile, pack, skips = [], now = Date.now() }) {
   const result = { step: null, reason: null, map: null, fallback: null, skipped: [] };
   const stop = (reason) => ({ ...result, reason });
   if (!profile) return stop("no-character");
-  if (!observedBuild(profile) || !pack || pack.build !== profile.clientBuild) return stop("build");
+  // Keep the existing future/stale timestamp fallbacks below the build check.
+  if (reviewStatus(savedBuild(profile, Infinity), pack ? [pack.build] : []) !== "reviewed") return stop("build");
   if (!["Alliance", "Horde"].includes(profile.faction) || (route && route.faction !== profile.faction)) return stop("route-side");
+  const skip = new Set(skips.slice(0, MAX_SKIPS));
+  result.skipped = route?.steps.filter((s) => skip.has(s.id)).map((s) => s.id) || [];
+  const savedAt = Date.parse(profile.source.updatedAt);
+  const elapsed = now - savedAt;
+  if (!Number.isFinite(elapsed) || elapsed < 0) return stop("unknown-save-time");
+  if (elapsed >= MAX_SAVE_AGE) return stop("stale-save");
+  result.freshUntil = savedAt + MAX_SAVE_AGE;
 
   const log = new Map((profile.quests || []).map((q) => [q.id, q]));
   const historyKnown = profile.history?.completedIdsKnown === true;
@@ -28,8 +37,6 @@ function recover({ route, profile, pack, skips = [] }) {
   const blocked = (reason) => ({ ...stop(reason), fallback: fallback() });
   if (!route) return blocked("no-route");
 
-  const skip = new Set(skips.slice(0, MAX_SKIPS));
-  result.skipped = route.steps.filter((s) => skip.has(s.id)).map((s) => s.id);
   const past = (s) => {
     if (s.kind === "travel") return profile.location?.mapId === s.mapId || profile.level >= s.level + 5;
     // Age out old absent steps without treating them as completed. Never age out a current quest.

@@ -38,10 +38,32 @@ window.CoverageView = (() => {
       <label class="cov-all"><input type="checkbox" data-cov-all ${showAll ? "checked" : ""}> Also show the other faction's zones</label>
       <p class="cov-foot">Counts come from community observations bundled with the app (${esc(data.source?.attribution || "Efficient Games, CC BY 4.0")}${data.source?.builds ? `; game builds ${esc(data.source.builds.join(", "))}` : ""}${data.source?.observedThrough ? `; observed through ${esc(data.source.observedThrough)}` : ""}). They grow as more players contribute and the app updates; your own game also fills in repair vendors and flight paths as you meet them.</p>`;
   }
-  function page() {
+  const PATCH_LABELS = {
+    "desktop-route": "Desktop guided route",
+    "frost-mage-guide": "Frost Mage DPS guide",
+    "frost-mage-abilities": "Frost Mage action-bar and keybind checks",
+  };
+  const PATCH_STATUS = {
+    reviewed: "Reviewed for this build",
+    "needs-review": "Needs review for this build",
+    "unknown-build": "Saved build unknown",
+    "no-review": "No reviewed build available",
+  };
+  function patchImpact(profile, routeBuild) {
+    const { savedBuild, rows } = window.PatchImpact.snapshot(profile, routeBuild);
+    return `<section class="cov-patch" aria-labelledby="cov-patch-title">
+      <h2 id="cov-patch-title">Patch impact</h2>
+      ${savedBuild ? `<p>Saved client build: <strong>${esc(savedBuild)}</strong></p>` : "<p>Saved build unknown</p>"}
+      <p>Based on the selected character’s addon save, not a live client check. A reviewed build does not prove quest readiness or learned ranks.</p>
+      <ul>${rows.map(({ id, status, reviewedBuilds }) => `<li data-patch-capability="${esc(id)}" data-patch-status="${esc(status)}"><strong>${esc(PATCH_LABELS[id])}</strong> — <span>${esc(PATCH_STATUS[status])}</span>${reviewedBuilds.length ? ` <small><span>Reviewed builds:</span> ${esc(reviewedBuilds.join(", "))}</small>` : ""}</li>`).join("")}</ul>
+      <p>Unreviewed route suggestions are withheld; route coverage and your saved journal remain available.</p>
+    </section>`;
+  }
+  function page(profile, routeBuild) {
     return `<section class="coverage-page" data-coverage>
       ${PageHero.render({ art: "coverage", eyebrow: "Help · Data coverage", title: "How much we know, zone by zone", subtitle: "Where the app's advice is rich and where it's still thin, for each faction.",
         aside: `<div class="cov-toggle" role="group" aria-label="Faction">${["Horde", "Alliance"].map((f) => `<button type="button" data-cov-faction="${f}" aria-pressed="${f === faction}">${f}</button>`).join("")}</div>` })}
+      ${patchImpact(profile, routeBuild)}
       <div data-cov-body>${body()}</div></section>`;
   }
   function paint() {
@@ -61,5 +83,5 @@ window.CoverageView = (() => {
     if (!data) { try { data = await api.dataCoverage(); } catch (e) { error = e.message || "Coverage is unavailable."; } }
     paint();
   }
-  return { page: () => { faction = faction || "Horde"; return page(); }, mounted, _state: () => ({ data, faction }) };
+  return { page: (profile, routeBuild) => { faction = faction || "Horde"; return page(profile, routeBuild); }, mounted, _state: () => ({ data, faction }) };
 })();

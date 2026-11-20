@@ -68,6 +68,8 @@ function importHandler({ store, file, filesystem = fs }) {
       },
       store,
       fs: filesystem,
+      privateWeekly: new (require("../src/core/private-weekly.cjs").PrivateWeekly)(),
+      privateAfterAction: new (require("../src/core/private-after-action.cjs").PrivateAfterAction)(),
       MAX_BACKUP_BYTES: require("../src/core/store.cjs").MAX_BACKUP_BYTES,
       v: validation,
       win: {},

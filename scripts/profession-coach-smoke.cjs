@@ -269,6 +269,16 @@ function shortPath(target) {
     assert.match(await shopping.innerText(), /Own storage, last seen: bank 10/);
     assert.match(await shopping.innerText(), /Alt stock, last seen: Vaelric \(Synthetic Realm\) · bags 99/);
 
+    // The saved recipe book and savings scenario remain usable; the new
+    // recipe-chain and cross-character capability projections do not ship.
+    const heldProjection = await page.evaluate(async id => {
+      const model = await window.backstage.professionCoach(id, { recipeId: 100 });
+      return { recipe: model.selectedRecipe.id, trace: Object.hasOwn(model, "batchDecision"),
+        craft: Object.hasOwn(model, "localCraft"), writer: typeof window.backstage.changeLocalCraft };
+    }, initial.activeProfileId);
+    assert.deepEqual(heldProjection, { recipe: 100, trace: false, craft: false, writer: "undefined" });
+    assert.equal(await page.locator("[data-workshop-decision], [data-local-craft], [data-craft-handoff]").count(), 0);
+
     if (process.argv.includes("--workshop-savings-only")) {
       const errors = [];
       page.on("pageerror", e => errors.push(e.message));

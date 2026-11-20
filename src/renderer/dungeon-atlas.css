@@ -1,10 +1,10 @@
 /* Instance Atlas: difficulty-coloured cards in the style of in-game level colours. */
-.atlas-page { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.atlas-page, .atlas-results { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .atlas-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; justify-content: space-between; }
 .atlas-brief { margin: 0 0 6px; font-size: 13px; color: #4a3214; }
 .atlas-preflight { padding: 10px 14px; margin: 0 0 14px; border: 1px solid #8c6a2e; border-radius: 5px; background: #f5e9c8; }
 .atlas-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.atlas-tabs button[aria-selected="true"] { outline: 2px solid #f0c75a; outline-offset: 2px; }
+.atlas-tabs button[aria-selected="true"] { text-decoration: underline; text-underline-offset: .22em; }
 .atlas-suggest h2 { margin: 0 0 8px; font: 700 18px Cinzel, Georgia, serif; color: #f3dca0; }
 .atlas-chips { display: flex; flex-wrap: wrap; gap: 10px; }
 .atlas-recap { padding: 12px 16px; border: 1px solid #806035; border-radius: 8px; background: #2b1b11; color: #f1e5ce; overflow-wrap: anywhere; }
@@ -16,6 +16,18 @@
 .atlas-recap-list li { min-width: 0; padding: 6px 10px; border: 1px solid #664a2b; border-radius: 5px; background: #392517; }
 .atlas-recap-list small { display: block; }
 .atlas-recap-link { margin-top: 5px; }
+.atlas-chest-leads > summary, [data-dungeon-progression] > summary { color: #f3dca0; cursor: pointer; font-weight: 700; scroll-margin-top: 20px; }
+.atlas-chest-leads > summary:focus-visible, [data-dungeon-progression] > summary:focus-visible { outline: 2px solid #f3dca0; outline-offset: 3px; }
+[data-dungeon-progression] { margin-top: 12px; }
+[data-dungeon-progression] h4 { margin: 10px 0 4px; color: #f3dca0; }
+[data-dungeon-progression] > summary + p { margin-top: 8px; }
+[data-dungeon-progression] ul { margin: 0 0 4px; padding-inline-start: 20px; }
+.atlas-chest-leads [data-chest-leads] { margin-top: 8px; }
+.atlas-chest-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 8px; padding: 0; list-style: none; }
+.atlas-chest-list > li { padding: 8px 12px; border: 1px solid #664a2b; border-radius: 5px; background: #392517; }
+.atlas-chest-list p { margin: 4px 0; }
+.atlas-chest-wished { display: inline-block; margin-inline-start: 8px; color: #f3dca0; font-size: .9em; }
+.atlas-chest-gaps { padding-inline-start: 20px; }
 .atlas-instance-recap { margin-bottom: 14px; }
 .atlas-recap-list + .atlas-recap-note { margin-top: 6px; }
 .atlas-page .atlas-chip { all: unset; box-sizing: border-box; cursor: pointer; padding: 10px 14px; border-radius: 6px; font: 700 15px Cinzel, Georgia, serif; color: #1d1207; border: 1px solid rgba(0,0,0,.4); box-shadow: 0 3px 8px rgba(0,0,0,.4); }
@@ -36,7 +48,15 @@
 .atlas-details h4, .atlas-quests h5, .atlas-pickup h5 { margin: 0 0 4px; font: 700 14px Cinzel, Georgia, serif; color: #5a3608; }
 .atlas-instance-recap h4 { color: #f3dca0; }
 .atlas-preflight > h4 { font-size: 17px; scroll-margin-top: 16px; }
-.atlas-preflight [tabindex="-1"]:focus-visible, .atlas-page .atlas-toggle:focus-visible, .atlas-page .atlas-chip:focus-visible { outline: 2px solid #a17021; outline-offset: 2px; }
+/* The shell's important gold outline disappears against Atlas parchment. */
+.atlas-preflight :is(button, [tabindex]):focus-visible,
+.atlas-fieldbook-support > summary:focus-visible,
+.atlas-card :is(.atlas-toggle, .atlas-loot-btn, .atlas-score):focus-visible { outline-color: #57340e !important; }
+.atlas-page :is(button, summary) { scroll-margin-block: 12px; }
+@media (forced-colors: active) {
+  .atlas-page :is(.atlas-card, .atlas-recap) { background: Canvas; border-color: CanvasText; }
+  .atlas-page :is(button, summary, [tabindex]):focus-visible { outline-color: LinkText !important; }
+}
 .atlas-quests li + li { margin-top: 6px; }
 .atlas-quests button { margin: 3px 0 0 6px; }
 .atlas-quests ul, .atlas-cols ul { margin: 0; padding-left: 18px; font-size: 13px; }
@@ -53,6 +73,11 @@
 .atlas-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 10px; }
 .atlas-fieldbook { overflow-wrap: anywhere; }
 .atlas-fieldbook-prep { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); margin-top: 14px; }
+.atlas-fieldbook-role { border-top: 1px solid #9a763d; margin-top: 10px; padding-top: 10px; scroll-margin-top: 16px; }
+.atlas-fieldbook-role p { margin: 4px 0 8px; }
+
+.atlas-fieldbook-support { margin-bottom: 10px; }
+.atlas-fieldbook-support > summary { color: #5a3608; cursor: pointer; margin-bottom: 8px; }
 .atlas-fieldbook h5 { margin: 0 0 4px; font: 700 13px Cinzel, Georgia, serif; color: #5a3608; }
 .atlas-fieldbook .atlas-pickup h5 { margin-top: 8px; }
 .atlas-fieldbook-wishes { margin: 12px 0; }

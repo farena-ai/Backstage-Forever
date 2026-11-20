@@ -7,7 +7,7 @@ const vm = require('node:vm');
 
 test('the atlas previews readiness in the catalog and keeps quest actions in the expanded entry',async()=>{
   const els=new Map(); let handle;
-  const root={addEventListener(_type,fn){handle=fn;},querySelector(selector){ if(!els.has(selector))els.set(selector,{});return els.get(selector); },querySelectorAll:()=>[]};
+  const root={addEventListener(_type,fn){handle=fn;},querySelector(selector){ if(!els.has(selector))els.set(selector,{ addEventListener() {}, setAttribute() {} });return els.get(selector); },querySelectorAll:()=>[]};
   const dungeon={id:'rfc',name:'Ragefire Chasm',kind:'dungeon',difficulty:'right',zone:'Orgrimmar',levels:{min:13,max:18},mapId:0,entrance:{x:0.2,y:0.5},bosses:[],observedOnly:[],roles:[],prep:[],yourQuests:[],pickUp:[{id:5723,title:'Search for the Lost Satchel'}]};
   const window={backstage:{dungeonAtlas:async()=>({level:15,suggested:[],entries:[dungeon]})}};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../src/renderer/dungeon-atlas.js'),'utf8'),{window,document:{querySelector:()=>root},CSS:{escape:s=>s},PageHero:{render:()=>''}});

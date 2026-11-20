@@ -37,7 +37,7 @@ Horde and Alliance are covered alike. The full list of in-game commands is on **
 
 ## Install
 
-**Windows 10 or 11:** download `Backstage-Forever-<version>-Windows-x64-Setup.exe` from the [latest release](https://github.com/farena-ai/Backstage-Forever/releases/latest) and run it. Windows may warn that the installer is from an unknown publisher (it isn't code-signed yet): choose **More info → Run anyway**. The app updates itself after that.
+**Windows 10 or 11:** download `Backstage-Forever-<version>-Windows-x64-Setup.exe` from the [latest release](https://github.com/farena-ai/Backstage-Forever/releases/latest). The installer is signed by **Frank Arena**. If Windows reports an unknown publisher or an invalid signature, stop and check the download against `SHA256SUMS.txt` on the release page. The app updates itself after installation.
 
 **macOS (Apple silicon or Intel):** download the `macOS-arm64` or `macOS-x64` zip, unzip it and move **Backstage Forever** to Applications. The app isn't notarized yet, so the first time macOS says it can't check it: open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** (on macOS 14 and older, right-click the app and choose **Open**). On a Mac the live link is not available yet; everything that works from your saved characters does, and the app tells you when a new version is out.
 

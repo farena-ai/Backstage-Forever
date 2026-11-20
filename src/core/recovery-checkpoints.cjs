@@ -2,6 +2,7 @@
 const fs = require("node:fs"), path = require("node:path"), crypto = require("node:crypto");
 const { validateState } = require("./validation.cjs");
 const { encodeJournalState, decodeJournalState } = require("./journal-persistence.cjs");
+const { clearLegacyLocalCraft } = require("./retired-craft-cleanup.cjs");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const ROOT_STAGE_PREFIXES = new Set(["state.json.", "credentials.json.", "recovery-preferences.json."]);
 const MAX_POINT_BYTES = 64 * 1024 * 1024, MAX_TOTAL_BYTES = 128 * 1024 * 1024;
@@ -200,6 +201,9 @@ class RecoveryCheckpoints {
       if (!sameFile(current.identity, token.identity) || hash(current.bytes) !== token.originalHash || this.read(token.id, token.sha256).fileHash !== token.fileHash) throw new RecoveryError("changed");
       this.disconnectSavedGame();
       writeAtomic(file, JSON.stringify(encodeJournalState({ ...point.state, memories: [] }), null, 2));
+      // A legacy sidecar is never read. If cleanup is blocked, the verified journal
+      // replacement still succeeded; explicit full reset can retry the cleanup.
+      try { clearLegacyLocalCraft(this.root()); } catch { /* Already retired. */ }
     } catch (e) { throw e instanceof RecoveryError ? e : new RecoveryError("unavailable"); }
   }
 }

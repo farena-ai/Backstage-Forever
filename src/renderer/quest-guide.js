@@ -9,7 +9,7 @@ window.QuestGuide = (() => {
   function remember(){const n=document.activeElement;focus=(n?.dataset?.questControl||n?.dataset?.shellControl)?{key:n.dataset.questControl||n.dataset.shellControl,start:n.selectionStart,end:n.selectionEnd,revision:focusRevision}:suspendedFocus?.revision===focusRevision?suspendedFocus:null;root.querySelectorAll(".quest-guide details[open] summary[data-interaction-key]").forEach(n=>disclosures.set(n.dataset.interactionKey,true));root.querySelectorAll(".quest-guide details:not([open]) summary[data-interaction-key]").forEach(n=>disclosures.set(n.dataset.interactionKey,false));}
   function restore(){root.querySelectorAll(".quest-guide summary[data-interaction-key]").forEach(n=>{if(disclosures.has(n.dataset.interactionKey))n.parentElement.open=disclosures.get(n.dataset.interactionKey);});if(!focus||focus.revision!==focusRevision)return;const n=[...root.querySelectorAll("[data-quest-control],[data-shell-control]")].find(n=>(n.dataset.questControl||n.dataset.shellControl)===focus.key);if(!n||n.disabled){suspendedFocus=focus;return;}if(n){n.focus({preventScroll:true});suspendedFocus=null;if(typeof focus.start==="number"&&n.setSelectionRange)try{n.setSelectionRange(focus.start,focus.end);}catch{}}}
   function beginRender(){remember();painting=true;}function endRender(){painting=false;}
-  function paintRegion(selector,markup,kind){if(guard?.defer(()=>paintRegion(selector,markup,kind),kind))return;const n=root.querySelector(selector);if(n){beginRender();try{PlayerNavigation.remember(root);n.innerHTML=markup();PlayerNavigation.mounted(root);restore();}finally{endRender();}}}
+  function paintRegion(selector,markup,kind,afterPaint){if(guard?.defer(()=>paintRegion(selector,markup,kind,afterPaint),kind))return;const n=root.querySelector(selector);if(n){beginRender();try{PlayerNavigation.remember(root);n.innerHTML=markup();PlayerNavigation.mounted(root);restore();afterPaint?.(n);}finally{endRender();}}}
   let profile = null,
     signature = "",
     sourceSignature = "",
@@ -271,7 +271,9 @@ window.QuestGuide = (() => {
     const olderCapture = !w?.canCopy && /capture|reload|addon/i.test(w?.reason || "");
     const heading=w?.source==="game"?"Game-reported quest marker":p?.name||p?.text||"Quest waypoint";
     const copyIntent=esc(JSON.stringify({kind:"copy",id:selected,generation,profileId:profile?.id??null,phase:w?.phase,canCopy:w?.canCopy===true}));
-    return `<section class="quest-waypoint ${w?.canCopy ? "has-waypoint" : ""}"><div class="eyebrow">${w?.source === "game" ? "SAVED GAME DESTINATION" : clue||namedClue?"NPC CLUE · DESTINATION UNCONFIRMED":isReference && p ? "APPROXIMATE COMMUNITY LOCATION" : "YOUR NEXT DESTINATION"}</div><h3>${p ? esc(heading) : namedClue?esc(d.mentions[0].name)+" · named in an objective":"Check your in-game quest log"}</h3>${p ? `<p class="waypoint-coordinates">${esc(point(p))}</p>${w.source === "reference" ? `<p class="section-note">${esc(evidenceLabel(p.evidence))}</p><p class="bf-note">Community data · may differ in game</p>` : `<p class="section-note">Saved game snapshot · saved ${esc(safeDate(profile?.source?.updatedAt))}. ${p.text?esc(p.text):"Point reported by the game; check your in-game journal."}</p>`}` : ""}<button class="primary" data-quest-control="copy:${selected}" data-quest-intent="${copyIntent}" data-quest-copy="${selected}" ${w?.canCopy&&!copying ? "" : "disabled"}>${clue?"Copy NPC clue marker":w?.source==="reference"?"Copy reference marker":"Copy game waypoint"}</button><p class="waypoint-instruction">${w?.canCopy ? (clue?"Copies where players last met this NPC. Paste it into game chat and press Enter.":isReference ? "Paste into game chat and press Enter." : "Paste into game chat and press Enter. The addon rechecks your quest and build.") : olderCapture ? "This desktop snapshot was saved before the waypoint feature. A newer save is needed for this desktop action." : esc(w?.reason || "No compatible destination was observed. Check the quest log in game.")}</p>${olderCapture ? '<p class="section-note">Prepare current companion files in Game Connection. They load on the next game launch; if the addon is already listed, you can choose a voluntary UI reload. Your current Compass may already work. Desktop waypoint evidence catches up after logout.</p>' : ""}</section>`;
+    const marker = w?.source === "game" && w.canCopy && window.CommandsView.scopedQuest.create(profile, selected, w);
+    const mapButton = marker ? `<button type="button" class="subtle" data-quest-control="saved-map:${selected}" data-map-focus="${esc(JSON.stringify({ scopedQuest: marker }))}">Show saved marker on map</button>` : "";
+    return `<section class="quest-waypoint ${w?.canCopy ? "has-waypoint" : ""}"><div class="eyebrow">${w?.source === "game" ? "SAVED GAME DESTINATION" : clue||namedClue?"NPC CLUE · DESTINATION UNCONFIRMED":isReference && p ? "APPROXIMATE COMMUNITY LOCATION" : "YOUR NEXT DESTINATION"}</div><h3>${p ? esc(heading) : namedClue?esc(d.mentions[0].name)+" · named in an objective":"Check your in-game quest log"}</h3>${p ? `<p class="waypoint-coordinates">${esc(point(p))}</p>${w.source === "reference" ? `<p class="section-note">${esc(evidenceLabel(p.evidence))}</p><p class="bf-note">Community data · may differ in game</p>` : `<p class="section-note">Saved game snapshot · saved ${esc(safeDate(profile?.source?.updatedAt))}. ${p.text?esc(p.text):"Point reported by the game; check your in-game journal."}</p>`}` : ""}<button class="primary" data-quest-control="copy:${selected}" data-quest-intent="${copyIntent}" data-quest-copy="${selected}" ${w?.canCopy&&!copying ? "" : "disabled"}>${clue?"Copy NPC clue marker":w?.source==="reference"?"Copy reference marker":"Copy game waypoint"}</button><p class="waypoint-instruction">${w?.canCopy ? (clue?"Copies where players last met this NPC. Paste it into game chat and press Enter.":isReference ? "Paste into game chat and press Enter." : "Paste into game chat and press Enter. The addon rechecks your quest and build.") : olderCapture ? "This desktop snapshot was saved before the waypoint feature. A newer save is needed for this desktop action." : esc(w?.reason || "No compatible destination was observed. Check the quest log in game.")}</p>${olderCapture ? '<p class="section-note">Prepare current companion files in Game Connection. They load on the next game launch; if the addon is already listed, you can choose a voluntary UI reload. Your current Compass may already work. Desktop waypoint evidence catches up after logout.</p>' : ""}${mapButton}</section>`;
   }
   function insightsMarkup(facts) {
     if (!facts) return "";
@@ -397,8 +399,8 @@ window.QuestGuide = (() => {
       )}<p>Race, class, reputation and unreported prerequisites remain unknown. Check the game before travelling.</p><p>Last successful reference check: ${esc(safeDate(status?.lastChecked))}. Collection date and check date are separate.</p></details>`;
   }
   function paintResults(){paintRegion(".quest-results",resultsMarkup,"results");}
-  function paintDetail(){
-    paintRegion(".quest-detail-host",detailMarkup,"detail");
+  function paintDetail(afterPaint){
+    paintRegion(".quest-detail-host",detailMarkup,"detail",afterPaint);
     root.querySelectorAll(".quest-ledger-row").forEach(node=>{const current=Number(node.dataset.questId)===selected;node.classList.toggle("selected",current);node.setAttribute("aria-pressed",String(current));});
   }
   function paintStatus(){paintRegion("[data-knowledge-status]",statusMarkup,"status");}
@@ -430,11 +432,12 @@ window.QuestGuide = (() => {
       }
     }
   }
-  async function open(id) {
+  async function open(id, reveal = false) {
     if (!root.querySelector(".quest-guide")) return;
     const request = ++detailRequest,
       epoch = generation,
-      pid = profile?.id || null;
+      pid = profile?.id || null,
+      arrivalRevision = focusRevision;
     if(selected!==id)copyError="";
     selected = id;
     opening=true;detailError="";
@@ -444,7 +447,12 @@ window.QuestGuide = (() => {
       const result = await api.questDetails(pid, id);
       if (request !== detailRequest || epoch !== generation) return;
       opening=false;details = result;
-      paintDetail();
+      paintDetail(reveal ? (host) => {
+        if (request !== detailRequest || epoch !== generation || arrivalRevision !== focusRevision) return;
+        const detail = host.querySelector(`[data-quest-control="detail:${id}"]`);
+        detail?.focus({ preventScroll: true });
+        detail?.scrollIntoView({ block: "start", behavior: "instant" });
+      } : undefined);
 
     } catch {
       if (request === detailRequest && epoch === generation) {
@@ -604,6 +612,6 @@ window.QuestGuide = (() => {
     contextMarkup,
     updateContext,
     invalidateContext,
-    open, beginRender,endRender,deferRender:callback=>guard?.defer(callback,"root")||false,
+    open: id => open(id, true), beginRender,endRender,deferRender:callback=>guard?.defer(callback,"root")||false,
   };
 })();

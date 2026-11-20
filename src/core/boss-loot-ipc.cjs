@@ -3,6 +3,7 @@
 const v = require("./validation.cjs");
 const { instanceLoot, itemCard, atlasLootSummary } = require("./boss-loot.cjs");
 const { dropIndex } = require("./boss-loot-data.cjs");
+const { gearAcquisition } = require("./gear-acquisition.cjs");
 
 const MAX_ID = 2147483647;
 const itemId = (x) => { if (!Number.isSafeInteger(x) || x < 1 || x > MAX_ID) throw Error("Invalid item ID."); return x; };
@@ -21,6 +22,14 @@ function registerBossLootHandlers({ handle, getState, gameData, wishlist, getPac
     return p || null;
   };
   const wished = (p) => (p?.id ? wishlist.get(p.id) : []);
+  handle("gearAcquisition", (...args) => {
+    count(args, 2);
+    const [expectedProfileId, slot] = args;
+    if (slot !== "chest") throw Error("Unsupported gear slot.");
+    const p = profile(null);
+    if ((expectedProfileId ?? null) !== (p?.id ?? null)) throw Error("The active character changed.");
+    return gearAcquisition(p, gameData, wished(p));
+  });
   handle("dungeonLoot", (...args) => {
     count(args, 2);
     const [profileId, instanceId] = args, p = profile(profileId);

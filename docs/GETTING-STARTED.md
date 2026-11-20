@@ -6,7 +6,7 @@ Backstage Forever is a free leveling companion for World of Warcraft: Forever: a
 
 **Windows 10 or 11**
 1. Open the [latest release](https://github.com/farena-ai/Backstage-Forever/releases/latest) and download the file ending in **Windows-x64-Setup.exe**. (The Source.zip is for developers.)
-2. Run it. The installer isn't code-signed yet, so Windows may show "Windows protected your PC": choose **More info → Run anyway**. It installs for your Windows account only.
+2. Right-click the downloaded installer and open **Properties → Digital Signatures**. Check that the signature is valid and the signer is **Frank Arena**, then run it. If the signature is missing or invalid, don't run the installer; download it again from the official release. It installs for your Windows account only.
 3. The app keeps itself up to date from then on (Settings → Updates).
 
 **macOS (Apple silicon or Intel)**

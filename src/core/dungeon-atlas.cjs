@@ -156,6 +156,9 @@ function buildAtlas({ profile = null, encounters = null, knowledgePack = null } 
   const suggested = entries.filter((e) => e.kind === "dungeon" && ["right", "easy"].includes(e.difficulty)).sort((a, b) => order[a.difficulty] - order[b.difficulty] || a.levels.min - b.levels.min).slice(0, 3).map((e) => e.id);
   return {
     level, faction, suggested, entries, recap: encounterRecap(profile, entriesByMap),
+    // Identity only: used to match the offline Fieldbook practice round trip.
+    practiceOwner: profile ? { id: profile.id, clientBuild: profile.clientBuild ?? null,
+      source: profile.source ? { kind: profile.source.kind, id: profile.source.id } : null } : null,
     attribution: encounters ? `${encounters.attribution} Encounters observed through ${encounters.source?.collectedOn?.last || "unknown"}.` : null,
     caution: "Baseline levels, entrances and bosses come from the original game era; World of Warcraft: Forever may differ. Observed Forever encounters are marked.",
   };

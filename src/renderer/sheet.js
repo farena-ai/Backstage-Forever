@@ -12,6 +12,7 @@ window.SheetView = (() => {
   const RATING = { fresh: "Holds up", aging: "Getting old", replace: "Time to replace" };
   const WHERE = { worn: "Worn", bags: "In your bags", bank: "In the bank", mail: "In the mail", other: "On", missing: "Not found" };
   let data = null, error = "", loadedAt = 0, loadedProfile = null, mountedFor = null, selection = null;
+  let pair = null, pairFocus = null;
   const active = () => document.getElementById("active-character")?.value || null;
   const nowSec = () => Math.floor(Date.now() / 1000);
   function ago(at) {
@@ -100,8 +101,119 @@ window.SheetView = (() => {
         <p class="sht-note">Leveling estimate from saved equipment. Check all equip restrictions in game. Loot listings and wishes do not prove ownership.</p>` : `<p role="status">${failed ? "Could not load this item comparison." : "Opening the item comparison…"}</p>`}
     </section>`;
   }
+  const signed = n => n > 0 ? `+${n}` : String(n);
+  function pairResult(model) {
+    const verdict = model.delta === null ? "No ranked result." : model.delta === 0 ? "The base scores tie." :
+      `Option ${model.delta < 0 ? "A" : "B"} leads by ${Math.abs(model.delta)} points.`;
+    return `<h2 class="sht-pair-result-heading" tabindex="-1">Comparison result</h2>
+      <p><strong>${verdict}</strong> ${esc(model.className)} · ${esc(model.role)} · Installed build ${esc(model.build)}</p>
+      ${model.sameCoverage ? "" : '<p>The saved sets cover different slots. No overall delta is shown.</p>'}
+      <div class="sht-pair-options">${model.options.map((o, i) => `<article><h3>Option ${i ? "B" : "A"} · ${esc(o.name)}</h3>
+        <p>${o.score === null ? "Score unavailable" : `Base score: ${o.score}`}</p>
+        <ul>${o.pieces.map(p => `<li>${esc(p.name)} (#${p.itemId})${p.slot ? ` · ${esc(p.slot)}` : ""}${p.wished ? " · On your wish list" : ""}</li>`).join("")}</ul>
+        ${o.issues.length ? `<ul>${o.issues.map(issue => `<li>${esc(issue)}</li>`).join("")}</ul>` : ""}</article>`).join("")}</div>
+      ${model.rows.length ? `<div class="sht-pair-table"><table><caption>Known base stats and role weights${model.delta === null ? " (zeros may omit unknown stats)" : ""}</caption>
+        <thead><tr><th scope="col">Stat</th><th scope="col">Weight</th><th scope="col">A</th><th scope="col">B</th><th scope="col">Points (B − A)</th></tr></thead>
+        <tbody>${model.rows.map(r => `<tr><th scope="row">${esc(r.stat)}</th><td>${r.weight}</td><td>${r.a}</td><td>${r.b}</td><td>${signed(r.points)}</td></tr>`).join("")}</tbody></table></div>` : ""}
+      <p class="sht-note">Weight × stat amount gives points. This is a base-item estimate, not a simulation or a comparison against what you wear. Saved sets sum listed combat slots only. Random affixes, enchants, procs, sockets, set bonuses and other instance effects are not scored and may change the result. Check all equip and reward restrictions in game. Wish list stars and source leads do not prove ownership or availability.</p>`;
+  }
+  function renderPairForm(node, model, seed) {
+    const suggestions = new Map(model.leads.map(l => [l.itemId, `${l.itemName} · ${l.sourceName}`]));
+    for (const id of model.wished) suggestions.set(id, `${suggestions.get(id) || `Item #${id}`} · Wish list`);
+    const select = (label, key) => `<label>${label}<select name="${key}" aria-label="${label}" required><option value="">Choose a set</option>${model.sets.map(s => `<option>${esc(s)}</option>`).join("")}</select></label>`;
+    const input = (label, key, value) => `<label>${label}<input name="${key}" inputmode="numeric" list="sheet-pair-items" pattern="[0-9]{1,10}" maxlength="10" value="${value}" required></label>`;
+    node.innerHTML = `<form class="sht-pair-form">
+      <label>Options<select name="mode" aria-label="Options"><option value="items">Items / quest rewards</option><option value="sets"${model.sets.length < 2 ? " disabled" : ""}>Saved gear sets</option></select></label>
+      <label>Role<select name="role" aria-label="Role" required><option value="">Choose a role</option>${Object.entries(model.roles).map(([id, label]) => `<option value="${esc(id)}">${esc(label)}</option>`).join("")}</select></label>
+      <div class="sht-pair-fields" data-pair-mode="items">${input("Option A item ID", "itemA", seed || "")}${input("Option B item ID", "itemB", "")}</div>
+      <div class="sht-pair-fields" data-pair-mode="sets" hidden>${select("Option A gear set", "setA")}${select("Option B gear set", "setB")}</div>
+      <datalist id="sheet-pair-items">${[...suggestions].map(([id, label]) => `<option value="${id}" label="${esc(label)}"></option>`).join("")}</datalist>
+      <button class="primary" type="submit">Compare</button>
+    </form><p class="sht-note" data-pair-hint>Enter exact item IDs, or use suggestions from chest acquisition leads and your wish list.</p>
+    <p data-pair-status role="status" class="sht-note"></p><div data-pair-result></div>`;
+  }
+  function mountPair(root, profile) {
+    const host = root.querySelector("[data-sheet-pair-host]");
+    if (!host || !profile || profile.id !== active()) { pair = null; pairFocus = null; return; }
+    const scope = JSON.stringify([profile.id, profile.clientBuild, profile.source?.kind, profile.source?.id, profile.className, profile.level, profile.gearSets]);
+    if (pair?.scope === scope) {
+      if (pair.panel.parentElement !== host) host.append(pair.panel);
+      if (pairFocus && pair.panel.contains(pairFocus)) pairFocus.focus({ preventScroll: true });
+      pairFocus = null;
+      return;
+    }
+    pairFocus = null;
+    const panel = document.createElement("details");
+    panel.className = "sht-card sht-pair";
+    panel.dataset.sheetPair = "";
+    panel.innerHTML = '<summary>Compare two options</summary><div data-pair-content></div>';
+    host.append(panel);
+    const local = pair = { scope, panel };
+    const current = () => pair === local && panel.isConnected && active() === profile.id;
+    const content = panel.querySelector("[data-pair-content]");
+    let catalog = null, loading = false, request = 0;
+    panel.addEventListener("toggle", async () => {
+      if (!panel.open || !current() || catalog || loading) return;
+      loading = true;
+      content.innerHTML = '<p role="status">Loading comparison options…</p>';
+      try {
+        const model = await api.sheetComparison(profile.id);
+        if (!current() || model.profileId !== profile.id) return;
+        catalog = model;
+        renderPairForm(content, model, selection?.profileId === profile.id ? selection.itemId : null);
+        syncMode();
+      } catch {
+        if (current()) content.innerHTML = '<p role="status">Comparison options unavailable. Close and reopen to retry.</p>';
+      } finally { loading = false; }
+    });
+    function syncMode() {
+      const mode = content.querySelector('[name="mode"]').value;
+      for (const fields of content.querySelectorAll("[data-pair-mode]")) {
+        fields.hidden = fields.dataset.pairMode !== mode;
+        for (const control of fields.querySelectorAll("input,select")) control.disabled = fields.hidden;
+      }
+      content.querySelector("[data-pair-hint]").hidden = mode !== "items";
+    }
+    panel.addEventListener("input", () => {
+      if (!catalog || !current()) return;
+      request++;
+      syncMode();
+      content.querySelector("[data-pair-status]").textContent = "";
+      content.querySelector("[data-pair-result]").textContent = "";
+    });
+    panel.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (!catalog || !current()) return;
+      const ownRequest = ++request, fields = new FormData(event.target), mode = fields.get("mode");
+      const submitFocus = event.target.contains(document.activeElement) ? document.activeElement : null;
+      const values = mode === "sets" ? [fields.get("setA"), fields.get("setB")] : [fields.get("itemA"), fields.get("itemB")].map(Number);
+      const status = content.querySelector("[data-pair-status]"), result = content.querySelector("[data-pair-result]");
+      result.textContent = "";
+      if (values[0] === values[1] || (mode === "items" && values.some(n => !Number.isSafeInteger(n) || n < 1 || n > 2147483647))) {
+        status.textContent = "Choose two different options with valid IDs or set names."; return;
+      }
+      status.textContent = "Comparing…";
+      try {
+        const model = await api.sheetComparison(profile.id, fields.get("role"), mode, ...values);
+        if (!current() || ownRequest !== request || model.profileId !== profile.id) return;
+        status.textContent = model.reason || "Comparison ready.";
+        // The template escapes display strings; IDs, scores and weights are numeric IPC projections.
+        if (!model.reason) {
+          result.innerHTML = pairResult(model);
+          if (panel.open && submitFocus === document.activeElement) {
+            const heading = result.querySelector("h2");
+            heading.focus({ preventScroll: true });
+            heading.scrollIntoView({ block: "start", behavior: "instant" });
+          }
+        }
+      } catch {
+        if (current() && ownRequest === request) status.textContent = "Could not compare these options. Review your choices and try again.";
+      }
+    });
+  }
   function page() {
-    return `<section class="sheet-page" data-sheet>${hero()}<div data-sheet-compare>${comparison()}</div><div data-sheet-body>${body()}</div></section>`;
+    pairFocus = pair?.panel.contains(document.activeElement) ? document.activeElement : null;
+    return `<section class="sheet-page" data-sheet>${hero()}<div data-sheet-compare>${comparison()}</div><div data-sheet-pair-host></div><div data-sheet-body>${body()}</div></section>`;
   }
   function paintSheet(root) {
     // Both templates escape text from saved state and use validated numeric item IDs.
@@ -117,9 +229,10 @@ window.SheetView = (() => {
     // Leave the comparison and keyboard focus intact while refreshing the paper doll.
     paintSheet(root);
   }
-  function mounted() {
+  function mounted(profile) {
     const root = document.querySelector("[data-sheet]");
-    if (!root) { mountedFor = null; selection = null; return; }
+    if (!root) { mountedFor = null; selection = null; pair = null; pairFocus = null; return; }
+    mountPair(root, profile);
     if (mountedFor === root) return;
     mountedFor = root;
     const id = active();
@@ -128,6 +241,7 @@ window.SheetView = (() => {
     document.getElementById("active-character")?.addEventListener("change", () => {
       if (mountedFor !== root) return;
       mountedFor = null; selection = null; data = null; error = ""; loadedAt = 0;
+      pair?.panel.remove(); pair = null; pairFocus = null;
       root.querySelector("[data-sheet-compare]").innerHTML = "";
       paintSheet(root);
     });

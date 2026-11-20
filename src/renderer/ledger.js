@@ -8,8 +8,9 @@ window.LedgerView = (() => {
   const QUALITY = ["poor", "common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom"];
   const LIMIT = 150;
   let data = null, error = "", loading = false, loadedAt = 0, mountedFor = null, route = "ledger", repFor = null;
-  let repFaction = null, focusRepFor = null, loadGeneration = 0;
+  let repFaction = null, focusRepFor = null, loadGeneration = 0, loadedFor = null;
   let activeProfile = () => data?.activeProfileId;
+  let characterPending = () => false;
   let cdGroup = "readiness";
   const query = { items: "", prices: "" };
   const nowSec = () => Math.floor(Date.now() / 1000);
@@ -274,10 +275,10 @@ window.LedgerView = (() => {
   }
   async function load() {
     if (loading) return; loading = true;
-    const generation = loadGeneration;
+    const generation = loadGeneration, owner = activeProfile();
     try { const fresh = await api.ledger(); if (generation === loadGeneration) { data = fresh; error = ""; } }
     catch (e) { if (generation === loadGeneration) error = e.message || "Your ledger is unavailable."; }
-    loading = false; loadedAt = Date.now();
+    loading = false; loadedAt = Date.now(); loadedFor = owner;
     const root = document.querySelector("[data-ledger]");
     if (generation !== loadGeneration) { if (root) load(); return; }
     if (root) { root.outerHTML = page(root.dataset.ledger); mountedFor = null; mounted(); }
@@ -362,11 +363,11 @@ window.LedgerView = (() => {
     root.querySelector("[data-ledger-goal-clear]")?.addEventListener("click", () => setGoal(null));
     root.querySelector("[data-ledger-goal-mount]")?.addEventListener("click", (e) => setGoal({ gold: Number(e.currentTarget.dataset.ledgerGoalMount), label: "Riding and first mount" }));
     // Each visit reads the newest saved ledger (a game save may have arrived since).
-    if (!loading && (!data || Date.now() - loadedAt > 3000)) load();
+    if (!loading && !characterPending() && (loadedFor !== activeProfile() || (!data && !error) || Date.now() - loadedAt > 3000)) load();
   }
   function selectReputation(profileId, factionId) {
     repFor = profileId; repFaction = factionId; focusRepFor = profileId;
     data = null; error = ""; loadGeneration++;
   }
-  return { init: readActive => { activeProfile = readActive; }, bags: () => page("ledger"), gold: () => page("ledger-gold"), reputation: () => page("ledger-reputation"), cooldowns: () => page("ledger-cooldowns"), page, mounted, selectReputation, reviewSavings, invalidate: () => { data = null; }, _state: () => ({ data, query, route }) };
+  return { init: (readActive, pending = () => false) => { activeProfile = readActive; characterPending = pending; }, bags: () => page("ledger"), gold: () => page("ledger-gold"), reputation: () => page("ledger-reputation"), cooldowns: () => page("ledger-cooldowns"), page, mounted, selectReputation, reviewSavings, invalidate: () => { data = null; error = ""; loadGeneration++; }, _state: () => ({ data, query, route }) };
 })();

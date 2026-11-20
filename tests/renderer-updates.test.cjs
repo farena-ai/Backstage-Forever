@@ -109,6 +109,7 @@ function harness(overrides = {}) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/journey.js"), "utf8"), context);
   context.JourneyView = context.window.JourneyView;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/guild-run.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/supply-desk.js"), "utf8"), context);
   context.GuildRun = context.window.GuildRun;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/party.js"), "utf8"), context);
   context.Party = context.window.Party;
@@ -133,7 +134,9 @@ function harness(overrides = {}) {
     context[name] = context.window[name];
   }
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/onboarding.js"), "utf8"), context);
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/practice-lab-model.js"), "utf8"), context);
+  for (const script of ["academy-tank-pack.js", "academy-healer-pack.js", "practice-lab-model.js"]) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer", script), "utf8"), context);
+  }
   context.window.BFPracticeLab = context.BFPracticeLab;
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/practice-lab.js"), "utf8"), context);
   context.PracticeLabView = context.window.PracticeLabView;

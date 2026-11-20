@@ -8,6 +8,7 @@ const { changeObjective, reconcileObjectives } = require("./objectives.cjs");
 const { preserveMemories } = require("./memory-data.cjs");
 const { RecoveryCheckpoints } = require("./recovery-checkpoints.cjs");
 const { encodeJournalState, decodeJournalState, hasInlineDesktopAwards } = require("./journal-persistence.cjs");
+const { clearLegacyLocalCraft } = require("./retired-craft-cleanup.cjs");
 class StoreStartupError extends Error {
   constructor(kind) { super("Saved local data could not be opened."); this.name = "StoreStartupError"; this.kind = kind; }
 }
@@ -30,6 +31,7 @@ class Store {
     fs.mkdirSync(dir, { recursive: true });
     this.file = path.join(dir, "state.json");
     this.keyFile = path.join(dir, "credentials.json");
+
     let persisted;
     try {
       if (fs.existsSync(this.file)) {
@@ -170,6 +172,9 @@ class Store {
     this.recovery.clearRootStages();
     this.recovery.clear({ preferences: true });
     this.#writeState(v.defaultState(), false, false);
+    // This retired store is never read. A locked leftover must not interrupt
+    // credential cleanup or make the already-committed reset report failure.
+    if (!clearLegacyLocalCraft(this.dir)) console.warn("Reset could not remove all retired local craft files.");
     atomic(this.keyFile, "{}");
     this.keys = {};
     return structuredClone(this.state);

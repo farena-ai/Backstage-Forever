@@ -10,6 +10,12 @@ The class guide corroborates the practice priority from an older beta build. The
 
 **Eligibility and privacy:** an imported active character must match the class, saved build, and level band. The desktop does not read the spellbook or use the talent planner as evidence of learned ranks. The player must check both exact learned entries in their current spellbook; if either is unknown, unlearned, or a different rank, the guide stays hidden. These are temporary self-checks, not verified observations, and are cleared when the view is abandoned or the active character changes. No addon capture, network/API/provider path, auto-cast, live cue, or persisted permission was added. No AoE, raid priority, best-DPS claim, or live client validation is included. This is separate from Practice Lab.
 
+## W4 4C — Manual Spellbook review
+
+In Characters → Talents, confirm both exact ranks as above, then open **Just learned this?** for a manual two-slot solo Frost layout. The one reviewed spell is Ice Lance Rank 1 (`1312002`). Compare the Spellbook entry with the in-game action-bar tooltip. Placement and binding start **unknown**; only an explicit manual check produces a **self-reported** result. The binding question applies to the same slot and resets to unknown when placement is no longer confirmed. The template doesn't assign keys, inspect or edit game settings, or give live cues. The answers are temporary and follow the Academy card's existing character-switch and navigation lifetime. Other ranks, forms, and pets are outside this case.
+
+Run `node --test tests/academy-dps.test.cjs` and `node scripts/academy-dps-smoke.cjs` for saved-fixture coverage. This is not live-client validation.
+
 ## Sources
 
 [1] https://wow4ever.quest/en/articles/guia-mago-wow-forever

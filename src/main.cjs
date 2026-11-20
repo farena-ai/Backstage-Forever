@@ -41,6 +41,8 @@ const { registerProfessionCoachHandlers } = require("./core/profession-coach-ipc
 const { registerPreparationHandlers } = require("./core/preparation-ipc.cjs");
 const { registerPartyHandlers } = require("./core/party-ipc.cjs");
 const { registerGuildRunHandlers } = require("./core/guild-run-ipc.cjs");
+const { registerSupplyDesk } = require("./core/supply-desk-ipc.cjs");
+const { registerLocalPlanPack, LOCAL_PLAN_MESSAGES } = require("./core/local-plan-pack.cjs");
 const { CompanionRequest } = require("./core/companion-request.cjs");
 const { CompanionContext } = require("./core/companion-context.cjs");
 const { MemoryService } = require("./core/memory.cjs");
@@ -49,6 +51,7 @@ const { preserveMemories } = require("./core/memory-data.cjs");
 const { VoiceService } = require("./core/voice.cjs");
 const { registerVoiceHandlers } = require("./core/voice-ipc.cjs");
 const { registerDiagnosticsHandlers } = require("./core/diagnostics-ipc.cjs");
+const { savedBuild } = require("./core/patch-impact.cjs");
 const { registerRecoveryHandlers, RECOVERY_MESSAGES } = require("./core/recovery-ipc.cjs");
 const { releaseChannel } = require("../package.json");
 const { FieldDispatchStore } = require("./core/field-dispatch-desktop.cjs");
@@ -105,8 +108,8 @@ const links = {
 };
 // 0.47 (4.4): read-only page views by name, so the companion's planning tools reuse exactly what the pages show.
 const views = Object.create(null);
-function handle(name, fn) {
-  views[name] = fn;
+function handle(name, fn, { privateOnly = false } = {}) {
+  if (!privateOnly) views[name] = fn;
   ipcMain.handle("backstage:" + name, async (event, ...args) => {
     if (
       event.sender !== win?.webContents ||
@@ -134,6 +137,8 @@ function handle(name, fn) {
       if (name.startsWith("community") && e?.name === "CommunityError") throw new Error(e.message);
       if (["partyBrief", "partyPreview", "createPartyJourney", "commitPartyPlan", "exportPartyPlan", "importPartyPlan"].includes(name) && /^Party plan/.test(e?.message)) throw e;
       if (name === "guildRun" && /^Guild Run Pack/.test(e?.message)) throw e;
+      if (name === "supplyDesk" && /^Supply Desk/.test(e?.message)) throw e;
+      if (name === "localPlanPack" && LOCAL_PLAN_MESSAGES.includes(e?.message)) throw new Error(e.message);
       if (["ask", "askCompanion", "memoryPreview", "saveMemory", "deleteMemory", "clearMemory"].includes(name) && /^(Memory |Provider response is no longer current|Choose the current character)/.test(e?.message)) throw e;
       if (
         name === "copyQuestWaypoint" &&
@@ -171,6 +176,8 @@ app.on("second-instance", () => {
 app.whenReady().then(async () => {
   if (!ownsInstance) return;
   let fieldDispatch;
+  const privateWeekly = new (require("./core/private-weekly.cjs").PrivateWeekly)();
+  const privateAfterAction = new (require("./core/private-after-action.cjs").PrivateAfterAction)();
   try {
     const dataDir = app.getPath("userData");
     // Old profiles do not establish a version. Check before startup creates any app-owned files.
@@ -186,7 +193,10 @@ app.whenReady().then(async () => {
       dataDir: app.getPath("userData"),
       inputAllowed: () => !!win && !win.isDestroyed() && win.isVisible() && win.isFocused() && !win.webContents.isDestroyed() && win.webContents.getURL() === trusted,
     });
-    store.onStateChange = () => { companionContext.sync(); characterGuidance?.sync(); };
+    store.onStateChange = () => {
+      companionContext.sync(); characterGuidance?.sync();
+      privateWeekly.sync(store.state); privateAfterAction.sync(store.state);
+    };
     chatgpt = new ChatGPTAuth(app.getPath("userData"), safeStorage, {
       openExternal: (url) => shell.openExternal(url),
     });
@@ -296,12 +306,14 @@ app.whenReady().then(async () => {
   registerVoiceHandlers({ handle, voice });
   diagnostics = registerDiagnosticsHandlers({
     handle, dialog, clipboard, getWindow: () => win, dataDir: app.getPath("userData"),
-    collect: collectDiagnostics = () => {
+    collect: collectDiagnostics = ({ includePatchImpact = true } = {}) => {
       // Read local status only, including bounded recovery metadata. No auth worker, model catalog or network refresh.
       const selected = store.state.provider, gameFacts = game.status();
       const index = knowledge.packs.get(knowledge.build), pack = (index || knowledge.bundled).pack;
       const update = updater.status();
+      const selectedProfile = store.state.profiles.find(p => p.id === store.state.activeProfileId);
       return {
+        ...(includePatchImpact ? { patchImpact: { savedBuild: savedBuild(selectedProfile, Date.now()), routeBuild: knowledge.bundled?.pack.build } } : {}),
         version: app.getVersion(), channel: releaseChannel,
         platform: process.platform, arch: process.arch,
         secureStorage: safeStorage.isEncryptionAvailable(), profileCount: store.state.profiles.length,
@@ -323,7 +335,10 @@ app.whenReady().then(async () => {
       await game.disconnect(); latestObservation = null; latestObservationRoot = null;
       // A live disconnect alone cannot prevent the saved source reopening next launch.
       store.recovery.disconnectSavedGame();
-      return operation();
+      const result = await operation();
+      privateWeekly.clear();
+      privateAfterAction.clear();
+      return result;
     } finally { resetting = false; }
   }
   recovery = registerRecoveryHandlers({ handle, store, context: companionContext, getEpoch: () => subscriptionEpoch, getWindow: () => win, dialog, transaction: replaceJournal });
@@ -356,7 +371,9 @@ app.whenReady().then(async () => {
     getWindow: () => win,
   });
   const guildRuns = registerGuildRunHandlers({ handle, dataDir: app.getPath("userData"),
-    context: companionContext, isBlocked: () => resetting, dialog, getWindow: () => win });
+    context: companionContext, isBlocked: () => resetting, dialog, clipboard, getWindow: () => win });
+  const supplyDesk = registerSupplyDesk({ handle, dataDir: app.getPath("userData") });
+  const localPlanPack = registerLocalPlanPack({ handle, dataDir: app.getPath("userData") });
   const insights = loadBundledInsights();
   // Creature levels, elite flags and hostility (bundled reference; optional).
   const creaturePack = (() => { try { return require("./core/creature-data.cjs").loadCreaturePack(); } catch { return null; } })();
@@ -570,6 +587,7 @@ app.whenReady().then(async () => {
   });
   handle("bootstrap", async () => ({
     ...gameSnapshot(),
+    desktopRouteBuild: knowledge.bundled?.pack.build ?? null,
     providers: v.providers,
     version: app.getVersion(),
     updateStatus: updater.status(),
@@ -702,7 +720,8 @@ app.whenReady().then(async () => {
     dir: app.getPath("userData"), appVersion: app.getVersion(),
     baseUrl: app.isPackaged ? BASE_URL : resolveBaseUrl(), // BF_COMMUNITY_URL is for development and tests only
     getProfiles: () => store.state.profiles,
-    getSupportText: () => require("./core/diagnostics.cjs").buildDiagnostics(collectDiagnostics()).text,
+    // The optional Community attachment retains its existing fields; saved build stays local.
+    getSupportText: () => require("./core/diagnostics.cjs").buildDiagnostics(collectDiagnostics({ includePatchImpact: false })).text,
   });
   require("./core/community-ipc.cjs").registerCommunityHandlers({
     handle, community,
@@ -849,7 +868,8 @@ app.whenReady().then(async () => {
         if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:playEvent", e);
         moments.onPlayEvent(e);
       }
-      if (mine) sessionHistory.checkpoint(playSession.summary(), worldMap.profile());
+      // Unlike ordinary history, a debrief cannot use a position with no saved-source link.
+      if (mine) sessionHistory.checkpoint(playSession.summary(), worldMap.profile(), { savedSourceLinked: !!mine.characterHash });
       moments.observeFrame(raw);
     } catch {}
   });
@@ -883,6 +903,12 @@ app.whenReady().then(async () => {
     const W = require("./core/weekly.cjs");
     return { recap: W.weeklyRecap(store.state, { history: (id) => (sessionHistory ? sessionHistory.view(id) : null) }), reminders: W.reminders(store.state) };
   });
+  const activeSessionHistory = () => sessionHistory?.view(store.state.activeProfileId);
+  handle("privateWeekly", (...args) => args.length ? null : privateWeekly.view(store.state, activeSessionHistory()), { privateOnly: true });
+  handle("addPrivateWeekly", (input, ...extra) => extra.length ? null : privateWeekly.add(store.state, activeSessionHistory(), input), { privateOnly: true });
+  const afterActionHistory = () => sessionHistory?.forAfterAction(worldMap.profile());
+  handle("privateAfterAction", (...args) => args.length ? null : privateAfterAction.view(store.state, afterActionHistory()), { privateOnly: true });
+  handle("savePrivateAfterAction", (input, ...extra) => extra.length ? null : privateAfterAction.save(store.state, afterActionHistory(), input), { privateOnly: true });
   // J27 (1.6): badge paintings as bytes, so the Badges page can draw its picture without a tainted canvas.
   handle("badgeArt", (...args) => {
     const ids = args[0];
@@ -998,14 +1024,17 @@ app.whenReady().then(async () => {
     return { profileId: store.state.activeProfileId ?? null, step: require("./core/next-step.cjs").nextStep(leveling.advise()) };
   });
   const { buildAtlas, loadEncounters } = require("./core/dungeon-atlas.cjs");
+  const { dungeonProgression } = require("./core/dungeon-progression.cjs");
   const encounters = loadEncounters();
   // Loot browser, wish list and item hover cards (boss loot pack + the player's own game data).
   wishlist = new (require("./core/wishlist.cjs").WishList)(app.getPath("userData"));
+  require("./core/sheet-comparison.cjs").registerSheetComparison({ handle, getState: () => store.state, gameData, wishlist });
   const bossLoot = require("./core/boss-loot-ipc.cjs").registerBossLootHandlers({ handle, getState: () => store.state, gameData, wishlist, getPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(), getCommunity: () => community?.index() || null, creatureName: (id) => worldMap?.npcName(id) || null, priceFor: (id) => ledgerPrice(id) });
   handle("dungeonAtlas", () => {
     const profile = store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null;
     const atlas = buildAtlas({ profile, encounters, knowledgePack: knowledge?.bundled?.pack }), loot = bossLoot.summary(profile);
     for (const e of atlas.entries) if (loot[e.id]) e.loot = loot[e.id];
+    atlas.progression = dungeonProgression("dm", profile, wishlist.get(profile?.id));
     return atlas;
   });
   handle("copyWaypoint", (input) => {
@@ -1103,7 +1132,7 @@ app.whenReady().then(async () => {
       type: "warning",
       title: "Delete all local data?",
       message:
-        "This deletes all profiles, goals, notes, plans, saved conversation memory, recovery points, preserved damaged originals, preferences, API keys and app-owned subscription credentials. Pending sign-ins are cancelled. Other apps and global Claude credentials are unaffected. Exported backups remain separate.",
+        "This deletes all profiles, goals, notes, plans, Supply Desk records, saved conversation memory, recovery points, preserved damaged originals, preferences, API keys and app-owned subscription credentials. Pending sign-ins are cancelled. Other apps and global Claude credentials are unaffected. Exported backups remain separate.",
       buttons: ["Cancel", "Delete all data"],
       defaultId: 0,
       cancelId: 0,
@@ -1135,10 +1164,13 @@ app.whenReady().then(async () => {
       await knowledgeReset;
       await claude.clearCredentials();
       guildRuns.reset();
+      localPlanPack.reset();
       const fresh = store.reset();
+      privateAfterAction.clear();
       wishlist?.clear(); // starred loot belongs to the characters just deleted
       community?.reset(); // local install id, sent marks and pack; shared facts stay on the server
       fieldDispatch.finishReset();
+      supplyDesk.reset();
       return fresh;
     } finally {
       resetting = false;

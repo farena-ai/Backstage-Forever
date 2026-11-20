@@ -1,4 +1,5 @@
 "use strict";
+const { forBuild } = require("./patch-impact.cjs");
 const MAX_REPORT_BYTES = 8192;
 const choice = (value, allowed) => typeof value === "string" && allowed.includes(value) ? value : "unknown";
 const count = value => Number.isSafeInteger(value) && value >= 0 && value <= 1000000 ? value : "unknown";
@@ -17,6 +18,7 @@ function buildDiagnostics(input, { now = Date.now } = {}) {
     game: { phase: choice(g?.phase, ["disconnected", "waiting", "folder-unavailable", "needs-addon", "needs-reload", "invalid-export", "stale", "synced", "error"]), companion: choice(g?.companionState, ["unavailable", "not-prepared", "saved", "update-next-launch", "prepared"]), partial: bool(g?.coverage?.partial), unreadableAccountCount: count(g?.coverage?.unreadableAccountCount), omittedCharacterCount: count(g?.coverage?.omittedCharacterCount), omittedProfileCount: count(g?.coverage?.omittedProfileCount) },
     reference: { phase: choice(r?.phase, ["offline", "refreshing", "mismatch", "ready", "reference", "error", "idle"]), build: build(r?.packBuild), quests: count(r?.counts?.quests), items: count(r?.counts?.items), npcs: count(r?.counts?.npcs) },
     updater: { phase: choice(u?.phase, ["idle", "unsupported", "disabled", "error", "checking", "current", "available", "downloading", "ready"]), code: choice(u?.diagnostic?.code, ["NETWORK", "TIMEOUT", "HTTP", "REDIRECT", "URL", "BODY_ABORT", "SIZE", "HASH", "SIGNATURE", "MANIFEST", "DISCOVERY", "PATH", "PERMISSION", "DISK", "CACHE", "CANCELLED"]), currentVersion: version(u?.currentVersion), availableVersion: version(u?.availableVersion), readyVersion: version(u?.readyVersion) },
+    ...(s.patchImpact ? { patchImpact: forBuild(s.patchImpact.savedBuild, s.patchImpact.routeBuild) } : {}),
     recovery: { phase: choice(s.recovery?.phase, ["ready", "unavailable", "limit"]), automatic: bool(s.recovery?.automatic), count: count(s.recovery?.count) },
   };
   const text = [
@@ -47,6 +49,11 @@ function buildDiagnostics(input, { now = Date.now } = {}) {
     `Reference item names: ${report.reference.items}`,
     `Reference NPCs: ${report.reference.npcs}`,
     "",
+    ...(report.patchImpact ? [
+      `Patch impact (saved build): ${report.patchImpact.savedBuild ?? "unknown"}`,
+      ...report.patchImpact.rows.map(({ id, status, reviewedBuilds }) => `${id}: ${status} (reviewed builds: ${reviewedBuilds.join(", ") || "none"})`),
+      "",
+    ] : []),
     `Updater phase: ${report.updater.phase}`,
     `Updater diagnostic code: ${report.updater.code}`,
     `Installed version: ${report.updater.currentVersion}`,

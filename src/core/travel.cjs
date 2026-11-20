@@ -176,7 +176,7 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
   return result;
 }
 const COVERAGE =
-  "Small dated reference: six conditional flights, ten directed scheduled-transport segments, and one Orgrimmar to Thunder Bluff road itinerary. Other routes may exist beyond this coverage.";
+  "Small dated reference: six conditional flights, ten directed scheduled-transport segments, and one Orgrimmar to Thunder Bluff road itinerary. Hearth travel is not covered: bind location and readiness are unknown. Other routes may exist beyond this coverage.";
 function planTravel(reference, intent, { profile } = {}) {
   const result = {
     status: "unavailable",
@@ -300,7 +300,7 @@ function planTravel(reference, intent, { profile } = {}) {
       id: e.id,
       title:
         e.mode === "road"
-          ? "Documented road fallback"
+          ? "Documented road itinerary"
           : e.mode === "flight"
             ? "Check the flight master"
             : "Documented " + e.mode + " segment",
@@ -312,6 +312,11 @@ function planTravel(reference, intent, { profile } = {}) {
   const negatives = ref.negatives.filter(
     (n) => n.from === origin.id && n.to === destination.id,
   );
+  // The pinned reference has one comparable pair: a directed flight and the
+  // road itinerary for the same endpoints. Don't compose other legs to fill it.
+  const flight = allowed.find((e) => e.mode === "flight");
+  const compare =
+    result.options.length === 2 && !!flight && availableRoads.length === 1;
   if (!result.options.length) {
     result.status =
       !faction && [...candidates, ...roads].some((e) => e.faction !== "neutral")
@@ -327,22 +332,31 @@ function planTravel(reference, intent, { profile } = {}) {
           ".";
   } else {
     result.status = "route";
-    result.text = "From " + origin.label + " to " + destination.label + ":";
+    result.text =
+      (compare ? "Compare two documented options from " : "From ") +
+      origin.label + " to " + destination.label + ":";
   }
   result.cautions.push(
     "Player unlocks, current service operation, costs, timing and level suitability are unknown.",
   );
-  if (
-    typeof intent.question === "string" &&
-    /\bfastest\b/i.test(intent.question)
-  )
+  if (compare) {
+    const master = node(flight.from).flightMaster.name;
     result.cautions.push(
-      "An offered flight may save walking; the actual fastest route is unknown.",
+      `Flight: your unlock is unknown. Check ${master} in game; if the destination is not offered, do not count on this flight.`,
+      "Road: this itinerary does not require a flight unlock. It gives broad published landmarks, not continuous navigation or a safety assessment.",
     );
-  if (availableRoads.length)
+  } else if (availableRoads.length) {
     result.cautions.push(
       "The road itinerary gives broad published landmarks, not continuous navigation or a safety assessment.",
     );
+  }
+  if (result.options.length === 1)
+    result.cautions.push("No second eligible option is verified for this direction in this reference.");
+  if (
+    compare ||
+    (typeof intent.question === "string" && /\b(?:fastest|quickest)\b/i.test(intent.question))
+  )
+    result.cautions.push("The fastest route is unknown.");
   const ids = new Set([
     ...result.options.flatMap((o) => o.sourceIds),
     ...negatives.flatMap((n) => n.sourceIds),

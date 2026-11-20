@@ -48,8 +48,29 @@ test("sessions are kept per character, bounded, written at most once a minute, a
 test("Journey shows past sessions; main keeps and clears them", () => {
   const read = (f) => fs.readFileSync(path.join(__dirname, "..", f), "utf8");
   const main = read("src/main.cjs");
-  assert.match(main, /sessions\.json/); assert.match(main, /sessionHistory\.checkpoint\(playSession\.summary\(\), worldMap\.profile\(\)\)/);
+  assert.match(main, /sessions\.json/); assert.match(main, /sessionHistory\.checkpoint\(playSession\.summary\(\), worldMap\.profile\(\),/);
   assert.match(main, /history: sessionHistory \? sessionHistory\.view\(p\.id\) : null/);
   assert.match(main, /try \{ sessionHistory\?\.clear\(\); \} catch \{\}/, "Delete all local data clears them");
   assert.match(read("src/renderer/journey.js"), /<h2>Past sessions<\/h2>/);
+});
+
+test("a saved-source change cannot reattribute a recorded session or upgrade a legacy row", t => {
+  const dir = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), "bf-session-attribution-"));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, "sessions.json"), now = Date.now();
+  const h = new SessionHistory({ file, now: () => now });
+  const a = { id: "p", name: "Same name", source: { kind: "wow-addon", id: "Player-A" } };
+  const b = { ...a, source: { ...a.source, id: "Player-B" } };
+  const summary = { active: true, startedAt: now - 4 * MIN, lastAt: now, activeMinutes: 4, deaths: 1 };
+  h.checkpoint(summary, a, { savedSourceLinked: true });
+  const legacy = { ...summary, startedAt: now - 20 * MIN };
+  h.checkpoint(legacy, a);
+  h.checkpoint(legacy, a, { savedSourceLinked: true });
+  h.checkpoint({ ...summary, deaths: 9 }, b, { savedSourceLinked: true });
+  h.flush();
+  const reopened = new SessionHistory({ file, now: () => now });
+  assert.deepEqual(reopened.forAfterAction(a).sessions.map(s => [s.startedAt, s.deaths]), [[summary.startedAt, 1]]);
+  assert.deepEqual(reopened.forAfterAction(b).sessions, []);
+  assert.equal(reopened.view(a.id).sessions.length, 2, "legacy remains available to the ordinary history");
+  assert.equal(reopened.view(a.id).sessions.some(s => Object.hasOwn(s, "savedSourceId")), false);
 });

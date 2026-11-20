@@ -7025,6 +7025,85 @@
           "text": "Delete all local data removes leftover private staging files. Reset now clears temporary files left by interrupted journal, credential, or recovery-preference writes. If one of those files is blocked, reset stops before changing the saved journal or credentials so you can retry. Unrelated files and exports are left alone."
         }
       ]
+    },
+    {
+      "version": "1.16.0",
+      "channel": "stable",
+      "source": "docs/releases/1.16.0.md",
+      "title": "Backstage Forever 1.16.0 — Desktop Field Journal",
+      "changes": [
+        {
+          "id": "desktop-adventure-journey",
+          "kind": "improved",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "See alternate tasks beside your next step in Now. Open saved quest markers in the Map and return to the same quest in Quest Guide. Map cards now explain which pins are saved observations and which areas are approximate reference."
+        },
+        {
+          "id": "desktop-fieldbook-practice",
+          "kind": "improved",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Prepare for The Deadmines in the Dungeon Fieldbook, review saved defeats, and try the fictional opener in Practice Lab. Open an editable Companion draft without sending it. The Atlas has improved keyboard navigation and German layouts."
+        },
+        {
+          "id": "desktop-prep-and-gear",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Review supplies, inspect Workshop material needs and compare gear in Sheet. Supply Desk commitments are session-only. Expanded recipe chains and local craft handoffs are not included: saved recipes can carry over from a different client build."
+        },
+        {
+          "id": "desktop-academy-controls",
+          "kind": "improved",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Try the reviewed tank and healer lessons and the manual spellbook checks in Academy. Data Coverage explains which guidance has been reviewed for the selected character’s saved build."
+        },
+        {
+          "id": "desktop-guild-officer",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Review organizer notes and debrief decisions locally, and separately preview the welcome text you choose to copy. Review a local Deadmines plan pack before importing it. Private organizer notes and decisions are not included in portable Guild Run Packs."
+        },
+        {
+          "id": "desktop-private-review",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Use private weekly and after-action notes to review saved observations. Notes entered there are session-only; they do not appear in shared recaps or backups."
+        },
+        {
+          "id": "desktop-first-scope",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "This desktop-first update does not add new native Compass commands or expand Companion quest pickup and turn-in coverage. Classic reference, fictional drills and saved observations are not live WoW Forever verification."
+        }
+      ]
     }
   ],
   "excluded": [

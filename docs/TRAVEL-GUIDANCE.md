@@ -4,13 +4,13 @@ This 0.13 preview reference answers a small set of Forever trips with dated evid
 
 ## A beginner's Orgrimmar to Thunder Bluff trip
 
-If a shared, dated addon snapshot identifies the matching build and Horde faction, the first suggestion is to check Doras for Thunder Bluff. Take that flight only if he actually offers the destination. Someone else's published flight observation does not tell us which routes your character has learned.
+If a shared, dated addon snapshot identifies the matching build and Horde faction, Companion compares the documented flight and road without ranking them. Check Doras for Thunder Bluff; count on the flight only if he offers the destination. Someone else's published flight observation does not tell us which routes your character has learned.
 
-The separate published road fallback leaves Orgrimmar's main gate, heads south toward Razor Hill, west across Southfury bridge past Far Watch Post, south toward Crossroads and Camp Taurajo, west into Mulgore toward Bloodhoof Village, then north to the Thunder Bluff lifts. These are broad landmarks, not turn-by-turn navigation, a level recommendation or a safety assessment.
+The published road itinerary needs no flight unlock. It leaves Orgrimmar's main gate, heads south toward Razor Hill, west across Southfury bridge past Far Watch Post, south toward Crossroads and Camp Taurajo, west into Mulgore toward Bloodhoof Village, then north to the Thunder Bluff lifts. These are broad landmarks, not turn-by-turn navigation, a level recommendation or a safety assessment.
 
 The November 6 guides explicitly say there is no direct **Orgrimmar to Thunder Bluff zeppelin**. That is a claim about this direction and mode only. Other Horde zeppelins are covered. The reverse negative was not independently established and is not generated.
 
-An offered flight may save walking, but the planner does not know your actual fastest route, prices, travel times, available hearthstone or current service operation.
+The planner does not know the fastest route, prices, travel times, or current service operation. Hearth travel is out of scope: the bind location and readiness are unknown.
 
 ## What is covered
 

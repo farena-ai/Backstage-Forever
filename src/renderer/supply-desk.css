@@ -1,0 +1,10 @@
+.supply-desk { margin-block: 1rem; overflow-wrap: anywhere; }
+.supply-desk summary { cursor: pointer; font-weight: 700; }
+.supply-desk :is(summary, button, input, select, h3) { scroll-margin-block: 1rem; }
+.supply-desk .supply-editor { display: grid; gap: .65rem; max-width: 36rem; }
+.supply-desk .supply-editor label { display: grid; gap: .25rem; }
+.supply-desk .actions { flex-wrap: wrap; }
+.supply-desk .supply-row { border-block-start: 1px solid currentColor; margin-block: .75rem; padding-block: .5rem; }
+.supply-desk .supply-counts { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; margin-block: .5rem; }
+.supply-desk .supply-counts dd { margin: 0; font-weight: 700; }
+.supply-desk [data-supply-message]:empty { display: none; }

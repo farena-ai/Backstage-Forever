@@ -8,8 +8,11 @@ const fs = require("node:fs/promises"),
 const releaseVersion = require("../package.json").version;
 const { testWindow, launch: launchElectron } = require("./test-window.cjs");
 const macSavedOnly = process.argv.includes("--mac-saved-only");
+const liveBaseline = process.argv.includes("--live-baseline");
+const baseline = liveBaseline && require("./live-baseline.cjs");
 (async () => {
-  const data = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "bf-setup-")));
+  const scratch = process.env.TMPDIR || os.tmpdir();
+  const data = await fs.realpath(await fs.mkdtemp(path.join(scratch, "bf-setup-")));
   const repo=path.resolve(__dirname,'..'), captures=path.join(repo,'.superpowers/sdd/native-setup-captures',new Date().toISOString().replace(/[:.]/g,'-'));
   await fs.mkdir(captures,{recursive:true});
   let app;
@@ -26,27 +29,29 @@ const macSavedOnly = process.argv.includes("--mac-saved-only");
     }
     await fs.mkdir(path.join(data, "community"));
     await fs.writeFile(path.join(data, "community", "settings.json"), JSON.stringify({ share: false, download: false }));
-    const livePreference = macSavedOnly ? '{ "enabled": true }\n' : '{"enabled":false}';
+    const livePreference = macSavedOnly || liveBaseline ? '{ "enabled": true }\n' : '{"enabled":false}';
     const pref = path.join(data, "live-link.json");
     await fs.writeFile(pref, livePreference);
     await fs.writeFile(path.join(data,'package.json'),JSON.stringify({name:'synthetic-native-map-setup',version:releaseVersion,main:'entry.cjs'}));
     await fs.writeFile(path.join(data, "entry.cjs"), `
       const load = require('node:module').createRequire(${JSON.stringify(path.join(repo, "package.json"))});
       const live = load('./src/core/live-bridge.cjs');
-      live.LiveBridge = class FixtureBridge extends live.LiveBridge {
+      ${liveBaseline ? `require(${JSON.stringify(require.resolve("./live-baseline.cjs"))}).installWorker(live, ${macSavedOnly});` : `live.LiveBridge = class FixtureBridge extends live.LiveBridge {
         constructor(options) {
           super({ ...options, ${macSavedOnly ? 'platform: "darwin",' : ''} spawn: () => {
             throw Error('Capture is forbidden in the saved setup fixture');
           } });
         }
-      };
+      };`}
       require('./fixture.cjs');
     `);
     await fs.writeFile(path.join(data,'fixture.cjs'),`const load=require('node:module').createRequire(${JSON.stringify(path.join(repo,'package.json'))});globalThis.mapSetup={providers:0,keys:0,game:0,external:0};load('./src/core/catalog-cache.cjs').CatalogCache.prototype.get=async()=>({models:[],source:'synthetic'});load('./src/core/model-catalog.cjs').listModels=async()=>({models:[]});load('./src/core/claude.cjs').status=async()=>({installed:false,loggedIn:false});load('./src/core/providers.cjs').ask=async()=>{mapSetup.providers++;throw Error('No provider');};load('./src/core/store.cjs').Store.prototype.getKey=function(){mapSetup.keys++;return '';};load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});load('./src/core/game-runtime.cjs').GameRuntime.prototype.launch=async()=>{mapSetup.game++;throw Error('No game');};load('./src/core/game-sync.cjs').GameSync.prototype.discover=async()=>[{id:'synthetic',label:'Synthetic Forever',path:${JSON.stringify(game)}}];load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});load('./src/core/voice.cjs').VoiceService.prototype.readCapabilities=async()=>({status:'unavailable',recognition:{available:false,cultures:[]},synthesis:{available:false,voices:[]}});load('electron').clipboard.writeText=()=>{mapSetup.external++;};load('electron').shell.openExternal=async()=>{mapSetup.external++;};load('./src/core/knowledge-cache.cjs').KnowledgeService.prototype.maybeRefresh=function(){};load('./src/core/updater.cjs').Updater.prototype.start=function(){};load('./src/main.cjs');`);
-    app = await launchElectron(electron, {
+    const open = () => launchElectron(electron, {
       args: [data],
-      env: { ...process.env, BF_USER_DATA: data },
+      env: { ...process.env, BF_USER_DATA: data, ...(liveBaseline ? { BF_TEST_INACTIVE: "1" } : {}) },
+      timeout: 20000,
     });
+    app = await open();
     const page = await testWindow(app);
     const cspErrors = [];
     page.on("console", (message) => {
@@ -114,7 +119,7 @@ const macSavedOnly = process.argv.includes("--mac-saved-only");
       );
     assert.equal((await page.evaluate(()=>window.backstage.gameStatus())).loadedGatheringSchema,null);
     await page.screenshot({path:path.join(captures,'setup-files-prepared.png'),fullPage:true});
-    const now = Math.floor(Date.now() / 1000);
+    const now = liveBaseline ? baseline.SAVED_AT : Math.floor(Date.now() / 1000);
     const shot = {
       schema: 1,
       activeId: "Player-Synthetic",
@@ -130,7 +135,7 @@ const macSavedOnly = process.argv.includes("--mac-saved-only");
           updatedAt: now,
           captureVersion:releaseVersion,clientBuild:'1.60.1.70888',
           gathering:{schemaVersion:1,status:'unavailable',recording:false,observedAt:now,limited:false,totalRecords:0,records:[]},
-          location: { zone: "Synthetic Forest", subZone: "Camp" },
+          location: liveBaseline ? { zone: "Durotar", subZone: "", mapId: 1411, x: 0.42, y: 0.68 } : { zone: "Synthetic Forest", subZone: "Camp" },
           progress: { current: 250, max: 1000 },
           quests: [
             {
@@ -149,6 +154,17 @@ const macSavedOnly = process.argv.includes("--mac-saved-only");
       exportFile,
       "BackstageForeverExport = " + JSON.stringify(JSON.stringify(shot)),
     );
+    if (liveBaseline) {
+      await baseline.check({ page, app, macSavedOnly, pref, livePreference });
+      await app.close(); app = null;
+      // Restart with no source available: a fresh import cannot stand in for a journal read.
+      await fs.unlink(exportFile);
+      app = await open();
+      await baseline.checkReopen({ page: await testWindow(app), app, macSavedOnly, pref, livePreference });
+      assert.deepEqual(cspErrors, []);
+      console.log(`PASS LIVE-T01: ${macSavedOnly ? "simulated darwin saved-only" : "synthetic worker live → stale → reconnect → window loss"}, disconnected dated journal and offline action after restart.`);
+      return;
+    }
     await page
       .getByRole("heading", { name: "Compass Hero", exact: true })
       .waitFor();
@@ -238,7 +254,7 @@ const macSavedOnly = process.argv.includes("--mac-saved-only");
     );
   } finally {
     if (app) await app.close();
-    assert.equal(path.dirname(await fs.realpath(data)),await fs.realpath(os.tmpdir()));
+    assert.equal(path.dirname(await fs.realpath(data)),await fs.realpath(scratch));
     assert.ok(path.basename(data).startsWith('bf-setup-'));
     await fs.rm(data, { recursive: true, force: true });
   }

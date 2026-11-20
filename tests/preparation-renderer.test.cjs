@@ -14,6 +14,48 @@ function fixture(){
 }
 function model(){return {character:{id:'a',name:'Aeralyn',className:'Hunter',faction:'Alliance'},source:{updatedAt:'2026-11-09T12:00:00.000Z',clientBuild:'1.60.1.70862'},coverage:Object.fromEntries(['professions','recipes','materials'].map(k=>[k,{status:'complete',observedAt:'2026-11-09T12:00:00.000Z',itemCount:1}])),professions:[{name:'Alchemy',rank:22,maxRank:75}],recipes:[{id:100,name:'Amber restorative'}],selection:{recipeId:100,crafts:1},selectedRecipe:{id:100,name:'Amber restorative'},planning:{available:true,inventoryExact:false,checklistAvailable:true},shoppingRows:[{itemId:200,name:'Sunleaf',required:3,have:2,missing:null,quantityKind:'lower-bound'}],otherCharacters:[{character:{name:'Vaelric'},coverage:{materials:{status:'complete',observedAt:'2026-11-08T12:00:00.000Z'}},materials:[{itemId:200,name:'Sunleaf',count:99}],professions:[]}],limitations:[]};}
 test('actual Preparation helper loads with the existing interaction dependency',()=>{const {c}=fixture();assert.equal(typeof c.Preparation?.init,'function');});
+test('Raid night checklist distinguishes a full bag and known empty carried scan from unobserved durability',()=>{
+ const {c,host}=fixture(), now=Date.now(), seenAt=Math.floor(now/1000);
+ const p={id:'a',name:'Veteran',level:60,source:{kind:'wow-addon',updatedAt:new Date(now).toISOString()},readiness:{bags:{free:0,total:40},equipment:[{slot:1,itemId:9}]},ledger:{bags:{seenAt,complete:true,items:[]},bank:{seenAt,complete:true,items:[{id:13446,n:99}]}}};
+ const before=structuredClone(p);host.character=()=>p;c.Preparation.init(host);
+ const packing=()=>c.Preparation.page(model()).split('data-activity-packing')[1]||'';
+ assert.match(packing(),/Raid night packing checklist/);
+ assert.match(packing(),/0 \/ 40 slots free/);
+ assert.match(packing(),/Known empty carried scan · 0 Major Healing Potions/);
+ assert.match(packing(),/Durability unknown/);
+ assert.doesNotMatch(packing(),/99 Major Healing Potions|ready to raid/i);
+ assert.deepEqual(p,before);
+});
+test('packing treats partial absence, future observations and unavailable character ownership as unknown',()=>{
+ const {c,host}=fixture(), now=Date.now(), seenAt=Math.floor(now/1000);
+ const p={id:'a',source:{kind:'wow-addon',updatedAt:new Date(now).toISOString()},ledger:{bags:{seenAt,complete:false,items:[{id:7,n:9,name:'Major Healing Potion'}]}}};
+ host.character=()=>p;c.Preparation.init(host);
+ const packing=()=>c.Preparation.page(model()).split('data-activity-packing')[1]||'';
+ assert.match(packing(),/Bag space unknown/);
+ assert.match(packing(),/Potion count unknown · partial carried scan/);
+ const painted=packing().match(/data-packing-evidence="([^"]*)"/)[1].replaceAll('&quot;','"');
+ host.root.querySelector=()=>({dataset:{packingEvidence:painted}});
+ assert.equal(c.Preparation.packingChanged(),false);
+ p.ledger.bags.items.push({id:13446,n:2});p.ledger.bags.seenAt-=172800;
+ assert.equal(c.Preparation.packingChanged(),true,'Ledger-only changes invalidate the packing paint');
+ assert.match(packing(),/At least 2 Major Healing Potions/);
+ assert.match(packing(),/Older than 24 hours/);
+ p.ledger.bags.seenAt=seenAt+120;
+ assert.match(packing(),/Potion count unknown · no usable saved carried scan/);
+ p.ledger.bags.seenAt=seenAt;p.ledger.bags.complete=true;
+ assert.match(packing(),/2 Major Healing Potions in carried bags/);
+ host.characterPending=()=>true;
+ assert.doesNotMatch(packing(),/2 Major Healing Potions/);
+});
+test('a newer export clock does not date an undated free-slot observation',()=>{
+ const {c,host}=fixture(), now=Date.now();
+ host.character=()=>({id:'a',name:'Veteran',source:{kind:'wow-addon',updatedAt:new Date(now).toISOString()},readiness:{bags:{free:3,total:40}}});
+ c.Preparation.init(host);
+ const packing=c.Preparation.page(model()).split('data-activity-packing')[1];
+ assert.match(packing,/3 \/ 40 slots free/);
+ assert.match(packing,/Bag-space observation time unknown/);
+ assert.doesNotMatch(packing,/<small>Saved /);
+});
 test('bounded local preferences keep characters separate and exclude evidence',()=>{const {c,host,storage}=fixture();c.Preparation.init(host);c.Preparation.save('a',{recipeId:100,crafts:2,materials:[{count:99}]});assert.deepEqual(JSON.parse(JSON.stringify(c.Preparation.options('a'))),{recipeId:100,crafts:2});assert.deepEqual(JSON.parse(JSON.stringify(c.Preparation.options('b'))),{crafts:1});assert.doesNotMatch(JSON.stringify(storage),/materials|99/);c.Preparation.save('a',{recipeId:-1,crafts:99});assert.deepEqual(JSON.parse(JSON.stringify(c.Preparation.options('a'))),{crafts:1});c.Preparation.remove('a');assert.deepEqual(JSON.parse(JSON.stringify(c.Preparation.options('a'))),{crafts:1});});
 test('partial materials retain unknown shortfalls and separate dated alt counts',()=>{const {c,host}=fixture();c.Preparation.init(host);const html=c.Preparation.page(model());assert.match(html,/At least 2/);assert.match(html,/Shortfall unknown/);assert.match(html,/Total required/);assert.match(html,/99/);assert.match(html,/never subtracted/);assert.match(html,/backpack and bags, not the bank or mail/i);assert.doesNotMatch(html,/Ready to craft|guaranteed skill/);});
 test('explicit checklist availability governs action, including missing recipe selection',()=>{const {c,host}=fixture();c.Preparation.init(host);const m=model();m.planning.checklistAvailable=false;m.selectedRecipe=null;m.shoppingRows=[];m.planning.reason='Selected recipe is no longer observed.';const html=c.Preparation.page(m);assert.match(html,/data-preparation-add[^>]* disabled/);assert.match(html,/no longer observed/);assert.match(html,/data-nav="company">Plan it yourself in Plans/);});

@@ -134,7 +134,7 @@ test("loot IPC validates arguments like the other handlers", async (t) => {
   const handlers = {}, state = { activeProfileId: "p1", profiles: [warrior] };
   const wishlist = new WishList(dir);
   const api = registerBossLootHandlers({ handle: (n, fn) => { handlers[n] = fn; }, getState: () => state, gameData, wishlist, getPack: () => tiny() });
-  assert.deepEqual(Object.keys(handlers).sort(), ["dungeonLoot", "itemCard", "setLootWish"]);
+  assert.deepEqual(Object.keys(handlers).sort(), ["dungeonLoot", "gearAcquisition", "itemCard", "setLootWish"]);
   const call = async (n, ...a) => handlers[n](...a);
   // itemCard
   for (const args of [[], [null], [null, 1, 2]]) await assert.rejects(call("itemCard", ...args), /Invalid loot request/);

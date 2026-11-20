@@ -302,6 +302,8 @@ test("minimized and window-not-found say paused, keep the last live state with i
   b.line(`ok topleft ${img.width} ${img.height} ${img.rgb.toString("base64")} pw`);
   assert.equal(b.status().last, null, "nothing to fall back on while live");
   t += 1000; b.line("minimized");
+  assert.equal(b.current(), null, "explicit minimization invalidates the still-young frame immediately");
+  assert.equal(b.status().signal, "minimized");
   t += 179000;
   const s = b.status();
   assert.equal(s.signal, "minimized"); assert.equal(s.frame, null, "never presented as live");

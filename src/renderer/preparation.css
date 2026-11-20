@@ -75,3 +75,7 @@ body[data-faction="horde"] .workshop-bench{background:linear-gradient(115deg,rgb
 .workshop .shop-tag.vendor { color: #6b3a08; background: #f6dc9a; }
 .workshop .shop-tag.gather { color: #1f4a14; background: #cdeeb8; }
 .workshop .shop-tag.other { color: #3d3020; background: #e6dcc6; }
+.activity-packing-checks{list-style:disc;padding-inline-start:1.5rem}
+.activity-packing-checks>li{margin-block:.8rem}
+.activity-packing-checks>li>*{display:block}
+.activity-packing-checks small{color:inherit}
