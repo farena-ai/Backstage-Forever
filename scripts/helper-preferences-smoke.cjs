@@ -55,7 +55,10 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await page.reload();
     // Let the seeded character's startup badge/zone bookkeeping settle before
     // taking the read-only handoff baseline. This is not a helper mutation.
-    await page.waitForFunction(() => localStorage.getItem('bf-badges-seen') && localStorage.getItem('bf-zones-done'));
+    await page.waitForFunction(() => {
+      const badges = JSON.parse(localStorage.getItem('bf-badges-seen') || '{}');
+      return badges.Alpha?.includes('level-10') && localStorage.getItem('bf-zones-done') !== null;
+    });
     const nav = page.locator('.secondary-navigation [data-nav="game"]');
     const section = page.locator('.ingame-helpers');
     const summary = key => section.locator(`[data-living-disclosure="helper-${key}"] > summary`);

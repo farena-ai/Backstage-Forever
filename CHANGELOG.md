@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.17.0 - In-Game Helpers
+
+- Add scoped native quest, gathering, reward and spell-rank helpers, per-character controls, and a manual desktop handoff. See the [release notes](docs/releases/1.17.0.md).
+
 ## 1.16.0 - Desktop Field Journal
 
 - Add desktop preparation, local officer review, and saved-evidence improvements. See the [release notes](docs/releases/1.16.0.md).

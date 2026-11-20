@@ -4,7 +4,9 @@ QA.3 is the corrected successor to QA.2 (`875dcbb`, `1.16.902`), which is held f
 
 The delta excludes post-stable Companion/Workshop work, DPS coaching, starter/triage views, new general Compass presets/mute, and unrelated route data. The existing Compass collapse and baseline junk-sale protections remain.
 
-## Manual live check (not run)
+## Manual live checks
+
+On QA.3 the owner reported passing the native panel, short batch, combat rejection, `/reload` and alt persistence, plus Adventure Compass tracking and the conditional nearby review check. This does not establish exact client build/locale, all review availability branches, the longest paste, broader gameplay checks, or rollback. The table below remains the full repeatable checklist, not a list of passed checks.
 
 Use a disposable WoW Forever installation/profile. Back up that **test** profile’s addon folder and account/per-character SavedVariables with the client stopped; record the exact original TOC version for rollback. Record the exact build, locale, test character, ZIP SHA-256 and outcome per row. Extract the ZIP into the disposable client’s `Interface/AddOns`; verify that the client loads `BackstageForever` version `1.16.903`. Start with the desktop closed. A missing API/data shape is a blocked row, not a pass. Do not use a real account’s valuables for merchant/reward tests.
 
