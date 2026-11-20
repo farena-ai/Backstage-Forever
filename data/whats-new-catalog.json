@@ -7119,7 +7119,7 @@
           ],
           "action": null,
           "section": "Changes",
-          "text": "Track a watched quest in Adventure Compass, check missing objectives, and review a nearby hand-in when the game confirms it is ready. Eligible detours and waypoints still require your action. Reviewed objective hints use exact quest and target matches."
+          "text": "Track a watched quest in Adventure Compass, check missing objectives, and review a nearby hand-in when the game confirms it is ready. If objective data is unreadable or incomplete, Compass withholds the hand-in tip and its waypoint. Eligible detours and waypoints still require your action. Reviewed objective hints use exact quest and target matches."
         },
         {
           "id": "ingame-evidence-helpers",
@@ -7129,7 +7129,7 @@
           ],
           "action": null,
           "section": "Changes",
-          "text": "See approximate last-seen gathering spots, supported quest reward comparisons, and a narrow Mage Frostbolt rank reminder on the reviewed builds. The addon does not select rewards, equip items, cast spells or change action slots for you."
+          "text": "Gathering map marks show approximate, recent last-seen Copper Vein and Silverleaf spots on Forever build 1.60.1.70862 when your current gathering skill is verified. The separate /bf nodes command lists remembered spots. Supported quest reward comparisons and a narrow Mage Frostbolt rank reminder do not select rewards, equip items, cast spells or change action slots for you."
         },
         {
           "id": "ingame-helper-preferences",

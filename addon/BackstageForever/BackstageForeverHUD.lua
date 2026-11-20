@@ -155,23 +155,25 @@ function questHelp.read(id,wantMarker,map)
     local complete=safe(field(api,'IsComplete'),id)
     local raw=safe(field(api,'GetQuestObjectives'),id)
     local ready=safe(field(api,'ReadyForTurnIn'),id)
-    if type(raw)=='table' then
-        for i=1,20 do
-            local row=field(raw,i);if row==nil then break end
-            local done=field(row,'finished')
-            if done~=true then
-                local label=field(row,'text')
-                local count=int(field(row,'numFulfilled'),0,100000)
-                local required=int(field(row,'numRequired'),1,100000)
-                if done==false and type(label)=='string' and label~='' then
-                    q.objective=i;q.label=label;q.remaining=count and required and count<required and required-count or nil
-                end
-                q.unresolved=true;break
-            end
+    -- A missing or restricted row is not the end of a verified list. Check the
+    -- entire bounded shape before using even the first objective or an empty list.
+    local facts=BackstageForeverPublicFacts
+    local rows=facts and facts.sequence(raw,20)
+    if not rows then return q end
+    local first,label,remaining
+    for i,row in ipairs(rows) do
+        local done=facts.field(row,'finished')
+        local description=facts.field(row,'text')
+        if type(done)~='boolean' or type(description)~='string' or not description:find('%S') then return q end
+        if not done and not first then
+            local count=int(facts.field(row,'numFulfilled'),0,100000)
+            local required=int(facts.field(row,'numRequired'),1,100000)
+            first,label=i,description
+            remaining=count and required and count<required and required-count or nil
         end
-        if field(raw,21)~=nil then q.unresolved=true end
-        q.ready=ready==true and complete==true and not q.unresolved
     end
+    q.objective,q.label,q.remaining=first,label,remaining
+    q.ready=ready==true and complete==true and not first
     q.phase=q.ready and 't' or (complete==false and ready~=true and q.objective and 'o' or nil)
     if wantMarker and q.phase then q.x,q.y=questHelp.marker(id,map) end
     return q

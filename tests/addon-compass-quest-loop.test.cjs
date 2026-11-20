@@ -107,3 +107,79 @@ assert(has('readiness is not verified') and not frames.BackstageForeverCompassTr
 slash('compass review');assert(not has('Before you leave:'))
 ready=true;event('QUEST_LOG_UPDATE');flush();local take=click('TakeDetour');ready=false;take();assert(not has('Detour:') and #marks==0)
 `));
+
+const unreadableObjectives = {
+ 'restricted first row': `local hidden={text='Hidden',finished=true}; issecretvalue=function(v)return rawequal(v,hidden)end
+ return {hidden,{text='Not done',finished=false}}`,
+ 'missing first row': `return {[2]={text='Not done',finished=false}}`,
+ 'hole after a finished row': `return {[1]={text='Done',finished=true},[3]={text='Not done',finished=false}}`,
+ 'out-of-range tail': `return {[1]={text='Done',finished=true},[22]={text='Not done',finished=false}}`,
+ 'finished row without a readable label': `return {{finished=true}}`,
+ 'invalid row shape': `return {true,{text='Not done',finished=false}}`,
+ 'nonnumeric key': `return {unexpected={text='Not done',finished=false}}`,
+ 'unavailable list': `return nil`,
+ 'throwing API': `error('Objective API unavailable')`,
+};
+
+for (const [name,body] of Object.entries(unreadableObjectives)) {
+ test(`unreadable objectives (${name}) cannot advertise a tracker or review hand-in`,()=>replay(String.raw`
+watch=2;event('PLAYER_LOGIN');assert(has('Ready to hand in'))
+local markerFor=C_QuestLog.GetNextWaypoint
+C_QuestLog.GetNextWaypoint=function(id) if id==2 then return markerFor(id) end end
+local original=C_QuestLog.GetQuestObjectives
+local function unreadable() ${body} end
+C_QuestLog.GetQuestObjectives=function(id) if id==2 then return unreadable() end;return original(id) end
+slash('compass review');slash('compass missing')
+assert(has('Tracked quest: Hand in here') and has('readiness is not verified'), 'tracker must report unknown, not ready')
+assert(last('readiness is not verified') and last('destination on this map is not verified'))
+assert(not has('Before you leave:') and not frames.BackstageForeverCompassTrackedWaypoint.visible and #marks==0)
+`));
+}
+
+const makeSparse=String.raw`
+local original=C_QuestLog.GetQuestObjectives
+C_QuestLog.GetQuestObjectives=function(id)
+ if id==2 then return {[1]={text='Done',finished=true},[4]={text='Not done',finished=false}} end
+ return original(id)
+end
+`;
+test('tracker click rechecks objective completeness without waiting for a quest event',()=>replay(String.raw`
+watch=2;event('PLAYER_LOGIN');local old=click('TrackedWaypoint')
+${makeSparse}
+old();assert(#marks==0, 'stale tracker click placed a waypoint')
+C_QuestLog.GetQuestObjectives=original;event('QUEST_LOG_UPDATE');flush()
+old();assert(#marks==0);click('TrackedWaypoint')();assert(#marks==1 and marks[1].x==.35)
+`));
+
+test('sparse objective evidence cannot offer or accept a detour',()=>replay(String.raw`
+watch=nil;event('PLAYER_LOGIN');BackstageForeverRouteCommand('route guide')
+local take=click('TakeDetour');local route=BackstageForeverRouteNow()
+${makeSparse}
+take();assert(not has('Detour:'), 'stale offer accepted a detour')
+event('QUEST_LOG_UPDATE');flush()
+assert(not frames.BackstageForeverCompassTakeDetour.visible and not has('Detour handed in.') and #marks==0)
+assert(BackstageForeverRouteNow().id==route.id)
+`));
+
+test('accepted detour waypoint rechecks objective evidence and does not award completion',()=>replay(String.raw`
+watch=nil;event('PLAYER_LOGIN');BackstageForeverRouteCommand('route guide')
+local route=BackstageForeverRouteNow()
+click('TakeDetour')();assert(has('Detour:'));local old=click('Waypoint')
+${makeSparse}
+old();assert(#marks==0, 'stale detour click placed a waypoint')
+assert(not has('Detour:') and not has('Detour handed in.') and BackstageForeverRouteNow().id==route.id)
+C_QuestLog.GetQuestObjectives=original;event('QUEST_LOG_UPDATE');flush()
+old();assert(#marks==0);click('TakeDetour')();click('Waypoint')();assert(#marks==1 and marks[1].x==.35)
+`));
+
+test('verified dense finished and truly empty objectives both allow a hand-in',()=>replay(String.raw`
+watch=2;event('PLAYER_LOGIN');assert(has('Ready to hand in'))
+click('TrackedWaypoint')();assert(#marks==1 and marks[1].x==.35)
+local original=C_QuestLog.GetQuestObjectives
+C_QuestLog.GetQuestObjectives=function(id)
+ if id==2 then return {{text='One',finished=true},{text='Two',finished=true}} end
+ return original(id)
+end
+slash('compass review');assert(has('Ready to hand in') and has('Before you leave: Hand in here'))
+click('TrackedWaypoint')();assert(#marks==2 and marks[2].x==.35)
+`));
