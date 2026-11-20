@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.14.0 — Deadmines Fieldbook
+
+- Add the desktop Dungeon Fieldbook for The Deadmines, with before-run preparation, Classic reference cues, and saved Journal defeats.
+- See the [release notes](docs/releases/1.14.0.md) for scope.
+
 ## 1.13.0 — Academy
 
 - Add four offline, fictional drills in Adventure → Practice Lab.
