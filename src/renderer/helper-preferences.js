@@ -38,8 +38,8 @@
         <summary>${t("Prepare changes for WoW")}</summary>
         <p>${t("Draft for:")} <strong>${esc([character.name, character.realm].filter(Boolean).join(" · "))}</strong></p>
         <p>${t("Choose only the settings to change. Leave unchanged does not mean On or Off.")}</p>
-        <div class="helper-choice-grid">${rows.map(([key, label]) => `<div><label for="helper-choice-${key}">${t(label)}</label>
-          <select id="helper-choice-${key}" data-helper-choice="${key}">${modes.map(([value, name]) => `<option value="${value}"${choices.get(key) === value ? " selected" : ""}>${t(name)}</option>`).join("")}</select></div>`).join("")}</div>
+        <div class="helper-choice-grid">${rows.map(([key, label]) => `<div><label id="helper-label-${key}" for="helper-choice-${key}">${t(label)}</label>
+          <select id="helper-choice-${key}" aria-labelledby="helper-label-${key}" data-helper-choice="${key}">${modes.map(([value, name]) => `<option value="${value}"${choices.get(key) === value ? " selected" : ""}>${t(name)}</option>`).join("")}</select></div>`).join("")}</div>
         <div data-helper-preview ${preview ? "" : "hidden"}>
           <p>${t("Confirm the character in WoW before pasting. The command changes whoever you are playing, not the selected desktop character. Apply it outside combat with the updated addon.")}</p>
           <label for="helper-batch-command">${t("Command to paste in WoW")}</label>
