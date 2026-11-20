@@ -20,7 +20,7 @@ const pt = (p) => p && Number.isSafeInteger(p.mapId) && Number.isFinite(p.x) && 
 const norm = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[’‘']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 // Static pins are built once from the bundled packs and grouped by map.
-function buildStaticIndex({ knowledgePack = null, npcReference = null, travelReference = null, vendorPack = null, insights = null, acquisitionPack = null } = {}) {
+function buildStaticIndex({ knowledgePack = null, npcReference = null, travelReference = null, vendorPack = null, insights = null, acquisitionPack = null, desktopProvenance = false } = {}) {
   const byMap = new Map();
   const add = (pin) => {
     if (!pt(pin)) return;
@@ -37,7 +37,8 @@ function buildStaticIndex({ knowledgePack = null, npcReference = null, travelRef
   for (const v of vendorPack?.vendors || []) if (!special.has(v.id)) special.set(v.id, { kind: "vendor", sub: "Vendor", label: v.name, positions: v.positions, lastSeen: v.lastSeen, sides: friendlyTo(v.observedReactionsByFaction), extra: { sells: (v.listings || []).slice(0, 6).map((l) => l.name).filter(Boolean) } });
   for (const [id, town] of flightNpcs) special.set(id, { ...(special.get(id) || {}), kind: "flight", sub: `Flight Master · ${town.label}` });
   const reviewedPoints = new Map();
-  for (const [id, town] of flightNpcs) {
+  // The shared index also feeds the stable native finder and advisor compilers.
+  for (const [id, town] of desktopProvenance ? flightNpcs : []) {
     const source = travelReference.sources?.find((s) => town.sourceIds?.includes(s.id) && s.scope === "exact-build-observation" && s.build);
     if (!source || !town.position) continue;
     const { uiMap: mapId, mapX: x, mapY: y } = town.position;
@@ -285,7 +286,7 @@ class WorldMap {
   constructor({ getState, knowledge, npcReference, travelReference, vendorPack, insights, acquisitionPack, creaturePack = null, live, getCommunity = () => null }) {
     Object.assign(this, { getState, knowledge, live, npcReference, travelReference, vendorPack, insights, getCommunity });
     this.creatures = require("./creature-data.cjs").creatureIndex(creaturePack);
-    this.static = buildStaticIndex({ knowledgePack: knowledge?.bundled?.pack, npcReference, travelReference, vendorPack, insights, acquisitionPack });
+    this.static = buildStaticIndex({ knowledgePack: knowledge?.bundled?.pack, npcReference, travelReference, vendorPack, insights, acquisitionPack, desktopProvenance: true });
     this.staticNpcIds = new Set();
     for (const pins of this.static.values()) for (const p of pins) if (p.npcId) this.staticNpcIds.add(p.npcId);
   }
