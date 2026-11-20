@@ -344,32 +344,60 @@ end
 BackstageForeverUpdateDanger=updateDanger
 
 -- Junk button on the vendor window. Selling happens only when you click it.
-local junkButton
+local junkButton,merchantOpen
+local function questSlot(api,bag,slot)
+    local q=call(api.GetContainerItemQuestInfo,bag,slot)
+    if type(q)~='table' then return nil end
+    local ok,rawId=pcall(function() return q.questID end)
+    if not ok then return nil end
+    if type(issecretvalue)=='function' then
+        local safe,secret=pcall(issecretvalue,rawId)
+        if not safe or secret then return nil end
+    end
+    local quest,active,id=field(q,'isQuestItem'),field(q,'isActive'),plain(rawId)
+    if quest==true or active==true or (type(id)=='number' and id>0) then return true end
+    if quest==false and active==false and (id==nil or id==0) then return false end
+end
+local function sellableSlot(api,bag,slot)
+    local info=call(api.GetContainerItemInfo,bag,slot)
+    local id=field(info,'itemID')
+    if type(id)~='number' or id<=0 or id%1~=0 or field(info,'quality')~=0 or field(info,'isLocked')==true or field(info,'hasNoValue')==true
+        or questSlot(api,bag,slot)~=false then return nil end
+    if type(BackstageForeverReviewedQuestItem)=='function' and BackstageForeverReviewedQuestItem(id) then return nil end
+    local price=num(select(11,call(GetItemInfo,id)))
+    local count=field(info,'stackCount')
+    if not price or price<=0 or price%1~=0 or type(count)~='number' or count<1 or count%1~=0 then return nil end
+    return {id=id,bag=bag,slot=slot,quality=0,count=count,price=price}
+end
 local function bagItems()
     local api=type(C_Container)=='table' and C_Container or nil
     local out={}
     if not api then return out end
     for bag=0,4 do
         local slots=num(call(api.GetContainerNumSlots,bag)) or 0
-        for slot=1,slots do
-            local info=call(api.GetContainerItemInfo,bag,slot)
-            local id=field(info,'itemID')
-            if id then
-                local price=select(11,call(GetItemInfo,id))
-                out[#out+1]={bag=bag,slot=slot,quality=field(info,'quality'),count=field(info,'stackCount') or 1,price=num(price),noValue=field(info,'hasNoValue')==true,link=field(info,'hyperlink')}
-            end
+        for slot=1,math.min(slots,100) do
+            local it=sellableSlot(api,bag,slot)
+            if it then out[#out+1]=it end
         end
     end
     return out
 end
 function BackstageForeverSellJunk()
-    if combat() then return 0 end
-    local list,total=BackstageForeverJunk(bagItems())
+    if call(InCombatLockdown)~=false or not merchantOpen or call(field(MerchantFrame,'IsShown'),MerchantFrame)~=true
+        or not (settings or loadSettings()).junk then return 0 end
+    local list=bagItems()
     local api=type(C_Container)=='table' and C_Container or nil
     if not api or type(api.UseContainerItem)~='function' then return 0 end
-    for _,it in ipairs(list) do pcall(api.UseContainerItem,it.bag,it.slot) end
-    if #list>0 then say(('Sold %d junk item%s for %s.'):format(#list,#list==1 and '' or 's',BackstageForeverMoney(total))) end
-    return #list,total
+    local sold,total=0,0
+    for _,it in ipairs(list) do
+        if not merchantOpen or call(InCombatLockdown)~=false or call(field(MerchantFrame,'IsShown'),MerchantFrame)~=true then break end
+        local current=sellableSlot(api,it.bag,it.slot)
+        if current and current.id==it.id and pcall(api.UseContainerItem,it.bag,it.slot) then
+            sold,total=sold+1,total+current.price*current.count
+        end
+    end
+    if sold>0 then say(('Sold %d junk item%s for %s.'):format(sold,sold==1 and '' or 's',BackstageForeverMoney(total))) end
+    return sold,total
 end
 local function updateJunk(open)
     if not settings then loadSettings() end
@@ -378,11 +406,12 @@ local function updateJunk(open)
         if junkButton then
             pcall(junkButton.SetSize,junkButton,210,22)
             pcall(junkButton.SetPoint,junkButton,'BOTTOMRIGHT',MerchantFrame,'TOPRIGHT',-8,2)
-            pcall(junkButton.SetScript,junkButton,'OnClick',function() BackstageForeverSellJunk() updateJunk(true) end)
+            pcall(junkButton.SetScript,junkButton,'OnClick',function() BackstageForeverSellJunk() updateJunk(merchantOpen) end)
         end
     end
     if not junkButton then return end
-    local list,total=BackstageForeverJunk(bagItems())
+    local list,total={},0
+    if open and settings.junk and not combat() then list,total=BackstageForeverJunk(bagItems()) end
     if open and settings.junk and #list>0 then
         pcall(junkButton.SetText,junkButton,('Sell junk: %d item%s · %s'):format(#list,#list==1 and '' or 's',BackstageForeverMoney(total)))
         pcall(junkButton.Show,junkButton)
@@ -623,8 +652,7 @@ end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_XP_UPDATE','PLAYER_LEVEL_UP','QUEST_TURNED_IN','PLAYER_DEAD','PLAYER_ALIVE','PLAYER_UNGHOST','PLAYER_TARGET_CHANGED','UNIT_CLASSIFICATION_CHANGED','MERCHANT_SHOW','MERCHANT_CLOSED','BAG_UPDATE_DELAYED','UPDATE_INVENTORY_DURABILITY','TAXIMAP_OPENED','QUEST_ACCEPTED','ZONE_CHANGED','ZONE_CHANGED_NEW_AREA','ZONE_CHANGED_INDOORS'}) do pcall(events.RegisterEvent,events,e) end
-        local merchantOpen=false
+        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_XP_UPDATE','PLAYER_LEVEL_UP','QUEST_TURNED_IN','PLAYER_DEAD','PLAYER_ALIVE','PLAYER_UNGHOST','PLAYER_TARGET_CHANGED','UNIT_CLASSIFICATION_CHANGED','MERCHANT_SHOW','MERCHANT_CLOSED','BAG_UPDATE_DELAYED','QUEST_LOG_UPDATE','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','UPDATE_INVENTORY_DURABILITY','TAXIMAP_OPENED','QUEST_ACCEPTED','ZONE_CHANGED','ZONE_CHANGED_NEW_AREA','ZONE_CHANGED_INDOORS'}) do pcall(events.RegisterEvent,events,e) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b)
             if event=='PLAYER_LOGIN' then
                 loadSettings() trackXP() lastLevelAt=now()
@@ -645,7 +673,7 @@ if type(CreateFrame)=='function' then
             elseif event=='QUEST_ACCEPTED' then pcall(hearthCheck)
             elseif event=='ZONE_CHANGED' or event=='ZONE_CHANGED_NEW_AREA' or event=='ZONE_CHANGED_INDOORS' then checkFlightNearby()
             elseif event=='MERCHANT_CLOSED' then merchantOpen=false updateJunk(false)
-            elseif event=='BAG_UPDATE_DELAYED' and merchantOpen then updateJunk(true) end
+            elseif merchantOpen and (event=='BAG_UPDATE_DELAYED' or event=='QUEST_LOG_UPDATE' or event=='PLAYER_REGEN_DISABLED' or event=='PLAYER_REGEN_ENABLED') then updateJunk(true) end
         end)
         local tick=0
         pcall(events.SetScript,events,'OnUpdate',function(_,dt) tick=tick+(tonumber(dt) or 0) if tick>=5 then tick=0 pcall(checkFlightNearby) end end)
