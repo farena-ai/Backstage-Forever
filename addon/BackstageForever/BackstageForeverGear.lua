@@ -509,6 +509,9 @@ local function showGlow(button,name)
 end
 
 local pending,spoken,scope=false,nil,nil
+function BackstageForeverRewardReasonsChanged()
+    scope=nil;pending=false;spoken=nil;G.clearPick()
+end
 local function rewardEnabled()
     return enabled() and (type(BackstageForeverHelperEnabled)~='function' or call(BackstageForeverHelperEnabled,'rewardReasons')==true)
 end

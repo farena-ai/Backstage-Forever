@@ -1,0 +1,24 @@
+# In-game helpers — integration qualification
+
+The four slices are composed on `272b97f`. This is a local integration, not a release or a live Forever-client qualification.
+
+| Slice | Qualified boundary | Still to verify in WoW Forever |
+| --- | --- | --- |
+| Preferences | `/bf helpers panel` opens eleven native checkboxes in addon replay. They use the same per-character writer as `/bf helpers <key> on\|off`. An explicit off survives reload; an unseeded alt defaults on. A retired click cannot mutate preferences after an owner round trip. Desktop handoff shows literal commands and does not apply or acknowledge them. | Native template availability, font fit, real click and persistence through `/reload` and switching characters with desktop closed. |
+| Compass | Exact watched or pinned log row, observed progress, explicit `ReadyForTurnIn`, current-map marker and manual waypoint. Detour, waypoint and exact `QUEST_TURNED_IN` are separate. Turning tracker/detours off retires actions; an explicit before-leaving review stays independent. | Live watch, objective, marker and readiness return shapes, and interaction with the actual guided route. The review offers one ready hand-in, not inferred follow-ups or trainer advice. |
+| Objective hints and sale safety | Target identity, quest log and objective layout must agree; same name or wrong GUID kind does not count. Shared counters require two watched matches. Quest-item tooltip/cue is optional; merchant preview and each manual sale independently fail closed on unreadable status or a protected item. | Exact tooltip/event and bag API behavior. For Lazy Peons the cue is conditional on a sleeping peon; the addon does not detect sleep or use the item. No world-object credit is inferred. |
+| Gathering, rewards and spell ranks | Gathering shows approximate last-seen map spots only, in the current owner/build/map/skill scope. Rewards compare observed same-slot armor stats and public usability; off clears glow and retires pending draws, and never overrides the prior gear opt-out. Rank pilot requires both learned Frostbolt entries and an exact lower-rank spell action slot. | Real map pin/skill exposure, real reward buttons and item-cache events, real spellbook/action-bar API values and combat restrictions. No DPS, auto-selection, auto-equip, casting or rebinding. |
+
+## Data evidence
+
+- Downloaded both immutable `quests.enUS.json` originals listed in `data/forever/source-lock.json`, verified the exact byte length, SHA-256, `wowf` and build metadata, and compared all selected objective tuples. On both `1.60.1.70862` and `1.60.1.70888`: quest 788 targets 3098; 1434 targets 4670/4672/4673/4675; 97265 targets 4671/4675/4674/4672/4670 in source index order. Quest 5441 has objectives 383344 (creature 10556) and 383345 (item 16114); the source identifies area 363 and explicitly says to use the item on sleeping peons. Live location and objective layout still have to match. Source: Efficient Games, CC BY 4.0.
+- The shipped exact-build acquisition pack corroborates Copper Vein 1731 and Silverleaf 1617 on `1.60.1.70862`. Both lack observed skill requirements: the map tooltip labels the starter threshold as reference. Neither the pack nor a recorded standing point establishes a current spawn.
+- The rank reminder is intentionally limited to Mage Frostbolt 837 → 7322 on `1.60.1.70959`. The existing [Academy pilot record](ACADEMY-DPS-PILOT.md) documents the published Rank 4 entry and build. Live spellbook learning and slot identity must be verified by the client APIs before any reminder; synthetic returns are not a live witness.
+
+## Repeat locally
+
+- Run the addon, preference, gathering, installer, command and localization tests with the repo's Node/Fengari runner. The new integration fixtures drive registered frame events and the real preference writer; the merchant and Compass cases load in shipped TOC order.
+- Run `scripts/helper-preferences-smoke.cjs` with `BF_TEST_TMP` set to an isolated scratch parent. It exercises keyboard-only desktop handoff in the real English and German Electron shell at normal and compact zoomed widths, with exact unchanged journal and renderer storage and no clipboard writes.
+- Verify generated locales, advisor and route packs, and shipped acquisition parity. No release installer or installed-game changes are part of this qualification.
+
+Focused qualification passed 343 tests, the composed Electron smoke, and the four generation/parity checks. The broader pre-final run was not green: the installer file inventory assertion was corrected and passed the focused rerun; six Windows-interrupted files passed on targeted reruns. The unrelated strict Companion benchmark reported 92.6% coverage on both the integration and the exact base. No benchmark expectations were changed.

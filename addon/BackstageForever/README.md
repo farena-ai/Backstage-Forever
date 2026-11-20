@@ -71,6 +71,12 @@ An owl crest on the edge of the minimap (`BackstageForeverAskButton`, our own pa
 
 The Adventure Compass and the BF Route step frame are drawn from our own painting in `Art/Frames` (made locally with ComfyUI): the Compass is a nine-piece leather-and-brass frame (`compass.tga`, a 512×512 atlas with 64-pixel corners, shown with 40-pixel corners and a 14-pixel inner edge) with a compass crest on top (`compass-crest.tga`), and the step frame is a parchment scroll between two rods (`step.tga`, 256×128: rod, parchment, rod) with the text in dark ink. `BackstageForeverPaintNineSlice` and `BackstageForeverPaintScroll` in `BackstageForeverHUD.lua` guard every call, so a missing texture leaves a frame plain instead of breaking it. A new art folder is only seen after quitting and restarting WoW.
 
+## In-game helper settings
+
+Type `/bf helpers panel` in WoW chat, out of combat, to open the current character’s eleven checkboxes. Helpers without a saved choice start on. `/bf helpers` lists the current choices; `/bf helpers questTracker off` changes one directly. The desktop Settings → Game connection section only shows commands; it cannot apply or verify them.
+
+Turning off **Keep quest items** hides the tooltip explanation, not the protection against selling quest items. Gathering marks are approximate **last-seen map spots**, not live spawns. The quest objective and spell-rank examples are build-limited; a checked box allows the helper to appear only when its evidence is available. The rank reminder does not recommend a rotation or change the action bar.
+
 ## Quality of life helpers (0.41)
 
 `BackstageForeverQoL.lua` holds four small helpers, each off until you switch it on with `/bf qol NAME on` (saved per character in `BackstageForeverQoLSettings`; `/bf qol` lists them):

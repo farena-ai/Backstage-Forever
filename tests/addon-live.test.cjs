@@ -449,7 +449,7 @@ UiMapPoint={CreateFromCoordinates=function(id,x,y)return {id=id,x=x,y=y}end}
 C_QuestLog={GetNumQuestLogEntries=function()return 2,2 end,
  GetInfo=function(i)return {questID=i,title=i==1 and 'First hand-in' or 'Second hand-in',isHeader=false}end,
  GetLogIndexForQuestID=function(id)return id end,
- IsComplete=function()return true end,GetQuestObjectives=function()return {}end,
+ IsComplete=function()return true end,ReadyForTurnIn=function()return true end,GetQuestObjectives=function()return {}end,
  GetNextWaypoint=function(id)return 1429,id==1 and .2 or .9,.3 end}
 BackstageForeverRouteSettings={arrow=false}
 BackstageForeverAssistSettings={toasts=false}

@@ -208,6 +208,27 @@ ${fire("QUEST_COMPLETE")}
 assert(reads==0 and not glow.shown and #touched==0)
 `));
 
+test("turning reward reasons off hides the glow and retires queued work across off and on", () => lua(`${GAME}${PICKER}
+local queued={}
+C_Timer={After=function(_,fn)queued[#queued+1]=fn end}
+dofile('addon/BackstageForever/BackstageForeverHelpers.lua')
+${LOAD}
+${fire("QUEST_COMPLETE")}
+queued[1]()
+local glow=frames.BackstageForeverGearPick
+assert(glow and glow.shown)
+${fire("PLAYER_EQUIPMENT_CHANGED")}
+queued[2]();assert(glow.shown)
+BackstageForeverHelpersCommand('helpers rewardReasons off');assert(not glow.shown,'must hide immediately')
+BackstageForeverHelpersCommand('helpers rewardReasons on');queued[2]();assert(not glow.shown,'retired callback cannot revive')
+BackstageForeverGearSettings={enabled=false}
+${fire("QUEST_COMPLETE")}
+assert(#queued==2 and not glow.shown,'new on choice cannot override legacy gear opt-out')
+BackstageForeverGearSettings.enabled=true
+${fire("QUEST_COMPLETE")}
+queued[3]();assert(glow.shown and #touched==0)
+`));
+
 test("reward picker glows the best choice for the class and never takes the reward", () => {
   const out = lua(`${GAME}${PICKER}${LOAD}
 ${fire("QUEST_COMPLETE")}

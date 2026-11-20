@@ -35,13 +35,13 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await page.evaluate(() => {
       localStorage.setItem("bf-setup-v4", "complete");
       localStorage.setItem("bf-share-character", "false");
-      localStorage.setItem("bf-lang-v1", "de");
+      localStorage.setItem("bf-lang-v1", "en");
     });
     await page.reload();
     const nav = page.locator('.secondary-navigation [data-nav="game"]');
     const section = page.locator('.ingame-helpers');
     const summary = key => section.locator(`[data-living-disclosure="helper-${key}"] > summary`);
-    const check = async (width, height, zoom) => {
+    const check = async (width, height, zoom, heading) => {
       const before = await fs.readFile(journal);
       const prefs = await page.evaluate(() => Object.entries(localStorage));
       await app.evaluate(({ BrowserWindow }, { width, height, zoom }) => {
@@ -51,8 +51,9 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
       await page.waitForFunction(width => Math.abs(innerWidth - width) < 24, width / zoom);
       await nav.press('Enter');
       await section.waitFor();
-      assert.equal(await section.getByRole('heading').innerText(), 'Helfer im Spiel');
+      assert.equal(await section.getByRole('heading').innerText(), heading);
       assert.equal(await section.evaluate(node => node.previousElementSibling.matches('[data-moment-settings]')), true);
+      assert.equal(await section.locator('p code').innerText(), '/bf helpers panel');
       assert.equal(await section.locator('details').count(), 11);
       await summary('questTracker').press('Enter');
       assert.deepEqual(await section.locator('details[open] code').allTextContents(), [
@@ -68,11 +69,14 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
       assert.deepEqual(await fs.readFile(journal), before);
       assert.deepEqual(await page.evaluate(() => Object.entries(localStorage)), prefs);
     };
-    await check(1180, 740, 1);
-    await check(1000, 690, 1.25);
+    await check(1180, 740, 1, 'In-Game Helpers');
+    await page.evaluate(() => localStorage.setItem('bf-lang-v1', 'de'));
+    await page.reload();
+    await check(1180, 740, 1, 'Helfer im Spiel');
+    await check(1000, 690, 1.25, 'Helfer im Spiel');
     assert.deepEqual(errors, []);
     assert.deepEqual(await app.evaluate(() => globalThis.clipboardWrites), []);
-    console.log('Helper handoff verified in Electron at normal and compact zoomed widths (German, keyboard, unchanged journal and storage, no clipboard writes).');
+    console.log('Helper handoff verified in Electron at normal and compact zoomed widths (English/German, keyboard, unchanged journal and storage, no clipboard writes).');
   } finally {
     await app?.close();
     await fs.rm(dir, { recursive: true, force: true });

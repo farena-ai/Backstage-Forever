@@ -23,8 +23,8 @@ local function event(e,...) for _,f in ipairs(events) do if f.events[e] and f.sc
 local function flush() for i=1,8 do local q=timers;timers={};if #q==0 then return end;for _,fn in ipairs(q) do fn() end end end
 local function click(name) local f=frames['BackstageForeverCompass'..name];assert(f and f.visible and f.scripts.OnClick,name);return f.scripts.OnClick end
 local map,owner,build,combat,watch,ready,complete,remaining=1429,'Player-Synthetic-1','70888',false,1,true,true,2
-local gates,objectiveReads,readyReads,watchReads={},0,0,0
-BackstageForeverHelperEnabled=function(k)return gates[k]~=false end
+local objectiveReads,readyReads,watchReads=0,0,0
+BackstageForeverHelperSettings={}
 BackstageForeverRouteSettings={arrow=false}
 BackstageForeverAssistSettings={toasts=false}
 C_Timer={After=function(_,fn)timers[#timers+1]=fn end}
@@ -50,6 +50,7 @@ C_QuestLog={GetNumQuestLogEntries=function()return 3,3 end,
  GetNextWaypoint=function(id)return 1429,id==1 and .25 or id==2 and marker or .9,.3 end}
 `+toc+String.raw`
 local slash=SlashCmdList.BACKSTAGEFOREVER
+local gates=setmetatable({}, {__newindex=function(_,key,on)slash('helpers '..key..(on and ' on' or ' off'))end})
 local function has(s)return fonts[2].text and fonts[2].text:find(s,1,true) end
 local function last(s)return chat[#chat] and chat[#chat]:find(s,1,true) end
 `;
@@ -93,10 +94,10 @@ event('QUEST_TURNED_IN',2);assert(has('Detour handed in.') and BackstageForeverR
 `));
 test('tracker toggle retires its old waypoint across off and on without clearing the explicit pin',()=>replay(String.raw`
 event('PLAYER_LOGIN');slash('compass track 2');assert(has('Tracked quest: Hand in here'))
-local old=click('TrackedWaypoint');gates.questTracker=false;local reads=watchReads;BackstageForeverHUDHelpersChanged()
+local old=click('TrackedWaypoint');local reads=watchReads;gates.questTracker=false
 assert(not has('Tracked quest:') and watchReads==reads)
 slash('compass missing');assert(last('Hand in here (#2): Ready to hand in'))
-gates.questTracker=true;BackstageForeverHUDHelpersChanged();old();assert(#marks==0 and has('Tracked quest: Hand in here'))
+gates.questTracker=true;old();assert(#marks==0 and has('Tracked quest: Hand in here'))
 owner='Player-Synthetic-2';event('PLAYER_ENTERING_WORLD');owner='Player-Synthetic-1';event('PLAYER_ENTERING_WORLD')
 assert(has('Tracked quest: Gather pelts') and not has('Tracked quest: Hand in here'))
 `));

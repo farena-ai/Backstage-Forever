@@ -47,8 +47,7 @@ local function fire(e,...)
 end
 local combat=false
 InCombatLockdown=function() return combat end
-local disabled={}
-BackstageForeverHelperEnabled=function(key) return not disabled[key] end
+local function mute(key,off) SlashCmdList.BACKSTAGEFOREVER('helpers '..key..(off and ' off' or ' on')) end
 `;
 function replay(setup, body) {
   const result = spawnSync(process.execPath, [require.resolve('./lua-stdin.cjs')], {
@@ -78,7 +77,7 @@ assert(#sold==0,'preview must not sell')
 button.scripts.OnClick(button)
 assert(#sold==1 and sold[1]==1,'a later slot must be rechecked immediately before sale')
 assert(not button:IsShown(),'no protected item in the next preview')
-disabled.keepQuestItems=true
+mute('keepQuestItems',true)
 GameTooltip:SetBagItem(0,2); assert(#GameTooltip.lines==0,'only explanation is optional')
 button.scripts.OnClick(button)
 assert(#sold==1,'disabling quest helper must not disable baseline protection')
@@ -132,12 +131,12 @@ local text=unitTip()
 assert(text:find('Two quests, one stop',1,true) and text:find('Befouled by Satyr: 4 remaining',1,true)
     and text:find('Hate the Hatefury: 1 remaining',1,true),text)
 assert(unitTip('Creature-0-1-2-3-4670-0002')=='','stale unit token must match the displayed spawn GUID')
-disabled.sharedObjectives=true
+mute('sharedObjectives',true)
 text=unitTip(); assert(not text:find('Two quests, one stop',1,true) and text:find('4 remaining',1,true),text)
-disabled.sharedObjectives=false; disabled.objectiveHints=true
+mute('sharedObjectives',false); mute('objectiveHints',true)
 assert(unitTip():find('Two quests, one stop',1,true),'shared hint must work independently')
 watched={1434}; assert(unitTip()=='','not two watched quests')
-disabled.objectiveHints=false
+mute('objectiveHints',false)
 guid='Creature-0-1-2-3-7777-0001'; assert(unitTip()=='','same tooltip name is not identity')
 guid='GameObject-0-1-2-3-4670-0001'; assert(unitTip()=='','object is not the creature')
 guid='Creature-0-1-2-3-4670-0001'; complete[1434]=true; rows[97265][5].numFulfilled=nil
@@ -164,6 +163,6 @@ items={16115}; assert(unitTip()=='','wrong exact item')
 items={16114}; rows[5441][1].finished=true; assert(unitTip()=='','wrong stage')
 rows[5441][1].finished=false; quests={}; assert(unitTip()=='','not in log')
 quests={5441}; bagsRead=0; combat=true; assert(unitTip()=='' and bagsRead==0,'quiet in combat')
-combat=false; disabled.questItemCue=true; assert(unitTip()=='' and bagsRead==0,'disabled cue skips bags')
+combat=false; mute('questItemCue',true); assert(unitTip()=='' and bagsRead==0,'disabled cue skips bags')
 assert(used==0,'no item use')
 `));

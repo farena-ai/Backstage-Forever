@@ -31,9 +31,12 @@ GetActionInfo=function(slot)reads=reads+1;if slot==7 then return 'spell',837 end
 fire('PLAYER_LOGIN');assert(#msgs==0);higher=true;fire('SPELLS_CHANGED')
 assert(#msgs==1 and msgs[1]:find('Frostbolt',1,true) and msgs[1]:find('7',1,true),'verified player rank and slot should be described')
 fire('SPELLS_CHANGED');fire('ACTIONBAR_SLOT_CHANGED',7);assert(#msgs==1,'unchanged reminder must not spam')
-local before=reads; BackstageForeverHelperEnabled=function()return false end;fire('SPELLS_CHANGED');assert(reads==before)
-BackstageForeverHelperEnabled=nil;build='70960';fire('SPELLS_CHANGED');assert(reads==before);build='70959';owner='B';fire('SPELLS_CHANGED');assert(#msgs==1)
-`,['BackstageForeverCoach.lua']));
+BackstageForeverHelpersCommand('helpers spellRankReminder off')
+local before=reads;fire('SPELLS_CHANGED');assert(reads==before)
+build='70960';BackstageForeverHelpersCommand('helpers spellRankReminder on');fire('SPELLS_CHANGED');assert(reads==before)
+build='70959';C_SpellBook.FindSpellBookSlotForSpell=nil;fire('SPELLS_CHANGED');assert(reads==before,'absent spellbook API is not learned-rank evidence')
+owner='B';fire('SPELLS_CHANGED');assert(#msgs==3) -- one reminder and two explicit settings acknowledgements
+`,['BackstageForeverHelpers.lua','BackstageForeverCoach.lua']));
 test('native gathering overlay marks only qualified historical points and drops them outside current scope',()=>replay(events+String.raw`
 local map,rank=1411,1
 build='70862'
@@ -49,8 +52,9 @@ BackstageForeverGatheringSession('PLAYER_LOGIN')
 local function points()return BackstageForeverGatheringMapPoints(1411) end
 local rows=points();assert(#rows==1 and rows[1].x==.3 and rows[1].detail:find('not a live spawn',1,true),'only exact recent historical identity')
 rank=0;assert(#points()==0);rank=nil;assert(#points()==0);rank=1;fighting=true;assert(#points()==0);fighting=false
-map=1412;assert(#points()==0); map=1411;owner='B';assert(#points()==0);owner='A';BackstageForeverHelperEnabled=function()return false end;assert(#points()==0)
-BackstageForeverHelperEnabled=nil
+map=1412;assert(#points()==0); map=1411;owner='B';assert(#points()==0);owner='A'
+BackstageForeverHelpersCommand('helpers gatheringMarks off');assert(#points()==0)
+BackstageForeverHelpersCommand('helpers gatheringMarks on')
 local pin={}
 MapCanvasPinMixin={}
 Mixin=function(target,...)for _,source in ipairs({...}) do for k,v in pairs(source)do target[k]=v end end;return target end
@@ -62,7 +66,7 @@ click(pin,'LeftButton');assert(moved==1)
 rank=0;click(pin,'LeftButton');assert(moved==1,'stale rank retires waypoint')
 rank=1;time=function()return 1800000000+604800 end
 click(pin,'LeftButton');assert(moved==1 and #points()==0,'expired point cannot be used')
-`,['BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverGathering.lua','BackstageForeverAdvisorMap.lua']));
+`,['BackstageForeverHelpers.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverGathering.lua','BackstageForeverAdvisorMap.lua']));
 
 test('shipped TOC loads the helper implementations in dependency order',()=>replay(String.raw`
 --LOAD--
