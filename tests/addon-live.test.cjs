@@ -376,6 +376,7 @@ C_QuestLog={GetNumQuestLogEntries=function()return 2,2 end,
  GetInfo=function(i)return {questID=i,title=i==1 and 'Main work' or 'Extra |check',isHeader=false}end,
  GetLogIndexForQuestID=function(id)return id end,
  IsComplete=function(id)return id==1 or ready end,
+ ReadyForTurnIn=function(id)return id==1 or ready end,
  GetQuestObjectives=function()return {}end,
  GetNextWaypoint=function(id)return 1413,id==1 and .2 or detourX,.4 end}
 dofile('addon/BackstageForever/BackstageForeverCoach.lua')
@@ -482,6 +483,7 @@ assert(#guideCalls==0)
 `));
 
 test('the real guided route takes over immediately, then releases Compass advice when hidden',()=>lua(dailyCompass+String.raw`
+SlashCmdList.BACKSTAGEFOREVER('helpers questDetours off')
 local click,dismissClick=waypoint.OnClick,dismiss.OnClick
 SlashCmdList.BACKSTAGEFOREVER('route guide')
 local route=BackstageForeverRouteNow();assert(route and route.text,'Fixture must start an actual guided route')

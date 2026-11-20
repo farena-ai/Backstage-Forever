@@ -341,6 +341,7 @@ update=function()
     safe(preparationLine.SetText,preparationLine,'')
     selectedCoach=nil
     clearOnMyWay()
+    if notNowButton then safe(notNowButton.Disable,notNowButton);safe(notNowButton.SetScript,notNowButton,'OnClick',nil)end
     safe(waypointButton.Disable,waypointButton)
     safe(waypointButton.SetScript,waypointButton,'OnClick',nil)
     if not visible then endDetour(true) end
