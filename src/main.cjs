@@ -354,8 +354,7 @@ app.whenReady().then(async () => {
     knowledge,
   });
   registerAdventureCoachHandlers({ handle, getState: () => store.state, knowledge });
-  registerProfessionCoachHandlers({ handle, getState: () => store.state, getWorkshopCraft: model => store.workshopCraft(model) });
-  handle("changeLocalCraft", (...args) => args.length === 2 && store.changeLocalCraft(...args));
+  registerProfessionCoachHandlers({ handle, getState: () => store.state });
   registerPreparationHandlers({
     handle,
     getState: () => store.state,
@@ -951,8 +950,7 @@ app.whenReady().then(async () => {
         if (c.repAdvice) Object.assign(c.repAdvice, { referenceBuild: pack.build, characterBuild: p.clientBuild ?? null });
       } catch { c.repAdvice = null; }
     }
-    return { ...view, goal: require("./core/gold-goal.cjs").goldGoalView(s),
-      localCraft: require("./core/local-craft.cjs").ledgerCraftLeads(s, store.localCraft) };
+    return { ...view, goal: require("./core/gold-goal.cjs").goldGoalView(s) };
   });
   // Gold goal (0.36, E4): the player's own target; null clears it. Only this handler writes it.
   handle("setGoldGoal", (...args) => {

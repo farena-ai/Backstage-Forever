@@ -2,7 +2,6 @@
 const { buildPreparation } = require("./preparation.cjs");
 const { validateState, str } = require("./validation.cjs");
 const { acquisitionFacts } = require("./acquisition-data.cjs");
-const { workshopDecision } = require("./workshop-decision.cjs");
 const { skillColor, colorRank, materialUnits, skillUpCountdown, shoppingList, nextPointPurchaseEstimate } = require("./profession-skillup.cjs");
 // Callers establish source/date authority before qualifying an owned observation.
 function professionCapQualification(profession) {
@@ -191,7 +190,6 @@ function buildProfessionCoach(
   for (const row of model.shoppingRows)
     row.acquisition = acquisition.rows.find((r) => r.itemId === row.itemId);
   model.shoppingList = shoppingList(model.shoppingRows, { crafts: settings.crafts, profile, profiles: valid.profiles });
-  model.batchDecision = workshopDecision(model, profile, valid.profiles, { acquisitionPack });
   model.skillUp = recipe ? skillUpCountdown(profession, recipe) : null;
   for (const row of model.shoppingList.rows) {
     // Stored observations are leads, never carried supply or proof of transferability.

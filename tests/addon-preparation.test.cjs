@@ -478,3 +478,27 @@ UnitSex=function()return 'SECRET' end;event('PLAYER_LEVEL_UP');save()
   const parsed = parseSavedVariables("BackstageForeverExport = " + JSON.stringify(JSON.stringify(rows[0])));
   assert.equal(parsed.characters[0].sex, "female");
 });
+
+test("stable capture can relabel a cached recipe across builds but desktop publishes no decision trace", () => {
+  const { mergeSnapshot } = require("../src/core/profile-sync.cjs");
+  const { defaultState } = require("../src/core/validation.cjs");
+  const { buildProfessionCoach } = require("../src/core/profession-coach.cjs");
+  const rows = run(String.raw`
+spells={1001,1004};infos[1004]={recipeID=1004,name='Final tonic',learned=true}
+local root={recipeID=1004,isRecraft=false,reagentSlotSchematics={basic(2000,1)}}
+C_TradeSkillUI.GetRecipeSchematic=function(id)if id==1004 then return root end;return schematic end
+schematic.quantityMax=1
+event('PLAYER_LOGIN');save()
+local previous=BackstageForeverExport;load();BackstageForeverExport=previous
+build='70888';now=now+1;spells={1004};event('PLAYER_LOGIN');save()
+spells={1001,1004};now=now+1;event('TRADE_SKILL_SHOW');flush();save()
+`);
+  assert.deepEqual(rows.map(saved => active(saved).readiness.workshop.recipes.items.map(r => r.id)), [[1001, 1004], [1004, 1001], [1001, 1004]]);
+  let state = defaultState();
+  for (const saved of rows) {
+    state = mergeSnapshot(state, parseSavedVariables(`BackstageForeverExport = [=[${JSON.stringify(saved)}]=]`));
+    const model = buildProfessionCoach(state, state.activeProfileId, { recipeId: 1004 });
+    assert.equal(model.selectedRecipe.id, 1004, 'ordinary saved recipe planning still works');
+    assert.equal(Object.hasOwn(model, 'batchDecision'), false, 'no producer chain or derived leads');
+  }
+});

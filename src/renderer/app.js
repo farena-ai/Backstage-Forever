@@ -424,9 +424,6 @@ async function selectActiveCharacter(id) {
   root.querySelector("[data-academy-dps]")?.remove();
   root.querySelector(".cov-patch")?.setAttribute("hidden", "");
   root.querySelector("[data-activity-packing]")?.remove();
-  root.querySelector("[data-local-craft]")?.remove();
-  root.querySelector("[data-craft-handoff]")?.remove();
-  root.querySelector("[data-ledger-local-craft]")?.remove();
   GuidedRouteView.retireRecovery();
   WorldMapView.retireRouteFocus();
   // Keep saves in picker order, including when the player changes their mind mid-save.

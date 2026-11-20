@@ -7060,7 +7060,7 @@
           ],
           "action": null,
           "section": "Changes",
-          "text": "Review supplies, inspect Workshop material needs and compare gear in Sheet. Supply Desk commitments and the optional local craft handoff are session-only."
+          "text": "Review supplies, inspect Workshop material needs and compare gear in Sheet. Supply Desk commitments are session-only. Expanded recipe chains and local craft handoffs are not included: saved recipes can carry over from a different client build."
         },
         {
           "id": "desktop-academy-controls",

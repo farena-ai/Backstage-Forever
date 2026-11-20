@@ -2,7 +2,7 @@
 const fs = require("node:fs"), path = require("node:path"), crypto = require("node:crypto");
 const { validateState } = require("./validation.cjs");
 const { encodeJournalState, decodeJournalState } = require("./journal-persistence.cjs");
-const { clearLegacyLocalCraft } = require("./local-craft.cjs");
+const { clearLegacyLocalCraft } = require("./retired-craft-cleanup.cjs");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const ROOT_STAGE_PREFIXES = new Set(["state.json.", "credentials.json.", "recovery-preferences.json."]);
 const MAX_POINT_BYTES = 64 * 1024 * 1024, MAX_TOTAL_BYTES = 128 * 1024 * 1024;

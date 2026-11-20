@@ -6,7 +6,7 @@ const {
 const { loadAcquisitionPack } = require("./acquisition-data.cjs");
 const { loadVendorPack } = require("./vendor-facts.cjs");
 const { validateState, str } = require("./validation.cjs");
-function registerProfessionCoachHandlers({ handle, getState, getWorkshopCraft = () => null }) {
+function registerProfessionCoachHandlers({ handle, getState }) {
   let acquisitionPack = null,
     vendorPack = null;
   try {
@@ -34,11 +34,10 @@ function registerProfessionCoachHandlers({ handle, getState, getWorkshopCraft = 
       !profile.clientBuild
     )
       throw Error("Choose the current saved addon character for coaching.");
-    const model = buildProfessionCoach(state, args[0], options, {
+    return buildProfessionCoach(state, args[0], options, {
       acquisitionPack,
       vendorPack,
     });
-    return { ...model, localCraft: getWorkshopCraft(model) };
   });
 }
 module.exports = { registerProfessionCoachHandlers };

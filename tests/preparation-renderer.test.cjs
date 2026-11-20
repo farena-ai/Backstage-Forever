@@ -136,17 +136,6 @@ function shippedThreadModel() {
  return m;
 }
 async function renderLoaded(m) {const f=fixture();f.host.api.professionCoach=async()=>m;f.c.Preparation.init(f.host);await f.c.Preparation.refresh();return f.c.Preparation.page();}
-test('batch decision shows an ordered manual plan and dated, non-live acquisition comparisons',async()=>{
- const m=shippedThreadModel();
- m.batchDecision={status:'planned',directReady:false,observedAt:m.source.updatedAt,batchPurchaseEstimate:42,
-  steps:[{name:'Mix <base>',itemName:'Tonic base',attempts:2,required:4,fromBags:1,output:4}],
-  rows:[{name:'Silverleaf',required:4,have:3,missing:1,options:['gather','buy'],gather:{name:'Recorded herb'},price:{unitCopper:42,seenAt:1794398400},estimatedCopper:42}]};
- const html=await renderLoaded(m);
- const panel=html.match(/<details[^>]+data-workshop-decision[^>]*>[\s\S]*?<\/details>/)?.[0];
- assert.ok(panel,'render the settled Workshop decision disclosure');
- assert.match(panel,/Mix &lt;base>/);assert.match(panel,/Gather lead: Recorded herb/);assert.match(panel,/Historical AH buyout: 42c each/);
- assert.match(panel,/break-even.*42c/i);assert.match(panel,/not current/i);assert.doesNotMatch(panel,/data-nav|data-preparation-savings/);
-});
 test('shipped Coarse Thread authorities merge Mahu despite reversed evidence order',async()=>{
  const m=shippedThreadModel(), row=m.shoppingRows[0], a=row.acquisition.sources.find(v=>v.entityId===3005), v=[...row.historicalSellers.suggestions,...row.historicalSellers.browse].find(v=>v.id===3005), before=JSON.stringify(m);
  assert.notDeepEqual(a.positions,v.positions,'Actual shipped authorities have reversed point order');

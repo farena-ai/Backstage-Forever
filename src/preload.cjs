@@ -23,7 +23,6 @@ contextBridge.exposeInMainWorld(
     companyBrief: () => invoke("companyBrief"),
     startDirectorSession: (...args) => invoke("startDirectorSession", ...args),
     professionCoach: (...args) => invoke("professionCoach", ...args),
-    changeLocalCraft: (...args) => invoke("changeLocalCraft", ...args),
     adventureCoach: (...args) => invoke("adventureCoach", ...args),
     preparationBrief: (...args) => invoke("preparationBrief", ...args),
     createPreparationJourney: (...args) => invoke("createPreparationJourney", ...args),
