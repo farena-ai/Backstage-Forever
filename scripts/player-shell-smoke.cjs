@@ -136,7 +136,7 @@ const { defaultState } = require("../src/core/validation.cjs");
         await page.getByLabel("Active character", { exact: true }).inputValue(),
         "Alpha",
       );
-      const group = ["preparation","dungeons","zones","guided-route"].includes(id) ? "adventure" : ["journey", "sheet", "alts", "badges"].includes(id) ? "characters" : id.startsWith("ledger") ? "ledger" : id === "party"
+      const group = ["preparation","dungeons","zones","guided-route","practice-lab"].includes(id) ? "adventure" : ["journey", "sheet", "alts", "badges"].includes(id) ? "characters" : id.startsWith("ledger") ? "ledger" : id === "party"
         ? "company"
         : ["game", "connections", "updates"].includes(id)
           ? "game"
@@ -388,7 +388,7 @@ const { defaultState } = require("../src/core/validation.cjs");
       assert.equal(await button.getAttribute("aria-current"), "page");
     }
     for (const [section, tabs] of [
-      ["Adventure", ["Next step", "Professions"]],
+      ["Adventure", ["Next step", "Professions", "Practice Lab"]],
       ["Settings", ["Game connection", "AI connection", "Updates"]],
       ["Help", ["Field guide"]],
     ]) {
