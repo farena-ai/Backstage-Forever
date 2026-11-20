@@ -135,14 +135,19 @@ function BackstageForeverBuildCoach(character,options)
     -- points cannot establish where a current hand-in actually is.
     local primary=result.recommendation
     local map=number(c.location.mapId,1,2147483647)
-    if map and primary and mode~='professions' then
+    local route=field(options,'route')
+    local exclude=field(options,'detourQuestId')
+    local wanted=field(options,'activeDetourId')
+    if map and ((route and route.mapId==map) or (not route and primary and mode~='professions')) then
         for _,step in ipairs(questSteps)do
             local marker=step.destination
             local id='on-my-way:'..step.questId
             if step.phase=='t' and step.source=='game' and marker and marker.mapId==map
-                and meaningful(step.title) and 'quest:'..step.questId~=primary.id then
+                and meaningful(step.title) and (not wanted or wanted==id)
+                and (route and not route.questIds[step.questId]
+                    or not route and step.questId~=exclude and (exclude or 'quest:'..step.questId~=primary.id)) then
                 result.onMyWay={id=id,questId=step.questId,title=step.title,
-                    signature=signature(id,{step.title,map,marker.x,marker.y})}
+                    signature=signature(id,{step.title,map,marker.x,marker.y}),mapId=map,questStep=step}
                 break
             end
         end

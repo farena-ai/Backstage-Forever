@@ -1,18 +1,15 @@
 -- Native display and explicit waypoint clicks only; capture remains event driven.
 local panel,body,hint,actionTitle,actionSource,preparationLine,focusButton,sessionButton,waypointButton
 local goalButton,notNowButton,detailsButton,selectedCoach
-local onMyWayTitle,onMyWayEvidence,onMyWayNotNow
-local onMyWayFresh=false
-local onMyWayShown
-local questDetails=false
-local professionDetails=false
-local professionDetailsButton,professionButton,recipeButton,attemptsButton
+local onMyWayTitle,onMyWayEvidence,onMyWayNotNow,takeDetour
 local dismissed,dismissOrder={},{}
 local latest,ownerId,preparation,captureMessage,settings
 local visible,collapsed,active=true,false,false
 local epoch=0
+local questHelp={generation=0}
 local anchors={TOPLEFT=true,TOP=true,TOPRIGHT=true,LEFT=true,CENTER=true,RIGHT=true,BOTTOMLEFT=true,BOTTOM=true,BOTTOMRIGHT=true}
 local focuses={balanced='nearby',nearby='turn-ins',['turn-ins']='balanced'}
+local DETOUR_ROUTE_BUILD='1.60.1.70888' -- first replay slice only
 local function finite(value) return type(value)=='number' and value==value and math.abs(value)<=10000 end
 local function safe(fn,...)
     if type(fn)~='function' then return nil end
@@ -23,6 +20,15 @@ local function safe(fn,...)
     return value
 end
 local function combat() return safe(InCombatLockdown)~=false end
+local function helper(key)
+    return type(BackstageForeverHelperEnabled)~='function' or safe(BackstageForeverHelperEnabled,key)==true
+end
+local function field(o,key)
+    if type(o)=='table' then return safe(function() return o[key] end) end
+end
+local function int(n,lo,hi)
+    if type(n)=='number' and n>=lo and n<=hi and n%1==0 then return n end
+end
 -- Nil-safe method call for optional widgets (the XP bar is plain textures; a client without them keeps the text).
 local function invoke(o,k,...) if o and type(o[k])=='function' then return safe(o[k],o,...) end end
 -- Layout (0.54): text and controls sit inside the painted brass border, not on it.
@@ -88,6 +94,9 @@ local function sourceLabel(step)
 end
 -- The game's language for the Compass's own lines (0.54); English when no translation exists.
 local function T(s) local v=type(BackstageForeverTr)=='function' and safe(BackstageForeverTr,s);return type(v)=='string' and v or s end
+local function say(message)
+    if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..(BackstageForeverTr or tostring)(message)) end
+end
 local function number(n)
     n=math.floor(tonumber(n) or 0)
     if type(BreakUpLargeNumbers)=='function' then local v=safe(BreakUpLargeNumbers,n);if type(v)=='string' then return v end end
@@ -102,9 +111,100 @@ end
 local function routeLine(route)
     return '|cffffd100'..T('Route')..' '..number(route.index)..'/'..number(route.total)..':|r '..text(route.text,120)
 end
-local function recommendation(coach)
+local function routeKey(route)
+    return route and (tostring(route.index)..':'..(route.id or route.text)) or nil
+end
+function questHelp.same(a,b,withMap)
+    return a and b and a.owner==b.owner and a.build==b.build and (not withMap or a.map==b.map)
+end
+function questHelp.retire(clearReview)
+    questHelp.generation=questHelp.generation+1
+    for _,button in ipairs({questHelp.waypoint,questHelp.dismiss}) do
+        invoke(button,'SetScript','OnClick',nil);invoke(button,'Hide')
+    end
+    if clearReview then questHelp.review=nil end
+end
+function questHelp.id(scope)
+    if questHelp.pin and questHelp.same(scope,questHelp.pin.scope) then return questHelp.pin.id end
+    local api=safe(function() return C_QuestLog end)
+    local id=int(safe(field(api,'GetQuestIDForQuestWatchIndex'),1),1,2147483647)
+    if not id then
+        local index=int(safe(GetQuestIndexForWatch,1),1,1000)
+        id=index and int(field(safe(field(api,'GetInfo'),index),'questID'),1,2147483647)
+    end
+    return id
+end
+function questHelp.marker(quest,map)
+    if not map then return end
+    local fn=field(safe(function() return C_QuestLog end),'GetNextWaypoint')
+    if type(fn)~='function' then return end
+    local ok,m,x,y=pcall(fn,quest)
+    if not ok then return end
+    m=safe(function()return m end);x=safe(function()return x end);y=safe(function()return y end)
+    if m==map and type(x)=='number' and type(y)=='number' and x>=0 and x<=1 and y>=0 and y<=1 and (x~=0 or y~=0) then
+        return x,y
+    end
+end
+function questHelp.read(id,wantMarker,map)
+    local api=safe(function() return C_QuestLog end)
+    local index=int(safe(field(api,'GetLogIndexForQuestID'),id),1,1000)
+    local info=index and safe(field(api,'GetInfo'),index)
+    local title=field(info,'title')
+    if not info or field(info,'questID')~=id or field(info,'isHeader')~=false or type(title)~='string' or title=='' then return end
+    local q={id=id,title=title}
+    local complete=safe(field(api,'IsComplete'),id)
+    local raw=safe(field(api,'GetQuestObjectives'),id)
+    local ready=safe(field(api,'ReadyForTurnIn'),id)
+    if type(raw)=='table' then
+        for i=1,20 do
+            local row=field(raw,i);if row==nil then break end
+            local done=field(row,'finished')
+            if done~=true then
+                local label=field(row,'text')
+                local count=int(field(row,'numFulfilled'),0,100000)
+                local required=int(field(row,'numRequired'),1,100000)
+                if done==false and type(label)=='string' and label~='' then
+                    q.objective=i;q.label=label;q.remaining=count and required and count<required and required-count or nil
+                end
+                q.unresolved=true;break
+            end
+        end
+        if field(raw,21)~=nil then q.unresolved=true end
+        q.ready=ready==true and complete==true and not q.unresolved
+    end
+    q.phase=q.ready and 't' or (complete==false and ready~=true and q.objective and 'o' or nil)
+    if wantMarker and q.phase then q.x,q.y=questHelp.marker(id,map) end
+    return q
+end
+function questHelp.ready(id)
+    local q=questHelp.read(id,false)
+    return q and q.ready==true
+end
+function questHelp.handIn(pick,character)
+    local point=pick.questStep.destination
+    return questHelp.ready(pick.questId) and safe(BackstageForeverDetourCurrent,character.id,character.clientBuild,
+        pick.questId,point.mapId,point.x,point.y)==true
+end
+function questHelp.action(q)
+    if q.ready then return T('Ready to hand in') end
+    if q.objective then
+        return text(q.label,75)..(q.remaining and (' · '..T('%d remaining'):format(q.remaining)) or '')
+    end
+    return T('Quest progress or hand-in readiness is not verified.')
+end
+local function endDetour(restore)
+    if detour and restore then resumed=detour.primary end
+    if detour and detour.route then safe(BackstageForeverRouteCompassPause,false,restore) end
+    detour=nil
+end
+local function recommendation(coach,preferred)
     local function eligible(pick)
         return type(pick)=='table' and type(pick.id)=='string' and type(pick.signature)=='string' and dismissed[pick.id]~=pick.signature
+    end
+    if preferred then
+        local function matches(pick)return eligible(pick) and preferred.id==pick.id and preferred.signature==pick.signature end
+        if matches(coach.recommendation) then return coach.recommendation end
+        for _,pick in ipairs(coach.alternatives or {})do if matches(pick) then return pick end end
     end
     if eligible(coach.recommendation) then return coach.recommendation end
     for _,pick in ipairs(coach.alternatives or {}) do if eligible(pick) then return pick end end
@@ -122,20 +222,20 @@ local function compactView(c,route,coach)
     local xp=type(c.progress)=='table' and c.progress or nil
     local cur,max=xp and tonumber(xp.current),xp and tonumber(xp.max)
     local bar=(cur and max and max>0) and {cur=math.max(0,math.min(cur,max)),max=max,rested=math.max(0,tonumber(xp.rested) or 0)} or nil
+    if route then return headText,bar,{routeLine(route)} end
     local out={}
     if type(c.quests)=='table' then
         local ready=0
         for i=1,math.min(#c.quests,50) do if type(c.quests[i])=='table' and c.quests[i].complete then ready=ready+1 end end
         out[#out+1]=T(('Quests: %d in your log'):format(#c.quests))..(ready>0 and (' · |cff7ad67a'..T(('%d ready to hand in'):format(ready))..'|r') or '')
     end
-    local pace=type(BackstageForeverPaceSummary)=='function' and safe(BackstageForeverPaceSummary)
+    local pace=safe(BackstageForeverPaceSummary)
     out[#out+1]=type(pace)=='string' and pace or T('Pace: shown after a few minutes of play')
     if xp and xp.resting then out[#out+1]=T('Resting: rested XP is building up') end
-    if route then
-        out[#out+1]=routeLine(route)
-    elseif type(coach)=='table' then
-        local pick=recommendation(coach)
+    if type(coach)=='table' then
+        local pick=recommendation(coach,resumed)
         out[#out+1]=pick and ('|cffffd100'..T('Next:')..'|r '..text(pick.title,110)) or quietLine(coach)
+        if pick and pick.reason then out[#out+1]=text(T(pick.reason),150) end
     else
         local plan=safe(BackstageForeverBuildPlan,c,{focus=settings.focus,minutes=settings.minutes})
         local step=type(plan)=='table' and type(plan.steps)=='table' and plan.steps[1]
@@ -154,50 +254,136 @@ local function paintXp(bar)
     invoke(xpText,'SetText',math.floor(f*100)..'%  ·  '..T(('%s XP to level up'):format(number(bar.max-bar.cur)))..(bar.rested>0 and ('  ·  '..T('rested')) or ''))
 end
 local update
-local function rememberDismissal(chosen)
+function questHelp.reviewStop(route)
+    questHelp.retire(true)
+    if not active or not visible or combat() or not helper('beforeLeaving') then return end
+    local scope=safe(BackstageForeverCompassQuestContext)
+    if not scope or not scope.map then return end
+    local api=safe(function() return C_QuestLog end)
+    local count=int(safe(field(api,'GetNumQuestLogEntries')),0,1000) or 0
+    local excluded=route and route.questIds or {}
+    for i=1,math.min(count,80) do
+        local info=safe(field(api,'GetInfo'),i)
+        local id=int(field(info,'questID'),1,2147483647)
+        if id and field(info,'isHeader')==false and not excluded[id] then
+            local q=questHelp.read(id,true,scope.map)
+            if q and q.ready and q.x then questHelp.review={scope=scope,quest=q};return end
+        end
+    end
+end
+function questHelp.paint(lines,bottom)
+    local tracker=helper('questTracker')
+    if not helper('beforeLeaving') then questHelp.review=nil end
+    if not tracker and not questHelp.review then return 0,0 end
+    local scope=safe(BackstageForeverCompassQuestContext)
+    if questHelp.pin and not questHelp.same(scope,questHelp.pin.scope) then questHelp.pin=nil end
+    local function bind(button,fn)
+        local generation,clickEpoch=questHelp.generation,epoch
+        invoke(button,'ClearAllPoints')
+        invoke(button,'SetPoint','BOTTOMLEFT',INSET,bottom)
+        invoke(button,'SetScript','OnClick',function()
+            if active and visible and not combat() and generation==questHelp.generation and clickEpoch==epoch then fn() end
+        end)
+        invoke(button,'Show');bottom=bottom+26
+    end
+    local height,start=0,bottom
+    local id=scope and tracker and questHelp.id(scope)
+    local q=id and questHelp.read(id,true,scope.map)
+    if q then
+        lines[#lines+1]=T('Tracked quest:')..' '..text(q.title,65)
+        lines[#lines+1]=questHelp.action(q)
+        height=height+48
+        if q.x then
+            bind(questHelp.waypoint,function()
+                if not helper('questTracker') then update();return end
+                local now=safe(BackstageForeverCompassQuestContext)
+                if not questHelp.same(scope,now,true) or questHelp.id(now)~=q.id then update();return end
+                local fresh=questHelp.read(id,true,now.map)
+                if not fresh or fresh.phase~=q.phase or fresh.objective~=q.objective or fresh.label~=q.label
+                    or fresh.remaining~=q.remaining or fresh.x~=q.x or fresh.y~=q.y then update();return end
+                safe(BackstageForeverGuide,('guide %d %s %d %.6f %.6f %s'):format(q.id,q.phase,now.map,q.x,q.y,now.build))
+            end)
+        end
+    end
+    local review=questHelp.review
+    if review then
+        local pick=review.quest
+        local now=questHelp.same(scope,review.scope,true) and questHelp.read(pick.id,true,scope.map)
+        if now and now.ready and now.x==pick.x and now.y==pick.y then
+            lines[#lines+1]=T('Before you leave:')..' '..text(now.title,60)
+            height=height+30
+            bind(questHelp.dismiss,function() questHelp.review=nil;update() end)
+        else questHelp.review=nil end
+    end
+    return height,bottom-start
+end
+local function dismiss(chosen)
     if not dismissed[chosen.id] then dismissOrder[#dismissOrder+1]=chosen.id end
     dismissed[chosen.id]=chosen.signature
     while #dismissOrder>20 do dismissed[table.remove(dismissOrder,1)]=nil end
+end
+local function rememberDismissal(chosen)
+    dismiss(chosen)
     epoch=epoch+1;update()
 end
 local function clearOnMyWay()
-    onMyWayShown=nil
+    detourOffer=nil
     for _,row in ipairs({onMyWayTitle,onMyWayEvidence})do invoke(row,'SetText','');invoke(row,'Hide')end
-    invoke(onMyWayNotNow,'SetScript','OnClick',nil)
-    invoke(onMyWayNotNow,'Disable');invoke(onMyWayNotNow,'Hide')
+    for _,button in ipairs({onMyWayNotNow,takeDetour})do
+        invoke(button,'SetScript','OnClick',nil);invoke(button,'Disable');invoke(button,'Hide')
+    end
 end
 update=function()
     if not panel then return end
     -- A redraw (including hide/show and route changes) retires earlier clicks.
     epoch=epoch+1
+    questHelp.retire(not visible)
     safe(preparationLine.SetText,preparationLine,'')
     selectedCoach=nil
     clearOnMyWay()
-    if notNowButton then safe(notNowButton.Disable,notNowButton);safe(notNowButton.SetScript,notNowButton,'OnClick',nil)end
     safe(waypointButton.Disable,waypointButton)
     safe(waypointButton.SetScript,waypointButton,'OnClick',nil)
+    if not visible then endDetour(true) end
     if combat() or not visible or not active then safe(panel.Hide,panel);return end
     local lines={'Getting ready. If this stays, type /reload once.'}
+    local showProfessionDetails=professionDetails
     local selected,command,stepIndex,onMyWay
     local route=latest and currentRoute()
-    local coach=latest and not route and safe(BackstageForeverBuildCoach,latest,{mode=settings.mode,skillLineId=settings.profession.skillLineId,recipeId=settings.profession.recipeId,crafts=settings.profession.crafts})
+    local detoursEnabled=helper('questDetours')
+    local routeContext=route and route.questIds and latest.clientBuild==DETOUR_ROUTE_BUILD and route or nil
+    local function project(inFlight)
+        if not latest or (route and (not routeContext or not detoursEnabled)) then return nil end
+        return safe(BackstageForeverBuildCoach,latest,{mode=settings.mode,skillLineId=settings.profession.skillLineId,
+            recipeId=settings.profession.recipeId,crafts=settings.profession.crafts,route=routeContext,
+            activeDetourId=inFlight and inFlight.pick.id,detourQuestId=inFlight and inFlight.primaryQuest})
+    end
+    local coach=project(detour)
+    local canOffer=detoursEnabled and onMyWayFresh and not captureMessage and not questDetails and not professionDetails
+    if detour then
+        local pick=coach and coach.onMyWay
+        if detour.invalid or not canOffer or not pick or pick.signature~=detour.pick.signature or routeKey(route)~=detour.route
+            or not latest or latest.clientBuild~=detour.build or settings.mode~=detour.mode then
+            endDetour(true);coach=project()
+        end
+    end
+    if resumed and coach and not detour then
+        local pick=recommendation(coach,resumed)
+        if not pick or pick.id~=resumed.id or pick.signature~=resumed.signature then resumed=nil end
+    end
+    if canOffer and not detour and not collapsed and coach and (routeContext or recommendation(coach,resumed)==coach.recommendation) then
+        local extra=coach.onMyWay
+        if extra and dismissed[extra.id]~=extra.signature and questHelp.handIn(extra,latest) then onMyWay=extra end
+    end
     if latest then
         lines={text(latest.name,60)..'  |  Level '..text(tostring(latest.level),4)..' '..text(latest.className,30)}
-        if not collapsed then
+        if not collapsed and not route and not detour then
             local xp=latest.progress
             lines[#lines+1]=text(latest.location and latest.location.zone,70)..' | '..(xp and ('XP '..text(tostring(xp.current),12)..' / '..text(tostring(xp.max),12)..((tonumber(xp.max) or 0)>0 and (' ('..math.floor((tonumber(xp.current) or 0)/xp.max*100)..'%)') or '')..((tonumber(xp.rested) or 0)>0 and ' | rested' or '')) or 'XP unavailable')
-            local pace=type(BackstageForeverPaceSummary)=='function' and safe(BackstageForeverPaceSummary)
+            local pace=safe(BackstageForeverPaceSummary)
             if type(pace)=='string' then lines[#lines+1]=pace end
-            if route then
-                lines[#lines+1]=routeLine(route)
-            elseif type(coach)=='table' then
-                selectedCoach=recommendation(coach)
+            if type(coach)=='table' then
+                selectedCoach=recommendation(coach,resumed)
                 if selectedCoach then
-                    local extra=coach.onMyWay
-                    if onMyWayFresh and not captureMessage and not questDetails and not professionDetails
-                        and selectedCoach==coach.recommendation and extra then
-                        if dismissed[extra.id]~=extra.signature then onMyWay=extra end
-                    end
                     lines[#lines+1]=T('Next:')..' '..text(selectedCoach.title,80)
                     local why,detail=selectedCoach.reason,selectedCoach.detail
                     if type(why)=='string' and why~='' then
@@ -259,23 +445,35 @@ update=function()
     end
     local headText,bar
     if collapsed and latest then headText,bar,lines=compactView(latest,route,coach) end
+    if detour then
+        lines={T('Detour:')..' '..text(detour.pick.title,100),T('Current game: ready to hand in on this map.')}
+    elseif route then
+        if not collapsed then lines={routeLine(route)} end
+        if routeContext then lines[#lines+1]=T('Next step in your guided route; locations are approximate.') end
+    end
+    if finished then lines[#lines+1]=T('Detour handed in. Back to your plan.') end
+    local helperHeight,helperFooter=0,0
+    if not detour then
+        helperHeight,helperFooter=questHelp.paint(lines,onMyWay and 176 or (collapsed or route) and 38 or 133)
+    end
     if captureMessage then lines[#lines+1]=captureMessage end
     invoke(head,'SetText',headText or '');invoke(head,headText and 'Show' or 'Hide')
     paintXp(bar)
     safe(body.SetText,body,table.concat(lines,'\n'))
     safe(body.ClearAllPoints,body)
-    local top=collapsed and (headText and (bar and -88 or -70) or -40) or route and -46 or professionDetails and -148 or type(BackstageForeverBuildProfessionCoach)=='function' and -120 or -94
+    local top=collapsed and (headText and (bar and -88 or -70) or -40) or (route or detour) and -46 or showProfessionDetails and -148 or type(BackstageForeverBuildProfessionCoach)=='function' and -120 or -94
     safe(body.SetPoint,body,'TOPLEFT',INSET,top)
-    if collapsed or route then
+    if collapsed or route or detour then
         -- Short views grow with their lines, keeping the footer clear of them.
         local measured=safe(body.GetStringHeight,body)
-        local h=type(measured)=='number' and measured>0 and math.min(measured,160) or #lines*14
+        local h=type(measured)=='number' and measured>0 and math.min(measured,160+helperHeight) or #lines*14
         safe(body.SetHeight,body,h)
-        safe(panel.SetHeight,panel,math.floor(-top+h+42))
+        local bottom=(detour and 78 or onMyWay and 176 or 42)+helperFooter
+        safe(panel.SetHeight,panel,math.floor(-top+h+bottom))
     else
-        safe(body.SetHeight,body,216)
-        local height=professionDetails and 494 or type(BackstageForeverBuildCoach)=='function' and 466 or 440
-        safe(panel.SetHeight,panel,height+(onMyWay and 48 or 0))
+        safe(body.SetHeight,body,216+helperHeight)
+        local height=showProfessionDetails and 494 or type(BackstageForeverBuildCoach)=='function' and 466 or 440
+        safe(panel.SetHeight,panel,height+helperHeight+helperFooter+(onMyWay and 48 or 0))
     end
     safe(goalButton.SetText,goalButton,'Goal: '..({adventure='Adventure',questing='Quests',professions='Professions'})[settings.mode])
     safe(focusButton.SetText,focusButton,'Focus: '..(({balanced='everything',['turn-ins']='hand-ins'})[settings.focus] or settings.focus))
@@ -325,24 +523,75 @@ update=function()
             bind(attemptsButton,function()choice.crafts=({[1]=5,[5]=10,[10]=20,[20]=1})[choice.crafts] or 1 end)
         end
     end
-    if route then
+    if route or detour then
         for _,control in ipairs({focusButton,sessionButton,goalButton,detailsButton,notNowButton,waypointButton,actionTitle,actionSource,preparationLine})do invoke(control,'Hide')end
+        if detour then invoke(professionDetailsButton,'Hide') end
     else
         if not selectedCoach then invoke(notNowButton,'Hide')end
         BackstageForeverHUDRefreshBadge()
     end
+    local clickEpoch,clickCharacter=epoch,latest
+    local function currentClick()
+        return active and visible and not combat() and epoch==clickEpoch and latest==clickCharacter and routeKey(currentRoute())==routeKey(route)
+    end
+    local function currentHandIn(pick)
+        if not currentClick() then return false end
+        if not helper('questDetours') then update();return false end
+        if questHelp.handIn(pick,latest) then return true end
+        -- Retire this offer even if the previous identity, map or marker returns.
+        onMyWayFresh=false;endDetour(true);update()
+        return false
+    end
     if onMyWay then
-        onMyWayShown=onMyWay
-        invoke(onMyWayTitle,'SetText','On my way: '..text(onMyWay.title,60))
-        invoke(onMyWayEvidence,'SetText','Current game: hand-in on this map')
+        invoke(onMyWayTitle,'SetText',T('On my way:')..' '..text(onMyWay.title,60))
+        invoke(onMyWayEvidence,'SetText',T('Current game: hand-in on this map'))
         invoke(onMyWayNotNow,'SetScript','OnClick',function()
-            if onMyWayShown~=onMyWay or combat() or currentRoute() then return end
+            if not currentHandIn(onMyWay) then return end
             rememberDismissal(onMyWay)
         end)
         invoke(onMyWayTitle,'Show');invoke(onMyWayEvidence,'Show')
         invoke(onMyWayNotNow,'Enable');invoke(onMyWayNotNow,'Show')
+        if validCommand(onMyWay.questStep) then
+            detourOffer=onMyWay
+            invoke(takeDetour,'SetPoint','BOTTOMLEFT',INSET,route and 45 or 110)
+            invoke(takeDetour,'SetSize',WIDE,22)
+            if not route then invoke(preparationLine,'Hide') end
+            invoke(takeDetour,'SetText',T('Take detour'))
+            invoke(takeDetour,'SetScript','OnClick',function()
+                if not currentHandIn(onMyWay) then return end
+                finished=nil
+                detour={pick=onMyWay,route=routeKey(route),mode=settings.mode,build=latest.clientBuild,owner=latest.id,
+                    primary=selectedCoach,primaryQuest=selectedCoach and selectedCoach.questStep and selectedCoach.questStep.questId or 0}
+                if route then safe(BackstageForeverRouteCompassPause,true) end
+                update()
+            end)
+            invoke(takeDetour,'Enable');invoke(takeDetour,'Show')
+        end
     end
-    if selected and not collapsed then
+    if detour then
+        local pick=detour.pick
+        local waypointWidth,gap=162,6
+        invoke(takeDetour,'SetPoint','BOTTOMLEFT',collapsed and INSET or INSET+waypointWidth+gap,38)
+        invoke(takeDetour,'SetSize',collapsed and WIDE or WIDE-waypointWidth-gap,22)
+        invoke(takeDetour,'SetText',T('Resume plan'))
+        invoke(takeDetour,'SetScript','OnClick',function()
+            if not currentClick() then return end
+            local scope=safe(BackstageForeverCompassQuestContext)
+            if not scope or scope.owner~=detour.owner or scope.build~=detour.build then endDetour(false);update();return end
+            endDetour(true);rememberDismissal(pick)
+        end)
+        invoke(takeDetour,'Enable');invoke(takeDetour,'Show')
+        if not collapsed then
+            invoke(waypointButton,'SetPoint','BOTTOMLEFT',INSET,38)
+            invoke(waypointButton,'SetSize',waypointWidth,22)
+            safe(waypointButton.SetScript,waypointButton,'OnClick',function()
+                if currentHandIn(pick) then safe(BackstageForeverGuide,validCommand(pick.questStep)) end
+            end)
+            invoke(waypointButton,'Enable');invoke(waypointButton,'Show')
+        end
+    elseif selected and not collapsed then
+        invoke(waypointButton,'SetPoint','BOTTOMLEFT',INSET,51)
+        invoke(waypointButton,'SetSize',WIDE,24)
         local qualifier=selected.source=='reference' and 'Approximate reference' or 'Current game'
         safe(actionTitle.SetText,actionTitle,'Step '..stepIndex..': '..text(selected.title,62))
         safe(actionSource.SetText,actionSource,qualifier..' — '..(selected.phase=='t' and 'turn-in' or 'objective'))
@@ -364,28 +613,71 @@ function BackstageForeverHUDRefreshBadge()
     local line=safe(BackstageForeverPinnedBadgeLine) or (preparation and preparation.text) or safe(BackstageForeverNextBadgeLine)
     safe(preparationLine.SetText,preparationLine,text(line,80))
 end
-function BackstageForeverHUDRouteChanged()
+function BackstageForeverHUDRouteChanged(explicit,reviewStop)
+    if explicit then
+        endDetour(false);resumed=nil;finished=nil
+        questHelp.retire(true)
+        if reviewStop then questHelp.reviewStop(currentRoute()) end
+    end
     update()
 end
-BackstageForeverHUDUpdate=function(character)
+function BackstageForeverHUDHelpersChanged()
+    if not helper('questDetours') then onMyWayFresh=false;finished=nil;endDetour(true) end
+    if not helper('beforeLeaving') then questHelp.review=nil end
+    update()
+end
+function BackstageForeverHUDNeedsDetourMap()
+    return visible and (onMyWayFresh or detour~=nil) and helper('questDetours') and not combat()
+end
+function BackstageForeverHUDMapChanged(mapId)
+    if latest and latest.location and latest.location.mapId~=mapId and (onMyWayFresh or detour) then
+        onMyWayFresh=false;endDetour(true);update()
+    end
+end
+function BackstageForeverHUDQuestChanged()
+    local pick=detour and detour.pick or detourOffer
+    if not latest or not pick or not BackstageForeverHUDNeedsDetourMap() then return end
+    if questHelp.handIn(pick,latest) then return end
+    onMyWayFresh=false;epoch=epoch+1;clearOnMyWay()
+    if detour then
+        -- No more old actions. Retain the detour until capture settles so an
+        -- exact QUEST_TURNED_IN arriving after the log update can still finish it.
+        detour.invalid=true
+        invoke(waypointButton,'SetScript','OnClick',nil);invoke(waypointButton,'Disable')
+    end
+end
+BackstageForeverHUDUpdate=function(character,turnedIn)
     epoch=epoch+1
-    if ownerId and character and ownerId~=character.id then epoch=epoch+1;dismissed={};dismissOrder={};questDetails=false;professionDetails=false end
+    finished=nil
+    if ownerId and character and ownerId~=character.id then
+        endDetour(false);resumed=nil;dismissed={};dismissOrder={};questDetails=false;professionDetails=false
+    end
+    if detour and helper('questDetours') and not combat() and character and character.id==detour.owner
+        and character.clientBuild==detour.build and character.location and character.location.mapId==detour.pick.mapId
+        and turnedIn==detour.pick.questId then
+        dismiss(detour.pick);finished=true;endDetour(true)
+    end
     latest=character;ownerId=character and character.id or ownerId
-    onMyWayFresh=character~=nil and not combat()
+    onMyWayFresh=character~=nil and helper('questDetours') and not combat()
     preparation=safe(BackstageForeverBuildPreparation,character)
     update()
 end
 BackstageForeverHUDSession=function(event)
+    endDetour(false);resumed=nil;finished=nil
+    questHelp.pin=nil;questHelp.retire(true)
     epoch=epoch+1;latest=nil;ownerId=nil;preparation=nil;captureMessage=nil;selectedCoach=nil;dismissed={};dismissOrder={};questDetails=false;professionDetails=false
     if preparationLine then safe(preparationLine.SetText,preparationLine,'') end
     onMyWayFresh=false;clearOnMyWay()
     active=event=='PLAYER_LOGIN'
+    -- The capture frame receives login before the HUD frame in TOC order.
+    if active then loadSettings() end
     if not active and panel then safe(panel.Hide,panel) end
 end
 BackstageForeverHUDCaptureStatus=function(state)
     -- Status changes cannot revive facts from a previously successful capture.
     if state=='unavailable' then epoch=epoch+1;latest=nil;preparation=nil;selectedCoach=nil end
     if state~='ready' then onMyWayFresh=false end
+    if state~='ready' then endDetour(false);resumed=nil;finished=nil end
     captureMessage=state=='partial' and 'Some public data is unavailable. Try again outside combat.'
         or state=='unavailable' and 'Snapshot unavailable. Try again outside combat.' or nil
     pcall(update)
@@ -484,7 +776,7 @@ local function initialize()
     end
     goalButton=button('BackstageForeverCompassGoal',INSET,168);goalButton:SetPoint('TOPLEFT',INSET,-38)
     goalButton:SetScript('OnClick',function()if active and not combat() then epoch=epoch+1;settings.mode=({adventure='questing',questing='professions',professions='adventure'})[settings.mode];save();update()end end)
-    notNowButton=button('BackstageForeverCompassNotNow',194,124);notNowButton:SetPoint('TOPLEFT',194,-38);notNowButton:SetText('Not now')
+    notNowButton=button('BackstageForeverCompassNotNow',194,124);notNowButton:SetPoint('TOPLEFT',194,-38);notNowButton:SetText(T('Not now'))
     focusButton=button('BackstageForeverCompassFocus',INSET,122)
     focusButton:SetScript('OnClick',function()if active and not combat() then epoch=epoch+1;settings.focus=focuses[settings.focus] or 'balanced';save();update()end end)
     sessionButton=button('BackstageForeverCompassSession',148,96)
@@ -507,17 +799,43 @@ local function initialize()
     onMyWayTitle=actionRow(155);onMyWayEvidence=actionRow(137)
     onMyWayEvidence:SetWidth(204)
     onMyWayNotNow=CreateFrame('Button','BackstageForeverCompassOnMyWayNotNow',panel,'UIPanelButtonTemplate')
-    onMyWayNotNow:SetPoint('BOTTOMLEFT',238,134);onMyWayNotNow:SetSize(80,22);onMyWayNotNow:SetText('Not now')
-    waypointButton=CreateFrame('Button','BackstageForeverCompassWaypoint',panel,'UIPanelButtonTemplate');waypointButton:SetPoint('BOTTOMLEFT',INSET,51);waypointButton:SetSize(WIDE,24);waypointButton:SetText('Show waypoint')
+    onMyWayNotNow:SetPoint('BOTTOMLEFT',238,134);onMyWayNotNow:SetSize(80,22);onMyWayNotNow:SetText(T('Not now'))
+    takeDetour=CreateFrame('Button','BackstageForeverCompassTakeDetour',panel,'UIPanelButtonTemplate');takeDetour:SetSize(WIDE,22)
+    waypointButton=CreateFrame('Button','BackstageForeverCompassWaypoint',panel,'UIPanelButtonTemplate');waypointButton:SetPoint('BOTTOMLEFT',INSET,51);waypointButton:SetSize(WIDE,24);waypointButton:SetText(T('Show waypoint'))
+    questHelp.waypoint=button('BackstageForeverCompassTrackedWaypoint',INSET,WIDE);questHelp.waypoint:SetText(T('Show tracked quest waypoint'))
+    questHelp.dismiss=button('BackstageForeverCompassLeavingDismiss',INSET,WIDE);questHelp.dismiss:SetText(T('Dismiss before-you-leave tip'))
     update()
 end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
-    for _,event in ipairs({'PLAYER_LOGIN','PLAYER_LOGOUT','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED'})do safe(events.RegisterEvent,events,event)end
-    events:SetScript('OnEvent',function(_,event)
+    for _,event in ipairs({'PLAYER_LOGIN','PLAYER_LOGOUT','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','QUEST_WATCH_LIST_CHANGED'})do safe(events.RegisterEvent,events,event)end
+    local questEvents={QUEST_ACCEPTED=true,QUEST_LOG_UPDATE=true,UNIT_QUEST_LOG_CHANGED=true,QUEST_TURNED_IN=true,
+        PLAYER_ENTERING_WORLD=true,ZONE_CHANGED=true,ZONE_CHANGED_INDOORS=true,ZONE_CHANGED_NEW_AREA=true}
+    for event in pairs(questEvents) do safe(events.RegisterEvent,events,event) end
+    events:SetScript('OnEvent',function(_,event,id)
+        if questEvents[event] then
+            id=safe(function() return id end)
+            if event=='UNIT_QUEST_LOG_CHANGED' and id~='player' then return end
+            local zone=event=='ZONE_CHANGED' or event=='ZONE_CHANGED_INDOORS' or event=='ZONE_CHANGED_NEW_AREA'
+            local hadReview=questHelp.review~=nil
+            questHelp.retire(event=='PLAYER_ENTERING_WORLD' or zone)
+            if event=='PLAYER_ENTERING_WORLD' and questHelp.pin
+                and not questHelp.same(safe(BackstageForeverCompassQuestContext),questHelp.pin.scope) then questHelp.pin=nil end
+            -- Allow the capture frame to settle an exact turn-in before repainting.
+            if event=='QUEST_TURNED_IN' or event=='PLAYER_ENTERING_WORLD' or (zone and hadReview and not detour) then pcall(update) end
+            return
+        end
         if event=='PLAYER_LOGOUT' then BackstageForeverHUDSession(event);return end
-        if event=='PLAYER_REGEN_DISABLED' then epoch=epoch+1;onMyWayFresh=false;clearOnMyWay();if waypointButton then safe(waypointButton.SetScript,waypointButton,'OnClick',nil);safe(waypointButton.Disable,waypointButton)end;if notNowButton then safe(notNowButton.SetScript,notNowButton,'OnClick',nil)end;if panel then safe(panel.Hide,panel)end;return end
-        if event=='PLAYER_LOGIN' then active=true;epoch=epoch+1;loadSettings()end
+        if event=='QUEST_WATCH_LIST_CHANGED' then
+            questHelp.retire(false)
+            if active and visible and helper('questTracker') and not detour then pcall(update) end
+            return
+        end
+        if event=='PLAYER_REGEN_DISABLED' then epoch=epoch+1;questHelp.retire(true);onMyWayFresh=false;clearOnMyWay();if waypointButton then safe(waypointButton.SetScript,waypointButton,'OnClick',nil);safe(waypointButton.Disable,waypointButton)end;if notNowButton then safe(notNowButton.SetScript,notNowButton,'OnClick',nil)end;if panel then safe(panel.Hide,panel)end;return end
+        if event=='PLAYER_LOGIN' then
+            if not active or not settings or settings~=BackstageForeverHUDSettings then loadSettings() end
+            active=true;epoch=epoch+1
+        end
         pcall(initialize);pcall(update)
     end)
 end
@@ -633,13 +951,45 @@ if type(SlashCmdList)=='table' then
         end
         if combat() or not active then return end
         message=type(message)=='string' and message:lower() or ''
+        local compass=message:match('^compass%s+(%a+)%s*$')
+        local pin=message:match('^compass%s+track%s+(%d+)%s*$')
+        if pin or message=='compass track clear' then
+            if not helper('questTracker') and not helper('questBlockers') then return end
+            if not pin then questHelp.pin=nil;update();return end
+            local id=int(tonumber(pin),1,2147483647)
+            local scope=id and safe(BackstageForeverCompassQuestContext)
+            local q=scope and questHelp.read(id,false)
+            if not q then say('Choose an exact quest ID from your current log.');return end
+            questHelp.pin={id=id,scope=scope};update()
+            return
+        elseif compass=='missing' then
+            if not helper('questBlockers') then return end
+            local scope=safe(BackstageForeverCompassQuestContext)
+            local id=scope and questHelp.id(scope)
+            local q=id and questHelp.read(id,true,scope.map)
+            if not q then say('No verified tracked quest. Watch a quest in the game or use /bf compass track QuestID.');return end
+            local result=text(q.title,65)..(' (#%d): '):format(q.id)..questHelp.action(q)
+            if not q.x then result=result..' '..T('A destination on this map is not verified.') end
+            say(result)
+            return
+        elseif compass=='review' then
+            if not helper('beforeLeaving') then questHelp.review=nil;update();return end
+            questHelp.reviewStop(currentRoute());update()
+            return
+        elseif compass=='track' then
+            say('Quest helpers: /bf compass track QuestID, /bf compass track clear, /bf compass missing, /bf compass review.')
+            return
+        elseif compass or message=='compass' then
+            say('Quest helpers: /bf compass track QuestID, /bf compass track clear, /bf compass missing, /bf compass review.')
+            return
+        end
         if message=='hide' then visible=false elseif message=='show' then visible=true
         elseif message=='status' then
             if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..(latest and 'live guidance in WoW; desktop saves on logout / UI reload.' or 'waiting for public snapshot.'))end
             return
         elseif message=='' then visible=not visible
         else
-            if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: try /bf next (where to go), /bf train (your trainer), /bf find NAME, or /bf help for everything.')end
+            say('try /bf next (where to go), or /bf help for everything.')
             return
         end
         pcall(initialize);save();pcall(update)
