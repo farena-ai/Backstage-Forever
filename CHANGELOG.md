@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.21.0 - Upgrades in the in-game atlas
+
+- The in-game Instance Atlas marks dungeon drops that are an upgrade for your character in green and counts them per dungeon. See the [release notes](docs/releases/1.21.0.md).
+
 ## 1.20.1 - Real icons for hotfix loot
 
 - Items the game delivers as hotfixes now show their real icon, quality, stats and upgrade verdict, read from the game's own hotfix cache on your computer. See the [release notes](docs/releases/1.20.1.md).
