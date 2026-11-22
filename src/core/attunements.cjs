@@ -146,12 +146,15 @@ function attunementView(profile, { pack = null, itemName = () => null, bossLoot 
   const done = new Set(historyKnown ? profile.history.completedIds : []);
   for (const e of profile?.history?.recent || []) done.add(e.id);
   const log = new Map((profile?.quests || []).map((x) => [x.id, x]));
+  // Keys kept on the key ring (the extras block holds their item ids; null when it was not saved).
+  const keyring = require("./capture-extras.cjs").keyringIds(profile);
   const where = (id) => {
     if ((profile?.readiness?.equipment || []).some((e) => e.itemId === id)) return "worn";
     for (const key of ["bags", "bank"]) if ((profile?.ledger?.[key]?.items || []).some((e) => e.id === id)) return key;
+    if (keyring?.has(id)) return "keyring";
     return null;
   };
-  const bagsKnown = Boolean(profile?.ledger?.bags), bankKnown = Boolean(profile?.ledger?.bank);
+  const bagsKnown = Boolean(profile?.ledger?.bags), bankKnown = Boolean(profile?.ledger?.bank), keyringKnown = Boolean(keyring);
   const chains = verifyChains({ pack, itemName, bossLoot }).filter((c) => !side || !c.side || c.side === side).map((c) => {
     const keyHeld = c.key?.confirmed ? where(c.key.id) : null;
     const steps = c.steps.map((s) => {
@@ -193,11 +196,12 @@ function attunementView(profile, { pack = null, itemName = () => null, bossLoot 
   if (!profile) notes.push("Pick a character to see its progress.");
   else {
     if (!historyKnown) notes.push("Finished quests are not known for this character yet, so quest steps cannot be ticked. Log in with the addon on, then type /reload once.");
-    if (!bagsKnown) notes.push("Bags are not saved for this character yet, so held keys cannot be seen.");
-    else notes.push(`Keys are looked for in your saved bags${bankKnown ? " and bank" : " (the bank was not seen yet)"} and in what you wear. A key kept on the key ring is not saved; its finished quest still counts.`);
+    if (!bagsKnown && !keyringKnown) notes.push("Bags are not saved for this character yet, so held keys cannot be seen.");
+    else if (keyringKnown) notes.push(`Keys are looked for on your saved key ring, in your saved bags${bagsKnown ? "" : " (not saved yet)"}${bankKnown ? " and bank" : " (the bank was not seen yet)"} and in what you wear.`);
+    else notes.push(`Keys are looked for in your saved bags${bankKnown ? " and bank" : " (the bank was not seen yet)"} and in what you wear. Your key ring is not in this save yet; a key kept there shows after your next save with the current addon, and its finished quest still counts.`);
   }
   const order = { started: 0, "not-started": 1, unknown: 1, done: 2, unconfirmed: 3 };
-  return { profileId: profile?.id ?? null, side, historyKnown, bagsKnown, bankKnown, referenceBuild: pack?.build ?? null, notes,
+  return { profileId: profile?.id ?? null, side, historyKnown, bagsKnown, bankKnown, keyringKnown, referenceBuild: pack?.build ?? null, notes,
     chains: chains.map((c, i) => ({ c, i })).sort((a, b) => order[a.c.status] - order[b.c.status] || a.i - b.i).map((x) => x.c),
     counts: { done: chains.filter((c) => c.status === "done").length, started: chains.filter((c) => c.status === "started").length, total: chains.length } };
 }

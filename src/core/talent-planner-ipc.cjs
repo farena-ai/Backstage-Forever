@@ -5,7 +5,21 @@
 const planner = require("./talent-planner.cjs");
 const { MAX_NAME } = require("./talent-builds.cjs");
 
-const OPS = new Set(["open", "add", "remove", "resetTree", "resetAll", "save", "delete", "activate", "export", "import", "compare"]);
+const { currentTalents } = require("./capture-extras.cjs");
+
+const OPS = new Set(["open", "add", "remove", "resetTree", "resetAll", "save", "delete", "activate", "export", "import", "compare", "fromCurrent", "compareCurrent"]);
+/**
+ * The talents the character has spent in game (saved in the extras block), laid on the trees: ranks per
+ * talent id, points per tree, points waiting, and a legal order for them (null when the saved
+ * ranks do not fit these trees). null when this character has no saved talents or is another class.
+ */
+function currentView(trees, profile, className) {
+  if (!profile || profile.className !== className) return null;
+  const now = currentTalents(trees, profile.extras?.talents);
+  if (!now) return null;
+  const order = now.unmatched.length ? null : planner.orderFromRanks(trees, now.ranks);
+  return { at: now.at, unspent: now.unspent, spent: now.spent, tabs: now.tabs, ranks: Object.fromEntries(now.ranks), unmatched: now.unmatched, order };
+}
 function registerTalentPlanner({ handle, getState, gameData, builds, onChange = () => {} }) {
   const profile = () => { const s = getState(); return s?.profiles?.find((p) => p.id === s.activeProfileId) || null; };
   const orderOf = (v) => {
@@ -26,7 +40,9 @@ function registerTalentPlanner({ handle, getState, gameData, builds, onChange = 
     const planLevel = Number.isInteger(input.planLevel) && input.planLevel >= planner.FIRST_LEVEL && input.planLevel <= planner.MAX_LEVEL ? input.planLevel : planner.MAX_LEVEL;
     const level = Number.isInteger(input.level) && input.level >= 1 && input.level <= 100 ? input.level : null;
     let order = op === "open" && !Array.isArray(input.order) ? [] : orderOf(input.order);
-    const reply = (extra = {}) => ({ ok: true, reason: null, order, view: planner.view(trees, order, { planLevel, level }), saved: saved(p, className, trees), respec: planner.RESPEC_SCHEDULE, maxName: MAX_NAME, ...extra });
+    const current = currentView(trees, p, className);
+    const reply = (extra = {}) => ({ ok: true, reason: null, order, view: planner.view(trees, order, { planLevel, level }), saved: saved(p, className, trees), respec: planner.RESPEC_SCHEDULE, maxName: MAX_NAME,
+      current: current ? { at: current.at, unspent: current.unspent, spent: current.spent, tabs: current.tabs, ranks: current.ranks, unmatched: current.unmatched, usable: Boolean(current.order) } : null, ...extra });
     const talent = () => { if (!Number.isSafeInteger(input.talentId)) throw Error("Invalid talent."); return input.talentId; };
     const own = () => { if (!p) throw Error("Choose a character first."); return p; };
     if (op === "open") {
@@ -54,6 +70,13 @@ function registerTalentPlanner({ handle, getState, gameData, builds, onChange = 
       order = r.order;
       return reply();
     }
+    if (op === "fromCurrent" || op === "compareCurrent") {
+      if (!current) return reply({ ok: false, reason: "Your current talents are not in this character's save yet. Log in with the current addon, then type /reload or log out." });
+      if (!current.order) return reply({ ok: false, reason: "The saved talents do not fit the talent trees read from your game files, so they cannot be used here." });
+      if (op === "fromCurrent") { order = current.order; return reply(); }
+      if (!planner.legal(trees, order)) throw Error("This build breaks the talent rules and cannot be compared.");
+      return reply({ diff: planner.diff(trees, order, current.order) });
+    }
     if (op === "compare") {
       const other = orderOf(input.other);
       if (!planner.legal(trees, order) || !planner.legal(trees, other)) throw Error("One of these builds breaks the talent rules and cannot be compared.");
@@ -76,4 +99,4 @@ function registerTalentPlanner({ handle, getState, gameData, builds, onChange = 
     return reply();
   });
 }
-module.exports = { registerTalentPlanner };
+module.exports = { registerTalentPlanner, currentView };

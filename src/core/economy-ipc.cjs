@@ -44,7 +44,7 @@ function registerEconomyHandlers({ handle, getState, economy, gameData, packName
     const crafts = profiles.filter((p) => p.readiness?.workshop?.recipes?.items?.length)
       .map((p) => E.craftProfit(p, { prices, vendor, vendorListed: listed(), facts }));
     const money = profiles.map((p) => ({ profileId: p.id, name: p.name, view: E.moneyView(economy.data.money[p.id]) })).filter((m) => m.view)
-      .map((m) => ({ profileId: m.profileId, name: m.name, ...m.view }));
+      .map((m) => ({ profileId: m.profileId, name: m.name, ...m.view, sessions: E.sessionView(economy.data.sessions?.[m.profileId]) }));
     return { crafts, money, vendorPricesSeen: vendor.size };
   }
   const events = () => E.calendarEvents(getState().profiles, now());

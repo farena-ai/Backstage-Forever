@@ -342,7 +342,7 @@
     let data = null, error = "", loading = false, loadedAt = 0, loadedFor = null, mountedFor = null, show = "open";
     const STATUS = { done: "Done", started: "Under way", "not-started": "Not started", unknown: "Progress unknown", unconfirmed: "Not confirmed in WoW Forever" };
     const STEP = { done: "Done", "in-log": "In your quest log", "in-progress": "Under way", todo: "To do", unconfirmed: "Not confirmed in WoW Forever" };
-    const WHERE = { worn: "you wear it", bags: "in your bags", bank: "in your bank" };
+    const WHERE = { worn: "you wear it", bags: "in your bags", bank: "in your bank", keyring: "on your key ring" };
 
     function step(s, n, current) {
       const detail = s.detail ? (WHERE[s.detail] || s.detail) : "";
