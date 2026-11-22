@@ -7512,6 +7512,36 @@
           "text": "The details come from the hotfix cache the game keeps in its own folder (Cache/ADB). Backstage Forever only reads that file, on your computer; it is never changed, uploaded or bundled. A cache written by another game build is ignored, and a row that does not fit the expected layout is skipped, so the item keeps what your game files say. When the game receives new item hotfixes, the app reads items again the next time it needs them. If the game has not written a cache yet (a fresh install that has never logged in), these items still show name-only as before."
         }
       ]
+    },
+    {
+      "version": "1.21.0",
+      "channel": "stable",
+      "source": "docs/releases/1.21.0.md",
+      "title": "Backstage Forever 1.21.0 — Upgrades in the in-game atlas",
+      "changes": [
+        {
+          "id": "atlas-upgrade-marks",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": "atlas",
+          "section": "Changes",
+          "text": "The in-game Instance Atlas (/bf atlas) marks each boss drop that is an upgrade for your character with a green \"Upgrade\", next to the gold \"Wish\" from your wish list. The banner of every dungeon says how many upgrades and wishes it holds, on its own line so long dungeon names stay readable."
+        },
+        {
+          "id": "atlas-upgrade-source",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "The desktop works out the upgrades by comparing each drop with what your character wore when the app last read its saved file, using the same rules as \"Upgrade for you\" on Dungeons & raids. It writes the list into the same small file as your wish list; the game reads it at your next login or /reload. After you equip new gear, /reload once so the desktop sees it, then once more to refresh the marks. Characters need a class set and a saved file from the installed game build. Not yet checked in the real game: the marks and the new banner line."
+        }
+      ]
     }
   ],
   "excluded": [

@@ -1,7 +1,7 @@
 "use strict";
 // IPC for the Instance Atlas loot browser, the loot wish list and item hover cards.
 const v = require("./validation.cjs");
-const { instanceLoot, itemCard, atlasLootSummary } = require("./boss-loot.cjs");
+const { instanceLoot, itemCard, atlasLootSummary, upgradeIds } = require("./boss-loot.cjs");
 const { dropIndex } = require("./boss-loot-data.cjs");
 const { gearAcquisition } = require("./gear-acquisition.cjs");
 
@@ -58,6 +58,10 @@ function registerBossLootHandlers({ handle, getState, gameData, wishlist, onWish
     return { itemIds };
   });
   // Card chips for dungeonAtlas: upgrades and starred items per instance, for the active character.
-  return { summary: (p) => { try { return atlasLootSummary(getPack(), { profile: p, gameData, wished: wished(p) }); } catch { return {}; } } };
+  return {
+    summary: (p) => { try { return atlasLootSummary(getPack(), { profile: p, gameData, wished: wished(p) }); } catch { return {}; } },
+    // For the desktop -> game hand-off. Only from item data already read: this never opens the game's files.
+    upgrades: (p) => { try { return p && gameData?.cached?.("items") ? upgradeIds(getPack(), { profile: p, gameData }) : []; } catch { return []; } },
+  };
 }
 module.exports = { registerBossLootHandlers };

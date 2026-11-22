@@ -84,3 +84,46 @@ test("the installer writes the hand-off with the addon, and a wish change rewrit
   assert.equal((await broken.prepare(game)).addonCurrent, true);
   assert.equal(read(), handoff.EMPTY);
 });
+
+// 1.21: the same file also carries the dungeon drops the desktop rates as upgrades.
+test("upgrades ride along: sorted, bounded, and a character with only upgrades is still named", () => {
+  const profiles = [saved("a", "Abel", "Thunder Hold"), saved("b", "Zed", "Thunder Hold"), saved("c", "Cara", "Thunder Hold")];
+  const text = handoff.compile({ profiles, wishlist: (id) => (id === "a" ? [5202] : []), upgrades: (id) => (id === "a" ? [9, 3, 9, -1, "x", 7] : id === "b" ? Array.from({ length: 300 }, (_, i) => 300 - i) : []) });
+  assert.match(text, /\["Abel-Thunder Hold"\]=\{wish=\{5202\},up=\{3,7,9\}\},/);
+  const zed = text.match(/\["Zed-Thunder Hold"\]=\{wish=\{\},up=\{([\d,]+)\}\}/)[1].split(",").map(Number);
+  assert.equal(zed.length, handoff.MAX_ITEMS); assert.equal(zed[0], 1); assert.equal(zed[199], 200);
+  assert.doesNotMatch(text, /Cara/);
+  assert.equal(handoff.compile({ profiles, wishlist: () => [], upgrades: () => { throw Error("no data"); } }), handoff.EMPTY, "a failing supplier leaves the file empty, never broken");
+  assert.equal(lua(String.raw`
+DEFAULT_CHAT_FRAME={AddMessage=function() end}
+${text.replace(/^--.*$/gm, "")}
+dofile('addon/BackstageForever/BackstageForeverAtlas.lua')
+local up,wish=BackstageForeverUpgradeSet('Abel','Thunder Hold'),BackstageForeverWishSet('Abel','Thunder Hold')
+assert(up[3] and up[7] and up[9] and not up[5202] and wish[5202] and not wish[3])
+assert(next(BackstageForeverWishSet('Zed','Thunder Hold'))==nil and BackstageForeverUpgradeSet('Zed','Thunder Hold')[200])
+assert(next(BackstageForeverUpgradeSet('Cara','Thunder Hold'))==nil)
+assert(BackstageForeverAtlasMarks(5202,wish,up)=='|cffffd100Wish|r ')
+assert(BackstageForeverAtlasMarks(7,wish,up)=='|cff40ff40Upgrade|r ')
+assert(BackstageForeverAtlasMarks(1,wish,up)=='' and BackstageForeverAtlasMarks(7,nil,nil)=='')
+local both={[7]=true}
+assert(BackstageForeverAtlasMarks(7,both,both)=='|cffffd100Wish|r |cff40ff40Upgrade|r ')
+local row={'dm','The Deadmines','d',17,26,'A',1436,.42,.72,{{'Edwin VanCleef','5202~100|7~50|3~33'},{'Mr. Smite','5202~10|7~67'}}}
+assert(BackstageForeverAtlasCountsLine(row,wish,up)=='|cffffd1001 on your wish list|r  ·  |cff40ff402 upgrades for you|r')
+assert(BackstageForeverAtlasCountsLine(row,{},{[3]=true})=='|cff40ff401 upgrade for you|r')
+assert(BackstageForeverAtlasCountsLine(row,{},{})=='')
+io.write('ok')
+`), "ok");
+});
+
+test("upgrade ids come only from drops rated an upgrade right now", () => {
+  const { upgradeIds } = require("../src/core/boss-loot.cjs");
+  const pack = { instances: { rfc: { bosses: [{ name: "Boss", npcIds: [1], items: [{ itemId: 30 }, { itemId: 10 }, { itemId: 20 }, { itemId: 40 }] }] } } };
+  const item = (id, stamina, requiredLevel = 10) => ({ id, name: "Item " + id, quality: 2, itemLevel: 20, requiredLevel, classId: 4, subclassId: 1, inventoryType: 1, slot: "Head", kind: "Cloth", armor: 10, stats: [{ stat: "Stamina", amount: stamina }], classes: null });
+  const table = { 1: item(1, 2), 10: item(10, 9), 20: item(20, 1), 30: item(30, 8), 40: item(40, 20, 60) };
+  const gameData = { build: () => "1.60.1.71037", items: (ids) => ids.map((id) => table[id] || null) };
+  const profile = { className: "Mage", level: 20, clientBuild: "1.60.1.71037", readiness: { equipment: [{ slot: 1, itemId: 1, name: "Item 1" }] } };
+  assert.deepEqual(upgradeIds(pack, { profile, gameData }), [10, 30], "better now: yes; worse or too high a level: no");
+  assert.deepEqual(upgradeIds(pack, { profile: { ...profile, clientBuild: "1.60.2.1" }, gameData }), [], "a saved file from another build is not compared");
+  assert.deepEqual(upgradeIds(pack, { profile: null, gameData }), []);
+  assert.deepEqual(upgradeIds(null, { profile, gameData }), []);
+});
