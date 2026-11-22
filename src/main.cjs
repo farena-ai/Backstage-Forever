@@ -1129,6 +1129,14 @@ app.whenReady().then(async () => {
     bossLootPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(),
     lootPack: () => require("./core/loot-data.cjs").loadLootPack(),
     onChange: () => { game?.writeHandoff().catch(() => {}); } });
+  // Recipe book, computed skill path, who can craft it, cooking from your bags (roadmap E2, E1, E3, E5).
+  require("./core/recipe-book-ipc.cjs").registerRecipeBook({ handle, getState: () => store.state, gameData,
+    trainerPack: () => require("./core/trainer-data.cjs").loadTrainerPack(),
+    vendorPack: () => { if (vendorReference === undefined) { try { vendorReference = require("./core/vendor-facts.cjs").loadVendorPack(); } catch { vendorReference = null; } } return vendorReference; },
+    lootPack: () => require("./core/loot-data.cjs").loadLootPack(),
+    bossLootPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(),
+    questPack: (p) => (p?.clientBuild ? knowledge.index(p)?.pack : null) || knowledge.bundled?.pack || null,
+    instanceNames: () => require("./core/boss-loot.cjs").INSTANCE_NAMES });
   handle("dungeonAtlas", () => {
     const profile = store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null;
     const atlas = buildAtlas({ profile, encounters, knowledgePack: knowledge?.bundled?.pack }), loot = bossLoot.summary(profile);
