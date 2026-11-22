@@ -43,6 +43,7 @@ const MAX = 1024 * 1024,
     "Bindings.xml",
     "BackstageForeverMinimap.lua",
     "BackstageForeverSources.lua",
+    "BackstageForeverChain.lua",
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");

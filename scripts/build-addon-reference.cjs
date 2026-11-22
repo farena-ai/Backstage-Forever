@@ -68,6 +68,8 @@ function compile(input) {
       const mention = npcPoint(q.mentions, "mentioned-in-objective");
       if (mention) row.mention = mention;
     }
+    // 1.19: the reported follow-up quest, for /bf chain. A reported link, not a proven prerequisite.
+    if (Number.isSafeInteger(q.nextQuestId) && q.nextQuestId !== q.id && pack.quests[q.nextQuestId]) row.next = q.nextQuestId;
     lines.push(`[${q.id}]=${literal(row)},`);
   }
   lines.push("}}", "");

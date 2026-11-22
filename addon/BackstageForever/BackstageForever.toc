@@ -26,6 +26,7 @@ BackstageForeverFind.lua
 BackstageForeverAssist.lua
 BackstageForeverGear.lua
 BackstageForeverQuestIntel.lua
+BackstageForeverChain.lua
 BackstageForeverRoute.lua
 BackstageForeverSupplies.lua
 BackstageForeverJournal.lua
