@@ -1,0 +1,41 @@
+Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
+License: https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/JIVESCORP/eg-link-output-wowf
+Immutable source commit: 1bf749ba19be7e699822d6587db0cb85b1b0bc3b
+Product wowf; merged client builds (newest first): 1.60.1.71037, 1.60.1.70959, 1.60.1.70938, 1.60.1.70888, 1.60.1.70862, 1.60.1.70840, 1.60.1.70790.
+Trainer windows collected 2026-11-09 to 2026-11-21.
+
+Backstage Forever changes to the compilation: trainers.json and
+creature_details.enUS.json of each build are verified against source-lock.json.
+A trainer is sorted by its NPC title ("Mage Trainer", "Portal Trainer", "Pet
+Trainer", "Weapon Master", a riding title, or a profession trainer). Services
+join by exact spell id, newest build first: the newest name and price win.
+The level is the highest level any player was shown, because a trainer window
+reports level 0 once the player has the level; 0 here means no level was
+recorded. The price is the full price (reputation below Honored); the Honored
+price is kept beside it. Kept: spell id, name, rank text, level, required
+profession skill, prices. Dropped: icons, trainer positions and names,
+contributor counts, required-ability text and the undocumented "bartered"
+prices.
+
+Coverage: 184 trainers seen; 4 have no recorded title and
+0 have a title this compiler does not sort, so their services are left out.
+1261 class, 364 profession, 14 weapon and 2 riding services.
+22 services have only a "bartered" price and so no price here.
+  Warrior: 103 skills from 5 trainers, 69 with a level, 103 with a price
+  Paladin: 147 skills from 3 trainers, 145 with a level, 147 with a price
+  Hunter: 169 skills from 15 trainers, 169 with a level, 169 with a price
+  Rogue: 5 skills from 1 trainers, 4 with a level, 5 with a price
+  Priest: 173 skills from 5 trainers, 172 with a level, 173 with a price
+  Shaman: 166 skills from 8 trainers, 160 with a level, 166 with a price
+  Mage: 167 skills from 12 trainers, 165 with a level, 167 with a price
+  Warlock: 147 skills from 5 trainers, 146 with a level, 147 with a price
+  Druid: 184 skills from 6 trainers, 183 with a level, 184 with a price
+
+These are what players saw, not a complete list: a class with few recorded
+trainers is missing skills. Talent ranks appear in trainer windows only for
+players who have the talent. No advice is derived. No runtime network request
+is needed.
+
+World of Warcraft and related content are copyright Blizzard Entertainment, Inc.
+The license covers the compilation and observations, not Blizzard content.

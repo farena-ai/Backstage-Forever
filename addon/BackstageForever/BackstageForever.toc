@@ -46,5 +46,8 @@ BackstageForeverOptions.lua
 BackstageForeverGuideData.lua
 BackstageForeverBossTips.lua
 BackstageForeverDesktop.lua
+BackstageForeverTalents.lua
 BackstageForeverAtlasData.lua
 BackstageForeverAtlas.lua
+BackstageForeverTravelData.lua
+BackstageForeverTravel.lua

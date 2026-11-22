@@ -15,7 +15,7 @@ const { FILES, OPTIONAL_FILES, BUILD, hash } = require("../src/core/knowledge.cj
 const { compile } = require("./build-forever-data.cjs");
 const root = path.join(__dirname, "..");
 const REPO = "JIVESCORP/eg-link-output-wowf";
-const EXTRA = ["loot.json", "object_details.enUS.json", "creatures.json", "flights.json", "trainers.json", "quest_scan.json", "texts.enUS.json", "encounters.json", "hunter_pets.json", "quest_prerequisites.json"];
+const EXTRA = ["creature_details.enUS.json", "npcs.json", "loot.json", "object_details.enUS.json", "creatures.json", "flights.json", "trainers.json", "quest_scan.json", "texts.enUS.json", "encounters.json", "hunter_pets.json", "quest_prerequisites.json"];
 const LICENSE_URL = (commit) => `https://raw.githubusercontent.com/${REPO}/${commit}/LICENSE`;
 
 function get(url) {
@@ -92,6 +92,9 @@ async function main() {
   fs.writeFileSync(path.join(vendorDir, "pack.json"), sellers.pack);
   fs.writeFileSync(path.join(vendorDir, "source-lock.json"), sellers.lock);
   console.log(`Compiled data/forever-vendors for ${withSellers.length} builds.`);
+  // The transport graph and the trainer costs lock every build that has their files, then rebuild.
+  for (const script of ["./build-forever-transport.cjs", "./build-forever-trainers.cjs"]) require(script).main(["--relock", dir, "--commit", commit]);
+  console.log("Then run: npm run build:addon-travel");
 }
 
 main().catch((error) => { console.error(error.message); process.exit(1); });

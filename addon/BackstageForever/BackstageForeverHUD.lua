@@ -934,6 +934,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverAssistCommand)=='function' then pcall(BackstageForeverAssistCommand,message)end
                 return
             end
+            if word=='fly' then
+                if type(BackstageForeverFlyCommand)=='function' then pcall(BackstageForeverFlyCommand,message)end
+                return
+            end
             if word=='gear' then
                 if type(BackstageForeverGearCommand)=='function' then pcall(BackstageForeverGearCommand,message)end
                 return
@@ -1008,6 +1012,10 @@ if type(SlashCmdList)=='table' then
             end
             if word=='atlas' then
                 if type(BackstageForeverAtlasCommand)=='function' then pcall(BackstageForeverAtlasCommand,message)end
+                return
+            end
+            if word=='talents' then
+                if type(BackstageForeverTalentsCommand)=='function' then pcall(BackstageForeverTalentsCommand,message)end
                 return
             end
             if word=='chain' then

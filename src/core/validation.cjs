@@ -180,6 +180,7 @@ function validateState(s) {
       "ledger",
       "stats",
       "gearSets",
+      "travel",
       "clientBuild",
       "locale",
       "captureVersion",
@@ -197,6 +198,7 @@ function validateState(s) {
     require("./ledger.cjs").validateLedger(p.ledger);
     require("./sheet.cjs").validateStats(p.stats);
     require("./sheet.cjs").validateGearSets(p.gearSets);
+    if (p.travel !== undefined && !require("node:util").isDeepStrictEqual(require("./travel-planner.cjs").normalizeTravelCapture(p.travel), p.travel)) fail();
     str(p.id, 100, false);
     if (ids.has(p.id)) fail();
     ids.add(p.id);

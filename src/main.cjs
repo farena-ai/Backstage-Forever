@@ -63,6 +63,7 @@ let miniNow = null;
 let sessionHistory = null;
 let closeAskPanel = null, dropAskPanelWindow = null;
 let wishlist = null;
+let talentBuilds = null; // saved talent builds per character (talent planner)
 let community = null, collectDiagnostics = null;
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
@@ -218,7 +219,7 @@ app.whenReady().then(async () => {
     game = new GameSync({
       dataDir: app.getPath("userData"),
       // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
-      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => wishlist?.get(id) || [], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)) }); },
+      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => wishlist?.get(id) || [], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null }); },
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -1007,6 +1008,7 @@ app.whenReady().then(async () => {
     if (ledgerPrices.key !== key) ledgerPrices = { key, index: L.priceIndex(profiles) };
     return L.priceFor(ledgerPrices.index, id);
   };
+  const travelPlanner = require("./core/travel-planner-ipc.cjs").registerTravelPlannerHandlers({ handle, getState: () => store.state });
   handle("talentCoach", (input) => {
     const className = typeof input?.className === "string" ? input.className.slice(0, 20) : null;
     const level = Number.isInteger(input?.level) && input.level >= 1 && input.level <= 100 ? input.level : null;
@@ -1014,9 +1016,16 @@ app.whenReady().then(async () => {
     const trees = gameData.talents(className);
     // 1.3 (J9): class quests and key unlocks, with or without the talent trees.
     const unlocks = require("./core/class-unlocks.cjs").classUnlocks(className, level);
-    if (!trees) return { available: false, unlocks, reason: gameData.status().reason || "Talent trees are not available from your game install yet." };
-    return { available: true, trees, unlocks, coach: require("./core/talent-coach.cjs").coach(trees, className, level) };
+    // C6: what the class trainer newly teaches at this level and the next two, with costs.
+    let training = null;
+    try { training = travelPlanner.trainerView(className, level); } catch { training = null; }
+    if (!trees) return { available: false, unlocks, training, reason: gameData.status().reason || "Talent trees are not available from your game install yet." };
+    return { available: true, trees, unlocks, training, coach: require("./core/talent-coach.cjs").coach(trees, className, level) };
   });
+  // Talent planner: click-to-spend on the same trees, saved builds per character, and the build
+  // marked "Use in game" rides the desktop -> game hand-off.
+  talentBuilds = new (require("./core/talent-builds.cjs").TalentBuilds)(app.getPath("userData"));
+  require("./core/talent-planner-ipc.cjs").registerTalentPlanner({ handle, getState: () => store.state, gameData, builds: talentBuilds, onChange: () => { game?.writeHandoff().catch(() => {}); } });
   radar = require("./core/radar-window.cjs").createRadar({ BrowserWindow, ipcMain, worldMap, live: liveBridge, rendererDir: path.join(__dirname, "renderer"), mapArt });
   handle("openRadar", () => radar.open());
   handle("setRadarTarget", (pin) => radar.setTarget(pin === undefined ? null : pin));
@@ -1174,6 +1183,7 @@ app.whenReady().then(async () => {
       const fresh = store.reset();
       privateAfterAction.clear();
       wishlist?.clear(); // starred loot belongs to the characters just deleted
+      talentBuilds?.clear(); // and so do their talent builds
       community?.reset(); // local install id, sent marks and pack; shared facts stay on the server
       fieldDispatch.finishReset();
       supplyDesk.reset();

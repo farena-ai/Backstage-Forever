@@ -76,3 +76,140 @@
 .tal-spellbook { margin-block-start: 10px; }
 .tal-spellbook h3 { margin-block-start: 8px; }
 .tal-spellbook select { max-inline-size: 100%; min-block-size: 32px; background: #fff7e5; color: #2b1b0a; border: 1px solid #825b2a; }
+/* C6: at the trainer. What the class trainer newly teaches at this level and the next two. */
+.tal-train { margin: 14px 0; padding: 12px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); border: 1px solid #a5823e; color: #2b1b0a; text-shadow: none; }
+.tal-train h3 { margin: 0 0 8px; font: 700 16px Cinzel, Georgia, serif; color: #3d220c; }
+.tal-train h3 small { font: 600 12px Georgia, serif; color: #6b4a22; margin-left: 6px; }
+.tal-train-none { margin: 0; font-size: 13px; color: #4a3218; }
+.tal-train-levels { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.tal-train-level { padding: 8px 10px; border-radius: 6px; background: rgba(255,248,225,.55); border: 1px solid #c4a466; min-width: 0; }
+.tal-train-level.now { border-color: #8a5a18; background: #fff6dc; box-shadow: 0 0 0 2px rgba(246,196,69,.4); }
+.tal-train-level > header { display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 10px; align-items: center; }
+.tal-train-level > header .tal-u-lv { grid-row: span 2; }
+.tal-train-level.now > header .tal-u-lv { background: #2e6b1e; }
+.tal-train-sum { font-size: 12px; color: #5a3e1c; }
+.tal-train-level ul { list-style: none; margin: 8px 0 0; padding: 6px 0 0; border-top: 1px solid #d3b87c; display: flex; flex-direction: column; gap: 3px; }
+.tal-train-level ul li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: baseline; font-size: 13px; }
+.tal-train-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tal-train-name small { color: #6b4a22; }
+.tal-train-tag { padding: 0 5px; border-radius: 7px; background: #6b3f12; color: #fff1d6; font-size: 11px; font-weight: 700; }
+.tal-train-cost { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tal-coins { display: inline-flex; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tal-gold { color: #694305; font-weight: 700; }
+.tal-silver { color: #45474a; font-weight: 700; }
+.tal-copper { color: #713914; font-weight: 700; }
+.tal-train-total { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; font-size: 13px; color: #3d220c; }
+.tal-train-total strong { font-size: 14px; }
+.tal-train-notes { margin: 8px 0 0; padding: 0 0 0 18px; font-size: 12px; line-height: 1.45; color: #5a3e1c; }
+@media (max-width: 1000px) { .tal-train-levels { grid-template-columns: 1fr; } }
+
+/* Talent planner (roadmap C1): click-to-spend on the same trees, level-up order, saved builds. */
+.tal-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 14px 0 10px; }
+.tal-modes { display: inline-flex; border: 1px solid #a5823e; border-radius: 8px; overflow: hidden; }
+.tal-modes button { padding: 8px 16px; border: 0; border-radius: 0; background: #2b1608; color: #e8c983; font: 700 14px Cinzel, Georgia, serif; }
+.tal-modes button:hover { background: #45250f; }
+.tal-modes button[aria-pressed="true"] { background: linear-gradient(180deg, #f3d58a, #c9973a); color: #2b1407; text-shadow: none; }
+.tal-budget { display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 12px; border-radius: 16px; background: linear-gradient(180deg, #efe0bb, #dcc797); border: 1px solid #a5823e; color: #2b1b0a; font-size: 13px; text-shadow: none; }
+.tal-budget strong { font: 800 17px/1 Cinzel, Georgia, serif; color: #7a1f14; }
+.tal-budget span { margin-left: 6px; padding: 0 7px; border-radius: 8px; background: #468134; color: #fff; font-size: 11px; font-weight: 800; }
+.tal-level { margin-left: auto; font-size: 13px; color: #f1dcb0; }
+.tal-level select { margin-left: 6px; }
+.tal-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #6b4a22; background: #3d220c; color: #f6dc9a; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.tal-btn:hover { background: #6a1a0e; }
+.tal-btn.quiet { background: transparent; color: #e8c983; }
+.tal-btn.quiet:hover { background: rgba(232, 201, 131, .16); }
+.tal-panel .tal-btn.quiet, .tal-compare .tal-btn.quiet { border-color: #8a5a18; color: #3d220c; text-shadow: none; }
+.tal-panel .tal-btn.quiet:hover, .tal-compare .tal-btn.quiet:hover { background: rgba(61, 34, 12, .14); }
+.talents-page :is(.tal-btn, .tal-mini, .tal-modes button, .tal-click):focus-visible { outline: 2px solid #f6c445; outline-offset: 2px; }
+.tal-panel :is(.tal-btn, input):focus-visible, .tal-compare .tal-btn:focus-visible { outline: 2px solid #654018; outline-offset: 2px; }
+[data-tal-status] { min-height: 36px; margin-bottom: 10px; }
+.tal-status { margin: 0; padding: 8px 12px; border-radius: 6px; background: rgba(43, 22, 8, .7); border: 1px solid #6b4a22; color: #e8d6ad; font-size: 13px; }
+.tal-status.said { background: linear-gradient(180deg, #efe0bb, #dcc797); border-color: #a5823e; color: #2b1b0a; text-shadow: none; }
+.tal-status.bad { background: #f6d9c9; border-color: #9c2b1b; color: #5a140a; text-shadow: none; }
+.tal-click { display: block; padding: 0; font: inherit; line-height: 0; transition: none; }
+.tal-click:hover { background: #0e0703; box-shadow: 0 0 0 2px rgba(246, 196, 69, .55); }
+.tal-open { border-color: #9a7b45; }
+.tal-click.tal-off { cursor: default; }
+.tal-click.tal-off:hover { box-shadow: none; }
+.tal-click .tal-rank { line-height: 1.3; }
+.tal-mini { padding: 1px 9px; border-radius: 10px; border: 1px solid #6b4a22; background: transparent; color: #e8c983; font-size: 11px; font-weight: 700; }
+.tal-mini:hover { background: #45250f; }
+.tal-order { list-style: none; margin: 0; padding: 0 4px 0 0; display: grid; gap: 4px; max-height: 548px; overflow-y: auto; }
+.tal-order li { display: grid; grid-template-columns: 94px 28px minmax(0, 1fr); gap: 8px; align-items: center; padding: 4px 6px; border-radius: 6px; background: rgba(255, 248, 225, .55); border: 1px solid #c4a466; }
+.tal-order li.due { background: #fff6dc; border-color: #8a5a18; }
+.tal-order-lv { padding: 2px 4px; border-radius: 8px; background: #6b3f12; color: #fff1d6; font-size: 11px; font-weight: 800; text-align: center; white-space: nowrap; }
+.tal-order li.due .tal-order-lv { background: #468134; color: #fff; }
+.tal-order canvas { border-radius: 4px; }
+.tal-order strong { display: block; font-size: 13px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tal-order small { display: block; color: #6b4a22; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tal-order li.tal-order-mark { display: flex; gap: 8px; padding: 0; border: 0; background: none; color: #7a1f14; font-size: 11px; font-weight: 800; }
+.tal-order-mark::before, .tal-order-mark::after { content: ""; flex: 1; height: 1px; background: #a5823e; }
+.tal-order-empty { margin: 0 0 10px; font-size: 13px; }
+.tal-bench { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; margin-top: 14px; }
+.tal-panel, .tal-compare { padding: 12px 14px; border-radius: 8px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; text-shadow: none; }
+.tal-panel h3, .tal-compare h3 { margin: 0 0 8px; font: 700 18px Cinzel, Georgia, serif; color: #3d220c; }
+.tal-panel .tal-note.first { margin: 0 0 8px; }
+.tal-save { display: flex; gap: 8px; margin-bottom: 8px; }
+.tal-save input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid #825b2a; border-radius: 6px; background: #fff7e5; color: #2b1b0a; font-size: 13px; text-shadow: none; }
+.tal-save input::placeholder { color: #7a6238; }
+.tal-builds { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tal-builds li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 6px 8px; border-radius: 6px; background: rgba(255, 248, 225, .55); border: 1px solid #c4a466; }
+.tal-builds li.loaded { background: #fff6dc; border-color: #8a5a18; }
+.tal-build-name { min-width: 0; }
+.tal-build-name strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tal-build-name small { color: #6b4a22; font-weight: 600; }
+.tal-ingame { color: #2e6b1e; font-weight: 800; }
+.tal-build-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.tal-build-acts .tal-btn { padding: 4px 10px; font-size: 12px; }
+.tal-respec { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; }
+.tal-respec li { display: flex; justify-content: space-between; gap: 6px; padding: 3px 8px; border-radius: 6px; background: rgba(255, 248, 225, .55); border: 1px solid #c4a466; font-size: 12px; }
+.tal-respec li:last-child { grid-column: span 2; }
+.tal-respec strong { color: #7a1f14; }
+.tal-compare { margin-top: 14px; }
+.tal-compare header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.tal-compare header h3 { margin: 0; }
+.tal-compare-totals { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0 0 8px; font-size: 13px; }
+.tal-compare table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tal-compare th { padding: 4px 8px; text-align: left; border-bottom: 1px solid #a5823e; color: #3d220c; }
+.tal-compare td { padding: 3px 8px; border-bottom: 1px solid rgba(165, 130, 62, .4); }
+.tal-compare :is(th, td):nth-child(n+3) { width: 150px; }
+.tal-compare td.more { font-weight: 800; color: #2e6b1e; }
+.tal-card { position: fixed; z-index: 60; width: 300px; padding: 10px 12px; border-radius: 8px; background: linear-gradient(180deg, #2b1608, #160a04); border: 1px solid #c9973a; color: #f1dcb0; box-shadow: 0 8px 24px rgba(0, 0, 0, .65); pointer-events: none; font-size: 13px; line-height: 1.35; }
+.tal-card[hidden] { display: none; }
+.tal-card strong { display: block; font: 700 15px Cinzel, Georgia, serif; color: #ffe9b0; }
+.tal-card-rank { font-size: 12px; color: #e8c983; }
+.tal-card p { margin: 6px 0 0; }
+.tal-card em { display: block; font-style: normal; font-size: 11px; font-weight: 800; color: #f6c445; }
+.tal-card .tal-card-why { color: #ffb4a1; }
+.tal-card .tal-card-hint { font-size: 11px; color: #b9a783; }
+@media (max-width: 1300px) { .tal-bench { grid-template-columns: 1fr 1fr; } .tal-bench > :first-child { grid-column: 1 / -1; } }
+@media (max-width: 1000px) { .tal-bench { grid-template-columns: 1fr; } .tal-level { margin-left: 0; } }
+
+/* The app frames every button with brass end caps. Talent icons, the two view tabs and the small
+   tree reset are not that kind of button: they keep the talent screen's own plain frames. */
+.talents-page :is(button.tal-click, .tal-modes button, button.tal-mini)::before, .talents-page :is(button.tal-click, .tal-modes button, button.tal-mini)::after { display: none; }
+.talents-page :is(button.tal-click, .tal-modes button, button.tal-mini), .talents-page :is(button.tal-click, .tal-modes button, button.tal-mini):hover:not(:disabled), .talents-page :is(button.tal-click, .tal-modes button, button.tal-mini):active:not(:disabled) { min-height: 0; transform: none; transition: none; }
+.talents-page button.tal-click { width: 44px; height: 44px; padding: 0; border: 2px solid #4a3a2a; border-radius: 6px; background: #0e0703; box-shadow: none; text-shadow: none; }
+.talents-page button.tal-click.tal-open { border-color: #9a7b45; }
+.talents-page button.tal-click.tal-some { border-color: #3cd04a; }
+.talents-page button.tal-click.tal-full { border-color: #f6c445; }
+.talents-page button.tal-click:hover:not(:disabled) { box-shadow: 0 0 0 2px rgba(246, 196, 69, .55); }
+.talents-page button.tal-click.tal-off:hover:not(:disabled) { box-shadow: none; border-color: #4a3a2a; }
+.talents-page .tal-modes button { padding: 8px 16px; border: 0; border-radius: 0; background: #2b1608; color: #e8c983; box-shadow: none; }
+.talents-page .tal-modes button:hover:not(:disabled) { background: #45250f; box-shadow: none; }
+.talents-page .tal-modes button[aria-pressed="true"], .talents-page .tal-modes button[aria-pressed="true"]:hover:not(:disabled) { background: linear-gradient(180deg, #f3d58a, #c9973a); color: #2b1407; text-shadow: none; }
+.talents-page button.tal-mini { padding: 1px 9px; border: 1px solid #6b4a22; border-radius: 10px; background: transparent; color: #e8c983; box-shadow: none; text-shadow: none; }
+.talents-page button.tal-mini:hover:not(:disabled) { background: #45250f; box-shadow: none; }
+.talents-page .tal-btn { min-height: 34px; padding: 5px 20px; }
+.talents-page .tal-build-acts .tal-btn { min-height: 30px; padding: 3px 16px; }
+.tal-tree header h3 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tal-tree header span { white-space: nowrap; }
+.tal-level { display: inline-flex; align-items: center; gap: 8px; }
+.tal-level select { margin-left: 0; }
+.tal-layout.tal-plan { grid-template-columns: minmax(0, 1fr) 356px; }
+@media (max-width: 1300px) { .tal-layout.tal-plan { grid-template-columns: 1fr; } }
+.tal-order li { grid-template-columns: 86px 28px minmax(0, 1fr); }
+.tal-builds li { display: grid; grid-template-columns: minmax(0, 1fr); }
+.tal-level { white-space: nowrap; }
+.tal-card small { color: #b9a783; }
+.tal-plan .tal-tree header h3 { font-size: 14px; }

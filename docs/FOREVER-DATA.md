@@ -48,6 +48,30 @@ A separate offline catalog contains **91 vendors with listings**, **1,301 listin
 
 Suggestions require a compatible observed character build and explicit historical nonhostile reaction evidence for the character's reported faction. Missing evidence stays unknown; it does not mean hostile or inaccessible. This snapshot has no Alliance reaction arrays. Multiple-map mobile vendor history is browse-only. Reference locations are approximate interaction points, and current stock, price and access are unverified. No observed seller means no matching observation, not that a material is unobtainable. No automatic purchase or vendor waypoint is created.
 
+## Flight graph and trainer costs
+
+Two more offline packs come from the same upstream snapshot. Both keep their source lock beside the pack, so a data refresh re-locks and rebuilds them in one step.
+
+**`data/forever-transport/`** is the flight graph for both factions, built from `flights.json` and `npcs.json` of every bundled build: every flight point a player saw on a flight map, every direct connection, and the longer routes the game itself offered. A connection has the flight time in seconds when a player flew it (the middle value of all recorded flights) and the price the flight master showed. The full price and the Honored price (10% less) are kept apart. Flight points take their place and faction from their flight master, or from where players landed and which flight masters they connect to.
+
+What upstream does **not** have, and so the pack does not have: flight point names, boats, zeppelins, the tram and portals. Nothing was added for them. The app shows a flight point by its zone and flight master until the addon has seen a flight map in game, which gives the real names. A connection nobody flew has no time; the planner then estimates from the distance and says so.
+
+**`data/forever-trainers/`** holds what class, profession, weapon and riding trainers teach, from `trainers.json` and the NPC titles in `creature_details.enUS.json`: spell or rank name, the level it needs, the profession skill it needs, and the price. A trainer window reports level 0 once the player has the level, so the level kept is the highest any player was shown, and 0 means no level was recorded. A class with few recorded trainers is missing skills; the pack's NOTICE lists the count per class. The undocumented "bartered" prices are left out. No advice is derived from this data.
+
+The Travel page (Adventure → Travel) and `/bf fly PLACE` plan with the flight graph; "At the trainer" on Characters → Talents and `/bf train` list the trainer costs. The in-game copy of both is `BackstageForeverTravelData.lua`, generated from the two packs. Both follow the same-patch rule.
+
+```powershell
+npm run check:forever-transport
+npm run check:forever-trainers
+npm run check:addon-travel
+node scripts/build-forever-transport.cjs --source-dir work/forever-sources/<commit> --check
+node scripts/build-forever-trainers.cjs --source-dir work/forever-sources/<commit> --check
+# After fetching a newer snapshot (refresh-forever-data.cjs does this for you):
+node scripts/build-forever-transport.cjs --relock work/forever-sources/<commit> --commit <commit>
+node scripts/build-forever-trainers.cjs --relock work/forever-sources/<commit> --commit <commit>
+npm run build:addon-travel
+```
+
 ## Source and license
 
 Data from [Efficient Games](https://efficient.games), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Source: [JIVESCORP/eg-link-output-wowf, immutable commit 23f9636486d3d60479dc0bcee2356053c33faf2c](https://github.com/JIVESCORP/eg-link-output-wowf/tree/23f9636486d3d60479dc0bcee2356053c33faf2c). Backstage Coding filters, normalizes, indexes and combines the records; those are changes to the compilation. The separate quest and seller artifacts retain their own license/notices. App code remains MIT. The compilation license does not transfer ownership of Blizzard's game content.
