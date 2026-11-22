@@ -6,7 +6,7 @@ local ART='Interface\\AddOns\\BackstageForever\\Art\\'
 local WIDTH,HEIGHT=680,500
 local LIST_X,LIST_TOP,LIST_ROW=28,-46,15.5
 local PANE_X,PANE_WIDTH=244,408
-local MAX_BOSSES,MAX_LOOT=16,8
+local MAX_BOSSES,MAX_LOOT,MAX_QUESTS=16,8,6
 
 -- Pure: how an instance fits a character level.
 function BackstageForeverAtlasFit(min,max,level)
@@ -46,7 +46,8 @@ end
 local FIT_COLOR={now={.25,1,.25},soon={1,.82,.2},later={.85,.85,.85},done={.5,.5,.5}}
 local FIT_WORD={now='Right for your level',soon='Coming up soon',later='For later',done='Below your level'}
 local frame,listButtons,bossButtons,lootRows={},{},{},{}
-local selected,selectedBoss=1,1
+local selected,selectedBoss,showQuests=1,1,false
+local questRows={}
 local function busy() return type(InCombatLockdown)=='function' and InCombatLockdown()~=false end
 local function say(text)
     if DEFAULT_CHAT_FRAME and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then
@@ -72,7 +73,47 @@ local function itemLabel(id)
     if type(C_Item)=='table' and type(C_Item.RequestLoadItemDataByID)=='function' then pcall(C_Item.RequestLoadItemDataByID,id) end
     return T('Item')..' #'..id
 end
+-- Pure: quests of one instance row that this side can take, each with where it stands for the player.
+-- state(id) returns 'done', 'log' or nil.
+function BackstageForeverAtlasQuests(row,faction,state)
+    local out={}
+    local mine=faction=='Alliance' and 'A' or faction=='Horde' and 'H' or nil
+    for _,q in ipairs(type(row)=='table' and type(row[11])=='table' and row[11] or {}) do
+        if not mine or q[4]=='B' or q[4]==mine then
+            out[#out+1]={id=q[1],title=q[2],level=q[3],giver=q[5]~='' and q[5] or nil,map=q[6],x=q[7],y=q[8],state=type(state)=='function' and state(q[1]) or nil}
+        end
+    end
+    return out
+end
+local function questState(id)
+    local api=C_QuestLog
+    if type(api)~='table' then return nil end
+    if type(api.IsQuestFlaggedCompleted)=='function' then local ok,done=pcall(api.IsQuestFlaggedCompleted,id);if ok and done==true then return 'done' end end
+    if type(api.IsOnQuest)=='function' then local ok,on=pcall(api.IsOnQuest,id);if ok and on==true then return 'log' end end
+end
+local function faction()
+    local ok,side=pcall(UnitFactionGroup,'player')
+    return ok and type(side)=='string' and side or nil
+end
+local function showQuestList()
+    local list=BackstageForeverAtlasQuests(rows()[selected],faction(),questState)
+    frame.bossName:SetText(T('Quests to bring'))
+    frame.tip:SetText(#list==0 and T('No quests known for this place yet.') or T('Green: done. Yellow: in your log. Click one for an arrow to its giver.'))
+    frame.noLoot:SetText('')
+    for _,l in ipairs(lootRows) do l:Hide() end
+    for i,line in ipairs(questRows) do
+        local q=list[i]
+        if q then
+            line.quest=q
+            local color=q.state=='done' and '|cff40ff40' or q.state=='log' and '|cffffd133' or '|cffffffff'
+            line.text:SetText(color..q.title..'|r'..(q.level>0 and ('  |cffaaaaaa'..q.level..'|r') or '')..(q.giver and ('  |cffaaaaaa'..q.giver..'|r') or ''))
+            line:Show()
+        else line.quest=nil;line:Hide() end
+    end
+end
 local function showBoss()
+    for _,l in ipairs(questRows) do l:Hide() end
+    if showQuests then showQuestList() return end
     local row=rows()[selected]
     local boss=row and row[10][selectedBoss]
     if not boss then frame.bossName:SetText('');frame.tip:SetText('');for _,l in ipairs(lootRows) do l:Hide() end return end
@@ -105,6 +146,8 @@ local function showInstance()
     local color=FIT_COLOR[fit]
     frame.fit:SetText(T(FIT_WORD[fit]));frame.fit:SetTextColor(color[1],color[2],color[3])
     if row[7]~=0 then frame.entrance:Show() else frame.entrance:Hide() end
+    local count=#BackstageForeverAtlasQuests(row,faction())
+    frame.questsButton:SetText(showQuests and T('Bosses') or (T('Quests')..' ('..count..')'))
     for i,button in ipairs(bossButtons) do
         local boss=row[10][i]
         if boss then button:SetText(i..'. '..boss[1]);button:Show() else button:Hide() end
@@ -145,7 +188,7 @@ local function build()
         button.label:SetPoint('LEFT',4,0);button.label:SetWidth(154);button.label:SetJustifyH('LEFT');button.label:SetWordWrap(false)
         button.band=button:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
         button.band:SetPoint('RIGHT',-4,0);button.band:SetJustifyH('RIGHT')
-        button:SetScript('OnClick',function() selected=i;selectedBoss=1;showInstance() end)
+        button:SetScript('OnClick',function() selected=i;selectedBoss=1;showQuests=false;showInstance() end)
         listButtons[i]=button
     end
     local divider=f:CreateTexture(nil,'OVERLAY');divider:SetColorTexture(.79,.62,.27,.5)
@@ -161,7 +204,7 @@ local function build()
     local rule=f:CreateTexture(nil,'OVERLAY');rule:SetColorTexture(.79,.62,.27,.9)
     rule:SetSize(PANE_WIDTH,1);rule:SetPoint('TOPLEFT',frame.banner,'BOTTOMLEFT',0,0)
     frame.facts=f:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
-    frame.facts:SetPoint('TOPLEFT',PANE_X,-154);frame.facts:SetWidth(280);frame.facts:SetJustifyH('LEFT');frame.facts:SetWordWrap(false)
+    frame.facts:SetPoint('TOPLEFT',PANE_X,-154);frame.facts:SetWidth(180);frame.facts:SetJustifyH('LEFT');frame.facts:SetWordWrap(false)
     frame.entrance=CreateFrame('Button',nil,f,'UIPanelButtonTemplate')
     frame.entrance:SetSize(118,20);frame.entrance:SetPoint('TOPRIGHT',f,'TOPLEFT',PANE_X+PANE_WIDTH,-150)
     frame.entrance:SetText(T('Show entrance'))
@@ -171,11 +214,29 @@ local function build()
         if busy() then say('Waypoints wait until you leave combat.') return end
         if type(BackstageForeverWay)=='function' then pcall(BackstageForeverWay,('way %d %.2f %.2f %s'):format(row[7],row[8]*100,row[9]*100,row[2])) end
     end)
+    frame.questsButton=CreateFrame('Button',nil,f,'UIPanelButtonTemplate')
+    frame.questsButton:SetSize(96,20);frame.questsButton:SetPoint('RIGHT',frame.entrance,'LEFT',-6,0)
+    frame.questsButton:SetScript('OnClick',function() showQuests=not showQuests;showInstance() end)
+    for i=1,MAX_QUESTS do
+        local line=CreateFrame('Button',nil,f)
+        line:SetSize(PANE_WIDTH,15);line:SetPoint('TOPLEFT',PANE_X,-384-(i-1)*16)
+        line.text=line:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
+        line.text:SetAllPoints();line.text:SetJustifyH('LEFT');line.text:SetWordWrap(false)
+        local hover=line:CreateTexture(nil,'HIGHLIGHT');hover:SetAllPoints();hover:SetColorTexture(1,1,1,.08)
+        line:SetScript('OnClick',function(self)
+            local q=self.quest
+            if not q or q.map==0 then say('The giver of this quest is not known yet.') return end
+            if busy() then say('Waypoints wait until you leave combat.') return end
+            if type(BackstageForeverWay)=='function' then pcall(BackstageForeverWay,('way %d %.2f %.2f %s'):format(q.map,q.x*100,q.y*100,q.giver or q.title)) end
+        end)
+        line:Hide()
+        questRows[i]=line
+    end
     for i=1,MAX_BOSSES do
         local button=CreateFrame('Button',nil,f,'UIPanelButtonTemplate')
         local column,line=(i-1)%2,math.floor((i-1)/2)
         button:SetSize(200,18);button:SetPoint('TOPLEFT',PANE_X+column*208,-180-line*19)
-        button:SetScript('OnClick',function() selectedBoss=i;showBoss() end)
+        button:SetScript('OnClick',function() selectedBoss=i;showQuests=false;showInstance() end)
         bossButtons[i]=button
     end
     local rule2=f:CreateTexture(nil,'OVERLAY');rule2:SetColorTexture(.79,.62,.27,.5)

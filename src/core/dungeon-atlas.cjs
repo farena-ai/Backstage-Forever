@@ -163,4 +163,4 @@ function buildAtlas({ profile = null, encounters = null, knowledgePack = null } 
     caution: "Baseline levels, entrances and bosses come from the original game era; World of Warcraft: Forever may differ. Observed Forever encounters are marked.",
   };
 }
-module.exports = { buildAtlas, loadEncounters, difficulty, BASELINE };
+module.exports = { buildAtlas, loadEncounters, difficulty, dungeonQuests, norm, BASELINE };

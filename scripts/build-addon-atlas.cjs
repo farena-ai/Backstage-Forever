@@ -6,11 +6,12 @@
 const fs = require("node:fs"), path = require("node:path");
 const root = path.join(__dirname, "..");
 const file = path.join(root, "addon", "BackstageForever", "BackstageForeverAtlasData.lua");
-const MAX_LOOT = 8;
+const MAX_LOOT = 8, MAX_QUESTS = 6;
 const luaString = (value) => '"' + [...Buffer.from(String(value), "utf8")].map((b) => (b >= 32 && b <= 126 && b !== 34 && b !== 92 ? String.fromCharCode(b) : "\\" + String(b).padStart(3, "0"))).join("") + '"';
 
 function compile() {
-  const { BASELINE } = require("../src/core/dungeon-atlas.cjs");
+  const { BASELINE, dungeonQuests, norm } = require("../src/core/dungeon-atlas.cjs");
+  const pack = JSON.parse(fs.readFileSync(path.join(root, "data", "forever", "pack.json"), "utf8"));
   const loot = JSON.parse(fs.readFileSync(path.join(root, "data", "forever-boss-loot", "pack.json"), "utf8"));
   const rows = BASELINE.map(([id, name, kind, min, max, side, , mapId, at, , bosses]) => {
     if (!/^[a-z0-9]{2,8}$/.test(id) || !Number.isInteger(min) || !Number.isInteger(max) || min > max) throw Error(`Bad atlas row: ${id}`);
@@ -24,14 +25,21 @@ function compile() {
     });
     const where = Number.isSafeInteger(mapId) && Array.isArray(at) && at.length === 2 ? `${mapId},${(at[0] / 100).toFixed(4)},${(at[1] / 100).toFixed(4)}` : "0,0,0";
     const letter = side === "Alliance" ? "A" : side === "Horde" ? "H" : "B";
-    return `{${luaString(id)},${luaString(name)},${luaString(kind === "raid" ? "r" : "d")},${min},${max},${luaString(letter)},${where},{${list.join(",")}}},`;
+    // Quests that send you inside (objectives or titles naming the place or a boss), for both sides.
+    const quests = dungeonQuests(pack, new Set(bosses.map(norm)), null, name, { min, max }).slice(0, MAX_QUESTS).map((q) => {
+      const sides = pack.quests[q.id]?.sides || [];
+      const who = sides.length === 1 ? (sides[0] === "Alliance" ? "A" : "H") : "B";
+      const g = q.giver && Number.isSafeInteger(q.giver.mapId) && Number.isFinite(q.giver.x) && Number.isFinite(q.giver.y) ? q.giver : null;
+      return `{${q.id},${luaString(q.title)},${q.level || 0},${luaString(who)},${luaString(g ? g.name : "")},${g ? g.mapId : 0},${g ? g.x.toFixed(4) : 0},${g ? g.y.toFixed(4) : 0}}`;
+    });
+    return `{${luaString(id)},${luaString(name)},${luaString(kind === "raid" ? "r" : "d")},${min},${max},${luaString(letter)},${where},{${list.join(",")}},{${quests.join(",")}}},`;
   });
   return `-- Generated offline by scripts/build-addon-atlas.cjs; data only.
 -- Level bands, entrances and boss order are Backstage Forever's own reference. Boss loot is observed
 -- by players: data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
 -- Historical observations, not guaranteed drops. Blizzard game content is excluded from that license.
 -- Row: id, name, kind (d dungeon, r raid), min level, max level, side (A, H, B), entrance map, x, y,
--- bosses {name, "itemId~percent|..."}.
+-- bosses {name, "itemId~percent|..."}, quests to bring {id, title, level, side, giver, giver map, x, y}.
 BackstageForeverAtlasData={
 ${rows.join("\n")}
 }
