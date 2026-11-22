@@ -197,7 +197,7 @@ if L=="deDE" then
         ["Turning off item tips does not turn off quest-item sale protection."]="Auch ohne Gegenstandshinweise bleibt der Verkaufsschutz f\195\188r Questgegenst\195\164nde aktiv.",
         ["Two quests, one stop"]="Zwei Quests, ein Stopp",
         ["Type /bf badges all for the full list; the app shows them all with dates in Characters > Badges."]="Gib /bf badges all f\195\188r die ganze Liste ein; die App zeigt sie alle mit Datum unter Charaktere > Abzeichen.",
-        ["Type /bf next any time for an arrow to your next quest. /bf help lists everything."]="Gib jederzeit /bf next ein, um einen Pfeil zu deiner n\195\164chsten Quest zu sehen. /bf help listet alles auf.",
+        ["Type /bf next for an arrow to your next quest. Right-click the owl on the minimap for settings. The free desktop app at backstagecoding.com adds maps, plans and a companion."]="Gib /bf next ein, um einen Pfeil zu deiner n\195\164chsten Quest zu sehen. Rechtsklicke die Eule an der Minikarte f\195\188r die Einstellungen. Die kostenlose Desktop-App auf backstagecoding.com bringt Karten, Pl\195\164ne und einen Begleiter.",
         ["type /bf next for the nearest quest"]="gib /bf next f\195\188r die n\195\164chste Quest ein",
         ["Upgrade lines on item tooltips and on quest rewards."]="Verbesserungszeilen in Gegenstands-Tooltips und bei Questbelohnungen.",
         ["Use /bf helpers <key> to check, or /bf helpers <key> on|off to change."]="Mit /bf helpers <key> pr\195\188fen oder mit /bf helpers <key> on|off \195\164ndern.",

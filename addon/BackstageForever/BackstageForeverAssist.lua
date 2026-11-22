@@ -661,7 +661,7 @@ if type(CreateFrame)=='function' then
                 loadSettings() trackXP() lastLevelAt=now()
                 if not settings.welcomed then
                     settings.welcomed=true
-                    BackstageForeverToast('Backstage Forever is ready','Type /bf next any time for an arrow to your next quest. /bf help lists everything.',nil,'ready')
+                    BackstageForeverToast('Backstage Forever is ready','Type /bf next for an arrow to your next quest. Right-click the owl on the minimap for settings. The free desktop app at backstagecoding.com adds maps, plans and a companion.',nil,'ready')
                 end
             elseif event=='PLAYER_XP_UPDATE' then trackXP()
             elseif event=='PLAYER_LEVEL_UP' then trackXP() onLevel(a)
