@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.23.0 - Gear, groups and stories
+
+- Editable stat weights, a gear plan per slot, a reputation planner, keys and attunements, share pictures, the story so far, a timeline with your screenshots, leveling races, a stream overlay, coach's notes, a quest list by distance, a dungeon run panel, a wish banner, a group finder board, readiness checks, a mentor link, guild sharing and an auction shopping list. See the [release notes](docs/releases/1.23.0.md).
+
 ## 1.22.0 - Planner season
 
 - A talent planner, a travel planner, trainer costs, gathering loops, a rare and treasure finder, price history, craft profit, a cooldown calendar, run history, and a set of small in-game helpers (rested, weapon skills, flight times, durability, class kits, ready check, group quests, player notes, mail expiry). See the [release notes](docs/releases/1.22.0.md).
