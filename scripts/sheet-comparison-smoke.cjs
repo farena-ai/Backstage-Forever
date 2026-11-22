@@ -15,7 +15,7 @@ const { navigate } = require("./player-navigation.cjs");
     const main = { id: "main", name: "Example", className: "Paladin", faction: "Alliance", realm: "Synthetic", level: 35, notes: "", goals: [], clientBuild: build,
       source: { kind: "wow-addon", id: "fixture-main", updatedAt: new Date(Date.now() - 60000).toISOString() },
       gearSets: { sets: [{ name: "Strength", savedAt: 1, items: [{ slot: 5, itemId: 2041 }] }, { name: "Healing", savedAt: 2, items: [{ slot: 5, itemId: 6682 }] }] } };
-    const alt = { ...main, id: "alt", name: "Alt", clientBuild: "1.60.1.70862", gearSets: undefined, source: { ...main.source, id: "fixture-alt" } };
+    const alt = { ...main, id: "alt", name: "Alt", clientBuild: "1.60.2.70862", gearSets: undefined, source: { ...main.source, id: "fixture-alt" } };
     const weaponSet = (name, mainId, offId) => ({ name, savedAt: 1, items: [{ slot: 16, itemId: mainId }, { slot: 17, itemId: offId }] });
     const rogue = { ...main, id: "rogue", name: "Rogue Fixture", className: "Rogue", source: { ...main.source, id: "fixture-rogue" },
       gearSets: { sets: [weaponSet("First pair", 101, 102), weaponSet("Second pair", 103, 104)] } };
@@ -128,7 +128,7 @@ const { navigate } = require("./player-navigation.cjs");
     await page.getByRole("heading", { name: "Alt", exact: true }).waitFor();
     await summary.press("Enter");
     await role.selectOption("leveling"); await fill(); await compare.press("Enter");
-    await panel.getByText(/matching installed WoW Forever build are required/).waitFor();
+    await panel.getByText(/installed WoW Forever game on the same patch are required/).waitFor();
     await app.evaluate(() => globalThis.releaseComparison());
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     assert.equal(await panel.getByText("Option B leads by 10 points.").count(), 0);
