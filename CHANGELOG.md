@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.20.1 - Real icons for hotfix loot
+
+- Items the game delivers as hotfixes now show their real icon, quality, stats and upgrade verdict, read from the game's own hotfix cache on your computer. See the [release notes](docs/releases/1.20.1.md).
+
 ## 1.20.0 - Your wish list in the game
 
 - Items you star on the desktop are marked in the in-game Instance Atlas after your next /reload. Fixes fuzzy text on light buttons and unnamed, icon-less dungeon loot. See the [release notes](docs/releases/1.20.0.md).

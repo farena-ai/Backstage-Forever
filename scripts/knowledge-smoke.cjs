@@ -399,7 +399,11 @@ function shortPath(target){
     }
     await fs.mkdir(path.join(repo,"work/v012-quest-ui-evidence"),{recursive:true});
     await page.evaluate(()=>{ document.getElementById("toast").className = ""; });
-    await page.locator('.quest-chain').screenshot({path:path.join(repo,"work/v012-quest-ui-evidence/quest-chain-directed.png")});
+    // The detail pane may repaint once more after its last read; a picture of a node that was just replaced is taken again.
+    for (let attempt = 0; ; attempt++) {
+      try { await page.locator('.quest-chain').screenshot({path:path.join(repo,"work/v012-quest-ui-evidence/quest-chain-directed.png")}); break; }
+      catch (error) { if (attempt >= 3 || !/not attached to the DOM/.test(String(error?.message))) throw error; await page.waitForTimeout(300); }
+    }
     await search.fill("5730");
     await openQuestAndWait(5730);
     await page

@@ -30,6 +30,8 @@ const TABLES = {
   talentTab: { fdid: 2178102, layout: 0xb436f3c7, opts: { strings: [0, 1, 2], signed: [3, 4, 5, 6, 7, 8, 9] } },
 };
 const FORMAT = 1; // bump when the cached JSON shape or a formula changes
+// Table hashes of the two item tables inside the game's hotfix cache.
+const HOTFIX_TABLES = { itemSparse: 0x919be54e, item: 0x50238ec2 };
 
 // Classic class ids (ChrClasses) and their AllowableClass / ClassMask bits.
 const CLASSES = { 1: "Warrior", 2: "Paladin", 3: "Hunter", 4: "Rogue", 5: "Priest", 7: "Shaman", 8: "Mage", 9: "Warlock", 11: "Druid" };
@@ -56,12 +58,40 @@ const BONDING = { 1: "Binds when picked up", 2: "Binds when equipped", 3: "Binds
 
 const unavailable = (reason, code) => Object.assign(Error(reason), { code });
 
-function readTable(storage, name) {
+function readDb(storage, name) {
   const { readDb2 } = require("./db2.cjs");
   const t = TABLES[name];
   const db = readDb2(storage.readFileId(t.fdid, { zeroEncrypted: true }), t.opts);
   if (db.header.layoutHash !== t.layout) throw unavailable(`The ${name} table layout differs from what this app reads.`, "LAYOUT");
-  return db.rows;
+  return db;
+}
+const readTable = (storage, name) => readDb(storage, name).rows;
+// The Item table packs its columns into bits, so its file does not give their full sizes. A hotfix
+// row of it is 43 bytes in this client: class (4), subclass, material, inventory type, sheathe (1 each),
+// a 4-byte column, sound override (1), icon (4), sound group (1), then columns this app does not use.
+const ITEM_HOTFIX_BYTES = 43;
+function itemHotfix(rec) {
+  if (rec.length !== ITEM_HOTFIX_BYTES) return null;
+  return [rec.readInt32LE(0), rec[4], rec[5], rec.readInt8(6), rec[7], rec.readInt32LE(8), rec[12], rec.readInt32LE(13), rec[17], 0, 0, 0, 0, 0, 0, 0];
+}
+// Rows the game received as hotfixes (hotfix-cache.cjs) laid over a table's installed rows.
+// A hotfix row that does not fit the table's layout exactly is left out: the installed row stays.
+function withHotfixes(db, name, hotfix, notes) {
+  const patch = hotfix?.tables?.get(HOTFIX_TABLES[name]);
+  if (!patch?.size || typeof db.inline !== "function") return { rows: db.rows, added: 0 };
+  if (db.header.tableHash !== HOTFIX_TABLES[name]) { notes.push(`${name}: hotfixes skipped`); return { rows: db.rows, added: 0 }; }
+  const byId = new Map(db.rows.map((r) => [r.id, r]));
+  let added = 0, unread = 0;
+  for (const [id, entry] of patch) {
+    if (entry.status === 2) { byId.delete(id); continue; }
+    let fields = null;
+    try { fields = name === "item" ? itemHotfix(entry.data) : db.inline(entry.data); } catch {}
+    if (!fields) { unread++; continue; }
+    if (!byId.has(id)) added++;
+    byId.set(id, { id, fields });
+  }
+  if (unread) notes.push(`${name}: ${unread} hotfix rows unreadable`);
+  return { rows: [...byId.values()], added };
 }
 // Optional tables: a missing or different one leaves its facts empty rather than failing everything.
 function tryTable(storage, name, notes) {
@@ -82,10 +112,10 @@ function propIndex(inv, subclass) {
   return -1;
 }
 
-function extractItems(storage) {
+function extractItems(storage, hotfix = null) {
   const notes = [];
-  const sparse = readTable(storage, "itemSparse");
-  const base = new Map(readTable(storage, "item").map((r) => [r.id, r.fields]));
+  const fromSparse = withHotfixes(readDb(storage, "itemSparse"), "itemSparse", hotfix, notes), sparse = fromSparse.rows;
+  const base = new Map(withHotfixes(readDb(storage, "item"), "item", hotfix, notes).rows.map((r) => [r.id, r.fields]));
   const byId = (rows) => rows && new Map(rows.map((r) => [r.id, r.fields]));
   const byLevel = (rows, levelField) => rows && new Map(rows.map((r) => [r.fields[levelField], r.fields]));
   const rpp = byId(tryTable(storage, "randPropPoints", notes));
@@ -133,7 +163,7 @@ function extractItems(storage) {
     // [name, quality, itemLevel, requiredLevel, classId, subclassId, inventoryType, armor, stats, min, max, delay, sell, bonding, classMask, icon]
     out[r.id] = [name, quality, ilvl, F[64], cls, sub, inv, armor, stats[0] === null ? null : stats, dmin, dmax, delay, F[22], F[59], F[51], b ? b[7] : 0];
   }
-  return { items: out, notes };
+  return { items: out, notes, hotfixItems: fromSparse.added };
 }
 
 function itemView(id, row) {
@@ -285,7 +315,9 @@ function extractTalents(storage, spells) {
 
 // --- Service -----------------------------------------------------------------------------------
 class GameData {
-  constructor({ getRoot, cacheDir, idleMs = 60000, open = null, maxFileBytes = 32 * 1024 * 1024, maxIconBytes = 16 * 1024 * 1024, maxIconSide = 256, memoryIcons = 128 }) {
+  constructor({ getRoot, cacheDir, idleMs = 60000, open = null, maxFileBytes = 32 * 1024 * 1024, maxIconBytes = 16 * 1024 * 1024, maxIconSide = 256, memoryIcons = 128, hotfixCheckMs = 30000 }) {
+    this.hotfixCheckMs = hotfixCheckMs;
+    this.hot = null; // last look at the game's hotfix cache: { at, key, build, signature, parsed }
     this.getRoot = getRoot;
     this.cacheDir = cacheDir;
     this.idleMs = idleMs;
@@ -324,17 +356,49 @@ class GameData {
   idle() { clearTimeout(this.timer); this.timer = setTimeout(() => this.release(), this.idleMs); this.timer.unref?.(); }
   buildDir(build) { return path.join(this.cacheDir, String(build).replace(/[^\w.-]/g, "_")); }
 
+  // The game's own hotfix cache for this build, looked at again at most every hotfixCheckMs.
+  // -> { signature, parsed } where signature is null when there is nothing usable.
+  hotfixes(build) {
+    const now = Date.now();
+    if (this.hot && this.hot.build === build && now - this.hot.at < this.hotfixCheckMs) return this.hot;
+    const none = { at: now, key: null, build, signature: null, parsed: null };
+    try {
+      const { readHotfixCache, MAX_FILE } = require("./hotfix-cache.cjs");
+      const dir = path.join(this.getRoot(), "Cache", "ADB");
+      const locales = fs.readdirSync(dir).filter((n) => /^[a-z]{2}[A-Z]{2}$/.test(n)).sort((a, b) => (b === "enUS") - (a === "enUS") || a.localeCompare(b));
+      for (const locale of locales) {
+        const file = path.join(dir, locale, "DBCache.bin");
+        let st; try { st = fs.statSync(file); } catch { continue; }
+        if (!st.isFile() || st.size > MAX_FILE) continue;
+        const key = `${file}|${st.size}|${st.mtimeMs}`;
+        if (this.hot && this.hot.build === build && this.hot.key === key) return (this.hot = { ...this.hot, at: now });
+        const parsed = readHotfixCache(fs.readFileSync(file), Object.values(HOTFIX_TABLES));
+        // Only a cache written by this exact game build is used: its rows follow this build's table layouts.
+        if (!parsed || String(build).split(".").pop() !== String(parsed.build)) return (this.hot = { ...none, key });
+        return (this.hot = { at: now, key, build, signature: parsed.signature, parsed });
+      }
+    } catch {}
+    return (this.hot = none);
+  }
   load(kind) {
     const build = this.build();
+    const hot = kind === "items" ? this.hotfixes(build) : null;
+    // Items read before the game received new item hotfixes are read again; if that fails they are kept.
+    const fresh = (value) => !hot || (value.hotfix ?? null) === hot.signature;
+    let stale = null;
     const have = this.data[kind];
-    if (have && have.build === build) { if (have.error) throw have.error; return have.value; }
+    if (have && have.build === build) {
+      if (have.error) throw have.error;
+      if (fresh(have.value) || have.hotfixFailed === hot.signature) return have.value;
+      stale = have.value;
+    }
     const file = path.join(this.buildDir(build), `${kind}.json`);
-    try {
+    if (!stale) try {
       if (fs.statSync(file).size <= this.maxFileBytes) {
         const j = JSON.parse(fs.readFileSync(file, "utf8"));
         if (j && j.format === FORMAT && j.build === build && j.kind === kind && j.data && typeof j.data === "object") {
-          this.data[kind] = { build, value: j.data };
-          return j.data;
+          if (fresh(j.data)) { this.data[kind] = { build, value: j.data }; return j.data; }
+          stale = j.data;
         }
       }
     } catch {}
@@ -343,10 +407,12 @@ class GameData {
       const spells = kind === "talents" ? this.load("spells").spells : null;
       const s = this.open();
       try {
-        const r = kind === "items" ? extractItems(s) : kind === "spells" ? extractSpells(s) : extractTalents(s, spells);
+        const r = kind === "items" ? extractItems(s, hot?.parsed) : kind === "spells" ? extractSpells(s) : extractTalents(s, spells);
         value = { [kind]: r[kind], notes: r.notes };
+        if (kind === "items") { value.hotfix = hot.signature; value.hotfixItems = r.hotfixItems; this.iconIds = null; }
       } finally { this.idle(); }
     } catch (e) {
+      if (stale) { this.data[kind] = { build, value: stale, hotfixFailed: hot.signature }; return stale; }
       const error = e.code === "LAYOUT"
         ? unavailable("This game build stores its item and spell tables in a layout this app does not read yet.", "LAYOUT")
         : e.code === "NOGAME" ? e : unavailable("Your WoW installation could not be read.", "UNREADABLE");
