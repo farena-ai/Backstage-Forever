@@ -930,6 +930,22 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverAccessCommand)=='function' then pcall(BackstageForeverAccessCommand,message)end
                 return
             end
+            if word=='tracker' then
+                if type(BackstageForeverTrackerCommand)=='function' then pcall(BackstageForeverTrackerCommand,message)end
+                return
+            end
+            if word=='run' then
+                if type(BackstageForeverRunCommand)=='function' then pcall(BackstageForeverRunCommand,message)end
+                return
+            end
+            if word=='wish' then
+                if type(BackstageForeverWishCommand)=='function' then pcall(BackstageForeverWishCommand,message)end
+                return
+            end
+            if word=='bags' then
+                if type(BackstageForeverBagsCommand)=='function' then pcall(BackstageForeverBagsCommand,message)end
+                return
+            end
             if word=='train' or word=='repair' or word=='flights' or word=='xp' or word=='hearth' or word=='help' or word=='toasts' or word=='danger' or word=='junk' then
                 if type(BackstageForeverAssistCommand)=='function' then pcall(BackstageForeverAssistCommand,message)end
                 return
