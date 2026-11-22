@@ -87,7 +87,7 @@ const repo = path.resolve(__dirname, ".."),
     };
     const profiles = [
       profile,
-      { ...profile, id: "build", name: "Wrong Build", clientBuild: "1.60.1.0" },
+      { ...profile, id: "build", name: "Wrong Build", clientBuild: "1.60.2.0" },
       {
         ...profile,
         id: "title",

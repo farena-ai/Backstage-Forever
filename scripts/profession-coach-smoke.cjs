@@ -835,12 +835,12 @@ function shortPath(target) {
       .getByLabel("Active character", { exact: true })
       .selectOption(first);
     await page.locator('[data-preparation-reagent="765"]').waitFor();
-    characters[0].clientBuild = "1.60.1.70888";
+    characters[0].clientBuild = "1.60.2.70888";
     await update();
     await page.waitForFunction(() =>
       document
         .querySelector('[data-preparation-control="sources"]')
-        ?.parentElement.textContent.includes("1.60.1.70888"),
+        ?.parentElement.textContent.includes("1.60.2.70888"),
     );
     await page
       .locator(".acquisition-sources")

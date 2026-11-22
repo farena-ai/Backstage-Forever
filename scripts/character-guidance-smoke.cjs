@@ -21,7 +21,7 @@ const repo=path.resolve(__dirname,'..');
 
   const profile={id:'p',name:'Synthetic Explorer',realm:'Fictional',className:'Mage',race:'Sunborn',faction:'Horde',level:20,clientBuild:build,locale:'enUS',captureVersion:'0.6.0',source:{kind:'wow-addon',id:'PRIVATE_SOURCE_CANARY',updatedAt:new Date(Date.now()-3600000).toISOString()},notes:'PRIVATE_NOTES_CANARY',goals:[],readiness:{equipment:[{slot:16,itemId:20,name:'Observed blade <img src=x onerror=evil()>',quality:2,itemLevel:12},{slot:19,itemId:99}]}};
 
-  const profiles=[profile,{...profile,id:'alliance',name:'Alliance Explorer',faction:'Alliance'},{...profile,id:'wrong',name:'Wrong Build',clientBuild:'1.60.1.0'},{id:'manual',name:'Manual Explorer',realm:'',className:'Warrior',level:1,notes:'',goals:[]}];
+  const profiles=[profile,{...profile,id:'alliance',name:'Alliance Explorer',faction:'Alliance'},{...profile,id:'wrong',name:'Wrong Build',clientBuild:'1.60.2.0'},{id:'manual',name:'Manual Explorer',realm:'',className:'Warrior',level:1,notes:'',goals:[]}];
 
   await fs.writeFile(path.join(dir,'state.json'),JSON.stringify(validateState({...defaultState(),onboarded:true,activeProfileId:'p',profiles})));
 
