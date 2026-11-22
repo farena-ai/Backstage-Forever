@@ -159,7 +159,7 @@ print(BackstageForeverNextBadgeLine())` });
   assert.match(read("addon/BackstageForever/BackstageForeverHUD.lua"), /BackstageForeverNextBadgeLine/);
 });
 
-test("J27 (1.6): Save a picture draws the earned badges from bytes the app hands over, and saves as a badges picture", () => {
+test("J27 (1.6), S9: the badge picture is drawn from bytes the app hands over, and saves as a badges picture", () => {
   const main = read("src/main.cjs");
   assert.match(main, /handle\("badgeArt"/);
   assert.match(main, /\["journey", "badges"\]\.includes\(kind\)/);
@@ -167,6 +167,8 @@ test("J27 (1.6): Save a picture draws the earned badges from bytes the app hands
   assert.match(read("src/preload.cjs"), /badgeArt: \(ids\) => invoke\("badgeArt", ids\)/);
   const page = read("src/renderer/badges.js");
   assert.match(page, /data-badge-picture/);
-  assert.match(page, /createImageBitmap\(new Blob\(\[bytes\]/, "no file:// images on the canvas");
-  assert.match(page, /api\.saveSharePicture\(new Uint8Array\(await blob\.arrayBuffer\(\)\), "badges"\)/);
+  assert.match(page, /ShareCard\?\.open\(\{ kind: "badges"/, "the Badge Case hands its earned badges to the share window");
+  const card = read("src/renderer/share-card.js");
+  assert.match(card, /createImageBitmap\(new Blob\(\[bytes\[i\]\]/, "no file:// images on the canvas");
+  assert.match(card, /api\.saveSharePicture\(bytes, request\.kind\)/);
 });

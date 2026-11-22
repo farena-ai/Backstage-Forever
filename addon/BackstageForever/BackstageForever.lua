@@ -818,7 +818,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.22.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.23.0'
     character.race=clean((call(UnitRace,'player')));
     -- UnitSex: 2 male, 3 female; 1 (unknown) and anything else is left out.
     local sex=integer(call(UnitSex,'player'),1,3);if sex==2 then character.sex='male' elseif sex==3 then character.sex='female' end
@@ -921,6 +921,10 @@ local function capture(event,eventId)
     if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character,event=='QUEST_TURNED_IN' and integer(eventId,1,2147483647) or nil) end
     -- The quest list by distance and the dungeon run panel read the same capture; they change nothing in it.
     if type(BackstageForeverPanelsUpdate)=="function" then pcall(BackstageForeverPanelsUpdate,character) end
+    -- The readiness check, guild sharing and the auction shopping list read the same capture too.
+    if type(BackstageForeverCrewUpdate)=="function" then pcall(BackstageForeverCrewUpdate,character) end
+    if type(BackstageForeverGuildUpdate)=="function" then pcall(BackstageForeverGuildUpdate,character) end
+    if type(BackstageForeverShopUpdate)=="function" then pcall(BackstageForeverShopUpdate,character) end
     local chars=array({character});for id,c in pairs(roster) do if id~=guid then chars[#chars+1]=c end end
     table.sort(chars,function(a,b) return a.updatedAt>b.updatedAt end)
     while #chars>100 do table.remove(chars) end
