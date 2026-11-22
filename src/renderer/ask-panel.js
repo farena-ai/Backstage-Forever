@@ -8,7 +8,7 @@
   const $ = (sel) => root.querySelector(sel);
   const SOURCE = { travel: "Forever travel reference · offline", npc: "Forever NPC reference · offline", quick: "Companion · offline answer", scope: "Companion", ai: "Companion · AI suggestion" };
   const input = $("[data-ap-input]"), form = $("[data-ap-form]"), list = $("[data-ap-log]"), body = $("[data-ap-body]");
-  let typing = 0, sending = false, revision = -1;
+  let typing = 0, draft = 0, sending = false, revision = -1;
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
   function entry(s) {
     const item = el("article", "ap-item");
@@ -33,6 +33,8 @@
     root.dataset.status = last ? last.status : "empty";
     body.scrollTop = body.scrollHeight;
     // Opened from the game (owl, /bf ask): the cursor goes straight into the question box.
+    // "Explain this" from the game: the text is put in the box for you to read, change and send. It is never sent for you.
+    if (v.draft && Number.isInteger(v.draft.seq) && v.draft.seq !== draft && typeof v.draft.text === "string") { draft = v.draft.seq; input.value = v.draft.text.slice(0, 1000); }
     if (Number.isInteger(v.typing) && v.typing !== typing) { typing = v.typing; input.focus(); }
   }
   form.addEventListener("submit", (event) => {

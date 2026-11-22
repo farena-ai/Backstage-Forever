@@ -502,6 +502,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_LEVEL_UP','PLAYER_MONEY','TIME_PLAYED_MSG','PLAYER_ENTERING_WORLD','ZONE_CHANGED_NEW_AREA','PLAYER_DEAD','PLAYER_CONTROL_LOST','PLAYER_MOUNT_DISPLAY_CHANGED','UPDATE_EXHAUSTION','GROUP_ROSTER_UPDATE','UNIT_SPELLCAST_SUCCEEDED','QUEST_DETAIL','QUEST_ACCEPTED','CHAT_MSG_LOOT','PLAYER_REGEN_ENABLED'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Journal',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b,c)
             store()
             if event=='PLAYER_LOGIN' then

@@ -60,6 +60,7 @@ end
 if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
     for _,event in ipairs({'PLAYER_LOGIN','PLAYER_LOGOUT','SPELLS_CHANGED','ACTIONBAR_SLOT_CHANGED','PLAYER_REGEN_ENABLED'}) do pcall(frame.RegisterEvent,frame,event) end
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Coach',frame) end
     pcall(frame.SetScript,frame,'OnEvent',function(_,event)
         if event=='PLAYER_LOGOUT' then rankOwner=nil;rankNotice=nil;return end
         if event=='PLAYER_LOGIN' then rankOwner=text(rankRead(UnitGUID,'player'),200);rankNotice=nil end

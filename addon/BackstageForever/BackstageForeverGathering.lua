@@ -416,6 +416,7 @@ end
 if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
     for _,e in ipairs({'UNIT_SPELLCAST_SENT','UNIT_SPELLCAST_SUCCEEDED','UNIT_SPELLCAST_FAILED','UNIT_SPELLCAST_FAILED_QUIET','UNIT_SPELLCAST_INTERRUPTED','LOOT_READY','LOOT_CLOSED','PLAYER_REGEN_DISABLED','ZONE_CHANGED_NEW_AREA','PLAYER_ENTERING_WORLD'})do pcall(frame.RegisterEvent,frame,e)end
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Gathering',frame) end
     frame:SetScript('OnEvent',function(_,event,...)
         event=text(event,50);if not event then retire();return end
         if event=='PLAYER_REGEN_DISABLED' or event=='ZONE_CHANGED_NEW_AREA' or event=='PLAYER_ENTERING_WORLD' then retire();return end

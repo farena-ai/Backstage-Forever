@@ -68,6 +68,7 @@ let journeyStore = null;
 let streamOverlay = null;
 let clearJourneyExtras = null;
 let closeAskPanel = null, dropAskPanelWindow = null;
+let recentGameAnswers = () => [];
 let wishlist = null;
 let statWeights = null; // the stat weights each character chose (roadmap C3)
 let gearPins = null; // one pinned gear target per slot and character (roadmap C2)
@@ -234,7 +235,7 @@ app.whenReady().then(async () => {
     game = new GameSync({
       dataDir: app.getPath("userData"),
       // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
-      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null }); },
+      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id) }); },
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -1165,8 +1166,13 @@ app.whenReady().then(async () => {
   inGameAsk = new (require("./core/ask-in-game.cjs").InGameAsk)({
     companion: companionService, getState: () => store.state, liveKeyFor: require("./core/live-bridge.cjs").liveKeyFor,
     panel: askPanel, getShare: () => inGameShare,
-    notify: (exchange) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:inGameExchange", exchange); },
+    notify: (exchange) => {
+      if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:inGameExchange", exchange);
+      // Roadmap A1: the answer joins the hand-off file, so /bf answers shows it after the next /reload.
+      game?.writeHandoff().catch(() => {});
+    },
   });
+  recentGameAnswers = (id) => inGameAsk.recent(id);
   liveBridge.subscribeQuestions((question) => { void inGameAsk.handle(question); });
   const stopAskContext = companionContext.subscribe(({ reason }) => {
     if (["source-root", "source-disconnect", "reset", "import", "restore"].includes(reason)) inGameAsk.rememberOrigin(null);

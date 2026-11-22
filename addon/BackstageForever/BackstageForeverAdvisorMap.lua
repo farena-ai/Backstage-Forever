@@ -284,6 +284,7 @@ end
 if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
     for _,e in ipairs({'ADDON_LOADED','PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_LOGOUT','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','SKILL_LINES_CHANGED','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','QUEST_LOG_UPDATE','QUEST_TURNED_IN','PLAYER_LEVEL_UP'})do pcall(frame.RegisterEvent,frame,e)end
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'AdvisorMap',frame) end
     frame:SetScript('OnEvent',function(_,event)
         event=text(event,50)
         if event=='PLAYER_LOGIN' or not settings then loadSettings()end

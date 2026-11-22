@@ -122,6 +122,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'UNIT_HEALTH','PLAYER_DEAD','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','PLAYER_TARGET_CHANGED','UPDATE_MOUSEOVER_UNIT'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Combat',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,unit)
             if event=='UNIT_HEALTH' then pcall(onHealth,plain(unit))
             elseif event=='PLAYER_DEAD' then endFight();pcall(onDeath)

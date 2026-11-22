@@ -184,6 +184,7 @@ if type(CreateFrame)=='function' and public(Minimap) then
         pcall(update,false)
     end)
     for _,event in ipairs({'PLAYER_LOGIN','QUEST_ACCEPTED','QUEST_TURNED_IN','QUEST_LOG_UPDATE','PLAYER_LEVEL_UP','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED'}) do holder:RegisterEvent(event) end
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Minimap',holder) end
     holder:SetScript('OnEvent',function(_,event)
         if event=='PLAYER_LOGIN' then loadSettings() end
         if event=='PLAYER_REGEN_DISABLED' then hideAll() return end

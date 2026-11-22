@@ -97,7 +97,10 @@ fire('PLAYER_LOGIN')
 BackstageForeverCrewUpdate({quests={{id=1053},{id=7}}})
 -- Someone asks: one answer with the six fields, one chat line that says so.
 from('Ann','C|sm')
-assert(#sent==1 and sent[1][1]=='BFParty' and sent[1][3]=='PARTY' and sent[1][2]=='A|sm|1|1|43|12|1',sent[1] and sent[1][2])
+-- 1.26: for a named dungeon a second message says where each of its quests stands for you.
+assert(#sent==2 and sent[1][1]=='BFParty' and sent[1][3]=='PARTY' and sent[1][2]=='A|sm|1|1|43|12|1',sent[1] and sent[1][2])
+assert(sent[2][3]=='PARTY' and sent[2][2]:match('^D|sm|[%d;lrd]*$'),sent[2][2])
+table.remove(sent,2)
 assert(last():find('Ann asked for a readiness check',1,true))
 from('Bob','C|sm') from('Ann','C|sm')
 assert(#sent==1,'at most one answer in ten seconds')
@@ -109,7 +112,7 @@ assert(#sent==2,'a malformed question gets no answer')
 BackstageForeverCheckCommand('check answers off')
 assert(BackstageForeverPartySettings.answerChecks==false and BackstageForeverCheckAnswers()==false)
 clock=1060 from('Ann','C|sm') assert(#sent==2)
-BackstageForeverCheckCommand('check answers on') from('Ann','C|sm') assert(#sent==3)
+BackstageForeverCheckCommand('check answers on') from('Ann','C|sm') assert(#sent==4 and sent[3][2]:sub(1,2)=='A|' and sent[4][2]:sub(1,5)=='D|sm|')
 -- Asking: one question, then one line per member after the answers arrive.
 clock=1100 sent={} said={}
 BackstageForeverCheckCommand('check sm')

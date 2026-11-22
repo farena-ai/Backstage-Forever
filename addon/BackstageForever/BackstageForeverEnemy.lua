@@ -153,6 +153,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_TARGET_CHANGED','UPDATE_MOUSEOVER_UNIT','NAME_PLATE_UNIT_ADDED'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Enemy',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a)
             if event=='PLAYER_LOGIN' then loadSettings() return end
             if event=='PLAYER_TARGET_CHANGED' then pcall(seen,'target')

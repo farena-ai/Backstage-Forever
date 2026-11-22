@@ -191,6 +191,7 @@ if type(CreateFrame)=='function' then
         end
         frame:RegisterEvent('PLAYER_LEVEL_UP')
         frame:RegisterEvent('PLAYER_REGEN_ENABLED')
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Talents',frame) end
         frame:SetScript('OnEvent',function(_,event,level)
             if event=='PLAYER_LEVEL_UP' then
                 local reached=(not secret(level) and type(level)=='number') and level or playerLevel()

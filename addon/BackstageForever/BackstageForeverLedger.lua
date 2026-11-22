@@ -710,6 +710,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_MONEY','UPDATE_FACTION','BANKFRAME_OPENED','BANKFRAME_CLOSED','PLAYERBANKSLOTS_CHANGED','BAG_UPDATE','MAIL_SHOW','MAIL_INBOX_UPDATE','MAIL_CLOSED','AUCTION_ITEM_LIST_UPDATE','AUCTION_HOUSE_CLOSED','TRAINER_SHOW','TRAINER_UPDATE','TRAINER_CLOSED','MERCHANT_SHOW'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Ledger',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             store()
             if event=='TRAINER_SHOW' or event=='TRAINER_UPDATE' then pcall(readTrainer) elseif event=='TRAINER_CLOSED' then request() end

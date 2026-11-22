@@ -70,6 +70,7 @@ function cleanQuestion(input) {
   return q && [...q].length <= QUESTION_MAX ? q : null;
 }
 /** Pure: the log after an exchange is added or updated (same id replaces it), newest last, bounded. */
+const DRAFT_MS = 15000;
 function upsert(log, entry) {
   const out = entry.id ? log.filter((e) => e.id !== entry.id) : [...log];
   const at = entry.id ? log.findIndex((e) => e.id === entry.id) : -1;
@@ -85,7 +86,10 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
   try { prefs = cleanSettings(JSON.parse(fs.readFileSync(file, "utf8"))); } catch { prefs = { ...DEFAULTS }; }
   const persist = () => { try { if (file) fs.writeFileSync(file, JSON.stringify(prefs)); } catch {} };
   // What the page shows: the exchanges, and a counter that tells it to put the cursor in the box.
-  const view = () => ({ log: [...log], typing, revision });
+  // draft: text for the question box ("Explain this" from the game). It is offered to the page for a
+  // short while only, so a panel window made later never fills in an old one.
+  let draft = null;
+  const view = () => ({ log: [...log], typing, revision, ...(draft && Date.now() - draft.at <= DRAFT_MS ? { draft: { seq: draft.seq, text: draft.text } } : {}) });
   const latest = () => log.at(-1) || null;
   // The panel window only ever shows our own page (navigation and new windows are blocked), so the
   // sender being its main frame is the check; comparing file URLs broke in the installed app.
@@ -188,8 +192,10 @@ function createAskPanel({ BrowserWindow, ipcMain, screen, rendererDir, dataDir =
     return true;
   }
   /** Opens the panel with the keyboard in its question box (the owl button, /bf ask). False when switched off. */
-  function open() {
+  function open(prefill) {
     if (!prefs.enabled) return false;
+    const text = cleanQuestion(prefill);
+    if (text) draft = { seq: (draft?.seq || 0) + 1, text, at: Date.now() };
     typing++; revision++; wantFocus = true;
     if (!win || win.isDestroyed()) create();
     else { send(); present(); }

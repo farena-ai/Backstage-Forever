@@ -79,7 +79,12 @@ group=false handler(nil,'GROUP_ROSTER_UPDATE') assert(next(BackstageForeverParty
 
 test("party sync stays within its rules", () => {
   const src = fs.readFileSync(path.join(__dirname, "../addon/BackstageForever/BackstageForeverParty.lua"), "utf8");
-  for (const banned of ["'RAID'", "'WHISPER'", "SendChatMessage", "hooksecurefunc", "QuestLogPushQuest", "AcceptQuest"]) assert.ok(!src.includes(banned), banned);
+  // 1.26: raid comms (their own switch, off by default) use this channel code too. The raid channel is named in exactly two
+  // places, both behind that switch: the gate that sends and the gate that hands a raid message to a raid handler.
+  assert.equal((src.match(/'RAID'/g) || []).length, 2);
+  assert.match(src, /elseif channel=='RAID' then\r?\n\s+if not raidOn\(\) or call\(IsInRaid\)~=true then return false end/);
+  assert.match(src, /if channel=='RAID' then\r?\n[^\n]*\n\s+if not raidOn\(\) or call\(IsInRaid\)~=true then return end/);
+  for (const banned of ["'WHISPER'", "SendChatMessage", "hooksecurefunc", "QuestLogPushQuest", "AcceptQuest"]) assert.ok(!src.includes(banned), banned);
   // 1.25: guild sharing (its own switch, off by default) uses this channel code. The guild channel is named in exactly two
   // places: the gate that sends and the gate that hands a guild message to a guild handler. Party sync itself never uses it.
   assert.equal((src.match(/'GUILD'/g) || []).length, 2);

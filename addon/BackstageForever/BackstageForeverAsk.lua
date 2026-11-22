@@ -198,6 +198,8 @@ local function buildButton()
         method(GameTooltip,'Show')
     end)
     method(button,'SetScript','OnLeave',function() method(GameTooltip,'Hide') end)
+    -- 1.26: the "large buttons" setting makes the owl bigger too.
+    if type(BackstageForeverApplyButtonSize)=='function' then pcall(BackstageForeverApplyButtonSize,button) end
     place()
     showButton()
     return button
@@ -272,6 +274,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_REGEN_ENABLED'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Ask',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             if event=='PLAYER_LOGIN' then loadSettings() pcall(buildButton)
             elseif event=='PLAYER_REGEN_ENABLED' then pcall(flush) end
