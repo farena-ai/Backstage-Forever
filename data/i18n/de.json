@@ -1,5 +1,7 @@
 {
  "version": 1,
+ "name": "Deutsch",
+ "machineNote": "maschinell übersetzt",
  "machineTranslated": true,
  "note": "German, machine-translated with the local model qwen3.8:27b and spot-checked; fixes welcome. Keys are the exact English text.",
  "app": {

@@ -32,6 +32,100 @@ test("the dictionary is current, machine translation is labelled, commands and p
   void cmds;
 });
 
+// More languages (roadmap P1): every data/i18n/<lang>.json is held to the same rules, and to German's key list.
+const { LANG_CODES, GAME_LOCALES } = require("../scripts/build-locales.cjs");
+const dictOf = (lang) => JSON.parse(read(`data/i18n/${lang}.json`));
+const SECTIONS = [["app", (d) => d.app], ["appTemplates", (d) => d.appTemplates], ["addon.plain", (d) => d.addon.plain], ["addon.templates", (d) => d.addon.templates]];
+
+test("every language file is compiled, named in its own words and loaded by the app before the translator", () => {
+  for (const lang of ["de", "es", "fr"]) assert.ok(LANG_CODES.includes(lang), `${lang} ships`);
+  assert.deepEqual(LANG_CODES, fs.readdirSync(path.join(root, "data/i18n")).filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5)).sort(), "nothing in data/i18n is left out");
+  const html = read("src/renderer/index.html"), lua = read("addon/BackstageForever/BackstageForeverLocale.lua");
+  const claimed = new Set();
+  for (const lang of LANG_CODES) {
+    const d = dictOf(lang);
+    assert.ok(typeof d.name === "string" && d.name.trim() && !/english|german|french|spanish/i.test(d.name), `${lang}: its own name`);
+    if (d.machineTranslated) assert.ok(typeof d.machineNote === "string" && d.machineNote.trim(), `${lang}: says machine-translated in its own words`);
+    const at = html.indexOf(`<script src="locales/${lang}.js"></script>`);
+    assert.ok(at > 0 && at < html.indexOf('<script src="i18n.js"></script>'), `${lang}: loaded before i18n.js`);
+    assert.ok(fs.existsSync(path.join(root, "src/renderer/locales", `${lang}.js`)), `${lang}: compiled for the app`);
+    for (const code of d.gameLocales || GAME_LOCALES[lang]) { assert.ok(!claimed.has(code), `${code} once`); claimed.add(code); assert.ok(lua.includes(`L=="${code}"`), `${lang}: the addon serves ${code}`); }
+  }
+  assert.deepEqual(GAME_LOCALES.es, ["esES", "esMX"], "both Spanish clients get Spanish");
+  assert.ok(Buffer.byteLength(lua) < 1024 * 1024, "one locale file stays under 1 MB; split it per language before it grows past that");
+});
+
+for (const lang of LANG_CODES) {
+  test(`${lang}: complete against German, nothing empty, placeholders, colour codes and commands untouched`, () => {
+    const d = dictOf(lang), de = dictOf("de");
+    assert.equal(d.version, 1);
+    const codes = (s) => (s.match(/%[0-9.]*[sdf]|\|c[0-9a-f]{8}|\|r/gi) || []).sort().join(" ");
+    const order = (s) => (s.match(/%(?:0?\d*)?(?:\.\d+)?[sdf]/g) || []).join(" ");
+    const ph = (s) => (s.match(/\{#?\d+\}/g) || []).map((x) => x.replace("#", "")).sort().join(" ");
+    for (const [name, pick] of SECTIONS) {
+      const mine = pick(d) || {}, theirs = pick(de);
+      const missing = Object.keys(theirs).filter((k) => !Object.hasOwn(mine, k));
+      assert.deepEqual(missing.slice(0, 5), [], `${lang} ${name}: ${missing.length} keys German has are missing`);
+      for (const [en, v] of Object.entries(mine)) {
+        assert.ok(typeof v === "string" && v.trim(), `${lang} ${name}: empty value for ${en}`);
+        assert.equal(codes(v), codes(en), `${lang} ${name}: format or colour codes changed: ${en}`);
+        for (const c of en.match(/\/bf [a-z]+/g) || []) assert.ok(v.includes(c), `${lang} ${name}: command lost: ${en} -> ${v}`);
+        if (/\/reload/.test(en)) assert.ok(v.includes("/reload"), `${lang} ${name}: /reload lost: ${en}`);
+        assert.equal(/^\s/.test(v), /^\s/.test(en), `${lang} ${name}: leading space changed: ${en}`);
+        assert.equal(/\s$/.test(v), /\s$/.test(en), `${lang} ${name}: trailing space changed: ${en}`);
+      }
+    }
+    // Addon templates fill captures in order, so the codes must come in the English order.
+    for (const [en, v] of Object.entries(d.addon.templates)) assert.equal(order(v), order(en), `${lang}: format codes reordered: ${en}`);
+    for (const [en, v] of Object.entries(d.appTemplates)) { assert.equal(ph(v), ph(en), `${lang}: placeholders changed: ${en}`); }
+  });
+
+  test(`${lang}: the compiled app dictionary loads, and its templates compile and translate`, () => {
+    const d = dictOf(lang), U = lang.toUpperCase();
+    const window = {}, html = { dataset: {} };
+    const ctx = vm.createContext({ window, document: { readyState: "complete", documentElement: html, body: null, addEventListener() {} }, localStorage: { getItem: () => lang, setItem() {} }, location: { reload() {} }, Object });
+    vm.runInContext(read(`src/renderer/locales/${lang}.js`), ctx);
+    assert.equal(window[`BF_LOCALE_${U}_META`].name, d.name);
+    assert.equal(window[`BF_LOCALE_${U}_TEMPLATES`].length, Object.keys(d.appTemplates).length, "every template compiled");
+    for (const [src] of window[`BF_LOCALE_${U}_TEMPLATES`]) assert.doesNotThrow(() => new RegExp(src));
+    vm.runInContext(read("src/renderer/i18n.js"), ctx);
+    const I = window.I18n;
+    assert.equal(I.lang, lang); assert.equal(html.lang, lang);
+    assert.equal(I.NAMES[lang], d.machineTranslated ? `${d.name} (${d.machineNote})` : d.name);
+    for (const code of d.gameLocales || GAME_LOCALES[lang]) assert.equal(I.resolve("auto", code), lang, `${code} shows ${lang}`);
+    assert.equal(I.tr("Hand in 3 finished quests"), d.appTemplates["Hand in {#0} finished quests"].replace("{0}", "3"));
+    assert.equal(I.tr("Open Now"), d.app["Open Now"]);
+    const points = I.tr("You have 3 talent points waiting to be spent.");
+    assert.ok(points.includes("3") && !/[{}]/.test(points), `a translation may write {0} or {#0}: ${points}`);
+    assert.equal(I.tr("Secrets of the Dreamers"), null);
+  });
+
+  test(`${lang}: in game its clients get its messages and templates`, () => {
+    const d = dictOf(lang);
+    const [en, want] = Object.entries(d.addon.plain).find(([k, v]) => !/^\s/.test(k) && k !== v);
+    for (const code of d.gameLocales || GAME_LOCALES[lang]) {
+      const out = lua(String.raw`
+GetLocale=function() return '${code}' end
+dofile('addon/BackstageForever/BackstageForeverLocale.lua')
+print(BackstageForeverTr(${JSON.stringify(en)}))
+print(BackstageForeverTr('Waypoint set: Thork at 51.5, 30.9. Follow the arrow on your minimap and screen.'))
+print(BackstageForeverTr('7 h 05 min'))
+print(tostring(BackstageForeverTranslated))
+`).split("\n");
+      assert.equal(out[0], want, code);
+      assert.equal(out[1], d.addon.templates["Waypoint set: %s at %.1f, %.1f. Follow the arrow on your minimap and screen."].replace("%s", "Thork").replace("%.1f", "51.5").replace("%.1f", "30.9"), code);
+      assert.equal(out[2], d.addon.templates["%d h %02d min"].replace("%d", "7").replace("%02d", "05"), code);
+      assert.equal(out[3], "true");
+    }
+  });
+}
+
+test("a language nobody translated stays English in game and in the app", () => {
+  assert.equal(lua(String.raw`GetLocale=function() return 'koKR' end
+dofile('addon/BackstageForever/BackstageForeverLocale.lua')
+print(BackstageForeverTr('Adventure Compass'), tostring(BackstageForeverTranslated))`), "Adventure Compass\tfalse");
+});
+
 test("in game: German clients get German messages, others English, and unknown text passes through", () => {
   const de = JSON.parse(read("data/i18n/de.json"));
   const [en, want] = Object.entries(de.addon.plain).find(([k]) => !/^\s/.test(k));
@@ -74,13 +168,13 @@ test("every addon chat helper and the message box go through the translator", ()
   assert.equal(read("addon/BackstageForever/BackstageForever.toc").split(/\r?\n/).find((l) => l.endsWith(".lua")), "BackstageForeverLocale.lua", "loads first");
 });
 
-function i18n({ pref = null, dict = { "Your next step": "Dein nächster Schritt", "Open map": "Karte öffnen" } } = {}) {
+function i18n({ pref = null, meta = null, dict = { "Your next step": "Dein nächster Schritt", "Open map": "Karte öffnen" } } = {}) {
   const store = new Map(pref ? [["bf-lang-v1", pref]] : []);
   const html = { dataset: {}, lang: "en" };
   const text = (v, parent) => ({ nodeType: 3, nodeValue: v, parentElement: parent });
   const el = (attrs = {}, kids = [], skip = false) => { const e = { nodeType: 1, attrs, childNodes: [], getAttribute: (k) => attrs[k] ?? null, setAttribute: (k, v) => { attrs[k] = v; }, matches: () => skip, closest: () => (skip ? e : null) }; e.childNodes = kids.map((k) => (typeof k === "string" ? text(k, e) : k)); return e; };
   const body = el({}, []);
-  const ctx = { window: { BF_LOCALE_DE: dict }, localStorage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) }, location: { reload() { ctx.reloaded = true; } },
+  const ctx = { window: { BF_LOCALE_DE: dict, ...(meta ? { BF_LOCALE_DE_META: meta } : {}) }, localStorage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) }, location: { reload() { ctx.reloaded = true; } },
     document: { readyState: "complete", body, documentElement: html, addEventListener() {} }, MutationObserver: undefined };
   vm.createContext(ctx); vm.runInContext(read("src/renderer/i18n.js"), ctx);
   return { I: ctx.window.I18n, html, el, body, ctx };
@@ -99,7 +193,12 @@ test("the app follows the game's language unless you pick one; whole text pieces
   assert.equal(btn.childNodes[1].nodeValue, "Untranslated words");
   assert.equal(btn.attrs.title, "Karte öffnen");
   assert.equal(skipped.childNodes[0].nodeValue, "Your next step", "data-no-translate and inputs stay as they are");
-  assert.match(I.control(), /Deutsch \(machine-translated\)/);
+  assert.match(I.control(), />de \(machine-translated\)</, "a dictionary without details still lists");
+  const named = i18n({ meta: { name: "Deutsch", machineTranslated: true, machineNote: "maschinell übersetzt", gameLocales: ["deDE"] } });
+  assert.match(named.I.control(), /<option value="auto"[^>]*>Same as the game<\/option><option value="en"[^>]*>English<\/option><option value="de"[^>]*>Deutsch \(maschinell übersetzt\)<\/option>/);
+  assert.equal(named.I.resolve("auto", "frFR"), "en", "no French dictionary loaded here, so English");
+  const reviewed = i18n({ meta: { name: "Deutsch", machineTranslated: false, gameLocales: ["deDE"] } }); reviewed.I.setGameLocale("deDE");
+  assert.equal(reviewed.I.NAMES.de, "Deutsch"); assert.equal(reviewed.html.dataset.machineTranslated, "false", "a reviewed language is not marked");
   const english = i18n({ pref: "en" }); english.I.setGameLocale("deDE"); assert.equal(english.I.lang, "en", "a chosen language wins over the game's");
 });
 
@@ -108,7 +207,8 @@ test("wiring: dictionary before the translator, the game locale passed in, the p
   assert.ok(html.indexOf('src="locales/de.js"') < html.indexOf('src="i18n.js"') && html.indexOf('src="i18n.js"') < html.indexOf('src="app.js"'));
   const app = read("src/renderer/app.js");
   assert.match(app, /window\.I18n\?\.setGameLocale\(selected\?\.locale \|\| null\)/); assert.match(app, /I18n\.control\(\)/);
-  assert.match(read("src/renderer/styles.css"), /html\[data-machine-translated="true"\] \.rail-bottom \.status::after \{ content: " · maschinell übersetzt"/);
+  assert.match(read("src/renderer/styles.css"), /html\[data-machine-translated="true"\] \.rail-bottom \.status::after \{ content: var\(--bf-machine-note, " · machine-translated"\)/);
+  assert.match(read("src/renderer/i18n.js"), /setProperty\?\.\("--bf-machine-note", JSON\.stringify\(" · " \+ \(META\[lang\]\?\.machineNote/, "the mark is written in the shown language");
   assert.match(read(".github/workflows/ci.yml"), /npm run check:locales/);
 });
 
