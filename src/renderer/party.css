@@ -10,7 +10,7 @@
 .party-expedition input, .party-expedition textarea { color: #2b1b0a; background: #fff8e6; border: 1px solid #a5823e; }
 .party-expedition :is(h2, h3) { color: #3d220c; }
 .party-expedition .eyebrow { color: #8a5a18; }
-.party-expedition .party-role { background: rgba(255,248,225,.6); color: #2b1b0a; }
+.party-expedition .party-role { background: rgba(255,248,225,.6); color: #2b1b0a; text-shadow: none; }
 .party-expedition .party-role.chosen { background: #fff0c8; }
 .party-expedition .party-role b, .party-expedition .party-role small { text-shadow: none; color: #2b1b0a; }
 .party-expedition .party-role small { color: #5a3e1c; }

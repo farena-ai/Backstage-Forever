@@ -309,13 +309,17 @@ const { defaultState } = require("../src/core/validation.cjs");
           path: path.join(capture, name + ".png"),
           fullPage: true,
         });
-      for (const label of ["Settings", "Help"])
+      for (const label of ["Settings", "Help"]) {
+        const span = page.getByRole("button", { name: label, exact: true }).locator("span").last();
+        // Zero rectangles means the label is not laid out yet (seen once on a slow runner), which is
+        // not wrapping: wait for it to be on screen, then count its line boxes.
+        await span.evaluate(async (n) => {
+          const end = Date.now() + 5000;
+          const boxes = () => { const r = document.createRange(); r.selectNodeContents(n); return r.getClientRects().length; };
+          while (boxes() === 0 && Date.now() < end) await new Promise((done) => requestAnimationFrame(done));
+        });
         assert.equal(
-          await page
-            .getByRole("button", { name: label, exact: true })
-            .locator("span")
-            .last()
-            .evaluate((n) => {
+          await span.evaluate((n) => {
               const r = document.createRange();
               r.selectNodeContents(n);
               return r.getClientRects().length;
@@ -323,6 +327,7 @@ const { defaultState } = require("../src/core/validation.cjs");
           1,
           `${name}: ${label} must not wrap into fragments`,
         );
+      }
       manifest.push({ name, ...metrics });
     };
     for (const [id, faction] of [

@@ -329,7 +329,7 @@ button.quest-ledger-row:not(.illustrated-card){display:flex;align-items:center;g
 .quest-links { display: flex; flex-direction: column; gap: 6px; }
 .quest-link-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .quest-link-row > span { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .14em; text-transform: uppercase; color: #e8c983; min-width: 110px; }
-.quest-guide .quest-link { all: unset; cursor: pointer; padding: 4px 10px; border-radius: 12px; background: #f1e1b8; color: #3d220c; font-weight: 700; }
+.quest-guide .quest-link { all: unset; cursor: pointer; padding: 4px 10px; border-radius: 12px; background: #f1e1b8; color: #3d220c; font-weight: 700; text-shadow: none; }
 .quest-guide .quest-link:hover, .quest-guide .quest-link:focus-visible { background: #fff6dc; outline: 2px solid #f6c445; }
 
 /* Rewards with game details: icon, stats, best pick. */
@@ -352,7 +352,7 @@ button.quest-ledger-row:not(.illustrated-card){display:flex;align-items:center;g
 /* Objective creature level and elite chips on "Where to go" tiles. */
 .quest-where-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .quest-chip { display: inline-block; padding: 0 7px; border-radius: 9px; font: 700 11px/1.6 "Source Sans 3", sans-serif; }
-.quest-chip-level { background: #e3d2a6; color: #3d220c; border: 1px solid #a5823e; }
+.quest-chip-level { background: #e3d2a6; color: #3d220c; border: 1px solid #a5823e; text-shadow: none; }
 .quest-chip-elite { background: #7a1f14; color: #ffe9c9; border: 1px solid #f0c060; }
 
 /* How to do it. */
@@ -380,5 +380,5 @@ button.quest-ledger-row:not(.illustrated-card){display:flex;align-items:center;g
 .quest-guide .ledger-caption { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .12em; text-transform: uppercase; color: #8a5a18; }
 .quest-guide .ledger-footnote { font-size: 12px; color: #c9b48a; }
 .quest-guide :is(.quest-search-label, .quest-ledger-row strong, .quest-detail h2, .quest-section h3, .quest-section h4, .quest-waypoint h3, .chain-status) { color: #3d220c; }
-.quest-guide .quest-chain button:not(.illustrated-card), .quest-guide .chain-link > span { color: #7a1f14; }
+.quest-guide .quest-chain button:not(.illustrated-card), .quest-guide .chain-link > span { color: #7a1f14; text-shadow: none; }
 .quest-guide .ledger-caption span, .quest-guide .atlas-index-label { color: #8a5a18; }

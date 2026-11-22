@@ -7434,6 +7434,56 @@
           "text": "Pins, drops and sellers come from places and loot players have seen, so a missing line does not mean something cannot be found. Not yet checked in the real game: where the minimap pins land, and the atlas window on screen. The dungeon paintings add about 5 MB to the addon."
         }
       ]
+    },
+    {
+      "version": "1.20.0",
+      "channel": "stable",
+      "source": "docs/releases/1.20.0.md",
+      "title": "Backstage Forever 1.20.0 — Your wish list in the game",
+      "changes": [
+        {
+          "id": "wish-list-handoff",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": "atlas",
+          "section": "Changes",
+          "text": "Star an item in Adventure → Dungeons & raids, and the in-game Instance Atlas (/bf atlas) marks it \"Wish\" on the boss that drops it and says how many of your wishes each dungeon holds. The desktop writes your wish list to one small file in the addon's folder; the game reads it at your next login or /reload. Nothing is sent to the game while it runs, and the file stays on your computer."
+        },
+        {
+          "id": "fuzzy-button-text",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Dark text on light buttons is crisp again. The skill-up colour chips on Professions, and the same kind of button on Now, Zones, Party, Guided route and elsewhere, carried a black shadow meant for light text."
+        },
+        {
+          "id": "hotfix-loot-names",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": "atlas",
+          "section": "Changes",
+          "text": "Dungeon loot that the game delivers as a hotfix no longer shows as \"Item #14145\" with an empty square. It shows its name and a painted loot pouch. Its quality and stats still come only from the game's own files, so those stay blank for these items for now."
+        },
+        {
+          "id": "handoff-scope",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "The wish list reaches the game for characters the desktop knows from a saved addon file, matched by name and realm. Not yet checked in the real game: the marks in the in-game atlas."
+        }
+      ]
     }
   ],
   "excluded": [

@@ -13,7 +13,7 @@
 .director-reason { font-size:14px; line-height:1.45; margin:4px 0; color:#4a3218; }
 .director-source { font-size:12px; color:#6b4a22; line-height:1.5; }
 .director-choice details { margin-top:6px; padding:0; border:0; }
-.director-choice summary { font-size:12px; min-height:22px; color:#7a1f14; }
+.director-choice summary { font-size:12px; min-height:22px; color:#7a1f14; text-shadow: none; }
 .director-choice details p { color:#4a3218; font-size:12px; line-height:1.5; }
 .director-alternatives { display:grid; gap:8px; align-content:start; }
 .director-alternative h3 { font-size:15px; margin:3px 0; }
@@ -28,7 +28,7 @@
 .director-footnote { margin:10px 0 0; color:#6b4a22; font-size:12px; line-height:1.5; }
 .director-preparation { color:#8a3a12; margin:10px 0 0; font-size:13px; }
 .director-private { margin-top:10px; color:#4a3218; font-size:12px; }
-.director-private summary { color:#7a1f14; font-size:12px; }
+.director-private summary { color:#7a1f14; font-size:12px; text-shadow: none; }
 .director-error { padding:10px 12px; margin-top:12px; border:1px solid #b8462e; border-radius:4px; background:#fbe1d4; color:#5a1a10; }
 .director-error p { font-size:13px; margin:0 0 8px; }
 .director-empty p { max-width:680px; color:#4a3218; font-size:14px; line-height:1.5; }

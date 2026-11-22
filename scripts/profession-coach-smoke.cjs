@@ -581,9 +581,18 @@ function shortPath(target) {
           preparationUi.retryReadError = false;
           preparationUi.holdRetryRead = true;
         });
-        await page
-          .getByRole("button", { name: "Retry workshop", exact: true })
-          .click();
+        // A click that lands while the error panel is being repainted can be swallowed (seen twice on
+        // GitHub's runners: no read ever started). Press again while the button is still offered.
+        const retry = page.getByRole("button", { name: "Retry workshop", exact: true });
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await retry.click();
+          const started = await app.evaluate(async () => {
+            const end = Date.now() + 12000;
+            while (preparationUi.retryReaders.length < 1 && Date.now() < end) await new Promise((r) => setTimeout(r, 10));
+            return preparationUi.retryReaders.length;
+          });
+          if (started >= 1 || !(await retry.isVisible().catch(() => false))) break;
+        }
         await untilMain("preparationUi.retryReaders.length===1");
         // This is the old CI wait: it succeeds while this retry reply is still held.
         await page.locator("[data-preparation-reagent]").first().waitFor();

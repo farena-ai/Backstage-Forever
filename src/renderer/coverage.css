@@ -6,7 +6,7 @@
 
 .cov-toggle { display: inline-flex; gap: 4px; padding: 3px; border-radius: 16px; background: rgba(0,0,0,.35); }
 .coverage-page .cov-toggle button { all: unset; cursor: pointer; padding: 5px 16px; border-radius: 14px; font-weight: 700; color: #f1dcb0; }
-.coverage-page .cov-toggle button[aria-pressed="true"] { background: #f6c445; color: #2b1407; }
+.coverage-page .cov-toggle button[aria-pressed="true"] { background: #f6c445; color: #2b1407; text-shadow: none; }
 .cov-patch { padding: 14px 16px; border: 1px solid #a5823e; border-radius: 8px; background: #2b170f; color: #f1dcb0; overflow-wrap: anywhere; }
 .cov-patch h2 { margin: 0 0 8px; color: #fff1d6; }
 .cov-patch p { margin: 0; }

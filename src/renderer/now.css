@@ -48,7 +48,7 @@
 .now-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .now-actions:empty { display: none; }
 .now-zones, .now-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.now-zones button, .now-log button { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; width: 100%; padding: 6px 8px; border: 1px solid #c4a466; border-radius: 4px; background: rgba(255,248,225,.55); color: #2b1b0a; text-align: left; font: inherit; cursor: pointer; }
+.now-zones button, .now-log button { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; width: 100%; padding: 6px 8px; border: 1px solid #c4a466; border-radius: 4px; background: rgba(255,248,225,.55); color: #2b1b0a; text-align: left; font: inherit; cursor: pointer; text-shadow: none; }
 .now-zones button:hover, .now-log button:hover, .now-zones button:focus-visible, .now-log button:focus-visible { background: #fff6dc; border-color: #8a5a18; }
 .now-zones button[disabled] { cursor: default; opacity: .85; }
 .now-zones strong { font-weight: 700; }
@@ -57,7 +57,7 @@
 .now-fit-soon em { background: #b7a98a; color: #2b1b0a; }
 .now-sub { margin: 12px 0 6px; font: 700 13px Cinzel, Georgia, serif; color: #5a2e0c; }
 .now-chip { flex: none; padding: 0 6px; border-radius: 8px; font-size: 11px; font-weight: 700; background: #3776be; color: #fff; }
-.now-chip.ready { background: #f6c445; color: #3a2400; }
+.now-chip.ready { background: #f6c445; color: #3a2400; text-shadow: none; }
 .now-chip.new { background: #468134; }
 .now-log small { color: #6b4a22; }
 .now-good { color: #2e6b1e; font-weight: 700; }
@@ -104,7 +104,7 @@
 .now-check { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; border: 1.5px solid #6b4a22; background: #fff6dc; color: #3d220c; }
 .now-checklist li.done .now-check { background: #468134; border-color: #2e5a20; color: #fff; }
 .now-checklist li.next .now-check { background: #f6c445; }
-.now-page .now-tip button.now-link { all: unset; cursor: pointer; color: #7a1f14; font-weight: 700; text-decoration: underline; }
+.now-page .now-tip button.now-link { all: unset; cursor: pointer; color: #7a1f14; font-weight: 700; text-decoration: underline; text-shadow: none; }
 
 /* Outdated addon in the running game. */
 .now-reload { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin: 0; padding: 10px 14px; border-radius: 6px; background: #30251c; color: #f1dcb0; border: 1px solid #a5823e; }
@@ -167,7 +167,7 @@
 .bf-actions { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
 .bf-celebrate .bf-continue, .bf-celebrate .bf-go, .bf-celebrate .bf-sound { all: unset; cursor: pointer; padding: 8px 18px; border-radius: 18px; font: 700 14px 'Source Sans 3', sans-serif; }
 .bf-celebrate .bf-continue { background: linear-gradient(180deg, #ffd34d, #c98a12); color: #2b1407; box-shadow: 0 0 18px rgba(246,196,69,.6); }
-.bf-celebrate .bf-go { display: inline-block; margin-top: 8px; background: #f6c445; color: #2b1407; }
+.bf-celebrate .bf-go { display: inline-block; margin-top: 8px; background: #f6c445; color: #2b1407; text-shadow: none; }
 .bf-celebrate .bf-sound { background: rgba(255,255,255,.1); color: #f1dcb0; }
 .bf-celebrate .bf-continue:focus-visible, .bf-celebrate .bf-go:focus-visible, .bf-celebrate .bf-sound:focus-visible { outline: 2px solid #fff1d6; outline-offset: 2px; }
 @keyframes bf-in { from { opacity: 0; } to { opacity: 1; } }
@@ -225,7 +225,7 @@
 .now-zr > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
 .now-zr strong { font: 700 14px Georgia, serif; color: #3d220c; }
 /* Name and map button share the first line; the note sits under the name, never pushing the button down. */
-.now-zr-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 8px; font-size: 14px; color: #2b1b0a; }
+.now-zr-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 8px; font-size: 14px; color: #2b1b0a; text-shadow: none; }
 .now-zr-item small { color: #6b4a22; grid-column: 1; }
 .now-zr-item button { grid-column: 2; grid-row: 1; }
 .now-zr-ico { flex: none; width: 38px; height: 38px; border-radius: 50%; background: transparent center / contain no-repeat; filter: drop-shadow(0 2px 3px rgba(0,0,0,.4)); }

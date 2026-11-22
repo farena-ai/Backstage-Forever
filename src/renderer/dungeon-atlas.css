@@ -30,7 +30,7 @@
 .atlas-chest-gaps { padding-inline-start: 20px; }
 .atlas-instance-recap { margin-bottom: 14px; }
 .atlas-recap-list + .atlas-recap-note { margin-top: 6px; }
-.atlas-page .atlas-chip { all: unset; box-sizing: border-box; cursor: pointer; padding: 10px 14px; border-radius: 6px; font: 700 15px Cinzel, Georgia, serif; color: #1d1207; border: 1px solid rgba(0,0,0,.4); box-shadow: 0 3px 8px rgba(0,0,0,.4); }
+.atlas-page .atlas-chip { all: unset; box-sizing: border-box; cursor: pointer; padding: 10px 14px; border-radius: 6px; font: 700 15px Cinzel, Georgia, serif; color: #1d1207; border: 1px solid rgba(0,0,0,.4); box-shadow: 0 3px 8px rgba(0,0,0,.4); text-shadow: none; }
 .atlas-page .atlas-chip small { display: block; font: 600 12px "Source Sans 3", sans-serif; opacity: .8; }
 .atlas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; align-items: start; }
 .atlas-card { position: relative; display: flex; overflow: hidden; border-radius: 8px; background: linear-gradient(180deg, #efe0bb, #d9c393); color: #2b1b0a; border: 1px solid #8c6a2e; box-shadow: inset 0 0 20px rgba(120,80,30,.25), 0 6px 14px rgba(0,0,0,.45); }
@@ -101,7 +101,7 @@
 .d-unknown .atlas-ribbon { background: linear-gradient(180deg, #c7a6e8, #7b4fb0); }
 .d-easy .atlas-diff { color: #2f6a2a; } .d-right .atlas-diff { color: #8a6a06; } .d-hard .atlas-diff { color: #a5520f; } .d-impossible .atlas-diff { color: #a1221a; } .d-trivial .atlas-diff { color: #6a6a6a; }
 
-.atlas-page .atlas-chip small { color: #2b1b0a; opacity: .85; }
+.atlas-page .atlas-chip small { color: #2b1b0a; opacity: .85; text-shadow: none; }
 
 /* Readiness checklist and quests to pick up first. */
 .atlas-ready { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 3px; font-size: 13px; }
@@ -163,7 +163,8 @@
 .loot-tile { position: relative; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 6px; background: linear-gradient(180deg, #2b1608, #160a03); border: 2px solid #8a7a66; box-shadow: inset 0 0 12px rgba(0,0,0,.55); transition: transform .12s ease, box-shadow .12s ease; }
 .loot-tile:hover { transform: translateY(-1px); box-shadow: inset 0 0 12px rgba(0,0,0,.55), 0 4px 12px rgba(0,0,0,.5); }
 .loot-icon { flex: none; line-height: 0; border: 2px solid currentColor; border-radius: 6px; overflow: hidden; color: #8a7a66; box-shadow: 0 0 0 1px #000; }
-.loot-gem { display: grid; place-items: center; width: 44px; height: 44px; line-height: 1; font-size: 20px; background: #1b0d05; }
+/* The painted pouch: shown when the game files have no icon for an item. */
+.loot-gem { display: block; width: 44px; height: 44px; object-fit: cover; background: #1b0d05; }
 .loot-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .loot-body .loot-compare { align-self: flex-start; margin-top: 4px; max-width: 100%; overflow-wrap: anywhere; }
 .loot-name { overflow: hidden; font-weight: 700; font-size: 14px; color: #e8e2d4; text-overflow: ellipsis; white-space: nowrap; }

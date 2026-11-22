@@ -19,7 +19,7 @@
 [data-sheet-compare]:empty { display: none; }
 [data-sheet-pair-host]:empty { display: none; }
 .sht-pair { overflow-wrap: anywhere; }
-.sht-pair summary { cursor: pointer; color: #3d220c; font-weight: 700; }
+.sht-pair summary { cursor: pointer; color: #3d220c; font-weight: 700; text-shadow: none; }
 .sht-pair .sht-pair-result-heading { color: #3d220c; scroll-margin-block-start: 1rem; }
 .sht-pair-form, .sht-pair-fields { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
 .sht-pair-form { margin-top: 10px; }

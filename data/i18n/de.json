@@ -4,6 +4,7 @@
  "note": "German, machine-translated with the local model qwen3.8:27b and spot-checked; fixes welcome. Keys are the exact English text.",
  "app": {
   "In-Game Helpers": "Helfer im Spiel",
+  "Details not in your game files yet": "Details noch nicht in deinen Spieldateien",
   "The easy way, in WoW: type": "Der einfache Weg, in WoW: gib",
   "or right-click the owl on the minimap for one window with every switch.": "ein oder rechtsklicke die Eule an der Minikarte für ein Fenster mit allen Schaltern.",
   "Prepare changes for WoW": "Änderungen für WoW vorbereiten",
@@ -1436,6 +1437,8 @@
  "addon": {
   "plain": {
    "In-Game Helpers": "Helfer im Spiel",
+   "Wish": "Wunsch",
+   "on your wish list": "auf deiner Wunschliste",
    "Instance Atlas": "Instanz-Atlas",
    "Right for your level": "Passt zu deiner Stufe",
    "Coming up soon": "Bald soweit",

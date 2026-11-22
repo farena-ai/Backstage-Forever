@@ -9,7 +9,7 @@ const MAX_ID = 2147483647;
 const itemId = (x) => { if (!Number.isSafeInteger(x) || x < 1 || x > MAX_ID) throw Error("Invalid item ID."); return x; };
 const count = (args, min, max = min) => { if (args.length < min || args.length > max) throw Error("Invalid loot request."); };
 
-function registerBossLootHandlers({ handle, getState, gameData, wishlist, getPack, getCommunity = () => null, creatureName = () => null, priceFor = () => null }) {
+function registerBossLootHandlers({ handle, getState, gameData, wishlist, onWishChange = () => {}, getPack, getCommunity = () => null, creatureName = () => null, priceFor = () => null }) {
   const community = () => { try { return getCommunity() || null; } catch { return null; } };
   let index = null, indexFor = null;
   const drops = () => { const p = getPack(); if (p !== indexFor) { indexFor = p; index = p ? dropIndex(p) : new Map(); } return index; };
@@ -52,7 +52,10 @@ function registerBossLootHandlers({ handle, getState, gameData, wishlist, getPac
     itemId(id);
     if (typeof on !== "boolean") throw Error("Invalid wish list change.");
     if (!p?.id) throw Error("Choose a character.");
-    return { itemIds: wishlist.set(p.id, id, on) };
+    const itemIds = wishlist.set(p.id, id, on);
+    // The in-game atlas marks wished items after the next /reload (desktop-handoff.cjs).
+    try { onWishChange(); } catch {}
+    return { itemIds };
   });
   // Card chips for dungeonAtlas: upgrades and starred items per instance, for the active character.
   return { summary: (p) => { try { return atlasLootSummary(getPack(), { profile: p, gameData, wished: wished(p) }); } catch { return {}; } } };

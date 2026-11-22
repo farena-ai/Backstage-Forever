@@ -217,16 +217,17 @@ window.DungeonAtlas = (() => {
   // Starred items that drop here, as small icons (hover for the item card).
   function wishRow(e) {
     const w = e.loot?.wished || []; if (!w.length) return "";
-    return `<div class="atlas-wishes"><span class="atlas-wish-label">★ Wish list</span>${w.slice(0, 8).map((x) => `<span class="atlas-wish q-${QUALITY[x.quality] || "unknown"}" data-card-item="${x.itemId}">${x.iconFileId && window.GameIcons ? GameIcons.tag(x.iconFileId, 28) : '<span class="loot-gem" aria-hidden="true">◆</span>'}<span class="sr-only">${esc(x.name || `Item #${x.itemId}`)} from ${esc(x.boss)}</span></span>`).join("")}</div>`;
+    return `<div class="atlas-wishes"><span class="atlas-wish-label">★ Wish list</span>${w.slice(0, 8).map((x) => `<span class="atlas-wish q-${QUALITY[x.quality] || "unknown"}" data-card-item="${x.itemId}">${x.iconFileId && window.GameIcons ? GameIcons.tag(x.iconFileId, 28) : '<img class="loot-gem" src="art/icons/loot-unknown.png" alt="">'}<span class="sr-only">${esc(x.name || `Item #${x.itemId}`)} from ${esc(x.boss)}</span></span>`).join("")}</div>`;
   }
   const pct = (c) => (c >= 0.995 ? "100%" : `${Math.max(1, Math.round(c * 100))}%`);
   function tile(x) {
     const it = x.item, q = QUALITY[it?.quality] || "unknown", v = x.verdict?.verdict || "unknown";
     const name = it?.name || `Item #${x.itemId}`;
-    const kind = it ? [it.slot, it.kind].filter(Boolean).join(" · ") || (it.itemLevel ? `Item level ${it.itemLevel}` : "") : "";
+    // A name-only item is one the game delivers by hotfix: its details are not in the local game files.
+    const kind = it ? [it.slot, it.kind].filter(Boolean).join(" · ") || (it.itemLevel ? `Item level ${it.itemLevel}` : it.nameOnly ? "Details not in your game files yet" : "") : "";
     const badge = BADGE[v] ? `<span class="loot-badge v-${esc(v)}">${esc(BADGE[v])}</span>` : "";
     return `<li class="loot-tile q-${q} v-${esc(v)}${x.wished ? " wished" : ""}${x.community ? " community" : ""}" data-card-item="${x.itemId}">
-      <span class="loot-icon">${it?.iconFileId && window.GameIcons ? GameIcons.tag(it.iconFileId, 44) : '<span class="loot-gem" aria-hidden="true">◆</span>'}</span>
+      <span class="loot-icon">${it?.iconFileId && window.GameIcons ? GameIcons.tag(it.iconFileId, 44) : '<img class="loot-gem" src="art/icons/loot-unknown.png" alt="">'}</span>
       <span class="loot-body"><span class="loot-name">${esc(name)}</span>${kind ? `<span class="loot-kind">${esc(kind)}</span>` : ""}${badge}${x.community ? `<span class="loot-provenance">${esc(x.source)}</span>` : ""}${activeProfileId() ? `<button type="button" class="loot-compare" data-nav="sheet" data-atlas-compare="${x.itemId}" data-atlas-profile="${esc(activeProfileId())}" aria-label="Compare item #${x.itemId} in Sheet">Compare in Sheet</button>` : ""}</span>
       <span class="loot-side"><span class="loot-chance" title="${x.community ? `${esc(x.source)} · ${x.samples} loot${x.samples === 1 ? "" : "s"} pooled` : `Seen in ${x.drops} loot${x.drops === 1 ? "" : "s"}`}">${pct(x.chance)}</span><button type="button" class="loot-star" data-loot-wish="${x.itemId}" aria-pressed="${x.wished}" aria-label="${x.wished ? "Remove from" : "Add to"} wish list: ${esc(name)}">${x.wished ? "★" : "☆"}</button></span></li>`;
   }

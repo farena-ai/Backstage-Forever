@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.20.0 - Your wish list in the game
+
+- Items you star on the desktop are marked in the in-game Instance Atlas after your next /reload. Fixes fuzzy text on light buttons and unnamed, icon-less dungeon loot. See the [release notes](docs/releases/1.20.0.md).
+
 ## 1.19.0 - Quest helper and Instance Atlas
 
 - In game: quest pins on the minimap, where items drop and who sells them on tooltips, `/bf available`, `/bf chain`, and the Instance Atlas (`/bf atlas`) with every dungeon and raid. See the [release notes](docs/releases/1.19.0.md).
