@@ -321,7 +321,7 @@ test("subscription receives bounded sourced quest facts without full local histo
         assert.match(body, /referenceStatus/);
         assert.match(body, /conflict/);
       }
-      assert.match(body, /164bd1e2/);
+      assert.ok(body.includes(knowledge.pack.sourceCommit.slice(0, 8)), "the pinned source commit travels with the facts");
     }
   } finally {
     f.close();

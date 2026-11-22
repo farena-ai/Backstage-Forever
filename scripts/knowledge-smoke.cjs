@@ -254,7 +254,7 @@ function shortPath(target){
       .click();
     assert.equal(
       (await app.evaluate(() => globalThis.knowledgeCopies)).at(-1),
-      "/bf guide 2000001 o 888 0.2500 0.7500 1.60.1.70888",
+      "/bf guide 2000001 o 888 0.2500 0.7500 " + require("../data/forever/pack.json").build,
     );
     await page.locator('.quest-ledger-row[data-quest-id="1061"]').click();
     await page
@@ -274,7 +274,7 @@ function shortPath(target){
       .click();
     assert.equal(
       (await app.evaluate(() => globalThis.knowledgeCopies)).at(-1),
-      "/bf guide 1061 t 999 0.1235 0.6543 1.60.1.70888",
+      "/bf guide 1061 t 999 0.1235 0.6543 " + require("../data/forever/pack.json").build,
     );
     assert.equal(await page.locator('.quest-guide .page-hero.ph-art-quests .ph-crest[src^="art/classes/"]').count(),1,"Quests opens on its painted banner with the painted class crest");
     assert.match(await page.locator('.quest-waypoint').innerText(),/Quest area reported by the game; not an exact NPC or spawn location/);

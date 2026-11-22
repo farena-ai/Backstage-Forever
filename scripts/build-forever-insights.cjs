@@ -38,15 +38,15 @@ const LICENSE = {
 };
 // Pinned merged coverage of the bundled builds.
 const COVERAGE = {
-  quests: 4916,
-  sharing: 4847,
+  quests: 5564,
+  sharing: 5226,
   durations: 37,
-  startItems: 1189,
-  dropLists: 186,
-  trainers: 113,
-  services: 5552,
-  uniqueSpells: 1427,
-  items: 6670,
+  startItems: 1295,
+  dropLists: 195,
+  trainers: 180,
+  services: 7900,
+  uniqueSpells: 1636,
+  items: 7006,
 };
 function validateLock(lock) {
   if (

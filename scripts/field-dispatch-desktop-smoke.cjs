@@ -421,7 +421,7 @@ const { version } = require("../package.json");
     await shown().getByRole("heading", { name: `Updated from 1.9.0 to ${version}` }).waitFor();
     const pending = (await read(file)).pending;
     assert.equal(pending.id, `stable:1.9.0..${version}`);
-    assert.deepEqual(await shown().locator(".field-dispatch__version").allTextContents(), [`Version ${version}`, "Version 1.17.1", "Version 1.17.0", "Version 1.16.0", "Version 1.15.1", "Version 1.15.0", "Version 1.14.0", "Version 1.13.0", "Version 1.12.1", "Version 1.12.0", "Version 1.11.0", "Version 1.10.0"]);
+    assert.deepEqual(await shown().locator(".field-dispatch__version").allTextContents(), [`Version ${version}`, "Version 1.18.0", "Version 1.17.1", "Version 1.17.0", "Version 1.16.0", "Version 1.15.1", "Version 1.15.0", "Version 1.14.0", "Version 1.13.0", "Version 1.12.1", "Version 1.12.0", "Version 1.11.0", "Version 1.10.0"]);
     assert.equal(await shown().locator("#field-dispatch-title:focus").count(), 1);
     assert.equal(await page.evaluate(() => backstage.fieldDispatchAcknowledge("stable:1.10.0..1.11.0")), false);
     await checkLayout();

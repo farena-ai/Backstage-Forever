@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.18.1 - Fresh data
+
+- The bundled quest, NPC, vendor, trainer, creature and loot data moves to a newer snapshot covering seven game builds, and the guided routes now reach level 55 or 56 for every race. See the [release notes](docs/releases/1.18.1.md).
+
 ## 1.18.0 - A front door in game
 
 - One painted settings window for every in-game helper (`/bf options`, or right-click the owl), a painted welcome card, four key bindings, `/way`, `/bf perf`, and boss tips installed by the desktop app. See the [release notes](docs/releases/1.18.0.md).

@@ -599,13 +599,19 @@ function centerOf(points) {
   return { mapId: best[0].mapId, x: best.reduce((n, pt) => n + pt.x, 0) / best.length, y: best.reduce((n, pt) => n + pt.y, 0) / best.length };
 }
 function answerCreature(u, { profile, data }) {
-  const ids = u.creature?.ids || [];
-  for (const id of ids) {
-    const area = data.index.creatureAreas.get(id), name = data.index.creatures.get(id)?.name || u.creature.gram;
-    if (!area) continue;
-    const c = centerOf(area.positions), h = here(profile);
-    const text = `${name} were seen around ${where(c, h)}${area.quests.length ? ` (for "${area.quests[0]}")` : ""}. That's where players fought them; they spread around that spot.`;
-    return { text, facts: [`${name}: around ${where(c, null)}${area.quests.length ? `, quest "${area.quests[0]}"` : ""}.`] };
+  const h = here(profile);
+  // One word can name several creatures ("outrunners": Ashenvale, Highvale, Galak). The ones
+  // seen nearest the player come first: same map, then next door, then the same continent.
+  const located = (u.creature?.ids || []).map((id) => ({ id, area: data.index.creatureAreas.get(id) })).filter((r) => r.area?.positions?.length).map((r) => ({ ...r, c: centerOf(r.area.positions) }));
+  if (h) located.sort((a, b) => near(a.c, h) - near(b.c, h));
+  for (const { id, area, c } of located) {
+    const name = data.index.creatures.get(id)?.name || u.creature.gram;
+    // The word may fit other creatures too: name up to two more, so a player with no saved place
+    // (or looking for a different one) is not left with a single guess.
+    const others = located.filter((r) => r.id !== id).slice(0, 2).map((r) => `${data.index.creatures.get(r.id)?.name || u.creature.gram} around ${where(r.c, null)}`);
+    const also = others.length ? ` Others with that name: ${others.join("; ")}.` : "";
+    const text = `${name} were seen around ${where(c, h)}${area.quests.length ? ` (for "${area.quests[0]}")` : ""}. That's where players fought them; they spread around that spot.${also}`;
+    return { text, facts: [`${name}: around ${where(c, null)}${area.quests.length ? `, quest "${area.quests[0]}"` : ""}.`, ...others.map((o) => `${o}.`)] };
   }
   return null;
 }

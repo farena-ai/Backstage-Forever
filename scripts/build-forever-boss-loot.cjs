@@ -7,7 +7,7 @@ const fs = require("node:fs"), path = require("node:path");
 const { validateBossLootPack, hash, MIN_CHANCE, MAX_ITEMS } = require("../src/core/boss-loot-data.cjs");
 const { BASELINE } = require("../src/core/dungeon-atlas.cjs");
 const root = path.join(__dirname, "..");
-const BUILDS = ["1.60.1.70888", "1.60.1.70862", "1.60.1.70840", "1.60.1.70790"];
+const BUILDS = ["1.60.1.71037", "1.60.1.70959", "1.60.1.70938", "1.60.1.70888", "1.60.1.70862", "1.60.1.70840", "1.60.1.70790"];
 const ATTRIBUTION = "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.";
 const dir = path.join(root, "data", "forever-boss-loot");
 const readJson = (f) => JSON.parse(fs.readFileSync(f, "utf8"));

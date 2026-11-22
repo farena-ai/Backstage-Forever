@@ -7304,6 +7304,78 @@
           "text": "Each switch runs the same /bf command you could type, and every setting still belongs to the character you are playing. Not yet checked in the real game: the entry in the game's own options list and the key bindings."
         }
       ]
+    },
+    {
+      "version": "1.18.1",
+      "channel": "stable",
+      "source": "docs/releases/1.18.1.md",
+      "title": "Backstage Forever 1.18.1 — Fresh data",
+      "changes": [
+        {
+          "id": "data-seven-builds",
+          "kind": "improved",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "The bundled data moves to a newer community snapshot and now covers seven game builds instead of four, including the current one. Quests with a known quest giver go from 910 to 1,536, quests with a known hand-in from 861 to 1,476, quest items with a known source from 485 to 809, bosses with recorded loot from 47 to 87, NPCs with a known place from 978 to 1,449, vendors from 291 to 417 (Alliance 62 to 113), trainers from 113 to 180, and flight masters from 22 to 38."
+        },
+        {
+          "id": "routes-to-55",
+          "kind": "improved",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": "guided-route",
+          "section": "Changes",
+          "text": "The guided routes reach level 55 or 56 for every race, up from 42, with 4,361 steps instead of 2,668. Dwarf and Gnome routes still start at level 10."
+        },
+        {
+          "id": "zone-advice-band",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": "now",
+          "section": "Changes",
+          "text": "Where to level no longer sends you away from a zone you are questing in because a neighbouring zone lists more quests, and a few level-60 holiday quests no longer stretch a low zone's level range."
+        },
+        {
+          "id": "companion-same-name",
+          "kind": "improved",
+          "platforms": [
+            "desktop"
+          ],
+          "action": "companion",
+          "section": "Changes",
+          "text": "When a word fits several creatures, the Companion answers with the one nearest you and names up to two others."
+        },
+        {
+          "id": "data-unknown-names",
+          "kind": "fixed",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Creatures recorded with the game's placeholder name \"Unknown\" are left out."
+        },
+        {
+          "id": "data-scope",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "These are places and drops players have seen, not guarantees. Alliance starting zones are still thinner than Horde ones; Dun Morogh in particular has very little."
+        }
+      ]
     }
   ],
   "excluded": [

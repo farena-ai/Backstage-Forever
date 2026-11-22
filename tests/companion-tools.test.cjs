@@ -249,5 +249,5 @@ test("review fixes: reward reverse lookup, per-point provenance and reported-loc
   Object.assign(older.npcs.find((n) => n.id === 2055), { build: "1.60.1.70790", positions: [{ mapId: 1458, x: 0.1, y: 0.1 }] });
   const faranell = JSON.parse(await kit({ npcReference: older }).call("find_npc", { name: "Faranell" }));
   const tiers = faranell.matches[0].locations.map((l) => `${l.evidence}@${l.build}`);
-  assert.ok(tiers.includes("historical-reference@1.60.1.70790") && tiers.some((t) => t.startsWith("reference-observation@1.60.1.70888")));
+  assert.ok(tiers.includes("historical-reference@1.60.1.70790") && tiers.includes(`reference-observation@${index.pack.build}`));
 });
