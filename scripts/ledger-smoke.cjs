@@ -67,7 +67,7 @@ const { defaultState } = require("../src/core/validation.cjs");
           overflow: root.scrollWidth - root.clientWidth, tableTop: root.querySelector("table").getBoundingClientRect().top };
       });
       assert.ok(geometry.banner <= 120, `${size} ${name}: compact banner`);
-      assert.equal(geometry.tabs.length, 4);
+      assert.equal(geometry.tabs.length, 5);
       const tops = geometry.tabs.map(({ top }) => top);
       assert.ok(Math.max(...tops) - Math.min(...tops) < 3, `subtabs stay together: ${tops}`);
       assert.ok(geometry.tabs.every(({ font }) => font >= 14), "subtabs stay readable");

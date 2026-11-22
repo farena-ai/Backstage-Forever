@@ -2,7 +2,7 @@
 // Journey journal from the addon: levels reached (with /played seconds), first-time moments and
 // zones visited. Bounded and validated; an invalid block is dropped without touching the rest.
 const FIRSTS = ["dungeon", "flight", "mount", "death", "rested", "group", "hearth"];
-const LIMITS = { levels: 80, firsts: 40, zones: 120, givers: 400, encounters: 100 };
+const LIMITS = { levels: 80, firsts: 40, zones: 120, givers: 400, encounters: 100, runs: 60, runLoot: 30 };
 const fail = () => { throw Error("Invalid journal."); };
 const int = (v, lo, hi) => (Number.isSafeInteger(v) && v >= lo && v <= hi ? v : fail());
 const MAX_T = 253402300799;
@@ -21,6 +21,34 @@ function normalizeEncounterHistory(value) {
     if (seen.has(key)) continue;
     seen.add(key);
     rows.push({ encounterId, name, instanceMap, instanceType, difficultyId, at });
+  }
+  return rows;
+}
+
+// G11: one row per dungeon or raid visit: when the character went in, the last moment the addon
+// saw it there, how often it died inside and the uncommon-or-better items it looted itself.
+function normalizeRunHistory(value) {
+  const rows = [], seen = new Set();
+  for (const r of arr(value, LIMITS.runs)) {
+    if (!r || typeof r !== "object" || Array.isArray(r)) fail();
+    const { name, instanceType } = r;
+    if (name !== undefined && (typeof name !== "string" || Buffer.byteLength(name) > 120 || !name.trim() || /[\x00-\x1f\x7f]/.test(name))) fail();
+    if (instanceType !== "party" && instanceType !== "raid") fail();
+    const instanceMap = int(r.instanceMap, 1, 2147483647), startedAt = int(r.startedAt, 1, MAX_T), endedAt = int(r.endedAt, startedAt, MAX_T);
+    const key = `${instanceMap}:${startedAt}`;
+    if (seen.has(key)) fail();
+    seen.add(key);
+    const loot = [], items = new Set();
+    // Lua writes an empty list as {} when nothing marked it as an array.
+    const raw = r.loot && typeof r.loot === "object" && !Array.isArray(r.loot) && !Object.keys(r.loot).length ? [] : r.loot;
+    for (const l of arr(raw, LIMITS.runLoot)) {
+      if (!l || typeof l !== "object" || Array.isArray(l)) fail();
+      const id = int(l.id, 1, 2147483647);
+      if (items.has(id)) fail();
+      items.add(id);
+      loot.push({ id, n: int(l.n, 1, 100000) });
+    }
+    rows.push({ instanceMap, instanceType, ...(name === undefined ? {} : { name }), startedAt, endedAt, deaths: int(r.deaths ?? 0, 0, 10000), loot });
   }
   return rows;
 }
@@ -51,7 +79,7 @@ function savedDungeonDefeats(profile) {
   };
 }
 
-function normalizeJournalCapture(j, { ignoreInvalidEncounters = false } = {}) {
+function normalizeJournalCapture(j, { ignoreInvalidEncounters = false, ignoreInvalidRuns = false } = {}) {
   if (!j || typeof j !== "object" || Array.isArray(j)) fail();
   const levels = [], seen = new Set();
   for (const e of arr(j.levels, LIMITS.levels)) {
@@ -80,7 +108,10 @@ function normalizeJournalCapture(j, { ignoreInvalidEncounters = false } = {}) {
   let encounters = [];
   try { encounters = normalizeEncounterHistory(j.encounters); }
   catch (error) { if (!ignoreInvalidEncounters) throw error; }
-  return { levels, firsts, zones, ...(givers.length ? { givers } : {}), ...(encounters.length ? { encounters } : {}), ...(j.played === undefined || j.played === null ? {} : { played: int(j.played, 0, 1e10) }) };
+  let runs = [];
+  try { runs = normalizeRunHistory(j.runs); }
+  catch (error) { if (!ignoreInvalidRuns) throw error; }
+  return { levels, firsts, zones, ...(givers.length ? { givers } : {}), ...(encounters.length ? { encounters } : {}), ...(runs.length ? { runs } : {}), ...(j.played === undefined || j.played === null ? {} : { played: int(j.played, 0, 1e10) }) };
 }
 // Stored profiles are re-validated with the same rules.
 const validateJournal = (j) => { if (j !== undefined) normalizeJournalCapture(j); };
@@ -100,4 +131,4 @@ function splits(profile, others = []) {
   }
   return rows.map((r) => ({ ...r, best: best.get(r.level) || null, personalBest: best.get(r.level)?.name === profile.name && best.get(r.level)?.seconds === r.seconds }));
 }
-module.exports = { normalizeJournalCapture, normalizeEncounterHistory, savedSource, savedDungeonDefeats, validateJournal, splits, FIRSTS, LIMITS };
+module.exports = { normalizeJournalCapture, normalizeEncounterHistory, normalizeRunHistory, savedSource, savedDungeonDefeats, validateJournal, splits, FIRSTS, LIMITS };

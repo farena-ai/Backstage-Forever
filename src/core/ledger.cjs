@@ -4,7 +4,7 @@
 // The addon block is validated strictly and bounded; an invalid block is dropped without
 // touching the rest of the character. Everything here stays on this computer: it is never part
 // of community sharing (community.cjs) or the AI context (providers.cjs).
-const LIMITS = Object.freeze({ items: 400, factions: 120, cooldowns: 16, prices: 1500, history: 5, moneyLog: 30, training: 200 });
+const LIMITS = Object.freeze({ items: 400, factions: 120, cooldowns: 16, prices: 1500, history: 5, moneyLog: 30, training: 200, vendor: 200 });
 const MAX_T = 253402300799, MONEY = 1e13, ID = 2147483647, MAX_REPUTATION_SCAN = 2147483646;
 const COOLDOWNS = Object.freeze({
   transmute: { name: "Transmute", profession: "Alchemy" },
@@ -105,6 +105,18 @@ function training(v) {
   });
   return { seenAt: int(v.seenAt, 0, MAX_T), services };
 }
+// E7: what a vendor charged for goods in a merchant window the player opened (cost for a stack of n).
+function vendorPrices(v) {
+  const out = [], seen = new Set();
+  for (const e of list(v, LIMITS.vendor)) {
+    obj(e);
+    const id = int(e.id, 1, ID);
+    if (seen.has(id)) fail();
+    seen.add(id);
+    out.push({ id, cost: int(e.cost, 1, MONEY), n: int(e.n ?? 1, 1, 10000), at: int(e.at, 0, MAX_T) });
+  }
+  return out;
+}
 /** Addon ledger block -> bounded copy with only known fields; throws when anything is invalid. */
 function normalizeLedgerCapture(l) {
   obj(l);
@@ -129,6 +141,7 @@ function normalizeLedgerCapture(l) {
   if (typeof l.pricesOn === "boolean") out.pricesOn = l.pricesOn;
   if (!absent(l.training)) out.training = training(l.training);
   if (!absent(l.riding)) out.riding = training(l.riding);
+  if (!absent(l.vendor)) out.vendor = vendorPrices(l.vendor);
   if (!absent(l.mounts)) {
     obj(l.mounts);
     out.mounts = { seenAt: int(l.mounts.seenAt, 0, MAX_T), items: list(l.mounts.items, 20).map((m) => { obj(m); return { id: int(m.id, 1, ID), name: text(m.name), cost: int(m.cost, 0, MONEY) }; }) };

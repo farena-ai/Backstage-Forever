@@ -88,11 +88,88 @@ window.LedgerView = (() => {
       <details class="ldg-source"><summary>When bags, banks and mail were last seen</summary><p class="ldg-note">Bags update whenever the addon saves. Bank and mail reflect the last time you opened them in game.</p>${seenChips()}</details></section>`;
   }
 
+  // Price history (E6): one point per Auction House visit, oldest on the left; the dashed line is the usual price.
+  const day = (at) => new Date(at * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const fullDay = (at) => new Date(at * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  function coinsText(copper) {
+    const g = Math.floor(copper / 10000), s = Math.floor((copper % 10000) / 100), c = copper % 100;
+    return [g ? `${g.toLocaleString()}g` : "", s ? `${s}s` : "", c || (!g && !s) ? `${c}c` : ""].filter(Boolean).join(" ");
+  }
+  function spark(points, usual) {
+    if (!points || points.length < 2) return `<span class="ldg-spark-none">${points?.length ? "Seen once" : ""}</span>`;
+    const W = 104, H = 28, pad = 4, values = points.map((p) => p[0]);
+    const lo = Math.min(...values, usual), hi = Math.max(...values, usual);
+    const x = (i) => pad + ((W - 2 * pad) * i) / (points.length - 1);
+    const y = (v) => (hi === lo ? H / 2 : pad + (H - 2 * pad) * (1 - (v - lo) / (hi - lo)));
+    const fix = (n) => Math.round(n * 10) / 10;
+    const last = points.length - 1;
+    return `<svg class="ldg-spark" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${points.length} visits from ${esc(day(points[0][1]))} to ${esc(day(points[last][1]))}: lowest ${esc(coinsText(Math.min(...values)))}, highest ${esc(coinsText(Math.max(...values)))}"><line class="ldg-spark-usual" x1="${pad}" x2="${W - pad}" y1="${fix(y(usual))}" y2="${fix(y(usual))}"/><polyline points="${points.map((p, i) => `${fix(x(i))},${fix(y(p[0]))}`).join(" ")}"/><circle cx="${fix(x(last))}" cy="${fix(y(values[last]))}" r="2.6"/></svg>`;
+  }
+  // Gold over time (E9): one sample per day played, per character.
+  let moneyFor = null, craftFor = null;
+  function goldChart(m) {
+    const pts = m.points;
+    if (pts.length < 2) return `<p class="ldg-empty">One sample so far: ${coins(pts[0][0])} on ${esc(fullDay(pts[0][1]))}. The chart appears after a second day of play.</p>`;
+    const W = 860, H = 220, L = 88, R = 16, T = 14, B = 30;
+    const t0 = pts[0][1], t1 = pts[pts.length - 1][1];
+    let lo = m.low, hi = m.high;
+    if (hi === lo) { hi = lo + 100; lo = Math.max(0, lo - 100); }
+    const padY = (hi - lo) * 0.08; lo = Math.max(0, lo - padY); hi += padY;
+    const fix = (n) => Math.round(n * 10) / 10;
+    const x = (at) => fix(L + ((W - L - R) * (at - t0)) / Math.max(1, t1 - t0)), y = (v) => fix(T + (H - T - B) * (1 - (v - lo) / (hi - lo)));
+    const line = pts.map((p) => `${x(p[1])},${y(p[0])}`).join(" ");
+    const grid = [0, 0.5, 1].map((f) => { const v = lo + (hi - lo) * f, yy = y(v); return `<line class="ldg-chart-grid" x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}"/><text class="ldg-chart-label" x="${L - 8}" y="${yy + 4}" text-anchor="end">${esc(coinsText(Math.round(v / 100) * 100))}</text>`; }).join("");
+    const marks = pts.length <= 45 ? pts.map((p) => `<circle cx="${x(p[1])}" cy="${y(p[0])}" r="2.8"/>`).join("") : "";
+    const dates = `<text class="ldg-chart-label" x="${L}" y="${H - 8}">${esc(day(t0))}</text><text class="ldg-chart-label" x="${W - R}" y="${H - 8}" text-anchor="end">${esc(day(t1))}</text>${pts.length >= 5 ? `<text class="ldg-chart-label" x="${(L + W - R) / 2}" y="${H - 8}" text-anchor="middle">${esc(day(Math.round((t0 + t1) / 2)))}</text>` : ""}`;
+    return `<svg class="ldg-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(m.name)}: gold from ${esc(fullDay(t0))} to ${esc(fullDay(t1))}, ${esc(coinsText(m.first))} to ${esc(coinsText(m.last))}">${grid}<polygon class="ldg-chart-area" points="${x(t0)},${y(lo)} ${line} ${x(t1)},${y(lo)}"/><polyline class="ldg-chart-line" points="${line}"/>${marks}${dates}</svg>`;
+  }
+  function signed(copper) {
+    if (!copper) return `<span class="ldg-flat">no change</span>`;
+    return `<span class="${copper > 0 ? "ldg-gain" : "ldg-loss"}">${copper > 0 ? "+" : "−"}${coins(Math.abs(copper))}</span>`;
+  }
+  function moneyCard() {
+    const list = data.money || [];
+    const missing = `<p class="ldg-note ldg-after">Gold per play session and the value of what you looted are not shown: the addon saves your gold once a day, not at the start and end of each session, and does not record loot outside dungeons.</p>`;
+    if (!list.length) return `<section class="ldg-card" data-ledger-money-card><h2>Gold over time</h2><p class="ldg-empty">No gold samples yet. They build up one per day you play with the addon on.</p>${missing}</section>`;
+    const pick = list.find((m) => m.profileId === moneyFor) || list.find((m) => m.profileId === activeProfile()) || list[0];
+    const rows = pick.changes.map((c) => `<tr><th scope="row">${esc(fullDay(c.at))}</th><td${num}>${coins(c.money)}</td><td${num}>${signed(c.change)}${c.days > 1 ? `<small class="ldg-cell-note">over ${c.days} days</small>` : ""}</td></tr>`).join("");
+    return `<section class="ldg-card" data-ledger-money-card><div class="ldg-toolbar"><h2>Gold over time</h2><label class="ldg-pick ldg-inline">Character <select data-ledger-money aria-label="Gold over time of">${list.map((m) => `<option value="${esc(m.profileId)}"${m === pick ? " selected" : ""}>${esc(m.name)}</option>`).join("")}</select></label></div>
+      <p class="ldg-note">${esc(pick.name)}: ${coins(pick.last)} on ${esc(fullDay(pick.lastAt))}${pick.points.length > 1 ? `, ${signed(pick.change)} since ${esc(fullDay(pick.firstAt))}` : ""}. One sample per day played, as the game last saved it that day.</p>
+      ${goldChart(pick)}
+      ${rows ? `<div class="ldg-chart-days">${table("money", "Gold day by day", [["Day"], ["Gold", true], ["Change since the sample before", true]], `<tbody>${rows}</tbody>`, pick.changes.length)}</div>` : ""}${missing}</section>`;
+  }
+  // Craft profit (E7): material cost against the selling price, only from prices the player saw.
+  function materialLine(m) {
+    const price = m.cost === null
+      ? `<em class="ldg-unknown">price never seen${m.vendorListed ? " (vendors sell it: open one in game)" : ""}</em>`
+      : `${coins(m.unit)} each · ${m.source === "vendor" ? "vendor" : "auction"}, ${esc(ago(m.at))}`;
+    return `<li><span data-card-item="${m.itemId}"><strong>${m.required} ×</strong> <span class="ldg-name q-${quality(m.quality)}">${esc(m.name)}</span></span><small>${price}</small></li>`;
+  }
+  function craftRows(pick) {
+    return pick.rows.map((r) => `<tr data-ledger-craft-row="${r.recipeId}">
+      <th scope="row"><span class="ldg-name q-${quality(r.quality)}" data-card-item="${r.outputItemId}">${esc(r.outputName)}</span><small class="ldg-cell-note">${esc(r.profession || "Profession")}${r.made > 1 || r.madeUpTo ? ` · makes ${r.made}${r.madeUpTo ? `–${r.madeUpTo}` : ""}` : ""}</small></th>
+      <td>${r.materialsKnown ? `<ul class="ldg-mats">${r.materials.map(materialLine).join("")}</ul>` : `<em class="ldg-unknown">Materials not read yet. Open the profession window in game.</em>`}</td>
+      <td${num}>${r.cost === null ? `<em class="ldg-unknown">Unknown</em>` : coins(r.cost)}</td>
+      <td${num}>${r.sell ? `${coins(r.sell.total)}<small class="ldg-cell-note">seen ${esc(ago(r.sell.at))}</small>` : `<em class="ldg-unknown">Never seen</em>${r.vendorPays ? `<small class="ldg-cell-note">vendors pay ${coins(r.vendorPays)}</small>` : ""}`}</td>
+      <td${num}>${r.profit === null ? `<em class="ldg-unknown">Unknown</em>` : `<strong>${signed(r.profit)}</strong>`}</td></tr>`).join("");
+  }
+  function crafts() {
+    const list = data.crafts || [];
+    if (!list.length) return `<section class="ldg-card"><h2>Craft profit</h2><p class="ldg-empty">No recipes saved yet. Open a profession window in game with the addon on, then type <code>/reload</code> (or log out) once.</p></section>`;
+    const pick = list.find((c) => c.profileId === craftFor) || list.find((c) => c.profileId === activeProfile()) || list[0];
+    const best = pick.rows.find((r) => r.profit !== null && r.profit > 0);
+    return `<div class="ldg-summary"><div><strong>${pick.rows.length}</strong><span>recipes that make an item</span></div><div><strong>${pick.known}</strong><span>with every price seen</span></div><div><strong>${best ? signed(best.profit) : "—"}</strong><span>${best ? `best: ${esc(best.outputName)}` : "no profitable craft seen yet"}</span></div></div>
+      <section class="ldg-card"><div class="ldg-toolbar"><h2>Craft profit</h2><label class="ldg-pick ldg-inline">Character <select data-ledger-craft aria-label="Craft profit of">${list.map((c) => `<option value="${esc(c.profileId)}"${c === pick ? " selected" : ""}>${esc(c.name)}</option>`).join("")}</select></label></div>
+      <p class="ldg-note">Material cost against what the result sold for, only from prices you saw: Auction House pages and vendor windows you opened. A price you never saw stays unknown. Fees and deposits are not included.</p>
+      ${pick.rows.length ? table("crafts", "Craft profit", [["Makes"], ["Materials"], ["Cost", true], ["Sells for", true], ["Profit", true]], `<tbody>${craftRows(pick)}</tbody>`, pick.rows.length) : `<p class="ldg-empty">None of ${esc(pick.name)}'s saved recipes makes an item.</p>`}
+      <p class="ldg-note ldg-after">${pick.complete ? "" : "The recipe list was only partly read. "}Vendor prices are remembered from vendor windows you open in game${data.vendorPricesSeen ? ` (${data.vendorPricesSeen} so far)` : " (none yet)"}; the bundled seller list has no prices.</p></section>`;
+  }
+
   // Gold & prices.
   function priceRows() {
     const rows = search(data.prices, query.prices);
     if (!rows.length) return `<p class="ldg-empty">${data.prices.length ? "No remembered price matches that." : "Browse the Auction House in game with price memory on (/bf prices on) and the prices you see show up here."}</p>`;
-    return table("prices", "Price memory", [["Item"], ["Last seen, each", true], ["Lowest seen", true], ["Last seen when"]], `<tbody>${rows.slice(0, LIMIT).map((r) => `<tr data-ledger-price="${r.itemId}"><th scope="row" data-card-item="${r.itemId}"><span class="ldg-name q-${quality(r.quality)}">${esc(r.name)}</span></th><td${num}>${coins(r.latest)}</td><td${num}>${coins(r.low)}${r.low < r.latest ? `<small class="ldg-cell-note">${esc(ago(r.lowAt))}</small>` : ""}</td><td>${esc(ago(r.latestAt))}</td></tr>`).join("")}</tbody>`, rows.length) + resultLimit(rows.length);
+    return table("prices", "Price memory", [["Item"], ["Last seen, each", true], ["Usual", true], ["History"], ["Lowest seen", true], ["Last seen when"]], `<tbody>${rows.slice(0, LIMIT).map((r) => `<tr data-ledger-price="${r.itemId}"><th scope="row" data-card-item="${r.itemId}"><span class="ldg-name q-${quality(r.quality)}">${esc(r.name)}</span></th><td${num}>${coins(r.latest)}${r.below ? `<small class="ldg-cell-note ldg-below" data-ledger-below>${r.belowPercent}% below your usual price</small>` : ""}</td><td${num}>${r.visits >= 2 ? coins(r.usual) : "—"}<small class="ldg-cell-note">${r.visits === 1 ? "1 visit" : `${r.visits || 0} visits`}</small></td><td class="ldg-spark-cell">${spark(r.spark, r.usual)}</td><td${num}>${coins(r.low)}${r.low < r.latest ? `<small class="ldg-cell-note">${esc(ago(r.lowAt))}</small>` : ""}</td><td>${esc(ago(r.latestAt))}</td></tr>`).join("")}</tbody>`, rows.length) + resultLimit(rows.length);
   }
   // Gold goal (0.36, E4): the player's own target, progress across characters, a pace estimate.
   let goalNote = "";
@@ -138,10 +215,6 @@ window.LedgerView = (() => {
       <p class="ldg-note" data-ledger-goal-status>${v.reached ? "<strong>Goal reached.</strong> Mail the gold to the character who needs it if it's spread out." : `<strong>${coins(v.left)}</strong> to go${v.daysLeft ? `, about <strong>${v.daysLeft} day${v.daysLeft === 1 ? "" : "s"}</strong> at your recent pace` : ""}.`} Counts gold on ${v.characters} character${v.characters === 1 ? "" : "s"}${v.activeName ? `; ${esc(v.activeName)} has ${coins(v.activeMoney)}` : ""}.</p>
       <p class="ldg-note">${esc(pace)}</p>${inputs}</section>`;
   }
-  function coinsText(copper) {
-    const g = Math.floor(copper / 10000), s = Math.floor((copper % 10000) / 100), c = copper % 100;
-    return [g ? `${g.toLocaleString()}g` : "", s ? `${s}s` : "", c || (!g && !s) ? `${c}c` : ""].filter(Boolean).join(" ");
-  }
   function gold() {
     const chars = ledgered();
     if (!chars.length) return empty("No gold or prices yet.");
@@ -150,9 +223,9 @@ window.LedgerView = (() => {
     const worth = table("value", "Estimated auction value", [["Item"], ["Qty", true], ["Each", true], ["Value", true]], `<tbody>${data.value.items.slice(0, 15).map((v) => `<tr><th scope="row" data-card-item="${v.itemId}"><span class="ldg-name q-${quality(v.quality)}">${esc(v.name)}</span></th><td${num}>${v.count.toLocaleString()}</td><td${num}>${coins(v.unit)}</td><td${num}>${coins(v.value)}</td></tr>`).join("")}</tbody>`);
     const mail = chars.filter((c) => c.mail?.money);
     return `<div class="ldg-summary"><div><strong>${coins(g.total)}</strong><span>gold on ${g.characters.length} character${g.characters.length === 1 ? "" : "s"}</span></div><div><strong>${data.value.items.length ? coins(data.value.total) : "—"}</strong><span>estimated auction value</span></div><div><strong>${data.prices.length.toLocaleString()}</strong><span>prices remembered</span></div></div>
-      <section class="ldg-card">${searchBar("prices", "Price memory", "Search remembered prices")}<p class="ldg-note">Lowest buyout per item on Auction House pages you opened. The addon never searches or buys.</p><div data-ledger-list="prices">${priceRows()}</div></section>
+      <section class="ldg-card">${searchBar("prices", "Price memory", "Search remembered prices")}<p class="ldg-note">Lowest buyout per item on Auction House pages you opened. The addon never searches or buys. Usual is the middle price of your visits; the mark appears after three visits when the newest price is at least 15% under it.</p><div data-ledger-list="prices">${priceRows()}</div></section>
       <div class="ldg-two"><section class="ldg-card"><h2>Gold per character</h2>${balances}${mail.length ? `<p class="ldg-note ldg-after">Waiting in the mail: ${mail.map((c) => `${esc(c.name)} ${coins(c.mail.money)}`).join(", ")}.</p>` : ""}</section>
-      <section class="ldg-card"><h2>Estimated auction value</h2>${data.value.items.length ? `${worth}<p class="ldg-note ldg-after">Based on last seen prices; actual sales vary.${data.value.items.length > 15 ? " Showing the 15 highest-value items." : ""}</p>` : `<p class="ldg-empty">Nothing you carry has a remembered auction price yet.</p>`}</section></div>${savingsReview()}${goalCard()}`;
+      <section class="ldg-card"><h2>Estimated auction value</h2>${data.value.items.length ? `${worth}<p class="ldg-note ldg-after">Based on last seen prices; actual sales vary.${data.value.items.length > 15 ? " Showing the 15 highest-value items." : ""}</p>` : `<p class="ldg-empty">Nothing you carry has a remembered auction price yet.</p>`}</section></div>${moneyCard()}${savingsReview()}${goalCard()}`;
   }
 
   // Reputation: one character at a time; their own side's factions first.
@@ -234,6 +307,7 @@ window.LedgerView = (() => {
   const PAGES = {
     ledger: ["ledger", "Bags & bank", "Everything you carry", "Bags, bank and mail of every character, searchable in one place.", bags],
     "ledger-gold": ["ledger-gold", "Gold & prices", "Gold and prices", "Gold on each character, and the Auction House prices you saw yourself.", gold],
+    "ledger-crafts": ["ledger-gold", "Craft profit", "Craft profit", "What your recipes cost to make and what the result sold for, from prices you saw yourself.", crafts],
     "ledger-reputation": ["ledger-reputation", "Reputation", "Reputation", "Where each character stands with every faction, Alliance and Horde alike.", reputation],
     "ledger-cooldowns": ["ledger-cooldowns", "Cooldowns", "Profession cooldowns", "Transmutes, Mooncloth and the Salt Shaker: which are ready, and when the rest will be.", cooldowns],
   };
@@ -336,6 +410,8 @@ window.LedgerView = (() => {
       finally { savingGoal = false; }
       repaint();
     };
+    root.querySelector("[data-ledger-money]")?.addEventListener("change", (e) => { moneyFor = e.target.value; repaint(); document.querySelector("[data-ledger-money]")?.focus({ preventScroll: true }); });
+    root.querySelector("[data-ledger-craft]")?.addEventListener("change", (e) => { craftFor = e.target.value; repaint(); document.querySelector("[data-ledger-craft]")?.focus({ preventScroll: true }); });
     const apply = root.querySelector("[data-ledger-savings-apply]");
     const review = savings;
     const expectedGoal = data?.goal?.goal ?? null;
@@ -369,5 +445,5 @@ window.LedgerView = (() => {
     repFor = profileId; repFaction = factionId; focusRepFor = profileId;
     data = null; error = ""; loadGeneration++;
   }
-  return { init: (readActive, pending = () => false) => { activeProfile = readActive; characterPending = pending; }, bags: () => page("ledger"), gold: () => page("ledger-gold"), reputation: () => page("ledger-reputation"), cooldowns: () => page("ledger-cooldowns"), page, mounted, selectReputation, reviewSavings, invalidate: () => { data = null; error = ""; loadGeneration++; }, _state: () => ({ data, query, route }) };
+  return { init: (readActive, pending = () => false) => { activeProfile = readActive; characterPending = pending; }, bags: () => page("ledger"), gold: () => page("ledger-gold"), reputation: () => page("ledger-reputation"), crafts: () => page("ledger-crafts"), cooldowns: () => page("ledger-cooldowns"), page, mounted, selectReputation, reviewSavings, invalidate: () => { data = null; error = ""; loadGeneration++; }, _state: () => ({ data, query, route }) };
 })();
