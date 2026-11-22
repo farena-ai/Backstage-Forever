@@ -956,6 +956,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverAtlasCommand)=='function' then pcall(BackstageForeverAtlasCommand,message)end
                 return
             end
+            if word=='talents' then
+                if type(BackstageForeverTalentsCommand)=='function' then pcall(BackstageForeverTalentsCommand,message)end
+                return
+            end
             if word=='chain' then
                 if type(BackstageForeverChainCommand)=='function' then pcall(BackstageForeverChainCommand)end
                 return

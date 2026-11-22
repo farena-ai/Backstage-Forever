@@ -51,6 +51,7 @@ local PAGES={
         switch('Enemy player alerts','Says when an enemy player is nearby. Never in battlegrounds.',on('BackstageForeverEnemySettings','enabled'),'enemy'),
         switch('Enemy alert sound','Plays a sound with the enemy player alert.',off('BackstageForeverEnemySettings','sound'),'enemy sound'),
         switch('Supply reminders','Ammo, food and drink, pet food, shards and poisons before you run out.',on('BackstageForeverSuppliesSettings','enabled'),'supplies'),
+        switch('Talent plan line','One chat line when you gain a level, naming the next point of your talent plan.',on('BackstageForeverAssistSettings','talentPlan'),'talents levelup'),
         helper('gatheringMarks','Gathering marks','Recent herb and ore spots you found, on the world map.'),
     }},
     {title='Comfort',rows={

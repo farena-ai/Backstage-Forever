@@ -87,8 +87,7 @@ window.TalentsView = (() => {
       if (!t) { cells.push(`<div class="tal-cell empty"></div>`); continue; }
       const have = now.get(t.id) || 0, plan = planned.get(t.id) || 0, isNext = next && next.talentId === t.id;
       const state = isNext ? "is-next" : have ? (have >= t.maxRank ? "full" : "some") : plan ? "planned" : "off";
-      const desc = t.descriptions?.[Math.max(0, (have || 1) - 1)] || t.descriptions?.[0] || "";
-      cells.push(`<div class="tal-cell tal-${state}" title="${esc(`${t.name || "Unknown talent"} (${have}/${t.maxRank})${plan ? ` · path: ${plan}/${t.maxRank}` : ""}${desc ? `\n${desc}` : ""}`)}">
+      cells.push(`<div class="tal-cell tal-${state}" data-tal-id="${t.id}" data-tal-have="${have}" data-tal-path="${plan}">
         ${t.iconFileId && window.GameIcons ? GameIcons.tag(t.iconFileId, 40) : `<span class="tal-noicon">?</span>`}
         <span class="tal-rank">${have}/${t.maxRank}</span>${isNext ? `<span class="tal-next-badge">Next</span>` : ""}</div>`);
     }
@@ -99,6 +98,211 @@ window.TalentsView = (() => {
   function unlocksCard(u) {
     if (!u?.rows?.length) return "";
     return `<section class="tal-unlocks" data-tal-unlocks><h3>Class quests and key unlocks</h3><ol>${u.rows.map((r) => `<li class="tal-u-${r.state}"><span class="tal-u-lv">${r.level}</span><div><strong>${esc(r.what)}</strong>${r.kind === "quest" ? ' <span class="tal-u-kind">quest</span>' : ""}<p>${esc(r.how)}</p></div></li>`).join("")}</ol><p class="tal-note">Your class trainer has the details; Forever may move a level or two.</p></section>`;
+  }
+  // --- Talent planner (roadmap C1) ---------------------------------------------------------------
+  // "My plan": click talents to place points. Every click is checked in the main process on the
+  // trees read from the player's own game files (talent-planner.cjs); this file only draws the answer.
+  let mode = "path", plan = null, planLevel = 60;
+  const icon = (id, size) => (id && window.GameIcons ? GameIcons.tag(id, size) : "");
+  const talentOf = (id) => { for (const tab of data?.trees?.tabs || []) for (const t of tab.talents) if (t.id === id) return { ...t, tab: tab.name }; return null; };
+  const myLevel = () => (preview ? null : Number.isInteger(who?.level) ? who.level : null);
+  const say = (text, bad = false) => { if (plan) plan.status = text ? { text, bad } : null; };
+  async function ask(op, extra = {}) {
+    const r = await api.talentPlanner({ op, className: plan.className, order: plan.order, planLevel, level: myLevel(), ...extra });
+    plan.order = r.order; plan.view = r.view; plan.saved = r.saved; plan.respec = r.respec; plan.maxName = r.maxName;
+    return r;
+  }
+  async function openPlan(cls) {
+    const key = `${who.id}|${cls}`;
+    if (!plan || plan.key !== key) plan = { key, className: cls, order: [], view: null, saved: null, respec: [], id: null, name: "", status: null, code: "", paste: "", diff: null, confirm: null };
+    const first = !plan.view;
+    const r = await ask("open");
+    if (!first) return;
+    // A fresh visit starts from the build this character uses in game, when there is one.
+    const active = r.saved.builds.find((b) => b.id === r.saved.active);
+    if (active) { plan.order = active.order; plan.id = active.id; plan.name = active.name; await ask("open"); mode = "plan"; }
+  }
+  const cellState = (v) => (v.rank >= v.maxRank ? "full" : v.rank ? "some" : v.canAdd ? "open" : "off");
+  const cellLabel = (t, v) => `${t.name || "Unknown talent"}, rank ${v.rank} of ${v.maxRank}, ${t.tab}`;
+  function planTree(tab) {
+    const rows = Math.max(7, ...tab.talents.map((t) => t.row + 1)), cells = [];
+    for (let r = 0; r < rows; r++) for (let col = 0; col < 4; col++) {
+      const t = tab.talents.find((x) => x.row === r && x.column === col);
+      if (!t) { cells.push(`<div class="tal-cell empty"></div>`); continue; }
+      const v = plan.view.talents[t.id] || { rank: 0, maxRank: t.maxRank, canAdd: false };
+      cells.push(`<button type="button" class="tal-cell tal-click tal-${cellState(v)}" data-tal-id="${t.id}" aria-label="${esc(cellLabel({ ...t, tab: tab.name }, v))}">
+        ${icon(t.iconFileId, 40) || `<span class="tal-noicon">?</span>`}<span class="tal-rank">${v.rank}/${v.maxRank}</span></button>`);
+    }
+    const pts = plan.view.tabs.find((x) => x.name === tab.name)?.points || 0;
+    return `<section class="tal-tree"><header>${icon(tab.iconFileId, 28)}<h3>${esc(tab.name)}</h3><span data-tal-tab-points="${esc(tab.name)}">${pts} point${pts === 1 ? "" : "s"}</span><button type="button" class="tal-mini" data-tal-act="reset-tree" data-tab="${esc(tab.name)}" aria-label="Reset ${esc(tab.name)}">Reset</button></header><div class="tal-grid">${cells.join("")}</div></section>`;
+  }
+  function budgetHtml() {
+    const v = plan.view;
+    return `<strong>${v.total}</strong> of ${v.budget} points placed<span>${v.left} left</span>`;
+  }
+  const statusHtml = () => (plan.status ? `<p class="tal-status ${plan.status.bad ? "bad" : "said"}">${esc(plan.status.text)}</p>` : `<p class="tal-status">Left click a talent to add a point. Right click takes one back. The rules are checked on your own talent trees.</p>`);
+  function orderHtml() {
+    const steps = plan.view.steps, lvl = myLevel();
+    if (!steps.length) return `<p class="tal-order-empty">No points placed yet. Left click a talent to add a point.</p>${data.coach?.order?.length ? `<button type="button" class="tal-btn" data-tal-act="from-path">Start from the suggested path</button>` : ""}`;
+    const groups = [];
+    for (const s of steps) {
+      const g = groups[groups.length - 1];
+      if (g && g.talentId === s.talentId) { g.toRank = s.rank; g.toLevel = s.level; } else groups.push({ ...s, fromRank: s.rank, toRank: s.rank, fromLevel: s.level, toLevel: s.level });
+    }
+    let marked = false;
+    return `<ol class="tal-order">${groups.map((g) => {
+      const mark = lvl !== null && !marked && g.fromLevel > lvl ? `<li class="tal-order-mark"><span>You are level ${lvl}</span></li>` : "";
+      if (mark) marked = true;
+      return `${mark}<li${lvl !== null && g.fromLevel <= lvl ? ' class="due"' : ""}><span class="tal-order-lv">${g.fromLevel === g.toLevel ? `Level ${g.fromLevel}` : `Levels ${g.fromLevel}–${g.toLevel}`}</span>${icon(talentOf(g.talentId)?.iconFileId, 28)}<div><strong>${esc(g.name)}</strong><small>${g.fromRank === g.toRank ? `rank ${g.toRank}` : `ranks ${g.fromRank}–${g.toRank}`} of ${g.maxRank} · ${esc(g.tab)}</small></div></li>`;
+    }).join("")}</ol>`;
+  }
+  function buildsHtml() {
+    const s = plan.saved;
+    if (!s.canSave) return `<p class="tal-note">Choose a character to save builds.</p>`;
+    const mine = !preview && s.inGame;
+    const rows = s.builds.map((b) => {
+      const active = s.active === b.id, loaded = plan.id === b.id;
+      return `<li${loaded ? ' class="loaded"' : ""}><div class="tal-build-name"><strong>${esc(b.name)}</strong><small>${b.split.join(" / ")}${active && mine ? ' · <span class="tal-ingame">used in game</span>' : ""}</small></div>
+        <div class="tal-build-acts"><button type="button" class="tal-btn" data-tal-act="load" data-id="${b.id}">Load</button><button type="button" class="tal-btn quiet" data-tal-act="compare" data-id="${b.id}">Compare</button>${mine ? `<button type="button" class="tal-btn quiet" data-tal-act="activate" data-id="${active ? "" : b.id}">${active ? "Stop using" : "Use in game"}</button>` : ""}<button type="button" class="tal-btn quiet" data-tal-act="${plan.confirm === b.id ? "delete" : "ask-delete"}" data-id="${b.id}">${plan.confirm === b.id ? "Really delete?" : "Delete"}</button></div></li>`;
+    }).join("");
+    const note = preview ? "Builds for a previewed class are kept with this character but never sent to the game."
+      : s.inGame ? "The build marked Use in game goes to the game at its next login or /reload. There, type /bf talents to see your next point. The app never spends points for you."
+      : "This character was not imported from the game, so no build is sent to the game.";
+    return `<div class="tal-save"><input type="text" data-tal-name maxlength="${plan.maxName || 40}" placeholder="Name this build" aria-label="Build name" value="${esc(plan.name)}"><button type="button" class="tal-btn" data-tal-act="save">Save</button></div>
+      ${rows ? `<ul class="tal-builds">${rows}</ul>` : `<p class="tal-note">No saved builds for this class yet.</p>`}<p class="tal-note">${note}</p>`;
+  }
+  function shareHtml() {
+    return `<p class="tal-note first">A short code that holds this build and its order. Anyone with the same talent trees can load it.</p>
+      <div class="tal-save"><input type="text" readonly data-tal-code aria-label="Share code for this build" placeholder="Copy makes a code" value="${esc(plan.code)}"><button type="button" class="tal-btn" data-tal-act="copy">Copy code</button></div>
+      <div class="tal-save"><input type="text" data-tal-paste maxlength="400" aria-label="Paste a share code" placeholder="Paste a code here" value="${esc(plan.paste)}"><button type="button" class="tal-btn" data-tal-act="import">Load code</button></div>`;
+  }
+  function respecHtml() {
+    const nth = (i) => `${i + 1}${["st", "nd", "rd"][i] || "th"}`;
+    const list = plan.respec || [];
+    return `<ol class="tal-respec">${list.map((g, i) => `<li><span>${i === list.length - 1 ? `${nth(i)} and later` : nth(i)}</span><strong>${g}g</strong></li>`).join("")}</ol>
+      <p class="tal-note">Reference: the classic schedule for unlearning talents at a class trainer. Not checked on WoW Forever; your trainer shows the real price.</p>`;
+  }
+  function compareHtml() {
+    const d = plan.diff;
+    if (!d) return "";
+    const head = `<header><h3>This plan and “${esc(d.name)}”</h3><button type="button" class="tal-btn quiet" data-tal-act="close-compare">Close</button></header>`;
+    const totals = `<p class="tal-compare-totals">${d.tabs.map((t) => `<span><strong>${esc(t.name)}</strong> ${t.a} / ${t.b}</span>`).join("")}<span><strong>Points</strong> ${d.totalA} / ${d.totalB}</span></p>`;
+    if (d.same) return `<section class="tal-compare" data-tal-compare-card>${head}${totals}<p class="tal-note">Both builds hold the same talents.</p></section>`;
+    return `<section class="tal-compare" data-tal-compare-card>${head}${totals}<table><thead><tr><th>Talent</th><th>Tree</th><th>This plan</th><th>${esc(d.name)}</th></tr></thead><tbody>${d.rows.map((r) => `<tr><td>${esc(r.name)}</td><td>${esc(r.tab)}</td><td class="${r.a > r.b ? "more" : ""}">${r.a} of ${r.maxRank}</td><td class="${r.b > r.a ? "more" : ""}">${r.b} of ${r.maxRank}</td></tr>`).join("")}</tbody></table></section>`;
+  }
+  function modeBar() {
+    const tab = (key, label) => `<button type="button" data-tal-mode="${key}" aria-pressed="${mode === key}">${label}</button>`;
+    const levels = [...new Set([60, 50, 40, 30, 20, myLevel()].filter((l) => Number.isInteger(l) && l >= 10 && l <= 60))].sort((a, b) => b - a);
+    const tools = mode === "plan" && plan?.view ? `<span class="tal-budget" data-tal-budget>${budgetHtml()}</span>
+      <label class="tal-level">Plan up to level <select data-tal-level>${levels.map((l) => `<option${l === planLevel ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+      <button type="button" class="tal-btn quiet" data-tal-act="reset-all">Reset all</button>` : "";
+    return `<div class="tal-bar"><div class="tal-modes" role="group" aria-label="Talent view">${tab("path", "Suggested path")}${tab("plan", "My plan")}</div>${tools}</div>`;
+  }
+  function planBody() {
+    if (!plan?.view) return `<p class="tal-empty">${esc(plan?.error || "Opening the planner…")}</p>`;
+    return `<div data-tal-status aria-live="polite">${statusHtml()}</div>
+      <div class="tal-layout tal-plan"><div class="tal-trees">${data.trees.tabs.map(planTree).join("")}</div><aside class="tal-side"><h3>Level-up order</h3><div data-tal-order>${orderHtml()}</div></aside></div>
+      <div data-tal-compare>${compareHtml()}</div>
+      <div class="tal-bench"><section class="tal-panel"><h3>Saved builds</h3><div data-tal-builds>${buildsHtml()}</div></section>
+        <section class="tal-panel"><h3>Share code</h3>${shareHtml()}</section>
+        <section class="tal-panel"><h3>Respec cost</h3>${respecHtml()}</section></div>`;
+  }
+  // After a point is added or taken back only the changed parts are redrawn, so icons do not blink.
+  function syncPlan() {
+    const root = document.querySelector("[data-talents]");
+    if (!root || !plan?.view) return;
+    for (const b of root.querySelectorAll("button[data-tal-id]")) {
+      const t = talentOf(Number(b.dataset.talId)), v = plan.view.talents[b.dataset.talId];
+      if (!t || !v) continue;
+      b.className = `tal-cell tal-click tal-${cellState(v)}`;
+      b.setAttribute("aria-label", cellLabel(t, v));
+      b.querySelector(".tal-rank").textContent = `${v.rank}/${v.maxRank}`;
+    }
+    for (const s of root.querySelectorAll("[data-tal-tab-points]")) {
+      const pts = plan.view.tabs.find((x) => x.name === s.dataset.talTabPoints)?.points || 0;
+      s.textContent = `${pts} point${pts === 1 ? "" : "s"}`;
+    }
+    const set = (sel, html) => { const el = root.querySelector(sel); if (el) el.innerHTML = html; };
+    set("[data-tal-budget]", budgetHtml()); set("[data-tal-order]", orderHtml()); set("[data-tal-status]", statusHtml()); set("[data-tal-compare]", compareHtml());
+    const code = root.querySelector("[data-tal-code]"); if (code) code.value = plan.code;
+  }
+  // The hover card: name, rank and the rank text from the player's own game files.
+  let card = null;
+  function hideCard() { if (card) card.hidden = true; }
+  function showCard(cell) {
+    const id = Number(cell.dataset.talId), t = talentOf(id);
+    if (!t) return;
+    const v = mode === "plan" ? plan?.view?.talents[id] : null;
+    const rank = v ? v.rank : Number(cell.dataset.talHave) || 0, path = v ? 0 : Number(cell.dataset.talPath) || 0;
+    // Some ranks have no text of their own in the game files; the nearest rank that has one is shown and named.
+    const text = (r) => {
+      const d = t.descriptions || [];
+      if (d[r - 1]) return esc(d[r - 1]);
+      let near = -1;
+      for (let i = 0; i < d.length; i++) if (d[i] && (near < 0 || Math.abs(i + 1 - r) < Math.abs(near + 1 - r))) near = i;
+      return near < 0 ? "Your game files have no text for this talent." : `${esc(d[near])} <small>(text of rank ${near + 1}; your game files have none for rank ${r})</small>`;
+    };
+    const parts = [`<strong>${esc(t.name || "Unknown talent")}</strong><span class="tal-card-rank">Rank ${rank} of ${t.maxRank} · ${esc(t.tab)}${path ? ` · path takes ${path}` : ""}</span>`];
+    if (rank > 0) parts.push(`<p><em>${rank >= t.maxRank ? "Highest rank" : "Now"}</em>${text(rank)}</p>`);
+    if (rank < t.maxRank) parts.push(`<p><em>${rank ? "Next rank" : "Rank 1"}</em>${text(rank + 1)}</p>`);
+    if (v && rank < t.maxRank && v.addWhy) parts.push(`<p class="tal-card-why">${esc(v.addWhy)}</p>`);
+    if (v) parts.push(`<p class="tal-card-hint">Left click adds a point. Right click takes one back.</p>`);
+    if (!card) { card = document.createElement("div"); card.className = "tal-card"; card.setAttribute("role", "tooltip"); document.body.appendChild(card); }
+    card.innerHTML = parts.join("");
+    card.hidden = false;
+    const r = cell.getBoundingClientRect(), w = card.offsetWidth, h = card.offsetHeight;
+    const left = r.right + 10 + w <= window.innerWidth - 8 ? r.right + 10 : Math.max(8, r.left - 10 - w);
+    card.style.left = `${Math.round(left)}px`;
+    card.style.top = `${Math.round(Math.max(8, Math.min(r.top, window.innerHeight - h - 8)))}px`;
+  }
+  async function point(op, id) {
+    if (!plan?.view || plan.working) return;
+    plan.working = true;
+    try {
+      const r = await ask(op, { talentId: id });
+      say(r.ok ? "" : r.reason, true);
+      if (r.ok) { plan.code = ""; plan.diff = null; plan.confirm = null; }
+    } catch (e) { say(e.message || "That did not work.", true); }
+    plan.working = false;
+    syncPlan();
+    const cell = document.querySelector(`button[data-tal-id="${id}"]`);
+    if (cell && card && !card.hidden) showCard(cell);
+  }
+  async function act(name, el) {
+    if (!plan?.view) return;
+    const build = plan.saved.builds.find((b) => b.id === el.dataset.id);
+    try {
+      if (name === "reset-all") { await ask("resetAll"); plan.code = ""; plan.diff = null; say("All points taken back."); }
+      else if (name === "reset-tree") { await ask("resetTree", { tab: el.dataset.tab }); plan.code = ""; plan.diff = null; say(`${el.dataset.tab} is empty again.`); }
+      else if (name === "from-path") {
+        plan.order = data.coach.order.map((s) => s.talentId); plan.id = null; plan.name = plan.name || `${data.coach.tree} leveling`;
+        const r = await ask("open"); say(r.ok ? "The suggested path is now your plan. Change it as you like." : r.reason, !r.ok);
+      } else if (name === "load" && build) {
+        plan.order = build.order; plan.id = build.id; plan.name = build.name; plan.code = ""; plan.diff = null;
+        const r = await ask("open"); say(r.ok ? `Loaded “${build.name}”.` : r.reason, !r.ok);
+      } else if (name === "save") {
+        const same = plan.saved.builds.find((b) => b.id === plan.id && b.name.toLowerCase() === plan.name.trim().toLowerCase());
+        const r = await ask("save", { name: plan.name, id: same ? same.id : undefined });
+        plan.id = r.savedId; plan.name = plan.saved.builds.find((b) => b.id === r.savedId)?.name || plan.name;
+        say(same ? "Build updated." : "Build saved.");
+      } else if (name === "ask-delete" && build) { plan.confirm = build.id; }
+      else if (name === "delete" && build) { await ask("delete", { id: build.id }); if (plan.id === build.id) plan.id = null; plan.confirm = null; say(`Deleted “${build.name}”.`); }
+      else if (name === "activate") {
+        await ask("activate", { id: el.dataset.id || null });
+        say(el.dataset.id ? "This build goes to the game at its next login or /reload." : "No build is sent to the game now.");
+      } else if (name === "compare" && build) {
+        const r = await ask("compare", { other: build.order }); plan.diff = { ...r.diff, name: build.name }; say("");
+      } else if (name === "close-compare") { plan.diff = null; }
+      else if (name === "copy") {
+        const r = await ask("export"); plan.code = r.code;
+        try { await navigator.clipboard.writeText(r.code); say("Code copied."); } catch { say("Select the code and copy it."); }
+      } else if (name === "import") {
+        const r = await ask("import", { code: plan.paste });
+        if (r.ok) { plan.id = null; plan.paste = ""; plan.code = ""; plan.diff = null; say("Build loaded from the code. Save it to keep it."); } else say(r.reason, true);
+      }
+      if (name !== "ask-delete" && name !== "delete") plan.confirm = null;
+    } catch (e) { say(e.message || "That did not work.", true); }
+    hideCard(); paint();
   }
   function body() {
     if (error) return `<p class="tal-empty">${esc(error)}</p>`;
@@ -119,7 +323,8 @@ window.TalentsView = (() => {
     const totals = Object.entries(c.totals).map(([k, v]) => `${v} ${esc(k)}`).join(" / ") || "none yet";
     return `<div class="tal-summary"><div class="tal-points"><strong>${c.points}</strong><span>talent point${c.points === 1 ? "" : "s"} at level ${c.level}</span></div><p>${c.points ? `By now: ${totals}.` : "Talents start at level 10: one point every level after that."} The path leans <strong>${esc(c.tree)}</strong>. ${esc(c.why)}</p></div>
       ${unlocksCard(data.unlocks)}
-      <div class="tal-layout"><div class="tal-trees">${trees.tabs.map((t) => tree(t, c)).join("")}</div><aside class="tal-side"><h3>Spend next</h3>${next}<p class="tal-note">In game: press <code>N</code> to open Talents. This path is a suggestion for solo leveling; your choices are yours.</p></aside></div>`;
+      ${modeBar()}
+      ${mode === "plan" ? planBody() : `<div class="tal-layout"><div class="tal-trees">${trees.tabs.map((t) => tree(t, c)).join("")}</div><aside class="tal-side"><h3>Spend next</h3>${next}<p class="tal-note">In game: press <code>N</code> to open Talents. This path is a suggestion for solo leveling; your choices are yours.</p></aside></div>`}`;
   }
   function page() {
     const cls = preview || who?.className;
@@ -128,14 +333,17 @@ window.TalentsView = (() => {
         aside: `<label class="tal-pick">Preview another class <select data-tal-class><option value="">${esc(who?.className || "Your class")}</option>${CLASSES.filter((c) => c !== who?.className).map((c) => `<option ${c === preview ? "selected" : ""}>${c}</option>`).join("")}</select></label>` })}
       <div data-tal-body>${body()}</div></section>`;
   }
-  function paint() { const b = document.querySelector("[data-tal-body]"); if (b) b.innerHTML = body(); }
+  function paint() { hideCard(); const b = document.querySelector("[data-tal-body]"); if (b) b.innerHTML = body(); }
   async function load() {
     if (loading) return; loading = true;
     try {
       const s = await api.bootstrap(); const p = s.state.profiles.find((x) => x.id === s.state.activeProfileId);
-      who = p?.className ? { name: p.name, className: p.className, level: p.level } : null;
+      who = p?.className ? { id: p.id, name: p.name, className: p.className, level: p.level } : null;
       const cls = preview || who?.className;
       data = cls ? await api.talentCoach({ className: cls, level: preview ? 60 : who.level }) : null; error = "";
+      if (data?.available && api.talentPlanner) {
+        try { await openPlan(cls); } catch (e) { plan = { key: "", error: e.message || "The planner is unavailable." }; }
+      }
     } catch (e) { error = e.message || "Talents are unavailable."; }
     loading = false;
     const root = document.querySelector("[data-talents]");
@@ -146,8 +354,34 @@ window.TalentsView = (() => {
     const root = document.querySelector("[data-talents]");
     if (!root || mountedFor === root) return;
     mountedFor = root;
-    root.addEventListener("change", (e) => { if (e.target.matches("[data-tal-class]")) { preview = e.target.value || null; data = null; paint(); load(); } });
+    root.addEventListener("change", (e) => {
+      if (e.target.matches("[data-tal-class]")) { preview = e.target.value || null; data = null; paint(); load(); }
+      else if (e.target.matches("[data-tal-level]") && plan?.view) { planLevel = Number(e.target.value) || 60; ask("open").then(() => { say(plan.view.total > plan.view.budget ? `This plan holds more points than level ${planLevel} gives.` : ""); paint(); }).catch(() => {}); }
+    });
+    root.addEventListener("input", (e) => {
+      if (!plan) return;
+      if (e.target.matches("[data-tal-name]")) plan.name = e.target.value;
+      else if (e.target.matches("[data-tal-paste]")) plan.paste = e.target.value;
+    });
+    root.addEventListener("click", (e) => {
+      const tab = e.target.closest("[data-tal-mode]"), cell = e.target.closest("button[data-tal-id]"), button = e.target.closest("[data-tal-act]");
+      if (tab) { mode = tab.dataset.talMode === "plan" ? "plan" : "path"; paint(); }
+      else if (cell) point("add", Number(cell.dataset.talId));
+      else if (button) act(button.dataset.talAct, button);
+    });
+    root.addEventListener("contextmenu", (e) => {
+      const cell = e.target.closest("button[data-tal-id]");
+      if (cell) { e.preventDefault(); point("remove", Number(cell.dataset.talId)); }
+    });
+    root.addEventListener("keydown", (e) => {
+      const cell = e.target.closest?.("button[data-tal-id]");
+      if (cell && (e.key === "Delete" || e.key === "Backspace")) { e.preventDefault(); point("remove", Number(cell.dataset.talId)); }
+    });
+    root.addEventListener("mouseover", (e) => { const cell = e.target.closest("[data-tal-id]"); if (cell) showCard(cell); });
+    root.addEventListener("mouseout", (e) => { const cell = e.target.closest("[data-tal-id]"); if (cell && !cell.contains(e.relatedTarget)) hideCard(); });
+    root.addEventListener("focusin", (e) => { const cell = e.target.closest("button[data-tal-id]"); if (cell) showCard(cell); });
+    root.addEventListener("focusout", hideCard);
     if (!data && !loading) load();
   }
-  return { page, academy, mounted, invalidate: () => { data = null; }, _state: () => ({ data, who, preview }) };
+  return { page, academy, mounted, invalidate: () => { data = null; }, _state: () => ({ data, who, preview, mode, plan }) };
 })();
