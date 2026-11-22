@@ -2,7 +2,7 @@
 const v = require("./validation.cjs"),
   ai = require("./providers.cjs");
 const { questInsights } = require("./insights-data.cjs");
-function enrichRewards(result, p, gameData) {
+function enrichRewards(result, p, gameData, weights = null) {
   const rw = result.rewards;
   if (!rw || typeof rw !== "object") return;
   const list = [...(Array.isArray(rw.items) ? rw.items : []), ...(Array.isArray(rw.choices) ? rw.choices : [])];
@@ -20,6 +20,7 @@ function enrichRewards(result, p, gameData) {
   // Worn items the game tables do not cover still occupy their slot; they are compared as unknown.
   (equipment || []).forEach((e, i) => { bySlot[e.slot] = worn[i] || { id: e.itemId, name: e.name || `Item #${e.itemId}`, unknown: true, stats: [], armor: 0 }; });
   const ctx = { className: p.className, level: Number.isInteger(p.level) ? p.level : undefined, equipmentKnown: !!equipment };
+  if (weights) ctx.weights = weights; // the stat weights this character chose (roadmap C3)
   const pick = require("./gear-score.cjs").bestReward(choices, ctx, bySlot);
   if (pick) result.rewardPick = { ...pick, equipmentKnown: !!equipment };
 }
@@ -33,6 +34,7 @@ function registerKnowledgeHandlers({
   getCreatures = () => null,
   getLocationContext = () => null,
   gameData = null,
+  weightsFor = () => null,
 }) {
   const sync = () => {
     const s = getState();
@@ -136,7 +138,7 @@ function registerKnowledgeHandlers({
       if (xp?.base && level && Number.isInteger(questLevel)) result.rewards = { ...result.rewards, xp: { ...xp, atYourLevel: { level, xp: require("./knowledge.cjs").estimateQuestXP(xp.base, questLevel, level) } } };
     } catch {}
     // Reward facts from the player's own game install, plus a suggested pick for this character.
-    if (gameData) try { enrichRewards(result, p, gameData); } catch {}
+    if (gameData) try { let w = null; try { w = weightsFor(p) || null; } catch {} enrichRewards(result, p, gameData, w); } catch {}
     const insights = getInsights();
     if (insights) {
       result.insights =

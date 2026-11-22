@@ -1,0 +1,141 @@
+/* Gear planning (roadmap C3, C2, C10, G5, C11): stat weights and gear plan inside Characters → Sheet,
+   the reputation planner and collections inside the Ledger, and the Keys & attunements page.
+   Parchment cards and brass edges, the same as the sheet and ledger pages around them. */
+
+/* --- Sheet: the view switch and which half shows ------------------------------------------- */
+.gp-switch { display: flex; gap: 6px; align-self: flex-start; padding: 4px; border-radius: 8px; border: 1px solid rgba(165,130,62,.55); background: rgba(12,20,25,.72); }
+.gp-switch button { min-height: 34px; padding: 5px 16px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #f1e3c0; font: 700 14px/1.3 "Segoe UI", sans-serif; }
+.gp-switch button:hover { background: rgba(239,224,187,.12); }
+.gp-switch button[aria-selected="true"] { border-color: #a5823e; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; text-shadow: none; }
+.gp-switch button:focus-visible { outline: 2px solid #f4cf72; outline-offset: 2px; }
+.sheet-page[data-sheet-view="plan"] > :is([data-sheet-compare], [data-sheet-pair-host], [data-sheet-body]) { display: none; }
+.sheet-page:not([data-sheet-view="plan"]) > .gp-plan { display: none; }
+.gp-plan { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.gp-plan :focus-visible { outline: 2px solid #523207; outline-offset: 2px; }
+
+/* --- Stat weights ------------------------------------------------------------------------------ */
+.gp-weights > summary { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; cursor: pointer; color: #3d220c; text-shadow: none; }
+.gp-weights > summary > span { font: 700 18px Cinzel, Georgia, serif; }
+.gp-weights > summary > small { font-size: 13px; color: #5a3e1c; }
+.gp-weights-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 12px 0 10px; }
+.gp-weights-bar label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #3d220c; }
+.gp-weights-bar select, .gp-stat input[type="number"] { box-sizing: border-box; min-height: 34px; padding: 4px 8px; border: 1px solid #8b6a34; border-radius: 5px; background: #fff6df; color: #2b1b0a; font: 400 14px/1.3 "Segoe UI", sans-serif; }
+.gp-weights-bar button, .gp-pin { min-height: 34px; padding: 5px 14px; border: 1px solid #8b6a34; border-radius: 5px; background: linear-gradient(180deg, #fbf1d6, #e9d6a8); color: #2b1b0a; font: 700 13px/1.3 "Segoe UI", sans-serif; text-shadow: none; white-space: nowrap; }
+.gp-weights-bar button:hover:not(:disabled), .gp-pin:hover:not(:disabled) { background: linear-gradient(180deg, #fff8e4, #f1e1b9); color: #2b1b0a; text-shadow: none; }
+.gp-weights-bar button:disabled, .gp-pin:disabled { opacity: .55; }
+.gp-status { font-size: 13px; color: #2e6b1e; font-weight: 600; }
+.gp-stats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 4px 28px; }
+.gp-stat { display: grid; grid-template-columns: minmax(120px, 1.1fr) minmax(90px, 1fr) 76px 68px; align-items: center; gap: 10px; min-height: 38px; padding: 0 6px; border-radius: 5px; }
+.gp-stat label { font-size: 13px; color: #2b1b0a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gp-stat input[type="range"] { width: 100%; min-width: 0; accent-color: #8a5a18; }
+.gp-stat input[type="number"] { width: 76px; text-align: right; font-variant-numeric: tabular-nums; }
+.gp-stat small { font-size: 12px; color: #6a4a1c; white-space: nowrap; }
+.gp-stat.gp-changed { background: rgba(138,90,24,.14); }
+.gp-stat.gp-changed label { font-weight: 700; }
+
+/* --- Gear plan --------------------------------------------------------------------------------- */
+.gp-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.gp-head h2 { margin: 0; }
+.gp-count { font-size: 13px; font-weight: 600; color: #5a3e1c; }
+.gp-card > .sht-note { max-width: 96ch; font-size: 13px; }
+.gp-slots { display: flex; flex-direction: column; margin-top: 12px; border-top: 1px solid #b89b5e; }
+.gp-slot { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 4px 18px; padding: 12px 0; border-bottom: 1px solid #b89b5e; }
+.gp-slot > header { min-width: 0; }
+.gp-slot h3 { margin: 0 0 6px; font: 700 13px Cinzel, Georgia, serif; letter-spacing: .05em; color: #5a2e0c; }
+.gp-worn { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; align-items: center; margin: 0; }
+.gp-worn canvas, .gp-icon canvas { display: block; border-radius: 4px; border: 1px solid #6b5a3c; }
+.gp-worn > span { display: flex; flex-direction: column; min-width: 0; }
+.gp-worn strong { font-size: 14px; overflow-wrap: anywhere; }
+.gp-worn small { font-size: 12px; color: #5a3e1c; }
+.gp-worn.gp-none strong { color: #8a1f14; }
+.gp-gem { display: grid; place-items: center; width: 28px; height: 28px; font-size: 15px; color: #6b5a3c; }
+.gp-ups { min-width: 0; }
+.gp-ups > ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.gp-cand { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 6px 8px; border-radius: 6px; background: rgba(60,40,18,.07); border: 1px solid rgba(138,90,24,.28); }
+.gp-cand.gp-pinned { background: rgba(46,107,30,.12); border-color: #4c8436; }
+.gp-icon { display: block; padding-top: 2px; }
+.gp-what { min-width: 0; }
+.gp-what p { margin: 0; }
+.gp-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: 14px; }
+.gp-name strong { overflow-wrap: anywhere; }
+.gp-gain { font-style: normal; font-weight: 700; color: #2e6b1e; font-variant-numeric: tabular-nums; }
+.gp-gain.gp-loss { color: #8a1f14; }
+.gp-flag { padding: 0 7px; border-radius: 9px; background: #2e6b1e; color: #fff8e4; font-size: 11px; font-weight: 700; line-height: 18px; }
+.gp-facts { font-size: 12px; color: #4a3414; }
+.gp-sources { list-style: none; margin: 3px 0 0; padding: 0; font-size: 13px; color: #2b1b0a; }
+.gp-sources li { padding-left: 0; overflow-wrap: anywhere; }
+.gp-kind { display: inline-block; min-width: 58px; margin-right: 4px; font: 700 11px/1.5 "Segoe UI", sans-serif; letter-spacing: .04em; text-transform: uppercase; color: #6a3a0c; }
+.gp-more { font-size: 12px; color: #5a3e1c; }
+.gp-pin { align-self: center; min-width: 64px; }
+.gp-nothing { margin: 0; padding: 7px 10px; border-radius: 5px; border: 1px dashed #a5823e; background: rgba(239,224,187,.6); color: #4a3414; font-size: 13px; }
+.gp-ups > ul + .gp-nothing { margin-top: 8px; }
+.gp-foot { margin-top: 12px; }
+.gp-foot h3 { margin: 0 0 4px; font: 700 13px Cinzel, Georgia, serif; letter-spacing: .05em; color: #5a2e0c; }
+.gp-foot ul { margin: 0; padding-left: 18px; font-size: 12px; color: #4a3414; }
+@media (max-width: 860px) { .gp-slot { grid-template-columns: 1fr; } .gp-stats { grid-template-columns: 1fr; } }
+
+/* --- Ledger: reputation planner ---------------------------------------------------------------- */
+.rp-card h3 { margin: 14px 0 6px; font: 700 14px Cinzel, Georgia, serif; letter-spacing: .04em; color: #5a2e0c; }
+.rp-need { margin: 0; font-size: 15px; color: #2b1b0a; }
+.rp-need strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+.rp-list { list-style: none; margin: 0; padding: 0; }
+.rp-list li { display: grid; gap: 3px; padding: 9px 0; border-top: 1px solid #c4ad7a; overflow-wrap: anywhere; }
+.rp-list p { margin: 0; font-size: 13px; color: #2b1b0a; }
+.rp-list small { font-size: 12px; color: #5a3e1c; }
+.rp-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.rp-amount { flex: 0 0 auto; font-weight: 700; color: #2e6b1e; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rp-notes { margin: 12px 0 0; padding-left: 18px; font-size: 12px; color: #4a3414; }
+
+/* --- Ledger: collections ----------------------------------------------------------------------- */
+.co-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.co-family { min-width: 0; padding: 10px 12px; border-radius: 6px; background: rgba(60,40,18,.08); border: 1px solid rgba(138,90,24,.35); }
+.co-family h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 6px; font: 700 14px Cinzel, Georgia, serif; color: #3d220c; }
+.co-family ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.co-family li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; overflow-wrap: anywhere; }
+.co-family li small, .co-none { font-size: 12px; color: #5a3e1c; }
+.co-none { margin: 0; }
+
+/* --- Keys & attunements ------------------------------------------------------------------------ */
+.at-page, .at-page > [data-attunements-body] { display: grid; gap: 12px; min-width: 0; }
+.at-page > .page-hero.compact { margin: 0; }
+.at-page :focus-visible { outline: 2px solid #f4cf72; outline-offset: 2px; }
+.at-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; padding: 10px 14px; border-radius: 6px; border: 1px solid #b59a5d66; background: #17232b; }
+.at-reference { flex: 1 1 420px; margin: 0; font-size: 13px; color: #cbd5d6; }
+.at-reference strong { color: #ffedc9; }
+.at-filter { display: flex; align-items: center; gap: 12px; font-size: 13px; color: #ffedc9; white-space: nowrap; }
+.at-filter button { min-height: 34px; padding: 5px 12px; }
+.at-grid { columns: 430px 2; column-gap: 12px; }
+.at-chain { break-inside: avoid; margin: 0 0 12px; min-width: 0; padding: 12px 14px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; border-left: 5px solid #8d6c36; box-shadow: 0 4px 10px #0004; }
+.at-chain.st-started { border-left-color: #b4741a; }
+.at-chain.st-done { border-left-color: #2e6b1e; }
+.at-chain.st-unconfirmed { border-left-color: #7a7468; }
+.at-chain > header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.at-chain h3 { margin: 0; font: 700 17px/1.3 Cinzel, Georgia, serif; color: #3d220c; }
+.at-meta { margin: 0; font-size: 12px; color: #5a3e1c; }
+.at-status { display: flex; flex-direction: column; align-items: flex-end; flex: 0 0 auto; font-size: 13px; font-weight: 700; color: #5a2e0c; text-align: right; }
+.at-status small { font-size: 12px; font-weight: 400; color: #5a3e1c; }
+.st-done .at-status { color: #2e6b1e; }
+.st-started .at-status { color: #8a4d08; }
+.at-chain p { margin: 6px 0 0; font-size: 13px; }
+.at-opens { color: #4a3414; }
+.at-key span, .at-next span { display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 9px; background: #5a3e1c; color: #fff8e4; font-size: 11px; font-weight: 700; line-height: 18px; }
+.at-next { padding: 6px 8px; border-radius: 5px; background: rgba(138,90,24,.14); }
+.at-next.at-finished span { background: #2e6b1e; }
+.at-chain details { margin: 8px 0 0; padding: 0; border: 0; background: none; box-shadow: none; }
+.at-chain summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #3d220c; text-shadow: none; }
+.at-steps { list-style: none; margin: 6px 0 0; padding: 0; }
+.at-step { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 6px 4px; border-top: 1px solid #c4ad7a; }
+.at-step p { margin: 0; font-size: 13px; }
+.at-step .at-how { font-size: 12px; color: #4a3414; }
+.at-mark { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid #8d6c36; font-size: 12px; font-weight: 700; color: #5a3e1c; background: #f6ebcd; }
+.at-step.s-done .at-mark { background: #2e6b1e; border-color: #2e6b1e; color: #fff8e4; }
+.at-step.s-done strong { color: #2e5a1e; }
+.at-step.s-unconfirmed { opacity: .8; }
+.at-step.at-current { background: rgba(138,90,24,.16); border-radius: 5px; }
+.at-type { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #6a3a0c; }
+.at-here { margin-left: 8px; padding: 0 7px; border-radius: 9px; background: #8a4d08; color: #fff8e4; font-size: 11px; font-weight: 700; line-height: 18px; }
+.at-state { display: flex; flex-direction: column; align-items: flex-end; font-size: 12px; font-weight: 600; color: #5a3e1c; text-align: right; max-width: 150px; }
+.at-state small { font-weight: 400; }
+.at-empty { margin: 0; padding: 12px 14px; border-radius: 5px; background: #efe0bb; color: #3d220c; border: 1px dashed #a5823e; }
+.at-source { margin: 0; font-size: 12px; color: #cbd5d6; max-width: 110ch; }
+
