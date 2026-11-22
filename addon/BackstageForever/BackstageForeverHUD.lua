@@ -952,6 +952,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverSuppliesCommand)=='function' then pcall(BackstageForeverSuppliesCommand,message)end
                 return
             end
+            if word=='available' then
+                if type(BackstageForeverAvailableCommand)=='function' then pcall(BackstageForeverAvailableCommand)end
+                return
+            end
             if word=='minimap' then
                 if type(BackstageForeverMinimapCommand)=='function' then pcall(BackstageForeverMinimapCommand,message)end
                 return

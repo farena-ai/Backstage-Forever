@@ -98,7 +98,7 @@ local function pin(index)
         method(GameTooltip,'SetOwner',self,'ANCHOR_LEFT')
         method(GameTooltip,'SetText',row.title or '',1,.82,.3)
         if row.detail then method(GameTooltip,'AddLine',row.detail,1,1,1,true) end
-        if finite(row.distance) then method(GameTooltip,'AddLine',('%d '):format(row.distance+.5)..(BackstageForeverTr or tostring)('yards away'),.8,.8,.8) end
+        if finite(row.distance) then method(GameTooltip,'AddLine',('%d '):format(math.floor(row.distance+.5))..(BackstageForeverTr or tostring)('yards away'),.8,.8,.8) end
         method(GameTooltip,'Show')
     end)
     frame:SetScript('OnLeave',function(self) if method(GameTooltip,'GetOwner')==self then method(GameTooltip,'Hide') end end)
@@ -175,4 +175,46 @@ if type(CreateFrame)=='function' and public(Minimap) then
         if event=='PLAYER_REGEN_DISABLED' then hideAll() return end
         stale=true
     end)
+end
+
+-- /bf available (1.19): the quests you can pick up on the map you are on, nearest first.
+-- Pure: a compass word for a direction (east and south in yards).
+function BackstageForeverCompassWord(east,south)
+    if not (finite(east) and finite(south)) or (east==0 and south==0) then return nil end
+    local angle=math.atan(east,-south)
+    local index=math.floor((angle/(math.pi/4))+.5)%8
+    return ({[0]='north','north-east','east','south-east','south','south-west','west','north-west'})[index]
+end
+-- Pure: chat lines for a list of {title,detail,east,south}; at most `limit` quests are named.
+function BackstageForeverAvailableLines(rows,limit)
+    local T=BackstageForeverTr or tostring
+    if #rows==0 then return {T('No quests to pick up on this map for your level. Try /bf next, or open the map for BF Guide.')} end
+    table.sort(rows,function(a,b) return a.distance<b.distance end)
+    local lines={(#rows==1 and T('1 quest you can pick up on this map:') or (#rows..' '..T('quests you can pick up on this map:')))}
+    for i=1,math.min(limit or 8,#rows) do
+        local row=rows[i]
+        local way=BackstageForeverCompassWord(row.east,row.south)
+        lines[#lines+1]=('%s, %s: %d %s%s'):format(row.detail or '',row.title or '',math.floor(row.distance+.5),T('yards'),way and (' '..T(way)) or '')
+    end
+    if #rows>(limit or 8) then lines[#lines+1]=('+%d '):format(#rows-(limit or 8))..T('more on the map (BF Guide).') end
+    return lines
+end
+function BackstageForeverAvailableCommand()
+    local api=public(C_Map)
+    local mapId=number(call(field(api,'GetBestMapForUnit'),'player'),1,2147483647)
+    local size=mapId and mapSize(mapId)
+    local where=mapId and call(field(api,'GetPlayerMapPosition'),mapId,'player')
+    local px,py=method(where,'GetXY')
+    if not size or not finite(px) or not finite(py) then say('Your place on the map is not known here; try again outside.') return end
+    local ok,points=pcall(BackstageForeverAdvisorLive,mapId)
+    local rows={}
+    for _,point in ipairs(ok and type(points)=='table' and points or {}) do
+        if point.layer=='pickup' and finite(point.x) and finite(point.y) then
+            local east,south=(point.x-px)*size.width,(point.y-py)*size.height
+            rows[#rows+1]={title=point.title,detail=point.detail,east=east,south=south,distance=math.sqrt(east*east+south*south)}
+        end
+    end
+    for _,line in ipairs(BackstageForeverAvailableLines(rows,8)) do
+        if DEFAULT_CHAT_FRAME and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then DEFAULT_CHAT_FRAME:AddMessage('Backstage Forever: '..(BackstageForeverTr or tostring)(line)) end
+    end
 end

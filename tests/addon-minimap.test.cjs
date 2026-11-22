@@ -56,3 +56,17 @@ test("the minimap file is display only and wired into the addon", () => {
   assert.match(fs.readFileSync(path.join(root, "addon/BackstageForever/BackstageForever.toc"), "utf8"), /BackstageForeverAdvisorMap\.lua\r?\nBackstageForeverMinimap\.lua/);
   assert.match(fs.readFileSync(path.join(root, "addon/BackstageForever/BackstageForever.toc"), "utf8"), /BackstageForeverMinimapSettings/);
 });
+
+test("/bf available names the nearest quests with distance and a compass word", () => lua(LOAD + String.raw`
+local w=BackstageForeverCompassWord
+assert(w(0,-10)=='north' and w(10,0)=='east' and w(0,10)=='south' and w(-10,0)=='west')
+assert(w(10,-10)=='north-east' and w(10,10)=='south-east' and w(-10,10)=='south-west' and w(-10,-10)=='north-west')
+assert(w(0,0)==nil and w(nil,1)==nil)
+local lines=BackstageForeverAvailableLines({},8)
+assert(#lines==1 and lines[1]:find('No quests to pick up',1,true))
+lines=BackstageForeverAvailableLines({{title='Gornek',detail='Your Place In The World (level 1)',east=0,south=-120,distance=120}},8)
+assert(lines[1]=='1 quest you can pick up on this map:' and lines[2]=='Your Place In The World (level 1), Gornek: 120 yards north',lines[2])
+local many={} for i=1,11 do many[i]={title='Giver '..i,detail='Quest '..i,east=i*10,south=0,distance=i*10} end
+lines=BackstageForeverAvailableLines(many,8)
+assert(lines[1]=='11 quests you can pick up on this map:' and #lines==10 and lines[2]:find('Giver 1: 10 yards east',1,true) and lines[10]=='+3 more on the map (BF Guide).',lines[10])
+`));
