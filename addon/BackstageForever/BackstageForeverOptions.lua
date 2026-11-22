@@ -214,6 +214,7 @@ BINDING_NAME_BACKSTAGEFOREVER_COMPASS='Show or hide the Adventure Compass'
 BINDING_NAME_BACKSTAGEFOREVER_NEXT='Point me to my next quest stop'
 BINDING_NAME_BACKSTAGEFOREVER_ASK='Ask the companion'
 BINDING_NAME_BACKSTAGEFOREVER_OPTIONS='Open Backstage Forever settings'
+BINDING_NAME_BACKSTAGEFOREVER_ATLAS='Open the Instance Atlas'
 function BackstageForeverBinding(command) run(command) end
 
 -- An entry in the game's own options list that opens the painted window.
