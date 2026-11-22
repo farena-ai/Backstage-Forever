@@ -912,6 +912,11 @@ local function capture(event,eventId)
             character.gearSets=sets
         end
     end
+    -- Travel: learned flight points with their names, and where the Hearthstone goes.
+    if type(BackstageForeverTravelSnapshot)=='function' then
+        local ok,travel=pcall(BackstageForeverTravelSnapshot)
+        if ok and type(travel)=='table' and type(travel.nodes)=='table' then array(travel.nodes);character.travel=travel end
+    end
     if type(BackstageForeverMapUpdate)=='function' then pcall(BackstageForeverMapUpdate,character)end
     if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character,event=='QUEST_TURNED_IN' and integer(eventId,1,2147483647) or nil) end
     local chars=array({character});for id,c in pairs(roster) do if id~=guid then chars[#chars+1]=c end end
@@ -978,7 +983,7 @@ local function capture(event,eventId)
     -- Retain identities while shedding the oldest remaining optional detail first.
     for i=#chars,1,-1 do
         if fits() then break end
-        for _,key in ipairs({'gearSets','stats','quests','progress','history','readiness'}) do discard(chars[i],key) end
+        for _,key in ipairs({'travel','gearSets','stats','quests','progress','history','readiness'}) do discard(chars[i],key) end
     end
     if changed then encoded,encodedNodes=encode(payload) end
     if exportFits(#encoded,encodedNodes) then

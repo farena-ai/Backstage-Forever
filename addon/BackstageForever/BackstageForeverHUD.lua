@@ -728,6 +728,8 @@ local function initialize()
     if combat() or panel or type(CreateFrame)~='function' then return end
     if not settings then loadSettings() end
     panel=CreateFrame('Frame','BackstageForeverCompass',UIParent,'BackdropTemplate')
+    -- 1.23: the larger-text setting scales this whole window.
+    if type(BackstageForeverApplyTextSize)=='function' then pcall(BackstageForeverApplyTextSize,panel) end
     panel:SetSize(340,440)
     if settings.point then panel:SetPoint(settings.point,UIParent,settings.relativePoint,settings.x,settings.y)
     else panel:SetPoint('CENTER',UIParent,'CENTER',260,60) end
@@ -900,8 +902,40 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverComfortCommand)=='function' then pcall(BackstageForeverComfortCommand,message)end
                 return
             end
+            if word=='ready' then
+                if type(BackstageForeverReadyCommand)=='function' then pcall(BackstageForeverReadyCommand,message)end
+                return
+            end
+            if word=='kit' then
+                if type(BackstageForeverKitCommand)=='function' then pcall(BackstageForeverKitCommand)end
+                return
+            end
+            if word=='group' then
+                if type(BackstageForeverGroupCommand)=='function' then pcall(BackstageForeverGroupCommand,message)end
+                return
+            end
+            if word=='note' then
+                if type(BackstageForeverNoteCommand)=='function' then pcall(BackstageForeverNoteCommand,message)end
+                return
+            end
+            if word=='notes' then
+                if type(BackstageForeverNotesCommand)=='function' then pcall(BackstageForeverNotesCommand,message)end
+                return
+            end
+            if word=='mail' then
+                if type(BackstageForeverMailCommand)=='function' then pcall(BackstageForeverMailCommand,message)end
+                return
+            end
+            if word=='access' then
+                if type(BackstageForeverAccessCommand)=='function' then pcall(BackstageForeverAccessCommand,message)end
+                return
+            end
             if word=='train' or word=='repair' or word=='flights' or word=='xp' or word=='hearth' or word=='help' or word=='toasts' or word=='danger' or word=='junk' then
                 if type(BackstageForeverAssistCommand)=='function' then pcall(BackstageForeverAssistCommand,message)end
+                return
+            end
+            if word=='fly' then
+                if type(BackstageForeverFlyCommand)=='function' then pcall(BackstageForeverFlyCommand,message)end
                 return
             end
             if word=='gear' then

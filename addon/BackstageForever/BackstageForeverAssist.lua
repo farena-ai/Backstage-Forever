@@ -26,7 +26,9 @@ local function loadSettings()
     local s=type(BackstageForeverAssistSettings)=='table' and BackstageForeverAssistSettings or {}
     local tbl=function(v) return type(v)=='table' and v or {} end
     settings={toasts=s.toasts~=false,danger=s.danger~=false,junk=s.junk~=false,welcomed=s.welcomed==true,bossTips=s.bossTips~=false,
-        repairers=tbl(s.repairers),flightNpcs=tbl(s.flightNpcs),flightNodes=tbl(s.flightNodes)}
+        repairers=tbl(s.repairers),flightNpcs=tbl(s.flightNpcs),flightNodes=tbl(s.flightNodes),
+        -- Flight point names as the game's flight map shows them, and where the Hearthstone was set (BackstageForeverTravel.lua).
+        flightNames=tbl(s.flightNames),bind=type(s.bind)=='table' and s.bind or nil}
     BackstageForeverAssistSettings=settings
     return settings
 end
@@ -336,7 +338,9 @@ local function updateDanger()
     if d then
         local c=TONES[d.tone] or TONES.yellow
         pcall(dangerText.SetTextColor,dangerText,c[1],c[2],c[3])
-        pcall(dangerText.SetText,dangerText,d.text)
+        -- 1.23: with "Marks without colour" on, red and orange warnings also start with [!!] or [!].
+        local sign=type(BackstageForeverMark)=='function' and (d.tone=='red' and BackstageForeverMark('danger') or d.tone=='orange' and BackstageForeverMark('warn')) or ''
+        pcall(dangerText.SetText,dangerText,sign..d.text)
         pcall(dangerText.Show,dangerText)
     else pcall(dangerText.Hide,dangerText) end
     return d or nil
@@ -482,6 +486,7 @@ end
 local function learnFlights()
     settings.flightNpcs=type(settings.flightNpcs)=='table' and settings.flightNpcs or {}
     settings.flightNodes=type(settings.flightNodes)=='table' and settings.flightNodes or {}
+    settings.flightNames=type(settings.flightNames)=='table' and settings.flightNames or {}
     local id=npcIdOf('npc')
     if id then settings.flightNpcs[id]=true end
     local taxi=type(C_TaxiMap)=='table' and C_TaxiMap or nil
@@ -492,6 +497,9 @@ local function learnFlights()
             local node,state=num(field(n,'nodeID')),num(field(n,'state'))
             -- Enum.FlightPathState: 0 current, 1 reachable (known), 2 unreachable (not learned).
             if node and state and state<2 then settings.flightNodes[node]=true end
+            -- The flight map names every point of the continent, learned or not.
+            local name=field(n,'name')
+            if node and type(name)=='string' and name~='' then settings.flightNames[node]=name:sub(1,80) end
         end
     end
 end
@@ -597,7 +605,11 @@ end
 function BackstageForeverAssistCommand(message)
     if not settings then loadSettings() end
     local cmd,arg=(type(message)=='string' and message:lower() or ''):match('^(%a+)%s*(%a*)')
-    if cmd=='train' then return BackstageForeverTrain() end
+    if cmd=='train' then
+        local t=BackstageForeverTrain()
+        if type(BackstageForeverTrainList)=='function' then pcall(BackstageForeverTrainList) end
+        return t
+    end
     if cmd=='repair' then return BackstageForeverRepair() end
     if cmd=='flights' then return BackstageForeverFlights() end
     if cmd=='xp' then return say(BackstageForeverPaceLine()) end
@@ -617,9 +629,10 @@ function BackstageForeverAssistCommand(message)
         local lines={
             '/bf next - an arrow to the nearest quest to hand in or pick up',
             '/bf how - how to do your tracked quest: what to get and where it came from',
-            '/bf train - an arrow to your class trainer',
+            '/bf train - an arrow to your class trainer, and what is new there at your level with prices',
             '/bf repair - an arrow to the nearest repair vendor',
             '/bf flights - which flight paths here you have learned',
+            '/bf fly PLACE - the best flight route to a place: legs, time and price',
             '/bf find NAME - find a person or place, e.g. /bf find flight master',
             '/bf xp - your experience per hour and time to the next level',
             '/bf prof - your profession: recipe colour, best next recipe, crafts to your cap',
@@ -642,6 +655,18 @@ function BackstageForeverAssistCommand(message)
             '/bf party - the quests of your party next to yours (party members with Backstage Forever); /bf party way shares your waypoint, /bf party go follows one',
             '/bf route guide - the full guided route for your race, step by step; /bf route skip skips a step, /bf route zone shows this zone only',
             '/bf qol - small helpers, each off until you switch it on: coords, loot, dismount, questtext',
+            '/bf rested - rested XP, how long until it is full, and whether you are resting',
+            '/bf weapons - your weapon skills against the cap for your level',
+            '/bf durability - how worn your gear is, most worn first',
+            '/bf flights times - the flights you took and how long each one lasted',
+            '/bf explore - the named areas you discovered on this map',
+            '/bf comfort - switch the rested, weapon skill, flight time and durability lines on or off',
+            '/bf kit - what your class carries: shards, runes, powders, poisons, ammo, totems, candles, seeds',
+            '/bf ready - before a pull: a class buff, food buff or reagent you are missing (on or off for the dungeon line)',
+            '/bf group - elite, group, dungeon and raid quests in your log, each with a looking-for-group line for your chat box',
+            '/bf note - a note on the player you target (or /bf note Name words); /bf notes lists them',
+            '/bf mail - letters that expire within 3 days, from your last mailbox visit (on or off for the mailbox line)',
+            '/bf access - marks that do not rely on colour, and larger text in the Compass and settings window',
             '/bf enemy - enemy players you saw recently; /bf enemy off silences the alerts, /bf enemy sound on adds a sound',
             '/bf gear - turn upgrade hints on item tooltips and the best-quest-reward highlight on or off',
             '/bf live - the thin line along the top edge that lets the desktop app follow you; /bf live safe if the app cannot read it',

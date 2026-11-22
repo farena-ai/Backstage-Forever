@@ -1023,6 +1023,7 @@ app.whenReady().then(async () => {
     if (ledgerPrices.key !== key) ledgerPrices = { key, index: L.priceIndex(profiles) };
     return L.priceFor(ledgerPrices.index, id);
   };
+  const travelPlanner = require("./core/travel-planner-ipc.cjs").registerTravelPlannerHandlers({ handle, getState: () => store.state });
   handle("talentCoach", (input) => {
     const className = typeof input?.className === "string" ? input.className.slice(0, 20) : null;
     const level = Number.isInteger(input?.level) && input.level >= 1 && input.level <= 100 ? input.level : null;
@@ -1030,8 +1031,11 @@ app.whenReady().then(async () => {
     const trees = gameData.talents(className);
     // 1.3 (J9): class quests and key unlocks, with or without the talent trees.
     const unlocks = require("./core/class-unlocks.cjs").classUnlocks(className, level);
-    if (!trees) return { available: false, unlocks, reason: gameData.status().reason || "Talent trees are not available from your game install yet." };
-    return { available: true, trees, unlocks, coach: require("./core/talent-coach.cjs").coach(trees, className, level) };
+    // C6: what the class trainer newly teaches at this level and the next two, with costs.
+    let training = null;
+    try { training = travelPlanner.trainerView(className, level); } catch { training = null; }
+    if (!trees) return { available: false, unlocks, training, reason: gameData.status().reason || "Talent trees are not available from your game install yet." };
+    return { available: true, trees, unlocks, training, coach: require("./core/talent-coach.cjs").coach(trees, className, level) };
   });
   // Talent planner: click-to-spend on the same trees, saved builds per character, and the build
   // marked "Use in game" rides the desktop -> game hand-off.

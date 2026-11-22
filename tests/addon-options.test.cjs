@@ -53,7 +53,7 @@ for _,page in ipairs(BackstageForeverOptionsPages) do
     end
   end
 end
-assert(count==35,'35 switches, got '..count)
+assert(count==40,'40 switches, got '..count)
 for _,key in ipairs({'questTracker','objectiveHints','questDetours','beforeLeaving','rewardReasons','questBlockers','gatheringMarks','sharedObjectives','keepQuestItems','questItemCue','spellRankReminder'}) do
   local found=false
   for _,m in ipairs(ran) do if m=='helpers '..key..' off' then found=true end end
@@ -78,10 +78,11 @@ dofile('addon/BackstageForever/BackstageForeverHelpers.lua')
 dofile('addon/BackstageForever/BackstageForeverOptions.lua')
 local quiet=BackstageForeverOptionsPresets[1]
 assert(quiet.title=='Quiet')
--- Fresh character: nine are on by default except the enemy sound (already off); danger and the durability warning are already on.
-assert(BackstageForeverOptionsApplyPreset(quiet)==8,'eight switches differ from the defaults')
-local expected={['toasts off']=true,['moments off']=true,['enemy off']=true,['helpers questDetours off']=true,['helpers beforeLeaving off']=true,['supplies off']=true,['comfort flights off']=true,['comfort rested off']=true}
-assert(#ran==8) for _,m in ipairs(ran) do assert(expected[m],m) end
+-- Fresh character: ten are on by default except the enemy sound (already off); danger, the durability warning,
+-- the ready check and the mail warning are already on.
+assert(BackstageForeverOptionsApplyPreset(quiet)==9,'nine switches differ from the defaults')
+local expected={['toasts off']=true,['moments off']=true,['enemy off']=true,['helpers questDetours off']=true,['helpers beforeLeaving off']=true,['supplies off']=true,['comfort flights off']=true,['comfort rested off']=true,['notes off']=true}
+assert(#ran==9) for _,m in ipairs(ran) do assert(expected[m],m) end
 for _,preset in ipairs(BackstageForeverOptionsPresets) do
   for _,list in ipairs({preset.on or {},preset.off or {}}) do
     for _,label in ipairs(list) do
