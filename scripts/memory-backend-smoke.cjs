@@ -117,7 +117,9 @@ function shortPath(target) {
     });
     await startPending(); await app.evaluate((_electron, root) => { memoryFixture.holdPreparation = true; memoryFixture.expectedRoot = root; }, emptyGame);
     await page.evaluate(root => { window.pendingPreparation = window.backstage.prepareGame(root); }, emptyGame);
-    await app.evaluate(async () => { const end = Date.now() + 5000; while (!memoryFixture.releasePreparation) { if (Date.now() > end) throw Error("Source preparation never paused"); await new Promise(r => setTimeout(r, 10)); } });
+    // The pause comes after a real addon install into the empty folder: about 160 files and 33 MB of
+    // painted textures today, which took longer than the old 5 seconds on a busy runner (seen in CI).
+    await app.evaluate(async () => { const end = Date.now() + 30000; while (!memoryFixture.releasePreparation) { if (Date.now() > end) throw Error("Source preparation never paused"); await new Promise(r => setTimeout(r, 10)); } });
     assert.equal(await app.evaluate(() => memoryFixture.preparationRootChanged), true);
     await finishPending(true); assert.equal(await call("memoryDraft", "Alpha"), null);
     await app.evaluate(() => { memoryFixture.holdPreparation = false; memoryFixture.releasePreparation(); }); await page.evaluate(() => window.pendingPreparation);

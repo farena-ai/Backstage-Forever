@@ -8,6 +8,14 @@
 .gp-switch button:hover { background: rgba(239,224,187,.12); }
 .gp-switch button[aria-selected="true"] { border-color: #a5823e; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; text-shadow: none; }
 .gp-switch button:focus-visible { outline: 2px solid #f4cf72; outline-offset: 2px; }
+/* One look for every "views of this page" switch (Sheet, Professions, Journey): a parchment bar,
+   plain words, the chosen view in dark leather. No brass frame: those are for page tabs and actions. */
+.content .gp-switch:not(.rb-switch) { gap: 6px; padding: 5px; border-color: #a5823e; background: linear-gradient(180deg, #efe0bb, #dcc797); }
+.content .gp-switch:not(.rb-switch) button { min-height: 34px; padding: 5px 14px; border: 1px solid transparent; border-radius: 5px; background: transparent; box-shadow: none; color: #3d2a12; text-shadow: none; font: 700 14px/1.3 "Segoe UI", sans-serif; transform: none; white-space: nowrap; }
+.content .gp-switch:not(.rb-switch) button::before, .content .gp-switch:not(.rb-switch) button::after { display: none; }
+.content .gp-switch:not(.rb-switch) button:hover:not(:disabled) { background: rgba(61,42,18,.12); border-color: transparent; box-shadow: none; transform: none; }
+.content .gp-switch:not(.rb-switch) button[aria-selected="true"], .content .gp-switch:not(.rb-switch) button[aria-selected="true"]:hover:not(:disabled) { border-color: #3d2a12; background: #3d2a12; color: #f6e7c1; text-shadow: none; }
+.content .gp-switch:not(.rb-switch) button:focus-visible { outline: 2px solid #523207; outline-offset: 2px; }
 .sheet-page[data-sheet-view="plan"] > :is([data-sheet-compare], [data-sheet-pair-host], [data-sheet-body]) { display: none; }
 .sheet-page:not([data-sheet-view="plan"]) > .gp-plan { display: none; }
 .gp-plan { display: flex; flex-direction: column; gap: 14px; min-width: 0; }

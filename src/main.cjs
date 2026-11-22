@@ -762,6 +762,7 @@ app.whenReady().then(async () => {
     getState: () => store.state, knowledge, npcReference: companionService.npcReference, travelReference,
     vendorPack: companionService.vendorPack, insights, acquisitionPack: companionService.acquisitionPack, creaturePack, worldPack: require("./core/world-finds.cjs").loadWorldPack(), live: liveBridge,
     getCommunity: () => community?.index() || null,
+    getTransport: () => require("./core/transport-data.cjs").loadTransportPack(),
   });
   handle("worldMap", (input) => worldMap.build(input || {}));
   handle("worldMapSearch", (query) => worldMap.search(query));

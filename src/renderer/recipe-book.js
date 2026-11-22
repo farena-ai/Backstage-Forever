@@ -59,8 +59,9 @@ window.RecipeBookView = (() => {
   }
   function sources(r) {
     if (!r.sources.length) return `<ul class="rb-sources"><li><span class="rb-kind rb-k-none">Unknown</span> Source not recorded${r.recipeItems.length ? ` · taught by ${esc(r.recipeItems[0].name || "a recipe item")}` : ""}</li></ul>`;
-    const shown = r.sources.slice(0, 3);
-    return `<ul class="rb-sources">${shown.map((s) => `<li>${sourceLine(s)}</li>`).join("")}${r.sources.length > shown.length ? `<li class="rb-more">and ${r.sources.length - shown.length} more</li>` : ""}</ul>`;
+    // Two quests with the same name read as one line here: say it once.
+    const lines = [...new Set(r.sources.map(sourceLine).filter(Boolean))], shown = lines.slice(0, 3);
+    return `<ul class="rb-sources">${shown.map((line) => `<li>${line}</li>`).join("")}${lines.length > shown.length ? `<li class="rb-more">and ${lines.length - shown.length} more</li>` : ""}</ul>`;
   }
   function status(r, rank) {
     if (r.known) return `<span class="rb-state rb-known">Known</span>${dot(r.colour)}`;

@@ -825,6 +825,33 @@ test("connected startup repairs the actual sixth coach module and preserves fore
  assert.equal(await fs.readFile(path.join(folder,"foreign-owner.lua"),"utf8"),"owner data");
 });
 
+test("a startup repair that fails once is tried one more time, and only once", async t => {
+ const f=await fixture(t),addon=path.join(__dirname,"../addon/BackstageForever"),dataDir=path.join(f.dir,"data");
+ const initial=new GameSync({dataDir,addonDir:addon});await initial.prepare(f.root);initial.close();
+ const folder=path.join(f.root,"Interface/AddOns/BackstageForever");
+ await fs.unlink(path.join(folder,"BackstageForeverCoach.lua"));
+ // The first attempt fails the way a held file does: nothing installed, "install-failed".
+ let attempts=0,failures=1;
+ class Held extends GameSync{async _installAddon(gen,root,cancelled,selectRoot=()=>true){attempts++;if(attempts<=failures){if(selectRoot(false))this.state={...this.state,setupIssue:"install-failed",addonInstalled:false,addonCurrent:false,phase:"needs-addon"};return this.status();}return super._installAddon(gen,root,cancelled,selectRoot);}}
+ const restored=new Held({dataDir,addonDir:addon,startupRetryMs:5});t.after(()=>restored.close());await restored.ready;
+ assert.equal(attempts,2);assert.equal(restored.status().addonCurrent,true);assert.equal(restored.status().setupIssue,null);
+ assert.equal(await fs.readFile(path.join(folder,"BackstageForeverCoach.lua"),"utf8"),await fs.readFile(path.join(addon,"BackstageForeverCoach.lua"),"utf8"));
+ attempts=0;failures=5;
+ const broken=new Held({dataDir,addonDir:addon,startupRetryMs:5});t.after(()=>broken.close());await broken.ready;
+ assert.equal(attempts,2,"no endless retries");assert.equal(broken.status().addonCurrent,false);assert.equal(broken.status().setupIssue,"install-failed");
+});
+
+test("verifying an installed addon walks each parent folder once, not once per file", async t => {
+ const f=await fixture(t),addon=path.join(__dirname,"../addon/BackstageForever"),dataDir=path.join(f.dir,"data");
+ const initial=new GameSync({dataDir,addonDir:addon});await initial.prepare(f.root);initial.close();
+ const real=fs.lstat;let calls=0;fs.lstat=(...a)=>{calls++;return real(...a);};t.after(()=>{fs.lstat=real;});
+ const restored=new GameSync({dataDir,addonDir:addon});t.after(()=>restored.close());await restored.ready;fs.lstat=real;
+ assert.equal(restored.status().addonCurrent,true);
+ // About 160 files and textures: one check each for the shipped and the installed copy, plus a few
+ // folder walks. Walking every parent for every file made this about 6,000 calls.
+ assert.ok(calls<1500,`startup verify made ${calls} lstat calls`);
+});
+
 test("connected startup repairs actual acquisition and profession modules with foreign files intact",async t=>{
  const f=await fixture(t),game=f.root,data=path.join(f.dir,'data'),addon=path.join(__dirname,'../addon/BackstageForever');
  const sync=new GameSync({dataDir:data,addonDir:addon});await sync.prepare(game);sync.close();const folder=path.join(game,'Interface/AddOns/BackstageForever');await fs.writeFile(path.join(folder,'foreign.lua'),'preserve');for(const name of ['BackstageForeverAcquisition.lua','BackstageForeverProfession.lua'])await fs.unlink(path.join(folder,name));

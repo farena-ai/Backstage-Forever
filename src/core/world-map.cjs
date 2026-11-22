@@ -286,8 +286,8 @@ function communityPins(community, mapId, { staticNpcIds = new Set(), npcName = (
 }
 
 class WorldMap {
-  constructor({ getState, knowledge, npcReference, travelReference, vendorPack, insights, acquisitionPack, creaturePack = null, worldPack = null, live, getCommunity = () => null }) {
-    Object.assign(this, { getState, knowledge, live, npcReference, travelReference, vendorPack, insights, getCommunity, worldPack });
+  constructor({ getState, knowledge, npcReference, travelReference, vendorPack, insights, acquisitionPack, creaturePack = null, worldPack = null, live, getCommunity = () => null, getTransport = () => null }) {
+    Object.assign(this, { getState, knowledge, live, npcReference, travelReference, vendorPack, insights, getCommunity, worldPack, getTransport });
     this.creatures = require("./creature-data.cjs").creatureIndex(creaturePack);
     this.static = buildStaticIndex({ knowledgePack: knowledge?.bundled?.pack, npcReference, travelReference, vendorPack, insights, acquisitionPack, worldPack, desktopProvenance: true });
     this.staticNpcIds = new Set();
@@ -304,6 +304,8 @@ class WorldMap {
     const zones = require("./leveling.cjs").loadLevelingPack().zones;
     const pack = this.knowledge?.bundled?.pack;
     const side = (sides, f) => !sides || !sides.length || sides.includes(f);
+    let transport = null;
+    try { transport = this.getTransport?.() || null; } catch { transport = null; }
     const rows = zones.map((z) => {
       const row = { mapId: z.mapId, name: mapName(z.mapId), min: z.min, max: z.max, faction: z.faction, Horde: {}, Alliance: {} };
       for (const f of ["Horde", "Alliance"]) row[f] = { questGivers: 0, objectiveAreas: 0, classTrainers: 0, professionTrainers: 0, vendors: 0, flightMasters: 0 };
@@ -325,9 +327,17 @@ class WorldMap {
           if (side(pin.sides, f) && !seen[f].has(id)) { seen[f].add(id); row[f][k]++; }
         }
       }
+      // Flight masters: the transport pack knows far more of them (each with its side and place) than
+      // the few the reviewed travel reference names, so both are counted, each flight master once.
+      for (const node of transport?.nodes || []) {
+        if (node.mapId !== z.mapId) continue;
+        const id = node.npcId ? `flightMasters:${node.npcId}` : `flightPoint:${node.id}`;
+        for (const f of ["Horde", "Alliance"]) if ((!node.side || node.side === f) && !seen[f].has(id)) { seen[f].add(id); row[f].flightMasters++; }
+      }
       return row;
     });
-    this._coverage = { zones: rows, source: { build: pack?.build || null, builds: pack?.builds || null, observedThrough: pack?.observedThrough || null, attribution: pack?.attribution || null } };
+    const flightPoints = transport?.nodes?.length || 0, placedFlightPoints = (transport?.nodes || []).filter((n) => n.mapId).length;
+    this._coverage = { zones: rows, flightPoints: { total: flightPoints, placed: placedFlightPoints }, source: { build: pack?.build || null, builds: pack?.builds || null, observedThrough: pack?.observedThrough || null, attribution: pack?.attribution || null } };
     return this._coverage;
   }
   liveFrame(profile) {

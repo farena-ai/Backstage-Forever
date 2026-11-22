@@ -4,6 +4,7 @@
 //
 //   mkdir /c/Users/faren/Projects/.bf-electron-lock      (one Electron window at a time)
 //   BF_TEST_INACTIVE=1 node scripts/site-screenshots.cjs [OUTDIR] [--webp DIR] [--game "<…>/_forever_"] [--only name,name]
+//                                                        [--size 984x635] [--lang de] [--shots FILE]
 //   rmdir /c/Users/faren/Projects/.bf-electron-lock
 //
 // OUTDIR defaults to work/site-shots (git-ignored) and receives the PNGs. --webp DIR also writes
@@ -11,6 +12,8 @@
 // --webp ../bf-site-next/backstage-forever/tour. scripts/build-site.cjs writes the pages around them. --game points at a WoW Forever folder that is only READ
 // (item names, talents and icons come from the player's own files; nothing is installed there,
 // because the app is connected to a throwaway synthetic client folder instead).
+// --size, --lang and --shots are for layout reviews: another window size, another language, and
+// another list of pictures (same shape as scripts/site-shots.cjs).
 const { _electron: electron } = require("playwright");
 const fs = require("node:fs/promises"), os = require("node:os"), path = require("node:path");
 const { testWindow, launch: launchElectron } = require("./test-window.cjs");
@@ -19,9 +22,12 @@ const { navigate } = require("./player-navigation.cjs");
 const { defaultState } = require("../src/core/validation.cjs");
 const { buildCharacters } = require("./site-fixture.cjs");
 
-const SIZE = [1440, 900];
 const args = process.argv.slice(2);
 const flag = (name) => { const i = args.indexOf(name); return i < 0 ? null : args.splice(i, 2)[1]; };
+const SIZE = (flag("--size") || "1440x900").split("x").map(Number);
+if (SIZE.length !== 2 || !SIZE.every((n) => Number.isInteger(n) && n >= 600 && n <= 4000)) throw new Error("--size wants WIDTHxHEIGHT, for example 984x635");
+const LANG = flag("--lang") || "en";
+if (!/^[a-z]{2}$/.test(LANG)) throw new Error("--lang wants a two-letter language, for example de");
 const webpDir = flag("--webp");
 const gameDir = flag("--game"), only = (flag("--only") || "").split(",").filter(Boolean);
 const explore = args.includes("--explore") && args.splice(args.indexOf("--explore"), 1);
@@ -65,7 +71,7 @@ const SHOTS = require(shotsFile ? path.resolve(shotsFile) : "./site-shots.cjs");
     page.on("pageerror", (e) => errors.push(e.message));
     page.setDefaultTimeout(10000);
     await app.evaluate(({ BrowserWindow }, [w, h]) => BrowserWindow.getAllWindows()[0].setContentSize(w, h), SIZE);
-    await page.evaluate(() => { localStorage.setItem("bf-setup-v4", "complete"); localStorage.setItem("bf-tour-v1", "done"); localStorage.setItem("bf-lang-v1", "en"); });
+    await page.evaluate((lang) => { localStorage.setItem("bf-setup-v4", "complete"); localStorage.setItem("bf-tour-v1", "done"); localStorage.setItem("bf-lang-v1", lang); }, LANG);
     await page.evaluate((root) => window.backstage.prepareGame(root), game);
     await page.reload();
     await page.waitForFunction((n) => document.querySelectorAll("#active-character option").length === n, characters.length);
@@ -107,7 +113,9 @@ const SHOTS = require(shotsFile ? path.resolve(shotsFile) : "./site-shots.cjs");
       if (only.length && !only.some((o) => shot.name.includes(o))) continue;
       try {
         await choose(shot.who);
-        if (Array.isArray(shot.route)) await go(shot.route); else await navigate(page, shot.route);
+        // `nav` lists menu buttons by their route ids, which works in every language.
+        if (shot.nav) for (const id of shot.nav) { await page.locator(`button[data-nav="${id}"]`).first().click(); await page.waitForTimeout(500); }
+        else if (Array.isArray(shot.route)) await go(shot.route); else await navigate(page, shot.route);
         await settle();
         if (shot.steps) { await shot.steps({ page, app, click: (name, role) => click(page, name, role) }); await settle(); }
         if (shot.top) {

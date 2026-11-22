@@ -20,7 +20,7 @@ function handledWords() {
 test("every /bf command the addon handles is on the Commands page, and nothing else", () => {
   const handled = handledWords();
   assert.ok(handled.size >= 15, `parsed ${[...handled].join(",")}`);
-  const listed = new Set(CATALOG.map((c) => c.word));
+  const listed = new Set(CATALOG.flatMap((c) => [c.word, ...(c.also || [])]));
   assert.deepEqual([...handled].filter((w) => !listed.has(w)).sort(), [], "missing from the Commands page");
   assert.deepEqual([...listed].filter((w) => !handled.has(w)).sort(), [], "listed but not handled by the addon");
 });
@@ -40,11 +40,65 @@ test("each entry explains itself in plain words with a usable example", () => {
 
 test("/bf help in game only mentions commands the page explains", () => {
   const assist = read("addon/BackstageForever/BackstageForeverAssist.lua");
-  const help = assist.slice(assist.indexOf("if cmd=='help'"), assist.indexOf("for _,l in ipairs(lines)"));
-  const words = [...help.matchAll(/'\/bf (\w+)/g)].map((m) => m[1]);
-  assert.ok(words.length >= 6);
-  const listed = new Set(CATALOG.map((c) => c.word));
+  const help = assist.slice(assist.indexOf("local HELP_TOPICS={"), assist.indexOf("function BackstageForeverAssistCommand(message)"));
+  const words = [...help.matchAll(/\/bf (\w+)/g)].map((m) => m[1]);
+  assert.ok(words.length >= 60);
+  const listed = new Set(CATALOG.flatMap((c) => [c.word, ...(c.also || [])]));
   for (const w of words) assert.ok(listed.has(w), `/bf ${w} in game help but not on the Commands page`);
+});
+
+test("/bf help is paged: a short index, one page per topic, one command by its word, and everything on request", () => {
+  const { spawnSync } = require("node:child_process");
+  const r = spawnSync(process.execPath, [require.resolve("./lua-stdin.cjs")], { cwd: root, encoding: "utf8", timeout: 20000, input: String.raw`
+local said={} DEFAULT_CHAT_FRAME={AddMessage=function(_,m) said[#said+1]=m end}
+dofile('addon/BackstageForever/BackstageForeverAssist.lua')
+local topics=BackstageForeverHelpTopics
+assert(#topics==7)
+-- The bare command: one line per topic plus a heading and a closing line, never the wall of text.
+local index=BackstageForeverHelpLines(nil)
+assert(#index==#topics+2 and #index<=10,'the index is short: '..#index)
+for i,topic in ipairs(topics) do
+  assert(index[i+1]==topic.index and topic.index:sub(1,#topic.key+2)==i..' '..topic.key,topic.key)
+  assert(#topic.lines>=5 and #topic.lines<=14,topic.key..' is one screen of chat: '..#topic.lines)
+  local byName,byNumber=BackstageForeverHelpLines(topic.key),BackstageForeverHelpLines(tostring(i))
+  assert(#byName==#topic.lines+1 and byName[1]==topic.head and byName[2]==topic.lines[1])
+  assert(#byNumber==#byName and byNumber[#byNumber]==byName[#byName],'page number and topic word give the same page')
+  assert(BackstageForeverHelpLines('  '..topic.key:upper()..' ')[1]==topic.head,'case and spaces do not matter')
+end
+-- Every line is in exactly one topic, and "all" prints each once.
+local seen,total={},0
+for _,topic in ipairs(topics) do for _,line in ipairs(topic.lines) do assert(not seen[line],line) seen[line]=true total=total+1 assert(#line<=200,line) end end
+local all=BackstageForeverHelpLines('all') assert(#all==total and total>=60)
+-- A command word finds its own lines.
+local fly=BackstageForeverHelpLines('fly') assert(#fly==1 and fly[1]:sub(1,13)=='/bf fly PLACE')
+local guild=BackstageForeverHelpLines('guild') assert(#guild==2)
+local helpers=BackstageForeverHelpLines('helpers') assert(#helpers==3)
+-- An unknown word says so and shows the index again.
+local unknown=BackstageForeverHelpLines('zzz') assert(unknown[1]=='No help page with that name.' and #unknown==#index+1)
+assert(BackstageForeverHelpLines('99')[1]=='No help page with that name.')
+-- The command prints what the function returns.
+said={} local printed=BackstageForeverAssistCommand('help') assert(#said==#index and #printed==#index and said[1]=='Backstage Forever: '..index[1])
+said={} BackstageForeverAssistCommand('help 3') assert(#said==#topics[3].lines+1 and said[1]=='Backstage Forever: '..topics[3].head)
+said={} BackstageForeverAssistCommand('help Gold') assert(said[1]=='Backstage Forever: '..topics[3].head)
+said={} BackstageForeverAssistCommand('help all') assert(#said==total)
+print('ok')` });
+  assert.equal(r.status, 0, r.stderr); assert.equal(r.stdout.trim(), "ok");
+});
+
+test("about ninety commands stay easy to scan: nine groups in a set order, none huge, no row saying 'the same as'", () => {
+  const groups = [...new Set(CATALOG.map((c) => c.group))];
+  assert.deepEqual(groups, ["Finding your way", "Your character", "Gold, bags and professions", "Dungeons and groups", "Adventure Compass", "Helpers on or off", "Ask the companion", "Live link", "Advanced"]);
+  // Each group is one block in the list (no group comes back later) and none is a wall.
+  let last = null; const closed = new Set();
+  for (const c of CATALOG) { if (c.group !== last) { assert.ok(!closed.has(c.group), `${c.group} is split`); if (last) closed.add(last); last = c.group; } }
+  for (const g of groups) { const n = CATALOG.filter((c) => c.group === g).length; assert.ok(n >= 3 && n <= 20, `${g} has ${n} commands`); }
+  for (const c of CATALOG) assert.ok(!/^The same .* as \/bf /.test(c.what), `${c.command} only repeats another row`);
+  // Where a player looks first: the arrow, then how; the settings window leads its group.
+  assert.equal(CATALOG[0].command, "/bf next");
+  assert.equal(CATALOG.find((c) => c.group === "Helpers on or off").word, "options");
+  const of = (word) => CATALOG.find((c) => c.word === word).group;
+  for (const word of ["lfg", "check", "mentor", "sr", "guild", "raid", "atlas", "run", "party", "group"]) assert.equal(of(word), "Dungeons and groups", word);
+  for (const word of ["prof", "nodes", "loop", "ledger", "prices", "sell", "shop", "mail", "bags", "wish"]) assert.equal(of(word), "Gold, bags and professions", word);
 });
 
 test("the Commands page is reachable from Help", () => {
@@ -159,4 +213,19 @@ test("Help explains community sharing and how to turn it off", () => {
   const html = read("src/renderer/index.html");
   assert.match(html, /<script src="community\.js"><\/script>/); assert.match(html, /href="community\.css"/);
   assert.match(read("src/renderer/app.js"), /CommunityView\.markup\(\)/);
+});
+
+test("Help names the newer pages where a player would look for them", () => {
+  const app = read("src/renderer/app.js"), nav = read("src/renderer/player-navigation.js");
+  const guide = app.slice(app.indexOf("function guide()"), app.indexOf("const onMac"));
+  for (const id of ["travel", "talents", "recipes", "runs", "ledger", "gear-plan"]) assert.ok(guide.includes(`data-guide-new="${id}"`), `Field guide has no paragraph for ${id}`);
+  for (const route of ["travel", "talents", "journey", "run-history", "attunements", "ledger-reputation", "calendar"]) assert.ok(guide.includes(`data-nav="${route}"`), `Field guide has no button to ${route}`);
+  for (const words of ["travel planner", "run history", "recipe book", "cooldown calendar", "gear plan", "trainer costs", "story so far", "craft profit", "reputation planner", "look up every command"]) assert.ok(nav.includes(words), `no section description mentions ${words}`);
+  const names = APP.map((a) => a.name);
+  for (const name of ["Travel planner", "Talent planner and trainer costs", "Gear plan and stat weights", "Recipe book and skill path", "Run history and keys", "Craft profit and reputation planner", "Story so far, timeline and races"]) assert.ok(names.includes(name), name);
+  for (const a of APP) assert.ok(a.what.length <= 520, `${a.name} is too long to scan`);
+  assert.match(read("src/renderer/onboarding.js"), /gear plan, talents, gold, bags, professions with a recipe book, dungeon runs and the story so far/);
+  const de = JSON.parse(read("data/i18n/de.json")).app;
+  for (const m of nav.matchAll(/description:\s*"([^"]+)"/g)) assert.ok(de[m[1]], `no German for the section description: ${m[1]}`);
+  for (const m of guide.matchAll(/<p data-guide-new="[a-z-]+">([^<]+)<\/p>/g)) assert.ok(de[m[1]], `no German for: ${m[1]}`);
 });

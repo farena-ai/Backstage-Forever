@@ -33,7 +33,9 @@
 .eco-chip.eco-mail { border-color: #8f5b4a; background: #f0d6c6; color: #6b1d10; text-shadow: none; }
 .eco-chip.eco-past { opacity: .72; }
 .eco-day .eco-chip :is(strong, span) { display: block; overflow: hidden; text-overflow: ellipsis; }
-.eco-day .eco-chip span { font-variant-numeric: tabular-nums; }
+.eco-day .eco-chip strong { white-space: normal; overflow-wrap: anywhere; }
+/* In a narrow day the character and the time wrap onto two lines; the time is never cut off. */
+.eco-day .eco-chip span { font-variant-numeric: tabular-nums; white-space: normal; overflow-wrap: anywhere; }
 .eco-more { font-size: 12px; color: #5a3e1c; }
 .eco-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; }
 .eco-legend .eco-chip { display: inline-block; }
@@ -44,7 +46,8 @@
 .eco-remind-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 18px; padding: 10px 0; border-top: 1px solid #c4ad7a; }
 .eco-remind-row > div { flex: 1 1 320px; min-width: 0; }
 .eco-remind-row .ldg-note { margin: 2px 0 0; }
-.eco-remind-row button { flex: 0 0 auto; min-width: 210px; min-height: 38px; padding: 7px 14px; }
+/* Side padding clears the brass corner ornaments, also with a long German label. */
+.eco-remind-row button { flex: 0 0 auto; min-width: 210px; min-height: 38px; padding: 7px 26px; white-space: nowrap; }
 .eco-msg { min-height: 1.3em; margin: 4px 0 0; font-size: 13px; color: #305219; font-weight: 600; }
 
 /* Run history. */

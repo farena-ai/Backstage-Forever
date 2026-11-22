@@ -8,6 +8,7 @@ window.BF_LOCALE_FR = {
  ": the scroll shows one step at a time, the game's arrow points at it, and it moves on as you pick up and hand in quests.": ": le parchemin montre une étape à la fois, la flèche du jeu la pointe, et il avance quand tu prends et rends des quêtes.",
  ". Chat is session-only; saved memory is off by default for each question and you choose what to share. Dictation creates text only (no audio files).": ". Le chat ne dure que la session ; la mémoire enregistrée est désactivée par défaut pour chaque question et tu choisis quoi partager. La dictée ne crée que du texte (aucun fichier audio).",
  ". In game,": ". En jeu,",
+ ". Nothing is filled in.": ". Rien n'est ajouté.",
  ". Talk to them to learn this flight path.": ". Parle-lui pour apprendre ce trajet aérien.",
  ". Your characters appear here.": ". Tes personnages apparaissent ici.",
  "· Agree on the first target and check healer mana before each pull.": "· Mettez-vous d'accord sur la première cible et vérifiez le mana du soigneur avant chaque pull.",
@@ -63,12 +64,15 @@ window.BF_LOCALE_FR = {
  "A random install id (not linked to your account, characters or computer), the game build and the app version": "Un identifiant d'installation aléatoire (non lié à ton compte, tes personnages ou ton ordinateur), le build du jeu et la version de l'app",
  "A run is timed from walking in to walking out; coming back within half an hour continues the same run. Deaths are your own. Loot is what you picked up yourself, uncommon or better. Runs saved by an older addon version have only their boss kills. Who you ran with is not recorded.": "Un run est chronométré de l'entrée à la sortie ; revenir dans la demi-heure continue le même run. Les morts sont les tiennes. Le butin est ce que tu as ramassé toi-même, de qualité inhabituelle ou mieux. Les runs enregistrés par une ancienne version de l'addon n'ont que leurs boss tués. Avec qui tu as joué n'est pas noté.",
  "A short code that holds this build and its order. Anyone with the same talent trees can load it.": "Un code court qui contient ce build et son ordre. Toute personne avec les mêmes arbres de talents peut le charger.",
+ "A short list of help topics in your chat window. /bf help way (or /bf help 1) prints that page, /bf help fly the line about one command, and /bf help all every command.": "Une courte liste de sujets d'aide dans ta fenêtre de discussion. /bf help way (ou /bf help 1) affiche cette page, /bf help fly la ligne d'une commande, et /bf help all toutes les commandes.",
  "A small always-on-top window with your next step, beside the game": "Une petite fenêtre toujours au premier plan avec ta prochaine étape, à côté du jeu",
  "A small next step…": "Une petite prochaine étape…",
  "A small notice when a cooldown comes ready or mail is two days from expiring. Only while this app is open; nothing runs in the background.": "Un petit message quand un temps de recharge est prêt ou qu'un courrier expire dans deux jours. Seulement quand cette app est ouverte ; rien ne tourne en arrière-plan.",
+ "A small page for a streaming program such as OBS: level, XP bar, zone, last level time, deaths this session and your next step.": "Une petite page pour un logiciel de streaming comme OBS : niveau, barre d'XP, zone, dernier temps de niveau, morts de cette session et ta prochaine étape.",
  "A small status report can help explain a connection or update problem. Prepare it here, review every line, then choose whether to share it.": "Un petit rapport d'état peut aider à expliquer un problème de connexion ou de mise à jour. Prépare-le ici, relis chaque ligne, puis choisis de le partager ou non.",
  "A spot only appears for others once at least 3 players found it. Community data you receive is shown with a teal “Community” label on the World Map, NPC cards and in the loot browser.": "Un point n'apparaît chez les autres qu'après avoir été trouvé par au moins 3 joueurs. Les données de la communauté que tu reçois portent une étiquette turquoise « Communauté » sur la carte du monde, les fiches de PNJ et dans le navigateur de butin.",
  "A stone in your bags that teleports you to the inn you chose as home, once an hour. Change it by talking to an innkeeper.": "Une pierre dans tes sacs qui te téléporte à l'auberge choisie comme foyer, une fois par heure. Change-la en parlant à un aubergiste.",
+ "A straight line at running speed. Roads, hills and water make the real trip longer.": "Une ligne droite à la vitesse de course. Les routes, les collines et l'eau allongent le vrai trajet.",
  "A trusted path forward.": "Un chemin sûr pour avancer.",
  "A whole guild of me": "Une guilde entière de moi",
  "A yellow ! over someone's head means they have a quest for you.": "Un ! jaune au-dessus de quelqu'un veut dire qu'il a une quête pour toi.",
@@ -88,6 +92,7 @@ window.BF_LOCALE_FR = {
  "Add goal": "Ajouter un but",
  "Add note": "Ajouter une note",
  "Address for your streaming program": "Adresse pour ton logiciel de stream",
+ "Advanced": "Avancé",
  "Advanced: enter a model ID manually": "Avancé : saisir un identifiant de modèle à la main",
  "Adventure": "Aventure",
  "Adventure · Dungeons & raids": "Aventure · Donjons et raids",
@@ -97,12 +102,17 @@ window.BF_LOCALE_FR = {
  "Adventure · Your next step": "Aventure · Ta prochaine étape",
  "Adventure · Zones": "Aventure · Zones",
  "Adventure / Next step": "Aventure / Prochaine étape",
+ "Adventure → Professions: every recipe of your profession with where it comes from, a worked-out path to the next skill rank, who among your characters can craft an item, and what you can cook from your bags.": "Aventure → Métiers : chaque recette de ton métier avec sa provenance, un chemin calculé vers le prochain rang de compétence, qui parmi tes personnages peut fabriquer un objet, et ce que tu peux cuisiner avec tes sacs.",
+ "Adventure → Travel compares on foot, flight and Hearthstone to the place you pick, fastest first, with time and price. It knows flight points only: no boats, zeppelins or the tram yet, and a flight nobody has timed is an estimate and says so.": "Aventure → Trajet compare la marche, le vol et la pierre de foyer vers le lieu que tu choisis, le plus rapide d'abord, avec le temps et le prix. Il ne connaît que les points de vol : pas encore de bateaux, de zeppelins ni de tram, et un vol que personne n'a chronométré est une estimation et le dit.",
+ "Adventure → Travel compares walking, flying and your Hearthstone to any place, fastest first. Adventure → Zones lists every zone for your level.": "Aventure → Trajet compare la marche, le vol et ta pierre de foyer vers n'importe quel lieu, le plus rapide d'abord. Aventure → Zones liste chaque zone pour ton niveau.",
  "Adventure coach": "Coach d'aventure",
+ "Adventure Compass": "Boussole d'aventure",
  "Adventure Director": "Directeur d'aventure",
  "After a reply, review the exchange here before choosing Save.": "Après une réponse, relis l'échange ici avant de choisir Enregistrer.",
  "After preparing changes in desktop Settings, while logged in to the intended character and outside combat.": "Après avoir préparé des changements dans les Réglages de l'app, connecté au bon personnage et hors combat.",
  "After startup and every six hours while the app is open, from this project’s GitHub Releases. Only releases signed by Backstage Forever’s update key count.": "Après le démarrage et toutes les six heures tant que l'app est ouverte, depuis les GitHub Releases de ce projet. Seules les versions signées avec la clé de mise à jour de Backstage Forever comptent.",
  "After the game saves, follow the last played character in this desktop journal. Pausing keeps your manual selection; live guidance in WoW keeps working.": "Après la sauvegarde du jeu, suis le dernier personnage joué dans ce journal. La pause garde ton choix manuel ; le guidage en direct dans WoW continue de fonctionner.",
+ "Agility": "Agilité",
  "Agree roles and the dungeon with your group; any class can pick any role here.": "Mettez-vous d'accord sur les rôles et le donjon avec ton groupe ; toute classe peut choisir tout rôle ici.",
  "AI connection": "Connexion IA",
  "All": "Tous",
@@ -132,6 +142,10 @@ window.BF_LOCALE_FR = {
  "Apply preset": "Appliquer le préréglage",
  "Apprentice": "Apprenti",
  "Approximate route reference": "Référence de route approximative",
+ "Archetype art — not your exact face or gear": "Illustration d'archétype — pas ton visage ni ton équipement exacts",
+ "Armor (per point)": "Armure (par point)",
+ "Around this app": "Autour de cette app",
+ "Arrow keys move the map, plus and minus zoom, 0 shows the whole zone. Use Find and the map lists to reach pins with the keyboard or a screen reader.": "Les flèches déplacent la carte, plus et moins zooment, 0 montre toute la zone. Utilise Chercher et les listes de la carte pour atteindre les repères au clavier ou avec un lecteur d'écran.",
  "Arrow keys move the map, plus and minus zoom, 0 shows the whole zone. Use the search box and the lists to reach pins with the keyboard or a screen reader.": "Les flèches déplacent la carte, plus et moins zooment, 0 montre toute la zone. Utilise la recherche et les listes pour atteindre les repères au clavier ou avec un lecteur d'écran.",
  "Ask": "Demander",
  "Ask about this": "Demander",
@@ -146,6 +160,7 @@ window.BF_LOCALE_FR = {
  "at level 60": "au niveau 60",
  "At the trainer": "Chez le maître",
  "Attach app log": "Joindre le journal de l'app",
+ "Attack power": "Puissance d'attaque",
  "Attacking draws an enemy to you (a pull). Getting too close also does, and nearby friends of theirs may join.": "Attaquer attire un ennemi vers toi (un pull). T'approcher trop aussi, et ses amis proches peuvent le rejoindre.",
  "Attacks on sight.": "Attaque à vue.",
  "Attunement": "Accès",
@@ -181,7 +196,10 @@ window.BF_LOCALE_FR = {
  "Bags": "Sacs",
  "Bags & bank": "Sacs et banque",
  "Bags update whenever the addon saves. Bank and mail are as they were the last time you opened them in game.": "Les sacs se mettent à jour à chaque sauvegarde de l'addon. La banque et le courrier sont tels que tu les as vus la dernière fois en jeu.",
+ "Bags update whenever the addon saves. Bank and mail reflect the last time you opened them in game.": "Les sacs se mettent à jour à chaque sauvegarde de l'addon. La banque et le courrier reflètent la dernière fois que tu les as ouverts en jeu.",
  "Bags, bank and mail of every character, searchable in one place.": "Sacs, banque et courrier de chaque personnage, avec recherche, au même endroit.",
+ "bank never opened": "banque jamais ouverte",
+ "banks never opened": "banques jamais ouvertes",
  "Based on 1 past spot:": "D'après 1 point passé :",
  "Based on the selected character’s addon save, not a live client check. A reviewed build does not prove quest readiness or learned ranks.": "D'après la sauvegarde d'addon du personnage choisi, pas une vérification du client en direct. Un build relu ne prouve ni qu'une quête est prête ni les rangs appris.",
  "Before import": "Avant l'import",
@@ -197,6 +215,7 @@ window.BF_LOCALE_FR = {
  "Best time is your fastest timed run that killed as many bosses as your fullest run there.": "Le meilleur temps est ton run chronométré le plus rapide qui a tué autant de boss que ton run le plus complet à cet endroit.",
  "Beyond the dungeon gate": "Au-delà de la porte du donjon",
  "Blank plan": "Plan vierge",
+ "Block value": "Valeur de blocage",
  "Bonus experience you build while logged out in an inn or city. Kills give double XP until it runs out (the blue part of your XP bar).": "De l'expérience bonus accumulée quand tu es déconnecté dans une auberge ou une ville. Les ennemis tués donnent le double d'XP jusqu'à épuisement (la partie bleue de ta barre d'XP).",
  "Bonuses to reputation gains (racial or event) are not counted.": "Les bonus aux gains de réputation (raciaux ou d'évènement) ne sont pas comptés.",
  "Boss defeated": "Boss vaincu",
@@ -217,6 +236,7 @@ window.BF_LOCALE_FR = {
  "Build not covered": "Build non couvert",
  "builds a five-check role list (roles, bag space, consumables, repairs, meeting point) and can save a portable party-plan file you send to friends yourself; importing one shows it first and adds only unchecked steps.": "crée une liste de rôle en cinq points (rôles, place dans les sacs, consommables, réparations, point de rendez-vous) et peut enregistrer un fichier de plan de groupe portable que tu envoies toi-même à tes amis ; l'importer l'affiche d'abord et n'ajoute que les étapes non cochées.",
  "Builds for a previewed class are kept with this character but never sent to the game.": "Les builds d'une classe en aperçu sont gardés avec ce personnage mais jamais envoyés au jeu.",
+ "Built only from what was saved between two saves. Unspent talent points are not in the saved data, so the notes never mention them.": "Construit uniquement à partir de ce qui a été sauvegardé entre deux sauvegardes. Les points de talent non dépensés ne sont pas dans les données sauvegardées, donc les notes n'en parlent jamais.",
  "button at vendors.": "chez les marchands.",
  "button) before you head out.": ") avant de partir.",
  "Calendar": "Calendrier",
@@ -239,6 +259,7 @@ window.BF_LOCALE_FR = {
  "Character details come from your saved game snapshot. Notes and goals remain editable.": "Les détails du personnage viennent de ta sauvegarde de jeu. Les notes et les buts restent modifiables.",
  "Character guidance": "Conseils de personnage",
  "Character name": "Nom du personnage",
+ "characters": "personnages",
  "Characters": "Personnages",
  "Characters · All characters": "Personnages · Tous les personnages",
  "Characters · Badges": "Personnages · Insignes",
@@ -247,7 +268,11 @@ window.BF_LOCALE_FR = {
  "Characters · Sheet": "Personnages · Fiche",
  "Characters · Talents": "Personnages · Talents",
  "Characters / All characters": "Personnages / Tous les personnages",
+ "Characters → Journey has more views: Story so far, a Timeline with your own screenshots, Races against friends with a code you swap by hand, Coach's notes and a Stream overlay only your own computer can open.": "Personnages → Parcours a d'autres vues : L'histoire, une Chronologie avec tes propres captures d'écran, des Courses contre tes amis avec un code échangé à la main, les Notes du coach et un Overlay de stream que seul ton ordinateur peut ouvrir.",
  "Characters → Sheet": "Personnages → Fiche",
+ "Characters → Sheet → Gear plan: pick a preset or weigh each stat yourself. For each slot it shows what you wear and up to three upgrades you can reach, with where each comes from. Pin one target per slot.": "Personnages → Fiche → Plan d'équipement : choisis un préréglage ou pondère chaque stat toi-même. Pour chaque emplacement, il montre ce que tu portes et jusqu'à trois améliorations à ta portée, avec leur provenance. Épingle une cible par emplacement.",
+ "Characters → Talents also has a planner for a build of your own and lists what your trainer teaches next, with prices. Characters → Journey tells your story so far, shows a timeline and lets you race friends to each level.": "Personnages → Talents a aussi un planificateur pour ton propre build et liste ce que ton maître enseigne ensuite, avec les prix. Personnages → Parcours raconte ton histoire jusqu'ici, montre une chronologie et te laisse faire la course avec tes amis à chaque niveau.",
+ "Characters → Talents, My plan: click to spend points with the real rules checked, see what to take at each level, and save or compare builds. At the trainer lists what you can train now and at the next levels, with prices.": "Personnages → Talents, Mon plan : clique pour dépenser des points, les vraies règles sont vérifiées, vois quoi prendre à chaque niveau, et enregistre ou compare des builds. Chez le maître liste ce que tu peux apprendre maintenant et aux niveaux suivants, avec les prix.",
  "Chat, party or anything you type": "Le chat, le groupe ou tout ce que tu tapes",
  "Check after startup and every six hours while the app is open. Downloads come from this project’s GitHub Releases.": "Vérifie après le démarrage et toutes les six heures tant que l'app est ouverte. Les téléchargements viennent des GitHub Releases de ce projet.",
  "Check for new versions": "Chercher de nouvelles versions",
@@ -261,7 +286,9 @@ window.BF_LOCALE_FR = {
  "Checking reference": "Vérification…",
  "Checklist opens Plans. Ask opens an editable question in the companion; nothing is sent until you press Send.": "Liste ouvre Plans. Demander ouvre une question modifiable dans le compagnon ; rien n'est envoyé tant que tu n'appuies pas sur Envoyer.",
  "Checklists": "Listes",
+ "Checklists and party plans you write yourself, and a Calendar of every character's profession cooldowns and mail expiry.": "Des listes et des plans de groupe que tu écris toi-même, et un Calendrier des temps de recharge de métier et des expirations de courrier de chaque personnage.",
  "Checklists for a session, a profession or a dungeon run, and party plans to share.": "Des listes pour une session, un métier ou un run de donjon, et des plans de groupe à partager.",
+ "Checklists for a session, a profession or a dungeon run, party plans to share, and a cooldown calendar.": "Des listes pour une session, un métier ou un donjon, des plans de groupe à partager et un calendrier des temps de recharge.",
  "Checks start in the Backstage Forever app from Applications. Source builds never check.": "Les vérifications démarrent dans l'app Backstage Forever du dossier Applications. Les versions compilées depuis le code source ne vérifient jamais.",
  "Chest": "Torse",
  "Chest gear acquisition leads": "Pistes pour une pièce de torse",
@@ -281,10 +308,12 @@ window.BF_LOCALE_FR = {
  "Choose your Forever installation": "Choisis ton installation de Forever",
  "Choose your next quest.": "Choisis ta prochaine quête.",
  "Choose zone": "Choisir une zone",
+ "City": "Ville",
  "Class": "Classe",
  "Class quest": "Quête de classe",
  "Class quests and key unlocks": "Quêtes de classe et déblocages clés",
  "Class trainers": "Maîtres de classe",
+ "Class trainers stand mostly in the capital cities, which are not leveling zones, so most zones show 0 for them.": "Les maîtres de classe se tiennent surtout dans les capitales, qui ne sont pas des zones de montée de niveau ; la plupart des zones affichent donc 0 pour eux.",
  "Clear": "Effacer",
  "Clear conversation": "Effacer la conversation",
  "Clear recovery history": "Effacer l'historique de restauration",
@@ -302,17 +331,21 @@ window.BF_LOCALE_FR = {
  "Closest next": "Le plus proche",
  "Cloud API questions may cost money. Nothing is sent until you press Send; private notes and goals stay here.": "Les questions par API cloud peuvent coûter de l'argent. Rien n'est envoyé tant que tu n'appuies pas sur Envoyer ; les notes et buts privés restent ici.",
  "Coach's notes": "Notes du coach",
+ "Coach's notes compare two saves, and this is the first one the app has kept for this character. They start with your next save.": "Les notes du coach comparent deux sauvegardes, et celle-ci est la première que l'app a gardée pour ce personnage. Elles commencent avec ta prochaine sauvegarde.",
  "Collect": "Ramasser",
  "Collected character totals": "Totaux des personnages réunis",
  "Collected characters": "Personnages réunis",
+ "Collections of": "Collections de",
  "Comes with the skill": "Vient avec la compétence",
  "coming up": "à venir",
+ "Command groups": "Groupes de commandes",
  "Command to paste in WoW": "Commande à coller dans WoW",
  "Commands": "Commandes",
  "Common": "Commun",
  "Community data · may differ in game": "Données de la communauté · peut différer en jeu",
  "Community data · may differ in game. Bosses seen in Forever are marked. Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0. Encounters observed through 2026-11-11.": "Données de la communauté · peut différer en jeu. Les boss vus dans Forever sont marqués. Données d'Efficient Games (https://efficient.games), sous licence CC BY 4.0. Rencontres observées jusqu'au 2026-11-11.",
  "Community data received": "Données de la communauté reçues",
+ "Community finds": "Trouvailles de la communauté",
  "Community sharing": "Partage communautaire",
  "Compact view": "Vue compacte",
  "Companion": "Compagnon",
@@ -322,6 +355,7 @@ window.BF_LOCALE_FR = {
  "Compare": "Comparer",
  "Compare in Sheet": "Comparer dans la Fiche",
  "Compare with this plan": "Comparer avec ce plan",
+ "Compare your level times with friends and with your own other characters. Codes travel by hand: there is no server.": "Compare tes temps de niveau avec tes amis et avec tes autres personnages. Les codes passent de main en main : il n'y a pas de serveur.",
  "Compared with what you wear, the same way as item cards. Bags and bank as the ledger last saw them.": "Comparé à ce que tu portes, comme sur les fiches d'objet. Sacs et banque tels que le registre les a vus en dernier.",
  "Compared with:": "Comparé avec :",
  "Comparison result": "Résultat de la comparaison",
@@ -352,7 +386,9 @@ window.BF_LOCALE_FR = {
  "Cooldown calendar": "Calendrier des temps de recharge",
  "Cooldown ready": "Recharge prête",
  "Cooldowns": "Temps de recharge",
+ "cooldowns ready now": "temps de recharge prêts maintenant",
  "cooldowns tracked": "temps de recharge suivis",
+ "Copy": "Copier",
  "Copy a waypoint, if available": "Copier un point de passage, s'il y en a un",
  "Copy address": "Copier l'adresse",
  "Copy and Save use these exact lines. Reports expire after five minutes; prepare a fresh one if needed. Nothing is uploaded.": "Copier et Enregistrer utilisent ces lignes exactes. Les rapports expirent après cinq minutes ; prépares-en un nouveau au besoin. Rien n'est envoyé.",
@@ -374,12 +410,15 @@ window.BF_LOCALE_FR = {
  "Craft": "Artisanat",
  "Craft attempts": "Essais d'artisanat",
  "Craft profit": "Profit d'artisanat",
+ "Craft profit and reputation planner": "Profit d'artisanat et planificateur de réputation",
+ "Craft profit of": "Profit d'artisanat de",
  "crafting characters": "personnages artisans",
  "Create character checklist": "Créer une liste pour le personnage",
  "Create plan": "Créer un plan",
  "Create point now": "Créer un point maintenant",
  "Create your first plan": "Crée ton premier plan",
  "Created by you": "Créé par toi",
+ "Critical strike": "Coup critique",
  "Current character facts": "Infos actuelles du personnage",
  "Current location, stock, price and access unverified. No route or purchase action.": "Lieu, stock, prix et accès actuels non vérifiés. Aucun trajet ni achat.",
  "Current preset:": "Préréglage actuel :",
@@ -392,8 +431,10 @@ window.BF_LOCALE_FR = {
  "Day": "Jour",
  "Dead": "Mort",
  "Deaths": "Morts",
+ "Deaths appear while the live link is on. The time is your last finished level.": "Les morts apparaissent tant que le lien en direct est actif. Le temps est celui de ton dernier niveau terminé.",
  "Default view": "Vue par défaut",
  "Default view restored.": "Vue par défaut rétablie.",
+ "Defense": "Défense",
  "Delete": "Supprimer",
  "Delete all local data": "Supprimer toutes les données locales",
  "Delete all local data clears characters, plans, memory, preferences, keys and app sign-ins after you confirm. It does not delete backups you exported or anything stored by your AI provider.": "Supprimer toutes les données locales efface les personnages, plans, mémoire, préférences, clés et connexions de l'app après ta confirmation. Ça ne supprime ni les sauvegardes que tu as exportées ni ce que ton fournisseur d'IA conserve.",
@@ -421,6 +462,7 @@ window.BF_LOCALE_FR = {
  "Display name on your code": "Nom affiché sur ton code",
  "Do this next": "Fais ça ensuite",
  "Do this once per new character so the app can read it.": "Fais-le une fois par nouveau personnage pour que l'app puisse le lire.",
+ "Done": "Fait",
  "Download": "Télécharger",
  "Download for Mac ↗": "Télécharger pour Mac ↗",
  "Draft for:": "Brouillon pour :",
@@ -433,16 +475,22 @@ window.BF_LOCALE_FR = {
  "Dungeon cleared": "Donjon terminé",
  "Dungeon preparation": "Préparation de donjon",
  "Dungeon preparation · offline": "Préparation de donjon · hors ligne",
+ "Dungeon run": "Run de donjon",
  "Dungeon runs": "Runs de donjon",
  "Dungeons & raids": "Donjons et raids",
  "DUNGEONS & RAIDS": "DONJONS ET RAIDS",
+ "Dungeons & raids opens Run history (time, bosses, deaths, loot and your best time) and Keys & attunements, with the step you are on. The directions there are classic reference text, not checked in WoW Forever.": "Donjons et raids ouvre l'Historique des runs (temps, boss, morts, butin et ton meilleur temps) et Clés et accès, avec l'étape où tu en es. Les indications y sont un texte de référence classique, non vérifié dans WoW Forever.",
+ "Dungeons and groups": "Donjons et groupes",
+ "dungeons and raids": "donjons et raids",
  "Dungeons and raids": "Donjons et raids",
  "Durability and repair": "Durabilité et réparation",
  "Dwarf": "Nain",
  "e.g. Reach 150 in Tailoring": "p. ex. Atteindre 150 en Couture",
  "e.g. riding and first mount": "p. ex. monte et première monture",
  "Each arrow is a reported next link, not a proven prerequisite. This list is a bounded view, not a required sequence.": "Chaque flèche est un lien suivant signalé, pas un prérequis prouvé. Cette liste est une vue limitée, pas un ordre obligatoire.",
+ "Each cell is the time played when that level was reached. Gold marks the fastest. The small figure is how far that racer was ahead of you (−) or behind you (+) at that level.": "Chaque case est le temps joué quand ce niveau a été atteint. L'or marque le plus rapide. Le petit chiffre indique de combien ce coureur était devant toi (−) ou derrière toi (+) à ce niveau.",
  "Each friend signs in independently. We never bundle Frank’s credentials or share someone else’s subscription.": "Chaque ami se connecte séparément. On n'intègre jamais les identifiants de Frank et on ne partage pas l'abonnement de quelqu'un d'autre.",
+ "Earlier month": "Mois précédent",
  "Earned": "Gagnés",
  "east": "est",
  "Easy": "Facile",
@@ -472,10 +520,12 @@ window.BF_LOCALE_FR = {
  "Every zone for your faction, how many of its quests you've done, and the ones you've finished.": "Chaque zone de ta faction, combien de ses quêtes tu as faites, et celles que tu as terminées.",
  "Everyone at a glance, and who to play tonight.": "Tout le monde en un coup d'œil, et qui jouer ce soir.",
  "Everything about your characters, in one place": "Tout sur tes personnages, au même endroit",
+ "Everything you can type in game": "Tout ce que tu peux taper en jeu",
  "Everything you carry": "Tout ce que tu portes",
  "Everything you found so far has been shared.": "Tout ce que tu as trouvé jusqu'ici a été partagé.",
  "EXACT PUBLIC CONTEXT · REVIEW BEFORE SENDING": "CONTEXTE PUBLIC EXACT · À RELIRE AVANT D'ENVOYER",
  "Exalted": "Exalté",
+ "Example:": "Exemple :",
  "Experience": "Expérience",
  "Experience shows after the next save.": "L'expérience s'affiche après la prochaine sauvegarde.",
  "Expired": "Expiré",
@@ -486,6 +536,7 @@ window.BF_LOCALE_FR = {
  "Explore more": "Explorer plus",
  "Export backup": "Exporter une sauvegarde",
  "Export review": "Exporter la relecture",
+ "Faction standings": "Réputation auprès des factions",
  "Fastest ways up": "Les moyens les plus rapides de monter",
  "Feet": "Pieds",
  "Field guide": "Guide de terrain",
@@ -499,18 +550,31 @@ window.BF_LOCALE_FR = {
  "Find my game": "Trouver mon jeu",
  "Find on the map": "Trouver sur la carte",
  "Find your place from your last save, or see what is missing.": "Retrouve où tu en es d'après ta dernière sauvegarde, ou vois ce qui manque.",
+ "Finding your way": "Trouver ton chemin",
  "Finds WoW Forever and installs the addon. Nothing to download or type.": "Trouve WoW Forever et installe l'addon. Rien à télécharger ni à taper.",
  "Finds WoW Forever, installs the addon and turns on the live link. Nothing to download or type.": "Trouve WoW Forever, installe l'addon et active le lien direct. Rien à télécharger ni à taper.",
  "Finds you shared": "Trouvailles que tu as partagées",
+ "First": "Première fois",
+ "First death": "Première mort",
+ "First dungeon": "Premier donjon",
+ "First flight": "Premier vol",
+ "First group": "Premier groupe",
+ "First hearthstone home": "Premier retour avec la pierre de foyer",
+ "First rested bonus": "Premier bonus de repos",
  "First run? Start with the entrance, quests and manual checks below. Boss reference and saved defeats are separate from your preparation.": "Premier run ? Commence par l'entrée, les quêtes et les vérifications à la main ci-dessous. La référence des boss et les victoires enregistrées sont séparées de ta préparation.",
+ "First time on a mount": "Première fois sur une monture",
  "Firsts": "Premières fois",
  "Fishing": "Pêche",
+ "Fishing not saved": "Pêche non enregistrée",
  "Five manual checks: agree roles, bag space, consumables, repairs and a meeting point. Opens Plans; you check off each step.": "Cinq vérifications à la main : rôles, place dans les sacs, consommables, réparations et point de rendez-vous. Ouvre Plans ; tu coches chaque étape.",
  "Flies you between places you've already visited. Talk to every flight master you pass so you can fly back later.": "Te fait voler entre des endroits déjà visités. Parle à chaque maître de vol que tu croises pour pouvoir y revenir en volant.",
  "Flight": "Vol",
  "Flight master": "Maître de vol",
  "Flight master for": "Maître de vol pour",
+ "Flight masters": "Maîtres de vol",
  "Flight path": "Trajet aérien",
+ "Flight points show by zone and flight master until the addon has seen a flight map, which gives their real names.": "Les points de vol s'affichent par zone et maître de vol jusqu'à ce que l'addon ait vu une carte de vol, qui donne leurs vrais noms.",
+ "Fly from": "Vole de",
  "Focus on": "Priorité",
  "Follow my last played character": "Suivre mon dernier personnage joué",
  "Follow my live position": "Suivre ma position en direct",
@@ -519,16 +583,20 @@ window.BF_LOCALE_FR = {
  "For a journal that will not open, preserve its files and use the startup recovery instructions. Private backups and Delete all local data remain in “Protect your journal” above.": "Si un journal ne s'ouvre pas, garde ses fichiers et suis les instructions de récupération au démarrage. Les sauvegardes privées et Supprimer toutes les données locales restent dans « Protège ton journal » ci-dessus.",
  "For AI questions, selected exchanges go only to your chosen provider when you send. Local NPC locations and recognized travel send nothing to a provider. Review the exact additional prompt below.": "Pour les questions à l'IA, les échanges choisis ne partent que chez le fournisseur que tu as choisi, quand tu envoies. Les lieux de PNJ locaux et les trajets reconnus n'envoient rien à un fournisseur. Relis le texte exact ajouté ci-dessous.",
  "for an arrow to your next quest,": "pour une flèche vers ta prochaine quête,",
+ "For each range it picks the orange or yellow recipe with the lowest material cost per skill point. A material you never saw a price for has no cost here: it is shown as Unknown, never guessed.": "Pour chaque tranche, il choisit la recette orange ou jaune au coût en matériaux le plus bas par point de compétence. Un matériau dont tu n'as jamais vu le prix n'a pas de coût ici : il est affiché comme Inconnu, jamais deviné.",
  "for the rest. Every command is explained under Help → Commands.": "pour le reste. Chaque commande est expliquée dans Aide → Commandes.",
  "for your class trainer,": "pour ton maître de classe,",
  "Forever-only boss": "Boss propre à Forever",
  "Forget my contributions": "Oublier mes contributions",
  "Found in": "Trouvé dans",
  "Four steps and you're playing with a guide.": "Quatre étapes et tu joues avec un guide.",
+ "free": "gratuit",
  "Free AI companion": "Compagnon IA gratuit",
  "Free AI on this PC": "IA gratuite sur ce PC",
  "Fri": "Ven",
+ "Friendly": "Amical",
  "From": "De",
+ "From level 40 your trainer teaches Portals, so you can take your group with you (Runes of Portals).": "À partir du niveau 40, ton maître enseigne les Portails, pour emmener ton groupe avec toi (Runes des portails).",
  "From the addon's last save (logout or /reload), not a live view.": "D'après la dernière sauvegarde de l'addon (déconnexion ou /reload), pas une vue en direct.",
  "from the chat line show there too, without taking your keyboard. Where and how questions are answered offline; others go to the AI you chose. Only what you typed is used, plus your active character when “Use my active character” is on in Companion. Every exchange also lands in the Companion conversation.": "depuis la ligne de chat s'y affichent aussi, sans prendre ton clavier. Les questions où et comment ont une réponse hors ligne ; les autres vont à l'IA que tu as choisie. Seul ce que tu as tapé est utilisé, plus ton personnage actif quand « Utiliser mon personnage actif » est activé dans Compagnon. Chaque échange arrive aussi dans la conversation du Compagnon.",
  "From the quest reference": "D'après la référence de quêtes",
@@ -551,12 +619,16 @@ window.BF_LOCALE_FR = {
  "Gather / buy": "Récolter / acheter",
  "Gather here with the addon running and your spots are remembered. Then type /reload in game and come back.": "Récolte ici avec l'addon actif et tes points seront retenus. Puis tape /reload en jeu et reviens.",
  "Gathered here": "Récolté ici",
+ "Gathering": "Récolte",
  "Gathering loop": "Circuit de récolte",
  "Gathering marks": "Marques de récolte",
  "Gathering profession": "Métier de récolte",
+ "Gear and a gear plan, talents, gold, bags, professions with a recipe book, dungeon runs and the story so far, for every character. It all stays on this computer, and the companion can plan your night from it.": "L'équipement et un plan d'équipement, les talents, l'or, les sacs, les métiers avec un livre de recettes, les donjons et l'histoire jusqu'ici, pour chaque personnage. Tout reste sur cet ordinateur, et le compagnon peut s'en servir pour planifier ta soirée.",
  "Gear comparison": "Comparaison d'équipement",
  "Gear comparisons are estimates from saved equipment.": "Les comparaisons d'équipement sont des estimations d'après l'équipement enregistré.",
  "Gear plan": "Plan d'équipement",
+ "Gear plan and stat weights": "Plan d'équipement et poids des stats",
+ "Gear plan, on the same page, lets you weigh the stats you care about and shows up to three upgrades for each slot, with where each one comes from.": "Le plan d'équipement, sur la même page, te laisse pondérer les stats qui comptent pour toi et montre jusqu'à trois améliorations par emplacement, avec leur provenance.",
  "Gear score for your class:": "Score d'équipement pour ta classe :",
  "Gear sets": "Ensembles d'équipement",
  "Gear wears out when you die or fight. Repair it at blacksmiths and many vendors.": "L'équipement s'use quand tu meurs ou combats. Répare-le chez les forgerons et beaucoup de marchands.",
@@ -564,6 +636,7 @@ window.BF_LOCALE_FR = {
  "Get set up": "Se préparer",
  "Get your group ready": "Prépare ton groupe",
  "Getting old": "Vieillit",
+ "Go on foot from": "Va à pied de",
  "Go through any race's route step by step: ✓ keeps a step, ✗ leaves it out, ↑ ↓ move it. Your review shows here at once;": "Parcours la route de n'importe quelle race étape par étape : ✓ garde une étape, ✗ la laisse de côté, ↑ ↓ la déplacent. Ta relecture s'affiche ici tout de suite ;",
  "Goal reached.": "But atteint.",
  "Gold": "Or",
@@ -579,11 +652,14 @@ window.BF_LOCALE_FR = {
  "Gold per character": "Or par personnage",
  "Gold per play session": "Or par session de jeu",
  "gold seen, all together": "or vu, tout compris",
+ "Gold, bags and professions": "Or, sacs et métiers",
  "Good friends": "Bons amis",
  "Good to know": "Bon à savoir",
  "Goods hand-ins": "Dons de marchandises",
  "green": "vert",
+ "Green from": "Vert à partir de",
  "Green rarely": "Vert rarement",
+ "Grey from": "Gris à partir de",
  "Grey items. They're only for selling to any vendor for money.": "Les objets gris. Ils ne servent qu'à être vendus à un marchand.",
  "Grey never": "Gris jamais",
  "grey, no more skill points": "gris, plus de points de compétence",
@@ -593,6 +669,7 @@ window.BF_LOCALE_FR = {
  "Growing family": "La famille s'agrandit",
  "Guided": "Guidé",
  "Guided route": "Route guidée",
+ "Guild members are not searched here.": "Les membres de la guilde ne sont pas recherchés ici.",
  "Hairline": "Ligne fine",
  "Hand in": "Rendre",
  "Hand-reviewed": "Relu à la main",
@@ -600,13 +677,19 @@ window.BF_LOCALE_FR = {
  "Have a Horde and an Alliance character.": "Avoir un personnage de la Horde et un de l'Alliance.",
  "Head": "Tête",
  "Healer": "Soigneur",
+ "Healing": "Soins",
+ "Health regeneration": "Régénération de vie",
  "Hearthstone": "Pierre de foyer",
+ "Held by": "Détenu par",
  "Help": "Aide",
+ "Help · Commands": "Aide · Commandes",
  "Help · Data coverage": "Aide · Couverture des données",
  "Help · Field guide": "Aide · Guide de terrain",
  "Help me prepare for my next adventure…": "Aide-moi à préparer ma prochaine aventure…",
+ "Helpers on or off": "Aides activées ou non",
  "Herb, ore and chest spots you gather, and where you looted quest creatures, help other players find them, and theirs help you. Turn it off any time.": "Les points d'herbes, de minerais et de coffres que tu récoltes, et les endroits où tu as fouillé des créatures de quête, aident les autres joueurs à les trouver, et les leurs t'aident. Désactive-le quand tu veux.",
  "Herb, ore and chest spots you gathered (kind, object id, zone map and position rounded to 0.5% of the map) and the item ids they gave": "Les points d'herbes, de minerais et de coffres que tu as récoltés (type, identifiant d'objet, carte de zone et position arrondie à 0,5 % de la carte) et les identifiants des objets obtenus",
+ "Herbs": "Herbes",
  "Herbs and ore are on the": "Les herbes et minerais sont sur la",
  "Hide Dungeon Fieldbook": "Masquer le Carnet de donjon",
  "Hide finished": "Masquer les terminés",
@@ -619,6 +702,7 @@ window.BF_LOCALE_FR = {
  "Hold to dictate": "Maintiens pour dicter",
  "holds longer checklists you can assign to characters.": "contient des listes plus longues que tu peux attribuer à des personnages.",
  "Holds up": "Tient bon",
+ "Honored": "Honoré",
  "Horde and Alliance alike": "Horde et Alliance à égalité",
  "How /bf junk sells greys": "Comment /bf junk vend les objets gris",
  "How far each route reaches": "Jusqu'où va chaque route",
@@ -665,11 +749,14 @@ window.BF_LOCALE_FR = {
  "Install the Backstage Forever addon": "Installe l'addon Backstage Forever",
  "Instance Atlas": "Atlas des instances",
  "Instance types": "Types d'instance",
+ "Intellect": "Intelligence",
  "Into the depths": "Dans les profondeurs",
+ "Inventory": "Inventaire",
  "is on by default: the herb, ore and chest spots you find and where you looted quest creatures are shared anonymously (rounded positions and game ids only, never names, realm, account or chat), and spots at least 3 players found appear on your World Map as Community finds. Turn it off any time in Settings → Game connection → Community; Forget my contributions deletes what you shared.": "est activé par défaut : les points d'herbes, de minerais et de coffres que tu trouves et les endroits où tu as fouillé des créatures de quête sont partagés anonymement (positions arrondies et identifiants du jeu seulement, jamais de noms, de royaume, de compte ni de chat), et les points trouvés par au moins 3 joueurs apparaissent sur ta carte du monde comme trouvailles de la communauté. Désactive-le quand tu veux dans Réglages → Connexion au jeu → Communauté ; Oublier mes contributions supprime ce que tu as partagé.",
  "is the small 84×4 corner strip.": "est la petite bande de coin de 84×4.",
  "It is off until you switch it on here. While it is off the app listens to nothing.": "Il est désactivé tant que tu ne l'actives pas ici. Tant qu'il est désactivé, l'app n'écoute rien.",
  "It shows one page and those few facts. It reads no files and takes no input.": "Il affiche une seule page et ces quelques infos. Il ne lit aucun fichier et n'accepte aucune saisie.",
+ "It stops when you switch it off or close the app. It keeps the same port number next time when it can.": "Il s'arrête quand tu le coupes ou fermes l'app. Il garde le même numéro de port la prochaine fois quand c'est possible.",
  "It tells you the next thing to do and follows you while you play.": "Il te dit quoi faire ensuite et te suit pendant que tu joues.",
  "Item": "Objet",
  "Item details appear once your game folder is connected.": "Les détails des objets apparaissent une fois ton dossier de jeu connecté.",
@@ -679,7 +766,9 @@ window.BF_LOCALE_FR = {
  "items in all": "objets en tout",
  "Journey": "Parcours",
  "Journey →": "Parcours →",
+ "Journey views": "Vues du parcours",
  "Journeyman": "Compagnon",
+ "Jump to": "Aller à",
  "Just completed": "Tout juste terminé",
  "Keep quest items": "Garder les objets de quête",
  "Keep the app up to date": "Garde l'app à jour",
@@ -700,6 +789,7 @@ window.BF_LOCALE_FR = {
  "Kill": "Tuer",
  "Known": "Connue",
  "Known empty equipment snapshot.": "Équipement enregistré comme vide.",
+ "Known recipes and skill come from each character's last save. A save holds at most 100 recipes, so \"Recipe not saved\" can be a recipe that character knows.": "Les recettes connues et la compétence viennent de la dernière sauvegarde de chaque personnage. Une sauvegarde contient au plus 100 recettes, donc \"Recette non enregistrée\" peut être une recette que ce personnage connaît.",
  "Last character save:": "Dernière sauvegarde du personnage :",
  "Last checked: Not checked in this session": "Dernière vérification : pas encore dans cette session",
  "Last run": "Dernier run",
@@ -710,16 +800,19 @@ window.BF_LOCALE_FR = {
  "Last shared": "Dernier partage",
  "Later": "Plus tard",
  "Later ›": "Plus tard ›",
+ "Later month": "Mois suivant",
  "Latest": "Dernier",
  "Latest point": "Dernier point",
  "Layers": "Calques",
  "layers. Other characters' bags are never counted for you.": "calques. Les sacs des autres personnages ne sont jamais comptés pour toi.",
  "Learn a profession": "Apprends un métier",
  "learn it, orange from here": "à apprendre, orange à partir d'ici",
+ "Learn the basics, look up every command, see how much the app knows zone by zone, or recover your local journal below.": "Apprends les bases, retrouve chaque commande, vois zone par zone ce que l'app sait, ou récupère ton journal local ci-dessous.",
  "Learn the basics, review a support report, or recover your local journal below.": "Apprends les bases, relis un rapport d'assistance ou récupère ton journal local ci-dessous.",
  "Leave this step out": "Laisser cette étape de côté",
  "Leave unchanged": "Ne pas changer",
  "Ledger": "Registre",
+ "Ledger → Craft profit sets material cost against selling price from the prices you saw; a price never seen stays Unknown. Ledger → Reputation plans the way to a standing with hand-ins and quests.": "Registre → Profit d'artisanat compare le coût des matériaux au prix de vente à partir des prix que tu as vus ; un prix jamais vu reste Inconnu. Registre → Réputation planifie le chemin vers un niveau avec des remises et des quêtes.",
  "Ledger → Gold & prices": "Registre → Or et prix",
  "Left click a talent to add a point. Right click takes one back. The rules are checked on your own talent trees.": "Clic gauche sur un talent pour ajouter un point. Clic droit pour en retirer un. Les règles sont vérifiées sur tes propres arbres de talents.",
  "Left click adds a point. Right click takes one back.": "Clic gauche ajoute un point. Clic droit en retire un.",
@@ -731,10 +824,14 @@ window.BF_LOCALE_FR = {
  "Level bands": "Tranches de niveaux",
  "Level ranges are reference coverage, not a continuous guide. Missing givers may leave quests out.": "Les tranches de niveaux indiquent la couverture de la référence, pas un guide continu. Des donneurs manquants peuvent laisser des quêtes de côté.",
  "Level unknown": "Niveau inconnu",
+ "Level up": "Niveau gagné",
  "Level up!": "Niveau supérieur !",
  "Level-up order": "Ordre de montée en niveau",
  "Level-ups, finished quests, deaths, repairs and nearby flight masters.": "Montées de niveau, quêtes terminées, morts, réparations et maîtres de vol proches.",
+ "Level-ups, firsts, dungeon runs, deaths and your screenshots, newest first.": "Niveaux gagnés, premières fois, runs de donjon, morts et tes captures d'écran, le plus récent d'abord.",
  "Leveling estimate from saved equipment. Check all equip restrictions in game. Loot listings and wishes do not prove ownership.": "Estimation de leveling d'après l'équipement enregistré. Vérifie toutes les restrictions d'équipement en jeu. Les listes de butin et les souhaits ne prouvent pas la possession.",
+ "Leveling preset (default)": "Préréglage de montée de niveau (par défaut)",
+ "Leveling race board": "Tableau des courses de niveau",
  "Leveling races": "Courses de niveaux",
  "Levels": "Niveaux",
  "levels covered": "niveaux couverts",
@@ -747,6 +844,7 @@ window.BF_LOCALE_FR = {
  "lists what to do next: hand-ins first, then training, then the quest you're on. Every step has": "liste quoi faire ensuite : d'abord les quêtes à rendre, puis l'apprentissage, puis la quête en cours. Chaque étape a",
  "Live game link": "Lien direct avec le jeu",
  "Live guidance runs inside WoW. The desktop journal catches up after the game saves on logout.": "Le guidage en direct tourne dans WoW. Le journal de l'app rattrape quand le jeu sauvegarde à la déconnexion.",
+ "Live link": "Lien en direct",
  "Live link can't read the game": "Le lien direct ne peut pas lire le jeu",
  "Live link off: showing your last save.": "Lien direct désactivé : ta dernière sauvegarde est affichée.",
  "Live moments": "Moments en direct",
@@ -776,23 +874,34 @@ window.BF_LOCALE_FR = {
  "Lowest buyout per item on Auction House pages you opened yourself. The addon never searches or buys.": "Achat immédiat le plus bas par objet sur les pages de l'hôtel des ventes que tu as ouvertes toi-même. L'addon ne cherche et n'achète jamais.",
  "Lowest seen": "Plus bas vu",
  "Mail expires": "Courrier expire",
+ "mailbox never opened": "boîte aux lettres jamais ouverte",
  "Mailboxes": "Boîtes aux lettres",
  "Main hand": "Main droite",
  "Main navigation": "Navigation principale",
  "Makes": "Produit",
+ "Mana regeneration": "Régénération de mana",
  "Manage roster →": "Gérer la liste →",
  "Manual completion": "Terminé à la main",
  "Manual group prep, not a verified Forever encounter mechanic.": "Préparation de groupe à la main, pas une mécanique de rencontre vérifiée dans Forever.",
  "Manual model ID": "Identifiant de modèle manuel",
  "Map": "Carte",
+ "Map details and layers": "Détails et calques de la carte",
+ "Map layers": "Calques de la carte",
+ "Map search results": "Résultats de recherche de la carte",
+ "Map selection": "Sélection sur la carte",
+ "Map view": "Vue de la carte",
  "Material cost against what the result sold for, only from prices you saw: Auction House pages and vendor windows you opened. A price you never saw stays unknown. Fees and deposits are not included.": "Coût des matériaux comparé au prix de vente du résultat, seulement d'après les prix que tu as vus : pages de l'hôtel des ventes et fenêtres de marchand que tu as ouvertes. Un prix jamais vu reste inconnu. Les frais et dépôts ne sont pas comptés.",
  "Materials": "Matériaux",
+ "Materials do not verify a turn-in or reputation gain.": "Les matériaux ne prouvent ni une remise ni un gain de réputation.",
+ "Melee weapon DPS": "DPS de l'arme de mêlée",
  "Mini Now": "Mini Maintenant",
  "Missing": "Manque",
  "Missing character · keep assignment": "Personnage manquant · garder l'attribution",
  "Model": "Modèle",
  "Moments come over the live link while you play. Turned-off kinds still appear in Recent moments on Now. In game,": "Les moments arrivent par le lien direct pendant que tu joues. Les types désactivés apparaissent quand même dans Moments récents sur Maintenant. En jeu,",
  "Mon": "Lun",
+ "Mooncloth ready": "Étoffe lunaire prête",
+ "More for your professions": "Plus pour tes métiers",
  "More quest filters": "Plus de filtres de quêtes",
  "More suggestions": "Plus de suggestions",
  "Most bosses in one run": "Le plus de boss en un run",
@@ -809,6 +918,7 @@ window.BF_LOCALE_FR = {
  "Name this build": "Nomme ce build",
  "Near you (last saved)": "Près de toi (dernière sauvegarde)",
  "Neck": "Cou",
+ "needed to learn": "requis pour apprendre",
  "Needs review for this build": "À relire pour ce build",
  "Never pooled": "Jamais cumulé",
  "Never seen": "Jamais vu",
@@ -843,6 +953,7 @@ window.BF_LOCALE_FR = {
  "No drop is recorded for this rare yet.": "Aucun butin n'est encore noté pour ce rare.",
  "No drop recorded yet.": "Aucun butin noté pour l'instant.",
  "No forced restart during your game. You can also restart here when you’re ready.": "Pas de redémarrage forcé pendant ta partie. Tu peux aussi redémarrer ici quand tu es prêt.",
+ "No friends added yet. The board holds up to 12.": "Aucun ami ajouté pour l'instant. Le tableau en contient jusqu'à 12.",
  "No gear sets saved on this character yet.": "Aucun ensemble d'équipement enregistré sur ce personnage.",
  "No gold samples yet. They build up one per day you play with the addon on.": "Pas encore de relevés d'or. Il s'en ajoute un par jour joué avec l'addon actif.",
  "No historical seller observation for this material. This does not mean unobtainable.": "Aucun vendeur observé par le passé pour ce matériau. Ça ne veut pas dire qu'il est introuvable.",
@@ -876,12 +987,14 @@ window.BF_LOCALE_FR = {
  "No role selected": "Aucun rôle choisi",
  "No saved builds for this class yet.": "Aucun build enregistré pour cette classe.",
  "No scout notes in your saved file yet. Type": "Pas encore de notes d'éclaireur dans ton fichier de sauvegarde. Tape",
+ "No Screenshots folder in your game folder yet. The game makes it with your first screenshot (the Print Screen key).": "Pas encore de dossier Screenshots dans ton dossier de jeu. Le jeu le crée avec ta première capture d'écran (touche Impr. écran).",
  "No seller observed: gather it, or try the auction house or trade.": "Aucun vendeur observé : récolte-le, ou essaie l'hôtel des ventes ou l'échange.",
  "No skill-up recipe observed": "Aucune recette donnant un point observée",
  "No spots are known here yet.": "Aucun point n'est encore connu ici.",
  "No starred items from the bundled loot records for this dungeon.": "Aucun objet marqué d'une étoile dans les relevés de butin fournis pour ce donjon.",
  "No step right now. Pick a zone on Now.": "Pas d'étape pour l'instant. Choisis une zone dans Maintenant.",
  "No target pinned yet": "Aucune cible épinglée",
+ "No time saved": "Aucun temps enregistré",
  "No timed run yet": "Pas encore de run chronométré",
  "No usable entrance waypoint in this reference.": "Aucun point de passage d'entrée utilisable dans cette référence.",
  "No verified route point for this step. The giver or objective location may be missing.": "Aucun point de route vérifié pour cette étape. Le lieu du donneur ou de l'objectif manque peut-être.",
@@ -916,6 +1029,7 @@ window.BF_LOCALE_FR = {
  "Nothing is ahead on the calendar yet.": "Rien à venir sur le calendrier pour l'instant.",
  "Nothing is sent until you press": "Rien n'est envoyé tant que tu n'appuies pas sur",
  "Nothing is uploaded. The button writes one file to the place you pick; you decide whether to send it to anyone.": "Rien n'est envoyé. Le bouton écrit un seul fichier à l'endroit que tu choisis ; c'est toi qui décides de l'envoyer à quelqu'un ou non.",
+ "nothing new recorded": "rien de nouveau enregistré",
  "Nothing observed yet.": "Rien d'observé pour l'instant.",
  "Nothing recorded about them yet.": "Rien de noté à son sujet pour l'instant.",
  "Nothing stands out tonight: play whoever you like. Rested XP, levels close to riding and long breaks show up here.": "Rien de spécial ce soir : joue qui tu veux. L'XP de repos, les niveaux proches de la monte et les longues pauses s'affichent ici.",
@@ -928,6 +1042,7 @@ window.BF_LOCALE_FR = {
  "Now entering": "Tu entres dans",
  "Now: More suggestions": "Maintenant : Plus de suggestions",
  "Objective": "Objectif",
+ "Objective areas": "Zones d'objectif",
  "Objective hints": "Indices d'objectifs",
  "Objective observations": "Observations d'objectifs",
  "Objectives": "Objectifs",
@@ -956,15 +1071,18 @@ window.BF_LOCALE_FR = {
  "once).": "une fois).",
  "One app. Your own access.": "Une app. Ton propre accès.",
  "One click on the Game connection page. It copies the addon into your game folder.": "Un clic sur la page Connexion au jeu. Ça copie l'addon dans ton dossier de jeu.",
+ "One painted window with a switch for every helper, in five pages: Quests, Alerts, Comfort, Panels and Sharing. Point at a switch to read what it does. Quiet, Leveling and Veteran are starting points: each sets the switches and says how many changed, and none turns on the newer panels or wider sharing. It is also in the game's own options, and Key Bindings has six Backstage Forever keys.": "Une fenêtre peinte avec un interrupteur pour chaque aide, en cinq pages : Quêtes, Alertes, Confort, Panneaux et Partage. Pointe un interrupteur pour lire ce qu'il fait. Discret, Montée de niveau et Vétéran sont des points de départ : chacun règle les interrupteurs et dit combien ont changé, et aucun n'active les nouveaux panneaux ni le partage élargi. Elle est aussi dans les options du jeu, et les raccourcis clavier ont six touches Backstage Forever.",
  "One setup finds the game, installs the addon and turns on the live link.": "Une seule installation trouve le jeu, installe l'addon et active le lien direct.",
  "One thing to change": "Une chose à changer",
  "Only if your model is missing from the list": "Seulement si ton modèle manque dans la liste",
  "Only releases signed by Backstage Forever’s update key are accepted.": "Seules les versions signées avec la clé de mise à jour de Backstage Forever sont acceptées.",
  "Only this computer can open it (address 127.0.0.1). Other computers cannot.": "Seul cet ordinateur peut l'ouvrir (adresse 127.0.0.1). Les autres ordinateurs ne le peuvent pas.",
+ "Only what sits in your bags or bank, or is worn, can be listed. A mount or pet you learned is not saved by the game for the addon to read.": "Seul ce qui est dans tes sacs ou ta banque, ou porté, peut être listé. Une monture ou une mascotte apprise n'est pas sauvegardée par le jeu d'une façon que l'addon puisse lire.",
  "Only what the game saved is here: a cooldown shows once a character has used it, and mail shows after you open that character's mailbox. Times are from each character's last save.": "Seul ce que le jeu a enregistré est ici : un temps de recharge apparaît une fois qu'un personnage l'a utilisé, et le courrier après l'ouverture de la boîte aux lettres de ce personnage. Les heures viennent de la dernière sauvegarde de chaque personnage.",
  "Open a code file": "Ouvrir un fichier de code",
  "Open a profession in game once": "Ouvre un métier une fois en jeu",
  "Open Adventure": "Ouvrir Aventure",
+ "Open Calendar": "Ouvrir le Calendrier",
  "Open character checklist": "Ouvrir la liste du personnage",
  "Open Characters": "Ouvrir Personnages",
  "Open Companion": "Ouvrir le Compagnon",
@@ -974,6 +1092,8 @@ window.BF_LOCALE_FR = {
  "Open Game connection": "Ouvrir Connexion au jeu",
  "Open in app": "Ouvrir dans l'app",
  "Open in Quests": "Ouvrir dans Quêtes",
+ "Open Journey": "Ouvrir Parcours",
+ "Open Ledger": "Ouvrir le Registre",
  "Open Now": "Ouvrir Maintenant",
  "Open Now.": "Ouvre Maintenant.",
  "Open officer debrief": "Ouvrir le bilan des officiers",
@@ -989,7 +1109,9 @@ window.BF_LOCALE_FR = {
  "Open Releases ↗": "Ouvrir Releases ↗",
  "Open saved quest": "Ouvrir la quête enregistrée",
  "Open Sheet": "Ouvrir la Fiche",
+ "Open Talents": "Ouvrir Talents",
  "Open the checkboxes in WoW chat:": "Ouvre les cases à cocher dans le chat de WoW :",
+ "Open Travel": "Ouvrir Trajet",
  "Open World Map": "Ouvrir la carte du monde",
  "Open your own profession": "Ouvre ton propre métier",
  "Open your profession window once in game, then": "Ouvre une fois ta fenêtre de métier en jeu, puis",
@@ -1009,6 +1131,7 @@ window.BF_LOCALE_FR = {
  "Opens a fictional drill. Nothing is sent to the game.": "Ouvre un exercice fictif. Rien n'est envoyé au jeu.",
  "Opens an editable Companion draft for The Deadmines (#dm). Nothing is sent until you choose Send.": "Ouvre un brouillon modifiable du Compagnon pour Les Mortemines (#dm). Rien n'est envoyé tant que tu ne choisis pas Envoyer.",
  "Opens an editable question in the companion; nothing is sent until you press Send.": "Ouvre une question modifiable dans le compagnon ; rien n'est envoyé tant que tu n'appuies pas sur Envoyer.",
+ "Opens one painted settings window with a switch for every in-game helper, in five pages (Quests, Alerts, Comfort, Panels, Sharing), and three starting points: Quiet, Leveling and Veteran.": "Ouvre une fenêtre de réglages peinte avec un interrupteur pour chaque aide en jeu, en cinq pages (Quêtes, Alertes, Confort, Panneaux, Partage), et trois points de départ : Discret, Montée de niveau et Vétéran.",
  "Opens the in-game helper checkboxes for your current character.": "Ouvre les cases à cocher des aides en jeu pour ton personnage actuel.",
  "OPTIONAL · LOCAL WINDOWS VOICE": "FACULTATIF · VOIX LOCALE DE WINDOWS",
  "Optional activation during this session": "Activation facultative pendant cette session",
@@ -1016,9 +1139,14 @@ window.BF_LOCALE_FR = {
  "or log out.": "ou déconnecte-toi.",
  "or right-click the owl on the minimap for one window with every switch.": "ou fais un clic droit sur la chouette de la minicarte pour une fenêtre avec tous les réglages.",
  "Orange always": "Orange toujours",
+ "Orange always gives a skill point. Yellow gives one less often as your skill rises; the craft counts allow for that and are estimates.": "L'orange donne toujours un point de compétence. Le jaune en donne moins souvent à mesure que ta compétence monte ; les nombres de fabrications en tiennent compte et sont des estimations.",
+ "Orange at your skill": "Orange à ta compétence",
+ "Ore": "Minerai",
  "Other characters · separate saved observations": "Autres personnages · observations enregistrées à part",
  "Other characters’ counts are never subtracted from this plan. Storage access and transfer availability are unknown.": "Les quantités des autres personnages ne sont jamais retirées de ce plan. L'accès au stockage et la possibilité de transfert sont inconnus.",
  "Other faction's NPCs": "PNJ de l'autre faction",
+ "Other factions": "Autres factions",
+ "Other NPCs": "Autres PNJ",
  "Other useful paths": "Autres parcours utiles",
  "Over a week old": "Vieux de plus d'une semaine",
  "Overrides are saved immediately and take precedence over presets.": "Les exceptions sont enregistrées tout de suite et passent avant les préréglages.",
@@ -1026,6 +1154,7 @@ window.BF_LOCALE_FR = {
  "Owned profession": "Métier possédé",
  "Ownership unknown": "Possession inconnue",
  "Partial snapshot": "Sauvegarde partielle",
+ "Partly covered": "Partiellement couvert",
  "Party": "Groupe",
  "Party expedition": "Expédition de groupe",
  "Past sessions": "Sessions passées",
@@ -1041,6 +1170,7 @@ window.BF_LOCALE_FR = {
  "Personal training review needs a saved addon character with matching reference build and enUS locale.": "La revue d'apprentissage personnelle demande un personnage enregistré par l'addon avec un build de référence correspondant et la langue enUS.",
  "Pick a class for this character in Characters to see training.": "Choisis une classe pour ce personnage dans Personnages pour voir l'apprentissage.",
  "Pick a pin on the World Map and choose “Track on radar”.": "Choisis un repère sur la carte du monde et « Suivre sur le radar ».",
+ "Pick a pin or a place from the lists to see its details and coordinates. Use": "Choisis un repère ou un lieu dans les listes pour voir ses détails et ses coordonnées. Utilise",
  "Pick a recipe below": "Choisis une recette ci-dessous",
  "Pick a starting checklist, then edit or add steps.": "Choisis une liste de départ, puis modifie ou ajoute des étapes.",
  "pick one": "choisis-en un",
@@ -1051,9 +1181,11 @@ window.BF_LOCALE_FR = {
  "Picture": "Image",
  "Pictures to share": "Images à partager",
  "Pin": "Épingler",
+ "Pin reputation target": "Épingler la cible de réputation",
  "Plain words above risky targets: elites, skulls, much higher levels.": "Des mots simples au-dessus des cibles risquées : élites, crânes, niveaux bien plus hauts.",
  "Plan a short session": "Planifier une courte session",
  "Plan a trip · local reference": "Planifier un trajet · référence locale",
+ "Plan for faction": "Plan pour la faction",
  "Plan it yourself in Plans →": "Planifie-le toi-même dans Plans →",
  "Plan name": "Nom du plan",
  "Plan this recipe": "Planifier cette recette",
@@ -1063,6 +1195,7 @@ window.BF_LOCALE_FR = {
  "Plan your role": "Prépare ton rôle",
  "Planned below.": "Planifié ci-dessous.",
  "Planner": "Planificateur",
+ "Plans · Calendar": "Plans · Calendrier",
  "Plans · Party": "Plans · Groupe",
  "Plans work without one. Add a character by hand, or connect the game to bring yours in.": "Les plans fonctionnent sans personnage. Ajoutes-en un à la main, ou connecte le jeu pour importer les tiens.",
  "Play with the live link on (it is by default) and your pace, time to the next level and deaths appear here.": "Joue avec le lien direct actif (il l'est par défaut) et ton rythme, le temps jusqu'au prochain niveau et tes morts apparaissent ici.",
@@ -1072,12 +1205,14 @@ window.BF_LOCALE_FR = {
  "Playing now": "En jeu",
  "Pocket money": "Argent de poche",
  "point waiting to be spent": "point à dépenser",
+ "Points per point of each stat. Every gear verdict for this character uses them: this plan, dungeon loot, item cards, the sheet and the upgrade marks in game (after the next /reload).": "Points par point de chaque stat. Chaque verdict d'équipement pour ce personnage les utilise : ce plan, le butin de donjon, les fiches d'objet, la fiche et les marques d'amélioration en jeu (après le prochain /reload).",
  "points to your next quest and": "pointe vers ta prochaine quête et",
  "points waiting to be spent": "points à dépenser",
  "Poor": "Médiocre",
  "Pop out radar": "Détacher le radar",
  "Pop-up tips": "Astuces surgissantes",
  "Portable plan title": "Titre du plan portable",
+ "Portals": "Portails",
  "Practice Lab": "Entraînement",
  "Practice the opener": "Travailler l'ouverture",
  "Preparation workshop": "Atelier de préparation",
@@ -1088,13 +1223,17 @@ window.BF_LOCALE_FR = {
  "Preparing the log…": "Préparation du journal…",
  "Preset": "Préréglage",
  "Preset preview": "Aperçu du préréglage",
+ "Press Enter in WoW, type the command, press Enter again. Commands only show you things or put an arrow on your map; nothing plays for you.": "Appuie sur Entrée dans WoW, tape la commande, appuie encore sur Entrée. Les commandes te montrent seulement des choses ou posent une flèche sur ta carte ; rien ne joue à ta place.",
  "Press N in game and spend them. Characters → Talents shows your plan and what comes next.": "Appuie sur N en jeu et dépense-les. Personnages → Talents montre ton plan et la suite.",
  "Preview another class": "Aperçu d'une autre classe",
  "Preview preset": "Aperçu du préréglage",
  "Preview selected point": "Aperçu du point choisi",
  "Price memory": "Mémoire des prix",
+ "price never seen": "prix jamais vu",
  "Price never seen": "Prix jamais vu",
+ "Priced steps together:": "Étapes avec prix, au total :",
  "prices remembered": "prix retenus",
+ "Prices: the latest auction price you saw (Ledger price memory) or what a vendor charged you, whichever is lower.": "Prix : le dernier prix d'enchères que tu as vu (mémoire des prix du Registre) ou ce qu'un marchand t'a facturé, le plus bas des deux.",
  "Priest": "Prêtre",
  "Priest · Light and shadow.": "Prêtre · Lumière et ombre.",
  "Private character memory": "Mémoire privée du personnage",
@@ -1104,12 +1243,15 @@ window.BF_LOCALE_FR = {
  "Private notes and goals are never automatically included in AI requests.": "Les notes et buts privés ne sont jamais ajoutés automatiquement aux demandes à l'IA.",
  "Private notes, goals, full completion history, account identifiers and local paths stay here. Saved exchanges are included only when you select them separately in Memory.": "Les notes privées, les buts, l'historique complet, les identifiants de compte et les chemins locaux restent ici. Les échanges enregistrés ne sont inclus que si tu les choisis à part dans Mémoire.",
  "Profession": "Métier",
+ "Profession trainers": "Maîtres de métier",
+ "Profession views": "Vues des métiers",
  "Professions": "Métiers",
  "PROFESSIONS": "MÉTIERS",
  "Professions workshop →": "Atelier des métiers →",
  "Professions: Where this comes from": "Métiers : origine des données",
  "Profiles and planning work offline. AI is optional and uses your own provider access.": "Les profils et la planification fonctionnent hors ligne. L'IA est facultative et utilise ton propre accès fournisseur.",
  "Profiles and provider settings remain in your Windows account’s app folder.": "Les profils et les réglages de fournisseur restent dans le dossier de l'app de ton compte Windows.",
+ "Progress to next": "Progression vers le suivant",
  "Progress unknown": "Progression inconnue",
  "Promise": "Promesse",
  "Public character context:": "Contexte public du personnage :",
@@ -1118,6 +1260,7 @@ window.BF_LOCALE_FR = {
  "puts an arrow on it.": "met une flèche dessus.",
  "puts it back on from your bags, only when you type it and never in combat. The Sheet page lists every set and where each missing piece is: bank, mail or another character. On": "le remet depuis tes sacs, seulement quand tu le tapes et jamais en combat. La page Fiche liste chaque ensemble et où se trouve chaque pièce manquante : banque, courrier ou autre personnage. Sur",
  "Quality not saved": "Qualité non enregistrée",
+ "Quantity": "Quantité",
  "Quest": "Quête",
  "Quest availability at the giver is not confirmed. Check in game.": "La disponibilité de la quête chez le donneur n'est pas confirmée. Vérifie en jeu.",
  "Quest blockers": "Blocages de quête",
@@ -1130,6 +1273,7 @@ window.BF_LOCALE_FR = {
  "Quest facts": "Infos de quête",
  "Quest focus": "Quête ciblée",
  "Quest giver": "Donneur de quête",
+ "Quest givers": "Donneurs de quêtes",
  "Quest givers, trainers, flight masters and herbs on the map →": "Donneurs de quêtes, maîtres, maîtres de vol et herbes sur la carte →",
  "Quest guidance updates as you play, even with this desktop app closed.": "Les conseils de quête se mettent à jour pendant que tu joues, même avec cette app fermée.",
  "Quest Guide": "Guide de quêtes",
@@ -1141,21 +1285,28 @@ window.BF_LOCALE_FR = {
  "Quest reference status": "État de la référence de quêtes",
  "Quest reward reasons": "Raisons des récompenses",
  "Quest rewards and the Best choice boxes on quest pages are the quickest way to fill these.": "Les récompenses de quête et les cases Meilleur choix sur les pages de quête sont le moyen le plus rapide de les remplir.",
+ "Quest rewards, vendor goods and drops: bundled community reference. A quest may need earlier quests first; check in game.": "Récompenses de quête, marchandises et butin : référence communautaire fournie. Une quête peut demander d'autres quêtes avant ; vérifie en jeu.",
  "Quest session": "Session de quêtes",
  "Quest steps in this save": "Étapes de quête dans cette sauvegarde",
  "Quest stories finished": "Histoires de quêtes terminées",
  "Quest tracker": "Suivi des quêtes",
  "Quest tracking begins at the selected character’s saved capture. Newer saved evidence can confirm a turn-in. Ready means ready to turn in, not turned in.": "Le suivi des quêtes commence à la sauvegarde du personnage choisi. Des preuves enregistrées plus récentes peuvent confirmer un rendu. Prête veut dire prête à rendre, pas rendue.",
+ "Questing": "Quêtes",
  "Questions from the game": "Questions venues du jeu",
  "Questions in plain words.": "Des questions en mots simples.",
  "Quests": "Quêtes",
+ "Quests and turn-ins": "Quêtes et remises",
  "Quests in saved logs": "Quêtes dans les journaux enregistrés",
  "quests ready to hand in": "quêtes prêtes à rendre",
  "Quests to pick up": "Quêtes à prendre",
  "Quit Backstage Forever, unzip, and drag the new app into Applications over the old one.": "Quitte Backstage Forever, décompresse, et glisse la nouvelle app dans Applications par-dessus l'ancienne.",
  "Race, class, reputation and unreported prerequisites remain unknown. Check the game before travelling.": "La race, la classe, la réputation et les prérequis non signalés restent inconnus. Vérifie en jeu avant de voyager.",
  "Races": "Courses",
+ "Radar and journey": "Radar et chemin",
  "Ranged": "À distance",
+ "Ranged attack power": "Puissance d'attaque à distance",
+ "Ranged weapon DPS": "DPS de l'arme à distance",
+ "Ranks of talent skills show for everyone; you can only train the ones whose talent you have.": "Les rangs des compétences de talent s'affichent pour tout le monde ; tu ne peux apprendre que celles dont tu as le talent.",
  "Rare defeated": "Rare vaincu",
  "Rare enemies": "Ennemis rares",
  "Read answer": "Lire la réponse",
@@ -1184,6 +1335,8 @@ window.BF_LOCALE_FR = {
  "Recent recorded defeats, not full runs, lockouts or loot.": "Victoires récentes notées, pas des runs complets, des verrouillages ni du butin.",
  "Recipe and materials": "Recette et matériaux",
  "Recipe book": "Livre de recettes",
+ "Recipe book and skill path": "Livre de recettes et parcours de compétence",
+ "Recipe colours come from your game files; trainer skill needs were seen by other players and are not complete.": "Les couleurs des recettes viennent de tes fichiers de jeu ; les compétences requises chez les maîtres ont été vues par d'autres joueurs et sont incomplètes.",
  "Recipe list unavailable": "Liste de recettes indisponible",
  "Recipe not saved": "Recette non enregistrée",
  "Recipes not learned yet": "Recettes pas encore apprises",
@@ -1218,6 +1371,7 @@ window.BF_LOCALE_FR = {
  "Replace": "Remplacer",
  "replaces them, clears saved memory and disconnects game observation until you reconnect.": "les remplace, efface la mémoire enregistrée et coupe l'observation du jeu jusqu'à ce que tu te reconnectes.",
  "Replay my path this session": "Rejouer mon chemin de cette session",
+ "Replay path": "Rejouer le chemin",
  "Replay the welcome tour": "Revoir la visite d'accueil",
  "Report a problem": "Signaler un problème",
  "Reported chain": "Suite signalée",
@@ -1240,6 +1394,7 @@ window.BF_LOCALE_FR = {
  "Rested XP keeps growing while you're logged out: about 5% of a level every 8 hours in an inn or city, a quarter of that elsewhere, up to 150%. Gold and bags are as the addon last saw them.": "L'XP de repos continue de monter quand tu es déconnecté : environ 5 % d'un niveau toutes les 8 heures dans une auberge ou une ville, un quart de ça ailleurs, jusqu'à 150 %. L'or et les sacs sont tels que l'addon les a vus en dernier.",
  "Restore selected point": "Restaurer le point choisi",
  "Restore skipped steps": "Rétablir les étapes passées",
+ "Resume or clear this objective in Now. Only a qualifying saved standing change can complete it.": "Reprends ou efface cet objectif dans Maintenant. Seul un changement de réputation sauvegardé qui correspond peut le terminer.",
  "Resume your route": "Reprends ta route",
  "Resurrect": "Ressusciter",
  "Retry": "Réessayer",
@@ -1250,6 +1405,7 @@ window.BF_LOCALE_FR = {
  "Retry quest session": "Réessayer la session de quêtes",
  "Retry saving": "Réessayer d'enregistrer",
  "Retry selected plan preview": "Réessayer l'aperçu du plan choisi",
+ "Revered": "Révéré",
  "Review cancellation": "Vérifier l'annulation",
  "Review Game connection": "Vérifier Connexion au jeu",
  "Review Game Connection": "Vérifier Connexion au jeu",
@@ -1272,6 +1428,8 @@ window.BF_LOCALE_FR = {
  "Rogue": "Voleur",
  "Routes are built from the quest data we have and grow as community data and your own play fill the gaps. Steps marked reviewed have been checked by hand.": "Les routes sont construites à partir des données de quêtes disponibles et grandissent à mesure que les données de la communauté et ton propre jeu comblent les trous. Les étapes marquées relues ont été vérifiées à la main.",
  "Run history": "Historique des runs",
+ "Run history and keys": "Historique des runs et clés",
+ "Run history of": "Historique des runs de",
  "Saddle up": "En selle",
  "Safe": "Sûr",
  "Sat": "Sam",
@@ -1283,6 +1441,7 @@ window.BF_LOCALE_FR = {
  "Save details missing": "Détails de sauvegarde manquants",
  "Save my scout notes…": "Enregistrer mes notes d'éclaireur…",
  "Save name": "Enregistrer le nom",
+ "Save path image": "Enregistrer l'image du chemin",
  "Save picture": "Enregistrer l'image",
  "Save plan": "Enregistrer le plan",
  "Save report": "Enregistrer le rapport",
@@ -1311,6 +1470,7 @@ window.BF_LOCALE_FR = {
  "Saving for riding training and your first mount, or anything else? Set the amount yourself, or open your riding trainer's window and a mount vendor once in game (then /reload): the app adds up what they charge.": "Tu économises pour la monte et ta première monture, ou autre chose ? Fixe le montant toi-même, ou ouvre une fois en jeu la fenêtre de ton maître de monte et d'un vendeur de montures (puis /reload) : l'app additionne leurs prix.",
  "Say again": "Répéter",
  "Scout mode notes who you talked to in game and where they stand: quest givers, hand-ins, trainers, vendors and flight masters. It helps fill the thin zones above.": "Le mode éclaireur note à qui tu as parlé en jeu et où ils se trouvent : donneurs de quêtes, rendus de quêtes, maîtres, marchands et maîtres de vol. Ça aide à remplir les zones peu couvertes ci-dessus.",
+ "Screenshots stay where the game saved them. The app only reads them to show small previews here; it never moves, changes or sends them. In WoW,": "Les captures d'écran restent là où le jeu les a enregistrées. L'app les lit seulement pour montrer de petits aperçus ici ; elle ne les déplace, ne les modifie et ne les envoie jamais. Dans WoW,",
  "Search": "Rechercher",
  "Search by item name, e.g. linen cloth": "Cherche par nom d'objet, p. ex. étoffe de lin",
  "Search everything": "Tout rechercher",
@@ -1352,6 +1512,7 @@ window.BF_LOCALE_FR = {
  "Settings → Game connection finds your WoW Forever folder and installs the addon.": "Réglages → Connexion au jeu trouve ton dossier WoW Forever et installe l'addon.",
  "Settings and help": "Réglages et aide",
  "Shaman": "Chaman",
+ "Share": "Partager",
  "Share anonymous finds with other players": "Partager des trouvailles anonymes avec les autres joueurs",
  "Share code": "Code de partage",
  "Share picture": "Partager l'image",
@@ -1360,9 +1521,11 @@ window.BF_LOCALE_FR = {
  "Shared objectives": "Objectifs partagés",
  "Sharing is a file you save and send yourself. Importing one never links accounts or sends anything.": "Partager, c'est un fichier que tu enregistres et envoies toi-même. En importer un ne relie jamais de comptes et n'envoie rien.",
  "Sheet": "Fiche",
+ "Sheet views": "Vues de la fiche",
  "Shirt": "Chemise",
  "Short": "Incomplet",
  "Shoulder": "Épaules",
+ "Show": "Afficher",
  "Show character name": "Afficher le nom du personnage",
  "Show file": "Afficher le fichier",
  "Show finished too": "Afficher aussi les terminés",
@@ -1372,6 +1535,7 @@ window.BF_LOCALE_FR = {
  "Show on World Map": "Voir sur la carte du monde",
  "Show realm": "Afficher le royaume",
  "Show road guide": "Afficher le guide de route",
+ "Show runs of": "Afficher les runs de",
  "Show the full map": "Afficher toute la carte",
  "Show trainer on map": "Voir le maître sur la carte",
  "shows the bags, bank and mail of every character in one searchable list, their gold, reputations with every faction (Alliance and Horde alike) and profession cooldowns such as transmutes. Open your bank and mailbox once in game so the addon can see them; it keeps what it saw last, with the time. With": "montre les sacs, la banque et le courrier de chaque personnage dans une seule liste avec recherche, leur or, leurs réputations avec chaque faction (Alliance comme Horde) et les temps de recharge de métier comme les transmutations. Ouvre ta banque et ta boîte aux lettres une fois en jeu pour que l'addon les voie ; il garde ce qu'il a vu en dernier, avec l'heure. Avec",
@@ -1385,6 +1549,7 @@ window.BF_LOCALE_FR = {
  "silences the short messages there.": "y coupe les messages courts.",
  "Simulated scenario": "Scénario simulé",
  "Skill": "Compétence",
+ "Skill needed (orange from here)": "Compétence requise (orange à partir d'ici)",
  "Skill numbers:": "Niveaux de compétence :",
  "Skill path": "Parcours de compétence",
  "Skill toward your current cap": "Compétence vers ton plafond actuel",
@@ -1398,6 +1563,7 @@ window.BF_LOCALE_FR = {
  "Slow PC? Use a free cloud key instead": "PC lent ? Utilise plutôt une clé cloud gratuite",
  "Small, dated recovery points protect your private journal automatically. No account or setup needed.": "De petits points de restauration datés protègent ton journal privé automatiquement. Aucun compte ni réglage nécessaire.",
  "so the app knows its level.": "pour que l'app connaisse son niveau.",
+ "Some quest items are not in your game data, so a goods hand-in may be listed as an ordinary quest.": "Certains objets de quête ne sont pas dans tes données de jeu ; une remise de marchandises peut donc apparaître comme une quête ordinaire.",
  "Something not working?": "Quelque chose ne marche pas ?",
  "Soon": "Bientôt",
  "Source commit": "Commit source",
@@ -1407,9 +1573,15 @@ window.BF_LOCALE_FR = {
  "southeast": "sud-est",
  "southwest": "sud-ouest",
  "Speed splits": "Temps par niveau",
+ "Spell damage": "Dégâts des sorts",
+ "Spell power": "Puissance des sorts",
  "Spell rank reminder": "Rappel de rang de sort",
  "Spend next": "À dépenser ensuite",
+ "Spirit": "Esprit",
  "Spots you gathered or opened chests, remembered by the addon (up to 500). Past spots, not live nodes. In game: /bf nodes.": "Les points où tu as récolté ou ouvert des coffres, retenus par l'addon (jusqu'à 500). Des points passés, pas des gisements en direct. En jeu : /bf nodes.",
+ "Stamina": "Endurance",
+ "Standard amount for this reward size": "Montant habituel pour cette taille de récompense",
+ "Standing": "Niveau de réputation",
  "Standing to reach": "Réputation à atteindre",
  "Start closed": "Fermer au départ",
  "Start from a checklist": "Partir d'une liste",
@@ -1425,6 +1597,7 @@ window.BF_LOCALE_FR = {
  "Starts in": "Commence dans",
  "Starts open": "Ouvert au départ",
  "Startup": "Démarrage",
+ "Stat weight preset": "Préréglage des poids de stats",
  "Stat weights": "Poids des stats",
  "Stats arrive after a /reload with the addon on.": "Les stats arrivent après un /reload avec l'addon actif.",
  "Status": "État",
@@ -1438,7 +1611,9 @@ window.BF_LOCALE_FR = {
  "Stops in order": "Arrêts dans l'ordre",
  "Stored locally": "Stocké en local",
  "Story so far": "L'histoire",
+ "Story so far, timeline and races": "L'histoire, la chronologie et les courses",
  "Stream overlay": "Overlay de stream",
+ "Strength": "Force",
  "Subscription sign-in, your own API key, or a local model.": "Connexion par abonnement, ta propre clé API ou un modèle local.",
  "Subscription usage and API billing are separate modes. No automatic paid fallback.": "L'usage par abonnement et la facturation API sont deux modes séparés. Aucun passage automatique au payant.",
  "Suggested for you": "Suggéré pour toi",
@@ -1449,18 +1624,26 @@ window.BF_LOCALE_FR = {
  "Switch overlay off": "Désactiver l'overlay",
  "Switch overlay on": "Activer l'overlay",
  "Take your first flight.": "Prends ton premier vol.",
+ "takes one at each level-up and boss kill.": "en prend une à chaque niveau gagné et à chaque boss vaincu.",
+ "Talent planner and trainer costs": "Planificateur de talents et coût des maîtres",
  "Talent trees aren't available yet.": "Les arbres de talents ne sont pas encore disponibles.",
+ "Talent view": "Vue des talents",
  "Target in gold": "Objectif en or",
  "Teaches your class new spells and abilities, usually every two levels. It costs a little money.": "Apprend à ta classe de nouveaux sorts et techniques, en général tous les deux niveaux. Ça coûte un peu d'argent.",
+ "Teleport spells to your capitals are taught by your mage trainer from level 20 (they use Runes of Teleportation).": "Les sorts de téléportation vers tes capitales sont enseignés par ton maître des mages à partir du niveau 20 (ils utilisent des Runes de téléportation).",
+ "Teleports": "Téléportations",
  "The addon also warns you about dangerous enemies, points you back to your body when you die, celebrates level-ups and adds a": "L'addon te prévient aussi des ennemis dangereux, te ramène vers ton corps quand tu meurs, fête tes montées de niveau et ajoute un bouton",
  "The addon draws a thin dark line, one pixel tall, along the top edge of the game; the app reads only that line from the game window, so it keeps working when another window covers WoW. When WoW is minimized nothing can be read: the app says live updates are paused, keeps showing where you were last and picks up again by itself when you bring the game back. If the app says it can't read the live line (remote desktop often changes its colours), type": "L'addon dessine une fine ligne sombre, haute d'un pixel, le long du bord supérieur du jeu ; l'app ne lit que cette ligne dans la fenêtre du jeu, donc ça marche même quand une autre fenêtre couvre WoW. Quand WoW est réduit, rien ne peut être lu : l'app dit que les mises à jour en direct sont en pause, continue de montrer où tu étais et reprend toute seule quand tu rouvres le jeu. Si l'app dit qu'elle ne peut pas lire la ligne (le bureau à distance change souvent ses couleurs), tape",
  "The build marked Use in game goes to the game at its next login or /reload. There, type /bf talents to see your next point. The app never spends points for you.": "Le build marqué Utiliser en jeu part vers le jeu à la prochaine connexion ou au prochain /reload. Là, tape /bf talents pour voir ton prochain point. L'app ne dépense jamais de points à ta place.",
  "The built-in AI runs on Windows. Use a free cloud key below.": "L'IA intégrée fonctionne sous Windows. Utilise une clé cloud gratuite ci-dessous.",
  "The classic keys and attunement chains, and the step this character is on.": "Les clés classiques et les suites de quêtes d'accès, et l'étape où en est ce personnage.",
+ "The code holds only that name and, per level, the time played and the day. No realm, class or account.": "Le code ne contient que ce nom et, par niveau, le temps joué et le jour. Ni royaume, ni classe, ni compte.",
  "The companion knows your class's WoW Forever talents, read from your own game: ask “what does Improved Renew do?”, “what talents should I take at level 20?” or “how many talent points at level 30?”. It answers these even without AI, uses your active character's class (or the class you name) and never borrows talents from other versions of WoW.": "Le compagnon connaît les talents WoW Forever de ta classe, lus dans ton propre jeu : demande « que fait Rénovation améliorée ? », « quels talents prendre au niveau 20 ? » ou « combien de points de talent au niveau 30 ? ». Il y répond même sans IA, utilise la classe de ton personnage actif (ou celle que tu nommes) et n'emprunte jamais de talents à d'autres versions de WoW.",
  "The complete installer’s size and fingerprint must match before it can run.": "La taille et l'empreinte de l'installeur complet doivent correspondre avant qu'il puisse se lancer.",
  "The data does not record which hand-ins repeat. The count shown is how many it would take if that one repeats; check in game.": "Les données ne disent pas quels dons se répètent. Le nombre affiché est ce qu'il faudrait si celui-ci se répète ; vérifie en jeu.",
+ "The data has no goods hand-in for this faction that this character can take.": "Les données n'ont aucune remise de marchandises pour cette faction que ce personnage puisse prendre.",
  "The data records no reputation per kill, so dungeon runs cannot be counted.": "Les données ne notent aucune réputation par ennemi tué ; les runs de donjon ne peuvent donc pas être comptés.",
+ "The Dungeons page also opens your run history, with times, deaths and loot, and the keys and attunement chains with the step you are on.": "La page Donjons ouvre aussi ton historique des runs, avec les temps, les morts et le butin, et les chaînes de clés et d'accès avec l'étape où tu en es.",
  "The easy way, in WoW: type": "La façon simple, dans WoW : tape",
  "The file could not be saved.": "Le fichier n'a pas pu être enregistré.",
  "The fishing skill each zone needs is not in the game files this app can read, so it is not shown.": "La compétence de pêche demandée par chaque zone n'est pas dans les fichiers de jeu que cette app peut lire ; elle n'est donc pas affichée.",
@@ -1469,6 +1652,7 @@ window.BF_LOCALE_FR = {
  "The guided route is unavailable.": "La route guidée est indisponible.",
  "The in-game Compass (": "La Boussole en jeu (",
  "The last save does not confirm this route transition.": "La dernière sauvegarde ne confirme pas ce passage de la route.",
+ "The Ledger also works out craft profit from the prices you saw, plans the way to a reputation standing, and lists the mounts, pets and recipes you hold. Plans → Calendar shows every cooldown and mail expiry.": "Le Registre calcule aussi le profit d'artisanat à partir des prix que tu as vus, planifie le chemin vers un niveau de réputation et liste les montures, mascottes et recettes que tu possèdes. Plans → Calendrier montre chaque temps de recharge et chaque expiration de courrier.",
  "The Linux build does not update itself. Download the new AppImage from the releases page; your journal stays.": "La version Linux ne se met pas à jour toute seule. Télécharge la nouvelle AppImage sur la page des versions ; ton journal reste.",
  "The live link is off. Turn it on in Settings → Game connection.": "Le lien direct est désactivé. Active-le dans Réglages → Connexion au jeu.",
  "The macOS-arm64 zip for Apple silicon, or macOS-x64 for Intel.": "Le zip macOS-arm64 pour Apple silicon, ou macOS-x64 pour Intel.",
@@ -1479,9 +1663,12 @@ window.BF_LOCALE_FR = {
  "The reference differs from the current game title. Saved game observations take priority.": "La référence diffère du titre actuel en jeu. Les observations enregistrées du jeu passent avant.",
  "The road ahead": "La route à venir",
  "the road ahead.": "la route à venir.",
+ "The same page has a recipe book for each profession, a worked-out path to the next skill rank, who among your characters can craft an item, and what you can cook from your bags.": "La même page a un livre de recettes pour chaque métier, un chemin calculé vers le prochain rang de compétence, qui parmi tes personnages peut fabriquer un objet, et ce que tu peux cuisiner avec tes sacs.",
  "The saved talents do not fit the talent trees read from your game files, so they cannot be used here.": "Les talents enregistrés ne correspondent pas aux arbres de talents lus dans tes fichiers de jeu ; ils ne peuvent donc pas servir ici.",
+ "The skill to learn it is not recorded": "La compétence pour l'apprendre n'est pas enregistrée",
  "The small next-step panel.": "Le petit panneau de prochaine étape.",
  "The story so far": "L'histoire jusqu'ici",
+ "The suggested path is now your plan. Change it as you like.": "Le chemin suggéré est maintenant ton plan. Change-le comme tu veux.",
  "The thin dark line along the top edge of the game that lets this app follow you, even behind other windows. /bf live safe draws a sturdier corner strip for remote desktop.": "La fine ligne sombre le long du bord supérieur du jeu qui permet à cette app de te suivre, même derrière d'autres fenêtres. /bf live safe dessine une bande de coin plus solide pour le bureau à distance.",
  "The time is clock time from login (or /reload) to the last moment the addon saw you, time away from the keyboard included. The change is everything that moved your gold: loot, quests, selling, repairs, training, mail and auctions.": "Le temps est le temps d'horloge entre la connexion (ou /reload) et le dernier moment où l'addon t'a vu, absences comprises. La variation compte tout ce qui a fait bouger ton or : butin, quêtes, ventes, réparations, apprentissage, courrier et enchères.",
  "The value of what you looted is not shown: the addon does not record loot outside dungeons.": "La valeur de ton butin n'est pas affichée : l'addon ne note pas le butin hors des donjons.",
@@ -1489,6 +1676,8 @@ window.BF_LOCALE_FR = {
  "There's no reload needed for the native Compass: it follows quests, levels and zones as you play, and the desktop catches up when the game saves. Quest reference updates and app updates are separate from AI and send nothing from your journal.": "Pas besoin de /reload pour la Boussole en jeu : elle suit les quêtes, les niveaux et les zones pendant que tu joues, et l'app rattrape quand le jeu sauvegarde. Les mises à jour de la référence de quêtes et celles de l'app sont séparées de l'IA et n'envoient rien de ton journal.",
  "These previews are never added to Explain my plan or tracked quest steps.": "Ces aperçus ne sont jamais ajoutés à Explique mon plan ni aux étapes de quête suivies.",
  "These run inside WoW. Type the command in chat to switch one on or off; add": "Elles tournent dans WoW. Tape la commande dans le chat pour en activer ou désactiver une ; ajoute",
+ "Thin": "Mince",
+ "Things you'll see in game": "Ce que tu verras en jeu",
  "This character was not imported from the game, so no build is sent to the game.": "Ce personnage n'a pas été importé du jeu ; aucun build n'est donc envoyé au jeu.",
  "This computer does not offer desktop notifications to the app.": "Cet ordinateur ne propose pas de notifications de bureau à l'app.",
  "This is saved encounter evidence, not a record of a clear, personal loot or lockout. Reload or log out in game to save new observations.": "Ce sont des traces de rencontre enregistrées, pas la preuve d'un donjon terminé, d'un butin personnel ou d'un verrouillage. Fais /reload ou déconnecte-toi en jeu pour enregistrer de nouvelles observations.",
@@ -1506,7 +1695,9 @@ window.BF_LOCALE_FR = {
  "Thu": "Jeu",
  "Time": "Temps",
  "Time logged in": "Temps connecté",
+ "Time played when each level was reached": "Temps joué quand chaque niveau a été atteint",
  "Time to replace": "À remplacer",
+ "timed runs": "runs chronométrés",
  "Timeline": "Chronologie",
  "Times come from the game when the addon last saved; they keep counting down here.": "Les temps viennent du jeu à la dernière sauvegarde de l'addon ; ils continuent de s'écouler ici.",
  "Times of day, exact positions or your location now": "Les heures, les positions exactes ou l'endroit où tu es maintenant",
@@ -1515,9 +1706,11 @@ window.BF_LOCALE_FR = {
  "To do": "À faire",
  "to find anyone, and": "pour trouver n'importe qui, et",
  "To manage individual helpers, even with the desktop app closed.": "Pour gérer chaque aide séparément, même avec l'app fermée.",
+ "to open Talents. This path is a suggestion for solo leveling; your choices are yours.": "ouvre les Talents. Ce chemin est une suggestion pour monter de niveau en solo ; tes choix t'appartiennent.",
  "to search every zone.": "pour chercher dans toutes les zones.",
  "to see who it is, what they offer you and how to get there.": "pour voir qui c'est, ce qu'il te propose et comment y aller.",
  "to your class trainer.": "vers ton maître de classe.",
+ "Today": "Aujourd'hui",
  "Tomorrow's first step": "Première étape de demain",
  "Tonight": "Ce soir",
  "Tonight’s adventure": "L'aventure de ce soir",
@@ -1526,18 +1719,25 @@ window.BF_LOCALE_FR = {
  "Too high for now · Horde-side entrance; reachable but deep in enemy territory.": "Trop haut pour l'instant · Entrée côté Horde ; accessible mais loin en territoire ennemi.",
  "Too little to go on": "Trop peu d'éléments",
  "too short": "trop court",
+ "Total:": "Total :",
  "Track an exact quest in your log, return to the game watch, explain the current blocker, or review one nearby ready hand-in.": "Suis une quête précise de ton journal, reviens au suivi du jeu, explique le blocage actuel ou vérifie un rendu de quête prêt à proximité.",
  "Track on radar": "Suivre sur le radar",
  "Track saved quest": "Suivre la quête enregistrée",
  "Trainable now": "À apprendre maintenant",
  "Trainer": "Maître",
  "trainer cap": "plafond du maître",
+ "Trainer skill and cost: seen in trainer windows by other players (not every trainer recipe is recorded). Vendors and drops: community reference; limited stock is not recorded in it.": "Compétence et coût chez le maître : vus dans les fenêtres de maître par d'autres joueurs (toutes les recettes de maître ne sont pas enregistrées). Marchands et butin : référence communautaire ; le stock limité n'y est pas enregistré.",
  "Trainer, class title or listed spell": "Maître, titre de classe ou sort listé",
  "Training costs": "Coûts d'apprentissage",
+ "Transmute": "Transmutation",
+ "Transmute ready": "Transmutation prête",
  "Transmutes, Mooncloth and the Salt Shaker: which are ready, and when the rest will be.": "Transmutations, Étoffe lunaire et Salière : lesquelles sont prêtes, et quand le seront les autres.",
  "Travel": "Trajet",
  "Travel planner": "Planificateur de trajet",
  "Tree": "Arbre",
+ "Trinket 1": "Bijou 1",
+ "Trinket 2": "Bijou 2",
+ "Trip": "Trajet",
  "Trusted ally": "Allié de confiance",
  "Try again": "Réessayer",
  "Try one decision at a time. These fictional drills use no live game data and do not measure your in-game performance.": "Essaie une décision à la fois. Ces exercices fictifs n'utilisent aucune donnée de jeu en direct et ne mesurent pas ta performance en jeu.",
@@ -1547,7 +1747,10 @@ window.BF_LOCALE_FR = {
  "Turn off": "Désactiver",
  "Turn on": "Activer",
  "Turn on free AI": "Activer l'IA gratuite",
+ "Turn-ins": "Remises",
  "Type /bf live safe if the link drops over remote desktop.": "Tape /bf live safe si le lien se coupe en bureau à distance.",
+ "Type a display name to make your code.": "Tape un nom affiché pour créer ton code.",
+ "Type at least two letters of an item, for example \"bandage\" or \"copper\".": "Tape au moins deux lettres d'un objet, par exemple \"bandage\" ou \"copper\".",
  "Type your question…": "Tape ta question…",
  "Unassigned · anyone": "Non attribué · tout le monde",
  "Unavailable": "Indisponible",
@@ -1574,16 +1777,20 @@ window.BF_LOCALE_FR = {
  "Use an Ollama Cloud API key. Cloud requests leave this computer and follow your Ollama account limits; local Ollama is a separate connection.": "Utilise une clé API Ollama Cloud. Les demandes cloud quittent cet ordinateur et suivent les limites de ton compte Ollama ; l'Ollama local est une connexion à part.",
  "Use community data (downloaded once a day from bf.backstagecoding.com)": "Utiliser les données de la communauté (téléchargées une fois par jour depuis bf.backstagecoding.com)",
  "Use in game": "Utiliser en jeu",
+ "Use it:": "Quand :",
  "Use my active character": "Utiliser mon personnage actif",
  "Use preset default": "Suivre le préréglage",
  "Use the free AI": "Utiliser l'IA gratuite",
  "Use the official browser flow or official installed tool. Your password never goes into this app.": "Utilise la connexion officielle par navigateur ou l'outil officiel installé. Ton mot de passe ne passe jamais par cette app.",
  "Use this exchange with this question": "Utiliser cet échange avec cette question",
+ "Use your Hearthstone to": "Utilise ta pierre de foyer vers",
  "used in game": "utilisé en jeu",
  "Usual": "Habituel",
  "Vendor": "Marchand",
  "Vendor prices: only what you saw in a vendor window yourself.": "Prix des marchands : seulement ce que tu as vu toi-même dans une fenêtre de marchand.",
  "Vendor trash": "Camelote",
+ "Vendors": "Marchands",
+ "vendors pay": "les marchands paient",
  "Verify the download": "Vérifier le fichier",
  "View override saved.": "Exception de vue enregistrée.",
  "View preferences changed. Preview the preset again.": "Les préférences de vue ont changé. Relance l'aperçu du préréglage.",
@@ -1591,6 +1798,8 @@ window.BF_LOCALE_FR = {
  "View preset applied.": "Préréglage de vue appliqué.",
  "Voice · optional dictation and reading": "Voix · dictée et lecture facultatives",
  "Waist": "Taille",
+ "Wait for your Hearthstone": "Attends ta pierre de foyer",
+ "Wand DPS": "DPS de la baguette",
  "Warlock": "Démoniste",
  "Warrior": "Guerrier",
  "We find your game and install or repair the companion files.": "On trouve ton jeu et on installe ou répare les fichiers du compagnon.",
@@ -1598,9 +1807,11 @@ window.BF_LOCALE_FR = {
  "Welcome": "Bienvenue",
  "Welcome to Backstage Forever": "Bienvenue dans Backstage Forever",
  "Welcome, adventurer · 01 / 01": "Bienvenue, aventurier · 01 / 01",
+ "Well covered": "Bien couvert",
  "west": "ouest",
  "What": "Quoi",
  "What do I craft next?": "Que fabriquer ensuite ?",
+ "What every character carries, their gold and the prices you saw, craft profit, a reputation planner and cooldowns.": "Ce que porte chaque personnage, son or et les prix que tu as vus, le profit d'artisanat, un planificateur de réputation et les temps de recharge.",
  "What every character carries, their gold, the auction prices you saw, reputations and cooldowns.": "Ce que porte chaque personnage, leur or, les prix d'enchères que tu as vus, les réputations et les temps de recharge.",
  "What happened?": "Que s'est-il passé ?",
  "What is shared": "Ce qui est partagé",
@@ -1609,6 +1820,7 @@ window.BF_LOCALE_FR = {
  "What kind of problem?": "Quel genre de problème ?",
  "What restore and clearing history do": "Ce que font la restauration et l'effacement de l'historique",
  "What the gold goal is for": "À quoi sert le but d'or",
+ "What the overlay shows now": "Ce que l'overlay montre maintenant",
  "What this page can't see": "Ce que cette page ne voit pas",
  "What to bring back.": "Quoi rapporter.",
  "What to change": "Quoi changer",
@@ -1620,6 +1832,7 @@ window.BF_LOCALE_FR = {
  "What your recipes cost to make and what the result sold for, from prices you saw yourself.": "Ce que tes recettes coûtent à fabriquer et le prix de vente du résultat, d'après les prix que tu as vus toi-même.",
  "What your things are worth": "Ce que valent tes affaires",
  "When": "Quand",
+ "When bags, banks and mail were last seen": "Quand les sacs, les banques et le courrier ont été vus pour la dernière fois",
  "When you die, release your spirit and run back to your body as a ghost to come back to life.": "Quand tu meurs, libère ton esprit et cours jusqu'à ton corps en fantôme pour revenir à la vie.",
  "Where did that item go?": "Où est passé cet objet ?",
  "Where do I go now?": "Où aller maintenant ?",
@@ -1647,6 +1860,7 @@ window.BF_LOCALE_FR = {
  "Working out the plan…": "Calcul du plan…",
  "Working out your gear plan…": "Calcul de ton plan d'équipement…",
  "works offline, no AI": "fonctionne hors ligne, sans IA",
+ "World": "Monde",
  "World map": "Carte du monde",
  "World Map": "Carte",
  "World of Warcraft is a trademark of Blizzard Entertainment. This independent project is not endorsed by Blizzard.": "World of Warcraft est une marque de Blizzard Entertainment. Ce projet indépendant n'est pas approuvé par Blizzard.",
@@ -1656,7 +1870,9 @@ window.BF_LOCALE_FR = {
  "Write down what you want from this character: a profession at 150, your first mount at 40, a dungeon with friends. Tick them off as you go.": "Note ce que tu veux pour ce personnage : un métier à 150, ta première monture au niveau 40, un donjon entre amis. Coche-les au fur et à mesure.",
  "Write goals on": "Écris des buts sur",
  "Write public welcome copy": "Écrire un texte d'accueil public",
+ "Written only from what was saved for": "Écrit uniquement à partir de ce qui a été sauvegardé pour",
  "yellow": "jaune",
+ "Yellow from": "Jaune à partir de",
  "Yellow usually": "Jaune en général",
  "You are here": "Tu es ici",
  "you can cook": "tu peux cuisiner",
@@ -1664,7 +1880,9 @@ window.BF_LOCALE_FR = {
  "You could learn": "À apprendre",
  "You died": "Tu es mort",
  "You died: run back to your body": "Tu es mort : retourne à ton corps",
+ "You have": "Tu as",
  "You hold an ingredient for a recipe that is not in your save.": "Tu as un ingrédient pour une recette qui n'est pas dans ta sauvegarde.",
+ "You hold enough for": "Tu en as assez pour",
  "You know the recipe and hold an ingredient, but something is missing.": "Tu connais la recette et tu as un ingrédient, mais il manque quelque chose.",
  "You know the recipe and hold everything for it.": "Tu connais la recette et tu as tout ce qu'il faut.",
  "You receive": "Tu reçois",
@@ -1672,11 +1890,14 @@ window.BF_LOCALE_FR = {
  "You've been here": "Tu es passé ici",
  "Your adventure starts in the world.": "Ton aventure commence dans le monde.",
  "Your anonymous id": "Ton identifiant anonyme",
+ "Your character": "Ton personnage",
  "Your characters and settings stay in your Mac account's app folder. The new app updates the addon; type /reload in WoW once.": "Tes personnages et réglages restent dans le dossier de l'app de ton compte Mac. La nouvelle app met à jour l'addon ; tape /reload une fois dans WoW.",
  "Your characters at a glance": "Tes personnages en un coup d'œil",
+ "Your characters at a glance, their journals, gear and a gear plan, talents and trainer costs, the story so far, and every badge.": "Tes personnages d'un coup d'œil, leurs journaux, leur équipement et un plan d'équipement, les talents et le coût des maîtres, l'histoire jusqu'ici et chaque insigne.",
  "Your characters, all of them at a glance, their journals, gear and gear sets, and a talent path for leveling.": "Tous tes personnages en un coup d'œil, leurs journaux, leur équipement et leurs ensembles, et un parcours de talents pour monter en niveau.",
  "Your chosen role": "Ton rôle choisi",
  "Your class": "Ta classe",
+ "Your class trainer has the details; Forever may move a level or two.": "Ton maître de classe a les détails ; Forever peut décaler d'un niveau ou deux.",
  "Your code": "Ton code",
  "Your companion checks for a new version while it is open and tells you here when one is out.": "Ton compagnon cherche une nouvelle version tant qu'il est ouvert et te le dit ici quand il y en a une.",
  "Your companion for World of Warcraft: Forever": "Ton compagnon pour World of Warcraft: Forever",
@@ -1705,6 +1926,7 @@ window.BF_LOCALE_FR = {
  "Your next quest, your trainer and your map,": "Ta prochaine quête, ton maître et ta carte,",
  "Your next step": "Ta prochaine étape",
  "Your next step, every zone you can level in, dungeons and profession plans.": "Ta prochaine étape, toutes les zones où monter en niveau, les donjons et les plans de métier.",
+ "Your next step, every zone, a travel planner, dungeons with run history and keys, and professions with a recipe book.": "Ta prochaine étape, chaque zone, un planificateur de trajet, les donjons avec l'historique des runs et les clés, et les métiers avec un livre de recettes.",
  "Your next steps": "Tes prochaines étapes",
  "Your objectives": "Tes objectifs",
  "Your pace appears after a few minutes of play.": "Ton rythme apparaît après quelques minutes de jeu.",
@@ -1733,6 +1955,7 @@ window.BF_LOCALE_FR = {
  "Zone finished: 90% of its quests done": "Zone terminée : 90 % de ses quêtes faites",
  "Zone for the gathering loop": "Zone pour le circuit de récolte",
  "Zone levels: Backstage Coding review of classic zone level ranges and quest towns. WoW Forever may differ; quest data observed in play overrides these bands where it exists. Quest, trainer and NPC references: Efficient Games, CC BY 4.0.": "Niveaux des zones : relecture par Backstage Coding des tranches de niveaux classiques et des villes de quêtes. WoW Forever peut différer ; les données de quêtes observées en jeu remplacent ces tranches quand elles existent. Références de quêtes, maîtres et PNJ : Efficient Games, CC BY 4.0.",
+ "Zone map": "Carte de zone",
  "Zone map. Arrow keys move it, plus and minus zoom, 0 shows the whole zone. Every pin is also in the search and the lists beside the map.": "Carte de zone. Les flèches la déplacent, plus et moins zooment, 0 montre toute la zone. Chaque repère est aussi dans la recherche et les listes à côté de la carte.",
  "zones finished": "zones terminées",
  "Zones finished": "Zones terminées",
@@ -1741,6 +1964,22 @@ window.BF_LOCALE_FR = {
  "Zoom out": "Zoom arrière"
 };
 window.BF_LOCALE_FR_TEMPLATES = [
+ [
+  "^For each slot: what you wear and up to ([0-9][0-9.,:/%–-]*) upgrades you can use now or within ([0-9][0-9.,:/%–-]*) levels, best first by your stat weights\\. A suggestion from the data on this computer, not a best-in-slot list\\. Pin one target per slot; pinned targets are marked in the in-game atlas like your wish list after the next /reload\\.$",
+  "Pour chaque emplacement : ce que tu portes et jusqu'à {#0} améliorations utilisables maintenant ou d'ici {#1} niveaux, la meilleure d'abord selon tes poids de stats. Une suggestion tirée des données de cet ordinateur, pas une liste best-in-slot. Épingle une cible par emplacement ; les cibles épinglées sont marquées dans l'atlas en jeu comme ta liste de souhaits après le prochain /reload.",
+  [
+   0,
+   1
+  ]
+ ],
+ [
+  "^Flight masters are counted from the ([0-9][0-9.,:/%–-]*) flight points players recorded; ([0-9][0-9.,:/%–-]*) of them have no recorded place yet and are in no zone's count\\. A zone with 0 may simply have no flight master\\. Class trainers stand mostly in the capital cities, which are not leveling zones, so most zones show 0 for them\\.$",
+  "Les maîtres de vol sont comptés à partir des {#0} points de vol enregistrés par les joueurs ; {#1} d'entre eux n'ont pas encore de lieu enregistré et ne comptent dans aucune zone. Une zone à 0 n'a peut-être simplement pas de maître de vol. Les maîtres de classe se tiennent surtout dans les capitales, qui ne sont pas des zones de montée de niveau ; la plupart des zones affichent donc 0 pour eux.",
+  [
+   0,
+   1
+  ]
+ ],
  [
   "^([0-9][0-9.,:/%–-]*) rare enemies are known by name\\. A player recorded a place for ([0-9][0-9.,:/%–-]*) of them, and a drop for ([0-9][0-9.,:/%–-]*)\\. The addon tells you when you meet any of them\\. Rares are not always up\\.$",
   "{0} ennemis rares sont connus par leur nom. Un joueur a noté un endroit pour {1} d'entre eux, et un butin pour {2}. L'addon te prévient quand tu en croises un. Les rares ne sont pas toujours présents.",
@@ -1751,8 +1990,25 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^Flight times and prices are what players recorded on game builds ([0-9][0-9.,:/%–-]*) to ([0-9][0-9.,:/%–-]*) \\(([0-9][0-9.,:/%–-]*) of ([0-9][0-9.,:/%–-]*) connections timed\\)\\. Boats, zeppelins, the tram and portals are not in this data\\.$",
+  "Les temps et les prix de vol sont ceux que les joueurs ont enregistrés sur les builds {#0} à {#1} ({#2} liaisons chronométrées sur {#3}). Les bateaux, les zeppelins, le tram et les portails ne sont pas dans ces données.",
+  [
+   0,
+   1,
+   2,
+   3
+  ]
+ ],
+ [
   "^One click downloads a small AI model \\((.+?)\\) and runs it on this PC\\. It's free, private and works offline\\. No account, no key, nothing to install yourself\\.$",
   "Un clic télécharge un petit modèle d'IA ({0}) et le lance sur ce PC. C'est gratuit, privé et ça marche hors ligne. Pas de compte, pas de clé, rien à installer toi-même.",
+  [
+   0
+  ]
+ ],
+ [
+  "^Save the ([0-9][0-9.,:/%–-]*) events still ahead as an \\.ics file and open it in any calendar app\\. The file is a copy: it does not update itself\\.$",
+  "Enregistre les {#0} événements encore à venir dans un fichier .ics et ouvre-le dans n'importe quelle app de calendrier. Le fichier est une copie : il ne se met pas à jour tout seul.",
   [
    0
   ]
@@ -1791,6 +2047,17 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^Checked: ([0-9][0-9.,:/%–-]*) quest rewards · ([0-9][0-9.,:/%–-]*) vendor items · ([0-9][0-9.,:/%–-]*) boss drops · ([0-9][0-9.,:/%–-]*) creature drops · ([0-9][0-9.,:/%–-]*) recipes you know\\.$",
+  "Vérifié : {#0} récompenses de quête · {#1} objets de marchand · {#2} butins de boss · {#3} butins de créature · {#4} recettes que tu connais.",
+  [
+   0,
+   1,
+   2,
+   3,
+   4
+  ]
+ ],
+ [
   "^Installed: version (.+?)\\. Updates download in the background and install when you close the app\\.$",
   "Installé : version {0}. Les mises à jour se téléchargent en arrière-plan et s'installent quand tu fermes l'app.",
   [
@@ -1806,6 +2073,14 @@ window.BF_LOCALE_FR_TEMPLATES = [
    2,
    3,
    4
+  ]
+ ],
+ [
+  "^Seen in trainer windows by players on game builds ([0-9][0-9.,:/%–-]*) to ([0-9][0-9.,:/%–-]*)\\. Efficient Games, CC BY 4\\.0\\.$",
+  "Vu dans les fenêtres de maître par des joueurs sur les builds {#0} à {#1}. Efficient Games, CC BY 4.0.",
+  [
+   0,
+   1
   ]
  ],
  [
@@ -1887,6 +2162,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^([0-9][0-9.,:/%–-]*) zones visited, but when and at what level was not saved\\.$",
+  "{#0} zones visitées, mais quand et à quel niveau n'a pas été sauvegardé.",
+  [
+   0
+  ]
+ ],
+ [
   "^Only ([0-9][0-9.,:/%–-]*) spot in ([0-9][0-9.,:/%–-]*) place here\\. A loop needs at least ([0-9][0-9.,:/%–-]*) places\\.$",
   "Seulement {0} point dans {1} endroit ici. Un circuit demande au moins {2} endroits.",
   [
@@ -1898,6 +2180,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
  [
   "^Save this provider’s API key to refresh models\\. Checked (.+?)$",
   "Enregistre la clé API de ce fournisseur pour actualiser les modèles. Vérifié {0}",
+  [
+   0
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) other recipes have no price seen and could be cheaper\\.$",
+  "{#0} autres recettes n'ont aucun prix vu et pourraient être moins chères.",
   [
    0
   ]
@@ -1948,6 +2237,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^Flight points: ([0-9][0-9.,:/%–-]*) learned, as saved by the addon\\.$",
+  "Points de vol : {#0} appris, d'après la sauvegarde de l'addon.",
+  [
+   0
+  ]
+ ],
+ [
   "^\\(at least ([0-9][0-9.,:/%–-]*) if they logged out outside an inn\\)$",
   "(au moins {0} s'il s'est déconnecté hors d'une auberge)",
   [
@@ -1981,6 +2277,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
   [
    0,
    1
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) letters when the mailbox was last opened$",
+  "{#0} lettres quand la boîte aux lettres a été ouverte pour la dernière fois",
+  [
+   0
   ]
  ],
  [
@@ -2072,6 +2375,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^of ([0-9][0-9.,:/%–-]*) skill points have a priced step$",
+  "sur {#0} points de compétence ont une étape avec prix",
+  [
+   0
+  ]
+ ],
+ [
   "^, ([0-9][0-9.,:/%–-]*) quests left at your level band\\.$",
   ", {0} quêtes restantes dans ta tranche de niveaux.",
   [
@@ -2082,6 +2392,14 @@ window.BF_LOCALE_FR_TEMPLATES = [
   "^“(.+?)”: do the objectives around here$",
   "« {0} » : fais les objectifs par ici",
   [
+   0
+  ]
+ ],
+ [
+  "^Reached level ([0-9][0-9.,:/%–-]*) (.+?) sooner than you\\.$",
+  "A atteint le niveau {#0} {0} plus tôt que toi.",
+  [
+   0,
    0
   ]
  ],
@@ -2102,6 +2420,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
  [
   "^Game snapshot · Saved · (.+?) ago$",
   "Sauvegarde du jeu · Enregistré · il y a {0}",
+  [
+   0
+  ]
+ ],
+ [
+  "^Show ([0-9][0-9.,:/%–-]*) steps below your skill$",
+  "Afficher {#0} étapes sous ta compétence",
   [
    0
   ]
@@ -2161,11 +2486,25 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^([0-9][0-9.,:/%–-]*) yards in a straight line$",
+  "{#0} mètres en ligne droite",
+  [
+   0
+  ]
+ ],
+ [
   "^Level ([0-9][0-9.,:/%–-]*): come back around ([0-9][0-9.,:/%–-]*)$",
   "Niveau {0} : reviens vers le niveau {1}",
   [
    0,
    1
+  ]
+ ],
+ [
+  "^Your character · ([0-9][0-9.,:/%–-]*) fastest$",
+  "Ton personnage · {#0} fois le plus rapide",
+  [
+   0
   ]
  ],
  [
@@ -2247,6 +2586,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^talent points at level ([0-9][0-9.,:/%–-]*)$",
+  "points de talent au niveau {#0}",
+  [
+   0
+  ]
+ ],
+ [
   "^([0-9][0-9.,:/%–-]*) quests · ([0-9][0-9.,:/%–-]*) in your log$",
   "{0} quêtes · {1} dans ton journal",
   [
@@ -2288,6 +2634,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
    0,
    1,
    2
+  ]
+ ],
+ [
+  "^Reach a standing with (.+?)$",
+  "Atteindre un niveau de réputation auprès de {0}",
+  [
+   0
   ]
  ],
  [
@@ -2353,6 +2706,14 @@ window.BF_LOCALE_FR_TEMPLATES = [
   "banque vue il y a {0} heures",
   [
    0
+  ]
+ ],
+ [
+  "^item level ([0-9][0-9.,:/%–-]*) · score ([0-9][0-9.,:/%–-]*)$",
+  "niveau d'objet {#0} · score {#1}",
+  [
+   0,
+   1
   ]
  ],
  [
@@ -2490,6 +2851,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^of ([0-9][0-9.,:/%–-]*) points placed$",
+  "sur {#0} points placés",
+  [
+   0
+  ]
+ ],
+ [
   "^of ([0-9][0-9.,:/%–-]*) zones visited$",
   "sur {0} zones visitées",
   [
@@ -2499,6 +2867,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
  [
   "^Worth a look · (.+?) ↗$",
   "À voir · {0} ↗",
+  [
+   0
+  ]
+ ],
+ [
+  "^(.+?) reputation plan$",
+  "Plan de réputation : {0}",
   [
    0
   ]
@@ -2633,6 +3008,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^You · ([0-9][0-9.,:/%–-]*) fastest$",
+  "Toi · {#0} fois le plus rapide",
+  [
+   0
+  ]
+ ],
+ [
   "^(.+?) · right here$",
   "{0} · juste ici",
   [
@@ -2716,6 +3098,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^(.+?) navigation$",
+  "Navigation : {0}",
+  [
+   0
+  ]
+ ],
+ [
   "^Continue “(.+?)”$",
   "Continuer « {0} »",
   [
@@ -2725,6 +3114,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
  [
   "^of level ([0-9][0-9.,:/%–-]*) ·$",
   "du niveau {0} ·",
+  [
+   0
+  ]
+ ],
+ [
+  "^Skill path ([0-9][0-9.,:/%–-]*)$",
+  "Parcours de compétence {#0}",
   [
    0
   ]
@@ -2749,6 +3145,20 @@ window.BF_LOCALE_FR_TEMPLATES = [
   [
    0,
    1
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) skills ·$",
+  "{#0} compétences ·",
+  [
+   0
+  ]
+ ],
+ [
+  "^(.+?) sections$",
+  "Sections : {0}",
+  [
+   0
   ]
  ],
  [
@@ -2790,8 +3200,36 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^in ([0-9][0-9.,:/%–-]*) days$",
+  "dans {#0} jours",
+  [
+   0
+  ]
+ ],
+ [
+  "^runs by (.+?)$",
+  "runs de {0}",
+  [
+   0
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) points$",
+  "{#0} points",
+  [
+   0
+  ]
+ ],
+ [
   "^([0-9][0-9.,:/%–-]*) quests$",
   "{0} quêtes",
+  [
+   0
+  ]
+ ],
+ [
+  "^levels ([0-9][0-9.,:/%–-]*)$",
+  "niveaux {#0}",
   [
    0
   ]
@@ -2827,6 +3265,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
  [
   "^from (.+?)$",
   "de {0}",
+  [
+   0
+  ]
+ ],
+ [
+  "^Rank ([0-9][0-9.,:/%–-]*)$",
+  "Rang {#0}",
   [
    0
   ]
