@@ -4,7 +4,7 @@ const {COMMIT,BUILD,BUILDS,ATTRIBUTION,SOURCES,LICENSE}=require('../src/core/npc
 const {normalizeNpcLocations,mergeNpcLocationPacks,validateNpcLocationPack,RAW_LIMIT,PACK_LIMIT,hash}=require('../src/core/npc-location-data.cjs');
 const dir=path.join(__dirname,'../data/forever-npc-locations');
 // Pinned merged coverage (NPC identities / bounded map points) for the bundled builds.
-const COVERAGE={npcs:1450,positions:3265};
+const COVERAGE={npcs:1449,positions:3263};
 const LOCK={schemaVersion:1,product:'wowf',build:BUILD,builds:BUILDS,commit:COMMIT,license:'CC BY 4.0',attribution:ATTRIBUTION,files:SOURCES.map(s=>structuredClone(s))};
 /** sourceDir holds one subdirectory per pinned build: sourceDir/<build>/npcs.json. */
 function compile(sourceDir){

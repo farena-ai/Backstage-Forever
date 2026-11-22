@@ -589,8 +589,6 @@ BackstageForeverFindData = {
 {"Sven Yorgen","",1431,78,339,"n"},
 {"Tavernkeep Smitts","",1431,738,443,"n"},
 {"Tavernkeep Smitts","",1431,741,448,"n"},
-{"Unknown","",1431,553,91,"n"},
-{"Unknown","",1431,740,462,"n"},
 {"Viktori Prism'Antras","",1431,798,480,"n"},
 {"Watcher Dodds","",1431,451,669,"n"},
 {"Watcher Ladimore","",1431,738,475,"n"},
