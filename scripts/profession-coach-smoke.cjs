@@ -443,7 +443,7 @@ function shortPath(target) {
       (await page.evaluate(() => window.backstage.bootstrap())).state;
     const untilMain = (condition) =>
       app.evaluate(async (_e, condition) => {
-        const end = Date.now() + 6000;
+        const end = Date.now() + 20000; // GitHub's runners can take several seconds to deliver one click
         while (!Function(`return (${condition})`)()) {
           if (Date.now() > end)
             throw Error("Fixture condition timed out: " + condition);
