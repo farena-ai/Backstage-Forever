@@ -140,3 +140,21 @@ combat=false;assert(BackstageForeverWelcomeOpen()==true and BackstageForeverWelc
   assert.match(assist, /pcall\(BackstageForeverWelcomeOpen\);shown=ok and value==true/, "first login tries the card, then falls back to the banner");
   assert.match(read("addon/BackstageForever/BackstageForeverHUD.lua"), /word=='welcome'/);
 });
+
+test("/way X Y [name] places a waypoint on the map you are on, unless another addon owns /way", () => lua(STUBS + String.raw`
+dofile('addon/BackstageForever/BackstageForeverOptions.lua')
+local x,y,label=BackstageForeverWayText('51.5 30.9 Thork')
+assert(x==51.5 and y==30.9 and label=='Thork')
+x,y,label=BackstageForeverWayText(' 45.2, 61.8 ')
+assert(x==45.2 and y==61.8 and label=='')
+for _,bad in ipairs({'','north','120 50','50','50 -3',string.rep('1',130)}) do assert(BackstageForeverWayText(bad)==nil,bad) end
+local sent
+BackstageForeverWay=function(m) sent=m end
+C_Map={GetBestMapForUnit=function() return 1413 end}
+assert(BackstageForeverWayRegister()==true and SLASH_BACKSTAGEFOREVERWAY1=='/way')
+SlashCmdList.BACKSTAGEFOREVERWAY('0.5 30 Camp')
+assert(sent=='way 1413 0.0050 0.3000 Camp',sent)
+sent=nil;SlashCmdList.BACKSTAGEFOREVERWAY('nowhere');assert(sent==nil and said[#said]:find('Use /way X Y',1,true))
+SlashCmdList.BACKSTAGEFOREVERWAY=nil;SlashCmdList.TOMTOM_WAY=function() end
+assert(BackstageForeverWayRegister()==false,'another waypoint addon keeps /way')
+`));

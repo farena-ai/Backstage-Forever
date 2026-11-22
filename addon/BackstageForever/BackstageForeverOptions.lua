@@ -294,3 +294,34 @@ end
 function BackstageForeverWelcomeCommand()
     if not BackstageForeverWelcomeOpen() then say('Open the welcome card outside combat.') end
 end
+
+-- /way X Y [name] (1.18): the waypoint line players paste from guides and chat, placed on the map
+-- you are on. A typed command, so the game allows the waypoint. Left alone when another addon
+-- already answers /way.
+function BackstageForeverWayText(message)
+    if type(message)~='string' or #message>120 then return nil end
+    local x,y,label=message:match('^%s*([%d%.]+)[,%s]+([%d%.]+)%s*(.-)%s*$')
+    x,y=tonumber(x),tonumber(y)
+    if not x or not y or x<0 or x>100 or y<0 or y>100 then return nil end
+    return x,y,label
+end
+local function way(message)
+    local x,y,label=BackstageForeverWayText(message)
+    if not x then say('Use /way X Y [name], for example /way 51.5 30.9 Thork.') return end
+    local map=type(C_Map)=='table' and type(C_Map.GetBestMapForUnit)=='function' and C_Map.GetBestMapForUnit('player')
+    if type(map)~='number' then say('Your map is not known yet; try again in a moment.') return end
+    if type(BackstageForeverWay)=='function' then BackstageForeverWay(('way %d %.4f %.4f %s'):format(map,x/100,y/100,label or '')) end
+end
+function BackstageForeverWayRegister()
+    if type(SlashCmdList)~='table' or SlashCmdList.BACKSTAGEFOREVERWAY then return false end
+    if SlashCmdList.TOMTOM_WAY or SLASH_TOMTOM_WAY1 then return false end
+    if type(hash_SlashCmdList)=='table' and hash_SlashCmdList['/WAY'] then return false end
+    SLASH_BACKSTAGEFOREVERWAY1='/way'
+    SlashCmdList.BACKSTAGEFOREVERWAY=way
+    return true
+end
+if type(CreateFrame)=='function' then
+    local wayLoader=CreateFrame('Frame')
+    wayLoader:RegisterEvent('PLAYER_LOGIN')
+    wayLoader:SetScript('OnEvent',function() pcall(BackstageForeverWayRegister) end)
+end
