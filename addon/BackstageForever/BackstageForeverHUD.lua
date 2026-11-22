@@ -946,6 +946,34 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverBagsCommand)=='function' then pcall(BackstageForeverBagsCommand,message)end
                 return
             end
+            if word=='lfg' then
+                if type(BackstageForeverLfgCommand)=='function' then pcall(BackstageForeverLfgCommand,message)end
+                return
+            end
+            if word=='check' then
+                if type(BackstageForeverCheckCommand)=='function' then pcall(BackstageForeverCheckCommand,message)end
+                return
+            end
+            if word=='mentor' then
+                if type(BackstageForeverMentorCommand)=='function' then pcall(BackstageForeverMentorCommand,message)end
+                return
+            end
+            if word=='sr' then
+                if type(BackstageForeverSoftCommand)=='function' then pcall(BackstageForeverSoftCommand,message)end
+                return
+            end
+            if word=='guild' then
+                if type(BackstageForeverGuildCommand)=='function' then pcall(BackstageForeverGuildCommand,message)end
+                return
+            end
+            if word=='shop' then
+                if type(BackstageForeverShopCommand)=='function' then pcall(BackstageForeverShopCommand,message)end
+                return
+            end
+            if word=='addons' then
+                if type(BackstageForeverBesideCommand)=='function' then pcall(BackstageForeverBesideCommand,message)end
+                return
+            end
             if word=='train' or word=='repair' or word=='flights' or word=='xp' or word=='hearth' or word=='help' or word=='toasts' or word=='danger' or word=='junk' then
                 if type(BackstageForeverAssistCommand)=='function' then pcall(BackstageForeverAssistCommand,message)end
                 return

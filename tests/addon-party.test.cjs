@@ -79,7 +79,12 @@ group=false handler(nil,'GROUP_ROSTER_UPDATE') assert(next(BackstageForeverParty
 
 test("party sync stays within its rules", () => {
   const src = fs.readFileSync(path.join(__dirname, "../addon/BackstageForever/BackstageForeverParty.lua"), "utf8");
-  for (const banned of ["'RAID'", "'GUILD'", "'WHISPER'", "SendChatMessage", "hooksecurefunc", "QuestLogPushQuest", "AcceptQuest"]) assert.ok(!src.includes(banned), banned);
+  for (const banned of ["'RAID'", "'WHISPER'", "SendChatMessage", "hooksecurefunc", "QuestLogPushQuest", "AcceptQuest"]) assert.ok(!src.includes(banned), banned);
+  // 1.25: guild sharing (its own switch, off by default) uses this channel code. The guild channel is named in exactly two
+  // places: the gate that sends and the gate that hands a guild message to a guild handler. Party sync itself never uses it.
+  assert.equal((src.match(/'GUILD'/g) || []).length, 2);
+  assert.ok(src.includes("return pcall(fn,PREFIX,text,'PARTY')"), "party sync's own send is PARTY only");
+  assert.ok(src.includes("if channel~='PARTY' or not settings.enabled then return end"));
   const toc = fs.readFileSync(path.join(__dirname, "../addon/BackstageForever/BackstageForever.toc"), "utf8");
   assert.match(toc, /BackstageForeverPartySettings/); assert.match(toc, /BackstageForeverParty\.lua/);
 });

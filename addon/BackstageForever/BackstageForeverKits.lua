@@ -333,6 +333,16 @@ local function readReady(asked)
     return state
 end
 
+-- How many things your class carries are running low (ammo counts as one), for the party
+-- readiness check. A number only: no names leave this file. nil when your class is not readable.
+function BackstageForeverKitLowCount()
+    local ok,kit=pcall(readKit)
+    if not ok or type(kit)~='table' then return nil end
+    local low=kit.ammoLow and 1 or 0
+    for _,row in ipairs(kit.rows or {}) do if row.low and not row.quiet then low=low+1 end end
+    return low
+end
+
 -- ---------------------------------------------------------------- commands
 function BackstageForeverKitCommand()
     if combat() then return say('Try /bf kit outside combat.') end

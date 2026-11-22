@@ -3,6 +3,8 @@
 -- quest IDs and objective counts, nothing else. /bf party shows who needs what;
 -- /bf party way shares your waypoint, /bf party go follows the last one shared with you.
 -- /bf party off stops sending and listening.
+-- Since 1.25 the readiness check, mentor link and soft-reserve list use the same party channel and
+-- stop with the same switch; guild sharing (off until you turn it on) uses the guild channel.
 local floor,min=math.floor,math.min
 local function plain(v)
     if v==nil then return nil end
@@ -180,11 +182,52 @@ local function broadcast(force)
     lastSent,lastBody,due=t,key,false
 end
 
+-- Other helpers ride on this one channel (1.25): the readiness check, the mentor link and the
+-- soft-reserve list on PARTY, guild sharing on GUILD. They register a handler for the first letter
+-- of their messages and send through BackstageForeverPartySend, so the same rules hold for all:
+-- one prefix, at most 255 bytes, party only while party sync is on, never a raid, never a whisper.
+-- Q, R and W belong to party sync itself.
+local handlers={PARTY={},GUILD={}}
+function BackstageForeverPartyHandle(kind,fn,channel)
+    local list=handlers[channel or 'PARTY']
+    if not list or type(kind)~='string' or #kind~=1 or kind=='Q' or kind=='R' or kind=='W' or type(fn)~='function' then return false end
+    list[kind]=fn
+    return true
+end
+function BackstageForeverPartyOn()
+    if not settings then loadSettings() end
+    return settings.enabled==true
+end
+function BackstageForeverPartySend(text,channel)
+    if not settings then loadSettings() end
+    if type(text)~='string' or text=='' or #text>255 then return false end
+    if channel=='GUILD' then
+        if call(IsInGuild)~=true then return false end
+    else
+        channel='PARTY'
+        if not settings.enabled or not inParty() then return false end
+    end
+    local fn=field(plain(C_ChatInfo),'SendAddonMessage')
+    if type(fn)~='function' then return false end
+    return (pcall(fn,PREFIX,text,channel))
+end
+
 local function onMessage(prefix,message,channel,sender)
-    if prefix~=PREFIX or channel~='PARTY' or not settings.enabled then return end
+    if prefix~=PREFIX then return end
+    if channel=='GUILD' then
+        -- Guild sharing has its own switch (off until you turn it on); its handler checks it.
+        sender=shortName(sender)
+        if not sender or sender==me() or type(message)~='string' or message=='' or #message>255 then return end
+        local handler=handlers.GUILD[message:sub(1,1)]
+        if handler then pcall(handler,sender,message) end
+        return
+    end
+    if channel~='PARTY' or not settings.enabled then return end
     sender=shortName(sender)
     if not sender or sender==me() or type(message)~='string' or #message>255 then return end
     if message=='R' then lastBody=nil;broadcast(false);return end
+    local handler=handlers.PARTY[message:sub(1,1)]
+    if handler then pcall(handler,sender,message) return end
     local x,y,map,label=message:match('^W|([%d%.]+)|([%d%.]+)|(%d+)|(.*)$')
     if x then
         state.way={map=tonumber(map),x=tonumber(x),y=tonumber(y),label=(label or ''):sub(1,40),from=sender}
@@ -213,6 +256,7 @@ local function myWaypoint()
     if pos then local getXY=field(pos,'GetXY') if getXY then x,y=call(getXY,pos) end end
     if map and x and y and (x>0 or y>0) then return map,x,y,'where I am' end
 end
+BackstageForeverPartyMyWaypoint=myWaypoint -- the mentor link sends the same thing to one player
 
 function BackstageForeverPartyCommand(message)
     if not settings then loadSettings() end
