@@ -144,6 +144,7 @@ if type(CreateFrame)=='function' then
     if events then
         local hooked=false
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'MapSearch',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             local map=plain(WorldMapFrame)
             if event=='PLAYER_LOGIN' and map and not hooked and type(map.HookScript)=='function' then

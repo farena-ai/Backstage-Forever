@@ -64,6 +64,10 @@ const MAX = 1024 * 1024,
     "BackstageForeverMapSearch.lua",
     "BackstageForeverDesktop.lua",
     "BackstageForeverTalents.lua",
+    "BackstageForeverPerf.lua",
+    "BackstageForeverAnswers.lua",
+    "BackstageForeverScout.lua",
+    "BackstageForeverRaid.lua",
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");
@@ -164,6 +168,9 @@ function parseSavedVariables(raw) {
   )
     invalid();
   const seen = new Set();
+  // Scout mode (roadmap S1): an optional block per character, kept beside the characters so the
+  // profile store, which knows nothing of it, is not touched.
+  const scout = [];
   const characters = s.characters.map((c) => {
     if (!c || typeof c !== "object") invalid();
     const key = id(c.id);
@@ -244,11 +251,17 @@ function parseSavedVariables(raw) {
     if (c.gearSets !== undefined) {
       try { out.gearSets = require("./sheet.cjs").normalizeGearSetsCapture(c.gearSets); } catch { /* Omit the entire invalid optional block. */ }
     }
+    if (c.scout !== undefined) {
+      try {
+        const block = require("./scout.cjs").normalizeScoutCapture(c.scout);
+        if (block.records.length) scout.push({ id: key, name: out.name, realm: out.realm || "", ...(out.faction ? { faction: out.faction } : {}), ...(typeof out.clientBuild === "string" ? { clientBuild: out.clientBuild } : {}), scout: block });
+      } catch { /* Omit the entire invalid optional block. */ }
+    }
     return out;
   });
   const activeId = s.activeId === null ? null : id(s.activeId);
   if (activeId && !seen.has(activeId)) invalid();
-  return { characters, activeId, observedAt: stamp(s.observedAt) };
+  return { characters, activeId, observedAt: stamp(s.observedAt), ...(scout.length ? { scout } : {}) };
 }
 async function safe(target, kind) {
   const absolute = path.resolve(target),
@@ -395,6 +408,14 @@ class GameSync {
     } catch { return false; } finally {
       if (temporary) await fs.unlink(temporary).catch(() => {});
     }
+  }
+  /** Scout mode records read from the game's saved file: [{ id, name, realm, faction, clientBuild, scout }]. */
+  scoutCapture() {
+    return (this.scoutBlocks || []).map((e) => ({ ...e }));
+  }
+  /** The scout export document (scout.cjs) for what was read; the caller decides where to write it. */
+  scoutExport(exportedAt = null) {
+    return require("./scout.cjs").scoutExport(this.scoutCapture(), { exportedAt });
   }
   status() {
     const state = structuredClone(this.state);
@@ -768,6 +789,8 @@ class GameSync {
       // their already imported observations and private journals independently.
       for (const name of snapshots.keys()) if (!seenAccounts.has(name)) { malformed = true; unreadableAccountCount++; snapshots.delete(name); }
       if (cancelled()) return this.status();
+      // Scout records of every character read this time; parsed and kept in memory, never uploaded.
+      this.scoutBlocks = [...snapshots.values()].flatMap((s) => s.scout || []).slice(0, 100);
       const composite = combineSnapshots([...snapshots.values()]);
       const best = composite?.snapshot;
       this.state.coverage = { ...this.state.coverage, partial: malformed || Boolean(composite?.coverage.omittedCharacterCount) || this.state.coverage.omittedProfileCount > 0, unreadableAccountCount, omittedCharacterCount: composite?.coverage.omittedCharacterCount || 0 };

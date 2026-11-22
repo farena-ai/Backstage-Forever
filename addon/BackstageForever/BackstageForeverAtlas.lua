@@ -174,12 +174,20 @@ local function showQuestList()
     frame.tip:SetText(T(BackstageForeverAtlasQuestHint(#list)))
     frame.noLoot:SetText('')
     for _,l in ipairs(lootRows) do l:Hide() end
+    -- 1.26: after /bf check for this dungeon, who in the party still needs each quest.
+    local needers
+    local place=rows()[selected]
+    if type(BackstageForeverCheckNeeders)=='function' and type(place)=='table' then
+        local ok,map=pcall(BackstageForeverCheckNeeders,place[1])
+        if ok and type(map)=='table' then needers=map end
+    end
     for i,line in ipairs(questRows) do
         local q=list[i]
         if q then
             line.quest=q
             local color=q.state=='done' and '|cff40ff40' or q.state=='log' and '|cffffd133' or '|cffffffff'
-            line.text:SetText(color..BackstageForeverAtlasQuestMark(q.state)..q.title..'|r'..(q.level>0 and ('  |cffaaaaaa'..q.level..'|r') or '')..(q.giver and ('  |cffaaaaaa'..q.giver..'|r') or ''))
+            local who=needers and needers[q.id]
+            line.text:SetText(color..BackstageForeverAtlasQuestMark(q.state)..q.title..'|r'..(who and ('  |cffff9933'..T('needs:')..' '..who..'|r') or '')..(q.level>0 and ('  |cffaaaaaa'..q.level..'|r') or '')..(q.giver and ('  |cffaaaaaa'..q.giver..'|r') or ''))
             line:Show()
         else line.quest=nil;line:Hide() end
     end
@@ -366,6 +374,7 @@ local function build()
         lootRows[i]=line
     end
     f:RegisterEvent('PLAYER_REGEN_DISABLED');f:RegisterEvent('GET_ITEM_INFO_RECEIVED')
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Atlas',f) end
     f:SetScript('OnEvent',function(_,event)
         if event=='PLAYER_REGEN_DISABLED' then f:Hide() elseif f:IsShown() then showBoss() end
     end)

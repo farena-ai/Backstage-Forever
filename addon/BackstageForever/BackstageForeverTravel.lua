@@ -345,6 +345,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         pcall(events.RegisterEvent,events,'HEARTHSTONE_BOUND')
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Travel',events) end
         pcall(events.SetScript,events,'OnEvent',function() pcall(rememberBind) end)
     end
 end

@@ -42,6 +42,7 @@ local PAGES={
         switch('Quest icons over enemies','A ! over the nameplate of enemies a quest still needs.',on('BackstageForeverRouteSettings','plates'),'plates'),
         switch('Minimap pins','Nearby quests, hand-ins, trainers and flight masters on the minimap.',on('BackstageForeverMinimapSettings','enabled'),'minimap'),
         switch('Gear hints','Upgrade lines on item tooltips and on quest rewards.',on('BackstageForeverGearSettings','enabled'),'gear'),
+        switch('Chain steps in tooltips','Quest link tooltips say which step of its chain a quest is and which quest the chain ends with.',on('BackstageForeverPanelSettings','chainTips'),'chain tips'),
         helper('spellRankReminder','Spell rank reminder','Tells you when your action bar still holds a lower rank of a spell you have trained.'),
     }},
     {title='Alerts',rows={
@@ -76,6 +77,8 @@ local PAGES={
         switch('Map search box','A small find box at the bottom left of the world map.',on('BackstageForeverWorldSettings','searchBox'),'mapsearch'),
         switch('Marks without colour','Adds [+], [x] or [!] to lines that otherwise tell good from bad by colour alone.',off('BackstageForeverSocialSettings','marks'),'access marks'),
         switch('Larger window text','Makes the Adventure Compass, this window and the welcome card 15% larger.',off('BackstageForeverSocialSettings','text'),'access text'),
+        switch('Large buttons','Makes the Compass, the step scroll, this window and the owl button 30% larger, for handhelds and controllers.',off('BackstageForeverSocialSettings','large'),'access large'),
+        switch('Explain on Alt-click','Alt-click an item to put it in the companion panel\'s question box. Nothing is asked for you.',off('BackstageForeverAskSettings','explainClick'),'explain click'),
         {label='Owl button on the minimap',about='Left-click asks the companion; right-click opens these settings. /bf ask show brings it back.',
             get=function() return saved('BackstageForeverAskSettings','hidden')~=true end,
             set=function(value) run(value and 'ask show' or 'ask hide') end},
@@ -89,6 +92,8 @@ local PAGES={
         switch('Group finder board','Reads looking-for-group lines in channels you joined into /bf lfg. It never sends.',on('BackstageForeverLfgSettings','enabled'),'lfg'),
         switch('Answer readiness checks','When a party member types /bf check, a short status goes to your party. Needs party sync.',on('BackstageForeverPartySettings','answerChecks'),'check answers'),
         switch('Guild sharing','Shares level, zone, professions and a dungeon flag with guild members who run the addon.',off('BackstageForeverGuildSettings','share'),'guild'),
+        switch('Raid comms','Boss notes, assignments and a readiness roll-up inside your raid, from the leader or an assistant. Text only.',off('BackstageForeverRaidSettings','enabled'),'raid'),
+        switch('Scout mode','Notes the quest givers, trainers, vendors and flight masters you talk to. It stays on this computer.',off('BackstageForeverScoutDB','on'),'scout'),
         switch('Auction shopping list','Your profession shopping list beside the auction window. A click fills the search box.',on('BackstageForeverShopSettings','enabled'),'shop'),
         switch('Step aside for other addons','Switches off what another addon already draws, and says so once. /bf addons lists it.',on('BackstageForeverBesideSettings','enabled'),'addons'),
     }},
@@ -243,6 +248,7 @@ BINDING_NAME_BACKSTAGEFOREVER_NEXT='Point me to my next quest stop'
 BINDING_NAME_BACKSTAGEFOREVER_ASK='Ask the companion'
 BINDING_NAME_BACKSTAGEFOREVER_OPTIONS='Open Backstage Forever settings'
 BINDING_NAME_BACKSTAGEFOREVER_ATLAS='Open the Instance Atlas'
+BINDING_NAME_BACKSTAGEFOREVER_EXPLAIN='Explain what I point at (fills the question box)'
 function BackstageForeverBinding(command) run(command) end
 
 -- An entry in the game's own options list that opens the painted window.
@@ -262,6 +268,7 @@ end
 if type(CreateFrame)=='function' then
     local loader=CreateFrame('Frame')
     loader:RegisterEvent('PLAYER_LOGIN')
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Options',loader) end
     loader:SetScript('OnEvent',function() pcall(register) end)
 end
 
@@ -356,6 +363,7 @@ end
 if type(CreateFrame)=='function' then
     local wayLoader=CreateFrame('Frame')
     wayLoader:RegisterEvent('PLAYER_LOGIN')
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Options2',wayLoader) end
     wayLoader:SetScript('OnEvent',function() pcall(BackstageForeverWayRegister) end)
 end
 
@@ -373,7 +381,11 @@ function BackstageForeverPerfLine(kilobytes,before,seconds)
     return line
 end
 local perfBefore,perfAt
-function BackstageForeverPerfCommand()
+function BackstageForeverPerfCommand(message)
+    -- 1.26: /bf perf on|off switches the per-module timing (BackstageForeverPerf.lua).
+    local arg=type(message)=='string' and #message<=40 and message:lower():match('^perf%s+(%a+)%s*$') or nil
+    local modules=BackstageForeverPerfModuleCommand
+    if (arg=='on' or arg=='off') and type(modules)=='function' then pcall(modules,message) return end
     local usage
     local update=UpdateAddOnMemoryUsage
     local read=GetAddOnMemoryUsage
@@ -385,4 +397,5 @@ function BackstageForeverPerfCommand()
     local now=type(GetTime)=='function' and GetTime() or nil
     say(BackstageForeverPerfLine(usage,perfBefore,perfAt and now and now-perfAt or nil))
     if usage then perfBefore,perfAt=usage,now end
+    if type(modules)=='function' then pcall(modules,'perf') end
 end

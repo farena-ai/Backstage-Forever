@@ -333,11 +333,22 @@ function parseQuestionPage(b) {
   return { kind: "question", id, index, count, sum: b[22], identity: (b[23] << 8) | b[24], bytes: Array.from(b.slice(5, 5 + n)) };
 }
 // Complete pages (index -> bytes) -> the question text, or null when the checksum or UTF-8 is wrong.
-const OPEN_SIGNAL = "\u0001open";
+const OPEN_SIGNAL = "\u0001open", PREFILL_SIGNAL = "\u0001fill:";
 function assembleQuestion(parts, count, sum) {
   const all = [];
   for (let i = 0; i < count; i++) { const p = parts.get(i); if (!p) return null; all.push(...p); }
   if (!all.length || all.length > QUESTION_MAX_BYTES || crc8(all, all.length) !== sum) return null;
+  // "Explain this" (roadmap A2): bytes 1, 255 and "fill:" in front of text that is put in the
+  // question box and never asked. Byte 255 is not UTF-8, so an older app drops the message whole
+  // instead of asking it.
+  if (all[0] === 1 && all[1] === 255) {
+    let rest;
+    try { rest = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(all.slice(2))); } catch { return null; }
+    if (!rest.startsWith("fill:")) return null;
+    rest = rest.slice(5).replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
+    if (!rest || [...rest].length > QUESTION_MAX_CHARS) return null;
+    return PREFILL_SIGNAL + rest;
+  }
   let text;
   try { text = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(all)); } catch { return null; }
   // The owl's "open the panel" signal (0.39.1): a control byte no typed question can contain.
@@ -874,7 +885,9 @@ class LiveBridge {
     const text = assembleQuestion(set.parts, pg.count, pg.sum);
     if (!text) return null;
     this.questionSeen.set(key, at);
-    const question = text === OPEN_SIGNAL ? { id: pg.id, kind: "open", text: "", characterHash: pg.identity, at } : { id: pg.id, text, characterHash: pg.identity, at };
+    const question = text === OPEN_SIGNAL ? { id: pg.id, kind: "open", text: "", characterHash: pg.identity, at }
+      : text.startsWith(PREFILL_SIGNAL) ? { id: pg.id, kind: "prefill", text: text.slice(PREFILL_SIGNAL.length), characterHash: pg.identity, at }
+      : { id: pg.id, text, characterHash: pg.identity, at };
     for (const fn of this.questionListeners || []) { try { fn(question); } catch {} }
     return question;
   }
@@ -933,4 +946,4 @@ class LiveBridge {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); this.emittedFreshFrame = !!s.frame; for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { HAIRLINE, HAIRLINE_REGION, HAIRLINE_WIDTH, TOPLEFT_REGION, hairlineThresholds, crc16, encodeHairlineFrame, encodeHairlineCells, decodeHairlineCells, decodeHairline, hairlineHint, encodeQuestionPages, parseQuestionPage, assembleQuestion, OPEN_SIGNAL, QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES, QUESTION_MAX_CHARS, QUESTION_INTERVAL_MS, encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };
+module.exports = { HAIRLINE, HAIRLINE_REGION, HAIRLINE_WIDTH, TOPLEFT_REGION, hairlineThresholds, crc16, encodeHairlineFrame, encodeHairlineCells, decodeHairlineCells, decodeHairline, hairlineHint, encodeQuestionPages, parseQuestionPage, assembleQuestion, OPEN_SIGNAL, PREFILL_SIGNAL, QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES, QUESTION_MAX_CHARS, QUESTION_INTERVAL_MS, encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };

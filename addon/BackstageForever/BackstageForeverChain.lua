@@ -41,11 +41,58 @@ function BackstageForeverChainLine(quests,questId,title)
     elseif not nextId then line=line..' '..T('This is the last step.') end
     return line
 end
-function BackstageForeverChainCommand()
+-- Pure (1.26, roadmap Q6): the lines a quest tooltip gets, or nil when the quest stands alone:
+-- "Step 3 of 7 in its quest chain." and what the chain ends with, by the title of its last quest.
+-- The reference knows titles and follow-up links only, so no reward is named.
+function BackstageForeverChainTip(quests,questId)
+    local ids,position=BackstageForeverQuestChain(quests,questId)
+    if not ids or #ids<2 then return nil end
+    local T=BackstageForeverTr or tostring
+    local lines={T(('Step %d of %d in its quest chain.'):format(position,#ids))}
+    if position==#ids then lines[2]=T('This is the last step of the chain.')
+    else
+        local last=rawget(quests,ids[#ids])
+        local title=type(last)=='table' and rawget(last,'title')
+        if type(title)=='string' and title~='' and #title<=120 then lines[2]=T('The chain ends with:')..' '..title:gsub('|','||')..'.' end
+    end
+    return lines
+end
+-- Pure: the quest id inside a quest link ("quest:123:20" or a whole chat link), or nil.
+function BackstageForeverChainLinkQuest(link)
+    if type(link)~='string' or #link>400 then return nil end
+    local id=tonumber(link:match('^quest:(%d+)') or link:match('|Hquest:(%d+)'))
+    if id and id>=1 and id<=2147483647 then return id end
+end
+function BackstageForeverChainTipsOn()
+    local s=BackstageForeverPanelSettings
+    return type(s)~='table' or rawget(s,'chainTips')~=false
+end
+-- Adds the lines to a tooltip the game (or the addon) has just filled. Returns how many were added.
+function BackstageForeverChainTooltip(tip,questId)
+    if not BackstageForeverChainTipsOn() or type(tip)~='table' or type(tip.AddLine)~='function' then return 0 end
+    if type(InCombatLockdown)=='function' then local ok,busy=pcall(InCombatLockdown) if not ok or busy then return 0 end end
+    local quests=type(BackstageForeverReference)=='table' and rawget(BackstageForeverReference,'quests')
+    if type(quests)~='table' then return 0 end
+    local ok,lines=pcall(BackstageForeverChainTip,quests,questId)
+    if not ok or type(lines)~='table' then return 0 end
+    for _,line in ipairs(lines) do pcall(tip.AddLine,tip,line,.79,.62,.27,true) end
+    if type(tip.Show)=='function' then pcall(tip.Show,tip) end
+    return #lines
+end
+function BackstageForeverChainCommand(message)
     local function say(text)
         if DEFAULT_CHAT_FRAME and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then
             DEFAULT_CHAT_FRAME:AddMessage('Backstage Forever: '..(BackstageForeverTr or tostring)(text))
         end
+    end
+    local which,arg=(type(message)=='string' and #message<=40 and message:lower() or ''):match('^chain%s+(%a+)%s*(%a*)$')
+    if which=='tips' then
+        if arg=='on' or arg=='off' then
+            if type(BackstageForeverPanelSettings)~='table' then BackstageForeverPanelSettings={} end
+            BackstageForeverPanelSettings.chainTips=arg=='on'
+        end
+        say(BackstageForeverChainTipsOn() and 'Chain steps in quest tooltips: on. A quest link shows which step of its chain it is.' or 'Chain steps in quest tooltips: off. /bf chain still lists them.')
+        return
     end
     local quests=type(BackstageForeverReference)=='table' and rawget(BackstageForeverReference,'quests')
     local api=C_QuestLog
@@ -63,4 +110,25 @@ function BackstageForeverChainCommand()
         end
     end
     if shown==0 then say('None of the quests in your log is part of a known chain.') end
+end
+-- Quest links (chat, quest log) open in the game's link tooltip. hooksecurefunc runs our code after
+-- the game's own SetHyperlink; the tooltip only gains lines.
+if type(CreateFrame)=='function' then
+    local events=CreateFrame('Frame')
+    if events then
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Chain',events) end
+        pcall(events.RegisterEvent,events,'PLAYER_LOGIN')
+        pcall(events.SetScript,events,'OnEvent',function()
+            if type(hooksecurefunc)~='function' then return end
+            for _,name in ipairs({'ItemRefTooltip','GameTooltip'}) do
+                local tip=_G[name]
+                if type(tip)=='table' and type(tip.SetHyperlink)=='function' then
+                    pcall(hooksecurefunc,tip,'SetHyperlink',function(self,link)
+                        local ok,id=pcall(BackstageForeverChainLinkQuest,link)
+                        if ok and id then pcall(BackstageForeverChainTooltip,self,id) end
+                    end)
+                end
+            end
+        end)
+    end
 end

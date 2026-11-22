@@ -15,8 +15,13 @@
 // k="h" herbs or "o" ore, s={x1,y1,x2,y2,...}} with each stop in ten-thousandths of the map, in
 // walking order. /bf loop walks it. Like the talent plan it is left out before the file grows past
 // its limit.
+//
+// Roadmap A1 adds the last few answers the companion gave to questions asked from the game:
+// ans={{q="question",a="answer",t=unix seconds},...}, newest first, plain text, at most 5 of them.
+// /bf answers reads them in game. They are the newest passenger and the first left out.
 const FILE = "BackstageForeverDesktop.lua";
 const MAX_CHARACTERS = 100, MAX_ITEMS = 200, MAX_BYTES = 256 * 1024, MAX_PICKS = 51, MAX_LOOP_STOPS = 40;
+const MAX_ANSWERS = 5, MAX_QUESTION = 200, MAX_ANSWER = 1200;
 const luaString = (value) => '"' + [...Buffer.from(String(value), "utf8")].map((b) => (b >= 32 && b <= 126 && b !== 34 && b !== 92 ? String.fromCharCode(b) : "\\" + String(b).padStart(3, "0"))).join("") + '"';
 const named = (v) => typeof v === "string" && v.length > 0 && v.length <= 60 && !/[\x00-\x1f]/.test(v);
 const itemId = (v) => Number.isSafeInteger(v) && v > 0 && v <= 2147483647;
@@ -54,11 +59,32 @@ function gatheringLoop(loop) {
   return `loop={m=${loop.mapId},k="${kind}",s={${flat.join(",")}}}`;
 }
 
+// Plain text for the chat window: no control characters, no Markdown marks, cut to max characters.
+// Line breaks survive in answers (keepLines) so a list stays a list.
+function plainText(value, max, keepLines) {
+  if (typeof value !== "string") return "";
+  let text = value.replace(/\r\n?/g, "\n").replace(/[\x00-\x09\x0b-\x1f\x7f]/g, " ").replace(/\*\*|__|`+/g, "").replace(/^[ \t]*#{1,6}[ \t]+/gm, "");
+  text = keepLines ? text.split("\n").map((l) => l.replace(/[ \t]+/g, " ").trim()).filter(Boolean).join("\n") : text.replace(/\s+/g, " ").trim();
+  const chars = Array.from(text);
+  return chars.length > max ? chars.slice(0, max).join("").trimEnd() : text;
+}
+// The last answers as Lua, or "" when there is none. Each needs a question, an answer and a time.
+function answerList(list) {
+  const rows = [];
+  for (const entry of Array.isArray(list) ? list : []) {
+    if (rows.length >= MAX_ANSWERS) break;
+    const q = plainText(entry?.question, MAX_QUESTION, false), a = plainText(entry?.answer, MAX_ANSWER, true);
+    const t = Number.isFinite(entry?.at) && entry.at > 0 ? Math.min(Math.floor(entry.at / 1000), 4102444800) : 0;
+    if (q && a) rows.push(`{q=${luaString(q)},a=${luaString(a)},t=${t}}`);
+  }
+  return rows.length ? `ans={${rows.join(",")}}` : "";
+}
+
 // The same bytes for the same input: characters sorted by key, wishes in wish-list order,
 // upgrades by item id, talent picks in the order the player planned them. Talent plans are the
 // newest passenger: when the file would grow past its limit they are left out, character by
 // character, before anything else is touched.
-function compile({ profiles = [], wishlist = () => [], upgrades = () => [], talents = () => null, loops = () => null } = {}) {
+function compile({ profiles = [], wishlist = () => [], upgrades = () => [], talents = () => null, loops = () => null, answers = () => [] } = {}) {
   const rows = [];
   const seen = new Set();
   for (const p of Array.isArray(profiles) ? profiles : []) {
@@ -69,26 +95,30 @@ function compile({ profiles = [], wishlist = () => [], upgrades = () => [], tale
     const ids = list(wishlist).slice(0, MAX_ITEMS), up = list(upgrades).sort((a, b) => a - b).slice(0, MAX_ITEMS);
     let tal = ""; try { tal = talentPlan(talents(p.id)); } catch {}
     let loop = ""; try { loop = gatheringLoop(loops(p.id)); } catch {}
-    if (!ids.length && !up.length && !tal && !loop) continue;
+    let ans = ""; try { ans = answerList(answers(p.id)); } catch {}
+    if (!ids.length && !up.length && !tal && !loop && !ans) continue;
     seen.add(key);
-    rows.push([key, ids, up, tal, loop]);
+    rows.push([key, ids, up, tal, loop, ans]);
   }
   rows.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   const kept = rows.slice(0, MAX_CHARACTERS);
-  const line = ([key, ids, up, tal, loop]) => `[${luaString(key)}]={wish={${ids.join(",")}}${up.length ? `,up={${up.join(",")}}` : ""}${tal ? `,${tal}` : ""}${loop ? `,${loop}` : ""}},`;
+  const line = ([key, ids, up, tal, loop, ans]) => `[${luaString(key)}]={wish={${ids.join(",")}}${up.length ? `,up={${up.join(",")}}` : ""}${tal ? `,${tal}` : ""}${loop ? `,${loop}` : ""}${ans ? `,${ans}` : ""}},`;
   const wrap = (body) => [...HEADER, "BackstageForeverDesktopData={schema=1,characters={", ...body, "}}", ""].join("\n");
-  let room = MAX_BYTES - Buffer.byteLength(wrap(kept.map(([key, ids, up]) => line([key, ids, up, "", ""]))));
+  let room = MAX_BYTES - Buffer.byteLength(wrap(kept.map(([key, ids, up]) => line([key, ids, up, "", "", ""]))));
   const body = [];
-  for (const row of kept) {
-    for (const i of [3, 4]) {
-      const cost = row[i] ? Buffer.byteLength(row[i]) + 1 : 0;
-      if (cost && cost <= room) room -= cost; else row[i] = "";
+  // Plans and loops of every character get room before any answers do.
+  for (const fields of [[3, 4], [5]]) {
+    for (const row of kept) {
+      for (const i of fields) {
+        const cost = row[i] ? Buffer.byteLength(row[i]) + 1 : 0;
+        if (cost && cost <= room) room -= cost; else row[i] = "";
+      }
     }
-    if (row[1].length || row[2].length || row[3] || row[4]) body.push(line(row));
   }
+  for (const row of kept) if (row[1].length || row[2].length || row[3] || row[4] || row[5]) body.push(line(row));
   const text = wrap(body);
   if (Buffer.byteLength(text) > MAX_BYTES) throw Error("Desktop hand-off is too large.");
   return text;
 }
 
-module.exports = { FILE, MAX_ITEMS, MAX_CHARACTERS, MAX_PICKS, MAX_LOOP_STOPS, MAX_BYTES, compile, EMPTY: compile() };
+module.exports = { FILE, MAX_ITEMS, MAX_CHARACTERS, MAX_PICKS, MAX_LOOP_STOPS, MAX_ANSWERS, MAX_QUESTION, MAX_ANSWER, MAX_BYTES, compile, EMPTY: compile() };

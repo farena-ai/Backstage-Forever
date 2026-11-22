@@ -228,6 +228,7 @@ if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
     if frame then
         pcall(frame.RegisterEvent,frame,'PLAYER_LOGOUT')
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Loop',frame) end
         pcall(frame.SetScript,frame,'OnEvent',function() stop(true) end)
     end
 end

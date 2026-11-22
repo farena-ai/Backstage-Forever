@@ -53,7 +53,7 @@ for _,page in ipairs(BackstageForeverOptionsPages) do
     end
   end
 end
-assert(count==53,'53 switches, got '..count)
+assert(count==58,'58 switches, got '..count)
 for _,key in ipairs({'questTracker','objectiveHints','questDetours','beforeLeaving','rewardReasons','questBlockers','gatheringMarks','sharedObjectives','keepQuestItems','questItemCue','spellRankReminder'}) do
   local found=false
   for _,m in ipairs(ran) do if m=='helpers '..key..' off' then found=true end end
@@ -123,7 +123,7 @@ test("/bf options, the owl's right-click and the key bindings reach their window
   assert.match(ask, /'RegisterForClicks','LeftButtonUp','RightButtonUp'/);
   assert.match(ask, /mouse=='RightButton' and type\(BackstageForeverOptionsToggle\)=='function'/);
   const bindings = [...read("addon/BackstageForever/Bindings.xml").matchAll(/<Binding name="(\w+)"/g)].map((m) => m[1]);
-  assert.deepEqual(bindings, ["BACKSTAGEFOREVER_COMPASS", "BACKSTAGEFOREVER_NEXT", "BACKSTAGEFOREVER_ASK", "BACKSTAGEFOREVER_OPTIONS", "BACKSTAGEFOREVER_ATLAS"]);
+  assert.deepEqual(bindings, ["BACKSTAGEFOREVER_COMPASS", "BACKSTAGEFOREVER_NEXT", "BACKSTAGEFOREVER_ASK", "BACKSTAGEFOREVER_OPTIONS", "BACKSTAGEFOREVER_ATLAS", "BACKSTAGEFOREVER_EXPLAIN"]);
   const options = read("addon/BackstageForever/BackstageForeverOptions.lua");
   for (const name of bindings) assert.ok(options.includes(`BINDING_NAME_${name}=`), name);
   assert.ok(options.includes("BINDING_HEADER_BACKSTAGEFOREVER="));
