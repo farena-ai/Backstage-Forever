@@ -213,7 +213,9 @@ window.SheetView = (() => {
   }
   function page() {
     pairFocus = pair?.panel.contains(document.activeElement) ? document.activeElement : null;
-    return `<section class="sheet-page" data-sheet>${hero()}<div data-sheet-compare>${comparison()}</div><div data-sheet-pair-host></div><div data-sheet-body>${body()}</div></section>`;
+    // The "Gear plan" view (gear-planning.js) shares this page; the switch under the hero picks one.
+    const plan = window.GearPlanView;
+    return `<section class="sheet-page" data-sheet data-sheet-view="${plan?.view() === "plan" ? "plan" : "sheet"}">${hero()}${plan ? plan.frame() : ""}<div data-sheet-compare>${comparison()}</div><div data-sheet-pair-host></div><div data-sheet-body>${body()}</div></section>`;
   }
   function paintSheet(root) {
     // Both templates escape text from saved state and use validated numeric item IDs.
@@ -231,7 +233,10 @@ window.SheetView = (() => {
   }
   function mounted(profile) {
     const root = document.querySelector("[data-sheet]");
-    if (!root) { mountedFor = null; selection = null; pair = null; pairFocus = null; return; }
+    if (!root) { mountedFor = null; selection = null; pair = null; pairFocus = null; window.GearPlanView?.mounted(null); return; }
+    // An item sent here to compare is shown on the sheet itself, not behind the gear plan.
+    if (selection && root.dataset?.sheetView === "plan" && !selection.card && !selection.failed) { window.GearPlanView?.show("sheet"); root.dataset.sheetView = "sheet"; for (const b of root.querySelectorAll("[data-gear-view]")) b.setAttribute("aria-selected", String(b.dataset.gearView === "sheet")); }
+    window.GearPlanView?.mounted(root, profile?.id || null);
     mountPair(root, profile);
     if (mountedFor === root) return;
     mountedFor = root;

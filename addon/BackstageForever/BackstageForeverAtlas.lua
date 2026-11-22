@@ -69,6 +69,25 @@ function BackstageForeverWishCount(row,set)
     end
     return count
 end
+-- P8 (1.24): with "Marks without colour" on, the list and the quests carry a text mark too, so
+-- nothing rests on colour alone. [+] right for you or done, [!] coming up soon, [x] below your
+-- level, [=] in your log. A dungeon for later and a quest you do not have carry no mark.
+local FIT_MARK={now='good',soon='warn',done='bad'}
+local QUEST_MARK={done='good',log='same'}
+local function mark(kind)
+    local f=BackstageForeverMark
+    if not kind or type(f)~='function' then return '' end
+    local ok,text=pcall(f,kind)
+    return ok and type(text)=='string' and text or ''
+end
+function BackstageForeverAtlasFitMark(fit) return mark(FIT_MARK[fit]) end
+function BackstageForeverAtlasQuestMark(state) return mark(QUEST_MARK[state]) end
+-- Pure: the line above the quest list, in marks when they are on and in colours otherwise.
+function BackstageForeverAtlasQuestHint(count)
+    if count==0 then return 'No quests known for this place yet.' end
+    if mark('good')~='' then return '[+] done. [=] in your log. Click one for an arrow to its giver.' end
+    return 'Green: done. Yellow: in your log. Click one for an arrow to its giver.'
+end
 local FIT_COLOR={now={.25,1,.25},soon={1,.82,.2},later={.85,.85,.85},done={.5,.5,.5}}
 local FIT_WORD={now='Right for your level',soon='Coming up soon',later='For later',done='Below your level'}
 local frame,listButtons,bossButtons,lootRows={},{},{},{}
@@ -152,7 +171,7 @@ end
 local function showQuestList()
     local list=BackstageForeverAtlasQuests(rows()[selected],faction(),questState)
     frame.bossName:SetText(T('Quests to bring'))
-    frame.tip:SetText(#list==0 and T('No quests known for this place yet.') or T('Green: done. Yellow: in your log. Click one for an arrow to its giver.'))
+    frame.tip:SetText(T(BackstageForeverAtlasQuestHint(#list)))
     frame.noLoot:SetText('')
     for _,l in ipairs(lootRows) do l:Hide() end
     for i,line in ipairs(questRows) do
@@ -160,7 +179,7 @@ local function showQuestList()
         if q then
             line.quest=q
             local color=q.state=='done' and '|cff40ff40' or q.state=='log' and '|cffffd133' or '|cffffffff'
-            line.text:SetText(color..q.title..'|r'..(q.level>0 and ('  |cffaaaaaa'..q.level..'|r') or '')..(q.giver and ('  |cffaaaaaa'..q.giver..'|r') or ''))
+            line.text:SetText(color..BackstageForeverAtlasQuestMark(q.state)..q.title..'|r'..(q.level>0 and ('  |cffaaaaaa'..q.level..'|r') or '')..(q.giver and ('  |cffaaaaaa'..q.giver..'|r') or ''))
             line:Show()
         else line.quest=nil;line:Hide() end
     end
@@ -221,9 +240,11 @@ local function showInstance()
     for i,button in ipairs(listButtons) do
         local r=rows()[i]
         if r then
-            local c=FIT_COLOR[BackstageForeverAtlasFit(r[4],r[5],level())]
+            local fit=BackstageForeverAtlasFit(r[4],r[5],level())
+            local c=FIT_COLOR[fit]
             local marks=frame.marks[i] or ''
-            button.label:SetText(r[2]);button.label:SetTextColor(c[1],c[2],c[3])
+            -- The mark sits inside the fixed-width name, so a long name is cut short, never pushed over the band.
+            button.label:SetText(BackstageForeverAtlasFitMark(fit)..r[2]);button.label:SetTextColor(c[1],c[2],c[3])
             -- A row with marks gives them room, so a long name is cut short instead of running under them.
             button.label:SetWidth(marks~='' and 122 or 154)
             button.band:SetText(marks..r[4]..'-'..r[5]);button.band:SetTextColor(c[1],c[2],c[3])

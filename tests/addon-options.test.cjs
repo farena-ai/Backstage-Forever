@@ -53,13 +53,26 @@ for _,page in ipairs(BackstageForeverOptionsPages) do
     end
   end
 end
-assert(count==43,'43 switches, got '..count)
+assert(count==48,'48 switches, got '..count)
 for _,key in ipairs({'questTracker','objectiveHints','questDetours','beforeLeaving','rewardReasons','questBlockers','gatheringMarks','sharedObjectives','keepQuestItems','questItemCue','spellRankReminder'}) do
   local found=false
   for _,m in ipairs(ran) do if m=='helpers '..key..' off' then found=true end end
   assert(found,'all eleven helpers have a switch: '..key)
 end
 `));
+
+test("the page buttons share the row under the painting without touching, however many pages there are", () => {
+  const options = read("addon/BackstageForever/BackstageForeverOptions.lua");
+  const [, width, step] = /local PAGE_WIDTH,PAGE_STEP=(\d+),(\d+)/.exec(options).map(Number);
+  const [, windowWidth] = /local WIDTH,HEIGHT=(\d+),\d+/.exec(options).map(Number);
+  const pages = (options.slice(0, options.indexOf("BackstageForeverOptionsPages=PAGES")).match(/\{title='/g) || []).length;
+  assert.equal(pages, 4);
+  assert.ok(step - width >= 6, "a gap between two page buttons");
+  assert.ok(34 + (pages - 1) * step + width <= windowWidth - 34, "the last page button ends inside the window's margin");
+  assert.match(options, /button:SetSize\(PAGE_WIDTH,22\);button:SetPoint\('TOPLEFT',34\+\(i-1\)\*PAGE_STEP,-114\)/);
+  const de = JSON.parse(read("data/i18n/de.json")).addon.plain;
+  for (const title of [...options.matchAll(/\{title='(\w+)',rows=/g)].map((m) => m[1])) assert.ok(title.length <= 10 && (de[title] || title).length <= 12, `${title} fits a ${width}px button`);
+});
 
 test("saved choices show as they are, with each helper's own default", () => lua(STUBS + String.raw`
 dofile('addon/BackstageForever/BackstageForeverOptions.lua')
@@ -78,11 +91,11 @@ dofile('addon/BackstageForever/BackstageForeverHelpers.lua')
 dofile('addon/BackstageForever/BackstageForeverOptions.lua')
 local quiet=BackstageForeverOptionsPresets[1]
 assert(quiet.title=='Quiet')
--- Fresh character: ten are on by default except the enemy sound (already off); danger, the durability warning,
+-- Fresh character: eleven are on by default except the enemy sound (already off); danger, the durability warning,
 -- the ready check and the mail warning are already on.
-assert(BackstageForeverOptionsApplyPreset(quiet)==9,'nine switches differ from the defaults')
-local expected={['toasts off']=true,['moments off']=true,['enemy off']=true,['helpers questDetours off']=true,['helpers beforeLeaving off']=true,['supplies off']=true,['comfort flights off']=true,['comfort rested off']=true,['notes off']=true}
-assert(#ran==9) for _,m in ipairs(ran) do assert(expected[m],m) end
+assert(BackstageForeverOptionsApplyPreset(quiet)==10,'ten switches differ from the defaults')
+local expected={['toasts off']=true,['moments off']=true,['enemy off']=true,['helpers questDetours off']=true,['helpers beforeLeaving off']=true,['supplies off']=true,['comfort flights off']=true,['comfort rested off']=true,['notes off']=true,['wish off']=true}
+assert(#ran==10) for _,m in ipairs(ran) do assert(expected[m],m) end
 for _,preset in ipairs(BackstageForeverOptionsPresets) do
   for _,list in ipairs({preset.on or {},preset.off or {}}) do
     for _,label in ipairs(list) do

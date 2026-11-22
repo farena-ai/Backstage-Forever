@@ -2,9 +2,9 @@
 ## Title: Backstage Forever
 ## Notes: Leveling companion for WoW Forever: Adventure Compass, guided route, arrows to your next quest, trainer and flight finders, and an ask panel. Pairs with the free Backstage Forever desktop app.
 ## Author: Backstage Coding (Frank Arena & Jason Babiuch)
-## Version: 1.21.0
+## Version: 1.22.0
 ## SavedVariables: BackstageForeverExport
-## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings, BackstageForeverQuestItemSourcesDB, BackstageForeverRouteSettings, BackstageForeverSuppliesSettings, BackstageForeverJournalDB, BackstageForeverMomentsSettings, BackstageForeverLedgerDB, BackstageForeverSheetDB, BackstageForeverAskSettings, BackstageForeverEnemySettings, BackstageForeverQoLSettings, BackstageForeverPartySettings, BackstageForeverHelperSettings, BackstageForeverMinimapSettings, BackstageForeverComfortSettings, BackstageForeverFlightTimesDB, BackstageForeverWorldSettings, BackstageForeverKitSettings, BackstageForeverSocialSettings, BackstageForeverNotesDB
+## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings, BackstageForeverQuestItemSourcesDB, BackstageForeverRouteSettings, BackstageForeverSuppliesSettings, BackstageForeverJournalDB, BackstageForeverMomentsSettings, BackstageForeverLedgerDB, BackstageForeverSheetDB, BackstageForeverAskSettings, BackstageForeverEnemySettings, BackstageForeverQoLSettings, BackstageForeverPartySettings, BackstageForeverHelperSettings, BackstageForeverMinimapSettings, BackstageForeverComfortSettings, BackstageForeverFlightTimesDB, BackstageForeverWorldSettings, BackstageForeverKitSettings, BackstageForeverSocialSettings, BackstageForeverNotesDB, BackstageForeverPanelSettings
 BackstageForeverLocale.lua
 BackstageForeverHelpers.lua
 BackstageForeverReference.lua
@@ -49,6 +49,8 @@ BackstageForeverDesktop.lua
 BackstageForeverTalents.lua
 BackstageForeverAtlasData.lua
 BackstageForeverAtlas.lua
+BackstageForeverPanels.lua
+BackstageForeverWish.lua
 BackstageForeverTravelData.lua
 BackstageForeverTravel.lua
 BackstageForeverLoop.lua

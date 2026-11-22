@@ -24,7 +24,7 @@ function ownership(profile, itemId) {
 }
 
 // What the character wears, by slot, in the same shape enrichRewards() (knowledge-ipc.cjs) uses.
-function equipmentContext(p, gameData) {
+function equipmentContext(p, gameData, weights = null) {
   const equipment = Array.isArray(p?.readiness?.equipment) ? p.readiness.equipment : null;
   let buildMatches = false;
   try { buildMatches = Boolean(p?.clientBuild && p.clientBuild === gameData?.build()); } catch {}
@@ -33,6 +33,8 @@ function equipmentContext(p, gameData) {
   // Worn items the game tables do not cover still occupy their slot; they are compared as unknown.
   (equipment || []).forEach((e, i) => { bySlot[e.slot] = worn[i] || { id: e.itemId, name: e.name || `Item #${e.itemId}`, unknown: true, stats: [], armor: 0 }; });
   const ctx = { className: p?.className || undefined, level: Number.isInteger(p?.level) ? p.level : undefined, equipmentKnown: !!equipment };
+  // Roadmap C3: the weights this character chose (stat-weights.cjs); absent means the built-in row.
+  if (weights) ctx.weights = weights;
   return { ctx, bySlot, equipmentKnown: !!equipment, buildMatches };
 }
 
@@ -81,24 +83,24 @@ const nameOnly = (id) => { const name = bundledName(id); return name ? { name, n
 const view = (it, id) => !it ? nameOnly(id) : { name: it.name, quality: it.quality, itemLevel: it.itemLevel, requiredLevel: it.requiredLevel, slot: it.slot, kind: it.kind, armor: it.armor || 0, stats: it.stats || [], damage: it.damage, speed: it.speed, dps: it.dps, bonding: it.bonding, classes: it.classes, iconFileId: it.iconFileId };
 
 // Every boss item of the pack, rated once: Map(itemId -> { item, verdict }).
-function rateAll(pack, profile, gameData) {
+function rateAll(pack, profile, gameData, weights = null) {
   const ids = [...new Set(Object.values(pack?.instances || {}).flatMap((i) => i.bosses.flatMap((b) => b.items.map((x) => x.itemId))))];
   const found = ids.length && gameData ? gameData.items(ids) : [];
-  const eq = equipmentContext(profile, gameData), out = new Map();
+  const eq = equipmentContext(profile, gameData, weights), out = new Map();
   ids.forEach((id, i) => out.set(id, { item: found[i] || null, verdict: upgradeVerdict(found[i] || null, eq) }));
   return { rated: out, equipmentKnown: eq.equipmentKnown };
 }
 const isUp = (v) => v.verdict === "upgrade";
 // Item ids of boss drops that are an upgrade for this character right now, lowest id first.
-function upgradeIds(pack, { profile = null, gameData = null } = {}) {
+function upgradeIds(pack, { profile = null, gameData = null, weights = null } = {}) {
   if (!pack || !profile) return [];
-  const { rated } = rateAll(pack, profile, gameData);
+  const { rated } = rateAll(pack, profile, gameData, weights);
   return [...rated].filter(([, r]) => isUp(r.verdict)).map(([id]) => id).sort((a, b) => a - b);
 }
 // Per atlas instance: counts for the card chip, and the starred items that drop there.
-function atlasLootSummary(pack, { profile = null, gameData = null, wished = [] } = {}) {
+function atlasLootSummary(pack, { profile = null, gameData = null, wished = [], weights = null } = {}) {
   if (!pack) return {};
-  const { rated } = rateAll(pack, profile, gameData), wish = new Set(wished), out = {};
+  const { rated } = rateAll(pack, profile, gameData, weights), wish = new Set(wished), out = {};
   for (const [id, inst] of Object.entries(pack.instances)) {
     const seen = new Set(), stars = [];
     let items = 0, upgrades = 0, later = 0;
@@ -125,13 +127,13 @@ function communityDrops(community, b) {
   return [...best.values()].sort((a, b2) => b2.rate - a.rate).slice(0, 16);
 }
 // One instance, boss by boss, with item facts and verdicts.
-function instanceLoot(pack, instanceId, { profile = null, gameData = null, wished = [], community = null } = {}) {
+function instanceLoot(pack, instanceId, { profile = null, gameData = null, wished = [], community = null, weights = null } = {}) {
   const inst = pack?.instances?.[instanceId];
   if (!inst) return null;
   const extra = new Map(inst.bosses.map((b) => [b, communityDrops(community, b)]));
   const ids = [...new Set(inst.bosses.flatMap((b) => [...b.items.map((x) => x.itemId), ...extra.get(b).map((x) => x.itemId)]))];
   const found = ids.length && gameData ? gameData.items(ids) : [], byId = new Map(ids.map((id, i) => [id, found[i] || null]));
-  const eq = equipmentContext(profile, gameData), wish = new Set(wished);
+  const eq = equipmentContext(profile, gameData, weights), wish = new Set(wished);
   return {
     instanceId, name: INSTANCE_NAMES[instanceId] || instanceId, equipmentKnown: eq.equipmentKnown, gameData: found.some(Boolean),
     bosses: inst.bosses.map((b) => ({ name: b.name, npcIds: b.npcIds, items: b.items.map((x) => {
@@ -145,13 +147,13 @@ function instanceLoot(pack, instanceId, { profile = null, gameData = null, wishe
   };
 }
 // Hover card data for one item.
-function itemCard(pack, itemId, { profile = null, gameData = null, wished = [], index = null, community = null, creatureName = () => null } = {}) {
+function itemCard(pack, itemId, { profile = null, gameData = null, wished = [], index = null, community = null, creatureName = () => null, weights = null } = {}) {
   const it = gameData ? gameData.items([itemId])[0] || null : null;
   const sources = ((index || dropIndex(pack)).get(itemId) || []).slice(0, 4).map((s) => ({ boss: s.boss, instanceId: s.instanceId, instance: INSTANCE_NAMES[s.instanceId] || s.instanceId, chance: s.chance }));
   const bosses = new Map();
   for (const inst of Object.values(pack?.instances || {})) for (const b of inst.bosses) for (const id of b.npcIds) bosses.set(id, b.name);
   // Community drops: labelled with how many players reported them, never merged into the bundled list.
   const communitySources = (community?.dropsByItem?.get(itemId) || []).slice(0, 3).map((d) => ({ npcId: d.npcId, name: bosses.get(d.npcId) || creatureName(d.npcId) || `Creature #${d.npcId}`, chance: d.rate, samples: d.samples, installs: d.installs, source: provenance(d.installs) }));
-  return { itemId, item: view(it, itemId), verdict: upgradeVerdict(it, equipmentContext(profile, gameData)), ownership: ownership(profile, itemId), sources, communitySources, wished: wished.includes(itemId) };
+  return { itemId, item: view(it, itemId), verdict: upgradeVerdict(it, equipmentContext(profile, gameData, weights)), ownership: ownership(profile, itemId), sources, communitySources, wished: wished.includes(itemId) };
 }
 module.exports = { equipmentContext, upgradeVerdict, atlasLootSummary, upgradeIds, instanceLoot, itemCard, INSTANCE_NAMES };

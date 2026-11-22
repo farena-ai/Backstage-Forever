@@ -69,6 +69,10 @@ let streamOverlay = null;
 let clearJourneyExtras = null;
 let closeAskPanel = null, dropAskPanelWindow = null;
 let wishlist = null;
+let statWeights = null; // the stat weights each character chose (roadmap C3)
+let gearPins = null; // one pinned gear target per slot and character (roadmap C2)
+// The weights a character scores gear with; null means the built-in row for the class.
+const profileWeights = (p) => { try { return p && statWeights ? require("./core/stat-weights.cjs").scoringWeights(p.className, statWeights.get(p.id)) : null; } catch { return null; } };
 let talentBuilds = null; // saved talent builds per character (talent planner)
 let gatheringLoops = null; // the gathering loop each character sent to the game
 let community = null, collectDiagnostics = null;
@@ -230,7 +234,7 @@ app.whenReady().then(async () => {
     game = new GameSync({
       dataDir: app.getPath("userData"),
       // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
-      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => wishlist?.get(id) || [], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null }); },
+      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null }); },
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -394,13 +398,14 @@ app.whenReady().then(async () => {
   const insights = loadBundledInsights();
   // Creature levels, elite flags and hostility (bundled reference; optional).
   const creaturePack = (() => { try { return require("./core/creature-data.cjs").loadCreaturePack(); } catch { return null; } })();
-  characterGuidance = registerCharacterGuidanceHandlers({ handle, getState: () => store.state, saveState: next => store.saveState(next), getInsights: () => insights, getGameData: () => gameData });
+  characterGuidance = registerCharacterGuidanceHandlers({ handle, getState: () => store.state, saveState: next => store.saveState(next), getInsights: () => insights, getGameData: () => gameData, weightsFor: profileWeights });
   // Item, spell, icon and talent facts from the player's own WoW install, cached locally per game build.
   const gameData = new (require("./core/game-data.cjs").GameData)({ getRoot: () => game?.root || null, cacheDir: path.join(app.getPath("userData"), "game-data") });
   registerKnowledgeHandlers({
     handle,
     knowledge,
     gameData,
+    weightsFor: profileWeights,
     getState: () => store.state,
     connected: () => game.status().connected,
     clipboard,
@@ -1054,10 +1059,11 @@ app.whenReady().then(async () => {
     try { found = ids.length ? gameData.items(ids) : []; } catch {}
     const facts = new Map();
     ids.forEach((id, i) => { if (found[i]) facts.set(id, found[i]); });
-    const ctx = { className: profile.className || undefined, level: Number.isInteger(profile.level) ? profile.level : undefined };
+    const weights = profileWeights(profile);
+    const ctx = { className: profile.className || undefined, level: Number.isInteger(profile.level) ? profile.level : undefined, ...(weights ? { weights } : {}) };
     const { scoreItem } = require("./core/gear-score.cjs"), loot = require("./core/boss-loot.cjs");
     let worn = null;
-    try { worn = loot.equipmentContext(profile, gameData); } catch {}
+    try { worn = loot.equipmentContext(profile, gameData, weights); } catch {}
     return S.sheetView(profile, {
       profiles: s.profiles, facts,
       score: facts.size && ctx.className ? (it) => { try { return scoreItem(it, ctx).score || 0; } catch { return 0; } } : null,
@@ -1110,9 +1116,19 @@ app.whenReady().then(async () => {
   const encounters = loadEncounters();
   // Loot browser, wish list and item hover cards (boss loot pack + the player's own game data).
   wishlist = new (require("./core/wishlist.cjs").WishList)(app.getPath("userData"));
-  require("./core/sheet-comparison.cjs").registerSheetComparison({ handle, getState: () => store.state, gameData, wishlist });
-  const bossLoot = require("./core/boss-loot-ipc.cjs").registerBossLootHandlers({ handle, getState: () => store.state, gameData, wishlist, onWishChange: () => { game?.writeHandoff().catch(() => {}); }, getPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(), getCommunity: () => community?.index() || null, creatureName: (id) => worldMap?.npcName(id) || null, priceFor: (id) => ledgerPrice(id) });
+  statWeights = new (require("./core/stat-weights.cjs").StatWeights)(app.getPath("userData"));
+  gearPins = new (require("./core/gear-plan.cjs").GearPins)(app.getPath("userData"));
+  require("./core/sheet-comparison.cjs").registerSheetComparison({ handle, getState: () => store.state, gameData, wishlist, weightsFor: profileWeights });
+  const bossLoot = require("./core/boss-loot-ipc.cjs").registerBossLootHandlers({ handle, getState: () => store.state, gameData, wishlist, weightsFor: profileWeights, onWishChange: () => { game?.writeHandoff().catch(() => {}); }, getPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(), getCommunity: () => community?.index() || null, creatureName: (id) => worldMap?.npcName(id) || null, priceFor: (id) => ledgerPrice(id) });
   handoffUpgrades = (profile) => bossLoot.upgrades(profile);
+  // Stat weights, gear plan, reputation planner, attunements and collections (roadmap C3, C2, C10, G5, C11).
+  let vendorReference; // read once, on first use
+  require("./core/gear-planning-ipc.cjs").registerGearPlanning({ handle, getState: () => store.state, gameData, statWeights, gearPins, wishlist,
+    questPack: (p) => (p?.clientBuild ? knowledge.index(p)?.pack : null) || knowledge.bundled?.pack || null,
+    vendorPack: () => { if (vendorReference === undefined) { try { vendorReference = require("./core/vendor-facts.cjs").loadVendorPack(); } catch { vendorReference = null; } } return vendorReference; },
+    bossLootPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(),
+    lootPack: () => require("./core/loot-data.cjs").loadLootPack(),
+    onChange: () => { game?.writeHandoff().catch(() => {}); } });
   handle("dungeonAtlas", () => {
     const profile = store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null;
     const atlas = buildAtlas({ profile, encounters, knowledgePack: knowledge?.bundled?.pack }), loot = bossLoot.summary(profile);
@@ -1253,6 +1269,7 @@ app.whenReady().then(async () => {
       const fresh = store.reset();
       privateAfterAction.clear();
       wishlist?.clear(); // starred loot belongs to the characters just deleted
+      statWeights?.clear(); gearPins?.clear(); // and so do their stat weights and pinned gear targets
       talentBuilds?.clear(); // and so do their talent builds
       gatheringLoops?.clear(); // and the gathering loops sent to the game
       community?.reset(); // local install id, sent marks and pack; shared facts stay on the server
