@@ -44,6 +44,9 @@ jobs:
       - run: npm run check:addon-sources
         if: ${{ !cancelled() }}
       - run: npm run check:addon-atlas
+      - run: npm run check:forever-transport
+      - run: npm run check:forever-trainers
+      - run: npm run check:addon-travel
         if: ${{ !cancelled() }}
       - run: npm test
         if: ${{ !cancelled() }}

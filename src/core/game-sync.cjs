@@ -47,6 +47,8 @@ const MAX = 1024 * 1024,
     "BackstageForeverChain.lua",
     "BackstageForeverAtlasData.lua",
     "BackstageForeverAtlas.lua",
+    "BackstageForeverTravelData.lua",
+    "BackstageForeverTravel.lua",
     "BackstageForeverDesktop.lua",
     "BackstageForeverTalents.lua",
   ];
@@ -222,6 +224,9 @@ function parseSavedVariables(raw) {
     }
     if (c.stats !== undefined) {
       try { out.stats = require("./sheet.cjs").normalizeStatsCapture(c.stats); } catch { /* Omit the entire invalid optional block. */ }
+    }
+    if (c.travel !== undefined) {
+      try { out.travel = require("./travel-planner.cjs").normalizeTravelCapture(c.travel); } catch { /* Omit the entire invalid optional block. */ }
     }
     if (c.gearSets !== undefined) {
       try { out.gearSets = require("./sheet.cjs").normalizeGearSetsCapture(c.gearSets); } catch { /* Omit the entire invalid optional block. */ }

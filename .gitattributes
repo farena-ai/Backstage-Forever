@@ -40,3 +40,5 @@ data/forever-boss-loot/LICENSE text eol=lf whitespace=-blank-at-eof
 data/forever-boss-loot/NOTICE text eol=lf
 *.tga binary
 *.webp binary
+data/forever-transport/* text eol=lf
+data/forever-trainers/* text eol=lf
