@@ -11,12 +11,13 @@ window.PlayerNavigation = (() => {
     ["company", "♜", "Plans"],
   ]);
   const groups = {
-    adventure: {label:"Adventure",routes:[["adventure","Next step"],["guided-route","Guided route"],["zones","Zones"],["dungeons","Dungeons & raids"],["preparation","Professions"],["practice-lab","Practice Lab"]],description:"Your next step, every zone you can level in, dungeons and profession plans."},
+    adventure: {label:"Adventure",routes:[["adventure","Next step"],["guided-route","Guided route"],["zones","Zones"],["dungeons","Dungeons & raids"],["run-history","Run history"],["preparation","Professions"],["practice-lab","Practice Lab"]],description:"Your next step, every zone you can level in, dungeons and profession plans."},
     company: {
       label: "Plans",
       routes: [
         ["company", "My plans"],
         ["party", "Party"],
+        ["calendar", "Calendar"],
       ],
       description:
         "Checklists for a session, a profession or a dungeon run, and party plans to share.",
@@ -28,7 +29,7 @@ window.PlayerNavigation = (() => {
     },
     ledger: {
       label: "Ledger",
-      routes: [["ledger", "Bags & bank"], ["ledger-gold", "Gold & prices"], ["ledger-reputation", "Reputation"], ["ledger-cooldowns", "Cooldowns"]],
+      routes: [["ledger", "Bags & bank"], ["ledger-gold", "Gold & prices"], ["ledger-crafts", "Craft profit"], ["ledger-reputation", "Reputation"], ["ledger-cooldowns", "Cooldowns"]],
       description: "What every character carries, their gold, the auction prices you saw, reputations and cooldowns.",
     },
     game: {

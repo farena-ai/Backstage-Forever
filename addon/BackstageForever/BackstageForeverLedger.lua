@@ -357,6 +357,41 @@ local function readMerchantMounts()
     end
     if #items>0 then d.mounts={seenAt=t,items=items} end
 end
+-- Craft profit (E7): what a vendor charges for trade goods and reagents, read from a merchant
+-- window you opened yourself. Kept per character with the time; the newest sightings win.
+local VENDOR_MAX=200
+function BackstageForeverLedgerVendorPrice(id,cost,n,at)
+    local d=store();id=int(id,1,2147483647);cost=int(cost,1,MONEY_MAX);n=int(n,1,10000) or 1;at=int(at,0,253402300799)
+    if not id or not cost or not at then return nil end
+    if type(d.vendor)~='table' then d.vendor={} end
+    d.vendor[id]={cost=cost,n=n,at=at}
+    return d.vendor[id]
+end
+local function vendorList(d)
+    local list={}
+    for id,e in pairs(type(d.vendor)=='table' and d.vendor or {}) do
+        if int(id,1,2147483647) and type(e)=='table' and int(e.cost,1,MONEY_MAX) and int(e.at,0,253402300799) then
+            list[#list+1]={id=id,cost=e.cost,n=int(e.n,1,10000) or 1,at=e.at}
+        else d.vendor[id]=nil end
+    end
+    table.sort(list,function(a,b) if a.at~=b.at then return a.at>b.at end;return a.id<b.id end)
+    for i=#list,VENDOR_MAX+1,-1 do d.vendor[list[i].id]=nil;list[i]=nil end
+    return list
+end
+local function readMerchantGoods()
+    local d=store();local t=now();if not t then return end
+    local n=int(call(GetMerchantNumItems),0,500);if not n or n==0 then return end
+    for i=1,min(n,200) do
+        local _,_,price,quantity,_,_,_,extended=call(GetMerchantItemInfo,i)
+        local id=int(call(GetMerchantItemID,i),1,2147483647)
+        local classId
+        if id then local r={call(GetItemInfoInstant,id)};classId=r[6] end
+        -- Trade goods (7) and reagents (5), bought for coin only.
+        if id and (classId==7 or classId==5) and extended~=true then BackstageForeverLedgerVendorPrice(id,price,quantity,t) end
+    end
+    vendorList(d)
+end
+BackstageForeverLedgerReadGoods=readMerchantGoods
 BackstageForeverLedgerReadMounts=readMerchantMounts
 BackstageForeverLedgerReadTrainer=readTrainer
 local function copyItems(items)
@@ -418,6 +453,8 @@ function BackstageForeverLedgerSnapshot()
         for _,m in ipairs(d.mounts.items) do if type(m)=='table' and int(m.id,1,2147483647) and str(m.name,100) and int(m.cost,0,MONEY_MAX) and #list<20 then list[#list+1]={id=m.id,name=m.name,cost=m.cost} end end
         out.mounts={seenAt=d.mounts.seenAt,items=list}
     end
+    local goods=vendorList(d)
+    if #goods>0 then out.vendor=goods end
     local prices={}
     for id,e in pairs(d.prices) do
         if type(e)=='table' and type(e.hist)=='table' and #e.hist>0 then
@@ -676,7 +713,7 @@ if type(CreateFrame)=='function' then
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             store()
             if event=='TRAINER_SHOW' or event=='TRAINER_UPDATE' then pcall(readTrainer) elseif event=='TRAINER_CLOSED' then request() end
-            if event=='MERCHANT_SHOW' then pcall(readMerchantMounts) end
+            if event=='MERCHANT_SHOW' then pcall(readMerchantMounts);pcall(readMerchantGoods) end
             if event=='PLAYER_LOGIN' then bankOpen=false;mailOpen=false end
             if event=='PLAYER_MONEY' then request()
             elseif event=='PLAYER_LOGIN' or event=='UPDATE_FACTION' then

@@ -272,6 +272,26 @@ assert(s0.mounts and #s0.mounts.items==1 and s0.mounts.items[1].name=='Horn of t
 print('ok')
 `));
 
+test("E7: vendor prices of trade goods are remembered from merchant windows the player opened", () => lua(WORLD + String.raw`
+local wares={{'Leaded Vial',400,3372,7,0,1},{'Fine Thread',500,2321,7,0,5},{'Wolf Meat',50,12,0,5,1},{'Token Thing',0,77,7,0,1},{'Symbol of Kings',1000,17033,5,0,20},{'Badge Good',100,88,7,0,1,true}}
+GetMerchantNumItems=function() return #wares end
+GetMerchantItemInfo=function(i) return wares[i][1],nil,wares[i][2],wares[i][6],-1,true,true,wares[i][7] end
+GetMerchantItemID=function(i) return wares[i][3] end
+GetItemInfoInstant=function(id) for _,w in ipairs(wares) do if w[3]==id then return id,nil,nil,nil,nil,w[4],w[5] end end end
+for _,name in ipairs({'BuyMerchantItem','BuybackItem','RepairAllItems','UseContainerItem'}) do _G[name]=function() error('automation call: '..name) end end
+BackstageForeverLedgerReadGoods()
+local s=BackstageForeverLedgerSnapshot()
+assert(s.vendor and #s.vendor==3,'trade goods and reagents bought for coin only')
+local by={} for _,v in ipairs(s.vendor) do by[v.id]=v end
+assert(by[3372].cost==400 and by[3372].n==1 and by[3372].at==t and by[2321].n==5 and by[17033].n==20)
+assert(by[12]==nil and by[77]==nil and by[88]==nil,'food, free items and items with another currency are left out')
+assert(BackstageForeverLedgerVendorPrice(1,0,1,t)==nil and BackstageForeverLedgerVendorPrice(nil,5,1,t)==nil)
+for i=1,260 do BackstageForeverLedgerVendorPrice(1000+i,5,1,t-i) end
+assert(#BackstageForeverLedgerSnapshot().vendor==200,'bounded, newest kept')
+assert(BackstageForeverLedgerDB.vendor[3372]~=nil and BackstageForeverLedgerDB.vendor[1260]==nil)
+print('ok')
+`));
+
 test("J29 (1.5): at login, reminders about your other characters from their saves", () => {
   const harness = fs.readFileSync(path.join(__dirname, "addon.test.cjs"), "utf8");
   const start = harness.indexOf("const LUA_HARNESS = String.raw`") + "const LUA_HARNESS = String.raw`".length;

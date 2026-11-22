@@ -33,6 +33,7 @@ local function store()
     if type(db.zones)~='table' then db.zones={} end
     if type(db.givers)~='table' then db.givers={} end
     if type(db.encounters)~='table' then db.encounters={} end
+    if type(db.runs)~='table' then db.runs={} end
     return db
 end
 local function now() return int(call(time),0,253402300799) end
@@ -95,6 +96,106 @@ local function encounterSnapshot(d)
     return #encounters>0 and encounters or nil
 end
 
+-- Run history (G11): one row per dungeon or raid visit: when you walked in, the last moment the
+-- addon saw you there, deaths inside and the uncommon-or-better items you looted yourself.
+-- Nothing about other players is kept. A visit resumed within half an hour (a run back after a
+-- wipe) stays the same run.
+local MAX_RUNS,MAX_RUN_LOOT=60,30
+local RUN_RESUME,RUN_OPEN,RUN_LEAVE=1800,14400,600
+local function openRun(d)
+    local r=d.runs[#d.runs]
+    if type(r)=='table' and r.open==true and type(r.endedAt)=='number' then return r end
+end
+function BackstageForeverJournalRunEnter(instanceMap,kind,name,at)
+    local d=store()
+    instanceMap=encounterInt(instanceMap,1,2147483647);at=int(at,1,253402300799)
+    if (kind~='party' and kind~='raid') or not instanceMap or not at then return nil end
+    name=plain(name)
+    if type(name)~='string' or #name>120 or name:find('[%z\1-\31\127]') or not name:find('%S') then name=nil end
+    local r=d.runs[#d.runs]
+    if type(r)=='table' and r.instanceMap==instanceMap and r.instanceType==kind and type(r.endedAt)=='number'
+        and at>=r.endedAt and at-r.endedAt<=(r.open==true and RUN_OPEN or RUN_RESUME) then
+        r.open=true;r.endedAt=at;r.name=r.name or name
+        return r
+    end
+    if type(r)=='table' then r.open=nil end
+    r={instanceMap=instanceMap,instanceType=kind,name=name,startedAt=at,endedAt=at,deaths=0,loot={},open=true}
+    d.runs[#d.runs+1]=r
+    while #d.runs>MAX_RUNS do table.remove(d.runs,1) end
+    return r
+end
+-- Something happened inside (a fight ended, a boss died): the run lasted at least until now.
+function BackstageForeverJournalRunTouch(at)
+    local r=openRun(store());at=int(at,1,253402300799)
+    if not r or not at or at<r.endedAt then return false end
+    r.endedAt=at
+    return true
+end
+function BackstageForeverJournalRunLeave(at)
+    local r=openRun(store());at=int(at,1,253402300799)
+    if not r then return false end
+    -- Logging in outside long after the last sign of life must not stretch the run.
+    if at and at>=r.endedAt and at-r.endedAt<=RUN_LEAVE then r.endedAt=at end
+    r.open=nil
+    return true
+end
+function BackstageForeverJournalRunDeath(at)
+    local r=openRun(store())
+    if not r or not BackstageForeverJournalRunTouch(at) then return false end
+    r.deaths=(int(r.deaths,0,9999) or 0)+1
+    return true
+end
+function BackstageForeverJournalRunLoot(itemId,count,at)
+    local r=openRun(store());itemId=int(itemId,1,2147483647);count=int(count,1,100000) or 1
+    if not r or not itemId or not BackstageForeverJournalRunTouch(at) then return false end
+    if type(r.loot)~='table' then r.loot={} end
+    for _,l in ipairs(r.loot) do
+        if type(l)=='table' and l.id==itemId then l.n=math.min(100000,(int(l.n,1,100000) or 0)+count);return true end
+    end
+    if #r.loot>=MAX_RUN_LOOT then return false end
+    r.loot[#r.loot+1]={id=itemId,n=count}
+    return true
+end
+-- "You receive loot: [item]x2." in the client's own language: the game's format strings become
+-- patterns, so only lines about your own loot match. Returns item id, count and quality.
+local LINK_QUALITY={['9d9d9d']=0,['ffffff']=1,['1eff00']=2,['0070dd']=3,['a335ee']=4,['ff8000']=5}
+local function lootPattern(fmt)
+    fmt=plain(fmt);if type(fmt)~='string' or #fmt==0 or #fmt>200 then return nil end
+    fmt=fmt:gsub('%%%d+%$','%%'):gsub('[%^%$%(%)%.%[%]%*%+%-%?]','%%%0'):gsub('%%s','(.+)'):gsub('%%d','(%%d+)')
+    return '^'..fmt..'$'
+end
+function BackstageForeverJournalLootFromChat(message,formats)
+    message=plain(message);if type(message)~='string' or #message>600 then return nil end
+    formats=formats or {plain(LOOT_ITEM_SELF_MULTIPLE),plain(LOOT_ITEM_PUSHED_SELF_MULTIPLE),plain(LOOT_ITEM_SELF),plain(LOOT_ITEM_PUSHED_SELF)}
+    local mine=false
+    for i=1,4 do
+        local p=lootPattern(formats[i])
+        if p and message:find(p) then mine=true;break end
+    end
+    if not mine then return nil end
+    local id=int(tonumber(message:match('|Hitem:(%d+)')),1,2147483647)
+    if not id then return nil end
+    local color=message:match('|c%x%x(%x%x%x%x%x%x)|Hitem:')
+    local quality=color and LINK_QUALITY[color:lower()] or int(select(3,call(GetItemInfo,id)),0,7)
+    local count=int(tonumber(message:match('|h|rx(%d+)')),1,100000) or 1
+    return id,count,quality
+end
+local function runSnapshot(d)
+    local runs={}
+    for i=math.max(1,#d.runs-MAX_RUNS+1),#d.runs do
+        local r=d.runs[i]
+        if type(r)=='table' and int(r.instanceMap,1,2147483647) and (r.instanceType=='party' or r.instanceType=='raid')
+            and int(r.startedAt,1,253402300799) and int(r.endedAt,r.startedAt,253402300799) then
+            local loot={}
+            for _,l in ipairs(type(r.loot)=='table' and r.loot or {}) do
+                if type(l)=='table' and int(l.id,1,2147483647) and int(l.n,1,100000) and #loot<MAX_RUN_LOOT then loot[#loot+1]={id=l.id,n=l.n} end
+            end
+            runs[#runs+1]={instanceMap=r.instanceMap,instanceType=r.instanceType,name=r.name,startedAt=r.startedAt,endedAt=r.endedAt,deaths=int(r.deaths,0,10000) or 0,loot=loot}
+        end
+    end
+    return #runs>0 and runs or nil
+end
+
 -- Called only for a successful ENCOUNTER_END. Use the instance ID, not a UI map or target NPC.
 function BackstageForeverJournalEncounter(encounterId,name,difficultyId)
     local _,kind,_,_,_,_,_,instanceMap=call(GetInstanceInfo)
@@ -114,6 +215,7 @@ function BackstageForeverJournalEncounter(encounterId,name,difficultyId)
     end
     d.encounters[#d.encounters+1]={encounterId=encounterId,name=name,instanceMap=instanceMap,instanceType=kind,difficultyId=difficultyId,at=at}
     while #d.encounters>MAX_ENCOUNTERS do table.remove(d.encounters,1) end
+    BackstageForeverJournalRunTouch(at)
     if type(BackstageForeverRequestEncounterCapture)=='function' then
         pcall(BackstageForeverRequestEncounterCapture,encounterSnapshot(d),at)
     end
@@ -129,8 +231,9 @@ function BackstageForeverJournalSnapshot()
     local givers={}
     for i=1,min(#d.givers,MAX_GIVERS) do local g=d.givers[i];givers[#givers+1]={q=g.q,n=g.n,m=g.m,x=g.x,y=g.y,at=g.at} end
     local encounters=encounterSnapshot(d)
-    if #levels==0 and #firsts==0 and #zones==0 and #givers==0 and not encounters and not d.played then return nil end
-    return {levels=levels,firsts=firsts,zones=zones,givers=givers,encounters=encounters,played=d.played}
+    local runs=runSnapshot(d)
+    if #levels==0 and #firsts==0 and #zones==0 and #givers==0 and not encounters and not runs and not d.played then return nil end
+    return {levels=levels,firsts=firsts,zones=zones,givers=givers,encounters=encounters,runs=runs,played=d.played}
 end
 
 -- Badges in game (1.1.1): the same rules as the app's Characters → Badges, from what this
@@ -398,7 +501,7 @@ end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_LEVEL_UP','PLAYER_MONEY','TIME_PLAYED_MSG','PLAYER_ENTERING_WORLD','ZONE_CHANGED_NEW_AREA','PLAYER_DEAD','PLAYER_CONTROL_LOST','PLAYER_MOUNT_DISPLAY_CHANGED','UPDATE_EXHAUSTION','GROUP_ROSTER_UPDATE','UNIT_SPELLCAST_SUCCEEDED','QUEST_DETAIL','QUEST_ACCEPTED'}) do pcall(events.RegisterEvent,events,e) end
+        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_LEVEL_UP','PLAYER_MONEY','TIME_PLAYED_MSG','PLAYER_ENTERING_WORLD','ZONE_CHANGED_NEW_AREA','PLAYER_DEAD','PLAYER_CONTROL_LOST','PLAYER_MOUNT_DISPLAY_CHANGED','UPDATE_EXHAUSTION','GROUP_ROSTER_UPDATE','UNIT_SPELLCAST_SUCCEEDED','QUEST_DETAIL','QUEST_ACCEPTED','CHAT_MSG_LOOT','PLAYER_REGEN_ENABLED'}) do pcall(events.RegisterEvent,events,e) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b,c)
             store()
             if event=='PLAYER_LOGIN' then
@@ -422,13 +525,22 @@ if type(CreateFrame)=='function' then
             elseif event=='PLAYER_ENTERING_WORLD' or event=='ZONE_CHANGED_NEW_AREA' then
                 local inside,kind=call(IsInInstance)
                 if inside and (kind=='party' or kind=='raid') then first('dungeon') end
+                local runName,runKind,_,_,_,_,_,runMap=call(GetInstanceInfo)
+                if runKind=='party' or runKind=='raid' then BackstageForeverJournalRunEnter(runMap,runKind,runName,now())
+                else BackstageForeverJournalRunLeave(now()) end
                 local z=zoneNow()
                 -- A zone visited for the first time is also a moment for the desktop app.
                 if z and BackstageForeverJournalZone(z) then
                     if type(BackstageForeverMomentsZone)=='function' then pcall(BackstageForeverMomentsZone,z) end
                     refreshBadge('zones')
                 end
-            elseif event=='PLAYER_DEAD' then first('death')
+            elseif event=='PLAYER_DEAD' then first('death');BackstageForeverJournalRunDeath(now())
+            elseif event=='PLAYER_REGEN_ENABLED' then BackstageForeverJournalRunTouch(now())
+            elseif event=='CHAT_MSG_LOOT' then
+                if openRun(db) then
+                    local id,count,quality=BackstageForeverJournalLootFromChat(a)
+                    if id and quality and quality>=2 then BackstageForeverJournalRunLoot(id,count,now()) end
+                end
             elseif event=='PLAYER_CONTROL_LOST' then if call(UnitOnTaxi,'player') then first('flight') end
             elseif event=='PLAYER_MOUNT_DISPLAY_CHANGED' then if call(IsMounted) then first('mount') end
             elseif event=='UPDATE_EXHAUSTION' then if call(GetXPExhaustion) then first('rested') end

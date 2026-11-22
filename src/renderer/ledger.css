@@ -125,3 +125,41 @@
   .ldg-bar { border: 1px solid CanvasText; }
   .ldg-bar > span { forced-color-adjust: none; background: Highlight; }
 }
+
+/* Price history, gold over time and craft profit (E6, E7, E9). */
+.ldg-below { color: #305219; font-weight: 700; }
+.ldg-spark-cell { width: 120px; vertical-align: middle; }
+.ldg-spark { display: block; overflow: visible; }
+.ldg-spark polyline { fill: none; stroke: #7a4a0c; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.ldg-spark circle { fill: #7a4a0c; }
+.ldg-spark-usual { stroke: #5a3e1c; stroke-width: 1; stroke-dasharray: 3 3; opacity: .55; }
+.ldg-spark-none { font-size: 12px; color: #5a3e1c; }
+.ldg-table-prices th:first-child { width: 25%; }
+.ldg-table-prices th:last-child { width: 16%; }
+.ldg-chart { display: block; width: 100%; height: auto; border: 1px solid #aa8e56; border-radius: 5px; background: #f2e5c5; }
+.ldg-chart-grid { stroke: #b89e68; stroke-width: 1; stroke-dasharray: 2 4; }
+.ldg-chart-label { fill: #5a3e1c; font: 600 13px "Segoe UI", sans-serif; }
+.ldg-chart-area { fill: #8b590d; opacity: .16; }
+.ldg-chart-line { fill: none; stroke: #7a4a0c; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.ldg-chart circle { fill: #f2e5c5; stroke: #7a4a0c; stroke-width: 1.6; }
+.ldg-chart-days { margin-top: 10px; }
+.ldg-chart-days .ldg-table-frame.ldg-long { max-height: 232px; }
+.ldg-gain { color: #305219; }
+.ldg-loss { color: #8a1f14; }
+.ldg-flat { color: #5a3e1c; }
+:is(.ldg-gain, .ldg-loss) .ldg-coins > span { color: inherit; }
+.ldg-unknown { font-style: normal; color: #6b4e26; }
+.ldg-mats { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.ldg-mats li { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
+.ldg-mats strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.ldg-table-crafts th:first-child { width: 22%; }
+.ldg-table-crafts th:nth-child(2) { width: 40%; }
+.ldg-table-crafts td { vertical-align: top; }
+.ldg-table-money th:first-child { width: 34%; }
+@media (forced-colors: active) {
+  .ldg-spark polyline, .ldg-chart-line { stroke: CanvasText; }
+  .ldg-spark circle { fill: CanvasText; }
+}
+.ldg-summary :is(.ldg-gain, .ldg-loss) { color: inherit; }
+.ldg-pick.ldg-inline { flex-wrap: nowrap; white-space: nowrap; }
+.ldg-pick.ldg-inline select { width: auto; min-width: 150px; }

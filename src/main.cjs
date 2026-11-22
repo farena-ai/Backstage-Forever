@@ -8,6 +8,7 @@ const {
   shell,
   session,
   clipboard,
+  Notification,
 } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
@@ -61,6 +62,7 @@ let liveBridge = null;
 let radar = null;
 let miniNow = null;
 let sessionHistory = null;
+let economy = null;
 let closeAskPanel = null, dropAskPanelWindow = null;
 let wishlist = null;
 let talentBuilds = null; // saved talent builds per character (talent planner)
@@ -198,6 +200,7 @@ app.whenReady().then(async () => {
     store.onStateChange = () => {
       companionContext.sync(); characterGuidance?.sync();
       privateWeekly.sync(store.state); privateAfterAction.sync(store.state);
+      try { economy?.absorb(store.state); } catch { /* History keeping must never block a save. */ }
     };
     chatgpt = new ChatGPTAuth(app.getPath("userData"), safeStorage, {
       openExternal: (url) => shell.openExternal(url),
@@ -940,6 +943,16 @@ app.whenReady().then(async () => {
     try { pack = (knowledge.packs.get(knowledge.build) || knowledge.bundled).pack; } catch {}
     return new Map(ids.map((id, i) => [id, { name: found[i]?.name || pack?.items?.[id]?.name || null, quality: Number.isInteger(found[i]?.quality) ? found[i].quality : null }]));
   };
+  // Economy and history: the desktop keeps its own long memory of prices, gold and dungeon runs.
+  economy = new (require("./core/economy.cjs").EconomyStore)({ file: path.join(app.getPath("userData"), "economy.json") });
+  try { economy.absorb(store.state); } catch {}
+  const economyPages = require("./core/economy-ipc.cjs").registerEconomyHandlers({
+    handle, getState: () => store.state, economy, gameData, dialog, getWindow: () => win,
+    packNames: () => (knowledge.packs.get(knowledge.build) || knowledge.bundled).pack,
+    notify: Notification.isSupported() ? (title, body) => new Notification({ title, body, silent: false }).show() : null,
+  });
+  const economyTimer = setInterval(() => { try { economyPages.tick(); } catch {} }, 60000);
+  economyTimer.unref?.();
   handle("ledger", (...args) => {
     if (args.length) throw Error("Invalid ledger request.");
     const L = require("./core/ledger.cjs"), s = store.state;
@@ -956,7 +969,9 @@ app.whenReady().then(async () => {
         if (c.repAdvice) Object.assign(c.repAdvice, { referenceBuild: pack.build, characterBuild: p.clientBuild ?? null });
       } catch { c.repAdvice = null; }
     }
-    return { ...view, goal: require("./core/gold-goal.cjs").goldGoalView(s) };
+    let extras = { crafts: [], money: [], vendorPricesSeen: 0 };
+    try { extras = economyPages.ledgerExtras(s, view); } catch { /* The Ledger still opens without its history. */ }
+    return { ...view, ...extras, goal: require("./core/gold-goal.cjs").goldGoalView(s) };
   });
   // Gold goal (0.36, E4): the player's own target; null clears it. Only this handler writes it.
   handle("setGoldGoal", (...args) => {
@@ -1158,6 +1173,7 @@ app.whenReady().then(async () => {
     recovery.clear();
     characterGuidance.clear();
     try { sessionHistory?.clear(); } catch {}
+    try { economy?.clear(); } catch {}
     try { fs.rmSync(path.join(app.getPath("userData"), "route-review.json"), { force: true }); guided = desktopGuided = null; } catch {}
     diagnostics.clear();
     companionContext.invalidate("reset");
