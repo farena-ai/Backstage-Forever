@@ -3,7 +3,7 @@
 -- Opened by /bf options, a right-click on the owl, a keybinding, or the game's own options list.
 local T=BackstageForeverTr or function(text) return text end
 local ART='Interface\\AddOns\\BackstageForever\\Art\\'
-local WIDTH,HEIGHT=560,470
+local WIDTH,HEIGHT=560,420
 local COLUMN_X={34,292}
 local ROW_TOP,ROW_HEIGHT,ROWS_PER_COLUMN=-150,25,8
 
