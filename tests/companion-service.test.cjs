@@ -38,14 +38,12 @@ test('dungeon prep never guesses a partial name or turns a clarification into a 
  assert.equal(f.seen.length,0);
 });
 
-test('only exact-build Forever encounters can supplement local preparation',async()=>{
+test('only Forever encounters from the same patch can supplement local preparation',async()=>{
  const f=fixture(),at='2026-11-10T00:00:00.000Z',reads=[];
  const pack=require('../src/core/boss-loot-data.cjs').loadBossLootPack();
  const alpha=f.state.profiles[0];
- // The encounter reference is one build's file and joins on that exact build (still one of the loot pack's builds).
- const encounterBuild=require('../src/core/dungeon-atlas.cjs').loadEncounters().build;assert.ok(pack.builds.includes(encounterBuild));
- Object.assign(alpha,{clientBuild:encounterBuild,quests:[{id:900001,title:'Scarlet Monastery Alpha quest',complete:false,objectives:[]},{id:900003,title:'Herod',complete:false,objectives:[]},{id:900004,title:'Scarlet Monasteryyard',complete:false,objectives:[]}],journal:{encounters:[{name:'Personal defeat canary',encounterId:444,instanceMap:189,instanceType:'party',difficultyId:1,at:Date.parse('2026-11-09')/1000}]}});alpha.source.updatedAt=at;
- f.state.profiles.push({...alpha,id:'Beta',name:'Beta',clientBuild:'1.60.1.99999',quests:[{id:900002,title:'The Deadmines Beta quest',complete:false,objectives:[]}]});
+ Object.assign(alpha,{clientBuild:pack.builds[0],quests:[{id:900001,title:'Scarlet Monastery Alpha quest',complete:false,objectives:[]},{id:900003,title:'Herod',complete:false,objectives:[]},{id:900004,title:'Scarlet Monasteryyard',complete:false,objectives:[]}],journal:{encounters:[{name:'Personal defeat canary',encounterId:444,instanceMap:189,instanceType:'party',difficultyId:1,at:Date.parse('2026-11-09')/1000}]}});alpha.source.updatedAt=at;
+ f.state.profiles.push({...alpha,id:'Beta',name:'Beta',clientBuild:'1.60.2.99999',quests:[{id:900002,title:'The Deadmines Beta quest',complete:false,objectives:[]}]});
  f.service.dungeonEvidence={lootPack:()=>pack,wishes:id=>{reads.push(id);return [5202];}};
  const prompt='Dungeon prep for #sm?';
  const local=await f.ask(prompt);

@@ -24,9 +24,13 @@ function resolveNpcLocation(prompt,{profile,shareProfile=false,currentIndex,hist
  const intent=parseNpcLocationIntent(prompt);if(!intent)return null;
  let historical=null;try{historical=validateNpcLocationPack(historicalPack);}catch{}
  const current=shareProfile&&currentIndex?.compatible(profile)?currentIndex:null;
- const records=[];
- if(current)for(const n of Object.values(current.pack.npcs||{}))if(n.kind==='npc')records.push({id:n.id,name:n.name,lastSeen:n.lastSeen,contributingFiles:n.sources,positions:n.positions,build:current.pack.build,sourceCommit:current.pack.sourceCommit,evidenceTier:'exact-build-observation'});
- if(historical)for(const n of historical.npcs)records.push({...n,build:n.build||historical.build,sourceCommit:historical.sourceCommit,evidenceTier:'historical-reference'});
+ // The quest pack is exact only on its own build; on another build of the same patch it is a carried reference.
+ const exact=!(current&&profile?.clientBuild&&current.pack.build&&profile.clientBuild!==current.pack.build);
+ const own=[],older=[];
+ if(current)for(const n of Object.values(current.pack.npcs||{}))if(n.kind==='npc')own.push({id:n.id,name:n.name,lastSeen:n.lastSeen,contributingFiles:n.sources,positions:n.positions,build:current.pack.build,sourceCommit:current.pack.sourceCommit,evidenceTier:exact?'exact-build-observation':'same-patch-reference'});
+ if(historical)for(const n of historical.npcs)older.push({...n,build:n.build||historical.build,sourceCommit:historical.sourceCommit,evidenceTier:'historical-reference'});
+ // An exact-build observation leads. Otherwise the per-NPC reference leads, because it names the build each NPC was seen on.
+ const records=exact?[...own,...older]:[...older,...own];
  const matchedIds=new Set(records.filter(n=>intent.id?n.id===intent.id:matches(intent.query,n.name)).map(n=>n.id));
  // A name discovers IDs; all evidence for those IDs participates in identity.
  const candidates=records.filter(n=>matchedIds.has(n.id));
@@ -52,7 +56,7 @@ function resolveNpcLocation(prompt,{profile,shareProfile=false,currentIndex,hist
  if(lines.length>1)text+='\nOther observed interaction points:\n'+lines.slice(1).map(x=>'- '+x).join('\n');
  if(out.additionalPositions)text+=`\n${out.additionalPositions} additional historical points are not shown.`;
  if(!hasRequestedPlace)text+=` I don't have a verified ${intent.place} location for this NPC.`;
- text+=`\n\n${entity.evidenceTier==='historical-reference'?'Older Forever build':'Observed character-build reference'} ${entity.build} · last observed ${entity.lastSeen||'date unknown'}. Approximate interaction point; not a live location.`;
+ text+=`\n\n${entity.evidenceTier==='historical-reference'?'Older Forever build':entity.evidenceTier==='same-patch-reference'?'Forever reference from another build of this patch,':'Observed character-build reference'} ${entity.build} · last observed ${entity.lastSeen||'date unknown'}. Approximate interaction point; not a live location.`;
  dto.answer=text;
  return result(text+`\nSource: Efficient Games · CC BY 4.0 · ${url}`);
 }

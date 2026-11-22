@@ -49,8 +49,8 @@ test("malformed or wrong-build comparisons never read installed item rows", () =
     ["main", "healer", "items", 2041, 2147483648], ["main", "healer", "items", 2041, 2041],
     ["main", "constructor", "items", 2041, 6682], ["main", ["healer"], "items", 2041, 6682],
     ["main", "healer", "sets", "A", "Other character's set"], ["main", "healer"]]) assert.throws(() => f.call(...args));
-  f.profile.clientBuild = "1.60.1.70862";
-  assert.match(f.pair("leveling").reason, /matching installed WoW Forever build/);
+  f.profile.clientBuild = "1.60.2.70862";
+  assert.match(f.pair("leveling").reason, /installed WoW Forever game on the same patch/);
   assert.deepEqual(f.reads, []);
 });
 

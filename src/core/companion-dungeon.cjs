@@ -1,5 +1,6 @@
 "use strict";
 const { BASELINE, loadEncounters } = require("./dungeon-atlas.cjs");
+const buildCompat = require("./build-compat.cjs");
 const { mentionsDungeonAlias } = require("./companion-intents.cjs");
 const { savedSource } = require("./journal-data.cjs");
 
@@ -140,7 +141,11 @@ function dungeonAnswer({ id, wrongEdition }, { profile, shareProfile, encounters
         .some(text => typeof text === "string" && phrase(text).includes(instance)))
         .filter(q => Number.isSafeInteger(q.id) && q.id > 0 && /^[\p{L}\p{N}][\p{L}\p{M}\p{N} '’.,:!?()-]{0,149}$/u.test(q.title)).slice(0, 4);
       if (quests.length) answer.push(`**From your saved quest log · ${source.updatedAt} (not live)**\n${quests.map(q => `- ${q.title} (quest #${q.id})`).join("\n")}\nPossible matches by instance name only; not proof of access, requirements or quests to pick up.`);
-      const evidence = ENCOUNTER_MAPS.has(id) ? encounterEvidence(encounters(), id, profile.clientBuild) : null;
+      // Observations made on another build of the same patch still apply (build-compat.cjs); the text
+      // names the build they were made on.
+      const observed = encounters();
+      const evidenceBuild = buildCompat.usable(observed?.build, profile.clientBuild) ? observed.build : profile.clientBuild;
+      const evidence = ENCOUNTER_MAPS.has(id) ? encounterEvidence(observed, id, evidenceBuild) : null;
       if (!evidence) answer.push("No verified Forever encounter observations match this instance and saved build.");
       else answer.push(encounterText(evidence));
     }

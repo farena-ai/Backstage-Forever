@@ -1,6 +1,7 @@
 "use strict";
 // Read-only estimates over exact installed item IDs. No comparison of instance modifiers.
 const { gearAcquisition } = require("./gear-acquisition.cjs");
+const buildCompat = require("./build-compat.cjs");
 const { WEIGHTS, blockers, slotsFor, weightsFor, statWeight, dpsKey } = require("./gear-score.cjs");
 const { SLOT_LABELS } = require("./sheet.cjs");
 const ROLES = Object.freeze({ leveling: "Leveling", tank: "Tank", healer: "Healer", caster: "Caster damage" });
@@ -76,8 +77,8 @@ function registerSheetComparison({ handle, getState, gameData, wishlist }) {
     const result = { profileId, build: build || null, className, role: ROLES[role], mode };
     let installed;
     try { installed = gameData.build(); } catch {}
-    if (profile.source?.kind !== "wow-addon" || !/^\d+\.\d+\.\d+\.\d+$/.test(build || "") || installed !== build)
-      return { ...result, reason: "A saved addon character and a matching installed WoW Forever build are required." };
+    if (profile.source?.kind !== "wow-addon" || !/^\d+\.\d+\.\d+\.\d+$/.test(build || "") || !buildCompat.usable(installed, build))
+      return { ...result, reason: "A saved addon character and an installed WoW Forever game on the same patch are required." };
     if (!Object.hasOwn(WEIGHTS, className) || !Number.isInteger(level))
       return { ...result, reason: "The saved class or level is unavailable for this estimate." };
     const ctx = { className, level, spec: role }, weights = weightsFor(ctx);
