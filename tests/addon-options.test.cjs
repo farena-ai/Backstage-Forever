@@ -96,6 +96,10 @@ assert(BackstageForeverOptionsOpen()==false and said[#said]:find('outside combat
 combat=false
 assert(BackstageForeverOptionsOpen()==true and BackstageForeverOptions.shown==true)
 assert(BackstageForeverOptionsToggle()==false and BackstageForeverOptions.shown==false,'the same command closes it')
+GetBuildInfo=function() return '1.60.1','71037' end
+BackstageForeverReference={build='1.60.1.70888'}
+assert(BackstageForeverBuildBadge()=='Game build 71037 · quest data from build 70888, same patch',BackstageForeverBuildBadge())
+BackstageForeverOptionsOpen();assert(BackstageForeverOptions.badge.text=='Game build 71037 · quest data from build 70888, same patch')
 `));
 
 test("/bf options, the owl's right-click and four key bindings reach the window", () => {

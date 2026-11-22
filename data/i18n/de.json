@@ -1434,6 +1434,10 @@
  "addon": {
   "plain": {
    "In-Game Helpers": "Helfer im Spiel",
+   "quest data checked on this build": "Questdaten auf diesem Build geprüft",
+   "quest data from build": "Questdaten von Build",
+   "same patch": "gleicher Patch",
+   "quest data is for an older patch": "Questdaten sind für einen älteren Patch",
    "Quests": "Quests",
    "Alerts": "Hinweise",
    "Comfort": "Komfort",

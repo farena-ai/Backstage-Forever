@@ -120,6 +120,8 @@ local function refresh()
         if i==current then button:LockHighlight() else button:UnlockHighlight() end
     end
     about:SetText(T(DEFAULT_ABOUT))
+    local ok,line=pcall(BackstageForeverBuildBadge)
+    frame.badge:SetText(ok and type(line)=='string' and line or '')
 end
 local function build()
     if frame or type(CreateFrame)~='function' or not UIParent then return frame end
@@ -139,6 +141,12 @@ local function build()
     -- Header painting (the first-login overlook), a gold rule under it.
     local scene=f:CreateTexture(nil,'ARTWORK');scene:SetTexture(ART..'Messages\\ready')
     scene:SetSize(496,62);scene:SetPoint('TOP',0,-42)
+    -- Which game build this is and where the quest data stands, on the painting's lower edge.
+    local shade=f:CreateTexture(nil,'ARTWORK',nil,1);shade:SetColorTexture(0,0,0,.55)
+    shade:SetPoint('BOTTOMLEFT',scene,'BOTTOMLEFT',0,0);shade:SetPoint('BOTTOMRIGHT',scene,'BOTTOMRIGHT',0,0);shade:SetHeight(16)
+    local badge=f:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
+    badge:SetPoint('BOTTOMRIGHT',scene,'BOTTOMRIGHT',-6,3);badge:SetJustifyH('RIGHT')
+    f.badge=badge
     local rule=f:CreateTexture(nil,'OVERLAY');rule:SetColorTexture(.79,.62,.27,.9)
     rule:SetSize(496,1);rule:SetPoint('TOP',scene,'BOTTOM',0,0)
     for i,page in ipairs(PAGES) do
