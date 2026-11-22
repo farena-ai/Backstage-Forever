@@ -880,7 +880,10 @@ local function capture(event,eventId)
     end
     if type(BackstageForeverJournalSnapshot)=='function' then
         local ok,journal=pcall(BackstageForeverJournalSnapshot)
-        if ok and type(journal)=='table' then array(journal.levels);array(journal.firsts);array(journal.zones);array(journal.givers or {});character.journal=journal end
+        if ok and type(journal)=='table' then array(journal.levels);array(journal.firsts);array(journal.zones);array(journal.givers or {})
+            if type(journal.runs)=='table' then array(journal.runs);for _,run in ipairs(journal.runs) do if type(run)=='table' and type(run.loot)=='table' then array(run.loot) end end end
+            character.journal=journal
+        end
     end
     if type(BackstageForeverLedgerSnapshot)=='function' then
         local ok,ledger=pcall(BackstageForeverLedgerSnapshot)
@@ -891,6 +894,7 @@ local function capture(event,eventId)
             if type(ledger.training)=='table' then array(ledger.training.services or {}) end
             if type(ledger.riding)=='table' then array(ledger.riding.services or {}) end
             if type(ledger.mounts)=='table' then array(ledger.mounts.items or {}) end
+            if type(ledger.vendor)=='table' then array(ledger.vendor) end
             for _,price in ipairs(ledger.prices or {}) do array(price.hist) end
             character.ledger=ledger
         end

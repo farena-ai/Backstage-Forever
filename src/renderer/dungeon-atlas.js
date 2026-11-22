@@ -24,7 +24,7 @@ window.DungeonAtlas = (() => {
     return `<section class="atlas-page" data-atlas>
       ${PageHero.render({ art: "dungeons", compact: true, eyebrow: "Adventure · Dungeons & raids", title: "Instance Atlas", subAttrs: "data-atlas-level",
         aside: `<div class="atlas-tabs" role="tablist" aria-label="Instance types">${[["dungeon", "Dungeons"], ["raid", "Raids"], ["forever", "New in Forever"]].map(([id, label]) =>
-          `<button type="button" role="tab" id="atlas-tab-${id}" data-atlas-tab="${id}" aria-controls="atlas-results" aria-selected="${tab === id}" tabindex="${tab === id ? 0 : -1}">${label}</button>`).join("")}</div>` })}
+          `<button type="button" role="tab" id="atlas-tab-${id}" data-atlas-tab="${id}" aria-controls="atlas-results" aria-selected="${tab === id}" tabindex="${tab === id ? 0 : -1}">${label}</button>`).join("")}</div><button type="button" class="atlas-history-link" data-nav="run-history" data-shell-control="run-history">Run history <span aria-hidden="true">→</span></button>` })}
       <div class="atlas-results" id="atlas-results" role="tabpanel" aria-labelledby="atlas-tab-${tab}">
       <div class="atlas-suggest" data-atlas-suggest></div>
       <section class="atlas-recap" aria-labelledby="atlas-recap-heading">
