@@ -111,6 +111,9 @@ local row={'dm','The Deadmines','d',17,26,'A',1436,.42,.72,{{'Edwin VanCleef','5
 assert(BackstageForeverAtlasCountsLine(row,wish,up)=='|cffffd1001 on your wish list|r  ·  |cff40ff402 upgrades for you|r')
 assert(BackstageForeverAtlasCountsLine(row,{},{[3]=true})=='|cff40ff401 upgrade for you|r')
 assert(BackstageForeverAtlasCountsLine(row,{},{})=='')
+assert(BackstageForeverAtlasListMarks(row,wish,up)=='|cffffd1001|r |cff40ff40+2|r ')
+assert(BackstageForeverAtlasListMarks(row,{},{[3]=true})=='|cff40ff40+1|r ')
+assert(BackstageForeverAtlasListMarks(row,wish,{})=='|cffffd1001|r ' and BackstageForeverAtlasListMarks(row,{},{})=='')
 io.write('ok')
 `), "ok");
 });
