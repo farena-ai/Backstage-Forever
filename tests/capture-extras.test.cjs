@@ -74,7 +74,7 @@ now=now+60;load();event('PLAYER_LOGIN');save()
 now=now+20000;money=money-5000;load();event('PLAYER_LOGIN');now=now+900;money=money+2500;event('PLAYER_ENTERING_WORLD');save()
 `);
   const c = first.raw.characters[0];
-  assert.equal(c.captureVersion, "1.23.0", "the capture version does not change");
+  assert.equal(c.captureVersion, require("../package.json").version, "the capture version is the release version, not a new schema");
   assert.deepEqual(c.extras.talents, { at: 1790000000, unspent: 2, tabs: [{ n: "Arcane", t: [[1, 1, 2, 2, "Arcane Subtlety"], [2, 1, 1, 2, "Wand Specialization"]] }, { n: "Fire", t: [[1, 2, 5, 5, "Improved Fireball"]] }, { n: "Frost", t: [] }] });
   assert.deepEqual(c.extras.keyring, { at: 1790000000, slots: 8, ids: [7146, 11000] }, "each key once, sorted");
   assert.deepEqual(c.extras.sessions, [[1790000000, 1790000000, 120000, 120000]]);
