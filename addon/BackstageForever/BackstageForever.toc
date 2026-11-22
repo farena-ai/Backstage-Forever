@@ -31,6 +31,7 @@ BackstageForeverSupplies.lua
 BackstageForeverJournal.lua
 BackstageForeverCombat.lua
 BackstageForeverMoments.lua
+BackstageForeverSources.lua
 BackstageForeverLedger.lua
 BackstageForeverSheet.lua
 BackstageForeverAsk.lua
