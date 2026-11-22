@@ -111,6 +111,7 @@ contextBridge.exposeInMainWorld(
     zoneBriefing: () => invoke("zoneBriefing"),
     dataCoverage: () => invoke("dataCoverage"),
     talentCoach: (input) => invoke("talentCoach", input),
+    talentPlanner: (input) => invoke("talentPlanner", input),
     journey: () => invoke("journey"),
     badges: (profileId = null) => invoke("badges", profileId),
     weekly: () => invoke("weekly"),

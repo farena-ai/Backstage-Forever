@@ -48,6 +48,7 @@ const MAX = 1024 * 1024,
     "BackstageForeverAtlasData.lua",
     "BackstageForeverAtlas.lua",
     "BackstageForeverDesktop.lua",
+    "BackstageForeverTalents.lua",
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");
