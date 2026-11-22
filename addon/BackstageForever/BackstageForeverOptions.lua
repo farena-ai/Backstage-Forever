@@ -86,6 +86,11 @@ local PAGES={
         switch('Run panel stays in combat','Keeps the dungeon run panel on screen in combat. It only updates outside combat.',off('BackstageForeverPanelSettings','runCombat'),'run combat'),
         switch('Wish list banner','A banner when you or your group loots an item from your wish list. Shown after combat.',on('BackstageForeverPanelSettings','wish'),'wish'),
         switch('Bag marks','Small signs on bag items: + upgrade, * wish, ! quest item. Off until you switch it on.',off('BackstageForeverPanelSettings','bags'),'bags marks'),
+        switch('Group finder board','Reads looking-for-group lines in channels you joined into /bf lfg. It never sends.',on('BackstageForeverLfgSettings','enabled'),'lfg'),
+        switch('Answer readiness checks','When a party member types /bf check, a short status goes to your party. Needs party sync.',on('BackstageForeverPartySettings','answerChecks'),'check answers'),
+        switch('Guild sharing','Shares level, zone, professions and a dungeon flag with guild members who run the addon.',off('BackstageForeverGuildSettings','share'),'guild'),
+        switch('Auction shopping list','Your profession shopping list beside the auction window. A click fills the search box.',on('BackstageForeverShopSettings','enabled'),'shop'),
+        switch('Step aside for other addons','Switches off what another addon already draws, and says so once. /bf addons lists it.',on('BackstageForeverBesideSettings','enabled'),'addons'),
     }},
 }
 BackstageForeverOptionsPages=PAGES
@@ -341,6 +346,8 @@ end
 function BackstageForeverWayRegister()
     if type(SlashCmdList)~='table' or SlashCmdList.BACKSTAGEFOREVERWAY then return false end
     if SlashCmdList.TOMTOM_WAY or SLASH_TOMTOM_WAY1 then return false end
+    -- TomTom may load its command later than this; when it runs at all, /way is left to it.
+    if type(BackstageForeverBesideYields)=='function' then local ok,other=pcall(BackstageForeverBesideYields,'way') if ok and other then return false end end
     if type(hash_SlashCmdList)=='table' and hash_SlashCmdList['/WAY'] then return false end
     SLASH_BACKSTAGEFOREVERWAY1='/way'
     SlashCmdList.BACKSTAGEFOREVERWAY=way

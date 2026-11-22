@@ -921,6 +921,10 @@ local function capture(event,eventId)
     if type(BackstageForeverHUDUpdate)=="function" then pcall(BackstageForeverHUDUpdate,character,event=='QUEST_TURNED_IN' and integer(eventId,1,2147483647) or nil) end
     -- The quest list by distance and the dungeon run panel read the same capture; they change nothing in it.
     if type(BackstageForeverPanelsUpdate)=="function" then pcall(BackstageForeverPanelsUpdate,character) end
+    -- The readiness check, guild sharing and the auction shopping list read the same capture too.
+    if type(BackstageForeverCrewUpdate)=="function" then pcall(BackstageForeverCrewUpdate,character) end
+    if type(BackstageForeverGuildUpdate)=="function" then pcall(BackstageForeverGuildUpdate,character) end
+    if type(BackstageForeverShopUpdate)=="function" then pcall(BackstageForeverShopUpdate,character) end
     local chars=array({character});for id,c in pairs(roster) do if id~=guid then chars[#chars+1]=c end end
     table.sort(chars,function(a,b) return a.updatedAt>b.updatedAt end)
     while #chars>100 do table.remove(chars) end
