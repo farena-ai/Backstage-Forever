@@ -36,5 +36,6 @@ BackstageForeverAsk.lua
 BackstageForeverEnemy.lua
 BackstageForeverQoL.lua
 BackstageForeverParty.lua
+BackstageForeverOptions.lua
 BackstageForeverGuideData.lua
 BackstageForeverBossTips.lua
