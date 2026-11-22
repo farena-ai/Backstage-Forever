@@ -43,7 +43,7 @@
 .cg-trainer li { padding: 5px 0; border-bottom: 1px solid rgba(138,90,24,.2); font-size: 14px; color: #2b1b0a; }
 .cg-empty { padding: 12px; border: 1px dashed #a5823e; border-radius: 6px; background: rgba(255,248,225,.45); }
 .character-guidance > details, .character-guidance [data-cg-facts] > details { padding: 10px 16px; border-top: 1px solid rgba(138,90,24,.3); }
-.character-guidance summary { font-size: 14px; color: #7a1f14; font-weight: 700; cursor: pointer; padding: 4px 0; min-height: 28px; }
+.character-guidance summary { font-size: 14px; color: #7a1f14; font-weight: 700; cursor: pointer; padding: 4px 0; min-height: 28px; text-shadow: none; }
 .cg-search { display: flex; align-items: end; gap: 10px; margin: 10px 0; }
 .cg-search label { flex: 1; min-width: 0; color: #5a3e1c; font-weight: 700; }
 .cg-search input { width: 100%; margin-top: 5px; }

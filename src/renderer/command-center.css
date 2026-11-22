@@ -29,7 +29,7 @@
 .command-plan .guidance-reference p { margin: 2px 0; color: #3d220c; }
 .step-evidence { margin-top: 4px; }
 .step-evidence p { font-size: 12px; color: #6b4a22; }
-.bf-card details summary, .bf-page details summary { color: #7a1f14; }
+.bf-card details summary, .bf-page details summary { color: #7a1f14; text-shadow: none; }
 details summary { cursor: pointer; color: #dac48f; min-height: 26px; font-size: 13px; }
 .plan-footer { display: flex; align-items: center; gap: 15px; margin-top: 12px; }
 .plan-footer p { font-size: 13px; color: #5a3e1c; margin: 0 auto 0 0; }

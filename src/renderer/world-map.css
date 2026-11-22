@@ -81,7 +81,7 @@
 .world-map-page .wm-legend label, .world-map-page .wm-layer { color: #2b1b0a; font-weight: 600; }
 .world-map-page .wm-layer input { accent-color: #7a1f14; margin: 0; }
 .world-map-page .wm-layer :is(.wm-ico, .wm-ico-other) { margin-right: 0; }
-.world-map-page .wm-results li button { all: unset; box-sizing: border-box; display: flex; gap: 8px; width: 100%; padding: 7px 6px; cursor: pointer; border-bottom: 1px solid rgba(120,80,30,.25); color: #2b1b0a; }
+.world-map-page .wm-results li button { all: unset; box-sizing: border-box; display: flex; gap: 8px; width: 100%; padding: 7px 6px; cursor: pointer; border-bottom: 1px solid rgba(120,80,30,.25); color: #2b1b0a; text-shadow: none; }
 .world-map-page .wm-results li button:hover, .world-map-page .wm-results li button:focus-visible { background: rgba(255,240,200,.7); outline: none; }
 .world-map-page .wm-results li strong { display: block; font: 700 14px Cinzel, Georgia, serif; }
 .world-map-page .wm-results ol { overflow-x: hidden; }

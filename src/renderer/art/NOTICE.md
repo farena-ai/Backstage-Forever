@@ -14,6 +14,7 @@ In 1.7.0, Backstage Coding created new original illustrations locally with Comfy
 | `heroes/whats-new.webp` | What's New banner, “Sealed Field Dispatch.” Original by Backstage Coding, generated locally with ComfyUI / Qwen-Image 2.1 (seed `346751902`, master `backstage-forever-field-dispatch/sealed-field-dispatch_00001_.png` with embedded workflow); cropped and shaded for the title area, then encoded as a 1200 × 320 WebP. |
 | `badge-level.webp` | Level-up celebration crest |
 | `icons/*.png` | Commands group crests |
+| `icons/loot-unknown.png` | The loot pouch shown when the game files have no icon for an item. Original art by Backstage Coding, made locally with ComfyUI (Qwen-Image 2.1) (1.20.0) |
 | `steps/*.png` | Now "Do this next" step crests (art pass 2, 0.22.0) |
 | `classes/*.png` | Class crests on Now and the talent coach (0.23.0) |
 | `zones/*.webp` | Now "Where to level" landscape vistas, one per kind of zone (art pass 2, 0.22.0); city banners `warcamp` and `citadel` (0.26.0) |

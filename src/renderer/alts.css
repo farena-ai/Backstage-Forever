@@ -8,7 +8,7 @@
 .alt-tonight ul { flex: 1 1 240px; margin: 0; padding-left: 18px; font-size: 13px; color: #dcc79a; }
 .alt-eyebrow { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .12em; text-transform: uppercase; color: #c9a45a; }
 .alt-summary { display: flex; gap: 10px; flex-wrap: wrap; }
-.alt-summary > div { flex: 1 1 150px; display: flex; flex-direction: column; padding: 10px 14px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; }
+.alt-summary > div { flex: 1 1 150px; display: flex; flex-direction: column; padding: 10px 14px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; text-shadow: none; }
 .alt-summary strong { font: 700 20px Cinzel, Georgia, serif; }
 .alt-summary span { font-size: 12px; color: #5a3e1c; }
 .alt-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }

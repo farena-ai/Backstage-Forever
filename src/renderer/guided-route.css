@@ -8,7 +8,7 @@
 .gr-card .gr-note { color: #5a3e1c; margin-top: 8px; }
 .gr-empty { margin: 0; padding: 10px 14px; border-radius: 6px; background: rgba(239,224,187,.92); color: #3d220c; border: 1px dashed #a5823e; }
 .gr-summary { display: flex; gap: 10px; flex-wrap: wrap; }
-.gr-summary > div { flex: 1 1 140px; display: flex; flex-direction: column; padding: 10px 14px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; }
+.gr-summary > div { flex: 1 1 140px; display: flex; flex-direction: column; padding: 10px 14px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; text-shadow: none; }
 .gr-summary strong { font: 700 20px Cinzel, Georgia, serif; }
 .gr-summary span { font-size: 12px; color: #5a3e1c; }
 .gr-bar { height: 10px; border-radius: 5px; background: rgba(239,224,187,.25); overflow: hidden; border: 1px solid #a5823e; }
@@ -36,7 +36,7 @@
 .gr-ghost { padding: 4px 10px; border-radius: 5px; border: 1px solid #a5823e; background: transparent; color: #3d220c; cursor: pointer; }
 .gr-review-list .gr-step { grid-template-columns: 1fr auto; }
 .gr-acts { grid-column: 2; grid-row: 1 / span 3; align-self: center; display: flex; gap: 4px; }
-.gr-acts button { display: grid; place-items: center; padding: 0; line-height: 1; width: 28px; height: 26px; border-radius: 4px; border: 1px solid #a5823e; background: #fff8e6; color: #3d220c; cursor: pointer; font-size: 14px; }
+.gr-acts button { display: grid; place-items: center; padding: 0; line-height: 1; width: 28px; height: 26px; border-radius: 4px; border: 1px solid #a5823e; background: #fff8e6; color: #3d220c; cursor: pointer; font-size: 14px; text-shadow: none; }
 .gr-acts button:hover, .gr-acts button:focus-visible { background: #f4cf72; }
 .gr-step.ok { background: rgba(120,190,90,.22); }
 .gr-step.out { opacity: .55; text-decoration: line-through; }
@@ -44,5 +44,5 @@
 .gr-review-bar label { color: #3d220c; font-weight: 600; }
 .gr-recovery-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 [data-guided-route-body] { display: grid; gap: 12px; min-width: 0; }
-.gr-coverage > summary { color: #3d220c; cursor: pointer; font-weight: 700; }
+.gr-coverage > summary { color: #3d220c; cursor: pointer; font-weight: 700; text-shadow: none; }
 .gr-coverage > div { overflow-x: auto; }

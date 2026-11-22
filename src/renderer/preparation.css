@@ -66,7 +66,7 @@ body[data-faction="horde"] .workshop-bench{background:linear-gradient(115deg,rgb
 .workshop :is(h2, h3) { color: #3d220c; }
 .workshop .eyebrow { color: #8a5a18; }
 .workshop .workshop-evidence { border-color: rgba(138,90,24,.35); }
-.workshop .skill-chip { background: #fff8e6; color: #2b1b0a; }
+.workshop .skill-chip { background: #fff8e6; color: #2b1b0a; text-shadow: none; }
 .workshop .skill-chip.chosen { background: #fff0c8; }
 .workshop .skill-chip small { color: #5a3e1c; }
 .workshop .skill-next, .workshop .skill-countdown, .workshop .workshop-reagent, .workshop .workshop-alt-grid article { background: rgba(255,248,225,.6); }

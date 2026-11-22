@@ -81,7 +81,7 @@ button.primary {
   background: var(--gold);
   border-color: var(--gold);
   color: #18252b;
-  font-weight: 650;
+  font-weight: 650; text-shadow: none;
 }
 button.primary:hover {
   background: #efd19d;

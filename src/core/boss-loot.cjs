@@ -64,7 +64,21 @@ function upgradeVerdict(item, { ctx = {}, bySlot = {}, equipmentKnown = false, b
 }
 
 // Item view fields the renderer needs (no sell price, class masks etc.).
-const view = (it) => it ? { name: it.name, quality: it.quality, itemLevel: it.itemLevel, requiredLevel: it.requiredLevel, slot: it.slot, kind: it.kind, armor: it.armor || 0, stats: it.stats || [], damage: it.damage, speed: it.speed, dps: it.dps, bonding: it.bonding, classes: it.classes, iconFileId: it.iconFileId } : null;
+// Some items exist only as game hotfixes, so the local game files do not describe them. The
+// bundled community data still knows their names: show the name instead of a bare item number.
+let bundledNames = null;
+function bundledName(id) {
+  if (!bundledNames) {
+    bundledNames = new Map();
+    try {
+      const items = JSON.parse(require("node:fs").readFileSync(require("node:path").join(__dirname, "../../data/forever/pack.json"), "utf8")).items || {};
+      for (const it of Object.values(items)) if (Number.isSafeInteger(it?.id) && typeof it.name === "string" && it.name) bundledNames.set(it.id, it.name);
+    } catch {}
+  }
+  return bundledNames.get(id) || null;
+}
+const nameOnly = (id) => { const name = bundledName(id); return name ? { name, nameOnly: true } : null; };
+const view = (it, id) => !it ? nameOnly(id) : { name: it.name, quality: it.quality, itemLevel: it.itemLevel, requiredLevel: it.requiredLevel, slot: it.slot, kind: it.kind, armor: it.armor || 0, stats: it.stats || [], damage: it.damage, speed: it.speed, dps: it.dps, bonding: it.bonding, classes: it.classes, iconFileId: it.iconFileId };
 
 // Every boss item of the pack, rated once: Map(itemId -> { item, verdict }).
 function rateAll(pack, profile, gameData) {
@@ -87,7 +101,7 @@ function atlasLootSummary(pack, { profile = null, gameData = null, wished = [] }
       seen.add(x.itemId); items++;
       const r = rated.get(x.itemId);
       if (isUp(r.verdict)) upgrades++; else if (r.verdict.verdict === "upgrade-later") later++;
-      if (wish.has(x.itemId)) stars.push({ itemId: x.itemId, boss: b.name, name: r.item?.name || null, quality: r.item?.quality ?? null, iconFileId: r.item?.iconFileId || null });
+      if (wish.has(x.itemId)) stars.push({ itemId: x.itemId, boss: b.name, name: r.item?.name || bundledName(x.itemId), quality: r.item?.quality ?? null, iconFileId: r.item?.iconFileId || null });
     }
     out[id] = { bosses: inst.bosses.length, bossesWithLoot: inst.bosses.filter((b) => b.items.length).length, items, upgrades, later, wished: stars };
   }
@@ -116,10 +130,10 @@ function instanceLoot(pack, instanceId, { profile = null, gameData = null, wishe
     instanceId, name: INSTANCE_NAMES[instanceId] || instanceId, equipmentKnown: eq.equipmentKnown, gameData: found.some(Boolean),
     bosses: inst.bosses.map((b) => ({ name: b.name, npcIds: b.npcIds, items: b.items.map((x) => {
       const it = byId.get(x.itemId);
-      return { itemId: x.itemId, chance: x.chance, drops: x.drops, item: view(it), verdict: upgradeVerdict(it, eq), wished: wish.has(x.itemId) };
+      return { itemId: x.itemId, chance: x.chance, drops: x.drops, item: view(it, x.itemId), verdict: upgradeVerdict(it, eq), wished: wish.has(x.itemId) };
     }), community: extra.get(b).map((x) => {
       const it = byId.get(x.itemId);
-      return { itemId: x.itemId, chance: x.rate, samples: x.samples, installs: x.installs, source: provenance(x.installs), item: view(it), verdict: upgradeVerdict(it, eq), wished: wish.has(x.itemId) };
+      return { itemId: x.itemId, chance: x.rate, samples: x.samples, installs: x.installs, source: provenance(x.installs), item: view(it, x.itemId), verdict: upgradeVerdict(it, eq), wished: wish.has(x.itemId) };
     }) })),
     attribution: pack.attribution,
   };
@@ -132,6 +146,6 @@ function itemCard(pack, itemId, { profile = null, gameData = null, wished = [], 
   for (const inst of Object.values(pack?.instances || {})) for (const b of inst.bosses) for (const id of b.npcIds) bosses.set(id, b.name);
   // Community drops: labelled with how many players reported them, never merged into the bundled list.
   const communitySources = (community?.dropsByItem?.get(itemId) || []).slice(0, 3).map((d) => ({ npcId: d.npcId, name: bosses.get(d.npcId) || creatureName(d.npcId) || `Creature #${d.npcId}`, chance: d.rate, samples: d.samples, installs: d.installs, source: provenance(d.installs) }));
-  return { itemId, item: view(it), verdict: upgradeVerdict(it, equipmentContext(profile, gameData)), ownership: ownership(profile, itemId), sources, communitySources, wished: wished.includes(itemId) };
+  return { itemId, item: view(it, itemId), verdict: upgradeVerdict(it, equipmentContext(profile, gameData)), ownership: ownership(profile, itemId), sources, communitySources, wished: wished.includes(itemId) };
 }
 module.exports = { equipmentContext, upgradeVerdict, atlasLootSummary, instanceLoot, itemCard, INSTANCE_NAMES };

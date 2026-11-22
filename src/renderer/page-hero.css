@@ -52,7 +52,7 @@ body[data-faction] :is(.ph-art-ledger, .ph-art-ledger-gold, .ph-art-ledger-reput
 .ph-sub { margin: 0; color: #f1dcb0; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
 .ph-sub strong { color: #fff1d6; }
 .ph-aside { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; justify-content: flex-end; }
-.ph-aside .ph-chip { padding: 4px 10px; border-radius: 12px; font: 700 12px 'Source Sans 3', sans-serif; color: #2b1b0a; background: rgba(239,224,187,.92); border: 1px solid #a5823e; }
+.ph-aside .ph-chip { padding: 4px 10px; border-radius: 12px; font: 700 12px 'Source Sans 3', sans-serif; color: #2b1b0a; background: rgba(239,224,187,.92); border: 1px solid #a5823e; text-shadow: none; }
 @media (max-width: 900px) { .ph-copy { max-width: 100%; } .page-hero { flex-direction: column; align-items: flex-start; } }
 @media (prefers-reduced-motion: reduce) { .page-hero::before, .page-hero::after { animation: none; } }
 
@@ -80,7 +80,7 @@ body[data-faction] :is(.ph-art-ledger, .ph-art-ledger-gold, .ph-art-ledger-reput
 .bf-row > div { min-width: 0; flex: 1; }
 .bf-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .bf-actions:empty { display: none; }
-.bf-page button.bf-link, .bf-card button.bf-link { all: unset; cursor: pointer; color: #7a1f14; font-weight: 700; text-decoration: underline; }
+.bf-page button.bf-link, .bf-card button.bf-link { all: unset; cursor: pointer; color: #7a1f14; font-weight: 700; text-decoration: underline; text-shadow: none; }
 
 /* Older pages keep their structure but wear parchment: their panels become cards. */
 .bf-parchment .panel { background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; border-radius: 6px; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
@@ -107,7 +107,7 @@ body[data-faction] :is(.ph-art-ledger, .ph-art-ledger-gold, .ph-art-ledger-reput
 
 /* Folded tools (quest filters, reference details, voice, memory, quest session) read as parchment. */
 .player-tool { background: linear-gradient(180deg, #efe0bb, #dcc797); border: 1px solid #a5823e; border-radius: 6px; color: #2b1b0a; }
-.player-tool > summary { color: #7a1f14; font-weight: 700; }
+.player-tool > summary { color: #7a1f14; font-weight: 700; text-shadow: none; }
 .player-tool[open] > summary { border-bottom-color: rgba(138,90,24,.35); }
 .bf-card .player-tool, .panel .player-tool, .quest-index .player-tool, .knowledge-status .player-tool { background: rgba(255,248,225,.55); border-color: #c4a466; box-shadow: none; }
 .player-tool :is(label, small, p) { color: #4a3218; }
