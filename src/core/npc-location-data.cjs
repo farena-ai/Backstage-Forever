@@ -2,7 +2,7 @@
 const {createHash}=require('node:crypto'),{isDeepStrictEqual}=require('node:util');
 const {COMMIT,BUILD,BUILDS,ATTRIBUTION,SOURCES}=require('./npc-location-sources.cjs');
 // Raw single-build input bound; the merged multi-build bundle has its own bound.
-const RAW_LIMIT=2*1024*1024,PACK_LIMIT=256*1024,MAX_NPCS=3000,MAX_POSITIONS=8,MAX_BUILDS=12;
+const RAW_LIMIT=2*1024*1024,PACK_LIMIT=768*1024,MAX_NPCS=8000,MAX_POSITIONS=8,MAX_BUILDS=12;
 const BUILD_RE=/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/,COMMIT_RE=/^[a-f0-9]{40}$/;
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const id=n=>Number.isSafeInteger(n)&&n>0&&n<=2147483647;
@@ -31,7 +31,8 @@ function normalizeNpcLocations(rawBytes,source=SOURCES[0],commit=COMMIT){
  checkSource(source,commit);
  if(!Buffer.isBuffer(rawBytes)||rawBytes.length>RAW_LIMIT||rawBytes.length!==source.bytes||hash(rawBytes)!==source.sha256)fail();
  const raw=JSON.parse(rawBytes);if(!isDeepStrictEqual(raw.meta,source.meta)||!raw.npcs||typeof raw.npcs!=='object'||Array.isArray(raw.npcs)||Object.keys(raw.npcs).length>MAX_NPCS)fail();
- const npcs=Object.entries(raw.npcs).map(([key,n])=>{if(!id(+key)||String(+key)!==key||!Array.isArray(n.positions))fail();const positions=[];for(const p of n.positions){const q={mapId:p.uiMap,x:p.mapX,y:p.mapY};point(q);if(positions.length<MAX_POSITIONS&&!positions.some(v=>v.mapId===q.mapId&&v.x===q.x&&v.y===q.y))positions.push(q);}return {id:+key,name:n.name,build:source.build,lastSeen:n.lastSeen,contributingFiles:n.sources,positions};}).sort((a,b)=>a.id-b.id);
+ // "Unknown" is the game's placeholder for a name that had not loaded; such rows are left out.
+ const npcs=Object.entries(raw.npcs).filter(([,n])=>n?.name!=='Unknown').map(([key,n])=>{if(!id(+key)||String(+key)!==key||!Array.isArray(n.positions))fail();const positions=[];for(const p of n.positions){const q={mapId:p.uiMap,x:p.mapX,y:p.mapY};point(q);if(positions.length<MAX_POSITIONS&&!positions.some(v=>v.mapId===q.mapId&&v.x===q.x&&v.y===q.y))positions.push(q);}return {id:+key,name:n.name,build:source.build,lastSeen:n.lastSeen,contributingFiles:n.sources,positions};}).sort((a,b)=>a.id-b.id);
  return validateNpcLocationPack({schemaVersion:1,kind:'forever-npc-locations',product:'wowf',build:source.build,builds:[source.build],sourceCommit:commit,license:'CC BY 4.0',attribution:ATTRIBUTION,sources:[structuredClone(source)],npcs},{pinned:false});
 }
 /** Newest-first merge: union of NPCs and positions (exact dedupe, cap 8); newest name wins. */
@@ -48,4 +49,4 @@ function mergeNpcLocationPacks(packs,{pinned=false}={}){
  const npcs=[...byId.values()].sort((a,b)=>a.id-b.id);
  return validateNpcLocationPack({schemaVersion:1,kind:'forever-npc-locations',product:'wowf',build:sources[0].build,builds:sources.map(s=>s.build),sourceCommit:valid[0].sourceCommit,license:'CC BY 4.0',attribution:ATTRIBUTION,sources,npcs},{pinned});
 }
-module.exports={normalizeNpcLocations,mergeNpcLocationPacks,validateNpcLocationPack,RAW_LIMIT,PACK_LIMIT,MAX_POSITIONS,hash};
+module.exports={normalizeNpcLocations,mergeNpcLocationPacks,validateNpcLocationPack,RAW_LIMIT,PACK_LIMIT,MAX_NPCS,MAX_POSITIONS,hash};

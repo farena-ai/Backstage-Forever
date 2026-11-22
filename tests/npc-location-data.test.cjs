@@ -2,11 +2,14 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 let data;try{data=require('../src/core/npc-location-data.cjs');}catch(e){if(e.code!=='MODULE_NOT_FOUND')throw e;}
 test('NPC data compiler and strict runtime validator exist',()=>assert.equal(typeof data?.normalizeNpcLocations,'function'));
-test('pinned multi-build compilation preserves 978 NPCs and 1786 points, excludes narrative/private/world fields',()=>{
+test('pinned multi-build compilation preserves every NPC and point of its pinned coverage, excludes narrative/private/world fields',()=>{
  assert.ok(data,'NPC data compiler required');
- const p=data.validateNpcLocationPack(JSON.parse(fs.readFileSync('data/forever-npc-locations/pack.json')));assert.equal(p.npcs.length,978);assert.equal(p.npcs.reduce((n,r)=>n+r.positions.length,0),1786);
- assert.equal(p.build,'1.60.1.70888');assert.deepEqual(p.builds,['1.60.1.70888','1.60.1.70862','1.60.1.70840','1.60.1.70790']);
- const cairne=p.npcs.find(r=>r.id===3057);assert.equal(cairne.lastSeen,'2026-11-05');assert.equal(cairne.build,'1.60.1.70790');assert.deepEqual(cairne.positions,[{mapId:1456,x:.5989,y:.5167}]);
+ const p=data.validateNpcLocationPack(JSON.parse(fs.readFileSync('data/forever-npc-locations/pack.json')));
+ // Re-pinned on every data refresh: compare with the compiler's coverage and the pinned sources; the first four-build pack is the floor.
+ const {COVERAGE}=require('../scripts/build-forever-npc-locations.cjs'),{COMMIT,BUILDS,SOURCES}=require('../src/core/npc-location-sources.cjs'),{assertNewestFirst}=require('./pack-invariants.cjs');
+ const points=p.npcs.reduce((n,r)=>n+r.positions.length,0);assert.deepEqual({npcs:p.npcs.length,positions:points},COVERAGE);assert.ok(p.npcs.length>=978&&points>=1786);assert.ok(p.npcs.length<=data.MAX_NPCS);
+ assert.equal(p.sourceCommit,COMMIT);assert.deepEqual(assertNewestFirst(p.builds),BUILDS);assert.equal(p.build,p.builds[0]);assert.deepEqual(p.sources,SOURCES);for(const s of p.sources)assert.equal(s.meta.clientBuild,s.build);
+ const cairne=p.npcs.find(r=>r.id===3057);assert.equal(cairne.name,'Cairne Bloodhoof');assert.ok(p.builds.includes(cairne.build));assert.match(cairne.lastSeen,/^\d{4}-\d\d-\d\d$/);assert.ok(cairne.positions.length&&cairne.positions.every(q=>q.mapId===1456),'Cairne stays in Thunder Bluff');
  for(const mapId of [1429,1436,1433,1453,1438])assert.ok(p.npcs.filter(n=>n.positions.some(q=>q.mapId===mapId)).length>=10,'Alliance map '+mapId);
  assert.doesNotMatch(JSON.stringify(p),/"(?:worldX|worldY|options|approached|objects|windows|side)":|Gossip|Greetings/);assert.deepEqual(data.validateNpcLocationPack(p),p);
 });
@@ -27,5 +30,5 @@ test('per-build NPC packs merge newest-first: union of NPCs and points, newest n
 test('raw hash, metadata and limits are enforced',()=>{assert.ok(data);const b=Buffer.from('{"meta":{"clientBuild":"1.60.1.999"}}');assert.throws(()=>data.normalizeNpcLocations(Buffer.concat([b,Buffer.from(' ')])));assert.throws(()=>data.normalizeNpcLocations(Buffer.alloc(2097153)));assert.throws(()=>data.normalizeNpcLocations(b));});
 test('runtime rejects unknown keys, duplicate identities, invalid coordinates/dates/provenance/oversize',()=>{
  assert.ok(data);const original=JSON.parse(fs.readFileSync('data/forever-npc-locations/pack.json'));
- for(const edit of [p=>p.private='secret',p=>p.npcs[0].worldX=1,p=>p.npcs.push(p.npcs[0]),p=>p.npcs[0].positions[0].x=NaN,p=>p.npcs[0].positions[0].y=1.1,p=>p.npcs[0].lastSeen='2026-02-30',p=>p.sourceCommit='bad',p=>p.npcs[0].name='x'.repeat(201),p=>p.npcs[0].positions=Array(9).fill(p.npcs[0].positions[0]),p=>p.npcs=Array(1001).fill(p.npcs[0])]){const p=structuredClone(original);edit(p);assert.throws(()=>data.validateNpcLocationPack(p));}
+ for(const edit of [p=>p.private='secret',p=>p.npcs[0].worldX=1,p=>p.npcs.push(p.npcs[0]),p=>p.npcs[0].positions[0].x=NaN,p=>p.npcs[0].positions[0].y=1.1,p=>p.npcs[0].lastSeen='2026-02-30',p=>p.sourceCommit='bad',p=>p.npcs[0].name='x'.repeat(201),p=>p.npcs[0].positions=Array(9).fill(p.npcs[0].positions[0]),p=>p.npcs=Array.from({length:data.MAX_NPCS+1},(_,i)=>({...p.npcs[0],id:i+1}))]){const p=structuredClone(original);edit(p);assert.throws(()=>data.validateNpcLocationPack(p));}
 });

@@ -34,7 +34,9 @@ test('display truncation cannot deny a requested city present in the complete ch
 });
 test('Alliance city questions resolve merged-build NPCs with city labels and per-NPC build provenance',()=>{
  const r=resolve('Where in Stormwind is Morgan Pestle?');
- assert.equal(r.dto.status,'found');assert.equal(r.dto.entities[0].positions[0].mapLabel,'Stormwind City');assert.equal(r.dto.entities[0].build,'1.60.1.70790');
- assert.match(r.text,/Stormwind City, around 63\.2, 74\.5/);assert.doesNotMatch(r.text,/don't have a verified/);assert.match(r.text,/data\/wowf\/1\.60\.1\.70790/);
+ assert.equal(r.dto.status,'found');assert.equal(r.dto.entities[0].positions[0].mapLabel,'Stormwind City');
+ // Provenance is per NPC: the newest merged build that saw him (first 70790, later builds since), not simply the pack's own build.
+ const row=pack.npcs.find(n=>n.id===279);assert.equal(row.name,'Morgan Pestle');assert.ok(pack.builds.includes(row.build));assert.equal(r.dto.entities[0].build,row.build);
+ assert.match(r.text,/Stormwind City, around 63\.2, 74\.[56]/);assert.doesNotMatch(r.text,/don't have a verified/);assert.ok(r.text.includes('/data/wowf/'+row.build));
  assert.match(resolve('Where in Ironforge is Morgan Pestle?').text,/don't have a verified Ironforge location/);
 });

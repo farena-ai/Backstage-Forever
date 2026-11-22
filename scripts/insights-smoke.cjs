@@ -274,7 +274,7 @@ const repo = path.resolve(__dirname, ".."),
           1,
           "Unknown drop item ID is shown once, rather than repeated as a redundant name suffix",
         );
-        assert.match(text, /1\.60\.1\.70888/);
+        assert.ok(text.includes(require("../data/forever-insights/pack.json").build), "names the insights pack's own build");
         assert.equal(
           await page.evaluate(() =>
             Boolean(

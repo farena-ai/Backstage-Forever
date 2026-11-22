@@ -136,7 +136,10 @@ class LevelingAdvisor {
     for (const z of this.pack.zones) {
       if (faction && z.faction !== "Contested" && z.faction !== faction) continue;
       const band = this.observedBand(z.mapId);
-      const range = band ? { min: Math.max(1, Math.min(z.min, band.min)), max: Math.max(z.max, band.max), observed: true } : { min: z.min, max: z.max, observed: false };
+      // Observed quests may widen the reviewed band by a few levels, not rewrite it: holiday and faire
+      // quests at level 60 stand in low zones, and one of them must not make Elwynn read 1-60.
+      const WIDEN = 5;
+      const range = band ? { min: Math.max(1, z.min - WIDEN, Math.min(z.min, band.min)), max: Math.min(z.max + WIDEN, Math.max(z.max, band.max)), observed: true } : { min: z.min, max: z.max, observed: false };
       const fit = this.fit(range, level);
       if (fit === "later" || fit === "done") continue;
       const avail = this.available(z.mapId, p);
@@ -144,7 +147,9 @@ class LevelingAdvisor {
       const hub = hubOf(avail.map((a) => a.giver));
       // Quests on offer matter most; then staying close (same zone, same continent); then the band's middle.
       let score = (fit === "now" ? 10 : 2) + Math.min(avail.length, 10) + Math.log2(1 + avail.length) * 2 - Math.abs((range.min + range.max) / 2 - level) * 0.3;
-      if (z.mapId === here) score += 4;
+      // Where you stand wins while it still has a few quests for you: nobody should be sent away from
+      // a zone they are questing in because a neighbour lists more.
+      if (z.mapId === here) score += avail.length >= 3 ? 10 : 4;
       else if (here && continent(here) === continent(z.mapId)) score += 3;
       if (z.starter) {
         const own = z.starter.some((r) => r.toLowerCase() === String(p.race || "").toLowerCase());

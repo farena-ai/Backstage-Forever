@@ -154,15 +154,14 @@ test("the shipped pack carries the richer quest rewards", () => {
   const qs = Object.values(pack.quests);
   const items = qs.flatMap((q) => [...q.rewards.items, ...q.rewards.choices]);
   const named = (r) => r.name !== `Item #${r.itemId}`;
-  assert.equal(
-    qs.filter((q) => { const a = [...q.rewards.items, ...q.rewards.choices]; return a.length && a.every(named); }).length,
-    435,
-  );
-  assert.equal(new Set(items.filter((r) => r.quality !== undefined).map((r) => r.itemId)).size, 399);
-  assert.equal(qs.filter((q) => q.rewards.moneyCopper !== undefined).length, 1547);
-  assert.equal(qs.filter((q) => q.rewards.reputation).length, 2937);
-  assert.equal(qs.filter((q) => q.rewards.xp).length, 4916);
-  assert.equal(qs.filter((q) => q.rewards.spells).length, 411);
+  // Coverage only grows as more builds are merged; the floors are the first four-build pack's counts.
+  const atLeast = (n, floor, what) => assert.ok(n >= floor, `${what}: ${n} >= ${floor}`);
+  atLeast(qs.filter((q) => { const a = [...q.rewards.items, ...q.rewards.choices]; return a.length && a.every(named); }).length, 435, "quests with every reward item named");
+  atLeast(new Set(items.filter((r) => r.quality !== undefined).map((r) => r.itemId)).size, 399, "reward items with a quality");
+  atLeast(qs.filter((q) => q.rewards.moneyCopper !== undefined).length, 1547, "quests with money");
+  atLeast(qs.filter((q) => q.rewards.reputation).length, 2937, "quests with reputation");
+  atLeast(qs.filter((q) => q.rewards.xp).length, 4916, "quests with experience");
+  atLeast(qs.filter((q) => q.rewards.spells).length, 411, "quests with spell rewards");
   assert.equal(pack.attribution, ATTRIBUTION);
   const d = new KnowledgeIndex(pack).details({}, 792);
   assert.equal(d.rewards.choices[0].name, "Primitive Club");

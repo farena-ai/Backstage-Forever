@@ -335,6 +335,8 @@ function normalizeData(inputs, { commit, build, itemFacts } = {}) {
     for (const [key, n] of entries(raw.npcs[collection]))
       optional(() => {
         if (!id(+key) || !object(n) || !text(n.name) || !id(n.sources)) fail();
+        // "Unknown" is the game's placeholder for a name that had not loaded; it is not a name.
+        if (n.name === "Unknown") fail();
         const npc = {
           id: +key,
           kind,

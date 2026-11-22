@@ -64,7 +64,7 @@ function shortPath(target) {
     assert.equal(model.shoppingRows[0].historicalSellers.status, "historical-suggestions");
     assert.equal(model.shoppingRows[1].historicalSellers.status, "historical-suggestions");
     assert.ok(model.shoppingRows[1].historicalSellers.suggestions.length <= 3);
-    assert.equal(model.sellerReference.source.sourceCommit, "164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1");
+    assert.equal(model.sellerReference.source.sourceCommit, require("../data/forever-vendors/pack.json").sourceCommit);
     assert.match(model.sellerReference.limitation, /current stock, price and access are unverified/);
     const stale = structuredClone(snapshot.state);
     let result = await create(); assert.equal(result.state.journeys.length, 1); const first = result.journeyId;

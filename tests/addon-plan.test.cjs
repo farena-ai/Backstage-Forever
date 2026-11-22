@@ -8,11 +8,13 @@ const root = path.join(__dirname, "..");
 const prelude = String.raw`
 dofile('addon/BackstageForever/BackstageForeverReference.lua')
 dofile('addon/BackstageForever/BackstageForeverPlan.lua')
+-- The synthetic character plays on the bundled reference's own build, whichever snapshot is pinned.
+local BUILD=BackstageForeverReference.build
 local function q(id,complete,title)
  return {id=id,title=title or (BackstageForeverReference.quests[id] or {}).title or ('Synthetic '..id),complete=complete==true,objectives={}}
 end
 local function player(quests)
- return {id='Synthetic-Character',clientBuild='1.60.1.70888',locale='enUS',location={mapId=1413,x=0.35,y=0.28},quests=quests}
+ return {id='Synthetic-Character',clientBuild=BUILD,locale='enUS',location={mapId=1413,x=0.35,y=0.28},quests=quests}
 end
 local function plan(c,o) return BackstageForeverBuildPlan(c,o or {minutes=60}) end
 `;
@@ -54,7 +56,7 @@ test("exact reference turn-ins retain approximate relationship details and never
 local s=plan(player({q(1061,true)})).steps[1]
 assert(s.source=='reference' and s.destination.mapId==1413 and s.destination.x==0.3528 and s.destination.y==0.2786)
 assert(s.detail:find('Approximate',1,true) and s.detail:find('observed turn-in NPC',1,true) and s.detail:find('Seereth Stonebreak',1,true))
-assert(s.command=='/bf guide 1061 t 1413 0.3528 0.2786 1.60.1.70888')
+assert(s.command=='/bf guide 1061 t 1413 0.3528 0.2786 '..BUILD)
 local m=plan(player({q(854,true)})).steps[1]
 assert(m.destination==nil and m.command==nil and not m.detail:find('Thork',1,true))
 local o=plan(player({q(854)})).steps[1]
@@ -136,7 +138,7 @@ local qs={};for i=1,10000 do qs[i]=q(900000+i) end
 p=plan(player(qs));assert(p.counts.quests==25 and p.counts.limited==true and #p.steps<=3)
 BackstageForeverReference.quests[1061].turnIn={mapId=1413,x=0.2,y=0.3,approximate=true,evidence='mentioned-in-objective',name='Thork'}
 assert(plan(player({q(1061,true)})).steps[1].destination==nil)
-BackstageForeverReference={build='1.60.1.70888',locale='enUS',quests=evil}
+BackstageForeverReference={build=BUILD,locale='enUS',quests=evil}
 assert(plan(player({q(1061,true,'Actual title')})).steps[1].destination==nil and not touched)
 `));
 
@@ -164,7 +166,7 @@ test("rounded destination preview equals the numeric command and malformed build
 local a=q(900001);a.destination={mapId=2147483647,x=0.1234567,y=0.9999999}
 local c=player({a});local s=plan(c).steps[1]
 assert(s.destination.x==0.1235 and s.destination.y==1,'Preview must describe the command precision')
-assert(s.command=='/bf guide 900001 o 2147483647 0.1235 1.0000 1.60.1.70888')
+assert(s.command=='/bf guide 900001 o 2147483647 0.1235 1.0000 '..BUILD)
 for _,b in ipairs({'bad','1.2.3.4; injected','1.2.3.4\n','1234.2.3.4','1.2.3.123456789'}) do
  c.clientBuild=b;s=plan(c).steps[1];assert(s.command==nil and s.source=='game' and s.destination)
 end

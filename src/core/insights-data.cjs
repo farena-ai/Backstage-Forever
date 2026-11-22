@@ -9,8 +9,8 @@ const ATTRIBUTION =
 // Per-file and per-build input bounds (the current build's quest file is ~5.2 MB);
 // the merged multi-build pack has its own bound. Row caps cover the merged union.
 const INPUT_BYTES = 8 * 1024 * 1024,
-  TOTAL_BYTES = 12 * 1024 * 1024,
-  PACK_BYTES = 2 * 1024 * 1024;
+  TOTAL_BYTES = 20 * 1024 * 1024,
+  PACK_BYTES = 4 * 1024 * 1024;
 const MAX = Object.freeze({
   quests: 10000,
   trainers: 300,

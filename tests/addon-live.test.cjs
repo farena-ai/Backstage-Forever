@@ -263,7 +263,8 @@ UnitXP=function()return xp end
 UnitXPMax=function()return 100 end
 GetZoneText=function()return zone end
 GetSubZoneText=function()return ''end
-GetBuildInfo=function()return '1.60.1','70888'end
+-- The game runs the bundled reference's own build (read when called, after the reference is loaded).
+GetBuildInfo=function()return BackstageForeverReference.build:match('^(%d+%.%d+%.%d+)%.(%d+)$')end
 GetLocale=function()return 'enUS'end
 time=function()return 1700000000 end
 C_QuestLog={GetNumQuestLogEntries=function()return 1,1 end,
@@ -321,7 +322,7 @@ assert(not text():find('Spirits of Stonetalon',1,true) and not text():find('XP 7
 
 test('real planner reasons stay inside existing body while source phase and waypoint rows remain reserved',()=>lua(hud.slice(0,hud.indexOf('local character='))+String.raw`
 dofile('addon/BackstageForever/BackstageForeverReference.lua')
-local character={id='Reason-A',name='Synthetic Hero',level=12,className='Mage',locale='deDE',clientBuild='1.60.1.70888',
+local character={id='Reason-A',name='Synthetic Hero',level=12,className='Mage',locale='deDE',clientBuild=BackstageForeverReference.build,
  location={mapId=1413,x=0.35,y=0.28,zone='Synthetic zone'},readiness={bags={free=2,total=16}},quests={
  {id=1061,title=string.rep('W',100),complete=true,objectives={}},
  {id=900001,title='Current marker',complete=false,destination={mapId=1413,x=0.5,y=0.5},objectives={{text='Actual unfinished objective',done=false}}}}}
@@ -342,7 +343,7 @@ local bodyBottom=frames.BackstageForeverCompass.height+fonts[2].point[3]-fonts[2
 assert(bodyBottom>=cue.point[3]+cue.height,'Reasons cannot expand into the reserved rows')
 local button=frames.BackstageForeverCompassWaypoint
 assert(button.enabled and #guideCalls==0)
-button.OnClick();assert(guideCalls[1]=='guide 1061 t 1413 0.3528 0.2786 1.60.1.70888')
+button.OnClick();assert(guideCalls[1]=='guide 1061 t 1413 0.3528 0.2786 '..BackstageForeverReference.build)
 frames.BackstageForeverCompassCollapse.OnClick();assert(not source.visible and not action.visible and not cue.visible)
 frames.BackstageForeverCompassCollapse.OnClick();assert(source.visible and action.visible and cue.visible)
 local previous=button.OnClick
