@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 const fs = require("node:fs"), path = require("node:path");
 const { ATTRIBUTION, observedBuild } = require("./knowledge.cjs");
 const FILES = Object.freeze(["vendors.json", "npcs.json", "creatures.json"]);
@@ -156,7 +157,7 @@ function sellerFacts(pack, profile, itemIds) {
   const catalog = validateVendorPack(pack);
   if (!Array.isArray(itemIds)) invalid();
   const ids = [...new Set(itemIds)].slice(0, 20); if (ids.some(id => !integer(id))) invalid();
-  const exact = Boolean(observedBuild(profile) && catalog.builds.includes(profile.clientBuild));
+  const exact = Boolean(observedBuild(profile) && catalog.builds.some(b => buildCompat.usable(b, profile.clientBuild)));
   const faction = ["Alliance", "Horde"].includes(profile?.faction) ? profile.faction : null;
   const rows = ids.map(itemId => {
     const matching = catalog.vendors.filter(v => v.listings.some(r => r.itemId === itemId));

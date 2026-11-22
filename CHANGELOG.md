@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.17.1 - Today's game build
+
+- Quest lookups, the Compass quest reference and the in-game helpers work on every build of the patch they were checked on, instead of one exact build. See the [release notes](docs/releases/1.17.1.md).
+
 ## 1.17.0 - In-Game Helpers
 
 - Add scoped native quest, gathering, reward and spell-rank helpers, per-character controls, and a manual desktop handoff. See the [release notes](docs/releases/1.17.0.md).

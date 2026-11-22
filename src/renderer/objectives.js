@@ -12,7 +12,9 @@ window.ObjectiveView = (() => {
   }
   const character = () => { const s = getState(); return s?.profiles.find(p => p.id === s.activeProfileId); };
   const pinned = p => getState()?.objectives?.find(o => o.profileId === p?.id);
-  const matches = (o, p) => o.sourceId === p?.source?.id && o.build === p.clientBuild;
+  // Same rule as src/core/build-compat.cjs: another build of the same patch still counts.
+  const patch = build => /^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,8}$/.exec(typeof build === "string" ? build : "")?.[1];
+  const matches = (o, p) => o.sourceId === p?.source?.id && (o.build === p.clientBuild || (Boolean(patch(o.build)) && patch(o.build) === patch(p.clientBuild)));
   const standings = ["", "Hated", "Hostile", "Unfriendly", "Neutral", "Friendly", "Honored", "Revered", "Exalted"];
   const label = o => o.kind === "quest" ? o.title : `${o.title} · ${o.kind === "reputation" ? standings[o.targetStanding] : `Rank ${o.targetRank}`}`;
   const action = (p, o, target) => esc(JSON.stringify({ profileId: p.id, expectedId: o?.id ?? null, target, ...(target ? { sourceId: p.source.id, build: p.clientBuild ?? null } : {}) }));

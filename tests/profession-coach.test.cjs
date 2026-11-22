@@ -164,7 +164,7 @@ test("source kinds, build, context and limited stock stay qualified, missing ref
     "bountifulHarvest:1",
   ]);
   const s = seed();
-  s.profiles[0].clientBuild = "1.60.1.70888";
+  s.profiles[0].clientBuild = "1.60.2.70888";
   assert.equal(build(s).shoppingRows[0].acquisition.status, "browse-only");
   m = build(seed(), {}, {});
   assert.equal(m.planning.checklistAvailable, true);

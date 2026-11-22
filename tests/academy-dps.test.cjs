@@ -26,7 +26,7 @@ test("only the selected, matching addon Mage save can open the rank checklist", 
     assert.doesNotMatch(markup, /Opener|Single-target priority| checked(?:\s|>)/);
   }
   for (const p of [null, { ...mage, source: null }, { ...mage, source: { ...mage.source, kind: "manual" } },
-    { ...mage, clientBuild: undefined }, { ...mage, clientBuild: "1.60.1.70888" },
+    { ...mage, clientBuild: undefined }, { ...mage, clientBuild: "1.60.2.70888" },
     { ...mage, clientBuild: "1.60.1.70959 " }, { ...mage, level: 22 }, { ...mage, level: 26 },
     { ...mage, className: "Warlock" }]) {
     assert.doesNotMatch(view.academy(p), /data-academy-rank|Opener|Single-target priority/);

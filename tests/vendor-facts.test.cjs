@@ -66,7 +66,7 @@ test("default suggestions require exact addon build and nonempty wholly nonhosti
   const facts = () => api().sellerFacts(normalize(raw), p, [2320, 999]);
   assert.equal(facts().rows[0].suggestions.length, 1); assert.equal(facts().rows[1].status, "unobserved");
   assert.match(facts().rows[0].suggestions[0].qualification, /Historical.*nonhostile.*Horde/);
-  for (const change of [() => p.faction = "Alliance", () => p.faction = null, () => p.clientBuild = "1.60.1.0", () => delete p.source, () => delete p.source.updatedAt]) {
+  for (const change of [() => p.faction = "Alliance", () => p.faction = null, () => p.clientBuild = "1.60.2.0", () => delete p.source, () => delete p.source.updatedAt]) {
     Object.assign(p, profile()); change(); const row = facts().rows[0]; assert.equal(row.suggestions.length, 0); assert.equal(row.browse.length, 1); assert.match(row.browse[0].qualification, /unknown|mismatch|saved addon/i);
   }
   Object.assign(p, profile());

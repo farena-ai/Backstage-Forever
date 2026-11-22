@@ -34,7 +34,7 @@ test("a missing giver and unresolved chain never become directions; one compatib
 });
 
 test("wrong and unknown builds are browse-only; wrong-side routes and quest steps are not actionable", () => {
-  for (const clientBuild of ["1.60.1.70862", undefined]) {
+  for (const clientBuild of ["1.60.2.70862", undefined]) {
     const r = project([step(2, "objective")], { clientBuild, quests: [quest(2)] });
     assert.deepEqual([r.reason, r.map, r.fallback], ["build", null, null]);
   }
@@ -43,11 +43,11 @@ test("wrong and unknown builds are browse-only; wrong-side routes and quest step
 });
 
 test("an explicit exact-build route pack restores a recommendation without changing the saved profile", () => {
-  const patched = { ...profile, clientBuild: "1.60.1.70960", quests: [quest(2)] };
+  const patched = { ...profile, clientBuild: "1.60.2.70960", quests: [quest(2)] };
   const options = { profile: patched, route: { faction: "Horde", steps: [step(2, "objective")] }, now: Date.parse("2026-11-12T01:00:00Z") };
   const retired = recover({ ...options, pack });
   assert.deepEqual([retired.reason, retired.map, retired.fallback], ["build", null, null]);
-  const reviewed = recover({ ...options, pack: { ...pack, build: "1.60.1.70960" } }); // Synthetic reviewed fixture only.
+  const reviewed = recover({ ...options, pack: { ...pack, build: "1.60.2.70960" } }); // Synthetic reviewed fixture only.
   assert.equal(reviewed.reason, null);
   assert.equal(reviewed.map.questId, 2);
 });

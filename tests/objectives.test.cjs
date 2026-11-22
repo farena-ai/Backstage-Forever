@@ -104,9 +104,9 @@ test("a reputation pin survives roster imports and completes only from a fresh m
   assert.throws(() => store.changeObjective({ ...action, profileId: alt.id }), /active character/);
   for (const [n, active, other] of [
     [6, {}, ledger(6, 6)], [7, ledger(6, null)], [8, ledger(6, 5)],
-    [9, ledger(6, 10)], [10, ledger(6, 9, "1.15.2.55555")],
+    [9, ledger(6, 10)], [10, ledger(6, 9, "1.15.3.55555")],
     [11, ledger(6, 11, build, 47)], [12, { ...ledger(6, 12), clientBuild: undefined }],
-    [13, { ...ledger(6, 13), clientBuild: "1.15.2.55555" }],
+    [13, { ...ledger(6, 13), clientBuild: "1.15.3.55555" }],
     [14, ledger(5, 14)],
   ]) {
     importSaved(store, n, active, other);
@@ -229,7 +229,7 @@ test("unknown quest history needs a dated turn-in, not a ready quest or an ID of
   assert.equal(store.state.objectives[0].completion, undefined);
   update(store, "alpha", p => {
     p.source.updatedAt = at(15);
-    p.clientBuild = "1.15.2.54321";
+    p.clientBuild = "1.15.3.54321";
     p.history.recent[0].completedAt = Date.parse(at(12)) / 1000;
   });
   assert.equal(store.state.objectives[0].completion, undefined);

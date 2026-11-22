@@ -745,7 +745,7 @@ function shortPath(target){
         .isDisabled(),
       true,
     );
-    characters[0].clientBuild = "1.60.1.99999";
+    characters[0].clientBuild = "1.60.2.99999";
     characters[0].captureVersion = "0.6.0";
     characters[0].updatedAt++;
     await write();

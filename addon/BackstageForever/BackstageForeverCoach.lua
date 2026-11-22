@@ -19,7 +19,12 @@ end
 function BackstageForeverSpellRankRefresh()
     if not rankEnabled() or not rankOwner or text(rankRead(UnitGUID,'player'),200)~=rankOwner or rankRead(InCombatLockdown)~=false then return end
     local version,build=rankRead(GetBuildInfo)
-    if version~='1.60.1' or build~='70959' then return end
+    -- Checked on 70959; used on every build of that patch.
+    if type(version)~='string' or type(build)~='string' then return end
+    local usable=BackstageForeverBuildUsable
+    if type(usable)=='function' then
+        local ok,value=pcall(usable,'1.60.1.70959',version..'.'..build);if not ok or value~=true then return end
+    elseif version~='1.60.1' or build~='70959' then return end
     local _,class=rankRead(UnitClass,'player');if class~='MAGE' then return end
     local bank=field(field(Enum,'SpellBookSpellBank'),'Player')
     local spell=field(field(Enum,'SpellBookItemType'),'Spell')

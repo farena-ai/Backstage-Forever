@@ -37,11 +37,11 @@ test("one chest slot joins exact quest choice, merchant, saved recipe, and dunge
 });
 
 test("wrong/unknown build, missing saved identity and incorrect picker ownership fail closed", () => {
-  for (const options of [{ installed: "1.60.1.70862" }, { installed: null }, { p: null }, { p: { ...profile, source: null } }]) {
+  for (const options of [{ installed: "1.60.2.70862" }, { installed: null }, { p: null }, { p: { ...profile, source: null } }]) {
     assert.equal(setup(options)()?.status, "unavailable");
     assert.deepEqual(setup(options)().leads, []);
   }
-  const otherBuild = "1.60.1.70862";
+  const otherBuild = "1.60.2.70862"; // another patch: the reference does not apply
   assert.deepEqual(setup({ p: { ...profile, clientBuild: otherBuild }, installed: otherBuild })().leads.map(x => x.kind), ["craft"]);
   assert.throws(() => setup()("alt"), /active character/i);
   assert.throws(() => setup()("one", "head"), /slot/i);

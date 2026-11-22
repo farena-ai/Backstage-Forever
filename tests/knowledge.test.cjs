@@ -109,7 +109,7 @@ test("invalid optional records are dropped; bounded strings remain literal data"
 test("exact ID/build/title matching never borrows same-title quests", () => {
   assert.equal(index.details(profile(), 1061).status, "match");
   assert.equal(
-    index.details({ ...profile(), clientBuild: "1.60.1.9" }, 1061).status,
+    index.details({ ...profile(), clientBuild: "1.60.2.9" }, 1061).status,
     "missing",
   );
   assert.equal(
@@ -328,7 +328,7 @@ test("actual quest waypoints preserve capture, build, profile, phase and coordin
   for (const altered of [
     { ...p, captureVersion: undefined },
     { ...p, source: undefined },
-    { ...p, clientBuild: "1.60.1.999" },
+    { ...p, clientBuild: "1.60.2.999" },
     { ...p, quests: [] },
   ]) {
     assert.equal(index.resolveWaypoint(altered, 1061, "t").canCopy, false);

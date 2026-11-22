@@ -478,7 +478,7 @@ test("ready, disappeared, unknown, stale, other identity and build data cannot i
       history: { recent: [], completedIdsKnown: true, completedIds: [1061] },
     }),
     updatedProfiles({
-      clientBuild: "1.15.8.99999",
+      clientBuild: "1.15.9.99999",
       history: { recent: [], completedIdsKnown: true, completedIds: [1061] },
     }),
     updatedProfiles({

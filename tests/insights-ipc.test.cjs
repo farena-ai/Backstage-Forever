@@ -130,7 +130,7 @@ test("optional insights leave legacy detail byte shape and automatic context unc
   p.quests[0].title = "Different";
   assert.equal(handlers.questDetails("p", 138).insights.status, "unavailable");
   p.quests[0].title = pack.quests[0].title;
-  p.clientBuild = "1.60.1.0";
+  p.clientBuild = "1.60.2.0";
   assert.equal(handlers.questDetails("p", 138).insights.status, "unavailable");
   p.clientBuild = build;
   p.locale = "deDE";

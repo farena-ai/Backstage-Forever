@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 const { validateCapture } = require("./quest-data.cjs");
 const crypto = require("node:crypto");
 
@@ -302,7 +303,7 @@ function reconcileJourneys(journeys, profiles) {
       if (!step.quest || step.observed) continue;
       const profile = byId.get(step.profileId),
         q = step.quest;
-      if (!profile?.source || profile.clientBuild !== q.build) continue;
+      if (!profile?.source || (profile.clientBuild !== q.build && !buildCompat.usable(q.build, profile.clientBuild))) continue;
       if (!evidence.has(profile.id)) {
         const saved = Date.parse(profile.source.updatedAt),
           turns = new Map();

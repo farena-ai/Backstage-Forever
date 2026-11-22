@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 // Application code: MIT. Selected publisher observations: CC BY 4.0.
 const fs = require("node:fs"), path = require("node:path");
 const { createHash } = require("node:crypto"), { isDeepStrictEqual } = require("node:util");
@@ -201,7 +202,7 @@ function qualification(profile, r) {
   const dated = typeof timestamp === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(timestamp)
     && Number.isFinite(Date.parse(timestamp)) && new Date(timestamp.slice(0, 10)).toISOString().slice(0, 10) === timestamp.slice(0, 10);
   if (!dated) return ["browse-only", "Historical browsing only: a dated saved addon observation is required."];
-  if (profile.clientBuild !== BUILD) return ["browse-only", "Historical browsing only: saved character build mismatch or unavailable; reference build is " + BUILD + "."];
+  if (!buildCompat.usable(BUILD, profile.clientBuild)) return ["browse-only", "Historical browsing only: saved character build mismatch or unavailable; reference build is " + BUILD + "."];
   if (r.kind === "historical-vendor-listing") {
     const faction = ["Alliance", "Horde"].includes(profile.faction) ? profile.faction : null;
     const ns = faction ? r.observedReactionsByFaction[faction] : null;

@@ -55,8 +55,8 @@ window.CoverageView = (() => {
       <h2 id="cov-patch-title">Patch impact</h2>
       ${savedBuild ? `<p>Saved client build: <strong>${esc(savedBuild)}</strong></p>` : "<p>Saved build unknown</p>"}
       <p>Based on the selected character’s addon save, not a live client check. A reviewed build does not prove quest readiness or learned ranks.</p>
-      <ul>${rows.map(({ id, status, reviewedBuilds }) => `<li data-patch-capability="${esc(id)}" data-patch-status="${esc(status)}"><strong>${esc(PATCH_LABELS[id])}</strong> — <span>${esc(PATCH_STATUS[status])}</span>${reviewedBuilds.length ? ` <small><span>Reviewed builds:</span> ${esc(reviewedBuilds.join(", "))}</small>` : ""}</li>`).join("")}</ul>
-      <p>Unreviewed route suggestions are withheld; route coverage and your saved journal remain available.</p>
+      <ul>${rows.map(({ id, status, reviewedBuilds, carriedFrom }) => `<li data-patch-capability="${esc(id)}" data-patch-status="${esc(status)}"><strong>${esc(PATCH_LABELS[id])}</strong> — <span>${esc(carriedFrom ? "Reviewed on another build of this patch, in use" : PATCH_STATUS[status])}</span>${reviewedBuilds.length ? ` <small><span>Reviewed builds:</span> ${esc(reviewedBuilds.join(", "))}</small>` : ""}</li>`).join("")}</ul>
+      <p>Game builds change every few days inside one patch. A review on one build covers the other builds of that patch; a new patch waits for a fresh review, and until then route suggestions are withheld while route coverage and your saved journal stay available.</p>
     </section>`;
   }
   function page(profile, routeBuild) {

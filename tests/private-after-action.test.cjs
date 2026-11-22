@@ -34,7 +34,7 @@ test("ineligible or bounded evidence does not get filled in from the save or oth
   const bounded = debrief.view(scoped, other);
   assert.equal(bounded.moreDefeats, true);
   assert.deepEqual(bounded.rows.map(row => row.at), Array.from({ length: 5 }, (_, i) => (defeatAt - i) * 1000));
-  for (const changed of [{ ...main, journal: {} }, { ...main, clientBuild: "1.60.1.70900" }, { ...main, source: { ...main.source, updatedAt: null } }, alt]) {
+  for (const changed of [{ ...main, journal: {} }, { ...main, clientBuild: "1.60.2.70900" }, { ...main, source: { ...main.source, updatedAt: null } }, alt]) {
     assert.deepEqual(debrief.view({ activeProfileId: changed.id, profiles: [changed] }, other).rows.filter(row => row.kind === "defeat"), []);
   }
 });

@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 // Reviewed exact-build relations, not the merged quest/vendor/boss packs. See docs/LIVE-P01-ACQUISITION.md.
 const BUILD = "1.60.1.70888";
 const ATTRIBUTION = "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.";
@@ -19,10 +20,10 @@ function gearAcquisition(profile, gameData, wished, now = Date.now()) {
   const clientBuild = profile.clientBuild;
   let installed;
   try { installed = gameData.build(); } catch {}
-  if (!/^\d+\.\d+\.\d+\.\d+$/.test(clientBuild || "") || installed !== clientBuild)
-    return unavailable("The saved character and installed game builds must match to verify the chest slot.");
+  if (!/^\d+\.\d+\.\d+\.\d+$/.test(clientBuild || "") || !buildCompat.usable(installed, clientBuild))
+    return unavailable("The saved character and installed game must be on the same patch to verify the chest slot.");
 
-  const ref = clientBuild === BUILD;
+  const ref = buildCompat.usable(BUILD, clientBuild);
   const quest = profile.quests?.find(q => q.id === 166);
   const inLog = !!quest && Number.isInteger(profile.level) && profile.level >= 14;
   const vendorSide = profile.faction === "Alliance";

@@ -6,6 +6,49 @@ local rows={{'questTracker','Quest tracker'},{'objectiveHints','Objective hints'
     {'keepQuestItems','Keep quest items'},{'questItemCue','Quest item cue'},
     {'spellRankReminder','Spell rank reminder'}}
 local known,checks={},{}
+
+-- Game builds change every few days inside one patch (1.60.1.70888, 1.60.1.71037 ...).
+-- Data checked on one build is used on the other builds of the same patch and says so
+-- ("carried"); a different patch number is a mismatch until the data is checked again.
+local function buildParts(value)
+    if type(value)~='string' or #value>30 then return end
+    return value:match('^(%d+%.%d+%.%d+)%.(%d+)$')
+end
+function BackstageForeverBuildRelation(dataBuild,clientBuild)
+    local dataPatch,dataNumber=buildParts(dataBuild)
+    local clientPatch,clientNumber=buildParts(clientBuild)
+    if not dataPatch or not clientPatch then return 'unknown' end
+    if dataPatch~=clientPatch then return 'mismatch' end
+    return dataNumber==clientNumber and 'match' or 'carried'
+end
+function BackstageForeverBuildUsable(dataBuild,clientBuild)
+    local relation=BackstageForeverBuildRelation(dataBuild,clientBuild)
+    return relation=='match' or relation=='carried'
+end
+-- Plain-words lines for /bf status: which build the game is on and what that means for the bundled data.
+function BackstageForeverBuildStatus()
+    local lines={}
+    if type(GetBuildInfo)~='function' then return lines end
+    local ok,version,number=pcall(GetBuildInfo)
+    if not ok or type(version)~='string' or type(number)~='string' then return lines end
+    if type(issecretvalue)=='function' then
+        local readable,secret=pcall(issecretvalue,number)
+        if not readable or secret then return lines end
+    end
+    local client=version..'.'..number
+    if not buildParts(client) then return lines end
+    local T=BackstageForeverTr or tostring
+    lines[1]=T('Game build')..' '..client..'.'
+    local reference=type(BackstageForeverReference)=='table' and rawget(BackstageForeverReference,'build')
+    local relation=BackstageForeverBuildRelation(reference,client)
+    if relation=='match' then lines[2]=T('Quest reference: checked on this exact build.')
+    elseif relation=='carried' then
+        lines[2]=T('Quest reference: checked on build')..' '..select(2,buildParts(reference))..' '..T('of this patch, in use. Places rarely move between builds.')
+    elseif relation=='mismatch' then
+        lines[2]=T('Quest reference: made for patch')..' '..buildParts(reference)..'. '..T('Quest places and hints are off until an update checks this patch.')
+    end
+    return lines
+end
 for _,row in ipairs(rows) do known[row[1]]=true end
 local panel,generation=nil,0
 local T=BackstageForeverTr or function(text)return text end

@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 // The quest pack supplies possible reputation sources, not a promise about the current server.
 const { MAP_NAMES } = require("./map-names.cjs");
 const { STANDINGS } = require("./ledger.cjs");
@@ -18,7 +19,7 @@ function place(pack, refs) {
 // A reference requirement can be compared with bags, but cannot establish
 // readiness, turn-in, or a reputation gain. Storage never counts as carried.
 function turnInMaterials(profile, pack, quest, now) {
-  if (profile.source?.kind !== "wow-addon" || !profile.clientBuild || profile.clientBuild !== pack.build) return;
+  if (profile.source?.kind !== "wow-addon" || !profile.clientBuild || !buildCompat.usable(pack.build, profile.clientBuild)) return;
   const items = (quest.objectives || []).filter(o => o.type === "item");
   if (!items.length || new Set(items.map(o => o.objectId)).size !== items.length ||
       items.some(o => !Number.isSafeInteger(o.objectId) || o.objectId < 1 || !Number.isSafeInteger(o.required) || o.required < 1)) return;

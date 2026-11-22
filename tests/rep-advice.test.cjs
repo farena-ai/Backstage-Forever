@@ -102,5 +102,5 @@ test("turn-in materials use exact objective IDs and this character’s dated bag
   const future = { ...profile.ledger.bags, seenAt: seenAt + 1 };
   assert.equal(rows({ ...profile, ledger: { ...profile.ledger, bags: future } })[0].materials.seenAt, null);
   assert.ok(rows(profile, { browseOnly: true }).every(q => !q.materials));
-  assert.ok(rows({ ...profile, clientBuild: "1.60.1.99999" }).every(q => !q.materials));
+  assert.ok(rows({ ...profile, clientBuild: "1.60.2.99999" }).every(q => !q.materials));
 });

@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 const { CITIES, ENDPOINTS, BUILD } = require("./travel-sources.cjs");
 const { loadTravelReference } = require("./travel-data.cjs");
 const { questionForEvidence } = require("./companion-conversation.cjs");
@@ -274,7 +275,7 @@ function planTravel(reference, intent, { profile } = {}) {
   const eligible = (e) => e.faction === "neutral" || e.faction === faction;
   const matching =
     profile?.source?.kind === "wow-addon" &&
-    profile?.clientBuild === BUILD &&
+    buildCompat.usable(BUILD, profile?.clientBuild) &&
     typeof profile?.source?.updatedAt === "string" &&
     Number.isFinite(Date.parse(profile.source.updatedAt));
   const allowed = candidates.filter(

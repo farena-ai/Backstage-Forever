@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 const { normalizeEncounterHistory, savedSource } = require("./journal-data.cjs");
 
 // Exact quest and gear relations: docs/LIVE-D03-DUNGEON-PROGRESSION.md.
@@ -18,7 +19,7 @@ function dungeonProgression(instanceId, profile, wished = [], now = Date.now()) 
   const savedAt = Date.parse(source?.updatedAt);
   if (!(savedAt <= now)) return { status: "unavailable", reason: "A dated addon save is required to see this character’s progression." };
   const { clientBuild } = profile;
-  if (!QUEST_BUILDS.has(clientBuild)) return { status: "unavailable", reason: "No Deadmines progression review matches this character’s saved build." };
+  if (![...QUEST_BUILDS].some(b => buildCompat.usable(b, clientBuild))) return { status: "unavailable", reason: "No Deadmines progression review matches this character’s saved build." };
 
   let retained = [];
   try {
@@ -34,7 +35,7 @@ function dungeonProgression(instanceId, profile, wished = [], now = Date.now()) 
     defeats: { captureBuild: null, moreRetained: retained.length > DISPLAY_LIMIT,
       rows: retained.slice(0, DISPLAY_LIMIT).map(({ name, encounterId, at }) => ({ name, encounterId, at })) },
     quests: QUESTS.filter(row => profile.quests?.some(q => q.id === row.id && q.complete === false)).map(row => ({ ...row })),
-    gearGoals: clientBuild !== GEAR_BUILD ? null : wished.includes(GEAR_GOAL.itemId) ? [{ ...GEAR_GOAL }] : [],
+    gearGoals: !buildCompat.usable(GEAR_BUILD, clientBuild) ? null : wished.includes(GEAR_GOAL.itemId) ? [{ ...GEAR_GOAL }] : [],
   };
 }
 

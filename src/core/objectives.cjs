@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 const { randomUUID } = require("node:crypto");
 const { validateCapture } = require("./quest-data.cjs");
 const { SIDES } = require("./ledger.cjs");
@@ -53,7 +54,7 @@ function validateObjectives(value, profileIds) {
   }
   return structuredClone(value);
 }
-const matches = (o, p) => p?.source?.id === o.sourceId && p.clientBuild === o.build;
+const matches = (o, p) => p?.source?.id === o.sourceId && (p.clientBuild === o.build || buildCompat.usable(o.build, p.clientBuild));
 const completed = (p, id) => p.history?.completedIdsKnown === true && p.history.completedIds.includes(id);
 const professionFor = (p, id) => p.readiness?.workshop?.professions?.items.find(row => row.skillLineId === id);
 const factionFor = (p, id) => p.ledger?.reputations?.factions.find(row => row.id === id);

@@ -379,7 +379,11 @@ local reviewedQuests={
 }
 local peons={quest=5441,npc=10556,item=16114,map=1411,area=363}
 local function supportedBuild()
+    -- Checked on 70862 and 70888; used on every build of that patch.
     local version,build=call(GetBuildInfo)
+    if type(version)~='string' or type(build)~='string' then return false end
+    local fn=BackstageForeverBuildUsable
+    if type(fn)=='function' then local ok,value=pcall(fn,'1.60.1.70888',version..'.'..build);return ok and value==true end
     return version=='1.60.1' and (build=='70862' or build=='70888')
 end
 local function helper(key)

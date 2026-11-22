@@ -7154,6 +7154,67 @@
           "text": "Helpers depend on the game data available to the addon. A last-seen spot is not a live spawn, and a missing hint does not prove there is nothing nearby. This update does not add general DPS coaching or expand Companion quest or Workshop recipe-chain advice."
         }
       ]
+    },
+    {
+      "version": "1.17.1",
+      "channel": "stable",
+      "source": "docs/releases/1.17.1.md",
+      "title": "Backstage Forever 1.17.1 — Today's game build",
+      "changes": [
+        {
+          "id": "same-patch-quest-data",
+          "kind": "fixed",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "WoW Forever gets a new game build every few days. Quest lookups, quest details, the Compass quest reference, saved goals and tracked plan steps were tied to one exact build, so after each small game update they went blank until the next Backstage Forever release. They now keep working on every build of the same patch (for example 1.60.1.70888 and 1.60.1.71037), and say which build the data was checked on. A new patch number still waits for a fresh check."
+        },
+        {
+          "id": "same-patch-helpers",
+          "kind": "fixed",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "In game, quest detours, objective hints on enemy tooltips, the quest-item cue, gathering marks and the Frostbolt rank reminder follow the same rule: checked on one build, used on the other builds of that patch."
+        },
+        {
+          "id": "build-status",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "/bf status now says which game build you are on and whether the quest data was checked on that build, on another build of the same patch, or on an older patch. Help → Data coverage shows the same under Patch impact."
+        },
+        {
+          "id": "publisher-notice",
+          "kind": "fixed",
+          "platforms": [
+            "windows"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Settings → Updates no longer says the Windows installer is unsigned. Installers are signed by Frank Arena; Windows may still show a notice for a newly released download."
+        },
+        {
+          "id": "same-patch-scope",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Places and quest steps rarely move between builds of one patch, but they can. Data in use from another build is labelled as such. If something is wrong on your build, use Report a problem under Settings → Game connection."
+        }
+      ]
     }
   ],
   "excluded": [
