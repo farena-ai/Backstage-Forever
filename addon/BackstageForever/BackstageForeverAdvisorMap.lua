@@ -12,6 +12,7 @@ local refresh
 local LAYERS={'pickup','handin','class','profession','flight','gather'}
 local LABELS={pickup='Quests to pick up',handin='Quest hand-ins',class='My class trainer',profession='Profession trainers',flight='Flight masters',gather='Gathering spots'}
 local ICONS={pickup='Interface\\GossipFrame\\AvailableQuestIcon',handin='Interface\\GossipFrame\\ActiveQuestIcon',class='Interface\\Minimap\\Tracking\\Class',profession='Interface\\Minimap\\Tracking\\Profession',flight='Interface\\Minimap\\Tracking\\FlightMaster',gather='Interface\\Icons\\INV_Misc_Flower_02'}
+BackstageForeverAdvisorIcons=ICONS
 local MAX_PINS=150
 local function property(value,key)
     value=public(value);if type(value)~='table' and type(value)~='userdata' then return nil end
@@ -120,6 +121,13 @@ function BackstageForeverAdvisorPoints(mapId,who,completed,inLog,complete,layers
         if ok and type(rows)=='table' then for _,r in ipairs(rows)do add(r)end end
     end
     return out
+end
+-- The same pins for the minimap (1.19), from live player state and the layers switched on in BF Guide.
+function BackstageForeverAdvisorLive(mapId)
+    if not settings then loadSettings() end
+    if not settings.enabled then return {} end
+    local inLog,complete=questLog()
+    return BackstageForeverAdvisorPoints(mapId,me(),completedSet(),inLog,complete,settings.layers,gameQuestSpots(mapId))
 end
 
 local function waypoint(mapId,x,y,label)

@@ -4,7 +4,7 @@
 ## Author: Backstage Coding (Frank Arena & Jason Babiuch)
 ## Version: 1.18.0
 ## SavedVariables: BackstageForeverExport
-## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings, BackstageForeverQuestItemSourcesDB, BackstageForeverRouteSettings, BackstageForeverSuppliesSettings, BackstageForeverJournalDB, BackstageForeverMomentsSettings, BackstageForeverLedgerDB, BackstageForeverSheetDB, BackstageForeverAskSettings, BackstageForeverEnemySettings, BackstageForeverQoLSettings, BackstageForeverPartySettings, BackstageForeverHelperSettings
+## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings, BackstageForeverQuestItemSourcesDB, BackstageForeverRouteSettings, BackstageForeverSuppliesSettings, BackstageForeverJournalDB, BackstageForeverMomentsSettings, BackstageForeverLedgerDB, BackstageForeverSheetDB, BackstageForeverAskSettings, BackstageForeverEnemySettings, BackstageForeverQoLSettings, BackstageForeverPartySettings, BackstageForeverHelperSettings, BackstageForeverMinimapSettings
 BackstageForeverLocale.lua
 BackstageForeverHelpers.lua
 BackstageForeverReference.lua
@@ -17,6 +17,7 @@ BackstageForeverGathering.lua
 BackstageForeverMapPlan.lua
 BackstageForeverMap.lua
 BackstageForeverAdvisorMap.lua
+BackstageForeverMinimap.lua
 BackstageForeverMap.xml
 BackstageForever.lua
 BackstageForeverHUD.lua
