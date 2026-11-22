@@ -94,7 +94,9 @@ body[data-faction] :is(.ph-art-ledger, .ph-art-ledger-gold, .ph-art-ledger-reput
 .bf-parchment .panel .rule { border-color: #b99a5e; }
 .bf-parchment .panel strong { color: #2b1b0a; }
 .page-hero .cmd-search input { width: min(380px, 100%); }
-.page-hero .tal-pick { color: #f1dcb0; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+/* A small dark plate behind the label, so its words stay readable over the faction crest. */
+.page-hero .tal-pick { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 4px; padding: 6px 10px 8px; border: 1px solid rgba(218,183,122,.5); border-radius: 6px; background: rgba(14,9,5,.9); color: #f1dcb0; font-weight: 600; text-shadow: none; }
+.page-hero .tal-pick select { margin-left: 0; }
 /* Small windows (1000×700 and the like): a shorter banner so the page's first action stays in view. */
 @media (max-height: 820px), (max-width: 1150px) {
   .page-hero, .page-hero.compact { min-height: 112px; padding: 10px 16px; margin-bottom: 10px; }

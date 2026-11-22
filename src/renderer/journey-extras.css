@@ -1,12 +1,12 @@
 /* Characters → Journey, extra views (story, timeline, races, coach, overlay) and the share window. */
-.jx-views { display: inline-flex; flex-wrap: wrap; align-self: flex-start; border: 1px solid #a5823e; border-radius: 6px; overflow: hidden; background: linear-gradient(180deg, #efe0bb, #dcc797); }
-.journey-page .jx-views button { min-height: 36px; border: 0; border-right: 1px solid rgba(138,90,24,.45); border-radius: 0; padding: 6px 14px; background: transparent; color: #3d220c; font: 700 13px Georgia, serif; cursor: pointer; text-shadow: none; box-shadow: none; }
-.journey-page .jx-views button:last-child { border-right: 0; }
+.jx-views { display: inline-flex; flex-wrap: wrap; gap: 6px; align-self: flex-start; padding: 5px; border: 1px solid #a5823e; border-radius: 8px; background: linear-gradient(180deg, #efe0bb, #dcc797); }
+/* Same look as the Sheet and Professions view switches (gear-planning.css, recipe-book.css). */
+.journey-page .jx-views button { min-height: 34px; border: 1px solid transparent; border-radius: 5px; padding: 5px 14px; background: transparent; color: #3d2a12; font: 700 14px/1.3 "Segoe UI", sans-serif; cursor: pointer; text-shadow: none; box-shadow: none; white-space: nowrap; }
+.journey-page .jx-views button:hover { background: rgba(61,42,18,.12); }
 .journey-page .jx-views button:is(:hover, :focus-visible, :active), .journey-page :is(.share-btn, .jx-panel button, .jx-switch, .jx-note button, button.jx-link):is(:hover, :focus-visible, :active), .share-dialog .share-actions button:is(:hover, :focus-visible, :active) { transform: none; box-shadow: none; }
-.journey-page .jx-views button[aria-pressed="true"] { background: #6b3f12; color: #fff1d6; text-shadow: none; }
+.journey-page .jx-views button[aria-pressed="true"], .journey-page .jx-views button[aria-pressed="true"]:hover { border-color: #3d2a12; background: #3d2a12; color: #f6e7c1; text-shadow: none; }
 .journey-page .jx-views button::before, .journey-page .jx-views button::after { display: none; }
-.journey-page .jx-views button:focus-visible { outline: 3px solid #8a5a18; outline-offset: -3px; }
-.journey-page .jx-views button[aria-pressed="true"]:focus-visible { outline-color: #ffe1a4; }
+.journey-page .jx-views button:focus-visible { outline: 2px solid #523207; outline-offset: 2px; }
 
 .jx-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
 .jx-head > div { flex: 1 1 320px; min-width: 0; }
@@ -96,7 +96,7 @@
 .jx-board :is(thead th:first-child, tbody th) { text-align: left; width: 64px; }
 .jx-board tbody th { color: #3d220c; }
 .jx-board td small { display: inline-block; min-width: 62px; margin-left: 6px; font-size: 11.5px; }
-.jx-board .jx-you { background: rgba(122,63,208,.1); }
+.jx-board .jx-you { background: rgba(107,63,18,.13); }
 .jx-board .jx-fastest { background: rgba(246,196,69,.45); font-weight: 700; }
 .jx-ahead { color: #2e5a1c; }
 .jx-behind { color: #8a2420; }

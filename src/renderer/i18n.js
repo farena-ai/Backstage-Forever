@@ -25,7 +25,8 @@ window.I18n = (() => {
     for (const [re, to, order] of TEMPLATES[lang] || []) {
       const m = re.exec(key); if (!m) continue;
       const parts = {}; order.forEach((n, i) => { const x = m[i + 1]; parts[n] = typeof d[x] === "string" ? d[x] : x; });
-      return to.replace(/\{(\d+)\}/g, (_, n) => parts[n] ?? "");
+      // A translation may write a number slot as {#0}, like its English key does.
+      return to.replace(/\{#?(\d+)\}/g, (_, n) => parts[n] ?? "");
     }
     return null;
   }

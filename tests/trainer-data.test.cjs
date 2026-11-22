@@ -80,6 +80,10 @@ test("at the trainer: this level and the next two, each with cost, the total, an
   assert.equal(T.trainerPlan(p, "Mage", 10).nextLevel, 20);
   assert.equal(T.trainerPlan(p, "Rogue", 20).available, false);
   assert.match(T.trainerPlan(p, "Mage", 0).reason, /level is not known/);
+  // Characters stop at 60: no "At level 61" for a character at the cap.
+  assert.deepEqual(T.trainerPlan(p, "Mage", 60).levels.map((l) => l.level), [60]);
+  assert.deepEqual(T.trainerPlan(p, "Mage", 59).levels.map((l) => l.level), [59, 60]);
+  assert.equal(T.trainerPlan(p, "Mage", 60).nextLevel, null);
 });
 
 test("the desktop view shows gold only for the character's own class and level, and follows the same-patch rule", () => {

@@ -263,16 +263,21 @@ function parseSavedVariables(raw) {
   if (activeId && !seen.has(activeId)) invalid();
   return { characters, activeId, observedAt: stamp(s.observedAt), ...(scout.length ? { scout } : {}) };
 }
-async function safe(target, kind) {
+// `checked` is a set of parent folders already walked in the same pass (one addon install or
+// verify): those are not walked again for every file. The file or folder itself is always checked.
+async function safe(target, kind, checked = null) {
   const absolute = path.resolve(target),
     parts = absolute.slice(path.parse(absolute).root.length).split(path.sep);
   let p = path.parse(absolute).root;
-  for (const part of parts) {
-    p = path.join(p, part);
+  for (let i = 0; i < parts.length - 1; i++) {
+    p = path.join(p, parts[i]);
+    if (checked?.has(p)) continue;
     const st = await fs.lstat(p);
     if (st.isSymbolicLink()) throw Error("Unsafe path");
+    checked?.add(p);
   }
   const st = await fs.lstat(absolute);
+  if (st.isSymbolicLink()) throw Error("Unsafe path");
   if (
     (kind === "dir" && !st.isDirectory()) ||
     (kind === "file" && !st.isFile())
@@ -289,13 +294,13 @@ async function boundedRead(file, limit = MAX) {
 const ART_DIRS = [["Art", "Zones"], ["Art", "Buttons"], ["Art", "Messages"], ["Art", "Frames"], ["Art", "Dungeons"]],
   ART_MAX_FILES = 128,
   ART_NAME = /^[A-Za-z0-9_-]{1,40}\.tga$/i;
-async function artFiles(addonDir) {
+async function artFiles(addonDir, checked = null) {
   const out = [];
   for (const parts of ART_DIRS) {
     const dir = path.join(addonDir, ...parts);
     let names;
     try {
-      await safe(dir, "dir");
+      await safe(dir, "dir", checked);
       names = await fs.readdir(dir);
     } catch (e) {
       if (e.code === "ENOENT") continue;
@@ -307,15 +312,20 @@ async function artFiles(addonDir) {
   }
   return out;
 }
-async function boundedBytes(file, limit = MAX) {
-  const st = await safe(file, "file");
+async function boundedBytes(file, limit = MAX, checked = null) {
+  const st = await safe(file, "file", checked);
   if (st.size > limit) invalid();
   const h = await fs.open(file, "r");
   try {
     const now = await h.stat();
     if (now.size > limit || now.ino !== st.ino) invalid();
-    const b = Buffer.alloc(limit + 1);
-    const { bytesRead } = await h.read(b, 0, b.length, 0);
+    // Room for the file as it is now plus one byte; a file that grew meanwhile is read again in full.
+    let b = Buffer.alloc(Math.min(limit, now.size) + 1);
+    let { bytesRead } = await h.read(b, 0, b.length, 0);
+    if (bytesRead === b.length && b.length <= limit) {
+      b = Buffer.alloc(limit + 1);
+      ({ bytesRead } = await h.read(b, 0, b.length, 0));
+    }
     if (bytesRead > limit) invalid();
     return Buffer.from(b.subarray(0, bytesRead));
   } finally {
@@ -331,9 +341,10 @@ function addonLoaded(state) {
 }
 const HANDOFF_FILE = require("./desktop-handoff.cjs").FILE;
 class GameSync {
-  constructor({ dataDir, addonDir, onSnapshot = () => {}, onRootChange = () => {}, runtime = new GameRuntime(), handoff = null }) {
+  constructor({ dataDir, addonDir, onSnapshot = () => {}, onRootChange = () => {}, runtime = new GameRuntime(), handoff = null, startupRetryMs = 800 }) {
     // Desktop -> game hand-off (desktop-handoff.cjs): supplies the bytes of its one data file.
     this.handoff = handoff;
+    this.startupRetryMs = startupRetryMs;
     this.dataDir = dataDir;
     this.addonDir = addonDir;
     this.onSnapshot = onSnapshot;
@@ -496,8 +507,15 @@ class GameSync {
           path.join(this.dataDir, "game-connection.private.json"),
         ),
       );
-      if (gen === this.generation && typeof cfg.root === "string")
+      if (gen === this.generation && typeof cfg.root === "string") {
         await this._connect(cfg.root, false);
+        // A virus scanner or indexer can hold a just-written file for a moment, which fails the
+        // repair once. Nobody is there to press "repair" at startup, so try one more time.
+        if (this.generation === gen + 1 && this.state.setupIssue === "install-failed") {
+          await new Promise((resolve) => setTimeout(resolve, this.startupRetryMs));
+          if (this.generation === gen + 1) await this._connect(cfg.root, false);
+        }
+      }
     } catch {}
     return this.status();
   }
@@ -606,13 +624,16 @@ class GameSync {
       await this.validateRoot(root);
       if (stale()) return this.status();
       // Creates missing folders one level at a time, refusing links; null when stale.
+      // Parent folders walked once in this pass (about 160 files share a dozen parents); the
+      // destination folders are walked again in full just before the files are published.
+      const checked = new Set();
       const ensure = async (base, parts) => {
         let dir = base;
         for (const part of parts) {
           if (stale()) return null;
           dir = path.join(dir, part);
           try {
-            await safe(dir, "dir");
+            await safe(dir, "dir", checked);
           } catch (e) {
             if (e.code !== "ENOENT") throw e;
             if (stale()) return null;
@@ -632,14 +653,14 @@ class GameSync {
       const sources = await Promise.all(
         OWN.map(async (file) => [
           file,
-          file === HANDOFF_FILE ? await this.handoffBytes() : await boundedBytes(path.join(this.addonDir, file)),
+          file === HANDOFF_FILE ? await this.handoffBytes() : await boundedBytes(path.join(this.addonDir, file), MAX, checked),
         ]),
       );
       // Painted textures (binary): every .tga in the addon's art folders.
       const art = await Promise.all(
-        (await artFiles(this.addonDir)).map(async (parts) => [
+        (await artFiles(this.addonDir, checked)).map(async (parts) => [
           path.join(...parts),
-          await boundedBytes(path.join(this.addonDir, ...parts)),
+          await boundedBytes(path.join(this.addonDir, ...parts), MAX, checked),
         ]),
       );
       const artFolders = [...new Set(art.map(([file]) => path.dirname(file)))];
@@ -650,15 +671,10 @@ class GameSync {
       try {
         for (const [file, content] of [...sources.slice(1), ...art, sources[0]]) {
           const dest = path.join(folder, file);
-          try {
-            await safe(dest, "file");
-          } catch (e) {
-            if (e.code !== "ENOENT") throw e;
-          }
           if (stale()) return this.status();
           let previous = null;
           try {
-            previous = await boundedBytes(dest);
+            previous = await boundedBytes(dest, MAX, checked);
             if (previous.equals(content)) continue;
           } catch (error) {
             if (error.code !== "ENOENT") throw error;
@@ -670,7 +686,7 @@ class GameSync {
           );
           staged.push({ temporary, dest, content, previous });
           await fs.writeFile(temporary, content, { flag: "wx" });
-          if (!(await boundedBytes(temporary)).equals(content)) throw Error("Verification failed");
+          if (!(await boundedBytes(temporary, MAX, checked)).equals(content)) throw Error("Verification failed");
         }
         await safe(folder, "dir");
         for (const dir of artFolders) await safe(path.join(folder, dir), "dir");

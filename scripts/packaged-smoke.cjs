@@ -292,15 +292,18 @@ async function sourceFiles(folder, prefix = "src") {
     assert.equal(path.resolve(restarted.cwd), path.resolve(appDir));
     assert.deepEqual(await checkSdk(app, appDir), sdk);
     let restored;
-    for (let attempt = 0; attempt < 300; attempt++) {
+    // A clock, not a poll count: a busy runner answers each poll slowly. The failure says where the
+    // repair stood, so a slow verify ("disconnected") and a failed one ("install-failed") read apart.
+    const repairDeadline = Date.now() + 30000;
+    for (;;) {
       restored = await reopened.evaluate(() => window.backstage.gameStatus());
-      if (restored.addonCurrent) break;
+      if (restored.addonCurrent || Date.now() > repairDeadline) break;
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
     assert.equal(
       restored.addonCurrent,
       true,
-      "Startup must finish verifying the repaired addon",
+      `Startup must finish verifying the repaired addon (phase ${restored.phase}, issue ${restored.setupIssue || "none"}, connected ${restored.connected})`,
     );
     for (const name of owned)
       assert.equal(

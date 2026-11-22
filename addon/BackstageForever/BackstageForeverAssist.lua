@@ -602,6 +602,131 @@ local function hearthCheck(force)
     if not force then BackstageForeverToast('Move your Hearthstone?',('It takes you to %s, but you are questing in %s. Talk to the innkeeper in %s and choose "Make this inn your home".'):format(bind,mapName(map),a.town),nil,'hearth') end
     return a
 end
+-- /bf help is paged (1.24): the bare command prints a short index, /bf help TOPIC or /bf help NUMBER one
+-- page, /bf help WORD the lines about one command, and /bf help all everything. Every line names a
+-- command the desktop app explains under Help, Commands (a test keeps the two in step).
+local HELP_TOPICS={
+    {key='way',index='1 way - arrows, flights and finding people and places',head='Finding your way (/bf help way):',lines={
+        '/bf next - an arrow to the nearest quest to hand in or pick up',
+        '/bf how - how to do your tracked quest: what to get and where it came from',
+        '/bf train - an arrow to your class trainer, and what is new there at your level with prices',
+        '/bf repair - an arrow to the nearest repair vendor',
+        '/bf find NAME - find a person or place, e.g. /bf find flight master',
+        '/bf way MapID X Y - an arrow to exact map coordinates; /way X Y works on the map you are on',
+        '/bf hearth - where your Hearthstone takes you',
+        '/bf flights - which flight paths here you have learned',
+        '/bf flights times - the flights you took and how long each one lasted',
+        '/bf fly PLACE - the best flight route to a place: legs, time and price',
+        '/bf route guide - the full guided route for your race, step by step; /bf route skip skips a step, /bf route zone shows this zone only',
+        '/bf chain - which step of its chain each quest in your log is; /bf chain tips off hides the lines in quest tooltips',
+        '/bf explore - the named areas you discovered on this map',
+    }},
+    {key='character',index='2 character - experience, talents, gear and your own notes',head='Your character (/bf help character):',lines={
+        '/bf xp - your experience per hour and time to the next level',
+        '/bf rested - rested XP, how long until it is full, and whether you are resting',
+        '/bf stats - your solo fights this session: damage, time and what hit you hardest',
+        '/bf talents - the next point of the talent plan you made in the desktop app',
+        '/bf badges - badges earned and the three closest next (/bf badges all for the list)',
+        '/bf weapons - your weapon skills against the cap for your level',
+        '/bf durability - how worn your gear is, most worn first',
+        '/bf kit - what your class carries: shards, runes, powders, poisons, ammo, totems, candles, seeds',
+        '/bf ready - before a pull: a class buff, food buff or reagent you are missing (on or off for the dungeon line)',
+        '/bf set save NAME, /bf set wear NAME - save the gear you wear as a set, put it back on later (out of combat); /bf set list, /bf set delete NAME',
+        '/bf note - a note on the player you target (or /bf note Name words); /bf notes lists them',
+    }},
+    {key='gold',index='3 gold - professions, gathering, prices, bags and mail',head='Gold, bags and professions (/bf help gold):',lines={
+        '/bf prof - your profession: recipe colour, best next recipe, crafts to your cap',
+        '/bf nodes - your remembered herbs, ore and chests nearby, with distance and direction',
+        '/bf loop - walk the gathering loop you sent from the desktop app; /bf loop next skips a stop, /bf loop stop ends it',
+        '/bf ledger - gold across your characters, and when the addon last saw your bank and mail',
+        '/bf prices - remember Auction House prices on pages you open yourself (on, off, status, or tips for tooltip lines)',
+        '/bf sell - what in your bags is worth more at auction than at a vendor',
+        '/bf shop - your profession shopping list; at the auction house a click fills the search box (on or off for the panel)',
+        '/bf mail - letters that expire within 3 days, from your last mailbox visit (on or off for the mailbox line)',
+        '/bf bags - items in your bags that are an upgrade, a wish or a quest item; /bf bags marks on draws small signs on them',
+        '/bf wish - your wish list and which boss was seen to drop each item (on or off for the banner)',
+    }},
+    {key='group',index='4 group - dungeons, parties, guild and raid',head='Dungeons and groups (/bf help group):',lines={
+        '/bf atlas - the Instance Atlas: every dungeon and raid with bosses, loot and a tip',
+        '/bf run - the dungeon run panel: bosses left, your quests here, wishes still possible, time in the run',
+        '/bf boss - the tip for the boss you target (on or off for the pop-ups)',
+        '/bf group - elite, group, dungeon and raid quests in your log, each with a looking-for-group line for your chat box',
+        '/bf lfg - the group finder board: looking-for-group lines from the channels you joined; click a row to whisper, /bf lfg post DUNGEON writes your own line',
+        '/bf party - the quests of your party next to yours (party members with Backstage Forever); /bf party way shares your waypoint, /bf party go follows one',
+        '/bf check - readiness check: asks party members with the addon for quests, key, gear wear, bag space and kit; /bf check answers off stops your answers',
+        '/bf mentor Name - ask a party member to share their next step with you; /bf mentor accept, step, way, say, go, end',
+        '/bf sr - the soft-reserve list: /bf sr add Player Item (party leader), /bf sr list, /bf sr remove Player, /bf sr clear',
+        '/bf guild - guild members who share level, zone, professions and a dungeon flag; /bf guild on shares yours, /bf guild lfd DUNGEON sets your flag',
+        '/bf guild craft NAME - ask sharing guild members who can make something; each answer has a whisper link',
+        '/bf raid - raid comms, off until you switch them on: /bf raid note Boss: text, /bf raid notes, /bf raid assign Player text, /bf raid check',
+    }},
+    {key='screen',index='5 screen - the Compass, lists and alerts on your screen',head='On your screen (/bf help screen):',lines={
+        '/bf show, /bf hide - the Adventure Compass panel',
+        '/bf tracker - your quest log as a small list, nearest first; click a quest for a waypoint (on or off)',
+        '/bf plates - quest icons over enemies a quest still needs (on or off)',
+        '/bf mapsearch - the find box on the world map; /bf mapsearch off hides it',
+        '/bf rares - rare enemy alerts: one line when you target or point at a rare; /bf rares off silences them',
+        '/bf enemy - enemy players you saw recently; /bf enemy off silences the alerts, /bf enemy sound on adds a sound',
+        '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',
+        '/bf moments - turn the short messages for elite, rare and boss kills and profession milestones on or off',
+        '/bf gear - turn upgrade hints on item tooltips and the best-quest-reward highlight on or off',
+    }},
+    {key='settings',index='6 settings - the settings window and the smaller switches',head='Settings (/bf help settings):',lines={
+        '/bf options - the settings window: a switch for every helper, and three starting points',
+        '/bf helpers - list individual helper settings for this character',
+        '/bf helpers panel - open this character’s helper checkboxes',
+        '/bf helpers apply key=on|off … commit - apply a prepared batch to this character, outside combat',
+        'Quest helpers: /bf compass track QuestID, /bf compass track clear, /bf compass missing, /bf compass review.',
+        '/bf qol - small helpers, each off until you switch it on: coords, loot, dismount, questtext',
+        '/bf comfort - switch the rested, weapon skill, flight time and durability lines on or off',
+        '/bf access - marks that do not rely on colour, and larger text in the Compass and settings window',
+        '/bf addons - other addons found and what Backstage Forever switched off beside them (on or off)',
+    }},
+    {key='companion',index='7 companion - asking questions and the desktop app',head='Companion and desktop app (/bf help companion):',lines={
+        '/bf ask - ask the companion a question (or click the owl button on the minimap); the answer appears in the Backstage Forever panel over your game',
+        '/bf answers - the last answers the companion gave you, as of your last /reload; /bf answers 1 reads one in full',
+        '/bf explain - opens the companion panel with the item you point at, your target or your tracked quest in its question box; nothing is asked for you',
+        '/bf live - the thin line along the top edge that lets the desktop app follow you; /bf live safe if the app cannot read it',
+        '/bf scout - scout mode, off until you switch it on: notes the quest givers, trainers, vendors and flight masters you talk to; /bf scout shows counts per zone',
+        '/bf perf - memory in use; /bf perf on times each part of the addon, /bf perf off stops it',
+    }},
+}
+BackstageForeverHelpTopics=HELP_TOPICS
+-- Pure: the chat lines for /bf help with this argument (nil, a topic, a page number, a command word or "all").
+function BackstageForeverHelpLines(arg)
+    arg=type(arg)=='string' and arg:lower():match('^%s*(.-)%s*$') or ''
+    local out={}
+    local function index()
+        out[#out+1]='Commands by topic. Type /bf help and a topic word or its number:'
+        for _,topic in ipairs(HELP_TOPICS) do out[#out+1]=topic.index end
+        out[#out+1]='Start with /bf next, /bf how and /bf options. /bf help all lists every command; the desktop app explains each one under Help, Commands.'
+        return out
+    end
+    if arg=='' then return index() end
+    if arg=='all' then
+        for _,topic in ipairs(HELP_TOPICS) do for _,line in ipairs(topic.lines) do out[#out+1]=line end end
+        return out
+    end
+    local page=HELP_TOPICS[tonumber(arg) or 0]
+    if not page then for _,topic in ipairs(HELP_TOPICS) do if topic.key==arg then page=topic end end end
+    if page then
+        out[#out+1]=page.head
+        for _,line in ipairs(page.lines) do out[#out+1]=line end
+        return out
+    end
+    -- A command word: every line that starts with it.
+    if arg:match('^%a+$') then
+        for _,topic in ipairs(HELP_TOPICS) do
+            for _,line in ipairs(topic.lines) do
+                local head=line:sub(1,5+#arg)
+                if head=='/bf '..arg..' ' or head=='/bf '..arg..',' then out[#out+1]=line end
+            end
+        end
+        if #out>0 then return out end
+    end
+    out[#out+1]='No help page with that name.'
+    return index()
+end
 function BackstageForeverAssistCommand(message)
     if not settings then loadSettings() end
     local cmd,arg=(type(message)=='string' and message:lower() or ''):match('^(%a+)%s*(%a*)')
@@ -626,73 +751,7 @@ function BackstageForeverAssistCommand(message)
         return settings[cmd]
     end
     if cmd=='help' then
-        local lines={
-            '/bf next - an arrow to the nearest quest to hand in or pick up',
-            '/bf how - how to do your tracked quest: what to get and where it came from',
-            '/bf train - an arrow to your class trainer, and what is new there at your level with prices',
-            '/bf repair - an arrow to the nearest repair vendor',
-            '/bf flights - which flight paths here you have learned',
-            '/bf fly PLACE - the best flight route to a place: legs, time and price',
-            '/bf find NAME - find a person or place, e.g. /bf find flight master',
-            '/bf xp - your experience per hour and time to the next level',
-            '/bf prof - your profession: recipe colour, best next recipe, crafts to your cap',
-            '/bf nodes - your remembered herbs, ore and chests nearby, with distance and direction',
-            '/bf loop - walk the gathering loop you sent from the desktop app; /bf loop next skips a stop, /bf loop stop ends it',
-            '/bf rares - rare enemy alerts: one line when you target or point at a rare; /bf rares off silences them',
-            '/bf mapsearch - the find box on the world map; /bf mapsearch off hides it',
-            '/bf hearth - where your Hearthstone takes you',
-            '/bf badges - badges earned and the three closest next (/bf badges all for the list)',
-            '/bf ledger - gold across your characters, and when the addon last saw your bank and mail',
-            '/bf prices - remember Auction House prices on pages you open yourself (on, off, status, or tips for tooltip lines)',
-            '/bf sell - what in your bags is worth more at auction than at a vendor',
-            '/bf plates - quest icons over enemies a quest still needs (on or off)',
-            '/bf boss - the tip for the boss you target (on or off for the pop-ups)',
-            '/bf set save NAME, /bf set wear NAME - save the gear you wear as a set, put it back on later (out of combat); /bf set list, /bf set delete NAME',
-            '/bf show, /bf hide - the Adventure Compass panel',
-            '/bf helpers - list individual helper settings for this character',
-            '/bf helpers panel - open this character’s helper checkboxes',
-            '/bf helpers apply key=on|off … commit - apply a prepared batch to this character, outside combat',
-            'Quest helpers: /bf compass track QuestID, /bf compass track clear, /bf compass missing, /bf compass review.',
-            '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',
-            '/bf moments - turn the short messages for elite, rare and boss kills and profession milestones on or off',
-            '/bf party - the quests of your party next to yours (party members with Backstage Forever); /bf party way shares your waypoint, /bf party go follows one',
-            '/bf route guide - the full guided route for your race, step by step; /bf route skip skips a step, /bf route zone shows this zone only',
-            '/bf qol - small helpers, each off until you switch it on: coords, loot, dismount, questtext',
-            '/bf rested - rested XP, how long until it is full, and whether you are resting',
-            '/bf weapons - your weapon skills against the cap for your level',
-            '/bf durability - how worn your gear is, most worn first',
-            '/bf flights times - the flights you took and how long each one lasted',
-            '/bf explore - the named areas you discovered on this map',
-            '/bf comfort - switch the rested, weapon skill, flight time and durability lines on or off',
-            '/bf kit - what your class carries: shards, runes, powders, poisons, ammo, totems, candles, seeds',
-            '/bf ready - before a pull: a class buff, food buff or reagent you are missing (on or off for the dungeon line)',
-            '/bf group - elite, group, dungeon and raid quests in your log, each with a looking-for-group line for your chat box',
-            '/bf note - a note on the player you target (or /bf note Name words); /bf notes lists them',
-            '/bf mail - letters that expire within 3 days, from your last mailbox visit (on or off for the mailbox line)',
-            '/bf access - marks that do not rely on colour, and larger text in the Compass and settings window',
-            '/bf tracker - your quest log as a small list, nearest first; click a quest for a waypoint (on or off)',
-            '/bf run - the dungeon run panel: bosses left, your quests here, wishes still possible, time in the run',
-            '/bf wish - your wish list and which boss was seen to drop each item (on or off for the banner)',
-            '/bf bags - items in your bags that are an upgrade, a wish or a quest item; /bf bags marks on draws small signs on them',
-            '/bf lfg - the group finder board: looking-for-group lines from the channels you joined; click a row to whisper, /bf lfg post DUNGEON writes your own line',
-            '/bf check - readiness check: asks party members with the addon for quests, key, gear wear, bag space and kit; /bf check answers off stops your answers',
-            '/bf mentor Name - ask a party member to share their next step with you; /bf mentor accept, step, way, say, go, end',
-            '/bf sr - the soft-reserve list: /bf sr add Player Item (party leader), /bf sr list, /bf sr remove Player, /bf sr clear',
-            '/bf guild - guild members who share level, zone, professions and a dungeon flag; /bf guild on shares yours, /bf guild lfd DUNGEON sets your flag',
-            '/bf guild craft NAME - ask sharing guild members who can make something; each answer has a whisper link',
-            '/bf raid - raid comms, off until you switch them on: /bf raid note Boss: text, /bf raid notes, /bf raid assign Player text, /bf raid check',
-            '/bf scout - scout mode, off until you switch it on: notes the quest givers, trainers, vendors and flight masters you talk to; /bf scout shows counts per zone',
-            '/bf answers - the last answers the companion gave you, as of your last /reload; /bf answers 1 reads one in full',
-            '/bf explain - opens the companion panel with the item you point at, your target or your tracked quest in its question box; nothing is asked for you',
-            '/bf chain - which step of its chain each quest in your log is; /bf chain tips off hides the lines in quest tooltips',
-            '/bf perf - memory in use; /bf perf on times each part of the addon, /bf perf off stops it',
-            '/bf shop - your profession shopping list; at the auction house a click fills the search box (on or off for the panel)',
-            '/bf addons - other addons found and what Backstage Forever switched off beside them (on or off)',
-            '/bf enemy - enemy players you saw recently; /bf enemy off silences the alerts, /bf enemy sound on adds a sound',
-            '/bf gear - turn upgrade hints on item tooltips and the best-quest-reward highlight on or off',
-            '/bf live - the thin line along the top edge that lets the desktop app follow you; /bf live safe if the app cannot read it',
-            '/bf ask - ask the companion a question (or click the owl button on the minimap); the answer appears in the Backstage Forever panel over your game',
-        }
+        local lines=BackstageForeverHelpLines((type(message)=='string' and message or ''):match('^%s*%a+%s+(.-)%s*$'))
         for _,l in ipairs(lines) do say(l) end
         return lines
     end

@@ -132,4 +132,11 @@ test("app sentences with numbers and names translate through templates (0.57)", 
   assert.equal(I.tr("Level 21: come back around 29"), "Stufe 21: komm um Stufe 29 wieder");
   assert.equal(I.tr("Secrets of the Dreamers"), null, "number placeholders never take names");
   assert.equal(I.tr("Something nobody wrote"), null);
+  // Number slots written as {#0} in the translation are filled too (they showed as "{#0} Halte").
+  assert.equal(I.tr("40 stops"), "40 Halte");
+  assert.equal(I.tr("about 19,890 yards"), "etwa 19,890 Yards");
+  for (const [en] of Object.entries(de.appTemplates)) {
+    const sample = en.replace(/\{#\d+\}/g, "7").replace(/\{\d+\}/g, "Name"), out = I.tr(sample);
+    if (out !== null) assert.doesNotMatch(out, /\{#?\d+\}/, `a slot is left unfilled: ${en}`);
+  }
 });

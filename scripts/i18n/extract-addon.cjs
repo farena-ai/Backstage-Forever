@@ -19,7 +19,7 @@ for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".lua") && x !== "B
 }
 // /bf help lines (Assist)
 const assist = fs.readFileSync(path.join(dir, "BackstageForeverAssist.lua"), "utf8");
-const help = assist.slice(assist.indexOf("if cmd=='help'"), assist.indexOf("for _,l in ipairs(lines)"));
+const help = assist.slice(assist.indexOf("local HELP_TOPICS={"), assist.indexOf("function BackstageForeverAssistCommand(message)"));
 for (const m of help.matchAll(/'((?:[^'\\]|\\.)*)'/g)) { const t = unq(m[1]); if (ok(t)) plain.set(t, "help"); }
 const list = { plain: [...plain.keys()].sort(), templates: [...templates.keys()].sort() };
 fs.writeFileSync(out, JSON.stringify(list, null, 1));
