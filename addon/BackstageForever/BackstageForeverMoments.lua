@@ -47,6 +47,7 @@ local function settings()
     if type(BackstageForeverMomentsSettings)~='table' then BackstageForeverMomentsSettings={} end
     local s=BackstageForeverMomentsSettings
     if type(s.toasts)~='boolean' then s.toasts=true end
+    if type(s.shots)~='boolean' then s.shots=false end
     return s
 end
 
@@ -188,6 +189,8 @@ local function onEncounterEnd(encounterId,name,difficultyId,_,success)
     if type(BackstageForeverJournalEncounter)=='function' then
         pcall(BackstageForeverJournalEncounter,encounterId,name,difficultyId)
     end
+    -- W7: one screenshot for this kill when the player switched that on (taken after combat).
+    if type(BackstageForeverMomentsShot)=='function' then pcall(BackstageForeverMomentsShot,'boss',int(encounterId,0,2147483647) or 0) end
     if lastBossAt and now()-lastBossAt<10 then return end
     lastBossAt=now()
     local recent=lastKill and now()-lastKill.at<=6 and lastKill or nil
@@ -291,10 +294,83 @@ local function onEquipment(slot)
     if gain and gain>=1 and int(newItem.id,1,16777215) then push(TYPES.upgrade,newItem.id,min(65535,floor(gain*10+.5)),slot) end
 end
 
--- /bf moments [on|off|status]: in-game toasts for kills and profession milestones.
-function BackstageForeverMomentsCommand(message)
-    local arg=(type(message)=='string' and message:lower() or ''):match('^moments%s*(%a*)') or ''
+-- Screenshots at big moments (W7): off unless you turn it on with /bf moments shots on. One
+-- screenshot when you gain a level and one when a dungeon or raid boss falls, taken with the
+-- game's own Screenshot() once you are out of combat. No key is pressed and nothing is sent: the
+-- picture lands in the game's Screenshots folder like one you take yourself.
+local shots={queue={},taken={},timer=false}
+-- Pure: note an event that wants a screenshot. Each event asks once; the same event reported
+-- again within 30 seconds is ignored. state: {queue={},taken={}}, t: a clock in seconds.
+function BackstageForeverMomentsShotQueue(state,kind,id,t)
+    if type(state)~='table' or (kind~='level' and kind~='boss') then return false end
+    id=tonumber(id) t=tonumber(t) or 0
+    if not id or id~=id or id<0 then return false end
+    local key=kind..':'..floor(id)
+    local last=state.taken[key]
+    if last and t-last<30 then return false end
+    for _,k in ipairs(state.queue) do if k==key then return false end end
+    state.queue[#state.queue+1]=key
+    return true
+end
+-- Pure: whether to take one screenshot now. Events that waited together share one picture.
+-- Never in combat; switched off, what waited is dropped.
+function BackstageForeverMomentsShotDue(state,enabled,inFight,t)
+    if type(state)~='table' or #state.queue==0 then return false end
+    if not enabled then for i=#state.queue,1,-1 do state.queue[i]=nil end return false end
+    if inFight then return false end
+    t=tonumber(t) or 0
+    for i=#state.queue,1,-1 do state.taken[state.queue[i]]=t state.queue[i]=nil end
+    return true
+end
+local function trySnap()
+    shots.timer=false
+    -- Anything but a clear "not in combat" counts as combat.
+    local ok,due=pcall(BackstageForeverMomentsShotDue,shots,settings().shots==true,call(InCombatLockdown)~=false,now())
+    if not ok or not due then return end
+    local snap=plain(Screenshot)
+    if type(snap)~='function' then
+        settings().shots=false
+        return say('Screenshots are not available in this game client, so the switch was turned off.')
+    end
+    pcall(snap)
+end
+local function scheduleSnap()
+    if shots.timer or #shots.queue==0 then return end
+    local timer=plain(C_Timer)
+    if type(field(timer,'After'))~='function' then return end
+    shots.timer=true
+    -- A short wait, so the level-up glow or the fallen boss is in the picture.
+    if not pcall(timer.After,1.5,function() pcall(trySnap) end) then shots.timer=false end
+end
+-- Called for a level-up ('level', new level) and a boss kill ('boss', encounter id).
+function BackstageForeverMomentsShot(kind,id)
+    if settings().shots~=true then return false end
+    if not BackstageForeverMomentsShotQueue(shots,kind,id,now()) then return false end
+    scheduleSnap()
+    return true
+end
+-- If the game refuses the call, switch the helper off instead of trying again.
+local function onActionRefused(addon,what)
+    if plain(addon)~='BackstageForever' or type(plain(what))~='string' or not what:find('Screenshot',1,true) then return end
     local s=settings()
+    if s.shots then
+        s.shots=false
+        say('This game client does not let addons take screenshots, so the switch was turned off. Use the Print Screen key instead.')
+    end
+end
+
+-- /bf moments [on|off|status]: in-game toasts for kills and profession milestones.
+-- /bf moments shots [on|off]: a screenshot at each level-up and boss kill (off by default).
+function BackstageForeverMomentsCommand(message)
+    local arg,second=(type(message)=='string' and message:lower() or ''):match('^moments%s*(%a*)%s*(%a*)')
+    arg,second=arg or '',second or ''
+    local s=settings()
+    if arg=='shots' then
+        if second=='on' then s.shots=true elseif second=='off' then s.shots=false elseif second=='' then s.shots=not s.shots
+        else return say('Use /bf moments shots on or /bf moments shots off.') end
+        say(s.shots and 'Screenshots on: one picture when you gain a level and one when a dungeon boss falls, taken after combat. They go to the Screenshots folder of your game.' or 'Screenshots at level-ups and boss kills are off.')
+        return s.shots
+    end
     if arg=='status' then
         return say(('Moment toasts are %s. The desktop app shows every moment either way; turn its moments off in Settings there.'):format(s.toasts and 'on' or 'off'))
     end
@@ -307,7 +383,7 @@ end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
-        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','UNIT_HEALTH','PLAYER_REGEN_DISABLED','PLAYER_TARGET_CHANGED','UPDATE_MOUSEOVER_UNIT','NAME_PLATE_UNIT_ADDED','UNIT_PET','ENCOUNTER_END','SKILL_LINES_CHANGED','CHAT_MSG_SKILL','UI_INFO_MESSAGE','PLAYER_EQUIPMENT_CHANGED','PLAYER_REGEN_ENABLED'}) do pcall(events.RegisterEvent,events,e) end
+        for _,e in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','UNIT_HEALTH','PLAYER_REGEN_DISABLED','PLAYER_TARGET_CHANGED','UPDATE_MOUSEOVER_UNIT','NAME_PLATE_UNIT_ADDED','UNIT_PET','ENCOUNTER_END','SKILL_LINES_CHANGED','CHAT_MSG_SKILL','UI_INFO_MESSAGE','PLAYER_EQUIPMENT_CHANGED','PLAYER_REGEN_ENABLED','PLAYER_LEVEL_UP','ADDON_ACTION_FORBIDDEN','ADDON_ACTION_BLOCKED'}) do pcall(events.RegisterEvent,events,e) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b,c,d,e)
             if event=='UNIT_HEALTH' then if plain(a)=='target' then pcall(onTargetHealth) end
             elseif event=='PLAYER_REGEN_DISABLED' then lastCombat=now()
@@ -318,7 +394,9 @@ if type(CreateFrame)=='function' then
             elseif event=='SKILL_LINES_CHANGED' or event=='CHAT_MSG_SKILL' then pcall(onSkills)
             elseif event=='UI_INFO_MESSAGE' then pcall(onInfoMessage,a,b)
             elseif event=='PLAYER_EQUIPMENT_CHANGED' then pcall(onEquipment,a)
-            elseif event=='PLAYER_REGEN_ENABLED' then lastCombat=now() pcall(onTargetHealth) pcall(flush)
+            elseif event=='PLAYER_REGEN_ENABLED' then lastCombat=now() pcall(onTargetHealth) pcall(flush) pcall(scheduleSnap)
+            elseif event=='PLAYER_LEVEL_UP' then pcall(BackstageForeverMomentsShot,'level',plain(a))
+            elseif event=='ADDON_ACTION_FORBIDDEN' or event=='ADDON_ACTION_BLOCKED' then pcall(onActionRefused,a,b)
             elseif event=='UNIT_PET' then if plain(a)=='player' then pet=call(UnitGUID,'pet') end
             elseif event=='PLAYER_LOGIN' or event=='PLAYER_ENTERING_WORLD' then
                 settings() me=call(UnitGUID,'player') pet=call(UnitGUID,'pet')

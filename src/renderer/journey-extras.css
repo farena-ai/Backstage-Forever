@@ -1,0 +1,153 @@
+/* Characters → Journey, extra views (story, timeline, races, coach, overlay) and the share window. */
+.jx-views { display: inline-flex; flex-wrap: wrap; align-self: flex-start; border: 1px solid #a5823e; border-radius: 6px; overflow: hidden; background: linear-gradient(180deg, #efe0bb, #dcc797); }
+.journey-page .jx-views button { min-height: 36px; border: 0; border-right: 1px solid rgba(138,90,24,.45); border-radius: 0; padding: 6px 14px; background: transparent; color: #3d220c; font: 700 13px Georgia, serif; cursor: pointer; text-shadow: none; box-shadow: none; }
+.journey-page .jx-views button:last-child { border-right: 0; }
+.journey-page .jx-views button:is(:hover, :focus-visible, :active), .journey-page :is(.share-btn, .jx-panel button, .jx-switch, .jx-note button, button.jx-link):is(:hover, :focus-visible, :active), .share-dialog .share-actions button:is(:hover, :focus-visible, :active) { transform: none; box-shadow: none; }
+.journey-page .jx-views button[aria-pressed="true"] { background: #6b3f12; color: #fff1d6; text-shadow: none; }
+.journey-page .jx-views button::before, .journey-page .jx-views button::after { display: none; }
+.journey-page .jx-views button:focus-visible { outline: 3px solid #8a5a18; outline-offset: -3px; }
+.journey-page .jx-views button[aria-pressed="true"]:focus-visible { outline-color: #ffe1a4; }
+
+.jx-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.jx-head > div { flex: 1 1 320px; min-width: 0; }
+.jx-head h2 { margin-bottom: 2px; }
+.jx-lead { margin: 0; font-size: 13px; color: #5a3e1c; }
+.jx-foot { margin: 10px 0 0; font-size: 12.5px; line-height: 1.45; color: #5a3e1c; }
+.jx-foot code, .jx-story code { padding: 0 4px; border-radius: 3px; background: rgba(60,40,18,.14); color: #3d220c; }
+.jx-hint { margin: 0; font-size: 13px; color: #5a3e1c; }
+.jx-status { min-height: 18px; margin: 8px 0 0; font-size: 13px; font-weight: 700; color: #2e5a1c; }
+.jx-status:empty { min-height: 0; margin: 0; }
+:is(.jx-chapter, .jx-panel, .jx-note, .jx-day, .jx-pictures, .jx-missing) > h3 { margin: 0 0 6px; font: 700 15px Cinzel, Georgia, serif; color: #3d220c; }
+
+/* Buttons on parchment: the brown pill the Badge Case uses. */
+.journey-page :is(.share-btn, .jx-panel button, .jx-switch, .jx-note button), .eco-page .share-btn, .badges-page .share-btn { min-height: 32px; padding: 4px 12px; border-radius: 6px; border: 1px solid #a5823e; background: #6b3f12; color: #fff1d6; font: 600 13px Georgia, serif; cursor: pointer; text-shadow: none; white-space: nowrap; box-shadow: none; }
+.journey-page :is(.share-btn, .jx-panel button, .jx-switch, .jx-note button)::before, .journey-page :is(.share-btn, .jx-panel button, .jx-switch, .jx-note button)::after, .eco-page .share-btn::before, .eco-page .share-btn::after, .badges-page .share-btn::before, .badges-page .share-btn::after { display: none; }
+.journey-page :is(.share-btn, .jx-panel button, .jx-switch, .jx-note button):hover, .eco-page .share-btn:hover { background: #7d4b18; }
+.journey-page :is(.share-btn, .jx-panel button, .jx-switch, .jx-note button):focus-visible, .eco-page .share-btn:focus-visible { outline: 3px solid #3d220c; outline-offset: 2px; }
+.journey-page .jx-switch[aria-pressed="true"] { background: #2e5a1c; border-color: #6f9a4a; }
+.journey-page button.jx-link { min-height: 0; padding: 0; border: 0; background: none; color: #6b3f12; font: 600 12.5px Georgia, serif; text-decoration: underline; cursor: pointer; text-shadow: none; box-shadow: none; }
+.journey-page button.jx-link::before, .journey-page button.jx-link::after { display: none; }
+.journey-page button.jx-link:focus-visible { outline: 2px solid #3d220c; outline-offset: 2px; }
+
+/* The story so far. */
+.jx-chapters { columns: 2 320px; column-gap: 16px; }
+.jx-chapter { break-inside: avoid; margin: 0 0 12px; padding: 10px 14px 12px; border-radius: 6px; background: rgba(255,248,225,.45); border: 1px solid rgba(138,90,24,.35); }
+.jx-chapter h3 { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.jx-num { flex: none; display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 4px; border-radius: 15px; background: radial-gradient(circle at 35% 30%, #fff0b8, #c79a4a 55%, #6b4a12); color: #3d220c; font: 700 13px Cinzel, Georgia, serif; text-shadow: none; }
+.jx-chapter ul, .jx-missing ul { margin: 0; padding-left: 18px; }
+.jx-chapter li, .jx-missing li { margin: 4px 0; line-height: 1.45; overflow-wrap: anywhere; }
+.jx-missing { margin-top: 4px; padding: 10px 14px; border-radius: 6px; border: 1px dashed #927242; color: #4a3218; }
+.jx-pictures { margin-top: 14px; padding-top: 12px; border-top: 1px solid #9b7c43; }
+.jx-pictures ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.jx-pictures li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "kind btn" "name btn"; align-items: center; gap: 0 10px; padding: 8px 10px; border-radius: 6px; background: rgba(60,40,18,.1); border: 1px solid rgba(138,90,24,.35); }
+.jx-kind { grid-area: kind; font: 700 11px Cinzel, Georgia, serif; letter-spacing: .08em; text-transform: uppercase; color: #8a5a18; }
+.jx-pictures strong { grid-area: name; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jx-pictures .share-btn { grid-area: btn; }
+
+/* Timeline. */
+.jx-folder { margin: 0; font-weight: 600; color: #3d220c; }
+.jx-day { margin-top: 14px; padding-top: 12px; border-top: 1px solid #9b7c43; }
+.jx-events { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; }
+.jx-ev { display: grid; grid-template-columns: 56px 74px minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: 13.5px; }
+.jx-ev time { color: #5a3e1c; font-variant-numeric: tabular-nums; }
+.jx-mark { justify-self: start; padding: 1px 8px; border-radius: 10px; font: 700 11px Georgia, serif; background: #6b3f12; color: #fff1d6; text-shadow: none; }
+.jx-ev-level .jx-mark { background: #5b3aa0; }
+.jx-ev-death .jx-mark { background: #8a2420; }
+.jx-ev-run .jx-mark { background: #2f5d7a; }
+.jx-ev-first .jx-mark { background: #8a5a18; }
+.jx-what { display: flex; flex-wrap: wrap; gap: 0 10px; min-width: 0; overflow-wrap: anywhere; }
+.jx-what small { color: #5a3e1c; }
+.jx-shots { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.jx-shot figure { margin: 0; display: flex; flex-direction: column; height: 100%; border-radius: 6px; overflow: hidden; border: 1px solid #a5823e; background: #fff6df; box-shadow: 0 3px 8px rgba(60,40,18,.3); }
+.jx-frame { aspect-ratio: 16 / 9; background: #23130a; display: grid; place-items: center; }
+.jx-frame canvas { display: block; width: 100%; height: 100%; }
+.jx-nopreview, .jx-missing-shot::after { margin: 0; padding: 8px; font-size: 12px; color: #e8c983; text-align: center; }
+.jx-missing-shot canvas { display: none; }
+.jx-missing-shot::after { content: "No preview could be made."; }
+.jx-shot figcaption { display: grid; gap: 2px; padding: 8px 10px 10px; font-size: 12.5px; color: #4a3218; }
+.jx-shot figcaption strong { font-size: 14px; color: #3d220c; }
+.jx-shot figcaption .jx-link { justify-self: start; }
+
+/* Leveling races. */
+.jx-race-forms, .jx-ov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; }
+.jx-panel { display: grid; gap: 7px; align-content: start; min-width: 0; margin: 0; padding: 12px 14px; border-radius: 6px; background: rgba(255,248,225,.45); border: 1px solid rgba(138,90,24,.35); }
+.jx-panel label { font-weight: 700; font-size: 13px; color: #3d220c; text-shadow: none; }
+.jx-panel :is(input[type="text"], textarea) { width: 100%; min-width: 0; box-sizing: border-box; margin: 0; padding: 6px 9px; border: 1px solid #a5823e; border-radius: 6px; background: #fff6df; color: #3d220c; font: 13px/1.4 Consolas, "Courier New", monospace; resize: vertical; }
+.jx-panel input[type="text"] { font: 14px Georgia, serif; min-height: 34px; }
+.jx-panel :is(input, textarea):focus-visible { outline: 2px solid #6b3f12; outline-offset: 1px; }
+.jx-panel ::placeholder { color: #6b5537; }
+.jx-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.jx-row input { flex: 1 1 180px; }
+.jx-friends { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; }
+.jx-friends li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 9px; border-radius: 5px; background: rgba(60,40,18,.1); }
+.jx-friends span { display: flex; gap: 10px; align-items: baseline; min-width: 0; }
+.jx-friends strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jx-friends small { color: #5a3e1c; white-space: nowrap; }
+.jx-standings { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px 14px; font-size: 13.5px; }
+.jx-standings li { display: flex; gap: 8px; min-width: 0; }
+.jx-standings strong { flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jx-board-frame { margin-top: 12px; max-height: 460px; overflow: auto; border: 1px solid #a5823e; border-radius: 6px; background: rgba(255,248,225,.5); }
+.jx-board-frame:focus-visible { outline: 3px solid #3d220c; outline-offset: 2px; }
+.jx-board { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.jx-board :is(th, td) { padding: 5px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid rgba(138,90,24,.25); }
+.jx-board thead th { position: sticky; top: 0; z-index: 1; background: #e3cf9e; color: #3d220c; vertical-align: bottom; max-width: 180px; }
+.jx-board thead th span { display: block; overflow: hidden; text-overflow: ellipsis; }
+.jx-board thead small { display: block; font-weight: 400; font-size: 11.5px; color: #5a3e1c; }
+.jx-board :is(thead th:first-child, tbody th) { text-align: left; width: 64px; }
+.jx-board tbody th { color: #3d220c; }
+.jx-board td small { display: inline-block; min-width: 62px; margin-left: 6px; font-size: 11.5px; }
+.jx-board .jx-you { background: rgba(122,63,208,.1); }
+.jx-board .jx-fastest { background: rgba(246,196,69,.45); font-weight: 700; }
+.jx-ahead { color: #2e5a1c; }
+.jx-behind { color: #8a2420; }
+.jx-none { color: #9b7c43; }
+
+/* Coach's notes. */
+.jx-notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; align-items: stretch; }
+.jx-note { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 12px 14px 14px; border-radius: 6px; background: rgba(255,248,225,.5); border: 1px solid rgba(138,90,24,.35); border-top: 4px solid #8a5a18; }
+.jx-note-well { border-top-color: #4d7a2c; }
+.jx-note-change { border-top-color: #a8431f; }
+.jx-note-next { border-top-color: #5b3aa0; }
+.jx-note p { margin: 0; line-height: 1.45; overflow-wrap: anywhere; }
+.jx-note ul { margin: 0; padding-left: 18px; }
+.jx-note li { margin: 5px 0; line-height: 1.45; overflow-wrap: anywhere; }
+.jx-note li .share-btn { display: block; margin-top: 5px; }
+.jx-big { font: 700 16px Georgia, serif; color: #3d220c; }
+.jx-note button { align-self: flex-start; margin-top: auto; }
+
+/* Stream overlay. */
+.jx-steps { margin: 2px 0 0; padding-left: 20px; font-size: 13.5px; line-height: 1.5; }
+.jx-facts { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.5; color: #4a3218; }
+.jx-ov-sample { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border: 2px solid #c79a4a; border-radius: 8px; background: linear-gradient(180deg, #36160a, #160904); color: #fff1d6; }
+.jx-ov-top { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; }
+.jx-ov-top strong { font: 700 24px Cinzel, Georgia, serif; color: #f6dc9a; white-space: nowrap; }
+.jx-ov-top span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #f1dcb0; }
+.jx-ov-xp { display: flex; align-items: center; gap: 10px; }
+.jx-ov-bar { flex: 1; height: 12px; border-radius: 6px; border: 1px solid #8a5a18; background: rgba(0,0,0,.55); overflow: hidden; }
+.jx-ov-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #7a3fd0, #c58cff); }
+.jx-ov-xp em { font-style: normal; min-width: 40px; text-align: right; }
+.jx-ov-row { display: flex; gap: 24px; }
+.jx-ov-row div { display: flex; flex-direction: column; }
+.jx-ov-sample small { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .12em; text-transform: uppercase; color: #e8c983; }
+.jx-ov-row b { font-size: 19px; }
+.jx-ov-step p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The share window. */
+.share-dialog { width: min(720px, calc(100vw - 48px)); max-height: calc(100vh - 40px); overflow: auto; padding: 18px 20px; border: 2px solid #c79a4a; border-radius: 10px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; box-shadow: 0 24px 70px rgba(0,0,0,.7); }
+.share-dialog::backdrop { background: rgba(10,4,2,.72); }
+.share-dialog h2 { margin: 0 0 10px; font: 700 20px Cinzel, Georgia, serif; color: #3d220c; }
+.share-preview { display: grid; place-items: center; min-height: 180px; border-radius: 6px; background: #23130a; overflow: hidden; }
+.share-canvas { display: block; width: 100%; height: auto; }
+.share-wait { margin: 0; color: #e8c983; }
+.share-who { margin: 12px 0 0; padding: 8px 12px 10px; border: 1px solid #927242; border-radius: 6px; display: flex; flex-wrap: wrap; gap: 4px 22px; }
+.share-who legend { padding: 0 6px; font-weight: 700; color: #3d220c; }
+.share-who label { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; color: #3d220c; text-shadow: none; cursor: pointer; }
+.share-who p { flex-basis: 100%; margin: 2px 0 0; font-size: 12.5px; color: #5a3e1c; }
+.share-status { min-height: 18px; margin: 8px 0 0; font-size: 13px; font-weight: 700; color: #2e5a1c; }
+.share-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.share-dialog .share-actions button { min-height: 36px; padding: 6px 16px; border-radius: 6px; border: 1px solid #a5823e; background: #6b3f12; color: #fff1d6; font: 600 14px Georgia, serif; cursor: pointer; text-shadow: none; box-shadow: none; }
+.share-dialog .share-actions button::before, .share-dialog .share-actions button::after { display: none; }
+.share-dialog .share-actions button:hover { background: #7d4b18; }
+.share-dialog .share-actions .share-close { margin-left: auto; background: transparent; color: #3d220c; text-shadow: none; }
+.share-dialog .share-actions .share-close:hover { background: rgba(60,40,18,.14); }
+.share-dialog :is(button, input):focus-visible { outline: 3px solid #3d220c; outline-offset: 2px; }

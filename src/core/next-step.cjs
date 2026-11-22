@@ -15,7 +15,8 @@ function direction(from, to) {
 const coords = (w) => (w && Number.isFinite(w.x) && Number.isFinite(w.y) ? `${(w.x * 100).toFixed(1)}, ${(w.y * 100).toFixed(1)}` : null);
 
 function nextStep(advice) {
-  if (!advice || advice.status) return null;
+  // The advisor marks a usable answer "ok"; any other status (no character, no level) has no step.
+  if (!advice || (advice.status && advice.status !== "ok")) return null;
   const me = advice.character?.position || null, log = advice.log || {}, zone = advice.next || null;
   const placed = (w) => {
     if (!w || !Number.isFinite(w.x)) return { where: null, dir: null };

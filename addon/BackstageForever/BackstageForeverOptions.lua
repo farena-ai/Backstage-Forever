@@ -46,6 +46,7 @@ local PAGES={
     {title='Alerts',rows={
         switch('Pop-up tips','Painted banners for level-ups, finished quests, deaths and repairs.',on('BackstageForeverAssistSettings','toasts'),'toasts'),
         switch('Moment banners','A short banner after combat for elite, rare and boss kills and profession milestones.',on('BackstageForeverMomentsSettings','toasts'),'moments'),
+        switch('Screenshots at big moments','One screenshot when you gain a level or defeat a dungeon boss, taken after combat.',off('BackstageForeverMomentsSettings','shots'),'moments shots'),
         switch('Danger warnings','A line above your target when it is far above your level or elite.',on('BackstageForeverAssistSettings','danger'),'danger'),
         switch('Boss tips','A short plain tip the first time you target a covered boss.',on('BackstageForeverAssistSettings','bossTips'),'boss'),
         switch('Enemy player alerts','Says when an enemy player is nearby. Never in battlegrounds.',on('BackstageForeverEnemySettings','enabled'),'enemy'),

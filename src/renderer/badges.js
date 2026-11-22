@@ -22,6 +22,7 @@ window.BadgesView = (() => {
       <span class="bd-how">${esc(b.how)}${b.desktopOnly ? '<small class="bd-scope">Desktop only</small>' : ""}</span>
       ${b.earned ? `<span class="bd-when">${b.at ? `Earned ${esc(day(b.at))}` : "Earned"}</span>` : b.progress ? `<span class="bd-prog" role="progressbar" aria-label="Progress toward ${esc(b.name)}" aria-valuemin="0" aria-valuemax="${Number(b.progress.need)}" aria-valuenow="${Number(b.progress.have)}"><span data-w="${pct}"></span></span><small>${Number(b.progress.have).toLocaleString()} / ${Number(b.progress.need).toLocaleString()}</small>` : `<span class="bd-when locked">${b.progressUnavailable ? "No saved progress" : "Not yet"}</span>`}
       ${b.questSteps ? `<ol class="bd-quest-steps" aria-label="Quest steps in this save">${b.questSteps.map(step => `<li><span>${esc(step.title)}</span> — <small>${step.confirmed ? "Confirmed in save" : "Not confirmed in save"}</small></li>`).join("")}</ol>` : ""}
+      ${b.earned && window.ShareCard ? ShareCard.button("badge", { id: b.id, art: artKeys(b)[0] || null, name: b.name, how: b.how, at: b.at || null, earned: data?.book?.earned ?? null, total: data?.book?.total ?? null }, "Share", data?.character?.id ?? null) : ""}
       ${others.length ? `<small class="bd-also" title="${esc(others.join(", "))}">Also: ${esc(others.slice(0, 3).join(", "))}${others.length > 3 ? ` +${others.length - 3}` : ""}</small>` : ""}</li>`;
   }
   function chooser(d) {
@@ -64,7 +65,7 @@ window.BadgesView = (() => {
         <div class="bd-latest"><h2>Recently earned</h2>${d.recent.length ? `<ul>${d.recent.map((b) => summaryRow(b, day(b.at))).join("")}</ul>` : `<p>No dated badges yet. Undated milestones still count in your collection.</p>`}</div>
         <div class="bd-next"><h2>Closest next</h2>${d.next.length ? `<ul>${d.next.map((b) => summaryRow(b, `${b.progress.have.toLocaleString()} / ${b.progress.need.toLocaleString()} · ${b.how}`)).join("")}</ul>` : `<p>${d.book.earned === d.book.total ? "Every badge earned. Well played!" : "Progress toward a badge will show up here."}</p>`}</div>
       </div>
-      <section class="bd-card"><div class="bd-card-head"><h2>${esc(d.character.name)}'s badges</h2><button type="button" class="bd-picture" data-badge-picture>Save a picture</button></div>
+      <section class="bd-card"><div class="bd-card-head"><h2>${esc(d.character.name)}'s badges</h2><button type="button" class="bd-picture" data-badge-picture>Share picture</button></div>
         <p class="bd-count">In WoW, type <code>/bf badges pin</code> to see eligible Compass goals: levels, exploration, and gold. Desktop-only badges aren’t available in the addon.</p>
         ${filters()}<p class="bd-count" role="status" data-badge-count>${countLabel(results.count)}</p><div data-badge-results>${results.html}</div>
       </section>
@@ -159,48 +160,13 @@ window.BadgesView = (() => {
     // A shell redraw also happens after a fresh game save. Filter edits only redraw the results.
     load(root);
   }
-  // J27 (1.6): a painted picture of this character's earned badges, saved where you choose.
-  async function pictureArt(badges) {
-    const art = new Map(), keys = badges.map(artKeys);
-    async function read(ids) {
-      const unique = [...new Set(ids.filter((id) => id && !art.has(id)))];
-      // badgeArt IPC accepts at most 60 keys per request.
-      for (let start = 0; start < unique.length; start += 60) {
-        const batch = unique.slice(start, start + 60);
-        const bytes = await api.badgeArt(batch).catch(() => []);
-        batch.forEach((id, i) => art.set(id, bytes?.[i] || null));
-      }
-    }
-    await read(keys.map(([primary]) => primary));
-    await read(keys.filter(([primary]) => !art.get(primary)).map(([, backup]) => backup));
-    return keys.map(([primary, backup]) => art.get(primary) || art.get(backup));
-  }
-  async function picture() {
+  // J27 (1.6), S9: a painted picture of this character's earned badges. The share window paints it
+  // (share-card.js), with Copy picture and Save picture; the name is on it only when ticked.
+  function picture() {
     const d = data;
     if (!d?.book) return;
     const earned = d.book.badges.filter((b) => b.earned);
-    const cols = 6, cell = 150, pad = 40, head = 130, rows = Math.max(1, Math.ceil(earned.length / cols));
-    const c = document.createElement("canvas"); c.width = pad * 2 + cols * cell; c.height = head + rows * (cell + 30) + pad;
-    const g = c.getContext("2d");
-    const bg = g.createLinearGradient(0, 0, 0, c.height); bg.addColorStop(0, "#2a1208"); bg.addColorStop(1, "#120804");
-    g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height);
-    g.strokeStyle = "#b8862e"; g.lineWidth = 4; g.strokeRect(10, 10, c.width - 20, c.height - 20);
-    g.fillStyle = "#f6dc9a"; g.textAlign = "center"; g.font = "700 40px Cinzel, Georgia, serif"; g.fillText(`${d.character.name}'s Badge Case`, c.width / 2, 66, c.width - 2 * pad);
-    g.font = "600 20px Georgia, serif"; g.fillStyle = "#e8c983";
-    g.fillText(`${d.book.earned} of ${d.book.total} badges${d.character.level ? ` · level ${d.character.level}` : ""}${d.character.className ? ` ${d.character.className}` : ""} · Backstage Forever`, c.width / 2, 100);
-    const art = await pictureArt(earned);
-    for (let i = 0; i < earned.length; i++) {
-      const x = pad + (i % cols) * cell, y = head + Math.floor(i / cols) * (cell + 30);
-      const bytes = art?.[i];
-      let painted = false;
-      if (bytes) { try { const bmp = await createImageBitmap(new Blob([bytes], { type: "image/png" })); g.drawImage(bmp, x + 15, y, 120, 120); bmp.close(); painted = true; } catch {} }
-      if (!painted) { g.fillStyle = "#b8862e"; g.font = "700 74px Georgia, serif"; g.fillText("✦", x + cell / 2, y + 88); }
-      g.fillStyle = "#f6dc9a"; g.font = "700 15px Georgia, serif"; g.fillText(earned[i].name, x + cell / 2, y + 140, cell - 8);
-    }
-    if (!earned.length) { g.fillStyle = "#e8c983"; g.font = "600 22px Georgia, serif"; g.fillText("The first badges come quickly.", c.width / 2, head + 60); }
-    const blob = await new Promise((r) => c.toBlob(r, "image/png"));
-    try { const saved = await api.saveSharePicture(new Uint8Array(await blob.arrayBuffer()), "badges"); if (saved) window.toast?.("Picture saved."); }
-    catch (e) { window.toast?.(e.message || "The picture could not be saved."); }
+    window.ShareCard?.open({ kind: "badges", profileId: d.character.id, data: { earned: d.book.earned, total: d.book.total, badges: earned.map((b) => ({ id: b.id, art: artKeys(b)[0] || null, name: b.name })) } });
   }
   // Opened from the new-badge banner: that character, that badge.
   function invalidate() { request++; data = null; error = ""; }

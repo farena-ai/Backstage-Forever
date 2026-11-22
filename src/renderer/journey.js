@@ -6,6 +6,8 @@ window.JourneyView = (() => {
   let data = null, error = "", mountedFor = null, week = null, request = null, scope = null;
   let selected = () => null, selectionPending = () => false;
   let manual = null, saving = null;
+  // Journey views: the overview below, and the extra views painted by journey-extras.js.
+  let view = "overview";
   const scopeOf = (p) => JSON.stringify([p?.id, p?.source?.kind, p?.source?.id, p?.source?.updatedAt, p?.clientBuild]);
   const dur = (s) => { if (!Number.isFinite(s)) return "?"; const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`; };
   const day = (t) => new Date(t * 1000).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
@@ -201,11 +203,12 @@ ${esc(draft?.improvement)}</textarea>
   }
   function page() {
     const next = scopeOf(selected());
-    if (scope !== next) { scope = next; data = week = request = manual = saving = null; resetDebrief(); error = ""; }
+    if (scope !== next) { scope = next; data = week = request = manual = saving = null; resetDebrief(); error = ""; window.JourneyExtras?.invalidate(); }
     const cls = String(data?.className || "").toLowerCase();
     return `<section class="journey-page" data-journey>${PageHero.render({ art: "journey", eyebrow: "Characters · Journey", title: esc(data?.name || "Your journey"), crest: PageHero.classCrest(cls), subtitle: "Badges you've earned, how fast each level went, and your rested bonus." })}
-      <section class="jr-card" aria-labelledby="journey-newcomer-title"><h2 id="journey-newcomer-title">Newcomer dungeon run</h2><p>Plan a relaxed first run with a volunteer mentor. The template opens in Party and does not copy your journal.</p><button type="button" data-journey-newcomer>Use newcomer/mentor template</button></section>
-      <div data-journey-body>${body()}</div></section>`;
+      ${window.JourneyExtras ? JourneyExtras.tabs(view) : ""}
+      ${view !== "overview" && window.JourneyExtras ? `<div data-journey-extra="${esc(view)}">${selected() ? JourneyExtras.render(view) : `<p class="jr-empty">Choose a character in Characters.</p>`}</div></section>` : `<section class="jr-card" aria-labelledby="journey-newcomer-title"><h2 id="journey-newcomer-title">Newcomer dungeon run</h2><p>Plan a relaxed first run with a volunteer mentor. The template opens in Party and does not copy your journal.</p><button type="button" data-journey-newcomer>Use newcomer/mentor template</button></section>
+      <div data-journey-body>${body()}</div></section>`}`;
   }
   function sizes(root) {
     for (const el of root.querySelectorAll("[data-w]")) el.style.width = `${Number(el.dataset.w)}%`;
@@ -270,6 +273,14 @@ ${esc(draft?.improvement)}</textarea>
     const root = document.querySelector("[data-journey]");
     if (!root || mountedFor === root) return;
     mountedFor = root; sizes(root);
+    const redraw = () => { const live = document.querySelector("[data-journey]"); if (!live) return; live.outerHTML = page(); mounted(); };
+    root.querySelector(".jx-views")?.addEventListener("click", (ev) => {
+      const next = ev.target.closest("[data-journey-view]")?.dataset.journeyView;
+      if (!next || next === view) return;
+      view = next; redraw();
+      document.querySelector(`[data-journey-view="${view}"]`)?.focus({ preventScroll: true });
+    });
+    if (view !== "overview" && window.JourneyExtras && selected()) JourneyExtras.mounted(root, view, redraw);
     bindPrivate(root);
     bindDebrief(root);
     if (!data && !error && !request) void load();
@@ -277,7 +288,7 @@ ${esc(draft?.improvement)}</textarea>
   return { init: (getProfile, pending) => { selected = getProfile; selectionPending = pending; }, celebrate, page, mounted,
     check: () => api.journey?.().then(d => { if (d?.id === selected()?.id) announce(d); }).catch(() => {}),
     invalidate: () => {
-      scope = data = week = request = manual = saving = null; resetDebrief(); error = "";
+      scope = data = week = request = manual = saving = null; resetDebrief(); error = ""; window.JourneyExtras?.invalidate();
       document.querySelectorAll("[data-private-weekly], [data-private-after-action]").forEach(panel => panel.remove());
-    }, _state: () => ({ data }), _show: show };
+    }, _state: () => ({ data, view }), _show: show, openView: (next) => { if (window.JourneyExtras?.VIEWS.some(([id]) => id === next)) view = next; } };
 })();
