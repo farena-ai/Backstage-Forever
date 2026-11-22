@@ -181,6 +181,7 @@ function validateState(s) {
       "stats",
       "gearSets",
       "travel",
+      "extras",
       "clientBuild",
       "locale",
       "captureVersion",
@@ -199,6 +200,7 @@ function validateState(s) {
     require("./sheet.cjs").validateStats(p.stats);
     require("./sheet.cjs").validateGearSets(p.gearSets);
     if (p.travel !== undefined && !require("node:util").isDeepStrictEqual(require("./travel-planner.cjs").normalizeTravelCapture(p.travel), p.travel)) fail();
+    try { require("./capture-extras.cjs").validateExtras(p.extras); } catch { fail(); }
     str(p.id, 100, false);
     if (ids.has(p.id)) fail();
     ids.add(p.id);

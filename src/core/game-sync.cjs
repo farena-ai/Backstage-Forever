@@ -251,6 +251,11 @@ function parseSavedVariables(raw) {
     if (c.gearSets !== undefined) {
       try { out.gearSets = require("./sheet.cjs").normalizeGearSetsCapture(c.gearSets); } catch { /* Omit the entire invalid optional block. */ }
     }
+    // Extras: spent talents, known recipe ids, key ring, play sessions. Each part is
+    // checked on its own; a damaged part is left out and never costs the character.
+    if (c.extras !== undefined) {
+      try { const extras = require("./capture-extras.cjs").normalizeExtrasCapture(c.extras); if (extras) out.extras = extras; } catch { /* Omit the entire invalid optional block. */ }
+    }
     if (c.scout !== undefined) {
       try {
         const block = require("./scout.cjs").normalizeScoutCapture(c.scout);

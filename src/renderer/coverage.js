@@ -36,7 +36,7 @@ window.CoverageView = (() => {
     return `<p class="cov-summary"><strong>${mine.length - thin.length} of ${mine.length}</strong> zones for ${esc(faction)} players have useful coverage.${thin.length ? ` Thin so far: ${thin.slice(0, 8).map((z) => esc(z.name)).join(", ")}${thin.length > 8 ? "…" : ""}.` : ""}</p>
       <div class="cov-grid">${(showAll ? zones : mine).map(zoneCard).join("")}</div>
       <label class="cov-all"><input type="checkbox" data-cov-all ${showAll ? "checked" : ""}> Also show the other faction's zones</label>
-      <p class="cov-foot">Counts come from community observations bundled with the app (${esc(data.source?.attribution || "Efficient Games, CC BY 4.0")}${data.source?.builds ? `; game builds ${esc(data.source.builds.join(", "))}` : ""}${data.source?.observedThrough ? `; observed through ${esc(data.source.observedThrough)}` : ""}). They grow as more players contribute and the app updates; your own game also fills in repair vendors and flight paths as you meet them.</p>
+      <p class="cov-foot">Counts come from community observations bundled with the app (${esc(data.source?.attribution || "Efficient Games, CC BY 4.0")}${data.source?.builds ? `; game builds ${esc(data.source.builds.map((b) => (typeof b === "string" ? b : b?.build)).filter(Boolean).join(", "))}` : ""}${data.source?.observedThrough ? `; observed through ${esc(data.source.observedThrough)}` : ""}). They grow as more players contribute and the app updates; your own game also fills in repair vendors and flight paths as you meet them.</p>
       <p class="cov-foot" data-cov-flight-note>${data.flightPoints?.total ? `Flight masters are counted from the ${data.flightPoints.total} flight points players recorded${data.flightPoints.total > data.flightPoints.placed ? `; ${data.flightPoints.total - data.flightPoints.placed} of them have no recorded place yet and are in no zone's count` : ""}. A zone with 0 may simply have no flight master. ` : ""}Class trainers stand mostly in the capital cities, which are not leveling zones, so most zones show 0 for them.</p>`;
   }
   const PATCH_LABELS = {
@@ -60,12 +60,39 @@ window.CoverageView = (() => {
       <p>Game builds change every few days inside one patch. A review on one build covers the other builds of that patch; a new patch waits for a fresh review, and until then route suggestions are withheld while route coverage and your saved journal stay available.</p>
     </section>`;
   }
+  // Scout notes (S1): what scout mode recorded in game, and one button to save it as a file.
+  let scout = null, scoutSaid = "", scoutBusy = false;
+  function scoutCard() {
+    const n = scout?.records || 0;
+    const who = (scout?.characters || []).slice(0, 6).map((c) => `${esc(c.name)} <b>${c.records}</b>`).join(" · ");
+    const count = !scout ? "<p>Reading your saved file…</p>"
+      : n ? `<p><strong>${n}</strong> <span>${n === 1 ? "record in your saved file" : "records in your saved file"}</span>${who ? `<span class="cov-scout-who"> · ${who}${scout.characters.length > 6 ? " …" : ""}</span>` : ""}</p>`
+      : "<p>No scout notes in your saved file yet. Type <code>/bf scout on</code> in game, talk to quest givers, trainers, vendors and flight masters, then type <code>/reload</code> or log out.</p>";
+    return `<section class="cov-patch cov-scout" data-cov-scout aria-labelledby="cov-scout-title">
+      <h2 id="cov-scout-title">Your scout notes</h2>
+      <p>Scout mode notes who you talked to in game and where they stand: quest givers, hand-ins, trainers, vendors and flight masters. It helps fill the thin zones above.</p>
+      ${count}
+      <div class="cov-scout-acts"><button type="button" class="cov-scout-save" data-cov-scout-save${n && !scoutBusy ? "" : " disabled"}>Save my scout notes…</button><span data-cov-scout-said role="status">${esc(scoutSaid)}</span></div>
+      <p><small>Nothing is uploaded. The button writes one file to the place you pick; you decide whether to send it to anyone.</small></p>
+    </section>`;
+  }
+  function paintScout() { const el = document.querySelector("[data-cov-scout]"); if (el) el.outerHTML = scoutCard(); }
+  async function saveScout() {
+    if (scoutBusy || !api.exportScoutNotes) return;
+    scoutBusy = true; scoutSaid = ""; paintScout();
+    try {
+      const r = await api.exportScoutNotes();
+      scoutSaid = r?.saved ? "Saved. The file stays on your computer." : r?.reason === "empty" ? "There is nothing to save yet." : "";
+    } catch (e) { scoutSaid = e.message || "The file could not be saved."; }
+    scoutBusy = false; paintScout();
+  }
   function page(profile, routeBuild) {
     return `<section class="coverage-page" data-coverage>
       ${PageHero.render({ art: "coverage", eyebrow: "Help · Data coverage", title: "How much we know, zone by zone", subtitle: "Where the app's advice is rich and where it's still thin, for each faction.",
         aside: `<div class="cov-toggle" role="group" aria-label="Faction">${["Horde", "Alliance"].map((f) => `<button type="button" data-cov-faction="${f}" aria-pressed="${f === faction}">${f}</button>`).join("")}</div>` })}
       ${patchImpact(profile, routeBuild)}
-      <div data-cov-body>${body()}</div></section>`;
+      <div data-cov-body>${body()}</div>
+      ${scoutCard()}</section>`;
   }
   function paint() {
     const b = document.querySelector("[data-cov-body]"); if (!b) return;
@@ -78,7 +105,8 @@ window.CoverageView = (() => {
     const root = document.querySelector("[data-coverage]");
     if (!root || mountedFor === root) return;
     mountedFor = root;
-    root.addEventListener("click", (e) => { const b = e.target.closest("[data-cov-faction]"); if (b) { faction = b.dataset.covFaction; paint(); } });
+    root.addEventListener("click", (e) => { const b = e.target.closest("[data-cov-faction]"); if (b) { faction = b.dataset.covFaction; paint(); } else if (e.target.closest("[data-cov-scout-save]")) saveScout(); });
+    if (api.scoutNotes) api.scoutNotes().then((s) => { scout = s; paintScout(); }).catch(() => { scout = { records: 0, characters: [] }; paintScout(); });
     root.addEventListener("change", (e) => { if (e.target.matches("[data-cov-all]")) { showAll = e.target.checked; paint(); } });
     if (!faction) { try { const s = await api.bootstrap(); const p = s.state.profiles.find((x) => x.id === s.state.activeProfileId); faction = p?.faction === "Alliance" ? "Alliance" : "Horde"; } catch { faction = "Horde"; } }
     if (!data) { try { data = await api.dataCoverage(); } catch (e) { error = e.message || "Coverage is unavailable."; } }

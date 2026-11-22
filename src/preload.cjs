@@ -110,6 +110,8 @@ contextBridge.exposeInMainWorld(
     levelingAdvice: () => invoke("levelingAdvice"),
     zoneBriefing: () => invoke("zoneBriefing"),
     dataCoverage: () => invoke("dataCoverage"),
+    scoutNotes: () => invoke("scoutNotes"),
+    exportScoutNotes: () => invoke("exportScoutNotes"),
     talentCoach: (input) => invoke("talentCoach", input),
     travelPlaces: () => invoke("travelPlaces"),
     travelPlan: (input) => invoke("travelPlan", input),

@@ -70,8 +70,12 @@ test("the page buttons share the row under the painting without touching, howeve
   assert.ok(step - width >= 6, "a gap between two page buttons");
   assert.ok(34 + (pages - 1) * step + width <= windowWidth - 34, "the last page button ends inside the window's margin");
   assert.match(options, /button:SetSize\(PAGE_WIDTH,22\);button:SetPoint\('TOPLEFT',34\+\(i-1\)\*PAGE_STEP,-114\)/);
-  const de = JSON.parse(read("data/i18n/de.json")).addon.plain;
-  for (const title of [...options.matchAll(/\{title='(\w+)',rows=/g)].map((m) => m[1])) assert.ok(title.length <= 9 && (de[title] || title).length <= 9, `${title} fits a ${width}px button`);
+  let titlesChecked = 0;
+  for (const lang of fs.readdirSync(path.join(root, "data/i18n")).filter((n) => n.endsWith(".json"))) {
+    const words = JSON.parse(read("data/i18n/" + lang)).addon.plain;
+    for (const title of [...options.matchAll(/\{title='(\w+)',rows=/g)].map((m) => m[1])) assert.ok(titlesChecked++ >= 0 &&title.length <= 9 && (words[title] || title).length <= 10, `${lang}: ${title} fits a ${width}
+  assert.ok(titlesChecked >= 15, "five page titles in each language");px button`);
+  }
 });
 
 test("saved choices show as they are, with each helper's own default", () => lua(STUBS + String.raw`

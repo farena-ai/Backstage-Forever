@@ -128,16 +128,27 @@ window.LedgerView = (() => {
     if (!copper) return `<span class="ldg-flat">no change</span>`;
     return `<span class="${copper > 0 ? "ldg-gain" : "ldg-loss"}">${copper > 0 ? "+" : "−"}${coins(Math.abs(copper))}</span>`;
   }
+  const span = (seconds) => { const h = Math.floor(seconds / 3600), m = Math.round((seconds % 3600) / 60); return h ? `${h} h ${String(m).padStart(2, "0")} min` : `${m} min`; };
+  const clock = (at) => new Date(at * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  // Gold per play session (E9): the purse when the addon loaded and when it last saw the character.
+  function sessionsBlock(pick) {
+    const s = pick.sessions;
+    if (!s) return `<h3 class="ldg-sub">Gold per play session</h3><p class="ldg-empty" data-ledger-sessions="none">No play session is saved for this character yet. Sessions are saved from the next login with the current addon.</p>`;
+    const rows = s.rows.map((r) => `<tr><th scope="row">${esc(fullDay(r.start))}<small class="ldg-cell-note">${esc(clock(r.start))} – ${esc(clock(r.end))}</small></th><td${num}>${esc(span(r.seconds))}</td><td${num}>${signed(r.change)}</td><td${num}>${r.perHour === null ? `<span class="ldg-flat">too short</span>` : signed(r.perHour)}</td></tr>`).join("");
+    const total = s.total ? `<p class="ldg-note"><span>Across these sessions of ten minutes or more:</span> ${signed(s.total.change)} <span>in</span> ${esc(span(s.total.seconds))}<span>, per hour</span> ${signed(s.total.perHour)}</p>` : "";
+    return `<h3 class="ldg-sub">Gold per play session</h3>${total}<div data-ledger-sessions>${table("sessions", "Gold per play session", [["Session"], ["Time logged in", true], ["Gold change", true], ["Per hour", true]], `<tbody>${rows}</tbody>`, s.rows.length)}</div>
+      <p class="ldg-note ldg-after">The time is clock time from login (or /reload) to the last moment the addon saw you, time away from the keyboard included. The change is everything that moved your gold: loot, quests, selling, repairs, training, mail and auctions.</p>`;
+  }
   function moneyCard() {
     const list = data.money || [];
-    const missing = `<p class="ldg-note ldg-after">Gold per play session and the value of what you looted are not shown: the addon saves your gold once a day, not at the start and end of each session, and does not record loot outside dungeons.</p>`;
+    const missing = `<p class="ldg-note ldg-after">The value of what you looted is not shown: the addon does not record loot outside dungeons.</p>`;
     if (!list.length) return `<section class="ldg-card" data-ledger-money-card><h2>Gold over time</h2><p class="ldg-empty">No gold samples yet. They build up one per day you play with the addon on.</p>${missing}</section>`;
     const pick = list.find((m) => m.profileId === moneyFor) || list.find((m) => m.profileId === activeProfile()) || list[0];
     const rows = pick.changes.map((c) => `<tr><th scope="row">${esc(fullDay(c.at))}</th><td${num}>${coins(c.money)}</td><td${num}>${signed(c.change)}${c.days > 1 ? `<small class="ldg-cell-note">over ${c.days} days</small>` : ""}</td></tr>`).join("");
     return `<section class="ldg-card" data-ledger-money-card><div class="ldg-toolbar"><h2>Gold over time</h2><label class="ldg-pick ldg-inline">Character <select data-ledger-money aria-label="Gold over time of">${list.map((m) => `<option value="${esc(m.profileId)}"${m === pick ? " selected" : ""}>${esc(m.name)}</option>`).join("")}</select></label></div>
       <p class="ldg-note">${esc(pick.name)}: ${coins(pick.last)} on ${esc(fullDay(pick.lastAt))}${pick.points.length > 1 ? `, ${signed(pick.change)} since ${esc(fullDay(pick.firstAt))}` : ""}. One sample per day played, as the game last saved it that day.</p>
       ${goldChart(pick)}
-      ${rows ? `<div class="ldg-chart-days">${table("money", "Gold day by day", [["Day"], ["Gold", true], ["Change since the sample before", true]], `<tbody>${rows}</tbody>`, pick.changes.length)}</div>` : ""}${missing}</section>`;
+      ${rows ? `<div class="ldg-chart-days">${table("money", "Gold day by day", [["Day"], ["Gold", true], ["Change since the sample before", true]], `<tbody>${rows}</tbody>`, pick.changes.length)}</div>` : ""}${sessionsBlock(pick)}${missing}</section>`;
   }
   // Craft profit (E7): material cost against the selling price, only from prices the player saw.
   function materialLine(m) {

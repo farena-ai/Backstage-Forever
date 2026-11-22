@@ -75,6 +75,7 @@ let gearPins = null; // one pinned gear target per slot and character (roadmap C
 // The weights a character scores gear with; null means the built-in row for the class.
 const profileWeights = (p) => { try { return p && statWeights ? require("./core/stat-weights.cjs").scoringWeights(p.className, statWeights.get(p.id)) : null; } catch { return null; } };
 let talentBuilds = null; // saved talent builds per character (talent planner)
+let forgetGameAnswers = null, clearGameAnswers = null; // kept in-game answers (ask-answers.json)
 let gatheringLoops = null; // the gathering loop each character sent to the game
 let community = null, collectDiagnostics = null;
 const catalogs = new CatalogCache();
@@ -214,6 +215,7 @@ app.whenReady().then(async () => {
       privateWeekly.sync(store.state); privateAfterAction.sync(store.state);
       try { economy?.absorb(store.state); } catch { /* History keeping must never block a save. */ }
       try { journeyStore?.absorb(store.state); } catch { /* Neither must the Journey's notes. */ }
+      try { forgetGameAnswers?.(store.state.profiles.map((p) => p.id)); } catch { /* Nor the kept in-game answers. */ }
     };
     chatgpt = new ChatGPTAuth(app.getPath("userData"), safeStorage, {
       openExternal: (url) => shell.openExternal(url),
@@ -766,6 +768,8 @@ app.whenReady().then(async () => {
   handle("worldMapSearch", (query) => worldMap.search(query));
   handle("worldMapNpc", (npcId) => worldMap.npc(npcId));
   handle("dataCoverage", () => worldMap.coverage());
+  // Scout notes (S1): a count for Help → Data coverage and "Save my scout notes…" to a file the player picks.
+  require("./core/scout-ipc.cjs").registerScoutHandlers({ handle, getGame: () => game, dialog, getWindow: () => win });
   const leveling = new (require("./core/leveling.cjs").LevelingAdvisor)({
     getState: () => store.state, knowledge, insights,
     getLive: () => worldMap.liveFrame(worldMap.profile()),
@@ -1175,6 +1179,8 @@ app.whenReady().then(async () => {
   inGameAsk = new (require("./core/ask-in-game.cjs").InGameAsk)({
     companion: companionService, getState: () => store.state, liveKeyFor: require("./core/live-bridge.cjs").liveKeyFor,
     panel: askPanel, getShare: () => inGameShare,
+    // The last answers per character are kept in ask-answers.json so /bf answers survives a restart.
+    answers: new (require("./core/ask-answers.cjs").AskAnswers)(app.getPath("userData")),
     notify: (exchange) => {
       if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:inGameExchange", exchange);
       // Roadmap A1: the answer joins the hand-off file, so /bf answers shows it after the next /reload.
@@ -1182,6 +1188,9 @@ app.whenReady().then(async () => {
     },
   });
   recentGameAnswers = (id) => inGameAsk.recent(id);
+  // A deleted character takes its kept answers with it; "Delete all local data" clears them all.
+  forgetGameAnswers = (ids) => { if (inGameAsk.forget(ids)) game?.writeHandoff().catch(() => {}); };
+  clearGameAnswers = () => inGameAsk.clear();
   liveBridge.subscribeQuestions((question) => { void inGameAsk.handle(question); });
   const stopAskContext = companionContext.subscribe(({ reason }) => {
     if (["source-root", "source-disconnect", "reset", "import", "restore"].includes(reason)) inGameAsk.rememberOrigin(null);
@@ -1286,6 +1295,7 @@ app.whenReady().then(async () => {
       wishlist?.clear(); // starred loot belongs to the characters just deleted
       statWeights?.clear(); gearPins?.clear(); // and so do their stat weights and pinned gear targets
       talentBuilds?.clear(); // and so do their talent builds
+      try { clearGameAnswers?.(); } catch {} // and the answers kept for /bf answers
       gatheringLoops?.clear(); // and the gathering loops sent to the game
       community?.reset(); // local install id, sent marks and pack; shared facts stay on the server
       fieldDispatch.finishReset();

@@ -124,7 +124,7 @@ window.TalentsView = (() => {
   const say = (text, bad = false) => { if (plan) plan.status = text ? { text, bad } : null; };
   async function ask(op, extra = {}) {
     const r = await api.talentPlanner({ op, className: plan.className, order: plan.order, planLevel, level: myLevel(), ...extra });
-    plan.order = r.order; plan.view = r.view; plan.saved = r.saved; plan.respec = r.respec; plan.maxName = r.maxName;
+    plan.order = r.order; plan.view = r.view; plan.saved = r.saved; plan.respec = r.respec; plan.maxName = r.maxName; plan.current = r.current || null;
     return r;
   }
   async function openPlan(cls) {
@@ -138,6 +138,20 @@ window.TalentsView = (() => {
     if (active) { plan.order = active.order; plan.id = active.id; plan.name = active.name; await ask("open"); mode = "plan"; }
   }
   const cellState = (v) => (v.rank >= v.maxRank ? "full" : v.rank ? "some" : v.canAdd ? "open" : "off");
+  // The talents this character has spent in game, as the addon saved them (null for a previewed class).
+  const current = () => (preview ? null : plan?.current || null);
+  const ownRank = (id) => current()?.ranks?.[id] || 0;
+  const shortDay = (at) => new Date(at * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  function currentHtml() {
+    if (preview || !plan?.saved?.inGame) return "";
+    const c = current();
+    if (!c) return `<div class="tal-current none" data-tal-current><p><strong>In game now</strong><span>Your spent talents are not in this character's save yet. They come with the next save from the current addon.</span></p></div>`;
+    const waiting = c.unspent === null ? "" : c.unspent > 0 ? `<span class="tal-current-wait"><b>${c.unspent}</b> <span>${c.unspent === 1 ? "point waiting to be spent" : "points waiting to be spent"}</span></span>` : `<span>no point waiting</span>`;
+    const odd = c.unmatched.length ? `<p class="tal-current-odd"><span>Not found in your talent trees:</span> ${c.unmatched.slice(0, 4).map((u) => esc(u.name)).join(", ")}${c.unmatched.length > 4 ? "…" : ""}</p>` : "";
+    return `<div class="tal-current" data-tal-current><p><strong>In game now</strong><span class="tal-current-split">${c.tabs.map((t) => `${esc(t.name)} <b>${t.points}</b>`).join(" · ")}</span>${waiting}<span class="tal-current-day"><span>saved</span> ${esc(shortDay(c.at))}</span></p>
+      <div class="tal-current-acts"><button type="button" class="tal-btn" data-tal-act="from-current"${c.usable ? "" : " disabled"}>Start from my current talents</button><button type="button" class="tal-btn quiet" data-tal-act="compare-current"${c.usable ? "" : " disabled"}>Compare with this plan</button></div>${odd}
+      <p class="tal-current-key"><span class="tal-own">2</span><span>A green number on a talent is the rank you have in game.</span></p></div>`;
+  }
   const cellLabel = (t, v) => `${t.name || "Unknown talent"}, rank ${v.rank} of ${v.maxRank}, ${t.tab}`;
   function planTree(tab) {
     const rows = Math.max(7, ...tab.talents.map((t) => t.row + 1)), cells = [];
@@ -145,8 +159,9 @@ window.TalentsView = (() => {
       const t = tab.talents.find((x) => x.row === r && x.column === col);
       if (!t) { cells.push(`<div class="tal-cell empty"></div>`); continue; }
       const v = plan.view.talents[t.id] || { rank: 0, maxRank: t.maxRank, canAdd: false };
+      const own = ownRank(t.id);
       cells.push(`<button type="button" class="tal-cell tal-click tal-${cellState(v)}" data-tal-id="${t.id}" aria-label="${esc(cellLabel({ ...t, tab: tab.name }, v))}">
-        ${icon(t.iconFileId, 40) || `<span class="tal-noicon">?</span>`}<span class="tal-rank">${v.rank}/${v.maxRank}</span></button>`);
+        ${icon(t.iconFileId, 40) || `<span class="tal-noicon">?</span>`}${own ? `<span class="tal-own" data-tal-own="${own}">${own}</span>` : ""}<span class="tal-rank">${v.rank}/${v.maxRank}</span></button>`);
     }
     const pts = plan.view.tabs.find((x) => x.name === tab.name)?.points || 0;
     return `<section class="tal-tree"><header>${icon(tab.iconFileId, 28)}<h3>${esc(tab.name)}</h3><span data-tal-tab-points="${esc(tab.name)}">${pts} point${pts === 1 ? "" : "s"}</span><button type="button" class="tal-mini" data-tal-act="reset-tree" data-tab="${esc(tab.name)}" aria-label="Reset ${esc(tab.name)}">Reset</button></header><div class="tal-grid">${cells.join("")}</div></section>`;
@@ -215,7 +230,7 @@ window.TalentsView = (() => {
   }
   function planBody() {
     if (!plan?.view) return `<p class="tal-empty">${esc(plan?.error || "Opening the planner…")}</p>`;
-    return `<div data-tal-status aria-live="polite">${statusHtml()}</div>
+    return `<div data-tal-status aria-live="polite">${statusHtml()}</div>${currentHtml()}
       <div class="tal-layout tal-plan"><div class="tal-trees">${data.trees.tabs.map(planTree).join("")}</div><aside class="tal-side"><h3>Level-up order</h3><div data-tal-order>${orderHtml()}</div></aside></div>
       <div data-tal-compare>${compareHtml()}</div>
       <div class="tal-bench"><section class="tal-panel"><h3>Saved builds</h3><div data-tal-builds>${buildsHtml()}</div></section>
@@ -258,6 +273,7 @@ window.TalentsView = (() => {
       return near < 0 ? "Your game files have no text for this talent." : `${esc(d[near])} <small>(text of rank ${near + 1}; your game files have none for rank ${r})</small>`;
     };
     const parts = [`<strong>${esc(t.name || "Unknown talent")}</strong><span class="tal-card-rank">Rank ${rank} of ${t.maxRank} · ${esc(t.tab)}${path ? ` · path takes ${path}` : ""}</span>`];
+    if (v && current()) parts.push(`<span class="tal-card-own">In game: rank ${ownRank(id)} of ${t.maxRank}</span>`);
     if (rank > 0) parts.push(`<p><em>${rank >= t.maxRank ? "Highest rank" : "Now"}</em>${text(rank)}</p>`);
     if (rank < t.maxRank) parts.push(`<p><em>${rank ? "Next rank" : "Rank 1"}</em>${text(rank + 1)}</p>`);
     if (v && rank < t.maxRank && v.addWhy) parts.push(`<p class="tal-card-why">${esc(v.addWhy)}</p>`);
@@ -307,6 +323,12 @@ window.TalentsView = (() => {
         say(el.dataset.id ? "This build goes to the game at its next login or /reload." : "No build is sent to the game now.");
       } else if (name === "compare" && build) {
         const r = await ask("compare", { other: build.order }); plan.diff = { ...r.diff, name: build.name }; say("");
+      } else if (name === "from-current") {
+        const r = await ask("fromCurrent");
+        if (r.ok) { plan.id = null; plan.name = plan.name || "My talents"; plan.code = ""; plan.diff = null; say("Your current talents are now the plan. Add the points you want next, then save it."); } else say(r.reason, true);
+      } else if (name === "compare-current") {
+        const r = await ask("compareCurrent");
+        if (r.ok) { plan.diff = { ...r.diff, name: "In game now" }; say(""); } else say(r.reason, true);
       } else if (name === "close-compare") { plan.diff = null; }
       else if (name === "copy") {
         const r = await ask("export"); plan.code = r.code;
