@@ -110,7 +110,7 @@ Seven helpers for playing with others. None of them sends a chat line, rolls, aw
 
 The party helpers and guild sharing use the party sync channel code: one addon-message prefix, 255 bytes at most, your party (never a whisper) or your guild. Every incoming message is checked field by field, cut to fixed lengths and shown as plain text: colour codes and links are taken out, and nothing received is ever run.
 
-Added in 1.26, each explained by `/bf help`:
+Added in 1.24, each explained by `/bf help`:
 
 - **Who still needs each dungeon quest**: a member who answers `/bf check DUNGEON` also sends where each quest the Instance Atlas lists for that dungeon stands for them (in the log, ready to hand in, done; at most 30 quests in one message). The check then lists who still needs each quest, and the atlas quest list shows the names.
 - **Who can craft it** (`/bf guild craft NAME`): part of guild sharing, so off until `/bf guild on`. The question holds only the name you typed; members answer with at most two matching recipe names from the recipes the addon has seen them know. One question every 30 seconds, one answer every 5. The whisper link puts `/w Name ` in your chat box.
