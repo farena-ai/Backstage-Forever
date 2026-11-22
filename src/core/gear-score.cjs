@@ -61,7 +61,12 @@ const className = (ctx) => {
 };
 function weightsFor(ctx) {
   const cls = className(ctx);
-  return { ...COMMON, ...(cls ? WEIGHTS[cls] : { Strength: 0.5, Agility: 0.5, Stamina: 0.5, Intellect: 0.5, Spirit: 0.3, armor: 0.01, meleeDps: 2, rangedDps: 1, wandDps: 1 }), ...(SPECS[ctx?.spec] || {}) };
+  const base = { ...COMMON, ...(cls ? WEIGHTS[cls] : { Strength: 0.5, Agility: 0.5, Stamina: 0.5, Intellect: 0.5, Spirit: 0.3, armor: 0.01, meleeDps: 2, rangedDps: 1, wandDps: 1 }), ...(SPECS[ctx?.spec] || {}) };
+  // Roadmap C3: the weights the player chose for this character (stat-weights.cjs) win over the built-in rows.
+  const own = ctx?.weights;
+  if (!own || typeof own !== "object" || Array.isArray(own)) return base;
+  for (const [stat, value] of Object.entries(own)) if (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100) base[stat] = value;
+  return base;
 }
 const isWeapon = (item) => item?.classId === 2;
 const statWeight = (weights, stat) => Object.hasOwn(weights, stat) ? weights[stat] : (/Resistance$/.test(stat) ? 0.05 : 0.1);
@@ -192,4 +197,4 @@ function bestReward(choices, ctx = {}, equippedBySlot = {}) {
   };
 }
 
-module.exports = { WEIGHTS, SPECS, WEAPONS, ARMOR, scoreItem, compare, bestReward, blockers, slotsFor, replaced, weightsFor, statWeight, dpsKey };
+module.exports = { WEIGHTS, SPECS, COMMON, WEAPONS, ARMOR, scoreItem, compare, bestReward, blockers, slotsFor, replaced, weightsFor, statWeight, dpsKey };

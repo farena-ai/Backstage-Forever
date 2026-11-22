@@ -85,7 +85,8 @@ window.LedgerView = (() => {
     const neverBank = chars.filter((c) => !c.bankSeenAt).length;
     return `<div class="ldg-summary"><div><strong>${data.items.length.toLocaleString()}</strong><span>different items</span></div><div><strong>${chars.length}</strong><span>characters</span></div><div><strong>${data.items.reduce((s, r) => s + r.total, 0).toLocaleString()}</strong><span>items in all</span></div><div><strong>${neverBank}</strong><span>bank${neverBank === 1 ? "" : "s"} never opened</span></div></div>
       <section class="ldg-card">${searchBar("items", "Inventory", "Search items by name or ID")}<div data-ledger-list="items">${itemRows()}</div>
-      <details class="ldg-source"><summary>When bags, banks and mail were last seen</summary><p class="ldg-note">Bags update whenever the addon saves. Bank and mail reflect the last time you opened them in game.</p>${seenChips()}</details></section>`;
+      <details class="ldg-source"><summary>When bags, banks and mail were last seen</summary><p class="ldg-note">Bags update whenever the addon saves. Bank and mail reflect the last time you opened them in game.</p>${seenChips()}</details></section>
+      ${window.RepPlannerView?.collectionSection(chars, data.activeProfileId) || ""}`;
   }
 
   // Price history (E6): one point per Auction House visit, oldest on the left; the dashed line is the usual price.
@@ -263,7 +264,8 @@ window.LedgerView = (() => {
       ${pin ? `${pin}<p class="ldg-note">Resume or clear this objective in Now. Only a qualifying saved standing change can complete it.</p>` : (next && !isActive ? '<p class="ldg-note">Switch the active character to pin their target.</p>' : "")}
       <h3>Quests and turn-ins</h3><p class="ldg-note">${reference} Current server reward amounts and unlisted requirements are unknown.</p>
       ${list.length && !isActive && !browseOnly ? `<p class="ldg-note">Switch the active character to ${esc(c.name)} to open quests from this plan.</p>` : ""}
-      ${list.length ? `<ul class="ldg-rep-quests">${list.map(q => repQuest(q, c, isActive && !browseOnly, browseOnly)).join("")}</ul>` : '<p class="ldg-empty">No matching quests in the available reference. Check eligibility and rewards in game.</p>'}</section>`;
+      ${list.length ? `<ul class="ldg-rep-quests">${list.map(q => repQuest(q, c, isActive && !browseOnly, browseOnly)).join("")}</ul>` : '<p class="ldg-empty">No matching quests in the available reference. Check eligibility and rewards in game.</p>'}</section>
+      ${window.RepPlannerView?.section(c.profileId, f) || ""}`;
   }
   function repQuest(q, character, canOpen, browseOnly) {
     const status = browseOnly ? "Reference only" : q.status === "turn-in" ? "Saved log: ready to turn in" : q.status === "in-log" ? "Saved log: in progress" : "Reference lead: check availability in game";
@@ -366,6 +368,7 @@ window.LedgerView = (() => {
     if (!root) { mountedFor = null; watchTables(null); return; }
     if (mountedFor === root) return;
     mountedFor = root; sizes(root); watchTables(root);
+    window.RepPlannerView?.mounted(root);
     for (const input of root.querySelectorAll("[data-ledger-search]")) input.addEventListener("input", () => {
       const kind = input.dataset.ledgerSearch;
       query[kind] = input.value.slice(0, 100);
