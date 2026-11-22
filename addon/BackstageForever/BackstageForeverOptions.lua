@@ -51,7 +51,10 @@ local PAGES={
         switch('Enemy player alerts','Says when an enemy player is nearby. Never in battlegrounds.',on('BackstageForeverEnemySettings','enabled'),'enemy'),
         switch('Enemy alert sound','Plays a sound with the enemy player alert.',off('BackstageForeverEnemySettings','sound'),'enemy sound'),
         switch('Supply reminders','Ammo, food and drink, pet food, shards and poisons before you run out.',on('BackstageForeverSuppliesSettings','enabled'),'supplies'),
+        switch('Talent plan line','One chat line when you gain a level, naming the next point of your talent plan.',on('BackstageForeverAssistSettings','talentPlan'),'talents levelup'),
         helper('gatheringMarks','Gathering marks','Recent herb and ore spots you found, on the world map.'),
+        switch('Weapon skill warning','One chat line when you equip a weapon type you have little skill with.',on('BackstageForeverComfortSettings','weapons'),'comfort weapons'),
+        switch('Low durability warning','One chat line when you enter a rest area with a gear slot under 20% durability.',on('BackstageForeverComfortSettings','durability'),'comfort durability'),
     }},
     {title='Comfort',rows={
         switch('Sell junk button','A button at vendors that sells grey items when you click it. Quest items are never sold.',on('BackstageForeverAssistSettings','junk'),'junk'),
@@ -62,6 +65,8 @@ local PAGES={
         switch('Price memory','Remembers prices on Auction House pages you open yourself. It never searches or buys.',on('BackstageForeverLedgerDB','pricesOn'),'prices'),
         switch('Party sync','Shares quest needs with party members who also run Backstage Forever.',on('BackstageForeverPartySettings','enabled'),'party'),
         switch('Live link to the desktop app','A thin dark line at the top edge that the desktop app reads. Nothing is sent over the internet.',on('BackstageForeverLiveSettings','enabled'),'live'),
+        switch('Flight time at take-off','Says how long a flight takes when you timed the same trip before.',on('BackstageForeverComfortSettings','flights'),'comfort flights'),
+        switch('Log-off rested nudge','One chat line when you start logging out outside an inn or city.',on('BackstageForeverComfortSettings','rested'),'comfort rested'),
         {label='Owl button on the minimap',about='Left-click asks the companion; right-click opens these settings. /bf ask show brings it back.',
             get=function() return saved('BackstageForeverAskSettings','hidden')~=true end,
             set=function(value) run(value and 'ask show' or 'ask hide') end},
@@ -72,12 +77,12 @@ BackstageForeverOptionsPages=PAGES
 -- Presets only flip switches listed here, and say what they changed.
 local PRESETS={
     {title='Quiet',about='Fewer interruptions: banners, enemy alerts and detour offers off. Safety warnings stay on.',
-        off={'Pop-up tips','Moment banners','Enemy player alerts','Enemy alert sound','Quest detours','Before leaving reminders','Supply reminders'},on={'Danger warnings'}},
+        off={'Pop-up tips','Moment banners','Enemy player alerts','Enemy alert sound','Quest detours','Before leaving reminders','Supply reminders','Flight time at take-off','Log-off rested nudge'},on={'Danger warnings','Low durability warning'}},
     {title='Leveling',about='The way Backstage Forever starts: every guide and reminder on, comfort extras off.',
-        on={'Quest tracker','Objective hints','Quest detours','Before leaving reminders','Quest reward reasons','Quest blockers','Shared objectives','Keep quest items','Quest item cue','Quest icons over enemies','Gear hints','Pop-up tips','Moment banners','Danger warnings','Boss tips','Enemy player alerts','Supply reminders','Sell junk button'},
+        on={'Quest tracker','Objective hints','Quest detours','Before leaving reminders','Quest reward reasons','Quest blockers','Shared objectives','Keep quest items','Quest item cue','Quest icons over enemies','Gear hints','Pop-up tips','Moment banners','Danger warnings','Boss tips','Enemy player alerts','Supply reminders','Sell junk button','Weapon skill warning','Low durability warning','Flight time at take-off','Log-off rested nudge'},
         off={'Enemy alert sound','Coordinates','Faster looting','Dismount at flight masters','Instant quest text'}},
     {title='Veteran',about='For players who know the way: beginner banners off, coordinates and fast looting on.',
-        off={'Pop-up tips','Danger warnings','Before leaving reminders','Quest reward reasons'},on={'Coordinates','Faster looting','Instant quest text','Quest icons over enemies','Boss tips'}},
+        off={'Pop-up tips','Danger warnings','Before leaving reminders','Quest reward reasons','Weapon skill warning','Log-off rested nudge'},on={'Flight time at take-off','Low durability warning','Coordinates','Faster looting','Instant quest text','Quest icons over enemies','Boss tips'}},
 }
 BackstageForeverOptionsPresets=PRESETS
 
