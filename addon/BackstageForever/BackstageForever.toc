@@ -42,3 +42,5 @@ BackstageForeverParty.lua
 BackstageForeverOptions.lua
 BackstageForeverGuideData.lua
 BackstageForeverBossTips.lua
+BackstageForeverAtlasData.lua
+BackstageForeverAtlas.lua

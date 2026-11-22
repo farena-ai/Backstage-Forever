@@ -39,6 +39,8 @@
     "check:addon-reference": "node scripts/build-addon-reference.cjs --check",
     "build:find-index": "node scripts/build-find-index.cjs",
     "build:addon-sources": "node scripts/build-addon-sources.cjs",
+    "build:addon-atlas": "node scripts/build-addon-atlas.cjs",
+    "check:addon-atlas": "node scripts/build-addon-atlas.cjs --check",
     "check:addon-sources": "node scripts/build-addon-sources.cjs --check",
     "build:addon-advisor": "node scripts/build-addon-advisor.cjs",
     "check:addon-advisor": "node scripts/build-addon-advisor.cjs --check",
