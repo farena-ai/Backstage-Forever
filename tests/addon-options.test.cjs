@@ -53,8 +53,8 @@ for _,page in ipairs(BackstageForeverOptionsPages) do
     end
   end
 end
-assert(count==47,'47 switches, got '..count)
-assert(#BackstageForeverOptionsPages==4 and BackstageForeverOptionsPages[4].title=='Panels' and #BackstageForeverOptionsPages[4].rows==5,'the in-game panels have their own page')
+assert(count==52,'52 switches, got '..count)
+assert(#BackstageForeverOptionsPages==4 and BackstageForeverOptionsPages[4].title=='Panels' and #BackstageForeverOptionsPages[4].rows==10,'the in-game panels and the group tools share a page')
 for _,key in ipairs({'questTracker','objectiveHints','questDetours','beforeLeaving','rewardReasons','questBlockers','gatheringMarks','sharedObjectives','keepQuestItems','questItemCue','spellRankReminder'}) do
   local found=false
   for _,m in ipairs(ran) do if m=='helpers '..key..' off' then found=true end end
