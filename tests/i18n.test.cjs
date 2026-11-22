@@ -38,7 +38,7 @@ const dictOf = (lang) => JSON.parse(read(`data/i18n/${lang}.json`));
 const SECTIONS = [["app", (d) => d.app], ["appTemplates", (d) => d.appTemplates], ["addon.plain", (d) => d.addon.plain], ["addon.templates", (d) => d.addon.templates]];
 
 test("every language file is compiled, named in its own words and loaded by the app before the translator", () => {
-  assert.ok(LANG_CODES.includes("de") && LANG_CODES.includes("fr"), "German and French ship");
+  for (const lang of ["de", "es", "fr"]) assert.ok(LANG_CODES.includes(lang), `${lang} ships`);
   assert.deepEqual(LANG_CODES, fs.readdirSync(path.join(root, "data/i18n")).filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5)).sort(), "nothing in data/i18n is left out");
   const html = read("src/renderer/index.html"), lua = read("addon/BackstageForever/BackstageForeverLocale.lua");
   const claimed = new Set();

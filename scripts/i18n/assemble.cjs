@@ -21,6 +21,6 @@ const EXACT = {
 const isCommandOnly = (s) => /^\/(bf|reload)\b[\w\s|.\-]*$/.test(s.trim());
 const fix = (en, de) => { if (EXACT[en]) return EXACT[en]; if (isCommandOnly(en)) return en; let v = de; for (const [a, b] of FIX) v = v.replace(a, b); return v; };
 const pick = (list) => Object.fromEntries(list.filter((en) => typeof cache[en] === "string").map((en) => [en, fix(en, cache[en])]).filter(([en, de]) => de !== en));
-const out = { version: 1, machineTranslated: true, note: "German, machine-translated with the local model qwen3.8:27b and spot-checked; fixes welcome. Keys are the exact English text.", app: pick(app), addon: { plain: pick(addon.plain), templates: pick(addon.templates) } };
+const out = { version: 1, name: "Deutsch", machineNote: "maschinell übersetzt", machineTranslated: true, note: "German, machine-translated with the local model qwen3.8:27b and spot-checked; fixes welcome. Keys are the exact English text.", app: pick(app), addon: { plain: pick(addon.plain), templates: pick(addon.templates) } };
 fs.writeFileSync(outFile, JSON.stringify(out, null, 1) + "\n");
 console.log("app", Object.keys(out.app).length, "addon plain", Object.keys(out.addon.plain).length, "templates", Object.keys(out.addon.templates).length);
