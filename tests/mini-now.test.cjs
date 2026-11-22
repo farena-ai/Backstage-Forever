@@ -29,6 +29,9 @@ test("next step: hand-ins first, then the nearest objective, then a pickup, then
   assert.equal(nextStep(advice({ next: { name: "The Barrens", min: 10, max: 25, why: "next up", quests: [] } })).title, "Head to The Barrens");
   assert.equal(nextStep(advice({ character: { dead: true } })).kind, "dead");
   assert.equal(nextStep({ status: "no-character" }), null);
+  // The real advisor answers with status "ok": that is a usable answer, not a failure.
+  assert.equal(nextStep({ ...advice(), status: "ok" }).kind, "pickup");
+  assert.equal(nextStep({ ...advice(), status: "no-level" }), null);
 });
 
 test("mini Now view: step, XP with rested, pace; a plain message without a character", () => {
@@ -36,6 +39,7 @@ test("mini Now view: step, XP with rested, pace; a plain message without a chara
   assert.equal(v.ready, true); assert.equal(v.xpPercent, 31); assert.equal(v.restedPercent, 20);
   assert.equal(v.step.kind, "pickup"); assert.deepEqual(v.pace, { levelsPerHour: 1.4, minutesToLevel: 29, minutes: 50, deaths: 1 });
   assert.equal(miniNowView({ status: "no-character" }).ready, false);
+  assert.equal(miniNowView({ ...advice(), status: "ok" }).ready, true, "the advisor's own \"ok\" answer is shown");
   assert.equal(miniNowView(advice(), { active: false }).pace, null);
 });
 

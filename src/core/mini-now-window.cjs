@@ -8,7 +8,7 @@ const { nextStep } = require("./next-step.cjs");
 
 /** Pure: advice + session -> what the window shows. */
 function miniNowView(advice, session) {
-  if (!advice || advice.status) return { ready: false, message: advice?.status === "no-character" ? "Log in with the addon to see your next step." : "Log in on this character and type /reload once." };
+  if (!advice || (advice.status && advice.status !== "ok")) return { ready: false, message: advice?.status === "no-character" ? "Log in with the addon to see your next step." : "Log in on this character and type /reload once." };
   const c = advice.character || {};
   const xp = c.xp ? Math.floor((c.xp.current / c.xp.max) * 100) : null;
   const pct = Number.isFinite(c.xpPercent) ? Math.floor(c.xpPercent) : xp;

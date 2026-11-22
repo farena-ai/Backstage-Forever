@@ -8,6 +8,7 @@ const {
   shell,
   session,
   clipboard,
+  nativeImage,
   Notification,
 } = require("electron");
 const path = require("node:path");
@@ -63,6 +64,9 @@ let radar = null;
 let miniNow = null;
 let sessionHistory = null;
 let economy = null;
+let journeyStore = null;
+let streamOverlay = null;
+let clearJourneyExtras = null;
 let closeAskPanel = null, dropAskPanelWindow = null;
 let wishlist = null;
 let statWeights = null; // the stat weights each character chose (roadmap C3)
@@ -144,6 +148,8 @@ function handle(name, fn, { privateOnly = false } = {}) {
       ].includes(e?.message)) throw e;
       if (e?.message === "Secure credential storage is unavailable.") throw e;
       if (name.startsWith("community") && e?.name === "CommunityError") throw new Error(e.message);
+      // Journey extras write their own plain sentences for the player (a bad race code, a missing screenshot).
+      if (e?.name === "JourneyError") throw new Error(e.message);
       if (["partyBrief", "partyPreview", "createPartyJourney", "commitPartyPlan", "exportPartyPlan", "importPartyPlan"].includes(name) && /^Party plan/.test(e?.message)) throw e;
       if (name === "guildRun" && /^Guild Run Pack/.test(e?.message)) throw e;
       if (name === "supplyDesk" && /^Supply Desk/.test(e?.message)) throw e;
@@ -206,6 +212,7 @@ app.whenReady().then(async () => {
       companionContext.sync(); characterGuidance?.sync();
       privateWeekly.sync(store.state); privateAfterAction.sync(store.state);
       try { economy?.absorb(store.state); } catch { /* History keeping must never block a save. */ }
+      try { journeyStore?.absorb(store.state); } catch { /* Neither must the Journey's notes. */ }
     };
     chatgpt = new ChatGPTAuth(app.getPath("userData"), safeStorage, {
       openExternal: (url) => shell.openExternal(url),
@@ -866,7 +873,13 @@ app.whenReady().then(async () => {
     },
     send: (m) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:moment", m); },
   });
-  liveBridge.subscribeMoments((raw) => { try { moments.observe(raw); } catch {} });
+  liveBridge.subscribeMoments((raw) => {
+    try {
+      const m = moments.observe(raw);
+      // The death review names the cause a moment after the death itself was noted (W8, A4).
+      if (m?.kind === "death" && raw?.type === 1) journeyStore?.annotateDeath(worldMap.profile()?.id, m.at, { tip: (raw.c >> 1) & 7, killer: m.death?.killer || null });
+    } catch {}
+  });
   handle("moments", () => moments.status());
   handle("setMomentSettings", (input) => moments.setSettings(input));
   // This play session (memory only): pace, deaths, level-ups and where you walked.
@@ -882,6 +895,8 @@ app.whenReady().then(async () => {
       for (const e of playSession.observe(frame)) {
         if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:playEvent", e);
         moments.onPlayEvent(e);
+        // W8: keep where this character died (zone and time) so the story and the coach can name it.
+        if (e.kind === "death" && mine) journeyStore?.recordDeath(worldMap.profile()?.id, { at: e.at, mapId: e.mapId });
       }
       // Unlike ordinary history, a debrief cannot use a position with no saved-source link.
       if (mine) sessionHistory.checkpoint(playSession.summary(), worldMap.profile(), { savedSourceLinked: !!mine.characterHash });
@@ -957,6 +972,38 @@ app.whenReady().then(async () => {
     packNames: () => (knowledge.packs.get(knowledge.build) || knowledge.bundled).pack,
     notify: Notification.isSupported() ? (title, body) => new Notification({ title, body, silent: false }).show() : null,
   });
+  // Journey extras: the story so far, the screenshot timeline, leveling races, Coach's notes,
+  // the stream overlay and share cards. The desktop keeps a small file of its own (journey.json).
+  journeyStore = new (require("./core/journey-store.cjs").JourneyStore)({ file: path.join(app.getPath("userData"), "journey.json"), validFriend: require("./core/level-race.cjs").importCode });
+  try { journeyStore.absorb(store.state); } catch {}
+  const shotThumbs = new (require("./core/screenshot-journal.cjs").ThumbCache)({
+    cacheDir: path.join(app.getPath("userData"), "screenshot-previews"),
+    render: (file, width) => {
+      const image = nativeImage.createFromPath(file);
+      if (image.isEmpty()) return null;
+      return image.resize({ width: Math.min(width, image.getSize().width), quality: "good" }).toJPEG(78);
+    },
+  });
+  let overlayCache = null;
+  streamOverlay = new (require("./core/stream-overlay.cjs").StreamOverlay)({
+    // A streaming program asks every two seconds; the answer is worked out at most once a second.
+    getState: () => { if (!overlayCache || Date.now() - overlayCache.at > 1000) overlayCache = { at: Date.now(), facts: journeyExtras.overlayFacts() }; return overlayCache.facts; },
+  });
+  const journeyExtras = require("./core/journey-extras-ipc.cjs").registerJourneyExtras({
+    handle, getState: () => store.state, journey: journeyStore, economy, sessions: (id) => (sessionHistory ? sessionHistory.view(id) : null), leveling,
+    chains: () => moments.reference, badgesFor: (p) => require("./core/badges.cjs").badgesFor(p), getRoot: () => game?.root || null, thumbs: shotThumbs, overlay: streamOverlay,
+    playSummary: () => playSession.summary(), dialog, getWindow: () => win, showFile: (file) => shell.showItemInFolder(file),
+    // Newer Electron takes pictures as clipboard items; older ones have writeImage.
+    copyImage: async (png) => {
+      if (typeof clipboard.writeImage === "function") return clipboard.writeImage(nativeImage.createFromBuffer(png));
+      const { ClipboardItem } = require("electron");
+      await clipboard.write([new ClipboardItem({ "image/png": new Blob([png], { type: "image/png" }) })]);
+    },
+    copyText: (text) => clipboard.writeText(text),
+  });
+  app.on("before-quit", () => { void streamOverlay?.stop(); });
+  void journeyExtras.resume();
+  clearJourneyExtras = () => { void streamOverlay.stop(); journeyStore.clear(); shotThumbs.clear(); };
   const economyTimer = setInterval(() => { try { economyPages.tick(); } catch {} }, 60000);
   economyTimer.unref?.();
   handle("ledger", (...args) => {
@@ -1134,11 +1181,11 @@ app.whenReady().then(async () => {
   // Share card (0.46, 3.3): a PNG the World Map drew of your own path, saved where you choose.
   handle("saveSharePicture", async (...args) => {
     const bytes = args[0], kind = args[1] ?? "journey";
-    if (args.length < 1 || args.length > 2 || !(bytes instanceof Uint8Array) || bytes.length < 8 || bytes.length > 8 * 1024 * 1024 || !["journey", "badges"].includes(kind)) throw Error("Invalid picture.");
+    if (args.length < 1 || args.length > 2 || !(bytes instanceof Uint8Array) || bytes.length < 8 || bytes.length > 8 * 1024 * 1024 || !(["journey", "badges"].includes(kind) || require("./core/journey-extras-ipc.cjs").SHARE_KINDS.includes(kind))) throw Error("Invalid picture.");
     if (![0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((b, i) => bytes[i] === b)) throw Error("Invalid picture.");
     const result = await dialog.showSaveDialog(win, kind === "badges"
       ? { title: "Save a picture of your badges", defaultPath: "Backstage-Forever-badges.png", filters: [{ name: "PNG picture", extensions: ["png"] }] }
-      : { title: "Save a picture of your journey", defaultPath: "Backstage-Forever-journey.png", filters: [{ name: "PNG picture", extensions: ["png"] }] });
+      : { title: kind === "journey" ? "Save a picture of your journey" : "Save this picture", defaultPath: `Backstage-Forever-${kind}.png`, filters: [{ name: "PNG picture", extensions: ["png"] }] });
     if (result.canceled || !result.filePath) return null;
     await require("node:fs/promises").writeFile(result.filePath, bytes);
     return true;
@@ -1200,6 +1247,7 @@ app.whenReady().then(async () => {
     characterGuidance.clear();
     try { sessionHistory?.clear(); } catch {}
     try { economy?.clear(); } catch {}
+    try { clearJourneyExtras?.(); } catch {}
     try { fs.rmSync(path.join(app.getPath("userData"), "route-review.json"), { force: true }); guided = desktopGuided = null; } catch {}
     diagnostics.clear();
     companionContext.invalidate("reset");

@@ -83,12 +83,17 @@ window.EconomyView = (() => {
     if (!r.loot.length) return `<span class="eco-muted">None seen</span>`;
     return `<ul class="eco-loot">${r.loot.map((l) => `<li data-card-item="${l.itemId}"><span class="ldg-name q-${QUALITY[l.quality] || "common"}">${esc(l.name)}</span>${l.count > 1 ? ` ×${l.count}` : ""}</li>`).join("")}</ul>`;
   }
+  // S9: a run as a picture; a personal best says so on the card.
+  function shareRun(r) {
+    if (!window.ShareCard) return "";
+    return ShareCard.button("run", { name: r.name, instanceType: r.instanceType, bosses: r.bosses.length, knownBosses: r.knownBosses, timed: r.timed, seconds: r.seconds, deaths: r.deaths, personalBest: r.personalBest, at: r.startedAt }, "Share", state.runs.data?.profileId ?? null);
+  }
   function runRows(rows) {
     return rows.map((r) => `<tr data-eco-run="${esc(r.id)}"><th scope="row">${esc(dateOf(r.startedAt))}<small class="ldg-cell-note">${esc(timeOf(r.startedAt))}</small></th>
       <td><strong>${esc(r.name)}</strong><small class="ldg-cell-note">${r.instanceType === "raid" ? "Raid" : "Dungeon"}</small></td>
       <td${num}>${r.timed ? `${esc(span(r.seconds))}${r.personalBest ? `<small class="ldg-cell-note eco-best" data-eco-best>Personal best</small>` : ""}` : `<em class="ldg-unknown">Not timed</em>${r.bossSpanSeconds ? `<small class="ldg-cell-note">${esc(span(r.bossSpanSeconds))} first to last boss</small>` : ""}`}</td>
       <td><strong>${r.bosses.length}${r.knownBosses ? ` of ${r.knownBosses}` : ""}</strong>${r.bosses.length ? `<small class="ldg-cell-note">${r.bosses.map((b) => esc(b.name)).join(", ")}</small>` : ""}</td>
-      <td${num}>${r.deaths === null ? `<em class="ldg-unknown">—</em>` : r.deaths}</td><td>${lootCell(r)}</td></tr>`).join("");
+      <td${num}>${r.deaths === null ? `<em class="ldg-unknown">—</em>` : r.deaths}</td><td>${lootCell(r)}</td><td>${shareRun(r)}</td></tr>`).join("");
   }
   function runsBody() {
     const s = state.runs;
@@ -105,7 +110,7 @@ window.EconomyView = (() => {
     return `<div class="ldg-summary"><div><strong>${d.totals.runs}</strong><span>run${d.totals.runs === 1 ? "" : "s"} by ${esc(d.name)}</span></div><div><strong>${d.dungeons.length}</strong><span>dungeon${d.dungeons.length === 1 ? "" : "s"} and raids</span></div><div><strong>${d.totals.bosses}</strong><span>boss kills</span></div><div><strong>${d.totals.timed}</strong><span>timed run${d.totals.timed === 1 ? "" : "s"}</span></div></div>
       <section class="ldg-card"><div class="ldg-toolbar"><h2>Personal bests</h2>${picker}</div>${table("bests", "Personal bests", [["Dungeon"], ["Runs", true], ["Most bosses in one run", true], ["Best time", true], ["Last run"]], `<tbody>${bests}</tbody>`, d.dungeons.length)}
         <p class="ldg-note ldg-after">Best time is your fastest timed run that killed as many bosses as your fullest run there.</p></section>
-      <section class="ldg-card"><div class="ldg-toolbar"><h2>Every run</h2>${filter}</div><div data-eco-run-list>${table("runs", "Every run", [["Date"], ["Dungeon"], ["Time", true], ["Bosses"], ["Deaths", true], ["Loot"]], `<tbody>${runRows(shown)}</tbody>`, shown.length)}</div>${honest}</section>`;
+      <section class="ldg-card"><div class="ldg-toolbar"><h2>Every run</h2>${filter}</div><div data-eco-run-list>${table("runs", "Every run", [["Date"], ["Dungeon"], ["Time", true], ["Bosses"], ["Deaths", true], ["Loot"], ["Picture"]], `<tbody>${runRows(shown)}</tbody>`, shown.length)}</div>${honest}</section>`;
   }
   function runs() {
     return `<section class="eco-page" data-economy="runs">${PageHero.render({ art: "dungeons", eyebrow: "Adventure · Dungeons & raids", title: "Run history", subtitle: "Your dungeon and raid runs, kept on this computer, with your best time in each.", compact: true, aside: `<button type="button" class="atlas-history-link" data-nav="dungeons" data-shell-control="run-history-back"><span aria-hidden="true">←</span> Dungeons &amp; raids</button>` })}<div data-eco-body>${runsBody()}</div></section>`;
