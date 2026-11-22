@@ -2,8 +2,10 @@ name: Windows validation
 on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
+# The window tests run in three parallel jobs, and a failing step does not hide the ones after it,
+# so one run shows every failure. "desktop" passes only when every job passed.
 jobs:
-  desktop:
+  unit:
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -14,105 +16,223 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check:addon-reference
+        if: ${{ !cancelled() }}
       - run: npm run check:find-index
+        if: ${{ !cancelled() }}
       - run: npm run check:guided-route
+        if: ${{ !cancelled() }}
       - run: npm run check:locales
+        if: ${{ !cancelled() }}
       - run: npm run check:addon-advisor
+        if: ${{ !cancelled() }}
       - run: npm run check:forever-vendors
+        if: ${{ !cancelled() }}
       - run: npm run check:forever-insights
+        if: ${{ !cancelled() }}
       - run: npm run check:forever-travel
+        if: ${{ !cancelled() }}
       - run: npm run check:forever-acquisition
+        if: ${{ !cancelled() }}
       - run: npm run check:forever-npc-locations
+        if: ${{ !cancelled() }}
       - run: npm run check:forever-creatures
+        if: ${{ !cancelled() }}
       - run: npm run check:forever-loot
+        if: ${{ !cancelled() }}
       - run: npm run check:forever-boss-loot
+        if: ${{ !cancelled() }}
       - run: npm test
+        if: ${{ !cancelled() }}
       - run: npm --prefix community-server test
-      - run: npm run test:ui
-        timeout-minutes: 10
-      - run: npm run test:setup
-        timeout-minutes: 10
-      - run: npm run test:autosave
-        timeout-minutes: 10
-      - run: npm run test:integration
-        timeout-minutes: 10
-      - run: npm run test:living-backend
-        timeout-minutes: 10
-      - run: npm run test:living-setup
-        timeout-minutes: 10
-      - run: npm run test:company-backend
-        timeout-minutes: 10
-      - run: npm run test:company
-        timeout-minutes: 10
-      - run: npm run test:director-backend
-        timeout-minutes: 10
-      - run: npm run test:director
-        timeout-minutes: 10
-      - run: npm run test:preparation-backend
-        timeout-minutes: 10
-      - run: npm run test:preparation
-        timeout-minutes: 10
-      - run: npm run test:adventure-coach
-        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+  windows-1:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
       - run: npm run test:profession-coach
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:ui
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:setup
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:autosave
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:integration
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:living-backend
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:living-setup
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:company-backend
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:company
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:director-backend
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:director
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:preparation-backend
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:preparation
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: windows-test-diagnostics-1
+          path: work/*failure.png
+  windows-2:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:adventure-coach
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:memory-backend
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:voice-backend
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:voice-memory
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:travel-companion
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:npc-companion
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:companion-tools
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:live-link
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:world-map
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:now
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:ledger
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:sheet
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:ask-panel
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: windows-test-diagnostics-2
+          path: work/*failure.png
+  windows-3:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
       - run: npm run test:conversation
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:companion-recovery
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:player-shell
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:product-polish
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:support
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:recovery
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:party-backend
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:party
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:command-center
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:knowledge
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:insights
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
       - run: npm run test:character-guidance
         timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: windows-test-diagnostics-3
+          path: work/*failure.png
+  packaged:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
       - run: npm run dist
       - run: npm run test:packaged
         timeout-minutes: 10
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: windows-test-diagnostics
+          name: windows-test-diagnostics-packaged
           path: work/*failure.png
       - uses: actions/upload-artifact@v4
         with:
           name: windows-preview-unsigned
           path: dist/*.exe
+  desktop:
+    if: ${{ always() }}
+    needs: [unit, windows-1, windows-2, windows-3, packaged]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every validation job passed
+        run: |
+          echo '${{ toJSON(needs) }}'
+          test "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}" = "false"
