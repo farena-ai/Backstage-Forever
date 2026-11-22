@@ -158,3 +158,17 @@ sent=nil;SlashCmdList.BACKSTAGEFOREVERWAY('nowhere');assert(sent==nil and said[#
 SlashCmdList.BACKSTAGEFOREVERWAY=nil;SlashCmdList.TOMTOM_WAY=function() end
 assert(BackstageForeverWayRegister()==false,'another waypoint addon keeps /way')
 `));
+
+test("/bf perf reports memory and its change in plain words", () => lua(STUBS + String.raw`
+dofile('addon/BackstageForever/BackstageForeverOptions.lua')
+assert(BackstageForeverPerfLine(nil)=='Memory use is not readable in this game client.')
+assert(BackstageForeverPerfLine(2560)=='Memory in use: 2.5 MB.')
+assert(BackstageForeverPerfLine(3072,2560,300)=='Memory in use: 3.0 MB. +0.5 MB since you last asked, 5 min ago.')
+assert(BackstageForeverPerfLine(2048,2560,90)=='Memory in use: 2.0 MB. -0.5 MB since you last asked, 2 min ago.')
+assert(BackstageForeverPerfLine(8192,2048,120):find('growing fast',1,true))
+local kb,t=2048,100
+UpdateAddOnMemoryUsage=function() end GetAddOnMemoryUsage=function(name) assert(name=='BackstageForever') return kb end GetTime=function() return t end
+BackstageForeverPerfCommand();assert(said[#said]=='Backstage Forever: Memory in use: 2.0 MB.',said[#said])
+kb,t=2560,400;BackstageForeverPerfCommand();assert(said[#said]:find('+0.5 MB since you last asked, 5 min ago.',1,true),said[#said])
+GetAddOnMemoryUsage=nil;BackstageForeverPerfCommand();assert(said[#said]:find('not readable',1,true))
+`));

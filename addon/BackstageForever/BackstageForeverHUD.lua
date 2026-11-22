@@ -952,6 +952,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverSuppliesCommand)=='function' then pcall(BackstageForeverSuppliesCommand,message)end
                 return
             end
+            if word=='perf' then
+                if type(BackstageForeverPerfCommand)=='function' then pcall(BackstageForeverPerfCommand)end
+                return
+            end
             if word=='welcome' then
                 if type(BackstageForeverWelcomeCommand)=='function' then pcall(BackstageForeverWelcomeCommand)end
                 return

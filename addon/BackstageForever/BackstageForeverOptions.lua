@@ -325,3 +325,31 @@ if type(CreateFrame)=='function' then
     wayLoader:RegisterEvent('PLAYER_LOGIN')
     wayLoader:SetScript('OnEvent',function() pcall(BackstageForeverWayRegister) end)
 end
+
+-- /bf perf (1.18): how much memory the addon holds, and how that changed since you last asked.
+-- Pure part first: turns two readings into the line that is printed.
+function BackstageForeverPerfLine(kilobytes,before,seconds)
+    if type(kilobytes)~='number' or kilobytes<0 then return 'Memory use is not readable in this game client.' end
+    local line=('Memory in use: %.1f MB.'):format(kilobytes/1024)
+    if type(before)=='number' and type(seconds)=='number' and seconds>=1 then
+        local change=(kilobytes-before)/1024
+        local minutes=math.max(1,math.floor(seconds/60+.5))
+        line=line..(' %s%.1f MB since you last asked, %d min ago.'):format(change>=0 and '+' or '-',math.abs(change),minutes)
+        if change>0 and change/minutes>1 then line=line..' That is growing fast; /reload clears it, and Report a problem in the desktop app tells us.' end
+    end
+    return line
+end
+local perfBefore,perfAt
+function BackstageForeverPerfCommand()
+    local usage
+    local update=UpdateAddOnMemoryUsage
+    local read=GetAddOnMemoryUsage
+    if type(update)=='function' and type(read)=='function' then
+        pcall(update)
+        local ok,value=pcall(read,'BackstageForever')
+        if ok and type(value)=='number' then usage=value end
+    end
+    local now=type(GetTime)=='function' and GetTime() or nil
+    say(BackstageForeverPerfLine(usage,perfBefore,perfAt and now and now-perfAt or nil))
+    if usage then perfBefore,perfAt=usage,now end
+end
