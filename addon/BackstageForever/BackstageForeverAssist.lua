@@ -336,7 +336,9 @@ local function updateDanger()
     if d then
         local c=TONES[d.tone] or TONES.yellow
         pcall(dangerText.SetTextColor,dangerText,c[1],c[2],c[3])
-        pcall(dangerText.SetText,dangerText,d.text)
+        -- 1.23: with "Marks without colour" on, red and orange warnings also start with [!!] or [!].
+        local sign=type(BackstageForeverMark)=='function' and (d.tone=='red' and BackstageForeverMark('danger') or d.tone=='orange' and BackstageForeverMark('warn')) or ''
+        pcall(dangerText.SetText,dangerText,sign..d.text)
         pcall(dangerText.Show,dangerText)
     else pcall(dangerText.Hide,dangerText) end
     return d or nil
@@ -642,6 +644,18 @@ function BackstageForeverAssistCommand(message)
             '/bf party - the quests of your party next to yours (party members with Backstage Forever); /bf party way shares your waypoint, /bf party go follows one',
             '/bf route guide - the full guided route for your race, step by step; /bf route skip skips a step, /bf route zone shows this zone only',
             '/bf qol - small helpers, each off until you switch it on: coords, loot, dismount, questtext',
+            '/bf rested - rested XP, how long until it is full, and whether you are resting',
+            '/bf weapons - your weapon skills against the cap for your level',
+            '/bf durability - how worn your gear is, most worn first',
+            '/bf flights times - the flights you took and how long each one lasted',
+            '/bf explore - the named areas you discovered on this map',
+            '/bf comfort - switch the rested, weapon skill, flight time and durability lines on or off',
+            '/bf kit - what your class carries: shards, runes, powders, poisons, ammo, totems, candles, seeds',
+            '/bf ready - before a pull: a class buff, food buff or reagent you are missing (on or off for the dungeon line)',
+            '/bf group - elite, group, dungeon and raid quests in your log, each with a looking-for-group line for your chat box',
+            '/bf note - a note on the player you target (or /bf note Name words); /bf notes lists them',
+            '/bf mail - letters that expire within 3 days, from your last mailbox visit (on or off for the mailbox line)',
+            '/bf access - marks that do not rely on colour, and larger text in the Compass and settings window',
             '/bf enemy - enemy players you saw recently; /bf enemy off silences the alerts, /bf enemy sound on adds a sound',
             '/bf gear - turn upgrade hints on item tooltips and the best-quest-reward highlight on or off',
             '/bf live - the thin line along the top edge that lets the desktop app follow you; /bf live safe if the app cannot read it',

@@ -383,6 +383,8 @@ end
 
 -- ---------------------------------------------------------------- tooltip line
 local GREEN,RED,GREY={0.25,1,0.25},{1,0.3,0.3},{0.6,0.6,0.6}
+-- 1.23: with "Marks without colour" on, the line also starts with [+], [=] or [x].
+local function mark(kind) local f=BackstageForeverMark;if type(f)~='function' then return '' end;local ok,m=pcall(f,kind);return ok and type(m)=='string' and m or '' end
 local SKIP_INV={[4]=true,[18]=true,[19]=true,[24]=true,[27]=true}
 -- -> text,r,g,b for one item link, or nil (not equipment, not cached, or the item you wear).
 function G.tooltipLine(link)
@@ -394,15 +396,15 @@ function G.tooltipLine(link)
     for _,slot in ipairs(slots) do if call(GetInventoryItemLink,'player',slot)==link then return nil end end
     local ctx=G.context()
     local block=G.blockers(item,ctx)
-    if #block>0 then return 'Not for you: '..block[1],unpackAll(RED) end
+    if #block>0 then return mark('bad')..'Not for you: '..block[1],unpackAll(RED) end
     local rep=G.replaced(item,ctx,G.equipped({item}))
     local cmp=G.compare(item,rep.items,ctx)
     if cmp.better then
         local top={}
         for i=1,math.min(3,#cmp.reasons) do top[i]=cmp.reasons[i] end
-        return 'Upgrade for you'..(#top>0 and (': '..table.concat(top,', ')) or ''),unpackAll(GREEN)
+        return mark('good')..'Upgrade for you'..(#top>0 and (': '..table.concat(top,', ')) or ''),unpackAll(GREEN)
     end
-    return 'Not an upgrade',unpackAll(GREY)
+    return mark('same')..'Not an upgrade',unpackAll(GREY)
 end
 local function linkOf(tooltip,data)
     local link
