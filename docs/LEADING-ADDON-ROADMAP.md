@@ -60,11 +60,11 @@ Those plans are mostly about making what exists trustworthy: evidence gates, rec
 
 | # | Feature | Size | Where | For | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Q1 | **Quest pins on the minimap.** Available quests, hand-ins and objective spots near you on the minimap, with edge arrows for the tracked one. | M | Game | N V | Today pins are world-map only, capped at 150. |
+| Q1 | **Quest pins on the minimap.** Available quests, hand-ins and objective spots near you on the minimap, with edge arrows for the tracked one. **Built for 1.19** (`/bf minimap`); placement still needs a check in the real client. | M | Game | N V | Today pins are world-map only, capped at 150. |
 | Q2 | **Objective areas on the in-game map.** Shaded areas for kill and collect objectives, from bundled data plus your own progress ticks. | M | Game | N | The app has them; the game does not. |
-| Q3 | **A real direction arrow.** One movable arrow with distance, time to arrive at your current speed, and a colour for "behind you". Used by route, quests, nodes, corpse and party. | M | Game | N V | Replaces the per-feature arrows. |
+| Q3 | **A real direction arrow.** One movable arrow with distance, time to arrive at your current speed, and a colour for "behind you". Used by route, quests, nodes, corpse and party. **Decided 2026-11-22:** the addon already drives the game's own waypoint arrow, which shows distance; an arrow of our own waits until players ask for one. | M | Game | N V | Replaces the per-feature arrows. |
 | Q4 | **Quest tracker by distance.** Your log sorted nearest first, with a level colour, a "ready" mark and a click for the waypoint. Groups by zone. | M | Game | N V | Probe: adding to or replacing the default tracker without taint. |
-| Q5 | **Available-quest finder.** "7 quests you can pick up in this zone" with a list, level colours and which lead into chains. | S–M | Game | N V | Data exists (878 givers); needs the Alliance drive (D1). |
+| Q5 | **Available-quest finder.** "7 quests you can pick up in this zone" with a list, level colours and which lead into chains. **Built for 1.19:** `/bf available` lists them nearest first with distance and direction. | S–M | Game | N V | Data exists (878 givers); needs the Alliance drive (D1). |
 | Q6 | **Chains made visible.** In the quest window and tooltip: "step 3 of 7", what the chain ends in (reward, attunement, dungeon), and what to keep. | M | Both | N V | Extends the chain badges. |
 | Q7 | **New in Forever lens.** Mark quests, zones, races and instances that exist only in Forever on the map, route and Atlas, with a filter. | M | Both | V | Veterans want exactly what is new. Needs a licensed list of the older quest IDs to compare against. |
 | Q8 | **Route variants.** The same engine with choices: solo, duo, dungeon-heavy, fewest trips, "careful" (avoids caves, elites and red mobs). | L | Both | N V | Extends P1's variants; "careful" serves one-life players. |
@@ -135,8 +135,8 @@ Those plans are mostly about making what exists trustworthy: evidence gates, rec
 | W2 | **Danger map.** Where players die, by level, from opt-in anonymous community deaths; in game a line when you walk into a spot that kills players of your level. | M | Both | N | Needs a community server addition (owner deploys). |
 | W3 | **Exploration tracker.** Undiscovered areas per zone with a waypoint to each, and XP left to gain from them. | S–M | Both | N V | |
 | W4 | **World map search.** Type any NPC, vendor item, quest or node on the in-game map and get pins. | M | Game | N V | `/bf find` covers about 40 maps and 1,193 rows; widen the index and give it a box. |
-| W5 | **"Who sells this?"** Vendor stock in tooltips and search, including limited-stock items you saw. | S–M | Both | N V | 4,322 vendor listings are bundled but not in the game tooltip. |
-| W6 | **"Where does this drop?" in game.** Quest-item and boss drops in the item tooltip. ⇄ | S | Game | N V | The addon carries no loot tables today; the two packs total 134 KB. |
+| W5 | **"Who sells this?"** Vendor stock in tooltips and search, including limited-stock items you saw. **Built for 1.19** on item tooltips, for your faction, with zone names. | S–M | Both | N V | 4,322 vendor listings are bundled but not in the game tooltip. |
+| W6 | **"Where does this drop?" in game.** Quest-item and boss drops in the item tooltip. ⇄ **Built for 1.19** for quest items (creatures with chance, and objects); the data file is 73 KB. | S | Game | N V | The addon carries no loot tables today; the two packs total 134 KB. |
 | W7 | **Screenshot journal.** An optional screenshot at level-ups, boss kills and badges; the desktop reads your Screenshots folder into the Journey timeline. | M | Both | N V | Probe: the screenshot call from an event. |
 | W8 | **The story so far.** A chapter page per character: zones, chains finished, firsts, deaths and screenshots, with a share picture. | M | App | N V | Was "after 1.0" as E12. |
 
