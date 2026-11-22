@@ -13,6 +13,7 @@ const {
   hash,
   observedBuild,
 } = require("./knowledge.cjs");
+const buildCompat = require("./build-compat.cjs");
 const BRANCH =
   "https://api.github.com/repos/JIVESCORP/eg-link-output-wowf/branches/main";
 class KnowledgeService {
@@ -151,11 +152,19 @@ class KnowledgeService {
   merged(newer, older) {
     return new KnowledgeIndex(mergePacks([newer.pack, older.pack]));
   }
+  // The bundled pack serves every build of its own patch (build-compat.cjs): a character on
+  // another build of that patch gets it until that build has its own downloaded pack, which
+  // is merged onto it. Another patch gets nothing.
+  carried(build) {
+    return buildCompat.relation(this.bundled.pack.build, build) === "carried"
+      ? this.bundled
+      : null;
+  }
   index(profile) {
     const build = profile === undefined ? this.build : profile?.clientBuild;
     if (build) {
       this.load(build);
-      return this.packs.get(build) || null;
+      return this.packs.get(build) || this.carried(build);
     }
     return this.bundled;
   }
@@ -333,7 +342,7 @@ class KnowledgeService {
           // One freshly downloaded build is merged into the current pack for that build
           // (bundled multi-build data or an earlier cache), so coverage never shrinks.
           const fresh = new KnowledgeIndex(normalizeData(inputs, { commit, build })),
-            base = this.packs.get(build),
+            base = this.packs.get(build) || this.carried(build),
             index = base ? this.merged(fresh, base) : fresh,
             payload = JSON.stringify(index.pack);
           if (!valid()) return this.status();
