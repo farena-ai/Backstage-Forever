@@ -11,7 +11,7 @@ window.PlayerNavigation = (() => {
     ["company", "♜", "Plans"],
   ]);
   const groups = {
-    adventure: {label:"Adventure",routes:[["adventure","Next step"],["guided-route","Guided route"],["zones","Zones"],["travel","Travel"],["dungeons","Dungeons & raids"],["run-history","Run history"],["preparation","Professions"],["practice-lab","Practice Lab"]],description:"Your next step, every zone you can level in, a travel planner, dungeons and profession plans."},
+    adventure: {label:"Adventure",routes:[["adventure","Next step"],["guided-route","Guided route"],["zones","Zones"],["travel","Travel"],["dungeons","Dungeons & raids"],["preparation","Professions"],["practice-lab","Practice Lab"]],description:"Your next step, every zone you can level in, a travel planner, dungeons and profession plans."},
     company: {
       label: "Plans",
       routes: [
@@ -49,7 +49,10 @@ window.PlayerNavigation = (() => {
         "Learn the basics, review a support report, or recover your local journal below.",
     },
   };
+  // Pages opened from inside another page keep that page highlighted in the tab row.
+  const nested = { "run-history": ["dungeons", "Run history"] };
   function group(route) {
+    if (nested[route]) route = nested[route][0];
     return (
       Object.keys(groups).find((key) =>
         groups[key].routes.some(([id]) => id === route),
@@ -66,6 +69,7 @@ window.PlayerNavigation = (() => {
         primary.find(([id]) => id === route)?.[2] ||
         "Adventure",
       pageLabel:
+        nested[route]?.[1] ||
         section?.routes.find(([id]) => id === route)?.[1] ||
         primary.find(([id]) => id === route)?.[2] ||
         "Adventure",
@@ -83,7 +87,7 @@ window.PlayerNavigation = (() => {
   function subtabs(route) {
     const section = groups[group(route)];
     if (!section) return "";
-    return `<section class="player-section" aria-label="${section.label} sections"><div class="player-section-heading"><span class="player-seal" aria-hidden="true">${group(route) === "company" ? "♜" : group(route) === "game" ? "⚙" : group(route) === "ledger" ? "⚖" : "▤"}</span><p>${section.description}</p></div><nav class="player-subtabs" aria-label="${section.label} navigation">${section.routes.map(([id, label]) => button(id, "", label, route === id, "subtab")).join("")}</nav>${group(route)==="company"?'<button class="professions-shortcut" data-professions-shortcut data-nav="preparation" data-shell-control="professions-shortcut">Professions workshop →</button>':""}</section>`;
+    return `<section class="player-section" aria-label="${section.label} sections"><div class="player-section-heading"><span class="player-seal" aria-hidden="true">${group(route) === "company" ? "♜" : group(route) === "game" ? "⚙" : group(route) === "ledger" ? "⚖" : "▤"}</span><p>${section.description}</p></div><nav class="player-subtabs" aria-label="${section.label} navigation">${section.routes.map(([id, label]) => button(id, "", label, (nested[route]?.[0] || route) === id, "subtab")).join("")}</nav>${group(route)==="company"?'<button class="professions-shortcut" data-professions-shortcut data-nav="preparation" data-shell-control="professions-shortcut">Professions workshop →</button>':""}</section>`;
   }
   const tools = new Map();
   function remember(container) {

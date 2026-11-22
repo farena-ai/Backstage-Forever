@@ -20,7 +20,8 @@ const routes = {
   "ledger-gold": ["Ledger", "Gold & prices"],
   "ledger-crafts": ["Ledger", "Craft profit"],
   calendar: ["Plans", "Calendar"],
-  "run-history": ["Adventure", "Run history"],
+  // Opened with the button on Dungeons & raids, not from a tab of its own.
+  "run-history": ["Adventure", "Dungeons & raids", "Run history"],
   "ledger-reputation": ["Ledger", "Reputation"],
   "ledger-cooldowns": ["Ledger", "Cooldowns"],
   company: ["Plans", "My plans"],
@@ -46,7 +47,7 @@ const legacy = {
 };
 async function navigate(page, id) {
   id = legacy[id] || id;
-  const [section, tab] = routes[id] || [];
+  const [section, tab, inner] = routes[id] || [];
   assert.ok(section, `Unknown player destination: ${id}`);
   const nav = page.getByRole("navigation", {
     name: ["Settings", "Help"].includes(section)
@@ -67,8 +68,9 @@ async function navigate(page, id) {
   if (tab) {
     const subtab = page.getByRole("navigation", { name: `${section} navigation`, exact: true })
       .getByRole("button", { name: tab, exact: true });
-    await click(subtab, `subtab:${id}`);
+    await click(subtab, `subtab:${inner ? "dungeons" : id}`);
   }
+  if (inner) await page.locator(`button[data-nav="${id}"]`).click();
   await page.waitForFunction((id) => page === id, id);
   assert.match(
     await page.locator("#page-heading").innerText(),

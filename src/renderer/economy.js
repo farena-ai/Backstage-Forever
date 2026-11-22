@@ -108,7 +108,7 @@ window.EconomyView = (() => {
       <section class="ldg-card"><div class="ldg-toolbar"><h2>Every run</h2>${filter}</div><div data-eco-run-list>${table("runs", "Every run", [["Date"], ["Dungeon"], ["Time", true], ["Bosses"], ["Deaths", true], ["Loot"]], `<tbody>${runRows(shown)}</tbody>`, shown.length)}</div>${honest}</section>`;
   }
   function runs() {
-    return `<section class="eco-page" data-economy="runs">${PageHero.render({ art: "dungeons", eyebrow: "Adventure · Run history", title: "Run history", subtitle: "Your dungeon and raid runs, kept on this computer, with your best time in each.", compact: true })}<div data-eco-body>${runsBody()}</div></section>`;
+    return `<section class="eco-page" data-economy="runs">${PageHero.render({ art: "dungeons", eyebrow: "Adventure · Dungeons & raids", title: "Run history", subtitle: "Your dungeon and raid runs, kept on this computer, with your best time in each.", compact: true, aside: `<button type="button" class="atlas-history-link" data-nav="dungeons" data-shell-control="run-history-back"><span aria-hidden="true">←</span> Dungeons &amp; raids</button>` })}<div data-eco-body>${runsBody()}</div></section>`;
   }
 
   function repaint() {
