@@ -7,6 +7,9 @@ const { KnowledgeService } = require("../src/core/knowledge-cache.cjs");
 const { FILES } = require("../src/core/knowledge.cjs");
 const { build, sourceCommit: commit } = require("../data/forever/pack.json");
 const bundled = path.join(__dirname, "../data/forever/pack.json");
+const { otherPatch } = require("./pack-invariants.cjs");
+// A build of the bundled patch that has no pack of its own.
+const carriedBuild = build.replace(/[0-9]+$/, "999");
 function setup(t, fetcher) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-knowledge-"));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
@@ -29,7 +32,13 @@ test("offline bundled lookup, exact selected build and checks without redownload
   assert.equal(s.status().build, build);
   assert.equal(s.status().packBuild, build);
   assert.equal(s.index().pack.observedThrough, s.bundled.pack.observedThrough);
-  s.setContext({ clientBuild: "1.60.1.999" }, false);
+  // Another build of the bundled patch carries the bundled pack; only another patch is refused.
+  s.setContext({ clientBuild: carriedBuild }, false);
+  assert.equal(s.index(), s.bundled);
+  assert.notEqual(s.status().phase, "mismatch");
+  assert.equal(s.status().build, carriedBuild);
+  assert.equal(s.status().packBuild, build);
+  s.setContext({ clientBuild: otherPatch(build) }, false);
   assert.equal(s.index(), null);
   assert.equal(s.status().phase, "mismatch");
   assert.equal(s.status().packBuild, build);
