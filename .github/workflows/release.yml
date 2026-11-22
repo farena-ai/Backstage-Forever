@@ -335,3 +335,52 @@ jobs:
           shasum -a 256 Backstage-Forever-"$version"-macOS-*.zip >> sums.tmp
           mv sums.tmp SHA256SUMS.txt
           gh release upload "$tag" Backstage-Forever-"$version"-macOS-*.zip SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"
+  linux:
+    # P2: an unsigned Linux build (AppImage, x64) of the same version, added to the release the Windows job published.
+    # It waits for the Mac job, whether that passed or not: both jobs rewrite SHA256SUMS.txt, and running them one
+    # after the other keeps either from dropping the other's lines. The Windows update file is not touched here.
+    needs: [release, mac]
+    if: ${{ !cancelled() && needs.release.result == 'success' && github.repository == 'farena-ai/Backstage-Forever' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      # The full test suite runs in the Windows jobs above; this job only packages the same, tested commit.
+      - run: npm run dist:linux
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Check the AppImage holds the app and the addon
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          cd dist
+          file="Backstage-Forever-$version-Linux-x64.AppImage"
+          test -s "$file"
+          chmod +x "$file"
+          # Unpacking needs no FUSE and starts nothing.
+          "./$file" --appimage-extract > /dev/null
+          test -f squashfs-root/resources/app.asar
+          test -f squashfs-root/resources/addon/BackstageForever/BackstageForever.toc
+          rm -rf squashfs-root
+      - name: Add the Linux build and its checksum to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"; version="${tag#v}"
+          cd dist
+          file="Backstage-Forever-$version-Linux-x64.AppImage"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS.txt --clobber
+          tr -d '\r' < SHA256SUMS.txt | grep -v -- '-Linux-' > sums.tmp || true
+          sha256sum "$file" >> sums.tmp
+          mv sums.tmp SHA256SUMS.txt
+          gh release upload "$tag" "$file" SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"

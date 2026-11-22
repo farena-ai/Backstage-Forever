@@ -420,6 +420,8 @@ async function selectActiveCharacter(id) {
   pendingCharacterSelection = selection;
   root.querySelector("[data-helper-owner]")?.remove();
   JourneyView.invalidate();
+  // Talents belong to one character: without this the page kept showing the previous one.
+  globalThis.TalentsView?.invalidate();
   fieldbookTrip = null;
   if (page === "practice-lab") root.querySelector("#fieldbook-return")?.setAttribute("hidden", "");
   root.querySelector("[data-academy-dps]")?.remove();
@@ -925,6 +927,8 @@ function guide() {
 }
 
 const onMac = () => typeof navigator !== "undefined" && /Mac/.test(navigator.userAgent || "");
+// Linux (AppImage): saved-only, and the app does not update itself there.
+const onLinux = () => typeof navigator !== "undefined" && /Linux/.test(navigator.userAgent || "") && !/Android/.test(navigator.userAgent || "");
 function updateSummary() {
   // Mac (1.0.1): the app checks the signed release feed and says when a new version is out; the player downloads it.
   if (updateInfo.phase === "available")
@@ -948,7 +952,7 @@ function updateSummary() {
     );
   if (!updateInfo.automatic) return "Automatic update checks are off.";
   if (updateInfo.phase === "unsupported")
-    return onMac() ? "Checks start in the Backstage Forever app from Applications. Source builds never check." : "Automatic checks start in the installed Windows app. Source builds never install updates.";
+    return onMac() ? "Checks start in the Backstage Forever app from Applications. Source builds never check." : onLinux() ? "The Linux build does not update itself. Download the new AppImage from the releases page; your journal stays." : "Automatic checks start in the installed Windows app. Source builds never install updates.";
   return onMac() ? "Your companion checks for a new version while it is open and tells you here when one is out." : "Your companion checks for updates while it is open.";
 }
 function refreshUpdateWidgets() {

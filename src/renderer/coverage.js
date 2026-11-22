@@ -111,5 +111,5 @@ window.CoverageView = (() => {
     if (!data) { try { data = await api.dataCoverage(); } catch (e) { error = e.message || "Coverage is unavailable."; } }
     paint();
   }
-  return { page: (profile, routeBuild) => { faction = faction || "Horde"; return page(profile, routeBuild); }, mounted, _state: () => ({ data, faction }) };
+  return { page: (profile, routeBuild) => { faction = faction || "Horde"; return page(profile, routeBuild); }, mounted, KINDS, level, _state: () => ({ data, faction }) };
 })();

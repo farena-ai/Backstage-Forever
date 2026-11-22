@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: BackstageCoding.BackstageForever
+PackageVersion: 1.23.0
+PackageLocale: en-US
+Publisher: Backstage Coding
+PublisherUrl: https://www.backstagecoding.com
+PublisherSupportUrl: https://github.com/farena-ai/Backstage-Forever/issues
+PrivacyUrl: https://github.com/farena-ai/Backstage-Forever/blob/main/docs/PRIVACY.md
+Author: "Frank Arena / Backstage Coding"
+PackageName: Backstage Forever
+PackageUrl: https://backstagecoding.com/backstage-forever/
+License: MIT
+LicenseUrl: https://github.com/farena-ai/Backstage-Forever/blob/main/LICENSE
+ShortDescription: "A free leveling companion for World of Warcraft: Forever: a desktop app and in-game addon that read your own game, tell you what to do next and guide you there"
+Description: "A free leveling companion for World of Warcraft: Forever: a desktop app and in-game addon that read your own game, tell you what to do next and guide you there. From Backstage Coding (https://www.backstagecoding.com). Designed by Frank Arena and Jason Babiuch."
+Moniker: backstage-forever
+Tags:
+- addon
+- companion
+- gaming
+- world-of-warcraft
+- wow
+ReleaseNotesUrl: https://github.com/farena-ai/Backstage-Forever/releases/tag/v1.23.0
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

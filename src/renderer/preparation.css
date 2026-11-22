@@ -79,3 +79,5 @@ body[data-faction="horde"] .workshop-bench{background:linear-gradient(115deg,rgb
 .activity-packing-checks>li{margin-block:.8rem}
 .activity-packing-checks>li>*{display:block}
 .activity-packing-checks small{color:inherit}
+/* The materials panel is painted like its neighbours, so it needs their inner margin too. */
+.content .workshop>.workshop-materials{padding:1px 26px 22px}
