@@ -4,7 +4,7 @@
 ## Author: Backstage Coding (Frank Arena & Jason Babiuch)
 ## Version: 1.21.0
 ## SavedVariables: BackstageForeverExport
-## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings, BackstageForeverQuestItemSourcesDB, BackstageForeverRouteSettings, BackstageForeverSuppliesSettings, BackstageForeverJournalDB, BackstageForeverMomentsSettings, BackstageForeverLedgerDB, BackstageForeverSheetDB, BackstageForeverAskSettings, BackstageForeverEnemySettings, BackstageForeverQoLSettings, BackstageForeverPartySettings, BackstageForeverHelperSettings, BackstageForeverMinimapSettings
+## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings, BackstageForeverQuestItemSourcesDB, BackstageForeverRouteSettings, BackstageForeverSuppliesSettings, BackstageForeverJournalDB, BackstageForeverMomentsSettings, BackstageForeverLedgerDB, BackstageForeverSheetDB, BackstageForeverAskSettings, BackstageForeverEnemySettings, BackstageForeverQoLSettings, BackstageForeverPartySettings, BackstageForeverHelperSettings, BackstageForeverMinimapSettings, BackstageForeverComfortSettings, BackstageForeverFlightTimesDB
 BackstageForeverLocale.lua
 BackstageForeverHelpers.lua
 BackstageForeverReference.lua
@@ -38,6 +38,7 @@ BackstageForeverSheet.lua
 BackstageForeverAsk.lua
 BackstageForeverEnemy.lua
 BackstageForeverQoL.lua
+BackstageForeverComfort.lua
 BackstageForeverParty.lua
 BackstageForeverOptions.lua
 BackstageForeverGuideData.lua

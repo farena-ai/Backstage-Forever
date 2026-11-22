@@ -876,6 +876,30 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverHelpersCommand)=='function' then pcall(BackstageForeverHelpersCommand,message)end
                 return
             end
+            if word=='flights' and message:lower():match('^flights%s+times') then
+                if type(BackstageForeverFlightTimesCommand)=='function' then pcall(BackstageForeverFlightTimesCommand)end
+                return
+            end
+            if word=='rested' then
+                if type(BackstageForeverRestedCommand)=='function' then pcall(BackstageForeverRestedCommand)end
+                return
+            end
+            if word=='weapons' then
+                if type(BackstageForeverWeaponsCommand)=='function' then pcall(BackstageForeverWeaponsCommand)end
+                return
+            end
+            if word=='durability' then
+                if type(BackstageForeverDurabilityCommand)=='function' then pcall(BackstageForeverDurabilityCommand)end
+                return
+            end
+            if word=='explore' then
+                if type(BackstageForeverExploreCommand)=='function' then pcall(BackstageForeverExploreCommand)end
+                return
+            end
+            if word=='comfort' then
+                if type(BackstageForeverComfortCommand)=='function' then pcall(BackstageForeverComfortCommand,message)end
+                return
+            end
             if word=='train' or word=='repair' or word=='flights' or word=='xp' or word=='hearth' or word=='help' or word=='toasts' or word=='danger' or word=='junk' then
                 if type(BackstageForeverAssistCommand)=='function' then pcall(BackstageForeverAssistCommand,message)end
                 return
