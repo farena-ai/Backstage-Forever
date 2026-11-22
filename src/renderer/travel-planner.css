@@ -1,0 +1,57 @@
+/* Adventure → Travel: the travel planner. Parchment panels like Zones and Talents. */
+.travel-page { display: flex; flex-direction: column; gap: 14px; }
+.tp-layout { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 14px; align-items: start; }
+.tp-pick { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 8px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.22), 0 4px 10px rgba(0,0,0,.35); text-shadow: none; }
+.tp-field { display: flex; flex-direction: column; gap: 4px; }
+.tp-field > span { font: 700 13px Cinzel, Georgia, serif; color: #3d220c; letter-spacing: .04em; text-transform: uppercase; }
+.tp-field select, .tp-field input { width: 100%; box-sizing: border-box; padding: 7px 9px; border-radius: 5px; border: 1px solid #8a6a32; background: #fff8e4; color: #2b1b0a; font: inherit; text-shadow: none; }
+.tp-results { list-style: none; margin: 0; padding: 2px 6px 2px 2px; display: flex; flex-direction: column; gap: 5px; max-height: 372px; overflow-y: auto; }
+.tp-results button.tp-place { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; align-items: center; width: 100%; padding: 6px 9px; border-radius: 6px; border: 1px solid #c4a466; background: rgba(255,248,225,.6); color: #2b1b0a; text-align: left; text-shadow: none; cursor: pointer; font: inherit; min-height: 0; box-shadow: none; transition: none; }
+/* List rows, not framed buttons: no end caps. */
+.tp-results button.tp-place::before, .tp-results button.tp-place::after { content: none; }
+.tp-results button.tp-place:hover:not(:disabled) { background: #fff6dc; border-color: #8a5a18; color: #2b1b0a; text-shadow: none; transform: none; box-shadow: none; }
+.tp-results button.tp-place.picked { background: #fff6dc; border-color: #8a5a18; box-shadow: 0 0 0 2px rgba(246,196,69,.55); color: #2b1b0a; text-shadow: none; }
+.tp-place-glyph { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #6b3f12; color: #fff1d6; font-size: 14px; }
+.tp-place-words { display: flex; flex-direction: column; min-width: 0; }
+.tp-place-words strong, .tp-place-words small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-place-words small { font-size: 12px; color: #5a3e1c; }
+.tp-none { margin: 0; font-size: 13px; color: #5a3e1c; }
+.tp-facts { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid #c4a466; }
+.tp-fact { margin: 0; font-size: 12px; line-height: 1.4; color: #4a3218; }
+
+.tp-out { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.tp-trip { margin: 0; font: 700 20px Cinzel, Georgia, serif; color: #f4cf72; overflow-wrap: anywhere; }
+.tp-trip span { color: #c79a4a; padding: 0 4px; }
+.tp-cards { display: flex; flex-direction: column; gap: 12px; }
+.tp-card { padding: 12px 16px 12px; border-radius: 8px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.22), 0 4px 10px rgba(0,0,0,.35); text-shadow: none; }
+.tp-card.tp-best { border-color: #8a5a18; box-shadow: 0 0 0 2px rgba(246,196,69,.55), inset 0 0 18px rgba(120,80,30,.22), 0 4px 10px rgba(0,0,0,.35); }
+.tp-card > header { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding-bottom: 9px; border-bottom: 1px solid #c4a466; }
+.tp-rank { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #6b3f12; color: #fff1d6; font: 700 16px Georgia, serif; }
+.tp-best .tp-rank { background: #2e6b1e; box-shadow: 0 0 0 3px rgba(246,196,69,.6); }
+.tp-title { display: flex; flex-direction: column; min-width: 0; }
+.tp-kind { font: 700 12px Cinzel, Georgia, serif; letter-spacing: .06em; text-transform: uppercase; color: #6b4a22; }
+.tp-title h3 { margin: 0; font: 800 24px/1.15 Cinzel, Georgia, serif; color: #7a1f14; }
+.tp-price { justify-self: end; padding: 4px 12px; border-radius: 14px; background: rgba(255,248,225,.75); border: 1px solid #c4a466; font-weight: 700; white-space: nowrap; }
+.tp-coins { display: inline-flex; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tp-gold { color: #694305; font-weight: 700; }
+.tp-silver { color: #45474a; font-weight: 700; }
+.tp-copper { color: #713914; font-weight: 700; }
+.tp-legs { list-style: none; margin: 9px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.tp-leg { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 5px 9px; border-radius: 6px; background: rgba(255,248,225,.55); border: 1px solid #d3b87c; }
+.tp-leg-glyph { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #8a5a18; color: #fff6dc; font-size: 13px; }
+.tp-leg-fly .tp-leg-glyph { background: #2f5f8a; }
+.tp-leg-hearth .tp-leg-glyph, .tp-leg-wait .tp-leg-glyph { background: #6a3a7a; }
+.tp-leg-words { min-width: 0; overflow-wrap: anywhere; }
+.tp-leg-words small { display: block; font-size: 12px; color: #5a3e1c; }
+.tp-leg-time { text-align: right; white-space: nowrap; font-size: 13px; font-variant-numeric: tabular-nums; color: #3d220c; }
+.tp-notes { margin: 9px 0 0; padding: 0 0 0 18px; font-size: 12px; line-height: 1.45; color: #4a3218; }
+.tp-plan-notes { margin: 0; padding: 10px 14px 10px 30px; border-radius: 6px; background: rgba(239,224,187,.92); color: #3d220c; border: 1px dashed #a5823e; }
+.tp-coverage { margin: 0; }
+.tp-source { margin: 12px 0 0; }
+.tp-coverage, .tp-source { font-size: 12px; line-height: 1.45; color: #d9c7a0; }
+.tp-empty { margin: 0; padding: 14px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px solid #a5823e; box-shadow: inset 0 0 18px rgba(120,80,30,.25), 0 4px 10px rgba(0,0,0,.35); }
+.tp-empty strong { color: #3d220c; }
+.tp-empty p { margin: 4px 0 0; }
+.tp-empty p:only-child { margin: 0; }
+@media (max-width: 1050px) { .tp-layout { grid-template-columns: 1fr; } .tp-results { max-height: 220px; } }
+@media (max-width: 700px) { .tp-leg { grid-template-columns: 26px minmax(0, 1fr); } .tp-leg-time { grid-column: 2; text-align: left; } }

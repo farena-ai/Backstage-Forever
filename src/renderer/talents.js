@@ -100,11 +100,24 @@ window.TalentsView = (() => {
     if (!u?.rows?.length) return "";
     return `<section class="tal-unlocks" data-tal-unlocks><h3>Class quests and key unlocks</h3><ol>${u.rows.map((r) => `<li class="tal-u-${r.state}"><span class="tal-u-lv">${r.level}</span><div><strong>${esc(r.what)}</strong>${r.kind === "quest" ? ' <span class="tal-u-kind">quest</span>' : ""}<p>${esc(r.how)}</p></div></li>`).join("")}</ol><p class="tal-note">Your class trainer has the details; Forever may move a level or two.</p></section>`;
   }
+  const coins = (copper) => { const g = Math.floor(copper / 10000), s = Math.floor((copper % 10000) / 100), c = copper % 100; return `<span class="tal-coins">${g ? `<span class="tal-gold">${g.toLocaleString()}g</span>` : ""}${s ? `<span class="tal-silver">${s}s</span>` : ""}${c || (!g && !s) ? `<span class="tal-copper">${c}c</span>` : ""}</span>`; };
+  // C6: what the class trainer newly teaches at this level and the next two. Facts only, no advice.
+  function trainingCard(t) {
+    if (!t) return "";
+    if (!t.available) return `<section class="tal-train" data-tal-train><h3>At the trainer</h3><p class="tal-train-none">${esc(t.reason || "No trainer costs are recorded for this class.")}</p></section>`;
+    const tag = (r) => (r.from === "portal" ? ' <span class="tal-train-tag">portal trainer</span>' : r.from === "pet" ? ' <span class="tal-train-tag">pet trainer</span>' : "");
+    const level = (l) => `<li class="tal-train-level${l.level === t.level ? " now" : ""}"><header><span class="tal-u-lv">${l.level}</span><strong>${l.level === t.level ? "Trainable now" : `At level ${l.level}`}</strong><span class="tal-train-sum">${l.rows.length ? `${l.rows.length} skill${l.rows.length === 1 ? "" : "s"} · ${coins(l.total)}${l.unpriced ? ` + ${l.unpriced} without a price` : ""}` : "nothing new recorded"}</span></header>${l.rows.length ? `<ul>${l.rows.map((r) => `<li><span class="tal-train-name">${esc(r.name)}${r.rank ? ` <small>${esc(r.rank)}</small>` : ""}${tag(r)}</span><span class="tal-train-cost">${r.copper === null ? "price not recorded" : (r.estimated ? "about " : "") + coins(r.copper)}</span></li>`).join("")}</ul>` : ""}</li>`;
+    const purse = t.money === null ? `<span class="tal-train-purse">Your gold is not in the saved data.</span>` : `<span class="tal-train-purse">You have ${coins(t.money)}${t.levels[0].total > t.money ? `, ${coins(t.levels[0].total - t.money)} short for this level` : ""}.</span>`;
+    return `<section class="tal-train" data-tal-train><h3>At the trainer <small>levels ${t.level}–${t.level + t.levels.length - 1}</small></h3>
+      <ol class="tal-train-levels">${t.levels.map(level).join("")}</ol>
+      <p class="tal-train-total"><strong>Total for these levels: ${coins(t.total)}</strong>${preview ? "" : purse}${t.nextLevel ? ` <span>After that, new skills come at level ${t.nextLevel}.</span>` : ""}</p>
+      <ul class="tal-train-notes">${t.notes.map((n) => `<li>${esc(n)}</li>`).join("")}<li>${esc(t.source)}</li></ul></section>`;
+  }
   function body() {
     if (error) return `<p class="tal-empty">${esc(error)}</p>`;
     if (!who) return `<p class="tal-empty">Choose a character with a class in Characters to see talents.</p>`;
     if (!data) return `<p class="tal-empty">Reading your talent trees…</p>`;
-    if (!data.available) return unlocksCard(data.unlocks) + `<div class="tal-empty"><strong>Talent trees aren't available yet.</strong><p>${esc(data.reason || "")} Connect your WoW Forever folder in Settings → Game connection; the app reads your talents from your own game files.</p></div>`;
+    if (!data.available) return unlocksCard(data.unlocks) + trainingCard(data.training) + `<div class="tal-empty"><strong>Talent trees aren't available yet.</strong><p>${esc(data.reason || "")} Connect your WoW Forever folder in Settings → Game connection; the app reads your talents from your own game files.</p></div>`;
     const c = data.coach, trees = data.trees;
     const descOf = (s) => { const t = trees.tabs.find((x) => x.name === s.tab)?.talents.find((x) => x.id === s.talentId); return t?.descriptions?.[s.rank - 1] || t?.descriptions?.[0] || ""; };
     const iconOf = (s) => trees.tabs.find((x) => x.name === s.tab)?.talents.find((x) => x.id === s.talentId)?.iconFileId;
@@ -119,6 +132,7 @@ window.TalentsView = (() => {
     const totals = Object.entries(c.totals).map(([k, v]) => `${v} ${esc(k)}`).join(" / ") || "none yet";
     return `<div class="tal-summary"><div class="tal-points"><strong>${c.points}</strong><span>talent point${c.points === 1 ? "" : "s"} at level ${c.level}</span></div><p>${c.points ? `By now: ${totals}.` : "Talents start at level 10: one point every level after that."} The path leans <strong>${esc(c.tree)}</strong>. ${esc(c.why)}</p></div>
       ${unlocksCard(data.unlocks)}
+      ${trainingCard(data.training)}
       <div class="tal-layout"><div class="tal-trees">${trees.tabs.map((t) => tree(t, c)).join("")}</div><aside class="tal-side"><h3>Spend next</h3>${next}<p class="tal-note">In game: press <code>N</code> to open Talents. This path is a suggestion for solo leveling; your choices are yours.</p></aside></div>`;
   }
   function page() {

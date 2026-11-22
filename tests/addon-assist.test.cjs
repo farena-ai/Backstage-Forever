@@ -159,7 +159,7 @@ test("flight paths: met masters and known nodes count as learned; nearby unknown
 BackstageForeverAdvisorData.npcs[1411][#BackstageForeverAdvisorData.npcs[1411]+1]={k='f',n='Devrak',r='Wind Rider Master',s='H',x=0.51,y=0.50,i=3615,t=25}
 BackstageForeverAdvisorData.npcs[1411][#BackstageForeverAdvisorData.npcs[1411]+1]={k='f',n='Known Node',r='Flight Master',s='H',x=0.2,y=0.2,i=7777,t=23}
 GetTaxiMapID=function() return 1414 end
-C_TaxiMap={GetAllTaxiNodes=function() return {{nodeID=23,state=1},{nodeID=25,state=2}} end}
+C_TaxiMap={GetAllTaxiNodes=function() return {{nodeID=23,state=1,name='Orgrimmar, Durotar'},{nodeID=25,state=2,name='Crossroads, The Barrens'}} end}
 UnitGUID=function(u) return 'Player-1-2' end
 ${LOAD}
 local ev=nil for _,f in pairs(frames) do if f.events and f.events.TAXIMAP_OPENED then ev=f end end
@@ -167,6 +167,7 @@ local fire=function(...) ev.scripts.OnEvent(ev,...) end
 fire('PLAYER_LOGIN')
 fire('TAXIMAP_OPENED')
 assert(BackstageForeverAssistSettings.flightNodes[23] and not BackstageForeverAssistSettings.flightNodes[25])
+assert(BackstageForeverAssistSettings.flightNames[23]=='Orgrimmar, Durotar' and BackstageForeverAssistSettings.flightNames[25]=='Crossroads, The Barrens','the flight map names every point, learned or not')
 local list=BackstageForeverAssistCommand('flights')
 assert(#list==2)
 local devrak,known for _,m in ipairs(msgs) do if m:find('Devrak',1,true) then devrak=m end if m:find('Known Node: learned',1,true) then known=m end end

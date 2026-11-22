@@ -26,7 +26,9 @@ local function loadSettings()
     local s=type(BackstageForeverAssistSettings)=='table' and BackstageForeverAssistSettings or {}
     local tbl=function(v) return type(v)=='table' and v or {} end
     settings={toasts=s.toasts~=false,danger=s.danger~=false,junk=s.junk~=false,welcomed=s.welcomed==true,bossTips=s.bossTips~=false,
-        repairers=tbl(s.repairers),flightNpcs=tbl(s.flightNpcs),flightNodes=tbl(s.flightNodes)}
+        repairers=tbl(s.repairers),flightNpcs=tbl(s.flightNpcs),flightNodes=tbl(s.flightNodes),
+        -- Flight point names as the game's flight map shows them, and where the Hearthstone was set (BackstageForeverTravel.lua).
+        flightNames=tbl(s.flightNames),bind=type(s.bind)=='table' and s.bind or nil}
     BackstageForeverAssistSettings=settings
     return settings
 end
@@ -482,6 +484,7 @@ end
 local function learnFlights()
     settings.flightNpcs=type(settings.flightNpcs)=='table' and settings.flightNpcs or {}
     settings.flightNodes=type(settings.flightNodes)=='table' and settings.flightNodes or {}
+    settings.flightNames=type(settings.flightNames)=='table' and settings.flightNames or {}
     local id=npcIdOf('npc')
     if id then settings.flightNpcs[id]=true end
     local taxi=type(C_TaxiMap)=='table' and C_TaxiMap or nil
@@ -492,6 +495,9 @@ local function learnFlights()
             local node,state=num(field(n,'nodeID')),num(field(n,'state'))
             -- Enum.FlightPathState: 0 current, 1 reachable (known), 2 unreachable (not learned).
             if node and state and state<2 then settings.flightNodes[node]=true end
+            -- The flight map names every point of the continent, learned or not.
+            local name=field(n,'name')
+            if node and type(name)=='string' and name~='' then settings.flightNames[node]=name:sub(1,80) end
         end
     end
 end
@@ -597,7 +603,11 @@ end
 function BackstageForeverAssistCommand(message)
     if not settings then loadSettings() end
     local cmd,arg=(type(message)=='string' and message:lower() or ''):match('^(%a+)%s*(%a*)')
-    if cmd=='train' then return BackstageForeverTrain() end
+    if cmd=='train' then
+        local t=BackstageForeverTrain()
+        if type(BackstageForeverTrainList)=='function' then pcall(BackstageForeverTrainList) end
+        return t
+    end
     if cmd=='repair' then return BackstageForeverRepair() end
     if cmd=='flights' then return BackstageForeverFlights() end
     if cmd=='xp' then return say(BackstageForeverPaceLine()) end
@@ -617,9 +627,10 @@ function BackstageForeverAssistCommand(message)
         local lines={
             '/bf next - an arrow to the nearest quest to hand in or pick up',
             '/bf how - how to do your tracked quest: what to get and where it came from',
-            '/bf train - an arrow to your class trainer',
+            '/bf train - an arrow to your class trainer, and what is new there at your level with prices',
             '/bf repair - an arrow to the nearest repair vendor',
             '/bf flights - which flight paths here you have learned',
+            '/bf fly PLACE - the best flight route to a place: legs, time and price',
             '/bf find NAME - find a person or place, e.g. /bf find flight master',
             '/bf xp - your experience per hour and time to the next level',
             '/bf prof - your profession: recipe colour, best next recipe, crafts to your cap',

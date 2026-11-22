@@ -1,0 +1,301 @@
+{
+  "schemaVersion": 1,
+  "product": "wowf",
+  "license": "CC BY 4.0",
+  "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+  "commit": "1bf749ba19be7e699822d6587db0cb85b1b0bc3b",
+  "build": "1.60.1.71037",
+  "builds": [
+    {
+      "build": "1.60.1.71037",
+      "files": {
+        "flights.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.71037/flights.json",
+          "bytes": 16446,
+          "sha256": "d67d0e5ba5e30fd1eb8674a97697ac7157376b21e67fd288786c905d673e3070",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.71037",
+            "collectedOn": {
+              "first": "2026-11-21",
+              "last": "2026-11-21"
+            },
+            "dataset": "flights",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          }
+        },
+        "npcs.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.71037/npcs.json",
+          "bytes": 74094,
+          "sha256": "67580353b535732055002b03d9f0943cfeceee08fcbdc76bfa30cff6a118bf98",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.71037",
+            "collectedOn": {
+              "first": "2026-11-21",
+              "last": "2026-11-21"
+            },
+            "dataset": "npcs",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70959",
+      "files": {
+        "flights.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70959/flights.json",
+          "bytes": 42644,
+          "sha256": "11e40f4cfb463e18724166be87aa419e4adc59e92c126dc7227b0296b2dd8d14",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70959",
+            "collectedOn": {
+              "first": "2026-11-19",
+              "last": "2026-11-21"
+            },
+            "dataset": "flights",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 10
+          }
+        },
+        "npcs.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70959/npcs.json",
+          "bytes": 473826,
+          "sha256": "09d8aebb9b58778f3a2b204b0be501210b0b12c7c54effc0567b5a034f5f57fa",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70959",
+            "collectedOn": {
+              "first": "2026-11-19",
+              "last": "2026-11-21"
+            },
+            "dataset": "npcs",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 10
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70938",
+      "files": {
+        "flights.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70938/flights.json",
+          "bytes": 38566,
+          "sha256": "4a41e20949714627eca7d422bd94210f652a0574529b474f2745335371939cc0",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70938",
+            "collectedOn": {
+              "first": "2026-11-20",
+              "last": "2026-11-21"
+            },
+            "dataset": "flights",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 8
+          }
+        },
+        "npcs.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70938/npcs.json",
+          "bytes": 591462,
+          "sha256": "25707c9ea017a905cda6b01206cd6d3bf496e6f77c823034c33d5907d951752c",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70938",
+            "collectedOn": {
+              "first": "2026-11-20",
+              "last": "2026-11-21"
+            },
+            "dataset": "npcs",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 8
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70888",
+      "files": {
+        "flights.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70888/flights.json",
+          "bytes": 28319,
+          "sha256": "438a576ee44a876b807b3f3f42d1138e6a7fcd24c71ea94be84cc854cf1bdeab",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70888",
+            "collectedOn": {
+              "first": "2026-11-20",
+              "last": "2026-11-21"
+            },
+            "dataset": "flights",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          }
+        },
+        "npcs.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70888/npcs.json",
+          "bytes": 363618,
+          "sha256": "e03cc30ff79ebf02f50bdc6baf3463b5b8c65569175a1e112102fcfc9ea74274",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70888",
+            "collectedOn": {
+              "first": "2026-11-20",
+              "last": "2026-11-21"
+            },
+            "dataset": "npcs",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70862",
+      "files": {
+        "flights.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70862/flights.json",
+          "bytes": 27676,
+          "sha256": "94c5181c0f5dc9a095d5ad02b8f20c615e5bdc6e068c20b020f0f482c2ee6291",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70862",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-21"
+            },
+            "dataset": "flights",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          }
+        },
+        "npcs.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70862/npcs.json",
+          "bytes": 732509,
+          "sha256": "64ca5ce997d82cc0ce9aa1ea1f96ea2c363b28bb3ebf3af460e2d16693915cdc",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70862",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-21"
+            },
+            "dataset": "npcs",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70840",
+      "files": {
+        "flights.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70840/flights.json",
+          "bytes": 7898,
+          "sha256": "bd7ae1b3910afb82925578ad3aa5e46096edfa7d8fb04514c707a3d41ff0e9dc",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70840",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-21"
+            },
+            "dataset": "flights",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 3
+          }
+        },
+        "npcs.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70840/npcs.json",
+          "bytes": 123058,
+          "sha256": "d657fb35416b2da2d9d75cbb3ff870f517111ce092a405301afdfb5fee4ef94b",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70840",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-21"
+            },
+            "dataset": "npcs",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 3
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70790",
+      "files": {
+        "flights.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70790/flights.json",
+          "bytes": 12198,
+          "sha256": "8918141ad93ea1b1a24d867b852d2b6b90e0ca05d3d12041a0d79afb6d8e731a",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70790",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-21"
+            },
+            "dataset": "flights",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          }
+        },
+        "npcs.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70790/npcs.json",
+          "bytes": 882823,
+          "sha256": "e732c47ad4bde79fa6ea1acba656d7498c39ac46e8cc4afc29f43239e4f128b4",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70790",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-21"
+            },
+            "dataset": "npcs",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          }
+        }
+      }
+    }
+  ],
+  "compiled": {
+    "bytes": 43416,
+    "sha256": "be91fab98f6da59b83c4d0c927f2723c5871edcff242146da298f58fbaffd17e"
+  }
+}

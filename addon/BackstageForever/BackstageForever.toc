@@ -45,3 +45,5 @@ BackstageForeverBossTips.lua
 BackstageForeverDesktop.lua
 BackstageForeverAtlasData.lua
 BackstageForeverAtlas.lua
+BackstageForeverTravelData.lua
+BackstageForeverTravel.lua

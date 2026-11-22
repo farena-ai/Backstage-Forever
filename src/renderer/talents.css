@@ -76,3 +76,29 @@
 .tal-spellbook { margin-block-start: 10px; }
 .tal-spellbook h3 { margin-block-start: 8px; }
 .tal-spellbook select { max-inline-size: 100%; min-block-size: 32px; background: #fff7e5; color: #2b1b0a; border: 1px solid #825b2a; }
+/* C6: at the trainer. What the class trainer newly teaches at this level and the next two. */
+.tal-train { margin: 14px 0; padding: 12px 16px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); border: 1px solid #a5823e; color: #2b1b0a; text-shadow: none; }
+.tal-train h3 { margin: 0 0 8px; font: 700 16px Cinzel, Georgia, serif; color: #3d220c; }
+.tal-train h3 small { font: 600 12px Georgia, serif; color: #6b4a22; margin-left: 6px; }
+.tal-train-none { margin: 0; font-size: 13px; color: #4a3218; }
+.tal-train-levels { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.tal-train-level { padding: 8px 10px; border-radius: 6px; background: rgba(255,248,225,.55); border: 1px solid #c4a466; min-width: 0; }
+.tal-train-level.now { border-color: #8a5a18; background: #fff6dc; box-shadow: 0 0 0 2px rgba(246,196,69,.4); }
+.tal-train-level > header { display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 10px; align-items: center; }
+.tal-train-level > header .tal-u-lv { grid-row: span 2; }
+.tal-train-level.now > header .tal-u-lv { background: #2e6b1e; }
+.tal-train-sum { font-size: 12px; color: #5a3e1c; }
+.tal-train-level ul { list-style: none; margin: 8px 0 0; padding: 6px 0 0; border-top: 1px solid #d3b87c; display: flex; flex-direction: column; gap: 3px; }
+.tal-train-level ul li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: baseline; font-size: 13px; }
+.tal-train-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tal-train-name small { color: #6b4a22; }
+.tal-train-tag { padding: 0 5px; border-radius: 7px; background: #6b3f12; color: #fff1d6; font-size: 11px; font-weight: 700; }
+.tal-train-cost { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tal-coins { display: inline-flex; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tal-gold { color: #694305; font-weight: 700; }
+.tal-silver { color: #45474a; font-weight: 700; }
+.tal-copper { color: #713914; font-weight: 700; }
+.tal-train-total { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; font-size: 13px; color: #3d220c; }
+.tal-train-total strong { font-size: 14px; }
+.tal-train-notes { margin: 8px 0 0; padding: 0 0 0 18px; font-size: 12px; line-height: 1.45; color: #5a3e1c; }
+@media (max-width: 1000px) { .tal-train-levels { grid-template-columns: 1fr; } }

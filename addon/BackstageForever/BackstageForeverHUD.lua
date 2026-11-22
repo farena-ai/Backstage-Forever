@@ -880,6 +880,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverAssistCommand)=='function' then pcall(BackstageForeverAssistCommand,message)end
                 return
             end
+            if word=='fly' then
+                if type(BackstageForeverFlyCommand)=='function' then pcall(BackstageForeverFlyCommand,message)end
+                return
+            end
             if word=='gear' then
                 if type(BackstageForeverGearCommand)=='function' then pcall(BackstageForeverGearCommand,message)end
                 return
