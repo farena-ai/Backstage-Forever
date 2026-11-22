@@ -76,7 +76,7 @@ function worldPins(pack) {
   if (!pack) return out;
   const source = "Efficient Games, CC BY 4.0";
   for (const r of pack.rares) r.positions.forEach((p, i) => out.push({ id: `rare:${r.id}:${p.mapId}:${i}`, kind: "rare", creatureId: r.id, label: r.name, sub: rareLabel(r), elite: Boolean(r.elite), drops: r.drops, mapId: p.mapId, x: p.x, y: p.y, evidence: "historical", source: `${source} · where a player met it; rares are not always up` }));
-  for (const n of pack.nodes) n.positions.forEach((p) => out.push({ id: `node:${n.id}:${p.mapId}:${Math.round(p.x * 1000)}:${Math.round(p.y * 1000)}`, kind: n.kind, label: n.name, sub: `${n.kind === "ore" ? "Mining node" : "Herb"} (reference) · skill ${n.skill}`, skill: n.skill, mapId: p.mapId, x: p.x, y: p.y, evidence: "historical", source }));
+  for (const n of pack.nodes) n.positions.forEach((p) => out.push({ id: `node:${n.id}:${p.mapId}:${Math.round(p.x * 1000)}:${Math.round(p.y * 1000)}`, kind: n.kind, label: n.name, sub: `${n.kind === "ore" ? "Mining node" : "Herb"} (reference) · skill ${n.skill}`, skill: n.skill, reference: true, mapId: p.mapId, x: p.x, y: p.y, evidence: "historical", source }));
   for (const c of pack.chests) c.positions.forEach((p) => out.push({ id: `chest:${c.id}:${p.mapId}:${Math.round(p.x * 1000)}:${Math.round(p.y * 1000)}`, kind: "chest", label: c.name, sub: "Chest (reference) · chests move between spots", mapId: p.mapId, x: p.x, y: p.y, evidence: "historical", source }));
   pack.mailboxes.forEach((p) => out.push({ id: `mailbox:${p.mapId}:${Math.round(p.x * 1000)}:${Math.round(p.y * 1000)}`, kind: "mailbox", label: "Mailbox", sub: null, mapId: p.mapId, x: p.x, y: p.y, evidence: "historical", source }));
   return out;

@@ -1045,6 +1045,7 @@ window.BF_LOCALE_DE = {
  "Recent recorded defeats, not full runs, lockouts or loot.": "Zuletzt aufgezeichnete Bosssiege, keine vollständigen Durchläufe, Instanzsperren oder Beute.",
  "Recovery point": "Wiederherstellungspunkt",
  "Reference edition": "Referenzausgabe",
+ "Reference herbs and ore": "Kräuter und Erz aus den Referenzdaten",
  "Reference missing": "Referenz fehlt",
  "Reference name unavailable": "Referenzname nicht verfügbar",
  "Reference offline": "Referenz offline",
