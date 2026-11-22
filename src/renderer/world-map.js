@@ -7,6 +7,7 @@ window.WorldMapView = (() => {
     Questing: [["quest-turnin", "Turn-ins"], ["quest-objective", "Objectives"], ["objective-area", "Objective areas"], ["quest-giver", "Quests to pick up"]],
     Gathering: [["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["heat", "Your gathering heat"], ["community", "Community finds"]],
     Services: [["flight", "Flight masters"], ["class-trainer", "Class trainers"], ["profession-trainer", "Profession trainers"], ["vendor", "Vendors"], ["npc", "Other NPCs"], ["otherFaction", "Other faction's NPCs"]],
+    World: [["rare", "Rare enemies"], ["chest", "Chests"], ["mailbox", "Mailboxes"]],
     Journey: [["journey", "My path this session"]],
   };
   const OFF_BY_DEFAULT = new Set(["npc", "otherFaction"]);
@@ -71,6 +72,7 @@ window.WorldMapView = (() => {
           <section class="wm-card" data-wm-card tabindex="-1" aria-label="Map selection"></section>
           <section class="wm-results" data-wm-results tabindex="-1" aria-label="Map search results" hidden></section>
           <div class="wm-legend" data-wm-legend>${layerControls()}</div>
+          ${window.WorldFinders?.panels() || ""}
           <div class="wm-near" data-wm-near hidden></div>
           <div class="wm-camps" data-wm-camps hidden></div>
           <div class="wm-heat" data-wm-heat hidden></div>
@@ -108,7 +110,7 @@ window.WorldMapView = (() => {
   // ---------- icons ----------
   // One silhouette per kind so pins read at a glance: shields for quests, a diamond for
   // flight, hexagons for trainers (swords: class, hammer: profession), a square for vendors.
-  const COLORS = { "quest-turnin": "#ffd34d", "quest-giver": "#f6c445", "quest-objective": "#d9442e", flight: "#3f86d8", "class-trainer": "#b8462e", "profession-trainer": "#2f9c8f", vendor: "#a8743a", herb: "#5fae3c", ore: "#9a8f86", find: "#e8b33a", community: "#2b8a9c", npc: "#6b5a48", town: "#3a2a16" };
+  const COLORS = { "quest-turnin": "#ffd34d", "quest-giver": "#f6c445", "quest-objective": "#d9442e", flight: "#3f86d8", "class-trainer": "#b8462e", "profession-trainer": "#2f9c8f", vendor: "#a8743a", herb: "#5fae3c", ore: "#9a8f86", find: "#e8b33a", community: "#2b8a9c", npc: "#6b5a48", town: "#3a2a16", rare: "#8fa6d8", chest: "#a8682e", mailbox: "#c9b48a" };
   function shade(hex, f = 0.55) { const n = parseInt(hex.slice(1), 16); const m = (v) => Math.max(0, Math.floor(v * f)); return `rgb(${m(n >> 16)},${m((n >> 8) & 255)},${m(n & 255)})`; }
   function fillShape(g, path, fill, x, y, r) {
     g.save(); g.shadowColor = "rgba(0,0,0,0.55)"; g.shadowBlur = 4; g.shadowOffsetY = 1.5;
@@ -137,6 +139,7 @@ window.WorldMapView = (() => {
     g.fillStyle = "#e9fbff"; for (const dx of [-0.38, 0.38]) { g.beginPath(); g.arc(x + dx * s, y - s * 0.22, s * 0.22, 0, 7); g.fill(); g.beginPath(); g.arc(x + dx * s, y + s * 0.42, s * 0.34, Math.PI, 0); g.fill(); }
     g.restore();
   }
+  function letter(g, x, y, s) { g.save(); g.beginPath(); g.roundRect(x - s, y - s * 0.7, s * 2, s * 1.4, s * 0.15); g.fillStyle = COLORS.mailbox; g.fill(); g.strokeStyle = "#3a2410"; g.lineWidth = 1.3; g.stroke(); g.beginPath(); g.moveTo(x - s, y - s * 0.7); g.lineTo(x, y + s * 0.1); g.lineTo(x + s, y - s * 0.7); g.stroke(); g.restore(); }
   function star(g, x, y, s) { g.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? s * 0.45 : s, a = -Math.PI / 2 + (i * Math.PI) / 5; g.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)); } g.closePath(); g.fillStyle = "#ffe27a"; g.fill(); g.strokeStyle = "#5a3a0c"; g.lineWidth = 1; g.stroke(); }
   // Painted medallions (original ComfyUI art) for the main pin kinds; vector shapes stay as the fallback.
   const PAINTED = {};
@@ -163,6 +166,10 @@ window.WorldMapView = (() => {
       return;
     }
     if (k === "npc") { fillShape(g, poly(g, x, y, r * 0.45, 4, Math.PI / 4), COLORS.npc, x, y, r * 0.45); return; }
+    // Rare enemies: a silver-blue star plate with a skull. Chests and mailboxes: small plain shapes.
+    if (k === "rare") { fillShape(g, poly(g, x, y, r * 1.15, 8, Math.PI / 8), COLORS.rare, x, y, r); skull(g, x, y + r * 0.05, r * 0.95); return; }
+    if (k === "chest") { chest(g, x, y, r * 0.8); return; }
+    if (k === "mailbox") { letter(g, x, y, r * 0.8); return; }
     if (k === "town") return;
     if (k === "objective-area") { const gr = g.createRadialGradient(x, y, 0, x, y, r * 1.2); gr.addColorStop(0, "rgba(242,210,27,0.85)"); gr.addColorStop(1, "rgba(242,210,27,0.1)"); g.beginPath(); g.arc(x, y, r * 1.2, 0, 7); g.fillStyle = gr; g.fill(); g.setLineDash([3, 2]); g.strokeStyle = "#6b4a10"; g.lineWidth = 1.3; g.stroke(); g.setLineDash([]); return; }
     if (k === "instance") { const gr = g.createRadialGradient(x, y, 2, x, y, r * 1.7); gr.addColorStop(0, "#f3d9ff"); gr.addColorStop(0.5, "#8a3fd1"); gr.addColorStop(1, "rgba(60,10,90,0)"); g.beginPath(); g.arc(x, y, r * 1.7, 0, 7); g.fillStyle = gr; g.fill(); g.strokeStyle = "#2a0d3d"; g.lineWidth = 2; for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(x, y, r * 0.4 + i * r * 0.38, i, i + 4.2); g.stroke(); } return; }
@@ -326,6 +333,8 @@ window.WorldMapView = (() => {
       ctx.fillStyle = "#fff3cf"; ctx.font = "700 10px 'Source Sans 3', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(c.pins.length), c.sx + 10, c.sy - 9.5);
       ctx.restore();
     }
+    // The gathering loop reads above the pins it runs through.
+    window.WorldFinders?.draw(ctx, toScreen, model?.mapId);
     // Landmarks on a parchment plate, above pins.
     for (const p of art ? [] : visiblePins().filter((p) => p.kind === "town")) {
       const [sx, sy] = toScreen(p.x, p.y); ctx.font = "700 16px Cinzel, Georgia, serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -607,7 +616,7 @@ window.WorldMapView = (() => {
       return;
     }
     if (p.kind === "objective-area") { box.innerHTML = goalBox + areaCard(p); paintIcons(box); return; }
-    const details = p.npcId ? `<div data-wm-npc-details>${npcDetails(p)}</div>` : p.kind === "community" ? communityDetails(p) : "";
+    const details = p.npcId ? `<div data-wm-npc-details>${npcDetails(p)}</div>` : p.kind === "community" ? communityDetails(p) : p.kind === "rare" ? window.WorldFinders?.rareDetails(p) || "" : "";
     box.innerHTML = `${goalBox}<div class="wm-card-head">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<div><h3>${esc(p.label)}</h3>${p.sub ? `<p class="wm-sub">${esc(p.sub)}</p>` : ""}</div></div>
       <p class="wm-coords">${esc(model.mapName)} · ${pct(p.x)}, ${pct(p.y)}</p>${relation(p)}
       ${details}
@@ -687,7 +696,14 @@ window.WorldMapView = (() => {
     box._near = near.map((n) => n.p);
     paintIcons(box);
   }
-  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; attrib(); loadArt(model?.mapId); legend(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); campsList(); heatList(); draw(); }
+  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; attrib(); loadArt(model?.mapId); legend(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); campsList(); heatList(); window.WorldFinders?.paint(model, finderHooks, layers.rare !== false); draw(); }
+  // What the gathering loop and rare panels (world-finders.js) may ask of this page.
+  const finderHooks = {
+    mapId: () => model?.mapId ?? null, redraw: () => draw(),
+    go: (id) => { follow = false; const f = document.querySelector("[data-wm-follow]"); if (f) f.checked = false; savePref(); load(id); },
+    focus: (x, y) => { view = { zoom: Math.max(view.zoom, 2.4), cx: x, cy: y }; draw(); },
+    selectRare: (id) => { const p = model?.pins.find((q) => q.kind === "rare" && q.creatureId === id); if (!p) return; selected = p; view = { zoom: Math.max(view.zoom, 2.2), cx: p.x, cy: p.y }; card(); draw(); document.querySelector("[data-wm-card]")?.scrollIntoView?.({ block: "nearest" }); },
+  };
 
   // ---------- data ----------
   // Real zone art from the player's own game install; parchment when unavailable.
@@ -865,7 +881,8 @@ window.WorldMapView = (() => {
       e.preventDefault(); draw();
     });
     root.addEventListener("change", (e) => {
-      if (e.target.matches("[data-wm-layer]")) { layers[e.target.dataset.wmLayer] = e.target.checked; if (!e.target.checked && selected?.kind === e.target.dataset.wmLayer) { selected = null; card(); } savePref(); nearList(); campsList(); heatList(); draw(); }
+      if (window.WorldFinders?.onChange(e, finderHooks)) return;
+      if (e.target.matches("[data-wm-layer]")) { layers[e.target.dataset.wmLayer] = e.target.checked; if (!e.target.checked && selected?.kind === e.target.dataset.wmLayer) { selected = null; card(); } savePref(); nearList(); campsList(); heatList(); window.WorldFinders?.paint(model, finderHooks, layers.rare !== false); draw(); }
       if (e.target.matches("[data-wm-zone]")) { follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; savePref(); load(Number(e.target.value)); }
       if (e.target.matches("[data-wm-follow]")) { follow = e.target.checked; savePref(); if (follow && lastLive) load(lastLive.position.mapId); }
     });
@@ -877,6 +894,7 @@ window.WorldMapView = (() => {
       if (e.target.contains(document.activeElement)) reveal("[data-wm-results]");
     });
     root.addEventListener("click", async (e) => {
+      if (e.target.closest("[data-wm-loop], [data-wm-rares]") && await window.WorldFinders?.onClick(e, finderHooks)) return;
       const np = e.target.closest("[data-wm-near-pin]");
       if (np) { const p = root.querySelector("[data-wm-near]")._near?.[Number(np.dataset.wmNearPin)]; if (p) { selected = p; view = { zoom: Math.max(view.zoom, 2), cx: p.x, cy: p.y }; card(); draw(); reveal("[data-wm-card]"); } return; }
       const hz = e.target.closest("[data-wm-heat-zone]");

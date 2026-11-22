@@ -624,6 +624,8 @@ body[data-class] .xp-fill {
 .world-map-page .wm-near li button::before, .world-map-page .wm-near li button::after,
 .world-map-page .wm-camps li button::before, .world-map-page .wm-camps li button::after,
 .wm-heat li button::before, .wm-heat li button::after,
+.world-map-page .wm-loop-list li button::before, .world-map-page .wm-loop-list li button::after,
+.world-map-page .wm-rares li button::before, .world-map-page .wm-rares li button::after,
 .wm-tools button::before, .wm-tools button::after,
 .professions-shortcut::before, .professions-shortcut::after {
   /* !important: a single-class selector would lose to button:not(.illustrated-card)::before. */

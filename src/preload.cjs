@@ -114,6 +114,8 @@ contextBridge.exposeInMainWorld(
     travelPlaces: () => invoke("travelPlaces"),
     travelPlan: (input) => invoke("travelPlan", input),
     talentPlanner: (input) => invoke("talentPlanner", input),
+    gatheringLoop: (input) => invoke("gatheringLoop", input),
+    gatheringLoopUse: (input) => invoke("gatheringLoopUse", input),
     journey: () => invoke("journey"),
     badges: (profileId = null) => invoke("badges", profileId),
     weekly: () => invoke("weekly"),

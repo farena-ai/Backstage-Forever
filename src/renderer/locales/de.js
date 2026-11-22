@@ -42,6 +42,8 @@ window.BF_LOCALE_DE = {
  "07 · Your ledger": "07 · Dein Kontobuch",
  "08 · Your character sheet": "08 · Dein Charakterbogen",
  "1 distinct boss encounter in retained history": "1 unterschiedlicher Bosskampf im gespeicherten Verlauf",
+ "1 quieter place is left out to keep the walk short.": "1 ruhigerer Ort bleibt weg, damit der Weg kurz bleibt.",
+ "1 spot needs more skill than you have and is left out.": "1 Stelle braucht mehr Fertigkeit, als du hast, und bleibt weg.",
  "1. Get a free key": "1. Hol dir einen kostenlosen Schlüssel",
  "2. Paste it": "2. Füge ihn ein",
  "A chest you opened (chests move between spots)": "Eine geöffnete Truhe (Truhen wechseln ihren Platz)",
@@ -75,6 +77,7 @@ window.BF_LOCALE_DE = {
  "Active character": "Aktiver Charakter",
  "Add a character": "Charakter hinzufügen",
  "Add a character by hand": "Charakter manuell hinzufügen",
+ "Add community and reference spots": "Stellen der Community und aus den Referenzdaten dazunehmen",
  "Add goal": "Ziel hinzufügen",
  "Add note": "Notiz hinzufügen",
  "Advanced: enter a model ID manually": "Erweitert: Modell-ID manuell eingeben",
@@ -166,6 +169,7 @@ window.BF_LOCALE_DE = {
  "Bags & bank": "Taschen & Bank",
  "Bags update whenever the addon saves. Bank and mail are as they were the last time you opened them in game.": "Taschen werden aktualisiert, sobald das Addon speichert. Bank und Post sind so, wie sie beim letzten Öffnen im Spiel waren.",
  "Bags, bank and mail of every character, searchable in one place.": "Taschen, Bank und Post aller Charaktere, an einem Ort durchsuchbar.",
+ "Based on 1 past spot:": "Grundlage: 1 frühere Fundstelle:",
  "Based on the selected character’s addon save, not a live client check. A reviewed build does not prove quest readiness or learned ranks.": "Grundlage ist der Addon-Spielstand des ausgewählten Charakters, keine Live-Prüfung. Ein geprüfter Build bestätigt weder den Queststatus noch erlernte Ränge.",
  "Before import": "Vor dem Import",
  "Before leaving reminders": "Erinnerungen vor dem Aufbruch",
@@ -236,6 +240,7 @@ window.BF_LOCALE_DE = {
  "Checks start in the Backstage Forever app from Applications. Source builds never check.": "Prüfungen starten in der Backstage-Forever-App aus dem Programme-Ordner. Quell-Builds prüfen nie.",
  "Chest": "Brust",
  "Chest gear acquisition leads": "Hinweise auf Quellen für Brustrüstung",
+ "Chests": "Truhen",
  "Choose a character to keep private exchanges. General typed questions still work.": "Wähle einen Charakter, um private Nachrichten zu erhalten. Allgemeine eingegebene Fragen funktionieren weiterhin.",
  "Choose a character to review saved identity, equipment and qualified historical class listings.": "Wähle einen Charakter, um gespeicherte Identität, Ausrüstung und qualifizierte historische Klassenlisten zu überprüfen.",
  "Choose a character with a class in Characters to see talents.": "Wähle in Charaktere einen Charakter mit einer Klasse, um Talente zu sehen.",
@@ -375,6 +380,7 @@ window.BF_LOCALE_DE = {
  "Download": "Herunterladen",
  "Download for Mac ↗": "Download für Mac ↗",
  "Draft for:": "Entwurf für:",
+ "Draw the loop on the map": "Runde auf der Karte zeichnen",
  "draws a larger, sturdier strip in a corner (": "zeichnet einen größeren, stabileren Streifen in einer Ecke (",
  "Drops from": "Droppt von",
  "Druid": "Druide",
@@ -412,6 +418,7 @@ window.BF_LOCALE_DE = {
  "Every point on this path is spent.": "Jeder Punkt auf diesem Pfad ist ausgegeben.",
  "Every point on this path is spent. 🎉": "Jeder Punkt auf diesem Pfad ist ausgegeben. 🎉",
  "Every quest from level 1 in order: pick up, do, hand in, then on to the next zone.": "Jede Quest ab Stufe 1 in der richtigen Reihenfolge: annehmen, erledigen, abgeben, dann weiter ins nächste Gebiet.",
+ "Every spot known here needs more skill than you have.": "Jede hier bekannte Stelle braucht mehr Fertigkeit, als du hast.",
  "Every zone for your faction, how many of its quests you've done, and the ones you've finished.": "Jedes Gebiet für deine Fraktion, wie viele Quests du erledigt hast und welche du abgeschlossen hast.",
  "Everyone at a glance, and who to play tonight.": "Alle auf einen Blick, und wen du heute spielst.",
  "Everything about your characters, in one place": "Alles über deine Charaktere an einem Ort",
@@ -490,8 +497,11 @@ window.BF_LOCALE_DE = {
  "Game builds change every few days inside one patch. A review on one build covers the other builds of that patch; a new patch waits for a fresh review, and until then route suggestions are withheld while route coverage and your saved journal stay available.": "Spiel-Builds ändern sich innerhalb eines Patches alle paar Tage. Eine Prüfung auf einem Build gilt auch für die anderen Builds dieses Patches; ein neuer Patch wartet auf eine neue Prüfung. Bis dahin werden Routenvorschläge ausgeblendet, Routenübersicht und gespeichertes Tagebuch bleiben verfügbar.",
  "Game connection": "Spielverbindung",
  "Gather / buy": "Sammeln / Kaufen",
+ "Gather here with the addon running and your spots are remembered. Then type /reload in game and come back.": "Sammle hier mit laufendem Addon, dann werden deine Stellen gemerkt. Tippe danach im Spiel /reload und komm zurück.",
  "Gathered here": "Hier gesammelt",
+ "Gathering loop": "Sammelrunde",
  "Gathering marks": "Sammelmarkierungen",
+ "Gathering profession": "Sammelberuf",
  "Gear comparison": "Ausrüstungsvergleich",
  "Gear comparisons are estimates from saved equipment.": "Ausrüstungsvergleiche sind Schätzungen anhand gespeicherter Ausrüstung.",
  "Gear score for your class:": "Ausrüstungswert für deine Klasse:",
@@ -683,6 +693,7 @@ window.BF_LOCALE_DE = {
  "Lowest buyout per item on Auction House pages you opened yourself. The addon never searches or buys.": "Niedrigster Kaufpreis pro Gegenstand auf Auktionshaus-Seiten, die du selbst geöffnet hast. Das Addon sucht oder kauft nie.",
  "Lowest seen": "Niedrigster Wert",
  "Mage": "Magier",
+ "Mailboxes": "Briefkästen",
  "Main hand": "Waffenhand",
  "Main navigation": "Hauptnavigation",
  "Manage roster →": "Roster verwalten →",
@@ -737,6 +748,8 @@ window.BF_LOCALE_DE = {
  "No characters yet.": "Noch keine Charaktere.",
  "No characters yet. Log in with the addon and type": "Noch keine Charaktere. Melde dich mit dem Addon an und tippe",
  "No current learned skill-up recipe is observed. Open your own profession normally, or choose a saved recipe for a manual plan.": "Kein aktuell gelerntes Rezept mit Skill-up beobachtet. Öffne deinen Beruf wie gewohnt oder wähle ein gespeichertes Rezept für einen Plan von Hand.",
+ "No drop is recorded for this rare yet.": "Für diesen seltenen Gegner ist noch keine Beute erfasst.",
+ "No drop recorded yet.": "Noch keine Beute erfasst.",
  "No forced restart during your game. You can also restart here when you’re ready.": "Kein erzwungener Neustart während deines Spiels. Du kannst hier auch neu starten, wenn du bereit bist.",
  "No gear sets saved on this character yet.": "Noch keine Ausrüstungssätze auf diesem Charakter gespeichert.",
  "No historical seller observation for this material. This does not mean unobtainable.": "Keine historischen Händlerbeobachtungen für dieses Material. Das bedeutet nicht, dass es unerschwinglich ist.",
@@ -757,6 +770,7 @@ window.BF_LOCALE_DE = {
  "No quests for it recorded yet": "Noch keine Quests dafür erfasst",
  "no quests recorded": "keine Quests erfasst",
  "No quests, training or wares are recorded for this NPC yet.": "Für diesen NPC sind noch keine Quests, Trainings oder Waren erfasst.",
+ "No rare enemy has a known place in this zone yet.": "In diesem Gebiet hat noch kein seltener Gegner einen bekannten Ort.",
  "No recovery points": "Keine Wiederherstellungspunkte",
  "No remaining step in this part of the route.": "In diesem Routenabschnitt sind keine Schritte mehr offen.",
  "No reputations yet. Log in with the addon on, then type": "Noch kein Ruf. Logge dich mit aktivem Addon ein und tippe dann",
@@ -765,6 +779,7 @@ window.BF_LOCALE_DE = {
  "No saved builds for this class yet.": "Für diese Klasse gibt es noch keine gespeicherten Skillungen.",
  "No seller observed: gather it, or try the auction house or trade.": "Kein Händler beobachtet: Sammle es, oder versuche den Auktionshaus-Handel.",
  "No skill-up recipe observed": "Kein Skill-up-Rezept beobachtet",
+ "No spots are known here yet.": "Hier sind noch keine Stellen bekannt.",
  "No starred items from the bundled loot records for this dungeon.": "Keine Wunschlistenmarkierungen in den mitgelieferten Beutedaten für diesen Dungeon.",
  "No step right now. Pick a zone on Now.": "Gerade kein Schritt. Wähle ein Gebiet auf Jetzt.",
  "No usable entrance waypoint in this reference.": "Diese Referenz enthält keinen verwendbaren Wegpunkt zum Eingang.",
@@ -890,6 +905,7 @@ window.BF_LOCALE_DE = {
  "Party": "Gruppe",
  "Party expedition": "Gruppenexpedition",
  "Past sessions": "Vergangene Sitzungen",
+ "Past spots, not live nodes.": "Frühere Fundstellen, keine aktuellen Vorkommen.",
  "Paste a code here": "Code hier einfügen",
  "Paste your free key": "Füge deinen kostenlosen Schlüssel ein",
  "Patch impact": "Auswirkungen des Patches",
@@ -922,6 +938,7 @@ window.BF_LOCALE_DE = {
  "Play with the live link on (it is by default) and your pace, time to the next level and deaths appear here.": "Spiel mit eingeschalteter Live-Verbindung (Standard), dann erscheinen hier dein Tempo, die Zeit bis zur nächsten Stufe und Tode.",
  "Play with the live link on and each session is kept here: when, how long, levels gained, deaths and zones. A break of 30 minutes starts a new session.": "Spiele mit aktivem Live-Link und jede Sitzung wird hier gespeichert: wann, wie lange, gewonnene Stufen, Tode und Gebiete. Eine Pause von 30 Minuten startet eine neue Sitzung.",
  "played this session": "in dieser Sitzung gespielt",
+ "Players saw it drop": "Spieler sahen diese Beute",
  "Playing now": "Spielt gerade",
  "Pocket money": "Taschengeld",
  "points to your next quest and": "zeigt auf deine nächste Quest und",
@@ -1003,6 +1020,7 @@ window.BF_LOCALE_DE = {
  "Ranged": "Distanz",
  "Rare": "Selten",
  "Rare defeated": "Selten besiegt",
+ "Rare enemies": "Seltene Gegner",
  "Read answer": "Antwort lesen",
  "Read my live position from the game window": "Meine Live-Position aus dem Spielfenster lesen",
  "Read official overview ↗": "Offizielle Übersicht lesen ↗",
@@ -1042,7 +1060,9 @@ window.BF_LOCALE_DE = {
  "Release Spirit": "Geist freilassen",
  "remembers what you wear;": "merkt sich, was du trägst;",
  "Reminders": "Erinnerungen",
+ "Remove from game": "Aus dem Spiel entfernen",
  "Remove saved key": "Gespeicherten Schlüssel entfernen",
+ "Removed. The addon forgets the loop at the next /reload.": "Entfernt. Das Addon vergisst die Runde beim nächsten /reload.",
  "Repair companion addon": "Begleiter-Addon reparieren",
  "Repairs your gear": "Repariert deine Ausrüstung",
  "Replace": "Ersetzen",
@@ -1147,7 +1167,11 @@ window.BF_LOCALE_DE = {
  "Selected memory & question preview": "Ausgewählte Erinnerung & Fragenvorschau",
  "Selected profession unavailable": "Ausgewählter Beruf nicht verfügbar",
  "Sell junk": "Müll verkaufen",
+ "Send it, then in game type /reload and /bf loop.": "Sende sie, dann tippe im Spiel /reload und /bf loop.",
+ "Send loop to game": "Runde ans Spiel senden",
  "Send question": "Frage senden",
+ "Sending needs a character saved by the addon.": "Zum Senden braucht es einen Charakter, den das Addon gespeichert hat.",
+ "Sent to game": "Ans Spiel gesendet",
  "Separate dictated draft": "Diktatentwurf trennen",
  "SEPARATE SAVED OBSERVATIONS": "GESPEICHERTE BEOBSACHTUNGEN TRENNEN",
  "Session length": "Sitzungsdauer",
@@ -1232,6 +1256,7 @@ window.BF_LOCALE_DE = {
  "Stop response": "Antwort stoppen",
  "Stop using": "Nicht mehr verwenden",
  "Stop voice": "Stimme stoppen",
+ "Stops in order": "Halte in Reihenfolge",
  "Stored locally": "Lokal gespeichert",
  "Subscription sign-in, your own API key, or a local model.": "Abonnement-Anmeldung, eigener API-Schlüssel oder ein lokales Modell.",
  "Subscription usage and API billing are separate modes. No automatic paid fallback.": "Abonnement-Nutzung und API-Abrechnung sind getrennte Modi. Kein automatischer kostenpflichtiger Fallback.",
@@ -1270,6 +1295,8 @@ window.BF_LOCALE_DE = {
  "These run inside WoW. Type the command in chat to switch one on or off; add": "Diese laufen in WoW. Tippe den Befehl in den Chat, um einen ein- oder auszuschalten; hänge",
  "This character was not imported from the game, so no build is sent to the game.": "Dieser Charakter wurde nicht aus dem Spiel importiert, deshalb geht keine Skillung ins Spiel.",
  "This is saved encounter evidence, not a record of a clear, personal loot or lockout. Reload or log out in game to save new observations.": "Dies sind gespeicherte Begegnungen, kein Nachweis für einen vollständigen Abschluss, persönliche Beute oder eine Instanzsperre. Lade die Oberfläche im Spiel neu oder melde dich ab, um neue Beobachtungen zu speichern.",
+ "This is where a player met it. Rare enemies are not always up, and some walk a path.": "Hier hat ein Spieler ihn getroffen. Seltene Gegner sind nicht immer da, und manche laufen einen Weg ab.",
+ "This loop is with the addon. In game: type /reload, then /bf loop.": "Diese Runde liegt beim Addon. Im Spiel: tippe /reload, dann /bf loop.",
  "This plan": "Dieser Plan",
  "This quest does not match your faction or race.": "Diese Quest passt nicht zu deiner Fraktion oder deinem Volk.",
  "This quest is not in your saved log. That does not mean you finished it.": "Diese Quest fehlt im gespeicherten Questlog. Das bedeutet nicht, dass sie abgeschlossen ist.",
@@ -1392,6 +1419,7 @@ window.BF_LOCALE_DE = {
  "Wider": "Breiter",
  "With this on, the addon draws a thin dark line, one pixel tall, along the top edge of the game. Backstage Forever reads only that line, twice a second, from the game window itself (so it keeps working when another window covers WoW), and the companion knows where you are right now without a reload. While WoW is minimized nothing can be read: live updates pause and resume when you bring it back. It sends no input, reads no game memory, stores no screenshots and pauses details during combat. Over remote desktop,": "Ist das an, zeichnet das Addon eine dünne dunkle Linie, ein Pixel hoch, am oberen Rand des Spiels. Backstage Forever liest nur diese Linie, zweimal pro Sekunde, direkt aus dem Spielfenster (es funktioniert also auch, wenn ein anderes Fenster WoW verdeckt), und der Begleiter weiß ohne Reload, wo du gerade bist. Ist WoW minimiert, kann nichts gelesen werden: Live-Updates pausieren und laufen weiter, sobald du es zurückholst. Es sendet keine Eingaben, liest keinen Spielspeicher, speichert keine Screenshots und pausiert Details im Kampf. Über Remotedesktop",
  "Words you'll see": "Wörter, die du siehst",
+ "Working out the loop…": "Runde wird berechnet…",
  "works offline, no AI": "funktioniert offline, keine KI",
  "World map": "Weltkarte",
  "World Map": "Weltkarte",
@@ -1456,12 +1484,15 @@ window.BF_LOCALE_DE = {
  "Your roster": "Deine Liste",
  "Your route, step by step": "Deine Route, Schritt für Schritt",
  "Your saved characters arrive after logout. Private notes stay here.": "Deine gespeicherten Charaktere erscheinen nach dem Logout. Private Notizen bleiben hier.",
+ "Your skill is not known. Open your skills in game, type /reload, and the loop will skip spots that are too hard.": "Deine Fertigkeit ist nicht bekannt. Öffne im Spiel deine Fertigkeiten, tippe /reload, dann lässt die Runde zu schwere Stellen aus.",
+ "Your skill:": "Deine Fertigkeit:",
  "Your wish list here": "Deine Wunschliste für diese Instanz",
  "Your world, 1 to 60": "Deine Welt, 1 bis 60",
  "Your world. Your adventure.": "Deine Welt. Dein Abenteuer.",
  "Zone": "Gebiet",
  "Zone finished": "Gebiet abgeschlossen",
  "Zone finished: 90% of its quests done": "Gebiet abgeschlossen: 90 % der Quests erledigt",
+ "Zone for the gathering loop": "Gebiet für die Sammelrunde",
  "Zone levels: Backstage Coding review of classic zone level ranges and quest towns. WoW Forever may differ; quest data observed in play overrides these bands where it exists. Quest, trainer and NPC references: Efficient Games, CC BY 4.0.": "Gebietsstufen: Backstage-Coding-Übersicht der klassischen Stufenbereiche und Questorte. WoW Forever kann abweichen; im Spiel beobachtete Questdaten haben Vorrang, wo es sie gibt. Quest-, Lehrer- und NPC-Daten: Efficient Games, CC BY 4.0.",
  "Zone map. Arrow keys move it, plus and minus zoom, 0 shows the whole zone. Every pin is also in the search and the lists beside the map.": "Gebietskarte. Pfeiltasten verschieben sie, Plus und Minus zoomen, 0 zeigt das gesamte Gebiet. Jede Markierung ist auch in der Suche und den Listen neben der Karte.",
  "Zones": "Gebiete",
@@ -1471,6 +1502,15 @@ window.BF_LOCALE_DE = {
  "Zoom out": "Herauszoomen"
 };
 window.BF_LOCALE_DE_TEMPLATES = [
+ [
+  "^([0-9][0-9.,:/%–-]*) rare enemies are known by name\\. A player recorded a place for ([0-9][0-9.,:/%–-]*) of them, and a drop for ([0-9][0-9.,:/%–-]*)\\. The addon tells you when you meet any of them\\. Rares are not always up\\.$",
+  "{#0} seltene Gegner sind mit Namen bekannt. Für {#1} davon hat ein Spieler einen Ort erfasst, für {#2} eine Beute. Das Addon sagt dir, wenn du einen triffst. Seltene Gegner sind nicht immer da.",
+  [
+   0,
+   1,
+   2
+  ]
+ ],
  [
   "^One click downloads a small AI model \\((.+?)\\) and runs it on this PC\\. It's free, private and works offline\\. No account, no key, nothing to install yourself\\.$",
   "Ein Klick lädt ein kleines KI-Modell ({0}) herunter und führt es auf diesem PC aus. Kostenlos, privat und offline. Kein Konto, kein Schlüssel, nichts selbst zu installieren.",
@@ -1583,10 +1623,37 @@ window.BF_LOCALE_DE_TEMPLATES = [
   ]
  ],
  [
+  "^Only ([0-9][0-9.,:/%–-]*) spots in ([0-9][0-9.,:/%–-]*) places here\\. A loop needs at least ([0-9][0-9.,:/%–-]*) places\\.$",
+  "Hier gibt es nur {#0} Stellen an {#1} Orten. Eine Runde braucht mindestens {#2} Orte.",
+  [
+   0,
+   1,
+   2
+  ]
+ ],
+ [
   "^Counts reflect this saved log\\. · ([0-9][0-9.,:/%–-]*) equipment slots observed$",
   "Zahlen aus diesem gespeicherten Log. · {0} Ausrüstungsplätze beobachtet",
   [
    0
+  ]
+ ],
+ [
+  "^Only ([0-9][0-9.,:/%–-]*) spots in ([0-9][0-9.,:/%–-]*) place here\\. A loop needs at least ([0-9][0-9.,:/%–-]*) places\\.$",
+  "Hier gibt es nur {#0} Stellen an {#1} Ort. Eine Runde braucht mindestens {#2} Orte.",
+  [
+   0,
+   1,
+   2
+  ]
+ ],
+ [
+  "^Only ([0-9][0-9.,:/%–-]*) spot in ([0-9][0-9.,:/%–-]*) place here\\. A loop needs at least ([0-9][0-9.,:/%–-]*) places\\.$",
+  "Hier gibt es nur {#0} Stelle an {#1} Ort. Eine Runde braucht mindestens {#2} Orte.",
+  [
+   0,
+   1,
+   2
   ]
  ],
  [
@@ -1603,6 +1670,20 @@ window.BF_LOCALE_DE_TEMPLATES = [
    0,
    1,
    2
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) spots need more skill than you have and are left out\\.$",
+  "{#0} Stellen brauchen mehr Fertigkeit, als du hast, und bleiben weg.",
+  [
+   0
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) quieter places are left out to keep the walk short\\.$",
+  "{#0} ruhigere Orte bleiben weg, damit der Weg kurz bleibt.",
+  [
+   0
   ]
  ],
  [
@@ -1675,6 +1756,14 @@ window.BF_LOCALE_DE_TEMPLATES = [
   ]
  ],
  [
+  "^The addon holds another loop: (.+?), ([0-9][0-9.,:/%–-]*) stops\\.$",
+  "Das Addon hält eine andere Runde: {0}, {#1} Halte.",
+  [
+   0,
+   1
+  ]
+ ],
+ [
   "^([0-9][0-9.,:/%–-]*) shown of ([0-9][0-9.,:/%–-]*) quests in your log · ([0-9][0-9.,:/%–-]*) ready$",
   "{0} von {1} Quests in deinem Log gezeigt · {2} bereit",
   [
@@ -1715,6 +1804,14 @@ window.BF_LOCALE_DE_TEMPLATES = [
   ]
  ],
  [
+  "^The addon holds a loop for (.+?), ([0-9][0-9.,:/%–-]*) stops\\.$",
+  "Das Addon hält eine Runde für {0}, {#1} Halte.",
+  [
+   0,
+   1
+  ]
+ ],
+ [
   "^(.+?)\\. Any piece here is a free upgrade\\.$",
   "{0}. Jedes Teil hier ist eine kostenlose Verbesserung.",
   [
@@ -1752,6 +1849,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
  [
   "^Game snapshot · Saved · (.+?) ago$",
   "Spielstand · Gespeichert · vor {0}",
+  [
+   0
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) from the bundled reference$",
+  "{#0} aus den Referenzdaten",
   [
    0
   ]
@@ -1957,6 +2061,20 @@ window.BF_LOCALE_DE_TEMPLATES = [
   ]
  ],
  [
+  "^Based on ([0-9][0-9.,:/%–-]*) past spots:$",
+  "Grundlage: {#0} frühere Fundstellen:",
+  [
+   0
+  ]
+ ],
+ [
+  "^Players saw it drop: (.+?)$",
+  "Spieler sahen diese Beute: {0}",
+  [
+   0
+  ]
+ ],
+ [
   "^Quests to pick up in (.+?)$",
   "Quests zum Annehmen in {0}",
   [
@@ -1987,6 +2105,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
  [
   "^· save from ([0-9][0-9.,:/%–-]*) hr ago$",
   "· Speicherstand von vor {0} Std.",
+  [
+   0
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) from the community$",
+  "{#0} aus der Community",
   [
    0
   ]
@@ -2033,6 +2158,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
   [
    0,
    1
+  ]
+ ],
+ [
+  "^about ([0-9][0-9.,:/%–-]*) min on foot$",
+  "etwa {#0} Min. zu Fuß",
+  [
+   0
   ]
  ],
  [
@@ -2264,6 +2396,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
   ]
  ],
  [
+  "^([0-9][0-9.,:/%–-]*) of your own$",
+  "{#0} eigene",
+  [
+   0
+  ]
+ ],
+ [
   "^(.+?) · Level ([0-9][0-9.,:/%–-]*) · (.+?)$",
   "{0} · Stufe {1} · {2}",
   [
@@ -2275,6 +2414,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
  [
   "^(.+?)'s quest log$",
   "Questlog von {0}",
+  [
+   0
+  ]
+ ],
+ [
+  "^about ([0-9][0-9.,:/%–-]*) yards$",
+  "etwa {#0} Yards",
   [
    0
   ]
@@ -2385,6 +2531,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
  [
   "^([0-9][0-9.,:/%–-]*) quests$",
   "{0} Quests",
+  [
+   0
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) stops$",
+  "{#0} Halte",
   [
    0
   ]

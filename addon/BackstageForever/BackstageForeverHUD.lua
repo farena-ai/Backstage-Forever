@@ -916,6 +916,18 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverHowCommand)=='function' then pcall(BackstageForeverHowCommand,message)end
                 return
             end
+            if word=='loop' then
+                if type(BackstageForeverLoopCommand)=='function' then pcall(BackstageForeverLoopCommand,message)end
+                return
+            end
+            if word=='rares' then
+                if type(BackstageForeverRaresCommand)=='function' then pcall(BackstageForeverRaresCommand,message)end
+                return
+            end
+            if word=='mapsearch' then
+                if type(BackstageForeverMapSearchCommand)=='function' then pcall(BackstageForeverMapSearchCommand,message)end
+                return
+            end
             if word=='nodes' then
                 if type(BackstageForeverNodesCommand)=='function' then pcall(BackstageForeverNodesCommand,message)end
                 return

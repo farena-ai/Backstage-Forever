@@ -64,6 +64,7 @@ let sessionHistory = null;
 let closeAskPanel = null, dropAskPanelWindow = null;
 let wishlist = null;
 let talentBuilds = null; // saved talent builds per character (talent planner)
+let gatheringLoops = null; // the gathering loop each character sent to the game
 let community = null, collectDiagnostics = null;
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
@@ -219,7 +220,7 @@ app.whenReady().then(async () => {
     game = new GameSync({
       dataDir: app.getPath("userData"),
       // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
-      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => wishlist?.get(id) || [], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null }); },
+      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => wishlist?.get(id) || [], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null }); },
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -741,7 +742,7 @@ app.whenReady().then(async () => {
   // World Map: one zone of pins plus live position, and a cross-zone finder.
   worldMap = new (require("./core/world-map.cjs").WorldMap)({
     getState: () => store.state, knowledge, npcReference: companionService.npcReference, travelReference,
-    vendorPack: companionService.vendorPack, insights, acquisitionPack: companionService.acquisitionPack, creaturePack, live: liveBridge,
+    vendorPack: companionService.vendorPack, insights, acquisitionPack: companionService.acquisitionPack, creaturePack, worldPack: require("./core/world-finds.cjs").loadWorldPack(), live: liveBridge,
     getCommunity: () => community?.index() || null,
   });
   handle("worldMap", (input) => worldMap.build(input || {}));
@@ -1026,6 +1027,11 @@ app.whenReady().then(async () => {
   // marked "Use in game" rides the desktop -> game hand-off.
   talentBuilds = new (require("./core/talent-builds.cjs").TalentBuilds)(app.getPath("userData"));
   require("./core/talent-planner-ipc.cjs").registerTalentPlanner({ handle, getState: () => store.state, gameData, builds: talentBuilds, onChange: () => { game?.writeHandoff().catch(() => {}); } });
+  // Gathering loops (E4): the loop for a zone, and the one each character sends to the game.
+  gatheringLoops = new (require("./core/gathering-loop.cjs").GatheringLoops)(app.getPath("userData"));
+  require("./core/gathering-loop-ipc.cjs").registerGatheringLoop({ handle, getState: () => store.state, loops: gatheringLoops, getCommunity: () => community?.index() || null,
+    worldPack: require("./core/world-finds.cjs").loadWorldPack(), acquisitionPack: companionService.acquisitionPack, getTransport: () => require("./core/transport-data.cjs").loadTransportPack(),
+    onChange: () => { game?.writeHandoff().catch(() => {}); } });
   radar = require("./core/radar-window.cjs").createRadar({ BrowserWindow, ipcMain, worldMap, live: liveBridge, rendererDir: path.join(__dirname, "renderer"), mapArt });
   handle("openRadar", () => radar.open());
   handle("setRadarTarget", (pin) => radar.setTarget(pin === undefined ? null : pin));
@@ -1184,6 +1190,7 @@ app.whenReady().then(async () => {
       privateAfterAction.clear();
       wishlist?.clear(); // starred loot belongs to the characters just deleted
       talentBuilds?.clear(); // and so do their talent builds
+      gatheringLoops?.clear(); // and the gathering loops sent to the game
       community?.reset(); // local install id, sent marks and pack; shared facts stay on the server
       fieldDispatch.finishReset();
       supplyDesk.reset();
