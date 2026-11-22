@@ -8,8 +8,182 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  # Every check and test runs before anything is built for publication. The window tests are
+  # split over three jobs so the release does not wait on one long queue.
+  gates-unit:
+    if: github.repository == 'farena-ai/Backstage-Forever'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run check:addon-reference
+        if: ${{ !cancelled() }}
+      - run: npm run check:find-index
+        if: ${{ !cancelled() }}
+      - run: npm run check:addon-advisor
+        if: ${{ !cancelled() }}
+      - run: npm run check:forever-vendors
+        if: ${{ !cancelled() }}
+      - run: npm run check:forever-insights
+        if: ${{ !cancelled() }}
+      - run: npm run check:forever-travel
+        if: ${{ !cancelled() }}
+      - run: npm run check:forever-acquisition
+        if: ${{ !cancelled() }}
+      - run: npm run check:forever-npc-locations
+        if: ${{ !cancelled() }}
+      - run: npm run check:forever-creatures
+        if: ${{ !cancelled() }}
+      - run: npm run check:forever-loot
+        if: ${{ !cancelled() }}
+      - run: npm test
+        if: ${{ !cancelled() }}
+  gates-1:
+    if: github.repository == 'farena-ai/Backstage-Forever'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:ui
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:setup
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:autosave
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:integration
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:living-backend
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:living-setup
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:company-backend
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:company
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:director-backend
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:director
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:preparation-backend
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:preparation
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+  gates-2:
+    if: github.repository == 'farena-ai/Backstage-Forever'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:adventure-coach
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:profession-coach
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:memory-backend
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:voice-backend
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:voice-memory
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:travel-companion
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:npc-companion
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:companion-tools
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:live-link
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:world-map
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:now
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:conversation
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+  gates-3:
+    if: github.repository == 'farena-ai/Backstage-Forever'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:companion-recovery
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:player-shell
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:product-polish
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:support
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:recovery
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:party-backend
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:party
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:command-center
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:knowledge
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:insights
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
+      - run: npm run test:character-guidance
+        timeout-minutes: 10
+        if: ${{ !cancelled() }}
   release:
     if: github.repository == 'farena-ai/Backstage-Forever'
+    needs: [gates-unit, gates-1, gates-2, gates-3]
     runs-on: windows-latest
     timeout-minutes: 90
     permissions:
@@ -34,87 +208,6 @@ jobs:
           if ($version -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' -or $env:GITHUB_REF_NAME -cne "v$version") { throw 'Tag must match strict package version' }
           "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
       - run: npm ci
-      - run: npm run check:addon-reference
-      - run: npm run check:find-index
-      - run: npm run check:addon-advisor
-      - run: npm run check:forever-vendors
-      - run: npm run check:forever-insights
-      - run: npm run check:forever-travel
-      - run: npm run check:forever-acquisition
-      - run: npm run check:forever-npc-locations
-      - run: npm run check:forever-creatures
-      - run: npm run check:forever-loot
-      - run: npm test
-      - run: npm run test:ui
-        timeout-minutes: 10
-      - run: npm run test:setup
-        timeout-minutes: 10
-      - run: npm run test:autosave
-        timeout-minutes: 10
-      - run: npm run test:integration
-        timeout-minutes: 10
-      - run: npm run test:living-backend
-        timeout-minutes: 10
-      - run: npm run test:living-setup
-        timeout-minutes: 10
-      - run: npm run test:company-backend
-        timeout-minutes: 10
-      - run: npm run test:company
-        timeout-minutes: 10
-      - run: npm run test:director-backend
-        timeout-minutes: 10
-      - run: npm run test:director
-        timeout-minutes: 10
-      - run: npm run test:preparation-backend
-        timeout-minutes: 10
-      - run: npm run test:preparation
-        timeout-minutes: 10
-      - run: npm run test:adventure-coach
-        timeout-minutes: 10
-      - run: npm run test:profession-coach
-        timeout-minutes: 10
-      - run: npm run test:memory-backend
-        timeout-minutes: 10
-      - run: npm run test:voice-backend
-        timeout-minutes: 10
-      - run: npm run test:voice-memory
-        timeout-minutes: 10
-      - run: npm run test:travel-companion
-        timeout-minutes: 10
-      - run: npm run test:npc-companion
-        timeout-minutes: 10
-      - run: npm run test:companion-tools
-        timeout-minutes: 10
-      - run: npm run test:live-link
-        timeout-minutes: 10
-      - run: npm run test:world-map
-        timeout-minutes: 10
-      - run: npm run test:now
-        timeout-minutes: 10
-      - run: npm run test:conversation
-        timeout-minutes: 10
-      - run: npm run test:companion-recovery
-        timeout-minutes: 10
-      - run: npm run test:player-shell
-        timeout-minutes: 10
-      - run: npm run test:product-polish
-        timeout-minutes: 10
-      - run: npm run test:support
-        timeout-minutes: 10
-      - run: npm run test:recovery
-        timeout-minutes: 10
-      - run: npm run test:party-backend
-        timeout-minutes: 10
-      - run: npm run test:party
-        timeout-minutes: 10
-      - run: npm run test:command-center
-        timeout-minutes: 10
-      - run: npm run test:knowledge
-        timeout-minutes: 10
-      - run: npm run test:insights
-        timeout-minutes: 10
-      - run: npm run test:character-guidance
-        timeout-minutes: 10
       - run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
