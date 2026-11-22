@@ -7484,6 +7484,34 @@
           "text": "The wish list reaches the game for characters the desktop knows from a saved addon file, matched by name and realm. Not yet checked in the real game: the marks in the in-game atlas."
         }
       ]
+    },
+    {
+      "version": "1.20.1",
+      "channel": "stable",
+      "source": "docs/releases/1.20.1.md",
+      "title": "Backstage Forever 1.20.1 — Real icons for hotfix loot",
+      "changes": [
+        {
+          "id": "hotfix-item-details",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": "atlas",
+          "section": "Changes",
+          "text": "Dungeon loot the game delivers as a hotfix now shows its real icon, quality colour, slot, stats and damage, and gets an \"Upgrade for you\" verdict like any other item. 1.20.0 could show only its name and a painted pouch. On a current install this fills in several thousand items across Dungeons & raids, item hover cards, gear comparison and the Ledger."
+        },
+        {
+          "id": "hotfix-cache-source",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "The details come from the hotfix cache the game keeps in its own folder (Cache/ADB). Backstage Forever only reads that file, on your computer; it is never changed, uploaded or bundled. A cache written by another game build is ignored, and a row that does not fit the expected layout is skipped, so the item keeps what your game files say. When the game receives new item hotfixes, the app reads items again the next time it needs them. If the game has not written a cache yet (a fresh install that has never logged in), these items still show name-only as before."
+        }
+      ]
     }
   ],
   "excluded": [

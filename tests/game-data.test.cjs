@@ -336,3 +336,134 @@ test("itemView maps every slot and keeps unknown stats readable", () => {
   assert.equal(itemView(1, row(1, [], 0x5ff)).classes, null, "every class allowed");
   assert.equal(itemView(1, null), null);
 });
+
+// --- Hotfix cache (items the game delivers as hotfixes) -----------------------------------------
+const { readHotfixCache } = require("../src/core/hotfix-cache.cjs");
+const SPARSE_HASH = 0x919be54e, ITEM_HASH = 0x50238ec2;
+// entries: [{ table, id, status = 1, data = Buffer }]
+function xfth(build, entries) {
+  const head = Buffer.alloc(44); head.write("XFTH"); head.writeUInt32LE(9, 4); head.writeUInt32LE(build, 8);
+  return Buffer.concat([head, ...entries.map((e) => {
+    const data = e.data || Buffer.alloc(0), h = Buffer.alloc(32);
+    h.write("XFTH"); h.writeInt32LE(91, 4); h.writeInt32LE(7, 8); h.writeUInt32LE(7, 12);
+    h.writeUInt32LE(e.table, 16); h.writeUInt32LE(e.id, 20); h.writeUInt32LE(data.length, 24); h[28] = e.status ?? 1;
+    return Buffer.concat([h, data]);
+  })]);
+}
+function itemBytes(cls, sub, icon) {
+  const b = Buffer.alloc(43); b.writeInt32LE(cls, 0); b[4] = sub; b[5] = 1; b.writeInt8(21, 6); b[7] = 3; b[12] = 255; b.writeInt32LE(icon, 13); b[17] = 8;
+  return b;
+}
+
+test("hotfix cache: keeps valid and removed rows of the asked tables, last entry wins", () => {
+  const a = Buffer.from("first"), b = Buffer.from("second");
+  const buf = xfth(70938, [
+    { table: SPARSE_HASH, id: 5, data: a }, { table: 0x11111111, id: 5, data: a }, { table: SPARSE_HASH, id: 5, data: b },
+    { table: SPARSE_HASH, id: 6, status: 3, data: a }, { table: SPARSE_HASH, id: 7, status: 4, data: a }, { table: ITEM_HASH, id: 8, status: 2 },
+  ]);
+  const p = readHotfixCache(buf, [SPARSE_HASH, ITEM_HASH]);
+  assert.equal(p.build, 70938);
+  assert.deepEqual([...p.tables.get(SPARSE_HASH)].map(([id, e]) => [id, e.status, e.data.toString()]), [[5, 1, "second"]]);
+  assert.deepEqual([...p.tables.get(ITEM_HASH)], [[8, { status: 2, data: null }]]);
+  assert.match(p.signature, /^[0-9a-f]{32}$/);
+  assert.notEqual(readHotfixCache(xfth(70938, [{ table: SPARSE_HASH, id: 5, data: a }]), [SPARSE_HASH]).signature, p.signature);
+  // Rows of other tables do not change the signature; nothing kept means no signature.
+  assert.equal(readHotfixCache(xfth(70938, [{ table: 0x11111111, id: 5, data: a }]), [SPARSE_HASH]).signature, null);
+  // Anything this reader does not understand is refused whole.
+  assert.equal(readHotfixCache(buf.subarray(0, buf.length - 1), [SPARSE_HASH]), null);
+  assert.equal(readHotfixCache(Buffer.concat([buf, Buffer.from("junk")]), [SPARSE_HASH]), null);
+  const other = Buffer.from(buf); other.writeUInt32LE(8, 4);
+  assert.equal(readHotfixCache(other, [SPARSE_HASH]), null);
+  assert.equal(readHotfixCache(Buffer.from("WDC5"), [SPARSE_HASH]), null);
+  assert.equal(readHotfixCache(null, [SPARSE_HASH]), null);
+});
+
+test("DB2 reader decodes one inline row and refuses bytes that do not fit the layout", () => {
+  const fields = [{ string: true, bits: 32 }, { bits: 16, count: 3 }, { bits: 8 }, { bits: 32, float: true }, { bits: 32 }];
+  const db = db2.readDb2(wdc5({ fields, rows: [{ id: 7, values: ["Worn Shortsword", [1, 2, 3], -1, 0.5, 1900] }], sparse: true }), { strings: [0], signed: [2], floats: [3] });
+  const rec = Buffer.concat([Buffer.from("Cursed Felblade\0"), Buffer.from([4, 0, 5, 0, 6, 0]), Buffer.from([0xfe]), Buffer.from([0, 0, 0x10, 0x40]), Buffer.from([0x34, 0x12, 0, 0])]);
+  assert.deepEqual(db.inline(rec), ["Cursed Felblade", [4, 5, 6], -2, 2.25, 0x1234]);
+  assert.equal(db.inline(rec.subarray(0, rec.length - 1)), null);
+  assert.equal(db.inline(Buffer.concat([rec, Buffer.alloc(1)])), null);
+});
+
+// The fake tables carry the real table hashes and decode a sparse hotfix row from JSON.
+function withHotfixDb2(tables) {
+  const original = db2.readDb2;
+  const byFdid = Object.fromEntries(Object.entries(TABLES).map(([n, t]) => [t.fdid, n]));
+  const hashes = { itemSparse: SPARSE_HASH, item: ITEM_HASH };
+  db2.readDb2 = (buf) => { const name = byFdid[buf.fdid]; if (!tables[name]) throw Object.assign(Error("missing"), { code: "MISSING" }); return { header: { layoutHash: L(name), tableHash: hashes[name] || 1 }, rows: tables[name], inline: (rec) => { try { return JSON.parse(rec.toString()); } catch { return null; } } }; };
+  return () => { db2.readDb2 = original; };
+}
+const sparseBytes = (id, o) => Buffer.from(JSON.stringify(sparseRow(id, o).fields));
+function writeHotfix(dirs, build, entries, locale = "enUS") {
+  const dir = path.join(dirs.game, "Cache", "ADB", locale);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "DBCache.bin"), xfth(build, entries));
+}
+
+test("items: hotfix-only items get their name, quality, stats and icon from the hotfix cache", (t) => {
+  const restore = withHotfixDb2(fakeTables()); t.after(restore);
+  const dirs = install(), stats = { opened: 0, reads: [], closed: 0 };
+  const felblade = { name: "Cursed Felblade", quality: 1, ilvl: 2, req: 1, inv: 21, delay: 1900, variance: 0.6 };
+  writeHotfix(dirs, 70938, [
+    { table: SPARSE_HASH, id: 14145, data: sparseBytes(14145, felblade) }, { table: ITEM_HASH, id: 14145, data: itemBytes(2, 7, 135648) },
+    { table: SPARSE_HASH, id: 60, status: 2 },                                 // removed by hotfix
+    { table: SPARSE_HASH, id: 25, data: sparseBytes(25, { name: "Worn Shortsword", quality: 2, ilvl: 2, req: 1, inv: 21, delay: 1900, variance: 0.6, sell: 7 }) }, // changed
+    { table: SPARSE_HASH, id: 1275, data: Buffer.from("not a row") },        // unreadable: the installed row stays
+    { table: ITEM_HASH, id: 50, data: Buffer.alloc(40) },                    // wrong size: the installed row stays
+  ]);
+  const g = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, idleMs: 5, open: fakeStorage(stats), hotfixCheckMs: 0 });
+  const blade = g.item(14145);
+  assert.equal(blade.name, "Cursed Felblade"); assert.equal(blade.quality, 1); assert.equal(blade.kind, "Sword"); assert.equal(blade.iconFileId, 135648);
+  assert.deepEqual(blade.damage, { min: 1, max: 3 });
+  assert.equal(g.item(60), null);
+  assert.equal(g.item(25).quality, 2);
+  assert.equal(g.item(1275).name, "Deputy Chain Coat");
+  assert.equal(g.item(50).iconFileId, 132644);
+  assert.equal(g.knownIcon(135648), true);
+  const status = g.status();
+  assert.equal(status.available, true);
+  assert.deepEqual(status.limitations, ["itemSparse: 1 hotfix rows unreadable", "item: 1 hotfix rows unreadable"]);
+  assert.equal(stats.opened, 1);
+
+  // Same hotfixes: a fresh instance uses the saved copy without opening the game.
+  const stats2 = { opened: 0, reads: [], closed: 0 };
+  const again = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, idleMs: 5, open: fakeStorage(stats2), hotfixCheckMs: 0 });
+  assert.equal(again.item(14145).name, "Cursed Felblade");
+  assert.equal(stats2.opened, 0);
+  // New item hotfixes arrive while the app runs: items are read again.
+  writeHotfix(dirs, 70938, [{ table: SPARSE_HASH, id: 14146, data: sparseBytes(14146, { ...felblade, name: "Felblade Two" }) }, { table: ITEM_HASH, id: 14146, data: itemBytes(2, 7, 135649) }]);
+  assert.equal(again.item(14146).name, "Felblade Two");
+  assert.equal(again.item(14145), null);
+  assert.equal(again.item(60).kind, "Shield");
+  assert.equal(again.knownIcon(135649), true);
+  assert.equal(stats2.opened, 1);
+  // A cache written by another game build is not used.
+  writeHotfix(dirs, 70937, [{ table: SPARSE_HASH, id: 14147, data: sparseBytes(14147, felblade) }]);
+  assert.equal(again.item(14147), null);
+  assert.equal(again.item(14146), null);
+  assert.equal(again.item(60).kind, "Shield");
+  g.release(); again.release();
+});
+
+test("items: when re-reading after new hotfixes fails, the earlier items stay; other locales are found", (t) => {
+  const restore = withHotfixDb2(fakeTables()); t.after(restore);
+  const dirs = install();
+  let broken = false, opened = 0;
+  const open = () => { opened++; if (broken) throw Error("locked"); return { readFileId: (fdid, opts) => ({ fdid, opts }), close() {} }; };
+  const g = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, idleMs: 5, open, hotfixCheckMs: 0 });
+  assert.equal(g.item(25).name, "Worn Shortsword");
+  assert.equal(opened, 1);
+  g.release(); broken = true;
+  writeHotfix(dirs, 70938, [{ table: SPARSE_HASH, id: 14145, data: sparseBytes(14145, { name: "Cursed Felblade", quality: 3, ilvl: 2, req: 1, inv: 21 }) }], "deDE");
+  assert.equal(g.item(25).name, "Worn Shortsword");
+  assert.equal(g.item(14145), null);
+  const tries = opened;
+  assert.equal(g.item(25).name, "Worn Shortsword");
+  assert.equal(opened, tries, "a failed re-read is not repeated for the same hotfixes");
+  broken = false;
+  const fresh = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, idleMs: 5, open, hotfixCheckMs: 0 });
+  assert.equal(fresh.item(14145).name, "Cursed Felblade");
+  g.release(); fresh.release();
+});

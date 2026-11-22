@@ -80,6 +80,25 @@ function readDb2(buf, opts = {}) {
   };
   const fix = (i, v) => (floats.has(i) ? f32(v) : signed.has(i) ? sx(v, elemBits[i] || 32) : v);
 
+  // One row in inline form (each field at its declared size, strings in place), as the game's
+  // hotfix cache stores it. Returns null unless the bytes fit this table's layout exactly.
+  const inline = (rec) => {
+    let at = 0, ok = true;
+    const fields = info.map((f, i) => {
+      const bits = elemBits[i] || 32, bytes = bits >> 3;
+      const n = f.type === 4 ? f.v3 : f.type === 0 || sparse ? Math.max(1, f.bitSize / (strings.has(i) ? 32 : bits) | 0) : 1;
+      const one = () => {
+        if (strings.has(i)) { const v = cstring(rec, at); at += Buffer.byteLength(v) + 1; return v; }
+        if (bytes < 1 || at + bytes > rec.length) { ok = false; at += bytes; return 0; }
+        const v = bytes > 6 ? Number(rec.readBigUInt64LE(at)) : rec.readUIntLE(at, bytes);
+        at += bytes;
+        return fix(i, v);
+      };
+      return n === 1 ? one() : Array.from({ length: n }, one);
+    });
+    return ok && at === rec.length ? fields : null;
+  };
+
   const rows = [];
   let globalIndex = 0;
   for (const s of sections) {
@@ -165,7 +184,7 @@ function readDb2(buf, opts = {}) {
       for (const [newId, oldId] of copies) { const src = byId.get(oldId); if (src) rows.push({ ...src, id: newId }); }
     }
   }
-  return { header: h, rows };
+  return { header: h, rows, inline };
 }
 
 module.exports = { readDb2, readBits, cstring };
