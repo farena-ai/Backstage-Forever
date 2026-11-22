@@ -355,6 +355,7 @@ window.BF_LOCALE_DE = {
  "Desktop view presets": "Desktop-Ansichtsvorgaben",
  "Destination & saved evidence": "Ziel & gespeicherte Belege",
  "Details could not be loaded.": "Details konnten nicht geladen werden.",
+ "Details not in your game files yet": "Details noch nicht in deinen Spieldateien",
  "Dictation language": "Diktat-Sprache",
  "Different game build": "Andere Spielversion",
  "different items": "verschiedene Gegenstände",
