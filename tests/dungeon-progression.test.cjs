@@ -20,17 +20,18 @@ test("projects exact saved Defias quest, starred gear goal and dated Deadmines d
   assert.deepEqual(result.defeats, { captureBuild: null, rows: [{ name: defeat.name, encounterId: defeat.encounterId, at: defeat.at }], moreRetained: false });
 });
 
-test("a different reviewed save build cannot borrow the older build's gear source", () => {
-  const result = model({ ...profile, clientBuild: "1.60.1.70888", quests: [quest(166)] }, [5202]);
+test("another build of the reviewed patch keeps the gear source; another patch has no review", () => {
+  const result = model({ ...profile, clientBuild: "1.60.1.71037", quests: [quest(166)] }, [5202]);
   assert.equal(result.status, "available");
-  assert.equal(result.gearGoals, null);
+  assert.deepEqual(result.gearGoals.map(g => g.itemId), [5202]);
   assert.deepEqual(result.quests.map(q => q.id), [166]);
+  assert.equal(model({ ...profile, clientBuild: "1.60.2.70888", quests: [quest(166)] }, [5202]).status, "unavailable");
 });
 
 test("only the reviewed exact dungeon and compatible dated addon scope are admitted", () => {
   assert.equal(model(profile, [2041], "lbrs"), null);
   for (const p of [null, { ...profile, source: undefined }, { ...profile, source: { ...profile.source, updatedAt: new Date((t + 1) * 1000).toISOString() } },
-    { ...profile, clientBuild: "1.60.1.70888-extra" }, { ...profile, clientBuild: "1.60.1.70900" }, { ...profile, clientBuild: null }]) {
+    { ...profile, clientBuild: "1.60.1.70888-extra" }, { ...profile, clientBuild: "1.60.2.70900" }, { ...profile, clientBuild: null }]) {
     const result = model(p, [2041]);
     assert.equal(result.status, "unavailable");
     assert.equal(result.gearGoals, undefined);

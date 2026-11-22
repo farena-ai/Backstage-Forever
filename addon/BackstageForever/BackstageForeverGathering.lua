@@ -322,7 +322,11 @@ local function mapContext(mapId)
     if type(BackstageForeverHelperEnabled)=='function' and call(BackstageForeverHelperEnabled,'gatheringMarks')~=true then return end
     if call(InCombatLockdown)~=false or not bind() then return end
     local build=clientBuild()
-    if build~='1.60.1.70862' or call(property(C_Map,'GetBestMapForUnit'),'player')~=mapId then return end
+    -- Checked on 70862; used on every build of that patch.
+    local usable=BackstageForeverBuildUsable
+    local supported=build=='1.60.1.70862'
+    if type(usable)=='function' then supported=call(usable,'1.60.1.70862',build)==true end
+    if not supported or call(property(C_Map,'GetBestMapForUnit'),'player')~=mapId then return end
     return build,epoch()
 end
 local function liveRanks()

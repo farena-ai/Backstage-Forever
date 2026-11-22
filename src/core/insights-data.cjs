@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 const fs = require("node:fs"),
   path = require("node:path"),
   { isDeepStrictEqual } = require("node:util");
@@ -786,7 +787,7 @@ function questInsights(pack, { id, title, build, locale } = {}) {
     reason,
     source: source(pack),
   });
-  if (build && build !== pack.build)
+  if (build && !buildCompat.usable(pack.build, build))
     return unavailable(
       "Saved game build differs from the bundled supplementary reference.",
     );

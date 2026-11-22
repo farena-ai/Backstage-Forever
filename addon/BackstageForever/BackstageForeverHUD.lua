@@ -9,7 +9,12 @@ local epoch=0
 local questHelp={generation=0}
 local anchors={TOPLEFT=true,TOP=true,TOPRIGHT=true,LEFT=true,CENTER=true,RIGHT=true,BOTTOMLEFT=true,BOTTOM=true,BOTTOMRIGHT=true}
 local focuses={balanced='nearby',nearby='turn-ins',['turn-ins']='balanced'}
-local DETOUR_ROUTE_BUILD='1.60.1.70888' -- first replay slice only
+local DETOUR_ROUTE_BUILD='1.60.1.70888' -- checked on this build; used on every build of the same patch
+local function buildUsable(dataBuild,clientBuild)
+    local fn=BackstageForeverBuildUsable
+    if type(fn)=='function' then local ok,value=pcall(fn,dataBuild,clientBuild);return ok and value==true end
+    return dataBuild~=nil and dataBuild==clientBuild
+end
 local function finite(value) return type(value)=='number' and value==value and math.abs(value)<=10000 end
 local function safe(fn,...)
     if type(fn)~='function' then return nil end
@@ -353,7 +358,7 @@ update=function()
     local selected,command,stepIndex,onMyWay
     local route=latest and currentRoute()
     local detoursEnabled=helper('questDetours')
-    local routeContext=route and route.questIds and latest.clientBuild==DETOUR_ROUTE_BUILD and route or nil
+    local routeContext=route and route.questIds and buildUsable(DETOUR_ROUTE_BUILD,latest.clientBuild) and route or nil
     local function project(inFlight)
         if not latest or (route and (not routeContext or not detoursEnabled)) then return nil end
         return safe(BackstageForeverBuildCoach,latest,{mode=settings.mode,skillLineId=settings.profession.skillLineId,
@@ -989,6 +994,10 @@ if type(SlashCmdList)=='table' then
         if message=='hide' then visible=false elseif message=='show' then visible=true
         elseif message=='status' then
             if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..(latest and 'live guidance in WoW; desktop saves on logout / UI reload.' or 'waiting for public snapshot.'))end
+            local ok,lines=pcall(BackstageForeverBuildStatus)
+            for _,line in ipairs(ok and type(lines)=='table' and lines or {})do
+                if type(DEFAULT_CHAT_FRAME)=='table' then safe(DEFAULT_CHAT_FRAME.AddMessage,DEFAULT_CHAT_FRAME,'Backstage Forever: '..(BackstageForeverTr or tostring)(text(line,200)))end
+            end
             return
         elseif message=='' then visible=not visible
         else

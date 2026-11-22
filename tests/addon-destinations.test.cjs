@@ -115,7 +115,7 @@ assert(step.command and step.command:find('guide 42 o 1413',1,true));save()
   assert.equal(resolved.destination.text, approved.quests[0].destination.text);
   assert.equal(resolved.canCopy, true);
   assert.equal(index.resolveWaypoint(profile, 42, "t").canCopy, false);
-  assert.equal(index.resolveWaypoint({ ...profile, clientBuild: "1.60.1.99999" }, 42, "o").canCopy, false);
+  assert.equal(index.resolveWaypoint({ ...profile, clientBuild: "1.60.2.99999" }, 42, "o").canCopy, false);
 });
 
 test("quest area rejects start-only broad absent-state conflicting and malformed matching rows", () => run(String.raw`

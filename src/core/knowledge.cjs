@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 // Application code: MIT. Compiled publisher facts: CC BY 4.0 (see data/forever/NOTICE).
 const { createHash } = require("node:crypto");
 const FILES = Object.freeze([
@@ -1130,13 +1131,14 @@ class KnowledgeIndex {
       }
   }
   compatible(p) {
-    return Boolean(observedBuild(p) && p.clientBuild === this.pack.build);
+    return Boolean(observedBuild(p) && buildCompat.usable(this.pack.build, p.clientBuild));
   }
   details(p = {}, questId) {
     if (!id(questId)) fail();
     const q = this.pack.quests[questId];
     const active = p.quests?.find((q) => q.id === questId);
-    const mismatch = p.clientBuild && p.clientBuild !== this.pack.build;
+    const mismatch = p.clientBuild && !buildCompat.usable(this.pack.build, p.clientBuild);
+    const carried = buildCompat.carriedNote(this.pack.build, p.clientBuild);
     const conflict =
       active && (!p.locale || p.locale === "enUS") && active.title !== q?.title;
     const status =
@@ -1150,6 +1152,7 @@ class KnowledgeIndex {
     const warnings = [];
     if (mismatch)
       warnings.push("No reference pack matches this character build.");
+    if (carried && q) warnings.push(carried);
     if (conflict)
       warnings.push(
         "Game title differs from the English reference; current game data wins.",
@@ -1270,7 +1273,7 @@ class KnowledgeIndex {
         typeof options.includeReferenceOnly !== "boolean")
     )
       fail();
-    if (p.clientBuild && p.clientBuild !== this.pack.build) return [];
+    if (p.clientBuild && !buildCompat.usable(this.pack.build, p.clientBuild)) return [];
     const active = new Map(p.quests?.map((q) => [q.id, q]) || []),
       needle = query.trim().toLocaleLowerCase("en-US");
     const currentTitle = (q) => active.get(q.id)?.title || q.title;

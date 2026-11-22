@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 const crypto = require("node:crypto");
 // Independent ordinary labels for the matching UI constants; provenance is documented in CHARACTER-GUIDANCE.
 const SLOT_BUILD = "1.60.1.70862";
@@ -46,8 +47,8 @@ function buildCharacterGuidance(state, profileId, { insights = null, now = Date.
   let status = !p ? "no-character" : source?.kind !== "wow-addon" ? "manual" :
     !source.build || !source.locale || !Number.isFinite(saved) ? "missing-metadata" :
     saved > now ? "future-date" : now - saved > 7 * 86400000 ? "stale" :
-    insights && (source.build !== insights.build || source.locale !== insights.textLocale) ? "mismatch" : "observed";
-  const compatible = source?.kind === "wow-addon" && source.build === insights?.build && source.locale === insights?.textLocale;
+    insights && (!buildCompat.usable(insights.build, source.build) || source.locale !== insights.textLocale) ? "mismatch" : "observed";
+  const compatible = source?.kind === "wow-addon" && buildCompat.usable(insights?.build, source.build) && source.locale === insights?.textLocale;
   const equipment = p?.readiness?.equipment;
   const rows = (equipment || []).slice(0, 19).map(item => ({
     slot: item.slot, slotLabel: source?.kind === "wow-addon" && SLOT_FAMILY.test(String(source.build || "")) ? SLOTS[item.slot - 1] || `Slot ${item.slot}` : `Slot ${item.slot}`,

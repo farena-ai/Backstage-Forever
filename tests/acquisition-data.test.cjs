@@ -57,7 +57,7 @@ test("matching dated addon yields historical places only, with explicit uncovere
 });
 test("current 70888, manual and missing or malformed date are browse-only with reasons", () => {
   const a = api(), p = a.loadAcquisitionPack();
-  for (const [update, reason] of [[q => q.clientBuild = "1.60.1.70888", /build mismatch/i], [q => q.source.kind = "manual", /saved addon/i], [q => delete q.source.updatedAt, /dated/i], [q => q.source.updatedAt = "garbage", /dated/i]]) {
+  for (const [update, reason] of [[q => q.clientBuild = "1.60.2.70888", /build mismatch/i], [q => q.source.kind = "manual", /saved addon/i], [q => delete q.source.updatedAt, /dated/i], [q => q.source.updatedAt = "garbage", /dated/i]]) {
     const q = profile(); update(q); const dto = a.acquisitionFacts(p, q, [765, 2320]);
     for (const row of dto.rows) { assert.equal(row.status, "browse-only"); assert.match(row.sources[0].reason, reason); }
   }

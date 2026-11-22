@@ -143,7 +143,7 @@ test("guidance and brief enrich exact IDs while preserving actual destination pr
   assert.equal(brief.guidance.steps[0].knowledge.record.id, 1061);
   assert.equal(brief.quests.items[0].knowledge.record.id, 1061);
   assert.equal(
-    buildGuidance({ ...p, clientBuild: "1.60.1.9" }, { knowledge: index })
+    buildGuidance({ ...p, clientBuild: "1.60.2.9" }, { knowledge: index })
       .steps[0].referenceDestination,
     undefined,
   );
@@ -194,7 +194,7 @@ test("shared context helper grounds facts and excludes private data and full his
     "Optional character context: " + serialized,
   );
   assert.deepEqual(
-    ai.approvedProfile({ ...p, clientBuild: "1.60.1.9" }, options).knowledge,
+    ai.approvedProfile({ ...p, clientBuild: "1.60.2.9" }, options).knowledge,
     undefined,
   );
 });

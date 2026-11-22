@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 const { createHash } = require("node:crypto");
 const { validateState } = require("./validation.cjs");
 
@@ -54,7 +55,7 @@ function buildCompany(state, { now = Date.now() } = {}) {
       if (s.quest && p) {
         tracking = !p.source || !p.clientBuild ? "unknown"
           : hashes.get(p.id) !== s.quest.sourceHash ? "identity-mismatch"
-          : p.clientBuild !== s.quest.build ? "build-mismatch" : "tracked";
+          : p.clientBuild !== s.quest.build && !buildCompat.usable(s.quest.build, p.clientBuild) ? "build-mismatch" : "tracked";
       }
       const ready = Boolean(s.quest && tracking === "tracked" && p.quests?.find((q) => q.id === s.quest.id)?.complete);
       const historical = tracking !== "tracked";

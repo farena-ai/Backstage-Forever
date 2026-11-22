@@ -61,7 +61,7 @@ test("known empty history is zero; unsupported builds and counts without known I
   assert.deepEqual(find(zero).questSteps?.map(step => step.confirmed), ids.map(() => false));
   for (const fields of [
     { clientBuild: undefined, history: history(...ids) },
-    { clientBuild: "1.60.1.70840", history: history(...ids) },
+    { clientBuild: "1.60.2.70840", history: history(...ids) },
     { history: { recent: [], completedCount: 500 } },
     { history: { ...history(...ids), completedIdsKnown: false } },
     { history: { recent: ids.map(id => ({ id, title: "Same title", completedAt: stamp + 1 })) } },

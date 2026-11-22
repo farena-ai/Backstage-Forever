@@ -14,7 +14,7 @@ CreateFrame=GetFrame
 local function fire(e,...)for _,f in ipairs(frames)do if f.events[e] and f.OnEvent then f:OnEvent(e,...)end end end
 InCombatLockdown=function()return fighting end
 UnitGUID=function()return owner end
-GetBuildInfo=function()return '1.60.1',build end
+GetBuildInfo=function()return patch or '1.60.1',build end
 DEFAULT_CHAT_FRAME={AddMessage=function(_,v)msgs[#msgs+1]=v end}
 `;
 test('known lower Frostbolt rank on an exact action slot reminds only after verified learning',()=>replay(events+String.raw`
@@ -33,8 +33,8 @@ assert(#msgs==1 and msgs[1]:find('Frostbolt',1,true) and msgs[1]:find('7',1,true
 fire('SPELLS_CHANGED');fire('ACTIONBAR_SLOT_CHANGED',7);assert(#msgs==1,'unchanged reminder must not spam')
 BackstageForeverHelpersCommand('helpers spellRankReminder off')
 local before=reads;fire('SPELLS_CHANGED');assert(reads==before)
-build='70960';BackstageForeverHelpersCommand('helpers spellRankReminder on');fire('SPELLS_CHANGED');assert(reads==before)
-build='70959';C_SpellBook.FindSpellBookSlotForSpell=nil;fire('SPELLS_CHANGED');assert(reads==before,'absent spellbook API is not learned-rank evidence')
+patch='1.60.2';BackstageForeverHelpersCommand('helpers spellRankReminder on');fire('SPELLS_CHANGED');assert(reads==before,'another patch is not supported')
+patch=nil;build='70959';C_SpellBook.FindSpellBookSlotForSpell=nil;fire('SPELLS_CHANGED');assert(reads==before,'absent spellbook API is not learned-rank evidence')
 owner='B';fire('SPELLS_CHANGED');assert(#msgs==3) -- one reminder and two explicit settings acknowledgements
 `,['BackstageForeverHelpers.lua','BackstageForeverCoach.lua']));
 test('native gathering overlay marks only qualified historical points and drops them outside current scope',()=>replay(events+String.raw`

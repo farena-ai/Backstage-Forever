@@ -818,7 +818,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.17.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.17.1'
     character.race=clean((call(UnitRace,'player')));
     -- UnitSex: 2 male, 3 female; 1 (unknown) and anything else is left out.
     local sex=integer(call(UnitSex,'player'),1,3);if sex==2 then character.sex='male' elseif sex==3 then character.sex='female' end
@@ -1021,7 +1021,10 @@ function BackstageForeverGuide(message)
     local phase=parts[3];local x,y=tonumber(parts[5]),tonumber(parts[6])
     if not quest or not map or (phase~='t' and phase~='o' and phase~='r') or not x or not y or x<0 or x>1 or y<0 or y>1 then guideMessage(help);return end
     if call(InCombatLockdown)~=false then guideMessage('Waypoint unavailable in combat or restricted state.');return end
-    if clientBuild()~=parts[7] then guideMessage('Waypoint build mismatch; use a current Compass step or a command from a matching saved build.');return end
+    -- A command made from data checked on another build of the same patch is accepted (BackstageForeverBuildUsable).
+    local sameBuild=clientBuild()==parts[7]
+    if not sameBuild and type(BackstageForeverBuildUsable)=='function' then sameBuild=call(BackstageForeverBuildUsable,parts[7],clientBuild())==true end
+    if not sameBuild then guideMessage('Waypoint build mismatch; use a current Compass step or a command from a matching saved build.');return end
     if phase~='r' then
         local api=public(C_QuestLog)
         local logIndex=integer(call(field(api,'GetLogIndexForQuestID'),quest),1,1000)

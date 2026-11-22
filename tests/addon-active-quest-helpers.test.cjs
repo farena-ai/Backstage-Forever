@@ -144,7 +144,8 @@ assert(unitTip()=='','complete and unknown counts excluded')
 complete[1434]=false; rows[1434][1].numFulfilled=0; assert(unitTip():find('7 remaining',1,true),'known zero is not unknown')
 rows[1434][1].type='item'; assert(unitTip()=='','objective stage mismatch'); rows[1434][1].type='monster'
 combat=true; assert(unitTip()=='','quiet in combat'); combat=false
-build='00000'; assert(unitTip()=='','unsupported build')
+build='71037'; assert(unitTip()~='','another build of the same patch keeps the checked hints')
+version='1.60.2'; assert(unitTip()=='','unsupported patch')
 `));
 
 test('quest-item cue requires current place, exact carried item and unfinished use stage', () => replay(active + String.raw`

@@ -218,7 +218,7 @@ test("quest projection qualifies build, locale, title and unknown evidence witho
   assert.equal(f.startItem.name, "Synthetic Starter");
   assert.equal(f.itemDrops[0].name, "Item #21");
   for (const change of [
-    { build: "1.60.1.0" },
+    { build: "1.60.2.0" },
     { locale: "deDE" },
     { title: "Other" },
     { id: 999 },

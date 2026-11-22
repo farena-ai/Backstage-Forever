@@ -64,7 +64,7 @@ test("the documented Org to TB pair is compared on evidence and requirements, no
   assert.match(requested.text, /no direct Orgrimmar to Thunder Bluff zeppelin/);
 });
 test("missing build or a missing direction cannot supply a second option", () => {
-  const roadOnly = trip("compare travel options from org to tb", { ...matching, clientBuild: "1.60.1.0" });
+  const roadOnly = trip("compare travel options from org to tb", { ...matching, clientBuild: "1.60.2.0" });
   assert.deepEqual(roadOnly.options.map((o) => o.mode), ["road"]);
   assert.deepEqual(roadOnly.sources.map((s) => s.id), ["E2", "E3"]);
   assert.match(roadOnly.text, /matching build/);
@@ -134,7 +134,7 @@ test("all published flights stay conditional, carry build/date, and never imply 
 test("manual, mismatched or missing saved build cannot promote exact-build flight observations", () => {
   for (const p of [
     { ...matching, source: { kind: "manual" } },
-    { ...matching, clientBuild: "1.60.1.0" },
+    { ...matching, clientBuild: "1.60.2.0" },
     { ...matching, clientBuild: undefined },
     { ...matching, source: undefined },
   ]) {

@@ -1,4 +1,5 @@
 "use strict";
+const buildCompat = require("./build-compat.cjs");
 // Badges: milestones a character has earned, from its own saved data. Each badge says plainly
 // what it's for and, when locked, what's left to earn it.
 const { splits, savedSource, savedDungeonDefeats } = require("./journal-data.cjs");
@@ -155,7 +156,7 @@ function observedMedalStandings(profile) {
 }
 function awardFacts(profile) {
   const history = profile?.history;
-  const chainCompletions = savedSource(profile) && QUEST_CHAIN_BUILDS.has(profile.clientBuild) &&
+  const chainCompletions = savedSource(profile) && [...QUEST_CHAIN_BUILDS].some(b => buildCompat.usable(b, profile.clientBuild)) &&
     history?.completedIdsKnown === true && Array.isArray(history.completedIds) ? new Set(history.completedIds) : null;
   return { professions: observedProfessionRanks(profile), dungeonVictories: savedDungeonDefeats(profile)?.distinct ?? 0, chainCompletions,
     reputation: observedMedalStandings(profile) };

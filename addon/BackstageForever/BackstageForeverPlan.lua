@@ -25,6 +25,11 @@ local function point(value)
     if not map or not x or not y or (label~=nil and label~='' and not text(label)) then return nil end
     return {mapId=map,x=x,y=y,text=text(label)}
 end
+local function buildUsable(dataBuild,clientBuild)
+    local fn=BackstageForeverBuildUsable
+    if type(fn)=='function' then local ok,value=pcall(fn,dataBuild,clientBuild);return ok and value==true end
+    return dataBuild~=nil and dataBuild==clientBuild
+end
 local function referenceInfo(character)
     local raw=BackstageForeverReference
     local result={status='unavailable'}
@@ -37,7 +42,12 @@ local function referenceInfo(character)
     result.attribution=field(raw,'attribution');result.license='CC BY 4.0'
     result.observedThrough=text(field(raw,'observedThrough'),10)
     result.status=build(field(character,'clientBuild')) and 'build-mismatch' or 'unknown-build'
-    if field(character,'clientBuild')~=result.build then return nil,result end
+    if field(character,'clientBuild')~=result.build then
+        -- Another build of the same patch: use the reference and say which build it was checked on.
+        if not buildUsable(result.build,field(character,'clientBuild')) then return nil,result end
+        result.status='carried';result.clientBuild=field(character,'clientBuild')
+        return raw,result
+    end
     result.status='match'
     return raw,result
 end
