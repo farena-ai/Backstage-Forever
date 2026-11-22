@@ -45,16 +45,20 @@ end
 
 -- Pure: the wish list the desktop app handed over for this character ("Name-Realm"), as a set of item ids.
 -- BackstageForeverDesktop.lua is written by the desktop app and read at login or /reload.
-function BackstageForeverWishSet(name,realm)
+local function handed(name,realm,key)
     local set={}
     local data=type(BackstageForeverDesktopData)=='table' and BackstageForeverDesktopData or nil
     if not data or rawget(data,'schema')~=1 or type(name)~='string' or type(realm)~='string' then return set end
     local characters=rawget(data,'characters')
     local row=type(characters)=='table' and rawget(characters,name..'-'..realm)
-    local wish=type(row)=='table' and rawget(row,'wish')
+    local wish=type(row)=='table' and rawget(row,key)
     for _,id in ipairs(type(wish)=='table' and wish or {}) do if type(id)=='number' then set[id]=true end end
     return set
 end
+function BackstageForeverWishSet(name,realm) return handed(name,realm,'wish') end
+-- Pure: the dungeon drops the desktop app rated as an upgrade over what this character wore when
+-- the desktop last read its saved file.
+function BackstageForeverUpgradeSet(name,realm) return handed(name,realm,'up') end
 -- Pure: how many of an instance row's recorded drops are in the set.
 function BackstageForeverWishCount(row,set)
     local count,seen=0,{}
@@ -79,6 +83,22 @@ end
 local function wishes()
     local okName,name=pcall(UnitName,'player') local okRealm,realm=pcall(GetRealmName)
     return BackstageForeverWishSet(okName and name or nil,okRealm and realm or nil)
+end
+local function upgrades()
+    local okName,name=pcall(UnitName,'player') local okRealm,realm=pcall(GetRealmName)
+    return BackstageForeverUpgradeSet(okName and name or nil,okRealm and realm or nil)
+end
+-- Pure: the coloured words in front of a drop: gold for a wish, green for an upgrade.
+function BackstageForeverAtlasMarks(id,wished,better)
+    return ((type(wished)=='table' and wished[id]) and ('|cffffd100'..T('Wish')..'|r ') or '')
+        ..((type(better)=='table' and better[id]) and ('|cff40ff40'..T('Upgrade')..'|r ') or '')
+end
+-- Pure: the line under an instance's name: wishes and upgrades it holds, then the level fit.
+function BackstageForeverAtlasFitLine(row,fit,wished,better)
+    local wishCount,upCount=BackstageForeverWishCount(row,wished),BackstageForeverWishCount(row,better)
+    return (wishCount>0 and ('|cffffd100'..wishCount..' '..T('on your wish list')..'|r  ·  ') or '')
+        ..(upCount>0 and ('|cff40ff40'..upCount..' '..T(upCount==1 and 'upgrade for you' or 'upgrades for you')..'|r  ·  ') or '')
+        ..T(FIT_WORD[fit])
 end
 local function rows() return type(BackstageForeverAtlasData)=='table' and BackstageForeverAtlasData or {} end
 local function level()
@@ -146,13 +166,13 @@ local function showBoss()
     frame.bossName:SetText(boss[1])
     frame.tip:SetText(T(BackstageForeverAtlasTip(boss[1]) or 'No tip for this boss yet.'))
     local loot=BackstageForeverAtlasLoot(boss[2])
-    local wished=wishes()
+    local wished,better=wishes(),upgrades()
     for i,line in ipairs(lootRows) do
         local item=loot[i]
         if item then
             line.item=item.id
-            -- A gold mark on items starred on the desktop.
-            line.text:SetText((wished[item.id] and ('|cffffd100'..T('Wish')..'|r ') or '')..itemLabel(item.id)..'  |cffaaaaaa'..item.chance..'%|r')
+            -- A gold mark on items starred on the desktop, a green one on upgrades it found.
+            line.text:SetText(BackstageForeverAtlasMarks(item.id,wished,better)..itemLabel(item.id)..'  |cffaaaaaa'..item.chance..'%|r')
             line:Show()
         else line.item=nil;line:Hide() end
     end
@@ -172,8 +192,7 @@ local function showInstance()
     frame.facts:SetText(('%s %d-%d  ·  %s%s%s'):format(T('Levels'),row[4],row[5],T(row[3]=='r' and 'Raid' or 'Dungeon'),
         place and ('  ·  '..place) or '',side and ('  ·  '..side) or ''))
     local color=FIT_COLOR[fit]
-    local wishCount=BackstageForeverWishCount(row,wishes())
-    frame.fit:SetText((wishCount>0 and ('|cffffd100'..wishCount..' '..T('on your wish list')..'|r  ·  ') or '')..T(FIT_WORD[fit]));frame.fit:SetTextColor(color[1],color[2],color[3])
+    frame.fit:SetText(BackstageForeverAtlasFitLine(row,fit,wishes(),upgrades()));frame.fit:SetTextColor(color[1],color[2],color[3])
     if row[7]~=0 then frame.entrance:Show() else frame.entrance:Hide() end
     local count=#BackstageForeverAtlasQuests(row,faction())
     frame.questsButton:SetText(showQuests and T('Bosses') or (T('Quests')..' ('..count..')'))

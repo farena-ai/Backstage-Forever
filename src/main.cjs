@@ -56,6 +56,7 @@ const { registerRecoveryHandlers, RECOVERY_MESSAGES } = require("./core/recovery
 const { releaseChannel } = require("../package.json");
 const { FieldDispatchStore } = require("./core/field-dispatch-desktop.cjs");
 const { LiveBridge } = require("./core/live-bridge.cjs");
+let handoffUpgrades = () => []; // set once the loot handlers exist (desktop -> game hand-off)
 let liveBridge = null;
 let radar = null;
 let miniNow = null;
@@ -217,7 +218,7 @@ app.whenReady().then(async () => {
     game = new GameSync({
       dataDir: app.getPath("userData"),
       // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
-      handoff: () => require("./core/desktop-handoff.cjs").compile({ profiles: store?.state?.profiles || [], wishlist: (id) => wishlist?.get(id) || [] }),
+      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => wishlist?.get(id) || [], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)) }); },
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -239,6 +240,8 @@ app.whenReady().then(async () => {
           )
             merged.onboarded = true;
           store.saveState(merged);
+          // New gear changes which drops are upgrades: refresh the file the game reads at /reload.
+          setImmediate(() => { game?.writeHandoff().catch(() => {}); });
           const selected = merged.profiles.find(
             (p) => p.id === merged.activeProfileId,
           );
@@ -1032,6 +1035,7 @@ app.whenReady().then(async () => {
   wishlist = new (require("./core/wishlist.cjs").WishList)(app.getPath("userData"));
   require("./core/sheet-comparison.cjs").registerSheetComparison({ handle, getState: () => store.state, gameData, wishlist });
   const bossLoot = require("./core/boss-loot-ipc.cjs").registerBossLootHandlers({ handle, getState: () => store.state, gameData, wishlist, onWishChange: () => { game?.writeHandoff().catch(() => {}); }, getPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(), getCommunity: () => community?.index() || null, creatureName: (id) => worldMap?.npcName(id) || null, priceFor: (id) => ledgerPrice(id) });
+  handoffUpgrades = (profile) => bossLoot.upgrades(profile);
   handle("dungeonAtlas", () => {
     const profile = store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null;
     const atlas = buildAtlas({ profile, encounters, knowledgePack: knowledge?.bundled?.pack }), loot = bossLoot.summary(profile);

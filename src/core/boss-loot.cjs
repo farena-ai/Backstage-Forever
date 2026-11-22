@@ -89,6 +89,12 @@ function rateAll(pack, profile, gameData) {
   return { rated: out, equipmentKnown: eq.equipmentKnown };
 }
 const isUp = (v) => v.verdict === "upgrade";
+// Item ids of boss drops that are an upgrade for this character right now, lowest id first.
+function upgradeIds(pack, { profile = null, gameData = null } = {}) {
+  if (!pack || !profile) return [];
+  const { rated } = rateAll(pack, profile, gameData);
+  return [...rated].filter(([, r]) => isUp(r.verdict)).map(([id]) => id).sort((a, b) => a - b);
+}
 // Per atlas instance: counts for the card chip, and the starred items that drop there.
 function atlasLootSummary(pack, { profile = null, gameData = null, wished = [] } = {}) {
   if (!pack) return {};
@@ -148,4 +154,4 @@ function itemCard(pack, itemId, { profile = null, gameData = null, wished = [], 
   const communitySources = (community?.dropsByItem?.get(itemId) || []).slice(0, 3).map((d) => ({ npcId: d.npcId, name: bosses.get(d.npcId) || creatureName(d.npcId) || `Creature #${d.npcId}`, chance: d.rate, samples: d.samples, installs: d.installs, source: provenance(d.installs) }));
   return { itemId, item: view(it, itemId), verdict: upgradeVerdict(it, equipmentContext(profile, gameData)), ownership: ownership(profile, itemId), sources, communitySources, wished: wished.includes(itemId) };
 }
-module.exports = { equipmentContext, upgradeVerdict, atlasLootSummary, instanceLoot, itemCard, INSTANCE_NAMES };
+module.exports = { equipmentContext, upgradeVerdict, atlasLootSummary, upgradeIds, instanceLoot, itemCard, INSTANCE_NAMES };
