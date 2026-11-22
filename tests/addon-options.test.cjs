@@ -122,3 +122,21 @@ test("the desktop installs every file the addon's list of files names", () => {
   assert.ok(ADDON_FILES.includes("Bindings.xml"), "key bindings load from Bindings.xml beside the .toc");
   for (const file of ADDON_FILES) assert.ok(fs.existsSync(path.join(root, "addon/BackstageForever", file)), file);
 });
+
+test("the first-login welcome card has three rows with their own painted medallions and never opens in combat", () => {
+  lua(STUBS + String.raw`
+dofile('addon/BackstageForever/BackstageForeverOptions.lua')
+assert(#BackstageForeverWelcomeRows==3)
+for _,row in ipairs(BackstageForeverWelcomeRows) do assert(#row.title<=24 and #row.text<=96 and row.art:match('^Buttons\\%a+$'),row.title) end
+combat=true;assert(BackstageForeverWelcomeOpen()==false)
+BackstageForeverWelcomeCommand();assert(said[#said]:find('outside combat',1,true))
+combat=false;assert(BackstageForeverWelcomeOpen()==true and BackstageForeverWelcome.shown==true)
+`);
+  for (const name of ["ask", "compass", "journal"]) {
+    const tga = fs.readFileSync(path.join(root, "addon/BackstageForever/Art/Buttons", name + ".tga"));
+    assert.equal(tga.readUInt16LE(12), 64, name); assert.equal(tga.readUInt16LE(14), 64, name); assert.equal(tga[16], 32, name + " has alpha");
+  }
+  const assist = read("addon/BackstageForever/BackstageForeverAssist.lua");
+  assert.match(assist, /pcall\(BackstageForeverWelcomeOpen\);shown=ok and value==true/, "first login tries the card, then falls back to the banner");
+  assert.match(read("addon/BackstageForever/BackstageForeverHUD.lua"), /word=='welcome'/);
+});

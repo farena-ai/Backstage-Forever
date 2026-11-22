@@ -234,3 +234,63 @@ if type(CreateFrame)=='function' then
     loader:RegisterEvent('PLAYER_LOGIN')
     loader:SetScript('OnEvent',function() pcall(register) end)
 end
+
+-- First login (1.18): one painted card instead of a line of chat. Three things the addon does,
+-- where the settings are, and that the free desktop app exists. /bf welcome shows it again.
+local WELCOME={
+    {art='Buttons\\compass',title='Follow the Compass',
+        text='The panel on your screen shows your next step. Type /bf next for an arrow to it.'},
+    {art='Buttons\\ask',title='Ask the owl',
+        text='Left-click the owl on the minimap to ask a question. Right-click it for settings.'},
+    {art='Buttons\\journal',title='Get the desktop app',
+        text='Free at backstagecoding.com: maps, plans and a companion. It keeps this addon up to date.'},
+}
+BackstageForeverWelcomeRows=WELCOME
+local welcome
+local function buildWelcome()
+    if welcome or type(CreateFrame)~='function' or not UIParent then return welcome end
+    local f=CreateFrame('Frame','BackstageForeverWelcome',UIParent)
+    f:Hide();f:SetSize(520,372);f:SetPoint('CENTER',0,40)
+    f:SetFrameStrata('DIALOG');f:SetClampedToScreen(true);f:EnableMouse(true)
+    if type(BackstageForeverPaintNineSlice)=='function' then pcall(BackstageForeverPaintNineSlice,f,'compass',40,14)
+    else local bg=f:CreateTexture(nil,'BACKGROUND');bg:SetAllPoints();bg:SetColorTexture(.07,.065,.055,.98) end
+    local crest=f:CreateTexture(nil,'ARTWORK');crest:SetTexture(ART..'Frames\\compass-crest')
+    crest:SetSize(96,48);crest:SetPoint('BOTTOM',f,'TOP',0,-16)
+    local title=f:CreateFontString(nil,'OVERLAY','GameFontNormalLarge')
+    title:SetPoint('TOP',0,-16);title:SetText(T('Welcome to Backstage Forever'))
+    local scene=f:CreateTexture(nil,'ARTWORK');scene:SetTexture(ART..'Messages\\ready')
+    scene:SetSize(456,57);scene:SetPoint('TOP',0,-42)
+    local rule=f:CreateTexture(nil,'OVERLAY');rule:SetColorTexture(.79,.62,.27,.9)
+    rule:SetSize(456,1);rule:SetPoint('TOP',scene,'BOTTOM',0,0)
+    for i,row in ipairs(WELCOME) do
+        local y=-114-(i-1)*64
+        local picture=f:CreateTexture(nil,'ARTWORK');picture:SetTexture(ART..row.art)
+        picture:SetSize(48,48);picture:SetPoint('TOPLEFT',34,y)
+        local head=f:CreateFontString(nil,'OVERLAY','GameFontNormal')
+        head:SetPoint('TOPLEFT',96,y-2);head:SetText(T(row.title))
+        local body=f:CreateFontString(nil,'OVERLAY','GameFontHighlight')
+        body:SetPoint('TOPLEFT',96,y-20);body:SetSize(390,30);body:SetJustifyH('LEFT');body:SetJustifyV('TOP');body:SetWordWrap(true)
+        body:SetText(T(row.text))
+    end
+    local settingsButton=CreateFrame('Button',nil,f,'UIPanelButtonTemplate')
+    settingsButton:SetSize(150,24);settingsButton:SetPoint('BOTTOMLEFT',96,26);settingsButton:SetText(T('Open settings'))
+    settingsButton:SetScript('OnClick',function() f:Hide();BackstageForeverOptionsOpen() end)
+    local start=CreateFrame('Button',nil,f,'UIPanelButtonTemplate')
+    start:SetSize(150,24);start:SetPoint('BOTTOMRIGHT',-96,26);start:SetText(T('Start playing'))
+    start:SetScript('OnClick',function() f:Hide() end)
+    f:RegisterEvent('PLAYER_REGEN_DISABLED');f:SetScript('OnEvent',function() f:Hide() end)
+    if type(UISpecialFrames)=='table' then table.insert(UISpecialFrames,'BackstageForeverWelcome') end
+    welcome=f
+    return f
+end
+-- Returns true when the card is on screen. In combat or without frames it returns false and the caller keeps its banner.
+function BackstageForeverWelcomeOpen()
+    if busy() then return false end
+    local ok,f=pcall(buildWelcome)
+    if not ok or not f then return false end
+    f:Show()
+    return true
+end
+function BackstageForeverWelcomeCommand()
+    if not BackstageForeverWelcomeOpen() then say('Open the welcome card outside combat.') end
+end

@@ -1434,6 +1434,16 @@
  "addon": {
   "plain": {
    "In-Game Helpers": "Helfer im Spiel",
+   "Welcome to Backstage Forever": "Willkommen bei Backstage Forever",
+   "Follow the Compass": "Folge dem Kompass",
+   "The panel on your screen shows your next step. Type /bf next for an arrow to it.": "Das Fenster auf deinem Bildschirm zeigt deinen nächsten Schritt. Gib /bf next für einen Pfeil dorthin ein.",
+   "Ask the owl": "Frag die Eule",
+   "Left-click the owl on the minimap to ask a question. Right-click it for settings.": "Linksklicke die Eule an der Minikarte, um eine Frage zu stellen. Rechtsklick öffnet die Einstellungen.",
+   "Get the desktop app": "Hol dir die Desktop-App",
+   "Free at backstagecoding.com: maps, plans and a companion. It keeps this addon up to date.": "Kostenlos auf backstagecoding.com: Karten, Pläne und ein Begleiter. Sie hält dieses Addon aktuell.",
+   "Open settings": "Einstellungen öffnen",
+   "Start playing": "Losspielen",
+   "Open the welcome card outside combat.": "Öffne die Willkommenskarte außerhalb des Kampfes.",
    "quest data checked on this build": "Questdaten auf diesem Build geprüft",
    "quest data from build": "Questdaten von Build",
    "same patch": "gleicher Patch",
