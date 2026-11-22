@@ -81,7 +81,7 @@ local PAGES={
     }},
     {title='Panels',rows={
         switch('Quest list by distance','A small list of your quests, nearest first. Click one for a waypoint. The game tracker is left alone.',off('BackstageForeverPanelSettings','tracker'),'tracker'),
-        switch('Dungeon run panel','Inside a dungeon: bosses left, your quests there, wishes still possible and time in the run.',on('BackstageForeverPanelSettings','run'),'run'),
+        switch('Dungeon run panel','Inside a dungeon: bosses left, your quests there, wishes still possible and time in the run.',off('BackstageForeverPanelSettings','run'),'run'),
         switch('Run panel stays in combat','Keeps the dungeon run panel on screen in combat. It only updates outside combat.',off('BackstageForeverPanelSettings','runCombat'),'run combat'),
         switch('Wish list banner','A banner when you or your group loots an item from your wish list. Shown after combat.',on('BackstageForeverPanelSettings','wish'),'wish'),
         switch('Bag marks','Small signs on bag items: + upgrade, * wish, ! quest item. Off until you switch it on.',off('BackstageForeverPanelSettings','bags'),'bags marks'),

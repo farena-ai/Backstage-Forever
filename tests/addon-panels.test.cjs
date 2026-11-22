@@ -374,7 +374,7 @@ test("the panels are wired in: files, saved settings, commands, switches, the ca
   assert.match(read("addon/BackstageForever/BackstageForever.lua"), /pcall\(BackstageForeverPanelsUpdate,character\)/);
   const options = read("addon/BackstageForever/BackstageForeverOptions.lua");
   assert.ok(options.includes("off('BackstageForeverPanelSettings','tracker'),'tracker'"), "the quest list is off by default");
-  assert.ok(options.includes("on('BackstageForeverPanelSettings','run'),'run'"));
+  assert.ok(options.includes("off('BackstageForeverPanelSettings','run'),'run'"));
   assert.ok(options.includes("off('BackstageForeverPanelSettings','runCombat'),'run combat'"));
   const source = read("addon/BackstageForever/BackstageForeverPanels.lua");
   for (const name of ["ObjectiveTracker", "QuestWatchFrame", "WatchFrame", "QuestTimerFrame", "hooksecurefunc", "SetAttribute", "RegisterStateDriver"]) {

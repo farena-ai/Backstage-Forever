@@ -47,7 +47,7 @@ end
 -- ---------------------------------------------------------------- switches
 -- The quest list is off until you switch it on. The run panel shows itself in dungeons and
 -- hides in combat unless you ask it to stay. wish and bags belong to BackstageForeverWish.lua.
-local DEFAULTS={tracker=false,run=true,runCombat=false,wish=true,bags=false}
+local DEFAULTS={tracker=false,run=false,runCombat=false,wish=true,bags=false}
 function BackstageForeverPanelEnabled(key)
     local s=BackstageForeverPanelSettings
     local v
