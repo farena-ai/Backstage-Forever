@@ -379,6 +379,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_ENTERING_WORLD','PLAYER_REGEN_ENABLED'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Kits',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,_,reloading)
             if event=='PLAYER_ENTERING_WORLD' then pcall(onWorld,plain(reloading))
             elseif pending then pcall(speak) end

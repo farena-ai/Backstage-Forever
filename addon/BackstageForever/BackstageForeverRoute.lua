@@ -153,8 +153,65 @@ local function stopsFor(mapId)
     return stops
 end
 
+-- Q3 (1.26): the step scroll says how far the step is, how long that takes at the speed you move
+-- now, and when it lies behind you. Both are pure; the scroll only prints what they return.
+-- facing: radians, 0 = north, counter-clockwise (GetPlayerFacing). east/south: yards from you to
+-- the spot (map x grows east, map y grows south). Behind: more than 100 degrees off your facing.
+function BackstageForeverArrivalBehind(facing,east,south)
+    if type(facing)~='number' or facing~=facing or type(east)~='number' or type(south)~='number' or east~=east or south~=south or (east==0 and south==0) then return false end
+    local atan2=math.atan2 or math.atan
+    local diff=(atan2(-east,-south)-facing)%(2*math.pi)
+    if diff>math.pi then diff=2*math.pi-diff end
+    return diff>math.rad(100)
+end
+-- "420 yd · about 1 min · behind you". No time while you stand still or are almost there.
+function BackstageForeverArrivalText(yards,speed,behind)
+    if type(yards)~='number' or yards~=yards or yards<0 or yards>100000 then return nil end
+    local T=BackstageForeverTr or tostring
+    local parts={('%d %s'):format(floor(yards+.5),T('yd'))}
+    if type(speed)=='number' and speed==speed and speed>=1 and speed<=1000 and yards>=10 then
+        local seconds=yards/speed
+        if seconds<55 then parts[#parts+1]=T(('about %d s'):format(max(5,floor(seconds/5+.5)*5)))
+        elseif seconds<3600 then parts[#parts+1]=T(('about %d min'):format(max(1,floor(seconds/60+.5)))) end
+    end
+    if behind==true then parts[#parts+1]=T('behind you') end
+    return table.concat(parts,' · ')
+end
+
 -- The step frame.
 local frame,lines,steps,index,mapNow,lastArrow,pending=nil,{},{},1,nil,nil,false
+-- Size of one map in yards, from the game's own conversion of its corners.
+local mapSizes={}
+local function mapSize(mapId)
+    if mapSizes[mapId]~=nil then return mapSizes[mapId] or nil end
+    local api=plain(C_Map)
+    local make=plain(CreateVector2D)
+    local size=false
+    if api and type(make)=='function' then
+        local _,a=call(field(api,'GetWorldPosFromMapPos'),mapId,call(make,0,0))
+        local _,b=call(field(api,'GetWorldPosFromMapPos'),mapId,call(make,1,1))
+        local ax,ay=method(a,'GetXY') local bx,by=method(b,'GetXY')
+        -- World x runs north-south and world y runs east-west.
+        if type(ax)=='number' and type(ay)=='number' and type(bx)=='number' and type(by)=='number' and ax~=bx and ay~=by then
+            size={width=math.abs(ay-by),height=math.abs(ax-bx)}
+        end
+    end
+    mapSizes[mapId]=size
+    return size or nil
+end
+-- The arrival line for the step shown, or nil: in combat, on another map, or when a reading is missing.
+local function arrivalLine()
+    local s=steps[index]
+    if not s or not s.x or not s.y or combat() then return nil end
+    local mapId,x,y=where()
+    if not mapId or not x or not y or (s.mapId or mapNow)~=mapId then return nil end
+    local size=mapSize(mapId)
+    if not size then return nil end
+    local east,south=(s.x-x)*size.width,(s.y-y)*size.height
+    local behind=BackstageForeverArrivalBehind(call(GetPlayerFacing),east,south)
+    return BackstageForeverArrivalText(sqrt(east*east+south*south),call(GetUnitSpeed,'player'),behind),behind
+end
+local shownArrival=''
 local guide=nil -- {index,total,note,top} while the guided route is shown
 local compassPaused=false
 local resumeCursor
@@ -218,6 +275,8 @@ local function build()
     frame=CreateFrame('Frame','BackstageForeverRouteFrame',UIParent)
     if not frame then return nil end
     method(frame,'SetSize',340,104);method(frame,'SetPoint','TOP',UIParent,'TOP',0,-120)
+    -- 1.26: the larger-text and large-buttons settings scale the step scroll too.
+    if type(BackstageForeverApplyTextSize)=='function' then pcall(BackstageForeverApplyTextSize,frame) end
     method(frame,'SetFrameStrata','MEDIUM');method(frame,'SetMovable',true);method(frame,'EnableMouse',true)
     method(frame,'SetClampedToScreen',true);method(frame,'RegisterForDrag','LeftButton')
     method(frame,'SetScript','OnDragStart',function(f) if not combat() then method(f,'StartMoving') end end)
@@ -242,6 +301,24 @@ local function build()
     button('x',-4,function() BackstageForeverRouteCommand('route') end)
     button('>',-28,function() BackstageForeverRouteCommand('route next') end)
     button('<',-52,function() BackstageForeverRouteCommand('route back') end)
+    -- The arrival line sits under the "Then:" line; the scroll grows by its height only while it shows.
+    lines.arrive=text('GameFontHighlightSmall',-91,12)
+    if lines.arrive then method(lines.arrive,'SetWordWrap',false) end
+    local wait=0
+    method(frame,'SetScript','OnUpdate',function(_,elapsed)
+        wait=wait-(type(elapsed)=='number' and elapsed or 0)
+        if wait>0 then return end
+        wait=.5
+        local ok,line,behind=pcall(arrivalLine)
+        line=ok and type(line)=='string' and line or ''
+        if behind then line=line..'!' end
+        if line==shownArrival or not lines.arrive then return end
+        shownArrival=line
+        method(lines.arrive,'SetText',behind and line:sub(1,-2) or line)
+        -- "Behind you" is said in words and shown in dark red, never by colour alone.
+        if behind then method(lines.arrive,'SetTextColor',.6,.1,.05) else method(lines.arrive,'SetTextColor',.3,.2,.1) end
+        method(frame,'SetHeight',line~='' and 118 or 104)
+    end)
     return frame
 end
 function BackstageForeverRouteRefresh()
@@ -434,6 +511,7 @@ if type(CreateFrame)=='function' then
     local pf=CreateFrame('Frame')
     if pf then
         for _,e in ipairs({'NAME_PLATE_UNIT_ADDED','NAME_PLATE_UNIT_REMOVED','QUEST_LOG_UPDATE','UNIT_QUEST_LOG_CHANGED'}) do pcall(pf.RegisterEvent,pf,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Route',pf) end
         pcall(pf.SetScript,pf,'OnEvent',function(_,event,u)
             if not settings then loadSettings() end
             u=str(u,40)
@@ -574,6 +652,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','QUEST_ACCEPTED','QUEST_TURNED_IN','QUEST_LOG_UPDATE','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LEVEL_UP'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Route2',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             if not settings then loadSettings() end
             if event=='PLAYER_LOGIN' then

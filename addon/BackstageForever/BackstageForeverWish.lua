@@ -422,6 +422,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','CHAT_MSG_LOOT','PLAYER_REGEN_ENABLED','PLAYER_REGEN_DISABLED'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Wish',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,...)
             if event=='CHAT_MSG_LOOT' then pcall(onLoot,...)
             elseif event=='PLAYER_LOGIN' then if enabled('bags') then pcall(hookBags) end

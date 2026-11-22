@@ -481,6 +481,8 @@ local function trackerEnter(line,data)
     pcall(GameTooltip.SetOwner,GameTooltip,line,'ANCHOR_RIGHT')
     pcall(GameTooltip.SetText,GameTooltip,quest.title,1,.82,.3)
     pcall(GameTooltip.AddLine,GameTooltip,T(quest.destination and 'Click: waypoint with the game\'s own arrow.' or 'No spot is known for this quest.'),1,1,1,true)
+    -- 1.26: which step of its chain this quest is, when the reference knows the chain.
+    if type(BackstageForeverChainTooltip)=='function' and type(quest.questId)=='number' then pcall(BackstageForeverChainTooltip,GameTooltip,quest.questId) end
     pcall(GameTooltip.Show,GameTooltip)
 end
 local function paintTracker()
@@ -641,6 +643,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','ENCOUNTER_END'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Panels',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             if event=='PLAYER_LOGIN' then
                 settings()

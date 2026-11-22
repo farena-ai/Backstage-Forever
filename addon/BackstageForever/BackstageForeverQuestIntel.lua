@@ -534,6 +534,7 @@ if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
     if frame then
         for _,e in ipairs({'PLAYER_LOGIN','LOOT_READY','LOOT_OPENED','PLAYER_TARGET_CHANGED','UPDATE_MOUSEOVER_UNIT'}) do pcall(frame.RegisterEvent,frame,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'QuestIntel',frame) end
         pcall(frame.SetScript,frame,'OnEvent',function(_,event)
             if event=='PLAYER_LOGIN' then db=nil;names,nameCount={},0;pcall(store);pcall(installObjectiveTooltip)
             elseif event=='PLAYER_TARGET_CHANGED' then pcall(remember,'target')

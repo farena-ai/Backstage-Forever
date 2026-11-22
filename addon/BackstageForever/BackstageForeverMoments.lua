@@ -384,6 +384,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','UNIT_HEALTH','PLAYER_REGEN_DISABLED','PLAYER_TARGET_CHANGED','UPDATE_MOUSEOVER_UNIT','NAME_PLATE_UNIT_ADDED','UNIT_PET','ENCOUNTER_END','SKILL_LINES_CHANGED','CHAT_MSG_SKILL','UI_INFO_MESSAGE','PLAYER_EQUIPMENT_CHANGED','PLAYER_REGEN_ENABLED','PLAYER_LEVEL_UP','ADDON_ACTION_FORBIDDEN','ADDON_ACTION_BLOCKED'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Moments',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b,c,d,e)
             if event=='UNIT_HEALTH' then if plain(a)=='target' then pcall(onTargetHealth) end
             elseif event=='PLAYER_REGEN_DISABLED' then lastCombat=now()

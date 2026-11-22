@@ -149,6 +149,7 @@ local function openPanel()
         foot:SetPoint('BOTTOMLEFT',16,16);foot:SetWidth(312);foot:SetJustifyH('LEFT');foot:SetWordWrap(true)
         foot:SetText(T('Turning off item tips does not turn off quest-item sale protection.'))
         for _,event in ipairs({'PLAYER_LOGIN','PLAYER_LOGOUT','PLAYER_ENTERING_WORLD','PLAYER_REGEN_DISABLED'}) do frame:RegisterEvent(event) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Helpers',frame) end
         frame:SetScript('OnEvent',function() generation=generation+1;frame:Hide() end)
         if type(UISpecialFrames)=='table' then table.insert(UISpecialFrames,'BackstageForeverHelperPanel') end
         panel=frame

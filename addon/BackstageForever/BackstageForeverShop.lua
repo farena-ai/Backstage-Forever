@@ -172,6 +172,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'AUCTION_HOUSE_SHOW','AUCTION_HOUSE_CLOSED','PLAYER_REGEN_DISABLED'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Shop',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             if event=='AUCTION_HOUSE_SHOW' then pcall(show)
             elseif frame then frame:Hide() end

@@ -122,6 +122,7 @@ if type(CreateFrame)=='function' then
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','BAG_UPDATE_DELAYED','UNIT_PET','UNIT_HAPPINESS','PLAYER_REGEN_ENABLED','PLAYER_ENTERING_WORLD','UNIT_INVENTORY_CHANGED'}) do pcall(events.RegisterEvent,events,e) end
         local last=0
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Supplies',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             if not settings then loadSettings() end
             if event=='PLAYER_LOGIN' then pcall(check,true);return end

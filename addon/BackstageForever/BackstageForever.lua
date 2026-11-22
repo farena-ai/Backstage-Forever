@@ -885,6 +885,11 @@ local function capture(event,eventId)
             character.journal=journal
         end
     end
+    -- Scout mode (1.26): an optional block of its own; older desktop apps ignore it.
+    if type(BackstageForeverScoutSnapshot)=='function' then
+        local ok,scout=pcall(BackstageForeverScoutSnapshot)
+        if ok and type(scout)=='table' and type(scout.records)=='table' and #scout.records>0 then array(scout.records);character.scout=scout end
+    end
     if type(BackstageForeverLedgerSnapshot)=='function' then
         local ok,ledger=pcall(BackstageForeverLedgerSnapshot)
         if ok and type(ledger)=='table' then
@@ -952,6 +957,11 @@ local function capture(event,eventId)
                 for j,q in ipairs(c.quests) do detached.quests[j]=type(q)=='table' and copy(q) or q end
             end
         end
+    end
+    -- Scout records are the newest optional block and the first to go; the saved list itself stays.
+    for i=#chars,1,-1 do
+        if fits() then break end
+        discard(chars[i],'scout')
     end
     -- Personal history is the first optional export detail to shed. The private
     -- native store is detached; trimming never deletes retained observations.
@@ -1104,6 +1114,7 @@ if type(CreateFrame)=='function' then
     end
     for _,event in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_LEVEL_UP','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LOGOUT','QUEST_LOG_UPDATE','QUEST_ACCEPTED','QUEST_TURNED_IN','UNIT_QUEST_LOG_CHANGED','PLAYER_XP_UPDATE','UPDATE_EXHAUSTION','PLAYER_EQUIPMENT_CHANGED','BAG_UPDATE_DELAYED','GET_ITEM_INFO_RECEIVED','PLAYER_STOPPED_MOVING'}) do pcall(frame.RegisterEvent,frame,event) end
     for event in pairs(workshopDirty) do pcall(frame.RegisterEvent,frame,event) end
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Capture',frame) end
     frame:SetScript('OnEvent',function(_,event,eventId)
         -- Logout APIs may already be torn down; only flush already recorded evidence.
         if event=='PLAYER_LOGOUT' or event=='PLAYER_LOGIN' then

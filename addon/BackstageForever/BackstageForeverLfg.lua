@@ -464,6 +464,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','CHAT_MSG_CHANNEL','PLAYER_REGEN_DISABLED'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Lfg',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,text,sender,_,_,_,_,_,channelIndex)
             if event=='CHAT_MSG_CHANNEL' then pcall(onChannel,text,sender,channelIndex)
             elseif event=='PLAYER_REGEN_DISABLED' then if frame then frame:Hide() end

@@ -619,6 +619,7 @@ if type(CreateFrame)=='function' then
             local function refresh() if validScope(token) then pcall(G.pickRewards) end end
             if type(C_Timer)=='table' and type(C_Timer.After)=='function' then pcall(C_Timer.After,0,refresh) else refresh() end
         end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Gear',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             if event=='QUEST_COMPLETE' then
                 scope=nil;pending=false;spoken=nil;G.clearPick()

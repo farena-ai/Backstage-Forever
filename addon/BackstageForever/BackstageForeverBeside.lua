@@ -204,6 +204,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         pcall(events.RegisterEvent,events,'PLAYER_LOGIN')
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Beside',events) end
         pcall(events.SetScript,events,'OnEvent',function()
             settings()
             -- A moment after login, so every addon and every saved switch is in place. Never in combat.

@@ -818,6 +818,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','DISPLAY_SIZE_CHANGED','UI_SCALE_CHANGED','QUEST_TURNED_IN'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Live',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a) if event=='PLAYER_LOGIN' then pcall(apply) pcall(announce) elseif event=='QUEST_TURNED_IN' then pcall(BackstageForeverLiveTurnedIn,a) else pcall(rescale) lastKey=nil end end)
     end
 end

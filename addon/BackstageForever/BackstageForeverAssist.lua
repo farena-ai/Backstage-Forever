@@ -679,6 +679,13 @@ function BackstageForeverAssistCommand(message)
             '/bf mentor Name - ask a party member to share their next step with you; /bf mentor accept, step, way, say, go, end',
             '/bf sr - the soft-reserve list: /bf sr add Player Item (party leader), /bf sr list, /bf sr remove Player, /bf sr clear',
             '/bf guild - guild members who share level, zone, professions and a dungeon flag; /bf guild on shares yours, /bf guild lfd DUNGEON sets your flag',
+            '/bf guild craft NAME - ask sharing guild members who can make something; each answer has a whisper link',
+            '/bf raid - raid comms, off until you switch them on: /bf raid note Boss: text, /bf raid notes, /bf raid assign Player text, /bf raid check',
+            '/bf scout - scout mode, off until you switch it on: notes the quest givers, trainers, vendors and flight masters you talk to; /bf scout shows counts per zone',
+            '/bf answers - the last answers the companion gave you, as of your last /reload; /bf answers 1 reads one in full',
+            '/bf explain - opens the companion panel with the item you point at, your target or your tracked quest in its question box; nothing is asked for you',
+            '/bf chain - which step of its chain each quest in your log is; /bf chain tips off hides the lines in quest tooltips',
+            '/bf perf - memory in use; /bf perf on times each part of the addon, /bf perf off stops it',
             '/bf shop - your profession shopping list; at the auction house a click fills the search box (on or off for the panel)',
             '/bf addons - other addons found and what Backstage Forever switched off beside them (on or off)',
             '/bf enemy - enemy players you saw recently; /bf enemy off silences the alerts, /bf enemy sound on adds a sound',
@@ -695,6 +702,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_XP_UPDATE','PLAYER_LEVEL_UP','QUEST_TURNED_IN','PLAYER_DEAD','PLAYER_ALIVE','PLAYER_UNGHOST','PLAYER_TARGET_CHANGED','UNIT_CLASSIFICATION_CHANGED','MERCHANT_SHOW','MERCHANT_CLOSED','BAG_UPDATE_DELAYED','QUEST_LOG_UPDATE','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','UPDATE_INVENTORY_DURABILITY','TAXIMAP_OPENED','QUEST_ACCEPTED','ZONE_CHANGED','ZONE_CHANGED_NEW_AREA','ZONE_CHANGED_INDOORS'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Assist',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b)
             if event=='PLAYER_LOGIN' then
                 loadSettings() trackXP() lastLevelAt=now()

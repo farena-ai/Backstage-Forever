@@ -405,8 +405,16 @@ function BackstageForeverMark(kind)
     if not enabled('marks') then return '' end
     return MARKS[kind] or ''
 end
-local TEXT_SCALE=1.15
-function BackstageForeverTextScale() return enabled('text') and TEXT_SCALE or 1 end
+-- P7 (1.26): "large buttons" for handhelds and controllers scales the same windows a further 30%
+-- on top of the text setting, and the owl button on the minimap with them.
+local TEXT_SCALE,LARGE_SCALE=1.15,1.3
+function BackstageForeverButtonScale() return enabled('large') and LARGE_SCALE or 1 end
+function BackstageForeverTextScale() return (enabled('text') and TEXT_SCALE or 1)*BackstageForeverButtonScale() end
+function BackstageForeverApplyButtonSize(frame)
+    frame=plain(frame)
+    if type(frame)~='table' or type(frame.SetScale)~='function' then return false end
+    return (pcall(frame.SetScale,frame,BackstageForeverButtonScale()))
+end
 -- The addon's windows each pick their own game fonts, so "larger text" scales the whole window:
 -- the Adventure Compass, the settings window and the welcome card.
 function BackstageForeverApplyTextSize(frame)
@@ -414,20 +422,24 @@ function BackstageForeverApplyTextSize(frame)
     if type(frame)~='table' or type(frame.SetScale)~='function' then return false end
     return (pcall(frame.SetScale,frame,BackstageForeverTextScale()))
 end
-local SCALED={'BackstageForeverCompass','BackstageForeverOptions','BackstageForeverWelcome'}
-local ACCESS={marks='Marks without colour',text='Larger window text'}
+local SCALED={'BackstageForeverCompass','BackstageForeverOptions','BackstageForeverWelcome','BackstageForeverRouteFrame'}
+local BUTTONS={'BackstageForeverAskButton'}
+local ACCESS={marks='Marks without colour',text='Larger window text',large='Large buttons'}
 function BackstageForeverAccessCommand(message)
     local which,arg=(type(message)=='string' and #message<=40 and message:lower() or ''):match('^access%s*(%a*)%s*(%a*)')
     if which and ACCESS[which] then
         if which=='text' and combat() then return say('Change the text size outside combat.') end
+        if which=='large' and combat() then return say('Change the button size outside combat.') end
         local on=set(which,arg)
-        if which=='text' then for _,name in ipairs(SCALED) do BackstageForeverApplyTextSize(_G[name]) end end
+        if which=='text' or which=='large' then for _,name in ipairs(SCALED) do BackstageForeverApplyTextSize(_G[name]) end end
+        if which=='large' then for _,name in ipairs(BUTTONS) do BackstageForeverApplyButtonSize(_G[name]) end end
         say(T(ACCESS[which])..' — '..T(on and 'On' or 'Off'))
         return on
     end
     say('Accessibility (each is off until you switch it on):')
     say('  '..T(ACCESS.marks)..' — '..T(enabled('marks') and 'On' or 'Off')..' (/bf access marks '..(enabled('marks') and 'off' or 'on')..')')
     say('  '..T(ACCESS.text)..' — '..T(enabled('text') and 'On' or 'Off')..' (/bf access text '..(enabled('text') and 'off' or 'on')..')')
+    say('  '..T(ACCESS.large)..' — '..T(enabled('large') and 'On' or 'Off')..' (/bf access large '..(enabled('large') and 'off' or 'on')..')')
 end
 
 -- ---------------------------------------------------------------- events
@@ -435,6 +447,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_TARGET_CHANGED','GROUP_ROSTER_UPDATE','PLAYER_REGEN_ENABLED','MAIL_SHOW','MAIL_INBOX_UPDATE','MAIL_CLOSED'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Social',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             if event=='PLAYER_LOGIN' then
                 notesDB()

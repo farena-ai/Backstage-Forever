@@ -211,7 +211,7 @@ assert(BackstageForeverApplyTextSize(nil)==false and BackstageForeverApplyTextSi
 assert(BackstageForeverAccessCommand('access text')==false and scales.BackstageForeverCompass==1 and BackstageForeverTextScale()==1,'no word toggles')
 combat=true BackstageForeverAccessCommand('access text on') assert(last():find('outside combat',1,true) and scales.BackstageForeverCompass==1) combat=false
 local n=#said BackstageForeverAccessCommand('access')
-assert(#said==n+3 and said[n+2]=='Backstage Forever:   Marks without colour — On (/bf access marks off)' and said[n+3]=='Backstage Forever:   Larger window text — Off (/bf access text on)',said[n+2])
+assert(#said==n+4 and said[n+4]=='Backstage Forever:   Large buttons — Off (/bf access large on)' and said[n+2]=='Backstage Forever:   Marks without colour — On (/bf access marks off)' and said[n+3]=='Backstage Forever:   Larger window text — Off (/bf access text on)',said[n+2])
 BackstageForeverAccessCommand('access nonsense on') assert(BackstageForeverSocialSettings.nonsense==nil)
 `));
 

@@ -189,6 +189,108 @@ function BackstageForeverCheckReport(dungeon,mine,members,answers)
     return lines
 end
 
+-- G6 (1.26) who still needs each dungeon quest. A member who answers a check for a named dungeon
+-- also sends where each of that dungeon's quests stands for them: l in the log, r ready to hand
+-- in, d done. A quest they do not list is one they have not picked up.
+local DQ_MAX,DQ_STATE=30,{l=true,r=true,d=true}
+-- Pure: "D|sm|2040l;2041r;2046d". states: {{id=,state=}}; at most 30 quests and 255 bytes.
+function BackstageForeverCheckQuestEncode(dungeon,states)
+    dungeon=dungeonId(dungeon)
+    if not dungeon then return nil end
+    local text,n,seen='D|'..dungeon..'|',0,{}
+    for _,row in ipairs(type(states)=='table' and states or {}) do
+        local id=type(row)=='table' and row.id
+        if type(id)=='number' and id==floor(id) and id>=1 and id<=9999999 and DQ_STATE[row.state] and not seen[id] and n<DQ_MAX then
+            local piece=(n>0 and ';' or '')..id..row.state
+            if #text+#piece>255 then break end
+            text=text..piece;n=n+1;seen[id]=true
+        end
+    end
+    return text
+end
+-- Pure: a message back into the dungeon and {[questId]=state}, or nil when anything about it is off.
+function BackstageForeverCheckQuestDecode(message)
+    if type(message)~='string' or #message>255 then return nil end
+    local d,body=message:match('^D|([^|]+)|([%d;lrd]*)$')
+    if not d or not dungeonId(d) then return nil end
+    local states,n={},0
+    if body~='' then
+        if body:sub(1,1)==';' or body:sub(-1)==';' or body:find(';;',1,true) then return nil end
+        for entry in body:gmatch('[^;]+') do
+            local id,state=entry:match('^([1-9]%d?%d?%d?%d?%d?%d?)([lrd])$')
+            id=tonumber(id)
+            if not id or states[id] or n>=DQ_MAX then return nil end
+            states[id]=state;n=n+1
+        end
+    end
+    return d,states
+end
+-- Pure: where each quest the Instance Atlas lists for a dungeon stands for you. state(id) returns
+-- 'done', 'ready', 'log' or nil. -> {{id=,state=}} for the encoder, or nil when the dungeon is not listed.
+function BackstageForeverCheckQuestStates(data,dungeon,state)
+    if type(data)~='table' or not dungeonId(dungeon) or type(state)~='function' then return nil end
+    local LETTER={done='d',ready='r',log='l'}
+    for _,row in ipairs(data) do
+        if type(row)=='table' and row[1]==dungeon then
+            local out={}
+            for _,q in ipairs(type(row[11])=='table' and row[11] or {}) do
+                local id=type(q)=='table' and q[1]
+                if type(id)=='number' then
+                    local ok,s=pcall(state,id)
+                    if ok and LETTER[s] then out[#out+1]={id=id,state=LETTER[s]} end
+                end
+            end
+            return out
+        end
+    end
+end
+-- Pure: who still needs each quest. quests: {{id=,title=}} (the atlas list for your side);
+-- mine: your own {[id]=state}; members: party names in order; answers: {[name]={[id]=state}}.
+-- -> {[questId]={names...}} where "You" stands for yourself. Done and ready-to-hand-in do not count.
+function BackstageForeverCheckQuestNeeders(quests,mine,members,answers)
+    local out={}
+    local function needs(states,id) return type(states)=='table' and states[id]~='d' and states[id]~='r' end
+    for _,q in ipairs(type(quests)=='table' and quests or {}) do
+        if type(q)=='table' and type(q.id)=='number' then
+            local names={}
+            if needs(mine,q.id) then names[#names+1]=T('You') end
+            for _,name in ipairs(type(members)=='table' and members or {}) do
+                if needs(type(answers)=='table' and answers[name] or nil,q.id) then names[#names+1]=name end
+            end
+            if #names>0 then out[q.id]=names end
+        end
+    end
+    return out
+end
+-- Pure: the chat lines under a readiness check: one line per quest somebody still needs.
+function BackstageForeverCheckQuestLines(quests,mine,members,answers,limit)
+    local lines={}
+    quests=type(quests)=='table' and quests or {}
+    if #quests==0 then return lines end
+    local silent={}
+    for _,name in ipairs(type(members)=='table' and members or {}) do
+        if type(answers)~='table' or type(answers[name])~='table' then silent[#silent+1]=name end
+    end
+    local needers=BackstageForeverCheckQuestNeeders(quests,mine,members,answers)
+    limit=type(limit)=='number' and limit or 8
+    local shown,open=0,0
+    for _,q in ipairs(quests) do
+        local names=needers[q.id]
+        if names then
+            open=open+1
+            if shown<limit then
+                shown=shown+1
+                lines[#lines+1]='  '..T(('%s: still needed by %s.'):format(BackstageForeverChatSafe(tostring(q.title or ('#'..q.id)),60) or ('#'..q.id),table.concat(names,', ')))
+            end
+        end
+    end
+    if open==0 then table.insert(lines,1,T('Dungeon quests: everyone who answered has them done or ready to hand in.'))
+    else table.insert(lines,1,T(('Dungeon quests somebody still needs: %d of %d.'):format(open,#quests))) end
+    if open>shown then lines[#lines+1]='  '..T(('and %d more.'):format(open-shown)) end
+    if #silent>0 then lines[#lines+1]='  '..T(('No quest answer from: %s.'):format(table.concat(silent,', '))) end
+    return lines
+end
+
 local latest=nil -- the newest capture of this character; read, never changed
 function BackstageForeverCrewUpdate(character) latest=type(character)=='table' and character or nil end
 function BackstageForeverCheckAnswers()
@@ -227,11 +329,50 @@ local function myStatus(dungeon)
     end
     return status
 end
-local check=nil -- the last check you asked for: {dungeon=,at=,mine=,members=,answers=}
+BackstageForeverCheckMine=myStatus -- raid comms (BackstageForeverRaid.lua) sends the same short status
+local function questStand(id)
+    local api=plain(C_QuestLog)
+    if call(field(api,'IsQuestFlaggedCompleted'),id)==true then return 'done' end
+    if call(field(api,'IsOnQuest'),id)==true then return call(field(api,'IsComplete'),id)==true and 'ready' or 'log' end
+end
+local function myQuestStates(dungeon)
+    return dungeon~='-' and BackstageForeverCheckQuestStates(BackstageForeverAtlasData,dungeon,questStand) or nil
+end
+-- The quests the Instance Atlas lists for a dungeon and your side: {{id=,title=}}.
+local function dungeonQuests(dungeon)
+    if type(BackstageForeverAtlasQuests)~='function' or type(BackstageForeverAtlasData)~='table' then return {} end
+    for _,row in ipairs(BackstageForeverAtlasData) do
+        if type(row)=='table' and row[1]==dungeon then
+            local ok,list=pcall(BackstageForeverAtlasQuests,row,call(UnitFactionGroup,'player'))
+            return ok and type(list)=='table' and list or {}
+        end
+    end
+    return {}
+end
+local check=nil -- the last check you asked for: {dungeon=,at=,mine=,members=,answers=,myQuests=,quests=}
+local function stateMap(states)
+    if type(states)~='table' then return nil end
+    local map={}
+    for _,row in ipairs(states) do map[row.id]=row.state end
+    return map
+end
 local function report()
     if not check then return say('No readiness check yet. Type /bf check in a party.') end
     for i,line in ipairs(BackstageForeverCheckReport(check.dungeon,check.mine,check.members,check.answers)) do say(line) end
+    if check.dungeon~='-' and check.myQuests then
+        for _,line in ipairs(BackstageForeverCheckQuestLines(dungeonQuests(check.dungeon),check.myQuests,check.members,check.quests)) do say(line) end
+    end
     check.shown=true
+end
+-- For the Instance Atlas: after a check for this dungeon, who still needs each quest, as
+-- {[questId]="You, Ann"}. nil when the last check was for another place.
+function BackstageForeverCheckNeeders(dungeon)
+    if not check or check.dungeon~=dungeon or not check.myQuests then return nil end
+    local out={}
+    for id,names in pairs(BackstageForeverCheckQuestNeeders(dungeonQuests(dungeon),check.myQuests,check.members,check.quests)) do
+        out[id]=BackstageForeverChatSafe(table.concat(names,', '),40)
+    end
+    return out
 end
 local function here()
     local _,kind,_,_,_,_,_,instanceMap=call(GetInstanceInfo)
@@ -257,7 +398,7 @@ function BackstageForeverCheckCommand(message)
     else dungeon=here() or '-' end
     local at=now()
     if not BackstageForeverCrewRate(rate,'ask',at,GAP) then return say('You asked a moment ago. /bf check show prints the answers again.') end
-    check={dungeon=dungeon,at=at,mine=myStatus(dungeon),members=partyNames(),answers={}}
+    check={dungeon=dungeon,at=at,mine=myStatus(dungeon),members=partyNames(),answers={},quests={},myQuests=stateMap(myQuestStates(dungeon))}
     if not send(BackstageForeverCheckRequest(dungeon)) then return say('Party sync is not available in this game client.') end
     local asked=check
     local after=field(plain(C_Timer),'After')
@@ -270,7 +411,12 @@ local function onCheckAsked(sender,message)
     local dungeon=BackstageForeverCheckAsked(message)
     if not dungeon or not BackstageForeverCheckAnswers() then return end
     if not BackstageForeverCrewRate(rate,'answer',now(),GAP) then return end
-    if send(BackstageForeverCheckEncode(myStatus(dungeon))) and not combat() then
+    local sent=send(BackstageForeverCheckEncode(myStatus(dungeon)))
+    -- 1.26: for a named dungeon, where each of its quests stands for you goes with the answer.
+    local states=sent and myQuestStates(dungeon) or nil
+    local quests=states and BackstageForeverCheckQuestEncode(dungeon,states)
+    if quests then send(quests) end
+    if sent and not combat() then
         say(('%s asked for a readiness check. Your short status went to your party. /bf check answers off stops that.'):format(sender))
     end
 end
@@ -279,6 +425,12 @@ local function onCheckAnswer(sender,message)
     local status=BackstageForeverCheckDecode(message)
     if not status or (status.dungeon or '-')~=check.dungeon then return end
     for _,name in ipairs(check.members) do if name==sender then check.answers[name]=status end end
+end
+local function onCheckQuests(sender,message)
+    if not check or now()-check.at>30 then return end
+    local dungeon,states=BackstageForeverCheckQuestDecode(message)
+    if not dungeon or dungeon~=check.dungeon then return end
+    for _,name in ipairs(check.members) do if name==sender then check.quests[name]=states end end
 end
 
 -- ---------------------------------------------------------------- S3 mentor link
@@ -650,6 +802,7 @@ end
 if type(BackstageForeverPartyHandle)=='function' then
     BackstageForeverPartyHandle('C',onCheckAsked)
     BackstageForeverPartyHandle('A',onCheckAnswer)
+    BackstageForeverPartyHandle('D',onCheckQuests)
     BackstageForeverPartyHandle('M',onMentor)
     BackstageForeverPartyHandle('S',onSoft)
 end
@@ -657,6 +810,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','GROUP_ROSTER_UPDATE'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Crew',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             if event=='PLAYER_LOGIN' then
                 crewSettings()
