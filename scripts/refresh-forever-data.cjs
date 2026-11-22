@@ -15,6 +15,8 @@ const { FILES, OPTIONAL_FILES, BUILD, hash } = require("../src/core/knowledge.cj
 const { compile } = require("./build-forever-data.cjs");
 const root = path.join(__dirname, "..");
 const REPO = "JIVESCORP/eg-link-output-wowf";
+const EXTRA = ["loot.json", "object_details.enUS.json", "creatures.json", "flights.json", "trainers.json", "quest_scan.json", "texts.enUS.json", "encounters.json", "hunter_pets.json", "quest_prerequisites.json"];
+const LICENSE_URL = (commit) => `https://raw.githubusercontent.com/${REPO}/${commit}/LICENSE`;
 
 function get(url) {
   return new Promise((resolve, reject) => {
@@ -56,6 +58,13 @@ async function main() {
       }
       fs.writeFileSync(file, bytes);
       files[name] = { sha256: hash(bytes), bytes: bytes.length, url };
+    }
+    // Files the other compilers read (loot, creatures, flights, insights). Stored beside the quest files; each compiler keeps its own lock.
+    for (const name of EXTRA) {
+      const file = path.join(dir, build, name);
+      if (fs.existsSync(file)) continue;
+      const bytes = await get(`https://raw.githubusercontent.com/${REPO}/${commit}/data/wowf/${build}/${name}`);
+      if (bytes) fs.writeFileSync(file, bytes);
     }
     next.builds.push({ build, files });
     console.log(`${build}: ${Object.keys(files).length} files, ${Object.values(files).reduce((t, f) => t + f.bytes, 0)} bytes`);

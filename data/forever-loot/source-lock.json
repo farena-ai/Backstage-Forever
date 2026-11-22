@@ -1,8 +1,11 @@
 {
   "publisher": "Efficient Games",
   "repository": "JIVESCORP/eg-link-output-wowf",
-  "commit": "164bd1e2d89579ada4ee5e2de7e5fd4db684a9f1",
+  "commit": "1bf749ba19be7e699822d6587db0cb85b1b0bc3b",
   "builds": [
+    "1.60.1.71037",
+    "1.60.1.70959",
+    "1.60.1.70938",
     "1.60.1.70888",
     "1.60.1.70862",
     "1.60.1.70840",
@@ -16,7 +19,7 @@
     "object_details.enUS.json"
   ],
   "normalization": "Only items that are quest objectives; per source kind (npc/object), id, name, observed chance and drop count; at most 6 sources per item.",
-  "items": 485,
-  "bytes": 60036,
-  "sha256": "d8af3f243f24d92179167d5cf12614f52f2b49808f2a4c1a184220d38918258c"
+  "items": 809,
+  "bytes": 103353,
+  "sha256": "6b318bc1a49bb57c87e68258ac0a999a3b2dd5a6cf058686b4b1575ae5967f3d"
 }
