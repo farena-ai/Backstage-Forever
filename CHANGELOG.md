@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.22.0 - Planner season
+
+- A talent planner, a travel planner, trainer costs, gathering loops, a rare and treasure finder, price history, craft profit, a cooldown calendar, run history, and a set of small in-game helpers (rested, weapon skills, flight times, durability, class kits, ready check, group quests, player notes, mail expiry). See the [release notes](docs/releases/1.22.0.md).
+
 ## 1.21.0 - Upgrades in the in-game atlas
 
 - The in-game Instance Atlas marks dungeon drops that are an upgrade for your character in green and counts them per dungeon. See the [release notes](docs/releases/1.21.0.md).
