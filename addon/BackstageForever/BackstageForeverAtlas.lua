@@ -43,6 +43,28 @@ function BackstageForeverAtlasPick(rows,level)
     return soon or 1
 end
 
+-- Pure: the wish list the desktop app handed over for this character ("Name-Realm"), as a set of item ids.
+-- BackstageForeverDesktop.lua is written by the desktop app and read at login or /reload.
+function BackstageForeverWishSet(name,realm)
+    local set={}
+    local data=type(BackstageForeverDesktopData)=='table' and BackstageForeverDesktopData or nil
+    if not data or rawget(data,'schema')~=1 or type(name)~='string' or type(realm)~='string' then return set end
+    local characters=rawget(data,'characters')
+    local row=type(characters)=='table' and rawget(characters,name..'-'..realm)
+    local wish=type(row)=='table' and rawget(row,'wish')
+    for _,id in ipairs(type(wish)=='table' and wish or {}) do if type(id)=='number' then set[id]=true end end
+    return set
+end
+-- Pure: how many of an instance row's recorded drops are in the set.
+function BackstageForeverWishCount(row,set)
+    local count,seen=0,{}
+    for _,boss in ipairs(type(row)=='table' and type(row[10])=='table' and row[10] or {}) do
+        for _,item in ipairs(BackstageForeverAtlasLoot(boss[2])) do
+            if set[item.id] and not seen[item.id] then seen[item.id]=true;count=count+1 end
+        end
+    end
+    return count
+end
 local FIT_COLOR={now={.25,1,.25},soon={1,.82,.2},later={.85,.85,.85},done={.5,.5,.5}}
 local FIT_WORD={now='Right for your level',soon='Coming up soon',later='For later',done='Below your level'}
 local frame,listButtons,bossButtons,lootRows={},{},{},{}
@@ -53,6 +75,10 @@ local function say(text)
     if DEFAULT_CHAT_FRAME and type(DEFAULT_CHAT_FRAME.AddMessage)=='function' then
         DEFAULT_CHAT_FRAME:AddMessage('Backstage Forever: '..(BackstageForeverTr or tostring)(text))
     end
+end
+local function wishes()
+    local okName,name=pcall(UnitName,'player') local okRealm,realm=pcall(GetRealmName)
+    return BackstageForeverWishSet(okName and name or nil,okRealm and realm or nil)
 end
 local function rows() return type(BackstageForeverAtlasData)=='table' and BackstageForeverAtlasData or {} end
 local function level()
@@ -120,11 +146,13 @@ local function showBoss()
     frame.bossName:SetText(boss[1])
     frame.tip:SetText(T(BackstageForeverAtlasTip(boss[1]) or 'No tip for this boss yet.'))
     local loot=BackstageForeverAtlasLoot(boss[2])
+    local wished=wishes()
     for i,line in ipairs(lootRows) do
         local item=loot[i]
         if item then
             line.item=item.id
-            line.text:SetText(itemLabel(item.id)..'  |cffaaaaaa'..item.chance..'%|r')
+            -- A gold mark on items starred on the desktop.
+            line.text:SetText((wished[item.id] and ('|cffffd100'..T('Wish')..'|r ') or '')..itemLabel(item.id)..'  |cffaaaaaa'..item.chance..'%|r')
             line:Show()
         else line.item=nil;line:Hide() end
     end
@@ -144,7 +172,8 @@ local function showInstance()
     frame.facts:SetText(('%s %d-%d  ·  %s%s%s'):format(T('Levels'),row[4],row[5],T(row[3]=='r' and 'Raid' or 'Dungeon'),
         place and ('  ·  '..place) or '',side and ('  ·  '..side) or ''))
     local color=FIT_COLOR[fit]
-    frame.fit:SetText(T(FIT_WORD[fit]));frame.fit:SetTextColor(color[1],color[2],color[3])
+    local wishCount=BackstageForeverWishCount(row,wishes())
+    frame.fit:SetText((wishCount>0 and ('|cffffd100'..wishCount..' '..T('on your wish list')..'|r  ·  ') or '')..T(FIT_WORD[fit]));frame.fit:SetTextColor(color[1],color[2],color[3])
     if row[7]~=0 then frame.entrance:Show() else frame.entrance:Hide() end
     local count=#BackstageForeverAtlasQuests(row,faction())
     frame.questsButton:SetText(showQuests and T('Bosses') or (T('Quests')..' ('..count..')'))

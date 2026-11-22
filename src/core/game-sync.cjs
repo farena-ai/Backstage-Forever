@@ -46,6 +46,7 @@ const MAX = 1024 * 1024,
     "BackstageForeverChain.lua",
     "BackstageForeverAtlasData.lua",
     "BackstageForeverAtlas.lua",
+    "BackstageForeverDesktop.lua",
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");
@@ -295,8 +296,11 @@ function addonLoaded(state) {
   const written = Date.parse(state.savedAt || ""), landed = Date.parse(state.addonUpdatedAt || "");
   return Number.isFinite(written) && Number.isFinite(landed) && written > landed;
 }
+const HANDOFF_FILE = require("./desktop-handoff.cjs").FILE;
 class GameSync {
-  constructor({ dataDir, addonDir, onSnapshot = () => {}, onRootChange = () => {}, runtime = new GameRuntime() }) {
+  constructor({ dataDir, addonDir, onSnapshot = () => {}, onRootChange = () => {}, runtime = new GameRuntime(), handoff = null }) {
+    // Desktop -> game hand-off (desktop-handoff.cjs): supplies the bytes of its one data file.
+    this.handoff = handoff;
     this.dataDir = dataDir;
     this.addonDir = addonDir;
     this.onSnapshot = onSnapshot;
@@ -338,6 +342,39 @@ class GameSync {
     this.state.loadedGatheringSchema = null;
     if (this.state.phase !== "folder-unavailable")
       this.onRootChange({ previousRoot: this.root, root: this.root, reason: "unavailable" });
+  }
+  // The hand-off file's bytes: what the desktop wants the game to read, or the shipped empty file.
+  async handoffBytes() {
+    const shipped = () => boundedBytes(path.join(this.addonDir, HANDOFF_FILE));
+    if (typeof this.handoff !== "function") return shipped();
+    try {
+      const bytes = Buffer.from(String(await this.handoff()), "utf8");
+      return bytes.length > 0 && bytes.length <= MAX ? bytes : await shipped();
+    } catch { return shipped(); }
+  }
+  // Rewrites only the hand-off file when the addon is already installed and current, for example
+  // after a wish-list change. Same checks as the installer: no symlinked folder, staged, renamed.
+  async writeHandoff() {
+    if (!this.root || !this.state.addonCurrent || typeof this.handoff !== "function") return false;
+    const root = this.root, folder = path.join(root, "Interface", "AddOns", "BackstageForever"), dest = path.join(folder, HANDOFF_FILE);
+    let temporary = null;
+    try {
+      await safe(folder, "dir");
+      const content = await this.handoffBytes();
+      let previous = null;
+      try { previous = await boundedBytes(dest); } catch (e) { if (e.code !== "ENOENT") throw e; }
+      if (previous && previous.equals(content)) return false;
+      temporary = path.join(folder, ".backstage-" + crypto.randomUUID() + ".tmp");
+      await fs.writeFile(temporary, content, { flag: "wx" });
+      if (!(await boundedBytes(temporary)).equals(content)) throw Error("Verification failed");
+      await safe(folder, "dir");
+      if (this.root !== root) return false;
+      fsSync.renameSync(temporary, dest);
+      temporary = null;
+      return true;
+    } catch { return false; } finally {
+      if (temporary) await fs.unlink(temporary).catch(() => {});
+    }
   }
   status() {
     const state = structuredClone(this.state);
@@ -554,7 +591,7 @@ class GameSync {
       const sources = await Promise.all(
         OWN.map(async (file) => [
           file,
-          await boundedBytes(path.join(this.addonDir, file)),
+          file === HANDOFF_FILE ? await this.handoffBytes() : await boundedBytes(path.join(this.addonDir, file)),
         ]),
       );
       // Painted textures (binary): every .tga in the addon's art folders.

@@ -216,6 +216,8 @@ app.whenReady().then(async () => {
     knowledge = new KnowledgeService({ dataDir: app.getPath("userData") });
     game = new GameSync({
       dataDir: app.getPath("userData"),
+      // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
+      handoff: () => require("./core/desktop-handoff.cjs").compile({ profiles: store?.state?.profiles || [], wishlist: (id) => wishlist?.get(id) || [] }),
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -1029,7 +1031,7 @@ app.whenReady().then(async () => {
   // Loot browser, wish list and item hover cards (boss loot pack + the player's own game data).
   wishlist = new (require("./core/wishlist.cjs").WishList)(app.getPath("userData"));
   require("./core/sheet-comparison.cjs").registerSheetComparison({ handle, getState: () => store.state, gameData, wishlist });
-  const bossLoot = require("./core/boss-loot-ipc.cjs").registerBossLootHandlers({ handle, getState: () => store.state, gameData, wishlist, getPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(), getCommunity: () => community?.index() || null, creatureName: (id) => worldMap?.npcName(id) || null, priceFor: (id) => ledgerPrice(id) });
+  const bossLoot = require("./core/boss-loot-ipc.cjs").registerBossLootHandlers({ handle, getState: () => store.state, gameData, wishlist, onWishChange: () => { game?.writeHandoff().catch(() => {}); }, getPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(), getCommunity: () => community?.index() || null, creatureName: (id) => worldMap?.npcName(id) || null, priceFor: (id) => ledgerPrice(id) });
   handle("dungeonAtlas", () => {
     const profile = store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null;
     const atlas = buildAtlas({ profile, encounters, knowledgePack: knowledge?.bundled?.pack }), loot = bossLoot.summary(profile);
