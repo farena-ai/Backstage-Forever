@@ -442,6 +442,8 @@ test("managed prepare repairs twenty-five owned files, keeps extras, and reports
     "BackstageForeverChain.lua",
     "BackstageForeverAtlasData.lua",
     "BackstageForeverAtlas.lua",
+    "BackstageForeverPanels.lua",
+    "BackstageForeverWish.lua",
     "BackstageForeverTravelData.lua",
     "BackstageForeverTravel.lua",
     "BackstageForeverLoop.lua",
@@ -508,7 +510,7 @@ test("managed prepare repairs twenty-five owned files, keeps extras, and reports
 
 test("installer stages all resources, commits TOC last and rolls back a failed commit", async (t) => {
   const f = await fixture(t), addon = path.join(f.dir, "source");
-  const files = ['BackstageForever.toc','BackstageForeverReference.lua','BackstageForeverAdvisorData.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverProfession.lua','BackstageForeverGathering.lua','BackstageForeverMapPlan.lua','BackstageForeverMap.lua','BackstageForeverAdvisorMap.lua','BackstageForeverMap.xml','BackstageForever.lua','BackstageForeverHUD.lua','BackstageForeverLive.lua','BackstageForeverFind.lua','BackstageForeverAssist.lua','BackstageForeverGear.lua','BackstageForeverQuestIntel.lua','BackstageForeverRoute.lua','BackstageForeverSupplies.lua','BackstageForeverJournal.lua','BackstageForeverCombat.lua','BackstageForeverMoments.lua','BackstageForeverLedger.lua','BackstageForeverSheet.lua','BackstageForeverAsk.lua','BackstageForeverEnemy.lua','BackstageForeverQoL.lua','BackstageForeverComfort.lua','BackstageForeverKits.lua','BackstageForeverSocial.lua','BackstageForeverParty.lua','BackstageForeverGuideData.lua','BackstageForeverLocale.lua','BackstageForeverHelpers.lua','BackstageForeverBossTips.lua','BackstageForeverOptions.lua','Bindings.xml','BackstageForeverMinimap.lua','BackstageForeverSources.lua','BackstageForeverChain.lua','BackstageForeverAtlasData.lua','BackstageForeverAtlas.lua','BackstageForeverTravelData.lua','BackstageForeverTravel.lua','BackstageForeverLoop.lua','BackstageForeverRareData.lua','BackstageForeverRares.lua','BackstageForeverMapSearch.lua','BackstageForeverDesktop.lua','BackstageForeverTalents.lua'];
+  const files = ['BackstageForever.toc','BackstageForeverReference.lua','BackstageForeverAdvisorData.lua','BackstageForeverPlan.lua','BackstageForeverCoach.lua','BackstageForeverAcquisition.lua','BackstageForeverProfession.lua','BackstageForeverGathering.lua','BackstageForeverMapPlan.lua','BackstageForeverMap.lua','BackstageForeverAdvisorMap.lua','BackstageForeverMap.xml','BackstageForever.lua','BackstageForeverHUD.lua','BackstageForeverLive.lua','BackstageForeverFind.lua','BackstageForeverAssist.lua','BackstageForeverGear.lua','BackstageForeverQuestIntel.lua','BackstageForeverRoute.lua','BackstageForeverSupplies.lua','BackstageForeverJournal.lua','BackstageForeverCombat.lua','BackstageForeverMoments.lua','BackstageForeverLedger.lua','BackstageForeverSheet.lua','BackstageForeverAsk.lua','BackstageForeverEnemy.lua','BackstageForeverQoL.lua','BackstageForeverComfort.lua','BackstageForeverKits.lua','BackstageForeverSocial.lua','BackstageForeverParty.lua','BackstageForeverGuideData.lua','BackstageForeverLocale.lua','BackstageForeverHelpers.lua','BackstageForeverBossTips.lua','BackstageForeverOptions.lua','Bindings.xml','BackstageForeverMinimap.lua','BackstageForeverSources.lua','BackstageForeverChain.lua','BackstageForeverAtlasData.lua','BackstageForeverAtlas.lua','BackstageForeverPanels.lua','BackstageForeverWish.lua','BackstageForeverTravelData.lua','BackstageForeverTravel.lua','BackstageForeverLoop.lua','BackstageForeverRareData.lua','BackstageForeverRares.lua','BackstageForeverMapSearch.lua','BackstageForeverDesktop.lua','BackstageForeverTalents.lua'];
   await fs.mkdir(addon);
   for (const file of files) await fs.writeFile(path.join(addon,file), file.endsWith('.toc')?'## Version: old\n':'old '+file);
   const sync = new GameSync({dataDir:path.join(f.dir,'data'),addonDir:addon}); t.after(()=>sync.close());
@@ -637,6 +639,8 @@ test("prepare accepts installation parent and missing account exports are needs-
     "BackstageForeverChain.lua",
     "BackstageForeverAtlasData.lua",
     "BackstageForeverAtlas.lua",
+    "BackstageForeverPanels.lua",
+    "BackstageForeverWish.lua",
     "BackstageForeverTravelData.lua",
     "BackstageForeverTravel.lua",
     "BackstageForeverLoop.lua",

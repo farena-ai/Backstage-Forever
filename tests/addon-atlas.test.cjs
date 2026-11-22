@@ -86,3 +86,42 @@ test("the atlas file only reads, and its one action is a clicked waypoint", () =
   assert.match(src, /frame\.entrance:SetScript\('OnClick'/);
   assert.match(fs.readFileSync(path.join(addon, "BackstageForeverHUD.lua"), "utf8"), /word=='atlas'/);
 });
+
+test("with marks without colour on, the dungeon list and the quest list carry a text mark as well as a colour (1.24)", () => lua(STUBS + String.raw`
+local buttons={}
+local plainFrame=CreateFrame
+CreateFrame=function(kind,name,parent,template) local w=plainFrame(kind,name);if kind=='Button' then buttons[#buttons+1]=w end;return w end
+UnitFactionGroup=function() return 'Alliance' end
+C_QuestLog={IsQuestFlaggedCompleted=function(id) return id==2040 end,IsOnQuest=function(id) return id==166 end}
+dofile('addon/BackstageForever/BackstageForeverSocial.lua')
+dofile('addon/BackstageForever/BackstageForeverAtlas.lua')
+-- Off: nothing is added anywhere, and the hint speaks in colours.
+for _,fit in ipairs({'now','soon','later','done'}) do assert(BackstageForeverAtlasFitMark(fit)=='') end
+assert(BackstageForeverAtlasQuestMark('done')=='' and BackstageForeverAtlasQuestMark('log')=='')
+assert(BackstageForeverAtlasQuestHint(3)=='Green: done. Yellow: in your log. Click one for an arrow to its giver.')
+assert(BackstageForeverAtlasQuestHint(0)=='No quests known for this place yet.')
+BackstageForeverAtlasData={
+  {'dm','The Deadmines','d',17,26,'A',1436,.42,.72,{{'Sneed',''}},{{166,'The Defias Brotherhood',22,'A','Gryan',1436,.5,.5},{2040,'Underground Assault',20,'B','',0,0,0},{7,'Not taken',20,'B','',0,0,0}}},
+  {'sfk','Shadowfang Keep','d',22,30,'B',1421,.44,.67,{{'Rethilgore',''}},{}},
+  {'brd','Blackrock Depths','d',52,60,'B',1427,.35,.84,{{'Lord Roccor',''}},{}},
+  {'rfc','Ragefire Chasm','d',13,16,'H',1454,.52,.49,{{'Oggleflint',''}},{}},
+}
+BackstageForeverAtlasCommand('atlas dm')
+local function label(name) for _,b in ipairs(buttons) do if type(b.label)=='table' and b.label.text and b.label.text:find(name,1,true) then return b.label.text end end end
+assert(label('The Deadmines')=='The Deadmines' and label('Blackrock Depths')=='Blackrock Depths')
+BackstageForeverAtlasCommand('atlas')
+-- On: each fit has its own mark; "for later" stays bare, so it still differs from the three marked ones.
+BackstageForeverAccessCommand('access marks on')
+assert(BackstageForeverAtlasFitMark('now')=='[+] ' and BackstageForeverAtlasFitMark('soon')=='[!] ' and BackstageForeverAtlasFitMark('done')=='[x] ' and BackstageForeverAtlasFitMark('later')=='')
+assert(BackstageForeverAtlasQuestMark('done')=='[+] ' and BackstageForeverAtlasQuestMark('log')=='[=] ' and BackstageForeverAtlasQuestMark(nil)=='')
+assert(BackstageForeverAtlasQuestHint(3)=='[+] done. [=] in your log. Click one for an arrow to its giver.' and BackstageForeverAtlasQuestHint(0)=='No quests known for this place yet.')
+BackstageForeverAtlasCommand('atlas dm')
+assert(label('The Deadmines')=='[+] The Deadmines' and label('Shadowfang Keep')=='[!] Shadowfang Keep' and label('Blackrock Depths')=='Blackrock Depths' and label('Ragefire Chasm')=='[x] Ragefire Chasm')
+-- The quest list: open it with the Quests button, then read its lines.
+local toggle
+for _,b in ipairs(buttons) do if type(b.text)=='string' and b.text=='Quests (3)' then toggle=b end end
+toggle.scripts.OnClick(toggle)
+local rows={}
+for _,b in ipairs(buttons) do if type(b.text)=='table' and type(b.quest)=='table' then rows[b.quest.id]=b.text.text end end
+assert(rows[166]:find('^|cffffd133%[=%] The Defias Brotherhood|r') and rows[2040]:find('^|cff40ff40%[%+%] Underground Assault|r') and rows[7]:find('^|cffffffffNot taken|r'),rows[166]..' / '..rows[2040]..' / '..rows[7])
+`));
