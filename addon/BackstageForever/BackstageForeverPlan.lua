@@ -220,6 +220,30 @@ function BackstageForeverBuildPlan(character,options)
     return result
 end
 
+-- Every quest of the captured log with the stop the plan above would use for it: the game's own
+-- marker first, then the bundled reference. The plan picks a few steps; the quest list by distance
+-- (/bf tracker) shows them all. A reference NPC that is only mentioned is a clue, never a stop.
+-- Returns nil when the quest log was not readable.
+function BackstageForeverQuestStops(character)
+    local quests=field(character,'quests')
+    if type(quests)~='table' then return nil end
+    local reference=referenceInfo(character)
+    local out,seen={},{}
+    for i=1,QUEST_CAP do
+        local quest=field(quests,i)
+        if quest==nil then break end
+        local item=candidate(character,quest,reference)
+        if item and not seen[item.step.questId] then
+            local step=item.step;seen[step.questId]=true
+            local stop=(not item.clue) and step.destination or nil
+            out[#out+1]={questId=step.questId,title=step.title,ready=step.phase=='t',level=integer(field(quest,'level'),1,1000),
+                zone=text(field(quest,'zone')),source=stop and step.source or nil,
+                destination=stop and {mapId=stop.mapId,x=stop.x,y=stop.y} or nil}
+        end
+    end
+    return out
+end
+
 -- Only current captured bag counts are used; unavailable data stays silent.
 function BackstageForeverBuildPreparation(character)
     local bags=field(field(character,'readiness'),'bags')

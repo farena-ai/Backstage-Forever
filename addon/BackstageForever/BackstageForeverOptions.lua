@@ -6,6 +6,7 @@ local ART='Interface\\AddOns\\BackstageForever\\Art\\'
 local WIDTH,HEIGHT=560,446
 local COLUMN_X={34,292}
 local ROW_TOP,ROW_HEIGHT,ROWS_PER_COLUMN=-150,25,8
+local PAGE_WIDTH,PAGE_STEP=117,125
 
 local function saved(name,key)
     local t=_G[name]
@@ -78,16 +79,23 @@ local PAGES={
             get=function() return saved('BackstageForeverAskSettings','hidden')~=true end,
             set=function(value) run(value and 'ask show' or 'ask hide') end},
     }},
+    {title='Panels',rows={
+        switch('Quest list by distance','A small list of your quests, nearest first. Click one for a waypoint. The game tracker is left alone.',off('BackstageForeverPanelSettings','tracker'),'tracker'),
+        switch('Dungeon run panel','Inside a dungeon: bosses left, your quests there, wishes still possible and time in the run.',off('BackstageForeverPanelSettings','run'),'run'),
+        switch('Run panel stays in combat','Keeps the dungeon run panel on screen in combat. It only updates outside combat.',off('BackstageForeverPanelSettings','runCombat'),'run combat'),
+        switch('Wish list banner','A banner when you or your group loots an item from your wish list. Shown after combat.',on('BackstageForeverPanelSettings','wish'),'wish'),
+        switch('Bag marks','Small signs on bag items: + upgrade, * wish, ! quest item. Off until you switch it on.',off('BackstageForeverPanelSettings','bags'),'bags marks'),
+    }},
 }
 BackstageForeverOptionsPages=PAGES
 
 -- Presets only flip switches listed here, and say what they changed.
 local PRESETS={
     {title='Quiet',about='Fewer interruptions: banners, enemy alerts and detour offers off. Safety warnings stay on.',
-        off={'Pop-up tips','Moment banners','Enemy player alerts','Enemy alert sound','Quest detours','Before leaving reminders','Supply reminders','Flight time at take-off','Log-off rested nudge','Player note reminders'},on={'Danger warnings','Low durability warning','Ready check at dungeons','Mail expiry warning'}},
+        off={'Pop-up tips','Moment banners','Enemy player alerts','Enemy alert sound','Quest detours','Before leaving reminders','Supply reminders','Flight time at take-off','Log-off rested nudge','Player note reminders','Wish list banner'},on={'Danger warnings','Low durability warning','Ready check at dungeons','Mail expiry warning'}},
     {title='Leveling',about='The way Backstage Forever starts: every guide and reminder on, comfort extras off.',
-        on={'Quest tracker','Objective hints','Quest detours','Before leaving reminders','Quest reward reasons','Quest blockers','Shared objectives','Keep quest items','Quest item cue','Quest icons over enemies','Gear hints','Pop-up tips','Moment banners','Danger warnings','Boss tips','Enemy player alerts','Supply reminders','Sell junk button','Weapon skill warning','Low durability warning','Flight time at take-off','Log-off rested nudge','Ready check at dungeons','Mail expiry warning','Player note reminders'},
-        off={'Enemy alert sound','Coordinates','Faster looting','Dismount at flight masters','Instant quest text'}},
+        on={'Quest tracker','Objective hints','Quest detours','Before leaving reminders','Quest reward reasons','Quest blockers','Shared objectives','Keep quest items','Quest item cue','Quest icons over enemies','Gear hints','Pop-up tips','Moment banners','Danger warnings','Boss tips','Enemy player alerts','Supply reminders','Sell junk button','Weapon skill warning','Low durability warning','Flight time at take-off','Log-off rested nudge','Ready check at dungeons','Mail expiry warning','Player note reminders','Dungeon run panel','Wish list banner'},
+        off={'Enemy alert sound','Coordinates','Faster looting','Dismount at flight masters','Instant quest text','Quest list by distance','Run panel stays in combat','Bag marks'}},
     {title='Veteran',about='For players who know the way: beginner banners off, coordinates and fast looting on.',
         off={'Pop-up tips','Danger warnings','Before leaving reminders','Quest reward reasons','Weapon skill warning','Log-off rested nudge'},on={'Flight time at take-off','Low durability warning','Ready check at dungeons','Mail expiry warning','Player note reminders','Coordinates','Faster looting','Instant quest text','Quest icons over enemies','Boss tips'}},
 }
@@ -165,7 +173,8 @@ local function build()
     rule:SetSize(496,1);rule:SetPoint('TOP',scene,'BOTTOM',0,0)
     for i,page in ipairs(PAGES) do
         local button=CreateFrame('Button',nil,f,'UIPanelButtonTemplate')
-        button:SetSize(156,22);button:SetPoint('TOPLEFT',34+(i-1)*168,-114);button:SetText(T(page.title))
+        -- Four pages share the 492-wide row under the painting.
+        button:SetSize(PAGE_WIDTH,22);button:SetPoint('TOPLEFT',34+(i-1)*PAGE_STEP,-114);button:SetText(T(page.title))
         button:SetScript('OnClick',function() current=i;refresh() end)
         pageButtons[i]=button
     end
