@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.24.0 - Recipes, languages and polish
+
+- A recipe book and skill path for every profession, French and Spanish, your current talents in the planner, coin per hour per session, in-game answers, chain steps in tooltips, raid notes, a Linux build, and a polish pass over every new screen. See the [release notes](docs/releases/1.24.0.md).
+
 ## 1.23.0 - Gear, groups and stories
 
 - Editable stat weights, a gear plan per slot, a reputation planner, keys and attunements, share pictures, the story so far, a timeline with your screenshots, leveling races, a stream overlay, coach's notes, a quest list by distance, a dungeon run panel, a wish banner, a group finder board, readiness checks, a mentor link, guild sharing and an auction shopping list. See the [release notes](docs/releases/1.23.0.md).

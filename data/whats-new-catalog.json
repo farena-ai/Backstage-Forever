@@ -7786,6 +7786,109 @@
           "text": "The new in-game commands, panels and messages between players have not been checked in the real game client yet; they are tested against stand-ins. German text for the new features is a first translation."
         }
       ]
+    },
+    {
+      "version": "1.24.0",
+      "channel": "stable",
+      "source": "docs/releases/1.24.0.md",
+      "title": "Backstage Forever 1.24.0 — Recipes, languages and polish",
+      "changes": [
+        {
+          "id": "recipe-book",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": "workshop",
+          "section": "Changes",
+          "text": "Recipe book and skill path. Adventure → Professions has four new views. The recipe book lists every recipe your game files define, whether you know it, when it turns yellow, green and grey, what it needs, and where it comes from when that is recorded. The skill path works out the cheapest recipe per skill range from prices you have seen; it is computed, not a reviewed guide. \"Who can craft it\" searches all your characters, and Cooking shows what you can cook from your bags right now. More than half of all recipes have no recorded source yet, and the page says so."
+        },
+        {
+          "id": "french-spanish",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "French and Spanish. Both are first translations awaiting a native review, like German. Text added since the translations were made can still show in English."
+        },
+        {
+          "id": "current-talents",
+          "kind": "improved",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "The planner knows your talents. The addon now saves your spent talents, so My plan can start from them and compare them with a plan. It also saves every known recipe (the old limit was 100), keys on your key ring, and play sessions."
+        },
+        {
+          "id": "coin-per-hour",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": "ledger",
+          "section": "Changes",
+          "text": "Coin per hour. Ledger → Gold & prices lists play sessions with time logged in, gold change and coin per hour. Time is clock time, including time away from the keyboard."
+        },
+        {
+          "id": "ingame-extras",
+          "kind": "new",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "More in-game helpers. /bf answers reads your last answers from the desktop. /bf explain opens the Ask panel filled in with your target, item or quest, unsent. Quest link tooltips say \"Step 3 of 7\". The route step shows time to arrive and \"behind you\". /bf check now says who still needs each dungeon quest. /bf raid shares leader notes and jobs in a raid (off by default). /bf guild craft asks sharing guild members who can make something. /bf scout (off by default) notes the quest givers, trainers and vendors you meet; Help → Data coverage can save those notes to a file. /bf perf on times each part of the addon."
+        },
+        {
+          "id": "help-options-polish",
+          "kind": "improved",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Tidier help and settings. /bf help is now a short index with topics. The in-game settings window has five pages, and the Quiet, Leveling and Veteran presets cover the newer switches. Help → Commands is regrouped with a jump row."
+        },
+        {
+          "id": "screen-polish",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Polish. Talents no longer shows the previous character after you switch. The faction crest in the side rail is no longer cut off. View switches, panels and margins on the newer screens now match. Data coverage counts flight points correctly. German no longer shows raw placeholders such as \"{#0}\"."
+        },
+        {
+          "id": "linux-build",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Linux. An AppImage is built with each release for players who run the game through a compatibility layer. It works from saved data only and has not been tested by us on a real Linux system yet."
+        },
+        {
+          "id": "unverified-in-game-124",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "The new in-game commands and the new saved data (talents, recipe lists, key ring, sessions) have not been checked in the real game client yet. If the game does not answer one of those reads, the app keeps the last saved value and says so."
+        }
+      ]
     }
   ],
   "excluded": [
