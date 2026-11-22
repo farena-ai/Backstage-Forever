@@ -5,6 +5,7 @@ const test = require("node:test"),
   os = require("node:os"),
   path = require("node:path");
 const { fixture } = require("./fixtures/insights.cjs");
+const { assertNewestFirst } = require("./pack-invariants.cjs");
 function api() {
   assert.ok(
     fs.existsSync(
@@ -31,20 +32,23 @@ test("Windows checkouts preserve LF bytes for all four generated insight resourc
 test("offline bundled validation checks every build's seven immutable source locks, coverage and compiled integrity", () => {
   assert.equal(api().checkBundle(), true);
   const p = require("../data/forever-insights/pack.json");
-  assert.deepEqual(p.coverage, {
-    quests: 4916,
-    sharing: 4847,
-    durations: 37,
-    startItems: 1189,
-    dropLists: 186,
-    trainers: 113,
-    services: 5552,
-    uniqueSpells: 1427,
-    items: 6670,
-  });
-  assert.equal(p.build, "1.60.1.70888");
-  assert.deepEqual(p.builds, ["1.60.1.70888", "1.60.1.70862", "1.60.1.70840", "1.60.1.70790"]);
+  const sources = require("../src/core/insights-sources.cjs");
+  const lock = require("../data/forever-insights/source-lock.json");
+  // The pack agrees with the compiler's pinned coverage and never falls below the first four-build pack.
+  assert.deepEqual(p.coverage, api().COVERAGE);
+  const floor = { quests: 4916, sharing: 4847, durations: 37, startItems: 1189, dropLists: 186, trainers: 113, services: 5552, uniqueSpells: 1427, items: 6670 };
+  for (const [k, n] of Object.entries(floor)) assert.ok(p.coverage[k] >= n, `${k} ${p.coverage[k]} >= ${n}`);
+  assert.equal(p.coverage.quests, p.quests.length);
+  assert.equal(p.coverage.trainers, p.trainers.length);
+  assert.equal(p.coverage.items, p.items.length);
+  assert.equal(p.sourceCommit, sources.COMMIT);
+  assert.equal(lock.commit, sources.COMMIT);
+  assert.deepEqual(assertNewestFirst(p.builds), sources.BUILDS);
+  assert.equal(p.build, p.builds[0], "the newest build is the pack's own");
+  assert.deepEqual(lock.builds, p.builds);
   assert.equal(p.sources.length, 7 * p.builds.length);
+  assert.deepEqual(p.sources, lock.files);
+  for (const s of p.sources) assert.equal(s.meta.clientBuild, s.build);
   const alliance = p.trainers.filter((t) => t.observedReactionsByFaction.Alliance?.some((r) => r >= 4));
   assert.ok(alliance.some((t) => t.positions.some((q) => q.mapId === 1429)), "an Elwynn Forest trainer");
   assert.ok(alliance.some((t) => t.positions.some((q) => q.mapId === 1453)), "a Stormwind trainer");

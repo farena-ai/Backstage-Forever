@@ -139,9 +139,14 @@ test("all seven exact metadata descriptors and aggregate input size are enforced
     assert.throws(() => normalize(r), /metadata/);
   }
   const r = fixture();
-  for (const name of Object.keys(r).slice(0, 4)) {
+  // Each file stays within its own bound; together they pass the aggregate bound.
+  const { INPUT_BYTES, TOTAL_BYTES } = api();
+  const each = Math.min(INPUT_BYTES, 4 * 1024 * 1024),
+    padded = Object.keys(r).slice(0, Math.floor(TOTAL_BYTES / each) + 1);
+  assert.ok(padded.length * each > TOTAL_BYTES, "the fixture has enough files to exceed the aggregate bound");
+  for (const name of padded) {
     const json = JSON.stringify(r[name]);
-    r[name] = json + " ".repeat(4 * 1024 * 1024 - json.length);
+    r[name] = json + " ".repeat(each - json.length);
   }
   assert.throws(() => normalize(r), /size/);
 });

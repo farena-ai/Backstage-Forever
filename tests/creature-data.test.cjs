@@ -5,12 +5,16 @@ const { SOURCES, COMMIT, BUILDS } = require("../src/core/creature-sources.cjs");
 const compiler = require("../scripts/build-forever-creatures.cjs");
 const file = path.join(__dirname, "../data/forever-creatures/pack.json");
 const bundled = () => JSON.parse(fs.readFileSync(file));
+const { assertNewestFirst } = require("./pack-invariants.cjs");
 
-test("the bundled creature pack is pinned, small and carries levels, flags and hostility", () => {
-  assert.ok(fs.statSync(file).size < 400 * 1024, "under 400 KB");
+test("the bundled creature pack is pinned, within its size cap and carries levels, flags and hostility", () => {
+  assert.ok(fs.statSync(file).size <= data.PACK_LIMIT, "within the pack size cap");
   const p = data.validateCreaturePack(bundled());
-  assert.equal(p.build, "1.60.1.70888");
-  assert.deepEqual(p.builds, BUILDS);
+  assert.equal(p.sourceCommit, COMMIT);
+  assert.deepEqual(assertNewestFirst(p.builds), BUILDS);
+  assert.equal(p.build, BUILDS[0], "the newest build is the pack's own");
+  for (const s of p.sources) assert.equal(s.meta.clientBuild, s.build);
+  assert.ok(p.creatures.length >= 3272 && p.creatures.length <= data.MAX_CREATURES, "never fewer creatures than the first four-build pack");
   assert.deepEqual(compiler.coverage(p), compiler.COVERAGE);
   const by = data.creatureIndex(p);
   assert.deepEqual(by.get(3381), { id: 3381, name: "Southsea Brigand", minLevel: 12, maxLevel: 13, hostileTo: ["Horde"], sources: 3 });
@@ -93,6 +97,6 @@ test("the runtime validator rejects unknown keys, bad bounds, duplicates, false 
     (p) => (p.creatures[0].elite = false), (p) => (p.creatures[0].hostileTo = ["Horde", "Alliance"]), (p) => (p.creatures[0].hostileTo = ["Scourge"]),
     (p) => (p.creatures[0].name = "x".repeat(201)), (p) => (p.creatures[0].sources = 99), (p) => (p.sourceCommit = "bad"),
     (p) => { p.creatures[0].minLevel = null; delete p.creatures[0].skull; }, (p) => (p.hostility = "changed"),
-    (p) => (p.creatures = Array.from({ length: 8001 }, (_, i) => ({ ...p.creatures[0], id: i + 1 }))),
+    (p) => (p.creatures = Array.from({ length: data.MAX_CREATURES + 1 }, (_, i) => ({ ...p.creatures[0], id: i + 1 }))),
   ]) { const p = structuredClone(original); edit(p); assert.throws(() => data.validateCreaturePack(p)); }
 });

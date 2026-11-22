@@ -85,8 +85,10 @@ local first=r.s[1]
 local p2=BackstageForeverGuidePosition(r,{completed={},inLog={},complete={},level=1,mapId=1420},{[first[8]]=true})
 assert(p2.index==2,'a skipped step is passed')
 local p3=BackstageForeverGuidePosition(r,{completed={},inLog={},complete={},level=60,mapId=1420},{})
-local hand=true for _,s in ipairs(p3.steps or {}) do if s[1]~='t' then hand=false end end
-assert(p3.ended or hand,'at 60 only unfinished hand-ins remain')
+-- The routes now reach the mid-fifties, so at 60 the last steps (level 56 and up) are still current:
+-- only hand-ins and steps less than five levels behind may remain.
+local hand=true for _,s in ipairs(p3.steps or {}) do if s[1]~='t' and 60>=s[6]+5 then hand=false end end
+assert(p3.ended or hand,'at 60 only hand-ins and steps within five levels remain')
 local behind=BackstageForeverGuidePosition({s={{'p','x',1,.5,.5,20,{1},'p:1'}},top=20},{completed={},inLog={},complete={},level=10},{})
 assert(behind.note and behind.note:find('level 20 and you are 10',1,true))
 print(#r.s)`);

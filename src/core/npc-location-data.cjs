@@ -48,4 +48,4 @@ function mergeNpcLocationPacks(packs,{pinned=false}={}){
  const npcs=[...byId.values()].sort((a,b)=>a.id-b.id);
  return validateNpcLocationPack({schemaVersion:1,kind:'forever-npc-locations',product:'wowf',build:sources[0].build,builds:sources.map(s=>s.build),sourceCommit:valid[0].sourceCommit,license:'CC BY 4.0',attribution:ATTRIBUTION,sources,npcs},{pinned});
 }
-module.exports={normalizeNpcLocations,mergeNpcLocationPacks,validateNpcLocationPack,RAW_LIMIT,PACK_LIMIT,MAX_POSITIONS,hash};
+module.exports={normalizeNpcLocations,mergeNpcLocationPacks,validateNpcLocationPack,RAW_LIMIT,PACK_LIMIT,MAX_NPCS,MAX_POSITIONS,hash};

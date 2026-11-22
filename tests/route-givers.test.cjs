@@ -18,7 +18,9 @@ test("the journal keeps each quest's giver and spot, bounded, one per quest", ()
 test("learned givers fill quests with no giver in the bundled data, and the route reaches further", () => {
   const before = G.buildGuidedRoutes({ pack, zones }).coverage.Horde.best;
   const qs = Object.values(pack.quests).filter((q) => q.level >= before && q.level <= before + 5 && (!q.sides?.length || q.sides.includes("Horde")) && !q.givers?.length).slice(0, 30);
-  const givers = qs.map((q, i) => ({ q: q.id, n: 900000 + (i % 5), m: 1446, x: 0.5 + (i % 10) * 0.01, y: 0.4 + Math.floor(i / 10) * 0.01, at: 1 }));
+  // The givers stand in the highest-level zone, so its level band admits quests past the current end of the route.
+  const top = zones.filter((z) => z.faction === "Contested").sort((a, b) => b.max - a.max || b.min - a.min)[0].mapId;
+  const givers = qs.map((q, i) => ({ q: q.id, n: 900000 + (i % 5), m: top, x: 0.5 + (i % 10) * 0.01, y: 0.4 + Math.floor(i / 10) * 0.01, at: 1 }));
   const learned = G.learnedGivers([{ journal: { givers } }], null);
   assert.equal(learned.quests.size, qs.length);
   const after = G.buildGuidedRoutes({ pack, zones, learned }).coverage.Horde.best;

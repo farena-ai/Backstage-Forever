@@ -98,4 +98,4 @@ function loadCreaturePack(file=path.join(__dirname,'../../data/forever-creatures
 /** id -> creature lookup over a validated pack. */
 const indexes=new WeakMap();
 function creatureIndex(pack){if(pack&&indexes.has(pack))return indexes.get(pack);const m=new Map();for(const c of pack?.creatures||[])m.set(c.id,c);if(pack&&typeof pack==='object')indexes.set(pack,m);return m;}
-module.exports={normalizeCreatures,mergeCreaturePacks,validateCreaturePack,loadCreaturePack,creatureIndex,RAW_LIMIT,PACK_LIMIT,HOSTILE_MAX,HOSTILITY,hash};
+module.exports={normalizeCreatures,mergeCreaturePacks,validateCreaturePack,loadCreaturePack,creatureIndex,RAW_LIMIT,PACK_LIMIT,MAX_CREATURES,HOSTILE_MAX,HOSTILITY,hash};

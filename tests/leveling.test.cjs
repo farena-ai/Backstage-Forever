@@ -127,9 +127,15 @@ test("live quest pages beat the last save: turned-in quests leave Now and show a
   assert.ok(!s.log.ready.some((x) => x.id === a));
 });
 
-test("1.0.1: with no class trainer in your zone, the capital next door comes before the other side of the sea", () => {
+test("1.0.1: a class trainer in your zone comes first; with none, the capital next door comes before the other side of the sea", () => {
   // Found on a real Mac: a level 4 Troll mage in Durotar was sent to Isabella in Tirisfal Glades.
-  const t = advisor({ level: 4, faction: "Horde", className: "Mage", race: "Troll", location: { mapId: 1411, x: 0.42, y: 0.68 }, quests: [] }).advise().training;
+  const mage = { level: 4, faction: "Horde", className: "Mage", race: "Troll", location: { mapId: 1411, x: 0.42, y: 0.68 }, quests: [] };
+  // The bundled data now knows Mai'ah, the mage trainer in Durotar's starting valley: your own zone comes first.
+  const own = advisor(mage).advise().training;
+  assert.equal(own.trainer.mapName, "Durotar", JSON.stringify(own.trainer));
+  // Without a mage trainer in Durotar (the data this was found on), it is Orgrimmar next door.
+  const noDurotarMage = { ...insights, trainers: insights.trainers.filter((x) => !(x.title === "Mage Trainer" && x.positions.some((p) => p.mapId === 1411))) };
+  const t = new LevelingAdvisor({ getState: () => ({ activeProfileId: "A", profiles: [{ id: "A", name: "P", ...mage }] }), knowledge: { bundled: { pack } }, insights: noDurotarMage }).advise().training;
   assert.equal(t.trainer.mapName, "Orgrimmar", JSON.stringify(t.trainer));
   const uc = advisor({ level: 4, faction: "Horde", className: "Mage", race: "Undead", location: { mapId: 1420, x: 0.3, y: 0.66 }, quests: [] }).advise().training;
   assert.equal(uc.trainer.mapName, "Tirisfal Glades", "an Undead mage in Tirisfal still trains there");

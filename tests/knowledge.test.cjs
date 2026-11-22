@@ -43,10 +43,13 @@ test("compiler retains exact live facts, independent observations, and no narrat
     pack.quests["5730"].rewards.choices[0].name,
   );
   const shipped = require("../data/forever/pack.json");
-  assert.equal(shipped.counts.npcs, 978);
-  assert.equal(shipped.counts.objects, 91);
-  assert.equal(shipped.counts.approachedObjects, 504);
-  assert.equal(shipped.counts.objectiveQuests, 297);
+  // The shipped counts describe the shipped rows and never fall below the first four-build pack.
+  const located = Object.entries(shipped.npcs);
+  assert.equal(shipped.counts.quests, Object.keys(shipped.quests).length);
+  assert.equal(shipped.counts.npcs, located.filter(([k]) => k.startsWith("npc:")).length);
+  assert.equal(shipped.counts.objects, located.filter(([k]) => k.startsWith("object:")).length);
+  for (const [k, floor] of Object.entries({ quests: 4916, npcs: 978, objects: 91, approachedObjects: 504, objectiveQuests: 297 }))
+    assert.ok(shipped.counts[k] >= floor, `${k} ${shipped.counts[k]} >= ${floor}`);
   assert.doesNotMatch(
     JSON.stringify(pack),
     /"description"|worldX|worldY|prerequisites|xpDifficulty/,
