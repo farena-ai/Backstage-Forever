@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.19.0 - Quest helper and Instance Atlas
+
+- In game: quest pins on the minimap, where items drop and who sells them on tooltips, `/bf available`, `/bf chain`, and the Instance Atlas (`/bf atlas`) with every dungeon and raid. See the [release notes](docs/releases/1.19.0.md).
+
 ## 1.18.1 - Fresh data
 
 - The bundled quest, NPC, vendor, trainer, creature and loot data moves to a newer snapshot covering seven game builds, and the guided routes now reach level 55 or 56 for every race. See the [release notes](docs/releases/1.18.1.md).

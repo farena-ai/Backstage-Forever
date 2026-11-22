@@ -41,6 +41,10 @@ jobs:
         if: ${{ !cancelled() }}
       - run: npm run check:forever-boss-loot
         if: ${{ !cancelled() }}
+      - run: npm run check:addon-sources
+        if: ${{ !cancelled() }}
+      - run: npm run check:addon-atlas
+        if: ${{ !cancelled() }}
       - run: npm test
         if: ${{ !cancelled() }}
       - run: npm --prefix community-server test
