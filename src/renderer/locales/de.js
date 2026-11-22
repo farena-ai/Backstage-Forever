@@ -1451,6 +1451,7 @@ window.BF_LOCALE_DE = {
  "The guided route is unavailable.": "Die geführte Route ist nicht verfügbar.",
  "The in-game Compass (": "Der In-Game-Kompass (",
  "The last save does not confirm this route transition.": "Der letzte Spielstand bestätigt diesen Zonenwechsel nicht.",
+ "The Linux build does not update itself. Download the new AppImage from the releases page; your journal stays.": "Die Linux-Version aktualisiert sich nicht selbst. Lade das neue AppImage von der Release-Seite; dein Tagebuch bleibt erhalten.",
  "The live link is off. Turn it on in Settings → Game connection.": "Die Live-Verbindung ist aus. Schalte sie unter Einstellungen → Spielverbindung ein.",
  "The macOS-arm64 zip for Apple silicon, or macOS-x64 for Intel.": "Das macOS-arm64-Zip für Apple Silicon oder macOS-x64 für Intel.",
  "The overlay is off": "Das Overlay ist aus",
