@@ -56,6 +56,9 @@ local PAGES={
         helper('gatheringMarks','Gathering marks','Recent herb and ore spots you found, on the world map.'),
         switch('Weapon skill warning','One chat line when you equip a weapon type you have little skill with.',on('BackstageForeverComfortSettings','weapons'),'comfort weapons'),
         switch('Low durability warning','One chat line when you enter a rest area with a gear slot under 20% durability.',on('BackstageForeverComfortSettings','durability'),'comfort durability'),
+        switch('Ready check at dungeons','One chat line when you walk into a dungeon: a class buff, food buff or reagent you are missing.',on('BackstageForeverKitSettings','ready'),'ready'),
+        switch('Mail expiry warning','One chat line at the mailbox when a letter expires within 3 days. Mail is never opened.',on('BackstageForeverSocialSettings','mail'),'mail'),
+        switch('Player note reminders','One chat line when you meet a player you wrote a note about. Notes stay on this computer.',on('BackstageForeverSocialSettings','notes'),'notes'),
     }},
     {title='Comfort',rows={
         switch('Sell junk button','A button at vendors that sells grey items when you click it. Quest items are never sold.',on('BackstageForeverAssistSettings','junk'),'junk'),
@@ -69,6 +72,8 @@ local PAGES={
         switch('Flight time at take-off','Says how long a flight takes when you timed the same trip before.',on('BackstageForeverComfortSettings','flights'),'comfort flights'),
         switch('Log-off rested nudge','One chat line when you start logging out outside an inn or city.',on('BackstageForeverComfortSettings','rested'),'comfort rested'),
         switch('Map search box','A small find box at the bottom left of the world map.',on('BackstageForeverWorldSettings','searchBox'),'mapsearch'),
+        switch('Marks without colour','Adds [+], [x] or [!] to lines that otherwise tell good from bad by colour alone.',off('BackstageForeverSocialSettings','marks'),'access marks'),
+        switch('Larger window text','Makes the Adventure Compass, this window and the welcome card 15% larger.',off('BackstageForeverSocialSettings','text'),'access text'),
         {label='Owl button on the minimap',about='Left-click asks the companion; right-click opens these settings. /bf ask show brings it back.',
             get=function() return saved('BackstageForeverAskSettings','hidden')~=true end,
             set=function(value) run(value and 'ask show' or 'ask hide') end},
@@ -79,12 +84,12 @@ BackstageForeverOptionsPages=PAGES
 -- Presets only flip switches listed here, and say what they changed.
 local PRESETS={
     {title='Quiet',about='Fewer interruptions: banners, enemy alerts and detour offers off. Safety warnings stay on.',
-        off={'Pop-up tips','Moment banners','Enemy player alerts','Enemy alert sound','Quest detours','Before leaving reminders','Supply reminders','Flight time at take-off','Log-off rested nudge'},on={'Danger warnings','Low durability warning'}},
+        off={'Pop-up tips','Moment banners','Enemy player alerts','Enemy alert sound','Quest detours','Before leaving reminders','Supply reminders','Flight time at take-off','Log-off rested nudge','Player note reminders'},on={'Danger warnings','Low durability warning','Ready check at dungeons','Mail expiry warning'}},
     {title='Leveling',about='The way Backstage Forever starts: every guide and reminder on, comfort extras off.',
-        on={'Quest tracker','Objective hints','Quest detours','Before leaving reminders','Quest reward reasons','Quest blockers','Shared objectives','Keep quest items','Quest item cue','Quest icons over enemies','Gear hints','Pop-up tips','Moment banners','Danger warnings','Boss tips','Enemy player alerts','Supply reminders','Sell junk button','Weapon skill warning','Low durability warning','Flight time at take-off','Log-off rested nudge'},
+        on={'Quest tracker','Objective hints','Quest detours','Before leaving reminders','Quest reward reasons','Quest blockers','Shared objectives','Keep quest items','Quest item cue','Quest icons over enemies','Gear hints','Pop-up tips','Moment banners','Danger warnings','Boss tips','Enemy player alerts','Supply reminders','Sell junk button','Weapon skill warning','Low durability warning','Flight time at take-off','Log-off rested nudge','Ready check at dungeons','Mail expiry warning','Player note reminders'},
         off={'Enemy alert sound','Coordinates','Faster looting','Dismount at flight masters','Instant quest text'}},
     {title='Veteran',about='For players who know the way: beginner banners off, coordinates and fast looting on.',
-        off={'Pop-up tips','Danger warnings','Before leaving reminders','Quest reward reasons','Weapon skill warning','Log-off rested nudge'},on={'Flight time at take-off','Low durability warning','Coordinates','Faster looting','Instant quest text','Quest icons over enemies','Boss tips'}},
+        off={'Pop-up tips','Danger warnings','Before leaving reminders','Quest reward reasons','Weapon skill warning','Log-off rested nudge'},on={'Flight time at take-off','Low durability warning','Ready check at dungeons','Mail expiry warning','Player note reminders','Coordinates','Faster looting','Instant quest text','Quest icons over enemies','Boss tips'}},
 }
 BackstageForeverOptionsPresets=PRESETS
 
@@ -135,6 +140,7 @@ local function build()
     if frame or type(CreateFrame)~='function' or not UIParent then return frame end
     local f=CreateFrame('Frame','BackstageForeverOptions',UIParent)
     f:Hide();f:SetSize(WIDTH,HEIGHT);f:SetPoint('CENTER',0,20)
+    if type(BackstageForeverApplyTextSize)=='function' then pcall(BackstageForeverApplyTextSize,f) end
     f:SetFrameStrata('DIALOG');f:SetClampedToScreen(true);f:EnableMouse(true);f:SetMovable(true)
     f:RegisterForDrag('LeftButton');f:SetScript('OnDragStart',f.StartMoving);f:SetScript('OnDragStop',f.StopMovingOrSizing)
     -- The same painted leather-and-brass frame and crest as the Adventure Compass.
@@ -260,6 +266,7 @@ local function buildWelcome()
     if welcome or type(CreateFrame)~='function' or not UIParent then return welcome end
     local f=CreateFrame('Frame','BackstageForeverWelcome',UIParent)
     f:Hide();f:SetSize(520,372);f:SetPoint('CENTER',0,40)
+    if type(BackstageForeverApplyTextSize)=='function' then pcall(BackstageForeverApplyTextSize,f) end
     f:SetFrameStrata('DIALOG');f:SetClampedToScreen(true);f:EnableMouse(true)
     if type(BackstageForeverPaintNineSlice)=='function' then pcall(BackstageForeverPaintNineSlice,f,'compass',40,14)
     else local bg=f:CreateTexture(nil,'BACKGROUND');bg:SetAllPoints();bg:SetColorTexture(.07,.065,.055,.98) end

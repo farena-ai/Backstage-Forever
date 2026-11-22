@@ -47,6 +47,8 @@ jobs:
       - run: npm run check:forever-transport
       - run: npm run check:forever-trainers
       - run: npm run check:addon-travel
+      - run: npm run check:forever-world
+      - run: npm run check:addon-rares
         if: ${{ !cancelled() }}
       - run: npm test
         if: ${{ !cancelled() }}
