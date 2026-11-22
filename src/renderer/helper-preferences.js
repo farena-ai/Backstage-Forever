@@ -33,6 +33,7 @@
       <h3 id="helper-preferences-title">${t("In-Game Helpers")}</h3>
       <p>${t("Not sent. Review a command below, then enter it in WoW chat while playing the character you want to change.")}</p>
       <p>${t("Desktop cannot verify these settings. The addon confirms On or Off in chat. If the command is unavailable, update and load the companion addon. Helpers with no saved choice start on.")}</p>
+      <p>${t("The easy way, in WoW: type")} <code>/bf options</code> ${t("or right-click the owl on the minimap for one window with every switch.")}</p>
       <p>${t("Open the checkboxes in WoW chat:")} <code>/bf helpers panel</code></p>
       ${identity ? `<details data-living-disclosure="helper-batch" data-helper-owner="${esc(identity)}">
         <summary>${t("Prepare changes for WoW")}</summary>

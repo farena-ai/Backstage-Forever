@@ -952,6 +952,18 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverSuppliesCommand)=='function' then pcall(BackstageForeverSuppliesCommand,message)end
                 return
             end
+            if word=='perf' then
+                if type(BackstageForeverPerfCommand)=='function' then pcall(BackstageForeverPerfCommand)end
+                return
+            end
+            if word=='welcome' then
+                if type(BackstageForeverWelcomeCommand)=='function' then pcall(BackstageForeverWelcomeCommand)end
+                return
+            end
+            if word=='options' or word=='settings' then
+                if type(BackstageForeverOptionsCommand)=='function' then pcall(BackstageForeverOptionsCommand,message)end
+                return
+            end
             if word=='route' then
                 if type(BackstageForeverRouteCommand)=='function' then pcall(BackstageForeverRouteCommand,message:lower())end
                 return

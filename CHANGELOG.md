@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.18.0 - A front door in game
+
+- One painted settings window for every in-game helper (`/bf options`, or right-click the owl), a painted welcome card, four key bindings, `/way`, `/bf perf`, and boss tips installed by the desktop app. See the [release notes](docs/releases/1.18.0.md).
+
 ## 1.17.1 - Today's game build
 
 - Quest lookups, the Compass quest reference and the in-game helpers work on every build of the patch they were checked on, instead of one exact build. See the [release notes](docs/releases/1.17.1.md).

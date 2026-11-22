@@ -180,15 +180,20 @@ local function buildButton()
     if icon then method(icon,'SetAllPoints',button);method(icon,'SetTexture',ICON) end
     local glow=method(button,'CreateTexture',nil,'HIGHLIGHT')
     if glow then method(glow,'SetAllPoints',button);method(glow,'SetTexture',ICON);method(glow,'SetBlendMode','ADD');method(glow,'SetAlpha',.35) end
-    method(button,'RegisterForClicks','LeftButtonUp')
+    method(button,'RegisterForClicks','LeftButtonUp','RightButtonUp')
     method(button,'RegisterForDrag','LeftButton')
-    method(button,'SetScript','OnClick',function() BackstageForeverAskOpen() end)
+    method(button,'SetScript','OnClick',function(_,mouse)
+        -- Right-click: the settings window (1.18). Left-click: the companion panel, as before.
+        if mouse=='RightButton' and type(BackstageForeverOptionsToggle)=='function' then pcall(BackstageForeverOptionsToggle) return end
+        BackstageForeverAskOpen()
+    end)
     method(button,'SetScript','OnDragStart',function(self) method(self,'SetScript','OnUpdate',dragUpdate) end)
     method(button,'SetScript','OnDragStop',function(self) method(self,'SetScript','OnUpdate',nil);dragUpdate() end)
     method(button,'SetScript','OnEnter',function(self)
         method(GameTooltip,'SetOwner',self,'ANCHOR_LEFT')
         method(GameTooltip,'SetText','Backstage Forever',1,.82,.3)
         method(GameTooltip,'AddLine','Click: open the companion panel over your game and type your question there.',1,1,1,true)
+        method(GameTooltip,'AddLine','Right-click: settings for every helper.',1,1,1,true)
         method(GameTooltip,'AddLine','Drag: move this button around the minimap.',.8,.8,.8,true)
         method(GameTooltip,'Show')
     end)

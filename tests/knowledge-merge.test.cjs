@@ -13,8 +13,10 @@ const {
 } = require("../src/core/knowledge.cjs");
 const { KnowledgeService } = require("../src/core/knowledge-cache.cjs");
 const { fixture } = require("./fixtures/forever-facts.cjs");
-const NEW = "1.60.1.70888",
-  OLD = "1.60.1.70862",
+const { assertNewestFirst } = require("./pack-invariants.cjs");
+// The bundled pack's own build and the one before it: the runtime tests below refresh and
+// cache the build the bundled pack is keyed on, whichever snapshot is pinned.
+const [NEW, OLD] = JSON.parse(fs.readFileSync(path.join(__dirname, "../data/forever/pack.json"), "utf8")).builds.map((b) => b.build),
   commit = "c".repeat(40);
 function rawFor(build, edit = () => {}) {
   const raw = fixture();
@@ -102,9 +104,11 @@ test("builds metadata is validated: first entry must be the pack itself and dupl
 test("the bundled pack merges several client builds and keeps Alliance coverage", () => {
   const pack = JSON.parse(fs.readFileSync(path.join(__dirname, "../data/forever/pack.json"), "utf8"));
   const lock = JSON.parse(fs.readFileSync(path.join(__dirname, "../data/forever/source-lock.json"), "utf8"));
-  assert.equal(pack.build, "1.60.1.70888");
-  assert.deepEqual(pack.builds.map((b) => b.build), lock.builds.map((b) => b.build));
-  assert.ok(pack.builds.length >= 3);
+  assert.deepEqual(assertNewestFirst(pack.builds.map((b) => b.build)), lock.builds.map((b) => b.build));
+  assert.equal(pack.build, pack.builds[0].build, "the newest build is the pack's own");
+  assert.equal(pack.build, lock.build);
+  assert.equal(pack.sourceCommit, lock.commit);
+  assert.ok(pack.builds.every((b) => b.sourceCommit === lock.commit));
   for (const b of lock.builds) for (const f of Object.values(b.files)) assert.equal(f.meta.clientBuild, b.build);
   const atMap = (mapId) => Object.values(pack.npcs).filter((n) => n.positions.some((p) => p.mapId === mapId)).length;
   for (const mapId of [1429, 1436, 1433, 1453, 1438]) assert.ok(atMap(mapId) >= 10, `NPC positions on map ${mapId}`);
@@ -144,6 +148,35 @@ test("runtime refresh merges one downloaded build into the bundled multi-build p
   s2.setContext({ clientBuild: NEW }, false);
   assert.equal(s2.status().sourceCommit, next);
   assert.equal(s2.index().pack.counts.quests, after.counts.quests);
+});
+
+test("a character on another build of the bundled patch gets the bundled pack, and its own downloaded build is merged onto it", async (t) => {
+  const live = NEW.replace(/\d+$/, "999999"), next = "d".repeat(40);
+  const raw = rawFor(live, (r) => {
+    for (const f of Object.values(r)) f.meta.collectedOn.last = "2026-11-30";
+    r["quests.enUS.json"].quests[1061].title = "Live Build Title";
+  });
+  let online = false;
+  const s = service(t, async (url) => {
+    if (!online) throw Error("offline");
+    return url.includes("api.github") ? new Response(JSON.stringify({ commit: { sha: next } })) : new Response(JSON.stringify(raw[url.split("/").at(-1)]));
+  });
+  s.setContext({ clientBuild: live }, false);
+  assert.equal(s.index(), s.bundled, "same patch, no pack of its own: the bundled pack is used");
+  assert.notEqual(s.status().phase, "mismatch");
+  await s.refresh();
+  assert.equal(s.index(), s.bundled, "a failed download keeps the bundled pack");
+  online = true;
+  await s.refresh();
+  const after = s.index().pack, before = s.bundled.pack;
+  assert.equal(after.build, live);
+  assert.equal(after.quests[1061].title, "Live Build Title");
+  assert.ok(after.counts.quests >= before.counts.quests && after.counts.npcs >= before.counts.npcs, "coverage never shrinks");
+  assert.deepEqual(after.builds.map((b) => b.build), [live, ...before.builds.map((b) => b.build)]);
+  // Another patch has no pack at all.
+  s.setContext({ clientBuild: live.replace(/\.\d+\.(\d+)$/, ".99.$1") }, false);
+  assert.equal(s.index(), null);
+  assert.equal(s.status().phase, "mismatch");
 });
 
 test("an older single-build cache from a previous app version is merged with the bundled pack on load", (t) => {

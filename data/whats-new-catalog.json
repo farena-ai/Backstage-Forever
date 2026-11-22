@@ -7215,6 +7215,95 @@
           "text": "Places and quest steps rarely move between builds of one patch, but they can. Data in use from another build is labelled as such. If something is wrong on your build, use Report a problem under Settings → Game connection."
         }
       ]
+    },
+    {
+      "version": "1.18.0",
+      "channel": "stable",
+      "source": "docs/releases/1.18.0.md",
+      "title": "Backstage Forever 1.18.0 — A front door in game",
+      "changes": [
+        {
+          "id": "ingame-settings-window",
+          "kind": "new",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "One painted settings window for every in-game helper. Type /bf options, or right-click the owl on the minimap. Three pages (Quests, Alerts, Comfort) hold 29 switches; point at one to read what it does. Quiet, Leveling and Veteran set a group of switches at once and say how many changed. The window also shows which game build you are on and which build the quest data was checked on. It is listed in the game's own options too."
+        },
+        {
+          "id": "ingame-welcome-card",
+          "kind": "new",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "A painted welcome card on your first login: what the Compass does, what the owl does, and where to get the free desktop app. /bf welcome shows it again."
+        },
+        {
+          "id": "ingame-key-bindings",
+          "kind": "new",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Four keys in the game's Key Bindings list under Backstage Forever: show or hide the Compass, point to your next quest stop, ask the companion, and open settings."
+        },
+        {
+          "id": "way-command",
+          "kind": "new",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "/way X Y [name], the waypoint line players paste from guides and chat, now places an arrow on the map you are on. If another waypoint addon already answers /way, Backstage Forever leaves it alone."
+        },
+        {
+          "id": "perf-command",
+          "kind": "new",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "/bf perf says how much memory the addon is using and how that changed since you last asked."
+        },
+        {
+          "id": "companion-same-patch-data",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "The Companion, the Now page and the adventure coach now get quest data for a character on another build of the same patch. 1.17.1 fixed this for quest lookups; these three still came up empty until that build had been downloaded. The same now holds for dungeon encounter history in the Companion and for the gear comparison on the Sheet, which had asked for the saved character and the installed game to be on the exact same build."
+        },
+        {
+          "id": "boss-tips-installed",
+          "kind": "fixed",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "The desktop app now installs the boss tips file with the rest of the addon. Before, players who installed through the app were missing in-game boss tips."
+        },
+        {
+          "id": "ingame-settings-scope",
+          "kind": "compatibility",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Each switch runs the same /bf command you could type, and every setting still belongs to the character you are playing. Not yet checked in the real game: the entry in the game's own options list and the key bindings."
+        }
+      ]
     }
   ],
   "excluded": [

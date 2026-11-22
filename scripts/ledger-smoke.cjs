@@ -43,7 +43,7 @@ const { defaultState } = require("../src/core/validation.cjs");
         bags: { seenAt: clock, complete: true, items: [item(2589, 7, "Linen Cloth"), item(12359, 12, "Thorium Bar")] },
         reputations: { seenAt: clock, factions: [{ id: 76, name: "Orgrimmar", standing: 7, min: 21000, max: 42000, value: 30000 }, { id: 530, name: "Darkspear Trolls", standing: 4, min: 0, max: 3000, value: 1200 }] },
         cooldowns: [{ key: "mooncloth", spellId: 18560, readyAt: clock - 60 }], prices: [], pricesOn: true } },
-      { id: "Synthetic-Outlander", name: "Outlander", faction: "Horde", race: "Orc", className: "Warrior", clientBuild: "1.60.1.99999", level: 1, ledger: {
+      { id: "Synthetic-Outlander", name: "Outlander", faction: "Horde", race: "Orc", className: "Warrior", clientBuild: "1.60.2.99999", level: 1, ledger: {
         schemaVersion: 1, reputations: { seenAt: clock, factions: [{ id: 72, name: "Stormwind", standing: 4, min: 0, max: 3000, value: 0 }] } } },
     ].map((c) => ({ realm: "Synthetic Realm", level: 40, updatedAt: clock, clientBuild: reference.build, captureVersion: require("../package.json").version, ...c }));
     await fs.writeFile(saved, "BackstageForeverExport = " + JSON.stringify(JSON.stringify({ schema: 1, observedAt: clock, activeId: characters[0].id, characters })));
@@ -148,7 +148,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     await activeCharacter.selectOption({ label: "Aeralyn · Level 40" });
     await plan.getByText(/Switch the active character to Vaelric to open quests/).waitFor();
     await page.getByLabel("Reputation of", { exact: true }).selectOption({ label: "Outlander · Horde" });
-    assert.match(await plan.innerText(), /Browse only.*1\.60\.1\.99999/s);
+    assert.match(await plan.innerText(), /Browse only.*1\.60\.2\.99999/s);
     assert.match(await plan.innerText(), /Minimum level/);
     assert.doesNotMatch(await plan.innerText(), /Saved log:|Reference lead: check availability/);
     assert.equal(await plan.locator("[data-quest-open]").count(), 0);

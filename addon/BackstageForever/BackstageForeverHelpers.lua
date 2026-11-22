@@ -25,6 +25,25 @@ function BackstageForeverBuildUsable(dataBuild,clientBuild)
     local relation=BackstageForeverBuildRelation(dataBuild,clientBuild)
     return relation=='match' or relation=='carried'
 end
+-- One short line for the settings window: the game build and where the quest data stands.
+function BackstageForeverBuildBadge()
+    if type(GetBuildInfo)~='function' then return nil end
+    local ok,version,number=pcall(GetBuildInfo)
+    if not ok or type(version)~='string' or type(number)~='string' then return nil end
+    if type(issecretvalue)=='function' then
+        local readable,secret=pcall(issecretvalue,number)
+        if not readable or secret then return nil end
+    end
+    local client=version..'.'..number
+    if not buildParts(client) then return nil end
+    local T=BackstageForeverTr or tostring
+    local reference=type(BackstageForeverReference)=='table' and rawget(BackstageForeverReference,'build')
+    local relation=BackstageForeverBuildRelation(reference,client)
+    local tail=relation=='match' and T('quest data checked on this build')
+        or relation=='carried' and (T('quest data from build')..' '..select(2,buildParts(reference))..', '..T('same patch'))
+        or relation=='mismatch' and T('quest data is for an older patch') or nil
+    return T('Game build')..' '..number..(tail and (' · '..tail) or '')
+end
 -- Plain-words lines for /bf status: which build the game is on and what that means for the bundled data.
 function BackstageForeverBuildStatus()
     local lines={}

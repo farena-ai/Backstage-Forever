@@ -74,7 +74,7 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
       await section.waitFor();
       assert.equal(await section.getByRole('heading').innerText(), heading);
       assert.equal(await section.evaluate(node => node.previousElementSibling.matches('[data-moment-settings]')), true);
-      assert.equal(await section.locator('p code').innerText(), '/bf helpers panel');
+      assert.deepEqual(await section.locator('p code').allInnerTexts(), ['/bf options', '/bf helpers panel']);
       assert.equal(await section.locator('details:not([data-helper-owner])').count(), 11);
       await summary('questTracker').press('Enter');
       assert.deepEqual(await section.locator('details[open] code').allTextContents(), [

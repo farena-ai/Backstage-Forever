@@ -1,0 +1,14 @@
+<Bindings>
+    <Binding name="BACKSTAGEFOREVER_COMPASS" header="BACKSTAGEFOREVER" category="ADDONS">
+        BackstageForeverBinding('')
+    </Binding>
+    <Binding name="BACKSTAGEFOREVER_NEXT" category="ADDONS">
+        BackstageForeverBinding('next')
+    </Binding>
+    <Binding name="BACKSTAGEFOREVER_ASK" category="ADDONS">
+        BackstageForeverBinding('ask')
+    </Binding>
+    <Binding name="BACKSTAGEFOREVER_OPTIONS" category="ADDONS">
+        BackstageForeverBinding('options')
+    </Binding>
+</Bindings>
