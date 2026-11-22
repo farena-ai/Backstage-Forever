@@ -132,6 +132,13 @@ contextBridge.exposeInMainWorld(
     setGoldGoal: (...args) => invoke("setGoldGoal", ...args),
     characterSheet: () => invoke("characterSheet"),
     sheetComparison: (...args) => invoke("sheetComparison", ...args),
+    statWeights: (profileId) => invoke("statWeights", profileId),
+    setStatWeights: (profileId, choice) => invoke("setStatWeights", profileId, choice),
+    gearPlan: (profileId) => invoke("gearPlan", profileId),
+    setGearPin: (profileId, slot, itemId) => invoke("setGearPin", profileId, slot, itemId),
+    repPlanner: (profileId, factionId, standing) => invoke("repPlanner", profileId, factionId, standing),
+    attunements: (profileId = null) => invoke("attunements", profileId),
+    collections: (profileId) => invoke("collections", profileId),
     playSession: () => invoke("playSession"),
     playTrail: (mapId) => invoke("playTrail", mapId),
     onPlayEvent: (listener) => {

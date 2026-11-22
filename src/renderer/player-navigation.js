@@ -50,7 +50,7 @@ window.PlayerNavigation = (() => {
     },
   };
   // Pages opened from inside another page keep that page highlighted in the tab row.
-  const nested = { "run-history": ["dungeons", "Run history"] };
+  const nested = { "run-history": ["dungeons", "Run history"], attunements: ["dungeons", "Keys & attunements"] };
   function group(route) {
     if (nested[route]) route = nested[route][0];
     return (

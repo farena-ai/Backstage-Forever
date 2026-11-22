@@ -22,6 +22,7 @@ const routes = {
   calendar: ["Plans", "Calendar"],
   // Opened with the button on Dungeons & raids, not from a tab of its own.
   "run-history": ["Adventure", "Dungeons & raids", "Run history"],
+  attunements: ["Adventure", "Dungeons & raids", "Keys & attunements"],
   "ledger-reputation": ["Ledger", "Reputation"],
   "ledger-cooldowns": ["Ledger", "Cooldowns"],
   company: ["Plans", "My plans"],

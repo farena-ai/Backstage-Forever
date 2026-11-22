@@ -9,7 +9,7 @@ const MAX_ID = 2147483647;
 const itemId = (x) => { if (!Number.isSafeInteger(x) || x < 1 || x > MAX_ID) throw Error("Invalid item ID."); return x; };
 const count = (args, min, max = min) => { if (args.length < min || args.length > max) throw Error("Invalid loot request."); };
 
-function registerBossLootHandlers({ handle, getState, gameData, wishlist, onWishChange = () => {}, getPack, getCommunity = () => null, creatureName = () => null, priceFor = () => null }) {
+function registerBossLootHandlers({ handle, getState, gameData, wishlist, onWishChange = () => {}, getPack, getCommunity = () => null, creatureName = () => null, priceFor = () => null, weightsFor = () => null }) {
   const community = () => { try { return getCommunity() || null; } catch { return null; } };
   let index = null, indexFor = null;
   const drops = () => { const p = getPack(); if (p !== indexFor) { indexFor = p; index = p ? dropIndex(p) : new Map(); } return index; };
@@ -22,6 +22,8 @@ function registerBossLootHandlers({ handle, getState, gameData, wishlist, onWish
     return p || null;
   };
   const wished = (p) => (p?.id ? wishlist.get(p.id) : []);
+  // The stat weights this character chose (roadmap C3); null means the built-in ones.
+  const weights = (p) => { try { return (p && weightsFor(p)) || null; } catch { return null; } };
   handle("gearAcquisition", (...args) => {
     count(args, 2);
     const [expectedProfileId, slot] = args;
@@ -35,12 +37,12 @@ function registerBossLootHandlers({ handle, getState, gameData, wishlist, onWish
     const [profileId, instanceId] = args, p = profile(profileId);
     if (typeof instanceId !== "string" || !/^[a-z0-9-]{1,24}$/.test(instanceId)) throw Error("Invalid instance.");
     const pack = getPack();
-    return instanceLoot(pack, instanceId, { profile: p, gameData, wished: wished(p), community: community() }) || { instanceId, bosses: [], unavailable: !pack };
+    return instanceLoot(pack, instanceId, { profile: p, gameData, wished: wished(p), community: community(), weights: weights(p) }) || { instanceId, bosses: [], unavailable: !pack };
   });
   handle("itemCard", (...args) => {
     count(args, 2);
     const [profileId, id] = args, p = profile(profileId);
-    const card = itemCard(getPack(), itemId(id), { profile: p, gameData, wished: wished(p), index: drops(), community: community(), creatureName });
+    const card = itemCard(getPack(), itemId(id), { profile: p, gameData, wished: wished(p), index: drops(), community: community(), creatureName, weights: weights(p) });
     // Ledger price memory (0.35): what this item went for on Auction House pages the player opened.
     let price = null;
     try { price = priceFor(id) || null; } catch {}
@@ -59,9 +61,9 @@ function registerBossLootHandlers({ handle, getState, gameData, wishlist, onWish
   });
   // Card chips for dungeonAtlas: upgrades and starred items per instance, for the active character.
   return {
-    summary: (p) => { try { return atlasLootSummary(getPack(), { profile: p, gameData, wished: wished(p) }); } catch { return {}; } },
+    summary: (p) => { try { return atlasLootSummary(getPack(), { profile: p, gameData, wished: wished(p), weights: weights(p) }); } catch { return {}; } },
     // For the desktop -> game hand-off. Only from item data already read: this never opens the game's files.
-    upgrades: (p) => { try { return p && gameData?.cached?.("items") ? upgradeIds(getPack(), { profile: p, gameData }) : []; } catch { return []; } },
+    upgrades: (p) => { try { return p && gameData?.cached?.("items") ? upgradeIds(getPack(), { profile: p, gameData, weights: weights(p) }) : []; } catch { return []; } },
   };
 }
 module.exports = { registerBossLootHandlers };

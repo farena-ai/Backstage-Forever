@@ -4,7 +4,8 @@ const { gearAcquisition } = require("./gear-acquisition.cjs");
 const buildCompat = require("./build-compat.cjs");
 const { WEIGHTS, blockers, slotsFor, weightsFor, statWeight, dpsKey } = require("./gear-score.cjs");
 const { SLOT_LABELS } = require("./sheet.cjs");
-const ROLES = Object.freeze({ leveling: "Leveling", tank: "Tank", healer: "Healer", caster: "Caster damage" });
+// "mine" scores with the stat weights the character chose (roadmap C3); the others are the built-in presets.
+const ROLES = Object.freeze({ mine: "Your stat weights", leveling: "Leveling", tank: "Tank", healer: "Healer", caster: "Caster damage" });
 const isId = id => Number.isSafeInteger(id) && id > 0 && id <= 2147483647;
 const round = n => Math.round(n * 10000) / 10000 || 0;
 const DPS = { meleeDps: "Melee DPS", rangedDps: "Ranged DPS", wandDps: "Wand DPS" };
@@ -51,7 +52,7 @@ function option(input, facts, wished, ctx) {
   return { name: input.name || pieces[0]?.name, pieces, issues: [...new Set(issues)], totals };
 }
 
-function registerSheetComparison({ handle, getState, gameData, wishlist }) {
+function registerSheetComparison({ handle, getState, gameData, wishlist, weightsFor: chosenWeights = () => null }) {
   handle("sheetComparison", (...args) => {
     const [profileId, role, mode, a, b] = args;
     const invalid = () => { throw Error("Choose two different options and a supported role."); };
@@ -81,7 +82,9 @@ function registerSheetComparison({ handle, getState, gameData, wishlist }) {
       return { ...result, reason: "A saved addon character and an installed WoW Forever game on the same patch are required." };
     if (!Object.hasOwn(WEIGHTS, className) || !Number.isInteger(level))
       return { ...result, reason: "The saved class or level is unavailable for this estimate." };
-    const ctx = { className, level, spec: role }, weights = weightsFor(ctx);
+    let own = null;
+    if (role === "mine") try { own = chosenWeights(profile) || null; } catch {}
+    const ctx = role === "mine" ? { className, level, ...(own ? { weights: own } : {}) } : { className, level, spec: role }, weights = weightsFor(ctx);
     const ids = [...new Set(inputs.flatMap(input => input.items.map(p => p.itemId)))];
     let found = [];
     try { found = ids.length ? gameData.items(ids) : []; } catch {}
