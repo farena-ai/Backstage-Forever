@@ -11,7 +11,7 @@ Players look for addons on **CurseForge** and **Wago**, which are also what most
 
 | Where | What | When |
 |---|---|---|
-| GitHub release | The app (Windows installer, Mac zips), source, and `BackstageForever-Addon-<version>.zip` | Every release tag (`release.yml`) |
+| GitHub release | The app (Windows installer, Mac zips, Linux AppImage: see [LINUX.md](LINUX.md)), source, and `BackstageForever-Addon-<version>.zip` | Every release tag (`release.yml`) |
 | CurseForge, Wago, WoWInterface | The addon, built for the WoW Forever flavor (Interface 16xxx) by the BigWigs packager | Every release tag, once the site's ID and token are set (`addon-sites.yml`) |
 
 Every pull request builds the addon package without uploading anything, so a broken package never reaches a release.

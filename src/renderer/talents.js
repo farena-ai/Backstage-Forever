@@ -8,6 +8,8 @@ window.TalentsView = (() => {
   const patch = window.PatchImpact;
   const guideBuilds = () => patch.MAGE_GUIDE_BUILDS.join(", ");
   function academy(profile) {
+    // The card is Mage guidance: another class sees its own talents first, not a card that does not apply.
+    if (profile?.className && profile.className !== "Mage") return "";
     const build = patch.savedBuild(profile, Date.now());
     const guideStatus = patch.reviewStatus(build, patch.MAGE_GUIDE_BUILDS);
     const abilityStatus = patch.reviewStatus(build, patch.MAGE_ABILITY_BUILDS);
@@ -397,5 +399,5 @@ window.TalentsView = (() => {
     root.addEventListener("focusout", hideCard);
     if (!data && !loading) load();
   }
-  return { page, academy, mounted, invalidate: () => { data = null; }, _state: () => ({ data, who, preview, mode, plan }) };
+  return { page, academy, mounted, invalidate: () => { data = null; who = null; }, _state: () => ({ data, who, preview, mode, plan }) };
 })();
