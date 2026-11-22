@@ -2,9 +2,9 @@
 ## Title: Backstage Forever
 ## Notes: Leveling companion for WoW Forever: Adventure Compass, guided route, arrows to your next quest, trainer and flight finders, and an ask panel. Pairs with the free Backstage Forever desktop app.
 ## Author: Backstage Coding (Frank Arena & Jason Babiuch)
-## Version: 1.18.1
+## Version: 1.19.0
 ## SavedVariables: BackstageForeverExport
-## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings, BackstageForeverQuestItemSourcesDB, BackstageForeverRouteSettings, BackstageForeverSuppliesSettings, BackstageForeverJournalDB, BackstageForeverMomentsSettings, BackstageForeverLedgerDB, BackstageForeverSheetDB, BackstageForeverAskSettings, BackstageForeverEnemySettings, BackstageForeverQoLSettings, BackstageForeverPartySettings, BackstageForeverHelperSettings
+## SavedVariablesPerCharacter: BackstageForeverHUDSettings, BackstageForeverGatheringDB, BackstageForeverMapSettings, BackstageForeverLiveSettings, BackstageForeverAdvisorSettings, BackstageForeverAssistSettings, BackstageForeverGearSettings, BackstageForeverQuestItemSourcesDB, BackstageForeverRouteSettings, BackstageForeverSuppliesSettings, BackstageForeverJournalDB, BackstageForeverMomentsSettings, BackstageForeverLedgerDB, BackstageForeverSheetDB, BackstageForeverAskSettings, BackstageForeverEnemySettings, BackstageForeverQoLSettings, BackstageForeverPartySettings, BackstageForeverHelperSettings, BackstageForeverMinimapSettings
 BackstageForeverLocale.lua
 BackstageForeverHelpers.lua
 BackstageForeverReference.lua
@@ -17,6 +17,7 @@ BackstageForeverGathering.lua
 BackstageForeverMapPlan.lua
 BackstageForeverMap.lua
 BackstageForeverAdvisorMap.lua
+BackstageForeverMinimap.lua
 BackstageForeverMap.xml
 BackstageForever.lua
 BackstageForeverHUD.lua
@@ -25,11 +26,13 @@ BackstageForeverFind.lua
 BackstageForeverAssist.lua
 BackstageForeverGear.lua
 BackstageForeverQuestIntel.lua
+BackstageForeverChain.lua
 BackstageForeverRoute.lua
 BackstageForeverSupplies.lua
 BackstageForeverJournal.lua
 BackstageForeverCombat.lua
 BackstageForeverMoments.lua
+BackstageForeverSources.lua
 BackstageForeverLedger.lua
 BackstageForeverSheet.lua
 BackstageForeverAsk.lua
@@ -39,3 +42,5 @@ BackstageForeverParty.lua
 BackstageForeverOptions.lua
 BackstageForeverGuideData.lua
 BackstageForeverBossTips.lua
+BackstageForeverAtlasData.lua
+BackstageForeverAtlas.lua

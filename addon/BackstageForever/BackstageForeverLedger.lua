@@ -525,6 +525,42 @@ local function tooltipItem(tooltip,data)
     return id,link
 end
 local tipShown=setmetatable({},{__mode='k'})
+-- 1.19: where an item comes from, out of BackstageForeverSources.lua (bundled community observations).
+-- Pure. faction: 'Alliance' or 'Horde' (sellers for the other side are left out); mapName: mapId -> name or nil.
+-- Returns up to two lines: "Dropped by: A (40%), B (31%)" / "Found in: Crate" and "Sold by: X (Zone), Y (Zone)".
+function BackstageForeverSourceLines(id,faction,mapName)
+    local data=type(BackstageForeverSourceData)=='table' and BackstageForeverSourceData or nil
+    if not data or type(id)~='number' then return {} end
+    local T=BackstageForeverTr or tostring
+    local lines={}
+    local drops=type(data.drops)=='table' and rawget(data.drops,id)
+    if type(drops)=='string' then
+        local creatures,objects={},{}
+        for kind,name,chance in drops:gmatch('([no])~([^~|]+)~(%d+)') do
+            if kind=='o' then objects[#objects+1]=name else creatures[#creatures+1]=('%s (%s%%)'):format(name,chance) end
+        end
+        if #creatures>0 then lines[#lines+1]=T('Dropped by:')..' '..table.concat(creatures,', ') end
+        if #objects>0 then lines[#lines+1]=T('Found in:')..' '..table.concat(objects,', ') end
+    end
+    local sold=type(data.sold)=='table' and rawget(data.sold,id)
+    if type(sold)=='string' then
+        local mine=faction=='Alliance' and 'A' or faction=='Horde' and 'H' or nil
+        local sellers={}
+        for name,map,side in sold:gmatch('([^~|]+)~(%d+)~([AHB])') do
+            if #sellers<3 and (not mine or side==mine or side=='B') then
+                local place=type(mapName)=='function' and mapName(tonumber(map)) or nil
+                sellers[#sellers+1]=type(place)=='string' and place~='' and ('%s (%s)'):format(name,place) or name
+            end
+        end
+        if #sellers>0 then lines[#lines+1]=T('Sold by:')..' '..table.concat(sellers,', ') end
+    end
+    return lines
+end
+local function sourceMapName(mapId)
+    local info=type(C_Map)=='table' and call(C_Map.GetMapInfo,mapId)
+    local name=type(info)=='table' and plain(info.name)
+    if type(name)=='string' then return name end
+end
 local function onTooltip(tooltip,data,resize)
     local d=store();if d.priceTips==false or (tooltip~=GameTooltip and tooltip~=ItemRefTooltip) then return end
     local id,link=tooltipItem(tooltip,data);if not id then return end
@@ -533,12 +569,16 @@ local function onTooltip(tooltip,data,resize)
     local quest,qr,qg,qb=BackstageForeverQuestUseLine(r[1])
     local advice=BackstageForeverPriceAdvice(id,r[11],r[3],1)
     local line,cr,cg,cb,verdict=BackstageForeverPriceLine(advice)
-    if not line and not quest then return end
+    local ok,sources=pcall(BackstageForeverSourceLines,id,plain(call(UnitFactionGroup,'player')),sourceMapName)
+    if not ok or type(sources)~='table' then sources={} end
+    if not line and not quest and #sources==0 then return end
     tipShown[tooltip]=id
     if quest then pcall(tooltip.AddLine,tooltip,quest,qr,qg,qb) end
-    if not line then if resize then pcall(tooltip.Show,tooltip) end;return end
-    pcall(tooltip.AddLine,tooltip,line,cr,cg,cb)
-    if verdict=='Worth more at the Auction House' then pcall(tooltip.AddLine,tooltip,verdict,0.25,1,0.25) end
+    if line then
+        pcall(tooltip.AddLine,tooltip,line,cr,cg,cb)
+        if verdict=='Worth more at the Auction House' then pcall(tooltip.AddLine,tooltip,verdict,0.25,1,0.25) end
+    end
+    for _,source in ipairs(sources) do pcall(tooltip.AddLine,tooltip,source,.75,.85,1,true) end
     if resize then pcall(tooltip.Show,tooltip) end
 end
 local function clearShown(tooltip) tipShown[tooltip]=nil end

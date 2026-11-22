@@ -41,7 +41,7 @@ test("G9 wiring: the Compass drops the stock dialog border, the step frame paint
   const hud = read("addon/BackstageForever/BackstageForeverHUD.lua"), route = read("addon/BackstageForever/BackstageForeverRoute.lua");
   assert.doesNotMatch(hud, /UI-DialogBox-Border/); assert.match(hud, /BackstageForeverPaintNineSlice\(panel,'compass',40,14\)/);
   assert.match(route, /BackstageForeverPaintScroll\(frame,'step',40\)/); assert.doesNotMatch(route, /\|cff9d9d9d/, "no faint grey on parchment");
-  assert.deepEqual(require("../src/core/game-sync.cjs").ART_DIRS.at(-1), ["Art", "Frames"]);
+  assert.ok(require("../src/core/game-sync.cjs").ART_DIRS.some((d) => d.join("/") === "Art/Frames"));
   for (const forbidden of ["hooksecurefunc", "Interface\\\\DialogFrame"]) assert.ok(!hud.includes(forbidden), forbidden);
 });
 

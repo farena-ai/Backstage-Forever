@@ -3,7 +3,7 @@
 -- Opened by /bf options, a right-click on the owl, a keybinding, or the game's own options list.
 local T=BackstageForeverTr or function(text) return text end
 local ART='Interface\\AddOns\\BackstageForever\\Art\\'
-local WIDTH,HEIGHT=560,420
+local WIDTH,HEIGHT=560,446
 local COLUMN_X={34,292}
 local ROW_TOP,ROW_HEIGHT,ROWS_PER_COLUMN=-150,25,8
 
@@ -39,6 +39,7 @@ local PAGES={
         helper('keepQuestItems','Keep quest items','Bag tooltips mark items a quest in your log still needs.'),
         helper('questItemCue','Quest item cue','A cue when you carry a quest item and stand where it is used.'),
         switch('Quest icons over enemies','A ! over the nameplate of enemies a quest still needs.',on('BackstageForeverRouteSettings','plates'),'plates'),
+        switch('Minimap pins','Nearby quests, hand-ins, trainers and flight masters on the minimap.',on('BackstageForeverMinimapSettings','enabled'),'minimap'),
         switch('Gear hints','Upgrade lines on item tooltips and on quest rewards.',on('BackstageForeverGearSettings','enabled'),'gear'),
         helper('spellRankReminder','Spell rank reminder','Tells you when your action bar still holds a lower rank of a spell you have trained.'),
     }},
@@ -213,6 +214,7 @@ BINDING_NAME_BACKSTAGEFOREVER_COMPASS='Show or hide the Adventure Compass'
 BINDING_NAME_BACKSTAGEFOREVER_NEXT='Point me to my next quest stop'
 BINDING_NAME_BACKSTAGEFOREVER_ASK='Ask the companion'
 BINDING_NAME_BACKSTAGEFOREVER_OPTIONS='Open Backstage Forever settings'
+BINDING_NAME_BACKSTAGEFOREVER_ATLAS='Open the Instance Atlas'
 function BackstageForeverBinding(command) run(command) end
 
 -- An entry in the game's own options list that opens the painted window.

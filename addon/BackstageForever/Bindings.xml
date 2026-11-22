@@ -11,4 +11,7 @@
     <Binding name="BACKSTAGEFOREVER_OPTIONS" category="ADDONS">
         BackstageForeverBinding('options')
     </Binding>
+    <Binding name="BACKSTAGEFOREVER_ATLAS" category="ADDONS">
+        BackstageForeverBinding('atlas')
+    </Binding>
 </Bindings>
