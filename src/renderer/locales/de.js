@@ -2859,3 +2859,4 @@ window.BF_LOCALE_DE_TEMPLATES = [
   ]
  ]
 ];
+window.BF_LOCALE_DE_META = {"name":"Deutsch","machineTranslated":true,"machineNote":"maschinell übersetzt","gameLocales":["deDE"]};

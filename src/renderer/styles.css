@@ -1407,7 +1407,7 @@ body[data-class] .providers {
 }
 
 /* 4.3 (0.53): translations are marked as machine-made, and the language picker. */
-html[data-machine-translated="true"] .rail-bottom .status::after { content: " · maschinell übersetzt"; opacity: .8; }
+html[data-machine-translated="true"] .rail-bottom .status::after { content: var(--bf-machine-note, " · machine-translated"); opacity: .8; }
 .bf-lang { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #f1e3c0; }
 .bf-lang select { padding: 3px 6px; border-radius: 4px; border: 1px solid #a5823e; background: #fff8e6; color: #2b1b0a; }
 

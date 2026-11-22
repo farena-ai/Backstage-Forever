@@ -1,19 +1,28 @@
 "use strict";
-// Translations (0.53, roadmap 4.3): the app follows the game's language (the addon saves it with each
-// character) unless you pick one on Help → Field guide. Pages are written in English; this layer swaps
+// Translations (0.53, roadmap 4.3; more languages, roadmap P1): the app follows the game's language (the addon
+// saves it with each character) unless you pick one on Help → Field guide. Pages are written in English; this layer swaps
 // whole text pieces and labels for the chosen language as they appear, from a reviewed dictionary
 // (locales/*.js, built by scripts/build-locales.cjs). Anything without a translation stays English.
 window.I18n = (() => {
   const KEY = "bf-lang-v1";
-  const DICTS = { de: window.BF_LOCALE_DE || {} };
-  // Sentences with numbers or names ("Hand in {0} finished quests"): [pattern, translation, placeholder order].
-  const TEMPLATES = { de: (window.BF_LOCALE_DE_TEMPLATES || []).map(([src, to, order]) => [new RegExp(src), to, order]) };
-  const NAMES = { auto: "Same as the game", en: "English", de: "Deutsch (machine-translated)" };
+  // Every dictionary script (locales/<lang>.js) leaves BF_LOCALE_<LANG>, …_TEMPLATES and …_META on the window.
+  const DICTS = {}, TEMPLATES = {}, META = {};
+  const NAMES = { auto: "Same as the game", en: "English" };
+  for (const k of Object.keys(window).filter((x) => /^BF_LOCALE_[A-Z]{2}$/.test(x)).sort()) {
+    const code = k.slice(-2).toLowerCase(), meta = window[k + "_META"] || {};
+    DICTS[code] = window[k] || {};
+    // Sentences with numbers or names ("Hand in {0} finished quests"): [pattern, translation, placeholder order].
+    TEMPLATES[code] = (window[k + "_TEMPLATES"] || []).map(([src, to, order]) => [new RegExp(src), to, order]);
+    META[code] = { name: meta.name || code, machineTranslated: meta.machineTranslated !== false, machineNote: meta.machineNote || "machine-translated", gameLocales: Array.isArray(meta.gameLocales) ? meta.gameLocales : [] };
+    // Each language under its own name; a machine translation says so in its own words.
+    NAMES[code] = META[code].name + (META[code].machineTranslated ? ` (${META[code].machineNote})` : "");
+  }
   let lang = "en", gameLang = null, observer = null;
   const pref = () => { try { return localStorage.getItem(KEY) || "auto"; } catch { return "auto"; } };
   /** Pure: the language to show for a preference and the game's locale code (e.g. "deDE"). */
   function resolve(p, gameLocale) {
-    const fromGame = /^de/i.test(gameLocale || "") ? "de" : "en";
+    const code = typeof gameLocale === "string" ? gameLocale : "";
+    const fromGame = Object.keys(META).find((l) => META[l].gameLocales.includes(code)) || (DICTS[code.slice(0, 2).toLowerCase()] ? code.slice(0, 2).toLowerCase() : "en");
     const want = p === "auto" ? fromGame : p;
     return want !== "en" && DICTS[want] && Object.keys(DICTS[want]).length ? want : "en";
   }
@@ -25,7 +34,7 @@ window.I18n = (() => {
     for (const [re, to, order] of TEMPLATES[lang] || []) {
       const m = re.exec(key); if (!m) continue;
       const parts = {}; order.forEach((n, i) => { const x = m[i + 1]; parts[n] = typeof d[x] === "string" ? d[x] : x; });
-      return to.replace(/\{(\d+)\}/g, (_, n) => parts[n] ?? "");
+      return to.replace(/\{#?(\d+)\}/g, (_, n) => parts[n] ?? ""); // a translation may write {0} or {#0}
     }
     return null;
   }
@@ -46,7 +55,9 @@ window.I18n = (() => {
   function apply(root = document.body) {
     lang = resolve(pref(), gameLang);
     document.documentElement.lang = lang;
-    document.documentElement.dataset.machineTranslated = lang !== "en" ? "true" : "false";
+    document.documentElement.dataset.machineTranslated = lang !== "en" && META[lang]?.machineTranslated !== false ? "true" : "false";
+    // The menu's small "machine-translated" mark, in the shown language (styles.css reads the variable).
+    document.documentElement.style?.setProperty?.("--bf-machine-note", JSON.stringify(" · " + (META[lang]?.machineNote || "machine-translated")));
     if (lang !== "en") walk(root);
   }
   function watch() {
@@ -73,5 +84,5 @@ window.I18n = (() => {
   document.addEventListener("change", (e) => { if (e.target.matches?.("[data-lang-choice]")) choose(e.target.value); });
   const start = () => { apply(); watch(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
-  return { resolve, tr, apply, setGameLocale, control, choose, get lang() { return lang; }, NAMES };
+  return { resolve, tr, apply, setGameLocale, control, choose, get lang() { return lang; }, NAMES, META };
 })();
