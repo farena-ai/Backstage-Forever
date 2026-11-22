@@ -28,6 +28,13 @@ const TABLES = {
   spellDuration: { fdid: 1137828, layout: 0x4fdf0951, opts: { signed: [0, 1, 2, 3] } },
   talent: { fdid: 1369062, layout: 0x147b0045, opts: { strings: [0], typed: true } },
   talentTab: { fdid: 2178102, layout: 0xb436f3c7, opts: { strings: [0, 1, 2], signed: [3, 4, 5, 6, 7, 8, 9] } },
+  // Profession recipes (recipe book): which spell belongs to which skill line and when it turns
+  // yellow and grey, what it uses, and which recipe item teaches it.
+  skillLine: { fdid: 1240935, layout: 0x6763217c, opts: { strings: [0, 1, 2, 3, 4] } },
+  skillLineAbility: { fdid: 1266278, layout: 0x224f7ea0, opts: { typed: true } },
+  spellReagents: { fdid: 841946, layout: 0xff40d202, opts: { typed: true } },
+  itemEffect: { fdid: 969941, layout: 0x4ca77678, opts: { typed: true } },
+  itemXItemEffect: { fdid: 3177687, layout: 0x96f083ad, opts: { typed: true } },
 };
 const FORMAT = 1; // bump when the cached JSON shape or a formula changes
 // Table hashes of the two item tables inside the game's hotfix cache.
@@ -313,6 +320,61 @@ function extractTalents(storage, spells) {
   return { talents: out, notes: [] };
 }
 
+// --- Profession recipes ------------------------------------------------------------------------
+// SkillLine categories: 11 is a profession, 9 a secondary skill (Cooking, First Aid, Fishing).
+const PROFESSION_CATEGORIES = [9, 11];
+const CREATE_ITEM = 24, LEARN_ON_USE = 6;
+/**
+ * Every recipe the game files define for a profession: a spell of the skill line that uses
+ * materials. Row: [spellId, skillLineId, yellowAt, greyAt, learnedWithSkillAt, skillUps,
+ * madeItemId, madeCount, [materialItemId, count, ...]]. learnedWithSkillAt is set only for
+ * recipes the game teaches by itself; what a trainer asks for is not in the game files.
+ * teach: spellId -> [recipeItemId, skillTheItemNeeds, ...].
+ */
+function extractRecipes(storage) {
+  const notes = [];
+  const lines = {};
+  for (const r of readTable(storage, "skillLine")) if (PROFESSION_CATEGORIES.includes(r.fields[6]) && r.fields[0]) lines[r.id] = [r.fields[0], r.fields[6], r.fields[7] || 0];
+  const reagents = new Map();
+  for (const r of readTable(storage, "spellReagents")) {
+    const list = [];
+    r.fields[1].forEach((item, i) => { const n = r.fields[2][i]; if (item > 0 && n > 0) list.push(item, n); });
+    if (list.length && !reagents.has(r.fields[0])) reagents.set(r.fields[0], list);
+  }
+  const made = new Map();
+  for (const r of readTable(storage, "spellEffect")) {
+    if (!r.relation || r.fields[1] !== 0 || r.fields[3] !== CREATE_ITEM || !(r.fields[10] > 0) || made.has(r.relation)) continue;
+    made.set(r.relation, [r.fields[10], Math.max(1, Math.round(r.fields[22]) || 1)]);
+  }
+  const rows = [], seen = new Set();
+  for (const r of readTable(storage, "skillLineAbility")) {
+    const F = r.fields, line = F[3], spell = F[4], uses = reagents.get(spell);
+    if (!lines[line] || !uses || !(spell > 0) || seen.has(`${line}:${spell}`)) continue;
+    seen.add(`${line}:${spell}`);
+    const out = made.get(spell) || [0, 0];
+    rows.push([spell, line, F[10], F[9], F[8] === 1 ? Math.max(1, F[5]) : 0, F[12], out[0], out[1], uses]);
+  }
+  rows.sort((a, b) => a[1] - b[1] || a[2] - b[2] || a[0] - b[0]);
+  // Recipe items: an item whose "learn" effect teaches one of the spells above.
+  const teach = {};
+  const effects = tryTable(storage, "itemEffect", notes), links = effects && tryTable(storage, "itemXItemEffect", notes);
+  if (links) {
+    const wanted = new Set(rows.map((r) => r[0]));
+    const taught = new Map();
+    for (const e of effects) if (e.fields[1] === LEARN_ON_USE && wanted.has(e.fields[6])) taught.set(e.id, e.fields[6]);
+    const byItem = new Map();
+    for (const l of links) { const spell = taught.get(l.fields[0]); if (spell && l.relation > 0) byItem.set(l.relation, spell); }
+    let sparse = null;
+    try { sparse = new Map(readTable(storage, "itemSparse").map((r) => [r.id, r.fields])); } catch { notes.push("itemSparse: recipe item skill unreadable"); }
+    for (const [item, spell] of [...byItem].sort((a, b) => a[0] - b[0])) {
+      const F = sparse?.get(item);
+      if (sparse && !F) continue; // an effect row for an item the game does not have
+      (teach[spell] ||= []).push(item, F && F[48] > 0 ? F[48] : 0);
+    }
+  }
+  return { recipes: { lines, rows, teach }, notes };
+}
+
 // --- Service -----------------------------------------------------------------------------------
 class GameData {
   constructor({ getRoot, cacheDir, idleMs = 60000, open = null, maxFileBytes = 32 * 1024 * 1024, maxIconBytes = 16 * 1024 * 1024, maxIconSide = 256, memoryIcons = 128, hotfixCheckMs = 30000 }) {
@@ -407,7 +469,7 @@ class GameData {
       const spells = kind === "talents" ? this.load("spells").spells : null;
       const s = this.open();
       try {
-        const r = kind === "items" ? extractItems(s, hot?.parsed) : kind === "spells" ? extractSpells(s) : extractTalents(s, spells);
+        const r = kind === "items" ? extractItems(s, hot?.parsed) : kind === "spells" ? extractSpells(s) : kind === "recipes" ? extractRecipes(s) : extractTalents(s, spells);
         value = { [kind]: r[kind], notes: r.notes };
         if (kind === "items") { value.hotfix = hot.signature; value.hotfixItems = r.hotfixItems; this.iconIds = null; }
       } finally { this.idle(); }
@@ -462,6 +524,16 @@ class GameData {
   spell(id) {
     if (!Number.isSafeInteger(id) || id <= 0) return null;
     try { return spellView(id, this.load("spells").spells[id]); } catch { return null; }
+  }
+  /** Profession recipes from the game files: { lines, rows, teach } (see extractRecipes), or null. */
+  recipes() {
+    try { return this.load("recipes").recipes; } catch { return null; }
+  }
+  /** Names and icons of many spells at once (null where the game has no such spell). */
+  spells(ids) {
+    let table = null;
+    try { table = this.load("spells").spells; } catch {}
+    return ids.map((id) => (table && Number.isSafeInteger(id) && id > 0 ? spellView(id, table[id]) : null));
   }
   // True when a table is ready without reading the game (in memory or cached on disk for this build).
   cached(kind) {
@@ -530,4 +602,4 @@ class GameData {
   }
 }
 
-module.exports = { GameData, arithmetic, TABLES, CLASSES, SLOTS, STATS, itemView, spellView, resolveDescription, extractItems, extractSpells, extractTalents, propIndex };
+module.exports = { GameData, arithmetic, TABLES, CLASSES, SLOTS, STATS, itemView, spellView, resolveDescription, extractItems, extractSpells, extractTalents, extractRecipes, propIndex };
