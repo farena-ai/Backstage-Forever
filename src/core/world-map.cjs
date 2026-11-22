@@ -366,7 +366,8 @@ class WorldMap {
     // NPCs friendly only to the other faction stay available but are marked (hidden by default in the app).
     if (profile?.faction) pins = pins.map((p) => (p.sides && !p.sides.includes(profile.faction) ? { ...p, otherFaction: true } : p));
     const counts = {};
-    for (const p of pins) if (!p.otherFaction) counts[p.kind] = (counts[p.kind] || 0) + 1;
+    // Reference herb and ore spots from the world finds pack are their own layer (off until asked for).
+    for (const p of pins) if (!p.otherFaction) { const k = p.reference ? "nodes" : p.kind; counts[k] = (counts[k] || 0) + 1; }
     counts.otherFaction = pins.filter((p) => p.otherFaction).length;
     // Soft areas where quest objectives happen, drawn under the pins.
     const areas = objectiveAreas(profile, index, this.creatures, mapId).slice(0, MAX_AREAS);

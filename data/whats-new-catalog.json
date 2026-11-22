@@ -7542,6 +7542,141 @@
           "text": "The desktop works out the upgrades by comparing each drop with what your character wore when the app last read its saved file, using the same rules as \"Upgrade for you\" on Dungeons & raids. It writes the list into the same small file as your wish list; the game reads it at your next login or /reload. After you equip new gear, /reload once so the desktop sees it, then once more to refresh the marks. Characters need a class set and a saved file from the installed game build. Not yet checked in the real game: the marks and the new banner line."
         }
       ]
+    },
+    {
+      "version": "1.22.0",
+      "channel": "stable",
+      "source": "docs/releases/1.22.0.md",
+      "title": "Backstage Forever 1.22.0 — Planner season",
+      "changes": [
+        {
+          "id": "talent-planner",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Talent planner. Characters → Talents has a \"My plan\" view: left click spends a point, right click takes it back, with the real rules checked (five points per row, prerequisites, one point per level from 10). It lists what to take at each level, saves named builds, compares two builds, and copies a short share code. Respec cost is shown as the classic schedule, labelled as reference. In game, /bf talents says your next planned point, and one chat line reminds you when you level up. The addon never spends a point."
+        },
+        {
+          "id": "travel-planner",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Travel planner. Adventure → Travel compares on foot, flight and Hearthstone to the place you pick, fastest first, with time and price. /bf fly PLACE prints the best flight route in game. The data has flight points only: no boats, zeppelins or the tram yet, and flights nobody has timed are estimates and say so."
+        },
+        {
+          "id": "trainer-costs",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "At the trainer. Characters → Talents lists what becomes trainable at your level and the next two, each with its price and the total. /bf train lists it in game. Facts only. Rogue training data is far from complete and the page says so."
+        },
+        {
+          "id": "gathering-loops",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Gathering loops. World Map draws a loop through herb and ore spots your skill can gather, with numbered stops, length and how many spots it rests on. \"Send loop to game\", then /bf loop walks you round it with the arrow."
+        },
+        {
+          "id": "rare-finder",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Rare and treasure finder. New World Map layers for rare enemies, chests and mailboxes, and one chat line when you target or mouse over a listed rare. Most rares are known by name only; few have a recorded place or drop."
+        },
+        {
+          "id": "map-search",
+          "kind": "improved",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Wider /bf find. It now finds quest givers by quest title, vendors by what they sell, rares, chests and mailboxes, and a small find box sits on the in-game world map."
+        },
+        {
+          "id": "price-history",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": "ledger",
+          "section": "Changes",
+          "text": "Price history and craft profit. The Ledger keeps dated history for every price you saw, shows your usual price and marks a price well below it. A new Craft profit tab sets material cost against selling price from your own seen prices; a price never seen stays \"Unknown\"."
+        },
+        {
+          "id": "calendar-runs",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Cooldown calendar, gold over time and run history. Plans → Calendar shows every character's profession cooldowns and mail expiry, with an optional reminder and a calendar file. The Ledger charts gold per day. Dungeons & raids has a Run history with time, bosses, deaths, loot and your best time. Runs saved by older versions show bosses only."
+        },
+        {
+          "id": "comfort-helpers",
+          "kind": "new",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Small in-game helpers. /bf rested, /bf weapons, /bf flights times, /bf durability, /bf explore, /bf kit, /bf ready, /bf group, /bf note, /bf notes, /bf mail. Each speaks in one short line, out of combat, and each has a switch in the settings window."
+        },
+        {
+          "id": "atlas-list-marks",
+          "kind": "improved",
+          "platforms": [
+            "addon"
+          ],
+          "action": "atlas",
+          "section": "Changes",
+          "text": "The in-game Instance Atlas list shows wish and upgrade counts beside each dungeon, spelled out on hover."
+        },
+        {
+          "id": "accessibility-marks",
+          "kind": "new",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Two accessibility switches (/bf access): marks that do not rely on colour alone, and larger text for the Compass, settings window and welcome card."
+        },
+        {
+          "id": "unverified-in-game",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "None of the new in-game commands and windows in this release have been checked in the real game client yet; they are tested against stand-ins. If one stays silent or looks wrong, switch it off in /bf options and tell us. German text for the new features is a first translation."
+        }
+      ]
     }
   ],
   "excluded": [

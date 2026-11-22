@@ -818,7 +818,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.21.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.22.0'
     character.race=clean((call(UnitRace,'player')));
     -- UnitSex: 2 male, 3 female; 1 (unknown) and anything else is left out.
     local sex=integer(call(UnitSex,'player'),1,3);if sex==2 then character.sex='male' elseif sex==3 then character.sex='female' end
@@ -880,7 +880,10 @@ local function capture(event,eventId)
     end
     if type(BackstageForeverJournalSnapshot)=='function' then
         local ok,journal=pcall(BackstageForeverJournalSnapshot)
-        if ok and type(journal)=='table' then array(journal.levels);array(journal.firsts);array(journal.zones);array(journal.givers or {});character.journal=journal end
+        if ok and type(journal)=='table' then array(journal.levels);array(journal.firsts);array(journal.zones);array(journal.givers or {})
+            if type(journal.runs)=='table' then array(journal.runs);for _,run in ipairs(journal.runs) do if type(run)=='table' and type(run.loot)=='table' then array(run.loot) end end end
+            character.journal=journal
+        end
     end
     if type(BackstageForeverLedgerSnapshot)=='function' then
         local ok,ledger=pcall(BackstageForeverLedgerSnapshot)
@@ -891,6 +894,7 @@ local function capture(event,eventId)
             if type(ledger.training)=='table' then array(ledger.training.services or {}) end
             if type(ledger.riding)=='table' then array(ledger.riding.services or {}) end
             if type(ledger.mounts)=='table' then array(ledger.mounts.items or {}) end
+            if type(ledger.vendor)=='table' then array(ledger.vendor) end
             for _,price in ipairs(ledger.prices or {}) do array(price.hist) end
             character.ledger=ledger
         end

@@ -7,10 +7,11 @@ window.WorldMapView = (() => {
     Questing: [["quest-turnin", "Turn-ins"], ["quest-objective", "Objectives"], ["objective-area", "Objective areas"], ["quest-giver", "Quests to pick up"]],
     Gathering: [["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["heat", "Your gathering heat"], ["community", "Community finds"]],
     Services: [["flight", "Flight masters"], ["class-trainer", "Class trainers"], ["profession-trainer", "Profession trainers"], ["vendor", "Vendors"], ["npc", "Other NPCs"], ["otherFaction", "Other faction's NPCs"]],
-    World: [["rare", "Rare enemies"], ["chest", "Chests"], ["mailbox", "Mailboxes"]],
+    World: [["rare", "Rare enemies"], ["nodes", "Reference herbs and ore"], ["chest", "Chests"], ["mailbox", "Mailboxes"]],
     Journey: [["journey", "My path this session"]],
   };
-  const OFF_BY_DEFAULT = new Set(["npc", "otherFaction"]);
+  // The busy reference layers stay off until asked for, so the default map is not cluttered.
+  const OFF_BY_DEFAULT = new Set(["npc", "otherFaction", "nodes", "chest", "mailbox"]);
   const PREF = "bf-world-map-v2";
   let clusters = [], pendingFocus = null, focused = null; // focused: { pin, goal } while a link's target is dialed in
   let model = null, mapId = null, follow = true, selected = null, hover = null, trail = [], view = { zoom: 1, cx: 0.5, cy: 0.5 };
@@ -155,6 +156,7 @@ window.WorldMapView = (() => {
       if (gather === "chest") chest(g, x, y, r * 0.62); else if (gather === "ore") rock(g, x, y, r * 0.62); else leaf(g, x, y, r * 0.7, COLORS.herb);
       people(g, x + r * 0.72, y - r * 0.72, r * 0.42); return;
     }
+    if (kind === "nodes") { leaf(g, x - r * 0.3, y, r * 0.75, COLORS.herb); rock(g, x + r * 0.45, y + r * 0.25, r * 0.5); return; }
     if (kind === "heat") { for (const [dx, c] of [[-0.45, HEAT.herb], [0.45, HEAT.ore], [0, HEAT.chest]]) { const gr = g.createRadialGradient(x + dx * r, y + (dx ? 0.25 : -0.35) * r, 0, x + dx * r, y + (dx ? 0.25 : -0.35) * r, r * 0.8); gr.addColorStop(0, rgba(c, 0.95)); gr.addColorStop(1, rgba(c, 0)); g.fillStyle = gr; g.beginPath(); g.arc(x + dx * r, y + (dx ? 0.25 : -0.35) * r, r * 0.8, 0, 7); g.fill(); } return; }
     const k = kind === "find" ? (gather === "ore" ? "ore" : "herb") : kind;
     const art = PAINTED[k];
@@ -294,7 +296,7 @@ window.WorldMapView = (() => {
 
   // ---------- drawing ----------
   // The Community finds switch hides every community pin, including NPCs the bundled data lacks.
-  function visiblePins() { return (model?.pins || []).filter((p) => p.kind === "town" || (layers[p.kind] !== false && (!p.community || layers.community !== false) && (!p.otherFaction || layers.otherFaction))); }
+  function visiblePins() { return (model?.pins || []).filter((p) => p.kind === "town" || (layers[p.kind] !== false && (!p.reference || layers.nodes) && (!p.community || layers.community !== false) && (!p.otherFaction || layers.otherFaction))); }
   function draw() {
     if (!canvas || !ctx) return;
     const w = canvas.width, h = canvas.height;

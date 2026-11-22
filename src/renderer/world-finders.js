@@ -5,7 +5,8 @@
 window.WorldFinders = (() => {
   const api = window.backstage;
   const PREF = "bf-world-finders-v1";
-  let profession = null, extra = true, show = true, view = null, loadedFor = null, busy = false, error = "", notice = "";
+  // The loop is drawn once the player asks for it (the tick box, a picker or Send), so the map opens uncluttered.
+  let profession = null, extra = true, show = false, view = null, loadedFor = null, busy = false, error = "", notice = "";
   try { const p = JSON.parse(localStorage.getItem(PREF) || "{}"); if (p.profession === "herbalism" || p.profession === "mining") profession = p.profession; if (typeof p.extra === "boolean") extra = p.extra; if (typeof p.show === "boolean") show = p.show; } catch {}
   const save = () => { try { localStorage.setItem(PREF, JSON.stringify({ profession, extra, show })); } catch {} };
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -142,10 +143,10 @@ window.WorldFinders = (() => {
   /** hooks: { mapId(), go(mapId), focus(x, y), selectRare(id), redraw() }. Returns true when handled. */
   function onChange(e, hooks) {
     const t = e.target;
-    if (t.matches("[data-wm-loop-prof]")) { profession = t.value; notice = ""; save(); view = null; paintLoop(); sync(hooks.mapId(), hooks); return true; }
+    if (t.matches("[data-wm-loop-prof]")) { profession = t.value; notice = ""; show = true; save(); view = null; paintLoop(); sync(hooks.mapId(), hooks); return true; }
     if (t.matches("[data-wm-loop-extra]")) { extra = t.checked; notice = ""; save(); sync(hooks.mapId(), hooks); return true; }
     if (t.matches("[data-wm-loop-show]")) { show = t.checked; save(); hooks.redraw(); return true; }
-    if (t.matches("[data-wm-loop-zone]")) { const id = Number(t.value); notice = ""; if (Number.isSafeInteger(id) && id !== hooks.mapId()) hooks.go(id); return true; }
+    if (t.matches("[data-wm-loop-zone]")) { const id = Number(t.value); notice = ""; show = true; save(); if (Number.isSafeInteger(id) && id !== hooks.mapId()) hooks.go(id); return true; }
     return false;
   }
   async function onClick(e, hooks) {
@@ -156,7 +157,7 @@ window.WorldFinders = (() => {
     const send = e.target.closest("[data-wm-loop-send]"), clear = e.target.closest("[data-wm-loop-clear]");
     if (!send && !clear) return false;
     if (busy || !api?.gatheringLoopUse) return true;
-    busy = true; notice = ""; paintLoop();
+    busy = true; notice = ""; if (send) { show = true; save(); hooks.redraw(); } paintLoop();
     try {
       const v = await api.gatheringLoopUse(clear ? null : { mapId: view.mapId, profession: view.profession, extra });
       if (clear) { loadedFor = null; notice = "Removed. The addon forgets the loop at the next /reload."; await sync(hooks.mapId(), hooks); }

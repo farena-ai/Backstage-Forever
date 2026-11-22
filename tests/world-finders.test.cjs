@@ -366,7 +366,8 @@ test("the World Map gets rare, chest and mailbox layers and an honest rare list"
   const barrens = map.build({ mapId: 1413 });
   assert.ok(barrens.counts.rare >= 5 && barrens.rares.here.length >= 5 && barrens.rares.total === pack.rares.length && barrens.rares.placed < barrens.rares.total);
   assert.ok(barrens.pins.some((p) => p.kind === "rare" && p.creatureId && /Rare/.test(p.sub)));
-  assert.ok(map.build({ mapId: 1411 }).counts.herb > 50, "reference herb spots are on the map");
+  const durotar = map.build({ mapId: 1411 });
+  assert.ok(durotar.counts.nodes > 100 && !durotar.counts.herb && durotar.pins.filter((p) => p.reference).length === durotar.counts.nodes, "reference spots are their own layer, not counted as herbs or ore");
   assert.ok(map.search("mailbox").results.every((r) => r.kind === "mailbox") && map.search("mailbox").results.length > 5);
   assert.ok(map.search("Gesharahan").results[0].kind === "rare");
   assert.deepEqual(new WorldMap({ getState: () => state }).build({ mapId: 1413 }).rares, { here: [], total: 0, placed: 0, withDrops: 0 }, "without the pack the list is empty, not invented");
@@ -538,7 +539,10 @@ test("the desktop wires the loop and the finder layers end to end", () => {
   assert.match(preload, /gatheringLoopUse: \(input\) => invoke\("gatheringLoopUse", input\)/);
   assert.ok(html.indexOf('<script src="world-finders.js">') > 0 && html.indexOf('<script src="world-finders.js">') < html.indexOf('<script src="world-map.js">'));
   assert.match(html, /href="world-finders\.css"/);
-  assert.match(wm, /World: \[\["rare", "Rare enemies"\], \["chest", "Chests"\], \["mailbox", "Mailboxes"\]\]/);
+  assert.match(wm, /World: \[\["rare", "Rare enemies"\], \["nodes", "Reference herbs and ore"\], \["chest", "Chests"\], \["mailbox", "Mailboxes"\]\]/);
+  assert.match(wm, /OFF_BY_DEFAULT = new Set\(\["npc", "otherFaction", "nodes", "chest", "mailbox"\]\)/, "the busy reference layers start off");
+  assert.match(wm, /\(!p\.reference \|\| layers\.nodes\)/);
+  assert.match(wf, /extra = true, show = false,/, "the loop is not drawn until asked for");
   assert.match(wm, /window\.WorldFinders\?\.draw\(ctx, toScreen, model\?\.mapId\)/);
   assert.match(wf, /Past spots|loop\.note/);
   assert.match(wf, /Rares are not always up\./);

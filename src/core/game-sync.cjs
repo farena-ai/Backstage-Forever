@@ -225,7 +225,7 @@ function parseSavedVariables(raw) {
       try { out.lootSources = require("./quest-intel.cjs").normalizeLootSourcesCapture(c.lootSources); } catch { /* Omit the entire invalid optional block. */ }
     }
     if (c.journal !== undefined) {
-      try { out.journal = require("./journal-data.cjs").normalizeJournalCapture(c.journal, { ignoreInvalidEncounters: true }); } catch { /* Omit the invalid optional journal. */ }
+      try { out.journal = require("./journal-data.cjs").normalizeJournalCapture(c.journal, { ignoreInvalidEncounters: true, ignoreInvalidRuns: true }); } catch { /* Omit the invalid optional journal. */ }
     }
     if (c.ledger !== undefined) {
       try { out.ledger = require("./ledger.cjs").normalizeLedgerCapture(c.ledger); } catch { /* Omit the entire invalid optional block. */ }
