@@ -5,7 +5,9 @@
 // item, gold per day, every dungeon and raid run, and the calendar settings. Built only from
 // what the addon really saved; nothing here is guessed and nothing leaves this computer.
 const fs = require("node:fs");
-const LIMITS = Object.freeze({ pricePoints: 60, priceItems: 3000, money: 730, runs: 300, notified: 300, profiles: 100, runLoot: 30, runBosses: 40 });
+const LIMITS = Object.freeze({ pricePoints: 60, priceItems: 3000, money: 730, runs: 300, notified: 300, profiles: 100, runLoot: 30, runBosses: 40, sessions: 400 });
+// A play session shorter than this gives no honest hourly figure.
+const SESSION_MIN = 600;
 const MAX_T = 253402300799, MONEY = 1e13, ID = 2147483647;
 // The addon folds the pages of one Auction House visit into one observation (15 minutes).
 const SAME_VISIT = 900;
@@ -147,6 +149,40 @@ function moneyView(points) {
   const changes = list.slice(1).map((p, i) => ({ at: p[1], money: p[0], change: p[0] - list[i][0], days: Math.max(1, Math.floor(p[1] / 86400) - Math.floor(list[i][1] / 86400)) }));
   return { points: list, first: first[0], firstAt: first[1], last: last[0], lastAt: last[1], change: last[0] - first[0],
     low: Math.min(...list.map((p) => p[0])), high: Math.max(...list.map((p) => p[0])), changes: changes.reverse().slice(0, 14) };
+}
+
+// ---- Play sessions (E9) -------------------------------------------------------------------
+// The addon saves, per character, when it was loaded and last saw the character, with the
+// gold at both moments: [start, lastSeen, copperAtStart, copperAtLastSeen]. Clock time, not
+// /played. The gold change is everything that moved the purse: loot, quests, vendors, repairs,
+// training, mail and the Auction House alike. Loot value is not part of it.
+/** Kept sessions plus newly saved ones: oldest first, one per start (the longer wins), never overlapping, bounded. */
+function mergeSessions(existing, incoming, limit = LIMITS.sessions) {
+  const byStart = new Map();
+  for (const s of [...(Array.isArray(existing) ? existing : []), ...(Array.isArray(incoming) ? incoming : [])]) {
+    if (!Array.isArray(s) || s.length !== 4 || !int(s[0], 1, MAX_T) || !int(s[1], s[0], MAX_T) || !int(s[2], 0, MONEY) || !int(s[3], 0, MONEY)) continue;
+    const seen = byStart.get(s[0]);
+    if (!seen || s[1] >= seen[1]) byStart.set(s[0], [s[0], s[1], s[2], s[3]]);
+  }
+  const out = [];
+  for (const s of [...byStart.values()].sort((a, b) => a[0] - b[0])) if (!out.length || s[0] > out[out.length - 1][1]) out.push(s);
+  return out.slice(-limit);
+}
+/**
+ * One character's sessions for the Ledger: newest first, each with its length, gold change and
+ * coin per hour (null when the session was shorter than ten minutes), plus the sum over the
+ * sessions shown. null when no session was saved.
+ */
+function sessionView(sessions, { limit = 12 } = {}) {
+  const list = mergeSessions(sessions, null);
+  if (!list.length) return null;
+  const rows = list.slice(-limit).reverse().map(([start, end, from, to]) => {
+    const seconds = end - start, change = to - from;
+    return { start, end, seconds, from, to, change, perHour: seconds >= SESSION_MIN ? Math.round((change * 3600) / seconds) : null };
+  });
+  const timed = rows.filter((r) => r.perHour !== null);
+  const seconds = timed.reduce((n, r) => n + r.seconds, 0), change = timed.reduce((n, r) => n + r.change, 0);
+  return { rows, kept: list.length, minSeconds: SESSION_MIN, total: timed.length ? { sessions: timed.length, seconds, change, perHour: Math.round((change * 3600) / seconds) } : null };
 }
 
 // ---- Run history (G11) --------------------------------------------------------------------
@@ -321,7 +357,7 @@ function calendarIcs(events, now = nowSec()) {
 }
 
 // ---- The desktop's own store --------------------------------------------------------------
-const emptyData = () => ({ version: 1, prices: {}, money: {}, runs: {}, calendar: { notify: false, notified: [] } });
+const emptyData = () => ({ version: 1, prices: {}, money: {}, runs: {}, sessions: {}, calendar: { notify: false, notified: [] } });
 const profileKey = (k) => typeof k === "string" && k.length > 0 && k.length <= 100 && k !== "__proto__";
 /**
  * Any earlier or damaged file -> the current shape. Unknown parts are dropped one by one; a
@@ -350,6 +386,11 @@ function migrate(raw) {
     const list = absorbRuns(runs, null);
     if (list.length) out.runs[profileId] = list;
   }
+  if (plain(raw.sessions)) for (const [profileId, sessions] of Object.entries(raw.sessions).slice(0, LIMITS.profiles)) {
+    if (!profileKey(profileId) || !Array.isArray(sessions)) continue;
+    const list = mergeSessions(sessions, null);
+    if (list.length) out.sessions[profileId] = list;
+  }
   if (plain(raw.calendar)) {
     out.calendar.notify = raw.calendar.notify === true;
     if (Array.isArray(raw.calendar.notified)) out.calendar.notified = raw.calendar.notified.filter((k) => typeof k === "string" && k.length <= 200).slice(-LIMITS.notified);
@@ -368,7 +409,7 @@ function absorb(data, profiles) {
   const next = migrate(data);
   const ids = new Set((profiles || []).map((p) => p.id));
   // A deleted character takes its history with it.
-  for (const part of ["prices", "money", "runs"]) for (const id of Object.keys(next[part])) if (!ids.has(id)) delete next[part][id];
+  for (const part of ["prices", "money", "runs", "sessions"]) for (const id of Object.keys(next[part])) if (!ids.has(id)) delete next[part][id];
   for (const p of profiles || []) {
     if (!profileKey(p?.id)) continue;
     if (p.ledger?.prices?.length) {
@@ -378,6 +419,8 @@ function absorb(data, profiles) {
     }
     const money = mergeMoney(next.money[p.id], p.ledger);
     if (money.length) next.money[p.id] = money;
+    const sessions = mergeSessions(next.sessions[p.id], p.extras?.sessions);
+    if (sessions.length) next.sessions[p.id] = sessions;
     if (p.journal?.runs?.length || p.journal?.encounters?.length || next.runs[p.id]) {
       const runs = absorbRuns(next.runs[p.id], p.journal);
       if (runs.length) next.runs[p.id] = runs; else delete next.runs[p.id];
@@ -405,5 +448,5 @@ class EconomyStore {
   /** Delete all local data. */
   clear() { this.data = emptyData(); this.#save(); }
 }
-module.exports = { LIMITS, mergePricePoints, median, priceSummary, mergedPriceHistory, vendorIndex, craftProfit, craftItemIds, mergeMoney, moneyView,
+module.exports = { LIMITS, mergePricePoints, median, priceSummary, mergedPriceHistory, vendorIndex, craftProfit, craftItemIds, mergeMoney, moneyView, mergeSessions, sessionView, SESSION_MIN,
   absorbRuns, runHistoryView, runItemIds, calendarEvents, localDay, dueNotifications, calendarIcs, migrate, absorb, EconomyStore };

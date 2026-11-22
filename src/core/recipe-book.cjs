@@ -104,7 +104,17 @@ function forCharacter(sources, side, vendorSeen = new Map()) {
 /** Recipe ids a character's save shows as known, and whether that list can be trusted to be whole. */
 function knownRecipes(profile) {
   const saved = profile?.readiness?.workshop?.recipes, ids = new Set((saved?.items || []).map((r) => r.id));
-  return { ids, observed: Boolean(saved), complete: saved?.complete === true, capped: (saved?.items?.length || 0) >= 100 };
+  // The extras block also holds every known recipe id per profession (capture-extras.cjs). With it the
+  // 100-recipe limit of the detailed list no longer hides anything. whole(skillLineId) says whether
+  // the game handed over the full list of that one profession (the saved skill line id).
+  const list = require("./capture-extras.cjs").knownRecipeList(profile);
+  if (list) {
+    for (const id of list.ids) ids.add(id);
+    const whole = (line) => list.lines.get(line)?.whole === true;
+    return { ids, observed: true, listed: true, capped: false, complete: [...list.lines.keys()].every(whole), whole };
+  }
+  const complete = saved?.complete === true, capped = (saved?.items?.length || 0) >= 100;
+  return { ids, observed: Boolean(saved), listed: false, complete, capped, whole: () => complete && !capped };
 }
 const professionsOf = (profile) => (profile?.readiness?.workshop?.professions?.items || []).filter((p) => isId(p.skillLineId));
 
@@ -198,6 +208,7 @@ function recipeBook(profile, game, index, { skillLineId = null, prices = new Map
   const choice = choices.find((c) => c.skillLineId === skillLineId) || choices[0];
   const { recipes, leftOut } = lineRecipes(game, choice.skillLineId, index);
   const known = knownRecipes(profile), rank = choice.yours && Number.isInteger(choice.rank) ? choice.rank : null;
+  const listWhole = professionsOf(profile).some((p) => lineFor(game, p) === choice.skillLineId && known.whole(p.skillLineId));
   const side = sideOf(profile);
   for (const r of recipes) {
     r.known = choice.yours && known.ids.has(r.id);
@@ -212,7 +223,8 @@ function recipeBook(profile, game, index, { skillLineId = null, prices = new Map
   const count = (kind) => recipes.filter((r) => (kind === "none" ? !r.sources.length : r.sourceKinds.includes(kind))).length;
   const notes = [];
   if (choice.yours && !known.observed) notes.push("No recipes are saved for this character yet. Open the profession window in game once, then /reload or log out.");
-  else if (choice.yours && (!known.complete || known.capped)) notes.push("Your save holds at most 100 recipes per character and may miss some, so a recipe marked as missing can be one you know. Open each profession window in game to refresh it.");
+  else if (choice.yours && known.listed && !listWhole) notes.push("The game did not hand over the full recipe list at the last save, so a recipe marked as missing can be one you know. Open each profession window in game once, then /reload.");
+  else if (choice.yours && !known.listed && (!known.complete || known.capped)) notes.push("Your save holds at most 100 recipes per character and may miss some, so a recipe marked as missing can be one you know. Open each profession window in game to refresh it.");
   if (!choice.yours) notes.push("This character does not have this profession in its save, so nothing is marked as known.");
   if (leftOut) notes.push(`${leftOut} ${leftOut === 1 ? "entry" : "entries"} in the game files left out: the item it makes is not in this game.`);
   if (index?.carried) notes.push("Some trainer, vendor or drop data was checked on another build of the same patch.");
@@ -320,7 +332,7 @@ function whoCanCraft(profiles, game, index, query, { limit = 20 } = {}) {
         const rank = prof ? prof.rank : null;
         const gap = knows ? 0 : full.orange !== null && rank !== null ? Math.max(0, full.orange - rank) : null;
         makers.push({ ...who(c.p), knows, rank, maxRank: prof ? prof.maxRank : null, gap, colour: knows && rank !== null ? colourAt(full, rank) : null,
-          saveMayMiss: !knows && (!c.known.complete || c.known.capped) });
+          saveMayMiss: !knows && !(prof ? c.known.whole(prof.skillLineId) : c.known.complete && !c.known.capped) });
       }
       makers.sort((a, b) => Number(b.knows) - Number(a.knows) || (a.gap === null) - (b.gap === null) || (a.gap ?? 0) - (b.gap ?? 0) || (b.rank ?? 0) - (a.rank ?? 0) || a.name.localeCompare(b.name));
       results.push({ id: full.id, name: full.name, iconFileId: full.iconFileId, quality: full.quality, itemId: full.made?.itemId || null, profession: lines[line][0], skillLineId: line,
@@ -401,7 +413,7 @@ function cookNow(profile, game, index, { skillLineId = COOKING, vendorSeen = new
   learn.sort((a, b) => Number(b.canLearn === true) - Number(a.canLearn === true) || (a.orange ?? 999) - (b.orange ?? 999) || a.name.localeCompare(b.name));
   const notes = [];
   if (!game?.recipes) notes.push("Your game files could not be read, so only recipes saved with this character are checked.");
-  if (!known.complete || known.capped) notes.push("Your save may not hold every recipe you know; a recipe under \"You could learn\" can be one you already have.");
+  if (!known.whole(cooking.skillLineId)) notes.push("Your save may not hold every recipe you know; a recipe under \"You could learn\" can be one you already have.");
   if (!held.bank) notes.push(held.source === "workshop" ? "Only the bags saved with your professions are counted." : "Your bank was not seen yet, so only bags are counted. Open the bank once in game.");
   return { status: "available", ...basics, gameData: Boolean(game?.recipes), ready, short: short.slice(0, 30), learn: learn.slice(0, 30), notes };
 }

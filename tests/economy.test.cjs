@@ -191,7 +191,7 @@ test("the calendar file is valid iCalendar text with only the events still ahead
 });
 
 test("the store migrates old and damaged files safely and takes over the ledger's short price memory", () => {
-  assert.deepEqual(E.migrate(null), { version: 1, prices: {}, money: {}, runs: {}, calendar: { notify: false, notified: [] } });
+  assert.deepEqual(E.migrate(null), { version: 1, prices: {}, money: {}, runs: {}, sessions: {}, calendar: { notify: false, notified: [] } });
   assert.deepEqual(E.migrate("junk").prices, {});
   const migrated = E.migrate({ version: 0, prices: { a: { 2589: [[90, T], ["bad", 1]], "not-an-id": [[1, 1]], 5: "x" }, "": { 1: [[1, 1]] }, b: [] }, money: { a: [[5, T], [6, T + 10], "x"], b: "x" },
     runs: { a: [{ id: "36:1", instanceMap: 36, instanceType: "party", timed: true, startedAt: 1, endedAt: 2, deaths: 0, loot: [], bosses: [] }, { broken: true }] }, calendar: { notify: "yes", notified: ["k", 5] }, extra: 1 });
@@ -294,7 +294,7 @@ test("the pages render price history, craft profit, the gold chart, the calendar
   const view = { now, activeProfileId: "a", characters: [{ profileId: "a", name: "Aeralyn", hasLedger: true, cooldowns: [], mail: null }], gold: { total: 700, characters: [{ profileId: "a", name: "Aeralyn", money: 700 }] }, items: [], value: { total: 0, items: [] }, goal: null,
     prices: [{ itemId: 929, name: "Healing <Potion>", quality: 1, latest: 600, latestAt: now, low: 600, lowAt: now, observations: 3, usual: 900, visits: 3, below: true, belowPercent: 33, spark: [[950, now - 4 * DAY], [900, now - 2 * DAY], [600, now]] },
       { itemId: 5, name: "Once", quality: 1, latest: 5, latestAt: now, low: 5, lowAt: now, observations: 1, usual: 5, visits: 1, below: false, belowPercent: 0, spark: [[5, now]] }],
-    money: [{ profileId: "a", name: "Aeralyn", points: [[500, now - DAY], [700, now]], first: 500, firstAt: now - DAY, last: 700, lastAt: now, change: 200, low: 500, high: 700, changes: [{ at: now, money: 700, change: 200, days: 1 }] }],
+    money: [{ profileId: "a", name: "Aeralyn", points: [[500, now - DAY], [700, now]], first: 500, firstAt: now - DAY, last: 700, lastAt: now, change: 200, low: 500, high: 700, changes: [{ at: now, money: 700, change: 200, days: 1 }], sessions: E.sessionView([[now - 9000, now - 1800, 400, 700], [now - 600, now - 300, 700, 650]]) }],
     crafts: [{ profileId: "a", name: "Aeralyn", complete: true, known: 1, rows: [
       { recipeId: 1, name: "Healing Potion", profession: "Alchemy", outputItemId: 929, outputName: "Healing Potion", quality: 1, made: 1, madeUpTo: null, materialsKnown: true, cost: 200, sell: { unit: 600, at: now, total: 600 }, vendorPays: 75, profit: 400, oldestAt: now,
         materials: [{ itemId: 2453, name: "Bruiseweed", quality: 1, required: 1, unit: 200, at: now, source: "auction", cost: 200, vendorListed: false }] },
@@ -316,7 +316,9 @@ test("the pages render price history, craft profit, the gold chart, the calendar
   const V = window.LedgerView, X = window.EconomyView;
   V.gold(); V.mounted(); await new Promise((r) => setTimeout(r, 10));
   assert.match(html, /33% below your usual price/); assert.match(html, /<svg class="ldg-spark"/); assert.match(html, /Seen once/); assert.match(html, /Healing &lt;Potion&gt;/);
-  assert.match(html, /Gold over time/); assert.match(html, /<svg class="ldg-chart"/); assert.match(html, /not at the start and end of each session/, "says what the gold chart cannot show");
+  assert.match(html, /Gold over time/); assert.match(html, /<svg class="ldg-chart"/); assert.match(html, /does not record loot outside dungeons/, "says what the gold chart cannot show");
+  // Gold per play session: length, change and coin per hour; a short session gets no hourly figure.
+  assert.match(html, /Gold per play session/); assert.match(html, /ldg-table-sessions/); assert.match(html, /2 h 00 min/); assert.match(html, /too short/); assert.match(html, /time away from the keyboard included/);
   const crafts = V.crafts();
   assert.match(crafts, /data-ledger-craft-row="1"/); assert.match(crafts, /ldg-gain/); assert.match(crafts, /price never seen \(vendors sell it: open one in game\)/); assert.match(crafts, /Unknown/); assert.match(crafts, /vendors pay/);
   X.calendar(); X.mounted(); await new Promise((r) => setTimeout(r, 10));

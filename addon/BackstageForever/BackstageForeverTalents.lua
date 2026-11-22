@@ -147,6 +147,41 @@ local function unspentPoints()
     local ok,points=pcall(UnitCharacterPoints,'player')
     if ok and not secret(points) and type(points)=='number' and points>=0 then return points end
 end
+-- The talents you have spent, for the desktop planner ("Start from my current talents"). One row
+-- per tree in game order: n = the tree's name, t = {tier, column, rank, highest rank, name} for
+-- every talent with at least one point. unspent = points waiting, when the game says. Returns nil
+-- (nothing is saved) in combat or when any value is hidden or out of range. Read-only.
+function BackstageForeverTalentSnapshot()
+    if busy() then return nil end
+    if type(GetNumTalentTabs)~='function' or type(GetTalentTabInfo)~='function' or type(GetNumTalents)~='function' or type(GetTalentInfo)~='function' then return nil end
+    local whole=function(v,lo,hi) return not secret(v) and type(v)=='number' and v==v and v%1==0 and v>=lo and v<=hi end
+    local text=function(v) return not secret(v) and type(v)=='string' and #v>0 and #v<=60 and not v:find('[%z\1-\31\127]') end
+    local ok,tabs=pcall(GetNumTalentTabs)
+    if not ok or not whole(tabs,1,6) then return nil end
+    local out={tabs={}}
+    local spent=0
+    for tab=1,tabs do
+        local info={pcall(GetTalentTabInfo,tab)}
+        if not info[1] then return nil end
+        local tabName
+        for i=2,4 do
+            if not tabName and text(info[i]) then tabName=info[i] end
+        end
+        local okCount,count=pcall(GetNumTalents,tab)
+        if not tabName or not okCount or not whole(count,0,60) then return nil end
+        local row={n=tabName,t={}}
+        for index=1,count do
+            local okInfo,name,_,tier,column,rank,maxRank=pcall(GetTalentInfo,tab,index)
+            if not okInfo or not text(name) or not whole(tier,1,15) or not whole(column,1,8) or not whole(maxRank,1,9) or not whole(rank,0,maxRank) then return nil end
+            if rank>0 then row.t[#row.t+1]={tier,column,rank,maxRank,name};spent=spent+rank end
+        end
+        out.tabs[tab]=row
+    end
+    if spent>71 then return nil end
+    local unspent=unspentPoints()
+    if unspent and unspent%1==0 and unspent<=71 then out.unspent=unspent end
+    return out
+end
 local function playerLevel()
     if type(UnitLevel)~='function' then return 0 end
     local ok,level=pcall(UnitLevel,'player')

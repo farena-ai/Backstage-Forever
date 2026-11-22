@@ -36,15 +36,30 @@ function playerMessage(error) {
 }
 
 class InGameAsk {
-  constructor({ companion, getState, liveKeyFor = () => null, panel, notify = () => {}, getShare = () => false, wait = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now }) {
-    Object.assign(this, { companion, getState, liveKeyFor, panel, notify, getShare, wait, now });
+  constructor({ companion, getState, liveKeyFor = () => null, panel, notify = () => {}, getShare = () => false, wait = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now, answers = null }) {
+    Object.assign(this, { companion, getState, liveKeyFor, panel, notify, getShare, wait, now, answers });
     this.queue = Promise.resolve();
     this.handled = 0;
     this.seq = 0;
     this.lastHash = null;
-    // Roadmap A1: the last answers per saved character, newest first. Memory only; the desktop
-    // hand-off carries them into the game the next time the addon is prepared.
+    // Roadmap A1: the last answers per saved character, newest first. The desktop hand-off carries
+    // them into the game the next time the addon is prepared. With an answers store
+    // (ask-answers.cjs) they are also kept on this computer, so they survive an app restart.
     this.answered = new Map();
+    try { const kept = answers?.load(); if (kept instanceof Map) this.answered = kept; } catch { /* Start without kept answers. */ }
+  }
+  /** Drops the answers of characters that are no longer saved. Returns true when something was dropped. */
+  forget(keepIds) {
+    const keep = new Set(keepIds);
+    let changed = false;
+    for (const id of [...this.answered.keys()]) if (!keep.has(id)) { this.answered.delete(id); changed = true; }
+    if (changed) this.answers?.save(this.answered);
+    return changed;
+  }
+  /** Delete all local data: every kept answer goes, in memory and on disk. */
+  clear() {
+    this.answered = new Map();
+    this.answers?.clear();
   }
   /** The last answers given for one saved character: [{ question, answer, at }], newest first. */
   recent(profileId) {
@@ -57,6 +72,7 @@ class InGameAsk {
     this.answered.set(profileId, list);
     // A bounded number of characters: the one answered longest ago makes room.
     while (this.answered.size > RECENT_PROFILES) this.answered.delete(this.answered.keys().next().value);
+    this.answers?.save(this.answered);
   }
   rememberOrigin(hash) {
     this.lastHash = validHash(hash) ? hash : null;

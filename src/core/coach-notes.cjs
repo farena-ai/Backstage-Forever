@@ -94,6 +94,11 @@ function coachNotes(profile, { previous = null, current = null, others = [], ses
       const due = levelThen ? seen.services.filter((s) => s.level > levelThen && s.level <= level) : [];
       if (due.length) change = { kind: "trainer", text: `Your trainer has ${plural(due.length, "rank")} you could not learn at your last visit on ${day(seen.seenAt)}: ${due.slice(0, 3).map((s) => `${s.name}${s.rank ? ` (${s.rank})` : ""}`).join(", ")}${due.length > 3 ? " and more" : ""}.`, advice: "Visit your class trainer before you head out again." };
     }
+    // Talent points the game reported as waiting at the newest save.
+    const waiting = profile.extras?.talents;
+    if (!change && waiting && Number.isInteger(waiting.unspent) && waiting.unspent > 0 && within(waiting.at)) {
+      change = { kind: "talents", text: `You have ${plural(waiting.unspent, "talent point")} waiting to be spent.`, advice: "Press N in game and spend them. Characters → Talents shows your plan and what comes next." };
+    }
     if (!change && (died.length >= 2 || sessionDeaths >= 2)) change = { kind: "deaths", text: `You died ${Math.max(died.length, sessionDeaths)} times, with no repeated cause or place in what was saved.`, advice: "Start each fight at full health and look around before you pull." };
   }
 

@@ -41,6 +41,9 @@ function collections(profile, { itemFact = () => null } = {}) {
   // Recipes the professions know, as the addon saved them, counted per profession.
   const workshop = profile.readiness?.workshop, byLine = new Map();
   for (const r of workshop?.recipes?.items || []) byLine.set(r.skillLineId, (byLine.get(r.skillLineId) || 0) + 1);
+  // The id list in the extras block is not cut at 100 recipes, so its count wins where it is higher.
+  const idList = require("./capture-extras.cjs").knownRecipeList(profile);
+  for (const [line, row] of idList?.lines || []) if (row.count > (byLine.get(line) || 0)) byLine.set(line, row.count);
   const seen = new Set(), recipes = [];
   for (const p of workshop?.professions?.items || []) {
     if (!byLine.has(p.skillLineId) || seen.has(p.name)) continue;
@@ -54,7 +57,7 @@ function collections(profile, { itemFact = () => null } = {}) {
   else if (!bankKnown) notes.push("The bank was not seen yet. Open it once in game.");
   if (held.size && !known) notes.push("Item kinds are not available. Connect your WoW Forever folder so the app can read them from your own game files.");
   notes.push("Only what sits in your bags or bank, or is worn, can be listed. A mount or pet you learned is not saved by the game for the addon to read.");
-  if (workshop?.recipes && workshop.recipes.complete === false) notes.push("The recipe list was not complete at the last save, so the recipe counts may be low.");
+  if (workshop?.recipes && workshop.recipes.complete === false && !(idList && [...idList.lines.values()].every((l) => l.whole))) notes.push("The recipe list was not complete at the last save, so the recipe counts may be low.");
   return { ...base, status: "available", bagsKnown, bankKnown, itemsChecked: held.size, itemsKnown: known,
     bagsSeenAt: profile.ledger?.bags?.seenAt ?? null, bankSeenAt: profile.ledger?.bank?.seenAt ?? null,
     families, recipes, recipesKnown: recipes.reduce((n, r) => n + r.count, 0), recipesSeen: Boolean(workshop?.recipes), notes };
