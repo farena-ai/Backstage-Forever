@@ -93,6 +93,12 @@ function BackstageForeverAtlasMarks(id,wished,better)
     return ((type(wished)=='table' and wished[id]) and ('|cffffd100'..T('Wish')..'|r ') or '')
         ..((type(better)=='table' and better[id]) and ('|cff40ff40'..T('Upgrade')..'|r ') or '')
 end
+-- Pure: the short marks in front of an instance's level band in the list: wishes as a gold number,
+-- upgrades as a green +number. Empty when it holds neither.
+function BackstageForeverAtlasListMarks(row,wished,better)
+    local wishCount,upCount=BackstageForeverWishCount(row,wished),BackstageForeverWishCount(row,better)
+    return (wishCount>0 and ('|cffffd100'..wishCount..'|r ') or '')..(upCount>0 and ('|cff40ff40+'..upCount..'|r ') or '')
+end
 -- Pure: what an instance holds for this character: wishes in gold, upgrades in green. Empty when none.
 -- It has its own line at the top of the banner, so it never runs into a long instance name.
 function BackstageForeverAtlasCountsLine(row,wished,better)
@@ -203,12 +209,24 @@ local function showInstance()
         local boss=row[10][i]
         if boss then button:SetText(i..'. '..boss[1]);button:Show() else button:Hide() end
     end
+    -- The hand-off is read once per login, so each row's marks are worked out once.
+    if not frame.marks then
+        frame.marks,frame.listCounts={},{}
+        local wished,better=wishes(),upgrades()
+        for i,r in ipairs(rows()) do
+            frame.marks[i]=BackstageForeverAtlasListMarks(r,wished,better)
+            frame.listCounts[i]=BackstageForeverAtlasCountsLine(r,wished,better)
+        end
+    end
     for i,button in ipairs(listButtons) do
         local r=rows()[i]
         if r then
             local c=FIT_COLOR[BackstageForeverAtlasFit(r[4],r[5],level())]
+            local marks=frame.marks[i] or ''
             button.label:SetText(r[2]);button.label:SetTextColor(c[1],c[2],c[3])
-            button.band:SetText(r[4]..'-'..r[5]);button.band:SetTextColor(c[1],c[2],c[3])
+            -- A row with marks gives them room, so a long name is cut short instead of running under them.
+            button.label:SetWidth(marks~='' and 122 or 154)
+            button.band:SetText(marks..r[4]..'-'..r[5]);button.band:SetTextColor(c[1],c[2],c[3])
             if i==selected then button.mark:Show() else button.mark:Hide() end
             button:Show()
         else button:Hide() end
@@ -240,6 +258,13 @@ local function build()
         button.band=button:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
         button.band:SetPoint('RIGHT',-4,0);button.band:SetJustifyH('RIGHT')
         button:SetScript('OnClick',function() selected=i;selectedBoss=1;showQuests=false;showInstance() end)
+        -- Hovering a marked row spells the numbers out.
+        button:SetScript('OnEnter',function(self)
+            local r,line=rows()[i],frame.listCounts and frame.listCounts[i]
+            if not r or not line or line=='' or not GameTooltip then return end
+            GameTooltip:SetOwner(self,'ANCHOR_RIGHT');GameTooltip:AddLine(r[2]);GameTooltip:AddLine(line);GameTooltip:Show()
+        end)
+        button:SetScript('OnLeave',function() if GameTooltip then GameTooltip:Hide() end end)
         listButtons[i]=button
     end
     local divider=f:CreateTexture(nil,'OVERLAY');divider:SetColorTexture(.79,.62,.27,.5)
