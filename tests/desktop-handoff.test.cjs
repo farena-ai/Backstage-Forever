@@ -108,9 +108,9 @@ assert(BackstageForeverAtlasMarks(1,wish,up)=='' and BackstageForeverAtlasMarks(
 local both={[7]=true}
 assert(BackstageForeverAtlasMarks(7,both,both)=='|cffffd100Wish|r |cff40ff40Upgrade|r ')
 local row={'dm','The Deadmines','d',17,26,'A',1436,.42,.72,{{'Edwin VanCleef','5202~100|7~50|3~33'},{'Mr. Smite','5202~10|7~67'}}}
-assert(BackstageForeverAtlasFitLine(row,'now',wish,up)=='|cffffd1001 on your wish list|r  ·  |cff40ff402 upgrades for you|r  ·  Right for your level')
-assert(BackstageForeverAtlasFitLine(row,'later',{},{[3]=true})=='|cff40ff401 upgrade for you|r  ·  For later')
-assert(BackstageForeverAtlasFitLine(row,'done',{},{})=='Below your level')
+assert(BackstageForeverAtlasCountsLine(row,wish,up)=='|cffffd1001 on your wish list|r  ·  |cff40ff402 upgrades for you|r')
+assert(BackstageForeverAtlasCountsLine(row,{},{[3]=true})=='|cff40ff401 upgrade for you|r')
+assert(BackstageForeverAtlasCountsLine(row,{},{})=='')
 io.write('ok')
 `), "ok");
 });

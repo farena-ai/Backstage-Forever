@@ -93,12 +93,14 @@ function BackstageForeverAtlasMarks(id,wished,better)
     return ((type(wished)=='table' and wished[id]) and ('|cffffd100'..T('Wish')..'|r ') or '')
         ..((type(better)=='table' and better[id]) and ('|cff40ff40'..T('Upgrade')..'|r ') or '')
 end
--- Pure: the line under an instance's name: wishes and upgrades it holds, then the level fit.
-function BackstageForeverAtlasFitLine(row,fit,wished,better)
+-- Pure: what an instance holds for this character: wishes in gold, upgrades in green. Empty when none.
+-- It has its own line at the top of the banner, so it never runs into a long instance name.
+function BackstageForeverAtlasCountsLine(row,wished,better)
     local wishCount,upCount=BackstageForeverWishCount(row,wished),BackstageForeverWishCount(row,better)
-    return (wishCount>0 and ('|cffffd100'..wishCount..' '..T('on your wish list')..'|r  ·  ') or '')
-        ..(upCount>0 and ('|cff40ff40'..upCount..' '..T(upCount==1 and 'upgrade for you' or 'upgrades for you')..'|r  ·  ') or '')
-        ..T(FIT_WORD[fit])
+    local parts={}
+    if wishCount>0 then parts[#parts+1]='|cffffd100'..wishCount..' '..T('on your wish list')..'|r' end
+    if upCount>0 then parts[#parts+1]='|cff40ff40'..upCount..' '..T(upCount==1 and 'upgrade for you' or 'upgrades for you')..'|r' end
+    return table.concat(parts,'  ·  ')
 end
 local function rows() return type(BackstageForeverAtlasData)=='table' and BackstageForeverAtlasData or {} end
 local function level()
@@ -192,7 +194,8 @@ local function showInstance()
     frame.facts:SetText(('%s %d-%d  ·  %s%s%s'):format(T('Levels'),row[4],row[5],T(row[3]=='r' and 'Raid' or 'Dungeon'),
         place and ('  ·  '..place) or '',side and ('  ·  '..side) or ''))
     local color=FIT_COLOR[fit]
-    frame.fit:SetText(BackstageForeverAtlasFitLine(row,fit,wishes(),upgrades()));frame.fit:SetTextColor(color[1],color[2],color[3])
+    frame.fit:SetText(T(FIT_WORD[fit]));frame.fit:SetTextColor(color[1],color[2],color[3])
+    frame.counts:SetText(BackstageForeverAtlasCountsLine(row,wishes(),upgrades()))
     if row[7]~=0 then frame.entrance:Show() else frame.entrance:Hide() end
     local count=#BackstageForeverAtlasQuests(row,faction())
     frame.questsButton:SetText(showQuests and T('Bosses') or (T('Quests')..' ('..count..')'))
@@ -249,6 +252,12 @@ local function build()
     frame.name:SetPoint('BOTTOMLEFT',frame.banner,'BOTTOMLEFT',8,6)
     frame.fit=f:CreateFontString(nil,'OVERLAY','GameFontNormalSmall')
     frame.fit:SetPoint('BOTTOMRIGHT',frame.banner,'BOTTOMRIGHT',-8,8)
+    frame.counts=f:CreateFontString(nil,'OVERLAY','GameFontNormalSmall')
+    frame.counts:SetPoint('TOPRIGHT',frame.banner,'TOPRIGHT',-8,-6);frame.counts:SetJustifyH('RIGHT')
+    if type(frame.counts.GetFont)=='function' then
+        local face,size=frame.counts:GetFont()
+        if face then frame.counts:SetFont(face,size or 10,'OUTLINE') end
+    end
     local rule=f:CreateTexture(nil,'OVERLAY');rule:SetColorTexture(.79,.62,.27,.9)
     rule:SetSize(PANE_WIDTH,1);rule:SetPoint('TOPLEFT',frame.banner,'BOTTOMLEFT',0,0)
     frame.facts=f:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
