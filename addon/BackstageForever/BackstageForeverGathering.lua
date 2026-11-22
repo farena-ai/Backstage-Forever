@@ -379,6 +379,15 @@ function BackstageForeverGatheringMapPoints(mapId,records,types,_,limit)
     while #out>limit do table.remove(out)end
     return out
 end
+-- Remembered spots on one map that the last saved skill can gather (chests always): for the
+-- minimap. Data only; nothing is read from the game here.
+function BackstageForeverGatheringSpots(mapId)
+    local out={}
+    for _,r in ipairs(store().records)do
+        if r.mapId==mapId and BackstageForeverNodeGatherable(r,ownedRanks)~=false then out[#out+1]={x=r.x,y=r.y,name=r.name,method=r.method}end
+    end
+    return out
+end
 local WORDS={herb='herbalism',herbs='herbalism',herbalism='herbalism',ore='mining',ores='mining',mining='mining',chest='chest',chests='chest'}
 function BackstageForeverNodesCommand(message)
     if call(InCombatLockdown)~=false then return say('Node lists wait until you leave combat.')end

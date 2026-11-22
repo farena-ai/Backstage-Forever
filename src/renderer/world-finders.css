@@ -1,0 +1,46 @@
+/* World Map side panels: the gathering loop and the rare enemy list (world-finders.js).
+   Same dark brass panels as "Your gathering heat" and "Near you". */
+.wm-loop, .wm-rares { padding: 12px 14px; border-radius: 6px; border: 1px solid #a8843f; color: #f1e4c4; box-shadow: 0 4px 10px rgba(0,0,0,.4); }
+.wm-loop { background: linear-gradient(180deg, #2c2414, #1a150c); }
+.wm-rares { background: linear-gradient(180deg, #1c2233, #10141f); border-color: #7f93c4; color: #e3e9f8; }
+.wm-loop[hidden], .wm-rares[hidden] { display: none; }
+.wm-loop h3, .wm-rares h3 { margin: 0 0 8px; font: 700 16px Cinzel, Georgia, serif; color: #f3cf7a; }
+.wm-rares h3 { color: #c9d6f7; }
+
+.wm-loop-pick { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 8px; margin-bottom: 8px; }
+.wm-loop-pick label { display: flex; flex-direction: column; gap: 3px; min-width: 0; font: 600 11px "Source Sans 3", sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #d9c79c; }
+.wm-loop-pick select { width: 100%; min-width: 0; padding: 6px 8px; background: #2a1a0c; color: #f3e3b8; border: 1px solid #8a6a2c; border-radius: 4px; font: 14px "Source Sans 3", sans-serif; letter-spacing: 0; text-transform: none; }
+.world-map-page .wm-loop-pick select:focus-visible, .world-map-page .wm-loop input:focus-visible { outline: 2px solid #f4cf72; outline-offset: 2px; }
+.wm-loop-skill { margin: 0 0 6px; font-size: 13px; color: #d9c79c; }
+.wm-loop-skill strong { color: #ffe39a; }
+.world-map-page .wm-loop .wm-loop-check { display: flex; align-items: center; gap: 7px; margin: 0 0 8px; color: #f1e4c4; font-size: 13px; font-weight: 600; }
+.wm-loop-sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; margin: 0 0 6px; padding: 7px 9px; border-radius: 4px; background: rgba(0,0,0,.32); border: 1px solid rgba(240,194,90,.35); font-size: 13px; }
+.wm-loop-sum strong { font: 700 15px Cinzel, Georgia, serif; color: #ffe39a; }
+.wm-loop-basis { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 6px; margin: 0 0 6px; font-size: 12.5px; color: #e6d7b0; }
+.wm-loop-src { padding: 1px 8px; border-radius: 9px; border: 1px solid currentColor; background: rgba(0,0,0,.35); font-size: 11.5px; font-weight: 700; }
+.wm-loop-src.yours { color: #ffe27a; } .wm-loop-src.community { color: #7fd3e3; } .wm-loop-src.reference { color: #cdbb93; }
+.wm-loop-note, .wm-loop-empty, .wm-loop-game { margin: 0 0 7px; font-size: 12.5px; line-height: 1.45; color: #cdbb93; }
+.wm-loop-empty { padding: 8px 10px; border-left: 3px solid #c98a3a; background: rgba(0,0,0,.28); color: #f1e4c4; font-size: 13px; }
+.wm-loop-game { margin: 0; }
+.wm-loop-list { margin: 0 0 8px; }
+.wm-loop-list summary { cursor: pointer; padding: 3px 0; font: 700 12px "Source Sans 3", sans-serif; letter-spacing: .06em; text-transform: uppercase; color: #f3cf7a; }
+.wm-loop-list ol { list-style: none; margin: 4px 0 0; padding: 0; max-height: 220px; overflow-y: auto; }
+.world-map-page .wm-loop-list li button { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; align-items: center; width: 100%; padding: 4px 4px; cursor: pointer; border-bottom: 1px solid rgba(240,200,120,.15); font-size: 13px; color: #f1e4c4; }
+.world-map-page .wm-loop-list li button:hover, .world-map-page .wm-loop-list li button:focus-visible { background: rgba(240,200,120,.12); outline: none; }
+.wm-loop-list li b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #2a1806; border: 1.5px solid #f0c25a; color: #fff3c4; font: 800 11px "Source Sans 3", sans-serif; }
+.wm-loop-list li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wm-loop-list li small { color: #cdbb93; font-variant-numeric: tabular-nums; }
+.wm-loop-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 7px; }
+.world-map-page .wm-loop-actions button { padding: 8px 26px; font-size: 13px; white-space: nowrap; }
+.world-map-page .wm-loop-actions button:disabled { opacity: .6; cursor: default; }
+
+.wm-rares ul { list-style: none; margin: 0 0 10px; padding: 0; max-height: 300px; overflow-y: auto; }
+.world-map-page .wm-rares li button { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; align-items: start; width: 100%; padding: 6px 4px; cursor: pointer; border-bottom: 1px solid rgba(170,190,240,.16); }
+.world-map-page .wm-rares li button:hover, .world-map-page .wm-rares li button:focus-visible { background: rgba(170,190,240,.12); outline: none; }
+.wm-rare-mark { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #2a3350; border: 1px solid #8fa6d8; color: #dfe7ff; font-size: 11px; line-height: 1; }
+.wm-rare-mark.elite { background: #4a3a12; border-color: #f0c25a; color: #ffe39a; }
+.wm-rare-text { min-width: 0; }
+.wm-rare-text strong { display: block; font-size: 14px; color: #f2f5ff; }
+.wm-rares small { display: block; font-size: 12px; line-height: 1.4; color: #aebbe0; }
+.wm-rares-empty { margin: 0 0 8px; padding: 8px 10px; border-left: 3px solid #7f93c4; background: rgba(0,0,0,.28); font-size: 13px; }
+.wm-rares .wm-rares-foot { font-size: 11.5px; line-height: 1.45; color: #9aa8cf; }

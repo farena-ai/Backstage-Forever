@@ -1,10 +1,12 @@
 -- Quest pins on the minimap (1.19): the BF Guide pins that are near you. Quests you can pick up,
 -- hand-ins, your class trainer, profession trainers and flight masters, with the same icons as
 -- the world map. A hand-in outside the minimap sits on its edge, in the direction to walk.
+-- Since the gathering loops: also the herb, ore and chest spots you remembered, and the next loop stop.
 -- Display only: nothing is clicked, tracked or set for you. Hidden in combat.
 local H=BackstageForeverPublicFacts
 local public,field,number=H.public,H.field,H.number
 local MAX_PINS=24
+local MAX_NODES=12
 local REFRESH,MOVE=20,.2
 -- Minimap diameter in yards at each zoom step, outdoors and indoors.
 local OUTDOOR={[0]=466.67,[1]=400,[2]=333.33,[3]=266.67,[4]=200,[5]=133.33}
@@ -137,11 +139,23 @@ local function update(force)
         end
     end
     local chosen=BackstageForeverMinimapChoose(rows,MAX_PINS)
+    -- Gathering spots you remembered and the next stop of a running /bf loop (BackstageForeverLoop.lua).
+    -- They never push a quest pin out: at most 12 more, nearest first; only the loop stop sits on the edge.
+    local okNodes,nodes=pcall(BackstageForeverLoopMinimapPoints,mapId,now)
+    local extra={}
+    for _,point in ipairs(okNodes and type(nodes)=='table' and nodes or {}) do
+        if finite(point.x) and finite(point.y) then
+            local x,y,edge,distance=BackstageForeverMinimapOffset((point.x-px)*size.width,(point.y-py)*size.height,facing,rotates,yards,pixels)
+            if x and (not edge or point.layer=='loop') then extra[#extra+1]={x=x,y=y,edge=edge,distance=distance,layer=point.layer,title=point.title,detail=point.detail,icon=point.icon} end
+        end
+    end
+    table.sort(extra,function(a,b) if (a.layer=='loop')~=(b.layer=='loop') then return a.layer=='loop' end return a.distance<b.distance end)
+    for i=1,math.min(MAX_NODES,#extra) do chosen[#chosen+1]=extra[i] end
     local icons=public(BackstageForeverAdvisorIcons) or {}
     for i,row in ipairs(chosen) do
         local frame=pin(i)
         frame.row=row
-        frame.icon:SetTexture(icons[row.layer])
+        frame.icon:SetTexture(row.icon or icons[row.layer])
         local shown=row.edge and 11 or (row.layer=='handin' and 16 or 13)
         frame:SetSize(shown,shown);frame.icon:SetAlpha(row.edge and .75 or 1)
         frame:ClearAllPoints();frame:SetPoint('CENTER',minimap,'CENTER',row.x,row.y)

@@ -42,3 +42,4 @@ data/forever-boss-loot/NOTICE text eol=lf
 *.webp binary
 data/forever-transport/* text eol=lf
 data/forever-trainers/* text eol=lf
+data/forever-world/* text eol=lf

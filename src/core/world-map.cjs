@@ -4,7 +4,7 @@
 const { MAP_NAMES } = require("./companion-tools.cjs");
 
 const GATHER_SPELLS = { 2366: "herb", 2368: "herb", 3570: "herb", 2575: "ore", 2576: "ore", 3564: "ore" };
-const KINDS = ["quest-turnin", "quest-giver", "quest-objective", "flight", "class-trainer", "profession-trainer", "vendor", "herb", "ore", "community", "find", "town", "npc"];
+const KINDS = ["quest-turnin", "quest-giver", "quest-objective", "rare", "flight", "class-trainer", "profession-trainer", "vendor", "herb", "ore", "chest", "community", "find", "town", "mailbox", "npc"];
 // Class trainers (and weapon/portal masters) teach your class; everything else trains a profession.
 const CLASS_TITLE = /^(warrior|paladin|hunter|rogue|priest|shaman|mage|warlock|druid|portal) trainer$|weapon master/i;
 const trainerKind = (title) => (CLASS_TITLE.test(title || "") ? "class-trainer" : "profession-trainer");
@@ -20,7 +20,7 @@ const pt = (p) => p && Number.isSafeInteger(p.mapId) && Number.isFinite(p.x) && 
 const norm = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[’‘']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 // Static pins are built once from the bundled packs and grouped by map.
-function buildStaticIndex({ knowledgePack = null, npcReference = null, travelReference = null, vendorPack = null, insights = null, acquisitionPack = null, desktopProvenance = false } = {}) {
+function buildStaticIndex({ knowledgePack = null, npcReference = null, travelReference = null, vendorPack = null, insights = null, acquisitionPack = null, worldPack = null, desktopProvenance = false } = {}) {
   const byMap = new Map();
   const add = (pin) => {
     if (!pt(pin)) return;
@@ -74,6 +74,9 @@ function buildStaticIndex({ knowledgePack = null, npcReference = null, travelRef
     const kind = GATHER_SPELLS[r.gatherSpellId] || "herb";
     for (const p of (r.positions || []).slice(0, 6)) add({ id: `node:${r.sourceKey}:${p.mapId}:${Math.round(p.x * 1000)}:${Math.round(p.y * 1000)}`, kind, label: r.referenceName || "Resource", sub: kind === "ore" ? "Mining node (reference)" : "Herb (reference)", mapId: p.mapId, x: p.x, y: p.y, lastSeen: r.observedOn || null, evidence: "historical", source: "Efficient Games, CC BY 4.0" });
   }
+  // World finds (optional): rare enemies where a player met them, reference herb and ore spots,
+  // ordinary chests and mailboxes.
+  for (const pin of worldPack ? require("./world-finds.cjs").worldPins(worldPack) : []) add(pin);
   return byMap;
 }
 
@@ -283,10 +286,10 @@ function communityPins(community, mapId, { staticNpcIds = new Set(), npcName = (
 }
 
 class WorldMap {
-  constructor({ getState, knowledge, npcReference, travelReference, vendorPack, insights, acquisitionPack, creaturePack = null, live, getCommunity = () => null }) {
-    Object.assign(this, { getState, knowledge, live, npcReference, travelReference, vendorPack, insights, getCommunity });
+  constructor({ getState, knowledge, npcReference, travelReference, vendorPack, insights, acquisitionPack, creaturePack = null, worldPack = null, live, getCommunity = () => null }) {
+    Object.assign(this, { getState, knowledge, live, npcReference, travelReference, vendorPack, insights, getCommunity, worldPack });
     this.creatures = require("./creature-data.cjs").creatureIndex(creaturePack);
-    this.static = buildStaticIndex({ knowledgePack: knowledge?.bundled?.pack, npcReference, travelReference, vendorPack, insights, acquisitionPack, desktopProvenance: true });
+    this.static = buildStaticIndex({ knowledgePack: knowledge?.bundled?.pack, npcReference, travelReference, vendorPack, insights, acquisitionPack, worldPack, desktopProvenance: true });
     this.staticNpcIds = new Set();
     for (const pins of this.static.values()) for (const p of pins) if (p.npcId) this.staticNpcIds.add(p.npcId);
   }
@@ -363,7 +366,8 @@ class WorldMap {
     // NPCs friendly only to the other faction stay available but are marked (hidden by default in the app).
     if (profile?.faction) pins = pins.map((p) => (p.sides && !p.sides.includes(profile.faction) ? { ...p, otherFaction: true } : p));
     const counts = {};
-    for (const p of pins) if (!p.otherFaction) counts[p.kind] = (counts[p.kind] || 0) + 1;
+    // Reference herb and ore spots from the world finds pack are their own layer (off until asked for).
+    for (const p of pins) if (!p.otherFaction) { const k = p.reference ? "nodes" : p.kind; counts[k] = (counts[k] || 0) + 1; }
     counts.otherFaction = pins.filter((p) => p.otherFaction).length;
     // Soft areas where quest objectives happen, drawn under the pins.
     const areas = objectiveAreas(profile, index, this.creatures, mapId).slice(0, MAX_AREAS);
@@ -382,6 +386,7 @@ class WorldMap {
         liveKey: profile?.source?.kind === "wow-addon" ? require("./live-bridge.cjs").liveKeyFor(profile.source.id) ?? -1 : null,
       },
       pins, counts, areas, camps: hostileCamps(areas), heat,
+      rares: require("./world-finds.cjs").rareSummary(this.worldPack, mapId),
       attribution: "Reference data from Efficient Games (https://efficient.games), CC BY 4.0. Positions are approximate community observations." + (community ? " Community layer: spots and NPCs at least 3 Backstage Forever players shared anonymously." : ""),
       community: community ? { version: community.version, generatedAt: community.generatedAt } : null,
     };
@@ -464,7 +469,7 @@ class WorldMap {
     const live = this.liveFrame(profile);
     const here = live?.position || (pt(profile?.location) ? profile.location : null);
     const results = [];
-    const kindWords = { flight: ["flight", "fly", "gryphon", "wind rider", "bat"], "class-trainer": ["trainer", "train", "class"], "profession-trainer": ["trainer", "train", "profession"], vendor: ["vendor", "sell", "merchant", "shop"], herb: ["herb", "herbs"], ore: ["ore", "mine", "mining", "vein"] };
+    const kindWords = { flight: ["flight", "fly", "gryphon", "wind rider", "bat"], "class-trainer": ["trainer", "train", "class"], "profession-trainer": ["trainer", "train", "profession"], vendor: ["vendor", "sell", "merchant", "shop"], herb: ["herb", "herbs"], ore: ["ore", "mine", "mining", "vein"], rare: ["rare", "rares"], chest: ["chest", "chests", "treasure"], mailbox: ["mail", "mailbox"] };
     for (const [mapId, pins] of this.static) {
       for (const p of pins) {
         if (p.kind === "town") continue;
