@@ -73,6 +73,25 @@ async function main() {
   fs.writeFileSync(path.join(root, "data", "forever", "pack.json"), result.pack);
   fs.writeFileSync(lockPath, result.lock);
   console.log(`Compiled data/forever for ${builds.length} builds at ${commit}. Sources kept in ${dir}.`);
+  // The seller pack keeps its own lock in the same shape; rebuild it from the same snapshot.
+  const vendors = require("./build-forever-vendors.cjs");
+  const vendorFiles = require("../src/core/vendor-facts.cjs").FILES;
+  const vendorDir = path.join(root, "data", "forever-vendors");
+  const { compiled: _compiled, ...vendorLock } = JSON.parse(fs.readFileSync(path.join(vendorDir, "source-lock.json"), "utf8"));
+  const withSellers = builds.filter((build) => vendorFiles.every((name) => fs.existsSync(path.join(dir, build, name))));
+  const sellers = vendors.compile(dir, {
+    ...vendorLock, commit, build: withSellers[0],
+    builds: withSellers.map((build) => ({
+      build,
+      files: Object.fromEntries(vendorFiles.map((name) => {
+        const bytes = fs.readFileSync(path.join(dir, build, name));
+        return [name, { url: `https://raw.githubusercontent.com/${REPO}/${commit}/data/wowf/${build}/${name}`, bytes: bytes.length, sha256: hash(bytes), meta: JSON.parse(bytes).meta }];
+      })),
+    })),
+  });
+  fs.writeFileSync(path.join(vendorDir, "pack.json"), sellers.pack);
+  fs.writeFileSync(path.join(vendorDir, "source-lock.json"), sellers.lock);
+  console.log(`Compiled data/forever-vendors for ${withSellers.length} builds.`);
 }
 
 main().catch((error) => { console.error(error.message); process.exit(1); });
