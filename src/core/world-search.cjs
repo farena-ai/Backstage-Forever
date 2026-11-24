@@ -116,9 +116,11 @@ function buildIndex({ knowledgePack = null, pins = null, vendorPack = null, insi
   // NPCs only the community placed (never mixed into the bundled rows).
   for (const [npcId, positions] of community?.npcPositions || []) {
     if (npcs.has(npcId)) continue;
-    const name = pack?.npcs?.[`npc:${npcId}`]?.name || creatures?.get?.(npcId)?.name || null, p = positions.find(placed);
+    // A name the bundled data lacks may come from the pack: the name the game showed to at least 3 players.
+    const bundled = pack?.npcs?.[`npc:${npcId}`]?.name || creatures?.get?.(npcId)?.name || null, p = positions.find(placed);
+    const name = bundled || community.npcNames?.get(npcId)?.name || null;
     if (!name || !p) continue;
-    const vendor = community.vendors?.has(npcId), zone = mapName(p.mapId);
+    const vendor = community.vendors?.has(npcId), zone = join(mapName(p.mapId), bundled ? null : "name from the community");
     npcPlace.set(npcId, { mapId: p.mapId, x: p.x, y: p.y, name });
     add("npc", npcId, name, join(vendor ? "Vendor" : "NPC", zone, `seen by ${p.installs} players`), { about: join(vendor ? "vendor" : null, zone), src: "community", mapId: p.mapId,
       t: { map: { mapId: p.mapId, x: p.x, y: p.y, npcId, label: name, sub: vendor ? "Vendor" : null, kind: vendor ? "vendor" : "npc" } } });

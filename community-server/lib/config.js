@@ -72,6 +72,7 @@ function loadConfig(env = process.env, overrides = {}) {
       reportPerInstall: { limit: intEnv(env, "BF_COMMUNITY_RL_REPORT_PER_HOUR", 5, 1, 1e6), windowMs: 3_600_000 },
       reportGlobal: { limit: intEnv(env, "BF_COMMUNITY_RL_REPORT_GLOBAL_PER_HOUR", 60, 1, 1e7), windowMs: 3_600_000 },
       forgetPerInstall: { limit: 3, windowMs: 3_600_000 },
+      minePerInstall: { limit: 12, windowMs: 3_600_000 },
       // Backstage Desk (CLIENT-CONTRACT.md sections D1 to D8). "Day" is a 24 hour window.
       heartbeatPerInstall: { limit: 6, windowMs: DAY },
       ticketPerInstall: { limit: 5, windowMs: DAY },

@@ -303,7 +303,7 @@ test("community spots cluster at low zoom and stand alone once you are close", (
   const many = Array.from({ length: 150 }, () => ({ sx: rnd() * 780, sy: rnd() * 520 }));
   assert.ok(C.grid(many, C.cellFor(1)).length <= 48, "the default view stays sparse");
   const wm = read("src/renderer/world-map.js");
-  assert.match(wm, /Community: \[\["c-herb", "Community herbs"\], \["c-ore", "Community ore"\], \["c-chest", "Community chests"\], \["c-npc", "NPCs players placed"\], \["c-vendor", "Community vendors"\]\]/);
+  assert.match(wm, /Community: \[\["c-herb", "Community herbs"\], \["c-ore", "Community ore"\], \["c-chest", "Community chests"\], \["c-object", "Community objects"\], \["c-npc", "NPCs players placed"\], \["c-vendor", "Community vendors"\]\]/);
   assert.match(wm, /window\.MapCluster\.grid\(shared, cell\)/);
 });
 
@@ -329,7 +329,7 @@ test("community pins: a layer each, seen by N players, skill filter facts, your 
   assert.deepEqual([W.canGather(40, 50), W.canGather(50, 50), W.canGather(null, 50), W.canGather(40, null), W.canGather(-1, null)], [false, true, null, null, false]);
   const sum = W.communitySummary(community, pins, { now: Date.parse("2026-11-23T06:00:00.000Z"), skills: { herb: 40, ore: -1 } });
   assert.deepEqual({ total: sum.total, yours: sum.yours, layers: sum.layers, beyondSkill: sum.beyondSkill, ageDays: sum.ageDays, perFactDates: sum.perFactDates },
-    { total: 6, yours: 1, layers: { "c-herb": 2, "c-ore": 1, "c-chest": 1, "c-npc": 1, "c-vendor": 1 }, beyondSkill: 2, ageDays: 3, perFactDates: false });
+    { total: 6, yours: 1, layers: { "c-herb": 2, "c-ore": 1, "c-chest": 1, "c-object": 0, "c-npc": 1, "c-vendor": 1 }, beyondSkill: 2, ageDays: 3, perFactDates: false });
   assert.equal(W.communitySummary(null, []), null);
   assert.deepEqual(W.communityPins(null, 1413), []);
 });

@@ -107,7 +107,7 @@ local SETTINGS={
 }
 BackstageForeverProfileSettings=SETTINGS
 -- Saved tables that hold no setting worth copying: one character's own records, or a list for one run.
-BackstageForeverProfileNotCopied={'BackstageForeverCrewSettings','BackstageForeverQuestItemSourcesDB','BackstageForeverJournalDB','BackstageForeverSheetDB',
+BackstageForeverProfileNotCopied={'BackstageForeverCrewSettings','BackstageForeverQuestItemSourcesDB','BackstageForeverWaresDB','BackstageForeverJournalDB','BackstageForeverSheetDB',
     'BackstageForeverFlightTimesDB','BackstageForeverNotesDB'}
 local function finite(v) return type(v)=='number' and v==v and v>-1e300 and v<1e300 end
 -- Pure: a value checked against one entry of the list. nil when it does not fit.

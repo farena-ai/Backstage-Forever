@@ -5,7 +5,7 @@ const { applyJourneyAction } = require("./journeys.cjs");
 const { buildCompany } = require("./company.cjs");
 const { preserveMemories } = require("./memory-data.cjs");
 const captured = [
-  "source", "location", "quests", "progress", "history", "readiness", "gathering", "lootSources", "journal", "ledger", "stats", "gearSets", "extras",
+  "source", "location", "quests", "progress", "history", "readiness", "gathering", "lootSources", "journal", "ledger", "stats", "gearSets", "extras", "wares",
   "clientBuild", "locale", "captureVersion", "sex",
 ];
 

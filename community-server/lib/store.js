@@ -1,7 +1,7 @@
 "use strict";
 // SQLite storage (node:sqlite, built in). Only aggregated-friendly facts are
 // stored: one row per (kind, fact key, hashed install) with a counter and the
-// first/last UTC day it was seen. No IPs, names of characters, GUIDs, realms,
+// first/last UTC day it was seen (the day the server received it). No IPs, names of characters, GUIDs, realms,
 // raw install ids or timestamps finer than a day are kept for observations.
 const fs = require("node:fs");
 const path = require("node:path");
@@ -28,8 +28,16 @@ function facts(sub) {
     out.push(["node", `${n.kind}|${ident}|${n.mapId}|${n.x}|${n.y}`, 1]);
     for (const itemId of n.itemIds) out.push(["nodeitem", `${n.kind}|${ident}|${itemId}`, 1]);
   }
-  for (const n of sub.npcs) out.push(["npc", `${n.npcId}|${n.mapId}|${n.x}|${n.y}`, 1]);
-  for (const v of sub.vendors) for (const itemId of v.itemIds) out.push(["vendor", `${v.npcId}|${itemId}`, 1]);
+  // The displayed NPC name is its own fact ("npcname"), one per install and (id, name), however
+  // many entries of one submission carry it.
+  const names = new Set();
+  const name = (e) => {
+    if (!e.name) return;
+    const key = `${e.npcId}|${e.name}`;
+    if (!names.has(key)) { names.add(key); out.push(["npcname", key, 1]); }
+  };
+  for (const n of sub.npcs) { out.push(["npc", `${n.npcId}|${n.mapId}|${n.x}|${n.y}`, 1]); name(n); }
+  for (const v of sub.vendors) { for (const itemId of v.itemIds) out.push(["vendor", `${v.npcId}|${itemId}`, 1]); name(v); }
   for (const d of sub.drops) {
     out.push(["droploot", `${d.npcId}`, d.loots]);
     for (const it of d.items) out.push(["drop", `${d.npcId}|${it.itemId}`, it.count]);
@@ -213,8 +221,12 @@ COMMIT;`);
       delObs: p("DELETE FROM obs WHERE install = ?"),
       delReports: p("DELETE FROM reports WHERE install = ?"),
       block: p("INSERT OR IGNORE INTO blocked(install, day) VALUES (?, ?)"),
-      published: p(`SELECT kind, key, COUNT(*) AS installs FROM obs WHERE kind = ?
+      // first/last: the earliest and latest UTC day any install reported the fact (day precision only).
+      published: p(`SELECT kind, key, COUNT(*) AS installs, MIN(first_day) AS first, MAX(last_day) AS last FROM obs WHERE kind = ?
         GROUP BY kind, key HAVING COUNT(*) >= ? ORDER BY key`),
+      // What one install hash contributed: spots, NPC places and vendor wares only.
+      mine: p(`SELECT kind, key FROM obs WHERE install = ? AND kind IN ('node', 'npc', 'vendor') ORDER BY kind, key LIMIT ?`),
+      mineCount: p(`SELECT COUNT(*) AS c FROM obs WHERE install = ? AND kind IN ('node', 'npc', 'vendor')`),
       dropRows: p(`SELECT d.key AS key, d.install AS install, d.n AS hits, COALESCE(l.n, 0) AS loots
         FROM obs d LEFT JOIN obs l
           ON l.kind = 'droploot' AND l.install = d.install AND l.key = substr(d.key, 1, instr(d.key, '|') - 1)
@@ -275,6 +287,11 @@ COMMIT;`);
 
   published(kind, minInstalls) { return this.q.published.all(kind, minInstalls); }
   dropRows(minInstalls) { return this.q.dropRows.all(minInstalls); }
+
+  // The fact keys one install hash contributed, at most `limit` of them, and how many there are in all.
+  mine(hash, limit) {
+    return { rows: this.q.mine.all(hash, limit), total: this.q.mineCount.get(hash).c };
+  }
 
   // --- admin helpers ---
   listReports({ all = false, limit = 50 } = {}) {

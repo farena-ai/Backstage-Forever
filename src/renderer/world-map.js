@@ -7,16 +7,20 @@ window.WorldMapView = (() => {
     Questing: [["quest-turnin", "Turn-ins"], ["quest-objective", "Objectives"], ["objective-area", "Objective areas"], ["quest-giver", "Quests to pick up"]],
     Gathering: [["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["heat", "Your gathering heat"]],
     // The daily community pack: what other players shared, never mixed with the bundled reference or your finds.
-    Community: [["c-herb", "Community herbs"], ["c-ore", "Community ore"], ["c-chest", "Community chests"], ["c-npc", "NPCs players placed"], ["c-vendor", "Community vendors"]],
+    Community: [["c-herb", "Community herbs"], ["c-ore", "Community ore"], ["c-chest", "Community chests"], ["c-object", "Community objects"], ["c-npc", "NPCs players placed"], ["c-vendor", "Community vendors"]],
     Services: [["flight", "Flight masters"], ["class-trainer", "Class trainers"], ["profession-trainer", "Profession trainers"], ["vendor", "Vendors"], ["npc", "Other NPCs"], ["otherFaction", "Other faction's NPCs"]],
     World: [["rare", "Rare enemies"], ["nodes", "Reference herbs and ore"], ["chest", "Chests"], ["mailbox", "Mailboxes"]],
     Journey: [["journey", "My path this session"]],
   };
   // The busy reference layers stay off until asked for, so the default map is not cluttered.
-  const OFF_BY_DEFAULT = new Set(["npc", "otherFaction", "nodes", "chest", "mailbox", "c-npc"]);
-  const COMMUNITY_LAYERS = ["c-herb", "c-ore", "c-chest", "c-npc", "c-vendor"];
+  const OFF_BY_DEFAULT = new Set(["npc", "otherFaction", "nodes", "chest", "mailbox", "c-npc", "c-object"]);
+  const COMMUNITY_LAYERS = ["c-herb", "c-ore", "c-chest", "c-object", "c-npc", "c-vendor"];
   // Community spots your character's skill cannot gather yet are hidden when this is on.
   let onlyGatherable = false;
+  // "Seen in the last N days": 0 shows every community spot. Spots whose pack row carries no day always show.
+  const SEEN_WITHIN = [0, 7, 30, 90];
+  let seenWithin = 0;
+  const tooOld = (p) => Boolean(seenWithin && p.community && p.ageDays != null && p.ageDays > seenWithin);
   const PREF = "bf-world-map-v2";
   let clusters = [], pendingFocus = null, focused = null; // focused: { pin, goal } while a link's target is dialed in
   let model = null, mapId = null, follow = true, selected = null, hover = null, trail = [], view = { zoom: 1, cx: 0.5, cy: 0.5 };
@@ -48,8 +52,9 @@ window.WorldMapView = (() => {
     }
     if (typeof p.follow === "boolean") follow = p.follow;
     if (typeof p.onlyGatherable === "boolean") onlyGatherable = p.onlyGatherable;
+    if (SEEN_WITHIN.includes(p.seenWithin)) seenWithin = p.seenWithin;
   } catch {}
-  const savePref = () => { try { localStorage.setItem(PREF, JSON.stringify({ layers, follow, onlyGatherable })); } catch {} };
+  const savePref = () => { try { localStorage.setItem(PREF, JSON.stringify({ layers, follow, onlyGatherable, seenWithin })); } catch {} };
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pct = (v) => (v * 100).toFixed(1);
   const dirName = (dx, dy) => { const d = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360; return ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"][Math.round(d / 45) % 8]; };
@@ -157,6 +162,11 @@ window.WorldMapView = (() => {
     g.fillStyle = "#e9fbff"; for (const dx of [-0.38, 0.38]) { g.beginPath(); g.arc(x + dx * s, y - s * 0.22, s * 0.22, 0, 7); g.fill(); g.beginPath(); g.arc(x + dx * s, y + s * 0.42, s * 0.34, Math.PI, 0); g.fill(); }
     g.restore();
   }
+  // Any other game object players looted (a crate, a barrel, a quest object): a plain wooden box.
+  function crate(g, x, y, s) {
+    g.save(); g.beginPath(); g.roundRect(x - s, y - s, s * 2, s * 2, s * 0.18); g.fillStyle = "#a8743a"; g.fill(); g.strokeStyle = "#2a1406"; g.lineWidth = 1.3; g.stroke();
+    g.beginPath(); g.moveTo(x - s, y - s); g.lineTo(x + s, y + s); g.moveTo(x + s, y - s); g.lineTo(x - s, y + s); g.strokeStyle = "#5a3412"; g.lineWidth = 1.1; g.stroke(); g.restore();
+  }
   function letter(g, x, y, s) { g.save(); g.beginPath(); g.roundRect(x - s, y - s * 0.7, s * 2, s * 1.4, s * 0.15); g.fillStyle = COLORS.mailbox; g.fill(); g.strokeStyle = "#3a2410"; g.lineWidth = 1.3; g.stroke(); g.beginPath(); g.moveTo(x - s, y - s * 0.7); g.lineTo(x, y + s * 0.1); g.lineTo(x + s, y - s * 0.7); g.stroke(); g.restore(); }
   function star(g, x, y, s) { g.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? s * 0.45 : s, a = -Math.PI / 2 + (i * Math.PI) / 5; g.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)); } g.closePath(); g.fillStyle = "#ffe27a"; g.fill(); g.strokeStyle = "#5a3a0c"; g.lineWidth = 1; g.stroke(); }
   // Painted medallions (original ComfyUI art) for the main pin kinds; vector shapes stay as the fallback.
@@ -170,10 +180,10 @@ window.WorldMapView = (() => {
     if (kind === "find" && gather === "chest") { chest(g, x, y, r * 0.85); star(g, x + r * 0.65, y - r * 0.65, r * 0.45); return; }
     if (kind === "community") {
       g.beginPath(); g.arc(x, y, r * 1.05, 0, 7); g.fillStyle = "rgba(43,138,156,0.18)"; g.fill(); g.setLineDash([2.5, 2]); g.strokeStyle = "#1f6f80"; g.lineWidth = 1.4; g.stroke(); g.setLineDash([]);
-      if (gather === "chest") chest(g, x, y, r * 0.62); else if (gather === "ore") rock(g, x, y, r * 0.62); else leaf(g, x, y, r * 0.7, COLORS.herb);
+      if (gather === "chest") chest(g, x, y, r * 0.62); else if (gather === "ore") rock(g, x, y, r * 0.62); else if (gather === "object") crate(g, x, y, r * 0.5); else leaf(g, x, y, r * 0.7, COLORS.herb);
       people(g, x + r * 0.72, y - r * 0.72, r * 0.42); return;
     }
-    if (kind === "c-herb" || kind === "c-ore" || kind === "c-chest") return icon(g, "community", x, y, r, { gather: kind.slice(2) });
+    if (kind === "c-herb" || kind === "c-ore" || kind === "c-chest" || kind === "c-object") return icon(g, "community", x, y, r, { gather: kind.slice(2) });
     if (kind === "c-npc" || kind === "c-vendor") { icon(g, kind === "c-vendor" ? "vendor" : "npc", x - r * 0.15, y + r * 0.1, r * (kind === "c-vendor" ? 0.8 : 1.3), { zoom }); people(g, x + r * 0.72, y - r * 0.72, r * 0.42); return; }
     if (kind === "nodes") { leaf(g, x - r * 0.3, y, r * 0.75, COLORS.herb); rock(g, x + r * 0.45, y + r * 0.25, r * 0.5); return; }
     if (kind === "heat") { for (const [dx, c] of [[-0.45, HEAT.herb], [0.45, HEAT.ore], [0, HEAT.chest]]) { const gr = g.createRadialGradient(x + dx * r, y + (dx ? 0.25 : -0.35) * r, 0, x + dx * r, y + (dx ? 0.25 : -0.35) * r, r * 0.8); gr.addColorStop(0, rgba(c, 0.95)); gr.addColorStop(1, rgba(c, 0)); g.fillStyle = gr; g.beginPath(); g.arc(x + dx * r, y + (dx ? 0.25 : -0.35) * r, r * 0.8, 0, 7); g.fill(); } return; }
@@ -305,8 +315,12 @@ window.WorldMapView = (() => {
   }
   function drawPinRaw(p, sx, sy, emphasis) {
     const r = 9 * (emphasis ? 1.35 : 1);
+    // A community spot nobody reported for over a month is faded: it may be gone. The selected one stays clear.
+    const faded = p.community && p.stale && !emphasis, before = ctx.globalAlpha;
+    if (faded) ctx.globalAlpha = before * 0.45;
     if (p.otherFaction) ctx.globalAlpha = 0.55;
     icon(ctx, p.kind, sx, sy, p.kind === "npc" ? r * 1.2 : r, { gather: p.gather, zoom: view.zoom });
+    if (faded) { if (p.npcId) people(ctx, sx + r * 0.75, sy - r * 0.75, r * 0.45); ctx.globalAlpha = before; return; }
     if (p.otherFaction) { ctx.globalAlpha = 1; ctx.beginPath(); ctx.moveTo(sx - r * 0.8, sy + r * 0.8); ctx.lineTo(sx + r * 0.8, sy - r * 0.8); ctx.strokeStyle = "#c0261a"; ctx.lineWidth = 2.2; ctx.stroke(); }
     // NPCs and vendors only the community placed carry the two-figure badge, like community spots.
     if (p.community && p.npcId) people(ctx, sx + r * 0.75, sy - r * 0.75, r * 0.45);
@@ -320,7 +334,7 @@ window.WorldMapView = (() => {
   function visiblePins() {
     return (model?.pins || []).filter((p) => {
       if (p.kind === "town") return true;
-      if (p.community) return layers[p.layer] !== false && !(onlyGatherable && p.gatherable === false);
+      if (p.community) return layers[p.layer] !== false && !(onlyGatherable && p.gatherable === false) && !tooOld(p);
       return layers[p.kind] !== false && (!p.reference || layers.nodes) && (!p.otherFaction || layers.otherFaction);
     });
   }
@@ -560,22 +574,35 @@ window.WorldMapView = (() => {
   }
   // How old the pack is, in plain words. The pack has one date for everything in it.
   const packAge = (c) => (c.ageDays == null ? "" : c.ageDays === 0 ? "today" : c.ageDays === 1 ? "yesterday" : `${c.ageDays} days ago`);
-  const LAYER_WORDS = { "c-herb": "herbs", "c-ore": "ore", "c-chest": "chests", "c-npc": "NPCs", "c-vendor": "vendors" };
+  const LAYER_WORDS = { "c-herb": "herbs", "c-ore": "ore", "c-chest": "chests", "c-object": "objects", "c-npc": "NPCs", "c-vendor": "vendors" };
+  // "3 days ago" for a spot's own last-seen day (pack format minor 1).
+  const agoWords = (days) => (days === 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`);
+  const WITHIN_WORDS = { 0: "at any time", 7: "in the last 7 days", 30: "in the last 30 days", 90: "in the last 90 days" };
+  // The card's markup for one zone summary. opts: { onlyGatherable, seenWithin, tooOldHere } (the card's own switches).
+  function communityMarkup(c, { onlyGatherable = false, seenWithin = 0, tooOldHere = 0 } = {}) {
+    const parts = COMMUNITY_LAYERS.filter((k) => c.layers[k]).map((k) => `<span class="wm-c-chip">${ico(k)}<b>${c.layers[k]}</b> <span>${LAYER_WORDS[k]}</span></span>`).join("");
+    const skill = (k, name) => (c.skills[k] == null ? `<span>${name}: not in your last save</span>` : c.skills[k] < 0 ? `<span>${name}: not learned</span>` : `<span>${name}</span> <b>${c.skills[k]}</b>`);
+    const age = packAge(c);
+    // Exact when the service has listed what this install shared; until then a match with the finds saved here.
+    const yours = !c.yours ? "" : c.yoursExact ? `; <b data-wm-c-yours="exact">${c.yours}</b> <span>${c.yours === 1 ? "is from you" : "are from you"}</span>` : `; <b data-wm-c-yours="guess">${c.yours}</b> <span>${c.yours === 1 ? "matches a find of yours" : "match finds of yours"}</span>`;
+    const fresh = c.perFactDates
+      ? `<label class="wm-c-within"><span>Show spots seen</span> <select data-wm-seen-within aria-label="Show spots seen">${SEEN_WITHIN.map((d) => `<option value="${d}"${d === seenWithin ? " selected" : ""}>${WITHIN_WORDS[d]}</option>`).join("")}</select></label>
+      <p class="wm-c-fresh" data-wm-c-fresh>${tooOldHere ? `<b>${tooOldHere}</b> <span>hidden as older</span>. ` : !seenWithin && c.stale ? `<b>${c.stale}</b> <span>${c.stale === 1 ? "is faded: not seen for over 30 days" : "are faded: not seen for over 30 days"}</span>. ` : ""}<span>Each spot says how many players saw it and when it was last seen.</span>${age ? ` <span>Pack from</span> <span>${esc(age)}</span>.` : ""}</p>`
+      : `<p class="wm-c-fresh" data-wm-c-fresh>${age ? `<span>Pack from</span> <span>${esc(age)}</span>. ` : ""}<span>Each spot says how many players saw it. The pack has one date for everything, so a single spot cannot say when it was last seen.</span></p>`;
+    return `<h3>Community layers</h3>
+      <p class="wm-c-line" data-wm-c-line>${c.total ? `<span>The community has</span> <b>${c.total}</b> <span>${c.total === 1 ? "spot here" : "spots here"}</span>${yours}.` : "<span>The community has no spots in this zone yet.</span>"}</p>
+      ${parts ? `<p class="wm-c-chips">${parts}</p>` : ""}
+      <label class="check-label wm-c-skill"><input type="checkbox" data-wm-gatherable ${onlyGatherable ? "checked" : ""}><span>Only what my skill can gather</span></label>
+      <p class="wm-c-skills">${skill("herb", "Herbalism")} · ${skill("ore", "Mining")}${onlyGatherable && c.beyondSkill ? ` · <b>${c.beyondSkill}</b> <span>hidden</span>` : ""}</p>
+      ${fresh}
+      <p class="wm-c-key"><canvas class="wm-ico" aria-hidden="true" width="22" height="22" data-ico-cluster></canvas><span>A numbered teal mark is several spots together. Click it, or zoom in, to see each one.</span></p>`;
+  }
   function communityCard() {
     const box = document.querySelector("[data-wm-community]"); if (!box) return;
     const c = model?.community;
     if (!c) { box.hidden = true; box.innerHTML = ""; return; }
     box.hidden = false;
-    const parts = COMMUNITY_LAYERS.filter((k) => c.layers[k]).map((k) => `<span class="wm-c-chip">${ico(k)}<b>${c.layers[k]}</b> <span>${LAYER_WORDS[k]}</span></span>`).join("");
-    const skill = (k, name) => (c.skills[k] == null ? `<span>${name}: not in your last save</span>` : c.skills[k] < 0 ? `<span>${name}: not learned</span>` : `<span>${name}</span> <b>${c.skills[k]}</b>`);
-    const age = packAge(c);
-    box.innerHTML = `<h3>Community layers</h3>
-      <p class="wm-c-line" data-wm-c-line>${c.total ? `<span>The community has</span> <b>${c.total}</b> <span>${c.total === 1 ? "spot here" : "spots here"}</span>${c.yours ? `; <b>${c.yours}</b> <span>${c.yours === 1 ? "matches a find of yours" : "match finds of yours"}</span>` : ""}.` : "<span>The community has no spots in this zone yet.</span>"}</p>
-      ${parts ? `<p class="wm-c-chips">${parts}</p>` : ""}
-      <label class="check-label wm-c-skill"><input type="checkbox" data-wm-gatherable ${onlyGatherable ? "checked" : ""}><span>Only what my skill can gather</span></label>
-      <p class="wm-c-skills">${skill("herb", "Herbalism")} · ${skill("ore", "Mining")}${onlyGatherable && c.beyondSkill ? ` · <b>${c.beyondSkill}</b> <span>hidden</span>` : ""}</p>
-      <p class="wm-c-fresh">${age ? `<span>Pack from</span> <span>${esc(age)}</span>. ` : ""}<span>Each spot says how many players saw it. The pack has one date for everything, so a single spot cannot say when it was last seen.</span></p>
-      <p class="wm-c-key"><canvas class="wm-ico" aria-hidden="true" width="22" height="22" data-ico-cluster></canvas><span>A numbered teal mark is several spots together. Click it, or zoom in, to see each one.</span></p>`;
+    box.innerHTML = communityMarkup(c, { onlyGatherable, seenWithin, tooOldHere: seenWithin ? (model?.pins || []).filter((p) => layers[p.layer] !== false && tooOld(p)).length : 0 });
     const cc = box.querySelector("[data-ico-cluster]"), g = cc.getContext("2d");
     g.beginPath(); g.arc(11, 11, 9, 0, 7); g.fillStyle = "#2b8a9c"; g.fill(); g.setLineDash([3, 2.5]); g.strokeStyle = "#e9fbff"; g.lineWidth = 1.2; g.stroke(); g.fillStyle = "#fff"; g.font = "700 10px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("7", 11, 11.5);
     paintIcons(box);
@@ -637,13 +664,16 @@ window.WorldMapView = (() => {
     return parts.join("");
   }
   // A community spot: who reported it and what it gave them (names fill in from the game install).
-  function communityDetails(p) {
+  function communityDetails(p, c = model?.community) {
     const items = (p.itemIds || []).slice(0, 16);
     if (items.length && api?.gameItems) api.gameItems(items).then((found) => {
       for (const el of document.querySelectorAll("[data-wm-community-item]")) { const i = items.indexOf(Number(el.dataset.wmCommunityItem)); if (i >= 0 && found?.[i]?.name) el.textContent = found[i].name; }
     }).catch(() => {});
-    const c = model?.community;
-    return `<p class="wm-note wm-community-note"><strong>${p.installs === 1 ? "Seen by 1 player" : `Seen by ${p.installs} players`}</strong>${c?.ageDays != null ? ` · <span>Pack from</span> <span>${esc(packAge(c))}</span>` : ""}<br><span>Shared anonymously. A past spot, not a live node; nodes respawn nearby.</span>${p.skill ? `<br><span>Needs skill</span> <b>${p.skill}</b>${p.gatherable === false ? " · <span>More than your character has.</span>" : ""}` : ""}${p.yours ? "<br><span>You found this one too.</span>" : ""}</p>${items.length ? `<section class="wm-sec"><h4>Gathered here</h4><ul class="wm-items">${items.map((id) => `<li data-card-item="${id}" data-wm-community-item="${id}">Item #${id}</li>`).join("")}</ul></section>` : ""}`;
+    // The spot's own day when the pack carries it; otherwise only the pack's date is known.
+    const when = p.ageDays != null ? ` · <span>Last seen</span> <span data-wm-last-seen>${esc(agoWords(p.ageDays))}</span>` : c?.ageDays != null ? ` · <span>Pack from</span> <span>${esc(packAge(c))}</span>` : "";
+    const old = p.stale ? `<br><span data-wm-stale>Not seen for over 30 days. It may be gone.</span>` : "";
+    const own = !p.yours ? "" : c?.yoursExact ? "<br><span data-wm-yours=\"exact\">You shared this one.</span>" : "<br><span data-wm-yours=\"guess\">You found this one too.</span>";
+    return `<p class="wm-note wm-community-note"><strong>${p.installs === 1 ? "Seen by 1 player" : `Seen by ${p.installs} players`}</strong>${when}${old}<br><span>${p.gather === "object" ? "Shared anonymously. An object another player looted, not a live one." : "Shared anonymously. A past spot, not a live node; nodes respawn nearby."}</span>${p.skill ? `<br><span>Needs skill</span> <b>${p.skill}</b>${p.gatherable === false ? " · <span>More than your character has.</span>" : ""}` : ""}${own}</p>${items.length ? `<section class="wm-sec"><h4>Gathered here</h4><ul class="wm-items">${items.map((id) => `<li data-card-item="${id}" data-wm-community-item="${id}">Item #${id}</li>`).join("")}</ul></section>` : ""}`;
   }
   async function loadNpc(p) {
     if (!p?.npcId || !api?.worldMapNpc) return;
@@ -969,6 +999,7 @@ window.WorldMapView = (() => {
     root.addEventListener("change", (e) => {
       if (window.WorldFinders?.onChange(e, finderHooks)) return;
       if (e.target.matches("[data-wm-layer]")) { layers[e.target.dataset.wmLayer] = e.target.checked; if (!e.target.checked && (selected?.kind === e.target.dataset.wmLayer || selected?.layer === e.target.dataset.wmLayer)) { selected = null; card(); } savePref(); nearList(); campsList(); heatList(); window.WorldFinders?.paint(model, finderHooks, layers.rare !== false); draw(); }
+      if (e.target.matches("[data-wm-seen-within]")) { const d = Number(e.target.value); seenWithin = SEEN_WITHIN.includes(d) ? d : 0; if (selected && tooOld(selected)) { selected = null; card(); } savePref(); communityCard(); nearList(); draw(); root.querySelector("[data-wm-seen-within]")?.focus({ preventScroll: true }); }
       if (e.target.matches("[data-wm-gatherable]")) { onlyGatherable = e.target.checked; if (onlyGatherable && selected?.community && selected.gatherable === false) { selected = null; card(); } savePref(); communityCard(); nearList(); draw(); root.querySelector("[data-wm-gatherable]")?.focus({ preventScroll: true }); }
       if (e.target.matches("[data-wm-zone]")) { follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; savePref(); load(Number(e.target.value)); }
       if (e.target.matches("[data-wm-follow]")) { follow = e.target.checked; savePref(); if (follow && lastLive) load(lastLive.position.mapId); }
@@ -1060,5 +1091,5 @@ window.WorldMapView = (() => {
   function focusZone(name) { const id = Number.isSafeInteger(name) && name > 0 ? name : window.ZoneArt?.idFor(name); if (!Number.isSafeInteger(id)) return false; pendingFocus = null; follow = false; mapId = id; savePref(); if (document.querySelector("[data-world-map]")) load(id); return true; }
   // _areaCard renders one objective-area card against a given model (tests).
   const _areaCard = (a, m) => { const keep = model; model = m; try { return areaCard(a); } finally { model = keep; } };
-  return { page, mounted, focus, focusZone, retireRouteFocus, _areaCard, _fillMarkup: fillMarkup, _state: () => ({ model, selected, view, trail, layers, results, journey, focused, clusters, onlyGatherable }) };
+  return { page, mounted, focus, focusZone, retireRouteFocus, _areaCard, _fillMarkup: fillMarkup, _communityMarkup: communityMarkup, _communityDetails: communityDetails, _state: () => ({ model, selected, view, trail, layers, results, journey, focused, clusters, onlyGatherable, seenWithin, visible: visiblePins().length }) };
 })();

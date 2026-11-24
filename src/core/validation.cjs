@@ -181,6 +181,7 @@ function validateState(s) {
       "stats",
       "gearSets",
       "travel",
+      "wares",
       "extras",
       "clientBuild",
       "locale",
@@ -199,6 +200,7 @@ function validateState(s) {
     require("./ledger.cjs").validateLedger(p.ledger);
     require("./sheet.cjs").validateStats(p.stats);
     require("./sheet.cjs").validateGearSets(p.gearSets);
+    if (p.wares !== undefined && !require("node:util").isDeepStrictEqual(require("./wares.cjs").normalizeWaresCapture(p.wares), p.wares)) fail();
     if (p.travel !== undefined && !require("node:util").isDeepStrictEqual(require("./travel-planner.cjs").normalizeTravelCapture(p.travel), p.travel)) fail();
     try { require("./capture-extras.cjs").validateExtras(p.extras); } catch { fail(); }
     str(p.id, 100, false);

@@ -1,10 +1,12 @@
 "use strict";
-// Community sharing (0.34): anonymous gathering spots and creature positions this player's own addon
-// observed go to the Backstage community service (community-server/CLIENT-CONTRACT.md), and a daily
-// community pack comes back for the World Map, NPC cards and the loot browser.
+// Community sharing (0.34): anonymous gathering spots, creature positions and vendor wares this
+// player's own addon observed go to the Backstage community service
+// (community-server/CLIENT-CONTRACT.md), and a daily community pack comes back for the World Map,
+// NPC cards and the loot browser.
 //
-// Privacy: only the fields the contract allows ever leave the computer. No names, GUIDs, realm,
-// account, chat or times; coordinates are rounded to 0.5% of the map. The install id is a random
+// Privacy: only the fields the contract allows ever leave the computer. No character, account,
+// realm or guild names, no GUIDs, chat or times; coordinates are rounded to 0.5% of the map. The
+// only names sent are the ones the game itself shows for an NPC or a node, never anything typed. The install id is a random
 // UUID kept in the app data folder, unrelated to the account, machine or character.
 // Everything fails quietly: an unreachable service only delays the next attempt.
 const fs = require("node:fs"), path = require("node:path"), crypto = require("node:crypto"), os = require("node:os");
@@ -18,12 +20,18 @@ const BACKOFF_MIN = 60 * 1000, BACKOFF_MAX = 60 * 60 * 1000;
 const MAX_ENTRIES = 500, MAX_FACTS = 5000, MAX_BODY = 256 * 1024, BATCHES_PER_TICK = 3;
 const MAX_SENT = 60000, MAX_PACK_BYTES = 8 * 1024 * 1024, MAX_RESPONSE = 64 * 1024, MAX_LOG_BYTES = 65536;
 const TIMEOUT = 20000;
-const PACK_LIMITS = Object.freeze({ nodes: 100000, nodeItems: 200000, npcs: 100000, vendors: 200000, drops: 200000, recipes: 50000 });
+const PACK_LIMITS = Object.freeze({ nodes: 100000, nodeItems: 200000, npcs: 100000, vendors: 200000, drops: 200000, recipes: 50000, npcNames: 100000 });
+// "From you": the list of this install's own contributions is asked for at most this often, and
+// again soon after something new was shared.
+const MINE_EVERY = 6 * 60 * 60 * 1000, MINE_MIN_GAP = 10 * 60 * 1000, MAX_MINE = 6000, MAX_MINE_BYTES = 1024 * 1024;
+const NODE_KINDS = Object.freeze(["herb", "ore", "chest", "object"]);
 const REPORT_CATEGORIES = Object.freeze(["bug", "data", "crash", "suggestion", "other"]);
 const KIND = Object.freeze({ herbalism: "herb", mining: "ore", chest: "chest" });
 const BUILD_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/, VERSION_RE = /^[0-9A-Za-z.+-]{1,32}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const NAME_RE = /^[\p{L}\p{N} '’.,:()&!-]{1,120}$/u;
+const NAME_RE = /^[\p{L}\p{M}\p{N} '’.,:()&!-]{1,120}$/u;
+// An NPC name as the game shows it: the same characters, at most 80.
+const NPC_NAME_RE = /^[\p{L}\p{M}\p{N} '’.,:()&!-]{1,80}$/u;
 // Control characters other than tab/newline, plus bidi overrides and isolates: the server rejects them.
 const UNSAFE_TEXT = /[\x00-\x08\x0b-\x1f\x7f-\x9f‎‏‪-‮⁦-⁩]/g;
 
@@ -46,20 +54,39 @@ function resolveBaseUrl(env = process.env) {
 }
 
 // ---------------------------------------------------------------- observations
+const utcDay = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : null);
+/** The name the game showed, cleaned to what the contract allows, or null. Never anything a player typed. */
+function gameName(value) {
+  if (typeof value !== "string") return null;
+  const name = value.normalize("NFC").trim().replace(/\s+/g, " ");
+  return NPC_NAME_RE.test(name) ? name : null;
+}
 /**
- * What this computer can share, from saved addon characters only. Each item carries a local dedupe
- * key, the client build it was seen on, the contract entry and how many stored facts it expands to.
- *  - nodes: gathering records (herbalism/mining/chest) with the items gathered there.
+ * What this computer can share, from saved addon characters only. Each item carries its local dedupe
+ * keys (never sent), the client build it was seen on, the contract entry and how many stored facts it
+ * expands to.
+ *  - nodes: gathering records (herbalism/mining/chest) with the items gathered there; with
+ *    `extended`, also other game objects the player looted a quest item from (kind "object").
  *  - npcs: where the player looted a creature (lootSources positions of kind "creature").
- * Vendors, recipes and drops are not collected: the addon records no merchant or trainer
- * listings, and quest-item loot counts have no loot-window denominator (drops need deltas of both).
+ *  - vendors: the NPC id and the item ids on sale, from vendor windows the player opened (wares block),
+ *    and where the player stood then, as an npcs entry (so the vendor can be placed on the map).
+ * `extended` (the service speaks pack format minor 1) also adds the NPC name exactly as the game showed
+ * it, on English (enUS) game clients only, once per NPC.
+ * `refreshFrom`: something seen again after that moment gets a second key holding its UTC day, so it is
+ * sent once more and the service can tell that the spot is still there. The day itself is not sent.
+ * Drops and recipes are not collected: the addon counts quest items looted, not loot windows opened, so
+ * there is no honest denominator for a drop rate, and it records no trainer or recipe listings.
  */
-function collectObservations(profiles) {
-  const out = [], seen = new Set();
-  const push = (item) => { if (!seen.has(item.key)) { seen.add(item.key); out.push(item); } };
+function collectObservations(profiles, { extended = false, refreshFrom = null } = {}) {
+  const out = [], seen = new Set(), named = new Set();
+  const push = (item) => { if (!seen.has(item.key)) { seen.add(item.key); item.keys = [item.key, ...(item.extra || [])]; delete item.extra; out.push(item); } };
+  const again = (key, at) => (refreshFrom !== null && Number.isFinite(at) && at >= refreshFrom ? [`${key}@${utcDay(at)}`] : []);
   for (const p of Array.isArray(profiles) ? profiles : []) {
     if (p?.source?.kind !== "wow-addon") continue;
     const profileBuild = typeof p.clientBuild === "string" && BUILD_RE.test(p.clientBuild) ? p.clientBuild : null;
+    const names = extended && p.locale === "enUS";
+    // One entry per NPC carries its name; the others would only repeat it.
+    const nameOf = (npcId, value) => { const name = names && !named.has(npcId) ? gameName(value) : null; if (name) named.add(npcId); return name; };
     for (const r of p.gathering?.records || []) {
       const kind = KIND[r?.method];
       if (!kind || !isId(r.entityId) || !isId(r.mapId) || !isFrac(r.x) || !isFrac(r.y)) continue;
@@ -67,14 +94,48 @@ function collectObservations(profiles) {
       const itemIds = [...new Set((Array.isArray(r.itemIds) ? r.itemIds : []).filter(isId))].sort((a, b) => a - b).slice(0, 16);
       const entry = { kind, objectId: r.entityId, mapId: r.mapId, x, y, ...(itemIds.length ? { itemIds } : {}) };
       const build = typeof r.clientBuild === "string" && BUILD_RE.test(r.clientBuild) ? r.clientBuild : profileBuild;
-      push({ key: `n:${kind}:${r.entityId}:${r.mapId}:${x}:${y}:${itemIds.join(",")}`, build, category: "nodes", entry, facts: 1 + itemIds.length });
+      const key = `n:${kind}:${r.entityId}:${r.mapId}:${x}:${y}:${itemIds.join(",")}`;
+      push({ key, extra: again(key, Date.parse(r.observedAt)), build, category: "nodes", entry, facts: 1 + itemIds.length });
     }
+    const objects = new Map();
     for (const item of p.lootSources?.items || []) for (const s of item?.sources || []) {
-      if (s?.kind !== "creature" || !isId(s.id)) continue;
-      for (const pos of s.positions || []) {
+      if (!isId(s?.id)) continue;
+      const seenAt = Date.parse(s.lastSeen);
+      if (s.kind === "object") {
+        if (!extended || !isId(item.itemId)) continue;
+        for (const pos of s.positions || []) {
+          if (!isId(pos?.mapId) || !isFrac(pos.x) || !isFrac(pos.y)) continue;
+          const x = round(pos.x), y = round(pos.y), k = `${s.id}:${pos.mapId}:${x}:${y}`;
+          if (!objects.has(k)) objects.set(k, { objectId: s.id, mapId: pos.mapId, x, y, items: new Set() });
+          objects.get(k).items.add(item.itemId);
+        }
+        continue;
+      }
+      if (s.kind !== "creature") continue;
+      for (const [i, pos] of (s.positions || []).entries()) {
         if (!isId(pos?.mapId) || !isFrac(pos.x) || !isFrac(pos.y)) continue;
-        const x = round(pos.x), y = round(pos.y);
-        push({ key: `p:${s.id}:${pos.mapId}:${x}:${y}`, build: profileBuild, category: "npcs", entry: { npcId: s.id, mapId: pos.mapId, x, y }, facts: 1 });
+        const x = round(pos.x), y = round(pos.y), key = `p:${s.id}:${pos.mapId}:${x}:${y}`;
+        if (seen.has(key)) continue;
+        const name = nameOf(s.id, s.name);
+        // Only the newest position (the first) is known to be as recent as the source's last sighting.
+        push({ key, extra: [...(i === 0 ? again(key, seenAt) : []), ...(name ? [`N:${s.id}:${name}`] : [])], build: profileBuild, category: "npcs", entry: { npcId: s.id, mapId: pos.mapId, x, y, ...(name ? { name } : {}) }, facts: name ? 2 : 1 });
+      }
+    }
+    for (const o of objects.values()) {
+      const itemIds = [...o.items].sort((a, b) => a - b).slice(0, 16);
+      push({ key: `n:object:${o.objectId}:${o.mapId}:${o.x}:${o.y}:${itemIds.join(",")}`, build: profileBuild, category: "nodes", entry: { kind: "object", objectId: o.objectId, mapId: o.mapId, x: o.x, y: o.y, itemIds }, facts: 1 + itemIds.length });
+    }
+    for (const v of p.wares?.vendors || []) {
+      if (!isId(v?.npcId) || !Array.isArray(v.itemIds)) continue;
+      const itemIds = [...new Set(v.itemIds.filter(isId))].sort((a, b) => a - b).slice(0, 200);
+      if (!itemIds.length) continue;
+      const key = `v:${v.npcId}:${itemIds.join(",")}`;
+      if (seen.has(key)) continue;
+      const name = nameOf(v.npcId, v.name);
+      push({ key, extra: [...again(key, v.seenAt * 1000), ...(name ? [`N:${v.npcId}:${name}`] : [])], build: profileBuild, category: "vendors", entry: { npcId: v.npcId, itemIds, ...(name ? { name } : {}) }, facts: itemIds.length + (name ? 1 : 0) });
+      if (isId(v.mapId) && isFrac(v.x) && isFrac(v.y)) {
+        const x = round(v.x), y = round(v.y), place = `p:${v.npcId}:${v.mapId}:${x}:${y}`;
+        push({ key: place, extra: again(place, v.seenAt * 1000), build: profileBuild, category: "npcs", entry: { npcId: v.npcId, mapId: v.mapId, x, y }, facts: 1 });
       }
     }
   }
@@ -116,11 +177,18 @@ const SECTIONS = Object.freeze({
   vendors: { npcId: "id", itemId: "id", installs: "count" },
   drops: { npcId: "id", itemId: "id", rate: "rate", samples: "count", installs: "count" },
   recipes: { source: "source", npcId: "id", spellId: "idn", itemId: "idn", installs: "count" },
+  // Pack format minor 1 (asked for with ?v=2): names the game showed, agreed on by at least minInstalls installs.
+  npcNames: { npcId: "id", name: "npcname", installs: "count" },
 });
+// Minor 1: the first and last UTC day a fact was reported. Both columns or neither.
+const SEEN_DAYS = Object.freeze(["nodes", "npcs", "vendors"]);
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const isDay = (v) => typeof v === "string" && DAY_RE.test(v) && Number.isFinite(Date.parse(`${v}T00:00:00Z`)) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v;
 const CHECK = {
-  kind: (v) => ["herb", "ore", "chest"].includes(v),
+  kind: (v) => NODE_KINDS.includes(v),
   id: isId, idn: (v) => v === null || isId(v),
   namen: (v) => v === null || (typeof v === "string" && NAME_RE.test(v)),
+  npcname: (v) => typeof v === "string" && NPC_NAME_RE.test(v),
   frac: isFrac, rate: isFrac,
   count: (v) => Number.isSafeInteger(v) && v >= 1 && v <= 100000000,
   source: (v) => v === "trainer" || v === "vendor",
@@ -129,10 +197,11 @@ const CHECK = {
 function validatePack(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) packFail("not an object");
   if (value.format !== 1) packFail("format");
+  if (value.minor !== undefined && !(Number.isSafeInteger(value.minor) && value.minor >= 0 && value.minor <= 1000)) packFail("minor");
   if (typeof value.version !== "string" || !/^[A-Za-z0-9._-]{1,64}$/.test(value.version)) packFail("version");
   if (typeof value.generatedAt !== "string" || value.generatedAt.length > 40 || !Number.isFinite(Date.parse(value.generatedAt))) packFail("generatedAt");
   if (!Number.isSafeInteger(value.minInstalls) || value.minInstalls < 1 || value.minInstalls > 1000) packFail("minInstalls");
-  const out = { format: 1, version: value.version, generatedAt: value.generatedAt, minInstalls: value.minInstalls };
+  const out = { format: 1, minor: value.minor || 0, version: value.version, generatedAt: value.generatedAt, minInstalls: value.minInstalls };
   for (const [name, spec] of Object.entries(SECTIONS)) {
     const sec = value[name];
     if (sec === undefined) { out[name] = []; continue; }
@@ -140,6 +209,9 @@ function validatePack(value) {
     if (sec.rows.length > PACK_LIMITS[name]) packFail(`${name} too large`);
     const at = {};
     for (const col of Object.keys(spec)) { at[col] = sec.columns.indexOf(col); if (at[col] < 0) packFail(`${name}.${col} missing`); }
+    const first = SEEN_DAYS.includes(name) ? sec.columns.indexOf("firstSeen") : -1, last = SEEN_DAYS.includes(name) ? sec.columns.indexOf("lastSeen") : -1;
+    if ((first < 0) !== (last < 0)) packFail(`${name} seen days`);
+    const ids = name === "npcNames" ? new Set() : null;
     out[name] = sec.rows.map((row, i) => {
       if (!Array.isArray(row) || row.length !== sec.columns.length) packFail(`${name}[${i}]`);
       const o = {};
@@ -148,14 +220,20 @@ function validatePack(value) {
         if (!CHECK[type](v)) packFail(`${name}[${i}].${col}`);
         o[col] = v;
       }
+      if (first >= 0) {
+        if (!isDay(row[first]) || !isDay(row[last]) || row[first] > row[last]) packFail(`${name}[${i}] seen days`);
+        o.firstSeen = row[first]; o.lastSeen = row[last];
+      }
       if ((name === "nodes" || name === "nodeItems") && (o.objectId === null) === (o.name === null)) packFail(`${name}[${i}] identity`);
       if (name === "recipes" && o.spellId === null && o.itemId === null) packFail(`${name}[${i}] identity`);
+      if (ids) { if (ids.has(o.npcId)) packFail(`${name}[${i}] duplicate`); ids.add(o.npcId); }
       return o;
     });
   }
   return out;
 }
 const counts = (p) => Object.fromEntries(Object.keys(SECTIONS).map((k) => [k, p?.[k]?.length || 0]));
+const seen = (r) => (r.lastSeen ? { firstSeen: r.firstSeen, lastSeen: r.lastSeen } : {});
 /** Lookup tables for the World Map, NPC cards and the loot browser. */
 function indexPack(pack) {
   if (!pack) return null;
@@ -163,18 +241,62 @@ function indexPack(pack) {
   const nodeKey = (r) => `${r.kind}:${r.objectId ?? "n:" + r.name}`;
   const items = new Map();
   for (const r of pack.nodeItems) push(items, nodeKey(r), { itemId: r.itemId, installs: r.installs });
-  const nodesByMap = new Map(), npcPositions = new Map(), vendors = new Map(), drops = new Map(), dropsByItem = new Map(), recipes = new Map();
-  for (const r of pack.nodes) push(nodesByMap, r.mapId, { kind: r.kind, objectId: r.objectId, name: r.name, x: r.x, y: r.y, installs: r.installs, items: (items.get(nodeKey(r)) || []).slice(0, 16) });
-  for (const r of pack.npcs) push(npcPositions, r.npcId, { mapId: r.mapId, x: r.x, y: r.y, installs: r.installs });
-  for (const r of pack.vendors) push(vendors, r.npcId, { itemId: r.itemId, installs: r.installs });
+  const nodesByMap = new Map(), npcPositions = new Map(), vendors = new Map(), drops = new Map(), dropsByItem = new Map(), recipes = new Map(), npcNames = new Map();
+  for (const r of pack.nodes) push(nodesByMap, r.mapId, { kind: r.kind, objectId: r.objectId, name: r.name, x: r.x, y: r.y, installs: r.installs, ...seen(r), items: (items.get(nodeKey(r)) || []).slice(0, 16) });
+  for (const r of pack.npcs) push(npcPositions, r.npcId, { mapId: r.mapId, x: r.x, y: r.y, installs: r.installs, ...seen(r) });
+  for (const r of pack.vendors) push(vendors, r.npcId, { itemId: r.itemId, installs: r.installs, ...seen(r) });
   for (const r of pack.drops) { push(drops, r.npcId, { itemId: r.itemId, rate: r.rate, samples: r.samples, installs: r.installs }); push(dropsByItem, r.itemId, { npcId: r.npcId, rate: r.rate, samples: r.samples, installs: r.installs }); }
   for (const r of pack.recipes) push(recipes, r.npcId, { source: r.source, spellId: r.spellId, itemId: r.itemId, installs: r.installs });
+  for (const r of pack.npcNames || []) npcNames.set(r.npcId, { name: r.name, installs: r.installs });
   for (const m of [npcPositions, vendors]) for (const list of m.values()) list.sort((a, b) => b.installs - a.installs);
   for (const m of [drops, dropsByItem]) for (const list of m.values()) list.sort((a, b) => b.rate - a.rate);
-  return { version: pack.version, generatedAt: pack.generatedAt, nodesByMap, npcPositions, vendors, drops, dropsByItem, recipes };
+  // Whether rows say when they were last seen (pack format minor 1). Older packs have one date for everything.
+  const perFactDates = [pack.nodes, pack.npcs, pack.vendors].some((list) => list.some((r) => r.lastSeen));
+  return { version: pack.version, generatedAt: pack.generatedAt, minor: pack.minor || 0, perFactDates, nodesByMap, npcPositions, vendors, drops, dropsByItem, recipes, npcNames };
 }
 /** "Community · N players": provenance shown everywhere community data appears. */
 const provenance = (installs) => `Community · ${installs} player${installs === 1 ? "" : "s"}`;
+/** Whole UTC days between a "YYYY-MM-DD" day and now (0 = today), or null when the day is missing or bad. A day in the future counts as today. */
+function daysSince(day, now = Date.now()) {
+  if (!isDay(day)) return null;
+  return Math.max(0, Math.floor((Date.parse(`${utcDay(now)}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86400000));
+}
+
+// ---------------------------------------------------------------- mine
+/** Strict check of a POST /v1/mine answer -> { total, truncated, keys: [strings] }, or a throw. */
+function validateMine(value) {
+  const bad = () => { throw Error("Invalid contributions list."); };
+  if (!value || typeof value !== "object" || Array.isArray(value) || value.ok !== true || !value.keys || typeof value.keys !== "object") bad();
+  const rows = (name, cols) => {
+    const sec = value.keys[name];
+    if (sec === undefined) return [];
+    if (!sec || !Array.isArray(sec.columns) || !Array.isArray(sec.rows) || sec.columns.length > 16 || sec.rows.length > MAX_MINE) bad();
+    const at = cols.map((c) => sec.columns.indexOf(c));
+    if (at.some((i) => i < 0)) bad();
+    return sec.rows.map((row) => { if (!Array.isArray(row) || row.length !== sec.columns.length) bad(); return at.map((i) => row[i]); });
+  };
+  const keys = [];
+  for (const [kind, objectId, name, mapId, x, y] of rows("nodes", ["kind", "objectId", "name", "mapId", "x", "y"])) {
+    if (!CHECK.kind(kind) || !CHECK.idn(objectId) || !CHECK.namen(name) || (objectId === null) === (name === null) || !isId(mapId) || !isFrac(x) || !isFrac(y)) bad();
+    keys.push(mineKey.node(kind, objectId, name, mapId, x, y));
+  }
+  for (const [npcId, mapId, x, y] of rows("npcs", ["npcId", "mapId", "x", "y"])) {
+    if (!isId(npcId) || !isId(mapId) || !isFrac(x) || !isFrac(y)) bad();
+    keys.push(mineKey.npc(npcId, mapId, x, y));
+  }
+  for (const [npcId, itemId] of rows("vendors", ["npcId", "itemId"])) {
+    if (!isId(npcId) || !isId(itemId)) bad();
+    keys.push(mineKey.vendor(npcId, itemId));
+  }
+  if (keys.length > MAX_MINE) bad();
+  return { total: Number.isSafeInteger(value.total) && value.total >= 0 ? value.total : keys.length, truncated: value.truncated === true, keys };
+}
+/** How a contributed fact is named locally, for the "from you" marks. */
+const mineKey = Object.freeze({
+  node: (kind, objectId, name, mapId, x, y) => `${kind}:${objectId ?? "n:" + name}:${mapId}:${x}:${y}`,
+  npc: (npcId, mapId, x, y) => `npc:${npcId}:${mapId}:${x}:${y}`,
+  vendor: (npcId, itemId) => `vendor:${npcId}:${itemId}`,
+});
 
 // ---------------------------------------------------------------- report log
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -214,10 +336,11 @@ class CommunityService {
     this.lines = [];
     this.preview = null;
     this.handles = [];
-    this.busy = { submit: false, pack: false };
+    this.busy = { submit: false, pack: false, mine: false };
     this.settings = this.readSettings();
     this.sent = this.readSent();
     this.pack = this.readPack();
+    this.mine = this.readMine();
     this.cachedIndex = undefined;
   }
   file(name) { return this.dir ? path.join(this.dir, name) : null; }
@@ -242,8 +365,13 @@ class CommunityService {
       blocked: raw.blocked === true, backoffUntil: time(raw.backoffUntil),
       failures: Number.isSafeInteger(raw.failures) && raw.failures >= 0 && raw.failures < 64 ? raw.failures : 0,
       lastError: typeof raw.lastError === "string" && raw.lastError.length <= 40 ? raw.lastError : null,
+      // Finds seen again after this moment are sent once more, so the service knows they are still there.
+      refreshFrom: time(raw.refreshFrom), lastMineAt: time(raw.lastMineAt), mineStale: raw.mineStale === true,
     };
-    if (!s.installId) { s.installId = this.randomUUID(); this.writeJson("settings.json", s); }
+    let save = false;
+    if (!s.installId) { s.installId = this.randomUUID(); save = true; }
+    if (s.refreshFrom === null) { s.refreshFrom = this.now(); save = true; }
+    if (save) this.writeJson("settings.json", s);
     return s;
   }
   saveSettings() { this.writeJson("settings.json", this.settings); }
@@ -259,6 +387,19 @@ class CommunityService {
     const raw = this.readJson("pack.json");
     try { return raw ? validatePack(raw) : null; } catch { return null; }
   }
+  /** The saved list of this install's own contributions; null until the service has answered for this install id. */
+  readMine() {
+    const raw = this.readJson("mine.json", MAX_MINE_BYTES * 2);
+    if (!raw || raw.schemaVersion !== 1 || raw.installId !== this.settings.installId || !Array.isArray(raw.keys) || raw.keys.length > MAX_MINE) return null;
+    return { total: Number.isSafeInteger(raw.total) && raw.total >= 0 ? raw.total : raw.keys.length, truncated: raw.truncated === true, keys: new Set(raw.keys.filter((k) => typeof k === "string" && k.length <= 200)) };
+  }
+  clearMine() {
+    this.mine = null; this.cachedIndex = undefined;
+    this.settings.lastMineAt = null; this.settings.mineStale = false;
+    try { const f = this.file("mine.json"); if (f) fs.rmSync(f, { force: true }); } catch { /* best effort */ }
+  }
+  /** The service says it speaks pack format minor 1: only then are the newer submit fields sent (an older service would refuse the whole batch). */
+  extended() { return (this.pack?.minor || 0) >= 1; }
   log(line) {
     const at = new Date(this.now()).toISOString().slice(0, 19).replace("T", " ");
     this.lines.push(`${at} ${String(line).slice(0, 300)}`);
@@ -291,7 +432,8 @@ class CommunityService {
 
   // -------- submit
   pending() {
-    return collectObservations(this.getProfiles()).filter((it) => !this.sent.has(short(it.key)));
+    return collectObservations(this.getProfiles(), { extended: this.extended(), refreshFrom: this.settings.refreshFrom })
+      .filter((it) => it.keys.some((k) => !this.sent.has(short(k))));
   }
   /** One sharing pass: off switch, block and backoff respected; never throws. */
   async submit({ force = false } = {}) {
@@ -314,18 +456,19 @@ class CommunityService {
         let res;
         try { res = await this.request("POST", "/v1/submit", { body }); } catch { this.backoff("offline"); this.log("submit: service unreachable, will retry later"); status = "offline"; break; }
         if (!this.settings.share || this.settings.installId !== body.installId) { status = "off"; break; } // switched off or forgotten meanwhile
+        const mark = (items) => { for (const it of items) for (const k of it.keys || [it.key]) this.sent.add(short(k)); };
         if (res.status === 200 || res.status === 201) {
-          for (const it of batch.items) this.sent.add(short(it.key));
+          mark(batch.items); s.mineStale = true;
           sent += batch.items.length; s.sentTotal += batch.items.length; s.lastSubmitAt = this.now(); s.failures = 0; s.backoffUntil = null; s.lastError = null;
           this.log(`submit: ${batch.items.length} entries accepted`);
         } else if (res.status === 400 || res.status === 404 || res.status === 405 || res.status === 415) {
           // Client bug: drop this batch for good (never retried), keep going with the rest.
-          for (const it of batch.items) this.sent.add(short(it.key));
+          mark(batch.items);
           this.log(`submit: batch rejected (${res.status}${res.json?.detail ? " " + String(res.json.detail).slice(0, 120) : ""})`);
         } else if (res.status === 403) {
           s.blocked = true; s.lastError = "blocked"; status = "blocked"; this.log("submit: this install is blocked; sharing stopped"); break;
         } else if (res.status === 413) {
-          if (batch.items.length > 1) { queue.unshift(...halves(batch)); n--; } else { for (const it of batch.items) this.sent.add(short(it.key)); }
+          if (batch.items.length > 1) { queue.unshift(...halves(batch)); n--; } else mark(batch.items);
         } else if (res.status === 429) {
           const after = Number.parseInt(res.headers?.get?.("retry-after") || "", 10);
           this.backoff("rate", Number.isFinite(after) && after > 0 ? after : 600); status = "waiting"; this.log("submit: rate limited, waiting"); break;
@@ -351,7 +494,8 @@ class CommunityService {
     try {
       let res;
       try {
-        res = await this.request("GET", "/v1/pack", { headers: { "Accept-Encoding": "gzip", ...(s.etag && this.pack ? { "If-None-Match": s.etag } : {}) }, maxBytes: MAX_PACK_BYTES });
+        // v=2 asks for pack format minor 1 (seen days, NPC names). A service that does not know it sends the plain pack.
+        res = await this.request("GET", "/v1/pack?v=2", { headers: { "Accept-Encoding": "gzip", ...(s.etag && this.pack ? { "If-None-Match": s.etag } : {}) }, maxBytes: MAX_PACK_BYTES });
       } catch { this.log("pack: service unreachable, keeping the last pack"); s.lastPackCheckAt = this.now() - PACK_EVERY + PACK_CHECK; return { status: "offline" }; }
       if (res.status === 304) { s.lastPackAt = this.now(); this.log("pack: unchanged"); return { status: "unchanged" }; }
       if (res.status !== 200 || !res.json) { this.log(`pack: unavailable (${res.status})`); s.lastPackCheckAt = this.now() - PACK_EVERY + PACK_CHECK; return { status: "offline" }; }
@@ -367,8 +511,43 @@ class CommunityService {
     } finally { this.busy.pack = false; this.saveSettings(); }
   }
   index() {
-    if (this.cachedIndex === undefined) this.cachedIndex = this.settings.download ? indexPack(this.pack) : null;
+    if (this.cachedIndex === undefined) {
+      this.cachedIndex = this.settings.download ? indexPack(this.pack) : null;
+      // "From you": the exact list from the service, or null when it has not answered (the map then says so).
+      if (this.cachedIndex) this.cachedIndex.mine = this.mine ? this.mine.keys : null;
+    }
     return this.cachedIndex;
+  }
+
+  // -------- mine
+  /**
+   * Asks the service which facts this install contributed (POST /v1/mine), so the map can mark them
+   * exactly. Sends the install id and nothing else; only while sharing is on and something was shared.
+   * Never throws; an unreachable or older service leaves the last list as it was.
+   */
+  async refreshMine({ force = false } = {}) {
+    const s = this.settings;
+    if (!s.share || s.blocked || this.busy.mine) return { status: !s.share ? "off" : s.blocked ? "blocked" : "busy" };
+    if (!s.sentTotal) return { status: "nothing" };
+    const since = s.lastMineAt === null ? Infinity : this.now() - s.lastMineAt;
+    if (!force && since < (s.mineStale ? MINE_MIN_GAP : MINE_EVERY)) return { status: "fresh" };
+    this.busy.mine = true;
+    s.lastMineAt = this.now();
+    const installId = s.installId;
+    try {
+      let res;
+      try { res = await this.request("POST", "/v1/mine", { body: { schema: 1, installId }, maxBytes: MAX_MINE_BYTES }); } catch { return { status: "offline" }; }
+      if (this.settings.installId !== installId || !this.settings.share) return { status: "off" }; // forgotten or switched off meanwhile
+      if (res.status === 404 || res.status === 405) { s.mineStale = false; this.log("mine: this service does not list contributions yet"); return { status: "unsupported" }; } // an older service: ask again in six hours, not after every submit
+      if (res.status !== 200 || !res.json) { this.log(`mine: unavailable (${res.status})`); return { status: "offline" }; }
+      let list;
+      try { list = validateMine(res.json); } catch { this.log("mine: answer rejected"); return { status: "invalid" }; }
+      this.mine = { total: list.total, truncated: list.truncated, keys: new Set(list.keys) };
+      this.cachedIndex = undefined; s.mineStale = false;
+      this.writeJson("mine.json", { schemaVersion: 1, installId, total: list.total, truncated: list.truncated, keys: list.keys });
+      this.log(`mine: ${list.keys.length} of your contributions listed`);
+      return { status: "updated", count: list.keys.length };
+    } finally { this.busy.mine = false; this.saveSettings(); }
   }
 
   // -------- settings, forget, report
@@ -384,8 +563,9 @@ class CommunityService {
       retryAt: s.backoffUntil && s.backoffUntil > this.now() ? new Date(s.backoffUntil).toISOString() : null,
       lastError: s.lastError,
       sent: s.sentTotal, pending,
+      mine: this.mine ? { count: this.mine.keys.size, total: this.mine.total, truncated: this.mine.truncated } : null,
       received: this.pack ? { version: this.pack.version, generatedAt: this.pack.generatedAt, ...c, total: Object.values(c).reduce((a, b) => a + b, 0) } : null,
-      shares: ["Herb, ore and chest spots you gathered (kind, object id, zone map and position rounded to 0.5% of the map) and the item ids they gave", "Where you looted quest-item creatures (creature id, zone map and rounded position)", "A random install id (not linked to your account, characters or computer), the game build and the app version"],
+      shares: ["Herb, ore and chest spots you gathered, and other objects you looted a quest item from (kind, object id, zone map and position rounded to 0.5% of the map) and the item ids they gave", "Where you looted quest-item creatures (creature id, zone map and rounded position)", "Vendors whose window you opened (vendor id, the item ids on sale and the rounded position where you stood; no prices)", "The name the game shows for those creatures and vendors, on English game clients only", "A random install id (not linked to your account, characters or computer), the game build and the app version"],
       never: ["Character names, GUIDs, realm, account or guild", "Chat, party or anything you type", "Times of day, exact positions or your location now"],
       host: new URL(this.baseUrl).host,
     };
@@ -409,6 +589,7 @@ class CommunityService {
     if (res.status === 429) throw new CommunityError("rate");
     if (res.status !== 200 || res.json?.ok !== true) throw new CommunityError(res.status === 400 ? "invalid" : "offline");
     const removed = res.json.removed && typeof res.json.removed === "object" ? { observations: Number(res.json.removed.observations) || 0, reports: Number(res.json.removed.reports) || 0 } : { observations: 0, reports: 0 };
+    this.clearMine(); // the list of this install's own contributions goes with the install id
     s.installId = this.randomUUID(); s.sentTotal = 0; s.lastSubmitAt = null; s.lastAttemptAt = null; s.blocked = false; s.backoffUntil = null; s.failures = 0; s.lastError = null;
     // Re-sharing the same finds would be allowed by the contract, but the user just asked us to forget
     // them: keep them marked as sent so only new finds are shared from now on.
@@ -457,9 +638,10 @@ class CommunityService {
   start() {
     if (this.handles.length) return;
     const t = this.timers;
-    const tick = () => { void this.submit().catch(() => {}); void this.refreshPack().catch(() => {}); };
+    const share = () => this.submit().catch(() => {}).then(() => this.refreshMine()).catch(() => {});
+    const tick = () => { void share(); void this.refreshPack().catch(() => {}); };
     this.handles.push(["t", t.setTimeout(tick, START_DELAY)]);
-    this.handles.push(["i", t.setInterval(() => { void this.submit().catch(() => {}); }, SUBMIT_EVERY)]);
+    this.handles.push(["i", t.setInterval(() => { void share(); }, SUBMIT_EVERY)]);
     this.handles.push(["i", t.setInterval(() => { void this.refreshPack().catch(() => {}); }, PACK_CHECK)]);
     for (const [, h] of this.handles) h?.unref?.();
   }
@@ -470,7 +652,7 @@ class CommunityService {
   /** Delete all local data: forget local community state too (contributions stay on the server). */
   reset() {
     try { if (this.dir) fs.rmSync(this.dir, { recursive: true, force: true }); } catch {}
-    this.sent = new Set(); this.pack = null; this.cachedIndex = undefined; this.preview = null; this.lines = [];
+    this.sent = new Set(); this.pack = null; this.mine = null; this.cachedIndex = undefined; this.preview = null; this.lines = [];
     this.settings = this.readSettings();
   }
 }
@@ -494,6 +676,6 @@ async function readCapped(res, max) {
 
 module.exports = {
   CommunityService, CommunityError, BASE_URL, resolveBaseUrl, round, collectObservations, planBatches, submitBody,
-  validatePack, indexPack, provenance, redactLog, capBytes, REPORT_CATEGORIES, PACK_LIMITS,
-  SUBMIT_EVERY, SUBMIT_MIN_GAP, START_DELAY, PACK_EVERY, MAX_LOG_BYTES,
+  validatePack, indexPack, provenance, daysSince, validateMine, mineKey, gameName, redactLog, capBytes, REPORT_CATEGORIES, PACK_LIMITS,
+  SUBMIT_EVERY, SUBMIT_MIN_GAP, START_DELAY, PACK_EVERY, MINE_EVERY, MINE_MIN_GAP, MAX_LOG_BYTES,
 };

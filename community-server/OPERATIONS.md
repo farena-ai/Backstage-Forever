@@ -28,6 +28,17 @@ and the nightly backup inside the service.
 3. The first deploy of Desk upgrades the database from schema 1 to schema 2 when the service
    starts. The upgrade only adds tables; no existing row is changed. The snapshot from step 2 is
    the way back (section 5).
+   **Pack format minor 1** (seen days, NPC names, `POST /v1/mine`; CLIENT-CONTRACT.md sections 4a
+   and 6a) changes nothing in the database: the first and last day per row were kept from the
+   start, names are ordinary observation rows of kind `npcname`, and the schema stays 3. So this
+   deploy has no upgrade step, and the release before it can open the same file after a rollback.
+   **One thing to do before running the older release on newer data:** it would publish nodes of
+   kind `object` in the default pack, which apps up to 1.26 refuse. Remove them first with
+   `sqlite3 community.db "DELETE FROM obs WHERE kind IN ('node','nodeitem') AND key LIKE 'object|%'"`
+   (the `npcname` rows are simply never read by the older release). The web server block below already forwards
+   `/v1/mine` and the `?v=2` query. **Deploy this server before the app version that uses it is
+   released**: that app works against the older server too (it then sends no names and gets no
+   "from you" list), but only the new server gives it the new fields.
 4. Once, in cPanel: replace the `# BEGIN BF COMMUNITY` block in the `.htaccess` of the
    `bf.backstagecoding.com` document root with `deploy/htaccess-snippet.conf`. It now also sends
    `/admin/` to the service, HTTPS only. Until this is done the admin area answers 404 from the

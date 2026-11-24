@@ -231,12 +231,22 @@ window.DeskView = (() => {
     const s = W.SWITCHES[key];
     return `<div class="desk-switch"><label class="check-label" for="desk-switch-${key}"><input id="desk-switch-${key}" type="checkbox" value="on" data-desk-switch="${key}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""}><strong>${esc(s.label)}</strong></label><p>${esc(s.text)}</p>${extra}</div>`;
   }
+  // The discovery fields in plain words. This list stands first on the screen, so the three shared
+  // fields are described in full here instead of "as above".
+  function discoveryRows() {
+    const full = Object.fromEntries(W.FIELDS.statistics.map(([key, , what]) => [key, what]));
+    return W.FIELDS.discoveries.map(([key, name, what]) => row(name, full[key] || what)).join("");
+  }
   function privacyInner() {
     if (!status) return `<p class="desk-muted">Loading your privacy settings…</p>`;
     const s = status;
     return `${s.blocked ? `<p class="desk-note bad" role="status">The service stopped accepting data from this install. Nothing is sent.</p>` : ""}
       <div class="desk-switches">
-        ${switchRow("share", s.share, s.blocked)}
+        ${switchRow("share", s.share, s.blocked, `<details class="desk-see-share" data-desk-see-share data-player-tool="desk-see-share"><summary>${esc(W.BUTTONS.see)}</summary>
+          <p class="desk-muted">${s.share ? "These are all the fields a shared discovery can hold. A spot reaches other players only once at least three installs reported it." : "Sharing is off, so nothing is sent. This is what would be sent if you switched it on."}</p>
+          <dl class="desk-sent desk-sent-share">${discoveryRows()}</dl>
+          <p class="desk-muted"><strong>Which spots are yours.</strong> <span>${esc(W.FIELDS.contributions[0][2])}</span></p>
+          <p class="desk-muted"><strong>What comes back.</strong> ${W.FIELDS.pack.map(([, name, what]) => `<span>${esc(name)}</span>: <span>${esc(what)}</span>`).join(" ")}</p></details>`)}
         ${switchRow("statistics", s.statistics, false, `<details class="desk-see" data-player-tool="desk-see"><summary>${esc(W.BUTTONS.see)}</summary>
           <p class="desk-muted">${s.statistics ? (s.lastHeartbeatDay ? "This is the whole of the next daily message. Today's was already sent." : "This is the whole of the next daily message.") : "Statistics are off, so nothing is sent. This is what would be sent if you switched them on."}</p>
           <dl class="desk-sent desk-sent-facts">${heartbeatRows(s.heartbeat)}</dl>
@@ -258,9 +268,10 @@ window.DeskView = (() => {
   }
   function paintPrivacy() {
     const el = document.querySelector("[data-desk-privacy]"); if (!el) return;
-    const open = el.querySelector("details.desk-see")?.open;
+    const open = el.querySelector("details.desk-see")?.open, openShare = el.querySelector("details[data-desk-see-share]")?.open;
     el.innerHTML = privacyInner();
     if (open) { const d = el.querySelector("details.desk-see"); if (d) d.open = true; }
+    if (openShare) { const d = el.querySelector("details[data-desk-see-share]"); if (d) d.open = true; }
   }
   async function loadStatus() {
     if (!api?.deskStatus) return;
