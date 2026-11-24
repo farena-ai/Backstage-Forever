@@ -10,16 +10,24 @@ const { STANDINGS, SIDES } = require("./ledger.cjs");
 
 // Where each standing starts on the classic reputation scale (Hated ... Exalted).
 const STARTS = Object.freeze({ 1: -42000, 2: -6000, 3: -3000, 4: 0, 5: 3000, 6: 9000, 7: 21000, 8: 42000 });
-// Standard reputation for a reward size when the quest records no exact amount.
-const TIER_AMOUNT = Object.freeze({ 1: 10, 2: 25, 3: 75, 4: 150, 5: 250, 6: 350, 7: 500, 8: 1000, 9: 5 });
+// Reputation for a reward size when the quest records no exact amount. These are the sizes of
+// WoW Forever, not of classic (75, 150, 250, 350, 500 for sizes 3 to 7): the game's own reward
+// table and about 2,200 quest hand-ins players recorded (Efficient Games, CC BY 4.0) agree on them.
+const TIER_AMOUNT = Object.freeze({ 1: 10, 2: 25, 3: 50, 4: 75, 5: 100, 6: 150, 7: 200, 8: 1, 9: 5 });
+// What a quest takes away from a faction, by the same sizes.
+const TIER_LOSS = Object.freeze({ 1: -50, 2: -125, 3: -250, 4: -375, 5: -500, 6: -750, 7: -1000, 8: -1, 9: -5 });
+/** The usual reputation change of a reward size (negative sizes are losses), or null. */
+const standardAmount = (tier) => (Number.isSafeInteger(tier) && tier !== 0 ? (tier > 0 ? TIER_AMOUNT[tier] : TIER_LOSS[-tier]) ?? null : null);
 const RACE_BITS = Object.freeze({ Human: 1, Orc: 2, Dwarf: 4, "Night Elf": 8, NightElf: 8, Undead: 16, Scourge: 16, Tauren: 32, Gnome: 64, Troll: 128 });
 const MAX_HAND_INS = 12, MAX_QUESTS = 15;
 const isId = (v) => Number.isSafeInteger(v) && v > 0 && v <= 2147483647;
 
 /** Reputation one reward row gives: exact when the quest records it, else the standard amount for its size. */
-function rewardAmount(row) {
+function rewardAmount(row, tiers = null) {
   if (Number.isInteger(row?.amount)) return row.amount > 0 ? { amount: row.amount, exact: true } : null;
-  const amount = TIER_AMOUNT[row?.tier];
+  // tiers: the sizes read from the player's own game files (game-data.cjs repTiers().gain), when readable.
+  const own = Array.isArray(tiers) && Number.isSafeInteger(row?.tier) && row.tier >= 1 && row.tier <= 9 ? tiers[row.tier] : null;
+  const amount = Number.isSafeInteger(own) && own > 0 ? own : TIER_AMOUNT[row?.tier];
   return amount ? { amount, exact: false } : null;
 }
 function factionSide(id) {
@@ -58,7 +66,7 @@ const handInItems = (q) => {
  * profile: the saved character. pack: the quest reference. options: factionId, standing (target, 2..8),
  * itemFact(id) -> { name, classId, bonding } from the player's game files (null when unknown).
  */
-function repPlan(profile, pack, { factionId = null, standing = null, itemFact = () => null } = {}) {
+function repPlan(profile, pack, { factionId = null, standing = null, itemFact = () => null, tiers = null } = {}) {
   const factions = profile?.ledger?.reputations?.factions || [];
   const options = factions.map((f) => ({ id: f.id, name: f.name, standing: f.standing, standingName: STANDINGS[f.standing] }));
   const base = { profileId: profile?.id ?? null, factions: options };
@@ -102,7 +110,7 @@ function repPlan(profile, pack, { factionId = null, standing = null, itemFact = 
   let doneCount = 0;
   for (const q of Object.values(pack.quests)) {
     const row = (q.rewards?.reputation || []).find((r) => r.factionId === f.id);
-    const gain = row && rewardAmount(row);
+    const gain = row && rewardAmount(row, tiers);
     if (!gain) continue;
     const saved = log.get(q.id), giver = place(pack, q.givers), turnIn = place(pack, q.turnIns);
     if (!saved) {
@@ -150,4 +158,4 @@ function repPlan(profile, pack, { factionId = null, standing = null, itemFact = 
       questsCover: need === null ? null : questPoints >= need } };
 }
 
-module.exports = { STARTS, TIER_AMOUNT, rewardAmount, pointsNeeded, repPlan };
+module.exports = { STARTS, TIER_AMOUNT, TIER_LOSS, standardAmount, rewardAmount, pointsNeeded, repPlan };

@@ -467,3 +467,63 @@ test("items: when re-reading after new hotfixes fails, the earlier items stay; o
   assert.equal(fresh.item(14145).name, "Cursed Felblade");
   g.release(); fresh.release();
 });
+
+// --- Flight points, flight prices, reputation sizes and spell levels (kind "extras") --------------
+const taxiNode = (id, name, x, y, continent, flags) => ({ id, fields: [name, [x, y, 30], [0, 0], [0, 0], id, continent, 0, id, flags, 0, 4689, 0, 0, 0, [0, 0]] });
+function extraTables(overrides = {}) {
+  return fakeTables({
+    taxiNodes: [taxiNode(2, "Stormwind, Elwynn", -8832.84, 478.61, 0, 1025), taxiNode(23, "Orgrimmar, Durotar", 1677.59, -4315.71, 1, 1026), taxiNode(40, "", 1, 1, 0, 0), taxiNode(41, "Nowhere", NaN, 5, 0, 3)],
+    taxiPath: [{ id: 6, fields: [6, 2, 4, 110] }, { id: 7, fields: [7, 4, 2, 110] }, { id: 8, fields: [8, 2, 2, 5] }, { id: 9, fields: [9, 5, 6, 300] }, { id: 10, fields: [10, 5, 6, 400] }, { id: 11, fields: [11, 5, 6, 300] }, { id: 12, fields: [12, 0, 6, 1] }],
+    questFactionReward: [{ id: 1, fields: [[0, 10, 25, 50, 75, 100, 150, 200, 1, 5]] }, { id: 2, fields: [[0, 65486, 65411, 65286, 65161, 65036, 64786, 64536, 65535, 65531]] }],
+    spellLevels: [{ id: 1, relation: 543, fields: [0, 0, 0, 20, 20] }, { id: 2, relation: 134, fields: [0, 22, 0, 0, 9] }, { id: 3, relation: 10074, fields: [0, 0, 0, 0, 1] }, { id: 4, relation: 543, fields: [0, 0, 0, 30, 30] }, { id: 5, relation: 77, fields: [1, 0, 0, 40, 40] }, { id: 6, relation: 78, fields: [0, 0, 0, 0, 0] }],
+    ...overrides,
+  });
+}
+
+test("extras: flight points, flight prices, reputation sizes and spell levels from the game's own tables", (t) => {
+  const restore = withFakeDb2(extraTables()); t.after(restore);
+  const dirs = install(), stats = { opened: 0, reads: [], closed: 0 };
+  const g = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, idleMs: 5, open: fakeStorage(stats) });
+  const f = g.flights();
+  assert.deepEqual(f.points, { 2: ["Stormwind, Elwynn", 0, -8832.8, 478.6, 1], 23: ["Orgrimmar, Durotar", 1, 1677.6, -4315.7, 2] }, "a point without a name or a place is left out");
+  assert.deepEqual(f.costs, { "2>4": 110, "4>2": 110 }, "rows that disagree on a price, or go nowhere, are left out");
+  assert.deepEqual(g.repTiers(), { gain: [0, 10, 25, 50, 75, 100, 150, 200, 1, 5], loss: [0, -50, -125, -250, -375, -500, -750, -1000, -1, -5] });
+  assert.deepEqual(g.spellLevels(), { 543: 20, 134: 9, 10074: 1 }, "the first row of the base difficulty; a level of 0 is no level");
+  for (const name of ["taxiNodes", "taxiPath", "questFactionReward", "spellLevels"]) assert.ok(stats.reads.includes(TABLES[name].fdid), name);
+  assert.equal(stats.reads.every((id) => [1068100, 1067802, 1282622, 1140079].includes(id)), true, "only the four tables are read");
+  // Cached per game build: a second service reads nothing from the game.
+  assert.ok(fs.existsSync(path.join(dirs.cache, "1.60.1.70938", "extras.json")));
+  const again = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, open: () => { throw Error("must not open the game"); } });
+  assert.deepEqual(again.flights(), f);
+  g.release(); again.release();
+});
+
+test("extras: a table with another layout or a missing table leaves only its own part empty", (t) => {
+  const restore = withFakeDb2(extraTables({ taxiPath: undefined, questFactionReward: [{ id: 1, fields: [[0, 10, 25]] }] }), { taxiNodes: 0xdeadbeef }); t.after(restore);
+  const dirs = install();
+  const g = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, idleMs: 5, open: fakeStorage({ opened: 0, reads: [], closed: 0 }) });
+  assert.equal(g.flights(), null, "no flight point without the node table, whatever else is readable");
+  assert.equal(g.repTiers(), null, "a reward table of another shape is not used");
+  assert.deepEqual(g.spellLevels(), { 543: 20, 134: 9, 10074: 1 });
+  const { notes } = gd.extractExtras({ readFileId: (fdid) => ({ fdid }) });
+  assert.deepEqual(notes, ["taxiNodes: layout differs", "taxiPath: unreadable"]);
+  g.release();
+  const none = new GameData({ getRoot: () => null, cacheDir: os.tmpdir() });
+  assert.equal(none.flights(), null); assert.equal(none.repTiers(), null); assert.equal(none.spellLevels(), null);
+});
+
+// One read-only look at a real install, when this PC has one (BF_REAL_GAME_DIR, or the default
+// folder with BF_REAL_GAME=1). Nothing is written to the game folder; the cache goes to a temp folder.
+test("extras: the real client's tables read as expected", { skip: !(process.env.BF_REAL_GAME_DIR || process.env.BF_REAL_GAME) }, () => {
+  const root = process.env.BF_REAL_GAME_DIR || "F:/WorldofWarcraft/World of Warcraft/_forever_";
+  const cache = fs.mkdtempSync(path.join(os.tmpdir(), "bf-gd-real-")); temp.push(cache);
+  const g = new GameData({ getRoot: () => root, cacheDir: cache });
+  const f = g.flights(), tiers = g.repTiers(), levels = g.spellLevels();
+  assert.ok(f && Object.keys(f.points).length >= 60, "flight points");
+  assert.equal(f.points[2][0], "Stormwind, Elwynn"); assert.equal(f.points[2][4], 1); assert.equal(f.points[23][4], 2);
+  assert.ok(Math.abs(f.points[2][2] + 8833) < 5 && Math.abs(f.points[2][3] - 479) < 5);
+  assert.equal(f.costs["2>4"], 110);
+  assert.deepEqual(tiers.gain.slice(0, 8), [0, 10, 25, 50, 75, 100, 150, 200]); assert.equal(tiers.loss[5], -500);
+  assert.equal(levels[543], 20, "Fire Ward is learned at 20");
+  g.release();
+});

@@ -85,8 +85,9 @@ test("advisor NPC rows carry NPC ids, flight masters carry upstream taxi nodes, 
 test("pinned flight master table is well formed and agrees with the reviewed travel reference", () => {
   const { MASTERS, SOURCES, validateMasters, normalizeFlightMasters, taxiNode } = require("../src/core/flight-masters.cjs");
   assert.equal(validateMasters(MASTERS), MASTERS);
-  // Same builds as the bundled quest pack, newest first (the list grows with every data refresh).
-  assert.deepEqual(assertNewestFirst(SOURCES.map((s) => s.build)), require("../data/forever/pack.json").builds.map((b) => b.build));
+  // Every build with flight data, newest first: the same builds as the bundled flight graph. Early
+  // builds of a patch have flights but no quest text, so this is not the quest pack's list.
+  assert.deepEqual(assertNewestFirst(SOURCES.map((s) => s.build)), require("../data/forever-transport/pack.json").builds);
   const travel = require("../data/forever-travel/pack.json");
   for (const n of travel.nodes) if (n.flightMaster?.npcId) assert.equal(taxiNode(n.flightMaster.npcId), n.flightMaster.taxiNode, n.label);
   for (const bad of [{ x: ["A", 1] }, { 1: ["A"] }, { 1: ["", 1] }, { 1: ["A", 0] }, []]) assert.throws(() => validateMasters(bad), /Invalid flight master/);

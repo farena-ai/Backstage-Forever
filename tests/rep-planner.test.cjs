@@ -33,8 +33,8 @@ const itemFact = (id) => FACTS[id] || null;
 
 test("reward amounts: the recorded amount is exact, a bare tier is the standard amount, losses are not gains", () => {
   assert.deepEqual(rewardAmount({ tier: 0, amount: 325 }), { amount: 325, exact: true });
-  assert.deepEqual(rewardAmount({ tier: 3 }), { amount: 75, exact: false });
-  assert.deepEqual(rewardAmount({ tier: 6 }), { amount: 350, exact: false });
+  assert.deepEqual(rewardAmount({ tier: 3 }), { amount: 50, exact: false });
+  assert.deepEqual(rewardAmount({ tier: 6 }), { amount: 150, exact: false });
   assert.equal(rewardAmount({ tier: -5 }), null);
   assert.equal(rewardAmount({ tier: 0, amount: -2500 }), null);
   assert.equal(rewardAmount({ tier: 0 }), null);
@@ -53,10 +53,10 @@ test("goods hand-ins show how many are needed and how many you hold in bags and 
   assert.equal(plan.status, "available"); assert.equal(plan.need, 4800); assert.equal(plan.target.name, "Honored");
   assert.deepEqual(plan.handIns.map((h) => h.id), [10, 11], "the one you can hand in most often first");
   const cloth = plan.handIns[0];
-  assert.equal(cloth.amount, 75); assert.equal(cloth.exact, false);
-  assert.equal(cloth.handInsNeeded, 64); assert.equal(cloth.heldHandIns, 3);
+  assert.equal(cloth.amount, 50); assert.equal(cloth.exact, false);
+  assert.equal(cloth.handInsNeeded, 96); assert.equal(cloth.heldHandIns, 3);
   assert.deepEqual(cloth.items, [{ itemId: 14047, required: 20, name: "Runecloth", bags: 45, bank: 20, held: 65 }]);
-  assert.deepEqual(cloth.itemsNeeded, [{ itemId: 14047, name: "Runecloth", total: 1280, missing: 1215 }]);
+  assert.deepEqual(cloth.itemsNeeded, [{ itemId: 14047, name: "Runecloth", total: 1920, missing: 1855 }]);
   assert.deepEqual(cloth.turnIn, { name: "Ralston Farnsley", zone: "Undercity" });
   assert.equal(plan.handIns[1].heldHandIns, 1);
   assert.ok(plan.notes.some((n) => /does not record which hand-ins repeat/.test(n)), "repeatability is said to be unknown");
@@ -69,8 +69,8 @@ test("quests are filtered to this character and summed; a quest-item quest is no
   assert.deepEqual(plan.quests.map((q) => q.id), [13, 12, 16, 17], "exact and bigger first; a quest above your level last");
   assert.equal(plan.quests[0].exact, true); assert.equal(plan.quests[3].later, true);
   assert.deepEqual(plan.quests[1].giver, { name: "Ralston Farnsley", zone: "Undercity" });
-  // 325 + 250 + 250 for the open quests, plus 75 + 350 for one hand-in of each kind.
-  assert.deepEqual(plan.totals, { handIns: 2, quests: 4, openQuests: 3, questPoints: 1250, questsExact: false, doneQuests: 2, questsCover: false });
+  // 325 + 100 + 100 for the open quests, plus 50 + 150 for one hand-in of each kind.
+  assert.deepEqual(plan.totals, { handIns: 2, quests: 4, openQuests: 3, questPoints: 725, questsExact: false, doneQuests: 2, questsCover: false });
   const alliance = repPlan(profile({ faction: "Alliance", race: "Human" }), pack(), { factionId: 68, standing: 6, itemFact });
   assert.ok(alliance.quests.some((q) => q.id === 15) && alliance.quests.some((q) => q.id === 18) && !alliance.quests.some((q) => q.id === 12));
 });

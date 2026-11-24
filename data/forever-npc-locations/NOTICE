@@ -1,15 +1,19 @@
 Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
 License: https://creativecommons.org/licenses/by/4.0/
 Source: https://github.com/JIVESCORP/eg-link-output-wowf
-Immutable source commit: 1bf749ba19be7e699822d6587db0cb85b1b0bc3b
+Immutable source commit: 423d6c9645cd102406782e7400805a7c738e2d69
 Product wowf; merged builds (newest first) 1.60.1.71037, 1.60.1.70959, 1.60.1.70938,
 1.60.1.70888, 1.60.1.70862, 1.60.1.70840,
-1.60.1.70790. File collection November 9-12, 2026.
+1.60.1.70790, 1.60.1.70532, 1.60.1.70450,
+1.60.1.70425, 1.60.1.70374, 1.60.1.70338,
+1.60.1.70334, 1.60.1.70291, 1.60.1.70205. File collection November 9-23, 2026.
 
 Backstage Forever normalization: each build's npcs.json is normalized
-separately, then merged newest-first into 978 NPC identities and 1786 bounded
+separately, then merged newest-first into 1591 NPC identities and 3902 bounded
 map interaction points (union with exact dedupe, at most eight points per NPC),
-names (newest build wins), contributing-file counts (largest single-build
+names (newest build wins; a row a player saw in a game in another language than
+English, with a name not in Latin letters, is left out of that build),
+contributing-file counts (largest single-build
 count), the newest build that observed each NPC and per-NPC lastSeen.
 Gossip, options, world coordinates, levels, objects, approached entities and
 personal records are excluded. Raw file sizes/hashes/metadata and compiled

@@ -1,14 +1,17 @@
 Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
 License: https://creativecommons.org/licenses/by/4.0/
 Source: https://github.com/JIVESCORP/eg-link-output-wowf
-Immutable source commit: 1bf749ba19be7e699822d6587db0cb85b1b0bc3b
+Immutable source commit: 423d6c9645cd102406782e7400805a7c738e2d69
 Product wowf; merged builds (newest first) 1.60.1.71037, 1.60.1.70959, 1.60.1.70938,
 1.60.1.70888, 1.60.1.70862, 1.60.1.70840,
-1.60.1.70790. File collection November 5-12, 2026.
+1.60.1.70790, 1.60.1.70532, 1.60.1.70450,
+1.60.1.70425, 1.60.1.70374, 1.60.1.70338,
+1.60.1.70334, 1.60.1.70291, 1.60.1.70205. File collection November 5-23, 2026.
 
 Backstage Forever normalization: each build's creatures.json is normalized
-separately, then merged newest-first into 3272 creature identities: name
-(newest named build wins; 8 rows were never named and stay null), the
+separately, then merged newest-first into 5171 creature identities: name
+(newest named build wins; a name a player saw in another language than English,
+not in Latin letters, is not used; 38 rows have no usable name and stay null), the
 observed level range (lowest and highest level seen in any build; level -1,
 shown in game as "??", is kept as a skull flag), elite (elite or rare elite),
 rare (rare or rare elite) and world boss flags (set if any build saw them),

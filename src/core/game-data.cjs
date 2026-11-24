@@ -35,6 +35,13 @@ const TABLES = {
   spellReagents: { fdid: 841946, layout: 0xff40d202, opts: { typed: true } },
   itemEffect: { fdid: 969941, layout: 0x4ca77678, opts: { typed: true } },
   itemXItemEffect: { fdid: 3177687, layout: 0x96f083ad, opts: { typed: true } },
+  // Facts the community data does not have (kind "extras"): flight point names and places,
+  // the price of each direct flight, what each quest reputation size pays, and the level a
+  // spell is learned at. Each file was told apart by its table name hash before its layout was pinned.
+  taxiNodes: { fdid: 1068100, layout: 0xe7b597f0, opts: { strings: [0], floats: [1] } },
+  taxiPath: { fdid: 1067802, layout: 0xa303de51, opts: {} },
+  questFactionReward: { fdid: 1282622, layout: 0x221ffdaa, opts: {} },
+  spellLevels: { fdid: 1140079, layout: 0x7eb86fdc, opts: {} },
 };
 const FORMAT = 1; // bump when the cached JSON shape or a formula changes
 // Table hashes of the two item tables inside the game's hotfix cache.
@@ -375,6 +382,40 @@ function extractRecipes(storage) {
   return { recipes: { lines, rows, teach }, notes };
 }
 
+// --- Flight points, flight prices, reputation sizes, spell levels --------------------------------
+/**
+ * flightPoints: id -> [name, continent (0 Eastern Kingdoms, 1 Kalimdor), x, y, sides] with the
+ *   world position in yards and sides 1 Alliance, 2 Horde, 3 both (TaxiNodes flags);
+ * flightCosts: "from>to" -> copper at the full price (TaxiPath), left out where two rows disagree;
+ * repTiers: { gain, loss }: reputation for each quest reward size 0-9 (QuestFactionReward);
+ * spellLevels: spell id -> the level it can be learned at (SpellLevels).
+ * A table that is missing or laid out differently leaves its part empty.
+ */
+function extractExtras(storage) {
+  const notes = [], flightPoints = {}, flightCosts = {}, spellLevels = {};
+  for (const r of tryTable(storage, "taxiNodes", notes) || []) {
+    const F = r.fields, name = F[0], pos = F[1];
+    if (!(r.id > 0) || typeof name !== "string" || !name || !Array.isArray(pos) || !Number.isFinite(pos[0]) || !Number.isFinite(pos[1])) continue;
+    flightPoints[r.id] = [name, F[5], Math.round(pos[0] * 10) / 10, Math.round(pos[1] * 10) / 10, F[8] & 3];
+  }
+  const clash = new Set();
+  for (const r of tryTable(storage, "taxiPath", notes) || []) {
+    const [, from, to, cost] = r.fields, key = `${from}>${to}`;
+    if (!(from > 0) || !(to > 0) || from === to || !Number.isSafeInteger(cost) || cost < 0 || clash.has(key)) continue;
+    if (key in flightCosts && flightCosts[key] !== cost) { clash.add(key); delete flightCosts[key]; } else flightCosts[key] = cost;
+  }
+  let repTiers = null;
+  const sizes = tryTable(storage, "questFactionReward", notes);
+  if (sizes) {
+    // The amounts are 16-bit signed numbers: the row of losses reads as 65486 for -50.
+    const row = (id) => { const v = sizes.find((r) => r.id === id)?.fields[0]; return Array.isArray(v) && v.length === 10 && v.every(Number.isSafeInteger) ? v.map((n) => (n > 32767 && n < 65536 ? n - 65536 : n)) : null; };
+    const gain = row(1), loss = row(2);
+    if (gain && gain[0] === 0 && gain.slice(1, 8).every((v) => v > 0)) repTiers = { gain, loss: loss && loss.every((v) => v <= 0) ? loss : null };
+  }
+  for (const r of tryTable(storage, "spellLevels", notes) || []) if (r.relation > 0 && r.fields[0] === 0 && r.fields[4] > 0 && !(r.relation in spellLevels)) spellLevels[r.relation] = r.fields[4];
+  return { extras: { flightPoints, flightCosts, repTiers, spellLevels }, notes };
+}
+
 // --- Service -----------------------------------------------------------------------------------
 class GameData {
   constructor({ getRoot, cacheDir, idleMs = 60000, open = null, maxFileBytes = 32 * 1024 * 1024, maxIconBytes = 16 * 1024 * 1024, maxIconSide = 256, memoryIcons = 128, hotfixCheckMs = 30000 }) {
@@ -469,7 +510,7 @@ class GameData {
       const spells = kind === "talents" ? this.load("spells").spells : null;
       const s = this.open();
       try {
-        const r = kind === "items" ? extractItems(s, hot?.parsed) : kind === "spells" ? extractSpells(s) : kind === "recipes" ? extractRecipes(s) : extractTalents(s, spells);
+        const r = kind === "items" ? extractItems(s, hot?.parsed) : kind === "spells" ? extractSpells(s) : kind === "recipes" ? extractRecipes(s) : kind === "extras" ? extractExtras(s) : extractTalents(s, spells);
         value = { [kind]: r[kind], notes: r.notes };
         if (kind === "items") { value.hotfix = hot.signature; value.hotfixItems = r.hotfixItems; this.iconIds = null; }
       } finally { this.idle(); }
@@ -528,6 +569,18 @@ class GameData {
   /** Profession recipes from the game files: { lines, rows, teach } (see extractRecipes), or null. */
   recipes() {
     try { return this.load("recipes").recipes; } catch { return null; }
+  }
+  /** Flight points and flight prices from the game files: { points, costs } (see extractExtras), or null. */
+  flights() {
+    try { const e = this.load("extras").extras; return Object.keys(e.flightPoints).length ? { points: e.flightPoints, costs: e.flightCosts } : null; } catch { return null; }
+  }
+  /** What each quest reputation size pays in this game: { gain, loss }, or null. */
+  repTiers() {
+    try { return this.load("extras").extras.repTiers || null; } catch { return null; }
+  }
+  /** spell id -> the level it can be learned at, or null when the game files could not be read. */
+  spellLevels() {
+    try { const v = this.load("extras").extras.spellLevels; return Object.keys(v).length ? v : null; } catch { return null; }
   }
   /** Names and icons of many spells at once (null where the game has no such spell). */
   spells(ids) {
@@ -602,4 +655,4 @@ class GameData {
   }
 }
 
-module.exports = { GameData, arithmetic, TABLES, CLASSES, SLOTS, STATS, itemView, spellView, resolveDescription, extractItems, extractSpells, extractTalents, extractRecipes, propIndex };
+module.exports = { GameData, arithmetic, TABLES, CLASSES, SLOTS, STATS, itemView, spellView, resolveDescription, extractItems, extractSpells, extractTalents, extractRecipes, extractExtras, propIndex };

@@ -2,13 +2,20 @@
 const buildCompat = require("./build-compat.cjs");
 const fs = require("node:fs"), path = require("node:path");
 const { ATTRIBUTION, observedBuild } = require("./knowledge.cjs");
+const { latinName } = require("./latin-name.cjs");
 const FILES = Object.freeze(["vendors.json", "npcs.json", "creatures.json"]);
 // Compiled (merged) pack bound. Raw single-file inputs have their own, larger bound:
 // the 70790/70862 creatures.json files are ~1.1 MB each.
-const MAX_BYTES = 1024 * 1024, RAW_MAX_BYTES = 2 * 1024 * 1024, RAW_BUILD_TOTAL = 4 * 1024 * 1024, MAX_BUILDS = 12;
+const MAX_BYTES = 1024 * 1024, RAW_MAX_BYTES = 2 * 1024 * 1024, RAW_BUILD_TOTAL = 4 * 1024 * 1024, MAX_BUILDS = 16;
 const BUILD_RE = /^1\.60\.1\.\d{1,8}$/;
 const LISTING_KEY = /^item:[1-9]\d*(?:#(?:[2-9]|[1-9]\d+))?$/;
 const LIMITATION = "Historical listings and approximate interaction points; current stock, price and access are unverified. No observation does not mean unobtainable.";
+// What a listing may carry besides its identity. price: copper for one purchase at the full price
+// (reputation below Honored); honored: the price players at Honored or better were shown (10% less);
+// stack: how many one purchase gives, when more than one; stock: the most the seller held at once,
+// only for limited stock. A listing nobody saw a money price for has none of them.
+const LISTING_EXTRAS = Object.freeze(["price", "honored", "stack", "stock"]);
+const MAX_PRICE = 1000000000;
 function invalid() { throw Error("Invalid historical seller data."); }
 const plain = o => !!o && typeof o === "object" && [Object.prototype, null].includes(Object.getPrototypeOf(o));
 function keys(o, expected) { if (!plain(o) || Object.keys(o).length !== expected.length || Object.keys(o).some(k => !expected.includes(k))) invalid(); }
@@ -48,7 +55,8 @@ function validateVendorPack(value) {
     reactions(v.observedReactionsByFaction); list(v.listings, 10000); if (!v.listings.length) invalid();
     const listingKeys = new Set();
     for (const row of v.listings) {
-      keys(row, ["key", "itemId", "name", "sources"]);
+      keys(row, ["key", "itemId", "name", "sources", ...LISTING_EXTRAS.filter(k => row?.[k] !== undefined)]);
+      if ((row.price !== undefined && !integer(row.price, MAX_PRICE)) || (row.honored !== undefined && !integer(row.honored, MAX_PRICE)) || (row.stack !== undefined && !integer(row.stack, 100000, 2)) || (row.stock !== undefined && !integer(row.stock, 100000))) invalid();
       if (!integer(row.itemId) || !text(row.name) || !integer(row.sources, 1000000) || typeof row.key !== "string" || row.key.length > 80 || !LISTING_KEY.test(row.key) || Number(row.key.match(/^item:(\d+)/)[1]) !== row.itemId || listingKeys.has(row.key)) invalid();
       listingKeys.add(row.key); listings++;
     }
@@ -79,7 +87,8 @@ function normalizeVendors(inputs, { commit, build } = {}) {
     const id = Number(key), n = ns[key], c = cs[key];
     if (!plain(v) || (v.entries !== undefined && !plain(v.entries)) || !Array.isArray(v.positions) || v.positions.length > 100) invalid();
     const entries = Object.entries(v.entries || {}); totalListings += entries.length; if (totalListings > 10000) invalid();
-    if (!/^[1-9]\d*$/.test(key) || !integer(id) || !text(v.name) || !n || !c || n.name !== v.name || c.name !== v.name || !Array.isArray(n.interactions) || !n.interactions.includes("Merchant") || !date(v.lastSeen) || v.lastSeen > vs.meta.collectedOn.last || !integer(v.sources, vs.meta.sources) || !integer(c.sources, raw["creatures.json"].meta.sources) || (v.repairs !== undefined && typeof v.repairs !== "boolean")) {
+    // A seller or listing named in another language than English is left out of this build.
+    if (!/^[1-9]\d*$/.test(key) || !integer(id) || !text(v.name) || !latinName(v.name) || !n || !c || n.name !== v.name || c.name !== v.name || !Array.isArray(n.interactions) || !n.interactions.includes("Merchant") || !date(v.lastSeen) || v.lastSeen > vs.meta.collectedOn.last || !integer(v.sources, vs.meta.sources) || !integer(c.sources, raw["creatures.json"].meta.sources) || (v.repairs !== undefined && typeof v.repairs !== "boolean")) {
       counts.droppedVendors++; counts.droppedListings += entries.length; continue;
     }
     const positions = [], seenPositions = new Set();
@@ -90,8 +99,15 @@ function normalizeVendors(inputs, { commit, build } = {}) {
     }
     const listings = [];
     for (const [entryKey, e] of entries) {
-      if (!plain(e) || !LISTING_KEY.test(entryKey) || entryKey.length > 80 || !integer(e.itemId) || Number(entryKey.match(/^item:(\d+)/)[1]) !== e.itemId || !text(e.name) || !integer(e.sources, vs.meta.sources)) { counts.droppedListings++; continue; }
-      listings.push({ key: entryKey, itemId: e.itemId, name: e.name, sources: e.sources });
+      if (!plain(e) || !LISTING_KEY.test(entryKey) || entryKey.length > 80 || !integer(e.itemId) || Number(entryKey.match(/^item:(\d+)/)[1]) !== e.itemId || !text(e.name) || !latinName(e.name) || !integer(e.sources, vs.meta.sources)) { counts.droppedListings++; continue; }
+      const row = { key: entryKey, itemId: e.itemId, name: e.name, sources: e.sources };
+      // Standing 4 and 5 (Neutral, Friendly) pay the full price; 6 and up pay 10% less.
+      const costs = plain(e.costs) ? e.costs : {}, full = costs["5"] ?? costs["4"], honored = costs["6"] ?? costs["7"];
+      if (integer(full, MAX_PRICE)) row.price = full;
+      if (integer(honored, MAX_PRICE)) row.honored = honored;
+      if ((row.price !== undefined || row.honored !== undefined) && integer(e.stack, 100000, 2)) row.stack = e.stack;
+      if (e.limited === true && integer(e.stockMax, 100000)) row.stock = e.stockMax;
+      listings.push(row);
     }
     // Unknown faction observations remain absent. Malformed reaction evidence is never promoted.
     const observedReactionsByFaction = {};
@@ -109,7 +125,9 @@ function normalizeVendors(inputs, { commit, build } = {}) {
 /**
  * Newest-first merge of single-build packs from one commit. Vendors join by exact ID;
  * the newest build's name wins. Positions, listings (by exact key) and observed reaction
- * values are unioned with exact dedupe and validator caps; lastSeen is the latest date,
+ * values are unioned with exact dedupe and validator caps; a listing keeps the newest build's
+ * price (with its stack) and limited stock, and takes them from an older build only when the
+ * newer ones recorded none; lastSeen is the latest date,
  * sources the largest single-build count; repairs is true when any build observed it.
  * Dropped counts are per-build dropped rows, summed.
  */
@@ -132,7 +150,14 @@ function mergeVendorPacks(packs) {
       }
       for (const row of v.listings) {
         const e = m.listings.find(r => r.key === row.key);
-        if (e) e.sources = Math.max(e.sources, row.sources);
+        if (e) {
+          e.sources = Math.max(e.sources, row.sources);
+          // A price is for its stack: an older build fills a missing price only for the same stack.
+          const priced = e.price !== undefined || e.honored !== undefined;
+          if (!priced && (row.price !== undefined || row.honored !== undefined)) { for (const k of ["price", "honored", "stack"]) if (row[k] !== undefined) e[k] = row[k]; }
+          else if (priced && e.stack === row.stack) { for (const k of ["price", "honored"]) if (e[k] === undefined && row[k] !== undefined) e[k] = row[k]; }
+          if (e.stock === undefined && row.stock !== undefined) e.stock = row.stock;
+        }
         else if (m.listings.length < 10000) m.listings.push({ ...row });
         else counts.droppedListings++;
       }
@@ -177,4 +202,4 @@ function sellerFacts(pack, profile, itemIds) {
   });
   return structuredClone({ source: { publisher: "Efficient Games", build: catalog.build, builds: catalog.builds, sourceCommit: catalog.sourceCommit, license: catalog.license, attribution: catalog.attribution, collectedOn: catalog.collectedOn }, limitation: LIMITATION, rows });
 }
-module.exports = { FILES, MAX_BYTES, RAW_MAX_BYTES, RAW_BUILD_TOTAL, MAX_BUILDS, LIMITATION, normalizeVendors, mergeVendorPacks, validateVendorPack, loadVendorPack, sellerFacts };
+module.exports = { LISTING_EXTRAS, FILES, MAX_BYTES, RAW_MAX_BYTES, RAW_BUILD_TOTAL, MAX_BUILDS, LIMITATION, normalizeVendors, mergeVendorPacks, validateVendorPack, loadVendorPack, sellerFacts };

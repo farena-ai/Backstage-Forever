@@ -86,7 +86,8 @@ function registerGearPlanning({ handle, getState, gameData, statWeights, gearPin
     const [profileId, factionId, standing] = args, p = anyProfile(profileId);
     if (!(factionId === null || (Number.isSafeInteger(factionId) && factionId > 0 && factionId <= 100000))) throw Error("Invalid faction.");
     if (!(standing === null || (Number.isInteger(standing) && standing >= 2 && standing <= 8))) throw Error("Invalid standing.");
-    return repPlan(p, safe(() => questPack(p)), { factionId, standing, itemFact: fact });
+    // Reward sizes from the player's own game files when they can be read; the built-in sizes otherwise.
+    return repPlan(p, safe(() => questPack(p)), { factionId, standing, itemFact: fact, tiers: safe(() => gameData?.repTiers()?.gain) || null });
   });
 
   handle("attunements", (...args) => {

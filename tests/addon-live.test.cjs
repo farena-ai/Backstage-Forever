@@ -343,7 +343,7 @@ local bodyBottom=frames.BackstageForeverCompass.height+fonts[2].point[3]-fonts[2
 assert(bodyBottom>=cue.point[3]+cue.height,'Reasons cannot expand into the reserved rows')
 local button=frames.BackstageForeverCompassWaypoint
 assert(button.enabled and #guideCalls==0)
-button.OnClick();assert(guideCalls[1]=='guide 1061 t 1413 0.3528 0.2786 '..BackstageForeverReference.build)
+button.OnClick();assert(guideCalls[1]=='guide 1061 t 1413 0.3528 0.2784 '..BackstageForeverReference.build)
 frames.BackstageForeverCompassCollapse.OnClick();assert(not source.visible and not action.visible and not cue.visible)
 frames.BackstageForeverCompassCollapse.OnClick();assert(source.visible and action.visible and cue.visible)
 local previous=button.OnClick

@@ -359,7 +359,7 @@ window.QuestGuide = (() => {
       const chips = [
         rewards.moneyCopper !== undefined ? `<li class="reward-chip">${coins(rewards.moneyCopper)}</li>` : "",
         xpNow ? `<li class="reward-chip xp">≈ ${xpNow.toLocaleString()} XP at level ${lvl}</li>` : observed ? `<li class="reward-chip xp">${observed.xp.toLocaleString()} XP seen at level ${observed.level}</li>` : "",
-        ...(rewards.reputation || []).map((r) => `<li class="reward-chip rep">${esc(r.name || "Faction")} reputation · ${Number.isInteger(r.amount) ? `reference ${r.amount > 0 ? "+" : ""}${r.amount}; ` : ""}server amount unknown</li>`),
+        ...(rewards.reputation || []).map((r) => `<li class="reward-chip rep">${esc(r.name || "Faction")} reputation · ${Number.isInteger(r.amount) ? `reference ${r.amount > 0 ? "+" : ""}${r.amount}; ` : Number.isInteger(r.standard) ? `usually ${r.standard > 0 ? "+" : ""}${r.standard} for this reward size; ` : ""}server amount unknown</li>`),
         ...(rewards.spells || []).map((sp) => `<li class="reward-chip spell">Teaches ${esc(sp.name || `spell #${sp.spellId}`)}</li>`),
       ].filter(Boolean).join("");
       return `<section class="quest-section quest-rewards-section"><h3>Rewards</h3>

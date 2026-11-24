@@ -4,7 +4,7 @@
 //   node scripts/refresh-forever-data.cjs --commit <40-hex> [--add-build 1.60.1.71037 ...] [--dir work/forever-sources] [--offline]
 //
 // It downloads the pinned commit's files for every build in data/forever/source-lock.json plus any
-// --add-build (newest first), writes them under <dir>/<commit>/<build>/, records exact byte sizes and
+// --add-build (newest first; a build without quest text upstream is kept for the other packs only), writes them under <dir>/<commit>/<build>/, records exact byte sizes and
 // SHA-256 hashes, and compiles the pack through the same locked compiler the checks use. Nothing is
 // fetched at app runtime; this is an authoring tool.
 //
@@ -50,11 +50,17 @@ async function main() {
   const lockPath = path.join(root, "data", "forever", "source-lock.json");
   const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
   const number = (b) => Number(b.split(".").pop());
-  const builds = [...new Set([...added, ...lock.builds.map((b) => b.build)])].sort((a, b) => number(b) - number(a));
+  // Builds the other packs already use that have no quest text upstream (the early builds of the
+  // patch): they stay out of the quest pack but feed sellers, flights, loot and positions.
+  const sideLocks = ["forever-vendors", "forever-transport", "forever-trainers"].flatMap((pack) => { try { return JSON.parse(fs.readFileSync(path.join(root, "data", pack, "source-lock.json"), "utf8")).builds.map((b) => b.build); } catch { return []; } });
+  const locked = new Set(lock.builds.map((b) => b.build));
+  const all = [...new Set([...added, ...locked, ...sideLocks])].sort((a, b) => number(b) - number(a));
   const dir = path.resolve(value("--dir") || path.join(root, "work", "forever-sources"), commit);
-  const next = { ...lock, commit, build: builds[0], builds: [] };
-  for (const build of builds) {
+  const builds = [], partial = [];
+  const next = { ...lock, commit, builds: [] };
+  for (const build of all) {
     const files = {};
+    let whole = true;
     fs.mkdirSync(path.join(dir, build), { recursive: true });
     for (const name of [...FILES, ...OPTIONAL_FILES]) {
       const file = path.join(dir, build, name);
@@ -62,7 +68,10 @@ async function main() {
       let bytes = fs.existsSync(file) ? fs.readFileSync(file) : await fetch(url);
       if (!bytes) {
         if (OPTIONAL_FILES.includes(name)) continue;
-        throw Error(offline ? `${file} is not cached; run without --offline to download it.` : `Upstream has no ${build}/${name} at ${commit}.`);
+        // A build the quest pack was built from must keep its files; any other build is partial.
+        if (locked.has(build)) throw Error(offline ? `${file} is not cached; run without --offline to download it.` : `Upstream has no ${build}/${name} at ${commit}.`);
+        whole = false;
+        continue;
       }
       if (!fs.existsSync(file)) fs.writeFileSync(file, bytes);
       files[name] = { sha256: hash(bytes), bytes: bytes.length, url };
@@ -74,9 +83,12 @@ async function main() {
       const bytes = await fetch(`https://raw.githubusercontent.com/${REPO}/${commit}/data/wowf/${build}/${name}`);
       if (bytes) fs.writeFileSync(file, bytes);
     }
+    if (!whole) { partial.push(build); console.log(`${build}: no quest text upstream; used by the other packs only`); continue; }
+    builds.push(build);
     next.builds.push({ build, files });
     console.log(`${build}: ${Object.keys(files).length} files, ${Object.values(files).reduce((t, f) => t + f.bytes, 0)} bytes`);
   }
+  next.build = builds[0];
   const result = compile(dir, next);
   fs.writeFileSync(path.join(root, "data", "forever", "pack.json"), result.pack);
   fs.writeFileSync(lockPath, result.lock);
@@ -86,7 +98,7 @@ async function main() {
   const vendorFiles = require("../src/core/vendor-facts.cjs").FILES;
   const vendorDir = path.join(root, "data", "forever-vendors");
   const { compiled: _compiled, ...vendorLock } = JSON.parse(fs.readFileSync(path.join(vendorDir, "source-lock.json"), "utf8"));
-  const withSellers = builds.filter((build) => vendorFiles.every((name) => fs.existsSync(path.join(dir, build, name))));
+  const withSellers = all.filter((build) => vendorFiles.every((name) => fs.existsSync(path.join(dir, build, name))));
   const sellers = vendors.compile(dir, {
     ...vendorLock, commit, build: withSellers[0],
     builds: withSellers.map((build) => ({
@@ -102,7 +114,7 @@ async function main() {
   console.log(`Compiled data/forever-vendors for ${withSellers.length} builds.`);
   // The transport graph and the trainer costs lock every build that has their files, then rebuild.
   for (const script of ["./build-forever-transport.cjs", "./build-forever-trainers.cjs"]) require(script).main(["--relock", dir, "--commit", commit]);
-  restOfThePacks({ dir, commit, previousCommit: lock.commit, builds });
+  restOfThePacks({ dir, commit, previousCommit: lock.commit, builds: all });
 }
 
 // Everything after the four packs above. Each step is its own process, so a compiler always reads the
