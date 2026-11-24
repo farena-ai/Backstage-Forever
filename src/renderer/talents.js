@@ -389,7 +389,26 @@ window.TalentsView = (() => {
         aside: `<label class="tal-pick">Preview another class <select data-tal-class><option value="">${esc(who?.className || "Your class")}</option>${CLASSES.filter((c) => c !== who?.className).map((c) => `<option ${c === preview ? "selected" : ""}>${c}</option>`).join("")}</select></label>` })}
       <div data-tal-body>${body()}</div></section>`;
   }
-  function paint() { hideCard(); const b = document.querySelector("[data-tal-body]"); if (b) b.innerHTML = body(); }
+  function paint() { hideCard(); const b = document.querySelector("[data-tal-body]"); if (b) b.innerHTML = body(); markWanted(); }
+  // Search everything: open the planner on one talent (another class is shown as a preview).
+  let wanted = null;
+  function focus(t) {
+    if (!t || !CLASSES.includes(t.className) || !Number.isSafeInteger(t.talentId)) return;
+    wanted = { className: t.className, talentId: t.talentId };
+    mode = "plan";
+    const next = who?.className === t.className ? null : t.className;
+    if (!who || next !== preview) { preview = next; data = null; }
+  }
+  function markWanted() {
+    if (!wanted || loading || !data) return;
+    if ((preview || who?.className) !== wanted.className) { if (who && who.className !== wanted.className && preview !== wanted.className) { preview = wanted.className; data = null; load(); } return; }
+    const cell = document.querySelector(`[data-talents] [data-tal-id="${wanted.talentId}"]`);
+    if (!cell) return;
+    wanted = null;
+    cell.classList.add("tal-found");
+    cell.scrollIntoView({ block: "center", behavior: "instant" });
+    if (cell.matches("button")) cell.focus({ preventScroll: true });
+  }
   async function load() {
     if (loading) return; loading = true;
     try {
@@ -403,7 +422,7 @@ window.TalentsView = (() => {
     } catch (e) { error = e.message || "Talents are unavailable."; }
     loading = false;
     const root = document.querySelector("[data-talents]");
-    if (root) { root.outerHTML = page(); mountedFor = null; mounted(); }
+    if (root) { root.outerHTML = page(); mountedFor = null; mounted(); markWanted(); }
   }
   function mounted() {
     mountAcademy();
@@ -440,5 +459,5 @@ window.TalentsView = (() => {
     root.addEventListener("focusout", hideCard);
     if (!data && !loading) load();
   }
-  return { page, academy, mounted, invalidate: () => { data = null; who = null; }, _state: () => ({ data, who, preview, mode, plan }) };
+  return { page, academy, mounted, focus, invalidate: () => { data = null; who = null; }, _state: () => ({ data, who, preview, mode, plan }) };
 })();

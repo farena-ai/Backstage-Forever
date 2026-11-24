@@ -10,7 +10,7 @@ const { defaultState } = require("../src/core/validation.cjs");
   let app;
   const capture = path.join(__dirname, "..", ".superpowers", "sdd", "world-map-captures");
   await fs.mkdir(capture, { recursive: true });
-  const watchdog = setTimeout(() => { console.error("World map fixture exceeded 150 seconds"); app?.process().kill(); process.exitCode = 1; }, 150000);
+  const watchdog = setTimeout(() => { console.error("World map fixture exceeded 240 seconds"); app?.process().kill(); process.exitCode = 1; }, 240000);
   try {
     const profile = { id: "Alpha", name: "Alpha", className: "Hunter", realm: "Synthetic", level: 15, race: "Tauren", faction: "Horde", clientBuild: "1.60.1.70888", goals: [], notes: "", location: { zone: "The Barrens", mapId: 1413, x: 0.52, y: 0.29 },
       quests: [{ id: 96, title: "Call of Water", complete: true, objectives: [] }, { id: 5728, title: "Hidden Enemies", complete: false, objectives: [{ text: "0/1 Bazzalan slain", done: false, type: "monster", required: 1, fulfilled: 0 }, { text: "0/1 Jergosh the Invoker slain", done: false, type: "monster", required: 1, fulfilled: 0 }] }] };
@@ -23,6 +23,14 @@ const { defaultState } = require("../src/core/validation.cjs");
     profile.gathering = { schemaVersion: 1, status: "available", recording: true, observedAt: at, limited: false, totalRecords: records.length, records };
     const initial = { ...defaultState(), onboarded: true, activeProfileId: "Alpha", profiles: [profile], provider: { id: "ollama", model: "fixture", endpoint: "http://127.0.0.1:11434" } };
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(initial));
+    // A small community pack in the Barrens, away from the map centre: 24 herb and ore spots in one
+    // corner, one chest elsewhere, and a spot that matches one of this character's own finds.
+    const packRows = [["herb", 1618, null, 1413, 0.44, 0.36, 4], ["chest", 2843, null, 1413, 0.8, 0.8, 3]];
+    for (let i = 0; i < 24; i++) packRows.push([i % 2 ? "ore" : "herb", null, i % 2 ? "Tin Vein" : "Mageroyal", 1413, 0.2 + (i % 6) * 0.01, 0.7 + Math.floor(i / 6) * 0.01, 3 + (i % 5)]);
+    await fs.mkdir(path.join(dir, "community"), { recursive: true });
+    await fs.writeFile(path.join(dir, "community", "pack.json"), JSON.stringify({ format: 1, version: "smoke-1", generatedAt: new Date(Date.now() - 3 * 86400000).toISOString(), minInstalls: 3,
+      nodes: { columns: ["kind", "objectId", "name", "mapId", "x", "y", "installs"], rows: packRows } }));
+    await fs.writeFile(path.join(dir, "community", "settings.json"), JSON.stringify({ share: false, download: true, lastPackCheckAt: Date.now() }));
     const repo = path.resolve(__dirname, "..");
     await fs.writeFile(path.join(dir, "package.json"), JSON.stringify({ name: "backstage-forever-worldmap-fixture", version: "0.15.0", main: "fixture-main.cjs" }));
     await fs.writeFile(path.join(dir, "fixture-main.cjs"), `
@@ -31,6 +39,7 @@ const { defaultState } = require("../src/core/validation.cjs");
       load('./src/core/claude.cjs').status=async()=>({available:false,connected:false});
       load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});
       load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});
+      load('./src/core/community.cjs').CommunityService.prototype.start=function(){};
       const { clipboard, ipcMain } = require('electron');
       clipboard.writeText=value=>{globalThis.fixtureClipboard=value;};
       const handle = ipcMain.handle.bind(ipcMain);
@@ -65,7 +74,8 @@ const { defaultState } = require("../src/core/validation.cjs");
     const legend = page.locator("[data-wm-legend]");
     const layerGroups = {
       Questing: ["quest-turnin", "quest-objective", "objective-area", "quest-giver"],
-      Gathering: ["herb", "ore", "find", "heat", "community"],
+      Gathering: ["herb", "ore", "find", "heat"],
+      Community: ["c-herb", "c-ore", "c-chest", "c-npc", "c-vendor"],
       Services: ["flight", "class-trainer", "profession-trainer", "vendor", "npc", "otherFaction"],
       Journey: ["journey"],
     };
@@ -76,7 +86,8 @@ const { defaultState } = require("../src/core/validation.cjs");
     assert.equal(await legend.getByRole("checkbox", { name: /Other NPCs/ }).isChecked(), false);
     assert.equal(await legend.getByRole("checkbox", { name: /My path this session/ }).isChecked(), true);
     assert.equal(await legend.getByRole("checkbox", { name: /Other faction's NPCs/ }).count(), st.counts.otherFaction ? 1 : 0);
-    const community = legend.getByRole("checkbox", { name: /Community finds/ });
+    assert.equal(await legend.getByRole("checkbox", { name: /NPCs players placed/ }).isChecked(), false, "the busiest community layer starts off");
+    const community = legend.getByRole("checkbox", { name: /Community herbs/ });
     await community.focus();
     await page.keyboard.press("Space");
     assert.equal(await community.isChecked(), false, "a focused layer toggles with Space");
@@ -300,6 +311,79 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator("[data-wm-canvas]").screenshot({ path: path.join(capture, "world-map-heat.png") });
     await heatBox.screenshot({ path: path.join(capture, "world-map-heat-panel.png") });
     await page.locator("[data-wm-layer=heat]").uncheck(); assert.equal(await heatBox.isHidden(), true); await page.locator("[data-wm-layer=heat]").check();
+    // Community layers: counted marks at the default zoom, the coverage line, freshness and the skill filter.
+    await page.locator("[data-wm-canvas]").press("0");
+    const shared = () => page.evaluate(() => { const v = WorldMapView._state(); return { community: v.model.community, marks: v.clusters.filter((c) => c.shared).map((c) => c.pins.length), counts: v.model.counts, only: v.onlyGatherable }; });
+    let sh = await shared();
+    assert.equal(sh.community.total, 26); assert.equal(sh.community.yours, 0, "finds are matched for characters saved by the addon only"); assert.equal(sh.community.ageDays, 3); assert.equal(sh.community.perFactDates, false);
+    assert.deepEqual([sh.counts["c-herb"], sh.counts["c-ore"], sh.counts["c-chest"]], [13, 12, 1]);
+    assert.ok(sh.marks.length <= 4 && sh.marks.reduce((t, n) => t + n, 0) === 26 && sh.marks[0] >= 20, `26 shared spots are a few counted marks at the default zoom: ${sh.marks}`);
+    const cbox = page.locator("[data-wm-community]");
+    await cbox.locator("[data-wm-c-line]").getByText(/The community has\s+26\s+spots here/).waitFor();
+    await cbox.getByText("3 days ago").waitFor();
+    await cbox.getByText(/one date for everything/).waitFor();
+    assert.equal(await page.locator("[data-wm-fill]").isHidden(), true, "a well covered zone shows no help card");
+    // This character has no saved professions, so nothing is known to be out of reach: the filter hides nothing it cannot prove.
+    await cbox.getByRole("checkbox", { name: "Only what my skill can gather" }).check();
+    sh = await shared();
+    assert.equal(sh.only, true); assert.equal(sh.marks.reduce((t, n) => t + n, 0), 26);
+    await cbox.getByRole("checkbox", { name: "Only what my skill can gather" }).uncheck();
+    await page.locator("[data-wm-layer=c-ore]").uncheck();
+    assert.equal((await shared()).marks.reduce((t, n) => t + n, 0), 14, "a community layer hides only its own spots");
+    await page.locator("[data-wm-layer=c-ore]").check();
+    await cbox.scrollIntoViewIfNeeded();
+    await cbox.screenshot({ path: path.join(capture, "world-map-community-panel.png") });
+    // A thin zone says what is missing and how to help; plain words, nothing else changes.
+    await page.locator("[data-wm-zone]").selectOption({ label: "Alterac Mountains" });
+    await page.locator("[data-wm-title]").getByText("Alterac Mountains").waitFor();
+    const fill = page.locator("[data-wm-fill]");
+    await fill.getByRole("heading", { name: "Help fill this zone" }).waitFor();
+    await fill.getByText("/bf scout on").waitFor();
+    assert.ok(await fill.locator("li").count() >= 2);
+    await page.locator("[data-wm-zone]").selectOption({ label: "The Barrens" });
+    await page.locator("[data-wm-title]").getByText("The Barrens").waitFor();
+
+    // Search everything (Ctrl+K): an overlay over any page; results open the right screen.
+    const rail = page.locator(".rail [data-world-search-open]");
+    assert.equal(await rail.count(), 1); assert.equal(await rail.getAttribute("aria-label"), "Search everything");
+    await page.keyboard.press("Control+k");
+    const ws = page.locator("[data-world-search]"), wsInput = ws.locator("[data-ws-input]");
+    await wsInput.waitFor();
+    assert.equal(await wsInput.evaluate((n) => document.activeElement === n), true, "the box has the keyboard");
+    assert.equal(await page.locator("[data-world-map]").count(), 1, "the page under the overlay is still there");
+    await wsInput.fill("hidden enemies");
+    await ws.locator('[data-ws-row] .ws-name', { hasText: "Hidden Enemies" }).first().waitFor();
+    const found = await page.evaluate(() => { const v = WorldSearchView._state(); return { groups: v.data.groups.map((g) => g.kind), first: v.flat[0], ms: v.data.ms, entries: v.data.index.entries, built: v.data.index.builtMs }; });
+    assert.equal(found.groups[0], "quest"); assert.equal(found.first.name, "Hidden Enemies"); assert.equal(found.first.sourceLabel, "Bundled reference");
+    assert.ok(found.entries > 8000 && found.ms < 250, `${found.entries} entries, ${found.ms} ms`);
+    assert.equal(await ws.locator('[data-ws-row][aria-selected="true"]').count(), 1);
+    await ws.locator("[data-ws-detail]").getByText("Opens this quest in Quests.").waitFor();
+    await page.keyboard.press("ArrowDown");
+    assert.equal(await ws.locator('[data-ws-row][aria-selected="true"]').getAttribute("data-ws-row"), "1", "arrow keys move the selection");
+    await page.keyboard.press("ArrowUp");
+    await ws.screenshot({ path: path.join(capture, "world-search.png") });
+    await page.keyboard.press("Enter");
+    await page.locator("[data-quest-guide], .quest-guide, [data-quest-details]").first().waitFor();
+    assert.equal(await ws.isHidden(), true, "opening a result closes the overlay");
+    assert.equal(await page.evaluate(() => document.body.dataset.page), "quest-guide");
+    // A zone opens the World Map on it; a command opens Help → Commands on its row; Esc closes.
+    await rail.click();
+    await wsInput.fill("durotar");
+    await ws.locator('[data-ws-row]:has(.ws-name:text-is("Durotar"))').first().click();
+    await page.locator("[data-wm-title]").getByText("Durotar").waitFor();
+    await page.keyboard.press("Control+k");
+    await wsInput.fill("/bf way");
+    await ws.locator('[data-ws-row] .ws-name', { hasText: "/bf way" }).first().waitFor();
+    await page.keyboard.press("Enter");
+    await page.locator(".cmd-row.cmd-found .cmd-name").getByText("/bf way").waitFor();
+    await page.keyboard.press("Control+k");
+    await wsInput.fill("bazzalan");
+    await ws.locator('[data-ws-row]:has(.ws-name:text-is("Bazzalan"))').first().click();
+    await page.locator('[data-atlas-card="rfc"] .atlas-bosses li.atlas-found').getByText("Bazzalan").waitFor();
+    await page.keyboard.press("Control+k");
+    await wsInput.waitFor();
+    await page.keyboard.press("Escape");
+    assert.equal(await ws.isHidden(), true);
     assert.deepEqual(pageErrors, [], "no uncaught errors in the main renderer");
     console.log("World map smoke passed");
   } finally {

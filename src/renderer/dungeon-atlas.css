@@ -205,3 +205,5 @@
 .atlas-history-link { min-height: 36px; padding: 6px 14px; border: 1px solid #a5823e; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; font: 700 14px/1.3 "Segoe UI", sans-serif; text-shadow: none; white-space: nowrap; box-shadow: 0 2px 6px #0006; }
 .atlas-history-link:hover { background: linear-gradient(180deg, #f7ecd0, #e6d4ad); color: #2b1b0a; text-shadow: none; }
 .atlas-history-link:focus-visible { outline: 2px solid #f4cf72; outline-offset: 2px; }
+/* Search everything: the boss you came for. */
+.atlas-bosses li.atlas-found { border-radius: 4px; background: rgba(246,196,69,.35); box-shadow: 0 0 0 2px rgba(176,64,26,.6); }

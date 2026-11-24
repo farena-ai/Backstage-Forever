@@ -249,3 +249,5 @@
 .tal-pet-need { font-size: 12px; color: #5a3e1c; }
 .tal-pet-lv { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tal-pet-later td { color: #6b5a3c; }
+/* Search everything: the talent you came for. */
+.tal-cell.tal-found { border-color: #fff1d0; box-shadow: 0 0 0 3px #f6c445, 0 0 16px rgba(246,196,69,.9); }

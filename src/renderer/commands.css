@@ -34,3 +34,5 @@
 
 .cmd-group h2 { display: flex; align-items: center; gap: 10px; }
 .cmd-ico { flex: none; width: 40px; height: 40px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+/* Search everything: the command you came for. */
+.cmd-row.cmd-found { border-color: #b0401a; box-shadow: 0 0 0 2px rgba(246,196,69,.75); }
