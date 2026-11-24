@@ -3,6 +3,7 @@
 // flight master table in src/core/flight-masters.cjs from fetched flights.json files.
 //   node scripts/refresh-forever-flight-masters.cjs <sources dir>/<commit> <commit>
 const fs = require("node:fs"), path = require("node:path"), { createHash } = require("node:crypto");
+const { latinName } = require("../src/core/latin-name.cjs");
 const [dir, commit] = process.argv.slice(2);
 if (!dir || !/^[a-f0-9]{40}$/.test(commit || "")) throw Error("Usage: <sources dir>/<commit> <commit>");
 const file = path.join(__dirname, "../src/core/flight-masters.cjs");
@@ -15,8 +16,9 @@ for (const build of builds) {
   const bytes = fs.readFileSync(path.join(dir, build, "flights.json")), data = JSON.parse(bytes), m = data.meta;
   rows.push(`  source(${JSON.stringify(build)}, ${bytes.length}, ${JSON.stringify(createHash("sha256").update(bytes).digest("hex"))}, meta(${JSON.stringify(build)}, ${JSON.stringify(m.collectedOn.first)}, ${JSON.stringify(m.collectedOn.last)}, ${m.sources})),`);
   for (const [id, v] of Object.entries(data.masters || {})) {
-    if (masters[id] && (masters[id][0] !== v.name || masters[id][1] !== v.node)) throw Error(`Builds disagree on flight master ${id}.`);
-    masters[id] ||= [v.name, v.node];
+    // Names come in the contributor's language: an English name wins over one in another script.
+    if (masters[id] && (masters[id][1] !== v.node || (masters[id][0] !== v.name && latinName(masters[id][0]) && latinName(v.name)))) throw Error(`Builds disagree on flight master ${id}.`);
+    if (!masters[id] || (!latinName(masters[id][0]) && latinName(v.name))) masters[id] = [v.name, v.node];
   }
 }
 const replace = (start, end, body) => {

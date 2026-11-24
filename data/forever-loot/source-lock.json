@@ -1,7 +1,7 @@
 {
   "publisher": "Efficient Games",
   "repository": "JIVESCORP/eg-link-output-wowf",
-  "commit": "1bf749ba19be7e699822d6587db0cb85b1b0bc3b",
+  "commit": "423d6c9645cd102406782e7400805a7c738e2d69",
   "builds": [
     "1.60.1.71037",
     "1.60.1.70959",
@@ -9,7 +9,15 @@
     "1.60.1.70888",
     "1.60.1.70862",
     "1.60.1.70840",
-    "1.60.1.70790"
+    "1.60.1.70790",
+    "1.60.1.70532",
+    "1.60.1.70450",
+    "1.60.1.70425",
+    "1.60.1.70374",
+    "1.60.1.70338",
+    "1.60.1.70334",
+    "1.60.1.70291",
+    "1.60.1.70205"
   ],
   "license": "CC BY 4.0",
   "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
@@ -18,8 +26,8 @@
     "npcs.json",
     "object_details.enUS.json"
   ],
-  "normalization": "Only items that are quest objectives; per source kind (npc/object), id, name, observed chance and drop count; at most 6 sources per item.",
-  "items": 809,
-  "bytes": 103353,
-  "sha256": "6b318bc1a49bb57c87e68258ac0a999a3b2dd5a6cf058686b4b1575ae5967f3d"
+  "normalization": "Only items that are quest objectives or recipe items (named Recipe:, Pattern:, Plans:, Schematic:, Formula:, Manual: or Design:); per source kind (npc/object), id, name, observed chance and drop count; at most 6 sources per item.",
+  "items": 906,
+  "bytes": 116810,
+  "sha256": "64f8fbf611440d4c892921d1ce6b71d26cb16b2fd1476e58a4d718c753f49097"
 }

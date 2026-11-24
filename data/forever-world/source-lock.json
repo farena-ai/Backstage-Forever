@@ -1,7 +1,7 @@
 {
   "publisher": "Efficient Games",
   "repository": "JIVESCORP/eg-link-output-wowf",
-  "commit": "1bf749ba19be7e699822d6587db0cb85b1b0bc3b",
+  "commit": "423d6c9645cd102406782e7400805a7c738e2d69",
   "builds": [
     "1.60.1.71037",
     "1.60.1.70959",
@@ -9,7 +9,15 @@
     "1.60.1.70888",
     "1.60.1.70862",
     "1.60.1.70840",
-    "1.60.1.70790"
+    "1.60.1.70790",
+    "1.60.1.70532",
+    "1.60.1.70450",
+    "1.60.1.70425",
+    "1.60.1.70374",
+    "1.60.1.70338",
+    "1.60.1.70334",
+    "1.60.1.70291",
+    "1.60.1.70205"
   ],
   "license": "CC BY 4.0",
   "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
@@ -24,62 +32,62 @@
     {
       "build": "1.60.1.71037",
       "name": "creature_details.enUS.json",
-      "bytes": 865050,
-      "sha256": "bf63bc6aa98d2091f9c4184bd4cb5a84e0a87c63763d55b78074db9cf6c30032"
+      "bytes": 1992082,
+      "sha256": "0f5706b9c944a912b2ab253968c8126d1fc39f1f0aa63768f0729c6fdeae47bf"
     },
     {
       "build": "1.60.1.71037",
       "name": "creatures.json",
-      "bytes": 144097,
-      "sha256": "7d4a71efb1a67a8bebe8b48c94ea6dddc709e2b95054bf55a734d7e54f5d0551"
+      "bytes": 766718,
+      "sha256": "9a89515458b02082a155ad5ca9aa144c4563e110aab4d1659b3eef9d9dc0c354"
     },
     {
       "build": "1.60.1.71037",
       "name": "loot.json",
-      "bytes": 193221,
-      "sha256": "56c1c1a1319705d672b318cd30f0a168c595e44920273478f714a58862d06175"
+      "bytes": 961390,
+      "sha256": "9d408ad2760967f1ad1f7abb9f14651e9509aa6f626d41ae223141cb6d013ada"
     },
     {
       "build": "1.60.1.71037",
       "name": "npcs.json",
-      "bytes": 74094,
-      "sha256": "67580353b535732055002b03d9f0943cfeceee08fcbdc76bfa30cff6a118bf98"
+      "bytes": 320980,
+      "sha256": "c24b5d7f67b59b8c1274b74aa0d83e20474b6628ce26a4c174b8429947b7a052"
     },
     {
       "build": "1.60.1.71037",
       "name": "object_details.enUS.json",
-      "bytes": 650652,
-      "sha256": "359f7ba642aa36a311e4273ea09acd1d8a5c3f6a4d557f69ef498aa121bb7f38"
+      "bytes": 1590201,
+      "sha256": "d1600d120e5c138d22db7d07044183d2aee1642520fa5107f3796fabb664f0d1"
     },
     {
       "build": "1.60.1.70959",
       "name": "creature_details.enUS.json",
-      "bytes": 2240794,
-      "sha256": "5521c67bcbd04e80235d079fef11a6a4dba6d109f15c5efeb90fceec20f23d1f"
+      "bytes": 2299699,
+      "sha256": "361919c2ec7f464f95872feab6efba18ee6e667f970e79bd35134a6d05c79446"
     },
     {
       "build": "1.60.1.70959",
       "name": "creatures.json",
-      "bytes": 1186595,
-      "sha256": "a71714b4c3ab0382d4dda4cbf8b54c9bd24a27370a1b2bd218c84edc36df748c"
+      "bytes": 1324794,
+      "sha256": "b9d6e15d7d899d8a3a56c20c6aa99944c401535013e2ec14afc795c474499d36"
     },
     {
       "build": "1.60.1.70959",
       "name": "loot.json",
-      "bytes": 1572102,
-      "sha256": "0ed3b6a86918c49fc65556b433b4e8363b30959d161b2bad5a3e875514841f38"
+      "bytes": 1836887,
+      "sha256": "04c1e941757a3c119cc4c0cf7f2966dbecd0a2f6ca1a786e8ab2b28cdd3c8eb0"
     },
     {
       "build": "1.60.1.70959",
       "name": "npcs.json",
-      "bytes": 473826,
-      "sha256": "09d8aebb9b58778f3a2b204b0be501210b0b12c7c54effc0567b5a034f5f57fa"
+      "bytes": 541944,
+      "sha256": "ca242c3507d2bd9f354834a8dfcb81d2e7dce2fefc519e741c738ce00ee8719a"
     },
     {
       "build": "1.60.1.70959",
       "name": "object_details.enUS.json",
-      "bytes": 1770859,
-      "sha256": "57c0d1f1940bc741d6c12bcbf1fc7fea0a2c724adc257afa9a958993b34555f8"
+      "bytes": 1832912,
+      "sha256": "37e8d117741b9e77412371efdd718a8879045fe39f2be478a37eeac57d3a06a4"
     },
     {
       "build": "1.60.1.70938",
@@ -230,28 +238,184 @@
       "name": "object_details.enUS.json",
       "bytes": 565175,
       "sha256": "e42b3fabea8b6808c425dc34fb318612416bf696c3410920aa73a393b25eb56f"
+    },
+    {
+      "build": "1.60.1.70532",
+      "name": "creature_details.enUS.json",
+      "bytes": 5789,
+      "sha256": "2a6f7bdd958936193839fbcef7d0cbd3febcbfe48d8cf5a2e3c694122e516d59"
+    },
+    {
+      "build": "1.60.1.70532",
+      "name": "creatures.json",
+      "bytes": 4939,
+      "sha256": "58566485e790709774a39af9e6a7185498d984e1ccebceb7f9005e9f55dbb9d2"
+    },
+    {
+      "build": "1.60.1.70532",
+      "name": "loot.json",
+      "bytes": 8411,
+      "sha256": "7a9fa2946c7e39eca0807e8bfba3713646fecdd81c63dd99828b0c7ce23cb302"
+    },
+    {
+      "build": "1.60.1.70532",
+      "name": "npcs.json",
+      "bytes": 5407,
+      "sha256": "de8700eede68781242ccf8017b19ebcfd912fff118a6a85107b6c3cdc3788cbe"
+    },
+    {
+      "build": "1.60.1.70532",
+      "name": "object_details.enUS.json",
+      "bytes": 3899,
+      "sha256": "6d374be82514761bea4539673a39b664674c5b81af906c5b02ec8a2dec5ab21f"
+    },
+    {
+      "build": "1.60.1.70450",
+      "name": "creatures.json",
+      "bytes": 162403,
+      "sha256": "7dd5eb4fcd991fa861d960c24ae1ce56f105c24e2b5e3a5c7f819e52d3ca3740"
+    },
+    {
+      "build": "1.60.1.70450",
+      "name": "loot.json",
+      "bytes": 191263,
+      "sha256": "0f9db67d80ea999cecfb70ab44847d542a709155cae8f21320d69b5a56bc4d48"
+    },
+    {
+      "build": "1.60.1.70450",
+      "name": "npcs.json",
+      "bytes": 140714,
+      "sha256": "b1fea842fd6c48594f66b46b77974bbc541a9c5446290e1598048be386539275"
+    },
+    {
+      "build": "1.60.1.70425",
+      "name": "creatures.json",
+      "bytes": 76305,
+      "sha256": "c2b0153fe90cf73168eaf0b0f9f40318ccd120a7168a4fd43d838ec7c11f92f8"
+    },
+    {
+      "build": "1.60.1.70425",
+      "name": "loot.json",
+      "bytes": 82887,
+      "sha256": "43139174a12238333015afe2b7c3f09f353226c4be4e675b0cfc28172fc3856f"
+    },
+    {
+      "build": "1.60.1.70425",
+      "name": "npcs.json",
+      "bytes": 69761,
+      "sha256": "3e5ea50d971616c92a754b9253376869786235b3c71e819c27020cd8ce966b33"
+    },
+    {
+      "build": "1.60.1.70374",
+      "name": "creatures.json",
+      "bytes": 62296,
+      "sha256": "52ead128fc2932a478d9f0a92c23b34279d11e89e68fc03184693a26bd9cdd08"
+    },
+    {
+      "build": "1.60.1.70374",
+      "name": "loot.json",
+      "bytes": 77451,
+      "sha256": "993d181778ac4f460ec2ba91f595d646cbc1c8079bf602871cc3b95599786c99"
+    },
+    {
+      "build": "1.60.1.70374",
+      "name": "npcs.json",
+      "bytes": 57387,
+      "sha256": "f5fab3af27b7cb32e827f50fe103b62f45170a00067087f5caf7fa6f13eaf31b"
+    },
+    {
+      "build": "1.60.1.70338",
+      "name": "creatures.json",
+      "bytes": 100261,
+      "sha256": "4c7b359afba5a9be8a7d4391e49a996120cfb701abdd9b95050ac1dfc1985599"
+    },
+    {
+      "build": "1.60.1.70338",
+      "name": "loot.json",
+      "bytes": 86498,
+      "sha256": "1aa02a580fbc55c0804a027df9da9907101406d11a24bfaf26a03bae5835d6bc"
+    },
+    {
+      "build": "1.60.1.70338",
+      "name": "npcs.json",
+      "bytes": 72156,
+      "sha256": "e320694c15be5eabbab5502ca3b1e1b8c390886ae39d4017bfcb7f4c25e1ff55"
+    },
+    {
+      "build": "1.60.1.70334",
+      "name": "creatures.json",
+      "bytes": 56899,
+      "sha256": "bc74d2fbd273cb0e1cdd3eb67aa08d669bcf545a30bb6845b7b7ef237303289e"
+    },
+    {
+      "build": "1.60.1.70334",
+      "name": "loot.json",
+      "bytes": 43880,
+      "sha256": "a5cd84cea7a5a7e780a420a0ad1fec953fcf2ecfbb8fe06c64bb26be1cbcf350"
+    },
+    {
+      "build": "1.60.1.70334",
+      "name": "npcs.json",
+      "bytes": 19101,
+      "sha256": "7688c54638895c08b12c762c90d5424a48d0b980eba82a30c7a71a724352af53"
+    },
+    {
+      "build": "1.60.1.70291",
+      "name": "creatures.json",
+      "bytes": 17596,
+      "sha256": "c44abf279cbb07f1d299053df070b0ca045dc277a1cd6bfaa625cff119c2632a"
+    },
+    {
+      "build": "1.60.1.70291",
+      "name": "loot.json",
+      "bytes": 8590,
+      "sha256": "136a059dbfa11a5bbc5f2a412b7bc4f04c8e3cbe4004bda7b38dc19405489a1f"
+    },
+    {
+      "build": "1.60.1.70291",
+      "name": "npcs.json",
+      "bytes": 5521,
+      "sha256": "b4be64bcd034ac11ebbfb3081a4e932b0735f8b3f0f456c857cd82497fdd6a3f"
+    },
+    {
+      "build": "1.60.1.70205",
+      "name": "creatures.json",
+      "bytes": 53951,
+      "sha256": "d280db273f61d077767c94e769df7aed9011a8380522fedc4b297e57e2f077d1"
+    },
+    {
+      "build": "1.60.1.70205",
+      "name": "loot.json",
+      "bytes": 36898,
+      "sha256": "77c9a182def9deaf4453b9127bdb4fb7b1748142e66e830e035b409f053e2a14"
+    },
+    {
+      "build": "1.60.1.70205",
+      "name": "npcs.json",
+      "bytes": 14245,
+      "sha256": "757b3026f1248b6925ff0cbedd419934a45a5a7baa052a1b3dd8ca971cd30409"
     }
   ],
-  "normalization": "Rares: client creature classification 4 or 2, newest named build wins; observed level range, up to 4 places (1% squares) and up to 5 looted non-quest drops. Nodes, chests and mailboxes: approached objects of the matching type, places rounded to 0.5% squares (mailboxes 1.5%).",
+  "normalization": "Rares: client creature classification 4 or 2, newest named build wins; observed level range, up to 4 places (1% squares) where the creature was met or its corpse looted, and up to 5 looted non-quest drops. Nodes, chests and mailboxes: approached objects of the matching type, places rounded to 0.5% squares (mailboxes 1.5%).",
   "crossCheck": {
-    "observedRareCreatures": 47,
-    "alsoClassifiedRare": 47,
+    "observedRareCreatures": 55,
+    "alsoClassifiedRare": 55,
     "classifiedRareSeenAsNormal": [
       5849
     ]
   },
   "counts": {
     "rares": 473,
-    "raresPlaced": 22,
-    "raresWithDrops": 27,
+    "raresPlaced": 27,
+    "raresWithDrops": 31,
     "rareElites": 161,
     "nodes": 40,
-    "herbSpots": 731,
-    "oreSpots": 482,
-    "chests": 12,
-    "chestSpots": 114,
-    "mailboxes": 205
+    "herbSpots": 835,
+    "oreSpots": 528,
+    "chests": 13,
+    "chestSpots": 136,
+    "mailboxes": 208
   },
-  "bytes": 91952,
-  "sha256": "a7ef8dee94e0adbf6e5c24cd67c62ad807ecdc8027ee3707b0556aa1241e3b10"
+  "bytes": 99271,
+  "sha256": "56a590b2c8f567130630e4e6fecdec8a10d49e71f8fb7c46b8ababaa16b3087b"
 }

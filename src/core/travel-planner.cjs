@@ -22,6 +22,32 @@ function nodeLabel(node, names = {}) {
   if (zone) return node.master ? `${zone} (${node.master})` : `${zone} flight point`;
   return node.master ? `Flight master ${node.master}` : `Flight point ${node.id}`;
 }
+/**
+ * The bundled flight graph with what the player's own game files add (game-data.cjs flights()):
+ * the game's name for every flight point, a place for points nobody recorded one for, and the
+ * price of connections nobody saw a price for. Observed places and prices are never replaced.
+ * Returns { pack, names, filled: { names, places, prices } }; `pack` is the same object when
+ * the game files add nothing.
+ */
+function withGameFiles(pack, game) {
+  const filled = { names: 0, places: 0, prices: 0 }, names = {};
+  if (!game || typeof game.points !== "object" || !game.points) return { pack, names, filled };
+  const nodes = pack.nodes.map((n) => {
+    const p = game.points[n.id];
+    if (!Array.isArray(p) || typeof p[0] !== "string" || !p[0] || p[0].length > 80) return n;
+    names[n.id] = p[0]; filled.names++;
+    if (n.wx !== null || !Number.isFinite(p[2]) || !Number.isFinite(p[3]) || !Number.isSafeInteger(p[1])) return n;
+    filled.places++;
+    return { ...n, wx: p[2], wy: p[3], instance: p[1], positionFrom: "game" };
+  });
+  const edges = pack.edges.map((e) => {
+    const c = game.costs?.[`${e.from}>${e.to}`];
+    if (e.cost !== null || e.honored !== null || !Number.isSafeInteger(c) || c < 0 || c > 10000000) return e;
+    filled.prices++;
+    return { ...e, cost: c };
+  });
+  return { pack: filled.places || filled.prices ? { ...pack, nodes, edges } : pack, names, filled };
+}
 const otherSide = (faction) => (faction === "Alliance" ? "Horde" : faction === "Horde" ? "Alliance" : null);
 
 /** Flight points this character may use, and whether that is known or assumed. */
@@ -286,4 +312,4 @@ function normalizeTravelCapture(t) {
   return out;
 }
 
-module.exports = { RUN_SPEED, HEARTH_CAST, nodeLabel, usableNodes, flightRoute, planTrip, destinations, searchDestinations, parsePlace, characterFacts, normalizeTravelCapture, TRAVEL_LIMITS };
+module.exports = { RUN_SPEED, HEARTH_CAST, withGameFiles, nodeLabel, usableNodes, flightRoute, planTrip, destinations, searchDestinations, parsePlace, characterFacts, normalizeTravelCapture, TRAVEL_LIMITS };

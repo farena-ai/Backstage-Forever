@@ -13,29 +13,39 @@ function buildStanding(pack, profile) {
   if (relation === "match") return { usable: true, relation, note: null };
   return { usable: true, relation, note: "Reference data: your character's game build is not known, so this was not checked against it." };
 }
-function travelView(state, { transport = loadTransportPack(), now = Math.floor(Date.now() / 1000) } = {}) {
+// The player's game files add names, missing places and missing prices to the bundled graph. The
+// names a character saw on a flight map in game come first; they are in the game's own language.
+function withGame(transport, game, facts) {
+  const extra = planner.withGameFiles(transport, game);
+  facts.names = { ...extra.names, ...facts.names };
+  return extra;
+}
+function travelView(state, { transport = loadTransportPack(), now = Math.floor(Date.now() / 1000), game = null } = {}) {
   const profile = state.profiles.find((p) => p.id === state.activeProfileId) || null;
   const standing = buildStanding(transport, profile);
   if (!standing.usable) return { available: false, reason: standing.note, places: [] };
   const facts = planner.characterFacts(profile, state.profiles);
+  const seen = Object.keys(facts.names).length, extra = withGame(transport, game, facts);
+  transport = extra.pack;
   const known = facts.knownNodes ? facts.knownNodes.length : null;
   return {
     available: true, note: standing.note,
     places: planner.destinations(transport, { names: facts.names, faction: facts.faction }).map(({ id, kind, label, sub, search }) => ({ id, kind, label, sub, search })),
     character: profile ? {
-      name: profile.name, faction: facts.faction, hasPosition: !!facts.position, zone: facts.zone, knownFlightPoints: known, namedFlightPoints: Object.keys(facts.names).length,
+      name: profile.name, faction: facts.faction, hasPosition: !!facts.position, zone: facts.zone, knownFlightPoints: known, namedFlightPoints: seen,
       hearth: facts.hearth ? { name: facts.hearth.name, placed: Number.isSafeInteger(facts.hearth.mapId), readyIn: Number.isFinite(facts.hearth.readyAt) ? Math.max(0, facts.hearth.readyAt - now) : null } : null,
     } : null,
-    counts: transport.counts, builds: transport.builds,
+    counts: transport.counts, builds: transport.builds, gameFiles: extra.filled,
     attribution: "Flight data from Efficient Games (https://efficient.games), CC BY 4.0.",
   };
 }
-function travelPlan(state, input, { transport = loadTransportPack(), now = Math.floor(Date.now() / 1000) } = {}) {
+function travelPlan(state, input, { transport = loadTransportPack(), now = Math.floor(Date.now() / 1000), game = null } = {}) {
   if (!input || typeof input !== "object" || typeof input.to !== "string" || input.to.length > 40 || (input.from !== undefined && (typeof input.from !== "string" || input.from.length > 40))) throw Error("Invalid travel request.");
   const profile = state.profiles.find((p) => p.id === state.activeProfileId) || null;
   const standing = buildStanding(transport, profile);
   if (!standing.usable) return { status: "unavailable", options: [], notes: [standing.note] };
   const facts = planner.characterFacts(profile, state.profiles);
+  transport = withGame(transport, game, facts).pack;
   const to = planner.parsePlace(input.to);
   const from = !input.from || input.from === "saved" ? (facts.position ? { ...facts.position, label: `${facts.zone || "Your saved position"} (where you last saved)` } : null) : planner.parsePlace(input.from);
   if (!to) throw Error("Choose a destination.");
@@ -45,20 +55,23 @@ function travelPlan(state, input, { transport = loadTransportPack(), now = Math.
   return result;
 }
 /** "At the trainer" for a class and level; money only for the active character's own class. */
-function trainerView(state, className, level, { trainers = loadTrainerPack() } = {}) {
+function trainerView(state, className, level, { trainers = loadTrainerPack(), spellLevels = null } = {}) {
   if (!CLASSES.includes(className)) return { available: false, reason: "No trainer data for this class." };
   const profile = state.profiles.find((p) => p.id === state.activeProfileId) || null;
   const standing = buildStanding(trainers, profile);
   if (!standing.usable) return { available: false, reason: standing.note };
   const own = profile?.className === className && profile.level === level;
   const money = own && Number.isSafeInteger(profile.ledger?.money) ? profile.ledger.money : null;
-  const plan = trainerPlan(trainers, className, level, { money, faction: profile?.faction });
+  const plan = trainerPlan(trainers, className, level, { money, faction: profile?.faction, spellLevels });
   if (plan.available && standing.note) plan.notes.push(standing.note);
   return plan;
 }
-function registerTravelPlannerHandlers({ handle, getState }) {
-  handle("travelPlaces", (...args) => { if (args.length) throw Error("Invalid travel request."); return travelView(getState()); });
-  handle("travelPlan", (...args) => { if (args.length !== 1) throw Error("Invalid travel request."); return travelPlan(getState(), args[0]); });
-  return { trainerView: (className, level) => trainerView(getState(), className, level) };
+function registerTravelPlannerHandlers({ handle, getState, gameData = null }) {
+  // Read from the player's own game files; null when no game folder is connected or readable.
+  const game = () => { try { return gameData?.flights() || null; } catch { return null; } };
+  const spellLevels = () => { try { return gameData?.spellLevels() || null; } catch { return null; } };
+  handle("travelPlaces", (...args) => { if (args.length) throw Error("Invalid travel request."); return travelView(getState(), { game: game() }); });
+  handle("travelPlan", (...args) => { if (args.length !== 1) throw Error("Invalid travel request."); return travelPlan(getState(), args[0], { game: game() }); });
+  return { trainerView: (className, level) => trainerView(getState(), className, level, { spellLevels: spellLevels() }) };
 }
 module.exports = { registerTravelPlannerHandlers, travelView, travelPlan, trainerView, buildStanding };

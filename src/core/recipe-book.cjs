@@ -53,7 +53,12 @@ function sourceIndex({ trainerPack = null, vendorPack = null, lootPack = null, b
     for (const v of vendorPack.vendors || []) {
       const sides = Object.entries(v.observedReactionsByFaction || {}).filter(([, seen]) => Array.isArray(seen) && seen.some((n) => n >= 4)).map(([side]) => side).sort();
       const zone = v.positions?.[0] ? MAP_NAMES[v.positions[0].mapId] || null : null;
-      for (const l of v.listings || []) { vendorListed.add(l.itemId); push(vendors, l.itemId, { npcId: v.id, name: v.name, zone, sides }); }
+      for (const l of v.listings || []) {
+        vendorListed.add(l.itemId);
+        // What other players were charged: the full price, or worked out from the Honored price (10% less).
+        const copper = Number.isSafeInteger(l.price) ? l.price : Number.isSafeInteger(l.honored) ? Math.round(l.honored / 0.9) : null;
+        push(vendors, l.itemId, { npcId: v.id, name: v.name, zone, sides, listed: copper === null ? null : { copper, estimated: !Number.isSafeInteger(l.price), stack: l.stack || 1 }, stock: Number.isSafeInteger(l.stock) ? l.stock : null });
+      }
     }
   }
   if (ok(lootPack, lootPack?.builds?.[0])) {
@@ -151,7 +156,7 @@ function lineRecipes(game, skillLineId, index) {
       if (itemsReadable && !itemName) continue;
       recipeItems.push({ itemId, name: itemName, skill });
       let found = false;
-      for (const v of index?.vendors.get(itemId) || []) { found = true; sources.push({ kind: "vendor", itemId, itemName, skill, npcId: v.npcId, name: v.name, zone: v.zone, sides: v.sides }); }
+      for (const v of index?.vendors.get(itemId) || []) { found = true; sources.push({ kind: "vendor", itemId, itemName, skill, npcId: v.npcId, name: v.name, zone: v.zone, sides: v.sides, listed: v.listed || null, stock: v.stock ?? null }); }
       for (const d of index?.drops.get(itemId) || []) { found = true; sources.push({ kind: d.kind, itemId, itemName, skill, name: d.name, instance: d.instance || null, object: Boolean(d.object), chance: d.chance, drops: d.drops }); }
       for (const q of index?.questItems.get(itemId) || []) { found = true; sources.push({ kind: "quest", itemId, itemName, skill, questId: q.questId, title: q.title, choice: q.choice, sides: q.sides }); }
       if (found) need(skill);
@@ -228,7 +233,7 @@ function recipeBook(profile, game, index, { skillLineId = null, prices = new Map
   if (!choice.yours) notes.push("This character does not have this profession in its save, so nothing is marked as known.");
   if (leftOut) notes.push(`${leftOut} ${leftOut === 1 ? "entry" : "entries"} in the game files left out: the item it makes is not in this game.`);
   if (index?.carried) notes.push("Some trainer, vendor or drop data was checked on another build of the same patch.");
-  notes.push("Trainer skill and cost: seen in trainer windows by other players (not every trainer recipe is recorded). Vendors and drops: community reference; limited stock is not recorded in it.");
+  notes.push("Trainer skill and cost: seen in trainer windows by other players (not every trainer recipe is recorded). Vendors and drops: community reference. A vendor price there is what other players were charged; limited stock is marked where players saw it.");
   return {
     status: "available", choices, profession: choice, rank, recipes, notes,
     counts: { total: recipes.length, known: recipes.filter((r) => r.known).length, missing: recipes.filter((r) => !r.known).length, learnable: recipes.filter((r) => r.learnable).length,

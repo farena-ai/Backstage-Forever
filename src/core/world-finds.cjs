@@ -25,7 +25,7 @@ function validateWorldPack(p) {
   keys(p, ["schemaVersion", "kind", "product", "build", "builds", "sourceCommit", "license", "attribution", "classification", "rares", "nodes", "chests", "mailboxes"]);
   if (p.schemaVersion !== 1 || p.kind !== "forever-world" || p.product !== "wowf" || p.license !== "CC BY 4.0" || p.attribution !== ATTRIBUTION || p.classification !== CLASSIFICATION) fail("header");
   if (typeof p.sourceCommit !== "string" || !/^[0-9a-f]{40}$/.test(p.sourceCommit)) fail("commit");
-  if (!Array.isArray(p.builds) || !p.builds.length || p.builds.length > 12 || p.builds.some((b) => !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/.test(b)) || p.build !== p.builds[0]) fail("builds");
+  if (!Array.isArray(p.builds) || !p.builds.length || p.builds.length > 16 || p.builds.some((b) => !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/.test(b)) || p.build !== p.builds[0]) fail("builds");
   if (!Array.isArray(p.rares) || p.rares.length > LIMITS.rares || !Array.isArray(p.nodes) || p.nodes.length > LIMITS.nodes || !Array.isArray(p.chests) || p.chests.length > LIMITS.chests) fail("sizes");
   let prev = 0;
   for (const r of p.rares) {

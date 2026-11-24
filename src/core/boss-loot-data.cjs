@@ -9,7 +9,7 @@ const MIN_CHANCE = 0.03, MAX_ITEMS = 16;
 function validateBossLootPack(p) {
   if (!p || p.schemaVersion !== 1 || p.kind !== "forever-boss-loot" || p.product !== "wowf" || p.license !== "CC BY 4.0" || typeof p.attribution !== "string" || p.attribution.length > 300) fail();
   if (typeof p.sourceCommit !== "string" || !/^[0-9a-f]{40}$/.test(p.sourceCommit)) fail();
-  if (!Array.isArray(p.builds) || !p.builds.length || p.builds.length > 12 || p.builds.some((b) => typeof b !== "string" || !/^\d+\.\d+\.\d+\.\d+$/.test(b))) fail();
+  if (!Array.isArray(p.builds) || !p.builds.length || p.builds.length > 16 || p.builds.some((b) => typeof b !== "string" || !/^\d+\.\d+\.\d+\.\d+$/.test(b))) fail();
   if (p.minChance !== MIN_CHANCE) fail();
   if (!p.instances || typeof p.instances !== "object" || Array.isArray(p.instances) || Object.keys(p.instances).length > 64) fail();
   for (const [key, inst] of Object.entries(p.instances)) {

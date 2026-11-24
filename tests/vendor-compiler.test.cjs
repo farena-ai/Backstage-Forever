@@ -39,7 +39,10 @@ test("separate seller pin merges three immutable inputs from every pinned build 
   const lock = require("../data/forever-vendors/source-lock.json"), pack = require("../data/forever-vendors/pack.json"), { COVERAGE, coverage } = require("../scripts/build-forever-vendors.cjs");
   assert.match(lock.commit, COMMIT); assert.equal(pack.sourceCommit, lock.commit);
   assertNewestFirst(pack.builds); assert.equal(pack.build, pack.builds[0]); assert.equal(lock.build, pack.build);
-  assert.deepEqual(pack.builds, require("../data/forever/pack.json").builds.map(b => b.build), "the same builds as the quest pack");
+  // Every build of the quest pack, plus the early builds of the same patch that have sellers but no quest text upstream.
+  const questBuilds = require("../data/forever/pack.json").builds.map(b => b.build), patch = b => b.split(".").slice(0, 3).join(".");
+  assert.ok(questBuilds.every(b => pack.builds.includes(b)), "every build of the quest pack");
+  assert.ok(pack.builds.every(b => patch(b) === patch(questBuilds[0])), "only builds of the same patch");
   const inputs = ["creatures.json", "npcs.json", "vendors.json"];
   assert.deepEqual(lock.builds.map(b => b.build), pack.builds);
   for (const b of lock.builds) { assert.deepEqual(Object.keys(b.files).sort(), inputs); for (const [name, f] of Object.entries(b.files)) { assert.ok(f.bytes > 0); assert.match(f.sha256, SHA256); assert.ok(f.url.endsWith(`/${lock.commit}/data/wowf/${b.build}/${name}`)); assert.equal(f.meta.license, "CC BY 4.0"); assert.equal(f.meta.clientBuild, b.build); } }
@@ -54,6 +57,10 @@ test("separate seller pin merges three immutable inputs from every pinned build 
   const inZone = (f, mapId) => friendly(f).filter(v => v.positions.some(p => p.mapId === mapId)).length;
   assert.ok(inZone("Alliance", 1429) >= 12 && inZone("Alliance", 1453) >= 13 && inZone("Horde", 1454) >= 21, "Elwynn, Stormwind and Orgrimmar sellers");
   assert.equal(pack.vendors.filter(v => v.repairs).length, COVERAGE.repairs); assert.ok(COVERAGE.repairs >= 85);
-  assert.doesNotMatch(JSON.stringify(pack), /"(?:side|price|stock|costs|costItems|stack|visits)"/);
+  // Money prices and limited stock are kept; the raw cost tables, token costs, raw side and visit counts are not.
+  assert.doesNotMatch(JSON.stringify(pack), /"(?:side|costs|costItems|bartered|limited|stockMax|visits)"/);
+  const listed = pack.vendors.flatMap(v => v.listings);
+  assert.ok(listed.filter(l => l.price !== undefined || l.honored !== undefined).length > 5000, "most listings carry the price players were shown");
+  assert.ok(listed.filter(l => l.stock !== undefined).length > 100, "limited stock is recorded where players saw it");
   assert.deepEqual(require("../src/core/knowledge.cjs").FILES, ["quests.enUS.json", "npcs.json", "creature_details.enUS.json", "item_hotfixes.enUS.json", "turn_ins.json", "objectives.json"]);
 });

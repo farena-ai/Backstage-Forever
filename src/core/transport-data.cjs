@@ -3,7 +3,7 @@
 // for both factions, with the observed flight seconds and costs where upstream has them.
 // Built offline by scripts/build-forever-transport.cjs from Efficient Games flights.json and
 // npcs.json (CC BY 4.0). Upstream has no flight point names, no boats and no zeppelins.
-const fs = require("node:fs"), path = require("node:path"), { createHash } = require("node:crypto");
+const fs = require("node:fs"), path = require("node:path"), { createHash } = require("node:crypto"); const { latinName } = require("./latin-name.cjs");
 
 const FILES = Object.freeze(["flights.json", "npcs.json"]);
 const ATTRIBUTION = "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.";
@@ -91,7 +91,9 @@ function compileTransport(builds, { commit }) {
     for (const [key, m] of Object.entries(flights.masters || {})) {
       const id = Number(key);
       if (!/^[1-9]\d*$/.test(key) || !int(id) || !text(m?.name) || !int(m?.node)) fail("Flight master.");
-      if (!masters.has(m.node)) masters.set(m.node, { npcId: id, name: m.name });
+      // The newest build's flight master; a name seen in another language gives way to an English one.
+      const have = masters.get(m.node);
+      if (!have || (!latinName(have.name) && latinName(m.name) && have.npcId === id)) masters.set(m.node, { npcId: id, name: m.name });
     }
     for (const [key, r] of Object.entries(flights.routes || {})) {
       const m = /^([1-9]\d*)>([1-9]\d*)$/.exec(key), from = m && Number(m[1]), to = m && Number(m[2]);
