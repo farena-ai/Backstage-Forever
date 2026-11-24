@@ -1008,6 +1008,11 @@ local function capture(event,eventId)
         local ok,scout=pcall(BackstageForeverScoutSnapshot)
         if ok and type(scout)=='table' and type(scout.records)=='table' and #scout.records>0 then array(scout.records);character.scout=scout end
     end
+    -- Kept profiles: an optional block, present only when the player switched on sharing them with the desktop app.
+    if type(BackstageForeverProfileSnapshot)=='function' then
+        local ok,block=pcall(BackstageForeverProfileSnapshot)
+        if ok and type(block)=='table' and type(block.profiles)=='table' then array(block.profiles);character.settingsProfiles=block end
+    end
     if type(BackstageForeverLedgerSnapshot)=='function' then
         local ok,ledger=pcall(BackstageForeverLedgerSnapshot)
         if ok and type(ledger)=='table' then
@@ -1073,6 +1078,7 @@ local function capture(event,eventId)
     if type(BackstageForeverCrewUpdate)=="function" then pcall(BackstageForeverCrewUpdate,character) end
     if type(BackstageForeverGuildUpdate)=="function" then pcall(BackstageForeverGuildUpdate,character) end
     if type(BackstageForeverShopUpdate)=="function" then pcall(BackstageForeverShopUpdate,character) end
+    if type(BackstageForeverBagUpdate)=="function" then pcall(BackstageForeverBagUpdate,character) end
     local chars=array({character});for id,c in pairs(roster) do if id~=guid then chars[#chars+1]=c end end
     table.sort(chars,function(a,b) return a.updatedAt>b.updatedAt end)
     while #chars>100 do table.remove(chars) end
@@ -1101,7 +1107,11 @@ local function capture(event,eventId)
             end
         end
     end
-    -- Scout records are the newest optional block and the first to go; the saved list itself stays.
+    -- Kept profiles and scout records are the newest optional blocks and the first to go; what is saved in game stays.
+    for i=#chars,1,-1 do
+        if fits() then break end
+        discard(chars[i],'settingsProfiles')
+    end
     for i=#chars,1,-1 do
         if fits() then break end
         discard(chars[i],'scout')

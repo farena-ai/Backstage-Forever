@@ -72,6 +72,9 @@ const MAX = 1024 * 1024,
     "BackstageForeverAnswers.lua",
     "BackstageForeverScout.lua",
     "BackstageForeverRaid.lua",
+    "BackstageForeverBag.lua",
+    "BackstageForeverChat.lua",
+    "BackstageForeverProfile.lua",
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");
@@ -174,7 +177,7 @@ function parseSavedVariables(raw) {
   const seen = new Set();
   // Scout mode (roadmap S1): an optional block per character, kept beside the characters so the
   // profile store, which knows nothing of it, is not touched.
-  const scout = [];
+  const scout = [], settingsProfiles = [];
   const characters = s.characters.map((c) => {
     if (!c || typeof c !== "object") invalid();
     const key = id(c.id);
@@ -266,11 +269,18 @@ function parseSavedVariables(raw) {
         if (block.records.length) scout.push({ id: key, name: out.name, realm: out.realm || "", ...(out.faction ? { faction: out.faction } : {}), ...(typeof out.clientBuild === "string" ? { clientBuild: out.clientBuild } : {}), scout: block });
       } catch { /* Omit the entire invalid optional block. */ }
     }
+    // Kept addon settings profiles (only present when the player switched sharing on in game).
+    if (c.settingsProfiles !== undefined) {
+      try {
+        const block = require("./settings-profiles.cjs").normalizeProfilesCapture(c.settingsProfiles);
+        if (block.profiles.length || block.done) settingsProfiles.push({ id: key, name: out.name, realm: out.realm || "", profiles: block });
+      } catch { /* Omit the entire invalid optional block. */ }
+    }
     return out;
   });
   const activeId = s.activeId === null ? null : id(s.activeId);
   if (activeId && !seen.has(activeId)) invalid();
-  return { characters, activeId, observedAt: stamp(s.observedAt), ...(scout.length ? { scout } : {}) };
+  return { characters, activeId, observedAt: stamp(s.observedAt), ...(scout.length ? { scout } : {}), ...(settingsProfiles.length ? { settingsProfiles } : {}) };
 }
 // `checked` is a set of parent folders already walked in the same pass (one addon install or
 // verify): those are not walked again for every file. The file or folder itself is always checked.
@@ -432,6 +442,10 @@ class GameSync {
   /** Scout mode records read from the game's saved file: [{ id, name, realm, faction, clientBuild, scout }]. */
   scoutCapture() {
     return (this.scoutBlocks || []).map((e) => ({ ...e }));
+  }
+  /** Kept addon settings profiles read from the game's saved file: [{ id, name, realm, profiles: { profiles, done } }]. */
+  settingsProfiles() {
+    return (this.profileBlocks || []).map((e) => ({ ...e, profiles: { done: e.profiles.done, profiles: e.profiles.profiles.map((p) => ({ ...p })) } }));
   }
   /** The scout export document (scout.cjs) for what was read; the caller decides where to write it. */
   scoutExport(exportedAt = null) {
@@ -816,6 +830,9 @@ class GameSync {
       if (cancelled()) return this.status();
       // Scout records of every character read this time; parsed and kept in memory, never uploaded.
       this.scoutBlocks = [...snapshots.values()].flatMap((s) => s.scout || []).slice(0, 100);
+      // Kept settings profiles of every character read this time; the same: in memory, never uploaded.
+      this.profileBlocks = [...snapshots.values()].flatMap((s) => s.settingsProfiles || []).slice(0, 100);
+      try { this.onSettingsProfiles?.(this.settingsProfiles()); } catch { /* A listener never stops a read. */ }
       const composite = combineSnapshots([...snapshots.values()]);
       const best = composite?.snapshot;
       this.state.coverage = { ...this.state.coverage, partial: malformed || Boolean(composite?.coverage.omittedCharacterCount) || this.state.coverage.omittedProfileCount > 0, unreadableAccountCount, omittedCharacterCount: composite?.coverage.omittedCharacterCount || 0 };
