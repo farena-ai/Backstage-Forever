@@ -1115,6 +1115,14 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverRaidCommand)=='function' then pcall(BackstageForeverRaidCommand,message)end
                 return
             end
+            if word=='event' or word=='events' then
+                if type(BackstageForeverEventCommand)=='function' then pcall(BackstageForeverEventCommand,message)end
+                return
+            end
+            if word=='lockouts' then
+                if type(BackstageForeverLockoutsCommand)=='function' then pcall(BackstageForeverLockoutsCommand,message)end
+                return
+            end
             if word=='welcome' then
                 if type(BackstageForeverWelcomeCommand)=='function' then pcall(BackstageForeverWelcomeCommand)end
                 return

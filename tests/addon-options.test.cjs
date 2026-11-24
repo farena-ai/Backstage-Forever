@@ -53,7 +53,7 @@ for _,page in ipairs(BackstageForeverOptionsPages) do
     end
   end
 end
-assert(count==58,'58 switches, got '..count)
+assert(count==60,'60 switches, got '..count)
 for _,key in ipairs({'questTracker','objectiveHints','questDetours','beforeLeaving','rewardReasons','questBlockers','gatheringMarks','sharedObjectives','keepQuestItems','questItemCue','spellRankReminder'}) do
   local found=false
   for _,m in ipairs(ran) do if m=='helpers '..key..' off' then found=true end end
@@ -138,7 +138,7 @@ for _,preset in ipairs(BackstageForeverOptionsPresets) do
     else assert(state[label]~=nil,preset.title..' does not say what '..label..' should be') end
   end
   -- Not checked in the real game yet, or shared beyond the party: a player turns these on one by one.
-  for _,label in ipairs({'Bag marks','Dungeon run panel','Run panel stays in combat','Quest list by distance','Raid comms','Guild sharing','Scout mode','Screenshots at big moments','Enemy alert sound'}) do
+  for _,label in ipairs({'Bag marks','Dungeon run panel','Run panel stays in combat','Quest list by distance','Raid comms','Guild sharing','Scout mode','Guild events','Guild-run loot notes','Screenshots at big moments','Enemy alert sound'}) do
     assert(state[label]==false,preset.title..' keeps '..label..' off')
   end
   -- Safety and courtesy stay on everywhere.

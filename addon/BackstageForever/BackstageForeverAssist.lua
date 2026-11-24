@@ -659,6 +659,8 @@ local HELP_TOPICS={
         '/bf guild - guild members who share level, zone, professions and a dungeon flag; /bf guild on shares yours, /bf guild lfd DUNGEON sets your flag',
         '/bf guild craft NAME - ask sharing guild members who can make something; each answer has a whisper link',
         '/bf raid - raid comms, off until you switch them on: /bf raid note Boss: text, /bf raid notes, /bf raid assign Player text, /bf raid check',
+        '/bf event - events with sign-ups for your guild, off until you switch them on: /bf event add proposes one, /bf events lists them, /bf event yes tank answers',
+        '/bf lockouts - the dungeons and raids this character is saved to and when each resets, with your other characters as last saved',
     }},
     {key='screen',index='5 screen - the Compass, lists and alerts on your screen',head='On your screen (/bf help screen):',lines={
         '/bf show, /bf hide - the Adventure Compass panel',

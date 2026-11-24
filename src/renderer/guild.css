@@ -1,0 +1,48 @@
+/* Plans → Guild. Uses the Ledger and Calendar card, table and summary styles (ledger.css, economy.css). */
+.gld-honest { margin: 0; padding: 9px 12px; border: 1px solid #b59a5d66; border-left: 3px solid #d9b46b; border-radius: 5px; background: #17232b; color: #d8e1df; font-size: 13px; line-height: 1.5; }
+.gld-honest strong { color: #ffedc9; }
+.gld-summary strong { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gld-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 14px; min-width: 0; }
+.gld-tools button { min-height: 34px; padding: 6px 16px; white-space: nowrap; }
+.gld-events { display: grid; gap: 10px; min-width: 0; }
+.gld-event { min-width: 0; padding: 10px 12px; border: 1px solid #aa8e56; border-radius: 5px; background: #f2e5c5; color: #2b1b0a; }
+.gld-event header { min-width: 0; }
+.gld-event h3 { margin: 0 0 2px; font: 700 16px/1.3 Cinzel, Georgia, serif; color: #3d220c; overflow-wrap: anywhere; }
+.gld-meta { margin: 2px 0 0; font-size: 13px; line-height: 1.5; color: #5a3e1c; overflow-wrap: anywhere; }
+.gld-meta strong { color: #2b1b0a; font-variant-numeric: tabular-nums; }
+.gld-when strong { font-weight: 700; }
+.gld-flag { color: #7a4a0c; font-weight: 600; }
+.gld-note { margin: 6px 0 0; padding: 5px 9px; border-left: 3px solid #a5823e; background: #fbf3dd; font-size: 14px; overflow-wrap: anywhere; }
+.gld-roles { display: grid; gap: 4px; margin: 8px 0 0; padding: 8px 0 0; border-top: 1px solid #c4ad7a; }
+.gld-role { display: grid; grid-template-columns: 138px minmax(0, 1fr); gap: 4px 10px; align-items: baseline; }
+.gld-role dt { margin: 0; font-size: 13px; color: #5a3e1c; }
+.gld-role dt strong { color: #2b1b0a; font-variant-numeric: tabular-nums; }
+.gld-role dd { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; min-width: 0; }
+.gld-name { display: inline-block; max-width: 100%; padding: 1px 8px; border: 1px solid #aa8e56; border-radius: 10px; background: #fbf3dd; color: #2b1b0a; font-size: 13px; line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gld-name.gld-me { border-color: #607245; background: #e1e6c9; color: #24400f; font-weight: 700; }
+.gld-none { color: #6b4e26; font-size: 13px; }
+.gld-mine { margin: 8px 0 0; font-size: 13px; color: #5a3e1c; }
+.gld-mine.gld-answered { color: #305219; font-weight: 700; }
+.gld-past .gld-bosses { color: #6b4e26; }
+.gld-answers { margin: 8px 0 0; }
+.gld-answers summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #3d220c; text-shadow: none; }
+.gld-answers summary:focus-visible { outline: 2px solid #785017; outline-offset: 2px; }
+.gld-page .ldg-table-frame:focus-visible, .gld-page :is(.gld-search, .gld-note-input):focus-visible { outline: 2px solid #785017; outline-offset: 2px; }
+.gld-prof { display: inline-block; margin: 0 10px 0 0; white-space: nowrap; }
+.gld-prof strong { font-variant-numeric: tabular-nums; }
+.gld-page :is(.gld-search, .gld-note-input) { box-sizing: border-box; min-height: 30px; padding: 4px 8px; border: 1px solid #8d6c36; border-radius: 5px; background: #fbf3dd; color: #2b1b0a; font: 400 14px/1.3 "Segoe UI", sans-serif; }
+.gld-note-input { width: 100%; min-width: 120px; }
+.gld-search { width: 230px; max-width: 100%; }
+.gld-table-roster { min-width: 760px; table-layout: fixed; }
+.gld-table-roster th:nth-child(1) { width: 15%; }
+.gld-table-roster th:nth-child(2) { width: 7%; }
+.gld-table-roster th:nth-child(3) { width: 17%; }
+.gld-table-roster th:nth-child(4) { width: 20%; }
+.gld-table-roster th:nth-child(5) { width: 14%; }
+.gld-table-roster th:nth-child(6) { width: 7%; }
+.gld-table-roster thead th { white-space: nowrap; }
+.gld-table-crafts th:first-child { width: 42%; }
+.gld-table-crafts th:nth-child(2) { width: 28%; }
+@media (forced-colors: active) {
+  .gld-event, .gld-name, .gld-honest { border-color: CanvasText; }
+}

@@ -17,10 +17,11 @@ window.PlayerNavigation = (() => {
       routes: [
         ["company", "My plans"],
         ["party", "Party"],
+        ["guild", "Guild"],
         ["calendar", "Calendar"],
       ],
       description:
-        "Checklists for a session, a profession or a dungeon run, party plans to share, and a cooldown calendar.",
+        "Checklists for a session, a profession or a dungeon run, party plans to share, a guild page with events, and a cooldown calendar.",
     },
     characters: {
       label: "Characters",

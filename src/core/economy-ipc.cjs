@@ -5,7 +5,7 @@
 // the notification switch and the calendar file the player chooses to save.
 const E = require("./economy.cjs");
 
-function registerEconomyHandlers({ handle, getState, economy, gameData, packNames = () => null, dialog, getWindow, notify = null, writeFile = (file, text) => require("node:fs/promises").writeFile(file, text, "utf8"), now = () => Math.floor(Date.now() / 1000) }) {
+function registerEconomyHandlers({ handle, getState, economy, gameData, packNames = () => null, dialog, getWindow, notify = null, guild = null, writeFile = (file, text) => require("node:fs/promises").writeFile(file, text, "utf8"), now = () => Math.floor(Date.now() / 1000) }) {
   const itemFacts = (ids) => {
     let found = [];
     try { found = ids.length ? gameData.items(ids) : []; } catch {}
@@ -47,8 +47,11 @@ function registerEconomyHandlers({ handle, getState, economy, gameData, packName
       .map((m) => ({ profileId: m.profileId, name: m.name, ...m.view, sessions: E.sessionView(economy.data.sessions?.[m.profileId]) }));
     return { crafts, money, vendorPricesSeen: vendor.size };
   }
-  const events = () => E.calendarEvents(getState().profiles, now());
-  const calendarView = () => ({ now: now(), events: events(), notify: economy.data.calendar.notify, canNotify: !!notify });
+  // Guild events and lockouts (guild-events-ipc.cjs) sit on the same calendar as cooldowns and mail.
+  const extra = () => { try { return guild ? guild.calendarEntries() : []; } catch { return []; } };
+  const events = () => [...E.calendarEvents(getState().profiles, now()), ...extra()].sort((a, b) => a.at - b.at || a.character.localeCompare(b.character) || a.key.localeCompare(b.key));
+  const lockouts = () => { try { return guild ? guild.lockouts() : []; } catch { return []; } };
+  const calendarView = () => ({ now: now(), events: events(), lockouts: lockouts(), notify: economy.data.calendar.notify, canNotify: !!notify });
   handle("economyCalendar", (...args) => {
     if (args.length) throw Error("Invalid calendar request.");
     return calendarView();

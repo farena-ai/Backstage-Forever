@@ -72,6 +72,9 @@ const MAX = 1024 * 1024,
     "BackstageForeverAnswers.lua",
     "BackstageForeverScout.lua",
     "BackstageForeverRaid.lua",
+    "BackstageForeverEvents.lua",
+    "BackstageForeverEventsWindow.lua",
+    "BackstageForeverLockouts.lua",
   ];
 const { atomic } = require("./store.cjs");
 const fsSync = require("node:fs");
@@ -175,6 +178,8 @@ function parseSavedVariables(raw) {
   // Scout mode (roadmap S1): an optional block per character, kept beside the characters so the
   // profile store, which knows nothing of it, is not touched.
   const scout = [];
+  // Guild events and lockouts (optional blocks too), kept the same way.
+  const guild = [];
   const characters = s.characters.map((c) => {
     if (!c || typeof c !== "object") invalid();
     const key = id(c.id);
@@ -266,11 +271,17 @@ function parseSavedVariables(raw) {
         if (block.records.length) scout.push({ id: key, name: out.name, realm: out.realm || "", ...(out.faction ? { faction: out.faction } : {}), ...(typeof out.clientBuild === "string" ? { clientBuild: out.clientBuild } : {}), scout: block });
       } catch { /* Omit the entire invalid optional block. */ }
     }
+    if (c.guild !== undefined || c.lockouts !== undefined) {
+      const G = require("./guild-events.cjs"), row = { id: key, name: out.name, realm: out.realm || "", updatedAt: out.updatedAt };
+      if (c.guild !== undefined) { try { row.guild = G.normalizeGuildCapture(c.guild); } catch { /* Omit the entire invalid optional block. */ } }
+      if (c.lockouts !== undefined) { try { row.lockouts = G.normalizeLockoutCapture(c.lockouts); } catch { /* Omit the entire invalid optional block. */ } }
+      if (row.guild || row.lockouts) guild.push(row);
+    }
     return out;
   });
   const activeId = s.activeId === null ? null : id(s.activeId);
   if (activeId && !seen.has(activeId)) invalid();
-  return { characters, activeId, observedAt: stamp(s.observedAt), ...(scout.length ? { scout } : {}) };
+  return { characters, activeId, observedAt: stamp(s.observedAt), ...(scout.length ? { scout } : {}), ...(guild.length ? { guild } : {}) };
 }
 // `checked` is a set of parent folders already walked in the same pass (one addon install or
 // verify): those are not walked again for every file. The file or folder itself is always checked.
@@ -432,6 +443,10 @@ class GameSync {
   /** Scout mode records read from the game's saved file: [{ id, name, realm, faction, clientBuild, scout }]. */
   scoutCapture() {
     return (this.scoutBlocks || []).map((e) => ({ ...e }));
+  }
+  /** Guild events, shared member details and lockouts read from the game's saved file: [{ id, name, realm, guild?, lockouts? }]. */
+  guildCapture() {
+    return (this.guildBlocks || []).map((e) => ({ ...e }));
   }
   /** The scout export document (scout.cjs) for what was read; the caller decides where to write it. */
   scoutExport(exportedAt = null) {
@@ -816,6 +831,10 @@ class GameSync {
       if (cancelled()) return this.status();
       // Scout records of every character read this time; parsed and kept in memory, never uploaded.
       this.scoutBlocks = [...snapshots.values()].flatMap((s) => s.scout || []).slice(0, 100);
+      // Guild and lockout blocks: the newest save of each character; kept in memory and in the desktop's own guild.json.
+      { const newest = new Map();
+        for (const e of [...snapshots.values()].flatMap((s) => s.guild || [])) if (!newest.has(e.id) || e.updatedAt > newest.get(e.id).updatedAt) newest.set(e.id, e);
+        this.guildBlocks = [...newest.values()].slice(0, 100); }
       const composite = combineSnapshots([...snapshots.values()]);
       const best = composite?.snapshot;
       this.state.coverage = { ...this.state.coverage, partial: malformed || Boolean(composite?.coverage.omittedCharacterCount) || this.state.coverage.omittedProfileCount > 0, unreadableAccountCount, omittedCharacterCount: composite?.coverage.omittedCharacterCount || 0 };
