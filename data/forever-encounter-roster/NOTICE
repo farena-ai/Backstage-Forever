@@ -1,0 +1,22 @@
+Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
+License: https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/JIVESCORP/eg-link-output-wowf
+Immutable source commit: 423d6c9645cd102406782e7400805a7c738e2d69
+Product wowf; merged client builds (newest first): 1.60.1.71037, 1.60.1.70959, 1.60.1.70938, 1.60.1.70888, 1.60.1.70862, 1.60.1.70790.
+Boss fights collected 2026-11-05 to 2026-11-22.
+
+Backstage Forever changes to the compilation: encounters.json of each build is
+verified against source-lock.json. Rows join by the game's encounter id. The
+newest build's name wins; kills, pulls and runs are added up over the builds;
+boss NPC ids are unioned. Kept: encounter id, name, instance map, kills, pulls,
+runs, boss NPC ids, number of builds. Dropped: positions, difficulties,
+same-run tallies and contributor counts. A name not in Latin letters (seen in
+a game in another language) is left out; a name from another Latin-letter
+language cannot be told apart and is kept as recorded.
+
+Coverage: 128 boss fights in 21 instances; 0 rows left out.
+This is what players recorded, not a full boss list, and it holds no boss
+abilities or tactics. No advice is derived. No runtime network request is needed.
+
+World of Warcraft and related content are copyright Blizzard Entertainment, Inc.
+The license covers the compilation and observations, not Blizzard content.

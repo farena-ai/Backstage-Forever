@@ -29,6 +29,7 @@ const FILE = "BackstageForeverDesktop.lua";
 const MAX_CHARACTERS = 100, MAX_ITEMS = 200, MAX_BYTES = 256 * 1024, MAX_PICKS = 51, MAX_LOOP_STOPS = 40;
 const MAX_ROUTE_STEPS = 12, ROUTE_TEXT = 200, ROUTE_NOTE = 120;
 const MAX_ANSWERS = 5, MAX_QUESTION = 200, MAX_ANSWER = 1200;
+const MAX_SHIPS = 24, MAX_SHIP_RIDES = 30, MAX_SHIP_BYTES = 16 * 1024;
 const luaString = (value) => '"' + [...Buffer.from(String(value), "utf8")].map((b) => (b >= 32 && b <= 126 && b !== 34 && b !== 92 ? String.fromCharCode(b) : "\\" + String(b).padStart(3, "0"))).join("") + '"';
 const named = (v) => typeof v === "string" && v.length > 0 && v.length <= 60 && !/[\x00-\x1f]/.test(v);
 const itemId = (v) => Number.isSafeInteger(v) && v > 0 && v <= 2147483647;
@@ -89,6 +90,36 @@ function answerList(list) {
 
 // Route steps as Lua, or "" for anything that is not a clean list. Text is escaped byte by byte
 // and "|" (the game's colour and link code) never gets through.
+// Roadmap B2 adds where boats, zeppelins and airships stop, for /bf fly across the sea. Upstream
+// names the transports but not their stops; the desktop works the stops out from the player's own
+// game files (transport-rides.cjs). They are not tied to a character, so they sit beside
+// `characters`: ships={H={...},A={...}}, one list per faction that has a saved character, each
+// {k="z" zeppelin | "b" boat | "a" airship, n="name", s={{"stop",continent,wx,wy},...},
+//  r={{from stop,to stop,seconds},...}}. Old addons never look at the field.
+const SHIP_KIND = { boat: "b", zeppelin: "z", airship: "a" }, OTHER_SIDE = { Horde: "Alliance", Alliance: "Horde" };
+function shipList(rides, faction) {
+  const rows = [];
+  for (const t of Array.isArray(rides?.transports) ? rides.transports : []) {
+    if (rows.length >= MAX_SHIPS) break;
+    if (!t || t.source !== "game-files" || !SHIP_KIND[t.mode] || t.side === OTHER_SIDE[faction] || !Array.isArray(t.stops) || t.stops.length < 2 || t.stops.length > 6 || !Array.isArray(t.rides)) continue;
+    // A stop nobody could name (no flight point or zone beside it) cannot be told to the player.
+    if (!t.stops.every((s) => s && s.named !== false && routeText(s.label, 60) && Number.isSafeInteger(s.instance) && s.instance >= 0 && s.instance <= 9999 && [s.wx, s.wy].every((v) => typeof v === "number" && Number.isFinite(v) && Math.abs(v) <= 100000))) continue;
+    const legs = t.rides.filter((r) => r && Number.isSafeInteger(r.from) && Number.isSafeInteger(r.to) && r.from !== r.to && t.stops[r.from] && t.stops[r.to] && Number.isSafeInteger(r.seconds) && r.seconds > 0 && r.seconds <= 36000).slice(0, MAX_SHIP_RIDES);
+    if (!legs.length) continue;
+    rows.push(`{k="${SHIP_KIND[t.mode]}"${routeText(t.name, 60) ? `,n=${luaString(t.name)}` : ""},s={${t.stops.map((s) => `{${luaString(s.label)},${s.instance},${Math.round(s.wx)},${Math.round(s.wy)}}`).join(",")}},r={${legs.map((r) => `{${r.from + 1},${r.to + 1},${r.seconds}}`).join(",")}}}`);
+  }
+  return rows;
+}
+function shipField(profiles, ships) {
+  const sides = [];
+  for (const [faction, key] of [["Alliance", "A"], ["Horde", "H"]]) {
+    if (!profiles.some((p) => p?.source?.kind === "wow-addon" && p.faction === faction)) continue;
+    let rows = []; try { rows = shipList(ships(faction), faction); } catch { rows = []; }
+    if (rows.length) sides.push(`${key}={${rows.join(",")}}`);
+  }
+  const text = sides.length ? `ships={${sides.join(",")}}` : "";
+  return Buffer.byteLength(text) <= MAX_SHIP_BYTES ? text : "";
+}
 const ROUTE_KINDS = new Set(["p", "c", "o", "t", "g", "d", "x"]), ROUTE_VARIANTS = new Set(["solo", "duo", "dungeons", "trips", "careful"]);
 const routeText = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max && !/[\x00-\x1f\x7f|]/.test(v);
 function routeSteps(route) {
@@ -109,7 +140,7 @@ function routeSteps(route) {
 // upgrades by item id, talent picks in the order the player planned them. Talent plans are the
 // newest passenger: when the file would grow past its limit they are left out, character by
 // character, before anything else is touched.
-function compile({ profiles = [], wishlist = () => [], upgrades = () => [], talents = () => null, loops = () => null, answers = () => [], routes = () => null } = {}) {
+function compile({ profiles = [], wishlist = () => [], upgrades = () => [], talents = () => null, loops = () => null, answers = () => [], routes = () => null, ships = () => null } = {}) {
   const rows = [];
   const seen = new Set();
   for (const p of Array.isArray(profiles) ? profiles : []) {
@@ -129,7 +160,9 @@ function compile({ profiles = [], wishlist = () => [], upgrades = () => [], tale
   rows.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   const kept = rows.slice(0, MAX_CHARACTERS);
   const line = ([key, ids, up, tal, loop, ans, rt]) => `[${luaString(key)}]={wish={${ids.join(",")}}${up.length ? `,up={${up.join(",")}}` : ""}${tal ? `,${tal}` : ""}${loop ? `,${loop}` : ""}${rt ? `,${rt}` : ""}${ans ? `,${ans}` : ""}},`;
-  const wrap = (body) => [...HEADER, "BackstageForeverDesktopData={schema=1,characters={", ...body, "}}", ""].join("\n");
+  // The stops are small and come first: every character's /bf fly needs them.
+  const sea = shipField(Array.isArray(profiles) ? profiles : [], ships);
+  const wrap = (body) => [...HEADER, "BackstageForeverDesktopData={schema=1,characters={", ...body, sea ? `},${sea}}` : "}}", ""].join("\n");
   let room = MAX_BYTES - Buffer.byteLength(wrap(kept.map(([key, ids, up]) => line([key, ids, up, "", "", "", ""]))));
   const body = [];
   // Plans and loops of every character get room first, then route steps, then answers.
@@ -147,4 +180,4 @@ function compile({ profiles = [], wishlist = () => [], upgrades = () => [], tale
   return text;
 }
 
-module.exports = { FILE, MAX_ITEMS, MAX_CHARACTERS, MAX_PICKS, MAX_LOOP_STOPS, MAX_ROUTE_STEPS, MAX_ANSWERS, MAX_QUESTION, MAX_ANSWER, MAX_BYTES, compile, EMPTY: compile() };
+module.exports = { FILE, MAX_SHIPS, MAX_SHIP_RIDES, MAX_SHIP_BYTES, MAX_ITEMS, MAX_CHARACTERS, MAX_PICKS, MAX_LOOP_STOPS, MAX_ROUTE_STEPS, MAX_ANSWERS, MAX_QUESTION, MAX_ANSWER, MAX_BYTES, compile, EMPTY: compile() };

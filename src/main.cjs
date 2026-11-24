@@ -77,6 +77,7 @@ let gearPins = null; // one pinned gear target per slot and character (roadmap C
 // The weights a character scores gear with; null means the built-in row for the class.
 const profileWeights = (p) => { try { return p && statWeights ? require("./core/stat-weights.cjs").scoringWeights(p.className, statWeights.get(p.id)) : null; } catch { return null; } };
 let talentBuilds = null; // saved talent builds per character (talent planner)
+let shipRides = null; // boats and zeppelins worked out from the game files, for the desktop -> game hand-off (B2)
 let forgetGameAnswers = null, clearGameAnswers = null; // kept in-game answers (ask-answers.json)
 let gatheringLoops = null; // the gathering loop each character sent to the game
 let community = null, collectDiagnostics = null;
@@ -240,7 +241,7 @@ app.whenReady().then(async () => {
     game = new GameSync({
       dataDir: app.getPath("userData"),
       // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
-      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id), routes: (id) => routeEditor?.handoff(id) || null }); },
+      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id), routes: (id) => routeEditor?.handoff(id) || null, ships: () => shipRides?.() || null }); },
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -1111,6 +1112,7 @@ app.whenReady().then(async () => {
     return L.priceFor(ledgerPrices.index, id);
   };
   const travelPlanner = require("./core/travel-planner-ipc.cjs").registerTravelPlannerHandlers({ handle, getState: () => store.state, gameData, reference: travelReference });
+  shipRides = () => { try { return travelPlanner.rides(); } catch { return null; } };
   handle("talentCoach", (input) => {
     const className = typeof input?.className === "string" ? input.className.slice(0, 20) : null;
     const level = Number.isInteger(input?.level) && input.level >= 1 && input.level <= 100 ? input.level : null;
@@ -1121,8 +1123,19 @@ app.whenReady().then(async () => {
     // C6: what the class trainer newly teaches at this level and the next two, with costs.
     let training = null;
     try { training = travelPlanner.trainerView(className, level); } catch { training = null; }
-    if (!trees) return { available: false, unlocks, training, reason: gameData.status().reason || "Talent trees are not available from your game install yet." };
-    return { available: true, trees, unlocks, training, coach: require("./core/talent-coach.cjs").coach(trees, className, level) };
+    // B3 (roadmap C7): the Hunter pet book, from recorded tames. Ability names come from the game files.
+    let petBook = null;
+    if (className === "Hunter") {
+      try {
+        const H = require("./core/hunter-pets.cjs"), pack = H.loadPets();
+        const profile = store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null;
+        const standing = require("./core/travel-planner-ipc.cjs").buildStanding(pack, profile);
+        const { MAP_NAMES } = require("./core/companion-tools.cjs");
+        petBook = standing.usable ? H.petBook(pack, { spells: (ids) => gameData.spells(ids), mapName: (m) => MAP_NAMES[m], level: profile?.className === "Hunter" ? profile.level : null, note: standing.note }) : { available: false, reason: standing.note };
+      } catch { petBook = null; }
+    }
+    if (!trees) return { available: false, unlocks, training, petBook, reason: gameData.status().reason || "Talent trees are not available from your game install yet." };
+    return { available: true, trees, unlocks, training, petBook, coach: require("./core/talent-coach.cjs").coach(trees, className, level) };
   });
   // Talent planner: click-to-spend on the same trees, saved builds per character, and the build
   // marked "Use in game" rides the desktop -> game hand-off.

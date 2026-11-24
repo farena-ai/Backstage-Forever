@@ -1,0 +1,454 @@
+{
+  "schemaVersion": 1,
+  "product": "wowf",
+  "license": "CC BY 4.0",
+  "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+  "commit": "423d6c9645cd102406782e7400805a7c738e2d69",
+  "build": "1.60.1.71037",
+  "builds": [
+    {
+      "build": "1.60.1.71037",
+      "files": {
+        "hunter_pets.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.71037/hunter_pets.json",
+          "bytes": 5225,
+          "sha256": "01196802b8222a43bc2407e0c965b5576a87310e0efc8352d2e06f95c99b5281",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.71037",
+            "collectedOn": {
+              "first": "2026-11-22",
+              "last": "2026-11-23"
+            },
+            "dataset": "hunter_pets",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 6
+          }
+        },
+        "creatures.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.71037/creatures.json",
+          "bytes": 766718,
+          "sha256": "9a89515458b02082a155ad5ca9aa144c4563e110aab4d1659b3eef9d9dc0c354",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.71037",
+            "collectedOn": {
+              "first": "2026-11-21",
+              "last": "2026-11-23"
+            },
+            "combatLogUploads": 4,
+            "dataset": "creatures",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 6
+          }
+        },
+        "creature_details.enUS.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.71037/creature_details.enUS.json",
+          "bytes": 1992082,
+          "sha256": "0f5706b9c944a912b2ab253968c8126d1fc39f1f0aa63768f0729c6fdeae47bf",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "cacheFiles": 108,
+            "cachesLeftOut": 0,
+            "clientBuild": "1.60.1.71037",
+            "collectedOn": {
+              "first": "2026-11-20",
+              "last": "2026-11-23"
+            },
+            "dataset": "creature_details",
+            "license": "CC BY 4.0",
+            "locale": "enUS",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70959",
+      "files": {
+        "hunter_pets.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70959/hunter_pets.json",
+          "bytes": 3096,
+          "sha256": "60429b8a5ce3f3a1736fdcf9e0ba2f6f03616fdf8bc7865f7822f9cfa73cedcb",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70959",
+            "collectedOn": {
+              "first": "2026-11-19",
+              "last": "2026-11-23"
+            },
+            "dataset": "hunter_pets",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 10
+          }
+        },
+        "creatures.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70959/creatures.json",
+          "bytes": 1324794,
+          "sha256": "b9d6e15d7d899d8a3a56c20c6aa99944c401535013e2ec14afc795c474499d36",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70959",
+            "collectedOn": {
+              "first": "2026-11-17",
+              "last": "2026-11-23"
+            },
+            "combatLogUploads": 9,
+            "dataset": "creatures",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 10
+          }
+        },
+        "creature_details.enUS.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70959/creature_details.enUS.json",
+          "bytes": 2299699,
+          "sha256": "361919c2ec7f464f95872feab6efba18ee6e667f970e79bd35134a6d05c79446",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "cacheFiles": 370,
+            "cachesLeftOut": 0,
+            "clientBuild": "1.60.1.70959",
+            "collectedOn": {
+              "first": "2026-11-17",
+              "last": "2026-11-23"
+            },
+            "dataset": "creature_details",
+            "license": "CC BY 4.0",
+            "locale": "enUS",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 7
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70938",
+      "files": {
+        "hunter_pets.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70938/hunter_pets.json",
+          "bytes": 6255,
+          "sha256": "a482e040ad05626af2eafbb9ccbbe0fc448507d4a114b8fa421c5340a0971d7e",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70938",
+            "collectedOn": {
+              "first": "2026-11-20",
+              "last": "2026-11-21"
+            },
+            "dataset": "hunter_pets",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 8
+          }
+        },
+        "creatures.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70938/creatures.json",
+          "bytes": 1543619,
+          "sha256": "679d1f39aabbafe1fcde53742f864e414a8a27ded7ebe503d9c16803c35dcfeb",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70938",
+            "collectedOn": {
+              "first": "2026-11-13",
+              "last": "2026-11-21"
+            },
+            "combatLogUploads": 15,
+            "dataset": "creatures",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 8
+          }
+        },
+        "creature_details.enUS.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70938/creature_details.enUS.json",
+          "bytes": 2380693,
+          "sha256": "33d9c2f933e488a1ad212af8963a6ffcfc1a925982c4339b972cee3baa169bb3",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "cacheFiles": 272,
+            "cachesLeftOut": 0,
+            "clientBuild": "1.60.1.70938",
+            "collectedOn": {
+              "first": "2026-11-13",
+              "last": "2026-11-17"
+            },
+            "dataset": "creature_details",
+            "license": "CC BY 4.0",
+            "locale": "enUS",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 6
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70888",
+      "files": {
+        "hunter_pets.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70888/hunter_pets.json",
+          "bytes": 2532,
+          "sha256": "8d7495979e6354d5a082fbe66b35ecdd430ee7409cbd344593e811afdbfa7893",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70888",
+            "collectedOn": {
+              "first": "2026-11-20",
+              "last": "2026-11-21"
+            },
+            "dataset": "hunter_pets",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          }
+        },
+        "creatures.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70888/creatures.json",
+          "bytes": 892316,
+          "sha256": "5eb4de9246d15f2109586786502672e875b1da2f005534ac4a8a9293754a9b97",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70888",
+            "collectedOn": {
+              "first": "2026-11-10",
+              "last": "2026-11-21"
+            },
+            "combatLogUploads": 10,
+            "dataset": "creatures",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          }
+        },
+        "creature_details.enUS.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70888/creature_details.enUS.json",
+          "bytes": 1768103,
+          "sha256": "6ae97be6d3b0dec269c840ce10ff695fbdb04dd315b13599f1e99bb3231793dd",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "cacheFiles": 100,
+            "cachesLeftOut": 0,
+            "clientBuild": "1.60.1.70888",
+            "collectedOn": {
+              "first": "2026-11-10",
+              "last": "2026-11-13"
+            },
+            "dataset": "creature_details",
+            "license": "CC BY 4.0",
+            "locale": "enUS",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70862",
+      "files": {
+        "hunter_pets.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70862/hunter_pets.json",
+          "bytes": 829,
+          "sha256": "1ef4564dc1df9d418232d35ab03befaf0c503b41f2b04bf5c6671344f66303f6",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70862",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-21"
+            },
+            "dataset": "hunter_pets",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          }
+        },
+        "creatures.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70862/creatures.json",
+          "bytes": 1154158,
+          "sha256": "950d90482d3990b0d6444219de01ce79976a57ba93bf7a4d33ebbf72a87c4f58",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70862",
+            "collectedOn": {
+              "first": "2026-11-07",
+              "last": "2026-11-21"
+            },
+            "combatLogUploads": 11,
+            "dataset": "creatures",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          }
+        },
+        "creature_details.enUS.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70862/creature_details.enUS.json",
+          "bytes": 1906616,
+          "sha256": "a610bf0a92892394364ae2b7d8205bbe66281b00d35ca95438756db13354c83d",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "cacheFiles": 142,
+            "cachesLeftOut": 0,
+            "clientBuild": "1.60.1.70862",
+            "collectedOn": {
+              "first": "2026-11-07",
+              "last": "2026-11-10"
+            },
+            "dataset": "creature_details",
+            "license": "CC BY 4.0",
+            "locale": "enUS",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70840",
+      "files": {
+        "hunter_pets.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70840/hunter_pets.json",
+          "bytes": 1395,
+          "sha256": "a073476e0c9aa1c69b7151d4e6cabacc1b7631aa8215128e1759cb3cf859ebfb",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70840",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-21"
+            },
+            "dataset": "hunter_pets",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 3
+          }
+        },
+        "creatures.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70840/creatures.json",
+          "bytes": 195916,
+          "sha256": "88d70d4da4d28b4a2c8a1292e8bfd9b7a63a154f7ce03357c752eecd6b1091a6",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70840",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-21"
+            },
+            "dataset": "creatures",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 3
+          }
+        },
+        "creature_details.enUS.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70840/creature_details.enUS.json",
+          "bytes": 688886,
+          "sha256": "76371579fa90a2cc67a334c9367bdc243a97fdb852f5feef396f16a9a948c40f",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "cacheFiles": 4,
+            "cachesLeftOut": 0,
+            "clientBuild": "1.60.1.70840",
+            "collectedOn": {
+              "first": "2026-11-07",
+              "last": "2026-11-07"
+            },
+            "dataset": "creature_details",
+            "license": "CC BY 4.0",
+            "locale": "enUS",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 2
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70790",
+      "files": {
+        "hunter_pets.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70790/hunter_pets.json",
+          "bytes": 4923,
+          "sha256": "c0c56095e7f3e250c12c7cd6288f92f31e6ac8a155d51aa91ec5e7adc8f06556",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70790",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-21"
+            },
+            "dataset": "hunter_pets",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          }
+        },
+        "creatures.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70790/creatures.json",
+          "bytes": 1122140,
+          "sha256": "53a792c56a04d81ec1b0c649a3be8a2729f7f235fe208d25bc6d063ef4bf70a6",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70790",
+            "collectedOn": {
+              "first": "2026-11-05",
+              "last": "2026-11-21"
+            },
+            "combatLogUploads": 13,
+            "dataset": "creatures",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          }
+        },
+        "creature_details.enUS.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70790/creature_details.enUS.json",
+          "bytes": 1161673,
+          "sha256": "b4a08094d881edb18f168bee8b71acc2e9d41165d590a1eefcb011a94a9e6762",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "cacheFiles": 147,
+            "cachesLeftOut": 0,
+            "clientBuild": "1.60.1.70790",
+            "collectedOn": {
+              "first": "2026-11-04",
+              "last": "2026-11-06"
+            },
+            "dataset": "creature_details",
+            "license": "CC BY 4.0",
+            "locale": "enUS",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 3
+          }
+        }
+      }
+    }
+  ],
+  "compiled": {
+    "bytes": 5144,
+    "sha256": "9a1ea8060805e8b67c494d42efe8b8cd5f8375be2eb1b3e94045278ee72e00be"
+  }
+}

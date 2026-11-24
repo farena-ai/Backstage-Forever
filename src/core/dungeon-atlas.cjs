@@ -8,6 +8,7 @@ const path = require("node:path");
 
 const { tipFor } = require("./boss-tips.cjs");
 const { normalizeEncounterHistory } = require("./journal-data.cjs");
+const { loadRoster } = require("./encounter-roster.cjs");
 const BASELINE = [
   // id, name, kind, min, max, faction, zone, mapId, entrance [x,y] (approximate), instance map, bosses
   ["rfc", "Ragefire Chasm", "dungeon", 13, 18, "Horde", "Orgrimmar", 1454, [52, 49], 389, ["Oggleflint", "Taragaman the Hungerer", "Jergosh the Invoker", "Bazzalan"]],
@@ -48,7 +49,10 @@ const PREP = {
 };
 const norm = (s) => String(s || "").toLowerCase().replace(/[’‘']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
-function loadEncounters(file = path.join(__dirname, "../../data/forever-encounters/pack.json")) {
+// The boss roster merged over every build of the patch (encounter-roster.cjs). A file path loads
+// the older single-build shape (data/forever-encounters), which the Companion's dated answer pins.
+function loadEncounters(file) {
+  if (file === undefined) return loadRoster();
   try {
     const p = JSON.parse(fs.readFileSync(file, "utf8"));
     if (p.kind !== "forever-encounters" || !Array.isArray(p.encounters) || p.encounters.length > 2000) return null;
@@ -107,6 +111,25 @@ function encounterRecap(profile, entriesByMap) {
   };
 }
 
+const loadPinnedEncounters = () => loadEncounters(path.join(__dirname, "../../data/forever-encounters/pack.json"));
+// A recorded name one or two letters off a baseline boss ("Geilhast", "Gelihast") is the same boss
+// typed by another game language, not a new one.
+function sameBoss(a, b) {
+  a = norm(a); b = norm(b);
+  if (a === b) return true;
+  if (a.length < 7 || Math.abs(a.length - b.length) > 1) return false;
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  let before = null;
+  for (let i = 1; i <= a.length; i++) {
+    const now = [i];
+    for (let j = 1; j <= b.length; j++) {
+      now[j] = Math.min(row[j] + 1, now[j - 1] + 1, row[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (before && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) now[j] = Math.min(now[j], before[j - 2] + 1);
+    }
+    before = row.slice(); row.splice(0, row.length, ...now);
+  }
+  return row[b.length] <= 1;
+}
 function buildAtlas({ profile = null, encounters = null, knowledgePack = null } = {}) {
   const level = Number.isInteger(profile?.level) ? profile.level : null;
   const faction = profile?.faction || null;
@@ -129,13 +152,13 @@ function buildAtlas({ profile = null, encounters = null, knowledgePack = null } 
     const bossNames = new Set([...bosses, ...observed.map((o) => o.name)].map(norm));
     // Your quests that point here: dungeon-tagged titles, or objectives naming a boss.
     const yours = quests.filter((q) => (q.objectives || []).some((o) => [...bossNames].some((b) => b && norm(o.text).includes(b))) || norm(q.title).includes(norm(name))).map((q) => ({ id: q.id, title: q.title, complete: Boolean(q.complete), objectives: (q.objectives || []).slice(0, 6) }));
-    const observedNames = new Set(observed.map((o) => norm(o.name)));
+    const seenAs = (b) => observed.find((o) => sameBoss(o.name, b));
     return {
       id, name, kind, levels: { min, max }, faction: side, zone, mapId, entrance: { x: ex / 100, y: ey / 100, approximate: true },
       difficulty: difficulty(level, min, max),
       factionNote: side && faction && side !== faction ? `${side}-side entrance; reachable but deep in enemy territory.` : null,
-      bosses: referenceBosses.map((b) => ({ name: b, observedInForever: observedNames.has(norm(b)), kills: observed.find((o) => norm(o.name) === norm(b))?.kills || 0, tip: tipFor(b) })),
-      observedOnly: observed.filter((o) => !referenceBosses.some((b) => norm(b) === norm(o.name))).map((o) => ({ name: o.name, kills: o.kills })),
+      bosses: referenceBosses.map((b) => ({ name: b, observedInForever: Boolean(seenAs(b)), kills: seenAs(b)?.kills || 0, tip: tipFor(b) })),
+      observedOnly: observed.filter((o) => !referenceBosses.some((b) => sameBoss(o.name, b))).map((o) => ({ name: o.name, kills: o.kills })),
       observedRuns: observed.reduce((m, o) => Math.max(m, o.runs || 0), 0),
       yourQuests: yours, roles: ROLES[kind], prep: PREP[kind], pickUp: dungeonQuests(knowledgePack, bossNames, profile, name, { min, max }),
       source: "Classic-era baseline (verify in Forever)" + (observed.length ? " + observed Forever encounters" : ""),
@@ -159,8 +182,8 @@ function buildAtlas({ profile = null, encounters = null, knowledgePack = null } 
     // Identity only: used to match the offline Fieldbook practice round trip.
     practiceOwner: profile ? { id: profile.id, clientBuild: profile.clientBuild ?? null,
       source: profile.source ? { kind: profile.source.kind, id: profile.source.id } : null } : null,
-    attribution: encounters ? `${encounters.attribution} Encounters observed through ${encounters.source?.collectedOn?.last || "unknown"}.` : null,
+    attribution: encounters ? `${encounters.attribution} Encounters observed through ${(encounters.collectedOn || encounters.source?.collectedOn)?.last || "unknown"}.` : null,
     caution: "Baseline levels, entrances and bosses come from the original game era; World of Warcraft: Forever may differ. Observed Forever encounters are marked.",
   };
 }
-module.exports = { buildAtlas, loadEncounters, difficulty, dungeonQuests, norm, BASELINE };
+module.exports = { buildAtlas, loadEncounters, loadPinnedEncounters, sameBoss, difficulty, dungeonQuests, norm, BASELINE };

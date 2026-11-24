@@ -74,6 +74,25 @@ node scripts/build-forever-trainers.cjs --relock work/forever-sources/<commit> -
 npm run build:addon-travel
 ```
 
+## Quest prerequisites, hunter pets and the boss roster
+
+Three small packs read upstream files that were downloaded but unused until 1.26. Each uses the shared pack tool (`scripts/forever-pack-tool.cjs`): a source lock beside the pack, a licence, a generated notice, strict validation, a size cap and an offline `check:` script.
+
+**`data/forever-prerequisites/`** comes from `quest_prerequisites.json`, which lists, per quest, the quests *every* recorded character had finished before taking it. That list holds the real prerequisites and also quests everybody simply does early, so the compiler keeps three careful readings and drops the rest: *needs* (a reported follow-up link of the quest pack that held for every record, three or more records), *lead-ins* (the only reported link, but someone took the quest without it) and *seen* (no reported link; handed in to the NPC that gives the quest; five or more records; shown as a pattern, never used to hide a quest). It is joined with `data/forever/pack.json` and stores that pack's hash, so it is rebuilt after the quest pack. Used by the quest guide ("Before this quest"), the guided routes (a quest waits until the quest it needs is handed in), the pick-up layer and `/bf available`, quest tooltips and `/bf chain`.
+
+**`data/forever-pets/`** comes from `hunter_pets.json` with names and places from `creature_details.enUS.json` and `creatures.json`: the beasts players tamed, the ability each came with, and what a pet ability asks at the trainer page. Recorded tames only. Ability names are not bundled; the app reads them from the player's game files and the game names them itself. Shown on Characters → Talents for hunters and by `/bf pet` (`BackstageForeverPetData.lua`, written by the same compiler).
+
+**`data/forever-encounter-roster/`** comes from `encounters.json` of every build: boss fights by the game's encounter id with kills, pulls and runs added up. It feeds the dungeon atlas. Upstream records no boss abilities. `data/forever-encounters/` is a different, older pack: one file of one build that the Companion's dated answer names, never rebuilt.
+
+```powershell
+npm run check:forever-prerequisites
+npm run check:forever-pets
+npm run check:forever-encounters
+node scripts/build-forever-prerequisites.cjs --source-dir work/forever-sources/<commit> --check
+```
+
+Upstream files that are still not compiled, and why, are listed by the refresh command itself (`UNUSED` in `scripts/refresh-forever-data.cjs`).
+
 ## Refreshing every pack in one command
 
 ```powershell

@@ -170,6 +170,83 @@ function BackstageForeverFlyLines(route,label,assumed,walkYards)
     return lines
 end
 
+-- Boats, zeppelins and airships (B2). Upstream names them but not where they stop; the desktop
+-- works the stops out from the player's own game files and hands them over in
+-- BackstageForeverDesktopData.ships[side]: {k=kind,n=name,s={{label,continent,wx,wy},...},r={{from,to,seconds},...}}.
+-- Pure: the clean ships for a side ('H' or 'A'). Anything damaged is skipped.
+function BackstageForeverFlyShips(desktop,side)
+    local out={}
+    local all=type(desktop)=='table' and rawget(desktop,'ships')
+    local list=type(all)=='table' and (side=='H' or side=='A') and rawget(all,side)
+    if type(list)~='table' then return out end
+    for i=1,math.min(#list,24) do
+        local t=list[i]
+        if type(t)=='table' and (t.k=='z' or t.k=='b' or t.k=='a') and type(t.s)=='table' and type(t.r)=='table' and #t.s>=2 and #t.s<=6 then
+            local stops,ok={},true
+            for j=1,#t.s do
+                local s=t.s[j]
+                if type(s)=='table' and type(s[1])=='string' and s[1]~='' and #s[1]<=60 and type(s[2])=='number' and type(s[3])=='number' and type(s[4])=='number' then
+                    stops[j]={l=(s[1]:gsub('|','||')),i=s[2],wx=s[3],wy=s[4]}
+                else ok=false end
+            end
+            local rides={}
+            for j=1,ok and math.min(#t.r,30) or 0 do
+                local r=t.r[j]
+                if type(r)=='table' and stops[r[1]] and stops[r[2]] and r[1]~=r[2] and type(r[3])=='number' and r[3]>0 and r[3]<=36000 then rides[#rides+1]={from=r[1],to=r[2],seconds=r[3]} end
+            end
+            if ok and #rides>0 then out[#out+1]={kind=t.k,name=type(t.n)=='string' and t.n~='' and #t.n<=60 and (t.n:gsub('|','||')) or nil,stops=stops,rides=rides} end
+        end
+    end
+    return out
+end
+-- Pure: the fastest way from one flight point to one on another continent with exactly one ride:
+-- fly to the flight point beside a stop, ride, fly on. nil when no ride joins the two continents.
+function BackstageForeverFlyCrossing(data,ships,start,dest,allowed)
+    local nodes=type(data)=='table' and type(data.flights)=='table' and data.flights.nodes
+    local a,b=nodes and nodes[start],nodes and nodes[dest]
+    if not a or not b or not a.i or not b.i or a.i==b.i then return nil end
+    local best
+    for _,ship in ipairs(type(ships)=='table' and ships or {}) do
+        for _,r in ipairs(ship.rides) do
+            local from,to=ship.stops[r.from],ship.stops[r.to]
+            if from.i==a.i and to.i==b.i then
+                local near,nearYards=BackstageForeverFlyNearest(data,from.wx,from.wy,from.i,allowed)
+                local far,farYards=BackstageForeverFlyNearest(data,to.wx,to.wy,to.i,allowed)
+                if near and far then
+                    local before=near~=start and BackstageForeverFlyRoute(data,start,near,allowed) or nil
+                    local after=far~=dest and BackstageForeverFlyRoute(data,far,dest,allowed) or nil
+                    if (near==start or before) and (far==dest or after) then
+                        local seconds=(before and before.seconds or 0)+nearYards/RUN_SPEED+r.seconds+farYards/RUN_SPEED+(after and after.seconds or 0)
+                        if not best or seconds<best.seconds then
+                            best={seconds=seconds,start=start,dest=dest,ship=ship,ride=r,from=from,to=to,near=near,nearYards=nearYards,far=far,farYards=farYards,before=before,after=after}
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+local SHIP_WORD={z='zeppelin',b='boat',a='airship'}
+-- Pure: the chat lines for a crossing. label(id) names a flight point.
+function BackstageForeverFlyCrossingLines(c,label,assumed,walkYards)
+    local word=T(SHIP_WORD[c.ship.kind] or 'boat')
+    local lines={}
+    lines[1]=('%s %s: %s %s, %s %s.'):format(T('To'),label(c.dest),T('about'),BackstageForeverTravelTime(c.seconds),T('plus the wait for the'),word)
+    if c.before then for _,line in ipairs(BackstageForeverFlyLines(c.before,label,false,walkYards)) do lines[#lines+1]=line end end
+    lines[#lines+1]=('%s %s: %s %d %s %s.'):format(T('Go to the'),c.from.l,T('about'),floor(c.nearYards+.5),T('yards from the flight master at'),label(c.near))
+    lines[#lines+1]=('%s %s %s %s %s %s: %s %s, %s.'):format(T('Ride the'),word,T('from'),c.from.l,T('to'),c.to.l,T('about'),BackstageForeverTravelTime(c.ride.seconds),T('plus the wait'))
+    if c.after then
+        lines[#lines+1]=('%s %s: %s %d %s %s.'):format(T('Then go to the flight master at'),label(c.far),T('about'),floor(c.farYards+.5),T('yards from the'),c.to.l)
+        for _,line in ipairs(BackstageForeverFlyLines(c.after,label,false,nil)) do lines[#lines+1]=line end
+    else
+        lines[#lines+1]=('%s %s %s %d %s %s.'):format(label(c.dest),T('is'),T('about'),floor(c.farYards+.5),T('yards from the'),c.to.l)
+    end
+    lines[#lines+1]=T('The stops and the ride time were worked out from your game files by the desktop app. Nobody can know the wait.')
+    if assumed then lines[#lines+1]=T('This assumes you know these flight points. Open a flight map once and the addon remembers which ones you have.') end
+    return lines
+end
+
 -- Pure: what a class trainer newly teaches at exactly this level, with the total.
 -- isKnown(spellId) -> true drops a skill the player already has. side 'A'/'H' hides the other
 -- faction's teleports and portals. Also reports the next level that has something new.
@@ -276,6 +353,24 @@ function BackstageForeverFlyCommand(message)
         else here=id end
     end
     if not best then
+        -- B2: a place across the sea, with one boat or zeppelin ride the desktop handed over.
+        local overseas=false
+        for _,id in ipairs(matches) do local n=data.flights.nodes[id] if n and n.i and n.i~=instance then overseas=true end end
+        if overseas and not here then
+            local ships=BackstageForeverFlyShips(BackstageForeverDesktopData,playerSide())
+            local crossing
+            for _,id in ipairs(matches) do
+                if allowed[id] then
+                    local c=BackstageForeverFlyCrossing(data,ships,start,id,allowed)
+                    if c and (not crossing or c.seconds<crossing.seconds) then crossing=c end
+                end
+            end
+            if crossing then
+                for _,line in ipairs(BackstageForeverFlyCrossingLines(crossing,label,assumed,yards)) do say(line) end
+                return crossing
+            end
+            if #ships==0 then return say(T('That place is on another continent. The desktop app works out where boats and zeppelins stop from your game files: open it with your game folder connected, then type /reload.')) end
+        end
         if here then return say(('%s %s.'):format(T('You are already at the flight point'),label(here))) end
         if blocked and not allowed[blocked] then return say(('%s %s. %s'):format(T('You have not learned the flight point'),label(blocked),T('Go there once and talk to the flight master.'))) end
         return say(('%s %s %s %s.'):format(T('No recorded flight connects'),label(start),T('to'),label(matches[1])))

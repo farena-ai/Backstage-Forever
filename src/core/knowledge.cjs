@@ -1,6 +1,7 @@
 "use strict";
 const buildCompat = require("./build-compat.cjs");
 const { latinName } = require("./latin-name.cjs");
+const { bundledPrerequisites, prerequisiteFacts } = require("./quest-prerequisites.cjs");
 // Application code: MIT. Compiled publisher facts: CC BY 4.0 (see data/forever/NOTICE).
 const { createHash } = require("node:crypto");
 const FILES = Object.freeze([
@@ -1282,11 +1283,18 @@ class KnowledgeIndex {
       previous: (this.reverse.get(questId) || []).slice(0, 12).map(link),
       next: q.nextQuestId ? [link(q.nextQuestId)] : [],
     };
+    // B3: what recorded players had finished before taking this quest. Only with the quest
+    // pack the prerequisite pack was built from; completion marks only with a known history.
+    const prerequisitePack = bundledPrerequisites();
+    const prerequisites = prerequisitePack && prerequisitePack.sourceCommit === this.pack.sourceCommit && prerequisitePack.build === this.pack.build
+      ? prerequisiteFacts(prerequisitePack, questId, { title: (x) => this.pack.quests[x]?.title, done: p.history?.completedIdsKnown === true ? completed : null })
+      : [];
     return {
       status,
       questId,
       record: q,
       chain,
+      prerequisites,
       givers: q.givers.map(resolve),
       turnIns: q.turnIns.map(resolve),
       objectiveLocations: q.objectiveLocations,

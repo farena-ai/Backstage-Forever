@@ -1,0 +1,26 @@
+Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
+License: https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/JIVESCORP/eg-link-output-wowf
+Immutable source commit: 423d6c9645cd102406782e7400805a7c738e2d69
+Product wowf; merged client builds (newest first): 1.60.1.71037, 1.60.1.70959, 1.60.1.70938, 1.60.1.70888, 1.60.1.70862, 1.60.1.70840, 1.60.1.70790.
+Tames collected 2026-11-09 to 2026-11-23.
+
+Backstage Forever changes to the compilation: hunter_pets.json, creatures.json
+and creature_details.enUS.json of each build are verified against
+source-lock.json. A beast joins by creature id over the builds: abilities and
+levels are unioned, tames are added up, the newest English name wins. Kept:
+creature id, name, pet family number, wild level range, the spell ids a tamed
+beast came with (active and passive apart), diet, number of recorded tames and
+up to three approximate places (one per zone map) from creatures.json. Per pet
+ability: spell id, the highest pet level recorded as needed, the highest
+training point cost recorded, and the pet families it was offered to. Dropped:
+attack speeds, training point tallies and contributor counts. Ability names
+are not bundled; the app reads them from the player's own game files.
+
+Coverage: 16 beasts (14 with an ability) of 7 families; 28 pet abilities;
+0 recorded beasts without an English name or level are left out.
+These are recorded tames, not a full list of beasts. No advice is derived.
+No runtime network request is needed.
+
+World of Warcraft and related content are copyright Blizzard Entertainment, Inc.
+The license covers the compilation and observations, not Blizzard content.
