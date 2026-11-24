@@ -3,7 +3,7 @@
 window.BadgesView = (() => {
   const api = window.backstage;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  const day = (t) => new Date(t * 1000).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  const day = (t) => (window.I18n?.when ? window.I18n.when(t * 1000, "date") : new Date(t * 1000).toLocaleString());
   let data = null, error = "", chosen = null, show = "all", category = "", query = "", mountedFor = null, focus = null, request = 0;
   const validKey = (v) => typeof v === "string" && /^[a-z0-9-]{1,40}$/.test(v) ? v : null;
   const artKeys = (b) => [...new Set([validKey(b.art), validKey(b.id)].filter(Boolean))];

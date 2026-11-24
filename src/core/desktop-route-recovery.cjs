@@ -2,6 +2,7 @@
 // Desktop policy only. Route order is reference data, not a record of play.
 const { savedBuild, reviewStatus } = require("./patch-impact.cjs");
 const { ALIASES, RACES, raceBits } = require("./guided-route.cjs");
+const { bundledPrerequisites, isLeadIn } = require("./quest-prerequisites.cjs");
 const MAX_SKIPS = 512;
 const MAX_SAVE_AGE = 24 * 60 * 60 * 1000;
 const point = (s) => Number.isSafeInteger(s.mapId) && s.mapId > 0 &&
@@ -63,7 +64,9 @@ function recover({ route, profile, pack, skips = [], now = Date.now() }) {
   if (s.kind === "pickup" || s.kind === "class") {
     if (ids.some((id) => pack.quests[id].minLevel > profile.level)) return blocked("level");
     if (!historyKnown) return blocked("unknown-history");
-    if (Object.values(pack.quests).some((q) => ids.includes(q.nextQuestId) && !done.has(q.id))) return blocked("prerequisite");
+    // A reported link players are known to have gone without (a lead-in) does not hold a quest back.
+    const prerequisites = bundledPrerequisites();
+    if (Object.values(pack.quests).some((q) => ids.includes(q.nextQuestId) && !done.has(q.id) && !isLeadIn(prerequisites, q.id, q.nextQuestId))) return blocked("prerequisite");
     return blocked("unconfirmed-pickup");
   }
   // One quest per step in the shipped route; a "fewest trips" hand-in can hold several.

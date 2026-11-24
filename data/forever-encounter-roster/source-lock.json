@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "product": "wowf",
+  "license": "CC BY 4.0",
+  "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+  "commit": "423d6c9645cd102406782e7400805a7c738e2d69",
+  "build": "1.60.1.71037",
+  "builds": [
+    {
+      "build": "1.60.1.71037",
+      "files": {
+        "encounters.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.71037/encounters.json",
+          "bytes": 7397,
+          "sha256": "6beb19b98fd878ec9264f712898f60da389453a0000d41f69e77281d878db5cf",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.71037",
+            "collectedOn": {
+              "first": "2026-11-21",
+              "last": "2026-11-22"
+            },
+            "combatLogUploads": 4,
+            "dataset": "encounters",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 2
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70959",
+      "files": {
+        "encounters.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70959/encounters.json",
+          "bytes": 11857,
+          "sha256": "b4c4471103360064c1b607954d599413df275d6caf9561aa34e10d85134845cc",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70959",
+            "collectedOn": {
+              "first": "2026-11-17",
+              "last": "2026-11-20"
+            },
+            "combatLogUploads": 9,
+            "dataset": "encounters",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 3
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70938",
+      "files": {
+        "encounters.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70938/encounters.json",
+          "bytes": 25401,
+          "sha256": "2baba6a581429e5b8612cf4b82189f9e3cba4b3dbd46e6fedd8da05f8f8af359",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70938",
+            "collectedOn": {
+              "first": "2026-11-13",
+              "last": "2026-11-17"
+            },
+            "combatLogUploads": 15,
+            "dataset": "encounters",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70888",
+      "files": {
+        "encounters.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70888/encounters.json",
+          "bytes": 14666,
+          "sha256": "72ad74380dac607bc8511fe0f2e078bd48cb3815c6c5858fdd61377aecfcbc71",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70888",
+            "collectedOn": {
+              "first": "2026-11-10",
+              "last": "2026-11-13"
+            },
+            "combatLogUploads": 10,
+            "dataset": "encounters",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70862",
+      "files": {
+        "encounters.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70862/encounters.json",
+          "bytes": 24298,
+          "sha256": "6a0aa51ef84bf7e003439bc0ae6ac7dbb5ef9411e70f3e920cfbeb4c91006ad0",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70862",
+            "collectedOn": {
+              "first": "2026-11-07",
+              "last": "2026-11-10"
+            },
+            "combatLogUploads": 11,
+            "dataset": "encounters",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70790",
+      "files": {
+        "encounters.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70790/encounters.json",
+          "bytes": 12221,
+          "sha256": "49ad0c8080821a8ccee7e6d714ad27f04f72c85d4eff88223be520c4060cf600",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70790",
+            "collectedOn": {
+              "first": "2026-11-05",
+              "last": "2026-11-07"
+            },
+            "combatLogUploads": 13,
+            "dataset": "encounters",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          }
+        }
+      }
+    }
+  ],
+  "compiled": {
+    "bytes": 14569,
+    "sha256": "2577565ff2dc1022c7e3bea698f48236311ab8b14c7cd8ef4d909f21dc5b1ecb"
+  }
+}

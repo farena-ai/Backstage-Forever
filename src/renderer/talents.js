@@ -114,6 +114,23 @@ window.TalentsView = (() => {
       <p class="tal-train-total"><strong>${t.levels.length > 1 ? "Total for these levels" : "Total"}: ${coins(t.total)}</strong>${preview ? "" : purse}${t.nextLevel ? ` <span>After that, new skills come at level ${t.nextLevel}.</span>` : ""}</p>
       <ul class="tal-train-notes">${t.notes.map((n) => `<li>${esc(n)}</li>`).join("")}<li>${esc(t.source)}</li></ul></section>`;
   }
+  // B3 (roadmap C7): the Hunter pet book. Recorded tames only; closed until asked for.
+  let petsOpen = false;
+  function petCard(b) {
+    if (!b) return "";
+    if (!b.available) return `<section class="tal-train tal-pets" data-tal-pets><h3>Hunter pet book</h3><p class="tal-train-none">${esc(b.reason || "The pet book is not available.")}</p></section>`;
+    const ability = (a) => `<li><span class="tal-pet-ability">${esc(a.name)}${a.rank ? ` <small>${esc(a.rank)}</small>` : ""}</span><span class="tal-pet-need">${a.petLevel ? `pet level ${a.petLevel}` : "pet level not recorded"}${a.cost === null ? "" : ` · ${a.cost} training points`}</span></li>`;
+    const place = (p) => `${esc(p.zone || `Map ${p.mapId}`)} ${Math.round(p.x * 100)}, ${Math.round(p.y * 100)}`;
+    const beast = (r) => `<tr class="${r.tameable === false ? "tal-pet-later" : ""}"><td><strong>${esc(r.name)}</strong><small>${esc(r.family)}${r.diet.length ? ` · eats ${esc(r.diet.join(", ").toLowerCase())}` : ""}</small></td><td class="tal-pet-lv">${r.minLevel === r.maxLevel ? r.minLevel : `${r.minLevel}–${r.maxLevel}`}${r.tameable === false ? "<small>above your level</small>" : ""}</td><td>${r.places.length ? r.places.map(place).join("<br>") : "<small>place not recorded</small>"}</td><td>${r.abilities.length ? `<ul>${r.abilities.map(ability).join("")}</ul>` : "<small>no ability recorded</small>"}</td></tr>`;
+    const learn = (a) => `<tr><td><strong>${esc(a.name)}</strong>${a.rank ? `<small>${esc(a.rank)}</small>` : ""}</td><td class="tal-pet-lv">${a.petLevel || "?"}</td><td class="tal-pet-lv">${a.cost === null ? "?" : a.cost}</td><td>${a.families.length ? esc(a.families.join(", ")) : "<small>not recorded</small>"}</td><td>${a.taughtBy.length ? esc(a.taughtBy.join(", ")) : "<small>no recorded beast</small>"}</td></tr>`;
+    const open = petsOpen ? `<h4>Beasts and the ability they come with</h4>
+      <div class="tal-pet-scroll"><table class="tal-pet-table"><thead><tr><th>Beast</th><th>Level</th><th>Seen at</th><th>Tame it to learn</th></tr></thead><tbody>${b.beasts.map(beast).join("")}</tbody></table></div>
+      <h4>Pet abilities at the trainer page</h4>
+      <div class="tal-pet-scroll"><table class="tal-pet-table"><thead><tr><th>Ability</th><th>Pet level</th><th>Points</th><th>Seen offered to</th><th>Recorded beast that has it</th></tr></thead><tbody>${b.abilities.map(learn).join("")}</tbody></table></div>
+      <ul class="tal-train-notes">${b.notes.map((n) => `<li>${esc(n)}</li>`).join("")}<li>${esc(b.source)}</li></ul>` : "";
+    return `<section class="tal-train tal-pets" data-tal-pets><header class="tal-pet-head"><h3>Hunter pet book <small>${b.counts.beasts} recorded beasts · ${b.counts.abilities} pet abilities</small></h3><button type="button" data-tal-pets-toggle aria-expanded="${petsOpen}">${petsOpen ? "Close the pet book" : "Open the pet book"}</button></header>
+      <p class="tal-train-none">Taming a beast teaches you the ability it comes with. You can then teach it to any pet of a family that can learn it.${b.level ? "" : " In game: /bf pet lists the beasts near your level."}</p>${open}</section>`;
+  }
   // --- Talent planner (roadmap C1) ---------------------------------------------------------------
   // "My plan": click talents to place points. Every click is checked in the main process on the
   // trees read from the player's own game files (talent-planner.cjs); this file only draws the answer.
@@ -345,7 +362,7 @@ window.TalentsView = (() => {
     if (error) return `<p class="tal-empty">${esc(error)}</p>`;
     if (!who) return `<p class="tal-empty">Choose a character with a class in Characters to see talents.</p>`;
     if (!data) return `<p class="tal-empty">Reading your talent trees…</p>`;
-    if (!data.available) return unlocksCard(data.unlocks) + trainingCard(data.training) + `<div class="tal-empty"><strong>Talent trees aren't available yet.</strong><p>${esc(data.reason || "")} Connect your WoW Forever folder in Settings → Game connection; the app reads your talents from your own game files.</p></div>`;
+    if (!data.available) return unlocksCard(data.unlocks) + trainingCard(data.training) + petCard(data.petBook) + `<div class="tal-empty"><strong>Talent trees aren't available yet.</strong><p>${esc(data.reason || "")} Connect your WoW Forever folder in Settings → Game connection; the app reads your talents from your own game files.</p></div>`;
     const c = data.coach, trees = data.trees;
     const descOf = (s) => { const t = trees.tabs.find((x) => x.name === s.tab)?.talents.find((x) => x.id === s.talentId); return t?.descriptions?.[s.rank - 1] || t?.descriptions?.[0] || ""; };
     const iconOf = (s) => trees.tabs.find((x) => x.name === s.tab)?.talents.find((x) => x.id === s.talentId)?.iconFileId;
@@ -361,6 +378,7 @@ window.TalentsView = (() => {
     return `<div class="tal-summary"><div class="tal-points"><strong>${c.points}</strong><span>talent point${c.points === 1 ? "" : "s"} at level ${c.level}</span></div><p>${c.points ? `By now: ${totals}.` : "Talents start at level 10: one point every level after that."} The path leans <strong>${esc(c.tree)}</strong>. ${esc(c.why)}</p></div>
       ${unlocksCard(data.unlocks)}
       ${trainingCard(data.training)}
+      ${petCard(data.petBook)}
       ${modeBar()}
       ${mode === "plan" ? planBody() : `<div class="tal-layout"><div class="tal-trees">${trees.tabs.map((t) => tree(t, c)).join("")}</div><aside class="tal-side"><h3>Spend next</h3>${next}<p class="tal-note">In game: press <code>N</code> to open Talents. This path is a suggestion for solo leveling; your choices are yours.</p></aside></div>`}`;
   }
@@ -403,6 +421,7 @@ window.TalentsView = (() => {
     });
     root.addEventListener("click", (e) => {
       const tab = e.target.closest("[data-tal-mode]"), cell = e.target.closest("button[data-tal-id]"), button = e.target.closest("[data-tal-act]");
+      if (e.target.closest("[data-tal-pets-toggle]")) { petsOpen = !petsOpen; paint(); return; }
       if (tab) { mode = tab.dataset.talMode === "plan" ? "plan" : "path"; paint(); }
       else if (cell) point("add", Number(cell.dataset.talId));
       else if (button) act(button.dataset.talAct, button);

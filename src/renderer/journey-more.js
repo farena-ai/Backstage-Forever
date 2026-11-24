@@ -5,7 +5,7 @@
 window.JourneyMore = (() => {
   const api = window.backstage;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  const day = (ms) => new Date(ms).toLocaleDateString(window.I18n?.lang, { day: "numeric", month: "short", year: "numeric" });
+  const day = (ms) => (window.I18n?.when ? window.I18n.when(ms, "date") : new Date(ms).toLocaleString());
   const wait = (text) => `<p class="jr-empty" role="status">${esc(text)}</p>`;
   const STATUS = { clear: "Nothing recorded against it", broken: "A record shows it broken", declared: "Self-declared" };
   const STANDING = { kept: "Reached by your rules", before: "Reached before this run", after: "Reached after a rule broke", unknown: "Reached; no date to compare", ahead: "Not reached yet" };

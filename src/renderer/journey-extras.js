@@ -12,9 +12,10 @@ window.JourneyExtras = (() => {
   let epoch = 0, note = "", busy = false, observer = null, thumbQueue = [], thumbBusy = false;
   const share = (kind, data, label) => window.ShareCard?.button(kind, data, label) || "";
   const dur = (s) => { if (!Number.isFinite(s)) return ""; const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`; };
-  const dateTime = (at) => new Date(at * 1000).toLocaleString(window.I18n?.lang, { dateStyle: "medium", timeStyle: "short" });
-  const longDay = (at) => new Date(at * 1000).toLocaleDateString(window.I18n?.lang, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  const clock = (at) => new Date(at * 1000).toLocaleTimeString(window.I18n?.lang, { hour: "2-digit", minute: "2-digit" });
+  const stamp = (v, kind) => (window.I18n?.when ? window.I18n.when(v, kind) : new Date(v).toLocaleString()); // one date format, in the shown language (i18n.js)
+  const dateTime = (at) => stamp(at * 1000);
+  const longDay = (at) => stamp(at * 1000, "longDay");
+  const clock = (at) => stamp(at * 1000, "time");
   const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
   const wait = (text) => `<p class="jr-empty" role="status">${esc(text)}</p>`;
 
@@ -168,7 +169,9 @@ window.JourneyExtras = (() => {
     if (!cache[`${view}:loaded`]) return wait("Reading what was saved…");
     return PAINT[view](cache[view]);
   }
-  const tabs = (active) => `<nav class="jx-views" aria-label="Journey views">${VIEWS.map(([id, label]) => `<button type="button" data-journey-view="${id}" aria-pressed="${active === id}">${label}</button>`).join("")}</nav>`;
+  // Two named groups: each stays on one line, so at a small window the switch is two tidy rows.
+  const GROUPS = Object.freeze([["Your journey", ["overview", "story", "timeline", "races", "coach"]], ["Runs and sharing", ["challenge", "overlay", "discord"]]]);
+  const tabs = (active) => `<nav class="jx-views" aria-label="Journey views">${GROUPS.map(([name, ids]) => `<div class="jx-group" role="group" aria-label="${name}"><span class="jx-group-name">${name}</span>${VIEWS.filter(([id]) => ids.includes(id)).map(([id, label]) => `<button type="button" data-journey-view="${id}" aria-pressed="${active === id}">${label}</button>`).join("")}</div>`).join("")}</nav>`;
 
   function mounted(root, view, rerender) {
     if (!PAINT[view]) return;

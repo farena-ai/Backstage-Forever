@@ -340,6 +340,7 @@ test("itemView maps every slot and keeps unknown stats readable", () => {
 // --- Hotfix cache (items the game delivers as hotfixes) -----------------------------------------
 const { readHotfixCache } = require("../src/core/hotfix-cache.cjs");
 const SPARSE_HASH = 0x919be54e, ITEM_HASH = 0x50238ec2;
+const NAME_HASH = 0x46c66698, SPELL_HASH = 0xe111669e, DURATION_HASH = 0xb423fa7a, EFFECT_HASH = 0xf04238a5, MISC_HASH = 0xc603ee28;
 // entries: [{ table, id, status = 1, data = Buffer }]
 function xfth(build, entries) {
   const head = Buffer.alloc(44); head.write("XFTH"); head.writeUInt32LE(9, 4); head.writeUInt32LE(build, 8);
@@ -391,7 +392,7 @@ test("DB2 reader decodes one inline row and refuses bytes that do not fit the la
 function withHotfixDb2(tables) {
   const original = db2.readDb2;
   const byFdid = Object.fromEntries(Object.entries(TABLES).map(([n, t]) => [t.fdid, n]));
-  const hashes = { itemSparse: SPARSE_HASH, item: ITEM_HASH };
+  const hashes = { itemSparse: SPARSE_HASH, item: ITEM_HASH, spellName: NAME_HASH, spell: SPELL_HASH, spellDuration: DURATION_HASH, spellEffect: EFFECT_HASH, spellMisc: MISC_HASH };
   db2.readDb2 = (buf) => { const name = byFdid[buf.fdid]; if (!tables[name]) throw Object.assign(Error("missing"), { code: "MISSING" }); return { header: { layoutHash: L(name), tableHash: hashes[name] || 1 }, rows: tables[name], inline: (rec) => { try { return JSON.parse(rec.toString()); } catch { return null; } } }; };
   return () => { db2.readDb2 = original; };
 }
@@ -466,6 +467,76 @@ test("items: when re-reading after new hotfixes fails, the earlier items stay; o
   const fresh = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, idleMs: 5, open, hotfixCheckMs: 0 });
   assert.equal(fresh.item(14145).name, "Cursed Felblade");
   g.release(); fresh.release();
+});
+
+// --- Spell hotfixes (B5) ------------------------------------------------------------------------
+const jsonRow = (fields) => Buffer.from(JSON.stringify(fields));
+const durationBytes = (ms) => { const b = Buffer.alloc(16); b.writeInt32LE(ms, 0); b.writeInt32LE(ms, 8); return b; };
+test("spells: names, ranks, tooltips and durations follow the game's hotfixes; talents follow the spells", (t) => {
+  const restore = withHotfixDb2(fakeTables()); t.after(restore);
+  const dirs = install(), stats = { opened: 0, reads: [], closed: 0 };
+  writeHotfix(dirs, 70938, [
+    { table: NAME_HASH, id: 133, data: jsonRow(["Pyroblast"]) },                                                    // renamed
+    { table: SPELL_HASH, id: 133, data: jsonRow(["Rank 2", "Burns the target for $s1 Fire damage over $d.", ""]) }, // reworded
+    { table: DURATION_HASH, id: 35, data: durationBytes(9000) },                                                     // longer
+    { table: NAME_HASH, id: 9000, data: jsonRow(["Brand New Spell"]) },                                              // exists only as a hotfix
+    { table: NAME_HASH, id: 12296, status: 2 },                                                                      // removed by hotfix
+    { table: NAME_HASH, id: 12282, data: Buffer.from("not a row") },                                                 // unreadable: the installed name stays
+    { table: DURATION_HASH, id: 36, data: Buffer.alloc(12) },                                                        // wrong size: skipped
+    { table: EFFECT_HASH, id: 1, data: Buffer.alloc(136) }, { table: EFFECT_HASH, id: 2, data: Buffer.alloc(136) },  // counted, never decoded
+    { table: MISC_HASH, id: 1, data: Buffer.alloc(119) },
+  ]);
+  const g = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, idleMs: 5, open: fakeStorage(stats), hotfixCheckMs: 0 });
+  assert.deepEqual(g.spell(133), { id: 133, name: "Pyroblast", iconFileId: 135812, rank: "Rank 2", description: "Burns the target for 14 to 22 Fire damage over 9 sec." });
+  assert.deepEqual(g.spell(9000), { id: 9000, name: "Brand New Spell", iconFileId: null });
+  assert.equal(g.spell(12296), null);
+  assert.equal(g.spell(12282).name, "Improved Heroic Strike");
+  const loaded = g.load("spells");
+  assert.equal(loaded.hotfixSpells, 1);
+  assert.deepEqual(loaded.notes, ["spellName: 1 hotfix rows unreadable", "spellDuration: 1 hotfix rows unreadable", "spellMisc: 1 hotfix rows not read (column sizes unknown)", "spellEffect: 2 hotfix rows not read (column sizes unknown)"]);
+  assert.equal(g.item(25).name, "Worn Shortsword", "items are untouched by spell hotfixes");
+  // Talents name their ranks from the hotfixed spells.
+  const arms = g.talents("warrior").tabs[0].talents;
+  assert.equal(arms.find((x) => x.id === 124).name, "Improved Heroic Strike");
+  assert.equal(g.load("talents").hotfix, loaded.hotfix);
+  const opened = stats.opened;
+  // Same hotfixes: a fresh instance uses the saved copies without opening the game.
+  const stats2 = { opened: 0, reads: [], closed: 0 };
+  const again = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, idleMs: 5, open: fakeStorage(stats2), hotfixCheckMs: 0 });
+  assert.equal(again.spell(133).name, "Pyroblast"); assert.equal(again.talents("warrior").tabs[0].talents.length, 2 - 0);
+  assert.equal(stats2.opened, 0);
+  // New spell hotfixes arrive while the app runs: spells and talents are read again.
+  writeHotfix(dirs, 70938, [{ table: NAME_HASH, id: 12282, data: jsonRow(["Better Heroic Strike"]) }]);
+  assert.equal(again.spell(133).name, "Fireball", "the earlier hotfix is gone from the cache, so the installed name is back");
+  assert.equal(again.talents("warrior").tabs[0].talents.find((x) => x.id === 124).name, "Better Heroic Strike");
+  assert.ok(stats2.opened >= 1);
+  // A cache written by another game build is not used.
+  writeHotfix(dirs, 70937, [{ table: NAME_HASH, id: 133, data: jsonRow(["Wrong Build"]) }]);
+  assert.equal(again.spell(133).name, "Fireball");
+  assert.equal(again.spell(12282).name, "Improved Heroic Strike");
+  assert.ok(opened >= 1);
+  g.release(); again.release();
+});
+
+test("spells: a hotfix row of a table with another hash, or a failed re-read, changes nothing", (t) => {
+  // The spell table reports another table hash: its hotfix rows are skipped and said so.
+  const original = db2.readDb2;
+  const restore = withHotfixDb2(fakeTables()); t.after(() => { restore(); db2.readDb2 = original; });
+  const patchedRead = db2.readDb2;
+  db2.readDb2 = (buf) => { const d = patchedRead(buf); return d.header.tableHash === SPELL_HASH ? { ...d, header: { ...d.header, tableHash: 7 } } : d; };
+  const dirs = install();
+  writeHotfix(dirs, 70938, [{ table: SPELL_HASH, id: 133, data: jsonRow(["Rank 9", "Changed.", ""]) }, { table: NAME_HASH, id: 133, data: jsonRow(["Pyroblast"]) }]);
+  let broken = false, opened = 0;
+  const open = () => { opened++; if (broken) throw Error("locked"); return { readFileId: (fdid, opts) => ({ fdid, opts }), close() {} }; };
+  const g = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, idleMs: 5, open, hotfixCheckMs: 0 });
+  assert.equal(g.spell(133).name, "Pyroblast"); assert.equal(g.spell(133).rank, "Rank 1");
+  assert.ok(g.load("spells").notes.includes("spell: hotfixes skipped"));
+  g.release(); broken = true;
+  writeHotfix(dirs, 70938, [{ table: NAME_HASH, id: 133, data: jsonRow(["Later Name"]) }]);
+  assert.equal(g.spell(133).name, "Pyroblast", "the earlier spells stay when the game cannot be read");
+  const tries = opened;
+  assert.equal(g.spell(133).name, "Pyroblast"); assert.equal(opened, tries, "a failed re-read is not repeated for the same hotfixes");
+  g.release();
 });
 
 // --- Flight points, flight prices, reputation sizes and spell levels (kind "extras") --------------

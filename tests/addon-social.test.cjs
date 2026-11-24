@@ -259,7 +259,7 @@ test("the social helpers are wired in, saved per character, switchable, and neve
 test("German clients get the social lines in German", () => {
   const out = lua(String.raw`
 GetLocale=function() return 'deDE' end
-dofile('addon/BackstageForever/BackstageForeverLocale.lua')
+dofile('addon/BackstageForever/BackstageForeverLocale.lua') dofile('addon/BackstageForever/BackstageForeverLocaleDe.lua') dofile('addon/BackstageForever/BackstageForeverLocaleEs.lua') dofile('addon/BackstageForever/BackstageForeverLocaleFr.lua')
 ` + FILE + String.raw`
 local q=BackstageForeverGroupQuests({{title='Der vermisste Diplomat',level=28,group=3,tagId=1,tagName='Elite'},{title='Bringt Freunde',level=22,group=2}})
 print(BackstageForeverLfgText(q[2])) print(BackstageForeverLfgText(q[1]))

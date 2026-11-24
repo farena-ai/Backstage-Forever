@@ -47,8 +47,20 @@ const TABLES = {
   taxiPathNode: { fdid: 1000437, layout: 0xfe362e70, opts: { floats: [0] } },
 };
 const FORMAT = 1; // bump when the cached JSON shape or a formula changes
-// Table hashes of the two item tables inside the game's hotfix cache.
-const HOTFIX_TABLES = { itemSparse: 0x919be54e, item: 0x50238ec2 };
+// Table hashes inside the game's hotfix cache: the two item tables, and (B5) the spell tables
+// whose hotfix rows can be read with certainty. Checked once against a real install (build 71037,
+// enUS): SpellName 1,341 rows, all read, 1,321 of the 1,322 that are also installed are equal (the
+// other is a real rename); Spell 1,341 rows, all read, 1,316 of 1,322 equal (six reworded
+// tooltips); SpellDuration 1 row, read, equal.
+const HOTFIX_TABLES = { itemSparse: 0x919be54e, item: 0x50238ec2, spellName: 0x46c66698, spell: 0xe111669e, spellDuration: 0xb423fa7a };
+// Spell tables that are in the cache but are NOT read. Their columns are packed into bits, so the
+// game file does not give the full column sizes a hotfix row uses, and the sizes cannot be told
+// for certain from the rows (most columns are zero in most rows). Counted, never decoded:
+// their installed rows stay. The talent tables had no hotfix row at all.
+const HOTFIX_UNREAD = { spellMisc: 0xc603ee28, spellEffect: 0xf04238a5, spellLevels: 0x1ddec5e6 };
+// Which hotfix tables each kind of game data is built from. Talents show spell names and
+// tooltips, so they follow the spell hotfixes.
+const HOTFIX_KINDS = { items: ["itemSparse", "item"], spells: ["spellName", "spell", "spellDuration", "spellMisc", "spellEffect"], talents: ["spellName", "spell", "spellDuration", "spellMisc", "spellEffect"] };
 
 // Classic class ids (ChrClasses) and their AllowableClass / ClassMask bits.
 const CLASSES = { 1: "Warrior", 2: "Paladin", 3: "Hunter", 4: "Rogue", 5: "Priest", 7: "Shaman", 8: "Mage", 9: "Warlock", 11: "Druid" };
@@ -91,6 +103,13 @@ function itemHotfix(rec) {
   if (rec.length !== ITEM_HOTFIX_BYTES) return null;
   return [rec.readInt32LE(0), rec[4], rec[5], rec.readInt8(6), rec[7], rec.readInt32LE(8), rec[12], rec.readInt32LE(13), rec[17], 0, 0, 0, 0, 0, 0, 0];
 }
+// SpellDuration is bit-packed too, but its four columns are all whole 32-bit numbers: a hotfix row
+// is exactly 16 bytes. Only the first column (the duration) is used.
+const DURATION_HOTFIX_BYTES = 16;
+function durationHotfix(rec) {
+  if (rec.length !== DURATION_HOTFIX_BYTES) return null;
+  return [rec.readInt32LE(0), rec.readInt32LE(4), rec.readInt32LE(8), rec.readInt32LE(12)];
+}
 // Rows the game received as hotfixes (hotfix-cache.cjs) laid over a table's installed rows.
 // A hotfix row that does not fit the table's layout exactly is left out: the installed row stays.
 function withHotfixes(db, name, hotfix, notes) {
@@ -102,7 +121,7 @@ function withHotfixes(db, name, hotfix, notes) {
   for (const [id, entry] of patch) {
     if (entry.status === 2) { byId.delete(id); continue; }
     let fields = null;
-    try { fields = name === "item" ? itemHotfix(entry.data) : db.inline(entry.data); } catch {}
+    try { fields = name === "item" ? itemHotfix(entry.data) : name === "spellDuration" ? durationHotfix(entry.data) : db.inline(entry.data); } catch {}
     if (!fields) { unread++; continue; }
     if (!byId.has(id)) added++;
     byId.set(id, { id, fields });
@@ -265,13 +284,23 @@ function resolveDescription(text, spellId, facts, depth = 0) {
   return s.length > 600 ? s.slice(0, 597) + "..." : s;
 }
 
-function extractSpells(storage) {
+function extractSpells(storage, hotfix = null) {
   const notes = [];
-  const names = readTable(storage, "spellName");
+  // B5: names, rank and tooltip text, and durations follow the game's hotfixes. A table that is
+  // missing or laid out differently is left as before; a hotfix row that does not fit is skipped.
+  const patched = (name, optional) => {
+    let db; try { db = readDb(storage, name); } catch (e) { if (!optional) throw e; notes.push(`${name}: ${e.code === "LAYOUT" ? "layout differs" : "unreadable"}`); return null; }
+    return withHotfixes(db, name, hotfix, notes);
+  };
+  const fromNames = patched("spellName", false), names = fromNames.rows;
   const misc = tryTable(storage, "spellMisc", notes);
-  const text = tryTable(storage, "spell", notes);
+  const text = patched("spell", true)?.rows || null;
   const effectRows = text ? tryTable(storage, "spellEffect", notes) : null;
-  const durationRows = text ? tryTable(storage, "spellDuration", notes) : null;
+  const durationRows = text ? patched("spellDuration", true)?.rows || null : null;
+  for (const [name, hash] of Object.entries(HOTFIX_UNREAD)) {
+    const waiting = [...(hotfix?.tables?.get(hash)?.values() || [])].filter((e) => e.status === 1).length;
+    if (waiting && name !== "spellLevels") notes.push(`${name}: ${waiting} hotfix rows not read (column sizes unknown)`);
+  }
   const icons = new Map(), durationIndex = new Map();
   for (const r of misc || []) if (r.relation && r.fields[1] === 0 && !icons.has(r.relation)) { icons.set(r.relation, r.fields[10]); durationIndex.set(r.relation, r.fields[3]); }
   const durations = new Map((durationRows || []).map((r) => [r.id, r.fields[0]]));
@@ -291,7 +320,7 @@ function extractSpells(storage) {
     const description = effectRows && durationRows ? resolveDescription(facts.text.get(r.id), r.id, facts) : null;
     out[r.id] = [r.fields[0], icons.get(r.id) || 0, description, rank.get(r.id) || null];
   }
-  return { spells: out, notes };
+  return { spells: out, notes, hotfixSpells: fromNames.added };
 }
 
 function spellView(id, row) {
@@ -458,7 +487,7 @@ function extractTransports(storage) {
 class GameData {
   constructor({ getRoot, cacheDir, idleMs = 60000, open = null, maxFileBytes = 32 * 1024 * 1024, maxIconBytes = 16 * 1024 * 1024, maxIconSide = 256, memoryIcons = 128, hotfixCheckMs = 30000 }) {
     this.hotfixCheckMs = hotfixCheckMs;
-    this.hot = null; // last look at the game's hotfix cache: { at, key, build, signature, parsed }
+    this.hot = {}; // kind -> last look at the game's hotfix cache: { at, key, build, signature, parsed }
     this.getRoot = getRoot;
     this.cacheDir = cacheDir;
     this.idleMs = idleMs;
@@ -499,10 +528,12 @@ class GameData {
 
   // The game's own hotfix cache for this build, looked at again at most every hotfixCheckMs.
   // -> { signature, parsed } where signature is null when there is nothing usable.
-  hotfixes(build) {
-    const now = Date.now();
-    if (this.hot && this.hot.build === build && now - this.hot.at < this.hotfixCheckMs) return this.hot;
+  hotfixes(build, kind = "items") {
+    const now = Date.now(), last = this.hot[kind];
+    const keep = (state) => (this.hot[kind] = state);
+    if (last && last.build === build && now - last.at < this.hotfixCheckMs) return last;
     const none = { at: now, key: null, build, signature: null, parsed: null };
+    const hashes = HOTFIX_KINDS[kind].map((name) => HOTFIX_TABLES[name] ?? HOTFIX_UNREAD[name]);
     try {
       const { readHotfixCache, MAX_FILE } = require("./hotfix-cache.cjs");
       const dir = path.join(this.getRoot(), "Cache", "ADB");
@@ -512,19 +543,20 @@ class GameData {
         let st; try { st = fs.statSync(file); } catch { continue; }
         if (!st.isFile() || st.size > MAX_FILE) continue;
         const key = `${file}|${st.size}|${st.mtimeMs}`;
-        if (this.hot && this.hot.build === build && this.hot.key === key) return (this.hot = { ...this.hot, at: now });
-        const parsed = readHotfixCache(fs.readFileSync(file), Object.values(HOTFIX_TABLES));
+        if (last && last.build === build && last.key === key) return keep({ ...last, at: now });
+        const parsed = readHotfixCache(fs.readFileSync(file), hashes);
         // Only a cache written by this exact game build is used: its rows follow this build's table layouts.
-        if (!parsed || String(build).split(".").pop() !== String(parsed.build)) return (this.hot = { ...none, key });
-        return (this.hot = { at: now, key, build, signature: parsed.signature, parsed });
+        if (!parsed || String(build).split(".").pop() !== String(parsed.build)) return keep({ ...none, key });
+        return keep({ at: now, key, build, signature: parsed.signature, parsed });
       }
     } catch {}
-    return (this.hot = none);
+    return keep(none);
   }
   load(kind) {
     const build = this.build();
-    const hot = kind === "items" ? this.hotfixes(build) : null;
-    // Items read before the game received new item hotfixes are read again; if that fails they are kept.
+    const hot = HOTFIX_KINDS[kind] ? this.hotfixes(build, kind) : null;
+    // Items, spells and talents read before the game received new hotfixes for their tables are
+    // read again; if that fails they are kept.
     const fresh = (value) => !hot || (value.hotfix ?? null) === hot.signature;
     let stale = null;
     const have = this.data[kind];
@@ -548,9 +580,10 @@ class GameData {
       const spells = kind === "talents" ? this.load("spells").spells : null;
       const s = this.open();
       try {
-        const r = kind === "items" ? extractItems(s, hot?.parsed) : kind === "spells" ? extractSpells(s) : kind === "recipes" ? extractRecipes(s) : kind === "extras" ? extractExtras(s) : kind === "transports" ? extractTransports(s) : extractTalents(s, spells);
+        const r = kind === "items" ? extractItems(s, hot?.parsed) : kind === "spells" ? extractSpells(s, hot?.parsed) : kind === "recipes" ? extractRecipes(s) : kind === "extras" ? extractExtras(s) : kind === "transports" ? extractTransports(s) : extractTalents(s, spells);
         value = { [kind]: r[kind], notes: r.notes };
         if (kind === "items") { value.hotfix = hot.signature; value.hotfixItems = r.hotfixItems; this.iconIds = null; }
+        else if (hot) { value.hotfix = hot.signature; if (kind === "spells") value.hotfixSpells = r.hotfixSpells; }
       } finally { this.idle(); }
     } catch (e) {
       if (stale) { this.data[kind] = { build, value: stale, hotfixFailed: hot.signature }; return stale; }
