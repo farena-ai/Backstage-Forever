@@ -127,7 +127,9 @@ local got={}
 for _,kind in ipairs({'Q','R','W','QQ','',5}) do assert(BackstageForeverPartyHandle(kind,function() end)==false,tostring(kind)) end
 assert(BackstageForeverPartyHandle('X',function(sender,message) got[#got+1]='party:'..sender..':'..message end)==true)
 assert(BackstageForeverPartyHandle('X',function(sender,message) got[#got+1]='guild:'..sender..':'..message end,'GUILD')==true)
-assert(BackstageForeverPartyHandle('X',function() end,'RAID')==false and BackstageForeverPartyHandle('Y','not a function')==false)
+-- 1.26: raid comms may register for the RAID channel; it stays silent until their own switch is on (tests/addon-raid.test.cjs).
+assert(BackstageForeverPartyHandle('X',function(sender,message) got[#got+1]='raid:'..sender..':'..message end,'RAID')==true)
+assert(BackstageForeverPartyHandle('X',function() end,'WHISPER')==false and BackstageForeverPartyHandle('Y','not a function')==false)
 from('Ann','Xhello','PARTY') from('Ann','Xhello','GUILD') from('Ann','Xhello','RAID') from('Ann','Xhello','WHISPER') from('Me','Xhello','GUILD')
 from('Ann','X'..string.rep('x',300),'GUILD') from('Ann','','GUILD') from('Ann','Zunknown','GUILD')
 assert(table.concat(got,' ')=='party:Ann:Xhello guild:Ann:Xhello',table.concat(got,' '))

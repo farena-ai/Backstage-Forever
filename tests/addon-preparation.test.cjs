@@ -226,13 +226,16 @@ C_SkillInfo.GetNumSkillLines=function()return 1 end
 spells={};for i=1,101 do spells[i]=i end
 C_TradeSkillUI.GetRecipeInfo=function(id)recipeReads=recipeReads+1;return {recipeID=id,name='Recipe '..id,learned=true}end
 C_TradeSkillUI.GetRecipeSchematic=function(id)local slots={};for i=1,21 do slots[i]=basic(i,1)end;return {recipeID=id,isRecraft=false,reagentSlotSchematics=slots}end
-recipeReads=0;event('NEW_RECIPE_LEARNED');flush();assert(recipeReads==100);save()
+recipeReads=0;event('NEW_RECIPE_LEARNED');flush();assert(recipeReads==101,'100 detailed recipes; the id list reads the one more');save()
 `);
   for (const p of rows.slice(0, 3)) assert.equal(active(p).readiness.workshop.materials.complete, false);
   assert.equal(active(rows[3]).readiness.workshop.professions.complete, false);
   const recipes = active(rows[4]).readiness.workshop.recipes;
   assert.equal(recipes.complete, false); assert.equal(recipes.items.length, 100);
   for (const r of recipes.items) { assert.equal(r.reagentsKnown, false); assert.deepEqual(r.reagents, []); }
+  // The id list (extras) is not cut at 100: every learned recipe of the profession is in it.
+  const known = active(rows[4]).extras.recipes.lines;
+  assert.equal(known.length, 1); assert.equal(known[0].l, 171); assert.equal(known[0].c, true); assert.equal(known[0].ids.length, 101);
 });
 
 test("export budget sheds workshop before older quests, XP and history", () => {

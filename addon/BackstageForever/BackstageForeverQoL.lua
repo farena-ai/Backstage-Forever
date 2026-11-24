@@ -130,6 +130,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','LOOT_READY','TAXIMAP_OPENED','UI_ERROR_MESSAGE'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'QoL',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b)
             if not settings then loadSettings() end
             if event=='PLAYER_LOGIN' then

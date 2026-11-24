@@ -187,7 +187,15 @@ end
 -- of their messages and send through BackstageForeverPartySend, so the same rules hold for all:
 -- one prefix, at most 255 bytes, party only while party sync is on, never a raid, never a whisper.
 -- Q, R and W belong to party sync itself.
-local handlers={PARTY={},GUILD={}}
+-- 1.26: raid comms (BackstageForeverRaid.lua) use the RAID channel behind their own switch, off
+-- until you turn it on. Party sync itself still never sends to a raid.
+local handlers={PARTY={},GUILD={},RAID={}}
+local function raidOn()
+    local fn=BackstageForeverRaidOn
+    if type(fn)~='function' then return false end
+    local ok,on=pcall(fn)
+    return ok and on==true
+end
 function BackstageForeverPartyHandle(kind,fn,channel)
     local list=handlers[channel or 'PARTY']
     if not list or type(kind)~='string' or #kind~=1 or kind=='Q' or kind=='R' or kind=='W' or type(fn)~='function' then return false end
@@ -203,6 +211,8 @@ function BackstageForeverPartySend(text,channel)
     if type(text)~='string' or text=='' or #text>255 then return false end
     if channel=='GUILD' then
         if call(IsInGuild)~=true then return false end
+    elseif channel=='RAID' then
+        if not raidOn() or call(IsInRaid)~=true then return false end
     else
         channel='PARTY'
         if not settings.enabled or not inParty() then return false end
@@ -219,6 +229,15 @@ local function onMessage(prefix,message,channel,sender)
         sender=shortName(sender)
         if not sender or sender==me() or type(message)~='string' or message=='' or #message>255 then return end
         local handler=handlers.GUILD[message:sub(1,1)]
+        if handler then pcall(handler,sender,message) end
+        return
+    end
+    if channel=='RAID' then
+        -- Raid comms have their own switch; each handler checks who may send what.
+        if not raidOn() or call(IsInRaid)~=true then return end
+        sender=shortName(sender)
+        if not sender or sender==me() or type(message)~='string' or message=='' or #message>255 then return end
+        local handler=handlers.RAID[message:sub(1,1)]
         if handler then pcall(handler,sender,message) end
         return
     end
@@ -310,6 +329,7 @@ if type(CreateFrame)=='function' then
             if settings and now()-lastSent>=SEND_GAP then pcall(broadcast,false) end
         end)
         local wasInParty=false
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Party',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a,b,c,d)
             if not settings then loadSettings() end
             if event=='PLAYER_LOGIN' then

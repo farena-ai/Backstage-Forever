@@ -225,6 +225,28 @@ test("private find provenance uses the row's build without changing the communit
   assert.equal(make({ ...player, gathering: null }).build().pins.some((p) => p.kind === "find"), false);
 });
 
+test("Data coverage counts flight masters from the transport pack, once each and by side", () => {
+  const transport = require("../src/core/transport-data.cjs").loadTransportPack();
+  const state = { activeProfileId: "A", profiles: [{ id: "A", ...player }] };
+  const withPack = new WorldMap({ getState: () => state, knowledge: { bundled: index, index: () => index }, travelReference: loadTravelReference(fs.readFileSync(path.join(root, "data/forever-travel/pack.json"))), getTransport: () => transport }).coverage();
+  const without = new WorldMap({ getState: () => state, knowledge: { bundled: index, index: () => index }, travelReference: loadTravelReference(fs.readFileSync(path.join(root, "data/forever-travel/pack.json"))) }).coverage();
+  assert.deepEqual(withPack.flightPoints, { total: transport.nodes.length, placed: transport.nodes.filter((n) => n.mapId).length });
+  assert.ok(withPack.flightPoints.total >= 60);
+  const zones = new Set(withPack.zones.map((z) => z.mapId));
+  for (const z of withPack.zones) for (const f of ["Horde", "Alliance"]) {
+    const expected = new Set(transport.nodes.filter((n) => n.mapId === z.mapId && n.side === f).map((n) => n.npcId || "point:" + n.id));
+    assert.ok(z[f].flightMasters >= expected.size, `${z.name} ${f}: ${z[f].flightMasters} of ${expected.size}`);
+    assert.ok(z[f].flightMasters <= expected.size + 2, `${z.name} ${f} counts a flight master twice`);
+  }
+  const sum = (c) => c.zones.reduce((n, z) => n + z.Horde.flightMasters + z.Alliance.flightMasters, 0);
+  const placedInZones = transport.nodes.filter((n) => zones.has(n.mapId)).length;
+  assert.ok(sum(withPack) >= placedInZones && sum(withPack) > sum(without) + 20, `${sum(withPack)} with the pack, ${sum(without)} without`);
+  // The Barrens has Horde flight masters at the Crossroads, Camp Taurajo and Ratchet's neighbours.
+  const barrens = withPack.zones.find((z) => z.mapId === 1413);
+  assert.ok(barrens.Horde.flightMasters >= 2, JSON.stringify(barrens.Horde));
+  assert.deepEqual(without.flightPoints, { total: 0, placed: 0 });
+});
+
 test("your remembered herbs, ore and chests become find pins and a per-zone heat map", () => {
   const { findPins, gatheringHeat } = require("../src/core/world-map.cjs");
   const rec = (method, mapId, x, y) => ({ id: `wowf:${method}:1:${mapId}:${x}:${y}:1.60.1.70888`, method, entityId: 1, itemIds: [2770], mapId, x, y, observedAt: "2026-11-11T12:00:00.000Z", clientBuild: "1.60.1.70888", name: method === "chest" ? "Battered Chest" : "Node", evidence: "observed-gathering-loot", precision: "recorded-standing-point", approximate: true });

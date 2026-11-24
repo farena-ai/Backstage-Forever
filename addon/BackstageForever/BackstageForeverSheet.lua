@@ -303,6 +303,7 @@ if type(CreateFrame)=='function' then
     local f=CreateFrame('Frame')
     if f then
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED'}) do pcall(f.RegisterEvent,f,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Sheet',f) end
         pcall(f.SetScript,f,'OnEvent',function(_,event)
             if event=='PLAYER_LOGIN' then makeButton()
             elseif event=='PLAYER_REGEN_DISABLED' then hideMenu();if setButton then pcall(setButton.Disable,setButton) end

@@ -189,7 +189,8 @@ test("the longest desktop preview is a bounded identity-free command accepted by
     for _,key in ipairs({${keys.map(key => `'${key}'`).join(",")}}) do
       assert(BackstageForeverHelperSettings[key]==false,key)
     end
-    cmd('help');assert(sawBatchHelp)
+    cmd('help');assert(not sawBatchHelp,'the bare command prints the short index')
+    cmd('help settings');assert(sawBatchHelp)
   `, "nil", "deDE", `
     local sawBatchHelp=false
     local original=DEFAULT_CHAT_FRAME.AddMessage

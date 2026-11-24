@@ -84,8 +84,11 @@ const REPLY = "A **two-handed axe** suits a level 12 warrior.\n\n- Keep the <b>t
     let panel = null;
     for (let i = 0; i < 100 && !(panel?.visible); i++) { panel = await panelWindow(); if (!panel?.visible) await new Promise((r) => setTimeout(r, 100)); }
     assert.ok(panel?.visible, "the answer panel appears");
-    const view = app.windows().find((w) => /ask-panel\.html$/.test(w.url()));
-    assert.ok(view, "panel page");
+    // The main process shows the window before Playwright has attached to its page (and before the
+    // page reports its address), so the list can lag the window by a moment: wait for the page itself.
+    let view = null;
+    for (let i = 0; i < 100 && !view; i++) { view = app.windows().find((w) => /ask-panel\.html$/.test(w.url())) || null; if (!view) await new Promise((r) => setTimeout(r, 100)); }
+    assert.ok(view, `panel page (windows: ${app.windows().map((w) => w.url() || "(no address yet)").join(", ")})`);
     await view.waitForFunction(() => document.querySelector("[data-ask-panel]")?.dataset.status === "answer", null, { timeout: 15000 });
     const text = await view.locator("[data-ask-panel]").innerText();
     assert.match(text, /You asked\s+Is a two-handed axe good for a level 12 warrior\?/i);

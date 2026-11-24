@@ -164,6 +164,79 @@ function BackstageForeverGuildLines(roster,limit)
     return lines
 end
 
+-- ---------------------------------------------------------------- E3 who can craft it (1.26)
+-- /bf guild craft NAME asks sharing guild members; their addons answer from the recipes they know.
+-- "X|name" is the question, "Y|name|Recipe Name" one answer. Both are checked field by field.
+local CRAFT_MIN,CRAFT_MAX,RECIPE_MAX,CRAFT_RESULTS,CRAFT_ANSWERS=3,40,48,20,2
+-- Pure: what the player typed (or shift-clicked) made into a search text of 3 to 40 bytes, or nil.
+function BackstageForeverCraftQuery(text)
+    if type(text)~='string' or #text>400 then return nil end
+    local linked=text:match('|h%[(.-)%]|h')
+    text=tidy(linked or text,CRAFT_MAX)
+    if not text or #text<CRAFT_MIN then return nil end
+    return text
+end
+function BackstageForeverCraftAsk(query)
+    query=BackstageForeverCraftQuery(query)
+    return query and ('X|'..query) or nil
+end
+-- Pure: the search text of a question, or nil when the message is not a clean question.
+function BackstageForeverCraftAsked(message)
+    if type(message)~='string' or #message>CRAFT_MAX+2 then return nil end
+    local query=message:match('^X|([^|]+)$')
+    if not query or #query<CRAFT_MIN or tidy(query,CRAFT_MAX)~=query then return nil end
+    return query
+end
+-- Pure: the recipes of yours whose name holds the search text, at most limit names.
+-- recipes: {{name=}} as the capture keeps them.
+function BackstageForeverCraftFind(recipes,query,limit)
+    local out,seen={},{}
+    query=BackstageForeverCraftQuery(query)
+    if not query then return out end
+    local want=query:lower()
+    limit=type(limit)=='number' and limit or CRAFT_ANSWERS
+    for _,recipe in ipairs(type(recipes)=='table' and recipes or {}) do
+        local name=type(recipe)=='table' and tidy(recipe.name,RECIPE_MAX)
+        if name and not seen[name] and name:lower():find(want,1,true) and #out<limit then seen[name]=true;out[#out+1]=name end
+    end
+    return out
+end
+function BackstageForeverCraftAnswer(query,name)
+    query=BackstageForeverCraftQuery(query)
+    name=tidy(name,RECIPE_MAX)
+    if not query or not name or not name:lower():find(query:lower(),1,true) then return nil end
+    return 'Y|'..query..'|'..name
+end
+-- Pure: the recipe name inside an answer to your question, or nil: the question must be the one
+-- you asked, and the recipe name must hold it.
+function BackstageForeverCraftAnswered(message,asked)
+    if type(message)~='string' or #message>CRAFT_MAX+RECIPE_MAX+3 or type(asked)~='string' then return nil end
+    local query,name=message:match('^Y|([^|]+)|([^|]+)$')
+    if not query or query:lower()~=asked:lower() or tidy(name,RECIPE_MAX)~=name then return nil end
+    if not name:lower():find(asked:lower(),1,true) then return nil end
+    return name
+end
+-- Pure: keeps one answer: at most twenty, each member and recipe once. -> true when it was added.
+function BackstageForeverCraftStore(results,who,name)
+    who=memberName(who)
+    if type(results)~='table' or not who or type(name)~='string' or #results>=CRAFT_RESULTS then return false end
+    for _,row in ipairs(results) do if row.who==who and row.name==name then return false end end
+    results[#results+1]={who=who,name=name}
+    return true
+end
+-- Pure: the chat lines for the answers. clickable: add a [whisper] link the addon made itself.
+function BackstageForeverCraftLines(query,results,clickable)
+    results=type(results)=='table' and results or {}
+    if #results==0 then return {T(('No sharing guild member answered for "%s". They need Backstage Forever, /bf guild on and the recipe.'):format(tostring(query)))} end
+    local lines={T(('Guild members who can make "%s": %d.'):format(tostring(query),#results))}
+    for i,row in ipairs(results) do
+        local line=('  %s: %s'):format(row.who,row.name)
+        if clickable then line=line..(' |cff71d5ff|Haddon:BackstageForever:gcraft:%d|h[%s]|h|r'):format(i,T('whisper')) end
+        lines[#lines+1]=line
+    end
+    return lines
+end
+
 -- ---------------------------------------------------------------- live
 function BackstageForeverGuildSharing()
     local s=BackstageForeverGuildSettings
@@ -208,8 +281,77 @@ local function onGuild(sender,message)
     if message=='G?' then asked=true return end
     BackstageForeverGuildStore(roster,sender,message,now())
 end
+-- E3: who can craft it. Asked and answered only while guild sharing is on.
+local craft,craftRate,linksHeard=nil,{},false
+local CRAFT_PREFIX='Backstage Forever: '
+local function due(key,at,gap)
+    local last=craftRate[key]
+    if type(last)=='number' and at>=last and at-last<gap then return false end
+    craftRate[key]=at
+    return true
+end
+local function myRecipes()
+    local items=field(field(field(field(latest,'readiness'),'workshop'),'recipes'),'items')
+    return type(items)=='table' and items or {}
+end
+local function onCraftAsked(sender,message)
+    if not BackstageForeverGuildSharing() then return end
+    local query=BackstageForeverCraftAsked(message)
+    if not query then return end
+    local found=BackstageForeverCraftFind(myRecipes(),query)
+    -- Answer only when you know a match, and at most once every five seconds.
+    if #found==0 or not due('answer',now(),5) then return end
+    for _,name in ipairs(found) do
+        local text=BackstageForeverCraftAnswer(query,name)
+        if text then send(text) end
+    end
+end
+local function onCraftAnswer(sender,message)
+    if not BackstageForeverGuildSharing() or not craft or now()-craft.at>60 then return end
+    local name=BackstageForeverCraftAnswered(message,craft.query)
+    if name then BackstageForeverCraftStore(craft.results,sender,name) end
+end
+local function craftReport()
+    if not craft then return say('Ask first: /bf guild craft NAME, for example /bf guild craft Ghost Dye.') end
+    local chat=plain(DEFAULT_CHAT_FRAME)
+    for i,line in ipairs(BackstageForeverCraftLines(craft.query,craft.results,linksHeard)) do
+        -- Lines with the addon's own link are printed as they are; names inside were checked on arrival.
+        if type(chat)=='table' and type(chat.AddMessage)=='function' then pcall(chat.AddMessage,chat,i==1 and (CRAFT_PREFIX..line) or line) end
+    end
+    craft.shown=true
+end
+-- A click on [whisper] puts "/w Name " in your chat box. It never sends anything.
+function BackstageForeverCraftLinkClick(link)
+    link=plain(link)
+    local index=type(link)=='string' and #link<=60 and tonumber(link:match('^addon:BackstageForever:gcraft:(%d%d?)$'))
+    local row=index and craft and craft.results[index]
+    if not row then return false end
+    local open=field(plain(ChatFrameUtil),'OpenChat') or plain(ChatFrame_OpenChat)
+    if type(open)~='function' then return false end
+    return (pcall(open,'/w '..row.who..' '))
+end
+local function craftCommand(text)
+    if not BackstageForeverGuildSharing() then return say('Guild sharing is off. /bf guild on turns it on; then members who share can answer.') end
+    if call(IsInGuild)~=true then return say('You are not in a guild.') end
+    if text=='' then return craftReport() end
+    local query=BackstageForeverCraftQuery(text)
+    if not query then return say('Name what you want made, at least three letters: /bf guild craft Ghost Dye.') end
+    local at=now()
+    if not due('ask',at,30) then return say('You asked a moment ago. /bf guild craft shows the answers again.') end
+    craft={query=query,at=at,results={}}
+    if not send(BackstageForeverCraftAsk(query)) then return say('Guild sharing is not available in this game client.') end
+    local asked=craft
+    local timer=plain(C_Timer)
+    if type(timer)=='table' and type(timer.After)=='function' and pcall(timer.After,5,function() if craft==asked and not asked.shown then pcall(craftReport) end end) then
+        return say(('Asked sharing guild members who can make "%s". The answers follow in a few seconds.'):format(query))
+    end
+    say(('Asked sharing guild members who can make "%s". Type /bf guild craft in a few seconds to read the answers.'):format(query))
+end
 local askedAt,offAt=nil,nil
 function BackstageForeverGuildCommand(message)
+    -- The thing to craft keeps its capitals and may be a shift-clicked link, so it is read first.
+    local wanted=type(message)=='string' and #message<=400 and message:match('^%a+%s+[Cc][Rr][Aa][Ff][Tt]%f[%A]%s*(.-)%s*$')
+    if wanted then return craftCommand(wanted) end
     local rest=type(message)=='string' and #message<=80 and message:lower():match('^%a+%s*(.-)%s*$') or ''
     local word,tail=rest:match('^(%a*)%s*(.*)$')
     if word=='on' or word=='off' then
@@ -249,14 +391,24 @@ function BackstageForeverGuildCommand(message)
     end
 end
 
-if type(BackstageForeverPartyHandle)=='function' then BackstageForeverPartyHandle('G',onGuild,'GUILD') end
+if type(BackstageForeverPartyHandle)=='function' then
+    BackstageForeverPartyHandle('G',onGuild,'GUILD')
+    BackstageForeverPartyHandle('X',onCraftAsked,'GUILD')
+    BackstageForeverPartyHandle('Y',onCraftAnswer,'GUILD')
+end
 if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_LEVEL_UP','ZONE_CHANGED_NEW_AREA'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Guild',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             if event=='PLAYER_LOGIN' then
                 settings()
+                -- The game tells addons about a click on their own chat links; the click is only read.
+                local registry=plain(EventRegistry)
+                if type(registry)=='table' and type(registry.RegisterCallback)=='function' then
+                    linksHeard=pcall(registry.RegisterCallback,registry,'SetItemRef',function(_,link) pcall(BackstageForeverCraftLinkClick,link) end,events)
+                end
                 -- The first send waits for the game to settle; later ones follow the 3-minute rule.
                 local timer=plain(C_Timer)
                 if type(timer)=='table' and type(timer.NewTicker)=='function' then pcall(timer.NewTicker,30,function() pcall(tick) end) end

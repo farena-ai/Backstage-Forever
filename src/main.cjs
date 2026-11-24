@@ -70,12 +70,14 @@ let challengeRuns = null, discordPresence = null; // challenge runs (C12) and th
 let streamOverlay = null;
 let clearJourneyExtras = null;
 let closeAskPanel = null, dropAskPanelWindow = null;
+let recentGameAnswers = () => [];
 let wishlist = null;
 let statWeights = null; // the stat weights each character chose (roadmap C3)
 let gearPins = null; // one pinned gear target per slot and character (roadmap C2)
 // The weights a character scores gear with; null means the built-in row for the class.
 const profileWeights = (p) => { try { return p && statWeights ? require("./core/stat-weights.cjs").scoringWeights(p.className, statWeights.get(p.id)) : null; } catch { return null; } };
 let talentBuilds = null; // saved talent builds per character (talent planner)
+let forgetGameAnswers = null, clearGameAnswers = null; // kept in-game answers (ask-answers.json)
 let gatheringLoops = null; // the gathering loop each character sent to the game
 let community = null, collectDiagnostics = null;
 const catalogs = new CatalogCache();
@@ -216,6 +218,7 @@ app.whenReady().then(async () => {
       try { economy?.absorb(store.state); } catch { /* History keeping must never block a save. */ }
       try { journeyStore?.absorb(store.state); } catch { /* Neither must the Journey's notes. */ }
       try { routeEdits?.absorb(store.state); challengeRuns?.absorb(store.state); } catch { /* Nor route edits and challenge runs. */ }
+      try { forgetGameAnswers?.(store.state.profiles.map((p) => p.id)); } catch { /* Nor the kept in-game answers. */ }
     };
     chatgpt = new ChatGPTAuth(app.getPath("userData"), safeStorage, {
       openExternal: (url) => shell.openExternal(url),
@@ -237,7 +240,7 @@ app.whenReady().then(async () => {
     game = new GameSync({
       dataDir: app.getPath("userData"),
       // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
-      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, routes: (id) => routeEditor?.handoff(id) || null }); },
+      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id), routes: (id) => routeEditor?.handoff(id) || null }); },
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -762,11 +765,14 @@ app.whenReady().then(async () => {
     getState: () => store.state, knowledge, npcReference: companionService.npcReference, travelReference,
     vendorPack: companionService.vendorPack, insights, acquisitionPack: companionService.acquisitionPack, creaturePack, worldPack: require("./core/world-finds.cjs").loadWorldPack(), live: liveBridge,
     getCommunity: () => community?.index() || null,
+    getTransport: () => require("./core/transport-data.cjs").loadTransportPack(),
   });
   handle("worldMap", (input) => worldMap.build(input || {}));
   handle("worldMapSearch", (query) => worldMap.search(query));
   handle("worldMapNpc", (npcId) => worldMap.npc(npcId));
   handle("dataCoverage", () => worldMap.coverage());
+  // Scout notes (S1): a count for Help → Data coverage and "Save my scout notes…" to a file the player picks.
+  require("./core/scout-ipc.cjs").registerScoutHandlers({ handle, getGame: () => game, dialog, getWindow: () => win });
   const leveling = new (require("./core/leveling.cjs").LevelingAdvisor)({
     getState: () => store.state, knowledge, insights,
     getLive: () => worldMap.liveFrame(worldMap.profile()),
@@ -1155,6 +1161,14 @@ app.whenReady().then(async () => {
     bossLootPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(),
     lootPack: () => require("./core/loot-data.cjs").loadLootPack(),
     onChange: () => { game?.writeHandoff().catch(() => {}); } });
+  // Recipe book, computed skill path, who can craft it, cooking from your bags (roadmap E2, E1, E3, E5).
+  require("./core/recipe-book-ipc.cjs").registerRecipeBook({ handle, getState: () => store.state, gameData,
+    trainerPack: () => require("./core/trainer-data.cjs").loadTrainerPack(),
+    vendorPack: () => { if (vendorReference === undefined) { try { vendorReference = require("./core/vendor-facts.cjs").loadVendorPack(); } catch { vendorReference = null; } } return vendorReference; },
+    lootPack: () => require("./core/loot-data.cjs").loadLootPack(),
+    bossLootPack: () => require("./core/boss-loot-data.cjs").loadBossLootPack(),
+    questPack: (p) => (p?.clientBuild ? knowledge.index(p)?.pack : null) || knowledge.bundled?.pack || null,
+    instanceNames: () => require("./core/boss-loot.cjs").INSTANCE_NAMES });
   handle("dungeonAtlas", () => {
     const profile = store.state.profiles.find((p) => p.id === store.state.activeProfileId) || null;
     const atlas = buildAtlas({ profile, encounters, knowledgePack: knowledge?.bundled?.pack }), loot = bossLoot.summary(profile);
@@ -1191,8 +1205,18 @@ app.whenReady().then(async () => {
   inGameAsk = new (require("./core/ask-in-game.cjs").InGameAsk)({
     companion: companionService, getState: () => store.state, liveKeyFor: require("./core/live-bridge.cjs").liveKeyFor,
     panel: askPanel, getShare: () => inGameShare,
-    notify: (exchange) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:inGameExchange", exchange); },
+    // The last answers per character are kept in ask-answers.json so /bf answers survives a restart.
+    answers: new (require("./core/ask-answers.cjs").AskAnswers)(app.getPath("userData")),
+    notify: (exchange) => {
+      if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:inGameExchange", exchange);
+      // Roadmap A1: the answer joins the hand-off file, so /bf answers shows it after the next /reload.
+      game?.writeHandoff().catch(() => {});
+    },
   });
+  recentGameAnswers = (id) => inGameAsk.recent(id);
+  // A deleted character takes its kept answers with it; "Delete all local data" clears them all.
+  forgetGameAnswers = (ids) => { if (inGameAsk.forget(ids)) game?.writeHandoff().catch(() => {}); };
+  clearGameAnswers = () => inGameAsk.clear();
   liveBridge.subscribeQuestions((question) => { void inGameAsk.handle(question); });
   const stopAskContext = companionContext.subscribe(({ reason }) => {
     if (["source-root", "source-disconnect", "reset", "import", "restore"].includes(reason)) inGameAsk.rememberOrigin(null);
@@ -1298,6 +1322,7 @@ app.whenReady().then(async () => {
       wishlist?.clear(); // starred loot belongs to the characters just deleted
       statWeights?.clear(); gearPins?.clear(); // and so do their stat weights and pinned gear targets
       talentBuilds?.clear(); // and so do their talent builds
+      try { clearGameAnswers?.(); } catch {} // and the answers kept for /bf answers
       gatheringLoops?.clear(); // and the gathering loops sent to the game
       community?.reset(); // local install id, sent marks and pack; shared facts stay on the server
       fieldDispatch.finishReset();

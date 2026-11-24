@@ -1,7 +1,7 @@
 {
   "name": "backstage-forever",
   "productName": "Backstage Forever",
-  "version": "1.22.0",
+  "version": "1.24.0",
   "releaseChannel": "stable",
   "description": "A free leveling companion for World of Warcraft: Forever: a desktop app and in-game addon that read your own game, tell you what to do next and guide you there. From Backstage Coding (https://www.backstagecoding.com). Designed by Frank Arena and Jason Babiuch.",
   "homepage": "https://github.com/farena-ai/Backstage-Forever#readme",
@@ -33,6 +33,7 @@
     "dist": "electron-builder --win nsis --x64 --publish never",
     "dist:signed": "node scripts/dist-signed.cjs",
     "dist:mac": "electron-builder --mac zip --arm64 --x64 --publish never",
+    "dist:linux": "electron-builder --linux AppImage --x64 --publish never",
     "test:command-center": "node scripts/command-center-smoke.cjs",
     "test:knowledge": "node scripts/knowledge-smoke.cjs",
     "build:addon-reference": "node scripts/build-addon-reference.cjs",
@@ -159,6 +160,20 @@
       "category": "public.app-category.games",
       "identity": null,
       "artifactName": "Backstage-Forever-${version}-macOS-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "Game",
+      "executableName": "backstage-forever",
+      "artifactName": "Backstage-Forever-${version}-Linux-x64.${ext}"
     },
     "nsis": {
       "oneClick": false,

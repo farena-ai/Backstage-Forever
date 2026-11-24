@@ -6,7 +6,7 @@ local ART='Interface\\AddOns\\BackstageForever\\Art\\'
 local WIDTH,HEIGHT=560,446
 local COLUMN_X={34,292}
 local ROW_TOP,ROW_HEIGHT,ROWS_PER_COLUMN=-150,25,8
-local PAGE_WIDTH,PAGE_STEP=117,125
+local PAGE_WIDTH,PAGE_STEP=92,100
 
 local function saved(name,key)
     local t=_G[name]
@@ -28,6 +28,10 @@ local function switch(label,about,get,command)
     return {label=label,about=about,get=get,set=function(value) run(command..(value and ' on' or ' off')) end}
 end
 
+-- Five pages, each at most sixteen switches (two columns of eight). Quests: what the Compass, map and
+-- tooltips say about quests. Alerts: banners and chat lines that speak up by themselves. Comfort: small
+-- conveniences and the accessibility switches. Panels: extra windows. Sharing: everything that passes
+-- something to your party, guild, raid or the desktop app, so it can all be checked in one place.
 local PAGES={
     {title='Quests',rows={
         helper('questTracker','Quest tracker','The Compass follows the quest you are watching and shows what it still needs.'),
@@ -42,68 +46,82 @@ local PAGES={
         switch('Quest icons over enemies','A ! over the nameplate of enemies a quest still needs.',on('BackstageForeverRouteSettings','plates'),'plates'),
         switch('Minimap pins','Nearby quests, hand-ins, trainers and flight masters on the minimap.',on('BackstageForeverMinimapSettings','enabled'),'minimap'),
         switch('Gear hints','Upgrade lines on item tooltips and on quest rewards.',on('BackstageForeverGearSettings','enabled'),'gear'),
+        switch('Chain steps in tooltips','Quest link tooltips say which step of its chain a quest is and which quest the chain ends with.',on('BackstageForeverPanelSettings','chainTips'),'chain tips'),
         helper('spellRankReminder','Spell rank reminder','Tells you when your action bar still holds a lower rank of a spell you have trained.'),
     }},
     {title='Alerts',rows={
         switch('Pop-up tips','Painted banners for level-ups, finished quests, deaths and repairs.',on('BackstageForeverAssistSettings','toasts'),'toasts'),
         switch('Moment banners','A short banner after combat for elite, rare and boss kills and profession milestones.',on('BackstageForeverMomentsSettings','toasts'),'moments'),
         switch('Screenshots at big moments','One screenshot when you gain a level or defeat a dungeon boss, taken after combat.',off('BackstageForeverMomentsSettings','shots'),'moments shots'),
+        switch('Wish list banner','A banner when you or your group loots an item from your wish list. Shown after combat.',on('BackstageForeverPanelSettings','wish'),'wish'),
         switch('Danger warnings','A line above your target when it is far above your level or elite.',on('BackstageForeverAssistSettings','danger'),'danger'),
         switch('Boss tips','A short plain tip the first time you target a covered boss.',on('BackstageForeverAssistSettings','bossTips'),'boss'),
+        switch('Rare enemy alerts','One chat line when you target or point at a rare enemy.',on('BackstageForeverWorldSettings','rares'),'rares'),
         switch('Enemy player alerts','Says when an enemy player is nearby. Never in battlegrounds.',on('BackstageForeverEnemySettings','enabled'),'enemy'),
         switch('Enemy alert sound','Plays a sound with the enemy player alert.',off('BackstageForeverEnemySettings','sound'),'enemy sound'),
-        switch('Rare enemy alerts','One chat line when you target or point at a rare enemy.',on('BackstageForeverWorldSettings','rares'),'rares'),
         switch('Supply reminders','Ammo, food and drink, pet food, shards and poisons before you run out.',on('BackstageForeverSuppliesSettings','enabled'),'supplies'),
-        switch('Talent plan line','One chat line when you gain a level, naming the next point of your talent plan.',on('BackstageForeverAssistSettings','talentPlan'),'talents levelup'),
-        helper('gatheringMarks','Gathering marks','Recent herb and ore spots you found, on the world map.'),
-        switch('Weapon skill warning','One chat line when you equip a weapon type you have little skill with.',on('BackstageForeverComfortSettings','weapons'),'comfort weapons'),
-        switch('Low durability warning','One chat line when you enter a rest area with a gear slot under 20% durability.',on('BackstageForeverComfortSettings','durability'),'comfort durability'),
         switch('Ready check at dungeons','One chat line when you walk into a dungeon: a class buff, food buff or reagent you are missing.',on('BackstageForeverKitSettings','ready'),'ready'),
+        switch('Low durability warning','One chat line when you enter a rest area with a gear slot under 20% durability.',on('BackstageForeverComfortSettings','durability'),'comfort durability'),
+        switch('Weapon skill warning','One chat line when you equip a weapon type you have little skill with.',on('BackstageForeverComfortSettings','weapons'),'comfort weapons'),
+        switch('Talent plan line','One chat line when you gain a level, naming the next point of your talent plan.',on('BackstageForeverAssistSettings','talentPlan'),'talents levelup'),
         switch('Mail expiry warning','One chat line at the mailbox when a letter expires within 3 days. Mail is never opened.',on('BackstageForeverSocialSettings','mail'),'mail'),
         switch('Player note reminders','One chat line when you meet a player you wrote a note about. Notes stay on this computer.',on('BackstageForeverSocialSettings','notes'),'notes'),
     }},
     {title='Comfort',rows={
         switch('Sell junk button','A button at vendors that sells grey items when you click it. Quest items are never sold.',on('BackstageForeverAssistSettings','junk'),'junk'),
-        switch('Coordinates','Your map coordinates under the minimap.',off('BackstageForeverQoLSettings','coords'),'qol coords'),
         switch('Faster looting','Loot windows empty at once when auto-loot is on.',off('BackstageForeverQoLSettings','loot'),'qol loot'),
-        switch('Dismount at flight masters','Gets you off your mount when you open the flight map.',off('BackstageForeverQoLSettings','dismount'),'qol dismount'),
         switch('Instant quest text','Quest text appears at once instead of scrolling in.',off('BackstageForeverQoLSettings','questtext'),'qol questtext'),
-        switch('Price memory','Remembers prices on Auction House pages you open yourself. It never searches or buys.',on('BackstageForeverLedgerDB','pricesOn'),'prices'),
-        switch('Party sync','Shares quest needs with party members who also run Backstage Forever.',on('BackstageForeverPartySettings','enabled'),'party'),
-        switch('Live link to the desktop app','A thin dark line at the top edge that the desktop app reads. Nothing is sent over the internet.',on('BackstageForeverLiveSettings','enabled'),'live'),
+        switch('Dismount at flight masters','Gets you off your mount when you open the flight map.',off('BackstageForeverQoLSettings','dismount'),'qol dismount'),
+        switch('Coordinates','Your map coordinates under the minimap.',off('BackstageForeverQoLSettings','coords'),'qol coords'),
         switch('Flight time at take-off','Says how long a flight takes when you timed the same trip before.',on('BackstageForeverComfortSettings','flights'),'comfort flights'),
         switch('Log-off rested nudge','One chat line when you start logging out outside an inn or city.',on('BackstageForeverComfortSettings','rested'),'comfort rested'),
+        switch('Price memory','Remembers prices on Auction House pages you open yourself. It never searches or buys.',on('BackstageForeverLedgerDB','pricesOn'),'prices'),
+        switch('Auction shopping list','Your profession shopping list beside the auction window. A click fills the search box.',on('BackstageForeverShopSettings','enabled'),'shop'),
         switch('Map search box','A small find box at the bottom left of the world map.',on('BackstageForeverWorldSettings','searchBox'),'mapsearch'),
-        switch('Marks without colour','Adds [+], [x] or [!] to lines that otherwise tell good from bad by colour alone.',off('BackstageForeverSocialSettings','marks'),'access marks'),
-        switch('Larger window text','Makes the Adventure Compass, this window and the welcome card 15% larger.',off('BackstageForeverSocialSettings','text'),'access text'),
+        helper('gatheringMarks','Gathering marks','Recent herb and ore spots you found, on the world map.'),
+        switch('Explain on Alt-click','Alt-click an item to put it in the companion panel\'s question box. Nothing is asked for you.',off('BackstageForeverAskSettings','explainClick'),'explain click'),
         {label='Owl button on the minimap',about='Left-click asks the companion; right-click opens these settings. /bf ask show brings it back.',
             get=function() return saved('BackstageForeverAskSettings','hidden')~=true end,
             set=function(value) run(value and 'ask show' or 'ask hide') end},
+        switch('Marks without colour','Adds [+], [x] or [!] to lines that otherwise tell good from bad by colour alone.',off('BackstageForeverSocialSettings','marks'),'access marks'),
+        switch('Larger window text','Makes the Adventure Compass, this window and the welcome card 15% larger.',off('BackstageForeverSocialSettings','text'),'access text'),
+        switch('Large buttons','Makes the Compass, the step scroll, this window and the owl button 30% larger, for handhelds and controllers.',off('BackstageForeverSocialSettings','large'),'access large'),
     }},
     {title='Panels',rows={
         switch('Quest list by distance','A small list of your quests, nearest first. Click one for a waypoint. The game tracker is left alone.',off('BackstageForeverPanelSettings','tracker'),'tracker'),
         switch('Dungeon run panel','Inside a dungeon: bosses left, your quests there, wishes still possible and time in the run.',off('BackstageForeverPanelSettings','run'),'run'),
         switch('Run panel stays in combat','Keeps the dungeon run panel on screen in combat. It only updates outside combat.',off('BackstageForeverPanelSettings','runCombat'),'run combat'),
-        switch('Wish list banner','A banner when you or your group loots an item from your wish list. Shown after combat.',on('BackstageForeverPanelSettings','wish'),'wish'),
         switch('Bag marks','Small signs on bag items: + upgrade, * wish, ! quest item. Off until you switch it on.',off('BackstageForeverPanelSettings','bags'),'bags marks'),
-        switch('Group finder board','Reads looking-for-group lines in channels you joined into /bf lfg. It never sends.',on('BackstageForeverLfgSettings','enabled'),'lfg'),
-        switch('Answer readiness checks','When a party member types /bf check, a short status goes to your party. Needs party sync.',on('BackstageForeverPartySettings','answerChecks'),'check answers'),
-        switch('Guild sharing','Shares level, zone, professions and a dungeon flag with guild members who run the addon.',off('BackstageForeverGuildSettings','share'),'guild'),
-        switch('Auction shopping list','Your profession shopping list beside the auction window. A click fills the search box.',on('BackstageForeverShopSettings','enabled'),'shop'),
         switch('Step aside for other addons','Switches off what another addon already draws, and says so once. /bf addons lists it.',on('BackstageForeverBesideSettings','enabled'),'addons'),
+    }},
+    {title='Sharing',rows={
+        switch('Party sync','Shares quest needs with party members who also run Backstage Forever.',on('BackstageForeverPartySettings','enabled'),'party'),
+        switch('Answer readiness checks','When a party member types /bf check, a short status goes to your party. Needs party sync.',on('BackstageForeverPartySettings','answerChecks'),'check answers'),
+        switch('Group finder board','Reads looking-for-group lines in channels you joined into /bf lfg. It never sends.',on('BackstageForeverLfgSettings','enabled'),'lfg'),
+        switch('Guild sharing','Shares level, zone, professions and a dungeon flag with guild members who run the addon.',off('BackstageForeverGuildSettings','share'),'guild'),
+        switch('Raid comms','Boss notes, assignments and a readiness roll-up inside your raid, from the leader or an assistant. Text only.',off('BackstageForeverRaidSettings','enabled'),'raid'),
+        switch('Live link to the desktop app','A thin dark line at the top edge that the desktop app reads. Nothing is sent over the internet.',on('BackstageForeverLiveSettings','enabled'),'live'),
+        switch('Scout mode','Notes the quest givers, trainers, vendors and flight masters you talk to. It stays on this computer.',off('BackstageForeverScoutDB','on'),'scout'),
     }},
 }
 BackstageForeverOptionsPages=PAGES
 
--- Presets only flip switches listed here, and say what they changed.
+-- Starting points. Each one names every switch except the ones in PRESET_KEEP, so the result does not
+-- depend on what was set before. Switches that are not checked in the real game yet, or that share
+-- beyond your party (screenshots, the quest list, the run panel, bag marks, guild sharing, raid comms,
+-- scout mode), are off in all three: a player turns those on one by one.
+local PRESET_KEEP={'Marks without colour','Larger window text','Large buttons','Owl button on the minimap','Live link to the desktop app','Step aside for other addons'}
+BackstageForeverOptionsPresetKeep=PRESET_KEEP
 local PRESETS={
-    {title='Quiet',about='Fewer interruptions: banners, enemy alerts and detour offers off. Safety warnings stay on.',
-        off={'Pop-up tips','Moment banners','Enemy player alerts','Enemy alert sound','Quest detours','Before leaving reminders','Supply reminders','Flight time at take-off','Log-off rested nudge','Player note reminders','Wish list banner'},on={'Danger warnings','Low durability warning','Ready check at dungeons','Mail expiry warning'}},
-    {title='Leveling',about='The way Backstage Forever starts: every guide and reminder on, comfort extras off.',
-        on={'Quest tracker','Objective hints','Quest detours','Before leaving reminders','Quest reward reasons','Quest blockers','Shared objectives','Keep quest items','Quest item cue','Quest icons over enemies','Gear hints','Pop-up tips','Moment banners','Danger warnings','Boss tips','Enemy player alerts','Supply reminders','Sell junk button','Weapon skill warning','Low durability warning','Flight time at take-off','Log-off rested nudge','Ready check at dungeons','Mail expiry warning','Player note reminders','Dungeon run panel','Wish list banner'},
-        off={'Enemy alert sound','Coordinates','Faster looting','Dismount at flight masters','Instant quest text','Quest list by distance','Run panel stays in combat','Bag marks'}},
+    {title='Quiet',about='Fewer interruptions: banners, enemy and rare alerts and detour offers off. Safety warnings stay on.',
+        on={'Quest tracker','Objective hints','Quest reward reasons','Quest blockers','Shared objectives','Keep quest items','Quest item cue','Quest icons over enemies','Minimap pins','Gear hints','Chain steps in tooltips','Spell rank reminder','Danger warnings','Gathering marks','Low durability warning','Ready check at dungeons','Mail expiry warning','Sell junk button','Price memory','Party sync','Map search box','Group finder board','Answer readiness checks','Auction shopping list'},
+        off={'Enemy alert sound','Coordinates','Faster looting','Dismount at flight masters','Instant quest text','Explain on Alt-click','Pop-up tips','Moment banners','Wish list banner','Boss tips','Rare enemy alerts','Enemy player alerts','Supply reminders','Talent plan line','Weapon skill warning','Player note reminders','Quest detours','Before leaving reminders','Flight time at take-off','Log-off rested nudge','Screenshots at big moments','Quest list by distance','Dungeon run panel','Run panel stays in combat','Bag marks','Guild sharing','Raid comms','Scout mode'}},
+    {title='Leveling',about='The way Backstage Forever starts: guides and reminders on, comfort extras and the newer panels off.',
+        on={'Quest tracker','Objective hints','Quest detours','Before leaving reminders','Quest reward reasons','Quest blockers','Shared objectives','Keep quest items','Quest item cue','Quest icons over enemies','Minimap pins','Gear hints','Chain steps in tooltips','Spell rank reminder','Pop-up tips','Moment banners','Danger warnings','Boss tips','Enemy player alerts','Rare enemy alerts','Supply reminders','Talent plan line','Gathering marks','Weapon skill warning','Low durability warning','Ready check at dungeons','Mail expiry warning','Player note reminders','Sell junk button','Price memory','Party sync','Flight time at take-off','Log-off rested nudge','Map search box','Wish list banner','Group finder board','Answer readiness checks','Auction shopping list'},
+        off={'Enemy alert sound','Coordinates','Faster looting','Dismount at flight masters','Instant quest text','Explain on Alt-click','Screenshots at big moments','Quest list by distance','Dungeon run panel','Run panel stays in combat','Bag marks','Guild sharing','Raid comms','Scout mode'}},
     {title='Veteran',about='For players who know the way: beginner banners off, coordinates and fast looting on.',
-        off={'Pop-up tips','Danger warnings','Before leaving reminders','Quest reward reasons','Weapon skill warning','Log-off rested nudge'},on={'Flight time at take-off','Low durability warning','Ready check at dungeons','Mail expiry warning','Player note reminders','Coordinates','Faster looting','Instant quest text','Quest icons over enemies','Boss tips'}},
+        on={'Quest tracker','Objective hints','Quest detours','Quest blockers','Shared objectives','Keep quest items','Quest item cue','Quest icons over enemies','Minimap pins','Gear hints','Chain steps in tooltips','Spell rank reminder','Moment banners','Boss tips','Enemy player alerts','Rare enemy alerts','Supply reminders','Talent plan line','Gathering marks','Low durability warning','Ready check at dungeons','Mail expiry warning','Player note reminders','Sell junk button','Coordinates','Faster looting','Instant quest text','Price memory','Party sync','Flight time at take-off','Map search box','Wish list banner','Group finder board','Answer readiness checks','Auction shopping list'},
+        off={'Enemy alert sound','Dismount at flight masters','Explain on Alt-click','Pop-up tips','Danger warnings','Before leaving reminders','Quest reward reasons','Weapon skill warning','Log-off rested nudge','Screenshots at big moments','Quest list by distance','Dungeon run panel','Run panel stays in combat','Bag marks','Guild sharing','Raid comms','Scout mode'}},
 }
 BackstageForeverOptionsPresets=PRESETS
 
@@ -179,7 +197,7 @@ local function build()
     rule:SetSize(496,1);rule:SetPoint('TOP',scene,'BOTTOM',0,0)
     for i,page in ipairs(PAGES) do
         local button=CreateFrame('Button',nil,f,'UIPanelButtonTemplate')
-        -- Four pages share the 492-wide row under the painting.
+        -- Five pages share the 492-wide row under the painting.
         button:SetSize(PAGE_WIDTH,22);button:SetPoint('TOPLEFT',34+(i-1)*PAGE_STEP,-114);button:SetText(T(page.title))
         button:SetScript('OnClick',function() current=i;refresh() end)
         pageButtons[i]=button
@@ -243,6 +261,7 @@ BINDING_NAME_BACKSTAGEFOREVER_NEXT='Point me to my next quest stop'
 BINDING_NAME_BACKSTAGEFOREVER_ASK='Ask the companion'
 BINDING_NAME_BACKSTAGEFOREVER_OPTIONS='Open Backstage Forever settings'
 BINDING_NAME_BACKSTAGEFOREVER_ATLAS='Open the Instance Atlas'
+BINDING_NAME_BACKSTAGEFOREVER_EXPLAIN='Explain what I point at (fills the question box)'
 function BackstageForeverBinding(command) run(command) end
 
 -- An entry in the game's own options list that opens the painted window.
@@ -262,6 +281,7 @@ end
 if type(CreateFrame)=='function' then
     local loader=CreateFrame('Frame')
     loader:RegisterEvent('PLAYER_LOGIN')
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Options',loader) end
     loader:SetScript('OnEvent',function() pcall(register) end)
 end
 
@@ -356,6 +376,7 @@ end
 if type(CreateFrame)=='function' then
     local wayLoader=CreateFrame('Frame')
     wayLoader:RegisterEvent('PLAYER_LOGIN')
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Options2',wayLoader) end
     wayLoader:SetScript('OnEvent',function() pcall(BackstageForeverWayRegister) end)
 end
 
@@ -373,7 +394,11 @@ function BackstageForeverPerfLine(kilobytes,before,seconds)
     return line
 end
 local perfBefore,perfAt
-function BackstageForeverPerfCommand()
+function BackstageForeverPerfCommand(message)
+    -- 1.26: /bf perf on|off switches the per-module timing (BackstageForeverPerf.lua).
+    local arg=type(message)=='string' and #message<=40 and message:lower():match('^perf%s+(%a+)%s*$') or nil
+    local modules=BackstageForeverPerfModuleCommand
+    if (arg=='on' or arg=='off') and type(modules)=='function' then pcall(modules,message) return end
     local usage
     local update=UpdateAddOnMemoryUsage
     local read=GetAddOnMemoryUsage
@@ -385,4 +410,5 @@ function BackstageForeverPerfCommand()
     local now=type(GetTime)=='function' and GetTime() or nil
     say(BackstageForeverPerfLine(usage,perfBefore,perfAt and now and now-perfAt or nil))
     if usage then perfBefore,perfAt=usage,now end
+    if type(modules)=='function' then pcall(modules,'perf') end
 end

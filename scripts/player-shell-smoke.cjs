@@ -310,23 +310,23 @@ const { defaultState } = require("../src/core/validation.cjs");
           fullPage: true,
         });
       for (const label of ["Settings", "Help"]) {
-        const span = page.getByRole("button", { name: label, exact: true }).locator("span").last();
-        // Zero rectangles means the label is not laid out yet (seen once on a slow runner), which is
-        // not wrapping: wait for it to be on screen, then count its line boxes.
-        await span.evaluate(async (n) => {
+        // The app repaints the whole shell on its 5-second snapshot poll. A label looked up just before
+        // such a repaint is no longer in the page a moment later and has zero rectangles (the CI failure:
+        // 0 instead of 1), which is not wrapping. So the label is looked up again on every try, in the
+        // page itself, and its line boxes are counted on the node that is really on screen.
+        const lines = await page.evaluate(async (label) => {
+          const boxes = () => {
+            const button = [...document.querySelectorAll(".secondary-navigation button")].find((b) => b.getAttribute("aria-label") === label);
+            const span = button?.querySelector("span:last-of-type");
+            if (!span?.isConnected) return 0;
+            const r = document.createRange(); r.selectNodeContents(span); return r.getClientRects().length;
+          };
           const end = Date.now() + 5000;
-          const boxes = () => { const r = document.createRange(); r.selectNodeContents(n); return r.getClientRects().length; };
-          while (boxes() === 0 && Date.now() < end) await new Promise((done) => requestAnimationFrame(done));
-        });
-        assert.equal(
-          await span.evaluate((n) => {
-              const r = document.createRange();
-              r.selectNodeContents(n);
-              return r.getClientRects().length;
-            }),
-          1,
-          `${name}: ${label} must not wrap into fragments`,
-        );
+          let n = boxes();
+          while (n === 0 && Date.now() < end) { await new Promise((done) => setTimeout(done, 25)); n = boxes(); }
+          return n;
+        }, label);
+        assert.equal(lines, 1, `${name}: ${label} must not wrap into fragments`);
       }
       manifest.push({ name, ...metrics });
     };

@@ -65,6 +65,8 @@ async function main() {
       };
       dialog.showMessageBox = async () => ({ response: 1 });
     });
+    // Counts every time Windows really takes focus from the test window (see "steady" below).
+    await app.evaluate(({ BrowserWindow }) => { voiceFixture.blurs = 0; BrowserWindow.getAllWindows()[0].on("blur", () => { voiceFixture.blurs++; }); });
     const call = (method, ...args) => page.evaluate(({ method, args }) => window.backstage[method](...args), { method, args });
     // Windows may refuse a background focus request while another app is in front; retry until the
     // window really has focus (voice input is only allowed in a focused window, by design).
@@ -76,6 +78,21 @@ async function main() {
       }
     };
     const waitPhase = async (id, phase) => { const end = Date.now() + 6000; while (true) { const s = await call("voiceStatus", id); if (s.phase === phase) return s; assert.ok(Date.now() < end, JSON.stringify(s)); await new Promise(r => setTimeout(r, 15)); } };
+    // Listening stops when the window loses focus, by design. Another program can take Windows
+    // focus at any moment (seen once in CI: the heard words were '' because listening had just been
+    // stopped that way). A step that needs a listening session is run again when, and only when,
+    // the window really lost focus while it ran; any other failure is reported at once.
+    const blurs = () => app.evaluate(() => voiceFixture.blurs);
+    const steady = async (step) => {
+      for (let attempt = 0; ; attempt++) {
+        const before = await blurs();
+        try { return await step(); } catch (error) {
+          if (attempt >= 4 || (await blurs()) === before) throw error;
+          console.warn("The test window lost focus during a listening step; running the step again.");
+        }
+      }
+    };
+    const listening = (profileId) => steady(async () => { await focus(); const session = await call("voiceStart", { profileId, culture: "en-US" }); await waitPhase(session.sessionId, "listening"); return session; });
     await call("companionContext", { profileId: "Alpha", view: "ai" }); await focus();
     assert.equal((await call("voiceCapabilities")).recognition.available, true);
     const guards = await app.evaluate(async ({ ipcMain, BrowserWindow }) => {
@@ -83,21 +100,25 @@ async function main() {
       for (const name of ["voiceCapabilities", "voiceStart", "voiceStatus", "voiceStop", "voiceSpeak", "voiceCancel"]) { const fn = ipcMain._invokeHandlers.get("backstage:" + name); results.push(await rejected(() => fn({ sender: {}, senderFrame: {} })), await rejected(() => fn({ sender: win.webContents, senderFrame: { url: event.senderFrame.url } })), await rejected(() => fn(event, null, "extra"))); } return results;
     }); assert.ok(guards.every(Boolean));
     await assert.rejects(() => call("voiceStart", { profileId: null, culture: "en-US" }));
-    let s = await call("voiceStart", { profileId: "Alpha", culture: "en-US" }); await waitPhase(s.sessionId, "listening");
-    await app.evaluate(() => voiceFixture.children.at(-1).send({ event: "hypothesis", text: "Where is the quest" }));
+    let s = await steady(async () => {
+      const session = await listening("Alpha");
+      await app.evaluate(() => voiceFixture.children.at(-1).send({ event: "hypothesis", text: "Where is the quest" }));
+      assert.equal((await call("voiceStatus", session.sessionId)).draft, "Where is the quest");
+      return session;
+    });
     assert.equal((await call("voiceStop", s.sessionId)).incomplete, true); assert.equal((await call("voiceStatus", s.sessionId)).draft, "Where is the quest");
     await app.evaluate(() => { voiceFixture.holdPrepare = true; }); s = await call("voiceStart", { profileId: "Alpha", culture: "en-US" });
     await call("voiceStop", s.sessionId); const before = await app.evaluate(() => voiceFixture.commands.filter(c => c.command === "listen").length);
     await app.evaluate(() => { voiceFixture.holdPrepare = false; voiceFixture.releasePreparation?.(); }); await new Promise(r => setTimeout(r, 40)); assert.equal(await app.evaluate(() => voiceFixture.commands.filter(c => c.command === "listen").length), before);
     s = await call("voiceSpeak", { profileId: "Alpha", text: "Explicit reviewed answer", voiceId: "Microsoft David Desktop" }); await waitPhase(s.sessionId, "speaking");
     await app.evaluate(({ BrowserWindow }) => { const win = BrowserWindow.getAllWindows()[0]; win.emit("blur"); win.hide(); }); assert.equal((await call("voiceStatus", s.sessionId)).phase, "speaking"); await assert.rejects(() => call("voiceStart", { profileId: "Alpha", culture: "en-US" })); await call("voiceStop", s.sessionId);
-    await focus(); s = await call("voiceStart", { profileId: "Alpha", culture: "en-US" }); await waitPhase(s.sessionId, "listening"); await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].emit("blur")); assert.equal((await call("voiceStatus", s.sessionId)).phase, "stopped");
+    s = await listening("Alpha"); await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].emit("blur")); assert.equal((await call("voiceStatus", s.sessionId)).phase, "stopped");
     for (const mutate of [() => call("companionContext", { profileId: "Alpha", view: "ai" }), () => call("clearMemory", "Alpha"), () => call("saveProvider", { provider: "ollama", model: "fixture", endpoint: "http://localhost:11434", authMode: "api" }), async () => { const base = (await call("bootstrap")).state; await call("saveState", { ...base, activeProfileId: "Beta" }, base); }, () => page.reload()]) {
-      await focus(); await call("companionContext", { profileId: "Alpha", view: "ai" }); s = await call("voiceStart", { profileId: "Alpha", culture: "en-US" }); await waitPhase(s.sessionId, "listening"); await app.evaluate(() => voiceFixture.children.at(-1).send({ event: "hypothesis", text: "Old private draft" })); await mutate(); assert.equal((await call("voiceStatus", s.sessionId)).draft, ""); const base = (await call("bootstrap")).state; if (base.activeProfileId !== "Alpha") await call("saveState", { ...base, activeProfileId: "Alpha" }, base);
+      await focus(); await call("companionContext", { profileId: "Alpha", view: "ai" }); s = await listening("Alpha"); await app.evaluate(() => voiceFixture.children.at(-1).send({ event: "hypothesis", text: "Old private draft" })); await mutate(); assert.equal((await call("voiceStatus", s.sessionId)).draft, ""); const base = (await call("bootstrap")).state; if (base.activeProfileId !== "Alpha") await call("saveState", { ...base, activeProfileId: "Alpha" }, base);
     }
     await call("companionContext", { profileId: "Alpha", view: "other" }); s = await call("voiceSpeak", { profileId: "Alpha", text: "Reviewed public plan", voiceId: "Microsoft David Desktop" }); await waitPhase(s.sessionId, "speaking");
-    await call("resetData"); assert.equal((await call("voiceStatus", s.sessionId)).phase, "idle"); await call("companionContext", { profileId: null, view: "ai" }); await focus(); s = await call("voiceStart", { profileId: null, culture: "en-US" }); await waitPhase(s.sessionId, "listening");
-    await app.evaluate(() => voiceFixture.children.at(-1).stdout.write("x".repeat(32769))); await waitPhase(s.sessionId, "error");
+    await call("resetData"); assert.equal((await call("voiceStatus", s.sessionId)).phase, "idle"); await call("companionContext", { profileId: null, view: "ai" });
+    await steady(async () => { s = await listening(null); await app.evaluate(() => voiceFixture.children.at(-1).stdout.write("x".repeat(32769))); await waitPhase(s.sessionId, "error"); });
     for (const killMode of ["false", "throw", "unclosed"]) {
       s = await call("voiceSpeak", { profileId: null, text: "Synthetic reviewed reading", voiceId: "Microsoft David Desktop" }); await waitPhase(s.sessionId, "speaking");
       const inputCount = await app.evaluate((_electron, killMode) => { voiceFixture.old = voiceFixture.children.at(-1); voiceFixture.old.killMode = killMode; voiceFixture.ignoreCancel = true; return voiceFixture.commands.filter(c => c.command === "listen").length; }, killMode);

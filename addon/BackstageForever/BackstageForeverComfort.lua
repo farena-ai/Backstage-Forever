@@ -532,6 +532,7 @@ if type(CreateFrame)=='function' then
         -- registration (guarded) and the nudge simply never speaks.
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_CAMPING','PLAYER_EQUIPMENT_CHANGED','PLAYER_REGEN_ENABLED',
             'PLAYER_UPDATE_RESTING','TAXIMAP_OPENED','TAXIMAP_CLOSED','PLAYER_CONTROL_LOST','PLAYER_CONTROL_GAINED'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Comfort',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event,a)
             if event=='PLAYER_LOGIN' then
                 flightDB()

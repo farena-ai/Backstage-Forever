@@ -16,13 +16,19 @@
 // walking order. /bf loop walks it. Like the talent plan it is left out before the file grows past
 // its limit.
 //
+// Roadmap A1 adds the last few answers the companion gave to questions asked from the game:
+// ans={{q="question",a="answer",t=unix seconds},...}, newest first, plain text, at most 5 of them.
+// /bf answers reads them in game. They are the newest passenger and the first left out.
+//
 // Roadmap Q8/Q9 (and the F3 follow-up) add the next steps of a route the player changed on the
 // desktop: rt={v="careful",s={{kind,text,map id,x,y,level,{quest ids},step id,note},...}} in the
 // shape of the addon's own guide steps, with the player's note as a ninth value. It is written
 // only for a character whose route differs from the one the addon already carries (another
-// variant, or edits), at most 12 steps, and it is the first passenger left out when space is short.
+// variant, or edits), at most 12 steps. It gets room after plans and loops and before answers.
 const FILE = "BackstageForeverDesktop.lua";
-const MAX_CHARACTERS = 100, MAX_ITEMS = 200, MAX_BYTES = 256 * 1024, MAX_PICKS = 51, MAX_LOOP_STOPS = 40, MAX_ROUTE_STEPS = 12, ROUTE_TEXT = 200, ROUTE_NOTE = 120;
+const MAX_CHARACTERS = 100, MAX_ITEMS = 200, MAX_BYTES = 256 * 1024, MAX_PICKS = 51, MAX_LOOP_STOPS = 40;
+const MAX_ROUTE_STEPS = 12, ROUTE_TEXT = 200, ROUTE_NOTE = 120;
+const MAX_ANSWERS = 5, MAX_QUESTION = 200, MAX_ANSWER = 1200;
 const luaString = (value) => '"' + [...Buffer.from(String(value), "utf8")].map((b) => (b >= 32 && b <= 126 && b !== 34 && b !== 92 ? String.fromCharCode(b) : "\\" + String(b).padStart(3, "0"))).join("") + '"';
 const named = (v) => typeof v === "string" && v.length > 0 && v.length <= 60 && !/[\x00-\x1f]/.test(v);
 const itemId = (v) => Number.isSafeInteger(v) && v > 0 && v <= 2147483647;
@@ -60,6 +66,27 @@ function gatheringLoop(loop) {
   return `loop={m=${loop.mapId},k="${kind}",s={${flat.join(",")}}}`;
 }
 
+// Plain text for the chat window: no control characters, no Markdown marks, cut to max characters.
+// Line breaks survive in answers (keepLines) so a list stays a list.
+function plainText(value, max, keepLines) {
+  if (typeof value !== "string") return "";
+  let text = value.replace(/\r\n?/g, "\n").replace(/[\x00-\x09\x0b-\x1f\x7f]/g, " ").replace(/\*\*|__|`+/g, "").replace(/^[ \t]*#{1,6}[ \t]+/gm, "");
+  text = keepLines ? text.split("\n").map((l) => l.replace(/[ \t]+/g, " ").trim()).filter(Boolean).join("\n") : text.replace(/\s+/g, " ").trim();
+  const chars = Array.from(text);
+  return chars.length > max ? chars.slice(0, max).join("").trimEnd() : text;
+}
+// The last answers as Lua, or "" when there is none. Each needs a question, an answer and a time.
+function answerList(list) {
+  const rows = [];
+  for (const entry of Array.isArray(list) ? list : []) {
+    if (rows.length >= MAX_ANSWERS) break;
+    const q = plainText(entry?.question, MAX_QUESTION, false), a = plainText(entry?.answer, MAX_ANSWER, true);
+    const t = Number.isFinite(entry?.at) && entry.at > 0 ? Math.min(Math.floor(entry.at / 1000), 4102444800) : 0;
+    if (q && a) rows.push(`{q=${luaString(q)},a=${luaString(a)},t=${t}}`);
+  }
+  return rows.length ? `ans={${rows.join(",")}}` : "";
+}
+
 // Route steps as Lua, or "" for anything that is not a clean list. Text is escaped byte by byte
 // and "|" (the game's colour and link code) never gets through.
 const ROUTE_KINDS = new Set(["p", "c", "o", "t", "g", "d", "x"]), ROUTE_VARIANTS = new Set(["solo", "duo", "dungeons", "trips", "careful"]);
@@ -82,7 +109,7 @@ function routeSteps(route) {
 // upgrades by item id, talent picks in the order the player planned them. Talent plans are the
 // newest passenger: when the file would grow past its limit they are left out, character by
 // character, before anything else is touched.
-function compile({ profiles = [], wishlist = () => [], upgrades = () => [], talents = () => null, loops = () => null, routes = () => null } = {}) {
+function compile({ profiles = [], wishlist = () => [], upgrades = () => [], talents = () => null, loops = () => null, answers = () => [], routes = () => null } = {}) {
   const rows = [];
   const seen = new Set();
   for (const p of Array.isArray(profiles) ? profiles : []) {
@@ -93,27 +120,31 @@ function compile({ profiles = [], wishlist = () => [], upgrades = () => [], tale
     const ids = list(wishlist).slice(0, MAX_ITEMS), up = list(upgrades).sort((a, b) => a - b).slice(0, MAX_ITEMS);
     let tal = ""; try { tal = talentPlan(talents(p.id)); } catch {}
     let loop = ""; try { loop = gatheringLoop(loops(p.id)); } catch {}
+    let ans = ""; try { ans = answerList(answers(p.id)); } catch {}
     let rt = ""; try { rt = routeSteps(routes(p.id)); } catch {}
-    if (!ids.length && !up.length && !tal && !loop && !rt) continue;
+    if (!ids.length && !up.length && !tal && !loop && !ans && !rt) continue;
     seen.add(key);
-    rows.push([key, ids, up, tal, loop, rt]);
+    rows.push([key, ids, up, tal, loop, ans, rt]);
   }
   rows.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   const kept = rows.slice(0, MAX_CHARACTERS);
-  const line = ([key, ids, up, tal, loop, rt]) => `[${luaString(key)}]={wish={${ids.join(",")}}${up.length ? `,up={${up.join(",")}}` : ""}${tal ? `,${tal}` : ""}${loop ? `,${loop}` : ""}${rt ? `,${rt}` : ""}},`;
+  const line = ([key, ids, up, tal, loop, ans, rt]) => `[${luaString(key)}]={wish={${ids.join(",")}}${up.length ? `,up={${up.join(",")}}` : ""}${tal ? `,${tal}` : ""}${loop ? `,${loop}` : ""}${rt ? `,${rt}` : ""}${ans ? `,${ans}` : ""}},`;
   const wrap = (body) => [...HEADER, "BackstageForeverDesktopData={schema=1,characters={", ...body, "}}", ""].join("\n");
-  let room = MAX_BYTES - Buffer.byteLength(wrap(kept.map(([key, ids, up]) => line([key, ids, up, "", "", ""]))));
+  let room = MAX_BYTES - Buffer.byteLength(wrap(kept.map(([key, ids, up]) => line([key, ids, up, "", "", "", ""]))));
   const body = [];
-  for (const row of kept) {
-    for (const i of [3, 4, 5]) {
-      const cost = row[i] ? Buffer.byteLength(row[i]) + 1 : 0;
-      if (cost && cost <= room) room -= cost; else row[i] = "";
+  // Plans and loops of every character get room first, then route steps, then answers.
+  for (const fields of [[3, 4], [6], [5]]) {
+    for (const row of kept) {
+      for (const i of fields) {
+        const cost = row[i] ? Buffer.byteLength(row[i]) + 1 : 0;
+        if (cost && cost <= room) room -= cost; else row[i] = "";
+      }
     }
-    if (row[1].length || row[2].length || row[3] || row[4] || row[5]) body.push(line(row));
   }
+  for (const row of kept) if (row[1].length || row[2].length || row[3] || row[4] || row[5] || row[6]) body.push(line(row));
   const text = wrap(body);
   if (Buffer.byteLength(text) > MAX_BYTES) throw Error("Desktop hand-off is too large.");
   return text;
 }
 
-module.exports = { FILE, MAX_ITEMS, MAX_CHARACTERS, MAX_PICKS, MAX_LOOP_STOPS, MAX_ROUTE_STEPS, MAX_BYTES, compile, EMPTY: compile() };
+module.exports = { FILE, MAX_ITEMS, MAX_CHARACTERS, MAX_PICKS, MAX_LOOP_STOPS, MAX_ROUTE_STEPS, MAX_ANSWERS, MAX_QUESTION, MAX_ANSWER, MAX_BYTES, compile, EMPTY: compile() };

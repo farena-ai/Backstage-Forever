@@ -11,6 +11,7 @@
 const { workshopQuestion } = require("./companion-workshop.cjs");
 const { dungeonQuestion } = require("./companion-dungeon.cjs");
 const RETRY_MS = 2000, RETRY_FOR_MS = 30000;
+const RECENT_ANSWERS = 5, RECENT_PROFILES = 100;
 // Companion errors meant for the player (same list as the main window's ask handler); others become generic.
 const PLAYER_ERRORS = /^(Provider |Could not reach|Save an API|Choose a model|Choose a character|Choose the current character|ChatGPT |Claude |Grok |Install the official|Connect a supported|Subscription |The free AI)/;
 const BUSY = /^Provider request (already in progress|is still stopping)/;
@@ -35,12 +36,43 @@ function playerMessage(error) {
 }
 
 class InGameAsk {
-  constructor({ companion, getState, liveKeyFor = () => null, panel, notify = () => {}, getShare = () => false, wait = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now }) {
-    Object.assign(this, { companion, getState, liveKeyFor, panel, notify, getShare, wait, now });
+  constructor({ companion, getState, liveKeyFor = () => null, panel, notify = () => {}, getShare = () => false, wait = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now, answers = null }) {
+    Object.assign(this, { companion, getState, liveKeyFor, panel, notify, getShare, wait, now, answers });
     this.queue = Promise.resolve();
     this.handled = 0;
     this.seq = 0;
     this.lastHash = null;
+    // Roadmap A1: the last answers per saved character, newest first. The desktop hand-off carries
+    // them into the game the next time the addon is prepared. With an answers store
+    // (ask-answers.cjs) they are also kept on this computer, so they survive an app restart.
+    this.answered = new Map();
+    try { const kept = answers?.load(); if (kept instanceof Map) this.answered = kept; } catch { /* Start without kept answers. */ }
+  }
+  /** Drops the answers of characters that are no longer saved. Returns true when something was dropped. */
+  forget(keepIds) {
+    const keep = new Set(keepIds);
+    let changed = false;
+    for (const id of [...this.answered.keys()]) if (!keep.has(id)) { this.answered.delete(id); changed = true; }
+    if (changed) this.answers?.save(this.answered);
+    return changed;
+  }
+  /** Delete all local data: every kept answer goes, in memory and on disk. */
+  clear() {
+    this.answered = new Map();
+    this.answers?.clear();
+  }
+  /** The last answers given for one saved character: [{ question, answer, at }], newest first. */
+  recent(profileId) {
+    return (this.answered.get(profileId) || []).map((entry) => ({ ...entry }));
+  }
+  remember(profileId, question, answer) {
+    if (typeof profileId !== "string" || !profileId || typeof question !== "string" || typeof answer !== "string" || !answer.trim()) return;
+    const list = [{ question, answer, at: this.now() }, ...(this.answered.get(profileId) || [])].slice(0, RECENT_ANSWERS);
+    this.answered.delete(profileId);
+    this.answered.set(profileId, list);
+    // A bounded number of characters: the one answered longest ago makes room.
+    while (this.answered.size > RECENT_PROFILES) this.answered.delete(this.answered.keys().next().value);
+    this.answers?.save(this.answered);
   }
   rememberOrigin(hash) {
     this.lastHash = validHash(hash) ? hash : null;
@@ -51,6 +83,12 @@ class InGameAsk {
     if (question && question.kind === "open") {
       this.rememberOrigin(question.characterHash);
       this.panel.open?.();
+      return Promise.resolve(null);
+    }
+    // "Explain this" (roadmap A2): the panel opens with the text in its question box. Nothing is asked.
+    if (question && question.kind === "prefill") {
+      this.rememberOrigin(question.characterHash);
+      this.panel.open?.(typeof question.text === "string" ? question.text : "");
       return Promise.resolve(null);
     }
     if (!question || typeof question.text !== "string" || !question.text.trim() || question.text.length > 1000) return Promise.resolve(null);
@@ -86,6 +124,8 @@ class InGameAsk {
       try {
         const result = await this.companion.ask(request);
         this.handled++;
+        // Kept for /bf answers only when the question came from the app's active character.
+        if (!(expected && characterHash && expected !== characterHash)) this.remember(state.activeProfileId, prompt, result.text);
         this.panel.show({ id, status: "answer", question: prompt, answer: { text: result.text, kind: result.kind }, note, at: this.now() });
         // The exchange also joins the Companion page's conversation.
         this.notify({ question: prompt, shareProfile: request.shareProfile, result: { text: result.text, kind: result.kind, npc: result.npc, travel: result.travel, lookups: result.lookups, conversation: result.conversation } });

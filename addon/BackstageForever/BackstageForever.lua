@@ -519,6 +519,23 @@ local function recipeDifficulty(info)
     end
     return ({[0]='optimal','medium','easy','trivial'})[value]
 end
+-- One GetRecipeInfo read per recipe while a workshop refresh runs (recipes and the id list share it).
+local infoMemo
+local function recipeInfo(trade,id)
+    local memo=infoMemo and infoMemo[id]
+    if memo then return memo[1],memo[2] end
+    local info,read=observed(field(trade,'GetRecipeInfo'),id)
+    if infoMemo then infoMemo[id]={info,read} end
+    return info,read
+end
+-- The same for a list read (a profession's spells, the window's recipe list): asked once per refresh.
+local function listRead(key,fn,...)
+    local memo=infoMemo and infoMemo[key]
+    if memo then return memo[1],memo[2] end
+    local raw,ok=observed(fn,...)
+    if infoMemo then infoMemo[key]={raw,ok} end
+    return raw,ok
+end
 local function recipes(owned)
     if not owned then return nil end
     local trade=public(C_TradeSkillUI)
@@ -553,7 +570,7 @@ local function recipes(owned)
     local function consider(id,candidates)
         if not id or seen[id] then result.complete=false;return end
         seen[id]=true
-        local info,read=observed(field(trade,'GetRecipeInfo'),id)
+        local info,read=recipeInfo(trade,id)
         if not read then result.complete=false;return end
         if info==nil then return end
         local learned=field(info,'learned')
@@ -582,7 +599,7 @@ local function recipes(owned)
         result.items[#result.items+1]=recipe
     end
     if not blocked and type(field(trade,'GetProfessionSpells'))=='function' then for _,line in ipairs(lines) do
-        local spells,ok=observed(field(trade,'GetProfessionSpells'),line.professionId,line.skillLineId)
+        local spells,ok=listRead('spells:'..line.professionId..':'..line.skillLineId,field(trade,'GetProfessionSpells'),line.professionId,line.skillLineId)
         local ids,complete=sequence(spells,100-queried)
         if not ok or not ids or not complete then result.complete=false end
         if ids then for _,raw in ipairs(ids) do
@@ -595,7 +612,7 @@ local function recipes(owned)
     local list=feature(trade,'GetFilteredRecipeIDs')
     if type(list)~='function' then list=feature(trade,'GetAllRecipeIDs') end
     if not blocked and type(list)=='function' and #lines>0 then
-        local raw,ok=observed(list)
+        local raw,ok=listRead('window',list)
         local ids=sequence(raw,300)
         if not ok then result.complete=false end
         if ids and #ids>0 then
@@ -609,6 +626,101 @@ local function recipes(owned)
     end
     result.observedAt=clock()
     if result.observedAt then return result end
+end
+-- Every recipe this character knows, as numbers only (an optional block of its own): the list
+-- above stops at 100 recipes with their details, this one holds up to 600 ids per profession.
+-- Read from the same trade skill API, only while it shows this character's own professions.
+-- A profession's list counts as whole (c) only when the client handed over its full spell list.
+-- Ids the last save already had are kept while the profession is still there at the same or a
+-- higher skill, so closing the window or /reload never forgets them.
+local KNOWN_PER_LINE,KNOWN_READS=600,2400
+local function knownRecipeIds(owned,previous)
+    if not owned then return nil end
+    local trade=public(C_TradeSkillUI)
+    if type(field(trade,'GetRecipeInfo'))~='function' then return nil end
+    local lines=ownedLines[owned]
+    if not lines then lines={};for _,p in ipairs(owned.items) do lines[#lines+1]={skillLineId=p.skillLineId,professionId=p.professionId,canonical=p.skillLineId} end end
+    local rows,order={},{}
+    for _,p in ipairs(owned.items) do
+        local row={l=p.skillLineId,r=p.rank,c=false,ids=array({})}
+        rows[p.skillLineId]={row=row,has={},whole=true,read=false};order[#order+1]=row
+    end
+    local blocked=false
+    for _,key in ipairs({'IsTradeSkillLinked','IsTradeSkillGuild','IsNPCCrafting'}) do
+        local fn=field(trade,key)
+        if fn==nil then
+            if key=='IsTradeSkillLinked' then fn=public(IsTradeSkillLinked)
+            elseif key=='IsTradeSkillGuild' then fn=public(IsTradeSkillGuild) end
+        end
+        if fn~=nil and type(fn)~='function' then blocked=true end
+        if type(fn)=='function' then
+            local value,ok=observed(fn)
+            if not ok or value~=false then blocked=true end
+        end
+    end
+    local asked,reads={},0
+    local function consider(id,candidates)
+        if not id then return false end
+        if asked[id] then return true end
+        if reads>=KNOWN_READS then return false end
+        asked[id]=true;reads=reads+1
+        local info,read=recipeInfo(trade,id)
+        if not read then return false end
+        if info==nil then return true end
+        local learned=field(info,'learned')
+        if learned~=true then return learned==false end
+        local inLine,lineKnown=feature(trade,'IsRecipeInSkillLine')
+        local owner
+        if lineKnown and inLine~=nil then
+            for _,line in ipairs(candidates) do if call(inLine,id,line.skillLineId)==true then owner=line;break end end
+        elseif lineKnown and #candidates==1 then owner=candidates[1] end
+        local entry=owner and rows[owner.canonical]
+        if not entry then return false end
+        if #entry.row.ids>=KNOWN_PER_LINE then return false end
+        entry.row.ids[#entry.row.ids+1]=id;entry.has[id]=true
+        return true
+    end
+    if not blocked then
+        if type(field(trade,'GetProfessionSpells'))=='function' then for _,line in ipairs(lines) do
+            local entry=rows[line.canonical]
+            local spells,ok=listRead('spells:'..line.professionId..':'..line.skillLineId,field(trade,'GetProfessionSpells'),line.professionId,line.skillLineId)
+            local ids,complete=sequence(spells,KNOWN_PER_LINE)
+            if entry then
+                entry.read=true
+                if not ok or not ids or not complete then entry.whole=false end
+                if ids then for _,raw in ipairs(ids) do
+                    if not consider(integer(raw,1,2147483647),{line}) then entry.whole=false end
+                end end
+            end
+        end end
+        local list=feature(trade,'GetFilteredRecipeIDs')
+        if type(list)~='function' then list=feature(trade,'GetAllRecipeIDs') end
+        if type(list)=='function' and #lines>0 then
+            local ids=sequence((listRead('window',list)),1200)
+            if ids then for _,value in ipairs(ids) do consider(integer(value,1,2147483647),lines) end end
+        end
+    end
+    local out=array({})
+    for _,row in ipairs(order) do
+        local entry=rows[row.l]
+        row.c=entry.read and entry.whole
+        if not row.c and type(previous)=='table' and type(previous.lines)=='table' then
+            for i,old in ipairs(previous.lines) do
+                if i>20 then break end
+                if type(old)=='table' and old.l==row.l and integer(old.r,0,row.r) and type(old.ids)=='table' then
+                    for j,raw in ipairs(old.ids) do
+                        local id=integer(raw,1,2147483647)
+                        if j>KNOWN_PER_LINE or #row.ids>=KNOWN_PER_LINE then break end
+                        if id and not entry.has[id] then entry.has[id]=true;row.ids[#row.ids+1]=id end
+                    end
+                end
+            end
+        end
+        table.sort(row.ids)
+        if row.c or #row.ids>0 then out[#out+1]=row end
+    end
+    local at=clock()
+    if #out>0 and at then return {at=at,lines=out} end
 end
 local function materials()
     local api=public(C_Container)
@@ -704,8 +816,14 @@ local function readiness(guid,build)
     local space=optional(bags)
     if not workshopCache or workshopCache.guid~=guid or workshopCache.build~=build then
         local owned=optional(professions)
+        infoMemo={}
         local fresh=optional(function()return recipes(owned)end)
-        workshopCache={guid=guid,build=build,professions=owned,recipes=optional(function()return remembered(guid,owned,fresh)end) or fresh}
+        -- The id list is an extra: a failure in it must not mark the capture as partial.
+        local prior=captureIssue
+        local okKnown,known=pcall(knownRecipeIds,owned,field(field(roster[guid],'extras'),'recipes'))
+        captureIssue=prior
+        infoMemo=nil
+        workshopCache={guid=guid,build=build,professions=owned,known=okKnown and known or nil,recipes=optional(function()return remembered(guid,owned,fresh)end) or fresh}
     end
     local carried=optional(materials)
     local workshop
@@ -818,7 +936,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.22.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.24.0'
     character.race=clean((call(UnitRace,'player')));
     -- UnitSex: 2 male, 3 female; 1 (unknown) and anything else is left out.
     local sex=integer(call(UnitSex,'player'),1,3);if sex==2 then character.sex='male' elseif sex==3 then character.sex='female' end
@@ -885,6 +1003,11 @@ local function capture(event,eventId)
             character.journal=journal
         end
     end
+    -- Scout mode (1.26): an optional block of its own; older desktop apps ignore it.
+    if type(BackstageForeverScoutSnapshot)=='function' then
+        local ok,scout=pcall(BackstageForeverScoutSnapshot)
+        if ok and type(scout)=='table' and type(scout.records)=='table' and #scout.records>0 then array(scout.records);character.scout=scout end
+    end
     if type(BackstageForeverLedgerSnapshot)=='function' then
         local ok,ledger=pcall(BackstageForeverLedgerSnapshot)
         if ok and type(ledger)=='table' then
@@ -898,6 +1021,31 @@ local function capture(event,eventId)
             for _,price in ipairs(ledger.prices or {}) do array(price.hist) end
             character.ledger=ledger
         end
+    end
+    -- Extras: spent talents, every known recipe id, the key ring and play sessions. One
+    -- optional block older desktop apps ignore; each part is read on its own and left out when
+    -- the game does not answer. A part that cannot be read now keeps what the last save had.
+    do
+        local extras={v=1};local any=false
+        local before=field(previous,'extras')
+        local function part(key,fn,mark)
+            local value
+            if type(fn)=='function' then local ok,result=pcall(fn);if ok and type(result)=='table' then value=result end end
+            if value then value.at=value.at or now;pcall(mark,value)
+            elseif type(field(before,key))=='table' then value=before[key] end
+            if value then extras[key]=value;any=true end
+        end
+        part('talents',BackstageForeverTalentSnapshot,function(v) array(v.tabs);for _,tab in ipairs(v.tabs) do array(tab.t);for _,row in ipairs(tab.t) do array(row) end end end)
+        part('recipes',function() return workshopCache and workshopCache.guid==guid and workshopCache.known or nil end,function() end)
+        part('keyring',BackstageForeverKeyringSnapshot,function(v) array(v.ids) end)
+        if type(BackstageForeverSessionsSnapshot)=='function' then
+            local ok,sessions=pcall(BackstageForeverSessionsSnapshot)
+            if ok and type(sessions)=='table' and #sessions>0 then
+                array(sessions);for _,row in ipairs(sessions) do array(row) end
+                extras.sessions=sessions;any=true
+            end
+        end
+        if any then character.extras=extras end
     end
     -- Character sheet (0.36): base stats and saved gear sets.
     if type(BackstageForeverSheetStats)=='function' then
@@ -952,6 +1100,16 @@ local function capture(event,eventId)
                 for j,q in ipairs(c.quests) do detached.quests[j]=type(q)=='table' and copy(q) or q end
             end
         end
+    end
+    -- Scout records are the newest optional block and the first to go; the saved list itself stays.
+    for i=#chars,1,-1 do
+        if fits() then break end
+        discard(chars[i],'scout')
+    end
+    -- Then the extras (talents, recipe ids, key ring, sessions): the game still knows them.
+    for i=#chars,1,-1 do
+        if fits() then break end
+        discard(chars[i],'extras')
     end
     -- Personal history is the first optional export detail to shed. The private
     -- native store is detached; trimming never deletes retained observations.
@@ -1104,6 +1262,7 @@ if type(CreateFrame)=='function' then
     end
     for _,event in ipairs({'PLAYER_LOGIN','PLAYER_ENTERING_WORLD','PLAYER_LEVEL_UP','ZONE_CHANGED','ZONE_CHANGED_INDOORS','ZONE_CHANGED_NEW_AREA','PLAYER_REGEN_ENABLED','PLAYER_LOGOUT','QUEST_LOG_UPDATE','QUEST_ACCEPTED','QUEST_TURNED_IN','UNIT_QUEST_LOG_CHANGED','PLAYER_XP_UPDATE','UPDATE_EXHAUSTION','PLAYER_EQUIPMENT_CHANGED','BAG_UPDATE_DELAYED','GET_ITEM_INFO_RECEIVED','PLAYER_STOPPED_MOVING'}) do pcall(frame.RegisterEvent,frame,event) end
     for event in pairs(workshopDirty) do pcall(frame.RegisterEvent,frame,event) end
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Capture',frame) end
     frame:SetScript('OnEvent',function(_,event,eventId)
         -- Logout APIs may already be torn down; only flush already recorded evidence.
         if event=='PLAYER_LOGOUT' or event=='PLAYER_LOGIN' then

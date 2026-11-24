@@ -237,6 +237,7 @@ function BackstageForeverMapGoalChanged()if latest then refresh()end end
 if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')
     for _,event in ipairs({'ADDON_LOADED','PLAYER_LOGIN','PLAYER_LOGOUT','PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','PLAYER_ENTERING_WORLD'})do pcall(frame.RegisterEvent,frame,event)end
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Map',frame) end
     frame:SetScript('OnEvent',function(_,event)
         event=text(event,50)
         if event=='PLAYER_LOGOUT' then BackstageForeverMapUpdate(nil);return end

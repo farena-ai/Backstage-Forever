@@ -89,7 +89,8 @@ function shortPath(target) {
         const previous=await action();
         await app.evaluate(()=>{preparationUi.retryReadError=false;preparationUi.holdRetryRead=true;});
         await page.getByRole("button",{name:"Retry workshop",exact:true}).click();
-        await untilMain("preparationUi.retryReaders.length===1");
+        // At least one: the page's own 5-second poll may read again beside the clicked retry.
+        await untilMain("preparationUi.retryReaders.length>=1");
         // This is the old CI wait: it succeeds while this retry reply is still held.
         await page.locator("[data-preparation-reagent]").first().waitFor();
         assert.equal((await action()).sourceRevision,previous.sourceRevision,"Existing rows belong to the error paint, not the retry reply");

@@ -11,7 +11,7 @@ window.PlayerNavigation = (() => {
     ["company", "♜", "Plans"],
   ]);
   const groups = {
-    adventure: {label:"Adventure",routes:[["adventure","Next step"],["guided-route","Guided route"],["zones","Zones"],["travel","Travel"],["dungeons","Dungeons & raids"],["preparation","Professions"],["practice-lab","Practice Lab"]],description:"Your next step, every zone you can level in, a travel planner, dungeons and profession plans."},
+    adventure: {label:"Adventure",routes:[["adventure","Next step"],["guided-route","Guided route"],["zones","Zones"],["travel","Travel"],["dungeons","Dungeons & raids"],["preparation","Professions"],["practice-lab","Practice Lab"]],description:"Your next step, every zone, a travel planner, dungeons with run history and keys, and professions with a recipe book."},
     company: {
       label: "Plans",
       routes: [
@@ -20,17 +20,17 @@ window.PlayerNavigation = (() => {
         ["calendar", "Calendar"],
       ],
       description:
-        "Checklists for a session, a profession or a dungeon run, and party plans to share.",
+        "Checklists for a session, a profession or a dungeon run, party plans to share, and a cooldown calendar.",
     },
     characters: {
       label: "Characters",
       routes: [["characters", "Journal"], ["alts", "All characters"], ["sheet", "Sheet"], ["talents", "Talents"], ["journey", "Journey"], ["badges", "Badges"]],
-      description: "Your characters, all of them at a glance, their journals, gear and gear sets, a talent path for leveling, and every badge they have earned.",
+      description: "Your characters at a glance, their journals, gear and a gear plan, talents and trainer costs, the story so far, and every badge.",
     },
     ledger: {
       label: "Ledger",
       routes: [["ledger", "Bags & bank"], ["ledger-gold", "Gold & prices"], ["ledger-crafts", "Craft profit"], ["ledger-reputation", "Reputation"], ["ledger-cooldowns", "Cooldowns"]],
-      description: "What every character carries, their gold, the auction prices you saw, reputations and cooldowns.",
+      description: "What every character carries, their gold and the prices you saw, craft profit, a reputation planner and cooldowns.",
     },
     game: {
       label: "Settings",
@@ -46,7 +46,7 @@ window.PlayerNavigation = (() => {
       label: "Help",
       routes: [["guide", "Field guide"], ["commands", "Commands"], ["coverage", "Data coverage"]],
       description:
-        "Learn the basics, review a support report, or recover your local journal below.",
+        "Learn the basics, look up every command, see how much the app knows zone by zone, or recover your local journal below.",
     },
   };
   // Pages opened from inside another page keep that page highlighted in the tab row.

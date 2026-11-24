@@ -411,6 +411,53 @@ local function rememberMoney(d,money,t)
     elseif type(last)~='table' or (int(last[2],0,253402300799) or 0)<t then log[#log+1]={money,t} end
     while #log>LIMITS.moneyLog do table.remove(log,1) end
 end
+-- Key ring: the item ids of the keys kept there, so the app's Keys & attunements page sees them.
+-- Only where the client has a key ring (KEYRING_CONTAINER); nil when it has none or did not answer.
+function BackstageForeverKeyringSnapshot()
+    if type(InCombatLockdown)=='function' and call(InCombatLockdown)~=false then return nil end
+    local bag=int(KEYRING_CONTAINER,-100,-1)
+    local api=plain(C_Container)
+    local size,info=field(api,'GetContainerNumSlots'),field(api,'GetContainerItemInfo')
+    if not bag or type(size)~='function' or type(info)~='function' then return nil end
+    local slots=int(call(size,bag),1,64)
+    if not slots then return nil end
+    local ids,seen={}, {}
+    for slot=1,slots do
+        local r=results(info,bag,slot)
+        if not r then return nil end
+        local id=int(field(r[1],'itemID'),1,2147483647)
+        if id and not seen[id] then seen[id]=true;ids[#ids+1]=id end
+    end
+    table.sort(ids)
+    return {slots=slots,ids=ids}
+end
+-- Play sessions for honest gold per hour: {start, last seen, gold at start, gold at last seen}.
+-- A new record starts when the addon loads (login or /reload) more than five minutes after the
+-- record before it was last seen; a quick /reload continues the same one. Clock time only: the
+-- addon never asks for /played here. Pure: d is the saved table, t the time, fresh = just loaded.
+local SESSION_MAX,SESSION_GAP=40,300
+function BackstageForeverSessionMark(d,t,money,fresh)
+    if type(d)~='table' or not int(t,1,253402300799) or not int(money,0,MONEY_MAX) then return nil end
+    if type(d.sessions)~='table' then d.sessions={} end
+    local list=d.sessions
+    local last=list[#list]
+    local usable=type(last)=='table' and int(last[1],1,253402300799) and int(last[2],last[1],253402300799) and int(last[3],0,MONEY_MAX) and int(last[4],0,MONEY_MAX)
+    if usable and t>=last[2] and (not fresh or t-last[2]<=SESSION_GAP) then last[2]=t;last[4]=money
+    elseif not usable or t>last[2] then list[#list+1]={t,t,money,money} end
+    while #list>SESSION_MAX do table.remove(list,1) end
+    return list[#list]
+end
+-- The saved sessions, checked again, oldest first.
+function BackstageForeverSessionsSnapshot()
+    local d=store();local out,last={},0
+    for _,s in ipairs(type(d.sessions)=='table' and d.sessions or {}) do
+        if type(s)=='table' and int(s[1],last+1,253402300799) and int(s[2],s[1],253402300799) and int(s[3],0,MONEY_MAX) and int(s[4],0,MONEY_MAX) and #out<SESSION_MAX then
+            out[#out+1]={s[1],s[2],s[3],s[4]};last=s[2]
+        end
+    end
+    return out
+end
+local sessionFresh=true
 -- Export block. BackstageForever.lua marks the lists as JSON arrays.
 function BackstageForeverLedgerSnapshot()
     local d=store();local t=now()
@@ -418,6 +465,7 @@ function BackstageForeverLedgerSnapshot()
     local out={schemaVersion=1}
     local money=int(call(GetMoney),0,MONEY_MAX)
     if money then out.money=money;out.moneyAt=t;d.money=money;d.moneyAt=t;rememberMoney(d,money,t)
+        if pcall(BackstageForeverSessionMark,d,t,money,sessionFresh) then sessionFresh=false end
     elseif int(d.money,0,MONEY_MAX) then out.money=d.money;out.moneyAt=d.moneyAt end
     -- Gold over the last days (one sample per day, the last one seen) for the app's gold goal.
     local log={}
@@ -710,6 +758,7 @@ if type(CreateFrame)=='function' then
     local events=CreateFrame('Frame')
     if events then
         for _,e in ipairs({'PLAYER_LOGIN','PLAYER_MONEY','UPDATE_FACTION','BANKFRAME_OPENED','BANKFRAME_CLOSED','PLAYERBANKSLOTS_CHANGED','BAG_UPDATE','MAIL_SHOW','MAIL_INBOX_UPDATE','MAIL_CLOSED','AUCTION_ITEM_LIST_UPDATE','AUCTION_HOUSE_CLOSED','TRAINER_SHOW','TRAINER_UPDATE','TRAINER_CLOSED','MERCHANT_SHOW'}) do pcall(events.RegisterEvent,events,e) end
+        if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'Ledger',events) end
         pcall(events.SetScript,events,'OnEvent',function(_,event)
             store()
             if event=='TRAINER_SHOW' or event=='TRAINER_UPDATE' then pcall(readTrainer) elseif event=='TRAINER_CLOSED' then request() end

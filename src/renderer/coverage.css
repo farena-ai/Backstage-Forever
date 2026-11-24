@@ -13,6 +13,14 @@
 .cov-patch p + p, .cov-patch li + li { margin-top: 4px; }
 .cov-patch ul { padding-inline-start: 1.35em; margin-block: 10px; }
 .cov-patch small { display: block; color: #ddc8a2; }
+.cov-scout code { padding: 0 4px; border-radius: 4px; background: #160a04; color: #ffe9b0; }
+.cov-scout b { color: #ffe9b0; }
+.cov-scout-who { color: #ddc8a2; }
+.cov-scout-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 10px 0 6px; }
+.cov-scout-save { padding: 7px 14px; border-radius: 6px; border: 1px solid #c9973a; background: #f6c445; color: #2b1407; text-shadow: none; font-weight: 700; cursor: pointer; }
+.cov-scout-save:hover { background: #ffd764; }
+.cov-scout-save:disabled { opacity: .5; cursor: default; }
+.cov-scout-save:focus-visible { outline: 2px solid #fff1d6; outline-offset: 2px; }
 .cov-summary { margin: 0; color: #f1dcb0; }
 .cov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 .cov-card { border-radius: 8px; overflow: hidden; border: 1px solid #a5823e; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; box-shadow: 0 4px 10px rgba(0,0,0,.35); }

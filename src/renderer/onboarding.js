@@ -7,7 +7,7 @@ window.Onboarding = (() => {
   const KEY = "bf-tour-v1";
   const CARDS = [
     { art: "art/splash/splash.webp", eyebrow: "Welcome", title: "Your companion for WoW Forever", text: "Backstage Forever reads your own game, quietly, and tells you what to do next: the quest to hand in, the objective nearby, the zone to level in. Mini Now keeps that step beside your game." },
-    { art: "art/splash/journal.webp", eyebrow: "Your field journal", title: "Everything about your characters, in one place", text: "Gear, talents, gold, bags, past sessions and badges for every character. It all stays on this computer, and the companion can plan your night from it." },
+    { art: "art/splash/journal.webp", eyebrow: "Your field journal", title: "Everything about your characters, in one place", text: "Gear and a gear plan, talents, gold, bags, professions with a recipe book, dungeon runs and the story so far, for every character. It all stays on this computer, and the companion can plan your night from it." },
     { crests: true, eyebrow: "Horde and Alliance alike", title: "Set up in one click", text: "On the next screen, Set it all up finds WoW Forever, installs the addon and turns on the live link. Then log in and play: the app follows along." },
   ];
   let el = null, index = 0, splash = true;

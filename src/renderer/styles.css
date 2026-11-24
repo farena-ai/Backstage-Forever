@@ -1389,7 +1389,8 @@ body[data-class] .providers {
 
 /* G11 (0.49): the faction crest beside the brand. */
 .brand { position: relative; }
-.brand .brand-faction { width: 34px; height: 34px; margin-left: auto; align-self: center; border: 0; background: none; filter: drop-shadow(0 0 6px var(--faction-glow, rgba(0,0,0,.4))); }
+/* Pinned beside the studio line: in the row it was pushed past the rail edge, cut in half, and gave the rail a sideways scrollbar. */
+.brand .brand-faction { position: absolute; right: 0; bottom: 6px; width: 28px; height: 28px; margin: 0; border: 0; background: none; filter: drop-shadow(0 0 6px var(--faction-glow, rgba(0,0,0,.4))); }
 
 /* 4.3 accessibility (0.52). Every control shows where the keyboard is, even where a page turned the
    outline off; motion stops for players who ask their system for less; Windows high-contrast mode
@@ -1406,7 +1407,7 @@ body[data-class] .providers {
 }
 
 /* 4.3 (0.53): translations are marked as machine-made, and the language picker. */
-html[data-machine-translated="true"] .rail-bottom .status::after { content: " · maschinell übersetzt"; opacity: .8; }
+html[data-machine-translated="true"] .rail-bottom .status::after { content: var(--bf-machine-note, " · machine-translated"); opacity: .8; }
 .bf-lang { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #f1e3c0; }
 .bf-lang select { padding: 3px 6px; border-radius: 4px; border: 1px solid #a5823e; background: #fff8e6; color: #2b1b0a; }
 

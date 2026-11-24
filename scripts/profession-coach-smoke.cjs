@@ -593,7 +593,10 @@ function shortPath(target) {
           });
           if (started >= 1 || !(await retry.isVisible().catch(() => false))) break;
         }
-        await untilMain("preparationUi.retryReaders.length===1");
+        // At least one, not exactly one: while the error is shown the page reads again by itself on
+        // its 5-second snapshot poll, so a second read can be held beside the clicked one (this was
+        // the CI failure: the count went to 2 and "exactly 1" never came true). All are released together.
+        await untilMain("preparationUi.retryReaders.length>=1");
         // This is the old CI wait: it succeeds while this retry reply is still held.
         await page.locator("[data-preparation-reagent]").first().waitFor();
         assert.equal(

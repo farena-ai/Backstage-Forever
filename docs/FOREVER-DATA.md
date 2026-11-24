@@ -72,6 +72,18 @@ node scripts/build-forever-trainers.cjs --relock work/forever-sources/<commit> -
 npm run build:addon-travel
 ```
 
+## Refreshing every pack in one command
+
+```powershell
+node scripts/refresh-forever-data.cjs --commit <upstream commit> [--add-build <build>] [--offline]
+```
+
+It downloads the pinned snapshot to `work/forever-sources/<commit>/` (or, with `--offline`, uses only what is already there), then rebuilds the quest pack, sellers, flight graph, trainer costs, field notes, creatures, NPC positions, quest loot, boss loot and world finds, rewrites the addon data files, and runs every `check:*` script. Run against the commit that is already pinned it changes nothing, which is the proof that the bundled packs reproduce.
+
+After a real refresh some checks fail on purpose: three compilers keep their build list as a constant and three keep pinned coverage numbers. The run names each one; update them by hand, run it again, then `npm test`.
+
+Not rebuilt by this command, and listed at the end of every run: `data/forever-travel` (a small hand-reviewed reference pinned to exact files), `data/forever-encounters` (no compiler in the repo; one exact upstream file and build), `data/forever-acquisition` (seven hand-qualified relations) and the hand-written leveling and route review files.
+
 ## Source and license
 
 Data from [Efficient Games](https://efficient.games), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Source: [JIVESCORP/eg-link-output-wowf, immutable commit 23f9636486d3d60479dc0bcee2356053c33faf2c](https://github.com/JIVESCORP/eg-link-output-wowf/tree/23f9636486d3d60479dc0bcee2356053c33faf2c). Backstage Coding filters, normalizes, indexes and combines the records; those are changes to the compilation. The separate quest and seller artifacts retain their own license/notices. App code remains MIT. The compilation license does not transfer ownership of Blizzard's game content.

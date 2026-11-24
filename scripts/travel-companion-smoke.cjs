@@ -45,6 +45,12 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
    const sequence=await app.evaluate(()=>travelFixture.receipts.length);
    const owner=await page.evaluate(()=>{window.travelBeforeSend={reply:messages.at(-1),recovery:questionRecovery,recoveryNode:document.querySelector('[data-question-recovery]')};return {generation:chatGeneration,profileId:state.activeProfileId,shareProfile:document.querySelector('#share-profile').checked};});
    await field.fill(text);await page.getByRole('button',{name:'Send question',exact:true}).click();
+   // Seen twice in CI: no request ever reached the main process and this waited a full minute. A page
+   // repaint (after a sharing change or the 5-second snapshot poll) can land between typing and the
+   // click and take the typed words with it, so Send has nothing to send. When no request has arrived
+   // after five seconds and none is under way, type and press once more.
+   const arrived=await app.evaluate(async(_e,sequence)=>{const end=Date.now()+5000;while(!travelFixture.receipts[sequence]&&Date.now()<end)await new Promise(r=>setTimeout(r,10));return Boolean(travelFixture.receipts[sequence]);},sequence);
+   if(!arrived&&!(await page.evaluate(()=>sending||chatStarting))){console.warn('Travel fixture: the question did not leave the page; typing it again.');await field.fill(text);await page.getByRole('button',{name:'Send question',exact:true}).click();}
    const deadline=Date.now()+60000;
    const receipt=await app.evaluate(async(_e,{sequence,deadline})=>{while(!travelFixture.receipts[sequence]||travelFixture.receipts[sequence].phase==='pending'){if(Date.now()>deadline)throw Error('Current travel request did not settle');await new Promise(r=>setTimeout(r,10));}return travelFixture.receipts[sequence];},{sequence,deadline});
    assert.equal(receipt.sequence,sequence+1);assert.equal(receipt.input.prompt,text);assert.equal(receipt.input.profileId,owner.profileId);assert.equal(receipt.input.shareProfile,owner.shareProfile);

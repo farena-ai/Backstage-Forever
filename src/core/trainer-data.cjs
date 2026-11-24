@@ -159,12 +159,15 @@ function priceOf(row) {
 const CITY_SIDE = Object.freeze({ Orgrimmar: "Horde", Undercity: "Horde", "Thunder Bluff": "Horde", Stormwind: "Alliance", Ironforge: "Alliance", Darnassus: "Alliance" });
 // A teleport or portal to the other faction's city is not for this character.
 const forFaction = (row, faction) => { if (row.from !== "portal" || !faction) return true; const city = /: (.+)$/.exec(row.name)?.[1]; return !CITY_SIDE[city] || CITY_SIDE[city] === faction; };
+// Characters stop at level 60: a level 59 or 60 character is not shown levels that do not exist.
+const LEVEL_CAP = 60;
 function trainerPlan(pack, className, level, { ahead = 2, money: purse = null, faction = null } = {}) {
   const rows = pack?.classes?.[className];
   const v = pack?.coverage?.[className];
   if (!rows || !Number.isSafeInteger(level) || level < 1 || level > 100) return { available: false, className, level, reason: rows ? "The character's level is not known." : `No ${className || "class"} trainer has been recorded yet.` };
   const levels = [];
-  for (let l = level; l <= level + ahead; l++) {
+  const last = Math.max(level, Math.min(level + ahead, LEVEL_CAP));
+  for (let l = level; l <= last; l++) {
     const list = rows.filter((r) => r.level === l && forFaction(r, faction)).map((r) => { const p = priceOf(r); return { id: r.id, name: r.name, rank: r.rank, from: r.from, copper: p.copper, estimated: p.estimated }; });
     levels.push({ level: l, rows: list, total: list.reduce((n, r) => n + (r.copper || 0), 0), unpriced: list.filter((r) => r.copper === null).length, estimated: list.some((r) => r.estimated) });
   }
@@ -174,7 +177,7 @@ function trainerPlan(pack, className, level, { ahead = 2, money: purse = null, f
   if (v.services < 60) notes.push(`Only ${v.services} ${className} skills from ${v.trainers} trainer${v.trainers === 1 ? "" : "s"} have been recorded so far, so this list is far from complete.`);
   if (levels.some((l) => l.estimated)) notes.push("Some prices were only seen at Honored reputation; the full price is worked out from the 10% discount.");
   notes.push("Ranks of talent skills show for everyone; you can only train the ones whose talent you have.");
-  const next = rows.find((r) => r.level > level + ahead);
+  const next = rows.find((r) => r.level > last && r.level <= LEVEL_CAP);
   return {
     available: true, className, level, levels, total, money: Number.isSafeInteger(purse) && purse >= 0 ? purse : null,
     nextLevel: next ? next.level : null, notes, coverage: { ...v },

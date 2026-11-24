@@ -411,6 +411,7 @@
   .rail .rail-bottom { gap: 5px; padding-top: 8px; }
   .rail-bottom .secondary-navigation button:not(.illustrated-card) { min-height: 34px; padding-top: 4px; padding-bottom: 4px; }
   .rail .rail-bottom .status { display: block; overflow-wrap: anywhere; }
+  .rail .rail-bottom .status .dot { margin-right: 6px; }
 }
 
 /* Main links fit at the default window size without a scroll bar. */
@@ -418,4 +419,10 @@
   .rail .brand { margin-bottom: 14px; }
   .rail nav.primary-navigation { gap: 7px; padding-top: 2px; padding-bottom: 2px; }
   .rail nav.primary-navigation button:not(.illustrated-card) { min-height: 46px; padding-top: 8px; padding-bottom: 8px; }
+}
+
+/* Translated labels are longer: in a compact window the seven Adventure tabs still share one line. */
+@media (max-width: 1100px) {
+  :root:not([lang="en"]) .player-subtabs:has(button[data-nav="practice-lab"]) { gap: 6px; }
+  :root:not([lang="en"]) .player-subtabs:has(button[data-nav="practice-lab"]) button { padding-left: 9px; padding-right: 9px; font-size: 12px; }
 }

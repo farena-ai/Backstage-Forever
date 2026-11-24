@@ -822,6 +822,7 @@ if type(CreateFrame)=='function' then
     local questEvents={QUEST_ACCEPTED=true,QUEST_LOG_UPDATE=true,UNIT_QUEST_LOG_CHANGED=true,QUEST_TURNED_IN=true,
         PLAYER_ENTERING_WORLD=true,ZONE_CHANGED=true,ZONE_CHANGED_INDOORS=true,ZONE_CHANGED_NEW_AREA=true}
     for event in pairs(questEvents) do safe(events.RegisterEvent,events,event) end
+    if type(BackstageForeverPerfFrame)=='function' then pcall(BackstageForeverPerfFrame,'HUD',events) end
     events:SetScript('OnEvent',function(_,event,id)
         if questEvents[event] then
             id=safe(function() return id end)
@@ -1075,7 +1076,7 @@ if type(SlashCmdList)=='table' then
                 return
             end
             if word=='chain' then
-                if type(BackstageForeverChainCommand)=='function' then pcall(BackstageForeverChainCommand)end
+                if type(BackstageForeverChainCommand)=='function' then pcall(BackstageForeverChainCommand,message)end
                 return
             end
             if word=='available' then
@@ -1087,7 +1088,23 @@ if type(SlashCmdList)=='table' then
                 return
             end
             if word=='perf' then
-                if type(BackstageForeverPerfCommand)=='function' then pcall(BackstageForeverPerfCommand)end
+                if type(BackstageForeverPerfCommand)=='function' then pcall(BackstageForeverPerfCommand,message)end
+                return
+            end
+            if word=='answers' then
+                if type(BackstageForeverAnswersCommand)=='function' then pcall(BackstageForeverAnswersCommand,message)end
+                return
+            end
+            if word=='explain' then
+                if type(BackstageForeverExplainCommand)=='function' then pcall(BackstageForeverExplainCommand,message)end
+                return
+            end
+            if word=='scout' then
+                if type(BackstageForeverScoutCommand)=='function' then pcall(BackstageForeverScoutCommand,message)end
+                return
+            end
+            if word=='raid' then
+                if type(BackstageForeverRaidCommand)=='function' then pcall(BackstageForeverRaidCommand,message)end
                 return
             end
             if word=='welcome' then
