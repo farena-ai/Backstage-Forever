@@ -265,60 +265,82 @@ function gatheringHeat(profile, mapId) {
   return { points, totals, zones: [...zones.values()].sort((a, b) => b.total - a.total || a.mapName.localeCompare(b.mapName)) };
 }
 
-// Community pack: the daily pack as proper layers (herbs, ore, chests, NPCs players placed, vendors),
-// never mixed with your own finds. NPC positions appear only where the bundled data has none.
-// Every pin says how many players saw it. The pack carries no date per spot, only its own date.
-const COMMUNITY_NODE = { herb: "Herb", ore: "Mining node", chest: "Chest" };
-const COMMUNITY_LAYERS = Object.freeze(["c-herb", "c-ore", "c-chest", "c-npc", "c-vendor"]);
+// Community pack: the daily pack as proper layers (herbs, ore, chests, other objects, NPCs players
+// placed, vendors), never mixed with your own finds. NPC positions appear only where the bundled data
+// has none. Every pin says how many players saw it and, when the pack carries it (format minor 1),
+// how long ago it was last reported.
+const COMMUNITY_NODE = { herb: "Herb", ore: "Mining node", chest: "Chest", object: "Object" };
+const COMMUNITY_LAYERS = Object.freeze(["c-herb", "c-ore", "c-chest", "c-object", "c-npc", "c-vendor"]);
+// A spot nobody reported for this long is drawn faded: it may be gone.
+const STALE_DAYS = 30;
 const seenBy = (n) => `seen by ${n} player${n === 1 ? "" : "s"}`;
+const ago = (days) => (days === 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`);
+/** "seen 3 days ago by 5 players", or "seen by 5 players" when the pack has no day for the spot. */
+const seenLine = (installs, ageDays) => (ageDays == null ? seenBy(installs) : `seen ${ago(ageDays)} by ${installs} player${installs === 1 ? "" : "s"}`);
 /** Whether a skill can gather a node: true, false, or null when either side is unknown. skill -1: profession not learned. */
 function canGather(skill, needed) {
   if (skill === -1) return false;
   if (!Number.isFinite(skill) || !Number.isFinite(needed)) return null;
   return skill >= needed;
 }
-function communityPins(community, mapId, { staticNpcIds = new Set(), npcName = () => null, vendorIds = new Set(), nodeFacts = () => null, skills = {}, mine = new Set() } = {}) {
+function communityPins(community, mapId, { staticNpcIds = new Set(), npcName = () => null, vendorIds = new Set(), nodeFacts = () => null, skills = {}, mine = new Set(), now = Date.now() } = {}) {
   if (!community) return [];
-  const { provenance } = require("./community.cjs");
+  const { provenance, daysSince, mineKey } = require("./community.cjs");
   const out = [];
+  const fresh = (r) => { const ageDays = daysSince(r.lastSeen, now); return ageDays == null ? { ageDays: null } : { ageDays, lastSeen: r.lastSeen, firstSeen: r.firstSeen, stale: ageDays > STALE_DAYS }; };
   for (const n of community.nodesByMap?.get(mapId) || []) {
-    const facts = nodeFacts(n) || {}, name = n.name || facts.name || null, needed = n.kind === "chest" ? null : facts.skill ?? null;
-    const gatherable = n.kind === "chest" ? true : canGather(skills[n.kind], needed);
-    out.push({ id: `community:${n.kind}:${n.objectId ?? n.name}:${n.x}:${n.y}`, kind: "community", layer: `c-${n.kind}`, gather: n.kind, label: name || COMMUNITY_NODE[n.kind], sub: `${COMMUNITY_NODE[n.kind]} · ${seenBy(n.installs)}${needed ? ` · skill ${needed}` : ""}`, mapId, x: n.x, y: n.y, installs: n.installs,
-      ...(needed ? { skill: needed } : {}), gatherable, yours: mine.has(`${n.kind}:${n.objectId}:${mapId}:${n.x}:${n.y}`), itemIds: n.items.map((i) => i.itemId), community: true, source: `${provenance(n.installs)} · spots other players gathered, rounded to 0.5% of the map` });
+    const gathered = n.kind === "herb" || n.kind === "ore";
+    const facts = nodeFacts(n) || {}, name = n.name || facts.name || null, needed = gathered ? facts.skill ?? null : null;
+    const gatherable = gathered ? canGather(skills[n.kind], needed) : true, f = fresh(n);
+    out.push({ id: `community:${n.kind}:${n.objectId ?? n.name}:${n.x}:${n.y}`, kind: "community", layer: `c-${n.kind}`, gather: n.kind, label: name || COMMUNITY_NODE[n.kind], sub: `${COMMUNITY_NODE[n.kind]} · ${seenLine(n.installs, f.ageDays)}${needed ? ` · skill ${needed}` : ""}`, mapId, x: n.x, y: n.y, installs: n.installs, ...f,
+      ...(needed ? { skill: needed } : {}), gatherable, yours: mine.has(mineKey.node(n.kind, n.objectId, n.name, mapId, n.x, n.y)), itemIds: n.items.map((i) => i.itemId), community: true,
+      source: `${provenance(n.installs)} · ${n.kind === "object" ? "objects other players looted" : "spots other players gathered"}, rounded to 0.5% of the map` });
   }
   for (const [npcId, positions] of community.npcPositions || []) {
     if (staticNpcIds.has(npcId)) continue;
     const p = positions.find((q) => q.mapId === mapId);
     if (!p) continue;
     const vendor = vendorIds.has(npcId) || community.vendors?.has(npcId);
-    out.push({ id: `community-npc:${npcId}:${mapId}`, npcId, kind: vendor ? "vendor" : "npc", layer: vendor ? "c-vendor" : "c-npc", label: npcName(npcId) || `NPC #${npcId}`, sub: `${vendor ? "Vendor" : "Seen here"} · ${seenBy(p.installs)}`, mapId, x: p.x, y: p.y, installs: p.installs,
-      yours: mine.has(`npc:${npcId}:${mapId}:${p.x}:${p.y}`), community: true, evidence: "community", source: `${provenance(p.installs)} · not in the bundled reference` });
+    // The bundled name wins; a name only the community knows is used and marked as such.
+    const bundled = npcName(npcId), shared = bundled ? null : community.npcNames?.get(npcId) || null, f = fresh(p);
+    out.push({ id: `community-npc:${npcId}:${mapId}`, npcId, kind: vendor ? "vendor" : "npc", layer: vendor ? "c-vendor" : "c-npc", label: bundled || shared?.name || `NPC #${npcId}`, sub: `${vendor ? "Vendor" : "Seen here"} · ${seenLine(p.installs, f.ageDays)}${shared ? " · name from the community" : ""}`, mapId, x: p.x, y: p.y, installs: p.installs, ...f,
+      ...(shared ? { communityName: true, nameInstalls: shared.installs } : {}),
+      yours: mine.has(mineKey.npc(npcId, mapId, p.x, p.y)), community: true, evidence: "community", source: `${provenance(p.installs)} · not in the bundled reference${shared ? ` · name from the community (${shared.installs} players)` : ""}` });
   }
   return out;
 }
-/** Keys of the spots the saved characters on this computer found themselves, in the rounded coordinates the pack uses. */
+/** Keys of the spots the saved characters on this computer found themselves, in the rounded coordinates the pack uses. A guess used only until the service has listed what this install really shared. */
 function ownSpotKeys(profiles) {
   const keys = new Set();
+  const { collectObservations, mineKey } = require("./community.cjs");
   let items = [];
-  try { items = require("./community.cjs").collectObservations(profiles); } catch { items = []; }
+  try { items = collectObservations(profiles, { extended: true }); } catch { items = []; }
   for (const it of items) {
     const e = it.entry;
-    if (it.category === "nodes" && e.objectId) keys.add(`${e.kind}:${e.objectId}:${e.mapId}:${e.x}:${e.y}`);
-    else if (it.category === "npcs") keys.add(`npc:${e.npcId}:${e.mapId}:${e.x}:${e.y}`);
+    if (it.category === "nodes" && e.objectId) keys.add(mineKey.node(e.kind, e.objectId, null, e.mapId, e.x, e.y));
+    else if (it.category === "npcs") keys.add(mineKey.npc(e.npcId, e.mapId, e.x, e.y));
   }
   return keys;
 }
-/** The community pack for one zone in numbers: spots per layer, how many match your own finds, and how old the pack is. */
+/** The community pack for one zone in numbers: spots per layer, how many are yours, how old the pack is and how fresh its spots are. */
 function communitySummary(community, pins, { now = Date.now(), skills = {} } = {}) {
   if (!community) return null;
   const layers = Object.fromEntries(COMMUNITY_LAYERS.map((k) => [k, 0]));
-  let total = 0, yours = 0, beyondSkill = 0;
-  for (const p of pins) { if (!p.community) continue; total++; layers[p.layer] = (layers[p.layer] || 0) + 1; if (p.yours) yours++; if (p.gatherable === false) beyondSkill++; }
+  let total = 0, yours = 0, beyondSkill = 0, stale = 0, dated = 0, names = 0;
+  for (const p of pins) {
+    if (!p.community) continue;
+    total++; layers[p.layer] = (layers[p.layer] || 0) + 1;
+    if (p.yours) yours++; if (p.gatherable === false) beyondSkill++;
+    if (p.ageDays != null) { dated++; if (p.stale) stale++; }
+    if (p.communityName) names++;
+  }
   const at = Date.parse(community.generatedAt);
   return { version: community.version, generatedAt: community.generatedAt, ageDays: Number.isFinite(at) ? Math.max(0, Math.floor((now - at) / 86400000)) : null,
-    // The pack carries one date for everything: no spot says when it was last seen.
-    perFactDates: false, total, yours, layers, beyondSkill, skills: { herb: skills.herb ?? null, ore: skills.ore ?? null } };
+    // true: spots say when they were last seen (pack format minor 1). false: the pack has one date for everything.
+    perFactDates: community.perFactDates === true && dated > 0, staleDays: STALE_DAYS, stale, names,
+    // true: "yours" is the list the service keeps for this install. false: a guess from the finds saved on this computer.
+    yoursExact: community.mine instanceof Set,
+    total, yours, layers, beyondSkill, skills: { herb: skills.herb ?? null, ore: skills.ore ?? null } };
 }
 
 // "Help fill this zone": what the bundled reference is really short of in a leveling zone, for one faction.
@@ -443,7 +465,7 @@ class WorldMap {
     const community = this.community();
     const skills = this.gatherSkills(profile);
     const shared = communityPins(community, mapId, { staticNpcIds: this.staticNpcIds, npcName: (id) => this.npcName(id), vendorIds: new Set((this.vendorPack?.vendors || []).map((v) => v.id)),
-      nodeFacts: (n) => this.nodeFacts(n, profile), skills, mine: community ? ownSpotKeys(this.getState().profiles) : new Set() });
+      nodeFacts: (n) => this.nodeFacts(n, profile), skills, mine: community ? (community.mine instanceof Set ? community.mine : ownSpotKeys(this.getState().profiles)) : new Set() });
     let pins = [...(this.static.get(mapId) || []), ...shared, ...questPins(profile, index, mapId), ...findPins(profile, mapId)];
     // Quest and personal pins draw above reference pins.
     pins.sort((a, b) => KINDS.indexOf(b.kind) - KINDS.indexOf(a.kind));
@@ -492,7 +514,10 @@ class WorldMap {
     const community = this.community();
     const cPositions = community?.npcPositions?.get(npcId) || [], cVendor = community?.vendors?.get(npcId) || [];
     const cRecipes = community?.recipes?.get(npcId) || [];
-    const name = ref?.name || trainer?.name || vendor?.name || located?.name || ((cPositions.length || cVendor.length || cRecipes.length) ? this.npcName(npcId) || `NPC #${npcId}` : null);
+    // A name the bundled data lacks may come from the community pack (the name the game showed to at least 3 players).
+    const known = ref?.name || trainer?.name || vendor?.name || located?.name || null;
+    const cName = known || !(cPositions.length || cVendor.length || cRecipes.length) || this.npcName(npcId) ? null : community?.npcNames?.get(npcId) || null;
+    const name = known || ((cPositions.length || cVendor.length || cRecipes.length) ? this.npcName(npcId) || cName?.name || `NPC #${npcId}` : null);
     if (!name) return null;
     const sides = ref?.side ? [ref.side] : friendlyTo(trainer?.observedReactionsByFaction || vendor?.observedReactionsByFaction);
     const bundledPositions = ref?.positions?.length ? ref.positions : trainer?.positions?.length ? trainer.positions : vendor?.positions?.length ? vendor.positions : located?.positions || [];
@@ -500,9 +525,12 @@ class WorldMap {
     const { provenance } = require("./community.cjs");
     const positions = bundledPositions.length ? bundledPositions : cPositions;
     const communityNotes = [];
-    if (!bundledPositions.length && cPositions.length) communityNotes.push(`Position from the community · ${provenance(cPositions[0].installs)}`);
+    const { daysSince } = require("./community.cjs");
+    const when = (list) => { const days = list.map((r) => daysSince(r.lastSeen)).filter((d) => d != null); return days.length ? ` · last seen ${ago(Math.min(...days))}` : ""; };
+    if (cName) communityNotes.push(`Name from the community · ${provenance(cName.installs)}`);
+    if (!bundledPositions.length && cPositions.length) communityNotes.push(`Position from the community · ${provenance(cPositions[0].installs)}${when(cPositions.slice(0, 1))}`);
     const communityVendor = !vendor && cVendor.length ? { items: cVendor.slice(0, 60).map((i) => ({ itemId: i.itemId, name: `Item #${i.itemId}`, installs: i.installs })), source: provenance(Math.max(...cVendor.map((i) => i.installs))) } : null;
-    if (communityVendor) communityNotes.push(`Wares from the community · ${communityVendor.source}`);
+    if (communityVendor) communityNotes.push(`Wares from the community · ${communityVendor.source}${when(cVendor)}`);
     const communityRecipes = cRecipes.slice(0, 40).map((r) => ({ ...r }));
     if (communityRecipes.length) communityNotes.push(`Recipes from the community · ${provenance(Math.max(...cRecipes.map((r) => r.installs)))}`);
     const level = Number.isInteger(profile?.level) ? profile.level : null;
@@ -532,7 +560,7 @@ class WorldMap {
     if (vendor || communityVendor) roles.push("Vendor");
     if (given.length) roles.push("Quest giver");
     return {
-      npcId, name, roles, sides,
+      npcId, name, ...(cName ? { communityName: true } : {}), roles, sides,
       otherFaction: Boolean(profile?.faction && sides && !sides.includes(profile.faction)),
       places: positions.slice(0, 6).map((p) => ({ mapId: p.mapId, mapName: mapName(p.mapId), x: p.x, y: p.y })),
       questsGiven: given, questsTurnedIn: turnIns,
@@ -577,4 +605,4 @@ class WorldMap {
     return { query, results: unique, from: here ? { mapId: here.mapId, mapName: mapName(here.mapId), live: Boolean(live) } : null };
   }
 }
-module.exports = { WorldMap, findPins, communityPins, communitySummary, ownSpotKeys, canGather, zoneGaps, coverageScore, COVERAGE_GOOD, COMMUNITY_LAYERS, gatheringHeat, buildStaticIndex, questPins, relevantQuests, objectiveAreas, hostileCamps, areaShapes, difficulty, greyLevel, creatureWarning, KINDS, mapName, trainerKind, friendlyTo };
+module.exports = { WorldMap, findPins, communityPins, communitySummary, ownSpotKeys, canGather, seenLine, STALE_DAYS, zoneGaps, coverageScore, COVERAGE_GOOD, COMMUNITY_LAYERS, gatheringHeat, buildStaticIndex, questPins, relevantQuests, objectiveAreas, hostileCamps, areaShapes, difficulty, greyLevel, creatureWarning, KINDS, mapName, trainerKind, friendlyTo };

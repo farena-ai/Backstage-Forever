@@ -189,6 +189,9 @@
 .wm-c-chips { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 .wm-c-chip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .world-map-page .wm-community .wm-c-skill { display: flex; align-items: center; gap: 6px; margin: 2px 0 4px; color: #dff4f7; font-weight: 600; font-size: 13px; }
+.world-map-page .wm-community .wm-c-within { display: flex; align-items: center; gap: 8px; margin: 2px 0 4px; color: #dff4f7; font-weight: 600; font-size: 13px; }
+.world-map-page .wm-community .wm-c-within > span { flex: none; white-space: nowrap; }
+.world-map-page .wm-community .wm-c-within select { flex: 1 1 auto; min-width: 0; padding: 3px 6px; border-radius: 4px; border: 1px solid #2b8a9c; background: #0b2228; color: #dff4f7; font: inherit; font-weight: 400; }
 .wm-c-skills, .wm-c-fresh { color: #a9d3da; font-size: 12px !important; }
 .wm-c-key { display: flex; align-items: flex-start; gap: 6px; margin: 0 !important; color: #a9d3da; font-size: 12px !important; }
 .wm-c-key canvas { flex: none; }

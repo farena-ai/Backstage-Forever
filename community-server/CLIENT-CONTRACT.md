@@ -1,7 +1,7 @@
 # Backstage Forever community server: client contract
 
 This is the exact API the desktop app uses to share and download community data.
-Server code lives next to this file. API version: `v1`. Pack format: `1`.
+Server code lives next to this file. API version: `v1`. Pack format: `1`, minor `1` (section 4a).
 
 - Base URL: `https://bf.backstagecoding.com` (HTTPS only; plain HTTP is redirected with 308).
 - Every request and response body is JSON (UTF-8). POST requests must send
@@ -57,8 +57,8 @@ per hour.
   "observations": {
     "nodes":   [{ "kind": "herb", "objectId": 1617, "mapId": 1429, "x": 0.45, "y": 0.6, "itemIds": [2447] },
                 { "kind": "ore", "name": "Copper Vein", "mapId": 1429, "x": 0.305, "y": 0.3 }],
-    "npcs":    [{ "npcId": 197, "mapId": 1429, "x": 0.485, "y": 0.42 }],
-    "vendors": [{ "npcId": 1213, "itemIds": [159, 4540] }],
+    "npcs":    [{ "npcId": 197, "mapId": 1429, "x": 0.485, "y": 0.42, "name": "Marshal McBride" }],
+    "vendors": [{ "npcId": 1213, "itemIds": [159, 4540], "name": "Godric Rothgar" }],
     "drops":   [{ "npcId": 448, "loots": 10, "items": [{ "itemId": 1931, "count": 3 }] }],
     "recipes": [{ "source": "trainer", "npcId": 1215, "spellId": 2330 },
                 { "source": "vendor", "npcId": 1250, "itemId": 2889 }]
@@ -80,11 +80,34 @@ either way.
 
 | Array | Entry fields | Rules |
 |---|---|---|
-| `nodes` | `kind` (`herb` \| `ore` \| `chest`), `objectId`?, `name`?, `mapId`, `x`, `y`, `itemIds`? | Needs `objectId` or `name`. When `objectId` is present it is the identity and `name` is ignored. Send `name` only when the object id is unknown: 1 to 120 characters, letters, digits, spaces and `'’.,:()&!-` only. `itemIds`: up to 16 unique ids gathered from that node. App mapping: `herbalism` → `herb`, `mining` → `ore`, `chest` → `chest`; `entityId` → `objectId`. |
-| `npcs` | `npcId`, `mapId`, `x`, `y` | One position where the NPC was seen. |
-| `vendors` | `npcId`, `itemIds` | 1 to 200 unique item ids that the vendor sells. |
+| `nodes` | `kind` (`herb` \| `ore` \| `chest` \| `object`), `objectId`?, `name`?, `mapId`, `x`, `y`, `itemIds`? | `object` (minor 1) is any other game object the player looted from, for example a quest object. Needs `objectId` or `name`. When `objectId` is present it is the identity and `name` is ignored. Send `name` only when the object id is unknown: 1 to 120 characters, letters, digits, spaces and `'’.,:()&!-` only. `itemIds`: up to 16 unique ids gathered from that node. App mapping: `herbalism` → `herb`, `mining` → `ore`, `chest` → `chest`; `entityId` → `objectId`. |
+| `npcs` | `npcId`, `mapId`, `x`, `y`, `name`? | One position where the NPC was seen. `name` (minor 1): see "NPC names" below. |
+| `vendors` | `npcId`, `itemIds`, `name`? | 1 to 200 unique item ids that the vendor sells. `name` (minor 1): see "NPC names" below. |
 | `drops` | `npcId`, `loots`, `items` | `loots` (1 to 1000) is the number of loot windows opened on that creature since the last successful submit. `items` (0 to 64) lists `{ "itemId", "count" }`, where `count` (1 to `loots`) is how many of those windows contained the item. Include kills that dropped nothing listed, with `items: []`; they are the denominator. **Send deltas only.** After a 200, reset the counters you sent. Never resend a batch that got a 200. |
 | `recipes` | `source` (`trainer` \| `vendor`), `npcId`, `spellId`?, `itemId`? | Needs `spellId` (trainer-taught recipe spell) or `itemId` (recipe item sold by a vendor), or both. |
+
+**NPC names (minor 1).** `name` on an `npcs` or `vendors` entry is the NPC's name exactly as the
+game client shows it (`UnitName`), never anything a player typed. 1 to 80 characters after trimming,
+letters, digits, spaces and `'’.,:()&!-` only. Send it **only from English (enUS) game clients**, so
+the published names are in one language, and once per NPC is enough. The server stores it as its own
+fact (`npcId` + name) per install hash and publishes a name only when at least 3 distinct installs
+sent the same name for the same id (section 4a).
+
+**Send the minor-1 fields only to a server that knows them.** A server from before minor 1 answers
+`400` to a `name` on these entries or to `kind: "object"`, and the client then drops the whole batch.
+The app therefore adds them only after it has downloaded a pack that says `"minor": 1` or higher.
+`vendors` without `name` has been part of the contract from the start and needs no such check.
+
+What the app sends today: `nodes` (herb, ore, chest; with minor 1 also `object`, from objects the
+player looted a quest item from), `npcs` (where the player looted a creature, and where the player
+stood when a vendor window was opened), `vendors` (from vendor windows the player opened). It sends
+no `drops`: the addon counts looted quest items, not loot windows, so there is no honest `loots`
+denominator. It sends no `recipes`: the addon records no trainer or recipe listings.
+
+**Freshness.** The server keeps, per fact and install hash, the first and the last UTC day it
+received that fact. To keep "last seen" true, the app sends a spot once more when the player saw it
+again on a later day (its local memory of what was sent holds the day; the day is never sent). The
+day the server records is the day the submit arrived.
 
 Never send character names, GUIDs, realm, account data, chat, guild or party info, or free text.
 The schema has no place for them and the server rejects unknown fields.
@@ -132,6 +155,46 @@ is why drops must be deltas.
   clients should then keep their last good pack. Treat the pack as untrusted data: bound sizes,
   validate types, and never execute it.
 
+### 4a. `GET /v1/pack?v=2`: pack format minor 1
+
+The default pack above never changes shape: apps up to 1.26 reject a node `kind` they do not know
+(and would then keep their last good pack for ever), so nothing new is ever added to it. An app that
+understands minor 1 asks for `?v=2`. Any other value of `v` gets the default pack. The two packs have
+their own `version` and ETag. An older server ignores the query and sends the default pack, which a
+minor-1 client must accept as well (no `minor`, no day columns, no `npcNames`).
+
+```json
+{
+  "format": 1,
+  "minor": 1,
+  "version": "0f1e2d3c4b5a69788796",
+  "generatedAt": "2026-11-24T18:00:00.000Z",
+  "minInstalls": 3,
+  "coordStep": 0.005,
+  "nodes":     { "columns": ["kind","objectId","name","mapId","x","y","installs","firstSeen","lastSeen"],
+                 "rows": [["herb",1617,null,1429,0.45,0.6,3,"2026-11-02","2026-11-23"], ["object",2843,null,1429,0.3,0.3,3,"2026-11-20","2026-11-20"]] },
+  "nodeItems": { "columns": ["kind","objectId","name","itemId","installs"], "rows": [["herb",1617,null,2447,3]] },
+  "npcs":      { "columns": ["npcId","mapId","x","y","installs","firstSeen","lastSeen"], "rows": [[197,1429,0.485,0.42,3,"2026-11-02","2026-11-23"]] },
+  "vendors":   { "columns": ["npcId","itemId","installs","firstSeen","lastSeen"], "rows": [[1213,159,3,"2026-11-02","2026-11-23"]] },
+  "drops":     { "columns": ["npcId","itemId","rate","samples","installs"], "rows": [] },
+  "recipes":   { "columns": ["source","npcId","spellId","itemId","installs"], "rows": [] },
+  "npcNames":  { "columns": ["npcId","name","installs"], "rows": [[197,"Marshal McBride",3]] }
+}
+```
+
+What minor 1 adds, and nothing else:
+
+- `minor`: `1`. A client that knows a lower minor ignores what it does not know.
+- `firstSeen`, `lastSeen` on `nodes`, `npcs` and `vendors`: the earliest and the latest **UTC day**
+  (`YYYY-MM-DD`) on which any install's submit carrying that fact arrived. Day precision only; there
+  is no time of day anywhere in the pack. They are computed over the same rows as `installs`, so a
+  fact with fewer than `minInstalls` reporters publishes no date either.
+- `nodes` and `nodeItems` rows of `kind` `"object"`.
+- `npcNames`: at most one row per `npcId`. A name appears only when at least `minInstalls` distinct
+  installs sent that exact name for that id; if several names qualify, the one with the most
+  installs wins (ties: the alphabetically first). `installs` counts the installs behind the name.
+- Nothing per install: the pack never says which install reported a fact. For that see section 6a.
+
 ### `GET /v1/pack/meta`
 
 Small freshness check (`Cache-Control: public, max-age=300`):
@@ -142,7 +205,8 @@ Small freshness check (`Cache-Control: public, max-age=300`):
   "counts": { "nodes": 1, "nodeItems": 1, "npcs": 1, "vendors": 1, "drops": 1, "recipes": 1 } }
 ```
 
-If `version` equals the cached version, the app can skip `GET /v1/pack`.
+If `version` equals the cached version, the app can skip `GET /v1/pack`. `GET /v1/pack/meta?v=2`
+describes the minor-1 pack instead (it adds `"minor": 1` and `counts.npcNames`).
 
 ## 5. `POST /v1/report`: problem reports
 
@@ -180,13 +244,49 @@ conversation), every heartbeat row and the first-seen day of that install (secti
 `200 {"ok":true,"removed":{"observations":12,"reports":0}}` (the shape is unchanged; tickets and
 heartbeats are removed without being counted in it). Facts already published in a pack
 disappear at the next rebuild if they drop below 3 installs. After a 200, generate a new install
-id. Limit: 3 per install per hour.
+id. Limit: 3 per install per hour. Because `/v1/mine` (section 6a) reads the same observation rows,
+it answers with an empty list for that install id from then on; the app deletes its saved copy.
+
+## 6a. `POST /v1/mine`: which facts did this install contribute
+
+So the app can mark "from you" exactly. The shared pack holds no per-install data; this is a read
+of the caller's own rows, and the install id is the only credential.
+
+```json
+{ "schema": 1, "installId": "3f2b8c1e-9d4a-4b7e-8f21-0a1b2c3d4e5f" }
+```
+
+Body limit 1 KB, unknown fields rejected, same install id rules as everywhere. Limit: 12 per install
+per hour. Response (`Cache-Control: no-store`):
+
+```json
+{ "ok": true, "total": 4, "truncated": false,
+  "counts": { "1429": { "herb": 1, "npc": 1 } },
+  "keys": {
+    "nodes":   { "columns": ["kind","objectId","name","mapId","x","y"], "rows": [["herb",1617,null,1429,0.45,0.6]] },
+    "npcs":    { "columns": ["npcId","mapId","x","y"], "rows": [[197,1429,0.485,0.42]] },
+    "vendors": { "columns": ["npcId","itemId"], "rows": [[1213,159],[1213,4540]] } } }
+```
+
+- `keys` lists the spots, NPC places and vendor wares this install hash reported, in the pack's own
+  rounded coordinates, whether or not they are published yet. At most 6,000 keys; `total` is the real
+  number and `truncated` says whether some were left out. `counts` is the number of returned spots
+  and NPC places per `mapId` and kind (`herb`, `ore`, `chest`, `object`, `npc`).
+- Drops, recipes, node items and names are not listed.
+- An install id the server has never seen, one that was forgotten and one that is blocked all get
+  the same `200` with empty lists. The answer never says whether an id exists, and never contains an
+  install id or hash.
+- Only what the caller's own id maps to is read: there is no way to ask about another install
+  without knowing its random id.
+- The app asks only while sharing is on and something was shared: at most every 6 hours, or 10
+  minutes after a new submit. A `404`/`405` means an older server: keep working without the list.
 
 ## 7. `GET /v1/health`
 
-`200 {"ok":true,"service":"bf-community","version":"1.0.0","packFormat":1,"desk":true,"uptimeSec":1234}`
+`200 {"ok":true,"service":"bf-community","version":"1.0.0","packFormat":1,"packMinor":1,"mine":true,"desk":true,"uptimeSec":1234}`
 
-`"desk": true` means the Backstage Desk endpoints of section 10 are there.
+`"desk": true` means the Backstage Desk endpoints of section 10 are there. `"packMinor": 1` and
+`"mine": true` (both absent on older servers) mean sections 4a and 6a are there.
 
 ## 8. Rate limits (in memory only)
 
@@ -198,6 +298,7 @@ id. Limit: 3 per install per hour.
 | `report` per install | 5/hour |
 | `report`, whole service | 60/hour |
 | `forget` per install | 3/hour |
+| `mine` per install | 12/hour |
 | `heartbeat` per install | 6/day (more are answered 200 and ignored) |
 | `tickets` (open a report) per install | 5/day |
 | `tickets` (open a report), whole service | 200/day; `503 report_inbox_full` at 5,000 open tickets |
@@ -218,11 +319,33 @@ derived. There are no cookies on `/v1/*`.
 
 **Community data (sections 3 to 6)**
 - Observations: one row per fact per install hash, holding a counter and the first and last UTC
-  **day** it was seen. No times of day, names, GUIDs, realms or account data.
+  **day** the server received it. No times of day, GUIDs, realms, or account, character or guild
+  names. Field by field, a row is exactly: the kind of fact, the fact key, the install hash, the
+  counter, the first day, the last day. The fact keys are:
+
+  | Kind | Key | From the request |
+  |---|---|---|
+  | `node` | node kind, object id or node name, map id, rounded x, rounded y | `observations.nodes[]` |
+  | `nodeitem` | node kind, object id or node name, item id | `observations.nodes[].itemIds` |
+  | `npc` | NPC id, map id, rounded x, rounded y | `observations.npcs[]` |
+  | `npcname` | NPC id, the name the game shows for it | `observations.npcs[].name`, `observations.vendors[].name` |
+  | `vendor` | NPC id, item id | `observations.vendors[]` |
+  | `droploot`, `drop` | NPC id (and item id), with the counter holding loot windows or hits | `observations.drops[]` |
+  | `recipe` | source, NPC id, spell id, item id | `observations.recipes[]` |
+
+  The only names stored are game strings: a node's name when its object id is unknown, and an NPC's
+  displayed name. Nothing typed by a player is accepted in an observation.
+- `POST /v1/mine` stores nothing: it reads the caller's own observation rows and is rate-limited in
+  memory by the install hash.
+- The first and last day were already kept per row since the first version of the service, so pack
+  format minor 1 needed no change to the database: the schema version stays `3`, and the previous
+  server version can open the same file after a rollback (OPERATIONS.md section 1 names the one
+  clean-up that needs: rows of kind `object`).
 - Daily submission counts per client build string. Not linked to installs.
 - Old one-way reports (`/v1/report`): category, text, app version, build, optional log, the
   install hash, and the creation time rounded to the minute.
-- Published data contains only facts that at least 3 distinct installs agree on.
+- Published data contains only facts that at least 3 distinct installs agree on. That holds for
+  the seen days (computed over those same installs) and for NPC names (3 installs, same id, same name).
 
 **Statistics (`/v1/heartbeat`)** - one row per install hash per UTC day, last values win:
 

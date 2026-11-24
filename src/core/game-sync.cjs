@@ -71,6 +71,7 @@ const MAX = 1024 * 1024,
     "BackstageForeverPerf.lua",
     "BackstageForeverAnswers.lua",
     "BackstageForeverScout.lua",
+    "BackstageForeverWares.lua",
     "BackstageForeverRaid.lua",
   ];
 const { atomic } = require("./store.cjs");
@@ -251,6 +252,10 @@ function parseSavedVariables(raw) {
     }
     if (c.travel !== undefined) {
       try { out.travel = require("./travel-planner.cjs").normalizeTravelCapture(c.travel); } catch { /* Omit the entire invalid optional block. */ }
+    }
+    // Vendor wares (1.27): which NPC sold which item ids, from vendor windows the player opened.
+    if (c.wares !== undefined) {
+      try { const wares = require("./wares.cjs").normalizeWaresCapture(c.wares); if (wares.vendors.length) out.wares = wares; } catch { /* Omit the entire invalid optional block. */ }
     }
     if (c.gearSets !== undefined) {
       try { out.gearSets = require("./sheet.cjs").normalizeGearSetsCapture(c.gearSets); } catch { /* Omit the entire invalid optional block. */ }

@@ -10,7 +10,9 @@ const APP_VERSION = /^[0-9A-Za-z.+-]{1,32}$/;
 const MAX_ID = 2147483647;
 
 const COORD_STEPS = 200; // 1 / 0.005
-const NODE_KINDS = Object.freeze(["herb", "ore", "chest"]);
+// "object" (pack format minor 1): any other game object the player looted from, e.g. a quest object.
+// Old apps reject kinds they do not know, so "object" rows are served only in the v=2 pack.
+const NODE_KINDS = Object.freeze(["herb", "ore", "chest", "object"]);
 const RECIPE_SOURCES = Object.freeze(["trainer", "vendor"]);
 const REPORT_CATEGORIES = Object.freeze(["bug", "data", "crash", "suggestion", "other"]);
 
@@ -22,6 +24,8 @@ const LIMITS = Object.freeze({
   dropItems: 64,
   maxLoots: 1000,
   nameLength: 120,
+  npcNameLength: 80,
+  mineKeys: 6000, // most fact keys one /v1/mine answer returns
   reportText: 2000,
   reportLogBytes: 64 * 1024,
 });
@@ -101,6 +105,14 @@ function nodeName(value, path) {
   return name;
 }
 
+// The NPC name exactly as the game shows it (never typed by a player). Same character rules as
+// node names, shorter. It is published only after k installs sent the same name for the same id.
+function npcName(value, path) {
+  const name = nodeName(value, path);
+  if (name.length > LIMITS.npcNameLength) fail(path, `must be 1..${LIMITS.npcNameLength} characters`);
+  return name;
+}
+
 function installId(value, path = "installId") {
   if (typeof value !== "string" || !UUID_V4.test(value)) fail(path, "must be a UUID v4");
   return value.toLowerCase();
@@ -151,15 +163,16 @@ function validateSubmit(body) {
   }
   for (const [i, e] of list("npcs").entries()) {
     const p = `observations.npcs[${i}]`;
-    plainObject(e, p, ["npcId", "mapId", "x", "y"], ["npcId", "mapId", "x", "y"]);
-    out.npcs.push({ npcId: id(e.npcId, `${p}.npcId`), mapId: id(e.mapId, `${p}.mapId`), x: coord(e.x, `${p}.x`), y: coord(e.y, `${p}.y`) });
-    expanded += 1;
+    plainObject(e, p, ["npcId", "mapId", "x", "y", "name"], ["npcId", "mapId", "x", "y"]);
+    const name = e.name === undefined ? null : npcName(e.name, `${p}.name`);
+    out.npcs.push({ npcId: id(e.npcId, `${p}.npcId`), mapId: id(e.mapId, `${p}.mapId`), x: coord(e.x, `${p}.x`), y: coord(e.y, `${p}.y`), ...(name === null ? {} : { name }) });
+    expanded += name === null ? 1 : 2;
   }
   for (const [i, e] of list("vendors").entries()) {
     const p = `observations.vendors[${i}]`;
-    plainObject(e, p, ["npcId", "itemIds"], ["npcId", "itemIds"]);
-    const v = { npcId: id(e.npcId, `${p}.npcId`), itemIds: uniqueIds(e.itemIds, `${p}.itemIds`, LIMITS.vendorItemIds, 1) };
-    expanded += v.itemIds.length;
+    plainObject(e, p, ["npcId", "itemIds", "name"], ["npcId", "itemIds"]);
+    const v = { npcId: id(e.npcId, `${p}.npcId`), itemIds: uniqueIds(e.itemIds, `${p}.itemIds`, LIMITS.vendorItemIds, 1), ...(e.name === undefined ? {} : { name: npcName(e.name, `${p}.name`) }) };
+    expanded += v.itemIds.length + (v.name ? 1 : 0);
     out.vendors.push(v);
   }
   for (const [i, e] of list("drops").entries()) {
@@ -227,8 +240,22 @@ function validateForget(body) {
   return { installId: installId(body.installId) };
 }
 
+// Same body as forget: the install id is the only thing that says whose contributions to list.
+function validateMine(body) {
+  plainObject(body, "", ["schema", "installId"], ["schema", "installId"]);
+  if (body.schema !== 1) fail("schema", "must be 1");
+  return { installId: installId(body.installId) };
+}
+
+// GET /v1/pack?v=2 asks for the minor-1 fields. Anything else (no query, v=1, a value this server
+// does not know) gets the shape every app understands, so an old app can never be handed new fields.
+function packVariant(params) {
+  const all = params.getAll("v");
+  return all.length === 1 && all[0] === "2" ? 2 : 1;
+}
+
 module.exports = {
-  ValidationError, validateSubmit, validateReport, validateForget,
+  ValidationError, validateSubmit, validateReport, validateForget, validateMine, packVariant,
   roundCoord, gridToFraction, LIMITS, NODE_KINDS, RECIPE_SOURCES, REPORT_CATEGORIES, COORD_STEPS,
   // shared with validate-desk.js
   fail, plainObject, array, oneOf, intRange, installId, UUID_V4, BUILD, MAX_ID,

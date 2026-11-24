@@ -100,11 +100,23 @@
       ["installId", "Install number", "The same random number as above."],
       ["appVersion", "App version", ""],
       ["build", "Game build", ""],
-      ["observations.nodes", "Gathering spots", "Herb, ore or chest, the object's number, the zone map, the position rounded to 0.5% of the map, and the item numbers it gave."],
-      ["observations.npcs", "NPC places", "The creature's number, the zone map and the rounded position where you looted it."],
-      ["observations.vendors", "Vendor stock", "A vendor's number and the item numbers it sells. The service accepts this; the app does not send it yet."],
+      ["observations.nodes", "Gathering spots", "Herb, ore, chest or another object you looted a quest item from, the object's number, the zone map, the position rounded to 0.5% of the map, and the item numbers it gave."],
+      ["observations.npcs", "NPC places", "The creature's number, the zone map and the rounded position where you looted it. For a vendor, the rounded position where you stood when you opened its window."],
+      ["observations.npcs.name", "NPC name", "The name the game shows for that creature. Sent only from English game clients. Other players see it only after three installs sent the same name. Nothing you type is ever sent here."],
+      ["observations.vendors", "Vendor stock", "A vendor's number and the item numbers it sells, from vendor windows you opened. No prices."],
+      ["observations.vendors.name", "Vendor name", "The name the game shows for that vendor, under the same rules as the NPC name."],
       ["observations.drops", "Drops", "A creature's number, how many times it was looted and which item numbers dropped. The service accepts this; the app does not send it yet."],
       ["observations.recipes", "Recipe sources", "A trainer's or vendor's number and the recipe it teaches or sells. The service accepts this; the app does not send it yet."],
+    ]),
+    // POST /v1/mine: how the map knows which shared spots are yours.
+    contributions: Object.freeze([
+      ["installId", "Install number", "Your install number, and nothing else. The service answers with the spots, NPC places and vendor stock this install shared, so the map can mark them as yours. Asked a few times a day at most, and only while sharing is on."],
+    ]),
+    // What comes back for everyone in the daily pack, beside the spots themselves.
+    pack: Object.freeze([
+      ["firstSeen", "First seen", "The day a spot, NPC place or vendor item was first reported by anyone. A day, never a time."],
+      ["lastSeen", "Last seen", "The day it was last reported by anyone. A day, never a time. The map uses it to say how fresh a spot is."],
+      ["npcNames", "NPC names", "A name at least three installs sent for the same NPC."],
     ]),
     messages: Object.freeze([
       ["appVersion", "App version", "So you only get messages meant for your version."],

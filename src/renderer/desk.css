@@ -95,9 +95,11 @@
 .desk-switch:first-child { border-top: 0; }
 .desk-switch .check-label strong { font-size: 15px; }
 .desk-switch > p { margin: 6px 0 0 26px; line-height: 1.55; max-width: 82ch; }
-.desk-see { margin: 10px 0 0 26px; }
-.desk-see summary { cursor: pointer; font-weight: 700; color: #7a1f14; text-shadow: none; width: fit-content; }
-.desk-see[open] summary { margin-bottom: 8px; }
+.desk-see, .desk-see-share { margin: 10px 0 0 26px; }
+.desk-see summary, .desk-see-share summary { cursor: pointer; font-weight: 700; color: #7a1f14; text-shadow: none; width: fit-content; }
+.desk-see[open] summary, .desk-see-share[open] summary { margin-bottom: 8px; }
+.desk-sent-share dd { max-height: none; white-space: normal; }
+.desk-see-share > p { margin: 8px 0 0; }
 .desk-see .desk-sent { max-width: 620px; margin: 8px 0; }
 .desk-extra { margin-top: 14px; display: grid; gap: 6px; }
 .desk-never { margin-top: 16px; }

@@ -133,7 +133,7 @@ test("drops, vendors and recipes are not collected: the app has no player-observ
 });
 
 test("the off switch stops every submit; downloads keep their own switch", async () => {
-  const fetch = fakeFetch((c) => (c.url.endsWith("/v1/pack") ? json(200, PACK, { etag: '"v1"' }) : json(200, { ok: true, stored: 1 })));
+  const fetch = fakeFetch((c) => (c.url.endsWith("/v1/pack?v=2") ? json(200, PACK, { etag: '"v1"' }) : json(200, { ok: true, stored: 1 })));
   const { s, clock } = service({ fetch });
   assert.equal(s.status().share, true, "sharing is on by default");
   s.setSettings({ share: false });
