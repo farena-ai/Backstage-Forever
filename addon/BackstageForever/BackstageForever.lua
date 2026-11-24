@@ -936,7 +936,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.26.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.27.0'
     character.race=clean((call(UnitRace,'player')));
     -- UnitSex: 2 male, 3 female; 1 (unknown) and anything else is left out.
     local sex=integer(call(UnitSex,'player'),1,3);if sex==2 then character.sex='male' elseif sex==3 then character.sex='female' end
@@ -1022,6 +1022,11 @@ local function capture(event,eventId)
         if ok and type(lockouts)=='table' and type(lockouts.rows)=='table' then array(lockouts.rows);character.lockouts=lockouts
         elseif type(field(previous,'lockouts'))=='table' then character.lockouts=previous.lockouts end
     end
+    -- Kept profiles: an optional block, present only when the player switched on sharing them with the desktop app.
+    if type(BackstageForeverProfileSnapshot)=='function' then
+        local ok,block=pcall(BackstageForeverProfileSnapshot)
+        if ok and type(block)=='table' and type(block.profiles)=='table' then array(block.profiles);character.settingsProfiles=block end
+    end
     if type(BackstageForeverLedgerSnapshot)=='function' then
         local ok,ledger=pcall(BackstageForeverLedgerSnapshot)
         if ok and type(ledger)=='table' then
@@ -1087,6 +1092,7 @@ local function capture(event,eventId)
     if type(BackstageForeverCrewUpdate)=="function" then pcall(BackstageForeverCrewUpdate,character) end
     if type(BackstageForeverGuildUpdate)=="function" then pcall(BackstageForeverGuildUpdate,character) end
     if type(BackstageForeverShopUpdate)=="function" then pcall(BackstageForeverShopUpdate,character) end
+    if type(BackstageForeverBagUpdate)=="function" then pcall(BackstageForeverBagUpdate,character) end
     local chars=array({character});for id,c in pairs(roster) do if id~=guid then chars[#chars+1]=c end end
     table.sort(chars,function(a,b) return a.updatedAt>b.updatedAt end)
     while #chars>100 do table.remove(chars) end
@@ -1115,7 +1121,11 @@ local function capture(event,eventId)
             end
         end
     end
-    -- Scout records are the newest optional block and the first to go; the saved list itself stays.
+    -- Kept profiles and scout records are the newest optional blocks and the first to go; what is saved in game stays.
+    for i=#chars,1,-1 do
+        if fits() then break end
+        discard(chars[i],'settingsProfiles')
+    end
     for i=#chars,1,-1 do
         if fits() then break end
         discard(chars[i],'scout')

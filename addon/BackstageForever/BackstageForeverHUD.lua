@@ -1111,6 +1111,18 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverScoutCommand)=='function' then pcall(BackstageForeverScoutCommand,message)end
                 return
             end
+            if word=='bag' then
+                if type(BackstageForeverBagCommand)=='function' then pcall(BackstageForeverBagCommand,message)end
+                return
+            end
+            if word=='chat' then
+                if type(BackstageForeverChatCommand)=='function' then pcall(BackstageForeverChatCommand,message)end
+                return
+            end
+            if word=='profile' then
+                if type(BackstageForeverProfileCommand)=='function' then pcall(BackstageForeverProfileCommand,message)end
+                return
+            end
             if word=='raid' then
                 if type(BackstageForeverRaidCommand)=='function' then pcall(BackstageForeverRaidCommand,message)end
                 return

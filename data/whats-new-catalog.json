@@ -8103,6 +8103,96 @@
           "text": "Your characters stay on your computer. The app shares only what the live map needs and anonymous statistics that help improve it, with no account, character or realm names and no files. Reports are sent only when you write one. Each of these has its own off switch. The new in-game commands in this release have not been checked in the real game client yet."
         }
       ]
+    },
+    {
+      "version": "1.27.0",
+      "channel": "stable",
+      "source": "docs/releases/1.27.0.md",
+      "title": "Backstage Forever 1.27.0 — Search everything",
+      "changes": [
+        {
+          "id": "search-everything",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Search everything. Press Ctrl+K anywhere in the app and type: quests, NPCs, items, spells, talents, recipes, zones, dungeons, bosses, rare enemies, flight points, boats, commands and help pages. Pick a result and the app opens the right screen at the right thing. Each row says where the fact comes from: your game files, the bundled reference, or the community."
+        },
+        {
+          "id": "community-map-layers",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Community map layers. The World Map draws what players have shared as five layers: herbs, ore, chests, NPCs and vendors, each with how many players saw it and how old the data is. Zones with thin data show a short \"help fill this zone\" card."
+        },
+        {
+          "id": "wider-find",
+          "kind": "improved",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Wider /bf find. It also finds quests players have met (pointing at the giver), dungeons and bosses, and the box on the in-game map lists up to eight results to click."
+        },
+        {
+          "id": "one-window-bags",
+          "kind": "new",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "One-window bags. /bf bag shows every bag in one window with search, categories, a glow on new items and marks for upgrades, wishes, quest items and junk. It is a finder: it never uses, moves or sells anything. Off until you turn it on."
+        },
+        {
+          "id": "chat-tools",
+          "kind": "new",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Chat tools. /bf chat has four switches: timestamps, class-coloured names, copy and click links (web addresses and coordinates such as \"45.2, 61.8\"), and a careful filter for gold-seller lines that never touches friends, guild or whispers. All off until you turn them on."
+        },
+        {
+          "id": "settings-profiles",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Settings profiles. /bf profile saves all your addon settings as one code you can keep, share or import, and the desktop can send a profile to another character. An import always keeps an undo."
+        },
+        {
+          "id": "zone-links-fix",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Zone tiles and links that pointed at a zone by its map number now open that zone."
+        },
+        {
+          "id": "unverified-in-game-127",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "The bag window, chat tools, profiles and the new find panel have not been checked in the real game client yet. Search and map layers are new; if a result opens the wrong place, use Help → Report a problem."
+        }
+      ]
     }
   ],
   "excluded": [
