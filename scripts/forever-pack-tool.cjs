@@ -14,11 +14,11 @@ const url = (commit, build, name) => `https://raw.githubusercontent.com/JIVESCOR
 const number = (build) => Number(build.split(".").pop());
 
 /**
- * spec: { name, dir, files, rawLimits, packLimit, compile(builds, { commit }) -> pack object,
+ * spec: { name, dir, files, optional (files a build may lack), rawLimits, packLimit, compile(builds, { commit }) -> pack object,
  *         validate(pack), notice(pack, lock) -> text }
  */
 function packTool(spec) {
-  const { dir, files: FILES } = spec;
+  const { dir, files: FILES } = spec, OPTIONAL = spec.optional || [];
   const at = (name) => path.join(dir, name);
   const readLock = () => JSON.parse(fs.readFileSync(at("source-lock.json"), "utf8"));
   function checkLock(lock) {
@@ -27,9 +27,9 @@ function packTool(spec) {
     if (!Array.isArray(lock.builds) || !lock.builds.length || lock.builds.length > MAX_BUILDS || lock.builds[0].build !== lock.build || new Set(lock.builds.map((b) => b.build)).size !== lock.builds.length) bad();
     let last = Infinity;
     for (const { build, files } of lock.builds) {
-      if (!BUILD_RE.test(build) || number(build) >= last || !files || !isDeepStrictEqual(Object.keys(files).sort(), [...FILES].sort())) bad();
+      if (!BUILD_RE.test(build) || number(build) >= last || !files || !isDeepStrictEqual(Object.keys(files).filter((name) => !OPTIONAL.includes(name)).sort(), [...FILES].sort())) bad();
       last = number(build);
-      for (const name of FILES) {
+      for (const name of Object.keys(files)) {
         const f = files[name];
         if (!Number.isSafeInteger(f.bytes) || f.bytes < 1 || f.bytes > spec.rawLimits[name] || !/^[a-f0-9]{64}$/.test(f.sha256) || f.url !== url(lock.commit, build, name)) bad();
         if (f.meta?.product !== "wowf" || f.meta.clientBuild !== build || f.meta.dataset !== name.split(".")[0] || f.meta.license !== "CC BY 4.0" || f.meta.attribution !== ATTRIBUTION) bad();
@@ -42,7 +42,7 @@ function packTool(spec) {
     const { compiled: _old, ...source } = checkLock(lock);
     const builds = source.builds.map(({ build, files }) => {
       const inputs = {};
-      for (const name of FILES) {
+      for (const name of Object.keys(files)) {
         const file = path.join(sourceDir, build, name), expected = files[name];
         if (fs.statSync(file).size !== expected.bytes) throw Error(`Source size mismatch: ${build}/${name}`);
         const bytes = fs.readFileSync(file);
@@ -63,7 +63,7 @@ function packTool(spec) {
     if (!builds.length) throw Error(`No build under ${sourceDir} has ${FILES.join(" and ")}.`);
     return {
       schemaVersion: 1, product: "wowf", license: "CC BY 4.0", attribution: ATTRIBUTION, commit, build: builds[0],
-      builds: builds.map((build) => ({ build, files: Object.fromEntries(FILES.map((name) => { const bytes = fs.readFileSync(path.join(sourceDir, build, name)); return [name, { url: url(commit, build, name), bytes: bytes.length, sha256: hash(bytes), meta: JSON.parse(bytes).meta }]; })) })),
+      builds: builds.map((build) => ({ build, files: Object.fromEntries([...FILES, ...OPTIONAL.filter((name) => fs.existsSync(path.join(sourceDir, build, name)))].map((name) => { const bytes = fs.readFileSync(path.join(sourceDir, build, name)); return [name, { url: url(commit, build, name), bytes: bytes.length, sha256: hash(bytes), meta: JSON.parse(bytes).meta }]; })) })),
     };
   }
   function write(result) {

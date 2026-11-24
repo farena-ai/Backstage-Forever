@@ -512,6 +512,43 @@ test("extras: a table with another layout or a missing table leaves only its own
   assert.equal(none.flights(), null); assert.equal(none.repTiers(), null); assert.equal(none.spellLevels(), null);
 });
 
+// --- Boats, zeppelins and airships (kind "transports") --------------------------------------------
+const pathNode = (path, index, continent, x, y, flags = 0, delay = 0, z = 0) => ({ id: path * 100 + index, relation: path, fields: [[x, y, z], path * 100 + index, path, index, continent, flags, delay, 0, 0] });
+test("transports: stops and path lengths come from the waypoints flagged as a stop", (t) => {
+  const restore = withFakeDb2(extraTables({ taxiPathNode: [
+    // Path 70 crosses the sea: 300 yards out, moved to the other continent, 400 in; then 500 and 600 back.
+    pathNode(70, 0, 1, 0, 0), pathNode(70, 1, 1, 100, 0, 2, 60), pathNode(70, 2, 1, 400, 0), pathNode(70, 3, 0, 5000, 0), pathNode(70, 4, 0, 5400, 0, 2, 60), pathNode(70, 5, 0, 5900, 0),
+    // Path 71 stays on one continent: a waypoint flagged to jump, and a step too long to be sailed.
+    pathNode(71, 0, 0, 0, 0, 2, 30), pathNode(71, 1, 0, 0, 300, 1), pathNode(71, 2, 0, 0, 9000), pathNode(71, 3, 0, 0, 9400, 2, 30, 300), pathNode(71, 4, 0, 0, 20000),
+    // An ordinary flight path (no stop), a path with one stop and a path with a missing waypoint are left out.
+    pathNode(6, 0, 0, 1, 1), pathNode(6, 1, 0, 50, 50), pathNode(72, 0, 0, 0, 0, 2, 60), pathNode(72, 1, 0, 9, 9), pathNode(73, 0, 0, 0, 0, 2, 60), pathNode(73, 2, 0, 90, 0, 2, 60),
+    { id: 1, relation: 0, fields: [[1, 1, 1], 1, 0, 0, 0, 2, 60, 0, 0] }, { id: 2, relation: 74, fields: [[NaN, 1, 1], 2, 74, 0, 0, 2, 60, 0, 0] },
+  ] })); t.after(restore);
+  const dirs = install(), stats = { opened: 0, reads: [], closed: 0 };
+  const g = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, idleMs: 5, open: fakeStorage(stats) });
+  const paths = g.transportPaths();
+  assert.deepEqual(paths, {
+    70: { stops: [[1, 100, 0, 60], [0, 5400, 0, 60]], yards: [700, 600] },
+    71: { stops: [[0, 0, 0, 30], [0, 0, 9400, 30]], yards: [800, 0] },
+  }, "what lies across a continent change, a jump flag or a step over 2,000 yards is not counted as sailed");
+  assert.deepEqual(stats.reads, [TABLES.taxiPathNode.fdid], "only the path waypoint table is read");
+  assert.ok(fs.existsSync(path.join(dirs.cache, "1.60.1.70938", "transports.json")));
+  const again = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, open: () => { throw Error("must not open the game"); } });
+  assert.deepEqual(again.transportPaths(), paths);
+  g.release(); again.release();
+});
+
+test("transports: another layout, a missing table or no game leaves them unknown", (t) => {
+  const restore = withFakeDb2(extraTables({ taxiPathNode: [pathNode(70, 0, 1, 0, 0, 2, 60), pathNode(70, 1, 1, 100, 0, 2, 60)] }), { taxiPathNode: 0xdeadbeef }); t.after(restore);
+  const dirs = install();
+  const g = new GameData({ getRoot: () => dirs.game, cacheDir: dirs.cache, idleMs: 5, open: fakeStorage({ opened: 0, reads: [], closed: 0 }) });
+  assert.equal(g.transportPaths(), null);
+  assert.deepEqual(gd.extractTransports({ readFileId: (fdid) => ({ fdid }) }).notes, ["taxiPathNode: layout differs"]);
+  assert.ok(g.flights(), "the flight points are still read");
+  g.release();
+  assert.equal(new GameData({ getRoot: () => null, cacheDir: os.tmpdir() }).transportPaths(), null);
+});
+
 // One read-only look at a real install, when this PC has one (BF_REAL_GAME_DIR, or the default
 // folder with BF_REAL_GAME=1). Nothing is written to the game folder; the cache goes to a temp folder.
 test("extras: the real client's tables read as expected", { skip: !(process.env.BF_REAL_GAME_DIR || process.env.BF_REAL_GAME) }, () => {
@@ -525,5 +562,11 @@ test("extras: the real client's tables read as expected", { skip: !(process.env.
   assert.equal(f.costs["2>4"], 110);
   assert.deepEqual(tiers.gain.slice(0, 8), [0, 10, 25, 50, 75, 100, 150, 200]); assert.equal(tiers.loss[5], -500);
   assert.equal(levels[543], 20, "Fire Ward is learned at 20");
+  // The Orgrimmar to Undercity zeppelin (path 302): one stop on each continent, a minute at each.
+  const paths = g.transportPaths();
+  assert.ok(paths && Object.keys(paths).length >= 8, "transport paths");
+  assert.deepEqual(paths[302].stops.map((s) => [s[0], s[3]]), [[1, 60], [0, 60]]);
+  assert.ok(Math.abs(paths[302].stops[0][1] - 1318) < 5 && Math.abs(paths[302].stops[0][2] + 4658) < 5);
+  assert.ok(paths[302].yards.every((y) => y > 1500 && y < 5000));
   g.release();
 });

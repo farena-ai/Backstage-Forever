@@ -94,7 +94,13 @@ test("the bundled pack matches its lock, its notice and its licence, and says wh
   assert.ok(pack.counts.timedEdges < pack.counts.edges, "untimed connections stay untimed");
   for (const e of pack.edges) assert.equal(e.seconds === null, e.samples === 0);
   const notice = fs.readFileSync(path.join(__dirname, "../data/forever-transport/NOTICE"), "utf8");
-  assert.match(notice, /Not in the upstream data: flight point names, boats, zeppelins/);
+  assert.match(notice, /Not in the upstream data: flight point names, transport stops, the tram/);
+  assert.match(notice, /Upstream\ndoes not record where a transport stops, how long a ride takes or which faction\nmay board/);
+  // Boats, zeppelins and airships: only that they exist. Stops, times and factions are not in the pack.
+  assert.ok(pack.transports.length >= 10);
+  for (const mode of ["boat", "zeppelin"]) assert.ok(pack.transports.some((t) => t.mode === mode), mode);
+  for (const t of pack.transports) assert.deepEqual(Object.keys(t), ["id", "name", "mode", "pathId", "speed", "accel"]);
+  assert.ok(lock.builds.some((b) => b.files["object_details.enUS.json"]) && lock.builds.some((b) => !b.files["object_details.enUS.json"]), "only the newer builds have the object file");
   assert.ok(notice.includes(lock.commit) && notice.includes(pack.attribution));
 });
 
@@ -116,5 +122,16 @@ test("the pack tool locks, rebuilds and catches a changed source file", () => {
     fs.writeFileSync(path.join(src, fx.build, "flights.json"), JSON.stringify(changed));
     assert.throws(() => tool.compile(src), /Source (size|hash) mismatch/);
     assert.throws(() => tool.checkLock({ ...lock, builds: [...lock.builds, { ...lock.builds[0], build: "1.60.1.200" }] }), /Invalid Test transport source lock/);
+    // An optional file is locked only for the builds that have it, and checked like the others.
+    const src2 = path.join(tmp, "src2");
+    for (const [b, files] of [[fx.build, fx.buffers(fx.flights(), fx.npcs(), fx.objects())], [fx.older, fx.buffers(fx.flights(fx.older), fx.npcs(fx.older))]]) { fs.mkdirSync(path.join(src2, b), { recursive: true }); for (const [name, bytes] of Object.entries(files)) fs.writeFileSync(path.join(src2, b, name), bytes); }
+    const both = packTool({ name: "Test transport", dir, files: T.FILES, optional: T.OPTIONAL, rawLimits: T.RAW_LIMITS, packLimit: T.PACK_LIMIT, compile: T.compileTransport, validate: T.validateTransportPack, notice: (p, l) => `${p.attribution}\n${l.commit}\n`, summary: () => "ok" });
+    const lock2 = both.relock(src2, fx.commit);
+    assert.deepEqual(lock2.builds.map((b) => Object.keys(b.files).length), [3, 2]);
+    assert.equal(JSON.parse(both.compile(src2, lock2).pack).transports.length, 5);
+    assert.throws(() => tool.checkLock(lock2), /Invalid Test transport source lock/, "a tool that does not know the optional file refuses it");
+    assert.throws(() => both.checkLock({ ...lock2, builds: [{ ...lock2.builds[0], files: { ...lock2.builds[0].files, "loot.json": lock2.builds[0].files["npcs.json"] } }, lock2.builds[1]] }), /Invalid Test transport source lock/);
+    fs.appendFileSync(path.join(src2, fx.build, "object_details.enUS.json"), " ");
+    assert.throws(() => both.compile(src2, lock2), /Source (size|hash) mismatch/);
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });

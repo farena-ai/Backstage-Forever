@@ -1,7 +1,9 @@
 "use strict";
-// Travel planner (roadmap Q15): compares going on foot, flying and the Hearthstone between two
-// places, fastest first. Pure: the transport pack and the character facts come in, options go out.
+// Travel planner (roadmap Q15): compares going on foot, flying, boats and zeppelins and the
+// Hearthstone between two places, fastest first. Pure: the transport pack, the rides
+// (transport-rides.cjs) and the character facts come in, options go out.
 // Flight times and prices are what players saw; anything worked out here is marked as an estimate.
+// A boat or zeppelin ride never includes the wait for the next departure: nobody can know it.
 const { MAP_NAMES } = require("./map-names.cjs");
 const { toWorld } = require("./transport-data.cjs");
 
@@ -192,6 +194,109 @@ function walkOption(a, b) {
 function landOptions(pack, a, b, allowed, assumed, names) {
   return [walkOption(a, b), flightOption(pack, a, b, allowed, assumed, names)].filter(Boolean).sort((x, y) => x.seconds - y.seconds);
 }
+const MODE_TITLE = Object.freeze({ boat: "Boat", zeppelin: "Zeppelin", airship: "Airship", tram: "Tram" });
+const MODE_THE = Object.freeze({ boat: "the boat", zeppelin: "the zeppelin", airship: "the airship", tram: "the tram" });
+const minutes = (seconds) => Math.max(1, Math.round(seconds / 60));
+const stopPlace = (s) => ({ kind: "point", label: s.label, mapId: null, instance: s.instance, wx: s.wx, wy: s.wy, placed: true });
+const mayBoard = (t, faction) => !(otherSide(faction) && t.side === otherSide(faction));
+/** The best way over land between two placed points: nothing to do when they are the same spot. */
+function landLink(pack, p, q, allowed, assumed, names, memo, pk, qk) {
+  if (!p.placed || !q.placed || p.instance !== q.instance) return null;
+  const key = `${pk}>${qk}`;
+  if (memo.has(key)) return memo.get(key);
+  const best = dist(p, q) < 15 ? { seconds: 0, legs: [], notes: [], cost: 0, costEstimated: false } : landOptions(pack, p, q, allowed, assumed, names)[0] || null;
+  memo.set(key, best);
+  return best;
+}
+/**
+ * The fastest trip that takes at least one boat, zeppelin or airship: over land to a stop, the ride,
+ * over land again, as often as needed. Rides without a known time (the tram) are left to tramOption.
+ */
+function rideOption(pack, a, b, allowed, assumed, names, rides, faction) {
+  const usable = (rides?.transports || []).filter((t) => t.timing !== "unknown" && mayBoard(t, faction));
+  if (!usable.length || !a.placed || !b.placed) return null;
+  // Points: 0 the start, 1 the end, then every stop. A state is a point and whether a ride was taken.
+  const points = [a, b], out = new Map();
+  for (const t of usable) {
+    const base = points.length;
+    for (const s of t.stops) points.push(stopPlace(s));
+    for (const r of t.rides) { const u = base + r.from; if (!out.has(u)) out.set(u, []); out.get(u).push({ to: base + r.to, t, r }); }
+  }
+  const memo = new Map(), land = (u, v) => landLink(pack, points[u], points[v], allowed, assumed, names, memo, u, v);
+  const id = (u, rode) => u * 2 + (rode ? 1 : 0), best = new Map([[id(0, false), 0]]), prev = new Map(), done = new Set(), goal = id(1, true);
+  for (;;) {
+    let at = null, d = Infinity;
+    for (const [k, v] of best) if (!done.has(k) && v < d) { at = k; d = v; }
+    if (at === null) return null;
+    if (at === goal) break;
+    done.add(at);
+    const u = at >> 1, rode = !!(at & 1), relax = (k, v, how) => { if (!done.has(k) && v < (best.get(k) ?? Infinity)) { best.set(k, v); prev.set(k, { from: at, how }); } };
+    // Staying on board for another leg costs the time it lies at this stop, like the one long ride does.
+    for (const e of out.get(u) || []) relax(id(e.to, true), d + e.r.seconds + (prev.get(at)?.how.ride?.t === e.t ? e.r.dock || 0 : 0), { ride: e });
+    // Over land: never straight from the start to the end, and never two land links in a row.
+    if (prev.get(at)?.how.land) continue;
+    for (let v = 1; v < points.length; v++) {
+      if (v === u || (v === 1 && !rode) || (u === 0 && v === 1)) continue;
+      const link = land(u, v);
+      if (link) relax(id(v, rode), d + link.seconds, { land: link });
+    }
+  }
+  const steps = [];
+  for (let k = goal; prev.has(k); k = prev.get(k).from) steps.unshift(prev.get(k).how);
+  const legs = [], notes = new Set(), used = [];
+  let cost = 0, costEstimated = false;
+  for (const how of steps) {
+    if (how.land) {
+      legs.push(...how.land.legs); for (const n of how.land.notes) notes.add(n);
+      if (how.land.cost === null || cost === null) cost = null; else { cost += how.land.cost; costEstimated ||= how.land.costEstimated; }
+    } else {
+      const { t, r } = how.ride;
+      legs.push({ kind: "ride", mode: t.mode, name: t.name, from: t.stops[r.from].label, to: t.stops[r.to].label, via: r.via, seconds: r.seconds, timing: "estimated" });
+      if (!used.includes(t)) used.push(t);
+    }
+  }
+  const list = [`The wait for the next departure is not in the time: nobody can know where ${used.length === 1 ? MODE_THE[used[0].mode] : "each transport"} is when you get there.`,
+    "Ride times are worked out from the path in your game files and the recorded speed; they are estimates."];
+  for (const t of used) {
+    const which = `${MODE_THE[t.mode]}${t.name ? ` (${t.name})` : ""}`;
+    if (t.roundSeconds) list.push(`Worked out the same way, a full round of ${which} takes about ${minutes(t.roundSeconds)} min.`);
+    if (!t.side) list.push(`The data does not say which faction may board ${which}.`);
+    else if (!faction && t.side !== "Both") list.push(`${which[0].toUpperCase()}${which.slice(1)} counts as ${t.side === "Alliance" ? "an Alliance" : "a Horde"} transport: its stops stand at ${t.side} flight points.`);
+  }
+  // Walking from one dock to the next one in the same town is a change, not a trip.
+  for (const l of legs) if (l.kind === "walk" && l.from === l.to) l.change = true;
+  const rideLegs = legs.filter((l) => l.kind === "ride");
+  return {
+    kind: "ride", mode: rideLegs[0].mode, title: MODE_TITLE[rideLegs[0].mode], seconds: Math.round(best.get(goal)), exact: false, plusWait: true, rides: rideLegs.length,
+    cost, costEstimated, legs, notes: [...list, ...notes],
+  };
+}
+/** The tram: known only from the published travel reference, with no place of its own and no time. */
+function tramOption(pack, a, b, allowed, assumed, names, rides, faction) {
+  const t = (rides?.transports || []).find((x) => x.timing === "unknown" && mayBoard(x, faction));
+  if (!t || !a.placed || !b.placed) return null;
+  let pick = null;
+  const memo = new Map();
+  for (const r of t.rides) {
+    const from = stopPlace(t.stops[r.from]), to = stopPlace(t.stops[r.to]);
+    const before = landLink(pack, a, from, allowed, assumed, names, memo, "a", `s${r.from}`), after = landLink(pack, to, b, allowed, assumed, names, memo, `s${r.to}`, "b");
+    if (!before || !after) continue;
+    const seconds = before.seconds + after.seconds;
+    if (!pick || seconds < pick.seconds) pick = { seconds, before, after, r };
+  }
+  if (!pick) return null;
+  const cost = pick.before.cost === null || pick.after.cost === null ? null : pick.before.cost + pick.after.cost;
+  const notes = new Set([
+    `${t.name}: known from a published travel guide for this game, not from recorded data. Where its stations stand and how long the ride takes are not recorded, so the time is left open and this is never ranked.`,
+    "The legs before and after are measured to the middle of each city.",
+    ...(t.side && !faction ? [`The guide lists it for ${t.side} characters.`] : []), ...pick.before.notes, ...pick.after.notes,
+  ]);
+  return {
+    kind: "ride", mode: t.mode, title: MODE_TITLE[t.mode], seconds: Math.round(pick.seconds), exact: false, plusWait: true, unknownTime: true, reference: true, rides: 1,
+    cost, costEstimated: pick.before.costEstimated || pick.after.costEstimated,
+    legs: [...pick.before.legs, { kind: "ride", mode: t.mode, name: t.name, from: t.stops[pick.r.from].label, to: t.stops[pick.r.to].label, via: [], seconds: null, timing: "unknown" }, ...pick.after.legs], notes: [...notes],
+  };
+}
 /** Where a Hearthstone lands, as a placed point; matches a bare inn name against flight point and zone names. */
 function hearthPlace(pack, hearth, names) {
   if (!hearth || typeof hearth.name !== "string" || !hearth.name.trim()) return null;
@@ -210,23 +315,29 @@ function hearthPlace(pack, hearth, names) {
 /**
  * from/to: { nodeId } | { mapId, x, y } | { mapId }.
  * character: { faction, knownNodes: number[] | null, names: { nodeId: name }, hearth: { name, mapId, x, y, readyAt } | null }.
- * now: epoch seconds. Returns options fastest first.
+ * now: epoch seconds. rides: transportRides(...) or null (no boats, zeppelins or tram then).
+ * Returns options fastest first; a ride's time never includes the wait, and an option whose
+ * time is not known (unknownTime) comes last.
  */
-function planTrip(pack, { from, to, character = {}, now = Math.floor(Date.now() / 1000) } = {}) {
+function planTrip(pack, { from, to, character = {}, now = Math.floor(Date.now() / 1000), rides = null } = {}) {
   const names = character.names || {};
   const a = place(pack, from, names), b = place(pack, to, names);
-  const result = { status: "ok", from: a, to: b, options: [], notes: [], coverage: `Flight times and prices are what players recorded on game builds ${pack.builds.at(-1).split(".").pop()} to ${pack.build.split(".").pop()} (${pack.counts.timedEdges} of ${pack.counts.edges} connections timed). Boats, zeppelins, the tram and portals are not in this data.` };
+  const result = { status: "ok", from: a, to: b, options: [], notes: [], coverage: `Flight times and prices are what players recorded on game builds ${pack.builds.at(-1).split(".").pop()} to ${pack.build.split(".").pop()} (${pack.counts.timedEdges} of ${pack.counts.edges} connections timed).`, transportNote: transportNote(rides) };
   if (!a || !b) { result.status = "unknown-place"; return result; }
   if (!a.placed) result.notes.push(`The app does not know where ${a.label} is on the map, so it cannot measure a walk from there.`);
   if (!b.placed) result.notes.push(`Nobody has recorded where ${b.label} is on the map, so there is no walking estimate to it.`);
   const { allowed, assumed } = usableNodes(pack, character);
   if (!assumed && !allowed.size) result.notes.push("This character has no learned flight points saved yet. Open a flight map in game, then /reload.");
   result.options.push(...landOptions(pack, a, b, allowed, assumed, names));
+  const byRide = (p, q) => rideOption(pack, p, q, allowed, assumed, names, rides, character.faction);
+  // A ride is worth showing when nothing else gets there, or when it beats the fastest way over land.
+  const ride = byRide(a, b);
+  if (ride && (!result.options.length || ride.seconds < result.options[0].seconds)) result.options.push(ride);
   const h = hearthPlace(pack, character.hearth, names);
   if (h && h.placed) {
     const wait = Number.isFinite(character.hearth.readyAt) ? Math.max(0, Math.round(character.hearth.readyAt - now)) : 0;
     const near = b.placed && h.instance === b.instance && dist(h, b) < 15;
-    const onward = near ? [] : landOptions(pack, h, b, allowed, assumed, names);
+    const onward = near ? [] : [...landOptions(pack, h, b, allowed, assumed, names), byRide(h, b)].filter(Boolean).sort((x, y) => x.seconds - y.seconds);
     const rest = onward[0] || null;
     if (near || rest) {
       const legs = [];
@@ -237,15 +348,34 @@ function planTrip(pack, { from, to, character = {}, now = Math.floor(Date.now() 
       if (!Number.isFinite(character.hearth.readyAt)) notes.push("The app does not know your Hearthstone cooldown; this assumes it is ready.");
       if (h.approximate) notes.push("The inn's exact spot was not recorded; the flight point of the same name stands in.");
       if (rest) notes.push(...rest.notes);
-      result.options.push({ kind: "hearth", title: "Hearthstone", seconds: wait + HEARTH_CAST + (rest ? rest.seconds : 0), exact: false, cost: rest ? rest.cost : 0, costEstimated: rest ? rest.costEstimated : false, legs, notes, waits: wait, then: rest ? rest.kind : null });
+      result.options.push({ kind: "hearth", title: "Hearthstone", seconds: wait + HEARTH_CAST + (rest ? rest.seconds : 0), exact: false, cost: rest ? rest.cost : 0, costEstimated: rest ? rest.costEstimated : false, legs, notes, waits: wait, then: rest ? rest.kind : null, ...(rest?.plusWait ? { plusWait: true, rides: rest.rides } : {}) });
     }
   } else if (h) result.notes.push(`Your Hearthstone goes to ${character.hearth.name}, but the app does not know where that is on the map yet. Set it at an innkeeper again with the addon running and it will remember the spot.`);
   else result.notes.push("Hearthstone: the saved character data does not say where it takes you.");
   result.options.sort((x, y) => x.seconds - y.seconds);
-  if (!result.options.length) { result.status = "no-route"; result.notes.push(a.placed && b.placed && a.instance !== b.instance ? "These places are on different continents. Boats and zeppelins are not in the data, so the app cannot connect them." : "No recorded flight connects these places for this character."); }
+  // The tram has no time, so it cannot be ranked: it is offered last, and only where the way to and
+  // from it is shorter than the fastest timed option.
+  const rail = tramOption(pack, a, b, allowed, assumed, names, rides, character.faction);
+  if (rail && (!result.options.length || rail.seconds < result.options[0].seconds)) result.options.push(rail);
+  if (!result.options.length) {
+    result.status = "no-route";
+    const apart = a.placed && b.placed && a.instance !== b.instance;
+    result.notes.push(!apart ? "No recorded flight connects these places for this character."
+      : !rides?.gameFiles ? "These places are on different continents. Where boats and zeppelins stop is read from your own game files, and no game folder is connected, so the app cannot cross the sea yet."
+      : "These places are on different continents, and no boat or zeppelin this character can board connects them in the data.");
+  }
   return result;
 }
 
+/** What the planner knows about boats, zeppelins, airships and the tram, in one plain sentence or two. */
+function transportNote(rides) {
+  if (!rides) return "Boats, zeppelins, the tram and portals are not in this data.";
+  const read = rides.transports.filter((t) => t.source === "game-files").length, rail = rides.transports.some((t) => t.source === "reference");
+  const tail = `${rail ? " The Deeprun Tram is known only from a published guide: no place and no time." : " The tram is not in this data."} Portals are not in this data.`;
+  if (!rides.known) return `No boat or zeppelin is in this data.${tail}`;
+  if (!rides.gameFiles) return `The data names ${rides.known} boats, zeppelins and airships but not where they stop. That is read from your own game files once a game folder is connected.${tail}`;
+  return `Boats, zeppelins and airships: the data names ${rides.known}; ${read} have their stops in your game files. Stops, ride times and factions are worked out from those files and are estimates. The wait for the next departure is never known.${tail}`;
+}
 /** Everything a player can pick as a place: flight points, then zones the pack can place. */
 function destinations(pack, { names = {}, faction = null } = {}) {
   const other = otherSide(faction);
@@ -312,4 +442,4 @@ function normalizeTravelCapture(t) {
   return out;
 }
 
-module.exports = { RUN_SPEED, HEARTH_CAST, withGameFiles, nodeLabel, usableNodes, flightRoute, planTrip, destinations, searchDestinations, parsePlace, characterFacts, normalizeTravelCapture, TRAVEL_LIMITS };
+module.exports = { RUN_SPEED, HEARTH_CAST, MODE_TITLE, transportNote, rideOption, tramOption, withGameFiles, nodeLabel, usableNodes, flightRoute, planTrip, destinations, searchDestinations, parsePlace, characterFacts, normalizeTravelCapture, TRAVEL_LIMITS };

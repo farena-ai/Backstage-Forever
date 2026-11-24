@@ -2,12 +2,16 @@
 // Transport graph (roadmap D3): every flight point and connection that upstream players saw,
 // for both factions, with the observed flight seconds and costs where upstream has them.
 // Built offline by scripts/build-forever-transport.cjs from Efficient Games flights.json and
-// npcs.json (CC BY 4.0). Upstream has no flight point names, no boats and no zeppelins.
+// npcs.json (CC BY 4.0). Upstream has no flight point names. Of boats, zeppelins and airships it has
+// only that they exist (object_details: name, path number, speed); where they stop is read from
+// the player's own game files at run time (transport-rides.cjs) and is never in the pack.
 const fs = require("node:fs"), path = require("node:path"), { createHash } = require("node:crypto"); const { latinName } = require("./latin-name.cjs");
 
 const FILES = Object.freeze(["flights.json", "npcs.json"]);
 const ATTRIBUTION = "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.";
-const RAW_LIMITS = Object.freeze({ "flights.json": 512 * 1024, "npcs.json": 4 * 1024 * 1024 });
+const OPTIONAL = Object.freeze(["object_details.enUS.json"]); // only the newer builds have it
+const RAW_LIMITS = Object.freeze({ "flights.json": 512 * 1024, "npcs.json": 4 * 1024 * 1024, "object_details.enUS.json": 8 * 1024 * 1024 });
+const MAX_TRANSPORTS = 64, MO_TRANSPORT = 15, MODES = Object.freeze(["boat", "zeppelin", "airship"]), BOAT_MODEL = 3015;
 const PACK_LIMIT = 256 * 1024, MAX_BUILDS = 16, MAX_NODES = 400, MAX_EDGES = 4000, MAX_ROUTES = 8000, MAX_MAPS = 200;
 const BUILD_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/;
 const SIDES = Object.freeze(["Alliance", "Horde", "Both"]);
@@ -71,7 +75,7 @@ function toWorld(pack, mapId, x, y) {
  */
 function compileTransport(builds, { commit }) {
   if (!Array.isArray(builds) || !builds.length || builds.length > MAX_BUILDS || !/^[a-f0-9]{40}$/.test(commit || "")) fail();
-  const masters = new Map(), npcs = new Map(), routes = new Map(), fitPoints = new Map();
+  const masters = new Map(), npcs = new Map(), routes = new Map(), fitPoints = new Map(), vehicles = new Map();
   const dates = [];
   const counts = { droppedRoutes: 0, routesWithoutHops: 0 };
   const point = (p) => { const q = position(p); if (q) { if (!fitPoints.has(q.mapId)) fitPoints.set(q.mapId, []); fitPoints.get(q.mapId).push(q); } return q; };
@@ -80,6 +84,18 @@ function compileTransport(builds, { commit }) {
     const flights = JSON.parse(files["flights.json"]), people = JSON.parse(files["npcs.json"]);
     if (flights?.meta?.dataset !== "flights" || people?.meta?.dataset !== "npcs" || flights.meta.clientBuild !== build || people.meta.clientBuild !== build) fail("Source metadata.");
     dates.push(flights.meta.collectedOn.first, flights.meta.collectedOn.last);
+    // Moving transports (object type 15): data is [path, speed in yards a second, acceleration, ...].
+    if (files["object_details.enUS.json"]) {
+      const things = JSON.parse(files["object_details.enUS.json"]);
+      if (things?.meta?.dataset !== "object_details" || things.meta.clientBuild !== build) fail("Source metadata.");
+      for (const [key, o] of Object.entries(things.objects || {})) {
+        const id = Number(key), d = o?.data;
+        if (o?.type !== MO_TRANSPORT || !/^[1-9]\d*$/.test(key) || !int(id) || vehicles.has(id) || !text(o.name) || !Array.isArray(d) || !int(d[0]) || !num(d[1], 1, 200)) continue;
+        // What it is: by its name, else by the model every named ship shares. Anything else is left out.
+        const mode = /zeppelin/i.test(o.name) ? "zeppelin" : /skycutter|airship/i.test(o.name) ? "airship" : o.displayId === BOAT_MODEL ? "boat" : null;
+        if (mode) vehicles.set(id, { id, name: o.name, mode, pathId: d[0], speed: d[1], accel: num(d[2], 0.01, 200) ? d[2] : null });
+      }
+    }
     for (const [key, n] of Object.entries(people.npcs || {})) {
       const id = Number(key); if (!/^[1-9]\d*$/.test(key) || !int(id)) continue;
       const positions = (Array.isArray(n?.positions) ? n.positions : []).map(point).filter(Boolean);
@@ -153,12 +169,13 @@ function compileTransport(builds, { commit }) {
   const byId = new Map(out.map((n) => [n.id, n]));
   const speeds = [...edges.values()].map((e) => { const a = byId.get(e.from), b = byId.get(e.to); return e.seconds && a.wx !== null && b.wx !== null && a.instance === b.instance ? dist(a, b) / e.seconds : null; }).filter(Boolean).sort((a, b) => a - b);
   const edgeList = [...edges.values()].sort((a, b) => a.from - b.from || a.to - b.to);
+  const transports = [...vehicles.values()].sort((a, b) => a.id - b.id).slice(0, MAX_TRANSPORTS);
   const pack = {
     schemaVersion: 1, kind: "forever-transport", product: "wowf", build: builds[0].build, builds: builds.map((b) => b.build), sourceCommit: commit, license: "CC BY 4.0", attribution: ATTRIBUTION,
     collectedOn: { first: dates.sort()[0], last: dates.at(-1) },
     flightSpeed: speeds.length ? round(speeds[Math.floor((speeds.length - 1) / 2)], 2) : null,
-    counts: { nodes: out.length, edges: edgeList.length, timedEdges: edgeList.filter((e) => e.seconds).length, pricedEdges: edgeList.filter((e) => e.cost !== null || e.honored !== null).length, routes: multi.length, timedRoutes: multi.filter((r) => r.seconds).length, placedNodes: out.filter((n) => n.wx !== null).length, ...counts },
-    nodes: out, edges: edgeList, routes: multi.sort((a, b) => a.from - b.from || a.to - b.to), maps,
+    counts: { nodes: out.length, edges: edgeList.length, timedEdges: edgeList.filter((e) => e.seconds).length, pricedEdges: edgeList.filter((e) => e.cost !== null || e.honored !== null).length, routes: multi.length, timedRoutes: multi.filter((r) => r.seconds).length, placedNodes: out.filter((n) => n.wx !== null).length, transports: transports.length, ...counts },
+    nodes: out, edges: edgeList, routes: multi.sort((a, b) => a.from - b.from || a.to - b.to), maps, transports,
   };
   return validateTransportPack(pack);
 }
@@ -195,8 +212,14 @@ function validateTransportPack(p) {
   }
   if (!p.maps || typeof p.maps !== "object" || Array.isArray(p.maps) || Object.keys(p.maps).length > MAX_MAPS) fail("Maps.");
   for (const [k, m] of Object.entries(p.maps)) if (!/^[1-9]\d{0,6}$/.test(k) || !Number.isSafeInteger(m.instance) || m.instance < 0 || ![m.x0, m.x1, m.y0, m.y1].every((v) => num(v, -100000, 100000)) || m.x0 === m.x1 || m.y0 === m.y1 || !int(m.points, 1000000)) fail("Map.");
+  if (!Array.isArray(p.transports) || p.transports.length > MAX_TRANSPORTS) fail("Transports.");
+  const vehicleIds = new Set();
+  for (const t of p.transports) {
+    if (!int(t.id) || vehicleIds.has(t.id) || !text(t.name) || !MODES.includes(t.mode) || !int(t.pathId) || !num(t.speed, 1, 200) || !(t.accel === null || num(t.accel, 0.01, 200))) fail("Transport.");
+    vehicleIds.add(t.id);
+  }
   const c = p.counts;
-  if (!c || c.nodes !== p.nodes.length || c.edges !== p.edges.length || c.routes !== p.routes.length || c.timedEdges !== p.edges.filter((e) => e.seconds).length || c.timedRoutes !== p.routes.filter((r) => r.seconds).length || c.placedNodes !== p.nodes.filter((n) => n.wx !== null).length) fail("Counts.");
+  if (!c || c.transports !== p.transports.length || c.nodes !== p.nodes.length || c.edges !== p.edges.length || c.routes !== p.routes.length || c.timedEdges !== p.edges.filter((e) => e.seconds).length || c.timedRoutes !== p.routes.filter((r) => r.seconds).length || c.placedNodes !== p.nodes.filter((n) => n.wx !== null).length) fail("Counts.");
   return p;
 }
 let cached = null;
@@ -208,4 +231,4 @@ function loadTransportPack(file = path.join(__dirname, "../../data/forever-trans
   if (bundled) cached = pack;
   return pack;
 }
-module.exports = { FILES, ATTRIBUTION, RAW_LIMITS, PACK_LIMIT, MAX_BUILDS, BUILD_RE, hash, medianSeconds, fitMap, toWorld, compileTransport, validateTransportPack, loadTransportPack };
+module.exports = { FILES, OPTIONAL, MODES, ATTRIBUTION, RAW_LIMITS, PACK_LIMIT, MAX_BUILDS, BUILD_RE, hash, medianSeconds, fitMap, toWorld, compileTransport, validateTransportPack, loadTransportPack };

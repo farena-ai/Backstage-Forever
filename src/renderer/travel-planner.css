@@ -41,6 +41,14 @@
 .tp-leg-glyph { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #8a5a18; color: #fff6dc; font-size: 13px; }
 .tp-leg-fly .tp-leg-glyph { background: #2f5f8a; }
 .tp-leg-hearth .tp-leg-glyph, .tp-leg-wait .tp-leg-glyph { background: #6a3a7a; }
+.tp-leg-ride { border-color: #8a6a32; background: rgba(255,248,225,.8); }
+.tp-leg-art { background: none; }
+.tp-leg-art img { display: block; width: 26px; height: 26px; }
+.tp-mode { display: inline-block; margin-right: 2px; padding: 0 7px; border-radius: 9px; background: #1f5a63; color: #f3fbfb; font: 700 11px/18px Cinzel, Georgia, serif; letter-spacing: .05em; text-transform: uppercase; text-shadow: none; vertical-align: 1px; }
+.tp-leg-zeppelin .tp-mode, .tp-leg-airship .tp-mode { background: #7a3a14; }
+.tp-leg-tram .tp-mode { background: #4a4f58; }
+.tp-wait { font-weight: 700; color: #7a1f14; white-space: nowrap; }
+.tp-title h3 .tp-wait { font-size: 17px; }
 .tp-leg-words { min-width: 0; overflow-wrap: anywhere; }
 .tp-leg-words small { display: block; font-size: 12px; color: #5a3e1c; }
 .tp-leg-time { text-align: right; white-space: nowrap; font-size: 13px; font-variant-numeric: tabular-nums; color: #3d220c; }

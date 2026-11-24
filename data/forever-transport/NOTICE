@@ -21,7 +21,17 @@ Zone map to world position lines are fitted from the recorded positions that
 carry both, and the typical flight speed is the middle speed of the timed
 connections; both are used only for estimates that the app labels as estimates.
 
-Not in the upstream data: flight point names, boats, zeppelins, the tram and
+Boats, zeppelins and airships: 12 moving transports from object_details.enUS.json
+(object type 15) of the builds that have that file, newest first: object id, name,
+path number, speed and acceleration, exactly as recorded. Whether one is a
+zeppelin or an airship is read from its name; the rest count as a boat when they
+use the model number all named ships share, and are left out otherwise. Upstream
+does not record where a transport stops, how long a ride takes or which faction
+may board, so none of that is in this pack: the app reads the stops from the
+path table of the player's own game files at run time, works the ride time out
+from the path length and the recorded speed, and labels it as an estimate.
+
+Not in the upstream data: flight point names, transport stops, the tram and
 portals. Nothing was added for them. Times and prices are what players saw on
 the listed builds; a connection nobody flew has no time. A flight master's name
 seen in a game in another language gives way to its English name from another

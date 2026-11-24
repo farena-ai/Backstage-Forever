@@ -4,6 +4,7 @@ const buildCompat = require("./build-compat.cjs");
 const { loadTransportPack } = require("./transport-data.cjs");
 const { loadTrainerPack, trainerPlan, CLASSES } = require("./trainer-data.cjs");
 const planner = require("./travel-planner.cjs");
+const { transportRides } = require("./transport-rides.cjs");
 
 /** How bundled reference data stands against the character's game build (same-patch rule). */
 function buildStanding(pack, profile) {
@@ -20,12 +21,12 @@ function withGame(transport, game, facts) {
   facts.names = { ...extra.names, ...facts.names };
   return extra;
 }
-function travelView(state, { transport = loadTransportPack(), now = Math.floor(Date.now() / 1000), game = null } = {}) {
+function travelView(state, { transport = loadTransportPack(), now = Math.floor(Date.now() / 1000), game = null, reference = null } = {}) {
   const profile = state.profiles.find((p) => p.id === state.activeProfileId) || null;
   const standing = buildStanding(transport, profile);
   if (!standing.usable) return { available: false, reason: standing.note, places: [] };
   const facts = planner.characterFacts(profile, state.profiles);
-  const seen = Object.keys(facts.names).length, extra = withGame(transport, game, facts);
+  const seen = Object.keys(facts.names).length, extra = withGame(transport, game, facts), rides = transportRides(transport, game, reference);
   transport = extra.pack;
   const known = facts.knownNodes ? facts.knownNodes.length : null;
   return {
@@ -36,21 +37,23 @@ function travelView(state, { transport = loadTransportPack(), now = Math.floor(D
       hearth: facts.hearth ? { name: facts.hearth.name, placed: Number.isSafeInteger(facts.hearth.mapId), readyIn: Number.isFinite(facts.hearth.readyAt) ? Math.max(0, facts.hearth.readyAt - now) : null } : null,
     } : null,
     counts: transport.counts, builds: transport.builds, gameFiles: extra.filled,
+    transports: { known: rides.known, read: rides.transports.filter((t) => t.source === "game-files").length, gameFiles: rides.gameFiles, tram: rides.transports.some((t) => t.source === "reference") },
     attribution: "Flight data from Efficient Games (https://efficient.games), CC BY 4.0.",
   };
 }
-function travelPlan(state, input, { transport = loadTransportPack(), now = Math.floor(Date.now() / 1000), game = null } = {}) {
+function travelPlan(state, input, { transport = loadTransportPack(), now = Math.floor(Date.now() / 1000), game = null, reference = null } = {}) {
   if (!input || typeof input !== "object" || typeof input.to !== "string" || input.to.length > 40 || (input.from !== undefined && (typeof input.from !== "string" || input.from.length > 40))) throw Error("Invalid travel request.");
   const profile = state.profiles.find((p) => p.id === state.activeProfileId) || null;
   const standing = buildStanding(transport, profile);
   if (!standing.usable) return { status: "unavailable", options: [], notes: [standing.note] };
   const facts = planner.characterFacts(profile, state.profiles);
+  const rides = transportRides(transport, game, reference);
   transport = withGame(transport, game, facts).pack;
   const to = planner.parsePlace(input.to);
   const from = !input.from || input.from === "saved" ? (facts.position ? { ...facts.position, label: `${facts.zone || "Your saved position"} (where you last saved)` } : null) : planner.parsePlace(input.from);
   if (!to) throw Error("Choose a destination.");
   if (!from) return { status: "no-start", options: [], notes: ["The app does not know where this character is. Choose a starting place, or log in with the addon and type /reload."] };
-  const result = planner.planTrip(transport, { from, to, character: facts, now });
+  const result = planner.planTrip(transport, { from, to, character: facts, now, rides });
   if (standing.note) result.notes.push(standing.note);
   return result;
 }
@@ -66,12 +69,18 @@ function trainerView(state, className, level, { trainers = loadTrainerPack(), sp
   if (plan.available && standing.note) plan.notes.push(standing.note);
   return plan;
 }
-function registerTravelPlannerHandlers({ handle, getState, gameData = null }) {
+function registerTravelPlannerHandlers({ handle, getState, gameData = null, reference = null }) {
   // Read from the player's own game files; null when no game folder is connected or readable.
-  const game = () => { try { return gameData?.flights() || null; } catch { return null; } };
+  // The stops of boats and zeppelins ride along when the path table could be read too.
+  const game = () => {
+    let flights = null, paths = null;
+    try { flights = gameData?.flights() || null; } catch {}
+    try { paths = gameData?.transportPaths?.() || null; } catch {}
+    return flights ? { ...flights, paths } : null;
+  };
   const spellLevels = () => { try { return gameData?.spellLevels() || null; } catch { return null; } };
-  handle("travelPlaces", (...args) => { if (args.length) throw Error("Invalid travel request."); return travelView(getState(), { game: game() }); });
-  handle("travelPlan", (...args) => { if (args.length !== 1) throw Error("Invalid travel request."); return travelPlan(getState(), args[0], { game: game() }); });
+  handle("travelPlaces", (...args) => { if (args.length) throw Error("Invalid travel request."); return travelView(getState(), { game: game(), reference }); });
+  handle("travelPlan", (...args) => { if (args.length !== 1) throw Error("Invalid travel request."); return travelPlan(getState(), args[0], { game: game(), reference }); });
   return { trainerView: (className, level) => trainerView(getState(), className, level, { spellLevels: spellLevels() }) };
 }
 module.exports = { registerTravelPlannerHandlers, travelView, travelPlan, trainerView, buildStanding };
