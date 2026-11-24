@@ -8,8 +8,8 @@ NODE_FLAGS=(--disable-warning=ExperimentalWarning)
 UNIT=bf-community.service
 umask 077
 
-mkdir -p "$BASE/secrets" "$BASE/data" "$BASE/backups" "$HOME/.config/systemd/user"
-chmod 700 "$BASE" "$BASE/secrets" "$BASE/data" "$BASE/backups"
+mkdir -p "$BASE/secrets" "$BASE/data" "$BASE/backups/nightly" "$HOME/.config/systemd/user"
+chmod 700 "$BASE" "$BASE/secrets" "$BASE/data" "$BASE/backups" "$BASE/backups/nightly"
 
 ENVF="$BASE/secrets/bf-community.env"
 if [ ! -f "$ENVF" ]; then
@@ -55,6 +55,9 @@ for _ in $(seq 1 15); do
   if out="$(curl -fsS "http://127.0.0.1:$PORT/v1/health" 2>/dev/null)"; then
     echo "deployed $REL: $out"
     ls -1dt "$BASE"/releases/r* | tail -n +6 | xargs -r rm -rf
+    if "$BASE/admin" admins 2>/dev/null | grep -q '^No admins yet'; then
+      echo "admin area: no admin account yet. On the server run: ~/bf-community/admin admin-add <name>"
+    fi
     exit 0
   fi
 done

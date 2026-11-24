@@ -230,4 +230,6 @@ function validateForget(body) {
 module.exports = {
   ValidationError, validateSubmit, validateReport, validateForget,
   roundCoord, gridToFraction, LIMITS, NODE_KINDS, RECIPE_SOURCES, REPORT_CATEGORIES, COORD_STEPS,
+  // shared with validate-desk.js
+  fail, plainObject, array, oneOf, intRange, installId, UUID_V4, BUILD, MAX_ID,
 };

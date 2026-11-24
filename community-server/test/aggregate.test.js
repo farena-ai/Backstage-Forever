@@ -116,7 +116,7 @@ test("purge removes an install's contributions and can block it", () => {
   for (const id of ids) send(store, id, { vendors: [{ npcId: 9, itemIds: [10] }] });
   assert.equal(buildPackData(store, 3).vendors.rows.length, 1);
   const h = hashInstall(SALT, ids[0]);
-  assert.deepEqual(store.purgeInstall(h, { block: true }), { observations: 1, reports: 0, blocked: true });
+  assert.deepEqual(store.purgeInstall(h, { block: true }), { observations: 1, reports: 0, tickets: 0, heartbeats: 0, blocked: true });
   assert.equal(store.isBlocked(h), true);
   assert.equal(buildPackData(store, 3).vendors.rows.length, 0);
 });
