@@ -8193,6 +8193,68 @@
           "text": "The bag window, chat tools, profiles and the new find panel have not been checked in the real game client yet. Search and map layers are new; if a result opens the wrong place, use Help → Report a problem."
         }
       ]
+    },
+    {
+      "version": "1.28.0",
+      "channel": "stable",
+      "source": "docs/releases/1.28.0.md",
+      "title": "Backstage Forever 1.28.0 — Guild events, fresher map",
+      "changes": [
+        {
+          "id": "guild-events",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Guild events and sign-ups. /bf event opens a window where guild members who switch it on can propose an event (dungeon or raid, day, time, roles wanted) and answer as tank, healer, damage, maybe or no. A reminder comes 15 minutes before. Events travel only over the game's own guild channel between members who opted in; nothing goes to our service. Off until you type /bf event on."
+        },
+        {
+          "id": "guild-page",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Guild page. Plans → Guild shows events ahead with your answer, members who share, a \"who can make it\" search, past events with attendance, and notes you keep per member. It lists only members who run the addon and chose to share."
+        },
+        {
+          "id": "lockouts",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Lockout calendar. /bf lockouts and the Calendar show every character's saved dungeons and raids with reset times, next to cooldowns, mail and guild events."
+        },
+        {
+          "id": "map-freshness",
+          "kind": "improved",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Fresher shared map. Community spots now say when they were last seen (\"seen 3 days ago by 5 players\"), a filter hides old ones, and your own spots are marked exactly. The app now also shares which vendor sells which items (no prices), recorded when you open a vendor window, so the Vendors layer can fill in. Drops are still not shared."
+        },
+        {
+          "id": "unverified-in-game-128",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Guild events need a second guild member running the addon and have not been tried between two players yet. The vendor recorder and the lockout list have not been checked in the real game client."
+        }
+      ]
     }
   ],
   "excluded": [
