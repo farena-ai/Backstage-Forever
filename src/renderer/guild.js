@@ -1,8 +1,10 @@
 "use strict";
-// Plans → Guild. A read-only view of what the addon saved: guild events with sign-ups, the guild
+// Plans → Guild. What the addon saved: guild events with sign-ups, the guild
 // members who run the addon and chose to share, who can make what, and past events with
 // attendance and the run that belonged to them. The only things kept by this page are the notes
 // you write about members (on this computer) and a calendar file you choose to save.
+// Backstage Live (live-guild.js) adds its cards at the top; for a character that joined its guild's
+// live link, "Events ahead" shows the live events with one-click answers instead of the saved ones.
 window.GuildView = (() => {
   const api = window.backstage;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -47,14 +49,16 @@ window.GuildView = (() => {
   function upcomingCard(d) {
     const picker = d.characters.length > 1 ? `<label class="ldg-pick ldg-inline">Character <select data-guild-character aria-label="Guild page of">${d.characters.map((c) => `<option value="${esc(c.profileId)}"${c.profileId === d.profileId ? " selected" : ""} data-keep>${esc(c.name)}${c.guild ? ` · ${esc(c.guild)}` : ""}</option>`).join("")}</select></label>` : "";
     const tools = `<div class="gld-tools">${picker}<button type="button" data-guild-export${d.upcoming.length && !state.busy ? "" : " disabled"}>Save events as a calendar file</button></div>`;
-    if (!d.upcoming.length) return `<section class="ldg-card" data-guild-upcoming><div class="ldg-toolbar"><h2>Events ahead</h2>${tools}</div><p class="ldg-empty">No guild events ahead. Propose one in game with <code>/bf event add</code></p><p class="eco-msg" role="status" data-guild-msg>${esc(state.msg)}</p></section>`;
-    const items = d.upcoming.map((e) => `<article class="gld-event" data-guild-event="${esc(e.id)}"><header><h3 data-no-translate>${esc(e.title)}</h3><p class="gld-meta">${timeLine(e.at, d)}</p>
+    const liveNote = `<p class="ldg-note ldg-after" data-guild-live-note>These events are live: answers from the app and from Discord show within seconds. Answers given in game show that fast only while the live link is on. Your answer here reaches the game at your next /reload.</p>`;
+    const live = window.LiveGuild?.eventsFor(d.profileId) || null, upcoming = live ? live.events : d.upcoming;
+    if (!upcoming.length) return `<section class="ldg-card" data-guild-upcoming><div class="ldg-toolbar"><h2>Events ahead</h2>${tools}</div><p class="ldg-empty">No guild events ahead. Propose one in game with <code>/bf event add</code></p><p class="eco-msg" role="status" data-guild-msg>${esc(state.msg)}</p></section>`;
+    const items = upcoming.map((e) => `<article class="gld-event" data-guild-event="${esc(e.id)}"><header><h3 data-no-translate>${esc(e.title)}</h3><p class="gld-meta">${timeLine(e.at, d)}</p>
         <p class="gld-meta"><strong data-no-translate>${esc(e.place)}</strong> · <span>proposed by</span> ${keep(e.creator)}${e.editor ? ` · <span>changed by</span> ${keep(e.editor)}` : ""}${e.relayed ? ` · <span class="gld-flag">Passed on by another member, not yet confirmed by its creator</span>` : ""}</p>
         ${e.note ? `<p class="gld-note" data-no-translate>${esc(e.note)}</p>` : ""}</header>
       <dl class="gld-roles">${roleRows(e, false)}</dl>
-      <p class="gld-mine${e.mine ? " gld-answered" : ""}" data-guild-mine>${e.mine ? MINE[e.mine] : "You have not answered yet."}</p></article>`).join("");
+      <p class="gld-mine${e.mine ? " gld-answered" : ""}" data-guild-mine>${e.mine ? MINE[e.mine] : "You have not answered yet."}</p>${live ? window.LiveGuild.answerRow(live.guildId, e) : ""}</article>`).join("");
     return `<section class="ldg-card" data-guild-upcoming><div class="ldg-toolbar"><h2>Events ahead</h2>${tools}</div><div class="gld-events">${items}</div>
-      <p class="ldg-note ldg-after">You answer in game. This page shows the answers your addon had when the game last saved.</p><p class="eco-msg" role="status" data-guild-msg>${esc(state.msg)}</p></section>`;
+      ${live ? liveNote : `<p class="ldg-note ldg-after">You answer in game. This page shows the answers your addon had when the game last saved.</p>`}<p class="eco-msg" role="status" data-guild-msg>${esc(state.msg)}</p></section>`;
   }
   function rosterCard(d) {
     if (!d.roster.length) return `<section class="ldg-card" data-guild-roster><h2>Members who share</h2><p class="ldg-empty">No guild member has shared with this character yet. Members appear here once they share and your game has saved. Switch guild sharing on in game with <code>/bf guild on</code></p></section>`;
@@ -103,7 +107,7 @@ window.GuildView = (() => {
     const items = shown.map((e) => `<article class="gld-event gld-past" data-guild-past-event="${esc(e.id)}"><header><h3 data-no-translate>${esc(e.title)}</h3><p class="gld-meta"><strong>${esc(when(e.at))}</strong> · <strong data-no-translate>${esc(e.place)}</strong> · <span>proposed by</span> ${keep(e.creator)}</p></header>
       ${attendanceLine(e)}${runLine(e)}
       ${e.guildLoot.length ? `<p class="gld-meta"><span>Won in the run (your loot notes):</span> ${e.guildLoot.map((l) => `${keep(l.who)}: <span class="ldg-name q-${QUALITY[l.quality] || "common"}" data-card-item="${l.itemId}" data-no-translate>${esc(l.name)}</span>`).join(", ")}</p>` : ""}
-      <details class="gld-answers"><summary>Who answered what</summary><dl class="gld-roles">${roleRows(e, true)}</dl></details></article>`).join("");
+      <details class="gld-answers"><summary>Who answered what</summary><dl class="gld-roles">${roleRows(e, true)}</dl></details>${window.LiveGuild?.summaryRow(d.profileId, e) || ""}</article>`).join("");
     return `<section class="ldg-card" data-guild-past><h2>Past events</h2><div class="gld-events">${items}</div>${d.past.length > shown.length ? `<p><button type="button" data-guild-more>Show ${Math.min(10, d.past.length - shown.length)} more</button></p>` : ""}
       <p class="ldg-note ldg-after">A run belongs to an event when it is in the same dungeon or raid and overlaps the time from 30 minutes before the event to 4 hours after it began. Who was there is your own group as your addon saw it. Other players' loot is noted only when you switched on guild-run loot notes in game: the item and the winner's name, on this computer only.</p></section>`;
   }
@@ -112,9 +116,10 @@ window.GuildView = (() => {
     if (s.error) return `<p class="ldg-empty">${esc(s.error)}</p>`;
     if (!s.data) return `<p class="ldg-empty">${s.loading ? "Opening your guild page…" : "Your guild page is loading."}</p>`;
     const d = s.data;
-    const honest = `<p class="gld-honest" data-guild-honest><strong>What this page can know.</strong> <span>It lists only guild members who run Backstage Forever and chose to share. Events and sign-ups travel between those members inside the game's guild channel; this page reads them from your game's saved file. Nothing is sent to any server.</span></p>`;
-    if (d.empty) return `${honest}<section class="ldg-card"><h2>Nothing saved yet</h2><p class="ldg-empty">No character has guild data in the saved file yet. Guild sharing and guild events are both off until you switch them on in game: <code>/bf guild on</code> <code>/bf event on</code></p></section>`;
-    return `${honest}<div class="ldg-summary gld-summary"><div><strong data-no-translate>${esc(d.guild || d.character)}</strong><span>${d.guild ? `<span>guild of</span> ${keep(d.character)}` : "guild name not saved"}</span></div><div><strong>${d.totals.members}</strong><span>members sharing</span></div><div><strong>${d.totals.upcoming}</strong><span>events ahead</span></div><div><strong>${esc(dateOf(d.savedAt))}</strong><span>last saved by the game</span></div></div>
+    const honest = `<p class="gld-honest" data-guild-honest><strong>What this page can know.</strong> <span>It lists only guild members who run Backstage Forever and chose to share. Events and sign-ups travel between those members inside the game's guild channel; this page reads them from your game's saved file.</span> <span data-guild-honest-live>${window.LiveGuild?.eventsFor(d.profileId) ? "Because you joined your guild in the app, your character's name and your answers also go to the Backstage service for your guild's members." : "Nothing is sent to any server unless you join your guild's live link below."}</span></p>`;
+    const liveCards = window.LiveGuild?.guildHtml(d.profileId ?? null) || "";
+    if (d.empty) return `${honest}${liveCards}<section class="ldg-card"><h2>Nothing saved yet</h2><p class="ldg-empty">No character has guild data in the saved file yet. Guild sharing and guild events are both off until you switch them on in game: <code>/bf guild on</code> <code>/bf event on</code></p></section>`;
+    return `${honest}${liveCards}<div class="ldg-summary gld-summary"><div><strong data-no-translate>${esc(d.guild || d.character)}</strong><span>${d.guild ? `<span>guild of</span> ${keep(d.character)}` : "guild name not saved"}</span></div><div><strong>${d.totals.members}</strong><span>members sharing</span></div><div><strong>${d.totals.upcoming}</strong><span>events ahead</span></div><div><strong>${esc(dateOf(d.savedAt))}</strong><span>last saved by the game</span></div></div>
       ${d.on ? "" : `<p class="ldg-empty" data-guild-off>Guild events are switched off on this character, so nothing new arrives. Switch them on in game with <code>/bf event on</code></p>`}
       ${upcomingCard(d)}${rosterCard(d)}${craftCard(d)}${pastCard(d)}`;
   }
@@ -135,23 +140,25 @@ window.GuildView = (() => {
     catch (e) { s.error = e.message || "This page is unavailable."; }
     s.loading = false; s.loadedAt = Date.now();
     // A note being typed is not thrown away by a refresh.
-    if (document.querySelector("[data-guild-page]") && !document.activeElement?.matches?.("[data-guild-note], [data-guild-query]")) repaint();
+    if (document.querySelector("[data-guild-page]") && !document.activeElement?.matches?.("[data-guild-note], [data-guild-query], [data-lg-input]")) repaint();
   }
   function mounted() {
     const root = document.querySelector("[data-guild-page]");
     if (!root) { mountedFor = null; return; }
+    window.LiveGuild?.mounted();
     if (mountedFor === root) return;
     mountedFor = root;
     const s = state;
-    root.querySelector("[data-guild-character]")?.addEventListener("change", (e) => { s.profileId = e.target.value; s.loadedAt = 0; s.query = ""; s.msg = ""; s.pastShown = 6; load(); });
+    // The picker and the export button sit in "Events ahead", which Backstage Live may redraw: they are heard on the page itself.
+    root.addEventListener?.("change", (e) => { if (!e.target.matches?.("[data-guild-character]")) return; s.profileId = e.target.value; s.loadedAt = 0; s.query = ""; s.msg = ""; s.pastShown = 6; load(); });
     root.querySelector("[data-guild-query]")?.addEventListener("input", (e) => {
       s.query = e.target.value;
       const box = root.querySelector("[data-guild-craft-results]");
       if (box && s.data && !s.data.empty) box.innerHTML = craftRows(s.data);
     });
     root.querySelector("[data-guild-more]")?.addEventListener("click", () => { s.pastShown += 10; repaint(); document.querySelector("[data-guild-more]")?.focus({ preventScroll: true }); });
-    root.querySelector("[data-guild-export]")?.addEventListener("click", async () => {
-      if (s.busy) return;
+    root.addEventListener?.("click", async (e) => {
+      if (!e.target.closest?.("[data-guild-export]") || s.busy) return;
       s.busy = true; s.msg = "";
       try {
         const result = await api.exportGuildEvents();
@@ -173,5 +180,24 @@ window.GuildView = (() => {
     // Each visit reads the newest save (a game save may have arrived since).
     if (!s.loading && Date.now() - s.loadedAt > 3000) load();
   }
-  return { page, mounted, _state: () => state };
+  /** Backstage Live has news: redraw "Events ahead" and the one sentence that depends on it, nothing else. */
+  function liveChanged() {
+    const d = state.data, card = document.querySelector("[data-guild-upcoming]");
+    if (!d || d.empty || !card) return;
+    const box = document.createElement("div"); box.innerHTML = upcomingCard(d);
+    const next = box.firstElementChild;
+    // Compared with what was drawn last (in English), not with the page, which may show another language.
+    if (next && card.bfSource !== next.innerHTML) { const first = card.bfSource === undefined && card.innerHTML === next.innerHTML; next.bfSource = next.innerHTML; if (first) card.bfSource = next.innerHTML; else card.replaceWith(next); }
+    // Finished events: the officers' "Post summary to Discord" row comes and goes with the membership.
+    for (const article of document.querySelectorAll("[data-guild-past-event]")) {
+      const e = d.past.find((x) => x.id === article.dataset.guildPastEvent), html = e ? window.LiveGuild?.summaryRow(d.profileId, e) || "" : "";
+      if (article.bfSummary === html) continue;
+      article.bfSummary = html;
+      article.querySelector("[data-lg-summary-row]")?.remove();
+      if (html) article.insertAdjacentHTML("beforeend", html);
+    }
+    const line = document.querySelector("[data-guild-honest-live]");
+    if (line) { const text = window.LiveGuild?.eventsFor(d.profileId) ? "Because you joined your guild in the app, your character's name and your answers also go to the Backstage service for your guild's members." : "Nothing is sent to any server unless you join your guild's live link below."; if (line.dataset.shown !== text) { line.dataset.shown = text; line.textContent = text; } }
+  }
+  return { page, mounted, liveChanged, _state: () => state };
 })();

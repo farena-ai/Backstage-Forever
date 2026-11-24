@@ -323,6 +323,21 @@ function encodeQuestionPages(id, text, identity = 0) {
   }
   return pages;
 }
+// Mirror of BackstageForeverLiveSignalPages (tests and fixtures): bytes 1, 255, "sig:" and the signal text.
+function encodeSignalPages(id, text, identity = 0) {
+  const all = Buffer.concat([Buffer.from([1, 255]), Buffer.from("sig:" + String(text ?? ""), "utf8")]);
+  if (!Number.isInteger(id) || id < 1 || id > 255 || all.length <= 6 || all.length > QUESTION_MAX_BYTES) return [];
+  const sum = crc8(all, all.length), count = Math.ceil(all.length / QUESTION_CHUNK), pages = [];
+  for (let p = 0; p < count; p++) {
+    const b = new Array(PAYLOAD_BYTES).fill(0), first = p * QUESTION_CHUNK, n = Math.min(QUESTION_CHUNK, all.length - first);
+    b[0] = PAGE_VERSION; b[1] = QUESTION_KIND; b[2] = id; b[3] = p; b[4] = count;
+    for (let k = 0; k < n; k++) b[5 + k] = all[first + k];
+    b[22] = sum; b[23] = (identity >> 8) & 255; b[24] = identity & 255; b[25] = n;
+    b[26] = crc8(b, PAYLOAD_BYTES - 1);
+    pages.push(b);
+  }
+  return pages;
+}
 // One question page -> { kind: "question", id, index, count, sum, identity, bytes }, or null.
 function parseQuestionPage(b) {
   if (!b || b[0] !== PAGE_VERSION || b[1] !== QUESTION_KIND) return null;
@@ -334,6 +349,10 @@ function parseQuestionPage(b) {
 }
 // Complete pages (index -> bytes) -> the question text, or null when the checksum or UTF-8 is wrong.
 const OPEN_SIGNAL = "\u0001open", PREFILL_SIGNAL = "\u0001fill:";
+// Backstage Live (guild, party and board signals; game-guild-feed.cjs decodes them): the same two
+// bytes in front of "sig:". They are never questions: they go to subscribeSignals, not to the
+// companion. An app from before this drops them whole, like any 1, 255 message it does not know.
+const GAME_SIGNAL = "\u0001sig:";
 function assembleQuestion(parts, count, sum) {
   const all = [];
   for (let i = 0; i < count; i++) { const p = parts.get(i); if (!p) return null; all.push(...p); }
@@ -344,6 +363,7 @@ function assembleQuestion(parts, count, sum) {
   if (all[0] === 1 && all[1] === 255) {
     let rest;
     try { rest = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(all.slice(2))); } catch { return null; }
+    if (rest.startsWith("sig:")) return /[\u0000-\u001f\u007f]/.test(rest) || rest.length <= 4 ? null : GAME_SIGNAL + rest.slice(4);
     if (!rest.startsWith("fill:")) return null;
     rest = rest.slice(5).replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
     if (!rest || [...rest].length > QUESTION_MAX_CHARS) return null;
@@ -885,6 +905,11 @@ class LiveBridge {
     const text = assembleQuestion(set.parts, pg.count, pg.sum);
     if (!text) return null;
     this.questionSeen.set(key, at);
+    if (text.startsWith(GAME_SIGNAL)) {
+      const signal = { id: pg.id, kind: "signal", text: text.slice(GAME_SIGNAL.length), characterHash: pg.identity, at };
+      for (const fn of this.signalListeners || []) { try { fn(signal); } catch {} }
+      return signal;
+    }
     const question = text === OPEN_SIGNAL ? { id: pg.id, kind: "open", text: "", characterHash: pg.identity, at }
       : text.startsWith(PREFILL_SIGNAL) ? { id: pg.id, kind: "prefill", text: text.slice(PREFILL_SIGNAL.length), characterHash: pg.identity, at }
       : { id: pg.id, text, characterHash: pg.identity, at };
@@ -892,6 +917,8 @@ class LiveBridge {
     return question;
   }
   subscribeQuestions(fn) { (this.questionListeners ||= new Set()).add(fn); return () => this.questionListeners.delete(fn); }
+  /** Guild, party and board signals from the game: { id, kind: "signal", text, characterHash, at }, once each. */
+  subscribeSignals(fn) { (this.signalListeners ||= new Set()).add(fn); return () => this.signalListeners.delete(fn); }
   /** Faster sampling for a while after a question page (back to intervalMs afterwards). */
   sampleFast(at = this.now()) {
     this.fastUntil = at + QUESTION_FAST_MS;
@@ -946,4 +973,4 @@ class LiveBridge {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { const s = this.status(); this.emittedFreshFrame = !!s.frame; for (const fn of this.listeners) { try { fn(s); } catch {} } }
 }
-module.exports = { HAIRLINE, HAIRLINE_REGION, HAIRLINE_WIDTH, TOPLEFT_REGION, hairlineThresholds, crc16, encodeHairlineFrame, encodeHairlineCells, decodeHairlineCells, decodeHairline, hairlineHint, encodeQuestionPages, parseQuestionPage, assembleQuestion, OPEN_SIGNAL, PREFILL_SIGNAL, QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES, QUESTION_MAX_CHARS, QUESTION_INTERVAL_MS, encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };
+module.exports = { HAIRLINE, HAIRLINE_REGION, HAIRLINE_WIDTH, TOPLEFT_REGION, hairlineThresholds, crc16, encodeHairlineFrame, encodeHairlineCells, decodeHairlineCells, decodeHairline, hairlineHint, encodeQuestionPages, parseQuestionPage, assembleQuestion, OPEN_SIGNAL, PREFILL_SIGNAL, GAME_SIGNAL, encodeSignalPages, QUESTION_KIND, QUESTION_CHUNK, QUESTION_MAX_BYTES, QUESTION_MAX_CHARS, QUESTION_INTERVAL_MS, encodePages, parsePage, encodeMomentPages, parseMomentPage, MOMENT_KIND, MOMENT_MAX_AGE_S, decodePageCells, PAGE_VERSION, LiveBridge, identityHash, rememberLiveKey, liveKeyFor, isKnownLiveKey, decodeStrip, stripHint, decodeCells, decodeCellsV4, encodeCells, encodeCellsV2, encodeCellsV4, encodePageCellsV4, parsePayload, crc8, REGION, COMPACT_REGION, CORNERS, CELL, V4, MIN_LEVEL_GAP, FRESH_MS, HEARTBEAT_STALE_MS, WORKER };

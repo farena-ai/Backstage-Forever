@@ -36,7 +36,11 @@ const routes = {
   report: ["Help", "Report a problem"],
   reports: ["Help", "My reports"],
   guide: ["Help", "Field guide"],
+  // Opened with the button on the Field guide (and from Plans → Guild), not from a tab of its own.
+  "guild-guide": ["Help", "Field guide", "Guild & Party guide"],
 };
+// A page opened from inside another one: the tab that stays highlighted.
+const parentTab = { "run-history": "dungeons", attunements: "dungeons", "guild-guide": "guide" };
 const legacy = {
   Adventure: "adventure",
   "Quest Guide": "quest-guide",
@@ -73,7 +77,7 @@ async function navigate(page, id) {
   if (tab) {
     const subtab = page.getByRole("navigation", { name: `${section} navigation`, exact: true })
       .getByRole("button", { name: tab, exact: true });
-    await click(subtab, `subtab:${inner ? "dungeons" : id}`);
+    await click(subtab, `subtab:${inner ? parentTab[id] : id}`);
   }
   if (inner) await page.locator(`button[data-nav="${id}"]`).click();
   await page.waitForFunction((id) => page === id, id);

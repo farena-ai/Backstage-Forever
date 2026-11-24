@@ -32,7 +32,7 @@ end
 
 local PREFIX='BFParty'
 local CHUNK,MAX_CHUNKS,MAX_QUESTS,MAX_OBJ=230,4,40,6
-local SEND_GAP=10
+local SEND_GAP=5 -- seconds between two quest updates of your own (10 before Backstage Live)
 BackstageForeverPartyPrefix=PREFIX
 
 local settings
@@ -280,6 +280,11 @@ BackstageForeverPartyMyWaypoint=myWaypoint -- the mentor link sends the same thi
 function BackstageForeverPartyCommand(message)
     if not settings then loadSettings() end
     local rest=(type(message)=='string' and message:lower() or ''):match('^party%s*(.-)%s*$') or ''
+    -- /bf party live on|off: BackstageForeverLiveParty.lua.
+    if rest:sub(1,4)=='live' and type(BackstageForeverPartyLiveCommand)=='function' then
+        local ok,handled=pcall(BackstageForeverPartyLiveCommand,rest)
+        if ok and handled then return end
+    end
     if rest=='on' or rest=='off' then
         settings.enabled=rest=='on'
         if settings.enabled and inParty() then send('R','R');broadcast(true) end

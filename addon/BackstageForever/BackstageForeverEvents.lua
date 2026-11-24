@@ -13,6 +13,8 @@
 --   E|id|version|creator|editor|time|place|tanks.healers.damage|flag|title|note    one event
 --   U|id|version|answer     your own sign-up        L|id|Name:answer:version,...  the creator's list
 --   P|version|propose|edit  who may propose and edit, from the guild leader only
+--   V|id|Name:answer:version:via,...   answers the desktop app handed over (given in Discord or in
+--                           the app), passed on by a member who reloaded; taken only when newer
 -- An event is changed only by a message from its creator (or from a rank the guild leader allowed);
 -- a copy passed on by somebody else is taken only for an event you did not know yet, and the
 -- creator's own message replaces it. The higher version wins; at the same version the later name
@@ -338,6 +340,83 @@ function BackstageForeverEventSign(db,id,name,status,ver,sender,now)
     e.signups[key]={s=status,v=ver,r=(not direct) or nil}
     return true
 end
+local VIA={g=true,k=true,d=true}
+-- Pure: takes one answer that came through the desktop app (its hand-off file, or a guild member
+-- passing theirs on): given in game by somebody ('g'), in the desktop app ('k') or in Discord ('d').
+-- Only a newer version is taken. me: your own name; an answer of your own counts as yours.
+-- -> true when it changed something.
+function BackstageForeverEventSignRelay(db,id,name,status,ver,via,me,now)
+    name=memberName(name)
+    local e=type(db)=='table' and eventId(id) and events(db)[id] or nil
+    if type(e)~='table' or not name or not STATUS[status] or not whole(ver,1,9999) or not VIA[via] or type(now)~='number' then return false end
+    if e.cancelled or now>e.at+AFTER then return false end
+    if type(e.signups)~='table' then e.signups={} end
+    local key=signKey(e,name)
+    local old=e.signups[key]
+    if type(old)=='table' and whole(old.v,1,9999) then
+        if ver<=old.v then return false end
+    elseif size(e.signups)>=SIGNUPS_MAX then return false end
+    e.signups[key]={s=status,v=ver,r=(not same(name,me)) or nil,d=via=='d' or nil}
+    return true
+end
+-- Pure: answers to pass on as messages "V|id|Name:t:3:d,Name:m:1:k" of at most 255 bytes, 12 a message.
+-- rows: {{n=,s=,v=,via=}}.
+function BackstageForeverEventRelayEncode(id,rows,limit)
+    local out={}
+    if not eventId(id) or type(rows)~='table' then return out end
+    local head='V|'..id..'|'
+    local current,count=head,0
+    for _,row in ipairs(rows) do
+        if type(row)=='table' and memberName(row.n) and STATUS[row.s] and whole(row.v,1,9999) and VIA[row.via] then
+            local part=('%s:%s:%d:%s'):format(row.n,row.s,row.v,row.via)
+            if count>0 and (#current+1+#part>255 or count>=12) then out[#out+1]=current;current,count=head,0 end
+            current=current..(count>0 and ',' or '')..part;count=count+1
+        end
+    end
+    if count>0 then out[#out+1]=current end
+    limit=type(limit)=='number' and limit or 4
+    while #out>limit do table.remove(out) end
+    return out
+end
+-- Pure: -> id, {{n=,s=,v=,via=}} or nil when any entry is off.
+function BackstageForeverEventRelayDecode(message)
+    if type(message)~='string' or #message>255 then return nil end
+    local id,body=message:match('^V|([%l%d]+)|([^|]+)$')
+    if not eventId(id) or body:sub(1,1)==',' or body:sub(-1)==',' or body:find(',,',1,true) then return nil end
+    local rows,seen={},{}
+    for entry in body:gmatch('[^,]+') do
+        local name,status,ver,via=entry:match('^([^:]+):([thdmn]):(%d+):([gkd])$')
+        ver=number(ver,4)
+        if not memberName(name) or not ver or ver<1 or seen[name:lower()] or #rows>=12 then return nil end
+        seen[name:lower()]=true
+        rows[#rows+1]={n=name,s=status,v=ver,via=via}
+    end
+    if #rows==0 then return nil end
+    return id,rows
+end
+-- Pure: takes one event the desktop app handed over (from the guild's page on the service). Your own
+-- change made in the app counts as yours. Anything else is hearsay, with one difference to a copy
+-- passed on in the guild channel: a higher version (or the same version from the later name) also
+-- replaces a copy you heard from its author, because the service already checked who may edit.
+-- -> as BackstageForeverEventMerge.
+function BackstageForeverEventMergeDesk(db,e,me,ctx)
+    me=memberName(me)
+    local c=wire(e,true)
+    if type(db)~='table' or not c or not me or type(ctx)~='table' or type(ctx.now)~='number' then return nil end
+    local author=c.editor or c.creator
+    if same(author,me) then return BackstageForeverEventMerge(db,e,me,ctx) end
+    local old=events(db)[c.id]
+    if type(old)~='table' or old.relayed~=nil then return BackstageForeverEventMerge(db,e,me,ctx) end
+    local oldAuthor=old.editor or old.creator
+    if not same(old.creator,c.creator) or not (c.ver>old.ver or (c.ver==old.ver and author:lower()>oldAuthor:lower())) then return nil end
+    if c.editor and not allowed(db.policy,'edit',rankOf(ctx,c.editor)) then return nil end
+    local ver=old.ver
+    old.relayed=me
+    if c.ver==ver then old.ver=ver-1 end
+    local result=BackstageForeverEventMerge(db,e,me,ctx)
+    if not result then old.relayed=nil;old.ver=ver end
+    return result
+end
 local REASONS={title=true,time=true,place=true,roles=true,rank=true,full=true,many=true,gone=true}
 local function fieldsOf(db,fields,now,dungeons)
     if type(fields)~='table' then return nil,'title' end
@@ -437,11 +516,18 @@ function BackstageForeverEventCounts(e)
     for _,row in ipairs(signRows(e)) do c[row.s]=c[row.s]+1 end
     return c
 end
--- Pure: the names that gave one answer, in order, as one text.
+-- Pure: the names that gave one answer, in order, as one text. An answer given in Discord carries
+-- a small "(D)". -> text, how many, and whether any of them came from Discord.
 function BackstageForeverEventNames(e,status)
-    local names={}
-    for _,row in ipairs(signRows(e)) do if row.s==status then names[#names+1]=row.n end end
-    return table.concat(names,', '),#names
+    local names,discord={},false
+    for _,row in ipairs(signRows(e)) do
+        if row.s==status then
+            local mark=e.signups[row.n].d==true
+            if mark then discord=true end
+            names[#names+1]=row.n..(mark and ' (D)' or '')
+        end
+    end
+    return table.concat(names,', '),#names,discord
 end
 local ANSWER={t='tank',h='healer',d='damage',m='maybe',n='no'}
 -- Pure: the chat lines for /bf events. when(at) gives the time as text; place(id) a place name.
@@ -647,7 +733,7 @@ function BackstageForeverEventClean(db,now)
         local c=type(e)=='table' and wire(e,true)
         if c and c.id==id and size(kept)<EVENTS_MAX then
             c.signups={}
-            for _,row in ipairs(signRows(e)) do if size(c.signups)<SIGNUPS_MAX then c.signups[row.n]={s=row.s,v=row.v,r=e.signups[row.n].r==true or nil} end end
+            for _,row in ipairs(signRows(e)) do if size(c.signups)<SIGNUPS_MAX then c.signups[row.n]={s=row.s,v=row.v,r=e.signups[row.n].r==true or nil,d=e.signups[row.n].d==true or nil} end end
             local a=archive(e)
             c.present,c.loot=a.present,a.loot
             c.relayed=memberName(e.relayed);c.reminded=e.reminded==true or nil
@@ -804,18 +890,34 @@ local function send(text)
     local ok,sent=pcall(fn,text,'GUILD')
     return ok and sent==true
 end
--- Everything goes out through one short queue, one message every second and a half.
-local queue,QUEUE_MAX={},60
+-- Everything goes out through one short queue, one message every second and a half. The first
+-- message after a quiet moment leaves at once, so an answer or a new event reaches the guild the
+-- second it is made; only a burst (a full answer to "what events do you know?") is spread out.
+local queue,QUEUE_MAX,QUEUE_GAP={},60,1.5
+local lastSend=nil
+local function pump()
+    if #queue==0 then return end
+    if not on() then queue={} return end
+    lastSend=tick()
+    send(table.remove(queue,1))
+end
 local function push(text)
     if type(text)~='string' then return end
     for _,have in ipairs(queue) do if have==text then return end end
     if #queue<QUEUE_MAX then queue[#queue+1]=text end
+    local at=tick()
+    if #queue==1 and (not lastSend or at-lastSend>=QUEUE_GAP or at<lastSend) then pump() end
 end
-local function pump()
-    if #queue==0 then return end
-    if not on() then queue={} return end
-    send(table.remove(queue,1))
+-- Backstage Live (BackstageForeverLiveGuild.lua) is told about every event and answer, so it can
+-- signal the desktop app over the live link. It does nothing when that file is not there.
+local function live(what,...)
+    local fn=BackstageForeverLiveGuildHeard
+    if type(fn)=='function' then pcall(fn,what,...) end
 end
+-- The highest version heard in the guild channel this session, by event and by answer: what a
+-- member who reloaded need not pass on again.
+local known={}
+local function hear(key,ver) if (known[key] or 0)<ver then known[key]=ver end end
 BackstageForeverEventsPump=pump -- for tests
 local notes,rate={},{}
 local function flush()
@@ -874,16 +976,39 @@ local function onEvent(sender,message)
     local e=BackstageForeverEventDecode(message,now)
     if not e then return end
     if answering and (heard[e.id] or 0)<e.ver then heard[e.id]=e.ver end
+    hear('e'..e.id,e.ver)
     readRanks()
     local result=BackstageForeverEventMerge(db(),e,sender,{now=now,rank=rank})
     if not result then return end
-    if result~='quiet' then announce(result,e,sender) end
+    if result~='quiet' then announce(result,e,sender);live('event',db().events[e.id]) end
     capture();refreshWindow()
 end
 local function onSign(sender,message)
     if not on() or not allow(sender) then return end
     local id,ver,status=BackstageForeverEventSignDecode(message)
-    if id and BackstageForeverEventSign(db(),id,sender,status,ver,sender,epoch()) then capture();refreshWindow() end
+    if id then hear('s'..id..':'..sender:lower(),ver) end
+    if id and BackstageForeverEventSign(db(),id,sender,status,ver,sender,epoch()) then live('signup',id,sender,status,ver);capture();refreshWindow() end
+end
+-- Answers the desktop app handed to another member (given in Discord or in the app). Only a newer
+-- version is taken. When it is about you, you are told who passed it on.
+local function onRelay(sender,message)
+    if not on() or not allow(sender) then return end
+    local id,rows=BackstageForeverEventRelayDecode(message)
+    if not id then return end
+    local d,me,now,changed=db(),myName(),epoch(),false
+    for _,row in ipairs(rows) do
+        hear('s'..id..':'..row.n:lower(),row.v)
+        if BackstageForeverEventSignRelay(d,id,row.n,row.s,row.v,row.via,me,now) then
+            changed=true
+            if same(row.n,me) and not combat() then
+                local e=d.events[id]
+                say((row.via=='d' and 'Your answer to %s is now: %s. It came from Discord, passed on by %s. /bf event changes it.'
+                    or 'Your answer to %s is now: %s. It came from the desktop app, passed on by %s. /bf event changes it.'):format(e and e.title or id,
+                    T(({t='tank',h='healer',d='damage',m='maybe',n='no'})[row.s]),sender))
+            end
+        end
+    end
+    if changed then capture();refreshWindow() end
 end
 local function onRoster(sender,message)
     if not on() or not allow(sender) then return end
@@ -892,8 +1017,9 @@ local function onRoster(sender,message)
     local changed=false
     local me=myName()
     for _,row in ipairs(rows) do
+        hear('s'..id..':'..row.n:lower(),row.v)
         -- Nobody else speaks for you.
-        if not same(row.n,me) and BackstageForeverEventSign(db(),id,row.n,row.s,row.v,sender,epoch()) then changed=true end
+        if not same(row.n,me) and BackstageForeverEventSign(db(),id,row.n,row.s,row.v,sender,epoch()) then changed=true;live('signup',id,row.n,row.s,row.v) end
     end
     if changed then capture();refreshWindow() end
 end
@@ -915,6 +1041,7 @@ local function ask()
 end
 local function broadcast(e)
     push(BackstageForeverEventEncode(e))
+    live('event',e)
     capture();refreshWindow()
 end
 local REASON={title='Give the event a title in plain words (2 to 40 characters, no links).',time='Pick a time that is still ahead, within half a year.',
@@ -965,9 +1092,17 @@ BackstageForeverEventsApi={
         local ver=BackstageForeverEventAnswer(db(),id,myName(),status,epoch())
         if not ver then return false end
         push(BackstageForeverEventSignEncode(id,ver,status))
+        live('signup',id,myName(),status,ver)
         capture();refreshWindow()
         return true
     end,
+}
+-- What Backstage Live works with (BackstageForeverLiveGuild.lua): the store, the queue and the guild list.
+BackstageForeverEventsInternals={
+    db=db,push=push,rank=rank,readRanks=readRanks,capture=capture,refresh=refreshWindow,epoch=epoch,me=myName,note=note,when=when,
+    known=function(key) return known[key] or 0 end,
+    inGuild=function(name) readRanks();return type(name)=='string' and ranks[name:lower()]~=nil end,
+    listed=function() return next(ranks)~=nil end,
 }
 local api=BackstageForeverEventsApi
 -- Guild sharing (BackstageForeverGuild.lua) hands over what members shared, for the desktop guild page.
@@ -1142,6 +1277,7 @@ if type(BackstageForeverPartyHandle)=='function' then
     BackstageForeverPartyHandle('U',onSign,'GUILD')
     BackstageForeverPartyHandle('L',onRoster,'GUILD')
     BackstageForeverPartyHandle('P',onPolicy,'GUILD')
+    BackstageForeverPartyHandle('V',onRelay,'GUILD')
 end
 if type(CreateFrame)=='function' then
     local frame=CreateFrame('Frame')

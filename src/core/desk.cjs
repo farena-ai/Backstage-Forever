@@ -524,6 +524,26 @@ class DeskService {
     } finally { this.busy.delete("sync"); }
   }
 
+  // -------- Backstage Live (contract L1/L2): a team reply seconds after it was written
+  /** The open tickets a live stream may listen for: ticket and key, exactly as the session body wants them. */
+  liveSubs() { return this.automatic && !this.state.blocked ? this.openTickets().map((t) => ({ ticket: t.ticket, key: t.key })) : []; }
+  /**
+   * A "ticket" event from the live stream: { ticket, status, fixedIn, unread, lastId }, the same row a sync
+   * returns. Only tickets this app holds are touched. The three-hour poll stays as the fallback.
+   */
+  liveTicket(row) {
+    const t = row && typeof row.ticket === "string" ? this.state.tickets.find((x) => x.ticket === row.ticket) : null;
+    if (!t) return { status: "unknown" };
+    t.status = oneOf(STATUSES, row.status, t.status); t.fixedIn = version(row.fixedIn);
+    t.updatedAt = new Date(this.now()).toISOString();
+    const unread = Number.isSafeInteger(row.unread) && row.unread >= 0 ? Math.min(row.unread, 999) : t.unread;
+    const fresh = Math.max(0, unread - t.unread);
+    t.unread = unread;
+    this.save(); this.changed();
+    if (fresh > 0 && this.state.notify && typeof this.notify === "function") { try { this.notify(fresh); } catch {} }
+    return { status: "updated", fresh };
+  }
+
   // -------- D7 automatic error reports
   /** Every unexpected error is remembered (scrubbed) for the report form; it is sent only when the switch is on. */
   captureError(where, error) {

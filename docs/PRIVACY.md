@@ -27,6 +27,12 @@ The same facts, field by field, are on the website's [privacy page](https://back
 | Quest progress: quest numbers and objective counts | Party members who also run the addon, through the game's own addon messages | Only while you're in a party (never raids). `/bf party off` stops it. Shared waypoints are sent only when you type `/bf party way`. |
 | A support report | Only where you save or send it yourself | Help → Field guide → Support & Recovery makes a report with secrets left out for you to copy or save; the app does not send that one anywhere. (A report sent to the team is the separate row above.) |
 
+### Guild and party features (only if you join)
+
+Off until you join. If you join your guild in the app, your character's name and realm and your answers to guild events are kept on the Backstage service for the members of your guild who joined, and are posted to the guild's Discord if its leader connected one. If you post on the realm party board, your listing is shown to other users on your realm and faction for 30 minutes. Leaving or removing deletes them.
+
+This is the one place where a character's name leaves your computer, and only for a character you join with. The app asks first each time: before you join a guild, before you switch the party board on, and before your first listing. Leave (Plans → Guild) removes your name and your sign-ups from the service; Remove (Plans → Party) takes your listing down; a guild leader can delete everything the service holds about the guild; Forget me also leaves every guild. The group planner, your notes and "people you have run with" stay on your computer. Settings → Privacy & sharing and the website's privacy page list every field.
+
 ## Features that stay on your computer
 
 - **The live link** (Windows): the addon draws a one-pixel line at the top edge of the game; the app reads only that line from the game's window to follow you live. It reads nothing else on your screen. `/bf live off` turns it off.

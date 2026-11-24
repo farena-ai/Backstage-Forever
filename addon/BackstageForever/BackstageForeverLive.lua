@@ -568,6 +568,43 @@ local function momentPage()
 end
 -- Questions waiting for the strip: {id, text, pages, next, pass, burst}, oldest first.
 local questions,lastWasQuestion={},false
+-- Backstage Live signals (guild link, events, sign-ups, party state, board listing) travel the same
+-- way as a question: pages of kind 4 whose text begins with bytes 1, 255 and "sig:". Byte 255 is
+-- not UTF-8, so an app that does not know them drops the message whole instead of asking it. They
+-- wait behind the player's own questions, at most SIGNAL_QUEUE of them, and never go up in combat.
+local SIGNAL_QUEUE,SIGNAL_HEAD=3,'\1\255sig:'
+local signals={}
+-- What is being sent now: the player's question first, then a signal. -> the list and its head.
+local function talking()
+    if questions[1] then return questions,questions[1] end
+    if signals[1] then return signals,signals[1] end
+end
+-- Pure: a signal's text -> its page byte arrays (the question page format), or {} when it does not fit.
+function BackstageForeverLiveSignalPages(id,text,identity)
+    if type(text)~='string' or #text==0 or text:find('%c') then return {} end
+    return BackstageForeverLiveQuestionPages(id,SIGNAL_HEAD..text,identity)
+end
+-- Puts one signal on the strip. key: a signal with the same key that has not started yet is replaced
+-- (only the newest party state matters). Returns its id and page count, or nil and a reason: 'off'
+-- (live link off), 'invalid', 'busy' (try again in a moment), 'combat'.
+function BackstageForeverLiveSignal(text,key)
+    local s=settings()
+    if not s.enabled then return nil,'off' end
+    if type(text)~='string' or #text==0 or #text+#SIGNAL_HEAD>QUESTION_MAX_BYTES or text:find('%c') then return nil,'invalid' end
+    if call(InCombatLockdown) then return nil,'combat' end
+    local at
+    for i,q in ipairs(signals) do if key~=nil and q.key==key and not q.started then at=i end end
+    if not at and #signals>=SIGNAL_QUEUE then return nil,'busy' end
+    local id=(floor(tonumber(s.questionSeq) or 0)%255)+1
+    local pages=BackstageForeverLiveSignalPages(id,text,BackstageForeverLiveIdentity(call(UnitGUID,'player')))
+    if #pages==0 then return nil,'invalid' end
+    s.questionSeq=id
+    signals[at or #signals+1]={id=id,key=key,pages=pages,next=1,pass=1,burst=0}
+    pageClock=99 quiet=0
+    return id,#pages
+end
+-- How many signals wait (for /bf live status and tests).
+function BackstageForeverLiveSignalsWaiting() return #signals end
 -- Puts a question the player typed on the strip (the Ask box and /bf ask call this, only after
 -- the player pressed Ask or Enter, and only out of combat). Returns its id (1-255, kept across
 -- reloads) and its page count, or nil and a reason: 'off' (live link off), 'invalid', 'busy'.
@@ -595,17 +632,18 @@ function BackstageForeverLiveQuestionStatus()
 end
 -- The next question page, or nil to give this slot to an ordinary page (after each burst).
 local function questionPage()
-    local q=questions[1]
+    local list,q=talking()
     if not q then return nil end
     if q.burst>=QUESTION_BURST then q.burst=0 return nil end
     local page=q.pages[q.next]
+    q.started=true
     q.burst=q.burst+1
     q.next=q.next+1
     if q.next>#q.pages then
         q.next=1 q.pass=q.pass+1
         if q.pass>passes() then
-            table.remove(questions,1)
-            if questions[1] then questions[1].burst=q.burst end
+            table.remove(list,1)
+            if list[1] then list[1].burst=q.burst end
         end
     end
     return page
@@ -613,14 +651,15 @@ end
 -- Hairline: the rest of this pass of the first question, at most HAIRLINE_QUESTION_SLOTS pages;
 -- a pass never wraps inside one frame, so every pass is a separate set of frames.
 local function questionSlots(out)
-    local q=questions[1]
+    local list,q=talking()
     if not q then return false end
+    q.started=true
     for _=1,HAIRLINE_QUESTION_SLOTS do
         out[#out+1]=q.pages[q.next]
         q.next=q.next+1
         if q.next>#q.pages then
             q.next=1 q.pass=q.pass+1
-            if q.pass>passes() then table.remove(questions,1) end
+            if q.pass>passes() then table.remove(list,1) end
             break
         end
     end

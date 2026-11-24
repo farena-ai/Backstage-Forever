@@ -358,6 +358,11 @@ function BackstageForeverGuildCommand(message)
     -- The thing to craft keeps its capitals and may be a shift-clicked link, so it is read first.
     local wanted=type(message)=='string' and #message<=400 and message:match('^%a+%s+[Cc][Rr][Aa][Ff][Tt]%f[%A]%s*(.-)%s*$')
     if wanted then return craftCommand(wanted) end
+    -- /bf guild link CODE, unlink, desk on|off: BackstageForeverLiveGuild.lua (the code keeps its capitals).
+    if type(BackstageForeverLiveGuildCommand)=='function' and type(message)=='string' then
+        local ok,handled=pcall(BackstageForeverLiveGuildCommand,message)
+        if ok and handled then return end
+    end
     local rest=type(message)=='string' and #message<=80 and message:lower():match('^%a+%s*(.-)%s*$') or ''
     local word,tail=rest:match('^(%a*)%s*(.*)$')
     if word=='on' or word=='off' then

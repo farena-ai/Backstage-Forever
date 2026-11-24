@@ -149,7 +149,7 @@ const SIZES = [[1440, 900, "full"], [984, 635, "compact"]];
       await page.getByRole("heading", { name: "What this app shares", exact: true }).waitFor();
       const share = page.getByLabel("Share map discoveries"), stats = page.getByLabel("Send anonymous usage statistics"), errors = page.getByLabel("Send automatic error reports");
       assert.deepEqual([await share.isChecked(), await stats.isChecked(), await errors.isChecked()], [true, true, false]);
-      assert.equal(await page.getByText("See exactly what is sent", { exact: true }).count(), 2, "one under map discoveries, one under statistics");
+      assert.equal(await page.getByText("See exactly what is sent", { exact: true }).count(), 3, "one under map discoveries, one under statistics, one under guild and party features");
       // Map discoveries: every field that can be sent, in plain words, with the newer ones (vendor stock, names, whose spots are yours).
       const shareSee = page.locator(".desk-see-share");
       await shareSee.locator("summary").click();

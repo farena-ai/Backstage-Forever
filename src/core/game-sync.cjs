@@ -75,6 +75,8 @@ const MAX = 1024 * 1024,
     "BackstageForeverRaid.lua",
     "BackstageForeverEvents.lua",
     "BackstageForeverEventsWindow.lua",
+    "BackstageForeverLiveGuild.lua",
+    "BackstageForeverLiveParty.lua",
     "BackstageForeverLockouts.lua",
     "BackstageForeverBag.lua",
     "BackstageForeverChat.lua",
@@ -184,6 +186,8 @@ function parseSavedVariables(raw) {
   const scout = [], settingsProfiles = [];
   // Guild events and lockouts (optional blocks too), kept the same way.
   const guild = [];
+  // Backstage Live (game-guild-feed.cjs): the guild link, own sign-ups, party state and board listing.
+  const live = [];
   const characters = s.characters.map((c) => {
     if (!c || typeof c !== "object") invalid();
     const key = id(c.id);
@@ -285,6 +289,9 @@ function parseSavedVariables(raw) {
       if (c.lockouts !== undefined) { try { row.lockouts = G.normalizeLockoutCapture(c.lockouts); } catch { /* Omit the entire invalid optional block. */ } }
       if (row.guild || row.lockouts) guild.push(row);
     }
+    if (c.live !== undefined) {
+      try { live.push({ id: key, name: out.name, realm: out.realm || "", updatedAt: out.updatedAt, live: require("./game-guild-feed.cjs").normalizeLiveCapture(c.live) }); } catch { /* Omit the entire invalid optional block. */ }
+    }
     // Kept addon settings profiles (only present when the player switched sharing on in game).
     if (c.settingsProfiles !== undefined) {
       try {
@@ -300,6 +307,7 @@ function parseSavedVariables(raw) {
   // Nearly every save carries a lockout block, so this list rides along without being a listed
   // field: code that takes the snapshot apart field by field (the profile merge) does not see it.
   if (guild.length) Object.defineProperty(parsed, "guild", { value: guild, enumerable: false });
+  if (live.length) Object.defineProperty(parsed, "live", { value: live, enumerable: false });
   return parsed;
 }
 // `checked` is a set of parent folders already walked in the same pass (one addon install or
@@ -466,6 +474,10 @@ class GameSync {
   /** Guild events, shared member details and lockouts read from the game's saved file: [{ id, name, realm, guild?, lockouts? }]. */
   guildCapture() {
     return (this.guildBlocks || []).map((e) => ({ ...e }));
+  }
+  /** Backstage Live blocks read from the game's saved file: [{ id, name, realm, updatedAt, live }] (game-guild-feed.cjs ingestSaved). */
+  liveCapture() {
+    return (this.liveBlocks || []).map((e) => ({ ...e }));
   }
   /** Kept addon settings profiles read from the game's saved file: [{ id, name, realm, profiles: { profiles, done } }]. */
   settingsProfiles() {
@@ -858,6 +870,11 @@ class GameSync {
       { const newest = new Map();
         for (const e of [...snapshots.values()].flatMap((s) => s.guild || [])) if (!newest.has(e.id) || e.updatedAt > newest.get(e.id).updatedAt) newest.set(e.id, e);
         this.guildBlocks = [...newest.values()].slice(0, 100); }
+      // Backstage Live blocks, the newest save of each character; the feed emits what the live link has not told yet.
+      { const newest = new Map();
+        for (const e of [...snapshots.values()].flatMap((s) => s.live || [])) if (!newest.has(e.id) || e.updatedAt > newest.get(e.id).updatedAt) newest.set(e.id, e);
+        this.liveBlocks = [...newest.values()].slice(0, 100); }
+      try { this.onLiveBlocks?.(this.liveCapture(), this.guildCapture()); } catch { /* A listener never stops a read. */ }
       // Kept settings profiles of every character read this time; the same: in memory, never uploaded.
       this.profileBlocks = [...snapshots.values()].flatMap((s) => s.settingsProfiles || []).slice(0, 100);
       try { this.onSettingsProfiles?.(this.settingsProfiles()); } catch { /* A listener never stops a read. */ }

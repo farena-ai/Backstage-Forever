@@ -65,6 +65,8 @@ let miniNow = null;
 let sessionHistory = null;
 let economy = null;
 let guildStore = null;
+let liveClient = null, guildService = null, groupStore = null, guildPanel = null; // Backstage Live (live-client.cjs, guild-service.cjs, group-planner.cjs, guild-panel-window.cjs)
+let liveTicketSubs = null; // tells the live stream which reports to listen for, whenever they change
 let journeyStore = null;
 let routeEditor = null, routeEdits = null; // route variants and edits per character (Q8, Q9)
 let challengeRuns = null, discordPresence = null; // challenge runs (C12) and the Discord status (S6)
@@ -157,6 +159,9 @@ function handle(name, fn, { privateOnly = false } = {}) {
       if (e?.message === "Secure credential storage is unavailable.") throw e;
       if (name.startsWith("community") && e?.name === "CommunityError") throw new Error(e.message);
       if (name.startsWith("desk") && e?.name === "DeskError") throw new Error(e.message);
+      // Guild and party features write their own plain sentences ("Your guild rank does not allow this.").
+      if (name.startsWith("live") && e?.name === "GuildError") throw new Error(e.message);
+      if (["livePlan", "liveRegularNote"].includes(name) && e?.message === "A note cannot hold a web address.") throw new Error(e.message);
       // Journey extras write their own plain sentences for the player (a bad race code, a missing screenshot).
       if (e?.name === "JourneyError") throw new Error(e.message);
       if (["partyBrief", "partyPreview", "createPartyJourney", "commitPartyPlan", "exportPartyPlan", "importPartyPlan"].includes(name) && /^Party plan/.test(e?.message)) throw e;
@@ -248,7 +253,7 @@ app.whenReady().then(async () => {
     game = new GameSync({
       dataDir: app.getPath("userData"),
       // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
-      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, reports: desk?.unread() || 0, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id), routes: (id) => routeEditor?.handoff(id) || null, ships: () => shipRides?.() || null, sentProfiles: (key) => profileSends?.get(key) || null }); },
+      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, reports: desk?.unread() || 0, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id), routes: (id) => routeEditor?.handoff(id) || null, ships: () => shipRides?.() || null, sentProfiles: (key) => profileSends?.get(key) || null, live: require("./core/game-guild-feed.cjs").handoff() }); },
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -790,6 +795,7 @@ app.whenReady().then(async () => {
       onChange: (unread) => {
         if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:deskChanged", { unread });
         game?.writeHandoff().catch(() => {}); // /bf reports reads the count after the next /reload
+        try { liveTicketSubs?.(); } catch {}
       },
     });
     community.onForgot = () => desk.wipe();
@@ -1041,6 +1047,83 @@ app.whenReady().then(async () => {
     handle, getState: () => store.state, getGame: () => game, store: guildStore, economy, gameData, dialog, getWindow: () => win,
     packNames: () => (knowledge.packs.get(knowledge.build) || knowledge.bundled).pack,
   });
+  // Backstage Live: one stream from the service (team replies, guild events and sign-ups, the realm party
+  // board), the guild service with the game's feed, the group planner with regulars, and the panel.
+  // Nothing here connects or sends until something needs it: an open report, a guild the player joined,
+  // or the party board the player switched on.
+  {
+    const { LiveClient } = require("./core/live-client.cjs");
+    const { GuildService } = require("./core/guild-service.cjs");
+    const { GroupStore } = require("./core/group-planner.cjs");
+    const { createLiveGuildHub, registerLiveGuildHandlers } = require("./core/live-guild-ipc.cjs");
+    const guildFeed = require("./core/game-guild-feed.cjs"); // the game side: what the addon reports, and what it reads at /reload
+    const userData = app.getPath("userData");
+    // Like Desk: a development or test run opens no stream by itself unless it was pointed at a test service.
+    liveClient = new LiveClient({ baseUrl: community.baseUrl, getInstallId: () => community.settings.installId, enabled: app.isPackaged || Boolean(process.env.BF_COMMUNITY_URL) });
+    groupStore = new GroupStore({ file: path.join(userData, "group.json") });
+    let hub = null;
+    guildService = new GuildService({
+      dir: userData, community, live: liveClient, feed: guildFeed,
+      // The game reads this at its next /reload; one member reloading passes the news on in game.
+      setHandoff: (data) => { guildFeed.setHandoff(data); }, // the feed rewrites the hand-off file when something changed
+      getSaved: () => game?.guildCapture?.() || [],
+      getPlan: (character) => hub?.handoffPlan(character) || null,
+    });
+    hub = createLiveGuildHub({
+      getState: () => store.state, guildStore, service: guildService, group: groupStore, feed: { real: true }, liveLink: () => Boolean(liveBridge?.enabled),
+      attunements: (profile) => require("./core/attunements.cjs").attunementView(profile),
+    });
+    // The Calendar shows the saved file's guild events together with the live events of guilds the player joined.
+    { const savedEntries = guildPages.calendarEntries; guildPages.calendarEntries = () => hub.calendarEntries(savedEntries()); }
+    const showApp = (route) => {
+      if (!win || win.isDestroyed()) return;
+      if (win.isMinimized()) win.restore();
+      win.show(); win.focus();
+      if (!win.webContents.isDestroyed()) win.webContents.send("backstage:openPage", route);
+    };
+    guildPanel = require("./core/guild-panel-window.cjs").createGuildPanel({
+      BrowserWindow, ipcMain, screen: require("electron").screen, rendererDir: path.join(__dirname, "renderer"), dataDir: userData,
+      view: () => hub.panelView(),
+      inCombat: () => Boolean(liveBridge?.enabled && liveBridge.current()?.combat),
+      gameLocale: () => store.state.profiles.find((p) => p.id === store.state.activeProfileId)?.locale || null,
+      actions: {
+        answer: (guildId, eventId, answer) => guildService.answer(guildId, eventId, answer),
+        board: async (action) => { if (action === "watch") { guildService.watchBoard(true); return true; } if (action === "browse") return guildService.browse(); return action === "renew" ? guildService.renew() : guildService.removeListing(); },
+        watch: (on) => guildService.watchBoard(on),
+        assign: (slot, member) => hub.changePlan(null, { action: "assign", slot, member }),
+        openApp: showApp,
+      },
+    });
+    registerLiveGuildHandlers({ handle, hub, service: guildService, group: groupStore, openExternal: (url) => shell.openExternal(url), copyText: (text) => clipboard.writeText(text), panel: guildPanel });
+    // The screens repaint a moment after anything changed, however many changes arrive together.
+    let liveNotice = null;
+    guildService.on("change", () => {
+      if (liveNotice) return;
+      liveNotice = setTimeout(() => {
+        liveNotice = null;
+        if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:liveGuild", { at: Date.now() });
+        guildPanel?.push(false);
+      }, 120);
+    });
+    guildService.on("party", (party) => { try { if (party && groupStore.sawParty(party)) guildPanel?.push(false); } catch {} });
+    // Desk rides on the same stream: a team reply shows the moment it is written. The three-hour check stays.
+    liveTicketSubs = () => liveClient?.setSubs("tickets", desk ? desk.liveSubs() : []);
+    liveClient.on("event", (name, data) => { if (name === "ticket") { try { desk?.liveTicket(data); } catch {} } });
+    liveClient.on("refetch", () => { void desk?.sync({ force: true }).catch(() => {}); });
+    liveTicketSubs();
+    // "Forget me" also leaves every guild on the service; the app forgets its memberships with it.
+    const forgot = community.onForgot;
+    community.onForgot = () => { try { forgot?.(); } finally { guildService.wipe(); } };
+    // After every read of the game's saved file the game holds the last hand-off.
+    if (game) {
+      const before = game.onSettingsProfiles;
+      game.onSettingsProfiles = (blocks) => { try { before?.(blocks); } finally { try { guildPages.refresh(); hub.absorbSaved(); guildService.savedFileRead(); } catch {} } };
+    }
+    try { hub.absorbSaved(); guildService.updateHandoff(); } catch {}
+    const liveTick = setInterval(() => { void guildService?.tick().catch(() => {}); }, 60 * 1000);
+    liveTick.unref?.();
+    if (guildPanel.openAtStart() && process.env.BF_TEST_INACTIVE !== "1") setTimeout(() => { try { guildPanel?.open(); } catch {} }, 4000).unref?.();
+  }
   const economyPages = require("./core/economy-ipc.cjs").registerEconomyHandlers({
     handle, getState: () => store.state, economy, gameData, dialog, getWindow: () => win, guild: guildPages,
     packNames: () => (knowledge.packs.get(knowledge.build) || knowledge.bundled).pack,
@@ -1316,6 +1399,13 @@ app.whenReady().then(async () => {
   forgetGameAnswers = (ids) => { if (inGameAsk.forget(ids)) game?.writeHandoff().catch(() => {}); };
   clearGameAnswers = () => inGameAsk.clear();
   liveBridge.subscribeQuestions((question) => { void inGameAsk.handle(question); });
+  // Backstage Live, game side: guild, party and board signals from the live link and the saved file
+  // go to game-guild-feed.cjs (the panel and the service client listen there); what it is given
+  // for the game (setHandoff) is written into the hand-off file for the next /reload.
+  { const guildFeed = require("./core/game-guild-feed.cjs");
+    guildFeed.attach(liveBridge);
+    guildFeed.onHandoffChange(() => { game?.writeHandoff().catch(() => {}); });
+    if (game) { game.onLiveBlocks = (live, guild) => { guildFeed.ingestSaved(live, guild); }; try { guildFeed.ingestSaved(game.liveCapture(), game.guildCapture()); } catch {} } }
   const stopAskContext = companionContext.subscribe(({ reason }) => {
     if (["source-root", "source-disconnect", "reset", "import", "restore"].includes(reason)) inGameAsk.rememberOrigin(null);
   });
@@ -1396,6 +1486,7 @@ app.whenReady().then(async () => {
     try { sessionHistory?.clear(); } catch {}
     try { economy?.clear(); } catch {}
     try { guildStore?.clear(); } catch {}
+    try { guildService?.reset(); groupStore?.clear(); } catch {} // local memberships (their tokens), the plan and regulars
     try { clearJourneyExtras?.(); } catch {}
     try { fs.rmSync(path.join(app.getPath("userData"), "route-review.json"), { force: true }); guided = desktopGuided = null; } catch {}
     try { fs.rmSync(path.join(app.getPath("userData"), "route-edits.json"), { force: true }); routeEdits.data = {}; routeEditor?.invalidate(); } catch {}
@@ -1495,6 +1586,9 @@ app.on("before-quit", (event) => {
   closeAskPanel?.();
   community?.stop();
   desk?.stop();
+  guildPanel?.close();
+  guildService?.stop();
+  liveClient?.stop();
   liveBridge?.stop();
   store?.closeRecovery();
   voice?.close();
