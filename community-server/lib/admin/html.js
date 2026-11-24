@@ -84,7 +84,7 @@ function page({ title, active = "", session = null, counts = null, body, flash =
       ? ` <span class="badge" title="${esc(`${counts.new} new, ${counts.looking} waiting on us`)}">${num(counts.new + counts.looking)}</span>` : "";
     return `<a href="${href}"${key === active ? ' class="on" aria-current="page"' : ""}>${esc(label)}${badge}</a>`;
   }).join("")}</nav>` : "";
-  const who = session ? `<form class="who" method="post" action="/admin/logout">${csrfInput(session)}<span class="who-name">${esc(session.admin.name)}</span><button class="btn quiet" type="submit">Sign out</button></form>` : "";
+  const who = session ? `<form class="who" method="post" action="/admin/logout">${csrfInput(session)}<a class="who-name" href="/admin/account" title="My account">${esc(session.admin.name)}</a><button class="btn quiet" type="submit">Sign out</button></form>` : "";
   return `<!doctype html>
 <html lang="en">
 <head>
