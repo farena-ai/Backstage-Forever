@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.28.0 - Guild events, fresher map
+
+- Guild events with sign-ups, a guild page, a lockout calendar, and shared map data that says when each spot was last seen and which spots are yours. See the [release notes](docs/releases/1.28.0.md).
+
 ## 1.27.0 - Search everything
 
 - A search box over everything the app knows, live community map layers, a one-window bag view, chat tools and settings profiles. See the [release notes](docs/releases/1.27.0.md).

@@ -343,7 +343,7 @@ test("schema 3 is added to a schema 2 database without touching anything else", 
   store.close();
   store = new Store(tmp.file);
   assert.equal(store.db.prepare("PRAGMA user_version").get().user_version, SCHEMA_VERSION);
-  assert.equal(SCHEMA_VERSION, 3);
+  assert.ok(SCHEMA_VERSION >= 3);
   assert.equal(store.db.prepare("SELECT COUNT(*) AS c FROM tickets").get().c, 1);
   assert.equal(D.recordSnapshot(store, D.parseReleases([release("1.26.0", [asset("Setup.exe", 5)])]), T0), 1);
   assert.equal(store.desk.createTicket("a".repeat(64), require("./helpers").ticket("x"), T0).ticket, "BF-1002");

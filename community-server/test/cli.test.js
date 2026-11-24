@@ -171,6 +171,7 @@ test("seed-demo fills a throwaway database that the dashboard can draw, and refu
   assert.equal(first.status, 0, first.stderr);
   const counts = JSON.parse(first.stdout);
   assert.ok(counts.heartbeats > 500 && counts.first_seen > 50 && counts.tickets > 10 && counts.error_groups >= 5 && counts.obs > 500, first.stdout);
+  assert.ok(counts.guilds >= 10 && counts.guild_members > 40 && counts.guild_events > 10 && counts.guild_signups > 30 && counts.lfg > 0, first.stdout);
   const refuse = run([file]);
   assert.equal(refuse.status, 1);
   assert.match(refuse.stderr, /already exists/);
@@ -181,6 +182,38 @@ test("seed-demo fills a throwaway database that the dashboard can draw, and refu
   assert.ok(d.active.now.mau > 50 && d.active.now.wau > 20);
   assert.ok(d.cohorts.some(c => c.size > 0 && c.weeks[0] && c.weeks[0].n > 0));
   assert.ok(d.support.openedInRange > 0 && d.support.topErrors.length > 0 && d.community.newFacts > 0);
+  const live = store.guilds.stats(Date.now(), 30);
+  assert.ok(live.guilds >= 10 && live.guildsWithDiscord >= 3 && live.guildsWithProblem === 1 && live.weeklyActiveGuilds < live.guilds && live.eventsCreated > 0 && live.listingsNow > 0 && live.listingsInRange > 0, JSON.stringify(live));
+  assert.ok(live.signups.game > 0 && live.signups.desktop > 0 && live.signups.discord > 0);
+  assert.ok(store.guilds.adminList().every(g => g.members >= 1));
   // Demo admins cannot sign in, and no real-looking data is in there.
   assert.ok(store.db.prepare("SELECT name, disabled, pw_hash FROM admins").all().every(a => a.name.startsWith("demo-") && a.disabled === 1 && a.pw_hash === "demo-no-login"));
+});
+
+test("guilds and guild-delete: the owner can list linked guilds and delete one for a deletion request", (t) => {
+  const db = tempDb(); t.after(() => db.cleanup());
+  assert.match(cli(db, ["guilds"]).out, /No linked guilds\./);
+  let store = new Store(db.file);
+  const G = require("../lib/guilds");
+  const made = store.guilds.createGuild("a".repeat(64), { realm: "Thunder Hold", faction: "horde", guildName: "Night Watch", character: { name: "Abel", realm: "Thunder Hold" }, rankIndex: 0 }, G.codeHash(SALT, "BFG-2222-2222"));
+  const g = store.guilds.guild(made.guildId);
+  store.guilds.join(g, "b".repeat(64), { character: { name: "Bea", realm: "Thunder Hold" }, rankIndex: 4 }, 1000);
+  store.close();
+  const list = cli(db, ["guilds"]);
+  assert.equal(list.code, 0, list.err);
+  assert.match(list.out, new RegExp(`^${made.guildId}  Night Watch \\(Thunder Hold, horde\\)  members 2  events 0  discord none  last active `));
+  assert.ok(!list.out.includes("Abel") && !list.out.includes("Bea"), "the list names guilds, not members");
+  const stats = JSON.parse(cli(db, ["stats"]).out);
+  assert.deepEqual([stats.live.guilds, stats.live.members, stats.live.guildsWithDiscord], [1, 2, 0]);
+  assert.equal(cli(db, ["guild-delete", "nope"]).code, 1);
+  assert.equal(cli(db, ["guild-delete", `g_${"z".repeat(16)}`]).code, 1);
+  const del = cli(db, ["guild-delete", made.guildId]);
+  assert.equal(del.code, 0, del.err);
+  assert.match(del.out, /Deleted the guild with 2 member\(s\), 0 event\(s\) and 0 sign-up\(s\)\./);
+  store = new Store(db.file);
+  assert.equal(store.guilds.guildCount(), 0);
+  assert.equal(store.db.prepare("SELECT COUNT(*) AS c FROM guild_members").get().c, 0);
+  const audit = store.db.prepare("SELECT action, target, detail, admin_name FROM audit ORDER BY id DESC LIMIT 1").get();
+  assert.deepEqual({ ...audit }, { action: "guild_delete", target: `guild ${made.guildId}`, detail: "members=2 events=0 signups=0", admin_name: "(command line)" });
+  store.close();
 });

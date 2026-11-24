@@ -29,7 +29,28 @@ echo "running tests on server ($("$NODE" --version))"
 (cd "$D" && "$NODE" "${NODE_FLAGS[@]}" --test --test-concurrency=1 "test/*.test.js" >/dev/null) \
   || { echo "server-side tests failed; current release unchanged" >&2; exit 1; }
 
+# The schema number of the database before this release touches it. A release raises it when it
+# adds tables; an older release refuses a higher number. If the health check fails below, the
+# number is set back so the previous release can start again (the added tables stay, unused,
+# and the next deploy finds them: every upgrade step is "create if not there").
+schema_of() {
+  "$NODE" "${NODE_FLAGS[@]}" -e '
+    const { DatabaseSync } = require("node:sqlite");
+    const d = new DatabaseSync(process.argv.at(-1));
+    console.log(d.prepare("PRAGMA user_version").get().user_version); d.close();' "$1"
+}
+schema_back() {
+  "$NODE" "${NODE_FLAGS[@]}" -e '
+    const { DatabaseSync } = require("node:sqlite");
+    const [file, want] = process.argv.slice(-2);
+    const d = new DatabaseSync(file), now = d.prepare("PRAGMA user_version").get().user_version;
+    if (/^[0-9]+$/.test(want) && now > Number(want)) { d.exec("PRAGMA user_version = " + Number(want)); console.log("schema number set back from " + now + " to " + want); }
+    d.close();' "$1" "$2"
+}
+SCHEMA_BEFORE=""
+
 if [ -f "$BASE/data/community.db" ]; then
+  SCHEMA_BEFORE="$(schema_of "$BASE/data/community.db" 2>/dev/null || true)"
   "$NODE" "${NODE_FLAGS[@]}" -e '
     const { DatabaseSync } = require("node:sqlite");
     const [src, dst] = process.argv.slice(-2);
@@ -63,5 +84,9 @@ for _ in $(seq 1 15); do
 done
 
 echo "health check failed; rolling back to ${prev:-nothing}" >&2
-if [ -n "$prev" ]; then ln -sfn "$prev" "$BASE/current"; systemctl --user restart "$UNIT"; else systemctl --user stop "$UNIT"; fi
+if [ -n "$prev" ]; then
+  systemctl --user stop "$UNIT" || true
+  if [ -n "$SCHEMA_BEFORE" ] && [ -f "$BASE/data/community.db" ]; then schema_back "$BASE/data/community.db" "$SCHEMA_BEFORE" || true; fi
+  ln -sfn "$prev" "$BASE/current"; systemctl --user restart "$UNIT"
+else systemctl --user stop "$UNIT"; fi
 exit 1

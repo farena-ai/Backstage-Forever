@@ -8,7 +8,7 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const MAX_COUNTER = 1_000_000;
 
 function day(now) { return new Date(now).toISOString().slice(0, 10); }
@@ -143,6 +143,10 @@ const DOWNLOADS_SCHEMA = `
   CREATE INDEX IF NOT EXISTS gh_downloads_day ON gh_downloads(day);
 `;
 
+// Schema 4 ("Backstage Live"): linked guilds, their events and sign-ups, the Discord link and the
+// party board. The statements live in lib/guilds.js; all are idempotent and touch no older table.
+const LIVE_SCHEMA = require("./guilds").SCHEMA;
+
 class Store {
   constructor(dbPath) {
     if (dbPath !== ":memory:") fs.mkdirSync(path.dirname(dbPath), { recursive: true, mode: 0o700 });
@@ -156,6 +160,7 @@ class Store {
       throw e;
     }
     this.desk = new (require("./desk").Desk)(this);
+    this.guilds = new (require("./guilds").Guilds)(this);
   }
 
   migrate() {
@@ -203,6 +208,10 @@ COMMIT;`);
     if (v < 3) this.db.exec(`BEGIN;
 ${DOWNLOADS_SCHEMA}
 PRAGMA user_version = 3;
+COMMIT;`);
+    if (v < 4) this.db.exec(`BEGIN;
+${LIVE_SCHEMA}
+PRAGMA user_version = 4;
 COMMIT;`);
   }
 
@@ -269,16 +278,21 @@ COMMIT;`);
   }
 
   // Removes everything an install contributed (observations, old reports,
-  // tickets with their messages, heartbeats, first-seen). With block=true,
+  // tickets with their messages, heartbeats, first-seen), takes it out of every
+  // guild it joined and removes its party-board listing. With block=true,
   // future submissions, reports, tickets and heartbeats from it are refused.
   purgeInstall(hash, { block = false, now = Date.now() } = {}) {
     return this.tx(() => {
       const observations = Number(this.q.delObs.run(hash).changes);
       const reports = Number(this.q.delReports.run(hash).changes);
       const desk = this.desk.purgeInstall(hash);
+      const live = this.guilds.purgeInstall(hash);
       if (block) this.q.block.run(hash, day(now));
       this.q.bump.run();
-      return { observations, reports, tickets: desk.tickets, heartbeats: desk.heartbeats, blocked: block };
+      const out = { observations, reports, tickets: desk.tickets, heartbeats: desk.heartbeats, blocked: block };
+      // What the realtime side has to follow up on (guilds left, a listing removed). Not part of the counted answer.
+      Object.defineProperty(out, "live", { value: live, enumerable: false });
+      return out;
     });
   }
 
