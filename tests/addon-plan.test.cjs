@@ -54,9 +54,9 @@ end
 
 test("exact reference turn-ins retain approximate relationship details and never claim mentioned NPCs are finishers", () => runLua(String.raw`
 local s=plan(player({q(1061,true)})).steps[1]
-assert(s.source=='reference' and s.destination.mapId==1413 and s.destination.x==0.3528 and s.destination.y==0.2786)
+assert(s.source=='reference' and s.destination.mapId==1413 and s.destination.x==0.3528 and s.destination.y==0.2784)
 assert(s.detail:find('Approximate',1,true) and s.detail:find('observed turn-in NPC',1,true) and s.detail:find('Seereth Stonebreak',1,true))
-assert(s.command=='/bf guide 1061 t 1413 0.3528 0.2786 '..BUILD)
+assert(s.command=='/bf guide 1061 t 1413 0.3528 0.2784 '..BUILD)
 local m=plan(player({q(854,true)})).steps[1]
 assert(m.destination==nil and m.command==nil and not m.detail:find('Thork',1,true))
 local o=plan(player({q(854)})).steps[1]

@@ -3,11 +3,11 @@ Backstage Forever world finds reference
 Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
 License: https://creativecommons.org/licenses/by/4.0/
 
-Source: JIVESCORP/eg-link-output-wowf commit 1bf749ba19be7e699822d6587db0cb85b1b0bc3b, builds 1.60.1.71037, 1.60.1.70959, 1.60.1.70938, 1.60.1.70888, 1.60.1.70862, 1.60.1.70840, 1.60.1.70790.
+Source: JIVESCORP/eg-link-output-wowf commit 423d6c9645cd102406782e7400805a7c738e2d69, builds 1.60.1.71037, 1.60.1.70959, 1.60.1.70938, 1.60.1.70888, 1.60.1.70862, 1.60.1.70840, 1.60.1.70790, 1.60.1.70532, 1.60.1.70450, 1.60.1.70425, 1.60.1.70374, 1.60.1.70338, 1.60.1.70334, 1.60.1.70291, 1.60.1.70205.
 
 normalization: rare enemies are the creatures whose classification in the game client's own
 creature data is 4 (rare) or 2 (rare elite). Level range and places are kept only where a player
-met the creature; drops only where a kill was looted (quest items left out). Herb and ore spots,
+met the creature or looted its corpse; drops only where a kill was looted (quest items left out). Herb and ore spots,
 chests and mailboxes are objects players walked up to; herb and ore are told apart by node name.
 Places are rounded. They are past community observations, not live spawns and not complete.
 The license does not grant rights in Blizzard narrative text or game assets.

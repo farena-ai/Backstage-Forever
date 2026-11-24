@@ -4,8 +4,9 @@
 const fs=require('node:fs'),path=require('node:path');
 const {createHash}=require('node:crypto'),{isDeepStrictEqual}=require('node:util');
 const {COMMIT,BUILD,BUILDS,ATTRIBUTION,SOURCES}=require('./creature-sources.cjs');
+const {latinName}=require('./latin-name.cjs');
 // Raw single-build input bound; the merged multi-build bundle has its own bound.
-const RAW_LIMIT=2*1024*1024,PACK_LIMIT=1024*1024,MAX_CREATURES=16000,MAX_BUILDS=12,MAX_LEVEL=63;
+const RAW_LIMIT=2*1024*1024,PACK_LIMIT=1024*1024,MAX_CREATURES=16000,MAX_BUILDS=16,MAX_LEVEL=63;
 const FACTIONS=['Alliance','Horde'];
 // UnitReaction scale seen in the data: 1 hated, 2 hostile, 3 unfriendly, 4 neutral, 5+ friendly.
 // A faction "observed it hostile" when any of its reactions is 3 or lower (red name, attacks on sight).
@@ -60,7 +61,7 @@ function normalizeCreatures(rawBytes,source=SOURCES[0],commit=COMMIT){
   const nums=lv.filter(l=>l>0);
   const hostileTo=[];for(const [f,rs] of Object.entries(c.reactions)){if(!FACTIONS.includes(f)||!Array.isArray(rs)||rs.some(r=>!Number.isSafeInteger(r)||r<1||r>8))fail();if(rs.some(r=>r<=HOSTILE_MAX))hostileTo.push(f);}
   const cls=c.classifications;
-  creatures.push(row({id:+key,name:c.name??null,minLevel:nums.length?Math.min(...nums):null,maxLevel:nums.length?Math.max(...nums):null,
+  creatures.push(row({id:+key,name:latinName(c.name)?c.name:null,minLevel:nums.length?Math.min(...nums):null,maxLevel:nums.length?Math.max(...nums):null,
    elite:cls.includes('elite')||cls.includes('rareelite'),rare:cls.includes('rare')||cls.includes('rareelite'),worldboss:cls.includes('worldboss'),skull:lv.includes(-1),
    hostileTo:FACTIONS.filter(f=>hostileTo.includes(f)),sources:c.sources}));
  }

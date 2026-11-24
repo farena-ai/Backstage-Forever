@@ -4,7 +4,7 @@ const {COMMIT,BUILD,BUILDS,ATTRIBUTION,SOURCES,LICENSE}=require('../src/core/cre
 const {normalizeCreatures,mergeCreaturePacks,validateCreaturePack,RAW_LIMIT,PACK_LIMIT,hash}=require('../src/core/creature-data.cjs');
 const dir=path.join(__dirname,'../data/forever-creatures');
 // Pinned merged coverage for the bundled builds.
-const COVERAGE={creatures:4772,elite:433,hostile:1989};
+const COVERAGE={creatures:5171,elite:489,hostile:2204};
 const LOCK={schemaVersion:1,product:'wowf',build:BUILD,builds:BUILDS,commit:COMMIT,license:'CC BY 4.0',attribution:ATTRIBUTION,files:SOURCES.map(s=>structuredClone(s))};
 const coverage=p=>({creatures:p.creatures.length,elite:p.creatures.filter(c=>c.elite).length,hostile:p.creatures.filter(c=>c.hostileTo.length).length});
 /** sourceDir holds one subdirectory per pinned build: sourceDir/<build>/creatures.json. */

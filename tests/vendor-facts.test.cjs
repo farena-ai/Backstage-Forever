@@ -37,10 +37,10 @@ for (const suffix of ["#0", "#1", "#00", "#01", "#02", "#09", "#010", "#0100"]) 
 test("seller normalizer joins exact positive IDs, names and Merchant evidence; retains only historical facts", () => {
   const pack = normalize(fixture());
   assert.equal(pack.vendors.length, 1); assert.equal(pack.counts.listings, 1);
-  assert.deepEqual(pack.vendors[0].listings, [{ key: "item:2320", itemId: 2320, name: "Coarse Thread", sources: 1 }]);
+  assert.deepEqual(pack.vendors[0].listings, [{ key: "item:2320", itemId: 2320, name: "Coarse Thread", sources: 1, price: 10, stack: 5 }], "the full price players were shown, for the stack one purchase gives");
   assert.deepEqual(pack.vendors[0].observedReactionsByFaction, { Horde: [4, 5] });
   assert.equal(pack.vendors[0].reactionSources, 2);
-  assert.doesNotMatch(JSON.stringify(pack), /costs|price|stack|stock|side|worldX/);
+  assert.doesNotMatch(JSON.stringify(pack), /costs|stockMax|limited|bartered|side|worldX/);
   assert.deepEqual(api().validateVendorPack(pack), pack);
   for (const mutate of [r => r["npcs.json"].npcs[10].name = "Other", r => r["creatures.json"].creatures[10].name = "Other", r => r["npcs.json"].npcs[10].interactions = [], r => r["vendors.json"].vendors[0] = r["vendors.json"].vendors[10]]) {
     const raw = fixture(); mutate(raw); const p = normalize(raw); assert.ok(p.counts.droppedVendors > 0);
@@ -53,7 +53,7 @@ test("seller normalizer joins exact positive IDs, names and Merchant evidence; r
 
 test("strict compiled loader rejects malformed schema, counts, dates, IDs, names, positions and reactions", t => {
   const pack = normalize(fixture());
-  for (const mutate of [p => p.private = true, p => p.product = "classic", p => p.sourceCommit = "main", p => p.counts.listings++, p => p.vendors[0].id = 0, p => p.vendors[0].name = "x".repeat(201), p => p.vendors[0].lastSeen = "2026-02-30", p => p.vendors[0].lastSeen = "2027-01-01", p => p.vendors[0].positions[0].x = NaN, p => p.vendors[0].positions[0].mapId = 0, p => p.vendors[0].positions[0].worldX = 1, p => p.vendors[0].observedReactionsByFaction.Horde = [9], p => p.vendors[0].reactionSources = 0, p => p.vendors[0].listings[0].key = "item:9", p => p.vendors[0].listings[0].price = 1, p => p.vendors.push(structuredClone(p.vendors[0])), p => delete p.vendors[0].repairs, p => p.vendors[0].repairs = 1, p => p.builds = [], p => p.builds = ["1.60.1.70790"], p => p.builds.push(p.build), p => p.builds.push("main"), p => delete p.builds]) {
+  for (const mutate of [p => p.private = true, p => p.product = "classic", p => p.sourceCommit = "main", p => p.counts.listings++, p => p.vendors[0].id = 0, p => p.vendors[0].name = "x".repeat(201), p => p.vendors[0].lastSeen = "2026-02-30", p => p.vendors[0].lastSeen = "2027-01-01", p => p.vendors[0].positions[0].x = NaN, p => p.vendors[0].positions[0].mapId = 0, p => p.vendors[0].positions[0].worldX = 1, p => p.vendors[0].observedReactionsByFaction.Horde = [9], p => p.vendors[0].reactionSources = 0, p => p.vendors[0].listings[0].key = "item:9", p => p.vendors[0].listings[0].price = 0, p => p.vendors[0].listings[0].honored = 1.5, p => p.vendors[0].listings[0].stack = 1, p => p.vendors[0].listings[0].stock = 0, p => p.vendors[0].listings[0].cost = 1, p => p.vendors.push(structuredClone(p.vendors[0])), p => delete p.vendors[0].repairs, p => p.vendors[0].repairs = 1, p => p.builds = [], p => p.builds = ["1.60.1.70790"], p => p.builds.push(p.build), p => p.builds.push("main"), p => delete p.builds]) {
     const bad = structuredClone(pack); mutate(bad); assert.throws(() => api().validateVendorPack(bad), /Invalid historical seller data/);
   }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bf-vendor-test-")); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));

@@ -5,7 +5,7 @@ const fs = require("node:fs"), path = require("node:path"), { spawnSync } = requ
 const root = path.join(__dirname, "..");
 const G = require("../src/core/guided-route.cjs");
 const { normalizeJournalCapture } = require("../src/core/journal-data.cjs");
-const pack = require("../data/forever/pack.json"), zones = require("../data/forever-leveling/pack.json").zones;
+const zones = require("../data/forever-leveling/pack.json").zones;
 
 test("the journal keeps each quest's giver and spot, bounded, one per quest", () => {
   const j = normalizeJournalCapture({ givers: [{ q: 5, n: 77, m: 1446, x: 0.512345, y: 0.4, at: 1 }, { q: 5, n: 78, m: 1446, x: 0.6, y: 0.4, at: 2 }] });
@@ -16,7 +16,12 @@ test("the journal keeps each quest's giver and spot, bounded, one per quest", ()
 });
 
 test("learned givers fill quests with no giver in the bundled data, and the route reaches further", () => {
+  // The bundled routes reach the level cap, so nothing could extend them. Take the recorded givers
+  // of the high-level quests away first: that is the state learned givers are for.
+  const full = require("../data/forever/pack.json"), CUT = 48;
+  const pack = { ...full, quests: Object.fromEntries(Object.entries(full.quests).map(([id, q]) => [id, q.level >= CUT ? { ...q, givers: [] } : q])) };
   const before = G.buildGuidedRoutes({ pack, zones }).coverage.Horde.best;
+  assert.ok(before < 60, `without high-level givers the route stops early: ${before}`);
   const qs = Object.values(pack.quests).filter((q) => q.level >= before && q.level <= before + 5 && (!q.sides?.length || q.sides.includes("Horde")) && !q.givers?.length).slice(0, 30);
   // The givers stand in the highest-level zone, so its level band admits quests past the current end of the route.
   const top = zones.filter((z) => z.faction === "Contested").sort((a, b) => b.max - a.max || b.min - a.min)[0].mapId;

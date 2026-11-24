@@ -1,172 +1,173 @@
 "use strict";
 // Immutable public provenance, not game mechanics. Builds newest first; the first is the pack's own.
-const COMMIT = "1bf749ba19be7e699822d6587db0cb85b1b0bc3b";
+const COMMIT = "423d6c9645cd102406782e7400805a7c738e2d69";
 const BUILDS = Object.freeze(["1.60.1.71037","1.60.1.70959","1.60.1.70938","1.60.1.70888","1.60.1.70862","1.60.1.70840","1.60.1.70790"]);
 const BUILD = BUILDS[0];
 const SOURCES = [
   {
     "name": "quests.enUS.json",
     "build": "1.60.1.71037",
-    "bytes": 3250756,
-    "sha256": "a73c10eb0ce5b58bd718a18bd079e602b714eabd615782824a98019b704e58c3",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.71037/quests.enUS.json",
+    "bytes": 5510804,
+    "sha256": "cdfe353b5fc638fd07d82872b0e4346e9b17a981bc054db1806579dd63f23c7f",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.71037/quests.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
-      "cacheFiles": 11,
+      "cacheFiles": 108,
       "cachesLeftOut": 0,
       "clientBuild": "1.60.1.71037",
       "collectedOn": {
         "first": "2026-11-20",
-        "last": "2026-11-21"
+        "last": "2026-11-23"
       },
       "dataset": "quests",
       "license": "CC BY 4.0",
       "locale": "enUS",
       "product": "wowf",
       "schemaVersion": 1,
-      "sources": 4
+      "sources": 5
     }
   },
   {
     "name": "quest_scan.json",
     "build": "1.60.1.71037",
-    "bytes": 469623,
-    "sha256": "90b2aed7a6d20876c4d3228fcf554746fa737a3943f5f436e3210a68b61b0fd2",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.71037/quest_scan.json",
+    "bytes": 774421,
+    "sha256": "1bf13f88bb47c79c0c08b3406c1d245887a471ea655e742059c0675880c5b071",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.71037/quest_scan.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.71037",
       "collectedOn": {
-        "first": "2026-11-21",
-        "last": "2026-11-21"
+        "first": "2026-11-22",
+        "last": "2026-11-23"
       },
       "dataset": "quest_scan",
       "license": "CC BY 4.0",
       "product": "wowf",
       "schemaVersion": 1,
-      "sources": 5
+      "sources": 6
     }
   },
   {
     "name": "trainers.json",
     "build": "1.60.1.71037",
-    "bytes": 170248,
-    "sha256": "0149b14d144480c6c2c0ed0e53a18d9c5fed445bbab63f421c0f003940797ac9",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.71037/trainers.json",
+    "bytes": 543919,
+    "sha256": "3b2caab3c056a5233784bd1e349797dd294bf2715b309f2db29ef7b9e2430e2f",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.71037/trainers.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.71037",
       "collectedOn": {
-        "first": "2026-11-21",
-        "last": "2026-11-21"
+        "first": "2026-11-22",
+        "last": "2026-11-23"
       },
       "dataset": "trainers",
       "license": "CC BY 4.0",
       "product": "wowf",
       "schemaVersion": 1,
-      "sources": 5
+      "sources": 6
     }
   },
   {
     "name": "npcs.json",
     "build": "1.60.1.71037",
-    "bytes": 74094,
-    "sha256": "67580353b535732055002b03d9f0943cfeceee08fcbdc76bfa30cff6a118bf98",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.71037/npcs.json",
+    "bytes": 320980,
+    "sha256": "c24b5d7f67b59b8c1274b74aa0d83e20474b6628ce26a4c174b8429947b7a052",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.71037/npcs.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.71037",
       "collectedOn": {
-        "first": "2026-11-21",
-        "last": "2026-11-21"
+        "first": "2026-11-22",
+        "last": "2026-11-23"
       },
       "dataset": "npcs",
       "license": "CC BY 4.0",
       "product": "wowf",
       "schemaVersion": 1,
-      "sources": 5
+      "sources": 6
     }
   },
   {
     "name": "creatures.json",
     "build": "1.60.1.71037",
-    "bytes": 144097,
-    "sha256": "7d4a71efb1a67a8bebe8b48c94ea6dddc709e2b95054bf55a734d7e54f5d0551",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.71037/creatures.json",
+    "bytes": 766718,
+    "sha256": "9a89515458b02082a155ad5ca9aa144c4563e110aab4d1659b3eef9d9dc0c354",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.71037/creatures.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.71037",
       "collectedOn": {
         "first": "2026-11-21",
-        "last": "2026-11-21"
+        "last": "2026-11-23"
       },
+      "combatLogUploads": 4,
       "dataset": "creatures",
       "license": "CC BY 4.0",
       "product": "wowf",
       "schemaVersion": 1,
-      "sources": 5
+      "sources": 6
     }
   },
   {
     "name": "creature_details.enUS.json",
     "build": "1.60.1.71037",
-    "bytes": 865050,
-    "sha256": "bf63bc6aa98d2091f9c4184bd4cb5a84e0a87c63763d55b78074db9cf6c30032",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.71037/creature_details.enUS.json",
+    "bytes": 1992082,
+    "sha256": "0f5706b9c944a912b2ab253968c8126d1fc39f1f0aa63768f0729c6fdeae47bf",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.71037/creature_details.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
-      "cacheFiles": 11,
+      "cacheFiles": 108,
       "cachesLeftOut": 0,
       "clientBuild": "1.60.1.71037",
       "collectedOn": {
         "first": "2026-11-20",
-        "last": "2026-11-21"
+        "last": "2026-11-23"
       },
       "dataset": "creature_details",
       "license": "CC BY 4.0",
       "locale": "enUS",
       "product": "wowf",
       "schemaVersion": 1,
-      "sources": 4
+      "sources": 5
     }
   },
   {
     "name": "item_hotfixes.enUS.json",
     "build": "1.60.1.71037",
-    "bytes": 920198,
-    "sha256": "27712c53fbf12c751b1a77b68a3313f1e1b98c99d7bd50d72f95a2accb5dd410",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.71037/item_hotfixes.enUS.json",
+    "bytes": 928216,
+    "sha256": "a5fefbf63d175e4718fd046c0094d7e5948827203b954c00a8204a6682e66cb7",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.71037/item_hotfixes.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
-      "cacheFiles": 7,
+      "cacheFiles": 89,
       "cachesLeftOut": 0,
       "clientBuild": "1.60.1.71037",
       "collectedOn": {
         "first": "2026-11-20",
-        "last": "2026-11-21"
+        "last": "2026-11-23"
       },
       "dataset": "item_hotfixes",
       "license": "CC BY 4.0",
       "locale": "enUS",
       "product": "wowf",
       "schemaVersion": 1,
-      "sources": 4
+      "sources": 5
     }
   },
   {
     "name": "quests.enUS.json",
     "build": "1.60.1.70959",
-    "bytes": 5418131,
-    "sha256": "d5bad1c752fd6e547f40c5c80c795bc3e823df9188133af733c7e0335a648a5d",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70959/quests.enUS.json",
+    "bytes": 5432876,
+    "sha256": "c65d7fe526b3098a294072ee5cc3ea6a4f7253d764d6fbe3a37d05cede53b878",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70959/quests.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
-      "cacheFiles": 265,
+      "cacheFiles": 369,
       "cachesLeftOut": 0,
       "clientBuild": "1.60.1.70959",
       "collectedOn": {
         "first": "2026-11-17",
-        "last": "2026-11-21"
+        "last": "2026-11-23"
       },
       "dataset": "quests",
       "license": "CC BY 4.0",
@@ -179,15 +180,15 @@ const SOURCES = [
   {
     "name": "quest_scan.json",
     "build": "1.60.1.70959",
-    "bytes": 827059,
-    "sha256": "83ff4fc102411223f09b5a1044f4043f8ee4e06e53c8ced70698c30dda26cd52",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70959/quest_scan.json",
+    "bytes": 831577,
+    "sha256": "d765048784e3c9a2259869982a2da0fce7a2913712fc1aa618315f6647d429a2",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70959/quest_scan.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70959",
       "collectedOn": {
         "first": "2026-11-19",
-        "last": "2026-11-21"
+        "last": "2026-11-23"
       },
       "dataset": "quest_scan",
       "license": "CC BY 4.0",
@@ -199,15 +200,15 @@ const SOURCES = [
   {
     "name": "trainers.json",
     "build": "1.60.1.70959",
-    "bytes": 810486,
-    "sha256": "9accb616d2a5a37de25d721cb1e86481314344658db2abaa7e2fea28c71d2d36",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70959/trainers.json",
+    "bytes": 878945,
+    "sha256": "377c8f8b289710a94580e0e75abb6f2eeb97f5b65e7c1ff5aca6f4c653f6aab4",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70959/trainers.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70959",
       "collectedOn": {
         "first": "2026-11-19",
-        "last": "2026-11-21"
+        "last": "2026-11-23"
       },
       "dataset": "trainers",
       "license": "CC BY 4.0",
@@ -219,15 +220,15 @@ const SOURCES = [
   {
     "name": "npcs.json",
     "build": "1.60.1.70959",
-    "bytes": 473826,
-    "sha256": "09d8aebb9b58778f3a2b204b0be501210b0b12c7c54effc0567b5a034f5f57fa",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70959/npcs.json",
+    "bytes": 541944,
+    "sha256": "ca242c3507d2bd9f354834a8dfcb81d2e7dce2fefc519e741c738ce00ee8719a",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70959/npcs.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70959",
       "collectedOn": {
         "first": "2026-11-19",
-        "last": "2026-11-21"
+        "last": "2026-11-23"
       },
       "dataset": "npcs",
       "license": "CC BY 4.0",
@@ -239,15 +240,15 @@ const SOURCES = [
   {
     "name": "creatures.json",
     "build": "1.60.1.70959",
-    "bytes": 1186595,
-    "sha256": "a71714b4c3ab0382d4dda4cbf8b54c9bd24a27370a1b2bd218c84edc36df748c",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70959/creatures.json",
+    "bytes": 1324794,
+    "sha256": "b9d6e15d7d899d8a3a56c20c6aa99944c401535013e2ec14afc795c474499d36",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70959/creatures.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70959",
       "collectedOn": {
         "first": "2026-11-17",
-        "last": "2026-11-21"
+        "last": "2026-11-23"
       },
       "combatLogUploads": 9,
       "dataset": "creatures",
@@ -260,17 +261,17 @@ const SOURCES = [
   {
     "name": "creature_details.enUS.json",
     "build": "1.60.1.70959",
-    "bytes": 2240794,
-    "sha256": "5521c67bcbd04e80235d079fef11a6a4dba6d109f15c5efeb90fceec20f23d1f",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70959/creature_details.enUS.json",
+    "bytes": 2299699,
+    "sha256": "361919c2ec7f464f95872feab6efba18ee6e667f970e79bd35134a6d05c79446",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70959/creature_details.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
-      "cacheFiles": 266,
+      "cacheFiles": 370,
       "cachesLeftOut": 0,
       "clientBuild": "1.60.1.70959",
       "collectedOn": {
         "first": "2026-11-17",
-        "last": "2026-11-21"
+        "last": "2026-11-23"
       },
       "dataset": "creature_details",
       "license": "CC BY 4.0",
@@ -283,17 +284,17 @@ const SOURCES = [
   {
     "name": "item_hotfixes.enUS.json",
     "build": "1.60.1.70959",
-    "bytes": 926721,
-    "sha256": "f64b2afc8ddc8aa4fe72b526baee428216d5f09206919d34d20bef8478a7bb1e",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70959/item_hotfixes.enUS.json",
+    "bytes": 929758,
+    "sha256": "19183638a869b2373438c1bfe66ff6f157e0cb47934937ac6899e19cf1141c69",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70959/item_hotfixes.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
-      "cacheFiles": 247,
+      "cacheFiles": 348,
       "cachesLeftOut": 0,
       "clientBuild": "1.60.1.70959",
       "collectedOn": {
         "first": "2026-11-17",
-        "last": "2026-11-21"
+        "last": "2026-11-23"
       },
       "dataset": "item_hotfixes",
       "license": "CC BY 4.0",
@@ -308,7 +309,7 @@ const SOURCES = [
     "build": "1.60.1.70938",
     "bytes": 5615296,
     "sha256": "cc038ecb07f37a74b4bde7e6663950288205487b26d11fdd30687e2811b870f7",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70938/quests.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70938/quests.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 272,
@@ -331,7 +332,7 @@ const SOURCES = [
     "build": "1.60.1.70938",
     "bytes": 807101,
     "sha256": "af6b820712da671450c7149ab9b41b5a085ec56e763cc58be53845f241c229e7",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70938/quest_scan.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70938/quest_scan.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70938",
@@ -351,7 +352,7 @@ const SOURCES = [
     "build": "1.60.1.70938",
     "bytes": 763721,
     "sha256": "4d94357ea0fde25af338781e72c372489a6a0c5cf7a3c316b344953ced6420ad",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70938/trainers.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70938/trainers.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70938",
@@ -371,7 +372,7 @@ const SOURCES = [
     "build": "1.60.1.70938",
     "bytes": 591462,
     "sha256": "25707c9ea017a905cda6b01206cd6d3bf496e6f77c823034c33d5907d951752c",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70938/npcs.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70938/npcs.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70938",
@@ -391,7 +392,7 @@ const SOURCES = [
     "build": "1.60.1.70938",
     "bytes": 1543619,
     "sha256": "679d1f39aabbafe1fcde53742f864e414a8a27ded7ebe503d9c16803c35dcfeb",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70938/creatures.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70938/creatures.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70938",
@@ -412,7 +413,7 @@ const SOURCES = [
     "build": "1.60.1.70938",
     "bytes": 2380693,
     "sha256": "33d9c2f933e488a1ad212af8963a6ffcfc1a925982c4339b972cee3baa169bb3",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70938/creature_details.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70938/creature_details.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 272,
@@ -435,7 +436,7 @@ const SOURCES = [
     "build": "1.60.1.70938",
     "bytes": 920054,
     "sha256": "000112c568dade2a5461586eeb644dbc086b56c65dad2ea11b921ceded8ed87d",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70938/item_hotfixes.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70938/item_hotfixes.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 237,
@@ -458,7 +459,7 @@ const SOURCES = [
     "build": "1.60.1.70888",
     "bytes": 5286308,
     "sha256": "c3b3a6aeee4a6c90c0d88a1e8ec468a43957fd46a7153b927c9a41b0e67faf7d",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70888/quests.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70888/quests.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 100,
@@ -481,7 +482,7 @@ const SOURCES = [
     "build": "1.60.1.70888",
     "bytes": 765508,
     "sha256": "f7bd32186f15993c6bdb42b1c4dfcf68e9bbdeca31834a4460a52d4854716fd9",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70888/quest_scan.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70888/quest_scan.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70888",
@@ -501,7 +502,7 @@ const SOURCES = [
     "build": "1.60.1.70888",
     "bytes": 454477,
     "sha256": "e124fe1bea28066f65c9061e7a79e91ab9b94f867ceea26f2e0ffe6b5915d2bd",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70888/trainers.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70888/trainers.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70888",
@@ -521,7 +522,7 @@ const SOURCES = [
     "build": "1.60.1.70888",
     "bytes": 363618,
     "sha256": "e03cc30ff79ebf02f50bdc6baf3463b5b8c65569175a1e112102fcfc9ea74274",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70888/npcs.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70888/npcs.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70888",
@@ -541,7 +542,7 @@ const SOURCES = [
     "build": "1.60.1.70888",
     "bytes": 892316,
     "sha256": "5eb4de9246d15f2109586786502672e875b1da2f005534ac4a8a9293754a9b97",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70888/creatures.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70888/creatures.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70888",
@@ -562,7 +563,7 @@ const SOURCES = [
     "build": "1.60.1.70888",
     "bytes": 1768103,
     "sha256": "6ae97be6d3b0dec269c840ce10ff695fbdb04dd315b13599f1e99bb3231793dd",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70888/creature_details.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70888/creature_details.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 100,
@@ -585,7 +586,7 @@ const SOURCES = [
     "build": "1.60.1.70888",
     "bytes": 1007041,
     "sha256": "5ae9f65b7c12f2cc4710604d46adeab59f8f1e1db84510426bb62bea714321d7",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70888/item_hotfixes.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70888/item_hotfixes.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 78,
@@ -608,7 +609,7 @@ const SOURCES = [
     "build": "1.60.1.70862",
     "bytes": 4204753,
     "sha256": "7b96a1e976a6746492f8a17e8de9ab1b014f236ebfb01e5f03dbe81880777877",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70862/quests.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70862/quests.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 142,
@@ -631,7 +632,7 @@ const SOURCES = [
     "build": "1.60.1.70862",
     "bytes": 654933,
     "sha256": "c237d72377bad9904bf4ad49d1121cc73ae3f2aa94847cfcc8d75e28268fbae3",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70862/quest_scan.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70862/quest_scan.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70862",
@@ -651,7 +652,7 @@ const SOURCES = [
     "build": "1.60.1.70862",
     "bytes": 855550,
     "sha256": "7afdbfada777b97fb1bfe97cb1dddf3c2ca475126a3d83420213f78b586c2ce2",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70862/trainers.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70862/trainers.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70862",
@@ -671,7 +672,7 @@ const SOURCES = [
     "build": "1.60.1.70862",
     "bytes": 732509,
     "sha256": "64ca5ce997d82cc0ce9aa1ea1f96ea2c363b28bb3ebf3af460e2d16693915cdc",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70862/npcs.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70862/npcs.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70862",
@@ -691,7 +692,7 @@ const SOURCES = [
     "build": "1.60.1.70862",
     "bytes": 1154158,
     "sha256": "950d90482d3990b0d6444219de01ce79976a57ba93bf7a4d33ebbf72a87c4f58",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70862/creatures.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70862/creatures.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70862",
@@ -712,7 +713,7 @@ const SOURCES = [
     "build": "1.60.1.70862",
     "bytes": 1906616,
     "sha256": "a610bf0a92892394364ae2b7d8205bbe66281b00d35ca95438756db13354c83d",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70862/creature_details.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70862/creature_details.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 142,
@@ -735,7 +736,7 @@ const SOURCES = [
     "build": "1.60.1.70862",
     "bytes": 706706,
     "sha256": "71bab433efbfd3bd04f579ef0a701c11a2a3ce0bc8daae8d3d5d8efcf5192ce2",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70862/item_hotfixes.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70862/item_hotfixes.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 135,
@@ -758,7 +759,7 @@ const SOURCES = [
     "build": "1.60.1.70840",
     "bytes": 2686938,
     "sha256": "e78aaae3aee37b26a47de4eef4b171910a04e77b9cb85bc3985a25bd0c058294",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70840/quests.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70840/quests.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 4,
@@ -781,7 +782,7 @@ const SOURCES = [
     "build": "1.60.1.70840",
     "bytes": 348745,
     "sha256": "a33a0c1eb0eee42c747b6355ba38fad4892456ab44a7671b7fa944af8bd6b319",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70840/quest_scan.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70840/quest_scan.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70840",
@@ -801,7 +802,7 @@ const SOURCES = [
     "build": "1.60.1.70840",
     "bytes": 169606,
     "sha256": "91a5b9fb19e58b369649e06d1ab8c3412cb7028dbf3c4f23055ad432d859cc88",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70840/trainers.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70840/trainers.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70840",
@@ -821,7 +822,7 @@ const SOURCES = [
     "build": "1.60.1.70840",
     "bytes": 123058,
     "sha256": "d657fb35416b2da2d9d75cbb3ff870f517111ce092a405301afdfb5fee4ef94b",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70840/npcs.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70840/npcs.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70840",
@@ -841,7 +842,7 @@ const SOURCES = [
     "build": "1.60.1.70840",
     "bytes": 195916,
     "sha256": "88d70d4da4d28b4a2c8a1292e8bfd9b7a63a154f7ce03357c752eecd6b1091a6",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70840/creatures.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70840/creatures.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70840",
@@ -861,7 +862,7 @@ const SOURCES = [
     "build": "1.60.1.70840",
     "bytes": 688886,
     "sha256": "76371579fa90a2cc67a334c9367bdc243a97fdb852f5feef396f16a9a948c40f",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70840/creature_details.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70840/creature_details.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 4,
@@ -884,7 +885,7 @@ const SOURCES = [
     "build": "1.60.1.70840",
     "bytes": 510641,
     "sha256": "a09bbcc400ad2aecca0d938612775e70c0a0462f09f4ef5089e988146ddf28d6",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70840/item_hotfixes.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70840/item_hotfixes.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 2,
@@ -907,7 +908,7 @@ const SOURCES = [
     "build": "1.60.1.70790",
     "bytes": 1278106,
     "sha256": "1d338604744f0100ec58ea14c904f1b1c676b826d832bc747c90eae27b569bc7",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70790/quests.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70790/quests.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 147,
@@ -930,7 +931,7 @@ const SOURCES = [
     "build": "1.60.1.70790",
     "bytes": 163811,
     "sha256": "61dcbb4de5f9b08fe65c091080bb3af8eeff0c4a4ced8f31b27ef0e449f17e56",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70790/quest_scan.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70790/quest_scan.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70790",
@@ -950,7 +951,7 @@ const SOURCES = [
     "build": "1.60.1.70790",
     "bytes": 1113381,
     "sha256": "578ff3b37135d8cc16e52a0c4f20524691148fde146de01141e47ed261a70ec7",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70790/trainers.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70790/trainers.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70790",
@@ -970,7 +971,7 @@ const SOURCES = [
     "build": "1.60.1.70790",
     "bytes": 882823,
     "sha256": "e732c47ad4bde79fa6ea1acba656d7498c39ac46e8cc4afc29f43239e4f128b4",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70790/npcs.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70790/npcs.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70790",
@@ -990,7 +991,7 @@ const SOURCES = [
     "build": "1.60.1.70790",
     "bytes": 1122140,
     "sha256": "53a792c56a04d81ec1b0c649a3be8a2729f7f235fe208d25bc6d063ef4bf70a6",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70790/creatures.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70790/creatures.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "clientBuild": "1.60.1.70790",
@@ -1011,7 +1012,7 @@ const SOURCES = [
     "build": "1.60.1.70790",
     "bytes": 1161673,
     "sha256": "b4a08094d881edb18f168bee8b71acc2e9d41165d590a1eefcb011a94a9e6762",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70790/creature_details.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70790/creature_details.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 147,
@@ -1034,7 +1035,7 @@ const SOURCES = [
     "build": "1.60.1.70790",
     "bytes": 584596,
     "sha256": "7f26b09eaa33062e3102f89ff64be0a555a82612e94db50c396250ae2ab8abee",
-    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/1bf749ba19be7e699822d6587db0cb85b1b0bc3b/data/wowf/1.60.1.70790/item_hotfixes.enUS.json",
+    "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70790/item_hotfixes.enUS.json",
     "meta": {
       "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
       "cacheFiles": 128,

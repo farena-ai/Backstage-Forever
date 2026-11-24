@@ -40,7 +40,8 @@ window.TravelPlannerView = (() => {
     const lines = [];
     lines.push(c.knownFlightPoints === null ? "Flight points: not saved yet. Open any flight map in game, then /reload; until then routes say “if you know these flight points”." : `Flight points: ${c.knownFlightPoints} learned, as saved by the addon.`);
     lines.push(c.hearth ? `Hearthstone: ${esc(c.hearth.name)}${c.hearth.readyIn === null ? ", cooldown not known" : c.hearth.readyIn > 0 ? `, ready in ${time(c.hearth.readyIn)}` : ", ready"}${c.hearth.placed ? "" : ". Its spot on the map is not recorded yet"}.` : "Hearthstone: not in the saved data yet.");
-    if (!c.namedFlightPoints) lines.push("Flight points show by zone and flight master until the addon has seen a flight map, which gives their real names.");
+    if (view.gameFiles?.names) lines.push("Flight point names, and the places and prices nobody recorded, come from your own game files.");
+    else if (!c.namedFlightPoints) lines.push("Flight points show by zone and flight master until the addon has seen a flight map, which gives their real names.");
     return lines.map((l) => `<p class="tp-fact">${l}</p>`).join("");
   }
   function leg(l) {

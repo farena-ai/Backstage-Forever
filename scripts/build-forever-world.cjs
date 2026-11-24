@@ -3,7 +3,7 @@
 // the community observations of Efficient Games (CC BY 4.0), merged across client builds.
 //   rares      creature_details.enUS.json classification 4 (rare) or 2 (rare elite): the game
 //              client's own creature data. Level and place only where a player met the creature
-//              (creatures.json); drops only where a kill was looted (loot.json).
+//              (creatures.json) or looted its corpse (loot.json); drops only where a kill was looted.
 //   nodes      objects players walked up to (npcs.json "approached") whose name is a known herb or
 //              ore node; the skill is the classic skill for that node name.
 //   chests     approached objects of the chest type with an ordinary treasure chest name.
@@ -14,7 +14,7 @@ const fs = require("node:fs"), path = require("node:path");
 const { validateWorldPack, hash, zone, ATTRIBUTION, CLASSIFICATION, LIMITS } = require("../src/core/world-finds.cjs");
 const { nodeInfo } = require("../src/core/gathering-loop.cjs");
 const root = path.join(__dirname, "..");
-const BUILDS = ["1.60.1.71037", "1.60.1.70959", "1.60.1.70938", "1.60.1.70888", "1.60.1.70862", "1.60.1.70840", "1.60.1.70790"];
+const BUILDS = ["1.60.1.71037", "1.60.1.70959", "1.60.1.70938", "1.60.1.70888", "1.60.1.70862", "1.60.1.70840", "1.60.1.70790", "1.60.1.70532", "1.60.1.70450", "1.60.1.70425", "1.60.1.70374", "1.60.1.70338", "1.60.1.70334", "1.60.1.70291", "1.60.1.70205"];
 const FILES = ["creature_details.enUS.json", "creatures.json", "loot.json", "npcs.json", "object_details.enUS.json"];
 const dir = path.join(root, "data", "forever-world");
 const RARE = { 2: "rareelite", 4: "rare" };
@@ -45,11 +45,13 @@ function compile(sourceDir, commit) {
   const stats = { observedRare: 0, observedRareAgree: 0, classifiedRareSeenNormal: [] };
   for (const build of BUILDS) {
     const read = (f) => { const p = path.join(sourceDir, build, f); if (!fs.existsSync(p)) return null; const b = fs.readFileSync(p); sources.push({ build, name: f, bytes: b.length, sha256: hash(b) }); return JSON.parse(b); };
+    // An early build of the patch has no creature text upstream: it names no rare, but where its
+    // players met and looted the rares the newer builds name still counts.
     const details = read("creature_details.enUS.json");
-    if (!details) continue;
+    if (!details && !fs.existsSync(path.join(sourceDir, build, "creatures.json"))) continue;
     used.push(build);
     // Newest build first: its name and classification win.
-    for (const [key, c] of Object.entries(details.creatures || {})) {
+    for (const [key, c] of Object.entries(details?.creatures || {})) {
       const cid = +key;
       if (!RARE[c?.classification] || rares.has(cid) || junk(c.name)) continue;
       rares.set(cid, { id: cid, name: c.name.trim(), elite: c.classification === 2, levels: [], positions: [], loot: new Map() });
@@ -65,6 +67,8 @@ function compile(sourceDir, commit) {
     const loot = read("loot.json");
     for (const [key, src] of Object.entries(loot?.sources || {})) {
       const m = /^npc:(\d+)(\||$)/.exec(key); const r = m && rares.get(+m[1]); if (!r) continue;
+      // Where a player stood when looting the corpse is a place the rare was met.
+      r.positions.push(...(Array.isArray(src.positions) ? src.positions : []));
       for (const [itemId, row] of Object.entries(src.items || {})) {
         if (row.quest) continue; // quest items drop only with the quest
         const have = r.loot.get(+itemId) || { drops: 0, windows: 0 };
@@ -135,7 +139,7 @@ if (require.main === module) {
     fs.copyFileSync(path.join(root, "data", "forever-loot", "LICENSE"), path.join(dir, "LICENSE"));
     const c = counts(pack);
     fs.writeFileSync(path.join(dir, "source-lock.json"), JSON.stringify({ publisher: "Efficient Games", repository: "JIVESCORP/eg-link-output-wowf", commit, builds: pack.builds, license: "CC BY 4.0", attribution: ATTRIBUTION, files: FILES, sources,
-      normalization: "Rares: client creature classification 4 or 2, newest named build wins; observed level range, up to 4 places (1% squares) and up to 5 looted non-quest drops. Nodes, chests and mailboxes: approached objects of the matching type, places rounded to 0.5% squares (mailboxes 1.5%).",
+      normalization: "Rares: client creature classification 4 or 2, newest named build wins; observed level range, up to 4 places (1% squares) where the creature was met or its corpse looted, and up to 5 looted non-quest drops. Nodes, chests and mailboxes: approached objects of the matching type, places rounded to 0.5% squares (mailboxes 1.5%).",
       crossCheck: { observedRareCreatures: stats.observedRare, alsoClassifiedRare: stats.observedRareAgree, classifiedRareSeenAsNormal: stats.classifiedRareSeenNormal },
       counts: c, bytes: Buffer.byteLength(text), sha256: hash(text) }, null, 2) + "\n");
     fs.writeFileSync(path.join(dir, "NOTICE"), [
@@ -143,7 +147,7 @@ if (require.main === module) {
       `Source: JIVESCORP/eg-link-output-wowf commit ${commit}, builds ${pack.builds.join(", ")}.`, "",
       "normalization: rare enemies are the creatures whose classification in the game client's own",
       "creature data is 4 (rare) or 2 (rare elite). Level range and places are kept only where a player",
-      "met the creature; drops only where a kill was looted (quest items left out). Herb and ore spots,",
+      "met the creature or looted its corpse; drops only where a kill was looted (quest items left out). Herb and ore spots,",
       "chests and mailboxes are objects players walked up to; herb and ore are told apart by node name.",
       "Places are rounded. They are past community observations, not live spawns and not complete.",
       "The license does not grant rights in Blizzard narrative text or game assets.", "",

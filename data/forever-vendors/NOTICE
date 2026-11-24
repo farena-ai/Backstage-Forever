@@ -1,9 +1,11 @@
 Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
 Source: https://github.com/JIVESCORP/eg-link-output-wowf
-Pinned commit: 1bf749ba19be7e699822d6587db0cb85b1b0bc3b
+Pinned commit: 423d6c9645cd102406782e7400805a7c738e2d69
 Product wowf; merged client builds (newest first) 1.60.1.71037, 1.60.1.70959, 1.60.1.70938,
 1.60.1.70888, 1.60.1.70862, 1.60.1.70840,
-1.60.1.70790. Observed listing names are not locale-guaranteed.
+1.60.1.70790, 1.60.1.70532, 1.60.1.70450,
+1.60.1.70425, 1.60.1.70374, 1.60.1.70338,
+1.60.1.70334, 1.60.1.70291, 1.60.1.70205. Observed listing names are not locale-guaranteed.
 License: https://creativecommons.org/licenses/by/4.0/
 
 Backstage Coding changed the compilation by joining exact numeric NPC IDs and
@@ -15,8 +17,14 @@ newest-first: sellers join by exact ID (newest build's name wins); positions,
 listings (by exact key) and observed reaction values are unioned with exact
 dedupe and bounded caps; lastSeen is the latest date and sources the largest
 single-build count; repairs is kept when any build observed it. Dropped counts
-are per-build dropped rows, summed. Prices, stock, raw side, narrative and world
-coordinates are omitted. Reactions are historical observations for the named
+are per-build dropped rows, summed. A listing keeps the money price players
+were shown: the full price (reputation below Honored) and the Honored price
+(10% less) apart, with the stack one purchase gives, and for limited stock the
+most the seller held at once. The newest build that recorded a price wins.
+Prices paid in items or tokens, "bartered" prices, raw side, narrative and world
+coordinates are omitted. A seller or listing a player saw in a game in another
+language than English (a name not in Latin letters) is left out of that build.
+Reactions are historical observations for the named
 faction, never proof of current access or purchase availability.
 Unknown factions and multiple-map mobile observations remain browse-only.
 Sources count contributing saved files, not observations. See source-lock.json

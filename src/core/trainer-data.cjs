@@ -10,6 +10,7 @@ const ATTRIBUTION = "Data from Efficient Games (https://efficient.games), licens
 const RAW_LIMITS = Object.freeze({ "trainers.json": 8 * 1024 * 1024, "creature_details.enUS.json": 16 * 1024 * 1024 });
 const PACK_LIMIT = 512 * 1024, MAX_BUILDS = 16, MAX_ROWS = 4000, MAX_GROUPS = 60;
 const BUILD_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/;
+const { latinName } = require("./latin-name.cjs");
 const CLASSES = Object.freeze(["Warrior", "Paladin", "Hunter", "Rogue", "Priest", "Shaman", "Mage", "Warlock", "Druid"]);
 const CLASS_TITLE = new RegExp(`^(${CLASSES.join("|")}) Trainer$`);
 const fail = (why = "") => { throw Error("Invalid trainer data." + (why ? " " + why : "")); };
@@ -49,11 +50,11 @@ function compileTrainers(builds, { commit }) {
   const seenTrainers = { classes: new Map(), professions: new Set(), weapons: new Set(), riding: new Set() };
   const counts = { trainers: 0, untitledTrainers: 0, otherTrainers: 0, droppedServices: 0, barteredOnly: 0 };
   const skills = new Set();
-  for (const t of parsed) for (const x of Object.values(t.trainers || {})) for (const s of Object.values(x?.services || {})) if (text(s?.skill, 40)) skills.add(s.skill);
+  for (const t of parsed) for (const x of Object.values(t.trainers || {})) for (const s of Object.values(x?.services || {})) if (text(s?.skill, 40) && latinName(s.skill)) skills.add(s.skill);
   const professionOf = (trainer, service) => {
     if (text(service.skill, 40)) return service.skill;
     const tally = {};
-    for (const s of Object.values(trainer.services || {})) if (text(s?.skill, 40)) tally[s.skill] = (tally[s.skill] || 0) + 1;
+    for (const s of Object.values(trainer.services || {})) if (text(s?.skill, 40) && latinName(s.skill)) tally[s.skill] = (tally[s.skill] || 0) + 1;
     const top = Object.entries(tally).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
     if (top) return top[0];
     // "Apprentice Herbalism", "Apprentice Alchemist": match the profession by its first letters.
@@ -70,6 +71,8 @@ function compileTrainers(builds, { commit }) {
       if (g.list === "classes") { if (!seenTrainers.classes.has(g.key)) seenTrainers.classes.set(g.key, new Set()); seenTrainers.classes.get(g.key).add(npc); } else seenTrainers[g.list].add(npc);
       for (const s of Object.values(x.services || {})) {
         if (!int(s?.spellId) || !text(s?.name) || !Number.isSafeInteger(s.level) || s.level < 0 || s.level > 100) { counts.droppedServices++; continue; }
+        // Seen in a game in another language: an older build's English row is used, or none.
+        if (![s.name, s.rankText, s.skill].every((v) => v === undefined || latinName(v))) { counts.droppedServices++; continue; }
         const key = g.list === "classes" ? g.key : g.list === "professions" ? professionOf(x, s) : "all";
         if (!key) { counts.droppedServices++; continue; }
         const map = lists[g.list];
@@ -161,26 +164,32 @@ const CITY_SIDE = Object.freeze({ Orgrimmar: "Horde", Undercity: "Horde", "Thund
 const forFaction = (row, faction) => { if (row.from !== "portal" || !faction) return true; const city = /: (.+)$/.exec(row.name)?.[1]; return !CITY_SIDE[city] || CITY_SIDE[city] === faction; };
 // Characters stop at level 60: a level 59 or 60 character is not shown levels that do not exist.
 const LEVEL_CAP = 60;
-function trainerPlan(pack, className, level, { ahead = 2, money: purse = null, faction = null } = {}) {
+// The level a skill with no recorded level is learned at, from the player's game files. A level
+// of 1 there is the table's default for passive skills, not a trainer level, so it is not used.
+const gameLevel = (spellLevels, id) => { const l = spellLevels?.[id]; return Number.isSafeInteger(l) && l > 1 && l <= 100 ? l : 0; };
+function trainerPlan(pack, className, level, { ahead = 2, money: purse = null, faction = null, spellLevels = null } = {}) {
   const rows = pack?.classes?.[className];
   const v = pack?.coverage?.[className];
   if (!rows || !Number.isSafeInteger(level) || level < 1 || level > 100) return { available: false, className, level, reason: rows ? "The character's level is not known." : `No ${className || "class"} trainer has been recorded yet.` };
   const levels = [];
+  const levelOf = (r) => r.level || gameLevel(spellLevels, r.id);
+  const fromGame = rows.filter((r) => !r.level && levelOf(r)).length, unknown = v.services - v.withLevel - fromGame;
   const last = Math.max(level, Math.min(level + ahead, LEVEL_CAP));
   for (let l = level; l <= last; l++) {
-    const list = rows.filter((r) => r.level === l && forFaction(r, faction)).map((r) => { const p = priceOf(r); return { id: r.id, name: r.name, rank: r.rank, from: r.from, copper: p.copper, estimated: p.estimated }; });
+    const list = rows.filter((r) => levelOf(r) === l && forFaction(r, faction)).map((r) => { const p = priceOf(r); return { id: r.id, name: r.name, rank: r.rank, from: r.from, copper: p.copper, estimated: p.estimated, ...(r.level ? {} : { levelFrom: "game" }) }; });
     levels.push({ level: l, rows: list, total: list.reduce((n, r) => n + (r.copper || 0), 0), unpriced: list.filter((r) => r.copper === null).length, estimated: list.some((r) => r.estimated) });
   }
   const total = levels.reduce((n, l) => n + l.total, 0);
   const notes = [];
-  if (v.withLevel < v.services) notes.push(`${v.services - v.withLevel} of ${v.services} recorded ${className} skills have no recorded level and are not listed here.`);
+  if (fromGame) notes.push(`${fromGame} ${className} skill${fromGame === 1 ? " has" : "s have"} no level recorded at a trainer; ${fromGame === 1 ? "its level comes" : "their levels come"} from your game files.`);
+  if (unknown > 0) notes.push(`${unknown} of ${v.services} recorded ${className} skills have no recorded level and are not listed here.`);
   if (v.services < 60) notes.push(`Only ${v.services} ${className} skills from ${v.trainers} trainer${v.trainers === 1 ? "" : "s"} have been recorded so far, so this list is far from complete.`);
   if (levels.some((l) => l.estimated)) notes.push("Some prices were only seen at Honored reputation; the full price is worked out from the 10% discount.");
   notes.push("Ranks of talent skills show for everyone; you can only train the ones whose talent you have.");
-  const next = rows.find((r) => r.level > last && r.level <= LEVEL_CAP);
+  const later = rows.map(levelOf).filter((l) => l > last && l <= LEVEL_CAP);
   return {
     available: true, className, level, levels, total, money: Number.isSafeInteger(purse) && purse >= 0 ? purse : null,
-    nextLevel: next ? next.level : null, notes, coverage: { ...v },
+    nextLevel: later.length ? Math.min(...later) : null, notes, coverage: { ...v },
     source: `Seen in trainer windows by players on game builds ${pack.builds.at(-1).split(".").pop()} to ${pack.build.split(".").pop()}. Efficient Games, CC BY 4.0.`,
   };
 }

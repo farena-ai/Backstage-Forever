@@ -1,19 +1,22 @@
 "use strict";
-// Builds data/forever-loot/pack.json: where quest objective items come from, per community loot
+// Builds data/forever-loot/pack.json: where quest objective items and recipe items come from, per community loot
 // observations (Efficient Games, CC BY 4.0), merged across client builds newest first.
 // Usage: node scripts/build-forever-loot.cjs --source-dir <dir with <build>/loot.json, npcs.json, object_details.enUS.json>
 //        node scripts/build-forever-loot.cjs --check
 const fs = require("node:fs"), path = require("node:path");
 const { validateLootPack, hash } = require("../src/core/loot-data.cjs");
 const root = path.join(__dirname, "..");
-const BUILDS = ["1.60.1.71037", "1.60.1.70959", "1.60.1.70938", "1.60.1.70888", "1.60.1.70862", "1.60.1.70840", "1.60.1.70790"];
+const BUILDS = ["1.60.1.71037", "1.60.1.70959", "1.60.1.70938", "1.60.1.70888", "1.60.1.70862", "1.60.1.70840", "1.60.1.70790", "1.60.1.70532", "1.60.1.70450", "1.60.1.70425", "1.60.1.70374", "1.60.1.70338", "1.60.1.70334", "1.60.1.70291", "1.60.1.70205"];
 const ATTRIBUTION = "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.";
 const dir = path.join(root, "data", "forever-loot");
+const RECIPE_ITEM = /^(Recipe|Pattern|Plans|Schematic|Formula|Manual|Design): \S/;
 
 function compile(sourceDir, commit) {
   const knowledge = JSON.parse(fs.readFileSync(path.join(root, "data", "forever", "pack.json"), "utf8"));
   const wanted = new Set();
   for (const q of Object.values(knowledge.quests)) for (const o of q.objectives || []) if (o.type === "item" && Number.isSafeInteger(o.objectId)) wanted.add(o.objectId);
+  // Recipe items (the recipe book's "drop" source), told by their English item name.
+  for (const it of Object.values(knowledge.items || {})) if (RECIPE_ITEM.test(it.name || "")) wanted.add(it.id);
   const names = { npc: new Map(), object: new Map() };
   for (const c of Object.values(knowledge.creatures || {})) names.npc.set(c.id, c.name);
   const items = new Map(); // itemId -> Map(key -> source)
@@ -62,15 +65,15 @@ if (require.main === module) {
     if (lock.sha256 !== hash(b) || lock.bytes !== b.length) throw Error("Loot pack checksum mismatch.");
     const p = validateLootPack(JSON.parse(b));
     if (Object.keys(p.items).length !== lock.items) throw Error("Loot pack coverage mismatch.");
-    console.log(`Loot pack check passed: ${lock.items} quest items with sources.`);
+    console.log(`Loot pack check passed: ${lock.items} quest and recipe items with sources.`);
   } else if (args[0] === "--source-dir" && args[1]) {
     const commit = (args[2] || fs.readFileSync(path.join(args[1], "commit.txt"), "utf8")).trim();
     const text = compile(args[1], commit);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "pack.json"), text);
     const items = Object.keys(JSON.parse(text).items).length;
-    fs.writeFileSync(path.join(dir, "source-lock.json"), JSON.stringify({ publisher: "Efficient Games", repository: "JIVESCORP/eg-link-output-wowf", commit, builds: JSON.parse(text).builds, license: "CC BY 4.0", attribution: ATTRIBUTION, files: ["loot.json", "npcs.json", "object_details.enUS.json"], normalization: "Only items that are quest objectives; per source kind (npc/object), id, name, observed chance and drop count; at most 6 sources per item.", items, bytes: Buffer.byteLength(text), sha256: hash(text) }, null, 2) + "\n");
-    console.log(`Wrote ${items} quest items (${Buffer.byteLength(text)} bytes).`);
+    fs.writeFileSync(path.join(dir, "source-lock.json"), JSON.stringify({ publisher: "Efficient Games", repository: "JIVESCORP/eg-link-output-wowf", commit, builds: JSON.parse(text).builds, license: "CC BY 4.0", attribution: ATTRIBUTION, files: ["loot.json", "npcs.json", "object_details.enUS.json"], normalization: "Only items that are quest objectives or recipe items (named Recipe:, Pattern:, Plans:, Schematic:, Formula:, Manual: or Design:); per source kind (npc/object), id, name, observed chance and drop count; at most 6 sources per item.", items, bytes: Buffer.byteLength(text), sha256: hash(text) }, null, 2) + "\n");
+    console.log(`Wrote ${items} quest and recipe items (${Buffer.byteLength(text)} bytes).`);
   } else throw Error("Use --source-dir <dir> [commit] or --check");
 }
 module.exports = { compile };

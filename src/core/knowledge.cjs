@@ -1,5 +1,6 @@
 "use strict";
 const buildCompat = require("./build-compat.cjs");
+const { latinName } = require("./latin-name.cjs");
 // Application code: MIT. Compiled publisher facts: CC BY 4.0 (see data/forever/NOTICE).
 const { createHash } = require("node:crypto");
 const FILES = Object.freeze([
@@ -58,6 +59,22 @@ const observedBuild = (p) =>
 function fail() {
   throw Error("Invalid Forever reference data.");
 }
+// ChrRaces.PlayableRaceBit of the eight classic races: Human 0, Orc 1, Dwarf 2, Night Elf 3,
+// Undead 4, Tauren 5, Gnome 6, Troll 7.
+const ALLIANCE_RACES = 0b01001101,
+  HORDE_RACES = 0b10110010;
+/**
+ * The side a quest's race mask allows (16 hex digits, every bit set = every race), or null
+ * when it allows races of both sides, none of the classic races, or everyone.
+ */
+function raceMaskSide(mask) {
+  if (typeof mask !== "string" || !/^[a-f0-9]{16}$/.test(mask) || /^f{16}$/.test(mask))
+    return null;
+  const low = parseInt(mask.slice(-2), 16);
+  const alliance = (low & ALLIANCE_RACES) !== 0,
+    horde = (low & HORDE_RACES) !== 0;
+  return alliance === horde ? null : alliance ? "Alliance" : "Horde";
+}
 function checkKeys(value, allowed) {
   if (!object(value) || Object.keys(value).some((k) => !allowed.includes(k)))
     fail();
@@ -94,7 +111,7 @@ function rewardItemFacts(raw) {
   if (raw.vendors)
     for (const [, v] of entries(raw.vendors.vendors, 5000))
       for (const [, e] of object(v?.entries) ? entries(v.entries, 5000) : [])
-        if (id(e?.itemId) && text(e.name) && !names[e.itemId])
+        if (id(e?.itemId) && text(e.name) && latinName(e.name) && !names[e.itemId])
           names[e.itemId] = e.name;
   if (raw.tooltip_scan)
     for (const [key, r] of entries(raw.tooltip_scan.items))
@@ -337,10 +354,13 @@ function normalizeData(inputs, { commit, build, itemFacts } = {}) {
         if (!id(+key) || !object(n) || !text(n.name) || !id(n.sources)) fail();
         // "Unknown" is the game's placeholder for a name that had not loaded; it is not a name.
         if (n.name === "Unknown") fail();
+        // A name seen in another language: the English creature name, or the row is left out.
+        const name = latinName(n.name) ? n.name : kind === "npc" ? creatures[key] : undefined;
+        if (!text(name)) fail();
         const npc = {
           id: +key,
           kind,
-          name: n.name,
+          name,
           sources: n.sources,
           positions: [],
           ...(day(n.lastSeen) ? { lastSeen: n.lastSeen } : {}),
@@ -480,6 +500,12 @@ function normalizeData(inputs, { commit, build, itemFacts } = {}) {
         });
       if (q.mentions.length >= 10) break;
     }
+  }
+  // A quest only one side's races may take says which side it is for, where no quest
+  // giver or finisher with a recorded side did.
+  for (const q of Object.values(pack.quests)) {
+    const side = q.sides?.length ? null : raceMaskSide(q.raceMask);
+    if (side) q.sides = [side];
   }
   pack.counts = {
     quests: Object.keys(pack.quests).length,
@@ -1104,11 +1130,18 @@ function estimateQuestXP(base, questLevel, playerLevel) {
 function rewardDetails(q) {
   const r = q.rewards;
   const out = { ...r };
-  if (r.reputation)
-    out.reputation = r.reputation.map((x) => ({
-      ...x,
-      ...(FACTIONS[x.factionId] ? { name: FACTIONS[x.factionId] } : {}),
-    }));
+  if (r.reputation) {
+    // A row without an exact amount still has a size; `standard` is what that size usually pays.
+    const { standardAmount } = require("./rep-planner.cjs");
+    out.reputation = r.reputation.map((x) => {
+      const standard = Number.isInteger(x.amount) ? null : standardAmount(x.tier);
+      return {
+        ...x,
+        ...(standard !== null ? { standard } : {}),
+        ...(FACTIONS[x.factionId] ? { name: FACTIONS[x.factionId] } : {}),
+      };
+    });
+  }
   if (r.xp || q.observedXP?.length) {
     const base = baseQuestXP(q);
     out.xp = {
@@ -1471,6 +1504,7 @@ class KnowledgeIndex {
   }
 }
 module.exports = {
+  raceMaskSide,
   FILES,
   OPTIONAL_FILES,
   FACTIONS,

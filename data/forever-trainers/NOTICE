@@ -1,9 +1,9 @@
 Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
 License: https://creativecommons.org/licenses/by/4.0/
 Source: https://github.com/JIVESCORP/eg-link-output-wowf
-Immutable source commit: 1bf749ba19be7e699822d6587db0cb85b1b0bc3b
-Product wowf; merged client builds (newest first): 1.60.1.71037, 1.60.1.70959, 1.60.1.70938, 1.60.1.70888, 1.60.1.70862, 1.60.1.70840, 1.60.1.70790.
-Trainer windows collected 2026-11-09 to 2026-11-21.
+Immutable source commit: 423d6c9645cd102406782e7400805a7c738e2d69
+Product wowf; merged client builds (newest first): 1.60.1.71037, 1.60.1.70959, 1.60.1.70938, 1.60.1.70888, 1.60.1.70862, 1.60.1.70840, 1.60.1.70790, 1.60.1.70532.
+Trainer windows collected 2026-11-09 to 2026-11-23.
 
 Backstage Forever changes to the compilation: trainers.json and
 creature_details.enUS.json of each build are verified against source-lock.json.
@@ -16,9 +16,10 @@ recorded. The price is the full price (reputation below Honored); the Honored
 price is kept beside it. Kept: spell id, name, rank text, level, required
 profession skill, prices. Dropped: icons, trainer positions and names,
 contributor counts, required-ability text and the undocumented "bartered"
-prices.
+prices. A service a player saw in a game in another language than English
+(a name not in Latin letters) is left out of that build.
 
-Coverage: 184 trainers seen; 4 have no recorded title and
+Coverage: 192 trainers seen; 7 have no recorded title and
 0 have a title this compiler does not sort, so their services are left out.
 1261 class, 364 profession, 14 weapon and 2 riding services.
 22 services have only a "bartered" price and so no price here.
@@ -30,7 +31,7 @@ Coverage: 184 trainers seen; 4 have no recorded title and
   Shaman: 166 skills from 8 trainers, 160 with a level, 166 with a price
   Mage: 167 skills from 12 trainers, 165 with a level, 167 with a price
   Warlock: 147 skills from 5 trainers, 146 with a level, 147 with a price
-  Druid: 184 skills from 6 trainers, 183 with a level, 184 with a price
+  Druid: 184 skills from 7 trainers, 183 with a level, 184 with a price
 
 These are what players saw, not a complete list: a class with few recorded
 trainers is missing skills. Talent ranks appear in trainer windows only for

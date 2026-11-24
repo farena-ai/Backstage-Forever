@@ -1,10 +1,10 @@
 Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
 Source: https://github.com/JIVESCORP/eg-link-output-wowf
-Pinned commit: 1bf749ba19be7e699822d6587db0cb85b1b0bc3b
+Pinned commit: 423d6c9645cd102406782e7400805a7c738e2d69
 Product wowf; reference client build 1.60.1.71037; English (enUS).
 Merged client builds (newest first): 1.60.1.71037, 1.60.1.70959, 1.60.1.70938,
 1.60.1.70888, 1.60.1.70862, 1.60.1.70840,
-1.60.1.70790.
+1.60.1.70790, 1.60.1.70532.
 
 Backstage Coding modified the compilation by retaining bounded factual fields,
 joining exact IDs, separating reward choices, and omitting narrative descriptions,
@@ -17,6 +17,10 @@ reward tiers (and override amounts, stored upstream in hundredths), XP difficult
 and multiplier, and reward spell IDs. Reward item names come from item hotfixes,
 vendor listings and the tooltip scan (which also gives item quality) of any pinned
 build, matched by exact item ID; unnamed items keep an "Item #id" label.
+A quest's sides are the recorded sides of its quest givers and finishers; where
+none has one, a race mask that allows races of one side only gives the side.
+An NPC a player saw in a game in another language takes its English creature
+name; without one the row is left out.
 NPC window positions are approximate player observation positions, not guaranteed
 creature spawns. Per-record sources counts contributing saved files (the largest
 single-build count), not observation counts.

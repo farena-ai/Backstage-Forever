@@ -1,7 +1,7 @@
 {
   "publisher": "Efficient Games",
   "repository": "JIVESCORP/eg-link-output-wowf",
-  "commit": "1bf749ba19be7e699822d6587db0cb85b1b0bc3b",
+  "commit": "423d6c9645cd102406782e7400805a7c738e2d69",
   "builds": [
     "1.60.1.71037",
     "1.60.1.70959",
@@ -9,7 +9,15 @@
     "1.60.1.70888",
     "1.60.1.70862",
     "1.60.1.70840",
-    "1.60.1.70790"
+    "1.60.1.70790",
+    "1.60.1.70532",
+    "1.60.1.70450",
+    "1.60.1.70425",
+    "1.60.1.70374",
+    "1.60.1.70338",
+    "1.60.1.70334",
+    "1.60.1.70291",
+    "1.60.1.70205"
   ],
   "license": "CC BY 4.0",
   "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
@@ -21,7 +29,7 @@
   "instances": 27,
   "bosses": 181,
   "bossesWithLoot": 87,
-  "items": 287,
-  "bytes": 21688,
-  "sha256": "a6d6429a0fcd17e34054dfe7c28289e79fc8c36308e98ea56357f7bfe471a973"
+  "items": 292,
+  "bytes": 22071,
+  "sha256": "13a93153fd613fd737d614d277d19bdb90fddaa2a3cb9baae575c1d5976f10a6"
 }

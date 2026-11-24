@@ -116,7 +116,7 @@ test("details expose faction names, observed XP with a derived base, and links",
   ];
   const index = new KnowledgeIndex(pack);
   const d = index.details({}, 5730);
-  assert.deepEqual(d.rewards.reputation[0], { factionId: 76, tier: 5, name: "Orgrimmar" });
+  assert.deepEqual(d.rewards.reputation[0], { factionId: 76, tier: 5, standard: 100, name: "Orgrimmar" }, "a size without an exact amount says what the size usually pays");
   assert.equal(d.rewards.reputation[1].name, undefined, "unknown factions keep only the ID");
   assert.deepEqual(d.rewards.xp, {
     difficulty: 5,

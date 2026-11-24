@@ -7,7 +7,7 @@ const id = (v) => Number.isSafeInteger(v) && v > 0 && v <= 2147483647;
 function validateLootPack(p) {
   if (!p || p.schemaVersion !== 1 || p.kind !== "forever-loot" || p.product !== "wowf" || p.license !== "CC BY 4.0" || typeof p.attribution !== "string") fail();
   if (typeof p.sourceCommit !== "string" || !/^[0-9a-f]{40}$/.test(p.sourceCommit)) fail();
-  if (!Array.isArray(p.builds) || !p.builds.length || p.builds.length > 12 || p.builds.some((b) => !/^\d+\.\d+\.\d+\.\d+$/.test(b))) fail();
+  if (!Array.isArray(p.builds) || !p.builds.length || p.builds.length > 16 || p.builds.some((b) => !/^\d+\.\d+\.\d+\.\d+$/.test(b))) fail();
   if (!p.items || typeof p.items !== "object" || Array.isArray(p.items) || Object.keys(p.items).length > 20000) fail();
   for (const [k, list] of Object.entries(p.items)) {
     if (!id(+k) || !Array.isArray(list) || !list.length || list.length > 6) fail();

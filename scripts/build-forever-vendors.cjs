@@ -5,7 +5,7 @@ const { FILES, MAX_BYTES, RAW_MAX_BYTES, RAW_BUILD_TOTAL, MAX_BUILDS, normalizeV
 const dir = path.join(__dirname, "../data/forever-vendors");
 // Pinned merged coverage of the bundled builds (vendors, listings, sellers with an observed
 // nonhostile reaction per faction, and sellers whose merchant window offered repairs).
-const COVERAGE = Object.freeze({ vendors: 417, listings: 6214, alliance: 113, horde: 306, repairs: 129 });
+const COVERAGE = Object.freeze({ vendors: 455, listings: 6823, alliance: 130, horde: 327, repairs: 145 });
 const BUILD_RE = /^1\.60\.1\.\d{1,8}$/;
 const readLock = () => JSON.parse(fs.readFileSync(path.join(dir, "source-lock.json"), "utf8"));
 const url = (commit, build, name) => `https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/${commit}/data/wowf/${build}/${name}`;
