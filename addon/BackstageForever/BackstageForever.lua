@@ -1003,6 +1003,14 @@ local function capture(event,eventId)
             character.journal=journal
         end
     end
+    -- Vendor wares (1.27): an optional block of its own; older desktop apps ignore it.
+    if type(BackstageForeverWaresSnapshot)=='function' then
+        local ok,wares=pcall(BackstageForeverWaresSnapshot)
+        if ok and type(wares)=='table' and type(wares.vendors)=='table' and #wares.vendors>0 then
+            array(wares.vendors);for _,v in ipairs(wares.vendors) do array(v.items) end
+            character.wares=wares
+        end
+    end
     -- Scout mode (1.26): an optional block of its own; older desktop apps ignore it.
     if type(BackstageForeverScoutSnapshot)=='function' then
         local ok,scout=pcall(BackstageForeverScoutSnapshot)
@@ -1134,6 +1142,11 @@ local function capture(event,eventId)
     for i=#chars,1,-1 do
         if fits() then break end
         discard(chars[i],'guild');discard(chars[i],'lockouts')
+    end
+    -- Vendor wares go next: the vendor shows them again the next time its window opens.
+    for i=#chars,1,-1 do
+        if fits() then break end
+        discard(chars[i],'wares')
     end
     -- Then the extras (talents, recipe ids, key ring, sessions): the game still knows them.
     for i=#chars,1,-1 do

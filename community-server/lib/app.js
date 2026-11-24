@@ -4,9 +4,9 @@
 // traces; the log never includes IPs or install ids.
 const http = require("node:http");
 const crypto = require("node:crypto");
-const { validateSubmit, validateReport, validateForget, ValidationError } = require("./validate");
+const { validateSubmit, validateReport, validateForget, validateMine, packVariant, gridToFraction, LIMITS, ValidationError } = require("./validate");
 const { hashInstall } = require("./store");
-const { PackCache, PACK_FORMAT } = require("./pack");
+const { PackCache, PACK_FORMAT, PACK_MINOR } = require("./pack");
 const { RateLimiter } = require("./ratelimit");
 const desk = require("./validate-desk");
 const { Auth } = require("./auth");
@@ -15,7 +15,7 @@ const { createAdmin } = require("./admin/web");
 
 const SERVICE_VERSION = require("../package.json").version;
 const BODY_LIMITS = {
-  "/v1/submit": 256 * 1024, "/v1/report": 160 * 1024, "/v1/forget": 1024,
+  "/v1/submit": 256 * 1024, "/v1/report": 160 * 1024, "/v1/forget": 1024, "/v1/mine": 1024,
   "/v1/heartbeat": 2 * 1024, "/v1/tickets": 24 * 1024, "/v1/tickets/:ticket/messages": 12 * 1024,
   "/v1/tickets/sync": 8 * 1024, "/v1/errors": 8 * 1024,
 };
@@ -48,6 +48,7 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
     reportInstall: new RateLimiter(L.reportPerInstall),
     reportGlobal: new RateLimiter(L.reportGlobal),
     forgetInstall: new RateLimiter(L.forgetPerInstall),
+    mineInstall: new RateLimiter(L.minePerInstall),
     heartbeatInstall: new RateLimiter(L.heartbeatPerInstall),
     ticketInstall: new RateLimiter(L.ticketPerInstall),
     ticketGlobal: new RateLimiter(L.ticketGlobal),
@@ -162,7 +163,7 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
 
   const routes = {
     "GET /v1/health": (req, res) => {
-      send(res, 200, { ok: store.ping(), service: "bf-community", version: SERVICE_VERSION, packFormat: PACK_FORMAT, desk: true, uptimeSec: Math.floor((now() - startedAt) / 1000) });
+      send(res, 200, { ok: store.ping(), service: "bf-community", version: SERVICE_VERSION, packFormat: PACK_FORMAT, packMinor: PACK_MINOR, mine: true, desk: true, uptimeSec: Math.floor((now() - startedAt) / 1000) });
     },
     "POST /v1/heartbeat": async (req, res) => {
       const hb = desk.validateHeartbeat(await readJson(req, BODY_LIMITS["/v1/heartbeat"]));
@@ -205,13 +206,13 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
       res.writeHead(200, { ...headers, "Content-Type": "application/json; charset=utf-8", "Content-Length": body.length });
       res.end(req.method === "HEAD" ? undefined : body);
     },
-    "GET /v1/pack/meta": (req, res) => {
-      const p = packs.get();
-      send(res, 200, { ok: true, format: PACK_FORMAT, version: p.version, generatedAt: p.generatedAt, minInstalls: config.minInstalls, bytes: p.body.length, gzipBytes: p.gzip.length, counts: p.counts },
+    "GET /v1/pack/meta": (req, res, url) => {
+      const variant = packVariant(url.searchParams), p = packs.get(variant);
+      send(res, 200, { ok: true, format: PACK_FORMAT, ...(variant === 2 ? { minor: PACK_MINOR } : {}), version: p.version, generatedAt: p.generatedAt, minInstalls: config.minInstalls, bytes: p.body.length, gzipBytes: p.gzip.length, counts: p.counts },
         { "Cache-Control": "public, max-age=300" });
     },
-    "GET /v1/pack": (req, res) => {
-      const p = packs.get();
+    "GET /v1/pack": (req, res, url) => {
+      const p = packs.get(packVariant(url.searchParams));
       const headers = {
         ...SECURITY_HEADERS,
         ETag: p.etag,
@@ -244,6 +245,33 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
       if (store.reportCount() >= config.maxReports) throw new HttpError(503, "report_inbox_full");
       const id = store.addReport(hash, rep, now());
       send(res, 201, { ok: true, id });
+    },
+    // What this install itself contributed, so the app can mark "from you" exactly. The install id
+    // is the only credential. An id the server has never seen, a forgotten one and a blocked one all
+    // get the same empty answer, so the reply never says whether an id exists.
+    "POST /v1/mine": async (req, res) => {
+      const { installId } = validateMine(await readJson(req, BODY_LIMITS["/v1/mine"]));
+      const hash = hashInstall(config.salt, installId);
+      limit(limiters.mineInstall, hash);
+      const { rows, total } = store.isBlocked(hash) ? { rows: [], total: 0 } : store.mine(hash, LIMITS.mineKeys);
+      const keys = { nodes: [], npcs: [], vendors: [] }, counts = {};
+      const count = (mapId, kind) => { const m = counts[mapId] || (counts[mapId] = {}); m[kind] = (m[kind] || 0) + 1; };
+      for (const r of rows) {
+        const f = r.key.split("|");
+        if (r.kind === "node") {
+          const named = f[1][0] !== "o";
+          keys.nodes.push([f[0], named ? null : Number(f[1].slice(1)), named ? f[1].slice(1) : null, Number(f[2]), gridToFraction(Number(f[3])), gridToFraction(Number(f[4]))]);
+          count(f[2], f[0]);
+        } else if (r.kind === "npc") {
+          keys.npcs.push([Number(f[0]), Number(f[1]), gridToFraction(Number(f[2])), gridToFraction(Number(f[3]))]);
+          count(f[1], "npc");
+        } else keys.vendors.push([Number(f[0]), Number(f[1])]);
+      }
+      send(res, 200, { ok: true, total, truncated: total > rows.length, counts, keys: {
+        nodes: { columns: ["kind", "objectId", "name", "mapId", "x", "y"], rows: keys.nodes },
+        npcs: { columns: ["npcId", "mapId", "x", "y"], rows: keys.npcs },
+        vendors: { columns: ["npcId", "itemId"], rows: keys.vendors },
+      } });
     },
     "POST /v1/forget": async (req, res) => {
       const { installId } = validateForget(await readJson(req, BODY_LIMITS["/v1/forget"]));

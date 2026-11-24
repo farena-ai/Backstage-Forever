@@ -127,13 +127,13 @@ test("batches stay within 500 entries and 5,000 facts, split by client build", (
   assert.deepEqual(Object.keys(body).sort(), ["installId", "observations", "schema"]);
 });
 
-test("drops, vendors and recipes are not collected: the app has no player-observed loot windows or listings", () => {
+test("drops and recipes are not collected (no loot-window count, no listings); vendors only when the addon saved wares", () => {
   const cats = new Set(collectObservations(profiles()).map((o) => o.category));
   assert.deepEqual([...cats].sort(), ["nodes", "npcs"]);
 });
 
 test("the off switch stops every submit; downloads keep their own switch", async () => {
-  const fetch = fakeFetch((c) => (c.url.endsWith("/v1/pack") ? json(200, PACK, { etag: '"v1"' }) : json(200, { ok: true, stored: 1 })));
+  const fetch = fakeFetch((c) => (c.url.endsWith("/v1/pack?v=2") ? json(200, PACK, { etag: '"v1"' }) : json(200, { ok: true, stored: 1 })));
   const { s, clock } = service({ fetch });
   assert.equal(s.status().share, true, "sharing is on by default");
   s.setSettings({ share: false });

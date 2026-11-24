@@ -81,6 +81,7 @@ while it has tickets not `closed`, with the usual backoff.
 ## D6. `DELETE /v1/tickets/{ticket}` — player deletes a report
 Header `X-BF-Ticket-Key`. Response `200 {"ok":true}`. Removes the ticket and its messages.
 `POST /v1/forget` (existing) additionally deletes every ticket and heartbeat row of that install hash.
+Since pack format minor 1 it also empties what `POST /v1/mine` (CLIENT-CONTRACT.md section 6a) answers for that install, because that read is made of the same observation rows.
 
 ## D7. `POST /v1/errors` — automatic error report (only if the player switched it on)
 Body limit 8 KB. Limits: 10 per install per day.

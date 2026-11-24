@@ -25,12 +25,17 @@ const { defaultState } = require("../src/core/validation.cjs");
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(initial));
     // A small community pack in the Barrens, away from the map centre: 24 herb and ore spots in one
     // corner, one chest elsewhere, and a spot that matches one of this character's own finds.
-    const packRows = [["herb", 1618, null, 1413, 0.44, 0.36, 4], ["chest", 2843, null, 1413, 0.8, 0.8, 3]];
-    for (let i = 0; i < 24; i++) packRows.push([i % 2 ? "ore" : "herb", null, i % 2 ? "Tin Vein" : "Mageroyal", 1413, 0.2 + (i % 6) * 0.01, 0.7 + Math.floor(i / 6) * 0.01, 3 + (i % 5)]);
+    // Pack format minor 1: every spot says when it was first and last seen. Half of the cluster and
+    // the chest were not seen for over a month; one herb is listed by the service as this install's own.
+    const day = (ago) => new Date(Date.now() - ago * 86400000).toISOString().slice(0, 10);
+    const packRows = [["herb", 1618, null, 1413, 0.44, 0.36, 4, day(20), day(2)], ["chest", 2843, null, 1413, 0.8, 0.8, 3, day(60), day(45)]];
+    for (let i = 0; i < 24; i++) packRows.push([i % 2 ? "ore" : "herb", null, i % 2 ? "Tin Vein" : "Mageroyal", 1413, 0.2 + (i % 6) * 0.01, 0.7 + Math.floor(i / 6) * 0.01, 3 + (i % 5), day(50), day(i < 12 ? 5 : 40)]);
+    const installId = "3f2b8c1e-9d4a-4b7e-8f21-0a1b2c3d4e5f";
     await fs.mkdir(path.join(dir, "community"), { recursive: true });
-    await fs.writeFile(path.join(dir, "community", "pack.json"), JSON.stringify({ format: 1, version: "smoke-1", generatedAt: new Date(Date.now() - 3 * 86400000).toISOString(), minInstalls: 3,
-      nodes: { columns: ["kind", "objectId", "name", "mapId", "x", "y", "installs"], rows: packRows } }));
-    await fs.writeFile(path.join(dir, "community", "settings.json"), JSON.stringify({ share: false, download: true, lastPackCheckAt: Date.now() }));
+    await fs.writeFile(path.join(dir, "community", "pack.json"), JSON.stringify({ format: 1, minor: 1, version: "smoke-1", generatedAt: new Date(Date.now() - 3 * 86400000).toISOString(), minInstalls: 3,
+      nodes: { columns: ["kind", "objectId", "name", "mapId", "x", "y", "installs", "firstSeen", "lastSeen"], rows: packRows } }));
+    await fs.writeFile(path.join(dir, "community", "settings.json"), JSON.stringify({ installId, share: false, download: true, lastPackCheckAt: Date.now() }));
+    await fs.writeFile(path.join(dir, "community", "mine.json"), JSON.stringify({ schemaVersion: 1, installId, total: 1, truncated: false, keys: ["herb:1618:1413:0.44:0.36"] }));
     const repo = path.resolve(__dirname, "..");
     await fs.writeFile(path.join(dir, "package.json"), JSON.stringify({ name: "backstage-forever-worldmap-fixture", version: "0.15.0", main: "fixture-main.cjs" }));
     await fs.writeFile(path.join(dir, "fixture-main.cjs"), `
@@ -75,7 +80,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     const layerGroups = {
       Questing: ["quest-turnin", "quest-objective", "objective-area", "quest-giver"],
       Gathering: ["herb", "ore", "find", "heat"],
-      Community: ["c-herb", "c-ore", "c-chest", "c-npc", "c-vendor"],
+      Community: ["c-herb", "c-ore", "c-chest", "c-object", "c-npc", "c-vendor"],
       Services: ["flight", "class-trainer", "profession-trainer", "vendor", "npc", "otherFaction"],
       Journey: ["journey"],
     };
@@ -313,15 +318,40 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator("[data-wm-layer=heat]").uncheck(); assert.equal(await heatBox.isHidden(), true); await page.locator("[data-wm-layer=heat]").check();
     // Community layers: counted marks at the default zoom, the coverage line, freshness and the skill filter.
     await page.locator("[data-wm-canvas]").press("0");
-    const shared = () => page.evaluate(() => { const v = WorldMapView._state(); return { community: v.model.community, marks: v.clusters.filter((c) => c.shared).map((c) => c.pins.length), counts: v.model.counts, only: v.onlyGatherable }; });
+    const shared = () => page.evaluate(() => { const v = WorldMapView._state(); return { community: v.model.community, marks: v.clusters.filter((c) => c.shared).map((c) => c.pins.length), counts: v.model.counts, only: v.onlyGatherable, within: v.seenWithin, stale: v.model.pins.filter((p) => p.community && p.stale).length }; });
     let sh = await shared();
-    assert.equal(sh.community.total, 26); assert.equal(sh.community.yours, 0, "finds are matched for characters saved by the addon only"); assert.equal(sh.community.ageDays, 3); assert.equal(sh.community.perFactDates, false);
+    assert.equal(sh.community.total, 26); assert.equal(sh.community.ageDays, 3); assert.equal(sh.community.perFactDates, true);
+    assert.deepEqual([sh.community.yours, sh.community.yoursExact], [1, true], "the one spot the service lists for this install, not a guess from local finds");
+    assert.deepEqual([sh.community.stale, sh.stale, sh.within], [13, 13, 0], "twelve of the cluster and the chest were not seen for over 30 days");
     assert.deepEqual([sh.counts["c-herb"], sh.counts["c-ore"], sh.counts["c-chest"]], [13, 12, 1]);
     assert.ok(sh.marks.length <= 4 && sh.marks.reduce((t, n) => t + n, 0) === 26 && sh.marks[0] >= 20, `26 shared spots are a few counted marks at the default zoom: ${sh.marks}`);
     const cbox = page.locator("[data-wm-community]");
     await cbox.locator("[data-wm-c-line]").getByText(/The community has\s+26\s+spots here/).waitFor();
     await cbox.getByText("3 days ago").waitFor();
-    await cbox.getByText(/one date for everything/).waitFor();
+    await cbox.getByText(/how many players saw it and when it was last seen/).waitFor();
+    assert.equal(await cbox.getByText(/one date for everything/).count(), 0);
+    assert.equal((await cbox.locator('[data-wm-c-yours="exact"]').innerText()).trim(), "1");
+    await cbox.getByText("is from you").waitFor();
+    await cbox.locator("[data-wm-c-fresh]").getByText(/are faded: not seen for over 30 days/).waitFor();
+    await cbox.scrollIntoViewIfNeeded();
+    await cbox.screenshot({ path: path.join(capture, "world-map-community-panel.png") });
+    await page.locator("[data-wm-canvas]").screenshot({ path: path.join(capture, "world-map-community-faded.png") });
+    // "Seen in the last 7 days" hides the older spots and says how many; the choice is kept.
+    const within = cbox.getByRole("combobox", { name: "Show spots seen" });
+    assert.deepEqual(await within.locator("option").allInnerTexts(), ["at any time", "in the last 7 days", "in the last 30 days", "in the last 90 days"]);
+    await within.selectOption("7");
+    sh = await shared();
+    assert.equal(sh.within, 7); assert.equal(sh.marks.reduce((t, n) => t + n, 0), 13, "the herb seen 2 days ago and the twelve seen 5 days ago stay");
+    await cbox.locator("[data-wm-c-fresh]").getByText(/^13$/).waitFor();
+    await cbox.locator("[data-wm-c-fresh]").getByText("hidden as older").waitFor();
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("bf-world-map-v2")).seenWithin), 7);
+    await cbox.screenshot({ path: path.join(capture, "world-map-community-panel-7-days.png") });
+    await cbox.getByRole("combobox", { name: "Show spots seen" }).selectOption("30");
+    assert.equal((await shared()).marks.reduce((t, n) => t + n, 0), 13);
+    await cbox.getByRole("combobox", { name: "Show spots seen" }).selectOption("90");
+    assert.equal((await shared()).marks.reduce((t, n) => t + n, 0), 26);
+    await cbox.getByRole("combobox", { name: "Show spots seen" }).selectOption("0");
+    assert.equal((await shared()).marks.reduce((t, n) => t + n, 0), 26);
     assert.equal(await page.locator("[data-wm-fill]").isHidden(), true, "a well covered zone shows no help card");
     // This character has no saved professions, so nothing is known to be out of reach: the filter hides nothing it cannot prove.
     await cbox.getByRole("checkbox", { name: "Only what my skill can gather" }).check();
@@ -331,8 +361,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.locator("[data-wm-layer=c-ore]").uncheck();
     assert.equal((await shared()).marks.reduce((t, n) => t + n, 0), 14, "a community layer hides only its own spots");
     await page.locator("[data-wm-layer=c-ore]").check();
-    await cbox.scrollIntoViewIfNeeded();
-    await cbox.screenshot({ path: path.join(capture, "world-map-community-panel.png") });
+    assert.equal(await page.locator("[data-wm-layer=c-object]").isChecked(), false, "the objects layer starts off");
     // A thin zone says what is missing and how to help; plain words, nothing else changes.
     await page.locator("[data-wm-zone]").selectOption({ label: "Alterac Mountains" });
     await page.locator("[data-wm-title]").getByText("Alterac Mountains").waitFor();
