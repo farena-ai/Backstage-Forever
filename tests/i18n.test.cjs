@@ -33,7 +33,7 @@ test("the dictionary is current, machine translation is labelled, commands and p
 });
 
 // More languages (roadmap P1): every data/i18n/<lang>.json is held to the same rules, and to German's key list.
-const { LANG_CODES, GAME_LOCALES } = require("../scripts/build-locales.cjs");
+const { LANG_CODES, GAME_LOCALES, languageFile } = require("../scripts/build-locales.cjs");
 const dictOf = (lang) => JSON.parse(read(`data/i18n/${lang}.json`));
 const SECTIONS = [["app", (d) => d.app], ["appTemplates", (d) => d.appTemplates], ["addon.plain", (d) => d.addon.plain], ["addon.templates", (d) => d.addon.templates]];
 
@@ -49,10 +49,12 @@ test("every language file is compiled, named in its own words and loaded by the 
     const at = html.indexOf(`<script src="locales/${lang}.js"></script>`);
     assert.ok(at > 0 && at < html.indexOf('<script src="i18n.js"></script>'), `${lang}: loaded before i18n.js`);
     assert.ok(fs.existsSync(path.join(root, "src/renderer/locales", `${lang}.js`)), `${lang}: compiled for the app`);
-    for (const code of d.gameLocales || GAME_LOCALES[lang]) { assert.ok(!claimed.has(code), `${code} once`); claimed.add(code); assert.ok(lua.includes(`L=="${code}"`), `${lang}: the addon serves ${code}`); }
+    for (const code of d.gameLocales || GAME_LOCALES[lang]) { assert.ok(!claimed.has(code), `${code} once`); claimed.add(code); assert.ok(read(`addon/BackstageForever/${languageFile(lang)}`).includes(`"${code}"`), `${lang}: the addon serves ${code}`); }
   }
   assert.deepEqual(GAME_LOCALES.es, ["esES", "esMX"], "both Spanish clients get Spanish");
-  assert.ok(Buffer.byteLength(lua) < 1024 * 1024, "one locale file stays under 1 MB; split it per language before it grows past that");
+  // B10: the lookup holds no text; each language has its own file, well under the 1 MB an addon file may reach.
+  assert.ok(Buffer.byteLength(lua) < 8 * 1024, "the lookup stays tiny");
+  for (const lang of LANG_CODES) assert.ok(Buffer.byteLength(read(`addon/BackstageForever/${languageFile(lang)}`)) < 512 * 1024, `${lang}: its file stays under 512 KB`);
 });
 
 for (const lang of LANG_CODES) {
@@ -106,7 +108,7 @@ for (const lang of LANG_CODES) {
     for (const code of d.gameLocales || GAME_LOCALES[lang]) {
       const out = lua(String.raw`
 GetLocale=function() return '${code}' end
-dofile('addon/BackstageForever/BackstageForeverLocale.lua')
+dofile('addon/BackstageForever/BackstageForeverLocale.lua') dofile('addon/BackstageForever/BackstageForeverLocaleDe.lua') dofile('addon/BackstageForever/BackstageForeverLocaleEs.lua') dofile('addon/BackstageForever/BackstageForeverLocaleFr.lua')
 print(BackstageForeverTr(${JSON.stringify(en)}))
 print(BackstageForeverTr('Waypoint set: Thork at 51.5, 30.9. Follow the arrow on your minimap and screen.'))
 print(BackstageForeverTr('7 h 05 min'))
@@ -122,7 +124,7 @@ print(tostring(BackstageForeverTranslated))
 
 test("a language nobody translated stays English in game and in the app", () => {
   assert.equal(lua(String.raw`GetLocale=function() return 'koKR' end
-dofile('addon/BackstageForever/BackstageForeverLocale.lua')
+dofile('addon/BackstageForever/BackstageForeverLocale.lua') dofile('addon/BackstageForever/BackstageForeverLocaleDe.lua') dofile('addon/BackstageForever/BackstageForeverLocaleEs.lua') dofile('addon/BackstageForever/BackstageForeverLocaleFr.lua')
 print(BackstageForeverTr('Adventure Compass'), tostring(BackstageForeverTranslated))`), "Adventure Compass\tfalse");
 });
 
@@ -133,7 +135,7 @@ test("in game: German clients get German messages, others English, and unknown t
   const sample = tmpl.replace(/%0?\d*d/, "42");
   const out = lua(String.raw`
 GetLocale=function() return 'deDE' end
-dofile('addon/BackstageForever/BackstageForeverLocale.lua')
+dofile('addon/BackstageForever/BackstageForeverLocale.lua') dofile('addon/BackstageForever/BackstageForeverLocaleDe.lua') dofile('addon/BackstageForever/BackstageForeverLocaleEs.lua') dofile('addon/BackstageForever/BackstageForeverLocaleFr.lua')
 print(BackstageForeverTr(${JSON.stringify(en)}))
 print(BackstageForeverTr(${JSON.stringify(sample)}))
 print(BackstageForeverTr('Something new'))
@@ -142,14 +144,14 @@ print(BackstageForeverTr(nil)==nil)
   assert.equal(out[0], want); assert.match(out[1], /42/); assert.notEqual(out[1], sample, `template ${tmpl}`);
   assert.equal(out[2], "Something new"); assert.equal(out[3], "true");
   assert.equal(lua(String.raw`GetLocale=function() return 'enUS' end
-dofile('addon/BackstageForever/BackstageForeverLocale.lua')
+dofile('addon/BackstageForever/BackstageForeverLocale.lua') dofile('addon/BackstageForever/BackstageForeverLocaleDe.lua') dofile('addon/BackstageForever/BackstageForeverLocaleEs.lua') dofile('addon/BackstageForever/BackstageForeverLocaleFr.lua')
 print(BackstageForeverTr(${JSON.stringify(en)}))`), en);
 });
 
 test("the compact Adventure Compass speaks German on German clients (0.54)", () => {
   const out = lua(String.raw`
 GetLocale=function() return 'deDE' end
-dofile('addon/BackstageForever/BackstageForeverLocale.lua')
+dofile('addon/BackstageForever/BackstageForeverLocale.lua') dofile('addon/BackstageForever/BackstageForeverLocaleDe.lua') dofile('addon/BackstageForever/BackstageForeverLocaleEs.lua') dofile('addon/BackstageForever/BackstageForeverLocaleFr.lua')
 for _,s in ipairs({'Adventure Compass','Quests: 3 in your log','2 ready to hand in','1,840 XP to level up','Pace: 12,400 XP/hour','next level in about 9 min','Next:','Drag the title to move  ·  /bf help  ·  /bf show'}) do print(BackstageForeverTr(s)) end
 `).split("\n");
   assert.deepEqual(out, ["Abenteuer-Kompass", "Quests: 3 in deinem Log", "2 bereit zur Abgabe", "1,840 EP bis zum Stufenaufstieg", "Tempo: 12,400 EP/Stunde", "nächste Stufe in etwa 9 min", "Als Nächstes:", "Titel ziehen zum Verschieben  ·  /bf help  ·  /bf show"]);
@@ -260,4 +262,34 @@ test("one date format across the newer screens, in the shown language (B6)", () 
     assert.match(src, /window\.I18n\?\.when/, file);
     assert.doesNotMatch(src, /toLocale(Date|Time)String\(/, `${file} formats a date on its own`);
   }
+});
+
+test("B10: one small lookup and one text file per language; every entry survives the trip", () => {
+  const { ADDON_FILES } = require("../src/core/game-sync.cjs");
+  const toc = read("addon/BackstageForever/BackstageForever.toc").split(/\r?\n/).filter((l) => l.endsWith(".lua"));
+  const files = LANG_CODES.map(languageFile);
+  assert.deepEqual(files.slice(0, 3), ["BackstageForeverLocaleDe.lua", "BackstageForeverLocaleEs.lua", "BackstageForeverLocaleFr.lua"]);
+  assert.deepEqual(toc.slice(0, 1 + files.length), ["BackstageForeverLocale.lua", ...files], "the lookup loads first, the languages right after it");
+  for (const name of ["BackstageForeverLocale.lua", ...files]) assert.ok(ADDON_FILES.includes(name), `the installer owns ${name}`);
+  const lookup = read("addon/BackstageForever/BackstageForeverLocale.lua");
+  assert.doesNotMatch(lookup, /Abenteuer|Aventura|Aventure/, "no text in the lookup");
+  const loadAll = "dofile('addon/BackstageForever/BackstageForeverLocale.lua')" + files.map((n) => ` dofile('addon/BackstageForever/${n}')`).join("");
+  for (const lang of LANG_CODES) {
+    const d = dictOf(lang), code = (d.gameLocales || GAME_LOCALES[lang])[0];
+    const text = read(`addon/BackstageForever/${languageFile(lang)}`);
+    assert.doesNotMatch(text, /\r/, `${lang}: no carriage return in the long text`);
+    assert.equal((text.match(/BackstageForeverLocaleLoad\(/g) || []).length, 1);
+    // Every plain entry, including the ones with tabs, line breaks, backslashes, quotes and brackets.
+    const plain = Object.entries(d.addon.plain).filter(([k, v]) => typeof v === "string" && v.trim() && k !== v);
+    const lit = (v) => '"' + [...Buffer.from(v, "utf8")].map((b) => (b >= 32 && b <= 126 && b !== 34 && b !== 92 ? String.fromCharCode(b) : "\\" + String(b).padStart(3, "0"))).join("") + '"';
+    const out = lua(`GetLocale=function() return '${code}' end\n${loadAll}\nlocal bad,n=0,0\nlocal first\nfor _,row in ipairs({${plain.map(([k, v]) => `{${lit(k)},${lit(v)}}`).join(",")}}) do n=n+1 if BackstageForeverTr(row[1])~=row[2] then bad=bad+1 first=first or row[1] end end\nprint(n,bad,tostring(first),tostring(BackstageForeverTranslated),BackstageForeverLocaleName)`);
+    assert.equal(out, `${plain.length}\t0\tnil\ttrue\t${code}`, lang);
+    assert.ok(plain.length > 800, `${lang}: ${plain.length} entries`);
+  }
+  // Another language's file is handed over but never taken apart; a damaged call changes nothing.
+  assert.equal(lua(`GetLocale=function() return 'enUS' end\n${loadAll}\nprint(BackstageForeverTr('Adventure Compass'),tostring(BackstageForeverTranslated),tostring(BackstageForeverLocaleLoad({'deDE'},'a\\tb\\n','')),tostring(BackstageForeverLocaleLoad({'enUS'},nil,'')),tostring(BackstageForeverLocaleLoad(nil,'','')))`), "Adventure Compass\tfalse\tfalse\tfalse\tfalse");
+  // The escapes: a tab, a line break and a backslash inside a text come back as written.
+  assert.equal(lua(`GetLocale=function() return 'xxXX' end\ndofile('addon/BackstageForever/BackstageForeverLocale.lua')\nprint(tostring(BackstageForeverLocaleLoad({'xxXX'},'a\\\\tb\\\\nc\\\\\\\\d\\tx\\\\ty\\n','^(%d+) q$\\t%1 Q\\n')))\nprint(BackstageForeverTr('a\\tb\\nc\\\\d')=='x\\ty',BackstageForeverTr('7 q'))`), "true\ntrue\t7 Q");
+  // A language file loaded without the lookup does nothing and does not fail.
+  assert.equal(lua(`dofile('addon/BackstageForever/${files[0]}')\nprint(tostring(BackstageForeverTr))`), "nil");
 });

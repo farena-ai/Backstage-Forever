@@ -218,7 +218,7 @@ test("the kit helpers are wired in, saved per character, switchable, and never a
 test("German clients get the kit and ready lines in German", () => {
   const out = lua(String.raw`
 GetLocale=function() return 'deDE' end
-dofile('addon/BackstageForever/BackstageForeverLocale.lua')
+dofile('addon/BackstageForever/BackstageForeverLocale.lua') dofile('addon/BackstageForever/BackstageForeverLocaleDe.lua') dofile('addon/BackstageForever/BackstageForeverLocaleEs.lua') dofile('addon/BackstageForever/BackstageForeverLocaleFr.lua')
 ` + FILE + String.raw`
 print(BackstageForeverReadyLine({buffs={'Arkane Intelligenz'},food=false,rows={{label='Soul Shard',name='Seelensplitter',count=1,low=true}}}))
 print(BackstageForeverReadyLine({buffs={},food=true,rows={},asked=true}))

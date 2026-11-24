@@ -295,7 +295,7 @@ test("the helpers are wired in, saved per character, switchable, and never act f
 test("German clients get the comfort lines in German", () => {
   const out = lua(String.raw`
 GetLocale=function() return 'deDE' end
-dofile('addon/BackstageForever/BackstageForeverLocale.lua')
+dofile('addon/BackstageForever/BackstageForeverLocale.lua') dofile('addon/BackstageForever/BackstageForeverLocaleDe.lua') dofile('addon/BackstageForever/BackstageForeverLocaleEs.lua') dofile('addon/BackstageForever/BackstageForeverLocaleFr.lua')
 local said={} DEFAULT_CHAT_FRAME={AddMessage=function(_,m) said[#said+1]=m end}
 ` + FILE + String.raw`
 for _,l in ipairs(BackstageForeverRestedLines(BackstageForeverRestedState(3000,20000,false))) do print(BackstageForeverTr(l)) end
