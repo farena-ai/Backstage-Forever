@@ -238,7 +238,7 @@ window.QuestGuide = (() => {
     if (!Array.isArray(facts) || !facts.length) return "";
     const quest = (x) => `<li class="${x.done === true ? "chain-completed" : ""}"><span class="chain-status">${x.done === true ? "Completed" : x.done === false ? "Not finished yet" : "Status unknown"}</span><button data-quest-control="needs:${x.id}" data-quest-intent="${intent("open",x.id)}" data-quest-id="${x.id}">${esc(x.title)} <small>#${x.id}</small></button></li>`;
     const part = { needs: ["Finish first", (n) => `All ${n} recorded players who took this quest had finished this first, and the game data links the two.`], seen: ["Usually finished first", (n) => `All ${n} recorded players had finished this first. A recorded pattern, not a proven rule.`], leadIn: ["Leads here, not required", (n) => `The game data links this quest, but among ${n} recorded players some took the quest without it.`] };
-    return `<section class="quest-section quest-prerequisites"><h3>Before this quest</h3>${facts.slice(0, 3).filter((f) => part[f.kind]).map((f) => `<h4>${part[f.kind][0]}</h4><ul class="quest-chain">${f.quests.slice(0, 4).map(quest).join("")}</ul><p class="section-note">${part[f.kind][1](Number(f.records) || 0)}</p>`).join("")}</section>`;
+    return `<section class="quest-section quest-prerequisites"><h3>Before this quest</h3>${facts.slice(0, 3).filter((f) => part[f.kind]).map((f) => `<h4>${part[f.kind][0]}</h4><ul class="quest-needs">${f.quests.slice(0, 4).map(quest).join("")}</ul><p class="section-note">${part[f.kind][1](Number(f.records) || 0)}</p>`).join("")}</section>`;
   }
   function chainMarkup(chain) {
     if (!chain.length) return "";

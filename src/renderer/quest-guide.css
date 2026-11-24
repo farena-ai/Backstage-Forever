@@ -382,3 +382,12 @@ button.quest-ledger-row:not(.illustrated-card){display:flex;align-items:center;g
 .quest-guide :is(.quest-search-label, .quest-ledger-row strong, .quest-detail h2, .quest-section h3, .quest-section h4, .quest-waypoint h3, .chain-status) { color: #3d220c; }
 .quest-guide .quest-chain button:not(.illustrated-card), .quest-guide .chain-link > span { color: #7a1f14; text-shadow: none; }
 .quest-guide .ledger-caption span, .quest-guide .atlas-index-label { color: #8a5a18; }
+/* B3: "Before this quest". The same cards as the reported chain, under their own name so the chain stays one list. */
+.quest-needs{list-style:none;padding:0;margin:10px 0;display:grid;gap:10px}
+.quest-needs li{position:relative;border:1px solid #b59e6044;border-left:3px solid #8a96776b;background:linear-gradient(110deg,rgba(255,248,225,0.47),rgba(255,248,225,0.53));padding:12px 17px 12px 40px}
+.quest-needs li:before{content:"◇";position:absolute;left:12px;top:11px;font-size:22px;color:#8a5a18}
+.quest-needs li.chain-completed:before{content:"◆";color:#4a3218}
+.quest-guide .quest-needs button:not(.illustrated-card){border:0;border-radius:0;padding:2px 0;background:none;box-shadow:none;text-shadow:none;transform:none;white-space:normal;min-height:26px;color:#7a1f14;font:13px/1.5 Cinzel,Georgia,serif;text-align:left}
+.quest-guide .quest-needs button:not(.illustrated-card):hover{background:none;text-decoration:underline;transform:none;box-shadow:none}
+.quest-guide .quest-needs button:not(.illustrated-card):before,.quest-guide .quest-needs button:not(.illustrated-card):after{display:none}
+.quest-needs button small{font:11px 'Source Sans',sans-serif;color:#4a3218}
