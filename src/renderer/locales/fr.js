@@ -107,7 +107,9 @@ window.BF_LOCALE_FR = {
  "Adventure / Next step": "Aventure / Prochaine étape",
  "Adventure → Professions: every recipe of your profession with where it comes from, a worked-out path to the next skill rank, who among your characters can craft an item, and what you can cook from your bags.": "Aventure → Métiers : chaque recette de ton métier avec sa provenance, un chemin calculé vers le prochain rang de compétence, qui parmi tes personnages peut fabriquer un objet, et ce que tu peux cuisiner avec tes sacs.",
  "Adventure → Travel compares on foot, flight and Hearthstone to the place you pick, fastest first, with time and price. It knows flight points only: no boats, zeppelins or the tram yet, and a flight nobody has timed is an estimate and says so.": "Aventure → Trajet compare la marche, le vol et la pierre de foyer vers le lieu que tu choisis, le plus rapide d'abord, avec le temps et le prix. Il ne connaît que les points de vol : pas encore de bateaux, de zeppelins ni de tram, et un vol que personne n'a chronométré est une estimation et le dit.",
+ "Adventure → Travel compares on foot, flight, boat or zeppelin and Hearthstone to the place you pick, fastest first, with time and price. Boat and zeppelin stops come from your game files; the wait for the next one is never known.": "Aventure → Trajet compare la marche, le vol, le bateau ou le zeppelin et la pierre de foyer vers le lieu que tu choisis, le plus rapide d'abord, avec le temps et le prix. Les arrêts des bateaux et des zeppelins viennent de tes fichiers de jeu ; l'attente du prochain départ n'est jamais connue.",
  "Adventure → Travel compares walking, flying and your Hearthstone to any place, fastest first. Adventure → Zones lists every zone for your level.": "Aventure → Trajet compare la marche, le vol et ta pierre de foyer vers n'importe quel lieu, le plus rapide d'abord. Aventure → Zones liste chaque zone pour ton niveau.",
+ "Adventure → Travel compares walking, flying, boats and zeppelins and your Hearthstone to any place, fastest first. Adventure → Zones lists every zone for your level.": "Aventure → Trajet compare la marche, le vol, les bateaux et les zeppelins et ta pierre de foyer vers n'importe quel lieu, le plus rapide d'abord. Aventure → Zones liste chaque zone pour ton niveau.",
  "Adventure coach": "Coach d'aventure",
  "Adventure Compass": "Boussole d'aventure",
  "Adventure Director": "Directeur d'aventure",
@@ -119,6 +121,7 @@ window.BF_LOCALE_FR = {
  "Agility": "Agilité",
  "Agree roles and the dungeon with your group; any class can pick any role here.": "Mettez-vous d'accord sur les rôles et le donjon avec ton groupe ; toute classe peut choisir tout rôle ici.",
  "AI connection": "Connexion IA",
+ "Airship": "Aéronef",
  "All": "Tous",
  "All characters": "Tous les personnages",
  "All characters saved on this computer": "Tous les personnages enregistrés sur cet ordinateur",
@@ -220,6 +223,9 @@ window.BF_LOCALE_FR = {
  "Beyond the dungeon gate": "Au-delà de la porte du donjon",
  "Blank plan": "Plan vierge",
  "Block value": "Valeur de blocage",
+ "Boat": "Bateau",
+ "Boats and zeppelins: where they stop is read from your game files. Connect your game folder to plan them.": "Bateaux et zeppelins : leurs arrêts sont lus dans tes fichiers de jeu. Connecte ton dossier de jeu pour les planifier.",
+ "Boats, zeppelins, the tram and portals are not in this data.": "Les bateaux, les zeppelins, le tram et les portails ne sont pas dans ces données.",
  "Bonus experience you build while logged out in an inn or city. Kills give double XP until it runs out (the blue part of your XP bar).": "De l'expérience bonus accumulée quand tu es déconnecté dans une auberge ou une ville. Les ennemis tués donnent le double d'XP jusqu'à épuisement (la partie bleue de ta barre d'XP).",
  "Bonuses to reputation gains (racial or event) are not counted.": "Les bonus aux gains de réputation (raciaux ou d'évènement) ne sont pas comptés.",
  "Boss defeated": "Boss vaincu",
@@ -304,6 +310,7 @@ window.BF_LOCALE_FR = {
  "Choose a character to review saved identity, equipment and qualified historical class listings.": "Choisis un personnage pour revoir son identité, son équipement et les listes de classe historiques enregistrés.",
  "Choose a character with a class in Characters to see talents.": "Choisis un personnage avec une classe dans Personnages pour voir les talents.",
  "Choose a dated recovery point": "Choisis un point de restauration daté",
+ "Choose a flight point or a zone on the left. The planner compares going on foot, flying, boats and zeppelins and your Hearthstone, with the time and the price of each.": "Choisis un point de vol ou une zone à gauche. Le planificateur compare la marche, le vol, les bateaux et les zeppelins et ta pierre de foyer, avec le temps et le prix de chacun.",
  "Choose a model after connecting": "Choisis un modèle après la connexion",
  "Choose a model, then ask": "Choisis un modèle, puis demande",
  "Choose a quest": "Choisis une quête",
@@ -442,6 +449,7 @@ window.BF_LOCALE_FR = {
  "Dead": "Mort",
  "Deaths": "Morts",
  "Deaths appear while the live link is on. The time is your last finished level.": "Les morts apparaissent tant que le lien en direct est actif. Le temps est celui de ton dernier niveau terminé.",
+ "Deeprun Tram: known from a published travel guide for this game, not from recorded data. Where its stations stand and how long the ride takes are not recorded, so the time is left open and this is never ranked.": "Tram des profondeurs : connu par un guide de voyage publié pour ce jeu, pas par des données enregistrées. L'emplacement de ses stations et la durée du trajet ne sont pas notés ; le temps reste donc ouvert et ce trajet n'est jamais classé.",
  "Default view": "Vue par défaut",
  "Default view restored.": "Vue par défaut rétablie.",
  "Defense": "Défense",
@@ -553,6 +561,7 @@ window.BF_LOCALE_FR = {
  "Export backup": "Exporter une sauvegarde",
  "Export review": "Exporter la relecture",
  "Faction standings": "Réputation auprès des factions",
+ "Fastest": "Le plus rapide",
  "Fastest ways up": "Les moyens les plus rapides de monter",
  "Feet": "Pieds",
  "Fewest trips": "Moins de trajets",
@@ -1103,6 +1112,7 @@ window.BF_LOCALE_FR = {
  "On by default": "Activé par défaut",
  "On foot": "À pied",
  "On foot, by flight or by Hearthstone: the time and the price of each, fastest first.": "À pied, en vol ou avec la Pierre de foyer : le temps et le prix de chaque trajet, le plus rapide d'abord.",
+ "On foot, by flight, by boat or zeppelin, or by Hearthstone: the time and the price of each, fastest first.": "À pied, en vol, en bateau ou en zeppelin, ou avec la Pierre de foyer : le temps et le prix de chaque trajet, le plus rapide d'abord.",
  "On the picture": "Sur l'image",
  "ON THIS COMPUTER": "SUR CET ORDINATEUR",
  "On vendor windows; sells grey items only when you click it.": "Dans les fenêtres de marchand ; ne vend les objets gris que si tu cliques dessus.",
@@ -1248,6 +1258,7 @@ window.BF_LOCALE_FR = {
  "Players saw it drop": "Des joueurs l'ont vu tomber",
  "Playing": "Joue à",
  "Playing now": "En jeu",
+ "plus the wait": "plus l'attente",
  "Pocket money": "Argent de poche",
  "point waiting to be spent": "point à dépenser",
  "Points per point of each stat. Every gear verdict for this character uses them: this plan, dungeon loot, item cards, the sheet and the upgrade marks in game (after the next /reload).": "Points par point de chaque stat. Chaque verdict d'équipement pour ce personnage les utilise : ce plan, le butin de donjon, les fiches d'objet, la fiche et les marques d'amélioration en jeu (après le prochain /reload).",
@@ -1395,6 +1406,7 @@ window.BF_LOCALE_FR = {
  "record in your saved file": "note dans ton fichier de sauvegarde",
  "records in your saved file": "notes dans ton fichier de sauvegarde",
  "Recovery point": "Point de restauration",
+ "reference": "référence",
  "Reference edition": "Édition de la référence",
  "Reference herbs and ore": "Herbes et minerais de référence",
  "Reference missing": "Référence manquante",
@@ -1474,6 +1486,7 @@ window.BF_LOCALE_FR = {
  "Reviewed on another build of this patch, in use": "Relu sur un autre build de ce patch, utilisé",
  "Reviewed report snapshot": "Copie du rapport relu",
  "Rewards": "Récompenses",
+ "Ride times are worked out from the path in your game files and the recorded speed; they are estimates.": "Les durées de trajet sont calculées à partir du parcours dans tes fichiers de jeu et de la vitesse enregistrée ; ce sont des estimations.",
  "right beside the game.": "juste à côté du jeu.",
  "Right for your level": "Bon pour ton niveau",
  "Right for your level · Alliance-side entrance; reachable but deep in enemy territory.": "Bon pour ton niveau · Entrée côté Alliance ; accessible mais loin en territoire ennemi.",
@@ -1691,6 +1704,10 @@ window.BF_LOCALE_FR = {
  "Switch overlay off": "Désactiver l'overlay",
  "Switch overlay on": "Activer l'overlay",
  "Switching it off or closing the app removes the status.": "Le désactiver ou fermer l'application supprime le statut.",
+ "Take the airship from": "Prends l'aéronef de",
+ "Take the boat from": "Prends le bateau de",
+ "Take the tram from": "Prends le tram de",
+ "Take the zeppelin from": "Prends le zeppelin de",
  "Take your first flight.": "Prends ton premier vol.",
  "takes one at each level-up and boss kill.": "en prend une à chaque niveau gagné et à chaque boss vaincu.",
  "Talent planner and trainer costs": "Planificateur de talents et coût des maîtres",
@@ -1723,6 +1740,7 @@ window.BF_LOCALE_FR = {
  "The in-game Compass (": "La Boussole en jeu (",
  "The last save does not confirm this route transition.": "La dernière sauvegarde ne confirme pas ce passage de la route.",
  "The Ledger also works out craft profit from the prices you saw, plans the way to a reputation standing, and lists the mounts, pets and recipes you hold. Plans → Calendar shows every cooldown and mail expiry.": "Le Registre calcule aussi le profit d'artisanat à partir des prix que tu as vus, planifie le chemin vers un niveau de réputation et liste les montures, mascottes et recettes que tu possèdes. Plans → Calendrier montre chaque temps de recharge et chaque expiration de courrier.",
+ "The legs before and after are measured to the middle of each city.": "Les étapes avant et après sont mesurées jusqu'au centre de chaque ville.",
  "The Linux build does not update itself. Download the new AppImage from the releases page; your journal stays.": "La version Linux ne se met pas à jour toute seule. Télécharge la nouvelle AppImage sur la page des versions ; ton journal reste.",
  "The live link is off. Turn it on in Settings → Game connection.": "Le lien direct est désactivé. Active-le dans Réglages → Connexion au jeu.",
  "The macOS-arm64 zip for Apple silicon, or macOS-x64 for Intel.": "Le zip macOS-arm64 pour Apple silicon, ou macOS-x64 pour Intel.",
@@ -1744,9 +1762,15 @@ window.BF_LOCALE_FR = {
  "The thin dark line along the top edge of the game that lets this app follow you, even behind other windows. /bf live safe draws a sturdier corner strip for remote desktop.": "La fine ligne sombre le long du bord supérieur du jeu qui permet à cette app de te suivre, même derrière d'autres fenêtres. /bf live safe dessine une bande de coin plus solide pour le bureau à distance.",
  "The time is clock time from login (or /reload) to the last moment the addon saw you, time away from the keyboard included. The change is everything that moved your gold: loot, quests, selling, repairs, training, mail and auctions.": "Le temps est le temps d'horloge entre la connexion (ou /reload) et le dernier moment où l'addon t'a vu, absences comprises. La variation compte tout ce qui a fait bouger ton or : butin, quêtes, ventes, réparations, apprentissage, courrier et enchères.",
  "The value of what you looted is not shown: the addon does not record loot outside dungeons.": "La valeur de ton butin n'est pas affichée : l'addon ne note pas le butin hors des donjons.",
+ "The wait for the next departure is not in the time: nobody can know where each transport is when you get there.": "L'attente du prochain départ n'est pas comptée dans le temps : personne ne peut savoir où est chaque transport quand tu arrives.",
+ "The wait for the next departure is not in the time: nobody can know where the airship is when you get there.": "L'attente du prochain départ n'est pas comptée dans le temps : personne ne peut savoir où est l'aéronef quand tu arrives.",
+ "The wait for the next departure is not in the time: nobody can know where the boat is when you get there.": "L'attente du prochain départ n'est pas comptée dans le temps : personne ne peut savoir où est le bateau quand tu arrives.",
+ "The wait for the next departure is not in the time: nobody can know where the zeppelin is when you get there.": "L'attente du prochain départ n'est pas comptée dans le temps : personne ne peut savoir où est le zeppelin quand tu arrives.",
  "The zone you are in": "La zone où tu es",
  "There is nothing to save yet.": "Il n'y a encore rien à enregistrer.",
  "There's no reload needed for the native Compass: it follows quests, levels and zones as you play, and the desktop catches up when the game saves. Quest reference updates and app updates are separate from AI and send nothing from your journal.": "Pas besoin de /reload pour la Boussole en jeu : elle suit les quêtes, les niveaux et les zones pendant que tu joues, et l'app rattrape quand le jeu sauvegarde. Les mises à jour de la référence de quêtes et celles de l'app sont séparées de l'IA et n'envoient rien de ton journal.",
+ "These places are on different continents, and no boat or zeppelin this character can board connects them in the data.": "Ces lieux sont sur des continents différents, et aucun bateau ni zeppelin que ce personnage peut prendre ne les relie dans les données.",
+ "These places are on different continents. Where boats and zeppelins stop is read from your own game files, and no game folder is connected, so the app cannot cross the sea yet.": "Ces lieux sont sur des continents différents. Les arrêts des bateaux et des zeppelins sont lus dans tes propres fichiers de jeu, et aucun dossier de jeu n'est connecté ; l'app ne peut donc pas encore traverser la mer.",
  "These previews are never added to Explain my plan or tracked quest steps.": "Ces aperçus ne sont jamais ajoutés à Explique mon plan ni aux étapes de quête suivies.",
  "These run inside WoW. Type the command in chat to switch one on or off; add": "Elles tournent dans WoW. Tape la commande dans le chat pour en activer ou désactiver une ; ajoute",
  "Thin": "Mince",
@@ -1769,6 +1793,7 @@ window.BF_LOCALE_FR = {
  "Thu": "Jeu",
  "Time": "Temps",
  "Time logged in": "Temps connecté",
+ "time not recorded": "durée non notée",
  "Time played when each level was reached": "Temps joué quand chaque niveau a été atteint",
  "Time to replace": "À remplacer",
  "timed runs": "runs chronométrés",
@@ -1776,6 +1801,7 @@ window.BF_LOCALE_FR = {
  "Times come from the game when the addon last saved; they keep counting down here.": "Les temps viennent du jeu à la dernière sauvegarde de l'addon ; ils continuent de s'écouler ici.",
  "Times of day, exact positions or your location now": "Les heures, les positions exactes ou l'endroit où tu es maintenant",
  "Title or exact quest ID": "Titre ou numéro exact de quête",
+ "to": "à",
  "to be explicit.": "pour être précis.",
  "To do": "À faire",
  "to find anyone, and": "pour trouver n'importe qui, et",
@@ -1874,6 +1900,7 @@ window.BF_LOCALE_FR = {
  "Waist": "Taille",
  "wait for steps this route does not have": "attendent des étapes que cet itinéraire n'a pas",
  "Wait for your Hearthstone": "Attends ta pierre de foyer",
+ "Walk to the next departure at": "Marche jusqu'au prochain départ à",
  "Wand DPS": "DPS de la baguette",
  "Warlock": "Démoniste",
  "Warrior": "Guerrier",
@@ -2051,6 +2078,14 @@ window.BF_LOCALE_FR = {
 };
 window.BF_LOCALE_FR_TEMPLATES = [
  [
+  "^Boats, zeppelins and airships: the data names ([0-9][0-9.,:/%–-]*); ([0-9][0-9.,:/%–-]*) have their stops in your game files\\. Stops, ride times and factions are worked out from those files and are estimates\\. The wait for the next departure is never known\\. The Deeprun Tram is known only from a published guide: no place and no time\\. Portals are not in this data\\.$",
+  "Bateaux, zeppelins et aéronefs : les données en nomment {#0} ; {#1} ont leurs arrêts dans tes fichiers de jeu. Les arrêts, les durées de trajet et les factions sont calculés à partir de ces fichiers et sont des estimations. L'attente du prochain départ n'est jamais connue. Le Tram des profondeurs n'est connu que par un guide publié : ni lieu ni durée. Les portails ne sont pas dans ces données.",
+  [
+   0,
+   1
+  ]
+ ],
+ [
   "^For each slot: what you wear and up to ([0-9][0-9.,:/%–-]*) upgrades you can use now or within ([0-9][0-9.,:/%–-]*) levels, best first by your stat weights\\. A suggestion from the data on this computer, not a best-in-slot list\\. Pin one target per slot; pinned targets are marked in the in-game atlas like your wish list after the next /reload\\.$",
   "Pour chaque emplacement : ce que tu portes et jusqu'à {#0} améliorations utilisables maintenant ou d'ici {#1} niveaux, la meilleure d'abord selon tes poids de stats. Une suggestion tirée des données de cet ordinateur, pas une liste best-in-slot. Épingle une cible par emplacement ; les cibles épinglées sont marquées dans l'atlas en jeu comme ta liste de souhaits après le prochain /reload.",
   [
@@ -2073,16 +2108,6 @@ window.BF_LOCALE_FR_TEMPLATES = [
    0,
    1,
    2
-  ]
- ],
- [
-  "^Flight times and prices are what players recorded on game builds ([0-9][0-9.,:/%–-]*) to ([0-9][0-9.,:/%–-]*) \\(([0-9][0-9.,:/%–-]*) of ([0-9][0-9.,:/%–-]*) connections timed\\)\\. Boats, zeppelins, the tram and portals are not in this data\\.$",
-  "Les temps et les prix de vol sont ceux que les joueurs ont enregistrés sur les builds {#0} à {#1} ({#2} liaisons chronométrées sur {#3}). Les bateaux, les zeppelins, le tram et les portails ne sont pas dans ces données.",
-  [
-   0,
-   1,
-   2,
-   3
   ]
  ],
  [
@@ -2130,6 +2155,16 @@ window.BF_LOCALE_FR_TEMPLATES = [
   [
    0,
    1
+  ]
+ ],
+ [
+  "^Flight times and prices are what players recorded on game builds ([0-9][0-9.,:/%–-]*) to ([0-9][0-9.,:/%–-]*) \\(([0-9][0-9.,:/%–-]*) of ([0-9][0-9.,:/%–-]*) connections timed\\)\\.$",
+  "Les temps et les prix de vol sont ceux que les joueurs ont enregistrés sur les builds {#0} à {#1} ({#2} liaisons chronométrées sur {#3}).",
+  [
+   0,
+   1,
+   2,
+   3
   ]
  ],
  [
@@ -2192,11 +2227,42 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^Worked out the same way, a full round of the zeppelin \\((.+?)\\) takes about ([0-9][0-9.,:/%–-]*) min\\.$",
+  "Calculé de la même façon : un tour complet du zeppelin ({0}) prend environ {#1} min.",
+  [
+   0,
+   1
+  ]
+ ],
+ [
+  "^Worked out the same way, a full round of the airship \\((.+?)\\) takes about ([0-9][0-9.,:/%–-]*) min\\.$",
+  "Calculé de la même façon : un tour complet de l'aéronef ({0}) prend environ {#1} min.",
+  [
+   0,
+   1
+  ]
+ ],
+ [
   "^Quest area reported by the game; not an exact NPC or spawn location · ([0-9][0-9.,:/%–-]*), ([0-9][0-9.,:/%–-]*)$",
   "Zone de quête indiquée par le jeu ; pas un lieu exact de PNJ ou d'apparition · {0}, {1}",
   [
    0,
    1
+  ]
+ ],
+ [
+  "^Worked out the same way, a full round of the boat \\((.+?)\\) takes about ([0-9][0-9.,:/%–-]*) min\\.$",
+  "Calculé de la même façon : un tour complet du bateau ({0}) prend environ {#1} min.",
+  [
+   0,
+   1
+  ]
+ ],
+ [
+  "^Worked out the same way, a full round of the boat takes about ([0-9][0-9.,:/%–-]*) min\\.$",
+  "Calculé de la même façon : un tour complet du bateau prend environ {#0} min.",
+  [
+   0
   ]
  ],
  [
@@ -2209,6 +2275,21 @@ window.BF_LOCALE_FR_TEMPLATES = [
  [
   "^([0-9][0-9.,:/%–-]*) of a level in rested XP: double experience until it runs out\\.$",
   "{0} d'un niveau en XP de repos : double expérience jusqu'à épuisement.",
+  [
+   0
+  ]
+ ],
+ [
+  "^Boats and zeppelins: ([0-9][0-9.,:/%–-]*) of ([0-9][0-9.,:/%–-]*) have their stops in your game files\\.$",
+  "Bateaux et zeppelins : {#0} sur {#1} ont leurs arrêts dans tes fichiers de jeu.",
+  [
+   0,
+   1
+  ]
+ ],
+ [
+  "^The data does not say which faction may board the airship \\((.+?)\\)\\.$",
+  "Les données ne disent pas quelle faction peut prendre l'aéronef ({0}).",
   [
    0
   ]
@@ -2245,6 +2326,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
    0,
    1,
    2
+  ]
+ ],
+ [
+  "^The data does not say which faction may board the boat \\((.+?)\\)\\.$",
+  "Les données ne disent pas quelle faction peut prendre le bateau ({0}).",
+  [
+   0
   ]
  ],
  [
@@ -2890,6 +2978,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^Stay on board at (.+?)\\.$",
+  "Reste à bord à : {0}.",
+  [
+   0
+  ]
+ ],
+ [
   "^([0-9][0-9.,:/%–-]*) items from ([0-9][0-9.,:/%–-]*) boss$",
   "{0} objets sur {1} boss",
   [
@@ -3002,6 +3097,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^(.+?) zeppelin tower$",
+  "Tour de zeppelin de {0}",
+  [
+   0
+  ]
+ ],
+ [
   "^bags ([0-9][0-9.,:/%–-]*) hours ago$",
   "sacs il y a {0} heures",
   [
@@ -3108,6 +3210,20 @@ window.BF_LOCALE_FR_TEMPLATES = [
   ]
  ],
  [
+  "^(.+?) airship dock$",
+  "Quai d'aéronef de {0}",
+  [
+   0
+  ]
+ ],
+ [
+  "^(.+?) tram station$",
+  "Station de tram de {0}",
+  [
+   0
+  ]
+ ],
+ [
   "^Level ([0-9][0-9.,:/%–-]*) (.+?) · (.+?) · (.+?)$",
   "{1} niveau {0} · {2} · {3}",
   [
@@ -3207,6 +3323,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
  [
   "^Skill path ([0-9][0-9.,:/%–-]*)$",
   "Parcours de compétence {#0}",
+  [
+   0
+  ]
+ ],
+ [
+  "^about ([0-9][0-9.,:/%–-]*) min$",
+  "environ {#0} min",
   [
    0
   ]
@@ -3344,6 +3467,13 @@ window.BF_LOCALE_FR_TEMPLATES = [
  [
   "^up to ([0-9][0-9.,:/%–-]*)$",
   "jusqu'à {0}",
+  [
+   0
+  ]
+ ],
+ [
+  "^(.+?) dock$",
+  "Quai de {0}",
   [
    0
   ]

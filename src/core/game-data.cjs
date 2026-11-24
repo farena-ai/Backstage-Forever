@@ -42,6 +42,9 @@ const TABLES = {
   taxiPath: { fdid: 1067802, layout: 0xa303de51, opts: {} },
   questFactionReward: { fdid: 1282622, layout: 0x221ffdaa, opts: {} },
   spellLevels: { fdid: 1140079, layout: 0x7eb86fdc, opts: {} },
+  // Kind "transports": the waypoints of every path. Boats, zeppelins and airships ride one; their
+  // stops are the waypoints flagged as a stop. Columns: place, id, path, index, continent, flags, delay.
+  taxiPathNode: { fdid: 1000437, layout: 0xfe362e70, opts: { floats: [0] } },
 };
 const FORMAT = 1; // bump when the cached JSON shape or a formula changes
 // Table hashes of the two item tables inside the game's hotfix cache.
@@ -416,6 +419,41 @@ function extractExtras(storage) {
   return { extras: { flightPoints, flightCosts, repTiers, spellLevels }, notes };
 }
 
+// --- Boats, zeppelins and airships (kind "transports") -------------------------------------------
+const TRANSPORT_LIMITS = Object.freeze({ nodes: 400, stops: 6, paths: 64, jump: 2000 });
+/**
+ * transportPaths: path id -> { stops: [[continent, x, y, seconds docked]], yards: [..] } for every
+ * path that has two or more stop waypoints (TaxiPathNode flag 2 with a wait). The path is a loop:
+ * yards[i] is the length of the path from stop i to the next stop (the last one back to the first).
+ * Where the vehicle changes continent, is flagged to jump (flag 1) or the next waypoint is more
+ * than 2,000 yards away, nothing is counted: it is moved there, it does not sail there.
+ */
+function extractTransports(storage) {
+  const notes = [], byPath = new Map(), transportPaths = {};
+  for (const r of tryTable(storage, "taxiPathNode", notes) || []) {
+    const [pos, , pathId, index, continent, flags, delay] = r.fields;
+    if (!(pathId > 0) || !Number.isSafeInteger(index) || index < 0 || !Number.isSafeInteger(continent) || continent < 0 || !Array.isArray(pos) || !pos.slice(0, 3).every(Number.isFinite) || pos.length < 3) continue;
+    if (!byPath.has(pathId)) byPath.set(pathId, []);
+    byPath.get(pathId).push({ index, continent, x: pos[0], y: pos[1], z: pos[2], flags: flags >>> 0, delay: Number.isSafeInteger(delay) && delay > 0 ? delay : 0 });
+  }
+  for (const [id, list] of [...byPath].sort((a, b) => a[0] - b[0])) {
+    if (list.length < 2 || list.length > TRANSPORT_LIMITS.nodes) continue;
+    list.sort((a, b) => a.index - b.index);
+    if (list.some((n, i) => n.index !== i)) continue; // a path with a gap or a doubled waypoint is not trusted
+    const at = list.map((n, i) => (n.flags & 2 && n.delay ? i : -1)).filter((i) => i >= 0);
+    if (at.length < 2 || at.length > TRANSPORT_LIMITS.stops || Object.keys(transportPaths).length >= TRANSPORT_LIMITS.paths) continue;
+    const step = (i) => {
+      const a = list[i], b = list[(i + 1) % list.length];
+      if (a.continent !== b.continent || a.flags & 1) return 0;
+      const d = Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+      return d > TRANSPORT_LIMITS.jump ? 0 : d;
+    };
+    const yards = at.map((from, k) => { const to = at[(k + 1) % at.length]; let sum = 0; for (let i = from; i !== to; i = (i + 1) % list.length) sum += step(i); return Math.round(sum); });
+    transportPaths[id] = { stops: at.map((i) => [list[i].continent, Math.round(list[i].x * 10) / 10, Math.round(list[i].y * 10) / 10, list[i].delay]), yards };
+  }
+  return { transports: { transportPaths }, notes };
+}
+
 // --- Service -----------------------------------------------------------------------------------
 class GameData {
   constructor({ getRoot, cacheDir, idleMs = 60000, open = null, maxFileBytes = 32 * 1024 * 1024, maxIconBytes = 16 * 1024 * 1024, maxIconSide = 256, memoryIcons = 128, hotfixCheckMs = 30000 }) {
@@ -510,7 +548,7 @@ class GameData {
       const spells = kind === "talents" ? this.load("spells").spells : null;
       const s = this.open();
       try {
-        const r = kind === "items" ? extractItems(s, hot?.parsed) : kind === "spells" ? extractSpells(s) : kind === "recipes" ? extractRecipes(s) : kind === "extras" ? extractExtras(s) : extractTalents(s, spells);
+        const r = kind === "items" ? extractItems(s, hot?.parsed) : kind === "spells" ? extractSpells(s) : kind === "recipes" ? extractRecipes(s) : kind === "extras" ? extractExtras(s) : kind === "transports" ? extractTransports(s) : extractTalents(s, spells);
         value = { [kind]: r[kind], notes: r.notes };
         if (kind === "items") { value.hotfix = hot.signature; value.hotfixItems = r.hotfixItems; this.iconIds = null; }
       } finally { this.idle(); }
@@ -573,6 +611,10 @@ class GameData {
   /** Flight points and flight prices from the game files: { points, costs } (see extractExtras), or null. */
   flights() {
     try { const e = this.load("extras").extras; return Object.keys(e.flightPoints).length ? { points: e.flightPoints, costs: e.flightCosts } : null; } catch { return null; }
+  }
+  /** Stops and path lengths of the boats, zeppelins and airships (see extractTransports), or null. */
+  transportPaths() {
+    try { const v = this.load("transports").transports.transportPaths; return Object.keys(v).length ? v : null; } catch { return null; }
   }
   /** What each quest reputation size pays in this game: { gain, loss }, or null. */
   repTiers() {
@@ -655,4 +697,4 @@ class GameData {
   }
 }
 
-module.exports = { GameData, arithmetic, TABLES, CLASSES, SLOTS, STATS, itemView, spellView, resolveDescription, extractItems, extractSpells, extractTalents, extractRecipes, extractExtras, propIndex };
+module.exports = { GameData, arithmetic, TABLES, CLASSES, SLOTS, STATS, itemView, spellView, resolveDescription, extractItems, extractSpells, extractTalents, extractRecipes, extractExtras, extractTransports, propIndex };

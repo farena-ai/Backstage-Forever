@@ -1110,7 +1110,7 @@ app.whenReady().then(async () => {
     if (ledgerPrices.key !== key) ledgerPrices = { key, index: L.priceIndex(profiles) };
     return L.priceFor(ledgerPrices.index, id);
   };
-  const travelPlanner = require("./core/travel-planner-ipc.cjs").registerTravelPlannerHandlers({ handle, getState: () => store.state, gameData });
+  const travelPlanner = require("./core/travel-planner-ipc.cjs").registerTravelPlannerHandlers({ handle, getState: () => store.state, gameData, reference: travelReference });
   handle("talentCoach", (input) => {
     const className = typeof input?.className === "string" ? input.className.slice(0, 20) : null;
     const level = Number.isInteger(input?.level) && input.level >= 1 && input.level <= 100 ? input.level : null;

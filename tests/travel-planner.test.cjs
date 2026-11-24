@@ -61,7 +61,8 @@ test("options come fastest first with time and price each, and say what is assum
   assert.equal(fly.assumed, true); assert.match(fly.notes[0], /^If you know these flight points/);
   assert.ok(fly.notes.some((n) => /does not land in between/.test(n)));
   assert.ok(r.options[0].seconds <= r.options[1].seconds);
-  assert.match(r.coverage, /Boats, zeppelins, the tram and portals are not in this data/);
+  assert.match(r.coverage, /connections timed\)\.$/);
+  assert.match(r.transportNote, /Boats, zeppelins, the tram and portals are not in this data/);
   assert.ok(r.notes.some((n) => /Hearthstone: the saved character data does not say/.test(n)));
 });
 
