@@ -59,8 +59,9 @@ BackstageForeverProfileLimits={code=MAX_CODE,settings=MAX_SETTINGS_CODE,depth=MA
 local B={'b'}
 local function N(lo,hi,whole) return {'n',lo,hi,whole} end
 local function E(...) local set={} for _,v in ipairs({...}) do set[v]=true end return {'e',set} end
-local function M(fields) return {'m',fields} end
-local XY=M({x=N(0,1e7),y=N(0,1e7)})
+local function M(fields,whole) return {'m',fields,whole} end
+-- A position needs both numbers.
+local XY=M({x=N(0,1e7),y=N(0,1e7)},true)
 local ANCHOR=E('TOPLEFT','TOP','TOPRIGHT','LEFT','CENTER','RIGHT','BOTTOMLEFT','BOTTOM','BOTTOMRIGHT')
 -- Each entry: the saved table, its settings, and how the owning file treats a missing key.
 -- fill: the owner fills in every setting at login, so a key the code lacks is left as it is.
@@ -123,7 +124,7 @@ local function check(spec,v)
         local out={}
         for key,sub in pairs(spec[2]) do
             local c=check(sub,rawget(v,key))
-            if c~=nil then out[key]=c end
+            if c~=nil then out[key]=c elseif spec[3] then return nil end
         end
         if next(out)==nil then return nil end
         return out
@@ -650,7 +651,7 @@ local function offered()
 end
 function BackstageForeverProfileCommand(message)
     local raw=type(message)=='string' and #message<=80 and message or ''
-    local arg,value=raw:lower():match('^profile%s*(%a*)%s*(%S*)')
+    local arg,value=raw:lower():match('^profile%s*(%a*)%s*(.-)%s*$')
     arg=arg or ''
     if arg=='' or arg=='export' or arg=='import' then
         if open() and arg=='export' and frame then frame.data:SetChecked(value=='data') end
