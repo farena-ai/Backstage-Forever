@@ -1033,7 +1033,8 @@ app.whenReady().then(async () => {
   require("./core/journey-more-ipc.cjs").registerJourneyMore({ handle, getState: () => store.state, challenges: challengeRuns, journey: journeyStore, presence: discordPresence, presenceFacts });
   const presenceTimer = setInterval(() => { try { if (discordPresence.settings.enabled) discordPresence.update(presenceFacts()); } catch {} }, 20000);
   presenceTimer.unref?.();
-  app.on("before-quit", () => { void streamOverlay?.stop(); try { discordPresence?.stop(); } catch {} });
+  app.on("before-quit", () => { void streamOverlay?.stop(); });
+  app.on("before-quit", () => { try { discordPresence?.stop(); } catch {} });
   void journeyExtras.resume();
   clearJourneyExtras = () => { void streamOverlay.stop(); journeyStore.clear(); shotThumbs.clear(); try { challengeRuns.clear(); discordPresence.clear(); } catch {} };
   const economyTimer = setInterval(() => { try { economyPages.tick(); } catch {} }, 60000);

@@ -14,8 +14,8 @@ window.JourneyMore = (() => {
   // ---- Challenge run ----
   function ruleForm(d, busy) {
     const r = d.rules || {};
-    const tick = (id, checked) => `<input type="checkbox" id="jm-rule-${id}" name="${id}"${checked ? " checked" : ""}>`;
     const option = (id) => d.options.find((o) => o.id === id);
+    const tick = (id, checked) => `<input type="checkbox" aria-label="${esc(option(id).name)}" id="jm-rule-${id}" name="${id}"${checked ? " checked" : ""}>`;
     const line = (id, checked, extra = "") => `<li>${tick(id, checked)}<label for="jm-rule-${id}"><strong>${esc(option(id).name)}</strong><span>${esc(option(id).what)}</span></label>${extra}</li>`;
     return `<form class="jx-panel jm-form" data-challenge-form><h3>${d.run ? "Start again with these rules" : "Choose your rules"}</h3>
       <ul class="jm-options">${line("oneLife", r.oneLife)}${line("noAuction", r.noAuction)}${line("selfFound", r.selfFound)}
@@ -54,7 +54,7 @@ window.JourneyMore = (() => {
   };
   function discord(d, { note, busy }) {
     if (!d) return wait("Reading the Discord switch…");
-    const tick = (key, label) => `<li><input type="checkbox" id="jm-dc-${key}" data-discord-tick="${key}"${d[key] ? " checked" : ""}${busy ? " disabled" : ""}><label for="jm-dc-${key}">${label}</label></li>`;
+    const tick = (key, label) => `<li><input type="checkbox" aria-label="${label}" id="jm-dc-${key}" data-discord-tick="${key}"${d[key] ? " checked" : ""}${busy ? " disabled" : ""}><label for="jm-dc-${key}">${label}</label></li>`;
     return `<section class="jr-card jm-discord" data-journey-discord><div class="jx-head"><div><h2>Discord status</h2><p class="jx-lead">Shows a line such as “Level 34 Hunter in Stranglethorn Vale” on your own Discord. Optional and off until you switch it on.</p></div>
         <button type="button" class="jx-switch" data-discord-toggle aria-pressed="${d.enabled}"${busy ? " disabled" : ""}>${d.enabled ? "Switch Discord status off" : "Switch Discord status on"}</button></div>
       <div class="jx-ov-grid"><div class="jx-panel">
