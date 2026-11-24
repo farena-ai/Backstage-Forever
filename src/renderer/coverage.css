@@ -39,3 +39,13 @@
 .cov-n { text-align: right; font-weight: 800; }
 .cov-foot, .cov-empty { margin: 0; color: #c9b48a; font-size: 13px; }
 .cov-all { color: #e7d3a6; font-size: 13px; }
+/* Help fill this zone: one quiet line of what is missing on thin zone cards, and how to help. */
+.cov-fill { margin: 0; padding: 8px 12px 10px; border-top: 1px dashed #8a6a3a; font-size: 13px; line-height: 1.4; color: #4a3218; background: rgba(246,196,69,.12); }
+.cov-fill strong { display: block; margin-bottom: 2px; color: #3d220c; }
+.cov-fill ul { margin: 0; padding-left: 18px; }
+.cov-help { padding: 14px 16px; border: 1px dashed #a5823e; border-radius: 8px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; }
+.cov-help h2 { margin: 0 0 6px; font: 700 18px Cinzel, Georgia, serif; color: #3d220c; }
+.cov-help p { margin: 0 0 6px; }
+.cov-help p:last-child { margin-bottom: 0; }
+.cov-help code { padding: 0 4px; border-radius: 3px; background: rgba(61,34,12,.12); font-family: Consolas, 'Cascadia Mono', monospace; }
+.cov-help ol { margin: 0 0 6px; padding-left: 20px; }

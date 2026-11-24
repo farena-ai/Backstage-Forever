@@ -444,7 +444,8 @@ test("the finder index covers more kinds within its size cap, and reproduces", (
   assert.ok(Buffer.byteLength(text) < MAX_BYTES, `finder file is ${Buffer.byteLength(text)} bytes`);
   const c = coverage();
   assert.ok(c.rows >= 2800 && c.maps >= 40, JSON.stringify(c));
-  for (const kind of ["f", "t", "v", "q", "n", "x", "h", "o", "r", "c", "m"]) assert.ok(c.kinds[kind] > 0, `no rows of kind ${kind}`);
+  for (const kind of ["f", "t", "v", "q", "n", "x", "h", "o", "r", "c", "m", "d", "b"]) assert.ok(c.kinds[kind] > 0, `no rows of kind ${kind}`);
+  assert.ok(c.quests >= 1000, "quests players met in Forever point at their givers");
   assert.ok(c.kinds.f >= 30, "flight masters come from the transport pack too");
   assert.ok(c.kinds.q >= 500 && c.items >= 900);
   assert.ok(c.kinds.r === W.loadWorldPack().rares.filter((r) => r.positions.length).length, "only rares with a place can be found");
@@ -474,6 +475,18 @@ assert(BackstageForeverFindDescribe(f[1].r,f[1].item):find(' sells '..ware,1,tru
 local giver for _,r in ipairs(BackstageForeverFindData) do if r[6]=='q' and r[2]:match('^Quest: [%a ]+$') and #r[2]>14 then giver=r break end end
 local title=giver[2]:match('^Quest: ([%a ]+)$')
 f=first(title) local hit=false for _,x in ipairs(f) do if x.r==giver or x.r[1]==giver[1] then hit=true end end assert(hit,'quest title '..title)
+-- Any quest players met finds its giver, not only the first quest a giver hands out; the list says how many matched.
+local quest=BackstageForeverFindQuests[1]
+assert(type(quest[1])=='string' and type(quest[2])=='number' and BackstageForeverFindData[quest[3]],'quest rows point at a giver row')
+f=first(quest[1]) hit=false for _,x in ipairs(f) do if x.quest==quest[1] and x.r==BackstageForeverFindData[quest[3]] then hit=true end end assert(hit,'quest '..quest[1])
+assert(type(f.total)=='number' and f.total>=#f)
+assert(BackstageForeverFindDescribe(BackstageForeverFindData[quest[3]],nil,quest[1],12):find(quest[1]..' (quest, level 12) from ',1,true))
+-- Dungeons and bosses are found at the entrance.
+f=first('dungeon') assert(#f>0 and f[1].r[6]=='d' and f[1].r[2]:find('Dungeon',1,true))
+local boss for _,r in ipairs(BackstageForeverFindData) do if r[6]=='b' then boss=r break end end
+f=first(boss[1]) hit=false for _,x in ipairs(f) do if x.r[6]=='b' and x.r[2]:find('^Boss in ') then hit=true end end assert(hit,'boss '..boss[1])
+msgs={} set=nil BackstageForeverFind('find '..boss[1]) local said=false for _,m in ipairs(msgs) do if m:find('This marks the entrance',1,true) then said=true end end assert(set and said)
+msgs={} set=nil BackstageForeverFind('find '..quest[1]) assert(set and msgs[1]:find(quest[1],1,true),msgs[1])
 assert(#first('zzzz')==0 and #first('')==0 and #first(string.rep('a',61))==0 and #first(nil)==0)
 assert(#first('trainer',3)==3,'the limit is kept')
 -- The command still sets the waypoint on the best match and names the others.
@@ -503,19 +516,33 @@ local events
 dofile('addon/BackstageForever/BackstageForeverMapSearch.lua')
 for _,w in ipairs(frames) do if w.scripts.OnEvent then events=w end end
 local rows=BackstageForeverMapSearchRows('mailbox',1413,.6,.1)
-assert(#rows>0 and #rows<=6 and rows[1].text=='Mailbox' and rows[1].where:match('^%d+%.%d, %d+%.%d$') and rows[1].way:match('^way 1413 [%d%.]+ [%d%.]+ Mailbox$'),rows[1].where)
+assert(#rows>0 and #rows<=8 and rows.total>=#rows and rows[1].kind=='m' and rows[1].text=='Mailbox' and rows[1].where:match('^%d+%.%d, %d+%.%d$') and rows[1].way:match('^way 1413 [%d%.]+ [%d%.]+ Mailbox$'),rows[1].where)
 local far for _,row in ipairs(BackstageForeverMapSearchRows('mailbox',1429,.5,.5)) do if row.where:find('^%a') then far=row end end
 assert(#BackstageForeverMapSearchRows('zzzz',1413,.6,.1)==0)
+-- A quest match names the quest and its giver; the waypoint goes to the giver.
+local quest=BackstageForeverFindQuests[1] local giver=BackstageForeverFindData[quest[3]]
+local qrow for _,row in ipairs(BackstageForeverMapSearchRows(quest[1],giver[3],.5,.5)) do if row.kind=='q' and row.text==quest[1]..' ('..giver[1]..')' then qrow=row end end
+assert(qrow and qrow.way:find(giver[1],1,true),'quest row for '..quest[1])
 -- Opening the map builds the box; a search fills rows; nothing is set until a click.
 events.scripts.OnEvent(events,'PLAYER_LOGIN')
 WorldMapFrame.scripts.OnShow()
 local box,buttons for _,w in ipairs(frames) do if w.kind=='EditBox' then box=w end end
 buttons={} for _,w in ipairs(frames) do if w.kind=='Button' then buttons[#buttons+1]=w end end
-assert(box and #buttons==6)
+assert(box and #buttons==8)
 for _,b in ipairs(buttons) do assert(b.shown==false) end
 set=nil box.text='mailbox' box.scripts.OnEnterPressed(box)
 assert(set==nil,'typing and Enter never set a waypoint')
 assert(buttons[1].shown==true and buttons[1].way:match('^way 1413 '))
+-- The results panel: a heading, a kind per row, and a line when there are more matches than rows.
+local panel,head for _,w in ipairs(frames) do if w.text=='Click a match for a waypoint.' then head=w end end
+assert(head,'the panel says a click sets the waypoint')
+assert(buttons[1].tag.text=='Mail' and buttons[1].label.text=='Mailbox' and buttons[1].where.text:match('^%d+%.%d, %d+%.%d$'))
+box.text='trainer' box.scripts.OnEnterPressed(box)
+local more for _,w in ipairs(frames) do if type(w.text)=='string' and w.text:find(' more. Type more letters.',1,true) then more=w end end
+assert(more and more.shown==true and buttons[8].shown==true and buttons[1].tag.text=='Trainer','eight rows and a count of the rest')
+box.text='zzzz' box.scripts.OnEnterPressed(box)
+assert(head.text=='No match in the bundled reference.' and buttons[1].shown==false)
+set=nil box.text='mailbox' box.scripts.OnEnterPressed(box)
 buttons[1].scripts.OnClick(buttons[1])
 assert(set and set.m==1413,'the click sets the waypoint')
 box.scripts.OnEscapePressed(box) for _,b in ipairs(buttons) do assert(b.shown==false and b.way==nil) end
@@ -540,7 +567,7 @@ test("the desktop wires the loop and the finder layers end to end", () => {
   assert.ok(html.indexOf('<script src="world-finders.js">') > 0 && html.indexOf('<script src="world-finders.js">') < html.indexOf('<script src="world-map.js">'));
   assert.match(html, /href="world-finders\.css"/);
   assert.match(wm, /World: \[\["rare", "Rare enemies"\], \["nodes", "Reference herbs and ore"\], \["chest", "Chests"\], \["mailbox", "Mailboxes"\]\]/);
-  assert.match(wm, /OFF_BY_DEFAULT = new Set\(\["npc", "otherFaction", "nodes", "chest", "mailbox"\]\)/, "the busy reference layers start off");
+  assert.match(wm, /OFF_BY_DEFAULT = new Set\(\["npc", "otherFaction", "nodes", "chest", "mailbox", "c-npc"\]\)/, "the busy reference layers start off");
   assert.match(wm, /\(!p\.reference \|\| layers\.nodes\)/);
   assert.match(wf, /extra = true, show = false,/, "the loop is not drawn until asked for");
   assert.match(wm, /window\.WorldFinders\?\.draw\(ctx, toScreen, model\?\.mapId\)/);

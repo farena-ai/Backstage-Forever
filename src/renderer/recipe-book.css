@@ -139,3 +139,5 @@
   .rb-maker { grid-template-columns: 104px minmax(0, 1fr); }
   .rb-maker > span:last-child { grid-column: 1 / -1; }
 }
+/* Search everything: the recipe you came for. */
+.rb-row.rb-found { background: rgba(246,196,69,.3); box-shadow: inset 3px 0 #b0401a; }

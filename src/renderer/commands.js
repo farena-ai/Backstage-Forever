@@ -10,7 +10,7 @@
     { group: "Finding your way", command: "/bf available", word: "available", what: "Lists the quests you can pick up on the map you are on, nearest first, with the giver, the quest level, the distance and the direction.", when: "When you arrive somewhere new and want to collect every quest before heading out.", example: "/bf available" },
     { group: "Finding your way", command: "/bf train", word: "train", what: "Puts the arrow on your class trainer (nearest in this zone, otherwise in your faction's cities) and lists what is new there at your level, each with its price and the total.", when: "After you level up. New skills usually arrive every two levels.", example: "/bf train" },
     { group: "Finding your way", command: "/bf repair", word: "repair", what: "Puts the arrow on the nearest vendor who can repair your gear. The addon also remembers every repair vendor you open.", when: "When the game or Backstage Forever says your gear is wearing out.", example: "/bf repair" },
-    { group: "Finding your way", command: "/bf find NAME", word: "find", what: "Finds an NPC, a quest giver (by name or quest title), something a vendor sells, a rare enemy, a herb, ore, chest or mailbox, and puts the arrow on the nearest match. Lists a few others too. The world map has the same search as a small box.", when: "Looking for a flight master, a trainer, a vendor, a quest, an item to buy or the nearest mailbox.", example: "/bf find mailbox" },
+    { group: "Finding your way", command: "/bf find NAME", word: "find", what: "Finds an NPC, a quest giver (by name or quest), a dungeon or boss, something a vendor sells, a rare enemy, herb, ore, chest or mailbox, and puts the arrow on the nearest match. Lists a few others too. The world map has the same search as a small box.", when: "Looking for a flight master, a trainer, a vendor, a quest, an item to buy or the nearest mailbox.", example: "/bf find mailbox" },
     { group: "Finding your way", command: "/bf way MapID X Y [name]", word: "way", what: "Puts the arrow on exact map coordinates. The app's World Map gives you this line ready to paste.", when: "When the app or a guide gives you coordinates.", example: "/bf way 1413 51.5 30.4 Crossroads" },
     { group: "Finding your way", command: "/bf hearth", word: "hearth", what: "Tells you where your Hearthstone takes you and, if you're questing in another zone, which inn to make your home instead.", when: "Before a long trip, or when you start questing somewhere new.", example: "/bf hearth" },
     { group: "Finding your way", command: "/bf flights", word: "flights", what: "Lists the flight masters in this zone and whether you've learned each flight path yet.", when: "When you arrive somewhere new. Learning a flight path lets you fly back later instead of running.", example: "/bf flights" },
@@ -112,7 +112,7 @@
     { name: "Quest progress in tooltips", where: "Hover an enemy in game", what: "If an enemy counts for one of your quests, its tooltip says which quest and how far along you are, like “Raptor Thieves: Raptor Head 3/12”. Drops count once you've looted that item from them." },
     { name: "Zone arrival banner", where: "Top of the screen", what: "When you enter a new zone: a painting of that zone with its name, its level range and how many quests there are for your level (capital cities just say so). Never in combat; /bf toasts turns it off with the other pop-ups." },
     { name: "Rare enemy alerts", where: "Chat", what: "When a rare enemy becomes your target or passes under your mouse: its name, whether it is a rare elite, its level, and what players saw it drop when someone recorded that. Once per rare per session, never in combat. /bf rares off silences it." },
-    { name: "Map search box", where: "Bottom left of the world map", what: "Type an NPC, a quest, an item a vendor sells, or herb, ore, rare, chest or mailbox and press Enter. Up to six matches appear; click one to put a waypoint on it. /bf mapsearch off hides the box." },
+    { name: "Map search box", where: "Bottom left of the world map", what: "Type an NPC, a quest, a dungeon or boss, an item a vendor sells, or herb, ore, rare, chest or mailbox and press Enter. A small panel lists up to eight matches with their kind and place; click one to put a waypoint on it. /bf mapsearch off hides the box." },
     { name: "Gathering spots on the minimap", where: "On your minimap in game", what: "The herbs, ore and chests you gathered or opened before, near you, as small icons, and the next stop of a running /bf loop. Past spots, not live nodes. Follows the Gathering marks switch." },
     { name: "Enemy player alerts", where: "Top of the screen and chat", what: "When an enemy player who can attack you becomes your target, passes under your mouse or shows a nameplate: \"Alliance level 32 Rogue nearby\" (or Horde), with their name and zone in chat. Once per player every 5 minutes, never in battlegrounds or arenas. /bf enemy lists who you saw." },
     { name: "Quality of life helpers", where: "Switched on with /bf qol", what: "Coordinates under the minimap; faster auto-loot that empties the loot window at once when the game is auto-looting anyway; getting off your mount when you open a flight master's map (out of combat); and instant quest text. All off until you turn them on." },
@@ -257,9 +257,17 @@
       <p class="cmd-foot">After installing or updating, type <code>/reload</code> in game once. New to WoW? The Field guide explains words like rested, hand in and elite.</p>
     </section>`;
   }
-  let bound = null;
+  let bound = null, wanted = null;
+  // Search everything: show one command (the list is filtered to it and the row is marked).
+  function focus(text) { filter = String(text || "").slice(0, 60); wanted = filter; }
   function mounted() {
     const root = document.querySelector("[data-commands]");
+    if (root && wanted) {
+      const want = wanted.toLowerCase(), rows = [...root.querySelectorAll("[data-cmd-list] .cmd-row")];
+      const row = rows.find((r) => r.querySelector(".cmd-name")?.textContent.toLowerCase().startsWith(want)) || rows[0];
+      wanted = null;
+      if (row) { row.classList.add("cmd-found"); row.scrollIntoView({ block: "center", behavior: "instant" }); }
+    }
     if (!root || bound === root) return;
     bound = root;
     root.addEventListener("input", (e) => {
@@ -275,5 +283,5 @@
       setTimeout(() => { b.textContent = "Copy"; }, 1500);
     });
   }
-  window.CommandsView = { page, mounted, CATALOG, FEATURES, APP, scopedQuest, scopedPractice };
+  window.CommandsView = { page, mounted, focus, CATALOG, FEATURES, APP, scopedQuest, scopedPractice };
 })();

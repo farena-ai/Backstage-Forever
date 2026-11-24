@@ -14,6 +14,14 @@ window.CoverageView = (() => {
     ["flightMasters", "Flight masters", "pins/flight", 1],
   ];
   const level = (n, good) => (n >= good ? "rich" : n >= Math.ceil(good / 3) ? "some" : n > 0 ? "thin" : "none");
+  // "Help fill this zone": what is missing, in plain words. Counts stay outside the sentences so they translate.
+  const GAP_WORDS = {
+    questGivers: ["No quest givers are placed here yet.", "quest givers placed here; a zone like this usually has many more."],
+    flightMasters: ["No flight master is placed here. Some zones have none.", ""],
+    trainers: ["No trainers are placed here yet.", ""],
+    vendors: ["No vendors are placed here yet.", "vendors placed here; there are usually more."],
+  };
+  const gapLines = (gap) => (gap?.missing || []).filter((m) => GAP_WORDS[m.key]).map((m) => `<li data-gap="${esc(m.key)}">${m.count ? `<b>${m.count}</b> <span>${GAP_WORDS[m.key][1]}</span>` : `<span>${GAP_WORDS[m.key][0]}</span>`}</li>`).join("");
   function zoneCard(z) {
     const f = z[faction];
     const art = window.ZoneArt?.url(z.mapId);
@@ -25,7 +33,7 @@ window.CoverageView = (() => {
     const verdict = score >= 0.7 ? ["Well covered", "good"] : score >= 0.35 ? ["Partly covered", "mid"] : ["Thin", "low"];
     return `<article class="cov-card ${z.faction === faction || z.faction === "Contested" ? "" : "cov-other"}">
       <header class="cov-head"${art ? ` data-art="${esc(art)}"` : ""}><div><h3>${esc(z.name)}</h3><span>Levels ${z.min}–${z.max} · ${esc(z.faction)}</span></div><em class="cov-verdict ${verdict[1]}">${verdict[0]}</em></header>
-      <ul class="cov-meters">${meters}</ul></article>`;
+      <ul class="cov-meters">${meters}</ul>${z.gaps?.[faction] ? `<div class="cov-fill" data-cov-fill="${z.mapId}"><strong>Help fill this zone</strong><ul>${gapLines(z.gaps[faction])}</ul></div>` : ""}</article>`;
   }
   function body() {
     if (error) return `<p class="cov-empty">${esc(error)}</p>`;
@@ -34,6 +42,12 @@ window.CoverageView = (() => {
     const mine = zones.filter((z) => z.faction === faction || z.faction === "Contested");
     const thin = mine.filter((z) => KINDS.reduce((t, [k, , , g]) => t + Math.min(1, z[faction][k] / g), 0) / KINDS.length < 0.35);
     return `<p class="cov-summary"><strong>${mine.length - thin.length} of ${mine.length}</strong> zones for ${esc(faction)} players have useful coverage.${thin.length ? ` Thin so far: ${thin.slice(0, 8).map((z) => esc(z.name)).join(", ")}${thin.length > 8 ? "…" : ""}.` : ""}</p>
+      ${mine.some((z) => z.gaps?.[faction]) ? `<section class="cov-help" data-cov-help aria-labelledby="cov-help-title"><h2 id="cov-help-title">Help fill a thin zone</h2>
+        <p>Zones marked <strong>Help fill this zone</strong> below are short of the basics: who gives quests, where the flight master and the trainers stand. If you play there, you can help.</p>
+        <ol><li><span>In game, type</span> <code>/bf scout on</code><span>. Then talk to quest givers, trainers, vendors and flight masters as you normally would.</span></li>
+        <li><span>Type</span> <code>/reload</code> <span>or log out. Your notes are now in your saved file, on your computer only.</span></li>
+        <li><span>Use</span> <strong>Save my scout notes…</strong> <span>at the bottom of this page if you want to send them to the team.</span></li></ol>
+        <p>Herb, ore and chest spots are different: they reach other players on their own while community sharing is on (Settings → Privacy & sharing).</p></section>` : ""}
       <div class="cov-grid">${(showAll ? zones : mine).map(zoneCard).join("")}</div>
       <label class="cov-all"><input type="checkbox" data-cov-all ${showAll ? "checked" : ""}> Also show the other faction's zones</label>
       <p class="cov-foot">Counts come from community observations bundled with the app (${esc(data.source?.attribution || "Efficient Games, CC BY 4.0")}${data.source?.builds ? `; game builds ${esc(data.source.builds.map((b) => (typeof b === "string" ? b : b?.build)).filter(Boolean).join(", "))}` : ""}${data.source?.observedThrough ? `; observed through ${esc(data.source.observedThrough)}` : ""}). They grow as more players contribute and the app updates; your own game also fills in repair vendors and flight paths as you meet them.</p>
@@ -112,5 +126,5 @@ window.CoverageView = (() => {
     if (!data) { try { data = await api.dataCoverage(); } catch (e) { error = e.message || "Coverage is unavailable."; } }
     paint();
   }
-  return { page: (profile, routeBuild) => { faction = faction || "Horde"; return page(profile, routeBuild); }, mounted, KINDS, level, _state: () => ({ data, faction }) };
+  return { page: (profile, routeBuild) => { faction = faction || "Horde"; return page(profile, routeBuild); }, mounted, KINDS, level, gapLines, _state: () => ({ data, faction }) };
 })();

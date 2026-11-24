@@ -1238,6 +1238,35 @@ app.whenReady().then(async () => {
     atlas.progression = dungeonProgression("dm", profile, wishlist.get(profile?.id));
     return atlas;
   });
+  // World search ("Search everything", Ctrl+K): one index over the bundled reference, the player's own game
+  // files, the community pack and the app's commands and help. Built on first use, kept per data version.
+  let searchSources = null;
+  const worldSearch = new (require("./core/world-search.cjs").WorldSearch)({
+    gameData, getProfile: () => worldMap.profile(), getCommunity: () => community?.index() || null, getLive: () => worldMap.liveFrame(worldMap.profile()),
+    sources: () => (searchSources ||= (() => {
+      const optional = (fn) => { try { return fn(); } catch { return null; } };
+      const knowledgePack = knowledge?.bundled?.pack || null;
+      return {
+        knowledgePack, pins: worldMap.static, vendorPack: companionService.vendorPack, insights, worldPack: worldMap.worldPack, creatures: worldMap.creatures,
+        transport: optional(() => require("./core/transport-data.cjs").loadTransportPack()),
+        trainerPack: optional(() => require("./core/trainer-data.cjs").loadTrainerPack()),
+        lootPack: optional(() => require("./core/loot-data.cjs").loadLootPack()),
+        bossLootPack: optional(() => require("./core/boss-loot-data.cjs").loadBossLootPack()),
+        atlas: optional(() => buildAtlas({ profile: null, encounters, knowledgePack })),
+        levelingZones: optional(() => require("./core/leveling.cjs").loadLevelingPack().zones),
+        instanceNames: optional(() => require("./core/boss-loot.cjs").INSTANCE_NAMES) || {},
+        commands: optional(() => require("./renderer/commands.js")),
+      };
+    })()),
+  });
+  handle("worldSearch", (query, options, ...extra) => {
+    if (extra.length) throw Error("Invalid search.");
+    return worldSearch.search(query, options === undefined ? {} : options);
+  });
+  handle("worldSearchDetail", (kind, id, ...extra) => {
+    if (extra.length) throw Error("Invalid search detail.");
+    return worldSearch.detail(kind, id);
+  });
   handle("copyWaypoint", (input) => {
     if (!input || typeof input !== "object") throw Error("Invalid waypoint.");
     const { mapId, x, y } = input;

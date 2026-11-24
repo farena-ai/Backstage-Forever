@@ -5,13 +5,18 @@ window.WorldMapView = (() => {
   const api = window.backstage;
   const LAYER_GROUPS = {
     Questing: [["quest-turnin", "Turn-ins"], ["quest-objective", "Objectives"], ["objective-area", "Objective areas"], ["quest-giver", "Quests to pick up"]],
-    Gathering: [["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["heat", "Your gathering heat"], ["community", "Community finds"]],
+    Gathering: [["herb", "Herbs"], ["ore", "Ore"], ["find", "Your finds"], ["heat", "Your gathering heat"]],
+    // The daily community pack: what other players shared, never mixed with the bundled reference or your finds.
+    Community: [["c-herb", "Community herbs"], ["c-ore", "Community ore"], ["c-chest", "Community chests"], ["c-npc", "NPCs players placed"], ["c-vendor", "Community vendors"]],
     Services: [["flight", "Flight masters"], ["class-trainer", "Class trainers"], ["profession-trainer", "Profession trainers"], ["vendor", "Vendors"], ["npc", "Other NPCs"], ["otherFaction", "Other faction's NPCs"]],
     World: [["rare", "Rare enemies"], ["nodes", "Reference herbs and ore"], ["chest", "Chests"], ["mailbox", "Mailboxes"]],
     Journey: [["journey", "My path this session"]],
   };
   // The busy reference layers stay off until asked for, so the default map is not cluttered.
-  const OFF_BY_DEFAULT = new Set(["npc", "otherFaction", "nodes", "chest", "mailbox"]);
+  const OFF_BY_DEFAULT = new Set(["npc", "otherFaction", "nodes", "chest", "mailbox", "c-npc"]);
+  const COMMUNITY_LAYERS = ["c-herb", "c-ore", "c-chest", "c-npc", "c-vendor"];
+  // Community spots your character's skill cannot gather yet are hidden when this is on.
+  let onlyGatherable = false;
   const PREF = "bf-world-map-v2";
   let clusters = [], pendingFocus = null, focused = null; // focused: { pin, goal } while a link's target is dialed in
   let model = null, mapId = null, follow = true, selected = null, hover = null, trail = [], view = { zoom: 1, cx: 0.5, cy: 0.5 };
@@ -33,8 +38,18 @@ window.WorldMapView = (() => {
     anim = requestAnimationFrame(animate);
   }
   function keepFlowing() { if (!anim && focused && !still() && typeof requestAnimationFrame === "function") anim = requestAnimationFrame(animate); }
-  try { const p = JSON.parse(localStorage.getItem(PREF) || "{}"); if (p.layers) layers = { ...layers, ...p.layers }; if (typeof p.follow === "boolean") follow = p.follow; } catch {}
-  const savePref = () => { try { localStorage.setItem(PREF, JSON.stringify({ layers, follow })); } catch {} };
+  try {
+    const p = JSON.parse(localStorage.getItem(PREF) || "{}");
+    if (p.layers) {
+      layers = { ...layers, ...p.layers };
+      // A saved "Community finds: off" from before the layers were split keeps every community layer off.
+      if (p.layers.community === false && !COMMUNITY_LAYERS.some((k) => k in p.layers)) for (const k of COMMUNITY_LAYERS) layers[k] = false;
+      delete layers.community;
+    }
+    if (typeof p.follow === "boolean") follow = p.follow;
+    if (typeof p.onlyGatherable === "boolean") onlyGatherable = p.onlyGatherable;
+  } catch {}
+  const savePref = () => { try { localStorage.setItem(PREF, JSON.stringify({ layers, follow, onlyGatherable })); } catch {} };
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pct = (v) => (v * 100).toFixed(1);
   const dirName = (dx, dy) => { const d = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360; return ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"][Math.round(d / 45) % 8]; };
@@ -73,6 +88,8 @@ window.WorldMapView = (() => {
           <section class="wm-card" data-wm-card tabindex="-1" aria-label="Map selection"></section>
           <section class="wm-results" data-wm-results tabindex="-1" aria-label="Map search results" hidden></section>
           <div class="wm-legend" data-wm-legend>${layerControls()}</div>
+          <section class="wm-community" data-wm-community hidden></section>
+          <section class="wm-fill" data-wm-fill hidden></section>
           ${window.WorldFinders?.panels() || ""}
           <div class="wm-near" data-wm-near hidden></div>
           <div class="wm-camps" data-wm-camps hidden></div>
@@ -156,6 +173,8 @@ window.WorldMapView = (() => {
       if (gather === "chest") chest(g, x, y, r * 0.62); else if (gather === "ore") rock(g, x, y, r * 0.62); else leaf(g, x, y, r * 0.7, COLORS.herb);
       people(g, x + r * 0.72, y - r * 0.72, r * 0.42); return;
     }
+    if (kind === "c-herb" || kind === "c-ore" || kind === "c-chest") return icon(g, "community", x, y, r, { gather: kind.slice(2) });
+    if (kind === "c-npc" || kind === "c-vendor") { icon(g, kind === "c-vendor" ? "vendor" : "npc", x - r * 0.15, y + r * 0.1, r * (kind === "c-vendor" ? 0.8 : 1.3), { zoom }); people(g, x + r * 0.72, y - r * 0.72, r * 0.42); return; }
     if (kind === "nodes") { leaf(g, x - r * 0.3, y, r * 0.75, COLORS.herb); rock(g, x + r * 0.45, y + r * 0.25, r * 0.5); return; }
     if (kind === "heat") { for (const [dx, c] of [[-0.45, HEAT.herb], [0.45, HEAT.ore], [0, HEAT.chest]]) { const gr = g.createRadialGradient(x + dx * r, y + (dx ? 0.25 : -0.35) * r, 0, x + dx * r, y + (dx ? 0.25 : -0.35) * r, r * 0.8); gr.addColorStop(0, rgba(c, 0.95)); gr.addColorStop(1, rgba(c, 0)); g.fillStyle = gr; g.beginPath(); g.arc(x + dx * r, y + (dx ? 0.25 : -0.35) * r, r * 0.8, 0, 7); g.fill(); } return; }
     const k = kind === "find" ? (gather === "ore" ? "ore" : "herb") : kind;
@@ -289,6 +308,8 @@ window.WorldMapView = (() => {
     if (p.otherFaction) ctx.globalAlpha = 0.55;
     icon(ctx, p.kind, sx, sy, p.kind === "npc" ? r * 1.2 : r, { gather: p.gather, zoom: view.zoom });
     if (p.otherFaction) { ctx.globalAlpha = 1; ctx.beginPath(); ctx.moveTo(sx - r * 0.8, sy + r * 0.8); ctx.lineTo(sx + r * 0.8, sy - r * 0.8); ctx.strokeStyle = "#c0261a"; ctx.lineWidth = 2.2; ctx.stroke(); }
+    // NPCs and vendors only the community placed carry the two-figure badge, like community spots.
+    if (p.community && p.npcId) people(ctx, sx + r * 0.75, sy - r * 0.75, r * 0.45);
   }
   // Small canvas icons for lists (legend, search results, near you, card header).
   const ico = (kind, extra = "") => `<canvas class="wm-ico" aria-hidden="true" width="22" height="22" data-ico="${esc(kind)}" ${extra}></canvas>`;
@@ -296,7 +317,13 @@ window.WorldMapView = (() => {
 
   // ---------- drawing ----------
   // The Community finds switch hides every community pin, including NPCs the bundled data lacks.
-  function visiblePins() { return (model?.pins || []).filter((p) => p.kind === "town" || (layers[p.kind] !== false && (!p.reference || layers.nodes) && (!p.community || layers.community !== false) && (!p.otherFaction || layers.otherFaction))); }
+  function visiblePins() {
+    return (model?.pins || []).filter((p) => {
+      if (p.kind === "town") return true;
+      if (p.community) return layers[p.layer] !== false && !(onlyGatherable && p.gatherable === false);
+      return layers[p.kind] !== false && (!p.reference || layers.nodes) && (!p.otherFaction || layers.otherFaction);
+    });
+  }
   function draw() {
     if (!canvas || !ctx) return;
     const w = canvas.width, h = canvas.height;
@@ -320,15 +347,20 @@ window.WorldMapView = (() => {
     drawAreas();
     // Pins: overlapping same-kind pins merge into numbered clusters; selection stays visible.
     clusters = [];
+    const cell = window.MapCluster?.cellFor(view.zoom) || 0, shared = [];
     for (const p of visiblePins()) {
       if (p.kind === "town") continue;
       const [sx, sy] = toScreen(p.x, p.y); if (sx < -20 || sy < -20 || sx > w + 20 || sy > h + 20) continue;
+      // Community pins are grouped apart from the reference, so zooming out never floods the map.
+      if (cell && p.community && p !== selected && p !== focused?.pin) { shared.push({ sx, sy, pin: p }); continue; }
       const near = p.kind !== "npc" && p !== selected && clusters.find((c) => c.kind === p.kind && (c.sx - sx) ** 2 + (c.sy - sy) ** 2 < 16 * 16);
       if (near) { near.pins.push(p); continue; }
       clusters.push({ kind: p.kind, sx, sy, pins: [p] });
     }
+    for (const g of cell ? window.MapCluster.grid(shared, cell) : []) clusters.push({ kind: "community", shared: true, sx: g.sx, sy: g.sy, pins: g.items.map((i) => i.pin) });
     for (const c of clusters) {
       if (c.pins.length === 1) { drawPin(c.pins[0], c.sx, c.sy, c.pins[0] === hover || c.pins[0] === selected); continue; }
+      if (c.shared) { drawSharedCluster(c); continue; }
       drawPin(c.pins[0], c.sx, c.sy, false);
       ctx.save(); if (focused && !c.pins.includes(focused.pin)) ctx.globalAlpha = 0.28;
       ctx.beginPath(); ctx.arc(c.sx + 10, c.sy - 10, 8, 0, 7); ctx.fillStyle = "#7a1f14"; ctx.fill(); ctx.strokeStyle = "#f6dc9a"; ctx.lineWidth = 1.5; ctx.stroke();
@@ -363,6 +395,17 @@ window.WorldMapView = (() => {
       ctx.restore();
     });
     if (pl?.live) arrow(...toScreen(pl.live.x, pl.live.y), pl.live.facing, pl.live.combat);
+  }
+  // Many community spots as one teal medallion with their count; a click zooms in on them.
+  function drawSharedCluster(c) {
+    const r = window.MapCluster.radiusFor(c.pins.length);
+    ctx.save(); if (focused) ctx.globalAlpha = 0.28;
+    ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1.5;
+    const g = ctx.createRadialGradient(c.sx, c.sy - r * 0.4, 1, c.sx, c.sy, r); g.addColorStop(0, "#5fc3d4"); g.addColorStop(1, "#1f6f80");
+    ctx.beginPath(); ctx.arc(c.sx, c.sy, r, 0, 7); ctx.fillStyle = g; ctx.fill();
+    ctx.shadowColor = "transparent"; ctx.setLineDash([3, 2.5]); ctx.strokeStyle = "#e9fbff"; ctx.lineWidth = 1.4; ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = "#ffffff"; ctx.font = `700 ${c.pins.length > 99 ? 10 : 11}px 'Source Sans 3', sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(c.pins.length), c.sx, c.sy + 0.5);
+    ctx.restore();
   }
   // Dialed-in target: a glowing route from you, a double ring on the target and how far it is.
   function drawFocus(f) {
@@ -499,7 +542,7 @@ window.WorldMapView = (() => {
   function layerControls() {
     return `<h3>Map layers</h3><div class="wm-layer-groups">${Object.entries(LAYER_GROUPS).map(([name, entries]) => `
       <fieldset class="wm-layer-group"><legend>${name}</legend>${entries.map(([k, label]) => {
-        const marker = k === "journey" ? '<span class="wm-ico-journey" aria-hidden="true"></span>' : k === "otherFaction" ? '<span class="wm-ico-other" aria-hidden="true">⊘</span>' : ico(k, k === "find" || k === "community" ? 'data-gather="herb"' : "");
+        const marker = k === "journey" ? '<span class="wm-ico-journey" aria-hidden="true"></span>' : k === "otherFaction" ? '<span class="wm-ico-other" aria-hidden="true">⊘</span>' : ico(k, k === "find" ? 'data-gather="herb"' : "");
         return `<label class="wm-layer" ${k === "otherFaction" ? "hidden" : ""}><input type="checkbox" data-wm-layer="${k}" ${layers[k] !== false ? "checked" : ""}>${marker}<span>${esc(label)}</span><small>0</small></label>`;
       }).join("")}</fieldset>`).join("")}</div>`;
   }
@@ -514,6 +557,44 @@ window.WorldMapView = (() => {
       if (badge.textContent !== String(count)) badge.textContent = count;
     }
     paintIcons(box);
+  }
+  // How old the pack is, in plain words. The pack has one date for everything in it.
+  const packAge = (c) => (c.ageDays == null ? "" : c.ageDays === 0 ? "today" : c.ageDays === 1 ? "yesterday" : `${c.ageDays} days ago`);
+  const LAYER_WORDS = { "c-herb": "herbs", "c-ore": "ore", "c-chest": "chests", "c-npc": "NPCs", "c-vendor": "vendors" };
+  function communityCard() {
+    const box = document.querySelector("[data-wm-community]"); if (!box) return;
+    const c = model?.community;
+    if (!c) { box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    const parts = COMMUNITY_LAYERS.filter((k) => c.layers[k]).map((k) => `<span class="wm-c-chip">${ico(k)}<b>${c.layers[k]}</b> <span>${LAYER_WORDS[k]}</span></span>`).join("");
+    const skill = (k, name) => (c.skills[k] == null ? `<span>${name}: not in your last save</span>` : c.skills[k] < 0 ? `<span>${name}: not learned</span>` : `<span>${name}</span> <b>${c.skills[k]}</b>`);
+    const age = packAge(c);
+    box.innerHTML = `<h3>Community layers</h3>
+      <p class="wm-c-line" data-wm-c-line>${c.total ? `<span>The community has</span> <b>${c.total}</b> <span>${c.total === 1 ? "spot here" : "spots here"}</span>${c.yours ? `; <b>${c.yours}</b> <span>${c.yours === 1 ? "matches a find of yours" : "match finds of yours"}</span>` : ""}.` : "<span>The community has no spots in this zone yet.</span>"}</p>
+      ${parts ? `<p class="wm-c-chips">${parts}</p>` : ""}
+      <label class="check-label wm-c-skill"><input type="checkbox" data-wm-gatherable ${onlyGatherable ? "checked" : ""}><span>Only what my skill can gather</span></label>
+      <p class="wm-c-skills">${skill("herb", "Herbalism")} · ${skill("ore", "Mining")}${onlyGatherable && c.beyondSkill ? ` · <b>${c.beyondSkill}</b> <span>hidden</span>` : ""}</p>
+      <p class="wm-c-fresh">${age ? `<span>Pack from</span> <span>${esc(age)}</span>. ` : ""}<span>Each spot says how many players saw it. The pack has one date for everything, so a single spot cannot say when it was last seen.</span></p>
+      <p class="wm-c-key"><canvas class="wm-ico" aria-hidden="true" width="22" height="22" data-ico-cluster></canvas><span>A numbered teal mark is several spots together. Click it, or zoom in, to see each one.</span></p>`;
+    const cc = box.querySelector("[data-ico-cluster]"), g = cc.getContext("2d");
+    g.beginPath(); g.arc(11, 11, 9, 0, 7); g.fillStyle = "#2b8a9c"; g.fill(); g.setLineDash([3, 2.5]); g.strokeStyle = "#e9fbff"; g.lineWidth = 1.2; g.stroke(); g.fillStyle = "#fff"; g.font = "700 10px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("7", 11, 11.5);
+    paintIcons(box);
+    window.I18n?.apply(box);
+  }
+  // "Help fill this zone": only where the bundled reference is really thin for your faction.
+  function fillMarkup(gap) {
+    if (!gap?.missing?.length) return "";
+    const lines = window.CoverageView?.gapLines(gap) || "";
+    if (!lines) return "";
+    return `<h3>Help fill this zone</h3><p><span>The app knows little about</span> <strong data-no-translate>${esc(gap.name)}</strong> <span>so far:</span></p><ul>${lines}</ul>
+      <p><span>If you play here, type</span> <code>/bf scout on</code> <span>in game and talk to the people you meet. Your notes stay on your computer; Help → Data coverage can save them as a file.</span></p>
+      <p><span>Herb, ore and chest spots reach other players on their own while community sharing is on (Settings → Privacy & sharing).</span></p>`;
+  }
+  function fillCard() {
+    const box = document.querySelector("[data-wm-fill]"); if (!box) return;
+    const html = fillMarkup(model?.fill);
+    box.hidden = !html; box.innerHTML = html;
+    if (html) window.I18n?.apply(box);
   }
   function relation(p) {
     const me = model?.player?.live || model?.player?.saved;
@@ -561,7 +642,8 @@ window.WorldMapView = (() => {
     if (items.length && api?.gameItems) api.gameItems(items).then((found) => {
       for (const el of document.querySelectorAll("[data-wm-community-item]")) { const i = items.indexOf(Number(el.dataset.wmCommunityItem)); if (i >= 0 && found?.[i]?.name) el.textContent = found[i].name; }
     }).catch(() => {});
-    return `<p class="wm-note wm-community-note">Shared anonymously by ${p.installs} player${p.installs === 1 ? "" : "s"}. A past spot, not a live node; nodes respawn nearby.</p>${items.length ? `<section class="wm-sec"><h4>Gathered here</h4><ul class="wm-items">${items.map((id) => `<li data-card-item="${id}" data-wm-community-item="${id}">Item #${id}</li>`).join("")}</ul></section>` : ""}`;
+    const c = model?.community;
+    return `<p class="wm-note wm-community-note"><strong>${p.installs === 1 ? "Seen by 1 player" : `Seen by ${p.installs} players`}</strong>${c?.ageDays != null ? ` · <span>Pack from</span> <span>${esc(packAge(c))}</span>` : ""}<br><span>Shared anonymously. A past spot, not a live node; nodes respawn nearby.</span>${p.skill ? `<br><span>Needs skill</span> <b>${p.skill}</b>${p.gatherable === false ? " · <span>More than your character has.</span>" : ""}` : ""}${p.yours ? "<br><span>You found this one too.</span>" : ""}</p>${items.length ? `<section class="wm-sec"><h4>Gathered here</h4><ul class="wm-items">${items.map((id) => `<li data-card-item="${id}" data-wm-community-item="${id}">Item #${id}</li>`).join("")}</ul></section>` : ""}`;
   }
   async function loadNpc(p) {
     if (!p?.npcId || !api?.worldMapNpc) return;
@@ -698,7 +780,7 @@ window.WorldMapView = (() => {
     box._near = near.map((n) => n.p);
     paintIcons(box);
   }
-  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; attrib(); loadArt(model?.mapId); legend(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); campsList(); heatList(); window.WorldFinders?.paint(model, finderHooks, layers.rare !== false); draw(); }
+  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; attrib(); loadArt(model?.mapId); legend(); communityCard(); fillCard(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); campsList(); heatList(); window.WorldFinders?.paint(model, finderHooks, layers.rare !== false); draw(); }
   // What the gathering loop and rare panels (world-finders.js) may ask of this page.
   const finderHooks = {
     mapId: () => model?.mapId ?? null, redraw: () => draw(),
@@ -823,10 +905,12 @@ window.WorldMapView = (() => {
   }
 
   // ---------- interaction ----------
-  function hitCluster(sx, sy) { return clusters.find((c) => c.pins.length > 1 && (c.sx - sx) ** 2 + (c.sy - sy) ** 2 < 14 * 14) || null; }
+  function hitCluster(sx, sy) { return clusters.find((c) => c.pins.length > 1 && (c.sx - sx) ** 2 + (c.sy - sy) ** 2 < (c.shared ? 18 * 18 : 14 * 14)) || null; }
   function hit(sx, sy) {
     let best = null, bd = 14 * 14;
-    for (const p of visiblePins()) { if (p.kind === "town") continue; const [x, y] = toScreen(p.x, p.y); const d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = p; } }
+    const folded = new Set();
+    for (const c of clusters) if (c.shared && c.pins.length > 1) for (const p of c.pins) folded.add(p);
+    for (const p of visiblePins()) { if (p.kind === "town" || folded.has(p)) continue; const [x, y] = toScreen(p.x, p.y); const d = (x - sx) ** 2 + (y - sy) ** 2; if (d < bd) { bd = d; best = p; } }
     return best;
   }
   function resize() {
@@ -862,7 +946,7 @@ window.WorldMapView = (() => {
       const p = hit(sx, sy), a = p ? null : hitArea(sx, sy);
       if ((p || a) !== hover) { hover = p || a; draw(); }
       const cl = hitCluster(sx, sy);
-      if (cl) showTip(sx, sy, `<strong>${cl.pins.length} places</strong><br><small>${cl.pins.slice(0, 4).map((p) => esc(p.label)).join(" · ")}${cl.pins.length > 4 ? " …" : ""}<br>Click to zoom in</small>`);
+      if (cl) showTip(sx, sy, cl.shared ? `<strong>${cl.pins.length} community spots</strong><br><small>${[...new Set(cl.pins.map((p) => p.label))].slice(0, 4).map(esc).join(" · ")}${cl.pins.length > 4 ? " …" : ""}</small><br><small>Seen by ${Math.min(...cl.pins.map((p) => p.installs))} to ${Math.max(...cl.pins.map((p) => p.installs))} players each · click to zoom in</small>` : `<strong>${cl.pins.length} places</strong><br><small>${cl.pins.slice(0, 4).map((p) => esc(p.label)).join(" · ")}${cl.pins.length > 4 ? " …" : ""}<br>Click to zoom in</small>`);
       else if (p) showTip(sx, sy, `<strong>${esc(p.label)}</strong>${p.sub ? `<br><small>${esc(p.sub)}</small>` : ""}`);
       else if (a) showTip(sx, sy, `<strong>${esc(a.label)}</strong><br><small>${esc(a.questTitle)}${a.levels ? ` · level ${esc(a.levels)}` : ""}${a.creature?.elite ? " · Elite" : ""}</small>`);
       else tip.hidden = true;
@@ -884,7 +968,8 @@ window.WorldMapView = (() => {
     });
     root.addEventListener("change", (e) => {
       if (window.WorldFinders?.onChange(e, finderHooks)) return;
-      if (e.target.matches("[data-wm-layer]")) { layers[e.target.dataset.wmLayer] = e.target.checked; if (!e.target.checked && selected?.kind === e.target.dataset.wmLayer) { selected = null; card(); } savePref(); nearList(); campsList(); heatList(); window.WorldFinders?.paint(model, finderHooks, layers.rare !== false); draw(); }
+      if (e.target.matches("[data-wm-layer]")) { layers[e.target.dataset.wmLayer] = e.target.checked; if (!e.target.checked && (selected?.kind === e.target.dataset.wmLayer || selected?.layer === e.target.dataset.wmLayer)) { selected = null; card(); } savePref(); nearList(); campsList(); heatList(); window.WorldFinders?.paint(model, finderHooks, layers.rare !== false); draw(); }
+      if (e.target.matches("[data-wm-gatherable]")) { onlyGatherable = e.target.checked; if (onlyGatherable && selected?.community && selected.gatherable === false) { selected = null; card(); } savePref(); communityCard(); nearList(); draw(); root.querySelector("[data-wm-gatherable]")?.focus({ preventScroll: true }); }
       if (e.target.matches("[data-wm-zone]")) { follow = false; const f = root.querySelector("[data-wm-follow]"); if (f) f.checked = false; savePref(); load(Number(e.target.value)); }
       if (e.target.matches("[data-wm-follow]")) { follow = e.target.checked; savePref(); if (follow && lastLive) load(lastLive.position.mapId); }
     });
@@ -971,9 +1056,9 @@ window.WorldMapView = (() => {
     if (document.querySelector("[data-world-map]")) load(f.mapId);
     return true;
   }
-  // Open a whole zone (a saved location only knows its name): no pin, just that zone's map.
-  function focusZone(name) { const id = window.ZoneArt?.idFor(name); if (!Number.isSafeInteger(id)) return false; pendingFocus = null; follow = false; mapId = id; savePref(); if (document.querySelector("[data-world-map]")) load(id); return true; }
+  // Open a whole zone by its name (a saved location only knows that) or its map id: no pin, just that zone's map.
+  function focusZone(name) { const id = Number.isSafeInteger(name) && name > 0 ? name : window.ZoneArt?.idFor(name); if (!Number.isSafeInteger(id)) return false; pendingFocus = null; follow = false; mapId = id; savePref(); if (document.querySelector("[data-world-map]")) load(id); return true; }
   // _areaCard renders one objective-area card against a given model (tests).
   const _areaCard = (a, m) => { const keep = model; model = m; try { return areaCard(a); } finally { model = keep; } };
-  return { page, mounted, focus, focusZone, retireRouteFocus, _areaCard, _state: () => ({ model, selected, view, trail, layers, results, journey, focused }) };
+  return { page, mounted, focus, focusZone, retireRouteFocus, _areaCard, _fillMarkup: fillMarkup, _state: () => ({ model, selected, view, trail, layers, results, journey, focused, clusters, onlyGatherable }) };
 })();

@@ -117,6 +117,8 @@ contextBridge.exposeInMainWorld(
     badgeArt: (ids) => invoke("badgeArt", ids),
     setRadarTarget: (pin) => invoke("setRadarTarget", pin),
     worldMapSearch: (query) => invoke("worldMapSearch", query),
+    worldSearch: (query, options) => invoke("worldSearch", query, options),
+    worldSearchDetail: (kind, id) => invoke("worldSearchDetail", kind, id),
     worldMapNpc: (npcId) => invoke("worldMapNpc", npcId),
     levelingAdvice: () => invoke("levelingAdvice"),
     zoneBriefing: () => invoke("zoneBriefing"),

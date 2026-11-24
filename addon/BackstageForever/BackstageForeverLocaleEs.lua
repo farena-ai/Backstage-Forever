@@ -175,6 +175,7 @@ BF find	Buscar BF
 Blacksmithing	Herrería
 Blinding Powder	Polvo cegador
 Boar	Jabalí
+Boss	Jefe
 Boss notes, assignments and a readiness roll-up inside your raid, from the leader or an assistant. Text only.	Notas de jefe, asignaciones y un resumen de preparación dentro de tu banda, del líder o de un ayudante. Solo texto.
 Boss tips	Consejos de jefe
 Boss tips off.	Consejos de jefe desactivados.
@@ -210,6 +211,7 @@ Class kit items low:	Quedan pocos objetos del kit de clase:
 Clear	Vaciar
 Click "Release Spirit". You will appear at a graveyard as a ghost; an arrow will lead you back to your body.	Haz clic en "Liberar espíritu". Aparecerás en un cementerio como fantasma; una flecha te llevará de vuelta a tu cuerpo.
 Click a line to fill the search box.	Haz clic en una línea para rellenar el cuadro de búsqueda.
+Click a match for a waypoint.	Haz clic en un resultado para un punto de ruta.
 Click a row first, or name the dungeon: /bf lfg post sm.	Haz clic primero en una fila, o nombra la mazmorra: /bf lfg post sm.
 Click a row to whisper. You press Enter.	Haz clic en una fila para susurrar. Intro lo pulsas tú.
 Click: newest first.	Clic: lo más nuevo primero.
@@ -295,6 +297,7 @@ First Aid	Primeros auxilios
 First go to the flight master at	Primero ve al maestro de vuelo en
 Fishing	Pesca
 Flash Powder	Polvo explosivo
+Flight	Vuelo
 flight master	maestro de vuelo
 Flight master	Maestro de vuelo
 flight masters	maestros de vuelo
@@ -353,6 +356,7 @@ has the key	tiene la llave
 Head	Cabeza
 healer	sanador
 Helpers updated for this character:	Ayudas actualizadas para este personaje:
+Herb	Hierba
 herbs	hierbas
 Herbs and alchemy	Hierbas y alquimia
 Hidden by mistake? /bf chat filter off stops it, and Report a problem in the desktop app tells us.	¿Ocultada por error? /bf chat filter off lo detiene, e «Informar de un problema» en la app de escritorio nos avisa.
@@ -416,6 +420,7 @@ loot lists	listas de botín
 Loot windows empty at once when auto-loot is on.	Las ventanas de botín se vacían al instante cuando el botín automático está activado.
 low	bajo
 Low durability warning	Aviso de durabilidad baja
+Mail	Correo
 Mail expiry warning	Aviso de correo por caducar
 Mail expiry warning: off. /bf mail still answers.	Aviso de correo por caducar: desactivado. /bf mail sigue respondiendo.
 Mail expiry warning: on.	Aviso de correo por caducar: activado.
@@ -541,6 +546,8 @@ Nothing recorded for your level in this zone. The desktop app's Now page suggest
 Nothing to suggest yet. Type /bf next for the nearest quest.	Nada que sugerir todavía. Escribe /bf next para la misión más cercana.
 Nothing you wear has durability to read.	Nada de lo que llevas puesto tiene durabilidad que leer.
 now	ahora
+NPC	PNJ
+Object	Objeto
 Objective hints	Pistas de objetivos
 Oct	oct
 of	de
@@ -581,6 +588,7 @@ Open the board outside combat.	Abre el tablón fuera de combate.
 Open the Instance Atlas outside combat.	Abre el Atlas de instancias fuera de combate.
 Open the welcome card outside combat.	Abre la tarjeta de bienvenida fuera de combate.
 ore	mena
+Ore	Mineral
 Other	Otros
 Other addons found:	Otros addons encontrados:
 Other quests	Otras misiones
@@ -624,6 +632,7 @@ Profiles to the desktop app: on. After /reload the desktop app lists this charac
 Put down the item on your cursor first, then try again.	Suelta primero el objeto que llevas en el cursor y vuelve a intentarlo.
 Quality	Calidad
 Quality of life helpers (each off until you switch it on):	Ayudas de calidad de vida (cada una desactivada hasta que la actives):
+Quest	Misión
 Quest blockers	Bloqueos de misión
 Quest chains are not available in this game client.	Las cadenas de misiones no están disponibles en este cliente de juego.
 quest data checked on this build	datos de misiones comprobados en esta versión
@@ -672,6 +681,7 @@ Raid comms: off. Nothing is sent to a raid and nothing is read.	Comunicación de
 Raid comms: on. Boss notes, assignments and readiness answers are shared inside your raid with players who run Backstage Forever. /bf raid off stops it.	Comunicación de banda: activada. Las notas de jefe, asignaciones y respuestas de preparación se comparten dentro de tu banda con los jugadores que usan Backstage Forever. /bf raid off la detiene.
 Ranged	A distancia
 rare	raro
+Rare	Raro
 rare elite	élite raro
 Rare enemies are not always there: this is where a player met it.	Los enemigos raros no siempre están: aquí es donde un jugador lo encontró.
 Rare enemy	Enemigo raro
@@ -877,6 +887,7 @@ This game version does not tell addons which areas are undiscovered.	Esta versi�
 This is not a Backstage Forever profile code.	Esto no es un código de perfil de Backstage Forever.
 This is the last step of the chain.	Este es el último paso de la cadena.
 This is the last step.	Este es el último paso.
+This marks the entrance. The spot is approximate.	Esto marca la entrada. El punto es aproximado.
 Time in the run	Tiempo del recorrido
 time not recorded	tiempo no registrado
 Timing is off. Nothing is measured and nothing is slowed.	El cronometraje está desactivado. No se mide nada y nada va más lento.
@@ -887,6 +898,7 @@ Totems not carried:	Tótems que no llevas:
 Tracked quest:	Misión seguida:
 Trade goods	Materiales
 trainer	instructor
+Trainer	Instructor
 trainers	instructores
 Try /bf bag junk outside combat.	Prueba /bf bag junk fuera de combate.
 Try /bf bags outside combat.	Prueba /bf bags fuera de combate.
@@ -908,7 +920,7 @@ Type /bf next for an arrow to your next quest. Right-click the owl on the minima
 type /bf next for the nearest quest	escribe /bf next para la misión más cercana
 Type /bf talents levelup on or /bf talents levelup off.	Escribe /bf talents levelup on o /bf talents levelup off.
 Type /reload so every window follows. /bf profile load undo puts the old settings back.	Escribe /reload para que todas las ventanas lo sigan. /bf profile load undo recupera los ajustes anteriores.
-Type a name, a quest, an item a vendor sells, or herb, ore, rare, chest, mailbox. Press Enter. Click a match for a waypoint.	Escribe un nombre, una misión, un objeto que venda un vendedor, o herb, ore, rare, chest, mailbox. Pulsa Intro. Haz clic en un resultado para un punto de ruta.
+Type a name, a quest, a dungeon or boss, an item a vendor sells, or herb, ore, rare, chest, mailbox. Press Enter. Click a match for a waypoint.	Escribe un nombre, una misión, una mazmorra o un jefe, un objeto que vende un vendedor, o herb, ore, rare, chest, mailbox. Pulsa Intro. Haz clic en un resultado para un punto de ruta.
 under a minute	menos de un minuto
 under an hour	menos de una hora
 upgrade	mejora
@@ -918,7 +930,7 @@ Upgrade lines on item tooltips and on quest rewards.	Líneas de mejora en las de
 upgrades for you	mejoras para ti
 Use /bf bag sort category, bag, name or quality. Sorting changes the view only; nothing is moved.	Usa /bf bag sort category, bag, name o quality. Ordenar solo cambia la vista; no se mueve nada.
 Use /bf bag, /bf bag bank, /bf bag junk, /bf bag sort WORD, or /bf bag on or off.	Usa /bf bag, /bf bag bank, /bf bag junk, /bf bag sort PALABRA, o /bf bag on u off.
-Use /bf find NAME, or /bf find flight, trainer, vendor, quest, rare, herb, ore, chest or mailbox.	Usa /bf find NOMBRE, o /bf find flight, trainer, vendor, quest, rare, herb, ore, chest o mailbox.
+Use /bf find NAME, or /bf find flight, trainer, vendor, dungeon, quest, rare, herb, ore, chest or mailbox.	Usa /bf find NOMBRE, o /bf find flight, trainer, vendor, dungeon, quest, rare, herb, ore, chest o mailbox.
 Use /bf helpers <key> to check, or /bf helpers <key> on|off to change.	Usa /bf helpers <key> para comprobar, o /bf helpers <key> on|off para cambiar.
 Use /bf loop, /bf loop next or /bf loop stop.	Usa /bf loop, /bf loop next o /bf loop stop.
 Use /bf mapsearch on or /bf mapsearch off.	Usa /bf mapsearch on o /bf mapsearch off.
@@ -937,6 +949,7 @@ Use /bf way MapID X Y [name].	Usa /bf way MapID X Y [nombre].
 Use /way X Y [name], for example /way 51.5 30.9 Thork.	Usa /way X Y [nombre], por ejemplo /way 51.5 30.9 Thork.
 Use %s here on a sleeping peon.	Usa %s aquí sobre un peón dormido.
 vendor	vendedor
+Vendor	Vendedor
 vendors	vendedores
 Veteran	Veterano
 Waist	Cintura
@@ -1151,6 +1164,7 @@ Zone guide: the quests around you, in the order that walks least.	Guía de zona:
 ^Asked (.-) for their next step%.$	Se ha pedido a %1 su siguiente paso.
 ^Flight times you learned: (%-?%d+)%.$	Tiempos de vuelo aprendidos: %1.
 ^And (%-?%d+) more points to spend%.$	Y %1 puntos más que gastar.
+^(%-?%d+) more%. Type more letters%.$	%1 más. Escribe más letras.
 ^asking the desktop app: "(.-)$	preguntando a la app: "%1
 ^LFG for %[(.-)%] %((.-), level (%-?%d+)%)$	Busco grupo para [%1] (%2, nivel %3)
 ^Soft reserve added: (.-), (.-)%.$	Soft reserve añadida: %1, %2.
