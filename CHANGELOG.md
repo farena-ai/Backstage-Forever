@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.25.0 - Your route, more data
+
+- Five route choices, a route editor with a share code, challenge runs, vendor prices and limited stock, flight point names, boats and zeppelins in the travel planner, leveling routes to 60, and corrected reputation amounts. See the [release notes](docs/releases/1.25.0.md).
+
 ## 1.24.0 - Recipes, languages and polish
 
 - A recipe book and skill path for every profession, French and Spanish, your current talents in the planner, coin per hour per session, in-game answers, chain steps in tooltips, raid notes, a Linux build, and a polish pass over every new screen. See the [release notes](docs/releases/1.24.0.md).
