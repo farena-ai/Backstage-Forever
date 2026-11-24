@@ -29,7 +29,13 @@
 // Backstage Desk adds one number beside schema: reports=N, how many replies to the player's own
 // reports wait unread in the desktop app. /bf reports says so. It is left out when it is zero, so
 // the file is byte for byte what it was before for everyone without a waiting reply.
+//
+// Profiles ("One addon instead of ten") add the addon settings profile the player chose to send to
+// a character under Settings: prof={n="name",f="From-Realm",c="code"}. The code is one line of plain
+// characters with its own checksum (settings-profiles.cjs); the game offers it and applies it only
+// when the player types /bf profile accept. It is the newest passenger and the first left out.
 const FILE = "BackstageForeverDesktop.lua";
+const MAX_PROFILE_CODE = 16000;
 const MAX_CHARACTERS = 100, MAX_ITEMS = 200, MAX_BYTES = 256 * 1024, MAX_PICKS = 51, MAX_LOOP_STOPS = 40;
 const MAX_ROUTE_STEPS = 12, ROUTE_TEXT = 200, ROUTE_NOTE = 120;
 const MAX_ANSWERS = 5, MAX_QUESTION = 200, MAX_ANSWER = 1200;
@@ -140,11 +146,19 @@ function routeSteps(route) {
   return `rt={v="${route.variant}",s={${rows.join(",")}}}`;
 }
 
+// A sent settings profile as Lua, or "" for anything that is not a clean one. The code's own
+// alphabet has no quote, backslash, bar or control character; anything else is refused here.
+function sentProfile(send) {
+  if (!send || typeof send.name !== "string" || !/^[a-z0-9][a-z0-9-]{0,19}$/.test(send.name) || !routeText(send.from, 130)) return "";
+  if (typeof send.code !== "string" || send.code.length > MAX_PROFILE_CODE || !/^BF\d+:[0-9a-f]{8}:[A-Za-z0-9_.\-%;{}]+$/.test(send.code)) return "";
+  return `prof={n=${luaString(send.name)},f=${luaString(send.from)},c=${luaString(send.code)}}`;
+}
+
 // The same bytes for the same input: characters sorted by key, wishes in wish-list order,
 // upgrades by item id, talent picks in the order the player planned them. Talent plans are the
 // newest passenger: when the file would grow past its limit they are left out, character by
 // character, before anything else is touched.
-function compile({ profiles = [], wishlist = () => [], upgrades = () => [], talents = () => null, loops = () => null, answers = () => [], routes = () => null, ships = () => null, reports = 0 } = {}) {
+function compile({ profiles = [], wishlist = () => [], upgrades = () => [], talents = () => null, loops = () => null, answers = () => [], routes = () => null, ships = () => null, reports = 0, sentProfiles = () => null } = {}) {
   const waiting = Number.isSafeInteger(reports) && reports > 0 ? Math.min(reports, 999) : 0;
   const rows = [];
   const seen = new Set();
@@ -158,20 +172,21 @@ function compile({ profiles = [], wishlist = () => [], upgrades = () => [], tale
     let loop = ""; try { loop = gatheringLoop(loops(p.id)); } catch {}
     let ans = ""; try { ans = answerList(answers(p.id)); } catch {}
     let rt = ""; try { rt = routeSteps(routes(p.id)); } catch {}
-    if (!ids.length && !up.length && !tal && !loop && !ans && !rt) continue;
+    let prof = ""; try { prof = sentProfile(sentProfiles(key, p.id)); } catch {}
+    if (!ids.length && !up.length && !tal && !loop && !ans && !rt && !prof) continue;
     seen.add(key);
-    rows.push([key, ids, up, tal, loop, ans, rt]);
+    rows.push([key, ids, up, tal, loop, ans, rt, prof]);
   }
   rows.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   const kept = rows.slice(0, MAX_CHARACTERS);
-  const line = ([key, ids, up, tal, loop, ans, rt]) => `[${luaString(key)}]={wish={${ids.join(",")}}${up.length ? `,up={${up.join(",")}}` : ""}${tal ? `,${tal}` : ""}${loop ? `,${loop}` : ""}${rt ? `,${rt}` : ""}${ans ? `,${ans}` : ""}},`;
+  const line = ([key, ids, up, tal, loop, ans, rt, prof]) => `[${luaString(key)}]={wish={${ids.join(",")}}${up.length ? `,up={${up.join(",")}}` : ""}${tal ? `,${tal}` : ""}${loop ? `,${loop}` : ""}${rt ? `,${rt}` : ""}${ans ? `,${ans}` : ""}${prof ? `,${prof}` : ""}},`;
   // The stops are small and come first: every character's /bf fly needs them.
   const sea = shipField(Array.isArray(profiles) ? profiles : [], ships);
   const wrap = (body) => [...HEADER, `BackstageForeverDesktopData={schema=1,${waiting ? `reports=${waiting},` : ""}characters={`, ...body, sea ? `},${sea}}` : "}}", ""].join("\n");
-  let room = MAX_BYTES - Buffer.byteLength(wrap(kept.map(([key, ids, up]) => line([key, ids, up, "", "", "", ""]))));
+  let room = MAX_BYTES - Buffer.byteLength(wrap(kept.map(([key, ids, up]) => line([key, ids, up, "", "", "", "", ""]))));
   const body = [];
-  // Plans and loops of every character get room first, then route steps, then answers.
-  for (const fields of [[3, 4], [6], [5]]) {
+  // Plans and loops of every character get room first, then route steps, then answers, then a sent profile.
+  for (const fields of [[3, 4], [6], [5], [7]]) {
     for (const row of kept) {
       for (const i of fields) {
         const cost = row[i] ? Buffer.byteLength(row[i]) + 1 : 0;
@@ -179,10 +194,10 @@ function compile({ profiles = [], wishlist = () => [], upgrades = () => [], tale
       }
     }
   }
-  for (const row of kept) if (row[1].length || row[2].length || row[3] || row[4] || row[5] || row[6]) body.push(line(row));
+  for (const row of kept) if (row[1].length || row[2].length || row[3] || row[4] || row[5] || row[6] || row[7]) body.push(line(row));
   const text = wrap(body);
   if (Buffer.byteLength(text) > MAX_BYTES) throw Error("Desktop hand-off is too large.");
   return text;
 }
 
-module.exports = { FILE, MAX_SHIPS, MAX_SHIP_RIDES, MAX_SHIP_BYTES, MAX_ITEMS, MAX_CHARACTERS, MAX_PICKS, MAX_LOOP_STOPS, MAX_ROUTE_STEPS, MAX_ANSWERS, MAX_QUESTION, MAX_ANSWER, MAX_BYTES, compile, EMPTY: compile() };
+module.exports = { FILE, MAX_SHIPS, MAX_SHIP_RIDES, MAX_SHIP_BYTES, MAX_ITEMS, MAX_CHARACTERS, MAX_PICKS, MAX_LOOP_STOPS, MAX_ROUTE_STEPS, MAX_ANSWERS, MAX_QUESTION, MAX_ANSWER, MAX_BYTES, MAX_PROFILE_CODE, compile, EMPTY: compile() };

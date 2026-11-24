@@ -80,6 +80,7 @@ let talentBuilds = null; // saved talent builds per character (talent planner)
 let shipRides = null; // boats and zeppelins worked out from the game files, for the desktop -> game hand-off (B2)
 let forgetGameAnswers = null, clearGameAnswers = null; // kept in-game answers (ask-answers.json)
 let gatheringLoops = null; // the gathering loop each character sent to the game
+let profileSends = null; // the addon settings profile each character is waiting to be offered in game
 let community = null, collectDiagnostics = null;
 let desk = null; // Backstage Desk: reports with replies, anonymous statistics, error reports (desk.cjs)
 const catalogs = new CatalogCache();
@@ -246,7 +247,7 @@ app.whenReady().then(async () => {
     game = new GameSync({
       dataDir: app.getPath("userData"),
       // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
-      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, reports: desk?.unread() || 0, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id), routes: (id) => routeEditor?.handoff(id) || null, ships: () => shipRides?.() || null }); },
+      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, reports: desk?.unread() || 0, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id), routes: (id) => routeEditor?.handoff(id) || null, ships: () => shipRides?.() || null, sentProfiles: (key) => profileSends?.get(key) || null }); },
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -815,6 +816,12 @@ app.whenReady().then(async () => {
   handle("dataCoverage", () => worldMap.coverage());
   // Scout notes (S1): a count for Help → Data coverage and "Save my scout notes…" to a file the player picks.
   require("./core/scout-ipc.cjs").registerScoutHandlers({ handle, getGame: () => game, dialog, getWindow: () => win });
+  // Addon settings profiles (Settings): list what each character kept in game and send one to another character.
+  profileSends = new (require("./core/settings-profiles.cjs").ProfileSends)(app.getPath("userData"));
+  const settingsProfiles = require("./core/settings-profiles-ipc.cjs").registerSettingsProfiles({ handle, getGame: () => game, getState: () => store.state, sends: profileSends,
+    onChange: () => { game?.writeHandoff().catch(() => {}); } });
+  // After each read of the saved file: a profile the game has accepted or dismissed stops being sent.
+  if (game) game.onSettingsProfiles = (blocks) => { if (settingsProfiles.settle(blocks)) game?.writeHandoff().catch(() => {}); };
   const leveling = new (require("./core/leveling.cjs").LevelingAdvisor)({
     getState: () => store.state, knowledge, insights,
     getLive: () => worldMap.liveFrame(worldMap.profile()),
@@ -1379,6 +1386,7 @@ app.whenReady().then(async () => {
       talentBuilds?.clear(); // and so do their talent builds
       try { clearGameAnswers?.(); } catch {} // and the answers kept for /bf answers
       gatheringLoops?.clear(); // and the gathering loops sent to the game
+      profileSends?.clear(); // and the settings profiles waiting to be offered in game
       community?.reset(); // local install id, sent marks and pack; shared facts stay on the server
       desk?.reset(); // local reports, their keys and the privacy switches
       fieldDispatch.finishReset();
