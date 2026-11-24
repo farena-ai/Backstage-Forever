@@ -60,6 +60,11 @@ code { font: 13px var(--mono); color: var(--parchment); background: var(--raised
 .badge { background: var(--brass); color: #1b1408; font-size: 12px; font-weight: 700; border-radius: 9px; padding: 0 7px; line-height: 18px; text-shadow: none; }
 .who { display: flex; align-items: center; gap: 10px; margin: 0; white-space: nowrap; }
 .who-name { color: var(--muted); font-size: 14px; }
+a.who-name:hover { color: var(--parchment); }
+.secret { font: 600 17px var(--mono); letter-spacing: .08em; color: var(--parchment); background: #14110c; border: 1px solid var(--brass-dim); border-radius: 6px; padding: 10px 12px; margin: 0 0 10px; overflow-wrap: anywhere; user-select: all; }
+.uri { font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere; margin: 0 0 12px; user-select: all; }
+.steps { margin: 0 0 12px; padding-left: 20px; }
+.steps li { margin-bottom: 6px; }
 
 /* ---------- layout ---------- */
 .main { width: 100%; max-width: 1160px; margin: 0 auto; padding: 24px 24px 40px; flex: 1; }
