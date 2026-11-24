@@ -1,0 +1,86 @@
+name: Weekly data check
+
+# Looks once a week for a newer snapshot of the community dataset the bundled packs are built from.
+# If there is one, it rebuilds every pack that has a compiler, runs the checks and the unit tests,
+# and opens a pull request for a person to review. It never merges anything and never releases.
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: data-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Find the newest upstream snapshot
+        id: upstream
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pinned=$(node -p "require('./data/forever/source-lock.json').commit")
+          repo=$(node -p "require('./data/forever/source-lock.json').repository")
+          newest=$(gh api "repos/$repo/commits?per_page=1" -q '.[0].sha')
+          echo "pinned=$pinned" >> "$GITHUB_OUTPUT"
+          echo "newest=$newest" >> "$GITHUB_OUTPUT"
+          if [ "$pinned" = "$newest" ]; then echo "changed=false" >> "$GITHUB_OUTPUT"; else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+          echo "Pinned $pinned, newest $newest"
+      - name: Stop if a refresh pull request is already open
+        id: open
+        if: steps.upstream.outputs.changed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh pr list --state open --search "head:data/refresh-" --json number -q 'length')
+          echo "count=$n" >> "$GITHUB_OUTPUT"
+      - name: Rebuild the packs from the newest snapshot
+        if: steps.upstream.outputs.changed == 'true' && steps.open.outputs.count == '0'
+        shell: bash
+        run: node scripts/refresh-forever-data.cjs --commit "${{ steps.upstream.outputs.newest }}" 2>&1 | tee refresh.log
+      - name: Unit tests
+        if: steps.upstream.outputs.changed == 'true' && steps.open.outputs.count == '0'
+        run: npm test
+      - name: Open a pull request
+        if: steps.upstream.outputs.changed == 'true' && steps.open.outputs.count == '0'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- data addon src scripts tests; then echo "The newer snapshot changes nothing bundled."; exit 0; fi
+          short=$(echo "${{ steps.upstream.outputs.newest }}" | cut -c1-8)
+          branch="data/refresh-$short"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A data addon src scripts tests
+          git commit -m "Data refresh to upstream $short"
+          git push origin "$branch"
+          {
+            echo "The weekly check found a newer snapshot of the community dataset (\`${{ steps.upstream.outputs.pinned }}\` → \`${{ steps.upstream.outputs.newest }}\`)."
+            echo
+            echo "Every pack with a compiler was rebuilt, the checks passed and the unit tests passed in the workflow run."
+            echo "Hand-reviewed packs are not touched. Review the diff before merging; nothing is released by this."
+            echo
+            echo "A pull request opened by a workflow does not start the usual CI. Close and reopen it, or push an empty commit, to run the window tests."
+            echo
+            echo '```'
+            tail -40 refresh.log
+            echo '```'
+          } > body.md
+          gh pr create --head "$branch" --title "Data refresh to upstream $short" --body-file body.md

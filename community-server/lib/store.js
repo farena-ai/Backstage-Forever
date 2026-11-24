@@ -8,7 +8,7 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const MAX_COUNTER = 1_000_000;
 
 function day(now) { return new Date(now).toISOString().slice(0, 10); }
@@ -38,13 +38,104 @@ function facts(sub) {
   return out;
 }
 
+// Schema 2 ("Backstage Desk"): statistics, tickets, error groups, announcements
+// and the admin area. Every statement is idempotent so a half-applied upgrade
+// can be re-run; nothing here touches the schema 1 tables or their rows.
+const DESK_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS heartbeats (
+    install TEXT NOT NULL, day TEXT NOT NULL,
+    app_version TEXT NOT NULL, addon_version TEXT, channel TEXT NOT NULL,
+    os TEXT NOT NULL, os_major TEXT, lang TEXT NOT NULL, build TEXT,
+    first_week TEXT NOT NULL, flags INTEGER NOT NULL, areas INTEGER NOT NULL,
+    PRIMARY KEY (install, day)
+  ) WITHOUT ROWID;
+  CREATE INDEX IF NOT EXISTS heartbeats_day ON heartbeats(day);
+  CREATE TABLE IF NOT EXISTS first_seen (install TEXT PRIMARY KEY, day TEXT NOT NULL) WITHOUT ROWID;
+  CREATE INDEX IF NOT EXISTS first_seen_day ON first_seen(day);
+  CREATE TABLE IF NOT EXISTS monthly_rollups (
+    month TEXT NOT NULL, dim TEXT NOT NULL, value TEXT NOT NULL,
+    installs INTEGER NOT NULL, days INTEGER NOT NULL,
+    PRIMARY KEY (month, dim, value)
+  ) WITHOUT ROWID;
+  CREATE TABLE IF NOT EXISTS tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key_hash TEXT, install TEXT,
+    status TEXT NOT NULL DEFAULT 'new', fixed_in TEXT,
+    kind TEXT NOT NULL, area TEXT NOT NULL, frequency TEXT,
+    summary TEXT NOT NULL, expected TEXT NOT NULL DEFAULT '',
+    app_version TEXT, addon_version TEXT, os TEXT, os_major TEXT, lang TEXT, build TEXT,
+    diagnostics TEXT,
+    tags TEXT NOT NULL DEFAULT '', severity TEXT, assignee INTEGER, github TEXT, duplicate_of INTEGER,
+    last_from TEXT NOT NULL DEFAULT 'player',
+    created_at TEXT NOT NULL, updated_at TEXT NOT NULL, first_reply_at TEXT, closed_at TEXT
+  );
+  INSERT INTO sqlite_sequence(name, seq) SELECT 'tickets', 1000
+    WHERE NOT EXISTS (SELECT 1 FROM sqlite_sequence WHERE name = 'tickets');
+  CREATE INDEX IF NOT EXISTS tickets_install ON tickets(install);
+  CREATE INDEX IF NOT EXISTS tickets_status ON tickets(status);
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    seq INTEGER, sender TEXT NOT NULL, admin INTEGER,
+    text TEXT NOT NULL, at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS messages_ticket ON messages(ticket, seq);
+  CREATE TABLE IF NOT EXISTS error_groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    signature TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL, message TEXT NOT NULL, stack TEXT NOT NULL, origin TEXT NOT NULL,
+    first_day TEXT NOT NULL, last_day TEXT NOT NULL, total INTEGER NOT NULL DEFAULT 0, ticket INTEGER
+  );
+  CREATE TABLE IF NOT EXISTS error_occurrences (
+    grp INTEGER NOT NULL REFERENCES error_groups(id) ON DELETE CASCADE,
+    app_version TEXT NOT NULL, os TEXT NOT NULL, day TEXT NOT NULL, n INTEGER NOT NULL,
+    PRIMARY KEY (grp, app_version, os, day)
+  ) WITHOUT ROWID;
+  CREATE INDEX IF NOT EXISTS error_occurrences_day ON error_occurrences(day);
+  CREATE TABLE IF NOT EXISTS announcements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL, text TEXT NOT NULL, level TEXT NOT NULL, link TEXT,
+    from_at TEXT NOT NULL, until_at TEXT NOT NULL,
+    min_version TEXT, max_version TEXT, os TEXT NOT NULL DEFAULT '', lang TEXT NOT NULL DEFAULT '',
+    created_by INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS saved_replies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, body TEXT NOT NULL, updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS admins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    pw_hash TEXT NOT NULL, totp_secret TEXT NOT NULL, totp_last_step INTEGER NOT NULL DEFAULT 0,
+    disabled INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, last_login_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS sessions (
+    id_hash TEXT PRIMARY KEY, admin INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    created_ms INTEGER NOT NULL, seen_ms INTEGER NOT NULL
+  ) WITHOUT ROWID;
+  CREATE TABLE IF NOT EXISTS audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at TEXT NOT NULL, admin INTEGER, admin_name TEXT NOT NULL,
+    action TEXT NOT NULL, target TEXT NOT NULL DEFAULT '', detail TEXT NOT NULL DEFAULT ''
+  );
+  CREATE TABLE IF NOT EXISTS login_attempts (
+    scope TEXT PRIMARY KEY, fails INTEGER NOT NULL, window_ms INTEGER NOT NULL, locked_until_ms INTEGER NOT NULL DEFAULT 0
+  ) WITHOUT ROWID;
+  INSERT OR IGNORE INTO meta(k, v) VALUES ('first_seen_pruned', '0');
+`;
+
 class Store {
   constructor(dbPath) {
     if (dbPath !== ":memory:") fs.mkdirSync(path.dirname(dbPath), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(dbPath);
     this.db.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;");
-    this.migrate();
-    this.prepare();
+    try {
+      this.migrate();
+      this.prepare();
+    } catch (e) {
+      this.db.close(); // do not hold the file open when the schema cannot be used
+      throw e;
+    }
+    this.desk = new (require("./desk").Desk)(this);
   }
 
   migrate() {
@@ -85,6 +176,10 @@ class Store {
         PRAGMA user_version = 1;
         COMMIT;`);
     }
+    if (v < 2) this.db.exec(`BEGIN;
+${DESK_SCHEMA}
+PRAGMA user_version = 2;
+COMMIT;`);
   }
 
   prepare() {
@@ -145,17 +240,22 @@ class Store {
     return Number(info.lastInsertRowid);
   }
 
-  // Removes everything an install contributed. With block=true, future
-  // submissions and reports from that install are refused.
+  // Removes everything an install contributed (observations, old reports,
+  // tickets with their messages, heartbeats, first-seen). With block=true,
+  // future submissions, reports, tickets and heartbeats from it are refused.
   purgeInstall(hash, { block = false, now = Date.now() } = {}) {
     return this.tx(() => {
       const observations = Number(this.q.delObs.run(hash).changes);
       const reports = Number(this.q.delReports.run(hash).changes);
+      const desk = this.desk.purgeInstall(hash);
       if (block) this.q.block.run(hash, day(now));
       this.q.bump.run();
-      return { observations, reports, blocked: block };
+      return { observations, reports, tickets: desk.tickets, heartbeats: desk.heartbeats, blocked: block };
     });
   }
+
+  // Refuses everything that install sends from now on; what it already sent stays.
+  blockInstall(hash, now = Date.now()) { return Number(this.q.block.run(hash, day(now)).changes); }
 
   published(kind, minInstalls) { return this.q.published.all(kind, minInstalls); }
   dropRows(minInstalls) { return this.q.dropRows.all(minInstalls); }
@@ -192,4 +292,4 @@ class Store {
   close() { this.db.close(); }
 }
 
-module.exports = { Store, hashInstall, facts, day };
+module.exports = { Store, hashInstall, facts, day, SCHEMA_VERSION };

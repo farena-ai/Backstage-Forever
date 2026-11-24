@@ -1,5 +1,5 @@
 [Unit]
-Description=Backstage Forever community data service (loopback 5081)
+Description=Backstage Forever community data and Desk service (loopback 5081)
 After=network-online.target
 
 [Service]
