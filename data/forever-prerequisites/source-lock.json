@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "product": "wowf",
+  "license": "CC BY 4.0",
+  "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+  "commit": "423d6c9645cd102406782e7400805a7c738e2d69",
+  "build": "1.60.1.71037",
+  "builds": [
+    {
+      "build": "1.60.1.71037",
+      "files": {
+        "quest_prerequisites.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.71037/quest_prerequisites.json",
+          "bytes": 902363,
+          "sha256": "7860884c87c8d5fa49738b25e003797fe27878a3fd5c67423c5f09c47d1153a8",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.71037",
+            "collectedOn": {
+              "first": "2026-11-22",
+              "last": "2026-11-23"
+            },
+            "dataset": "quest_prerequisites",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 6
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70959",
+      "files": {
+        "quest_prerequisites.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70959/quest_prerequisites.json",
+          "bytes": 845632,
+          "sha256": "a6a25568eb28adb38de813221d7abf111af2591bfd3ec3e8dd3281b7612718f9",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70959",
+            "collectedOn": {
+              "first": "2026-11-19",
+              "last": "2026-11-23"
+            },
+            "dataset": "quest_prerequisites",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 10
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70938",
+      "files": {
+        "quest_prerequisites.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70938/quest_prerequisites.json",
+          "bytes": 309521,
+          "sha256": "6e6cecc0a651aa4262b67ccc365863be2a90446bcc6f84058b100fb5f521ba90",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70938",
+            "collectedOn": {
+              "first": "2026-11-17",
+              "last": "2026-11-17"
+            },
+            "dataset": "quest_prerequisites",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 7
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70888",
+      "files": {
+        "quest_prerequisites.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70888/quest_prerequisites.json",
+          "bytes": 288133,
+          "sha256": "10d5ff440aa42a8ea3477ddf43c39f84f4ce97a156f022f8ac49145c6c2b4d83",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70888",
+            "collectedOn": {
+              "first": "2026-11-10",
+              "last": "2026-11-13"
+            },
+            "dataset": "quest_prerequisites",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 4
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70862",
+      "files": {
+        "quest_prerequisites.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70862/quest_prerequisites.json",
+          "bytes": 163743,
+          "sha256": "f7b4eb840c79bcd37eb158781389e29584681cad96c9bae334ad73382859a5cd",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70862",
+            "collectedOn": {
+              "first": "2026-11-09",
+              "last": "2026-11-10"
+            },
+            "dataset": "quest_prerequisites",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 5
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70840",
+      "files": {
+        "quest_prerequisites.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70840/quest_prerequisites.json",
+          "bytes": 63576,
+          "sha256": "de2eca54634cd8800a3c6434bd2543cd782b750c79de0751f3b5be3bf06ea32b",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70840",
+            "collectedOn": {
+              "first": "2026-11-07",
+              "last": "2026-11-07"
+            },
+            "dataset": "quest_prerequisites",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 3
+          }
+        }
+      }
+    },
+    {
+      "build": "1.60.1.70790",
+      "files": {
+        "quest_prerequisites.json": {
+          "url": "https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/423d6c9645cd102406782e7400805a7c738e2d69/data/wowf/1.60.1.70790/quest_prerequisites.json",
+          "bytes": 53081,
+          "sha256": "aa02ef4f407423294bb6498449c6e1ea6922dd16c5682a2cd528d0c2dfbbc4ab",
+          "meta": {
+            "attribution": "Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.",
+            "clientBuild": "1.60.1.70790",
+            "collectedOn": {
+              "first": "2026-11-06",
+              "last": "2026-11-06"
+            },
+            "dataset": "quest_prerequisites",
+            "license": "CC BY 4.0",
+            "product": "wowf",
+            "schemaVersion": 1,
+            "sources": 3
+          }
+        }
+      }
+    }
+  ],
+  "compiled": {
+    "bytes": 6729,
+    "sha256": "4c6543fd344eabc03df1d84438f1a3c08629d3a022c23a51101a77d1710c9a8a"
+  }
+}

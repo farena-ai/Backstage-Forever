@@ -3,6 +3,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { validatePack } = require("../src/core/knowledge.cjs");
+const { bundledPrerequisites, prerequisiteIndex } = require("../src/core/quest-prerequisites.cjs");
+// The prerequisite pack belongs to one quest pack; any other pack compiles without it.
+function prerequisitesFor(pack) {
+  const p = bundledPrerequisites();
+  return p && p.sourceCommit === pack.sourceCommit && p.build === pack.build ? prerequisiteIndex(p) : null;
+}
 const root = path.join(__dirname, "..");
 const MAX_BYTES = 1024 * 1024;
 
@@ -25,8 +31,10 @@ function literal(value) {
   ).join(",") + "}";
   throw new TypeError("Unsupported reference literal.");
 }
-function compile(input) {
+function compile(input, prerequisites = undefined) {
   const pack = validatePack(input);
+  const pre = prerequisites === undefined ? prerequisitesFor(pack) : prerequisites;
+  const known = (ids) => ids.filter((x) => pack.quests[x]);
   const coordinates = p => ({ mapId: p.mapId, x: p.x, y: p.y });
   const npcPoint = (rows, evidence) => {
     for (const row of rows) {
@@ -70,6 +78,12 @@ function compile(input) {
     }
     // 1.19: the reported follow-up quest, for /bf chain. A reported link, not a proven prerequisite.
     if (Number.isSafeInteger(q.nextQuestId) && q.nextQuestId !== q.id && pack.quests[q.nextQuestId]) row.next = q.nextQuestId;
+    // B3: quests every recorded player had finished first. need: a reported link that held for
+    // all of them. after: a recorded pattern only. lead: a reported link players went without.
+    const need = pre?.needs.get(q.id), after = pre?.seen.get(q.id), lead = pre?.leadIns.get(q.id);
+    if (need && known(need.ids).length) row.need = known(need.ids);
+    if (after && known(after.ids).length) row.after = known(after.ids);
+    if (lead && pack.quests[lead.id]) row.lead = lead.id;
     lines.push(`[${q.id}]=${literal(row)},`);
   }
   lines.push("}}", "");

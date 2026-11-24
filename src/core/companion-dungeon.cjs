@@ -1,5 +1,6 @@
 "use strict";
-const { BASELINE, loadEncounters } = require("./dungeon-atlas.cjs");
+// The Companion's dated answer stays on the pinned single-build file it names (see ENCOUNTER_URL).
+const { BASELINE, loadPinnedEncounters: loadEncounters } = require("./dungeon-atlas.cjs");
 const buildCompat = require("./build-compat.cjs");
 const { mentionsDungeonAlias } = require("./companion-intents.cjs");
 const { savedSource } = require("./journal-data.cjs");

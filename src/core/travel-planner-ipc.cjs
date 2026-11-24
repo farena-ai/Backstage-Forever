@@ -81,6 +81,14 @@ function registerTravelPlannerHandlers({ handle, getState, gameData = null, refe
   const spellLevels = () => { try { return gameData?.spellLevels() || null; } catch { return null; } };
   handle("travelPlaces", (...args) => { if (args.length) throw Error("Invalid travel request."); return travelView(getState(), { game: game(), reference }); });
   handle("travelPlan", (...args) => { if (args.length !== 1) throw Error("Invalid travel request."); return travelPlan(getState(), args[0], { game: game(), reference }); });
-  return { trainerView: (className, level) => trainerView(getState(), className, level, { spellLevels: spellLevels() }) };
+  // B2: the rides for the desktop -> game hand-off. Null until the game files gave the stops, or
+  // when the transport data is from another patch than the saved characters.
+  const rides = () => {
+    const files = game(), state = getState(), transport = loadTransportPack();
+    const profile = state.profiles.find((p) => p.id === state.activeProfileId) || state.profiles[0] || null;
+    if (!files?.paths || !buildStanding(transport, profile).usable) return null;
+    return transportRides(transport, files, reference);
+  };
+  return { rides, trainerView: (className, level) => trainerView(getState(), className, level, { spellLevels: spellLevels() }) };
 }
 module.exports = { registerTravelPlannerHandlers, travelView, travelPlan, trainerView, buildStanding };

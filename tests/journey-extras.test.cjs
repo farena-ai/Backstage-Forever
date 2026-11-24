@@ -162,6 +162,10 @@ test("the pages paint every view from its model, escaped and without inline styl
   assert.deepEqual(Array.from(X.VIEWS, ([id]) => id), ["overview", "story", "timeline", "races", "coach", "challenge", "overlay", "discord"]);
   const tabs = X.tabs("story");
   assert.equal((tabs.match(/data-journey-view=/g) || []).length, 8); assert.match(tabs, /data-journey-view="story" aria-pressed="true"/);
+  // B6: two named groups that never break inside, so a small window shows two tidy rows.
+  assert.deepEqual([...tabs.matchAll(/<div class="jx-group" role="group" aria-label="([^"]+)">/g)].map((m) => m[1]), ["Your journey", "Runs and sharing"]);
+  assert.equal((tabs.split('aria-label="Runs and sharing"')[1].match(/data-journey-view=/g) || []).length, 3);
+  assert.match(require("node:fs").readFileSync(require("node:path").join(__dirname, "../src/renderer/journey-extras.css"), "utf8"), /.jx-group {[^}]*flex-wrap: nowrap/);
   const root = { querySelectorAll: () => [], querySelector: () => null, addEventListener() {} };
   const html = {};
   for (const [view] of X.VIEWS.slice(1)) {

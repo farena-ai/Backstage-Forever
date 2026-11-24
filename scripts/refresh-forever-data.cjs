@@ -9,7 +9,8 @@
 // fetched at app runtime; this is an authoring tool.
 //
 // After the quest pack it rebuilds every other pack that has a compiler (sellers, flight graph, trainer
-// costs, field notes, creatures, NPC positions, quest loot, boss loot, world finds), then the addon data
+// costs, quest prerequisites, hunter pets, boss roster, field notes, creatures, NPC positions, quest loot,
+// boss loot, world finds), then the addon data
 // files, and finally runs every check:* script and says which ones need a pinned number updated.
 // --offline never downloads: every file must already be under <dir>/<commit>/ (a missing optional file is
 // skipped, a missing required one stops the run). Packs written by hand or reviewed by a person are not
@@ -112,9 +113,32 @@ async function main() {
   fs.writeFileSync(path.join(vendorDir, "pack.json"), sellers.pack);
   fs.writeFileSync(path.join(vendorDir, "source-lock.json"), sellers.lock);
   console.log(`Compiled data/forever-vendors for ${withSellers.length} builds.`);
-  // The transport graph and the trainer costs lock every build that has their files, then rebuild.
-  for (const script of ["./build-forever-transport.cjs", "./build-forever-trainers.cjs"]) require(script).main(["--relock", dir, "--commit", commit]);
+  // The transport graph, the trainer costs, the quest prerequisites (joined with the quest pack just
+  // written), the hunter pet book and the boss roster lock every build that has their files, then rebuild.
+  for (const script of ["./build-forever-transport.cjs", "./build-forever-trainers.cjs", "./build-forever-prerequisites.cjs", "./build-forever-pets.cjs", "./build-forever-encounters.cjs"]) require(script).main(["--relock", dir, "--commit", commit]);
+  notCached(dir, all);
   restOfThePacks({ dir, commit, previousCommit: lock.commit, builds: all });
+}
+
+// Upstream files no compiler reads, and why. Printed so nobody has to open them again to find out.
+const UNUSED = {
+  "hotfixes.enUS.json": "raw hotfix rows of every game table; the app reads the same rows from the player's own hotfix cache, in the player's language",
+  "item_uses.json": "where a quest item was used, for about a dozen quests; too few to add a layer for",
+  "game_rules.json": "level cap, profession caps and reputation bands the app already holds; the renown rewards are a later feature",
+  "character_stats.json": "per-class stat formulas from a handful of characters; nothing in the app works from formulas yet",
+  "durability.json": "maximum durability of a few hundred items; the game shows it on the item",
+  "broadcast_text.enUS.json": "NPC greeting text; narrative text is never bundled",
+  "probes.json": "upstream's own collection checks",
+  "rank_scan.json": "not published at this commit when last checked",
+  "stat_scan.json": "not published at this commit when last checked",
+  "talent_scan.json": "not published at this commit when last checked",
+};
+function notCached(dir, builds) {
+  console.log("\nUpstream files that are not compiled:");
+  for (const [name, why] of Object.entries(UNUSED)) {
+    const cached = builds.filter((build) => fs.existsSync(path.join(dir, build, name))).length;
+    console.log(`${cached ? "note" : "none"}  ${name}: ${cached ? `cached for ${cached} build(s); ` : "not in the cache; "}${why}.`);
+  }
 }
 
 // Everything after the four packs above. Each step is its own process, so a compiler always reads the
@@ -154,9 +178,9 @@ function restOfThePacks({ dir, commit, previousCommit, builds }) {
   for (const name of ["build:addon-reference", "build:addon-sources", "build:addon-atlas", "build:addon-advisor", "build:addon-travel", "build:addon-rares", "build:find-index", "build:guided-route"]) run(name, "npm", ["run", "--silent", name]);
   console.log("\nNot rebuilt here (say so in the release notes if they are behind):");
   for (const [pack, why] of [
-    ["data/forever-travel", "a small hand-reviewed reference (boats, zeppelins, roads) pinned to exact files and published guides in src/core/travel-sources.cjs; a person has to review any change"],
-    ["data/forever-encounters", "no compiler in the repo; the pack and src/core/companion-dungeon.cjs name one exact upstream file and build"],
-    ["data/forever-acquisition", "seven hand-qualified relations from four files that are not part of the per-build snapshot"],
+    ["data/forever-travel", "a small hand-reviewed reference (boats, zeppelins, roads): its file hashes, the day each flight was seen (2026-11-09) and its reviewed guides are constants in src/core/travel-sources.cjs and travel-data.cjs, and its notice states them. Rebuilding from a newer file would claim a review that did not happen; the flight graph the app plans with is data/forever-transport, which is rebuilt above"],
+    ["data/forever-encounters", "one file of one build that the Companion's dated \"historical encounters\" answer names (src/core/companion-dungeon.cjs). The boss roster the dungeon atlas shows is data/forever-encounter-roster, which is rebuilt above"],
+    ["data/forever-acquisition", "seven hand-qualified material sources: the notice states the reviewed counts and the day they were seen, and the four input files are renamed copies outside the per-build snapshot. A person has to choose and check the relations again"],
     ["data/forever-leveling, data/forever-route", "written and reviewed by hand"],
   ]) console.log(`skip  ${pack}: ${why}.`);
   console.log("\nChecks:");

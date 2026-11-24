@@ -103,7 +103,8 @@ said={} BackstageForeverPerfCommand('perf') assert(said[1]:find('Memory in use',
 
 test("every module with an event handler registers with the readout, and every budget names a real module", () => {
   const toc = read("addon/BackstageForever/BackstageForever.toc").split(/\r?\n/).filter((l) => l.endsWith(".lua"));
-  assert.equal(toc[1], "BackstageForeverPerf.lua", "loaded right after the locale, before every module with a frame");
+  // B10: the locale is the lookup plus one data-only file per language; the readout follows them.
+  assert.equal(toc.filter((l) => !/^BackstageForeverLocale/.test(l))[0], "BackstageForeverPerf.lua", "loaded right after the locale files, before every module with a frame");
   const names = new Set();
   for (const file of toc) {
     if (file === "BackstageForeverPerf.lua") continue;

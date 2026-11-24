@@ -29,7 +29,7 @@ function questRow(id, progress = []) {
   return { id, title: q.title, complete: objectives.length > 0 && objectives.every((o) => o.done), objectives };
 }
 
-const encounterIds = new Map(require("../data/forever-encounters/pack.json").encounters.map((e) => [e.name, e.id]));
+const encounterIds = new Map(require("../data/forever-encounter-roster/pack.json").encounters.map((e) => [e.name, e.id]));
 // Boss names come from the bundled loot pack; the id is the game's where the encounter pack has it.
 const bossesOf = (instanceMap) => (bossLoot.instances[SLUGS[instanceMap]]?.bosses || []).map((b, i) => ({ name: b.name, encounterId: encounterIds.get(b.name) || b.npcIds?.[0] || 900000 + instanceMap * 100 + i }));
 

@@ -43,7 +43,7 @@ end
 local function friendly(s,f)return s==nil or s=='B' or f==nil or s==f end
 local function completedSet()
     local ids=call(field(public(C_QuestLog),'GetAllCompletedQuestIDs'));local out={}
-    if type(ids)=='table' then for _,v in pairs(ids)do v=number(public(v),1,2147483647);if v then out[v]=true end end end
+    if type(ids)=='table' then out.known=true;for _,v in pairs(ids)do v=number(public(v),1,2147483647);if v then out[v]=true end end end
     return out
 end
 local function questLog()
@@ -77,6 +77,13 @@ local function giverOf(id)
     end
     return giverIndex[id]
 end
+-- Pure (B3): is every quest this giver row needs first finished? Without a known history nothing is held back.
+function BackstageForeverAdvisorReady(row,completed)
+    local needs=type(row)=='table' and rawget(row,'p')
+    if type(needs)~='table' or type(completed)~='table' or not (rawget(completed,'known')==true or next(completed)~=nil) then return true end
+    for i=1,math.min(#needs,8) do if not completed[needs[i]] then return false end end
+    return true
+end
 -- Pure: the advisor pins for one map. Exposed for tests and /bf next.
 -- spots: optional {questID={x,y}} from the game; hand-ins prefer it, then our reference, then the quest giver.
 function BackstageForeverAdvisorPoints(mapId,who,completed,inLog,complete,layers,spots)
@@ -101,7 +108,7 @@ function BackstageForeverAdvisorPoints(mapId,who,completed,inLog,complete,layers
     if on('pickup')then
         for _,g in ipairs(field(field(data,'givers'),mapId) or {})do
             local l,m=g.l,g.m or 0
-            if not completed[g.q] and not inLog[g.q] and friendly(g.s,who.faction) and m<=who.level and l>=who.level-3 and l<=who.level+2 then
+            if not completed[g.q] and not inLog[g.q] and friendly(g.s,who.faction) and m<=who.level and l>=who.level-3 and l<=who.level+2 and BackstageForeverAdvisorReady(g,completed) then
                 add({layer='pickup',x=g.x,y=g.y,title=g.n,detail=g.t..' (level '..l..')',questId=g.q,level=l})
             end
         end

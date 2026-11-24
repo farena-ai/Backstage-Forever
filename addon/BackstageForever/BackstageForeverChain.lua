@@ -37,7 +37,15 @@ function BackstageForeverChainLine(quests,questId,title)
     local line=('%s: %s %d %s %d.'):format(name,T('step'),position,T('of'),#ids)
     local nextId=ids[position+1]
     local nextRow=nextId and rawget(quests,nextId)
-    if type(nextRow)=='table' and type(rawget(nextRow,'title'))=='string' then line=line..' '..T('Next:')..' '..rawget(nextRow,'title')..'.'
+    if type(nextRow)=='table' and type(rawget(nextRow,'title'))=='string' then
+        line=line..' '..T('Next:')..' '..rawget(nextRow,'title')..'.'
+        -- B3: the next step may need another quest as well as this one.
+        local also={}
+        for _,other in ipairs(type(rawget(nextRow,'need'))=='table' and rawget(nextRow,'need') or {}) do
+            local o=other~=questId and #also<3 and rawget(quests,other)
+            if type(o)=='table' and type(rawget(o,'title'))=='string' then also[#also+1]=rawget(o,'title') end
+        end
+        if #also>0 then line=line..' '..T('It also needs:')..' '..table.concat(also,', ')..'.' end
     elseif not nextId then line=line..' '..T('This is the last step.') end
     return line
 end
@@ -57,6 +65,32 @@ function BackstageForeverChainTip(quests,questId)
     end
     return lines
 end
+-- Pure (B3): what players had finished before they took this quest, as tooltip lines, or nil.
+-- done: optional function(questId) -> true when the player has finished it.
+function BackstageForeverChainNeeds(quests,questId,done)
+    local row=type(quests)=='table' and type(questId)=='number' and rawget(quests,questId)
+    if type(row)~='table' then return nil end
+    local T=BackstageForeverTr or tostring
+    local function names(ids,open)
+        local out={}
+        for i=1,type(ids)=='table' and math.min(#ids,4) or 0 do
+            local other=rawget(quests,ids[i])
+            local title=type(other)=='table' and rawget(other,'title')
+            local finished=false
+            if type(done)=='function' then local ok,value=pcall(done,ids[i]);finished=ok and value==true end
+            if type(title)=='string' and title~='' and #title<=120 and not (open and finished) then out[#out+1]=(title:gsub('|','||')) end
+        end
+        return #out>0 and table.concat(out,', ') or nil
+    end
+    local lines={}
+    local need=names(rawget(row,'need'),true)
+    if need then lines[#lines+1]=T('Finish first:')..' '..need..'.' end
+    local after=names(rawget(row,'after'),true)
+    if after then lines[#lines+1]=T('Recorded players had all finished:')..' '..after..'.' end
+    local lead=type(rawget(row,'lead'))=='number' and names({rawget(row,'lead')},false)
+    if lead then lines[#lines+1]=lead..': '..T('leads here, but players took this quest without it.') end
+    return #lines>0 and lines or nil
+end
 -- Pure: the quest id inside a quest link ("quest:123:20" or a whole chat link), or nil.
 function BackstageForeverChainLinkQuest(link)
     if type(link)~='string' or #link>400 then return nil end
@@ -74,7 +108,11 @@ function BackstageForeverChainTooltip(tip,questId)
     local quests=type(BackstageForeverReference)=='table' and rawget(BackstageForeverReference,'quests')
     if type(quests)~='table' then return 0 end
     local ok,lines=pcall(BackstageForeverChainTip,quests,questId)
-    if not ok or type(lines)~='table' then return 0 end
+    if not ok or type(lines)~='table' then lines={} end
+    local flagged=type(C_QuestLog)=='table' and rawget(C_QuestLog,'IsQuestFlaggedCompleted')
+    local read,more=pcall(BackstageForeverChainNeeds,quests,questId,type(flagged)=='function' and flagged or nil)
+    if read and type(more)=='table' then for _,line in ipairs(more) do lines[#lines+1]=line end end
+    if #lines==0 then return 0 end
     for _,line in ipairs(lines) do pcall(tip.AddLine,tip,line,.79,.62,.27,true) end
     if type(tip.Show)=='function' then pcall(tip.Show,tip) end
     return #lines

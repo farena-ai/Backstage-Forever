@@ -231,3 +231,21 @@
 .tal-level { white-space: nowrap; }
 .tal-card small { color: #b9a783; }
 .tal-plan .tal-tree header h3 { font-size: 14px; }
+/* B3 (roadmap C7): the Hunter pet book, in the trainer card's parchment. */
+.tal-pet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tal-pet-head h3 { margin: 0; }
+.tal-pets > .tal-train-none { margin-top: 6px; }
+.tal-pets h4 { margin: 14px 0 6px; font: 700 13px Cinzel, Georgia, serif; color: #3d220c; }
+.tal-pet-scroll { overflow-x: auto; border: 1px solid #c4a466; border-radius: 6px; background: rgba(255,248,225,.55); }
+.tal-pet-table { width: 100%; border-collapse: collapse; font-size: 13px; color: #2b1b0a; }
+.tal-pet-table th { text-align: left; padding: 6px 10px; font: 700 11px Georgia, serif; letter-spacing: .5px; text-transform: uppercase; color: #5a3e1c; border-bottom: 1px solid #c4a466; white-space: nowrap; }
+.tal-pet-table td { padding: 6px 10px; vertical-align: top; border-bottom: 1px solid #dcc797; }
+.tal-pet-table tr:last-child td { border-bottom: 0; }
+.tal-pet-table td small { display: block; font-size: 11px; color: #6b4a22; }
+.tal-pet-table td ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.tal-pet-table td li { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+.tal-pet-ability { font-weight: 700; }
+.tal-pet-ability small { display: inline; font-weight: 400; }
+.tal-pet-need { font-size: 12px; color: #5a3e1c; }
+.tal-pet-lv { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tal-pet-later td { color: #6b5a3c; }

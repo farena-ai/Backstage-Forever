@@ -276,7 +276,7 @@ test("the addon file is wired in and holds no call that spends or opens anything
 test("German players read the same lines in German", () => {
   const out = lua(STUBS + String.raw`
 GetLocale=function() return 'deDE' end
-dofile('addon/BackstageForever/BackstageForeverLocale.lua')
+dofile('addon/BackstageForever/BackstageForeverLocale.lua') dofile('addon/BackstageForever/BackstageForeverLocaleDe.lua') dofile('addon/BackstageForever/BackstageForeverLocaleEs.lua') dofile('addon/BackstageForever/BackstageForeverLocaleFr.lua')
 ` + data + String.raw`
 dofile('addon/BackstageForever/BackstageForeverTalents.lua')
 local plan=BackstageForeverTalentPlan('Abel','Thunder Hold')

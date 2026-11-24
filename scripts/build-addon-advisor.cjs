@@ -17,6 +17,7 @@ const { loadVendorPack } = require("../src/core/vendor-facts.cjs");
 const { loadBundledInsights } = require("../src/core/insights-data.cjs");
 const { MASTERS, SOURCES: FLIGHT_SOURCES, normalizeFlightMasters, taxiNode } = require("../src/core/flight-masters.cjs");
 const { isDeepStrictEqual } = require("node:util");
+const { bundledPrerequisites, prerequisiteIndex } = require("../src/core/quest-prerequisites.cjs");
 
 function luaString(value) {
   return '"' + [...Buffer.from(String(value), "utf8")].map((b) => (b >= 32 && b <= 126 && b !== 34 && b !== 92 ? String.fromCharCode(b) : "\\" + String(b).padStart(3, "0"))).join("") + '"';
@@ -62,11 +63,15 @@ function compile() {
     if (rows.length) npcs[mapId] = rows.sort((a, b) => a.k.localeCompare(b.k) || a.n.localeCompare(b.n));
   }
   const givers = {};
+  // B3: quests that must be finished first (quest-prerequisites.cjs "needs"), so the pick-up layer
+  // and /bf available do not offer a quest the giver will not give yet.
+  const prerequisites = bundledPrerequisites();
+  const needs = prerequisites && prerequisites.sourceCommit === pack.sourceCommit && prerequisites.build === pack.build ? prerequisiteIndex(prerequisites).needs : new Map();
   for (const q of Object.values(pack.quests).sort((a, b) => a.id - b.id)) {
     if (!q.level || !q.givers?.length) continue;
     const g = q.givers.find((r) => r.kind === "npc"); if (!g) continue;
     const n = pack.npcs[`npc:${g.id}`]; const p = n?.positions?.[0]; if (!p) continue;
-    (givers[p.mapId] ||= []).push({ q: q.id, t: short(q.title), l: q.level, m: q.minLevel || undefined, s: side(q.sides), n: short(n.name, 40), x: p.x, y: p.y });
+    (givers[p.mapId] ||= []).push({ q: q.id, t: short(q.title), l: q.level, m: q.minLevel || undefined, s: side(q.sides), n: short(n.name, 40), x: p.x, y: p.y, p: needs.get(q.id)?.ids });
   }
   const zones = loadLevelingPack().zones.map((z) => ({ m: z.mapId, lo: z.min, hi: z.max, f: z.faction[0], h: z.towns?.Horde?.[0], a: z.towns?.Alliance?.[0], th: z.towns?.Horde?.length ? z.towns.Horde : undefined, ta: z.towns?.Alliance?.length ? z.towns.Alliance : undefined }));
   const data = { build: pack.build, attribution: "Quest and NPC data from Efficient Games (https://efficient.games), CC BY 4.0. Zone levels: Backstage Coding review.", npcs, givers, zones };

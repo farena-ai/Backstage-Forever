@@ -5,6 +5,13 @@
 // objectives we know an area for, hand in, each phase walked nearest-first. It goes as far as the
 // data does; the in-game zone guide and Now's "Where to level" take over after that.
 const { MAP_NAMES } = require("./companion-tools.cjs");
+const { bundledPrerequisites, prerequisiteIndex } = require("./quest-prerequisites.cjs");
+// Quests that must be handed in before another can be taken (quest-prerequisites.cjs "needs"),
+// used only with the quest pack they were built from.
+function neededQuests(pack) {
+  const p = bundledPrerequisites();
+  return p && pack?.sourceCommit === p.sourceCommit && pack.build === p.build ? prerequisiteIndex(p).needs : null;
+}
 const KALIMDOR = new Set([1411, 1412, 1413, 1414, 1438, 1439, 1440, 1441, 1442, 1443, 1444, 1445, 1446, 1447, 1448, 1449, 1450, 1451, 1452, 1454, 1456, 1457]);
 const continent = (m) => (KALIMDOR.has(m) ? "K" : "E");
 const name = (m) => MAP_NAMES[m] || `Map ${m}`;
@@ -112,7 +119,7 @@ function wave(quests, mapId, from, hub = 0, first = null) {
  *  flags: questId -> { elite, dungeon } from the data; dungeons: visits to insert, each
  *  { key, name, min, max, faction, mapId, x, y } with its quests held back until the visit.
  */
-function buildRoute({ pack, zones, start, faction, race = null, learned = null, tune = null, byZone = questsByZone(pack, faction, race, learned, tune?.flags || null) }) {
+function buildRoute({ pack, zones, start, faction, race = null, learned = null, tune = null, needs = neededQuests(pack), byZone = questsByZone(pack, faction, race, learned, tune?.flags || null) }) {
   const ABOVE = Number.isInteger(tune?.above) ? tune.above : 2, BELOW = Number.isInteger(tune?.below) ? tune.below : 4, BATCH = Number.isInteger(tune?.batch) ? tune.batch : 0, HUB = Number.isFinite(tune?.hub) ? tune.hub : 0;
   const keep = typeof tune?.keep === "function" ? tune.keep : null;
   const visits = (tune?.dungeons || []).filter((d) => !d.faction || d.faction === faction).sort((a, b) => a.min - b.min || (a.key < b.key ? -1 : 1));
@@ -141,6 +148,12 @@ function buildRoute({ pack, zones, start, faction, race = null, learned = null, 
       let rest = pool;
       while (rest.length) {
         let now = rest.filter((q) => q.level <= level + ABOVE + BATCH && q.minLevel <= level + ABOVE);
+        // A quest waits for a later round while a quest it needs is still to be handed in here.
+        if (needs && now.length) {
+          const waiting = new Set(rest.map((q) => q.id));
+          const free = now.filter((q) => !(needs.get(q.id)?.ids || []).some((x) => waiting.has(x)));
+          if (free.length || (level < 80 && rest.some((q) => !now.includes(q)))) now = free;
+        }
         if (!now.length) { level = Math.max(level + 1, Math.min(...rest.map((q) => Math.max(q.level, q.minLevel))) - ABOVE); continue; }
         for (const q of now) used.add(q.id);
         const ws = wave(now, zone.mapId, last, HUB, tune?.order === "group" ? (q) => Boolean(q.elite || q.dungeon) : null);
@@ -255,12 +268,12 @@ function position(route, { completed = [], inLog = [], complete = [], level = 1,
   return at < 0 ? { ended: true, index: steps.length, total: steps.length, done: steps.length } : { ended: false, index: at, total: steps.length, done: done.filter(Boolean).length };
 }
 
-function buildGuidedRoutes({ pack, zones, reviews = null, raw = null, learned = null, tune = null }) {
+function buildGuidedRoutes({ pack, zones, reviews = null, raw = null, learned = null, tune = null, needs = neededQuests(pack) }) {
   const routes = [];
   for (const race of Object.keys(RACES)) {
     const start = zones.find((z) => z.starter?.some((r) => (ALIASES[r] || r) === race));
     if (!start) continue;
-    const built = buildRoute({ pack, zones, start, faction: start.faction, race, learned, tune });
+    const built = buildRoute({ pack, zones, start, faction: start.faction, race, learned, tune, needs });
     if (raw) raw[race] = built; // unreviewed, for the review page
     routes.push(applyReview(built, reviews?.routes?.[race] || null));
   }
