@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.29.0 - Backstage Live
+
+- Live guild and party tools: a Guild & Party panel that updates in seconds, guild events shared across the whole guild, a group planner, a realm party board, instant replies to your reports, and everything ready for a guild's Discord. See the [release notes](docs/releases/1.29.0.md).
+
 ## 1.28.0 - Guild events, fresher map
 
 - Guild events with sign-ups, a guild page, a lockout calendar, and shared map data that says when each spot was last seen and which spots are yours. See the [release notes](docs/releases/1.28.0.md).
