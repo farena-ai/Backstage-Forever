@@ -27,7 +27,9 @@ window.GuildView = (() => {
   function ago(at, now) {
     const s = Math.max(0, now - at);
     if (s < 3600) return "Under an hour ago";
+    if (s < 7200) return "1 hour ago";
     if (s < 86400) return `${Math.floor(s / 3600)} hours ago`;
+    if (s < 2 * 86400) return "1 day ago";
     return `${Math.floor(s / 86400)} days ago`;
   }
   function table(id, label, columns, content, count = 0) {
@@ -117,7 +119,7 @@ window.GuildView = (() => {
       ${upcomingCard(d)}${rosterCard(d)}${craftCard(d)}${pastCard(d)}`;
   }
   function page() {
-    return `<section class="eco-page gld-page" data-guild-page>${PageHero.render({ art: "plans", eyebrow: "Plans · Guild", title: "Guild", subtitle: "Events with sign-ups, the members who share, who can make what, and who came.", compact: true })}<div data-eco-body>${body()}</div></section>`;
+    return `<section class="eco-page gld-page" data-guild-page>${PageHero.render({ art: "plans", eyebrow: "Plans · Guild", title: "Guild", subtitle: "Events with sign-ups, who shares, who can make what, and who came.", compact: true })}<div data-eco-body>${body()}</div></section>`;
   }
   function repaint() {
     const root = document.querySelector("[data-guild-page]");

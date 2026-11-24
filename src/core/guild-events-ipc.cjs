@@ -8,7 +8,13 @@ const G = require("./guild-events.cjs");
 function registerGuildHandlers({ handle, getState, getGame, store, economy = null, gameData = null, packNames = () => null, dialog, getWindow,
   writeFile = (file, text) => require("node:fs/promises").writeFile(file, text, "utf8"), now = () => Math.floor(Date.now() / 1000) }) {
   // Each request first takes in what the last read of the saved file held.
-  const refresh = () => { try { store.absorb(getGame()?.guildCapture?.() || []); } catch { /* The page still shows what was kept. */ } };
+  // The saved file names a character by its capture id; the app's profile carries that id as its source.
+  const refresh = () => {
+    try {
+      const bySource = new Map((getState()?.profiles || []).filter((p) => p?.source?.id).map((p) => [p.source.id, p.id]));
+      store.absorb((getGame()?.guildCapture?.() || []).map((e) => ({ ...e, id: bySource.get(e.id) || e.id })));
+    } catch { /* The page still shows what was kept. */ }
+  };
   let atlasRows = null;
   const atlas = () => {
     if (atlasRows) return atlasRows;
