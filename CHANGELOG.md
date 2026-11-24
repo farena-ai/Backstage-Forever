@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.26.0 - Report a problem, hear back
+
+- Report a problem from the app and get replies in a My reports inbox, clear privacy switches, quests held back until their prerequisite is done, a hunter pet book, boats and zeppelins in /bf fly, spell text that follows game hotfixes, and a lighter addon. See the [release notes](docs/releases/1.26.0.md).
+
 ## 1.25.0 - Your route, more data
 
 - Five route choices, a route editor with a share code, challenge runs, vendor prices and limited stock, flight point names, boats and zeppelins in the travel planner, leveling routes to 60, and corrected reputation amounts. See the [release notes](docs/releases/1.25.0.md).

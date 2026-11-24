@@ -7990,6 +7990,119 @@
           "text": "Still thin, because nobody has recorded it yet: Dun Morogh and several other Alliance zones, Rogue trainer skills, most recipe sources, places for most rare enemies, and flight times nobody has flown. Boats, zeppelins and the new route features have not been checked in the real game client."
         }
       ]
+    },
+    {
+      "version": "1.26.0",
+      "channel": "stable",
+      "source": "docs/releases/1.26.0.md",
+      "title": "Backstage Forever 1.26.0 — Report a problem, hear back",
+      "changes": [
+        {
+          "id": "report-and-reply",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Report a problem and hear back. Help → Report a problem shows exactly what will be sent before you send it. You get a report number, and Help → My reports shows our replies, the status (Received, Looking into it, Question for you, Fixed in a version, Closed) and a box to answer. A dot on Help tells you a reply is waiting; /bf reports says so in game. You can delete a report at any time."
+        },
+        {
+          "id": "privacy-switches",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Privacy & sharing in one place. Settings → Privacy & sharing has three switches, each with a plain sentence: share map discoveries, send anonymous usage statistics (on), and send automatic error reports (off). \"See exactly what is sent\" shows the next statistics message, and \"Forget me\" deletes what the service holds for this install. Statistics carry no account, character, realm or guild names, no files and no chat."
+        },
+        {
+          "id": "quest-prerequisites",
+          "kind": "improved",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": "guided-route",
+          "section": "Changes",
+          "text": "Quests wait for what they need. The quest guide has a \"Before this quest\" section, /bf available and the map hold a quest back until its needed quest is done, and guided routes no longer ask you to pick up 134 quests before the one that unlocks them."
+        },
+        {
+          "id": "hunter-pet-book",
+          "kind": "new",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Hunter pet book. A button on Characters → Talents and /bf pet list the beasts players have recorded teaching a pet ability, with where they are. It is short for now: 16 beasts."
+        },
+        {
+          "id": "boss-roster",
+          "kind": "improved",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": "atlas",
+          "section": "Changes",
+          "text": "More bosses listed. The dungeon atlas marks bosses players have seen in 21 instances, up from 3."
+        },
+        {
+          "id": "fly-boats",
+          "kind": "improved",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "/bf fly now adds the boat or zeppelin when the place is on another continent, after one /reload."
+        },
+        {
+          "id": "spell-hotfixes",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Spell names, ranks and tooltip text follow the game's own hotfixes, so talents and trainer lists no longer show text the game has since changed."
+        },
+        {
+          "id": "lighter-addon",
+          "kind": "improved",
+          "platforms": [
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "The addon loads only your language's text. English clients load about half as fast again; other languages are unchanged."
+        },
+        {
+          "id": "polish-126",
+          "kind": "improved",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "One date format across the newer screens, brass buttons in Journey and Run history, a tidier Journey view switch, and about 200 more lines translated into German, French and Spanish."
+        },
+        {
+          "id": "privacy-statement-126",
+          "kind": "compatibility",
+          "platforms": [
+            "desktop",
+            "addon"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Your characters stay on your computer. The app shares only what the live map needs and anonymous statistics that help improve it, with no account, character or realm names and no files. Reports are sent only when you write one. Each of these has its own off switch. The new in-game commands in this release have not been checked in the real game client yet."
+        }
+      ]
     }
   ],
   "excluded": [
