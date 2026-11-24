@@ -5,6 +5,18 @@ window.DungeonAtlas = (() => {
   let atlas = null, tab = "dungeon", open = null, view = "details", mountedFor = null;
   let fieldbookMode = "full";
   let ownsProgression;
+  // Search everything: the dungeon (and boss) to open once the atlas has loaded.
+  let wanted = null;
+  function focus(id, boss = null) { wanted = typeof id === "string" && id ? { id, boss: typeof boss === "string" ? boss : null } : null; const root = document.querySelector("[data-atlas]"); if (root && atlas && mountedFor === root) showWanted(root); }
+  function showWanted(root) {
+    const w = wanted; wanted = null;
+    if (!w || !atlas?.entries?.some((e) => e.id === w.id)) return;
+    open = null;
+    openDetails(root, w.id, false, "[data-atlas-open]");
+    const card = root.querySelector(`[data-atlas-card="${CSS.escape(w.id)}"]`);
+    const row = w.boss ? [...(card?.querySelectorAll(".atlas-bosses li") || [])].find((li) => li.dataset.atlasBoss === w.boss) : null;
+    if (row) { row.classList.add("atlas-found"); row.scrollIntoView({ block: "center", behavior: "instant" }); }
+  }
   const loot = new Map(); // instance id -> dungeonLoot result (or { error })
   const lootRequests = new Map();
   // One original painting per dungeon and raid (art/dungeons/<id>.webp, local ComfyUI, 0.58).
@@ -168,7 +180,7 @@ window.DungeonAtlas = (() => {
     const pilot = e.id === "dm";
     const entrance = e.entrance && validPoint(e.mapId, e.entrance);
     const last = e.bosses.length - 1;
-    const bosses = e.bosses.map((b, i) => `<li class="${b.observedInForever ? "seen" : ""}${i === last && window.BF_BOSS_ART?.includes(e.id) ? " atlas-final" : ""}">${i === last && window.BF_BOSS_ART?.includes(e.id) ? `<img class="atlas-final-art" src="art/bosses/${esc(e.id)}.webp" alt="" width="72" height="72">` : ""}<span class="atlas-skull" aria-hidden="true">☠</span>${esc(b.name)}${b.observedInForever ? `<small>seen in Forever${b.kills ? ` · ${b.kills} kill${b.kills === 1 ? "" : "s"}` : ""}</small>` : ""}${b.tip ? `<p class="atlas-tip"><strong>Tip:</strong> ${esc(b.tip)}</p>` : ""}</li>`).join("");
+    const bosses = e.bosses.map((b, i) => `<li data-atlas-boss="${esc(b.name)}" class="${b.observedInForever ? "seen" : ""}${i === last && window.BF_BOSS_ART?.includes(e.id) ? " atlas-final" : ""}">${i === last && window.BF_BOSS_ART?.includes(e.id) ? `<img class="atlas-final-art" src="art/bosses/${esc(e.id)}.webp" alt="" width="72" height="72">` : ""}<span class="atlas-skull" aria-hidden="true">☠</span>${esc(b.name)}${b.observedInForever ? `<small>seen in Forever${b.kills ? ` · ${b.kills} kill${b.kills === 1 ? "" : "s"}` : ""}</small>` : ""}${b.tip ? `<p class="atlas-tip"><strong>Tip:</strong> ${esc(b.tip)}</p>` : ""}</li>`).join("");
     const extra = e.observedOnly.map((b) => `<li class="seen new"><span class="atlas-skull">☠</span>${esc(b.name)}<small>Forever-only boss</small></li>`).join("");
     const saved = savedEncounters(atlas?.recap);
     const yourQuests = saved ? e.yourQuests : [];
@@ -284,6 +296,7 @@ window.DungeonAtlas = (() => {
     paintRecap(root, next.recap);
     paint();
     syncChestDungeon(root);
+    if (wanted) showWanted(root);
     return next;
   }
   function openDetails(root, id, toggle, focus = "[data-atlas-prep-heading]") {
@@ -433,5 +446,5 @@ window.DungeonAtlas = (() => {
   }
   // Do not show a retained card until a scoped return has matched the fresh Atlas.
   function awaitPracticeReturn() { open = null; }
-  return { page, mounted, awaitPracticeReturn };
+  return { page, mounted, awaitPracticeReturn, focus };
 })();

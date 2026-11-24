@@ -265,24 +265,77 @@ function gatheringHeat(profile, mapId) {
   return { points, totals, zones: [...zones.values()].sort((a, b) => b.total - a.total || a.mapName.localeCompare(b.mapName)) };
 }
 
-// Community pack (0.34): gathering spots at least 3 players reported, as their own "community" layer
-// (never mixed with your finds), and NPC positions only where the bundled data has none.
+// Community pack: the daily pack as proper layers (herbs, ore, chests, NPCs players placed, vendors),
+// never mixed with your own finds. NPC positions appear only where the bundled data has none.
+// Every pin says how many players saw it. The pack carries no date per spot, only its own date.
 const COMMUNITY_NODE = { herb: "Herb", ore: "Mining node", chest: "Chest" };
-function communityPins(community, mapId, { staticNpcIds = new Set(), npcName = () => null, vendorIds = new Set() } = {}) {
+const COMMUNITY_LAYERS = Object.freeze(["c-herb", "c-ore", "c-chest", "c-npc", "c-vendor"]);
+const seenBy = (n) => `seen by ${n} player${n === 1 ? "" : "s"}`;
+/** Whether a skill can gather a node: true, false, or null when either side is unknown. skill -1: profession not learned. */
+function canGather(skill, needed) {
+  if (skill === -1) return false;
+  if (!Number.isFinite(skill) || !Number.isFinite(needed)) return null;
+  return skill >= needed;
+}
+function communityPins(community, mapId, { staticNpcIds = new Set(), npcName = () => null, vendorIds = new Set(), nodeFacts = () => null, skills = {}, mine = new Set() } = {}) {
   if (!community) return [];
   const { provenance } = require("./community.cjs");
   const out = [];
   for (const n of community.nodesByMap?.get(mapId) || []) {
-    out.push({ id: `community:${n.kind}:${n.objectId ?? n.name}:${n.x}:${n.y}`, kind: "community", gather: n.kind, label: n.name || COMMUNITY_NODE[n.kind], sub: `${COMMUNITY_NODE[n.kind]} · ${provenance(n.installs)}`, mapId, x: n.x, y: n.y, installs: n.installs, itemIds: n.items.map((i) => i.itemId), community: true, source: `${provenance(n.installs)} · spots other players gathered, rounded to 0.5% of the map` });
+    const facts = nodeFacts(n) || {}, name = n.name || facts.name || null, needed = n.kind === "chest" ? null : facts.skill ?? null;
+    const gatherable = n.kind === "chest" ? true : canGather(skills[n.kind], needed);
+    out.push({ id: `community:${n.kind}:${n.objectId ?? n.name}:${n.x}:${n.y}`, kind: "community", layer: `c-${n.kind}`, gather: n.kind, label: name || COMMUNITY_NODE[n.kind], sub: `${COMMUNITY_NODE[n.kind]} · ${seenBy(n.installs)}${needed ? ` · skill ${needed}` : ""}`, mapId, x: n.x, y: n.y, installs: n.installs,
+      ...(needed ? { skill: needed } : {}), gatherable, yours: mine.has(`${n.kind}:${n.objectId}:${mapId}:${n.x}:${n.y}`), itemIds: n.items.map((i) => i.itemId), community: true, source: `${provenance(n.installs)} · spots other players gathered, rounded to 0.5% of the map` });
   }
   for (const [npcId, positions] of community.npcPositions || []) {
     if (staticNpcIds.has(npcId)) continue;
     const p = positions.find((q) => q.mapId === mapId);
     if (!p) continue;
     const vendor = vendorIds.has(npcId) || community.vendors?.has(npcId);
-    out.push({ id: `community-npc:${npcId}:${mapId}`, npcId, kind: vendor ? "vendor" : "npc", label: npcName(npcId) || `NPC #${npcId}`, sub: `${vendor ? "Vendor" : "Seen here"} · ${provenance(p.installs)}`, mapId, x: p.x, y: p.y, installs: p.installs, community: true, evidence: "community", source: `${provenance(p.installs)} · not in the bundled reference` });
+    out.push({ id: `community-npc:${npcId}:${mapId}`, npcId, kind: vendor ? "vendor" : "npc", layer: vendor ? "c-vendor" : "c-npc", label: npcName(npcId) || `NPC #${npcId}`, sub: `${vendor ? "Vendor" : "Seen here"} · ${seenBy(p.installs)}`, mapId, x: p.x, y: p.y, installs: p.installs,
+      yours: mine.has(`npc:${npcId}:${mapId}:${p.x}:${p.y}`), community: true, evidence: "community", source: `${provenance(p.installs)} · not in the bundled reference` });
   }
   return out;
+}
+/** Keys of the spots the saved characters on this computer found themselves, in the rounded coordinates the pack uses. */
+function ownSpotKeys(profiles) {
+  const keys = new Set();
+  let items = [];
+  try { items = require("./community.cjs").collectObservations(profiles); } catch { items = []; }
+  for (const it of items) {
+    const e = it.entry;
+    if (it.category === "nodes" && e.objectId) keys.add(`${e.kind}:${e.objectId}:${e.mapId}:${e.x}:${e.y}`);
+    else if (it.category === "npcs") keys.add(`npc:${e.npcId}:${e.mapId}:${e.x}:${e.y}`);
+  }
+  return keys;
+}
+/** The community pack for one zone in numbers: spots per layer, how many match your own finds, and how old the pack is. */
+function communitySummary(community, pins, { now = Date.now(), skills = {} } = {}) {
+  if (!community) return null;
+  const layers = Object.fromEntries(COMMUNITY_LAYERS.map((k) => [k, 0]));
+  let total = 0, yours = 0, beyondSkill = 0;
+  for (const p of pins) { if (!p.community) continue; total++; layers[p.layer] = (layers[p.layer] || 0) + 1; if (p.yours) yours++; if (p.gatherable === false) beyondSkill++; }
+  const at = Date.parse(community.generatedAt);
+  return { version: community.version, generatedAt: community.generatedAt, ageDays: Number.isFinite(at) ? Math.max(0, Math.floor((now - at) / 86400000)) : null,
+    // The pack carries one date for everything: no spot says when it was last seen.
+    perFactDates: false, total, yours, layers, beyondSkill, skills: { herb: skills.herb ?? null, ore: skills.ore ?? null } };
+}
+
+// "Help fill this zone": what the bundled reference is really short of in a leveling zone, for one faction.
+const COVERAGE_GOOD = Object.freeze({ questGivers: 25, objectiveAreas: 15, classTrainers: 3, professionTrainers: 4, vendors: 6, flightMasters: 1 });
+const coverageScore = (f) => Object.entries(COVERAGE_GOOD).reduce((t, [k, good]) => t + Math.min(1, (f?.[k] || 0) / good), 0) / Object.keys(COVERAGE_GOOD).length;
+/** null unless the zone is for this faction and its numbers are really thin. missing: [{ key, count }]. */
+function zoneGaps(row, faction) {
+  const f = row?.[faction];
+  if (!f || !(row.faction === faction || row.faction === "Contested")) return null;
+  const missing = [];
+  if (f.questGivers < 5) missing.push({ key: "questGivers", count: f.questGivers });
+  if (!f.flightMasters) missing.push({ key: "flightMasters", count: 0 });
+  if (!f.classTrainers && !f.professionTrainers) missing.push({ key: "trainers", count: 0 });
+  if (f.vendors < 2) missing.push({ key: "vendors", count: f.vendors });
+  const score = coverageScore(f);
+  if (!(score < 0.35 || f.questGivers < 5) || !missing.length) return null;
+  return { mapId: row.mapId, name: row.name, faction, score: Math.round(score * 100) / 100, missing };
 }
 
 class WorldMap {
@@ -292,12 +345,30 @@ class WorldMap {
     this.static = buildStaticIndex({ knowledgePack: knowledge?.bundled?.pack, npcReference, travelReference, vendorPack, insights, acquisitionPack, worldPack, desktopProvenance: true });
     this.staticNpcIds = new Set();
     for (const pins of this.static.values()) for (const p of pins) if (p.npcId) this.staticNpcIds.add(p.npcId);
+    // Names and skills of gathering nodes by object id (community rows often carry the id only).
+    const { nodeSkill } = require("./gathering-loop.cjs");
+    this.nodeNames = new Map();
+    for (const n of worldPack?.nodes || []) this.nodeNames.set(n.id, { name: n.name, skill: n.skill ?? nodeSkill(n.name) });
+    for (const r of acquisitionPack?.rows || []) if (r.kind === "gathered-object-loot" && r.entityId && r.referenceName && !this.nodeNames.has(r.entityId)) this.nodeNames.set(r.entityId, { name: r.referenceName, skill: nodeSkill(r.referenceName) });
+    this.nodeFacts = (n, profile) => {
+      const known = n.objectId ? this.nodeNames.get(n.objectId) : null;
+      if (known) return known;
+      const name = n.name || (profile?.gathering?.records || []).find((r) => r.entityId === n.objectId)?.name || null;
+      return name ? { name, skill: nodeSkill(name) } : null;
+    };
   }
   community() { try { return this.getCommunity?.() || null; } catch { return null; } }
   npcName(npcId) {
     return this.knowledge?.bundled?.pack?.npcs?.[`npc:${npcId}`]?.name || this.creatures.get(npcId)?.name || null;
   }
   profile() { const s = this.getState(); return s.profiles.find((p) => p.id === s.activeProfileId) || null; }
+  /** Gathering skills from the last save: a rank, -1 when the save lists professions without this one, null when unknown. */
+  gatherSkills(profile) {
+    const { professionSkill } = require("./gathering-loop.cjs");
+    const known = Array.isArray(profile?.readiness?.workshop?.professions?.items);
+    const one = (p) => { const rank = professionSkill(profile, p); return rank !== null ? rank : known ? -1 : null; };
+    return { herb: one("herbalism"), ore: one("mining") };
+  }
   /** How much the bundled reference knows per leveling zone and faction (Help → Data coverage). */
   coverage() {
     if (this._coverage) return this._coverage;
@@ -336,6 +407,8 @@ class WorldMap {
       }
       return row;
     });
+    // "Help fill this zone": set only where the numbers are really thin for that faction.
+    for (const row of rows) row.gaps = { Horde: zoneGaps(row, "Horde"), Alliance: zoneGaps(row, "Alliance") };
     const flightPoints = transport?.nodes?.length || 0, placedFlightPoints = (transport?.nodes || []).filter((n) => n.mapId).length;
     this._coverage = { zones: rows, flightPoints: { total: flightPoints, placed: placedFlightPoints }, source: { build: pack?.build || null, builds: pack?.builds || null, observedThrough: pack?.observedThrough || null, attribution: pack?.attribution || null } };
     return this._coverage;
@@ -368,7 +441,9 @@ class WorldMap {
     const mapId = requested || live?.position.mapId || saved?.mapId || 1454;
     const index = this.knowledge?.index?.(profile || {}) || this.knowledge?.bundled || null;
     const community = this.community();
-    const shared = communityPins(community, mapId, { staticNpcIds: this.staticNpcIds, npcName: (id) => this.npcName(id), vendorIds: new Set((this.vendorPack?.vendors || []).map((v) => v.id)) });
+    const skills = this.gatherSkills(profile);
+    const shared = communityPins(community, mapId, { staticNpcIds: this.staticNpcIds, npcName: (id) => this.npcName(id), vendorIds: new Set((this.vendorPack?.vendors || []).map((v) => v.id)),
+      nodeFacts: (n) => this.nodeFacts(n, profile), skills, mine: community ? ownSpotKeys(this.getState().profiles) : new Set() });
     let pins = [...(this.static.get(mapId) || []), ...shared, ...questPins(profile, index, mapId), ...findPins(profile, mapId)];
     // Quest and personal pins draw above reference pins.
     pins.sort((a, b) => KINDS.indexOf(b.kind) - KINDS.indexOf(a.kind));
@@ -377,7 +452,9 @@ class WorldMap {
     if (profile?.faction) pins = pins.map((p) => (p.sides && !p.sides.includes(profile.faction) ? { ...p, otherFaction: true } : p));
     const counts = {};
     // Reference herb and ore spots from the world finds pack are their own layer (off until asked for).
-    for (const p of pins) if (!p.otherFaction) { const k = p.reference ? "nodes" : p.kind; counts[k] = (counts[k] || 0) + 1; }
+    // Community pins count under their own layer, so the bundled counts stay what the reference knows.
+    for (const p of pins) if (!p.otherFaction) { const k = p.community ? p.layer : p.reference ? "nodes" : p.kind; counts[k] = (counts[k] || 0) + 1; }
+    counts.community = shared.length;
     counts.otherFaction = pins.filter((p) => p.otherFaction).length;
     // Soft areas where quest objectives happen, drawn under the pins.
     const areas = objectiveAreas(profile, index, this.creatures, mapId).slice(0, MAX_AREAS);
@@ -398,7 +475,8 @@ class WorldMap {
       pins, counts, areas, camps: hostileCamps(areas), heat,
       rares: require("./world-finds.cjs").rareSummary(this.worldPack, mapId),
       attribution: "Reference data from Efficient Games (https://efficient.games), CC BY 4.0. Positions are approximate community observations." + (community ? " Community layer: spots and NPCs at least 3 Backstage Forever players shared anonymously." : ""),
-      community: community ? { version: community.version, generatedAt: community.generatedAt } : null,
+      community: communitySummary(community, shared, { skills }),
+      fill: (() => { const faction = profile?.faction; const row = ["Horde", "Alliance"].includes(faction) ? this.coverage().zones.find((z) => z.mapId === mapId) : null; return row ? zoneGaps(row, faction) : null; })(),
     };
   }
   // Everything known about one NPC, in the selected character's terms.
@@ -499,4 +577,4 @@ class WorldMap {
     return { query, results: unique, from: here ? { mapId: here.mapId, mapName: mapName(here.mapId), live: Boolean(live) } : null };
   }
 }
-module.exports = { WorldMap, findPins, communityPins, gatheringHeat, buildStaticIndex, questPins, relevantQuests, objectiveAreas, hostileCamps, areaShapes, difficulty, greyLevel, creatureWarning, KINDS, mapName, trainerKind, friendlyTo };
+module.exports = { WorldMap, findPins, communityPins, communitySummary, ownSpotKeys, canGather, zoneGaps, coverageScore, COVERAGE_GOOD, COMMUNITY_LAYERS, gatheringHeat, buildStaticIndex, questPins, relevantQuests, objectiveAreas, hostileCamps, areaShapes, difficulty, greyLevel, creatureWarning, KINDS, mapName, trainerKind, friendlyTo };

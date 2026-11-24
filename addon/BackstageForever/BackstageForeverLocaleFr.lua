@@ -179,6 +179,7 @@ class kit fine	kit de classe correct
 Class kit items low:	Objets du kit de classe presque épuisés :
 Click "Release Spirit". You will appear at a graveyard as a ghost; an arrow will lead you back to your body.	Clique sur "Libérer l'esprit". Tu apparaîtras dans un cimetière en fantôme ; une flèche te ramènera à ton corps.
 Click a line to fill the search box.	Clique sur une ligne pour remplir la recherche.
+Click a match for a waypoint.	Clique sur un résultat pour placer un repère.
 Click a row first, or name the dungeon: /bf lfg post sm.	Clique d'abord sur une ligne, ou nomme le donjon : /bf lfg post sm.
 Click a row to whisper. You press Enter.	Clique sur une ligne pour chuchoter. C'est toi qui appuies sur Entrée.
 Click: newest first.	Clic : les plus récents d'abord.
@@ -245,6 +246,7 @@ Finish first:	À terminer d'abord :
 Fire Totem	Totem de feu
 First go to the flight master at	Va d'abord voir le maître de vol à
 Flash Powder	Poudre éclipsante
+Flight	Vol
 flight master	maître de vol
 Flight master	Maître de vol
 flight masters	maîtres de vol
@@ -295,6 +297,7 @@ has the key	a la clé
 Head	Tête
 healer	soigneur
 Helpers updated for this character:	Aides mises à jour pour ce personnage :
+Herb	Herbe
 herbs	herbes
 Higher observed stats	Stats observées plus hautes
 Higher observed stats:	Stats observées plus hautes :
@@ -341,6 +344,7 @@ loot lists	listes de butin
 Loot windows empty at once when auto-loot is on.	Les fenêtres de butin se vident d'un coup quand le butin automatique est activé.
 low	bas
 Low durability warning	Alerte de durabilité basse
+Mail	Courrier
 Mail expiry warning	Alerte courrier expirant
 Mail expiry warning: off. /bf mail still answers.	Alerte d'expiration du courrier : désactivée. /bf mail répond toujours.
 Mail expiry warning: on.	Alerte d'expiration du courrier : activée.
@@ -459,6 +463,8 @@ Nothing recorded for your level in this zone. The desktop app's Now page suggest
 Nothing to suggest yet. Type /bf next for the nearest quest.	Rien à proposer pour l'instant. Tape /bf next pour la quête la plus proche.
 Nothing you wear has durability to read.	Rien de ce que tu portes n'a de durabilité à lire.
 now	maintenant
+NPC	PNJ
+Object	Objet
 Objective hints	Indices d'objectifs
 Oct	oct.
 of	sur
@@ -494,6 +500,7 @@ Open the board outside combat.	Ouvre le tableau hors combat.
 Open the Instance Atlas outside combat.	Ouvre l'Atlas des instances hors combat.
 Open the welcome card outside combat.	Ouvre la carte d'accueil hors combat.
 ore	minerai
+Ore	Minerai
 Other addons found:	Autres addons trouvés :
 Other quests	Autres quêtes
 Owl	Chouette
@@ -528,6 +535,7 @@ Price memory	Mémoire des prix
 price not recorded	prix non noté
 Put down the item on your cursor first, then try again.	Pose d'abord l'objet de ton curseur, puis réessaie.
 Quality of life helpers (each off until you switch it on):	Aides de confort de jeu (chacune désactivée tant que tu ne l'actives pas) :
+Quest	Quête
 Quest blockers	Blocages de quête
 Quest chains are not available in this game client.	Les suites de quêtes ne sont pas disponibles dans ce client de jeu.
 quest data checked on this build	données de quêtes vérifiées sur ce build
@@ -749,6 +757,7 @@ This game version cannot equip items from an addon command.	Cette version du jeu
 This game version does not tell addons which areas are undiscovered.	Cette version du jeu ne dit pas aux addons quels lieux ne sont pas découverts.
 This is the last step of the chain.	C'est la dernière étape de la suite.
 This is the last step.	C'est la dernière étape.
+This marks the entrance. The spot is approximate.	Ceci marque l'entrée. L'emplacement est approximatif.
 Time in the run	Temps dans le run
 time not recorded	durée non notée
 Timing is off. Nothing is measured and nothing is slowed.	Le chronométrage est désactivé. Rien n'est mesuré et rien n'est ralenti.
@@ -758,6 +767,7 @@ Totems carried:	Totems transportés :
 Totems not carried:	Totems non transportés :
 Tracked quest:	Quête suivie :
 trainer	maître
+Trainer	Maître
 trainers	maîtres
 Try /bf bags outside combat.	Essaie /bf bags hors combat.
 Try /bf explore outside combat.	Essaie /bf explore hors combat.
@@ -777,7 +787,7 @@ Type /bf fly and a place, for example /bf fly Orgrimmar. It prints the best flig
 Type /bf next for an arrow to your next quest. Right-click the owl on the minimap for settings. The free desktop app at backstagecoding.com adds maps, plans and a companion.	Tape /bf next pour une flèche vers ta prochaine quête. Clic droit sur la chouette de la minicarte pour les réglages. L'app gratuite sur backstagecoding.com ajoute cartes, plans et un compagnon.
 type /bf next for the nearest quest	tape /bf next pour la quête la plus proche
 Type /bf talents levelup on or /bf talents levelup off.	Tape /bf talents levelup on ou /bf talents levelup off.
-Type a name, a quest, an item a vendor sells, or herb, ore, rare, chest, mailbox. Press Enter. Click a match for a waypoint.	Tape un nom, une quête, un objet vendu par un marchand, ou herb, ore, rare, chest, mailbox. Appuie sur Entrée. Clique sur un résultat pour un point de passage.
+Type a name, a quest, a dungeon or boss, an item a vendor sells, or herb, ore, rare, chest, mailbox. Press Enter. Click a match for a waypoint.	Tape un nom, une quête, un donjon ou un boss, un objet vendu par un marchand, ou herb, ore, rare, chest, mailbox. Appuie sur Entrée. Clique sur un résultat pour placer un repère.
 under a minute	moins d'une minute
 under an hour	moins d'une heure
 upgrade	amélioration
@@ -785,7 +795,7 @@ Upgrade	Amélioration
 upgrade for you	amélioration pour toi
 Upgrade lines on item tooltips and on quest rewards.	Lignes d'amélioration dans les infobulles d'objets et sur les récompenses de quête.
 upgrades for you	améliorations pour toi
-Use /bf find NAME, or /bf find flight, trainer, vendor, quest, rare, herb, ore, chest or mailbox.	Utilise /bf find NOM, ou /bf find flight, trainer, vendor, quest, rare, herb, ore, chest ou mailbox.
+Use /bf find NAME, or /bf find flight, trainer, vendor, dungeon, quest, rare, herb, ore, chest or mailbox.	Utilise /bf find NOM, ou /bf find flight, trainer, vendor, dungeon, quest, rare, herb, ore, chest ou mailbox.
 Use /bf helpers <key> to check, or /bf helpers <key> on|off to change.	Utilise /bf helpers <key> pour vérifier, ou /bf helpers <key> on|off pour changer.
 Use /bf loop, /bf loop next or /bf loop stop.	Utilise /bf loop, /bf loop next ou /bf loop stop.
 Use /bf mapsearch on or /bf mapsearch off.	Utilise /bf mapsearch on ou /bf mapsearch off.
@@ -803,6 +813,7 @@ Use /bf way MapID X Y [name].	Utilise /bf way MapID X Y [nom].
 Use /way X Y [name], for example /way 51.5 30.9 Thork.	Utilise /way X Y [nom], par exemple /way 51.5 30.9 Thork.
 Use %s here on a sleeping peon.	Utilise %s ici sur un péon endormi.
 vendor	marchand
+Vendor	Marchand
 vendors	marchands
 Veteran	Vétéran
 Waist	Taille
@@ -1009,6 +1020,7 @@ Zone guide: the quests around you, in the order that walks least.	Guide de zone�
 ^Asked (.-) for their next step%.$	Demandé à %1 sa prochaine étape.
 ^Flight times you learned: (%-?%d+)%.$	Durées de vol apprises : %1.
 ^And (%-?%d+) more points to spend%.$	Et %1 points de plus à dépenser.
+^(%-?%d+) more%. Type more letters%.$	%1 de plus. Tape plus de lettres.
 ^asking the desktop app: "(.-)$	question à l'app : "%1
 ^LFG for %[(.-)%] %((.-), level (%-?%d+)%)$	Cherche groupe pour [%1] (%2, niveau %3)
 ^Soft reserve added: (.-), (.-)%.$	Soft-reserve ajoutée : %1, %2.

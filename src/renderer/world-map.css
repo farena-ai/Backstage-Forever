@@ -179,3 +179,23 @@
 .wm-heat-chip i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
 .wm-heat-herb { color: #6fdc6a; } .wm-heat-ore { color: #86b2f2; } .wm-heat-chest { color: #f6c654; }
 .wm-heat small { display: block; color: #cdbb93; font-size: 11px; line-height: 1.45; }
+/* Community layers: what other players shared, in the community teal. */
+.wm-community { padding: 12px 14px; border-radius: 6px; background: linear-gradient(180deg, #10323a, #0b2228); border: 1px solid #2b8a9c; color: #dff4f7; box-shadow: 0 4px 10px rgba(0,0,0,.4); }
+.wm-community[hidden], .wm-fill[hidden] { display: none; }
+.wm-community h3 { margin: 0 0 6px; font: 700 16px Cinzel, Georgia, serif; color: #bfeaf1; }
+.wm-community p { margin: 0 0 6px; font-size: 13px; line-height: 1.4; }
+.wm-community b { color: #fff; }
+.wm-c-line { font-size: 14px !important; }
+.wm-c-chips { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.wm-c-chip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.world-map-page .wm-community .wm-c-skill { display: flex; align-items: center; gap: 6px; margin: 2px 0 4px; color: #dff4f7; font-weight: 600; font-size: 13px; }
+.wm-c-skills, .wm-c-fresh { color: #a9d3da; font-size: 12px !important; }
+.wm-c-key { display: flex; align-items: flex-start; gap: 6px; margin: 0 !important; color: #a9d3da; font-size: 12px !important; }
+.wm-c-key canvas { flex: none; }
+/* Help fill this zone: a quiet parchment note, only on thin zones. */
+.wm-fill { padding: 12px 14px; border-radius: 6px; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; border: 1px dashed #8a5a18; box-shadow: 0 4px 10px rgba(0,0,0,.35); }
+.wm-fill h3 { margin: 0 0 6px; font: 700 16px Cinzel, Georgia, serif; color: #3d220c; }
+.wm-fill p { margin: 0 0 6px; font-size: 13px; line-height: 1.4; }
+.wm-fill p:last-child { margin-bottom: 0; }
+.wm-fill ul { margin: 0 0 6px; padding-left: 18px; font-size: 13px; }
+.wm-fill code { padding: 0 4px; border-radius: 3px; background: rgba(61,34,12,.12); font-family: Consolas, 'Cascadia Mono', monospace; }

@@ -224,6 +224,7 @@ window.RecipeBookView = (() => {
     book.data = d; book.error = message; book.at = Date.now();
     if (d?.profession) book.line = d.profession.skillLineId;
     paint();
+    markFound();
   }
   async function loadWho() {
     const query = who.query.trim();
@@ -255,6 +256,20 @@ window.RecipeBookView = (() => {
     if ((view === "book" || view === "path") && !book.loading && (!book.data || book.error || stale(book.at))) void loadBook();
     if (view === "cook" && !cook.loading && (!cook.data || cook.error || stale(cook.at))) void loadCook();
   }
+  // Search everything: open the recipe book on one recipe (its profession, filtered to its name).
+  let found = null;
+  function focusRecipe(t) {
+    if (!t || !Number.isSafeInteger(t.skillLineId) || typeof t.name !== "string") return;
+    view = "book";
+    Object.assign(book, { line: t.skillLineId, data: null, filter: "all", source: "any", query: t.name.slice(0, 60), shown: PAGE });
+    found = Number.isSafeInteger(t.spellId) ? t.spellId : null;
+  }
+  function markFound() {
+    if (found == null || view !== "book" || book.data?.status !== "available") return;
+    const row = section()?.querySelector(`[data-rb-recipe="${found}"]`) || section()?.querySelector("[data-rb-recipe]");
+    found = null;
+    if (row) { row.classList.add("rb-found"); row.scrollIntoView({ block: "center", behavior: "instant" }); }
+  }
   function show(next) {
     view = VIEWS.some(([id]) => id === next) ? next : "bench";
     const s = section();
@@ -271,7 +286,7 @@ window.RecipeBookView = (() => {
   function mounted(id) {
     if (id !== profileId) {
       profileId = id || null; request++;
-      Object.assign(book, { line: null, data: null, error: "", loading: false, at: 0, shown: PAGE, earlier: false });
+      Object.assign(book, { line: found != null ? book.line : null, data: null, error: "", loading: false, at: 0, shown: PAGE, earlier: false });
       Object.assign(who, { data: null, error: "", loading: false });
       Object.assign(cook, { data: null, error: "", loading: false, at: 0 });
       if (view !== "bench") paint();
@@ -305,5 +320,5 @@ window.RecipeBookView = (() => {
       if (e.target.matches?.("[data-rb-who]")) { who.query = e.target.value.slice(0, 60); clearTimeout(typing); typing = setTimeout(() => void loadWho(), 200); }
     });
   }
-  return { init, frame, links, mounted, show, view: () => view };
+  return { init, frame, links, mounted, show, focusRecipe, view: () => view };
 })();

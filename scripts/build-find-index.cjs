@@ -3,8 +3,14 @@
 // addon's in-game finder table (BackstageForeverFind.lua). --check verifies only.
 // Row: { name, note, map id, x*1000, y*1000, kind [, wares] }. Kinds: f flight master, t trainer,
 // v vendor, q quest giver, n other NPC, x world object, h herb, o ore, r rare enemy, c chest,
-// m mailbox. A vendor's wares are positions in BackstageForeverFindItems, so each item name is
-// stored once.
+// m mailbox, d dungeon or raid entrance, b boss (at its dungeon's entrance). A vendor's wares are
+// positions in BackstageForeverFindItems, so each item name is stored once.
+// BackstageForeverFindQuests lists the quests players met in Forever: { title, level, row of the
+// giver in BackstageForeverFindData }, so any of those titles finds its giver, not only the first
+// quest a giver hands out. Quests, dungeons and bosses come from the desktop's search index
+// (src/core/world-search.cjs), so the game and the desktop find the same things.
+// Not in the game file, to stay under the size cap: quests nobody has met in play yet, and items
+// beyond vendor wares (drops, rewards, recipes). Those are searched on the desktop only.
 const fs = require("node:fs");
 const path = require("node:path");
 const { buildStaticIndex } = require("../src/core/world-map.cjs");
@@ -14,6 +20,8 @@ const { loadAcquisitionPack } = require("../src/core/acquisition-data.cjs");
 const { loadBundledInsights } = require("../src/core/insights-data.cjs");
 const { loadWorldPack, rareLabel } = require("../src/core/world-finds.cjs");
 const { loadTransportPack } = require("../src/core/transport-data.cjs");
+const { buildIndex } = require("../src/core/world-search.cjs");
+const { sourcesFromDisk } = require("../src/core/world-search-sources.cjs");
 const root = path.join(__dirname, "..");
 const target = path.join(root, "addon", "BackstageForever", "BackstageForeverFind.lua");
 const CODES = { flight: "f", "class-trainer": "t", "profession-trainer": "t", vendor: "v", npc: "n", herb: "h", ore: "o", rare: "r", chest: "c", mailbox: "m" };
@@ -81,11 +89,35 @@ function rowsOf() {
     const p = o.positions[0], q = questNote(`object:${o.id}`);
     if (Number.isSafeInteger(p.mapId) && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1) add(o.name, q || "Object", p.mapId, p.x, p.y, q ? "q" : "x");
   }
+  // Dungeons, raids and their bosses from the shared search index, placed at the entrance.
+  const shared = buildIndex({ ...sourcesFromDisk(), game: { reason: "" } });
+  const atlas = new Map((sourcesFromDisk().atlas?.entries || []).map((e) => [e.id, e]));
+  for (const e of shared.entries) {
+    if (e.k !== "dungeon" && e.k !== "boss") continue;
+    const d = atlas.get(e.k === "dungeon" ? e.id : e.t.dungeon), at = d?.entrance;
+    if (!d || !at || !Number.isSafeInteger(d.mapId) || !(at.x >= 0 && at.x <= 1 && at.y >= 0 && at.y <= 1)) continue;
+    if (e.k === "dungeon") add(d.name, `${d.kind === "raid" ? "Raid" : "Dungeon"}${d.levels ? `, levels ${d.levels.min}-${d.levels.max}` : ""}`, d.mapId, at.x, at.y, "d");
+    else add(e.name, `Boss in ${d.name}`, d.mapId, at.x, at.y, "b");
+  }
   rows.sort((a, b) => a[2] - b[2] || a[0].localeCompare(b[0]) || a[3] - b[3] || a[4] - b[4] || a[5].localeCompare(b[5]));
-  return { rows, items };
+  // Quests met in play, each pointing at its giver's row. A title the giver's own note already
+  // carries in full is left out (the row is found by it anyway).
+  const rowAt = new Map();
+  rows.forEach((r, i) => { const k = `${r[0]}:${r[2]}`; if (!rowAt.has(k)) rowAt.set(k, i + 1); });
+  const quests = [];
+  for (const e of shared.entries) {
+    if (e.k !== "quest" || !e.seen) continue;
+    const q = knowledge.quests[e.id], g = (q?.givers || [])[0], giver = g ? knowledge.npcs?.[`${g.kind}:${g.id}`] : null;
+    const p = (giver?.positions || []).find((x) => Number.isSafeInteger(x.mapId));
+    const at = giver?.name && p ? rowAt.get(`${giver.name}:${p.mapId}`) : null;
+    if (!at || rows[at - 1][1] === `Quest: ${e.name}`) continue;
+    quests.push([e.name, q.level > 0 ? q.level : 0, at]);
+  }
+  quests.sort((a, b) => a[0].localeCompare(b[0]) || a[1] - b[1] || a[2] - b[2]);
+  return { rows, items, quests };
 }
 function compile() {
-  const { rows, items } = rowsOf();
+  const { rows, items, quests } = rowsOf();
   const body = rows.map((r) => `{${luaString(r[0])},${luaString(r[1])},${r[2]},${r[3]},${r[4]},"${r[5]}"${r[6] ? `,{${r[6].join(",")}}` : ""}}`).join(",\n");
   const { MAP_NAMES } = require("../src/core/companion-tools.cjs");
   const maps = Object.entries(MAP_NAMES).map(([id, n]) => `[${id}]=${luaString(n)}`).join(",");
@@ -96,6 +128,9 @@ BackstageForeverFindData = {
 ${body}
 }
 BackstageForeverFindItems = {${items.map(luaString).join(",")}}
+BackstageForeverFindQuests = {
+${quests.map((q) => `{${luaString(q[0])},${q[1]},${q[2]}}`).join(",\n")}
+}
 BackstageForeverFindMaps = {${maps}}
 ` + fs.readFileSync(path.join(__dirname, "find-runtime.lua"), "utf8");
   if (Buffer.byteLength(text) > MAX_BYTES) throw Error(`BackstageForeverFind.lua would be ${Buffer.byteLength(text)} bytes; the cap is ${MAX_BYTES}.`);
@@ -103,9 +138,9 @@ BackstageForeverFindMaps = {${maps}}
 }
 /** Rows per kind and the number of maps, for tests and the release notes. */
 function coverage() {
-  const { rows, items } = rowsOf(), kinds = {};
+  const { rows, items, quests } = rowsOf(), kinds = {};
   for (const r of rows) kinds[r[5]] = (kinds[r[5]] || 0) + 1;
-  return { rows: rows.length, maps: new Set(rows.map((r) => r[2])).size, kinds, items: items.length };
+  return { rows: rows.length, maps: new Set(rows.map((r) => r[2])).size, kinds, items: items.length, quests: quests.length };
 }
 if (require.main === module) {
   const out = compile().replace(/\r\n/g, "\n");
