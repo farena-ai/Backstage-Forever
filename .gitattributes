@@ -43,3 +43,12 @@ data/forever-boss-loot/NOTICE text eol=lf
 data/forever-transport/* text eol=lf
 data/forever-trainers/* text eol=lf
 data/forever-world/* text eol=lf
+data/forever-prerequisites/*.json text eol=lf
+data/forever-prerequisites/LICENSE text eol=lf whitespace=-blank-at-eof
+data/forever-prerequisites/NOTICE text eol=lf
+data/forever-pets/*.json text eol=lf
+data/forever-pets/LICENSE text eol=lf whitespace=-blank-at-eof
+data/forever-pets/NOTICE text eol=lf
+data/forever-encounter-roster/*.json text eol=lf
+data/forever-encounter-roster/LICENSE text eol=lf whitespace=-blank-at-eof
+data/forever-encounter-roster/NOTICE text eol=lf
