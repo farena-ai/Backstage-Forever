@@ -284,6 +284,11 @@ actions (who, what, when, which ticket). The audit log never contains what a pla
 and/or a Discord message holding only: ticket number, kind, area, app version, and the first 80
 characters of the summary.
 
+**GitHub download counts** - public data only, nothing from or about players. About once an hour
+the server asks GitHub's public API for the release list of the project and stores, per release tag
+and file name, GitHub's running download count per UTC day, plus each release's publication date.
+The request carries no player data. The app is not involved.
+
 **Log** - the service log records only the time, method, route pattern (`/v1/tickets/:ticket`,
 never the ticket number), status and duration. It contains no IPs, install ids, ticket numbers,
 keys, e-mail addresses or text.

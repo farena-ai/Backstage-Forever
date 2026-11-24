@@ -356,11 +356,11 @@ test("migration: a copy of the live schema 1 database with data upgrades in plac
   raw.close();
 
   let store = new Store(tmp.file);
-  assert.equal(store.db.prepare("PRAGMA user_version").get().user_version, 2);
+  assert.equal(store.db.prepare("PRAGMA user_version").get().user_version, SCHEMA_VERSION);
   assert.equal(snapshot(store.db), before, "old rows are untouched");
   assert.equal(store.revision(), 41);
   const tables = store.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map(r => r.name);
-  for (const name of ["heartbeats", "first_seen", "monthly_rollups", "tickets", "messages", "error_groups", "error_occurrences", "announcements", "saved_replies", "admins", "sessions", "audit", "login_attempts"])
+  for (const name of ["heartbeats", "first_seen", "monthly_rollups", "tickets", "messages", "error_groups", "error_occurrences", "announcements", "saved_replies", "admins", "sessions", "audit", "login_attempts", "gh_releases", "gh_downloads"])
     assert.ok(tables.includes(name), `table ${name}`);
   // Old features still work on the upgraded file.
   assert.equal(store.reportCount(), 2);
@@ -377,7 +377,7 @@ test("migration: a copy of the live schema 1 database with data upgrades in plac
 
   // Opening it again changes nothing (the upgrade is idempotent) and the ticket counter is not reset.
   store = new Store(tmp.file);
-  assert.equal(store.db.prepare("PRAGMA user_version").get().user_version, 2);
+  assert.equal(store.db.prepare("PRAGMA user_version").get().user_version, SCHEMA_VERSION);
   assert.equal(store.reportCount(), 1);
   assert.equal(store.desk.createTicket(h(2), ticket("x"), T0).ticket, "BF-1002");
   store.close();
@@ -391,15 +391,15 @@ test("migration: a half-applied upgrade is finished; a newer database is refused
   raw.exec("CREATE TABLE first_seen (install TEXT PRIMARY KEY, day TEXT NOT NULL) WITHOUT ROWID; INSERT INTO first_seen VALUES ('keepme', '2026-01-01');");
   raw.close();
   let store = new Store(tmp.file);
-  assert.equal(store.db.prepare("PRAGMA user_version").get().user_version, 2);
+  assert.equal(store.db.prepare("PRAGMA user_version").get().user_version, SCHEMA_VERSION);
   assert.equal(store.db.prepare("SELECT day FROM first_seen WHERE install = 'keepme'").get().day, "2026-01-01");
   assert.equal(store.desk.createTicket(h(1), ticket("x"), T0).ticket, "BF-1001");
-  store.db.exec("PRAGMA user_version = 3");
+  store.db.exec(`PRAGMA user_version = ${SCHEMA_VERSION + 1}`);
   store.close();
   assert.throws(() => new Store(tmp.file), /newer than this server/);
 
   const fresh = new Store(":memory:");
-  assert.equal(fresh.db.prepare("PRAGMA user_version").get().user_version, 2);
+  assert.equal(fresh.db.prepare("PRAGMA user_version").get().user_version, SCHEMA_VERSION);
   assert.equal(fresh.desk.createTicket(h(1), ticket("x"), T0).ticket, "BF-1001");
   assert.equal(fresh.revision(), 0);
   fresh.close();

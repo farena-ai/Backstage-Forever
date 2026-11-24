@@ -84,6 +84,9 @@ All are optional except the salt, which the first deploy made.
 | `BF_DESK_BACKUP_DIR` | `~/bf-community/backups/nightly` | `off` switches nightly backups off |
 | `BF_DESK_BACKUP_KEEP` | `14` | how many nightly copies to keep |
 | `BF_DESK_MAX_OPEN_TICKETS` | `5000` | above this, new reports get "inbox full" |
+| `BF_DESK_DOWNLOADS` | on | `off` stops the hourly question to GitHub about download counts |
+| `BF_DESK_GITHUB_REPO` | `farena-ai/Backstage-Forever` | which public repository's releases are counted |
+| `BF_DESK_GITHUB_TOKEN` | empty | optional GitHub token, only to get a higher request allowance. Not needed |
 | `BF_DESK_SCRYPT_LOG2N` | `17` | password hashing cost (17 needs 128 MB for a moment at each sign-in). Lower it to 15 or 16 only if the host cannot spare the memory |
 
 ### Alerts to admins
@@ -123,6 +126,34 @@ sends one harmless message ("This is a test message from Backstage Desk...") to 
 and says for each channel whether it was handed over. "No alerts are configured" means both are
 off. A failed alert never holds up a player's report; the service log gets one line such as
 `notify email failed: exit 75`, with no addresses and no text.
+
+### Download counts from GitHub
+
+The dashboard's Downloads section shows how often the files of each GitHub release were
+downloaded. For that the service asks GitHub's **public** API, at most once an hour:
+
+```
+GET https://api.github.com/repos/farena-ai/Backstage-Forever/releases?per_page=100
+```
+
+- This is the only outside address the service calls by itself (alerts aside). The host is fixed
+  to `api.github.com`; redirects are not followed; the request carries only a `User-Agent`
+  (`backstage-forever-desk`) and, if set, the token. Nothing about players is sent or received.
+- It keeps one number per release file per UTC day (GitHub's running total; the last reading of
+  the day wins). Daily downloads on the dashboard are the differences. The first day has no
+  difference, so the page says when tracking started. If GitHub lowers a count, that day shows 0.
+- An unchanged list costs nothing (GitHub answers "not modified"). If GitHub says "too many
+  requests" the service waits until the time GitHub names (six hours at most). After a failure it
+  tries again after 1, 2, 4, then every 6 hours, and writes one line to the service log, such as
+  `downloads fetch failed: status 503`. A failed check never affects the app or the admin area.
+- Installer downloads include the automatic updates of existing installs. Downloads are not new
+  players; the page says so.
+- No token is needed: without one GitHub allows 60 requests an hour per server address and this
+  uses one or two. Set `BF_DESK_GITHUB_TOKEN` only if the server shares its address with other
+  heavy users of GitHub. A token with no permissions at all is enough; it is never logged.
+- By hand: `~/bf-community/admin downloads-fetch` asks now (it still respects a wait GitHub asked
+  for) and prints what it found. `BF_DESK_DOWNLOADS=off` plus a restart stops all of it; the
+  numbers already stored stay and the section then says it is switched off.
 
 ## 4. Housekeeping the service does by itself
 
@@ -216,4 +247,5 @@ To remove one ticket only: open it in the admin area, "Delete ticket".
 | sign-in fails for everyone after a salt change | section 6: `admin-reset-totp` |
 | sign-in is very slow or the service is killed at sign-in | the host cannot spare 128 MB: set `BF_DESK_SCRYPT_LOG2N=16`, restart, then `admin-password` for each admin |
 | "Too many failed attempts" | wait 15 minutes, or `admin-unlock <name>` |
+| Downloads section says "No download counts yet" for more than two hours | `~/bf-community/admin downloads-fetch` and read what it prints; the host may block outbound HTTPS |
 | no alert e-mail | `admin notify-test`; then the mail log of the host |

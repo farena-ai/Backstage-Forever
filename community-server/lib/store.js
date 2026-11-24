@@ -8,7 +8,7 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 const MAX_COUNTER = 1_000_000;
 
 function day(now) { return new Date(now).toISOString().slice(0, 10); }
@@ -123,6 +123,18 @@ const DESK_SCHEMA = `
   INSERT OR IGNORE INTO meta(k, v) VALUES ('first_seen_pruned', '0');
 `;
 
+// Schema 3: download counts of the public GitHub releases (no player data).
+const DOWNLOADS_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS gh_releases (
+    tag TEXT PRIMARY KEY, published_at TEXT, prerelease INTEGER NOT NULL DEFAULT 0, first_day TEXT NOT NULL
+  ) WITHOUT ROWID;
+  CREATE TABLE IF NOT EXISTS gh_downloads (
+    tag TEXT NOT NULL, asset TEXT NOT NULL, day TEXT NOT NULL, count INTEGER NOT NULL,
+    PRIMARY KEY (tag, asset, day)
+  ) WITHOUT ROWID;
+  CREATE INDEX IF NOT EXISTS gh_downloads_day ON gh_downloads(day);
+`;
+
 class Store {
   constructor(dbPath) {
     if (dbPath !== ":memory:") fs.mkdirSync(path.dirname(dbPath), { recursive: true, mode: 0o700 });
@@ -179,6 +191,10 @@ class Store {
     if (v < 2) this.db.exec(`BEGIN;
 ${DESK_SCHEMA}
 PRAGMA user_version = 2;
+COMMIT;`);
+    if (v < 3) this.db.exec(`BEGIN;
+${DOWNLOADS_SCHEMA}
+PRAGMA user_version = 3;
 COMMIT;`);
   }
 

@@ -228,6 +228,10 @@ input:hover, select:hover, textarea:hover { border-color: var(--brass-dim); }
 .tile-value { font: 600 28px/1.2 var(--serif); color: var(--parchment); font-variant-numeric: tabular-nums; margin: 2px 0; }
 .tile-sub { color: var(--muted); font-size: 12px; min-height: 18px; }
 .charts { column-count: 2; column-gap: 16px; margin-bottom: 0; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 12px 0 14px; padding-top: 18px; border-top: 1px solid var(--brass-dim); }
+.section-head h2 { font-size: 22px; margin: 0; padding: 0; border: 0; }
+.chart.full { margin: 16px 0; }
+.plain-note { color: var(--ink); background: var(--raised); border: 1px solid var(--line); border-left: 3px solid var(--brass); border-radius: 8px; padding: 10px 14px; margin: 0 0 16px; font-size: 14px; }
 .chart { margin: 0 0 16px; min-width: 0; break-inside: avoid; }
 .chart figcaption h3 { font-size: 17px; margin: 0 0 4px; }
 .summary { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
