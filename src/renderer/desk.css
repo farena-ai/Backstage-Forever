@@ -1,0 +1,130 @@
+/* Backstage Desk: Help → Report a problem, Help → My reports, Settings → Privacy & sharing.
+   Parchment panels like the Field guide and the Settings pages; brass for marks, red only for delete. */
+.desk-page { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.desk-page > .page-hero { margin-bottom: 0; }
+.desk-columns { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.desk-inbox { grid-template-columns: minmax(250px, .7fr) minmax(0, 1.6fr); }
+.desk-page .panel { padding: 20px 22px; }
+.desk-page .panel h2 { font-size: 19px; margin: 2px 0 10px; }
+.desk-page .panel h3 { font-size: 15px; margin: 0 0 6px; }
+.desk-page .panel h4 { margin: 14px 0 6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #8a5a18; }
+.desk-muted, .bf-parchment .panel .desk-muted { color: #6b4a22; font-size: 13px; }
+.desk-lead { font-size: 15px; line-height: 1.55; margin-bottom: 16px; max-width: 78ch; }
+
+/* the form */
+.desk-form { display: grid; gap: 13px; }
+.desk-form label, .desk-reply label { display: grid; gap: 6px; font-weight: 600; }
+.desk-form label small { font-weight: 400; }
+.desk-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.desk-page :is(input[type=text], textarea, select) { width: 100%; box-sizing: border-box; font: inherit; padding: 9px 11px; border-radius: 5px; }
+.bf-parchment .desk-page select, .desk-page.bf-parchment select { background: #fff8e6; color: #2b1b0a; border: 1px solid #a5823e; text-shadow: none; }
+.desk-page textarea { min-height: 128px; resize: vertical; line-height: 1.45; }
+.desk-page textarea.desk-short { min-height: 70px; }
+.desk-page .check-label { display: flex; align-items: flex-start; gap: 10px; font-weight: 500; line-height: 1.4; }
+.desk-page .check-label input { margin-top: 3px; flex: none; }
+.desk-page .button-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+.desk-note { padding: 9px 12px; border-left: 3px solid #5a8a4a; background: rgba(90,138,74,.14); border-radius: 0 4px 4px 0; overflow-wrap: anywhere; }
+.bf-parchment .panel .desk-note { color: #2f4a22; }
+.desk-note.bad { border-color: #a23a2a; background: rgba(162,58,42,.12); }
+.bf-parchment .panel .desk-note.bad { color: #7a1f14; }
+
+/* what will be sent */
+.desk-preview { position: sticky; top: 8px; }
+.desk-sent { display: grid; gap: 0; margin: 0; border: 1px solid #c4a466; border-radius: 6px; background: rgba(255,248,225,.6); overflow: hidden; }
+.desk-sent > div { display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 10px; padding: 7px 11px; border-top: 1px solid rgba(165,130,62,.35); }
+.desk-sent > div:first-child { border-top: 0; }
+.desk-sent dt { font-size: 12px; letter-spacing: .04em; color: #6b4a22; font-weight: 600; }
+.desk-sent dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 132px; overflow: auto; }
+.bf-parchment .panel .desk-sent dd { color: #2b1b0a; }
+.desk-sent dd em { color: #8a6a3a; }
+.desk-removed { margin-top: 10px; padding: 9px 12px; border-left: 3px solid #b8862b; background: rgba(246,196,69,.2); border-radius: 0 4px 4px 0; font-weight: 600; }
+.desk-removed span { font-weight: 400; }
+
+/* sent */
+.desk-done { display: flex; gap: 18px; align-items: flex-start; }
+.desk-seal { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-size: 24px; color: #fff8e6; background: radial-gradient(circle at 35% 30%, #7fae62, #3f6a2c); box-shadow: 0 0 0 2px #c4a466, 0 2px 8px rgba(60,40,18,.35); text-shadow: none; }
+.desk-done p { margin: 6px 0 12px; max-width: 70ch; }
+.desk-number { font-family: Consolas, "Courier New", monospace; font-weight: 700; letter-spacing: .03em; }
+
+/* my reports */
+.desk-hero-acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.desk-list-panel { padding: 12px !important; }
+.desk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.desk-page .desk-item { all: unset; box-sizing: border-box; display: grid; gap: 5px; width: 100%; padding: 10px 12px; border: 1px solid #c4a466; border-radius: 6px; background: rgba(255,248,225,.6); color: #2b1b0a; cursor: pointer; text-shadow: none; }
+.desk-page button.desk-item:hover { background: #fff6dc; }
+.desk-page button.desk-item:focus-visible { outline: 2px solid #8a5a18; outline-offset: 2px; }
+.desk-page .desk-item.active { background: #fff6dc; border-color: #8a5a18; box-shadow: 0 0 0 2px rgba(246,196,69,.45); }
+.desk-item-waiting { cursor: default !important; border-style: dashed !important; }
+.desk-item-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.desk-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.desk-item small { color: #6b4a22; }
+.desk-chip { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 11.5px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; border: 1px solid #a5823e; background: #f1dfb4; color: #4a3218; text-shadow: none; }
+.desk-chip-looking { background: #d9e6f2; border-color: #6a8fb5; color: #1f3d5c; }
+.desk-chip-question { background: #f6c445; border-color: #a87a12; color: #3d2a05; text-shadow: none; }
+.desk-chip-fixed { background: #cfe5c1; border-color: #5a8a4a; color: #23401a; }
+.desk-chip-closed { background: #e2d8c4; border-color: #a3957a; color: #5a4d38; }
+.desk-chip-waiting { background: transparent; border-style: dashed; }
+.desk-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #e2542f; box-shadow: 0 0 0 2px rgba(255,248,225,.9), 0 0 6px rgba(226,84,47,.7); flex: none; }
+.rail .desk-dot-rail { position: absolute; top: 7px; right: 9px; box-shadow: 0 0 0 2px #0d161e, 0 0 7px rgba(226,84,47,.8); }
+.rail [data-shell-control="nav:guide"] { position: relative; }
+.player-subtabs .desk-dot-tab { margin-left: 7px; box-shadow: 0 0 6px rgba(226,84,47,.7); }
+.desk-link { all: unset; cursor: pointer; margin-left: auto; color: #7a1f14; text-decoration: underline; font-size: 12.5px; }
+.desk-link:focus-visible { outline: 2px solid #8a5a18; outline-offset: 2px; }
+.desk-empty { display: grid; gap: 10px; justify-items: start; padding: 18px 8px; }
+.desk-thread { display: grid; gap: 12px; min-height: 260px; align-content: start; }
+.desk-thread-head { display: grid; gap: 4px; padding-bottom: 10px; border-bottom: 1px solid rgba(165,130,62,.45); }
+.desk-thread-head > div { display: flex; gap: 10px; align-items: center; }
+.desk-page .desk-thread-head h2 { margin: 2px 0 0; overflow-wrap: anywhere; }
+.desk-fixed { padding: 9px 12px; border-left: 3px solid #b8862b; background: rgba(246,196,69,.2); border-radius: 0 4px 4px 0; }
+.desk-fixed.here { border-color: #5a8a4a; background: rgba(90,138,74,.16); font-weight: 600; }
+.desk-messages { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.desk-message { max-width: 86%; padding: 10px 13px; border-radius: 8px; border: 1px solid #c4a466; background: #fffaf0; box-shadow: 0 2px 6px rgba(60,40,18,.12); }
+.desk-message p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+.bf-parchment .panel .desk-message p { color: #2b1b0a; }
+.desk-from-player { justify-self: end; background: #f1dfb4; border-color: #a5823e; }
+.desk-from-team { justify-self: start; border-left: 3px solid #2b8a9c; }
+.desk-pending { opacity: .7; border-style: dashed; }
+.desk-who { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; }
+.desk-who small { color: #6b4a22; }
+.desk-reply { display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid rgba(165,130,62,.45); }
+.desk-page .desk-delete { margin-left: auto; }
+
+/* privacy & sharing */
+.desk-switches { display: grid; gap: 0; border: 1px solid #c4a466; border-radius: 6px; background: rgba(255,248,225,.55); }
+.desk-switch { padding: 14px 16px; border-top: 1px solid rgba(165,130,62,.4); }
+.desk-switch:first-child { border-top: 0; }
+.desk-switch .check-label strong { font-size: 15px; }
+.desk-switch > p { margin: 6px 0 0 26px; line-height: 1.55; max-width: 82ch; }
+.desk-see { margin: 10px 0 0 26px; }
+.desk-see summary { cursor: pointer; font-weight: 700; color: #7a1f14; text-shadow: none; width: fit-content; }
+.desk-see[open] summary { margin-bottom: 8px; }
+.desk-see .desk-sent { max-width: 620px; margin: 8px 0; }
+.desk-extra { margin-top: 14px; display: grid; gap: 6px; }
+.desk-never { margin-top: 16px; }
+.desk-never ul { margin: 0; padding-left: 20px; columns: 2; column-gap: 32px; }
+.desk-never li { margin: 3px 0; break-inside: avoid; }
+.desk-forget { display: flex; gap: 20px; align-items: center; justify-content: space-between; margin-top: 16px; padding: 14px 16px; border: 1px solid #c9a08f; border-radius: 6px; background: rgba(162,58,42,.07); }
+.desk-forget p { margin: 2px 0; max-width: 78ch; }
+.desk-forget button { flex: none; }
+.desk-privacy > [data-desk-privacy] > .desk-note { margin-top: 12px; }
+
+/* "Report this" on an error message */
+#toast .desk-report-this { all: unset; cursor: pointer; display: inline-block; margin-left: 12px; color: #f3d9a4; text-decoration: underline; font-weight: 600; white-space: nowrap; }
+#toast .desk-report-this:focus-visible { outline: 2px solid #f3d9a4; outline-offset: 2px; }
+
+/* a message from the team */
+#desk-dock { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 90; width: min(620px, calc(100vw - 48px)); pointer-events: none; }
+.desk-notice { pointer-events: auto; display: grid; gap: 6px; padding: 14px 18px; border-radius: 8px; border: 1px solid #a5823e; border-top: 3px solid #2b8a9c; background: linear-gradient(180deg, #efe0bb, #dcc797); color: #2b1b0a; box-shadow: 0 12px 40px rgba(0,0,0,.55); text-shadow: none; }
+.desk-notice-warning { border-top-color: #c0432a; }
+.desk-notice .eyebrow { color: #8a5a18; }
+.desk-notice strong { font-size: 16px; color: #2b1b0a; }
+.desk-notice p { color: #3d220c; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+.desk-notice .button-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+
+@media (max-width: 1180px) {
+  .desk-columns { grid-template-columns: 1fr; }
+  .desk-inbox { grid-template-columns: minmax(220px, .8fr) minmax(0, 1.5fr); }
+  .desk-preview { position: static; }
+  .desk-never ul { columns: 1; }
+  .desk-forget { flex-direction: column; align-items: flex-start; }
+}

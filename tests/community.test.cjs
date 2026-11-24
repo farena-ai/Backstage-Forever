@@ -373,7 +373,7 @@ test("World Map: community spots get their own layer, NPCs only fill gaps; loot 
   assert.deepEqual(instanceLoot(pack, "rfc", {}).bosses[0].community, []);
 });
 
-test("Settings → Community renders the switch, the lists and the reviewed log preview", async () => {
+test("Settings → Community renders the switch and the lists, and points to Report a problem", async () => {
   const vm = require("node:vm");
   const listeners = {}, painted = [];
   const status = { share: true, download: true, blocked: false, installId: "3f2b8c1e", lastSubmitAt: null, lastPackAt: null, retryAt: null, sent: 12, pending: 2, received: { total: 7 }, shares: ["Herb <spots>"], never: ["Character names"], host: "bf.backstagecoding.com" };
@@ -386,12 +386,11 @@ test("Settings → Community renders the switch, the lists and the reviewed log 
   const html = V.markup();
   assert.match(html, /<input type="checkbox" value="on" data-community-share checked >Share anonymous finds with other players/);
   assert.match(html, /Herb &lt;spots&gt;/); assert.match(html, /Never shared/); assert.match(html, /Forget my contributions/);
-  assert.match(html, /2 new finds will be shared/); assert.match(html, /Report a problem/); assert.match(html, /Attach app log/);
-  const box = { innerHTML: "", querySelector: () => null };
-  painted.push(box);
-  await listeners.change({ target: { checked: true, matches: (sel) => sel === "[data-community-attach]" } });
-  assert.match(box.innerHTML, /<pre class="community-log"[^>]*>line &lt;1&gt;<\/pre>/);
-  assert.equal(V._state().report.attach, true);
+  assert.match(html, /2 new finds will be shared/);
+  // Reports moved to Help → Report a problem (Backstage Desk); the card links there and to the privacy switches.
+  assert.match(html, /<button type="button" data-nav="report">Report a problem<\/button>/); assert.match(html, /data-nav="privacy"/);
+  assert.doesNotMatch(html, /Attach app log|<textarea/);
+  assert.equal(listeners.submit, undefined, "the old one-way form is gone from the screen");
 });
 
 test("every checkbox in the community form has an explicit value, so the app does not think the form is being edited", () => {

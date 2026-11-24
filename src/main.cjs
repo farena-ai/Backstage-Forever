@@ -80,6 +80,7 @@ let talentBuilds = null; // saved talent builds per character (talent planner)
 let forgetGameAnswers = null, clearGameAnswers = null; // kept in-game answers (ask-answers.json)
 let gatheringLoops = null; // the gathering loop each character sent to the game
 let community = null, collectDiagnostics = null;
+let desk = null; // Backstage Desk: reports with replies, anonymous statistics, error reports (desk.cjs)
 const catalogs = new CatalogCache();
 const trusted = pathToFileURL(
   path.join(__dirname, "renderer", "index.html"),
@@ -152,6 +153,7 @@ function handle(name, fn, { privateOnly = false } = {}) {
       ].includes(e?.message)) throw e;
       if (e?.message === "Secure credential storage is unavailable.") throw e;
       if (name.startsWith("community") && e?.name === "CommunityError") throw new Error(e.message);
+      if (name.startsWith("desk") && e?.name === "DeskError") throw new Error(e.message);
       // Journey extras write their own plain sentences for the player (a bad race code, a missing screenshot).
       if (e?.name === "JourneyError") throw new Error(e.message);
       if (["partyBrief", "partyPreview", "createPartyJourney", "commitPartyPlan", "exportPartyPlan", "importPartyPlan"].includes(name) && /^Party plan/.test(e?.message)) throw e;
@@ -168,6 +170,9 @@ function handle(name, fn, { privateOnly = false } = {}) {
         ].includes(e?.message)
       )
         throw e;
+      // An error of a type nobody throws on purpose (TypeError, RangeError…) is unexpected: Desk remembers it,
+      // scrubbed, for the report form, and sends it only if the player switched automatic error reports on.
+      if (e instanceof Error && ["TypeError", "RangeError", "ReferenceError", "SyntaxError", "EvalError", "URIError", "AggregateError"].includes(e.name)) { try { desk?.captureError("main", e); } catch {} }
       throw new Error(
         ["ask", "askCompanion", "connectSubscription", "disconnectSubscription"].includes(
           name,
@@ -240,7 +245,7 @@ app.whenReady().then(async () => {
     game = new GameSync({
       dataDir: app.getPath("userData"),
       // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
-      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id), routes: (id) => routeEditor?.handoff(id) || null }); },
+      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, reports: desk?.unread() || 0, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id), routes: (id) => routeEditor?.handoff(id) || null }); },
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -760,6 +765,42 @@ app.whenReady().then(async () => {
     })).response === 1,
   });
   community.start();
+  // Backstage Desk: reports with replies, anonymous statistics (STATISTICS_DEFAULT in desk.cjs), automatic
+  // error reports (off until switched on) and messages from the team, on the same service and install id.
+  {
+    const os = require("node:os");
+    const { DeskService, systemInfo } = require("./core/desk.cjs");
+    const { knownNames } = require("./core/desk-scrub.cjs");
+    const accountFolders = () => { try { return game?.root ? fs.readdirSync(path.join(game.root, "WTF", "Account"), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).slice(0, 50) : []; } catch { return []; } };
+    desk = new DeskService({
+      dir: app.getPath("userData"), community, appVersion: app.getVersion(), channel: releaseChannel,
+      // A development or test run sends nothing by itself unless it was pointed at a test service (BF_COMMUNITY_URL).
+      automatic: app.isPackaged || Boolean(process.env.BF_COMMUNITY_URL),
+      system: systemInfo({ platform: process.platform, release: os.release(), systemVersion: typeof process.getSystemVersion === "function" ? process.getSystemVersion() : "" }),
+      // Local status only. The saved build of the active character, the addon the app installed, three yes/no facts.
+      getFacts: () => {
+        const status = game?.status?.() || {}, active = store.state.profiles.find((p) => p.id === store.state.activeProfileId);
+        return { addonVersion: status.addonVersion || null, build: active?.clientBuild || null, gameConnected: Boolean(status.connected), addonInstalled: Boolean(status.addonInstalled || status.addonCurrent), liveLink: Boolean(liveBridge?.enabled) };
+      },
+      getNames: () => knownNames(store.state.profiles, [...accountFolders(), (() => { try { return os.userInfo().username; } catch { return ""; } })(), path.basename(os.homedir())]),
+      notify: Notification.isSupported() ? (count) => new Notification({ title: "Backstage Forever", body: count === 1 ? "A reply to one of your reports is waiting. Open Help → My reports." : "Replies to your reports are waiting. Open Help → My reports.", silent: false }).show() : null,
+      onChange: (unread) => {
+        if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:deskChanged", { unread });
+        game?.writeHandoff().catch(() => {}); // /bf reports reads the count after the next /reload
+      },
+    });
+    community.onForgot = () => desk.wipe();
+    const confirmForgetMe = async () => (await dialog.showMessageBox(win, {
+      type: "warning", title: "Forget me?",
+      message: "Ask the service to delete everything this install has sent: map discoveries, statistics and your reports with their replies. Your reports are also removed from this computer. The app then continues with a new random install id.",
+      buttons: ["Cancel", "Forget me"], defaultId: 0, cancelId: 0, noLink: true,
+    })).response === 1;
+    require("./core/desk-ipc.cjs").registerDeskHandlers({
+      handle, desk, confirmForget: confirmForgetMe, forget: () => community.forget(),
+      openExternal: (link) => shell.openExternal(link),
+    });
+    desk.start();
+  }
   // World Map: one zone of pins plus live position, and a cross-zone finder.
   worldMap = new (require("./core/world-map.cjs").WorldMap)({
     getState: () => store.state, knowledge, npcReference: companionService.npcReference, travelReference,
@@ -1326,6 +1367,7 @@ app.whenReady().then(async () => {
       try { clearGameAnswers?.(); } catch {} // and the answers kept for /bf answers
       gatheringLoops?.clear(); // and the gathering loops sent to the game
       community?.reset(); // local install id, sent marks and pack; shared facts stay on the server
+      desk?.reset(); // local reports, their keys and the privacy switches
       fieldDispatch.finishReset();
       supplyDesk.reset();
       return fresh;
@@ -1394,6 +1436,7 @@ app.on("before-quit", (event) => {
   sessionHistory?.flush();
   closeAskPanel?.();
   community?.stop();
+  desk?.stop();
   liveBridge?.stop();
   store?.closeRecovery();
   voice?.close();
