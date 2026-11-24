@@ -45,16 +45,21 @@ Then open the app and click **Set it all up**: it finds World of Warcraft: Forev
 
 ## Privacy at a glance
 
-Your characters, notes, sessions and settings stay on your computer. Backstage Forever never reads your account, password or chat, never sends input to the game and never plays for you. What can leave your computer, and only when you use it:
+Your characters stay on your computer. The app shares only what the live map needs and anonymous statistics that help improve it, with no account, character or realm names and no files. Reports are sent only when you write one. Each of these has its own off switch.
+
+Backstage Forever never reads your account, password or chat, never sends input to the game and never plays for you. Everything that can leave your computer:
 
 | What | Where it goes | When |
 |---|---|---|
-| Anonymous gathering spots and creature positions (rounded, with a random install id) | The community service at bf.backstagecoding.com | Community sharing is on by default; switch it off in Settings → Game connection |
+| Anonymous gathering spots and creature positions (rounded, with a random install id) | The community service at bf.backstagecoding.com | On by default; switch it off in Settings → Privacy & sharing |
+| Anonymous usage statistics, once a day: app and addon version, operating system family, language, game build and which main areas you opened (random install number; no names, no files, no chat) | The same service | On by default; switch it off in Settings → Privacy & sharing, where "See exactly what is sent" shows the whole message |
+| A report you write, with a short diagnostics block you can read and leave out | The same service; the team can reply to you in the app | Only when you send one from Help → Report a problem |
+| Automatic error reports: the error message with file paths removed | The same service | Off until you switch it on in Settings → Privacy & sharing |
 | Your question and, if you allow it, your character's details | The AI provider you choose | Only when you ask the companion with a cloud AI (the free local AI and quick answers stay on your PC) |
 | Update checks | GitHub releases | Windows app, automatically; you can turn it off |
 | Quest progress (quest numbers and counts) | Your party members who also run the addon | Party sync, in a party only; `/bf party off` stops it |
 
-The full details are in [docs/PRIVACY.md](docs/PRIVACY.md).
+The install number is made at random; the server keeps only a scrambled form of it, IP addresses are not stored, and **Forget me** in Settings → Privacy & sharing deletes it. The full details are in [docs/PRIVACY.md](docs/PRIVACY.md), and every field is listed on the website's [privacy page](https://backstagecoding.com/backstage-forever/privacy.html).
 
 ## Good to know
 

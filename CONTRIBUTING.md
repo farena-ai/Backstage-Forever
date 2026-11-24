@@ -14,7 +14,7 @@ Thanks for helping! Bug reports, translation fixes and code are all welcome.
 2. Keep the rules that make Backstage Forever safe to use:
    - The addon uses only Blizzard's public addon interface. It never automates play: no auto-accepting, clicking, moving or targeting, and never replaces or hooks Blizzard functions.
    - Game data is read from the player's own installation, on their computer, and never bundled or uploaded.
-   - Nothing leaves the computer unless the player turns it on or asks for it; see [docs/PRIVACY.md](docs/PRIVACY.md).
+   - Only what [docs/PRIVACY.md](docs/PRIVACY.md) lists may leave the computer, each part with its own off switch: map discoveries, anonymous statistics, and reports the player sends. Never account, character, realm or guild names, never files, never chat. A new field needs a line on the privacy page first.
    - Horde and Alliance get the same care.
    - Art is original only. No Blizzard art, logos or lettering.
 3. Follow [docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md) for anything visible: contrast, the 11px minimum, labels for screen readers.

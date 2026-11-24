@@ -78,6 +78,7 @@
     "test:companion-atlas-draft": "node scripts/companion-atlas-draft-smoke.cjs",
     "test:product-polish": "node scripts/product-polish-smoke.cjs",
     "test:support": "node scripts/support-smoke.cjs",
+    "test:desk": "node --test tests/desk.test.cjs && node scripts/desk-smoke.cjs",
     "test:recovery": "node scripts/recovery-smoke.cjs",
     "test:party-backend": "node scripts/party-backend-smoke.cjs",
     "test:party": "node scripts/party-smoke.cjs",
