@@ -637,3 +637,9 @@ body[data-class] .xp-fill {
 }
 .rail-link::before, .rail-link::after { content: none; display: none; }
 .rail-bottom .rail-link::before, .rail-bottom .rail-link::after, .corner-note .rail-link::before, .corner-note .rail-link::after { content: none; display: none; }
+/* Search everything: plain rows and chips, no framed end caps. */
+.ws-panel .ws-close::before, .ws-panel .ws-close::after,
+.ws-panel .ws-chips button::before, .ws-panel .ws-chips button::after,
+.ws-panel .ws-more::before, .ws-panel .ws-more::after,
+.ws-panel .ws-row::before, .ws-panel .ws-row::after,
+.ws-detail .ws-sources button::before, .ws-detail .ws-sources button::after { content: none; display: none; }
