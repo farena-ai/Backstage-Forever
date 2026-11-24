@@ -1,55 +1,159 @@
 "use strict";
-// Website pages for backstagecoding.com/backstage-forever/ (roadmap R4, R5, D6).
+// The website at backstagecoding.com/backstage-forever/ (roadmap R4, R5, D6).
 //
-//   node scripts/build-site.cjs SITE_DIR          write the pages
-//   node scripts/build-site.cjs SITE_DIR --check  fail if a page is stale or a link is broken
+//   node scripts/build-site.cjs SITE_DIR [--date YYYY-MM-DD]   write the pages (--date is the sitemap's lastmod; left out without it)
+//   node scripts/build-site.cjs SITE_DIR --check               fail if a page is stale or something is wrong
 //
-// SITE_DIR is a copy of the live folder (index.html, landing.css, desktop-downloads.js, images).
-// The site's own header, footer, stylesheets and scripts are taken from that index.html, so the
-// new pages always match the live page. Everything written here is generated from the repo:
-//   whats-new.html  data/whats-new-catalog.json (the list the app shows after an update)
+// SITE_DIR is a copy of the live folder (index.html, desktop-downloads.js, crest.png, journey.webp,
+// compass.png, helpers.png). The parent site's header, footer, stylesheet and scripts are taken from
+// that index.html, so every page keeps the live site's frame. Everything else is written from here:
+//   index.html      site/index.template.html + site/content.cjs (the home page)
 //   tour.html       the feature tour; pictures come from scripts/site-screenshots.cjs --webp SITE_DIR/tour
+//   download.html   every download with one sentence, and the install steps
+//   whats-new.html  data/whats-new-catalog.json (the list the app shows after an update)
 //   commands.html   src/renderer/commands.js (the list behind Help → Commands)
 //   coverage.html   the same count the app's Help → Data coverage shows, plus pack totals
-//   tour.css        styles for these pages
-// and one marked block in index.html that links to them. No page needs JavaScript to be read.
+//   site.css        site/site.css
+//   sitemap-backstage-forever.xml
+// No page needs JavaScript to be read, and nothing is loaded from another site.
 // Run it again for every release; nothing is deployed from here.
 const fs = require("node:fs"), os = require("node:os"), path = require("node:path"), vm = require("node:vm");
 const root = path.join(__dirname, "..");
-const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
+// Line endings are normalised: a Windows checkout may hold these files with CRLF, and the pages must come out the same everywhere.
+const read = (p) => fs.readFileSync(path.join(root, p), "utf8").replace(/\r\n/g, "\n");
 const json = (p) => JSON.parse(read(p));
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const num = (n) => Number(n).toLocaleString("en-US");
-const RELEASES = "https://github.com/farena-ai/Backstage-Forever/releases";
+const { BASE, REPO, RELEASES, PAGES, HERO_SHOT, FEATURES, MORE, ALSO, STEPS, TRUST, DOWNLOADS, INSTALL, FAQ } = require("../site/content.cjs");
 const SHOWN_RELEASES = 8;
+const LATEST = `${RELEASES}/latest`;
+const ORDER = ["index.html", "tour.html", "download.html", "whats-new.html", "commands.html", "coverage.html"];
+const OG = { file: "og-image.jpg", width: 1200, height: 630, alt: "Backstage Forever: the Now page of the desktop app beside the crest" };
+const LIMITS = { title: 60, description: 155 };
+const urlOf = (file) => BASE + (file === "index.html" ? "" : file);
+const hrefOf = (file) => (file === "index.html" ? "./" : `./${file}`);
 
-// ---------- the site's own chrome, from the live index.html ----------
+// ---------- the parent site's frame, from the index.html in the folder ----------
 function chrome(index) {
-  const mainStart = index.indexOf('<main id="main">'), mainEnd = index.indexOf("</main>");
+  const mainStart = index.search(/<main id="main"/), mainEnd = index.indexOf("</main>");
   const skip = index.indexOf('<a class="skip"');
-  if (mainStart < 0 || mainEnd < 0 || skip < 0) throw new Error("index.html does not look like the live page (no skip link or <main id=\"main\">).");
+  if (mainStart < 0 || mainEnd < 0 || skip < 0) throw new Error("index.html does not look like the site's page (no skip link or <main id=\"main\">).");
   const after = index.slice(mainEnd + "</main>".length);
   const scriptAt = after.search(/<script\b/);
   return {
-    styles: (index.match(/<link rel="stylesheet"[^>]*>/g) || []).filter((l) => !l.includes("tour.css")),
+    // The folder's own stylesheets are replaced by site.css; the parent site's stay.
+    styles: (index.match(/<link rel="stylesheet"[^>]*>/g) || []).filter((l) => !/href="\.\/(?:site|tour|landing)\.css"/.test(l)),
     header: index.slice(skip, mainStart),
     footer: scriptAt < 0 ? after.replace(/<\/body>[^]*$/, "") : after.slice(0, scriptAt),
     scripts: (after.match(/<script\b[^>]*><\/script>/g) || []),
   };
 }
 
-const PAGES = [["tour.html", "Feature tour"], ["whats-new.html", "What's new"], ["commands.html", "Commands"], ["coverage.html", "Data coverage"]];
-const downloads = `<div class="actions" aria-label="Download the desktop app"><a class="btn" data-download="windows" href="${RELEASES}/latest">Download for Windows <span aria-hidden="true">↓</span></a><a class="btn light" data-download="arm" href="${RELEASES}/latest">Mac · Apple Silicon <span aria-hidden="true">↓</span></a><a class="btn light" data-download="intel" href="${RELEASES}/latest">Mac · Intel <span aria-hidden="true">↓</span></a></div>`;
+// ---------- pictures ----------
+// Width and height of a WebP or PNG, so every <img> carries its real size. Null when unreadable.
+function imageSize(file) {
+  let b;
+  try { b = fs.readFileSync(file); } catch { return null; }
+  if (b.length >= 24 && b.toString("latin1", 1, 4) === "PNG") return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+  if (b.length < 30 || b.toString("latin1", 0, 4) !== "RIFF" || b.toString("latin1", 8, 12) !== "WEBP") return null;
+  const kind = b.toString("latin1", 12, 16);
+  if (kind === "VP8 ") return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+  if (kind === "VP8L") { const n = b.readUInt32LE(21); return { w: (n & 0x3fff) + 1, h: ((n >> 14) & 0x3fff) + 1 }; }
+  if (kind === "VP8X") return { w: b.readUIntLE(24, 3) + 1, h: b.readUIntLE(27, 3) + 1 };
+  return null;
+}
+const sizeAttrs = (site, name) => { const s = imageSize(path.join(site, name)); return s ? ` width="${s.w}" height="${s.h}"` : ""; };
+// One screenshot: the 800 px copy for small screens, the full one for large, and a link to the full picture.
+function shot(ctx, [name, title, alt, caption], { sizes, lazy = true, wide = false } = {}) {
+  const big = `tour/${name}.webp`, small = `tour/${name}-800.webp`;
+  for (const f of [big, small]) if (!fs.existsSync(path.join(ctx.site, f))) ctx.missing.push(f);
+  const b = imageSize(path.join(ctx.site, big)) || { w: 1600, h: 1000 }, s = imageSize(path.join(ctx.site, small)) || { w: 800, h: 500 };
+  const srcset = s.w < b.w ? ` srcset="./${small} ${s.w}w, ./${big} ${b.w}w" sizes="${sizes}"` : "";
+  return `<figure class="bfx-shot${wide ? " bfx-wide" : ""}"><a class="bfx-frame" href="./${big}" aria-label="${esc(title)}: open the full-size picture"><img src="./${s.w < b.w ? small : big}"${srcset} width="${b.w}" height="${b.h}" alt="${esc(alt)}"${lazy ? ' loading="lazy"' : ""} decoding="async"></a><figcaption><strong>${esc(title)}</strong> ${esc(caption)}</figcaption></figure>`;
+}
+const SIZES = { half: "(max-width: 900px) calc(100vw - 40px), 660px", wide: "(max-width: 1220px) calc(100vw - 40px), 1180px", pair: "(max-width: 900px) calc(100vw - 40px), 580px" };
 
-function page(c, { file, title, description, eyebrow, heading, lead, body }) {
-  const nav = `<nav class="bfx-nav" aria-label="Backstage Forever pages"><a href="./">Download</a>${PAGES.map(([href, label]) => `<a href="./${href}"${href === file ? ' aria-current="page"' : ""}>${label}</a>`).join("")}</nav>`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} — Backstage Forever</title><link rel="canonical" href="https://backstagecoding.com/backstage-forever/${file}"><meta name="description" content="${esc(description)}">${c.styles.join("")}<link rel="stylesheet" href="./tour.css"></head><body>
+// ---------- shared pieces ----------
+const jsonLd = (data) => `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>`;
+function head(c, file, extra = []) {
+  const p = PAGES[file], url = urlOf(file), image = BASE + OG.file;
+  const crumbs = file === "index.html" ? [] : [jsonLd({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [["Backstage Coding", "https://backstagecoding.com/"], ["Backstage Forever", BASE], [p.nav, url]].map(([name, item], i) => ({ "@type": "ListItem", position: i + 1, name, item })) })];
+  return `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(p.title)}</title><meta name="description" content="${esc(p.description)}"><link rel="canonical" href="${url}">`
+    + `<meta property="og:type" content="website"><meta property="og:site_name" content="Backstage Forever"><meta property="og:title" content="${esc(p.title)}"><meta property="og:description" content="${esc(p.description)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${image}"><meta property="og:image:width" content="${OG.width}"><meta property="og:image:height" content="${OG.height}"><meta property="og:image:alt" content="${esc(OG.alt)}">`
+    + `<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(p.title)}"><meta name="twitter:description" content="${esc(p.description)}"><meta name="twitter:image" content="${image}"><meta name="theme-color" content="#121922">`
+    + `${c.styles.join("")}<link rel="stylesheet" href="./site.css">${[...crumbs, ...extra].join("")}`;
+}
+const nav = (file) => `<nav class="bfx-nav" aria-label="Backstage Forever pages">${ORDER.map((f) => `<a href="${hrefOf(f)}"${f === file ? ' aria-current="page"' : ""}>${esc(PAGES[f].nav)}</a>`).join("")}</nav>`;
+// The call to action. The download script upgrades [data-download] links to direct files and
+// .bf-release to the release's number; without JavaScript they stay on the latest-release page.
+const cta = () => `<div class="bfx-cta"><a class="bfx-btn" data-download="windows" href="${LATEST}">Download for Windows — free</a>`
+  + `<p>Also for <a data-download="arm" href="${LATEST}">macOS on Apple silicon</a>, <a data-download="intel" href="${LATEST}">macOS on Intel</a> and <a href="./download.html#linux">Linux</a>. The app installs and updates the in-game addon for you.</p>`
+  + `<p class="bfx-fine">Signed installer · Open source · No account · <a class="bf-release" href="${LATEST}">Latest release on GitHub</a></p></div>`;
+const ctaBand = (title, text) => `<section class="bfx-section bfx-band bfx-cta-band" id="get"><div class="bfx-wrap"><h2>${esc(title)}</h2><p class="bfx-intro">${esc(text)}</p>${cta()}</div></section>`;
+const legal = () => `<div class="bfx-legal"><div class="bfx-wrap"><p>Backstage Forever is an independent fan project. It is not affiliated with or endorsed by Blizzard Entertainment. World of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc.</p><p>The app bundles no game files: map art, icons and item data are read from your own installation, on your own computer. Quest and world reference data comes from Efficient Games (CC BY 4.0) and from players' own play. Free and open source under the MIT licence, on <a href="${REPO}">GitHub</a>.</p></div></div>`;
+const commandsLine = (list) => (list?.length ? `<p class="bfx-cmds"><span>In game:</span> ${list.map((x) => `<code>${esc(x)}</code>`).join(" ")}</p>` : "");
+const downloadsList = () => `<ul class="bfx-dl">${DOWNLOADS.map((d) => `<li id="${d.id}"${d.main ? ' class="bfx-main"' : ""}><h3>${esc(d.title)}</h3><p>${esc(d.text)}</p><a class="bfx-btn${d.main ? "" : " bfx-ghost"}" data-download="${d.key}" href="${LATEST}">${esc(d.button)}</a></li>`).join("")}</ul>`;
+
+function page(c, file, body, { extra = [], bottom = ["Get Backstage Forever", "One free download. The desktop app sets up the addon in WoW Forever and keeps both up to date."] } = {}) {
+  const p = PAGES[file];
+  return `<!doctype html><html lang="en"><head>${head(c, file, extra)}</head><body>
 ${c.header}<main id="main" class="bfx-page">
-<section class="bfx-hero"><div class="wrap"><p class="eyebrow"><img src="./crest.png" width="28" height="28" alt=""> ${esc(eyebrow)}</p><h1>${heading}</h1><p class="bfx-lead">${lead}</p>${nav}</div></section>
+<section class="bfx-top"><div class="bfx-wrap"><p class="bfx-crumbs"><a href="./">Backstage Forever</a> / ${esc(p.nav)}</p><h1>${esc(p.h1)}</h1><p class="bfx-lead">${p.lead}</p>${cta()}${nav(file)}</div></section>
 ${body}
-<section class="bfx-get"><div class="wrap"><h2>Get the desktop app</h2><p>One download. The desktop app installs its addon into WoW Forever during setup.</p>${downloads}<p class="fine">Free · Windows and Mac · <a class="bf-release" href="${RELEASES}/latest">Latest release ↗</a></p></div></section>
+${ctaBand(...bottom)}
+${legal()}
 </main>${c.footer}${c.scripts.join("")}</body></html>
 `;
+}
+
+// ---------- home ----------
+function home(c, ctx) {
+  const p = PAGES["index.html"];
+  const software = jsonLd({ "@context": "https://schema.org", "@type": "SoftwareApplication", name: "Backstage Forever", description: p.description, url: BASE, image: BASE + OG.file,
+    screenshot: `${BASE}tour/now.webp`, applicationCategory: "GameApplication", applicationSubCategory: "UtilitiesApplication", operatingSystem: "Windows 10, Windows 11, macOS, Linux",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }, isAccessibleForFree: true, downloadUrl: LATEST, installUrl: LATEST, releaseNotes: `${BASE}whats-new.html`,
+    license: "https://opensource.org/licenses/MIT", inLanguage: ["en", "de", "fr", "es"], sameAs: REPO,
+    author: { "@type": "Person", name: "Frank Arena" }, publisher: { "@type": "Organization", name: "Backstage Coding", url: "https://backstagecoding.com/" } });
+  const faq = jsonLd({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: FAQ.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) });
+  const latest = stableReleases()[0];
+  const cards = [["tour.html", "Feature tour", "Real screens of every part of the app."], ["download.html", "Download", "Windows, macOS, Linux and the addon on its own."], ["whats-new.html", "What's new", latest ? `Latest: ${tagline(latest)}.` : "What changed in each release."],
+    ["commands.html", "Commands", "Everything you can type in game, in plain words."], ["coverage.html", "Data coverage", "How much the app knows, zone by zone, for each faction."]];
+  const features = FEATURES.map((f, i) => `<section class="bfx-feature bfx-section${i % 2 ? "" : " bfx-band"}${i % 2 ? " bfx-flip" : ""}" id="${f.id}"><div class="bfx-wrap"><div class="bfx-text"><p class="bfx-kicker">${esc(f.kicker)}</p><h2>${esc(f.h2)}</h2>${f.text.map((t) => `<p>${esc(t)}</p>`).join("")}${commandsLine(f.commands)}<p class="bfx-more"><a href="./tour.html#${f.id}">More ${esc(f.short.toLowerCase())} screens in the tour</a></p></div>${shot(ctx, f.shots.find((s) => s[0] === f.home), { sizes: SIZES.half })}</div></section>`).join("\n");
+  const parts = {
+    head: head(c, "index.html", [software, faq]), header: c.header, footer: c.footer, scripts: c.scripts.join(""), repo: REPO,
+    h1: esc(p.h1), h1sub: esc(p.h1sub), cta: cta(), nav: nav("index.html"),
+    "hero-shot": shot(ctx, HERO_SHOT, { sizes: SIZES.wide, lazy: false }),
+    "feature-links": `<nav class="bfx-jump" aria-label="Features">${FEATURES.map((f) => `<a href="#${f.id}">${esc(f.short)}</a>`).join("")}<a href="#in-game">In the game</a><a href="#faq">Questions</a></nav>`,
+    features, also: `<ul class="bfx-also">${ALSO.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`,
+    steps: `<ol class="bfx-steps">${STEPS.map(([t, text]) => `<li><h3>${esc(t)}</h3><p>${esc(text)}</p></li>`).join("")}</ol>`,
+    trust: `<div class="bfx-tiles">${TRUST.map(([t, text]) => `<div class="bfx-tile"><h3>${esc(t)}</h3><p>${text}</p></div>`).join("")}</div>`,
+    cards: `<div class="bfx-cards">${cards.map(([href, title, text]) => `<a class="bfx-card" href="./${href}"><strong>${esc(title)}</strong><span>${esc(text)}</span></a>`).join("")}</div>`,
+    faq: `<div class="bfx-faq">${FAQ.map(([q, a]) => `<div class="bfx-qa"><h3>${esc(q)}</h3><p>${esc(a)}</p></div>`).join("")}</div>`,
+    downloads: downloadsList(), legal: legal(),
+  };
+  return read("site/index.template.html").replace(/<!--[^]*?-->\n?/g, "").replace(/\{\{([\w:.-]+)\}\}/g, (all, key) => {
+    if (key.startsWith("size:")) return sizeAttrs(ctx.site, key.slice(5));
+    if (!(key in parts)) throw new Error(`site/index.template.html: nothing to put in {{${key}}}`);
+    return parts[key];
+  });
+}
+
+// ---------- feature tour ----------
+function tour(c, ctx) {
+  const groups = [...FEATURES, MORE];
+  const jump = `<nav class="bfx-jump" aria-label="On this page">${groups.map((t) => `<a href="#${t.id}">${esc(t.short)}</a>`).join("")}<a href="#in-game">In the game</a></nav>`;
+  const sections = groups.map((t, i) => `<section class="bfx-tour-group bfx-section${i % 2 ? " bfx-band" : ""}" id="${t.id}"><div class="bfx-wrap"><p class="bfx-kicker">${String(i + 1).padStart(2, "0")} / ${esc(t.kicker)}</p><h2>${esc(t.h2)}</h2>${t.text ? `<p class="bfx-intro">${esc(t.text[0])}</p>` : ""}${commandsLine(t.commands)}<div class="bfx-shots">${t.shots.map((s, n) => { const wide = n === 0 || (t.shots.length % 2 === 0 && n === t.shots.length - 1 && t.shots.length > 2); return shot(ctx, s, { sizes: wide ? SIZES.wide : SIZES.pair, wide, lazy: i > 0 || n > 0 }); }).join("")}</div></div></section>`).join("\n");
+  const inGame = `<section class="bfx-tour-group bfx-section${groups.length % 2 ? " bfx-band" : ""}" id="in-game"><div class="bfx-wrap"><p class="bfx-kicker">${String(groups.length + 1).padStart(2, "0")} / In the game</p><h2>The addon brings it into WoW Forever</h2><p class="bfx-intro">These two are real pictures from the game. Everything the addon can do is on the <a href="./commands.html">commands page</a>.</p><div class="bfx-shots"><figure class="bfx-shot"><div class="bfx-frame"><img src="./compass.png"${sizeAttrs(ctx.site, "compass.png")} alt="Adventure Compass panel in WoW Forever showing level, experience to the next level, quests ready to hand in and the next step" loading="lazy" decoding="async"></div><figcaption><strong>Adventure Compass</strong> What is ready to hand in and how your leveling is going.</figcaption></figure><figure class="bfx-shot"><div class="bfx-frame"><img src="./helpers.png"${sizeAttrs(ctx.site, "helpers.png")} alt="In-Game Helpers panel in WoW Forever with a switch for each hint, set for one character" loading="lazy" decoding="async"></div><figcaption><strong>In-Game Helpers</strong> Choose which hints each character gets.</figcaption></figure></div></div></section>`;
+  return page(c, "tour.html", `<div class="bfx-wrap">${jump}</div>\n${sections}\n${inGame}`);
+}
+
+// ---------- download ----------
+function download(c) {
+  const body = `<section class="bfx-section" id="files"><div class="bfx-wrap"><h2>Choose your system</h2><p class="bfx-intro">Every button opens the latest release on GitHub, where the files are. The desktop app is the download you want; it brings the addon with it.</p>${downloadsList()}
+<div class="bfx-notes"><p>Each release lists SHA-256 checksums (SHA256SUMS.txt) for every file. If Windows reports an unknown publisher or an invalid signature, do not run the installer; download it again from the release page.</p><p>The same files and the source code are on <a href="${RELEASES}">the releases page on GitHub</a>.</p></div></div></section>
+<section class="bfx-section bfx-band" id="install"><div class="bfx-wrap"><h2>Install it</h2><p class="bfx-intro">About five minutes, once. The app finds WoW Forever (or lets you choose its folder) and installs the addon.</p><div class="bfx-install">${INSTALL.map(([title, steps]) => `<div class="bfx-tile"><h3>${esc(title)}</h3><ol>${steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol></div>`).join("")}</div>
+<p class="bfx-intro">More detail is in the <a href="${REPO}/blob/main/docs/GETTING-STARTED.md">getting started guide</a> and the <a href="${REPO}/blob/main/docs/LINUX.md">Linux notes</a> on GitHub. Curious first? Take the <a href="./tour.html">feature tour</a> or read the <a href="./#faq">questions and answers</a>.</p></div></section>`;
+  return page(c, "download.html", body, { bottom: ["Ready when you are", "The Windows installer is the quickest start. The app sets up the addon in WoW Forever and keeps both up to date."] });
 }
 
 // ---------- what's new ----------
@@ -60,79 +164,37 @@ function stableReleases() {
   return json("data/whats-new-catalog.json").releases.filter((r) => r.channel === "stable").sort((a, b) => compareVersions(b.version, a.version));
 }
 const tagline = (r) => r.title.replace(/^Backstage Forever\s+\S+\s*[—–-]\s*/, "").trim() || r.title;
+// A change usually opens with a short name ("Recipe book and skill path."): that part is set in bold.
+const changeText = (text) => { const m = /^(.{3,60}?[.:])\s+(?=\S)/.exec(text); return m ? `<strong>${esc(m[1])}</strong> ${esc(text.slice(m[0].length))}` : esc(text); };
 function whatsNew(c) {
   const releases = stableReleases(), shown = releases.slice(0, SHOWN_RELEASES);
+  const jump = `<nav class="bfx-jump" aria-label="Releases on this page">${shown.map((r) => `<a href="#v${esc(r.version)}">${esc(r.version)}</a>`).join("")}</nav>`;
   const body = shown.map((r, i) => {
     const groups = Object.keys(KIND_LABEL).map((kind) => {
       const rows = r.changes.filter((ch) => ch.kind === kind);
-      return rows.length ? `<h3 class="bfx-kind bfx-kind-${kind}">${KIND_LABEL[kind]}</h3><ul>${rows.map((ch) => `<li>${esc(ch.text)}${ch.platforms?.length ? ` <span class="bfx-where">${ch.platforms.map((p) => esc(PLATFORM_LABEL[p] || p)).join(" · ")}</span>` : ""}</li>`).join("")}</ul>` : "";
+      return rows.length ? `<h3 class="bfx-kind">${KIND_LABEL[kind]}</h3><ul>${rows.map((ch) => `<li>${changeText(ch.text)}${ch.platforms?.length ? ` <span class="bfx-where">${ch.platforms.map((p) => esc(PLATFORM_LABEL[p] || p)).join(" · ")}</span>` : ""}</li>`).join("")}</ul>` : "";
     }).join("");
-    return `<article class="bfx-release" id="v${esc(r.version)}"><header><p class="bfx-version">${i === 0 ? "Latest · " : ""}Version ${esc(r.version)}</p><h2>${esc(tagline(r))}</h2></header>${groups}<p class="bfx-more"><a class="text-link" href="${RELEASES}/tag/v${esc(r.version)}">Full notes and files for ${esc(r.version)} ↗</a></p></article>`;
+    return `<article class="bfx-release" id="v${esc(r.version)}"><header><p class="bfx-version">${i === 0 ? "Latest · " : ""}Version ${esc(r.version)}</p><h2>${esc(tagline(r))}</h2></header>${groups}<p class="bfx-notes-link"><a href="${RELEASES}/tag/v${esc(r.version)}">Full notes and files for version ${esc(r.version)} on GitHub</a></p></article>`;
   }).join("\n");
-  return page(c, { file: "whats-new.html", title: "What's new", description: "What changed in the latest Backstage Forever releases, from the same list the app shows after an update.",
-    eyebrow: "Release notes", heading: "What's <em>new.</em>", lead: "The same list the app shows after an update, newest first.",
-    body: `<section class="wrap section bfx-releases">${body}<p class="bfx-older">${releases.length > shown.length ? `${releases.length - shown.length} older releases are on ` : "Every release is on "}<a class="text-link" href="${RELEASES}">GitHub ↗</a></p></section>` });
-}
-
-// ---------- feature tour ----------
-// name = picture in tour/ (name.webp and name-small.webp); alt says what is on it.
-const TOUR = [
-  { id: "next", title: "Know what to do next", lead: "Open the app and it tells you your next step, from your last save.", shots: [
-    ["now", "Now", "Now page: the next quest to hand in for a level 16 hunter, with Show on map", "One clear next step with the reason, then your objective, your week and your quest log."],
-    ["guided-route", "Guided route", "Guided route page: the next pick-up on the route and a plan B from the quest log", "A step-by-step leveling route for every race. It finds your place from your save and says what is missing."],
-  ] },
-  { id: "map", title: "Find your way", lead: "A map that knows where things are, and a planner that knows how long the trip takes.", shots: [
-    ["world-map-loop", "World Map with a gathering loop", "World Map of The Barrens with quest pins and a numbered herb gathering loop", "Quest givers, objectives, trainers, vendors and flight masters on one map. Pick Herbalism or Mining and it draws a round trip through spots you and other players found, then sends it to the game."],
-    ["travel", "Travel planner", "Travel planner comparing a flight, going on foot and the Hearthstone to Thunder Bluff", "On foot, by flight or by Hearthstone: the time and the price of each, fastest first."],
-  ] },
-  { id: "dungeons", title: "Dungeons and raids", lead: "What drops, what you ran and which keys you still need.", shots: [
-    ["dungeons-loot", "Dungeons & raids with loot", "Scarlet Monastery in the Instance Atlas with each boss's recorded loot and drop chances", "All 27 dungeons and raids by level. Each boss lists the loot players saw, how often, and whether it is an upgrade for you."],
-    ["run-history", "Run history", "Run history: personal best time and most bosses for nine dungeons and raids", "Every run with its time, bosses, deaths and your loot, and your best time in each dungeon."],
-    ["attunements", "Keys & attunements", "Keys and attunements: the Onyxia chain with four steps done and the current step marked", "The classic key and attunement chains with the step your character is on."],
-  ] },
-  { id: "character", title: "Plan your character", lead: "Talents and gear, checked against your own game files.", shots: [
-    ["talents-plan", "Talents: My plan", "Talent planner for a mage with 51 points placed and the level-up order", "Click talents to build a plan. You get the level-up order, a share code and the respec cost. The game shows your next point with /bf talents."],
-    ["gear-plan", "Gear plan", "Gear plan: for each slot the worn item and up to three upgrades with where they come from", "For each slot: what you wear and up to three upgrades you can reach, best first by your stat weights, with the quest, vendor or boss they come from."],
-  ] },
-  { id: "professions", title: "Professions and gold", lead: "Recipes, prices and cooldowns, from what you saw yourself.", shots: [
-    ["recipe-book", "Recipe book", "Recipe book for Alchemy: recipes with skill colours, known or missing, and where each comes from", "Every recipe of a profession: known or missing, the skill colours and where to learn it."],
-    ["skill-path", "Skill path", "Skill path for Alchemy: the cheapest recipe for the next skill range with its material cost", "The cheapest way through each skill range, worked out from your game files and the prices you saw. Unknown prices stay unknown."],
-    ["price-history", "Price history", "Gold and prices: remembered auction prices with a small history line per item", "The addon remembers the auction prices you looked at. The app shows the usual price and a short history for each item."],
-    ["craft-profit", "Craft profit", "Craft profit: material cost, selling price and profit for six recipes", "What your recipes cost to make and what the result sold for, only from prices you saw."],
-    ["calendar", "Calendar", "Cooldown calendar for November with a transmute and a Mooncloth cooldown", "Every character's profession cooldowns and mail expiry on one calendar."],
-  ] },
-  { id: "journey", title: "Your journey", lead: "A record of your character that stays on your computer.", shots: [
-    ["journey-story", "Story so far", "Story so far: levels, firsts, dungeon runs and deaths written as short chapters", "Your character's story in plain sentences, written only from what was saved."],
-    ["journey-timeline", "Timeline", "Timeline: level-ups and dungeon runs by day", "Level-ups, firsts, dungeon runs and your screenshots, day by day."],
-    ["share-card", "Share picture", "Share picture for a Molten Core run: bosses, time and deaths on a painted card", "A painted card for a run, a level-up or a badge. Your name is only on it if you tick the box."],
-  ] },
-];
-function figure(site, name, caption, alt, missing) {
-  for (const f of [`tour/${name}.webp`, `tour/${name}-small.webp`]) if (!fs.existsSync(path.join(site, f))) missing.push(f);
-  return `<figure class="bfx-shot"><a class="screen-frame" href="./tour/${name}.webp"><img src="./tour/${name}-small.webp" width="720" height="450" alt="${esc(alt)}" loading="lazy"></a><figcaption><strong>${esc(caption)}</strong> ${""}</figcaption></figure>`;
-}
-function tour(c, site, missing) {
-  const { CATALOG } = require("../src/renderer/commands.js");
-  const jump = `<nav class="bfx-jump" aria-label="On this page">${TOUR.map((t) => `<a href="#${t.id}">${esc(t.title)}</a>`).join("")}<a href="#in-game">In the game</a></nav>`;
-  const sections = TOUR.map((t, i) => `<section class="bfx-pillar${i % 2 ? " bfx-band" : ""}" id="${t.id}"><div class="wrap section"><p class="eyebrow">${String(i + 1).padStart(2, "0")} / ${esc(t.title)}</p><h2>${esc(t.lead)}</h2><div class="bfx-shots">${t.shots.map(([name, caption, alt, text]) => figure(site, name, caption, alt, missing).replace('</strong> </figcaption>', `</strong> ${esc(text)}</figcaption>`)).join("")}</div></div></section>`).join("\n");
-  const n = TOUR.length + 1;
-  const inGame = `<section class="bfx-pillar${TOUR.length % 2 ? " bfx-band" : ""}" id="in-game"><div class="wrap section"><p class="eyebrow">${String(n).padStart(2, "0")} / In the game</p><h2>The addon brings it into WoW Forever.</h2><div class="bfx-shots"><figure class="bfx-shot"><div class="screen-frame"><img src="./compass.png" width="624" height="438" alt="Adventure Compass showing leveling progress and quest hand-ins" loading="lazy"></div><figcaption><strong>Adventure Compass</strong> What is ready to hand in and how your leveling is going.</figcaption></figure><figure class="bfx-shot"><div class="screen-frame"><img src="./helpers.png" width="672" height="504" alt="In-Game Helpers panel with per-character settings" loading="lazy"></div><figcaption><strong>In-Game Helpers</strong> Choose which hints each character gets.</figcaption></figure>${figure(site, "commands", "Commands", "Help, Commands page in the desktop app: every command with what it does and when to use it", missing).replace('</strong> </figcaption>', `</strong> ${num(CATALOG.length)} things you can type in game, each explained in plain words. <a class="text-link" href="./commands.html">See them all</a></figcaption>`)}</div></div></section>`;
-  return page(c, { file: "tour.html", title: "Feature tour", description: "A tour of Backstage Forever with real screenshots: next steps, world map, dungeons, talents and gear, professions, gold and your journey.",
-    eyebrow: "Feature tour", heading: "See what it <em>does.</em>", lead: "Real screens from the desktop app. The characters are made up; item pictures come from your own game files.",
-    body: `<div class="wrap">${jump}</div>\n${sections}\n${inGame}` });
+  return page(c, "whats-new.html", `<section class="bfx-section"><div class="bfx-wrap">${jump}<div class="bfx-releases">${body}</div><p class="bfx-older">${releases.length > shown.length ? `${releases.length - shown.length} older releases are on ` : "Every release is on "}<a href="${RELEASES}">the releases page on GitHub</a>.</p></div></section>`,
+    { bottom: ["Get the latest version", "The Windows app updates itself. On a Mac or Linux, download the new version here."] });
 }
 
 // ---------- commands ----------
 function commands(c) {
-  const { CATALOG, FEATURES, APP } = require("../src/renderer/commands.js");
+  const { CATALOG, FEATURES: SEEN, APP } = require("../src/renderer/commands.js");
   const groups = [...new Set(CATALOG.map((x) => x.group))];
   const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const used = new Set();
+  const idOf = new Map(CATALOG.map((x) => { let id = `cmd-${slug(x.command.replace(/^\/bf\s*/, "")) || "bf"}`; for (let n = 2; used.has(id); n++) id = `${id.replace(/-\d+$/, "")}-${n}`; used.add(id); return [x, id]; }));
   const jump = `<nav class="bfx-jump" aria-label="On this page">${groups.map((g) => `<a href="#${slug(g)}">${esc(g)}</a>`).join("")}<a href="#in-game">Things you'll see in game</a><a href="#in-app">In the desktop app</a></nav>`;
-  const sections = groups.map((g) => `<section class="bfx-cmd-group" id="${slug(g)}"><h2>${esc(g)}</h2><dl class="bfx-cmds">${CATALOG.filter((x) => x.group === g).map((x) => `<div class="bfx-cmd"><dt><code>${esc(x.command)}</code></dt><dd><p>${esc(x.what)}</p>${x.when ? `<p class="bfx-when"><strong>Use it:</strong> ${esc(x.when)}</p>` : ""}${x.example && x.example !== x.command ? `<p class="bfx-when">Example: <code>${esc(x.example)}</code></p>` : ""}</dd></div>`).join("")}</dl></section>`).join("\n");
-  const list = (id, title, rows) => `<section class="bfx-cmd-group" id="${id}"><h2>${title}</h2><dl class="bfx-cmds">${rows.map((x) => `<div class="bfx-cmd"><dt>${esc(x.name)}</dt><dd><p>${esc(x.what)}</p>${x.where ? `<p class="bfx-when"><strong>Where:</strong> ${esc(x.where)}</p>` : ""}</dd></div>`).join("")}</dl></section>`;
-  return page(c, { file: "commands.html", title: "Commands", description: "Every Backstage Forever command you can type in WoW Forever, in plain words, with when to use it.",
-    eyebrow: "Help · Commands", heading: "Everything you can <em>type in game.</em>", lead: `Press Enter in game, type a command, press Enter again. ${num(CATALOG.length)} commands, the same list as Help → Commands in the app.`,
-    body: `<div class="wrap section bfx-commands">${jump}${sections}\n${list("in-game", "Things you'll see in game", FEATURES)}\n${list("in-app", "In the desktop app", APP)}</div>` });
+  // Every command as a link: find one with the browser's own search, then jump to it.
+  const index = `<div class="bfx-index" id="all-commands"><h2>Find a command</h2><p>All ${num(CATALOG.length)} commands. Press Ctrl+F (or Cmd+F) to search this page, or pick one to jump to it.</p>${groups.map((g) => `<h3>${esc(g)}</h3><ul>${CATALOG.filter((x) => x.group === g).map((x) => `<li><a href="#${idOf.get(x)}"><code>${esc(x.command)}</code></a></li>`).join("")}</ul>`).join("")}</div>`;
+  const sections = groups.map((g) => `<section class="bfx-cmd-group" id="${slug(g)}"><h2>${esc(g)}</h2><dl class="bfx-cmd-list">${CATALOG.filter((x) => x.group === g).map((x) => `<div class="bfx-cmd" id="${idOf.get(x)}"><dt><code>${esc(x.command)}</code></dt><dd><p>${esc(x.what)}</p>${x.when ? `<p class="bfx-when"><strong>Use it:</strong> ${esc(x.when)}</p>` : ""}${x.example && x.example !== x.command ? `<p class="bfx-when">Example: <code>${esc(x.example)}</code></p>` : ""}</dd></div>`).join("")}</dl></section>`).join("\n");
+  const list = (id, title, rows) => `<section class="bfx-cmd-group" id="${id}"><h2>${title}</h2><dl class="bfx-cmd-list">${rows.map((x) => `<div class="bfx-cmd"><dt>${esc(x.name)}</dt><dd><p>${esc(x.what)}</p>${x.where ? `<p class="bfx-when"><strong>Where:</strong> ${esc(x.where)}</p>` : ""}</dd></div>`).join("")}</dl></section>`;
+  PAGES["commands.html"].lead = `Press Enter in WoW Forever, type a command, press Enter again. Commands only show you things or put an arrow on your map; nothing plays for you. This is the same list as Help → Commands in the app.`;
+  return page(c, "commands.html", `<section class="bfx-section"><div class="bfx-wrap">${jump}${index}${sections}\n${list("in-game", "Things you'll see in game", SEEN)}\n${list("in-app", "In the desktop app", APP)}</div></section>`,
+    { bottom: ["Get the app that installs the addon", "The commands come with the addon, and the desktop app installs and updates it for you."] });
 }
 
 // ---------- data coverage ----------
@@ -165,7 +227,7 @@ function coverage(c) {
     const mine = zones.filter((z) => z.faction === f || z.faction === "Contested");
     const useful = mine.filter((z) => score(z, f) >= 0.35).length;
     const rows = mine.map((z) => { const [label, cls] = verdict(score(z, f)); return `<tr><th scope="row">${esc(z.name)}<small>Levels ${z.min}–${z.max}${z.faction === "Contested" ? " · contested" : ""}</small></th>${KINDS.map(([k, , , good]) => `<td class="bfx-n bfx-${level(z[f][k], good)}">${num(z[f][k])}</td>`).join("")}<td><span class="bfx-verdict bfx-${cls}">${label}</span></td></tr>`; }).join("");
-    return `<section class="bfx-cov" id="${f.toLowerCase()}"><h2>${f}</h2><p><strong>${useful} of ${mine.length}</strong> leveling zones for ${f} players have useful coverage.</p><div class="bfx-scroll"><table class="bfx-table"><thead><tr><th scope="col">Zone</th>${KINDS.map(([, label]) => `<th scope="col">${esc(label)}</th>`).join("")}<th scope="col">Overall</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+    return `<section class="bfx-cov" id="${f.toLowerCase()}"><h2>${f}</h2><p><strong>${useful} of ${mine.length}</strong> leveling zones for ${f} players have useful coverage.</p><div class="bfx-scroll" tabindex="0" role="region" aria-label="${f} coverage by zone"><table class="bfx-table"><thead><tr><th scope="col">Zone</th>${KINDS.map(([, label]) => `<th scope="col">${esc(label)}</th>`).join("")}<th scope="col">Overall</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
   };
   // Totals straight from the bundled packs.
   const pack = json("data/forever/pack.json"), transport = json("data/forever-transport/pack.json"), trainers = json("data/forever-trainers/pack.json");
@@ -182,111 +244,28 @@ function coverage(c) {
   ];
   const tiles = totals.map(([title, rows]) => `<section class="bfx-total"><h3>${esc(title)}</h3><dl>${rows.map(([n, label]) => `<div><dt>${n}</dt><dd>${esc(label)}</dd></div>`).join("")}</dl></section>`).join("");
   const builds = (data.source.builds || []).map((b) => (typeof b === "string" ? b : b.build)).filter(Boolean);
-  return page(c, { file: "coverage.html", title: "Data coverage", description: "How much Backstage Forever knows about WoW Forever, zone by zone and for each faction: quest givers, trainers, vendors, flight points, rares and more.",
-    eyebrow: "Help · Data coverage", heading: "How much we know, <em>zone by zone.</em>", lead: "Where the app's advice is rich and where it is still thin, for each faction. The same count the app shows under Help → Data coverage.",
-    body: `<div class="wrap section bfx-coverage"><nav class="bfx-jump" aria-label="On this page"><a href="#totals">Totals</a><a href="#alliance">Alliance</a><a href="#horde">Horde</a></nav>
-<section id="totals"><h2>What the app carries</h2><div class="bfx-totals">${tiles}</div></section>
+  return page(c, "coverage.html", `<section class="bfx-section"><div class="bfx-wrap"><nav class="bfx-jump" aria-label="On this page"><a href="#totals">Totals</a><a href="#alliance">Alliance</a><a href="#horde">Horde</a><a href="#honest-notes">What is still thin</a></nav>
+<section class="bfx-cov" id="totals"><h2>What the app carries</h2><div class="bfx-totals">${tiles}</div></section>
 ${table("Alliance")}
 ${table("Horde")}
-<p class="bfx-foot">Counts come from community observations bundled with the app (${esc(data.source.attribution || "Efficient Games, CC BY 4.0")}${builds.length ? `; game builds ${esc(builds.join(", "))}` : ""}${data.source.observedThrough ? `; observed through ${esc(data.source.observedThrough)}` : ""}). A zero means nobody has recorded it yet, not that it does not exist. Item names, talents and recipes are read from your own game files and are not counted here.</p></div>` });
+<section class="bfx-cov" id="honest-notes"><h2>What is still thin</h2><div class="bfx-notes"><p>A zero means nobody has recorded it yet, not that it does not exist. In a thin zone the app has less to point at, and it says so instead of guessing. Reference data that was not checked on your game build is labelled.</p><p>Flight times and prices exist only for connections players have flown and recorded. Boats, zeppelins, the tram and portals are not in the travel data.</p><p>More than half of all profession recipes have no recorded source yet, and the recipe book says so for each one. Key and attunement directions are classic reference text, not checked in WoW Forever.</p><p>Item names, talents and recipes are read from your own game files and are not counted here.</p></div></section>
+<p class="bfx-foot">Counts come from community observations bundled with the app (${esc(data.source.attribution || "Efficient Games, CC BY 4.0")}${builds.length ? `; game builds ${esc(builds.join(", "))}` : ""}${data.source.observedThrough ? `; observed through ${esc(data.source.observedThrough)}` : ""}).</p></div></section>`);
 }
 
-// ---------- the block on the download page ----------
-function indexBlock() {
-  const latest = stableReleases()[0];
-  const cards = [
-    ["tour.html", "Feature tour", "Real screens of every part of the app."],
-    ["whats-new.html", "What's new", latest ? `Latest: ${tagline(latest)}.` : "What changed in each release."],
-    ["commands.html", "Commands", "Everything you can type in game, in plain words."],
-    ["coverage.html", "Data coverage", "How much the app knows, zone by zone, for each faction."],
-  ];
-  return `<!-- bf:more (generated by scripts/build-site.cjs; do not edit by hand) --><section class="bfx-more-band" id="more"><div class="wrap section"><p class="eyebrow">03 / Look around</p><h2>See it <em>before you install.</em></h2><div class="bfx-cards">${cards.map(([href, title, text]) => `<a class="bfx-card" href="./${href}"><strong>${esc(title)} <span aria-hidden="true">→</span></strong><span>${esc(text)}</span></a>`).join("")}</div></div></section><!-- /bf:more -->`;
-}
-function patchIndex(index) {
-  const css = '<link rel="stylesheet" href="./tour.css">';
-  let out = index.replace(/<!-- bf:more[^]*?<!-- \/bf:more -->/, "").replace(css, "");
-  if (!out.includes("</main>") || !out.includes('<link rel="stylesheet" href="./landing.css">')) throw new Error("index.html: no </main> or landing.css link to anchor the generated block.");
-  out = out.replace('<link rel="stylesheet" href="./landing.css">', `<link rel="stylesheet" href="./landing.css">${css}`);
-  return out.replace("</main>", `${indexBlock()}</main>`);
-}
+// ---------- sitemap ----------
+// The date is only ever the one given with --date: never the clock, a file time or git, so a build is the same on every machine.
+const sitemap = (date) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${ORDER.map((f) => `  <url><loc>${urlOf(f)}</loc>${date ? `<lastmod>${date}</lastmod>` : ""}</url>`).join("\n")}\n</urlset>\n`;
+const withoutDates = (xml) => xml.replace(/\r\n/g, "\n").replace(/<lastmod>[^<]*<\/lastmod>/g, "");
 
-const CSS = `/* Generated by scripts/build-site.cjs in the Backstage Forever repo. Same palette as landing.css. */
-.bfx-page{background:#121922;color:#ede2d0}
-.bfx-page :is(h1,h2,h3,h4,dt,strong,th){color:#fff6e4}
-.bfx-page :is(p,li,dd,td,figcaption,small){color:#ede2d0}
-.bfx-page a:not(.btn){color:#f2ca94}
-.bfx-page code{font-family:ui-monospace,Consolas,monospace;font-size:.92em;background:#0c1118;color:#f2d4a6;border:1px solid #4e4237;border-radius:4px;padding:1px 6px;overflow-wrap:anywhere}
-.bfx-page .eyebrow{color:#e6d3b7;display:flex;align-items:center;gap:10px}
-.bfx-page em{color:#f2ca94;font-style:normal}
-.bfx-hero{background:linear-gradient(180deg,#191421,#121922);border-bottom:1px solid #4e4237;padding-block:54px 34px}
-.bfx-hero h1{font-size:clamp(40px,6vw,76px);line-height:1;margin-block:16px;overflow-wrap:anywhere}
-.bfx-lead{max-width:60ch;font-size:17px}
-.bfx-nav,.bfx-jump{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
-.bfx-nav a,.bfx-jump a{display:inline-block;padding:8px 14px;border:1px solid #705b46;border-radius:999px;background:#121923;color:#fff5e8;text-decoration:none;font-size:14px;line-height:1.2}
-.bfx-nav a:hover,.bfx-jump a:hover{background:#303641}
-.bfx-nav a[aria-current="page"]{background:#f2d4a6;border-color:#f2d4a6;color:#201b19}
-.bfx-jump{margin-block:26px 0}.bfx-jump a{border-color:#4e4237;font-size:13px}
-.bfx-band{background:#191421;border-block:1px solid #4e4237}
-.bfx-pillar h2{max-width:26ch;margin-block:14px 26px}
-.bfx-shots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 22px}
-.bfx-shot{margin:0;min-width:0}
-.bfx-shot .screen-frame{display:block;border-color:#705b46}
-.bfx-shot img{display:block;width:100%;height:auto;background:#1b1413}
-.bfx-shot figcaption{margin-top:10px;font-size:14px;line-height:1.55}
-.bfx-shot figcaption strong{display:block;font-size:15px}
-.bfx-get{background:#191421;border-top:1px solid #4e4237;padding-block:54px;text-align:left}
-.bfx-get h2{margin-bottom:10px}.bfx-get .actions{margin-top:20px}.bfx-get .fine{margin-top:13px}
-.bfx-get .btn{background:#f2d4a6;color:#201b19;border-color:#f2d4a6}.bfx-get .btn:hover{background:#ffe5b9}
-.bfx-get .btn.light{background:#121923;color:#fff5e8;border-color:#e6d3b7a1}.bfx-get .btn.light:hover{background:#303641}
-.bfx-release{border:1px solid #4e4237;border-radius:10px;background:#191421;padding:24px 26px;margin-bottom:22px}
-.bfx-release h2{margin:4px 0 6px;font-size:clamp(24px,3vw,34px)}
-.bfx-version{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#e6d3b7}
-.bfx-kind{font-size:14px;letter-spacing:.08em;text-transform:uppercase;margin:20px 0 8px;color:#f2ca94}
-.bfx-release ul{margin:0;padding-left:20px;line-height:1.6}.bfx-release li+li{margin-top:8px}
-.bfx-where{display:inline-block;margin-left:4px;padding:0 8px;border:1px solid #705b46;border-radius:999px;font-size:12px;color:#e6d3b7;white-space:nowrap}
-.bfx-more{margin:18px 0 0}.bfx-older{margin-top:8px}
-.bfx-cmd-group{margin-top:44px}.bfx-cmd-group h2{font-size:clamp(24px,3vw,34px);margin-bottom:16px}
-.bfx-cmds{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:0}
-.bfx-cmd{border:1px solid #4e4237;border-radius:10px;background:#191421;padding:16px 18px;min-width:0}
-.bfx-cmd dt{font-weight:700;font-size:16px;margin-bottom:8px}.bfx-cmd dd{margin:0}
-.bfx-cmd p{margin:0;line-height:1.55;font-size:15px}.bfx-cmd p+p{margin-top:8px}.bfx-when{font-size:14px}
-.bfx-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}
-.bfx-total{border:1px solid #4e4237;border-radius:10px;background:#191421;padding:16px 18px}
-.bfx-total h3{font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#f2ca94;margin:0 0 10px}
-.bfx-total dl{margin:0}.bfx-total div{display:flex;gap:12px;align-items:baseline;padding:5px 0;border-top:1px solid #2c2530}
-.bfx-total div:first-child{border-top:0}.bfx-total dt{min-width:5.2ch;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}.bfx-total dd{margin:0;font-size:14px}
-.bfx-cov{margin-top:48px}.bfx-cov h2{margin-bottom:8px}
-.bfx-scroll{overflow-x:auto;margin-top:16px;border:1px solid #4e4237;border-radius:10px}
-.bfx-table{width:100%;min-width:760px;border-collapse:collapse;background:#191421;font-size:14px}
-.bfx-table th,.bfx-table td{padding:9px 12px;border-top:1px solid #2c2530;text-align:right;vertical-align:middle}
-.bfx-table thead th{border-top:0;background:#24201d;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
-.bfx-table th:first-child,.bfx-table td:last-child,.bfx-table thead th:last-child{text-align:left}
-.bfx-table tbody th{font-weight:700}.bfx-table tbody th small{display:block;font-weight:400;font-size:12px;color:#c9bca8}
-.bfx-n{font-variant-numeric:tabular-nums}
-.bfx-page td.bfx-rich{color:#a9e6a0}.bfx-page td.bfx-some{color:#f2d4a6}.bfx-page td.bfx-thin{color:#f0a37e}.bfx-page td.bfx-none{color:#9a8f86}
-.bfx-verdict{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
-.bfx-verdict.bfx-good{background:#1f4a25;color:#d6f5d0}.bfx-verdict.bfx-mid{background:#5a4418;color:#ffe9b8}.bfx-verdict.bfx-low{background:#4a231c;color:#ffd3c4}
-.bfx-foot{margin-top:26px;font-size:13px;line-height:1.6;max-width:90ch}
-.bfx-more-band{background:#121922;color:#ede2d0;border-top:1px solid #4e4237}
-.bfx-more-band h2{color:#fff6e4;margin-block:14px 24px}.bfx-more-band em{color:#f2ca94;font-style:normal}.bfx-more-band .eyebrow{color:#e6d3b7}
-.bfx-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.bfx-card{display:flex;flex-direction:column;gap:8px;padding:18px;border:1px solid #705b46;border-radius:10px;background:#191421;text-decoration:none;min-width:0}
-.bfx-card strong{color:#f2ca94;font-size:17px}.bfx-card span{color:#ede2d0;font-size:14px;line-height:1.5}
-.bfx-card:hover{background:#24201d;border-color:#f2d4a6}
-.bfx-page a:focus-visible,.bfx-card:focus-visible{outline:2px solid #ffe3af;outline-offset:3px}
-@media(max-width:980px){.bfx-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.bfx-totals{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:760px){.bfx-shots,.bfx-cmds{grid-template-columns:1fr}.bfx-hero{padding-block:38px 26px}.bfx-release{padding:18px}}
-@media(max-width:520px){.bfx-cards,.bfx-totals{grid-template-columns:1fr}.bfx-get .actions{flex-direction:column;align-items:stretch}}
-`;
-
-// ---------- links ----------
+// ---------- checks ----------
 function checkLinks(site, files) {
   const problems = [];
   for (const [file, html] of Object.entries(files)) {
     if (!file.endsWith(".html")) continue;
     const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
-    for (const m of html.matchAll(/\s(?:href|src)="([^"]*)"/g)) {
-      const url = m[1];
+    const urls = [...html.matchAll(/\s(?:href|src)="([^"]*)"/g)].map((m) => m[1]);
+    for (const m of html.matchAll(/\ssrcset="([^"]*)"/g)) for (const part of m[1].split(",")) urls.push(part.trim().split(/\s+/)[0]);
+    for (const url of urls) {
       // Site-wide files and outside links are not this folder's to check.
       if (/^(https?:|mailto:)/.test(url) || url.startsWith("/")) continue;
       if (url.startsWith("#")) { if (url.length > 1 && !ids.has(url.slice(1))) problems.push(`${file}: no element with id ${url}`); continue; }
@@ -297,30 +276,72 @@ function checkLinks(site, files) {
       if (text === null) problems.push(`${file}: ${url} does not exist`);
       else if (hash && !new RegExp(`\\sid="${hash}"`).test(text)) problems.push(`${file}: ${url} has no such anchor`);
     }
-    if (/<script(?![^>]*\ssrc="(?:\/|\.\/)[^"]*")/.test(html) || /https?:\/\/[^"']*\.(?:js|css|woff2?)\b/.test(html)) problems.push(`${file}: loads a script, style or font from another site`);
+    if (/<script(?![^>]*\ssrc="(?:\/|\.\/)[^"]*")(?![^>]*type="application\/ld\+json")/.test(html) || /<(?:script|link|img|source)\b[^>]*\s(?:src|href)="https?:\/\/[^"]*"/.test(html.replace(/<link rel="canonical"[^>]*>/, ""))) problems.push(`${file}: loads a script, style, font or picture from another site`);
     if (/no desktop app required/i.test(html)) problems.push(`${file}: says the desktop app is optional`);
   }
   return problems;
 }
+const attr = (tag, name) => new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1];
+// What a search engine and a first-time visitor need from every page.
+function audit(files) {
+  const problems = [], seen = { title: new Map(), description: new Map() };
+  for (const [file, html] of Object.entries(files)) {
+    if (!file.endsWith(".html")) continue;
+    const say = (text) => problems.push(`${file}: ${text}`);
+    const title = /<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "", description = attr(/<meta name="description"[^>]*>/.exec(html)?.[0] ?? "", "content") ?? "";
+    const plain = (s) => s.replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+    for (const [kind, value] of [["title", plain(title)], ["description", plain(description)]]) {
+      if (!value) say(`no ${kind}`);
+      else if (value.length > LIMITS[kind]) say(`${kind} is ${value.length} characters (limit ${LIMITS[kind]})`);
+      if (seen[kind].has(value)) say(`same ${kind} as ${seen[kind].get(value)}`);
+      seen[kind].set(value, file);
+    }
+    if (!/<html lang="en">/.test(html)) say("no lang attribute");
+    if (attr(/<link rel="canonical"[^>]*>/.exec(html)?.[0] ?? "", "href") !== urlOf(file)) say("canonical link is missing or wrong");
+    for (const name of ["og:title", "og:description", "og:url", "og:image"]) if (!new RegExp(`<meta property="${name}" content="[^"]+">`).test(html)) say(`no ${name}`);
+    if (!/<meta name="twitter:card" content="summary_large_image">/.test(html)) say("no twitter card");
+    const h1 = html.match(/<h1\b/g) || [];
+    if (h1.length !== 1) say(`${h1.length} h1 headings (wanted one)`);
+    // Headings never skip a level on the way down.
+    let last = 0;
+    for (const m of html.slice(html.indexOf('<main id="main"'), html.indexOf("</main>")).matchAll(/<h([1-6])\b/g)) { const level = Number(m[1]); if (last && level > last + 1) say(`an h${level} follows an h${last}`); last = level; }
+    for (const tag of html.match(/<img\b[^>]*>/g) || []) {
+      const src = attr(tag, "src");
+      if (attr(tag, "alt") === undefined) say(`${src} has no alt text`);
+      if (!/^\d+$/.test(attr(tag, "width") ?? "") || !/^\d+$/.test(attr(tag, "height") ?? "")) say(`${src} has no width and height`);
+    }
+    for (const m of html.matchAll(/<script type="application\/ld\+json">([^]*?)<\/script>/g)) { try { const d = JSON.parse(m[1]); if (d["@context"] !== "https://schema.org" || !d["@type"]) say("structured data without a type"); } catch { say("structured data does not parse"); } }
+    for (const m of html.matchAll(/<a\b[^>]*>([^]*?)<\/a>/g)) if (/^\s*(?:click here|here|more|read more|link)\s*$/i.test(m[1].replace(/<[^>]+>/g, ""))) say(`a link says only "${m[1].trim()}"`);
+    if (!/not affiliated with or endorsed by Blizzard Entertainment/.test(html)) say("no Blizzard notice");
+    if (!/data-download="windows"[^>]*>Download for Windows — free</.test(html)) say("no Windows download button");
+  }
+  return problems;
+}
 
-function build(site) {
+function build(site, { date = null } = {}) {
   const indexPath = path.join(site, "index.html");
   if (!fs.existsSync(indexPath)) throw new Error(`${indexPath} not found. Copy the live backstage-forever folder there first.`);
-  const index = fs.readFileSync(indexPath, "utf8"), c = chrome(index), missing = [];
-  const files = { "index.html": patchIndex(index), "tour.css": CSS, "whats-new.html": whatsNew(c), "tour.html": tour(c, site, missing), "commands.html": commands(c), "coverage.html": coverage(c) };
-  return { files, problems: [...missing.map((f) => `${f} is missing: run scripts/site-screenshots.cjs --webp ${path.join(site, "tour")}`), ...checkLinks(site, files)] };
+  if (date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("--date wants YYYY-MM-DD");
+  const c = chrome(fs.readFileSync(indexPath, "utf8")), ctx = { site, missing: [] };
+  const files = { "index.html": home(c, ctx), "tour.html": tour(c, ctx), "download.html": download(c), "whats-new.html": whatsNew(c), "commands.html": commands(c), "coverage.html": coverage(c),
+    "site.css": read("site/site.css"), "sitemap-backstage-forever.xml": sitemap(date) };
+  if (!fs.existsSync(path.join(site, OG.file))) ctx.missing.push(OG.file);
+  const shots = `node scripts/site-screenshots.cjs work/site-shots --webp ${path.join(site, "tour")} --og ${path.join(site, OG.file)}`;
+  return { files, problems: [...[...new Set(ctx.missing)].map((f) => `${f} is missing: run ${shots}`), ...checkLinks(site, files), ...audit(files)] };
 }
 
 if (require.main === module) {
-  const args = process.argv.slice(2), check = args.includes("--check"), site = args.find((a) => !a.startsWith("--"));
-  if (!site) { console.error("Usage: node scripts/build-site.cjs SITE_DIR [--check]"); process.exit(2); }
-  const { files, problems } = build(path.resolve(site));
+  const args = process.argv.slice(2), check = args.includes("--check");
+  const dateAt = args.indexOf("--date"), date = dateAt < 0 ? undefined : args.splice(dateAt, 2)[1];
+  const site = args.find((a) => !a.startsWith("--"));
+  if (!site) { console.error("Usage: node scripts/build-site.cjs SITE_DIR [--check] [--date YYYY-MM-DD]"); process.exit(2); }
+  const { files, problems } = build(path.resolve(site), date ? { date } : {});
   if (check) for (const [name, text] of Object.entries(files)) {
-    const file = path.join(site, name);
-    if (!fs.existsSync(file) || fs.readFileSync(file, "utf8") !== text) problems.push(`${name} is stale: run node scripts/build-site.cjs ${site}`);
+    const file = path.join(site, name), same = (a, b) => (name.endsWith(".xml") ? withoutDates(a) === withoutDates(b) : a === b);
+    if (!fs.existsSync(file) || !same(fs.readFileSync(file, "utf8"), text)) problems.push(`${name} is stale: run node scripts/build-site.cjs ${site}`);
   } else for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(site, name), text);
   for (const p of problems) console.error(p);
   if (problems.length) process.exit(1);
-  console.log(check ? "Website pages are current and every link resolves." : `Wrote ${Object.keys(files).join(", ")} to ${path.resolve(site)}`);
+  console.log(check ? "Website pages are current, every link resolves and every page passes the checks." : `Wrote ${Object.keys(files).join(", ")} to ${path.resolve(site)}`);
 }
-module.exports = { build, chrome, patchIndex, checkLinks, stableReleases, tagline, TOUR };
+module.exports = { build, chrome, checkLinks, audit, imageSize, stableReleases, tagline, sitemap, FEATURES, MORE, HERO_SHOT, PAGES, ORDER, OG, LIMITS, BASE };

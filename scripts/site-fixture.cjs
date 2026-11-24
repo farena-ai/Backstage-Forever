@@ -52,7 +52,37 @@ const THESSALY_GEAR = [[1, 10041, "Dreamweave Circlet", 50], [2, 18691, "Dark Ad
   [8, 11822, "Omnicast Boots", 59], [11, 12545, "Eye of Orgrimmar", 60], [12, 13001, "Maiden's Circle", 61], [13, 12930, "Briarwood Reed", 60], [14, 11832, "Burst of Knowledge", 58],
   [16, 13964, "Witchblade", 62], [17, 22253, "Tome of the Lost", 63], [18, 13938, "Bonecreeper Stylus", 62]];
 
-function buildCharacters({ clock, version }) {
+// The optional extras block (src/core/capture-extras.cjs) for the level 60 mage, built from the
+// player's own game files when the screenshot script was given --game: talents spent row by row
+// (16 Arcane, 35 Frost), every trainer-taught recipe she has outgrown, and two keys on the key ring.
+function mageExtras(game, at, professions, workshopIds) {
+  const extras = { v: 1, keyring: { at, slots: 12, ids: [7146, 12382] } };
+  if (!game) return extras;
+  const spend = (tab, budget) => {
+    const rows = [];
+    let spent = 0;
+    for (const t of [...tab.talents].sort((a, b) => a.row - b.row || a.column - b.column)) {
+      if (spent >= budget || spent < t.row * 5) continue;
+      const rank = Math.min(t.maxRank, budget - spent);
+      spent += rank;
+      rows.push([t.row + 1, t.column + 1, rank, t.maxRank, t.name]);
+    }
+    return { n: tab.name, t: rows, spent };
+  };
+  const want = { Arcane: 16, Frost: 35 };
+  const tabs = (game.talents?.tabs || []).map((tab) => spend(tab, want[tab.name] || 0));
+  if (tabs.length && tabs.reduce((n, t) => n + t.spent, 0) <= 51) extras.talents = { at, unspent: 51 - tabs.reduce((n, t) => n + t.spent, 0), tabs: tabs.map(({ n, t }) => ({ n, t })) };
+  const taughtByItem = new Set(Object.keys(game.recipes?.teach || {}).map(Number));
+  const lines = professions.map((p) => {
+    // Row: [spell, skill line, yellow from, grey from, ...]. Known: gone yellow a while ago and not from a recipe item.
+    const ids = (game.recipes?.rows || []).filter((r) => r[1] === p.skillLineId && r[2] > 0 && r[2] <= p.rank - 12 && !taughtByItem.has(r[0])).map((r) => r[0]);
+    return { l: p.skillLineId, r: p.rank, c: true, ids: [...new Set([...ids, ...workshopIds.filter(([, line]) => line === p.skillLineId).map(([id]) => id)])].sort((a, b) => a - b).slice(0, 600) };
+  }).filter((line) => line.ids.length);
+  if (lines.length) extras.recipes = { at, lines };
+  return extras;
+}
+
+function buildCharacters({ clock, version, game = null }) {
   const build = reference.build;
   const at = (daysAgo, seconds = 0) => clock - daysAgo * DAY + seconds;
   const side = (s) => transport.nodes.filter((n) => n.side === s || n.side === "Both" || n.side === "Neutral");
@@ -75,6 +105,7 @@ function buildCharacters({ clock, version }) {
     ledger: { schemaVersion: 1, money: 38450, moneyAt: clock, moneyLog: [[4200, at(8)], [9100, at(6)], [15800, at(4)], [24100, at(2)], [38450, at(0, -600)]],
       bags: { seenAt: clock, complete: true, items: [item(2449, 14, "Earthroot"), item(765, 20, "Silverleaf"), item(2770, 18, "Copper Ore"), item(2589, 12, "Linen Cloth"), item(118, 4, "Minor Healing Potion"), item(4540, 10, "Tough Hunk of Bread")] },
       reputations: { seenAt: clock, factions: [{ id: 81, name: "Thunder Bluff", standing: 5, min: 3000, max: 9000, value: 5450 }, { id: 76, name: "Orgrimmar", standing: 4, min: 0, max: 3000, value: 2100 }, { id: 530, name: "Darkspear Trolls", standing: 4, min: 0, max: 3000, value: 600 }] },
+      mail: { seenAt: at(1), complete: true, letters: 3, money: 12500, expiresAt: clock + DAY * 3, items: [item(2589, 20, "Linen Cloth")] },
       cooldowns: [], prices: [], pricesOn: true },
   };
 
@@ -115,9 +146,9 @@ function buildCharacters({ clock, version }) {
       moneyLog: [[1210400, at(13)], [1498000, at(12)], [1502300, at(11)], [1987000, at(10)], [2240100, at(9)], [2101900, at(8)], [2650000, at(7)], [3120800, at(6)], [3099000, at(5)], [3704400, at(4)], [4011000, at(3)], [4390200, at(2)], [4605000, at(1)], [4823511, at(0, -600)]],
       bags: { seenAt: clock, complete: true, items: [item(14047, 86, "Runecloth"), item(14048, 9, "Bolt of Runecloth"), item(14341, 4, "Rune Thread"), item(13463, 22, "Dreamfoil"), item(13465, 6, "Mountain Silversage"), item(13464, 12, "Golden Sansam"), item(8925, 20, "Crystal Vial"), item(13444, 9, "Major Mana Potion"), item(13446, 6, "Major Healing Potion"), item(13454, 5, "Greater Arcane Elixir", 1), item(8545, 18, "Heavy Mageweave Bandage"), item(11000, 1, "Shadowforge Key")] },
       bank: { seenAt: at(1), complete: true, items: [item(14342, 3, "Mooncloth", 1), item(14344, 4, "Large Brilliant Shard", 3), item(12811, 1, "Righteous Orb", 2), item(7078, 5, "Essence of Fire", 2), item(14047, 140, "Runecloth"), item(4338, 60, "Mageweave Cloth")] },
-      mail: { seenAt: at(0, -3600), complete: true, letters: 2, money: 184500, expiresAt: clock + DAY * 27, items: [item(13463, 20, "Dreamfoil")] },
+      mail: { seenAt: at(0, -3600), complete: true, letters: 2, money: 184500, expiresAt: clock + DAY * 5, items: [item(13463, 20, "Dreamfoil")] },
       reputations: { seenAt: clock, factions: [{ id: 72, name: "Stormwind", standing: 7, min: 21000, max: 42000, value: 30120 }, { id: 47, name: "Ironforge", standing: 6, min: 9000, max: 21000, value: 15400 }, { id: 529, name: "Argent Dawn", standing: 6, min: 9000, max: 21000, value: 17250 }, { id: 576, name: "Timbermaw Hold", standing: 4, min: 0, max: 3000, value: 1875 }, { id: 749, name: "Hydraxian Waterlords", standing: 5, min: 3000, max: 9000, value: 4100 }, { id: 59, name: "Thorium Brotherhood", standing: 4, min: 0, max: 3000, value: 950 }] },
-      cooldowns: [{ key: "mooncloth", spellId: 18560, readyAt: clock + 26 * 3600 }, { key: "transmute", spellId: 17187, readyAt: clock + 5 * 3600 }],
+      cooldowns: [{ key: "mooncloth", spellId: 18560, readyAt: clock + 26 * 3600 }, { key: "transmute", spellId: 17187, readyAt: clock - 2 * 3600 }],
       prices: [
         price(14047, "Runecloth", 1, [[410, 13], [395, 11], [430, 9], [455, 7], [440, 5], [480, 3], [505, 1], [520, 0]]),
         price(14048, "Bolt of Runecloth", 1, [[2300, 9], [2450, 5], [2600, 0]]),
@@ -134,6 +165,11 @@ function buildCharacters({ clock, version }) {
         price(13446, "Major Healing Potion", 1, [[9800, 10], [10400, 6], [11200, 0]]),
         price(7078, "Essence of Fire", 2, [[31000, 12], [34500, 8], [33000, 4], [38000, 0]]),
         price(12811, "Righteous Orb", 2, [[220000, 12], [245000, 6], [262000, 0]]),
+        // The herbs and vials an alchemist buys on the way up, so the skill path has prices to work with.
+        ...[[765, "Silverleaf", 95], [2447, "Peacebloom", 80], [2449, "Earthroot", 140], [785, "Mageroyal", 210], [2450, "Briarthorn", 260], [2453, "Bruiseweed", 380], [2452, "Swiftthistle", 520], [3820, "Stranglekelp", 610],
+          [3355, "Wild Steelbloom", 540], [3356, "Kingsblood", 470], [3357, "Liferoot", 590], [3818, "Fadeleaf", 760], [3821, "Goldthorn", 880], [3358, "Khadgar's Whisker", 720], [3819, "Wintersbite", 940], [4625, "Firebloom", 1150],
+          [8831, "Purple Lotus", 1320], [8836, "Arthas' Tears", 990], [8838, "Sungrass", 1480], [8839, "Blindweed", 1650], [8845, "Ghost Mushroom", 2400], [8846, "Gromsblood", 1900], [13466, "Plaguebloom", 3100], [13467, "Icecap", 2800],
+          [3371, "Empty Vial", 20], [3372, "Leaded Vial", 40]].map(([id, name, p], i) => price(id, name, 1, [[Math.round(p * 0.9), 11 - (i % 3)], [Math.round(p * 1.08), 6], [p, i % 4]])),
       ], pricesOn: true },
   };
 
@@ -141,15 +177,21 @@ function buildCharacters({ clock, version }) {
   const brannoc = {
     id: "Fixture-Brannoc", name: "Brannoc", faction: "Alliance", race: "Dwarf", className: "Warrior", sex: "male", level: 42,
     location: { zone: "Stranglethorn Vale", subZone: "Booty Bay", mapId: 1434, x: 0.27, y: 0.77 },
+    progress: { current: 41200, max: 63900, rested: 21000, resting: true },
     quests: [],
     journal: { levels: levels(1, 42, 40, 1.4), firsts: [{ key: "flight", at: at(39) }, { key: "dungeon", at: at(30) }, { key: "mount", at: at(3) }], zones: [1426, 1455, 1432, 1437, 1433, 1434, 1417], runs: brannocRuns, encounters: kills.splice(0), played: Math.round(2.6 * DAY) },
     stats: { schemaVersion: 1, seenAt: clock, strength: 142, agility: 71, stamina: 131, intellect: 22, spirit: 44, armor: 2210, attackPower: 404, health: 2540, power: 100, powerKind: "rage" },
-    readiness: { bags: { free: 6, total: 68 }, workshop: { professions: { observedAt: clock, complete: true, items: [{ skillLineId: 164, professionId: 164, name: "Blacksmithing", rank: 205, maxRank: 225 }, { skillLineId: 186, professionId: 186, name: "Mining", rank: 214, maxRank: 225 }] } } },
+    // Worn gear a few levels behind, so a level 34-45 dungeon has upgrades to show.
+    readiness: { equipment: [[1, 3836, "Green Iron Helm", 34], [3, 3841, "Golden Scale Shoulders", 35], [15, 6593, "Battleforge Cloak", 26], [5, 3844, "Green Iron Hauberk", 36], [9, 3835, "Green Iron Bracers", 33], [10, 3485, "Green Iron Gauntlets", 30],
+      [6, 6594, "Battleforge Girdle", 28], [7, 3843, "Golden Scale Leggings", 34], [8, 3846, "Polished Steel Boots", 37], [16, 6687, "Corpsemaker", 34]].map(([slot, itemId, name, itemLevel]) => ({ slot, itemId, name, quality: 2, itemLevel })),
+      bags: { free: 6, total: 68 }, workshop: { professions: { observedAt: clock, complete: true, items: [{ skillLineId: 164, professionId: 164, name: "Blacksmithing", rank: 205, maxRank: 225 }, { skillLineId: 186, professionId: 186, name: "Mining", rank: 214, maxRank: 225 }] } } },
     ledger: { schemaVersion: 1, money: 612300, moneyAt: clock, moneyLog: [[310000, at(6)], [455000, at(3)], [612300, at(0, -600)]],
       bags: { seenAt: clock, complete: true, items: [item(3860, 24, "Mithril Bar"), item(3859, 12, "Steel Bar"), item(7911, 9, "Truesilver Ore", 2), item(3928, 5, "Superior Healing Potion")] },
       reputations: { seenAt: clock, factions: [{ id: 47, name: "Ironforge", standing: 6, min: 9000, max: 21000, value: 11200 }, { id: 21, name: "Booty Bay", standing: 4, min: 0, max: 3000, value: 2500 }] },
+      mail: { seenAt: at(2), complete: true, letters: 1, money: 0, expiresAt: clock + DAY * 2, items: [item(3860, 10, "Mithril Bar")] },
       cooldowns: [], prices: [], pricesOn: true },
   };
+  thessaly.extras = mageExtras(game, clock, thessaly.readiness.workshop.professions.items, thessaly.readiness.workshop.recipes.items.map((r) => [r.id, r.skillLineId]));
 
   return [aelora, thessaly, brannoc].map((c) => ({ realm: "Fixture Realm", updatedAt: clock, clientBuild: build, captureVersion: version, ...c }));
 }
