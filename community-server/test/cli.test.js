@@ -53,6 +53,34 @@ test("admin accounts are made, changed and disabled only from the command line",
   assert.match(cli(db, ["admin-enable", "alice"]).out, /can sign in again/);
   assert.match(cli(db, ["admin-disable", "nobody"]).err, /no such admin/);
 
+  // A password-only account, asked for explicitly; the default stays password + authenticator.
+  const plain = cli(db, ["admin-add", "pat", "--no-authenticator"], { input: `${PW}\n` });
+  assert.equal(plain.code, 0, plain.err);
+  assert.match(plain.out, /Admin "pat" is ready\. It signs in with the name and the password only/);
+  assert.match(plain.out, /admin-set-authenticator pat/);
+  assert.ok(!/otpauth:|Secret \(type/.test(plain.out) && !plain.out.includes(PW));
+  assert.equal(cli(db, ["admin-add", "--no-authenticator", "quinn"], { input: `${PW}\n` }).code, 0); // the flag may come first
+  assert.match(cli(db, ["admin-add", "rob", "--no-authenticater"], { input: `${PW}\n` }).err, /unknown option --no-authenticater/);
+  assert.match(cli(db, ["admin-add", "rob", "--no-authenticator"], { input: "too short\n" }).err, /at least 14 characters/);
+  const listed = cli(db, ["admins"]).out;
+  assert.match(listed, /^pat \(password only\) {2}created/m);
+  assert.match(listed, /^alice {2}created/m);
+  const added = cli(db, ["admin-set-authenticator", "pat"]);
+  assert.match(added.out, /Secret \(type it in by hand\): [A-Z2-7]{32}/);
+  assert.match(added.out, /otpauth:\/\/totp\/Backstage%20Desk:pat\?/);
+  assert.ok(!/password only/.test(cli(db, ["admins"]).out.split("\n").find(l => l.startsWith("pat"))));
+  assert.match(cli(db, ["admin-remove-authenticator", "pat"]).out, /"pat" now signs in with a password only, and is signed out everywhere\./);
+  assert.match(cli(db, ["admins"]).out, /^pat \(password only\)/m);
+  assert.match(cli(db, ["admin-remove-authenticator", "nobody"]).err, /no such admin/);
+  {
+    const check = new Store(db.file);
+    const rows = check.db.prepare("SELECT name, totp_secret FROM admins ORDER BY name").all().map(r => [r.name, r.totp_secret === "" ? "none" : "set"]);
+    const log = check.db.prepare("SELECT action, target, detail FROM audit WHERE target IN ('pat', 'quinn') ORDER BY id").all().map(r => `${r.action} ${r.target} ${r.detail}`.trim());
+    check.close();
+    assert.deepEqual(rows, [["alice", "set"], ["pat", "none"], ["quinn", "none"]]);
+    assert.deepEqual(log, ["admin_add pat authenticator=no", "admin_add quinn authenticator=no", "admin_set_authenticator pat", "admin_remove_authenticator pat"]);
+  }
+
   const reset = cli(db, ["admin-reset-totp", "alice"]);
   const secret2 = /Secret \(type it in by hand\): ([A-Z2-7]{32})/.exec(reset.out)[1];
   assert.notEqual(secret2, secret);
@@ -63,7 +91,7 @@ test("admin accounts are made, changed and disabled only from the command line",
   auth = new Auth({ store, salt: SALT });
   return auth.login({ name: "alice", password: "another long password", code: totp.totp(totp.base32Decode(secret2)) }).then((r) => {
     assert.equal(r.ok, true);
-    const audit = store.db.prepare("SELECT admin_name, action, target FROM audit ORDER BY id").all().map(a => `${a.admin_name}|${a.action}|${a.target}`);
+    const audit = store.db.prepare("SELECT admin_name, action, target FROM audit WHERE target = 'alice' ORDER BY id").all().map(a => `${a.admin_name}|${a.action}|${a.target}`);
     assert.deepEqual(audit.slice(0, 6), ["(command line)|admin_add|alice", "(command line)|admin_disable|alice", "(command line)|admin_enable|alice", "(command line)|admin_reset_totp|alice", "(command line)|admin_password|alice", "(command line)|admin_unlock|alice"]);
     store.close();
   });

@@ -15,6 +15,9 @@
 //
 // Backstage Desk
 //   node admin.js admin-add <name>        new admin; asks for a password, prints the authenticator setup
+//   node admin.js admin-add <name> --no-authenticator    new admin that signs in with a password only
+//   node admin.js admin-set-authenticator <name>         add (or replace) the authenticator; prints the setup
+//   node admin.js admin-remove-authenticator <name>      back to password only
 //   node admin.js admin-password <name>   new password for an admin
 //   node admin.js admin-reset-totp <name> new authenticator secret (signs the admin out)
 //   node admin.js admin-disable <name>    / admin-enable <name> / admin-unlock <name>
@@ -45,7 +48,8 @@ function usage(code = 1) {
   console.error(`usage: node admin.js <command>
   stats | reports [--all] [--limit N] | report <id> | mark-read <id> | delete-report <id>
   purge-install <hash|installId> [--block] | hash <installId> | pack
-  admin-add <name> | admin-password <name> | admin-reset-totp <name> | admin-disable <name> | admin-enable <name> | admin-unlock <name> | admins
+  admin-add <name> [--no-authenticator] | admin-set-authenticator <name> | admin-remove-authenticator <name>
+  admin-password <name> | admin-reset-totp <name> | admin-disable <name> | admin-enable <name> | admin-unlock <name> | admins
   tickets [--all] [--limit N] | ticket <BF-nnnn> | reply <BF-nnnn> <text>
   rollup | backup | notify-test | downloads-fetch`);
   process.exit(code);
@@ -198,11 +202,25 @@ async function main(argv) {
 
       // ------------------------------------------------------------- admins
       case "admin-add": {
-        const name = auth.normalizeName(args[0]);
+        const withAuthenticator = !args.includes("--no-authenticator");
+        const unknown = args.find(a => a.startsWith("--") && a !== "--no-authenticator");
+        if (unknown) throw new Error(`unknown option ${unknown.slice(0, 40)}`);
+        const name = auth.normalizeName(args.find(a => !a.startsWith("--")));
         if (auth.getAdmin(name)) throw new Error("an admin with that name already exists");
-        const r = await auth.createAdmin(name, await newPassword(auth));
-        desk.audit(CLI, "admin_add", r.name);
-        printTotp(r);
+        const r = await auth.createAdmin(name, await newPassword(auth), { authenticator: withAuthenticator });
+        desk.audit(CLI, "admin_add", r.name, withAuthenticator ? "authenticator=yes" : "authenticator=no");
+        if (withAuthenticator) printTotp(r);
+        else {
+          console.log(`Admin "${r.name}" is ready. It signs in with the name and the password only (leave the code field empty).`);
+          console.log("Anyone who learns the password can sign in. To add an authenticator later: the My account page in the admin area,");
+          console.log(`or: node admin.js admin-set-authenticator ${r.name}`);
+        }
+        break;
+      }
+      case "admin-remove-authenticator": {
+        const name = auth.removeAuthenticator(String(args[0] || ""));
+        desk.audit(CLI, "admin_remove_authenticator", name);
+        console.log(`"${name}" now signs in with a password only, and is signed out everywhere.`);
         break;
       }
       case "admin-password": {
@@ -212,9 +230,10 @@ async function main(argv) {
         console.log(`Password changed for "${name}". They are signed out everywhere.`);
         break;
       }
+      case "admin-set-authenticator":
       case "admin-reset-totp": {
         const r = auth.resetTotp(String(args[0] || ""));
-        desk.audit(CLI, "admin_reset_totp", r.name);
+        desk.audit(CLI, cmd === "admin-reset-totp" ? "admin_reset_totp" : "admin_set_authenticator", r.name);
         printTotp(r);
         break;
       }
@@ -236,7 +255,7 @@ async function main(argv) {
       case "admins": {
         const rows = auth.listAdmins();
         if (!rows.length) console.log("No admins yet. Make one with: node admin.js admin-add <name>");
-        for (const a of rows) console.log(`${a.name}${a.disabled ? " (disabled)" : ""}  created ${a.created_at}  last sign-in ${a.last_login_at || "never"}  sessions ${a.sessions}`);
+        for (const a of rows) console.log(`${a.name}${a.disabled ? " (disabled)" : ""}${a.authenticator ? "" : " (password only)"}  created ${a.created_at}  last sign-in ${a.last_login_at || "never"}  sessions ${a.sessions}`);
         break;
       }
 

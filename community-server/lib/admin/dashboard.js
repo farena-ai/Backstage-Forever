@@ -81,7 +81,7 @@ ${figs.join("\n")}
 ${table}`;
 }
 
-function renderDashboard(d) {
+function renderDashboard(d, notice = "") {
   const range = RANGE_NAMES[d.days];
   const picker = `<nav class="seg" aria-label="Period">${RANGES.map(r => `<a href="/admin/?days=${r}"${r === d.days ? ' class="on" aria-current="true"' : ""}>${esc(RANGE_NAMES[r])}</a>`).join("")}</nav>`;
   const a = d.active.now;
@@ -233,6 +233,7 @@ ${d.history.map(m => `<tr><th scope="row">${esc(m.month)}</th><td class="n">${nu
   }
 
   return `<div class="head"><h1>Dashboard</h1>${picker}</div>
+${notice}
 ${tiles}
 <div class="charts">
 ${charts.join("\n")}

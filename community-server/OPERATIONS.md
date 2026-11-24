@@ -51,18 +51,46 @@ ssh stacy
   app straight away (type the secret in, or turn the link into a QR code on your own computer).
 - Sign in at `/admin/` with name, password and the six-digit code.
 
+**Without an authenticator.** An account can also be made with a password only:
+
+```
+~/bf-community/admin admin-add yourname --no-authenticator
+```
+
+Sign in with the name and the password and leave the code field empty. This is allowed, but it
+is the weaker choice: anyone who learns or guesses that one password is in, and the admin area
+holds every player report. **Add an authenticator as soon as you can.** It takes two minutes: sign
+in, click your name (top right, "My account"), "Add an authenticator", type the secret into the
+app and confirm with one code. Until then the Dashboard and the Admins page say "This account
+signs in with a password only".
+
+On the My account page each admin can change their own password (the current one is asked for;
+every other session of theirs is signed out), add an authenticator (it takes effect only after a
+correct code) and remove it again (the current password is asked for).
+
 Other account commands:
 
 | Command | What it does |
 |---|---|
 | `admins` | list accounts, last sign-in, open sessions |
 | `admin-password <name>` | set a new password; signs that admin out everywhere |
-| `admin-reset-totp <name>` | new authenticator secret (lost phone); signs that admin out |
+| `admin-set-authenticator <name>` | give an account an authenticator, or a new one (lost phone); prints the setup once; signs that admin out. `admin-reset-totp` is the same command under its old name |
+| `admin-remove-authenticator <name>` | back to password only; signs that admin out |
 | `admin-disable <name>` / `admin-enable <name>` | switch an account off or on. Disabling can also be done in the admin area; enabling cannot |
 | `admin-unlock <name>` | clear a sign-in lock straight away |
 
-Sign-in rules: five wrong tries lock that name for 15 minutes; 100 wrong tries in 15 minutes lock
-sign-in for everyone for 15 minutes; ten tries per network in 15 minutes. A session lasts 12 hours
+Sign-in rules: five wrong tries in 15 minutes lock that name for 15 minutes. If the same name is
+locked again within a day of the last lock ending, each lock lasts twice as long: 30 minutes, 1, 2,
+4, 8, 16 hours, then 24 hours each time. A correct sign-in, `admin-unlock`, or a quiet day starts
+over at 15 minutes. That leaves someone guessing a password about 5 tries a day once it has run
+up, which is what protects a password-only account. 100 wrong tries in 15 minutes lock sign-in for
+everyone for 15 minutes; ten tries per network in 15 minutes. Wrong "current password" entries on
+the My account page count the same way, and the fifth one also ends that admin's sessions.
+
+The rules are the same for every name, with or without an authenticator and whether or not the
+name exists, on purpose: the sign-in page gives nothing away about an account until its password
+has been typed correctly. That is why password-only accounts do not get a different limit of
+their own; everyone got the stricter, growing lock instead. A session lasts 12 hours
 at most and ends after 1 hour without use. Every sign-in and every action is in the Audit log page.
 
 ## 3. Settings (the env file)
@@ -208,8 +236,9 @@ unless it has leaked. If it is changed:
 - Blocked installs are no longer blocked.
 - A ticket's "same install" list no longer links old and new tickets. Ticket keys keep working:
   they do not depend on the salt, so players keep their conversations.
-- Every admin's authenticator secret becomes unreadable. Run `admin-reset-totp <name>` for each
-  admin right after the restart. Passwords keep working.
+- Every admin's authenticator secret becomes unreadable. Run `admin-set-authenticator <name>` for
+  each admin that had one, right after the restart. Passwords keep working, and password-only
+  accounts are not affected.
 
 So: keep the old salt somewhere safe until every deletion request that might still refer to old
 data has been handled, and change it only together with a note in the release notes.
@@ -244,7 +273,8 @@ To remove one ticket only: open it in the admin area, "Delete ticket".
 | service does not start | `tail ~/bf-community/data/service.log`. A bad setting is named there ("BF_DESK_DISCORD_WEBHOOK must be ...") |
 | admin area: "This form has expired or was not sent from this site" on every form | `BF_DESK_PUBLIC_ORIGIN` does not match the address in the browser |
 | sign-in page loads, signing in always returns to it | the page is not reached over HTTPS (the session cookie is Secure). Check the `.htaccess` block |
-| sign-in fails for everyone after a salt change | section 6: `admin-reset-totp` |
+| sign-in fails for everyone after a salt change | section 6: `admin-set-authenticator` |
+| "Sign-in is locked for a while" and it keeps getting longer | someone (or a typo habit) keeps failing on that name. `admin-unlock <name>` clears it; if it was not you, change the password and add an authenticator |
 | sign-in is very slow or the service is killed at sign-in | the host cannot spare 128 MB: set `BF_DESK_SCRYPT_LOG2N=16`, restart, then `admin-password` for each admin |
 | "Too many failed attempts" | wait 15 minutes, or `admin-unlock <name>` |
 | Downloads section says "No download counts yet" for more than two hours | `~/bf-community/admin downloads-fetch` and read what it prints; the host may block outbound HTTPS |
