@@ -291,7 +291,11 @@ function parseSavedVariables(raw) {
   });
   const activeId = s.activeId === null ? null : id(s.activeId);
   if (activeId && !seen.has(activeId)) invalid();
-  return { characters, activeId, observedAt: stamp(s.observedAt), ...(scout.length ? { scout } : {}), ...(settingsProfiles.length ? { settingsProfiles } : {}), ...(guild.length ? { guild } : {}) };
+  const parsed = { characters, activeId, observedAt: stamp(s.observedAt), ...(scout.length ? { scout } : {}), ...(settingsProfiles.length ? { settingsProfiles } : {}) };
+  // Nearly every save carries a lockout block, so this list rides along without being a listed
+  // field: code that takes the snapshot apart field by field (the profile merge) does not see it.
+  if (guild.length) Object.defineProperty(parsed, "guild", { value: guild, enumerable: false });
+  return parsed;
 }
 // `checked` is a set of parent folders already walked in the same pass (one addon install or
 // verify): those are not walked again for every file. The file or folder itself is always checked.
