@@ -5,7 +5,7 @@
 // a finished zone and the story so far. Pure: the renderer paints what this returns, and Node
 // tests check it. A character's name and realm are on a card only when the player ticked them.
 (function () {
-const KINDS = Object.freeze(["level", "badge", "badges", "run", "best", "chain", "zone", "story"]);
+const KINDS = Object.freeze(["level", "badge", "badges", "run", "best", "chain", "zone", "story", "challenge"]);
 const LIMITS = Object.freeze({ title: 60, kicker: 40, line: 110, lines: 7, stats: 4, statLabel: 22, statValue: 16, grid: 120, who: 60 });
 const FOOTER = "Backstage Forever";
 
@@ -91,6 +91,15 @@ const BUILD = {
     const min = whole(d.min, 1, 100), max = whole(d.max, 1, 100);
     return { kicker: "Zone finished", title: name, art: "explorer-15",
       lines: [`${done} of ${total} known quests done.`, min && max ? `A zone for levels ${min} to ${max}.` : ""], stats: [["Quests", `${done} / ${total}`]] };
+  },
+  // C12: a challenge run. Each rule line already says how far the app can vouch for it.
+  challenge(d) {
+    const rules = (Array.isArray(d.rules) ? d.rules : []).map((l) => cut(l, LIMITS.line)).filter(Boolean).slice(0, 5);
+    if (!rules.length) return null;
+    const level = whole(d.level, 1, 100), kept = whole(d.kept, 0, 6), total = whole(d.total, 1, 6), days = whole(d.days, 0, 99999);
+    return { kicker: "Challenge run", title: d.broken === true ? "A rule was broken" : level ? `Level ${level} by my own rules` : "By my own rules", art: `level-${Math.min(60, Math.max(10, Math.floor((level || 10) / 10) * 10))}`,
+      lines: [...rules, d.broken === true ? "" : "Checked only against what the app saved. It is not proof.", day(d.startedAt) ? `Started on ${day(d.startedAt)}.` : ""],
+      stats: [level ? ["Level", String(level)] : null, kept !== null && total ? ["Milestones", `${kept} of ${total}`] : null, days !== null ? ["Days", String(days)] : null] };
   },
   story(d) {
     const lines = (Array.isArray(d.lines) ? d.lines : []).map((l) => cut(l, LIMITS.line)).filter(Boolean);

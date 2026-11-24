@@ -48,6 +48,49 @@ local function loadSettings()
     return settings
 end
 
+-- Pure: the next route steps the desktop app sent for this character (roadmap Q8/Q9), or nil.
+-- data is BackstageForeverDesktopData. The desktop sends them only for a route you changed there
+-- (another route choice, or your own edits and notes). Returns a route in the guide's own shape,
+-- {s={{kind,text,mapId,x,y,level,{questIds},id,note},...},top=level,variant=word}; anything that
+-- is not a clean list is refused whole. Text is shown as plain text: '|' codes are taken out.
+local DESKTOP_KINDS={p=true,c=true,o=true,t=true,g=true,d=true,x=true}
+local DESKTOP_VARIANTS={solo=true,duo=true,dungeons=true,trips=true,careful=true}
+local function desktopText(v,limit)
+    if type(v)~='string' or v=='' or #v>limit or v:find('[%z\1-\31\127]') then return nil end
+    return (v:gsub('|','/'))
+end
+function BackstageForeverDesktopRouteRead(data,name,realm)
+    if type(data)~='table' or data.schema~=1 or type(data.characters)~='table' or type(name)~='string' or type(realm)~='string' then return nil end
+    local row=data.characters[name..'-'..realm]
+    local rt=type(row)=='table' and row.rt or nil
+    if type(rt)~='table' or not DESKTOP_VARIANTS[rt.v] or type(rt.s)~='table' then return nil end
+    local n=#rt.s
+    if n<1 or n>12 then return nil end
+    local steps,top={},1
+    for i=1,n do
+        local r=rt.s[i]
+        if type(r)~='table' or not DESKTOP_KINDS[r[1]] then return nil end
+        local text,id=desktopText(r[2],600),desktopText(r[8],400)
+        local mapId,level=r[3],r[6]
+        if not text or not id or type(mapId)~='number' or mapId%1~=0 or mapId<0 or mapId>2147483647 or type(level)~='number' or level%1~=0 or level<1 or level>100 then return nil end
+        local x,y=r[4],r[5]
+        if x~=nil or y~=nil then
+            if type(x)~='number' or type(y)~='number' or x~=x or y~=y or x<0 or x>1 or y<0 or y>1 then return nil end
+        end
+        local ids={}
+        if type(r[7])~='table' or #r[7]>40 then return nil end
+        for _,q in ipairs(r[7]) do
+            if type(q)~='number' or q%1~=0 or q<1 or q>2147483647 then return nil end
+            ids[#ids+1]=q
+        end
+        local note=nil
+        if r[9]~=nil then note=desktopText(r[9],360);if not note then return nil end end
+        steps[i]={r[1],text,mapId>0 and mapId or nil,x,y,level,ids,id,note}
+        if level>top then top=level end
+    end
+    return {s=steps,top=top,variant=rt.v}
+end
+
 -- Pure: candidate stops -> an ordered route from the player's spot.
 -- stops: {kind='turnin'|'objective'|'pickup', x, y, title, detail, questId}
 -- Pick-ups at the same spot merge into one step; the order is a nearest-next walk where
@@ -201,7 +244,7 @@ local function paint()
         return
     end
     if guide then
-        method(lines.title,'SetText',('BF Guide · step %d of %d · level %d'):format(guide.index+index-1,guide.total,s.level or 1))
+        method(lines.title,'SetText',((guide.desktop and 'BF Guide · your route · step %d of %d · level %d' or 'BF Guide · step %d of %d · level %d')):format(guide.index+index-1,guide.total,s.level or 1))
     else
         method(lines.title,'SetText',('BF Route · step %d of %d'):format(index,#steps))
     end
@@ -209,7 +252,9 @@ local function paint()
     method(lines.body,'SetText',s.text..where)
     local n=steps[index+1]
     local nextLine=n and ('|cff6a4a20Then:|r '..n.text) or (guide and '|cff6a4a20Last guided step for now.|r' or '|cff6a4a20Last step here.|r')
-    method(lines.next,'SetText',(guide and index==1 and guide.note) and ('|cff8a2a10'..guide.note..'|r') or nextLine)
+    -- A note you wrote on the desktop takes the bottom line of its step.
+    if s.note then nextLine='|cff6a4a20Your note:|r '..s.note end
+    method(lines.next,'SetText',(guide and index==1 and guide.note and not s.note) and ('|cff8a2a10'..guide.note..'|r') or nextLine)
     -- No waypoint here: paint also runs on its own (login, zone and quest changes), and the game
     -- forbids addons from setting waypoints outside a player's click or command.
 end
@@ -257,13 +302,21 @@ function BackstageForeverRouteRefresh()
     if settings.mode=='guide' and type(BackstageForeverGuideRoute)=='function' then
         local _,race=call(UnitRace,'player')
         local route=BackstageForeverGuideRoute(str(race,40))
-        if route then
+        -- Q8/Q9: steps of a route changed on the desktop come first; the built-in route follows.
+        local sent=BackstageForeverDesktopRouteRead(BackstageForeverDesktopData,call(UnitName,'player'),call(GetRealmName))
+        if route or sent then
             local log=questLog();local inLog,complete={},{}
             for _,q in ipairs(log) do inLog[q.id]=true;if q.complete then complete[q.id]=true end end
             local completed={}
             local ids=call(field(plain(C_QuestLog),'GetAllCompletedQuestIDs'))
             if type(ids)=='table' then for _,v in pairs(ids) do v=int(v,1,2147483647);if v then completed[v]=true end end end
-            local pos=BackstageForeverGuidePosition(route,{completed=completed,inLog=inLog,complete=complete,level=int(call(UnitLevel,'player'),1,1000),mapId=mapId},settings.skipped)
+            local state={completed=completed,inLog=inLog,complete=complete,level=int(call(UnitLevel,'player'),1,1000),mapId=mapId}
+            local pos=sent and BackstageForeverGuidePosition(sent,state,settings.skipped) or nil
+            local fromDesktop=pos~=nil and not pos.ended
+            if not fromDesktop then
+                if sent and route and not settings.sentDone then settings.sentDone=true;say('The steps from the desktop app are done. Save with /reload and the app sends the next ones; until then this is the built-in route.') end
+                pos=route and BackstageForeverGuidePosition(route,state,settings.skipped) or pos
+            else settings.sentDone=nil end
             if pos.ended then
                 settings.mode='zone'
                 say(('The guided route ends at level %d for now. The zone guide takes over; the desktop app\'s Now page shows where to level next.'):format(pos.top or 1))
@@ -271,9 +324,9 @@ function BackstageForeverRouteRefresh()
                 steps={}
                 for i,r in ipairs(pos.steps) do
                     local ids={};for _,id in ipairs(r[7] or {})do ids[id]=true end
-                    steps[i]={kind=r[1],text=r[2],mapId=r[3],x=r[4],y=r[5],level=r[6],id=r[8],questIds=ids}
+                    steps[i]={kind=r[1],text=r[2],mapId=r[3],x=r[4],y=r[5],level=r[6],id=r[8],questIds=ids,note=fromDesktop and r[9] or nil}
                 end
-                guide={index=pos.index,total=pos.total,note=pos.note,top=pos.top};index=1
+                guide={index=pos.index,total=pos.total,note=pos.note,top=pos.top,desktop=fromDesktop};index=1
                 -- The turn-in can queue a refresh after the HUD resumes the guide.
                 -- Keep a browsed step if actual route progress hasn't moved the anchor.
                 if cursor and cursor.anchor==pos.index then

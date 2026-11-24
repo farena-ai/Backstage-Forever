@@ -586,6 +586,7 @@ if L=="deDE" then
         ["The quest log is not readable in this game client."]="Das Questlog ist in diesem Spielclient nicht lesbar.",
         ["The search box waits until you leave combat."]="Das Suchfeld wartet, bis du den Kampf verl\195\164sst.",
         ["The soft-reserve list is empty. The party leader adds to it: /bf sr add Player Item."]="Die Soft-Reserve-Liste ist leer. Der Gruppenleiter tr\195\164gt ein: /bf sr add Spieler Gegenstand.",
+        ["The steps from the desktop app are done. Save with /reload and the app sends the next ones; until then this is the built-in route."]="Die Schritte aus der Desktop-App sind erledigt. Speichere mit /reload, dann schickt die App die n\195\164chsten; bis dahin gilt die eingebaute Route.",
         ["The way Backstage Forever starts: every guide and reminder on, comfort extras off."]="So startet Backstage Forever: alle Hilfen und Erinnerungen an, Komfort-Extras aus.",
         ["There is no guided route for your race yet. The zone guide takes over."]="Es gibt noch keine gef\195\188hrte Route f\195\188r deine Rasse. Der Gebiets-Leitfaden \195\188bernimmt.",
         ["There is no line with that number. Type /bf group for the list."]="Es gibt keine Zeile mit dieser Nummer. Tippe /bf group f\195\188r die Liste.",
