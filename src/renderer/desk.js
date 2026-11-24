@@ -257,7 +257,8 @@ window.DeskView = (() => {
         <label class="check-label" for="desk-switch-notify"><input id="desk-switch-notify" type="checkbox" value="on" data-desk-switch="notify" ${s.notify ? "checked" : ""}>Show a desktop notification when a reply to one of my reports arrives</label>
         <p class="desk-muted">${esc(W.REPORTS)}</p>
       </div>
-      <div class="desk-never"><h3>Never sent</h3><ul>${W.NEVER.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>
+      ${window.LiveGuild?.privacyHtml() || ""}
+      <div class="desk-never"><h3>Never sent</h3><ul>${W.NEVER.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>${W.GUILD ? `<p class="desk-muted" data-desk-exception>${esc(W.GUILD.exception)}</p>` : ""}</div>
       <div class="desk-forget"><div><h3>${esc(W.BUTTONS.forget)}</h3><p>${esc(W.INSTALL_ID[3])}</p><p class="desk-muted"><span>Your install number starts with</span> <code>${esc(s.installId)}</code><span>. The service is at</span> <span data-no-translate>${esc(s.host)}</span><span>.</span></p></div>
         <button type="button" class="danger" data-desk-forget ${forgetting ? "disabled" : ""}>${esc(W.BUTTONS.forget)}</button></div>
       <p class="desk-note${privacyNote?.bad ? " bad" : ""}" role="status"${privacyNote ? "" : " hidden"}>${esc(privacyNote?.text || "")}</p>`;
@@ -268,9 +269,10 @@ window.DeskView = (() => {
   }
   function paintPrivacy() {
     const el = document.querySelector("[data-desk-privacy]"); if (!el) return;
-    const open = el.querySelector("details.desk-see")?.open, openShare = el.querySelector("details[data-desk-see-share]")?.open;
+    const open = el.querySelector("details.desk-see:not(.lg-see)")?.open, openShare = el.querySelector("details[data-desk-see-share]")?.open, openGuild = el.querySelector("details.lg-see")?.open;
     el.innerHTML = privacyInner();
-    if (open) { const d = el.querySelector("details.desk-see"); if (d) d.open = true; }
+    if (openGuild) { const d = el.querySelector("details.lg-see"); if (d) d.open = true; }
+    if (open) { const d = el.querySelector("details.desk-see:not(.lg-see)"); if (d) d.open = true; }
     if (openShare) { const d = el.querySelector("details[data-desk-see-share]"); if (d) d.open = true; }
   }
   async function loadStatus() {

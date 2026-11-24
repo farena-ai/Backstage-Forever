@@ -140,7 +140,7 @@ const { defaultState } = require("../src/core/validation.cjs");
         ? "company"
         : ["game", "connections", "updates", "privacy"].includes(id)
           ? "game"
-          : ["report", "reports"].includes(id) ? "guide" : id;
+          : ["report", "reports", "guild-guide"].includes(id) ? "guide" : id;
       assert.equal(
         await page
           .locator('.rail [aria-current="page"]')

@@ -257,7 +257,7 @@ ${table("Horde")}
 // The sentences and the field lists come from src/renderer/privacy-wording.js, the file the app's own
 // Settings → Privacy & sharing screen reads, so the page and the app cannot drift apart.
 function privacy(c) {
-  const { SUMMARY, SWITCHES, BUTTONS, INSTALL_ID, REPORTS, NEVER, FIELDS, SERVICE } = PRIVACY;
+  const { SUMMARY, SWITCHES, BUTTONS, INSTALL_ID, REPORTS, NEVER, FIELDS, SERVICE, GUILD } = PRIVACY;
   const fields = (rows) => `<dl class="bfx-fields">${rows.map(([key, name, what]) => `<div><dt>${esc(name)} <code>${esc(key)}</code></dt><dd>${esc(what || "As above.")}</dd></div>`).join("")}</dl>`;
   const sections = [
     ["short", "In short", `<p class="bfx-intro">${esc(SUMMARY)}</p><p>Everything goes to one place, the project's own service at ${esc(SERVICE)}. Nothing is sold, nothing is shown to advertisers, and no outside statistics service is used.</p>`],
@@ -269,7 +269,15 @@ function privacy(c) {
     ["errors", "Automatic error reports: every field", `<p>Sent only while the third switch is on, at most a handful a day, and never the same error twice in one session.</p>${fields(FIELDS.errors)}`],
     ["map", "Map discoveries: every field", `<p>A spot appears for other players only once at least three installs reported it.</p>${fields(FIELDS.discoveries)}<h3>Which spots are yours</h3><p>The shared map itself never says who found what. To mark your own spots, your app asks the service for the list of what this install shared.</p>${fields(FIELDS.contributions)}<h3>What every player gets back</h3><p>The daily map pack holds only what at least three installs agree on. Since 1.27 it also says how fresh each spot is.</p>${fields(FIELDS.pack)}`],
     ["messages", "Messages from the team", `<p>The app asks the service, at most once an hour, whether there is a message for its version, for example about a broken release. This request carries no install number. It stops when you untick “Use community data and messages from the team” under Settings → Game connection.</p>${fields(FIELDS.messages)}`],
-    ["never", "Never sent", `<ul class="bfx-plain">${NEVER.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`],
+    // Opt-in, and the one place a character's name leaves the computer: said in full, field by field.
+    ["guild", `${GUILD.label}: every field`, `<p>${esc(GUILD.text)}</p><h3>Who sees it</h3><ul class="bfx-plain">${GUILD.who.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+      <h3>What you are asked first</h3><div class="bfx-qa"><p>Before you join: “${esc(GUILD.join[0])} (its name) ${esc(GUILD.join[1])}”</p><p>Before your first party board listing: “${esc(GUILD.board)}” ${esc(GUILD.boardHolds)}</p><p>${esc(GUILD.boardOn)}</p><p>For a guild leader or officer: ${esc(GUILD.leader)}</p></div>
+      <h3>When you join a guild</h3>${fields(FIELDS.guildJoin)}<h3>Each answer to an event</h3>${fields(FIELDS.guildSignup)}<h3>With every guild request</h3>${fields(FIELDS.guildMember)}
+      <h3>When a leader or officer connects the guild</h3>${fields(FIELDS.guildCreate)}<h3>A guild event</h3><p>Sent by members whose guild rank allows proposing or changing events.</p>${fields(FIELDS.guildEvent)}
+      <h3>A party board listing</h3>${fields(FIELDS.board)}<h3>Reading the party board</h3>${fields(FIELDS.boardRead)}
+      <h3>The live connection</h3><p>Opened only while something needs it: an open report, a guild you joined, or the party board on screen.</p>${fields(FIELDS.live)}
+      <h3>How to leave and delete</h3><ul class="bfx-plain">${GUILD.leave.map((x) => `<li>${esc(x)}</li>`).join("")}</ul><p>${esc(GUILD.never)} ${esc(GUILD.planner)}</p>`],
+    ["never", "Never sent", `<ul class="bfx-plain">${NEVER.map((x) => `<li>${esc(x)}</li>`).join("")}</ul><p>${esc(GUILD.exception)}</p>`],
     ["elsewhere", "What else can leave your computer", `<ul class="bfx-plain"><li>An update check, to this project's releases on GitHub. Settings → Updates turns it off.</li><li>A question to the companion, and your character's details if you allow it, to the AI provider you connected. Only when you ask; quick answers and the free AI on your own computer send nothing.</li><li>Quest progress (quest numbers and counts) to party members who also run the addon, through the game's own addon messages. Typing /bf party off in game stops it.</li></ul><p>The longer notes for each feature are in the <a href="${REPO}/blob/main/docs/PRIVACY.md">privacy notes on GitHub</a>.</p>`],
   ];
   const jump = `<nav class="bfx-jump" aria-label="On this page">${sections.map(([id, title]) => `<a href="#${id}">${esc(title.replace(/: every field$/, ""))}</a>`).join("")}</nav>`;

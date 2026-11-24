@@ -86,6 +86,7 @@
     "test:party-backend": "node scripts/party-backend-smoke.cjs",
     "test:party": "node scripts/party-smoke.cjs",
     "test:guild-run": "node scripts/guild-run-smoke.cjs",
+    "test:live-guild": "node --test --test-concurrency=1 tests/live-client.test.cjs tests/guild-service.test.cjs tests/group-planner.test.cjs && node scripts/live-guild-smoke.cjs",
     "test:supply-desk": "node --test tests/supply-desk.test.cjs && node scripts/supply-desk-smoke.cjs && node scripts/supply-desk-reset-smoke.cjs",
     "test:practice-lab": "node scripts/practice-lab-desktop-smoke.cjs",
     "test:atlas-accessibility": "node scripts/atlas-accessibility-smoke.cjs",

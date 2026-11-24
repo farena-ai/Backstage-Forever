@@ -224,6 +224,32 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.on("backstage:deskChanged", handler);
       return () => ipcRenderer.removeListener("backstage:deskChanged", handler);
     },
+    // Backstage Live: guild setup and join, events, Discord, the party board, the group planner, regulars, the panel.
+    liveGuildState: (profileId = null) => invoke("liveGuildState", profileId),
+    liveGuildRefresh: (profileId = null) => invoke("liveGuildRefresh", profileId),
+    liveGuildCreate: (input) => invoke("liveGuildCreate", input),
+    liveGuildJoin: (input) => invoke("liveGuildJoin", input),
+    liveGuildDecline: (input) => invoke("liveGuildDecline", input),
+    liveGuildAllow: (key) => invoke("liveGuildAllow", key),
+    liveGuildLeave: (guildId) => invoke("liveGuildLeave", guildId),
+    liveGuildDelete: (input) => invoke("liveGuildDelete", input),
+    liveGuildRotate: (guildId) => invoke("liveGuildRotate", guildId),
+    liveGuildRemoveMember: (input) => invoke("liveGuildRemoveMember", input),
+    liveDiscord: (input) => invoke("liveDiscord", input),
+    liveEvent: (input) => invoke("liveEvent", input),
+    liveBoard: (input) => invoke("liveBoard", input),
+    livePlan: (input) => invoke("livePlan", input),
+    liveRegulars: (profileId = null) => invoke("liveRegulars", profileId),
+    liveRegularNote: (input) => invoke("liveRegularNote", input),
+    liveCopy: (text) => invoke("liveCopy", text),
+    livePanel: (input) => invoke("livePanel", input),
+    livePrivacy: (profileId = null) => invoke("livePrivacy", profileId),
+    onLiveGuild: (listener) => {
+      if (typeof listener !== "function") throw new Error("Invalid guild listener.");
+      const handler = (_event, value) => listener(value);
+      ipcRenderer.on("backstage:liveGuild", handler);
+      return () => ipcRenderer.removeListener("backstage:liveGuild", handler);
+    },
     mapArt: (mapId) => invoke("mapArt", mapId),
     gameDataStatus: () => invoke("gameDataStatus"),
     gameItems: (ids) => invoke("gameItems", ids),
