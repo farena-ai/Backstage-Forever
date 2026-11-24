@@ -29,6 +29,11 @@
 //   node admin.js backup                  write today's database copy now
 //   node admin.js notify-test             send a harmless test to whatever alerts are configured
 //   node admin.js downloads-fetch         ask GitHub for the release download counts now
+//
+// Backstage Live
+//   node admin.js discord-register-commands   tell Discord about the bot's /backstage commands (once, and after they change)
+//   node admin.js guilds [--limit N]          linked guilds: id, members, Discord state (no member names)
+//   node admin.js guild-delete <guildId>      delete one guild and everything stored for it (a deletion request)
 process.removeAllListeners("warning");
 const { loadConfig, loadEnvFileIfPresent } = require("./lib/config");
 const { Store, hashInstall } = require("./lib/store");
@@ -39,6 +44,8 @@ const { runMaintenance } = require("./lib/maintenance");
 const { runBackup, retentionStatus } = require("./lib/stats");
 const { DownloadsFetcher, downloadStats } = require("./lib/downloads");
 const V = require("./lib/validate-desk");
+const { DiscordClient, registerCommands } = require("./lib/discord");
+const { GUILD_ID } = require("./lib/validate-live");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HASH = /^[0-9a-f]{64}$/;
@@ -51,7 +58,8 @@ function usage(code = 1) {
   admin-add <name> [--no-authenticator] | admin-set-authenticator <name> | admin-remove-authenticator <name>
   admin-password <name> | admin-reset-totp <name> | admin-disable <name> | admin-enable <name> | admin-unlock <name> | admins
   tickets [--all] [--limit N] | ticket <BF-nnnn> | reply <BF-nnnn> <text>
-  rollup | backup | notify-test | downloads-fetch`);
+  rollup | backup | notify-test | downloads-fetch
+  discord-register-commands | guilds [--limit N] | guild-delete <guildId>`);
   process.exit(code);
 }
 
@@ -154,7 +162,7 @@ async function main(argv) {
   try {
     switch (cmd) {
       case "stats":
-        console.log(JSON.stringify({ ...store.stats(), desk: deskStats(store) }, null, 2));
+        console.log(JSON.stringify({ ...store.stats(), desk: deskStats(store), live: (({ days, listingsPerDay, ...rest }) => rest)(store.guilds.stats()) }, null, 2));
         break;
       case "reports": {
         const all = args.includes("--all");
@@ -317,6 +325,38 @@ async function main(argv) {
         console.log(said || r.status);
         if (r.status === "updated" || r.status === "unchanged") console.log(`Downloads of release files in all: ${downloadStats(store).total ?? 0}.`);
         if (r.status === "failed") process.exitCode = 1;
+        break;
+      }
+      case "discord-register-commands": {
+        if (!config.discord) {
+          console.log(config.discordPartial ? "Discord is off: only some of the four BF_DISCORD_ values are set in the env file." : "Discord is off: set BF_DISCORD_APP_ID, BF_DISCORD_PUBLIC_KEY, BF_DISCORD_BOT_TOKEN and BF_DISCORD_CLIENT_SECRET in the env file.");
+          process.exitCode = 1;
+          break;
+        }
+        try {
+          const n = await registerCommands(new DiscordClient({ discord: config.discord }));
+          console.log(`Discord now lists ${n} command(s) for the bot: /backstage link, /backstage channel, /backstage events. New commands can take a few minutes to show up in Discord.`);
+        } catch (e) {
+          // Only the kind of failure and the status code; never the token.
+          console.log(`Discord did not accept the commands (${e && e.kind ? e.kind : "error"}${e && e.status ? ` ${e.status}` : ""}). Check the application id and the bot token.`);
+          process.exitCode = 1;
+        }
+        break;
+      }
+      case "guilds": {
+        const rows = store.guilds.adminList({ limit: limitArg(args, 50) });
+        if (!rows.length) console.log("No linked guilds.");
+        for (const g of rows) console.log(`${g.id}  ${safe(g.name)} (${safe(g.realm)}, ${g.faction})  members ${g.members}  events ${g.events}  discord ${g.discord_state}  last active ${g.active_at}`);
+        break;
+      }
+      case "guild-delete": {
+        const id = String(args[0] || "");
+        if (!GUILD_ID.test(id)) usage();
+        const d = store.guilds.adminDetail(id);
+        if (!d) { console.error("No such guild."); process.exitCode = 1; break; }
+        store.guilds.deleteGuild(id);
+        desk.audit(CLI, "guild_delete", `guild ${id}`, `members=${d.members.length} events=${d.events} signups=${d.signups}`);
+        console.log(`Deleted the guild with ${d.members.length} member(s), ${d.events} event(s) and ${d.signups} sign-up(s).${d.guild.discord_guild ? " The bot is still in its Discord server: remove it there, or use the admin area next time (it asks the bot to leave)." : ""}`);
         break;
       }
       case "notify-test": {

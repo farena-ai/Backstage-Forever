@@ -2,6 +2,7 @@
 // Housekeeping, run every hour inside the service and by `admin.js rollup`:
 //  - heartbeat rows older than 13 months are rolled into monthly totals and deleted;
 //  - expired admin sessions and old sign-in counters are pruned;
+//  - guild events that ended more than 14 days ago are deleted (the service also does this by itself);
 //  - once a day (after 03:00 UTC) the database is copied to a dated file and
 //    only the newest copies are kept.
 // It never throws: a failed step is logged (no data in the message) and the
@@ -9,12 +10,14 @@
 const { runRetention, runBackup } = require("./stats");
 
 function runMaintenance({ store, auth, config, now = Date.now(), log = () => {}, backup = true }) {
-  const out = { retention: null, pruned: null, backup: null };
+  const out = { retention: null, pruned: null, backup: null, live: null };
   const step = (name, fn) => {
     try { return fn(); } catch (e) { log(`${new Date(now).toISOString()} maintenance ${name} failed: ${e && e.code ? e.code : "error"}`); return null; }
   };
   out.retention = step("retention", () => runRetention(store, now));
   if (auth) out.pruned = step("prune", () => auth.prune(now));
+  // Backstage Live: past guild events (14 days), their summaries (180 days), run-out codes and listings.
+  out.live = step("live", () => ({ ...store.guilds.expire(now), listings: store.guilds.expireListings(now).length }));
   if (backup && config.backupDir && new Date(now).getUTCHours() >= 3) out.backup = step("backup", () => runBackup(store, config.backupDir, now, config.backupKeep));
   if (out.retention && out.retention.months.length) log(`${new Date(now).toISOString()} maintenance rolled up ${out.retention.months.length} month(s), removed ${out.retention.heartbeatsDeleted} heartbeat rows`);
   if (out.backup && out.backup.created) log(`${new Date(now).toISOString()} maintenance wrote the nightly backup`);

@@ -7,8 +7,8 @@ Server code lives next to this file. API version: `v1`. Pack format: `1`, minor 
 - Every request and response body is JSON (UTF-8). POST requests must send
   `Content-Type: application/json` and must not compress the body.
 - No cookies, no auth headers, no CORS on `/v1/*`. The service is meant for the desktop app only.
-  (The one exception is the `X-BF-Ticket-Key` header of section 10. Cookies exist only under
-  `/admin/`, the team's admin area, which the app never calls.)
+  (The two exceptions are the `X-BF-Ticket-Key` header of section 10 and the `X-BF-Member` header of
+  section 11. Cookies exist only under `/admin/`, the team's admin area, which the app never calls.)
 - Unknown fields are rejected anywhere in a request. Send only the fields listed here.
 
 ## 1. Install id and the sharing switch
@@ -283,10 +283,12 @@ per hour. Response (`Cache-Control: no-store`):
 
 ## 7. `GET /v1/health`
 
-`200 {"ok":true,"service":"bf-community","version":"1.0.0","packFormat":1,"packMinor":1,"mine":true,"desk":true,"uptimeSec":1234}`
+`200 {"ok":true,"service":"bf-community","version":"1.0.0","packFormat":1,"packMinor":1,"mine":true,"desk":true,"live":true,"discord":false,"uptimeSec":1234}`
 
 `"desk": true` means the Backstage Desk endpoints of section 10 are there. `"packMinor": 1` and
-`"mine": true` (both absent on older servers) mean sections 4a and 6a are there.
+`"mine": true` (both absent on older servers) mean sections 4a and 6a are there. `"live": true`
+(absent on older servers) means section 11 is there; `"discord"` says whether its Discord part is
+switched on.
 
 ## 8. Rate limits (in memory only)
 
@@ -306,13 +308,27 @@ per hour. Response (`Cache-Control: no-store`):
 | player replies, per ticket | 20/day |
 | delete a ticket, per ticket key | 10/hour |
 | `errors` per install | 10/day |
+| `live/session` per install | 120/hour |
+| streams open at once | 2 per install (a third closes the oldest); 2,000 in all (`503 busy`) |
+| link a guild (`POST /v1/guilds`) per install | 3/day |
+| join a guild, per install | 30/hour |
+| join a guild, per link code | 60/hour |
+| wrong link codes and wrong Discord link codes, per client IP | 20/hour |
+| calls inside a guild, per member token | 1,200/hour |
+| start a Discord connection, per guild | 10/hour |
+| Discord test post, per guild | 6/hour |
+| put or delete a party-board listing, per install | 60/hour |
+| read the party board, per client IP | 600/hour |
+| Discord's webhook (`/discord/interactions`), whole service | 3,000/minute; not counted per IP |
 
 "Per day" is a 24-hour window that starts with the first request. All of these are counted in
-memory only, keyed by the install hash or by a hash of the ticket key.
+memory only, keyed by the install hash, a hash of the ticket key, the hash of the member token or
+the guild id.
 
 ## 9. What the server stores (for the app's privacy page)
 
-Field by field. Nothing else is kept. The install id is never stored: only `hashInstall(installId)`,
+Field by field. Nothing else is kept. Only the Backstage Live part (the last block before the log, opt-in) holds
+names of characters and guilds; nothing else does. The install id is never stored: only `hashInstall(installId)`,
 a salted HMAC-SHA-256 of it, called "the install hash" below. IP addresses are used in memory for
 rate limits (as a keyed hash) and are never written to the database or the log. Country is not
 derived. There are no cookies on `/v1/*`.
@@ -338,9 +354,9 @@ derived. There are no cookies on `/v1/*`.
 - `POST /v1/mine` stores nothing: it reads the caller's own observation rows and is rate-limited in
   memory by the install hash.
 - The first and last day were already kept per row since the first version of the service, so pack
-  format minor 1 needed no change to the database: the schema version stays `3`, and the previous
-  server version can open the same file after a rollback (OPERATIONS.md section 1 names the one
-  clean-up that needs: rows of kind `object`).
+  format minor 1 needed no change to the database. (Backstage Live, section 11, added tables of its
+  own and made the schema version `4`; no older table or row changed. OPERATIONS.md section 1 says
+  what going back to an older server needs.)
 - Daily submission counts per client build string. Not linked to installs.
 - Old one-way reports (`/v1/report`): category, text, app version, build, optional log, the
   install hash, and the creation time rounded to the minute.
@@ -412,9 +428,77 @@ the server asks GitHub's public API for the release list of the project and stor
 and file name, GitHub's running download count per UTC day, plus each release's publication date.
 The request carries no player data. The app is not involved.
 
+**Backstage Live (section 11)** - this is the one part of the service that stores names. It is
+opt-in: nothing below exists for a guild until its leader linked it, and no character name is taken
+from an app before its user agreed on the consent screen. It is kept apart from the anonymous
+statistics: no statistics row, observation or ticket is linked to a guild or a character.
+
+*A linked guild* - one row, kept until the guild is deleted (by its leader, by the last member
+leaving, by an admin, or on request):
+
+| Stored | From |
+|---|---|
+| guild id (`g_…`) | made by the server |
+| guild name, realm, faction | `guildName`, `realm`, `faction` of G1 |
+| HMAC of the link code (keyed with the server's secret) | the code itself is sent once and never stored |
+| the three rank thresholds | G4 |
+| time linked; time of last activity (changes at most once an hour) | set by the server |
+| Discord, if connected: the Discord server id and name, the channel id and name, the state, and the last problem sentence | Discord's answer in D1, `/backstage channel` |
+
+*A member* - one row per character per guild, kept until that member leaves, is removed, uses
+Forget, or the guild is deleted:
+
+| Stored | From |
+|---|---|
+| character name and realm | `character` of G1/G2 |
+| role and in-game rank index | `rankIndex` of G1/G2 and the thresholds |
+| install hash | `installId` (hashed); never shown to other members |
+| SHA-256 of the member token | the token itself is sent once and never stored |
+| time joined; time last seen (changes at most every 10 minutes) | set by the server |
+| for a member who linked Discord: the Discord user id and the display name at that moment | D3; removed by `DELETE …/discord/link`, by disconnecting Discord, by leaving |
+
+*Events* - kept until **14 days after the event's date**, then deleted with their sign-ups:
+id, version, creator name and realm, editor name and realm, date and time, place id, title, note,
+the three role numbers, called off or not, whether the copy was passed on, times created and
+changed, and (Discord) the ids of the bot's message and of the Discord scheduled event.
+The creator of a passed-on event can be a guildmate who does not use the app.
+
+*Sign-ups* - kept with their event (so at most 14 days after it), and removed earlier when their
+member leaves: character name and realm, answer, version, where it was given (game, desktop,
+Discord), whether somebody else passed it on, time. An officer can pass on the answer of a
+guildmate who does not use the app.
+
+*Past-event summary* - numbers only, **kept 180 days after the event's date**: event id, title,
+place id, date, how many attended, bosses, duration. No names: the names sent with E3 go into the
+Discord post and are dropped.
+
+*Discord link codes* - HMAC of the code, the Discord server id, the Discord user id and display
+name of whoever ran `/backstage link`; deleted when used, and after 15 minutes at the latest.
+
+*Party-board listing* - one per install, kept until **30 minutes after its last refresh**, or
+until it is deleted, replaced, or the install uses Forget: listing id, install hash (never sent to
+anybody), realm, faction, kind, character name and realm, level, class, roles, place id, note,
+what is needed, time of the last refresh.
+
+*Counters* - per UTC day, a count each of: guilds linked, events created, sign-ups from the game,
+from the desktop app and from Discord, listings put up. Counts only, linked to nothing; deleted
+after 13 months.
+
+*Not stored*: stream tokens and who is connected (memory only), anything sent on a stream, the
+access token Discord returns while connecting (discarded at once), Discord messages or member
+lists (the bot reads none), the names in an E3 summary.
+
+*What reaches Discord* for a connected guild, in the channel its leader chose: event titles,
+notes, dates, and the character names of members and guildmates who signed up; the E3 summary with
+the names it was given. Other players on the same realm and faction see party-board listings.
+Guild data is visible only to members of that guild, and to the service's admins (who handle abuse
+and deletion requests; their actions are in the audit log, which names guilds only by id).
+
 **Log** - the service log records only the time, method, route pattern (`/v1/tickets/:ticket`,
-never the ticket number), status and duration. It contains no IPs, install ids, ticket numbers,
-keys, e-mail addresses or text.
+never the ticket number; `/v1/guilds/:guild/events/:event`, never a guild id or a name; the stream's
+token is in the query string, which is never logged), status and duration. It contains no IPs,
+install ids, ticket numbers, guild ids, character or guild names, keys, tokens, codes, e-mail
+addresses or text. A failed Discord call is logged as its kind and status code only.
 
 ## 10. Backstage Desk: reports with replies, statistics, error reports, announcements
 
@@ -539,3 +623,312 @@ Anonymous, cacheable for 1 hour (`Cache-Control: public, max-age=3600`, ETag, 30
   releases. At most 5,000 groups are kept; reports for further new groups are answered 200 and dropped.
 - D1: the server's own first-seen day is the UTC day of the first heartbeat it received.
 - A blocked install gets `403 blocked` on D1, D2, D4 and D7. It can still read and delete its tickets.
+
+## 11. Backstage Live: realtime stream, guilds, events, Discord, party board
+
+This section is the Backstage Live contract as agreed for app and server (2026-11-24). Everything
+in sections 1, 2 and 8 applies: install id, common responses, strict unknown-field rejection, body
+rules, in-memory rate limits, no stored IP addresses. `GET /v1/health` carries `"live": true` when
+this section is there, and `"discord": true|false` for whether the Discord part is switched on.
+
+Storing guild data on the service is opt-in and separate from the anonymous statistics: a guild
+exists only after its leader linked it, a member's character name is stored only after that member
+agreed on the consent screen (`"consent": true`), and Leave, Forget and Delete remove it again
+(section 9 lists every stored field and how long it is kept).
+
+**Shared rules**
+- A character is `{ "name": "Abel", "realm": "Thunder Hold" }`, exactly as the game shows it.
+  `name`: 2 to 24 letters (no digits, spaces or punctuation). `realm`: 2 to 40 letters, digits,
+  spaces, `'` and `-`. `guildName`: 2 to 24 of the same plus `.`.
+- `faction`: `"horde" | "alliance"`. Rank index: integer 0 to 9, 0 is the guild leader.
+- Player text (`title`, `note`) is one line of plain text, NFC. Control characters, invisible
+  direction characters, the game's colour and link codes (anything with `|`) and web addresses are
+  refused with 400. Limits are in characters. Text is stored as given and escaped wherever it is shown.
+- Times are `2026-11-27T19:00:00Z` (UTC, to the second, exactly this form).
+- `memberToken`: 43 characters (32 random bytes, base64url), given once when a guild is linked or
+  joined, stored only as a SHA-256. Every call inside a guild carries it in the header
+  `X-BF-Member`. This and `X-BF-Ticket-Key` are the only two headers that carry a secret.
+- **One answer for every "not yours"**: a missing or malformed token, a token nobody holds, a token
+  of another guild, and a guild that does not exist all get `404 {"ok":false,"error":"not_found"}`.
+  The service never says whether a guild exists. A member who may not do something gets
+  `403 {"ok":false,"error":"forbidden"}`. A blocked install gets `403 blocked`.
+- Roles: `leader`, `officer`, `member`. The member who linked the guild is `leader`. For everybody
+  else the role follows the rank index the app reported when joining: rank 0 is `leader`, a rank up
+  to `thresholds.officerRank` is `officer`, anything else `member`. The rank is self-reported (the
+  server cannot see the game), so a leader can remove any member and make a new link code.
+
+### L1. `POST /v1/live/session` - get a one-time stream token
+Body limit 4 KB. Limit: 120 per install per hour.
+```json
+{ "schema": 1, "installId": "…", "subs": [
+  { "t": "tickets", "tickets": [ { "ticket": "BF-1042", "key": "…" } ] },
+  { "t": "guild", "guildId": "g_…", "member": "<memberToken>" },
+  { "t": "lfg", "realm": "Thunder Hold", "faction": "horde" } ] }
+```
+- At most 12 entries in `subs`: one `tickets` entry (up to 40 tickets), up to 8 `guild` entries,
+  up to 2 `lfg` entries. `subs` may be empty.
+- Response `200 {"ok":true,"stream":"<43-character one-time token>","expiresIn":60}`.
+- Every subscription is checked here, once: a ticket needs its key, a guild needs a member token of
+  that guild. One that does not check out is **left out without an error** (the stream simply never
+  carries it), so a stale ticket or a guild the member was removed from does not stop the others.
+- `503 busy` when too many unused tokens are waiting.
+
+### L2. `GET /v1/live/stream?s=<token>` - Server-Sent Events
+`Content-Type: text/event-stream`, `Cache-Control: no-store`, `X-Accel-Buffering: no`.
+- The token works **once** and for 60 seconds. A used, expired or unknown token: `404 not_found`.
+  A malformed or missing `s`, or any other query parameter: `400`. `HEAD` and `POST`: `405`.
+- A comment line `: ping` every 20 seconds.
+- The server ends the stream 55 minutes after it opened. The client then asks for a new session and
+  connects again (backoff 2 s up to 5 min).
+- At most 2 streams per install: opening a third closes the oldest one. At most 2,000 streams in
+  all: beyond that `503 {"ok":false,"error":"busy"}` with `Retry-After`.
+- **Nothing is replayed.** After every (re)connect the client does a full refetch (G3, E1 list, P1
+  list, D5). A client that reads too slowly is cut off and reconnects the same way.
+- Each event has `id:` (counts up from 1 per stream), `event:` and one `data:` line holding one JSON
+  object:
+
+| `event` | `data` | When |
+|---|---|---|
+| `hello` | `{"serverTime":"…"}` | first thing on every stream |
+| `ticket` | `{"ticket":"BF-1042","status":"question","fixedIn":null,"unread":1,"lastId":3}` | the team replied, the status or fixed-in version changed, or the player replied from elsewhere |
+| `guild.event` | `{"guildId":"g_…","event":{…E1…}}` | an event was accepted (new, changed or called off) |
+| `guild.event.gone` | `{"guildId":"g_…","id":"…"}` | reserved; this server does not send it (an event leaves the list by expiry, which the refetch shows) |
+| `guild.signup` | `{"guildId":"g_…","eventId":"…","signup":{…E2…}}` | a sign-up was accepted, from the app or a Discord button |
+| `guild.member` | `{"guildId":"g_…","members":12}` | somebody joined, left or was removed. `members: 0` once, when the guild was deleted |
+| `guild.discord` | `{"guildId":"g_…","state":"none"\|"pending"\|"connected"\|"problem"}` | the Discord state changed; read G3 for the reason |
+| `lfg` | `{"op":"put"\|"gone","listing":{…P1…}}` | a listing on a subscribed realm and faction was put, refreshed, removed or ran out |
+
+- `unread` in a `ticket` event counts the team's messages after the player's last own message (the
+  stream does not know the app's `since`); `lastId` is the newest message id. For exact numbers use D5.
+- A member who leaves or is removed stops receiving that guild at once, also on a stream that is
+  already open. `POST /v1/forget` closes every stream of that install.
+
+### G1. `POST /v1/guilds` - link a guild
+Body limit 2 KB. Limit: 3 per install per day.
+```json
+{ "schema": 1, "installId": "…", "realm": "Thunder Hold", "faction": "horde", "guildName": "Night Watch",
+  "character": { "name": "Abel", "realm": "Thunder Hold" }, "rankIndex": 0 }
+```
+- An optional `"consent": true` is accepted (anything else in that field is refused).
+- Response `201 {"ok":true,"guildId":"g_…","linkCode":"BFG-7K2M-Q9XD","member":"<memberToken>","role":"leader"}`.
+- `guildId`: `g_` and 16 characters. `linkCode`: `BFG-XXXX-XXXX` from the letters and digits
+  `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (no `0 O 1 I L`). The code and the token are shown once; the
+  server keeps only hashes.
+- A (realm, faction, guild name) that is already linked, compared without letter case:
+  `409 {"ok":false,"error":"exists"}` and nothing more.
+
+### G2. `POST /v1/guilds/join` - join with the code
+Body limit 2 KB. Limits: 30 per install per hour, 60 per link code per hour; 20 wrong codes per
+network address per hour.
+```json
+{ "schema": 1, "installId": "…", "linkCode": "BFG-7K2M-Q9XD", "character": { "name": "Bea", "realm": "Thunder Hold" },
+  "rankIndex": 4, "consent": true }
+```
+- `consent` must be literally `true`. The code may be sent in lower case.
+- Response `201 {"ok":true,"guildId":"g_…","guildName":"Night Watch","member":"<memberToken>","role":"member"}`.
+- Wrong code: `404 not_found`.
+- A character name that is already a member of that guild can be joined again **only from the same
+  install**; that gives a new token and ends the old one. From any other install it is
+  `409 {"ok":false,"error":"exists"}` (an officer removes the old entry first). `409 full` at 1,000 members.
+
+### G3. `GET /v1/guilds/{guildId}` - the guild as one member sees it
+```json
+{ "ok": true, "guildId": "g_…", "guildName": "Night Watch", "realm": "Thunder Hold", "faction": "horde", "role": "member",
+  "members": [ { "name": "Abel", "realm": "Thunder Hold", "role": "leader", "discord": null, "lastSeen": "2026-11-24T12:00:00Z" } ],
+  "thresholds": { "officerRank": 1, "proposeRank": 9, "editRank": 1 },
+  "discord": { "state": "none", "guildName": null, "channel": null, "problem": null } }
+```
+- `members[].discord`: the Discord display name of a member who linked Discord, else `null`.
+  `lastSeen`: when that member's app last called the service (updated at most every 10 minutes).
+- `discord.state`: `"none" | "pending" | "connected" | "problem"`; `guildName`: the Discord server's
+  name; `channel`: `"#raids"`; `problem`: one plain sentence for the leader, e.g.
+  `"The bot cannot post in #raids: missing permission Send Messages"`.
+- Thresholds: a rank index up to `officerRank` is an officer; up to `proposeRank` may propose
+  events; up to `editRank` may change other members' events.
+
+### G4. `PATCH /v1/guilds/{guildId}` - leader only
+`{ "schema": 1, "thresholds": { "officerRank": 2 }, "rotateCode": true }` - either or both; inside
+`thresholds` any of the three, each 0 to 9. Response: the G3 shape, plus `"linkCode"` when a new code
+was made (the old one stops working at once; members who already joined stay). Changing
+`officerRank` re-derives every member's role from the rank they joined with.
+
+### G5. Leave, remove, delete
+- `POST /v1/guilds/{guildId}/leave` (any member; body `{"schema":1}` or none) -> `200 {"ok":true}`.
+  Removes the member and that member's own sign-ups. When the last leader leaves, the member with
+  the highest in-game rank becomes leader. When the last member leaves, the guild is deleted.
+- `DELETE /v1/guilds/{guildId}/members/{name}` (officer or leader; `{name}` is not case sensitive).
+  An officer removes members; only a leader removes an officer or another leader. Nobody removes
+  themselves this way (`403`): use leave. An unknown name: `404`.
+- `DELETE /v1/guilds/{guildId}` (leader) deletes the guild and everything stored for it, and asks
+  the bot to leave its Discord server.
+- `POST /v1/forget` (section 6) also takes that install out of every guild it joined (same effect
+  as leave in each) and removes its party-board listing. Its answer shape does not change.
+
+### E1. Events
+```json
+{ "id": "abc123", "version": 3, "creator": { "name": "Anna", "realm": "Thunder Hold" }, "editor": { "name": "Bob", "realm": "Thunder Hold" },
+  "at": "2026-11-27T19:00:00Z", "place": "mc", "title": "Molten Core", "note": "Bring fire resist",
+  "roles": { "tank": 2, "healer": 8, "damage": 30 }, "cancelled": false }
+```
+- `id`: 1 to 24 of `A-Z a-z 0-9 _ -` (the addon's event id). `version`: 1 to 9999. `place`: an Atlas
+  id of the addon (`^[a-z][a-z0-9]{0,7}$`) or `"other"`. `title` 2 to 40 characters, `note` 0 to 80.
+  `roles`: tank 0 to 9, healer 0 to 9, damage 0 to 40.
+- `editor`, `note` and `cancelled` may be left out or (`editor`, `note`) be `null`. An editor that
+  names the creator is the creator. In answers `editor` is always there (the creator when nobody
+  else edited) and `note` is `""` when empty.
+
+**`PUT /v1/guilds/{guildId}/events/{id}`** (body limit 4 KB). The body is the shape itself, the
+shape with `"schema": 1` added, or `{ "schema": 1, "event": {…} }`: all three are accepted. `id`
+must be the id in the address.
+
+Response `200 {"ok":true,"accepted":true|false,"reason":"…","event":{…the stored event…}|null}`. A
+version that loses is **not an error**: the answer carries what is stored so the app can show it.
+
+The server is one more replica and merges exactly like the addon (`BackstageForeverEventMerge`); a
+shared table of cases is run against both (`test/fixtures/event-merge-cases.json`). The call is
+*direct* when the caller's own character is the event's author (its editor, else its creator),
+otherwise it is a copy *passed on* (what the app heard on the guild channel):
+
+| Stored | Arrives | Result (`reason`) |
+|---|---|---|
+| nothing | anything | accepted (`new`) |
+| any | another creator for the same id | refused (`creator`) |
+| a passed-on copy | direct | accepted, whatever the versions (`author`) |
+| direct | direct, higher version | accepted (`newer`) |
+| direct | direct, same version | the author name later in the alphabet wins (`tie`), else refused (`older`) |
+| direct | direct, lower version | refused (`older`) |
+| direct | passed on | refused, even with a higher version (`hearsay`) |
+| a passed-on copy | passed on | accepted only with a higher version (`newer`), else refused (`older`) |
+
+Names are compared the way the addon does: ASCII letters folded to lower case, then byte by byte.
+
+- Permissions (direct calls): proposing needs a rank up to `proposeRank`, or being officer or
+  leader; changing your own event is always allowed; changing somebody else's event (you are its
+  `editor`) needs a rank up to `editRank`, or being leader. Otherwise `403 forbidden`. Any member
+  may pass on an event.
+- Time window, as in the addon: a new event that began more than 4 hours ago is not taken
+  (`accepted:false`, `reason:"past"`, `event:null`); one more than 180 days ahead is not taken (`"ahead"`).
+- At most 60 live events per guild (live: not yet 4 hours past its start): `409 {"ok":false,"error":"full"}`
+  for a new one beyond that.
+
+**`GET /v1/guilds/{guildId}/events?since=<time>`** -> `{"ok":true,"events":[…E1…],"signups":{"<eventId>":[…E2…]}}`.
+Without `since`: every stored event (also called-off and recently past ones) - the full refetch.
+With `since`: only events changed at or after that time, with all of their sign-ups.
+
+### E2. Sign-ups
+`{ "who": { "name": "Bea", "realm": "Thunder Hold" }, "answer": "healer", "version": 2, "via": "desktop" }`
+- `answer`: `"tank" | "healer" | "damage" | "maybe" | "no"`. `version`: 1 to 9999. `via` from the app:
+  `"game"` (the addon heard or made it) or `"desktop"`. `"discord"` is set only by the server.
+
+**`PUT /v1/guilds/{guildId}/events/{id}/signups/{name}`** (body limit 2 KB): the shape, the shape
+with `"schema": 1`, or `{ "schema": 1, "signup": {…} }`. `who.name` must be the `{name}` in the
+address (not case sensitive).
+- A member sets only their own character's answer; an officer or leader may set anybody's, also a
+  guildmate's who does not use the app (`403 forbidden` otherwise).
+- Response `200 {"ok":true,"accepted":true|false,"reason":"new"|"newer"|"older"|"closed"|"full","signup":{…stored…}|null}`.
+  Your own answer is accepted with a higher version, or when the stored one was set by somebody
+  else; an answer set for somebody else is accepted only with a higher version (the addon's rule).
+- A called-off event, and one that began more than 4 hours ago, take no answers (`"closed"`).
+  At most 40 sign-ups per event (`"full"`). An unknown event: `404`.
+- A Discord button press of a linked member is stored as that member's own answer, one version on,
+  `via: "discord"`. A later answer from the game needs a higher version, as always.
+
+### E3. `POST /v1/guilds/{guildId}/events/{id}/summary` - officer or leader
+Body limit 8 KB: `{ "schema": 1, "attended": ["Abel","Bea"], "bosses": 8, "durationSec": 9660 }`
+(`attended` up to 80 character names, `bosses` 0 to 99, `durationSec` 0 to 86400).
+Response `200 {"ok":true,"posted":true|false}` - `posted` says whether a Discord post was queued
+(false when Discord is off or not connected). The server keeps only the numbers (how many attended,
+bosses, duration); the names go into the Discord post and are not stored.
+
+### Discord (D1 to D3)
+Switched on only by the server's settings (`BF_DISCORD_APP_ID`, `BF_DISCORD_PUBLIC_KEY`,
+`BF_DISCORD_BOT_TOKEN`, `BF_DISCORD_CLIENT_SECRET`). While any of them is missing, **every** route
+below answers `503 {"ok":false,"error":"discord_off"}` before anything else is looked at, and the
+app shows "Discord connection is not available yet". `GET /v1/health` says `"discord": false`.
+
+**D1.** `POST /v1/guilds/{guildId}/discord/start` (officer or leader; body `{"schema":1}` or none;
+10 per guild per hour) -> `{"ok":true,"url":"https://discord.com/oauth2/authorize?…"}`: Discord's own
+add-bot page. Scopes `bot applications.commands`; permissions View Channel, Send Messages, Embed
+Links, Manage Events and Create Events, nothing else. The address carries a signed `state` that
+works once and for 15 minutes. The guild's state is `pending` until the browser comes back.
+- `GET /discord/callback` (the browser, not the app) finishes it and shows a plain page: "Discord is
+  connected. You can close this tab and go back to Backstage Forever." The Discord server is taken
+  from Discord's own answer, never from the address. One Discord server serves one guild.
+- The channel is the Discord server's system channel, or whatever `/backstage channel` chose. With
+  neither, the state is `problem` with "No channel is chosen yet. Run /backstage channel in the
+  Discord channel you want."
+- `POST …/discord/test` (officer or leader; 6 per guild per hour) posts a test message and answers
+  once the bot tried: `{"ok":true,"posted":true|false,"discord":{…as in G3…}}`. `409 not_connected`
+  when no Discord server is linked.
+- `DELETE …/discord` (officer or leader) removes the link and every member's Discord tie and asks
+  the bot to leave the Discord server.
+
+**D2.** `POST /discord/interactions` is Discord's webhook. The Ed25519 signature and the timestamp
+(at most 5 minutes old) are checked on the raw bytes before anything is parsed; otherwise
+`401 invalid_signature`. Buttons under an event post: Tank, Healer, Damage, Maybe, No. Slash
+commands: `/backstage link`, `/backstage channel [channel]` (needs Manage Server in Discord),
+`/backstage events`. All command answers are visible only to the person who typed them.
+
+**D3.** `/backstage link`, and a button pressed by somebody not yet linked, answer with a one-time
+code `BFL-XXXX-XXXX` (15 minutes, one use, hashed on the server) and the address
+`https://bf.backstagecoding.com/discord/link?code=BFL-…`, a plain page showing the same code.
+- `POST /v1/guilds/{guildId}/discord/link` (any member) `{ "schema": 1, "code": "BFL-7K2M-Q9XD" }` ->
+  `200 {"ok":true,"discord":"<display name>"}`: ties **the calling member** to the Discord user who
+  got that code. A wrong, used, expired or other guild's code: `404 not_found` (20 misses per
+  network address per hour). One Discord user answers for one character per guild.
+- `DELETE /v1/guilds/{guildId}/discord/link` unties the calling member -> `200 {"ok":true}`.
+- Only the Discord user id and the display name at that moment are stored.
+
+What the bot does for a connected guild: one message per event, edited in place (title, time,
+note, the sign-up list by role), with the five buttons until 4 hours after the start; a reminder
+15 minutes before (it names linked members who said yes or maybe, nobody else); a Discord scheduled
+event that follows the event's title and time and is deleted when the event is called off; the E3
+summary. Everything players typed is escaped, and every message is sent with
+`allowed_mentions: {"parse": []}`, so no title, note or name can ping `@everyone` or anybody else.
+A failure (missing permission, deleted channel, bot removed, Discord not answering) never fails an
+app request: it sets `discord.state` to `problem` with the reason and sends `guild.discord`; the
+next success sets it back to `connected`.
+
+### P1. Party board - opt-in, visible to other users on the same realm and faction
+```json
+{ "id": "<16 characters>", "kind": "lfg", "who": { "name": "Abel", "realm": "Thunder Hold" }, "level": 34, "class": "hunter",
+  "roles": ["damage"], "place": "sm", "note": "Any wing", "need": null, "at": "2026-11-24T12:00:00Z" }
+```
+- `id`: 16 of `A-Z a-z 0-9 _ -`, made by the app. `kind`: `"lfg" | "lfm"`. `level` 1 to 80. `class`:
+  3 to 12 lower-case letters or `null`. `roles`: any of tank, healer, damage, no duplicates.
+  `place`: as in E1. `note` 0 to 60 characters (`""` when empty). `need`: `null` or
+  `{"tank":0-9,"healer":0-9,"damage":0-40}`. All ten fields must be sent.
+- `at` must be a valid time; the server replaces it with the time it received the listing.
+
+**`PUT /v1/lfg/{id}`** (body limit 4 KB; 60 per install per hour)
+`{ "schema": 1, "installId": "…", "realm": "Thunder Hold", "faction": "horde", "listing": {…}, "consent": true }`
+-> `200 {"ok":true,"listing":{…},"expiresIn":1800}`. `consent` must be `true`.
+- A listing runs out 30 minutes after its last PUT: send it again to keep it.
+- One listing per install: a PUT with another id (or another realm or faction) replaces the old one.
+- An id that belongs to another install: `409 {"ok":false,"error":"exists"}`.
+
+**`DELETE /v1/lfg/{id}`** `{ "schema": 1, "installId": "…" }` -> `200 {"ok":true}`; `404` when that
+install has no such listing.
+
+**`GET /v1/lfg?realm=Thunder+Hold&faction=horde`** -> `{"ok":true,"listings":[…]}`: at most 200,
+newest first, only that realm (not case sensitive) and faction. Both parameters are required. No
+install id is needed to read (600 per network address per hour).
+
+### How this server implements the points the Live contract leaves open, and where it differs
+- **Create Events permission.** The contract lists four bot permissions; this server also asks for
+  Create Events, which Discord requires for making a scheduled event. Nothing else is asked for.
+- **Event posts are plain messages, not embeds**, so they also show where a server member has
+  embeds switched off. The Embed Links permission is still requested, as the contract says.
+- **`guild.event.gone` is never sent** (see L2). Events leave by expiry only: 14 days after their date.
+- **A name can be re-joined only from the same install** (G2, `409 exists`), so a guild member
+  cannot take over another member's entry by typing that name.
+- **Passed-on events** (E1) are accepted from any member, as in the game. Their creator need not be
+  a member of the linked guild, so an event can carry the name of a guildmate who never used the app.
+  The same is true for a sign-up an officer passes on.
+- **The PUT bodies of E1 and E2** are accepted in three forms (bare, with `schema`, wrapped).
+- **G1 has no `consent` field in the contract**; the server accepts an optional `"consent": true`.
+- **Reasons** (`reason` in E1/E2 answers) and the `accepted` flag are additions; a stale version is
+  a normal 200.
+- **Leaving** removes the member row and that member's own sign-ups. An event that member created
+  stays until it expires (its creator name is part of the event the guild planned).
+- Title and note limits count characters; the addon counts bytes and cuts on its side.

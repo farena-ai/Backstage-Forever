@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 // Fills a THROWAWAY database with realistic fake data for 120 days so the
-// admin dashboard can be looked at. Everything is made up: random install
+// admin dashboard, the Guilds page and the Party board can be looked at. Everything is made up: random install
 // hashes, invented report text, no real names.
 //
 //   node tools/seed-demo.js <dbfile> [--days 120] [--force]
@@ -201,9 +201,69 @@ function seed(file, { days = 120, now = Date.now(), seedValue = 20261124 } = {})
     recordSnapshot(store, out, at(d, 0.5));
   }
   db.prepare("INSERT OR REPLACE INTO meta(k, v) VALUES ('downloads_ok_ms', ?)").run(String(now - 20 * 60_000));
+
+  // Backstage Live: linked guilds with members, events and sign-ups, a few party-board listings and
+  // the daily counters. Every name is invented.
+  const REALMS = ["Thunder Hold", "Greymist", "Emberfall"];
+  const GUILD_NAMES = ["Night Watch", "Ashen Circle", "The Long Road", "Copper Kettle", "Dawn Patrol", "Second Wind", "Hollow Oak", "Iron Lantern", "Last Pull", "Quiet Ones", "Stormcallers", "Old Guard", "Riverfolk", "Two Left Feet"];
+  const FIRST = ["Abel", "Bera", "Cyr", "Dalla", "Edrik", "Fenna", "Garr", "Hilde", "Ivo", "Jora", "Kell", "Lysa", "Marn", "Nessa", "Orin", "Pell", "Quill", "Rhea", "Sten", "Tova", "Ulf", "Vesna", "Wren", "Yara", "Zeph"];
+  const TAIL = ["", "an", "el", "is", "or", "wyn", "ric", "a"];
+  const PLACES = ["mc", "ony", "bwl", "zg", "ubrs", "strat", "scholo", "brd", "other"];
+  const TITLES = ["Molten Core", "Onyxia", "Blackwing Lair", "Zul'Gurub", "Upper Blackrock", "Stratholme run", "Scholomance", "Blackrock Depths", "Guild meeting"];
+  const live = store.guilds, bump = (metric, d, n = 1) => db.prepare("INSERT INTO live_daily(day, metric, n) VALUES (?, ?, ?) ON CONFLICT(day, metric) DO UPDATE SET n = n + excluded.n").run(dayOf(d), metric, n);
+  const charName = () => { const n = pick(FIRST) + pick(TAIL); return n.length >= 2 ? n : "Abel"; };
+  (() => { // the guild calls open their own transactions
+    GUILD_NAMES.forEach((guildName, gi) => {
+      const linkedDay = Math.max(0, days - 6 - Math.floor(rand() * Math.min(60, days - 7))), realm = REALMS[gi % REALMS.length], faction = gi % 2 ? "alliance" : "horde";
+      const made = live.createGuild(fakeHash(), { realm, faction, guildName, character: { name: charName(), realm }, rankIndex: 0 }, fakeHash(), at(linkedDay));
+      if (made.error) return;
+      const g = live.guild(made.guildId), size = 3 + Math.floor(rand() * rand() * 38), names = new Set([db.prepare("SELECT name FROM guild_members WHERE guild = ?").get(g.id).name]);
+      for (let k = 0; k < size; k++) {
+        const name = charName();
+        if (names.has(name)) continue;
+        names.add(name);
+        live.join(g, fakeHash(), { character: { name, realm }, rankIndex: weighted([[1, 2], [2, 3], [4, 10], [6, 12]]) }, 1000, at(Math.min(days - 1, linkedDay + Math.floor(rand() * 5))));
+      }
+      const list = [...names];
+      // Six guilds use Discord; one of them has a problem the leader has to fix.
+      if (gi % 5 < 2 || gi === 3) {
+        const problem = gi === 3 ? "The bot cannot post in #raids: missing permission Send Messages" : null;
+        live.discordConnect(g.id, { state: problem ? "problem" : "connected", guild: String(100000000000000000n + BigInt(gi)), guildName: guildName + " HQ", channel: String(200000000000000000n + BigInt(gi)), channelName: gi === 3 ? "raids" : pick(["raids", "events", "calendar"]), problem });
+        list.slice(0, Math.ceil(list.length * 0.4)).forEach((name, k) => db.prepare("UPDATE guild_members SET discord_user = ?, discord_name = ? WHERE guild = ? AND name = ?").run(String(400000000000000000n + BigInt(gi * 100 + k)), name.toLowerCase() + pick(["", "_", "42", ".exe"]), g.id, name));
+      }
+      const quiet = gi === 9 || gi === 12; // two guilds went quiet weeks ago
+      const eventsMade = quiet ? 1 : 2 + Math.floor(rand() * 5);
+      for (let e = 0; e < eventsMade; e++) {
+        const when = quiet ? now - 9 * DAY : now + Math.floor((rand() * 12 - 2) * DAY), pi = Math.floor(rand() * PLACES.length), creator = pick(list.slice(0, 4));
+        const id = Math.floor(rand() * 36 ** 8).toString(36).padStart(8, "0");
+        db.prepare(`INSERT OR IGNORE INTO guild_events(guild, id, version, creator_name, creator_realm, at, at_ms, place, title, note, tank, healer, damage, cancelled, relayed, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`).run(g.id, id, 1 + Math.floor(rand() * 3), creator, realm, stamp(Math.floor(when / 60000) * 60000), Math.floor(when / 60000) * 60000,
+          PLACES[pi], TITLES[pi], rand() < 0.5 ? "Bring consumables" : "", 2, pi < 4 ? 8 : 1, pi < 4 ? 30 : 3, rand() < 0.08 ? 1 : 0, stamp(now - 3 * DAY), stamp(now - Math.floor(rand() * 2 * DAY)));
+        bump("event_created", Math.max(linkedDay, days - 1 - Math.floor(rand() * 20)));
+        for (const name of list) {
+          if (rand() > 0.55) continue;
+          const via = weighted([["game", 55], ["desktop", 25], ["discord", g.discord_guild || gi % 5 < 2 ? 20 : 0]]);
+          db.prepare("INSERT OR IGNORE INTO guild_signups(guild, event, name_key, name, realm, answer, version, via, relayed, at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, 0, ?)")
+            .run(g.id, id, name.toLowerCase(), name, realm, weighted([["damage", 50], ["healer", 18], ["tank", 10], ["maybe", 12], ["no", 10]]), via, stamp(now - Math.floor(rand() * 2 * DAY)));
+          bump(`signup_${via}`, Math.max(linkedDay, days - 1 - Math.floor(rand() * 20)));
+        }
+      }
+      db.prepare("UPDATE guilds SET active_at = ? WHERE id = ?").run(stamp(quiet ? now - 20 * DAY : now - Math.floor(rand() * 3 * DAY)), g.id);
+    });
+    // The party board: listings that are live right now, and a count per day for the chart.
+    const NOTES = ["Any wing", "Need a healer, then we go", "Key in hand", "Quest run, all bosses", "Fast run, know the fights", ""];
+    for (let k = 0; k < 9; k++) {
+      const kind = rand() < 0.6 ? "lfg" : "lfm", cls = pick(["warrior", "priest", "mage", "hunter", "rogue", "druid", "shaman", "paladin", "warlock"]);
+      db.prepare(`INSERT INTO lfg(id, install, realm, realm_key, faction, kind, name, who_realm, level, class, roles, place, note, need, at, expires_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(crypto.randomBytes(12).toString("base64url"), fakeHash(), REALMS[k % 3], REALMS[k % 3].toLowerCase(), k % 2 ? "alliance" : "horde", kind, charName(), REALMS[k % 3], 18 + Math.floor(rand() * 42), cls,
+          pick(["damage", "tank", "healer", "tank,damage", "healer,damage"]), pick(["sm", "brd", "strat", "zf", "other"]), pick(NOTES), kind === "lfm" ? JSON.stringify({ tank: Math.floor(rand() * 2), healer: Math.floor(rand() * 2), damage: Math.floor(rand() * 3) }) : null,
+          stamp(now - Math.floor(rand() * 25 * 60_000)), now + 5 * 60_000 + Math.floor(rand() * 25 * 60_000));
+    }
+    for (let d = Math.max(0, days - 45); d < days; d++) bump("listing", d, Math.round(4 + (d - (days - 45)) / 4 + rand() * 6));
+  })();
   desk.audit({ id: adminIds[0], name: "demo-mara" }, "demo_seed", "", `days=${days}`, now);
 
-  const counts = Object.fromEntries(["heartbeats", "first_seen", "obs", "tickets", "messages", "error_groups", "announcements", "gh_downloads"].map(t => [t, db.prepare(`SELECT COUNT(*) AS c FROM ${t}`).get().c]));
+  const counts = Object.fromEntries(["heartbeats", "first_seen", "obs", "tickets", "messages", "error_groups", "announcements", "gh_downloads", "guilds", "guild_members", "guild_events", "guild_signups", "lfg"].map(t => [t, db.prepare(`SELECT COUNT(*) AS c FROM ${t}`).get().c]));
   store.close();
   return counts;
 }
