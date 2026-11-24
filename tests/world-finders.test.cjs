@@ -567,7 +567,7 @@ test("the desktop wires the loop and the finder layers end to end", () => {
   assert.ok(html.indexOf('<script src="world-finders.js">') > 0 && html.indexOf('<script src="world-finders.js">') < html.indexOf('<script src="world-map.js">'));
   assert.match(html, /href="world-finders\.css"/);
   assert.match(wm, /World: \[\["rare", "Rare enemies"\], \["nodes", "Reference herbs and ore"\], \["chest", "Chests"\], \["mailbox", "Mailboxes"\]\]/);
-  assert.match(wm, /OFF_BY_DEFAULT = new Set\(\["npc", "otherFaction", "nodes", "chest", "mailbox", "c-npc"\]\)/, "the busy reference layers start off");
+  assert.match(wm, /OFF_BY_DEFAULT = new Set\(\["npc", "otherFaction", "nodes", "chest", "mailbox", "c-npc", "c-object"\]\)/, "the busy reference layers start off");
   assert.match(wm, /\(!p\.reference \|\| layers\.nodes\)/);
   assert.match(wf, /extra = true, show = false,/, "the loop is not drawn until asked for");
   assert.match(wm, /window\.WorldFinders\?\.draw\(ctx, toScreen, model\?\.mapId\)/);

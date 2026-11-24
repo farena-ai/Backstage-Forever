@@ -127,7 +127,7 @@ test("batches stay within 500 entries and 5,000 facts, split by client build", (
   assert.deepEqual(Object.keys(body).sort(), ["installId", "observations", "schema"]);
 });
 
-test("drops, vendors and recipes are not collected: the app has no player-observed loot windows or listings", () => {
+test("drops and recipes are not collected (no loot-window count, no listings); vendors only when the addon saved wares", () => {
   const cats = new Set(collectObservations(profiles()).map((o) => o.category));
   assert.deepEqual([...cats].sort(), ["nodes", "npcs"]);
 });
