@@ -9,7 +9,7 @@ window.SettingsProfiles = (() => {
   let view = null, loadedAt = 0, note = "", bad = false, busy = false, target = "";
 
   const who = (c) => [c.name, c.realm].filter(Boolean).join(" · ");
-  const day = (seconds) => (seconds ? window.I18n?.when(seconds * 1000, "date") || "" : "");
+  const day = (seconds, kind = "day") => (seconds ? window.I18n?.when(seconds * 1000, kind) || "" : "");
   const WHY = { sum: "damaged", read: "damaged", form: "damaged", big: "too long", version: "from a newer addon", empty: "empty", data: "holds data" };
 
   function inner() {
@@ -23,9 +23,8 @@ window.SettingsProfiles = (() => {
       const rows = s.profiles.map((p) => {
         const same = chosen && chosen.key === s.key;
         const can = p.ok && chosen && !same && !busy;
-        const label = chosen ? `${t("Send to")} ${esc(chosen.name)}` : t("Send");
         const facts = p.ok ? `${p.settings} ${t("settings")}${p.at ? ` · ${t("kept")} ${esc(day(p.at))}` : ""}` : `<span class="sp-bad">${t("Cannot be sent:")} ${t(WHY[p.reason] || "damaged")}</span>`;
-        return `<tr><th scope="row">${esc(p.name)}</th><td>${facts}</td><td class="sp-act"><button type="button" class="primary" data-sp-send="${esc(s.id)}" data-sp-name="${esc(p.name)}" ${can ? "" : "disabled"}>${label}</button></td></tr>`;
+        return `<tr><th scope="row">${esc(p.name)}</th><td${p.at ? ` title="${esc(day(p.at, "date"))}"` : ""}>${facts}</td><td class="sp-act"><button type="button" class="primary" data-sp-send="${esc(s.id)}" data-sp-name="${esc(p.name)}"${chosen ? ` title="${t("Send to")} ${esc(who(chosen))}"` : ""} ${can ? "" : "disabled"}>${t("Send")}</button></td></tr>`;
       }).join("");
       return `<div class="sp-source"><h4>${esc(who(s))}</h4><table class="sp-table"><tbody>${rows}</tbody></table></div>`;
     }).join("");

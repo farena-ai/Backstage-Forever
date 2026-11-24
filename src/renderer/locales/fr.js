@@ -923,7 +923,7 @@ window.BF_LOCALE_FR = {
  "Keep this step": "Garder cette étape",
  "Keep your journal": "Garde ton journal",
  "keeps private notes for each character and shows gear and class training from your last save.": "garde des notes privées pour chaque personnage et montre l'équipement et l'apprentissage de classe de ta dernière sauvegarde.",
- "kept": "gardé",
+ "kept": "du",
  "Key": "Clé",
  "Key stored: No. Keys are encrypted by your operating system and excluded from backups.": "Clé stockée : Non. Les clés sont chiffrées par ton système et exclues des sauvegardes.",
  "Key stored: Yes. Keys are encrypted by your operating system and excluded from backups.": "Clé stockée : Oui. Les clés sont chiffrées par ton système et exclues des sauvegardes.",
