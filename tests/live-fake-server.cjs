@@ -161,10 +161,11 @@ function fakeLive({ discord = true } = {}) {
       if (ev && req.method === "PUT") {
         if (!validEvent(body) || body.id !== ev[1]) return bad(res, "event");
         const old = g.events.get(body.id);
-        if (old && eventOrder(body, old) <= 0) return send(res, 200, { ok: true, kept: true, version: old.version });
+        if (old && eventOrder(body, old) <= 0) return send(res, 200, { ok: true, accepted: false, reason: "older", event: old });
+        if (state.declineEvents) return send(res, 200, { ok: true, accepted: false, reason: state.declineEvents, event: null });
         g.events.set(body.id, body);
         push("guild.event", { guildId: g.id, event: body }, toGuild(g.id));
-        return send(res, 200, { ok: true, version: body.version });
+        return send(res, 200, { ok: true, accepted: true, reason: old ? "newer" : "new", event: body });
       }
       const su = /^\/events\/([A-Za-z0-9_-]{1,24})\/signups\/([^/]+)$/.exec(rest);
       if (su && req.method === "PUT") {
@@ -174,17 +175,18 @@ function fakeLive({ discord = true } = {}) {
         if (name !== m.character.name && !officer(m)) return send(res, 403, { ok: false, error: "forbidden" });
         if (!g.signups.has(su[1])) g.signups.set(su[1], new Map());
         const rows = g.signups.get(su[1]), old = rows.get(name.toLowerCase());
-        if (old && body.version <= old.version) return send(res, 200, { ok: true, kept: true, version: old.version });
+        if (g.events.get(su[1]).cancelled) return send(res, 200, { ok: true, accepted: false, reason: "closed", signup: null });
+        if (old && body.version <= old.version) return send(res, 200, { ok: true, accepted: false, reason: "older", signup: old });
         rows.set(name.toLowerCase(), body);
         push("guild.signup", { guildId: g.id, eventId: su[1], signup: body }, toGuild(g.id));
-        return send(res, 200, { ok: true, version: body.version });
+        return send(res, 200, { ok: true, accepted: true, reason: old ? "newer" : "new", signup: body });
       }
       const sm = /^\/events\/([A-Za-z0-9_-]{1,24})\/summary$/.exec(rest);
       if (sm && req.method === "POST") {
         if (!officer(m)) return send(res, 403, { ok: false, error: "forbidden" });
         if (!exact(body, ["schema", "attended", "bosses", "durationSec"]) || !Array.isArray(body.attended) || !body.attended.every((n) => typeof n === "string")) return bad(res, "summary");
         g.summaries.push({ id: sm[1], ...body });
-        return send(res, 200, { ok: true });
+        return send(res, 200, { ok: true, posted: state.discord && g.discord.state === "connected" });
       }
       if (rest.startsWith("/discord")) {
         if (!state.discord) return send(res, 503, { ok: false, error: "discord_off" });
@@ -194,7 +196,7 @@ function fakeLive({ discord = true } = {}) {
           push("guild.discord", { guildId: g.id, state: "pending" }, toGuild(g.id));
           return send(res, 200, { ok: true, url: `https://discord.com/oauth2/authorize?client_id=1&scope=bot+applications.commands&state=${token(8)}` });
         }
-        if (rest === "/discord/test" && req.method === "POST") { if (g.discord.state !== "connected") return send(res, 409, { ok: false, error: "not_connected" }); g.tests++; return send(res, 200, { ok: true }); }
+        if (rest === "/discord/test" && req.method === "POST") { if (g.discord.state !== "connected") return send(res, 409, { ok: false, error: "not_connected" }); g.tests++; return send(res, 200, { ok: true, posted: true, discord: { ...g.discord } }); }
         if (rest === "/discord" && req.method === "DELETE") {
           if (!officer(m)) return send(res, 403, { ok: false, error: "forbidden" });
           g.discord = { state: "none", guildName: null, channel: null, problem: null };

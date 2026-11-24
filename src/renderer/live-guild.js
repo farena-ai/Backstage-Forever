@@ -139,7 +139,7 @@ window.LiveGuild = (() => {
       <div class="lg-actions"><button type="button" data-lg="discord" data-action="unlink" data-guild="${esc(g.memberId)}"${busy("me")}>Unlink</button></div>${noteLine("me")}</div>`;
     return `<div class="lg-sub" data-lg-discord-me><h3>Link my Discord</h3>
       <p>In your guild's Discord, type <code data-no-translate>/backstage link</code> ${copyButton("/backstage link")}. <span>Discord shows a code only you can see. Paste it here, and the sign-up buttons under event posts answer as this character.</span></p>
-      <div class="lg-inline"><label class="lg-field"><span>Code from Discord</span><input type="text" data-lg-input="discord-code" maxlength="64" value="${esc(draft("discord-code"))}" autocomplete="off" spellcheck="false" placeholder="L-…"></label><button type="button" class="primary" data-lg="discord" data-action="link" data-guild="${esc(g.memberId)}"${busy("me")}>Link my Discord</button></div>
+      <div class="lg-inline"><label class="lg-field"><span>Code from Discord</span><input type="text" data-lg-input="discord-code" maxlength="64" value="${esc(draft("discord-code"))}" autocomplete="off" spellcheck="false" placeholder="BFL-…"></label><button type="button" class="primary" data-lg="discord" data-action="link" data-guild="${esc(g.memberId)}"${busy("me")}>Link my Discord</button></div>
       <p class="lg-fine">The service keeps only your Discord user number and display name.</p>${noteLine("me")}</div>`;
   }
   function eventForm(d, g) {
@@ -197,6 +197,17 @@ window.LiveGuild = (() => {
     return { guildId: g.memberId, live: d.live?.state === "live", events: g.events.map((e) => ({ id: e.id, title: e.title, place: e.placeName, at: Math.floor(Date.parse(e.at) / 1000), creator: e.creator.name, editor: e.editor && e.editor.name !== e.creator.name ? e.editor.name : null, relayed: false,
       roles: { t: e.roles.tank, h: e.roles.healer, d: e.roles.damage }, note: e.note || null, mine: e.mine ? short[e.mine] : null, mineWord: e.mine, waiting: e.waiting, inGame: e.inGame, canCancel: g.canEdit || e.creator.name === g.character.name,
       signups: Object.fromEntries(Object.entries(short).map(([word, k]) => [k, e.names[word]])) })) };
+  }
+  /**
+   * For guild.js, on a finished event: officers and the leader can post who came, how many bosses and how long
+   * (E3). Only when this character was in the run, so the list of who came is known.
+   */
+  function summaryRow(profileId, e) {
+    const d = S.data && S.loadedFor === (profileId ?? null) ? S.data : null, g = d ? myGuild(d) : null;
+    if (!g || !g.canManage || !e.attendance?.known) return "";
+    const summary = { attended: e.attendance.rows.filter((r) => r.present).map((r) => r.name).slice(0, 80), bosses: e.run ? e.run.bosses.length : 0, durationSec: e.run?.seconds || 0 };
+    return `<div class="lg-answer lg-summary-row" data-lg-summary-row="${esc(e.id)}"><button type="button" class="lg-answer-btn" data-lg="summary" data-guild="${esc(g.memberId)}" data-event="${esc(e.id)}" data-summary="${esc(JSON.stringify(summary))}"${busy("summary")}>Post summary to Discord</button>
+      <span class="lg-muted"><span>Sends who was in your group (</span><span data-no-translate>${summary.attended.length}</span><span>), the bosses and the time. The names go into the Discord post only.</span></span>${S.note[`summary:${e.id}`] ? noteLine(`summary:${e.id}`) : ""}</div>`;
   }
   /** The one-click answer row under an event on Plans → Guild. */
   function answerRow(guildId, e) {
@@ -474,7 +485,7 @@ window.LiveGuild = (() => {
   async function run(key, noteKey, fn, ok = "") {
     if (S.busy) return;
     S.busy = key; say(noteKey, ""); paint();
-    try { const r = await fn(); say(noteKey, typeof ok === "function" ? ok(r) : ok); }
+    try { const r = await fn(); const text = typeof ok === "function" ? ok(r) : ok; say(noteKey, typeof text === "function" ? text(r) : text); }
     catch (e) { fail(noteKey, e); }
     // The picture is read again for the character this page shows, whatever the action answered with.
     try { S.data = await api.liveGuildState(S.loadedFor ?? null); S.loadedAt = Date.now(); } catch {}
@@ -511,9 +522,14 @@ window.LiveGuild = (() => {
     if (a === "discord") {
       const action = b.dataset.action, noteKey = action === "test" ? "test" : ["link", "unlink"].includes(action) ? "me" : "discord";
       return run(action === "test" ? "test" : ["link", "unlink"].includes(action) ? "me" : "discord", noteKey, async () => { const r = await api.liveDiscord({ action, guildId: guild, ...(action === "link" ? { code: draft("discord-code").trim() } : {}) }); if (action === "link") delete S.drafts["discord-code"]; return r; },
-        action === "start" ? "Discord's page is open in your browser." : action === "test" ? "Sent. Look in your Discord channel." : action === "link" ? "Linked." : action === "unlink" ? "Unlinked." : action === "disconnect" ? "Disconnected." : "");
+        action === "start" ? "Discord's page is open in your browser." : action === "test" ? (r) => (r?.posted === false ? "Discord did not take the post. The reason is shown in step 1." : "Sent. Look in your Discord channel.") : action === "link" ? "Linked." : action === "unlink" ? "Unlinked." : action === "disconnect" ? "Disconnected." : "");
     }
     if (a === "answer") return run(`answer:${b.dataset.event}`, "member", () => api.liveEvent({ action: "answer", guildId: guild, eventId: b.dataset.event, answer: b.dataset.answer }));
+    if (a === "summary") {
+      let summary = null; try { summary = JSON.parse(b.dataset.summary); } catch {}
+      if (!summary) return;
+      return run("summary", `summary:${b.dataset.event}`, () => api.liveEvent({ action: "summary", guildId: guild, eventId: b.dataset.event, summary }), (r) => (r?.posted ? "Posted to your guild's Discord." : "Sent. Nothing was posted, because your guild's Discord is not connected."));
+    }
     if (a === "cancel-event") return run("propose", "member", () => api.liveEvent({ action: "cancel", guildId: guild, eventId: b.dataset.event }), "Called off.");
     if (a === "propose") {
       const f = S.form, at = f?.date && f.time ? new Date(`${f.date}T${f.time}`) : null;
@@ -609,6 +625,6 @@ window.LiveGuild = (() => {
     // Invitations are looked for once at start, so the card can show on any page.
     setTimeout(() => { if (!S.data) void load(host.profileId?.() ?? null); }, 2500);
   }
-  return { init, mounted, guildHtml, partyHtml, guidePage, privacyHtml, eventsFor, answerRow, reload: load,
+  return { init, mounted, guildHtml, partyHtml, guidePage, privacyHtml, eventsFor, answerRow, summaryRow, reload: load,
     _state: () => S, _test: { offerCard, setupCard, memberCard, plannerCard, boardCard, regularsCard, countdown } };
 })();

@@ -107,7 +107,7 @@ window.GuildView = (() => {
     const items = shown.map((e) => `<article class="gld-event gld-past" data-guild-past-event="${esc(e.id)}"><header><h3 data-no-translate>${esc(e.title)}</h3><p class="gld-meta"><strong>${esc(when(e.at))}</strong> · <strong data-no-translate>${esc(e.place)}</strong> · <span>proposed by</span> ${keep(e.creator)}</p></header>
       ${attendanceLine(e)}${runLine(e)}
       ${e.guildLoot.length ? `<p class="gld-meta"><span>Won in the run (your loot notes):</span> ${e.guildLoot.map((l) => `${keep(l.who)}: <span class="ldg-name q-${QUALITY[l.quality] || "common"}" data-card-item="${l.itemId}" data-no-translate>${esc(l.name)}</span>`).join(", ")}</p>` : ""}
-      <details class="gld-answers"><summary>Who answered what</summary><dl class="gld-roles">${roleRows(e, true)}</dl></details></article>`).join("");
+      <details class="gld-answers"><summary>Who answered what</summary><dl class="gld-roles">${roleRows(e, true)}</dl></details>${window.LiveGuild?.summaryRow(d.profileId, e) || ""}</article>`).join("");
     return `<section class="ldg-card" data-guild-past><h2>Past events</h2><div class="gld-events">${items}</div>${d.past.length > shown.length ? `<p><button type="button" data-guild-more>Show ${Math.min(10, d.past.length - shown.length)} more</button></p>` : ""}
       <p class="ldg-note ldg-after">A run belongs to an event when it is in the same dungeon or raid and overlaps the time from 30 minutes before the event to 4 hours after it began. Who was there is your own group as your addon saw it. Other players' loot is noted only when you switched on guild-run loot notes in game: the item and the winner's name, on this computer only.</p></section>`;
   }
@@ -188,6 +188,14 @@ window.GuildView = (() => {
     const next = box.firstElementChild;
     // Compared with what was drawn last (in English), not with the page, which may show another language.
     if (next && card.bfSource !== next.innerHTML) { const first = card.bfSource === undefined && card.innerHTML === next.innerHTML; next.bfSource = next.innerHTML; if (first) card.bfSource = next.innerHTML; else card.replaceWith(next); }
+    // Finished events: the officers' "Post summary to Discord" row comes and goes with the membership.
+    for (const article of document.querySelectorAll("[data-guild-past-event]")) {
+      const e = d.past.find((x) => x.id === article.dataset.guildPastEvent), html = e ? window.LiveGuild?.summaryRow(d.profileId, e) || "" : "";
+      if (article.bfSummary === html) continue;
+      article.bfSummary = html;
+      article.querySelector("[data-lg-summary-row]")?.remove();
+      if (html) article.insertAdjacentHTML("beforeend", html);
+    }
     const line = document.querySelector("[data-guild-honest-live]");
     if (line) { const text = window.LiveGuild?.eventsFor(d.profileId) ? "Because you joined your guild in the app, your character's name and your answers also go to the Backstage service for your guild's members." : "Nothing is sent to any server unless you join your guild's live link below."; if (line.dataset.shown !== text) { line.dataset.shown = text; line.textContent = text; } }
   }

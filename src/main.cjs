@@ -1056,21 +1056,21 @@ app.whenReady().then(async () => {
     const { GuildService } = require("./core/guild-service.cjs");
     const { GroupStore } = require("./core/group-planner.cjs");
     const { createLiveGuildHub, registerLiveGuildHandlers } = require("./core/live-guild-ipc.cjs");
-    const feedLink = require("./core/guild-feed-link.cjs");
+    const guildFeed = require("./core/game-guild-feed.cjs"); // the game side: what the addon reports, and what it reads at /reload
     const userData = app.getPath("userData");
     // Like Desk: a development or test run opens no stream by itself unless it was pointed at a test service.
     liveClient = new LiveClient({ baseUrl: community.baseUrl, getInstallId: () => community.settings.installId, enabled: app.isPackaged || Boolean(process.env.BF_COMMUNITY_URL) });
     groupStore = new GroupStore({ file: path.join(userData, "group.json") });
     let hub = null;
     guildService = new GuildService({
-      dir: userData, community, live: liveClient, feed: feedLink.feed,
+      dir: userData, community, live: liveClient, feed: guildFeed,
       // The game reads this at its next /reload; one member reloading passes the news on in game.
-      setHandoff: (data) => { feedLink.setHandoff(data); game?.writeHandoff().catch(() => {}); },
+      setHandoff: (data) => { guildFeed.setHandoff(data); }, // the feed rewrites the hand-off file when something changed
       getSaved: () => game?.guildCapture?.() || [],
       getPlan: (character) => hub?.handoffPlan(character) || null,
     });
     hub = createLiveGuildHub({
-      getState: () => store.state, guildStore, service: guildService, group: groupStore, feed: feedLink, liveLink: () => Boolean(liveBridge?.enabled),
+      getState: () => store.state, guildStore, service: guildService, group: groupStore, feed: { real: true }, liveLink: () => Boolean(liveBridge?.enabled),
       attunements: (profile) => require("./core/attunements.cjs").attunementView(profile),
     });
     // The Calendar shows the saved file's guild events together with the live events of guilds the player joined.

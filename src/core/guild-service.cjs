@@ -35,7 +35,7 @@ const EVENT_ID_RE = /^[A-Za-z0-9_-]{1,24}$/, LISTING_ID_RE = /^[A-Za-z0-9_-]{16}
 // What the game itself accepts (its own event and listing ids): anything the desktop creates uses these, or the addon would drop it.
 const GAME_ID = "abcdefghijklmnopqrstuvwxyz0123456789";
 const gameId = (n, bytes = crypto.randomBytes(n)) => Array.from(bytes, (b) => GAME_ID[b % GAME_ID.length]).join("");
-const NAME_RE = /^[\p{L}\p{M}]{2,24}$/u, REALM_RE = /^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} '’-]{0,39}$/u, GUILD_NAME_RE = /^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} '’-]{1,23}$/u;
+const NAME_RE = /^[\p{L}\p{M}]{2,24}$/u, REALM_RE = /^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} '’-]{0,39}$/u, GUILD_NAME_RE = /^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} '’.-]{1,23}$/u;
 
 // ---------------------------------------------------------------- pure helpers
 const lower = (v) => String(v ?? "").toLowerCase();
@@ -129,8 +129,9 @@ function mergeGuild(known, incoming) {
 function fromSaved(capture, realm) {
   const out = { events: [], signups: {} };
   for (const e of capture?.events || []) {
+    if (!e || typeof e !== "object") continue;
     const creator = splitName(e.creator, realm), editor = e.editor ? splitName(e.editor, realm) : creator;
-    const row = eventShape({ id: e.id, version: e.ver, creator, editor, at: iso(e.at * 1000), place: e.dungeon, title: e.title, note: e.note || "", roles: { tank: e.roles?.t, healer: e.roles?.h, damage: e.roles?.d }, cancelled: e.cancelled === true });
+    const row = eventShape({ id: e.id, version: e.ver, creator, editor, at: Number.isSafeInteger(e?.at) && e.at > 0 && e.at < 1e11 ? iso(e.at * 1000) : null, place: e.dungeon, title: e.title, note: e.note || "", roles: { tank: e.roles?.t, healer: e.roles?.h, damage: e.roles?.d }, cancelled: e.cancelled === true });
     if (!row) continue;
     out.events.push(row);
     out.signups[row.id] = (e.signups || []).map((s) => ({ who: splitName(s.name, realm), answer: LETTER[s.status], version: 0, via: "game" })).filter((s) => s.who && s.answer);
@@ -166,7 +167,7 @@ function listingBody(i) {
   return { schema: 1, installId: i.installId, realm: i.realm, faction: f, listing, consent: true };
 }
 function summaryBody(i) {
-  const attended = [...new Set((Array.isArray(i?.attended) ? i.attended : []).filter((n) => typeof n === "string" && NAME_RE.test(n)))].slice(0, 40);
+  const attended = [...new Set((Array.isArray(i?.attended) ? i.attended : []).filter((n) => typeof n === "string" && NAME_RE.test(n)))].slice(0, 80);
   return { schema: 1, attended, bosses: int(i?.bosses, 0, 99) ? i.bosses : 0, durationSec: int(i?.durationSec, 0, 86400) ? i.durationSec : 0 };
 }
 /** Only Discord's own add-bot page may be opened for step 1. */
@@ -358,6 +359,8 @@ class GuildService extends EventEmitter {
     try { json = await this.call("POST", "/v1/guilds/join", { body }); }
     catch (e) {
       if (e.code === "gone") { this.state.offers = this.state.offers.filter((o) => o !== offer); this.save(); this.changed("offers"); throw new GuildError("gone", "This guild link code is no longer valid. Ask your guild leader for the new one."); }
+      // The same character name joined from another computer: only an officer can clear the old entry.
+      if (e.code === "exists") throw new GuildError("exists", "This character already joined from another computer. Ask an officer to remove the old entry on Plans → Guild, then join again.");
       throw e;
     }
     if (!GUILD_ID_RE.test(json.guildId) || !TOKEN_RE.test(json.member)) throw new GuildError("offline");
@@ -406,8 +409,7 @@ class GuildService extends EventEmitter {
     if (this.busy.has(key)) return { status: "busy" };
     this.busy.add(key);
     try {
-      const since = iso(this.now() - 6 * 3600 * 1000);
-      const j = await this.guildCall(g, "GET", `/events?since=${encodeURIComponent(since)}`);
+      const j = await this.guildCall(g, "GET", "/events"); // without "since": every stored event, the full refetch
       // The service is one replica among several: its rows are merged in, and rows it no longer lists stay
       // only while the game still holds them (the hand-off and the saved file decide that, not the app).
       const serverIds = new Set((Array.isArray(j.events) ? j.events : []).map((e) => e?.id));
@@ -485,10 +487,28 @@ class GuildService extends EventEmitter {
     this.save();
     return item;
   }
+  /**
+   * The service answers a PUT with 200 { accepted, reason, event | signup }: a row that loses is not an
+   * error, and the answer carries what the service keeps. That stored row then replaces ours here, so
+   * the screens show what every other member sees. Returns { accepted, reason }.
+   */
   async send(entry) {
     const g = this.guild(entry.guildId);
-    if (entry.type === "event") await this.guildCall(g, "PUT", `/events/${entry.eventId}`, entry.body);
-    else await this.guildCall(g, "PUT", `/events/${entry.eventId}/signups/${encodeURIComponent(entry.body.who.name)}`, entry.body);
+    const j = entry.type === "event" ? await this.guildCall(g, "PUT", `/events/${entry.eventId}`, entry.body)
+      : await this.guildCall(g, "PUT", `/events/${entry.eventId}/signups/${encodeURIComponent(entry.body.who.name)}`, entry.body);
+    if (j.accepted !== false) return { accepted: true, reason: typeof j.reason === "string" ? j.reason.slice(0, 20) : "" };
+    const reason = typeof j.reason === "string" ? j.reason.slice(0, 20) : "";
+    if (entry.type === "event") {
+      const stored = eventShape(j.event);
+      if (stored) g.events = [...g.events.filter((e) => e.id !== stored.id), stored].sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
+      else if (["past", "ahead", "creator"].includes(reason)) { g.events = g.events.filter((e) => e.id !== entry.eventId); delete g.signups[entry.eventId]; }
+    } else {
+      const stored = signupShape(j.signup), rows = (g.signups[entry.eventId] || []).filter((s) => !sameWho(s.who, entry.body.who));
+      if (stored) g.signups[entry.eventId] = [...rows, stored];
+      else if (["closed", "full"].includes(reason)) { if (rows.length) g.signups[entry.eventId] = rows; else delete g.signups[entry.eventId]; }
+    }
+    this.save(); this.updateHandoff(); this.changed("events");
+    return { accepted: false, reason };
   }
   /**
    * Every change goes through the queue: it is sent at once when the service answers, and waits when it
@@ -499,12 +519,17 @@ class GuildService extends EventEmitter {
     const result = await this.flush();
     const refused = result.refused.find((r) => r.item === item);
     if (refused) { try { undo?.(); } catch {} this.save(); this.updateHandoff(); this.changed("events"); throw refused.error; }
+    // Not taken by the service's own rule: say why when the player can do something about it. ("older" and
+    // "hearsay" only mean the service already holds a newer row, which is now shown.)
+    const declined = result.declined.find((r) => r.item === item);
+    const why = declined && { closed: "This event takes no more answers: it was called off or began more than 4 hours ago.", full: "This event already has 40 answers.", past: "This event began more than 4 hours ago.", ahead: "An event can be at most 180 days ahead.", creator: "Another event already uses this number. Propose it again." }[declined.reason];
+    if (why) throw new GuildError("invalid", why);
     if (this.state.queue.includes(item)) { this.changed("queue"); return { sent: false, queued: true }; }
     return { sent: true };
   }
   /** Send what waits: events before sign-ups, oldest first. Stops at the first failure a later try could fix. Never throws. */
   async flush() {
-    const out = { sent: 0, refused: [] };
+    const out = { sent: 0, refused: [], declined: [] };
     if (!this.state.queue.length || this.busy.has("queue")) return out;
     this.busy.add("queue");
     const tried = new Set();
@@ -515,7 +540,7 @@ class GuildService extends EventEmitter {
         if (!item) break;
         tried.add(item);
         if (!this.has(item.guildId)) { this.state.queue = this.state.queue.filter((q) => q !== item); continue; }
-        try { await this.send(item); out.sent++; }
+        try { const r = await this.send(item); out.sent++; if (!r.accepted) out.declined.push({ item, reason: r.reason }); }
         catch (e) {
           if (e.code === "offline" || e.code === "rate" || e.code === "blocked") break;
           out.refused.push({ item, error: e }); // refused for good: it can never be sent
@@ -586,8 +611,8 @@ class GuildService extends EventEmitter {
   async postSummary(guildId, eventId, input) {
     const g = this.guild(guildId);
     if (typeof eventId !== "string" || !EVENT_ID_RE.test(eventId)) throw new GuildError("invalid");
-    await this.guildCall(g, "POST", `/events/${eventId}/summary`, summaryBody(input));
-    return { posted: true };
+    const j = await this.guildCall(g, "POST", `/events/${eventId}/summary`, summaryBody(input));
+    return { sent: true, posted: j.posted === true }; // posted: whether a Discord post was queued
   }
 
   // -------- Discord (D1, D3)
@@ -604,9 +629,14 @@ class GuildService extends EventEmitter {
   }
   async discordTest(guildId) {
     const g = this.guild(guildId);
-    await this.guildCall(g, "POST", "/discord/test");
-    g.testAt = this.now(); this.save(); this.changed("guilds");
-    return { posted: true };
+    const j = await this.guildCall(g, "POST", "/discord/test");
+    // The answer says whether the bot could post, and carries the Discord state with the reason when it could not.
+    const d = j.discord;
+    if (d && DISCORD_STATES.includes(d.state)) g.discord = { state: d.state, guildName: typeof d.guildName === "string" ? line(d.guildName, 100) : g.discord.guildName, channel: typeof d.channel === "string" ? line(d.channel, 100) : g.discord.channel, problem: typeof d.problem === "string" ? line(d.problem, 300) : null };
+    const posted = j.posted !== false;
+    if (posted) g.testAt = this.now();
+    this.save(); this.updateHandoff(); this.changed("guilds");
+    return { posted };
   }
   async discordDisconnect(guildId) {
     const g = this.guild(guildId);
@@ -842,7 +872,8 @@ class GuildService extends EventEmitter {
     } else if (name === "guild.member") {
       if (int(data.members, 0, 100000)) g.memberCount = data.members;
       this.changed("guilds");
-      void this.refreshGuild(memberId(g)).catch(() => {});
+      // members: 0 is sent once when the guild was deleted; the read then finds out and forgets the membership.
+      void this.refreshGuild(memberId(g), { force: data.members === 0 }).catch(() => {});
     } else if (name === "guild.discord") {
       if (DISCORD_STATES.includes(data.state)) g.discord = { ...g.discord, state: data.state, ...(data.state === "none" ? { guildName: null, channel: null, problem: null } : {}) };
       this.save(); this.updateHandoff(); this.changed("guilds");
@@ -871,13 +902,15 @@ class GuildService extends EventEmitter {
       const savedAnswers = new Map();
       for (const e of savedEntry?.guild?.events || []) for (const s of e.signups || []) { const w = splitName(s.name, g.realm); if (w) savedAnswers.set(`${e.id}|${whoKey(w)}`, LETTER[s.status]); }
       const nowIso = iso(this.now() - 4 * 3600 * 1000);
-      const events = g.events.filter((e) => e.at >= nowIso && (this.gameKnown.get(e.id) || 0) < e.version);
       const signups = {};
       for (const e of g.events) {
         if (e.at < nowIso) continue;
         const rows = (g.signups[e.id] || []).filter((s) => s.version > 0 && s.via !== "game" && savedAnswers.get(`${e.id}|${whoKey(s.who)}`) !== s.answer);
         if (rows.length) signups[e.id] = rows;
       }
+      // The game takes a sign-up only together with its event's row, so an event with answers to hand over
+      // goes along even when the game already holds that version (the addon's merge then leaves it alone).
+      const events = g.events.filter((e) => e.at >= nowIso && ((this.gameKnown.get(e.id) || 0) < e.version || signups[e.id]));
       out.guild = { id: g.guildId, guildName: g.guildName, realm: g.realm, events, signups, discord: g.discord.state };
     }
     if (this.state.board.on) {

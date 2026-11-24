@@ -1,13 +1,12 @@
 "use strict";
 // The group planner and regulars (group-planner.cjs), the panel's remembered place (guild-panel-window.cjs),
-// the feed door (guild-feed-link.cjs) and the hub that feeds the windows (live-guild-ipc.cjs).
+// and the hub that feeds the windows (live-guild-ipc.cjs).
 // All of it is local: nothing in this file opens a connection.
 const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), os = require("node:os"), path = require("node:path");
 const { EventEmitter } = require("node:events");
 const P = require("../src/core/group-planner.cjs");
 const { panelSettings, placeOn, createGuildPanel, DEFAULT, MIN, MAX } = require("../src/core/guild-panel-window.cjs");
-const { resolveFeed } = require("../src/core/guild-feed-link.cjs");
 const { createLiveGuildHub, registerLiveGuildHandlers, COPYABLE } = require("../src/core/live-guild-ipc.cjs");
 const { GuildService } = require("../src/core/guild-service.cjs");
 
@@ -185,19 +184,12 @@ test("the panel page keeps the strict page rules and never holds an inline style
   assert.deepEqual([...preload.matchAll(/^\s+(\w+): /gm)].map((m) => m[1]), ["state", "close", "settings", "answer", "board", "plan", "app", "onState"], "a narrow bridge");
 });
 
-test("the feed door accepts the module however it is exported, and works without it", () => {
-  const e = new EventEmitter(); e.setHandoff = function (d) { this.got = d; };
-  assert.equal(resolveFeed(e).feed, e); resolveFeed(e).setHandoff({ a: 1 }); assert.deepEqual(e.got, { a: 1 });
-  const seen = [];
-  const named = resolveFeed({ feed: new EventEmitter(), setHandoff: (d) => seen.push(d) });
-  assert.ok(named.feed instanceof EventEmitter); named.setHandoff({ b: 2 }); assert.deepEqual(seen, [{ b: 2 }]);
-  assert.ok(resolveFeed({ gameGuildFeed: new EventEmitter() }).feed instanceof EventEmitter);
-  assert.deepEqual(resolveFeed(null), { feed: null, setHandoff: null }); assert.deepEqual(resolveFeed({ nothing: 1 }), { feed: null, setHandoff: null });
-  const link = require("../src/core/guild-feed-link.cjs");
-  assert.equal(typeof link.feed.on, "function"); assert.equal(typeof link.setHandoff, "function");
-  // The desktop side only listens and hands data over: it never requires the hand-off writer or the live-bridge decoder itself.
+test("the desktop side only listens to the game feed and hands data to it", () => {
+  // It never requires the hand-off writer or the live-bridge decoder itself; main.cjs gives it the feed.
   for (const file of ["src/core/guild-service.cjs", "src/core/live-client.cjs", "src/core/live-guild-ipc.cjs", "src/core/group-planner.cjs", "src/core/guild-panel-window.cjs"]) assert.doesNotMatch(read(file), /require\([^)]*(desktop-handoff|live-bridge|game-guild-feed)/, file);
-  assert.match(read("src/core/guild-feed-link.cjs"), /require\("\.\/game-guild-feed\.cjs"\)/);
+  const main = read("src/main.cjs");
+  assert.ok(main.includes('const guildFeed = require("./core/game-guild-feed.cjs");')); assert.ok(main.includes("live: liveClient, feed: guildFeed,")); assert.ok(main.includes("setHandoff: (data) => { guildFeed.setHandoff(data); }"));
+  assert.equal(fs.existsSync(path.join(__dirname, "..", "src/core/guild-feed-link.cjs")), false, "the stand-in is gone");
 });
 
 test("the hub: one character's context, candidates for the planner, the panel's view, and guild events on the Calendar", async () => {

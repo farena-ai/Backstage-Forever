@@ -181,10 +181,11 @@
 .lg-root td button.lg-copy { padding: 4px 12px; }
 .lg-table-regulars { min-width: 680px; table-layout: fixed; }
 .lg-table-regulars th:nth-child(1) { width: 17%; }
-.lg-table-regulars th:nth-child(2) { width: 9%; }
-.lg-table-regulars th:nth-child(3) { width: 12%; }
-.lg-table-regulars th:nth-child(4) { width: 22%; }
-.lg-table-regulars thead th, .lg-table-board thead th { white-space: nowrap; }
+.lg-table-regulars th:nth-child(2) { width: 12%; }
+.lg-table-regulars th:nth-child(3) { width: 13%; }
+.lg-table-regulars th:nth-child(4) { width: 19%; }
+.lg-table-board thead th { white-space: nowrap; }
+.lg-table-regulars thead th { white-space: normal; vertical-align: bottom; }
 .lg-root td .lg-note-input { min-height: 30px; padding: 4px 8px; }
 .lg-root td button.lg-copy { white-space: nowrap; }
 

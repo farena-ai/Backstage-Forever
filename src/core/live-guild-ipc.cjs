@@ -20,7 +20,7 @@ const COPYABLE = /^(?:\/w [^\s/|]{2,80} |\/bf guild link [A-Z0-9-]{4,32}|\/backs
 /**
  * The shared brain of the main window and the panel. getState(): the app state (profiles, active
  * profile). guildStore: the saved-file guild memory (guild-events.cjs). service: GuildService.
- * group: GroupStore. feed: { real } from guild-feed-link.cjs.
+ * group: GroupStore. feed: { real }: whether the game side (game-guild-feed.cjs) is wired in.
  */
 function createLiveGuildHub({ getState, guildStore = null, service, group, feed = { real: false }, liveLink = () => false, attunements = null, now = Date.now }) {
   let atlasRows = null;
@@ -192,7 +192,7 @@ function registerLiveGuildHandlers({ handle, hub, service, group, openExternal =
     return { ...result, state: snapshot() };
   });
   handle("liveEvent", async (...args) => {
-    need(args.length === 1 && only(args[0], ["action", "guildId", "eventId", "answer", "event"]) && guildId(args[0].guildId));
+    need(args.length === 1 && only(args[0], ["action", "guildId", "eventId", "answer", "event", "summary"]) && guildId(args[0].guildId));
     const a = args[0];
     let result;
     if (a.action === "answer") { need(str(a.eventId, 24) && ANSWERS.includes(a.answer)); result = await service.answer(a.guildId, a.eventId, a.answer); }
@@ -200,6 +200,11 @@ function registerLiveGuildHandlers({ handle, hub, service, group, openExternal =
       need(only(a.event, ["id", "at", "place", "title", "note", "roles"]) && str(a.event.title, 200) && str(a.event.at, 40) && str(a.event.place, 8) && (a.event.note === undefined || str(a.event.note, 400)) && only(a.event.roles, ROLES) && (a.event.id === undefined || str(a.event.id, 24)));
       result = await service.saveEvent(a.guildId, a.event);
     } else if (a.action === "cancel") { need(str(a.eventId, 24)); result = await service.cancelEvent(a.guildId, a.eventId); }
+    else if (a.action === "summary") {
+      // E3, officers: who came, bosses and time of a finished event, for the guild's Discord.
+      need(str(a.eventId, 24) && only(a.summary, ["attended", "bosses", "durationSec"]) && Array.isArray(a.summary.attended) && a.summary.attended.length <= 80 && a.summary.attended.every((n) => str(n, 60)) && Number.isSafeInteger(a.summary.bosses) && Number.isSafeInteger(a.summary.durationSec));
+      result = await service.postSummary(a.guildId, a.eventId, { ...a.summary, attended: a.summary.attended.map((n) => n.split("-")[0]) });
+    }
     else need(false);
     return { ...result, state: snapshot() };
   });

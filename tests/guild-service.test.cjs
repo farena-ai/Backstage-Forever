@@ -274,6 +274,43 @@ test("offline queue: an answer and an event edit wait, survive a restart, and go
   } finally { d.stop(); leader.stop(); await fake.close(); }
 });
 
+test("a row the service does not take is not an error: what it keeps is shown, and a closed event says so", async () => {
+  const fake = await fakeLive().listen();
+  const { leader, guildId, code } = await leaderGuild(fake);
+  const d = desktop(fake, { live: false });
+  try {
+    d.feed.emit("link", LINK(code, { rankIndex: 1 }));
+    await d.service.join(code, { consent: true });
+    fake.putEvent(guildId, EVENT({ version: 5, title: "The newer title" }));
+    // The app still holds version 1 (it was offline) and the game reports an older copy.
+    d.feed.emit("event", { ...EVENT({ version: 2, title: "An older title" }), character: ABEL });
+    await until(() => d.service.view().guilds[0].events[0]?.title === "The newer title", 3000, "the stored row replaces ours");
+    assert.equal(d.service.view().guilds[0].events[0].version, 5); assert.equal(d.service.view().waiting, 0);
+    // Somebody answered for Abel on Discord meanwhile, with a higher number: our lower one loses quietly.
+    fake.putSignup(guildId, "mc7k2m9q", { who: ABEL, answer: "no", version: 4, via: "discord" });
+    assert.deepEqual(await d.service.answer(guildId, "mc7k2m9q", "healer"), { sent: true });
+    assert.equal(d.service.view().guilds[0].events[0].mine, "no", "the service's row is what everybody sees");
+    assert.deepEqual(await d.service.answer(guildId, "mc7k2m9q", "healer"), { sent: true });
+    assert.equal(d.service.view().guilds[0].events[0].mine, "healer", "the next answer counts on from the stored number");
+    assert.equal(fake.guild(guildId).signups.get("mc7k2m9q").get("abel").version, 5);
+    // A called-off event takes no answers, and the app says so.
+    fake.putEvent(guildId, EVENT({ id: "off00001", cancelled: false, title: "Soon called off" }));
+    await d.service.refreshEvents(guildId);
+    fake.guild(guildId).events.get("off00001").cancelled = true;
+    await assert.rejects(d.service.answer(guildId, "off00001", "tank"), /takes no more answers/);
+    assert.equal(d.service.view().guilds[0].events.find((e) => e.id === "off00001").mine, null);
+    // An event too far ahead is not taken, and does not stay on the list.
+    fake.state.declineEvents = "ahead";
+    await assert.rejects(d.service.saveEvent(guildId, { at: soon(24 * 200), place: "mc", title: "Next year", roles: { tank: 2, healer: 8, damage: 30 } }), /180 days/);
+    assert.equal(d.service.view().guilds[0].events.some((e) => e.title === "Next year"), false);
+    fake.state.declineEvents = null;
+    await assert.rejects(d.service.saveEvent(guildId, { at: soon(), place: "mc", title: "Too many", roles: { tank: 12, healer: 8, damage: 30 } }), /at most 9 tanks/);
+    // The full refetch asks for everything, never for a slice.
+    fake.clear(); await d.service.refreshEvents(guildId);
+    assert.deepEqual(fake.log[0].query, {});
+  } finally { d.stop(); leader.stop(); await fake.close(); }
+});
+
 test("an event known only from the saved file is passed on before the answer to it", async () => {
   const fake = await fakeLive().listen();
   const { leader, guildId, code } = await leaderGuild(fake);
@@ -418,7 +455,7 @@ test("Discord: add, live status, test post, link my Discord, disconnect; and eve
     const made = await d.service.saveEvent(guildId, { at: soon(), place: "mc", title: "Molten Core", note: "", roles: { tank: 2, healer: 8, damage: 30 } });
     assert.equal(made.sent, true, "events work without Discord");
     assert.deepEqual(await d.service.answer(guildId, made.id, "tank"), { sent: true });
-    assert.deepEqual(await d.service.postSummary(guildId, made.id, { attended: ["Bruna", "Bruna"], bosses: 10, durationSec: 7200, loot: ["x"] }), { posted: true });
+    assert.deepEqual(await d.service.postSummary(guildId, made.id, { attended: ["Bruna", "Bruna"], bosses: 10, durationSec: 7200, loot: ["x"] }), { sent: true, posted: false }, "sent; nothing was posted because Discord is off");
     assert.deepEqual(fake.guild(guildId).summaries.at(-1), { id: made.id, schema: 1, attended: ["Bruna"], bosses: 10, durationSec: 7200 });
     fake.state.discord = true;
     await d.service.discordStart(guildId);
@@ -483,7 +520,7 @@ test("the realm party board: its own switch, consent before the first post, live
     // Your own listing made in game (/bf lfg list …) is posted for you once you agreed to posting; "list off" takes it down.
     const mineInGame = { id: "madeingame000001", kind: "lfg", who: ABEL, level: 34, class: "hunter", roles: ["damage"], place: "ulda", note: "", need: null, at: soon(0), character: ABEL };
     d.feed.emit("listing", mineInGame);
-    await until(() => fake.lfg.has("madeingame000001"), 3000, "the in-game listing on the service");
+    await until(() => fake.lfg.has("madeingame000001") && d.service.view().board.mine?.id === "madeingame000001", 3000, "the in-game listing on the service");
     assert.equal(d.service.view().board.mine.id, "madeingame000001"); assert.equal(fake.lfg.has(posted.id), false, "it replaced the older one");
     d.feed.emit("listing", { gone: true, id: "madeingame000001", character: ABEL });
     await until(() => !fake.lfg.has("madeingame000001") && d.service.view().board.mine === null, 3000, "taken down");

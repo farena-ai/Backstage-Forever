@@ -34,7 +34,9 @@ const EVENT = (over = {}) => ({ id: "mc7k2m9q", version: 1, creator: BRUNA, edit
     const profile = (id, name, className, level) => ({ id, name, className, realm: "Thunder Hold", faction: "Horde", race: "Orc", level, notes: "", goals: [] });
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify({ ...defaultState(), onboarded: true, activeProfileId: "p1", profiles: [profile("p1", "Bruna", "Warrior", 60), profile("p2", "Abel", "Priest", 60), profile("p3", "Mirel", "Hunter", 34)] }));
     // What the game's saved file told the app earlier: both characters are in the guild "Ashen Vanguard".
-    const saved = (me, guild = "Ashen Vanguard") => ({ at: Math.floor(Date.now() / 1000) - 3600, on: true, loot: false, me, guild, realmOffset: 60, events: [], past: [], members: [] });
+    const saved = (me, guild = "Ashen Vanguard") => ({ at: Math.floor(Date.now() / 1000) - 3600, on: true, loot: false, me, guild, realmOffset: 60, events: [], members: [],
+      // One finished event the character was at, so the after-event summary can be posted.
+      past: me === "Bruna" ? [{ id: "old4zg01", title: "Zul'Gurub, Monday", dungeon: "zg", at: Math.floor(Date.now() / 1000) - 2 * 86400, creator: "Bruna", t: 2, h: 4, d: 14, signups: [{ n: "Bruna", s: "t" }, { n: "Abel", s: "h" }, { n: "Cyra", s: "d" }], present: ["Abel", "Bruna", "Cyra"], loot: [] }] : [] });
     await fs.writeFile(path.join(dir, "guild.json"), JSON.stringify({ version: 1, characters: { p1: { name: "Bruna", realm: "Thunder Hold", guild: saved("Bruna") }, p2: { name: "Abel", realm: "Thunder Hold", guild: saved("Abel") }, p3: { name: "Mirel", realm: "Thunder Hold", guild: saved("Mirel", "Night Watch") } }, notes: {} }));
     app = await launch(electron, { args: [path.join(__dirname, "..")], env: { ...process.env, BF_USER_DATA: dir, BF_COMMUNITY_URL: fake.url, BF_TEST_INACTIVE: "1" }, timeout: 20000 });
     const page = await testWindow(app); page.setDefaultTimeout(8000);
@@ -42,13 +44,17 @@ const EVENT = (over = {}) => ({ id: "mc7k2m9q", version: 1, creator: BRUNA, edit
       const load = process.getBuiltinModule("node:module").createRequire(process.getBuiltinModule("node:path").join(app.getAppPath(), "package.json"));
       load("./src/core/game-runtime.cjs").GameRuntime.prototype.probe = async () => ({ state: "not-running", launchAvailable: false });
       load("./src/core/providers.cjs").models = async () => [];
-      globalThis.liveFixture = { opened: [], copied: [], feed: load("./src/core/guild-feed-link.cjs") };
+      const guildFeed = load("./src/core/game-guild-feed.cjs"), give = guildFeed.setHandoff.bind(guildFeed);
+      globalThis.liveFixture = { opened: [], copied: [], feed: guildFeed, last: null };
+      // What the guild service hands to the game side, as given (the feed then checks and compiles it).
+      guildFeed.setHandoff = (data) => { globalThis.liveFixture.last = data; return give(data); };
       dialog.showMessageBox = async () => ({ response: 1 });
       shell.openExternal = async (url) => { globalThis.liveFixture.opened.push(url); };
       clipboard.writeText = (text) => { globalThis.liveFixture.copied.push(text); };
     });
-    const feed = (name, payload) => app.evaluate((_e, [name, payload]) => { globalThis.liveFixture.feed.feed.emit(name, payload); }, [name, payload]);
-    const handoff = () => app.evaluate(() => globalThis.liveFixture.feed.last.data);
+    const feed = (name, payload) => app.evaluate((_e, [name, payload]) => { globalThis.liveFixture.feed.emit(name, payload); }, [name, payload]);
+    const handoff = () => app.evaluate(() => globalThis.liveFixture.last);
+    const compiled = () => app.evaluate(() => globalThis.liveFixture.feed.handoff());
     const size = (w, h) => app.evaluate(({ BrowserWindow }, v) => BrowserWindow.getAllWindows().find((x) => /index\.html/.test(x.webContents.getURL())).setContentSize(...v), [w, h]);
     const settle = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     const shot = async (name, target = page) => { await settle(); await target.screenshot({ path: path.join(shots, `${name}.png`) }); };
@@ -96,7 +102,7 @@ const EVENT = (over = {}) => ({ id: "mc7k2m9q", version: 1, creator: BRUNA, edit
     const appPattern = (template) => new RegExp("^" + template.split(/(\{#?\d+\})/).map((part) => (/^\{#\d+\}$/.test(part) ? "([0-9][0-9.,:/%–-]*)" : /^\{\d+\}$/.test(part) ? "(.+?)" : part.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&"))).join("") + "$");
     const dictionaries = {};
     for (const lang of ["de", "fr", "es"]) { const d = JSON.parse(await fs.readFile(path.join(__dirname, "..", "data", "i18n", `${lang}.json`), "utf8")); dictionaries[lang.toUpperCase()] = { app: d.app || {}, templates: Object.keys(d.appTemplates || {}).map(appPattern) }; }
-    const MINE = "[data-lg-root], [data-lg-guide], [data-lg-privacy], [data-desk-exception], #live-dock, [data-guild-upcoming], [data-guild-honest], [data-guide-live]";
+    const MINE = "[data-lg-root], [data-lg-guide], [data-lg-privacy], [data-desk-exception], #live-dock, [data-guild-upcoming], [data-guild-honest], [data-guide-live], [data-lg-summary-row]";
     const fits = async (label) => {
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), `${label}: no sideways scrolling`);
       const clipped = await page.evaluate(() => [...document.querySelectorAll("[data-lg-root] button, [data-lg-root] .lg-status, [data-lg-root] h2, [data-lg-root] h3, .lg-dock-card button")].filter((el) => el.offsetParent && el.scrollWidth > el.clientWidth + (el.tagName === "BUTTON" ? 8 : 2) && !el.matches(".lg-chip, .lg-slot-main")).map((el) => (el.textContent || "").trim().slice(0, 40)));
@@ -194,6 +200,17 @@ const EVENT = (over = {}) => ({ id: "mc7k2m9q", version: 1, creator: BRUNA, edit
       await shotsOf("leader-problem-en", '[data-lg-setup="steps"]');
       fake.discordConnected(guildId, { guildName: "Ashen Vanguard HQ", channel: "#raids" });
       await steps.locator('[data-lg-step="discord"] .lg-status').getByText("Connected", { exact: true }).waitFor();
+    });
+
+    await check("after an event: an officer posts who came, the bosses and the time to Discord with one button", async () => {
+      const row = page.locator('[data-guild-past-event="old4zg01"] [data-lg-summary-row]');
+      await row.waitFor();
+      await scan(page, "summary", MINE);
+      await row.getByRole("button", { name: "Post summary to Discord", exact: true }).click();
+      await page.locator('[data-guild-past-event="old4zg01"] [data-lg-note="summary:old4zg01"]').getByText("Posted to your guild's Discord.", { exact: true }).waitFor();
+      const sent = fake.guild(guildId).summaries.at(-1);
+      assert.deepEqual(sent, { id: "old4zg01", schema: 1, attended: ["Abel", "Bruna", "Cyra"], bosses: 0, durationSec: 0 });
+      await shotsOf("summary-en", '[data-guild-past-event="old4zg01"]');
     });
 
     await check("the leader proposes an event from the app; it is on the service within a moment", async () => {
