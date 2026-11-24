@@ -31,6 +31,9 @@ const routes = {
   game: ["Settings", "Game connection"],
   connections: ["Settings", "AI connection"],
   updates: ["Settings", "Updates"],
+  privacy: ["Settings", "Privacy & sharing"],
+  report: ["Help", "Report a problem"],
+  reports: ["Help", "My reports"],
   guide: ["Help", "Field guide"],
 };
 const legacy = {

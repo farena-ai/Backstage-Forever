@@ -49,6 +49,9 @@ jobs:
       - run: npm run check:addon-travel
       - run: npm run check:forever-world
       - run: npm run check:addon-rares
+      - run: npm run check:forever-prerequisites
+      - run: npm run check:forever-pets
+      - run: npm run check:forever-encounters
         if: ${{ !cancelled() }}
       - run: npm test
         if: ${{ !cancelled() }}

@@ -38,15 +38,16 @@ window.PlayerNavigation = (() => {
         ["game", "Game connection"],
         ["connections", "AI connection"],
         ["updates", "Updates"],
+        ["privacy", "Privacy & sharing"],
       ],
       description:
-        "Your game folder, the AI the companion uses, and app updates.",
+        "Your game folder, the AI the companion uses, app updates, and what the app shares.",
     },
     guide: {
       label: "Help",
-      routes: [["guide", "Field guide"], ["commands", "Commands"], ["coverage", "Data coverage"]],
+      routes: [["guide", "Field guide"], ["commands", "Commands"], ["coverage", "Data coverage"], ["report", "Report a problem"], ["reports", "My reports"]],
       description:
-        "Learn the basics, look up every command, see how much the app knows zone by zone, or recover your local journal below.",
+        "Learn the basics, look up every command, see how much the app knows zone by zone, report a problem and read the reply, or recover your local journal below.",
     },
   };
   // Pages opened from inside another page keep that page highlighted in the tab row.

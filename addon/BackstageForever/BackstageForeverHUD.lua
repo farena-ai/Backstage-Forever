@@ -1099,6 +1099,10 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverAnswersCommand)=='function' then pcall(BackstageForeverAnswersCommand,message)end
                 return
             end
+            if word=='reports' then
+                if type(BackstageForeverReportsCommand)=='function' then pcall(BackstageForeverReportsCommand,message)end
+                return
+            end
             if word=='explain' then
                 if type(BackstageForeverExplainCommand)=='function' then pcall(BackstageForeverExplainCommand,message)end
                 return

@@ -12,7 +12,7 @@ const pkg = require("../package.json");
 const INDEX = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Fixture</title><link rel="stylesheet" href="/css/products.css?v=1"><link rel="stylesheet" href="./landing.css"></head><body>
 <a class="skip" href="#main">Skip to content</a><header class="site-head"><nav><a href="./" aria-current="page">Backstage Forever</a></nav></header>
 <main id="main"><section id="setup"><h1>Old page</h1><a class="btn" data-download="windows" href="https://github.com/farena-ai/Backstage-Forever/releases/latest">Download for Windows</a></section></main><footer class="footer"><a href="/contact.html">Contact</a></footer><script src="/js/products.js?v=1" defer></script><script src="./desktop-downloads.js" defer></script></body></html>`;
-const PAGES = ["commands.html", "coverage.html", "download.html", "index.html", "tour.html", "whats-new.html"];
+const PAGES = ["commands.html", "coverage.html", "download.html", "index.html", "privacy.html", "tour.html", "whats-new.html"];
 const SHOTS = [site.HERO_SHOT, ...[...site.FEATURES, site.MORE].flatMap((f) => f.shots)];
 const DATE = "2026-11-24";
 
@@ -293,4 +293,35 @@ test("the Linux build is an x64 AppImage with its own file name", () => {
   assert.match(linux, /needs: \[release, mac\]/, "after the Mac job: both rewrite SHA256SUMS.txt");
   assert.match(linux, /grep -v -- '-Linux-' > sums\.tmp/);
   assert.doesNotMatch(linux, /backstage-update\.json/, "the Windows update file is not touched");
+});
+
+test("the privacy page says what is shared in the approved words and lists every field the app can send", (t) => {
+  const { files, problems } = built(t);
+  assert.deepEqual(problems, []);
+  const W = require("../src/renderer/privacy-wording.js");
+  const page = files["privacy.html"], seen = text(page);
+  assert.ok(site.ORDER.includes("privacy.html"), "in the page bar and the sitemap");
+  assert.match(files["sitemap-backstage-forever.xml"], /<loc>https:\/\/backstagecoding\.com\/backstage-forever\/privacy\.html<\/loc>/);
+  assert.ok(seen.includes(W.SUMMARY), "the short statement, word for word");
+  for (const k of ["share", "statistics", "errors"]) { assert.ok(seen.includes(W.SWITCHES[k].label), k); assert.ok(seen.includes(W.SWITCHES[k].text), `${k}: the sentence beside the switch`); }
+  for (const line of [...W.INSTALL_ID, ...W.NEVER, W.REPORTS, W.BUTTONS.see, W.BUTTONS.forget]) assert.ok(seen.includes(line), line);
+  // The four plain facts about the install number.
+  for (const fact of [/made at random/, /keeps only a scrambled form of it, so an install is counted once/, /IP addresses are not stored/, /Forget me deletes it/]) assert.match(seen, fact);
+  // Every field of every list is on the page, by its plain name and as it is sent.
+  let count = 0;
+  for (const rows of Object.values(W.FIELDS)) for (const [key, name] of rows) { count++; assert.ok(page.includes(`<dt>${name.replace(/&/g, "&amp;")} <code>${key}</code></dt>`), `${key} (${name})`); }
+  assert.ok(count >= 50, `${count} fields listed`);
+  // And those lists are the fields the app's own builders produce (the contract's D1, D2 and D7).
+  const D = require("../src/core/desk.cjs"), id = "3f2b8c1e-9d4a-4b7e-8f21-0a1b2c3d4e5f";
+  const flat = (o, pre = "") => Object.entries(o).flatMap(([k, v]) => (v && typeof v === "object" && !Array.isArray(v) ? flat(v, `${pre}${k}.`) : [`${pre}${k}`]));
+  for (const key of flat(D.heartbeatBody({ installId: id })).filter((k) => k !== "schema")) assert.ok(page.includes(`<code>${key}</code>`), `statistics field ${key}`);
+  for (const key of flat(D.ticketBody({ installId: id, kind: "bug", area: "map", summary: "abcde", details: "abcdefghij", expected: "", diagnostics: {} })).filter((k) => k !== "schema")) assert.ok(page.includes(`<code>${key}</code>`), `report field ${key}`);
+  for (const key of flat(D.errorBody({ installId: id })).filter((k) => k !== "schema")) assert.ok(page.includes(`<code>${key}</code>`), `error field ${key}`);
+  // Linked from the foot of every page and from the FAQ; the home page's trust card and FAQ use the same statement.
+  for (const [name, body] of html(files)) assert.match(body.slice(body.indexOf('class="bfx-legal"')), /<a href="\.\/privacy\.html">Privacy: what the app shares, field by field<\/a>/, `${name} links the privacy page at its foot`);
+  const home = files["index.html"], faq = home.slice(home.indexOf('class="bfx-faq"'));
+  assert.match(faq, /<a href="\.\/privacy\.html">Privacy: every field the app can send<\/a>/);
+  assert.equal(text(home).split(W.SUMMARY).length - 1, 3, "in the trust card, in the FAQ answer and in the FAQ data for search engines");
+  // No page still claims that nothing is shared.
+  for (const [name, body] of html(files)) assert.doesNotMatch(text(body), /no telemetry|nothing leaves your computer|nothing is uploaded|are never uploaded/i, name);
 });

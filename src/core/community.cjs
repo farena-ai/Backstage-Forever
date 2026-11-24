@@ -414,6 +414,7 @@ class CommunityService {
     // them: keep them marked as sent so only new finds are shared from now on.
     this.saveSettings(); this.saveSent();
     this.log("forget: contributions removed; new install id");
+    try { this.onForgot?.(); } catch { /* Desk drops its local tickets; never blocks the answer */ }
     return { removed, status: this.status() };
   }
   /** The exact log text that would be attached, redacted. The renderer shows it; send() uses this copy. */

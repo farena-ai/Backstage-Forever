@@ -7,6 +7,8 @@
 const BASE = "https://backstagecoding.com/backstage-forever/";
 const REPO = "https://github.com/farena-ai/Backstage-Forever";
 const RELEASES = `${REPO}/releases`;
+// The privacy sentences are shared with the app: one file, so the website and the app never disagree.
+const PRIVACY = require("../src/renderer/privacy-wording.js");
 
 // Title at most 60 characters, description at most 155 (a test checks both).
 const PAGES = {
@@ -50,6 +52,13 @@ const PAGES = {
     description: "How much Backstage Forever knows about WoW Forever, zone by zone for Alliance and Horde: quest givers, trainers, vendors, flight points and rares.",
     h1: "How much the app knows, zone by zone",
     lead: "Where the app's advice is rich and where it is still thin, for each faction. The same count the app shows under Help → Data coverage.",
+  },
+  "privacy.html": {
+    nav: "Privacy",
+    title: "Privacy: what the app shares | Backstage Forever",
+    description: "What Backstage Forever shares and what it never does: every field of the map discoveries, anonymous statistics and reports, and how to switch each off.",
+    h1: "Privacy: what Backstage Forever shares",
+    lead: "Every field the desktop app can send, in plain words, and the switch that turns each part off. The same sentences as Settings → Privacy & sharing in the app.",
   },
 };
 
@@ -200,7 +209,7 @@ const STEPS = [
 ];
 
 const TRUST = [
-  ["Your characters stay on your computer", "Characters, gold, notes and plans are kept in the app's own folder and are never uploaded. No account, no telemetry, no ads. The few things that can leave are listed under “Where is my data?” below."],
+  ["Your characters stay on your computer", `${PRIVACY.SUMMARY} You need no account and there are no ads. <a href="./privacy.html">Every field the app can send is on the privacy page</a>.`],
   ["It never plays for you", "The addon sends no input to the game and automates nothing: no auto-accepting, no movement, nothing in combat. An arrow appears only when you click or type a command."],
   ["Open source", `Free under the MIT licence. Read the code, the release notes and the privacy notes on <a href="${REPO}">GitHub</a>.`],
   ["Signed installer", "The Windows installer is signed by its publisher, Frank Arena. Every release also lists SHA-256 checksums for all downloads."],
@@ -235,7 +244,9 @@ const FAQ = [
   ["Does it work on Mac and Linux?", "Yes, from saved data. There are zips for macOS on Apple silicon and on Intel, and an AppImage for Linux. They read what the addon saved after you type /reload or log out. The live link, which follows you while you play, is on Windows only. The Linux build is new and less tested."],
   ["Which languages does it speak?", "English, German, French and Spanish, in the app and in the game. German, French and Spanish are first translations that still await a native review, and text added since can show in English."],
   ["How do updates work?", "On Windows the app updates itself and then brings the addon in your game folder up to date; type /reload once. On a Mac the app tells you when a new version is out, and on Mac and Linux you download it from the release page. The What's new page lists what changed."],
-  ["Where is my data, and does anything leave my computer?", "Your data is in the app's own folder: %APPDATA%\\Backstage Forever on Windows, ~/Library/Application Support/Backstage Forever on a Mac and ~/.config/Backstage Forever on Linux. Characters, gold, notes and plans are never uploaded. A few things can leave, and each can be switched off: anonymous, rounded gathering spots shared with other players, the update check, a question you send to a cloud AI you connected, and quest progress shared with party members who run the addon. The privacy notes on GitHub list every one."],
+  // A third entry is a link shown under the answer: [address, words].
+  ["Where is my data, and does anything leave my computer?", `Your data is in the app's own folder: %APPDATA%\\Backstage Forever on Windows, ~/Library/Application Support/Backstage Forever on a Mac and ~/.config/Backstage Forever on Linux. ${PRIVACY.SUMMARY} Besides that, an update check goes to GitHub, a question goes to a cloud AI only if you connected one, and quest progress goes to party members who run the addon. The privacy page lists every field.`,
+    ["./privacy.html", "Privacy: every field the app can send"]],
 ];
 
-module.exports = { BASE, REPO, RELEASES, PAGES, HERO_SHOT, FEATURES, MORE, ALSO, STEPS, TRUST, DOWNLOADS, INSTALL, FAQ };
+module.exports = { BASE, REPO, RELEASES, PAGES, HERO_SHOT, FEATURES, MORE, ALSO, STEPS, TRUST, DOWNLOADS, INSTALL, FAQ, PRIVACY };

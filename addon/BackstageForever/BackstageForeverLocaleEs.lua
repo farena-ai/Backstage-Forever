@@ -52,6 +52,7 @@ if type(BackstageForeverLocaleLoad)=='function' then BackstageForeverLocaleLoad(
 /bf raid - raid comms, off until you switch them on: /bf raid note Boss: text, /bf raid notes, /bf raid assign Player text, /bf raid check	/bf raid - comunicación de banda, desactivada hasta que la actives: /bf raid note Jefe: texto, /bf raid notes, /bf raid assign Jugador texto, /bf raid check
 /bf rares - rare enemy alerts: one line when you target or point at a rare; /bf rares off silences them	/bf rares - alertas de enemigos raros: una línea cuando seleccionas o señalas a un raro; /bf rares off las silencia
 /bf ready - before a pull: a class buff, food buff or reagent you are missing (on or off for the dungeon line)	/bf ready - antes de un pull: un beneficio de clase, un beneficio de comida o un componente que te falta (on u off para la línea de mazmorra)
+/bf reports - how many replies to your problem reports are waiting in the desktop app	/bf reports - cuántas respuestas a tus informes de problemas esperan en la app de escritorio
 /bf rested - rested XP, how long until it is full, and whether you are resting	/bf rested - la EXP de descanso, cuánto falta para que se llene y si estás descansando
 /bf route guide - the full guided route for your race, step by step; /bf route skip skips a step, /bf route zone shows this zone only	/bf route guide - la ruta guiada completa de tu raza, paso a paso; /bf route skip salta un paso, /bf route zone muestra solo esta zona
 /bf run - the dungeon run panel: bosses left, your quests here, wishes still possible, time in the run	/bf run - el panel de mazmorra: jefes restantes, tus misiones aquí, deseos aún posibles, tiempo del recorrido
@@ -77,6 +78,7 @@ if type(BackstageForeverLocaleLoad)=='function' then BackstageForeverLocaleLoad(
 %s: action slot(s) %s still use rank %d. Rank %d is learned; update the bar manually if wanted.	%s: la(s) casilla(s) de acción %s aún usan el rango %d. El rango %d ya está aprendido; actualiza la barra a mano si quieres.
 1 kit item low	1 objeto del kit escaso
 1 quest you can pick up on this map:	1 misión que puedes aceptar en este mapa:
+1 reply is waiting in the desktop app. Open Help there, then My reports.	Hay 1 respuesta esperando en la app de escritorio. Abre allí Ayuda y luego Mis informes.
 1 way - arrows, flights and finding people and places	1 way - flechas, vuelos y encontrar personas y lugares
 2 character - experience, talents, gear and your own notes	2 character - experiencia, talentos, equipo y tus propias notas
 3 gold - professions, gathering, prices, bags and mail	3 gold - profesiones, recolección, precios, bolsas y correo
@@ -423,6 +425,7 @@ No recorded beast is near your level. Try /bf pet with a family or an ability na
 No recorded beast matches that. Try a family (cat, wolf) or an ability name.	Ninguna bestia registrada coincide. Prueba con una familia (cat, wolf) o el nombre de una facultad.
 No recorded flight connects	Ningún vuelo registrado conecta
 No repair vendor is recorded here yet. Blacksmiths and armor vendors in towns can repair; open one and the addon remembers it.	Aún no hay ningún vendedor que repare registrado aquí. Los herreros y los vendedores de armaduras de los pueblos pueden reparar; abre uno y el addon lo recuerda.
+No replies to your reports are waiting. To report a problem, open Help in the desktop app.	No hay respuestas a tus informes esperando. Para informar de un problema, abre Ayuda en la app de escritorio.
 No sets yet. Wear the gear, then type /bf set save NAME.	Aún no hay conjuntos. Ponte el equipo y luego escribe /bf set save NOMBRE.
 No soft-reserve list from your party leader yet. Asked again; try /bf sr list in a few seconds.	Aún no hay lista de soft reserve del líder de tu grupo. Se volvió a pedir; prueba /bf sr list en unos segundos.
 No spot is known for this quest.	No se conoce ningún lugar para esta misión.
@@ -934,6 +937,7 @@ Zone guide: the quests around you, in the order that walks least.	Guía de zona:
 ^Price memory is (.-): (%-?%d+) item prices remembered from Auction House pages you opened%.$	Memoria de precios: %1. %2 precios de objetos recordados de las páginas de la casa de subastas que abriste.
 ^This session: (%-?%d+) fights, (%-?%d+) damage, (%-?%d+) damage per second on average %(solo fights%)%.$	Esta sesión: %1 combates, %2 de daño, %3 de daño por segundo en promedio (combates en solitario).
 ^Scout mode is off%. Records on this character: (%-?%d+)%. /bf scout on starts recording%.$	El modo explorador está desactivado. Registros en este personaje: %1. /bf scout on empieza a registrar.
+^(%-?%d+) replies are waiting in the desktop app%. Open Help there, then My reports%.$	Hay %1 respuestas esperando en la app de escritorio. Abre allí Ayuda y luego Mis informes.
 ^Waypoint set: (.-) at (%-?[%d%.]+), (%-?[%d%.]+)%. Follow the arrow on your minimap and screen%.$	Punto de ruta fijado: %1 en %2, %3. Sigue la flecha en tu minimapa y en la pantalla.
 ^Your last answers from the companion: (%-?%d+)%. They are as of your last /reload%.$	Tus últimas respuestas del compañero: %1. Son de tu último /reload.
 ^(.-) is your mentor and may ask for your next step%. /bf mentor end stops it%.$	%1 es tu mentor y puede pedir tu siguiente paso. /bf mentor end lo termina.

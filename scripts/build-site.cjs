@@ -13,6 +13,7 @@
 //   whats-new.html  data/whats-new-catalog.json (the list the app shows after an update)
 //   commands.html   src/renderer/commands.js (the list behind Help → Commands)
 //   coverage.html   the same count the app's Help → Data coverage shows, plus pack totals
+//   privacy.html    src/renderer/privacy-wording.js (the sentences behind Settings → Privacy & sharing) and every field the app can send
 //   site.css        site/site.css
 //   sitemap-backstage-forever.xml
 // No page needs JavaScript to be read, and nothing is loaded from another site.
@@ -24,10 +25,10 @@ const read = (p) => fs.readFileSync(path.join(root, p), "utf8").replace(/\r\n/g,
 const json = (p) => JSON.parse(read(p));
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const num = (n) => Number(n).toLocaleString("en-US");
-const { BASE, REPO, RELEASES, PAGES, HERO_SHOT, FEATURES, MORE, ALSO, STEPS, TRUST, DOWNLOADS, INSTALL, FAQ } = require("../site/content.cjs");
+const { BASE, REPO, RELEASES, PAGES, HERO_SHOT, FEATURES, MORE, ALSO, STEPS, TRUST, DOWNLOADS, INSTALL, FAQ, PRIVACY } = require("../site/content.cjs");
 const SHOWN_RELEASES = 8;
 const LATEST = `${RELEASES}/latest`;
-const ORDER = ["index.html", "tour.html", "download.html", "whats-new.html", "commands.html", "coverage.html"];
+const ORDER = ["index.html", "tour.html", "download.html", "whats-new.html", "commands.html", "coverage.html", "privacy.html"];
 const OG = { file: "og-image.jpg", width: 1200, height: 630, alt: "Backstage Forever: the Now page of the desktop app beside the crest" };
 const LIMITS = { title: 60, description: 155 };
 const urlOf = (file) => BASE + (file === "index.html" ? "" : file);
@@ -90,7 +91,7 @@ const cta = () => `<div class="bfx-cta"><a class="bfx-btn" data-download="window
   + `<p>Also for <a data-download="arm" href="${LATEST}">macOS on Apple silicon</a>, <a data-download="intel" href="${LATEST}">macOS on Intel</a> and <a href="./download.html#linux">Linux</a>. The app installs and updates the in-game addon for you.</p>`
   + `<p class="bfx-fine">Signed installer · Open source · No account · <a class="bf-release" href="${LATEST}">Latest release on GitHub</a></p></div>`;
 const ctaBand = (title, text) => `<section class="bfx-section bfx-band bfx-cta-band" id="get"><div class="bfx-wrap"><h2>${esc(title)}</h2><p class="bfx-intro">${esc(text)}</p>${cta()}</div></section>`;
-const legal = () => `<div class="bfx-legal"><div class="bfx-wrap"><p>Backstage Forever is an independent fan project. It is not affiliated with or endorsed by Blizzard Entertainment. World of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc.</p><p>The app bundles no game files: map art, icons and item data are read from your own installation, on your own computer. Quest and world reference data comes from Efficient Games (CC BY 4.0) and from players' own play. Free and open source under the MIT licence, on <a href="${REPO}">GitHub</a>.</p></div></div>`;
+const legal = () => `<div class="bfx-legal"><div class="bfx-wrap"><p>Backstage Forever is an independent fan project. It is not affiliated with or endorsed by Blizzard Entertainment. World of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc.</p><p>The app bundles no game files: map art, icons and item data are read from your own installation, on your own computer. Quest and world reference data comes from Efficient Games (CC BY 4.0) and from players' own play. Free and open source under the MIT licence, on <a href="${REPO}">GitHub</a>.</p><p><a href="./privacy.html">Privacy: what the app shares, field by field</a></p></div></div>`;
 const commandsLine = (list) => (list?.length ? `<p class="bfx-cmds"><span>In game:</span> ${list.map((x) => `<code>${esc(x)}</code>`).join(" ")}</p>` : "");
 const downloadsList = () => `<ul class="bfx-dl">${DOWNLOADS.map((d) => `<li id="${d.id}"${d.main ? ' class="bfx-main"' : ""}><h3>${esc(d.title)}</h3><p>${esc(d.text)}</p><a class="bfx-btn${d.main ? "" : " bfx-ghost"}" data-download="${d.key}" href="${LATEST}">${esc(d.button)}</a></li>`).join("")}</ul>`;
 
@@ -128,7 +129,7 @@ function home(c, ctx) {
     steps: `<ol class="bfx-steps">${STEPS.map(([t, text]) => `<li><h3>${esc(t)}</h3><p>${esc(text)}</p></li>`).join("")}</ol>`,
     trust: `<div class="bfx-tiles">${TRUST.map(([t, text]) => `<div class="bfx-tile"><h3>${esc(t)}</h3><p>${text}</p></div>`).join("")}</div>`,
     cards: `<div class="bfx-cards">${cards.map(([href, title, text]) => `<a class="bfx-card" href="./${href}"><strong>${esc(title)}</strong><span>${esc(text)}</span></a>`).join("")}</div>`,
-    faq: `<div class="bfx-faq">${FAQ.map(([q, a]) => `<div class="bfx-qa"><h3>${esc(q)}</h3><p>${esc(a)}</p></div>`).join("")}</div>`,
+    faq: `<div class="bfx-faq">${FAQ.map(([q, a, link]) => `<div class="bfx-qa"><h3>${esc(q)}</h3><p>${esc(a)}</p>${link ? `<p class="bfx-more"><a href="${link[0]}">${esc(link[1])}</a></p>` : ""}</div>`).join("")}</div>`,
     downloads: downloadsList(), legal: legal(),
   };
   return read("site/index.template.html").replace(/<!--[^]*?-->\n?/g, "").replace(/\{\{([\w:.-]+)\}\}/g, (all, key) => {
@@ -252,6 +253,29 @@ ${table("Horde")}
 <p class="bfx-foot">Counts come from community observations bundled with the app (${esc(data.source.attribution || "Efficient Games, CC BY 4.0")}${builds.length ? `; game builds ${esc(builds.join(", "))}` : ""}${data.source.observedThrough ? `; observed through ${esc(data.source.observedThrough)}` : ""}).</p></div></section>`);
 }
 
+// ---------- privacy ----------
+// The sentences and the field lists come from src/renderer/privacy-wording.js, the file the app's own
+// Settings → Privacy & sharing screen reads, so the page and the app cannot drift apart.
+function privacy(c) {
+  const { SUMMARY, SWITCHES, BUTTONS, INSTALL_ID, REPORTS, NEVER, FIELDS, SERVICE } = PRIVACY;
+  const fields = (rows) => `<dl class="bfx-fields">${rows.map(([key, name, what]) => `<div><dt>${esc(name)} <code>${esc(key)}</code></dt><dd>${esc(what || "As above.")}</dd></div>`).join("")}</dl>`;
+  const sections = [
+    ["short", "In short", `<p class="bfx-intro">${esc(SUMMARY)}</p><p>Everything goes to one place, the project's own service at ${esc(SERVICE)}. Nothing is sold, nothing is shown to advertisers, and no outside statistics service is used.</p>`],
+    ["install-number", "The install number", `<ul class="bfx-plain">${INSTALL_ID.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`],
+    ["switches", "Three switches, each on its own", `<p>They are in the app under Settings → Privacy & sharing. Under them are two buttons: “${esc(BUTTONS.see)}”, which shows the whole of the next statistics message, and “${esc(BUTTONS.forget)}”.</p>`
+      + [["share", "On unless you switch it off."], ["statistics", "On unless you switch it off."], ["errors", "Off until you switch it on."]].map(([k, state]) => `<div class="bfx-qa"><h3>${esc(SWITCHES[k].label)}</h3><p>${esc(SWITCHES[k].text)}</p><p class="bfx-when">${state}</p></div>`).join("")],
+    ["statistics", "Anonymous usage statistics: every field", `<p>One small message, at most once a day while the app is used. No counts of clicks, no times, no names.</p>${fields(FIELDS.statistics)}`],
+    ["reports", "A report you send: every field", `<p>${esc(REPORTS)}</p>${fields(FIELDS.report)}<h3>Replies and reading the answer</h3><p>The team can answer inside the app. Your app asks for replies when it starts and every three hours while a report is open.</p>${fields(FIELDS.replies)}<p>You can delete a report in the app under Help → My reports; that removes it and its replies from the service.</p>`],
+    ["errors", "Automatic error reports: every field", `<p>Sent only while the third switch is on, at most a handful a day, and never the same error twice in one session.</p>${fields(FIELDS.errors)}`],
+    ["map", "Map discoveries: every field", `<p>A spot appears for other players only once at least three installs reported it.</p>${fields(FIELDS.discoveries)}`],
+    ["messages", "Messages from the team", `<p>The app asks the service, at most once an hour, whether there is a message for its version, for example about a broken release. This request carries no install number. It stops when you untick “Use community data and messages from the team” under Settings → Game connection.</p>${fields(FIELDS.messages)}`],
+    ["never", "Never sent", `<ul class="bfx-plain">${NEVER.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`],
+    ["elsewhere", "What else can leave your computer", `<ul class="bfx-plain"><li>An update check, to this project's releases on GitHub. Settings → Updates turns it off.</li><li>A question to the companion, and your character's details if you allow it, to the AI provider you connected. Only when you ask; quick answers and the free AI on your own computer send nothing.</li><li>Quest progress (quest numbers and counts) to party members who also run the addon, through the game's own addon messages. Typing /bf party off in game stops it.</li></ul><p>The longer notes for each feature are in the <a href="${REPO}/blob/main/docs/PRIVACY.md">privacy notes on GitHub</a>.</p>`],
+  ];
+  const jump = `<nav class="bfx-jump" aria-label="On this page">${sections.map(([id, title]) => `<a href="#${id}">${esc(title.replace(/: every field$/, ""))}</a>`).join("")}</nav>`;
+  return page(c, "privacy.html", `<section class="bfx-section"><div class="bfx-wrap bfx-privacy">${jump}${sections.map(([id, title, body]) => `<section class="bfx-priv" id="${id}"><h2>${esc(title)}</h2>${body}</section>`).join("\n")}</div></section>`);
+}
+
 // ---------- sitemap ----------
 // The date is only ever the one given with --date: never the clock, a file time or git, so a build is the same on every machine.
 const sitemap = (date) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${ORDER.map((f) => `  <url><loc>${urlOf(f)}</loc>${date ? `<lastmod>${date}</lastmod>` : ""}</url>`).join("\n")}\n</urlset>\n`;
@@ -323,7 +347,7 @@ function build(site, { date = null } = {}) {
   if (!fs.existsSync(indexPath)) throw new Error(`${indexPath} not found. Copy the live backstage-forever folder there first.`);
   if (date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("--date wants YYYY-MM-DD");
   const c = chrome(fs.readFileSync(indexPath, "utf8")), ctx = { site, missing: [] };
-  const files = { "index.html": home(c, ctx), "tour.html": tour(c, ctx), "download.html": download(c), "whats-new.html": whatsNew(c), "commands.html": commands(c), "coverage.html": coverage(c),
+  const files = { "index.html": home(c, ctx), "tour.html": tour(c, ctx), "download.html": download(c), "whats-new.html": whatsNew(c), "commands.html": commands(c), "coverage.html": coverage(c), "privacy.html": privacy(c),
     "site.css": read("site/site.css"), "sitemap-backstage-forever.xml": sitemap(date) };
   if (!fs.existsSync(path.join(site, OG.file))) ctx.missing.push(OG.file);
   const shots = `node scripts/site-screenshots.cjs work/site-shots --webp ${path.join(site, "tour")} --og ${path.join(site, OG.file)}`;

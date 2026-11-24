@@ -25,6 +25,10 @@
 // shape of the addon's own guide steps, with the player's note as a ninth value. It is written
 // only for a character whose route differs from the one the addon already carries (another
 // variant, or edits), at most 12 steps. It gets room after plans and loops and before answers.
+//
+// Backstage Desk adds one number beside schema: reports=N, how many replies to the player's own
+// reports wait unread in the desktop app. /bf reports says so. It is left out when it is zero, so
+// the file is byte for byte what it was before for everyone without a waiting reply.
 const FILE = "BackstageForeverDesktop.lua";
 const MAX_CHARACTERS = 100, MAX_ITEMS = 200, MAX_BYTES = 256 * 1024, MAX_PICKS = 51, MAX_LOOP_STOPS = 40;
 const MAX_ROUTE_STEPS = 12, ROUTE_TEXT = 200, ROUTE_NOTE = 120;
@@ -140,7 +144,8 @@ function routeSteps(route) {
 // upgrades by item id, talent picks in the order the player planned them. Talent plans are the
 // newest passenger: when the file would grow past its limit they are left out, character by
 // character, before anything else is touched.
-function compile({ profiles = [], wishlist = () => [], upgrades = () => [], talents = () => null, loops = () => null, answers = () => [], routes = () => null, ships = () => null } = {}) {
+function compile({ profiles = [], wishlist = () => [], upgrades = () => [], talents = () => null, loops = () => null, answers = () => [], routes = () => null, ships = () => null, reports = 0 } = {}) {
+  const waiting = Number.isSafeInteger(reports) && reports > 0 ? Math.min(reports, 999) : 0;
   const rows = [];
   const seen = new Set();
   for (const p of Array.isArray(profiles) ? profiles : []) {
@@ -162,7 +167,7 @@ function compile({ profiles = [], wishlist = () => [], upgrades = () => [], tale
   const line = ([key, ids, up, tal, loop, ans, rt]) => `[${luaString(key)}]={wish={${ids.join(",")}}${up.length ? `,up={${up.join(",")}}` : ""}${tal ? `,${tal}` : ""}${loop ? `,${loop}` : ""}${rt ? `,${rt}` : ""}${ans ? `,${ans}` : ""}},`;
   // The stops are small and come first: every character's /bf fly needs them.
   const sea = shipField(Array.isArray(profiles) ? profiles : [], ships);
-  const wrap = (body) => [...HEADER, "BackstageForeverDesktopData={schema=1,characters={", ...body, sea ? `},${sea}}` : "}}", ""].join("\n");
+  const wrap = (body) => [...HEADER, `BackstageForeverDesktopData={schema=1,${waiting ? `reports=${waiting},` : ""}characters={`, ...body, sea ? `},${sea}}` : "}}", ""].join("\n");
   let room = MAX_BYTES - Buffer.byteLength(wrap(kept.map(([key, ids, up]) => line([key, ids, up, "", "", "", ""]))));
   const body = [];
   // Plans and loops of every character get room first, then route steps, then answers.

@@ -63,7 +63,7 @@ After that, every release tag uploads the new version to each site that has its 
 >
 > **The desktop app** (free, Windows and Mac) adds a live Now page, the World Map, professions advice, dungeon plans, character portraits and a companion that answers from WoW Forever's own data. It installs and updates this addon for you: https://www.backstagecoding.com and https://github.com/farena-ai/Backstage-Forever/releases
 >
-> Everything stays on your PC. The addon reads only your own character, never automates play and never sends anything anywhere.
+> The addon reads only your own character, never automates play and sends nothing over the internet. Your characters stay on your computer; the desktop app shares only what its privacy page lists, each part with its own off switch.
 >
 > From Backstage Coding, designed by Frank Arena and Jason Babiuch.
 
