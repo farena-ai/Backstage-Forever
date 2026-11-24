@@ -174,7 +174,7 @@ test("lock-out: five failures lock the account, also for the right password, unt
   const locked = await signIn(s, "alice", PW, made.secret);
   assert.equal(locked.status, 429);
   assert.equal(locked.setCookie, null);
-  assert.match(await locked.res.text(), /locked for 15 minutes/);
+  assert.match(await locked.res.text(), /Sign-in is locked for a while/);
   // Another account is not affected; an unknown name locks the same way (so a lock reveals nothing).
   assert.equal((await signIn(s, "bob", PW, bob.secret)).status, 303);
   for (let i = 0; i < 5; i++) await signIn(s, "ghost", PW, made.secret);

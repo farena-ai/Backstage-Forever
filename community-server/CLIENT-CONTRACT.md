@@ -276,7 +276,7 @@ than 13 months are deleted.
 
 **Announcements (`/v1/announcements`)** - nothing is stored about the caller.
 
-**Admin area** - admin name, scrypt password hash, encrypted authenticator secret, session
+**Admin area** - admin name, scrypt password hash, encrypted authenticator secret (for accounts that have one), session
 hashes, sign-in failure counters (keyed by a hash of the typed name), and an audit log of admin
 actions (who, what, when, which ticket). The audit log never contains what a player wrote.
 

@@ -55,7 +55,23 @@ const FLASH = Object.freeze({
   retention: "The retention job ran.",
   ticket: "Ticket made from the error group.",
   nothing: "Nothing was selected.",
+  password: "Your password was changed. Every other session of yours was signed out.",
+  authadded: "The authenticator is on. From now on signing in needs a code. Your other sessions were signed out.",
+  authremoved: "The authenticator was removed. This account now signs in with a password only.",
+  authcancelled: "Setting up the authenticator was cancelled. Nothing changed.",
 });
+// Fixed texts for things that went wrong on the My account page (never built from input).
+const ACCOUNT_ERRORS = Object.freeze({
+  current: "The current password is not right. Nothing was changed.",
+  locked: "Too many wrong passwords. This account is locked for a while and you have been signed out.",
+  match: "The two new passwords are not the same. Nothing was changed.",
+  short: "The new password must be at least 14 characters. Nothing was changed.",
+  weak: "That new password cannot be used: it is too long, one repeated character, or the same as the current one. Nothing was changed.",
+  code: "That code is not right. Check the time on your phone and try the next code.",
+  expired: "Setting up took too long. Start again.",
+  has: "This account already has an authenticator.",
+});
+const PASSWORD_ONLY = "This account signs in with a password only.";
 const OS_LABEL = { windows: "Windows", macos: "macOS", linux: "Linux" };
 const LANG_LABEL = { en: "English", de: "German", fr: "French", es: "Spanish" };
 
@@ -156,7 +172,7 @@ ${error ? `<p class="error" role="alert">${esc(error)}</p>` : ""}
 <input type="hidden" name="lt" value="${val(loginToken())}">
 ${field("Name", '<input name="name" type="text" required maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" autofocus>')}
 ${field("Password", '<input name="password" type="password" required maxlength="256" autocomplete="current-password">')}
-${field("Authenticator code", '<input name="code" type="text" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code">', "The six digits from your authenticator app.")}
+${field("Authenticator code", '<input name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code">', "The six digits from your authenticator app. Leave it empty if your account has none.")}
 <button class="btn primary" type="submit">Sign in</button>
 </form></section>`,
     }));
@@ -170,7 +186,7 @@ ${field("Authenticator code", '<input name="code" type="text" required inputmode
     const r = await auth.login({ name: form.get("name"), password: form.get("password"), code: one(form, "code") });
     if (!r.ok) {
       return r.reason === "locked"
-        ? loginPage(res, 429, "Too many failed attempts. Sign-in is locked for 15 minutes.")
+        ? loginPage(res, 429, "Too many failed attempts. Sign-in is locked for a while, and for longer each time it happens. Try again later.")
         : loginPage(res, 401, "Sign-in failed. Check the name, the password and the code.");
     }
     const old = readCookie(req);
@@ -189,7 +205,8 @@ ${field("Authenticator code", '<input name="code" type="text" required inputmode
       dashCache.clear();
       dashCache.set(key, data);
     }
-    ctx.html({ title: "Dashboard", active: "dashboard", wide: true, body: renderDashboard(data) });
+    const notice = ctx.session.admin.authenticator ? "" : `<p class="plain-note">${esc(PASSWORD_ONLY)} Anyone who learns the password can sign in. You can add an authenticator under <a href="/admin/account">My account</a>.</p>`;
+    ctx.html({ title: "Dashboard", active: "dashboard", wide: true, body: renderDashboard(data, notice) });
   }
 
   // -------------------------------------------------------------- tickets
@@ -586,14 +603,93 @@ ${field("Title", `<input name="title" value="${val(r.title || "")}" maxlength="6
   }
 
   // --------------------------------------------------------------- admins
+  // ----------------------------------------------------------- my account
+  function accountPage(ctx) {
+    const me = ctx.session.admin, s = ctx.session, has = auth.hasAuthenticator(me.id);
+    const pending = has ? null : auth.pendingAuthenticator(me);
+    const err = ACCOUNT_ERRORS[ctx.url.searchParams.get("err")] || "";
+    let authBox;
+    if (has) {
+      authBox = `<p>${chip("on", "st-fixed")} Signing in needs your password and a six-digit code from your authenticator app.</p>
+<p class="dim">Lost the phone? The owner can set a new one on the server with <code>admin.js admin-set-authenticator ${esc(me.name)}</code>.</p>
+<form method="post" action="/admin/account/authenticator/remove" class="stack" autocomplete="off">${csrfInput(s)}
+${field("Current password", '<input name="current" type="password" required maxlength="256" autocomplete="current-password">')}
+<button class="btn danger" type="submit" data-confirm="Remove the authenticator? Signing in will then need the password only.">Remove the authenticator</button></form>`;
+    } else if (pending) {
+      authBox = `<ol class="steps"><li>Open your authenticator app and add a new account.</li><li>Type in this secret (or use the link text below as a QR code made on your own computer):</li></ol>
+<p class="secret">${esc(pending.secret.replace(/(.{4})/g, "$1 ").trim())}</p>
+<p class="uri">${esc(pending.uri)}</p>
+<form method="post" action="/admin/account/authenticator/confirm" class="stack" autocomplete="off">${csrfInput(s)}
+${field("The six-digit code the app shows now", '<input name="code" type="text" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code">', "Nothing changes until a correct code is entered. This setup is kept for 30 minutes.")}
+<button class="btn primary" type="submit">Switch the authenticator on</button></form>
+<form method="post" action="/admin/account/authenticator/cancel" class="stack">${csrfInput(s)}<button class="btn quiet" type="submit">Cancel</button></form>`;
+    } else {
+      authBox = `<p class="plain-note">${esc(PASSWORD_ONLY)} Anyone who learns the password can sign in. An authenticator app adds a six-digit code that changes every 30 seconds.</p>
+<form method="post" action="/admin/account/authenticator/start">${csrfInput(s)}<button class="btn primary" type="submit">Add an authenticator</button></form>`;
+    }
+    ctx.html({
+      title: "My account", active: "account",
+      body: `<div class="head"><h1>My account</h1><div class="head-chips">${chip(me.name, "tag")}${has ? chip("password + authenticator", "st-fixed") : chip("password only", "st-looking")}</div></div>
+${err ? `<p class="error" role="alert">${esc(err)}</p>` : ""}
+<div class="two">
+<section class="card"><h2>Change my password</h2>
+<form method="post" action="/admin/account/password" class="stack" autocomplete="off">${csrfInput(s)}
+${field("Current password", '<input name="current" type="password" required maxlength="256" autocomplete="current-password">')}
+${field("New password", '<input name="next" type="password" required minlength="14" maxlength="256" autocomplete="new-password">', "At least 14 characters. A few unrelated words work well.")}
+${field("New password again", '<input name="again" type="password" required minlength="14" maxlength="256" autocomplete="new-password">')}
+<button class="btn primary" type="submit">Change password</button></form>
+<p class="note">Changing it signs out every other session of yours. This one stays.</p></section>
+<aside><section class="card"><h2>Authenticator</h2>${authBox}</section></aside>
+</div>`,
+    });
+  }
+
+  const accountBack = (ctx, r) => {
+    if (r === "locked") return redirect(ctx.res, "/admin/login", { "Set-Cookie": cookie("", 0) });
+    ctx.redirect(`/admin/account?err=${r === "wrong" ? "current" : r}`);
+  };
+
+  async function accountPassword(ctx) {
+    const f = ctx.form, next = f.get("next") ?? "";
+    if (next !== (f.get("again") ?? "")) return ctx.redirect("/admin/account?err=match");
+    if ([...next].length < 14) return ctx.redirect("/admin/account?err=short");
+    const r = await auth.changePassword(ctx.session.admin, f.get("current") ?? "", next, ctx.session.idHash);
+    if (r === "ok") return ctx.redirect("/admin/account?done=password");
+    accountBack(ctx, r.startsWith("weak") ? "weak" : r);
+  }
+
+  function accountAuthStart(ctx) {
+    if (auth.hasAuthenticator(ctx.session.admin.id)) return ctx.redirect("/admin/account?err=has");
+    auth.beginAuthenticator(ctx.session.admin);
+    ctx.redirect("/admin/account");
+  }
+
+  function accountAuthConfirm(ctx) {
+    if (auth.hasAuthenticator(ctx.session.admin.id)) return ctx.redirect("/admin/account?err=has");
+    const r = auth.confirmAuthenticator(ctx.session.admin, one(ctx.form, "code"), ctx.session.idHash);
+    ctx.redirect(r === "ok" ? "/admin/account?done=authadded" : `/admin/account?err=${r === "wrong" ? "code" : "expired"}`);
+  }
+
+  function accountAuthCancel(ctx) {
+    auth.clearPending(ctx.session.admin.id);
+    ctx.redirect("/admin/account?done=authcancelled");
+  }
+
+  async function accountAuthRemove(ctx) {
+    const r = await auth.dropAuthenticator(ctx.session.admin, ctx.form.get("current") ?? "", ctx.session.idHash);
+    if (r === "ok") return ctx.redirect("/admin/account?done=authremoved");
+    accountBack(ctx, r);
+  }
+
   function adminList(ctx) {
     const list = auth.listAdmins();
     ctx.html({
       title: "Admins", active: "admins",
       body: `<div class="head"><h1>Admins</h1></div>
-<p class="lede">Accounts are made, re-enabled and given new authenticator secrets only with the command-line tool on the server (<code>admin.js admin-add</code>). There is no sign-up.</p>
-<div class="card flush"><div class="scroll"><table class="grid-table"><thead><tr><th scope="col">Name</th><th scope="col">State</th><th scope="col">Created</th><th scope="col">Last sign-in</th><th scope="col" class="n">Sessions</th><th scope="col"><span class="vh">Action</span></th></tr></thead><tbody>
-${list.map(a => `<tr><th scope="row">${esc(a.name)}${a.id === ctx.session.admin.id ? ' <span class="dim">(you)</span>' : ""}</th><td>${a.disabled ? chip("disabled", "st-closed") : chip("active", "st-fixed")}</td><td class="nowrap">${when(a.created_at)}</td><td class="nowrap">${a.last_login_at ? when(a.last_login_at) : '<span class="dim">never</span>'}</td><td class="n">${num(a.sessions)}</td>
+<p class="lede">Accounts are made and re-enabled only with the command-line tool on the server (<code>admin.js admin-add</code>). There is no sign-up. Each admin changes their own password and authenticator under <a href="/admin/account">My account</a>.</p>
+${list.some(a => !a.authenticator && !a.disabled) ? `<p class="plain-note">${list.filter(a => !a.authenticator && !a.disabled).map(a => `<b>${esc(a.name)}</b>`).join(", ")}: ${list.filter(a => !a.authenticator && !a.disabled).length === 1 ? "this account signs" : "these accounts sign"} in with a password only. An authenticator can be added under My account.</p>` : ""}
+<div class="card flush"><div class="scroll"><table class="grid-table"><thead><tr><th scope="col">Name</th><th scope="col">State</th><th scope="col">Signs in with</th><th scope="col">Created</th><th scope="col">Last sign-in</th><th scope="col" class="n">Sessions</th><th scope="col"><span class="vh">Action</span></th></tr></thead><tbody>
+${list.map(a => `<tr><th scope="row">${esc(a.name)}${a.id === ctx.session.admin.id ? ' <span class="dim">(you)</span>' : ""}</th><td>${a.disabled ? chip("disabled", "st-closed") : chip("active", "st-fixed")}</td><td>${a.authenticator ? "password + authenticator" : chip("password only", "st-looking")}</td><td class="nowrap">${when(a.created_at)}</td><td class="nowrap">${a.last_login_at ? when(a.last_login_at) : '<span class="dim">never</span>'}</td><td class="n">${num(a.sessions)}</td>
 <td>${a.disabled || a.id === ctx.session.admin.id ? "" : `<form method="post" action="/admin/admins/${a.id}/disable" class="inline-form">${csrfInput(ctx.session)}<button class="btn danger quiet" type="submit" data-confirm="Disable ${esc(a.name)} and sign them out?">Disable</button></form>`}</td></tr>`).join("")}
 </tbody></table></div></div>`,
     });
@@ -703,6 +799,12 @@ ${field("Install id or install hash", '<input name="install" required maxlength=
     ["GET", /^\/admin\/admins\/?$/, "/admin/admins", adminList],
     ["POST", /^\/admin\/admins\/(\d{1,9})\/disable$/, "/admin/admins/:id/disable", adminDisable],
     ["GET", /^\/admin\/audit\/?$/, "/admin/audit", auditList],
+    ["GET", /^\/admin\/account\/?$/, "/admin/account", accountPage],
+    ["POST", /^\/admin\/account\/password$/, "/admin/account/password", accountPassword],
+    ["POST", /^\/admin\/account\/authenticator\/start$/, "/admin/account/authenticator/start", accountAuthStart],
+    ["POST", /^\/admin\/account\/authenticator\/confirm$/, "/admin/account/authenticator/confirm", accountAuthConfirm],
+    ["POST", /^\/admin\/account\/authenticator\/cancel$/, "/admin/account/authenticator/cancel", accountAuthCancel],
+    ["POST", /^\/admin\/account\/authenticator\/remove$/, "/admin/account/authenticator/remove", accountAuthRemove],
     ["GET", /^\/admin\/data\/?$/, "/admin/data", dataPage],
     ["POST", /^\/admin\/data\/export$/, "/admin/data/export", dataExport],
     ["POST", /^\/admin\/data\/purge$/, "/admin/data/purge", dataPurge],
