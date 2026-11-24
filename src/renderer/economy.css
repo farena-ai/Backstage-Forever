@@ -31,6 +31,10 @@
 .eco-day ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 3px; }
 .eco-chip { display: block; padding: 2px 6px; border-radius: 4px; border: 1px solid #607245; background: #e1e6c9; color: #24400f; font-size: 12px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: none; }
 .eco-chip.eco-mail { border-color: #8f5b4a; background: #f0d6c6; color: #6b1d10; text-shadow: none; }
+.eco-chip.eco-lockout { border-color: #5f6f8a; background: #d9e0ea; color: #1f3350; text-shadow: none; }
+.eco-chip.eco-event { border-color: #8d6c36; background: #f6e3a8; color: #4a2c05; text-shadow: none; }
+.eco-table-lockouts th:first-child { width: 24%; }
+.eco-table-lockouts th:nth-child(2) { width: 34%; }
 .eco-chip.eco-past { opacity: .72; }
 .eco-day .eco-chip :is(strong, span) { display: block; overflow: hidden; text-overflow: ellipsis; }
 .eco-day .eco-chip strong { white-space: normal; overflow-wrap: anywhere; }

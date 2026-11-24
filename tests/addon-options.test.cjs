@@ -53,7 +53,7 @@ for _,page in ipairs(BackstageForeverOptionsPages) do
     end
   end
 end
-assert(count==64,'64 switches, got '..count)
+assert(count==66,'66 switches, got '..count)
 for _,key in ipairs({'questTracker','objectiveHints','questDetours','beforeLeaving','rewardReasons','questBlockers','gatheringMarks','sharedObjectives','keepQuestItems','questItemCue','spellRankReminder'}) do
   local found=false
   for _,m in ipairs(ran) do if m=='helpers '..key..' off' then found=true end end
@@ -138,7 +138,7 @@ for _,preset in ipairs(BackstageForeverOptionsPresets) do
     else assert(state[label]~=nil,preset.title..' does not say what '..label..' should be') end
   end
   -- Not checked in the real game yet, or shared beyond the party: a player turns these on one by one.
-  for _,label in ipairs({'Bag marks','Dungeon run panel','Run panel stays in combat','Quest list by distance','Raid comms','Guild sharing','Scout mode','Screenshots at big moments','Enemy alert sound','One-window bags','Chat timestamps','Class colours in chat','Copy and links in chat','Gold seller filter','Profiles to the desktop app'}) do
+  for _,label in ipairs({'Bag marks','Dungeon run panel','Run panel stays in combat','Quest list by distance','Raid comms','Guild sharing','Scout mode','Guild events','Guild-run loot notes','Screenshots at big moments','Enemy alert sound','One-window bags','Chat timestamps','Class colours in chat','Copy and links in chat','Gold seller filter','Profiles to the desktop app'}) do
     assert(state[label]==false,preset.title..' keeps '..label..' off')
   end
   -- Safety and courtesy stay on everywhere.
@@ -164,7 +164,7 @@ local titles,where={},{}
 for i,page in ipairs(BackstageForeverOptionsPages) do titles[i]=page.title for _,row in ipairs(page.rows) do where[row.label]=page.title end end
 assert(table.concat(titles,',')=='Quests,Alerts,Comfort,Panels,Sharing',table.concat(titles,','))
 -- Everything that passes something to other players or to the desktop app sits on one page.
-for _,label in ipairs({'Party sync','Answer readiness checks','Group finder board','Guild sharing','Raid comms','Live link to the desktop app','Scout mode','Profiles to the desktop app'}) do assert(where[label]=='Sharing',label) end
+for _,label in ipairs({'Party sync','Answer readiness checks','Group finder board','Guild sharing','Raid comms','Live link to the desktop app','Scout mode','Profiles to the desktop app','Guild events','Guild-run loot notes'}) do assert(where[label]=='Sharing',label) end
 -- Windows the addon draws are Panels; banners and chat lines that speak up by themselves are Alerts.
 for _,label in ipairs({'Quest list by distance','Dungeon run panel','Run panel stays in combat','Bag marks','One-window bags','Chat timestamps','Class colours in chat','Copy and links in chat','Gold seller filter'}) do assert(where[label]=='Panels',label) end
 for _,label in ipairs({'Wish list banner','Pop-up tips','Rare enemy alerts','Mail expiry warning'}) do assert(where[label]=='Alerts',label) end

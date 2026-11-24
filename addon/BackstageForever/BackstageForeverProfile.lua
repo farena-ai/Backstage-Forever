@@ -103,6 +103,7 @@ local SETTINGS={
     -- Switches that live in a data table.
     Ledger={global='BackstageForeverLedgerDB',fill=true,keys={pricesOn=B,priceTips=B}},
     Scout={global='BackstageForeverScoutDB',keys={on=B}},
+    Events={global='BackstageForeverEventsDB',keys={on=B,loot=B}},
     Gathering={global='BackstageForeverGatheringDB',fill=true,keys={recording=B}},
 }
 BackstageForeverProfileSettings=SETTINGS

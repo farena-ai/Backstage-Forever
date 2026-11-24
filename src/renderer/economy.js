@@ -1,6 +1,7 @@
 "use strict";
 // Plans → Calendar (E11) and Adventure → Run history (G11). Both are read-only views of what
-// the addon saved: the calendar shows every character's profession cooldowns and mail expiry;
+// the addon saved: the calendar shows every character's profession cooldowns and mail expiry,
+// and with them lockout resets and guild events (guild-events.cjs);
 // run history lists dungeon and raid runs with a personal best per dungeon. The only actions
 // are the notification switch (off by default) and saving a calendar file.
 window.EconomyView = (() => {
@@ -43,7 +44,7 @@ window.EconomyView = (() => {
     for (let i = 0; i < offset; i++) cells.push(`<td class="eco-day eco-out" aria-hidden="true"></td>`);
     for (let d = 1; d <= days; d++) {
       const date = new Date(month.y, month.m, d), key = dayKey(date), list = byDay.get(key) || [];
-      const chips = list.slice(0, 3).map((e) => `<li class="eco-chip eco-${e.kind}${e.past ? " eco-past" : ""}" title="${esc(`${e.title} · ${e.character} · ${when(e.at)}`)}"><strong>${esc(e.kind === "mail" ? "Mail expires" : e.title.replace(/ ready$/, ""))}</strong><span>${esc(e.character)} · ${esc(timeOf(e.at))}</span></li>`).join("");
+      const chips = list.slice(0, 3).map((e) => `<li class="eco-chip eco-${e.kind}${e.past ? " eco-past" : ""}" title="${esc(`${e.title} · ${e.character} · ${when(e.at)}`)}"><strong${e.kind === "event" || e.kind === "lockout" ? " data-no-translate" : ""}>${esc(e.kind === "mail" ? "Mail expires" : e.title.replace(/ (ready|resets)$/, ""))}</strong><span>${esc(e.character)} · ${esc(timeOf(e.at))}</span></li>`).join("");
       cells.push(`<td class="eco-day${key === dayKey(today) ? " eco-today" : ""}${list.length ? " eco-has" : ""}" data-eco-day="${key}"><span class="eco-day-num"${key === dayKey(today) ? ' aria-label="Today"' : ""}>${d}</span>${list.length ? `<ul>${chips}${list.length > 3 ? `<li class="eco-more">+${list.length - 3} more</li>` : ""}</ul>` : ""}</td>`);
     }
     while (cells.length % 7) cells.push(`<td class="eco-day eco-out" aria-hidden="true"></td>`);
@@ -52,10 +53,23 @@ window.EconomyView = (() => {
     const title = stamp(first, "month");
     return `<div class="ldg-toolbar"><h2 data-eco-month>${esc(title)}</h2><div class="eco-month-nav"><button type="button" data-eco-step="-1" aria-label="Earlier month">‹ Earlier</button><button type="button" data-eco-step="0">This month</button><button type="button" data-eco-step="1" aria-label="Later month">Later ›</button></div></div>
       <div class="eco-month-frame"><table class="eco-month"><caption class="sr-only">${esc(title)}</caption><thead><tr>${WEEKDAYS.map((w) => `<th scope="col">${w}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>
-      <p class="eco-legend"><span class="eco-chip eco-cooldown">Cooldown ready</span><span class="eco-chip eco-mail">Mail expires</span></p>`;
+      <p class="eco-legend"><span class="eco-chip eco-cooldown">Cooldown ready</span><span class="eco-chip eco-mail">Mail expires</span><span class="eco-chip eco-lockout">Lockout resets</span><span class="eco-chip eco-event">Guild event</span></p>`;
   }
   function eventRows(list, t) {
-    return list.map((e) => `<tr data-eco-event="${esc(e.kind)}"><th scope="row">${esc(e.kind === "mail" ? "Mail expires" : e.title)}<small class="ldg-cell-note">${esc(e.detail)}</small></th><td>${esc(e.character)}${e.faction ? `<small class="ldg-cell-note">${esc(e.faction)}</small>` : ""}</td><td>${esc(when(e.at))}</td><td${num}>${e.at <= t ? (e.kind === "mail" ? `<strong class="eco-late">Expired</strong>` : `<strong class="ldg-ready">Ready</strong>`) : `in ${esc(wait(e.at - t))}`}</td></tr>`).join("");
+    return list.map((e) => `<tr data-eco-event="${esc(e.kind)}"><th scope="row">${e.kind === "event" || e.kind === "lockout" ? `<span data-no-translate>${esc(e.title)}</span>` : esc(e.kind === "mail" ? "Mail expires" : e.title)}<small class="ldg-cell-note"${e.kind === "event" || e.kind === "lockout" ? " data-no-translate" : ""}>${esc(e.detail)}</small></th><td>${esc(e.character)}${e.faction ? `<small class="ldg-cell-note">${esc(e.faction)}</small>` : ""}</td><td>${esc(when(e.at))}</td><td${num}>${e.at <= t ? (e.kind === "mail" ? `<strong class="eco-late">Expired</strong>` : `<strong class="ldg-ready">Ready</strong>`) : `in ${esc(wait(e.at - t))}`}</td></tr>`).join("");
+  }
+  // Every character's saved instances, soonest reset first. A character whose game client has no
+  // list of saved instances says so instead of looking free.
+  function lockoutCard(list, t) {
+    if (!list.length) return `<section class="ldg-card" data-eco-lockouts><h2>Lockouts</h2><p class="ldg-empty">No lockouts saved yet. Log in on a character with the current addon, then type <code>/reload</code> once.</p></section>`;
+    const rows = list.map((c) => {
+      const who = `<th scope="row" rowspan="${Math.max(1, c.rows.length)}"><span data-no-translate>${esc(c.character)}</span><small class="ldg-cell-note"><span>saved</span> ${esc(dateOf(c.savedAt))}</small></th>`;
+      if (!c.available) return `<tr data-eco-lockout="unknown">${who}<td colspan="3"><em class="ldg-unknown">The game client did not tell the addon which instances this character is saved to.</em></td></tr>`;
+      if (!c.rows.length) return `<tr data-eco-lockout="free">${who}<td colspan="3"><span class="eco-muted">Not saved to any dungeon or raid.</span></td></tr>`;
+      return c.rows.map((r, i) => `<tr data-eco-lockout="saved">${i ? "" : who}<td><strong data-no-translate>${esc(r.name)}</strong><small class="ldg-cell-note">${r.raid ? "Raid" : "Dungeon"}${r.total ? ` · <span>${r.progress} of ${r.total}</span> <span>bosses down</span>` : ""}</small></td><td>${esc(when(r.resetAt))}</td><td${num}>in ${esc(wait(r.resetAt - t))}</td></tr>`).join("");
+    }).join("");
+    return `<section class="ldg-card" data-eco-lockouts><h2>Lockouts</h2>${table("lockouts", "Lockouts", [["Character"], ["Saved to"], ["Resets"], ["Time left", true]], `<tbody>${rows}</tbody>`, list.reduce((n, c) => n + Math.max(1, c.rows.length), 0))}
+      <p class="ldg-note ldg-after">A lockout that has reset since a character's last save is left out. In game the same list is <code>/bf lockouts</code></p></section>`;
   }
   function calendarBody() {
     const c = state.calendar;
@@ -64,18 +78,19 @@ window.EconomyView = (() => {
     const t = nowSec(), events = c.data.events;
     const ready = events.filter((e) => e.kind === "cooldown" && e.at <= t), ahead = events.filter((e) => e.at > t), expired = events.filter((e) => e.kind === "mail" && e.at <= t);
     const next = ahead[0];
-    const honest = `<p class="ldg-note ldg-after">Only what the game saved is here: a cooldown shows once a character has used it, and mail shows after you open that character's mailbox. Times are from each character's last save.</p>`;
+    const honest = `<p class="ldg-note ldg-after">Only what the game saved is here: a cooldown shows once a character has used it, and mail shows after you open that character's mailbox. Times are from each character's last save.</p><p class="ldg-note ldg-after">Guild events come from guild members who run the addon and switched guild events on. Lockouts are the game's own list of saved instances, as each character last saved it. All times are your computer's time.</p>`;
     const list = [...ready, ...expired, ...ahead];
     return `<div class="ldg-summary"><div><strong>${ready.length}</strong><span>cooldown${ready.length === 1 ? "" : "s"} ready now</span></div><div><strong>${ahead.length}</strong><span>coming up</span></div><div><strong>${next ? esc(wait(next.at - t)) : "—"}</strong><span>${next ? `until ${esc(next.kind === "mail" ? "mail expires" : next.title.toLowerCase())} on ${esc(next.character)}` : "nothing ahead yet"}</span></div></div>
       <section class="ldg-card eco-calendar" data-eco-calendar>${monthGrid(c, events)}</section>
       <section class="ldg-card"><h2>Ready now and coming up</h2>${list.length ? table("events", "Ready now and coming up", [["What"], ["Character"], ["When"], ["Status", true]], `<tbody>${eventRows(list, t)}</tbody>`, list.length) : `<p class="ldg-empty">Nothing on the calendar yet. Use a profession cooldown (a transmute, Mooncloth, the Salt Shaker) or open a mailbox in game, then type <code>/reload</code> once.</p>`}${honest}</section>
+      ${lockoutCard(c.data.lockouts || [], t)}
       <section class="ldg-card eco-remind"><h2>Reminders</h2>
         <div class="eco-remind-row"><div><strong>Desktop notifications</strong><p class="ldg-note">${c.data.canNotify ? "A small notice when a cooldown comes ready or mail is two days from expiring. Only while this app is open; nothing runs in the background." : "This computer does not offer desktop notifications to the app."}</p></div><button type="button" class="${c.data.notify ? "" : "primary"}" data-eco-notify="${c.data.notify ? "off" : "on"}" aria-pressed="${c.data.notify ? "true" : "false"}"${c.data.canNotify && !c.busy ? "" : " disabled"}>${c.data.notify ? "Turn notifications off" : "Turn notifications on"}</button></div>
         <div class="eco-remind-row"><div><strong>Calendar file</strong><p class="ldg-note">Save the ${ahead.length} event${ahead.length === 1 ? "" : "s"} still ahead as an .ics file and open it in any calendar app. The file is a copy: it does not update itself.</p></div><button type="button" data-eco-export${ahead.length && !c.busy ? "" : " disabled"}>Save calendar file</button></div>
         <p class="eco-msg" role="status" data-eco-msg>${esc(c.note)}</p></section>`;
   }
   function calendar() {
-    return `<section class="eco-page" data-economy="calendar">${PageHero.render({ art: "plans", eyebrow: "Plans · Calendar", title: "Cooldown calendar", subtitle: "Every character's profession cooldowns and mail expiry on one calendar.", compact: true })}<div data-eco-body>${calendarBody()}</div></section>`;
+    return `<section class="eco-page" data-economy="calendar">${PageHero.render({ art: "plans", eyebrow: "Plans · Calendar", title: "Cooldown calendar", subtitle: "Every character's profession cooldowns, mail expiry, lockout resets and guild events on one calendar.", compact: true })}<div data-eco-body>${calendarBody()}</div></section>`;
   }
 
   // ---- Run history ----

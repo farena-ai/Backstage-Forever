@@ -20,6 +20,7 @@ const routes = {
   "ledger-gold": ["Ledger", "Gold & prices"],
   "ledger-crafts": ["Ledger", "Craft profit"],
   calendar: ["Plans", "Calendar"],
+  guild: ["Plans", "Guild"],
   // Opened with the button on Dungeons & raids, not from a tab of its own.
   "run-history": ["Adventure", "Dungeons & raids", "Run history"],
   attunements: ["Adventure", "Dungeons & raids", "Keys & attunements"],

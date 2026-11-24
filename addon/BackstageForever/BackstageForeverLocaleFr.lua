@@ -22,6 +22,7 @@ if type(BackstageForeverLocaleLoad)=='function' then BackstageForeverLocaleLoad(
 /bf compass missing explains what the tracked quest is waiting for.	/bf compass missing explique ce qu'attend la quête suivie.
 /bf durability - how worn your gear is, most worn first	/bf durability - l'usure de ton équipement, le plus usé d'abord
 /bf enemy - enemy players you saw recently; /bf enemy off silences the alerts, /bf enemy sound on adds a sound	/bf enemy - les joueurs ennemis vus récemment ; /bf enemy off coupe les alertes, /bf enemy sound on ajoute un son
+/bf event - events with sign-ups for your guild, off until you switch them on: /bf event add proposes one, /bf events lists them, /bf event yes tank answers	/bf event - événements avec inscriptions pour ta guilde, désactivés tant que tu ne les actives pas : /bf event add en propose un, /bf events les affiche, /bf event yes tank répond
 /bf explain - opens the companion panel with the item you point at, your target or your tracked quest in its question box; nothing is asked for you	/bf explain - ouvre le panneau du compagnon avec l'objet que tu pointes, ta cible ou ta quête suivie dans sa case de question ; rien n'est demandé à ta place
 /bf explore - the named areas you discovered on this map	/bf explore - les lieux nommés que tu as découverts sur cette carte
 /bf find NAME - find a person or place, e.g. /bf find flight master	/bf find NOM - trouve une personne ou un lieu, p. ex. /bf find flight master
@@ -38,6 +39,7 @@ if type(BackstageForeverLocaleLoad)=='function' then BackstageForeverLocaleLoad(
 /bf ledger - gold across your characters, and when the addon last saw your bank and mail	/bf ledger - l'or de tous tes personnages, et quand l'addon a vu ta banque et ton courrier en dernier
 /bf lfg - the group finder board: looking-for-group lines from the channels you joined; click a row to whisper, /bf lfg post DUNGEON writes your own line	/bf lfg - le tableau de recherche de groupe : les lignes de recherche de groupe des canaux que tu as rejoints ; clique sur une ligne pour chuchoter, /bf lfg post DONJON écrit ta propre ligne
 /bf live - the thin line along the top edge that lets the desktop app follow you; /bf live safe if the app cannot read it	/bf live - la fine ligne le long du bord supérieur qui permet à l'app de te suivre ; /bf live safe si l'app ne peut pas la lire
+/bf lockouts - the dungeons and raids this character is saved to and when each resets, with your other characters as last saved	/bf lockouts - les donjons et raids où ce personnage est enregistré et quand chacun se réinitialise, avec tes autres personnages tels qu'ils ont été enregistrés
 /bf loop - walk the gathering loop you sent from the desktop app; /bf loop next skips a stop, /bf loop stop ends it	/bf loop - suis le circuit de récolte envoyé depuis l'app ; /bf loop next saute un arrêt, /bf loop stop le termine
 /bf mail - letters that expire within 3 days, from your last mailbox visit (on or off for the mailbox line)	/bf mail - les lettres qui expirent dans les 3 jours, d'après ta dernière visite à la boîte aux lettres (on ou off pour la ligne de la boîte)
 /bf mapsearch - the find box on the world map; /bf mapsearch off hides it	/bf mapsearch - la case de recherche sur la carte du monde ; /bf mapsearch off la masque
@@ -130,11 +132,13 @@ Ammo	Munitions
 Ammo, food and drink, pet food, shards and poisons before you run out.	Munitions, nourriture et boisson, nourriture du familier, fragments et poisons avant d'en manquer.
 amount not known	quantité inconnue
 And also:	Et aussi :
+Answer outside combat.	Réponds hors combat.
 Answer readiness checks	Répondre aux vérifications
 Applied: %d settings changed. Type /reload.	Appliqué : %d réglages modifiés. Tapez /reload.
 Arcane Powder	Poudre des arcanes
 Ask first: /bf guild craft NAME, for example /bf guild craft Ghost Dye.	Demande d'abord : /bf guild craft NOM, par exemple /bf guild craft Teinture fantôme.
 Ask the owl	Demande à la chouette
+Asked guild members for their events. Answers arrive within a few seconds.	Demande envoyée aux membres de la guilde. Les réponses arrivent en quelques secondes.
 Asked who is sharing. Answers arrive within a few minutes; try /bf guild again later.	Demandé qui partage. Les réponses arrivent en quelques minutes ; réessaie /bf guild plus tard.
 Asked your party. The answers follow in a few seconds.	Demandé à ton groupe. Les réponses arrivent dans quelques secondes.
 Asked your party. Type /bf check show in a few seconds to read the answers.	Demandé à ton groupe. Tape /bf check show dans quelques secondes pour lire les réponses.
@@ -145,6 +149,7 @@ auction house	hôtel des ventes
 Auction shopping list	Liste de courses (enchères)
 Auction shopping list: off. /bf shop still prints the list.	Liste de courses aux enchères : désactivée. /bf shop affiche toujours la liste.
 Auction shopping list: on. It opens beside the auction window when your profession plan needs something.	Liste de courses aux enchères : activée. Elle s'ouvre à côté de la fenêtre des enchères quand ton plan de métier a besoin de quelque chose.
+Back	Retour
 Back on your feet	De nouveau sur pied
 Backpack	Sac à dos
 Backstage Forever is ready	Backstage Forever est prêt
@@ -182,6 +187,8 @@ Boss tips on: a short tip when you first target a covered boss.	Conseils de boss
 boss warnings	alertes de boss
 Bosses	Boss
 Bosses left	Boss restants
+by	par
+Call off	Annuler
 Candles	Bougies
 Carrion Bird	Charognard
 Cat	Félin
@@ -189,11 +196,13 @@ Category	Catégorie
 Chain steps in quest tooltips: off. /bf chain still lists them.	Étapes de suite dans les infobulles de quête : désactivé. /bf chain les liste toujours.
 Chain steps in quest tooltips: on. A quest link shows which step of its chain it is.	Étapes de suite dans les infobulles de quête : activé. Un lien de quête montre à quelle étape de sa suite elle est.
 Chain steps in tooltips	Étapes de suite en infobulle
+Change	Modifier
 Change bag marks outside combat.	Change les marques de sac hors combat.
 Change chat tools outside combat.	Modifiez les outils de chat hors combat.
 Change profiles outside combat.	Modifiez les profils hors combat.
 Change settings outside combat.	Change les réglages hors combat.
 Change the button size outside combat.	Change la taille des boutons hors combat.
+Change the event	Modifier l'événement
 Change the text size outside combat.	Change la taille du texte hors combat.
 Change this outside combat.	Change ça hors combat.
 Chat timestamps	Horodatage du chat
@@ -239,7 +248,10 @@ Crocolisk	Crocilisque
 Current game: hand-in on this map	Jeu en cours : à rendre sur cette carte
 Current game: ready to hand in on this map.	Jeu en cours : prête à rendre sur cette carte.
 damage	DPS
+Damage	Dégâts
+Damage wanted	Dégâts voulus
 Danger warnings	Alertes de danger
+Day	Jour
 Dec	déc.
 Demonic Figurine	Figurine démoniaque
 Detour handed in. Back to your plan.	Détour rendu. Retour à ton plan.
@@ -249,6 +261,7 @@ Dismount at flight masters	Pied à terre au maître de vol
 Drag the title to move  ·  /bf help  ·  /bf show	Fais glisser le titre pour déplacer  ·  /bf help  ·  /bf show
 Dropped by:	Butin de :
 Dungeon	Donjon
+Dungeon or raid	Donjon ou raid
 Dungeon quests: everyone who answered has them done or ready to hand in.	Quêtes de donjon : tous ceux qui ont répondu les ont faites ou prêtes à rendre.
 Dungeon run	Run de donjon
 Dungeon run panel	Panneau de run de donjon
@@ -271,6 +284,7 @@ Enemy tooltips say when a quest in your log needs that enemy.	Les infobulles d'e
 Engineering	Ingénierie
 Equipment	Équipement
 estimated from the distance	estimé d'après la distance
+Events and sign-ups shared with guild members who run the addon and switched this on. /bf event opens them.	Événements et inscriptions partagés avec les membres de la guilde qui utilisent l'addon et l'ont activé. /bf event les ouvre.
 Every Backstage Forever helper has a switch in one window. You can also type /bf options or right-click the owl on the minimap.	Chaque aide de Backstage Forever a son réglage dans une seule fenêtre. Tu peux aussi taper /bf options ou faire un clic droit sur la chouette de la minicarte.
 Every bag in one window with search and categories, opened by /bf bag. Your game bags stay as they are.	Tous les sacs dans une fenêtre avec recherche et catégories, ouverte par /bf bag. Vos sacs du jeu restent tels quels.
 Every listed boss is down.	Tous les boss listés sont tombés.
@@ -325,6 +339,7 @@ Gear sets	Ensembles d'équipement
 Get the desktop app	Récupère l'app de bureau
 Gets you off your mount when you open the flight map.	Te fait descendre de ta monture quand tu ouvres la carte de vol.
 Gift of the Wild reagents	Composants de Don du fauve
+Give the event a title in plain words (2 to 40 characters, no links).	Donne à l'événement un titre en mots simples (2 à 40 caractères, sans lien).
 Give the profile a short name: letters, digits and hyphens, for example /bf profile save raiding.	Donnez au profil un nom court : lettres, chiffres et tirets, par exemple /bf profile save raiding.
 Go there once and talk to the flight master.	Vas-y une fois et parle au maître de vol.
 Go to the	Va à l'arrêt
@@ -340,6 +355,11 @@ Group finder board	Tableau de groupes
 Group finder board: 1 line in the last 15 minutes.	Tableau de recherche de groupe : 1 ligne dans les 15 dernières minutes.
 Group finder board: off. No chat line is read.	Tableau de recherche de groupe : désactivé. Aucune ligne de chat n'est lue.
 Group finder board: on. It reads the channels you have joined and never sends.	Tableau de recherche de groupe : activé. Il lit les canaux que tu as rejoints et n'envoie jamais rien.
+Guild events	Événements de guilde
+Guild events are off. /bf event on shares events and sign-ups with guild members who run Backstage Forever.	Les événements de guilde sont désactivés. /bf event on partage les événements et les inscriptions avec les membres de la guilde qui utilisent Backstage Forever.
+Guild events: /bf event opens the window, /bf event add proposes one, /bf events lists them, /bf event yes tank|healer|damage N, /bf event maybe N, /bf event no N.	Événements de guilde : /bf event ouvre la fenêtre, /bf event add en propose un, /bf events les affiche, /bf event yes tank|healer|damage N, /bf event maybe N, /bf event no N.
+Guild events: off. Nothing is sent and nothing is read. What you have stays on this computer.	Événements de guilde : désactivés. Rien n'est envoyé et rien n'est lu. Ce que tu as reste sur cet ordinateur.
+Guild events: on. Events and sign-ups are shared with guild members who run Backstage Forever and switched this on. /bf event off stops it.	Événements de guilde : activés. Les événements et les inscriptions sont partagés avec les membres de la guilde qui utilisent Backstage Forever et l'ont activé. /bf event off l'arrête.
 Guild sharing	Partage de guilde
 Guild sharing is not available in this game client.	Le partage de guilde n'est pas disponible dans ce client de jeu.
 Guild sharing is off, so nobody sees the flag. /bf guild on turns it on.	Le partage de guilde est désactivé ; personne ne voit donc le signal. /bf guild on l'active.
@@ -348,12 +368,18 @@ Guild sharing is off. /bf guild on turns it on; then members who share can answe
 Guild sharing: off. Nothing is sent and nothing is read.	Partage de guilde : désactivé. Rien n'est envoyé et rien n'est lu.
 Guild sharing: on. You are not in a guild, so nothing is sent.	Partage de guilde : activé. Tu n'es pas dans une guilde ; rien n'est donc envoyé.
 Guild sharing: on. Your level, zone, professions and dungeon flag go to guild members who run Backstage Forever. /bf guild off stops it.	Partage de guilde : activé. Ton niveau, ta zone, tes métiers et ton signal de donjon vont aux membres de la guilde qui utilisent Backstage Forever. /bf guild off l'arrête.
+Guild-run loot notes	Notes de butin de guilde
+Guild-run loot notes: off. Only your own loot is in your run history.	Notes de butin des sorties de guilde : désactivées. Seul ton propre butin figure dans ton historique.
+Guild-run loot notes: on. In a guild-event run, who won a rare or better item is noted on this computer only.	Notes de butin des sorties de guilde : activées. Lors d'une sortie d'événement de guilde, le gagnant d'un objet rare ou meilleur est noté sur cet ordinateur uniquement.
 hand-in	rendu de quête
 hand-ins	rendus de quêtes
 Hands	Mains
 has the key	a la clé
 Head	Tête
 healer	soigneur
+Healer	Soigneur
+Healers	Soigneurs
+Healers wanted	Soigneurs voulus
 Helpers updated for this character:	Aides mises à jour pour ce personnage :
 Herb	Herbe
 herbs	herbes
@@ -368,6 +394,7 @@ Higher observed stats:	Stats observées plus hautes :
 Horde side	Côté Horde
 Hyena	Hyène
 Import	Importer
+In a guild-event run, notes who won a rare or better item. It stays on this computer.	Lors d'une sortie d'événement de guilde, note qui a gagné un objet rare ou meilleur. Cela reste sur cet ordinateur.
 In a raid the list stays with you: party sync never sends to a raid.	En raid, la liste reste chez toi : la synchro de groupe n'envoie jamais à un raid.
 In-Game Helpers	Aides en jeu
 Include my data: player notes, flight times, gathering spots	Inclure mes données : notes de joueurs, temps de vol, emplacements de récolte
@@ -435,6 +462,7 @@ Marked in your bags: 1 item.	Marqué dans tes sacs : 1 objet.
 Marks a quest reward that is a clear upgrade and says why. You still pick.	Marque une récompense de quête qui est une nette amélioration et dit pourquoi. C'est toujours toi qui choisis.
 Marks without colour	Marques sans couleur
 May	mai
+Maybe	Peut-être
 Met this session	Croisé cette session
 minimap button hidden. /bf ask show brings it back; /bf ask still opens the companion panel.	bouton de minicarte masqué. /bf ask show le fait revenir ; /bf ask ouvre toujours le panneau du compagnon.
 minimap button shown. Drag it around the minimap edge to move it.	bouton de minicarte affiché. Fais-le glisser autour de la minicarte pour le déplacer.
@@ -452,15 +480,19 @@ more on the map (BF Guide).	de plus sur la carte (BF Guide).
 Most worn gear under 30%:	Équipement le plus usé sous 30 % :
 Name	Nom
 Name a dungeon the board knows, for example /bf lfg post sm.	Nomme un donjon que le tableau connaît, par exemple /bf lfg post sm.
+Name the event by its number: /bf event cancel 1. /bf events lists them.	Désigne l'événement par son numéro : /bf event cancel 1. /bf events les affiche.
 Name what you want made, at least three letters: /bf guild craft Ghost Dye.	Nomme ce que tu veux faire fabriquer, au moins trois lettres : /bf guild craft Teinture fantôme.
 Nearby quests, hand-ins, trainers and flight masters on the minimap.	Quêtes proches, rendus, maîtres et maîtres de vol sur la minicarte.
 needs	cherche
 needs:	il faut :
 New at your trainer at level	Nouveau chez ton maître au niveau
+New event	Nouvel événement
+New guild event	Nouvel événement de guilde
 Next loop stop	Prochain arrêt du circuit
 Next new skills at level	Prochaines nouvelles compétences au niveau
 Next step in your guided route; locations are approximate.	Prochaine étape de ton itinéraire guidé ; les lieux sont approximatifs.
 Next:	Ensuite :
+No	Non
 no ability recorded	aucune technique relevée
 No advice available. Check your quest log.	Aucun conseil disponible. Regarde ton journal de quêtes.
 No answers here yet. Ask with /bf ask, let the desktop app prepare the addon, then type /reload.	Pas encore de réponses ici. Demande avec /bf ask, laisse l'app préparer l'addon, puis tape /reload.
@@ -470,6 +502,7 @@ No clear quest reward winner on observed stats.	Aucune récompense de quête ne 
 No discovered area was found on this map.	Aucun lieu découvert n'a été trouvé sur cette carte.
 No drops recorded for this boss yet.	Aucun butin noté pour ce boss pour l'instant.
 No elite, group, dungeon or raid quest is in your log.	Aucune quête élite, de groupe, de donjon ou de raid dans ton journal.
+No event has that number. /bf events lists them.	Aucun événement ne porte ce numéro. /bf events les affiche.
 No events timed yet. Play for a minute, then type /bf perf again.	Aucun évènement chronométré pour l'instant. Joue une minute, puis retape /bf perf.
 No fights yet this session.	Pas encore de combat cette session.
 No flight masters are recorded in this zone.	Aucun maître de vol n'est noté dans cette zone.
@@ -481,6 +514,8 @@ No gathering loop from the desktop app yet. In the app open World Map, pick a zo
 No gathering loop is running.	Aucun circuit de récolte en cours.
 No gathering loop is running. Type /bf loop to start it.	Aucun circuit de récolte en cours. Tape /bf loop pour le lancer.
 No gear sets yet. Put on the gear you want and type /bf set save NAME.	Pas encore d'ensembles. Mets l'équipement voulu et tape /bf set save NOM.
+No guild events ahead. /bf event add proposes one.	Aucun événement de guilde à venir. /bf event add en propose un.
+No guild events ahead. Propose one with New event.	Aucun événement de guilde à venir. Propose-en un avec Nouvel événement.
 No guild member is sharing right now. Members need Backstage Forever and /bf guild on.	Aucun membre de la guilde ne partage en ce moment. Il leur faut Backstage Forever et /bf guild on.
 No help page with that name.	Aucune page d'aide de ce nom.
 No helper settings changed. Log in to the intended character and leave combat first.	Aucun réglage d'aide changé. Connecte-toi au bon personnage et sors du combat d'abord.
@@ -530,6 +565,7 @@ None of the quests in your log is part of a known chain.	Aucune quête de ton jo
 north	nord
 north-east	nord-est
 north-west	nord-ouest
+Not coming	Absents
 not known	inconnu
 Not now	Pas maintenant
 Notes go out one a second; /bf raid notes share sends this one again.	Les notes partent une par seconde ; /bf raid notes share renvoie celle-ci.
@@ -571,6 +607,7 @@ One-window bags: off.	Sacs en une fenêtre : désactivé.
 One-window bags: on. A window to find and look: click an item to see where it is. Use items from your game bags.	Sacs en une fenêtre : activé. Une fenêtre pour chercher et regarder : cliquez sur un objet pour voir où il est. Utilisez les objets depuis vos sacs du jeu.
 One-window bags: on. Type /bf bag to open the window. Your game bags work as before.	Sacs en une fenêtre : activé. Tapez /bf bag pour ouvrir la fenêtre. Vos sacs du jeu fonctionnent comme avant.
 Only hunters can tame beasts.	Seuls les chasseurs peuvent dompter des bêtes.
+Only the guild leader sets who may propose and edit events.	Seul le maître de guilde décide qui peut proposer et modifier les événements.
 Only the party leader changes the soft-reserve list. /bf sr list shows it.	Seul le chef de groupe change la liste de soft-reserve. /bf sr list l'affiche.
 Only the raid leader or an assistant can do that. /bf raid notes shows the notes.	Seul le chef de raid ou un assistant peut faire ça. /bf raid notes affiche les notes.
 Only the raid leader or an assistant writes raid notes. /bf raid notes shows them.	Seul le chef de raid ou un assistant écrit des notes de raid. /bf raid notes les affiche.
@@ -582,6 +619,8 @@ Open profiles outside combat.	Ouvrez les profils hors combat.
 Open settings	Ouvrir les réglages
 Open settings outside combat.	Ouvre les réglages hors combat.
 Open the board outside combat.	Ouvre le tableau hors combat.
+Open the form outside combat.	Ouvre le formulaire hors combat.
+Open the guild events window outside combat.	Ouvre la fenêtre des événements de guilde hors combat.
 Open the Instance Atlas outside combat.	Ouvre l'Atlas des instances hors combat.
 Open the welcome card outside combat.	Ouvre la carte d'accueil hors combat.
 ore	minerai
@@ -602,6 +641,10 @@ Party sync is on. Join a party with other Backstage Forever players to see each 
 Past spots, not live nodes: someone may have gathered them already.	Des points passés, pas des gisements en direct : quelqu'un les a peut-être déjà récoltés.
 pet level	niveau du familier
 pet trainer	maître des familiers
+Pick a day and a time.	Choisis un jour et une heure.
+Pick a dungeon or raid from the list, or Other.	Choisis un donjon ou un raid dans la liste, ou Autre.
+Pick a time that is still ahead, within half a year.	Choisis une heure encore à venir, dans les six mois.
+Plain words only: no links. The event goes to guild members who run Backstage Forever and switched guild events on.	Des mots simples uniquement : pas de lien. L'événement part vers les membres de la guilde qui utilisent Backstage Forever et ont activé les événements de guilde.
 Player note reminders	Rappels de notes de joueurs
 Player note reminders: off. /bf notes still lists them.	Rappels de notes de joueurs : désactivés. /bf notes les liste toujours.
 Player note reminders: on.	Rappels de notes de joueurs : activés.
@@ -718,7 +761,10 @@ Run panel stays in combat	Panneau de run en combat
 Rune of Portals	Rune des portails
 Rune of Teleportation	Rune de téléportation
 same patch	même patch
+Save and share	Enregistrer et partager
+Save the event outside combat.	Enregistre l'événement hors combat.
 Save the gear you wear: /bf set save NAME.	Enregistre l'équipement que tu portes : /bf set save NOM.
+Say the role: /bf event yes tank, /bf event yes healer or /bf event yes damage.	Indique le rôle : /bf event yes tank, /bf event yes healer ou /bf event yes damage.
 Says how long a flight takes when you timed the same trip before.	Dit combien de temps dure un vol si tu as déjà chronométré le même trajet.
 Says when an enemy player is nearby. Never in battlegrounds.	Dit quand un joueur ennemi est proche. Jamais en champ de bataille.
 Scorpid	Scorpide
@@ -796,14 +842,19 @@ Talent points start at level 10.	Les points de talent commencent au niveau 10.
 Talk to a quest giver, trainer, vendor or flight master and it is noted.	Parle à un donneur de quêtes, un maître, un marchand ou un maître de vol et c'est noté.
 Tallstrider	Haut-trotteur
 Taming a beast teaches you the ability it comes with. Recorded tames only; places are approximate.	Dompter une bête t'apprend la technique qu'elle possède. Domptages relevés seulement ; les lieux sont approximatifs.
+Tanks and healers 0 to 9, damage 0 to 40.	Tanks et soigneurs de 0 à 9, dégâts de 0 à 40.
+Tanks wanted	Tanks voulus
 Target a covered dungeon or raid boss first.	Cible d'abord un boss de donjon ou de raid couvert.
 Target a player and type /bf note good tank, or type /bf note Name good tank. /bf notes lists them.	Cible un joueur et tape /bf note bon tank, ou tape /bf note Nom bon tank. /bf notes les liste.
 Tells you when your action bar still holds a lower rank of a spell you have trained.	Te prévient quand ta barre d'action contient encore un rang inférieur d'un sort que tu as appris.
 That badge cannot be pinned. Use /bf badges pin to see available goals.	Cet insigne ne peut pas être épinglé. Utilise /bf badges pin pour voir les objectifs disponibles.
 That chat line is no longer remembered.	Cette ligne du chat n'est plus en mémoire.
 That could not be handed to the desktop app; try fewer words.	Ça n'a pas pu être transmis à l'app ; essaie avec moins de mots.
+That did not work.	Cela n'a pas fonctionné.
 That dungeon is not known. Try a short name, for example /bf check sm.	Ce donjon n'est pas connu. Essaie un nom court, par exemple /bf check sm.
 That dungeon is not known. Try a short name, for example /bf guild lfd brd.	Ce donjon n'est pas connu. Essaie un nom court, par exemple /bf guild lfd brd.
+That event is over or was called off.	Cet événement est terminé ou a été annulé.
+That hour happens twice that night because the clocks change. The first one is used.	Cette heure a lieu deux fois cette nuit-là à cause du changement d'heure. La première est utilisée.
 That is not a player name the addon can keep a note on.	Ce n'est pas un nom de joueur sur lequel l'addon peut garder une note.
 That line is gone. Type /bf group for a fresh list.	Cette ligne n'existe plus. Tape /bf group pour une nouvelle liste.
 That place is on another continent. The desktop app works out where boats and zeppelins stop from your game files: open it with your game folder connected, then type /reload.	Ce lieu est sur un autre continent. L'app de bureau calcule où s'arrêtent les bateaux et les zeppelins à partir de tes fichiers de jeu : ouvre-la avec ton dossier de jeu relié, puis tape /reload.
@@ -811,6 +862,7 @@ That player has no reserve on the list.	Ce joueur n'a pas de réserve sur la lis
 That player is not in your party. /bf mentor Name asks a party member.	Ce joueur n'est pas dans ton groupe. /bf mentor Nom demande à un membre du groupe.
 That player is not in your raid.	Ce joueur n'est pas dans ton raid.
 That reserve is already on the list.	Cette réserve est déjà sur la liste.
+That time does not exist on that day: the clocks change. Pick another time.	Cette heure n'existe pas ce jour-là : on change d'heure. Choisis une autre heure.
 That was the whole loop. It starts again; /bf loop stop ends it.	C'était tout le circuit. Il recommence ; /bf loop stop le termine.
 The addon learns the real flight point names when you open a flight map; until then use a zone or a flight master name.	L'addon apprend les vrais noms des points de vol quand tu ouvres une carte de vol ; d'ici là, utilise une zone ou le nom d'un maître de vol.
 The bag window is not available in this game client. /bf bags lists marked items instead.	La fenêtre des sacs n'est pas disponible dans ce client. /bf bags donne la liste des objets marqués.
@@ -835,6 +887,8 @@ The game would not place a waypoint here; walk to those coordinates.	Le jeu n'a 
 The gathering loop waits until you leave combat.	Le circuit de récolte attend que tu sortes du combat.
 The giver of this quest is not known yet.	Le donneur de cette quête n'est pas encore connu.
 The gold seller filter has its own switch: /bf chat filter on.	Le filtre de vendeurs d'or a son propre interrupteur : /bf chat filter on.
+The guild event list is full (20). An event leaves it four hours after it began.	La liste des événements de guilde est pleine (20). Un événement la quitte quatre heures après son début.
+The guild events window is not available in this game client.	La fenêtre des événements de guilde n'est pas disponible dans ce client de jeu.
 The Instance Atlas data is missing; update Backstage Forever.	Les données de l'Atlas des instances manquent ; mets à jour Backstage Forever.
 The Instance Atlas is not available in this game client.	L'Atlas des instances n'est pas disponible dans ce client de jeu.
 The list is full: 10 reserves fit in what party sync may send.	La liste est pleine : 10 réserves tiennent dans ce que la synchro de groupe peut envoyer.
@@ -849,6 +903,7 @@ The profile window is not available in this game client. /bf profile save NAME a
 The quest list is not available in this game client.	La liste de quêtes n'est pas disponible dans ce client de jeu.
 The quest log is not readable in this game client.	Le journal de quêtes n'est pas lisible dans ce client de jeu.
 The rest is in the desktop app.	Le reste est dans l'app.
+The rule is set and goes to guild members who run Backstage Forever.	La règle est fixée et part vers les membres de la guilde qui utilisent Backstage Forever.
 The search box waits until you leave combat.	La recherche attend que tu sortes du combat.
 The settings could not be written as a code.	Les réglages n'ont pas pu être écrits sous forme de code.
 The soft-reserve list is empty. The party leader adds to it: /bf sr add Player Item.	La liste de soft-reserve est vide. Le chef de groupe y ajoute : /bf sr add Joueur Objet.
@@ -863,6 +918,7 @@ There is no mentor link to end.	Il n'y a pas de lien de mentor à terminer.
 There is nothing to explain here. Point at an item, target someone, or type /bf explain and a few words.	Il n'y a rien à expliquer ici. Pointe un objet, cible quelqu'un, ou tape /bf explain et quelques mots.
 Thieves' Tools	Outils de voleur
 This assumes you know these flight points. Open a flight map once and the addon remembers which ones you have.	Ça suppose que tu connais ces points de vol. Ouvre une carte de vol une fois et l'addon retient ceux que tu as.
+This character is not saved to any dungeon or raid.	Ce personnage n'est enregistré dans aucun donjon ni raid.
 This code comes from a newer Backstage Forever. Update the addon first.	Ce code vient d'un Backstage Forever plus récent. Mettez d'abord l'addon à jour.
 This code holds no settings.	Ce code ne contient aucun réglage.
 This code is damaged and cannot be read.	Ce code est abîmé et ne peut pas être lu.
@@ -870,6 +926,7 @@ This code is damaged: a piece is missing or changed. Copy it again, all of it.	C
 This code is too long.	Ce code est trop long.
 This game build has no timer for the loop; type /bf loop next at each stop.	Ce build du jeu n'a pas de minuteur pour le circuit ; tape /bf loop next à chaque arrêt.
 This game client does not let addons take screenshots, so the switch was turned off. Use the Print Screen key instead.	Ce client de jeu ne laisse pas les addons faire de captures d'écran ; le réglage a donc été désactivé. Utilise plutôt la touche Impr. écran.
+This game client does not tell addons which instances you are saved to, so there are no lockouts to show.	Ce client de jeu n'indique pas aux addons les instances où tu es enregistré, il n'y a donc aucun verrouillage à afficher.
 This game client has no chat filter the addon can use.	Ce client n'a pas de filtre de chat que l'addon puisse utiliser.
 This game client has no chat timestamp setting the addon can switch.	Ce client n'a pas de réglage d'horodatage du chat que l'addon puisse changer.
 This game client has no class colour setting the addon can switch.	Ce client n'a pas de réglage de couleurs de classe que l'addon puisse changer.
@@ -880,9 +937,12 @@ This is not a Backstage Forever profile code.	Ce n'est pas un code de profil Bac
 This is the last step of the chain.	C'est la dernière étape de la suite.
 This is the last step.	C'est la dernière étape.
 This marks the entrance. The spot is approximate.	Ceci marque l'entrée. L'emplacement est approximatif.
+Time	Heure
 Time in the run	Temps dans le run
 time not recorded	durée non notée
+Times are your computer's time. Realm time uses the realm clock as it is now.	Les heures sont celles de ton ordinateur. L'heure du royaume suit l'horloge du royaume telle qu'elle est maintenant.
 Timing is off. Nothing is measured and nothing is slowed.	Le chronométrage est désactivé. Rien n'est mesuré et rien n'est ralenti.
+Title	Titre
 to	à
 To	Vers
 Totems carried:	Totems transportés :
@@ -922,6 +982,7 @@ Upgrade lines on item tooltips and on quest rewards.	Lignes d'amélioration dans
 upgrades for you	améliorations pour toi
 Use /bf bag sort category, bag, name or quality. Sorting changes the view only; nothing is moved.	Utilisez /bf bag sort category, bag, name ou quality. Le tri ne change que l'affichage ; rien n'est déplacé.
 Use /bf bag, /bf bag bank, /bf bag junk, /bf bag sort WORD, or /bf bag on or off.	Utilisez /bf bag, /bf bag bank, /bf bag junk, /bf bag sort MOT, ou /bf bag on ou off.
+Use /bf event policy propose N or anyone, and /bf event policy edit N or creator. N is a guild rank number: 0 is the guild leader, 1 the next rank.	Utilise /bf event policy propose N ou anyone, et /bf event policy edit N ou creator. N est un numéro de rang de guilde : 0 est le maître de guilde, 1 le rang suivant.
 Use /bf find NAME, or /bf find flight, trainer, vendor, dungeon, quest, rare, herb, ore, chest or mailbox.	Utilise /bf find NOM, ou /bf find flight, trainer, vendor, dungeon, quest, rare, herb, ore, chest ou mailbox.
 Use /bf helpers <key> to check, or /bf helpers <key> on|off to change.	Utilise /bf helpers <key> pour vérifier, ou /bf helpers <key> on|off pour changer.
 Use /bf loop, /bf loop next or /bf loop stop.	Utilise /bf loop, /bf loop next ou /bf loop stop.
@@ -958,6 +1019,8 @@ west	ouest
 When a party member types /bf check, a short status goes to your party. Needs party sync.	Quand un membre du groupe tape /bf check, un court état part vers ton groupe. Demande la synchro de groupe.
 whisper	chuchoter
 Who	Qui
+Who may change an event: only its creator.	Qui peut modifier un événement : seulement son créateur.
+Who may propose events: any member.	Qui peut proposer des événements : tout membre.
 win not matched to this list	butin gagné absent de cette liste
 Wind Serpent	Serpent des vents
 wins not matched to this list	butins gagnés absents de cette liste
@@ -980,11 +1043,15 @@ yards from the flight master at	mètres du maître de vol à
 yards in a straight line	mètres à vol d'oiseau
 yd	m
 You	Toi
+You already have 5 events on the list. Call one off first.	Tu as déjà 5 événements dans la liste. Annules-en un d'abord.
+You answered maybe.	Tu as répondu peut-être.
+You answered no.	Tu as répondu non.
 You are already at the flight point	Tu es déjà au point de vol
 You are at the level cap. Rested XP has nothing to add.	Tu es au niveau maximum. L'XP de repos n'a rien à ajouter.
 You are in combat. Gear sets can only be worn out of combat.	Tu es en combat. Les ensembles ne peuvent être mis que hors combat.
 You are logging out outside a rest area. Rested XP builds four times faster in an inn or city (reference rate).	Tu te déconnectes hors d'une zone de repos. L'XP de repos monte quatre fois plus vite dans une auberge ou une ville (taux de référence).
 You are not in a dungeon or raid the Instance Atlas knows.	Tu n'es pas dans un donjon ou un raid que l'Atlas des instances connaît.
+You are not in a guild, so nothing is sent.	Tu n'es pas dans une guilde, donc rien n'est envoyé.
 You are not in a guild.	Tu n'es pas dans une guilde.
 You are not in a raid, so it is kept for later. /bf raid notes share sends your notes to a raid.	Tu n'es pas en raid ; elle est donc gardée pour plus tard. /bf raid notes share envoie tes notes à un raid.
 You are not in a rest area now.	Tu n'es pas dans une zone de repos en ce moment.
@@ -993,21 +1060,34 @@ You are resting now.	Tu te reposes en ce moment.
 You asked a moment ago. /bf check show prints the answers again.	Tu as demandé il y a un instant. /bf check show réaffiche les réponses.
 You asked a moment ago. /bf guild craft shows the answers again.	Tu as demandé il y a un instant. /bf guild craft réaffiche les réponses.
 You asked a moment ago. /bf raid show prints the roll-up again.	Tu as demandé il y a un instant. /bf raid show réaffiche le bilan.
+You asked a moment ago. Wait a few minutes.	Tu as demandé il y a un instant. Attends quelques minutes.
 You asked:	Tu as demandé :
 You died	Tu es mort
 You have	Tu as
 You have no mentee yet. /bf mentor Name asks a party member.	Tu n'as pas encore d'élève. /bf mentor Nom demande à un membre du groupe.
+You have not answered yet.	Tu n'as pas encore répondu.
+You have not answered.	Tu n'as pas répondu.
 You have not learned the flight point	Tu n'as pas appris le point de vol
 You looted it.	Tu l'as ramassé.
 You shared your notes a moment ago. Wait half a minute.	Tu as partagé tes notes il y a un instant. Attends une demi-minute.
+You signed up as damage.	Tu es inscrit en dégâts.
+You signed up as healer.	Tu es inscrit comme soigneur.
+You signed up as tank.	Tu es inscrit comme tank.
+Your answer: damage.	Ta réponse : dégâts.
+Your answer: healer.	Ta réponse : soigneur.
+Your answer: maybe.	Ta réponse : peut-être.
+Your answer: no.	Ta réponse : non.
+Your answer: tank.	Ta réponse : tank.
 Your bags are not readable in this game client.	Tes sacs ne sont pas lisibles dans ce client de jeu.
 Your body shows on the minimap and map. 	Ton corps apparaît sur la minicarte et la carte. 
 Your buffs are not readable right now, so they were not checked.	Tes améliorations ne sont pas lisibles pour l'instant ; elles n'ont donc pas été vérifiées.
 Your character (/bf help character):	Ton personnage (/bf help character) :
 Your class carries nothing the addon counts yet.	Ta classe ne transporte rien que l'addon compte pour l'instant.
 Your class is not readable in this game client.	Ta classe n'est pas lisible dans ce client de jeu.
+Your computer's time.	L'heure de ton ordinateur.
 Your data is too large for one code. Untick "Include my data".	Vos données sont trop volumineuses pour un seul code. Décochez « Inclure mes données ».
 Your gathering loop is for %s (%d stops). Go there and type /bf loop again.	Ton circuit de récolte est pour %s (%d arrêts). Vas-y et retape /bf loop.
+Your guild rank may not do that. The guild leader sets who may propose and edit events.	Ton rang de guilde ne le permet pas. Le maître de guilde décide qui peut proposer et modifier les événements.
 Your kit:	Ton kit :
 Your line is in the chat box. Change it as you like and press Enter to send it.	Ta ligne est dans la zone de chat. Change-la comme tu veux et appuie sur Entrée pour l'envoyer.
 Your looking-for-dungeon flag is cleared.	Ton signal de recherche de donjon est effacé.
@@ -1088,6 +1168,7 @@ Zone guide: the quests around you, in the order that walks least.	Guide de zone�
 ^Mentor link with (.-) ended: you are no longer in a party together%.$	Lien de mentor avec %1 terminé : vous n'êtes plus dans le même groupe.
 ^New skills may be waiting: (.-) in (.-)%. Type /bf train for an arrow%.$	De nouvelles compétences t'attendent peut-être : %1 à %2. Tape /bf train pour une flèche.
 ^(.-) is at (%-?%d+)%% durability%. Repair before you head out: /bf repair%.$	%1 est à %2%% de durabilité. Répare avant de partir : /bf repair.
+^Who may change other members' events: guild rank (%-?%d+) and above%.$	Qui peut modifier les événements des autres membres : rang de guilde %1 et au-dessus.
 ^No answer from (%-?%d+) %(no addon, raid comms off, or answers off%)%.$	Pas de réponse de %1 (pas d'addon, communication de raid désactivée ou réponses désactivées).
 ^Profile "(.-)" kept: this character's settings as they are now%.$	Profil "%1" gardé : les réglages de ce personnage tels qu'ils sont maintenant.
 ^You have no note on (.-)%. To write one: /bf note (.-) your words%.$	Tu n'as pas de note sur %1. Pour en écrire une : /bf note %2 tes mots.
@@ -1100,19 +1181,23 @@ Zone guide: the quests around you, in the order that walks least.	Guide de zone�
 ^Your gear has lost (%-?%d+)%% of its durability%. Most worn first:$	Ton équipement a perdu %1%% de sa durabilité. Le plus usé d'abord :
 ^(%-?%d+) letters expire within 3 days%. The soonest has (.-) left%.$	%1 lettres expirent dans les 3 jours. Il reste %2 à la plus proche.
 ^Bag window sorted by (.-)%. Nothing in your bags was moved%.$	Fenêtre des sacs triée par %1. Rien n'a été déplacé dans vos sacs.
+^Guild events: (%-?%d+) new or changed%. /bf events lists them%.$	Événements de guilde : %1 nouveaux ou modifiés. /bf events les affiche.
 ^Weapon skills, lowest first%. The cap at level (%-?%d+) is (%-?%d+)%.$	Compétences d'arme, les plus basses d'abord. Le plafond au niveau %1 est %2.
 ^You already mentor (.-)%. /bf mentor end stops that first%.$	Tu es déjà le mentor de %1. /bf mentor end arrête ça d'abord.
 ^Pick a number from 1 to (%-?%d+), for example /bf answers 1%.$	Choisis un numéro de 1 à %1, par exemple /bf answers 1.
 ^Scout mode is on%. Records on this character: (%-?%d+) of (%-?%d+)%.$	Le mode éclaireur est activé. Notes sur ce personnage : %1 sur %2.
+^New guild event from (.-): (.-), (.-)%. /bf event to answer%.$	Nouvel événement de guilde de %1 : %2, %3. /bf event pour répondre.
 ^(.-) shared a soft%-reserve list%. /bf sr list shows it%.$	%1 a partagé une liste de soft-reserve. /bf sr list l'affiche.
 ^Group finder board: (%-?%d+) lines in the last 15 minutes%.$	Tableau de recherche de groupe : %1 lignes dans les 15 dernières minutes.
 ^The search box is not reachable here%. Search for: (.-)$	La recherche n'est pas accessible ici. Cherche : %1
 ^(%-?%d+) rested XP %(kills give double until it runs out%)$	%1 XP de repos (les ennemis tués donnent le double jusqu'à épuisement)
 ^Shopping list from your profession plan: (%-?%d+) items%.$	Liste de courses de ton plan de métier : %1 objets.
+^Tanks (%-?%d+) of (%-?%d+), healers (%-?%d+) of (%-?%d+), damage (%-?%d+) of (%-?%d+)%.$	Tanks %1 sur %2, soigneurs %3 sur %4, dégâts %5 sur %6.
 ^Best fight: (%-?%d+) damage per second over (%-?%d+) seconds%.$	Meilleur combat : %1 dégâts par seconde sur %2 secondes.
 ^combat is over, your question went to the app: (.-)$	le combat est fini, ta question est partie vers l'app : %1
 ^No set called "(.-)"%. /bf set list shows your sets%.$	Aucun ensemble nommé "%1". /bf set list montre tes ensembles.
 ^One letter expires within 3 days: it has (.-) left%.$	Une lettre expire dans les 3 jours : il lui reste %1.
+^Who may propose events: guild rank (%-?%d+) and above%.$	Qui peut proposer des événements : rang de guilde %1 et au-dessus.
 ^(.-) is in (.-), slot (%-?%d+)%. It is lit up in your bag%.$	%1 se trouve dans %2, emplacement %3. Il est éclairé dans votre sac.
 ^(.-) is in (.-), slot (%-?%d+)%. Open that bag to use it%.$	%1 se trouve dans %2, emplacement %3. Ouvrez ce sac pour l'utiliser.
 ^Dungeon quests somebody still needs: (%-?%d+) of (%-?%d+)%.$	Quêtes de donjon dont quelqu'un a encore besoin : %1 sur %2.
@@ -1141,16 +1226,21 @@ Zone guide: the quests around you, in the order that walks least.	Guide de zone�
 ^(.-): (%-?%d+) quests, (%-?%d+) shared with you%.$	%1 : %2 quêtes, %3 en commun avec toi.
 ^(.-): left as you set it, beside (.-)%.$	%1 : laissé comme tu l'as réglé, à côté de %2.
 ^Already worn in the other slot: (.-)$	Déjà porté dans l'autre emplacement : %1
+^Guild event changed by (.-): (.-), (.-)%.$	Événement de guilde modifié par %1 : %2, %3.
+^Guild event in (%-?%d+) minutes: (.-), (.-)%.$	Événement de guilde dans %1 minutes : %2, %3.
 ^Raid readiness: (%-?%d+) of (%-?%d+) answered%.$	Préparation du raid : %1 sur %2 ont répondu.
 ^(.-) is not in your party any more%.$	%1 n'est plus dans ton groupe.
+^Guild event called off by (.-): (.-)%.$	Événement de guilde annulé par %1 : %2.
 ^Step (%-?%d+) of (%-?%d+) in its quest chain%.$	Étape %1 sur %2 de sa suite de quêtes.
 ^(.-): you noted on (%-?%d+) (.-) in (.-): (.-)$	%1 : tu as noté le %2 %3 à %4 : %5
 ^Level (%-?%d+): (.-) %((.-)%), rank (%-?%d+) of (%-?%d+)$	Niveau %1 : %2 (%3), rang %4 sur %5
 ^Backstage Forever: saved the (.-)$	Backstage Forever : enregistré : %1
 ^Gold across (%-?%d+) character(.-): (.-)%.$	Or sur %1 personnage%2 : %3.
 ^over its budget of (%-?[%d%.]+) ms each$	au-dessus de son budget de %1 ms chacun
+^(.-) your time %(realm (%-?%d+):(%-?%d+)%)$	%1 à ton heure (royaume %2:%3)
 ^Backstage Forever live link (.-)$	Lien direct Backstage Forever : %1
 ^Nearest remembered spots in (.-)$	Points retenus les plus proches à %1
+^This character is saved to (%-?%d+)%.$	Ce personnage est enregistré dans %1.
 ^(.-) to (.-): (.-), flown (%-?%d+) times%.$	De %1 à %2 : %3, volé %4 fois.
 ^(.-)s can wear (.-) from level 40$	Les %1s peuvent porter %2 à partir du niveau 40
 ^Asked (.-) for their next step%.$	Demandé à %1 sa prochaine étape.
@@ -1158,6 +1248,7 @@ Zone guide: the quests around you, in the order that walks least.	Guide de zone�
 ^And (%-?%d+) more points to spend%.$	Et %1 points de plus à dépenser.
 ^(%-?%d+) more%. Type more letters%.$	%1 de plus. Tape plus de lettres.
 ^asking the desktop app: "(.-)$	question à l'app : "%1
+^Guild event called off: (.-)%.$	Événement de guilde annulé : %1.
 ^LFG for %[(.-)%] %((.-), level (%-?%d+)%)$	Cherche groupe pour [%1] (%2, niveau %3)
 ^Soft reserve added: (.-), (.-)%.$	Soft-reserve ajoutée : %1, %2.
 ^Sold (%-?%d+) junk item(.-) for (.-)%.$	Vendu %1 objet%2 gris pour %3.
@@ -1173,15 +1264,20 @@ Zone guide: the quests around you, in the order that walks least.	Guide de zone�
 ^Raid note for (.-) removed%.$	Note de raid pour %1 retirée.
 ^Sell junk: (%-?%d+) item(.-) · (.-)$	Vendre le gris : %1 objet%2 · %3
 ^BF Route · step (%-?%d+) of (%-?%d+)$	BF Route · étape %1 sur %2
+^Signed up as damage: (.-)%.$	Inscrit en dégâts : %1.
+^Signed up as healer: (.-)%.$	Inscrit comme soigneur : %1.
 ^(%-?%d+) of (%-?%d+) badges earned%.$	%1 insignes gagnés sur %2.
 ^(.-) set "(.-)": (%-?%d+) item(.-)%.$	%1 : ensemble "%2", %3 objet%4.
 ^(.-): still needed by (.-)%.$	%1 : encore nécessaire pour %2.
+^Guild events ahead: (%-?%d+)%.$	Événements de guilde à venir : %1.
 ^Readiness check for (.-):$	Vérification de préparation pour %1 :
+^(.-), as last saved: (%-?%d+)%.$	%1, au dernier enregistrement : %2.
 ^Enemy player alerts (.-)$	Alertes de joueurs ennemis : %1
 ^Gear wearing out %((%-?%d+)%%%)$	Équipement usé (%1%%)
 ^most worn gear at (%-?%d+)%%%%$	équipement le plus usé à %1%%%%
 ^next level in about (.-)$	niveau suivant dans environ %1
 ^Quests: (%-?%d+) in your log$	Quêtes : %1 dans ton journal
+^Signed up as tank: (.-)%.$	Inscrit comme tank : %1.
 ^Your job: (.-) %(from (.-)%)$	Ton rôle : %1 (de %2)
 ^  (.-): them (.-), you (.-)$	  %1 : lui %2, toi %3
 ^Explain the quest: (.-)$	Explique la quête : %1
@@ -1198,6 +1294,7 @@ Zone guide: the quests around you, in the order that walks least.	Guide de zone�
 ^Raid note for (.-): (.-)$	Note de raid pour %1 : %2
 ^Your gear sets %((%-?%d+)%):$	Tes ensembles d'équipement (%1) :
 ^(%-?%d+) ready to hand in$	%1 prêtes à rendre
+^Answered maybe: (.-)%.$	Répondu peut-être : %1.
 ^Head to (%-?[%d%.]+), (%-?[%d%.]+)%.$	Va à %1, %2.
 ^LFG (.-), level (%-?%d+) (.-)$	Cherche groupe pour %1, niveau %2 %3
 ^No set called "(.-)"%.$	Aucun ensemble nommé "%1".
@@ -1223,10 +1320,12 @@ Zone guide: the quests around you, in the order that walks least.	Guide de zone�
 ^Talent plan "(.-)"%.$	Plan de talents "%1".
 ^(%-?%d+) kit items low$	%1 objets du kit presque épuisés
 ^(%-?%d+) quests for (.-)$	%1 quêtes pour %2
+^Answered no: (.-)%.$	Répondu non : %1.
 ^Badge earned: (.-)$	Insigne gagné : %1
 ^No remembered (.-)$	Aucun point retenu : %1
 ^Note sent to (.-)%.$	Note envoyée à %1.
 ^Pace: (.-) XP/hour$	Rythme : %1 XP/heure
+^(%-?%d+) of (%-?%d+) bosses$	%1 boss sur %2
 ^About (.-) to (.-)%.$	Environ %1 jusqu'à %2.
 ^Looking for (.-)%.$	Cherche %1.
 ^no quest for (.-)$	pas de quête pour %1
@@ -1239,10 +1338,13 @@ Zone guide: the quests around you, in the order that walks least.	Guide de zone�
 ^Party sync (.-)$	Synchro de groupe : %1
 ^(%-?%d+) days (%-?%d+) h$	%1 jours %2 h
 ^(.-) mastered!$	%1 maîtrisé !
+^(.-) your time$	%1 à ton heure
 ^about (%-?%d+) min$	environ %1 min
 ^and (%-?%d+) more%.$	et %1 de plus.
+^resets in (.-)$	réinitialisation dans %1
 ^Supplies: (.-)$	Provisions : %1
 ^(%-?%d+) days ago$	il y a %1 jours
+^(%-?%d+) h (%-?%d+) min$	%1 h %2 min
 ^(%-?%d+) min ago$	il y a %1 min
 ^(%-?%d+) XP/hour$	%1 XP/heure
 ^about (%-?%d+) s$	environ %1 s
@@ -1252,6 +1354,7 @@ Zone guide: the quests around you, in the order that walks least.	Guide de zone�
 ^(%-?%d+) h ago$	il y a %1 h
 ^(%-?%d+) days$	%1 jours
 ^low: (.-)$	bas : %1
+^(%-?%d+) min$	%1 min
 ^LFG (.-)$	LFG %1
 ^(%-?%d+) h$	%1 h
 ]==]) end
