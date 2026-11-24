@@ -57,6 +57,7 @@ local function showList()
     if not e then
         for _,s in ipairs({listPane.name,listPane.when,listPane.where,listPane.note,listPane.mine}) do s:SetText('') end
         for _,g in ipairs(groups) do g.head:SetText('');g.names:SetText('') end
+        listPane.legend:SetText('')
         for _,b in ipairs(answerButtons) do b:Hide() end
         listPane.change:Hide();listPane.off:Hide()
         return
@@ -67,12 +68,15 @@ local function showList()
     listPane.note:SetText(e.note or '')
     local counts=a.counts(e)
     local wanted={t=e.roles.t,h=e.roles.h,d=e.roles.d}
+    local fromDiscord=false
     for i,g in ipairs(groups) do
         local key=GROUPS[i][1]
-        local names=a.names(e,key)
+        local names,_,discord=a.names(e,key)
+        if discord then fromDiscord=true end
         g.head:SetText(T(GROUPS[i][2])..' '..counts[key]..(wanted[key] and (' '..T('of')..' '..wanted[key]) or ''))
         g.names:SetText(names)
     end
+    listPane.legend:SetText(fromDiscord and T('(D) signed up in Discord') or '')
     local mine=a.mine(e)
     listPane.mine:SetText(T(mine and ANSWER_WORD[mine] or 'You have not answered yet.'))
     for _,b in ipairs(answerButtons) do
@@ -171,6 +175,8 @@ local function build()
     end
     listPane.empty=text(listPane,'GameFontDisable',LIST_X+4,LIST_TOP-4,LIST_WIDTH-8,40)
     listPane.more=text(listPane,'GameFontDisableSmall',LIST_X+4,LIST_TOP-LIST_ROWS*LIST_ROW,60)
+    -- Under the list, beside the "+N more" count: what the small mark after a name means.
+    listPane.legend=text(listPane,'GameFontDisableSmall',LIST_X+68,LIST_TOP-LIST_ROWS*LIST_ROW,LIST_WIDTH-72)
     local divider=listPane:CreateTexture(nil,'OVERLAY');divider:SetColorTexture(.79,.62,.27,.5)
     divider:SetSize(1,HEIGHT-124);divider:SetPoint('TOPLEFT',266,-46)
     listPane.name=text(listPane,'GameFontNormalLarge',PANE_X,-48,PANE_WIDTH)

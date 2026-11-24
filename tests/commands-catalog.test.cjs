@@ -53,10 +53,10 @@ test("/bf help is paged: a short index, one page per topic, one command by its w
 local said={} DEFAULT_CHAT_FRAME={AddMessage=function(_,m) said[#said+1]=m end}
 dofile('addon/BackstageForever/BackstageForeverAssist.lua')
 local topics=BackstageForeverHelpTopics
-assert(#topics==7)
+assert(#topics==9)
 -- The bare command: one line per topic plus a heading and a closing line, never the wall of text.
 local index=BackstageForeverHelpLines(nil)
-assert(#index==#topics+2 and #index<=10,'the index is short: '..#index)
+assert(#index==#topics+2 and #index<=12,'the index is short: '..#index)
 for i,topic in ipairs(topics) do
   assert(index[i+1]==topic.index and topic.index:sub(1,#topic.key+2)==i..' '..topic.key,topic.key)
   assert(#topic.lines>=5 and #topic.lines<=14,topic.key..' is one screen of chat: '..#topic.lines)
@@ -71,7 +71,10 @@ for _,topic in ipairs(topics) do for _,line in ipairs(topic.lines) do assert(not
 local all=BackstageForeverHelpLines('all') assert(#all==total and total>=60)
 -- A command word finds its own lines.
 local fly=BackstageForeverHelpLines('fly') assert(#fly==1 and fly[1]:sub(1,13)=='/bf fly PLACE')
-local guild=BackstageForeverHelpLines('guild') assert(#guild==2)
+local sr=BackstageForeverHelpLines('sr') assert(#sr==1 and sr[1]:sub(1,6)=='/bf sr')
+-- "guild" and "party" are step-by-step pages of their own (Backstage Live); the page wins over the command word.
+local guild=BackstageForeverHelpLines('guild') assert(guild[1]==topics[9].head and guild[2]:sub(1,7)=='Step 1.')
+local party=BackstageForeverHelpLines('party') assert(party[1]==topics[8].head and party[2]:sub(1,7)=='Step 1.')
 local helpers=BackstageForeverHelpLines('helpers') assert(#helpers==3)
 -- An unknown word says so and shows the index again.
 local unknown=BackstageForeverHelpLines('zzz') assert(unknown[1]=='No help page with that name.' and #unknown==#index+1)

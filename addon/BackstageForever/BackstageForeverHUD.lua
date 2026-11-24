@@ -967,6 +967,14 @@ if type(SlashCmdList)=='table' then
                 if type(BackstageForeverGuildCommand)=='function' then pcall(BackstageForeverGuildCommand,message)end
                 return
             end
+            if word=='plan' then
+                if type(BackstageForeverPlanCommand)=='function' then pcall(BackstageForeverPlanCommand,message)end
+                return
+            end
+            if word=='announce' then
+                if type(BackstageForeverAnnounceCommand)=='function' then pcall(BackstageForeverAnnounceCommand,message)end
+                return
+            end
             if word=='shop' then
                 if type(BackstageForeverShopCommand)=='function' then pcall(BackstageForeverShopCommand,message)end
                 return
