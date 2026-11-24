@@ -90,8 +90,9 @@ window.LedgerView = (() => {
   }
 
   // Price history (E6): one point per Auction House visit, oldest on the left; the dashed line is the usual price.
-  const day = (at) => new Date(at * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short" });
-  const fullDay = (at) => new Date(at * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  const stamp = (v, kind) => (window.I18n?.when ? window.I18n.when(v, kind) : new Date(v).toLocaleString()); // one date format, in the shown language (i18n.js)
+  const day = (at) => stamp(at * 1000, "day");
+  const fullDay = (at) => stamp(at * 1000, "date");
   function coinsText(copper) {
     const g = Math.floor(copper / 10000), s = Math.floor((copper % 10000) / 100), c = copper % 100;
     return [g ? `${g.toLocaleString()}g` : "", s ? `${s}s` : "", c || (!g && !s) ? `${c}c` : ""].filter(Boolean).join(" ");
@@ -129,7 +130,7 @@ window.LedgerView = (() => {
     return `<span class="${copper > 0 ? "ldg-gain" : "ldg-loss"}">${copper > 0 ? "+" : "−"}${coins(Math.abs(copper))}</span>`;
   }
   const span = (seconds) => { const h = Math.floor(seconds / 3600), m = Math.round((seconds % 3600) / 60); return h ? `${h} h ${String(m).padStart(2, "0")} min` : `${m} min`; };
-  const clock = (at) => new Date(at * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const clock = (at) => stamp(at * 1000, "time");
   // Gold per play session (E9): the purse when the addon loaded and when it last saw the character.
   function sessionsBlock(pick) {
     const s = pick.sessions;

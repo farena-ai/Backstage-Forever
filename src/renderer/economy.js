@@ -24,9 +24,10 @@ window.EconomyView = (() => {
     return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m ${String(s).padStart(2, "0")}s`;
   }
   const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  const when = (at) => new Date(at * 1000).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  const dateOf = (at) => new Date(at * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-  const timeOf = (at) => new Date(at * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const stamp = (v, kind) => (window.I18n?.when ? window.I18n.when(v, kind) : new Date(v).toLocaleString()); // one date format, in the shown language (i18n.js)
+  const when = (at) => stamp(at * 1000, "weekday");
+  const dateOf = (at) => stamp(at * 1000, "date");
+  const timeOf = (at) => stamp(at * 1000, "time");
   function table(id, label, columns, content, count = 0) {
     return `<div class="ldg-table-frame${count > 12 ? " ldg-long" : ""}"><table class="ldg-table eco-table-${id}"><caption class="sr-only">${label}</caption><thead><tr>${columns.map(([text, numeric]) => `<th scope="col"${numeric ? num : ""}>${text}</th>`).join("")}</tr></thead>${content}</table></div>`;
   }
@@ -48,7 +49,7 @@ window.EconomyView = (() => {
     while (cells.length % 7) cells.push(`<td class="eco-day eco-out" aria-hidden="true"></td>`);
     const rows = [];
     for (let i = 0; i < cells.length; i += 7) rows.push(`<tr>${cells.slice(i, i + 7).join("")}</tr>`);
-    const title = first.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    const title = stamp(first, "month");
     return `<div class="ldg-toolbar"><h2 data-eco-month>${esc(title)}</h2><div class="eco-month-nav"><button type="button" data-eco-step="-1" aria-label="Earlier month">‹ Earlier</button><button type="button" data-eco-step="0">This month</button><button type="button" data-eco-step="1" aria-label="Later month">Later ›</button></div></div>
       <div class="eco-month-frame"><table class="eco-month"><caption class="sr-only">${esc(title)}</caption><thead><tr>${WEEKDAYS.map((w) => `<th scope="col">${w}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>
       <p class="eco-legend"><span class="eco-chip eco-cooldown">Cooldown ready</span><span class="eco-chip eco-mail">Mail expires</span></p>`;

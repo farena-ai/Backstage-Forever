@@ -10,9 +10,10 @@ window.JourneyView = (() => {
   let view = "overview";
   const scopeOf = (p) => JSON.stringify([p?.id, p?.source?.kind, p?.source?.id, p?.source?.updatedAt, p?.clientBuild]);
   const dur = (s) => { if (!Number.isFinite(s)) return "?"; const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`; };
-  const day = (t) => new Date(t * 1000).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  const stamp = (v, kind) => (window.I18n?.when ? window.I18n.when(v, kind) : new Date(v).toLocaleString()); // one date format, in the shown language (i18n.js)
+  const day = (t) => stamp(t * 1000, "date");
   function dungeonDefeats(evidence) {
-    const date = value => `<time datetime="${esc(value.toISOString())}">${esc(value.toLocaleString(window.I18n?.lang, { dateStyle: "medium", timeStyle: "short" }))}</time>`;
+    const date = value => `<time datetime="${esc(value.toISOString())}">${esc(stamp(value))}</time>`;
     return `<section class="jr-card" data-journey-defeats><h2>Personal dungeon boss defeats</h2>${evidence ? `
       <p><strong>${evidence.distinct === 1 ? "1 distinct boss encounter in retained history" : `${evidence.distinct} distinct boss encounters in retained history`}</strong></p>
       <p>Last character save: ${date(new Date(evidence.savedAt))}</p>
@@ -42,13 +43,13 @@ window.JourneyView = (() => {
   function history(h) {
     if (!h || !h.totals.sessions) return `<p class="jr-empty">Play with the live link on and each session is kept here: when, how long, levels gained, deaths and zones. A break of 30 minutes starts a new session.</p>`;
     const max = Math.max(0.25, ...h.days.map((d) => d.levels));
-    const when = (ms) => new Date(ms).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    const when = (ms) => stamp(ms, "weekday");
     return `<p class="jr-hist-total">${h.totals.sessions} session${h.totals.sessions === 1 ? "" : "s"} · ${esc(dur(h.totals.minutes * 60))} played · ${h.totals.levels} levels · ${h.totals.deaths} death${h.totals.deaths === 1 ? "" : "s"}</p>
       <ol class="jr-days" aria-label="Levels gained per day, last 14 days">${h.days.map((d) => `<li title="${esc(d.day)}: ${d.levels} levels in ${d.minutes} min"><span class="jr-day-bar"><span data-h="${Math.round((d.levels / max) * 100)}"></span></span><small>${esc(d.day.slice(8))}</small></li>`).join("")}</ol>
       <ul class="jr-sessions">${h.sessions.slice(0, 8).map((x) => `<li><strong>${esc(when(x.startedAt))}</strong><span>${esc(dur(x.minutes * 60))}${x.startLevel && x.level ? ` · level ${x.startLevel}${x.level > x.startLevel ? ` → ${x.level}` : ""}` : ""}${x.levelsGained ? ` · +${x.levelsGained} levels` : ""} · ${x.deaths} death${x.deaths === 1 ? "" : "s"} · ${x.zones.length} zone${x.zones.length === 1 ? "" : "s"}</span></li>`).join("")}</ul>`;
   }
   // 1.4 (J17): the last seven days, for this character and all of them.
-  const weeklyTime = at => new Date(at).toLocaleString(window.I18n?.lang, { dateStyle: "medium", timeStyle: "short" });
+  const weeklyTime = at => stamp(at);
   const entryLabel = kind => kind === "accomplishment" ? "Accomplishment" : "Correction";
   function privatePanel(model) {
     if (!model || selectionPending()) return "";

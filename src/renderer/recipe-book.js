@@ -25,7 +25,7 @@ window.RecipeBookView = (() => {
     return [g ? `${g.toLocaleString()}g` : "", s ? `${s}s` : "", c || (!g && !s) ? `${c}c` : ""].filter(Boolean).join(" ");
   }
   const pct = (chance) => (Number.isFinite(chance) ? `${chance >= 0.1 ? Math.round(chance * 100) : Math.round(chance * 1000) / 10}%` : "");
-  const dateOf = (at) => (Number.isFinite(at) && at > 0 ? new Date(at * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "");
+  const dateOf = (at) => (Number.isFinite(at) && at > 0 ? (window.I18n?.when ? window.I18n.when(at * 1000, "day") : new Date(at * 1000).toLocaleString()) : "");
   const COLOUR = { orange: "Orange", yellow: "Yellow", green: "Green", grey: "Grey" };
   const dot = (colour) => (colour ? `<i class="rb-dot rb-${colour}" title="${COLOUR[colour]} at your skill" aria-label="${COLOUR[colour]} at your skill"></i>` : "");
   const needs = (materials) => materials.map((m) => `${m.count} ${esc(m.name)}`).join(", ");

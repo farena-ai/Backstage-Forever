@@ -240,3 +240,24 @@ test("app sentences with numbers and names translate through templates (0.57)", 
     if (out !== null) assert.doesNotMatch(out, /\{#?\d+\}/, `a slot is left unfilled: ${en}`);
   }
 });
+
+test("one date format across the newer screens, in the shown language (B6)", () => {
+  const { I } = i18n();
+  const at = new Date(2026, 10, 24, 14, 5).getTime();
+  assert.equal(I.when(at, "date"), "24 Nov 2026", "English is written day first, like the app's own sentences");
+  assert.equal(I.when(at, "day"), "24 Nov");
+  assert.equal(I.when(at, "time"), "14:05");
+  assert.equal(I.when(at), "24 Nov 2026, 14:05");
+  assert.equal(I.when(new Date(at), "month"), "November 2026");
+  assert.match(I.when(at, "longDay"), /^Tuesday,? 24 November 2026$/);
+  assert.equal(I.when(NaN), ""); assert.equal(I.when("nonsense"), "");
+  assert.equal(I.when(at, "no such kind"), I.when(at));
+  const de = i18n({ pref: "de" }).I;
+  assert.equal(de.lang, "de"); assert.match(de.when(at, "date"), /^24\. Nov\.? 2026$/);
+  // Journey, badges, run history, the ledger and the recipe book all ask the one helper.
+  for (const file of ["journey.js", "journey-extras.js", "journey-more.js", "badges.js", "economy.js", "ledger.js", "recipe-book.js"]) {
+    const src = read(`src/renderer/${file}`);
+    assert.match(src, /window\.I18n\?\.when/, file);
+    assert.doesNotMatch(src, /toLocale(Date|Time)String\(/, `${file} formats a date on its own`);
+  }
+});

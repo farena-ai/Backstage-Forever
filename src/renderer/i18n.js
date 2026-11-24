@@ -38,6 +38,20 @@ window.I18n = (() => {
     }
     return null;
   }
+  // One date format for the whole app (B6), in the shown language. value: a Date or milliseconds.
+  // kind: "date" 24 Nov 2026 · "day" 24 Nov · "time" 14:05 · "dateTime" (default) · "weekday" Tue, 24 Nov, 14:05
+  // · "longDay" Tuesday, 24 November 2026 · "month" November 2026. An unreadable value gives "".
+  const WHEN = {
+    date: { day: "numeric", month: "short", year: "numeric" }, day: { day: "numeric", month: "short" }, time: { hour: "2-digit", minute: "2-digit" },
+    dateTime: { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }, weekday: { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" },
+    longDay: { weekday: "long", day: "numeric", month: "long", year: "numeric" }, month: { month: "long", year: "numeric" },
+  };
+  function when(value, kind = "dateTime") {
+    const d = value instanceof Date ? value : new Date(value);
+    if (!Number.isFinite(d.getTime())) return "";
+    // English is written day first ("24 Nov 2026"), like the dates in the app's own sentences (story.cjs, challenge-runs.cjs).
+    try { return d.toLocaleString(lang === "en" ? "en-GB" : lang, WHEN[kind] || WHEN.dateTime); } catch { return d.toLocaleString(); }
+  }
   const SKIP = "[data-no-translate], script, style, textarea, code, pre, input, select option[data-keep]";
   function walk(n) {
     if (!n) return;
@@ -84,5 +98,5 @@ window.I18n = (() => {
   document.addEventListener("change", (e) => { if (e.target.matches?.("[data-lang-choice]")) choose(e.target.value); });
   const start = () => { apply(); watch(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
-  return { resolve, tr, apply, setGameLocale, control, choose, get lang() { return lang; }, NAMES, META };
+  return { resolve, tr, when, apply, setGameLocale, control, choose, get lang() { return lang; }, NAMES, META };
 })();
