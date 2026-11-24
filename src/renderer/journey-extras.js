@@ -6,8 +6,8 @@
 window.JourneyExtras = (() => {
   const api = window.backstage;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  const VIEWS = Object.freeze([["overview", "Overview"], ["story", "Story so far"], ["timeline", "Timeline"], ["races", "Races"], ["coach", "Coach's notes"], ["overlay", "Stream overlay"]]);
-  const LOADERS = { story: () => api.story(), timeline: () => api.journeyTimeline(), races: () => api.raceBoard(), coach: () => api.coachNotes(), overlay: () => api.streamOverlay() };
+  const VIEWS = Object.freeze([["overview", "Overview"], ["story", "Story so far"], ["timeline", "Timeline"], ["races", "Races"], ["coach", "Coach's notes"], ["challenge", "Challenge run"], ["overlay", "Stream overlay"], ["discord", "Discord status"]]);
+  const LOADERS = { story: () => api.story(), timeline: () => api.journeyTimeline(), races: () => api.raceBoard(), coach: () => api.coachNotes(), overlay: () => api.streamOverlay(), ...(window.JourneyMore?.loaders || {}) };
   const cache = {}, errors = {}, loading = {};
   let epoch = 0, note = "", busy = false, observer = null, thumbQueue = [], thumbBusy = false;
   const share = (kind, data, label) => window.ShareCard?.button(kind, data, label) || "";
@@ -150,7 +150,9 @@ window.JourneyExtras = (() => {
         <div class="jx-panel"><h3>What it shows now</h3>${sample}<p class="jx-foot">Deaths appear while the live link is on. The time is your last finished level.</p></div></div></section>`;
   }
 
-  const PAINT = { story, timeline, races, coach, overlay };
+  // Challenge runs (C12) and the Discord status (S6) are painted by journey-more.js.
+  const more = (name) => (d) => window.JourneyMore[name](d, { note, busy, share });
+  const PAINT = { story, timeline, races, coach, overlay, ...(window.JourneyMore ? { challenge: more("challenge"), discord: more("discord") } : {}) };
   function load(view, rerender) {
     if (loading[view] || !LOADERS[view]) return;
     const mine = epoch;
@@ -180,6 +182,7 @@ window.JourneyExtras = (() => {
       catch (e) { note = e?.message || "That did not work."; }
       busy = false; rerender();
     };
+    if (view === "challenge" || view === "discord") { window.JourneyMore.mounted(root.querySelector("[data-journey-extra]") || root, view, { cache, act, rerender, setNote: (text) => { note = text; } }); return; }
     root.addEventListener("click", (ev) => {
       const show = ev.target.closest("[data-shot-show]"), remove = ev.target.closest("[data-race-remove]");
       if (show) { api.showScreenshot(show.dataset.shotShow).catch((e) => window.toast?.(e.message)); return; }
@@ -199,7 +202,7 @@ window.JourneyExtras = (() => {
     });
   }
   function invalidate() {
-    epoch++; note = ""; busy = false; observer?.disconnect(); thumbQueue = [];
+    epoch++; note = ""; busy = false; observer?.disconnect(); thumbQueue = []; window.JourneyMore?.reset();
     for (const k of Object.keys(cache)) delete cache[k];
     for (const k of Object.keys(errors)) delete errors[k];
     for (const k of Object.keys(loading)) delete loading[k];

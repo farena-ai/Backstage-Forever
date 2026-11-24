@@ -39,6 +39,9 @@ function recover({ route, profile, pack, skips = [], now = Date.now() }) {
 
   const past = (s) => {
     if (s.kind === "travel") return profile.location?.mapId === s.mapId || profile.level >= s.level + 5;
+    // Q8/Q9: a step you wrote yourself or a dungeon visit stays until you skip it or outlevel it,
+    // the same rule the route position and the addon use.
+    if (s.kind === "custom" || s.kind === "dungeon") return profile.level >= s.level + 5;
     // Age out old absent steps without treating them as completed. Never age out a current quest.
     const settled = (id) => !log.has(id) && (done.has(id) || profile.level >= s.level + 5);
     if (s.kind === "pickup") return s.ids.every((id) => log.has(id) || settled(id));
@@ -51,6 +54,8 @@ function recover({ route, profile, pack, skips = [], now = Date.now() }) {
   const s = route.steps[index];
   result.step = { ...s, index };
   if (s.kind === "travel") return blocked("travel");
+  // Nothing in a save can confirm these; they are shown as written, with a map point when one is known.
+  if (s.kind === "custom" || s.kind === "dungeon") return { ...result, free: true, quest: null, map: point(s) ? { profileId: profile.id, mapId: s.mapId, x: s.x, y: s.y } : null };
   const ids = s.ids.filter((id) => !done.has(id) || log.has(id));
   if (ids.some((id) => !pack.quests[id])) return blocked("reference");
   if (ids.some((id) => !compatible(pack.quests[id]))) return blocked("quest-side");
@@ -61,7 +66,8 @@ function recover({ route, profile, pack, skips = [], now = Date.now() }) {
     if (Object.values(pack.quests).some((q) => ids.includes(q.nextQuestId) && !done.has(q.id))) return blocked("prerequisite");
     return blocked("unconfirmed-pickup");
   }
-  const id = ids.length === 1 ? ids[0] : null;
+  // One quest per step in the shipped route; a "fewest trips" hand-in can hold several.
+  const id = ids.length === 1 ? ids[0] : ids.find((i) => log.has(i) && (s.kind !== "turnin" || log.get(i).complete)) ?? ids.find((i) => log.has(i)) ?? null;
   const saved = log.get(id);
   if (!saved) return blocked("not-in-log");
   if (!referenceMatches(pack.quests[id], saved)) return blocked("reference");
