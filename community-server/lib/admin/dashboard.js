@@ -31,6 +31,56 @@ function byWeek(days, lists) {
   return { keys, lists: out };
 }
 
+const SHORT = { windows: "Windows", "mac-arm64": "Mac ARM", "mac-x64": "Mac Intel", linux: "Linux", addon: "Addon", source: "Source", other: "Other" };
+
+// GitHub release downloads: public numbers about files, nothing about players.
+function downloadsSection(dl, range, days) {
+  const head = (sub) => `<div class="section-head"><h2>Downloads</h2><span class="dim">${esc(sub)}</span></div>`;
+  if (!dl) return `${head("from the public GitHub release pages")}<p class="card empty">Download counts are switched off on this server.</p>`;
+  const checked = dl.lastChecked ? `last checked ${dl.lastChecked.slice(0, 16).replace("T", " ")} UTC` : "not checked yet";
+  if (dl.empty) return `${head(`from the public GitHub release pages, ${checked}`)}<p class="card empty">No download counts yet. The service asks GitHub about once an hour.</p>`;
+  const classes = dl.classes.filter(c => dl.totals[c] > 0 || c !== "other");
+  const weekly = days > 90 ? byWeek(dl.days, dl.perDay) : null;
+  const startInRange = dl.trackingStart >= dl.days[0];
+  const figs = [
+    barList({
+      title: "Downloads by platform, all time", what: "File", countLabel: "Downloads",
+      summary: `${num(dl.total)} downloads of release files in all, as GitHub counts them today. Update and checksum files are left out.`,
+      rows: dl.byClass.map(x => ({ label: x.label, n: x.n, pct: x.pct })),
+    }),
+    columnChart({
+      title: weekly ? "Downloads per week" : "Downloads per day",
+      summary: `${plural(dl.inRange, "download", "downloads")} in the last ${range}, from the change in GitHub's counts between one day and the next.`,
+      labels: (weekly ? weekly.keys : dl.days).map(shortDay), keys: weekly ? weekly.keys : dl.days,
+      series: dl.classes.map((c, i) => ({ c, name: SHORT[c], values: weekly ? weekly.lists[i] : dl.perDay[i], cls: c === "other" ? "other" : `s${i + 1}` })).filter(s => classes.includes(s.c)),
+      yLabel: "Downloads", xLabel: weekly ? "Week starting (UTC)" : "Day (UTC)",
+      note: `Tracking started on ${dl.trackingStart}${startInRange ? "; earlier days cannot be shown" : ""}. Files that already existed that day are counted from the next change on; a release that came out later counts in full. ${num(dl.sinceStart)} downloads have been counted day by day since then.`,
+    }),
+  ];
+  if (dl.updates.length) {
+    figs.push(figure({
+      title: "Update and checksum files", summary: "Fetched by the app's updater and by people checking a download. Shown for completeness; not counted as downloads.",
+      body: `<table class="grid-table"><thead><tr><th scope="col">File</th><th scope="col" class="n">Fetched</th></tr></thead><tbody>
+${dl.updates.slice(0, 8).map(u => `<tr><th scope="row">${text(u.name)}</th><td class="n">${num(u.n)}</td></tr>`).join("")}</tbody></table>`,
+    }));
+  }
+  const shown = dl.releases.slice(0, 12), rest = dl.releases.slice(12);
+  const table = figure({
+    title: "Downloads per release",
+    summary: `The newest ${shown.length === dl.releases.length ? "releases" : `${shown.length} of ${dl.releases.length} releases`}, with all-time downloads of each file kind.`,
+    body: `<div class="scroll"><table class="grid-table"><thead><tr><th scope="col">Release</th><th scope="col">Published</th><th scope="col" class="n">Days out</th>${classes.map(c => `<th scope="col" class="n">${esc(SHORT[c])}</th>`).join("")}<th scope="col" class="n">Total</th></tr></thead><tbody>
+${shown.map(r => `<tr><th scope="row">${text(r.tag)}${r.prerelease ? ' <span class="chip tag">pre-release</span>' : ""}</th><td class="nowrap">${esc(r.published || "not known")}</td><td class="n">${r.daysSince === null ? "–" : num(r.daysSince)}</td>${classes.map(c => `<td class="n">${num(r.counts[c])}</td>`).join("")}<td class="n"><b>${num(r.total)}</b></td></tr>`).join("")}
+${rest.length ? `<tr><th scope="row" class="dim">${num(rest.length)} older releases</th><td></td><td></td>${classes.map(c => `<td class="n">${num(rest.reduce((a, r) => a + r.counts[c], 0))}</td>`).join("")}<td class="n"><b>${num(rest.reduce((a, r) => a + r.total, 0))}</b></td></tr>` : ""}
+</tbody></table></div>`,
+  }).replace('class="card chart"', 'class="card chart full"');
+  return `${head(`from the public GitHub release pages, ${checked}`)}
+<p class="plain-note">Downloads are not new players. Installer downloads include automatic updates of existing installs: each time the app updates itself it fetches the installer again.</p>
+<div class="charts">
+${figs.join("\n")}
+</div>
+${table}`;
+}
+
 function renderDashboard(d) {
   const range = RANGE_NAMES[d.days];
   const picker = `<nav class="seg" aria-label="Period">${RANGES.map(r => `<a href="/admin/?days=${r}"${r === d.days ? ' class="on" aria-current="true"' : ""}>${esc(RANGE_NAMES[r])}</a>`).join("")}</nav>`;
@@ -92,6 +142,16 @@ ${tile("Open tickets", num(d.support.openNow), d.support.medianFirstReplyHours =
       summary: `Share of each day's active installs running ${v.latest}, the newest stable version seen, from ${shortDay(ad.firstDay)} on. Latest: ${lastShare === undefined ? "no data" : `${r1(lastShare)}%`}.`,
       days: ad.days, series: [{ name: v.latest, values: ad.share, cls: "s1" }], yLabel: "Share of the day's installs", percent: true,
       labels: ad.days.map((_, i) => `Day ${i + 1}`), xLabel: "Days since first seen (up to 30)",
+    }));
+  }
+
+  const dl = d.downloads;
+  if (dl && !dl.empty && dl.latest && dl.latest.values.some(x => x !== null)) {
+    const lastTotal = [...dl.latest.values].reverse().find(x => x !== null);
+    charts.push(lineChart({
+      title: `Downloads of ${dl.latest.tag}`,
+      summary: `All downloads so far of the files of ${dl.latest.tag}, the newest release on GitHub${dl.latest.publishedAt ? `, published ${shortDay(dl.latest.publishedAt.slice(0, 10))}` : ""}: ${num(lastTotal)}. Compare with the adoption chart: downloads include automatic updates.`,
+      days: dl.days, series: [{ name: "Downloads so far", values: dl.latest.values, cls: "s1" }], yLabel: "Downloads, running total",
     }));
   }
 
@@ -177,7 +237,8 @@ ${tiles}
 <div class="charts">
 ${charts.join("\n")}
 </div>
-<p class="footnote">Counts are installs that send statistics. Installs with statistics switched off, and anything before the statistics release, are not in these numbers. Period: ${esc(d.start)} to ${esc(d.today)} (UTC).</p>`;
+<p class="footnote">Counts are installs that send statistics. Installs with statistics switched off, and anything before the statistics release, are not in these numbers. Period: ${esc(d.start)} to ${esc(d.today)} (UTC).</p>
+${downloadsSection(d.downloads, range, d.days)}`;
 }
 
 module.exports = { renderDashboard };

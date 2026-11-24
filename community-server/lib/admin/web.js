@@ -22,6 +22,7 @@ const { lineChart, barList } = require("./charts");
 const V = require("../validate-desk");
 const { ValidationError } = require("../validate");
 const stats = require("../stats");
+const { downloadStats } = require("../downloads");
 const { hashInstall, day } = require("../store");
 
 const COOKIE = "__Host-bfadmin";
@@ -184,6 +185,7 @@ ${field("Authenticator code", '<input name="code" type="text" required inputmode
     let data = dashCache.get(key);
     if (!data) {
       data = stats.dashboard(store, { now: now(), days });
+      data.downloads = config.downloads && config.downloads.enabled ? downloadStats(store, { now: now(), days }) : null;
       dashCache.clear();
       dashCache.set(key, data);
     }
@@ -625,7 +627,7 @@ ${list.rows.map(r => `<tr><td class="nowrap">${when(r.at)}</td><th scope="row">$
     const mb = st.dbBytes === null ? "–" : `${(st.dbBytes / 1048576).toFixed(st.dbBytes < 10485760 ? 2 : 1)} MB`;
     const ROWS = [["heartbeats", "Heartbeat rows (one per install per day)"], ["first_seen", "Installs ever seen (first-seen days)"], ["monthly_rollups", "Monthly totals"],
       ["tickets", "Tickets"], ["messages", "Ticket messages and notes"], ["error_groups", "Error groups"], ["error_occurrences", "Error counts per version and day"],
-      ["announcements", "Announcements"], ["obs", "Community observations"], ["reports", "Old one-way reports"], ["blocked", "Blocked installs"], ["sessions", "Admin sessions"], ["audit", "Audit log entries"]];
+      ["announcements", "Announcements"], ["obs", "Community observations"], ["gh_downloads", "GitHub download counts (public data)"], ["reports", "Old one-way reports"], ["blocked", "Blocked installs"], ["sessions", "Admin sessions"], ["audit", "Audit log entries"]];
     ctx.html({
       title: "Data", active: "data",
       body: `<div class="head"><h1>Data</h1></div>

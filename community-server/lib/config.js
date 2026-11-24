@@ -5,6 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const fs = require("node:fs");
 const { parseEmailList, parseDiscordWebhook } = require("./notify");
+const { parseRepo, parseToken } = require("./downloads");
 
 const DEFAULT_ENV_FILE = path.join(os.homedir(), "bf-community", "secrets", "bf-community.env");
 const DEFAULT_DB = path.join(os.homedir(), "bf-community", "data", "community.db");
@@ -94,6 +95,12 @@ function loadConfig(env = process.env, overrides = {}) {
     // Nightly database copies (kept 14). Empty or "off" disables them.
     backupDir: backupDir(env),
     backupKeep: intEnv(env, "BF_DESK_BACKUP_KEEP", 14, 1, 365),
+    // Download counts of the public GitHub releases, asked for at most once an hour.
+    downloads: {
+      enabled: !["off", "0"].includes(String(env.BF_DESK_DOWNLOADS ?? "on").toLowerCase()),
+      repo: parseRepo(env.BF_DESK_GITHUB_REPO),
+      token: parseToken(env.BF_DESK_GITHUB_TOKEN),
+    },
     // Admin notifications: both channels are off unless set in the env file.
     notify: {
       email: parseEmailList(env.BF_DESK_NOTIFY_EMAIL, "BF_DESK_NOTIFY_EMAIL"),
@@ -106,7 +113,7 @@ function loadConfig(env = process.env, overrides = {}) {
   };
   // Overrides (tests, tools) replace single settings; grouped ones are merged key by key.
   for (const [k, v] of Object.entries(overrides))
-    config[k] = ["limits", "auth", "notify"].includes(k) && v && typeof v === "object" ? { ...config[k], ...v } : v;
+    config[k] = ["limits", "auth", "notify", "downloads"].includes(k) && v && typeof v === "object" ? { ...config[k], ...v } : v;
   return config;
 }
 

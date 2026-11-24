@@ -13,6 +13,7 @@ const fs = require("node:fs");
 const crypto = require("node:crypto");
 const { Store } = require("../lib/store");
 const { FLAGS, HEARTBEAT_AREAS, TICKET_AREAS } = require("../lib/validate-desk");
+const { recordSnapshot } = require("../lib/downloads");
 
 const DAY = 86_400_000;
 
@@ -177,9 +178,32 @@ function seed(file, { days = 120, now = Date.now(), seedValue = 20261124 } = {})
   desk.saveSavedReply({ title: "Ask for the game build", body: "Thanks for the report.\n\nCould you tell us the game build shown under Settings, About? That helps us find it." }, now);
   desk.saveSavedReply({ title: "Fixed in the next version", body: "This is fixed and will be in the next version. The app updates itself when you start it.\n\nThank you for taking the time to write." }, now);
   desk.saveSavedReply({ title: "Community data corrected", body: "That entry has been corrected. It reaches your app with the next daily data pack." }, now);
+  // GitHub download counts: tracking begins 75 days ago; later releases appear while it runs.
+  const trackFrom = Math.max(0, days - 75);
+  const files = (v) => [[`Backstage-Forever-${v}-Windows-x64-Setup.exe`, 30], [`Backstage-Forever-${v}-macOS-arm64.zip`, 4], [`Backstage-Forever-${v}-macOS-x64.zip`, 1.5], [`Backstage-Forever-${v}-Linux-x64.AppImage`, 2.5],
+    [`BackstageForever-Addon-${v}.zip`, 6], [`Backstage-Forever-${v}-Source.zip`, 0.4], ["backstage-update.json", 55], ["SHA256SUMS.txt", 0.8]];
+  const fetched = new Map();
+  for (let d = trackFrom; d < days; d++) {
+    const out = [];
+    releases.forEach(([v, rd], ri) => {
+      if (rd > d) return;
+      const next = releases[ri + 1], current = !next || next[1] > d, age = d - rd;
+      const assets = files(v).map(([name, weight]) => {
+        const key = `${v}|${name}`;
+        // Before tracking began the release had already been downloaded for a while.
+        if (!fetched.has(key)) fetched.set(key, d === trackFrom && rd < d ? Math.round(weight * (40 + (trackFrom - rd) * (current ? 9 : 3))) : 0);
+        const pull = current ? (age < 4 ? 14 : 5) : 0.25;
+        fetched.set(key, fetched.get(key) + Math.floor(weight * pull * (0.5 + rand()) / 6));
+        return { name, count: fetched.get(key) };
+      });
+      out.push({ tag: `v${v}`, publishedAt: stamp(now - (days - 1 - rd) * DAY - 5 * 3600_000), prerelease: false, assets });
+    });
+    recordSnapshot(store, out, at(d, 0.5));
+  }
+  db.prepare("INSERT OR REPLACE INTO meta(k, v) VALUES ('downloads_ok_ms', ?)").run(String(now - 20 * 60_000));
   desk.audit({ id: adminIds[0], name: "demo-mara" }, "demo_seed", "", `days=${days}`, now);
 
-  const counts = Object.fromEntries(["heartbeats", "first_seen", "obs", "tickets", "messages", "error_groups", "announcements"].map(t => [t, db.prepare(`SELECT COUNT(*) AS c FROM ${t}`).get().c]));
+  const counts = Object.fromEntries(["heartbeats", "first_seen", "obs", "tickets", "messages", "error_groups", "announcements", "gh_downloads"].map(t => [t, db.prepare(`SELECT COUNT(*) AS c FROM ${t}`).get().c]));
   store.close();
   return counts;
 }

@@ -114,6 +114,11 @@ test("tickets, reply, stats, rollup, backup and notify-test from the command lin
   assert.match(cli(db, ["backup"], { env: { BF_DESK_BACKUP_DIR: "off" } }).err, /switched off/);
 
   assert.match(cli(db, ["notify-test"]).out, /No alerts are configured/);
+  // The manual download check makes no outbound call when the feature is switched off.
+  const dl = cli(db, ["downloads-fetch"], { env: { BF_DESK_DOWNLOADS: "off" } });
+  assert.equal(dl.code, 0);
+  assert.match(dl.out, /Download counts are switched off/);
+  assert.match(cli(db, ["downloads-fetch"], { env: { BF_DESK_GITHUB_REPO: "not a repo" } }).err, /BF_DESK_GITHUB_REPO must look like owner\/repository/);
   const bad = cli(db, ["notify-test"], { env: { BF_DESK_NOTIFY_EMAIL: "owner@example.com", BF_DESK_SENDMAIL: path.join(db.dir, "no-such-sendmail") } });
   assert.equal(bad.code, 1);
   assert.match(bad.out, /E-mail to 1 address\(es\): FAILED/);

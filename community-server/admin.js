@@ -25,6 +25,7 @@
 //   node admin.js rollup                  run the retention job and prune sessions now
 //   node admin.js backup                  write today's database copy now
 //   node admin.js notify-test             send a harmless test to whatever alerts are configured
+//   node admin.js downloads-fetch         ask GitHub for the release download counts now
 process.removeAllListeners("warning");
 const { loadConfig, loadEnvFileIfPresent } = require("./lib/config");
 const { Store, hashInstall } = require("./lib/store");
@@ -33,6 +34,7 @@ const { Auth } = require("./lib/auth");
 const { Notifier } = require("./lib/notify");
 const { runMaintenance } = require("./lib/maintenance");
 const { runBackup, retentionStatus } = require("./lib/stats");
+const { DownloadsFetcher, downloadStats } = require("./lib/downloads");
 const V = require("./lib/validate-desk");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -45,7 +47,7 @@ function usage(code = 1) {
   purge-install <hash|installId> [--block] | hash <installId> | pack
   admin-add <name> | admin-password <name> | admin-reset-totp <name> | admin-disable <name> | admin-enable <name> | admin-unlock <name> | admins
   tickets [--all] [--limit N] | ticket <BF-nnnn> | reply <BF-nnnn> <text>
-  rollup | backup | notify-test`);
+  rollup | backup | notify-test | downloads-fetch`);
   process.exit(code);
 }
 
@@ -282,6 +284,20 @@ async function main(argv) {
         if (!config.backupDir) throw new Error("backups are switched off (BF_DESK_BACKUP_DIR)");
         const r = runBackup(store, config.backupDir, Date.now(), config.backupKeep);
         console.log(r.created ? `Wrote ${r.file}` : `Today's copy already exists: ${r.file}`);
+        break;
+      }
+      case "downloads-fetch": {
+        const r = await new DownloadsFetcher({ store, config, log: (l) => console.error(l) }).run({ force: true });
+        const said = {
+          off: "Download counts are switched off (BF_DESK_DOWNLOADS=off).",
+          backoff: `GitHub asked us to wait. Next try after ${r.until}.`,
+          unchanged: "Nothing has changed on GitHub since the last check.",
+          updated: `Read ${r.releases} release(s); ${r.rows} count(s) were new or had changed.`,
+          failed: `The check failed: ${r.why}.`,
+        }[r.status];
+        console.log(said || r.status);
+        if (r.status === "updated" || r.status === "unchanged") console.log(`Downloads of release files in all: ${downloadStats(store).total ?? 0}.`);
+        if (r.status === "failed") process.exitCode = 1;
         break;
       }
       case "notify-test": {
