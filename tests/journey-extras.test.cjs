@@ -141,7 +141,7 @@ function pageContext(models) {
   const context = vm.createContext({ backstage: Object.fromEntries(Object.entries(models).map(([name, value]) => [name, async () => structuredClone(value)])), structuredClone, IntersectionObserver: class { observe() {} disconnect() {} unobserve() {} },
     document: { addEventListener() {}, querySelector: () => null }, setTimeout });
   context.window = context;
-  for (const file of ["../src/core/share-cards.cjs", "../src/renderer/share-card.js", "../src/renderer/journey-extras.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, file), "utf8"), context);
+  for (const file of ["../src/core/share-cards.cjs", "../src/renderer/share-card.js", "../src/renderer/journey-more.js", "../src/renderer/journey-extras.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, file), "utf8"), context);
   return context;
 }
 
@@ -151,12 +151,17 @@ test("the pages paint every view from its model, escaped and without inline styl
   try {
     x.handlers.setRaceName("Frank"); x.handlers.addRaceCode(R.exportCode({ journal: { levels: [{ level: 12, played: 40000, at: T }, { level: 13, played: 43000, at: T + DAY }] } }, "Mia <3".replace("<", "&")));
     x.a.name = "Aer<i>alyn";
-    models = { story: x.handlers.story(), journeyTimeline: x.handlers.journeyTimeline(), raceBoard: x.handlers.raceBoard(), coachNotes: x.handlers.coachNotes(), streamOverlay: await x.handlers.setStreamOverlay(true) };
+    models = { story: x.handlers.story(), journeyTimeline: x.handlers.journeyTimeline(), raceBoard: x.handlers.raceBoard(), coachNotes: x.handlers.coachNotes(), streamOverlay: await x.handlers.setStreamOverlay(true),
+      // C12 and S6: the two views journey-more.js paints, from the models their own handlers build.
+      challengeRun: (() => { const C = require("../src/core/challenge-runs.cjs"), run = { startedAt: Date.parse("2026-11-01T12:00:00Z"), startLevel: 5, rules: { oneLife: true, custom: "No <b>mounts</b>" } };
+        const view = C.evaluate(run, { level: 12, journal: { levels: [] } }, { deaths: [] });
+        return { profileId: "a", name: "Aer<i>alyn", level: 12, saved: true, options: C.RULES, limits: { custom: C.LIMITS.custom, dungeonLevel: C.LIMITS.dungeonLevel }, rules: run.rules, run: view, card: C.cardData(view), character: { name: "A", realm: "", level: 12, className: null } }; })(),
+      discordPresence: new (require("../src/core/discord-presence.cjs").DiscordPresence)({ connect: () => { throw Error("never"); } }).status() };
   } finally { fs.rmSync(x.root, { recursive: true, force: true }); }
   const w = pageContext(models), X = w.JourneyExtras;
-  assert.deepEqual(Array.from(X.VIEWS, ([id]) => id), ["overview", "story", "timeline", "races", "coach", "overlay"]);
+  assert.deepEqual(Array.from(X.VIEWS, ([id]) => id), ["overview", "story", "timeline", "races", "coach", "challenge", "overlay", "discord"]);
   const tabs = X.tabs("story");
-  assert.equal((tabs.match(/data-journey-view=/g) || []).length, 6); assert.match(tabs, /data-journey-view="story" aria-pressed="true"/);
+  assert.equal((tabs.match(/data-journey-view=/g) || []).length, 8); assert.match(tabs, /data-journey-view="story" aria-pressed="true"/);
   const root = { querySelectorAll: () => [], querySelector: () => null, addEventListener() {} };
   const html = {};
   for (const [view] of X.VIEWS.slice(1)) {
@@ -166,6 +171,9 @@ test("the pages paint every view from its model, escaped and without inline styl
     assert.doesNotMatch(html[view], /\sstyle=/, `${view}: the page's CSP forbids inline styles`);
     assert.doesNotMatch(html[view], /undefined|NaN|\[object/, view);
   }
+  assert.match(html.challenge, /No &lt;b&gt;mounts&lt;\/b&gt;/); assert.doesNotMatch(html.challenge, /<b>mounts/); assert.match(html.challenge, /Nothing recorded against it/); assert.match(html.challenge, /Self-declared/);
+  assert.match(html.challenge, /data-share-card="\{&quot;kind&quot;:&quot;challenge&quot;/); assert.doesNotMatch(html.challenge, /verified/i);
+  assert.match(html.discord, /Needs a Discord application id/); assert.match(html.discord, /data-discord-toggle aria-pressed="false"/); assert.match(html.discord, /name is never sent/);
   assert.match(html.story, /The story so far/); assert.match(html.story, /Aer&lt;i&gt;alyn/); assert.doesNotMatch(html.story, /<i>alyn/); assert.match(html.story, /data-story-chapter="zones"/);
   assert.match(html.story, /data-share-card="\{&quot;kind&quot;:&quot;story&quot;/); assert.match(html.story, /Pictures to share/);
   assert.match(html.timeline, /1 screenshot read from your game&#39;s Screenshots folder/); assert.match(html.timeline, /data-shot="WoWScrnShot_1\.jpg"/); assert.match(html.timeline, /Level 12 · Westfall · from a play session/);
@@ -183,13 +191,17 @@ test("the pages say plainly when there is nothing to show", async () => {
     journeyTimeline: { days: [], counts: { rows: 0, shots: 0, placed: 0 }, folder: { connected: false, found: false, limit: 200 } },
     raceBoard: { name: "", code: null, exportError: "Type a display name to make your code.", levelsSaved: 0, friends: [], limits: { friends: 12, name: 24 }, board: { columns: [], rows: [], standings: [] } },
     coachNotes: { status: "first-save", from: null, to: T, wentWell: [], change: null, tomorrow: null, noStepReason: "No next step can be worked out from the saved data. Open Now after your next save.", message: "Coach's notes compare two saves, and this is the first one the app has kept for this character. They start with your next save." },
-    streamOverlay: { running: false, port: null, url: null, enabled: false, facts: {} } });
+    streamOverlay: { running: false, port: null, url: null, enabled: false, facts: {} },
+    challengeRun: { profileId: "a", name: "Bram", level: 3, saved: false, options: require("../src/core/challenge-runs.cjs").RULES, limits: { custom: 120, dungeonLevel: 60 }, rules: null, run: null, card: null },
+    discordPresence: { enabled: true, appId: "", level: true, className: true, zone: true, appIdValid: false, state: "needs-id", connected: false, preview: "" } });
   const X = w.JourneyExtras, root = { querySelectorAll: () => [], querySelector: () => null, addEventListener() {} }, html = {};
   for (const [view] of X.VIEWS.slice(1)) { await new Promise((resolve) => { X.mounted(root, view, resolve); }); html[view] = X.render(view); }
   assert.match(html.story, /There is no story to tell yet/); assert.match(html.story, /Not saved/); assert.match(html.story, /quest reference is not loaded/); assert.doesNotMatch(html.story, /Pictures to share/);
   assert.match(html.timeline, /Connect your game folder in Settings/); assert.match(html.timeline, /Nothing with a saved date yet/);
   assert.match(html.races, /Type a display name to make your code/); assert.match(html.races, /No level times to compare yet/); assert.match(html.races, /No friends added yet/);
   assert.match(html.coach, /Not yet/); assert.match(html.coach, /this is the first one the app has kept/); assert.match(html.coach, /No next step can be worked out/); assert.doesNotMatch(html.coach, /What went well/);
+  assert.match(html.challenge, /Choose your rules/); assert.match(html.challenge, /Every rule would be self-declared/); assert.doesNotMatch(html.challenge, /data-share-card/);
+  assert.match(html.discord, /Nothing is opened until one is typed in below/);
   assert.match(html.overlay, /The overlay is off/); assert.match(html.overlay, /While it is off the app listens to nothing/); assert.match(html.overlay, /aria-pressed="false"/);
 });
 

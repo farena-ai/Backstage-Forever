@@ -36,7 +36,7 @@ function learnedGivers(profiles = [], npcLocations = null) {
   }
   return { npcs, quests };
 }
-function questsByZone(pack, faction, race = null, learned = null) {
+function questsByZone(pack, faction, race = null, learned = null, flags = null) {
   const by = new Map(), bit = race ? RACES[race] : 0;
   for (const q of Object.values(pack.quests || {})) {
     if (!q.level || (q.sides?.length && !q.sides.includes(faction))) continue;
@@ -46,7 +46,7 @@ function questsByZone(pack, faction, race = null, learned = null) {
     if (!g) continue;
     const t = spot(pack, q.turnIns?.find((r) => r.kind === "npc") || q.turnIns?.[0], learned);
     const o = (q.objectiveLocations || []).map((l) => l.positions?.[0]).find((p) => p && Number.isFinite(p.x) && p.mapId === g.mapId) || null;
-    const row = { id: q.id, title: q.title, level: q.level, minLevel: q.minLevel || 1, giver: g, turnIn: t, objective: o, single: singleRace(q.raceMask) };
+    const row = { id: q.id, title: q.title, level: q.level, minLevel: q.minLevel || 1, giver: g, turnIn: t, objective: o, single: singleRace(q.raceMask), ...(flags?.get(q.id) || null) };
     if (!by.has(g.mapId)) by.set(g.mapId, []);
     by.get(g.mapId).push(row);
   }
@@ -66,7 +66,9 @@ function walk(items, from) {
 const pickupText = (s) => (s.quests.length > 1 ? `Pick up ${s.quests.length} quests from ${s.npc}: ${s.quests.slice(0, 3).map((q) => q.title).join(", ")}${s.quests.length > 3 ? "…" : ""}` : `Pick up “${s.quests[0].title}” from ${s.npc}`);
 
 /** One wave: pick-ups (merged per giver), objectives, hand-ins, each walked nearest-first. */
-function wave(quests, mapId, from) {
+// hub (the "fewest trips" variant): givers standing close together become one stop, and every
+// quest that goes back to the same person is handed in together.
+function wave(quests, mapId, from, hub = 0, first = null) {
   const picks = [], steps = [];
   // Class quests: a giver offering three or more one-race quests at the same level (the class
   // tablets and letters). Without class data they become one step: take the one for your class.
@@ -81,35 +83,70 @@ function wave(quests, mapId, from) {
   quests = quests.filter((q) => !classy.has(q.id));
   if (!from) { const low = quests.slice().sort((a, b) => a.level - b.level)[0]; if (low) from = low.giver; }
   for (const q of quests) {
-    const near = picks.find((p) => p.npc === q.giver.npc && Math.hypot(p.x - q.giver.x, p.y - q.giver.y) <= MERGE);
+    const near = picks.find((p) => (hub || p.npc === q.giver.npc) && Math.hypot(p.x - q.giver.x, p.y - q.giver.y) <= (hub || MERGE));
     if (near) near.quests.push(q); else picks.push({ kind: "pickup", npc: q.giver.npc, mapId, x: q.giver.x, y: q.giver.y, quests: [q] });
   }
-  steps.push(...walk(picks, from).map((p) => ({ kind: "pickup", ids: p.quests.map((q) => q.id), text: pickupText(p), npc: p.npc, mapId, x: p.x, y: p.y, level: Math.min(...p.quests.map((q) => q.level)) })));
+  steps.push(...walk(picks, from).map((p) => ({ kind: "pickup", ids: p.quests.map((q) => q.id), text: hub && new Set(p.quests.map((q) => q.giver.npc)).size > 1 ? `Pick up ${p.quests.length} quests in one stop around ${p.npc}: ${p.quests.slice(0, 3).map((q) => q.title).join(", ")}${p.quests.length > 3 ? "…" : ""}` : pickupText(p), npc: p.npc, mapId, x: p.x, y: p.y, level: Math.min(...p.quests.map((q) => q.level)) })));
   const last = () => steps[steps.length - 1] || from;
-  const objs = walk(quests.filter((q) => q.objective).map((q) => ({ ...q.objective, q })), last());
+  // first (the duo variant): objectives of the quests it picks out are walked before the others.
+  const spots = quests.filter((q) => q.objective).map((q) => ({ ...q.objective, q }));
+  const lead = first ? walk(spots.filter((o) => first(o.q)), last()) : [];
+  const objs = first ? [...lead, ...walk(spots.filter((o) => !first(o.q)), lead[lead.length - 1] || last())] : walk(spots, last());
   for (const o of objs) steps.push({ kind: "objective", ids: [o.q.id], text: `“${o.q.title}”: do the objectives around here`, mapId, x: o.x, y: o.y, level: o.q.level });
   const turns = walk(quests.filter((q) => q.turnIn).map((q) => ({ ...q.turnIn, q })), last());
+  if (hub) {
+    const stops = [];
+    for (const t of turns) { const s = stops.find((x) => x.npc === t.npc && x.mapId === t.mapId && Math.hypot(x.x - t.x, x.y - t.y) <= MERGE); if (s) s.quests.push(t.q); else stops.push({ npc: t.npc, mapId: t.mapId, x: t.x, y: t.y, quests: [t.q] }); }
+    for (const t of stops) steps.push({ kind: "turnin", ids: t.quests.map((q) => q.id), text: t.quests.length > 1 ? `Hand in ${t.quests.length} quests to ${t.npc}: ${t.quests.slice(0, 3).map((q) => q.title).join(", ")}${t.quests.length > 3 ? "…" : ""}` : `Hand in “${t.quests[0].title}” to ${t.npc}`, npc: t.npc, mapId: t.mapId, x: t.x, y: t.y, level: Math.min(...t.quests.map((q) => q.level)) });
+    return steps;
+  }
   for (const t of turns) steps.push({ kind: "turnin", ids: [t.q.id], text: `Hand in “${t.q.title}” to ${t.npc}`, npc: t.npc, mapId: t.mapId, x: t.x, y: t.y, level: t.q.level });
   return steps;
 }
 
-/** A route from one starting zone. zones: the leveling pack's zones. */
-function buildRoute({ pack, zones, start, faction, race = null, learned = null, byZone = questsByZone(pack, faction, race, learned) }) {
+/**
+ * A route from one starting zone. zones: the leveling pack's zones.
+ * tune (roadmap Q8, see route-variants.cjs) changes the same engine and nothing else:
+ *  above/below: how far over and under your level a quest may be; batch: extra levels taken in
+ *  one round; hub: radius within which givers become one stop; keep(q): false leaves a quest out;
+ *  flags: questId -> { elite, dungeon } from the data; dungeons: visits to insert, each
+ *  { key, name, min, max, faction, mapId, x, y } with its quests held back until the visit.
+ */
+function buildRoute({ pack, zones, start, faction, race = null, learned = null, tune = null, byZone = questsByZone(pack, faction, race, learned, tune?.flags || null) }) {
+  const ABOVE = Number.isInteger(tune?.above) ? tune.above : 2, BELOW = Number.isInteger(tune?.below) ? tune.below : 4, BATCH = Number.isInteger(tune?.batch) ? tune.batch : 0, HUB = Number.isFinite(tune?.hub) ? tune.hub : 0;
+  const keep = typeof tune?.keep === "function" ? tune.keep : null;
+  const visits = (tune?.dungeons || []).filter((d) => !d.faction || d.faction === faction).sort((a, b) => a.min - b.min || (a.key < b.key ? -1 : 1));
+  const held = new Set(visits.map((d) => d.key)), entered = new Set();
+  const wanted = (q) => (!keep || keep(q)) && !(q.dungeon && held.has(q.dungeon));
+  // Dungeon-heavy: once you are two levels into a dungeon's band, collect its quests, go in, hand in.
+  const dungeonStops = (level, steps, used) => {
+    for (const d of visits) {
+      const at = Math.min(d.max, d.min + 2);
+      if (entered.has(d.key) || level < at) continue;
+      entered.add(d.key);
+      if (level > d.max + 2) continue; // the route jumped past it: say nothing rather than send you back
+      const mine = [...byZone.values()].flat().filter((q) => q.dungeon === d.key && !used.has(q.id) && (!keep || keep(q)) && q.minLevel <= at + ABOVE).sort((a, b) => a.giver.mapId - b.giver.mapId || a.id - b.id);
+      for (const q of mine) { used.add(q.id); steps.push({ kind: "pickup", ids: [q.id], text: `For ${d.name}: pick up “${q.title}” from ${q.giver.npc}`, npc: q.giver.npc, mapId: q.giver.mapId, x: q.giver.x, y: q.giver.y, level: at }); }
+      steps.push({ kind: "dungeon", ids: [], dungeon: d.key, text: `Dungeon visit: ${d.name} (levels ${d.min}–${d.max}). Bring a full group.${mine.length ? ` You carry ${mine.length} quest${mine.length === 1 ? "" : "s"} for it.` : " No quest for it is known in the data."}`, mapId: d.mapId, x: d.x, y: d.y, level: at });
+      for (const q of mine) if (q.turnIn) steps.push({ kind: "turnin", ids: [q.id], text: `Hand in “${q.title}” to ${q.turnIn.npc}`, npc: q.turnIn.npc, mapId: q.turnIn.mapId, x: q.turnIn.x, y: q.turnIn.y, level: at });
+    }
+  };
   const open = zones.filter((z) => z.mapId !== start.mapId && !z.starter && (z.faction === faction || z.faction === "Contested"));
   const steps = [], used = new Set(), visited = [];
   let level = 1, here = start.mapId, last = null, zone = start;
   while (zone) {
-    const pool = (byZone.get(zone.mapId) || []).filter((q) => !used.has(q.id) && q.level >= level - BELOW && q.level <= zone.max + ABOVE).sort((a, b) => a.level - b.level || a.id - b.id);
+    const pool = (byZone.get(zone.mapId) || []).filter((q) => !used.has(q.id) && wanted(q) && q.level >= level - BELOW && q.level <= zone.max + ABOVE).sort((a, b) => a.level - b.level || a.id - b.id);
     if (pool.length >= MIN_ZONE_QUESTS || zone === start) {
       if (zone !== start) steps.push({ kind: "travel", ids: [], text: `Head to ${name(zone.mapId)} (levels ${zone.min}–${zone.max})`, mapId: zone.mapId, x: pool[0]?.giver.x ?? null, y: pool[0]?.giver.y ?? null, level: Math.max(level, zone.min) });
       let rest = pool;
       while (rest.length) {
-        let now = rest.filter((q) => q.level <= level + ABOVE && q.minLevel <= level + ABOVE);
+        let now = rest.filter((q) => q.level <= level + ABOVE + BATCH && q.minLevel <= level + ABOVE);
         if (!now.length) { level = Math.max(level + 1, Math.min(...rest.map((q) => Math.max(q.level, q.minLevel))) - ABOVE); continue; }
         for (const q of now) used.add(q.id);
-        const ws = wave(now, zone.mapId, last);
+        const ws = wave(now, zone.mapId, last, HUB, tune?.order === "group" ? (q) => Boolean(q.elite || q.dungeon) : null);
         steps.push(...ws); if (ws.length) last = ws[ws.length - 1];
         level = Math.max(level, Math.max(...now.map((q) => q.level)));
+        if (visits.length) dungeonStops(level, steps, used);
         rest = rest.filter((q) => !used.has(q.id));
       }
       here = zone.mapId;
@@ -119,12 +156,12 @@ function buildRoute({ pack, zones, start, faction, race = null, learned = null, 
     const ready = open.filter((z) => !visited.includes(z.mapId) && z.min <= level + 3);
     const pick = ready.sort((a, b) => (continent(a.mapId) !== continent(here)) - (continent(b.mapId) !== continent(here)) || a.min - b.min || a.max - b.max)[0];
     if (pick) { zone = pick; continue; }
-    const later = open.filter((z) => !visited.includes(z.mapId) && (byZone.get(z.mapId) || []).some((q) => !used.has(q.id) && q.level >= level - BELOW)).sort((a, b) => a.min - b.min)[0];
+    const later = open.filter((z) => !visited.includes(z.mapId) && (byZone.get(z.mapId) || []).some((q) => !used.has(q.id) && wanted(q) && q.level >= level - BELOW)).sort((a, b) => a.min - b.min)[0];
     if (later) { level = later.min - 3; zone = later; continue; }
     zone = null;
   }
   const real = steps.filter((s) => s.kind !== "travel");
-  return { key: race || String(start.mapId), race, start: start.mapId, startName: name(start.mapId), faction, races: start.starter, steps: steps.filter((s, i) => !(s.kind === "travel" && steps[i + 1]?.kind === "travel")).map((s) => ({ id: `${s.kind}:${s.ids.join("+") || s.mapId}`, ...s })),
+  return { key: race || String(start.mapId), race, start: start.mapId, startName: name(start.mapId), faction, races: start.starter, steps: steps.filter((s, i) => !(s.kind === "travel" && steps[i + 1]?.kind === "travel")).map((s) => ({ id: `${s.kind}:${s.kind === "dungeon" ? s.dungeon : s.ids.join("+") || s.mapId}`, ...s })),
     reachesLevel: real.length ? Math.max(...real.map((s) => s.level)) : 1, startsLevel: real.length ? Math.min(...real.map((s) => s.level)) : null,
     gaps: gapsOf(real), zones: [start.mapId, ...steps.filter((s) => s.kind === "travel").map((s) => s.mapId)].filter((m, i, a) => a.indexOf(m) === i) };
 }
@@ -203,7 +240,7 @@ function stepDone(s, st) {
   if (s.kind === "class") return level >= lvl + 2 || ids.some((id) => st.completed.has(id) || st.inLog.has(id));
   if (s.kind === "objective") return ids.every((id) => st.completed.has(id) || st.complete.has(id) || !st.inLog.has(id));
   if (s.kind === "travel") return st.mapId === s.mapId;
-  return false;
+  return false; // a dungeon visit or your own step: behind you once you skip it or outlevel it
 }
 /** Where a character is on a route: the first step not behind them (same as the addon). */
 function position(route, { completed = [], inLog = [], complete = [], level = 1, mapId = null } = {}, skipped = []) {
@@ -218,12 +255,12 @@ function position(route, { completed = [], inLog = [], complete = [], level = 1,
   return at < 0 ? { ended: true, index: steps.length, total: steps.length, done: steps.length } : { ended: false, index: at, total: steps.length, done: done.filter(Boolean).length };
 }
 
-function buildGuidedRoutes({ pack, zones, reviews = null, raw = null, learned = null }) {
+function buildGuidedRoutes({ pack, zones, reviews = null, raw = null, learned = null, tune = null }) {
   const routes = [];
   for (const race of Object.keys(RACES)) {
     const start = zones.find((z) => z.starter?.some((r) => (ALIASES[r] || r) === race));
     if (!start) continue;
-    const built = buildRoute({ pack, zones, start, faction: start.faction, race, learned });
+    const built = buildRoute({ pack, zones, start, faction: start.faction, race, learned, tune });
     if (raw) raw[race] = built; // unreviewed, for the review page
     routes.push(applyReview(built, reviews?.routes?.[race] || null));
   }
