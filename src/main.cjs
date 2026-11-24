@@ -65,6 +65,8 @@ let miniNow = null;
 let sessionHistory = null;
 let economy = null;
 let journeyStore = null;
+let routeEditor = null, routeEdits = null; // route variants and edits per character (Q8, Q9)
+let challengeRuns = null, discordPresence = null; // challenge runs (C12) and the Discord status (S6)
 let streamOverlay = null;
 let clearJourneyExtras = null;
 let closeAskPanel = null, dropAskPanelWindow = null;
@@ -215,6 +217,7 @@ app.whenReady().then(async () => {
       privateWeekly.sync(store.state); privateAfterAction.sync(store.state);
       try { economy?.absorb(store.state); } catch { /* History keeping must never block a save. */ }
       try { journeyStore?.absorb(store.state); } catch { /* Neither must the Journey's notes. */ }
+      try { routeEdits?.absorb(store.state); challengeRuns?.absorb(store.state); } catch { /* Nor route edits and challenge runs. */ }
       try { forgetGameAnswers?.(store.state.profiles.map((p) => p.id)); } catch { /* Nor the kept in-game answers. */ }
     };
     chatgpt = new ChatGPTAuth(app.getPath("userData"), safeStorage, {
@@ -237,7 +240,7 @@ app.whenReady().then(async () => {
     game = new GameSync({
       dataDir: app.getPath("userData"),
       // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
-      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id) }); },
+      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id), routes: (id) => routeEditor?.handoff(id) || null }); },
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -824,7 +827,7 @@ app.whenReady().then(async () => {
     const current = G.applyReview(raw, G.mergeReviews(bundledReview(), localReview()).routes[input.race] || null, { keepSkipped: true });
     if (!current.steps.some((s) => s.id === input.id)) throw Error("Unknown step.");
     atomic(reviewFile, JSON.stringify(G.reviewAction(localReview(), input.race, input.id, input.action, current)));
-    guided = desktopGuided = null;
+    guided = desktopGuided = null; routeEditor?.invalidate();
     return true;
   });
   handle("exportRouteReview", async (...args) => {
@@ -845,13 +848,22 @@ app.whenReady().then(async () => {
     const pack = knowledge.bundled?.pack || readJson("data/forever/pack.json");
     // Never use the mixed-character learned giver cache to recommend a route point.
     desktopGuided ||= G.buildGuidedRoutes({ pack, zones: readJson("data/forever-leveling/pack.json").zones, reviews: G.mergeReviews(bundledReview(), localReview()) });
-    const race = p?.race ? (G.ALIASES[p.race.replace(/\s/g, "")] || G.ALIASES[p.race] || p.race) : null;
-    const route = desktopGuided.routes.find((r) => r.key === race) || null;
+    // Q8/Q9: the character's own route: the variant they chose, with their edits laid over it.
+    const mine = routeEditor.routeFor(p);
+    const route = mine.route;
     const coverage = desktopGuided.routes.map((r) => ({ race: r.key, faction: r.faction, start: r.startName, from: r.startsLevel, to: r.reachesLevel, steps: r.steps.length, gaps: r.gaps, reviewed: r.reviewed }));
     const recovery = desktopRoute.recover({ route, profile: p, pack, skips: input.skips });
-    return { profileId: p?.id ?? null, build: p?.clientBuild ?? null, route: route ? { race: route.key, total: route.steps.length } : null,
+    return { profileId: p?.id ?? null, build: p?.clientBuild ?? null, route: route ? { race: route.key, total: route.steps.length, variant: mine.variant } : null,
       recovery, coverage, skipLimit: desktopRoute.MAX_SKIPS, mapName: MAP_NAMES[recovery.map?.mapId] || null };
   });
+  routeEdits = new (require("./core/route-editor.cjs").RouteEdits)({ file: path.join(app.getPath("userData"), "route-edits.json"), write: atomic });
+  try { routeEdits.absorb(store.state); } catch {}
+  routeEditor = require("./core/route-editor-ipc.cjs").registerRouteEditor({
+    handle, getState: () => store.state, edits: routeEdits, getPack: () => knowledge.bundled?.pack || readJson("data/forever/pack.json"),
+    getZones: () => readJson("data/forever-leveling/pack.json").zones, getReviews: () => G.mergeReviews(bundledReview(), localReview()),
+    getCreatures: () => { try { return readJson("data/forever-creatures/pack.json").creatures; } catch { return []; } },
+    getBaseline: () => require("./core/dungeon-atlas.cjs").BASELINE, mapNames: require("./core/companion-tools.cjs").MAP_NAMES,
+    dialog, getWindow: () => win, copyText: (text) => clipboard.writeText(text), onChange: () => { game?.writeHandoff().catch(() => {}); } });
   // "You are here": the zone the character is in, for their level and faction.
   handle("zoneBriefing", () => {
     const profile = worldMap.profile();
@@ -1007,9 +1019,24 @@ app.whenReady().then(async () => {
     },
     copyText: (text) => clipboard.writeText(text),
   });
+  // Challenge runs (C12) and the Discord status (S6, off until an application id is typed in).
+  challengeRuns = new (require("./core/challenge-runs.cjs").ChallengeStore)({ file: path.join(app.getPath("userData"), "challenge-runs.json"), write: atomic });
+  try { challengeRuns.absorb(store.state); } catch {}
+  discordPresence = new (require("./core/discord-presence.cjs").DiscordPresence)({ file: path.join(app.getPath("userData"), "discord-presence.json"), write: atomic });
+  // Only while the live link reports: Discord must never show a place from an old save.
+  const presenceFacts = () => {
+    try {
+      const f = journeyExtras.overlayFacts(), p = store.state.profiles.find((x) => x.id === store.state.activeProfileId);
+      return f.live && p ? { level: f.level, className: p.className || "", zone: f.zone || "" } : null;
+    } catch { return null; }
+  };
+  require("./core/journey-more-ipc.cjs").registerJourneyMore({ handle, getState: () => store.state, challenges: challengeRuns, journey: journeyStore, presence: discordPresence, presenceFacts });
+  const presenceTimer = setInterval(() => { try { if (discordPresence.settings.enabled) discordPresence.update(presenceFacts()); } catch {} }, 20000);
+  presenceTimer.unref?.();
   app.on("before-quit", () => { void streamOverlay?.stop(); });
+  app.on("before-quit", () => { try { discordPresence?.stop(); } catch {} });
   void journeyExtras.resume();
-  clearJourneyExtras = () => { void streamOverlay.stop(); journeyStore.clear(); shotThumbs.clear(); };
+  clearJourneyExtras = () => { void streamOverlay.stop(); journeyStore.clear(); shotThumbs.clear(); try { challengeRuns.clear(); discordPresence.clear(); } catch {} };
   const economyTimer = setInterval(() => { try { economyPages.tick(); } catch {} }, 60000);
   economyTimer.unref?.();
   handle("ledger", (...args) => {
@@ -1273,6 +1300,7 @@ app.whenReady().then(async () => {
     try { economy?.clear(); } catch {}
     try { clearJourneyExtras?.(); } catch {}
     try { fs.rmSync(path.join(app.getPath("userData"), "route-review.json"), { force: true }); guided = desktopGuided = null; } catch {}
+    try { fs.rmSync(path.join(app.getPath("userData"), "route-edits.json"), { force: true }); routeEdits.data = {}; routeEditor?.invalidate(); } catch {}
     diagnostics.clear();
     companionContext.invalidate("reset");
     subscriptionEpoch++;

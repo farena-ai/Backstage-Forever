@@ -3,7 +3,8 @@
 window.GuidedRouteView = (() => {
   const api = window.backstage;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  const KIND = { pickup: "Pick up", class: "Class quest", objective: "Objectives", turnin: "Hand in", travel: "Travel" };
+  const KIND = { pickup: "Pick up", class: "Class quest", objective: "Objectives", turnin: "Hand in", travel: "Travel", dungeon: "Dungeon", custom: "Your step" };
+  const VARIANT = { solo: "Solo", duo: "Duo", dungeons: "Dungeon-heavy", trips: "Fewest trips", careful: "Careful" };
   const REASON = {
     "no-character": "Import an addon save or choose a saved character.",
     build: "No matching reference for this saved build. Browse only.",
@@ -55,15 +56,18 @@ window.GuidedRouteView = (() => {
   }
   function body(d, owner) {
     const { step, reason, map, quest, fallback, skipped } = d.recovery;
-    const focus = map && { ...map, routeBuild: d.build, routeSource: owner.source.id, kind: step.kind === "turnin" ? "quest-turnin" : "quest-objective", label: quest.title,
-      source: "Approximate route reference", goal: { title: quest.title, questId: quest.id } };
+    // A dungeon visit or a step of your own has a map point but no quest behind it.
+    const focus = map && (quest ? { ...map, routeBuild: d.build, routeSource: owner.source.id, kind: step.kind === "turnin" ? "quest-turnin" : "quest-objective", label: quest.title,
+      source: "Approximate route reference", goal: { title: quest.title, questId: quest.id } }
+      : { mapId: map.mapId, x: map.x, y: map.y, label: step.text.slice(0, 80), source: step.kind === "custom" ? "Your own route step" : "Classic-era baseline (approximate entrance)" });
     const primary = focus ? `<button type="button" class="gr-map" data-map-focus="${esc(JSON.stringify(focus))}">Show on Map</button>`
       : fallback ? `<button type="button" class="gr-map" data-quest-open="${fallback.id}" data-ledger-quest-profile="${esc(d.profileId)}">Open saved quest</button>`
       : "";
     return `<section class="gr-card" data-gr-recovery aria-labelledby="gr-heading"><h2 id="gr-heading" tabindex="-1">Resume your route</h2>
       ${owner ? `<p class="gr-note"><b>${esc(owner.name)}</b>${owner.source?.updatedAt ? ` · ${esc(new Date(owner.source.updatedAt).toLocaleString())} · <span>Last saved · not live</span>` : ""}</p>` : ""}
-      ${step ? `<p class="gr-note">${esc(KIND[step.kind] || step.kind)} · ${step.index + 1} / ${d.route.total}</p><p><strong>${esc(step.text)}</strong></p>` : ""}
-      ${reason ? `<p>${esc(REASON[reason])}</p>` : `<p class="gr-note">${esc(d.mapName || `Map ${map.mapId}`)} · <span>Approximate route reference</span></p>`}
+      ${step ? `<p class="gr-note"><span>${esc(KIND[step.kind] || step.kind)}</span> · ${step.index + 1} / ${d.route.total}${d.route.variant && d.route.variant !== "solo" ? ` · <span>${esc(VARIANT[d.route.variant] || "")}</span>` : ""}</p><p><strong data-no-translate>${esc(step.text)}</strong></p>` : ""}
+      ${step?.note ? `<p class="gr-step-note"><b>Your note:</b> <span data-no-translate>${esc(step.note)}</span></p>` : ""}
+      ${reason ? `<p>${esc(REASON[reason])}</p>` : map ? `<p class="gr-note">${esc(d.mapName || `Map ${map.mapId}`)} · <span>${step.kind === "custom" ? "Your own map point" : "Approximate route reference"}</span></p>` : `<p class="gr-note">${step.kind === "custom" ? "A step you wrote. It has no map point. Skip it when you are done." : "No map point is known for this step."}</p>`}
       ${reason ? `<p class="gr-note"><strong>Plan B:</strong> ${fallback ? `<span>In your saved quest log</span> · ${esc(fallback.title)}` : "No supported alternative in the last save."}</p>` : ""}
       <div class="gr-recovery-actions">${primary}${step && skipped.length < d.skipLimit ? `<button type="button" class="gr-ghost" data-gr-player="skip">Skip this step</button>` : ""}${skipped.length ? `<button type="button" class="gr-ghost" data-gr-player="restore">Restore skipped steps</button>` : ""}</div>
       ${skipped.length ? `<p class="gr-note">${skipped.length} · <span>Skipped here, not completed in game.</span></p>` : ""}
@@ -102,7 +106,7 @@ window.GuidedRouteView = (() => {
   }
   function page() {
     return `<section class="guided-route-page" data-guided-route>${PageHero.render({ art: "quests", eyebrow: "Adventure · Guided route", title: "Your route, step by step", subtitle: "Find your place from your last save, or see what is missing." })}
-      <div data-guided-route-body>${reading}</div><div data-gr-review-slot>${reviewPanel()}</div></section>`;
+      <div data-guided-route-body>${reading}</div><div class="re-slot" data-route-editor-slot></div><div data-gr-review-slot>${reviewPanel()}</div></section>`;
   }
   function mounted() {
     const root = document.querySelector("[data-guided-route]");
@@ -167,6 +171,8 @@ window.GuidedRouteView = (() => {
     });
     root.addEventListener("change", (e) => { if (e.target.matches?.("[data-gr-race]")) loadReview(e.target.value, 0); });
     if (current()) void load();
+    // Q8/Q9: the route choice and the editor; an edit there refreshes the step above.
+    if (current()) window.RouteEditorView?.mount(root, owner, () => { if (current()) void load(); });
   }
   return { page, mounted, retireRecovery, removeSkips };
 })();
