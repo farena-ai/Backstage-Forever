@@ -262,7 +262,7 @@ function retentionStatus(store, now = Date.now()) {
     cutoff: retentionCutoff(now), lastRun: meta("retention_ran"), lastBackup: meta("backup_ran"),
     oldestHeartbeat: db.prepare("SELECT MIN(day) AS d FROM heartbeats").get().d,
     rows: Object.fromEntries(["heartbeats", "first_seen", "monthly_rollups", "tickets", "messages", "error_groups", "error_occurrences",
-      "announcements", "sessions", "audit", "obs", "reports", "blocked", "gh_downloads"].map(t => [t, count(t)])),
+      "announcements", "sessions", "audit", "obs", "reports", "blocked", "gh_downloads", "guilds", "guild_members", "guild_events", "guild_signups", "guild_summaries", "lfg"].map(t => [t, count(t)])),
     dbBytes,
   };
 }

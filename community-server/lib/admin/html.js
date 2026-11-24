@@ -70,6 +70,8 @@ const NAV = [
   ["/admin/", "Dashboard", "dashboard"],
   ["/admin/tickets", "Tickets", "tickets"],
   ["/admin/errors", "Errors", "errors"],
+  ["/admin/guilds", "Guilds", "guilds"],
+  ["/admin/party", "Party board", "party"],
   ["/admin/announcements", "Announcements", "announcements"],
   ["/admin/replies", "Saved replies", "replies"],
   ["/admin/admins", "Admins", "admins"],

@@ -6,6 +6,7 @@ const path = require("node:path");
 const fs = require("node:fs");
 const { parseEmailList, parseDiscordWebhook } = require("./notify");
 const { parseRepo, parseToken } = require("./downloads");
+const { parseDiscordConfig } = require("./discord");
 
 const DEFAULT_ENV_FILE = path.join(os.homedir(), "bf-community", "secrets", "bf-community.env");
 const DEFAULT_DB = path.join(os.homedir(), "bf-community", "data", "community.db");
@@ -26,7 +27,7 @@ function loadEnvFileIfPresent(file = process.env.BF_COMMUNITY_ENV_FILE || DEFAUL
   return true;
 }
 
-const DAY = 86_400_000;
+const DAY = 86_400_000, HOUR = 3_600_000;
 
 function origin(value) {
   let url;
@@ -83,7 +84,30 @@ function loadConfig(env = process.env, overrides = {}) {
       errorPerInstall: { limit: 10, windowMs: DAY },
       errorGlobal: { limit: intEnv(env, "BF_DESK_RL_ERROR_GLOBAL_PER_HOUR", 2000, 1, 1e7), windowMs: 3_600_000 },
       loginPerIp: { limit: 10, windowMs: 15 * 60_000 },
+      // Backstage Live (CLIENT-CONTRACT.md section 11).
+      liveSessionPerInstall: { limit: 120, windowMs: HOUR },
+      guildCreatePerInstall: { limit: 3, windowMs: DAY },
+      guildJoinPerInstall: { limit: 30, windowMs: HOUR },
+      guildJoinPerCode: { limit: 60, windowMs: HOUR },
+      // Wrong link codes and wrong Discord link codes from one network address.
+      codeMissPerIp: { limit: 20, windowMs: HOUR },
+      guildCallsPerMember: { limit: 1200, windowMs: HOUR },
+      lfgWritePerInstall: { limit: 60, windowMs: HOUR },
+      lfgReadPerIp: { limit: 600, windowMs: HOUR },
+      discordStartPerGuild: { limit: 10, windowMs: HOUR },
+      discordTestPerGuild: { limit: 6, windowMs: HOUR },
+      discordInteractionsGlobal: { limit: intEnv(env, "BF_LIVE_RL_INTERACTIONS_PER_MIN", 3000, 1, 1e6), windowMs: 60_000 },
     },
+    // Realtime streams: how many at once, in all and per install.
+    live: {
+      maxStreams: intEnv(env, "BF_LIVE_MAX_STREAMS", 2000, 1, 100000),
+      perInstall: 2, pingMs: 20_000, lifetimeMs: 55 * 60_000, tokenMs: 60_000,
+    },
+    maxGuilds: intEnv(env, "BF_LIVE_MAX_GUILDS", 20000, 1, 1e7),
+    maxGuildMembers: intEnv(env, "BF_LIVE_MAX_GUILD_MEMBERS", 1000, 1, 100000),
+    maxListings: intEnv(env, "BF_LIVE_MAX_LISTINGS", 5000, 1, 1e6),
+    // Discord for linked guilds: off unless all four BF_DISCORD_* values are set.
+    ...(() => { const d = parseDiscordConfig(env); return { discord: d.discord, discordPartial: d.partial }; })(),
     // Open (not closed) tickets the inbox will hold before answering 503 report_inbox_full.
     maxOpenTickets: intEnv(env, "BF_DESK_MAX_OPEN_TICKETS", 5000, 1, 1e7),
     maxErrorGroups: intEnv(env, "BF_DESK_MAX_ERROR_GROUPS", 5000, 1, 1e6),
@@ -114,7 +138,7 @@ function loadConfig(env = process.env, overrides = {}) {
   };
   // Overrides (tests, tools) replace single settings; grouped ones are merged key by key.
   for (const [k, v] of Object.entries(overrides))
-    config[k] = ["limits", "auth", "notify", "downloads"].includes(k) && v && typeof v === "object" ? { ...config[k], ...v } : v;
+    config[k] = ["limits", "auth", "notify", "downloads", "live"].includes(k) && v && typeof v === "object" ? { ...config[k], ...v } : v;
   return config;
 }
 

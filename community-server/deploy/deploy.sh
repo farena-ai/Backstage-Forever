@@ -15,6 +15,9 @@
 #   ~/bf-community/admin                      wrapper: ~/bf-community/admin stats | admin-add <name> | ...
 # The database schema is upgraded by the service at start (idempotent; a
 # pre-deploy snapshot is taken first). See ../OPERATIONS.md.
+# Backstage Live: schema 4 adds tables only; the web-server block in htaccess-snippet.conf must be
+# replaced once by hand (OPERATIONS.md section 9), and Discord stays off until its four values
+# are in the env file.
 #   ~/.config/systemd/user/bf-community.service
 set -euo pipefail
 

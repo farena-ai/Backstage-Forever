@@ -12,6 +12,8 @@ const desk = require("./validate-desk");
 const { Auth } = require("./auth");
 const { Notifier } = require("./notify");
 const { createAdmin } = require("./admin/web");
+const { Live } = require("./live");
+const { createLiveHttp } = require("./live-http");
 
 const SERVICE_VERSION = require("../package.json").version;
 const BODY_LIMITS = {
@@ -36,9 +38,11 @@ class HttpError extends Error {
   constructor(status, code, extra = {}) { super(code); this.status = status; this.code = code; this.extra = extra; }
 }
 
-function createApp({ store, config, now = () => Date.now(), log = (line) => console.log(line), notifier, auth }) {
+// discordRequest / discordSleep: only tests pass these (a stand-in for discord.com and for waiting).
+function createApp({ store, config, now = () => Date.now(), log = (line) => console.log(line), notifier, auth, discordRequest, discordSleep }) {
   auth = auth || new Auth({ store, salt: config.salt, now, options: config.auth || {} });
   notifier = notifier || new Notifier({ config, log, now });
+  const live = new Live({ store, config, now, log, request: discordRequest, sleep: discordSleep });
   const packs = new PackCache(store, { minInstalls: config.minInstalls, rebuildMs: config.packRebuildMs, now });
   const L = config.limits;
   const limiters = {
@@ -146,7 +150,9 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
     },
     "DELETE": (req, res, url, segment) => {
       const { number, key } = keyed(req, segment, limiters.ticketDelete);
-      store.desk.deleteTicket(ticketRow(number, key).id);
+      const id = ticketRow(number, key).id;
+      store.desk.deleteTicket(id);
+      live.ticketGone(id);
       send(res, 200, { ok: true });
     },
     "POST messages": async (req, res, url, segment) => {
@@ -157,13 +163,14 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
       limit(limiters.ticketReply, String(row.id));
       const r = store.desk.playerReply(row, text, now());
       notify("reply", row);
+      live.publishTicket(row.id);
       send(res, 201, { ok: true, id: r.id, at: r.at, status: r.status });
     },
   };
 
   const routes = {
     "GET /v1/health": (req, res) => {
-      send(res, 200, { ok: store.ping(), service: "bf-community", version: SERVICE_VERSION, packFormat: PACK_FORMAT, packMinor: PACK_MINOR, mine: true, desk: true, uptimeSec: Math.floor((now() - startedAt) / 1000) });
+      send(res, 200, { ok: store.ping(), service: "bf-community", version: SERVICE_VERSION, packFormat: PACK_FORMAT, packMinor: PACK_MINOR, mine: true, desk: true, live: true, discord: !!config.discord, uptimeSec: Math.floor((now() - startedAt) / 1000) });
     },
     "POST /v1/heartbeat": async (req, res) => {
       const hb = desk.validateHeartbeat(await readJson(req, BODY_LIMITS["/v1/heartbeat"]));
@@ -278,12 +285,14 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
       const hash = hashInstall(config.salt, installId);
       limit(limiters.forgetInstall, hash);
       const removed = store.purgeInstall(hash, { now: now() });
+      live.afterForget(hash, removed);
       // Tickets, their messages, heartbeats and the first-seen day go too; the answer keeps its documented shape.
       send(res, 200, { ok: true, removed: { observations: removed.observations, reports: removed.reports } });
     },
   };
   const paths = new Set(Object.keys(routes).map(k => k.split(" ")[1]));
-  const admin = createAdmin({ store, config, auth, now, log, loginLimiter: limiters.loginIp, clientKey });
+  const liveHttp = createLiveHttp({ live, store, config, now, http: { send, readJson, limit, installHash, HttpError, clientKey, SECURITY_HEADERS } });
+  const admin = createAdmin({ store, config, auth, now, log, loginLimiter: limiters.loginIp, clientKey, live });
 
   async function handle(req, res) {
     const started = now();
@@ -291,7 +300,9 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
     try {
       const url = new URL(req.url, "http://localhost");
       pathname = url.pathname;
-      limit(limiters.ip, clientKey(req));
+      // Discord's webhook comes from a handful of Discord addresses for every guild at once: it has
+      // its own limit (and its signature check) instead of the per-address one.
+      if (pathname !== "/discord/interactions") limit(limiters.ip, clientKey(req));
       if (config.adminEnabled && (pathname === "/admin" || pathname.startsWith("/admin/"))) {
         label = "/admin";
         label = await admin.handle(req, res, url);
@@ -306,6 +317,13 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
         const th = ticketRoutes[ticket[2] ? `${method} messages` : method];
         if (!th) throw new HttpError(405, "method_not_allowed", { allow: ticket[2] ? "POST" : "GET, HEAD, DELETE" });
         await th(req, res, url, ticket[1]);
+        return;
+      }
+      const lr = handler ? null : liveHttp.match(method, pathname);
+      if (lr) {
+        label = lr.label;
+        if (!lr.handler) throw new HttpError(405, "method_not_allowed", { allow: lr.allow });
+        await lr.handler(req, res, url);
         return;
       }
       if (!handler) {
@@ -342,7 +360,7 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
   server.headersTimeout = 10_000;
   server.keepAliveTimeout = 5_000;
   server.maxHeadersCount = 64;
-  return { server, packs, limiters, auth, notifier, admin };
+  return { server, packs, limiters, auth, notifier, admin, live, liveHttp };
 }
 
 module.exports = { createApp, BODY_LIMITS, SECURITY_HEADERS };

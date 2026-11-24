@@ -24,6 +24,7 @@ const { ValidationError } = require("../validate");
 const stats = require("../stats");
 const { downloadStats } = require("../downloads");
 const { hashInstall, day } = require("../store");
+const { createLivePages, renderLive, FLASH: LIVE_FLASH } = require("./live-pages");
 
 const COOKIE = "__Host-bfadmin";
 const FORM_LIMIT = 64 * 1024;
@@ -59,6 +60,7 @@ const FLASH = Object.freeze({
   authadded: "The authenticator is on. From now on signing in needs a code. Your other sessions were signed out.",
   authremoved: "The authenticator was removed. This account now signs in with a password only.",
   authcancelled: "Setting up the authenticator was cancelled. Nothing changed.",
+  ...LIVE_FLASH,
 });
 // Fixed texts for things that went wrong on the My account page (never built from input).
 const ACCOUNT_ERRORS = Object.freeze({
@@ -79,8 +81,10 @@ class Refuse extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 
-function createAdmin({ store, config, auth, now = () => Date.now(), log = () => {}, loginLimiter, clientKey }) {
+function createAdmin({ store, config, auth, now = () => Date.now(), log = () => {}, loginLimiter, clientKey, live = null }) {
   const desk = store.desk;
+  // Tells the realtime streams that hold a ticket's key that it changed. Never fails an admin action.
+  const ticketChanged = (id) => { try { if (live) live.publishTicket(id); } catch { /* the stream is a convenience */ } };
   const processKey = crypto.randomBytes(32);
   const dir = path.join(__dirname, "static");
   const STATIC = {
@@ -206,7 +210,9 @@ ${field("Authenticator code", '<input name="code" type="text" inputmode="numeric
       dashCache.set(key, data);
     }
     const notice = ctx.session.admin.authenticator ? "" : `<p class="plain-note">${esc(PASSWORD_ONLY)} Anyone who learns the password can sign in. You can add an authenticator under <a href="/admin/account">My account</a>.</p>`;
-    ctx.html({ title: "Dashboard", active: "dashboard", wide: true, body: renderDashboard(data, notice) });
+    // Live numbers are read fresh on every view: connections change by the second.
+    const liveBlock = live ? renderLive(store.guilds.stats(now(), days), live.hub.stats(), { 7: "7 days", 30: "30 days", 90: "90 days", 365: "365 days" }[days], !!config.discord) : "";
+    ctx.html({ title: "Dashboard", active: "dashboard", wide: true, body: renderDashboard(data, notice) + liveBlock });
   }
 
   // -------------------------------------------------------------- tickets
@@ -273,7 +279,7 @@ ${pager("/admin/tickets", params, list.page, list.pages)}` : '<p class="card emp
     need(ctx.form.get("action") === "close", "Unknown action.");
     if (!ids.length) return ctx.redirect("/admin/tickets?done=nothing");
     let n = 0;
-    for (const id of ids) { const r = desk.updateTicket(id, { status: "closed" }, now()); if (r && r.changed.length) n += 1; }
+    for (const id of ids) { const r = desk.updateTicket(id, { status: "closed" }, now()); if (r && r.changed.length) { n += 1; ticketChanged(id); } }
     desk.audit(ctx.session.admin, "ticket_bulk_close", ids.map(V.ticketLabel).join(" "), `closed=${n}`, now());
     ctx.redirect("/admin/tickets?done=closed");
   }
@@ -361,6 +367,7 @@ ${t.install ? `<form method="post" action="${base}/block" class="stack">${csrfIn
     need(status === "" || V.TICKET_STATUSES.includes(status), "Unknown status.");
     const r = desk.adminReply(id, ctx.session.admin.id, body, status || null, now());
     desk.audit(ctx.session.admin, "ticket_reply", V.ticketLabel(id), `status=${r.status}`, now());
+    ticketChanged(id);
     ctx.redirect(`/admin/tickets/${V.ticketLabel(id)}?done=replied`);
   }
 
@@ -402,6 +409,8 @@ ${t.install ? `<form method="post" action="${base}/block" class="stack">${csrfIn
       const detail = r.changed.map(k => ({ status: `status=${f.status}`, fixed_in: `fixedIn=${f.fixedIn || "none"}`, severity: `severity=${f.severity || "none"}`, tags: "tags",
         assignee: `assignee=${f.assignee || "none"}`, github: `github=${f.github ? "set" : "none"}`, duplicate_of: `duplicateOf=${f.duplicateOf ? V.ticketLabel(f.duplicateOf) : "none"}` })[k]).join(" ");
       desk.audit(ctx.session.admin, "ticket_update", V.ticketLabel(id), detail, now());
+      // Only the status and the fixed-in version are visible to the player.
+      if (r.changed.includes("status") || r.changed.includes("fixed_in")) ticketChanged(id);
     }
     ctx.redirect(`/admin/tickets/${V.ticketLabel(id)}?done=saved`);
   }
@@ -411,6 +420,7 @@ ${t.install ? `<form method="post" action="${base}/block" class="stack">${csrfIn
     need(ctx.form.get("confirm") === "yes", "Tick the box to confirm.");
     if (!desk.deleteTicket(id)) throw new Refuse(404, "There is no such ticket.");
     desk.audit(ctx.session.admin, "ticket_delete", V.ticketLabel(id), "", now());
+    if (live) live.ticketGone(id);
     ctx.redirect("/admin/tickets?done=deleted");
   }
 
@@ -723,7 +733,8 @@ ${list.rows.map(r => `<tr><td class="nowrap">${when(r.at)}</td><th scope="row">$
     const mb = st.dbBytes === null ? "–" : `${(st.dbBytes / 1048576).toFixed(st.dbBytes < 10485760 ? 2 : 1)} MB`;
     const ROWS = [["heartbeats", "Heartbeat rows (one per install per day)"], ["first_seen", "Installs ever seen (first-seen days)"], ["monthly_rollups", "Monthly totals"],
       ["tickets", "Tickets"], ["messages", "Ticket messages and notes"], ["error_groups", "Error groups"], ["error_occurrences", "Error counts per version and day"],
-      ["announcements", "Announcements"], ["obs", "Community observations"], ["gh_downloads", "GitHub download counts (public data)"], ["reports", "Old one-way reports"], ["blocked", "Blocked installs"], ["sessions", "Admin sessions"], ["audit", "Audit log entries"]];
+      ["announcements", "Announcements"], ["guilds", "Linked guilds"], ["guild_members", "Guild members (character names of members who agreed)"], ["guild_events", "Guild events"],
+      ["guild_signups", "Guild event sign-ups"], ["guild_summaries", "Past-event summaries (numbers only)"], ["lfg", "Party board listings"], ["obs", "Community observations"], ["gh_downloads", "GitHub download counts (public data)"], ["reports", "Old one-way reports"], ["blocked", "Blocked installs"], ["sessions", "Admin sessions"], ["audit", "Audit log entries"]];
     ctx.html({
       title: "Data", active: "data",
       body: `<div class="head"><h1>Data</h1></div>
@@ -740,7 +751,7 @@ ${ROWS.map(([k, l]) => `<tr><th scope="row">${esc(l)}</th><td class="n">${num(st
 <aside>
 <section class="card"><h2>Export tickets</h2><p class="dim">All tickets with their messages and internal notes as one JSON file. Install hashes are cut to the short label; ticket keys are not included.</p>
 <form method="post" action="/admin/data/export">${csrfInput(ctx.session)}<button class="btn" type="submit">Download JSON</button></form></section>
-<section class="card danger"><h2>Purge an install</h2><p class="dim">For a deletion request. Removes that install's observations, old reports, tickets, heartbeats and first-seen day. This cannot be undone.</p>
+<section class="card danger"><h2>Purge an install</h2><p class="dim">For a deletion request. Removes that install's observations, old reports, tickets, heartbeats and first-seen day, takes it out of every guild it joined and removes its party-board listing. This cannot be undone.</p>
 <form method="post" action="/admin/data/purge" class="stack">${csrfInput(ctx.session)}
 ${field("Install id or install hash", '<input name="install" required maxlength="64" spellcheck="false" autocomplete="off" placeholder="3f2b8c1e-9d4a-4b7e-8f21-0a1b2c3d4e5f">', "The id from the app's Settings, or the 64-character hash.")}
 <label class="tick"><input type="checkbox" name="block" value="yes"> Also block this install</label>
@@ -764,7 +775,8 @@ ${field("Install id or install hash", '<input name="install" required maxlength=
     else if (UUID.test(target)) hash = hashInstall(config.salt, target);
     else throw new Refuse(400, "That is neither an install id nor an install hash.");
     const r = store.purgeInstall(hash, { block: ctx.form.get("block") === "yes", now: now() });
-    desk.audit(ctx.session.admin, "install_purge", `install ${installLabel(hash)}`, `observations=${r.observations} reports=${r.reports} tickets=${r.tickets} heartbeats=${r.heartbeats} blocked=${r.blocked}`, now());
+    if (live) live.afterForget(hash, r);
+    desk.audit(ctx.session.admin, "install_purge", `install ${installLabel(hash)}`, `observations=${r.observations} reports=${r.reports} tickets=${r.tickets} heartbeats=${r.heartbeats} guilds=${r.live ? r.live.left.length : 0} blocked=${r.blocked}`, now());
     ctx.redirect("/admin/data?done=purged");
   }
 
@@ -809,6 +821,7 @@ ${field("Install id or install hash", '<input name="install" required maxlength=
     ["POST", /^\/admin\/data\/export$/, "/admin/data/export", dataExport],
     ["POST", /^\/admin\/data\/purge$/, "/admin/data/purge", dataPurge],
     ["POST", /^\/admin\/data\/retention$/, "/admin/data/retention", dataRetention],
+    ...(live ? createLivePages({ store, live, now, Refuse, need }).ROUTES : []),
   ];
 
   // Returns a label for the service log (a route pattern: never an id, a query or a name).

@@ -8,7 +8,7 @@ const { Store, hashInstall, SCHEMA_VERSION } = require("../lib/store");
 const { PackCache, buildPackData } = require("../lib/pack");
 const { validateSubmit, validateMine, packVariant, ValidationError } = require("../lib/validate");
 const { validatePack: oldAppValidatePack } = require("./fixtures/app-1.26-validate-pack");
-const { SALT, T0, DAY, uuid, submit, boot, post, tempDb } = require("./helpers");
+const { SALT, T0, DAY, uuid, submit, boot, post, tempDb, asSchema3 } = require("./helpers");
 
 function send(store, installId, observations, now = T0) {
   const sub = validateSubmit(submit(installId, observations));
@@ -123,7 +123,7 @@ test("submit validation: names are game strings only, capped, and nothing else n
   assert.deepEqual([q(""), q("v=1"), q("v=2"), q("v=3"), q("v=2&v=2"), q("x=2"), q("v=02")], [1, 1, 2, 1, 1, 1, 1]);
 });
 
-test("the live schema (3) with data needs no migration: old rows publish their stored days", () => {
+test("the live schema (3) with data: old rows are untouched by the schema 4 upgrade and publish their stored days", () => {
   // The live database as the 1.0.0 server left it: schema 3, rows written by the old code.
   const db = tempDb();
   const old = new Store(db.file);
@@ -133,6 +133,7 @@ test("the live schema (3) with data needs no migration: old rows publish their s
   const before = old.db.prepare("SELECT * FROM obs ORDER BY kind, key, install").all();
   const cols = old.db.prepare("PRAGMA table_info(obs)").all().map((c) => c.name);
   old.close();
+  asSchema3(db.file);
   assert.deepEqual(cols, ["kind", "key", "install", "n", "first_day", "last_day"]);
   const raw = new DatabaseSync(db.file);
   assert.equal(raw.prepare("PRAGMA user_version").get().user_version, 3);
@@ -140,8 +141,10 @@ test("the live schema (3) with data needs no migration: old rows publish their s
   // Opening it twice with this server changes nothing and loses nothing.
   for (let pass = 0; pass < 2; pass++) {
     const store = new Store(db.file);
-    assert.equal(SCHEMA_VERSION, 3, "no schema bump, so the previous server can still open the file after a rollback");
-    assert.equal(store.db.prepare("PRAGMA user_version").get().user_version, 3);
+    // Schema 4 only adds the Backstage Live tables; no table or row of schema 3 changes. (Going back to the
+    // 1.0.0 server afterwards needs the version number set back: OPERATIONS.md, "Rolling back".)
+    assert.equal(SCHEMA_VERSION, 4);
+    assert.equal(store.db.prepare("PRAGMA user_version").get().user_version, 4);
     assert.deepEqual(store.db.prepare("SELECT * FROM obs ORDER BY kind, key, install").all(), before);
     assert.deepEqual(buildPackData(store, 3, 2).npcs.rows, [[197, 1429, 0.485, 0.42, 3, "2026-10-25", "2026-11-14"]]);
     assert.deepEqual(buildPackData(store, 3, 1).npcs.rows, [[197, 1429, 0.485, 0.42, 3]]);
