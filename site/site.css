@@ -1,0 +1,235 @@
+/* Backstage Forever website. Source: site/site.css in the Backstage Forever repo; scripts/build-site.cjs
+   copies it into the site folder. Everything inside <main class="bfx-page"> is styled here with its own
+   bfx- classes, so the pages do not depend on the parent site's stylesheet. */
+
+/* Shown only where the parent site's stylesheet is missing (a local preview): a layered rule loses
+   to every unlayered rule, so on the live site the parent's header and footer rules always win. */
+@layer bf-fallback {
+  body { margin: 0; background: #121922; color: #ede2d0; font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif; }
+  .skip:not(:focus) { position: absolute; left: -9999px; }
+  .site-head, .footer { background: #0e131a; color: #ede2d0; font-size: 14px; }
+  .site-head { border-bottom: 1px solid #4e4237; }
+  .footer { border-top: 1px solid #4e4237; padding-block: 22px; }
+  .site-head .head-inner, .footer .wrap { width: min(1180px, 100% - 40px); margin-inline: auto; }
+  .site-head .head-inner { display: flex; align-items: center; gap: 18px; padding-block: 12px; }
+  .site-head nav, .footer nav { display: flex; gap: 16px; }
+  .site-head a, .footer a { color: #f2d4a6; text-decoration: none; }
+  .site-head .brand, .footer .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .08em; }
+  .brand small { display: block; font-weight: 400; letter-spacing: .3em; }
+  .site-head .menu { display: none; }
+  .footer-top, .footer-bottom { display: flex; gap: 16px; justify-content: space-between; align-items: center; margin-block: 8px; }
+  @media (max-width: 760px) {
+    .site-head .head-inner, .site-head nav, .footer nav, .footer-top, .footer-bottom { flex-wrap: wrap; }
+  }
+}
+
+.bfx-page { background: #121922; color: #ede2d0; font-size: 16px; line-height: 1.6; overflow-wrap: break-word; }
+.bfx-page *, .bfx-page *::before, .bfx-page *::after { box-sizing: border-box; }
+/* :where() keeps these resets weak: any rule below with one class wins, and the parent site's bare element rules still lose. */
+.bfx-page :where(h1, h2, h3, h4, p, ul, ol, dl, dd, figure, blockquote) { margin: 0; padding: 0; }
+.bfx-page :where(h1, h2, h3, h4, dt, strong, th) { color: #fff6e4; font-weight: 700; }
+.bfx-page :where(p, li, dd, td, figcaption, small) { color: #ede2d0; }
+.bfx-page :is(h1, h2, h3) { line-height: 1.15; letter-spacing: 0; text-wrap: balance; }
+.bfx-page h2 { font-size: clamp(26px, 3.2vw, 38px); }
+.bfx-page h3 { font-size: 19px; }
+.bfx-page a { color: #f2ca94; text-underline-offset: 3px; }
+.bfx-page a:hover { color: #ffe5b9; }
+.bfx-page a:focus-visible { outline: 2px solid #ffe3af; outline-offset: 3px; border-radius: 4px; }
+.bfx-page img { max-width: 100%; height: auto; }
+.bfx-page code { font-family: ui-monospace, Consolas, "Cascadia Mono", monospace; font-size: .92em; background: #0c1118; color: #f2d4a6; border: 1px solid #4e4237; border-radius: 4px; padding: 1px 6px; overflow-wrap: anywhere; }
+.bfx-page em { color: #f2ca94; font-style: normal; }
+.bfx-wrap { width: min(1180px, 100% - 40px); margin-inline: auto; }
+.bfx-section { padding-block: clamp(44px, 6vw, 76px); }
+.bfx-band { background: #191421; border-block: 1px solid #4e4237; }
+.bfx-kicker { display: flex; align-items: center; gap: 10px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: #e6d3b7; }
+.bfx-kicker img { width: 28px; height: 28px; flex: none; }
+.bfx-lead { max-width: 62ch; font-size: 18px; }
+.bfx-intro { max-width: 68ch; margin-top: 14px; }
+
+/* Buttons and the download block */
+.bfx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 12px 26px; border: 1px solid #f2d4a6; border-radius: 8px; background: #f2d4a6; color: #201b19; font-size: 18px; font-weight: 700; line-height: 1.2; text-decoration: none; text-align: center; }
+.bfx-page a.bfx-btn { color: #201b19; }
+.bfx-page a.bfx-btn:hover { background: #ffe5b9; border-color: #ffe5b9; color: #201b19; }
+.bfx-page a.bfx-btn.bfx-ghost { background: #121923; color: #fff5e8; border-color: #8d7659; font-size: 16px; font-weight: 600; min-height: 48px; padding: 10px 18px; }
+.bfx-page a.bfx-btn.bfx-ghost:hover { background: #303641; color: #fff5e8; }
+.bfx-cta { display: grid; gap: 10px; justify-items: start; margin-top: 26px; }
+.bfx-cta p { font-size: 15px; max-width: 60ch; }
+.bfx-cta .bfx-fine { font-size: 14px; color: #c9bca8; }
+.bfx-cta-band { text-align: left; }
+.bfx-cta-band h2 { margin-bottom: 10px; }
+
+/* Page links */
+.bfx-nav, .bfx-jump { display: flex; flex-wrap: wrap; gap: 8px; }
+.bfx-nav { margin-top: 28px; }
+.bfx-nav a, .bfx-jump a { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 15px; border: 1px solid #705b46; border-radius: 999px; background: #121923; color: #fff5e8; text-decoration: none; font-size: 14px; line-height: 1.2; }
+.bfx-page :is(.bfx-nav, .bfx-jump) a { color: #fff5e8; }
+.bfx-page :is(.bfx-nav, .bfx-jump) a:hover { background: #303641; }
+.bfx-page .bfx-nav a[aria-current="page"] { background: #f2d4a6; border-color: #f2d4a6; color: #201b19; }
+.bfx-jump { margin-top: 22px; }
+.bfx-jump a { border-color: #4e4237; font-size: 13px; }
+.bfx-crumbs { font-size: 13px; color: #c9bca8; margin-bottom: 14px; }
+.bfx-crumbs a { color: #e6d3b7; }
+
+/* Home hero */
+.bfx-hero { position: relative; isolation: isolate; overflow: hidden; background: #121922; }
+.bfx-hero > img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 62% center; z-index: -2; }
+.bfx-hero::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, #101722f7 4%, #101722e0 40%, #10172266 68%, #10172220 100%), linear-gradient(0deg, #121922 0%, #12192200 38%); }
+.bfx-hero .bfx-wrap { padding-block: clamp(40px, 6vw, 72px) clamp(90px, 12vw, 170px); }
+.bfx-hero h1 { font-size: clamp(44px, 6.4vw, 84px); line-height: .98; margin-block: 16px 18px; max-width: 14ch; }
+.bfx-hero h1 span { display: block; margin-top: 14px; font-size: clamp(21px, 2.3vw, 30px); line-height: 1.2; color: #f2ca94; max-width: 24ch; }
+.bfx-hero .bfx-lead { max-width: 54ch; }
+.bfx-heroshot { margin-top: clamp(-130px, -9vw, -60px); position: relative; }
+.bfx-heroshot figcaption { text-align: center; }
+
+/* Sub-page hero */
+.bfx-top { background: linear-gradient(180deg, #191421, #121922); border-bottom: 1px solid #4e4237; padding-block: 40px 30px; }
+.bfx-top h1 { font-size: clamp(32px, 4.6vw, 54px); margin-block: 12px 14px; max-width: 22ch; }
+.bfx-top .bfx-cta { margin-top: 20px; }
+
+/* Screenshots */
+.bfx-shot { min-width: 0; }
+.bfx-frame { display: block; border: 1px solid #705b46; border-radius: 10px; overflow: hidden; background: #1b1413; box-shadow: 0 18px 44px #0009; }
+.bfx-frame img { display: block; width: 100%; height: auto; }
+.bfx-shot figcaption { margin-top: 10px; font-size: 14px; line-height: 1.55; color: #c9bca8; }
+.bfx-shot figcaption strong { display: block; font-size: 16px; }
+
+/* Feature sections on the home page */
+.bfx-feature .bfx-wrap { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 56px); align-items: center; }
+.bfx-feature.bfx-flip .bfx-text { order: 2; }
+.bfx-text > * + * { margin-top: 14px; }
+.bfx-text h2 { margin-top: 10px; }
+.bfx-cmds { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
+.bfx-cmds span { color: #c9bca8; }
+.bfx-more a { font-weight: 600; }
+.bfx-also { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; margin-top: 22px; list-style: none; }
+.bfx-also li { padding-left: 18px; position: relative; }
+.bfx-also li::before { content: ""; position: absolute; left: 0; top: .62em; width: 7px; height: 7px; border-radius: 50%; background: #f2ca94; }
+
+/* In the game */
+.bfx-ingame { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 56px); align-items: center; }
+.bfx-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.bfx-pair .bfx-frame img { aspect-ratio: 4 / 3; object-fit: contain; }
+
+/* Steps, cards, questions */
+.bfx-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 26px; list-style: none; counter-reset: step; }
+.bfx-steps li, .bfx-tile, .bfx-qa, .bfx-dl li { border: 1px solid #4e4237; border-radius: 10px; background: #191421; padding: 20px; min-width: 0; }
+.bfx-band :is(.bfx-steps li, .bfx-tile, .bfx-qa, .bfx-dl li) { background: #121922; }
+.bfx-steps li { counter-increment: step; }
+.bfx-steps li::before { content: counter(step); display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 12px; border-radius: 50%; background: #f2d4a6; color: #201b19; font-weight: 700; }
+.bfx-steps h3, .bfx-tile h3, .bfx-qa h3, .bfx-dl h3 { margin-bottom: 8px; }
+.bfx-steps p, .bfx-tile p, .bfx-qa p, .bfx-dl p { font-size: 15px; }
+.bfx-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
+.bfx-faq { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
+.bfx-qa h3 { font-size: 18px; }
+.bfx-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-top: 26px; }
+.bfx-card { display: flex; flex-direction: column; gap: 8px; padding: 18px; border: 1px solid #705b46; border-radius: 10px; background: #191421; text-decoration: none; min-width: 0; }
+.bfx-card strong { color: #f2ca94; font-size: 17px; }
+.bfx-card span { color: #ede2d0; font-size: 14px; line-height: 1.5; }
+.bfx-card:hover { background: #24201d; border-color: #f2d4a6; }
+
+/* Downloads */
+.bfx-dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 26px; list-style: none; }
+.bfx-dl li { display: flex; flex-direction: column; gap: 10px; }
+.bfx-dl p { flex: 1; }
+.bfx-dl .bfx-btn { align-self: stretch; }
+.bfx-dl li.bfx-main { border-color: #f2d4a6; }
+.bfx-notes { margin-top: 22px; display: grid; gap: 10px; max-width: 80ch; font-size: 15px; }
+.bfx-install { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
+.bfx-install ol { padding-left: 20px; display: grid; gap: 8px; font-size: 15px; }
+
+/* Tour */
+.bfx-tour-group h2 { margin-top: 10px; }
+.bfx-tour-group .bfx-cmds { margin-top: 12px; }
+.bfx-shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 24px; margin-top: 28px; }
+.bfx-shots .bfx-wide { grid-column: 1 / -1; }
+
+/* What's new */
+.bfx-releases { margin-top: 26px; }
+.bfx-release { border: 1px solid #4e4237; border-radius: 10px; background: #191421; padding: 24px 26px; margin-bottom: 22px; }
+.bfx-release h2 { margin: 4px 0 6px; font-size: clamp(22px, 3vw, 32px); }
+.bfx-version { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: #e6d3b7; }
+.bfx-page .bfx-kind { font-size: 14px; letter-spacing: .08em; text-transform: uppercase; margin: 20px 0 8px; color: #f2ca94; }
+.bfx-release ul { padding-left: 20px; line-height: 1.6; max-width: 90ch; }
+.bfx-release li + li { margin-top: 8px; }
+.bfx-where { display: inline-block; margin-left: 4px; padding: 0 8px; border: 1px solid #705b46; border-radius: 999px; font-size: 12px; color: #e6d3b7; white-space: nowrap; }
+.bfx-release .bfx-notes-link { margin-top: 18px; }
+.bfx-older { margin-top: 8px; }
+
+/* Commands */
+.bfx-index { margin-top: 26px; border: 1px solid #4e4237; border-radius: 10px; background: #191421; padding: 18px 20px; }
+.bfx-index h2 { font-size: 22px; margin-bottom: 6px; }
+.bfx-index p { font-size: 15px; margin-bottom: 14px; }
+.bfx-index h3 { font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: #f2ca94; margin: 14px 0 8px; }
+.bfx-index ul { display: flex; flex-wrap: wrap; gap: 6px 8px; list-style: none; }
+.bfx-index a { display: inline-block; text-decoration: none; padding-block: 3px; }
+.bfx-cmd-group { margin-top: 44px; }
+.bfx-cmd-group h2 { font-size: clamp(24px, 3vw, 34px); margin-bottom: 16px; }
+.bfx-cmd-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.bfx-cmd { border: 1px solid #4e4237; border-radius: 10px; background: #191421; padding: 16px 18px; min-width: 0; scroll-margin-top: 16px; }
+.bfx-cmd:target { border-color: #f2d4a6; box-shadow: 0 0 0 2px #f2d4a655; }
+.bfx-cmd dt { font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+.bfx-cmd p { line-height: 1.55; font-size: 15px; }
+.bfx-cmd p + p { margin-top: 8px; }
+.bfx-cmd .bfx-when { font-size: 14px; }
+
+/* Data coverage */
+.bfx-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.bfx-total { border: 1px solid #4e4237; border-radius: 10px; background: #191421; padding: 16px 18px; }
+.bfx-page .bfx-total h3 { font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: #f2ca94; margin: 0 0 10px; }
+.bfx-total dl div { display: flex; gap: 12px; align-items: baseline; padding: 5px 0; border-top: 1px solid #2c2530; }
+.bfx-total dl div:first-child { border-top: 0; }
+.bfx-total dt { min-width: 5.2ch; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bfx-total dd { font-size: 14px; }
+.bfx-cov { margin-top: 48px; }
+.bfx-cov h2 { margin-bottom: 8px; }
+.bfx-scroll { overflow-x: auto; margin-top: 16px; border: 1px solid #4e4237; border-radius: 10px; }
+.bfx-table { width: 100%; min-width: 760px; border-collapse: collapse; background: #191421; font-size: 14px; }
+.bfx-table th, .bfx-table td { padding: 9px 12px; border-top: 1px solid #2c2530; text-align: right; vertical-align: middle; }
+.bfx-table thead th { border-top: 0; background: #24201d; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+.bfx-table th:first-child, .bfx-table td:last-child, .bfx-table thead th:last-child { text-align: left; }
+.bfx-table tbody th { font-weight: 700; }
+.bfx-table tbody th small { display: block; font-weight: 400; font-size: 12px; color: #c9bca8; }
+.bfx-n { font-variant-numeric: tabular-nums; }
+.bfx-page td.bfx-rich { color: #a9e6a0; }
+.bfx-page td.bfx-some { color: #f2d4a6; }
+.bfx-page td.bfx-thin { color: #f0a37e; }
+.bfx-page td.bfx-none { color: #9a8f86; }
+.bfx-verdict { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.bfx-verdict.bfx-good { background: #1f4a25; color: #d6f5d0; }
+.bfx-verdict.bfx-mid { background: #5a4418; color: #ffe9b8; }
+.bfx-verdict.bfx-low { background: #4a231c; color: #ffd3c4; }
+.bfx-foot { margin-top: 26px; font-size: 13px; line-height: 1.6; max-width: 90ch; }
+
+/* The note above the site footer */
+.bfx-legal { border-top: 1px solid #4e4237; padding-block: 26px; background: #0f151d; }
+.bfx-legal p { font-size: 13px; line-height: 1.6; color: #c9bca8; max-width: 100ch; }
+.bfx-legal p + p { margin-top: 8px; }
+
+@media (max-width: 1080px) {
+  .bfx-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bfx-steps, .bfx-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bfx-install { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .bfx-feature .bfx-wrap, .bfx-ingame { grid-template-columns: 1fr; }
+  .bfx-feature.bfx-flip .bfx-text { order: 0; }
+  .bfx-faq, .bfx-shots, .bfx-cmd-list, .bfx-totals { grid-template-columns: 1fr; }
+  .bfx-hero::after { background: linear-gradient(0deg, #121922 4%, #101722ee 46%, #101722b0 100%); }
+}
+@media (max-width: 560px) {
+  .bfx-wrap { width: min(1180px, 100% - 32px); }
+  .bfx-page { font-size: 16px; }
+  .bfx-lead { font-size: 17px; }
+  .bfx-hero .bfx-wrap { padding-top: 22px; }
+  .bfx-hero h1 { font-size: clamp(38px, 11vw, 48px); margin-block: 10px 12px; }
+  .bfx-hero h1 span { margin-top: 8px; font-size: 20px; }
+  .bfx-hero .bfx-lead { font-size: 16px; line-height: 1.5; }
+  .bfx-hero .bfx-kicker { font-size: 11px; letter-spacing: .1em; }
+  .bfx-hero .bfx-kicker img { display: none; }
+  .bfx-hero .bfx-cta { margin-top: 16px; }
+  .bfx-cta { justify-items: stretch; }
+  .bfx-cta .bfx-btn { width: 100%; }
+  .bfx-cards, .bfx-steps, .bfx-tiles, .bfx-also, .bfx-pair { grid-template-columns: 1fr; }
+  .bfx-release { padding: 18px; }
+  .bfx-nav a, .bfx-jump a { min-height: 44px; }
+}

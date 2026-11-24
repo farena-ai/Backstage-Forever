@@ -1,0 +1,81 @@
+<!doctype html><html lang="en"><head>{{head}}</head><body>
+{{header}}<main id="main" class="bfx-page">
+<!-- Home page of backstagecoding.com/backstage-forever/. Edit this template (site/index.template.html) and
+     site/content.cjs in the Backstage Forever repo, then run node scripts/build-site.cjs; do not edit index.html. -->
+<section class="bfx-hero" aria-labelledby="title"><img src="./journey.webp" alt=""{{size:journey.webp}} fetchpriority="high">
+<div class="bfx-wrap">
+<p class="bfx-kicker"><img src="./crest.png" width="28" height="28" alt=""> Free · Windows, macOS and Linux · Open source</p>
+<h1 id="title">{{h1}} <span>{{h1sub}}</span></h1>
+<p class="bfx-lead">Backstage Forever is a free desktop app for World of Warcraft: Forever that reads your own saved characters and tells you what to do next: quests, talents, dungeons, professions and gold. It installs and updates its in-game addon for you, so the same guidance follows you into the game.</p>
+{{cta}}
+{{nav}}
+</div></section>
+
+<section class="bfx-heroshot" aria-label="The desktop app"><div class="bfx-wrap">{{hero-shot}}</div></section>
+
+<section class="bfx-section" id="features"><div class="bfx-wrap">
+<h2>What Backstage Forever does</h2>
+<p class="bfx-intro">Everything below works from your own characters: the addon saves what it sees while you play, and the desktop app turns it into plans. Horde and Alliance are covered alike. Where the data is still thin, the <a href="./coverage.html">data coverage page</a> says so.</p>
+{{feature-links}}
+</div></section>
+
+{{features}}
+
+<section class="bfx-section" id="more"><div class="bfx-wrap">
+<h2>Also in the app</h2>
+{{also}}
+<p class="bfx-intro bfx-more"><a href="./tour.html">See every screen in the feature tour</a></p>
+</div></section>
+
+<section class="bfx-section bfx-band bfx-cta-band" id="get"><div class="bfx-wrap">
+<h2>Get Backstage Forever</h2>
+<p class="bfx-intro">One download. The desktop app sets up the addon in WoW Forever and keeps both up to date.</p>
+{{cta}}
+</div></section>
+
+<section class="bfx-section" id="in-game"><div class="bfx-wrap bfx-ingame">
+<div class="bfx-text">
+<p class="bfx-kicker">Inside WoW Forever</p>
+<h2>The addon brings it into the game</h2>
+<p>The Adventure Compass shows your experience, your pace, the quests that are ready to hand in and your next step. Tooltips show quest progress on enemies and whether an item is an upgrade for you.</p>
+<p>You choose which hints each character gets, and every one can be switched off. Click the owl button on the minimap to ask the companion a question without leaving the game.</p>
+<p class="bfx-cmds"><span>In game:</span> <code>/bf</code> <code>/bf help</code> <code>/bf helpers panel</code></p>
+<p class="bfx-more"><a href="./commands.html">See every command you can type in game</a></p>
+</div>
+<div class="bfx-pair">
+<figure class="bfx-shot"><div class="bfx-frame"><img src="./compass.png"{{size:compass.png}} alt="Adventure Compass panel in WoW Forever showing level, experience to the next level, quests ready to hand in and the next step" loading="lazy" decoding="async"></div><figcaption><strong>Adventure Compass</strong> What is ready to hand in and how your leveling is going.</figcaption></figure>
+<figure class="bfx-shot"><div class="bfx-frame"><img src="./helpers.png"{{size:helpers.png}} alt="In-Game Helpers panel in WoW Forever with a switch for each hint, set for one character" loading="lazy" decoding="async"></div><figcaption><strong>In-Game Helpers</strong> Choose which hints each character gets.</figcaption></figure>
+</div>
+</div></section>
+
+<section class="bfx-section bfx-band" id="how-it-works"><div class="bfx-wrap">
+<h2>How it works</h2>
+<p class="bfx-intro">Setting up takes about five minutes, and you only do it once.</p>
+{{steps}}
+<p class="bfx-intro bfx-more"><a href="./download.html">All downloads and install steps for Windows, macOS and Linux</a></p>
+</div></section>
+
+<section class="bfx-section" id="privacy"><div class="bfx-wrap">
+<h2>Private, fair and open</h2>
+<p class="bfx-intro">Backstage Forever shows you things and points the way. You play the game.</p>
+{{trust}}
+</div></section>
+
+<section class="bfx-section bfx-band" id="look-around"><div class="bfx-wrap">
+<h2>Look around before you install</h2>
+{{cards}}
+</div></section>
+
+<section class="bfx-section" id="faq"><div class="bfx-wrap">
+<h2>Questions and answers</h2>
+{{faq}}
+</div></section>
+
+<section class="bfx-section bfx-band bfx-cta-band" id="download"><div class="bfx-wrap">
+<h2>Download Backstage Forever, free</h2>
+<p class="bfx-intro">Pick your system. Every button goes to the latest release.</p>
+{{downloads}}
+<p class="bfx-intro">Need help? Read the <a href="{{repo}}/blob/main/docs/GETTING-STARTED.md">getting started guide on GitHub</a>, <a href="https://discord.com/invite/u6hFbJRsYs">ask on the Hounds of Oblivion Discord</a> or <a href="{{repo}}/issues">report a bug on GitHub</a>.</p>
+</div></section>
+{{legal}}
+</main>{{footer}}{{scripts}}</body></html>
