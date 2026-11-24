@@ -645,6 +645,7 @@ local HELP_TOPICS={
         '/bf mail - letters that expire within 3 days, from your last mailbox visit (on or off for the mailbox line)',
         '/bf bags - items in your bags that are an upgrade, a wish or a quest item; /bf bags marks on draws small signs on them',
         '/bf wish - your wish list and which boss was seen to drop each item (on or off for the banner)',
+        '/bf bag - every bag in one window: search, categories, new items lit up, free slots; /bf bag bank, /bf bag junk, /bf bag sort name',
     }},
     {key='group',index='4 group - dungeons, parties, guild and raid',head='Dungeons and groups (/bf help group):',lines={
         '/bf atlas - the Instance Atlas: every dungeon and raid with bosses, loot and a tip',
@@ -670,6 +671,7 @@ local HELP_TOPICS={
         '/bf toasts, danger, junk - turn pop-up tips, target warnings or the sell-junk button on or off',
         '/bf moments - turn the short messages for elite, rare and boss kills and profession milestones on or off',
         '/bf gear - turn upgrade hints on item tooltips and the best-quest-reward highlight on or off',
+        '/bf chat - chat tools, each off at first: stamps, names, links (copy a line, web addresses, coordinates) and filter; /bf chat filtered',
     }},
     {key='settings',index='6 settings - the settings window and the smaller switches',head='Settings (/bf help settings):',lines={
         '/bf options - the settings window: a switch for every helper, and three starting points',
@@ -681,6 +683,7 @@ local HELP_TOPICS={
         '/bf comfort - switch the rested, weapon skill, flight time and durability lines on or off',
         '/bf access - marks that do not rely on colour, and larger text in the Compass and settings window',
         '/bf addons - other addons found and what Backstage Forever switched off beside them (on or off)',
+        '/bf profile - all settings of this character as one code to export or import; /bf profile save NAME, load NAME, list, share on',
     }},
     {key='companion',index='7 companion - asking questions and the desktop app',head='Companion and desktop app (/bf help companion):',lines={
         '/bf ask - ask the companion a question (or click the owl button on the minimap); the answer appears in the Backstage Forever panel over your game',
