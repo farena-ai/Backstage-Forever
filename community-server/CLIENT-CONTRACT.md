@@ -6,7 +6,9 @@ Server code lives next to this file. API version: `v1`. Pack format: `1`.
 - Base URL: `https://bf.backstagecoding.com` (HTTPS only; plain HTTP is redirected with 308).
 - Every request and response body is JSON (UTF-8). POST requests must send
   `Content-Type: application/json` and must not compress the body.
-- No cookies, no auth headers, no CORS. The service is meant for the desktop app only.
+- No cookies, no auth headers, no CORS on `/v1/*`. The service is meant for the desktop app only.
+  (The one exception is the `X-BF-Ticket-Key` header of section 10. Cookies exist only under
+  `/admin/`, the team's admin area, which the app never calls.)
 - Unknown fields are rejected anywhere in a request. Send only the fields listed here.
 
 ## 1. Install id and the sharing switch
@@ -30,7 +32,7 @@ Server code lives next to this file. API version: `v1`. Pack format: `1`.
 | 304 | empty | pack unchanged (only for conditional GET) |
 | 400 | `{"ok":false,"error":"invalid","detail":"observations.npcs[3].x: must be a number 0..1"}` or `"invalid_json"` | client bug: drop that batch, log `detail`, **do not retry** |
 | 403 | `{"ok":false,"error":"blocked"}` | this install was blocked by the owner: stop submitting |
-| 404 / 405 | `not_found` / `method_not_allowed` (with an `Allow` header) | client bug |
+| 404 / 405 | `not_found` / `method_not_allowed` (with an `Allow` header) | client bug. For a ticket (section 10): the ticket is gone or the key is wrong; remove it locally |
 | 413 | `body_too_large` | split the batch (submit) or trim the log (report) |
 | 415 | `json_required` / `encoding_not_supported` | client bug |
 | 429 | `rate_limited`, with a `Retry-After` header in seconds | wait at least `Retry-After`, then retry the same batch |
@@ -173,14 +175,18 @@ Body limit 160 KB. Limit: 5 reports per install per hour.
 { "schema": 1, "installId": "3f2b8c1e-9d4a-4b7e-8f21-0a1b2c3d4e5f" }
 ```
 
-Deletes every observation and report from that install. Response:
-`200 {"ok":true,"removed":{"observations":12,"reports":0}}`. Facts already published in a pack
+Deletes every observation and report from that install, and also every ticket (with its whole
+conversation), every heartbeat row and the first-seen day of that install (section 10). Response:
+`200 {"ok":true,"removed":{"observations":12,"reports":0}}` (the shape is unchanged; tickets and
+heartbeats are removed without being counted in it). Facts already published in a pack
 disappear at the next rebuild if they drop below 3 installs. After a 200, generate a new install
 id. Limit: 3 per install per hour.
 
 ## 7. `GET /v1/health`
 
-`200 {"ok":true,"service":"bf-community","version":"1.0.0","packFormat":1,"uptimeSec":1234}`
+`200 {"ok":true,"service":"bf-community","version":"1.0.0","packFormat":1,"desk":true,"uptimeSec":1234}`
+
+`"desk": true` means the Backstage Desk endpoints of section 10 are there.
 
 ## 8. Rate limits (in memory only)
 
@@ -192,14 +198,216 @@ id. Limit: 3 per install per hour.
 | `report` per install | 5/hour |
 | `report`, whole service | 60/hour |
 | `forget` per install | 3/hour |
+| `heartbeat` per install | 6/day (more are answered 200 and ignored) |
+| `tickets` (open a report) per install | 5/day |
+| `tickets` (open a report), whole service | 200/day; `503 report_inbox_full` at 5,000 open tickets |
+| read one ticket, per ticket key | 120/hour |
+| player replies, per ticket | 20/day |
+| delete a ticket, per ticket key | 10/hour |
+| `errors` per install | 10/day |
+
+"Per day" is a 24-hour window that starts with the first request. All of these are counted in
+memory only, keyed by the install hash or by a hash of the ticket key.
 
 ## 9. What the server stores (for the app's privacy page)
 
-- Observations: one row per fact per hashed install, holding a counter and the first and last
-  UTC **day** it was seen. No times of day, IPs, names, GUIDs, realms or account data.
-- Daily submission counts per client build string. They are not linked to installs.
-- Reports: category, text, app version, build, optional log, the install hash, and the creation
-  time rounded to the minute.
-- The service log records only the time, method, route, status and duration. It contains no IPs
-  and no install ids.
+Field by field. Nothing else is kept. The install id is never stored: only `hashInstall(installId)`,
+a salted HMAC-SHA-256 of it, called "the install hash" below. IP addresses are used in memory for
+rate limits (as a keyed hash) and are never written to the database or the log. Country is not
+derived. There are no cookies on `/v1/*`.
+
+**Community data (sections 3 to 6)**
+- Observations: one row per fact per install hash, holding a counter and the first and last UTC
+  **day** it was seen. No times of day, names, GUIDs, realms or account data.
+- Daily submission counts per client build string. Not linked to installs.
+- Old one-way reports (`/v1/report`): category, text, app version, build, optional log, the
+  install hash, and the creation time rounded to the minute.
 - Published data contains only facts that at least 3 distinct installs agree on.
+
+**Statistics (`/v1/heartbeat`)** - one row per install hash per UTC day, last values win:
+
+| Stored | From the request field |
+|---|---|
+| install hash | `installId` (hashed) |
+| UTC day (no time of day) | set by the server |
+| app version, addon version, release channel | `appVersion`, `addonVersion`, `channel` |
+| operating system family and major version | `os`, `osMajor` |
+| app language | `lang` |
+| game build | `build` |
+| first-seen week as the app remembers it | `firstSeenWeek` |
+| four yes/no flags | `flags.gameConnected`, `flags.addonInstalled`, `flags.liveLink`, `flags.sharing` |
+| which of the nine main areas were opened that day (yes/no each) | `areas` |
+
+Also one row per install hash with the UTC day the server first saw it. Heartbeat rows are kept for
+at most 13 months: older calendar months are turned into monthly totals (counts only, no install
+hash) and the rows are deleted. A first-seen day is deleted once no heartbeat row of that install is
+left. `POST /v1/forget` deletes all of it at once.
+
+**Tickets (`/v1/tickets`)**
+
+| Stored | From |
+|---|---|
+| ticket number | made by the server (`BF-1001`, `BF-1002`, ...) |
+| SHA-256 of the ticket key | the key itself is sent once in the 201 answer and never stored |
+| install hash | `installId` (hashed); shown to admins only as its first 8 characters |
+| kind, area, how often | `kind`, `area`, `frequency` |
+| summary, details, what was expected | `summary`, `details` (kept as message 1), `expected` |
+| app version, addon version, OS family and major version, language, game build | the fields of the same name |
+| diagnostics block, if the player left it in | `diagnostics.screen`, `.lastError`, `.gameConnected`, `.addonInstalled` |
+| every later message, with who wrote it (player or team) and when | `text` of section D4, and the team's replies |
+| times: opened, last change, first team reply, closed (to the second, UTC) | set by the server |
+| handling data added by the team | status, fixed-in version, severity, tags, assigned admin, GitHub link, duplicate-of, internal notes |
+
+A ticket stays until the player deletes it (`DELETE /v1/tickets/{ticket}` or `POST /v1/forget`) or
+an admin deletes it; then the ticket and all of its messages and notes are removed.
+
+**Automatic error reports (`/v1/errors`)** - never linked to an install: the install id is used
+only for the rate limit and the block list, in memory, and is not stored with the error.
+
+| Stored | From |
+|---|---|
+| per error group: error name, the message and stack of the first report, main or renderer | `name`, `message`, `stack`, `where` |
+| per group, app version, OS family and UTC day: a count | `appVersion`, `os` |
+| first and last UTC day, and a total | set by the server |
+
+`osMajor` and `lang` are checked and then dropped. Folder names are removed from `stack` and
+absolute paths from `message` by the server as well, whatever the app sent. Per-day counts older
+than 13 months are deleted.
+
+**Announcements (`/v1/announcements`)** - nothing is stored about the caller.
+
+**Admin area** - admin name, scrypt password hash, encrypted authenticator secret, session
+hashes, sign-in failure counters (keyed by a hash of the typed name), and an audit log of admin
+actions (who, what, when, which ticket). The audit log never contains what a player wrote.
+
+**Alerts to admins** - if switched on by the owner, a new ticket or a player reply sends an e-mail
+and/or a Discord message holding only: ticket number, kind, area, app version, and the first 80
+characters of the summary.
+
+**Log** - the service log records only the time, method, route pattern (`/v1/tickets/:ticket`,
+never the ticket number), status and duration. It contains no IPs, install ids, ticket numbers,
+keys, e-mail addresses or text.
+
+## 10. Backstage Desk: reports with replies, statistics, error reports, announcements
+
+This section is the Desk contract as agreed for app and server. Everything in sections 1, 2 and 8
+(install id, common responses, strict unknown-field rejection, rate limits, body rules) applies
+unchanged.
+
+**Shared rules**
+- JSON only, HTTPS only, no cookies and no auth headers on `/v1/*` (cookies exist only under `/admin`).
+- `installId`: UUID v4 string. Server stores only `hashInstall(installId)` (existing salted HMAC).
+- `appVersion`, `addonVersion`: `^\d{1,3}\.\d{1,3}\.\d{1,3}$` (addonVersion may be `null`).
+- `build`: game build `^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$` or `null`.
+- `os`: `"windows" | "macos" | "linux"`; `osMajor`: string `^[0-9]{1,3}$` or `null`.
+- `lang`: `"en" | "de" | "fr" | "es"`. `channel`: `"stable" | "beta" | "dev"`.
+- Text fields are plain text, NFC, no control characters except `\n`; the server stores them as
+  given and always HTML-escapes on output. Limits are in characters.
+- The server never stores IP addresses; rate limiting is in memory.
+- Times are ISO-8601 UTC strings (`2026-11-24T12:00:00Z`).
+
+### D1. `POST /v1/heartbeat` — anonymous statistics (at most once per UTC day per install)
+Body limit 2 KB. Limit: 6 per install per day (extra ones are accepted and ignored: 200).
+```json
+{ "schema": 1, "installId": "…", "appVersion": "1.26.0", "addonVersion": "1.26.0", "channel": "stable",
+  "os": "windows", "osMajor": "11", "lang": "en", "build": "1.60.1.71037",
+  "firstSeenWeek": "2026-W48",
+  "flags": { "gameConnected": true, "addonInstalled": true, "liveLink": false, "sharing": true },
+  "areas": ["now", "route", "map", "dungeons", "professions", "ledger", "talents", "journey", "companion"] }
+```
+- `firstSeenWeek`: ISO week the app first ran, `^\d{4}-W\d{2}$` (the app remembers it; the server
+  also keeps its own first-seen date per hash and prefers its own).
+- `flags`: exactly these four booleans. `areas`: subset of the nine names above, no duplicates.
+- Response `200 {"ok":true}`. `403 blocked` as usual.
+- Server keeps one row per (hash, UTC day): last values win.
+
+### D2. `POST /v1/tickets` — open a report
+Body limit 24 KB. Limits: 5 per install per day, 200 global per day; `503 report_inbox_full` when the
+open-ticket cap is reached.
+```json
+{ "schema": 1, "installId": "…", "appVersion": "1.26.0", "addonVersion": "1.26.0", "os": "windows",
+  "osMajor": "11", "lang": "en", "build": "1.60.1.71037",
+  "kind": "bug", "area": "talents", "frequency": "always",
+  "summary": "Planner shows the wrong tree", "details": "Steps…", "expected": "…",
+  "diagnostics": { "screen": "talents", "lastError": "TypeError: … (paths removed)", "gameConnected": true, "addonInstalled": true } }
+```
+- `kind`: `"bug" | "data" | "translation" | "idea" | "other"`.
+- `area`: one of `now, route, map, quests, dungeons, professions, ledger, talents, gear, journey,
+  companion, travel, settings, addon-ingame, install-update, website, other`.
+- `frequency`: `"once" | "sometimes" | "always" | null`.
+- `summary` 5–140 chars; `details` 10–4000; `expected` 0–1000 (may be `""`).
+- `diagnostics`: optional object or `null`; fields exactly as shown; `lastError` ≤ 2000 chars or `null`.
+- Response `201 {"ok":true,"ticket":"BF-1042","key":"<43-char base64url secret>","status":"new","createdAt":"…"}`.
+  The server stores only a hash of `key`. The key is shown once; the app stores it locally.
+
+### D3. `GET /v1/tickets/{ticket}` — read one ticket (the conversation)
+Header `X-BF-Ticket-Key: <key>`. (This is the one place a header carries a secret.) Wrong or missing
+key → `404 not_found` (never reveals whether the ticket exists). Limit: 120 per install-less client per
+hour per ticket key hash.
+Optional query `since=<message id>` returns only newer messages.
+```json
+{ "ok": true, "ticket": "BF-1042", "status": "question", "fixedIn": null, "kind": "bug", "area": "talents",
+  "summary": "…", "createdAt": "…", "updatedAt": "…",
+  "messages": [ { "id": 1, "from": "player", "text": "…", "at": "…" },
+                { "id": 2, "from": "team", "text": "…", "at": "…" } ] }
+```
+- `status`: `"new" | "looking" | "question" | "fixed" | "closed"`; `fixedIn`: version string or `null`.
+- Internal notes are never included. `from` is `"player"` or `"team"` (no admin names).
+
+### D4. `POST /v1/tickets/{ticket}/messages` — player reply
+Header `X-BF-Ticket-Key`. Body `{ "schema": 1, "text": "…" }`, text 1–4000 chars, body limit 12 KB.
+Limit 20 per ticket per day. A reply to a `fixed` or `closed` ticket re-opens it as `looking`.
+Response `201 {"ok":true,"id":3,"at":"…","status":"looking"}`.
+
+### D5. `POST /v1/tickets/sync` — check many tickets at once (what the app polls)
+Body limit 8 KB: `{ "schema": 1, "tickets": [ { "ticket": "BF-1042", "key": "…", "since": 2 } ] }` (max 50).
+Response: `{ "ok": true, "tickets": [ { "ticket": "BF-1042", "status": "question", "fixedIn": null,
+"updatedAt": "…", "unread": 1, "lastId": 3 } ], "gone": ["BF-0007"] }` — `gone` lists tickets that no
+longer exist or whose key did not match (the app removes them). App polls at start, then every 3 hours
+while it has tickets not `closed`, with the usual backoff.
+
+### D6. `DELETE /v1/tickets/{ticket}` — player deletes a report
+Header `X-BF-Ticket-Key`. Response `200 {"ok":true}`. Removes the ticket and its messages.
+`POST /v1/forget` (existing) additionally deletes every ticket and heartbeat row of that install hash.
+
+### D7. `POST /v1/errors` — automatic error report (only if the player switched it on)
+Body limit 8 KB. Limits: 10 per install per day.
+```json
+{ "schema": 1, "installId": "…", "appVersion": "1.26.0", "os": "windows", "osMajor": "11", "lang": "en",
+  "where": "main" , "name": "TypeError", "message": "… (paths removed)", "stack": ["at f (app.js:10:3)", "…"] }
+```
+- `where`: `"main" | "renderer"`. `name` ≤ 60, `message` ≤ 300, `stack`: ≤ 12 lines, each ≤ 200, file
+  names only (no directories). The server groups by a signature of name + first three stack lines.
+- Response `200 {"ok":true}`.
+
+### D8. `GET /v1/announcements?appVersion=1.26.0&os=windows&lang=en` — messages from the team
+Anonymous, cacheable for 1 hour (`Cache-Control: public, max-age=3600`, ETag, 304 supported).
+```json
+{ "ok": true, "announcements": [ { "id": 12, "title": "…", "text": "…", "level": "info",
+  "from": "2026-11-24T00:00:00Z", "until": "2026-12-01T00:00:00Z", "link": null } ] }
+```
+- `level`: `"info" | "warning"`; `title` ≤ 80, `text` ≤ 600; `link` is `null` or an https URL on
+  `github.com/farena-ai/Backstage-Forever` or `backstagecoding.com` only. The server filters by
+  version range, OS and language server-side; the app shows each id once.
+
+### D9. `GET /v1/health` gains `"desk": true`.
+
+### How this server implements the points the contract leaves open
+
+- Ticket numbers start at `BF-1001` and are never reused. A number is at least four digits.
+- `details` becomes message 1 (`"from":"player"`). `expected` is stored with the ticket and shown
+  to the team; it is not repeated in `messages`.
+- Message ids count 1, 2, 3 ... per ticket over the messages the player can see. Internal notes
+  take no id, so there are no gaps that would give them away.
+- A player reply sets `question`, `fixed` and `closed` back to `looking`; `new` and `looking` stay.
+- `since` in D5 may be left out (it then means 0). `unread` counts only messages from the team.
+- D8: every query parameter is optional. Without `appVersion`, `os` or `lang` the server returns
+  only announcements that do not target on that detail. Unknown parameters are refused with 400.
+- D3 with a malformed ticket id or key answers `404 not_found`, the same as a wrong key. A key in
+  the URL is never looked at.
+- Text fields: a tab is tolerated besides the newline; `\r\n` is stored as `\n`; text is put
+  into NFC. Other control characters are refused with 400. Limits count Unicode code points.
+- D7: the group signature ignores line and column numbers, so one fault stays one group across
+  releases. At most 5,000 groups are kept; reports for further new groups are answered 200 and dropped.
+- D1: the server's own first-seen day is the UTC day of the first heartbeat it received.
+- A blocked install gets `403 blocked` on D1, D2, D4 and D7. It can still read and delete its tickets.

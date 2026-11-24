@@ -8,9 +8,18 @@ const { validateSubmit, validateReport, validateForget, ValidationError } = requ
 const { hashInstall } = require("./store");
 const { PackCache, PACK_FORMAT } = require("./pack");
 const { RateLimiter } = require("./ratelimit");
+const desk = require("./validate-desk");
+const { Auth } = require("./auth");
+const { Notifier } = require("./notify");
+const { createAdmin } = require("./admin/web");
 
 const SERVICE_VERSION = require("../package.json").version;
-const BODY_LIMITS = { "/v1/submit": 256 * 1024, "/v1/report": 160 * 1024, "/v1/forget": 1024 };
+const BODY_LIMITS = {
+  "/v1/submit": 256 * 1024, "/v1/report": 160 * 1024, "/v1/forget": 1024,
+  "/v1/heartbeat": 2 * 1024, "/v1/tickets": 24 * 1024, "/v1/tickets/:ticket/messages": 12 * 1024,
+  "/v1/tickets/sync": 8 * 1024, "/v1/errors": 8 * 1024,
+};
+const TICKET_PATH = /^\/v1\/tickets\/([^/]{1,40})(\/messages)?$/;
 const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
@@ -27,7 +36,9 @@ class HttpError extends Error {
   constructor(status, code, extra = {}) { super(code); this.status = status; this.code = code; this.extra = extra; }
 }
 
-function createApp({ store, config, now = () => Date.now(), log = (line) => console.log(line) }) {
+function createApp({ store, config, now = () => Date.now(), log = (line) => console.log(line), notifier, auth }) {
+  auth = auth || new Auth({ store, salt: config.salt, now, options: config.auth || {} });
+  notifier = notifier || new Notifier({ config, log, now });
   const packs = new PackCache(store, { minInstalls: config.minInstalls, rebuildMs: config.packRebuildMs, now });
   const L = config.limits;
   const limiters = {
@@ -37,6 +48,15 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
     reportInstall: new RateLimiter(L.reportPerInstall),
     reportGlobal: new RateLimiter(L.reportGlobal),
     forgetInstall: new RateLimiter(L.forgetPerInstall),
+    heartbeatInstall: new RateLimiter(L.heartbeatPerInstall),
+    ticketInstall: new RateLimiter(L.ticketPerInstall),
+    ticketGlobal: new RateLimiter(L.ticketGlobal),
+    ticketRead: new RateLimiter(L.ticketReadPerKey),
+    ticketReply: new RateLimiter(L.ticketReplyPerTicket),
+    ticketDelete: new RateLimiter(L.ticketDeletePerKey),
+    errorInstall: new RateLimiter(L.errorPerInstall),
+    errorGlobal: new RateLimiter(L.errorGlobal),
+    loginIp: new RateLimiter(L.loginPerIp),
   };
   // Per-process key: client addresses are only ever held as keyed hashes in memory.
   const ipKey = crypto.randomBytes(32);
@@ -97,9 +117,93 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
     return hash;
   }
 
+  // The ticket key is the only credential on /v1. A malformed id, a missing
+  // key, a wrong key and a ticket that does not exist all give the same 404.
+  function keyed(req, segment, limiter) {
+    const number = desk.ticketNumber(segment), key = desk.ticketKey(req.headers["x-bf-ticket-key"]);
+    if (number === null || key === null) throw new HttpError(404, "not_found");
+    if (limiter) limit(limiter, crypto.createHash("sha256").update(key).digest("base64url"));
+    return { number, key };
+  }
+  function ticketRow(number, key) {
+    const row = store.desk.ticketByKey(number, key);
+    if (!row) throw new HttpError(404, "not_found");
+    return row;
+  }
+  function notify(type, row) {
+    try {
+      Promise.resolve(notifier.ticketEvent(type, { ticket: desk.ticketLabel(row.id), kind: row.kind, area: row.area, appVersion: row.app_version, summary: row.summary }))
+        .catch(() => {});
+    } catch { /* a notification can never fail a request */ }
+  }
+
+  const ticketRoutes = {
+    "GET": (req, res, url, segment) => {
+      const { number, key } = keyed(req, segment, limiters.ticketRead);
+      const since = desk.validateSince(url.searchParams);
+      send(res, 200, store.desk.publicTicket(ticketRow(number, key), since));
+    },
+    "DELETE": (req, res, url, segment) => {
+      const { number, key } = keyed(req, segment, limiters.ticketDelete);
+      store.desk.deleteTicket(ticketRow(number, key).id);
+      send(res, 200, { ok: true });
+    },
+    "POST messages": async (req, res, url, segment) => {
+      const { number, key } = keyed(req, segment, null);
+      const { text } = desk.validateTicketMessage(await readJson(req, BODY_LIMITS["/v1/tickets/:ticket/messages"]));
+      const row = ticketRow(number, key);
+      if (row.install && store.isBlocked(row.install)) throw new HttpError(403, "blocked");
+      limit(limiters.ticketReply, String(row.id));
+      const r = store.desk.playerReply(row, text, now());
+      notify("reply", row);
+      send(res, 201, { ok: true, id: r.id, at: r.at, status: r.status });
+    },
+  };
+
   const routes = {
     "GET /v1/health": (req, res) => {
-      send(res, 200, { ok: store.ping(), service: "bf-community", version: SERVICE_VERSION, packFormat: PACK_FORMAT, uptimeSec: Math.floor((now() - startedAt) / 1000) });
+      send(res, 200, { ok: store.ping(), service: "bf-community", version: SERVICE_VERSION, packFormat: PACK_FORMAT, desk: true, uptimeSec: Math.floor((now() - startedAt) / 1000) });
+    },
+    "POST /v1/heartbeat": async (req, res) => {
+      const hb = desk.validateHeartbeat(await readJson(req, BODY_LIMITS["/v1/heartbeat"]));
+      const hash = installHash(hb.installId);
+      // More than six a day are accepted and ignored.
+      if (limiters.heartbeatInstall.hit(hash, now()).ok) store.desk.recordHeartbeat(hash, hb, now());
+      send(res, 200, { ok: true });
+    },
+    "POST /v1/tickets": async (req, res) => {
+      const t = desk.validateTicket(await readJson(req, BODY_LIMITS["/v1/tickets"]));
+      const hash = installHash(t.installId);
+      limit(limiters.ticketInstall, hash);
+      limit(limiters.ticketGlobal, "global");
+      if (store.desk.openTicketCount() >= config.maxOpenTickets) throw new HttpError(503, "report_inbox_full");
+      const made = store.desk.createTicket(hash, t, now());
+      notify("new", { id: made.id, kind: t.kind, area: t.area, app_version: t.appVersion, summary: t.summary });
+      send(res, 201, { ok: true, ticket: made.ticket, key: made.key, status: made.status, createdAt: made.createdAt });
+    },
+    "POST /v1/tickets/sync": async (req, res) => {
+      const { tickets } = desk.validateTicketSync(await readJson(req, BODY_LIMITS["/v1/tickets/sync"]));
+      send(res, 200, { ok: true, ...store.desk.syncTickets(tickets) });
+    },
+    "POST /v1/errors": async (req, res) => {
+      const e = desk.validateError(await readJson(req, BODY_LIMITS["/v1/errors"]));
+      const hash = installHash(e.installId);
+      limit(limiters.errorInstall, hash);
+      limit(limiters.errorGlobal, "global");
+      store.desk.recordError(e, now(), config.maxErrorGroups);
+      send(res, 200, { ok: true });
+    },
+    "GET /v1/announcements": (req, res, url) => {
+      const q = desk.validateAnnouncementQuery(url.searchParams);
+      const body = Buffer.from(JSON.stringify({ ok: true, announcements: store.desk.activeAnnouncements(q, now()) }));
+      const etag = `"${crypto.createHash("sha256").update(body).digest("hex").slice(0, 20)}"`;
+      const headers = { ...SECURITY_HEADERS, ETag: etag, "Cache-Control": "public, max-age=3600" };
+      const inm = String(req.headers["if-none-match"] || "");
+      if (inm && inm.split(",").map(s => s.trim().replace(/^W\//, "")).some(t => t === etag || t === "*")) {
+        res.writeHead(304, headers); res.end(); return;
+      }
+      res.writeHead(200, { ...headers, "Content-Type": "application/json; charset=utf-8", "Content-Length": body.length });
+      res.end(req.method === "HEAD" ? undefined : body);
     },
     "GET /v1/pack/meta": (req, res) => {
       const p = packs.get();
@@ -146,20 +250,36 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
       const hash = hashInstall(config.salt, installId);
       limit(limiters.forgetInstall, hash);
       const removed = store.purgeInstall(hash, { now: now() });
+      // Tickets, their messages, heartbeats and the first-seen day go too; the answer keeps its documented shape.
       send(res, 200, { ok: true, removed: { observations: removed.observations, reports: removed.reports } });
     },
   };
   const paths = new Set(Object.keys(routes).map(k => k.split(" ")[1]));
+  const admin = createAdmin({ store, config, auth, now, log, loginLimiter: limiters.loginIp, clientKey });
 
   async function handle(req, res) {
     const started = now();
-    let pathname = "-";
+    let pathname = "-", label = null;
     try {
-      pathname = new URL(req.url, "http://localhost").pathname;
-      if (pathname.length > 1 && pathname.endsWith("/")) pathname = pathname.slice(0, -1);
+      const url = new URL(req.url, "http://localhost");
+      pathname = url.pathname;
       limit(limiters.ip, clientKey(req));
+      if (config.adminEnabled && (pathname === "/admin" || pathname.startsWith("/admin/"))) {
+        label = "/admin";
+        label = await admin.handle(req, res, url);
+        return;
+      }
+      if (pathname.length > 1 && pathname.endsWith("/")) pathname = pathname.slice(0, -1);
       const method = req.method === "HEAD" ? "GET" : req.method;
       const handler = routes[`${method} ${pathname}`];
+      const ticket = handler ? null : TICKET_PATH.exec(pathname);
+      if (ticket) {
+        label = ticket[2] ? "/v1/tickets/:ticket/messages" : "/v1/tickets/:ticket";
+        const th = ticketRoutes[ticket[2] ? `${method} messages` : method];
+        if (!th) throw new HttpError(405, "method_not_allowed", { allow: ticket[2] ? "POST" : "GET, HEAD, DELETE" });
+        await th(req, res, url, ticket[1]);
+        return;
+      }
       if (!handler) {
         if (paths.has(pathname)) {
           const allow = Object.keys(routes).filter(k => k.endsWith(` ${pathname}`)).map(k => k.split(" ")[0]);
@@ -168,7 +288,7 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
         }
         throw new HttpError(404, "not_found");
       }
-      await handler(req, res);
+      await handler(req, res, url);
     } catch (e) {
       if (e instanceof ValidationError) send(res, 400, { ok: false, error: "invalid", detail: e.message.slice(0, 300) });
       else if (e instanceof HttpError) {
@@ -183,7 +303,8 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
         else res.destroy();
       }
     } finally {
-      if (!paths.has(pathname)) pathname = "(other)";
+      if (label) pathname = label;
+      else if (!paths.has(pathname)) pathname = "(other)";
       log(`${new Date().toISOString()} ${req.method} ${pathname} ${res.statusCode} ${now() - started}ms`);
     }
   }
@@ -193,7 +314,7 @@ function createApp({ store, config, now = () => Date.now(), log = (line) => cons
   server.headersTimeout = 10_000;
   server.keepAliveTimeout = 5_000;
   server.maxHeadersCount = 64;
-  return { server, packs, limiters };
+  return { server, packs, limiters, auth, notifier, admin };
 }
 
 module.exports = { createApp, BODY_LIMITS, SECURITY_HEADERS };
