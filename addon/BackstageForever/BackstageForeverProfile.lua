@@ -82,7 +82,7 @@ local SETTINGS={
     Ask={global='BackstageForeverAskSettings',fill=true,keys={hidden=B,explainClick=B,angle=N(0,360)}},
     Enemy={global='BackstageForeverEnemySettings',fill=true,keys={enabled=B,sound=B}},
     QoL={global='BackstageForeverQoLSettings',fill=true,keys={coords=B,loot=B,dismount=B}},
-    Party={global='BackstageForeverPartySettings',fill=true,keys={enabled=B,answerChecks=B}},
+    Party={global='BackstageForeverPartySettings',fill=true,keys={enabled=B,answerChecks=B,live=B,say=M({quest=E('party','guild'),objective=E('party','guild'),ready=E('party','guild')})}},
     Helper={global='BackstageForeverHelperSettings',keys={questTracker=B,objectiveHints=B,questDetours=B,beforeLeaving=B,rewardReasons=B,questBlockers=B,
         gatheringMarks=B,sharedObjectives=B,keepQuestItems=B,questItemCue=B,spellRankReminder=B}},
     Minimap={global='BackstageForeverMinimapSettings',fill=true,keys={enabled=B}},
@@ -104,6 +104,7 @@ local SETTINGS={
     Ledger={global='BackstageForeverLedgerDB',fill=true,keys={pricesOn=B,priceTips=B}},
     Scout={global='BackstageForeverScoutDB',keys={on=B}},
     Events={global='BackstageForeverEventsDB',keys={on=B,loot=B}},
+    LiveGuild={global='BackstageForeverLiveGuildDB',keys={desk=B}},
     Gathering={global='BackstageForeverGatheringDB',fill=true,keys={recording=B}},
 }
 BackstageForeverProfileSettings=SETTINGS

@@ -1,0 +1,332 @@
+{
+ "note": "Signal texts exactly as BackstageForeverLiveGuild.lua writes them (a test keeps the two in step), with what game-guild-feed.cjs must make of each.",
+ "signals": [
+  {
+   "text": "L1|Abel-Thunder Hold|1|H|BFG-7K2M-Q9XD|Night Watch",
+   "type": "link",
+   "payloads": [
+    {
+     "code": "BFG-7K2M-Q9XD",
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     },
+     "rankIndex": 1,
+     "guildName": "Night Watch",
+     "realm": "Thunder Hold",
+     "faction": "horde"
+    }
+   ]
+  },
+  {
+   "text": "X1|Abel-Thunder Hold|H|Night Watch",
+   "type": "unlink",
+   "payloads": [
+    {
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     },
+     "guildName": "Night Watch",
+     "realm": "Thunder Hold",
+     "faction": "horde"
+    }
+   ]
+  },
+  {
+   "text": "E1|Abel-Thunder Hold|abc123|3|Anna|Bob|1795806000|mc|2.8.30|-|Molten Core|Bring fire resist",
+   "type": "event",
+   "payloads": [
+    {
+     "id": "abc123",
+     "version": 3,
+     "creator": {
+      "name": "Anna",
+      "realm": "Thunder Hold"
+     },
+     "editor": {
+      "name": "Bob",
+      "realm": "Thunder Hold"
+     },
+     "at": "2026-11-27T19:00:00Z",
+     "place": "mc",
+     "title": "Molten Core",
+     "note": "Bring fire resist",
+     "roles": {
+      "tank": 2,
+      "healer": 8,
+      "damage": 30
+     },
+     "cancelled": false,
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     }
+    }
+   ]
+  },
+  {
+   "text": "E1|Abel-Thunder Hold|zz9zz9|1|Abel|-|1795900000|other|1.1.3|x|Café night|-",
+   "type": "event",
+   "payloads": [
+    {
+     "id": "zz9zz9",
+     "version": 1,
+     "creator": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     },
+     "editor": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     },
+     "at": "2026-11-28T21:06:40Z",
+     "place": "other",
+     "title": "Café night",
+     "note": "",
+     "roles": {
+      "tank": 1,
+      "healer": 1,
+      "damage": 3
+     },
+     "cancelled": true,
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     }
+    }
+   ]
+  },
+  {
+   "text": "U1|Abel-Thunder Hold|abc123|Abel:h:2",
+   "type": "signup",
+   "payloads": [
+    {
+     "eventId": "abc123",
+     "signup": {
+      "who": {
+       "name": "Abel",
+       "realm": "Thunder Hold"
+      },
+      "answer": "healer",
+      "version": 2,
+      "via": "game"
+     },
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     }
+    }
+   ]
+  },
+  {
+   "text": "U1|Abel-Thunder Hold|abc123|Bob:t:1,Cy-Stormrage:m:4,Dee:n:2",
+   "type": "signup",
+   "payloads": [
+    {
+     "eventId": "abc123",
+     "signup": {
+      "who": {
+       "name": "Bob",
+       "realm": "Thunder Hold"
+      },
+      "answer": "tank",
+      "version": 1,
+      "via": "game"
+     },
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     }
+    },
+    {
+     "eventId": "abc123",
+     "signup": {
+      "who": {
+       "name": "Cy",
+       "realm": "Stormrage"
+      },
+      "answer": "maybe",
+      "version": 4,
+      "via": "game"
+     },
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     }
+    },
+    {
+     "eventId": "abc123",
+     "signup": {
+      "who": {
+       "name": "Dee",
+       "realm": "Thunder Hold"
+      },
+      "answer": "no",
+      "version": 2,
+      "via": "game"
+     },
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     }
+    }
+   ]
+  },
+  {
+   "text": "P1|Abel-Thunder Hold|Abel|sm|1795000000|Abel:5:h:34:1:1;Bob:1:t:36:1:0;Cy-Stormrage:3:-:35:0:0;Dee:0:-:0:1:0|4",
+   "type": "party",
+   "payloads": [
+    {
+     "leader": "Abel",
+     "members": [
+      {
+       "name": "Abel",
+       "realm": "Thunder Hold",
+       "class": "priest",
+       "role": "healer",
+       "level": 34,
+       "online": true,
+       "ready": true
+      },
+      {
+       "name": "Bob",
+       "realm": "Thunder Hold",
+       "class": "warrior",
+       "role": "tank",
+       "level": 36,
+       "online": true,
+       "ready": false
+      },
+      {
+       "name": "Cy",
+       "realm": "Stormrage",
+       "class": "hunter",
+       "role": null,
+       "level": 35,
+       "online": false,
+       "ready": false
+      },
+      {
+       "name": "Dee",
+       "realm": "Thunder Hold",
+       "class": null,
+       "role": null,
+       "level": null,
+       "online": true,
+       "ready": false
+      }
+     ],
+     "total": 4,
+     "place": "sm",
+     "plan": {
+      "place": "sm",
+      "at": "2026-11-18T11:06:40Z",
+      "members": [
+       {
+        "name": "Abel",
+        "realm": "Thunder Hold",
+        "role": "healer"
+       },
+       {
+        "name": "Bob",
+        "realm": "Thunder Hold",
+        "role": "tank"
+       }
+      ]
+     },
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     }
+    }
+   ]
+  },
+  {
+   "text": "P1|Abel-Thunder Hold|-|-|0|-|0",
+   "type": "party",
+   "payloads": [
+    {
+     "leader": null,
+     "members": [],
+     "total": 0,
+     "place": null,
+     "plan": null,
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     }
+    }
+   ]
+  },
+  {
+   "text": "F1|Abel-Thunder Hold|abcdefgh12345678|g|34|3|hd|sm|-|have the key",
+   "type": "listing",
+   "payloads": [
+    {
+     "id": "abcdefgh12345678",
+     "kind": "lfg",
+     "who": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     },
+     "level": 34,
+     "class": "hunter",
+     "roles": [
+      "healer",
+      "damage"
+     ],
+     "place": "sm",
+     "note": "have the key",
+     "need": null,
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     }
+    }
+   ]
+  },
+  {
+   "text": "F1|Abel-Thunder Hold|abcdefgh12345678|m|60|0|-|brd|1.0.2|-",
+   "type": "listing",
+   "payloads": [
+    {
+     "id": "abcdefgh12345678",
+     "kind": "lfm",
+     "who": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     },
+     "level": 60,
+     "class": null,
+     "roles": [],
+     "place": "brd",
+     "note": "",
+     "need": {
+      "tank": 1,
+      "healer": 0,
+      "damage": 2
+     },
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     }
+    }
+   ]
+  },
+  {
+   "text": "F1|Abel-Thunder Hold|abcdefgh12345678|x",
+   "type": "listing",
+   "payloads": [
+    {
+     "gone": true,
+     "id": "abcdefgh12345678",
+     "character": {
+      "name": "Abel",
+      "realm": "Thunder Hold"
+     }
+    }
+   ]
+  }
+ ]
+}

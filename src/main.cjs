@@ -248,7 +248,7 @@ app.whenReady().then(async () => {
     game = new GameSync({
       dataDir: app.getPath("userData"),
       // Desktop -> game hand-off: the wish list of each saved character, read by the game at login or /reload.
-      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, reports: desk?.unread() || 0, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id), routes: (id) => routeEditor?.handoff(id) || null, ships: () => shipRides?.() || null, sentProfiles: (key) => profileSends?.get(key) || null }); },
+      handoff: () => { const profiles = store?.state?.profiles || []; return require("./core/desktop-handoff.cjs").compile({ profiles, reports: desk?.unread() || 0, wishlist: (id) => [...(gearPins?.ids(id) || []), ...(wishlist?.get(id) || [])], upgrades: (id) => handoffUpgrades(profiles.find((p) => p.id === id)), talents: (id) => talentBuilds?.handoff(id, profiles.find((p) => p.id === id)?.className) || null, loops: (id) => gatheringLoops?.get(id) || null, answers: (id) => recentGameAnswers(id), routes: (id) => routeEditor?.handoff(id) || null, ships: () => shipRides?.() || null, sentProfiles: (key) => profileSends?.get(key) || null, live: require("./core/game-guild-feed.cjs").handoff() }); },
       onRootChange: () => { companionContext.invalidate("source-root"); characterGuidance?.clear(); },
       addonDir: app.isPackaged
         ? path.join(process.resourcesPath, "addon", "BackstageForever")
@@ -1316,6 +1316,13 @@ app.whenReady().then(async () => {
   forgetGameAnswers = (ids) => { if (inGameAsk.forget(ids)) game?.writeHandoff().catch(() => {}); };
   clearGameAnswers = () => inGameAsk.clear();
   liveBridge.subscribeQuestions((question) => { void inGameAsk.handle(question); });
+  // Backstage Live, game side: guild, party and board signals from the live link and the saved file
+  // go to game-guild-feed.cjs (the panel and the service client listen there); what it is given
+  // for the game (setHandoff) is written into the hand-off file for the next /reload.
+  { const guildFeed = require("./core/game-guild-feed.cjs");
+    guildFeed.attach(liveBridge);
+    guildFeed.onHandoffChange(() => { game?.writeHandoff().catch(() => {}); });
+    if (game) { game.onLiveBlocks = (live, guild) => { guildFeed.ingestSaved(live, guild); }; try { guildFeed.ingestSaved(game.liveCapture(), game.guildCapture()); } catch {} } }
   const stopAskContext = companionContext.subscribe(({ reason }) => {
     if (["source-root", "source-disconnect", "reset", "import", "restore"].includes(reason)) inGameAsk.rememberOrigin(null);
   });

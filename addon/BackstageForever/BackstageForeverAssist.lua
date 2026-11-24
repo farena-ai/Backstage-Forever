@@ -696,6 +696,30 @@ local HELP_TOPICS={
         '/bf scout - scout mode, off until you switch it on: notes the quest givers, trainers, vendors and flight masters you talk to; /bf scout shows counts per zone',
         '/bf perf - memory in use; /bf perf on times each part of the addon, /bf perf off stops it',
     }},
+    {key='party',index='8 party - step by step: playing together in a party',head='Playing in a party, step by step (/bf help party):',lines={
+        'Step 1. Everybody runs Backstage Forever with party sync on (it is on at first; /bf party on).',
+        'Step 2. /bf party shows whose quests match yours. With live updates on (/bf party live on) it follows what changes by itself.',
+        'Step 3. The leader types /bf plan role NAME tank (or healer, damage). Each member sees "Your role" at once; /bf plan shows the plan.',
+        'Step 4. A plan made in the desktop app (who plays what, what to bring) reaches the game at your next /reload and goes to your party.',
+        'Step 5. /bf check sm asks who is ready for a dungeon; the answers and who still needs which quest stay current for half an hour.',
+        'Step 6. /bf plan ready tells your party you are ready. /bf sr add PLAYER ITEM keeps the soft-reserve list (leader); members see it without asking.',
+        'Looking for players: /bf lfg list sm healer puts you on the realm board (the desktop app sends it and must be running); /bf lfg list off takes it down.',
+        'The realm board of other players is in /bf lfg, as of your last /reload, under the lines read from chat.',
+        'Chat lines in your name are off until you want them: /bf announce quest party says a finished quest in party chat. Never in combat.',
+        '/bf plan - the group plan: your role and what to bring; /bf plan role NAME tank (party leader), /bf plan ready',
+        '/bf announce - short party or guild chat lines you switch on yourself: /bf announce quest party, objective, ready; off at first',
+    }},
+    {key='guild',index='9 guild - step by step: guild events, the desktop app and Discord',head='Guild events, step by step (/bf help guild):',lines={
+        'Step 1. Each member who wants events types /bf event on. /bf event opens the window; /bf event add proposes an event.',
+        'Step 2. Answer with the buttons in the window or /bf event yes tank. Your answer reaches guild members in game at once.',
+        'Step 3 (leader or officer). In the desktop app open Plans, Guild and choose Link my guild. It shows a code like BFG-7K2M-Q9XD.',
+        'Step 4 (leader or officer). Type /bf guild link and that code. It goes to guild members\' addons, never to chat.',
+        'Step 5 (members). You see one line: your guild uses Backstage Forever events. Open the desktop app and join there; nothing is shared before you agree.',
+        'Step 6. With the app running, events and answers made in game reach it within seconds over the live link (/bf live), and Discord if the guild connected it.',
+        'Step 7. What happened in Discord or in the app reaches the game at your next /reload, and your addon passes it on to guild members in game at once.',
+        'Answers given in Discord show a small (D) after the name in the events window.',
+        '/bf guild link shows where the link stands; /bf guild unlink (leader) takes it away; /bf guild desk off stops telling the desktop app.',
+    }},
 }
 BackstageForeverHelpTopics=HELP_TOPICS
 -- Pure: the chat lines for /bf help with this argument (nil, a topic, a page number, a command word or "all").

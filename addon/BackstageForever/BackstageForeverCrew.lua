@@ -407,30 +407,84 @@ function BackstageForeverCheckCommand(message)
     end
     say('Asked your party. Type /bf check show in a few seconds to read the answers.')
 end
+-- Backstage Live: with live party updates on (BackstageForeverLiveParty.lua, /bf party live), a
+-- check stays open for half an hour. Whoever answered sends the answer again when it changes (a
+-- quest handed in, a full bag, worn gear), at most every eight seconds and never in combat, and the
+-- asker's list, the quest needs in the Instance Atlas and /bf check show follow without asking again.
+local LIVE_KEEP=1800
+local liveAsk=nil -- the last check you answered: {dungeon=,at=,a=answer sent,d=quest message sent}
+local function liveOn()
+    local fn=BackstageForeverPartyLive
+    if type(fn)~='function' then return false end
+    local ok,on=pcall(fn)
+    return ok and on==true
+end
+local function checkOpen() return check and now()-check.at<=(liveOn() and LIVE_KEEP or 30) end
 local function onCheckAsked(sender,message)
     local dungeon=BackstageForeverCheckAsked(message)
     if not dungeon or not BackstageForeverCheckAnswers() then return end
     if not BackstageForeverCrewRate(rate,'answer',now(),GAP) then return end
-    local sent=send(BackstageForeverCheckEncode(myStatus(dungeon)))
+    local answer=BackstageForeverCheckEncode(myStatus(dungeon))
+    local sent=send(answer)
     -- 1.26: for a named dungeon, where each of its quests stands for you goes with the answer.
     local states=sent and myQuestStates(dungeon) or nil
     local quests=states and BackstageForeverCheckQuestEncode(dungeon,states)
     if quests then send(quests) end
+    if sent then liveAsk={dungeon=dungeon,at=now(),a=answer,d=quests or nil} end
     if sent and not combat() then
         say(('%s asked for a readiness check. Your short status went to your party. /bf check answers off stops that.'):format(sender))
     end
 end
+-- An answer that changed after the list was printed: one quiet line, at most every twenty seconds.
+local function changedLater(name)
+    if not check or not check.shown or combat() then return end
+    if BackstageForeverCrewRate(rate,'later',now(),20) then say(('Readiness changed: %s. /bf check show prints the list again.'):format(name)) end
+end
 local function onCheckAnswer(sender,message)
-    if not check or now()-check.at>30 then return end
+    if not checkOpen() then return end
     local status=BackstageForeverCheckDecode(message)
     if not status or (status.dungeon or '-')~=check.dungeon then return end
-    for _,name in ipairs(check.members) do if name==sender then check.answers[name]=status end end
+    check.heard=check.heard or {}
+    for _,name in ipairs(check.members) do
+        if name==sender then
+            local was=check.heard['a'..name]
+            check.answers[name]=status;check.heard['a'..name]=message
+            if was and was~=message then changedLater(name) end
+        end
+    end
 end
 local function onCheckQuests(sender,message)
-    if not check or now()-check.at>30 then return end
+    if not checkOpen() then return end
     local dungeon,states=BackstageForeverCheckQuestDecode(message)
     if not dungeon or dungeon~=check.dungeon then return end
-    for _,name in ipairs(check.members) do if name==sender then check.quests[name]=states end end
+    check.heard=check.heard or {}
+    for _,name in ipairs(check.members) do
+        if name==sender then
+            local was=check.heard['d'..name]
+            check.quests[name]=states;check.heard['d'..name]=message
+            if was and was~=message then changedLater(name) end
+        end
+    end
+end
+-- Called (never in combat) when your quest log, bags or gear wear changed. Your own side of an open
+-- check is read again, and an answer you gave goes out again when it is different now.
+-- -> false when the pace said "not yet" (call again), true otherwise.
+function BackstageForeverCheckLiveChanged()
+    local at=now()
+    if check and at-check.at<=LIVE_KEEP then
+        check.mine=myStatus(check.dungeon)
+        check.myQuests=stateMap(myQuestStates(check.dungeon))
+    end
+    if not liveAsk then return true end
+    if at-liveAsk.at>LIVE_KEEP or not liveOn() or not partyOn() or not inParty() or not BackstageForeverCheckAnswers() then liveAsk=nil return true end
+    local answer=BackstageForeverCheckEncode(myStatus(liveAsk.dungeon))
+    local states=myQuestStates(liveAsk.dungeon)
+    local quests=states and BackstageForeverCheckQuestEncode(liveAsk.dungeon,states) or nil
+    if answer==liveAsk.a and quests==liveAsk.d then return true end
+    if not BackstageForeverCrewRate(rate,'live',at,8) then return false end
+    if answer~=liveAsk.a and send(answer) then liveAsk.a=answer end
+    if quests and quests~=liveAsk.d and send(quests) then liveAsk.d=quests end
+    return true
 end
 
 -- ---------------------------------------------------------------- S3 mentor link
@@ -822,6 +876,7 @@ if type(CreateFrame)=='function' then
             end
             -- A link ends when the other player leaves the party; a list from a former leader is forgotten.
             if not inParty() then
+                liveAsk=nil
                 local other=mentor.mentee or mentor.mentor
                 mentor.mentee,mentor.mentor,mentor.way,mentor.asked,mentor.offer=nil,nil,nil,nil,nil
                 soft.theirs,soft.pending=nil,{}

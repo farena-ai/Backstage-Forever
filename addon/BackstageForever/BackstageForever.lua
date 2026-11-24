@@ -1025,6 +1025,16 @@ local function capture(event,eventId)
             character.guild=guild
         end
     end
+    -- Backstage Live: the guild link, your own answers, your party and your board listing, so the
+    -- desktop app learns them from the saved file while the live link is off. An optional block of
+    -- its own; older desktop apps ignore it.
+    if type(BackstageForeverLiveGuildSnapshot)=='function' then
+        local ok,live,lists=pcall(BackstageForeverLiveGuildSnapshot)
+        if ok and type(live)=='table' then
+            for _,list in ipairs(type(lists)=='table' and lists or {}) do array(list) end
+            character.live=live
+        end
+    end
     if type(BackstageForeverLockoutSnapshot)=='function' then
         local ok,lockouts=pcall(BackstageForeverLockoutSnapshot)
         if ok and type(lockouts)=='table' and type(lockouts.rows)=='table' then array(lockouts.rows);character.lockouts=lockouts
@@ -1137,6 +1147,11 @@ local function capture(event,eventId)
     for i=#chars,1,-1 do
         if fits() then break end
         discard(chars[i],'scout')
+    end
+    -- The Backstage Live block is small and the live link carries the same facts.
+    for i=#chars,1,-1 do
+        if fits() then break end
+        discard(chars[i],'live')
     end
     -- Then guild events and lockouts: both are optional and the addon keeps its own copy.
     for i=#chars,1,-1 do

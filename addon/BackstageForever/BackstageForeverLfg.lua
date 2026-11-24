@@ -2,10 +2,12 @@
 -- have already joined, read into a small sortable list.
 --   /bf lfg            shows or hides the board        /bf lfg list   the same rows in chat
 --   /bf lfg on|off     reading on or off               /bf lfg post DUNGEON   your own line, in your chat box
+--   /bf lfg board      the realm board the desktop app handed over at your last /reload, in chat
+--   /bf lfg list DUNGEON ...   your own listing on that realm board (BackstageForeverLiveGuild.lua)
 -- Reading only: the addon never joins a channel and never sends a chat line. A click on a row puts
 -- "/w Name " in your chat box; the post button puts your own line there. You press Enter.
 -- The board lives in memory for this session; nothing other players wrote is saved.
-local floor,min=math.floor,math.min
+local floor,min,max=math.floor,math.min,math.max
 local unpackAll=unpack or table.unpack
 local function plain(v)
     if v==nil then return nil end
@@ -222,7 +224,24 @@ end
 function BackstageForeverLfgAge(seconds)
     if type(seconds)~='number' or seconds~=seconds then return '' end
     if seconds<60 then return T('now') end
+    if seconds>=7200 then return ('%d %s'):format(floor(seconds/3600),T('h')) end
     return ('%d %s'):format(floor(seconds/60),T('min'))
+end
+-- Pure: the realm board rows the desktop app handed over (BackstageForeverDeskBoard) as the board
+-- paints them: {dungeon=,wanted=,who=,age=,row=}, at most limit, and how many were left out. now:
+-- seconds since 1970; the age says how old a listing was when you last looked, never "now".
+function BackstageForeverLfgBoardRows(rows,now,limit)
+    limit=type(limit)=='number' and limit>=1 and limit or 6
+    local out={}
+    rows=type(rows)=='table' and rows or {}
+    for i=1,min(#rows,limit) do
+        local row=rows[i]
+        local wanted=type(BackstageForeverListingWanted)=='function' and BackstageForeverListingWanted(row) or ''
+        if row.note then wanted=wanted..' · '..row.note end
+        out[i]={dungeon=BackstageForeverLfgName(row.place) or row.place,wanted=wanted,who=row.who..(type(row.level)=='number' and (' ('..row.level..')') or ''),
+            age=BackstageForeverLfgAge(max(60,(type(now)=='number' and now or row.at)-row.at)),row=row}
+    end
+    return out,#rows-#out
 end
 local ROLE_WORD={tank='tank',healer='healer',dps='damage'}
 -- Pure: what a row is after, in plain words.
@@ -291,6 +310,16 @@ end
 -- ---------------------------------------------------------------- the board on screen
 -- Fixed column widths and no wrapping: a long name is cut short, it never runs into the next column.
 local WIDTH,INSET,LINE,TOP,LINES=460,16,14,-52,12
+local BOARD_LINES=6 -- rows of the realm board under the chat rows
+local function wallClock() local t=call(time);return type(t)=='number' and t or 0 end
+-- The realm board as of the last /reload: rows, and whether the desktop app handed one over at all.
+local function deskBoard()
+    local fn=BackstageForeverLfgDeskRows
+    if type(fn)~='function' then return {},false end
+    local ok,rows,given=pcall(fn)
+    if not ok or type(rows)~='table' then return {},false end
+    return rows,given==true
+end
 local COLUMNS={{'dungeon',0,135,'LEFT','Dungeon'},{'wanted',141,130,'LEFT','Looking for'},{'who',277,90,'LEFT','Who'},{'age',373,55,'RIGHT','Seen'}}
 BackstageForeverLfgColumns=COLUMNS
 local frame
@@ -316,7 +345,32 @@ local function paint()
     frame.note:ClearAllPoints();frame.note:SetPoint('TOPLEFT',INSET,TOP-#rows*LINE-2)
     frame.heads.dungeon:SetText((by=='dungeon' and '|cffffffff' or '|cffffd100')..T('Dungeon')..'|r')
     frame.heads.age:SetText((by=='age' and '|cffffffff' or '|cffffd100')..T('Seen')..'|r')
-    frame:SetHeight(-TOP+(#rows+(note~='' and 1 or 0))*LINE+48)
+    -- Under the chat rows: the realm board the desktop app handed over, as old as your last /reload.
+    local used=#rows+(note~='' and 1 or 0)
+    local listed,given=deskBoard()
+    local extra=0
+    if given then
+        local boardRows,boardMore=BackstageForeverLfgBoardRows(listed,wallClock(),BOARD_LINES)
+        local y=TOP-used*LINE-10
+        frame.boardHead:ClearAllPoints();frame.boardHead:SetPoint('TOPLEFT',INSET,y)
+        frame.boardHead:SetText(T('Realm board, from the desktop app, as of your last /reload'));frame.boardHead:Show()
+        for i,line in ipairs(frame.boardLines) do
+            local data=boardRows[i]
+            if data then
+                line:ClearAllPoints();line:SetPoint('TOPLEFT',INSET,y-LINE-2-(i-1)*LINE)
+                for _,column in ipairs(COLUMNS) do line[column[1]]:SetText(data[column[1]] or '') end
+                line.data=data.row;line:Show()
+            else line.data=nil;line:Hide() end
+        end
+        local boardNote=#boardRows==0 and T('No listing on the realm board at your last /reload.') or boardMore>0 and ('+%d %s'):format(boardMore,T('more')) or ''
+        frame.boardNote:ClearAllPoints();frame.boardNote:SetPoint('TOPLEFT',INSET,y-LINE-2-#boardRows*LINE)
+        frame.boardNote:SetText(boardNote)
+        extra=10+LINE+2+(#boardRows+(boardNote~='' and 1 or 0))*LINE
+    else
+        frame.boardHead:Hide();frame.boardNote:SetText('')
+        for _,line in ipairs(frame.boardLines) do line.data=nil;line:Hide() end
+    end
+    frame:SetHeight(-TOP+used*LINE+extra+48)
 end
 local function build()
     if frame or type(CreateFrame)~='function' or not UIParent then return frame end
@@ -390,6 +444,31 @@ local function build()
     end
     f.note=f:CreateFontString(nil,'OVERLAY','GameFontDisableSmall')
     f.note:SetWidth(WIDTH-INSET*2);f.note:SetJustifyH('LEFT');f.note:SetWordWrap(false)
+    -- The realm board section: a heading, six rows in the same columns, a note. Hidden until the
+    -- desktop app handed a board over.
+    f.boardHead=f:CreateFontString(nil,'OVERLAY','GameFontNormalSmall')
+    f.boardHead:SetWidth(WIDTH-INSET*2);f.boardHead:SetJustifyH('LEFT');f.boardHead:SetWordWrap(false);f.boardHead:Hide()
+    f.boardNote=f:CreateFontString(nil,'OVERLAY','GameFontDisableSmall')
+    f.boardNote:SetWidth(WIDTH-INSET*2);f.boardNote:SetJustifyH('LEFT');f.boardNote:SetWordWrap(false)
+    f.boardLines={}
+    for i=1,BOARD_LINES do
+        local line=CreateFrame('Button',nil,f)
+        line:SetSize(WIDTH-INSET*2,LINE)
+        local hover=line:CreateTexture(nil,'HIGHLIGHT');hover:SetAllPoints();hover:SetColorTexture(1,1,1,.08)
+        for _,column in ipairs(COLUMNS) do
+            local text=line:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall')
+            text:SetPoint('LEFT',column[2],0);text:SetWidth(column[3]);text:SetJustifyH(column[4]);text:SetWordWrap(false)
+            line[column[1]]=text
+        end
+        line:RegisterForDrag('LeftButton');line:SetScript('OnDragStart',startDrag);line:SetScript('OnDragStop',stopDrag)
+        line:SetScript('OnClick',function(self)
+            if not self.data then return end
+            local text=BackstageForeverLfgWhisper({who=self.data.who})
+            if not text or not toChatBox(text) then say('The chat box cannot be opened from here.') end
+        end)
+        line:Hide()
+        f.boardLines[i]=line
+    end
     local post=CreateFrame('Button',nil,f,'UIPanelButtonTemplate')
     post:SetSize(170,22);post:SetPoint('BOTTOMLEFT',INSET,12);post:SetText(T('Write my line'))
     post:SetScript('OnClick',function() pcall(BackstageForeverLfgCommand,'lfg post') end)
@@ -420,6 +499,24 @@ end
 function BackstageForeverLfgCommand(message)
     local rest=type(message)=='string' and #message<=80 and message:match('^%a+%s*(.-)%s*$') or ''
     local word,tail=rest:lower():match('^(%a*)%s*(.*)$')
+    -- The realm board the desktop app handed over, in chat.
+    local function boardInChat(always)
+        local listed,given=deskBoard()
+        if not given then
+            if always then say('No realm board from the desktop app yet. It arrives at login or /reload when the realm board is switched on in the app.') end
+            return
+        end
+        local rows,more=BackstageForeverLfgBoardRows(listed,wallClock(),8)
+        if #rows==0 then return say('Realm board: no listing at your last /reload.') end
+        say(('Realm board, as of your last /reload: %d.'):format(#rows+more))
+        for _,row in ipairs(rows) do say(('  %s: %s, %s (%s)'):format(row.dungeon,row.who,row.wanted,row.age)) end
+    end
+    if word=='board' then return boardInChat(true) end
+    -- /bf lfg list DUNGEON ... posts your own listing; the bare word still prints the chat board.
+    if word=='list' and type(BackstageForeverListingCommand)=='function' then
+        local ok,handled=pcall(BackstageForeverListingCommand,rest:match('^%a*%s*(.*)$') or '')
+        if ok and handled then return end
+    end
     if word=='on' or word=='off' then
         settings().enabled=word=='on'
         if word=='off' then for i=#board,1,-1 do board[i]=nil end selected=nil end
@@ -436,10 +533,10 @@ function BackstageForeverLfgCommand(message)
         local at=clock()
         BackstageForeverLfgPrune(board,at)
         local rows,more=BackstageForeverLfgRows(board,sortBy(),at,10)
-        if #rows==0 then return say(BackstageForeverLfgEnabled() and 'No looking-for-group line seen yet in the channels you have joined.' or 'Reading is off. /bf lfg on turns it on.') end
+        if #rows==0 then say(BackstageForeverLfgEnabled() and 'No looking-for-group line seen yet in the channels you have joined.' or 'Reading is off. /bf lfg on turns it on.') return boardInChat(false) end
         say(#rows+more==1 and 'Group finder board: 1 line in the last 15 minutes.' or ('Group finder board: %d lines in the last 15 minutes.'):format(#rows+more))
         for _,row in ipairs(rows) do say(('  %s: %s, %s (%s)'):format(row.dungeon,row.who,row.wanted,row.age)) end
-        return
+        return boardInChat(false)
     end
     if combat() then return say('Open the board outside combat.') end
     if frame and frame:IsShown() then frame:Hide() return false end

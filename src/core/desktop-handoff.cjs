@@ -34,7 +34,19 @@
 // a character under Settings: prof={n="name",f="From-Realm",c="code"}. The code is one line of plain
 // characters with its own checksum (settings-profiles.cjs); the game offers it and applies it only
 // when the player types /bf profile accept. It is the newest passenger and the first left out.
+//
+// Backstage Live adds three fields beside `characters` (game-guild-feed.cjs checks them first):
+// guild={id="g_…",n="guild name",r="realm",discord="connected",events={{id,version,creator,editor,
+// unix time,place,tanks,healers,damage,cancelled 0|1,title,note},...},signups={{event id,name,
+// answer t|h|d|m|n,version,via g|k|d},...}}; lfg={r="realm",f="H"|"A",rows={{id,kind g|m,name,realm,
+// level,class 0-9,roles,place,note,tanks,healers,damage (-1: no need given),unix time},...}} and
+// plan={p="place",n="note",t=unix time,f="Name-Realm",m={{name,role t|h|d|-,bring},...}}. The addon
+// merges guild rows by version like guild-channel messages and passes news on to guild members in
+// game. They are the newest passengers: each has its own byte cap (sign-ups go before events, the
+// oldest board rows first) and, when the whole file is full, the board goes first, then the guild,
+// then the plan. With none of them the file is byte for byte what it was.
 const FILE = "BackstageForeverDesktop.lua";
+const MAX_GUILD_BYTES = 96 * 1024, MAX_LFG_BYTES = 16 * 1024, MAX_PLAN_BYTES = 6 * 1024;
 const MAX_PROFILE_CODE = 16000;
 const MAX_CHARACTERS = 100, MAX_ITEMS = 200, MAX_BYTES = 256 * 1024, MAX_PICKS = 51, MAX_LOOP_STOPS = 40;
 const MAX_ROUTE_STEPS = 12, ROUTE_TEXT = 200, ROUTE_NOTE = 120;
@@ -154,11 +166,46 @@ function sentProfile(send) {
   return `prof={n=${luaString(send.name)},f=${luaString(send.from)},c=${luaString(send.code)}}`;
 }
 
+// Backstage Live fields as Lua: { plan, guild, lfg }, each "" when there is nothing clean to say.
+const size = (text) => Buffer.byteLength(text);
+function liveFields(live) {
+  const out = { plan: "", guild: "", lfg: "" };
+  if (!live || typeof live !== "object") return out;
+  const g = live.guild;
+  if (g && typeof g.id === "string" && /^g_[A-Za-z0-9_-]{1,40}$/.test(g.id) && Array.isArray(g.events) && Array.isArray(g.signups)) {
+    const event = (e) => `{${luaString(e.id)},${e.ver},${luaString(e.creator)},${luaString(e.editor)},${e.at},${luaString(e.place)},${e.t},${e.h},${e.d},${e.x},${luaString(e.title)},${luaString(e.note)}}`;
+    const signup = (r) => `{${luaString(r.id)},${luaString(r.name)},"${r.s}",${r.ver},"${r.via}"}`;
+    const events = g.events.slice(0, 60), signups = g.signups.slice(0, 600);
+    const build = () => `guild={id=${luaString(g.id)}${g.guildName ? `,n=${luaString(g.guildName)}` : ""}${g.realm ? `,r=${luaString(g.realm)}` : ""},discord=${luaString(["none", "pending", "connected", "problem"].includes(g.discord) ? g.discord : "none")},events={${events.map(event).join(",")}},signups={${signups.filter((r) => events.some((e) => e.id === r.id)).map(signup).join(",")}}}`;
+    let text = build();
+    // Sign-ups go first (the events themselves matter more), then the events furthest ahead.
+    while (size(text) > MAX_GUILD_BYTES && signups.length) { signups.length = Math.max(0, signups.length - 20); text = build(); }
+    while (size(text) > MAX_GUILD_BYTES && events.length) { events.pop(); text = build(); }
+    out.guild = size(text) <= MAX_GUILD_BYTES ? text : "";
+  }
+  const l = live.lfg;
+  if (l && Array.isArray(l.rows)) {
+    const rows = l.rows.slice(0, 40);
+    const row = (r) => `{${luaString(r.id)},"${r.kind}",${luaString(r.name)},${luaString(r.realm)},${r.level},${r.cls},"${r.roles}",${luaString(r.place)},${luaString(r.note)},${r.need ? `${r.need.t},${r.need.h},${r.need.d}` : "-1,-1,-1"},${r.at}}`;
+    const build = () => `lfg={${l.realm ? `r=${luaString(l.realm)},` : ""}${l.faction ? `f="${l.faction === "horde" ? "H" : "A"}",` : ""}rows={${rows.map(row).join(",")}}}`;
+    let text = build();
+    while (size(text) > MAX_LFG_BYTES && rows.length) { rows.pop(); text = build(); }
+    // An empty board is still worth telling: the game then shows "no listings" instead of old rows.
+    out.lfg = size(text) <= MAX_LFG_BYTES ? text : "";
+  }
+  const p = live.plan;
+  if (p && Array.isArray(p.members) && p.members.length) {
+    const text = `plan={p=${luaString(p.place || "")},n=${luaString(p.note || "")},t=${Number.isSafeInteger(p.at) ? p.at : 0}${p.for ? `,f=${luaString(p.for)}` : ""},m={${p.members.slice(0, 40).map((m) => `{${luaString(m.name)},"${m.role}",${luaString(m.bring || "")}}`).join(",")}}}`;
+    out.plan = size(text) <= MAX_PLAN_BYTES ? text : "";
+  }
+  return out;
+}
+
 // The same bytes for the same input: characters sorted by key, wishes in wish-list order,
 // upgrades by item id, talent picks in the order the player planned them. Talent plans are the
 // newest passenger: when the file would grow past its limit they are left out, character by
 // character, before anything else is touched.
-function compile({ profiles = [], wishlist = () => [], upgrades = () => [], talents = () => null, loops = () => null, answers = () => [], routes = () => null, ships = () => null, reports = 0, sentProfiles = () => null } = {}) {
+function compile({ profiles = [], wishlist = () => [], upgrades = () => [], talents = () => null, loops = () => null, answers = () => [], routes = () => null, ships = () => null, reports = 0, sentProfiles = () => null, live = null } = {}) {
   const waiting = Number.isSafeInteger(reports) && reports > 0 ? Math.min(reports, 999) : 0;
   const rows = [];
   const seen = new Set();
@@ -182,7 +229,16 @@ function compile({ profiles = [], wishlist = () => [], upgrades = () => [], tale
   const line = ([key, ids, up, tal, loop, ans, rt, prof]) => `[${luaString(key)}]={wish={${ids.join(",")}}${up.length ? `,up={${up.join(",")}}` : ""}${tal ? `,${tal}` : ""}${loop ? `,${loop}` : ""}${rt ? `,${rt}` : ""}${ans ? `,${ans}` : ""}${prof ? `,${prof}` : ""}},`;
   // The stops are small and come first: every character's /bf fly needs them.
   const sea = shipField(Array.isArray(profiles) ? profiles : [], ships);
-  const wrap = (body) => [...HEADER, `BackstageForeverDesktopData={schema=1,${waiting ? `reports=${waiting},` : ""}characters={`, ...body, sea ? `},${sea}}` : "}}", ""].join("\n");
+  let extra = { plan: "", guild: "", lfg: "" }; try { extra = liveFields(live); } catch { extra = { plan: "", guild: "", lfg: "" }; }
+  const tail = () => [sea, extra.guild, extra.lfg, extra.plan].filter(Boolean).join(",");
+  const wrap = (body) => [...HEADER, `BackstageForeverDesktopData={schema=1,${waiting ? `reports=${waiting},` : ""}characters={`, ...body, tail() ? `},${tail()}}` : "}}", ""].join("\n");
+  // The live fields ride last: when the characters' own wishes leave no room, the board goes first,
+  // then the guild, then the plan.
+  { const full = extra, bare = kept.map(([key, ids, up]) => line([key, ids, up, "", "", "", "", ""]));
+    for (const drop of [[], ["lfg"], ["lfg", "guild"], ["lfg", "guild", "plan"]]) {
+      extra = { ...full }; for (const k of drop) extra[k] = "";
+      if (Buffer.byteLength(wrap(bare)) <= MAX_BYTES) break;
+    } }
   let room = MAX_BYTES - Buffer.byteLength(wrap(kept.map(([key, ids, up]) => line([key, ids, up, "", "", "", "", ""]))));
   const body = [];
   // Plans and loops of every character get room first, then route steps, then answers, then a sent profile.
@@ -200,4 +256,4 @@ function compile({ profiles = [], wishlist = () => [], upgrades = () => [], tale
   return text;
 }
 
-module.exports = { FILE, MAX_SHIPS, MAX_SHIP_RIDES, MAX_SHIP_BYTES, MAX_ITEMS, MAX_CHARACTERS, MAX_PICKS, MAX_LOOP_STOPS, MAX_ROUTE_STEPS, MAX_ANSWERS, MAX_QUESTION, MAX_ANSWER, MAX_BYTES, MAX_PROFILE_CODE, compile, EMPTY: compile() };
+module.exports = { FILE, MAX_SHIPS, MAX_SHIP_RIDES, MAX_SHIP_BYTES, MAX_ITEMS, MAX_CHARACTERS, MAX_PICKS, MAX_LOOP_STOPS, MAX_ROUTE_STEPS, MAX_ANSWERS, MAX_QUESTION, MAX_ANSWER, MAX_BYTES, MAX_PROFILE_CODE, MAX_GUILD_BYTES, MAX_LFG_BYTES, MAX_PLAN_BYTES, compile, EMPTY: compile() };
