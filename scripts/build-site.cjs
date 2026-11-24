@@ -1,7 +1,7 @@
 "use strict";
 // The website at backstagecoding.com/backstage-forever/ (roadmap R4, R5, D6).
 //
-//   node scripts/build-site.cjs SITE_DIR [--date YYYY-MM-DD]   write the pages
+//   node scripts/build-site.cjs SITE_DIR [--date YYYY-MM-DD]   write the pages (--date is the sitemap's lastmod; left out without it)
 //   node scripts/build-site.cjs SITE_DIR --check               fail if a page is stale or something is wrong
 //
 // SITE_DIR is a copy of the live folder (index.html, desktop-downloads.js, crest.png, journey.webp,
@@ -19,7 +19,8 @@
 // Run it again for every release; nothing is deployed from here.
 const fs = require("node:fs"), os = require("node:os"), path = require("node:path"), vm = require("node:vm");
 const root = path.join(__dirname, "..");
-const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
+// Line endings are normalised: a Windows checkout may hold these files with CRLF, and the pages must come out the same everywhere.
+const read = (p) => fs.readFileSync(path.join(root, p), "utf8").replace(/\r\n/g, "\n");
 const json = (p) => JSON.parse(read(p));
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const num = (n) => Number(n).toLocaleString("en-US");
@@ -252,8 +253,9 @@ ${table("Horde")}
 }
 
 // ---------- sitemap ----------
-const sitemap = (date) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${ORDER.map((f) => `  <url><loc>${urlOf(f)}</loc><lastmod>${date}</lastmod></url>`).join("\n")}\n</urlset>\n`;
-const withoutDates = (xml) => xml.replace(/<lastmod>[^<]*<\/lastmod>/g, "<lastmod></lastmod>");
+// The date is only ever the one given with --date: never the clock, a file time or git, so a build is the same on every machine.
+const sitemap = (date) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${ORDER.map((f) => `  <url><loc>${urlOf(f)}</loc>${date ? `<lastmod>${date}</lastmod>` : ""}</url>`).join("\n")}\n</urlset>\n`;
+const withoutDates = (xml) => xml.replace(/\r\n/g, "\n").replace(/<lastmod>[^<]*<\/lastmod>/g, "");
 
 // ---------- checks ----------
 function checkLinks(site, files) {
@@ -316,10 +318,10 @@ function audit(files) {
   return problems;
 }
 
-function build(site, { date = new Date().toISOString().slice(0, 10) } = {}) {
+function build(site, { date = null } = {}) {
   const indexPath = path.join(site, "index.html");
   if (!fs.existsSync(indexPath)) throw new Error(`${indexPath} not found. Copy the live backstage-forever folder there first.`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("--date wants YYYY-MM-DD");
+  if (date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("--date wants YYYY-MM-DD");
   const c = chrome(fs.readFileSync(indexPath, "utf8")), ctx = { site, missing: [] };
   const files = { "index.html": home(c, ctx), "tour.html": tour(c, ctx), "download.html": download(c), "whats-new.html": whatsNew(c), "commands.html": commands(c), "coverage.html": coverage(c),
     "site.css": read("site/site.css"), "sitemap-backstage-forever.xml": sitemap(date) };

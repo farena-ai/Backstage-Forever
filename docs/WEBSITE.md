@@ -12,7 +12,7 @@ reads there is generated from this repo, so it follows each release:
 | `commands.html` | `src/renderer/commands.js`, the list behind Help → Commands |
 | `coverage.html` | the same count the app shows under Help → Data coverage, plus totals from the bundled packs |
 | `site.css` | `site/site.css` |
-| `sitemap-backstage-forever.xml` | the list of pages, with the build date |
+| `sitemap-backstage-forever.xml` | the list of pages, with the day given as `--date` |
 | `tour/*.webp`, `og-image.jpg` | `scripts/site-screenshots.cjs` (the app itself, with fixture characters) |
 
 Kept by hand in the folder and never written by the build: `desktop-downloads.js` (turns the
@@ -38,7 +38,8 @@ from another site (no fonts, scripts or trackers).
    ```
 
    `--check` fails if a page is stale, a picture is missing, a link does not resolve, or a page
-   breaks one of the rules below. `--date YYYY-MM-DD` sets the sitemap's date (today otherwise).
+   breaks one of the rules below. `--date YYYY-MM-DD` writes that day as the sitemap's `lastmod`; without it the sitemap has no dates
+   (the build never reads the clock, file times or git, so it is the same on every machine).
 3. Pictures, only when screens changed (opens the app in a window that never takes focus; one
    Electron window at a time, so take the lock first):
 

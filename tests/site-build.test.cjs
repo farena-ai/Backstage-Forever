@@ -50,7 +50,8 @@ test("the website builds from the repo, with working links and the parent site's
     assert.doesNotMatch(page.replace(/<link rel="canonical"[^>]*>/, ""), /<(?:script|link|img|source)\b[^>]*(?:src|href)="https?:/);
     assert.doesNotMatch(page, /fonts\.googleapis|googletagmanager|google-analytics/i, `${name} has no tracker or outside font`);
   }
-  assert.equal(files["site.css"], fs.readFileSync(path.join(__dirname, "../site/site.css"), "utf8"));
+  assert.equal(files["site.css"], fs.readFileSync(path.join(__dirname, "../site/site.css"), "utf8").replace(/\r\n/g, "\n"));
+  for (const [name, body] of Object.entries(files)) assert.ok(!body.includes("\r"), `${name} has no CRLF, whatever the checkout`);
 });
 
 test("every page carries the download call to action, top and bottom, in a form the download script understands", (t) => {
@@ -255,6 +256,8 @@ test("building twice changes nothing, and the sitemap lists every page", (t) => 
   const map = first["sitemap-backstage-forever.xml"];
   assert.deepEqual([...map.matchAll(/<url><loc>([^<]+)<\/loc><lastmod>([^<]+)<\/lastmod><\/url>/g)].map((m) => [m[1], m[2]]), site.ORDER.map((f) => [site.BASE + (f === "index.html" ? "" : f), DATE]));
   assert.throws(() => site.build(dir, { date: "24.11.2026" }));
+  // Without a date the sitemap carries none: nothing comes from the clock, file times or git.
+  assert.doesNotMatch(site.build(dir).files["sitemap-backstage-forever.xml"], /lastmod|\d{4}-\d{2}-\d{2}/);
 });
 
 test("a missing picture or a broken link is reported", (t) => {
