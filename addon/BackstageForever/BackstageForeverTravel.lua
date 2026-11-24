@@ -227,15 +227,15 @@ function BackstageForeverFlyCrossing(data,ships,start,dest,allowed)
     end
     return best
 end
-local SHIP_WORD={z='zeppelin',b='boat',a='airship'}
+-- Whole phrases, so each language can use its own article.
+local SHIP_RIDE={z='Ride the zeppelin',b='Ride the boat',a='Ride the airship'}
 -- Pure: the chat lines for a crossing. label(id) names a flight point.
 function BackstageForeverFlyCrossingLines(c,label,assumed,walkYards)
-    local word=T(SHIP_WORD[c.ship.kind] or 'boat')
     local lines={}
-    lines[1]=('%s %s: %s %s, %s %s.'):format(T('To'),label(c.dest),T('about'),BackstageForeverTravelTime(c.seconds),T('plus the wait for the'),word)
+    lines[1]=('%s %s: %s %s, %s.'):format(T('To'),label(c.dest),T('about'),BackstageForeverTravelTime(c.seconds),T('plus the wait'))
     if c.before then for _,line in ipairs(BackstageForeverFlyLines(c.before,label,false,walkYards)) do lines[#lines+1]=line end end
     lines[#lines+1]=('%s %s: %s %d %s %s.'):format(T('Go to the'),c.from.l,T('about'),floor(c.nearYards+.5),T('yards from the flight master at'),label(c.near))
-    lines[#lines+1]=('%s %s %s %s %s %s: %s %s, %s.'):format(T('Ride the'),word,T('from'),c.from.l,T('to'),c.to.l,T('about'),BackstageForeverTravelTime(c.ride.seconds),T('plus the wait'))
+    lines[#lines+1]=('%s %s %s %s %s: %s %s, %s.'):format(T(SHIP_RIDE[c.ship.kind] or SHIP_RIDE.b),T('from'),c.from.l,T('to'),c.to.l,T('about'),BackstageForeverTravelTime(c.ride.seconds),T('plus the wait'))
     if c.after then
         lines[#lines+1]=('%s %s: %s %d %s %s.'):format(T('Then go to the flight master at'),label(c.far),T('about'),floor(c.farYards+.5),T('yards from the'),c.to.l)
         for _,line in ipairs(BackstageForeverFlyLines(c.after,label,false,nil)) do lines[#lines+1]=line end

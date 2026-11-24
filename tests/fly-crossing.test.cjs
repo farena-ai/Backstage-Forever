@@ -87,7 +87,7 @@ local direct=BackstageForeverFlyCrossing(D,ships,11,20,nil)
 assert(direct and not direct.before and not direct.after)
 local label=function(id) return BackstageForeverAssistSettings.flightNames[id] end
 local lines=BackstageForeverFlyCrossingLines(c,label,false,30)
-assert(lines[1]:find('^To Tarren Mill: about ') and lines[1]:find('plus the wait for the zeppelin.',1,true),lines[1])
+assert(lines[1]:find('^To Tarren Mill: about ') and lines[1]:find(', plus the wait.',1,true),lines[1])
 assert(lines[2]:find('Fly from Crossroads to Orgrimmar',1,true),lines[2])
 assert(lines[3]:find('^Go to the Orgrimmar zeppelin tower: about %d+ yards from the flight master at Orgrimmar%.$'),lines[3])
 assert(lines[4]=='Ride the zeppelin from Orgrimmar zeppelin tower to Tirisfal Glades zeppelin tower: about 1 min 58 s, plus the wait.',lines[4])

@@ -99,6 +99,7 @@ A small list of your quests, nearest first. Click one for a waypoint. The game t
 a spot	un punto
 A spot you gathered before. Not a live node.	Un lugar donde ya recolectaste. No es un nodo activo.
 A thin dark line at the top edge that the desktop app reads. Nothing is sent over the internet.	Una fina línea oscura en el borde superior que la app lee. No se envía nada por internet.
+ability	facultad
 about	alrededor de
 about a day	alrededor de un día
 Accessibility (each is off until you switch it on):	Accesibilidad (cada opción está desactivada hasta que la actives):
@@ -142,6 +143,8 @@ Bag marks: off. /bf bags still lists the items.	Marcas en bolsas: desactivadas. 
 Bag marks: on. + upgrade, * on your wish list, ! quest item. Open your bags to see them.	Marcas en bolsas: activadas. + mejora, * en tu lista de deseos, ! objeto de misión. Abre tus bolsas para verlas.
 Bag tooltips mark items a quest in your log still needs.	Las descripciones emergentes de las bolsas marcan los objetos que una misión de tu registro aún necesita.
 bags	bolsas
+Bat	Murciélago
+Bear	Oso
 Before leaving reminders	Avisos antes de irte
 Before you leave:	Antes de irte:
 Before you pull:	Antes del pull:
@@ -149,6 +152,7 @@ behind you	detrás de ti
 Below your level	Bajo tu nivel
 BF find	Buscar BF
 Blinding Powder	Polvo cegador
+Boar	Jabalí
 Boss notes, assignments and a readiness roll-up inside your raid, from the leader or an assistant. Text only.	Notas de jefe, asignaciones y un resumen de preparación dentro de tu banda, del líder o de un ayudante. Solo texto.
 Boss tips	Consejos de jefe
 Boss tips off.	Consejos de jefe desactivados.
@@ -157,6 +161,8 @@ boss warnings	avisos de jefes
 Bosses	Jefes
 Bosses left	Jefes restantes
 Candles	Velas
+Carrion Bird	Carroñero
+Cat	Felino
 Chain steps in quest tooltips: off. /bf chain still lists them.	Pasos de cadena en las descripciones emergentes de misión: desactivado. /bf chain los sigue listando.
 Chain steps in quest tooltips: on. A quest link shows which step of its chain it is.	Pasos de cadena en las descripciones emergentes de misión: activado. Un enlace de misión muestra qué paso de su cadena es.
 Chain steps in tooltips	Pasos de cadena al apuntar
@@ -182,12 +188,19 @@ Comfort helpers (each speaks on its own until you switch it off):	Ayudas de como
 Coming up soon	Muy pronto
 Commands by topic. Type /bf help and a topic word or its number:	Comandos por tema. Escribe /bf help y una palabra de tema o su número:
 Companion and desktop app (/bf help companion):	Compañero y app de escritorio (/bf help companion):
+Compass badge changes wait until you leave combat.	Los cambios de insignia de la brújula esperan a que salgas del combate.
 Coordinates	Coordenadas
 Coordinates must be between 0 and 100.	Las coordenadas deben estar entre 0 y 100.
+Crab	Cangrejo
+Crocolisk	Crocolisco
+Current game: hand-in on this map	Juego actual: entrega en este mapa
+Current game: ready to hand in on this map.	Juego actual: lista para entregar en este mapa.
 damage	daño
 Danger warnings	Avisos de peligro
 Dec	dic
 Demonic Figurine	Figurilla demoníaca
+Detour handed in. Back to your plan.	Desvío entregado. De vuelta a tu plan.
+Detour:	Desvío:
 Dismiss before-you-leave tip	Descartar el aviso de antes de irte
 Dismount at flight masters	Desmontar en puntos de vuelo
 Drag the title to move  ·  /bf help  ·  /bf show	Arrastra el título para mover  ·  /bf help  ·  /bf show
@@ -215,6 +228,7 @@ Every Backstage Forever helper has a switch in one window. You can also type /bf
 Every listed boss is down.	Todos los jefes de la lista han caído.
 Every point of this plan is spent.	Todos los puntos de este plan están gastados.
 Everyone who answered is stocked, repaired and has bag space.	Todos los que respondieron tienen provisiones, están reparados y tienen espacio en las bolsas.
+Evidence:	Prueba:
 Explain on Alt-click	Explicar con Alt-clic
 Explain on Alt-click: off. /bf explain still works.	Explicar con Alt-clic: desactivado. /bf explain sigue funcionando.
 Explain on Alt-click: on. Alt-click an item to put it in the companion panel's question box. Nothing is asked for you.	Explicar con Alt-clic: activado. Haz Alt-clic en un objeto para ponerlo en el cuadro de pregunta del panel del compañero. No se pregunta nada por ti.
@@ -225,6 +239,7 @@ Fewer interruptions: banners, enemy alerts and detour offers off. Safety warning
 Fewer interruptions: banners, enemy and rare alerts and detour offers off. Safety warnings stay on.	Menos interrupciones: estandartes, alertas de enemigos y de raros y ofertas de desvío desactivados. Los avisos de seguridad siguen activos.
 Fewer than 5 bag slots free:	Menos de 5 casillas de bolsa libres:
 Finding your way (/bf help way):	Encontrar el camino (/bf help way):
+Finish first:	Termina primero:
 Fire Totem	Tótem de fuego
 First go to the flight master at	Primero ve al maestro de vuelo en
 Flash Powder	Polvo explosivo
@@ -241,6 +256,7 @@ For later	Para más tarde
 For players who know the way: beginner banners off, coordinates and fast looting on.	Para quien ya conoce el camino: carteles de principiante desactivados, coordenadas y botín rápido activados.
 Found in:	Se encuentra en:
 Free at backstagecoding.com: maps, plans and a companion. It keeps this addon up to date.	Gratis en backstagecoding.com: mapas, planes y un compañero. Mantiene este addon al día.
+from	de
 Full price, as players saw it. Talent ranks only count if you have the talent.	Precio completo, tal como lo vieron jugadores. Los rangos de talentos solo cuentan si tienes el talento.
 Game build	Versión del juego
 Gathering loop in %s: %d stops. These are past spots, not live nodes. /bf loop next skips a stop, /bf loop stop ends it.	Ruta de recolección en %s: %d paradas. Son lugares pasados, no nodos activos. /bf loop next salta una parada, /bf loop stop la termina.
@@ -252,7 +268,9 @@ Get the desktop app	Consigue la app
 Gets you off your mount when you open the flight map.	Te baja de la montura cuando abres el mapa de vuelo.
 Gift of the Wild reagents	Componentes de Don de lo Salvaje
 Go there once and talk to the flight master.	Ve allí una vez y habla con el maestro de vuelo.
+Go to the	Ve a la parada
 Gold, bags and professions (/bf help gold):	Oro, bolsas y profesiones (/bf help gold):
+Gorilla	Gorila
 Green: done. Yellow: in your log. Click one for an arrow to its giver.	Verde: hecha. Amarillo: en tu registro. Haz clic en una para una flecha hacia quien la da.
 Group	Grupo
 group finder	búsqueda de grupo
@@ -279,6 +297,7 @@ herbs	hierbas
 Higher observed stats	Stats observadas más altas
 Higher observed stats:	Stats observadas más altas:
 Horde side	Lado Horda
+Hyena	Hiena
 In a raid the list stays with you: party sync never sends to a raid.	En una banda la lista se queda contigo: la sincronización de grupo nunca envía a una banda.
 In-Game Helpers	Ayudas en el juego
 Infernal Stone	Piedra infernal
@@ -287,6 +306,8 @@ Instance Atlas	Atlas de instancias
 Instant quest text	Texto de misión instantáneo
 Instant quest text is not available in this game client.	El texto de misión instantáneo no está disponible en este cliente de juego.
 interface	interfaz
+is	está a
+It also needs:	También necesita:
 It is one flight: the bird does not land in between.	Es un solo vuelo: el ave no aterriza por el camino.
 Item	Objeto
 Join a party first.	Únete primero a un grupo.
@@ -301,6 +322,7 @@ Keeps the dungeon run panel on screen in combat. It only updates outside combat.
 Large buttons	Botones grandes
 Larger window text	Texto de ventana más grande
 Last-seen gathering spot (approximate, not a live spawn).	Último lugar de recolección visto (aproximado, no una aparición en directo).
+leads here, but players took this quest without it.	lleva aquí, pero hubo jugadores que aceptaron esta misión sin ella.
 Left-click asks the companion; right-click opens these settings. /bf ask show brings it back.	El clic izquierdo pregunta al compañero; el clic derecho abre estos ajustes. /bf ask show lo trae de vuelta.
 Left-click the owl on the minimap to ask a question. Right-click it for settings.	Clic izquierdo en el búho del minimapa para hacer una pregunta. Clic derecho para los ajustes.
 Legs	Piernas
@@ -347,6 +369,7 @@ Module timing is off. /bf perf on measures events and time per module.	El cronom
 Moment banners	Carteles de momentos
 more	más
 more in your quest log	más en tu registro de misiones
+more match; add a word to narrow it down.	más coinciden; añade una palabra para afinar.
 more on the map (BF Guide).	más en el mapa (BF Guide).
 Most worn gear under 30%:	Equipo más desgastado por debajo del 30%:
 Name a dungeon the board knows, for example /bf lfg post sm.	Nombra una mazmorra que el tablón conozca, por ejemplo /bf lfg post sm.
@@ -357,7 +380,10 @@ needs:	necesita:
 New at your trainer at level	Nuevo en tu instructor al nivel
 Next loop stop	Siguiente parada
 Next new skills at level	Próximas habilidades nuevas al nivel
+Next step in your guided route; locations are approximate.	Siguiente paso de tu ruta guiada; los lugares son aproximados.
 Next:	Siguiente:
+no ability recorded	ninguna facultad registrada
+No advice available. Check your quest log.	No hay consejo disponible. Mira tu registro de misiones.
 No answers here yet. Ask with /bf ask, let the desktop app prepare the addon, then type /reload.	Aún no hay respuestas aquí. Pregunta con /bf ask, deja que la app prepare el addon y luego escribe /reload.
 no boss in the Instance Atlas was seen to drop it	no se ha visto a ningún jefe del Atlas de instancias soltarlo
 No clear quest reward winner on observed stats.	Ninguna recompensa de misión gana con claridad según las stats observadas.
@@ -393,6 +419,8 @@ No quests to pick up on this map for your level. Try /bf next, or open the map f
 No raid check yet. A leader or assistant types /bf raid check.	Aún no hay comprobación de banda. Un líder o ayudante escribe /bf raid check.
 No raid notes yet. A leader or assistant adds one: /bf raid note Boss: text.	Aún no hay notas de banda. Un líder o ayudante añade una: /bf raid note Jefe: texto.
 No readiness check yet. Type /bf check in a party.	Aún no hay comprobación de preparación. Escribe /bf check en un grupo.
+No recorded beast is near your level. Try /bf pet with a family or an ability name.	Ninguna bestia registrada está cerca de tu nivel. Prueba /bf pet con una familia o el nombre de una facultad.
+No recorded beast matches that. Try a family (cat, wolf) or an ability name.	Ninguna bestia registrada coincide. Prueba con una familia (cat, wolf) o el nombre de una facultad.
 No recorded flight connects	Ningún vuelo registrado conecta
 No repair vendor is recorded here yet. Blacksmiths and armor vendors in towns can repair; open one and the addon remembers it.	Aún no hay ningún vendedor que repare registrado aquí. Los herreros y los vendedores de armaduras de los pueblos pueden reparar; abre uno y el addon lo recuerda.
 No sets yet. Wear the gear, then type /bf set save NAME.	Aún no hay conjuntos. Ponte el equipo y luego escribe /bf set save NOMBRE.
@@ -403,6 +431,7 @@ No talent plan for this character yet. Make one in the desktop app under Charact
 No tip for this boss yet.	Aún no hay consejo para este jefe.
 No trainer costs are recorded for your class yet.	Aún no hay costos de instructor registrados para tu clase.
 No trainer for your class is recorded yet. Ask a guard in any town: they mark trainers on your map.	Aún no hay ningún instructor de tu clase registrado. Pregunta a un guardia en cualquier pueblo: marcan a los instructores en tu mapa.
+No unfinished badge goals with available progress.	No hay objetivos de insignia pendientes con progreso disponible.
 No verified tracked quest. Watch a quest in the game or use /bf compass track QuestID.	No hay ninguna misión seguida verificada. Sigue una misión en el juego o usa /bf compass track QuestID.
 No waypoint or position to share here.	Aquí no hay punto de ruta ni posición que compartir.
 No wish or upgrade left here.	Aquí no queda ningún deseo ni mejora.
@@ -417,6 +446,7 @@ north	norte
 north-east	noreste
 north-west	noroeste
 not known	desconocido
+Not now	Ahora no
 Notes go out one a second; /bf raid notes share sends this one again.	Las notas salen una por segundo; /bf raid notes share vuelve a enviar esta.
 Notes the quest givers, trainers, vendors and flight masters you talk to. It stays on this computer.	Anota los PNJ de misión, instructores, vendedores y maestros de vuelo con los que hablas. Se queda en esta computadora.
 Nothing in your bags is an upgrade, a wish or a quest item.	Nada de lo que hay en tus bolsas es una mejora, un deseo o un objeto de misión.
@@ -425,6 +455,7 @@ Nothing is asked until you press Enter there.	No se pregunta nada hasta que puls
 Nothing needed changing.	No hacía falta cambiar nada.
 Nothing new is recorded at your trainer for level	No hay nada nuevo registrado en tu instructor para el nivel
 Nothing recorded for your level in this zone. The desktop app's Now page suggests where to go next.	No hay nada registrado para tu nivel en esta zona. La página Ahora de la app sugiere adónde ir después.
+Nothing to suggest yet. Type /bf next for the nearest quest.	Nada que sugerir todavía. Escribe /bf next para la misión más cercana.
 Nothing you wear has durability to read.	Nada de lo que llevas puesto tiene durabilidad que leer.
 now	ahora
 Objective hints	Pistas de objetivos
@@ -434,6 +465,7 @@ of this patch, in use. Places rarely move between builds.	de este parche, en uso
 Off	Desactivado
 Off Hand	Mano izquierda
 On	Activado
+On my way:	En camino:
 on this map	en este mapa
 On your screen (/bf help screen):	En tu pantalla (/bf help screen):
 on your wish list	en tu lista de deseos
@@ -447,6 +479,7 @@ One chat line when you start logging out outside an inn or city.	Una línea de c
 One chat line when you target or point at a rare enemy.	Una línea de chat cuando seleccionas o señalas a un enemigo raro.
 One chat line when you walk into a dungeon: a class buff, food buff or reagent you are missing.	Una línea de chat cuando entras en una mazmorra: un beneficio de clase, un beneficio de comida o un componente que te falta.
 One screenshot when you gain a level or defeat a dungeon boss, taken after combat.	Una captura de pantalla cuando subes de nivel o derrotas a un jefe de mazmorra, hecha después del combate.
+Only hunters can tame beasts.	Solo los cazadores pueden domar bestias.
 Only the party leader changes the soft-reserve list. /bf sr list shows it.	Solo el líder del grupo cambia la lista de soft reserve. /bf sr list la muestra.
 Only the raid leader or an assistant can do that. /bf raid notes shows the notes.	Solo el líder de banda o un ayudante puede hacer eso. /bf raid notes muestra las notas.
 Only the raid leader or an assistant writes raid notes. /bf raid notes shows them.	Solo el líder de banda o un ayudante escribe notas de banda. /bf raid notes las muestra.
@@ -462,6 +495,7 @@ Open the welcome card outside combat.	Abre la tarjeta de bienvenida fuera de com
 ore	mena
 Other addons found:	Otros addons encontrados:
 Other quests	Otras misiones
+Owl	Búho
 Owl button on the minimap	Botón búho en el minimapa
 Pace: shown after a few minutes of play	Ritmo: se muestra tras unos minutos de juego
 Painted banners for level-ups, finished quests, deaths and repairs.	Carteles pintados para subidas de nivel, misiones terminadas, muertes y reparaciones.
@@ -472,6 +506,7 @@ Party sync is off, so the list is not shared. /bf party on turns it on.	La sincr
 Party sync is off. /bf party on turns it on.	La sincronía de grupo está desactivada. /bf party on la activa.
 Party sync is on. Join a party with other Backstage Forever players to see each other's quests.	La sincronía de grupo está activada. Únete a un grupo con otros jugadores de Backstage Forever para ver las misiones de cada uno.
 Past spots, not live nodes: someone may have gathered them already.	Lugares pasados, no nodos activos: puede que alguien ya los haya recolectado.
+pet level	nivel de mascota
 pet trainer	instructor de mascotas
 Player note reminders	Avisos de notas de jugadores
 Player note reminders: off. /bf notes still lists them.	Avisos de notas de jugadores: desactivados. /bf notes las sigue listando.
@@ -480,6 +515,7 @@ players	jugadores
 Players saw it drop	Jugadores lo vieron caer
 plays	juega
 Plays a sound with the enemy player alert.	Reproduce un sonido con la alerta de jugador enemigo.
+plus the wait	más la espera
 Point at a switch to read what it does. Settings belong to this character.	Señala un interruptor para leer qué hace. Los ajustes son de este personaje.
 Points out when one enemy counts for two of your quests.	Señala cuando un enemigo cuenta para dos de tus misiones.
 Poisons	Venenos
@@ -527,6 +563,7 @@ Quests by distance	Misiones por distancia
 Quests to bring	Misiones que llevar
 quests you can pick up on this map:	misiones que puedes aceptar en este mapa:
 Quiet	Tranquilo
+Quiet for now. Continue at your own pace.	Por ahora, calma. Sigue a tu ritmo.
 Raid	Banda
 Raid comms	Comunicación de banda
 Raid comms are not available in this game client.	La comunicación de banda no está disponible en este cliente del juego.
@@ -559,13 +596,21 @@ Ready to hand in	Lista para entregar
 Ready: nothing is missing that the addon can check.	Listo: no falta nada que el addon pueda comprobar.
 Rebirth seeds	Semillas de Renacer
 Recent herb and ore spots you found, on the world map.	Lugares recientes de hierbas y menas que encontraste, en el mapa del mundo.
+Recorded beasts that match:	Bestias registradas que coinciden:
+Recorded beasts you can tame near your level:	Bestias registradas que puedes domar cerca de tu nivel:
+Recorded players had all finished:	Todos los jugadores registrados habían terminado:
 Remembers prices on Auction House pages you open yourself. It never searches or buys.	Recuerda los precios de las páginas de la casa de subastas que abres tú. Nunca busca ni compra.
 Restart the run clock outside combat.	Reinicia el reloj del recorrido fuera de combate.
 rested	descansado
 Rested XP is full: 30 bars, a level and a half.	La EXP de descanso está llena: 30 barras, un nivel y medio.
 Rested XP is not readable in this game client.	La EXP de descanso no se puede leer en este cliente de juego.
 Resting: rested XP is building up	Descansando: la EXP de descanso se está acumulando
+Resume plan	Retomar el plan
+Ride the airship	Toma la nave voladora
+Ride the boat	Toma el barco
+Ride the zeppelin	Toma el zepelín
 Right for your level	Adecuado para tu nivel
+Route	Ruta
 Route hidden. /bf route shows it again.	Ruta oculta. /bf route la muestra de nuevo.
 Route on: one step at a time. The arrow points at the step you show; < and > move it. /bf route guide follows the full guided route for your race; /bf route hides it.	Ruta activada: un paso cada vez. La flecha apunta al paso que muestras; < y > lo cambian. /bf route guide sigue la ruta guiada completa de tu raza; /bf route la oculta.
 Run back to your body	Corre hasta tu cuerpo
@@ -576,6 +621,7 @@ same patch	mismo parche
 Save the gear you wear: /bf set save NAME.	Guarda el equipo que llevas: /bf set save NOMBRE.
 Says how long a flight takes when you timed the same trip before.	Dice cuánto dura un vuelo si ya cronometraste el mismo trayecto antes.
 Says when an enemy player is nearby. Never in battlegrounds.	Avisa cuando hay un jugador enemigo cerca. Nunca en campos de batalla.
+Scorpid	Escórpido
 Scout mode	Modo explorador
 Scout mode: off. Nothing new is noted. What you recorded stays until /bf scout clear.	Modo explorador: desactivado. No se anota nada nuevo. Lo que registraste se queda hasta /bf scout clear.
 Scout mode: on. Quest givers, hand-ins, trainers, vendors and flight masters you talk to are noted on this computer. Nothing is sent to anyone. /bf scout off stops it.	Modo explorador: activado. Los PNJ de misión, entregas, instructores, vendedores y maestros de vuelo con los que hablas se anotan en esta computadora. No se envía nada a nadie. /bf scout off lo detiene.
@@ -600,6 +646,7 @@ Shopping list from your profession plan: 1 item.	Lista de compras de tu plan de 
 Shoulder	Hombros
 Show entrance	Ver entrada
 Show tracked quest waypoint	Mostrar punto de ruta de la misión seguida
+Show waypoint	Mostrar punto de ruta
 Sit and eat or drink to recover health and mana before the next fight.	Siéntate y come o bebe para recuperar salud y maná antes del siguiente combate.
 Skill: %d / %d (starter-node reference).	Habilidad: %d / %d (referencia de nodos iniciales).
 skills	habilidades
@@ -618,6 +665,7 @@ south	sur
 south-east	sureste
 south-west	suroeste
 Spell rank reminder	Aviso de rango de hechizo
+Spider	Araña
 spots	lugares
 Start from:	Plantilla:
 Start playing	A jugar
@@ -634,20 +682,25 @@ Switch the timing outside combat.	Cambia el cronometraje fuera de combate.
 Switches off what another addon already draws, and says so once. /bf addons lists it.	Apaga lo que otro addon ya dibuja y lo dice una vez. /bf addons lo lista.
 Symbol of Divinity	Símbolo de divinidad
 Symbol of Kings	Símbolo de reyes
+Take detour	Tomar el desvío
 Talent plan line	Línea del plan de talentos
 Talent plan line on level-up is off.	La línea del plan de talentos al subir de nivel está desactivada.
 Talent plan line on level-up is on.	La línea del plan de talentos al subir de nivel está activada.
 Talent points start at level 10.	Los puntos de talento empiezan en el nivel 10.
 Talk to a quest giver, trainer, vendor or flight master and it is noted.	Habla con un PNJ de misión, un instructor, un vendedor o un maestro de vuelo y queda anotado.
+Tallstrider	Zancaalta
+Taming a beast teaches you the ability it comes with. Recorded tames only; places are approximate.	Domar una bestia te enseña la facultad que trae. Solo domas registradas; los lugares son aproximados.
 tank	tanque
 Target a covered dungeon or raid boss first.	Selecciona primero a un jefe de mazmorra o de banda incluido.
 Target a player and type /bf note good tank, or type /bf note Name good tank. /bf notes lists them.	Selecciona a un jugador y escribe /bf note buen tanque, o escribe /bf note Nombre buen tanque. /bf notes las lista.
 Tells you when your action bar still holds a lower rank of a spell you have trained.	Te avisa cuando tu barra de acción aún tiene un rango inferior de un hechizo que ya has entrenado.
+That badge cannot be pinned. Use /bf badges pin to see available goals.	Esa insignia no se puede fijar. Usa /bf badges pin para ver los objetivos disponibles.
 That could not be handed to the desktop app; try fewer words.	Eso no se pudo pasar a la app; prueba con menos palabras.
 That dungeon is not known. Try a short name, for example /bf check sm.	Esa mazmorra no se conoce. Prueba un nombre corto, por ejemplo /bf check sm.
 That dungeon is not known. Try a short name, for example /bf guild lfd brd.	Esa mazmorra no se conoce. Prueba un nombre corto, por ejemplo /bf guild lfd brd.
 That is not a player name the addon can keep a note on.	Ese no es un nombre de jugador sobre el que el addon pueda guardar una nota.
 That line is gone. Type /bf group for a fresh list.	Esa línea ya no existe. Escribe /bf group para una lista nueva.
+That place is on another continent. The desktop app works out where boats and zeppelins stop from your game files: open it with your game folder connected, then type /reload.	Ese lugar está en otro continente. La app de escritorio calcula dónde paran los barcos y zepelines con tus archivos del juego: ábrela con tu carpeta del juego conectada y luego escribe /reload.
 That player has no reserve on the list.	Ese jugador no tiene ninguna reserva en la lista.
 That player is not in your party. /bf mentor Name asks a party member.	Ese jugador no está en tu grupo. /bf mentor Nombre se lo pide a un miembro del grupo.
 That player is not in your raid.	Ese jugador no está en tu banda.
@@ -674,14 +727,18 @@ The Instance Atlas is not available in this game client.	El Atlas de instancias 
 The list is full: 10 reserves fit in what party sync may send.	La lista está llena: caben 10 reservas en lo que la sincronización de grupo puede enviar.
 The live link is off, so the desktop app cannot open its panel. Type /bf live on, then try again.	El enlace en directo está desactivado, así que la app no puede abrir su panel. Escribe /bf live on y prueba otra vez.
 The panel on your screen shows your next step. Type /bf next for an arrow to it.	El panel de tu pantalla muestra tu siguiente paso. Escribe /bf next para una flecha hacia él.
+The pet book is not available.	El libro de mascotas no está disponible.
+The pet book was recorded on another patch and is not shown.	El libro de mascotas se registró en otro parche y no se muestra.
 The quest list is not available in this game client.	La lista de misiones no está disponible en este cliente del juego.
 The quest log is not readable in this game client.	El registro de misiones no se puede leer en este cliente de juego.
 The rest is in the desktop app.	El resto está en la app.
 The search box waits until you leave combat.	El cuadro de búsqueda espera hasta que salgas del combate.
 The soft-reserve list is empty. The party leader adds to it: /bf sr add Player Item.	La lista de soft reserve está vacía. El líder del grupo añade a ella: /bf sr add Jugador Objeto.
 The steps from the desktop app are done. Save with /reload and the app sends the next ones; until then this is the built-in route.	Los pasos de la aplicación de escritorio están hechos. Guarda con /reload y la aplicación envía los siguientes; hasta entonces esta es la ruta integrada.
+The stops and the ride time were worked out from your game files by the desktop app. Nobody can know the wait.	Las paradas y la duración del trayecto las calculó la app de escritorio con tus archivos del juego. Nadie puede saber la espera.
 The way Backstage Forever starts: every guide and reminder on, comfort extras off.	Así empieza Backstage Forever: todas las guías y avisos activados, extras de comodidad desactivados.
 The way Backstage Forever starts: guides and reminders on, comfort extras and the newer panels off.	Como empieza Backstage Forever: guías y recordatorios activados, extras de comodidad y paneles nuevos desactivados.
+Then go to the flight master at	Luego ve al maestro de vuelo en
 There is no guided route for your race yet. The zone guide takes over.	Aún no hay ruta guiada para tu raza. La guía de zona toma el relevo.
 There is no line with that number. Type /bf group for the list.	No hay ninguna línea con ese número. Escribe /bf group para ver la lista.
 There is no mentor link to end.	No hay ningún enlace de mentor que terminar.
@@ -699,6 +756,7 @@ Time in the run	Tiempo del recorrido
 time not recorded	tiempo no registrado
 Timing is off. Nothing is measured and nothing is slowed.	El cronometraje está desactivado. No se mide nada y nada va más lento.
 to	a
+To	A
 Totems carried:	Tótems que llevas:
 Totems not carried:	Tótems que no llevas:
 Tracked quest:	Misión seguida:
@@ -709,10 +767,12 @@ Try /bf explore outside combat.	Prueba /bf explore fuera de combate.
 Try /bf group outside combat.	Prueba /bf group fuera de combate.
 Try /bf kit outside combat.	Prueba /bf kit fuera de combate.
 Try /bf lfg post outside combat.	Prueba /bf lfg post fuera de combate.
+try /bf next (where to go), or /bf help for everything.	prueba /bf next (adónde ir) o /bf help para verlo todo.
 Try /bf note outside combat.	Prueba /bf note fuera de combate.
 Try /bf ready outside combat.	Prueba /bf ready fuera de combate.
 Try a zone, a town or a flight master name.	Prueba con una zona, un pueblo o el nombre de un maestro de vuelo.
 Turning off item tips does not turn off quest-item sale protection.	Desactivar los consejos de objetos no desactiva la protección contra la venta de objetos de misión.
+Turtle	Tortuga
 Two quests, one stop	Dos misiones, una parada
 Type /bf answers 1 to read the newest in full.	Escribe /bf answers 1 para leer entera la más reciente.
 Type /bf badges all for the full list; the app shows them all with dates in Characters > Badges.	Escribe /bf badges all para la lista completa; la app las muestra todas con fechas en Personajes > Insignias.
@@ -763,12 +823,14 @@ When a party member types /bf check, a short status goes to your party. Needs pa
 whisper	susurrar
 Who	Quién
 win not matched to this list	botín ganado que no está en esta lista
+Wind Serpent	Serpiente alada
 wins not matched to this list	botines ganados que no están en esta lista
 Wish	Deseo
 Wish list banner	Aviso de lista de deseos
 Wish list banner: off. /bf wish still lists your wishes.	Aviso de lista de deseos: desactivado. /bf wish sigue listando tus deseos.
 Wish list banner: on. A banner when you or your group loots a wished item.	Aviso de lista de deseos: activado. Un aviso cuando tú o tu grupo consiguen como botín un objeto deseado.
 without a recorded price	sin precio registrado
+Wolf	Lobo
 Worth more at the Auction House	Vale más en la casa de subastas
 Worth more at the Auction House (after its 5% cut):	Vale más en la casa de subastas (tras su comisión del 5%):
 Wrist	Muñecas
@@ -777,6 +839,8 @@ Write a short note: /bf mentor say words (up to 120 characters).	Escribe una not
 Write my line	Escribir mi línea
 yards	metros
 yards away	metros
+yards from the	metros de la parada
+yards from the flight master at	metros del maestro de vuelo en
 yards in a straight line	metros en línea recta
 yd	m
 You	Tú
@@ -969,6 +1033,7 @@ Zone guide: the quests around you, in the order that walks least.	Guía de zona:
 ^Readiness check for (.-):$	Revisión de preparación para %1:
 ^Enemy player alerts (.-)$	Alertas de jugador enemigo: %1
 ^Gear wearing out %((%-?%d+)%%%)$	Equipo gastándose (%1%%)
+^most worn gear at (%-?%d+)%%%%$	equipo más desgastado al %1%%%%
 ^next level in about (.-)$	siguiente nivel en alrededor de %1
 ^Quests: (%-?%d+) in your log$	Misiones: %1 en tu registro
 ^Your job: (.-) %(from (.-)%)$	Tu tarea: %1 (de %2)
@@ -1039,5 +1104,6 @@ Zone guide: the quests around you, in the order that walks least.	Guía de zona:
 ^(%-?%d+) h ago$	hace %1 h
 ^(%-?%d+) days$	%1 días
 ^low: (.-)$	bajo: %1
+^LFG (.-)$	LFG %1
 ^(%-?%d+) h$	%1 h
 ]==]) end
