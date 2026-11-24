@@ -936,7 +936,7 @@ local function capture(event,eventId)
         end
     end
     local character={id=guid,name=name,realm=realm,className=class,level=level,location=location,updatedAt=now}
-    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.27.0'
+    character.clientBuild=clientBuild();character.locale=clean(call(GetLocale),4);character.captureVersion='1.28.0'
     character.race=clean((call(UnitRace,'player')));
     -- UnitSex: 2 male, 3 female; 1 (unknown) and anything else is left out.
     local sex=integer(call(UnitSex,'player'),1,3);if sex==2 then character.sex='male' elseif sex==3 then character.sex='female' end
@@ -1015,6 +1015,20 @@ local function capture(event,eventId)
     if type(BackstageForeverScoutSnapshot)=='function' then
         local ok,scout=pcall(BackstageForeverScoutSnapshot)
         if ok and type(scout)=='table' and type(scout.records)=='table' and #scout.records>0 then array(scout.records);character.scout=scout end
+    end
+    -- Guild events, sign-ups and what sharing members told you, and this character's lockouts:
+    -- two optional blocks of their own; older desktop apps ignore them.
+    if type(BackstageForeverEventsSnapshot)=='function' then
+        local ok,guild,lists=pcall(BackstageForeverEventsSnapshot)
+        if ok and type(guild)=='table' then
+            for _,list in ipairs(type(lists)=='table' and lists or {}) do array(list) end
+            character.guild=guild
+        end
+    end
+    if type(BackstageForeverLockoutSnapshot)=='function' then
+        local ok,lockouts=pcall(BackstageForeverLockoutSnapshot)
+        if ok and type(lockouts)=='table' and type(lockouts.rows)=='table' then array(lockouts.rows);character.lockouts=lockouts
+        elseif type(field(previous,'lockouts'))=='table' then character.lockouts=previous.lockouts end
     end
     -- Kept profiles: an optional block, present only when the player switched on sharing them with the desktop app.
     if type(BackstageForeverProfileSnapshot)=='function' then
@@ -1124,6 +1138,11 @@ local function capture(event,eventId)
         if fits() then break end
         discard(chars[i],'scout')
     end
+    -- Then guild events and lockouts: both are optional and the addon keeps its own copy.
+    for i=#chars,1,-1 do
+        if fits() then break end
+        discard(chars[i],'guild');discard(chars[i],'lockouts')
+    end
     -- Vendor wares go next: the vendor shows them again the next time its window opens.
     for i=#chars,1,-1 do
         if fits() then break end
@@ -1185,6 +1204,17 @@ local function capture(event,eventId)
         end
         BackstageForeverExport=encoded;prepared=payload;return true
     end
+end
+-- /bf lockouts: the saved instances of your other characters, as each was last saved.
+function BackstageForeverRosterLockouts()
+    local out={}
+    local guid=clean(call(UnitGUID,'player'),200)
+    for id,c in pairs(roster) do
+        local block=type(c)=='table' and id~=guid and c.lockouts
+        if type(block)=='table' and type(block.rows)=='table' and type(c.name)=='string' and #out<20 then out[#out+1]={name=c.name,at=block.at,rows=block.rows} end
+    end
+    table.sort(out,function(a,b) return a.name<b.name end)
+    return out
 end
 function BackstageForeverCompassQuestContext()
     if call(InCombatLockdown)~=false then return nil end

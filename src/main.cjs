@@ -64,6 +64,7 @@ let radar = null;
 let miniNow = null;
 let sessionHistory = null;
 let economy = null;
+let guildStore = null;
 let journeyStore = null;
 let routeEditor = null, routeEdits = null; // route variants and edits per character (Q8, Q9)
 let challengeRuns = null, discordPresence = null; // challenge runs (C12) and the Discord status (S6)
@@ -1034,8 +1035,14 @@ app.whenReady().then(async () => {
   // Economy and history: the desktop keeps its own long memory of prices, gold and dungeon runs.
   economy = new (require("./core/economy.cjs").EconomyStore)({ file: path.join(app.getPath("userData"), "economy.json") });
   try { economy.absorb(store.state); } catch {}
+  // Plans → Guild: guild events, sharing members and lockouts from the saved file, with the desktop's own guild.json.
+  guildStore = new (require("./core/guild-events.cjs").GuildStore)({ file: path.join(app.getPath("userData"), "guild.json") });
+  const guildPages = require("./core/guild-events-ipc.cjs").registerGuildHandlers({
+    handle, getState: () => store.state, getGame: () => game, store: guildStore, economy, gameData, dialog, getWindow: () => win,
+    packNames: () => (knowledge.packs.get(knowledge.build) || knowledge.bundled).pack,
+  });
   const economyPages = require("./core/economy-ipc.cjs").registerEconomyHandlers({
-    handle, getState: () => store.state, economy, gameData, dialog, getWindow: () => win,
+    handle, getState: () => store.state, economy, gameData, dialog, getWindow: () => win, guild: guildPages,
     packNames: () => (knowledge.packs.get(knowledge.build) || knowledge.bundled).pack,
     notify: Notification.isSupported() ? (title, body) => new Notification({ title, body, silent: false }).show() : null,
   });
@@ -1388,6 +1395,7 @@ app.whenReady().then(async () => {
     characterGuidance.clear();
     try { sessionHistory?.clear(); } catch {}
     try { economy?.clear(); } catch {}
+    try { guildStore?.clear(); } catch {}
     try { clearJourneyExtras?.(); } catch {}
     try { fs.rmSync(path.join(app.getPath("userData"), "route-review.json"), { force: true }); guided = desktopGuided = null; } catch {}
     try { fs.rmSync(path.join(app.getPath("userData"), "route-edits.json"), { force: true }); routeEdits.data = {}; routeEditor?.invalidate(); } catch {}

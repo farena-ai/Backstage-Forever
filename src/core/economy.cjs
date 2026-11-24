@@ -327,9 +327,12 @@ function localDay(at) {
  */
 function dueNotifications(events, notified, now = nowSec()) {
   const done = new Set(notified || []);
-  return (events || []).filter((e) => !done.has(e.key) && (e.kind === "cooldown" ? e.at <= now && now - e.at <= 6 * 3600 : e.at > now && e.at - now <= 2 * 86400))
-    .map((e) => ({ key: e.key, title: e.kind === "cooldown" ? `${e.title}: ${e.character}` : `Mail expires soon: ${e.character}`,
-      body: e.kind === "cooldown" ? `${e.detail} cooldown on ${e.character} is ready.` : `Mail on ${e.character} starts to expire in ${Math.max(1, Math.round((e.at - now) / 3600))} hours.` }));
+  // A guild event (guild-events.cjs) gets one notice in its last quarter of an hour; lockouts get none.
+  const due = (e) => (e.kind === "cooldown" ? e.at <= now && now - e.at <= 6 * 3600 : e.kind === "mail" ? e.at > now && e.at - now <= 2 * 86400 : e.kind === "event" ? e.at > now && e.at - now <= 900 : false);
+  return (events || []).filter((e) => !done.has(e.key) && due(e))
+    .map((e) => (e.kind === "event" ? { key: e.key, title: `Guild event soon: ${e.title}`, body: `Starts in ${Math.max(1, Math.round((e.at - now) / 60))} minutes. ${e.detail}.` }
+      : { key: e.key, title: e.kind === "cooldown" ? `${e.title}: ${e.character}` : `Mail expires soon: ${e.character}`,
+        body: e.kind === "cooldown" ? `${e.detail} cooldown on ${e.character} is ready.` : `Mail on ${e.character} starts to expire in ${Math.max(1, Math.round((e.at - now) / 3600))} hours.` }));
 }
 const icsText = (v) => String(v).replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/([,;])/g, "\\$1");
 const icsTime = (at) => new Date(at * 1000).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
@@ -349,7 +352,7 @@ function fold(line) {
 function calendarIcs(events, now = nowSec()) {
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Backstage Forever//Cooldown calendar//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:Backstage Forever"];
   for (const e of (events || []).filter((x) => x.at > now)) {
-    lines.push("BEGIN:VEVENT", `UID:${icsText(e.key.replace(/[^A-Za-z0-9:._-]/g, "-"))}@backstage-forever`, `DTSTAMP:${icsTime(now)}`, `DTSTART:${icsTime(e.at)}`, `DTEND:${icsTime(e.at + 900)}`,
+    lines.push("BEGIN:VEVENT", `UID:${icsText(e.key.replace(/[^A-Za-z0-9:._-]/g, "-"))}@backstage-forever`, `DTSTAMP:${icsTime(now)}`, `DTSTART:${icsTime(e.at)}`, `DTEND:${icsTime(e.at + (Number.isSafeInteger(e.minutes) && e.minutes > 0 && e.minutes <= 1440 ? e.minutes * 60 : 900))}`,
       `SUMMARY:${icsText(`${e.title} - ${e.character}`)}`, `DESCRIPTION:${icsText(`${e.detail}. ${e.character}${e.realm ? ` (${e.realm})` : ""}. As the game last saved it.`)}`, "END:VEVENT");
   }
   lines.push("END:VCALENDAR");

@@ -136,7 +136,7 @@ const { defaultState } = require("../src/core/validation.cjs");
         await page.getByLabel("Active character", { exact: true }).inputValue(),
         "Alpha",
       );
-      const group = ["preparation","dungeons","run-history","attunements","zones","travel","guided-route","practice-lab"].includes(id) ? "adventure" : ["journey", "sheet", "alts", "badges"].includes(id) ? "characters" : id.startsWith("ledger") ? "ledger" : ["party", "calendar"].includes(id)
+      const group = ["preparation","dungeons","run-history","attunements","zones","travel","guided-route","practice-lab"].includes(id) ? "adventure" : ["journey", "sheet", "alts", "badges"].includes(id) ? "characters" : id.startsWith("ledger") ? "ledger" : ["party", "calendar", "guild"].includes(id)
         ? "company"
         : ["game", "connections", "updates", "privacy"].includes(id)
           ? "game"

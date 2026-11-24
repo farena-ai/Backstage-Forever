@@ -6,7 +6,9 @@
 --   /bf guild lfd DUNGEON|off your flag            /bf guild   the list
 -- It uses the party sync channel code (BackstageForeverParty.lua): one prefix, at most 255 bytes.
 -- Sends are rare: after login, when something changed, and never more often than every 3 minutes.
--- What arrives is checked field by field and kept in memory only, at most 100 members, for 30 minutes.
+-- What arrives is checked field by field; /bf guild works from memory, at most 100 members, for 30 minutes.
+-- For the desktop guild page the last thing each sharing member told you is also kept in your saved
+-- file (BackstageForeverEvents.lua, at most 100 members for 60 days); a member who stops sharing is forgotten.
 local floor,min=math.floor,math.min
 local unpackAll=unpack or table.unpack
 local function plain(v)
@@ -279,7 +281,9 @@ BackstageForeverGuildTick=tick -- for tests
 local function onGuild(sender,message)
     if not BackstageForeverGuildSharing() then return end
     if message=='G?' then asked=true return end
-    BackstageForeverGuildStore(roster,sender,message,now())
+    if BackstageForeverGuildStore(roster,sender,message,now()) and type(BackstageForeverGuildHeard)=='function' then
+        pcall(BackstageForeverGuildHeard,sender,BackstageForeverGuildDecode(message))
+    end
 end
 -- E3: who can craft it. Asked and answered only while guild sharing is on.
 local craft,craftRate,linksHeard=nil,{},false
@@ -309,7 +313,9 @@ end
 local function onCraftAnswer(sender,message)
     if not BackstageForeverGuildSharing() or not craft or now()-craft.at>60 then return end
     local name=BackstageForeverCraftAnswered(message,craft.query)
-    if name then BackstageForeverCraftStore(craft.results,sender,name) end
+    if name and BackstageForeverCraftStore(craft.results,sender,name) and type(BackstageForeverGuildCraftHeard)=='function' then
+        pcall(BackstageForeverGuildCraftHeard,sender,name)
+    end
 end
 local function craftReport()
     if not craft then return say('Ask first: /bf guild craft NAME, for example /bf guild craft Ghost Dye.') end

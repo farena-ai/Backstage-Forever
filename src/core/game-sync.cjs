@@ -73,6 +73,9 @@ const MAX = 1024 * 1024,
     "BackstageForeverScout.lua",
     "BackstageForeverWares.lua",
     "BackstageForeverRaid.lua",
+    "BackstageForeverEvents.lua",
+    "BackstageForeverEventsWindow.lua",
+    "BackstageForeverLockouts.lua",
     "BackstageForeverBag.lua",
     "BackstageForeverChat.lua",
     "BackstageForeverProfile.lua",
@@ -179,6 +182,8 @@ function parseSavedVariables(raw) {
   // Scout mode (roadmap S1): an optional block per character, kept beside the characters so the
   // profile store, which knows nothing of it, is not touched.
   const scout = [], settingsProfiles = [];
+  // Guild events and lockouts (optional blocks too), kept the same way.
+  const guild = [];
   const characters = s.characters.map((c) => {
     if (!c || typeof c !== "object") invalid();
     const key = id(c.id);
@@ -274,6 +279,12 @@ function parseSavedVariables(raw) {
         if (block.records.length) scout.push({ id: key, name: out.name, realm: out.realm || "", ...(out.faction ? { faction: out.faction } : {}), ...(typeof out.clientBuild === "string" ? { clientBuild: out.clientBuild } : {}), scout: block });
       } catch { /* Omit the entire invalid optional block. */ }
     }
+    if (c.guild !== undefined || c.lockouts !== undefined) {
+      const G = require("./guild-events.cjs"), row = { id: key, name: out.name, realm: out.realm || "", updatedAt: out.updatedAt };
+      if (c.guild !== undefined) { try { row.guild = G.normalizeGuildCapture(c.guild); } catch { /* Omit the entire invalid optional block. */ } }
+      if (c.lockouts !== undefined) { try { row.lockouts = G.normalizeLockoutCapture(c.lockouts); } catch { /* Omit the entire invalid optional block. */ } }
+      if (row.guild || row.lockouts) guild.push(row);
+    }
     // Kept addon settings profiles (only present when the player switched sharing on in game).
     if (c.settingsProfiles !== undefined) {
       try {
@@ -285,7 +296,11 @@ function parseSavedVariables(raw) {
   });
   const activeId = s.activeId === null ? null : id(s.activeId);
   if (activeId && !seen.has(activeId)) invalid();
-  return { characters, activeId, observedAt: stamp(s.observedAt), ...(scout.length ? { scout } : {}), ...(settingsProfiles.length ? { settingsProfiles } : {}) };
+  const parsed = { characters, activeId, observedAt: stamp(s.observedAt), ...(scout.length ? { scout } : {}), ...(settingsProfiles.length ? { settingsProfiles } : {}) };
+  // Nearly every save carries a lockout block, so this list rides along without being a listed
+  // field: code that takes the snapshot apart field by field (the profile merge) does not see it.
+  if (guild.length) Object.defineProperty(parsed, "guild", { value: guild, enumerable: false });
+  return parsed;
 }
 // `checked` is a set of parent folders already walked in the same pass (one addon install or
 // verify): those are not walked again for every file. The file or folder itself is always checked.
@@ -447,6 +462,10 @@ class GameSync {
   /** Scout mode records read from the game's saved file: [{ id, name, realm, faction, clientBuild, scout }]. */
   scoutCapture() {
     return (this.scoutBlocks || []).map((e) => ({ ...e }));
+  }
+  /** Guild events, shared member details and lockouts read from the game's saved file: [{ id, name, realm, guild?, lockouts? }]. */
+  guildCapture() {
+    return (this.guildBlocks || []).map((e) => ({ ...e }));
   }
   /** Kept addon settings profiles read from the game's saved file: [{ id, name, realm, profiles: { profiles, done } }]. */
   settingsProfiles() {
@@ -835,6 +854,10 @@ class GameSync {
       if (cancelled()) return this.status();
       // Scout records of every character read this time; parsed and kept in memory, never uploaded.
       this.scoutBlocks = [...snapshots.values()].flatMap((s) => s.scout || []).slice(0, 100);
+      // Guild and lockout blocks: the newest save of each character; kept in memory and in the desktop's own guild.json.
+      { const newest = new Map();
+        for (const e of [...snapshots.values()].flatMap((s) => s.guild || [])) if (!newest.has(e.id) || e.updatedAt > newest.get(e.id).updatedAt) newest.set(e.id, e);
+        this.guildBlocks = [...newest.values()].slice(0, 100); }
       // Kept settings profiles of every character read this time; the same: in memory, never uploaded.
       this.profileBlocks = [...snapshots.values()].flatMap((s) => s.settingsProfiles || []).slice(0, 100);
       try { this.onSettingsProfiles?.(this.settingsProfiles()); } catch { /* A listener never stops a read. */ }
