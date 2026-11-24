@@ -1,6 +1,7 @@
 -- Answers inside the game and "Explain this" (1.26, roadmap A1 and A2).
 --   /bf answers        the last answers the companion gave you, read from the desktop hand-off
 --   /bf answers 2      one of them in full
+--   /bf reports        how many replies to your problem reports wait in the desktop app
 --   /bf explain        opens the companion panel with the thing you point at, your target or your
 --                      tracked quest in its question box. Nothing is asked until you press Enter.
 --   /bf explain WORDS  the same with your own words (an item or quest link works)
@@ -133,6 +134,22 @@ function BackstageForeverAnswersCommand(message)
     for i,line in ipairs(BackstageForeverAnswersLines(list,index,type(now)=='number' and now or nil)) do
         emit(i==1 and (PREFIX..line) or line)
     end
+end
+
+-- ---------------------------------------------------------------- Desk: replies to your reports
+-- Pure: the chat line for /bf reports. data is BackstageForeverDesktopData; its reports field is how
+-- many replies to your own problem reports wait unread in the desktop app, as of the last /reload.
+function BackstageForeverReportsLine(data)
+    local n=type(data)=='table' and data.schema==1 and data.reports or nil
+    if type(n)~='number' or n~=n or n<1 then
+        return T('No replies to your reports are waiting. To report a problem, open Help in the desktop app.')
+    end
+    n=min(floor(n),999)
+    if n==1 then return T('1 reply is waiting in the desktop app. Open Help there, then My reports.') end
+    return T(('%d replies are waiting in the desktop app. Open Help there, then My reports.'):format(n))
+end
+function BackstageForeverReportsCommand()
+    emit(PREFIX..BackstageForeverReportsLine(BackstageForeverDesktopData))
 end
 
 -- ---------------------------------------------------------------- A2 explain this

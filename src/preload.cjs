@@ -193,6 +193,29 @@ contextBridge.exposeInMainWorld(
     communityForget: () => invoke("communityForget"),
     communityReportPreview: () => invoke("communityReportPreview"),
     communityReport: (input) => invoke("communityReport", input),
+    // Backstage Desk: reports with replies, the privacy switches and messages from the team.
+    deskStatus: () => invoke("deskStatus"),
+    deskSetSettings: (input) => invoke("deskSetSettings", input),
+    deskVisit: (input) => invoke("deskVisit", input),
+    deskReportPreview: (input) => invoke("deskReportPreview", input),
+    deskReportSend: (input) => invoke("deskReportSend", input),
+    deskTickets: () => invoke("deskTickets"),
+    deskTicket: (ticket) => invoke("deskTicket", ticket),
+    deskReply: (input) => invoke("deskReply", input),
+    deskDelete: (ticket) => invoke("deskDelete", ticket),
+    deskCancelWaiting: (id) => invoke("deskCancelWaiting", id),
+    deskSync: () => invoke("deskSync"),
+    deskForget: () => invoke("deskForget"),
+    deskAnnouncements: () => invoke("deskAnnouncements"),
+    deskAnnouncementSeen: (id) => invoke("deskAnnouncementSeen", id),
+    deskAnnouncementOpen: (id) => invoke("deskAnnouncementOpen", id),
+    deskRendererError: (input) => invoke("deskRendererError", input),
+    onDeskChanged: (listener) => {
+      if (typeof listener !== "function") throw new Error("Invalid desk listener.");
+      const handler = (_event, value) => listener(value);
+      ipcRenderer.on("backstage:deskChanged", handler);
+      return () => ipcRenderer.removeListener("backstage:deskChanged", handler);
+    },
     mapArt: (mapId) => invoke("mapArt", mapId),
     gameDataStatus: () => invoke("gameDataStatus"),
     gameItems: (ids) => invoke("gameItems", ids),

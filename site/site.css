@@ -233,3 +233,19 @@
   .bfx-release { padding: 18px; }
   .bfx-nav a, .bfx-jump a { min-height: 44px; }
 }
+/* Privacy page: one row per field that can be sent. */
+.bfx-priv { margin-top: 34px; }
+.bfx-priv > p, .bfx-priv > ul { max-width: 86ch; }
+.bfx-priv > * + * { margin-top: 12px; }
+.bfx-priv .bfx-qa { max-width: 86ch; }
+.bfx-priv .bfx-when { margin-top: 8px; font-size: 13px; color: #c9bca8; }
+.bfx-plain { padding-left: 22px; }
+.bfx-plain li + li { margin-top: 6px; }
+.bfx-fields { border: 1px solid #4e4237; border-radius: 10px; background: #191421; overflow: hidden; }
+.bfx-fields > div { display: grid; grid-template-columns: minmax(200px, 300px) minmax(0, 1fr); gap: 16px; padding: 10px 16px; border-top: 1px solid #2c2530; }
+.bfx-fields > div:first-child { border-top: 0; }
+.bfx-fields dt { font-weight: 700; }
+.bfx-fields dt code { display: block; margin-top: 2px; font-weight: 400; font-size: 12px; color: #c9bca8; overflow-wrap: anywhere; }
+.bfx-fields dd { margin: 0; font-size: 15px; }
+.bfx-legal a { color: #fff5e8; }
+@media (max-width: 720px) { .bfx-fields > div { grid-template-columns: 1fr; gap: 4px; } }

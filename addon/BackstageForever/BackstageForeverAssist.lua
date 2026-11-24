@@ -685,6 +685,7 @@ local HELP_TOPICS={
     {key='companion',index='7 companion - asking questions and the desktop app',head='Companion and desktop app (/bf help companion):',lines={
         '/bf ask - ask the companion a question (or click the owl button on the minimap); the answer appears in the Backstage Forever panel over your game',
         '/bf answers - the last answers the companion gave you, as of your last /reload; /bf answers 1 reads one in full',
+        '/bf reports - how many replies to your problem reports are waiting in the desktop app',
         '/bf explain - opens the companion panel with the item you point at, your target or your tracked quest in its question box; nothing is asked for you',
         '/bf live - the thin line along the top edge that lets the desktop app follow you; /bf live safe if the app cannot read it',
         '/bf scout - scout mode, off until you switch it on: notes the quest givers, trainers, vendors and flight masters you talk to; /bf scout shows counts per zone',

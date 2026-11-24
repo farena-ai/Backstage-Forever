@@ -1,6 +1,8 @@
 # Support and recovery
 
-Open **Field Guide → Support & Recovery**, then choose **Prepare report**. Review the displayed snapshot before choosing **Copy report** or **Save report**. Nothing is uploaded or sent to support automatically. Share the copied text or saved `.txt` file yourself only if you want to.
+Open **Field Guide → Support & Recovery**, then choose **Prepare report**. Review the displayed snapshot before choosing **Copy report** or **Save report**. The app does not upload this snapshot or send it to support. Share the copied text or saved `.txt` file yourself only if you want to.
+
+To tell the team about a problem and get an answer in the app, use **Help → Report a problem** instead: it shows everything that will be sent before you send it, and the reply appears under **Help → My reports**. See [Privacy](PRIVACY.md) for the exact fields.
 
 The report contains fixed, bounded facts: app version/channel, operating-system platform and architecture, whether secure credential storage is available, profile count, selected provider ID and configured access mode, whether that provider has a saved key, connection/setup states and coverage counts, public reference status/build/counts, and update phase/known diagnostic code/versions. Configured subscription mode does not prove sign-in, entitlement or remaining quota. Preparing a report does not run a provider CLI, connect to a provider, refresh public data or inspect audio.
 
