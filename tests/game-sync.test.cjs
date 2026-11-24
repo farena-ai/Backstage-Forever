@@ -78,7 +78,9 @@ async function fixture(t) {
     ),
   };
 }
-async function withinDeadline(promise, label, milliseconds = 5000) {
+// The addon is about 80 files now; a full install with verification can take several seconds on a
+// busy CI machine, so the guard is generous. It still catches a hang.
+async function withinDeadline(promise, label, milliseconds = 30000) {
   let timer;
   try {
     return await Promise.race([
