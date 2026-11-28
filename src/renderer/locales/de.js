@@ -1550,6 +1550,7 @@ window.BF_LOCALE_DE = {
  "no profitable craft seen yet": "noch kein lohnendes Handwerk gesehen",
  "No provider, account or database download needed.": "Kein Anbieter, Konto oder Datenbank-Download nötig.",
  "No quest givers are placed here yet.": "Hier sind noch keine Questgeber verortet.",
+ "No quest log received yet.": "Noch kein Quest-Tagebuch empfangen.",
  "No quests for it recorded yet": "Noch keine Quests dafür erfasst",
  "no quests recorded": "keine Quests erfasst",
  "No quests, training or wares are recorded for this NPC yet.": "Für diesen NPC sind noch keine Quests, Trainings oder Waren erfasst.",
@@ -3195,6 +3196,7 @@ window.BF_LOCALE_DE = {
  "Your plan reaches the game at your next /reload. Your group sees it in game after that.": "Dein Plan erreicht das Spiel bei deinem nächsten /reload. Danach sieht ihn deine Gruppe im Spiel.",
  "Your plans": "Deine Pläne",
  "Your progress:": "Dein Fortschritt:",
+ "Your quest log is empty.": "Dein Quest-Tagebuch ist leer.",
  "Your question": "Deine Frage",
  "YOUR QUESTION": "DEINE FRAGE",
  "Your question changed during capture. Insert only when you are ready.": "Deine Frage hat sich während der Aufnahme geändert. Füge sie nur ein, wenn du bereit bist.",
@@ -3921,6 +3923,14 @@ window.BF_LOCALE_DE_TEMPLATES = [
  [
   "^([0-9][0-9.,:/%–-]*) of ([0-9][0-9.,:/%–-]*) points · Automatic off$",
   "{0} von {1} Punkten · Automatisch aus",
+  [
+   0,
+   1
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) quests · ([0-9][0-9.,:/%–-]*) ready to turn in$",
+  "{#0} Quests · {#1} zum Abgeben bereit",
   [
    0,
    1

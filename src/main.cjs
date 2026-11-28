@@ -709,10 +709,14 @@ app.whenReady().then(async () => {
   // Opt-in live game link: reads only the addon's status strip from the game window.
   liveBridge = new LiveBridge({ dataDir: app.getPath("userData") });
   const { matchingLiveFrame } = require("./core/character-freshness.cjs");
+  const { LevelingAdvisor, liveQuestPreview } = require("./core/leveling.cjs");
   const liveForRenderer = (status) => {
     const { activeProfileId, profiles } = store.state;
     const selected = profiles.find((profile) => profile.id === activeProfileId);
-    return matchingLiveFrame(selected, status) ? { ...status, liveProfileId: activeProfileId } : status;
+    const frame = matchingLiveFrame(selected, status);
+    if (!frame) return status;
+    const preview = liveQuestPreview(selected, frame, knowledge?.bundled?.pack);
+    return { ...status, liveProfileId: activeProfileId, ...(preview ? { questPreview: preview } : {}) };
   };
   liveBridge.subscribe((status) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:liveLink", liveForRenderer(status)); });
   if (liveBridge.enabled) liveBridge.start();
@@ -835,7 +839,7 @@ app.whenReady().then(async () => {
     onChange: () => { game?.writeHandoff().catch(() => {}); } });
   // After each read of the saved file: a profile the game has accepted or dismissed stops being sent.
   if (game) game.onSettingsProfiles = (blocks) => { if (settingsProfiles.settle(blocks)) game?.writeHandoff().catch(() => {}); };
-  const leveling = new (require("./core/leveling.cjs").LevelingAdvisor)({
+  const leveling = new LevelingAdvisor({
     getState: () => store.state, knowledge, insights,
     getLive: () => worldMap.liveFrame(worldMap.profile()),
   });

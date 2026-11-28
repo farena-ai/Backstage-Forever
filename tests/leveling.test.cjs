@@ -127,6 +127,17 @@ test("live quest pages beat the last save: turned-in quests leave Now and show a
   assert.ok(!s.log.ready.some((x) => x.id === a));
 });
 
+test("Companion preview counts and titles come from the complete live log, including a known empty log", () => {
+  const { liveQuestPreview } = require("../src/core/leveling.cjs");
+  const character = { quests: [{ id: 7, title: "Saved title", complete: true }, { id: 9, title: "No longer active" }] };
+  const reference = { quests: { 8: { title: "New quest" } } };
+  assert.equal(liveQuestPreview(character, {}, reference), null);
+  assert.deepEqual(liveQuestPreview(character, { questLog: [] }, reference), { count: 0, ready: 0, entries: [] });
+  assert.deepEqual(liveQuestPreview(character, { questLog: [{ id: 7, complete: false }, { id: 8, complete: true }] }, reference), {
+    count: 2, ready: 1, entries: [{ title: "New quest", complete: true }, { title: "Saved title", complete: false }],
+  });
+});
+
 test("1.0.1: a class trainer in your zone comes first; with none, the capital next door comes before the other side of the sea", () => {
   // Found on a real Mac: a level 4 Troll mage in Durotar was sent to Isabella in Tirisfal Glades.
   const mage = { level: 4, faction: "Horde", className: "Mage", race: "Troll", location: { mapId: 1411, x: 0.42, y: 0.68 }, quests: [] };

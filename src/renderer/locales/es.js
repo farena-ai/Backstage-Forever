@@ -1560,6 +1560,7 @@ window.BF_LOCALE_ES = {
  "no profitable craft seen yet": "aún no se ha visto ninguna fabricación rentable",
  "No provider, account or database download needed.": "No hace falta proveedor, cuenta ni descargar una base de datos.",
  "No quest givers are placed here yet.": "Aquí aún no hay ningún dador de misiones situado.",
+ "No quest log received yet.": "Aún no se ha recibido el registro de misiones.",
  "No quests for it recorded yet": "Aún sin misiones registradas",
  "no quests recorded": "sin misiones registradas",
  "No quests, training or wares are recorded for this NPC yet.": "Aún no hay misiones, entrenamiento ni mercancías registrados para este PNJ.",
@@ -3216,6 +3217,7 @@ window.BF_LOCALE_ES = {
  "Your plan reaches the game at your next /reload. Your group sees it in game after that.": "Tu plan llega al juego en tu próximo /reload. Después tu grupo lo ve en el juego.",
  "Your plans": "Tus planes",
  "Your progress:": "Tu progreso:",
+ "Your quest log is empty.": "Tu registro de misiones está vacío.",
  "Your question": "Tu pregunta",
  "YOUR QUESTION": "TU PREGUNTA",
  "Your question changed during capture. Insert only when you are ready.": "Tu pregunta cambió durante la captura. Inserta solo cuando te venga bien.",
@@ -3943,6 +3945,14 @@ window.BF_LOCALE_ES_TEMPLATES = [
  [
   "^([0-9][0-9.,:/%–-]*) of ([0-9][0-9.,:/%–-]*) points · Automatic off$",
   "{0} de {1} puntos · Automático desactivado",
+  [
+   0,
+   1
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) quests · ([0-9][0-9.,:/%–-]*) ready to turn in$",
+  "{#0} misiones · {#1} listas para entregar",
   [
    0,
    1

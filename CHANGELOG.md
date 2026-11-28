@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.29.3 - Live Companion quest previews
+
+- Companion shows the active character's live quest log when BF has received it and marks the saved fallback. Painted zone rows keep their artwork on hover and keyboard focus. See the [release notes](docs/releases/1.29.3.md).
+
 ## 1.29.2 - See where your character data comes from
 
 - See live or saved status by the active character and on Companion answers. Use **Fix connection** to refresh an older save and get the next step if BF still needs help. See the [release notes](docs/releases/1.29.2.md).

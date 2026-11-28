@@ -12,6 +12,23 @@ const WINDOW_BELOW = 3, WINDOW_ABOVE = 2;
 const KALIMDOR = new Set([1411, 1412, 1413, 1414, 1438, 1439, 1440, 1441, 1442, 1443, 1444, 1445, 1446, 1447, 1448, 1449, 1450, 1451, 1452, 1454, 1456, 1457]);
 const continent = (mapId) => (KALIMDOR.has(mapId) ? "kalimdor" : "eastern-kingdoms");
 
+function resolveLiveQuests(profile, frame, pack) {
+  if (!Array.isArray(frame?.questLog)) return null;
+  const saved = new Map((profile.quests || []).map((quest) => [quest.id, quest]));
+  return frame.questLog.map(({ id, complete }) => {
+    const previous = saved.get(id);
+    return previous ? { ...previous, complete } : { id, complete, title: pack?.quests?.[id]?.title || `Quest ${id}`, objectives: [] };
+  });
+}
+
+function liveQuestPreview(profile, frame, pack) {
+  const quests = resolveLiveQuests(profile, frame, pack);
+  if (!quests) return null;
+  const ready = quests.filter((quest) => quest.complete);
+  const active = quests.filter((quest) => !quest.complete);
+  return { count: quests.length, ready: ready.length, entries: [...ready, ...active].slice(0, 5).map(({ title, complete }) => ({ title, complete })) };
+}
+
 function loadLevelingPack(file = path.join(__dirname, "..", "..", "data", "forever-leveling", "pack.json")) {
   const pack = JSON.parse(fs.readFileSync(file, "utf8"));
   validateLevelingPack(pack);
@@ -119,16 +136,12 @@ class LevelingAdvisor {
     // Live quest pages (addon 0.25+) beat the last save: quests turned in since then are done,
     // and the log is exactly what's in the game right now.
     const pack = this.knowledge?.bundled?.pack || null;
-    const liveLog = Array.isArray(live?.questLog) ? live.questLog : null;
+    const liveLog = resolveLiveQuests(p, live, pack);
     const logKnown = liveLog !== null || Array.isArray(p.quests);
     const turnedIn = Array.isArray(live?.turnedIn) ? live.turnedIn : [];
     const saved = p.history?.completedIdsKnown ? p.history.completedIds : [];
     const done = new Set([...saved, ...turnedIn]);
-    let quests = p.quests || [];
-    if (liveLog) {
-      const byId = new Map(quests.map((q) => [q.id, q]));
-      quests = liveLog.map((e) => { const q = byId.get(e.id); return q ? { ...q, complete: e.complete } : { id: e.id, title: pack?.quests?.[e.id]?.title || `Quest ${e.id}`, complete: e.complete, objectives: [] }; });
-    } else quests = quests.filter((q) => !done.has(q.id));
+    const quests = liveLog || (p.quests || []).filter((q) => !done.has(q.id));
     const history = { ...(p.history || {}), completedIds: [...done], completedIdsKnown: Boolean(p.history?.completedIdsKnown || turnedIn.length) };
     const justDone = turnedIn.slice(0, 5).map((id) => ({ id, title: pack?.quests?.[id]?.title || (p.quests || []).find((q) => q.id === id)?.title || `Quest ${id}` }));
     p = { ...p, level, location: where, quests, history };
@@ -267,4 +280,4 @@ function trainingCosts(p, all) {
   const next3 = levels.reduce((t, l) => t + l.total, 0);
   return { costs: { seenAt: seen.seenAt, money, nowTotal: due, levels, nextThree: next3, canAffordNext: money == null || !levels.length ? null : money >= levels[0].total, shortBy: money == null || !levels.length ? null : Math.max(0, levels[0].total - money), knownNow: now } };
 }
-module.exports = { LevelingAdvisor, loadLevelingPack, validateLevelingPack, hubOf };
+module.exports = { LevelingAdvisor, loadLevelingPack, validateLevelingPack, hubOf, liveQuestPreview };

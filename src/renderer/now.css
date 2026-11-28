@@ -49,7 +49,7 @@
 .now-actions:empty { display: none; }
 .now-zones, .now-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .now-zones button, .now-log button { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; width: 100%; padding: 6px 8px; border: 1px solid #c4a466; border-radius: 4px; background: rgba(255,248,225,.55); color: #2b1b0a; text-align: left; font: inherit; cursor: pointer; text-shadow: none; }
-.now-zones button:hover, .now-log button:hover, .now-zones button:focus-visible, .now-log button:focus-visible { background: #fff6dc; border-color: #8a5a18; }
+.now-zones button:hover, .now-log button:hover, .now-zones button:focus-visible, .now-log button:focus-visible { background-color: #fff6dc; border-color: #8a5a18; }
 .now-zones button[disabled] { cursor: default; opacity: .85; }
 .now-zones strong { font-weight: 700; }
 .now-zones span { font-size: 13px; color: #5a3e1c; }
@@ -69,7 +69,7 @@
 /* List rows are plain rows, not the ornate action buttons. */
 .now-page .now-zones button, .now-page .now-log button { min-height: 0; border-radius: 4px; padding: 6px 8px; box-shadow: none; text-shadow: none; color: #2b1b0a; background: rgba(255,248,225,.55); }
 .now-page .now-zones button::before, .now-page .now-zones button::after, .now-page .now-log button::before, .now-page .now-log button::after { display: none; }
-.now-page .now-zones button:hover:not(:disabled), .now-page .now-log button:hover:not(:disabled) { transform: none; background: #fff6dc; box-shadow: none; }
+.now-page .now-zones button:hover:not(:disabled), .now-page .now-log button:hover:not(:disabled), .now-page .now-zones button:focus-visible, .now-page .now-log button:focus-visible { transform: none; background-color: #fff6dc; box-shadow: none; }
 .now-card small { color: #6b4a22; }
 
 /* Recorded session gains share a scale; XP is the fallback when no history exists. */
