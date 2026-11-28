@@ -116,10 +116,50 @@
       "scope": "published-forever-guidance",
       "license": "Original factual curation only",
       "reviewedOn": "2026-11-28"
+    },
+    {
+      "product": "wowf",
+      "id": "E7",
+      "publisher": "Bind on Forever",
+      "url": "https://bindonforever.com/zones/stonetalon-mountains",
+      "publishedOn": "2026-10-11",
+      "scope": "published-forever-guidance-prelaunch",
+      "license": "Original factual curation only",
+      "reviewedOn": "2026-11-28"
+    },
+    {
+      "product": "wowf",
+      "id": "E8",
+      "publisher": "r/wowforever player report",
+      "url": "https://www.reddit.com/r/wowforever/comments/1y2wluk/faster_way_from_thunder_bluff_to_the_barrens_and/",
+      "publishedOn": "2026-11-22",
+      "scope": "published-forever-guidance",
+      "license": "Original factual curation only",
+      "reviewedOn": "2026-11-28"
+    },
+    {
+      "product": "wowf",
+      "id": "E9",
+      "publisher": "Bind on Forever",
+      "url": "https://bindonforever.com/zones/westfall",
+      "publishedOn": "2026-10-11",
+      "scope": "published-forever-guidance-prelaunch",
+      "license": "Original factual curation only",
+      "reviewedOn": "2026-11-28"
+    },
+    {
+      "product": "wowf",
+      "id": "E10",
+      "publisher": "GAMES.GG",
+      "url": "https://games.gg/world-of-warcraft/guides/wow-forever-westfall-guide/",
+      "publishedOn": "2026-11-27",
+      "scope": "published-forever-guidance",
+      "license": "Original factual curation only",
+      "reviewedOn": "2026-11-28"
     }
   ],
   "compiled": {
-    "bytes": 14315,
-    "sha256": "f59bba36559ed9082065652ff10ec83a7264e4c48cd095b040423b65ca210105"
+    "bytes": 18047,
+    "sha256": "324e1050f50a9c20e109ed3a095e02e8e91ac45a29f82352730c039e01df206e"
   }
 }

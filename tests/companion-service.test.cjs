@@ -17,6 +17,83 @@ function fixture(id='ollama',authMode='api'){
 }
 test('shared service interface exists',()=>assert.equal(typeof CompanionService,'function'));
 
+test('player questions use the selected live quest and walking origin without sending character data',async()=>{
+ const f=fixture(),p=f.state.profiles[0];
+ const {KnowledgeIndex}=require('../src/core/knowledge.cjs');
+ const index=new KnowledgeIndex(require('../data/forever/pack.json'));
+ const {identityHash,rememberLiveKey}=require('../src/core/live-bridge.cjs');
+ const {TravelCompanion}=require('../src/core/travel-companion.cjs');
+ const guid='Player-4373-00000057';
+ Object.assign(p,{clientBuild:index.pack.build,location:{mapId:1454,zone:'Orgrimmar',x:.5,y:.5},quests:[{id:96294,title:'A Darker Truth',complete:false,objectives:[]}]});
+ p.source={kind:'wow-addon',id:'companion-live-fixture',updatedAt:'2026-11-28T12:00:00.000Z'};
+ rememberLiveKey(p.source.id,guid);
+ f.service.knowledge={index:()=>index,bundled:index};
+ f.service.travel=new TravelCompanion({store:f.store,context:f.context,reference:require('../data/forever-travel/pack.json')});
+ const frame={characterHash:identityHash(guid),position:{mapId:1412,x:.36,y:.18},quest:{id:96294},questLog:[{id:96294,complete:true}],turnedIn:[]};
+ let active=frame;
+ f.service.live={status:()=>({enabled:true,signal:active?'live':'stale',frame:active})};
+ f.transport(()=>assert.fail('verified questions should stay local'));
+ let answer=await f.ask('How do I get to Stonetalon from here on foot?');
+ assert.equal(answer.travel.origin.id,'mulgore');
+ assert.equal(answer.characterContext.kind,'live');
+ answer=await f.ask('Where is Muln Earthfury near me?');
+ assert.equal(answer.npc.status,'found');
+ assert.match(answer.text,/Area checked: Mulgore · live character location/);
+ assert.equal(answer.characterContext.kind,'live');
+ answer=await f.ask('Where do I turn this quest in?');
+ assert.match(answer.text,/Live quest log.*Ready to turn in.*Muln Earthfury/s);
+ assert.doesNotMatch(answer.text,/How to do it:/);
+ assert.equal(answer.characterContext.kind,'live');
+ active={...frame,questLogHash:((96294 % 251)+2)%256};
+ answer=await f.ask('Is my tracked quest complete?');
+ assert.match(answer.text,/Last saved quest log.*In progress/s);
+ assert.doesNotMatch(answer.text,/Ready to turn in/);
+ active={...frame,quest:{id:222222},questLog:[{id:222222,complete:true}]};
+ answer=await f.ask('Where do I turn this quest in?');
+ assert.match(answer.text,/Live quest log.*Ready to turn in.*turn-in NPC is missing/s);
+ assert.equal(answer.characterContext.kind,'live');
+ active={...frame,questLog:[],turnedIn:[96294]};
+ answer=await f.ask('Can I turn in A Darker Truth yet?');
+ assert.match(answer.text,/turned in/i);
+ assert.doesNotMatch(answer.text,/Pick it up|How to do it:/i);
+ active={...frame,characterHash:0};
+ answer=await f.ask('Can I turn in A Darker Truth yet?');
+ assert.match(answer.text,/Last saved quest log/);
+ assert.doesNotMatch(answer.text,/Ready to turn in|already turned in/i);
+ assert.equal(answer.characterContext.kind,'saved');
+ answer=await f.ask('Where is Muln Earthfury near me?');
+ assert.match(answer.text,/Area checked: Orgrimmar · last saved character location/);
+ assert.equal(answer.characterContext.kind,'saved');
+ p.history={completedIdsKnown:true,completedIds:[96294]};
+ active={...frame,questLog:[],turnedIn:[]};
+ answer=await f.ask('Did I already turn A Darker Truth in?');
+ assert.match(answer.text,/Last saved.*Already turned in/);
+ assert.equal(answer.characterContext.kind,'saved');
+ active=frame;
+ answer=await f.ask('Where do I turn this quest in?',{shareProfile:false});
+ assert.match(answer.text,/quest name|quest title/i);
+ assert.doesNotMatch(answer.text,/Muln|Mulgore|96294/);
+ assert.equal(answer.characterContext.kind,'none');
+});
+
+test('public Forever lore questions get dated Blizzard sources without inference',async()=>{
+ const f=fixture();
+ f.transport(()=>assert.fail('reviewed lore went to a provider'));
+ for(const [question,expected] of [
+  ['Who are the Skyborne?',/Zephras Isle.*Windshaper.*Horde.*High Order.*Alliance/s],
+  ["What's the story behind Shen'dralas?",/centaur.*Dire Maul|Dire Maul.*centaur/s],
+  ['What is the story of the Riverglades?',/waterways.*trade roads/s],
+  ['Tell me about Mount Hyjal',/Archimonde.*Darkwhisper Gorge/s],
+  ['Who are the Forsaken?',/Sylvanas.*Lich King.*Undercity/s],
+  ['Who is Varimathras and why is he in the Undercity?',/dreadlord.*Sylvanas/s],
+ ]){
+  const r=await f.ask(question,{shareProfile:false});
+  assert.equal(r.topic,'lore',question);
+  assert.match(r.text,expected);
+  assert.match(r.text,/Blizzard Entertainment/);
+ }
+});
+
 test('explicit dungeon preparation answers offline with no character, model, or credentials',async()=>{
  const f=fixture();f.state.activeProfileId=null;f.state.profiles=[];f.state.provider.model='';
  f.store.getKey=()=>assert.fail('offline answer read a credential');

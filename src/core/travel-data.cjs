@@ -20,8 +20,8 @@ const PACK_BYTES = 256 * 1024,
   TOTAL_BYTES = 5 * 1024 * 1024;
 // Updating evidence requires deliberate review of this canonical compiled identity.
 const PINNED_PACK = {
-  bytes: 14315,
-  sha256: "f59bba36559ed9082065652ff10ec83a7264e4c48cd095b040423b65ca210105",
+  bytes: 18047,
+  sha256: "324e1050f50a9c20e109ed3a095e02e8e91ac45a29f82352730c039e01df206e",
 };
 const fail = (reason) => {
   throw Error("Travel reference: " + reason);
@@ -143,7 +143,7 @@ function validateTravelReference(p) {
     );
     id(n.id);
     text(n.label, 100);
-    if (!["city", "transport-endpoint", "zone"].includes(n.kind)) fail("node kind");
+    if (!["city", "transport-endpoint", "zone", "town"].includes(n.kind)) fail("node kind");
     list(n.aliases, 4, 1);
     refs(n.sourceIds);
     for (const a of n.aliases) {
@@ -356,7 +356,7 @@ function compileTravelReference(inputs) {
       sourceIds: ["E4"],
     })),
   );
-  nodes.push(...ZONES.map(([id, label, aliases]) => ({ id, label, kind: "zone", aliases: [...aliases], sourceIds: ["E5", "E6"] })));
+  nodes.push(...ZONES.map(([id, label, aliases, sourceIds, kind = "zone"]) => ({ id, label, kind, aliases: [...aliases], sourceIds: [...sourceIds] })));
   const edges = FLIGHTS.map((rawKey) => {
     const [a, b] = rawKey.split(">").map(Number),
       r = f.routes[rawKey],

@@ -6,7 +6,8 @@ const {ConversationSession}=require('./companion-conversation.cjs');
 const {resolveNpcLocation}=require('./npc-location.cjs');
 const {uuid}=require('./memory-data.cjs');
 const {createCompanionTools}=require('./companion-tools.cjs');
-const {quickAnswer,isNextQuestion}=require('./quick-answers.cjs');
+const {quickAnswer,isNextQuestion,isQuestProgressQuestion,questAnswer}=require('./quick-answers.cjs');
+const {loreAnswer}=require('./forever-lore.cjs');
 const {workshopQuestion,workshopAnswer}=require('./companion-workshop.cjs');
 const {dungeonQuestion,dungeonAnswer,dungeonFactsQuestion,dungeonFactsAnswer}=require('./companion-dungeon.cjs');
 const {resolve:resolveIntent}=require('./companion-intents.cjs');
@@ -85,47 +86,7 @@ class CompanionService {
         // No class to answer for (ask, no AI call) or a pure points-per-level question: answered here.
         return finishQuick(talentQuickAnswer(talent));
       }
-      // A direct factual reply stays sourced. Requests that benefit from a model can use the facts as context.
-      let intents=null;
-      if(!talentFirst){try{intents=resolveIntent(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile});}catch{intents=null;}}
-      // The old dungeon classifier and its Atlas-derived travel destination are detection only.
-      if(intents?.intent==='dungeon'){
-        const facts=dungeonFactsQuestion(prepared.questionForEvidence,{legacyInstanceIntent:true});
-        return finishPrivateQuick(dungeonFactsAnswer(facts,this.dungeonEvidence),'dungeon-facts',prepared.meta);
-      }
-      const verified=intents&&(intents.answer||intents.facts?.length)&&intents.intent!=='quest-next'?intents:null;
-      // The NPC answer wins when it finds the person; otherwise a better understood answer wins.
-      const npcAll=talentFirst?null:resolveNpcLocation(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile,currentIndex:input.shareProfile?this.knowledge.index(profile||{}):null,historicalPack:this.npcReference});
-      const npc=npcAll&&(npcAll.dto?.status==='found'||!verified?.answer||['npc-location','lore','rp'].includes(verified.intent))?npcAll:null;
-      if(npc){
-        if(signal.aborted)throw signal.reason;
-        this.memory.complete(token,input.prompt,npc.text);
-        if(!this.session.commit(prepared.token,{question:input.prompt,answer:npc.text,kind:'npc'}))throw Error('Provider response is no longer current.');
-        this.travel?.clear();return {text:npc.text,kind:'npc',npc:npc.dto,characterContext:savedContext,conversation:prepared.meta};
-      }
-      // A travel route or a follow-up to an open trip stays with the travel planner.
-      const tripOpen=Boolean(this.travel?.trip?.pending);
-      const localAll=talentFirst?null:this.travel?.resolve(input.prompt,{profileId,shareProfile:input.shareProfile});
-      // The new answer only replaces a "where are you starting?" kind of clarification, or a trip
-      // the planner misread (a flight master in a town is a person, not a trip).
-      // A trip the planner fully recognized stays with it, even when it must ask (your faction, say).
-      const kept=['route','unavailable','same-place'].includes(localAll?.dto?.status)||Boolean(localAll?.dto?.status==='clarify'&&localAll?.dto?.origin&&localAll?.dto?.destination);
-      const local=localAll&&(kept||tripOpen||!verified?.answer)?localAll:null;
-      if(local){
-        if(signal.aborted)throw signal.reason;
-        this.memory.complete(token,input.prompt,local.text);
-        if(!this.session.commit(prepared.token,{question:input.prompt,answer:local.text,kind:'travel'}))throw Error('Provider response is no longer current.');
-        return {text:local.text,kind:'travel',characterContext:savedContext,conversation:prepared.meta,travel:this.travel.commit(local)};
-      }
-      const directFact=verified?.facts?.length&&!verified.preferModel&&LOCAL_FACT_INTENTS.has(verified.intent)&&!needsSynthesis.test(input.prompt);
-      if(verified?.answer&&(!selected.model||directFact)){
-        if(signal.aborted)throw signal.reason;
-        this.memory.complete(token,input.prompt,verified.answer);
-        if(!this.session.commit(prepared.token,{question:input.prompt,answer:verified.answer,kind:'intent'}))throw Error('Provider response is no longer current.');
-        this.travel?.clear();return {text:verified.answer,kind:'intent',intent:verified.intent,characterContext:savedContext,conversation:prepared.meta};
-      }
       const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence,reportedLocation:prepared.reportedLocation};
-      // Live frames count only when they carry the selected character's identity.
       let usedLive = false;
       const liveStatusNow = () => {
         const observed = input.shareProfile ? this.live?.status?.() : null;
@@ -136,16 +97,65 @@ class CompanionService {
       const liveNow = () => liveStatusNow()?.frame || null;
       const liveFrame = liveNow();
       const replyContext = () => characterContext(profile, usedLive, input.shareProfile, checkedAt);
+      const localEvidence = usesLive => characterContext(profile, usesLive && liveFrame, input.shareProfile, checkedAt);
+      const toolsFor = (live, liveStatus) => createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live,liveStatus,planner:this.planner});
+      if(!talentFirst && !needsSynthesis.test(input.prompt)){
+        const lore=loreAnswer(input.prompt);
+        if(lore)return finishQuick(lore,{kind:'none'});
+        if(isQuestProgressQuestion(input.prompt)){
+          const answer=questAnswer(input.prompt,{tools:toolsFor(liveFrame),live:liveFrame});
+          if(answer)return finishQuick(answer,localEvidence(answer.usedLive));
+        }
+      }
+      // A direct factual reply stays sourced. Requests that benefit from a model can use the facts as context.
+      let intents=null;
+      if(!talentFirst){try{intents=resolveIntent(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile});}catch{intents=null;}}
+      // The old dungeon classifier and its Atlas-derived travel destination are detection only.
+      if(intents?.intent==='dungeon'){
+        const facts=dungeonFactsQuestion(prepared.questionForEvidence,{legacyInstanceIntent:true});
+        return finishPrivateQuick(dungeonFactsAnswer(facts,this.dungeonEvidence),'dungeon-facts',prepared.meta);
+      }
+      const verified=intents&&(intents.answer||intents.facts?.length)&&intents.intent!=='quest-next'?intents:null;
+      // The NPC answer wins when it finds the person; otherwise a better understood answer wins.
+      const npcAll=talentFirst?null:resolveNpcLocation(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile,currentIndex:options.knowledge||this.knowledge.bundled,historicalPack:this.npcReference,liveFrame});
+      const npc=npcAll&&(npcAll.dto?.status==='found'||!verified?.answer||['npc-location','lore','rp'].includes(verified.intent))?npcAll:null;
+      if(npc){
+        if(signal.aborted)throw signal.reason;
+        this.memory.complete(token,input.prompt,npc.text);
+        if(!this.session.commit(prepared.token,{question:input.prompt,answer:npc.text,kind:'npc'}))throw Error('Provider response is no longer current.');
+        this.travel?.clear();return {text:npc.text,kind:'npc',npc:npc.dto,characterContext:localEvidence(npc.usesLive),conversation:prepared.meta};
+      }
+      // A travel route or a follow-up to an open trip stays with the travel planner.
+      const tripOpen=Boolean(this.travel?.trip?.pending);
+      const localAll=talentFirst?null:this.travel?.resolve(input.prompt,{profileId,shareProfile:input.shareProfile,liveFrame});
+      // The new answer only replaces a "where are you starting?" kind of clarification, or a trip
+      // the planner misread (a flight master in a town is a person, not a trip).
+      // A trip the planner fully recognized stays with it, even when it must ask (your faction, say).
+      const kept=['route','unavailable','same-place'].includes(localAll?.dto?.status)||Boolean(localAll?.dto?.status==='clarify'&&localAll?.dto?.origin&&localAll?.dto?.destination);
+      const local=localAll&&(kept||tripOpen||!verified?.answer)?localAll:null;
+      if(local){
+        if(signal.aborted)throw signal.reason;
+        this.memory.complete(token,input.prompt,local.text);
+        if(!this.session.commit(prepared.token,{question:input.prompt,answer:local.text,kind:'travel'}))throw Error('Provider response is no longer current.');
+        return {text:local.text,kind:'travel',characterContext:localEvidence(local.trip?.intent?.originSource==='live-location'),conversation:prepared.meta,travel:this.travel.commit(local)};
+      }
+      const directFact=verified?.facts?.length&&!verified.preferModel&&LOCAL_FACT_INTENTS.has(verified.intent)&&!needsSynthesis.test(input.prompt);
+      if(verified?.answer&&(!selected.model||directFact)){
+        if(signal.aborted)throw signal.reason;
+        this.memory.complete(token,input.prompt,verified.answer);
+        if(!this.session.commit(prepared.token,{question:input.prompt,answer:verified.answer,kind:'intent'}))throw Error('Provider response is no longer current.');
+        this.travel?.clear();return {text:verified.answer,kind:'intent',intent:verified.intent,characterContext:savedContext,conversation:prepared.meta};
+      }
       const advise=input.shareProfile&&this.advise?()=>this.advise(profileId):null;
       if(advise&&isNextQuestion(input.prompt)){
         const next=quickAnswer(input.prompt,{advise});
-        if(next)return finishQuick(next,replyContext());
+        if(next)return finishQuick(next,localEvidence(next.usedLive));
       }
       // No model chosen: answer the common questions locally (quest how-to, next steps, training).
       if(!selected.model){
-        const tools=createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow,planner:this.planner});
+        const tools=toolsFor(liveFrame);
         const quick=quickAnswer(input.prompt,{tools,live:liveFrame,talent,advise});
-        if(quick)return finishQuick(quick, replyContext());
+        if(quick)return finishQuick(quick, localEvidence(quick.usedLive));
         throw Error('Choose a model in Connections for AI questions. Local NPC locations, travel, quest how-to, next steps, training and talents need no model.');
       }
       let context=this.ai.profileContext(state,profileId,input.shareProfile,options);
@@ -160,7 +170,7 @@ class CompanionService {
       const factsText=input.shareProfile&&verified?.facts?.length?'Verified WoW Forever facts for this question:\n'+verified.facts.slice(0,8).map(f=>'- '+String(f).slice(0,400)).join('\n'):'';
       if(factsText&&!claudeSubscription)context=[factsText,context].filter(Boolean).join('\n\n');
       // Read-only local lookups (NPCs, quests, items, travel, character) the model may call.
-      const tools=this.lookups?createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow,planner:this.planner}):undefined;
+      const tools=this.lookups?toolsFor(liveNow,liveStatusNow):undefined;
       const request={model:selected.model,prompt:prepared.composedPrompt,context,signal,...(tools?{tools}:{})};
       let reply;
       if(selected.authMode==='subscription'&&input.provider!=='ollama'){

@@ -11,6 +11,16 @@ const pct = (v) => (Number.isFinite(v) ? (v * 100).toFixed(1) : "?");
 const QUEST = /\b(how (do|can|should|would) i( do| finish| complete| get| beat)?|how to (do|finish|complete)|help( me)? (with|on|for)|stuck (on|with)|what do i do (for|in|with|on)|where do i (go|find|get) .*(for|in) (the )?(quest )?)\b/;
 const NEXT = /\b(what (should|do|can) i do( next| now)?|what now|what next|where should i (level|go|quest)|next step|what to do next|where (do|should) i level)\b/;
 const isNextQuestion = (question) => /^(?:what (?:(?:quest|quests) )?should i do (?:next|now)|what next|what now|where should i (?:level|quest)(?: next)?)(?: in wow forever)?$/.test(norm(question));
+const isTurnInQuestion = (question) => /^(?:where|can|how|who|is|did|have)\b.*\b(?:turn(?:ed)? (?:\S+ ){0,8}in|hand(?:ed)? (?:\S+ ){0,8}in)\b/.test(norm(question));
+const COMPLETION_QUERY = /^(?:(?:have|do) i (?:already )?(?:have |completed? )?|did i (?:already )?complete )(.+?)(?: (?:already|completed?|yet))+$/;
+const isQuestProgressQuestion = (question) => {
+  if (isTurnInQuestion(question)) return true;
+  const q = norm(question);
+  if (COMPLETION_QUERY.test(q)) return true;
+  return /^(?:how|what|where|can|is)\b/.test(q) &&
+    /\b(?:this|my|current|tracked) quest\b/.test(q) &&
+    /\b(?:finished?|completed?|ready|objectives?)\b/.test(q);
+};
 const TRAIN = /\b(what (can|do|should) i (learn|train)|new (spells|skills|abilities)|when do i train|class trainer|where (is|s) my trainer|go train|training)\b/;
 const TONIGHT = /\b(tonight|this evening|plan (my|a|the|this) (session|night|evening|evening s play)|what should i play|who should i play|which (character|alt|toon) (should i|to) play|plan my play)\b/;
 // Words that are question scaffolding, not part of a quest title.
@@ -23,36 +33,86 @@ function questQuery(text) {
 }
 function lines(title, items) { return items.length ? `${title}\n${items.map((t) => `• ${t}`).join("\n")}` : ""; }
 
+function turnInLocation(receiver) {
+  if (!receiver) return "The turn-in NPC is missing from the Forever reference.";
+  const location = receiver.locations?.[0];
+  return `Go to ${receiver.name}${location ? ` in ${location.place || location.zone} around ${location.x}, ${location.y}` : ""}.`;
+}
+
 function questAnswer(question, { tools, live }) {
   const q = norm(question);
   const thisQuest = /\b(this|my|current|tracked) quest\b/.test(q);
   let id = null, title = null;
   if (thisQuest && live?.quest?.id) id = live.quest.id;
-  const query = questQuery(question);
+  const turnIn = isTurnInQuestion(question);
+  const query = turnIn && !/["“”]/.test(question)
+    ? q.replace(/^(?:where|can|how|who|is|did|have)\s+(?:(?:do|can|should|would|is)\s+)?(?:i\s+)?(?:already\s+)?/, "")
+      .replace(/^(?:turn(?:ed)?|hand(?:ed)?) (?:in )?/, "")
+      .replace(/\s+(?:yet|now|already)(?=\s|$)/g, "").replace(/\s+in(?: to)?(?: wow forever)?$/, "").replace(/^quest\s+(?=#?\d+$)/, "").trim()
+    : !/["“”]/.test(question) && q.match(COMPLETION_QUERY)?.[1] || questQuery(question);
+  if (thisQuest && !id && isQuestProgressQuestion(question))
+    return { text: "Which quest do you mean? Tell me its quest title or ID, or track it in game so the live link can identify it.", topic: "quest-clarify" };
   if (!id && query.length >= 3) {
     const found = tools.lookup("search_quests", { query });
     const rows = found?.quests || [];
-    // Prefer a quest in the player's log, then an exact title, then the best match.
-    const exact = rows.find((r) => norm(r.title) === norm(query));
-    const pick = rows.find((r) => r.inPlayersQuestLog && (norm(r.title).includes(norm(query)) || norm(query).includes(norm(r.title)))) || exact || (rows.length === 1 ? rows[0] : null) || rows.find((r) => r.inPlayersQuestLog);
+    // An active quest disambiguates duplicate titles and partial searches.
+    const exact = rows.filter((r) => norm(r.title) === norm(query));
+    const candidates = exact.length ? exact : rows;
+    const pick = candidates.find((r) => r.inPlayersQuestLog) || (candidates.length === 1 ? candidates[0] : null);
     if (pick) { id = pick.id; title = pick.title; }
-    else if (rows.length > 1) return { text: `I found several quests matching “${query}”:\n${rows.slice(0, 5).map((r) => `• ${r.title} (level ${r.questLevel ?? "?"})`).join("\n")}\nAsk again with the exact title, for example: how do I do “${rows[0].title}”?`, kind: "quick", topic: "quest-choices" };
+    else if (candidates.length > 1) {
+      if (turnIn && /^(?:where|who)\b/.test(q) && exact.length && rows.length < 10) {
+        const receivers = exact.map(({ id: questId }) => tools.lookup("get_quest", { quest_id: questId })?.turnIns);
+        const npc = receivers[0]?.[0];
+        if (npc && receivers.every((npcs) => npcs?.length === 1 && npcs[0].id === npc.id))
+          return { text: `**${exact[0].title}**\n\nThe recorded steps with this title share a turn-in. ${turnInLocation(npc)}`, topic: "quest-turnin" };
+      }
+      return { text: `I found several quests matching “${query}”:\n${candidates.slice(0, 5).map((r) => `• ${r.title} (level ${r.questLevel ?? "?"}, #${r.id})`).join("\n")}\nTell me the quest ID so I can check the right step.`, topic: "quest-choices" };
+    }
   }
   if (!id) return null;
   const d = tools.lookup("get_quest", { quest_id: id });
-  if (!d || d.status === "not-found" || d.status === "invalid" || d.status === "unavailable") return null;
+  if (!d || d.status === "invalid" || d.status === "unavailable") return null;
+  if (d.status === "not-found" && !d.playerProgress?.inQuestLog && !d.playerProgress?.turnedIn)
+    return thisQuest && live?.quest?.id === id ? { text: `The Live Link reported quest #${id}. I don't have a local record for its steps or turn-in yet.`, topic: "quest", usedLive: true } : null;
   title = d.title || title || `Quest ${id}`;
   const out = [`**${title}**${d.questLevel ? ` (level ${d.questLevel})` : ""}`];
-  if (d.playerProgress?.readyToTurnIn) out.push(`It's complete: ${d.playerProgress.nextStep || "hand it in to the quest giver."}`);
+  const progress = d.playerProgress;
+  const usedLive = (thisQuest && live?.quest?.id === id) || progress?.source === "live-quest-log" || progress?.source === "live-turn-in";
+  const result = () => ({ text: out.filter(Boolean).join("\n\n"), kind: "quick", topic: turnIn && !thisQuest ? "quest-turnin" : "quest", questId: id, usedLive });
+  const progressLabel = progress?.source === "live-turn-in" ? "Live turn-in history"
+    : progress?.source === "live-quest-log" ? "Live quest log" : "Last saved quest log";
+  if (progress?.turnedIn) {
+    out.push(`${progressLabel} · Already turned in.`);
+    return result();
+  }
+  const receiver = d.turnIns?.[0];
+  const turnInPoint = turnInLocation(receiver);
+  if (progress?.readyToTurnIn) {
+    out.push(`${progressLabel} · Ready to turn in. ${turnInPoint}`);
+    return result();
+  }
+  if (turnIn) {
+    if (progress?.inQuestLog) out.push(`${progressLabel} · The remaining objectives need to be finished before you can turn it in.`);
+    else if (progress?.source === "live-quest-log") out.push("Live quest log · This quest isn't listed as active.");
+    out.push(receiver ? `Turn-in reference · ${turnInPoint}` : turnInPoint);
+    if (d.objectiveText && progress?.inQuestLog) out.push(d.objectiveText);
+    return result();
+  }
+  if (progress?.inQuestLog) out.push(`${progressLabel} · In progress.`);
+  if (d.status === "not-found") {
+    out.push("This quest's objectives are missing from the Forever reference.");
+    return result();
+  }
   const how = d.howToDoIt || [];
   if (how.length) out.push(lines("How to do it:", how));
   else if (d.objectiveText) out.push(`Objective: ${d.objectiveText}`);
   if (d.questSays?.length) out.push(`The quest says: “${d.questSays.join(" ")}”`);
   const giver = d.givers?.[0], loc = giver?.locations?.[0];
-  if (!d.playerProgress?.inQuestLog && giver) out.push(`Pick it up from ${giver.name}${loc ? ` in ${loc.zone || "the zone"} around ${loc.x ?? "?"}, ${loc.y ?? "?"}` : ""}.`);
+  if (!progress?.inQuestLog && giver) out.push(`Quest giver · ${giver.name}${loc ? ` in ${loc.zone || "the zone"} around ${loc.x}, ${loc.y}` : ""}.`);
   if (d.howToBasis?.length) out.push(`Based on ${d.howToBasis.join(", ")}.`);
   out.push("Open it on the Quests page for the map, rewards and the best pick for your class.");
-  return { text: out.filter(Boolean).join("\n\n"), kind: "quick", topic: "quest", questId: id };
+  return result();
 }
 
 function nextAnswer(advice) {
@@ -67,7 +127,7 @@ function nextAnswer(advice) {
   if (!steps.length) return null;
   out.push(lines("Suggested next steps", steps));
   out.push(`${c.live ? "Live position" : "Saved position when available"} · ${log.live ? "Live quest log" : log.known === false ? "Quest log unavailable" : "Last saved quest log"}. Open Now for destination evidence and maps.`);
-  return { text: out.join("\n\n"), kind: "quick", topic: "next" };
+  return { text: out.join("\n\n"), kind: "quick", topic: "next", usedLive: Boolean(c.live || log.live || log.liveCompleted?.length) };
 }
 
 // 1.4 (J16): "I have 90 minutes", "an hour", "2 hours", "half an hour" -> minutes (10 to 600).
@@ -159,4 +219,4 @@ function quickAnswer(question, { tools = null, advise = null, live = null, talen
   return null;
 }
 const QUICK_HELP = "Without an AI model I can still answer right away: “how do I do <quest name>?”, “what should I do next?”, “what should I do tonight?”, “what do I train?”, “what does <talent> do?”, “what talents should I take?”, “how many talent points at level 20?”, “where is <NPC>?” and “how do I get to <place>?”. For anything else, turn on an AI model in Settings → Connections.";
-module.exports = { quickAnswer, isNextQuestion, questQuery, tonightAnswer, QUICK_HELP, minutesIn };
+module.exports = { quickAnswer, isNextQuestion, isQuestProgressQuestion, questAnswer, questQuery, tonightAnswer, QUICK_HELP, minutesIn };

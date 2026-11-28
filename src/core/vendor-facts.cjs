@@ -6,7 +6,7 @@ const { latinName } = require("./latin-name.cjs");
 const FILES = Object.freeze(["vendors.json", "npcs.json", "creatures.json"]);
 // Compiled (merged) pack bound. Raw single-file inputs have their own, larger bound:
 // the 70790/70862 creatures.json files are ~1.1 MB each.
-const MAX_BYTES = 1024 * 1024, RAW_MAX_BYTES = 2 * 1024 * 1024, RAW_BUILD_TOTAL = 4 * 1024 * 1024, MAX_BUILDS = 16;
+const MAX_BYTES = 1024 * 1024, RAW_MAX_BYTES = 2 * 1024 * 1024, RAW_BUILD_TOTAL = 4 * 1024 * 1024, MAX_BUILDS = 18;
 const BUILD_RE = /^1\.60\.1\.\d{1,8}$/;
 const LISTING_KEY = /^item:[1-9]\d*(?:#(?:[2-9]|[1-9]\d+))?$/;
 const LIMITATION = "Historical listings and approximate interaction points; current stock, price and access are unverified. No observation does not mean unobtainable.";

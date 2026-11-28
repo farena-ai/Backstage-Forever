@@ -1,10 +1,11 @@
 Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
 License: https://creativecommons.org/licenses/by/4.0/
 Source: https://github.com/JIVESCORP/eg-link-output-wowf
-Immutable source commit: 423d6c9645cd102406782e7400805a7c738e2d69
-Product wowf; merged builds (newest first) 1.60.1.71037, 1.60.1.70959, 1.60.1.70938,
+Immutable source commit: 62b0bbc6786fb719ace03c57b39f3255e908f06f
+Product wowf; merged builds (newest first) 1.60.1.71139, 1.60.1.71091,
+1.60.1.71037, 1.60.1.70959, 1.60.1.70938,
 1.60.1.70888, 1.60.1.70862, 1.60.1.70840,
-1.60.1.70790. Collected November 4–23, 2026.
+1.60.1.70790. Collected November 4–28, 2026.
 
 Backstage Forever normalization changes: separately compiled bounded quest
 sharing counts, starting-item IDs, static durations, reported item/count drops,

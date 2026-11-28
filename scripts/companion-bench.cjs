@@ -55,7 +55,7 @@ function routeOf(r) {
   if (r.kind === "npc") return r.npc?.status === "found" ? "npc-location" : "clarify";
   if (r.kind === "travel") return r.travel?.status === "route" ? "travel" : "clarify";
   if (r.kind === "intent") return { role: "role", "turnin-which": "clarify", place: "npc-location", profession: "trainer", recipe: "recipe", creature: "creature" }[r.intent] || r.intent;
-  if (r.kind === "quick") return { train: "trainer", next: "quest-next", tonight: "quest-next", quest: "quest-info", "quest-choices": "quest-info", "dungeon-facts": "dungeon" }[r.topic] || "quick:" + r.topic;
+  if (r.kind === "quick") return { train: "trainer", next: "quest-next", tonight: "quest-next", quest: "quest-info", "quest-turnin": "quest-turnin", "quest-clarify": "clarify", "quest-choices": "quest-info", lore: "lore", "dungeon-facts": "dungeon" }[r.topic] || "quick:" + r.topic;
   return r.kind;
 }
 const norm = (s) => String(s || "").toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, " ");
