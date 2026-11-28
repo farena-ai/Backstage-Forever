@@ -6,7 +6,7 @@ const {ConversationSession}=require('./companion-conversation.cjs');
 const {resolveNpcLocation}=require('./npc-location.cjs');
 const {uuid}=require('./memory-data.cjs');
 const {createCompanionTools}=require('./companion-tools.cjs');
-const {quickAnswer}=require('./quick-answers.cjs');
+const {quickAnswer,isNextQuestion}=require('./quick-answers.cjs');
 const {workshopQuestion,workshopAnswer}=require('./companion-workshop.cjs');
 const {dungeonQuestion,dungeonAnswer,dungeonFactsQuestion,dungeonFactsAnswer}=require('./companion-dungeon.cjs');
 const {resolve:resolveIntent}=require('./companion-intents.cjs');
@@ -14,6 +14,8 @@ const {resolveTalentQuestion,talentBlock,talentQuickAnswer,TALENT_MAX}=require('
 const { matchingLiveFrame, characterContext } = require('./character-freshness.cjs');
 // Providers accept at most this much context text (ChatGPT subscription limit).
 const CONTEXT_LIMIT=20000;
+const LOCAL_FACT_INTENTS = new Set(['place','npc-location','trainer','role','vendor','item-source','recipe','drops','creature','gather','quest-info','quest-turnin','turnin-which','class-unlock']);
+const needsSynthesis = /\b(?:compare|pros and cons|help me (?:decide|choose|plan)|how (?:much|many)|which [^?.!]{1,180} should i (?:choose|use|play)|and\s+(?:what|which|where|how|should|can|tell|show)\b)|\?\s*\S/i;
 // These events cancel work/drafts without changing completed conversation ownership.
 const SOFT_REASONS=new Set(['renderer-context','response-stop','memory-save']);
 class CompanionService {
@@ -83,8 +85,7 @@ class CompanionService {
         // No class to answer for (ask, no AI call) or a pure points-per-level question: answered here.
         return finishQuick(talentQuickAnswer(talent));
       }
-      // 0.58: understand the request and answer from WoW Forever's own data. With no model the answer
-      // is returned as is; with a model its verified facts go into the model's context instead.
+      // A direct factual reply stays sourced. Requests that benefit from a model can use the facts as context.
       let intents=null;
       if(!talentFirst){try{intents=resolveIntent(prepared.questionForEvidence,{profile,shareProfile:input.shareProfile});}catch{intents=null;}}
       // The old dungeon classifier and its Atlas-derived travel destination are detection only.
@@ -116,7 +117,8 @@ class CompanionService {
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:local.text,kind:'travel'}))throw Error('Provider response is no longer current.');
         return {text:local.text,kind:'travel',characterContext:savedContext,conversation:prepared.meta,travel:this.travel.commit(local)};
       }
-      if(verified?.answer&&!selected.model){
+      const directFact=verified?.facts?.length&&!verified.preferModel&&LOCAL_FACT_INTENTS.has(verified.intent)&&!needsSynthesis.test(input.prompt);
+      if(verified?.answer&&(!selected.model||directFact)){
         if(signal.aborted)throw signal.reason;
         this.memory.complete(token,input.prompt,verified.answer);
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:verified.answer,kind:'intent'}))throw Error('Provider response is no longer current.');
@@ -134,10 +136,15 @@ class CompanionService {
       const liveNow = () => liveStatusNow()?.frame || null;
       const liveFrame = liveNow();
       const replyContext = () => characterContext(profile, usedLive, input.shareProfile, checkedAt);
+      const advise=input.shareProfile&&this.advise?()=>this.advise(profileId):null;
+      if(advise&&isNextQuestion(input.prompt)){
+        const next=quickAnswer(input.prompt,{advise});
+        if(next)return finishQuick(next,replyContext());
+      }
       // No model chosen: answer the common questions locally (quest how-to, next steps, training).
       if(!selected.model){
         const tools=createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow,planner:this.planner});
-        const quick=quickAnswer(input.prompt,{tools,live:liveFrame,talent,advise:input.shareProfile&&this.advise?()=>this.advise(profileId):null});
+        const quick=quickAnswer(input.prompt,{tools,live:liveFrame,talent,advise});
         if(quick)return finishQuick(quick, replyContext());
         throw Error('Choose a model in Connections for AI questions. Local NPC locations, travel, quest how-to, next steps, training and talents need no model.');
       }

@@ -4,6 +4,7 @@ const { createHash } = require("node:crypto");
 const {
   COMMIT,
   BUILD,
+  REVIEWED_ON,
   INPUTS,
   SOURCES,
   CITIES,
@@ -11,20 +12,22 @@ const {
   MASTERS,
   FLIGHTS,
   TRANSPORTS,
-  ROAD_STEPS,
+  ZONES,
+  ROADS,
 } = require("./travel-sources.cjs");
 const PACK_BYTES = 256 * 1024,
   INPUT_BYTES = 4 * 1024 * 1024,
   TOTAL_BYTES = 5 * 1024 * 1024;
 // Updating evidence requires deliberate review of this canonical compiled identity.
 const PINNED_PACK = {
-  bytes: 12514,
-  sha256: "6c9f49c58cad59056243fa4f8ffdab3a034504735143601f58b22c90127a6dbe",
+  bytes: 14315,
+  sha256: "f59bba36559ed9082065652ff10ec83a7264e4c48cd095b040423b65ca210105",
 };
 const fail = (reason) => {
   throw Error("Travel reference: " + reason);
 };
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const roadRecord = ({ id, from, to, faction, sourceIds, steps }) => ({ id, from, to, mode: "road", faction, scope: "published-forever-guidance", sourceIds: [...sourceIds], steps: [...steps] });
 function record(value, required, optional = []) {
   if (
     !value ||
@@ -110,7 +113,7 @@ function validateTravelReference(p) {
     p.product !== "wowf" ||
     p.build !== BUILD ||
     p.commit !== COMMIT ||
-    p.reviewedOn !== "2026-11-10"
+    p.reviewedOn !== REVIEWED_ON
   )
     fail("schema/provenance mismatch");
   date(p.reviewedOn);
@@ -120,7 +123,7 @@ function validateTravelReference(p) {
     if (!known || !isDeepStrictEqual(s, known))
       fail("source provenance mismatch");
     date(s.reviewedOn);
-    date(s.publishedOn || s.observedOn);
+    if (s.publishedOn || s.observedOn) date(s.publishedOn || s.observedOn);
   }
   unique(p.sources.map((s) => s.id));
   const refs = (ids) => {
@@ -140,7 +143,7 @@ function validateTravelReference(p) {
     );
     id(n.id);
     text(n.label, 100);
-    if (!["city", "transport-endpoint"].includes(n.kind)) fail("node kind");
+    if (!["city", "transport-endpoint", "zone"].includes(n.kind)) fail("node kind");
     list(n.aliases, 4, 1);
     refs(n.sourceIds);
     for (const a of n.aliases) {
@@ -154,7 +157,7 @@ function validateTravelReference(p) {
         !p.nodes.some((c) => c.id === n.cityId && c.kind === "city"))
     )
       fail("unknown endpoint city");
-    if (n.kind === "city" && n.cityId) fail("unexpected city reference");
+    if (n.kind !== "transport-endpoint" && n.cityId) fail("unexpected city reference");
     if (n.position) position(n.position);
     if (n.flightMaster) {
       record(n.flightMaster, ["npcId", "taxiNode", "name", "questId"]);
@@ -267,12 +270,7 @@ function validateTravelReference(p) {
     fact(i, ["steps"]);
     list(i.steps, 12, 1);
     i.steps.forEach((s) => text(s));
-    if (
-      i.mode !== "road" ||
-      i.from !== "orgrimmar" ||
-      i.to !== "thunder-bluff" ||
-      i.scope !== "published-forever-guidance"
-    )
+    if (!ROADS.some((road) => isDeepStrictEqual(i, roadRecord(road))))
       fail("unsupported itinerary");
   }
   unique([...p.edges, ...p.negatives, ...p.itineraries].map((f) => f.id));
@@ -358,6 +356,7 @@ function compileTravelReference(inputs) {
       sourceIds: ["E4"],
     })),
   );
+  nodes.push(...ZONES.map(([id, label, aliases]) => ({ id, label, kind: "zone", aliases: [...aliases], sourceIds: ["E5", "E6"] })));
   const edges = FLIGHTS.map((rawKey) => {
     const [a, b] = rawKey.split(">").map(Number),
       r = f.routes[rawKey],
@@ -431,7 +430,7 @@ function compileTravelReference(inputs) {
     product: "wowf",
     build: BUILD,
     commit: COMMIT,
-    reviewedOn: "2026-11-10",
+    reviewedOn: REVIEWED_ON,
     sources: structuredClone(SOURCES),
     nodes,
     edges,
@@ -447,18 +446,7 @@ function compileTravelReference(inputs) {
         text: "The published Forever guides state there is no direct Orgrimmar to Thunder Bluff zeppelin. Other Horde zeppelin routes are documented.",
       },
     ],
-    itineraries: [
-      {
-        id: "org-tb-road",
-        from: "orgrimmar",
-        to: "thunder-bluff",
-        mode: "road",
-        faction: "Horde",
-        scope: "published-forever-guidance",
-        sourceIds: ["E2", "E3"],
-        steps: [...ROAD_STEPS],
-      },
-    ],
+    itineraries: ROADS.map(roadRecord),
   };
   const bytes = JSON.stringify(pack) + "\n";
   loadTravelReference(bytes);

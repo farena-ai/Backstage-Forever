@@ -26,6 +26,23 @@ function intent(q, options = {}) {
 function trip(q, profile = matching) {
   return api().planTravel(reference, intent(q, { profile }), { profile });
 }
+test("natural walking phrases preserve the place names and restrict routes to road", () => {
+  for (const q of ["How do I walk from TB to Stonetalon?", "How do you get to Stonetalon Mountains from Thunder Bluff on foot?", "from TB, how can I get to Stonetalon on foot in WoW Forever?", "Mulgore to Stonetalon by foot", "Thunder Bluff to Stonetalon (on foot) in WoW: Forever please", "Thunder Bluff to Stonetalon on foot in World of Warcraft: Forever"]) {
+    const parsed = intent(q);
+    assert.equal(parsed?.status, "ready", q);
+    assert.equal(parsed.destinationId, "stonetalon-mountains", q);
+    assert.equal(parsed.mode, "road", q);
+    assert.deepEqual(trip(q).options.map(o => o.mode), ["road"], q);
+  }
+  assert.equal(intent("How do you get to Thunder Bluff from Stonetalon on foot?").originId, "stonetalon-mountains");
+  assert.equal(trip("Walk from org to uc").status, "uncovered");
+  assert.match(trip("Walk from org to uc").text, /walking route/i);
+  for (const [question, mode] of [["How do I get from TB to Stonetalon by boat?", "boat"], ["Fly from TB to Stonetalon", "flight"]]) {
+    assert.equal(intent(question).mode, mode);
+    assert.equal(trip(question).status, "uncovered");
+    assert.deepEqual(trip(question).options, []);
+  }
+});
 test("Org to TB fastest question gives conditional Doras flight, road and scoped zeppelin correction", () => {
   const i = intent("what is the fastest way from org to tb");
   assert.equal(i.status, "ready");

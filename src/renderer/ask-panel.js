@@ -6,7 +6,7 @@
   const api = window.askPanel, root = document.querySelector("[data-ask-panel]");
   if (!api || !root) return;
   const $ = (sel) => root.querySelector(sel);
-  const SOURCE = { travel: "Forever travel reference · offline", npc: "Forever NPC reference · offline", quick: "Companion · offline answer", scope: "Companion", ai: "Companion · AI suggestion" };
+  const SOURCE = { travel: "Forever travel reference · offline", npc: "Forever NPC reference · offline", quick: "Companion · offline answer", intent: "Forever game reference · offline", scope: "Companion", ai: "Companion · AI suggestion" };
   const input = $("[data-ap-input]"), form = $("[data-ap-form]"), list = $("[data-ap-log]"), body = $("[data-ap-body]");
   let typing = 0, draft = 0, sending = false, revision = -1;
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };

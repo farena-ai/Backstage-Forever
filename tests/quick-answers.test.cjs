@@ -33,6 +33,16 @@ test("what should I do next uses the Now advice", () => {
   assert.equal(a.topic, "next");
   assert.match(a.text, /Level in The Barrens/);
 });
+test("what quest should I do next uses the character's location and labels missing hand-ins", () => {
+  const a = quickAnswer("What quest should I do next?", { advise: () => ({ status: "ok",
+    character: { name: "Vael", level: 16, live: true, position: { mapId: 1413, x: .52, y: .3 } },
+    log: { live: false, ready: [{ id: 9, title: "Ready quest", turnIn: null }] },
+    next: { name: "The Barrens", mapId: 1413, min: 10, max: 30 },
+  }) });
+  assert.match(a.text, /Hand in Ready quest.*Hand-in location not recorded/s);
+  assert.match(a.text, /Live position.*Last saved quest log/s);
+  assert.doesNotMatch(a.text, /undefined|probably at/i);
+});
 test("what do I train names the trainer and spells", () => {
   const a = quickAnswer("what can I learn at my trainer", setup(hunter));
   assert.equal(a.topic, "train");

@@ -568,12 +568,13 @@
           [
             "55.9, 47.5",
             "55.9,47.5",
+            "55.8, 48.3",
             "56, 47"
           ]
         ],
         "faction": "Alliance"
       },
-      "evidence": "data/forever/pack.json npcs[\"npc:1573\"] Gryth Thurden side=Alliance mapId 1455 (Ironforge) x=0.5588 y=0.4746 (also data/forever-npc-locations/pack.json npcs[114]); src/core/flight-masters.cjs MASTERS[1573] Gryth Thurden taxi node 6"
+      "evidence": "data/forever/pack.json npcs[\"npc:1573\"] Gryth Thurden, Alliance, Ironforge map 1455, includes observed points 0.5588,0.4746 and 0.5581,0.4825; the NPC location pack also records them. src/core/flight-masters.cjs maps NPC 1573 to taxi node 6."
     },
     {
       "id": "trainer-01",

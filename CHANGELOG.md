@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.29.5 - More reliable Companion answers
+
+- Companion respects walking requests, covers the northern Mulgore road to Stonetalon, and keeps sourced factual answers local even when an AI model is connected. See the [release notes](docs/releases/1.29.5.md).
+
 ## 1.29.4 - Nearby quest loops and clearer next steps
 
 - Now explains your highest-priority action, World Map plans nearby quest loops and shows destination evidence, and Mini Now stays focused on the current step. Missing locations can be reported through Desk. See the [release notes](docs/releases/1.29.4.md).

@@ -57,7 +57,9 @@ test("bounded shipped pack validates with six independent flights and original o
   );
   assert.equal(p.negatives.length, 1);
   assert.equal(p.negatives[0].from, "orgrimmar");
-  assert.equal(p.itineraries.length, 1);
+  assert.deepEqual(p.itineraries.map(({ from, to }) => [from, to]), [
+    ["orgrimmar", "thunder-bluff"], ["thunder-bluff", "stonetalon-mountains"], ["mulgore", "stonetalon-mountains"],
+  ]);
   assert.equal(hasResearchOnlyMaster(p.nodes), false);
   assert.ok(!JSON.stringify(p).includes("worldX"));
 });

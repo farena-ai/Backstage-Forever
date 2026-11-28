@@ -2,6 +2,7 @@
 // Immutable provenance and original factual curation; no guide prose is redistributed.
 const COMMIT = "23f9636486d3d60479dc0bcee2356053c33faf2c";
 const BUILD = "1.60.1.70862";
+const REVIEWED_ON = "2026-11-28";
 const INPUTS = [
   {
     name: "flights.json",
@@ -115,6 +116,18 @@ const SOURCES = [
     license: "All rights reserved; original factual curation only",
     reviewedOn: "2026-11-10",
   },
+  {
+    product: "wowf", id: "E5", publisher: "Kiljó Kitten",
+    url: "https://www.youtube.com/watch?v=6PXvjnhyKgU",
+    scope: "published-forever-guidance", license: "Original factual curation only",
+    reviewedOn: REVIEWED_ON,
+  },
+  {
+    product: "wowf", id: "E6", publisher: "Clan Camp Gaming",
+    url: "https://clancamp.gg/wow/forever/zones/camp-gevrek-17223",
+    observedOn: "2026-11-10", scope: "published-forever-guidance",
+    license: "Original factual curation only", reviewedOn: REVIEWED_ON,
+  },
 ];
 
 const CITIES = [
@@ -137,6 +150,10 @@ const ENDPOINTS = [
   ["auberdine-dock", "Auberdine dock", "auberdine"],
   ["stormwind-tram", "Stormwind tram entrance", "stormwind"],
   ["ironforge-tram", "Ironforge tram entrance", "ironforge"],
+];
+const ZONES = [
+  ["mulgore", "Mulgore", ["mulgore"]],
+  ["stonetalon-mountains", "Stonetalon Mountains", ["stonetalon mountains", "stonetalon"]],
 ];
 const MASTERS = [
   {
@@ -182,6 +199,18 @@ const ROAD_STEPS = [
   "Turn west through the pass into Mulgore toward Bloodhoof Village.",
   "Head north toward the base of Thunder Bluff and use the lifts to reach the city.",
 ];
+const STONETALON_STEPS = [
+  "In northern Mulgore, look for the Camp Gev'rek signpost near 37.5, 14.3 on the Mulgore map. That point is the fork, not the zone border.",
+  "Follow the sign for Stonetalon Mountains through the hills at Gloomrise into southern Stonetalon. Stay on the trail and watch for hostile spiders in the area.",
+];
+const ROADS = [
+  { id: "org-tb-road", from: "orgrimmar", to: "thunder-bluff", faction: "Horde", sourceIds: ["E2", "E3"], steps: ROAD_STEPS },
+  { id: "tb-stonetalon-road", from: "thunder-bluff", to: "stonetalon-mountains", faction: "neutral", sourceIds: ["E2", "E3", "E5", "E6"], steps: [
+    "Take one of the Thunder Bluff lifts down to Mulgore, then head northwest across the plains toward the hills.",
+    ...STONETALON_STEPS,
+  ] },
+  { id: "mulgore-stonetalon-road", from: "mulgore", to: "stonetalon-mountains", faction: "neutral", sourceIds: ["E5", "E6"], steps: STONETALON_STEPS },
+];
 function freeze(value) {
   if (value && typeof value === "object") {
     Object.values(value).forEach(freeze);
@@ -192,6 +221,7 @@ function freeze(value) {
 module.exports = freeze({
   COMMIT,
   BUILD,
+  REVIEWED_ON,
   INPUTS,
   SOURCES,
   CITIES,
@@ -199,5 +229,6 @@ module.exports = freeze({
   MASTERS,
   FLIGHTS,
   TRANSPORTS,
-  ROAD_STEPS,
+  ZONES,
+  ROADS,
 });
