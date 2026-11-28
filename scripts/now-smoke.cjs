@@ -272,6 +272,12 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
       }
     }
     await page.locator('[data-nav="now"]').first().click();
+    // Emulate an open game refreshing its strip between clicks. The lone synthetic
+    // frame would otherwise expire while Now's four-second refresh is throttled.
+    await app.evaluate(() => {
+      const bridge = liveFixture.bridge;
+      bridge.now = () => bridge.frame?.receivedAt ?? Date.now();
+    });
     const ready = [{ id: 844, complete: true }, { id: 845, complete: true }];
     await frame({ seq: 7, questLog: ready, turnedIn: [] });
     await page.locator('[data-now-loop-action="start"]').click();
