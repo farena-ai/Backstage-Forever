@@ -330,6 +330,7 @@ function understand(question, { profile = null, data = loadData() } = {}) {
   else if (who && npc && (!item || npc.gram.length >= item.gram.length) && !/\b(drop|drops|farm|loot)\b/.test(q)) out.intent = "npc-location";
   else if (RX.next.test(q)) out.intent = "quest-next";
   else if (quest && (RX.quest.test(q) || who || /\bwhat(?:'s| is)\b/.test(q))) out.intent = "quest-info";
+  else if (who && place && placeLike(subj)) out.intent = "place";
   else if (who && someone()) { out.intent = "npc-location"; out.npc = someone(); }
   else if (who && beast()) { out.intent = "creature"; out.creature = beast(); }
   else if (who && place) out.intent = "place";
@@ -514,7 +515,7 @@ function answerTravel(u, { profile, data }) {
   const fm = h ? flightNear({ ...(profile || {}), location: h }, data) : null;
   const lines = [`${dest}${destZone && destZone !== dest && !u.dungeon ? ` is in ${destZone}` : ""}.`];
   if (h && zoneOf(h.mapId) === destZone && !ends.origin) lines.push("You're already in that zone.");
-  else if (fm) lines.push(`${ends.origin ? `From ${ends.origin}, the` : "Your nearest"} flight master is ${fm.name} in ${where(fm.positions.find((p) => p.mapId === h.mapId), ends.origin ? null : h)}; fly toward ${destZone} if you have that flight path, otherwise ride there.`);
+  else if (fm) lines.push(`I don't have directions to ${destZone} in the Forever reference. ${ends.origin ? `From ${ends.origin}, the` : "Your nearest"} recorded flight master is ${fm.name} in ${where(fm.positions.find((p) => p.mapId === h.mapId), ends.origin ? null : h)}. Check the flight map for connections you have unlocked.`);
   else return null;
   return { text: lines.join(" "), facts: [lines.join(" ")] };
 }
@@ -646,13 +647,15 @@ function answerTransport(u, { profile }) {
   const all = ref.edges.filter((e) => e.mode !== "flight" && served(e) && want.test(e.mode.replace("ship", "boat")));
   const edges = all.filter((e) => !faction || !e.faction || e.faction === faction);
   if (!edges.length && all.length && faction) { const other = all[0].faction; const text = `The ${all[0].mode} from ${label(all[0].from)} to ${label(all[0].to)} is a ${other} route. As ${faction} you'd be boarding in hostile territory, so take your own faction's way instead.`; return { text, facts: [text] }; }
-  if (!edges.length && /\b(zeppelin|boat|ship|tram)\b/.test(slang(u.q))) { const mode = slang(u.q).match(/\b(zeppelin|boat|ship|tram)\b/)[1]; const text = `There's no ${mode} to ${dest} in the travel reference${ends.origin ? ` from ${ends.origin}` : ""}. Fly there if you have the flight path, otherwise ride.`; return { text, facts: [text] }; }
+  if (!edges.length && /\b(zeppelin|boat|ship|tram)\b/.test(slang(u.q))) { const mode = slang(u.q).match(/\b(zeppelin|boat|ship|tram)\b/)[1]; const text = `There's no ${mode} to ${dest} in the travel reference${ends.origin ? ` from ${ends.origin}` : ""}.`; return { text, facts: [text] }; }
   if (!edges.length) return null;
   // Prefer a departure on the player's own continent.
   const fromOrigin = (e) => (ends.origin && STOPS[e.from]?.serves.some((x) => loose(x) === loose(ends.origin)) ? 1 : 0);
   edges.sort((a, b) => fromOrigin(b) - fromOrigin(a) || (STOPS[b.from]?.k === onK ? 1 : 0) - (STOPS[a.from]?.k === onK ? 1 : 0));
   const e = edges[0], how = (e.steps || [])[0] || "";
-  const text = `Take the ${e.mode} from ${label(e.from)} to ${label(e.to)}${STOPS[e.to] ? ` (${STOPS[e.to].serves.join(", ")})` : ""}. ${how}`.trim();
+  const matchingOrigin = fromOrigin(e);
+  const prefix = ends.origin && !matchingOrigin ? `I don't have the approach from ${ends.origin}. A documented segment is the` : "Check in game for the";
+  const text = `${prefix} ${e.mode} from ${label(e.from)} to ${label(e.to)}${STOPS[e.to] ? ` (${STOPS[e.to].serves.join(", ")})` : ""}. ${how}`.trim();
   return { text, facts: [text] };
 }
 function answerTravelPlan(u, { profile, data }) {
@@ -665,6 +668,10 @@ function answerTravelPlan(u, { profile, data }) {
   if (startPt && destPt && startPt.mapId === destPt.mapId && Number.isFinite(destPt.x) && !/\b(zeppelin|boat|ship|tram)\b/.test(slang(u.q))) {
     const text = `${ends.dest} is ${where(destPt, startPt).replace(/^[^,]+, /, "in ")}.`.replace(/ \(([a-z-]+) of you\)/, " ($1 of you)");
     return { text, facts: [text] };
+  }
+  if (trip?.mode === "road") {
+    const plan = planTravel(readJson("data/forever-travel/pack.json"), trip, { profile });
+    return plan.status === "route" ? { text: plan.text, facts: [plan.text.split("\n").slice(0, 7).join(" ")] } : null;
   }
   const transportDest = ["Undercity", "Tirisfal Glades", "Stranglethorn Vale", "Grom'gol Base Camp", "Darkshore", "Auberdine", "Ironforge", "Dun Morogh", "Stormwind City", "Orgrimmar", "Durotar"].includes(ends.dest);
   const crossSea = startPt && destPt && KALIMDOR.has(startPt.mapId) !== KALIMDOR.has(destPt.mapId);

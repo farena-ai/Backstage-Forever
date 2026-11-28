@@ -97,10 +97,29 @@
       "scope": "published-forever-guidance-prelaunch",
       "license": "All rights reserved; original factual curation only",
       "reviewedOn": "2026-11-10"
+    },
+    {
+      "product": "wowf",
+      "id": "E5",
+      "publisher": "Kiljó Kitten",
+      "url": "https://www.youtube.com/watch?v=6PXvjnhyKgU",
+      "scope": "published-forever-guidance",
+      "license": "Original factual curation only",
+      "reviewedOn": "2026-11-28"
+    },
+    {
+      "product": "wowf",
+      "id": "E6",
+      "publisher": "Clan Camp Gaming",
+      "url": "https://clancamp.gg/wow/forever/zones/camp-gevrek-17223",
+      "observedOn": "2026-11-10",
+      "scope": "published-forever-guidance",
+      "license": "Original factual curation only",
+      "reviewedOn": "2026-11-28"
     }
   ],
   "compiled": {
-    "bytes": 12514,
-    "sha256": "6c9f49c58cad59056243fa4f8ffdab3a034504735143601f58b22c90127a6dbe"
+    "bytes": 14315,
+    "sha256": "f59bba36559ed9082065652ff10ec83a7264e4c48cd095b040423b65ca210105"
   }
 }

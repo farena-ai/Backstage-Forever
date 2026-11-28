@@ -112,6 +112,16 @@ const {testWindow}=require('./test-window.cjs');const {defaultState}=require('..
   // Quick answers need no model: quest how-to comes straight from the app's own data.
   await send('how do I do "Raptor Thieves"?');await page.locator('#chatlog .message.assistant').last().getByText(/How to do it/).waitFor();assert.match(await page.locator('#chatlog .message.assistant').last().innerText(),/Gazrog/);
   await call('saveProvider',{provider:'ollama',model:'fixture',endpoint:'http://127.0.0.1:11434',authMode:'api'});await page.waitForFunction(()=>document.querySelector('#chatlog').textContent==='');await page.reload();await open();
+  const beforeFacts=await app.evaluate(()=>travelFixture.calls.length);
+  await send('from thunder bluff on foot how do you get to stonetalon mountains in wow forever');
+  const walking=page.locator('[data-travel-result]').last();
+  assert.match(await walking.locator('h3').innerText(),/Thunder Bluff to Stonetalon Mountains/);
+  assert.deepEqual(await walking.locator('.travel-option .eyebrow').allTextContents(),['Documented option · road']);
+  assert.match(await walking.innerText(),/37\.5, 14\.3.*Gloomrise/s);
+  await send('Where can I buy arrows?');
+  const factual=page.locator('#chatlog .message.assistant').last();
+  assert.match(await factual.innerText(),/Forever game reference.*Where to buy it:/is);
+  assert.equal(await app.evaluate(()=>travelFixture.calls.length),beforeFacts);
   await send('Which pet should I use?');await send('This is for wow forever, not retail');assert.match(await app.evaluate(()=>travelFixture.calls.at(-1).prompt),/Which pet should I use/);assert.equal(await page.locator('#chatlog .message.assistant img, #chatlog .message.assistant a, #chatlog .message.assistant script').count(),0);assert.ok(await page.locator('#chatlog strong').count());
   const dom=await page.evaluate(()=>{const n=document.createElement('div');n.innerHTML=CompanionReply.render('**bold**\n\n- list\n\n`code` <svg onload=evil()> [x](data:text/html,evil)');return [n.querySelectorAll('strong').length,n.querySelectorAll('li').length,n.querySelectorAll('code').length,n.querySelectorAll('a,svg,script,button').length];});assert.deepEqual(dom,[1,1,1,0]);
   await page.screenshot({path:path.join(capture,'safe-reply.png'),fullPage:true});

@@ -20,7 +20,8 @@
       ? `Published community observation · build ${s.build} · observed ${s.observedOn}`
       : s.scope.includes("prelaunch")
         ? `General prelaunch guidance · published ${s.publishedOn}`
-        : `General Forever guidance · published ${s.publishedOn}`;
+        : s.publishedOn ? `General Forever guidance · published ${s.publishedOn}`
+          : s.observedOn ? `General Forever guidance · observed ${s.observedOn}` : "General Forever guidance";
   }
   function render(travel, index, text) {
     const t = travel;

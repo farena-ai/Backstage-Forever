@@ -8489,6 +8489,44 @@
           "text": "Report a missing location. Start a Desk draft from a quest with a missing destination and review it before sending. Desk groups reports so the team can spot gaps affecting more players."
         }
       ]
+    },
+    {
+      "version": "1.29.5",
+      "channel": "stable",
+      "source": "docs/releases/1.29.5.md",
+      "title": "Backstage Forever 1.29.5 — More reliable Companion answers",
+      "changes": [
+        {
+          "id": "walking-directions",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": "companion",
+          "section": "Changes",
+          "text": "Ask for directions on foot. Companion understands more ways to ask, remembers the walking preference on follow-ups, and gives sourced directions from Thunder Bluff and Mulgore into Stonetalon Mountains."
+        },
+        {
+          "id": "factual-replies",
+          "kind": "improved",
+          "platforms": [
+            "desktop"
+          ],
+          "action": "companion",
+          "section": "Changes",
+          "text": "Get direct answers from the Forever reference. When Companion has a sourced factual answer about an NPC, trainer, item, or quest, it can show that answer even with a model connected. Broader advice still uses your selected provider."
+        },
+        {
+          "id": "companion-next-step",
+          "kind": "improved",
+          "platforms": [
+            "desktop"
+          ],
+          "action": "companion",
+          "section": "Changes",
+          "text": "Ask what quest to do next. Companion uses the same recommendations as Now and labels whether your position and quest log are live or saved."
+        }
+      ]
     }
   ],
   "excluded": [

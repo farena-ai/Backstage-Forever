@@ -18,6 +18,30 @@ function fixture(){
  return {store,context,requests,memory,travel,service,ask,opened,copied,counts:()=>({calls,keys,saves}),transport:fn=>transport=fn};
 }
 test('recognized original trip and Forever correction are local with no model, key or provider call',async()=>{const f=fixture();const r=await f.ask();assert.equal(r.kind,'travel');assert.deepEqual(r.travel.options.map(o=>o.mode),['flight','road']);assert.match(r.text,/zeppelin/i);assert.match(r.text,/unknown/);assert.deepEqual(f.counts(),{calls:0,keys:0,saves:0});assert.equal(f.memory.draft('Alpha').question,'what is the fastest way from org to tb');assert.equal((await f.ask('This is for wow forever, not retail')).kind,'travel');assert.equal((await f.ask('which is fastest?')).kind,'travel');assert.equal((await f.ask('can I walk instead?')).kind,'travel');assert.equal(f.service.session.status().turns,4);assert.doesNotMatch(JSON.stringify(r),/PRIVATE_/);assert.deepEqual(Object.keys(r.travel).sort(),['status','headline','origin','destination','options','cautions','claims','sources','coverage','choiceToken'].sort());});
+test('the reported Thunder Bluff question gives sourced Forever walking directions with or without character sharing', async () => {
+  for (const shareProfile of [true, false]) {
+    const f = fixture();
+    f.store.state.provider.model = 'fixture';
+    const r = await f.ask('from thunder bluff on foot how do you get to stonetalon mountains in wow forever', { shareProfile });
+    assert.equal(r.kind, 'travel');
+    assert.equal(r.travel.status, 'route');
+    assert.equal(r.travel.origin.label, 'Thunder Bluff');
+    assert.equal(r.travel.destination.label, 'Stonetalon Mountains');
+    assert.deepEqual(r.travel.options.map(option => option.mode), ['road']);
+    assert.match(r.travel.options[0].steps.join(' '), /lifts?.*Mulgore.*37\.5, 14\.3.*Gloomrise/);
+    assert.ok(r.travel.sources.some(source => source.url.includes('6PXvjnhyKgU')));
+    assert.equal(f.counts().calls, 0);
+  }
+});
+test('an on-foot follow-up filters flights and sticks to that mode for the current trip', async () => {
+  const f = fixture();
+  assert.deepEqual((await f.ask()).travel.options.map(o => o.mode), ['flight', 'road']);
+  for (const q of ['Can I walk instead?', 'What are my options?']) {
+    assert.deepEqual((await f.ask(q)).travel.options.map(o => o.mode), ['road']);
+  }
+  assert.deepEqual((await f.ask('This is for WoW Forever, not Retail')).travel.options.map(o => o.mode), ['road']);
+  assert.deepEqual((await f.ask()).travel.options.map(o => o.mode), ['flight','road']);
+});
 test('sharing off omits observed build; pending faction report gives only a general road',async()=>{const f=fixture();let r=await f.ask(undefined,{shareProfile:false});assert.equal(r.travel.status,'clarify');r=await f.ask('Horde',{shareProfile:false});assert.deepEqual(r.travel.options.map(o=>o.mode),['road']);assert.match(r.text,/user.reported/i);assert.doesNotMatch(r.text,/PRIVATE_/);});
 test('pending starting city and destination use only current USER trip; unrelated class correction stays AI',async()=>{const f=fixture();f.store.state.profiles[0].location={};let r=await f.ask('How do I get to TB?');assert.equal(r.travel.status,'clarify');r=await f.ask('Orgrimmar');assert.equal(r.travel.status,'route');f.store.state.provider.model='fixture';await f.ask('How do I get to TB?');await f.ask('Which pet should my hunter use?');assert.equal((await f.ask('This is for wow forever, not retail')).kind,'ai');});
 test('ordinary AI needs model; unavailable and uncovered local travel never dispatch',async()=>{const f=fixture();await assert.rejects(f.ask('Which pet should I use?'),/model/i);assert.equal(f.counts().keys,0);assert.equal((await f.ask('org to booty bay')).kind,'travel');f.travel.reference=null;assert.equal((await f.ask()).travel.status,'unavailable');assert.equal(f.counts().calls,0);});

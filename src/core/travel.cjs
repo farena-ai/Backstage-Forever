@@ -1,30 +1,34 @@
 "use strict";
 const buildCompat = require("./build-compat.cjs");
-const { CITIES, ENDPOINTS, BUILD } = require("./travel-sources.cjs");
+const { CITIES, ENDPOINTS, ZONES, BUILD } = require("./travel-sources.cjs");
 const { loadTravelReference } = require("./travel-data.cjs");
 const { questionForEvidence } = require("./companion-conversation.cjs");
 const normalize = (s) =>
   s.toLowerCase().replace(/’/g, "'").replace(/\s+/g, " ").trim();
 const aliases = new Map([
-  ...CITIES.flatMap(([id, , names]) => names.map((n) => [normalize(n), id])),
+  ...[...CITIES, ...ZONES].flatMap(([id, , names]) => names.map((n) => [normalize(n), id])),
   ...ENDPOINTS.map(([id, label]) => [normalize(label), id]),
 ]);
 const labels = new Map(
-  [...CITIES, ...ENDPOINTS].map(([id, label]) => [id, label]),
+  [...CITIES, ...ENDPOINTS, ...ZONES].map(([id, label]) => [id, label]),
 );
+const MODE_QUALIFIER = /\(\s*(?:(?:on|by) foot|by (?:road|flight|boat|ship|tram|zeppelin))\s*\)|\b(?:on|by) foot\b|\bby (?:road|flight|boat|ship|tram|zeppelin)\b/gi;
+const MODE_VERB = /\b(walk(?:ing)?|fly(?:ing)?)\s+(?:from|to|there)\b/i;
+const TRIP_CLAUSE = /[,;:]?\s+how\s+(?:do|can|should)\s+(?:i|we|you)\s+(?:get|go|travel|walk)\s*$/i;
+function trimTripTail(value) {
+  return value.trim().replace(/[?.!,]+$/, "").replace(/\s+please$/i, "")
+    .replace(/\s+in\s+(?:(?:wow|world of warcraft):?\s+)?forever$/i, "").trim();
+}
+
 function endpoint(raw) {
-  const cleaned = raw
-    .trim()
-    .replace(/[?.!,]+$/, "")
-    .replace(
-      /\s+(?:please|in (?:wow )?forever|by (?:flight|zeppelin|boat|tram|road))$/i,
-      "",
-    )
+  const cleaned = trimTripTail(raw)
+    .replace(TRIP_CLAUSE, "")
     .trim();
   const id = aliases.get(normalize(cleaned)) || null;
   const label = id
     ? labels.get(id)
     : /^[a-z][a-z0-9 '\-]{0,79}$/i.test(cleaned) &&
+        !/\b(?:how|should|could|would|want|need)\b/i.test(cleaned) &&
         !/^(?:here|there|home)$/i.test(cleaned)
       ? cleaned
       : null;
@@ -41,7 +45,7 @@ function savedOrigin(profile) {
   for (const value of [location?.subZone, location?.zone])
     if (typeof value === "string") {
       const e = endpoint(value);
-      if (e.id && CITIES.some(([id]) => id === e.id)) return e;
+      if (e.id && [...CITIES, ...ZONES].some(([id]) => id === e.id)) return e;
     }
   return null;
 }
@@ -65,12 +69,21 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
     /\b(?:quest|level)\s+next\b/i.test(q)
   )
     return null;
-  const forward = q.match(/\bfrom\s+(.+?)\s+to\s+(.+)$/i);
-  const reverse = q.match(/.*\bto\s+(.+?)\s+from\s+(.+)$/i);
-  const simple = q.match(/^([a-z '\-]+?)\s+to\s+(.+)$/i);
+  const modeWords = q.match(MODE_QUALIFIER) || [];
+  const verb = q.match(MODE_VERB)?.[1]?.toLowerCase();
+  const modes = new Set(modeWords.map(phrase => {
+    const word = phrase.toLowerCase().match(/(foot|road|flight|boat|ship|tram|zeppelin)\b/)[1];
+    return word === "foot" ? "road" : word === "ship" ? "boat" : word;
+  }));
+  if (verb) modes.add(verb.startsWith("walk") ? "road" : "flight");
+  const mode = modes.size === 1 ? [...modes][0] : null;
+  const routeQuestion = trimTripTail(q.replace(MODE_QUALIFIER, " ").replace(/\s+/g, " "));
+  const forward = routeQuestion.match(/\bfrom\s+(.+?)\s+to\s+(.+)$/i);
+  const reverse = routeQuestion.match(/.*\bto\s+(.+?)\s+from\s+(.+)$/i);
+  const simple = routeQuestion.match(/^([a-z '\-]+?)\s+to\s+(.+)$/i);
   const barePair =
     simple &&
-    !/\b(?:how|what|why|when|from|way|get|go|travel|walk|fly|boat|tram|zeppelin|route|want|need)\b/i.test(
+    !/\b(?:how|what|why|when|from|way|get|go|take|travel|walk|fly|boat|tram|zeppelin|route|want|need)\b/i.test(
       simple[1],
     );
   const routeParts =
@@ -98,12 +111,13 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
   const travel =
     geographic ||
     /\b(?:route|fastest way)\b/i.test(q) ||
-    /\b(?:get|go|walk)\b.*\b(?:to|from|there)\b/i.test(q) ||
+    /\b(?:get|go|take me|walk)\b.*\b(?:to|from|there)\b/i.test(q) ||
     barePair;
   if (!travel) return null;
   const result = {
     status: "clarify",
     question: q,
+    mode,
     originId: null,
     destinationId: null,
     originLabel: null,
@@ -113,7 +127,7 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
     clarification: "What are your starting place and destination?",
   };
   if (
-    /\b(?:or|then|and|via|through)\b/i.test(q) ||
+    modes.size > 1 || /\b(?:or|then|and|via|through)\b/i.test(q) ||
     routeParts.some((part) => /\bto\b/i.test(part))
   ) {
     result.reason = "ambiguous";
@@ -137,7 +151,7 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
       to = simple[2];
       explicit = true;
     } else {
-      const destination = q.match(/.*\bto\s+(.+)$/i);
+      const destination = routeQuestion.match(/.*\bto\s+(.+)$/i);
       if (destination) to = destination[1];
     }
   }
@@ -167,7 +181,7 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
   } else if ((from && !result.originId) || (to && !result.destinationId)) {
     result.reason = "unknown-endpoint";
     result.clarification = result.destinationId
-      ? "Which named starting city or transport stop are you using?"
+      ? "Which named starting place are you using?"
       : "Which named destination or transport stop are you using?";
   } else if (result.destinationId)
     result.clarification = "Where are you starting this trip?";
@@ -177,7 +191,7 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
   return result;
 }
 const COVERAGE =
-  "Small dated reference: six conditional flights, ten directed scheduled-transport segments, and one Orgrimmar to Thunder Bluff road itinerary. Hearth travel is not covered: bind location and readiness are unknown. Other routes may exist beyond this coverage.";
+  "The Forever reference covers selected directions. Hearth travel is not covered because your bind location and readiness are unknown.";
 function planTravel(reference, intent, { profile } = {}) {
   const result = {
     status: "unavailable",
@@ -227,12 +241,11 @@ function planTravel(reference, intent, { profile } = {}) {
     ) {
       result.status = "uncovered";
       result.text =
-        "This local reference does not cover a verified connection from " +
+        `I don't have a ${intent.mode === "road" ? "walking route" : "route"} in the Forever reference from ` +
         result.origin.label +
         " to " +
         result.destination.label +
-        ". " +
-        COVERAGE;
+        ". A nearby town, gate or landmark can help narrow the route.";
     } else {
       result.status = "clarify";
       result.text =
@@ -264,10 +277,10 @@ function planTravel(reference, intent, { profile } = {}) {
     endpointId === requested.id ||
     (requested.kind === "city" && node(endpointId)?.cityId === requested.id);
   const candidates = ref.edges.filter(
-    (e) => at(e.from, origin) && at(e.to, destination),
+    (e) => (!intent.mode || e.mode === intent.mode) && at(e.from, origin) && at(e.to, destination),
   );
   const roads = ref.itineraries.filter(
-    (i) => i.from === origin.id && i.to === destination.id,
+    (i) => (!intent.mode || i.mode === intent.mode) && i.from === origin.id && i.to === destination.id,
   );
   const faction = ["Horde", "Alliance"].includes(profile?.faction)
     ? profile.faction
@@ -326,7 +339,7 @@ function planTravel(reference, intent, { profile } = {}) {
     result.text =
       result.status === "clarify"
         ? "Which faction is this trip for?"
-        : "This reference lacks a verified usable connection from " +
+        : `I don't have a sourced ${intent.mode === "road" ? "walking route" : "usable route"} from ` +
           origin.label +
           " to " +
           destination.label +
@@ -351,7 +364,7 @@ function planTravel(reference, intent, { profile } = {}) {
       "The road itinerary gives broad published landmarks, not continuous navigation or a safety assessment.",
     );
   }
-  if (result.options.length === 1)
+  if (result.options.length === 1 && !intent.mode)
     result.cautions.push("No second eligible option is verified for this direction in this reference.");
   if (
     compare ||
@@ -396,7 +409,7 @@ function planTravel(reference, intent, { profile } = {}) {
                 : s.scope.includes("prelaunch")
                   ? "general prelaunch Forever guidance, published " +
                     s.publishedOn
-                  : "general published Forever guidance, " + s.publishedOn) +
+                  : "general published Forever guidance" + (s.publishedOn || s.observedOn ? ", " + (s.publishedOn || s.observedOn) : "")) +
               "; reviewed " +
               s.reviewedOn +
               ". " +

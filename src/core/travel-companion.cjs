@@ -88,11 +88,13 @@ class TravelCompanion {
         short,
       )
     ) {
-      intent = previous.intent;
+      intent = /^can i walk instead/i.test(short) ? { ...previous.intent, mode: "road" } : previous.intent;
       reported = previous.reported;
     }
-    if (intent && previous && intent.question === previous.question)
+    if (intent && previous && intent.question === previous.question) {
       reported = previous.reported;
+      if (intent.question !== short) intent = { ...intent, mode: previous.intent.mode ?? intent.mode };
+    }
     if (previous?.pending && short.length <= 80) {
       const faction = short.match(
         /^(?:i(?:'m| am)|for|my faction is)?\s*(horde|alliance)[.!]?$/i,
@@ -121,7 +123,7 @@ class TravelCompanion {
             "from " + old.originLabel + " to " + short.replace(/[.!]$/, ""),
             { profile },
           );
-        if (candidate?.status === "ready") intent = candidate;
+        if (candidate?.status === "ready") intent = { ...candidate, mode: old.mode };
       }
     }
     if (!intent) return null;

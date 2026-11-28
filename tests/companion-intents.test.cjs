@@ -59,20 +59,43 @@ test("roleplay is the model's to voice, grounded in where the character stands; 
   assert.equal(resolve("what quest should I do next", { profile: horde }).intent, "quest-next", "next steps stay with the leveling advisor");
 });
 
-test("with a model chosen, the verified facts reach its context ahead of the character record", async () => {
+test("a configured model cannot overwrite sourced direct answers, while open-ended questions still reach the model", async () => {
   const providers = require("../src/core/providers.cjs");
   const { CompanionService } = require("../src/core/companion-service.cjs"), { CompanionContext } = require("../src/core/companion-context.cjs"), { CompanionRequest } = require("../src/core/companion-request.cjs"), { MemoryService } = require("../src/core/memory.cjs");
   const state = { activeProfileId: horde.id, profiles: [structuredClone(horde)], provider: { id: "ollama", model: "fixture", endpoint: "http://localhost:11434", authMode: "api" }, memories: [] };
   const store = { state, getKey: () => "" }, context = new CompanionContext(() => state), requests = new CompanionRequest(context), memory = new MemoryService({ store, context });
   const seen = [];
   const service = new CompanionService({ store, context, requests, memory, knowledge: { index: () => null }, ai: { ...providers, ask: async (r) => { seen.push(r); return "In voice."; } }, chatgpt: {}, claude: {} });
-  const r = await service.ask({ provider: "ollama", prompt: "Where can I buy arrows?", profileId: horde.id, shareProfile: true, memoryIds: [] });
-  assert.equal(r.kind, "ai");
-  assert.match(seen[0].context, /^Verified WoW Forever facts for this question:\n- .*Arrow/);
+  const ask = prompt => service.ask({ provider: "ollama", prompt, profileId: horde.id, shareProfile: true, memoryIds: [] });
+  for (const [question, evidence] of [
+    ["Where can I buy arrows?", /Where to buy it:.*Arrow/s],
+    ["What leatherworking skill do I need for Embossed Leather Gloves?", /Leatherworking 40/],
+    ["Where do I turn in Centaur Bracers?", /Regthar Deathgate/],
+    ["Who teaches guns?", /Ansekhwa.*Thunder Bluff/s],
+  ]) {
+    const answer = await ask(question);
+    assert.notEqual(answer.kind, "ai", question);
+    assert.match(answer.text, evidence, question);
+  }
+  assert.equal(seen.length, 0);
+  const advice = await ask("Help me decide whether I should focus on PvP or play with my guild tonight.");
+  assert.equal(advice.kind, "ai");
+  assert.equal(seen.length, 1);
+  for (const prompt of ["Where can I buy arrows, and what pet should I use?", "Can you compare Shadow and Holy priest for leveling and tell me where the trainer is?", "How much cloth do I need to train tailoring from 1 to 150?"]) {
+    assert.equal((await ask(prompt)).kind, "ai", prompt);
+    assert.match(seen.at(-1).context, /Verified WoW Forever facts for this question:/);
+  }
+  const draft = "Help me review this explicitly selected supply plan for WoW Forever.\nProfession: Alchemy. Selected saved recipe: Amber restorative.\nCoarse Thread (item 2320): total required 2; historical seller: vendor in Stormwind City.";
+  assert.equal((await ask(draft)).kind, "ai");
   const noModel = new CompanionService({ store: { ...store, state: { ...state, provider: { ...state.provider, model: "" } } }, context: new CompanionContext(() => ({ ...state, provider: { ...state.provider, model: "" } })), requests: new CompanionRequest(context), memory, knowledge: { index: () => null }, ai: providers, chatgpt: {}, claude: {} });
   const local = await noModel.ask({ provider: "ollama", prompt: "Where can I buy arrows?", profileId: horde.id, shareProfile: true, memoryIds: [] });
   assert.equal(local.kind, "intent");
   assert.match(local.text, /Where to buy it:/);
+});
+
+test("unverified travel tips never imply the player can fly or ride to a place by assumption", () => {
+  const answer = resolve("How do I walk from The Barrens to Darnassus?", { profile: horde }).answer;
+  assert.doesNotMatch(answer || "", /fly toward|otherwise ride|take the boat|take the zeppelin/i);
 });
 
 test("0.59: slang, single distinctive names, items you carry, quest targets, recipes and weapon masters", () => {
@@ -110,8 +133,8 @@ test("1.0.1: with no character shared, the race or city a question names picks t
 });
 
 test("1.0.1: 'the Undercity zeppelin to Orgrimmar' leaves from Tirisfal, and drops near a place come from near it", () => {
-  assert.match(resolve("Where is the Undercity zeppelin to Orgrimmar?").answer, /^Take the zeppelin from Tirisfal zeppelin tower to Orgrimmar/);
-  assert.match(resolve("where is the zeppelin from orgrimmar to undercity").answer, /^Take the zeppelin from Orgrimmar zeppelin tower to Tirisfal/);
+  assert.match(resolve("Where is the Undercity zeppelin to Orgrimmar?").answer, /^Check in game for the zeppelin from Tirisfal zeppelin tower to Orgrimmar/);
+  assert.match(resolve("where is the zeppelin from orgrimmar to undercity").answer, /^Check in game for the zeppelin from Orgrimmar zeppelin tower to Tirisfal/);
   const linen = resolve("what drops linen cloth near goldshire").answer;
   assert.match(linen, /Westfall/);
   assert.doesNotMatch(linen, /Ragefire/, "no Kalimdor dungeon bosses for an Elwynn question");

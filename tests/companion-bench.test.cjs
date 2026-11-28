@@ -38,7 +38,7 @@ test("outbound instance travel preserves the explicit unverified origin in eithe
     assert.deepEqual(r.travel.origin, { id: null, label: "Scarlet Monastery" });
     assert.equal(r.travel.destination.id, "undercity");
     assert.deepEqual(r.travel.options, []);
-    assert.match(r.text, /^This local reference does not cover a verified connection from Scarlet Monastery to Undercity\./);
+    assert.match(r.text, /^I don't have a route in the Forever reference from Scarlet Monastery to Undercity\./);
     assert.deepEqual(r.travel.claims, []);
     assert.equal(r.travel.choiceToken, null);
     assert.deepEqual(seen, []);
