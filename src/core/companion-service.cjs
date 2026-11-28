@@ -124,17 +124,21 @@ class CompanionService {
       }
       const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence,reportedLocation:prepared.reportedLocation};
       // Live frames count only when they carry the selected character's identity.
-      const observed = input.shareProfile ? this.live?.status?.() : null;
-      const liveFrame = matchingLiveFrame(profile, observed);
-      const liveStatus = observed?.frame && !liveFrame ? {...observed, signal:'other-character', frame:null} : observed;
-      const replyContext = characterContext(profile, liveFrame, input.shareProfile, checkedAt);
-      const liveNow = () => liveFrame;
-      const liveStatusNow = () => liveStatus;
+      let usedLive = false;
+      const liveStatusNow = () => {
+        const observed = input.shareProfile ? this.live?.status?.() : null;
+        const match = matchingLiveFrame(profile, observed);
+        if (match) usedLive = true;
+        return observed?.frame && !match ? {...observed, signal:'other-character', frame:null} : observed;
+      };
+      const liveNow = () => liveStatusNow()?.frame || null;
+      const liveFrame = liveNow();
+      const replyContext = () => characterContext(profile, usedLive, input.shareProfile, checkedAt);
       // No model chosen: answer the common questions locally (quest how-to, next steps, training).
       if(!selected.model){
         const tools=createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow,planner:this.planner});
         const quick=quickAnswer(input.prompt,{tools,live:liveFrame,talent,advise:input.shareProfile&&this.advise?()=>this.advise(profileId):null});
-        if(quick)return finishQuick(quick, replyContext);
+        if(quick)return finishQuick(quick, replyContext());
         throw Error('Choose a model in Connections for AI questions. Local NPC locations, travel, quest how-to, next steps, training and talents need no model.');
       }
       let context=this.ai.profileContext(state,profileId,input.shareProfile,options);
@@ -168,7 +172,7 @@ class CompanionService {
       if(!this.session.commit(prepared.token,{question:input.prompt,answer:reply,kind:'ai'}))throw Error('Provider response is no longer current.');
       this.travel?.clear();
       const lookups=tools?tools.trace.filter(t=>t.summary).slice(0,10).map(t=>t.summary):[];
-      return {text:reply,kind:'ai',characterContext:replyContext,conversation:prepared.meta,...(lookups.length?{lookups}:{})};
+      return {text:reply,kind:'ai',characterContext:replyContext(),conversation:prepared.meta,...(lookups.length?{lookups}:{})};
     },{waitForSettlement:selected.authMode==='subscription'&&input.provider==='anthropic'});
   }
 }

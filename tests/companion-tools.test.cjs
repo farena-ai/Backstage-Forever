@@ -236,6 +236,32 @@ test("companion service hands tools to the provider and returns the lookup trail
   assert.equal((await off.ask({ provider: "anthropic", prompt: "Which quest should I do next?", profileId: "A", shareProfile: true, memoryIds: [] })).lookups, undefined);
 });
 
+test("Companion tools recheck the active character's live signal during a reply", async () => {
+  const { CompanionContext } = require("../src/core/companion-context.cjs");
+  const { CompanionRequest } = require("../src/core/companion-request.cjs");
+  const { MemoryService } = require("../src/core/memory.cjs");
+  const { CompanionService } = require("../src/core/companion-service.cjs");
+  const { identityHash, rememberLiveKey } = require("../src/core/live-bridge.cjs");
+  const guid = "Player-4373-0000002B";
+  rememberLiveKey("tools-live-character", guid);
+  const source = { kind: "wow-addon", id: "tools-live-character", updatedAt: "2026-11-27T19:00:00.000Z" };
+  const state = { activeProfileId: "A", profiles: [{ ...profile, id: "A", source }], provider: { id: "anthropic", model: "m", authMode: "api" }, memories: [] };
+  const store = { state, getKey: () => "k" }, context = new CompanionContext(() => state);
+  const frame = { characterHash: identityHash(guid), position: { mapId: 1454, x: .5, y: .5 } };
+  let status = { enabled: true, signal: "live", frame };
+  const ai = { ...providers, ask: async ({ tools }) => {
+    assert.equal(JSON.parse(await tools.call("get_live_state", {})).status, "live");
+    status = { enabled: true, signal: "minimized", frame: null };
+    const paused = JSON.parse(await tools.call("get_live_state", {}));
+    assert.equal(paused.status, "minimized");
+    assert.equal(paused.position, undefined);
+    return "Bring WoW back into view to refresh your location.";
+  } };
+  const service = new CompanionService({ store, context, requests: new CompanionRequest(context), memory: new MemoryService({ store, context }), ai, chatgpt: {}, claude: {}, knowledge: { index: () => index }, npcReference, travelReference, live: { status: () => status } });
+  const reply = await service.ask({ provider: "anthropic", prompt: "Which quest should I do next?", profileId: "A", shareProfile: true, memoryIds: [] });
+  assert.equal(reply.characterContext.kind, "live", "the reply records the earlier live context it received");
+});
+
 test("review fixes: reward reverse lookup, per-point provenance and reported-location origin", async () => {
   const reported = createCompanionTools({ profile, shareProfile: true, knowledgeIndex: index, npcReference, travelReference, contextOptions: { reportedLocation: { zone: "Thunder Bluff", source: "user-report" } } });
   const item = JSON.parse(await reported.call("find_item", { id: 287059 }));

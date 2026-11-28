@@ -712,7 +712,7 @@ app.whenReady().then(async () => {
   const liveForRenderer = (status) => {
     const { activeProfileId, profiles } = store.state;
     const selected = profiles.find((profile) => profile.id === activeProfileId);
-    return { ...status, liveProfileId: matchingLiveFrame(selected, status) ? activeProfileId : null };
+    return matchingLiveFrame(selected, status) ? { ...status, liveProfileId: activeProfileId } : status;
   };
   liveBridge.subscribe((status) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:liveLink", liveForRenderer(status)); });
   if (liveBridge.enabled) liveBridge.start();
