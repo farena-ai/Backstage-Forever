@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.29.3 - Live Companion quest previews
+## 1.29.3 - Live Companion quest log
 
 - Companion shows the active character's live quest log when BF has received it and marks the saved fallback. Painted zone rows keep their artwork on hover and keyboard focus. See the [release notes](docs/releases/1.29.3.md).
 
