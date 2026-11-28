@@ -422,6 +422,7 @@ async function selectActiveCharacter(id) {
   const previous = pendingCharacterSelection;
   const selection = { id };
   pendingCharacterSelection = selection;
+  paintCharacterFreshness();
   root.querySelector("[data-helper-owner]")?.remove();
   JourneyView.invalidate();
   // Talents belong to one character: without this the page kept showing the previous one.
@@ -498,12 +499,12 @@ function paintCharacterFreshness() {
   root.querySelector("[data-command='fix-character-connection']").hidden = !repair;
   const location = root.querySelector("[data-companion-character-location]");
   if (location) {
+    const current = characterSelectionPending() ? null : profile();
     const frame = kind === "live" ? window.LiveLink.status().frame : null;
-    const saved = profile()?.location;
+    const saved = current?.location;
     const translate = (value) => window.I18n?.tr(value) || value;
     const description = frame?.position && frame.zone ? `${translate("Live location")} · ${frame.zone}` : saved?.zone ? `${translate("Saved location")} · ${saved.zone}${saved.subZone ? " · " + saved.subZone : ""}` : translate("Location not yet received");
     if (location.textContent !== description) location.textContent = description;
-    const current = characterSelectionPending() ? null : profile();
     const live = kind === "live" ? window.LiveLink.status().questPreview : null;
     paintCompanionQuestPreview(current?.quests, live);
   }

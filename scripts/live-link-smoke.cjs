@@ -13,6 +13,7 @@ const { defaultState } = require("../src/core/validation.cjs");
   const watchdog = setTimeout(() => { console.error("Live link fixture exceeded 120 seconds"); app?.process().kill(); process.exitCode = 1; }, 120000);
   try {
     const initial = { ...defaultState(), onboarded: true, activeProfileId: "Alpha", profiles: [{ id: "Alpha", name: "Alpha", className: "Warrior", realm: "Synthetic", level: 12, race: "Orc", faction: "Horde", goals: [], notes: "", source: { kind: "wow-addon", id: "synthetic-alpha", updatedAt: new Date().toISOString() }, quests: [{ id: 1, title: "Earlier saved quest", complete: false, objectives: [] }], location: { zone: "The Barrens", mapId: 1413, x: 0.6, y: 0.2 } }], provider: { id: "ollama", model: "fixture", endpoint: "http://127.0.0.1:11434" } };
+    initial.profiles.push({ ...initial.profiles[0], id: "Beta", name: "Beta", source: undefined, quests: [{ id: 2, title: "Other character quest", complete: false, objectives: [] }] });
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(initial));
     const repo = path.resolve(__dirname, "..");
     await fs.writeFile(path.join(dir, "package.json"), JSON.stringify({ name: "backstage-forever-live-fixture", version: "0.13.6", main: "fixture-main.cjs" }));
@@ -107,6 +108,23 @@ const { defaultState } = require("../src/core/validation.cjs");
     assert.match(await page.locator("[data-character-freshness]").innerText(), /^Last saved/);
     assert.match(await preview.textContent(), /Last saved/);
     assert.doesNotMatch(await preview.textContent(), /Exploring the Horde/);
+    await app.evaluate(({ ipcMain }) => {
+      const channel = "backstage:saveState", original = ipcMain._invokeHandlers.get(channel);
+      ipcMain.removeHandler(channel);
+      ipcMain.handle(channel, async (event, ...args) => {
+        if (args[0]?.activeProfileId === "Beta") await new Promise((resolve) => { globalThis.releaseCharacterSwitch = resolve; });
+        return original(event, ...args);
+      });
+    });
+    await page.locator("#active-character").selectOption("Beta");
+    await app.evaluate(async () => {
+      const deadline = Date.now() + 5000;
+      while (!globalThis.releaseCharacterSwitch && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 20));
+      if (!globalThis.releaseCharacterSwitch) throw Error("Character switch did not reach its held save");
+    });
+    assert.doesNotMatch(await preview.textContent(), /Earlier saved quest/, "The old quest is hidden before the character switch saves");
+    await app.evaluate(() => globalThis.releaseCharacterSwitch());
+    await page.waitForFunction(() => document.querySelector('[data-companion-quest-preview]')?.textContent.includes('Other character quest'));
     await navigate(page, "game");
     await page.locator("#live-link-toggle").uncheck();
     await page.locator("[data-live-link-line]").getByText(/Off\. Turn it on/).waitFor();
