@@ -330,6 +330,7 @@ function understand(question, { profile = null, data = loadData() } = {}) {
   else if (who && npc && (!item || npc.gram.length >= item.gram.length) && !/\b(drop|drops|farm|loot)\b/.test(q)) out.intent = "npc-location";
   else if (RX.next.test(q)) out.intent = "quest-next";
   else if (quest && (RX.quest.test(q) || who || /\bwhat(?:'s| is)\b/.test(q))) out.intent = "quest-info";
+  else if (who && place && placeLike(subj)) out.intent = "place";
   else if (who && someone()) { out.intent = "npc-location"; out.npc = someone(); }
   else if (who && beast()) { out.intent = "creature"; out.creature = beast(); }
   else if (who && place) out.intent = "place";

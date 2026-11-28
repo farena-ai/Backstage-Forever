@@ -65,7 +65,7 @@ const { defaultState } = require("../src/core/validation.cjs");
     await page.getByText(/type \/reload on this character/i).waitFor();
     assert.equal(await app.evaluate(() => freshnessFixture.refreshes), refreshes + 1);
     assert.equal(await page.getByRole("textbox", { name: "Your question", exact: true }).inputValue(), "Draft I still need");
-    await page.getByRole("textbox", { name: "Your question", exact: true }).fill("Which step of Exploring the Horde should I do next?");
+    await page.getByRole("textbox", { name: "Your question", exact: true }).fill("Compare finishing Exploring the Horde with leveling nearby. What would you do first?");
     await page.getByRole("button", { name: "Send question", exact: true }).click();
     const reply = page.locator("#chatlog .message.assistant").last();
     await reply.getByText(/Thunder Bluff, around 59\.9, 51\.7/).waitFor();

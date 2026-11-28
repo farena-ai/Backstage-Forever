@@ -72,7 +72,11 @@ function shortPath(target) {
     assert.ok((await app.evaluate(() => memoryFixture.retrievalPrompts)).every(prompt => ["Where is my quest?", "Explain the quest route"].includes(prompt)));
     await call("saveProvider", { provider: "ollama", model: "fixture", endpoint, authMode: "api" });
     await assert.rejects(() => ask("q".repeat(12000), [id]), /fewer exchanges|prompt budget/); assert.equal(await call("memoryDraft", "Alpha"), null);
-    assert.equal(await ask("Where is Stormwind?"), "Fixture quest answer"); assert.equal((await app.evaluate(() => memoryFixture.requests.at(-1))).prompt, "Where is Stormwind?");
+    const loreQuestion = "What should I know about the story of Stormwind?";
+    assert.equal(await ask(loreQuestion), "Fixture quest answer"); assert.equal((await app.evaluate(() => memoryFixture.requests.at(-1))).prompt, loreQuestion);
+    const providerRequests = seen.length;
+    assert.match(await ask("Where is Stormwind?"), /Stormwind City.*world map/i);
+    assert.equal(seen.length, providerRequests, "a local place answer never sends the question to the provider");
     const beforeFailure = await call("memoryDraft", "Alpha"); await assert.rejects(() => ask("Explain FAIL_REPLY quest")); assert.equal(await call("memoryDraft", "Alpha"), null); await assert.rejects(() => call("saveMemory", { profileId: "Alpha", responseId: beforeFailure.responseId }));
     await ask("Please write a cake recipe"); assert.equal(await call("memoryDraft", "Alpha"), null);
     await ask(); state = (await call("bootstrap")).state; const stale = structuredClone(state); stale.memories = "forged renderer history"; stale.profiles[0].notes = "Updated journal";
