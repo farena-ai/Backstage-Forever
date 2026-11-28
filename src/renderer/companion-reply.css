@@ -6,3 +6,9 @@
 .message .companion-message-heading .eyebrow { margin-bottom: 0; }
 .companion-character-context { color: #d5c8ab; font-size: 11px; line-height: 1.4; }
 .companion-character-context:empty { display: none; }
+.companion-quest-preview h3 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 9px; }
+.companion-quest-source { font: 650 11px var(--font-body, sans-serif); color: #694d2e; letter-spacing: .03em; }
+.companion-quest-preview[data-quest-source="live"] .companion-quest-source { color: #31622e; }
+.companion-quest-preview ul { list-style: none; margin: 0; padding: 0; }
+.companion-quest-preview li { display: grid; gap: 2px; padding: 7px 0; border-top: 1px solid #a17d4440; }
+.companion-quest-preview li small { color: #694d2e; }

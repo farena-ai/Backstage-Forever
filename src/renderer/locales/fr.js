@@ -1550,6 +1550,7 @@ window.BF_LOCALE_FR = {
  "no profitable craft seen yet": "aucun artisanat rentable vu pour l'instant",
  "No provider, account or database download needed.": "Aucun fournisseur, compte ni téléchargement de base de données nécessaire.",
  "No quest givers are placed here yet.": "Aucun donneur de quête n'est encore placé ici.",
+ "No quest log received yet.": "Aucun journal de quêtes reçu pour le moment.",
  "No quests for it recorded yet": "Aucune quête notée pour l'instant",
  "no quests recorded": "aucune quête notée",
  "No quests, training or wares are recorded for this NPC yet.": "Aucune quête, aucun apprentissage ni marchandise notés pour ce PNJ.",
@@ -3185,6 +3186,7 @@ window.BF_LOCALE_FR = {
  "Your plan reaches the game at your next /reload. Your group sees it in game after that.": "Ton plan arrive dans le jeu à ton prochain /reload. Ton groupe le voit en jeu après cela.",
  "Your plans": "Tes plans",
  "Your progress:": "Ta progression :",
+ "Your quest log is empty.": "Ton journal de quêtes est vide.",
  "Your question": "Ta question",
  "YOUR QUESTION": "TA QUESTION",
  "Your question changed during capture. Insert only when you are ready.": "Ta question a changé pendant la dictée. N'insère que quand tu es prêt.",
@@ -3909,6 +3911,14 @@ window.BF_LOCALE_FR_TEMPLATES = [
  [
   "^([0-9][0-9.,:/%–-]*) of ([0-9][0-9.,:/%–-]*) points · Automatic off$",
   "{0} points sur {1} · Automatique désactivé",
+  [
+   0,
+   1
+  ]
+ ],
+ [
+  "^([0-9][0-9.,:/%–-]*) quests · ([0-9][0-9.,:/%–-]*) ready to turn in$",
+  "{#0} quêtes · {#1} prêtes à rendre",
   [
    0,
    1

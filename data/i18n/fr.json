@@ -5,6 +5,8 @@
  "machineTranslated": true,
  "note": "French, a first machine translation (Claude) awaiting a native review; fixes welcome. Keys are the exact English text.",
  "app": {
+  "No quest log received yet.": "Aucun journal de quêtes reçu pour le moment.",
+  "Your quest log is empty.": "Ton journal de quêtes est vide.",
   "Fix connection": "Réparer la connexion",
   "No game save yet": "Aucune sauvegarde de jeu",
   "Last saved just now": "Vient d’être sauvegardé",
@@ -4779,6 +4781,7 @@
   }
  },
  "appTemplates": {
+  "{#0} quests · {#1} ready to turn in": "{#0} quêtes · {#1} prêtes à rendre",
   "Last saved {#0} min ago": "Sauvegardé il y a {#0} min",
   "Last saved {#0} hr ago": "Sauvegardé il y a {#0} h",
   "Last saved {#0} days ago": "Sauvegardé il y a {#0} j",

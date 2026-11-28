@@ -8403,6 +8403,34 @@
           "text": "One button for an older save. Click Fix connection when BF is using a save at least 15 minutes old. BF reads any newer save first and gives you the next step if it still needs a fresh save or the addon needs attention."
         }
       ]
+    },
+    {
+      "version": "1.29.3",
+      "channel": "stable",
+      "source": "docs/releases/1.29.3.md",
+      "title": "Backstage Forever 1.29.3 — Live Companion quest log",
+      "changes": [
+        {
+          "id": "companion-live-quest-preview",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "See your current quest log in Companion. The list updates as the selected character's live quest log arrives. It marks the snapshot Last saved when live quest data is unavailable."
+        },
+        {
+          "id": "zone-art-hover",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Keep the zone paintings on screen. The illustrated Where to level rows keep their artwork when you hover or move through them with the keyboard."
+        }
+      ]
     }
   ],
   "excluded": [

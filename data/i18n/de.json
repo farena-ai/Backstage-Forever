@@ -5,6 +5,8 @@
  "machineTranslated": true,
  "note": "German, machine-translated with the local model qwen3.8:27b and spot-checked; fixes welcome. Keys are the exact English text.",
  "app": {
+  "No quest log received yet.": "Noch kein Quest-Tagebuch empfangen.",
+  "Your quest log is empty.": "Dein Quest-Tagebuch ist leer.",
   "Fix connection": "Verbindung reparieren",
   "No game save yet": "Noch kein Spielstand",
   "Last saved just now": "Gerade gespeichert",
@@ -4782,6 +4784,7 @@
   }
  },
  "appTemplates": {
+  "{#0} quests · {#1} ready to turn in": "{#0} Quests · {#1} zum Abgeben bereit",
   "Last saved {#0} min ago": "Vor {#0} Min. gespeichert",
   "Last saved {#0} hr ago": "Vor {#0} Std. gespeichert",
   "Last saved {#0} days ago": "Vor {#0} Tagen gespeichert",
