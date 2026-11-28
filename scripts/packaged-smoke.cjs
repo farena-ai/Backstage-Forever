@@ -70,10 +70,13 @@ async function sourceFiles(folder, prefix = "src") {
     await fs.cp(path.join(repo, "dist", "win-unpacked"), appDir, { recursive: true });
     await fs.mkdir(path.join(data, "updates"), { recursive: true });
     await fs.mkdir(path.join(data, "knowledge-v1"), { recursive: true });
+    await fs.mkdir(path.join(data, "desk"), { recursive: true });
     await fs.writeFile(path.join(data, "updates", "preferences.json"),
       JSON.stringify({ automatic: false, installOnQuit: false }));
     await fs.writeFile(path.join(data, "knowledge-v1", "preferences.json"),
       JSON.stringify({ automatic: false, checked: {} }));
+    await fs.writeFile(path.join(data, "desk", "state.json"),
+      JSON.stringify({ statistics: false, errors: false }));
     // Synthetic journal fixtures can be seeded here, before the first launch.
     app = await launchElectron(electron, launchOptions);
     const page = await testWindow(app);
@@ -102,6 +105,7 @@ async function sourceFiles(folder, prefix = "src") {
     );
     assert.equal(reference.automatic, false);
     assert.equal((await page.evaluate(() => window.backstage.updateStatus())).automatic, false);
+    assert.equal((await page.evaluate(() => window.backstage.deskStatus())).statistics, false);
     const bundled = JSON.parse(
       await fs.readFile(
         path.join(__dirname, "../data/forever/pack.json"),

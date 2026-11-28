@@ -179,6 +179,44 @@ test("scrubber: stack lines keep the file name and lose every folder", () => {
 });
 
 // ---------------------------------------------------------------- heartbeat
+test("startup sends a check-in at one minute, keeps the daily limit, and honors opt-out", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
+  const active = setup();
+  const optedOut = setup();
+  optedOut.desk.setSettings({ statistics: false });
+  active.desk.start();
+  optedOut.desk.start();
+  t.after(() => { active.desk.stop(); optedOut.desk.stop(); });
+
+  async function advance(ms) {
+    active.clock.advance(ms);
+    optedOut.clock.advance(ms);
+    t.mock.timers.tick(ms);
+    await new Promise(setImmediate);
+  }
+  const requests = (fixture) => fixture.fake.requests("/v1/heartbeat").length;
+  await advance(59_999);
+  assert.equal(requests(active), 0);
+  await advance(1);
+  assert.equal(requests(active), 1, "the scheduled check-in reaches the server at one minute");
+  assert.equal(requests(optedOut), 0);
+  await advance(600_000);
+  assert.equal(requests(active), 1, "periodic work does not send a second check-in today");
+  assert.equal(requests(optedOut), 0);
+
+  const restarted = setup({ dir: active.dir, fake: active.fake, at: new Date(active.clock.now()).toISOString() });
+  restarted.desk.start();
+  t.after(() => restarted.desk.stop());
+  restarted.clock.advance(60_000);
+  await advance(60_000);
+  assert.equal(requests(active), 1, "restarting on the same UTC day preserves the limit");
+  active.clock.set("2026-11-25T00:10:00Z");
+  optedOut.clock.set("2026-11-25T00:10:00Z");
+  await advance(600_000);
+  assert.equal(requests(active), 2, "an open app can check in the following UTC day");
+  assert.equal(requests(optedOut), 0);
+});
+
 test("heartbeat: at most once per UTC day, with today's areas, and the first-seen week is remembered", async () => {
   const { desk, fake, clock, dir } = setup();
   desk.visit({ route: "talents", lang: "de" }); desk.visit({ route: "world-map", lang: "de" }); desk.visit({ route: "privacy", lang: "de" }); desk.visit({ route: "../etc", lang: "de" });

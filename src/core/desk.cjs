@@ -20,7 +20,7 @@ const STATISTICS_DEFAULT = true;
 const ERRORS_DEFAULT = false;
 
 const START_DELAY = 30 * 1000, TICK_EVERY = 10 * 60 * 1000;
-const SYNC_EVERY = 3 * 60 * 60 * 1000, ANNOUNCE_EVERY = 60 * 60 * 1000, HEARTBEAT_AFTER = 5 * 60 * 1000;
+const SYNC_EVERY = 3 * 60 * 60 * 1000, ANNOUNCE_EVERY = 60 * 60 * 1000, HEARTBEAT_AFTER = 60_000;
 const BACKOFF_MIN = 60 * 1000, BACKOFF_MAX = 60 * 60 * 1000;
 const MAX_TICKETS = 200, MAX_OUTBOX = 20, SYNC_BATCH = 50, MAX_SEEN = 500;
 const ERRORS_PER_DAY = 5, ERROR_GAP = 60 * 1000;
@@ -647,7 +647,8 @@ class DeskService {
     if (this.handles.length) return;
     const t = this.timers, run = () => { void this.tick().catch(() => {}); };
     this.handles.push(["t", t.setTimeout(run, START_DELAY)]);
-    this.handles.push(["t", t.setTimeout(run, HEARTBEAT_AFTER + 1000)]);
+    // Give short sessions their own check-in without waiting for ticket sync.
+    this.handles.push(["t", t.setTimeout(() => { void this.heartbeat().catch(() => {}); }, HEARTBEAT_AFTER)]);
     this.handles.push(["i", t.setInterval(run, TICK_EVERY)]);
     for (const [, h] of this.handles) h?.unref?.();
   }

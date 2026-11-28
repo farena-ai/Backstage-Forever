@@ -18,6 +18,8 @@ const { fakeLive } = require("./live-fake-server.cjs");
 
 const root = path.join(__dirname, "..");
 const SIGNALS = JSON.parse(fs.readFileSync(path.join(root, "tests/fixtures/live-signals.json"), "utf8")).signals;
+// Keep the recording's events within the hand-off window regardless of the day CI runs.
+const fixtureNow = () => Date.parse("2026-11-27T18:00:00Z");
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "bf-live-int-"));
 const until = async (fn, ms = 5000, what = "condition") => { const end = Date.now() + ms; while (Date.now() < end) { if (await fn()) return; await new Promise((r) => setTimeout(r, 15)); } assert.fail(`timed out waiting for ${what}`); };
 const quiet = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -33,7 +35,7 @@ test("recorded live signals -> decoder -> feed -> guild service -> service; and 
   const dir = tmp();
   // Anna's desktop linked the guild earlier; the code is the one the recorded link signal carries.
   const annaCommunity = new CommunityService({ dir: tmp(), getProfiles: () => [], appVersion: "1.28.0", baseUrl: fake.url });
-  const anna = new GuildService({ dir: tmp(), community: annaCommunity });
+  const anna = new GuildService({ dir: tmp(), community: annaCommunity, now: fixtureNow });
   await anna.createGuild({ character: ANNA, faction: "horde", guildName: "Night Watch", rankIndex: 0, consent: true });
   const guild = fake.anyGuild(), guildId = guild.id;
   guild.linkCode = SIGNALS[0].payloads[0].code;
@@ -47,9 +49,9 @@ test("recorded live signals -> decoder -> feed -> guild service -> service; and 
   live.frame = { characterHash: IDENTITY };
   const detach = feed.attach(live);
   const state = { activeProfileId: "p1", profiles: [{ id: "p1", name: "Abel", realm: "Thunder Hold", faction: "Horde", level: 40, className: "Priest" }] };
-  const group = new GroupStore({ file: path.join(dir, "group.json") });
+  const group = new GroupStore({ file: path.join(dir, "group.json"), now: fixtureNow });
   let hub = null;
-  const service = new GuildService({ dir, community, live: client, feed, setHandoff: (data) => feed.setHandoff(data), getPlan: (c) => hub.handoffPlan(c) });
+  const service = new GuildService({ dir, community, live: client, feed, setHandoff: (data) => feed.setHandoff(data), getPlan: (c) => hub.handoffPlan(c), now: fixtureNow });
   hub = createLiveGuildHub({ getState: () => state, service, group, feed: { real: true } });
   service.on("party", (p) => { if (p) group.sawParty(p); });
   let serial = 0;
@@ -91,7 +93,7 @@ test("recorded live signals -> decoder -> feed -> guild service -> service; and 
     await quiet(200);
     assert.equal(fake.log.slice(before).filter((e) => e.route.startsWith("/v1/lfg")).length, 0, "a listing made in game is not posted without the board's consent");
     // 5. News from the service: an event by Anna, an answer by a Discord button, live on Abel's stream.
-    const at = new Date(Date.now() + 2 * 86400000).toISOString().replace(/\.\d{3}Z$/, "Z");
+    const at = new Date(fixtureNow() + 2 * 86400000).toISOString().replace(/\.\d{3}Z$/, "Z");
     fake.putEvent(guildId, { id: "def456", version: 2, creator: ANNA, editor: ANNA, at, place: "bwl", title: "Blackwing Lair", note: "Bring \"onyxia\" cloaks", roles: { tank: 3, healer: 9, damage: 28 }, cancelled: false });
     fake.putSignup(guildId, "def456", { who: { name: "Cy", realm: "Thunder Hold" }, answer: "tank", version: 1, via: "discord" });
     fake.putSignup(guildId, event.id, { who: ANNA, answer: "healer", version: 7, via: "discord" });
@@ -121,7 +123,7 @@ assert(#g.signups==3,'three answers the game does not have: '..#g.signups)
 local by={} for _,s in ipairs(g.signups) do by[s.id..':'..s.n]=s end
 assert(by['def456:Cy'].s=='t' and by['def456:Cy'].via=='d' and by['def456:Abel'].s=='h' and by['def456:Abel'].via=='k' and by['abc123:Anna'].s=='h' and by['abc123:Anna'].v==7)
 -- A game that knows neither event yet (a guildmate who was offline): the merge brings both, with the answers.
-local NOW=${Math.floor(Date.now() / 1000)}
+local NOW=${Math.floor(fixtureNow() / 1000)}
 local db={events={}}
 local ctx={now=NOW,guild='Night Watch',rank=function() return 1 end,member=function(n) return n=='Anna' or n=='Abel' or n=='Cy' or n=='Bob' end}
 local news,why=BackstageForeverDeskMerge(db,g,'Abel',ctx)
