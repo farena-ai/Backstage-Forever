@@ -221,6 +221,18 @@ const SIZES = [[1440, 900, "full"], [984, 635, "compact"]];
       assert.doesNotMatch(body, /Send anonymous usage statistics|See exactly what is sent|Forget me\b/, "the privacy screen is translated");
     });
 
+    await check("a missing quest location opens an exact preview without sending a report", async () => {
+      const before = fake.requests("/v1/tickets").length;
+      assert.equal(await page.evaluate(() => DeskView.reportMissingLocation({ questId: 93739, zone: 1413, build: "1.60.1.71037", name: "Thrallson" })), true);
+      const preview = page.locator("[data-desk-preview]");
+      await preview.getByText("Missing location for quest #93739", { exact: true }).waitFor();
+      const draft = await page.locator("#desk-details").inputValue();
+      assert.match(draft, /Quest ID: 93739\nZone: The Barrens\nGame build: 1\.60\.1\.71037/);
+      assert.doesNotMatch(draft, /Thrallson/);
+      assert.equal(await page.locator("#desk-diagnostics").isChecked(), false);
+      assert.equal(fake.requests("/v1/tickets").length, before, "opening the review page does not send it");
+    });
+
     await check("nothing private reached the service in the whole run", async () => {
       for (const call of fake.log) assert.doesNotMatch(call.raw + call.query, /Thrallson|Draenor|johnsmith|AppData/, `${call.method} ${call.route}`);
       const routes = [...new Set(fake.log.map((c) => `${c.method} ${c.route.replace(/BF-\d+/, "BF-N")}`))].sort();

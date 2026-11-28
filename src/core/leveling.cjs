@@ -17,7 +17,8 @@ function resolveLiveQuests(profile, frame, pack) {
   const saved = new Map((profile.quests || []).map((quest) => [quest.id, quest]));
   return frame.questLog.map(({ id, complete }) => {
     const previous = saved.get(id);
-    return previous ? { ...previous, complete } : { id, complete, title: pack?.quests?.[id]?.title || `Quest ${id}`, objectives: [] };
+    if (!previous) return { id, complete, title: pack?.quests?.[id]?.title || `Quest ${id}`, objectives: [] };
+    return { ...previous, complete, destination: previous.complete === complete ? previous.destination : undefined };
   });
 }
 
@@ -129,7 +130,7 @@ class LevelingAdvisor {
     if (!p) return { status: "no-character" };
     if (!Number.isInteger(p.level) || p.level < 1) return { status: "no-level", name: p.name };
     let live = null;
-    try { live = this.getLive?.() || null; } catch {}
+    try { live = this.getLive?.(p) || null; } catch {}
     const level = Math.max(p.level, Number.isInteger(live?.level) ? live.level : 0), faction = p.faction === "Horde" || p.faction === "Alliance" ? p.faction : null;
     const where = live?.position ? { mapId: live.position.mapId, x: live.position.x, y: live.position.y } : p.location;
     const here = Number.isSafeInteger(where?.mapId) ? where.mapId : null;
@@ -184,28 +185,41 @@ class LevelingAdvisor {
     const shown = zones.filter((z, i) => i === 0 || z.available > 0);
     return {
       status: "ok",
-      character: { savedAt: p.source?.updatedAt || null, name: p.name, level, faction, className: p.className || null, race: p.race || null, sex: p.sex || null, zone: here ? mapName(here) : null, live: Boolean(live?.position), xp: p.progress && Number.isFinite(p.progress.max) && p.progress.max > 0 ? { current: p.progress.current, max: p.progress.max, rested: Number.isFinite(p.progress.rested) ? p.progress.rested : 0, savedLevel: p.level } : null, xpPercent: Number.isFinite(live?.xpPercent) ? live.xpPercent : null, dead: Boolean(live?.dead), position: where && Number.isFinite(where.x) ? { mapId: where.mapId, x: where.x, y: where.y } : null },
+      character: { savedAt: p.source?.updatedAt || null, name: p.name, level, faction, className: p.className || null, race: p.race || null, sex: p.sex || null, zone: here ? mapName(here) : null, clientBuild: p.clientBuild || null, live: Boolean(live?.position), xp: p.progress && Number.isFinite(p.progress.max) && p.progress.max > 0 ? { current: p.progress.current, max: p.progress.max, rested: Number.isFinite(p.progress.rested) ? p.progress.rested : 0, savedLevel: p.level } : null, xpPercent: Number.isFinite(live?.xpPercent) ? live.xpPercent : null, dead: Boolean(live?.dead), position: where && Number.isFinite(where.x) ? { mapId: where.mapId, x: where.x, y: where.y } : null },
       next: next && { ...next, why: this.why(next, p, here) },
       zones: (shown.length ? shown : zones).slice(0, 6),
       training: this.training(p),
-      log: { ...this.log(p), justDone, known: logKnown, live: Boolean(liveLog) },
+      log: { ...this.log(p), justDone, completed: [...done], liveCompleted: turnedIn, known: logKnown, live: Boolean(liveLog) },
       source: this.pack.source,
     };
   }
   // Your quest log in "where do I go" terms: hand-ins with the NPC's spot, then open quests.
   log(p) {
     const pack = this.knowledge?.bundled?.pack || null;
+    const compatible = require("./build-compat.cjs").usable(pack?.build, p.clientBuild);
     const spot = (ref) => { const n = ref && pack?.npcs?.[`${ref.kind}:${ref.id}`]; const pos = n?.positions?.[0]; return n ? { name: n.name, npcId: n.id, mapId: pos?.mapId ?? null, mapName: pos ? mapName(pos.mapId) : null, x: pos?.x ?? null, y: pos?.y ?? null } : null; };
     const ready = [], active = [];
     for (const q of p.quests || []) {
       const rec = pack?.quests?.[q.id] || null;
+      const waypoint = q.destination && this.knowledge?.bundled?.resolveWaypoint?.(p, q.id, q.complete ? "t" : "o");
+      const game = waypoint?.source === "game" && waypoint.destination;
       // Without a recorded hand-in NPC, quests usually go back to whoever gave them.
-      if (q.complete) { const t = spot(rec?.turnIns?.[0]); const g = t ? null : spot(rec?.givers?.[0]); ready.push({ id: q.id, title: q.title, level: rec?.level ?? null, turnIn: t || (g && { ...g, guess: true }) }); }
+      if (q.complete) {
+        const t = (rec?.turnIns || []).map(spot).find((target) => Number.isFinite(target?.x));
+        const g = !t && (rec?.givers || []).map(spot).find((target) => Number.isFinite(target?.x));
+        const turnIn = game ? { ...game, mapName: mapName(game.mapId), evidence: "game-waypoint" } : t ? { ...t, evidence: compatible ? "verified-turn-in" : "reference" } : g ? { ...g, guess: true, evidence: "likely-quest-giver" } : null;
+        ready.push({ id: q.id, title: q.title, level: rec?.level ?? null, turnIn });
+      }
       else {
         const objs = q.objectives || [];
-        const loc = rec?.objectiveLocations?.find((o) => !objs[o.index - 1]?.done)?.positions?.[0] || null;
+        const observations = rec?.objectiveLocations || [];
+        const verified = compatible && observations.find((loc) => {
+          const objective = objs[loc.index - 1];
+          return objective && !objective.done && objective.type === loc.type && objective.required === loc.required && loc.positions?.[0];
+        });
+        const loc = game || (verified || observations.find((o) => !objs[o.index - 1]?.done))?.positions?.[0];
         active.push({ id: q.id, title: q.title, level: rec?.level ?? null, done: objs.filter((o) => o.done).length, total: objs.length,
-          next: objs.find((o) => !o.done)?.text || null, where: loc ? { mapId: loc.mapId, mapName: mapName(loc.mapId), x: loc.x, y: loc.y } : null });
+          next: objs.find((o) => !o.done)?.text || null, where: loc ? { mapId: loc.mapId, mapName: mapName(loc.mapId), x: loc.x, y: loc.y, evidence: game ? "game-waypoint" : verified ? "recorded-objective" : "reference" } : null });
       }
     }
     const here = p.location?.mapId;

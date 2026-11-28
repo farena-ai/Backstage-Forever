@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("miniNow", Object.freeze({
   state: () => ipcRenderer.invoke("miniNow:state"),
   close: () => ipcRenderer.invoke("miniNow:close"),
+  openNow: () => ipcRenderer.invoke("miniNow:openNow"),
   onState: (listener) => {
     if (typeof listener !== "function") throw new Error("Invalid mini Now listener.");
     const handler = (_event, value) => listener(value);

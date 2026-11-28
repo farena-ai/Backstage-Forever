@@ -8431,6 +8431,64 @@
           "text": "Keep the zone paintings on screen. The illustrated Where to level rows keep their artwork when you hover or move through them with the keyboard."
         }
       ]
+    },
+    {
+      "version": "1.29.4",
+      "channel": "stable",
+      "source": "docs/releases/1.29.4.md",
+      "title": "Backstage Forever 1.29.4 — Nearby quest loops and clearer next steps",
+      "changes": [
+        {
+          "id": "nearby-next-step",
+          "kind": "improved",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "See your best next move. Now weighs nearby objectives, ready hand-ins, available training and your pinned quest, then explains why it picked the first suggestion."
+        },
+        {
+          "id": "nearby-quest-loop",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": "now",
+          "section": "Changes",
+          "text": "Plan nearby stops. Build a two- or three-stop loop of recorded quest destinations in your zone. The map numbers the stops and advances when BF receives quest progress from the game. The loop lasts for your current BF session."
+        },
+        {
+          "id": "destination-evidence",
+          "kind": "improved",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Know how reliable the pin is. Now and World Map label verified turn-ins, recorded objectives, likely quest givers and missing locations."
+        },
+        {
+          "id": "mini-now-focus",
+          "kind": "improved",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Keep Mini Now focused. See one action, its destination and where the information came from. Open details when you need the reason or a path back to Now."
+        },
+        {
+          "id": "missing-location-desk",
+          "kind": "new",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Report a missing location. Start a Desk draft from a quest with a missing destination and review it before sending. Desk groups reports so the team can spot gaps affecting more players."
+        }
+      ]
     }
   ],
   "excluded": [

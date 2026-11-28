@@ -321,3 +321,7 @@
 .now-objective .now-actions { flex-wrap: wrap; }
 .objective-pin { margin-top: 8px; }
 .objective-confirm [data-objective-confirmation]:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.now-loop-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 0; }
+.now-loop-controls span { color: #f5e2b7; font-size: 12px; }
+.now-evidence { display: inline-block; color: #66502d; background-color: #d5b27544; padding: 2px 6px; border-radius: 4px; }
+.now-evidence[data-now-evidence="verified-turn-in"] { color: #265626; background-color: #a3b97953; }

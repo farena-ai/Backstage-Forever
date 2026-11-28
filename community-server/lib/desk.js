@@ -22,6 +22,7 @@ function errorSignature(name, stack) {
 }
 
 const PAGE = 25;
+const MISSING_QUEST_PREFIX = "Missing location for quest #";
 const TICKET_FILTERS = Object.freeze({
   open: "t.status IN ('new','looking','question')",
   new: "t.status = 'new'",
@@ -160,10 +161,40 @@ class Desk {
     return this.all("SELECT m.id, m.seq, m.sender, m.text, m.at, a.name AS admin_name FROM messages m LEFT JOIN admins a ON a.id = m.admin WHERE m.ticket = ? ORDER BY m.id", id);
   }
 
-  listTickets({ filter = "open", q = "", kind, area, version, os, lang, severity, tag, assignee, page = 1 } = {}) {
+  missingQuestLocations() {
+    return this.all(`
+      WITH reports AS (
+        SELECT substr(t.summary, length(?) + 1) AS quest, t.install
+        FROM tickets t
+        WHERE ${TICKET_FILTERS.open} AND t.install IS NOT NULL AND t.kind = 'data' AND t.area = 'quests' AND t.summary GLOB ?
+      )
+      SELECT CAST(quest AS INTEGER) AS questId, COUNT(DISTINCT install) AS installs, COUNT(*) AS reports
+      FROM reports
+      WHERE length(quest) BETWEEN 1 AND 8 AND quest NOT GLOB '*[^0-9]*' AND substr(quest, 1, 1) <> '0'
+      GROUP BY quest
+      ORDER BY installs DESC, reports DESC, questId
+      LIMIT 10`, MISSING_QUEST_PREFIX, MISSING_QUEST_PREFIX + "[1-9]*");
+  }
+
+  referenceDataReports() {
+    return this.all(`
+      WITH terms(term, needle) AS (VALUES ('trainer', '%trainer%'), ('recipe', '%recipe%'))
+      SELECT term, COUNT(DISTINCT t.install) AS installs, COUNT(*) AS reports
+      FROM terms
+      JOIN tickets t ON ${TICKET_FILTERS.open} AND t.kind = 'data'
+        AND (t.summary LIKE needle OR EXISTS (SELECT 1 FROM messages m WHERE m.ticket = t.id AND m.text LIKE needle))
+      GROUP BY term
+      ORDER BY installs DESC, reports DESC, term`);
+  }
+
+  listTickets({ filter = "open", q = "", kind, area, version, os, lang, severity, tag, assignee, missingQuest, page = 1 } = {}) {
     const where = [TICKET_FILTERS[filter] || TICKET_FILTERS.open], args = [];
     const eq = (col, v) => { if (v) { where.push(`t.${col} = ?`); args.push(v); } };
     eq("kind", kind); eq("area", area); eq("app_version", version); eq("os", os); eq("lang", lang);
+    if (missingQuest) {
+      where.push("t.install IS NOT NULL AND t.kind = 'data' AND t.area = 'quests' AND t.summary = ?");
+      args.push(MISSING_QUEST_PREFIX + missingQuest);
+    }
     if (severity === "none") where.push("t.severity IS NULL"); else eq("severity", severity);
     if (assignee === "none") where.push("t.assignee IS NULL");
     else if (assignee) { where.push("t.assignee = ?"); args.push(Number(assignee) || 0); }

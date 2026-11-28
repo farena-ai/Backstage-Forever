@@ -14,6 +14,8 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
   try {
     const profile = { id: "Alpha", name: "Alpha", className: "Hunter", realm: "Synthetic", level: 15, race: "Tauren", faction: "Horde", goals: [], notes: "", location: { zone: "The Barrens", mapId: 1413, x: 0.52, y: 0.29 }, journal: { levels: [{ level: 13, at: 1700000000, played: 30000 }, { level: 14, at: 1700003600, played: 33000 }, { level: 15, at: 1700009000, played: 38400 }], firsts: [{ key: "flight", at: 1700002000 }], zones: [1411, 1413, 1454, 1456, 1412, 1441], played: 39000 },
       quests: [{ id: 96, title: "Call of Water", complete: true, objectives: [] }, { id: 5728, title: "Hidden Enemies", complete: false, objectives: [{ text: "0/1 Bazzalan slain", done: false, type: "monster", required: 1, fulfilled: 0 }, { text: "0/1 Jergosh the Invoker slain", done: false, type: "monster", required: 1, fulfilled: 0 }] }] };
+    profile.source = { kind: "wow-addon", id: "synthetic-alpha", updatedAt: new Date().toISOString() };
+    profile.clientBuild = require("../data/forever/pack.json").build;
     const initial = { ...defaultState(), onboarded: true, activeProfileId: "Alpha", profiles: [profile], provider: { id: "ollama", model: "fixture", endpoint: "http://127.0.0.1:11434" } };
     await fs.writeFile(path.join(dir, "state.json"), JSON.stringify(validateState(initial)));
     const repo = path.resolve(__dirname, "..");
@@ -25,6 +27,9 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
       load('./src/core/game-runtime.cjs').GameRuntime.prototype.probe=async()=>({state:'not-running',launchAvailable:false});
       load('./src/core/voice.cjs').VoiceService.prototype.capabilities=async()=>({available:false,recognizers:[],voices:[]});
       const L=load('./src/core/live-bridge.cjs');
+      const guid='Player-4373-0000002A';
+      L.rememberLiveKey('synthetic-alpha', guid);
+      globalThis.fixtureCharacterHash=L.identityHash(guid);
       L.LiveBridge.prototype.readPreference=function(){globalThis.liveFixture={bridge:this};return false;};L.LiveBridge.prototype.start=function(){};
       load('./src/main.cjs');
     `);
@@ -73,7 +78,7 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     await page.locator(".bf-arrive").click(); await page.locator(".bf-arrive").waitFor({ state: "detached" });
     await page.screenshot({ path: path.join(capture, "now.png") });
     // Live frame in another zone: Now refreshes from it.
-    await app.evaluate(() => { const b = liveFixture.bridge; b.enabled = true; b.frame = { version: 2, seq: 1, combat: false, characterHash: 0, mounted: false, position: { mapId: 1413, x: 0.51, y: 0.30, facing: 1 }, level: 16, receivedAt: Date.now() }; b.signal = "live"; b.emit(); });
+    await app.evaluate(() => { const b = liveFixture.bridge; b.enabled = true; b.frame = { version: 2, seq: 1, combat: false, characterHash: fixtureCharacterHash, mounted: false, position: { mapId: 1413, x: 0.51, y: 0.30, facing: 1 }, level: 16, receivedAt: Date.now() }; b.signal = "live"; b.emit(); });
     await page.locator("[data-now-live]").getByText(/Level 16/).waitFor({ timeout: 15000 });
     // First-run checklist and this session's card.
     assert.match(await page.locator(".now-setup h2").innerText(), /Get set up/);
@@ -84,7 +89,7 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     assert.equal(await app.evaluate(() => globalThis.setupCalls), 1);
     await page.locator(".now-session").waitFor();
     // Playing on: a level-up celebrates, a death puts "run back to your body" first.
-    const frame = (o) => app.evaluate((_e, o) => { const b = liveFixture.bridge; b.frame = { version: 3, combat: false, dead: false, characterHash: 0, mounted: false, level: 16, xpPercent: 40, position: { mapId: 1413, x: 0.51, y: 0.30, facing: 1 }, ...o, receivedAt: Date.now() }; b.signal = "live"; b.emit(); }, o);
+    const frame = (o) => app.evaluate((_e, o) => { const b = liveFixture.bridge; b.frame = { version: 3, combat: false, dead: false, characterHash: fixtureCharacterHash, mounted: false, level: 16, xpPercent: 40, position: { mapId: 1413, x: 0.51, y: 0.30, facing: 1 }, ...o, receivedAt: Date.now() }; b.signal = "live"; b.emit(); }, o);
     await frame({ seq: 2, position: { mapId: 1413, x: 0.53, y: 0.31, facing: 1 } });
     await frame({ seq: 3, level: 17, xpPercent: 1, position: { mapId: 1413, x: 0.55, y: 0.33, facing: 1 } });
     await page.locator(".bf-celebrate [data-bf-level]").getByText("17", { exact: true }).waitFor(); await page.locator(".bf-celebrate").getByText("You reached level 17").waitFor(); await page.waitForTimeout(1400);
@@ -249,7 +254,7 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
     // Every visible button that names a page, with the quest-session tool unfolded.
     await page.evaluate(() => PlayerNavigation.reveal(root, "coach-quest-plan"));
     const navs = await page.locator(".adventure-page button[data-nav]").evaluateAll((ns) => ns.filter((n) => n.getClientRects().length).map((n) => ({ nav: n.dataset.nav, text: n.textContent.trim() })));
-    assert.ok(navs.length >= 4, JSON.stringify(navs));
+    for (const required of ["quest-guide", "dungeons", "preparation"]) assert.ok(navs.some(({ nav }) => nav === required), JSON.stringify(navs));
     for (const { nav, text } of navs) {
       await page.locator(`.adventure-page button[data-nav="${nav}"]`, { hasText: text }).filter({ visible: true }).first().click();
       await page.waitForFunction((d) => page === d, nav, { timeout: 5000 }).catch(() => { throw new Error(`Adventure "${text}" did not open ${nav}`); });
@@ -266,7 +271,27 @@ const { defaultState, validateState } = require("../src/core/validation.cjs");
         await page.waitForFunction((d) => page === d, nav, { timeout: 5000 });
       }
     }
-    console.log("Now smoke passed");
+    await page.locator('[data-nav="now"]').first().click();
+    const ready = [{ id: 844, complete: true }, { id: 845, complete: true }];
+    await frame({ seq: 7, questLog: ready, turnedIn: [] });
+    await page.locator('[data-now-loop-action="start"]').click();
+    const stops = page.locator("[data-wm-quest-stop]");
+    await stops.first().waitFor().catch(async (error) => {
+      const details = await page.evaluate(async () => ({ page, receipt: await backstage.questLoop(), mapId: WorldMapView._state().model?.mapId, now: NowView._state().advice?.canPlanLoop, startError: document.querySelector('[data-now-loop-action="start"]')?.title }));
+      throw new Error(`The nearby quest loop did not open: ${JSON.stringify(details)}`, { cause: error });
+    });
+    assert.equal(await stops.count(), 2);
+    assert.match(await stops.first().innerText(), /Next stop · Verified turn-in/i);
+    const firstId = (await stops.first().innerText()).includes("Plainstrider") ? 844 : 845;
+    const remaining = ready.filter((q) => q.id !== firstId);
+    await frame({ seq: 8, characterHash: 0, questLog: remaining, turnedIn: [firstId] });
+    assert.equal(await page.evaluate(async () => (await window.backstage.questLoop()).loop.currentIndex), 0);
+    await frame({ seq: 9, questLog: remaining, turnedIn: [firstId] });
+    await stops.nth(1).locator('small', { hasText: "Next stop" }).waitFor();
+    assert.match(await stops.first().innerText(), /Completed/);
+    await frame({ seq: 10, questLog: [], turnedIn: [firstId, remaining[0].id] });
+    await page.getByText("All stops completed.", { exact: true }).waitFor();
+    console.log("Now smoke passed, including verified quest loop progression");
   } catch (e) { console.error(e); process.exitCode = 1; }
   finally { clearTimeout(watchdog); await app?.close().catch(() => {}); await fs.rm(dir, { recursive: true, force: true }).catch(() => {}); }
 })();

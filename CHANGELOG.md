@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.29.4 - Nearby quest loops and clearer next steps
+
+- Now explains your highest-priority action, World Map plans nearby quest loops and shows destination evidence, and Mini Now stays focused on the current step. Missing locations can be reported through Desk. See the [release notes](docs/releases/1.29.4.md).
+
 ## 1.29.3 - Live Companion quest log
 
 - Companion shows the active character's live quest log when BF has received it and marks the saved fallback. Painted zone rows keep their artwork on hover and keyboard focus. See the [release notes](docs/releases/1.29.3.md).

@@ -23,6 +23,7 @@ window.WorldMapView = (() => {
   const tooOld = (p) => Boolean(seenWithin && p.community && p.ageDays != null && p.ageDays > seenWithin);
   const PREF = "bf-world-map-v2";
   let clusters = [], pendingFocus = null, focused = null; // focused: { pin, goal } while a link's target is dialed in
+  let questLoop = null, loopRequest = null, loopPoll = null, pendingLoopFit = null;
   let model = null, mapId = null, follow = true, selected = null, hover = null, trail = [], view = { zoom: 1, cx: 0.5, cy: 0.5 };
   let layers = Object.fromEntries(Object.values(LAYER_GROUPS).flat().map(([k]) => [k, !OFF_BY_DEFAULT.has(k)]));
   let journey = null, journeyAt = 0; // this session's path on the shown map (from the app, memory only)
@@ -58,6 +59,45 @@ window.WorldMapView = (() => {
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pct = (v) => (v * 100).toFixed(1);
   const dirName = (dx, dy) => { const d = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360; return ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"][Math.round(d / 45) % 8]; };
+  const DESTINATION = {
+    "verified-turn-in": ["Verified turn-in", "The quest reference lists this NPC as the hand-in."],
+    "likely-quest-giver": ["Likely quest giver", "Check the turn-in in your quest log. This marker comes from the quest giver record."],
+    "missing-location": ["Location missing", "Check your quest log for the destination. BF has no recorded waypoint for this step."],
+    "recorded-objective": ["Recorded objective area", "Use this area as a reference for the quest objective."],
+    "game-waypoint": ["Saved game waypoint", "WoW reported this destination in the saved quest log."],
+    reference: ["Reference location", "Confirm this destination in WoW."],
+  };
+  const destinationInfo = (evidence) => Object.hasOwn(DESTINATION, evidence) ? DESTINATION[evidence] : null;
+  function goalEvidence(evidence) {
+    const info = destinationInfo(evidence);
+    return info ? `<p class="wm-goal-evidence" data-wm-goal-evidence="${evidence}"><strong>${info[0]}</strong><br>${info[1]}</p>` : "";
+  }
+  function questLoopMarkup(loop) {
+    const complete = loop.stops.every((stop) => stop.done);
+    const rows = loop.stops.map((stop, index) => {
+      const active = !stop.done && index === loop.currentIndex;
+      const state = stop.done ? "Completed" : active ? "Next stop" : "Upcoming";
+      const evidence = destinationInfo(stop.evidence)?.[0];
+      return `<li><button type="button" data-wm-quest-stop="${index}"${active ? ' aria-current="step"' : ""}><span class="wm-stop-number">${index + 1}</span><span><strong>${esc(stop.title)}</strong><small>${state}${evidence ? ` · ${evidence}` : ""}</small></span></button></li>`;
+    }).join("");
+    return `<div class="wm-quest-loop-head"><h3>Nearby quest loop</h3><button type="button" data-wm-act="fit-quest-loop">Show all stops</button></div>${complete ? '<p class="wm-quest-loop-complete">All stops completed.</p>' : ""}<ol>${rows}</ol>`;
+  }
+  const shownQuestLoop = () => !characterSelectionPending() && questLoop?.profileId === model?.profileId && questLoop?.profileId === profile()?.id && questLoop?.loop?.mapId === model?.mapId ? questLoop.loop : null;
+
+  function paintQuestLoop() {
+    const box = document.querySelector("[data-wm-quest-loop]");
+    if (!box) return;
+    const loop = shownQuestLoop();
+    const markup = loop ? questLoopMarkup(loop) : "";
+    box.hidden = !loop;
+    if (box._loopMarkup === markup) return false;
+    const focusedStop = box.contains(document.activeElement) && document.activeElement.dataset.wmQuestStop;
+    box._loopMarkup = markup;
+    box.innerHTML = markup;
+    window.I18n?.apply(box);
+    if (focusedStop) box.querySelector(`[data-wm-quest-stop="${focusedStop}"]`)?.focus({ preventScroll: true });
+    return true;
+  }
 
   // ---------- page shell ----------
   function page() {
@@ -91,6 +131,7 @@ window.WorldMapView = (() => {
         </div>
         <aside class="wm-side" aria-label="Map details and layers">
           <section class="wm-card" data-wm-card tabindex="-1" aria-label="Map selection"></section>
+          <section class="wm-quest-loop" data-wm-quest-loop aria-label="Nearby quest loop" hidden></section>
           <section class="wm-results" data-wm-results tabindex="-1" aria-label="Map search results" hidden></section>
           <div class="wm-legend" data-wm-legend>${layerControls()}</div>
           <section class="wm-community" data-wm-community hidden></section>
@@ -395,6 +436,7 @@ window.WorldMapView = (() => {
     if (focused && focused.pin.mapId === model?.mapId) drawFocus(focused);
     if (selected && selected.kind !== "objective-area") { const [sx, sy] = toScreen(selected.x, selected.y); ctx.beginPath(); ctx.arc(sx, sy, 18, 0, 7); ctx.strokeStyle = "#fff6d0"; ctx.lineWidth = 3; ctx.stroke(); ctx.strokeStyle = "#a0701a"; ctx.lineWidth = 1.5; ctx.stroke(); }
     if (layers.journey !== false && journey && journey.mapId === model?.mapId) drawJourney(journey);
+    drawQuestLoop();
     // Player: saved marker, live trail, live arrow.
     const pl = model?.player;
     if (pl?.saved && !pl.live) { const [sx, sy] = toScreen(pl.saved.x, pl.saved.y); ctx.beginPath(); ctx.arc(sx, sy, 8, 0, 7); ctx.setLineDash([3, 3]); ctx.strokeStyle = "#3a2410"; ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); ctx.font = "600 11px 'Source Sans 3'"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; const lw = ctx.measureText("last saved").width + 10; ctx.fillStyle = "rgba(245,232,200,0.92)"; ctx.beginPath(); ctx.roundRect(sx - lw / 2, sy + 11, lw, 15, 3); ctx.fill(); ctx.fillStyle = "#3a2410"; ctx.fillText("last saved", sx, sy + 19); }
@@ -409,6 +451,58 @@ window.WorldMapView = (() => {
       ctx.restore();
     });
     if (pl?.live) arrow(...toScreen(pl.live.x, pl.live.y), pl.live.facing, pl.live.combat);
+  }
+  // Offset overlapping badges so two quests for one NPC still have separate visible stops.
+  function questLoopMarkers(loop) {
+    const markers = [];
+    loop?.stops.forEach((stop, index) => {
+      const [x, y] = toScreen(stop.where.x, stop.where.y);
+      let sx = x;
+      for (const offset of [0, 26, -26, 52]) {
+        sx = x + offset;
+        if (!markers.some((p) => Math.hypot(p.sx - sx, p.y - y) < 24)) break;
+      }
+      markers.push({ index, x, y, sx });
+    });
+    return markers;
+  }
+  function drawQuestLoop() {
+    const loop = shownQuestLoop();
+    if (!loop) return;
+    const markers = questLoopMarkers(loop);
+    ctx.save();
+    ctx.setLineDash([6, 5]);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#40290fee";
+    ctx.beginPath();
+    for (const [i, marker] of markers.entries()) {
+      if (i === 0) ctx.moveTo(marker.x, marker.y);
+      else ctx.lineTo(marker.x, marker.y);
+    }
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#f6d493";
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = "700 13px 'Source Sans 3', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (const { index, x, y, sx } of markers) {
+      const done = loop.stops[index].done, active = index === loop.currentIndex && !done;
+      if (sx !== x) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(sx, y); ctx.stroke(); }
+      ctx.beginPath();
+      ctx.arc(sx, y, active ? 13 : 11, 0, Math.PI * 2);
+      ctx.fillStyle = done ? "#36533c" : active ? "#f6cf76" : "#573b20";
+      ctx.fill();
+      ctx.strokeStyle = active ? "#412809" : "#fce6ad";
+      ctx.stroke();
+      ctx.fillStyle = active ? "#2e1c0b" : "#fff3d9";
+      ctx.fillText(String(index + 1), sx, y + 1);
+    }
+    ctx.restore();
+  }
+  function hitQuestStop(sx, sy) {
+    return questLoopMarkers(shownQuestLoop()).find((point) => Math.hypot(point.sx - sx, point.y - sy) <= 13)?.index ?? null;
   }
   // Many community spots as one teal medallion with their count; a click zooms in on them.
   function drawSharedCluster(c) {
@@ -722,7 +816,10 @@ window.WorldMapView = (() => {
     }
     if (focused && focused.pin !== p) focused = null;
     const goal = focused?.goal;
-    const goalBox = focused ? `<section class="wm-goal" data-wm-goal><span class="wm-goal-eyebrow">Your goal here</span><h4>${esc(goal?.title || p.label)}</h4>${goal?.steps?.length ? `<ol>${goal.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}<div class="wm-goal-actions">${goal?.questId ? `<button type="button" data-quest-open="${esc(goal.questId)}"${p.routeBuild ? ` data-ledger-quest-profile="${esc(p.profileId)}"` : ""}>Open quest</button>` : ""}<button type="button" class="subtle" data-wm-act="unfocus">Show the full map</button></div></section>` : "";
+    const missing = goal?.evidence === "missing-location";
+    const report = missing && Number.isSafeInteger(goal.questId) ? '<button type="button" data-wm-act="report-missing-location">Report missing location</button>' : "";
+    const goalBox = focused ? `<section class="wm-goal" data-wm-goal><span class="wm-goal-eyebrow">Your goal here</span><h4>${esc(goal?.title || p.label)}</h4>${goalEvidence(goal?.evidence)}${goal?.steps?.length ? `<ol>${goal.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}<div class="wm-goal-actions">${goal?.questId ? `<button type="button" data-quest-open="${esc(goal.questId)}"${p.routeBuild ? ` data-ledger-quest-profile="${esc(p.profileId)}"` : ""}>Open quest</button>` : ""}${report}<button type="button" class="subtle" data-wm-act="unfocus">Show the full map</button></div></section>` : "";
+    if (missing) { box.innerHTML = goalBox; window.I18n?.apply(box); return; }
     if (p.routeBuild) {
       // Route focus contains only escaped display data and a scoped quest action, not a waypoint command.
       box.innerHTML = `${goalBox}<p class="wm-coords">${esc(model.mapName)} · ${pct(p.x)}, ${pct(p.y)}</p><p class="wm-src">Approximate route reference</p>`;
@@ -734,7 +831,7 @@ window.WorldMapView = (() => {
     box.innerHTML = `${goalBox}<div class="wm-card-head">${ico(p.kind, p.gather ? `data-gather="${esc(p.gather)}"` : "")}<div><h3>${esc(p.label)}</h3>${p.sub ? `<p class="wm-sub">${esc(p.sub)}</p>` : ""}</div></div>
       <p class="wm-coords">${esc(model.mapName)} · ${pct(p.x)}, ${pct(p.y)}</p>${relation(p)}
       ${details}
-      <div class="wm-card-actions"><button type="button" class="primary" data-wm-act="way">Copy waypoint for WoW</button>${p.objectivePoint ? "" : '<button type="button" data-wm-act="track">Track on radar</button>'}${p.questId ? `<button type="button" data-quest-open="${esc(p.questId)}">Open quest</button>` : ""}</div>
+      <div class="wm-card-actions"><button type="button" class="primary" data-wm-act="way">Copy waypoint for WoW</button>${p.objectivePoint ? "" : '<button type="button" data-wm-act="track">Track on radar</button>'}${p.questId && !goal?.questId ? `<button type="button" data-quest-open="${esc(p.questId)}">Open quest</button>` : ""}</div>
       ${p.objectivePoint ? '<p class="wm-note">No matching objective area. This reference point is a guide, not a live spawn.</p>' : provenanceCard(p)}
       <p class="wm-src">${esc(p.source || "")}${p.lastSeen ? ` · seen ${esc(p.lastSeen)}` : ""}${p.build ? ` · build ${esc(p.build)}` : ""}</p>`;
     paintIcons(box);
@@ -810,7 +907,7 @@ window.WorldMapView = (() => {
     box._near = near.map((n) => n.p);
     paintIcons(box);
   }
-  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; attrib(); loadArt(model?.mapId); legend(); communityCard(); fillCard(); card(); liveLine(); zoneSelect(); resultsList(); nearList(); campsList(); heatList(); window.WorldFinders?.paint(model, finderHooks, layers.rare !== false); draw(); }
+  function paintAll() { const t = document.querySelector("[data-wm-title]"); if (t && model) t.textContent = model.mapName; attrib(); loadArt(model?.mapId); legend(); communityCard(); fillCard(); card(); paintQuestLoop(); liveLine(); zoneSelect(); resultsList(); nearList(); campsList(); heatList(); window.WorldFinders?.paint(model, finderHooks, layers.rare !== false); draw(); }
   // What the gathering loop and rare panels (world-finders.js) may ask of this page.
   const finderHooks = {
     mapId: () => model?.mapId ?? null, redraw: () => draw(),
@@ -831,6 +928,60 @@ window.WorldMapView = (() => {
       arts.set(id, { bitmap, source: r?.source || null, reason: r?.reason || null });
     } catch { arts.set(id, { bitmap: null, reason: "Map art unavailable." }); }
     if (model?.mapId === id) { attrib(); draw(); }
+  }
+  function fitQuestLoop() {
+    const loop = shownQuestLoop();
+    if (!loop) return;
+    const points = loop.stops.map((stop) => stop.where);
+    const me = model.player?.live || model.player?.saved;
+    if (me && [me.x, me.y].every(Number.isFinite)) points.push(me);
+    const xs = points.map((point) => point.x), ys = points.map((point) => point.y);
+    const left = Math.min(...xs), right = Math.max(...xs), top = Math.min(...ys), bottom = Math.max(...ys);
+    const zoom = Math.max(1, Math.min(3, 0.68 / Math.max(right - left, bottom - top)));
+    view = zoom === 1 ? { zoom, cx: 0.5, cy: 0.5 } : { zoom, cx: (left + right) / 2, cy: (top + bottom) / 2 };
+    draw();
+  }
+  function showQuestStop(index, { automatic = false } = {}) {
+    const stop = shownQuestLoop()?.stops[index];
+    if (!stop) return;
+    const where = stop.where;
+    const npcId = stop.npcId ?? where.npcId;
+    const exactPin = (model.pins || []).find((pin) => pin.npcId && npcId === pin.npcId && Math.hypot(pin.x - where.x, pin.y - where.y) < 0.005);
+    selected = exactPin || { kind: stop.kind === "turnin" ? "quest-turnin" : "quest-objective", label: stop.destination || stop.title, questId: stop.questId, npcId, ...where };
+    focused = { pin: selected, questLoop: true, automatic, goal: { title: stop.title, questId: stop.questId, evidence: stop.evidence, steps: [stop.detail].filter(Boolean) } };
+    follow = false;
+    savePref();
+    const toggle = document.querySelector("[data-wm-follow]");
+    if (toggle) toggle.checked = false;
+    if (!automatic) view = { zoom: Math.max(2.2, view.zoom), cx: where.x, cy: where.y };
+    card();
+    draw();
+  }
+  async function refreshQuestLoop() {
+    const root = mountedFor, profileId = model?.profileId;
+    if (!api.questLoop || !root?.isConnected || !profileId || characterSelectionPending() || profile()?.id !== profileId || loopRequest?.root === root) return;
+    const request = { root, profileId };
+    loopRequest = request;
+    try {
+      const receipt = await api.questLoop();
+      if (loopRequest !== request || root !== mountedFor || !root.isConnected || characterSelectionPending() || profile()?.id !== profileId || model?.profileId !== profileId) return;
+      const loop = receipt?.profileId === profileId ? receipt.loop : null;
+      const usable = Array.isArray(loop?.stops) && loop.stops.length >= 2 && loop.stops.length <= 3 && loop.stops.every((stop) => stop.where?.mapId === loop.mapId && [stop.where.x, stop.where.y].every(Number.isFinite));
+      const prior = shownQuestLoop();
+      questLoop = usable ? receipt : null;
+      const retired = !questLoop && focused?.questLoop;
+      if (retired) { focused = null; selected = null; card(); }
+      const changed = paintQuestLoop();
+      if (prior && focused?.automatic && prior.currentIndex !== loop?.currentIndex && shownQuestLoop()) {
+        if (loop.currentIndex >= 0) showQuestStop(loop.currentIndex, { automatic: true });
+        else { focused = null; selected = null; card(); }
+      }
+      if (pendingLoopFit && profileId === pendingLoopFit.profileId && shownQuestLoop()?.mapId === pendingLoopFit.mapId) {
+        pendingLoopFit = null;
+        fitQuestLoop();
+      } else if (retired || changed) draw();
+    } catch { /* A transient read leaves the current loop available. */ }
+    finally { if (loopRequest === request) loopRequest = null; }
   }
   function attrib() {
     const a = document.querySelector("[data-wm-attrib]"); if (!a || !model) return;
@@ -868,14 +1019,14 @@ window.WorldMapView = (() => {
       if (pendingFocus && pendingFocus.mapId === m.mapId) {
         // Prefer the real pin (an NPC from another page); otherwise mark the spot itself.
         const f = pendingFocus;
-        const real = f.npcId ? model.pins.filter((p) => p.npcId === f.npcId).sort((a, b) => Math.hypot(a.x - f.x, a.y - f.y) - Math.hypot(b.x - f.x, b.y - f.y))[0] : null;
+        const real = f.npcId ? model.pins.filter((p) => p.npcId === f.npcId && (!f.fitLoop || Math.hypot(p.x - f.x, p.y - f.y) < 0.005)).sort((a, b) => Math.hypot(a.x - f.x, a.y - f.y) - Math.hypot(b.x - f.x, b.y - f.y))[0] : null;
         const pin = real || { id: "focus", kind: f.kind || (f.npcId ? "npc" : "instance"), npcId: f.npcId || undefined, label: f.label, sub: f.sub || null, mapId: m.mapId, x: f.x, y: f.y, source: f.source || (f.kind || f.npcId ? "From your advisor" : "Classic-era baseline (approximate entrance)"),
           ...(f.objectivePoint ? { objectivePoint: true, questId: f.questId, source: "From your quest page" } : {}),
           ...(f.routeBuild ? { questId: f.questId, profileId: f.profileId, routeBuild: f.routeBuild, routeSource: f.routeSource } : {}),
           ...(f.scopedQuest ? { scopedQuest: f.scopedQuest } : {}) };
         if (!real) model.pins.push(pin);
         selected = pin; pendingFocus = null;
-        focused = { pin, goal: f.goal || null };
+        focused = { pin, goal: f.goal || null, questLoop: Boolean(f.fitLoop), ...(f.fitLoop ? { automatic: true } : {}) };
         revealRoute = Boolean(f.routeBuild);
         revealGoal = Boolean(f.revealGoal && f.goal);
         // Frame you and the target together when you're on this map, else zoom in on the target.
@@ -896,7 +1047,7 @@ window.WorldMapView = (() => {
         // The settling selection will mount a fresh map; don't reload the old character meanwhile.
         if (!characterSelectionPending()) void load();
       } else if (root) {
-        paintAll(); loadJourney(true);
+        paintAll(); loadJourney(true); void refreshQuestLoop();
         if (revealRoute) {
           const action = root.querySelector("[data-wm-goal] [data-quest-open]");
           action?.focus({ preventScroll: true });
@@ -973,6 +1124,8 @@ window.WorldMapView = (() => {
     canvas.addEventListener("mousemove", (e) => {
       const [sx, sy] = at(e);
       if (dragging) { const [ax, ay] = toMap(dragging.x, dragging.y), [bx, by] = toMap(sx, sy); view.cx += ax - bx; view.cy += ay - by; dragging = { x: sx, y: sy, moved: true }; draw(); return; }
+      const stopIndex = hitQuestStop(sx, sy);
+      if (stopIndex !== null) { showTip(sx, sy, `<strong>${stopIndex + 1}. ${esc(shownQuestLoop().stops[stopIndex].title)}</strong>`); return; }
       const p = hit(sx, sy), a = p ? null : hitArea(sx, sy);
       if ((p || a) !== hover) { hover = p || a; draw(); }
       const cl = hitCluster(sx, sy);
@@ -983,7 +1136,7 @@ window.WorldMapView = (() => {
     });
     canvas.addEventListener("mouseleave", () => { tip.hidden = true; hover = null; dragging = null; draw(); });
     canvas.addEventListener("mousedown", (e) => { const [x, y] = at(e); dragging = { x, y, moved: false }; });
-    canvas.addEventListener("mouseup", (e) => { const was = dragging; dragging = null; if (was?.moved) return; const [sx, sy] = at(e); const c = hitCluster(sx, sy); if (c && view.zoom < 8) { const [mx, my] = toMap(sx, sy); view = { zoom: Math.min(8, view.zoom * 2), cx: mx, cy: my }; draw(); return; } selected = hit(sx, sy) || hitArea(sx, sy); card(); draw(); });
+    canvas.addEventListener("mouseup", (e) => { const was = dragging; dragging = null; if (was?.moved) return; const [sx, sy] = at(e); const stopIndex = hitQuestStop(sx, sy); if (stopIndex !== null) { showQuestStop(stopIndex); return; } const c = hitCluster(sx, sy); if (c && view.zoom < 8) { const [mx, my] = toMap(sx, sy); view = { zoom: Math.min(8, view.zoom * 2), cx: mx, cy: my }; draw(); return; } selected = hit(sx, sy) || hitArea(sx, sy); card(); draw(); });
     canvas.addEventListener("wheel", (e) => { e.preventDefault(); const [mx, my] = toMap(...at(e)); const z = Math.min(8, Math.max(1, view.zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2))); view.cx = mx - (mx - view.cx) * (view.zoom / z); view.cy = my - (my - view.cy) * (view.zoom / z); view.zoom = z; if (z === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }, { passive: false });
     canvas.addEventListener("dblclick", () => { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); });
     // 4.3 (0.52): the map works from the keyboard too.
@@ -1013,6 +1166,8 @@ window.WorldMapView = (() => {
     });
     root.addEventListener("click", async (e) => {
       if (e.target.closest("[data-wm-loop], [data-wm-rares]") && await window.WorldFinders?.onClick(e, finderHooks)) return;
+      const stop = e.target.closest("[data-wm-quest-stop]");
+      if (stop) { showQuestStop(Number(stop.dataset.wmQuestStop)); return; }
       const np = e.target.closest("[data-wm-near-pin]");
       if (np) { const p = root.querySelector("[data-wm-near]")._near?.[Number(np.dataset.wmNearPin)]; if (p) { selected = p; view = { zoom: Math.max(view.zoom, 2), cx: p.x, cy: p.y }; card(); draw(); reveal("[data-wm-card]"); } return; }
       const hz = e.target.closest("[data-wm-heat-zone]");
@@ -1032,6 +1187,11 @@ window.WorldMapView = (() => {
         return;
       }
       const act = e.target.closest("[data-wm-act]")?.dataset.wmAct; if (!act) return;
+      if (act === "fit-quest-loop") { fitQuestLoop(); return; }
+      if (act === "report-missing-location" && !characterSelectionPending() && focused?.goal?.evidence === "missing-location") {
+        window.DeskView?.reportMissingLocation?.({ questId: focused.goal.questId, zone: model?.mapName, build: profile()?.clientBuild });
+        return;
+      }
       if (act === "in" || act === "out") { view.zoom = Math.min(8, Math.max(1, view.zoom * (act === "in" ? 1.5 : 1 / 1.5))); if (view.zoom === 1) { view.cx = 0.5; view.cy = 0.5; } draw(); }
       if (act === "reset") { view = { zoom: 1, cx: 0.5, cy: 0.5 }; draw(); }
       if (act === "focus-area" && selected?.kind === "objective-area") dialArea(selected);
@@ -1050,9 +1210,10 @@ window.WorldMapView = (() => {
     if (pendingFocus?.routeBuild && (!root || !routeOwner(pendingFocus))) pendingFocus = null;
     if ((selected?.scopedQuest && (!root || !routeOwner(selected))) ||
         model?.pins.some((p) => p.routeBuild && (!root || !routeOwner(p)))) clearRoutePin();
-    if (!root) { mountedFor = null; return; }
+    if (!root) { mountedFor = null; clearInterval(loopPoll); loopPoll = null; return; }
     if (mountedFor === root) return;
     mountedFor = root; bind(); load();
+    if (api.questLoop && !loopPoll) loopPoll = setInterval(refreshQuestLoop, 3000);
   }
   if (api?.onLiveLink) api.onLiveLink(onLive);
   window.addEventListener("resize", () => { if (document.querySelector("[data-world-map]")) resize(); });
@@ -1069,20 +1230,24 @@ window.WorldMapView = (() => {
     if (focused?.pin?.routeBuild) focused = null;
   }
   function retireRouteFocus() {
+    questLoop = null; loopRequest = null; pendingLoopFit = null;
+    if (focused?.questLoop) { focused = null; selected = null; card(); }
+    if (document.querySelector("[data-world-map]")) { paintQuestLoop(); draw(); }
     if (pendingFocus?.routeBuild) pendingFocus = null;
     if (selected?.scopedQuest || model?.pins.some((p) => p.routeBuild)) {
       clearRoutePin();
       if (document.querySelector("[data-world-map]")) { card(); draw(); }
     }
   }
-  function focus(f, { revealGoal = false } = {}) {
+  function focus(f, { revealGoal = false, fitLoop = false } = {}) {
     if (f?.scopedQuest) {
       const target = !characterSelectionPending() && window.CommandsView.scopedQuest.mapTarget(f.scopedQuest, profile());
       if (!target) { window.toast?.("That saved quest marker is no longer current. Open it again from Quest Guide."); return false; }
       f = target;
     }
     if (!f || !Number.isSafeInteger(f.mapId) || (f.routeBuild && !routeOwner(f))) return false;
-    pendingFocus = revealGoal ? { ...f, revealGoal } : f; follow = false; mapId = f.mapId;
+    pendingLoopFit = fitLoop ? { profileId: profile()?.id, mapId: f.mapId } : null;
+    pendingFocus = revealGoal || fitLoop ? { ...f, revealGoal, fitLoop } : f; follow = false; mapId = f.mapId;
     if (!f.scopedQuest) savePref();
     if (document.querySelector("[data-world-map]")) load(f.mapId);
     return true;
@@ -1091,5 +1256,5 @@ window.WorldMapView = (() => {
   function focusZone(name) { const id = Number.isSafeInteger(name) && name > 0 ? name : window.ZoneArt?.idFor(name); if (!Number.isSafeInteger(id)) return false; pendingFocus = null; follow = false; mapId = id; savePref(); if (document.querySelector("[data-world-map]")) load(id); return true; }
   // _areaCard renders one objective-area card against a given model (tests).
   const _areaCard = (a, m) => { const keep = model; model = m; try { return areaCard(a); } finally { model = keep; } };
-  return { page, mounted, focus, focusZone, retireRouteFocus, _areaCard, _fillMarkup: fillMarkup, _communityMarkup: communityMarkup, _communityDetails: communityDetails, _state: () => ({ model, selected, view, trail, layers, results, journey, focused, clusters, onlyGatherable, seenWithin, visible: visiblePins().length }) };
+  return { page, mounted, focus, focusZone, retireRouteFocus, _areaCard, _goalEvidence: goalEvidence, _questLoopMarkup: questLoopMarkup, _fillMarkup: fillMarkup, _communityMarkup: communityMarkup, _communityDetails: communityDetails, _state: () => ({ model, selected, view, trail, layers, results, journey, focused, clusters, onlyGatherable, seenWithin, visible: visiblePins().length }) };
 })();

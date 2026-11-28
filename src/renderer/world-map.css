@@ -202,3 +202,23 @@
 .wm-fill p:last-child { margin-bottom: 0; }
 .wm-fill ul { margin: 0 0 6px; padding-left: 18px; font-size: 13px; }
 .wm-fill code { padding: 0 4px; border-radius: 3px; background: rgba(61,34,12,.12); font-family: Consolas, 'Cascadia Mono', monospace; }
+
+/* A numbered route ledger beside the map. The active stop reads first without moving the map. */
+.wm-quest-loop { padding: 12px; border: 1px solid #b1894f; border-radius: 6px; background: linear-gradient(#f4e7c8, #e5cda0); color: #442b18; }
+.wm-quest-loop[hidden] { display: none; }
+.wm-quest-loop-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 10px; flex-wrap: wrap; }
+.wm-quest-loop h3 { margin: 0; color: #3d220c; font: 700 15px Cinzel, Georgia, serif; }
+.wm-quest-loop ol { display: grid; gap: 5px; margin: 9px 0 0; padding: 0; list-style: none; }
+.world-map-page .wm-quest-loop button { min-height: 0; padding: 5px 7px; border: 1px solid transparent; border-radius: 4px; background: transparent; box-shadow: none; color: #442b18; text-shadow: none; text-align: left; transform: none; }
+.world-map-page .wm-quest-loop button::before, .world-map-page .wm-quest-loop button::after { display: none; }
+.world-map-page .wm-quest-loop button:focus-visible { outline: 2px solid #774318; outline-offset: 1px; }
+.world-map-page .wm-quest-loop [data-wm-quest-stop] { display: flex; align-items: start; gap: 8px; width: 100%; }
+.world-map-page .wm-quest-loop [data-wm-quest-stop]:hover, .world-map-page .wm-quest-loop [aria-current="step"] { background: #fff2ce; border-color: #b1894f; }
+.wm-quest-loop button[data-wm-act] { text-decoration: underline; text-underline-offset: 2px; font-size: 11px; }
+.wm-quest-loop strong { display: block; font-size: 12px; }
+.wm-quest-loop small { display: block; color: #68462e; font-size: 11px; }
+.wm-stop-number { display: grid; place-content: center; min-width: 20px; height: 20px; border: 1px solid #aa7e42; border-radius: 50%; color: #fff2cd; background: #593c22; font-weight: 700; }
+.wm-quest-loop [aria-current="step"] .wm-stop-number { color: #392410; background: #f6cf76; }
+.wm-quest-loop-complete { margin: 7px 0 0; font-size: 12px; color: #304d2e; }
+.wm-goal .wm-goal-evidence { padding: 6px 8px; margin: 6px 0; border-left: 2px solid #ddb770; background: #fff5d41c; font-size: 12px; }
+.wm-goal .wm-goal-evidence[data-wm-goal-evidence="likely-quest-giver"], .wm-goal .wm-goal-evidence[data-wm-goal-evidence="missing-location"] { border-left-style: dashed; }

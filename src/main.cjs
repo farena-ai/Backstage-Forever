@@ -376,6 +376,7 @@ app.whenReady().then(async () => {
       // A live disconnect alone cannot prevent the saved source reopening next launch.
       store.recovery.disconnectSavedGame();
       const result = await operation();
+      nearbyLoops.clear(); dismissedNow.clear();
       privateWeekly.clear();
       privateAfterAction.clear();
       return result;
@@ -841,9 +842,76 @@ app.whenReady().then(async () => {
   if (game) game.onSettingsProfiles = (blocks) => { if (settingsProfiles.settle(blocks)) game?.writeHandoff().catch(() => {}); };
   const leveling = new LevelingAdvisor({
     getState: () => store.state, knowledge, insights,
-    getLive: () => worldMap.liveFrame(worldMap.profile()),
+    getLive: (profile) => {
+      if (profile.source?.kind === "wow-addon") return matchingLiveFrame(profile, liveBridge.status());
+      const frame = worldMap.liveFrame(profile);
+      return frame ? { ...frame, questLog: undefined, turnedIn: undefined } : null;
+    },
   });
-  handle("levelingAdvice", () => leveling.advise());
+  const { direction, recommendSteps } = require("./core/next-step.cjs");
+  const { buildLoop, advanceLoop } = require("./core/quest-loop.cjs");
+  const nearbyLoops = new Map(), dismissedNow = new Map();
+  const activeOwner = () => store.state.activeProfileId ?? null;
+  const loopOwner = (id) => {
+    const p = leveling.profile(id);
+    return JSON.stringify([p?.source?.id, p?.clientBuild]);
+  };
+  function stepOptions(id) {
+    const pinned = store.state.objectives?.find((o) => o.profileId === id && o.kind === "quest" && !o.completion);
+    const selected = leveling.profile(id);
+    const validPin = pinned && pinned.sourceId === selected?.source?.id && require("./core/build-compat.cjs").usable(pinned.build, selected?.clientBuild);
+    const dismissed = dismissedNow.get(id);
+    const hidden = dismissed?.day === new Date().toDateString() ? [...dismissed.keys] : [];
+    if (validPin && hidden.includes(`pin:${pinned.id}`)) {
+      hidden.push(...["hand-in", "quest", "pickup"].map((kind) => `${kind}:${pinned.questId}`));
+      return { pinnedQuest: null, hidden };
+    }
+    return { pinnedQuest: validPin ? pinned.questId : null, hidden };
+  }
+  function currentLoop(id, advice) {
+    const found = nearbyLoops.get(id);
+    if (!found || !id) return null;
+    if (found.owner !== loopOwner(id)) { nearbyLoops.delete(id); return null; }
+    found.loop = advanceLoop(found.loop, advice || leveling.advise(id));
+    return found.loop;
+  }
+  function plannedStep(advice, id, loop = currentLoop(id, advice)) {
+    const stop = loop?.stops[loop.currentIndex];
+    if (!stop || advice?.character?.dead) return null;
+    const dir = direction(advice?.character?.position, stop.where)?.words || `in ${stop.where.mapName || "the marked zone"}`;
+    const source = advice?.log?.live ? "live" : "saved";
+    return { ...stop, dir, source, reason: `Stop ${loop.currentIndex + 1} of ${loop.stops.length} in your nearby quest loop.`, spoken: `${stop.title}, ${dir}.` };
+  }
+  function suggestedStep(advice) {
+    const id = activeOwner();
+    return plannedStep(advice, id) || recommendSteps(advice, stepOptions(id))[0] || null;
+  }
+  handle("levelingAdvice", () => {
+    const id = activeOwner(), advice = leveling.advise(id);
+    if (advice.status !== "ok") return advice;
+    const options = stepOptions(id), loop = currentLoop(id, advice);
+    const { completed, liveCompleted, ...log } = advice.log;
+    return { ...advice, log, recommendations: recommendSteps(advice, options), loop, loopStep: plannedStep(advice, id, loop), canPlanLoop: Boolean(!loop && buildLoop(advice, options)) };
+  });
+  handle("questLoop", (...args) => {
+    if (args.length) throw Error("Invalid quest loop request.");
+    const profileId = activeOwner();
+    return { profileId, loop: currentLoop(profileId) };
+  }, { privateOnly: true });
+  handle("changeQuestLoop", (...args) => {
+    const [action, id] = args;
+    if (args.length !== 2 || !["start", "end"].includes(action) || typeof id !== "string" || id !== activeOwner()) throw Error("Choose the current character.");
+    if (action === "end") { nearbyLoops.delete(id); return { profileId: id, loop: null }; }
+    const loop = currentLoop(id) || buildLoop(leveling.advise(id), stepOptions(id));
+    if (loop) nearbyLoops.set(id, { owner: loopOwner(id), loop });
+    return { profileId: id, loop };
+  }, { privateOnly: true });
+  handle("setNowDismissals", (...args) => {
+    const [id, keys] = args;
+    if (args.length !== 2 || typeof id !== "string" || id !== activeOwner() || !Array.isArray(keys) || keys.length > 32 || keys.some((key) => typeof key !== "string" || key.length > 110)) return false;
+    dismissedNow.set(id, { day: new Date().toDateString(), keys: [...keys] });
+    return true;
+  }, { privateOnly: true });
   // G10 (0.49): the first-launch tour is for new players only (no characters yet), never in automated tests.
   handle("onboarding", (...args) => { if (args.length) throw Error("Invalid onboarding request."); return { show: process.env.BF_TEST_INACTIVE !== "1" && !(!app.isPackaged && process.env.BF_USER_DATA && process.env.BF_ONBOARDING !== "1") && !(store.state.profiles || []).length }; });
   handle("worldTracker", (...args) => { if (args.length) throw Error("Invalid world tracker request."); return leveling.tracker(); });
@@ -1298,12 +1366,15 @@ app.whenReady().then(async () => {
   handle("openRadar", () => radar.open());
   handle("setRadarTarget", (pin) => radar.setTarget(pin === undefined ? null : pin));
   // Mini Now (0.44, 3.4): next step, XP and pace in a small always-on-top window beside the game.
-  miniNow = require("./core/mini-now-window.cjs").createMiniNow({ BrowserWindow, ipcMain, advise: () => leveling.advise(), session: () => playSession.summary(), live: liveBridge, rendererDir: path.join(__dirname, "renderer") });
+  miniNow = require("./core/mini-now-window.cjs").createMiniNow({ BrowserWindow, ipcMain, advise: () => leveling.advise(), getStep: suggestedStep, session: () => playSession.summary(), live: liveBridge, rendererDir: path.join(__dirname, "renderer"), onOpenNow: () => {
+    if (!win || win.isDestroyed()) return;
+    win.show(); win.focus(); win.webContents.send("backstage:openPage", "now");
+  } });
   handle("openMiniNow", () => miniNow.open());
   // Spoken next steps (0.45, 3.5): the same one step, with its sentence, for the voice.
   handle("nextStep", (...args) => {
     if (args.length) throw Error("Invalid next step request.");
-    return { profileId: store.state.activeProfileId ?? null, step: require("./core/next-step.cjs").nextStep(leveling.advise()) };
+    return { profileId: activeOwner(), step: suggestedStep(leveling.advise()) };
   });
   const { buildAtlas, loadEncounters } = require("./core/dungeon-atlas.cjs");
   const { dungeonProgression } = require("./core/dungeon-progression.cjs");
@@ -1491,6 +1562,7 @@ app.whenReady().then(async () => {
     // If retirement cannot be persisted, leave the journal and its related state untouched.
     fieldDispatch.beginReset();
     resetting = true;
+    nearbyLoops.clear(); dismissedNow.clear();
     recovery.clear();
     characterGuidance.clear();
     try { sessionHistory?.clear(); } catch {}
