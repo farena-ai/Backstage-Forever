@@ -15,7 +15,7 @@ const { matchingLiveFrame, characterContext } = require('./character-freshness.c
 // Providers accept at most this much context text (ChatGPT subscription limit).
 const CONTEXT_LIMIT=20000;
 const LOCAL_FACT_INTENTS = new Set(['place','npc-location','trainer','role','vendor','item-source','recipe','drops','creature','gather','quest-info','quest-turnin','turnin-which','class-unlock']);
-const needsSynthesis = /\b(?:compare|pros and cons|help me (?:decide|choose|plan)|how (?:much|many)|which [^?.!]{1,180} should i (?:choose|use|play)|and\s+(?:what|which|where|how|should|can|tell|show)\b)|\?\s*\S/i;
+const needsSynthesis = /[\r\n]|\b(?:compare|pros and cons|help me (?:decide|choose|plan|review)|how (?:much|many)|which [^?.!]{1,180} should i (?:choose|use|play)|and\s+(?:what|which|where|how|should|can|tell|show)\b)|\?\s*\S/i;
 // These events cancel work/drafts without changing completed conversation ownership.
 const SOFT_REASONS=new Set(['renderer-context','response-stop','memory-save']);
 class CompanionService {

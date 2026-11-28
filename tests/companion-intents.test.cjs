@@ -85,6 +85,8 @@ test("a configured model cannot overwrite sourced direct answers, while open-end
     assert.equal((await ask(prompt)).kind, "ai", prompt);
     assert.match(seen.at(-1).context, /Verified WoW Forever facts for this question:/);
   }
+  const draft = "Help me review this explicitly selected supply plan for WoW Forever.\nProfession: Alchemy. Selected saved recipe: Amber restorative.\nCoarse Thread (item 2320): total required 2; historical seller: vendor in Stormwind City.";
+  assert.equal((await ask(draft)).kind, "ai");
   const noModel = new CompanionService({ store: { ...store, state: { ...state, provider: { ...state.provider, model: "" } } }, context: new CompanionContext(() => ({ ...state, provider: { ...state.provider, model: "" } })), requests: new CompanionRequest(context), memory, knowledge: { index: () => null }, ai: providers, chatgpt: {}, claude: {} });
   const local = await noModel.ask({ provider: "ollama", prompt: "Where can I buy arrows?", profileId: horde.id, shareProfile: true, memoryIds: [] });
   assert.equal(local.kind, "intent");
