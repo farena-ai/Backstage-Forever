@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.29.1 - Short-session check-ins
+
+- Anonymous statistics check in about a minute after the desktop app opens, once per UTC day when enabled. Privacy & sharing explains the timing. See the [release notes](docs/releases/1.29.1.md).
+
 ## 1.29.0 - Backstage Live
 
 - Live guild and party tools: a Guild & Party panel that updates in seconds, guild events shared across the whole guild, a group planner, a realm party board, instant replies to your reports, and everything ready for a guild's Discord. See the [release notes](docs/releases/1.29.0.md).

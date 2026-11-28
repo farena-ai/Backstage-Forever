@@ -8347,6 +8347,34 @@
           "text": "What is live and what is not: players in the same guild or party see each other's changes at once; the desktop panel updates in seconds; anything coming from outside the game (a change made on another computer, or later in Discord) reaches the running game at the next /reload, and one member's reload passes it on to every guildmate in game. Guild and party features are a separate, opt-in kind of sharing: they use character names, which anonymous statistics never do. Help → Guild & Party explains each step. These features have not been tried between real players in the game yet."
         }
       ]
+    },
+    {
+      "version": "1.29.1",
+      "channel": "stable",
+      "source": "docs/releases/1.29.1.md",
+      "title": "Backstage Forever 1.29.1 — Short-session check-ins",
+      "changes": [
+        {
+          "id": "earlier-check-in",
+          "kind": "improved",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Short sessions count. If anonymous statistics are enabled, Backstage Forever tries its daily check-in about a minute after opening. Each installation can report once per UTC day."
+        },
+        {
+          "id": "check-in-privacy",
+          "kind": "fixed",
+          "platforms": [
+            "desktop"
+          ],
+          "action": null,
+          "section": "Changes",
+          "text": "Clearer Privacy & sharing. Expand the statistics details to see when the check-in runs and exactly what it contains. Turn off anonymous statistics there to stop future check-ins."
+        }
+      ]
     }
   ],
   "excluded": [

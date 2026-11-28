@@ -248,7 +248,7 @@ window.DeskView = (() => {
           <p class="desk-muted"><strong>Which spots are yours.</strong> <span>${esc(W.FIELDS.contributions[0][2])}</span></p>
           <p class="desk-muted"><strong>What comes back.</strong> ${W.FIELDS.pack.map(([, name, what]) => `<span>${esc(name)}</span>: <span>${esc(what)}</span>`).join(" ")}</p></details>`)}
         ${switchRow("statistics", s.statistics, false, `<details class="desk-see" data-player-tool="desk-see"><summary>${esc(W.BUTTONS.see)}</summary>
-          <p class="desk-muted">${s.statistics ? (s.lastHeartbeatDay ? "This is the whole of the next daily message. Today's was already sent." : "This is the whole of the next daily message.") : "Statistics are off, so nothing is sent. This is what would be sent if you switched them on."}</p>
+          <p class="desk-muted">${s.statistics ? "The first check-in is due about a minute after opening Backstage Forever, once per UTC day. Here is what it sends." : "Statistics are off, so nothing is sent. This is what would be sent if you switched them on."}</p>
           <dl class="desk-sent desk-sent-facts">${heartbeatRows(s.heartbeat)}</dl>
           <p class="desk-muted">${W.INSTALL_ID.slice(0, 3).map((x) => `<span>${esc(x)}</span>`).join(" ")}</p></details>`)}
         ${switchRow("errors", s.errors, false)}
