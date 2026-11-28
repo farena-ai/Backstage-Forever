@@ -53,6 +53,8 @@ function fullHistories() {
 function importHandler({ store, file, filesystem = fs }) {
   let handler;
   const calls = { confirm: 0, disconnect: 0, guidanceInvalidations: 0 };
+  const nearbyLoops = new Map([["old-profile", { stops: [] }]]);
+  const dismissedNow = new Map([["old-profile", { keys: ["quest:1"] }]]);
   const source = fs.readFileSync(
     path.join(__dirname, "../src/main.cjs"),
     "utf8",
@@ -67,6 +69,8 @@ function importHandler({ store, file, filesystem = fs }) {
         handler = fn;
       },
       store,
+      nearbyLoops,
+      dismissedNow,
       fs: filesystem,
       privateWeekly: new (require("../src/core/private-weekly.cjs").PrivateWeekly)(),
       privateAfterAction: new (require("../src/core/private-after-action.cjs").PrivateAfterAction)(),
@@ -98,7 +102,7 @@ function importHandler({ store, file, filesystem = fs }) {
       },
     },
   );
-  return { handler, calls };
+  return { handler, calls, nearbyLoops, dismissedNow };
 }
 test("a large exported completion-history roster restores with journals and credentials intact", (t) => {
   const dir = directory(t);
@@ -123,12 +127,14 @@ test("the actual native-dialog import handler accepts the same larger valid back
   const file = path.join(dir, "backup.json");
   fs.writeFileSync(file, JSON.stringify(state, null, 2));
   const store = new Store(path.join(dir, "target"), safe);
-  const { handler, calls } = importHandler({ store, file });
+  const { handler, calls, nearbyLoops, dismissedNow } = importHandler({ store, file });
   await handler();
   assert.deepEqual(store.state, state);
   assert.equal(calls.confirm, 1);
   assert.equal(calls.disconnect, 1);
   assert.equal(calls.guidanceInvalidations, 1);
+  assert.equal(nearbyLoops.size, 0);
+  assert.equal(dismissedNow.size, 0);
 });
 test("the native import budget refuses an oversized file before reading or confirming", async () => {
   let read = false;

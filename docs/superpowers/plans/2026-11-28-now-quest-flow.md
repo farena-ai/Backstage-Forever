@@ -8,8 +8,8 @@
 
 **Tech Stack:** Node, Electron IPC, existing renderer HTML and CSS, Node test runner and native smoke tests.
 
-- [ ] Test and implement proximity, pinned-goal and evidence ranking with stable ties.
-- [ ] Test and implement same-zone quest loops with positive completion evidence and character ownership.
-- [ ] Integrate the planner with Now, Mini Now and the map. Verify map evidence and keyboard access.
-- [ ] Add Desk draft validation, explicit review and moderator grouping. Verify with a local stub service.
+- [x] Test and implement proximity, pinned-goal and evidence ranking with stable ties.
+- [x] Test and implement same-zone quest loops with positive completion evidence and character ownership.
+- [x] Integrate the planner with Now, Mini Now and the map. Verify map evidence and keyboard access.
+- [x] Add Desk draft validation, explicit review and moderator grouping. Verify with a local stub service.
 - [ ] Run focused suites and production release checks. Verify the signed public Windows update path.
