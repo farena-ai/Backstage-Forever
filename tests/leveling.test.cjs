@@ -58,6 +58,23 @@ test("an observed empty quest log is distinct from a missing one", () => {
   assert.equal(advisor({ level: 15, quests: [] }).advise().log.known, true);
 });
 
+test("recorded objectives require a matching objective and game waypoints stay in their quest phase", () => {
+  const { KnowledgeIndex } = require("../src/core/knowledge.cjs");
+  const profile = { id: "A", level: 6, faction: "Alliance", captureVersion: "1.29.3", clientBuild: pack.build,
+    source: { kind: "wow-addon", updatedAt: "2026-11-28T12:00:00.000Z" },
+    quests: [{ id: 6, title: "Bounty on Garrick Padfoot", complete: false, objectives: [] }] };
+  const point = { mapId: 1429, x: .5, y: .4 };
+  let live;
+  const make = new LevelingAdvisor({ getState: () => ({ activeProfileId: "A", profiles: [profile] }), knowledge: { bundled: new KnowledgeIndex(pack) }, insights, getLive: () => live });
+  assert.equal(make.advise().log.active[0].where.evidence, "reference");
+  profile.quests[0].objectives.push({ type: "item", required: 1, done: false });
+  assert.equal(make.advise().log.active[0].where.evidence, "recorded-objective");
+  profile.quests[0].destination = point;
+  assert.deepEqual(make.advise().log.active[0].where, { ...point, mapName: "Elwynn Forest", evidence: "game-waypoint" });
+  live = { questLog: [{ id: 6, complete: true }] };
+  assert.notEqual(make.advise().log.ready[0].turnIn?.evidence, "game-waypoint");
+});
+
 test("a level 5 Human Warrior in Elwynn Forest gets Alliance zones and quests from the bundled data", () => {
   const r = advisor({ level: 5, faction: "Alliance", className: "Warrior", race: "Human", location: { mapId: 1429, x: 0.45, y: 0.55 }, quests: [] }).advise();
   assert.equal(r.status, "ok");

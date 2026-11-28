@@ -2,6 +2,7 @@
 // Mini Now (0.44, 3.4) and the one-line next step shared with spoken steps (3.5).
 const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), path = require("node:path");
+const vm = require("node:vm");
 const { nextStep, direction } = require("../src/core/next-step.cjs");
 const { miniNowView, createMiniNow } = require("../src/core/mini-now-window.cjs");
 const read = (f) => fs.readFileSync(path.join(__dirname, "..", f), "utf8");
@@ -43,6 +44,38 @@ test("mini Now view: step, XP with rested, pace; a plain message without a chara
   assert.equal(miniNowView(advice(), { active: false }).pace, null);
 });
 
+test("mini Now uses the shared choice and labels the quest evidence independently of live location", () => {
+  const selected = { kind: "objective", key: "quest:9", title: "Vile Familiars", where: { mapName: "Durotar" }, reason: "Your closest quest" };
+  const saved = miniNowView(advice({ log: { live: false, known: true } }), null, selected);
+  assert.equal(saved.step, selected);
+  assert.equal(saved.evidence, "saved");
+  assert.equal(miniNowView(advice({ log: { live: true } }), null, selected).evidence, "live");
+  assert.equal(miniNowView(advice(), null, { ...selected, source: "reference" }).evidence, "reference");
+  assert.equal(miniNowView(advice(), null, null).step, null);
+});
+
+test("mini Now keeps the detail controls mounted and announces only a changed action", () => {
+  const announcements = [], elements = new Map();
+  for (const key of ["who", "step", "details", "details-panel"]) elements.set(`[data-mn-${key}]`, { innerHTML: "", textContent: "", hidden: false, querySelectorAll: () => [] });
+  elements.set("[data-mn-announcement]", { set textContent(value) { announcements.push(value); } });
+  let emit;
+  const window = { miniNow: { onState(handler) { emit = handler; }, state: () => new Promise(() => {}) } };
+  const document = { addEventListener() {}, querySelector: (key) => elements.get(key) };
+  vm.runInNewContext(read("src/renderer/mini-now.js"), { window, document });
+  const data = { ready: true, name: "Vael", level: 15, zone: "Durotar", xpPercent: 31, restedPercent: 20, evidence: "saved", step: { key: "quest:9", kind: "objective", title: "Vile Familiars", detail: "Collect 2 heads", where: { mapName: "Durotar" }, dir: "north", reason: "Your closest quest" } };
+  emit(data);
+  assert.match(elements.get("[data-mn-step]").innerHTML, /Vile Familiars/);
+  assert.match(elements.get("[data-mn-step]").innerHTML, /Durotar/);
+  assert.match(elements.get("[data-mn-step]").innerHTML, /Last saved/);
+  assert.doesNotMatch(elements.get("[data-mn-step]").innerHTML, /Your closest quest|Collect 2 heads/);
+  assert.match(elements.get("[data-mn-details]").innerHTML, /Your closest quest/);
+  emit({ ...data, xpPercent: 33, evidence: "live", step: { ...data.step, dir: "south" } });
+  assert.equal(announcements.length, 1);
+  emit({ ...data, step: { ...data.step, key: "quest:10", title: "Sarkoth" } });
+  assert.equal(announcements.length, 2);
+  assert.match(announcements[1], /Sarkoth/);
+});
+
 test("the window opens without taking focus, trusts only its own page and cleans up", () => {
   const handlers = {}, sent = [];
   let created = null;
@@ -52,16 +85,24 @@ test("the window opens without taking focus, trusts only its own page and cleans
     loadURL(u) { this.url = u; this.webContents.mainFrame.url = u; } showInactive() { this.inactive = (this.inactive || 0) + 1; } show() { throw Error("must not take focus"); } focus() { throw Error("must not take focus"); }
     isDestroyed() { return false; } close() { this.listeners["on:closed"]?.(); }
   }
-  const m = createMiniNow({ BrowserWindow: FakeWin, ipcMain: { handle: (c, f) => { handlers[c] = f; } }, advise: () => advice(), session: () => null, live: { subscribe: () => () => {} }, rendererDir: path.join(__dirname, "../src/renderer") });
+  let nowOpens = 0;
+  const chosen = { kind: "objective", title: "Selected route stop" };
+  const m = createMiniNow({ BrowserWindow: FakeWin, ipcMain: { handle: (c, f) => { handlers[c] = f; } }, advise: () => advice(), getStep: () => chosen, onOpenNow: () => { nowOpens++; }, session: () => null, live: { subscribe: () => () => {} }, rendererDir: path.join(__dirname, "../src/renderer") });
   m.open(); created.listeners["ready-to-show"]();
   assert.equal(created.inactive, 1); assert.equal(created.o.show, false); assert.equal(created.o.alwaysOnTop, true);
   assert.equal(created.o.webPreferences.sandbox, true); assert.equal(created.o.webPreferences.contextIsolation, true);
   assert.match(created.o.webPreferences.preload, /mini-now-preload\.cjs$/);
   const own = { sender: created.webContents, senderFrame: created.webContents.mainFrame };
-  assert.equal(handlers["miniNow:state"](own).step.kind, "pickup");
-  assert.throws(() => handlers["miniNow:state"]({ sender: {}, senderFrame: {} }), /Untrusted/);
-  m.push(true); assert.equal(sent[0][0], "miniNow:state");
-  m.close(); assert.equal(m.isOpen(), false);
+  try {
+    assert.equal(handlers["miniNow:state"](own).step, chosen);
+    assert.throws(() => handlers["miniNow:state"]({ sender: {}, senderFrame: {} }), /Untrusted/);
+    assert.throws(() => handlers["miniNow:openNow"]({ sender: {}, senderFrame: {} }), /Untrusted/);
+    assert.throws(() => handlers["miniNow:openNow"](own, "other-page"), /Invalid/);
+    assert.equal(handlers["miniNow:openNow"](own), true);
+    assert.equal(nowOpens, 1);
+    m.push(true); assert.equal(sent[0][0], "miniNow:state");
+  } finally { m.close(); }
+  assert.equal(m.isOpen(), false);
 });
 
 test("mini Now is wired: Now button, preload, CSP without inline styles, help entry", () => {
@@ -70,5 +111,8 @@ test("mini Now is wired: Now button, preload, CSP without inline styles, help en
   assert.match(read("src/main.cjs"), /handle\("openMiniNow"/);
   const html = read("src/renderer/mini-now.html");
   assert.match(html, /style-src 'self'/); assert.doesNotMatch(read("src/renderer/mini-now.js"), /style="/);
+  assert.match(html, /<details[^>]+data-mn-details-panel/);
+  assert.match(html, /data-mn="open-now"/);
+  assert.doesNotMatch(html, /<main[^>]+aria-live/);
   assert.match(read("src/renderer/commands.js"), /name: "Mini Now"/);
 });

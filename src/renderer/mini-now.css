@@ -5,29 +5,37 @@ html, body { margin: 0; height: 100%; background: transparent; font: 13px/1.35 "
 .mn-title { font: 700 12px Cinzel, Georgia, serif; letter-spacing: .05em; color: #f4cf72; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mn-bar button { -webkit-app-region: no-drag; border: 0; background: transparent; color: #dcc79a; font-size: 13px; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
 .mn-bar button:hover, .mn-bar button:focus-visible { background: rgba(200,162,79,.25); color: #fff; }
-.mn-body { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; overflow: auto; }
+.mn-body { flex: 1; display: flex; flex-direction: column; gap: 9px; padding: 11px 12px 12px; overflow: auto; }
 .mn-step { display: flex; flex-direction: column; gap: 2px; padding-left: 10px; border-left: 3px solid #c8a24f; }
-/* Put art behind actionable guidance only; leave the death warning and XP untouched. */
+.mn-step-header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; }
+/* Keep the existing artwork behind the recommendation. */
 @media (forced-colors: none) {
-  .mn-step:is(.mn-turnin, .mn-objective, .mn-pickup, .mn-zone) { position: relative; isolation: isolate; }
-  .mn-step:is(.mn-turnin, .mn-objective, .mn-pickup, .mn-zone)::before {
+  .mn-step:not(.mn-dead) { position: relative; isolation: isolate; }
+  .mn-step:not(.mn-dead)::before {
     content: ""; position: absolute; inset: 0 0 0 auto; width: min(48%, 150px);
-    z-index: -1; pointer-events: none; opacity: .26;
+    z-index: -1; pointer-events: none; opacity: .2;
     background: url("art/reference/next.webp") center / cover no-repeat;
     mask-image: linear-gradient(90deg, transparent, #000 80%);
   }
 }
 .mn-turnin { border-left-color: #f4cf72; } .mn-objective { border-left-color: #8fbf6a; } .mn-pickup { border-left-color: #e6b84a; } .mn-dead { border-left-color: #d0533c; }
 .mn-kind { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .12em; text-transform: uppercase; color: #c9a45a; }
-.mn-step strong { font-size: 15px; color: #fff4d6; }
-.mn-detail { color: #dcc79a; }
-.mn-detail em { font-style: normal; color: #f4cf72; font-weight: 600; }
+.mn-evidence { padding: 1px 5px; border-radius: 3px; color: #f0d7a1; background: #6c522e; font-size: 11px; font-weight: 650; }
+.mn-evidence.mn-live { color: #d1ebbd; background: #38502e; }
+.mn-step strong { color: #fff4d6; font-size: 15px; overflow-wrap: anywhere; }
+.mn-destination { color: #edcf92; overflow-wrap: anywhere; }
+.mn-details { font-size: 12px; background: rgba(8,5,3,.23); border: 1px solid #ba92464d; border-radius: 4px; }
+.mn-details summary { cursor: pointer; color: #edcf92; padding: 4px 8px; }
+.mn-detail-content { display: grid; gap: 6px; padding: 4px 8px 6px; color: #dcc79a; overflow-wrap: anywhere; }
+.mn-detail-content p { margin: 0; }
+.mn-details button { color: #fff4d6; background: #492e14; border: 1px solid #bd9455; border-radius: 4px; margin: 0 8px 8px; padding: 4px 7px; font: inherit; cursor: pointer; }
+.mn-details button:hover { background: #644117; }
 .mn-xp { position: relative; height: 8px; border-radius: 4px; background: rgba(255,255,255,.12); overflow: hidden; }
 .mn-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #7a4bb0, #a36ee0); }
 .mn-rest { position: absolute; top: 0; bottom: 0; background: rgba(90,140,235,.6); }
-.mn-pace, .mn-msg, .mn-note { margin: 0; }
+.mn-pace, .mn-msg { margin: 0; }
 .mn-pace { color: #dcc79a; font-size: 12px; }
-.mn-note { color: #a8916a; font-size: 11px; }
+.mn-screen-reader { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* 4.3 (0.52): keyboard focus and less motion. */
-:where(button):focus-visible { outline: 2px solid #f4cf72; outline-offset: 2px; }
+:where(button, summary):focus-visible { outline: 2px solid #f4cf72; outline-offset: 2px; }

@@ -413,6 +413,43 @@ const { defaultState } = require("../src/core/validation.cjs");
     await wsInput.waitFor();
     await page.keyboard.press("Escape");
     assert.equal(await ws.isHidden(), true);
+    // Quest loop receipt belongs to this character and this map; a second read can advance it.
+    const loopReceipt = { profileId: "Alpha", loop: { mapId: 1413, currentIndex: 0, stops: [
+      { kind: "turnin", questId: 96, title: "Hand in Call of Water", evidence: "verified-turn-in", where: { mapId: 1413, x: .47, y: .4 }, detail: "Talk to the recorded quest finisher.", done: false },
+      { kind: "objective", questId: 5728, title: "Continue Hidden Enemies", evidence: "recorded-objective", where: { mapId: 1413, x: .57, y: .53 }, detail: "Work on your objective in this area.", done: false },
+    ] } };
+    await app.evaluate(({ ipcMain }, receipt) => {
+      const name = "backstage:questLoop";
+      globalThis.fixtureQuestLoop = receipt;
+      ipcMain.removeHandler(name);
+      ipcMain.handle(name, () => globalThis.fixtureQuestLoop);
+    }, loopReceipt);
+    await navigate(page, "world-map");
+    await page.evaluate(() => WorldMapView.focus({ mapId: 1413, x: .47, y: .4, label: "Call of Water", goal: { title: "Hand in Call of Water", questId: 96, evidence: "likely-quest-giver" } }, { fitLoop: true }));
+    const stops = page.locator("[data-wm-quest-loop]");
+    await stops.locator('[data-wm-quest-stop="0"][aria-current="step"]').getByText("Hand in Call of Water").waitFor();
+    const goal = page.locator("[data-wm-goal]");
+    await goal.getByText("Likely quest giver", { exact: true }).waitFor();
+    assert.match(await goal.innerText(), /Check the turn-in in your quest log/);
+    assert.equal(await page.getByRole("button", { name: "Copy waypoint for WoW" }).count(), 1);
+    await stops.locator('[data-wm-quest-stop="1"]').click();
+    await goal.getByText("Continue Hidden Enemies", { exact: true }).waitFor();
+    await goal.getByText("Recorded objective area", { exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => WorldMapView._state().view.cx), .57);
+    const mapSurface = page.locator("[data-wm-canvas]");
+    await mapSurface.scrollIntoViewIfNeeded();
+    const firstPin = await mapSurface.evaluate((canvas) => {
+      const { view } = WorldMapView._state(), bounds = canvas.getBoundingClientRect();
+      return { x: bounds.width * ((.47 - view.cx) * view.zoom + .5), y: bounds.height * ((.4 - view.cy) * view.zoom + .5) };
+    });
+    await mapSurface.click({ position: firstPin });
+    await goal.getByText("Verified turn-in", { exact: true }).waitFor();
+    await app.evaluate(() => { fixtureQuestLoop.loop.stops[0].done = true; fixtureQuestLoop.loop.currentIndex = 1; });
+    await stops.locator('[data-wm-quest-stop="1"][aria-current="step"]').getByText("Continue Hidden Enemies").waitFor();
+    assert.match(await stops.locator('[data-wm-quest-stop="0"]').innerText(), /Completed/);
+    await page.evaluate(() => WorldMapView.focusZone(1411));
+    await page.locator("[data-wm-title]").getByText("Durotar").waitFor();
+    await stops.waitFor({ state: "hidden" });
     assert.deepEqual(pageErrors, [], "no uncaught errors in the main renderer");
     console.log("World map smoke passed");
   } finally {

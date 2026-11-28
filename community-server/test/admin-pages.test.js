@@ -173,6 +173,32 @@ test("hostile player text is escaped on every admin page; CSP and friends on eve
   assert.ok(!JSON.stringify(data).includes(seeded.hash) && !JSON.stringify(data).includes("key_hash"));
 });
 
+test("missing quest locations are prioritized by reporting installs with an exact ticket filter", async (t) => {
+  const s = await boot(MANY); t.after(() => s.close());
+  const a = await admin(s);
+  const i1 = uuid(), i2 = uuid();
+  for (const [install, suffix, extra] of [[i1, "12"], [i1, "12"], [i2, "12"], [i2, "121"], [i2, "12 extra"], [i2, "99", { kind: "bug" }], [i1, "77", { area: "map" }]]) {
+    const made = await post(s.base, "/v1/tickets", ticket(install, { summary: `Missing location for quest #${suffix}`, kind: "data", area: "quests", ...extra }));
+    assert.equal(made.status, 201);
+  }
+  for (const [install, summary, details, kind] of [[i1, "Missing class trainer", "The location is absent.", "data"], [i2, "Missing recipe source", "I can learn the recipe.", "data"], [i2, "Another missing reference", "The trainer location is absent.", "data"], [i1, "How to open the trainer page", "The button needs a tooltip.", "idea"]]) {
+    const made = await post(s.base, "/v1/tickets", ticket(install, { summary, details, kind, area: "professions" }));
+    assert.equal(made.status, 201);
+  }
+  assert.deepEqual(s.store.desk.missingQuestLocations().map(({ questId, installs, reports }) => [questId, installs, reports]), [[12, 2, 3], [121, 1, 1]]);
+  assert.deepEqual(s.store.desk.referenceDataReports().map(({ term, installs, reports }) => [term, installs, reports]), [["trainer", 2, 2], ["recipe", 1, 1]]);
+  const page = await (await get(s.base, "/admin/tickets", { cookie: a.cookie })).text();
+  assert.match(page, /Missing quest locations/);
+  assert.match(page, /missingQuest=12"/);
+  const filtered = await (await get(s.base, "/admin/tickets?missingQuest=12", { cookie: a.cookie })).text();
+  assert.match(filtered, /3 shown by this filter/);
+  assert.doesNotMatch(filtered, /Missing location for quest #121|Missing location for quest #12 extra/);
+  assert.match(page, /kind=data&amp;q=trainer/);
+  const trainers = await (await get(s.base, "/admin/tickets?kind=data&q=trainer", { cookie: a.cookie })).text();
+  assert.match(trainers, /2 shown by this filter/);
+  assert.doesNotMatch(trainers, /Missing recipe source|How to open the trainer page/);
+});
+
 test("tickets: reply, note, handling fields, duplicate, bulk close, delete and block", async (t) => {
   const s = await boot(MANY); t.after(() => s.close());
   const a = await admin(s);

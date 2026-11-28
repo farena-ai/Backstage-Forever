@@ -724,3 +724,39 @@ test("a development or test run sends nothing by itself; what the player does by
   assert.equal((await desk.sync({ force: true })).status, "synced", "Check for replies still works");
   assert.match(read("src/main.cjs"), /automatic: app\.isPackaged \|\| Boolean\(process\.env\.BF_COMMUNITY_URL\)/);
 });
+test("missing quest location drafts contain only reviewed game context and never send on open", () => {
+  const vm = require("node:vm");
+  const renderer = require("node:fs").readFileSync(require("node:path").join(__dirname, "../src/renderer/desk.js"), "utf8");
+  const opened = [], sent = [];
+  const load = () => {
+    const window = {
+      addEventListener() {},
+      PrivacyWording: {},
+      ZoneArt: { idFor: (name) => name === "The Barrens" ? 1413 : null, nameFor: (id) => id === 1413 ? "The Barrens" : null },
+      backstage: { deskReportSend: (body) => sent.push(body) },
+    };
+    vm.runInNewContext(renderer, { window, document: { addEventListener() {} }, clearTimeout() {}, setTimeout() {}, setInterval() {} });
+    const desk = window.DeskView;
+    desk.init({ page: () => "now", navigate: (page) => opened.push(page) });
+    return desk;
+  };
+  const desk = load();
+  assert.equal(desk.reportMissingLocation({ questId: 93739, zone: "The Barrens", build: "1.60.1.71037", character: "PRIVATE_NAME" }), true);
+  const { form } = desk._state();
+  assert.equal(form.kind, "data");
+  assert.equal(form.area, "quests");
+  assert.equal(form.summary, "Missing location for quest #93739");
+  assert.match(form.details, /Quest ID: 93739\nZone: The Barrens\nGame build: 1\.60\.1\.71037/);
+  assert.equal(form.diagnostics, false);
+  assert.equal(form.scrub, true);
+  assert.deepEqual(opened, ["report"]);
+  assert.deepEqual(sent, []);
+  assert.doesNotMatch(JSON.stringify(form), /PRIVATE_NAME/);
+  assert.equal(desk.reportMissingLocation({ questId: "93739", zone: 'private <zone>', build: "secret" }), false);
+  assert.equal(desk.reportMissingLocation({ questId: 12, zone: 'private <zone>', build: "secret" }), false, "an existing draft is preserved");
+  assert.equal(desk._state().form.details, form.details);
+  const another = load();
+  assert.equal(another.reportMissingLocation({ questId: 12, zone: "private <zone>", build: "secret" }), true);
+  assert.doesNotMatch(JSON.stringify(another._state().form), /private <zone>|secret|Zone:|Game build:/);
+  assert.deepEqual(sent, []);
+});

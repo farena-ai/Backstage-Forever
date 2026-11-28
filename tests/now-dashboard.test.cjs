@@ -4,6 +4,7 @@ const { join } = require("node:path");
 const { runInNewContext } = require("node:vm");
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { recommendSteps } = require("../src/core/next-step.cjs");
 const src = (name) => readFileSync(join(__dirname, "../src/renderer", `${name}.js`), "utf8");
 
 function dashboard(overrides = {}, toon = {}, { storage = new Map(), state, day = new Date(2026, 10, 18) } = {}) {
@@ -20,7 +21,10 @@ function dashboard(overrides = {}, toon = {}, { storage = new Map(), state, day 
     document: { querySelector: (sel) => nodes[sel] },
     BF_PORTRAITS: ["undead-female-priest"],
     backstage: {
-      levelingAdvice: async () => ({ status: "ok", character, zones: [], log: { inLog: 1, ready: [{ title: "Finish the task", id: 42 }], active: [] } }),
+      levelingAdvice: async () => {
+        const advice = { status: "ok", character, zones: [], log: { inLog: 1, ready: [{ title: "Finish the task", id: 42 }], active: [] } };
+        return { ...advice, recommendations: recommendSteps(advice) };
+      },
       gameStatus: async () => ({ connected: false }),
       liveLinkStatus: async () => ({ signal: "old-addon" }),
       weekly: async () => ({ reminders: [{ kind: "mail", text: "Check your mail" }] }),
@@ -191,7 +195,10 @@ test("an unobserved quest log does not read as zero quests", async () => {
 });
 
 test("a delayed recommendation cannot replace the newly selected character's action", async () => {
-  const reply = title => ({ status: "ok", character: { name: title, level: 20 }, zones: [], log: { inLog: 1, ready: [{ id: 50, title }], active: [] } });
+  const reply = title => {
+    const result = { status: "ok", character: { name: title, level: 20 }, zones: [], log: { inLog: 1, ready: [{ id: 50, title }], active: [] } };
+    return { ...result, recommendations: recommendSteps(result) };
+  };
   let release;
   const pending = new Promise(resolve => { release = resolve; });
   let calls = 0;

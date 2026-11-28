@@ -85,46 +85,32 @@ window.NowView = (() => {
     return `<div class="now-cost" data-now-cost>${k.nowTotal ? `<p>Ready to learn now: about <strong>${esc(gsc(k.nowTotal))}</strong>.</p>` : ""}${rows ? `<h3 class="now-sub">Training costs</h3><ol class="now-plan now-costs">${rows}</ol>` : ""}${verdict}<p><small>Prices from your trainer's window${k.seenAt ? `, seen ${esc(new Date(k.seenAt * 1000).toLocaleDateString([], { month: "short", day: "numeric" }))}` : ""}. Spells you haven't seen there yet aren't counted.</small></p></div>`;
   }
   // The few things worth doing right now, most urgent first.
-  function steps(a, hidden, pinnedQuest) {
-    const out = [];
-    if (a.character.dead || session?.dead) {
-      out.push({ kind: "death", title: "You died: run back to your body", reason: "The live link reported your character is dead.",
-        detail: "In game, click <strong>Release Spirit</strong>. You appear at a graveyard as a ghost; Backstage Forever puts an arrow on your body. Walk over it and click <strong>Resurrect</strong>. The Spirit Healer at the graveyard can revive you on the spot, but your gear loses durability and you stay weak for a while.",
-        actions: "" });
-    }
-    const questSource = a.log.live ? "your latest live quest log" : a.character.savedAt ? "your saved quest log" : "the character’s quest log (save time unknown)";
-    const first = a.log.ready.find(q => q.id !== pinnedQuest && !hidden.includes(`hand-in:${q.id}`));
-    if (first) {
-      out.push({ kind: "hand-in", key: `hand-in:${first.id}`, title: `Hand in “${esc(first.title)}”`, reason: `Ready to turn in according to ${questSource}.`,
-        detail: first.turnIn ? `${esc(first.turnIn.name)}${first.turnIn.guess ? " (usually the quest giver)" : ""}${at(first.turnIn) ? ` · ${at(first.turnIn)}` : ""}` : "Hand-in location not recorded yet.",
-        actions: mapBtn(first.turnIn, first.turnIn?.name || first.title, `Turn in: ${first.title}`, first.turnIn?.npcId,
-          { title: `Hand in “${first.title}”`, questId: first.id, steps: [`Go to ${first.turnIn?.name || "the quest giver"}${first.turnIn?.guess ? " (quests usually go back to whoever gave them)" : ""}.`, `Talk to them and choose “${first.title}”.`, "Pick your reward and click Complete Quest."] }) + `<button type="button" data-quest-open="${first.id}">Open quest</button>` });
-    }
-    const t = a.training;
-    if (t?.newNow?.length && t.trainer) {
-      out.push({ kind: "train", key: `train:${a.character.level}:${t.className}`, title: `Check ${t.newNow.length} ${esc(t.className)} skill${t.newNow.length === 1 ? "" : "s"} at your trainer`, reason: `Training reference for level ${a.character.level}; check in game what you already know.`,
-        detail: `${t.newNow.slice(0, 5).map((s) => esc(s.name) + (s.rank ? ` <small>${esc(s.rank)}</small>` : "")).join(", ")}${t.newNow.length > 5 ? "…" : ""} · ${esc(t.trainer.name)}, ${at(t.trainer)}`,
-        actions: mapBtn(t.trainer, t.trainer.name, t.trainer.title, t.trainer.npcId,
-          { title: `Train at ${t.trainer.name}`, steps: [`Go to ${t.trainer.name}, ${t.trainer.title}.`, `Talk to them and learn: ${t.newNow.slice(0, 6).map((s) => s.name + (s.rank ? ` (${s.rank})` : "")).join(", ")}${t.newNow.length > 6 ? "…" : ""}.`, "Training costs a little money; drag new abilities onto your action bar."] }) });
-    }
-    const act = a.log.active.find(q => q.id !== pinnedQuest && !hidden.includes(`quest:${q.id}`));
-    if (act) {
-      out.push({ kind: "quest", key: `quest:${act.id}`, title: `Continue “${esc(act.title)}”`, reason: `Still in progress in ${questSource}.${a.log.live && act.total ? " Objective details come from saved data." : ""}`,
-        detail: `${act.next ? esc(act.next) : "Objectives in progress"}${act.total ? ` · ${act.done}/${act.total} done` : ""}${act.where ? ` · ${at(act.where)}` : ""}`,
-        actions: mapBtn(act.where, act.title, act.next, null,
-          { title: `Continue “${act.title}”`, questId: act.id, steps: [act.next ? `${act.next}.` : "Work on the quest objectives around here.", ...(act.total ? [`${act.done} of ${act.total} objectives done.`] : []), "Come back to the quest giver when it says complete."] }) + `<button type="button" data-quest-open="${act.id}">Open quest</button>` });
-    }
-    const n = a.next;
-    if (n && (n.mapId !== a.character.position?.mapId || out.length < 2)) {
-      const where = n.hub ? { mapId: n.mapId, mapName: n.name, x: n.hub.x, y: n.hub.y } : null;
-      out.push({ kind: "zone", key: `zone:${n.mapId}`, title: n.mapId === a.character.position?.mapId ? `Keep leveling in ${esc(n.name)}` : `Head to ${esc(n.name)}`, reason: `Leveling reference for your character at level ${a.character.level}. Check quest availability in game.`,
-        detail: esc(n.why) + (n.hub ? ` · most quests start around ${pct(n.hub.x)}, ${pct(n.hub.y)}` : ""),
-        actions: mapBtn(where, `${n.name} quest hub`, n.why, null,
-          { title: `Quest hub in ${n.name}`, steps: [n.why, ...(n.quests?.length ? [`Pick up: ${n.quests.slice(0, 4).map((q) => q.title).join(", ")}${n.quests.length > 4 ? "…" : ""}.`] : []), "Look for the yellow ! over people's heads."] }) });
-    }
-    return out.filter(s => !hidden.includes(s.key)).slice(0, 4);
+  const EVIDENCE = { "verified-turn-in": "Verified turn-in", "likely-quest-giver": "Likely quest giver", "missing-location": "Location missing", "recorded-objective": "Recorded objective", "game-waypoint": "Saved game waypoint", reference: "Reference location" };
+  function mapTarget(step) {
+    const { where, title, destination, questId, npcId, evidence } = step;
+    if (!where) return null;
+    const instructions = step.kind === "turnin" ? [evidence === "game-waypoint" ? "Use the quest's saved game waypoint to find the hand-in." : evidence === "verified-turn-in" ? "Talk to " + destination + " and choose the quest." : "Check in WoW that " + (destination || "this NPC") + " accepts the hand-in."] : step.kind === "objective" ? [step.detail, "Check progress in your WoW quest log."] : [step.detail];
+    return { ...where, label: destination || title, sub: step.detail, npcId, goal: { title, questId, evidence, steps: instructions } };
   }
-  const stepRow = (s, primary = false, savedAt = null) => `<li class="now-step now-${s.kind}${primary ? " now-step-priority" : ""}"><span class="now-ico now-ico-art" aria-hidden="true">${crest(s.kind)}</span><div><h3>${s.title}</h3><p>${s.detail}</p>${primary ? `<p class="now-reason"><strong>Why this?</strong> ${esc(s.reason)}${savedAt ? ` <small>Saved ${esc(savedAt)}.</small>` : ""}</p>` : ""}<div class="now-actions">${primary ? s.actions.replace('<button ', '<button class="primary" ') + dismissButton(s.key) : s.actions}</div></div></li>`;
+  function steps(a, hidden, pinnedQuest) {
+    const list = (a.recommendations || []).filter(step => !hidden.includes(step.key) && (step.questId == null || step.questId !== pinnedQuest));
+    const current = a.loopStep;
+    const ordered = current ? [current, ...list.filter(step => step.key !== current.key)] : list;
+    return ordered.slice(0, 4).map(step => {
+      const kind = ({ turnin: "hand-in", objective: "quest", pickup: "zone", dead: "death", training: "train" })[step.kind] || step.kind;
+      const target = mapTarget(step);
+      const map = target ? mapBtn(target, target.label, target.sub, target.npcId, target.goal) : "";
+      const quest = Number.isSafeInteger(step.questId) ? `<button type="button" data-quest-open="${step.questId}">Open quest</button>` : "";
+      const report = quest && step.evidence === "missing-location" ? `<button type="button" data-now-report-quest="${step.questId}">Report missing location</button>` : "";
+      const title = step.kind === "turnin" ? "Hand in “" + step.title.slice(8) + "”" : step.kind === "objective" ? "Continue “" + step.title + "”" : step.kind === "dead" ? "You died · " + step.title : step.title;
+      return { ...step, kind, title: esc(title), detail: [esc(step.detail), step.where && step.kind !== "turnin" ? at(step.where) : ""].filter(Boolean).join(" · "), actions: map + quest + report };
+    });
+  }
+  function loopAction(a) {
+    if (a.loop) return `<div class="now-loop-controls" data-now-loop><span>${a.loop.currentIndex < 0 ? "Nearby quest loop complete" : `Nearby quest loop · Stop ${a.loop.currentIndex + 1} of ${a.loop.stops.length}`}</span><button type="button" data-now-loop-action="map">Show loop on map</button><button type="button" data-now-loop-action="end">End loop</button></div>`;
+    return a.canPlanLoop ? `<div class="now-loop-controls"><button type="button" data-now-loop-action="start">Plan nearby stops</button></div>` : "";
+  }
+  const stepRow = (s, primary = false, savedAt = null, dismissKey = s.key) => `<li class="now-step now-${s.kind}${primary ? " now-step-priority" : ""}"><span class="now-ico now-ico-art" aria-hidden="true">${crest(s.kind)}</span><div><h3>${s.title}</h3><p>${s.detail}</p>${s.evidence ? `<small class="now-evidence" data-now-evidence="${esc(s.evidence)}">${esc(EVIDENCE[s.evidence])}</small>` : ""}${primary ? `<p class="now-reason"><strong>Why this?</strong> ${esc(s.reason)}${savedAt ? ` <small>Saved ${esc(savedAt)}.</small>` : ""}</p>` : ""}<div class="now-actions">${primary ? s.actions.replace("<button ", "<button class=\"primary\" ") + (advice?.loopStep?.key === s.key || s.kind === "death" ? "" : dismissButton(dismissKey)) : s.actions}</div></div></li>`;
 
   // Classic rule: at or below this quest/mob level you get no experience.
   const greyAt = (lvl) => (lvl <= 5 ? 0 : lvl <= 39 ? lvl - 5 - Math.floor(lvl / 10) : lvl - 1 - Math.floor(lvl / 5));
@@ -245,7 +231,8 @@ window.NowView = (() => {
     const { keys } = dismissed();
     const pin = window.ObjectiveView?.recommendation(activeId());
     const pinKey = pin && `pin:${pin.id}`;
-    const suggestPin = Boolean(pinKey && !keys.includes(pinKey));
+    const rankedPin = advice?.recommendations?.some(step => pin?.questId && step.questId === pin.questId) && !keys.includes(pinKey);
+    const suggestPin = Boolean(pinKey && !keys.includes(pinKey) && !rankedPin && !advice?.loopStep && !advice?.character?.dead);
     const objective = window.ObjectiveView?.card({ profileId: activeId(), suggested: suggestPin, dismiss: suggestPin ? dismissButton(pinKey) : "" }) || "";
     const priorityPin = suggestPin ? objective : "", supportingPin = suggestPin ? "" : objective;
     if (error) return `${priorityPin}<div class="now-card"><p role="status">${esc(error)}</p></div>${supportingPin}`;
@@ -256,7 +243,7 @@ window.NowView = (() => {
         : "Connect your WoW Forever folder to bring your character into the journal.";
       return `${priorityPin || `<article class="now-card now-next">${nextHeading}<p>${hint}</p></article>`}${reloadBanner()}${setupCard(advice)}${weekStrip()}${supportingPin}`;
     }
-    const a = advice, c = a.character, [first, ...followups] = steps(a, keys, pin?.questId);
+    const a = advice, c = a.character, [first, ...followups] = steps(a, keys, suggestPin || keys.includes(pinKey) ? pin?.questId : null);
     const alternatives = priorityPin ? [first, ...followups].filter(Boolean) : followups;
     const date = Date.parse(c.savedAt || "");
     const savedAt = !a.log.live && (first?.kind === "hand-in" || first?.kind === "quest") && Number.isFinite(date) ? new Date(date).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : null;
@@ -280,8 +267,9 @@ window.NowView = (() => {
     return `<div class="now-grid now-overview">
       <div class="now-task-stack">
       ${priorityPin || `<article class="now-card now-next">${nextHeading}
-        ${first ? `<ol class="now-steps">${stepRow(first, true, savedAt)}</ol>` : `<p>${keys.length ? "No more suggestions for this character today. Your quest log and other tools are still available below." : "No next action found in the available data. You can still browse your quest log and other tools below."}</p>`}
+        ${first ? `<ol class="now-steps">${stepRow(first, true, savedAt, rankedPin && first.questId === pin.questId ? pinKey : first.key)}</ol>` : `<p>${keys.length ? "No more suggestions for this character today. Your quest log and other tools are still available below." : "No next action found in the available data. You can still browse your quest log and other tools below."}</p>`}
       </article>`}
+      ${loopAction(a)}
       ${alternatives.length ? `<details class="now-card now-followups"><summary>More suggestions</summary><ol class="now-steps">${alternatives.map(s => stepRow(s)).join("")}</ol></details>` : ""}
       </div>
       ${sessionCard(a)}
@@ -365,6 +353,8 @@ window.NowView = (() => {
     const ownsView = () => request === current && activeId() === requestedFor && mountedFor;
     lastFetch = Date.now();
     try {
+      if (requestedFor && api.setNowDismissals) await api.setNowDismissals(requestedFor, dismissed().keys);
+      if (!ownsView()) return;
       const [a, s, game, live, z, wk, journey] = await Promise.all([api.levelingAdvice(), api.playSession ? api.playSession().catch(() => null) : null,
         api.gameStatus ? api.gameStatus().catch(() => null) : null, api.liveLinkStatus ? api.liveLinkStatus().catch(() => null) : null,
         api.zoneBriefing ? api.zoneBriefing().catch(() => null) : null, api.weekly ? api.weekly().catch(() => null) : null,
@@ -390,7 +380,7 @@ window.NowView = (() => {
     if (!document.querySelector("[data-now]")) return;
     const f = status?.frame;
     if (setup && setup.live?.signal !== status?.signal) { setup.live = status; lastKey = ""; liveLine(); }
-    const key = f?.position ? [f.position.mapId, f.level, f.questLogHash, f.quest?.objectivesDone?.length, f.dead, Math.floor((f.xpPercent ?? 0) / 5),
+    const key = f?.position ? [f.position.mapId, Math.floor(f.position.x * 40), Math.floor(f.position.y * 40), f.level, f.questLogHash, f.quest?.objectivesDone?.length, f.dead, Math.floor((f.xpPercent ?? 0) / 5),
       // Live quest pages: a hand-in or a newly finished objective refreshes too.
       (f.questLog || []).map((q) => q.id + (q.complete ? "c" : "")).join(","), (f.turnedIn || []).join(",")].join("|") : "none";
     if (key === lastKey) return;
@@ -426,8 +416,18 @@ window.NowView = (() => {
         const hidden = dismissed();
         hidden.keys = [...hidden.keys.filter(key => key !== current.key), current.key].slice(-32);
         try { localStorage.setItem(dismissStorage(hidden.id), JSON.stringify({ day: hidden.day, keys: hidden.keys })); } catch {}
+        void api.setNowDismissals?.(hidden.id, hidden.keys)?.catch(() => {});
         paint();
         (document.querySelector("[data-now-next-heading]") || document.querySelector("[data-objective-heading]"))?.focus({ preventScroll: true });
+        return;
+      }
+      const loopButton = e.target.closest("[data-now-loop-action]");
+      if (loopButton) { void changeLoop(loopButton, root); return; }
+      const report = e.target.closest("[data-now-report-quest]");
+      if (report) {
+        if (root === mountedFor && !window.characterSelectionPending?.() && loadedFor === activeId()) {
+          window.DeskView?.reportMissingLocation({ questId: Number(report.dataset.nowReportQuest), zone: advice?.character?.position?.mapId, build: advice?.character?.clientBuild });
+        }
         return;
       }
       const m = e.target.closest("[data-now-map]");
@@ -436,6 +436,22 @@ window.NowView = (() => {
       if (e.target.closest('[data-now-act="mini"]')) api.openMiniNow?.().catch(() => {});
       if (e.target.closest('[data-now-act="setup"]')) oneClickSetup();
     });
+  }
+  async function changeLoop(button, owner) {
+    const id = activeId(), action = button.dataset.nowLoopAction;
+    if (!id || owner !== mountedFor || window.characterSelectionPending?.() || button.disabled || !advice) return;
+    button.disabled = true;
+    try {
+      const result = action === "map" ? { loop: advice.loop, profileId: id } : await api.changeQuestLoop(action, id);
+      if (!document.querySelector("[data-now]") || id !== activeId() || window.characterSelectionPending?.() || result?.profileId !== id) return;
+      const loop = result.loop;
+      if (action === "end") { advice = { ...advice, loop: null, loopStep: null }; paint(); await load(); return; }
+      const stop = loop?.stops[loop.currentIndex < 0 ? 0 : loop.currentIndex];
+      if (!stop) { await load(); return; }
+      if (window.WorldMapView?.focus(mapTarget(stop), { revealGoal: true, fitLoop: true })) document.querySelector('[data-nav="world-map"]')?.click();
+    } catch (error) {
+      if (owner === mountedFor && id === activeId()) { button.title = error.message; window.DeskView?.caught?.(error, "now"); }
+    } finally { button.disabled = false; }
   }
   function mounted() {
     const root = document.querySelector("[data-now]");

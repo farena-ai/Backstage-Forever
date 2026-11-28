@@ -1144,7 +1144,7 @@ api.onInGameExchange?.((x) => {
 // "Open in app" on the answer panel: the Companion page, through the ordinary navigation.
 // The Guild & Party panel opens Plans → Guild, Plans → Party and its guide the same way.
 api.onOpenPage?.((target) => {
-  if (!["assistant", "guild", "party", "guild-guide"].includes(target) || !state) return;
+  if (!["now", "assistant", "guild", "party", "guild-guide"].includes(target) || !state) return;
   const existing = root.querySelector(`button[data-nav="${target}"]`);
   if (existing) { existing.click(); return; }
   const b = document.createElement("button");

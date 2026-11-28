@@ -130,6 +130,35 @@ window.DeskView = (() => {
     host.navigate("report");
   }
 
+  function reportMissingLocation({ questId, zone, build } = {}) {
+    if (!Number.isSafeInteger(questId) || questId < 1 || questId > 99_999_999 || sending) return false;
+    const summary = `Missing location for quest #${questId}`;
+    if (form.summary || form.details || form.expected) {
+      if (form.summary === summary && form.kind === "data" && form.area === "quests") {
+        host.navigate("report");
+        return true;
+      }
+      formNote = { bad: false, text: "Finish your current report before reporting a missing quest location." };
+      host.navigate("report");
+      return false;
+    }
+
+    const map = window.ZoneArt;
+    const mapId = typeof zone === "string" && zone.length <= 80 ? map?.idFor(zone) : zone;
+    const zoneName = Number.isSafeInteger(mapId) ? map?.nameFor(mapId) : null;
+    const buildName = typeof build === "string" && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/.test(build) && build === build.trim() ? build : null;
+    const context = [`Quest ID: ${questId}`, zoneName ? `Zone: ${zoneName}` : null, buildName ? `Game build: ${buildName}` : null].filter(Boolean);
+    clearTimeout(previewTimer);
+    previewToken++;
+    preview = null;
+    sentResult = null;
+    formNote = null;
+    caret = null;
+    form = { ...blank(), kind: "data", area: "quests", areaChosen: true, summary, details: [...context, "", "A location for this quest was missing."].join("\n"), diagnostics: false };
+    host.navigate("report");
+    return true;
+  }
+
   // ---------------------------------------------------------------- Help → My reports
   let inbox = null, inboxError = "", selected = null, conversation = null, conversationError = "", loading = false, replyText = "", replying = false, replyNote = null, confirmDelete = null, deleting = false, checking = false;
   function chip(t) {
@@ -413,6 +442,6 @@ window.DeskView = (() => {
     setInterval(checkNotices, 5 * 60 * 1000);
     window.addEventListener("focus", () => setTimeout(checkNotices, 500));
   }
-  return { init, mounted, reportPage, inboxPage, privacyPage, prefill, caught, reportThis, checkNotices, KINDS, AREAS, FREQUENCIES, STATUS,
+  return { init, mounted, reportPage, inboxPage, privacyPage, prefill, reportMissingLocation, caught, reportThis, checkNotices, KINDS, AREAS, FREQUENCIES, STATUS,
     _state: () => ({ form: { ...form }, preview, inbox, selected, conversation, status, unread, sentResult, notice }) };
 })();

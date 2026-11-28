@@ -1,31 +1,38 @@
 "use strict";
-// Mini Now (0.44, roadmap 3.4): a small always-on-top window beside the game with your next
-// step, experience and pace. Like the radar: its own preload and IPC channels, accepted only
+// Mini Now is a small always-on-top window beside the game with your next step.
+// Like the radar, its own preload and IPC channels are accepted only
 // from that window. It never sends input to the game and never takes the keyboard by itself.
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { nextStep } = require("./next-step.cjs");
 
-/** Pure: advice + session -> what the window shows. */
-function miniNowView(advice, session) {
+/** Pure view of the current recommendation and optional session details. */
+function miniNowView(advice, session, step = nextStep(advice)) {
   if (!advice || (advice.status && advice.status !== "ok")) return { ready: false, message: advice?.status === "no-character" ? "Log in with the addon to see your next step." : "Log in on this character and type /reload once." };
   const c = advice.character || {};
   const xp = c.xp ? Math.floor((c.xp.current / c.xp.max) * 100) : null;
   const pct = Number.isFinite(c.xpPercent) ? Math.floor(c.xpPercent) : xp;
   const rested = c.xp && c.xp.rested > 0 ? Math.round((c.xp.rested / c.xp.max) * 100) : 0;
   const pace = session?.active ? { levelsPerHour: session.levelsPerHour ?? null, minutesToLevel: session.minutesToLevel ?? null, minutes: session.activeMinutes ?? 0, deaths: session.deaths ?? 0 } : null;
-  return { ready: true, name: c.name || null, level: c.level ?? null, zone: c.zone || null, live: Boolean(c.live), xpPercent: pct, restedPercent: rested, step: nextStep(advice), pace };
+  const questStep = step?.kind === "turnin" || step?.kind === "objective";
+  const evidence = ["live", "saved", "reference"].includes(step?.source)
+    ? step.source
+    : questStep
+      ? advice.log?.live ? "live" : "saved"
+      : c.live ? "live" : c.savedAt ? "saved" : "reference";
+  return { ready: true, name: c.name || null, level: c.level ?? null, zone: c.zone || null, live: Boolean(c.live), evidence, xpPercent: pct, restedPercent: rested, step, pace };
 }
 
-function createMiniNow({ BrowserWindow, ipcMain, advise, session, live, rendererDir }) {
+function createMiniNow({ BrowserWindow, ipcMain, advise, session, live, rendererDir, getStep = nextStep, onOpenNow }) {
   const page = pathToFileURL(path.join(rendererDir, "mini-now.html")).toString();
   let win = null, timer = null;
   const valid = (event) => win && !win.isDestroyed() && event.sender === win.webContents && event.senderFrame === win.webContents.mainFrame && event.senderFrame.url === page;
   function state() {
-    let advice = null, s = null;
+    let advice = null, s = null, step;
     try { advice = advise(); } catch {}
     try { s = session?.(); } catch {}
-    return miniNowView(advice, s);
+    try { step = getStep(advice); } catch {}
+    return miniNowView(advice, s, step);
   }
   let last = "";
   function push(force) {
@@ -36,6 +43,13 @@ function createMiniNow({ BrowserWindow, ipcMain, advise, session, live, renderer
   }
   ipcMain.handle("miniNow:state", (event) => { if (!valid(event)) throw Error("Untrusted mini Now request."); return state(); });
   ipcMain.handle("miniNow:close", (event) => { if (!valid(event)) throw Error("Untrusted mini Now request."); win?.close(); return true; });
+  ipcMain.handle("miniNow:openNow", (event, ...args) => {
+    if (!valid(event)) throw Error("Untrusted mini Now request.");
+    if (args.length) throw Error("Invalid mini Now request.");
+    if (!onOpenNow) return false;
+    onOpenNow();
+    return true;
+  });
   // Live frames arrive several times a second; the window only needs a fresh look every 2s.
   let queued = false;
   const unsubscribe = live?.subscribe?.(() => { if (queued || !win) return; queued = true; setTimeout(() => { queued = false; push(false); }, 2000); });

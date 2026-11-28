@@ -229,9 +229,13 @@ ${field("Authenticator code", '<input name="code" type="text" inputmode="numeric
       kind: pick("kind", V.TICKET_KINDS), area: pick("area", V.TICKET_AREAS), version: pick("version", facets.version),
       os: pick("os", V.OS_FAMILIES), lang: pick("lang", V.LANGS), severity: pick("severity", [...V.SEVERITIES, "none"]),
       tag: pick("tag", facets.tag), assignee: pick("assignee", ["none", ...admins.map(a => String(a.id))]),
+      missingQuest: /^[1-9]\d{0,7}$/.test(q.get("missingQuest") || "") ? q.get("missingQuest") : "",
       page: Math.max(1, Number(q.get("page")) || 1),
     };
     const list = desk.listTickets(f), counts = ctx.counts;
+    const showTriage = f.filter === "open" && !f.missingQuest && !f.q && !f.kind && !f.area;
+    const missing = showTriage ? desk.missingQuestLocations() : [];
+    const references = showTriage ? desk.referenceDataReports() : [];
     const params = Object.fromEntries(Object.entries(f).filter(([k, v]) => v && k !== "page" && !(k === "filter" && v === "open")));
     const tab = (key, label) => {
       const p = new URLSearchParams({ ...params, filter: key });
@@ -253,8 +257,15 @@ ${field("Authenticator code", '<input name="code" type="text" inputmode="numeric
       title: "Tickets", active: "tickets", wide: true,
       body: `<div class="head"><h1>Tickets</h1><span class="dim">${num(list.total)} shown by this filter</span></div>
 <nav class="tabs" aria-label="Ticket filters">${FILTERS.map(([k, l]) => tab(k, l)).join("")}</nav>
+${missing.length || references.length ? `<section class="card"><h2>Map and reference data reports</h2>
+${missing.length ? `<h3>Missing quest locations</h3><p>Open reports ranked by the number of reporting installs.</p>
+<table class="grid-table"><thead><tr><th scope="col">Quest</th><th scope="col">Reporting installs</th><th scope="col">Open reports</th></tr></thead><tbody>
+${missing.map(({ questId, installs, reports }) => `<tr><th scope="row"><a href="/admin/tickets?missingQuest=${questId}">Quest #${questId}</a></th><td>${num(installs)}</td><td>${num(reports)}</td></tr>`).join("")}</tbody></table>` : ""}
+${references.length ? `<h3>Trainer and recipe data</h3><p>Open data reports mentioning trainers or recipes.</p><ul>${references.map(({ term, installs, reports }) => `<li><a href="/admin/tickets?kind=data&amp;q=${esc(term)}">${term === "trainer" ? "Trainer reports" : "Recipe reports"}</a> <span class="dim">${num(reports)} open · ${num(installs)} reporting installs</span></li>`).join("")}</ul>` : ""}
+</section>` : ""}
 <form class="filters card" method="get" action="/admin/tickets">
 <input type="hidden" name="filter" value="${val(f.filter)}">
+${f.missingQuest ? `<input type="hidden" name="missingQuest" value="${val(f.missingQuest)}"><p>Missing location for quest #${esc(f.missingQuest)}</p>` : ""}
 <label class="field grow"><span class="field-label">Search summaries and messages</span><input type="search" name="q" value="${val(f.q)}" maxlength="100" placeholder="Words, or a ticket number"></label>
 ${field("Kind", select("kind", [...any("Any"), ...V.TICKET_KINDS], f.kind))}
 ${field("Area", select("area", [...any("Any"), ...V.TICKET_AREAS], f.area))}
