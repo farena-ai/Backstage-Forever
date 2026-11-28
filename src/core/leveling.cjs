@@ -4,7 +4,7 @@
 // which override the table where they exist. Everything is local; nothing is fetched.
 const fs = require("node:fs");
 const path = require("node:path");
-const { MAP_NAMES } = require("./companion-tools.cjs");
+const { MAP_NAMES } = require("./map-names.cjs");
 
 const mapName = (id) => MAP_NAMES[id] || `Map ${id}`;
 const WINDOW_BELOW = 3, WINDOW_ABOVE = 2;
@@ -13,7 +13,10 @@ const KALIMDOR = new Set([1411, 1412, 1413, 1414, 1438, 1439, 1440, 1441, 1442, 
 const continent = (mapId) => (KALIMDOR.has(mapId) ? "kalimdor" : "eastern-kingdoms");
 
 function resolveLiveQuests(profile, frame, pack) {
-  if (!Array.isArray(frame?.questLog)) return null;
+  if (frame?.combat || !Array.isArray(frame?.questLog)) return null;
+  // The main strip changes before a replacement set of quest pages may arrive.
+  const hash = frame.questLog.reduce((value, quest) => (value * 31 + quest.id % 251 + Number(quest.complete)) % 256, 0);
+  if (Number.isInteger(frame.questLogHash) && hash !== frame.questLogHash) return null;
   const saved = new Map((profile.quests || []).map((quest) => [quest.id, quest]));
   return frame.questLog.map(({ id, complete }) => {
     const previous = saved.get(id);
@@ -139,7 +142,7 @@ class LevelingAdvisor {
     const pack = this.knowledge?.bundled?.pack || null;
     const liveLog = resolveLiveQuests(p, live, pack);
     const logKnown = liveLog !== null || Array.isArray(p.quests);
-    const turnedIn = Array.isArray(live?.turnedIn) ? live.turnedIn : [];
+    const turnedIn = !live?.combat && Array.isArray(live?.turnedIn) ? live.turnedIn : [];
     const saved = p.history?.completedIdsKnown ? p.history.completedIds : [];
     const done = new Set([...saved, ...turnedIn]);
     const quests = liveLog || (p.quests || []).filter((q) => !done.has(q.id));
@@ -294,4 +297,4 @@ function trainingCosts(p, all) {
   const next3 = levels.reduce((t, l) => t + l.total, 0);
   return { costs: { seenAt: seen.seenAt, money, nowTotal: due, levels, nextThree: next3, canAffordNext: money == null || !levels.length ? null : money >= levels[0].total, shortBy: money == null || !levels.length ? null : Math.max(0, levels[0].total - money), knownNow: now } };
 }
-module.exports = { LevelingAdvisor, loadLevelingPack, validateLevelingPack, hubOf, liveQuestPreview };
+module.exports = { LevelingAdvisor, loadLevelingPack, validateLevelingPack, hubOf, liveQuestPreview, resolveLiveQuests };

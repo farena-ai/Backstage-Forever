@@ -67,6 +67,23 @@ test("search_quests and plan_travel use bundled references", async () => {
   assert.deepEqual(t.trace.map((x) => x.name), ["search_quests", "plan_travel"]);
 });
 
+test("tool lookups use complete live quest and location evidence independently", () => {
+  const saved = { ...profile, quests: [{ id: 96294, title: "A Darker Truth", complete: false, objectives: [{ text: "Saved objective", done: false }] }] };
+  const frame = { position: { mapId: 1412, x: .36, y: .18 }, questLog: [{ id: 96294, complete: true }], turnedIn: [] };
+  const live = kit({ profile: saved, live: frame });
+  const character = live.lookup("get_character", {}).character;
+  assert.equal(character.questLogSource, "live-quest-log");
+  assert.deepEqual(character.quests, [{ id: 96294, title: "A Darker Truth", complete: true, readyToTurnIn: true }]);
+  const progress = live.lookup("get_quest", { quest_id: 96294 }).playerProgress;
+  assert.deepEqual(progress, { source: "live-quest-log", inQuestLog: true, readyToTurnIn: true, objectives: [] });
+  const road = live.lookup("plan_travel", { from: "here", to: "Stonetalon" });
+  assert.equal(road.origin.id, "mulgore");
+  assert.match(road.summary, /Live Link/);
+  const off = kit({ profile: saved, live: frame, shareProfile: false });
+  assert.equal(off.lookup("get_quest", { quest_id: 96294 }).playerProgress, null);
+  assert.equal(off.lookup("plan_travel", { from: "here", to: "Stonetalon" }).origin, null);
+});
+
 test("character context is withheld when sharing is off and never includes private notes", async () => {
   const off = createCompanionTools({ profile, shareProfile: false, knowledgeIndex: index, npcReference });
   const r = JSON.parse(await off.call("get_character", {}));
@@ -275,5 +292,5 @@ test("review fixes: reward reverse lookup, per-point provenance and reported-loc
   Object.assign(older.npcs.find((n) => n.id === 2055), { build: "1.60.1.70790", positions: [{ mapId: 1458, x: 0.1, y: 0.1 }] });
   const faranell = JSON.parse(await kit({ npcReference: older }).call("find_npc", { name: "Faranell" }));
   const tiers = faranell.matches[0].locations.map((l) => `${l.evidence}@${l.build}`);
-  assert.ok(tiers.includes("historical-reference@1.60.1.70790") && tiers.includes(`reference-observation@${index.pack.build}`));
+  assert.ok(tiers.includes("historical-reference@1.60.1.70790") && tiers.includes("merged-reference@null"));
 });

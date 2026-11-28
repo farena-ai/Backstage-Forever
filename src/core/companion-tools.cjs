@@ -1,9 +1,10 @@
 "use strict";
+const { resolveLiveQuests } = require("./leveling.cjs");
 // Read-only local lookups the companion model may call while answering one question.
 // Every tool reads bundled reference packs or the approved character context; none
 // touches the network, the game, files or user data, and results stay bounded.
 const { approvedProfile } = require("./providers.cjs");
-const { parseTravelIntent, planTravel } = require("./travel.cjs");
+const { parseTravelIntent, planTravel, originForMap } = require("./travel.cjs");
 const { acquisitionFacts } = require("./acquisition-data.cjs");
 const { sellerFacts } = require("./vendor-facts.cjs");
 const { validateNpcLocationPack } = require("./npc-location-data.cjs");
@@ -120,26 +121,29 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
     here = shared ? (liveFrame ? liveFrame.position : reported ? (reported.mapId ? reported : null) : shared.location) : null;
   }
   refresh();
-  const originLabel = () => (liveFrame ? MAP_NAMES[liveFrame.position.mapId] : null) || reported?.zone || null;
   const index = knowledgeIndex;
   const pack = index?.pack;
   const exactBuild = Boolean(shared && index?.compatible?.(shared));
   // A different saved build still gets reference answers, labelled as such, but never waypoints.
   const qp = !shared ? {} : exactBuild || !shared.clientBuild || shared.clientBuild === pack?.build ? shared : { ...shared, clientBuild: undefined };
+  const liveQuests = () => shared ? resolveLiveQuests(shared, live, pack) : null;
 
   function npcRecords() {
     const out = [];
-    if (pack) for (const n of Object.values(pack.npcs || {})) if (n.kind === "npc") out.push({ id: n.id, name: n.name, lastSeen: n.lastSeen || null, positions: n.positions || [], build: pack.build, commit: pack.sourceCommit, tier: exactBuild ? "exact-build-observation" : "reference-observation" });
+    const merged = Array.isArray(pack?.builds) && pack.builds.length > 1;
     if (historical) for (const n of historical.npcs) out.push({ id: n.id, name: n.name, lastSeen: n.lastSeen, positions: n.positions, build: n.build || historical.build, commit: historical.sourceCommit, tier: "historical-reference" });
-    return out;
+    const questNpcRecords = [];
+    if (pack) for (const n of Object.values(pack.npcs || {})) if (n.kind === "npc") questNpcRecords.push({ id: n.id, name: n.name, lastSeen: n.lastSeen || null, positions: n.positions || [], build: merged ? null : pack.build, commit: pack.sourceCommit, tier: merged ? "merged-reference" : exactBuild ? "exact-build-observation" : "reference-observation" });
+    if (merged) return [...out, ...questNpcRecords];
+    return [...questNpcRecords, ...out];
   }
   function npcDto(group) {
     const best = group.find((r) => r.positions.length) || group[0];
     const positions = [];
-    // Each point keeps the build, evidence tier and date of the record it came from.
+    // These fields describe the NPC record. Merged records don't have per-point build dates.
     for (const r of group) for (const p of r.positions) if (!positions.some((q) => q.p.mapId === p.mapId && Math.abs(q.p.x - p.x) < 0.005 && Math.abs(q.p.y - p.y) < 0.005)) positions.push({ p, r });
     const pts = positions.map(({ p, r }) => ({ ...point(p, here), evidence: r.tier, build: r.build, lastSeen: r.lastSeen || null })).sort((a, b) => (b.sameMapAsPlayer ? 1 : 0) - (a.sameMapAsPlayer ? 1 : 0) || (a.mapDistance ?? 9) - (b.mapDistance ?? 9)).slice(0, 4);
-    const sources = [...new Map(group.map((r) => [r.commit + r.build, `Efficient Games, CC BY 4.0 · ${NPC_REPO}/${r.commit}/data/wowf/${r.build}`])).values()];
+    const sources = [...new Map(group.map((r) => [r.commit + r.build, `Efficient Games, CC BY 4.0 · ${NPC_REPO}/${r.commit}/data/wowf${r.build ? "/" + r.build : ""}`])).values()];
     return { id: best.id, name: best.name, locations: pts, morePoints: Math.max(0, positions.length - pts.length), source: sources.join(" ; ") };
   }
 
@@ -193,19 +197,30 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
     search_quests(args) {
       const query = str(args.query);
       if (!query || !index) return { status: index ? "invalid" : "unavailable" };
-      const rows = index.search(query.replace(/^#/, ""), qp, { includeReferenceOnly: true }).slice(0, 10);
+      const log = liveQuests();
+      const rows = index.search(query.replace(/^#/, ""), log ? { ...qp, quests: log } : qp, { includeReferenceOnly: true }).slice(0, 10);
       return { status: rows.length ? "found" : "not-found", build: pack.build, levelNote: "questLevel is the difficulty level; a player at or above minimumLevelToAccept can accept it (other requirements unknown).", ...(qp !== shared && shared ? { buildNote: "Reference build differs from the saved character build." } : {}), quests: rows.map((q) => ({ id: q.id, title: q.title, questLevel: q.level, minimumLevelToAccept: q.minLevel, inPlayersQuestLog: q.active, seenInPlay: q.observedInPlay })) };
     },
     get_quest(args) {
       const id = posInt(args.quest_id);
       if (!id || !index) return { status: index ? "invalid" : "unavailable" };
-      const d = index.details(qp, id);
-      if (d.status === "missing") return { status: "not-found", questId: id, warnings: d.warnings, ...intelFor(id, null) };
-      const npc = (n) => ({ id: n.id, name: n.name || `NPC #${n.id}`, kind: n.kind, locations: (n.positions || []).slice(0, 2).map((p) => point(p, here)) });
+      const log = liveQuests();
+      const d = index.details(log ? { ...qp, quests: log } : qp, id);
+      const active = (log ?? shared?.quests)?.find((q) => q.id === id);
+      const liveTurnedIn = Boolean(shared && !live?.combat && !active && live?.turnedIn?.includes(id));
+      const savedTurnedIn = Boolean(!active && shared?.history?.completedIdsKnown && shared.history.completedIds?.includes(id));
+      const playerProgress = liveTurnedIn ? { source: "live-turn-in", turnedIn: true } : active
+        ? { source: log ? "live-quest-log" : "last-saved", inQuestLog: true, readyToTurnIn: Boolean(active.complete), objectives: log ? [] : (active.objectives || []).slice(0, 6) }
+        : savedTurnedIn
+          ? { source: "last-saved", turnedIn: true }
+          : log ? { source: "live-quest-log", inQuestLog: false } : null;
+      if (d.status === "missing") return { status: "not-found", questId: id, title: active?.title, playerProgress, warnings: d.warnings, ...intelFor(id, null) };
+      const npc = (n) => ({ id: n.id, name: n.name || `NPC #${n.id}`, kind: n.kind, locations: (n.positions || []).slice(0, 2).map((p) => ({
+        ...point(p, here), place: require("./companion-intents.cjs").placeLabel(p),
+      })) });
       const item = (r) => ({ id: r.id ?? r.itemId, name: pack.items?.[r.id ?? r.itemId]?.name || (r.name && r.name !== `Item #${r.itemId}` ? r.name : null), count: r.count ?? r.amount ?? undefined, ...(Number.isSafeInteger(r.quality) ? { quality: r.quality } : {}) });
       const rw = d.rewards;
       const r = d.record;
-      const active = shared?.quests?.find((q) => q.id === id);
       return {
         status: d.status, questId: id, title: active?.title || r.title, questLevel: r.level ?? null, minimumLevelToAccept: r.minLevel ?? null, levelNote: "questLevel is the difficulty level; a player at or above minimumLevelToAccept can accept it (other requirements unknown).", sides: r.sides || null,
         objectiveText: r.objectiveEvidence || null,
@@ -221,7 +236,7 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
           const creature = pack.creatures?.[o.objectId];
           return creature ? { ...o, creatureName: creature.name } : o;
         }),
-        playerProgress: active ? { inQuestLog: true, readyToTurnIn: Boolean(active.complete), objectives: (active.objectives || []).slice(0, 6), ...(active.complete ? { nextStep: d.turnIns.length ? `Ready to turn in: go to ${d.turnIns[0].name || "the turn-in NPC"} (see turnIns) to finish it.` : "Ready to turn in; the turn-in NPC is not in the reference (objective text may name them)." } : {}) } : null,
+        playerProgress,
         givers: d.givers.slice(0, 3).map(npc), turnIns: d.turnIns.slice(0, 3).map(npc),
         objectiveAreas: d.objectiveLocations.slice(0, 4).map((o) => ({ index: o.index, type: o.type, locations: (o.positions || []).slice(0, 2).map((p) => point(p, here)) })),
         rewards: rw ? {
@@ -269,9 +284,13 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
       const to = str(args.to, 100), from = str(args.from, 100);
       if (!to) return { status: "invalid" };
       if (!travelReference) return { status: "unavailable" };
-      const implicit = !from && originLabel();
+      const implicit = !from && !liveFrame && reported?.zone;
       const question = from ? `from ${from} to ${to}` : implicit ? `from ${implicit} to ${to}` : `how do I get to ${to}`;
-      const intent = parseTravelIntent(question, { profile: shared || undefined });
+      const intent = parseTravelIntent(question, {
+        profile: shared || undefined,
+        liveOrigin: originForMap(liveFrame?.position?.mapId),
+        allowSavedOrigin: !liveFrame,
+      });
       if (!intent) return { status: "not-understood", message: "This place is not in the reviewed travel reference (dungeons and small sites usually are not). Do not guess its direction or location; say it is not covered." };
       const plan = planTravel(travelReference, intent, { profile: shared || undefined });
       return { status: plan.status, summary: plan.text, origin: plan.origin, destination: plan.destination, options: plan.options.slice(0, 3), cautions: plan.cautions, sources: plan.sources.slice(0, 3) };
@@ -286,8 +305,15 @@ function createCompanionTools({ profile = null, shareProfile = false, knowledgeI
         if (Number.isInteger(live.level)) record.liveLevel = live.level;
       }
       if (record.location?.mapId) record.location.zoneFromMap = mapLabel(record.location.mapId);
-      if (Array.isArray(record.quests)) record.quests = record.quests.map((q) => (q.complete ? { ...q, readyToTurnIn: true } : q));
-      return { status: "shared", character: record, note: "Saved snapshots are not live; use snapshotUpdatedAt and locationSource." };
+      const log = liveQuests();
+      if (log) {
+        record.quests = log.slice(0, 40).map(({ id, title, complete }) => ({ id, title, complete, readyToTurnIn: complete }));
+        record.questLogSource = "live-quest-log";
+      } else if (Array.isArray(record.quests)) {
+        record.quests = record.quests.map((q) => (q.complete ? { ...q, readyToTurnIn: true } : q));
+        record.questLogSource = "last-saved";
+      }
+      return { status: "shared", character: record, note: "Check locationSource and questLogSource independently for freshness." };
     },
     get_live_state() {
       if (!shared) return { status: "not-shared", message: "Character sharing is off for this question." };

@@ -3,7 +3,7 @@ const {createHash}=require('node:crypto'),{isDeepStrictEqual}=require('node:util
 const {COMMIT,BUILD,BUILDS,ATTRIBUTION,SOURCES}=require('./npc-location-sources.cjs');
 const {latinName}=require('./latin-name.cjs');
 // Raw single-build input bound; the merged multi-build bundle has its own bound.
-const RAW_LIMIT=2*1024*1024,PACK_LIMIT=768*1024,MAX_NPCS=8000,MAX_POSITIONS=8,MAX_BUILDS=16;
+const RAW_LIMIT=2*1024*1024,PACK_LIMIT=768*1024,MAX_NPCS=8000,MAX_POSITIONS=8,MAX_BUILDS=18;
 const BUILD_RE=/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,8}$/,COMMIT_RE=/^[a-f0-9]{40}$/;
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const id=n=>Number.isSafeInteger(n)&&n>0&&n<=2147483647;

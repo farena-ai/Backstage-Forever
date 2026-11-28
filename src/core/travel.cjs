@@ -50,7 +50,7 @@ function savedOrigin(profile) {
   return null;
 }
 /** previousQuestion must be a main-owned original USER question, never assistant prose. */
-function parseTravelIntent(question, { previousQuestion, profile } = {}) {
+function parseTravelIntent(question, { previousQuestion, profile, liveOrigin, allowSavedOrigin = true } = {}) {
   if (
     typeof question !== "string" ||
     !question.trim() ||
@@ -62,7 +62,7 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
   const marker = {};
   if (questionForEvidence(q, marker) === marker)
     return typeof previousQuestion === "string" && previousQuestion !== q
-      ? parseTravelIntent(previousQuestion, { profile })
+      ? parseTravelIntent(previousQuestion, { profile, liveOrigin, allowSavedOrigin })
       : null;
   if (
     /\bget\s+to\s+(?:level\s*|lvl\s*)\d+/i.test(q) ||
@@ -166,12 +166,12 @@ function parseTravelIntent(question, { previousQuestion, profile } = {}) {
     result.destinationId = e.id;
     result.destinationLabel = e.label;
   }
-  if (!explicit) {
-    const e = savedOrigin(profile);
+  if (!explicit || (liveOrigin && /^here[?.!]*$/i.test(from?.trim() || ""))) {
+    const e = liveOrigin || (!explicit && allowSavedOrigin ? savedOrigin(profile) : null);
     if (e) {
       result.originId = e.id;
       result.originLabel = e.label;
-      result.originSource = "saved-location";
+      result.originSource = liveOrigin ? "live-location" : "saved-location";
     }
   }
   if (result.originId && result.destinationId) {
@@ -233,6 +233,8 @@ function planTravel(reference, intent, { profile } = {}) {
         result.origin.label +
         ".",
     );
+  if (intent.originSource === "live-location" && result.origin)
+    result.cautions.push("The starting place came from the Live Link when you asked for this trip.");
   if (intent.status === "clarify" || !origin || !destination) {
     if (
       intent.reason === "unknown-endpoint" &&
@@ -421,4 +423,10 @@ function planTravel(reference, intent, { profile } = {}) {
   result.text = sections.join("\n\n");
   return result;
 }
-module.exports = { parseTravelIntent, planTravel };
+function originForMap(mapId) {
+  const name = require("./map-names.cjs").MAP_NAMES[mapId];
+  const e = name && endpoint(name === "Stormwind City" ? "Stormwind" : name);
+  return e?.id ? e : null;
+}
+
+module.exports = { parseTravelIntent, planTravel, originForMap };

@@ -85,11 +85,11 @@ function checkBundle() {
     throw Error("Travel compiled checksum mismatch.");
   const pack = loadTravelReference(bytes);
   if (
-    pack.nodes.length !== 19 ||
+    pack.nodes.length !== 24 ||
     pack.edges.length !== 16 ||
     pack.negatives.length !== 1 ||
-    pack.itineraries.length !== 3 ||
-    pack.sources.length !== 6
+    pack.itineraries.length !== 9 ||
+    pack.sources.length !== 10
   )
     throw Error("Travel pinned coverage mismatch.");
   const license = fs.readFileSync(path.join(dir, "LICENSE-CC-BY-4.0.txt"));

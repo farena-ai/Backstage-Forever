@@ -59,6 +59,8 @@ test("bounded shipped pack validates with six independent flights and original o
   assert.equal(p.negatives[0].from, "orgrimmar");
   assert.deepEqual(p.itineraries.map(({ from, to }) => [from, to]), [
     ["orgrimmar", "thunder-bluff"], ["thunder-bluff", "stonetalon-mountains"], ["mulgore", "stonetalon-mountains"],
+    ["barrens", "stonetalon-mountains"], ["stonetalon-mountains", "barrens"], ["astranaar", "stonetalon-mountains"],
+    ["ashenvale", "stonetalon-mountains"], ["elwynn-forest", "westfall"], ["westfall", "elwynn-forest"],
   ]);
   assert.equal(hasResearchOnlyMaster(p.nodes), false);
   assert.ok(!JSON.stringify(p).includes("worldX"));

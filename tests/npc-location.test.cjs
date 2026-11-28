@@ -3,6 +3,19 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 let npc;try{npc=require('../src/core/npc-location.cjs');}catch(e){if(e.code!=='MODULE_NOT_FOUND')throw e;}
 const pack=JSON.parse(fs.readFileSync('data/forever-npc-locations/pack.json'));const resolve=(q,opts={})=>{assert.ok(npc);return npc.resolveNpcLocation(q,{historicalPack:pack,...opts});};
 test('local NPC resolver exists',()=>assert.equal(typeof npc?.resolveNpcLocation,'function'));
+test('nearby searches use the matching game map to disambiguate an observed NPC',()=>{
+ const r=resolve('Where is Minor Manifestation of Earth near me?',{shareProfile:true,liveFrame:{position:{mapId:1411}}});
+ assert.equal(r.dto.entities[0].id,5891);
+ assert.equal(r.usesLive,true);
+});
+test('an older NPC observation does not inherit the head build from a merged quest pack',()=>{
+ const {KnowledgeIndex}=require('../src/core/knowledge.cjs');
+ const index=new KnowledgeIndex(require('../data/forever/pack.json'));
+ const profile={clientBuild:index.pack.build,source:{kind:'wow-addon'}};
+ const r=resolve('Where is NPC #54?',{shareProfile:true,profile,currentIndex:index});
+ assert.equal(r.dto.entities[0].build,'1.60.1.70938');
+ assert.doesNotMatch(r.text,/Observed character-build reference|1\.60\.1\.71139/);
+});
 test('natural city and edition qualifiers do not become part of the NPC name',()=>{
   for(const question of ['Where is Cairne Bloodhoof in org?', 'Where is Cairne in Orgrimmar in WoW Forever?']){
     const result=resolve(question);

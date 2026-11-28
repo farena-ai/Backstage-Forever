@@ -1,6 +1,6 @@
 "use strict";
 const { randomUUID, createHash } = require("node:crypto");
-const { parseTravelIntent, planTravel } = require("./travel.cjs");
+const { parseTravelIntent, planTravel, originForMap } = require("./travel.cjs");
 const { SOURCES } = require("./travel-sources.cjs");
 const { applyJourneyAction } = require("./journeys.cjs");
 const { object } = require("./validation.cjs");
@@ -55,7 +55,7 @@ class TravelCompanion {
       createHash("sha256").update(JSON.stringify(this.reference)).digest("hex"),
     ]);
   }
-  resolve(question, { profileId, shareProfile }) {
+  resolve(question, { profileId, shareProfile, liveFrame }) {
     const fingerprint = this.fingerprint(profileId),
       previous = this.trip?.fingerprint === fingerprint ? this.trip : null;
     const profile = shareProfile
@@ -63,6 +63,8 @@ class TravelCompanion {
       : undefined;
     let intent = parseTravelIntent(question, {
         profile,
+        liveOrigin: shareProfile ? originForMap(liveFrame?.position?.mapId) : null,
+        allowSavedOrigin: !shareProfile || !liveFrame?.position,
         previousQuestion: previous?.question,
       }),
       reported;

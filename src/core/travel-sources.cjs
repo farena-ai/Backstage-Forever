@@ -128,6 +128,30 @@ const SOURCES = [
     observedOn: "2026-11-10", scope: "published-forever-guidance",
     license: "Original factual curation only", reviewedOn: REVIEWED_ON,
   },
+  {
+    product: "wowf", id: "E7", publisher: "Bind on Forever",
+    url: "https://bindonforever.com/zones/stonetalon-mountains",
+    publishedOn: "2026-10-11", scope: "published-forever-guidance-prelaunch",
+    license: "Original factual curation only", reviewedOn: REVIEWED_ON,
+  },
+  {
+    product: "wowf", id: "E8", publisher: "r/wowforever player report",
+    url: "https://www.reddit.com/r/wowforever/comments/1y2wluk/faster_way_from_thunder_bluff_to_the_barrens_and/",
+    publishedOn: "2026-11-22", scope: "published-forever-guidance",
+    license: "Original factual curation only", reviewedOn: REVIEWED_ON,
+  },
+  {
+    product: "wowf", id: "E9", publisher: "Bind on Forever",
+    url: "https://bindonforever.com/zones/westfall",
+    publishedOn: "2026-10-11", scope: "published-forever-guidance-prelaunch",
+    license: "Original factual curation only", reviewedOn: REVIEWED_ON,
+  },
+  {
+    product: "wowf", id: "E10", publisher: "GAMES.GG",
+    url: "https://games.gg/world-of-warcraft/guides/wow-forever-westfall-guide/",
+    publishedOn: "2026-11-27", scope: "published-forever-guidance",
+    license: "Original factual curation only", reviewedOn: REVIEWED_ON,
+  },
 ];
 
 const CITIES = [
@@ -152,8 +176,13 @@ const ENDPOINTS = [
   ["ironforge-tram", "Ironforge tram entrance", "ironforge"],
 ];
 const ZONES = [
-  ["mulgore", "Mulgore", ["mulgore"]],
-  ["stonetalon-mountains", "Stonetalon Mountains", ["stonetalon mountains", "stonetalon"]],
+  ["mulgore", "Mulgore", ["mulgore"], ["E5", "E6"]],
+  ["stonetalon-mountains", "Stonetalon Mountains", ["stonetalon mountains", "stonetalon"], ["E5", "E7"]],
+  ["barrens", "The Barrens", ["the barrens", "barrens"], ["E7", "E8"]],
+  ["ashenvale", "Ashenvale", ["ashenvale"], ["E7"]],
+  ["astranaar", "Astranaar", ["astranaar"], ["E7"], "town"],
+  ["elwynn-forest", "Elwynn Forest", ["elwynn forest", "elwynn"], ["E9", "E10"]],
+  ["westfall", "Westfall", ["westfall"], ["E9", "E10"]],
 ];
 const MASTERS = [
   {
@@ -210,6 +239,26 @@ const ROADS = [
     ...STONETALON_STEPS,
   ] },
   { id: "mulgore-stonetalon-road", from: "mulgore", to: "stonetalon-mountains", faction: "neutral", sourceIds: ["E5", "E6"], steps: STONETALON_STEPS },
+  { id: "barrens-stonetalon-road", from: "barrens", to: "stonetalon-mountains", faction: "neutral", sourceIds: ["E7", "E8"], steps: [
+    "From the Crossroads area, take the road west out of the Barrens toward Stonetalon Mountains.",
+    "The road enters southeastern Stonetalon near Camp Aparaje and Grimtotem Post.",
+  ] },
+  { id: "stonetalon-barrens-road", from: "stonetalon-mountains", to: "barrens", faction: "neutral", sourceIds: ["E7", "E8"], steps: [
+    "Head for southeastern Stonetalon, in the Malaka'jin and Camp Aparaje area.",
+    "Follow the road east over the zone border. It leads toward the Crossroads in the Barrens.",
+  ] },
+  ...["astranaar", "ashenvale"].map(from => ({ id: `${from}-stonetalon-road`, from, to: "stonetalon-mountains", faction: "neutral", sourceIds: ["E7"], steps: [
+    "In Ashenvale, look south of Astranaar for the entrance to Talondeep Path, around 42, 72 on the Ashenvale map.",
+    "Take the tunnel to Stonetalon Mountains on the Webwinder Path side.",
+  ] })),
+  { id: "elwynn-westfall-road", from: "elwynn-forest", to: "westfall", faction: "neutral", sourceIds: ["E9", "E10"], steps: [
+    "Take the road west out of Elwynn Forest. It enters northeastern Westfall near Jansen Stead.",
+    "Continue toward Sentinel Hill if you want the main Westfall quest hub.",
+  ] },
+  { id: "westfall-elwynn-road", from: "westfall", to: "elwynn-forest", faction: "neutral", sourceIds: ["E9", "E10"], steps: [
+    "From the Sentinel Hill area, follow the road toward northeastern Westfall and Jansen Stead.",
+    "Follow the road across the border into western Elwynn Forest.",
+  ] },
 ];
 function freeze(value) {
   if (value && typeof value === "object") {

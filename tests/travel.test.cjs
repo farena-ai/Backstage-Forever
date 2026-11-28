@@ -26,6 +26,21 @@ function intent(q, options = {}) {
 function trip(q, profile = matching) {
   return api().planTravel(reference, intent(q, { profile }), { profile });
 }
+test("Forever walking coverage includes signed passes and preserves documented directions", () => {
+  for (const [question, landmark] of [
+    ["The Barrens to Stonetalon on foot", /Camp Aparaje/],
+    ["Stonetalon to The Barrens on foot", /Malaka'jin/],
+    ["Astranaar to Stonetalon on foot", /Talondeep Path/],
+    ["Elwynn Forest to Westfall on foot", /Jansen Stead/],
+    ["Westfall to Elwynn Forest on foot", /Jansen Stead/],
+  ]) {
+    const route = trip(question);
+    assert.equal(route.status, "route", question);
+    assert.deepEqual(route.options.map(o => o.mode), ["road"], question);
+    assert.match(route.text, landmark);
+    assert.ok(route.sources.length, question);
+  }
+});
 test("natural walking phrases preserve the place names and restrict routes to road", () => {
   for (const q of ["How do I walk from TB to Stonetalon?", "How do you get to Stonetalon Mountains from Thunder Bluff on foot?", "from TB, how can I get to Stonetalon on foot in WoW Forever?", "Mulgore to Stonetalon by foot", "Thunder Bluff to Stonetalon (on foot) in WoW: Forever please", "Thunder Bluff to Stonetalon on foot in World of Warcraft: Forever"]) {
     const parsed = intent(q);
