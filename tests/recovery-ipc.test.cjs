@@ -45,6 +45,8 @@ test("real persisted-disconnect sharing failure aborts the main replacement tran
   const scope = { store: f.store, game, subscriptionEpoch: 0, gameActionEpoch: 0, resetting: false, latestObservation: null, latestObservationRoot: null, recovery: { clear() {} }, diagnostics: { clear() {} }, characterGuidance: { clear() { guidanceInvalidations++; } }, companionContext: f.context, catalogs: { clear() {} }, knowledge: { setContext() {} } };
   scope.privateWeekly = new (require("../src/core/private-weekly.cjs").PrivateWeekly)();
   scope.privateAfterAction = new (require("../src/core/private-after-action.cjs").PrivateAfterAction)();
+  scope.nearbyLoops = new Map();
+  scope.dismissedNow = new Map();
   vm.runInNewContext(source.slice(source.indexOf("  async function replaceJournal("), source.indexOf("  recovery = registerRecoveryHandlers")) + "globalThis.replace = replaceJournal;", scope);
   const script = '$a=[System.IO.File]::Open($env:BF_LOCK_CONNECTION,[System.IO.FileMode]::Open,[System.IO.FileAccess]::Read,[System.IO.FileShare]::Read); [Console]::WriteLine("LOCKED"); [Console]::ReadLine() | Out-Null; $a.Dispose()';
   const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, env: { ...process.env, BF_LOCK_CONNECTION: connection } });
