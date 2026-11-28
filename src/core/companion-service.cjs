@@ -11,6 +11,7 @@ const {workshopQuestion,workshopAnswer}=require('./companion-workshop.cjs');
 const {dungeonQuestion,dungeonAnswer,dungeonFactsQuestion,dungeonFactsAnswer}=require('./companion-dungeon.cjs');
 const {resolve:resolveIntent}=require('./companion-intents.cjs');
 const {resolveTalentQuestion,talentBlock,talentQuickAnswer,TALENT_MAX}=require('./talent-context.cjs');
+const { matchingLiveFrame, characterContext } = require('./character-freshness.cjs');
 // Providers accept at most this much context text (ChatGPT subscription limit).
 const CONTEXT_LIMIT=20000;
 // These events cancel work/drafts without changing completed conversation ownership.
@@ -47,13 +48,15 @@ class CompanionService {
       const token=this.memory.begin(profileId),memoryIds=input.memoryIds===undefined?[]:input.memoryIds;
       const augmented=buildMemoryPrompt(state,{profileId,prompt:input.prompt,memoryIds});
       const profile=state.profiles.find(p=>p.id===profileId);
+      const checkedAt = Date.now();
+      const savedContext = characterContext(profile, null, input.shareProfile, checkedAt);
       const scope={owner:this.owner(profileId),shareProfile:input.shareProfile,memoryIds};
       const refusal=scopeResponse(input.prompt);
       const finishPrivateQuick=(text,topic,meta)=>{
         if(signal.aborted)throw signal.reason;
         const conversation=this.session.skip(scope);
         this.travel?.clear();
-        return {text,kind:'quick',topic,conversation:meta?.resetReason?{...conversation,resetReason:meta.resetReason}:conversation};
+        return {text,kind:'quick',topic,characterContext:savedContext,conversation:meta?.resetReason?{...conversation,resetReason:meta.resetReason}:conversation};
       };
       // Preparation and instance facts stay offline and out of conversation history and Memory.
       const workshop=!refusal&&workshopQuestion(input.prompt);
@@ -65,11 +68,11 @@ class CompanionService {
       const prepared=this.session.prepare({...scope,prompt:input.prompt,currentPrompt:augmented.prompt});
       if(prepared.meta.resetReason==='scope-change')this.travel?.clear();
       if(refusal){this.travel?.clear();return {text:refusal,kind:'scope',conversation:prepared.meta};}
-      const finishQuick=({text,topic})=>{
+      const finishQuick=({text,topic}, evidence = savedContext)=>{
         if(signal.aborted)throw signal.reason;
         this.memory.complete(token,input.prompt,text);
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:text,kind:'quick'}))throw Error('Provider response is no longer current.');
-        this.travel?.clear();return {text,kind:'quick',topic,conversation:prepared.meta};
+        this.travel?.clear();return {text,kind:'quick',topic,characterContext:evidence,conversation:prepared.meta};
       };
       // Talent questions: WoW Forever's own trees from the game client. A clear talent question wins over
       // NPC and travel matching ("Improved Renew only goes to 3/3" is not a trip).
@@ -97,7 +100,7 @@ class CompanionService {
         if(signal.aborted)throw signal.reason;
         this.memory.complete(token,input.prompt,npc.text);
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:npc.text,kind:'npc'}))throw Error('Provider response is no longer current.');
-        this.travel?.clear();return {text:npc.text,kind:'npc',npc:npc.dto,conversation:prepared.meta};
+        this.travel?.clear();return {text:npc.text,kind:'npc',npc:npc.dto,characterContext:savedContext,conversation:prepared.meta};
       }
       // A travel route or a follow-up to an open trip stays with the travel planner.
       const tripOpen=Boolean(this.travel?.trip?.pending);
@@ -111,26 +114,27 @@ class CompanionService {
         if(signal.aborted)throw signal.reason;
         this.memory.complete(token,input.prompt,local.text);
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:local.text,kind:'travel'}))throw Error('Provider response is no longer current.');
-        return {text:local.text,kind:'travel',conversation:prepared.meta,travel:this.travel.commit(local)};
+        return {text:local.text,kind:'travel',characterContext:savedContext,conversation:prepared.meta,travel:this.travel.commit(local)};
       }
       if(verified?.answer&&!selected.model){
         if(signal.aborted)throw signal.reason;
         this.memory.complete(token,input.prompt,verified.answer);
         if(!this.session.commit(prepared.token,{question:input.prompt,answer:verified.answer,kind:'intent'}))throw Error('Provider response is no longer current.');
-        this.travel?.clear();return {text:verified.answer,kind:'intent',intent:verified.intent,conversation:prepared.meta};
+        this.travel?.clear();return {text:verified.answer,kind:'intent',intent:verified.intent,characterContext:savedContext,conversation:prepared.meta};
       }
       const options={knowledge:this.knowledge.index(profile||{}),prompt:prepared.questionForEvidence,reportedLocation:prepared.reportedLocation};
       // Live frames count only when they carry the selected character's identity.
-      const {liveKeyFor}=require('./live-bridge.cjs');
-      const bound=profile?.source?.kind==='wow-addon',expected=bound?liveKeyFor(profile.source.id):null; // null: GUID not read yet, never matches
-      const liveStatusNow=()=>{if(!input.shareProfile||!this.live?.status)return null;const s=this.live.status();if(s?.frame&&bound&&s.frame.characterHash&&s.frame.characterHash!==expected)return {...s,signal:'other-character',frame:null};if(s?.frame&&bound&&!s.frame.characterHash)return {...s,frame:{...s.frame,identityUnverified:true}};return s;};
-      const liveNow=()=>liveStatusNow()?.frame||null;
-      const liveStatus=liveStatusNow(),liveFrame=liveStatus?.frame||null;
+      const observed = input.shareProfile ? this.live?.status?.() : null;
+      const liveFrame = matchingLiveFrame(profile, observed);
+      const liveStatus = observed?.frame && !liveFrame ? {...observed, signal:'other-character', frame:null} : observed;
+      const replyContext = characterContext(profile, liveFrame, input.shareProfile, checkedAt);
+      const liveNow = () => liveFrame;
+      const liveStatusNow = () => liveStatus;
       // No model chosen: answer the common questions locally (quest how-to, next steps, training).
       if(!selected.model){
         const tools=createCompanionTools({profile,shareProfile:input.shareProfile,knowledgeIndex:options.knowledge||this.knowledge.bundled||null,npcReference:this.npcReference,travelReference:this.travelReference,vendorPack:this.vendorPack,acquisitionPack:this.acquisitionPack,contextOptions:options,live:liveNow,liveStatus:liveStatusNow,planner:this.planner});
         const quick=quickAnswer(input.prompt,{tools,live:liveFrame,talent,advise:input.shareProfile&&this.advise?()=>this.advise(profileId):null});
-        if(quick)return finishQuick(quick);
+        if(quick)return finishQuick(quick, replyContext);
         throw Error('Choose a model in Connections for AI questions. Local NPC locations, travel, quest how-to, next steps, training and talents need no model.');
       }
       let context=this.ai.profileContext(state,profileId,input.shareProfile,options);
@@ -164,7 +168,7 @@ class CompanionService {
       if(!this.session.commit(prepared.token,{question:input.prompt,answer:reply,kind:'ai'}))throw Error('Provider response is no longer current.');
       this.travel?.clear();
       const lookups=tools?tools.trace.filter(t=>t.summary).slice(0,10).map(t=>t.summary):[];
-      return {text:reply,kind:'ai',conversation:prepared.meta,...(lookups.length?{lookups}:{})};
+      return {text:reply,kind:'ai',characterContext:replyContext,conversation:prepared.meta,...(lookups.length?{lookups}:{})};
     },{waitForSettlement:selected.authMode==='subscription'&&input.provider==='anthropic'});
   }
 }

@@ -3,7 +3,13 @@
 .topbar { gap: 16px; padding: 0 28px; height: 76px; }
 .topbar .breadcrumb { margin-right: auto; }
 .topbar .game-status-chip { display: flex; align-items: center; gap: 10px; padding: 7px 13px; min-height: 44px; text-align: left; font-size: 12px; }
-.game-status-chip small { display: block; color: #c5c5ac; font-size: 11px; font-weight: 400; }
+.active-character-status { display: grid; justify-items: end; gap: 3px; min-width: 0; }
+.active-character-status label, .active-character-status select { width: 100%; min-width: 0; }
+.character-freshness-row { display: flex; align-items: baseline; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.character-freshness-row small { color: #d2c6ac; font-size: 11px; }
+.character-freshness-row [data-character-freshness="live"] { color: #a8e0ba; font-weight: 650; }
+.character-freshness-row [data-character-freshness="live"]::before { content: "●"; margin-inline-end: 5px; font-size: .8em; }
+.character-freshness-row button { border: 0; padding: 1px 0; background: none; color: #ecd19b; font-size: 11px; text-decoration: underline; text-underline-offset: 2px; box-shadow: none; }
 .game-status-chip .dot { flex: 0 0 6px; }
 .content { padding: 23px 28px 40px; }
 /* Adventure quest plan and "Before you set out": parchment cards in the Now look. */

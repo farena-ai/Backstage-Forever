@@ -291,7 +291,7 @@ async function physicalClick(page, locator, whilePressed) {
   console.log("Injected caret preparation: real held read replaced the idle target; atomic setup owns the current exact range");
   clock=Math.floor(Date.now()/1000);Object.assign(captures[0],{updatedAt:clock,name:"Lark Dawnvale",level:32,className:"Warrior",faction:"Horde"});await writeCapture();await page.evaluate(()=>window.backstage.refreshGame());
   await page.waitForFunction(()=>document.body.dataset.faction==="horde"&&document.body.dataset.class==="warrior"&&document.querySelector('#active-character option:checked')?.textContent.includes("Lark Dawnvale · Level 32"),{},{timeout:12000});
-  assert.match(await page.locator(".game-status-chip small").innerText(),/Saved · just now/);
+  assert.match(await page.locator("[data-character-freshness]").innerText(),/Last saved just now/);
   assert.equal(await sameIdTitle.inputValue(),"Same-ID retained draft");
   assert.deepEqual(await companyControl('[data-company-edit="title"]',{selection:true}),{value:"Same-ID retained draft",focused:true,start:3,end:8},"Same-ID chrome update retains dirty text and focus");
   // A physical click followed by native Shift+Arrow creates a newer selection.

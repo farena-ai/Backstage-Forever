@@ -708,10 +708,16 @@ app.whenReady().then(async () => {
   });
   // Opt-in live game link: reads only the addon's status strip from the game window.
   liveBridge = new LiveBridge({ dataDir: app.getPath("userData") });
-  liveBridge.subscribe((status) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:liveLink", status); });
+  const { matchingLiveFrame } = require("./core/character-freshness.cjs");
+  const liveForRenderer = (status) => {
+    const { activeProfileId, profiles } = store.state;
+    const selected = profiles.find((profile) => profile.id === activeProfileId);
+    return { ...status, liveProfileId: matchingLiveFrame(selected, status) ? activeProfileId : null };
+  };
+  liveBridge.subscribe((status) => { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("backstage:liveLink", liveForRenderer(status)); });
   if (liveBridge.enabled) liveBridge.start();
-  handle("liveLinkStatus", () => liveBridge.status());
-  handle("setLiveLink", (enabled) => liveBridge.setEnabled(enabled));
+  handle("liveLinkStatus", () => liveForRenderer(liveBridge.status()));
+  handle("setLiveLink", (enabled) => liveForRenderer(liveBridge.setEnabled(enabled)));
   let travelReference;
   let worldMap = null;
   try { travelReference = loadTravelReference(fs.readFileSync(path.join(__dirname, "..", "data", "forever-travel", "pack.json"))); } catch { travelReference = null; }

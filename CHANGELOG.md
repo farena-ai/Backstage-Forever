@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.29.2 - See where your character data comes from
+
+- See live or saved status by the active character and on Companion answers. Use **Fix connection** to refresh an older save and get the next step if BF still needs help. See the [release notes](docs/releases/1.29.2.md).
+
 ## 1.29.1 - Short-session check-ins
 
 - Anonymous statistics check in about a minute after the desktop app opens, once per UTC day when enabled. Privacy & sharing explains the timing. See the [release notes](docs/releases/1.29.1.md).

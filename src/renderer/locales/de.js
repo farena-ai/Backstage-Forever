@@ -404,6 +404,8 @@ window.BF_LOCALE_DE = {
  "Changes save automatically. No AI question is sent until you ask.": "Änderungen werden automatisch gespeichert. Es wird keine KI-Frage gesendet, bis du fragst.",
  "Changing character clears quest proof and makes this an unchecked manual step. To track another saved quest, remove this step and add that quest.": "Wechselst du den Charakter, wird der Quest-Nachweis gelöscht und dieser Schritt wird zu einem unbestätigten manuellen Schritt. Um eine andere gespeicherte Quest zu verfolgen, entferne diesen Schritt und füge die Quest hinzu.",
  "Character": "Charakter",
+ "Character data at reply": "Charakterdaten für diese Antwort",
+ "Character data is up to date.": "Die Charakterdaten sind auf dem neuesten Stand.",
  "Character details come from your saved game snapshot. Notes and goals remain editable.": "Charakterdetails stammen aus deinem gespeicherten Spielstand. Notizen und Ziele bleiben bearbeitbar.",
  "Character guidance": "Charakterführung",
  "Character name": "Charaktername",
@@ -860,6 +862,7 @@ window.BF_LOCALE_DE = {
  "Fishing": "Angeln",
  "Fishing not saved": "Angeln nicht gespeichert",
  "Five manual checks: agree roles, bag space, consumables, repairs and a meeting point. Opens Plans; you check off each step.": "Fünf Prüfpunkte von Hand: Rollen absprechen, Taschenplatz, Verbrauchsgüter, Reparaturen und ein Treffpunkt. Öffnet Pläne; du hakst jeden Schritt ab.",
+ "Fix connection": "Verbindung reparieren",
  "Fixed": "Behoben",
  "Fixed in": "Behoben in",
  "Fixed in version": "Behoben in Version",
@@ -1144,6 +1147,7 @@ window.BF_LOCALE_DE = {
  "In use": "In Verwendung",
  "in WoW for a larger, sturdier strip in a corner.": "in WoW für einen größeren, stabileren Streifen in einer Ecke.",
  "In WoW, type": "In WoW, gib ein",
+ "In WoW, type /reload on this character to save your progress. BF will pick it up automatically.": "Tippe in WoW mit diesem Charakter /reload, um deinen Fortschritt zu speichern. BF liest ihn automatisch ein.",
  "In your bags": "In deinen Taschen",
  "In your group": "In deiner Gruppe",
  "In your group without a yes:": "In deiner Gruppe ohne Zusage:",
@@ -1252,6 +1256,7 @@ window.BF_LOCALE_DE = {
  "Last saved": "Zuletzt gespeichert",
  "Last saved · not live": "Letzter Spielstand · nicht live",
  "last saved by the game": "zuletzt vom Spiel gespeichert",
+ "Last saved just now": "Gerade gespeichert",
  "Last seen": "Zuletzt gesehen",
  "Last seen, each": "Zuletzt gesehen, jeweils",
  "Last shared": "Zuletzt geteilt",
@@ -1325,6 +1330,7 @@ window.BF_LOCALE_DE = {
  "Live link can't read the game": "Live-Verbindung kann das Spiel nicht lesen",
  "Live link in use": "Live-Verbindung in Benutzung",
  "Live link off: showing your last save.": "Live-Verbindung aus: Zeige deinen letzten Stand.",
+ "Live location": "Live-Position",
  "Live moments": "Live-Momente",
  "Live with your guild": "Live mit deiner Gilde",
  "Load": "Laden",
@@ -1382,6 +1388,7 @@ window.BF_LOCALE_DE = {
  "Manual completion": "Manuelle Vervollständigung",
  "Manual group prep, not a verified Forever encounter mechanic.": "Manuelle Gruppenvorbereitung, keine bestätigte Bossmechanik in Forever.",
  "Manual model ID": "Manuelle Modell-ID",
+ "Manual profile": "Manuelles Profil",
  "Map": "Karte",
  "Map details and layers": "Kartendetails und Ebenen",
  "Map layers": "Kartenebenen",
@@ -1509,6 +1516,7 @@ window.BF_LOCALE_DE = {
  "No flight master is placed here. Some zones have none.": "Hier ist kein Flugmeister verortet. Manche Zonen haben keinen.",
  "No forced restart during your game. You can also restart here when you’re ready.": "Kein erzwungener Neustart während deines Spiels. Du kannst hier auch neu starten, wenn du bereit bist.",
  "No friends added yet. The board holds up to 12.": "Noch keine Freunde hinzugefügt. Die Tafel fasst bis zu 12.",
+ "No game save yet": "Noch kein Spielstand",
  "No gear sets saved on this character yet.": "Noch keine Ausrüstungssätze auf diesem Charakter gespeichert.",
  "No gold samples yet. They build up one per day you play with the addon on.": "Noch keine Goldmessungen. Pro Spieltag mit aktivem Addon kommt eine dazu.",
  "No guild event is ahead.": "Kein Gildenereignis steht bevor.",
@@ -1778,6 +1786,7 @@ window.BF_LOCALE_DE = {
  "Open the planner": "Planer öffnen",
  "Open Travel": "Reisen öffnen",
  "Open World Map": "Weltkarte öffnen",
+ "Open WoW Forever and enter the world on this character.": "Öffne WoW Forever und betritt die Welt mit diesem Charakter.",
  "Open your own profession": "Öffne deinen eigenen Beruf",
  "Open your profession window once in game, then": "Öffne dein Berufsfenster einmal im Spiel, dann",
  "Open your quest log in game (L) for where to go.": "Öffne dein Questlog im Spiel (L), um zu sehen, wohin es geht.",
@@ -2194,6 +2203,7 @@ window.BF_LOCALE_DE = {
  "Rested XP keeps growing while you're logged out: about 5% of a level every 8 hours in an inn or city, a quarter of that elsewhere, up to 150%. Gold and bags are as the addon last saw them.": "Ausruf-EP wächst weiter, während du offline bist: ca. 5 % einer Stufe alle 8 Stunden in einem Gasthaus oder in der Stadt, ein Viertel davon woanders, bis zu 150 %. Gold und Taschen sind so, wie das Addon sie zuletzt gesehen hat.",
  "Restore selected point": "Ausgewählten Punkt wiederherstellen",
  "Restore skipped steps": "Übersprungene Schritte zurückholen",
+ "Restore the WoW window to resume live updates.": "Stelle das WoW-Fenster wieder her, um Live-Updates fortzusetzen.",
  "Resume or clear this objective in Now. Only a qualifying saved standing change can complete it.": "Setze dieses Ziel unter Jetzt fort oder lösche es. Nur eine passende gespeicherte Rufänderung kann es abschließen.",
  "Resume your route": "Route fortsetzen",
  "Resurrect": "Auferstehen",
@@ -2271,6 +2281,7 @@ window.BF_LOCALE_DE = {
  "Saved defeats here": "Hier gespeicherte Boss-Siege",
  "Saved for this character.": "Für diesen Charakter gespeichert.",
  "Saved journal": "Gespeichertes Journal",
+ "Saved location": "Gespeicherte Position",
  "Saved more than 15 minutes ago. Log out or type /reload in game to bring it up to date.": "Vor mehr als 15 Minuten gespeichert. Logge dich aus oder tippe /reload im Spiel, um es zu aktualisieren.",
  "Saved position not known": "Gespeicherte Position nicht bekannt",
  "Saved quest": "Quest gespeichert",
@@ -2324,6 +2335,7 @@ window.BF_LOCALE_DE = {
  "Select a point to review its date and journal counts before restoring.": "Wähle einen Punkt, um Datum und Journalanzahl zu prüfen, bevor du wiederherstellst.",
  "Select a saved character to change its desktop view.": "Wähle einen gespeicherten Charakter, um seine Desktop-Ansicht anzupassen.",
  "Select command": "Befehl markieren",
+ "Select the character you are playing, or log into this character in WoW.": "Wähle den Charakter, den du spielst, oder melde dich in WoW mit diesem Charakter an.",
  "Selected memory & question preview": "Ausgewählte Erinnerung & Fragenvorschau",
  "Selected profession unavailable": "Ausgewählter Beruf nicht verfügbar",
  "Self-declared": "Selbst erklärt",
@@ -2833,7 +2845,9 @@ window.BF_LOCALE_DE = {
  "Turn-ins": "Abgaben",
  "Turtle": "Schildkröte",
  "Type": "Typ",
+ "Type /bf live on in WoW to resume live updates.": "Tippe in WoW /bf live on, um Live-Updates fortzusetzen.",
  "Type /bf live safe if the link drops over remote desktop.": "Tippe /bf live safe, wenn die Verbindung über Remotedesktop abbricht.",
+ "Type /bf live safe in WoW to use the more readable live strip.": "Tippe in WoW /bf live safe für einen besser lesbaren Live-Streifen.",
  "Type /reload in game. The game takes the plan and passes it to your group. Anyone can read it there with": "Tippe /reload im Spiel. Das Spiel übernimmt den Plan und gibt ihn an deine Gruppe weiter. Dort kann ihn jeder lesen mit",
  "Type a display name to make your code.": "Tippe einen Anzeigenamen, um deinen Code zu erstellen.",
  "Type a name: a quest, an NPC, an item, a spell, a zone, a boss or a command.": "Tippe einen Namen: eine Quest, einen NSC, einen Gegenstand, einen Zauber, eine Zone, einen Boss oder einen Befehl.",
@@ -4230,6 +4244,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
   ]
  ],
  [
+  "^Last saved ([0-9][0-9.,:/%–-]*) days ago$",
+  "Vor {#0} Tagen gespeichert",
+  [
+   0
+  ]
+ ],
+ [
   "^Level ([0-9][0-9.,:/%–-]*): under level ([0-9][0-9.,:/%–-]*)$",
   "Stufe {#0}: unter Stufe {#1}",
   [
@@ -4276,6 +4297,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
  [
   "^gold on ([0-9][0-9.,:/%–-]*) characters$",
   "Gold auf {0} Charakteren",
+  [
+   0
+  ]
+ ],
+ [
+  "^Last saved ([0-9][0-9.,:/%–-]*) min ago$",
+  "Vor {#0} Min. gespeichert",
   [
    0
   ]
@@ -4336,6 +4364,13 @@ window.BF_LOCALE_DE_TEMPLATES = [
   [
    0,
    1
+  ]
+ ],
+ [
+  "^Last saved ([0-9][0-9.,:/%–-]*) hr ago$",
+  "Vor {#0} Std. gespeichert",
+  [
+   0
   ]
  ],
  [

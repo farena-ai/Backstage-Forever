@@ -71,6 +71,7 @@
     }
     for (const n of document.querySelectorAll("[data-live-link-strip]")) { n.textContent = stripLine(); n.hidden = !stripLine(); }
     for (const n of document.querySelectorAll("#live-link-toggle")) n.checked = status.enabled;
+    window.dispatchEvent(new Event("bf-live-status"));
   }
   window.LiveLink = {
     markup() {

@@ -20,7 +20,11 @@
     else a.append(el("p", "ap-thinking", "Thinking…"));
     item.append(a);
     if (s.note) item.append(el("p", "ap-note", s.note));
-    if (s.status === "answer") item.append(el("p", "ap-kind", SOURCE[s.answer?.kind] || SOURCE.ai));
+    if (s.status === "answer") {
+      item.append(el("p", "ap-kind", SOURCE[s.answer?.kind] || SOURCE.ai));
+      const context = window.CharacterFreshness?.answer(s.answer?.characterContext);
+      if (context) item.append(el("p", "ap-kind", context));
+    }
     return item;
   }
   function paint(v) {

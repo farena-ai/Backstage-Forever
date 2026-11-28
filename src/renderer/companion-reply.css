@@ -2,3 +2,5 @@
 .companion-reply p { margin: .65em 0; }
 .companion-reply ul,.companion-reply ol { padding-left: 1.5em; }
 .companion-reply code { background: rgba(255,248,225,0.70); padding: .12em .3em; border-radius: 3px; }
+.companion-character-context { display: block; margin: 4px 0 8px; color: #d5c8ab; font-size: 11px; }
+.companion-character-context:empty { display: none; }
