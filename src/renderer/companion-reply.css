@@ -2,3 +2,7 @@
 .companion-reply p { margin: .65em 0; }
 .companion-reply ul,.companion-reply ol { padding-left: 1.5em; }
 .companion-reply code { background: rgba(255,248,225,0.70); padding: .12em .3em; border-radius: 3px; }
+.companion-message-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 12px; margin-bottom: 8px; }
+.message .companion-message-heading .eyebrow { margin-bottom: 0; }
+.companion-character-context { color: #d5c8ab; font-size: 11px; line-height: 1.4; }
+.companion-character-context:empty { display: none; }

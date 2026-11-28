@@ -374,8 +374,8 @@
  .shell:has(.workshop, [data-party]) .rail-bottom{padding-top:7px}.shell:has(.workshop, [data-party]) .secondary-navigation button{font-size:12px}
  .shell:has(.workshop, [data-party]) .topbar{height:auto;min-height:66px;padding:10px 14px;gap:8px;flex-wrap:wrap;align-items:center}
  .shell:has(.workshop, [data-party]) .breadcrumb{width:100%;font-size:11px;gap:6px}
- .shell:has(.workshop, [data-party]) .topbar>label{min-width:0;flex:1}.shell:has(.workshop, [data-party]) .topbar select{width:100%;min-width:0;max-width:100%}
- .shell:has(.workshop, [data-party]) .game-status-chip{min-width:0;max-width:52%;font-size:11px}.shell:has(.workshop, [data-party]) .game-status-chip small{font-size:11px}
+ .shell:has(.workshop, [data-party]) .topbar>.active-character-status{min-width:0;flex:1}.shell:has(.workshop, [data-party]) .topbar select{width:100%;min-width:0;max-width:100%}
+ .shell:has(.workshop, [data-party]) .game-status-chip{min-width:0;max-width:52%;font-size:11px}
  .shell:has(.workshop, [data-party]) .content{padding:14px}
  .shell:has(.workshop, [data-party]) .player-section-heading{display:none}.shell:has(.workshop, [data-party]) .player-subtabs{flex-wrap:wrap}
 }

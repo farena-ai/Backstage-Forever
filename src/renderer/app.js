@@ -479,6 +479,60 @@ function refreshGameStatusWidget(status = gameStatus) {
   const label = chip.querySelector("[data-game-connection-label]");
   if (label) label.textContent = unavailable ? "Game folder unavailable" : status.connected ? LivingSetup.prepared(status) ? "Compass prepared" : "Game connected" : "Connect game";
 }
+function selectedCharacterFreshness() {
+  const selected = state && !characterSelectionPending() ? profile() : null;
+  if (!selected) return { text: "", repair: false };
+  const live = window.LiveLink?.status();
+  const savedAt = selected.source?.kind === "wow-addon" ? Date.parse(selected.source.updatedAt) : NaN;
+  const kind = live?.signal === "live" && live.liveProfileId === selected.id ? "live" : Number.isFinite(savedAt) ? "saved" : "manual";
+  return { ...CharacterFreshness.header({ kind, savedAt, checkedAt: Date.now() }), kind };
+}
+function paintCharacterFreshness() {
+  const status = root.querySelector("[data-character-freshness]");
+  if (!status) return;
+  const { text, kind, repair } = selectedCharacterFreshness();
+  const label = window.I18n?.tr(text) || text;
+  if (status.textContent !== label) status.textContent = label;
+  status.hidden = !text;
+  status.dataset.characterFreshness = kind || "";
+  root.querySelector("[data-command='fix-character-connection']").hidden = !repair;
+  const location = root.querySelector("[data-companion-character-location]");
+  if (location) {
+    const frame = kind === "live" ? window.LiveLink.status().frame : null;
+    const saved = profile()?.location;
+    const translate = (value) => window.I18n?.tr(value) || value;
+    const description = frame?.position && frame.zone ? `${translate("Live location")} · ${frame.zone}` : saved?.zone ? `${translate("Saved location")} · ${saved.zone}${saved.subZone ? " · " + saved.subZone : ""}` : translate("Location not yet received");
+    if (location.textContent !== description) location.textContent = description;
+  }
+}
+window.addEventListener("bf-live-status", paintCharacterFreshness);
+
+async function recoverCharacterConnection(button) {
+  if (!selectedCharacterFreshness().repair || button.disabled) return;
+  const selectedId = state.activeProfileId;
+  const scope = setupGeneration;
+  button.disabled = true;
+  try {
+    const result = await mutateStateCall(() => api.refreshGame());
+    if (scope !== setupGeneration) return;
+    await applyGame(result);
+    if (state.activeProfileId !== selectedId || !selectedCharacterFreshness().repair) {
+      toast("Character data is up to date.");
+      return;
+    }
+    if (LivingSetup.unavailable(gameStatus) || !gameStatus.connected || !gameStatus.addonCurrent) {
+      setupOpen = true;
+      setupCandidates = null;
+      await prepareCompanion(() => api.startCompanion());
+      return;
+    }
+    const live = window.LiveLink?.status();
+    const signal = live?.signal === "live" ? "other-character" : live?.signal;
+    toast(CharacterFreshness.recovery({ signal }));
+  } finally {
+    if (button.isConnected) button.disabled = false;
+  }
+}
 function companyChromeSignature(saved, status) {
   const selected = saved.profiles.find(p => p.id === saved.activeProfileId);
   return JSON.stringify([
@@ -567,8 +621,9 @@ function render() {
   const previousSupplyDesk = root.querySelector("[data-supply-desk]");
   const supplyFocus = previousSupplyDesk?.contains(document.activeElement) ? document.activeElement : null;
   const previousPracticeLab = page === "practice-lab" ? root.querySelector("[data-practice-lab]") : null;
-  root.innerHTML = `<button type="button" class="skip-content" data-shell-control="skip-content" data-action="skip-content">Skip to content</button><div class="shell"><aside class="rail">${brand()}${WorldSearchView.railButton()}${PlayerNavigation.main(page)}<div class="rail-bottom">${PlayerNavigation.secondary(page)}<div class="status"><i class="dot"></i>Local journal · private</div><small><button type="button" class="rail-link" data-link="website" title="Open backstagecoding.com in your browser">BACKSTAGE CODING</button><br>Frank Arena &amp; Jason Babiuch<br>v${esc(version)}${/^0./.test(String(version)) ? " · Desktop preview" : ""}</small></div></aside><main class="main" id="main-content" tabindex="-1" aria-labelledby="page-heading"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span id="page-heading" role="heading" aria-level="1">${current.label}${current.label !== current.pageLabel ? " / " + current.pageLabel : ""}</span></div><button data-shell-control="connection-status" class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span><span data-game-connection-label>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}</span><small>${esc(profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character")}</small></span></button><label><span class="sr-only">Active character</span><select data-shell-control="active-character" id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label></header><div class="content${["game", "connections", "updates", "assistant"].includes(page) ? " bf-parchment" : ""}">${PlayerNavigation.subtabs(page)}${page === "practice-lab" ? "" : setupDock()}${{ now: NowView.page, adventure: adventure, company: Company.page, party: Party.page, preparation: Preparation.page, "practice-lab": () => '<div data-practice-lab-host></div>', "world-map": WorldMapView.page, dungeons: DungeonAtlas.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, commands: CommandsView.page, coverage: () => CoverageView.page(characterSelectionPending() ? null : profile(), desktopRouteBuild), report: () => DeskView.reportPage(), reports: () => DeskView.inboxPage(), privacy: () => DeskView.privacyPage(), talents: () => TalentsView.academy(characterSelectionPending() ? null : profile()) + TalentsView.page(), journey: JourneyView.page, badges: BadgesView.page, alts: AltsView.page, zones: WorldTrackerView.page, travel: TravelPlannerView.page, "guided-route": GuidedRouteView.page, sheet: SheetView.page, ledger: LedgerView.bags, "ledger-gold": LedgerView.gold, "ledger-crafts": LedgerView.crafts, calendar: EconomyView.calendar, guild: GuildView.page, "guild-guide": () => LiveGuild.guidePage(), "run-history": EconomyView.runs, attunements: AttunementsView.page, "ledger-reputation": LedgerView.reputation, "ledger-cooldowns": LedgerView.cooldowns, updates: updatesPage }[page]()}</div></main></div>`;
+  root.innerHTML = `<button type="button" class="skip-content" data-shell-control="skip-content" data-action="skip-content">Skip to content</button><div class="shell"><aside class="rail">${brand()}${WorldSearchView.railButton()}${PlayerNavigation.main(page)}<div class="rail-bottom">${PlayerNavigation.secondary(page)}<div class="status"><i class="dot"></i>Local journal · private</div><small><button type="button" class="rail-link" data-link="website" title="Open backstagecoding.com in your browser">BACKSTAGE CODING</button><br>Frank Arena &amp; Jason Babiuch<br>v${esc(version)}${/^0./.test(String(version)) ? " · Desktop preview" : ""}</small></div></aside><main class="main" id="main-content" tabindex="-1" aria-labelledby="page-heading"><header class="topbar"><div class="breadcrumb"><span>Your field journal</span><span>/</span><span id="page-heading" role="heading" aria-level="1">${current.label}${current.label !== current.pageLabel ? " / " + current.pageLabel : ""}</span></div><button data-shell-control="connection-status" class="game-status-chip" data-nav="game" aria-label="Review Game Connection"><i class="dot" aria-hidden="true"></i><span><span data-game-connection-label>${LivingSetup.unavailable(gameStatus) ? "Game folder unavailable" : gameStatus.connected ? setupReady() ? "Compass prepared" : "Game connected" : "Connect game"}</span></span></button><div class="active-character-status"><label><span class="sr-only">Active character</span><select data-shell-control="active-character" id="active-character" aria-label="Active character">${state.profiles.length ? state.profiles.map((p) => `<option value="${esc(p.id)}" ${p.id === state.activeProfileId ? "selected" : ""}>${esc(p.name)} · Level ${p.level}</option>`).join("") : "<option>No characters yet</option>"}</select></label><div class="character-freshness-row"><small data-character-freshness hidden></small><button type="button" data-shell-control="fix-character-connection" data-command="fix-character-connection" hidden>Fix connection</button></div></div></header><div class="content${["game", "connections", "updates", "assistant"].includes(page) ? " bf-parchment" : ""}">${PlayerNavigation.subtabs(page)}${page === "practice-lab" ? "" : setupDock()}${{ now: NowView.page, adventure: adventure, company: Company.page, party: Party.page, preparation: Preparation.page, "practice-lab": () => '<div data-practice-lab-host></div>', "world-map": WorldMapView.page, dungeons: DungeonAtlas.page, "quest-guide": QuestGuide.page, characters: characters, assistant: assistant, connections: connections, game: gameConnection, guide: guide, commands: CommandsView.page, coverage: () => CoverageView.page(characterSelectionPending() ? null : profile(), desktopRouteBuild), report: () => DeskView.reportPage(), reports: () => DeskView.inboxPage(), privacy: () => DeskView.privacyPage(), talents: () => TalentsView.academy(characterSelectionPending() ? null : profile()) + TalentsView.page(), journey: JourneyView.page, badges: BadgesView.page, alts: AltsView.page, zones: WorldTrackerView.page, travel: TravelPlannerView.page, "guided-route": GuidedRouteView.page, sheet: SheetView.page, ledger: LedgerView.bags, "ledger-gold": LedgerView.gold, "ledger-crafts": LedgerView.crafts, calendar: EconomyView.calendar, guild: GuildView.page, "guild-guide": () => LiveGuild.guidePage(), "run-history": EconomyView.runs, attunements: AttunementsView.page, "ledger-reputation": LedgerView.reputation, "ledger-cooldowns": LedgerView.cooldowns, updates: updatesPage }[page]()}</div></main></div>`;
   if (pendingCharacterSelection) document.getElementById("active-character").value = pendingCharacterSelection.id;
+  paintCharacterFreshness();
   PlayerNavigation.mounted(root);
   if (page === "company" || page === "preparation")
     SupplyDesk.mount({ root, page, previous: previousSupplyDesk, focus: supplyFocus, api, esc });
@@ -838,7 +893,7 @@ function characters() {
 function assistant() {
   const p = profile();
   const provider = metadata.find((item) => item.id === state.provider.id);
-  return `${PageHero.render({ art: "companion", eyebrow: "Companion", title: "Ask about WoW Forever", subtitle: "Where is someone, how do I get there: answered offline from the bundled reference. Anything else goes to the AI you choose, only when you press Send." })}<div class="grid companion-grid"><section class="panel companion-conversation"><p class="corner-note" data-conversation-notice role="status">${esc(conversationNotice)}</p><div class="chatlog" id="chatlog" role="log" aria-label="Conversation" aria-live="polite">${messages.length ? messages.map((m, index) => `<div class="message ${m.role}"><span class="eyebrow">${m.role === "user" ? (m.inGame ? "You · from the game" : "You") : m.kind === "travel" ? "Forever travel reference · local" : m.kind === "npc" ? "Forever NPC reference · local" : m.kind === "quick" ? "Companion · offline answer" : m.lookups?.length ? "Companion · AI with local reference lookups" : "Companion · AI suggestion"}</span><div class="message-text ${m.role === "assistant" ? "companion-reply" : ""}">${m.kind === "travel" && m.travel ? CompanionTravel.render(m.travel,index,m.text) : m.kind === "npc" ? CompanionReply.renderNpc(m.text,m.npc,body => PlayerNavigation.disclosure("npc-source-"+index,"Source & evidence",body)) : m.role === "assistant" ? CompanionReply.render(m.text) : esc(m.text)}</div>${m.role === "assistant" && m.lookups?.length ? `<small class="lookup-trail" data-lookup-trail>Checked: ${m.lookups.map(esc).join(" · ")}</small>` : ""}</div>`).join("") : ""}</div>${!state.provider.model ? '<div class="ai-setup-hint"><span>Local NPC locations and travel need no model. Other questions need an AI connection.</span><button type="button" data-nav="connections">Configure AI connection</button></div>' : ""}<p class="companion-cost" data-companion-cost>Local NPC locations and travel send nothing to a provider. ${esc(provider?.name || state.provider.id)} · ${state.provider.id === "ollama" ? "Your local Ollama service" : state.provider.authMode === "subscription" ? "Your subscription and its plan limits" : "Cloud API · charges may apply"}. Nothing is sent until you ask.</p><form id="chat-form" class="chat-form"><label>Your question<textarea name="prompt" maxlength="12000" required placeholder="Help me prepare for my next adventure…" ${sending ? "disabled" : ""}></textarea></label><label class="check-label"><input type="checkbox" id="share-profile" ${shareCharacter ? "checked" : ""} ${sending ? "disabled" : ""}>Use my active character</label>${QuestGuide.contextMarkup()}<small data-memory-selection-summary>${Memory.summary()}</small><div class="button-row"><button class="primary" type="submit" ${sending ? "disabled" : ""}>${sending ? "Thinking…" : "Send question"}</button>${sending ? '<button type="button" data-command="stop-response">Stop response</button>' : ""}<button type="button" data-command="clear-chat">Clear conversation</button></div><div class="suggestions"><button type="button" data-prompt="What is the fastest way from Orgrimmar to Thunder Bluff?">Plan a trip · local reference</button><button type="button" data-prompt="Dungeon prep for The Deadmines?">Dungeon preparation · offline</button><button type="button" data-prompt="Help me plan a relaxed 45-minute game session around a goal I will describe next.">Plan a short session</button></div>${PlayerNavigation.disclosure("voice", "Voice · optional dictation and reading", Voice.markup())}</form>${questionRecovery ? `<div class="callout" data-question-recovery role="status"><p>${esc(questionRecovery.message)}</p><button type="button" data-command="edit-question">Edit question</button></div>` : ""}${PlayerNavigation.disclosure("memory", Memory.summary(), Memory.markup())}</section><aside class="panel companion-intel">${window.FreeAI ? FreeAI.card(state.provider.id) : ""}<img class="hero-medallion" src="${portrait(p?.className)}" alt=""><h2>${esc(p?.name || "Choose your character")}</h2><p>${p ? `Level ${p.level} ${esc(p.className)} · ${esc(p.race || "Race not yet received")} · ${esc(p.faction || "Faction not yet received")}` : "Your character snapshot will bring this page to life."}</p><p>${esc(p?.location?.zone || "Location not yet received")}${p?.location?.subZone ? " · " + esc(p.location.subZone) : ""}</p>${window.LiveLink ? LiveLink.line() : ""}<div class="callout brass">${esc(snapshotLabel(p))}<br>${esc(briefProfileId === p?.id ? adventureBrief?.freshness?.message : "Desktop saved data arrives after the game saves on logout.")}</div><h3>Observed quest log</h3><p>${esc(briefProfileId === p?.id ? adventureBrief?.quests?.message : "Quest data unavailable.")}</p>${(
+  return `${PageHero.render({ art: "companion", eyebrow: "Companion", title: "Ask about WoW Forever", subtitle: "Where is someone, how do I get there: answered offline from the bundled reference. Anything else goes to the AI you choose, only when you press Send." })}<div class="grid companion-grid"><section class="panel companion-conversation"><p class="corner-note" data-conversation-notice role="status">${esc(conversationNotice)}</p><div class="chatlog" id="chatlog" role="log" aria-label="Conversation" aria-live="polite">${messages.length ? messages.map((m, index) => `<div class="message ${m.role}"><div class="companion-message-heading"><span class="eyebrow">${m.role === "user" ? (m.inGame ? "You · from the game" : "You") : m.kind === "travel" ? "Forever travel reference · local" : m.kind === "npc" ? "Forever NPC reference · local" : m.kind === "quick" ? "Companion · offline answer" : m.lookups?.length ? "Companion · AI with local reference lookups" : "Companion · AI suggestion"}</span>${m.role === "assistant" && m.characterContext ? `<small class="companion-character-context">${esc(CharacterFreshness.answer(m.characterContext))}</small>` : ""}</div><div class="message-text ${m.role === "assistant" ? "companion-reply" : ""}">${m.kind === "travel" && m.travel ? CompanionTravel.render(m.travel,index,m.text) : m.kind === "npc" ? CompanionReply.renderNpc(m.text,m.npc,body => PlayerNavigation.disclosure("npc-source-"+index,"Source & evidence",body)) : m.role === "assistant" ? CompanionReply.render(m.text) : esc(m.text)}</div>${m.role === "assistant" && m.lookups?.length ? `<small class="lookup-trail" data-lookup-trail>Checked: ${m.lookups.map(esc).join(" · ")}</small>` : ""}</div>`).join("") : ""}</div>${!state.provider.model ? '<div class="ai-setup-hint"><span>Local NPC locations and travel need no model. Other questions need an AI connection.</span><button type="button" data-nav="connections">Configure AI connection</button></div>' : ""}<p class="companion-cost" data-companion-cost>Local NPC locations and travel send nothing to a provider. ${esc(provider?.name || state.provider.id)} · ${state.provider.id === "ollama" ? "Your local Ollama service" : state.provider.authMode === "subscription" ? "Your subscription and its plan limits" : "Cloud API · charges may apply"}. Nothing is sent until you ask.</p><form id="chat-form" class="chat-form"><label>Your question<textarea name="prompt" maxlength="12000" required placeholder="Help me prepare for my next adventure…" ${sending ? "disabled" : ""}></textarea></label><label class="check-label"><input type="checkbox" id="share-profile" ${shareCharacter ? "checked" : ""} ${sending ? "disabled" : ""}>Use my active character</label>${QuestGuide.contextMarkup()}<small data-memory-selection-summary>${Memory.summary()}</small><div class="button-row"><button class="primary" type="submit" ${sending ? "disabled" : ""}>${sending ? "Thinking…" : "Send question"}</button>${sending ? '<button type="button" data-command="stop-response">Stop response</button>' : ""}<button type="button" data-command="clear-chat">Clear conversation</button></div><div class="suggestions"><button type="button" data-prompt="What is the fastest way from Orgrimmar to Thunder Bluff?">Plan a trip · local reference</button><button type="button" data-prompt="Dungeon prep for The Deadmines?">Dungeon preparation · offline</button><button type="button" data-prompt="Help me plan a relaxed 45-minute game session around a goal I will describe next.">Plan a short session</button></div>${PlayerNavigation.disclosure("voice", "Voice · optional dictation and reading", Voice.markup())}</form>${questionRecovery ? `<div class="callout" data-question-recovery role="status"><p>${esc(questionRecovery.message)}</p><button type="button" data-command="edit-question">Edit question</button></div>` : ""}${PlayerNavigation.disclosure("memory", Memory.summary(), Memory.markup())}</section><aside class="panel companion-intel">${window.FreeAI ? FreeAI.card(state.provider.id) : ""}<img class="hero-medallion" src="${portrait(p?.className)}" alt=""><h2>${esc(p?.name || "Choose your character")}</h2><p>${p ? `Level ${p.level} ${esc(p.className)} · ${esc(p.race || "Race not yet received")} · ${esc(p.faction || "Faction not yet received")}` : "Your character snapshot will bring this page to life."}</p><p data-companion-character-location></p><div class="callout brass">${esc(snapshotLabel(p))}<br>${esc(briefProfileId === p?.id ? adventureBrief?.freshness?.message : "Desktop saved data arrives after the game saves on logout.")}</div><h3>Observed quest log</h3><p>${esc(briefProfileId === p?.id ? adventureBrief?.quests?.message : "Quest data unavailable.")}</p>${(
     p?.quests || []
   )
     .slice(0, 5)
@@ -1070,7 +1125,7 @@ api.onInGameExchange?.((x) => {
   if (conversationScope !== null && conversationScope !== nextScope) messages = [];
   conversationScope = nextScope;
   messages.push({ role: "user", text: x.question.slice(0, 1000), inGame: true });
-  messages.push({ role: "assistant", text: x.result.text, kind: x.result.kind, travel: x.result.travel, npc: x.result.npc, lookups: Array.isArray(x.result.lookups) ? x.result.lookups.slice(0, 10).map(String) : undefined });
+  messages.push({ role: "assistant", text: x.result.text, kind: x.result.kind, travel: x.result.travel, npc: x.result.npc, characterContext: x.result.characterContext, lookups: Array.isArray(x.result.lookups) ? x.result.lookups.slice(0, 10).map(String) : undefined });
   if (page === "assistant" && !sending) { rememberDrafts(); render(); }
 });
 // "Open in app" on the answer panel: the Companion page, through the ordinary navigation.
@@ -1662,6 +1717,9 @@ root.addEventListener("click", (event) => {
       case "game-refresh":
         await mutateGame(() => api.refreshGame());
         break;
+      case "fix-character-connection":
+        await recoverCharacterConnection(button);
+        break;
       case "game-disconnect":
         setupGeneration++;
         setupBusy = false;
@@ -2097,7 +2155,7 @@ root.addEventListener("submit", (event) => {
         if (generation === chatGeneration) {
           if (result.conversation?.resetReason) messages = [{ role: "user", text: prompt }];
           if (result.conversation?.omittedTurns) conversationNotice = "Recent messages accompany follow-ups; older exchanges were omitted to keep this request bounded. Your current question and selected saved memory stay intact.";
-          messages.push({ role: "assistant", text: result.text, kind: result.kind, travel: result.travel, npc: result.npc, lookups: Array.isArray(result.lookups) ? result.lookups.slice(0, 10).map(String) : undefined });
+          messages.push({ role: "assistant", text: result.text, kind: result.kind, travel: result.travel, npc: result.npc, characterContext: result.characterContext, lookups: Array.isArray(result.lookups) ? result.lookups.slice(0, 10).map(String) : undefined });
           void QuestGuide.updateContext(true);
           await Memory.review();
         }
@@ -2228,8 +2286,6 @@ setInterval(async () => {
         snapshotRenderPending=false;
       }
       document.querySelectorAll("[data-snapshot-age]").forEach(node => { node.textContent=snapshotLabel(profile()); });
-      const savedAge=root.querySelector(".game-status-chip small");
-      if (savedAge) savedAge.textContent=profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character";
       CharacterGuidance.refresh(); return;
     }
     if (page === "preparation") {
@@ -2241,8 +2297,6 @@ setInterval(async () => {
       acceptBrief(result);
       if (chromeChanged) render();
       else if (Preparation.packingChanged()) Preparation.paint();
-      const savedAge = root.querySelector(".game-status-chip small");
-      if (savedAge) savedAge.textContent = profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character";
       Preparation.refresh();
       return;
     }
@@ -2255,8 +2309,6 @@ setInterval(async () => {
       gameStatus = result.gameStatus || {};
       acceptBrief(result);
       if (chromeChanged) render();
-      const savedAge = root.querySelector(".game-status-chip small");
-      if (savedAge) savedAge.textContent = profile() ? "Desktop · " + CommandCenter.age(profile()) : "Desktop · no saved character";
       Company.refresh();
       return;
     }
@@ -2285,6 +2337,7 @@ setInterval(async () => {
   } catch {
   } finally {
     snapshotPolling = false;
+    paintCharacterFreshness();
   }
 }, 5000);
 

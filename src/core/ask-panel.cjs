@@ -58,7 +58,13 @@ function panelState(input) {
   const status = ["thinking", "answer", "error"].includes(input?.status) ? input.status : "error";
   const out = { status, question: text(input?.question, 400), at: Number.isFinite(input?.at) ? input.at : Date.now() };
   if (Number.isSafeInteger(input?.id) && input.id > 0) out.id = input.id;
-  if (status === "answer") out.answer = { text: text(input?.answer?.text, 20000), kind: text(input?.answer?.kind, 20) || "ai" };
+  if (status === "answer") {
+    out.answer = { text: text(input?.answer?.text, 20000), kind: text(input?.answer?.kind, 20) || "ai" };
+    const context = input?.answer?.characterContext;
+    if (["live", "saved", "manual"].includes(context?.kind) && Number.isFinite(context.checkedAt) && (context.savedAt === null || Number.isFinite(context.savedAt))) {
+      out.answer.characterContext = { kind: context.kind, checkedAt: context.checkedAt, savedAt: context.savedAt };
+    }
+  }
   if (status === "error") out.message = text(input?.message, 400) || "The companion could not answer. Open the app to try again.";
   if (input?.note) out.note = text(input.note, 200);
   return out;

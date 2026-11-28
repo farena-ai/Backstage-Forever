@@ -126,9 +126,9 @@ class InGameAsk {
         this.handled++;
         // Kept for /bf answers only when the question came from the app's active character.
         if (!(expected && characterHash && expected !== characterHash)) this.remember(state.activeProfileId, prompt, result.text);
-        this.panel.show({ id, status: "answer", question: prompt, answer: { text: result.text, kind: result.kind }, note, at: this.now() });
+        this.panel.show({ id, status: "answer", question: prompt, answer: { text: result.text, kind: result.kind, characterContext: result.characterContext }, note, at: this.now() });
         // The exchange also joins the Companion page's conversation.
-        this.notify({ question: prompt, shareProfile: request.shareProfile, result: { text: result.text, kind: result.kind, npc: result.npc, travel: result.travel, lookups: result.lookups, conversation: result.conversation } });
+        this.notify({ question: prompt, shareProfile: request.shareProfile, result: { text: result.text, kind: result.kind, npc: result.npc, travel: result.travel, lookups: result.lookups, characterContext: result.characterContext, conversation: result.conversation } });
         return result;
       } catch (error) {
         // The main window is answering something else: wait for it, a little.
